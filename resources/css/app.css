@@ -162,6 +162,14 @@
     --btn-color: var(--btn-action);
 }
 
+/* A btn-link is still a button, so it follows the surface too. Without this it keeps DaisyUI's own
+   fallback of --color-primary and stays amber, which put an amber "All results" beside a white
+   "New lesson" on the teacher dashboard: the exact split Bart's instruction closes. White and
+   underlined is also what brand-kit.css already does with a link on the information card. */
+.btn-link {
+    --btn-color: var(--btn-action);
+}
+
 /* The label is set separately, and the :not() is load-bearing. btn-outline, btn-dash, btn-ghost,
    btn-soft and btn-link all re-derive --btn-fg FROM --btn-color, because a button with no fill has
    to draw itself in the action colour instead. Setting --btn-fg unconditionally here overrode that

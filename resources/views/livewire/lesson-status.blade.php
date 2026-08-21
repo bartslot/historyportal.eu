@@ -51,17 +51,13 @@
 
                     @elseif($step['state'] === 'skipped')
                         @if($step['canRetry'] && ! $lesson->isGenerating())
-                            {{-- Amber retry button — clickable --}}
+                            {{-- Retry this step. The surface decides its colour, not this line. --}}
                             <button
                                 wire:click="runStep('{{ $step['key'] }}')"
                                 wire:loading.attr="disabled"
                                 wire:target="runStep('{{ $step['key'] }}')"
                                 title="Run this step now"
-                                class="group flex h-6 w-6 items-center justify-center rounded-full
-                                       border border-amber-700/60 bg-amber-950/40
-                                       hover:border-amber-500 hover:bg-amber-500/20
-                                       transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-1 focus:ring-offset-slate-900
-                                       disabled:opacity-40 disabled:cursor-not-allowed"
+                                class="btn btn-outline btn-primary btn-circle btn-xs group"
                             >
                                 {{-- Retry icon (loading state) --}}
                                 <svg

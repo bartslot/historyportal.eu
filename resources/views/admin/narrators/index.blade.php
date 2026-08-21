@@ -50,13 +50,13 @@
                 {{-- Actions --}}
                 <div class="flex items-center gap-2 flex-shrink-0">
                     <a href="{{ route('admin.narrators.studio', $narrator) }}"
-                       class="rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-amber-400 transition-colors">
+                       class="btn btn-primary btn-sm">
                         Open Studio
                     </a>
                     <form method="POST" action="{{ route('admin.narrators.toggle', $narrator) }}">
                         @csrf @method('PATCH')
                         <button type="submit"
-                                class="rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-400 hover:border-slate-500 hover:text-slate-300 transition-colors">
+                                class="btn btn-outline btn-sm">
                             {{ $narrator->is_active ? 'Deactivate' : 'Activate' }}
                         </button>
                     </form>

@@ -48,7 +48,7 @@
                         <ul tabindex="0" class="dropdown-content menu menu-sm z-10 w-40 rounded-box bg-base-100 p-2 shadow">
                             <li><a href="{{ route('teacher.classes.manage', $class) }}">{{ __('Manage') }}</a></li>
                             <li>
-                                <button type="button" class="text-error"
+                                <button type="button" class="btn btn-ghost btn-xs text-error"
                                         wire:click="delete({{ $class->id }})"
                                         wire:confirm="{{ __('Delete this class? Its roster is removed; past results are kept anonymously.') }}">
                                     {{ __('Delete') }}

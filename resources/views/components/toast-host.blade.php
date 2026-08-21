@@ -56,13 +56,13 @@
                 <template x-if="t.action">
                     <button type="button"
                             x-on:click="run(t)"
-                            class="mt-1 rounded text-sm font-semibold text-sky-400 underline decoration-sky-400/40 underline-offset-2 transition hover:text-sky-300 hover:decoration-sky-300"
+                            class="btn btn-link btn-sm mt-1 px-0 text-info"
                             x-text="t.action.label"></button>
                 </template>
             </div>
 
             <button type="button" x-on:click="dismiss(t)"
-                    class="-mr-1 shrink-0 rounded p-1 text-slate-500 transition hover:bg-slate-800 hover:text-slate-200"
+                    class="btn btn-ghost btn-circle btn-xs -mr-1 shrink-0 text-slate-500 hover:text-slate-200"
                     :aria-label="@js(__('Dismiss'))">
                 <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />

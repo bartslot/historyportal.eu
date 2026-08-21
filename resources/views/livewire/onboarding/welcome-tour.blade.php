@@ -69,7 +69,7 @@
                  :style="arrowStyle"></div>
 
             <button type="button" wire:click="dismiss({{ $startStep }})" aria-label="{{ __('Close') }}"
-                    class="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-white/10 hover:text-slate-200">
+                    class="btn btn-ghost btn-circle btn-sm absolute right-3 top-3 text-slate-400 hover:text-slate-200">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5" aria-hidden="true">
                     <path stroke-linecap="round" d="M6 6l12 12M18 6 6 18" />
                 </svg>
@@ -114,7 +114,7 @@
 
                         @if ($step['topic'])
                             <button type="button" wire:click="openHelp('{{ $step['topic'] }}')"
-                                    class="text-sm text-amber-400 transition hover:text-amber-300">
+                                    class="btn btn-link btn-sm px-0">
                                 {{ __('Read more in the help centre') }}
                             </button>
                         @endif
@@ -123,7 +123,7 @@
             @endforeach
 
             <div class="mt-7 flex items-center justify-between gap-3 border-t border-slate-800 pt-4">
-                <button type="button" @click="dismiss()" class="text-xs text-slate-500 transition hover:text-slate-300">
+                <button type="button" @click="dismiss()" class="btn btn-ghost btn-xs text-slate-500 hover:text-slate-300">
                     {{ __('Skip the tour') }}
                 </button>
 

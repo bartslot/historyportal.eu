@@ -72,7 +72,7 @@
             type="button"
             x-show="search.length > 0"
             x-on:click="clear()"
-            class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+            class="btn btn-ghost btn-circle btn-xs absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
             tabindex="-1"
         >
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
