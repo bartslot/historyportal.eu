@@ -36,7 +36,7 @@
                 @endif
                 <p class="mt-3 leading-relaxed text-slate-300">{{ $article['excerpt'] }}</p>
                 <a href="{{ Seo::url('article', ['slug' => $article['slug']]) }}"
-                   class="mt-3 inline-flex text-sm text-amber-400 hover:text-amber-300">{{ __('Read more') }}</a>
+                   class="btn btn-link btn-sm mt-3 px-0">{{ __('Read more') }}</a>
             </article>
         @empty
             <div class="mt-12 rounded-2xl border border-dashed border-slate-800 px-6 py-12 text-center">
@@ -45,7 +45,7 @@
                     {{ __('Articles written on the main site appear here automatically.') }}
                 </p>
                 <a href="{{ config('services.wordpress.url') }}" rel="noopener"
-                   class="mt-5 inline-flex text-sm text-amber-400 hover:text-amber-300">
+                   class="btn btn-link btn-sm mt-5 px-0">
                     {{ __('Visit the main site') }}
                 </a>
             </div>

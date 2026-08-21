@@ -37,10 +37,7 @@
         <p class="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-slate-400">{{ $message }}</p>
 
         <div class="mt-7 flex flex-col items-center gap-3">
-            <a href="{{ $back }}"
-               class="w-full rounded-lg bg-amber-500 px-4 py-3 text-sm font-semibold text-slate-950
-                      transition-colors hover:bg-amber-400 focus:outline-none focus:ring-2
-                      focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-slate-900">
+            <a href="{{ $back }}" class="btn btn-primary w-full">
                 {{ $backLabel }}
             </a>
 
@@ -55,7 +52,7 @@
                  place, and a language that puts the number elsewhere still reads correctly. The
                  only interpolated value is our own span, never anything from the request. --}}
             {!! __('Taking you back in :seconds seconds.', ['seconds' => '<span data-error-seconds>10</span>']) !!}
-            <button type="button" data-error-stay class="ml-1 underline hover:text-slate-300">{{ __('Stay here') }}</button>
+            <button type="button" data-error-stay class="btn btn-link btn-xs px-1 align-baseline">{{ __('Stay here') }}</button>
         </p>
     </div>
 

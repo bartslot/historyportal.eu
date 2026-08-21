@@ -24,7 +24,7 @@
                         href="{{ $social['href'] }}"
                         target="_blank"
                         rel="noreferrer"
-                        class="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm uppercase text-white/90 transition hover:bg-white/20"
+                        class="btn btn-sm btn-outline uppercase"
                     >
                         {{ $social['label'] }}
                     </a>
@@ -35,7 +35,7 @@
                 
                 <a
                     href="mailto:info@thelearningportal.us"
-                    class="inline-flex items-center rounded-full border border-white/15 bg-white px-7 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-100"
+                    class="btn"
                 >
                     Let&apos;s talk
                 </a>
