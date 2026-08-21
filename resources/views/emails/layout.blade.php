@@ -70,10 +70,12 @@
                          to pass contrast against #040B1A. --}}
                     <tr>
                         <td align="center" bgcolor="#040B1A" style="background-color: #040B1A; padding: 28px 24px 6px 24px;">
-                            {{-- The tagline is a brand asset, like the logo, and stays in English
-                                 in every language. Translating it would make it a different
-                                 tagline in each market. --}}
-                            <span style="font-family: Georgia, 'Times New Roman', serif; font-size: 13px; font-style: italic; line-height: 1.5; color: #bae6fd;">Where Storytelling Meets Learning.</span>
+                            {{-- A sentence, not a slogan, so it goes through the translator like
+                                 every other line in the message. It used to be "Where Storytelling
+                                 Meets Learning.", kept in English on the argument that a tagline is
+                                 a brand asset. Bart rejected the line itself: "this looks like AI
+                                 slop. The typical title and subtitle with a subheading." --}}
+                            <span style="font-family: Georgia, 'Times New Roman', serif; font-size: 13px; font-style: italic; line-height: 1.5; color: #bae6fd;">{{ __('History lessons your class wants to see the end of.') }}</span>
                         </td>
                     </tr>
                     <tr>

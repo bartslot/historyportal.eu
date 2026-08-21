@@ -176,7 +176,7 @@
                 </h1>
 
                 <p data-reveal-item class="mt-5 max-w-md text-balance text-sm leading-relaxed text-white/60 sm:text-base">
-                    {{ __('Story-driven history lessons, narrated and ready for your class.') }}
+                    {{ __('Real paintings, a narrated story, and a game your class finishes by themselves.') }}
                 </p>
 
                 <div data-reveal-item class="mt-8 flex flex-wrap items-center justify-center gap-3 sm:justify-start">
@@ -218,7 +218,7 @@
                  "Attempt to read property title on null". The front door of the product, 500ing
                  because a lesson was mid-rebuild. --}}
             <h1 data-reveal-item class="text-balance text-4xl leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-6xl">
-                {{ $demoLesson?->title ?? __('Where storytelling meets learning.') }}
+                {{ $demoLesson?->title ?? __('The lesson they talk about after class.') }}
             </h1>
 
             {{-- What the product IS, under the name of what it just made. This used to read "Check

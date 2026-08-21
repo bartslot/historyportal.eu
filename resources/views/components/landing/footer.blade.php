@@ -15,7 +15,7 @@
         <div class="section-container flex flex-col items-center justify-end py-12 text-center">
             <p class="text-sm uppercase tracking-[0.8em] text-sky-50/70">Contact</p>
             <h2 class="mt-3 font-history text-3xl text-white md:text-4xl">
-                Feel free to connect on social media.
+                Tell me what you think of it.
             </h2>
 
             <div class="mt-8 flex flex-wrap justify-center gap-3">
