@@ -123,7 +123,7 @@ final class Seo
                     '@id' => url('/').'#organization',
                     'name' => 'The Learning Portal',
                     'url' => url('/'),
-                    'description' => __('Narrated, story-driven history lessons that a teacher can build in minutes and a class can play on any device.'),
+                    'description' => __('History lessons your class wants to see the end of. Real paintings, a narrated story, and a game they finish themselves. Built in minutes, plays anywhere.'),
                     'email' => 'info@thelearningportal.us',
                 ],
                 [
