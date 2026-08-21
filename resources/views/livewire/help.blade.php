@@ -162,7 +162,7 @@
                                                 aria-label="{{ __('Enlarge the picture of :subject', ['subject' => $section['heading']]) }}">
                                             <img src="{{ $section['image_url'] }}" alt="{{ $section['heading'] }}"
                                                  loading="lazy" decoding="async"
-                                                 class="block w-full transition duration-300 ease-[cubic-bezier(0.215,0.61,0.355,1)] group-hover:scale-[1.01] motion-reduce:transition-none">
+                                                 class="block w-full transition duration-300 ease-enter group-hover:scale-[1.01] motion-reduce:transition-none">
                                             <span class="absolute bottom-2 right-2 flex items-center gap-1.5 rounded-lg bg-slate-950/80 px-2 py-1 text-[0.65rem] text-slate-300 opacity-0 backdrop-blur-sm transition group-hover:opacity-100 group-focus-visible:opacity-100">
                                                 <x-icons.magnifying-glass class="h-3.5 w-3.5" />
                                                 {{ __('Enlarge') }}
@@ -204,9 +204,9 @@
     <div x-show="lightbox.open" x-cloak
          class="fixed inset-0 z-[70] flex items-center justify-center p-4 sm:p-8"
          role="dialog" aria-modal="true" :aria-label="lightbox.caption"
-         x-transition:enter="transition duration-200 ease-[cubic-bezier(0.215,0.61,0.355,1)]"
+         x-transition:enter="transition duration-200 ease-enter"
          x-transition:enter-start="opacity-0"
-         x-transition:leave="transition duration-150 ease-[cubic-bezier(0.55,0.055,0.675,0.19)]"
+         x-transition:leave="transition duration-150 ease-exit"
          x-transition:leave-end="opacity-0">
         <div class="absolute inset-0 bg-slate-950/90 backdrop-blur-sm" @click="hide()"></div>
 

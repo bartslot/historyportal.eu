@@ -1,3 +1,5 @@
+import { GSAP_EASE, EASE } from '../easing.js'
+
 /**
  * tuner.js — live controls for the numbers that are still guesses.
  *
@@ -646,6 +648,38 @@ if (!window.__tune) {
     { key: 'size', label: 'Tile size (px)', min: 64, max: 1024, step: 16, value: 256,
       apply: (v) => { grainOnPage(); document.documentElement.style.setProperty('--lp-grain-size', `${v}px`) } },
   ], { tab: 'UI' })
+
+  /**
+   * The five easing curves, live.
+   *
+   * Every one of them reaches ~25 CSS rules at once, because the stylesheet no longer writes curves
+   * out — it says var(--ease-enter) and friends. So dragging a curve here retimes every reveal,
+   * close, reposition and pop in the app at the same moment, which is the only way to judge whether
+   * they belong to each other.
+   *
+   * The values are READ FROM easing.js, never retyped: `value: EASE[intent]` below. A panel that
+   * restated the curves would be a sixth place they are written down, and this codebase has just
+   * finished collapsing three.
+   *
+   * WORTH KNOWING: this moves the CSS half only. GSAP tweens take their curve from GSAP_EASE at the
+   * moment the tween is built, so a tween already running — or one whose call site read the name at
+   * import time — keeps the curve it started with. The GSAP name each intent maps to is in the
+   * label so it is at least visible here rather than only in the source.
+   */
+  register('Easing', Object.keys(EASE).map((intent) => ({
+    key: intent,
+    type: 'text',
+    label: `${intent} — GSAP ${GSAP_EASE[intent]}`,
+    value: EASE[intent],
+    apply: (v) => {
+      const token = `--ease-${intent.replace(/[A-Z]/g, (c) => '-' + c.toLowerCase())}`
+      if (!/^cubic-bezier\([-\d.,\s]+\)$/.test(String(v).trim())) {
+        console.warn(`[tune] ${token} needs a cubic-bezier(...), got "${v}" — ignoring`)
+        return
+      }
+      document.documentElement.style.setProperty(token, String(v).trim())
+    },
+  })), { tab: 'UI' })
 
   register('Scratch CSS', [
     {

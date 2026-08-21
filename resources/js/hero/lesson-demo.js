@@ -13,6 +13,7 @@
 // whole thing in without an edit-and-rebuild — see resources/views/livewire/dev/test-panel.blade.php.
 
 import { gsap } from 'gsap';
+import { GSAP_EASE, CONSTANT_RATE } from '../easing.js';
 import { createTimewarp } from './timewarp.js';
 import { createCardwheel } from './cardwheel.js';
 
@@ -153,7 +154,7 @@ const typeInto = (timeline, target, text, position, charactersPerSecond) => {
     timeline.to(cursor, {
         index: text.length,
         duration: text.length / Math.max(1, charactersPerSecond),
-        ease: 'none',
+        ease: CONSTANT_RATE,
         onUpdate: () => {
             target.textContent = text.slice(0, Math.round(cursor.index));
         },
@@ -208,7 +209,7 @@ const buildStoryboard = (root, warp, settings) => {
     } = heroParts(root);
 
     const { beat } = settings;
-    const master = gsap.timeline({ paused: true, defaults: { ease: 'power2.out' } });
+    const master = gsap.timeline({ paused: true, defaults: { ease: GSAP_EASE.enter } });
 
     gsap.set([goal, audience], { autoAlpha: 0, y: 14 });
     gsap.set(chips, { autoAlpha: 0, y: 10, scale: 0.94 });
@@ -232,7 +233,7 @@ const buildStoryboard = (root, warp, settings) => {
         duration: CARET_BLINK,
         repeat: -1,
         yoyo: true,
-        ease: 'none',
+        ease: CONSTANT_RATE,
     });
 
     // ── The questions answer themselves ─────────────────────────────────────
@@ -251,11 +252,11 @@ const buildStoryboard = (root, warp, settings) => {
             scale: 1,
             duration: 0.45,
             stagger: 0.09,
-            ease: 'back.out(1.7)',
+            ease: GSAP_EASE.pop,
         }, `>+${beat * 0.6}`)
         // The choice makes itself, but only after a beat of deliberation.
         .call(() => picked?.classList.add('is-picked'), null, `>+${beat}`)
-        .to(picked, { scale: 1.06, duration: 0.24, ease: 'back.out(2.4)' }, '<')
+        .to(picked, { scale: 1.06, duration: 0.24, ease: GSAP_EASE.pop }, '<')
         .to(chips.filter((chip) => chip !== picked), {
             autoAlpha: 0.28,
             scale: 0.96,
@@ -287,22 +288,22 @@ const buildStoryboard = (root, warp, settings) => {
                 autoAlpha: 0,
                 scale: 0.6,
                 duration: 1.1,
-                ease: 'power2.in',
+                ease: GSAP_EASE.exit,
             }, launch)
             .to(warp.state, {
                 pull: 1,
                 duration: settings.windUp,
-                ease: 'power2.in',
+                ease: GSAP_EASE.exit,
             }, launch)
             .to(warp.state, {
                 spin: settings.warpSpin,
                 duration: settings.windUp,
-                ease: 'power2.in',
+                ease: GSAP_EASE.exit,
             }, launch)
             .to(warp.state, {
                 glow: settings.warpGlow,
                 duration: settings.windUp * 0.8,
-                ease: 'power3.in',
+                ease: GSAP_EASE.exit,
             }, launch)
             // The stock wheel has gone in; now the lesson itself comes back out. Overlapped on
             // purpose — the last few ring cards are still falling as the first Tasman picture
@@ -310,11 +311,11 @@ const buildStoryboard = (root, warp, settings) => {
             .to(warp.state, {
                 burst: 1,
                 duration: settings.windUp * 0.75,
-                ease: 'power1.in',
+                ease: GSAP_EASE.exit,
             }, afterWarp(launchAt + settings.windUp * 0.45))
             // The last card goes in and the middle flares.
-            .to(warp.state, { glow: 0.95, duration: 0.3, ease: 'power2.out' }, brake)
-            .to(warp.state, { glow: 0, duration: 1, ease: 'power2.out' }, afterWarp(brakeAt + 0.3));
+            .to(warp.state, { glow: 0.95, duration: 0.3, ease: GSAP_EASE.enter }, brake)
+            .to(warp.state, { glow: 0, duration: 1, ease: GSAP_EASE.enter }, afterWarp(brakeAt + 0.3));
     } else {
 
         master
@@ -325,14 +326,14 @@ const buildStoryboard = (root, warp, settings) => {
                 gap: settings.warpFirstGap ?? 1.4,
                 cadence: settings.warpCadence ?? 0.9,
             }, 'warp')
-            .to(warp.state, { speed: 0.004, duration: settings.inhale, ease: 'power2.out' }, 'warp')
-            .to(warp.state, { glow: 0.07, duration: settings.inhale, ease: 'none' }, 'warp')
-            .to(conversation, { scale: 0.97, duration: settings.inhale, ease: 'power2.out' }, 'warp')
+            .to(warp.state, { speed: 0.004, duration: settings.inhale, ease: GSAP_EASE.enter }, 'warp')
+            .to(warp.state, { glow: 0.07, duration: settings.inhale, ease: GSAP_EASE.enter }, 'warp')
+            .to(conversation, { scale: 0.97, duration: settings.inhale, ease: GSAP_EASE.enter }, 'warp')
             .call(() => {
                 gsap.to(master, {
                     timeScale: settings.timeScaleWarp,
                     duration: settings.windUp * 0.6,
-                    ease: 'power2.in',
+                    ease: GSAP_EASE.exit,
                 });
             }, null, `warp+=${settings.inhale + settings.windUp * 0.35}`)
             // The questions are pulled into the mouth with everything else.
@@ -340,13 +341,13 @@ const buildStoryboard = (root, warp, settings) => {
                 autoAlpha: 0,
                 scale: 0.55,
                 duration: 1.3,
-                ease: 'power2.in',
+                ease: GSAP_EASE.exit,
             }, afterWarp(launchAt + 1.1))
             .to(wheel, {
                 autoAlpha: 0,
                 scale: 2.6,
                 duration: 1.1,
-                ease: 'power2.in',
+                ease: GSAP_EASE.exit,
                 overwrite: true,
             }, launch);
 
@@ -359,23 +360,23 @@ const buildStoryboard = (root, warp, settings) => {
                 .to(warp.state, {
                     speed: settings.surge.rate,
                     duration: climb,
-                    ease: 'power3.in',
+                    ease: GSAP_EASE.exit,
                 }, launch)
                 .to(warp.state, {
                     speed: settings.surge.rate * 0.55,
                     duration: settings.surge.hold,
-                    ease: 'power2.out',
+                    ease: GSAP_EASE.enter,
                 }, afterWarp(launchAt + climb))
                 .to(warp.state, {
                     speed: settings.warpRate,
                     duration: settings.windUp - climb - settings.surge.hold,
-                    ease: 'power4.in',
+                    ease: GSAP_EASE.exit,
                 }, afterWarp(launchAt + climb + settings.surge.hold));
         } else {
             master.to(warp.state, {
                 speed: settings.warpRate,
                 duration: settings.windUp,
-                ease: 'power4.in',
+                ease: GSAP_EASE.exit,
             }, launch);
         }
 
@@ -384,13 +385,13 @@ const buildStoryboard = (root, warp, settings) => {
             .to(warp.state, {
                 spin: settings.warpSpin,
                 duration: settings.windUp * 0.9,
-                ease: 'power3.in',
+                ease: GSAP_EASE.exit,
             }, afterWarp(launchAt + 0.5))
             .to(warp.state, {
                 density: settings.warpDensity,
                 alpha: 1,
                 duration: 1.6,
-                ease: 'power2.out',
+                ease: GSAP_EASE.enter,
             }, launch)
             // How big and how wide this variant flies — the difference between cards you can read
             // and cards that are only texture.
@@ -398,28 +399,28 @@ const buildStoryboard = (root, warp, settings) => {
                 scale: settings.warpScale ?? 1,
                 spread: settings.warpSpread ?? 1,
                 duration: settings.windUp * 0.8,
-                ease: 'power2.inOut',
+                ease: GSAP_EASE.move,
             }, launch)
             // Streaks only once there is something to streak.
             .to(warp.state, {
                 trail: settings.warpTrail,
                 duration: settings.windUp * 0.75,
-                ease: 'power3.in',
+                ease: GSAP_EASE.exit,
             }, afterWarp(launchAt + 0.8))
             .to(warp.state, {
                 glow: settings.warpGlow,
                 duration: settings.windUp * 0.7,
-                ease: 'power3.in',
+                ease: GSAP_EASE.exit,
             }, afterWarp(launchAt + 1))
 
             // ── Breaking through ────────────────────────────────────────────────
             // The mouth flares, the field brakes hard, and the streaks resolve back into stillness.
-            .to(warp.state, { glow: 0.95, duration: 0.28, ease: 'power2.out' }, brake)
+            .to(warp.state, { glow: 0.95, duration: 0.28, ease: GSAP_EASE.enter }, brake)
             .to(warp.state, {
                 speed: SETTLE.speed,
                 spin: SETTLE.spin,
                 duration: settings.brake,
-                ease: 'power4.out',
+                ease: GSAP_EASE.enter,
             }, brake)
             .to(warp.state, {
                 alpha: SETTLE.alpha,
@@ -428,14 +429,14 @@ const buildStoryboard = (root, warp, settings) => {
                 scale: 1,
                 spread: 1,
                 duration: settings.brake * 0.85,
-                ease: 'power2.out',
+                ease: GSAP_EASE.enter,
             }, afterWarp(brakeAt + 0.2))
-            .to(warp.state, { glow: 0, duration: 0.9, ease: 'power2.out' }, afterWarp(brakeAt + 0.3))
+            .to(warp.state, { glow: 0, duration: 0.9, ease: GSAP_EASE.enter }, afterWarp(brakeAt + 0.3))
             .call(() => {
                 gsap.to(master, {
                     timeScale: settings.timeScaleStart,
                     duration: 0.8,
-                    ease: 'power2.out',
+                    ease: GSAP_EASE.enter,
                 });
             }, null, brake);
 
@@ -458,7 +459,7 @@ const buildStoryboard = (root, warp, settings) => {
             scale: 1,
             duration: 0.9,
             stagger: 0.16,
-            ease: 'expo.out',
+            ease: GSAP_EASE.enter,
         }, 'reveal');
 
     // Order restored: the ring reassembles, every card back in the seat it left. Running `pull`
@@ -468,13 +469,13 @@ const buildStoryboard = (root, warp, settings) => {
             .to(warp.state, {
                 pull: 0,
                 duration: 2.2,
-                ease: 'power3.out',
+                ease: GSAP_EASE.enter,
             }, 'reveal')
             .to(warp.state, {
                 spin: 0.02,
                 alpha: 0.55,
                 duration: 2,
-                ease: 'power2.out',
+                ease: GSAP_EASE.enter,
             }, 'reveal');
     }
 
@@ -573,7 +574,7 @@ export const setupHeroLessonDemo = async () => {
             return;
         }
 
-        gsap.to(master, { timeScale: TIMESCALE_SKIP, duration: 0.3, ease: 'power1.in' });
+        gsap.to(master, { timeScale: TIMESCALE_SKIP, duration: 0.3, ease: GSAP_EASE.exit });
     };
 
     root.querySelector('[data-demo-skip]')?.addEventListener('click', skip);
