@@ -40,13 +40,25 @@
     --color-base-300:         oklch(22% 0.033 264);  /* #1e293b slate-800 — elevated */
     --color-base-content:     oklch(98% 0.004 264);  /* #f8fafc slate-50  — primary text */
 
-    /* Primary — amber gold */
-    --color-primary:          oklch(76% 0.171 62);   /* #f59e0b amber-500 */
-    --color-primary-content:  oklch(9% 0.022 264);   /* slate-950 — text on amber */
+    /* ── THE AMBER ────────────────────────────────────────────────────────────────────────────
+       ONE amber, and it is amber-300. The app had four in circulation — 300, 400, 500 and 600 —
+       and nineteen buttons reached for a different one of them for the same primary action, so
+       "the amber" was whatever the last person had open. Bart settled it: "make it the standard
+       for all Ambers. Amber is used too much."
 
-    /* Secondary — warm amber variant */
-    --color-secondary:        oklch(69% 0.163 56);   /* #d97706 amber-600 */
-    --color-secondary-content: oklch(98% 0.004 264);
+       The value is Tailwind's own `--color-amber-300`, character for character, on purpose: a
+       button converted to `btn-primary` and a not-yet-converted `bg-amber-300` next to it must
+       not differ by a hair, or the sweep looks like a bug while it is half done.
+
+       --color-warning is the one amber deliberately left alone; see the note there. */
+    --color-primary:          oklch(87.9% 0.169 91.605);  /* amber-300 */
+    --color-primary-content:  oklch(9% 0.022 264);        /* slate-950 — text on amber */
+
+    /* Secondary is the SAME amber. It was amber-600, which made it a second brand amber for the
+       seven places that use it; there is no role here that primary does not already fill. Kept as
+       a name rather than deleted so its call sites can move to `primary` on their own schedule. */
+    --color-secondary:        oklch(87.9% 0.169 91.605);  /* amber-300 */
+    --color-secondary-content: oklch(9% 0.022 264);
 
     /* Accent — sky blue (portal / AI magic) */
     --color-accent:           oklch(76% 0.139 217);  /* #38bdf8 sky-400 */
@@ -61,7 +73,13 @@
     --color-info-content:     oklch(9% 0.022 264);
     --color-success:          oklch(73% 0.165 148);  /* emerald-400 */
     --color-success-content:  oklch(9% 0.022 264);
-    --color-link:             oklch(83% 0.161 68);   /* #fbbf24 amber-400 */
+    --color-link:             oklch(87.9% 0.169 91.605);  /* amber-300 — the brand amber */
+
+    /* WARNING STAYS AMBER-400, and that is not an oversight. It is the only amber in the theme
+       doing semantic work rather than brand work: the lesson report grades every question on an
+       error / warning / success scale (`< 35%` error, `< 50%` warning, else success), and the
+       classroom list marks an archived class with it. Fold it into the brand amber and that
+       three-state scale silently becomes two. */
     --color-warning:          oklch(83% 0.161 68);   /* #fbbf24 amber-400 */
     --color-warning-content:  oklch(9% 0.022 264);
     --color-error:            oklch(65% 0.22 27);    /* rose-500 */
@@ -82,6 +100,92 @@
     /* Depth + noise (film-grain effect built into daisyUI v5) */
     --depth: 1;
     --noise: 0.04;
+}
+
+/* ═══ THE BUTTON ══════════════════════════════════════════════════════════════════════════════
+   Every button in this app is a DaisyUI `btn`. Three sizes and no fourth:
+
+       btn btn-xs   24px tall, 11px/600, 8px  of padding-inline
+       btn btn-sm   32px tall, 12px/600, 12px of padding-inline
+       btn          40px tall, 14px/600, 16px of padding-inline
+
+   (Measured against the built CSS, not read off the docs — they follow from --size-field: 0.25rem.)
+   Icon-only buttons add `btn-circle`; buttons with no chrome add `btn-ghost`. Reaching for
+   `rounded-* px-* py-* bg-* text-*` on a button means rebuilding one of the three by hand, and the
+   app had 237 of those before this rule existed.
+
+   DELIBERATELY UNLAYERED. DaisyUI puts .btn and .btn-primary in @layer utilities, and a cascade
+   layer beats specificity outright: the same rules written inside @layer components style nothing
+   at all, which is exactly how the amber gradient that used to live down there died unnoticed. The
+   landing-cursor block at the foot of this file is unlayered for the same reason. */
+
+/* ── Shape ────────────────────────────────────────────────────────────────────────────────────
+   Bart: "We need fully rounded buttons everywhere, no more squared rounded buttons." Pills.
+
+   Set as --radius-field ON the button rather than as a border-radius, because that is the variable
+   DaisyUI reads for the corner AND the one `.join` reads to round the ends of a button group. A
+   flat `border-radius` here would give a three-button join three separate pills; going through the
+   variable gives it one pill with square seams, which is what a joined group should look like.
+
+   Scoped to .btn so inputs and selects keep --radius-field at the theme's 0.5rem. They are not
+   buttons and Bart's instruction was not about them. */
+.btn {
+    --radius-btn: calc(infinity * 1px);   /* the same value Tailwind's own `rounded-full` emits */
+    --radius-field: var(--radius-btn);
+}
+
+/* ── Colour, and which surface you are on ─────────────────────────────────────────────────────
+   Bart: "Make sure Amber buttons would be used only on frontend, not on backend. Backend uses
+   solid white, fully rounded."
+
+   So the colour of a primary action is a property of the SURFACE, not of the button, and a button
+   never names it. The marketing site, the lesson player, the sign-in page — anything a visitor or
+   a class sees — gets the brand amber. The teacher app gets a white pill.
+
+   That white pill is not a new invention: brand-kit.css already carries --color-card-action and
+   --color-card-action-label from the Figma information card, where Bart made the same call for the
+   same reason ("it's white now — we shouldn't put so much colour in our UI while our footage is
+   already very colourful"). This generalises that one card to the whole workspace.
+
+   A surface declares itself with `data-surface="teacher"` on <html>. See layouts/app.blade.php. */
+:root {
+    --btn-action:       var(--color-primary);
+    --btn-action-label: var(--color-primary-content);
+}
+
+[data-surface="teacher"] {
+    --btn-action:       var(--color-card-action);        /* #ffffff */
+    --btn-action-label: var(--color-card-action-label);  /* #18293f */
+}
+
+.btn-primary {
+    --btn-color: var(--btn-action);
+}
+
+/* The label is set separately, and the :not() is load-bearing. btn-outline, btn-dash, btn-ghost,
+   btn-soft and btn-link all re-derive --btn-fg FROM --btn-color, because a button with no fill has
+   to draw itself in the action colour instead. Setting --btn-fg unconditionally here overrode that
+   and painted `btn-outline btn-primary` in the teacher app's navy label on a transparent dark
+   panel: invisible. Caught in the browser, not in review. */
+.btn-primary:not(.btn-outline, .btn-dash, .btn-ghost, .btn-soft, .btn-link) {
+    --btn-fg: var(--btn-action-label);
+}
+
+/* ── The pointer ──────────────────────────────────────────────────────────────────────────────
+   Tailwind v4 dropped the `cursor: pointer` its preflight used to give buttons, and DaisyUI only
+   puts it back on .btn — so every button that had not been converted yet showed the arrow. That is
+   37 of them, counted, including all three sign-in submits.
+
+   One rule rather than 37 patches, and in @layer base so that a `cursor-*` utility on any single
+   button still wins. :disabled is excluded because a dead control must not invite a click, and
+   [aria-busy] because a button mid-request is not clickable either. */
+@layer base {
+    button:not(:disabled, [aria-disabled="true"], [aria-busy="true"]),
+    [role="button"]:not([aria-disabled="true"]),
+    label:has(> input[type="file"]),
+    summary {
+        cursor: pointer;
+    }
 }
 
 @theme {
@@ -172,27 +276,15 @@
         box-shadow: 0 4px 24px rgba(0,0,0,0.55), 0 0 32px rgba(245,158,11,0.18);
     }
 
-    /* Primary button: amber gradient + dark label */
-    .btn-primary {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        border-color: transparent;
-        color: #020617;
-        box-shadow: 0 2px 12px rgba(245,158,11,0.35);
-    }
-    .btn-primary:hover, .btn-primary:focus {
-        background: linear-gradient(135deg, var(--color-link) 0%, #f59e0b 100%);
-        box-shadow: 0 0 40px rgba(245,158,11,0.45);
-    }
+    /* The .btn-primary and .btn-ghost overrides that used to sit here — an amber gradient, an
+       amber glow, an amber ghost border — were DEAD, every declaration of them. They are in
+       @layer components; DaisyUI declares .btn in @layer utilities, and a layer beats specificity
+       outright, so its `background-color: var(--btn-bg)`, `color: var(--btn-fg)`, `border-color`
+       and `box-shadow` won all four. Measured in the browser before removing: the computed
+       background-image carried no gradient and the ghost border computed to rgba(0,0,0,0).
 
-    /* Ghost / outline button: amber border */
-    .btn-ghost {
-        border: 1px solid rgba(245,158,11,0.4);
-        color: var(--color-link);
-    }
-    .btn-ghost:hover {
-        background: rgba(245,158,11,0.08);
-        border-color: #f59e0b;
-    }
+       Buttons are now shaped by the block above the @theme rule, which is unlayered and does win.
+       Do not put button styling back in here. */
 
     /* Badge / label — Netflix-style category chip */
     .badge-primary {
@@ -287,9 +379,9 @@
     .tab {
         @apply px-4;
     }
-    button[type="button"] {
-        @apply hover:cursor-pointer;
-    }
+    /* Moved to the unlayered button foundation above the @theme rule: `button[type="button"]`
+       only ever covered the buttons that carried that attribute, which left 37 of them — every
+       bare <button>, every type="submit" — showing the arrow. */
 
     /* Alert overrides */
     .alert-info    { background: rgba(56,189,248,0.10); border-color: rgba(56,189,248,0.25); }
