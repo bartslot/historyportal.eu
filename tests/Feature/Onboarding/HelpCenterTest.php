@@ -26,9 +26,17 @@ class HelpCenterTest extends TestCase
         ));
     }
 
-    public function test_guests_are_sent_to_the_login_page(): void
+    /**
+     * The help centre is PUBLIC as of 2026-08-19. It used to redirect a signed-out visitor to
+     * /login, which meant the one document written for people who do not know the product yet was
+     * unreachable by exactly them: an invitation email links a teacher straight to it before they
+     * have any account. Sibling assertion in GuestDemoTest covers the /try sandbox account.
+     */
+    public function test_a_signed_out_visitor_can_read_the_help_centre(): void
     {
-        $this->get(route('help.index'))->assertRedirect(route('login'));
+        $this->get(route('help.index'))
+            ->assertOk()
+            ->assertDontSee('wire:click="startTutorial"', false);
     }
 
     public function test_the_help_page_lists_every_teacher_topic_with_its_sections(): void
