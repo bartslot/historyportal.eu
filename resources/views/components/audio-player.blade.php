@@ -89,7 +89,7 @@
         </p>
     </template>
 
-    <p x-show="error" x-text="errorMessage" class="text-xs text-rose-400"></p>
+    <p x-show="error" x-text="errorMessage" class="text-xs text-error"></p>
     <audio
         x-ref="nativeAudio"
         preload="metadata"

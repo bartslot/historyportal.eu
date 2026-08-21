@@ -8,13 +8,13 @@
 
         {{-- Deliberately the same message whether or not the address has an account. --}}
         @if(session('status'))
-            <div class="mb-4 rounded-lg border border-emerald-700 bg-emerald-900/30 px-4 py-3 text-sm text-emerald-300">
+            <div class="mb-4 rounded-lg border border-success/40 bg-success/10 px-4 py-3 text-sm text-success">
                 {{ session('status') }}
             </div>
         @endif
 
         @if($errors->any())
-            <div class="mb-4 rounded-lg border border-rose-700 bg-rose-900/30 px-4 py-3 text-sm text-rose-300">
+            <div class="mb-4 rounded-lg border border-error/40 bg-error/10 px-4 py-3 text-sm text-error">
                 {{ $errors->first() }}
             </div>
         @endif

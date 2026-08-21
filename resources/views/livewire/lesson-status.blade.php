@@ -12,7 +12,7 @@
     <div class="h-1.5 w-full rounded-full bg-slate-800 overflow-hidden">
         <div
             class="h-full rounded-full transition-all duration-700 ease-out
-                {{ $lesson->status === \App\Enums\LessonStatus::Failed ? 'bg-rose-500' : 'bg-amber-400' }}"
+                {{ $lesson->status === \App\Enums\LessonStatus::Failed ? 'bg-error' : 'bg-amber-400' }}"
             style="width: {{ round(($this->completedCount / 5) * 100) }}%"
         ></div>
     </div>
@@ -26,8 +26,8 @@
                 <div class="mt-0.5 flex-shrink-0">
                     @if($step['state'] === 'done')
                         {{-- Green check --}}
-                        <span class="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/20 border border-emerald-600">
-                            <svg class="h-3.5 w-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <span class="flex h-6 w-6 items-center justify-center rounded-full bg-success/20 border border-success/40">
+                            <svg class="h-3.5 w-3.5 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                             </svg>
                         </span>
@@ -43,8 +43,8 @@
 
                     @elseif($step['state'] === 'failed')
                         {{-- Red X --}}
-                        <span class="flex h-6 w-6 items-center justify-center rounded-full bg-rose-500/20 border border-rose-600">
-                            <svg class="h-3.5 w-3.5 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <span class="flex h-6 w-6 items-center justify-center rounded-full bg-error/20 border border-error/40">
+                            <svg class="h-3.5 w-3.5 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                             </svg>
                         </span>
@@ -102,9 +102,9 @@
                 {{-- Text --}}
                 <div class="flex-1 min-w-0">
                     <p class="text-sm font-medium
-                        {{ $step['state'] === 'done'    ? 'text-emerald-300' : '' }}
+                        {{ $step['state'] === 'done'    ? 'text-success' : '' }}
                         {{ $step['state'] === 'active'  ? 'text-amber-300'   : '' }}
-                        {{ $step['state'] === 'failed'  ? 'text-rose-300'    : '' }}
+                        {{ $step['state'] === 'failed'  ? 'text-error'    : '' }}
                         {{ $step['state'] === 'skipped' ? 'text-slate-500'   : '' }}
                         {{ $step['state'] === 'pending' ? 'text-slate-400'   : '' }}
                     ">{{ $step['label'] }}</p>
@@ -137,14 +137,14 @@
             ⏱ Running for <span x-text="Math.floor(elapsed / 60) > 0 ? Math.floor(elapsed / 60) + 'm ' + (elapsed % 60) + 's' : elapsed + 's'"></span> — average generation time is 2–5 minutes.
         </p>
     @elseif($lesson->status === \App\Enums\LessonStatus::Failed)
-        <div class="rounded-xl border border-rose-800 bg-rose-950/40 px-4 py-3 text-xs text-rose-300 border-t border-slate-800 mt-4">
+        <div class="rounded-xl border border-error/40 bg-error/10 px-4 py-3 text-xs text-error border-t border-slate-800 mt-4">
             <p class="font-semibold mb-1">Generation failed</p>
             @if($lesson->error_message)
-                <p class="text-rose-400/80 font-mono">{{ $lesson->error_message }}</p>
+                <p class="text-error/80 font-mono">{{ $lesson->error_message }}</p>
             @endif
         </div>
     @elseif($this->allStepsComplete)
-        <p class="text-xs text-emerald-400 border-t border-slate-800 pt-4">
+        <p class="text-xs text-success border-t border-slate-800 pt-4">
             ✓ All steps complete — lesson is ready to review and publish.
         </p>
     @elseif($lesson->status === \App\Enums\LessonStatus::Ready)

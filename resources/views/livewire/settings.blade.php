@@ -30,7 +30,7 @@
                 <x-ui.language-picker model="locale" :current="$locale" :label="__('Language')" />
                 <p class="mt-1 text-xs text-slate-500">{{ __('Changes the language of the interface.') }}</p>
                 @error('locale')
-                    <p class="mt-1 text-xs text-rose-400">{{ $message }}</p>
+                    <p class="mt-1 text-xs text-error">{{ $message }}</p>
                 @enderror
             </div>
 
@@ -41,7 +41,7 @@
                 <x-ui.language-picker model="teaching_locale" :current="$teaching_locale" :label="__('Teaching language')" />
                 <p class="mt-1 text-xs text-slate-500">{{ __('The language your lessons are written and read aloud in. This can differ from the language of the interface.') }}</p>
                 @error('teaching_locale')
-                    <p class="mt-1 text-xs text-rose-400">{{ $message }}</p>
+                    <p class="mt-1 text-xs text-error">{{ $message }}</p>
                 @enderror
             </div>
 

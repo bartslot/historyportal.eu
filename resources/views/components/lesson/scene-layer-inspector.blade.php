@@ -77,7 +77,7 @@
              class="h-9 w-9 shrink-0 rounded bg-base-100 object-contain" />
         <h3 class="min-w-0 flex-1 truncate font-semibold text-amber-300">{{ $layer['title'] ?? __('Icon') }}</h3>
         <button type="button" wire:click="detachArtwork({{ $aid }})"
-                class="btn btn-ghost btn-xs btn-square text-slate-500 hover:text-rose-400"
+                class="btn btn-ghost btn-xs btn-square text-slate-500 hover:text-error"
                 aria-label="{{ __('Remove layer') }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />

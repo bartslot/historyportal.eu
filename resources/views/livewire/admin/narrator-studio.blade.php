@@ -34,7 +34,7 @@
 
         <div class="flex items-center gap-2">
             <span class="rounded-full px-3 py-1 text-xs font-medium border
-                {{ $narrator->is_active ? 'bg-emerald-950/60 border-emerald-700 text-emerald-300' : 'bg-slate-900 border-slate-700 text-slate-500' }}">
+                {{ $narrator->is_active ? 'bg-success/10 border-success/40 text-success' : 'bg-slate-900 border-slate-700 text-slate-500' }}">
                 {{ $narrator->is_active ? 'Active' : 'Inactive' }}
             </span>
             <span class="text-xs text-slate-600">·</span>
@@ -47,7 +47,7 @@
         <div wire:key="studio-flash">
             @if($flashMessage)
                 <div class="rounded-xl border px-4 py-3 text-sm
-                    {{ $flashError ? 'border-rose-700 bg-rose-950/40 text-rose-300' : 'border-emerald-700 bg-emerald-950/40 text-emerald-300' }}">
+                    {{ $flashError ? 'border-error/40 bg-error/10 text-error' : 'border-success/40 bg-success/10 text-success' }}">
                     {{ $flashMessage }}
                 </div>
             @endif
@@ -87,7 +87,7 @@
                     <label class="block text-sm font-medium text-slate-300 mb-2">Upload new image</label>
                     <input type="file" wire:model="portraitUpload" accept="image/*"
                            class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-medium file:bg-amber-500/10 file:text-amber-400 hover:file:bg-amber-500/20">
-                    @error('portraitUpload') <p class="mt-1 text-xs text-rose-400">{{ $message }}</p> @enderror
+                    @error('portraitUpload') <p class="mt-1 text-xs text-error">{{ $message }}</p> @enderror
                 </div>
                 <button type="submit"
                         class="rounded-xl bg-amber-500/90 px-4 py-2 text-sm font-medium text-slate-950 hover:bg-amber-400 disabled:opacity-50"
@@ -279,7 +279,7 @@
                                 hover:bg-amber-400 transition-colors disabled:opacity-50"
                         >▶ Generate</button>
                     </div>
-                    @error('customPhrase') <p class="text-sm text-rose-400">{{ $message }}</p> @enderror
+                    @error('customPhrase') <p class="text-sm text-error">{{ $message }}</p> @enderror
                 </div>
 
             </div>
@@ -304,15 +304,15 @@
                                     @else
                                         <button
                                             wire:click="applyVoice({{ $sample->id }})"
-                                            class="rounded-lg border border-emerald-700 px-3 py-1 text-xs text-emerald-400
-                                                hover:bg-emerald-950/40 transition-colors"
+                                            class="rounded-lg border border-success/40 px-3 py-1 text-xs text-success
+                                                hover:bg-success/10 transition-colors"
                                         >Use this voice</button>
                                     @endif
                                     <button
                                         wire:click="deleteSample({{ $sample->id }})"
                                         wire:confirm="Delete this sample?"
                                         class="rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-500
-                                            hover:border-rose-700 hover:text-rose-400 transition-colors"
+                                            hover:border-error/40 hover:text-error transition-colors"
                                     >✕</button>
                                 </div>
                             </div>
@@ -377,7 +377,7 @@
                         class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100
                                 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
                         placeholder="The Professor">
-                    @error('name') <p class="mt-1 text-sm text-rose-400">{{ $message }}</p> @enderror
+                    @error('name') <p class="mt-1 text-sm text-error">{{ $message }}</p> @enderror
                 </div>
 
                 {{-- Short name + title (greeting) --}}
@@ -412,7 +412,7 @@
                     <textarea wire:model="description" rows="2"
                             class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100
                                     resize-none focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"></textarea>
-                    @error('description') <p class="mt-1 text-sm text-rose-400">{{ $message }}</p> @enderror
+                    @error('description') <p class="mt-1 text-sm text-error">{{ $message }}</p> @enderror
                 </div>
 
                 {{-- Subject --}}
@@ -502,13 +502,13 @@
                                 <div class="flex gap-2 flex-shrink-0">
                                     @if($sample->voice_id !== $narrator->voice_id || round($sample->voice_speed, 2) !== round($narrator->voice_speed, 2))
                                         <button wire:click="applyVoice({{ $sample->id }})"
-                                                class="rounded-lg border border-emerald-700 px-3 py-1 text-xs text-emerald-400 hover:bg-emerald-950/40 transition-colors">
+                                                class="rounded-lg border border-success/40 px-3 py-1 text-xs text-success hover:bg-success/10 transition-colors">
                                             Use voice
                                         </button>
                                     @endif
                                     <button wire:click="deleteSample({{ $sample->id }})"
                                             wire:confirm="Delete this sample?"
-                                            class="rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-500 hover:border-rose-700 hover:text-rose-400 transition-colors">
+                                            class="rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-500 hover:border-error/40 hover:text-error transition-colors">
                                         ✕
                                     </button>
                                 </div>

@@ -10,12 +10,12 @@
         {{-- NOT a flow group: this is a collapsed shortcut banner (~53px), and giving it the 75vh
              flow treatment pushed the Topic field — the first thing anyone actually needs — below
              the fold behind ~490px of empty space, dimmed to 38%. The flow starts at Topic. --}}
-        <div class="rounded-2xl border border-indigo-500/30 bg-indigo-950/20 p-4"
+        <div class="rounded-box border border-slate-700/70 bg-base-200/60 p-4"
              x-data="{ open: false, pick: '' }">
             <button type="button" class="flex w-full items-center gap-3 text-left" x-on:click="open = !open">
                 <x-lesson.icon-voyage class="h-7 w-7 text-indigo-300" />
                 <span class="flex-1">
-                    <span class="block text-sm font-semibold text-indigo-200">{{ __('Start from a historical voyage') }}</span>
+                    <span class="block text-sm font-semibold text-base-content">{{ __('Start from a historical voyage') }}</span>
                     <span class="block text-xs text-slate-400">{{ __('Sail a real expedition on the map. No topic or generation needed, ready to edit in seconds.') }}</span>
                 </span>
                 <svg class="h-4 w-4 text-slate-400 transition-transform" :class="open && 'rotate-90'" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m9 5 7 7-7 7"/></svg>
@@ -30,7 +30,7 @@
                             <option value="{{ $id }}">{{ $name }}</option>
                         @endforeach
                     </select>
-                    @error('voyagePick') <span class="mt-1 text-xs text-rose-300">{{ $message }}</span> @enderror
+                    @error('voyagePick') <span class="mt-1 text-xs text-error">{{ $message }}</span> @enderror
                 </label>
                 <button type="button" x-on:click="$wire.createVoyageLesson(pick)"
                         wire:loading.attr="disabled" wire:target="createVoyageLesson"
@@ -51,9 +51,9 @@
              learning objectives and real narrative sources. --}}
         @if ($storyId)
             @php $chosen = collect($this->storyChoices)->firstWhere('id', $storyId); @endphp
-            <div class="alert bg-emerald-500/10 border border-emerald-500/40 flex items-center justify-between">
+            <div class="alert bg-success/10 border border-success/40 flex items-center justify-between">
                 <div class="flex flex-col gap-0.5">
-                    <span class="text-sm text-emerald-300 font-semibold">{{ __('Story') }}: {{ $chosen['title'] ?? $topic }}</span>
+                    <span class="text-sm text-success font-semibold">{{ __('Story') }}: {{ $chosen['title'] ?? $topic }}</span>
                     <span class="text-xs text-slate-400">
                         {{ collect([$chosen['era'] ?? null, $chosen['region'] ?? null, $chosen['grade_band'] ?? null])->filter()->implode(' · ') }}
                         · {{ __('curated: objectives and sources included') }}
@@ -101,16 +101,16 @@
                        placeholder="{{ __('Search topics, events, people… e.g. Black Death, French Revolution') }}"
                        autocomplete="off"
                        class="input input-bordered bg-slate-900 mt-1 text-base w-full
-                              @if($topicId) border-emerald-500/60 pr-10 @endif" />
+                              @if($topicId) border-success/60 pr-10 @endif" />
                 {{-- Locked check when a catalog item is chosen --}}
                 @if ($topicId)
-                    <svg class="absolute right-3 top-1/2 -translate-y-1/2 mt-0.5 h-5 w-5 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    <svg class="absolute right-3 top-1/2 -translate-y-1/2 mt-0.5 h-5 w-5 text-success" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                 @endif
             </div>
-            @error('topic') <span class="text-rose-400 text-xs mt-1">{{ $message }}</span> @enderror
+            @error('topic') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
 
             @if ($topicId && $topicWikipediaUrl)
-                <span class="text-xs text-emerald-400/80 mt-1">
+                <span class="text-xs text-success/80 mt-1">
                     {!! __('Grounded in :link.', ['link' => '<a href="'.e($topicWikipediaUrl).'" target="_blank" rel="noopener" class="underline">'.e(__('this Wikipedia article')).'</a>']) !!}
                 </span>
             @elseif (strlen(trim($topic)) >= 2 && !$topicId)
@@ -147,7 +147,7 @@
                                         {{ $s['figure_kind'] === 'ruler' ? __('Ruler') : __('Person') }}
                                     </span>
                                 @elseif ($s['type'] === 'place')
-                                    <span class="badge badge-sm badge-outline border-emerald-500/40 text-emerald-300 shrink-0">
+                                    <span class="badge badge-sm badge-outline border-success/40 text-success shrink-0">
                                         {{ __('Place') }}
                                     </span>
                                 @elseif ($s['type'] === 'event')
@@ -197,7 +197,7 @@
                         @if ($slot)
                             <button type="button" wire:click="toggleFocusTag('{{ $slot }}')"
                                     title="{{ __('Remove') }}"
-                                    class="group inline-flex items-center gap-1 rounded-md border border-amber-500/50 bg-amber-500/15 px-2 py-1 text-[11px] font-medium text-amber-300 transition hover:border-rose-400/60 hover:bg-rose-500/10 hover:text-rose-300">
+                                    class="group inline-flex items-center gap-1 rounded-md border border-amber-500/50 bg-amber-500/15 px-2 py-1 text-[11px] font-medium text-amber-300 transition hover:border-error/60 hover:bg-error/10 hover:text-error">
                                 {{ __($focusAll[$slot]['label'] ?? $slot) }}
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3 w-3 opacity-60 group-hover:opacity-100" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -264,7 +264,7 @@
                    maxlength="200"
                    autocomplete="off"
                    class="input input-bordered bg-slate-900 mt-1 text-sm w-full" />
-            @error('focus') <span class="text-rose-400 text-xs mt-1">{{ $message }}</span> @enderror
+            @error('focus') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
 
             {{-- Angle suggestions --}}
             <div x-show="open" style="display:none"
@@ -711,7 +711,7 @@
                     <input id="lw-source-upload" type="file"
                            wire:model="sourceUpload" accept=".pdf,.docx"
                            class="file-input file-input-bordered w-full bg-slate-900" />
-                    @error('sourceUpload') <span class="text-rose-400 text-xs">{{ $message }}</span> @enderror
+                    @error('sourceUpload') <span class="text-error text-xs">{{ $message }}</span> @enderror
                 </div>
             @endif
         </div>
@@ -742,7 +742,7 @@
         </div>
         <div class="collapse-content pt-2">
             <x-wizard.narrator-picker :narrators="$this->narrators" :selected-id="$avatar_id" />
-            @error('avatar_id') <span class="text-rose-400 text-xs">{{ $message }}</span> @enderror
+            @error('avatar_id') <span class="text-error text-xs">{{ $message }}</span> @enderror
         </div>
     </div>
 
@@ -853,7 +853,7 @@
     </div>{{-- /final flow group --}}
 
     @if ($errors->any())
-        <div class="bg-rose-500/10 border border-rose-500/40 rounded-xl p-4 text-sm text-rose-200 space-y-1">
+        <div class="bg-error/10 border border-error/40 rounded-xl p-4 text-sm text-error space-y-1">
             <p class="font-semibold">{{ __('Cannot continue yet. Fix these first:') }}</p>
             <ul class="list-disc ml-5">
                 @foreach ($errors->all() as $err)

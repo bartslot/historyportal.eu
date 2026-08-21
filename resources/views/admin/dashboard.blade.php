@@ -2,7 +2,7 @@
 <div class="space-y-8">
 
     <div>
-        <p class="text-xs uppercase tracking-widest text-rose-400">Super Admin</p>
+        <p class="text-xs uppercase tracking-widest text-error">Super Admin</p>
         <h1 class="font-history text-2xl font-semibold text-slate-100 md:text-3xl xl:text-4xl">Admin dashboard</h1>
     </div>
 

@@ -113,7 +113,7 @@
                                    class="input input-xs input-bordered bg-slate-900 flex-1"
                                    @if ($isCapital) title="Territory capital (auto-added)" @endif />
                             <button type="button" wire:click="removeFocus({{ $i }})"
-                                    class="shrink-0 text-rose-300 hover:text-rose-200 text-xs px-1"
+                                    class="shrink-0 text-error/80 hover:text-error text-xs px-1"
                                     title="Remove focus city" aria-label="Remove focus city">✕</button>
                         </li>
                     @endif
@@ -130,13 +130,13 @@
         <span class="text-xs uppercase tracking-wider text-slate-400">Territory</span>
 
         @if ($qid)
-            <div class="mt-1 flex items-center justify-between gap-2 rounded-lg border border-emerald-700/40 bg-emerald-950/30 px-2.5 py-1.5">
+            <div class="mt-1 flex items-center justify-between gap-2 rounded-lg border border-success/40 bg-success/10 px-2.5 py-1.5">
                 <div class="min-w-0">
-                    <p class="truncate text-sm text-emerald-200">{{ $scene->location ?? $qid }}</p>
+                    <p class="truncate text-sm text-success">{{ $scene->location ?? $qid }}</p>
                     <p class="text-[10px] text-slate-500">{{ $qid }} · red boundary, fit at the chosen year</p>
                 </div>
                 <button type="button" wire:click="unlinkTerritory"
-                        class="shrink-0 text-[11px] text-rose-300 underline hover:text-rose-200">Change</button>
+                        class="shrink-0 text-[11px] text-error/80 underline hover:text-error">Change</button>
             </div>
         @else
             <input type="search" wire:model.live.debounce.400ms="territoryQuery"
@@ -178,5 +178,5 @@
 
     <button type="button" wire:click="deleteScene({{ $scene->id }})"
             wire:confirm="Delete this map block?"
-            class="text-rose-300 hover:text-rose-200 text-xs underline mt-2">Delete block</button>
+            class="text-error/80 hover:text-error text-xs underline mt-2">Delete block</button>
 </div>

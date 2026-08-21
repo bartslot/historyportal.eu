@@ -132,7 +132,7 @@
                             @endif
                         </span>
                         <button type="button" wire:click="removeQuizQuestion({{ $i }})"
-                                class="text-rose-300 hover:text-rose-200 text-[11px] underline">{{ __('Remove') }}</button>
+                                class="text-error/80 hover:text-error text-[11px] underline">{{ __('Remove') }}</button>
                     </div>
 
                     {{-- Question + AI-generate: drafts the question WITH its linked correct answer
@@ -181,9 +181,9 @@
                                          AI-redraw stays distractor-only (a redrawn "correct" answer would
                                          silently change what the question tests). --}}
                                     <input type="text" wire:model.blur="quizDraft.{{ $i }}.options.{{ $oi }}" maxlength="60"
-                                           class="input input-xs input-bordered flex-1 bg-emerald-950/60 border-emerald-500/50 text-emerald-200"
+                                           class="input input-xs input-bordered flex-1 bg-success/10 border-success/50 text-success"
                                            title="{{ __('Correct answer. Edit it freely, and drag to reorder.') }}" />
-                                    <span class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-emerald-500/20 text-emerald-400"
+                                    <span class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-success/20 text-success"
                                           title="{{ __('Correct answer') }}" aria-label="{{ __('Correct answer') }}">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="w-3.5 h-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                                     </span>
@@ -205,7 +205,7 @@
                     </div>
 
                     @if (! empty($quizErrors[$i]))
-                        <ul class="text-[11px] text-rose-300 list-disc list-inside space-y-0.5">
+                        <ul class="text-[11px] text-error list-disc list-inside space-y-0.5">
                             @foreach ($quizErrors[$i] as $err)<li>{{ $err }}</li>@endforeach
                         </ul>
                     @endif
@@ -224,7 +224,7 @@
                 </span>
                 @if ($quizSaved)
                     <span wire:loading.remove wire:target="autosaveQuiz, updatedQuizDraft"
-                          class="text-[11px] text-emerald-400">✓ {{ __('Saved automatically') }}</span>
+                          class="text-[11px] text-success">✓ {{ __('Saved automatically') }}</span>
                 @endif
             </div>
         </div>
@@ -314,5 +314,5 @@
 
     <button type="button" wire:click="deleteScene({{ $scene->id }})"
             wire:confirm="Delete this game segment?"
-            class="text-rose-300 hover:text-rose-200 text-xs underline mt-2">Delete segment</button>
+            class="text-error/80 hover:text-error text-xs underline mt-2">Delete segment</button>
 </div>

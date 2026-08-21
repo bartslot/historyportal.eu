@@ -170,7 +170,7 @@
                         <p class="mt-1 text-xs text-slate-500">{{ __('Attempts') }}</p>
                     </div>
                     <div>
-                        <p class="font-history text-3xl font-light {{ $results['needs_attention'] > 0 ? 'text-rose-300' : 'text-slate-100' }}">
+                        <p class="font-history text-3xl font-light {{ $results['needs_attention'] > 0 ? 'text-error' : 'text-slate-100' }}">
                             {{ $results['needs_attention'] }}
                         </p>
                         <p class="mt-1 text-xs text-slate-500">{{ __('Below 50%') }}</p>
@@ -229,7 +229,7 @@
                                 <span class="shrink-0 font-medium text-slate-200">{{ $lessonResult['average'] }}%</span>
                             </div>
                             <div class="mt-2 h-1 overflow-hidden rounded-full bg-slate-800">
-                                <span class="block h-full rounded-full bg-emerald-400/80" style="width: {{ $lessonResult['average'] }}%"></span>
+                                <span class="block h-full rounded-full bg-success/80" style="width: {{ $lessonResult['average'] }}%"></span>
                             </div>
                             <p class="mt-1.5 text-[0.65rem] text-slate-600">
                                 {{ trans_choice(':count attempt|:count attempts', $lessonResult['attempts'], ['count' => $lessonResult['attempts']]) }}

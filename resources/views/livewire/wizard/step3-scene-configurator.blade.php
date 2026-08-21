@@ -1068,7 +1068,7 @@
              x-data x-init="setTimeout(() => $wire.set('publishNotice', null), 5000)">
             <div @class([
                 'flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm shadow-2xl',
-                'border-emerald-600 bg-emerald-950 text-emerald-200' => $publishOk,
+                'border-success/40 bg-success/10 text-success' => $publishOk,
                 'border-amber-600 bg-amber-950 text-amber-200' => ! $publishOk,
             ])>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4 shrink-0" aria-hidden="true">
@@ -1583,7 +1583,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z" />
                     @php
                         $statusColor = match (true) {
-                            $lesson->status === \App\Enums\LessonStatus::Published => 'fill-emerald-500',
+                            $lesson->status === \App\Enums\LessonStatus::Published => 'fill-success',
                             $lesson->scheduled_publish_at !== null => 'fill-amber-400',
                             default => 'fill-purple-500',
                         };
@@ -1616,7 +1616,7 @@
                 @if ($lesson->scheduled_publish_at)
                     <div class="mt-2 flex items-center justify-between gap-2 border-t border-slate-700/50 pt-2 text-[11px] text-amber-300">
                         <span>{{ __('Scheduled') }}: {{ $lesson->scheduled_publish_at->isoFormat('D MMM, HH:mm') }}</span>
-                        <button type="button" wire:click="cancelSchedule" class="text-rose-300 underline hover:text-rose-200">{{ __('Cancel') }}</button>
+                        <button type="button" wire:click="cancelSchedule" class="text-error/80 underline hover:text-error">{{ __('Cancel') }}</button>
                     </div>
                 @endif
             </div>
@@ -1876,7 +1876,7 @@
                          Hidden on the background row (not deletable). No confirm — one click removes it. --}}
                     <button type="button" data-nodrag data-obj-adjust x-show="!obj.bg"
                             @click.stop="deleteObject(obj)"
-                            class="btn btn-ghost btn-xs btn-square shrink-0 text-slate-500 opacity-0 transition hover:text-rose-400 group-hover:opacity-100"
+                            class="btn btn-ghost btn-xs btn-square shrink-0 text-slate-500 opacity-0 transition hover:text-error group-hover:opacity-100"
                             aria-label="{{ __('Delete object') }}" :title="@js(__('Delete'))">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"></path>
@@ -2453,7 +2453,7 @@
                                 </span>
                             @endif
                             @if (! empty($art['correctness']))
-                                <span class="absolute left-1 top-1 rounded bg-emerald-600/90 px-1 text-[8px] font-semibold uppercase tracking-wider text-white"
+                                <span class="absolute left-1 top-1 rounded bg-success px-1 text-[8px] font-semibold uppercase tracking-wider text-white"
                                       title="{{ __('Match correctness: soft criteria met') }}">
                                     ✓ {{ $art['correctness'] }}
                                 </span>
@@ -2518,7 +2518,7 @@
                     </label>
                 </div>
                 @error('uploadImage')
-                    <p class="mt-1 text-[11px] text-rose-300">{{ $message }}</p>
+                    <p class="mt-1 text-[11px] text-error">{{ $message }}</p>
                 @enderror
                 <p class="mt-3 text-[11px] text-slate-500">
                     {{-- Not "public-domain works": the license filter admits CC BY and CC BY-SA too

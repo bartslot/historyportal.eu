@@ -44,7 +44,7 @@
             x-bind:aria-current="selected === {{ $scene->id }} ? 'true' : null"
             x-bind:class="selected === {{ $scene->id }}
                 ? 'ring-2 ring-amber-400 ring-offset-2 ring-offset-slate-900'
-                : '{{ $scene->status === 'failed' ? 'ring-1 ring-rose-500/50' : 'ring-1 ring-slate-700/50 hover:ring-slate-500' }}'"
+                : '{{ $scene->status === 'failed' ? 'ring-1 ring-error/50' : 'ring-1 ring-slate-700/50 hover:ring-slate-500' }}'"
         @endif
         @class([
             'group relative shrink-0 aspect-video rounded-xl overflow-hidden transition-all',
@@ -52,7 +52,7 @@
             'w-32' => ! $wide,
             'ring-2 ring-amber-400 ring-offset-2 ring-offset-slate-900'        => $selected && ! $clientSwitch,
             'ring-1 ring-slate-700/50 hover:ring-slate-500'                    => ! $clientSwitch && ! $selected && $scene->status !== 'failed',
-            'ring-1 ring-rose-500/50'                                          => ! $clientSwitch && $scene->status === 'failed',
+            'ring-1 ring-error/50'                                          => ! $clientSwitch && $scene->status === 'failed',
         ])>
     {{-- Full thumbnail (image / year / place / badges). Hidden by the compact @container rule. --}}
     <span data-thumb-full class="contents">
@@ -126,7 +126,7 @@
     @endif
 
     @if ($scene->status === 'failed')
-        <span class="absolute top-1 right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[8px] flex items-center justify-center">!</span>
+        <span class="absolute top-1 right-1 w-4 h-4 rounded-full bg-error text-white text-[8px] flex items-center justify-center">!</span>
     @endif
     </span>
 
@@ -150,7 +150,7 @@
             aria-label="{{ __('Delete scene') }}"
             class="absolute -right-1.5 -top-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-full
                    border border-slate-600 bg-slate-900 text-slate-300 opacity-0 shadow-lg transition
-                   hover:border-rose-500 hover:bg-rose-600 hover:text-white
+                   hover:border-error hover:bg-error hover:text-white
                    focus-visible:opacity-100 group-hover/thumb:opacity-100">
         <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />

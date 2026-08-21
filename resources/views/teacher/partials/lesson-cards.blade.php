@@ -30,11 +30,11 @@
                                 // Open an existing lesson on Preview; see Lesson::cardEntryStep().
                                 $entryStep = $lesson->cardEntryStep();
                                 $statusClass = match($lesson->status) {
-                                    \App\Enums\LessonStatus::Failed => 'bg-rose-400',
+                                    \App\Enums\LessonStatus::Failed => 'bg-error',
                                     \App\Enums\LessonStatus::Ready,
                                     \App\Enums\LessonStatus::Published,
                                     \App\Enums\LessonStatus::Previewable,
-                                    \App\Enums\LessonStatus::Configuring => 'bg-emerald-400',
+                                    \App\Enums\LessonStatus::Configuring => 'bg-success',
                                     default => 'bg-amber-400',
                                 };
                             @endphp

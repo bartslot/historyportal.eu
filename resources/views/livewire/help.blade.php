@@ -103,7 +103,7 @@
                             <x-dynamic-component :component="'icons.'.$topic['icon']" class="mt-0.5 h-4 w-4 shrink-0" />
                             <span>{{ $topic['title'] }}</span>
                             @if (($topic['audience'] ?? 'all') === 'admin')
-                                <span class="ml-auto shrink-0 rounded bg-rose-400/10 px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-rose-300">{{ __('Admin') }}</span>
+                                <span class="ml-auto shrink-0 rounded bg-error/10 px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-error">{{ __('Admin') }}</span>
                             @endif
                         </a>
                     </li>
@@ -125,7 +125,7 @@
                             <h2 id="{{ $topic['id'] }}-heading" class="flex flex-wrap items-center gap-2 font-history text-2xl font-light text-slate-100">
                                 {{ $topic['title'] }}
                                 @if (($topic['audience'] ?? 'all') === 'admin')
-                                    <span class="rounded bg-rose-400/10 px-1.5 py-0.5 font-sans text-[0.6rem] font-semibold uppercase tracking-wide text-rose-300">{{ __('Admin only') }}</span>
+                                    <span class="rounded bg-error/10 px-1.5 py-0.5 font-sans text-[0.6rem] font-semibold uppercase tracking-wide text-error">{{ __('Admin only') }}</span>
                                 @endif
                             </h2>
                             <p class="mt-1.5 text-sm leading-relaxed text-slate-400">{{ $topic['summary'] }}</p>

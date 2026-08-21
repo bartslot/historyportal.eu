@@ -66,6 +66,6 @@
             </div>
         </div>
 
-        <button type="button" wire:click="clearBgEmbed" class="text-[11px] text-rose-300 underline hover:text-rose-200">{{ __('Remove video') }}</button>
+        <button type="button" wire:click="clearBgEmbed" class="text-[11px] text-error/80 underline hover:text-error">{{ __('Remove video') }}</button>
     @endif
 </div>

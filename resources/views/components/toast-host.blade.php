@@ -81,13 +81,15 @@
                     _seq: 0,
 
                     // One accent per status. Nothing else in the toast is tinted.
+                    //
+                    // These four ARE the theme's semantic colours, so the toast names them rather
+                    // than restating their hexes: a copied colour is a colour that drifts, and this
+                    // copy had already outlived one theme change. Both call sites are inline styles,
+                    // which can hold a var() directly, so no lookup is needed to resolve them.
                     accent(type) {
-                        return {
-                            success: '#34d399',   // emerald-400
-                            error:   '#fb7185',   // rose-400
-                            warning: '#fbbf24',   // amber-400
-                            info:    '#38bdf8',   // sky-400
-                        }[type] || '#38bdf8'
+                        const known = ['success', 'error', 'warning', 'info']
+
+                        return `var(--color-${known.includes(type) ? type : 'info'})`
                     },
 
                     // Heroicons outline paths, one per status.
