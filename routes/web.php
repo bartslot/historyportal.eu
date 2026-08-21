@@ -213,7 +213,15 @@ Route::middleware(['auth', \App\Http\Middleware\RestrictGuestDemo::class])->get(
 
 // Help centre — how the app works, for any signed-in user. Shares its copy with the welcome tour
 // (App\Support\HelpGuide), and holds the button that replays that tour.
-Route::middleware(['auth', \App\Http\Middleware\RestrictGuestDemo::class])->get('/help', \App\Livewire\Help::class)->name('help.index');
+// PUBLIC, deliberately. An invitation email points a teacher at the help centre before they have
+// an account, and it was gated behind BOTH auth and RestrictGuestDemo — so it 302'd to /login for
+// an invited stranger AND for the /try sandbox account the invitation actually sends them to. The
+// help centre was unreachable by exactly the people it was written for.
+//
+// Safe to open: App\Livewire\Help guards every user read with `$user instanceof User`,
+// startTutorial() returns early without one, and admin-audience entries are already filtered out
+// for anyone who is not an admin. A guest simply sees the public articles and no tour button.
+Route::get('/help', \App\Livewire\Help::class)->name('help.index');
 
 // RestrictGuestDemo fences landing-page demo guests (App\Services\GuestDemoSession) into the
 // wizard for their own copy — they hold a real teacher account, so without it the whole

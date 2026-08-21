@@ -1,5 +1,15 @@
 /**
- * REFUTATION SPEC — "the wizard Help icon hands a landing-page guest a bare 403 in a new tab".
+ * REGRESSION GUARD — the wizard Help icon used to hand a landing-page guest a bare 403 in a new tab.
+ *
+ * FIXED 2026-08-19: /help was gated behind BOTH `auth` and RestrictGuestDemo. RestrictGuestDemo had
+ * already been taught to let help through (see GuestDemoTest, which asserts assertOk for a guest),
+ * but `auth` still bounced anyone not signed in — so an invited teacher following the help link in
+ * an invitation email, before they had any account at all, hit /login. The route is now public.
+ *
+ * What follows was the refutation spec that established the defect was real. It is kept because the
+ * four ways it tried to break the claim are exactly the four ways this could regress.
+ *
+ * ORIGINAL REFUTATION NOTES — "the wizard Help icon hands a landing-page guest a bare 403 in a new tab".
  *
  * The claim under test is narrow and falsifiable, so this file tries to break it four ways
  * before agreeing with it:
