@@ -15,7 +15,7 @@
         <input type="number" wire:model.blur.number="selectedScene.config.year" wire:change="saveSelected"
                placeholder="e.g. 1600"
                class="input input-sm input-bordered bg-slate-900 mt-1" />
-        <span class="mt-1 text-[10px] text-slate-500">Negative = BCE. Sets the map's time slider.</span>
+        <span class="mt-1 text-2xs text-slate-500">Negative = BCE. Sets the map's time slider.</span>
     </label>
 
     <label class="form-control">
@@ -77,7 +77,7 @@
                             @if (filled($c->historical_name))
                                 <span class="truncate text-sm text-slate-200">
                                     <span class="font-semibold">{{ $c->historical_name }}</span>
-                                    <span class="text-[11px] text-slate-400">({{ $c->name }})</span>
+                                    <span class="text-2xs text-slate-400">({{ $c->name }})</span>
                                 </span>
                             @else
                                 <span class="truncate text-sm text-slate-200">{{ $c->name }}</span>
@@ -87,12 +87,12 @@
                 @endforeach
             </ul>
         @elseif (filled($cityQuery))
-            <p class="mt-1 text-[10px] text-slate-500">No city matches “{{ $cityQuery }}”. Try a different spelling, or drop a pin below.</p>
+            <p class="mt-1 text-2xs text-slate-500">No city matches “{{ $cityQuery }}”. Try a different spelling, or drop a pin below.</p>
         @endif
 
         <button type="button"
                 onclick="window.dispatchEvent(new CustomEvent('lessonmap:add-focus'))"
-                class="mt-1 text-[11px] text-sky-300 underline hover:text-sky-200">or drop a pin on the map</button>
+                class="mt-1 text-2xs text-sky-300 underline hover:text-sky-200">or drop a pin on the map</button>
 
         @php $annotations = $scene->config['annotations'] ?? []; @endphp
         @if (count($annotations))
@@ -120,7 +120,7 @@
                 @endforeach
             </ul>
         @else
-            <p class="mt-1 text-[10px] text-slate-500">No focus cities yet — search above or drop a pin to mark a key place on the map.</p>
+            <p class="mt-1 text-2xs text-slate-500">No focus cities yet — search above or drop a pin to mark a key place on the map.</p>
         @endif
     </div>
 
@@ -133,17 +133,17 @@
             <div class="mt-1 flex items-center justify-between gap-2 rounded-lg border border-emerald-700/40 bg-emerald-950/30 px-2.5 py-1.5">
                 <div class="min-w-0">
                     <p class="truncate text-sm text-emerald-200">{{ $scene->location ?? $qid }}</p>
-                    <p class="text-[10px] text-slate-500">{{ $qid }} · red boundary, fit at the chosen year</p>
+                    <p class="text-2xs text-slate-500">{{ $qid }} · red boundary, fit at the chosen year</p>
                 </div>
                 <button type="button" wire:click="unlinkTerritory"
-                        class="shrink-0 text-[11px] text-rose-300 underline hover:text-rose-200">Change</button>
+                        class="shrink-0 text-2xs text-rose-300 underline hover:text-rose-200">Change</button>
             </div>
         @else
             <input type="search" wire:model.live.debounce.400ms="territoryQuery"
                    placeholder="Search an empire/kingdom — e.g. Byzantine Empire"
                    class="input input-sm input-bordered bg-slate-900 mt-1" />
-            <p class="mt-1 text-[10px] text-amber-400/70">No territory linked — search a polity (cities: link the empire that ruled it).</p>
-            <p class="mt-1 text-[10px] text-sky-300/80">Don't know its name? Hover the map to see territory names, then click one to link it.</p>
+            <p class="mt-1 text-2xs text-amber-400/70">No territory linked — search a polity (cities: link the empire that ruled it).</p>
+            <p class="mt-1 text-2xs text-sky-300/80">Don't know its name? Hover the map to see territory names, then click one to link it.</p>
 
             @if (filled($territoryQuery) && $territoryResults && $territoryResults->isNotEmpty())
                 <ul class="mt-1 max-h-48 overflow-y-auto rounded-lg border border-slate-700/60 divide-y divide-slate-800 bg-slate-900/95">
@@ -158,14 +158,14 @@
                             <button type="button" wire:click="linkTerritory('{{ $t->qid }}')"
                                     class="flex w-full items-center justify-between gap-2 px-2.5 py-1.5 text-left hover:bg-slate-800/70">
                                 <span class="truncate text-sm text-slate-200">{{ $t->name }}</span>
-                                <span class="shrink-0 text-[10px] text-slate-500" title="Active era">{{ $era }}</span>
+                                <span class="shrink-0 text-2xs text-slate-500" title="Active era">{{ $era }}</span>
                             </button>
                         </li>
                     @endforeach
                 </ul>
             @elseif (filled($territoryQuery))
                 @php $blockYear = $scene->config['year'] ?? null; @endphp
-                <p class="mt-1 text-[10px] text-slate-500">
+                <p class="mt-1 text-2xs text-slate-500">
                     @if ($blockYear !== null)
                         No “{{ $territoryQuery }}” existed around {{ $blockYear < 0 ? abs($blockYear).' BCE' : $blockYear }}. Try the empire that ruled it then (e.g. a larger kingdom or monarchy).
                     @else

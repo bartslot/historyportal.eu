@@ -41,7 +41,7 @@
                         @if ($term['save'])
                             <span
                                 :class="term === '{{ $key }}' ? 'bg-slate-950/15 text-slate-900' : 'bg-amber-500/15 text-amber-300'"
-                                class="rounded-full px-2 py-0.5 text-[0.65rem] font-medium uppercase tracking-[0.08em]"
+                                class="rounded-full px-2 py-0.5 text-2xs font-medium uppercase tracking-[0.08em]"
                             >{{ $term['save'] }}</span>
                         @endif
                     </button>
@@ -58,7 +58,7 @@
                     'border border-white/10 bg-white/4 shadow-[0_16px_40px_rgba(0,0,0,0.35)] hover:-translate-y-1 hover:border-amber-400/30 hover:bg-white/6' => ! $tier['featured'],
                 ])>
                     @if (! empty($tier['badge']))
-                        <span class="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full border border-amber-400/40 bg-amber-500/15 px-3 py-1 text-[0.7rem] font-medium uppercase tracking-[0.1em] text-amber-300">
+                        <span class="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full border border-amber-400/40 bg-amber-500/15 px-3 py-1 text-2xs font-medium uppercase tracking-widest text-amber-300">
                             {{ $tier['badge'] }}
                         </span>
                     @endif

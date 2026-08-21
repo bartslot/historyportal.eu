@@ -129,11 +129,11 @@ export function renderItineraryPins (map, hostEl, stops, { hidden = false } = {}
     pin.style.cssText = 'pointer-events:none;z-index:30;transition:opacity .3s ease'
     pin.innerHTML = `
       <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
-        ${s.name ? `<span data-name style="white-space:nowrap;font-size:11px;font-weight:${PLACE_LABEL.weight};color:${PLACE_LABEL.ink};
+        ${s.name ? `<span data-name style="white-space:nowrap;font-size:var(--text-2xs);font-weight:${PLACE_LABEL.weight};color:${PLACE_LABEL.ink};
             background:${PLACE_LABEL.fill};border-radius:9999px;padding:${PLACE_LABEL.padY}px ${PLACE_LABEL.padX}px;
             box-shadow:0 1px 3px rgba(0,0,0,0.25)"></span>` : ''}
         ${s.number == null ? '' : `<span data-number style="display:flex;align-items:center;justify-content:center;width:18px;height:18px;
-            border-radius:9999px;font-size:10px;font-weight:700;color:#fff;
+            border-radius:9999px;font-size:var(--text-2xs);font-weight:700;color:#fff;
             background:${last ? DOT_INK_LAST : DOT_INK};box-shadow:0 1px 4px rgba(0,0,0,0.4);
             border:2px solid rgba(255,255,255,0.9);transition:transform .3s ${EASE.pop}">${Number(s.number)}</span>`}
       </div>`

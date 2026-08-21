@@ -79,17 +79,17 @@
 
                         <div class="absolute inset-x-0 bottom-0 p-8 text-white">
                             <div>
-                                <h3 class="text-2xl font-semibold leading-[1.05] tracking-tight text-white">
+                                <h3 class="text-2xl font-semibold leading-display tracking-tight text-white">
                                     {{ $item['title'] }}
-                                    <p class="truncate text-[14px] pt-2 font-medium text-white/85">{{ $item['category'] }}</p>
+                                    <p class="truncate text-sm pt-2 font-medium text-white/85">{{ $item['category'] }}</p>
                                 </h3>
                                 <div class="max-h-0 overflow-hidden opacity-0 transition-all duration-300 ease-out-ease-[cubic-bezier(0.95,0.05,0.795,0.035)] group-hover:max-h-32 group-hover:opacity-100">
-                                <p class="text-[11px] leading-5 text-slate-200/90">
+                                <p class="text-2xs leading-5 text-slate-200/90">
                                         {{ $item['description'] }}
                                     </p>
                                     <div class="min-w-0">
                                         @if ($lesson)
-                                            <span class="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-sky-200">
+                                            <span class="mt-2 inline-flex items-center gap-1.5 text-2xs font-semibold text-sky-200">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-3.5 w-3.5" aria-hidden="true">
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 0 1 0 1.971l-11.54 6.347a1.125 1.125 0 0 1-1.667-.985V5.653Z" />
                                                 </svg>
@@ -130,8 +130,8 @@
                                         {{ $loop->iteration }}
                                     </span>
                                     <div class="min-w-0">
-                                        <p class="text-[9px] font-semibold uppercase tracking-[0.3em] text-sky-100/70">Tool</p>
-                                        <p class="truncate text-[10px] font-medium text-white/85 flex items-center gap-1">
+                                        <p class="text-2xs font-semibold uppercase tracking-[0.3em] text-sky-100/70">Tool</p>
+                                        <p class="truncate text-2xs font-medium text-white/85 flex items-center gap-1">
                                             <x-dynamic-component :component="'icons.'.$feature['icon']" class="w-4 h-4 flex-shrink-0" />
                                             <span>{{ $feature['title'] }}</span>
                                         </p>
@@ -145,7 +145,7 @@
                                         {{ $feature['title'] }}
                                     </h3>
                                     <div class="max-h-0 overflow-hidden opacity-0 transition-all duration-300 ease-out group-hover:max-h-28 group-hover:opacity-100">
-                                        <p class="text-[11px] leading-5 text-slate-300">
+                                        <p class="text-2xs leading-5 text-slate-300">
                                             {{ $feature['description'] }}
                                         </p>
                                     </div>

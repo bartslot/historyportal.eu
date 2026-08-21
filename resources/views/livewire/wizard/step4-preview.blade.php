@@ -80,7 +80,7 @@
                         class="flex cursor-not-allowed items-center justify-center gap-2 rounded-2xl bg-slate-800/50 px-5 py-4 text-base font-semibold text-slate-500">
                     <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"/></svg>
                     {{ __('Schedule') }}
-                    <span class="rounded-full bg-slate-700 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-slate-300">{{ __('Soon') }}</span>
+                    <span class="rounded-full bg-slate-700 px-1.5 py-0.5 text-2xs font-medium uppercase tracking-wide text-slate-300">{{ __('Soon') }}</span>
                 </button>
 
                 {{-- Assign to class — inline picker of the teacher's own classes (toggle per class). --}}

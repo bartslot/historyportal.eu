@@ -557,12 +557,12 @@ export class TextOverlayLayer {
     bar.style.cssText = `position:absolute; bottom:calc(100% + 8px); left:0; display:none;
       align-items:center; gap:6px; padding:5px 8px; border-radius:10px;
       background:#0f172a; border:1px solid rgba(245,158,11,0.45); box-shadow:0 6px 20px rgba(0,0,0,0.5);
-      font-family:'Inter', sans-serif; font-size:12px; font-weight:500; white-space:nowrap; z-index:5;`
+      font-family:'Inter', sans-serif; font-size:var(--text-xs); font-weight:500; white-space:nowrap; z-index:5;`
     // Keep the box focused while using the toolbar (pointerdown would otherwise blur + drag).
     bar.addEventListener('pointerdown', (e) => e.stopPropagation())
 
     const selectCss = `background:#1e293b; color:#e2e8f0; border:1px solid rgba(255,255,255,0.15);
-      border-radius:7px; padding:3px 6px; font-size:12px; outline:none; cursor:pointer;`
+      border-radius:7px; padding:3px 6px; font-size:var(--text-xs); outline:none; cursor:pointer;`
 
     const fontSel = document.createElement('select')
     fontSel.title = 'Font style'
@@ -728,7 +728,7 @@ export class TextOverlayLayer {
       chip.textContent = `🔗 ${label}`
       chip.style.cssText = `display:inline-flex; align-items:center; gap:8px; padding:8px 16px;
         border-radius:999px; border:1px solid rgba(245,158,11,0.5); background:rgba(2,6,23,0.7);
-        color:#fbbf24; font-size:16px; font-weight:600; cursor:pointer;`
+        color:#fbbf24; font-size:var(--text-base); font-weight:600; cursor:pointer;`
       chip.addEventListener('click', () => this._openLinkModal(url))
       node.appendChild(chip)
     } else {
@@ -753,7 +753,7 @@ export class TextOverlayLayer {
           <span style="display:flex; gap:14px; flex-shrink:0; margin-left:16px;">
             <a href="${url.replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer"
                style="color:#fbbf24; text-decoration:none;">Open in new tab ↗</a>
-            <button data-close style="background:none; border:none; color:#e2e8f0; font-size:18px; cursor:pointer;">✕</button>
+            <button data-close style="background:none; border:none; color:#e2e8f0; font-size:var(--text-lg); cursor:pointer;">✕</button>
           </span>
         </div>
         <iframe src="${url.replace(/"/g, '&quot;')}" style="flex:1; border:none; background:white;"

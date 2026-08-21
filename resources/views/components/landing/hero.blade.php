@@ -171,7 +171,7 @@
             >
 
             <div class="flex flex-col items-center sm:items-start">
-                <h1 data-reveal-item class="text-balance text-4xl leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-6xl">
+                <h1 data-reveal-item class="text-balance text-4xl leading-display tracking-tight text-white sm:text-5xl lg:text-6xl">
                     {{ __('History Portal is now live') }}
                 </h1>
 
@@ -217,7 +217,7 @@
                  moment DemoLesson::resolve() found nothing playable the ENTIRE LANDING PAGE threw
                  "Attempt to read property title on null". The front door of the product, 500ing
                  because a lesson was mid-rebuild. --}}
-            <h1 data-reveal-item class="text-balance text-4xl leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-6xl">
+            <h1 data-reveal-item class="text-balance text-4xl leading-display tracking-tight text-white sm:text-5xl lg:text-6xl">
                 {{ $demoLesson?->title ?? __('The lesson they talk about after class.') }}
             </h1>
 

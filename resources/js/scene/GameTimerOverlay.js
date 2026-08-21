@@ -19,7 +19,7 @@ export class GameTimerOverlay {
     if (!this.host) return   // preview may omit the timer host — never throw and break stage mount
     this.host.innerHTML = `
       <div style="position:absolute; inset:0; background:rgba(0,0,0,0.55); display:flex; flex-direction:column; align-items:center; justify-content:center; color:white;">
-        <div style="font-size:14px; letter-spacing:0.2em; text-transform:uppercase; opacity:0.85;">TIME TO COMPLETE THE CHALLENGE</div>
+        <div style="font-size:var(--text-sm); letter-spacing:0.2em; text-transform:uppercase; opacity:0.85;">TIME TO COMPLETE THE CHALLENGE</div>
         <div data-timer style="font-size:96px; font-weight:700; margin-top:24px;">${this._format(this._remaining)}</div>
       </div>
     `

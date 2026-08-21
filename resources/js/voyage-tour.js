@@ -572,7 +572,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
     close.type = 'button';
     close.setAttribute('aria-label', 'Sluiten');
     close.textContent = '✕';
-    close.style.cssText = 'position:absolute;top:calc(4% + 10px);right:calc(4% + 14px);z-index:50;width:36px;height:36px;border-radius:9999px;border:none;background:rgba(15,23,42,.92);color:#e2e8f0;font-size:18px;line-height:1;cursor:pointer;';
+    close.style.cssText = 'position:absolute;top:calc(4% + 10px);right:calc(4% + 14px);z-index:50;width:36px;height:36px;border-radius:9999px;border:none;background:rgba(15,23,42,.92);color:#e2e8f0;font-size:var(--text-lg);line-height:1;cursor:pointer;';
     overlay.appendChild(close);
     setReadingOverlayOpen(true);
     // Esc closes the modal (matches DaisyUI's native <dialog>); backdrop click closes it too.
@@ -897,7 +897,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
           + '<path d="M5 5 19 19M19 5 5 19" fill="none" stroke="#fff" stroke-width="5.5" stroke-linecap="round"/>'
           + '<path d="M5 5 19 19M19 5 5 19" fill="none" stroke="#f59e0b" stroke-width="3" stroke-linecap="round"/></svg>'
           + '<span style="position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:3px;background:rgba(15,23,42,.92);'
-          + 'color:#fbbf24;font-size:10px;font-weight:600;letter-spacing:.02em;padding:1px 7px;border-radius:9999px;white-space:nowrap;'
+          + 'color:#fbbf24;font-size:var(--text-2xs);font-weight:600;letter-spacing:.02em;padding:1px 7px;border-radius:9999px;white-space:nowrap;'
           + 'box-shadow:0 1px 4px rgba(0,0,0,.5);line-height:1.5;">Destination</span>';
         h._geo = { lng: destWp[0], lat: destWp[1] };
         makeDraggable(h, {

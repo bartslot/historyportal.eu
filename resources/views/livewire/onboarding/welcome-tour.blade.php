@@ -75,7 +75,7 @@
                 </svg>
             </button>
 
-            <p class="pr-8 text-xs font-medium uppercase tracking-[0.18em] text-amber-400">
+            <p class="pr-8 text-xs font-medium uppercase tracking-eyebrow text-amber-400">
                 {{ __('Getting started') }}
                 <span class="ml-2 text-slate-500" aria-live="polite"
                       x-text="`${index + 1} / ${total}`"></span>

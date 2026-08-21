@@ -37,7 +37,7 @@
        style="width: var(--rail-w, 11rem)">
     <div class="flex h-full flex-col pt-20" data-rail-col>
         <div class="px-3 pb-1 pt-3">
-            <span data-rail-label class="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+            <span data-rail-label class="text-2xs font-semibold uppercase tracking-widest text-slate-500">
                 {{ __('Scenes') }} · {{ $scenes->count() }}
             </span>
         </div>
@@ -90,7 +90,7 @@
                         class="aspect-video w-full rounded-xl border-2 border-dashed border-white/20 text-white/40 transition-all hover:border-amber-400 hover:text-amber-300"
                         title="{{ __('Add scene') }}" aria-label="{{ __('Add scene') }}">
                     <span class="block text-2xl leading-none">+</span>
-                    <span data-rail-label class="mt-1 block text-[9px] font-semibold uppercase tracking-widest">{{ __('Add Scene') }}</span>
+                    <span data-rail-label class="mt-1 block text-2xs font-semibold uppercase tracking-widest">{{ __('Add Scene') }}</span>
                 </button>
             @endif
         </div>

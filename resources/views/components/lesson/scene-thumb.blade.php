@@ -59,8 +59,8 @@
     @if ($scene->kind === 'map')
         <div class="w-full h-full bg-sky-800/30 border border-sky-600/30 flex flex-col items-center justify-center text-white gap-1">
             <x-lesson.icon-map class="h-7 w-7 opacity-90" />
-            <span class="text-[9px] font-bold uppercase tracking-widest">Map</span>
-            <span class="text-[9px] opacity-70">{{ $scene->year ?? '—' }}</span>
+            <span class="text-2xs font-bold uppercase tracking-widest">Map</span>
+            <span class="text-2xs opacity-70">{{ $scene->year ?? '—' }}</span>
         </div>
     @elseif ($scene->kind === 'game')
         <div class="w-full h-full bg-teal-700/30 border border-teal-600/30 flex flex-col items-center justify-center text-white gap-1">
@@ -72,8 +72,8 @@
                     {{-- Quiz (no bespoke icon): a checklist glyph. --}}
                     <svg class="h-6 w-6 opacity-90" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m-9 8h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z"/></svg>
             @endswitch
-            <span class="text-[9px] font-bold tracking-widest">{{ strtoupper($scene->game_type ?? 'game') }}</span>
-            <span class="text-[9px] opacity-70">Seg {{ $scene->game_segment_index }}</span>
+            <span class="text-2xs font-bold tracking-widest">{{ strtoupper($scene->game_type ?? 'game') }}</span>
+            <span class="text-2xs opacity-70">Seg {{ $scene->game_segment_index }}</span>
         </div>
     @elseif ($scene->kind === 'voyage')
         {{-- The itinerary scene is a voyage scene that stops nowhere, so it has no landfall to name.
@@ -83,23 +83,23 @@
         <div class="w-full h-full bg-indigo-800/30 border border-indigo-500/30 flex flex-col items-center justify-center text-white gap-1">
             @if ($isVoyageOverview)
                 <x-lesson.icon-voyage-overview class="h-8 w-auto opacity-90" />
-                <span class="text-[9px] font-bold uppercase tracking-widest">{{ __('Overview') }}</span>
+                <span class="text-2xs font-bold uppercase tracking-widest">{{ __('Overview') }}</span>
             @else
                 <x-lesson.icon-voyage class="h-7 w-7 opacity-90" />
-                <span class="text-[9px] font-bold uppercase tracking-widest">{{ __('Route') }}</span>
-                <span class="text-[9px] opacity-70 truncate max-w-[90%]">{{ $scene->location ?? '—' }}</span>
+                <span class="text-2xs font-bold uppercase tracking-widest">{{ __('Route') }}</span>
+                <span class="text-2xs opacity-70 truncate max-w-[90%]">{{ $scene->location ?? '—' }}</span>
             @endif
         </div>
     @elseif ($scene->kind === 'video')
         <div class="w-full h-full bg-indigo-900/30 border border-indigo-500/30 flex flex-col items-center justify-center text-white gap-1">
             <x-lesson.icon-video class="h-7 w-auto opacity-90" />
-            <span class="text-[9px] font-bold uppercase tracking-widest">{{ __('Video') }}</span>
+            <span class="text-2xs font-bold uppercase tracking-widest">{{ __('Video') }}</span>
         </div>
     @elseif ($scene->kind === 'gallery')
         <div class="w-full h-full bg-violet-800/30 border border-violet-500/30 flex flex-col items-center justify-center text-white gap-1">
             <x-lesson.icon-slideshow class="h-7 w-7 opacity-90" />
-            <span class="text-[9px] font-bold uppercase tracking-widest">Slideshow</span>
-            <span class="text-[9px] opacity-70 truncate max-w-[90%]">{{ $scene->location ?? '—' }}</span>
+            <span class="text-2xs font-bold uppercase tracking-widest">Slideshow</span>
+            <span class="text-2xs opacity-70 truncate max-w-[90%]">{{ $scene->location ?? '—' }}</span>
         </div>
     @else
         {{-- Placeholder sits underneath; a present image covers it. If the image 404s
@@ -107,26 +107,26 @@
              instead of the browser's broken-image glyph. --}}
         <div class="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-slate-800/60 text-slate-500">
             <x-lesson.icon-story class="h-6 w-6 opacity-80" />
-            <span class="text-[9px] tracking-widest">{{ __('SCENE') }} {{ $scene->order }}</span>
+            <span class="text-2xs tracking-widest">{{ __('SCENE') }} {{ $scene->order }}</span>
         </div>
         @if ($scene->image_path)
             <img src="{{ asset('storage/' . $scene->image_path) }}"
                  onerror="this.style.display='none'"
                  class="relative w-full h-full object-cover" alt="" />
         @endif
-        <span class="absolute bottom-0 inset-x-0 bg-black/55 text-[9px] text-white px-1 py-0.5 text-left truncate">
+        <span class="absolute bottom-0 inset-x-0 bg-black/55 text-2xs text-white px-1 py-0.5 text-left truncate">
             {{ $scene->year ?? '—' }} · {{ $scene->location ?? '—' }}
         </span>
     @endif
 
     @if ($number !== null)
-        <span class="absolute top-1 left-1 min-w-4 rounded bg-black/60 px-1 text-center text-[9px] font-semibold leading-4 text-white/80">
+        <span class="absolute top-1 left-1 min-w-4 rounded bg-black/60 px-1 text-center text-2xs font-semibold leading-4 text-white/80">
             {{ $number }}
         </span>
     @endif
 
     @if ($scene->status === 'failed')
-        <span class="absolute top-1 right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[8px] flex items-center justify-center">!</span>
+        <span class="absolute top-1 right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-3xs flex items-center justify-center">!</span>
     @endif
     </span>
 

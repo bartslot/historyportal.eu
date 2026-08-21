@@ -67,7 +67,7 @@
                     Clear results
                 </button>
             </div>
-            <p class="mt-2 text-[0.65rem] leading-snug text-slate-500">
+            <p class="mt-2 text-2xs leading-snug text-slate-500">
                 Sheets are a PNG "photo" (Emma all-correct, Liam mixed) — upload it into
                 <span class="text-slate-400">Import paper answers</span> to test vision extraction.
             </p>
@@ -78,7 +78,7 @@
         @endif
 
         <div class="mt-3 border-t border-slate-800 pt-3">
-            <div class="mb-1.5 text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">Signed in as</div>
+            <div class="mb-1.5 text-2xs font-semibold uppercase tracking-wide text-slate-500">Signed in as</div>
             <div class="mb-2 text-xs text-slate-400">
                 <span class="text-slate-200">{{ $currentUserName }}</span>
                 <span class="badge badge-xs ml-1 border-slate-700 bg-slate-800 text-slate-300">{{ $currentRole ?: 'no role' }}</span>
@@ -94,7 +94,7 @@
                     </button>
                 @endforeach
             </div>
-            <p class="mt-1.5 text-[0.65rem] leading-snug text-slate-500">
+            <p class="mt-1.5 text-2xs leading-snug text-slate-500">
                 Switches account instantly, no logout needed. Switching back returns to the same account.
             </p>
         </div>
@@ -141,9 +141,9 @@
              }"
              x-show="ready" x-cloak>
             <div class="mb-1.5 flex items-center justify-between">
-                <span class="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">Hero demo</span>
+                <span class="text-2xs font-semibold uppercase tracking-wide text-slate-500">Hero demo</span>
                 <button type="button" @click="window.heroDemo.reset(); s = window.heroDemo.settings; scrub = 0"
-                        class="text-[0.65rem] text-slate-500 underline hover:text-slate-300">reset</button>
+                        class="text-2xs text-slate-500 underline hover:text-slate-300">reset</button>
             </div>
 
             {{-- The four warp characters. Scored in resources/js/hero/__tests__/variants.bench.test.js
@@ -161,7 +161,7 @@
             <div class="space-y-2">
                 @foreach ($heroDials as [$key, $label, $min, $max, $step, $unit])
                     <label class="block">
-                        <span class="flex items-baseline justify-between text-[0.65rem] text-slate-400">
+                        <span class="flex items-baseline justify-between text-2xs text-slate-400">
                             {{ $label }}
                             <span class="font-mono text-slate-200"
                                   x-text="Number(s.{{ $key }}).toFixed({{ $step < 1 ? 2 : 0 }}) + '{{ $unit }}'"></span>
@@ -174,7 +174,7 @@
             </div>
 
             <label class="mt-3 block">
-                <span class="text-[0.65rem] text-slate-400">Scrub</span>
+                <span class="text-2xs text-slate-400">Scrub</span>
                 <input type="range" min="0" max="100" step="0.5"
                        x-model.number="scrub" @input="onScrub()"
                        class="range range-xs range-secondary mt-0.5 w-full">
@@ -185,7 +185,7 @@
                 <button type="button" @click="window.heroDemo.play()" class="btn btn-xs btn-outline">Play</button>
                 <button type="button" @click="window.heroDemo.pause()" class="btn btn-xs btn-outline">Pause</button>
             </div>
-            <p class="mt-1.5 text-[0.65rem] leading-snug text-slate-500">
+            <p class="mt-1.5 text-2xs leading-snug text-slate-500">
                 Saved in this browser. Once it feels right, tell Claude the numbers and they become
                 the defaults in <span class="text-slate-400 font-mono">hero/lesson-demo.js</span>.
             </p>
@@ -199,12 +199,12 @@
                     x-on:click="window.dispatchEvent(new CustomEvent('dev:tune'))"
                     class="btn btn-sm w-full justify-start border-fuchsia-700 bg-fuchsia-900/40 text-fuchsia-200 hover:bg-fuchsia-900/70">
                 Settings
-                <span class="ml-auto text-[0.65rem] font-normal text-fuchsia-400/80">sliders for this screen</span>
+                <span class="ml-auto text-2xs font-normal text-fuchsia-400/80">sliders for this screen</span>
             </button>
         </div>
 
         <div class="mt-3 border-t border-slate-800 pt-3">
-            <div class="mb-1.5 text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">Jump to</div>
+            <div class="mb-1.5 text-2xs font-semibold uppercase tracking-wide text-slate-500">Jump to</div>
             <div class="flex flex-wrap gap-1.5">
                 <a href="{{ route('teacher.results.hub') }}" class="btn btn-xs btn-ghost">Results hub</a>
                 <a href="{{ route('teacher.dashboard') }}" class="btn btn-xs btn-ghost">Lessons</a>
