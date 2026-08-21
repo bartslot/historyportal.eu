@@ -18,7 +18,7 @@
      Colour is repeated as both a bgcolor attribute and an inline style throughout: Outlook honours
      the attribute, everything else the style, and dropping either leaves white gaps in one of them. --}}
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" xmlns="http://www.w3.org/1999/xhtml">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -45,9 +45,23 @@
                         </td>
                     </tr>
 
+                    {{-- Optional FULL-BLEED band at the top of the card.
+                         The card's 36px padding is what makes a coloured block inside the body look
+                         like it is floating in a white frame. A hero band has to sit outside that
+                         padding to touch the sides, and it cannot do so from inside the slot: email
+                         clients do not honour negative margins. So it gets its own row, with zero
+                         padding, and the band supplies its own top corner radius.
+
+                         Emails that pass no hero are byte-for-byte unchanged. --}}
+                    @isset($hero)
+                    <tr>
+                        <td style="padding: 0; font-size: 0; line-height: 0;">{{ $hero }}</td>
+                    </tr>
+                    @endisset
+
                     {{-- Body card --}}
                     <tr>
-                        <td bgcolor="#ffffff" style="background-color: #ffffff; padding: 36px 36px 40px 36px; font-family: Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #0f172a; border-radius: 14px;">
+                        <td bgcolor="#ffffff" style="background-color: #ffffff; padding: 36px 36px 40px 36px; font-family: Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #0f172a; border-radius: {{ isset($hero) ? '0 0 14px 14px' : '14px' }};">
                             {{ $slot }}
                         </td>
                     </tr>
