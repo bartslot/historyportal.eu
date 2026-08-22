@@ -311,6 +311,11 @@ class Step3SceneConfigurator extends Component
             'shots' => $this->serializeShots($scene),
             'hasSkyboxImage' => ! empty($scene->skybox_image_path),
             'audioUrl' => $scene->audioUrl(),
+            // Does that recording actually say what the script now says? The Script panel waits for
+            // a re-narration by watching these events, and every OTHER thing that re-fires one —
+            // the save it makes just before asking, above all — carries the recording being
+            // replaced. Without this the panel took the first of those as the answer.
+            'audioFresh' => $scene->hasFreshAudio(),
             // The Script panel spins while narration is being made; without these it had no way to
             // learn the job had failed and kept spinning for good.
             'status' => (string) $scene->status,
@@ -5030,6 +5035,11 @@ class Step3SceneConfigurator extends Component
 
         if (! NarrationBudget::charge($this->lesson, $cost)) {
             $this->warnBudgetSpent();
+            // Say it to the panel as well as to the teacher. The panel writes an edit down as
+            // saved the moment it sends it, so a refusal left it believing the scene held words
+            // it does not: the next save was skipped as "no change", and a re-narration would
+            // have spoken the OLD script while the new one sat on screen looking safe.
+            $this->dispatch('scene:script-rejected', sceneId: $this->selectedSceneId);
 
             return;   // the edit is refused, so nothing is charged and nothing is re-narrated
         }
