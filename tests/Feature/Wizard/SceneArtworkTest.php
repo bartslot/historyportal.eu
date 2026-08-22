@@ -309,6 +309,63 @@ class SceneArtworkTest extends TestCase
         $this->assertSame(6.0, (float) $layer['scale']);
     }
 
+    /**
+     * The Dimensions row's width. A layer has only ever stored a height and taken its width from
+     * the image's own aspect, so `width` is optional and only exists once a teacher has released
+     * the aspect lock and typed one.
+     */
+    public function test_an_explicit_width_is_stored_for_the_layer(): void
+    {
+        $this->layerComponent()
+            ->call('updateArtworkLayer', $this->asset1->id, 'width', 62.5);
+
+        $this->assertSame(62.5, (float) $this->attachedLayer()['width']);
+    }
+
+    public function test_a_width_beyond_the_cap_is_clamped_not_rejected(): void
+    {
+        $this->layerComponent()
+            ->call('updateArtworkLayer', $this->asset1->id, 'width', 9999);
+
+        $this->assertSame(200.0, (float) $this->attachedLayer()['width']);
+    }
+
+    /**
+     * Both sides keep their decimals. An int cast here would round a locked 10:3 box off its own
+     * proportion on every keystroke — the panel edits these to two decimals, and the aspect lock
+     * that drives them is only correct while the stored value is.
+     */
+    public function test_the_box_keeps_its_decimals(): void
+    {
+        $this->layerComponent()
+            ->call('updateArtworkLayer', $this->asset1->id, 'width', 11.05)
+            ->call('updateArtworkLayer', $this->asset1->id, 'height', 11.06);
+
+        $layer = $this->attachedLayer();
+        $this->assertSame(11.05, (float) $layer['width']);
+        $this->assertSame(11.06, (float) $layer['height']);
+    }
+
+    /**
+     * FOUND BY OPENING THE PANEL, not here. A layer sitting at x = 50 rendered in the Position
+     * field as "5", because the formatter trimmed trailing zeros off a value with no decimal point
+     * at all. Nothing errored, the number was simply wrong, and typing in the field would then have
+     * moved the layer to the left edge.
+     */
+    public function test_a_round_position_keeps_its_last_digit(): void
+    {
+        Livewire::actingAs($this->teacher)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
+            ->call('selectScene', $this->scene->id)
+            ->call('attachArtwork', $this->asset1->id)
+            ->call('updateArtworkLayer', $this->asset1->id, 'x', 50)
+            ->call('updateArtworkLayer', $this->asset1->id, 'y', 100)
+            ->call('setActiveLayer', $this->asset1->id)
+            ->assertSeeHtml('value="50"')
+            ->assertSeeHtml('value="100"')
+            ->assertDontSeeHtml('value="5"');
+    }
+
     /** @return array<string, mixed> */
     private function attachedLayer(): array
     {

@@ -341,7 +341,13 @@ trait EditsSceneArtwork
         $whitelist = [
             'depth' => [0, 3],
             'scale' => [0.2, 6],   // 6x: big enough to fill the stage with one detail
-            'height' => [5, 100],
+            // The layer's box on the stage, both in % of stage height/width. `height` has always
+            // been stored; `width` is new and OPTIONAL — absent means "take the width from the
+            // image's own aspect", which is what every layer created before the Dimensions row
+            // did and still does. Both are floats: the panel edits them to two decimals, and an
+            // int would quietly round a locked 10:3 box off its proportion on every keystroke.
+            'height' => [1, 200],
+            'width' => [1, 200],
             'wobble' => [0, 2],
             'opacity' => [0.05, 1],
             'kind' => ['figure', 'strip', 'cover'],
@@ -396,8 +402,9 @@ trait EditsSceneArtwork
         // "leave the artwork alone" or a hex colour. Anything else is dropped.
         // Coerce and clamp the value.
         $coercedValue = match ($field) {
-            'depth', 'scale', 'opacity', 'blur', 'x', 'y', 'draw_time', 'anim_delay' => (float) $value,
-            'height', 'wobble' => (int) $value,
+            'depth', 'scale', 'opacity', 'blur', 'x', 'y', 'draw_time', 'anim_delay',
+            'height', 'width' => (float) $value,
+            'wobble' => (int) $value,
             'sway', 'grayscale' => (bool) $value,
             'kind', 'blend', 'ink_preset', 'ink_fill', 'anim', 'anim_ease' => (string) $value,
             default => $value,
@@ -409,9 +416,9 @@ trait EditsSceneArtwork
             // Clamp: use floats for min/max to preserve float results when clamping floats
             $coercedValue = max((float) $min, min((float) $max, (float) $coercedValue));
             // Re-cast after clamping to preserve float/int type
-            if (in_array($field, ['depth', 'scale', 'opacity', 'blur', 'x', 'y', 'anim_delay'], true)) {
+            if (in_array($field, ['depth', 'scale', 'opacity', 'blur', 'x', 'y', 'anim_delay', 'height', 'width'], true)) {
                 $coercedValue = (float) $coercedValue;
-            } elseif (in_array($field, ['height', 'wobble'], true)) {
+            } elseif ($field === 'wobble') {
                 $coercedValue = (int) $coercedValue;
             }
         }

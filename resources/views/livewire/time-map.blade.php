@@ -191,16 +191,21 @@
                aria-label="{{ __('Territory colour strength') }}">
     </div>
 
-    {{-- Settings: a cog that fans out to a sound (read-aloud) toggle. The map-style palette that
-         used to live here is gone — there is one ground now (see timemap/index.js). --}}
+    {{-- Settings: a cog that fans out to a map-style palette and a sound (read-aloud) toggle.
+
+         The note that used to sit here said the palette was gone and there was one ground now.
+         That was true of the LESSON map, which really did drop its drawn atlases, and not of this
+         screen — the palette below is live and switches three styles. It is corrected rather than
+         deleted because a stale comment claiming a feature is gone is how the palette came to be
+         removed from this file once already. --}}
     <div class="absolute right-4 top-4 z-30"
          x-data="{ settingsOpen: false, paletteOpen: false,
                    style: (window.localStorage.getItem('tm-style') || 'soft-atlas'),
                    sound: (window.localStorage.getItem('tm-sound') === '1'),
-                   {{-- Soft Atlas, Night and Earth only. Antique and Tolkien read almost identically
-                        to Soft Atlas, and Earth is Satellite v2 — all three stay DEFINED so existing
-                        saved choices keep working and nothing 404s, they are simply not offered. --}}
-                   items: [['soft-atlas','Soft Atlas'],['night','Night'],['earth','Earth']] }"
+                   {{-- Which styles are offered now lives in <x-ui.map-style-picker>, next to the
+                        thumbnails that show what each one looks like. Soft Atlas, Night and Earth;
+                        Antique and Pen-ink stay DEFINED in timemap/index.js so existing saved
+                        choices keep working, they are simply not offered. --}} }"
          x-on:click.outside="settingsOpen = false; paletteOpen = false">
 
         {{-- Cog --}}
@@ -230,14 +235,14 @@
                     <path d="m42 54c0 5.332-8 5.332-8 0s8-5.332 8 0"/>
                 </svg>
             </button>
-            <ul x-show="paletteOpen" x-transition.opacity style="display:none"
-                class="menu absolute right-0 mt-2 w-56 rounded-box bg-base-100/95 p-2 shadow-xl">
-                <li class="menu-title text-xs">{{ __('Map style') }}</li>
-                <template x-for="it in items" :key="it[0]">
-                    <li><a x-on:click="style = it[0]; window.__applyMapStyle && window.__applyMapStyle(it[0]); paletteOpen = false"
-                           :class="{ 'active font-semibold': style === it[0] }" x-text="it[1]"></a></li>
-                </template>
-            </ul>
+            {{-- The styles as pictures rather than as a list of names. Same component the lesson
+                 inspector's Map style section uses, and the same keys `__applyMapStyle` already
+                 understands, so this is a new face on the existing switch and not a second one. --}}
+            <div x-show="paletteOpen" x-transition.opacity style="display:none"
+                 class="absolute right-0 mt-2 w-80 rounded-box bg-base-100/95 p-3 shadow-xl">
+                <p class="mb-2 text-xs font-semibold text-base-content/70">{{ __('Map style') }}</p>
+                <x-ui.map-style-picker model="style" on-select="paletteOpen = false" />
+            </div>
         </div>
 
         {{-- Sound sub-button (bottom-left): read summaries aloud via ElevenLabs --}}

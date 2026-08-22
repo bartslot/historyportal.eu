@@ -11,6 +11,9 @@ import { clampToViewport, restorePosition, savePosition, defaultPosition, isView
 // Dev settings sliders. Imported unconditionally because it is a registry and nothing more until
 // something registers a knob — it builds no DOM and adds no listeners beyond one window event.
 import './dev/tuner.js';
+import { settingsPanelTuner } from './dev/settings-panel-tuner.js';
+import { layerSizeRow } from './ui/layer-size-row.js';
+import { layerOverlay, setLayerPropEverywhere } from './scene/layer-overlays.js';
 
 window.Sortable = Sortable;
 
@@ -39,6 +42,23 @@ window.onboardingTour = createTour;
 // Animated easing swatches for the wizard's Animate tab: x-data="easingPreview('enter')".
 // Same global-factory pattern, for the same reason.
 window.easingPreview = easingPreview;
+
+// The settings panel's geometry knobs: x-data="settingsPanelTuner()". Same global-factory pattern.
+// It registers a tuner group while an inspector is open and unregisters when it closes, so the
+// knobs follow the panel rather than sitting in the list on every page.
+window.settingsPanelTuner = settingsPanelTuner;
+
+// The inspector's Dimensions row: x-data="layerSizeRow({ ... })". Same global-factory pattern.
+// The proportion maths it drives lives in resources/js/ui/aspect-lock.js, where aspect-lock.test.js
+// holds it — a lock that recomputes its ratio from the rounded fields drifts a square out of
+// square with every individual step still looking right, so it is not left in a template.
+window.layerSizeRow = layerSizeRow;
+
+// A map or voyage scene keeps TWO artwork overlays alive over the same layers, so "set this
+// property live" has to reach both and "measure this layer" has to read the one on screen. See
+// resources/js/scene/layer-overlays.js — the panel's live previews all go through these.
+window.__layerOverlay = layerOverlay;
+window.__setLayerProp = setLayerPropEverywhere;
 
 // The 3D scene system (three.js, ~1.7 MB) is used ONLY by the lesson-creation wizard. Load it on
 // demand via window.loadLessonScene() so the landing page and other app pages never download three.

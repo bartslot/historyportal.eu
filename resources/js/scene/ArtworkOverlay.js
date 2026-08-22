@@ -117,6 +117,11 @@ export class ArtworkOverlay {
         y: Number.isFinite(l.y) ? l.y : 58,
         scale: Number.isFinite(l.scale) ? l.scale : 1,
         height: Number.isFinite(l.height) ? l.height : 40,
+        // OPTIONAL. null means "no explicit width" — the node stays width:max-content and takes
+        // its width from the image's own aspect, which is what every layer did before the
+        // Dimensions row existed. Only a teacher who unlocks the aspect and types a width
+        // gives a layer one, so nothing that already exists changes shape.
+        width: Number.isFinite(l.width) ? l.width : null,
         depth: Number.isFinite(l.depth) ? l.depth : 1,   // parallax: higher = follows the camera more
         blur: Number.isFinite(l.blur) ? l.blur : 0,
         opacity: Number.isFinite(l.opacity) ? l.opacity : 1,
@@ -245,6 +250,58 @@ export class ArtworkOverlay {
     return item.height * item.scale
   }
 
+  // On-screen width, or null when the layer has none of its own.
+  _widthPct(item) {
+    return Number.isFinite(item.width) ? item.width * item.scale : null
+  }
+
+  /**
+   * The node's width declaration.
+   *
+   * `max-content` is the long-standing behaviour: the node hugs the image, so its border-box IS
+   * the picture and the selection ring lands exactly on it. An explicit width has to keep that
+   * property, so the image is told to fill the node rather than being left to its own aspect —
+   * otherwise the ring and the drag handles would sit around a box the picture no longer fills.
+   */
+  _widthCss(item) {
+    const w = this._widthPct(item)
+    return w === null ? 'width:max-content;' : `width:${w}%;`
+  }
+
+  /**
+   * The layer's box shape, as the ratio of its width-percentage to its height-percentage.
+   *
+   * The Dimensions row needs a width for a layer that has never had one — the overwhelming
+   * majority, since a width only becomes explicit once someone releases the aspect lock. The row
+   * multiplies this by the layer's STORED height to get one, which keeps both sides of the pair in
+   * the same units and derived from the same source.
+   *
+   * A RATIO, NOT TWO PERCENTAGES, and that is the whole point. Returning absolute percentages
+   * meant measuring the node's height against this.host — but a node's percentage height resolves
+   * against its offset parent, which here is a plane wrapper shorter than the host. A layer stored
+   * at height 40 measured as 71.8, the row captured 18.08 : 40 as its proportion, and halving the
+   * width took the height to 35.9 instead of 20. Every individual number looked plausible. Dividing
+   * the two percentages cancels whatever box they were measured against, so the shape is right
+   * however the stage is nested.
+   *
+   * Returns null while there is nothing to measure — an image that has not decoded reports 0, and
+   * seeding the row from that would let the first keystroke write a zero-width layer.
+   */
+  measure(assetId) {
+    const item = this._layers.find(l => String(l.asset_id) === String(assetId))
+    const node = item && this._nodeEl(item)
+    if (!item || !node) return null
+
+    const hostW = this.host?.clientWidth || 0
+    const hostH = this.host?.clientHeight || 0
+    const w = node.offsetWidth
+    const h = node.offsetHeight
+    if (!hostW || !hostH || !w || !h) return null
+
+    // (w / hostW) / (h / hostH) — the box's width-% to height-% ratio in stage units.
+    return { ratio: (w * hostH) / (h * hostW) }
+  }
+
   /**
    * Set one property on one layer and repaint it, without a server round-trip.
    *
@@ -261,7 +318,7 @@ export class ArtworkOverlay {
     const node = item && this._nodeEl(item)
     if (!item || !node) return
 
-    const NUMERIC = ['x', 'y', 'scale', 'height', 'opacity', 'blur', 'white_key', 'depth', 'rotation', 'tint_opacity']
+    const NUMERIC = ['x', 'y', 'scale', 'height', 'width', 'opacity', 'blur', 'white_key', 'depth', 'rotation', 'tint_opacity']
     item[key] = NUMERIC.includes(key) ? Number(value) : (key === 'grayscale' ? !!value : value)
 
     switch (key) {
@@ -284,9 +341,20 @@ export class ArtworkOverlay {
         break
       case 'scale':
       case 'height':
+      case 'width': {
         node.style.height = `${this._heightPct(item)}%`
+        const w = this._widthPct(item)
+        // Setting the property to '' returns the node to width:max-content, so clearing an
+        // explicit width puts the layer back on its own aspect rather than freezing the last one.
+        node.style.width = w === null ? '' : `${w}%`
+        const liveImg = node.querySelector('img')
+        if (liveImg) {
+          liveImg.style.width = w === null ? 'auto' : '100%'
+          liveImg.style.objectFit = w === null ? '' : 'fill'
+        }
         this._syncChrome(item)
         break
+      }
       case 'rotation':
         node.style.transform = this._transform(item)
         this._syncChrome(item)
@@ -594,14 +662,19 @@ export class ArtworkOverlay {
     // Playback nodes are inert (pointer-events:none) so a student can't drag the decoration and it
     // never steals a map pan; editor nodes catch pointers to move/select.
     node.style.cssText = `position:absolute; left:${item.x}%; top:${item.y}%; height:${this._heightPct(item)}%;
-      width:max-content; transform:${this._transform(item)}; transform-origin:center;
+      ${this._widthCss(item)} transform:${this._transform(item)}; transform-origin:center;
       z-index:${this.onTop ? this._zTop : this._zNormal}; ${interact} touch-action:none; user-select:none;`
 
     const img = document.createElement('img')
     img.src = item.url
     img.alt = item.title
     img.draggable = false
-    img.style.cssText = 'height:100%; width:auto; display:block; pointer-events:none; user-select:none;'
+    // With no explicit width the node hugs the image and `width:auto` keeps its natural aspect.
+    // Once a teacher unlocks the aspect and types a width, the box is theirs and the picture is
+    // stretched to it — `contain` would letterbox and leave the ring around empty space.
+    img.style.cssText = this._widthPct(item) === null
+      ? 'height:100%; width:auto; display:block; pointer-events:none; user-select:none;'
+      : 'height:100%; width:100%; object-fit:fill; display:block; pointer-events:none; user-select:none;'
     // The node sizes itself to the image's aspect, so the chrome can only be measured once the
     // file has decoded. Without this the ring is a sliver on first paint.
     img.addEventListener('load', () => this._syncChrome(item), { once: true })

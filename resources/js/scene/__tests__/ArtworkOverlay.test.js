@@ -281,3 +281,68 @@ describe('ArtworkOverlay — live preview while dragging a control', () => {
     expect(() => overlay.setLayerProp(999, 'tint', '#000000')).not.toThrow()
   })
 })
+
+describe('ArtworkOverlay — measuring a layer for the Dimensions row', () => {
+  /**
+   * jsdom reports 0 for every offset/client dimension, so the boxes are stubbed. That is the whole
+   * point of the test: what matters is which boxes the ratio is built from, not what a real browser
+   * would return.
+   */
+  const stub = (el, { width, height }) => {
+    Object.defineProperty(el, 'offsetWidth', { value: width, configurable: true })
+    Object.defineProperty(el, 'offsetHeight', { value: height, configurable: true })
+  }
+  const stubHost = (el, { width, height }) => {
+    Object.defineProperty(el, 'clientWidth', { value: width, configurable: true })
+    Object.defineProperty(el, 'clientHeight', { value: height, configurable: true })
+  }
+
+  it('reports the box as a width-% to height-% ratio, not as two percentages', () => {
+    // Arrange — a 16:9 stage with a square layer on it. A square is 22.5% as wide as the stage
+    // when it is 40% as tall, so the ratio the row wants is 0.5625, not 1.
+    const el = host()
+    stubHost(el, { width: 1600, height: 900 })
+    const overlay = new ArtworkOverlay(el)
+    overlay.setLayers([layer()])
+    stub(el.querySelector('[data-layer-id="art_1"]'), { width: 360, height: 360 })
+
+    // Act
+    const box = overlay.measure(1)
+
+    // Assert
+    expect(box.ratio).toBeCloseTo(0.5625, 6)
+  })
+
+  /**
+   * THE BUG THIS REPLACED. The row multiplies the ratio by the layer's STORED height, so the ratio
+   * must not depend on which box the node's percentage height resolved against. A node rendered
+   * twice as tall as its stored height (its offset parent being half the host) has to yield the
+   * same shape, or the lock captures a proportion the layer never had — measured live as a layer
+   * stored at height 40 that reported 71.8, whose lock then took a halved width to 35.9 and not 20.
+   */
+  it('gives the same shape however tall the node happens to render', () => {
+    const el = host()
+    stubHost(el, { width: 1600, height: 900 })
+    const overlay = new ArtworkOverlay(el)
+    overlay.setLayers([layer()])
+    const node = el.querySelector('[data-layer-id="art_1"]')
+
+    stub(node, { width: 360, height: 360 })
+    const small = overlay.measure(1).ratio
+
+    stub(node, { width: 720, height: 720 })
+    const large = overlay.measure(1).ratio
+
+    expect(large).toBeCloseTo(small, 9)
+  })
+
+  it('reports nothing while the image has not decoded', () => {
+    const el = host()
+    stubHost(el, { width: 1600, height: 900 })
+    const overlay = new ArtworkOverlay(el)
+    overlay.setLayers([layer()])
+    stub(el.querySelector('[data-layer-id="art_1"]'), { width: 0, height: 0 })
+
+    expect(overlay.measure(1)).toBeNull()
+  })
+})

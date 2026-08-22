@@ -90,6 +90,27 @@
     --font-history: 'History', ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
     --color-dropdown: #18293f;
     --color-dropdown-border: #2e425a;
+
+    /* The one small step. The panels had drifted into text-[10px] and text-[11px] used
+       interchangeably for the same kind of label, which is two names for one intention; they are
+       merged here at 11px, the size Figma's own LABEL_BIGGER style carries. Anything smaller than
+       this is not a size we have — a row label that will not fit at 11px is a row that needs a
+       wider label column, not a sixth font size. */
+    --text-2xs: 0.6875rem;        /* 11px */
+    --text-2xs--line-height: 1.1;
+
+    /* Settings-panel geometry (Figma settings-Maps-panel, 1470:1877).
+
+       Variables rather than literals in the markup because every one of these started as a
+       measurement off a picture, and a number nobody has squinted at on a real screen is still a
+       guess. The dev tuner registers all five — see resources/js/dev/settings-panel-tuner.js —
+       and moves them live by rewriting these properties, which only works while the panel READS
+       them. Hard-coding any of these back into a class is what silently unhooks the control. */
+    --settings-panel-w: 19.375rem;      /* 310px */
+    --settings-panel-label-w: 4.5rem;   /* the label column; Figma's 49px does not fit 11px type */
+    --settings-panel-thumb-h: 4rem;     /* 64px map-style card */
+    --settings-panel-row-h: 2rem;       /* 32px field height */
+    --settings-panel-pad: 1rem;         /* 16px side padding */
 }
 
 @font-face {

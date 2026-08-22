@@ -105,13 +105,10 @@
             </label>
 
             <div @class(['space-y-2', 'pointer-events-none opacity-40' => $routeAnim['route'] === 'none'])>
-                <label class="flex items-center gap-2">
-                    <span class="w-12 shrink-0 text-[10px] uppercase tracking-wide text-slate-500">{{ __('Time') }}</span>
-                    <input type="range" min="0.5" max="10" step="0.5" value="{{ $routeAnim['duration'] }}"
-                           wire:change="setOverviewAnim('duration', $event.target.value)"
-                           class="range range-xs flex-1" />
-                    <span class="w-9 text-right font-mono text-[10px] text-slate-400">{{ rtrim(rtrim(number_format((float) $routeAnim['duration'], 1), '0'), '.') }}s</span>
-                </label>
+                <x-ui.slider-row :label="__('Time')" :min="0.5" :max="10" :step="0.5"
+                                 :value="$routeAnim['duration']"
+                                 :display="rtrim(rtrim(number_format((float) $routeAnim['duration'], 1), '0'), '.')" unit="s"
+                                 on-change="setOverviewAnim('duration', $event.target.value)" />
 
                 <label class="flex items-center justify-between gap-2">
                     <span class="text-[11px] text-slate-300">{{ __('Number the stops as it goes') }}</span>
@@ -157,34 +154,27 @@
     {{-- Delay: how long the layer waits before it moves. --}}
     @if ($isLayer)
         @foreach ([['in', $current, 'anim_delay'], ['out', $out, 'anim_out_delay']] as [$half, $vals, $field])
-            <label class="flex items-center gap-2" x-show="build === '{{ $half }}'" @if ($half === 'out') x-cloak @endif>
-                <span class="w-12 shrink-0 text-[10px] uppercase tracking-wide text-slate-500">{{ __('Delay') }}</span>
-                <input type="range" min="0" max="10" step="0.1" value="{{ $vals['delay'] }}"
-                       wire:change="updateArtworkLayer({{ $aid }}, '{{ $field }}', $event.target.value)"
-                       class="range range-xs flex-1" />
-                <span class="w-9 text-right font-mono text-[10px] text-slate-400">{{ rtrim(rtrim(number_format($vals['delay'], 1), '0'), '.') ?: '0' }}s</span>
-            </label>
+            <x-ui.slider-row :label="__('Delay')" :min="0" :max="10" :step="0.1"
+                             :value="$vals['delay']"
+                             :display="rtrim(rtrim(number_format($vals['delay'], 1), '0'), '.') ?: '0'" unit="s"
+                             :on-change="'updateArtworkLayer(' . $aid . ', \'' . $field . '\', $event.target.value)'"
+                             x-show="build === '{{ $half }}'" @if ($half === 'out') x-cloak @endif />
         @endforeach
 
         {{-- Duration — the industry term for how long the movement itself takes (Keynote, After
              Effects, CSS all call it that). Stored in ms to match the Web Animations API. --}}
         @foreach ([['in', $current, 'anim_duration'], ['out', $out, 'anim_out_duration']] as [$half, $vals, $field])
-            <label class="flex items-center gap-2" x-show="build === '{{ $half }}'" @if ($half === 'out') x-cloak @endif>
-                <span class="w-12 shrink-0 text-[10px] uppercase tracking-wide text-slate-500">{{ __('Duration') }}</span>
-                <input type="range" min="100" max="5000" step="50" value="{{ $vals['duration'] }}"
-                       wire:change="updateArtworkLayer({{ $aid }}, '{{ $field }}', $event.target.value)"
-                       class="range range-xs flex-1" />
-                <span class="w-9 text-right font-mono text-[10px] text-slate-400">{{ rtrim(rtrim(number_format($vals['duration'] / 1000, 2), '0'), '.') }}s</span>
-            </label>
+            <x-ui.slider-row :label="__('Duration')" :min="100" :max="5000" :step="50"
+                             :value="$vals['duration']"
+                             :display="rtrim(rtrim(number_format($vals['duration'] / 1000, 2), '0'), '.')" unit="s"
+                             :on-change="'updateArtworkLayer(' . $aid . ', \'' . $field . '\', $event.target.value)'"
+                             x-show="build === '{{ $half }}'" @if ($half === 'out') x-cloak @endif />
         @endforeach
     @else
-        <label class="flex items-center gap-2">
-            <span class="w-12 shrink-0 text-[10px] uppercase tracking-wide text-slate-500">{{ __('Duration') }}</span>
-            <input type="range" min="0" max="3" step="0.1" value="{{ $current['delay'] }}"
-                   wire:change="setSceneTransition('duration', $event.target.value)"
-                   class="range range-xs flex-1" />
-            <span class="w-9 text-right font-mono text-[10px] text-slate-400">{{ rtrim(rtrim(number_format($current['delay'], 1), '0'), '.') ?: '0' }}s</span>
-        </label>
+        <x-ui.slider-row :label="__('Duration')" :min="0" :max="3" :step="0.1"
+                         :value="$current['delay']"
+                         :display="rtrim(rtrim(number_format($current['delay'], 1), '0'), '.') ?: '0'" unit="s"
+                         on-change="setSceneTransition('duration', $event.target.value)" />
     @endif
 
     {{-- Easing, chosen from live curves rather than a list of names --}}
