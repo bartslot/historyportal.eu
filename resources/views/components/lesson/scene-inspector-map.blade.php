@@ -41,20 +41,11 @@
     @php $projection = $scene->config['projection'] ?? 'mercator'; @endphp
     <div class="form-control">
         <span class="text-xs uppercase tracking-wider text-slate-400">View</span>
-        <div class="mt-1 inline-flex overflow-hidden rounded-lg border border-slate-700/60">
-            <button type="button"
-                    wire:click="setProjection('mercator')"
-                    onclick="window.dispatchEvent(new CustomEvent('lessonmap:projection',{detail:{type:'mercator'}}))"
-                    class="flex-1 px-3 py-1.5 text-xs font-medium transition-colors {{ $projection === 'globe' ? 'bg-slate-800 text-slate-400' : 'bg-amber-500 text-slate-950' }}">
-                Flat 2D
-            </button>
-            <button type="button"
-                    wire:click="setProjection('globe')"
-                    onclick="window.dispatchEvent(new CustomEvent('lessonmap:projection',{detail:{type:'globe'}}))"
-                    class="flex-1 px-3 py-1.5 text-xs font-medium transition-colors {{ $projection === 'globe' ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400' }}">
-                Globe 3D
-            </button>
-        </div>
+        {{-- The projection flips the live preview instantly (the dispatched event) and persists
+             the choice (the wire call) so it survives a re-mount. --}}
+        <x-ui.segmented class="mt-1" name="map-projection" :value="$projection"
+                        :options="[['mercator', __('Flat 2D')], ['globe', __('Globe 3D')]]"
+                        on-change="window.dispatchEvent(new CustomEvent('lessonmap:projection', { detail: { type: $event.target.value } })); $wire.call('setProjection', $event.target.value)" />
     </div>
 
     {{-- Focus cities — search the cities corpus (modern OR historical name), then drop a red dot
@@ -142,7 +133,7 @@
             <input type="search" wire:model.live.debounce.400ms="territoryQuery"
                    placeholder="Search an empire/kingdom — e.g. Byzantine Empire"
                    class="input input-sm input-bordered bg-slate-900 mt-1" />
-            <p class="mt-1 text-[10px] text-amber-400/70">No territory linked — search a polity (cities: link the empire that ruled it).</p>
+            <p class="mt-1 text-[10px] text-base-content/55">No territory linked — search a polity (cities: link the empire that ruled it).</p>
             <p class="mt-1 text-[10px] text-sky-300/80">Don't know its name? Hover the map to see territory names, then click one to link it.</p>
 
             @if (filled($territoryQuery) && $territoryResults && $territoryResults->isNotEmpty())

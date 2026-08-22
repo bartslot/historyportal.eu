@@ -18,7 +18,7 @@
             <button type="button" wire:click="selectCollection('{{ $set }}')"
                     class="rounded-full px-3 py-1 text-[11px] font-medium transition-colors
                            {{ $collection === $set
-                               ? 'bg-amber-500 text-slate-950'
+                               ? 'bg-base-content text-base-100'
                                : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200' }}">
                 {{ $collectionLabels[$set] ?? ucfirst(str_replace('-', ' ', $set)) }}
             </button>
@@ -39,7 +39,7 @@
             <button type="button" wire:click="selectGroup('', '')"
                     class="shrink-0 rounded-full px-3 py-1 text-[11px] font-medium transition-colors
                            {{ $category === ''
-                               ? 'bg-amber-500 text-slate-950'
+                               ? 'bg-base-content text-base-100'
                                : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200' }}">
                 {{ __('All') }}
             </button>
@@ -50,7 +50,7 @@
                         class="shrink-0 rounded-full px-3 py-1 text-[11px] transition-colors
                                {{ $group['subcategory'] === '' ? 'font-semibold' : 'font-medium' }}
                                {{ $active
-                                   ? 'bg-amber-500 text-slate-950'
+                                   ? 'bg-base-content text-base-100'
                                    : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200' }}">
                     {{ $group['label'] }}
                 </button>

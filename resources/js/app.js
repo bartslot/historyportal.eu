@@ -13,7 +13,7 @@ import { clampToViewport, restorePosition, savePosition, defaultPosition, isView
 import './dev/tuner.js';
 import { settingsPanelTuner } from './dev/settings-panel-tuner.js';
 import { layerSizeRow } from './ui/layer-size-row.js';
-import { layerOverlay, setLayerPropEverywhere } from './scene/layer-overlays.js';
+import { layerOverlay, setLayerPropEverywhere, selectLayerEverywhere } from './scene/layer-overlays.js';
 
 window.Sortable = Sortable;
 
@@ -59,6 +59,7 @@ window.layerSizeRow = layerSizeRow;
 // resources/js/scene/layer-overlays.js — the panel's live previews all go through these.
 window.__layerOverlay = layerOverlay;
 window.__setLayerProp = setLayerPropEverywhere;
+window.__selectLayer = selectLayerEverywhere;
 
 // The 3D scene system (three.js, ~1.7 MB) is used ONLY by the lesson-creation wizard. Load it on
 // demand via window.loadLessonScene() so the landing page and other app pages never download three.

@@ -99,18 +99,9 @@
     <div x-show="view === 'slideshow'" x-cloak class="space-y-2">
         {{-- Slideshow render mode — Standard (flat) | Parallax (depth) | Drawing (line art). --}}
         <div x-data="{ mode: @js($slideshowMode) }">
-            <div class="flex rounded-lg overflow-hidden border border-slate-700 text-[11px] font-medium">
-                @foreach (['standard' => __('Standard'), 'parallax' => __('Parallax'), 'drawing' => __('Drawing')] as $modeVal => $modeLabel)
-                    <button type="button"
-                            @click="mode = '{{ $modeVal }}'; $wire.call('setSlideshowMode', '{{ $modeVal }}')"
-                            :class="mode === '{{ $modeVal }}'
-                                ? 'bg-amber-500 text-slate-950'
-                                : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200'"
-                            class="flex-1 py-1.5 transition-colors">
-                        {{ $modeLabel }}
-                    </button>
-                @endforeach
-            </div>
+            <x-ui.segmented name="slideshow-mode" model="mode"
+                            :options="[['standard', __('Standard')], ['parallax', __('Parallax')], ['drawing', __('Drawing')]]"
+                            on-change="$wire.call('setSlideshowMode', $event.target.value)" />
             <p class="mt-1 text-[10px] leading-tight text-slate-500" x-show="mode === 'parallax'" x-cloak>
                 {{ __('Layers and text gain depth and follow the camera.') }}
             </p>
@@ -148,7 +139,7 @@
                  x-on:dragover.prevent="if (files($event)) $event.dataTransfer.dropEffect = 'copy'"
                  x-on:dragleave="depth = Math.max(0, depth - 1)"
                  x-on:drop.prevent="depth = 0; const f = $event.dataTransfer.files[0]; if (f) $wire.upload('droppedBackground', f)"
-                 :class="depth > 0 ? 'border-amber-400 bg-amber-500/10' : 'border-slate-700/70 bg-slate-900/40'"
+                 :class="depth > 0 ? 'border-base-content/40 bg-base-content/5' : 'border-slate-700/70 bg-slate-900/40'"
                  class="flex items-center gap-2.5 rounded-lg border p-1.5 transition-colors">
                 @if ($backgroundImageUrl)
                     <img src="{{ $backgroundImageUrl }}"
@@ -170,18 +161,9 @@
             @if ($backgroundImageUrl)
                 <div x-data="{ fit: @js($backgroundFit) }">
                     <span class="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">{{ __('Fit') }}</span>
-                    <div class="flex rounded-lg overflow-hidden border border-slate-700 text-[11px] font-medium">
-                        @foreach (['cover' => __('Fill frame'), 'contain' => __('Whole image')] as $fitVal => $fitLabel)
-                            <button type="button"
-                                    @click="fit = '{{ $fitVal }}'; $wire.call('setBackgroundFit', '{{ $fitVal }}')"
-                                    :class="fit === '{{ $fitVal }}'
-                                        ? 'bg-amber-500 text-slate-950'
-                                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200'"
-                                    class="flex-1 py-1.5 transition-colors">
-                                {{ $fitLabel }}
-                            </button>
-                        @endforeach
-                    </div>
+                    <x-ui.segmented name="background-fit" model="fit"
+                                    :options="[['cover', __('Fill frame')], ['contain', __('Whole image')]]"
+                                    on-change="$wire.call('setBackgroundFit', $event.target.value)" />
                     <p class="mt-1 text-[10px] leading-tight text-slate-500" x-show="fit === 'cover'" x-cloak>
                         {{ __('Fills the frame. Portraits are cropped from the top so faces stay in shot.') }}
                     </p>
@@ -208,8 +190,8 @@
                                 <button type="button" wire:click="useLessonImageBackground(@js($img['url']))" title="{{ $img['label'] ?? '' }}"
                                         @class([
                                             'h-12 w-16 shrink-0 overflow-hidden rounded ring-1 transition',
-                                            'ring-amber-400' => $backgroundImageUrl === $img['url'],
-                                            'ring-slate-700 hover:ring-amber-400' => $backgroundImageUrl !== $img['url'],
+                                            'ring-base-content' => $backgroundImageUrl === $img['url'],
+                                            'ring-slate-700 hover:ring-base-content/40' => $backgroundImageUrl !== $img['url'],
                                         ])>
                                     <img src="{{ $img['url'] }}" alt="{{ $img['label'] ?? '' }}" class="h-full w-full object-cover" loading="lazy"
                                          onerror="this.closest('button').style.display='none'" />
@@ -224,13 +206,8 @@
                 </div>
             @endif
 
-            <div class="flex overflow-hidden rounded-lg border border-slate-700/70 text-[11px] font-medium">
-                @foreach (['ai' => __('AI Gen'), 'paintings' => __('Paintings'), 'url' => __('Drawing')] as $sv => $sl)
-                    <button type="button" @click="imgSrc = '{{ $sv }}'"
-                            :class="imgSrc === '{{ $sv }}' ? 'bg-amber-500 text-slate-950' : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700 hover:text-slate-200'"
-                            class="flex-1 whitespace-nowrap px-1 py-1.5 transition-colors">{{ $sl }}</button>
-                @endforeach
-            </div>
+            <x-ui.segmented name="image-source" model="imgSrc"
+                            :options="[['ai', __('AI Gen')], ['paintings', __('Paintings')], ['url', __('Drawing')]]" />
 
             {{-- AI generated — Regenerate / Edit prompt (Figma item 5) --}}
             <div x-show="imgSrc === 'ai'" x-cloak class="space-y-2">
@@ -240,7 +217,7 @@
                             wire:click="regenerate({{ $scene->id }}, 'image')"
                             wire:loading.attr="disabled" wire:target="regenerate"
                             @disabled($isBusy)
-                            class="inline-flex items-center gap-1.5 text-[12px] text-slate-300 transition hover:text-amber-300 disabled:opacity-50">
+                            class="inline-flex items-center gap-1.5 text-[12px] text-slate-300 transition hover:text-base-content disabled:opacity-50">
                         @if ($isGenerating)
                             <x-icons.spinner class="h-3.5 w-3.5 animate-spin" /><span>{{ __('Generating…') }}</span>
                         @else
@@ -248,7 +225,7 @@
                         @endif
                     </button>
                     <button type="button" @click="promptOpen = !promptOpen"
-                            class="inline-flex items-center gap-1.5 text-[12px] text-slate-300 transition hover:text-amber-300">
+                            class="inline-flex items-center gap-1.5 text-[12px] text-slate-300 transition hover:text-base-content">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-3.5 w-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" /></svg>
                         <span>{{ __('Edit prompt') }}</span>
                     </button>
@@ -268,7 +245,7 @@
                      GenerateSceneImage bails on hasManualBackground() before AND after generating.
                      The AI generate/regenerate buttons below stay gated, to avoid double-dispatch. --}}
                 <button type="button" wire:click="openPaintingPicker"
-                        class="btn btn-xs btn-outline border-slate-600 text-slate-300 hover:border-amber-400 hover:text-amber-300 disabled:opacity-50 inline-flex items-center gap-1.5">
+                        class="btn btn-xs btn-outline border-slate-600 text-slate-300 hover:border-base-content/40 hover:text-base-content disabled:opacity-50 inline-flex items-center gap-1.5">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-3 h-3">
                         <rect x="3" y="4" width="18" height="14" rx="2"/>
                         <path stroke-linecap="round" d="m3 15 4.5-4.5a1.4 1.4 0 0 1 2 0L14 15m-2-2 2.5-2.5a1.4 1.4 0 0 1 2 0L21 15"/>
@@ -285,7 +262,7 @@
             <div x-show="imgSrc === 'url'" x-cloak class="space-y-1.5">
                 <button type="button"
                         @click="$wire.call('setSlideshowMode', 'drawing')"
-                        class="inline-flex items-center gap-1.5 text-[12px] text-slate-300 transition hover:text-amber-300">
+                        class="inline-flex items-center gap-1.5 text-[12px] text-slate-300 transition hover:text-base-content">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-3.5 w-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" /></svg>
                     <span>{{ __('Draw this background') }}</span>
                 </button>
@@ -303,7 +280,7 @@
                         <input type="text" x-model="link" placeholder="https://sketchfab.com/3d-models/…"
                                class="input input-xs input-bordered flex-1 bg-slate-900" />
                         <button type="button" @click="if (link.trim()) { $wire.setSketchfabEmbed(link); link = '' }"
-                                class="btn btn-xs border-0 bg-amber-500 font-semibold text-slate-950 hover:bg-amber-400">{{ __('Set') }}</button>
+                                class="btn btn-xs btn-neutral">{{ __('Set') }}</button>
                     </div>
                     <p class="mt-1 text-[10px] text-slate-500">{{ __('Paste a Sketchfab model URL or its <iframe> embed code.') }}</p>
                 </div>
@@ -331,7 +308,7 @@
                         <button type="button"
                                 wire:click="selectSkyboxCandidate({{ $scene->id }}, {{ $i }})"
                                 wire:loading.attr="disabled" wire:target="selectSkyboxCandidate,generateSkyboxCandidates"
-                                class="group relative block w-full overflow-hidden rounded ring-1 ring-slate-700 hover:ring-2 hover:ring-amber-400 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                class="group relative block w-full overflow-hidden rounded ring-1 ring-slate-700 hover:ring-2 hover:ring-base-content/40 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                 style="aspect-ratio:2/1">
                             <img src="{{ asset('storage/' . $path) }}"
                                  class="w-full h-full object-cover" />
@@ -412,33 +389,33 @@
         <div>
             <div class="flex items-center justify-between mb-1">
                 <label class="text-[10px] uppercase tracking-widest text-slate-500">Blur</label>
-                <span class="text-[10px] font-mono text-amber-300" x-text="Number(blur).toFixed(2)"></span>
+                <span class="text-[10px] font-mono text-base-content/85" x-text="Number(blur).toFixed(2)"></span>
             </div>
             <input type="range" min="0.01" max="0.9" step="0.01"
                    x-model.number="blur"
                    @input="emitBlur()"
                    @change="$wire.set('selectedScene.skybox_blur', Number(blur)); $wire.call('saveSelected')"
-                   class="range range-xs accent-amber-400 w-full" />
+                   class="range range-xs w-full" />
         </div>
 
         {{-- Opacity --}}
         <div>
             <div class="flex items-center justify-between mb-1">
                 <label class="text-[10px] uppercase tracking-widest text-slate-500">Opacity</label>
-                <span class="text-[10px] font-mono text-amber-300" x-text="Math.round(opacity * 100) + '%'"></span>
+                <span class="text-[10px] font-mono text-base-content/85" x-text="Math.round(opacity * 100) + '%'"></span>
             </div>
             <input type="range" min="0" max="1" step="0.01"
                    x-model.number="opacity"
                    @input="emitOpacity()"
                    @change="$wire.set('selectedScene.skybox_opacity', Number(opacity)); $wire.call('saveSelected')"
-                   class="range range-xs accent-amber-400 w-full" />
+                   class="range range-xs w-full" />
         </div>
 
         {{-- Background color --}}
         <div>
             <div class="flex items-center justify-between mb-1">
                 <label class="text-[10px] uppercase tracking-widest text-slate-500">Background</label>
-                <span class="text-[10px] font-mono text-amber-300" x-text="bgColor"></span>
+                <span class="text-[10px] font-mono text-base-content/85" x-text="bgColor"></span>
             </div>
             <label class="flex items-center gap-2 cursor-pointer">
                 <span class="w-6 h-6 rounded border border-slate-600 overflow-hidden relative shrink-0"
@@ -463,8 +440,8 @@
                     World ready
                 </div>
             @elseif(in_array($worldStatus, ['pending', 'generating']))
-                <div class="flex items-center gap-2 text-amber-400">
-                    <span class="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                <div class="flex items-center gap-2 text-warning">
+                    <span class="h-1.5 w-1.5 rounded-full bg-warning animate-pulse"></span>
                     Generating world… this takes ~5–10 min
                 </div>
             @elseif($worldStatus === 'failed')
@@ -473,7 +450,7 @@
                     Generation failed
                 </div>
                 <button wire:click="generateWorld({{ $scene->id }})"
-                        class="text-amber-400 hover:text-amber-300 underline underline-offset-2 mt-1">Retry</button>
+                        class="text-warning hover:text-base-content underline underline-offset-2 mt-1">Retry</button>
             @else
                 <div class="text-slate-400">Select to start WorldLabs generation</div>
             @endif
@@ -508,28 +485,28 @@
                 <div>
                     <div class="flex items-center justify-between mb-1">
                         <label class="text-[10px] uppercase tracking-widest text-slate-500">World Y</label>
-                        <span class="text-[10px] font-mono text-amber-300" x-text="(charYOffset >= 0 ? '+' : '') + Number(charYOffset).toFixed(2)"></span>
+                        <span class="text-[10px] font-mono text-base-content/85" x-text="(charYOffset >= 0 ? '+' : '') + Number(charYOffset).toFixed(2)"></span>
                     </div>
                     <input type="range" min="-3" max="3" step="0.01" x-model.number="charYOffset"
-                           @input="emitCharY()" class="range range-xs accent-amber-400 w-full" />
+                           @input="emitCharY()" class="range range-xs w-full" />
                     <button @click="charYOffset = 0; emitCharY()" class="text-[9px] text-slate-500 hover:text-slate-300 mt-1">reset</button>
                 </div>
                 <div>
                     <div class="flex items-center justify-between mb-1">
                         <label class="text-[10px] uppercase tracking-widest text-slate-500">World Scale</label>
-                        <span class="text-[10px] font-mono text-amber-300" x-text="Number(worldScale).toFixed(2) + '×'"></span>
+                        <span class="text-[10px] font-mono text-base-content/85" x-text="Number(worldScale).toFixed(2) + '×'"></span>
                     </div>
                     <input type="range" min="0.1" max="5" step="0.01" x-model.number="worldScale"
-                           @input="emitWorldScale()" class="range range-xs accent-amber-400 w-full" />
+                           @input="emitWorldScale()" class="range range-xs w-full" />
                     <button @click="worldScale = 1; emitWorldScale()" class="text-[9px] text-slate-500 hover:text-slate-300 mt-1">reset</button>
                 </div>
                 <div>
                     <div class="flex items-center justify-between mb-1">
                         <label class="text-[10px] uppercase tracking-widest text-slate-500">Char Scale</label>
-                        <span class="text-[10px] font-mono text-amber-300" x-text="Number(charScale).toFixed(2) + '×'"></span>
+                        <span class="text-[10px] font-mono text-base-content/85" x-text="Number(charScale).toFixed(2) + '×'"></span>
                     </div>
                     <input type="range" min="0.1" max="3" step="0.01" x-model.number="charScale"
-                           @input="emitCharScale()" class="range range-xs accent-amber-400 w-full" />
+                           @input="emitCharScale()" class="range range-xs w-full" />
                     <button @click="charScale = 1; emitCharScale()" class="text-[9px] text-slate-500 hover:text-slate-300 mt-1">reset</button>
                 </div>
                 <button @click="dirty && save()"

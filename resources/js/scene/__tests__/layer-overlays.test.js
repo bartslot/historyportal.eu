@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { layerOverlay, setLayerPropEverywhere } from '../layer-overlays.js'
+import { layerOverlay, setLayerPropEverywhere, selectLayerEverywhere } from '../layer-overlays.js'
 
 /** A stand-in overlay that records what was set on it. */
 const overlay = (assetIds) => ({
@@ -87,5 +87,39 @@ describe('previewing a change', () => {
     setLayerPropEverywhere('232', 'height', 20)
 
     expect(stage.sets).toEqual([['232', 'height', 20]])
+  })
+})
+
+describe('clearing the selection', () => {
+  const selectable = () => ({ _layers: [{ asset_id: 232 }], selected: 'art_232', select (id) { this.selected = id } })
+
+  /**
+   * "Back to Scene" cleared only the stage's overlay, so on a map scene the layer stayed ringed and
+   * handled over the map and the button looked inert.
+   */
+  it('deselects on every overlay, not just the stage', () => {
+    const voyage = selectable()
+    const stage = selectable()
+    window.__voyageArtworkLayer = voyage
+    window.__lessonArtworkLayer = stage
+
+    selectLayerEverywhere(null)
+
+    expect(voyage.selected).toBeNull()
+    expect(stage.selected).toBeNull()
+  })
+
+  /**
+   * Deselect does NOT filter by ownership. An overlay that is not rendering the layer can still be
+   * holding a selection of its own, and "nothing is selected" has to mean nothing, anywhere.
+   */
+  it('clears an overlay that is not rendering the layer', () => {
+    const other = { _layers: [{ asset_id: 999 }], selected: 'art_999', select (id) { this.selected = id } }
+    window.__voyageArtworkLayer = other
+    window.__lessonArtworkLayer = selectable()
+
+    selectLayerEverywhere(null)
+
+    expect(other.selected).toBeNull()
   })
 })

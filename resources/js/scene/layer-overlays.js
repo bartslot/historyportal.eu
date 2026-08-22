@@ -37,6 +37,18 @@ export function layerOverlay (assetId) {
 }
 
 /**
+ * Select (or deselect, with null) on EVERY overlay.
+ *
+ * Deselect is the case that matters: clearing only the stage's copy left the map's copy ringed and
+ * handled, so "back to Scene" looked like it had done nothing. Unlike setLayerProp this does NOT
+ * filter by ownership — passing null means "nothing is selected anywhere", and an overlay that
+ * does not have the layer still has a selection to clear.
+ */
+export function selectLayerEverywhere (layerId) {
+  all().forEach((o) => o.select?.(layerId))
+}
+
+/**
  * Set a property on EVERY overlay rendering the layer.
  *
  * All of them, not just the preferred one: which copy is on screen depends on the scene kind and

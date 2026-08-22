@@ -903,8 +903,17 @@
             <div x-data="{ tab: 'format' }" wire:key="layer-tabs-{{ $al['asset_id'] ?? 0 }}">
                 <x-lesson.layer-panel-title :layer="$al" class="-mx-4 -mt-4" />
 
-                <x-ui.panel-tabs class="-mx-4 mb-1"
-                                 :tabs="[['format', __('Format')], ['animate', __('Animate')]]" />
+                <x-ui.panel-tabs class="-mx-4 mb-1" name="layer-tabs-{{ $al['asset_id'] ?? 0 }}"
+                                 :tabs="[['format', __('Format')], ['animate', __('Animate')]]">
+                    <x-slot:breadcrumb>
+                        {{-- Back to the scene's own settings. Also clears the canvas ring and the
+                             JS dedupe guard, or the layer stays visibly selected with nothing
+                             selected. --}}
+                        <x-ui.panel-breadcrumb :label="__('Scene')"
+                                               wire:click="clearActiveLayer"
+                                               x-on:click="window.__selectLayer?.(null); window.__clearLayerGuard?.()" />
+                    </x-slot:breadcrumb>
+                </x-ui.panel-tabs>
 
                 <div x-show="tab === 'format'">
                     <x-lesson.settings-map-panel :layer="$al" :scene="$this->selectedSceneModel" />
@@ -927,7 +936,7 @@
                      scene before it just as a narration scene does. --}}
                 {{-- Same tab row as a selected layer gets. The two panels sat side by side with
                      different tab treatments, and a tab is a tab wherever it appears. --}}
-                <x-ui.panel-tabs class="-mx-4"
+                <x-ui.panel-tabs class="-mx-4" name="scene-tabs-{{ $sceneModel->id }}"
                                  :tabs="[['format', __('Format')], ['animate', __('Animate')]]" />
 
                 <div x-show="tab === 'animate'" x-cloak>
@@ -1001,7 +1010,7 @@
                     </span>
                     <input type="checkbox" @checked($lesson->subtitles)
                            wire:change="setSubtitles($event.target.checked)"
-                           class="toggle toggle-sm toggle-warning shrink-0" />
+                           class="toggle toggle-sm shrink-0" />
                 </label>
             </div>
 
@@ -1051,7 +1060,7 @@
                     </span>
                     <input type="checkbox" @checked($lesson->background_music)
                            wire:change="setBackgroundMusic($event.target.checked)"
-                           class="toggle toggle-sm toggle-warning shrink-0" />
+                           class="toggle toggle-sm shrink-0" />
                 </label>
             </div>
             @endif
