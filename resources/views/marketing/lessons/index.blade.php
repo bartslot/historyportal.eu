@@ -17,7 +17,7 @@
 
     <main class="mx-auto max-w-6xl px-4 pb-16 pt-32 sm:px-6 lg:px-8">
         <header class="max-w-3xl">
-            <p class="text-xs font-medium uppercase tracking-[0.18em] text-amber-400">{{ __('Lesson library') }}</p>
+            <p class="text-xs font-medium uppercase tracking-eyebrow text-amber-400">{{ __('Lesson library') }}</p>
             <h1 class="mt-3 font-history text-4xl font-light tracking-tight text-white sm:text-5xl">
                 {{ $title }}
             </h1>

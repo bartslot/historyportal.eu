@@ -124,7 +124,7 @@ $machineState = $isFailed ? 'error' : ($isStalled ? 'stalled' : ($isDone ? 'read
     @if($this->autoAdvanceActive) wire:poll.2s="checkAndAutoAdvance" @endif
 >
     <header class="mx-auto max-w-2xl text-center">
-        <p class="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-sky-300/75">
+        <p class="text-2xs font-semibold uppercase tracking-eyebrow text-sky-300/75">
             {{ __('History Portal workshop') }}
         </p>
         <h1 class="mt-3 font-history text-3xl font-light tracking-[-0.035em] text-slate-100 sm:text-4xl">
@@ -167,7 +167,7 @@ $machineState = $isFailed ? 'error' : ($isStalled ? 'stalled' : ($isDone ? 'read
         <section class="min-w-0" aria-labelledby="generation-process-title">
             <div class="flex items-end justify-between gap-4 border-b border-slate-800 pb-4">
                 <div>
-                    <p class="text-[0.65rem] uppercase tracking-[0.16em] text-slate-500">{{ __('Live process') }}</p>
+                    <p class="text-2xs uppercase tracking-[0.16em] text-slate-500">{{ __('Live process') }}</p>
                     <h2 id="generation-process-title" class="mt-1 text-base font-semibold text-slate-100">
                         {{ __('What the workshop is doing') }}
                     </h2>

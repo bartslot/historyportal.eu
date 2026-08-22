@@ -123,7 +123,7 @@
         <div class="flex flex-col items-center sm:items-start">
             {{-- Kept word for word in step with components/landing/hero.blade.php. This page exists to
                  preview that hero, so copy that drifts here previews something nobody ships. --}}
-            <h1 data-reveal-item class="text-balance text-4xl leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-6xl">
+            <h1 data-reveal-item class="text-balance text-4xl leading-display tracking-tight text-white sm:text-5xl lg:text-6xl">
                 {{ $demoLesson?->title ?? __('The lesson they talk about after class.') }}
             </h1>
 

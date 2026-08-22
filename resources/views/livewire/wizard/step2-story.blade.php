@@ -20,7 +20,7 @@
                     <span class="text-sm font-medium text-white">{{ $fw->label() }}</span>
                     <span class="text-xs text-slate-400 leading-snug">{{ $fw->description() }}</span>
                     @if ($fw === NarrativeFramework::default())
-                        <span class="mt-0.5 text-[10px] uppercase tracking-wide text-amber-300/70">default</span>
+                        <span class="mt-0.5 text-2xs uppercase tracking-wide text-amber-300/70">default</span>
                     @endif
                 </button>
             @endforeach

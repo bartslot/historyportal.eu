@@ -229,7 +229,7 @@ export class StoryGameEngine {
       // class (never markup). Missing/invalid icons just render the label alone.
       const icon = String(m.icon || '')
       if (/^[a-z0-9-]+$/i.test(icon)) top.appendChild(el('i', `ti ${icon} text-amber-400 text-xs`))
-      top.appendChild(el('span', 'text-[11px] font-semibold text-slate-200 truncate max-w-[110px]', m.label || m.key))
+      top.appendChild(el('span', 'text-2xs font-semibold text-slate-200 truncate max-w-[110px]', m.label || m.key))
       seg.appendChild(top)
 
       const track = el('div', 'h-1.5 w-full rounded-full bg-white/10 overflow-hidden')
@@ -343,7 +343,7 @@ export class StoryGameEngine {
 
     const card = el('div', 'sg-card max-w-xl w-full rounded-xl border-2 border-amber-700/60 shadow-2xl px-6 py-4')
     card.style.background = 'linear-gradient(160deg, #fdf6e3 0%, #f5e9c9 100%)' // parchment
-    card.appendChild(el('p', 'text-[11px] font-bold uppercase tracking-[0.18em] text-amber-800 mb-1', 'Spelleider'))
+    card.appendChild(el('p', 'text-2xs font-bold uppercase tracking-eyebrow text-amber-800 mb-1', 'Spelleider'))
     card.appendChild(el('p', 'font-serif italic text-slate-900 text-base leading-relaxed', line)) // untrusted → textContent
     wrap.appendChild(card)
 
@@ -373,7 +373,7 @@ export class StoryGameEngine {
     card.appendChild(el('h2', 'font-history text-2xl sm:text-3xl font-bold text-rose-300 mb-4', 'Zo liep de geschiedenis bijna anders…'))
     if (historicalNote) {
       const note = el('div', 'rounded-xl border border-amber-500/30 bg-amber-500/10 px-5 py-4 mb-6')
-      note.appendChild(el('p', 'text-[11px] font-bold uppercase tracking-[0.18em] text-amber-400 mb-1', 'Wat er echt gebeurde'))
+      note.appendChild(el('p', 'text-2xs font-bold uppercase tracking-eyebrow text-amber-400 mb-1', 'Wat er echt gebeurde'))
       note.appendChild(el('p', 'text-slate-200 text-sm leading-relaxed', historicalNote)) // untrusted → textContent
       card.appendChild(note)
     }

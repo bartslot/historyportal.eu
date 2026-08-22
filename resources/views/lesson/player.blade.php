@@ -200,7 +200,7 @@
                  :style="`background-image:url('${lesson.title_bg_url}')`"></div>
             {{-- Darken for title legibility --}}
             <div class="absolute inset-0 bg-black/55"></div>
-            <span class="absolute bottom-2 right-3 text-[10px] text-white/40">{{ __('Image: Wikimedia Commons') }}</span>
+            <span class="absolute bottom-2 right-3 text-2xs text-white/40">{{ __('Image: Wikimedia Commons') }}</span>
         </div>
     </template>
 
@@ -290,7 +290,7 @@
              Reactive rather than server-rendered because it now also names the artist of the scene
              on screen, and that changes as the lesson plays. --}}
         <p x-show="attributionLine" x-text="attributionLine" x-cloak
-           class="absolute bottom-1 left-1/2 -translate-x-1/2 max-w-[92vw] truncate text-[10px] text-white/35 pointer-events-none"
+           class="absolute bottom-1 left-1/2 -translate-x-1/2 max-w-[92vw] truncate text-2xs text-white/35 pointer-events-none"
            style="z-index:40"></p>
 
         {{-- ── Subtitles — the narration written along the bottom while it is spoken ─────────── --}}
@@ -584,7 +584,7 @@
             @if($lesson->narrator?->name || $lesson->historical_figure)
                 <div class="absolute bottom-10 right-8 sm:right-12 hidden sm:flex items-center gap-4" style="z-index:20">
                     <div class="flex flex-col items-end gap-0.5 text-right">
-                        <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-400/80">{{ __('Narrated by') }}</p>
+                        <p class="text-2xs font-semibold uppercase tracking-[0.2em] text-amber-400/80">{{ __('Narrated by') }}</p>
                         <p class="font-history text-2xl font-semibold leading-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
                             {{ $lesson->narrator?->name ?? $lesson->historical_figure }}
                         </p>
@@ -612,7 +612,7 @@
                         style="image-rendering: pixelated;"></canvas>
                 <p class="text-base font-mono font-bold tracking-[0.25em] text-white/80 uppercase"
                    x-text="lesson.lesson_code"></p>
-                <p class="text-[10px] text-white/40 tracking-widest uppercase group-hover:text-white/60 transition">Scan to join</p>
+                <p class="text-2xs text-white/40 tracking-widest uppercase group-hover:text-white/60 transition">Scan to join</p>
             </button>
 
             {{-- QR modal --}}
@@ -639,7 +639,7 @@
                     {{-- Era / region --}}
                     <p x-show="lesson.era || lesson.region"
                        x-text="[lesson.era, lesson.region].filter(Boolean).join(' · ').toUpperCase()"
-                       class="mb-4 border-l-2 border-amber-400 pl-3 text-xs font-bold tracking-[0.18em] text-amber-400
+                       class="mb-4 border-l-2 border-amber-400 pl-3 text-xs font-bold tracking-eyebrow text-amber-400
                               drop-shadow-[0_1px_8px_rgba(0,0,0,1)]"></p>
 
                     {{-- Title --}}
@@ -647,7 +647,7 @@
                         x-html="lesson.title.includes(': ')
                             ? lesson.title.replace(/^(.*?):\s*(.+)$/, '<span style=\'font-weight:300\'>$1:</span> <span style=\'font-weight:700\'>$2</span>')
                             : lesson.title"
-                        class="font-history text-white leading-[0.95] tracking-tight
+                        class="font-history text-white leading-history tracking-tight
                                drop-shadow-[0_2px_40px_rgba(0,0,0,1)]"
                         style="font-size: clamp(2.2rem, 6vw, 7rem);"
                     ></h1>
@@ -721,7 +721,7 @@
             class="absolute inset-0 flex items-center justify-center bg-slate-950/92 backdrop-blur-md pointer-events-auto px-5 py-8 overflow-y-auto"
         >
             <div class="w-full max-w-2xl rounded-3xl border border-amber-500/40 bg-slate-950/95 p-7 sm:p-9 shadow-2xl">
-                <p class="text-amber-400 text-[11px] font-semibold uppercase tracking-[0.3em] mb-3">{{ __('Your Challenge') }}</p>
+                <p class="text-amber-400 text-2xs font-semibold uppercase tracking-[0.3em] mb-3">{{ __('Your Challenge') }}</p>
                 <h2 x-text="lesson.game_title || 'Strategy Challenge'"
                     class="font-history text-2xl sm:text-4xl font-bold text-[#E1EEF4] leading-tight mb-5 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]"></h2>
                 <div x-text="lesson.game_instructions || 'Work in your teams to decide your strategy, then present it to the class.'"

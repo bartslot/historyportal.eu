@@ -2,7 +2,7 @@
 <div class="space-y-14">
     <header class="flex flex-col gap-6 border-b border-slate-800 pb-8 sm:flex-row sm:items-end sm:justify-between">
         <div>
-            <p class="text-xs font-medium uppercase tracking-[0.18em] text-amber-400">{{ __('Teacher workspace') }}</p>
+            <p class="text-xs font-medium uppercase tracking-eyebrow text-amber-400">{{ __('Teacher workspace') }}</p>
             <h1>
                 {{ __('Overview') }}
             </h1>
@@ -114,7 +114,7 @@
                                     {{ trans_choice(':count student|:count students', $classroom->members_count, ['count' => $classroom->members_count]) }}
                                 </p>
                             </div>
-                            <span class="rounded-md border border-slate-700 px-2 py-1 font-mono text-[0.65rem] text-slate-400">
+                            <span class="rounded-md border border-slate-700 px-2 py-1 font-mono text-2xs text-slate-400">
                                 {{ $classroom->join_code }}
                             </span>
                         </div>
@@ -207,7 +207,7 @@
                             <path d="M4 38H96" fill="none" stroke="rgba(148,163,184,.45)" stroke-width=".8" stroke-dasharray="2 2" />
                         @endif
                     </svg>
-                    <div class="mt-1 flex justify-between text-[0.65rem] text-slate-600">
+                    <div class="mt-1 flex justify-between text-2xs text-slate-600">
                         @foreach($results['chart_labels'] as $label)
                             <span>{{ $label }}</span>
                         @endforeach
@@ -231,7 +231,7 @@
                             <div class="mt-2 h-1 overflow-hidden rounded-full bg-slate-800">
                                 <span class="block h-full rounded-full bg-emerald-400/80" style="width: {{ $lessonResult['average'] }}%"></span>
                             </div>
-                            <p class="mt-1.5 text-[0.65rem] text-slate-600">
+                            <p class="mt-1.5 text-2xs text-slate-600">
                                 {{ trans_choice(':count attempt|:count attempts', $lessonResult['attempts'], ['count' => $lessonResult['attempts']]) }}
                             </p>
                         </a>

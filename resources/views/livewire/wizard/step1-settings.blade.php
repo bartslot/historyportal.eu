@@ -23,7 +23,7 @@
 
             <div x-show="open" x-collapse class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
                 <label class="form-control flex-1">
-                    <span class="text-[10px] uppercase tracking-wider text-slate-400">{{ __('Voyage') }}</span>
+                    <span class="text-2xs uppercase tracking-wider text-slate-400">{{ __('Voyage') }}</span>
                     <select x-model="pick" class="select select-sm select-bordered bg-slate-900 mt-1">
                         <option value="">{{ __('Choose a voyage…') }}</option>
                         @foreach ($this->voyageOptions as $id => $name)
@@ -75,7 +75,7 @@
                                 @if ($choice['subtitle'])
                                     <span class="text-xs text-slate-400 leading-tight">{{ $choice['subtitle'] }}</span>
                                 @endif
-                                <span class="text-[11px] text-slate-500">
+                                <span class="text-2xs text-slate-500">
                                     {{ collect([$choice['era'], $choice['region'], $choice['grade_band']])->filter()->implode(' · ') }}
                                 </span>
                             </div>
@@ -197,7 +197,7 @@
                         @if ($slot)
                             <button type="button" wire:click="toggleFocusTag('{{ $slot }}')"
                                     title="{{ __('Remove') }}"
-                                    class="group inline-flex items-center gap-1 rounded-md border border-amber-500/50 bg-amber-500/15 px-2 py-1 text-[11px] font-medium text-amber-300 transition hover:border-rose-400/60 hover:bg-rose-500/10 hover:text-rose-300">
+                                    class="group inline-flex items-center gap-1 rounded-md border border-amber-500/50 bg-amber-500/15 px-2 py-1 text-2xs font-medium text-amber-300 transition hover:border-rose-400/60 hover:bg-rose-500/10 hover:text-rose-300">
                                 {{ __($focusAll[$slot]['label'] ?? $slot) }}
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3 w-3 opacity-60 group-hover:opacity-100" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -272,7 +272,7 @@
                  x-transition:enter-start="opacity-0 -translate-y-1"
                  x-transition:enter-end="opacity-100 translate-y-0"
                  class="absolute z-50 top-full mt-1 w-full rounded-box border border-white/10 bg-base-200 p-2 shadow-xl">
-                <p class="px-1 pb-1.5 text-[10px] uppercase tracking-wider text-slate-500">{{ __('Popular angles') }}</p>
+                <p class="px-1 pb-1.5 text-2xs uppercase tracking-wider text-slate-500">{{ __('Popular angles') }}</p>
                 <div class="flex flex-wrap gap-1.5">
                     @foreach ($angleSuggestions as $angle)
                         <button type="button"

@@ -106,7 +106,7 @@
 
         {{-- Scroll hint --}}
         <div class="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-40">
-            <span class="text-[10px] uppercase tracking-widest text-slate-400">Scroll</span>
+            <span class="text-2xs uppercase tracking-widest text-slate-400">Scroll</span>
             <svg class="h-4 w-4 animate-bounce text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path d="M6 9l6 6 6-6"/>
             </svg>

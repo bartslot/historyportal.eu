@@ -74,7 +74,7 @@
                                 <img src="{{ $asset->url() }}" alt="{{ $asset->title }}" class="max-h-full max-w-full">
                             </div>
                             <p class="mt-2 truncate text-xs font-medium" title="{{ $asset->title }}">{{ $asset->title }}</p>
-                            <p class="truncate text-[11px] opacity-50" title="{{ $asset->credit() }}">{{ $asset->credit() }}</p>
+                            <p class="truncate text-2xs opacity-50" title="{{ $asset->credit() }}">{{ $asset->credit() }}</p>
                         </button>
                         <button wire:click="remove({{ $asset->id }})"
                                 wire:confirm="Remove this artwork from your library?"

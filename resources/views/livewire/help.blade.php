@@ -18,7 +18,7 @@
 >
     <header class="flex flex-col gap-6 border-b border-slate-800 pb-8 sm:flex-row sm:items-end sm:justify-between">
         <div>
-            <p class="text-xs font-medium uppercase tracking-[0.18em] text-amber-400">{{ __('Help') }}</p>
+            <p class="text-xs font-medium uppercase tracking-eyebrow text-amber-400">{{ __('Help') }}</p>
             <h1 class="mt-2 font-history text-4xl font-light tracking-tight text-slate-100 sm:text-5xl">
                 {{ __('How the portal works') }}
             </h1>
@@ -103,7 +103,7 @@
                             <x-dynamic-component :component="'icons.'.$topic['icon']" class="mt-0.5 h-4 w-4 shrink-0" />
                             <span>{{ $topic['title'] }}</span>
                             @if (($topic['audience'] ?? 'all') === 'admin')
-                                <span class="ml-auto shrink-0 rounded bg-rose-400/10 px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-rose-300">{{ __('Admin') }}</span>
+                                <span class="ml-auto shrink-0 rounded bg-rose-400/10 px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-wide text-rose-300">{{ __('Admin') }}</span>
                             @endif
                         </a>
                     </li>
@@ -125,7 +125,7 @@
                             <h2 id="{{ $topic['id'] }}-heading" class="flex flex-wrap items-center gap-2 font-history text-2xl font-light text-slate-100">
                                 {{ $topic['title'] }}
                                 @if (($topic['audience'] ?? 'all') === 'admin')
-                                    <span class="rounded bg-rose-400/10 px-1.5 py-0.5 font-sans text-[0.6rem] font-semibold uppercase tracking-wide text-rose-300">{{ __('Admin only') }}</span>
+                                    <span class="rounded bg-rose-400/10 px-1.5 py-0.5 font-sans text-2xs font-semibold uppercase tracking-wide text-rose-300">{{ __('Admin only') }}</span>
                                 @endif
                             </h2>
                             <p class="mt-1.5 text-sm leading-relaxed text-slate-400">{{ $topic['summary'] }}</p>
@@ -163,7 +163,7 @@
                                             <img src="{{ $section['image_url'] }}" alt="{{ $section['heading'] }}"
                                                  loading="lazy" decoding="async"
                                                  class="block w-full transition duration-300 ease-[cubic-bezier(0.215,0.61,0.355,1)] group-hover:scale-[1.01] motion-reduce:transition-none">
-                                            <span class="absolute bottom-2 right-2 flex items-center gap-1.5 rounded-lg bg-slate-950/80 px-2 py-1 text-[0.65rem] text-slate-300 opacity-0 backdrop-blur-sm transition group-hover:opacity-100 group-focus-visible:opacity-100">
+                                            <span class="absolute bottom-2 right-2 flex items-center gap-1.5 rounded-lg bg-slate-950/80 px-2 py-1 text-2xs text-slate-300 opacity-0 backdrop-blur-sm transition group-hover:opacity-100 group-focus-visible:opacity-100">
                                                 <x-icons.magnifying-glass class="h-3.5 w-3.5" />
                                                 {{ __('Enlarge') }}
                                             </span>

@@ -39,7 +39,7 @@
             <img src="{{ $narrator->portraitUrl() ?? asset('assets/avatar-fallback.png') }}"
                  alt="{{ $narrator->name }}"
                  class="w-full h-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-110 group-focus-visible:scale-105 motion-reduce:transition-none motion-reduce:scale-100" />
-            <span class="absolute bottom-0 left-0 right-0 text-[9px] bg-black/55 text-white py-0.5">{{ $narrator->name }}</span>
+            <span class="absolute bottom-0 left-0 right-0 text-2xs bg-black/55 text-white py-0.5">{{ $narrator->name }}</span>
         </button>
     @endforeach
 </div>
