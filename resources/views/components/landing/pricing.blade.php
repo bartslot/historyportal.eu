@@ -29,13 +29,13 @@
         <div class="mt-10 flex justify-center">
             <div class="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1">
                 @foreach ($terms as $key => $term)
+                    {{-- A segmented control is still a row of buttons: the chosen term is the
+                         primary action, the others are the same button with no fill. --}}
                     <button
                         type="button"
                         @click="term = '{{ $key }}'"
-                        :class="term === '{{ $key }}'
-                            ? 'lp-bg-amber-cta text-slate-950 shadow-[0_2px_12px_rgba(245,158,11,0.4)]'
-                            : 'text-slate-300 hover:text-white'"
-                        class="inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-semibold transition"
+                        :class="term === '{{ $key }}' ? 'btn-primary' : 'btn-ghost'"
+                        class="btn btn-sm"
                     >
                         {{ $term['label'] }}
                         @if ($term['save'])
@@ -117,9 +117,9 @@
                     <a
                         href="{{ $tier['href'] }}"
                         @class([
-                            'mt-8 inline-flex w-full items-center justify-center rounded-full px-6 py-3 text-sm font-semibold transition',
-                            'lp-bg-amber-cta text-slate-950 shadow-[0_2px_12px_rgba(245,158,11,0.4)] hover:shadow-[0_0_40px_rgba(245,158,11,0.45)]' => $tier['featured'],
-                            'border border-amber-400/45 text-amber-300 hover:border-amber-400 hover:bg-amber-500/10' => ! $tier['featured'],
+                            'btn mt-8 w-full',
+                            'btn-primary' => $tier['featured'],
+                            'btn-outline btn-primary' => ! $tier['featured'],
                         ])
                     >
                         {{ $tier['cta'] }}

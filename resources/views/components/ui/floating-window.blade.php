@@ -135,7 +135,7 @@
         {{-- The close button must not start a drag, or a click that moves one pixel becomes a drag
              and never closes. --}}
         <button type="button" @pointerdown.stop @click="{{ $onClose }}"
-                class="text-slate-500 hover:text-slate-200" aria-label="{{ __('Close') }}">&times;</button>
+                class="btn btn-ghost btn-circle btn-xs text-slate-500 hover:text-slate-200" aria-label="{{ __('Close') }}">&times;</button>
     </div>
 
     {{ $slot }}

@@ -66,9 +66,7 @@
 
             <button
                 type="submit"
-                class="w-full rounded-lg bg-amber-500 px-4 py-3 text-sm font-semibold text-slate-950
-                       hover:bg-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2
-                       focus:ring-offset-slate-900 transition-colors"
+                class="btn btn-primary w-full"
             >
                 {{ __('Change password') }}
             </button>

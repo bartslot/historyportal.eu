@@ -28,7 +28,7 @@
                         @click="open = !open"
                         :aria-expanded="open"
                         aria-haspopup="dialog"
-                        class="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-slate-700 bg-slate-900 text-slate-400 transition hover:border-amber-500/60 hover:text-amber-300"
+                        class="btn btn-outline btn-circle overflow-hidden"
                         title="{{ __('Meet your narrator') }}"
                     >
                         @if($narratorImage)
@@ -81,7 +81,7 @@
                     <p class="mt-1 text-sm text-slate-500">{{ __('Roster, assigned lessons and recent performance.') }}</p>
                 </div>
             </div>
-            <a href="{{ route('teacher.classes.index') }}" class="text-sm text-amber-400 transition hover:text-amber-300">
+            <a href="{{ route('teacher.classes.index') }}" class="btn btn-link btn-sm px-0">
                 {{ __('Manage classes') }}
             </a>
         </div>
@@ -152,7 +152,7 @@
                     <p class="mt-1 text-sm text-slate-500">{{ __('Quiz performance over the last 30 days.') }}</p>
                 </div>
             </div>
-            <a href="{{ route('teacher.results.hub') }}" class="inline-flex items-center gap-2 text-sm text-amber-400 transition hover:text-amber-300">
+            <a href="{{ route('teacher.results.hub') }}" class="btn btn-link btn-sm px-0">
                 <x-icons.chart-bar class="h-4 w-4" />
                 {{ __('All results') }}
             </a>

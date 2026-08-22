@@ -90,7 +90,7 @@
                     @error('portraitUpload') <p class="mt-1 text-xs text-rose-400">{{ $message }}</p> @enderror
                 </div>
                 <button type="submit"
-                        class="rounded-xl bg-amber-500/90 px-4 py-2 text-sm font-medium text-slate-950 hover:bg-amber-400 disabled:opacity-50"
+                        class="btn btn-primary btn-sm"
                         wire:loading.attr="disabled" wire:target="portraitUpload,uploadPortrait">
                     <span wire:loading.remove wire:target="uploadPortrait">Save image</span>
                     <span wire:loading wire:target="uploadPortrait">Uploading…</span>
@@ -275,8 +275,7 @@
                         <button
                             wire:click="generateCustomSample"
                             wire:loading.attr="disabled"
-                            class="flex-shrink-0 rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-semibold text-slate-950
-                                hover:bg-amber-400 transition-colors disabled:opacity-50"
+                            class="btn btn-primary shrink-0"
                         >▶ Generate</button>
                     </div>
                     @error('customPhrase') <p class="text-sm text-rose-400">{{ $message }}</p> @enderror
@@ -304,15 +303,13 @@
                                     @else
                                         <button
                                             wire:click="applyVoice({{ $sample->id }})"
-                                            class="rounded-lg border border-emerald-700 px-3 py-1 text-xs text-emerald-400
-                                                hover:bg-emerald-950/40 transition-colors"
+                                            class="btn btn-outline btn-success btn-xs"
                                         >Use this voice</button>
                                     @endif
                                     <button
                                         wire:click="deleteSample({{ $sample->id }})"
                                         wire:confirm="Delete this sample?"
-                                        class="rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-500
-                                            hover:border-rose-700 hover:text-rose-400 transition-colors"
+                                        class="btn btn-outline btn-xs text-slate-500 hover:text-rose-400"
                                     >✕</button>
                                 </div>
                             </div>
@@ -476,7 +473,7 @@
                 <div class="pt-2 border-t border-slate-800">
                     <button
                         wire:click="saveSettings"
-                        class="rounded-xl bg-amber-500 px-6 py-3 text-sm font-semibold text-slate-950 hover:bg-amber-400 transition-colors"
+                        class="btn btn-primary"
                     >Save settings</button>
                 </div>
             </div>

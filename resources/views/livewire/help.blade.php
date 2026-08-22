@@ -51,7 +51,7 @@
         >
         @if ($searching)
             <button type="button" wire:click="clearSearch" aria-label="{{ __('Clear search') }}"
-                    class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-500 transition hover:text-slate-200">
+                    class="btn btn-ghost btn-circle btn-sm absolute inset-y-0 right-1 my-auto text-slate-500 hover:text-slate-200">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5" aria-hidden="true">
                     <path stroke-linecap="round" d="M6 6l12 12M18 6 6 18" />
                 </svg>
@@ -84,7 +84,7 @@
             <x-icons.magnifying-glass class="mx-auto h-7 w-7 text-slate-600" />
             <p class="mt-3 text-sm font-medium text-slate-300">{{ __('Nothing here matches ":search"', ['search' => $this->search]) }}</p>
             <p class="mt-1 text-sm text-slate-500">{{ __('Try a shorter word, or read the subjects below.') }}</p>
-            <button type="button" wire:click="clearSearch" class="mt-4 text-sm text-amber-400 transition hover:text-amber-300">
+            <button type="button" wire:click="clearSearch" class="btn btn-link btn-sm mt-4 px-0">
                 {{ __('Show everything again') }}
             </button>
         </div>
@@ -158,7 +158,7 @@
                                     <figure class="mt-4" data-help-figure>
                                         <button type="button"
                                                 @click="show(@js($section['image_url']), @js($section['heading']))"
-                                                class="group relative block w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-950 transition hover:border-amber-500/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                                                class="group relative block w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-950 transition hover:border-primary/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                                                 aria-label="{{ __('Enlarge the picture of :subject', ['subject' => $section['heading']]) }}">
                                             <img src="{{ $section['image_url'] }}" alt="{{ $section['heading'] }}"
                                                  loading="lazy" decoding="async"
@@ -175,7 +175,7 @@
 
                         @if ($topic['link'])
                             <a href="{{ route($topic['link']['route']) }}"
-                               class="inline-flex items-center gap-1.5 text-sm text-amber-400 transition hover:text-amber-300">
+                               class="btn btn-link btn-sm px-0">
                                 {{ $topic['link']['label'] }}
                                 <x-icons.chevron-right class="h-4 w-4" />
                             </a>
@@ -191,7 +191,7 @@
                         {{ __('If something does not work the way this page describes, mail us and tell us what you were doing. That is the fastest way to get it fixed.') }}
                     </p>
                     {{-- Same address as the public site footer. --}}
-                    <a href="mailto:info@thelearningportal.us" class="mt-3 inline-flex items-center gap-1.5 text-sm text-amber-400 transition hover:text-amber-300">
+                    <a href="mailto:info@thelearningportal.us" class="btn btn-link btn-sm mt-3 px-0">
                         info@thelearningportal.us
                         <x-icons.chevron-right class="h-4 w-4" />
                     </a>
@@ -216,7 +216,7 @@
             <div class="flex shrink-0 items-start justify-between gap-4 pb-3">
                 <p class="text-sm text-slate-300" x-text="lightbox.caption"></p>
                 <button type="button" @click="hide()" aria-label="{{ __('Close') }}"
-                        class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-white/10 hover:text-slate-200">
+                        class="btn btn-ghost btn-circle btn-sm shrink-0 text-slate-400 hover:text-slate-200">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5" aria-hidden="true">
                         <path stroke-linecap="round" d="M6 6l12 12M18 6 6 18" />
                     </svg>

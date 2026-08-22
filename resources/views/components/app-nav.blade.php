@@ -156,7 +156,7 @@
 
                     {{-- Help is one click away from every page, for every signed-in user. --}}
                     <a href="{{ route('help.index') }}" title="{{ __('Help') }}" aria-label="{{ __('Help') }}" data-tour="help"
-                       class="flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-slate-800/60 {{ request()->routeIs('help.index') ? 'text-amber-400' : 'text-slate-400 hover:text-white' }}">
+                       class="btn btn-ghost btn-circle btn-sm {{ request()->routeIs('help.index') ? 'text-primary' : 'text-slate-400 hover:text-white' }}">
                         <x-icons.question-mark-circle class="h-5 w-5" />
                     </a>
 
@@ -230,7 +230,7 @@
                             <li>
                                 <form method="POST" action="{{ route('logout') }}" class="w-full">
                                     @csrf
-                                    <button type="submit" class="w-full text-left text-sm text-slate-300 hover:bg-slate-800 hover:text-rose-400">
+                                    <button type="submit" class="btn btn-ghost btn-sm w-full justify-start font-normal text-slate-300 hover:text-rose-400">
                                         {{ __('Sign out') }}
                                     </button>
                                 </form>
