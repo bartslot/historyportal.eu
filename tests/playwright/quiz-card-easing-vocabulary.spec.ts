@@ -1,19 +1,23 @@
 import { test, expect, type Page } from '@playwright/test';
+import { EASE } from '../../resources/js/easing.js';
 
 /**
- * Does the quiz card's entrance curve actually make it the odd one out?
+ * Does the app's CSS actually run on the easing vocabulary?
  *
- * A motion-lane finding says the quiz card enters on cubic-bezier(0.16, 1, 0.3, 1) (app.css:1265)
- * rather than EASE.enter from resources/js/easing.js, and that the cost is drift: "the quiz is now
- * the one surface whose entrance does not match the rest of the app, so tuning EASE.enter in
- * easing.js will visibly change every other reveal and leave the quiz card behind."
+ * This spec started as a refutation. A motion-lane finding said the quiz card entered on
+ * cubic-bezier(0.16, 1, 0.3, 1) rather than EASE.enter, and that the cost was drift — "tuning
+ * EASE.enter will visibly change every other reveal and leave the quiz card behind". Measuring it
+ * found something worse than the finding: NO CSS rule was on EASE.enter, so tuning it changed
+ * nothing anywhere. The quiz card was not an outlier, because there was no line for it to be
+ * outside of. app.css had twenty-three curves of its own.
  *
- * That is a claim about the WHOLE app, not about the quiz — so this spec measures the whole app.
- * It reads every declared curve out of the live stylesheet in a real browser and asks:
+ * That is fixed. GSAP is the vocabulary now, easing.js maps the five intents onto it, and the
+ * stylesheets say var(--ease-enter) instead of writing curves out. So this spec turns around: it
+ * no longer measures how far apart the two halves are, it holds them together, in a real browser,
+ * on the bytes actually served.
  *
- *   1. Does a student see the quiz card animate in, decelerating?              (is anything broken)
- *   2. How many CSS rules in the shipped bundle use EASE.enter?                (what would tuning move)
- *   3. Do the app's OTHER CSS entrance animations use the quiz card's curve?   (is the quiz an outlier)
+ * The expected curves are IMPORTED from easing.js rather than restated here. A test that retypes
+ * the values it is checking passes whenever both copies are wrong together.
  *
  * Run WITHOUT SwiftShader — under it CSS animations snap to their end frame and never report a
  * curve to the Animation domain at all:
@@ -25,22 +29,25 @@ const CODE = process.env.MOTION_LESSON_CODE ?? 'CF0AVG';
 const SCENE_QUIZ = 21;                               // "What do you already know?" in CF0AVG
 const SHOT = 'tests/playwright/results-quiz-card-easing';
 
-/** resources/js/easing.js — the semantic aliases, as Chrome serialises them. */
-const EASE = {
-  enter: 'cubic-bezier(0.215, 0.61, 0.355, 1)',
-  exit: 'cubic-bezier(0.55, 0.055, 0.675, 0.19)',
-  move: 'cubic-bezier(0.645, 0.045, 0.355, 1)',
-  pop: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
-};
-
-/** The curve the finding objects to. */
-const QUIZ_CARD_CURVE = 'cubic-bezier(0.16, 1, 0.3, 1)';
-
 /** Fast start, soft landing — what "enter" means, whatever the exact control points. */
 function decelerates(curve: string): boolean {
   const m = curve.match(/cubic-bezier\(([-\d.]+),\s*([-\d.]+),/);
   if (!m) return false;
   return Number(m[2]) > Number(m[1]);
+}
+
+/**
+ * One spelling for one curve, whichever stylesheet it came out of.
+ *
+ * Whitespace is not the only difference: the dev server serves the source as written
+ * ("cubic-bezier(0.333, 1, 0.667, 1)") while a production build ships it minified
+ * ("cubic-bezier(.333,1,.667,1)"). Comparing the strings made every curve in a built bundle look
+ * absent, and this survey once reported an app with 53 curves as having none. Compare the numbers.
+ */
+function normaliseCurve(curve: string): string {
+  const nums = curve.slice('cubic-bezier('.length, -1).split(',').map((n) => Number(n.trim()));
+  if (nums.length !== 4 || nums.some(Number.isNaN)) return curve.replace(/\s+/g, '');
+  return `cubic-bezier(${nums.join(', ')})`;
 }
 
 async function recordAnimations(page: Page) {
@@ -60,28 +67,23 @@ async function recordAnimations(page: Page) {
   };
 }
 
-/**
- * Every cubic-bezier the shipped stylesheet declares, with the selector that declares it and
- * whether it rides an `animation` or a `transition`. Read from the live document rather than by
- * grepping source, so what is measured is what the browser actually loaded.
- */
-type Decl = { selector: string; curve: string; via: 'animation' | 'transition' };
-
-/**
- * One spelling for one curve, whichever stylesheet it came out of.
- *
- * Whitespace is not the only difference: the dev server serves the source as written
- * ("cubic-bezier(0.16, 1, 0.3, 1)") while a production build ships it minified
- * ("cubic-bezier(.16,1,.3,1)"). Comparing the strings made every curve in a built bundle look
- * absent, and this survey reported an app with 53 curves as having none. Compare the numbers.
- */
-function normaliseCurve(curve: string): string {
-  const nums = curve.slice('cubic-bezier('.length, -1).split(',').map((n) => Number(n.trim()));
-  if (nums.length !== 4 || nums.some(Number.isNaN)) return curve.replace(/\s+/g, '');
-  return `cubic-bezier(${nums.join(', ')})`;
+/** The curve a keyframed CSS animation actually reports, with var() already resolved by the engine. */
+function keyframeCurves(animation: any): string[] {
+  // `source.easing` always reports "linear" for a CSSAnimation; the real curve is per keyframe.
+  return (animation.source.keyframesRule?.keyframes ?? []).map((k: any) => normaliseCurve(k.easing));
 }
 
-async function readDeclaredCurves(page: Page): Promise<Decl[]> {
+/**
+ * Every timing function the shipped stylesheets declare, with the selector that declares it and
+ * whether it rides an `animation` or a `transition`. Read from the live document rather than by
+ * grepping source, so what is measured is what the browser actually loaded.
+ *
+ * A timing is now usually `var(--ease-enter)` rather than a curve, which is the whole point, so
+ * both forms are captured and told apart by `fromVocabulary`.
+ */
+type Decl = { selector: string; timing: string; via: 'animation' | 'transition'; fromVocabulary: boolean };
+
+async function readDeclaredTimings(page: Page): Promise<Decl[]> {
   // HARNESS TRAP, hit on the first run of this spec: in dev, Vite serves the stylesheet from
   // port 5173 while the page is on 8000, so every sheet is cross-origin and `sheet.cssRules`
   // throws — the survey silently reported zero curves in a bundle that has 53. So collect the
@@ -108,14 +110,17 @@ async function readDeclaredCurves(page: Page): Promise<Decl[]> {
       const via = /animation/.test(line) ? 'animation' : /transition/.test(line) ? 'transition' : null;
       if (!via) continue;
       for (const c of line.matchAll(/cubic-bezier\([^)]*\)/g)) {
-        out.push({ selector, curve: normaliseCurve(c[0]), via: via as Decl['via'] });
+        out.push({ selector, timing: normaliseCurve(c[0]), via, fromVocabulary: false });
+      }
+      for (const v of line.matchAll(/var\(--ease-[a-z-]+\)/g)) {
+        out.push({ selector, timing: v[0].replace(/\s+/g, ''), via, fromVocabulary: true });
       }
     }
   }
   return out;
 }
 
-test.describe('Quiz card entrance — is it really the odd one out?', () => {
+test.describe('The easing vocabulary reaches the CSS', () => {
 
   test('a student sees the quiz card rise and fade in, decelerating', async ({ page }) => {
     const awaitAnimation = await recordAnimations(page);
@@ -127,79 +132,53 @@ test.describe('Quiz card entrance — is it really the odd one out?', () => {
     await expect(card).toBeVisible({ timeout: 30_000 });
     await page.screenshot({ path: `${SHOT}/quiz-card-student-view.png` });
 
-    const entrance = await awaitAnimation('qz-slide-in');
-    const curves: string[] = (entrance.source.keyframesRule?.keyframes ?? []).map((k: any) => k.easing);
+    const curves = keyframeCurves(await awaitAnimation('qz-slide-in'));
 
-    // `source.easing` always reports "linear" for a CSSAnimation; the real curve is per keyframe.
     expect(curves.length, 'the entrance has no keyframes').toBeGreaterThan(1);
     expect(new Set(curves).size, 'the entrance mixes curves between keyframes').toBe(1);
-    expect(entrance.source.duration, 'the entrance has no duration').toBeGreaterThan(120);
     expect(
       decelerates(curves[0]),
       `the quiz card arrives on "${curves[0]}", which does not decelerate to rest`,
     ).toBe(true);
 
-    console.log(`[quiz card] ${entrance.source.duration}ms on ${curves[0]}`);
+    // And specifically: it arrives on the app's `enter`, not on a curve of its own. This is the
+    // assertion the whole finding was about, and it used to be false.
+    expect(
+      curves[0],
+      `the quiz card is on "${curves[0]}" — the app enters on "${EASE.enter}"`,
+    ).toBe(normaliseCurve(EASE.enter));
   });
 
-  test('tuning EASE.enter would move nothing in CSS — no rule in the bundle uses it', async ({ page }) => {
-    // The finding's stated cost is that "tuning EASE.enter in easing.js will visibly change every
-    // other reveal and leave the quiz card behind". That is only true if some CSS reveal is on
-    // EASE.enter today. easing.js is a JS module exporting JS strings, and there is no
-    // --ease-* custom property bridging it into the stylesheet, so this counts what is actually
-    // there.
+  test('tuning an intent moves the app — the CSS is on the vocabulary, not on copies', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('body')).toBeVisible();
 
-    const declared = await readDeclaredCurves(page);
-    expect(declared.length, 'no curves were readable from the stylesheet').toBeGreaterThan(10);
+    const declared = await readDeclaredTimings(page);
+    expect(declared.length, 'no timings were readable from the stylesheet').toBeGreaterThan(10);
 
-    const onEnter = declared.filter((d) => d.curve === EASE.enter);
     const tally = new Map<string, number>();
-    for (const d of declared) tally.set(d.curve, (tally.get(d.curve) ?? 0) + 1);
+    for (const d of declared) tally.set(d.timing, (tally.get(d.timing) ?? 0) + 1);
     console.log(
-      '[declared CSS curves]\n' +
+      '[declared CSS timings]\n' +
       [...tally.entries()].sort((a, b) => b[1] - a[1]).map(([c, n]) => `  ${String(n).padStart(3)}  ${c}`).join('\n'),
     );
 
-    // Every CSS appearance of EASE.enter's curve is a Tailwind ARBITRARY-VALUE utility —
-    // `.ease-[cubic-bezier(0.215,0.61,0.355,1)]` — i.e. the control points are typed by hand into
-    // a class name in a blade (language-picker, help, welcome-tour). Those do not import
-    // easing.js any more than app.css does. So no CSS rule anywhere derives its curve from the
-    // easing vocabulary, and editing EASE.enter in easing.js repaints exactly nothing in CSS.
-    const fromVocabulary = onEnter.filter((d) => !/\.ease-/.test(d.selector));
+    // Most of the app's motion now derives its curve from the vocabulary. Retuning --ease-enter
+    // repaints all of these at once; before, it repainted nothing.
+    const onVocabulary = declared.filter((d) => d.fromVocabulary);
     expect(
-      fromVocabulary.length,
-      `a CSS rule derives its curve from easing.js: ${fromVocabulary.map((d) => d.selector).join(', ')}`,
-    ).toBe(0);
+      onVocabulary.length,
+      'no CSS rule derives its timing from the easing vocabulary',
+    ).toBeGreaterThan(10);
 
-    // Sanity: the literal does appear, as a hand-typed Tailwind utility and nothing more.
-    console.log(`[EASE.enter in CSS] ${onEnter.length} hit(s), all arbitrary-value utilities`);
-  });
-
-  test('the quiz card shares its curve with the app\'s other CSS entrances', async ({ page }) => {
-    // If the quiz card were the outlier the finding describes, its curve would appear once in the
-    // whole bundle. Count it.
-    await page.goto('/');
-    await expect(page.locator('body')).toBeVisible();
-
-    const declared = await readDeclaredCurves(page);
-    const siblings = declared.filter((d) => d.curve === QUIZ_CARD_CURVE);
-    console.log(
-      `[${QUIZ_CARD_CURVE}] used by ${siblings.length} rule(s):\n` +
-      siblings.map((d) => `  ${d.via.padEnd(10)} ${d.selector}`).join('\n'),
-    );
-
+    // The only hand-written curves left should be Tailwind arbitrary-value utilities —
+    // `.ease-[cubic-bezier(...)]`, control points typed into a class name in a blade. Those are
+    // the next thing to collapse, but they are markup, not this stylesheet.
+    const bespoke = declared.filter((d) => !d.fromVocabulary && !/\.ease-/.test(d.selector));
     expect(
-      siblings.length,
-      `the quiz card's curve appears ${siblings.length}x — it would be an outlier at 1`,
-    ).toBeGreaterThan(1);
-
-    // And specifically: the site header's entrance, another reveal, is on the very same curve.
-    expect(
-      siblings.some((d) => /site-header__logo|site-nav/.test(d.selector)),
-      'the site header entrance does not share the quiz card\'s curve',
-    ).toBe(true);
+      bespoke.map((d) => `${d.selector} → ${d.timing}`),
+      'a stylesheet rule writes its own curve instead of naming an intent',
+    ).toEqual([]);
   });
 
   test('the site header entrance really runs on that curve in a real browser', async ({ page }) => {
@@ -208,11 +187,13 @@ test.describe('Quiz card entrance — is it really the odd one out?', () => {
     const awaitAnimation = await recordAnimations(page);
     await page.goto('/');
 
-    const header = await awaitAnimation('site-header-rise');
-    const curves: string[] = (header.source.keyframesRule?.keyframes ?? []).map((k: any) => k.easing);
+    const curves = keyframeCurves(await awaitAnimation('site-header-rise'));
     await page.screenshot({ path: `${SHOT}/site-header-entrance.png` });
 
-    console.log(`[site header] ${header.source.duration}ms on ${curves[0]}`);
-    expect(curves[0], 'the header entrance is not on the quiz card\'s curve').toBe(QUIZ_CARD_CURVE);
+    console.log(`[site header] on ${curves[0]}`);
+    expect(
+      curves[0],
+      `the header entrance is on "${curves[0]}", not the app's enter`,
+    ).toBe(normaliseCurve(EASE.enter));
   });
 });

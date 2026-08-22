@@ -394,7 +394,7 @@
                                 <span class="mt-0.5 text-xs text-base-content/50">{{ $option['subtitle'] }}</span>
                                 <span @class([
                                     'mt-auto pt-3 text-2xs font-medium',
-                                    'text-emerald-300' => $option['status'] === 'taught',
+                                    'text-success' => $option['status'] === 'taught',
                                     'text-sky-300' => $option['status'] === 'prepared',
                                     'text-amber-300' => $option['status'] === 'untaught',
                                 ])>

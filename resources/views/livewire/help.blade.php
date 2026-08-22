@@ -103,7 +103,7 @@
                             <x-dynamic-component :component="'icons.'.$topic['icon']" class="mt-0.5 h-4 w-4 shrink-0" />
                             <span>{{ $topic['title'] }}</span>
                             @if (($topic['audience'] ?? 'all') === 'admin')
-                                <span class="ml-auto shrink-0 rounded bg-rose-400/10 px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-wide text-rose-300">{{ __('Admin') }}</span>
+                                <span class="ml-auto shrink-0 rounded bg-error/10 px-1.5 py-0.5 text-3xs font-semibold uppercase tracking-wide text-error">{{ __('Admin') }}</span>
                             @endif
                         </a>
                     </li>
@@ -125,7 +125,7 @@
                             <h2 id="{{ $topic['id'] }}-heading" class="flex flex-wrap items-center gap-2 font-history text-2xl font-light text-slate-100">
                                 {{ $topic['title'] }}
                                 @if (($topic['audience'] ?? 'all') === 'admin')
-                                    <span class="rounded bg-rose-400/10 px-1.5 py-0.5 font-sans text-2xs font-semibold uppercase tracking-wide text-rose-300">{{ __('Admin only') }}</span>
+                                    <span class="rounded bg-error/10 px-1.5 py-0.5 font-sans text-3xs font-semibold uppercase tracking-wide text-error">{{ __('Admin only') }}</span>
                                 @endif
                             </h2>
                             <p class="mt-1.5 text-sm leading-relaxed text-slate-400">{{ $topic['summary'] }}</p>
@@ -162,7 +162,7 @@
                                                 aria-label="{{ __('Enlarge the picture of :subject', ['subject' => $section['heading']]) }}">
                                             <img src="{{ $section['image_url'] }}" alt="{{ $section['heading'] }}"
                                                  loading="lazy" decoding="async"
-                                                 class="block w-full transition duration-300 ease-[cubic-bezier(0.215,0.61,0.355,1)] group-hover:scale-[1.01] motion-reduce:transition-none">
+                                                 class="block w-full transition duration-300 ease-enter group-hover:scale-[1.01] motion-reduce:transition-none">
                                             <span class="absolute bottom-2 right-2 flex items-center gap-1.5 rounded-lg bg-slate-950/80 px-2 py-1 text-2xs text-slate-300 opacity-0 backdrop-blur-sm transition group-hover:opacity-100 group-focus-visible:opacity-100">
                                                 <x-icons.magnifying-glass class="h-3.5 w-3.5" />
                                                 {{ __('Enlarge') }}
@@ -204,9 +204,9 @@
     <div x-show="lightbox.open" x-cloak
          class="fixed inset-0 z-[70] flex items-center justify-center p-4 sm:p-8"
          role="dialog" aria-modal="true" :aria-label="lightbox.caption"
-         x-transition:enter="transition duration-200 ease-[cubic-bezier(0.215,0.61,0.355,1)]"
+         x-transition:enter="transition duration-200 ease-enter"
          x-transition:enter-start="opacity-0"
-         x-transition:leave="transition duration-150 ease-[cubic-bezier(0.55,0.055,0.675,0.19)]"
+         x-transition:leave="transition duration-150 ease-exit"
          x-transition:leave-end="opacity-0">
         <div class="absolute inset-0 bg-slate-950/90 backdrop-blur-sm" @click="hide()"></div>
 

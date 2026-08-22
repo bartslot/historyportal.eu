@@ -83,7 +83,7 @@
                                     {{ $item['title'] }}
                                     <p class="truncate text-sm pt-2 font-medium text-white/85">{{ $item['category'] }}</p>
                                 </h3>
-                                <div class="max-h-0 overflow-hidden opacity-0 transition-all duration-300 ease-out-ease-[cubic-bezier(0.95,0.05,0.795,0.035)] group-hover:max-h-32 group-hover:opacity-100">
+                                <div class="max-h-0 overflow-hidden opacity-0 transition-all duration-300 ease-enter group-hover:max-h-32 group-hover:opacity-100">
                                 <p class="text-2xs leading-5 text-slate-200/90">
                                         {{ $item['description'] }}
                                     </p>

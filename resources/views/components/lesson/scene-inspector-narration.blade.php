@@ -109,7 +109,7 @@
 
             <button type="button" wire:click="deleteScene({{ $scene->id }})"
                     wire:confirm="{{ __('Delete this scene?') }}"
-                    class="text-xs text-rose-300 underline transition hover:text-rose-200">{{ __('Delete scene') }}</button>
+                    class="text-xs text-error/80 underline transition hover:text-error">{{ __('Delete scene') }}</button>
         </div>
     </details>
 </div>

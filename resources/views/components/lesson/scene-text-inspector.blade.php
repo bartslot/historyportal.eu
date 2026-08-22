@@ -160,7 +160,7 @@
 
     <button type="button" wire:click="deleteSceneText(@js($id))"
             wire:confirm="{{ $isPanel ? __('Remove this background panel?') : __('Remove this text?') }}"
-            class="text-xs text-rose-300 underline transition hover:text-rose-200">
+            class="text-xs text-error/80 underline transition hover:text-error">
         {{ $isPanel ? __('Remove panel') : __('Remove text') }}
     </button>
 </div>

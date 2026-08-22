@@ -8,10 +8,11 @@
 @endphp
 
 <footer id="contact" class="relative border-t border-white/10">
-    <div
-        class="relative -mt-px bg-cover bg-center"
-        style="bg-blue-800"
-    >
+    {{-- This band had a background (footer-bg.svg over a gradient) until dde6356 replaced the
+         declaration with the string "bg-blue-800" — a Tailwind class inside a style attribute,
+         which sets nothing. It has rendered flat ever since, and bg-cover/bg-center had no image
+         to size. public/footer-bg.svg is still there; what belongs here is a design decision. --}}
+    <div class="relative -mt-px">
         <div class="section-container flex flex-col items-center justify-end py-12 text-center">
             <p class="text-sm uppercase tracking-[0.8em] text-sky-50/70">Contact</p>
             <h2 class="mt-3 font-history text-3xl text-white md:text-4xl">

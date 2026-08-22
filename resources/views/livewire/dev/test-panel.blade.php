@@ -23,7 +23,7 @@
         </div>
 
         @if (session('dev_status'))
-            <div class="mb-3 rounded-lg border border-emerald-700 bg-emerald-900/40 px-3 py-2 text-xs text-emerald-300">
+            <div class="mb-3 rounded-lg border border-success/40 bg-success/10 px-3 py-2 text-xs text-success">
                 {{ session('dev_status') }}
             </div>
         @endif

@@ -270,14 +270,14 @@
 }
 
 .lp-succession-in {
-  animation: lp-succession-slide 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: lp-succession-slide 420ms var(--ease-enter) both;
 }
 
 /* Runs once and leaves: the banner is an event, not a field. Alpine drops it from the DOM when
    succeededFrom clears, so the tail of this keyframe and that timeout are deliberately the same
    gesture seen from two sides. */
 .lp-succession {
-  animation: lp-succession-note 4200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: lp-succession-note 4200ms var(--ease-enter) both;
 }
 
 @media (prefers-reduced-motion: reduce) {

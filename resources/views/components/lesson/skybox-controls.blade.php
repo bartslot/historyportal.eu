@@ -312,7 +312,7 @@
                     <div class="aspect-video overflow-hidden rounded-lg ring-1 ring-slate-700">
                         <iframe src="{{ $bgEmbed['src'] }}" class="h-full w-full" style="border:0" allow="autoplay; fullscreen; xr-spatial-tracking" allowfullscreen></iframe>
                     </div>
-                    <button type="button" wire:click="clearBgEmbed" class="text-2xs text-rose-300 underline hover:text-rose-200">{{ __('Remove 3D background') }}</button>
+                    <button type="button" wire:click="clearBgEmbed" class="text-2xs text-error/80 underline hover:text-error">{{ __('Remove 3D background') }}</button>
                 @endif
             </div>
         </div>
@@ -458,8 +458,8 @@
 
         <div class="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-xs space-y-1">
             @if($worldStatus === 'ready')
-                <div class="flex items-center gap-2 text-emerald-400">
-                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+                <div class="flex items-center gap-2 text-success">
+                    <span class="h-1.5 w-1.5 rounded-full bg-success"></span>
                     World ready
                 </div>
             @elseif(in_array($worldStatus, ['pending', 'generating']))
@@ -468,8 +468,8 @@
                     Generating world… this takes ~5–10 min
                 </div>
             @elseif($worldStatus === 'failed')
-                <div class="flex items-center gap-2 text-rose-400">
-                    <span class="h-1.5 w-1.5 rounded-full bg-rose-400"></span>
+                <div class="flex items-center gap-2 text-error">
+                    <span class="h-1.5 w-1.5 rounded-full bg-error"></span>
                     Generation failed
                 </div>
                 <button wire:click="generateWorld({{ $scene->id }})"

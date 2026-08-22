@@ -96,7 +96,7 @@
                                     class="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm text-slate-200 hover:bg-white/10">
                                 <span class="truncate">{{ $class->name }}</span>
                                 @if (in_array($class->id, $this->assignedClassIds, true))
-                                    <svg class="h-4 w-4 shrink-0 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                                    <svg class="h-4 w-4 shrink-0 text-success" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
                                 @endif
                             </button>
                         @empty

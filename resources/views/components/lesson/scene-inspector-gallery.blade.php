@@ -83,7 +83,7 @@
                             <button type="button" wire:click="moveGalleryImage({{ $i }}, {{ $i + 1 }})" @disabled($i === count($images) - 1)
                                     class="shrink-0 px-1 text-slate-400 hover:text-slate-200 disabled:opacity-30" title="Move down" aria-label="Move down">↓</button>
                             <button type="button" wire:click="removeGalleryImage({{ $i }})"
-                                    class="shrink-0 px-1 text-rose-300 hover:text-rose-200" title="Remove" aria-label="Remove">✕</button>
+                                    class="shrink-0 px-1 text-error/80 hover:text-error" title="Remove" aria-label="Remove">✕</button>
                         </div>
                         <input type="text" value="{{ is_array($img) ? ($img['credit'] ?? '') : '' }}"
                                wire:change="setGalleryImageCredit({{ $i }}, $event.target.value)"
@@ -111,5 +111,5 @@
 
     <button type="button" wire:click="deleteScene({{ $scene->id }})"
             wire:confirm="{{ __('Delete this gallery?') }}"
-            class="mt-2 text-xs text-rose-300 underline hover:text-rose-200">{{ __('Delete gallery') }}</button>
+            class="mt-2 text-xs text-error/80 underline hover:text-error">{{ __('Delete gallery') }}</button>
 </div>

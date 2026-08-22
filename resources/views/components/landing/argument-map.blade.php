@@ -5,7 +5,7 @@
 
     $borderColor = fn(string $type) => match($type) {
         'meta'     => 'border-l-sky-400/60',
-        'solution' => 'border-l-emerald-400/60',
+        'solution' => 'border-l-success/60',
         default    => 'border-l-amber-500/60',
     };
 
@@ -155,7 +155,7 @@
                                 {{-- Solution leaf: show points directly --}}
                                 @foreach(($branch['points'] ?? []) as $point)
                                     <div class="flex items-start gap-2 py-1 text-2xs text-slate-300/80">
-                                        <svg class="mt-0.5 h-3 w-3 shrink-0 text-emerald-400"
+                                        <svg class="mt-0.5 h-3 w-3 shrink-0 text-success"
                                             viewBox="0 0 24 24" fill="none"
                                             stroke="currentColor" stroke-width="2.5"
                                             aria-hidden="true"

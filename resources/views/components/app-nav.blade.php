@@ -230,7 +230,7 @@
                             <li>
                                 <form method="POST" action="{{ route('logout') }}" class="w-full">
                                     @csrf
-                                    <button type="submit" class="btn btn-ghost btn-sm w-full justify-start font-normal text-slate-300 hover:text-rose-400">
+                                    <button type="submit" class="w-full text-left text-sm text-slate-300 hover:bg-slate-800 hover:text-error">
                                         {{ __('Sign out') }}
                                     </button>
                                 </form>

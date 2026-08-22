@@ -3,7 +3,7 @@
 
     <div class="flex items-end justify-between gap-4">
         <div>
-            <p class="text-xs uppercase tracking-widest text-rose-400">Admin · Narrators</p>
+            <p class="text-xs uppercase tracking-widest text-error">Admin · Narrators</p>
             <h1 class="font-history text-5xl font-semibold text-slate-100 md:text-6xl xl:text-7xl">Narrator management</h1>
             <p class="mt-1 text-sm text-slate-500">Configure voice, portrait and behaviour for each narrator.</p>
         </div>
@@ -32,7 +32,7 @@
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2 mb-1">
                         <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs border
-                            {{ $narrator->is_active ? 'bg-emerald-950/60 border-emerald-700 text-emerald-300' : 'bg-slate-900 border-slate-700 text-slate-500' }}">
+                            {{ $narrator->is_active ? 'bg-success/10 border-success/40 text-success' : 'bg-slate-900 border-slate-700 text-slate-500' }}">
                             {{ $narrator->is_active ? 'Active' : 'Inactive' }}
                         </span>
                         <span class="text-xs text-slate-600">·</span>

@@ -36,7 +36,7 @@
         {{-- The spotlight ring. Its huge spread shadow dims everything except the element inside.
              That shadow is a class, not an inline style: Alpine's :style binding replaces the whole
              style attribute on every reposition, which would wipe an inline shadow after one move. --}}
-        <div class="pointer-events-none fixed z-[61] rounded-xl ring-2 ring-amber-400/90 shadow-[0_0_0_9999px_rgba(2,6,23,0.85)] transition-all duration-300 ease-[cubic-bezier(0.645,0.045,0.355,1)] motion-reduce:transition-none"
+        <div class="pointer-events-none fixed z-[61] rounded-xl ring-2 ring-amber-400/90 shadow-[0_0_0_9999px_rgba(2,6,23,0.85)] transition-all duration-300 ease-move motion-reduce:transition-none"
              :style="spotlightStyle"
              aria-hidden="true"></div>
 
@@ -47,7 +47,7 @@
             aria-modal="true"
             :aria-labelledby="`welcome-tour-title-${index}`"
             x-on:keydown="trapFocus($event)"
-            class="lp-bg-card fixed z-[62] border border-amber-500/30 bg-base-200 shadow-2xl outline-none transition-[top,left,opacity] duration-200 ease-[cubic-bezier(0.215,0.61,0.355,1)] motion-reduce:transition-none"
+            class="lp-bg-card fixed z-[62] border border-amber-500/30 bg-base-200 shadow-2xl outline-none transition-[top,left,opacity] duration-200 ease-enter motion-reduce:transition-none"
             :class="[
                 compact
                     ? 'inset-x-0 bottom-0 max-h-[85vh] w-full overflow-y-auto rounded-t-3xl border-b-0 p-6 pb-8'
@@ -132,7 +132,7 @@
                         <button type="button" @click="goTo({{ $dotIndex }})" role="tab"
                                 :aria-selected="index === {{ $dotIndex }}"
                                 aria-label="{{ $dotStep['title'] }}"
-                                class="h-1.5 rounded-full transition-all duration-200 ease-[cubic-bezier(0.215,0.61,0.355,1)] motion-reduce:transition-none"
+                                class="h-1.5 rounded-full transition-all duration-200 ease-enter motion-reduce:transition-none"
                                 :class="index === {{ $dotIndex }} ? 'w-5 bg-amber-400' : 'w-1.5 bg-slate-700 hover:bg-slate-600'"></button>
                     @endforeach
                 </div>

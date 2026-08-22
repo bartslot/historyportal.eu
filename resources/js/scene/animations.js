@@ -6,7 +6,7 @@
 // not a cubic-bezier. The curves come from resources/js/easing.js so motion in a lesson matches
 // motion in the app chrome.
 
-import { BEZIER, EASE, EASING } from '../easing.js'
+import { EASE, CURVE, EASING } from '../easing.js'
 
 /** How a layer arrives on the scene. `none` shows it immediately. */
 export const ENTRANCES = [
@@ -48,24 +48,23 @@ export const SCENE_TRANSITIONS = [
 ]
 
 /**
- * The easing menu. `curve` drives the live preview graph, `bezier` drives the real animation —
- * the two are the same shape, so what a teacher previews is what plays.
+ * The easing menu. `curve` drives the live preview graph, `bezier` drives the real animation.
+ *
+ * Both sides now come from the same intent in easing.js, so what a teacher previews is what plays.
+ * They did not: "Overshoot" previewed a hand-rolled easeInOutBack, which anticipates BACKWARD
+ * before it starts, while the animation it described ran back.out — overshoot at the END only. The
+ * comment here claimed the two were the same shape for as long as they were not.
+ *
+ * "Constant" is the one linear curve in the app and stays one: a teacher choosing no easing is a
+ * product decision, not a developer reaching for `ease: 'none'` by default.
  */
 export const EASINGS = [
-  { key: 'enter', label: 'Settle', bezier: EASE.enter, curve: EASING.easeOutCubic },
-  { key: 'move', label: 'Smooth', bezier: EASE.move, curve: EASING.easeInOutCubic },
-  { key: 'exit', label: 'Accelerate', bezier: EASE.exit, curve: EASING.easeInCubic },
-  { key: 'pop', label: 'Overshoot', bezier: EASE.pop, curve: overshoot },
+  { key: 'enter', label: 'Settle', bezier: EASE.enter, curve: CURVE.enter },
+  { key: 'move', label: 'Smooth', bezier: EASE.move, curve: CURVE.move },
+  { key: 'exit', label: 'Accelerate', bezier: EASE.exit, curve: CURVE.exit },
+  { key: 'pop', label: 'Overshoot', bezier: EASE.pop, curve: CURVE.pop },
   { key: 'linear', label: 'Constant', bezier: 'linear', curve: EASING.linear },
 ]
-
-/** Back-ease that matches BEZIER.pop closely enough for the preview to be honest about it. */
-function overshoot(t) {
-  const c = 1.70158, s = c * 1.525
-  return t < 0.5
-    ? (Math.pow(2 * t, 2) * ((s + 1) * 2 * t - s)) / 2
-    : (Math.pow(2 * t - 2, 2) * ((s + 1) * (2 * t - 2) + s) + 2) / 2
-}
 
 export const DEFAULT_ENTRANCE = 'none'
 export const DEFAULT_EASE = 'enter'
@@ -139,7 +138,7 @@ export function sceneTransitionFrames(type) {
   }
 }
 
-export { BEZIER, EASE }
+export { EASE }
 
 /**
  * Play a layer's exit — the same movement as its entrance, run backwards.

@@ -102,101 +102,33 @@
     --noise: 0.04;
 }
 
-/* ═══ THE BUTTON ══════════════════════════════════════════════════════════════════════════════
-   Every button in this app is a DaisyUI `btn`. Three sizes and no fourth:
+/* ─── Easing, by intent ──────────────────────────────────────────────────
+   The five curves the app animates with, so a stylesheet can pick an animation's curve by what the
+   animation MEANS rather than by copying four numbers out of a JS module. Copying is what used to
+   happen, and it drifted: this stylesheet had twenty-three curves of its own, and the quiz card
+   entered on one no other reveal in the app used.
 
-       btn btn-xs   24px tall, 11px/600, 8px  of padding-inline
-       btn btn-sm   32px tall, 12px/600, 12px of padding-inline
-       btn          40px tall, 14px/600, 16px of padding-inline
+   GSAP IS THE SOURCE. These are cubic-bezier forms of GSAP's power2.out / power2.in /
+   power2.inOut / back.out(1.7), fitted to what GSAP actually computes — three of them exactly, and
+   power2.inOut (which is piecewise, so no exact cubic exists) to 2.6e-3. They are NOT the Penner
+   approximations that used to sit here: those carried the right names while being up to 0.03 away
+   from the curve GSAP ran beside them.
 
-   (Measured against the built CSS, not read off the docs — they follow from --size-field: 0.25rem.)
-   Icon-only buttons add `btn-circle`; buttons with no chrome add `btn-ghost`. Reaching for
-   `rounded-* px-* py-* bg-* text-*` on a button means rebuilding one of the three by hand, and the
-   app had 237 of those before this rule existed.
+   These values are not free to edit here. resources/js/__tests__/easing-css-parity.test.js
+   evaluates each one against gsap.parseEase() and fails the build past 0.004.
 
-   DELIBERATELY UNLAYERED. DaisyUI puts .btn and .btn-primary in @layer utilities, and a cascade
-   layer beats specificity outright: the same rules written inside @layer components style nothing
-   at all, which is exactly how the amber gradient that used to live down there died unnoticed. The
-   landing-cursor block at the foot of this file is unlayered for the same reason. */
-
-/* ── Shape ────────────────────────────────────────────────────────────────────────────────────
-   Bart: "We need fully rounded buttons everywhere, no more squared rounded buttons." Pills.
-
-   Set as --radius-field ON the button rather than as a border-radius, because that is the variable
-   DaisyUI reads for the corner AND the one `.join` reads to round the ends of a button group. A
-   flat `border-radius` here would give a three-button join three separate pills; going through the
-   variable gives it one pill with square seams, which is what a joined group should look like.
-
-   Scoped to .btn so inputs and selects keep --radius-field at the theme's 0.5rem. They are not
-   buttons and Bart's instruction was not about them. */
-.btn {
-    --radius-btn: calc(infinity * 1px);   /* the same value Tailwind's own `rounded-full` emits */
-    --radius-field: var(--radius-btn);
-}
-
-/* ── Colour, and which surface you are on ─────────────────────────────────────────────────────
-   Bart: "Make sure Amber buttons would be used only on frontend, not on backend. Backend uses
-   solid white, fully rounded."
-
-   So the colour of a primary action is a property of the SURFACE, not of the button, and a button
-   never names it. The marketing site, the lesson player, the sign-in page — anything a visitor or
-   a class sees — gets the brand amber. The teacher app gets a white pill.
-
-   That white pill is not a new invention: brand-kit.css already carries --color-card-action and
-   --color-card-action-label from the Figma information card, where Bart made the same call for the
-   same reason ("it's white now — we shouldn't put so much colour in our UI while our footage is
-   already very colourful"). This generalises that one card to the whole workspace.
-
-   A surface declares itself with `data-surface="teacher"` on <html>. See layouts/app.blade.php. */
-:root {
-    --btn-action:       var(--color-primary);
-    --btn-action-label: var(--color-primary-content);
-}
-
-[data-surface="teacher"] {
-    --btn-action:       var(--color-card-action);        /* #ffffff */
-    --btn-action-label: var(--color-card-action-label);  /* #18293f */
-}
-
-.btn-primary {
-    --btn-color: var(--btn-action);
-}
-
-/* A btn-link is still a button, so it follows the surface too. Without this it keeps DaisyUI's own
-   fallback of --color-primary and stays amber, which put an amber "All results" beside a white
-   "New lesson" on the teacher dashboard: the exact split Bart's instruction closes. White and
-   underlined is also what brand-kit.css already does with a link on the information card. */
-.btn-link {
-    --btn-color: var(--btn-action);
-}
-
-/* The label is set separately, and the :not() is load-bearing. btn-outline, btn-dash, btn-ghost,
-   btn-soft and btn-link all re-derive --btn-fg FROM --btn-color, because a button with no fill has
-   to draw itself in the action colour instead. Setting --btn-fg unconditionally here overrode that
-   and painted `btn-outline btn-primary` in the teacher app's navy label on a transparent dark
-   panel: invisible. Caught in the browser, not in review. */
-.btn-primary:not(.btn-outline, .btn-dash, .btn-ghost, .btn-soft, .btn-link) {
-    --btn-fg: var(--btn-action-label);
-}
-
-/* ── The pointer ──────────────────────────────────────────────────────────────────────────────
-   Tailwind v4 dropped the `cursor: pointer` its preflight used to give buttons, and DaisyUI only
-   puts it back on .btn — so every button that had not been converted yet showed the arrow. That is
-   37 of them, counted, including all three sign-in submits.
-
-   One rule rather than 37 patches, and in @layer base so that a `cursor-*` utility on any single
-   button still wins. :disabled is excluded because a dead control must not invite a click, and
-   [aria-busy] because a button mid-request is not clickable either. */
-@layer base {
-    button:not(:disabled, [aria-disabled="true"], [aria-busy="true"]),
-    [role="button"]:not([aria-disabled="true"]),
-    label:has(> input[type="file"]),
-    summary {
-        cursor: pointer;
-    }
-}
-
+   Declared in @theme rather than in a plain :root block so Tailwind, which owns the --ease-*
+   namespace, generates a utility for each: markup says `ease-enter` and `ease-pop`. That matters
+   more than it looks -- ten class names had control points typed straight into `ease-[...]`, and
+   the fix for that is making the easy thing to type the right thing. Tailwind still emits these
+   onto :root, so every var(--ease-enter) in the rules below is unaffected. */
 @theme {
+    --ease-enter: cubic-bezier(0.333, 1, 0.667, 1);         /* power2.out    reveal / open / settle */
+    --ease-exit: cubic-bezier(0.333, 0, 0.667, 0);          /* power2.in     close / fade-out */
+    --ease-move: cubic-bezier(0.624, -0.042, 0.376, 1.042); /* power2.inOut  reposition / camera */
+    --ease-draw-on: cubic-bezier(0.333, 0, 0.667, 0);       /* power2.in     pen / coastline sweep */
+    --ease-pop: cubic-bezier(0.333, 1.567, 0.667, 1);       /* back.out(1.7) appear with overshoot */
+
     --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
     --font-history: 'History', ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
@@ -432,7 +364,7 @@
         color: oklch(83% 0.16 71);
         opacity: 0.94;
         contain: paint;
-        transition: opacity 160ms cubic-bezier(0.25, 1, 0.5, 1);
+        transition: opacity 160ms var(--ease-enter);
     }
 
     .goal-ring-composer__ring {
@@ -446,11 +378,11 @@
     }
 
     .goal-ring-composer__ring--out {
-        animation: teacher-goal-ring-out 5s var(--ring-delay) cubic-bezier(0.16, 1, 0.3, 1) infinite;
+        animation: teacher-goal-ring-out 5s var(--ring-delay) var(--ease-enter) infinite;
     }
 
     .goal-ring-composer__ring--in {
-        animation: teacher-goal-ring-in 5s var(--ring-delay) cubic-bezier(0.16, 1, 0.3, 1) infinite;
+        animation: teacher-goal-ring-in 5s var(--ring-delay) var(--ease-enter) infinite;
     }
 
     .goal-ring-composer__core {
@@ -685,22 +617,6 @@
 
    Declared once, as a custom property, so the two hexes live in exactly one place: `.hp-modals`
    below is for markup, `var(--lp-gradient-modal)` for anything that needs it inside another rule. */
-/* ─── Easing, by intent ──────────────────────────────────────────────────
-   The same five curves resources/js/easing.js exports as EASE.*, so a stylesheet can pick an
-   animation's curve by what the animation MEANS rather than by copying four numbers out of a JS
-   module. Copying is what used to happen, and it drifted: the quiz card ended up on a curve no
-   other reveal in the app used, and tuning EASE.enter moved nothing in CSS at all.
-
-   These values are not free to edit here. easing.js is the source; this block mirrors it, and
-   resources/js/__tests__/easing-css-parity.test.js fails the build if the two ever disagree. */
-:root {
-    --ease-enter: cubic-bezier(0.215, 0.61, 0.355, 1);    /* reveal / open / fade-in */
-    --ease-exit: cubic-bezier(0.55, 0.055, 0.675, 0.19);  /* close / fade-out */
-    --ease-move: cubic-bezier(0.645, 0.045, 0.355, 1);    /* reposition / layout / camera */
-    --ease-draw-on: cubic-bezier(0.55, 0.055, 0.675, 0.19); /* pen / coastline sweep */
-    --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);        /* badge / pin appear, with overshoot */
-}
-
 :root {
     --lp-gradient-modal: linear-gradient(106deg, #0f1829 0%, #040b1a 100%);
     /* The blank bar that stands in for a quiz answer while the read-gate counts down, and its
@@ -933,7 +849,7 @@
         /* Fully white. It was 90% over a near-black page, which reads as slightly grey rather than
            as a light source. */
         opacity: 1;
-        animation: landing-cursor-breathe 3.2s var(--ease-move, cubic-bezier(0.65, 0, 0.35, 1)) infinite;
+        animation: landing-cursor-breathe 3.2s var(--ease-move) infinite;
     }
 
     /* A pulsing glow at the centre of vision is exactly what motion sensitivity struggles with, so
@@ -986,7 +902,7 @@
         -webkit-backdrop-filter: blur(14px);
         border-bottom: 1px solid rgba(148, 163, 184, 0.14);
         opacity: 0;
-        transition: opacity 320ms cubic-bezier(0.25, 1, 0.5, 1);
+        transition: opacity 320ms var(--ease-enter);
     }
 
     .site-header.is-scrolled::before {
@@ -1006,7 +922,7 @@
 
     .site-header__logo,
     .site-nav > * {
-        animation: site-header-rise 620ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+        animation: site-header-rise 620ms var(--ease-enter) backwards;
     }
 
     .site-header__logo { animation-delay: 60ms; }
@@ -1015,7 +931,7 @@
     .site-nav > :nth-child(3) { animation-delay: 320ms; }
 
     .site-header__logo img {
-        transition: transform 240ms cubic-bezier(0.25, 1, 0.5, 1);
+        transition: transform 240ms var(--ease-enter);
     }
 
     .site-header__logo:hover img {
@@ -1030,7 +946,7 @@
         position: relative;
         font-size: 0.8125rem;
         color: rgba(255, 255, 255, 0.72);
-        transition: color 200ms cubic-bezier(0.25, 1, 0.5, 1);
+        transition: color 200ms var(--ease-enter);
     }
 
     @media (min-width: 640px) {
@@ -1054,7 +970,7 @@
         background: currentColor;
         transform: scaleX(0);
         transform-origin: left center;
-        transition: transform 220ms cubic-bezier(0.25, 1, 0.5, 1);
+        transition: transform 220ms var(--ease-enter);
     }
 
     .site-nav__link:hover::after,
@@ -1072,10 +988,10 @@
         font-weight: 600;
         color: #fff;
         transition:
-            transform 150ms cubic-bezier(0.25, 1, 0.5, 1),
-            background-color 240ms cubic-bezier(0.25, 1, 0.5, 1),
-            border-color 240ms cubic-bezier(0.25, 1, 0.5, 1),
-            color 240ms cubic-bezier(0.25, 1, 0.5, 1);
+            transform 150ms var(--ease-enter),
+            background-color 240ms var(--ease-enter),
+            border-color 240ms var(--ease-enter),
+            color 240ms var(--ease-enter);
     }
 
     @media (min-width: 640px) {
@@ -1107,11 +1023,11 @@
        the only thing asking to be read. It returns the moment the lesson lands. */
     .js-hero-demo:not(.hero-revealed) .site-nav {
         opacity: 0.55;
-        transition: opacity 700ms cubic-bezier(0.25, 1, 0.5, 1);
+        transition: opacity 700ms var(--ease-enter);
     }
 
     .site-nav {
-        transition: opacity 700ms cubic-bezier(0.25, 1, 0.5, 1);
+        transition: opacity 700ms var(--ease-enter);
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -1204,7 +1120,7 @@
 
     .hero-revealed .wheel {
         opacity: 0 !important;
-        transition: opacity 600ms cubic-bezier(0.25, 1, 0.5, 1);
+        transition: opacity 600ms var(--ease-enter);
     }
 
     .hero-caret {
@@ -1230,10 +1146,10 @@
         font-size: 0.875rem;
         font-weight: 600;
         transition:
-            transform 160ms cubic-bezier(0.25, 1, 0.5, 1),
-            background-color 220ms cubic-bezier(0.25, 1, 0.5, 1),
-            border-color 220ms cubic-bezier(0.25, 1, 0.5, 1),
-            box-shadow 220ms cubic-bezier(0.25, 1, 0.5, 1);
+            transform 160ms var(--ease-enter),
+            background-color 220ms var(--ease-enter),
+            border-color 220ms var(--ease-enter),
+            box-shadow 220ms var(--ease-enter);
     }
 
     .hero-action:hover {
@@ -1262,7 +1178,7 @@
     }
 
     .hero-action__play {
-        transition: transform 200ms cubic-bezier(0.25, 1, 0.5, 1);
+        transition: transform 200ms var(--ease-enter);
     }
 
     .hero-action--primary:hover .hero-action__play {
@@ -1282,7 +1198,7 @@
     .hero-action__knob {
         /* Explicit, so the translate is measured in the 24-unit viewBox on every engine. */
         transform-box: view-box;
-        transition: transform 280ms cubic-bezier(0.25, 1, 0.5, 1);
+        transition: transform 280ms var(--ease-enter);
     }
 
     .hero-action--ghost:hover .hero-action__knob--a {
@@ -1530,7 +1446,7 @@
    four bars in a row read as a deliberate reveal rather than four things switching off. */
 @keyframes qz-ghost-out { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 0; } }
 
-.qz-card       { animation: qz-slide-in 0.28s cubic-bezier(0.16, 1, 0.3, 1); }
+.qz-card       { animation: qz-slide-in 0.28s var(--ease-enter); }
 .qz-correct    { animation: qz-pop 0.4s var(--ease-pop); }
 .qz-wrong      { animation: qz-wobble 0.45s var(--ease-move); }
 .qz-score-bump { animation: qz-score-pop 0.45s var(--ease-pop); }

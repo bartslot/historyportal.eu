@@ -189,7 +189,7 @@ $machineState = $isFailed ? 'error' : ($isStalled ? 'stalled' : ($isDone ? 'read
                     <li class="grid grid-cols-[1rem_minmax(0,1fr)] gap-3 py-3.5">
                         <span class="mt-1 flex h-4 w-4 items-center justify-center" aria-hidden="true">
                             @if ($task['state'] === 'done')
-                                <svg viewBox="0 0 20 20" class="h-4 w-4 text-emerald-300">
+                                <svg viewBox="0 0 20 20" class="h-4 w-4 text-success">
                                     <circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="1.5" />
                                     <path d="m6.5 10 2.2 2.2 4.8-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                                 </svg>
@@ -199,7 +199,7 @@ $machineState = $isFailed ? 'error' : ($isStalled ? 'stalled' : ($isDone ? 'read
                                 <svg viewBox="0 0 20 20" @class([
                                     'h-4 w-4',
                                     'animate-spin text-amber-300' => ! $isFailed,
-                                    'text-rose-300' => $isFailed,
+                                    'text-error' => $isFailed,
                                 ])>
                                     <circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="30 20" />
                                 </svg>
@@ -227,7 +227,7 @@ $machineState = $isFailed ? 'error' : ($isStalled ? 'stalled' : ($isDone ? 'read
             role="alert"
             @class([
                 'mx-auto mt-10 max-w-3xl border p-5 sm:p-6',
-                'border-rose-500/35 bg-rose-500/6' => $isFailed,
+                'border-error/40 bg-error/10' => $isFailed,
                 'border-orange-400/35 bg-orange-400/6' => $isStalled && ! $isFailed,
             ])
         >
@@ -274,7 +274,7 @@ $machineState = $isFailed ? 'error' : ($isStalled ? 'stalled' : ($isDone ? 'read
                             wire:confirm="{{ __('Remove this stalled lesson, its queued work, and generated files? This cannot be undone.') }}"
                             wire:loading.attr="disabled"
                             wire:target="startNewLesson"
-                            class="btn btn-sm btn-ghost border-rose-400/35 text-rose-200 hover:border-rose-300 hover:bg-rose-400/10"
+                            class="btn btn-sm btn-ghost border-error/40 text-error hover:border-error hover:bg-error/10"
                         >
                             {{ __('Remove session and start a new lesson') }}
                         </button>
@@ -309,8 +309,8 @@ $machineState = $isFailed ? 'error' : ($isStalled ? 'stalled' : ($isDone ? 'read
                                     <div class="flex items-center gap-2">
                                         <span @class([
                                             'h-1.5 w-1.5 shrink-0 rounded-full',
-                                            'bg-emerald-300' => $has,
-                                            'bg-rose-300' => ! $has && $scene->status === 'failed',
+                                            'bg-success' => $has,
+                                            'bg-error' => ! $has && $scene->status === 'failed',
                                             'animate-pulse bg-amber-300' => ! $has && $scene->status !== 'failed',
                                         ])></span>
                                         <span class="text-slate-400">{{ $label }}</span>
@@ -327,7 +327,7 @@ $machineState = $isFailed ? 'error' : ($isStalled ? 'stalled' : ($isDone ? 'read
                         </div>
 
                         @if ($scene->error_message)
-                            <p class="mt-2 ps-20 text-xs text-rose-300">{{ $scene->error_message }}</p>
+                            <p class="mt-2 ps-20 text-xs text-error">{{ $scene->error_message }}</p>
                         @endif
                     </div>
                 @endforeach
