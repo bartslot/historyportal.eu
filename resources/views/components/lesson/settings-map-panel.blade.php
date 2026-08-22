@@ -81,7 +81,7 @@
     {{-- ── Appearance: colour, where it sits, how big, how turned, how soft ────────────────── --}}
     <x-ui.settings-section :title="__('Appearance')" name="appearance">
         <div class="space-y-2">
-            <span class="block text-3xs font-semibold uppercase tracking-wide text-base-content/55">{{ __('Colour') }}</span>
+            <span class="block text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Colour') }}</span>
 
             <x-ui.color-field
                 :color="$val('tint', '')"
@@ -94,7 +94,7 @@
                 :on-opacity-change="'updateArtworkLayer(' . $aid . ', \'tint_opacity\', $event.target.value / 100)'" />
 
             <button type="button" wire:click="updateArtworkLayer({{ $aid }}, 'tint', '')"
-                    class="btn btn-ghost btn-xs w-full text-2xs text-base-content/55 hover:text-base-content">
+                    class="btn btn-ghost btn-xs w-full text-2xs text-panel-label hover:text-base-content">
                 {{ __('No tint') }}
             </button>
 
@@ -103,7 +103,7 @@
             {{-- Position: two fields on one row, X and Y, both stage percentages. --}}
             <div class="flex items-center gap-2">
                 <span style="width: var(--settings-panel-label-w, 3.0625rem)"
-                      class="shrink-0 text-3xs font-semibold uppercase tracking-wide text-base-content/55">{{ __('Position') }}</span>
+                      class="shrink-0 text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Position') }}</span>
                 <x-ui.stepper-field glyph="X" :label="__('Horizontal position')" :min="0" :max="100" :step="1"
                                     :value="$num($val('x', 50), 0)"
                                     :on-input="$live('x')" :on-change="$save('x')" class="min-w-0 flex-1" />
@@ -142,7 +142,7 @@
         <div class="space-y-2">
             <label class="flex items-center justify-between gap-2">
                 <span style="width: var(--settings-panel-label-w, 3.0625rem)"
-                      class="shrink-0 text-3xs font-semibold uppercase tracking-wide text-base-content/55">{{ __('Blend') }}</span>
+                      class="shrink-0 text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Blend') }}</span>
                 {{-- Multiply is the one that earns its keep: it drops the white paper out of an
                      engraving or a scanned map so the artwork sits ON the scene instead of in a box
                      on top of it. The blend applies to the layer's CONTENT, never to this panel. --}}
@@ -197,14 +197,14 @@
 
                 <div class="flex items-center gap-2">
                     <span style="width: var(--settings-panel-label-w, 3.0625rem)"
-                      class="shrink-0 text-3xs font-semibold uppercase tracking-wide text-base-content/55">{{ __('Backdrop') }}</span>
+                      class="shrink-0 text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Backdrop') }}</span>
                     <div class="flex min-w-0 flex-1 gap-1">
                         @foreach ([['none', __('None')], ['glass', __('Glass')], ['#0f172a', __('Solid')]] as [$bgVal, $bgLabel])
                             <button type="button" wire:click="setEmbedOption({{ $aid }}, 'bg', '{{ $bgVal }}')"
                                     @class([
                                         'btn btn-xs min-w-0 flex-1 rounded-full text-2xs',
                                         'btn-neutral' => $eo['bg'] === $bgVal,
-                                        'btn-ghost text-base-content/55' => $eo['bg'] !== $bgVal,
+                                        'btn-ghost text-panel-label' => $eo['bg'] !== $bgVal,
                                     ])>{{ $bgLabel }}</button>
                         @endforeach
                     </div>
@@ -228,12 +228,12 @@
                 ] as [$field, $label, $opts, $default])
                     <label class="flex items-center justify-between gap-2">
                         <span style="width: var(--settings-panel-label-w, 3.0625rem)"
-                      class="shrink-0 text-3xs font-semibold uppercase tracking-wide text-base-content/55">{{ $label }}</span>
+                      class="shrink-0 text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ $label }}</span>
                         <div class="relative min-w-0 flex-1">
                             <select wire:change="{{ $save($field) }}" aria-label="{{ $label }}"
                                     style="height: var(--settings-panel-row-h, 2rem)"
-                            class="w-full appearance-none rounded-lg border border-base-300/70 bg-base-100 py-0 pl-3 pr-7
-                                           text-2xs text-base-content/85 outline-none focus:border-base-content/40">
+                            class="w-full appearance-none rounded-lg border border-panel-hairline bg-base-100 py-0 pl-3 pr-7
+                                           text-2xs text-panel-value outline-none focus:border-panel-label">
                                 @foreach ($opts as $ov => $ol)
                                     <option value="{{ $ov }}" @selected(($layer[$field] ?? $default) === $ov)>{{ $ol }}</option>
                                 @endforeach
@@ -247,7 +247,7 @@
 
     {{-- ── Pin to map ─────────────────────────────────────────────────────────────────────── --}}
     @if ($isMapScene)
-        <div class="border-t border-base-300/70 px-4 py-3">
+        <div class="border-t border-panel-hairline px-4 py-3">
             {{-- The map scene's overlay by its OWN handle first: the shared one can be repointed by
                  a slideshow render, and pinning the wrong overlay's layer would silently do
                  nothing. --}}

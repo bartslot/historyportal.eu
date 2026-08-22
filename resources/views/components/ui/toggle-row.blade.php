@@ -14,7 +14,7 @@
      colour; inside the teacher app an on-state reads solid white. The inspectors had drifted to
      amber toggles because that was the only variant anyone had reached for. --}}
 <label {{ $attributes->class(['flex items-center justify-between gap-3 py-1']) }}>
-    <span class="text-3xs font-semibold uppercase leading-tight tracking-wide text-base-content/55">{{ $label }}</span>
+    <span class="text-3xs font-semibold uppercase leading-tight tracking-wide text-panel-label">{{ $label }}</span>
     <input type="checkbox" @checked($checked)
            @if ($onToggle) x-on:change="{{ $onToggle }}" @endif
            @if ($onChange) wire:change="{{ $onChange }}" @endif

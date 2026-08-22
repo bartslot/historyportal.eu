@@ -13,7 +13,7 @@
      themes with currentColor. --}}
 <button type="button" {{ $attributes->class([
         'flex shrink-0 items-center gap-1.5 rounded-full pr-2 text-xs font-medium',
-        'text-base-content/55 transition-colors hover:text-base-content',
+        'text-panel-label transition-colors hover:text-base-content',
     ]) }}>
     <x-icons.chevron-left class="h-3 w-3 shrink-0" />
     {{ $label }}

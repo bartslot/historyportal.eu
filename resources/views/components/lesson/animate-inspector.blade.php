@@ -153,12 +153,19 @@
 
     {{-- Delay: how long the layer waits before it moves. --}}
     @if ($isLayer)
+        {{-- NOTHING BUT ATTRIBUTES between `<x-…` and `>`. These rows carried
+             `@if ($half === 'out') x-cloak @endif` inside the tag, and Blade's component parser
+             cannot read a directive there: the tag silently failed to compile, landed in the page
+             verbatim, and Alpine then evaluated `:label="__('Delay')"` as JavaScript — which is
+             where a flood of "__ is not defined", "$vals is not defined" and "rtrim is not
+             defined" came from. x-cloak is unconditional now; cloaking both halves costs one frame
+             before Alpine boots, and the panel is Alpine-gated anyway. --}}
         @foreach ([['in', $current, 'anim_delay'], ['out', $out, 'anim_out_delay']] as [$half, $vals, $field])
             <x-ui.slider-row :label="__('Delay')" :min="0" :max="10" :step="0.1"
                              :value="$vals['delay']"
                              :display="rtrim(rtrim(number_format($vals['delay'], 1), '0'), '.') ?: '0'" unit="s"
                              :on-change="'updateArtworkLayer(' . $aid . ', \'' . $field . '\', $event.target.value)'"
-                             x-show="build === '{{ $half }}'" @if ($half === 'out') x-cloak @endif />
+                             x-show="build === '{{ $half }}'" x-cloak />
         @endforeach
 
         {{-- Duration — the industry term for how long the movement itself takes (Keynote, After
@@ -168,7 +175,7 @@
                              :value="$vals['duration']"
                              :display="rtrim(rtrim(number_format($vals['duration'] / 1000, 2), '0'), '.')" unit="s"
                              :on-change="'updateArtworkLayer(' . $aid . ', \'' . $field . '\', $event.target.value)'"
-                             x-show="build === '{{ $half }}'" @if ($half === 'out') x-cloak @endif />
+                             x-show="build === '{{ $half }}'" x-cloak />
         @endforeach
     @else
         <x-ui.slider-row :label="__('Duration')" :min="0" :max="3" :step="0.1"

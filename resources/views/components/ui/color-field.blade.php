@@ -44,20 +44,20 @@
                    class="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
         </span>
         <span class="flex min-w-0 items-baseline gap-0.5">
-            <span class="text-3xs font-semibold text-base-content/55">#</span>
-            <span class="truncate text-xs tracking-wide text-base-content/85">{{ $hex }}</span>
+            <span class="text-3xs font-semibold text-panel-label">#</span>
+            <span class="truncate text-xs tracking-wide text-panel-value">{{ $hex }}</span>
         </span>
     </label>
 
-    <label class="flex shrink-0 cursor-text items-center gap-0.5 border-l border-base-content/10 pl-2">
+    <label class="flex shrink-0 cursor-text items-center gap-0.5 border-l border-panel-hairline pl-2">
         <input type="number" min="0" max="100" step="1" value="{{ (int) round(((float) $opacity) * 100) }}"
                aria-label="{{ $opacityLabel }}"
                @if ($onOpacityInput) x-on:input="{{ $onOpacityInput }}" @endif
                @if ($onOpacityChange) wire:change="{{ $onOpacityChange }}" @endif
                class="w-7 border-0 bg-transparent p-0 text-right text-xs outline-none
                       [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
-        <span class="text-3xs font-semibold text-base-content/55">%</span>
+        <span class="text-3xs font-semibold text-panel-label">%</span>
     </label>
 
-    <x-ui.keyframe-diamond class="border-l border-base-content/10 pl-1" />
+    <x-ui.keyframe-diamond class="border-l border-panel-hairline pl-1" />
 </div>

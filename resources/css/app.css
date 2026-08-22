@@ -194,6 +194,58 @@
     font-display: swap;
 }
 
+/* ─── The settings panel's tab strip — Figma `tab-header` (1470:1879) ─ */
+/**
+ * DaisyUI's tabs-box, brought to the file's appearance through its own variables.
+ *
+ * THE CONTRAST WAS INVERTED, which is why this was rejected by eye twice. tabs-box paints the TRAY
+ * as a filled pill (base-200) and leaves the active tab base-100 — on this dark theme that makes
+ * the active tab DARKER than its surroundings, so the eye reads the tray as the object and the
+ * selected tab as a hole in it. The file is the other way round: a flat bordered strip with no
+ * fill, and the active tab a LIGHTER box inside it.
+ *
+ * So the tray gives up its fill, its pill radius, its inset shadow and its padding — the strip's
+ * border and spacing belong to <x-ui.panel-tabs>, which is the 1px #162235 rule the file draws —
+ * and --tab-bg carries the active box at #121b2c, a token whose comment already reads "the active
+ * tab, the button rail".
+ *
+ * UNLAYERED for the same reason as .range-panel below: DaisyUI declares these in @layer utilities,
+ * which outranks @layer components, and an override that half-applies looks deliberate.
+ */
+.tabs-panel {
+    background-color: transparent;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0;
+    gap: 0.25rem;                                /* the file's 4px */
+    --tab-height: 1.75rem;                       /* 28px */
+    --radius-field: 6px;                         /* the active box's corner */
+}
+
+/**
+ * --tab-bg AND --tab-p GO ON THE CHILD, not the container.
+ *
+ * DaisyUI declares both inside `.tab` itself, so a value inherited from `.tabs` never reaches them:
+ * setting --tab-bg on the strip left the active tab resolving to base-100 — near-black, the exact
+ * inverted contrast this skin exists to fix — while every other property applied and made it look
+ * like the override had worked. Same failure mode as the layer trap on .range-panel, one level down.
+ */
+.tabs-panel > .tab {
+    color: var(--color-panel-label);
+    font-weight: 500;
+    font-size: 0.8125rem;                        /* 13px */
+    --tab-p: 0.875rem;                           /* 14px */
+    --tab-bg: var(--color-card-surface-raised);  /* #121b2c — LIGHTER than the strip */
+}
+
+/* The active tab is a flat box, not a raised one: tabs-box adds a lift shadow that the file's
+   `tab-format-active` does not have, and on a strip with no fill it reads as a floating chip. */
+.tabs-panel > :is(.tab-active, [aria-selected='true'], input:checked, label:has(:checked)) {
+    color: var(--color-panel-value);
+    font-weight: 600;
+    box-shadow: none;
+}
+
 /* ─── The settings panel's slider — Figma `row-rotate` (1471:2104) ──── */
 /**
  * DaisyUI's range, brought to the file's geometry through its OWN variables. Nothing here draws a

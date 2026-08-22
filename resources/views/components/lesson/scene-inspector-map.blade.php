@@ -43,7 +43,7 @@
         <span class="text-xs uppercase tracking-wider text-slate-400">View</span>
         {{-- The projection flips the live preview instantly (the dispatched event) and persists
              the choice (the wire call) so it survives a re-mount. --}}
-        <x-ui.segmented class="mt-1" name="map-projection" :value="$projection"
+        <x-ui.segmented panel class="mt-1" name="map-projection" :value="$projection"
                         :options="[['mercator', __('Flat 2D')], ['globe', __('Globe 3D')]]"
                         on-change="window.dispatchEvent(new CustomEvent('lessonmap:projection', { detail: { type: $event.target.value } })); $wire.call('setProjection', $event.target.value)" />
     </div>

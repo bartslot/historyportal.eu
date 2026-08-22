@@ -16,6 +16,6 @@
      Geometry is the file's — a 9.1px square turned 45 degrees inside a 12.9px box. --}}
 <span {{ $attributes->class(['flex shrink-0 items-center justify-center']) }}
       style="width: 12.872px; height: 12.872px" aria-hidden="true">
-    <span class="-rotate-45 rounded-[1px] border border-base-content/40"
+    <span class="-rotate-45 rounded-[1px] border border-panel-label"
           style="width: 9.102px; height: 9.102px"></span>
 </span>

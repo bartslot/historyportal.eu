@@ -15,7 +15,7 @@
 
     <div class="space-y-2">
         <p class="text-xs uppercase tracking-wider text-slate-400">Element type</p>
-        <x-ui.segmented class="w-full" name="game-type-{{ $scene->id }}" :value="$gameType"
+        <x-ui.segmented panel class="w-full" name="game-type-{{ $scene->id }}" :value="$gameType"
                         :options="[['quiz', __('Quiz')], ['strategy', __('Strategy')], ['debate', __('Debate')]]"
                         tab-class="flex-1"
                         on-change="$wire.call('setSceneGameType', {{ $scene->id }}, $event.target.value)" />
@@ -70,7 +70,7 @@
                 </div>
                 <div class="flex items-center gap-1.5">
                     <span class="text-[11px] text-slate-400">{{ __('Scope') }}</span>
-                    <x-ui.segmented name="quiz-scope-{{ $scene->id }}" :value="$quizScope"
+                    <x-ui.segmented panel name="quiz-scope-{{ $scene->id }}" :value="$quizScope"
                                     :options="[['taught', __('Taught so far')], ['full', __('Whole story')]]"
                                     on-change="$wire.call('setQuizScope', $event.target.value)" />
                 </div>

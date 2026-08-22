@@ -99,7 +99,7 @@
     <div x-show="view === 'slideshow'" x-cloak class="space-y-2">
         {{-- Slideshow render mode — Standard (flat) | Parallax (depth) | Drawing (line art). --}}
         <div x-data="{ mode: @js($slideshowMode) }">
-            <x-ui.segmented name="slideshow-mode" model="mode"
+            <x-ui.segmented panel name="slideshow-mode" model="mode"
                             :options="[['standard', __('Standard')], ['parallax', __('Parallax')], ['drawing', __('Drawing')]]"
                             on-change="$wire.call('setSlideshowMode', $event.target.value)" />
             <p class="mt-1 text-[10px] leading-tight text-slate-500" x-show="mode === 'parallax'" x-cloak>
@@ -161,7 +161,7 @@
             @if ($backgroundImageUrl)
                 <div x-data="{ fit: @js($backgroundFit) }">
                     <span class="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">{{ __('Fit') }}</span>
-                    <x-ui.segmented name="background-fit" model="fit"
+                    <x-ui.segmented panel name="background-fit" model="fit"
                                     :options="[['cover', __('Fill frame')], ['contain', __('Whole image')]]"
                                     on-change="$wire.call('setBackgroundFit', $event.target.value)" />
                     <p class="mt-1 text-[10px] leading-tight text-slate-500" x-show="fit === 'cover'" x-cloak>
@@ -206,7 +206,7 @@
                 </div>
             @endif
 
-            <x-ui.segmented name="image-source" model="imgSrc"
+            <x-ui.segmented panel name="image-source" model="imgSrc"
                             :options="[['ai', __('AI Gen')], ['paintings', __('Paintings')], ['url', __('Drawing')]]" />
 
             {{-- AI generated — Regenerate / Edit prompt (Figma item 5) --}}

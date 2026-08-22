@@ -27,6 +27,21 @@
      too strong. */
   --color-card-hairline: rgb(255 255 255 / 0.07);
 
+  /* ── Settings-panel chrome ────────────────────────────────────────────────────────────────── */
+  /* The four colours the whole inspector is drawn in, read off the Figma panel's own Selection
+     colors list rather than approximated from base-*. They were `border-base-300/70` and
+     `text-base-content/55` before, which are close enough to look deliberate and wrong enough that
+     Bart rejected the tabs by eye twice.
+
+     --color-panel-hairline is THE line colour for the panel: every section rule, every field
+     border, the tab strip. It happens to equal --color-scrubber-badge-edge, and the two are
+     deliberately NOT aliased — one is a settings panel and the other is a timeline badge, and
+     coupling them means a future change to one silently moves the other. */
+  --color-panel-hairline: #162235;
+  --color-panel-label: #7e8b9c;    /* the uppercase row labels */
+  --color-panel-value: #e2e8f0;    /* the numbers, and the active tab */
+  --color-panel-title: #c7d5e3;    /* the section headings */
+
   /* ── Text ─────────────────────────────────────────────────────────────────────────────────── */
   /* TWO text colours on a card, not three. White says something, muted names something.
    *

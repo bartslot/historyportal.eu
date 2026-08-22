@@ -28,7 +28,7 @@
 
     <div class="flex items-center gap-2">
         <span style="width: var(--settings-panel-label-w, 3.0625rem)"
-              class="shrink-0 text-3xs font-semibold uppercase tracking-wide text-base-content/55">{{ __('Angle') }}</span>
+              class="shrink-0 text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Angle') }}</span>
 
         {{-- The dial. Pointer position relative to the centre IS the angle, so a drag crosses
              0/360 without any special case. --}}
@@ -53,7 +53,7 @@
                    style="height: var(--settings-panel-row-h, 2rem)">
                 {{-- data-scrub: drag this label sideways to change the number. See scrub.js. --}}
                 <span data-scrub aria-hidden="true"
-                      class="shrink-0 cursor-ew-resize select-none text-3xs font-semibold text-base-content/55">&deg;</span>
+                      class="shrink-0 cursor-ew-resize select-none text-3xs font-semibold text-panel-label">&deg;</span>
                 <input type="number" min="0" max="360" step="1"
                        aria-label="{{ __('Angle') }}"
                        :value="deg"
@@ -62,11 +62,11 @@
                        class="w-full min-w-0 border-0 bg-transparent p-0 text-right text-xs outline-none
                               [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
             </label>
-            <div class="join-item flex flex-col justify-center rounded-r-lg border border-l-0 border-base-content/10">
+            <div class="join-item flex flex-col justify-center rounded-r-lg border border-l-0 border-panel-hairline">
                 @foreach ([['up', 1, __('Increase angle')], ['down', -1, __('Decrease angle')]] as [$dir, $delta, $name])
                     <button type="button" x-on:click="nudge({{ $delta }}, $wire)"
                             aria-label="{{ $name }}"
-                            class="flex h-1/2 items-center px-1 text-base-content/55 transition-colors hover:text-base-content">
+                            class="flex h-1/2 items-center px-1 text-panel-label transition-colors hover:text-base-content">
                         <x-icons.chevron-down class="h-2.5 w-2.5 {{ $dir === 'up' ? 'rotate-180' : '' }}" />
                     </button>
                 @endforeach
@@ -76,12 +76,12 @@
 
     <div class="flex items-center gap-2">
         <span style="width: var(--settings-panel-label-w, 3.0625rem)"
-              class="shrink-0 text-3xs font-semibold uppercase tracking-wide text-base-content/55">{{ __('Flip') }}</span>
+              class="shrink-0 text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Flip') }}</span>
         <div class="join">
             @foreach ([['x', __('Flip horizontally'), 'scale-x-[-1]'], ['y', __('Flip vertically'), 'scale-y-[-1]']] as [$axis, $name, $iconFlip])
                 <button type="button" x-on:click="toggleFlip('{{ $axis }}', $wire)"
                         :aria-pressed="{{ $axis === 'y' ? 'flipY' : 'flipX' }} ? 'true' : 'false'"
-                        :class="{{ $axis === 'y' ? 'flipY' : 'flipX' }} ? 'bg-base-300 text-base-content' : 'text-base-content/55'"
+                        :class="{{ $axis === 'y' ? 'flipY' : 'flipX' }} ? 'bg-base-300 text-base-content' : 'text-panel-label'"
                         data-tooltip="{{ $name }}" aria-label="{{ $name }}"
                         class="btn btn-ghost btn-xs join-item px-2">
                     <x-icons.arrow-path class="h-3.5 w-3.5 {{ $iconFlip }}" />

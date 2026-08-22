@@ -16,7 +16,7 @@
     // Server-rendered highlight. When `selectedWhen` is given Alpine owns the class instead, so
     // these are only the starting classes it will overwrite on its first tick.
     $ringOn = 'ring-2 ring-base-content';
-    $ringOff = 'ring-1 ring-base-300/70 group-hover:ring-base-content/40';
+    $ringOff = 'ring-1 ring-panel-hairline group-hover:ring-base-content/40';
     $ring = $selected ? $ringOn : $ringOff;
 @endphp
 
@@ -53,6 +53,6 @@
              class="h-full w-full object-cover" />
     </span>
 
-    <span class="text-2xs font-semibold uppercase tracking-wide {{ $selected ? 'text-base-content/85' : 'text-base-content/55' }}"
-          @if ($selectedWhen) :class="({{ $selectedWhen }}) ? 'text-base-content/85' : 'text-base-content/55'" @endif>{{ $label }}</span>
+    <span class="text-2xs font-semibold uppercase tracking-wide {{ $selected ? 'text-panel-value' : 'text-panel-label' }}"
+          @if ($selectedWhen) :class="({{ $selectedWhen }}) ? 'text-panel-value' : 'text-panel-label'" @endif>{{ $label }}</span>
 </button>

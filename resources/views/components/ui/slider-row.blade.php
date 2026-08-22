@@ -52,7 +52,7 @@
      The value is `display`, never a re-derivation of `value` — the caller owns the formatting, and
      a row that recomputed it would show a number the panel above it disagrees with. --}}
 <label {{ $attributes->class(['flex items-center gap-2 py-1']) }}>
-    <span class="shrink-0 text-3xs font-semibold uppercase leading-tight tracking-wide text-base-content/55"
+    <span class="shrink-0 text-3xs font-semibold uppercase leading-tight tracking-wide text-panel-label"
           style="width: {{ $labelWidth }}">{{ $label }}</span>
 
     <input type="range" min="{{ $min }}" max="{{ $max }}" step="{{ $step }}" value="{{ $value }}"
@@ -62,9 +62,9 @@
            class="range range-panel min-w-0 flex-1" />
 
     <span class="flex w-11 shrink-0 items-baseline justify-end gap-0.5">
-        <span class="text-xs font-medium text-base-content/85">{{ $display ?? $value }}</span>
+        <span class="text-xs font-medium text-panel-value">{{ $display ?? $value }}</span>
         @if ($unit)
-            <span class="text-3xs font-semibold uppercase tracking-wide text-base-content/55">{{ $unit }}</span>
+            <span class="text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ $unit }}</span>
         @endif
     </span>
 

@@ -17,7 +17,9 @@
      built here and shown whenever there is somewhere to go back to.
 
      The tabs themselves are <x-ui.segmented>, which is stock DaisyUI `tabs tabs-box`. --}}
-<div {{ $attributes->class(['flex w-full items-center gap-1 border-y border-base-300/70 px-4 py-1.5']) }}>
+{{-- A FULL border, not `border-y`. The file draws the strip as a bordered box; top-and-bottom
+     rules read as two separators with a gap between them rather than as one strip. --}}
+<div {{ $attributes->class(['flex w-full items-center gap-1 border border-panel-hairline px-4 py-1.5']) }}>
     {{ $breadcrumb }}
-    <x-ui.segmented :name="$name" :options="$tabs" :model="$model" class="shrink-0" />
+    <x-ui.segmented panel :name="$name" :options="$tabs" :model="$model" class="shrink-0" />
 </div>
