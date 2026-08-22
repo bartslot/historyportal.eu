@@ -15,6 +15,7 @@ import { settingsPanelTuner } from './dev/settings-panel-tuner.js';
 import { layerSizeRow } from './ui/layer-size-row.js';
 import { layerAngleRow } from './ui/angle-dial.js';
 import { initScrub } from './ui/scrub.js';
+import { initRangeFill } from './ui/range-fill.js';
 import { layerOverlay, setLayerPropEverywhere, selectLayerEverywhere } from './scene/layer-overlays.js';
 
 window.Sortable = Sortable;
@@ -70,6 +71,10 @@ window.layerAngleRow = layerAngleRow;
 // panels are morphed constantly by Livewire and a per-element binding would quietly stop working
 // on whichever row was re-rendered last. Opt in with `data-scrub` on the label.
 initScrub();
+
+// The panel sliders paint their fill INTO the track (see .range-panel in app.css), so the stop
+// position has to follow the value. Server-rendered for the first frame; this handles the drag.
+initRangeFill();
 
 // The 3D scene system (three.js, ~1.7 MB) is used ONLY by the lesson-creation wizard. Load it on
 // demand via window.loadLessonScene() so the landing page and other app pages never download three.

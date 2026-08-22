@@ -27,6 +27,16 @@
     'keyframe' => false,
 ])
 
+@php
+    // Where the fill stops. The rail paints it as a gradient rather than letting DaisyUI cast it
+    // off the thumb, so it needs a number — rendered here so the row is right on its first frame,
+    // then kept in step by resources/js/ui/range-fill.js.
+    $span = (float) $max - (float) $min;
+    $fillPct = $span > 0
+        ? max(0, min(100, (((float) $value - (float) $min) / $span) * 100))
+        : 0;
+@endphp
+
 {{-- ONE slider row for the whole app: label, rail, value — Figma `row-rotate` (1471:2104).
 
      This shape had been retyped eleven times across the layer, text and animate inspectors, and the
@@ -59,6 +69,7 @@
            aria-label="{{ $label }}"
            @if ($onInput) x-on:input="{{ $onInput }}" @endif
            @if ($onChange) wire:change="{{ $onChange }}" @endif
+           style="--range-pct: {{ round($fillPct, 2) }}%"
            class="range range-panel min-w-0 flex-1" />
 
     <span class="flex w-11 shrink-0 items-baseline justify-end gap-0.5">
