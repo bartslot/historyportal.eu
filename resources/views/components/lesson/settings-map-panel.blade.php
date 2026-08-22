@@ -45,14 +45,18 @@
 
      WHERE IT DIVERGES FROM THE FILE, and why, so the next person does not "fix" it back:
 
-     * Row labels are 11px (`text-2xs`), not Figma's 8px LABEL_SMALL_UI. The type scale was settled
-       at one small step and 8px is not it. The label column is widened to pay for it.
+     * Row labels ARE the file's 8px LABEL_SMALL_UI (`text-3xs`), and the label column is the
+       file's 49px. An earlier pass rendered them at 11px on the reading that there was one small
+       type step; there are two in the file, and at 11px every label sat too heavy and the column
+       had to grow 23px to fit.
      * The SIZE row (W/H + aspect lock) is not here. A layer stores ONE uniform `scale`; there is no
        width and the `height` in the whitelist is not read by the renderer. Two number fields
        writing one value, plus a lock over an aspect that cannot change, is three dead controls.
        `SCALE` is that value, and it is a real slider.
-     * The small outlined diamond at the right of every Figma field is Figma's own "bound to a
-       variable" chrome, inherited from the tool's inspector. It names nothing here.
+     * The small outlined diamond after Color, X, Y, W, H and Scale is the per-property keyframe
+       marker that feeds the Animate tab. It is DRAWN AND INERT — what pressing one should do is
+       not specified yet, and an inert marker is better than a button that does nothing. See
+       <x-ui.keyframe-diamond>.
      * `Map style` renders only where a style engine exists. The lesson map deliberately has one
        ground — see the note in resources/js/lesson-map.js, "the five drawn atlases were removed" —
        so on a wizard scene there is nothing for the cards to switch and they stay out.
@@ -77,7 +81,7 @@
     {{-- ── Appearance: colour, where it sits, how big, how turned, how soft ────────────────── --}}
     <x-ui.settings-section :title="__('Appearance')" name="appearance">
         <div class="space-y-2">
-            <span class="block text-2xs font-semibold uppercase tracking-wide text-base-content/55">{{ __('Colour') }}</span>
+            <span class="block text-3xs font-semibold uppercase tracking-wide text-base-content/55">{{ __('Colour') }}</span>
 
             <x-ui.color-field
                 :color="$val('tint', '')"
@@ -98,8 +102,8 @@
 
             {{-- Position: two fields on one row, X and Y, both stage percentages. --}}
             <div class="flex items-center gap-2">
-                <span style="width: var(--settings-panel-label-w, 4.5rem)"
-                      class="shrink-0 text-2xs font-semibold uppercase tracking-wide text-base-content/55">{{ __('Position') }}</span>
+                <span style="width: var(--settings-panel-label-w, 3.0625rem)"
+                      class="shrink-0 text-3xs font-semibold uppercase tracking-wide text-base-content/55">{{ __('Position') }}</span>
                 <x-ui.stepper-field glyph="X" :label="__('Horizontal position')" :min="0" :max="100" :step="1"
                                     :value="$num($val('x', 50), 0)"
                                     :on-input="$live('x')" :on-change="$save('x')" class="min-w-0 flex-1" />
@@ -117,13 +121,15 @@
                                  :on-input="$live('depth')" :on-change="$save('depth')" />
             @endif
 
+            {{-- Scale carries the keyframe marker in the file; Rotate and Blur do not. --}}
             <x-ui.slider-row :label="__('Scale')" :min="0.2" :max="6" :step="0.05"
                              :value="$val('scale', 1.0)" :display="$pct($val('scale', 1.0))" unit="%"
+                             keyframe
                              :on-input="$live('scale')" :on-change="$save('scale')" />
 
-            <x-ui.slider-row :label="__('Rotate')" :min="-180" :max="180" :step="1"
-                             :value="$val('rotation', 0)" :display="$num($val('rotation', 0), 0)" unit="°"
-                             :on-input="$live('rotation')" :on-change="$save('rotation')" />
+            {{-- Rotation is a dial, not a slider — an angle has no ends. See <x-ui.angle-row>. --}}
+            <x-ui.angle-row :asset-id="$aid" :rotation="$val('rotation', 0)"
+                            :flip-x="(bool) $val('flip_x', false)" :flip-y="(bool) $val('flip_y', false)" />
 
             <x-ui.slider-row :label="__('Blur')" :min="0" :max="2.5" :step="0.1"
                              :value="$val('blur', 0)" :display="$num($val('blur', 0), 1)"
@@ -135,8 +141,8 @@
     <x-ui.settings-section :title="__('Layer')" name="layer">
         <div class="space-y-2">
             <label class="flex items-center justify-between gap-2">
-                <span style="width: var(--settings-panel-label-w, 4.5rem)"
-                      class="shrink-0 text-2xs font-semibold uppercase tracking-wide text-base-content/55">{{ __('Blend') }}</span>
+                <span style="width: var(--settings-panel-label-w, 3.0625rem)"
+                      class="shrink-0 text-3xs font-semibold uppercase tracking-wide text-base-content/55">{{ __('Blend') }}</span>
                 {{-- Multiply is the one that earns its keep: it drops the white paper out of an
                      engraving or a scanned map so the artwork sits ON the scene instead of in a box
                      on top of it. The blend applies to the layer's CONTENT, never to this panel. --}}
@@ -190,8 +196,8 @@
                                  :on-change="'setEmbedOption(' . $aid . ', \'autospin\', $event.target.checked)'" />
 
                 <div class="flex items-center gap-2">
-                    <span style="width: var(--settings-panel-label-w, 4.5rem)"
-                      class="shrink-0 text-2xs font-semibold uppercase tracking-wide text-base-content/55">{{ __('Backdrop') }}</span>
+                    <span style="width: var(--settings-panel-label-w, 3.0625rem)"
+                      class="shrink-0 text-3xs font-semibold uppercase tracking-wide text-base-content/55">{{ __('Backdrop') }}</span>
                     <div class="flex min-w-0 flex-1 gap-1">
                         @foreach ([['none', __('None')], ['glass', __('Glass')], ['#0f172a', __('Solid')]] as [$bgVal, $bgLabel])
                             <button type="button" wire:click="setEmbedOption({{ $aid }}, 'bg', '{{ $bgVal }}')"
@@ -221,8 +227,8 @@
                     ['ink_fill', __('Fill'), ['auto' => __('Auto'), 'none' => __('None'), 'wash' => __('Wash'), 'hatch' => __('Hatch'), 'cross' => __('Crosshatch')], 'auto'],
                 ] as [$field, $label, $opts, $default])
                     <label class="flex items-center justify-between gap-2">
-                        <span style="width: var(--settings-panel-label-w, 4.5rem)"
-                      class="shrink-0 text-2xs font-semibold uppercase tracking-wide text-base-content/55">{{ $label }}</span>
+                        <span style="width: var(--settings-panel-label-w, 3.0625rem)"
+                      class="shrink-0 text-3xs font-semibold uppercase tracking-wide text-base-content/55">{{ $label }}</span>
                         <div class="relative min-w-0 flex-1">
                             <select wire:change="{{ $save($field) }}" aria-label="{{ $label }}"
                                     style="height: var(--settings-panel-row-h, 2rem)"

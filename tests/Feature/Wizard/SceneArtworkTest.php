@@ -366,6 +366,135 @@ class SceneArtworkTest extends TestCase
             ->assertDontSeeHtml('value="5"');
     }
 
+    /**
+     * THE ROTATE HANDLE'S ANGLE HAD NOWHERE TO GO. The canvas handle turned the node and updated
+     * the overlay's own copy, but the payload it emitted carried only x/y/scale — so the angle
+     * never reached the server and the next render put the layer back flat. It read as "the handle
+     * doesn't register"; the handle worked perfectly and nothing was listening.
+     */
+    public function test_an_on_canvas_rotation_is_persisted(): void
+    {
+        $this->layerComponent()
+            ->call('moveArtworkLayer', $this->asset1->id, 50.0, 58.0, 1.0, null, null, null, 45.0);
+
+        $this->assertSame(45.0, (float) $this->attachedLayer()['rotation']);
+    }
+
+    public function test_a_move_without_an_angle_leaves_the_stored_one_alone(): void
+    {
+        $this->layerComponent()
+            ->call('updateArtworkLayer', $this->asset1->id, 'rotation', 30)
+            ->call('moveArtworkLayer', $this->asset1->id, 10.0, 20.0, 1.0);
+
+        $this->assertSame(30.0, (float) $this->attachedLayer()['rotation']);
+    }
+
+    public function test_an_on_canvas_rotation_is_clamped(): void
+    {
+        $this->layerComponent()
+            ->call('moveArtworkLayer', $this->asset1->id, 50.0, 58.0, 1.0, null, null, null, 999.0);
+
+        $this->assertSame(180.0, (float) $this->attachedLayer()['rotation']);
+    }
+
+    /**
+     * Stored as a NUMBER, not as whatever string arrived off the wire. `is_numeric("45")` is true,
+     * so a string would survive the clamp untouched and only misbehave later.
+     *
+     * Not assertIsFloat: json_encode drops a zero fraction, so a whole 45.0 comes back out of the
+     * column as int 45. That is a serialisation detail and it is invisible to JS, where 45 and 45.0
+     * are the same value. What must never happen is a STRING, and a fractional angle must keep its
+     * fraction — both of which this checks.
+     */
+    public function test_the_angle_is_stored_as_a_number(): void
+    {
+        $this->layerComponent()
+            ->call('updateArtworkLayer', $this->asset1->id, 'rotation', '45');
+
+        $stored = $this->attachedLayer()['rotation'];
+        $this->assertIsNotString($stored);
+        $this->assertSame(45.0, (float) $stored);
+    }
+
+    public function test_a_fractional_angle_keeps_its_fraction(): void
+    {
+        $this->layerComponent()
+            ->call('updateArtworkLayer', $this->asset1->id, 'rotation', '45.5');
+
+        $this->assertSame(45.5, (float) $this->attachedLayer()['rotation']);
+    }
+
+    public function test_the_colour_treatment_values_are_stored_as_numbers(): void
+    {
+        $this->layerComponent()
+            ->call('updateArtworkLayer', $this->asset1->id, 'white_key', '0.04')
+            ->call('updateArtworkLayer', $this->asset1->id, 'tint_opacity', '0.5');
+
+        $layer = $this->attachedLayer();
+        $this->assertIsFloat($layer['white_key']);
+        $this->assertIsFloat($layer['tint_opacity']);
+    }
+
+    /**
+     * Flip is mirroring, not rotation: on a symmetrical shape a half turn and a horizontal flip
+     * look identical, and on a ship they are opposite headings.
+     */
+    public function test_each_flip_axis_is_stored_independently(): void
+    {
+        $this->layerComponent()
+            ->call('updateArtworkLayer', $this->asset1->id, 'flip_x', true)
+            ->call('updateArtworkLayer', $this->asset1->id, 'flip_y', false);
+
+        $layer = $this->attachedLayer();
+        $this->assertTrue($layer['flip_x']);
+        $this->assertFalse($layer['flip_y']);
+    }
+
+    public function test_flipping_does_not_touch_the_angle(): void
+    {
+        $this->layerComponent()
+            ->call('updateArtworkLayer', $this->asset1->id, 'rotation', 30)
+            ->call('updateArtworkLayer', $this->asset1->id, 'flip_x', true);
+
+        $this->assertSame(30.0, (float) $this->attachedLayer()['rotation']);
+    }
+
+    /**
+     * The canvas payload is an explicit field whitelist, so a field added to the model is invisible
+     * to the editor and the player until it is named here too. `width`, `flip_x` and `flip_y` were
+     * stored correctly and never sent, so the canvas forgot them on the next scene:load — the
+     * teacher's width survived the save and vanished on the refresh.
+     */
+    public function test_the_canvas_payload_carries_the_layer_box_and_its_flips(): void
+    {
+        $component = $this->layerComponent()
+            ->call('updateArtworkLayer', $this->asset1->id, 'width', 62.5)
+            ->call('updateArtworkLayer', $this->asset1->id, 'rotation', 45)
+            ->call('updateArtworkLayer', $this->asset1->id, 'flip_x', true);
+
+        $shots = $component->instance()->serializeShots($this->scene->refresh());
+        $layer = collect($shots[0]['layers'])->firstWhere('asset_id', $this->asset1->id);
+
+        $this->assertSame(62.5, $layer['width']);
+        $this->assertSame(45.0, $layer['rotation']);
+        $this->assertTrue($layer['flip_x']);
+        $this->assertFalse($layer['flip_y']);
+    }
+
+    /**
+     * Absent means "take the width from the image's own aspect", which is what every layer authored
+     * before the Dimensions row does. It must not arrive at the canvas as a number.
+     */
+    public function test_a_layer_with_no_width_of_its_own_reports_none(): void
+    {
+        $component = $this->layerComponent();
+
+        $shots = $component->instance()->serializeShots($this->scene->refresh());
+        $layer = collect($shots[0]['layers'])->firstWhere('asset_id', $this->asset1->id);
+
+        $this->assertNull($layer['width']);
+    }
+
     /** @return array<string, mixed> */
     private function attachedLayer(): array
     {

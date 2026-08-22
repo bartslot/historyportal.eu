@@ -70,7 +70,7 @@
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-CtmQSzUx.css",
+    "file": "assets/app-DKnCGYhf.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -79,7 +79,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-DDwLAJr7.js",
+    "file": "assets/app-FgBY7f1D.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -139,7 +139,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-BBbFABPa.js",
+    "file": "assets/lesson-player-OnB64bSf.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -161,7 +161,7 @@
     ]
   },
   "resources/js/scene/ArtworkOverlay.js": {
-    "file": "assets/ArtworkOverlay-AOPGQdIt.js",
+    "file": "assets/ArtworkOverlay-CEaggusc.js",
     "name": "ArtworkOverlay",
     "src": "resources/js/scene/ArtworkOverlay.js",
     "isDynamicEntry": true,
@@ -178,7 +178,7 @@
     "isDynamicEntry": true
   },
   "resources/js/scene/ParallaxScene.js": {
-    "file": "assets/ParallaxScene-Bm-Vz9Ak.js",
+    "file": "assets/ParallaxScene-C1e8hfoF.js",
     "name": "ParallaxScene",
     "src": "resources/js/scene/ParallaxScene.js",
     "isDynamicEntry": true,
@@ -209,7 +209,7 @@
     "isDynamicEntry": true
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-h7ko3Ofm.js",
+    "file": "assets/index-7LFhmO8V.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,

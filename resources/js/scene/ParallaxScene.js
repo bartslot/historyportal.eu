@@ -211,6 +211,11 @@ export class ParallaxScene {
   /** @param {PlaneSpec} spec */
   _buildPlane (spec) {
     const { url, kind = 'cover', depth = 1, height, width, sway } = spec
+    // Mirroring, matching ArtworkOverlay._transform: applied AFTER the rotation so a flipped layer
+    // mirrors about its own axes. Absent means unflipped.
+    const mirror = (spec.flip_x || spec.flip_y)
+      ? ` scale(${spec.flip_x ? -1 : 1}, ${spec.flip_y ? -1 : 1})`
+      : ''
     const layer = document.createElement('div')
     const animate = sway && ! prefersReducedMotion()
 
@@ -251,9 +256,10 @@ export class ParallaxScene {
         const box = Number.isFinite(width)
           ? `height:${height ?? 40}%;width:${width}%;max-width:none;object-fit:fill;`
           : `height:${height ?? 40}%;max-width:none;object-fit:contain;`
+        const spin = Number.isFinite(spec.rotation) && spec.rotation ? ` rotate(${spec.rotation}deg)` : ''
         img.style.cssText = `position:absolute;left:${spec.x}%;top:${spec.y}%;`
           + box
-          + `transform:translate(-50%,-50%) scale(${s});`
+          + `transform:translate(-50%,-50%) scale(${s})${spin}${mirror};`
       } else {
         // Centered + bottom-anchored figure; translateX(-50%) lives in the sway keyframes
         // too, so the breathing animation composes with the centering instead of fighting it.

@@ -19,20 +19,20 @@
      teacher nudging a layer one percent left needs somewhere to type it and an arrow key that
      steps it; a readout would leave the slider as the only way to hit a round number.
 
-     Figma's right-hand cell — a small outlined diamond — is NOT reproduced. That rhombus is
-     Figma's own "bound to a variable" affordance from the tool's inspector chrome, which the mock
-     inherited; it names nothing in this product. Drawing it would put a control on the panel that
-     does nothing when clicked. --}}
+     The right-hand cell is the file's per-property keyframe marker. It is drawn and inert; see
+     <x-ui.keyframe-diamond> for why. --}}
 {{-- Stock DaisyUI `input` in its label form, which is how DaisyUI 5 wants a prefixed field. The
      theme supplies the border, background and focus ring, so nothing here restates them. --}}
 <label {{ $attributes->class(['input input-xs flex items-center gap-1.5 px-2']) }}
        style="height: var(--settings-panel-row-h, 2rem)">
-    <span aria-hidden="true"
-          class="shrink-0 text-2xs font-semibold uppercase tracking-wide text-base-content/55">{{ $glyph }}</span>
+    {{-- data-scrub: drag the glyph sideways to change the number. See resources/js/ui/scrub.js. --}}
+    <span data-scrub aria-hidden="true"
+          class="shrink-0 cursor-ew-resize select-none text-3xs font-semibold uppercase tracking-wide text-base-content/55">{{ $glyph }}</span>
     <input type="number" min="{{ $min }}" max="{{ $max }}" step="{{ $step }}" value="{{ $value }}"
            aria-label="{{ $label }}"
            @if ($onInput) x-on:input="{{ $onInput }}" @endif
            @if ($onChange) wire:change="{{ $onChange }}" @endif
-           class="w-full min-w-0 border-0 bg-transparent p-0 font-mono text-2xs outline-none
+           class="w-full min-w-0 border-0 bg-transparent p-0 text-xs outline-none
                   [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
+    <x-ui.keyframe-diamond class="border-l border-base-content/10 pl-1" />
 </label>

@@ -63,53 +63,81 @@ export const artObjId = (assetId) => `art_${assetId}`
  * Keep this in step with what _node() reads. The url is stripped of its cache-busting query so a
  * re-save of the same file doesn't count as a change.
  */
+/**
+ * Which layers are on the scene, in order — the part of a scene that needs a REBUILD when it
+ * changes. Everything else (position, size, colour, blend, the animate settings) is a property of
+ * a node that already exists and can be set on it in place.
+ *
+ * The split exists because rebuilding is visible. setLayers() tears every node down and builds it
+ * again, and the caller then replays the entrance animations; doing that after each saved edit made
+ * the whole scene flicker and the layers re-fly-in every time a teacher nudged a slider.
+ */
+/**
+ * Every property syncProps can apply to a live node. Keep it in step with the switch in
+ * setLayerProp — a key listed here that the switch does not handle updates the held item and
+ * nothing on screen, which looks exactly like a save that did not take.
+ */
+const SYNCABLE = [
+  'x', 'y', 'scale', 'height', 'width', 'rotation', 'opacity', 'blur', 'blend',
+  'white_key', 'grayscale', 'tint', 'tint_opacity', 'flip_x', 'flip_y',
+]
+
+/**
+ * The properties syncProps LOOKS at, syncable or not.
+ *
+ * Explicit rather than "every key on the payload", because the payload also carries metadata the
+ * node never renders — `path`, `title` — and the normalised item does not hold those at all. A
+ * blanket comparison found a difference on the first of them every time and fell back to a
+ * rebuild, which would have left the flicker exactly where it was.
+ *
+ * Everything here that is NOT in SYNCABLE forces the rebuild: `depth` moves the parallax offset,
+ * the anim_* values are read when entrances replay, and anchor/lng/lat change what the projector
+ * does with the layer. None of them are a property setLayerProp can paint.
+ */
+const WATCHED = [
+  ...SYNCABLE,
+  'depth', 'anchor', 'lng', 'lat',
+  'anim', 'anim_delay', 'anim_ease', 'anim_duration',
+  'anim_out', 'anim_out_delay', 'anim_out_ease', 'anim_out_duration',
+]
+
+export function layersIdentity(layers) {
+  return JSON.stringify((Array.isArray(layers) ? layers : []).map(l => [
+    l.asset_id,
+    String(l.url || (l.embed && l.embed.src) || '').split('?')[0],
+    l.kind,
+    l.embed ? l.embed.type : null,
+  ]))
+}
+
 export function layersSignature(layers) {
   return JSON.stringify((Array.isArray(layers) ? layers : []).map(l => [
     l.asset_id,
     String(l.url || (l.embed && l.embed.src) || '').split('?')[0],
-    l.x, l.y, l.scale, l.height, l.depth, l.rotation,
+    l.x, l.y, l.scale, l.height, l.width, l.depth, l.rotation,
     l.blur, l.opacity, l.blend,
     l.white_key, l.grayscale, l.tint, l.tint_opacity,
     l.anim, l.anim_delay, l.anim_ease, l.anim_duration,
     l.anim_out, l.anim_out_delay, l.anim_out_ease, l.anim_out_duration,
     l.kind,
-    l.anchor, l.lng, l.lat,
+    l.anchor, l.lng, l.lat, l.flip_x, l.flip_y,
     l.embed ? JSON.stringify(l.embed.opts || null) : null,
   ]))
 }
 
-export class ArtworkOverlay {
-  constructor(hostEl, { onChange = null, readonly = false } = {}) {
-    this.host = hostEl
-    this.onChange = onChange
-    this.readonly = readonly   // playback: render the layers but never let the viewer drag them
-    this._layers = []
-    this._selectedId = null
-    this._entrances = []   // Animations in flight, so a scene change can stop them
-    // Stacking order for the layer NODES: [normal, when stacked above the text overlay].
-    // Deliberately not on the host — see setStackLevels.
-    this._zNormal = 6
-    this._zTop = 8
-    // { project(lng,lat) → {x,y} host-%, unproject(x%,y%) → {lng,lat} } while a map is live
-    // beneath this overlay. Null on a slideshow scene, where positions are stage-relative.
-    this._projector = null
-    this.host.style.pointerEvents = 'none'   // the host is transparent; only layer nodes catch events
-    // Deselect when something that isn't one of MY layers is selected (mutually-exclusive
-    // selection across text, artwork and background — no re-dispatch, so no loop).
-    window.addEventListener('scene-object-selected', (e) => {
-      const id = e.detail?.id
-      if (id && !this._layers.some(l => artObjId(l.asset_id) === id) && this._selectedId !== null) {
-        this._selectedId = null
-        this._applySelection()
-      }
-    })
-  }
-
-  setLayers(layers) {
-    this._layers = (Array.isArray(layers) ? layers : [])
-      // A layer is renderable if it has an image url OR an iframe embed (3D / video).
-      .filter(l => l && (l.url || l.embed) && (l.asset_id != null))
-      .map(l => ({
+/**
+ * One layer, in the shape the overlay holds internally.
+ *
+ * SHARED WITH syncProps ON PURPOSE. The server payload and the held item are not the same shape:
+ * the payload sends `anchor: null` where the item holds `'screen'`, `anim: null` where the item
+ * holds `'none'`, and so on for a dozen fields. Diffing the raw payload against the item therefore
+ * found a "change" in something unsyncable on EVERY scene load, so the in-place path fell straight
+ * back to a rebuild and the flicker it was written to remove stayed exactly where it was. The unit
+ * tests missed it because their fixtures were already in the normalised shape — the payload the
+ * server actually sends never appeared in them.
+ */
+export function normalizeLayer(l) {
+  return {
         asset_id: l.asset_id,
         url: l.url || null,
         embed: l.embed || null,   // { type:'sketchfab'|'video', src, title, ... } for iframe layers
@@ -144,6 +172,11 @@ export class ArtworkOverlay {
         anim_out_ease: l.anim_out_ease || 'exit',
         anim_out_duration: Number.isFinite(l.anim_out_duration) ? l.anim_out_duration : 600,
         rotation: Number.isFinite(l.rotation) ? l.rotation : 0,   // degrees, clockwise
+        // Mirroring. Absent means unflipped, so every layer authored before the Angle control
+        // renders exactly as it did. NOT a rotation: a 180-degree turn and a horizontal flip look
+        // the same on a symmetrical shape and completely different on a ship or a portrait.
+        flip_x: !!l.flip_x,
+        flip_y: !!l.flip_y,
         kind: l.kind || 'figure',
         // 'map' pins the layer to lng/lat and lets the projector place it; 'screen' (default)
         // keeps it at its x/y on the stage.
@@ -151,7 +184,41 @@ export class ArtworkOverlay {
         lng: Number.isFinite(l.lng) ? l.lng : null,
         lat: Number.isFinite(l.lat) ? l.lat : null,
         title: l.title || (l.embed && l.embed.title) || 'Icon',
-      }))
+  }
+}
+
+export class ArtworkOverlay {
+  constructor(hostEl, { onChange = null, readonly = false } = {}) {
+    this.host = hostEl
+    this.onChange = onChange
+    this.readonly = readonly   // playback: render the layers but never let the viewer drag them
+    this._layers = []
+    this._selectedId = null
+    this._entrances = []   // Animations in flight, so a scene change can stop them
+    // Stacking order for the layer NODES: [normal, when stacked above the text overlay].
+    // Deliberately not on the host — see setStackLevels.
+    this._zNormal = 6
+    this._zTop = 8
+    // { project(lng,lat) → {x,y} host-%, unproject(x%,y%) → {lng,lat} } while a map is live
+    // beneath this overlay. Null on a slideshow scene, where positions are stage-relative.
+    this._projector = null
+    this.host.style.pointerEvents = 'none'   // the host is transparent; only layer nodes catch events
+    // Deselect when something that isn't one of MY layers is selected (mutually-exclusive
+    // selection across text, artwork and background — no re-dispatch, so no loop).
+    window.addEventListener('scene-object-selected', (e) => {
+      const id = e.detail?.id
+      if (id && !this._layers.some(l => artObjId(l.asset_id) === id) && this._selectedId !== null) {
+        this._selectedId = null
+        this._applySelection()
+      }
+    })
+  }
+
+  setLayers(layers) {
+    this._layers = (Array.isArray(layers) ? layers : [])
+      // A layer is renderable if it has an image url OR an iframe embed (3D / video).
+      .filter(l => l && (l.url || l.embed) && (l.asset_id != null))
+      .map(normalizeLayer)
     this._projectPinned()
     this._render()
   }
@@ -241,8 +308,13 @@ export class ArtworkOverlay {
     // Rotation AFTER the centring translate, so the layer turns about its own middle rather than
     // swinging around the stage origin.
     const spin = item.rotation ? ` rotate(${item.rotation}deg)` : ''
+    // After the rotation, so a flipped layer mirrors about its own axes rather than about the
+    // stage's — flip then turn puts a mirrored ship on the wrong heading.
+    const sx = item.flip_x ? -1 : 1
+    const sy = item.flip_y ? -1 : 1
+    const mirror = (sx === 1 && sy === 1) ? '' : ` scale(${sx}, ${sy})`
 
-    return `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))${spin}`
+    return `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))${spin}${mirror}`
   }
 
   // On-screen height of the node = base height × user scale, as a % of the stage.
@@ -266,6 +338,48 @@ export class ArtworkOverlay {
   _widthCss(item) {
     const w = this._widthPct(item)
     return w === null ? 'width:max-content;' : `width:${w}%;`
+  }
+
+  /**
+   * Apply changed PROPERTIES to the nodes already on screen, without rebuilding any of them.
+   *
+   * The counterpart to layersIdentity: when the same layers are present and only their values
+   * moved, every change is something setLayerProp already knows how to apply to a live node. That
+   * keeps the canvas steady — no teardown, no re-entrance, no dropped selection or in-flight drag.
+   *
+   * Returns false when it cannot do the job (a layer it does not hold), so the caller can fall back
+   * to a full setLayers rather than silently showing stale values.
+   */
+  syncProps(layers) {
+    const incoming = Array.isArray(layers) ? layers : []
+    const plan = []
+
+    // Work out the whole plan BEFORE touching anything. A partial application followed by a
+    // rebuild would paint two different states in consecutive frames, which is the flicker this
+    // exists to remove.
+    for (const raw of incoming) {
+      const item = this._layers.find(l => String(l.asset_id) === String(raw.asset_id))
+      if (!item) return false            // a layer we do not hold — the caller must rebuild
+
+      // Compare like with like. The payload and the held item are different shapes, and diffing
+      // them raw finds a phantom change in something unsyncable every single time.
+      const next = normalizeLayer(raw)
+
+      for (const key of WATCHED) {
+        // After normalizeLayer there is no "absent": a layer with no explicit width normalises to
+        // width null, which is exactly what the server means by it, so the two agree.
+        if (next[key] === undefined) continue
+        if (item[key] === next[key]) continue
+        // Anything setLayerProp cannot paint — `depth`, the animate settings, the anchor — has to
+        // go the long way. Applying it here would update the held item and nothing on screen,
+        // which reads exactly like a save that did not take.
+        if (!SYNCABLE.includes(key)) return false
+        plan.push([item.asset_id, key, next[key]])
+      }
+    }
+
+    plan.forEach(([id, key, value]) => this.setLayerProp(id, key, value))
+    return true
   }
 
   /**
@@ -319,7 +433,8 @@ export class ArtworkOverlay {
     if (!item || !node) return
 
     const NUMERIC = ['x', 'y', 'scale', 'height', 'width', 'opacity', 'blur', 'white_key', 'depth', 'rotation', 'tint_opacity']
-    item[key] = NUMERIC.includes(key) ? Number(value) : (key === 'grayscale' ? !!value : value)
+    const BOOLEAN = ['grayscale', 'flip_x', 'flip_y']
+    item[key] = NUMERIC.includes(key) ? Number(value) : (BOOLEAN.includes(key) ? !!value : value)
 
     switch (key) {
       case 'tint':
@@ -356,6 +471,8 @@ export class ArtworkOverlay {
         break
       }
       case 'rotation':
+      case 'flip_x':
+      case 'flip_y':
         node.style.transform = this._transform(item)
         this._syncChrome(item)
         break
@@ -876,6 +993,11 @@ export class ArtworkOverlay {
       x: Math.round(item.x * 100) / 100,
       y: Math.round(item.y * 100) / 100,
       scale: Math.round(item.scale * 1000) / 1000,
+      // ROTATION BELONGS HERE. The rotate handle turns the node and updates item.rotation, but
+      // this payload carried only x/y/scale — so the angle never reached the server, and the next
+      // render put the layer back flat. It looked like the handle "didn't register"; in fact it
+      // worked perfectly and nothing was listening.
+      rotation: Math.round((item.rotation || 0) * 10) / 10,
       anchor: item.anchor,
       lng: Number.isFinite(item.lng) ? item.lng : null,
       lat: Number.isFinite(item.lat) ? item.lat : null,

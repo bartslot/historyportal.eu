@@ -847,6 +847,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     let _artworkOverlay = null
     let _artworkHost = null
     let _artworkSig = null   // skip re-seeding the overlay on identical poll re-renders
+    let _artworkIdent = null // WHICH layers are on the scene; a change here is the only rebuild
     // Drawing mode: ink pen engine that draws each clipart stroke-by-stroke.
     let _inkMod = null
     let _inkEngines = []
@@ -924,6 +925,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         if (_artworkOverlay) { try { _artworkOverlay.clear() } catch (_) {} }
         if (_artworkHost) _artworkHost.style.display = 'none'
         _artworkSig = null
+        _artworkIdent = null
         for (const e of _inkEngines) { try { e.destroy() } catch (_) {} }
         _inkEngines = []
         _inkSig = null
@@ -1042,10 +1044,19 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                 // Re-seed only on a real change, then replay the entrances so the teacher sees
                 // the movement they just set. Gated on the same signature, or the 3s poll would
                 // restart every entrance a few times a minute while they work.
+                // Same rule as the map overlay: a rebuild is visible, so only rebuild when the
+                // SET of layers changed. When the same layers are present and only their values
+                // moved, syncProps applies them to the live nodes — no teardown, and no entrance
+                // replaying itself every time a slider is let go.
                 if (sig !== _artworkSig) {
+                    const ident = _artworkMod.layersIdentity(artLayers)
+                    const inPlace = ident === _artworkIdent && _artworkOverlay.syncProps?.(artLayers)
+                    if (!inPlace) {
+                        _artworkOverlay.setLayers(artLayers)
+                        _artworkOverlay.playEntrances()
+                    }
                     _artworkSig = sig
-                    _artworkOverlay.setLayers(artLayers)
-                    _artworkOverlay.playEntrances()
+                    _artworkIdent = ident
                 }
             }
             return true

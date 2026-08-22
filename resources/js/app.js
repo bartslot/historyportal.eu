@@ -13,6 +13,8 @@ import { clampToViewport, restorePosition, savePosition, defaultPosition, isView
 import './dev/tuner.js';
 import { settingsPanelTuner } from './dev/settings-panel-tuner.js';
 import { layerSizeRow } from './ui/layer-size-row.js';
+import { layerAngleRow } from './ui/angle-dial.js';
+import { initScrub } from './ui/scrub.js';
 import { layerOverlay, setLayerPropEverywhere, selectLayerEverywhere } from './scene/layer-overlays.js';
 
 window.Sortable = Sortable;
@@ -60,6 +62,14 @@ window.layerSizeRow = layerSizeRow;
 window.__layerOverlay = layerOverlay;
 window.__setLayerProp = setLayerPropEverywhere;
 window.__selectLayer = selectLayerEverywhere;
+
+// The rotation dial: x-data="layerAngleRow({ ... })". Same global-factory pattern.
+window.layerAngleRow = layerAngleRow;
+
+// Drag a field's label sideways to change its number, app-wide. ONE delegated listener — these
+// panels are morphed constantly by Livewire and a per-element binding would quietly stop working
+// on whichever row was re-rendered last. Opt in with `data-scrub` on the label.
+initScrub();
 
 // The 3D scene system (three.js, ~1.7 MB) is used ONLY by the lesson-creation wizard. Load it on
 // demand via window.loadLessonScene() so the landing page and other app pages never download three.

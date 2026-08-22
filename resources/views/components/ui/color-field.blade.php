@@ -44,8 +44,8 @@
                    class="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
         </span>
         <span class="flex min-w-0 items-baseline gap-0.5">
-            <span class="text-2xs font-semibold text-base-content/55">#</span>
-            <span class="truncate font-mono text-2xs tracking-wide text-base-content/85">{{ $hex }}</span>
+            <span class="text-3xs font-semibold text-base-content/55">#</span>
+            <span class="truncate text-xs tracking-wide text-base-content/85">{{ $hex }}</span>
         </span>
     </label>
 
@@ -54,8 +54,10 @@
                aria-label="{{ $opacityLabel }}"
                @if ($onOpacityInput) x-on:input="{{ $onOpacityInput }}" @endif
                @if ($onOpacityChange) wire:change="{{ $onOpacityChange }}" @endif
-               class="w-7 border-0 bg-transparent p-0 text-right font-mono text-2xs outline-none
+               class="w-7 border-0 bg-transparent p-0 text-right text-xs outline-none
                       [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
-        <span class="text-2xs font-semibold text-base-content/55">%</span>
+        <span class="text-3xs font-semibold text-base-content/55">%</span>
     </label>
+
+    <x-ui.keyframe-diamond class="border-l border-base-content/10 pl-1" />
 </div>

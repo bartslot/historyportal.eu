@@ -275,6 +275,7 @@
         // window.__lessonArtworkLayer.
         let artOverlay = null
         let artSig = null
+        let artIdent = null
         const voyageArtHost = () => document.getElementById('lesson-voyage-art')
         const ensureArtOverlay = () => {
             if (artOverlay) return artOverlay
@@ -300,6 +301,7 @@
                         : null
                     window.Livewire.dispatch('artwork:move', {
                         assetId, x: t.x, y: t.y, scale: t.scale,
+                        rotation: t.rotation,
                         anchor: ll ? 'map' : null,
                         lng: ll ? ll.lng : null,
                         lat: ll ? ll.lat : null,
@@ -346,7 +348,18 @@
             // Before the layers, never after: a pinned layer has no usable x/y of its own, so a
             // seed without the projector paints it at a stale position for one frame.
             wireArtProjector()
-            if (sig !== artSig) { artSig = sig; overlay.setLayers(layers); overlay.playEntrances() }
+            // A REBUILD IS VISIBLE, so only rebuild when the set of layers actually changed.
+            // setLayers() tears every node down and playEntrances() then re-flies them in; doing
+            // that after each saved edit is what made the scene flicker and distort every time a
+            // teacher nudged a value. When the same layers are present and only their numbers
+            // moved, syncProps applies the changes to the live nodes and nothing is torn down.
+            if (sig !== artSig) {
+                const ident = window.LessonScene.layersIdentity(layers)
+                const inPlace = ident === artIdent && overlay.syncProps?.(layers)
+                if (!inPlace) { overlay.setLayers(layers); overlay.playEntrances() }
+                artSig = sig
+                artIdent = ident
+            }
             // A dedicated handle the object list reads on voyage scenes — the SHARED handle can be
             // repointed by a slideshow render (wizard-bridge), so it isn't reliable here.
             window.__voyageArtworkLayer = overlay
@@ -356,6 +369,7 @@
             const h = voyageArtHost()
             if (h) h.style.display = 'none'
             artSig = null
+            artIdent = null
             if (artOverlay) { try { artOverlay.clear() } catch (_) {} }
             window.__voyageArtworkLayer = null
             // Release the shared handle only if it still points at MY overlay (a slideshow scene

@@ -91,13 +91,28 @@
     --color-dropdown: #18293f;
     --color-dropdown-border: #2e425a;
 
-    /* The one small step. The panels had drifted into text-[10px] and text-[11px] used
-       interchangeably for the same kind of label, which is two names for one intention; they are
-       merged here at 11px, the size Figma's own LABEL_BIGGER style carries. Anything smaller than
-       this is not a size we have — a row label that will not fit at 11px is a row that needs a
-       wider label column, not a sixth font size. */
-    --text-2xs: 0.6875rem;        /* 11px */
+    /* The panels had drifted into text-[10px] and text-[11px] used interchangeably for the same
+       kind of label, which is two names for one intention; they are merged here at 11px, the size
+       Figma's LABEL_BIGGER carries. This is the SECTION-TITLE step — the row labels under it are
+       text-3xs below, which is a different style in the file, not a rounding of this one. */
+    --text-2xs: 0.6875rem;        /* 11px — Figma's LABEL_BIGGER (section titles) */
     --text-2xs--line-height: 1.1;
+
+    /* Figma's LABEL_SMALL_UI: the uppercase row labels in a settings panel.
+       This is a SECOND small step, and it is deliberate. An earlier pass merged everything small
+       into text-2xs on the reading that the file had one band; it has two — LABEL_SMALL_UI at 8
+       and LABEL_BIGGER at 11 — and collapsing them made every row label sit three pixels too
+       heavy and forced the label column 23px wider than the design to fit. */
+    --text-3xs: 0.5rem;           /* 8px */
+    --text-3xs--line-height: 1.2;
+
+    /* Slider parts, measured off `row-rotate` (1471:2104). Named here rather than written as hex
+       at the point of use so the theme stays the one place a colour is decided. The rail is thin
+       and the fill is a muted indigo: a white fill on a fat pill reads as a progress bar, which is
+       what this looked like before and is not what the file draws. */
+    --color-slider-track: #222b3d;
+    --color-slider-fill: #586291;
+    --color-slider-knob: #d9d9d9;
 
     /* Settings-panel geometry (Figma settings-Maps-panel, 1470:1877).
 
@@ -107,7 +122,7 @@
        and moves them live by rewriting these properties, which only works while the panel READS
        them. Hard-coding any of these back into a class is what silently unhooks the control. */
     --settings-panel-w: 19.375rem;      /* 310px */
-    --settings-panel-label-w: 4.5rem;   /* the label column; Figma's 49px does not fit 11px type */
+    --settings-panel-label-w: 3.0625rem;   /* 49px — the file's, and 8px labels fit it */
     --settings-panel-thumb-h: 4rem;     /* 64px map-style card */
     --settings-panel-row-h: 2rem;       /* 32px field height */
     --settings-panel-pad: 1rem;         /* 16px side padding */
@@ -177,6 +192,38 @@
     font-weight: 700;
     font-style: normal;
     font-display: swap;
+}
+
+/* ─── The settings panel's slider — Figma `row-rotate` (1471:2104) ──── */
+/**
+ * DaisyUI's range, brought to the file's geometry through its OWN variables. Nothing here draws a
+ * track or a thumb; a hand-rolled slider would lose the keyboard stepping, the RTL handling and the
+ * focus ring the component already has. DaisyUI supplies the behaviour, Figma supplies the look.
+ *
+ * DELIBERATELY UNLAYERED, and this is the whole reason it works. DaisyUI declares `.range` inside
+ * `@layer utilities`, and utilities outrank components — so the same block written in
+ * `@layer components` lost every property that `.range` also sets. It failed silently and
+ * half-way: the fill colour and the corner radius landed (those two `.range` does not set), while
+ * the thumb size, the rail colour and the knob colour did not, leaving a 24px pill wearing the
+ * right colours. Unlayered CSS beats every layer, which is the same reason the button cursor rule
+ * at the bottom of this file is unlayered.
+ *
+ * The one number that does the work is --range-thumb-size. DaisyUI derives the track height from
+ * it (`calc(var(--range-thumb-size) * .5)`), so the file's 7px rail and 13.6px knob are not two
+ * numbers to reconcile — they are one 14px thumb, and any other value makes rail and knob disagree.
+ *
+ * --radius-selector is scoped here for the same reason: the track takes it directly (the file's
+ * rx 3) and the thumb takes it plus --range-p, which on a 14px thumb still resolves to a circle.
+ * --range-p is zeroed because the file's knob is solid, not ringed.
+ */
+.range-panel {
+    --range-thumb-size: 0.875rem;      /* 14px knob → 7px rail */
+    --radius-selector: 3px;            /* rx 3 on the rail; the knob stays round */
+    --range-p: 0px;                    /* solid knob, no ring */
+    --range-bg: var(--color-slider-track);
+    --range-thumb: var(--color-slider-knob);
+    /* --range-progress is currentColor, so the fill is set as the element's colour. */
+    color: var(--color-slider-fill);
 }
 
 /* ─── DaisyUI component overrides — Learning Portal brand ───────────── */
