@@ -14,7 +14,7 @@
  * front, amber AT it, nothing ahead. No geometry changes and no second canvas — it composites with
  * the map exactly like any other line, so it can never sit over labels or pins that belong on top.
  */
-import * as EASING from '../easing.js'
+import { CURVE } from '../easing.js'
 
 const AMBER = '#f59e0b'
 const CLEAR = 'rgba(0,0,0,0)'
@@ -108,12 +108,12 @@ export const outlineOf = (geometry) => {
  * @param {number} [opts.durationMs]   omitted → scaled to the longest path
  * @param {number} [opts.maxMs]        ceiling for that scaling
  * @param {string} [opts.beforeId]     insert beneath this layer
- * @param {Function} [opts.easing]     defaults to easeInCubic: slow build, then away
+ * @param {Function} [opts.easing]     defaults to CURVE.drawOn: slow build, then away
  * @returns {{cancel: Function}}
  */
 export const sweepBorder = (map, {
   id, lines, trail = null, colour = AMBER, width = 2.6,
-  durationMs, maxMs = 4200, beforeId, easing = EASING.easeInCubic,
+  durationMs, maxMs = 4200, beforeId, easing = CURVE.drawOn,
 } = {}) => {
   const noop = { cancel: () => {} }
   if (!map || !id || !Array.isArray(lines) || !lines.length) return noop

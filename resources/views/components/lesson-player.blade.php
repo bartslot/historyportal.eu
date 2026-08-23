@@ -50,7 +50,7 @@
             <template x-if="currentAttribution">
                 <span
                     x-text="currentAttribution"
-                    class="rounded-md bg-slate-950/60 px-2 py-0.5 text-[10px] text-slate-400 backdrop-blur-sm transition-opacity duration-700"
+                    class="rounded-md bg-slate-950/60 px-2 py-0.5 text-2xs text-slate-400 backdrop-blur-sm transition-opacity duration-700"
                     :class="attributionVisible ? 'opacity-100' : 'opacity-0'"
                 ></span>
             </template>
@@ -58,13 +58,13 @@
             {{-- Source badge --}}
             <template x-if="currentSource === 'europeana'">
                 <a href="https://www.europeana.eu" target="_blank" rel="noopener noreferrer"
-                   class="rounded-md bg-slate-950/60 px-2 py-0.5 text-[10px] text-indigo-400 hover:text-indigo-300 backdrop-blur-sm transition-colors">
+                   class="rounded-md bg-slate-950/60 px-2 py-0.5 text-2xs text-indigo-400 hover:text-indigo-300 backdrop-blur-sm transition-colors">
                     Europeana
                 </a>
             </template>
             <template x-if="currentSource === 'wikimedia'">
                 <a href="https://commons.wikimedia.org" target="_blank" rel="noopener noreferrer"
-                   class="rounded-md bg-slate-950/60 px-2 py-0.5 text-[10px] text-sky-400 hover:text-sky-300 backdrop-blur-sm transition-colors">
+                   class="rounded-md bg-slate-950/60 px-2 py-0.5 text-2xs text-sky-400 hover:text-sky-300 backdrop-blur-sm transition-colors">
                     Wikimedia
                 </a>
             </template>

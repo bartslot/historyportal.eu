@@ -131,11 +131,11 @@
     {{-- Title bar: the drag handle. `touch-none` stops a touch drag scrolling the page instead. --}}
     <div class="flex cursor-move touch-none select-none items-center justify-between border-b border-slate-700/60 bg-base-200/60 px-3 py-2"
          @pointerdown="start($event)">
-        <span class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">{{ $title }}</span>
+        <span class="text-2xs font-semibold uppercase tracking-widest text-slate-400">{{ $title }}</span>
         {{-- The close button must not start a drag, or a click that moves one pixel becomes a drag
              and never closes. --}}
         <button type="button" @pointerdown.stop @click="{{ $onClose }}"
-                class="text-slate-500 hover:text-slate-200" aria-label="{{ __('Close') }}">&times;</button>
+                class="btn btn-ghost btn-circle btn-xs text-slate-500 hover:text-slate-200" aria-label="{{ __('Close') }}">&times;</button>
     </div>
 
     {{ $slot }}

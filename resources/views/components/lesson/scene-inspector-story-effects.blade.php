@@ -5,7 +5,7 @@
 <div class="mt-4 space-y-3 rounded-box border border-amber-500/30 bg-base-200/60 p-3">
     <div>
         <h4 class="text-xs font-semibold uppercase tracking-widest text-amber-300">{{ __('Game effects') }}</h4>
-        <p class="mt-1 text-[11px] text-slate-500">{{ __('What this choice does to the class meters, and what the game master says next.') }}</p>
+        <p class="mt-1 text-2xs text-slate-500">{{ __('What this choice does to the class meters, and what the game master says next.') }}</p>
     </div>
 
     <label class="form-control">

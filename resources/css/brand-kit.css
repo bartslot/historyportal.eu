@@ -61,12 +61,52 @@
   --color-card-action: #ffffff;
   --color-card-action-label: #18293f;
 
+  /* ── The type scale below Tailwind's `xs` ─────────────────────────────────────────────────── */
+  /* Tailwind stops at --text-xs (12px) and this UI needs smaller, so for a long time every author
+     invented their own bottom of the scale. Measured across resources/views and resources/js: the
+     ~10px band was spelled four ways in 189 places (10px, 0.65rem, 0.62rem, 0.6rem), the ~11px band
+     four ways in 108, and a ~9px band three ways in 33 with nothing behind any of them. Rendered,
+     one wizard screen carried SIX different sizes under 12px at once: 9, 9.6, 10, 10.4, 11, 12.
+     They are now two named steps, and nothing outside this file sets a font size.
+     Guarded by tests/Unit/TypeScaleTest.php, which fails on a new arbitrary size.
+
+     WHY 11px AND NOT 10px. Bart: "the ~11px band... let's combine it with the 10px. Use tailwind
+     sizing for this." Both values were in play and 11 wins on every count that has an authority
+     behind it. Figma's LABEL_BIGGER is 11px and this file has said so since the card was built;
+     SKILL.md §3 names the label hand "8 or 11px" and the section label 11px in muted. The 75 places
+     that set that label at 10px were the ones disagreeing with the design, so merging up fixes them
+     by definition. It is also the only safe direction: merging to 11 moves ~330 call sites UP and
+     shrinks nothing, where merging to 10 would have shrunk 108 and pushed the label hand further
+     from Figma. Checked before the codemod rather than after, by forcing every size in the band to
+     11px in the browser and re-measuring: zero elements clipped on either dense surface. Helper
+     prose does reflow — "Negative = BCE. Sets the map's time slider." goes from one line to two —
+     which lengthens a panel that already scrolls, and is the price of legible copy.
+
+     WHY THE ~9px BAND FOLDS IN TOO. It had three spellings and no authority, so it was going to
+     move whatever happened. It went up, not down into the 8px step, for the same reason: measured
+     at 11px on the 128×72 scene thumbnails that carry most of it (86 elements on one screen),
+     nothing clipped and the tile still held the label comfortably. 8px stays what Figma made it —
+     a micro-label on a card, not a general small size. */
+  --text-2xs: 0.6875rem;             /* 11px — small text you READ: helper prose, readouts, labels */
+  --text-3xs: 0.5rem;                /* 8px  — a micro-label on a tile or a card. Figma's floor. */
+
+  /* Tracking and leading were invented in brackets for the same reason and are fixed the same way.
+     Only the values Tailwind has no step for are named; `tracking-[0.1em]` was simply
+     `tracking-widest` spelled the long way, and went there instead of becoming a token. */
+  --tracking-eyebrow: 0.18em;        /* the uppercase kicker over a page title */
+  --leading-display: 1.05;           /* a big Inter heading, set tight */
+  --leading-history: 0.95;           /* the History face, whose caps sit differently to Inter's */
+
   /* ── The small-caps label ─────────────────────────────────────────────────────────────────── */
   /* Figma: LABEL_SMALL_UI and LABEL_BIGGER. Inter SemiBold, 0.5 letter-spacing, uppercase. Used for
      "ROMAN REPUBLIC", "READ MORE ON", "SOMETHING NOT RIGHT?" — every piece of text that labels
-     rather than speaks. */
-  --text-card-label-sm: 0.5rem;      /* 8px  */
-  --text-card-label: 0.6875rem;      /* 11px */
+     rather than speaks.
+
+     These hold the scale steps rather than repeating their numbers: the label is not a third size,
+     it is the same 11px and 8px wearing a semantic name that `.lp-card-label` can reach for. One
+     number, two ways to say it. */
+  --text-card-label-sm: var(--text-3xs);   /* 8px  */
+  --text-card-label: var(--text-2xs);      /* 11px */
   --tracking-card-label: 0.5px;
   --font-weight-card-label: 600;
 
@@ -122,11 +162,19 @@
      needs no colour to be understood. */
   --color-scrubber-playhead: #d9d9d9;
 
-  /* 10px — the year in the badge and under a century tick. Named `num` and not `year` on purpose:
+  /* The year in the badge and under a century tick. Named `num` and not `year` on purpose:
      `text-*` utilities resolve against BOTH --text-* and --color-*, so a --text-scrubber-year next
      to --color-scrubber-year would make `text-scrubber-year` mean the size and silently drop the
-     colour. Two things a utility can mean must never share a name. */
-  --text-scrubber-num: 0.625rem;
+     colour. Two things a utility can mean must never share a name.
+
+     This was its own 10px, which made the scrubber the last survivor of the band the rest of the
+     app just left behind — a year in a badge is exactly "small text you read", so it takes the
+     step. The name stays for the reason above. The risk here was specific and worth naming: these
+     labels are absolutely positioned along a ruler, so 10% wider text could make neighbouring
+     centuries touch. Measured instead of assumed — see the scrubber case in
+     tests/playwright/type-scale-i18n.spec.ts, which walks the century labels and asserts no pair
+     overlaps, in the locale with the longest month and era words. */
+  --text-scrubber-num: var(--text-2xs);
 
   /* Geometry. Referenced as `h-[var(--scrubber-height)]` rather than a `h-scrubber` utility: these
      names are not in a Tailwind theme namespace, so no utility is generated for them and the class
@@ -222,14 +270,14 @@
 }
 
 .lp-succession-in {
-  animation: lp-succession-slide 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: lp-succession-slide 420ms var(--ease-enter) both;
 }
 
 /* Runs once and leaves: the banner is an event, not a field. Alpine drops it from the DOM when
    succeededFrom clears, so the tail of this keyframe and that timeout are deliberately the same
    gesture seen from two sides. */
 .lp-succession {
-  animation: lp-succession-note 4200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: lp-succession-note 4200ms var(--ease-enter) both;
 }
 
 @media (prefers-reduced-motion: reduce) {

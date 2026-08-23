@@ -53,7 +53,7 @@
 
         <div class="mt-8 flex flex-wrap items-center gap-3">
             <a href="{{ route('lesson.play', ['lessonCode' => $lesson->lesson_code]) }}"
-               class="inline-flex items-center gap-2 rounded-lg bg-amber-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-300">
+               class="btn btn-primary">
                 {{ __('Play this lesson') }}
             </a>
             <span class="text-sm text-slate-500">{{ __('Opens straight away. No account, nothing to install.') }}</span>
@@ -87,7 +87,7 @@
             <p class="mt-2 text-sm leading-relaxed text-slate-300">
                 {{ __('Every lesson here was made in the portal from a topic and an age group. You can change any scene, swap the images, rewrite the narration, or start from your own subject entirely.') }}
             </p>
-            <a href="{{ route('login') }}" class="mt-4 inline-flex items-center gap-1.5 text-sm text-amber-400 transition hover:text-amber-300">
+            <a href="{{ route('login') }}" class="btn btn-link btn-sm mt-4 px-0">
                 {{ __('Sign in to build a lesson') }}
             </a>
         </section>

@@ -25,20 +25,20 @@
                     <span class="lp-label mb-6 block">About The Learning Portal</span>
 
                     <h1 class="font-history text-5xl font-semibold text-slate-100 md:text-6xl xl:text-7xl">
-                        Where Storytelling<br>Meets Learning
+                        Your class already<br>likes stories
                     </h1>
 
                     <p class="mt-7 max-w-lg text-base leading-relaxed text-slate-300/80">
-                        We use storytelling to engage learners and make history come alive.
-                        Julius Caesar narrates the fall of Rome. Cleopatra walks you through her
-                        own dynasty. Abraham Lincoln explains the Civil War from the front lines.
+                        History is full of them, and we hand them back to the people they
+                        happened to. Julius Caesar narrates the fall of Rome. Cleopatra walks
+                        you through her own dynasty. Abraham Lincoln explains the Civil War from
+                        the front lines.
                     </p>
 
                     <p class="mt-4 max-w-lg text-sm leading-relaxed text-slate-400/70">
-                        Our AI-powered platform transforms K-12 history education, turning dry
-                        facts into cinematic experiences that students actually remember. Currently
-                        in beta and invite-only. Built for teachers who believe learning should feel
-                        like an adventure.
+                        You type in one topic. The script, the paintings and the voice are drafted
+                        in a few minutes, and then you edit them until the lesson is yours. K-12,
+                        in five languages. Currently in beta and invite only.
                     </p>
 
                     <div class="mt-10 flex flex-wrap items-center gap-4">
@@ -80,10 +80,10 @@
                     <div class="card lp-grain border border-white/6"
                          style="background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);">
                         <div class="card-body p-5">
-                            <span class="lp-label mb-2 text-sky-400">Teacher-First</span>
+                            <span class="lp-label mb-2 text-sky-400">You Edit Everything</span>
                             <p class="text-sm leading-relaxed text-slate-400/80">
-                                Create a complete lesson in under two minutes. Set the topic, grade level,
-                                and tone, then the AI handles the rest.
+                                A first draft arrives in minutes. Then you change the script, swap a
+                                painting or retake a line, until it is the lesson you would have taught.
                             </p>
                         </div>
                     </div>
@@ -106,7 +106,7 @@
 
         {{-- Scroll hint --}}
         <div class="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-40">
-            <span class="text-[10px] uppercase tracking-widest text-slate-400">Scroll</span>
+            <span class="text-2xs uppercase tracking-widest text-slate-400">Scroll</span>
             <svg class="h-4 w-4 animate-bounce text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path d="M6 9l6 6 6-6"/>
             </svg>

@@ -22,7 +22,7 @@
     {{-- Blade has @checked/@selected/@disabled but NO @open directive — it would emit a literal
          `@open(...)` attribute and the disclosure would stay shut. --}}
     <details wire:ignore.self @if ($needsScript) open @endif class="border-t border-slate-700/50 pt-2">
-        <summary class="cursor-pointer list-none text-[10px] font-semibold uppercase tracking-widest text-slate-500 transition hover:text-slate-300">
+        <summary class="cursor-pointer list-none text-2xs font-semibold uppercase tracking-widest text-slate-500 transition hover:text-slate-300">
             {{ __('Scene details') }}
             @if ($needsScript)
                 <span class="ml-1 normal-case tracking-normal text-amber-400/80">{{ __('add the story text') }}</span>
@@ -34,7 +34,7 @@
                 <input type="text" wire:model.blur="selectedScene.chapter_name" wire:change="saveSelected"
                        placeholder="{{ $scene->chapterName() }}"
                        class="input input-sm input-bordered bg-slate-900 mt-1" />
-                <span class="mt-1 text-[10px] text-slate-500">{{ __('Shown in the player chapter bar. Auto-named from the narration; edit to taste.') }}</span>
+                <span class="mt-1 text-2xs text-slate-500">{{ __('Shown in the player chapter bar. Auto-named from the narration; edit to taste.') }}</span>
             </label>
 
             <label class="form-control">
@@ -109,7 +109,7 @@
 
             <button type="button" wire:click="deleteScene({{ $scene->id }})"
                     wire:confirm="{{ __('Delete this scene?') }}"
-                    class="text-xs text-rose-300 underline transition hover:text-rose-200">{{ __('Delete scene') }}</button>
+                    class="text-xs text-error/80 underline transition hover:text-error">{{ __('Delete scene') }}</button>
         </div>
     </details>
 </div>

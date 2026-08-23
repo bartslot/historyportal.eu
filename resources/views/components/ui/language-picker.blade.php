@@ -77,9 +77,9 @@
         @keydown.enter.prevent="pick(active)"
         @keydown.space.prevent="pick(active)"
         @keydown.tab="open = false"
-        x-transition:enter="transition duration-150 ease-[cubic-bezier(0.215,0.61,0.355,1)]"
+        x-transition:enter="transition duration-150 ease-enter"
         x-transition:enter-start="opacity-0 -translate-y-1"
-        x-transition:leave="transition duration-100 ease-[cubic-bezier(0.55,0.055,0.675,0.19)]"
+        x-transition:leave="transition duration-100 ease-exit"
         x-transition:leave-end="opacity-0"
         class="absolute z-50 mt-2 w-full overflow-hidden rounded-lg border border-slate-700 bg-slate-900 py-1 shadow-2xl focus:outline-none"
     >

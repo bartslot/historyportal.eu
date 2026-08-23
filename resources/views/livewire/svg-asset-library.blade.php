@@ -69,12 +69,12 @@
                          inside a <button> is invalid HTML (browsers auto-close the outer one) and the
                          ✕ click would bubble into attach(). Both sit inside the relative wrapper. --}}
                     <div class="group relative rounded-lg border border-base-300 bg-base-100 p-2 flex flex-col">
-                        <button wire:click="attach({{ $asset->id }})" class="cursor-pointer text-left" aria-label="Add {{ $asset->title }} to Scene">
+                        <button wire:click="attach({{ $asset->id }})" class="text-left" aria-label="Add {{ $asset->title }} to Scene">
                             <div class="flex h-24 items-center justify-center overflow-hidden rounded bg-base-200">
                                 <img src="{{ $asset->url() }}" alt="{{ $asset->title }}" class="max-h-full max-w-full">
                             </div>
                             <p class="mt-2 truncate text-xs font-medium" title="{{ $asset->title }}">{{ $asset->title }}</p>
-                            <p class="truncate text-[11px] opacity-50" title="{{ $asset->credit() }}">{{ $asset->credit() }}</p>
+                            <p class="truncate text-2xs opacity-50" title="{{ $asset->credit() }}">{{ $asset->credit() }}</p>
                         </button>
                         <button wire:click="remove({{ $asset->id }})"
                                 wire:confirm="Remove this artwork from your library?"

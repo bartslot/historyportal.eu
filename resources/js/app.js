@@ -1,5 +1,6 @@
 import './bootstrap';
 import { gsap } from 'gsap';
+import { GSAP_EASE } from './easing.js';
 import Sortable                from 'sortablejs';
 import { createTour } from './onboarding/tour.js';
 import { initTooltips } from './tooltip.js';
@@ -81,9 +82,9 @@ const setupLandingCursor = () => {
     // means the browser counted each one toward Cumulative Layout Shift. Moving the mouse for a few
     // seconds was enough to log ninety-odd shift entries and climb the score without limit.
     // A transform is composited: it moves the dot without touching layout at all.
-    const xTo = gsap.quickTo(cursor, 'x', { duration: 0.12, ease: 'power3.out' });
-    const yTo = gsap.quickTo(cursor, 'y', { duration: 0.12, ease: 'power3.out' });
-    const scaleTo = gsap.quickTo(cursor, 'scale', { duration: 0.2, ease: 'power2.out' });
+    const xTo = gsap.quickTo(cursor, 'x', { duration: 0.12, ease: GSAP_EASE.enter });
+    const yTo = gsap.quickTo(cursor, 'y', { duration: 0.12, ease: GSAP_EASE.enter });
+    const scaleTo = gsap.quickTo(cursor, 'scale', { duration: 0.2, ease: GSAP_EASE.enter });
     let isMouseDown = false;
     let isBackgroundHover = false;
 
@@ -110,7 +111,7 @@ const setupLandingCursor = () => {
         xTo(x);
         yTo(y);
         syncCursorState();
-        gsap.to(cursor, { autoAlpha: 1, duration: 0.08, ease: 'none', overwrite: 'auto' });
+        gsap.to(cursor, { autoAlpha: 1, duration: 0.08, ease: GSAP_EASE.enter, overwrite: 'auto' });
     };
 
     window.addEventListener('pointermove', (event) => {
@@ -121,7 +122,7 @@ const setupLandingCursor = () => {
         isBackgroundHover = false;
         cursor.classList.remove('landing-cursor--portal-bg');
         scaleTo(0.7);
-        gsap.to(cursor, { autoAlpha: 1, duration: 0.18, ease: 'sine.out', overwrite: 'auto' });
+        gsap.to(cursor, { autoAlpha: 1, duration: 0.18, ease: GSAP_EASE.enter, overwrite: 'auto' });
     });
 
     window.addEventListener('mousedown', () => {
@@ -179,7 +180,7 @@ const setupWheelMotion = () => {
         breathingTween = gsap.to(wheel, {
             scale,
             duration,
-            ease: 'sine.inOut',
+            ease: GSAP_EASE.move,
             repeat: -1,
             yoyo: true,
             overwrite: true,
@@ -188,10 +189,10 @@ const setupWheelMotion = () => {
 
     startBreathing();
 
-    const wheelX = gsap.quickTo(wheel, 'x', { duration: 0.9, ease: 'power3.out' });
-    const wheelY = gsap.quickTo(wheel, 'y', { duration: 0.9, ease: 'power3.out' });
-    const wheelRotation = gsap.quickTo(wheel, 'rotation', { duration: 1.1, ease: 'power3.out' });
-    const wheelOpacity = gsap.quickTo(wheel, 'opacity', { duration: 0.3, ease: 'sine.out' });
+    const wheelX = gsap.quickTo(wheel, 'x', { duration: 0.9, ease: GSAP_EASE.enter });
+    const wheelY = gsap.quickTo(wheel, 'y', { duration: 0.9, ease: GSAP_EASE.enter });
+    const wheelRotation = gsap.quickTo(wheel, 'rotation', { duration: 1.1, ease: GSAP_EASE.enter });
+    const wheelOpacity = gsap.quickTo(wheel, 'opacity', { duration: 0.3, ease: GSAP_EASE.enter });
 
     const moveWheel = (clientX, clientY, target) => {
         if (!finePointer || document.documentElement.classList.contains('portal-exiting')) {
@@ -247,16 +248,16 @@ const setupHeroParallax = () => {
 
     gsap.set([glow, spotlight, orb, copy, cta], { willChange: 'transform' });
 
-    const glowX = gsap.quickTo(glow, 'x', { duration: 1.4, ease: 'power3.out' });
-    const glowY = gsap.quickTo(glow, 'y', { duration: 1.4, ease: 'power3.out' });
-    const spotlightX = gsap.quickTo(spotlight, 'x', { duration: 1.6, ease: 'power3.out' });
-    const spotlightY = gsap.quickTo(spotlight, 'y', { duration: 1.6, ease: 'power3.out' });
-    const orbX = gsap.quickTo(orb, 'x', { duration: 1.8, ease: 'power3.out' });
-    const orbY = gsap.quickTo(orb, 'y', { duration: 1.8, ease: 'power3.out' });
-    const copyX = gsap.quickTo(copy, 'x', { duration: 1.0, ease: 'power3.out' });
-    const copyY = gsap.quickTo(copy, 'y', { duration: 1.0, ease: 'power3.out' });
-    const ctaX = gsap.quickTo(cta, 'x', { duration: 0.9, ease: 'power3.out' });
-    const ctaY = gsap.quickTo(cta, 'y', { duration: 0.9, ease: 'power3.out' });
+    const glowX = gsap.quickTo(glow, 'x', { duration: 1.4, ease: GSAP_EASE.enter });
+    const glowY = gsap.quickTo(glow, 'y', { duration: 1.4, ease: GSAP_EASE.enter });
+    const spotlightX = gsap.quickTo(spotlight, 'x', { duration: 1.6, ease: GSAP_EASE.enter });
+    const spotlightY = gsap.quickTo(spotlight, 'y', { duration: 1.6, ease: GSAP_EASE.enter });
+    const orbX = gsap.quickTo(orb, 'x', { duration: 1.8, ease: GSAP_EASE.enter });
+    const orbY = gsap.quickTo(orb, 'y', { duration: 1.8, ease: GSAP_EASE.enter });
+    const copyX = gsap.quickTo(copy, 'x', { duration: 1.0, ease: GSAP_EASE.enter });
+    const copyY = gsap.quickTo(copy, 'y', { duration: 1.0, ease: GSAP_EASE.enter });
+    const ctaX = gsap.quickTo(cta, 'x', { duration: 0.9, ease: GSAP_EASE.enter });
+    const ctaY = gsap.quickTo(cta, 'y', { duration: 0.9, ease: GSAP_EASE.enter });
 
     const moveHero = (clientX, clientY) => {
         if (!finePointer || document.documentElement.classList.contains('portal-exiting')) {
@@ -488,7 +489,7 @@ const setupPortalExitAnimation = () => {
             };
 
             const tl = gsap.timeline({
-                defaults: { ease: 'power4.out' },
+                defaults: { ease: GSAP_EASE.enter },
                 onComplete: cleanup,
             });
 
@@ -499,7 +500,7 @@ const setupPortalExitAnimation = () => {
                     opacity: 0.08,
                     rotation: currentWheelRotation + 24,
                     duration: 0.18,
-                    ease: 'expo.in',
+                    ease: GSAP_EASE.exit,
                 }, 0)
                 .to(copy, { opacity: 1, duration: 0.01 }, 0)
                 .to(cta, { opacity: 1, duration: 0.01 }, 0);
@@ -536,40 +537,40 @@ const setupPortalExitAnimation = () => {
                     .to(material, {
                         opacity: 0.98,
                         duration: 0.28,
-                        ease: 'sine.out',
+                        ease: GSAP_EASE.enter,
                     }, 0)
                     .to(mesh.position, {
                         x: nearX,
                         y: nearY,
                         z: driftZ,
                         duration: 1.05,
-                        ease: 'expo.out',
+                        ease: GSAP_EASE.enter,
                     }, 0)
                     .to(mesh.scale, {
                         x: nearScale,
                         y: nearScale,
                         z: nearScale,
                         duration: 1.05,
-                        ease: 'expo.out',
+                        ease: GSAP_EASE.enter,
                     }, 0)
                     .to(mesh.rotation, {
                         x: (spinX * Math.PI) / 180,
                         y: (spinY * Math.PI) / 180,
                         z: (spinZ * Math.PI) / 180,
                         duration: 1.05,
-                        ease: 'expo.out',
+                        ease: GSAP_EASE.enter,
                     }, 0)
                     .to(material, {
                         opacity: 0.92,
                         duration: 0.32,
-                        ease: 'sine.out',
+                        ease: GSAP_EASE.enter,
                     }, 0.24)
                     .to(mesh.position, {
                         x: nearX + arcX,
                         y: nearY + arcY,
                         z: driftZ + gsap.utils.random(-40, 120),
                         duration: 0.8,
-                        ease: 'sine.inOut',
+                        ease: GSAP_EASE.move,
                     }, 1.06);
 
                 tl.add(burst, burstDelay);
@@ -579,7 +580,7 @@ const setupPortalExitAnimation = () => {
                 opacity: 0,
                 y: -18,
                 duration: 0.45,
-                ease: 'power2.out',
+                ease: GSAP_EASE.enter,
             }, 1.15);
 
             if (signup) {
@@ -589,7 +590,7 @@ const setupPortalExitAnimation = () => {
                         opacity: 1,
                         y: 0,
                         duration: 0.5,
-                        ease: 'power2.out',
+                        ease: GSAP_EASE.enter,
                     }, 1.22);
             }
         } catch (error) {

@@ -14,7 +14,7 @@
     </h3>
 
     <div x-data="{ link: '' }">
-        <span class="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">{{ __('Video link or embed code') }}</span>
+        <span class="mb-1 block text-2xs font-semibold uppercase tracking-wider text-slate-400">{{ __('Video link or embed code') }}</span>
         <div class="flex gap-1.5">
             <input type="text" x-model="link" placeholder="https://youtu.be/… · vimeo.com/… · &lt;iframe …&gt;"
                    @keydown.enter.prevent="if (link.trim()) { $wire.setVideoEmbed(link); link = '' }"
@@ -40,15 +40,15 @@
                 save() { $wire.setEmbedOptions({ autoplay: this.autoplay, controls: this.controls, fit: this.fit, start: Number(this.start) || 0, end: Number(this.end) || 0 }) }
              }" class="space-y-2 rounded-lg bg-slate-800/40 p-2">
             <label class="flex items-center justify-between gap-2">
-                <span class="text-[11px] text-slate-300">{{ __('Autoplay (muted)') }}</span>
+                <span class="text-2xs text-slate-300">{{ __('Autoplay (muted)') }}</span>
                 <input type="checkbox" x-model="autoplay" @change="save()" class="toggle toggle-sm toggle-warning" />
             </label>
             <label class="flex items-center justify-between gap-2">
-                <span class="text-[11px] text-slate-300">{{ __('Show controls') }}</span>
+                <span class="text-2xs text-slate-300">{{ __('Show controls') }}</span>
                 <input type="checkbox" x-model="controls" @change="save()" class="toggle toggle-sm toggle-warning" />
             </label>
             <div class="flex items-center justify-between gap-2">
-                <span class="text-[11px] text-slate-300">{{ __('Fit') }}</span>
+                <span class="text-2xs text-slate-300">{{ __('Fit') }}</span>
                 <div class="inline-flex overflow-hidden rounded-lg border border-slate-700/60">
                     <button type="button" @click="fit = 'cover'; save()" :class="fit === 'cover' ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400'" class="px-2.5 py-1 text-xs font-medium">{{ __('Cover') }}</button>
                     <button type="button" @click="fit = 'fit'; save()" :class="fit === 'fit' ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400'" class="px-2.5 py-1 text-xs font-medium">{{ __('Fit') }}</button>
@@ -56,16 +56,16 @@
             </div>
             <div class="grid grid-cols-2 gap-2">
                 <label class="form-control">
-                    <span class="text-[10px] uppercase tracking-wider text-slate-500">{{ __('Start (s)') }}</span>
+                    <span class="text-2xs uppercase tracking-wider text-slate-500">{{ __('Start (s)') }}</span>
                     <input type="number" min="0" x-model="start" @change="save()" class="input input-xs input-bordered bg-slate-900 mt-1" />
                 </label>
                 <label class="form-control">
-                    <span class="text-[10px] uppercase tracking-wider text-slate-500">{{ __('End (s)') }}</span>
+                    <span class="text-2xs uppercase tracking-wider text-slate-500">{{ __('End (s)') }}</span>
                     <input type="number" min="0" x-model="end" @change="save()" class="input input-xs input-bordered bg-slate-900 mt-1" />
                 </label>
             </div>
         </div>
 
-        <button type="button" wire:click="clearBgEmbed" class="text-[11px] text-rose-300 underline hover:text-rose-200">{{ __('Remove video') }}</button>
+        <button type="button" wire:click="clearBgEmbed" class="text-2xs text-error/80 underline hover:text-error">{{ __('Remove video') }}</button>
     @endif
 </div>

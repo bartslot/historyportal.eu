@@ -49,7 +49,7 @@
         </h3>
         @if ($legCount)
             {{-- Which landfall is being edited. Meaningless on the overview: it stops nowhere. --}}
-            <span x-show="!wide" class="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-medium text-slate-400">Waypoint {{ $legIndex + 1 }} / {{ $legCount }}</span>
+            <span x-show="!wide" class="rounded-full bg-slate-800 px-2 py-0.5 text-2xs font-medium text-slate-400">Waypoint {{ $legIndex + 1 }} / {{ $legCount }}</span>
         @endif
     </div>
 
@@ -115,13 +115,13 @@
             @if ($legDef)
                 <div class="mt-2 grid grid-cols-2 gap-2">
                     <label class="form-control">
-                        <span class="text-[10px] uppercase tracking-wider text-slate-400">Departs</span>
+                        <span class="text-2xs uppercase tracking-wider text-slate-400">Departs</span>
                         <input type="date" value="{{ $legDef['depart'] ?? '' }}"
                                wire:change="setLegDepart($event.target.value)"
                                class="input input-xs input-bordered bg-slate-900 mt-1" />
                     </label>
                     <label class="form-control">
-                        <span class="text-[10px] uppercase tracking-wider text-slate-400">Arrives</span>
+                        <span class="text-2xs uppercase tracking-wider text-slate-400">Arrives</span>
                         <input type="date" value="{{ $legDef['arrive'] ?? '' }}"
                                wire:change="setLegArrive($event.target.value)"
                                class="input input-xs input-bordered bg-slate-900 mt-1" />
@@ -130,7 +130,7 @@
                 {{-- How to drag the Destination X and bend the sailing line lives in Help, not here:
                      a teacher edits the same lesson dozens of times and reads the instructions once. --}}
             @else
-                <p class="mt-2 rounded-lg border border-amber-700/40 bg-amber-950/20 px-2.5 py-1.5 text-[11px] text-amber-300/80">
+                <p class="mt-2 rounded-lg border border-amber-700/40 bg-amber-950/20 px-2.5 py-1.5 text-2xs text-amber-300/80">
                     This voyage has no waypoint data yet — dates can't be edited.
                 </p>
             @endif
@@ -156,7 +156,7 @@
                     @foreach ([['water', 'By sea'], ['land', 'Overland']] as [$terrainKey, $terrainLabel])
                         <button type="button" role="tab" x-on:click="terrain = '{{ $terrainKey }}'"
                                 :class="terrain === '{{ $terrainKey }}' ? 'bg-slate-700 text-slate-100' : 'text-slate-400 hover:text-slate-200'"
-                                class="rounded-md py-1 text-[11px] font-medium transition-colors">{{ $terrainLabel }}</button>
+                                class="rounded-md py-1 text-2xs font-medium transition-colors">{{ $terrainLabel }}</button>
                     @endforeach
                 </div>
 
@@ -175,7 +175,7 @@
                                 <img src="{{ $t['thumb'] }}" alt="" class="h-full w-full object-contain" loading="lazy" />
                             </span>
                             <span @class([
-                                'text-[10px] font-medium',
+                                'text-2xs font-medium',
                                 'text-amber-300' => $legMarkerImage === '' && $legTransport === $t['id'],
                                 'text-slate-400' => $legMarkerImage !== '' || $legTransport !== $t['id'],
                             ])>{{ $t['label'] }}</span>
@@ -190,12 +190,12 @@
                         <img src="{{ $legMarkerImage }}" alt=""
                              class="h-16 w-16 shrink-0 rounded-full object-cover ring-2 ring-amber-400" />
                         <div class="min-w-0 flex-1">
-                            <p class="text-[11px] text-slate-300">A picture travels this leg.</p>
+                            <p class="text-2xs text-slate-300">A picture travels this leg.</p>
                             <div class="mt-1 flex gap-2">
                                 <button type="button" wire:click="openMarkerImagePicker"
-                                        class="text-[11px] text-amber-300 underline hover:text-amber-200">Change</button>
+                                        class="text-2xs text-amber-300 underline hover:text-amber-200">Change</button>
                                 <button type="button" wire:click="clearLegMarkerImage"
-                                        class="text-[11px] text-slate-400 underline hover:text-slate-200">Use a model</button>
+                                        class="text-2xs text-slate-400 underline hover:text-slate-200">Use a model</button>
                             </div>
                         </div>
                     @else
@@ -204,7 +204,7 @@
                         </span>
                         <div class="min-w-0 flex-1">
                             <button type="button" wire:click="openMarkerImagePicker"
-                                    class="text-[11px] text-amber-300 underline hover:text-amber-200">{{ __('Use a picture instead') }}</button>
+                                    class="text-2xs text-amber-300 underline hover:text-amber-200">{{ __('Use a picture instead') }}</button>
                         </div>
                     @endif
                 </div>
@@ -225,24 +225,24 @@
                     Gallery / description
                 </span>
                 {{-- What is in there, without opening it. --}}
-                <span class="text-[10px] text-slate-500">
+                <span class="text-2xs text-slate-500">
                     {{ trim((string) ($gallery['title'] ?? '')) !== '' ? $gallery['title'] : __('unnamed') }}@if (count($galleryImages)) · {{ count($galleryImages) }} @endif
                 </span>
             </summary>
-            <span class="mt-0.5 block text-[10px] text-slate-500">Opens as a modal from the landfall hotspot.</span>
+            <span class="mt-0.5 block text-2xs text-slate-500">Opens as a modal from the landfall hotspot.</span>
 
             <label class="form-control mt-2">
-                <span class="text-[10px] uppercase tracking-wider text-slate-500">Title</span>
+                <span class="text-2xs uppercase tracking-wider text-slate-500">Title</span>
                 <input type="text" wire:model.blur="selectedScene.config.gallery.title" wire:change="saveSelected"
                        placeholder="e.g. Verversingspost" class="input input-sm input-bordered bg-slate-900 mt-1" />
             </label>
             <label class="form-control mt-2">
-                <span class="text-[10px] uppercase tracking-wider text-slate-500">Date label</span>
+                <span class="text-2xs uppercase tracking-wider text-slate-500">Date label</span>
                 <input type="text" wire:model.blur="selectedScene.config.gallery.date_label" wire:change="saveSelected"
                        placeholder="e.g. 5 september 1642" class="input input-sm input-bordered bg-slate-900 mt-1" />
             </label>
             <label class="form-control mt-2">
-                <span class="text-[10px] uppercase tracking-wider text-slate-500">Story</span>
+                <span class="text-2xs uppercase tracking-wider text-slate-500">Story</span>
                 <textarea wire:model.blur="selectedScene.config.gallery.story" wire:change="saveSelected" rows="4"
                           placeholder="What happened at this stop…"
                           class="textarea textarea-bordered bg-slate-900 mt-1 leading-relaxed"></textarea>
@@ -251,7 +251,7 @@
             {{-- Image fit — cover (fill, may crop) vs fit (letterbox on a blurred backdrop). --}}
             @php $gfit = ($gallery['fit'] ?? 'fit') === 'cover' ? 'cover' : 'fit'; @endphp
             <div class="mt-3 flex items-center justify-between gap-2">
-                <span class="text-[10px] uppercase tracking-wider text-slate-500">Image fit</span>
+                <span class="text-2xs uppercase tracking-wider text-slate-500">Image fit</span>
                 <div class="inline-flex overflow-hidden rounded-lg border border-slate-700/60">
                     <button type="button" wire:click="setGalleryFit('cover')"
                             class="px-2.5 py-1 text-xs font-medium transition-colors {{ $gfit === 'cover' ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400' }}">Cover</button>
@@ -260,8 +260,8 @@
                 </div>
             </div>
 
-            <span class="mt-3 block text-[10px] uppercase tracking-wider text-slate-500">Images</span>
-            <span class="text-[10px] text-slate-500">The first three pin as thumbnails on the map; all show in the gallery.</span>
+            <span class="mt-3 block text-2xs uppercase tracking-wider text-slate-500">Images</span>
+            <span class="text-2xs text-slate-500">The first three pin as thumbnails on the map; all show in the gallery.</span>
             @if (count($galleryImages))
                 <ul class="mt-1 space-y-2" x-data="{ drag: null }">
                     @foreach ($galleryImages as $i => $img)
@@ -275,9 +275,9 @@
                             <div class="flex items-center gap-2">
                                 <span class="shrink-0 select-none text-slate-600" aria-hidden="true" title="Drag to reorder">⠿</span>
                                 <img src="{{ $gsrc }}" alt="" class="h-9 w-9 shrink-0 rounded object-cover" onerror="this.style.visibility='hidden'" />
-                                <span class="min-w-0 flex-1 truncate text-[11px] text-slate-400">{{ $gsrc }}</span>
+                                <span class="min-w-0 flex-1 truncate text-2xs text-slate-400">{{ $gsrc }}</span>
                                 <button type="button" wire:click="removeGalleryImage({{ $i }})"
-                                        class="shrink-0 px-1 text-rose-300 hover:text-rose-200" title="Remove" aria-label="Remove">✕</button>
+                                        class="shrink-0 px-1 text-error/80 hover:text-error" title="Remove" aria-label="Remove">✕</button>
                             </div>
                             <input type="text" value="{{ is_array($img) ? ($img['credit'] ?? '') : '' }}"
                                    wire:change="setGalleryImageCredit({{ $i }}, $event.target.value)"
@@ -287,7 +287,7 @@
                     @endforeach
                 </ul>
             @else
-                <p class="mt-1 text-[10px] text-slate-500">No gallery images yet.</p>
+                <p class="mt-1 text-2xs text-slate-500">No gallery images yet.</p>
             @endif
 
             <div x-data="{ url: '' }" class="mt-2">
@@ -313,10 +313,10 @@
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 0 1 3 12c0-1.605.42-3.113 1.157-4.418"/></svg>
                 Projection
             </div>
-            <span class="mt-0.5 block text-[10px] text-slate-500">Applies to the whole voyage.</span>
+            <span class="mt-0.5 block text-2xs text-slate-500">Applies to the whole voyage.</span>
             <div class="mt-2 flex items-end justify-between gap-3">
                 <div>
-                    <span class="text-[10px] uppercase tracking-wider text-slate-400">View</span>
+                    <span class="text-2xs uppercase tracking-wider text-slate-400">View</span>
                     <div class="mt-1 inline-flex overflow-hidden rounded-lg border border-slate-700/60">
                         <button type="button" wire:click="setVoyageView('flat')"
                                 class="px-2.5 py-1 text-xs font-medium transition-colors {{ $view === 'globe' ? 'bg-slate-800 text-slate-400' : 'bg-amber-500 text-slate-950' }}">
@@ -330,7 +330,7 @@
                 </div>
                 {{-- INTRO — the "from space" fly-in. Only the first leg plays it. --}}
                 <label class="flex items-center gap-2" title="Fly in from orbit before departure (first leg only)">
-                    <span class="text-[10px] uppercase tracking-wider text-slate-400">Space intro</span>
+                    <span class="text-2xs uppercase tracking-wider text-slate-400">Space intro</span>
                     <input type="checkbox" @checked($intro)
                            wire:change="setVoyageIntro($event.target.checked)"
                            class="toggle toggle-sm toggle-warning" />
@@ -356,14 +356,14 @@
                 {{-- WAYPOINT TITLES — the landfall names pinned along the route --}}
                 <div class="rounded-lg bg-slate-800/30 p-2">
                     <label class="flex items-center justify-between gap-2">
-                        <span class="text-[11px] text-slate-300">Waypoint titles</span>
+                        <span class="text-2xs text-slate-300">Waypoint titles</span>
                         <input type="checkbox" @checked($vm('labels', true)) wire:change="setVoyageMap('labels', $event.target.checked)" class="toggle toggle-sm toggle-warning" />
                     </label>
                     @if ($vm('labels', true))
                         <div class="mt-2 flex items-center gap-2">
                             <input type="color" value="{{ $vm('label_color', '#3a2c1a') }}" wire:change="setVoyageMap('label_color', $event.target.value)" class="{{ $swatch }}" title="Label colour" />
                             <label class="flex flex-1 items-center gap-1.5">
-                                <span class="text-[10px] text-slate-500">Size</span>
+                                <span class="text-2xs text-slate-500">Size</span>
                                 <input type="range" min="0.5" max="2.2" step="0.1" value="{{ $vm('label_size', 1.0) }}" wire:change="setVoyageMap('label_size', $event.target.value)" class="{{ $mini }}" />
                             </label>
                         </div>
@@ -373,14 +373,14 @@
                 {{-- CITY NAMES --}}
                 <div class="rounded-lg bg-slate-800/30 p-2">
                     <label class="flex items-center justify-between gap-2">
-                        <span class="text-[11px] text-slate-300">City names</span>
+                        <span class="text-2xs text-slate-300">City names</span>
                         <input type="checkbox" @checked($vm('cities', true)) wire:change="setVoyageMap('cities', $event.target.checked)" class="toggle toggle-sm toggle-warning" />
                     </label>
                     @if ($vm('cities', true))
                         <div class="mt-2 flex items-center gap-2">
                             <input type="color" value="{{ $vm('city_color', '#3a2c1a') }}" wire:change="setVoyageMap('city_color', $event.target.value)" class="{{ $swatch }}" title="City name colour" />
                             <label class="flex flex-1 items-center gap-1.5">
-                                <span class="text-[10px] text-slate-500">Size</span>
+                                <span class="text-2xs text-slate-500">Size</span>
                                 <input type="range" min="0.5" max="2.2" step="0.1" value="{{ $vm('city_size', 1.0) }}" wire:change="setVoyageMap('city_size', $event.target.value)" class="{{ $mini }}" />
                             </label>
                         </div>
@@ -390,7 +390,7 @@
                 {{-- COUNTRY BORDERS --}}
                 <div class="rounded-lg bg-slate-800/30 p-2">
                     <label class="flex items-center justify-between gap-2">
-                        <span class="text-[11px] text-slate-300">Country borders</span>
+                        <span class="text-2xs text-slate-300">Country borders</span>
                         <input type="checkbox" @checked($vm('borders', true)) wire:change="setVoyageMap('borders', $event.target.checked)" class="toggle toggle-sm toggle-warning" />
                     </label>
                     @if ($vm('borders', true))
@@ -398,12 +398,12 @@
                             <div class="flex items-center gap-2">
                                 <input type="color" value="{{ $vm('border_color', '#5b4a36') }}" wire:change="setVoyageMap('border_color', $event.target.value)" class="{{ $swatch }}" title="Border colour" />
                                 <label class="flex flex-1 items-center gap-1.5">
-                                    <span class="text-[10px] text-slate-500">Width</span>
+                                    <span class="text-2xs text-slate-500">Width</span>
                                     <input type="range" min="0.2" max="4" step="0.2" value="{{ $vm('border_width', 0.6) }}" wire:change="setVoyageMap('border_width', $event.target.value)" class="{{ $mini }}" />
                                 </label>
                             </div>
                             <label class="flex items-center gap-1.5">
-                                <span class="w-9 text-[10px] text-slate-500">Opacity</span>
+                                <span class="w-9 text-2xs text-slate-500">Opacity</span>
                                 <input type="range" min="0" max="1" step="0.05" value="{{ $vm('border_opacity', 0.3) }}" wire:change="setVoyageMap('border_opacity', $event.target.value)" class="{{ $mini }} flex-1" />
                             </label>
                         </div>
@@ -423,13 +423,13 @@
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15a4.5 4.5 0 0 0 4.5 4.5H18a3.75 3.75 0 0 0 1.332-7.257 3 3 0 0 0-3.758-3.848 5.25 5.25 0 0 0-10.233 2.33A4.502 4.502 0 0 0 2.25 15Z"/></svg>
                     Undiscovered land
                 </div>
-                <span class="text-[10px] text-slate-500">{{ ($voyageMap['fog_auto'] ?? false) ? 'auto' : count($voyageFog).' painted' }}</span>
+                <span class="text-2xs text-slate-500">{{ ($voyageMap['fog_auto'] ?? false) ? 'auto' : count($voyageFog).' painted' }}</span>
             </div>
 
             {{-- AUTO fog-of-war: mask all new land along the route; the ship's range unmasks it on
                  approach and the coastline draws on at landfall. When on, the manual brush is hidden. --}}
             <label class="mt-2 flex items-center justify-between gap-2 rounded-lg bg-slate-800/40 px-2.5 py-2">
-                <span class="text-[11px] text-slate-300">Fog undiscovered land automatically</span>
+                <span class="text-2xs text-slate-300">Fog undiscovered land automatically</span>
                 <input type="checkbox" @checked($voyageMap['fog_auto'] ?? false)
                        wire:change="setVoyageMap('fog_auto', $event.target.checked)"
                        class="toggle toggle-sm toggle-warning" />
@@ -452,16 +452,16 @@
                         <button type="button"
                                 x-on:click="erase = false; window.__voyagePaint.erase = false; window.dispatchEvent(new Event('voyage-paint-changed'))"
                                 :class="!erase ? 'bg-amber-500 text-slate-950' : 'text-slate-300 hover:text-slate-100'"
-                                class="rounded-md py-1 text-[11px] font-medium transition-colors">Paint</button>
+                                class="rounded-md py-1 text-2xs font-medium transition-colors">Paint</button>
                         <button type="button"
                                 x-on:click="erase = true; window.__voyagePaint.erase = true; window.dispatchEvent(new Event('voyage-paint-changed'))"
-                                :class="erase ? 'bg-rose-500 text-slate-950' : 'text-slate-300 hover:text-slate-100'"
-                                class="rounded-md py-1 text-[11px] font-medium transition-colors">Erase</button>
+                                :class="erase ? 'bg-error text-slate-950' : 'text-slate-300 hover:text-slate-100'"
+                                class="rounded-md py-1 text-2xs font-medium transition-colors">Erase</button>
                     </div>
-                    <p class="mt-1 text-[10px] text-slate-500" x-text="erase ? 'Drag over masked land to reveal it.' : 'Drag over land to hide it.'"></p>
+                    <p class="mt-1 text-2xs text-slate-500" x-text="erase ? 'Drag over masked land to reveal it.' : 'Drag over land to hide it.'"></p>
                     {{-- Brush size — shared between Paint and Erase (the value stays put when you switch). --}}
                     <label class="mt-2 block">
-                        <span class="flex justify-between text-[11px] text-slate-300">Brush size <span class="text-slate-500" x-text="brush + ' km'"></span></span>
+                        <span class="flex justify-between text-2xs text-slate-300">Brush size <span class="text-slate-500" x-text="brush + ' km'"></span></span>
                         <input type="range" min="60" max="600" step="20" x-model.number="brush"
                                x-on:input="window.__voyagePaint.brushKm = brush"
                                class="range range-xs mt-1" :class="erase ? 'range-error' : 'range-warning'" />
@@ -472,12 +472,12 @@
             @if (count($voyageFog))
                 <div class="mt-2 flex items-center gap-3">
                     <button type="button" wire:click="undoFog"
-                            class="flex items-center gap-1 text-[11px] text-slate-300 hover:text-slate-100">
+                            class="flex items-center gap-1 text-2xs text-slate-300 hover:text-slate-100">
                         <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"/></svg>
                         Undo <span class="text-slate-500">(⌘Z)</span>
                     </button>
                     <button type="button" wire:click="clearFog"
-                            class="text-[11px] text-rose-300 underline hover:text-rose-200">Reset all</button>
+                            class="text-2xs text-error/80 underline hover:text-error">Reset all</button>
                 </div>
             @endif
         </section>
@@ -530,7 +530,7 @@
                             ])
                              data-stop-leg="{{ $stop['leg'] }}"
                              @if ($stop['scene_id']) wire:click="selectScene({{ $stop['scene_id'] }})" @endif>
-                            <span data-stop-number class="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-slate-700/70 text-[10px] font-semibold text-slate-200">{{ $stop['n'] }}</span>
+                            <span data-stop-number class="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-slate-700/70 text-2xs font-semibold text-slate-200">{{ $stop['n'] }}</span>
                             <span class="flex-1 truncate">
                                 {{ $stop['title'] ?: __('Unnamed stop') }}
                             </span>
@@ -552,7 +552,7 @@
                                 <button type="button" data-nodrag
                                         wire:click.stop="deleteVoyageStop({{ $stop['leg'] }})"
                                         wire:confirm="{{ __('Remove this stop from the voyage?') }}"
-                                        class="btn btn-ghost btn-xs shrink-0 px-1 text-slate-500 opacity-0 transition group-hover:opacity-100 hover:text-rose-300 focus-visible:opacity-100"
+                                        class="btn btn-ghost btn-xs shrink-0 px-1 text-slate-500 opacity-0 transition group-hover:opacity-100 hover:text-error focus-visible:opacity-100"
                                         aria-label="{{ __('Remove this stop') }}"
                                         data-tooltip="{{ __('Remove this stop') }}">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-3.5 w-3.5" aria-hidden="true">
@@ -575,14 +575,14 @@
             @if (count($fleet))
                 <div class="mt-2 flex flex-wrap items-center gap-1.5">
                     @foreach ($fleet as $ship)
-                        <span class="inline-flex items-center gap-1 rounded-full border border-slate-700/50 bg-slate-900/60 px-2 py-0.5 text-[11px] text-slate-300">
+                        <span class="inline-flex items-center gap-1 rounded-full border border-slate-700/50 bg-slate-900/60 px-2 py-0.5 text-2xs text-slate-300">
                             {{ $ship['name'] ?? 'Ship' }}
-                            @if ($ship['flagship'] ?? false)<span class="text-[9px] font-semibold text-amber-300">★</span>@endif
+                            @if ($ship['flagship'] ?? false)<span class="text-2xs font-semibold text-amber-300">★</span>@endif
                         </span>
                     @endforeach
                 </div>
             @else
-                <p class="mt-1 text-[10px] text-slate-500">This voyage has no fleet data.</p>
+                <p class="mt-1 text-2xs text-slate-500">This voyage has no fleet data.</p>
             @endif
         </section>
 
@@ -599,30 +599,30 @@
             {{-- WHERE THE DATE AND PLACE ARE WRITTEN. One or the other: the map used to carry both,
                  so the landfall name appeared twice within a few centimetres of itself. --}}
             <div class="mt-2">
-                <span class="text-[11px] text-slate-300">{{ __('Date and place') }}</span>
+                <span class="text-2xs text-slate-300">{{ __('Date and place') }}</span>
                 <div class="mt-1 grid grid-cols-2 gap-1">
                     @foreach ([['bottom', __('Bottom left')], ['top', __('Top centre')]] as [$pos, $label])
                         <button type="button" wire:click="setVoyageMap('info_position', '{{ $pos }}')"
                                 @class([
-                                    'rounded-md border px-2 py-1 text-[11px] transition',
+                                    'rounded-md border px-2 py-1 text-2xs transition',
                                     'border-amber-400 bg-amber-400/10 text-amber-300' => $vmr('info_position', 'bottom') === $pos,
                                     'border-slate-700 text-slate-400 hover:border-slate-500' => $vmr('info_position', 'bottom') !== $pos,
                                 ])>{{ $label }}</button>
                     @endforeach
                 </div>
-                <p class="mt-1 text-[10px] text-slate-500">{{ __('One line in the corner, or the date chip above the map.') }}</p>
+                <p class="mt-1 text-2xs text-slate-500">{{ __('One line in the corner, or the date chip above the map.') }}</p>
             </div>
 
             <label class="mt-3 block">
-                <span class="flex justify-between text-[11px] text-slate-300">Ship size <span class="text-slate-500">{{ number_format((float) $vmr('ship_scale', 1.0), 1) }}×</span></span>
+                <span class="flex justify-between text-2xs text-slate-300">Ship size <span class="text-slate-500">{{ number_format((float) $vmr('ship_scale', 1.0), 1) }}×</span></span>
                 <input type="range" min="0.4" max="2.5" step="0.1" value="{{ $vmr('ship_scale', 1.0) }}"
                        wire:change="setVoyageMap('ship_scale', $event.target.value)"
                        class="range range-xs range-warning mt-1" />
             </label>
 
             <label class="mt-2 flex items-center justify-between gap-2">
-                <span class="text-[11px] text-slate-300">Scale with zoom
-                    <span class="block text-[10px] text-slate-500">On: pinned to the map (shrinks as you zoom out). Off: constant size.</span>
+                <span class="text-2xs text-slate-300">Scale with zoom
+                    <span class="block text-2xs text-slate-500">On: pinned to the map (shrinks as you zoom out). Off: constant size.</span>
                 </span>
                 <input type="checkbox" @checked($vmr('ship_anchored', false)) wire:change="setVoyageMap('ship_anchored', $event.target.checked)" class="toggle toggle-sm toggle-warning shrink-0" />
             </label>
@@ -631,30 +631,30 @@
                  read as too much on a big classroom screen, so the swing is adjustable — 0 parks the
                  ship dead still on the water. --}}
             <label class="mt-3 block">
-                <span class="flex justify-between text-[11px] text-slate-300">Animation <span class="text-slate-500">{{ (int) $vmr('motion', 100) }}%</span></span>
+                <span class="flex justify-between text-2xs text-slate-300">Animation <span class="text-slate-500">{{ (int) $vmr('motion', 100) }}%</span></span>
                 <input type="range" min="0" max="100" step="5" value="{{ (int) $vmr('motion', 100) }}"
                        wire:change="setVoyageMap('motion', $event.target.value)"
                        class="range range-xs range-warning mt-1" />
-                <span class="mt-0.5 flex justify-between text-[9px] text-slate-500"><span>Still</span><span>Full rock</span></span>
+                <span class="mt-0.5 flex justify-between text-2xs text-slate-500"><span>Still</span><span>Full rock</span></span>
             </label>
 
             {{-- Sailing zoom: how closely the camera follows the ship. 0 = tight on the ship + a small
                  island; 100 = a continental view (never the whole world). --}}
             <label class="mt-3 block">
-                <span class="flex justify-between text-[11px] text-slate-300">Sailing zoom <span class="text-slate-500">{{ (int) $vmr('ocean_zoom', 30) }}%</span></span>
+                <span class="flex justify-between text-2xs text-slate-300">Sailing zoom <span class="text-slate-500">{{ (int) $vmr('ocean_zoom', 30) }}%</span></span>
                 <input type="range" min="0" max="100" step="5" value="{{ (int) $vmr('ocean_zoom', 30) }}"
                        wire:change="setVoyageMap('ocean_zoom', $event.target.value)"
                        class="range range-xs range-warning mt-1" />
-                <span class="mt-0.5 flex justify-between text-[9px] text-slate-500"><span>Ship + island</span><span>Continental</span></span>
+                <span class="mt-0.5 flex justify-between text-2xs text-slate-500"><span>Ship + island</span><span>Continental</span></span>
             </label>
 
             <label class="mt-3 flex items-center justify-between gap-2">
-                <span class="text-[11px] text-slate-300">Dolly in on arrival
-                    <span class="block text-[10px] text-slate-500">Zoom in a little more as the ship makes landfall.</span>
+                <span class="text-2xs text-slate-300">Dolly in on arrival
+                    <span class="block text-2xs text-slate-500">Zoom in a little more as the ship makes landfall.</span>
                 </span>
                 <input type="checkbox" @checked($vmr('cam_dolly_arrival', false)) wire:change="setVoyageMap('cam_dolly_arrival', $event.target.checked)" class="toggle toggle-sm toggle-warning shrink-0" />
             </label>
-            <p class="mt-2 text-[10px] text-slate-500">The sail (with these camera moves) plays in Preview and for students — the editor jumps straight to each landfall.</p>
+            <p class="mt-2 text-2xs text-slate-500">The sail (with these camera moves) plays in Preview and for students — the editor jumps straight to each landfall.</p>
         </section>
 
         {{-- ROUTE LINE — the sailed (visible) part of the journey. Lesson-wide (one setting for every
@@ -675,7 +675,7 @@
             <div class="mt-2 space-y-2.5" @disabled(! $rl['enabled']) @class(['opacity-40 pointer-events-none' => ! $rl['enabled']])>
                 {{-- Colour (fill) --}}
                 <label class="flex items-center justify-between gap-2">
-                    <span class="text-[11px] text-slate-300">Colour</span>
+                    <span class="text-2xs text-slate-300">Colour</span>
                     <input type="color" value="{{ $rl['color'] }}"
                            wire:change="setRouteLine('color', $event.target.value)"
                            class="h-6 w-10 cursor-pointer rounded border border-slate-600 bg-slate-900" />
@@ -683,7 +683,7 @@
 
                 {{-- Opacity --}}
                 <label class="block">
-                    <span class="flex justify-between text-[11px] text-slate-300">Opacity <span class="text-slate-500">{{ number_format((float) $rl['opacity'], 2) }}</span></span>
+                    <span class="flex justify-between text-2xs text-slate-300">Opacity <span class="text-slate-500">{{ number_format((float) $rl['opacity'], 2) }}</span></span>
                     <input type="range" min="0" max="1" step="0.05" value="{{ $rl['opacity'] }}"
                            wire:change="setRouteLine('opacity', $event.target.value)"
                            class="range range-xs range-warning mt-1" />
@@ -691,7 +691,7 @@
 
                 {{-- Thickness --}}
                 <label class="block">
-                    <span class="flex justify-between text-[11px] text-slate-300">Thickness <span class="text-slate-500">{{ (float) $rl['thickness'] }}px</span></span>
+                    <span class="flex justify-between text-2xs text-slate-300">Thickness <span class="text-slate-500">{{ (float) $rl['thickness'] }}px</span></span>
                     <input type="range" min="0.5" max="12" step="0.5" value="{{ $rl['thickness'] }}"
                            wire:change="setRouteLine('thickness', $event.target.value)"
                            class="range range-xs range-warning mt-1" />
@@ -699,7 +699,7 @@
 
                 {{-- Wobble --}}
                 <label class="block">
-                    <span class="flex justify-between text-[11px] text-slate-300">Wobble <span class="text-slate-500">{{ number_format((float) $rl['wobble'], 2) }}</span></span>
+                    <span class="flex justify-between text-2xs text-slate-300">Wobble <span class="text-slate-500">{{ number_format((float) $rl['wobble'], 2) }}</span></span>
                     <input type="range" min="0" max="1" step="0.05" value="{{ $rl['wobble'] }}"
                            wire:change="setRouteLine('wobble', $event.target.value)"
                            class="range range-xs range-warning mt-1" />
@@ -707,7 +707,7 @@
 
                 {{-- Curve: straight vs bezier --}}
                 <div>
-                    <span class="text-[11px] text-slate-300">Line style</span>
+                    <span class="text-2xs text-slate-300">Line style</span>
                     <div class="mt-1 inline-flex overflow-hidden rounded-lg border border-slate-700/60">
                         <button type="button" wire:click="setRouteLine('curve', 'bezier')"
                                 class="px-3 py-1 text-xs font-medium transition-colors {{ ($rl['curve'] ?? 'bezier') === 'straight' ? 'bg-slate-800 text-slate-400' : 'bg-amber-500 text-slate-950' }}">
@@ -727,16 +727,16 @@
              and because an accidental drag is exactly when nobody thinks to try a shortcut. --}}
         <button type="button" wire:click="undoVoyage"
                 @disabled(! $this->canUndoVoyage)
-                class="mt-3 flex items-center gap-1.5 border-t border-slate-700/50 pt-3 text-[11px] transition
+                class="mt-3 flex items-center gap-1.5 border-t border-slate-700/50 pt-3 text-2xs transition
                        {{ $this->canUndoVoyage ? 'text-slate-300 hover:text-amber-300' : 'cursor-not-allowed text-slate-600' }}">
             <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"/></svg>
             {{ __('Undo last route change') }}
-            <span class="ml-auto font-mono text-[10px] text-slate-500">⌘Z</span>
+            <span class="ml-auto font-mono text-2xs text-slate-500">⌘Z</span>
         </button>
 
         <button type="button" wire:click="resetVoyageRoute"
                 wire:confirm="Reset the whole route to its original shape? Your dragged waypoints and bends will be discarded (dates, gallery and map settings stay)."
-                class="mt-2 flex items-center gap-1.5 border-t border-slate-700/50 pt-3 text-[11px] text-slate-400 hover:text-amber-300">
+                class="mt-2 flex items-center gap-1.5 border-t border-slate-700/50 pt-3 text-2xs text-slate-400 hover:text-amber-300">
             <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"/></svg>
             Reset route to original
         </button>
@@ -747,7 +747,7 @@
     <button type="button" wire:click="deleteScene({{ $scene->id }})"
             x-show="!wide"
             wire:confirm="Delete this waypoint?"
-            class="mt-4 flex items-center gap-1 border-t border-slate-700/50 pt-3 text-xs text-rose-300 hover:text-rose-200">
+            class="mt-4 flex items-center gap-1 border-t border-slate-700/50 pt-3 text-xs text-error/80 hover:text-error">
         <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
         Delete waypoint
     </button>

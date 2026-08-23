@@ -330,7 +330,7 @@ export class QuizOverlay {
       return `
         <button data-opt="${i}" ${answered || gated ? 'disabled' : ''}
                 class="${anim} ${tone} ${cursor} relative flex w-full items-center gap-4 rounded-xl border px-4 py-3
-                       text-left text-[20px] font-medium transition-[background-color,border-color,transform,opacity] duration-150">
+                       text-left text-xl font-medium transition-[background-color,border-color,transform,opacity] duration-150">
           <span class="${LETTER_CLASSES[i]} inline-flex h-[30px] w-9 shrink-0 items-center justify-center
                        rounded-lg text-[15px] font-extrabold">${LETTERS[i]}</span>
           <span>${this._escape(opt)}</span>
