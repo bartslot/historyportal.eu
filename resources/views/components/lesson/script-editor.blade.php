@@ -47,6 +47,10 @@
     {{-- Which tab the dock is showing. Lives in $store.view alongside the panel toggles, so it
          survives a scene change (this component is rebuilt per scene) and a reload. --}}
     <div role="tablist" class="tabs tabs-boxed tabs-sm">
+        <button type="button" role="tab" x-on:click="$store.view.showTab('timeline')"
+                :aria-selected="$store.view.bottomTab === 'timeline'"
+                :class="$store.view.bottomTab === 'timeline' ? 'tab-active' : ''"
+                class="tab" data-tab="timeline">{{ __('Timeline') }}</button>
         <button type="button" role="tab" x-on:click="$store.view.showTab('icons')"
                 :aria-selected="$store.view.bottomTab === 'icons'"
                 :class="$store.view.bottomTab === 'icons' ? 'tab-active' : ''"
@@ -55,6 +59,12 @@
                 :aria-selected="$store.view.bottomTab === 'script'"
                 :class="$store.view.bottomTab === 'script' ? 'tab-active' : ''"
                 class="tab">{{ __('Script') }}</button>
+    </div>
+
+    {{-- ── Timeline tab ──────────────────────────────────────────────────────────
+         The rows are the scene's objects; a camera is one a map scene has. --}}
+    <div x-show="$store.view.bottomTab === 'timeline'" x-cloak class="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <x-lesson.animation-timeline :scene="$scene ?? null" />
     </div>
 
     {{-- ── Icons tab ─────────────────────────────────────────────────────────────

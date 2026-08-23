@@ -170,6 +170,19 @@
     --settings-panel-thumb-h: 4rem;     /* 64px map-style card */
     --settings-panel-row-h: 2rem;       /* 32px field height */
     --settings-panel-pad: 1rem;         /* 16px side padding */
+
+    /* Animation timeline (Figma Animation - Timeline, 1417:1999). Sampled off the file's own
+       render rather than guessed: the ground is darker than the panel, the lanes are the same
+       hairline the section rules use — so the lane is bg-panel-hairline and gets NO token of its
+       own, a second name for one colour being how a palette drifts — and the playhead and the
+       keyframes share one colour so the mark that says "here" and the marks that say "and here"
+       read as one family. */
+    --color-timeline-ground: #08101e;
+    --color-timeline-mark: #394658;   /* playhead line AND keyframe diamond */
+    --color-timeline-strip: #0f1929;  /* the transport row above the lanes */
+    --timeline-lane-h: 1.3125rem;     /* 21px */
+    --timeline-row-pitch: 1.5rem;     /* 24px — lane plus its gap */
+    --timeline-label-col: 14.125rem;  /* 226px — labels and value fields, lanes start after it */
 }
 
 @font-face {

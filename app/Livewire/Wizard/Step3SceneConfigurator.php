@@ -1921,6 +1921,66 @@ class Step3SceneConfigurator extends Component
     }
 
     /**
+     * Timeline tab: the scene's keyframed animation.
+     *
+     * Written into the scene config SNAPSHOT and saved through saveSelected(), like every other
+     * config edit — writing straight to the model is overwritten by the next save, which rebuilds
+     * config from that snapshot.
+     *
+     * The payload comes from the browser, so it is rebuilt here field by field rather than
+     * trusted: a track names an object and one of its properties, and carries keyframes of
+     * {time, value, easing}. Anything else is dropped.
+     *
+     * @param  array{duration?: mixed, tracks?: mixed}  $timeline
+     */
+    public function setTimeline(array $timeline): void
+    {
+        if (! $this->selectedScene || ! $this->selectedSceneId) {
+            return;
+        }
+
+        $duration = max(0.0, min(3600.0, (float) ($timeline['duration'] ?? 0)));
+        $tracks = [];
+
+        foreach ((array) ($timeline['tracks'] ?? []) as $track) {
+            if (! is_array($track)) {
+                continue;
+            }
+
+            $target = (string) ($track['target'] ?? '');
+            $property = (string) ($track['property'] ?? '');
+            // The vocabulary is shared with resources/js/anim/properties.js, which plays it back.
+            $allowed = match (strtok($target, ':')) {
+                'camera' => ['lng', 'lat', 'altitude', 'heading', 'tilt'],
+                'layer' => ['x', 'y', 'scale', 'rotation', 'opacity'],
+                default => [],
+            };
+
+            if (! in_array($property, $allowed, true)) {
+                continue;
+            }
+
+            $keyframes = [];
+            foreach ((array) ($track['keyframes'] ?? []) as $key) {
+                if (! is_array($key) || ! isset($key['time']) || ! is_numeric($key['time'])) {
+                    continue;
+                }
+                $keyframes[] = [
+                    'time' => max(0.0, min($duration ?: 3600.0, (float) $key['time'])),
+                    'value' => (float) ($key['value'] ?? 0),
+                    'easing' => is_string($key['easing'] ?? null) ? $key['easing'] : 'easeInOutCubic',
+                ];
+            }
+
+            usort($keyframes, fn (array $a, array $b): int => $a['time'] <=> $b['time']);
+            $tracks[] = ['target' => $target, 'property' => $property, 'keyframes' => $keyframes];
+        }
+
+        $this->selectedScene['config']['timeline'] = ['duration' => $duration, 'tracks' => $tracks];
+        $this->saveSelected();
+    }
+
+    /**
      * Give a leg that has no scene one, so the class can actually see that stop.
      *
      * A route can end up with more legs than scenes — an added crossing, a deleted scene — and the

@@ -159,6 +159,35 @@ export const animationTimeline = (config = {}) => ({
     if (frame.camera && map) applyPose(map, { ...poseFromMap(map), ...frame.camera })
   },
 
+  // ── Transport ───────────────────────────────────────────────────────────────────────────
+
+  playing: false,
+  _raf: null,
+  _startedAt: 0,
+  _startedFrom: 0,
+
+  play () {
+    if (this.playing || !(this.duration > 0)) return
+    this.playing = true
+    this._startedFrom = this.time >= this.duration ? 0 : this.time
+    this._startedAt = performance.now()
+    const step = () => {
+      if (!this.playing) return
+      const elapsed = (performance.now() - this._startedAt) / 1000
+      const t = this._startedFrom + elapsed
+      if (t >= this.duration) { this.seek(this.duration); return this.pause() }
+      this.seek(t)
+      this._raf = requestAnimationFrame(step)
+    }
+    this._raf = requestAnimationFrame(step)
+  },
+
+  pause () {
+    this.playing = false
+    if (this._raf) cancelAnimationFrame(this._raf)
+    this._raf = null
+  },
+
   // ── Keyframes ───────────────────────────────────────────────────────────────────────────
 
   /** The diamond on a property row: "put what I am looking at, here". */
@@ -172,6 +201,40 @@ export const animationTimeline = (config = {}) => ({
     if (!Number.isFinite(value)) return
 
     this.writeTrack(target, property, (track) => addKeyframe(track, { time: this.time, value }))
+    this.save()
+  },
+
+  /** Is there a key exactly under the playhead? Drives the diamond's pressed state. */
+  hasKeyHere (target, property) {
+    return this.keysOf(target, property).some((k) => Math.abs(k.time - this.time) < 1e-6)
+  },
+
+  /** What this property reads at the playhead: the sampled value when it is animated, and the
+   *  map's own value when it is not, so the field never shows a number nothing is using. */
+  valueAt (target, property) {
+    const keys = this.keysOf(target, property)
+    if (keys.length) {
+      const frame = sampleFrame(this.tracks, this.time)
+      const value = frame[target]?.[property]
+      if (Number.isFinite(value)) return Math.round(value * 1000) / 1000
+    }
+    const map = window.__lessonMap
+    const live = map && kindOfTarget(target) === 'camera' ? poseFromMap(map)[property] : null
+    return Number.isFinite(live) ? Math.round(live * 1000) / 1000 : 0
+  },
+
+  /** Typing a number moves the object AND, if this property is keyed here, moves that key's value.
+   *  Editing a value at a keyframe that then ignored it is the sort of thing nobody reports. */
+  setValue (target, property, value) {
+    if (!Number.isFinite(value)) return
+    const map = window.__lessonMap
+    if (map && kindOfTarget(target) === 'camera') applyPose(map, { ...poseFromMap(map), [property]: value })
+
+    if (!this.hasKeyHere(target, property)) return
+    this.writeTrack(target, property, (track) => ({
+      ...track,
+      keyframes: sortedKeys(track).map((k) => (Math.abs(k.time - this.time) < 1e-6 ? { ...k, value } : k)),
+    }))
     this.save()
   },
 
