@@ -210,7 +210,12 @@ export class ParallaxScene {
 
   /** @param {PlaneSpec} spec */
   _buildPlane (spec) {
-    const { url, kind = 'cover', depth = 1, height, sway } = spec
+    const { url, kind = 'cover', depth = 1, height, width, sway } = spec
+    // Mirroring, matching ArtworkOverlay._transform: applied AFTER the rotation so a flipped layer
+    // mirrors about its own axes. Absent means unflipped.
+    const mirror = (spec.flip_x || spec.flip_y)
+      ? ` scale(${spec.flip_x ? -1 : 1}, ${spec.flip_y ? -1 : 1})`
+      : ''
     const layer = document.createElement('div')
     const animate = sway && ! prefersReducedMotion()
 
@@ -242,9 +247,19 @@ export class ParallaxScene {
         // The plane wrapper carries the parallax pan (baseScale forced to 1 in show() so this
         // scale isn't doubled). No sway — a placed object stays put.
         const s = Number.isFinite(spec.scale) ? spec.scale : 1
+        // An explicit width is optional and rare: it exists only once a teacher has unlocked the
+        // aspect in the Dimensions row. Without one the figure keeps `object-fit:contain` and its
+        // own aspect, which is what every layer authored before that row does. With one, the box
+        // is theirs, so the picture fills it — the editor renders the same two cases the same way
+        // (ArtworkOverlay._widthCss), and playback disagreeing with the editor is the whole bug
+        // class this mirrors.
+        const box = Number.isFinite(width)
+          ? `height:${height ?? 40}%;width:${width}%;max-width:none;object-fit:fill;`
+          : `height:${height ?? 40}%;max-width:none;object-fit:contain;`
+        const spin = Number.isFinite(spec.rotation) && spec.rotation ? ` rotate(${spec.rotation}deg)` : ''
         img.style.cssText = `position:absolute;left:${spec.x}%;top:${spec.y}%;`
-          + `height:${height ?? 40}%;max-width:none;object-fit:contain;`
-          + `transform:translate(-50%,-50%) scale(${s});`
+          + box
+          + `transform:translate(-50%,-50%) scale(${s})${spin}${mirror};`
       } else {
         // Centered + bottom-anchored figure; translateX(-50%) lives in the sway keyframes
         // too, so the breathing animation composes with the centering instead of fighting it.

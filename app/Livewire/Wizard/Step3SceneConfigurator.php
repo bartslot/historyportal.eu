@@ -207,6 +207,11 @@ class Step3SceneConfigurator extends Component
                 'kind' => in_array($l['kind'] ?? 'cover', ['cover', 'figure', 'strip'], true) ? ($l['kind'] ?? 'cover') : 'cover',
                 'scale' => (float) ($l['scale'] ?? 1),
                 'height' => isset($l['height']) ? (float) $l['height'] : null,
+                // The layer's own width, once a teacher has released the aspect lock and given it
+                // one. Absent for everything authored before the Dimensions row, and absent MEANS
+                // "take the width from the image's aspect" — so it stays null rather than being
+                // defaulted to something.
+                'width' => isset($l['width']) ? (float) $l['width'] : null,
                 'sway' => (bool) ($l['sway'] ?? false),
                 'blur' => isset($l['blur']) ? (float) $l['blur'] : null,
                 'opacity' => isset($l['opacity']) ? (float) $l['opacity'] : null,
@@ -226,6 +231,10 @@ class Step3SceneConfigurator extends Component
                 'white_key' => isset($l['white_key']) ? (float) $l['white_key'] : null,
                 'tint_opacity' => isset($l['tint_opacity']) ? (float) $l['tint_opacity'] : null,
                 'rotation' => isset($l['rotation']) ? (float) $l['rotation'] : null,
+                // Mirroring, which is not rotation: a half turn and a horizontal flip are the same
+                // on a symmetrical shape and opposite headings on a ship.
+                'flip_x' => ! empty($l['flip_x']),
+                'flip_y' => ! empty($l['flip_y']),
                 'anim_duration' => isset($l['anim_duration']) ? (int) $l['anim_duration'] : null,
                 'anim_out' => $l['anim_out'] ?? null,
                 'anim_out_delay' => isset($l['anim_out_delay']) ? (float) $l['anim_out_delay'] : null,

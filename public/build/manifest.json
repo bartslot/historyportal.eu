@@ -80,7 +80,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-BpXv1_-x.css",
+    "file": "assets/app-BWekRFXZ.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -89,7 +89,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-BcNxx2dl.js",
+    "file": "assets/app-DhuTh5Ex.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -152,7 +152,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-yfcHjb8G.js",
+    "file": "assets/lesson-player-C2DXnCCa.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -175,7 +175,7 @@
     ]
   },
   "resources/js/scene/ArtworkOverlay.js": {
-    "file": "assets/ArtworkOverlay-DV9Brpnk.js",
+    "file": "assets/ArtworkOverlay-CAjTt96P.js",
     "name": "ArtworkOverlay",
     "src": "resources/js/scene/ArtworkOverlay.js",
     "isDynamicEntry": true,
@@ -192,7 +192,7 @@
     "isDynamicEntry": true
   },
   "resources/js/scene/ParallaxScene.js": {
-    "file": "assets/ParallaxScene-XyCafuro.js",
+    "file": "assets/ParallaxScene-C1e8hfoF.js",
     "name": "ParallaxScene",
     "src": "resources/js/scene/ParallaxScene.js",
     "isDynamicEntry": true,
@@ -223,7 +223,7 @@
     "isDynamicEntry": true
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-BlgcJZjt.js",
+    "file": "assets/index-NGgkLbyH.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
@@ -312,7 +312,7 @@
     ]
   },
   "resources/js/voyage-tour.js": {
-    "file": "assets/voyage-tour-CPKQchKP.js",
+    "file": "assets/voyage-tour-BGNA4Jfj.js",
     "name": "voyage-tour",
     "src": "resources/js/voyage-tour.js",
     "isEntry": true,
