@@ -27,7 +27,7 @@
        style="height: var(--settings-panel-row-h, 2rem)">
     {{-- data-scrub: drag the glyph sideways to change the number. See resources/js/ui/scrub.js. --}}
     <span data-scrub aria-hidden="true"
-          class="shrink-0 cursor-ew-resize select-none text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ $glyph }}</span>
+          class="shrink-0 cursor-col-resize select-none text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ $glyph }}</span>
     <input type="number" min="{{ $min }}" max="{{ $max }}" step="{{ $step }}" value="{{ $value }}"
            aria-label="{{ $label }}"
            @if ($onInput) x-on:input="{{ $onInput }}" @endif

@@ -60,6 +60,8 @@ export function layerAngleRow ({ assetId, rotation = 0, flipX = false, flipY = f
     flipX: !!flipX,
     flipY: !!flipY,
     dragging: false,
+    /** The angle when the dial was focused — what Esc returns to. */
+    _focusDeg: null,
 
     init () {
       this.deg = Math.round(toDial(rotation))
@@ -86,6 +88,48 @@ export function layerAngleRow ({ assetId, rotation = 0, flipX = false, flipY = f
     /** Stepper and arrow keys. */
     nudge (delta, $wire) {
       this.setDeg(this.deg + delta, { commitWith: $wire })
+    },
+
+    /**
+     * The keyboard an element with role="slider" is expected to answer to.
+     *
+     * Both axes, not just left/right: this is a DIAL, and someone reaching for Up to turn it
+     * clockwise is not making a mistake. Home and End are the two ends of the turn, PageUp/PageDown
+     * move in fifteens the way the canvas handle already snaps with Shift held, and Shift makes an
+     * arrow coarse — the same modifier meaning as the scrubby labels, because a modifier must never
+     * mean two different things in one panel.
+     */
+    onKey (event, $wire) {
+      const step = event.shiftKey ? 10 : 1
+      const move = {
+        ArrowRight: step, ArrowUp: step,
+        ArrowLeft: -step, ArrowDown: -step,
+        PageUp: 15, PageDown: -15,
+      }[event.key]
+
+      if (move !== undefined) {
+        event.preventDefault()
+        this.nudge(move, $wire)
+        return
+      }
+      if (event.key === 'Home' || event.key === 'End') {
+        event.preventDefault()
+        this.setDeg(event.key === 'Home' ? 0 : 359, { commitWith: $wire })
+        return
+      }
+      // Esc puts the angle back to where this focus began, matching every numeric field in the
+      // panel (resources/js/ui/field-revert.js). A dial with no way back is a dial you can only
+      // fix by remembering the old number.
+      if (event.key === 'Escape' && this._focusDeg !== null) {
+        event.preventDefault()
+        event.stopPropagation()
+        this.setDeg(this._focusDeg, { commitWith: $wire })
+      }
+    },
+
+    /** Remember where a keyboard session started, so Esc has somewhere to go back to. */
+    onFocus () {
+      this._focusDeg = this.deg
     },
 
     /** Pointer anywhere on the dial gives the angle directly — no linear mapping, so it wraps. */

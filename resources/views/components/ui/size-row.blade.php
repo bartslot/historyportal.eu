@@ -43,7 +43,7 @@
                 {{-- data-scrub: dragging W while the aspect is held drives H, because the drag
                      dispatches the same `input` event typing does and edit() is already on it. --}}
                 <span data-scrub aria-hidden="true"
-                      class="shrink-0 cursor-ew-resize select-none text-3xs font-semibold text-panel-label">{{ $glyph }}</span>
+                      class="shrink-0 cursor-col-resize select-none text-3xs font-semibold text-panel-label">{{ $glyph }}</span>
                 {{-- ONE writer. `x-model` plus an input handler that also assigns to the same
                      property is two of them, and they disagree the moment the handler derives a
                      value rather than echoing one: the lock would set h to 10, x-model would put

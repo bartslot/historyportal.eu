@@ -41,8 +41,8 @@
                 x-on:pointermove="moveDial($event, $el)"
                 x-on:pointerup="endDial($wire)"
                 x-on:pointercancel="endDial($wire)"
-                x-on:keydown.left.prevent="nudge(-1, $wire)"
-                x-on:keydown.right.prevent="nudge(1, $wire)">
+                x-on:focus="onFocus()"
+                x-on:keydown="onKey($event, $wire)">
             <span class="pointer-events-none absolute left-1/2 top-1/2 block h-1 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-base-content"
                   :style="dotStyle()"></span>
         </button>
@@ -53,7 +53,7 @@
                    style="height: var(--settings-panel-row-h, 2rem)">
                 {{-- data-scrub: drag this label sideways to change the number. See scrub.js. --}}
                 <span data-scrub aria-hidden="true"
-                      class="shrink-0 cursor-ew-resize select-none text-3xs font-semibold text-panel-label">&deg;</span>
+                      class="shrink-0 cursor-col-resize select-none text-3xs font-semibold text-panel-label">&deg;</span>
                 <input type="number" min="0" max="360" step="1"
                        aria-label="{{ __('Angle') }}"
                        :value="deg"

@@ -117,3 +117,67 @@ describe('the dial, the field and the stepper as one value', () => {
     expect([r.flipX, r.flipY]).toEqual([false, true])
   })
 })
+
+describe('the keyboard a role="slider" has to answer to', () => {
+  const row = (rotation = 0) => {
+    const r = layerAngleRow({ assetId: 1, rotation })
+    r.init()
+    return r
+  }
+  const key = (k, extra = {}) => ({ key: k, preventDefault () {}, stopPropagation () {}, ...extra })
+
+  /** It is a DIAL. Someone reaching for Up to turn it clockwise is not making a mistake. */
+  it('turns on both axes, not just left and right', () => {
+    const up = row(10); up.onKey(key('ArrowUp'), null)
+    const right = row(10); right.onKey(key('ArrowRight'), null)
+    const down = row(10); down.onKey(key('ArrowDown'), null)
+    const left = row(10); left.onKey(key('ArrowLeft'), null)
+
+    expect([up.deg, right.deg]).toEqual([11, 11])
+    expect([down.deg, left.deg]).toEqual([9, 9])
+  })
+
+  /** Shift is coarse everywhere in this panel; a modifier must not mean two things. */
+  it('takes a coarser step with Shift, matching the scrubby labels', () => {
+    const r = row(0)
+    r.onKey(key('ArrowRight', { shiftKey: true }), null)
+    expect(r.deg).toBe(10)
+  })
+
+  it('jumps to the ends of the turn with Home and End', () => {
+    const home = row(123); home.onKey(key('Home'), null)
+    const end = row(123); end.onKey(key('End'), null)
+    expect([home.deg, end.deg]).toEqual([0, 359])
+  })
+
+  it('moves in fifteens on PageUp and PageDown', () => {
+    const r = row(0)
+    r.onKey(key('PageUp'), null)
+    expect(r.deg).toBe(15)
+    r.onKey(key('PageDown'), null)
+    expect(r.deg).toBe(0)
+  })
+
+  it('wraps on the keyboard as it does on the pointer', () => {
+    const r = row(359)
+    r.onKey(key('ArrowRight'), null)
+    expect(r.deg).toBe(0)
+  })
+
+  it('gives the angle back on Escape', () => {
+    const r = row(45)
+    r.onFocus()
+    r.onKey(key('ArrowRight'), null)
+    r.onKey(key('ArrowRight'), null)
+    expect(r.deg).toBe(47)
+
+    r.onKey(key('Escape'), null)
+    expect(r.deg).toBe(45)
+  })
+
+  it('ignores a key it has no meaning for', () => {
+    const r = row(45)
+    r.onKey(key('a'), null)
+    expect(r.deg).toBe(45)
+  })
+})
