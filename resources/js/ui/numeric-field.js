@@ -1,5 +1,9 @@
 /**
- * field-revert.js — Esc gives a numeric field its old value back.
+ * numeric-field.js — how the panel's numeric fields behave beyond plain typing.
+ *
+ * Three gestures, all of them things a teacher tries because every other tool has them:
+ * Escape puts the old value back, double-clicking a field's label resets that property to its
+ * default, and a pasted "50%" is read as 50.
  *
  * "Esc reverting is the one people notice only when it is missing." A teacher who types over a
  * width, sees the layer jump somewhere wrong and presses Escape expects the old number back; with
@@ -23,12 +27,12 @@
  * node has taken the focus away too.
  */
 
+import { fieldFor } from './scrub.js'
+
 /** element → the value it held when focus arrived. Not a data-attribute; a morph eats those. */
 const focusedWith = new WeakMap()
 
-/** Fields this applies to: the panel's own numeric inputs and sliders. */
-const REVERTABLE = 'input[type=number], input[type=range]'
-
+/** The fields all of this applies to: the panel's numeric inputs and its sliders. */
 export function isRevertable (el) {
   return el instanceof HTMLInputElement && (el.type === 'number' || el.type === 'range')
 }
@@ -49,14 +53,59 @@ export function revertTo (input, value) {
   return true
 }
 
+/**
+ * A pasted value with a trailing percent sign, as the number underneath it.
+ *
+ * `<input type="number">` refuses a "%" keystroke outright, so this only ever matters for a paste —
+ * which is exactly how "50%" arrives, copied from somewhere that wrote the unit.
+ *
+ * DELIBERATELY DOES NOT TOUCH THE DECIMAL SEPARATOR. A Dutch teacher types 0,5 and this app ships
+ * in five languages, so deciding what a comma means is locale-aware number parsing and a design
+ * decision in its own right. Reading "1,5" as 15 would be silent and wrong. Only the unit is
+ * stripped; anything else is left for the browser to accept or reject as it already does.
+ */
+export function stripUnit (text) {
+  const match = String(text).trim().match(/^(-?[\d.,]+)\s*%$/)
+  return match ? match[1] : null
+}
+
 /** Install the delegated handlers. Idempotent. */
-export function initFieldRevert (root = document) {
-  if (root.__fieldRevertReady) return
-  root.__fieldRevertReady = true
+export function initNumericFields (root = document) {
+  if (root.__numericFieldsReady) return
+  root.__numericFieldsReady = true
 
   // focusin rather than focus: focus does not bubble, so a delegated listener never sees it.
   root.addEventListener('focusin', (e) => {
     if (isRevertable(e.target)) focusedWith.set(e.target, e.target.value)
+  })
+
+  // A pasted "50%" is a 50. See stripUnit for why the decimal separator is left alone.
+  root.addEventListener('paste', (e) => {
+    if (!isRevertable(e.target)) return
+    const pasted = e.clipboardData?.getData('text')
+    if (!pasted) return
+    const bare = stripUnit(pasted)
+    if (bare === null) return
+    e.preventDefault()
+    revertTo(e.target, bare)
+  })
+
+  /**
+   * Double-click a field's label to put that property back to its default.
+   *
+   * The only way back to a default, and the dial needs it most: landing on exactly 0 by hand is
+   * fiddly, and Escape only helps while the focus is still in the field. The default is
+   * server-rendered onto the input, so a Livewire morph re-applies it rather than stripping it —
+   * unlike the Escape memory, which the server has never heard of and which lives in a WeakMap.
+   */
+  root.addEventListener('dblclick', (e) => {
+    const handle = e.target instanceof Element ? e.target.closest('[data-scrub]') : null
+    if (!handle) return
+    const field = fieldFor(handle)
+    const fallback = field?.dataset.default
+    if (!field || fallback === undefined) return
+    e.preventDefault()
+    revertTo(field, fallback)
   })
 
   root.addEventListener('keydown', (e) => {

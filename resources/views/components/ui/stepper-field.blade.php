@@ -11,6 +11,8 @@
     'onChange' => null,
     /** Alpine expression for `@input` — the live drag/type, applied without a round trip. */
     'onInput' => null,
+    /** The property's default; double-clicking the glyph returns to it. */
+    'default' => null,
 ])
 
 {{-- A numeric field with its axis letter in front — Figma's `input` in the position and size rows.
@@ -30,6 +32,7 @@
           class="shrink-0 cursor-col-resize select-none text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ $glyph }}</span>
     <input type="number" min="{{ $min }}" max="{{ $max }}" step="{{ $step }}" value="{{ $value }}"
            aria-label="{{ $label }}"
+           @if ($default !== null) data-default="{{ $default }}" @endif
            @if ($onInput) x-on:input="{{ $onInput }}" @endif
            @if ($onChange) wire:change="{{ $onChange }}" @endif
            class="w-full min-w-0 border-0 bg-transparent p-0 text-xs outline-none

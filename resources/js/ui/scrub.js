@@ -82,6 +82,9 @@ export function initScrub (root = document) {
     const onMove = (ev) => {
       const dx = ev.clientX - startX
       if (!dragged && Math.abs(dx) < DRAG_THRESHOLD_PX) return
+      // Only once a real drag has started: from here the gesture is a scrub, not a click, and the
+      // browser must not also be selecting text under the pointer.
+      if (ev.cancelable) ev.preventDefault()
       dragged = true
       const multiplier = ev.shiftKey ? COARSE : (ev.altKey ? FINE : 1)
       field.value = String(scrubbedValue(startValue, dx, { step, min, max, multiplier }))
@@ -100,6 +103,9 @@ export function initScrub (root = document) {
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
     window.addEventListener('pointercancel', onUp)
-    e.preventDefault()
+    // NOT preventDefault() here. Cancelling pointerdown suppresses the compatibility mouse events
+    // that follow, and double-clicking a label is now how a property goes back to its default —
+    // so swallowing the press would take the reset gesture with it. Text selection is already
+    // handled by `select-none` on the handle, which is what preventDefault was really for.
   })
 }

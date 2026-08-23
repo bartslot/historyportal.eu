@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { initFieldRevert, revertTo, isRevertable } from '../ui/field-revert.js'
+import { initNumericFields, revertTo, isRevertable, stripUnit } from '../ui/numeric-field.js'
 
 const mount = (html) => {
   document.body.innerHTML = html
@@ -8,7 +8,7 @@ const mount = (html) => {
 
 const esc = (el) => el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
 
-beforeEach(() => { document.body.innerHTML = ''; delete document.__fieldRevertReady })
+beforeEach(() => { document.body.innerHTML = ''; delete document.__numericFieldsReady })
 
 describe('which fields Esc applies to', () => {
   it('covers the panel’s numeric fields and its sliders', () => {
@@ -51,7 +51,7 @@ describe('putting a value back', () => {
 
 describe('Escape in a field', () => {
   it('restores the value the field was focused with', () => {
-    initFieldRevert(document)
+    initNumericFields(document)
     const el = mount('<input type="number" value="50">')
 
     el.dispatchEvent(new FocusEvent('focusin', { bubbles: true }))
@@ -66,7 +66,7 @@ describe('Escape in a field', () => {
    * back to where the visit started.
    */
   it('goes back to the start of the visit, not the previous keystroke', () => {
-    initFieldRevert(document)
+    initNumericFields(document)
     const el = mount('<input type="number" value="50">')
 
     el.dispatchEvent(new FocusEvent('focusin', { bubbles: true }))
@@ -79,7 +79,7 @@ describe('Escape in a field', () => {
 
   /** Or Esc also closes whatever panel sits above the field. */
   it('swallows the key when it reverted something', () => {
-    initFieldRevert(document)
+    initNumericFields(document)
     const el = mount('<input type="number" value="50">')
     el.dispatchEvent(new FocusEvent('focusin', { bubbles: true }))
     el.value = '9'
@@ -92,7 +92,7 @@ describe('Escape in a field', () => {
 
   /** But an untouched field must let Esc through to close the panel. */
   it('lets the key through when there is nothing to revert', () => {
-    initFieldRevert(document)
+    initNumericFields(document)
     const el = mount('<input type="number" value="50">')
     el.dispatchEvent(new FocusEvent('focusin', { bubbles: true }))
 
@@ -108,7 +108,7 @@ describe('Escape in a field', () => {
    * has never heard of. Focused, handler installed, memory gone.
    */
   it('survives a morph rewriting the field’s attributes', () => {
-    initFieldRevert(document)
+    initNumericFields(document)
     const el = mount('<input type="number" value="50">')
 
     el.dispatchEvent(new FocusEvent('focusin', { bubbles: true }))
@@ -123,11 +123,89 @@ describe('Escape in a field', () => {
   })
 
   it('ignores Escape in a field it never saw focused', () => {
-    initFieldRevert(document)
+    initNumericFields(document)
     const el = mount('<input type="number" value="50">')
     el.value = '9'
     esc(el)
 
     expect(el.value).toBe('9')
+  })
+})
+
+describe('double-clicking a label to reset the property', () => {
+  const dbl = (el) => el.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true }))
+
+  it('puts the property back to the default the server rendered', () => {
+    initNumericFields(document)
+    const el = mount('<label><span data-scrub>X</span><input type="number" value="12" data-default="50"></label>')
+
+    dbl(el.querySelector('[data-scrub]'))
+
+    expect(el.querySelector('input').value).toBe('50')
+  })
+
+  /** The reset must reach the canvas AND the save, exactly as Escape does. */
+  it('tells the live preview and the save', () => {
+    initNumericFields(document)
+    const el = mount('<label><span data-scrub>X</span><input type="number" value="12" data-default="50"></label>')
+    const seen = []
+    el.querySelector('input').addEventListener('input', () => seen.push('input'))
+    el.querySelector('input').addEventListener('change', () => seen.push('change'))
+
+    dbl(el.querySelector('[data-scrub]'))
+
+    expect(seen).toEqual(['input', 'change'])
+  })
+
+  /**
+   * A field with no default declared has nothing to go back to — W's default is "derive it from
+   * the image again", which is a component's job, not a number the server can render.
+   */
+  it('does nothing for a field with no default', () => {
+    initNumericFields(document)
+    const el = mount('<label><span data-scrub>W</span><input type="number" value="12"></label>')
+
+    dbl(el.querySelector('[data-scrub]'))
+
+    expect(el.querySelector('input').value).toBe('12')
+  })
+
+  it('ignores a double-click that is not on a handle', () => {
+    initNumericFields(document)
+    const el = mount('<label><span>X</span><input type="number" value="12" data-default="50"></label>')
+
+    dbl(el.querySelector('span'))
+
+    expect(el.querySelector('input').value).toBe('12')
+  })
+})
+
+describe('a pasted value that carries its unit', () => {
+  it('reads "50%" as 50', () => {
+    expect(stripUnit('50%')).toBe('50')
+    expect(stripUnit('  50 % ')).toBe('50')
+    expect(stripUnit('-12.5%')).toBe('-12.5')
+  })
+
+  it('leaves a plain number alone', () => {
+    expect(stripUnit('50')).toBeNull()
+  })
+
+  /**
+   * DELIBERATELY NOT PARSED. This app ships in five languages and a Dutch teacher types 0,5 — so
+   * deciding what a comma means is locale-aware number parsing, and reading "1,5" as 15 would be
+   * silent and wrong. Only the unit is stripped; the separator is left exactly as it arrived for
+   * the browser to accept or reject as it already does.
+   */
+  it('strips the unit without touching the decimal separator', () => {
+    expect(stripUnit('1,5%')).toBe('1,5')
+    expect(stripUnit('1.5%')).toBe('1.5')
+  })
+
+  it('refuses anything that is not a number with a percent sign', () => {
+    expect(stripUnit('50px')).toBeNull()
+    expect(stripUnit('120+8')).toBeNull()
+    expect(stripUnit('%')).toBeNull()
+    expect(stripUnit('half%')).toBeNull()
   })
 })

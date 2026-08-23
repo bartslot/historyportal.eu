@@ -25,6 +25,11 @@
     'onInput' => null,
     /** Show the per-property keyframe diamond at the end of the row. */
     'keyframe' => false,
+    /**
+     * The property's default. Double-clicking the label returns to it — the only way back once a
+     * teacher has moved something and Escape's memory has gone with the focus.
+     */
+    'default' => null,
 ])
 
 @php
@@ -62,11 +67,16 @@
      The value is `display`, never a re-derivation of `value` — the caller owns the formatting, and
      a row that recomputed it would show a number the panel above it disagrees with. --}}
 <label {{ $attributes->class(['flex items-center gap-2 py-1']) }}>
-    <span class="shrink-0 text-3xs font-semibold uppercase leading-tight tracking-wide text-panel-label"
+    {{-- data-scrub marks it as the row's handle: double-click resets the property to its default.
+         A slider is dragged on its own track, so this label does not scrub — it only resets. --}}
+    <span @if ($default !== null) data-scrub @endif
+          class="shrink-0 text-3xs font-semibold uppercase leading-tight tracking-wide text-panel-label
+                 @if ($default !== null) cursor-pointer @endif"
           style="width: {{ $labelWidth }}">{{ $label }}</span>
 
     <input type="range" min="{{ $min }}" max="{{ $max }}" step="{{ $step }}" value="{{ $value }}"
            aria-label="{{ $label }}"
+           @if ($default !== null) data-default="{{ $default }}" @endif
            @if ($onInput) x-on:input="{{ $onInput }}" @endif
            @if ($onChange) wire:change="{{ $onChange }}" @endif
            style="--range-pct: {{ round($fillPct, 2) }}%"

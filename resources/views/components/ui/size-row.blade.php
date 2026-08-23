@@ -42,7 +42,11 @@
                    style="height: var(--settings-panel-row-h, 2rem)">
                 {{-- data-scrub: dragging W while the aspect is held drives H, because the drag
                      dispatches the same `input` event typing does and edit() is already on it. --}}
+                {{-- H resets to the stored default like every other field. W's default is not a
+                     number — it is "take the width from the image's aspect again" — so it resets
+                     through the component that knows how to derive it. --}}
                 <span data-scrub aria-hidden="true"
+                      @if ($side === 'w') x-on:dblclick.prevent="resetWidth()" @endif
                       class="shrink-0 cursor-col-resize select-none text-3xs font-semibold text-panel-label">{{ $glyph }}</span>
                 {{-- ONE writer. `x-model` plus an input handler that also assigns to the same
                      property is two of them, and they disagree the moment the handler derives a
@@ -51,6 +55,7 @@
                      teacher was reading. `:value` binds one way and `edit()` owns the write. --}}
                 <input type="number" min="1" max="200" step="0.01"
                        aria-label="{{ $name }}"
+                       @if ($side === 'h') data-default="40" @endif
                        :value="{{ $side }}"
                        :disabled="!ready"
                        x-on:input="edit('{{ $side }}', $event.target.value)"

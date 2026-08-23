@@ -16,7 +16,7 @@ import { layerSizeRow } from './ui/layer-size-row.js';
 import { layerAngleRow } from './ui/angle-dial.js';
 import { initScrub } from './ui/scrub.js';
 import { initRangeFill } from './ui/range-fill.js';
-import { initFieldRevert } from './ui/field-revert.js';
+import { initNumericFields } from './ui/numeric-field.js';
 import { layerOverlay, setLayerPropEverywhere, selectLayerEverywhere } from './scene/layer-overlays.js';
 
 window.Sortable = Sortable;
@@ -77,9 +77,10 @@ initScrub();
 // position has to follow the value. Server-rendered for the first frame; this handles the drag.
 initRangeFill();
 
-// Esc gives a numeric field back the value it had when focused. Delegated for the same reason as
-// the two above: Livewire morphs these panels and per-element bindings stop firing.
-initFieldRevert();
+// How the panel's numeric fields behave beyond typing: Esc restores the value they were focused
+// with, double-clicking a label resets that property to its default, and a pasted "50%" is a 50.
+// Delegated for the same reason as the two above: Livewire morphs these panels constantly.
+initNumericFields();
 
 // The 3D scene system (three.js, ~1.7 MB) is used ONLY by the lesson-creation wizard. Load it on
 // demand via window.loadLessonScene() so the landing page and other app pages never download three.

@@ -80,6 +80,18 @@ export function layerSizeRow ({ assetId, height, width = null, locked = true } =
       setTimeout(() => this._seedWidth(), 50)
     },
 
+    /**
+     * Put the width back to its default, which for a layer is not a number: it is "no explicit
+     * width", the state every layer authored before the Dimensions row is in, where the width
+     * follows the image's own aspect. So it re-derives rather than restoring a remembered value.
+     */
+    resetWidth () {
+      this._tries = 0
+      this.ready = false
+      this._seedWidth()
+      this.push()
+    },
+
     toggleLock () {
       this.locked = !this.locked
       // Re-captures on engage, so unlock → reshape → lock holds the NEW proportion.

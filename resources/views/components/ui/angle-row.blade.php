@@ -55,7 +55,7 @@
                 <span data-scrub aria-hidden="true"
                       class="shrink-0 cursor-col-resize select-none text-3xs font-semibold text-panel-label">&deg;</span>
                 <input type="number" min="0" max="360" step="1"
-                       aria-label="{{ __('Angle') }}"
+                       aria-label="{{ __('Angle') }}" data-default="0"
                        :value="deg"
                        x-on:input="setDeg($event.target.value)"
                        x-on:change="commit($wire)"

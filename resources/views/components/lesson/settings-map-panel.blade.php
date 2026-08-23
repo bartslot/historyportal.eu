@@ -105,10 +105,10 @@
                 <span style="width: var(--settings-panel-label-w, 3.0625rem)"
                       class="shrink-0 text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Position') }}</span>
                 <x-ui.stepper-field glyph="X" :label="__('Horizontal position')" :min="0" :max="100" :step="1"
-                                    :value="$num($val('x', 50), 0)"
+                                    :value="$num($val('x', 50), 0)" :default="50"
                                     :on-input="$live('x')" :on-change="$save('x')" class="min-w-0 flex-1" />
                 <x-ui.stepper-field glyph="Y" :label="__('Vertical position')" :min="0" :max="100" :step="1"
-                                    :value="$num($val('y', 58), 0)"
+                                    :value="$num($val('y', 58), 0)" :default="58"
                                     :on-input="$live('y')" :on-change="$save('y')" class="min-w-0 flex-1" />
             </div>
 
@@ -117,13 +117,13 @@
 
             @if ($slideshowMode === 'parallax')
                 <x-ui.slider-row :label="__('Depth')" :min="0.4" :max="2.5" :step="0.05"
-                                 :value="$val('depth', 1.3)" :display="$num($val('depth', 1.3))"
+                                 :value="$val('depth', 1.3)" :display="$num($val('depth', 1.3))" :default="1.3"
                                  :on-input="$live('depth')" :on-change="$save('depth')" />
             @endif
 
             {{-- Scale carries the keyframe marker in the file; Rotate and Blur do not. --}}
             <x-ui.slider-row :label="__('Scale')" :min="0.2" :max="6" :step="0.05"
-                             :value="$val('scale', 1.0)" :display="$pct($val('scale', 1.0))" unit="%"
+                             :value="$val('scale', 1.0)" :display="$pct($val('scale', 1.0))" unit="%" :default="1.0"
                              keyframe
                              :on-input="$live('scale')" :on-change="$save('scale')" />
 
@@ -132,7 +132,7 @@
                             :flip-x="(bool) $val('flip_x', false)" :flip-y="(bool) $val('flip_y', false)" />
 
             <x-ui.slider-row :label="__('Blur')" :min="0" :max="2.5" :step="0.1"
-                             :value="$val('blur', 0)" :display="$num($val('blur', 0), 1)"
+                             :value="$val('blur', 0)" :display="$num($val('blur', 0), 1)" :default="0"
                              :on-input="$live('blur')" :on-change="$save('blur')" />
         </div>
     </x-ui.settings-section>
@@ -166,13 +166,13 @@
             </label>
 
             <x-ui.slider-row :label="__('Opacity')" :min="0.05" :max="1" :step="0.05"
-                             :value="$val('opacity', 1.0)" :display="$pct($val('opacity', 1.0))" unit="%"
+                             :value="$val('opacity', 1.0)" :display="$pct($val('opacity', 1.0))" unit="%" :default="1.0"
                              :on-input="$live('opacity')" :on-change="$save('opacity')" />
 
             {{-- Drop white keys the paper out of a scan, which is what lets an engraving be drained
                  and recoloured to sit with the lesson's palette. --}}
             <x-ui.slider-row :label="__('Drop white')" :min="0" :max="0.5" :step="0.01"
-                             :value="$val('white_key', 0)" :display="$pct($val('white_key', 0))" unit="%"
+                             :value="$val('white_key', 0)" :display="$pct($val('white_key', 0))" unit="%" :default="0"
                              :on-input="$live('white_key')" :on-change="$save('white_key')" />
 
             <x-ui.toggle-row :label="__('Grayscale')" :checked="(bool) $val('grayscale', false)"
@@ -218,7 +218,7 @@
         <x-ui.settings-section :title="__('Ink draw-on')" name="ink">
             <div class="space-y-2">
                 <x-ui.slider-row :label="__('Speed')" :min="2" :max="20" :step="0.5"
-                                 :value="$val('draw_time', 7)" :display="$num($val('draw_time', 7), 1)" unit="s"
+                                 :value="$val('draw_time', 7)" :display="$num($val('draw_time', 7), 1)" unit="s" :default="7"
                                  data-tooltip="{{ __('Seconds for the full draw-on') }}"
                                  :on-change="$save('draw_time')" />
 
