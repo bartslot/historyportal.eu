@@ -5,6 +5,7 @@ import { createTour } from './onboarding/tour.js';
 import { initTooltips } from './tooltip.js';
 import { watchCarousels } from './carousel.js';
 import { easingPreview } from './easing-preview.js';
+import { animationTimeline } from './anim/timeline-panel.js';
 import { setupHeroLessonDemo } from './hero/lesson-demo.js';
 import { setupSiteHeader } from './site-header.js';
 import { clampToViewport, restorePosition, savePosition, defaultPosition, isViewportUsable } from './ui/floating-window.js';
@@ -39,6 +40,10 @@ window.onboardingTour = createTour;
 // Animated easing swatches for the wizard's Animate tab: x-data="easingPreview('enter')".
 // Same global-factory pattern, for the same reason.
 window.easingPreview = easingPreview;
+
+// The wizard's Timeline tab: x-data="animationTimeline({...})". Registered from a bundled
+// module because the dock is morphed in, and a <script> that arrives through a morph never runs.
+window.animationTimeline = animationTimeline;
 
 // The 3D scene system (three.js, ~1.7 MB) is used ONLY by the lesson-creation wizard. Load it on
 // demand via window.loadLessonScene() so the landing page and other app pages never download three.
