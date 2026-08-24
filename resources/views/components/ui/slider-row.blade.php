@@ -15,7 +15,8 @@
     /** Small trailing unit shown next to the number, e.g. '%' or 's'. */
     'unit' => null,
     /**
-     * Left column width. Defaults to the panel's own variable so the dev tuner moves every row at
+     * Left column width. Kept for callers that still pass it; the shell owns the column now.
+     * Defaults to the panel's own variable so the dev tuner moves every row at
      * once; pass a literal only where a row is outside the settings panel.
      */
     'labelWidth' => 'var(--settings-panel-label-w, 3.0625rem)',
@@ -25,6 +26,9 @@
     'onInput' => null,
     /** Show the per-property keyframe diamond at the end of the row. */
     'keyframe' => false,
+    /** What the diamond keys, e.g. 'art:231' and 'opacity'. Without both it stays a marker. */
+    'keyframeTarget' => null,
+    'keyframeProperty' => null,
     /**
      * The property's default. Double-clicking the label returns to it — the only way back once a
      * teacher has moved something and Escape's memory has gone with the focus.
@@ -66,14 +70,9 @@
 
      The value is `display`, never a re-derivation of `value` — the caller owns the formatting, and
      a row that recomputed it would show a number the panel above it disagrees with. --}}
-<label {{ $attributes->class(['flex items-center gap-2 py-1']) }}>
-    {{-- data-scrub marks it as the row's handle: double-click resets the property to its default.
-         A slider is dragged on its own track, so this label does not scrub — it only resets. --}}
-    <span @if ($default !== null) data-scrub @endif
-          class="shrink-0 text-3xs font-semibold uppercase leading-tight tracking-wide text-panel-label
-                 @if ($default !== null) cursor-pointer @endif"
-          style="width: {{ $labelWidth }}">{{ $label }}</span>
-
+<x-ui.panel-row :label="$label" :default="$default" :keyframe="$keyframe"
+                :keyframe-target="$keyframeTarget" :keyframe-property="$keyframeProperty"
+                {{ $attributes }}>
     <input type="range" min="{{ $min }}" max="{{ $max }}" step="{{ $step }}" value="{{ $value }}"
            aria-label="{{ $label }}"
            @if ($default !== null) data-default="{{ $default }}" @endif
@@ -88,8 +87,4 @@
             <span class="text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ $unit }}</span>
         @endif
     </span>
-
-    @if ($keyframe)
-        <x-ui.keyframe-diamond />
-    @endif
-</label>
+</x-ui.panel-row>

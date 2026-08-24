@@ -39,6 +39,7 @@
      coupling them means a future change to one silently moves the other. */
   --color-panel-hairline: #162235;
   --color-panel-label: #7e8b9c;    /* the uppercase row labels */
+  --color-panel-icon: #c7d5e3;     /* object icons in the timeline — the file's own stroke */
   --color-panel-value: #e2e8f0;    /* the numbers, and the active tab */
   --color-panel-title: #c7d5e3;    /* the section headings */
 

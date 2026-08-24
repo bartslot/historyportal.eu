@@ -39,6 +39,14 @@ async function openTimeline(page: Page) {
   await page.mouse.down();
   await page.mouse.up();
   await page.waitForTimeout(600);
+
+  // Start every test from an unanimated scene. The timeline PERSISTS — that is the feature — so
+  // without this the tests only pass in the order they happen to run in, which is not passing.
+  await page.evaluate(() => {
+    const c = (document.querySelector('[data-timeline]') as any)._x_dataStack[0];
+    c.targets = []; c.tracks = []; c.refreshObjects(); c.seek(0); c.save();
+  });
+  await page.waitForTimeout(1500);
 }
 
 test('the Timeline tab opens and rules the scene in seconds of narration', async ({ page }) => {
@@ -74,7 +82,7 @@ test('a camera is added to the map, and gets the five rows a pose has', async ({
   }
 
   await expect(page.locator('[data-timeline-group="camera"]')).toBeVisible();
-  for (const property of ['lng', 'lat', 'altitude', 'heading', 'tilt']) {
+  for (const property of ['lng', 'lat', 'zoom', 'heading', 'tilt']) {
     await expect(page.locator(`[data-timeline-key="camera:${property}"]`)).toBeVisible();
   }
 
@@ -122,13 +130,13 @@ test('a keyframe dragged along its lane snaps to a spoken word', async ({ page }
   }
   await expect(page.locator('[data-timeline-group="camera"]')).toBeVisible();
 
-  const diamondButton = page.locator('[data-timeline-key="camera:altitude"]');
+  const diamondButton = page.locator('[data-timeline-key="camera:zoom"]');
   box = (await diamondButton.boundingBox())!;
   await walkTo(page, box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down(); await page.mouse.up();
   await page.waitForTimeout(1000);
 
-  const key = page.locator('[data-timeline-diamond="camera:altitude"]').first();
+  const key = page.locator('[data-timeline-diamond="camera:zoom"]').first();
   await expect(key).toBeVisible();
 
   // Drag it a long way down the lane with a real mouse.
@@ -148,6 +156,84 @@ test('a keyframe dragged along its lane snaps to a spoken word', async ({ page }
 
   expect(landed.time, 'the keyframe should have moved').toBeGreaterThan(0.5);
   expect(landed.starts, 'it should have landed on a word start').toContain(landed.time);
+
+  expect(errors, `console errors:\n${errors.join('\n')}`).toEqual([]);
+});
+
+test('pressing play moves the map — the whole point, and it is asserted on the MAP', async ({ page }) => {
+  const errors = watchConsole(page);
+  await openTimeline(page);
+
+  const add = page.locator('[data-timeline-add-camera]');
+  if (await add.count()) {
+    const ab = (await add.boundingBox())!;
+    await walkTo(page, ab.x + ab.width / 2, ab.y + ab.height / 2);
+    await page.mouse.down(); await page.mouse.up();
+    await page.waitForTimeout(1500);
+  }
+
+  const keyRow = async (property: string) => {
+    const kb = (await page.locator(`[data-timeline-key="camera:${property}"]`).boundingBox())!;
+    await walkTo(page, kb.x + kb.width / 2, kb.y + kb.height / 2);
+    await page.mouse.down(); await page.mouse.up();
+    await page.waitForTimeout(1600);
+  };
+
+  // With nothing keyed, play must refuse rather than run for 30s and change nothing.
+  await expect(page.locator('[data-timeline-play]')).toBeDisabled();
+
+  // Frame one, at the start.
+  await keyRow('lng');
+  await keyRow('lat');
+
+  // Move the map with a REAL mouse drag on the globe, the way a teacher frames a shot.
+  // MUST be the maplibre canvas: a map scene stacks the artwork overlay's canvas over it, and
+  // canvas.first() grabs that one — the drag then does nothing and the test reads a working
+  // feature as broken.
+  const canvas = page.locator('canvas.maplibregl-canvas');
+  const cb = (await canvas.boundingBox())!;
+  await walkTo(page, cb.x + cb.width * 0.6, cb.y + cb.height * 0.5);
+  await page.mouse.down();
+  await walkTo(page, cb.x + cb.width * 0.3, cb.y + cb.height * 0.45, 16);
+  await page.mouse.up();
+  await page.waitForTimeout(1200);
+
+  // Frame two, later in the narration.
+  const lanes = page.locator('[data-timeline-lanes]');
+  const lb = (await lanes.boundingBox())!;
+  await walkTo(page, lb.x + 10, lb.y + 20);
+  await page.mouse.down();
+  await walkTo(page, lb.x + lb.width * 0.6, lb.y + 20, 14);
+  await page.mouse.up();
+  await page.waitForTimeout(500);
+  await keyRow('lng');
+  await keyRow('lat');
+
+  await expect(page.locator('[data-timeline-play]')).toBeEnabled();
+
+  // Rewind and play. The assertion is on the MAP, not on the timeline's own numbers: a playhead
+  // that advances while nothing moves is exactly the bug this test exists for.
+  await page.evaluate(() => (document.querySelector('[data-timeline]') as any)._x_dataStack[0].seek(0));
+  await page.waitForTimeout(300);
+  const centreOf = () => page.evaluate(() => {
+    const m = (window as any).__lessonMap;
+    return [+m.getCenter().lng.toFixed(3), +m.getCenter().lat.toFixed(3)];
+  });
+  const before = await centreOf();
+
+  const pb = (await page.locator('[data-timeline-play]').boundingBox())!;
+  await walkTo(page, pb.x + pb.width / 2, pb.y + pb.height / 2);
+  await page.mouse.down(); await page.mouse.up();
+  await page.waitForTimeout(2500);
+  const during = await centreOf();
+  await page.waitForTimeout(2500);
+  const later = await centreOf();
+
+  const moved = (a: number[], b: number[]) => Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]);
+  expect(moved(before, during), `map did not move during playback: ${JSON.stringify({ before, during })}`)
+    .toBeGreaterThan(0.05);
+  expect(moved(during, later), `map stopped moving mid-playback: ${JSON.stringify({ during, later })}`)
+    .toBeGreaterThan(0.05);
 
   expect(errors, `console errors:\n${errors.join('\n')}`).toEqual([]);
 });

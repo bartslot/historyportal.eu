@@ -30,18 +30,40 @@ const P = (key, label, interpolate, unit = '') => ({ key, label, interpolate, un
  * timeline with lanes — there is no second list anywhere.
  */
 const REGISTRY = {
+  // Map-native, deliberately: these are exactly what map.jumpTo() takes and what getCenter/
+  // getZoom/getBearing/getPitch give back, so a keyframe round-trips through the map without a
+  // conversion in the middle. ZOOM rather than altitude because it is the number a teacher sees
+  // everywhere else in the app — and it costs nothing, since zoom is already logarithmic in
+  // altitude, so interpolating zoom linearly IS the log-altitude flight camera-track.js was
+  // written for. Altitude stays inside camera-track.js for cinematic poses; it is not a second
+  // row here, because two rows driving one degree of freedom fight each other.
   camera: [
     P('lng', 'Longitude', 'angle', '°'),
     P('lat', 'Latitude', 'linear', '°'),
-    P('altitude', 'Altitude', 'log', 'm'),
+    P('zoom', 'Zoom', 'linear', ''),
     P('heading', 'Heading', 'angle', '°'),
     P('tilt', 'Tilt', 'linear', '°'),
   ],
-  layer: [
+  // A TEXT layer, whose real property names these are — read off a stored scene's own `texts`
+  // rather than assumed. The first draft listed `size` and `opacity`: `size` is the STRING "xl",
+  // and a text item has no `opacity` at all (it has `bgOpacity`, and only the rect has `opacity`).
+  // Both would have drawn a row that silently animated nothing, which is the exact failure this
+  // registry exists to prevent — and writing the warning in the comment did not stop me guessing.
+  text: [
     P('x', 'X', 'linear', '%'),
     P('y', 'Y', 'linear', '%'),
+  ],
+  /** The half-panel behind a caption. `opacity` is a number on these and only on these. */
+  rect: [
+    P('opacity', 'Opacity', 'linear', ''),
+  ],
+  /** An icon, painting or embed layer — names taken off ArtworkOverlay's own items. */
+  art: [
+    P('x', 'X', 'linear', '%'),
+    P('y', 'Y', 'linear', '%'),
+    P('width', 'W', 'linear', '%'),
     P('scale', 'Scale', 'linear', '%'),
-    P('rotation', 'Rotation', 'angle', '°'),
+    P('rotation', 'Angle', 'angle', '°'),
     P('opacity', 'Opacity', 'linear', ''),
   ],
 }

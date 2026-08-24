@@ -123,6 +123,7 @@
 
             {{-- Scale carries the keyframe marker in the file; Rotate and Blur do not. --}}
             <x-ui.slider-row :label="__('Scale')" :min="0.2" :max="6" :step="0.05"
+                             :keyframe-target="'art:'.$aid" keyframe-property="scale"
                              :value="$val('scale', 1.0)" :display="$pct($val('scale', 1.0))" unit="%" :default="1.0"
                              keyframe
                              :on-input="$live('scale')" :on-change="$save('scale')" />
@@ -165,7 +166,9 @@
                 </div>
             </label>
 
-            <x-ui.slider-row :label="__('Opacity')" :min="0.05" :max="1" :step="0.05"
+            <x-ui.slider-row :label="__('Opacity')" keyframe
+                             :keyframe-target="'art:'.$aid" keyframe-property="opacity"
+                             :min="0.05" :max="1" :step="0.05"
                              :value="$val('opacity', 1.0)" :display="$pct($val('opacity', 1.0))" unit="%" :default="1.0"
                              :on-input="$live('opacity')" :on-change="$save('opacity')" />
 

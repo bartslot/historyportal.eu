@@ -16,8 +16,13 @@
 ])
 
 @php
-    $swatch = filled($color) ? $color : $placeholder;
-    $hex = strtoupper(ltrim($swatch, '#'));
+    // The picker always needs a concrete colour to open on, but the FIELD must not present that
+    // fallback as a value. It did: an untinted layer showed "#38BDF8" in full-strength text beside
+    // a blue swatch, under a button reading "No tint", while the artwork stayed black. Bart, twice:
+    // "Still black". A control that states a colour nothing is using is worse than an empty one.
+    $isSet  = filled($color);
+    $swatch = $isSet ? $color : $placeholder;
+    $hex    = strtoupper(ltrim($swatch, '#'));
 @endphp
 
 {{-- Swatch, hex readout and strength in one bordered control — Figma's `color-swatch-border`.
@@ -35,8 +40,17 @@
      style="height: var(--settings-panel-row-h, 2rem)">
 
     <label class="flex min-w-0 flex-1 cursor-pointer items-center gap-2">
+        {{-- Unset reads as unset: the swatch shows the checker a transparent colour always means,
+             not a blue nobody chose. --}}
         <span class="relative h-[18px] w-6 shrink-0 overflow-hidden rounded-sm ring-1 ring-inset ring-base-content/15"
-              style="background: {{ $swatch }}">
+              @if ($isSet)
+                  style="background: {{ $swatch }}"
+              @else
+                  style="background-color: var(--color-panel-hairline);
+                         background-image: linear-gradient(45deg, rgb(255 255 255 / .18) 25%, transparent 25%, transparent 75%, rgb(255 255 255 / .18) 75%),
+                                           linear-gradient(45deg, rgb(255 255 255 / .18) 25%, transparent 25%, transparent 75%, rgb(255 255 255 / .18) 75%);
+                         background-size: 8px 8px; background-position: 0 0, 4px 4px"
+              @endif>
             <input type="color" value="{{ $swatch }}"
                    aria-label="{{ $colorLabel }}"
                    @if ($onColorInput) x-on:input="{{ $onColorInput }}" @endif
@@ -44,8 +58,12 @@
                    class="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
         </span>
         <span class="flex min-w-0 items-baseline gap-0.5">
-            <span class="text-3xs font-semibold text-panel-label">#</span>
-            <span class="truncate text-xs tracking-wide text-panel-value">{{ $hex }}</span>
+            @if ($isSet)
+                <span class="text-3xs font-semibold text-panel-label">#</span>
+                <span class="truncate text-xs tracking-wide text-panel-value">{{ $hex }}</span>
+            @else
+                <span class="truncate text-xs tracking-wide text-panel-label">{{ __('None') }}</span>
+            @endif
         </span>
     </label>
 

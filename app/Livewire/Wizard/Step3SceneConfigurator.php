@@ -1940,6 +1940,17 @@ class Step3SceneConfigurator extends Component
         }
 
         $duration = max(0.0, min(3600.0, (float) ($timeline['duration'] ?? 0)));
+
+        // The objects on this scene. A camera EXISTS whether or not anything is keyed on it, so it
+        // cannot be inferred from the tracks — inferring it is what left scenes holding an empty
+        // track for a property that no longer exists.
+        $targets = [];
+        foreach ((array) ($timeline['targets'] ?? []) as $target) {
+            if (is_string($target) && in_array(strtok($target, ':'), ['camera'], true)) {
+                $targets[] = $target;
+            }
+        }
+
         $tracks = [];
 
         foreach ((array) ($timeline['tracks'] ?? []) as $track) {
@@ -1951,8 +1962,10 @@ class Step3SceneConfigurator extends Component
             $property = (string) ($track['property'] ?? '');
             // The vocabulary is shared with resources/js/anim/properties.js, which plays it back.
             $allowed = match (strtok($target, ':')) {
-                'camera' => ['lng', 'lat', 'altitude', 'heading', 'tilt'],
-                'layer' => ['x', 'y', 'scale', 'rotation', 'opacity'],
+                'camera' => ['lng', 'lat', 'zoom', 'heading', 'tilt'],
+                'text' => ['x', 'y'],
+                'rect' => ['opacity'],
+                'art' => ['x', 'y', 'width', 'scale', 'rotation', 'opacity'],
                 default => [],
             };
 
@@ -1976,7 +1989,11 @@ class Step3SceneConfigurator extends Component
             $tracks[] = ['target' => $target, 'property' => $property, 'keyframes' => $keyframes];
         }
 
-        $this->selectedScene['config']['timeline'] = ['duration' => $duration, 'tracks' => $tracks];
+        $this->selectedScene['config']['timeline'] = [
+            'duration' => $duration,
+            'targets' => array_values(array_unique($targets)),
+            'tracks' => $tracks,
+        ];
         $this->saveSelected();
     }
 

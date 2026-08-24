@@ -45,8 +45,16 @@ export const ticksFor = (duration, step) => {
   return out
 }
 
-/** `12.4s` — seconds, because that is the unit the narration and the teacher both think in. */
-export const formatTime = (seconds) => {
-  const s = Number.isFinite(seconds) ? Math.max(0, seconds) : 0
-  return `${s.toFixed(s < 10 ? 2 : 1)}s`
-}
+/**
+ * MILLISECONDS on the face, seconds in the model.
+ *
+ * Bart: *"That teachers think in seconds make it harder to work with. We need milliseconds."* The
+ * file agrees — the mock's transport says `ms`. Seconds put three decimals in a field two digits
+ * wide, and a keyframe at 2.856 is harder to read back than 2856. The model stays in seconds
+ * because the narration alignment is in seconds; only the display converts.
+ */
+export const toMs = (seconds) => Math.round((Number.isFinite(seconds) ? Math.max(0, seconds) : 0) * 1000)
+
+export const fromMs = (ms) => (Number.isFinite(ms) ? Math.max(0, ms) : 0) / 1000
+
+export const formatTime = (seconds) => `${toMs(seconds)}`

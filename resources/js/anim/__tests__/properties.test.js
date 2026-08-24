@@ -15,12 +15,15 @@ const at = (time, value, easing = 'linear') => ({ time, value, easing })
 describe('propertiesFor', () => {
   it('gives a camera the five things a pose is made of', () => {
     expect(propertiesFor('camera').map((p) => p.key))
-      .toEqual(['lng', 'lat', 'altitude', 'heading', 'tilt'])
+      .toEqual(['lng', 'lat', 'zoom', 'heading', 'tilt'])
   })
 
-  it('gives a layer what a layer actually has, which is not the same list', () => {
-    expect(propertiesFor('layer').map((p) => p.key))
-      .toEqual(['x', 'y', 'scale', 'rotation', 'opacity'])
+  it('gives a text layer what a text layer actually has, which is not the camera list', () => {
+    expect(propertiesFor('text').map((p) => p.key)).toEqual(['x', 'y'])
+    // `size` is the string "xl" on a real text item and there is no `opacity` — neither is a
+    // number, so neither gets a row.
+    expect(propertiesFor('text').map((p) => p.key)).not.toContain('size')
+    expect(propertiesFor('rect').map((p) => p.key)).toEqual(['opacity'])
   })
 
   it('is empty for an object kind that cannot be animated yet, rather than guessing', () => {
@@ -28,8 +31,14 @@ describe('propertiesFor', () => {
   })
 
   it('labels and units come from the registry so the panel never invents them', () => {
-    const altitude = propertiesFor('camera').find((p) => p.key === 'altitude')
-    expect(altitude).toMatchObject({ label: 'Altitude', unit: 'm' })
+    expect(propertiesFor('camera').find((p) => p.key === 'zoom'))
+      .toMatchObject({ label: 'Zoom', unit: '' })
+    expect(propertiesFor('camera').find((p) => p.key === 'tilt'))
+      .toMatchObject({ label: 'Tilt', unit: '°' })
+  })
+
+  it('has no altitude row beside zoom — two rows driving one degree of freedom fight', () => {
+    expect(propertiesFor('camera').map((p) => p.key)).not.toContain('altitude')
   })
 })
 
@@ -59,22 +68,23 @@ describe('INTERPOLATE.log', () => {
 describe('sampleFrame', () => {
   it('groups every track by the object it belongs to', () => {
     const frame = sampleFrame([
-      track('camera', 'altitude', [at(0, 100), at(2, 10000)]),
-      track('layer:7', 'opacity', [at(0, 0), at(2, 1)]),
+      track('camera', 'zoom', [at(0, 1), at(2, 9)]),
+      track('rect:7', 'opacity', [at(0, 0), at(2, 1)]),
     ], 1)
 
-    expect(Object.keys(frame).sort()).toEqual(['camera', 'layer:7'])
-    expect(frame['layer:7'].opacity).toBeCloseTo(0.5, 10)
+    expect(Object.keys(frame).sort()).toEqual(['camera', 'rect:7'])
+    expect(frame.camera.zoom).toBeCloseTo(5, 10)
+    expect(frame['rect:7'].opacity).toBeCloseTo(0.5, 10)
   })
 
   it('uses each property OWN interpolation, not one rule for all of them', () => {
     const frame = sampleFrame([
-      track('camera', 'altitude', [at(0, 100), at(2, 10000)]),
-      track('camera', 'tilt', [at(0, 0), at(2, 60)]),
+      track('camera', 'lng', [at(0, 170), at(2, -170)]),   // wraps
+      track('camera', 'tilt', [at(0, 0), at(2, 60)]),      // plain
     ], 1)
 
-    expect(frame.camera.altitude).toBeCloseTo(1000, 6)   // logarithmic
-    expect(frame.camera.tilt).toBeCloseTo(30, 10)        // plain
+    expect(frame.camera.lng).toBe(180)
+    expect(frame.camera.tilt).toBeCloseTo(30, 10)
   })
 
   it('wraps longitude per segment so a Pacific crossing goes the short way', () => {
@@ -93,7 +103,7 @@ describe('sampleFrame', () => {
   })
 
   it('gives the same frame for the same time — scrubbing depends on it', () => {
-    const tracks = [track('camera', 'altitude', [at(0, 100), at(4, 10000)])]
+    const tracks = [track('camera', 'zoom', [at(0, 1), at(4, 9)])]
     expect(sampleFrame(tracks, 2.5)).toEqual(sampleFrame(tracks, 2.5))
   })
 

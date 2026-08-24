@@ -174,6 +174,17 @@ export function layerAngleRow ({ assetId, rotation = 0, flipX = false, flipY = f
      * identical, and on a ship or a portrait they are completely different, so folding one into
      * the other would be wrong exactly where it matters.
      */
+    /**
+     * Quarter turn, as a button.
+     *
+     * Figma gives rotation a 90-degree button beside the flips and no label on any of them — the
+     * glyphs say it. Straightening a dropped icon is the common act and dialling 90.0 by hand is
+     * the fiddliest thing a dial does.
+     */
+    rotate90 ($wire) {
+      this.setDeg(this.deg + 90, { commitWith: $wire })
+    },
+
     toggleFlip (axis, $wire) {
       const key = axis === 'y' ? 'flipY' : 'flipX'
       const field = axis === 'y' ? 'flip_y' : 'flip_x'

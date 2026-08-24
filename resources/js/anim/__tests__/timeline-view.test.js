@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  fitZoom, timeAtX, xAtTime, toleranceSeconds, tickStep, ticksFor, formatTime, SNAP_PX,
+  fitZoom, timeAtX, xAtTime, toleranceSeconds, tickStep, ticksFor, formatTime, toMs, fromMs, SNAP_PX,
 } from '../timeline-view.js'
 
 /**
@@ -74,13 +74,18 @@ describe('ticksFor', () => {
   })
 })
 
-describe('formatTime', () => {
-  it('reads in seconds, which is what the narration and the teacher both use', () => {
-    expect(formatTime(2.856)).toBe('2.86s')
-    expect(formatTime(28.746)).toBe('28.7s')
+describe('milliseconds on the face, seconds in the model', () => {
+  it('shows whole milliseconds — no decimals in a field two digits wide', () => {
+    expect(formatTime(2.856)).toBe('2856')
+    expect(formatTime(28.746)).toBe('28746')
   })
 
   it('never shows a negative time', () => {
-    expect(formatTime(-1)).toBe('0.00s')
+    expect(formatTime(-1)).toBe('0')
+    expect(toMs(-1)).toBe(0)
+  })
+
+  it('round-trips, so typing a number back gives the same moment', () => {
+    for (const s of [0, 0.4, 2.856, 8]) expect(fromMs(toMs(s))).toBeCloseTo(s, 3)
   })
 })
