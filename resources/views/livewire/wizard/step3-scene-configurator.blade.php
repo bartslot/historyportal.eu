@@ -157,9 +157,10 @@
         });
         document.addEventListener('keydown', (e) => {
             if ((e.key !== 'z' && e.key !== 'Z') || !(e.metaKey || e.ctrlKey) || e.shiftKey) return;
-            // Never steal the shortcut from a field the teacher is typing in.
-            const t = e.target;
-            if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+            // Never steal the shortcut from a field the teacher is typing in. One shared guard —
+            // resources/js/ui/keyboard.js — so this and Delete below and the timeline's Space all
+            // agree on what "typing" means.
+            if (window.__isTypingTarget?.(e.target)) return;
             e.preventDefault();
             window.__undoLastEdit();
         });
@@ -2013,8 +2014,7 @@
         window.addEventListener('keydown', (e) => {
             if (e.key !== 'Backspace' && e.key !== 'Delete') return;
             if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
-            const a = document.activeElement;
-            if (a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return;
+            if (window.__isTypingTarget?.(document.activeElement)) return;
             const sel = window.getSelection?.();
             if (sel && !sel.isCollapsed && sel.anchorNode?.parentElement?.closest?.('[contenteditable], input, textarea')) return;
             const id = window.__artOverlay()?._selectedId || window.__lessonTextLayer?._selectedId;

@@ -13,6 +13,7 @@ import { addKeyframe, removeKeyframe, sortedKeys } from './keyframes.js'
 import { propertiesFor, sampleFrame, kindOfTarget } from './properties.js'
 import { wordSpans, snapTime, wordAt } from './narration-clock.js'
 import { textObjects, artObjects, readObjectProperty, writeObjectProperty } from './scene-objects.js'
+import { isPlayPauseKey } from '../ui/keyboard.js'
 import {
   fitZoom, timeAtX, xAtTime, toleranceSeconds, tickStep, ticksFor, formatTime, toMs, fromMs,
   DRAG_THRESHOLD_PX,
@@ -349,6 +350,42 @@ export const animationTimeline = (config = {}) => ({
     this.playing = false
     if (this._raf) cancelAnimationFrame(this._raf)
     this._raf = null
+  },
+
+  /**
+   * Whether the timeline is the thing on screen, and so whether Space is currently its key.
+   *
+   * The dock is ONE component with three tabs, and the two it is not showing stay mounted — the
+   * tabs are x-show, not x-if. So a timeline that exists is not a timeline anyone is looking at,
+   * and without this check Space would scrub a hidden panel while the teacher was typing a
+   * lesson script one tab away.
+   */
+  get transportHasTheKeyboard () {
+    const view = this.$store?.view
+    return !!view && !!view.script && view.bottomTab === 'timeline'
+  },
+
+  /**
+   * Space plays and pauses, the way it does in every editor and in the lesson player.
+   *
+   * Bound from the Blade as `x-on:keydown.window` rather than registered here. Switching scenes
+   * changes the dock's wire:key, so Livewire tears the panel down and Alpine builds a fresh
+   * component — four switches, five instances, measured. A window listener added in init() would
+   * survive every teardown, because Alpine knows nothing about it, and the next one would join it;
+   * two handlers turn one press into play-then-pause. Alpine removes a .window binding with the
+   * component that declared it, which is the same reason Escape is bound that way already.
+   */
+  onKeydown (event) {
+    if (!isPlayPauseKey(event) || !this.transportHasTheKeyboard) return
+
+    // Play refuses under two keyframes, and the refusal has to look like nothing happened rather
+    // than like a broken button. Cancelling the page's scroll to then do nothing is worse than
+    // not taking the key at all, so this returns before preventDefault.
+    if (!this.playing && this.nothingToPlay) return
+
+    event.preventDefault()   // only now that the key is ours: Space must not also scroll the page
+    if (this.playing) this.pause()
+    else this.play()
   },
 
   // ── Keyframes ───────────────────────────────────────────────────────────────────────────

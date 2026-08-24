@@ -32,6 +32,14 @@
      x-on:pointerup.window="onPointerUp()"
      x-on:pointercancel.window="onPointerUp()"
      x-on:keydown.escape.window="onEscape()"
+     {{-- Space = play/pause. Bound here, not in init(), because Alpine removes a .window listener
+          with the component that declared it. Switching scenes changes the dock's wire:key, so
+          Livewire tears this whole panel down and a brand new component is built — measured: four
+          switches, five instances. A listener added by hand would outlive every one of them and
+          the next press would play and immediately pause. onKeydown() does the deciding: it
+          ignores fields, ignores modifiers, and only cancels the page's scroll once it has
+          actually taken the key. --}}
+     x-on:keydown.window="onKeydown($event)"
      data-timeline
      class="flex min-h-0 flex-1 flex-col overflow-hidden"
      style="background: var(--color-timeline-ground)">
@@ -46,11 +54,17 @@
 
         {{-- Disabled until two keyframes exist, because one keyframe is a position and not a
              movement — and a play button that runs for thirty seconds and changes nothing reads
-             as the feature being broken. --}}
+             as the feature being broken.
+
+             The hint is the app's own tooltip carrying its key cap, exactly as the player's play
+             button wears K — never `title` as well, which is what puts two tooltips on screen at
+             once. --}}
         <button type="button" x-on:click="playing ? pause() : play()" data-timeline-play
                 :disabled="nothingToPlay && !playing"
                 class="grid h-7 w-7 place-items-center rounded text-panel-value hover:text-white disabled:opacity-30"
-                :title="nothingToPlay ? @js(__('Set two keyframes on a property to make something move')) : ''"
+                :data-tooltip="playing ? @js(__('Pause')) : @js(__('Play'))"
+                data-tooltip-key="{{ __('Space') }}"
+                aria-keyshortcuts="Space"
                 :aria-label="playing ? @js(__('Pause')) : @js(__('Play'))">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
                 <path x-show="!playing" stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 0 1 0 1.971l-11.54 6.347a1.125 1.125 0 0 1-1.667-.985V5.653Z"/>
