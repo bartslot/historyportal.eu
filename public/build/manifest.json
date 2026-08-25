@@ -1,9 +1,15 @@
 {
+  "../../../node_modules/three/build/three.module.js": {
+    "file": "assets/three.module-CpB-wl7P.js",
+    "name": "three.module",
+    "src": "../../../node_modules/three/build/three.module.js",
+    "isDynamicEntry": true
+  },
   "_GLTFLoader-Et3HGvr1.js": {
     "file": "assets/GLTFLoader-Et3HGvr1.js",
     "name": "GLTFLoader",
     "imports": [
-      "node_modules/three/build/three.module.js"
+      "../../../node_modules/three/build/three.module.js"
     ]
   },
   "__commonjsHelpers-DqutJMZx.js": {
@@ -73,14 +79,8 @@
       "_easing-ewk2GCDD.js"
     ]
   },
-  "node_modules/three/build/three.module.js": {
-    "file": "assets/three.module-CpB-wl7P.js",
-    "name": "three.module",
-    "src": "node_modules/three/build/three.module.js",
-    "isDynamicEntry": true
-  },
   "resources/css/app.css": {
-    "file": "assets/app-Bd5bxktZ.css",
+    "file": "assets/app-B8pOiag-.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -102,7 +102,7 @@
     ],
     "dynamicImports": [
       "resources/js/scene/index.js",
-      "node_modules/three/build/three.module.js"
+      "../../../node_modules/three/build/three.module.js"
     ],
     "css": [
       "assets/app-AEfMPvIN.css"
@@ -124,7 +124,7 @@
     "src": "resources/js/avatar-3d.js",
     "isDynamicEntry": true,
     "imports": [
-      "node_modules/three/build/three.module.js",
+      "../../../node_modules/three/build/three.module.js",
       "_GLTFLoader-Et3HGvr1.js"
     ]
   },
@@ -234,7 +234,7 @@
       "__commonjsHelpers-DqutJMZx.js",
       "resources/js/avatar-3d.js",
       "_big-countdown-CX1Dvr_1.js",
-      "node_modules/three/build/three.module.js",
+      "../../../node_modules/three/build/three.module.js",
       "_animations-Cu3PUxsB.js",
       "_easing-ewk2GCDD.js",
       "_layer-filters-Dlw3KxFY.js",
@@ -305,7 +305,7 @@
     "src": "resources/js/timemap/voyage-ships.js",
     "isDynamicEntry": true,
     "imports": [
-      "node_modules/three/build/three.module.js",
+      "../../../node_modules/three/build/three.module.js",
       "_GLTFLoader-Et3HGvr1.js",
       "_border-sweep-DMLmipml.js",
       "_easing-ewk2GCDD.js"
@@ -325,7 +325,7 @@
       "resources/js/timemap/voyage-ships.js",
       "__commonjsHelpers-DqutJMZx.js",
       "_map-imagery-CNBQh7cm.js",
-      "node_modules/three/build/three.module.js",
+      "../../../node_modules/three/build/three.module.js",
       "_GLTFLoader-Et3HGvr1.js"
     ]
   }

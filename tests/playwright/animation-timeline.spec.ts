@@ -11,8 +11,10 @@ import { test, expect, Page } from '@playwright/test';
  * word marks and the snapping have real data under them.
  */
 
-const LESSON = 359;
-const SCENE = 4786;
+// Resolved at run time: every worktree has its OWN database, so a hardcoded pair is a spec that
+// only passes where it was written. Override with PW_LESSON_ID / PW_SCENE_ID.
+const LESSON = Number(process.env.PW_LESSON_ID ?? 359);
+const SCENE = Number(process.env.PW_SCENE_ID ?? 4786);
 const URL = `/teacher/lessons/${LESSON}/wizard?step=4&scene=${SCENE}`;
 
 function watchConsole(page: Page): string[] {
@@ -29,7 +31,10 @@ async function walkTo(page: Page, x: number, y: number, steps = 8) {
 
 async function openTimeline(page: Page) {
   await page.goto(URL);
-  await page.waitForLoadState('networkidle');
+  // NOT networkidle: the wizard runs a 3s wire:poll, so the network never goes idle and this
+  // helper was riding its own timeout. Wait for the thing we actually need instead.
+  await page.waitForLoadState('domcontentloaded');
+  await page.locator('[data-tab="timeline"]').waitFor({ state: 'visible', timeout: 30000 });
   await page.waitForTimeout(8000);            // the globe needs a beat; a black frame is loading
 
   const tab = page.locator('[data-tab="timeline"]');
@@ -42,11 +47,23 @@ async function openTimeline(page: Page) {
 
   // Start every test from an unanimated scene. The timeline PERSISTS — that is the feature — so
   // without this the tests only pass in the order they happen to run in, which is not passing.
+  // The reset calls save(), which is a real Livewire round trip; the round trip morphs the dock and
+  // Alpine rebuilds the component. Waiting a fixed 1500ms raced it — every locator captured during
+  // the morph resolved to a DETACHED node, and boundingBox() then returned null. Wait for the
+  // response, then for the panel to be back.
+  const settled = page.waitForResponse(
+    r => r.url().includes('livewire/update') && r.status() === 200,
+    { timeout: 15000 },
+  ).catch(() => null);
+
   await page.evaluate(() => {
     const c = (document.querySelector('[data-timeline]') as any)._x_dataStack[0];
     c.targets = []; c.tracks = []; c.refreshObjects(); c.seek(0); c.save();
   });
-  await page.waitForTimeout(1500);
+
+  await settled;
+  await expect(page.locator('[data-timeline]')).toBeVisible();
+  await page.waitForTimeout(600);
 }
 
 test('the Timeline tab opens and rules the scene in seconds of narration', async ({ page }) => {
@@ -55,8 +72,8 @@ test('the Timeline tab opens and rules the scene in seconds of narration', async
 
   await expect(page.locator('[data-timeline]')).toBeVisible();
 
-  // The ruler is in seconds, not milliseconds — the narration is the clock.
-  const firstTick = page.locator('[data-timeline-lanes] span', { hasText: /^\d+(\.\d+)?s$/ }).first();
+  // The ruler reads in MILLISECONDS — Bart overruled seconds, and the Figma transport says ms.
+  const firstTick = page.locator('[data-timeline-lanes] span', { hasText: /^\d+$/ }).first();
   await expect(firstTick).toBeVisible();
 
   // Word marks come from the stored alignment; a scene with 474 characters has plenty.
@@ -73,7 +90,8 @@ test('a camera is added to the map, and gets the five rows a pose has', async ({
   // Adding a camera PERSISTS — it is an object the scene has, not a mode the panel is in — so a
   // second run finds it already there. That is the behaviour, not a stale fixture.
   const add = page.locator('[data-timeline-add-camera]');
-  if (await add.count()) {
+  if (await add.isVisible()) {
+    await expect(add).toBeVisible();
     const box = (await add.boundingBox())!;
     await walkTo(page, box.x + box.width / 2, box.y + box.height / 2);
     await page.mouse.down();
@@ -103,12 +121,21 @@ test('dragging the playhead scrubs, and the readout names the spoken word', asyn
   await page.mouse.up();
   await page.waitForTimeout(400);
 
-  const time = Number(await page.locator('[data-timeline-time]').inputValue());
-  expect(time).toBeGreaterThan(1);
+  const ms = Number(await page.locator('[data-timeline-time]').inputValue());
+  expect(ms, 'the field reads milliseconds').toBeGreaterThan(1000);
 
-  // At 40% through a 30-second narration something is being said.
+  // Land ON a word rather than hoping one is being spoken: there is real silence between words,
+  // and asserting at an arbitrary moment tests the gaps, not the readout.
+  const target = await page.evaluate(() => {
+    const c = (document.querySelector('[data-timeline]') as any)._x_dataStack[0];
+    const span = (c.spans ?? []).find((s: any) => s.start > 0.5 && s.start < c.duration - 0.5);
+    if (span) c.seek(span.start + Math.min(0.05, (span.end - span.start) / 2));
+    return span?.word ?? null;
+  });
+  expect(target, 'the narration should have a word inside the timeline').not.toBeNull();
+  await page.waitForTimeout(200);
   const word = (await page.locator('[data-timeline-word]').textContent())?.trim() ?? '';
-  expect(word.length, `expected a spoken word at ${time}s, got "${word}"`).toBeGreaterThan(0);
+  expect(word, `readout should name the word being spoken`).toBe(target);
 
   expect(errors, `console errors:\n${errors.join('\n')}`).toEqual([]);
 });
@@ -120,9 +147,11 @@ test('a keyframe dragged along its lane snaps to a spoken word', async ({ page }
   // The camera may already be on this scene — adding one PERSISTS, which is the point of it
   // being an object rather than a mode. Add it only when it is not there yet.
   // boundingBox() auto-waits and throws when nothing is there, so ask whether it exists first.
+  // isVisible(), NOT count(): "Add camera" is x-show'd, so a hidden one still counts as 1 and
+  // boundingBox() then returns null — which is what three of these tests died on.
   const add = page.locator('[data-timeline-add-camera]');
   let box = null;
-  if (await add.count()) {
+  if (await add.isVisible()) {
     box = (await add.boundingBox())!;
     await walkTo(page, box.x + box.width / 2, box.y + box.height / 2);
     await page.mouse.down(); await page.mouse.up();
@@ -165,7 +194,7 @@ test('pressing play moves the map — the whole point, and it is asserted on the
   await openTimeline(page);
 
   const add = page.locator('[data-timeline-add-camera]');
-  if (await add.count()) {
+  if (await add.isVisible()) {
     const ab = (await add.boundingBox())!;
     await walkTo(page, ab.x + ab.width / 2, ab.y + ab.height / 2);
     await page.mouse.down(); await page.mouse.up();

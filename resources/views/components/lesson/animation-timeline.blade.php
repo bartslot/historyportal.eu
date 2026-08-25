@@ -59,11 +59,22 @@
              The hint is the app's own tooltip carrying its key cap, exactly as the player's play
              button wears K — never `title` as well, which is what puts two tooltips on screen at
              once. --}}
+        {{-- The WRAPPER carries the tooltip, not the button.
+
+             A disabled element dispatches no pointer events, so a tooltip on it can never appear —
+             which left a dead play button with no way to learn why. Apple's HIG asks for the
+             opposite: show when a command cannot be carried out AND help people understand why.
+             The wrapper is always alive, so the reason is reachable in exactly the state that
+             needs it. --}}
+        <span class="shrink-0"
+              :data-tooltip="nothingToPlay && !playing
+                  ? @js(__('Set two keyframes on a property to make something move'))
+                  : (playing ? @js(__('Pause')) : @js(__('Play')))"
+              :data-tooltip-key="nothingToPlay && !playing ? null : @js(__('Space'))">
         <button type="button" x-on:click="playing ? pause() : play()" data-timeline-play
                 :disabled="nothingToPlay && !playing"
-                class="grid h-7 w-7 place-items-center rounded text-panel-value hover:text-white disabled:opacity-30"
-                :data-tooltip="playing ? @js(__('Pause')) : @js(__('Play'))"
-                data-tooltip-key="{{ __('Space') }}"
+                class="grid h-7 w-7 cursor-pointer place-items-center rounded text-panel-value
+                       hover:text-white disabled:cursor-default disabled:opacity-30"
                 aria-keyshortcuts="Space"
                 :aria-label="playing ? @js(__('Pause')) : @js(__('Play'))">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
@@ -71,6 +82,7 @@
                 <path x-show="playing" x-cloak stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5"/>
             </svg>
         </button>
+        </span>
 
         {{-- Current time, and the WORD being spoken there, which is the readout that means
              something to a teacher. --}}
@@ -131,7 +143,9 @@
                         class="btn btn-xs rounded-full">{{ __('Add camera') }}</button>
             </div>
 
-            <template x-if="!objects.length">
+            {{-- Only when it is TRUE. On a map scene this sat directly under an "Add camera"
+                 button, denying what the panel was offering in the same breath. --}}
+            <template x-if="!objects.length && !canHaveCamera">
                 <div class="px-4 pb-3">
                     <p class="text-2xs text-panel-label">{{ __('Nothing on this scene can be animated yet.') }}</p>
                 </div>
@@ -214,7 +228,9 @@
              against a scrollLeft the component tracked itself, inside overflow-hidden — so zooming
              in past a second or two put the playhead somewhere off to the right with no way to
              reach it, which is what made the zoom control feel broken. --}}
-        <div x-ref="lanes" data-timeline-lanes class="relative min-w-0 flex-1 overflow-x-auto"
+        {{-- col-resize, the same handle the scrubby labels wear: dragging here moves the playhead,
+             and nothing said so. It is the panel's main gesture and it was silent. --}}
+        <div x-ref="lanes" data-timeline-lanes class="relative min-w-0 flex-1 cursor-col-resize overflow-x-auto"
              x-on:pointerdown="startScrub($event)">
             <div class="relative" :style="`width: ${Math.max(contentWidth, 100)}px`">
 
