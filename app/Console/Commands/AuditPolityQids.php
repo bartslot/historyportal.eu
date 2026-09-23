@@ -213,7 +213,7 @@ final class AuditPolityQids extends Command
         $bar = $this->output->createProgressBar((int) ceil(count($qids) / self::BATCH));
 
         foreach (array_chunk($qids, self::BATCH) as $chunk) {
-            $response = Http::withHeaders(['User-Agent' => 'thelearningportal.us timemap audit'])
+            $response = Http::withHeaders(['User-Agent' => 'historyportal.eu timemap audit'])
                 ->timeout(60)
                 ->retry(3, 500)
                 ->get('https://www.wikidata.org/w/api.php', [

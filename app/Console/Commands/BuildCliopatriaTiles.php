@@ -51,7 +51,7 @@ class BuildCliopatriaTiles extends Command
 
     private const LAND_URL = 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_land.geojson';
 
-    private const UA = 'TheLearningPortal/1.0 (https://thelearningportal.us; bartslot@gmail.com) educational';
+    private const UA = 'HistoryPortal/1.0 (https://historyportal.eu; bartslot@gmail.com) educational';
 
     public function handle(): int
     {

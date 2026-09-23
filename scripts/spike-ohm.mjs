@@ -4,7 +4,7 @@ const { VectorTile } = require('@mapbox/vector-tile');
 const PbfMod = require('pbf');
 const Protobuf = PbfMod.PbfReader || PbfMod.Pbf || PbfMod.default || PbfMod;
 
-const UA = 'TheLearningPortal/1.0 (https://thelearningportal.us; bartslot@gmail.com) educational';
+const UA = 'HistoryPortal/1.0 (https://historyportal.eu; bartslot@gmail.com) educational';
 const BASE = 'https://vtiles.openhistoricalmap.org/maps/ohm_admin';
 
 const lon2x = (lon, z) => Math.floor(((lon + 180) / 360) * 2 ** z);

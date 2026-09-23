@@ -200,7 +200,7 @@ SSML;
                 'Ocp-Apim-Subscription-Key' => $key,
                 'Content-Type' => 'application/ssml+xml',
                 'X-Microsoft-OutputFormat' => 'audio-24khz-48kbitrate-mono-mp3',
-                'User-Agent' => 'TheLearningPortal',
+                'User-Agent' => 'HistoryPortal',
             ])
             // A full scene of narration is a minute or more of speech, and Azure streams it back as
             // it synthesises. From SiteGround that regularly ran past 25s with ~280 KB already

@@ -2,7 +2,7 @@
 
 Builds a PostgreSQL database of **verified historical facts** from trusted open-license sources
 (World History Encyclopedia + Wikipedia). The corpus powers the AI lesson script generator in
-thelearningportal.us — guaranteeing zero hallucinations by grounding every LLM prompt in facts
+historyportal.eu — guaranteeing zero hallucinations by grounding every LLM prompt in facts
 that actually exist in the record.
 
 ---

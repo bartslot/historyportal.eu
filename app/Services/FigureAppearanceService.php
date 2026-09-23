@@ -20,7 +20,7 @@ final class FigureAppearanceService
 {
     private const TTL_DAYS = 28;
 
-    private const UA = 'TheLearningPortalBot/1.0 (+https://thelearningportal.us; education)';
+    private const UA = 'HistoryPortalBot/1.0 (+https://historyportal.eu; education)';
 
     private const INSTRUCTION = <<<'TXT'
     Describe ONLY the physical appearance of the historical figure in this reference portrait, for

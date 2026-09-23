@@ -92,7 +92,7 @@
             <p class="mt-3 max-w-2xl text-slate-300">
                 {{ __('The portal speaks English, Dutch, German, French and Italian, and a lesson takes minutes to build from your own topic. We are preparing for wider classroom use and are glad to hear what your curriculum needs.') }}
             </p>
-            <a href="mailto:info@thelearningportal.us?subject={{ rawurlencode(__('Classroom use')) }}"
+            <a href="mailto:info@historyportal.eu?subject={{ rawurlencode(__('Classroom use')) }}"
                class="mt-5 inline-flex items-center gap-2 rounded-lg bg-amber-400 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-amber-300">
                 {{ __('Talk to us') }}
             </a>

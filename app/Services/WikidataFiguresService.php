@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Http;
 class WikidataFiguresService
 {
     // Wikimedia blocks requests without a descriptive User-Agent (HTTP 403). See their UA policy.
-    private const USER_AGENT = 'TheLearningPortal/1.0 (https://thelearningportal.us; bartslot@gmail.com) educational';
+    private const USER_AGENT = 'HistoryPortal/1.0 (https://historyportal.eu; bartslot@gmail.com) educational';
 
     private const SPARQL_ENDPOINT = 'https://query.wikidata.org/sparql';
 

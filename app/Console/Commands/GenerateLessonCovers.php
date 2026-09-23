@@ -50,7 +50,7 @@ final class GenerateLessonCovers extends Command
     private const SOURCE_FETCH_WIDTH = 1000;
 
     /** Wikimedia 403s requests without a User-Agent. */
-    private const HTTP_USER_AGENT = 'TheLearningPortal/1.0 (https://thelearningportal.us)';
+    private const HTTP_USER_AGENT = 'HistoryPortal/1.0 (https://historyportal.eu)';
 
     /**
      * GD decodes to an uncompressed truecolor canvas — 4 bytes a pixel — so a 8000x5000 skybox

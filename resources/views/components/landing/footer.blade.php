@@ -34,7 +34,7 @@
             <div class="mt-8 flex flex-wrap justify-center gap-4">
                 
                 <a
-                    href="mailto:info@thelearningportal.us"
+                    href="mailto:info@historyportal.eu"
                     class="inline-flex items-center rounded-full border border-white/15 bg-white px-7 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-100"
                 >
                     Let&apos;s talk

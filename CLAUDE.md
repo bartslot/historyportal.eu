@@ -1,7 +1,7 @@
 # The Learning Portal — CLAUDE.md
 
 ## Project Overview
-**thelearningportal.us** is an AI-powered K-12 EdTech platform that generates engaging,
+**historyportal.eu** is an AI-powered K-12 EdTech platform that generates engaging,
 gamified, story-driven lessons narrated by animated historical avatars. Teachers create
 lessons in minutes; students watch, interact, and complete quizzes via a Flutter mobile app
 or PWA.

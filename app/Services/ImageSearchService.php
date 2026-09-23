@@ -163,7 +163,7 @@ class ImageSearchService
     {
         $slug = str_replace(' ', '_', $topic);
         $response = Http::timeout(10)
-            ->withHeaders(['Api-User-Agent' => 'thelearningportal.us/1.0 (contact@thelearningportal.us)'])
+            ->withHeaders(['Api-User-Agent' => 'historyportal.eu/1.0 (info@historyportal.eu)'])
             ->get(self::WIKIMEDIA_MEDIA . rawurlencode($slug));
 
         if (! $response->ok()) {
@@ -224,7 +224,7 @@ class ImageSearchService
     {
         // Step 1: search for file names
         $searchResponse = Http::timeout(10)
-            ->withHeaders(['Api-User-Agent' => 'thelearningportal.us/1.0'])
+            ->withHeaders(['Api-User-Agent' => 'historyportal.eu/1.0'])
             ->get('https://commons.wikimedia.org/w/api.php', [
                 'action'      => 'query',
                 'list'        => 'search',
@@ -252,7 +252,7 @@ class ImageSearchService
 
         // Step 2: get image URLs for those files
         $infoResponse = Http::timeout(10)
-            ->withHeaders(['Api-User-Agent' => 'thelearningportal.us/1.0'])
+            ->withHeaders(['Api-User-Agent' => 'historyportal.eu/1.0'])
             ->get('https://commons.wikimedia.org/w/api.php', [
                 'action'   => 'query',
                 'titles'   => $titles,

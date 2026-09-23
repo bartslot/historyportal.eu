@@ -125,7 +125,7 @@ class CloudinaryService
         }
         try {
             $response = Http::timeout(30)
-                ->withHeaders(['User-Agent' => 'TheLearningPortal/1.0 (educational; +https://thelearningportal.us)'])
+                ->withHeaders(['User-Agent' => 'HistoryPortal/1.0 (educational; +https://historyportal.eu)'])
                 ->get($url);
             if ($response->successful()) {
                 $hosted = $this->uploadBytes($response->body(), $folder, $publicId);

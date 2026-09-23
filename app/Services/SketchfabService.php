@@ -63,7 +63,7 @@ class SketchfabService
     {
         $this->lastError = null;
         try {
-            $response = Http::withHeaders(['User-Agent' => 'LearningPortal/1.0 (thelearningportal.us)'])
+            $response = Http::withHeaders(['User-Agent' => 'HistoryPortal/1.0 (historyportal.eu)'])
                 ->timeout(self::TIMEOUT)
                 ->get(self::API, [
                     'type' => 'models',

@@ -153,7 +153,7 @@ class EnhanceSceneImages extends Command
 
         try {
             $res = \Illuminate\Support\Facades\Http::withHeaders([
-                'User-Agent' => 'LearningPortal/1.0 (thelearningportal.us; scene imagery)',
+                'User-Agent' => 'HistoryPortal/1.0 (historyportal.eu; scene imagery)',
             ])->timeout(30)->get($url);
 
             return ($res->successful() && $res->body() !== '') ? $res->body() : null;

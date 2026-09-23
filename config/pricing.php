@@ -79,7 +79,7 @@ return [
             'tagline'     => 'For districts and large schools that need scale and control.',
             'featured'    => false,
             'cta'         => 'Contact sales',
-            'href'        => 'mailto:hello@thelearningportal.us?subject=District%20pricing',
+            'href'        => 'mailto:info@historyportal.eu?subject=District%20pricing',
             'price_label' => "Let's talk",   // custom — same across every term
             'features'    => [
                 'Unlimited classrooms & students',
