@@ -1,15 +1,23 @@
-# The Learning Portal — CLAUDE.md
+# History Portal — CLAUDE.md
 
 ## Project Overview
-**historyportal.eu** is an AI-powered K-12 EdTech platform that generates engaging,
-gamified, story-driven lessons narrated by animated historical avatars. Teachers create
-lessons in minutes; students watch, interact, and complete quizzes via a Flutter mobile app
-or PWA.
 
-The **History Portal** is the first subject vertical (history lessons with AI avatars of
-historical figures like Julius Caesar). Future verticals: Science, Literature, Civics.
+**The Learning Portal** (`thelearningportal.us`) is the company. Its own site carries the
+mission, the vision and the goals, and it is a separate WordPress install, not this repo.
 
-**Tagline:** "Where Storytelling Meets Learning. AI-Powered. Teacher-Centric. Results-Driven."
+**History Portal** (`historyportal.eu`) is the product, and it is what lives here: narrated,
+story-driven history lessons a teacher builds in minutes and a class plays on any device,
+with quizzes and class games. Laravel serves the teacher app and the player; a separate
+Flutter codebase covers iOS, Android and the PWA over the REST API.
+
+History is the first subject. Science, Literature and Civics are the intended next ones, and
+each would be its own product under the same company.
+
+**There is no tagline. Do not write one.** See `docs/brand-guidelines.md` for the voice, and
+say "your class", never "learners" or "users".
+
+In the interface: the product name is **History Portal**. The company name appears only where
+it belongs, in the footer copyright, the licence line and the Organization schema.
 
 ---
 

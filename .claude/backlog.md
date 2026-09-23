@@ -1,4 +1,4 @@
-# The Learning Portal (historyportal.eu) — Backlog (post-Alfonso playtest)
+# History Portal — Backlog (post-Alfonso playtest)
 
 **Source:** Playtest + interviews with Alfonso (history/geography teacher, ~30, teaches 12–18, currently at a French international school in Rome following the French system). Two sessions: (1) teaching-practice interview, (2) hands-on product playtest. Transcripts: `leticia_interview1/2.txt`, `audio_transcribe(2).txt`.
 

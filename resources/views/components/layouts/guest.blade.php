@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $title ?? 'Sign In' }} · The Learning Portal</title>
+    <title>{{ $title ?? 'Sign In' }} · History Portal</title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
@@ -15,10 +15,7 @@
             <a href="{{ route('home') }}" class="inline-flex flex-col items-center gap-2">
                 <x-logo class="h-14 w-14" />
                 <span class="font-cinzel text-2xl font-bold tracking-wide text-amber-400">
-                    The Learning Portal
-                </span>
-                <span class="text-xs uppercase tracking-widest text-slate-400">
-                    Where Storytelling Meets Learning
+                    History Portal
                 </span>
             </a>
         </div>

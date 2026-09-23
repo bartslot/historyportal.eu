@@ -1,6 +1,7 @@
-# The Learning Portal
+# History Portal
 
-AI-powered K-12 EdTech platform — Laravel 12 + Livewire 3 backend.
+Narrated history lessons for the classroom. Laravel 12 + Livewire 3.
+The product of The Learning Portal (thelearningportal.us).
 
 ## Quick start (fresh clone)
 

@@ -30,7 +30,7 @@ test('owner preview shows the Edit toolbar (logo hidden) and carries scene ids',
   await page.goto(`/lesson/${LESSON_CODE}`, { waitUntil: 'domcontentloaded' });
 
   await expect(page.getByRole('button', { name: 'Edit scene' })).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator('img[alt="The Learning Portal"]')).toHaveCount(0); // big logo hidden for owner
+  await expect(page.locator('img[alt="History Portal"]')).toHaveCount(0); // big logo hidden for owner
 
   // editSceneHref reads window.LESSON.scenes[index].id — verify that payload carries the ids it needs.
   const sceneId = await page.evaluate(() => (window as any).LESSON?.scenes?.[2]?.id);
