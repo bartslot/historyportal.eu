@@ -1,5 +1,8 @@
 # Avatar Studio — Talking Head Implementation Plan
 
+
+> **Obsolete (2026-09-23).** There is no Vercel deployment. Everything is Laravel hosted on SiteGround; this plan's serverless functions were never adopted. Kept for the design record only.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build a resource-efficient, API-free animated talking avatar — portrait image + audio amplitude JSON → live CSS/canvas animation with mouth, eyes, head movement, and breathing. No GPU, no AI API, runs on Vercel Hobby + Laravel on SiteGround.

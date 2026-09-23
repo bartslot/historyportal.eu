@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(scp:*)", "Bash(rsync:*)",
+      "Bash(scp:*)",
+      "Bash(rsync:*)",
       "Bash(php /Users/bartslot/Projects/historyportal.eu/artisan make:migration add_details_and_update_tone_title_in_lessons_table)",
       "Read(//Users/bartslot/SadTalker/**)",
       "Bash(brew install:*)",
@@ -34,11 +35,9 @@
       "Read(//Users/bartslot/.ssh/**)",
       "Bash(ssh -i '~/.ssh/siteground_tlp2' -p 18765 u2628-emomoo15slu6@ssh.historyportal.eu ':*)",
       "Bash(curl -si https://historyportal.eu/)",
-      "Bash(ssh -i ~/.ssh/siteground_tlp2 -p 18765 ufsiv6awvjybq@history.historyportal.eu \"cd ~/public_html && git pull origin feature/avatar-studio-talking-head && php84 artisan config:clear && php84 artisan view:clear\")",
+      "Bash(ssh -i ~/.ssh/siteground_tlp2 -p 18765 ufsiv6awvjybq@historyportal.eu \"cd ~/public_html && git pull origin feature/avatar-studio-talking-head && php84 artisan config:clear && php84 artisan view:clear\")",
       "Bash(ssh -i ~/.ssh/siteground_tlp2 -p 18765 u2628-emomoo15slu6@ssh.historyportal.eu \"cd ~/www/historyportal.eu/app && git pull origin feature/avatar-studio-talking-head && php84 artisan config:clear && php84 artisan view:clear\")",
-      "Bash(curl -s -X POST https://thelearningportal-us.vercel.app/api/detect-landmarks -H 'Content-Type: application/json' -d '{\"portrait_base64\":\"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==\"}')",
-      "Bash(git push:*)",
-      "Bash(curl -s https://thelearningportal-us.vercel.app/api/test6)"
+      "Bash(git push:*)"
     ]
   }
 }

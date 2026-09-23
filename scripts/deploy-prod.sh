@@ -32,8 +32,8 @@ DRY=""
 # second, unserved copy of the app, leaving the real site untouched and the deploy reporting success.
 #
 # So: ask the server which directory holds an artisan file. Exactly one does.
-# Counted by REAL path: a hostname can be a symlink to the site it shares (historyportal.eu and
-# history.historyportal.eu are one app reached two ways), and counting those as two apps made this
+# Counted by REAL path: a hostname can be a symlink to the site it shares (two hostnames, one app
+# reached two ways), and counting those as two apps made this
 # refuse a perfectly ordinary deploy. Two DISTINCT real paths still means a half-finished move, and
 # guessing between them is how the wrong one gets deployed to.
 APPS=$(ssh -p "$PORT" -i "$KEY" "$HOST" \
