@@ -32,7 +32,7 @@
 ```js
 import { VectorTile } from '@mapbox/vector-tile';
 import Protobuf from 'pbf';
-const UA = 'TheLearningPortal/1.0 (educational; bartslot@gmail.com)';
+const UA = 'HistoryPortal/1.0 (educational; bartslot@gmail.com)';
 // z4 tiles covering Europe (x in 7..9, y in 4..6 at z4 roughly cover W/Central Europe)
 const tiles = [[4, 8, 5], [4, 9, 5]];
 for (const [z, x, y] of tiles) {
@@ -59,7 +59,7 @@ Run `node scripts/spike-ohm.mjs`. **Record:** do Gaul/Roman Republic/Carthage (2
 - [ ] **Step 4: Overpass wikidata.** Query OHM Overpass for a couple of European admin boundaries and confirm the `wikidata` tag is present:
 
 ```bash
-curl -s -A "TheLearningPortal/1.0 (educational; bartslot@gmail.com)" \
+curl -s -A "HistoryPortal/1.0 (educational; bartslot@gmail.com)" \
   "https://overpass-api.openhistoricalmap.org/api/interpreter" \
   --data 'data=[out:json][timeout:25];relation["boundary"="administrative"]["name"="Roman Republic"];out tags 1;' | head -c 800
 ```
@@ -114,7 +114,7 @@ class FetchOhmTiles extends Command
 
     protected $description = 'Mirror OHM admin + land vector tiles to public/ohm-tiles';
 
-    private const UA = 'TheLearningPortal/1.0 (https://thelearningportal.us; bartslot@gmail.com) educational';
+    private const UA = 'HistoryPortal/1.0 (https://historyportal.eu; bartslot@gmail.com) educational';
 
     /** Europe-biased coverage box [west, south, east, north]; world at z0-2 for context. */
     private array $bbox = [-25.0, 30.0, 50.0, 72.0];
@@ -341,7 +341,7 @@ class SyncOhmPolities extends Command
 
     protected $description = 'Pre-enrich major OHM admin boundaries (admin_level<=4 / has_label) into polities, keyed by osm_id';
 
-    private const UA = 'TheLearningPortal/1.0 (https://thelearningportal.us; bartslot@gmail.com) educational';
+    private const UA = 'HistoryPortal/1.0 (https://historyportal.eu; bartslot@gmail.com) educational';
 
     public function handle(WikidataPolityResolver $resolver): int
     {

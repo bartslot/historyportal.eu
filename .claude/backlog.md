@@ -1,4 +1,4 @@
-# The Learning Portal (thelearningportal.us) — Backlog (post-Alfonso playtest)
+# The Learning Portal (historyportal.eu) — Backlog (post-Alfonso playtest)
 
 **Source:** Playtest + interviews with Alfonso (history/geography teacher, ~30, teaches 12–18, currently at a French international school in Rome following the French system). Two sessions: (1) teaching-practice interview, (2) hands-on product playtest. Transcripts: `leticia_interview1/2.txt`, `audio_transcribe(2).txt`.
 
@@ -18,7 +18,7 @@ Alfonso framed his own teaching as two axes — **history = time, geography = sp
 Each ticket is written to be **dispatched to a single coding agent** (e.g. Claude Code) and is self-contained: it states *why*, *scope (in/out)*, *acceptance criteria*, and a **Smoke** block — the agent's self-check before it reports done.
 
 **Dispatch contract (paste into each agent run):**
-> Work in the repo at `/Users/bartslot/BartsAutomation/BartsDev/apps/thelearningportal.us`. Implement this ticket. When done, run the **Smoke** steps as real commands (`php artisan test --filter=…`, `php artisan dusk --filter=…`, and `npm run build` if JS/CSS/Three.js changed) and paste the actual output. If a test can't run because the harness/feature doesn't exist yet, create the minimum harness (see INFRA-1), then run it. Run `./vendor/bin/pint` before finishing. Do not mark done until the smoketest passes. Report any acceptance criterion you couldn't meet and why.
+> Work in the repo at `/Users/bartslot/BartsAutomation/BartsDev/apps/historyportal.eu`. Implement this ticket. When done, run the **Smoke** steps as real commands (`php artisan test --filter=…`, `php artisan dusk --filter=…`, and `npm run build` if JS/CSS/Three.js changed) and paste the actual output. If a test can't run because the harness/feature doesn't exist yet, create the minimum harness (see INFRA-1), then run it. Run `./vendor/bin/pint` before finishing. Do not mark done until the smoketest passes. Report any acceptance criterion you couldn't meet and why.
 
 **Global Definition of Done (applies to every ticket):**
 - [ ] Acceptance criteria met
@@ -79,7 +79,7 @@ Smoke: run … → expect …
 
 ## Assumptions & open decisions (read before dispatching)
 
-Confirmed: **TALL stack (Laravel + Livewire + Alpine + Tailwind) + Three.js**, repo at `…/apps/thelearningportal.us`. Smoke commands now target Pest + Laravel Dusk (see conventions above). Remaining assumptions — correct any that are wrong and the affected tickets shift:
+Confirmed: **TALL stack (Laravel + Livewire + Alpine + Tailwind) + Three.js**, repo at `…/apps/historyportal.eu`. Smoke commands now target Pest + Laravel Dusk (see conventions above). Remaining assumptions — correct any that are wrong and the affected tickets shift:
 - **Supabase access** is via a direct Postgres connection from Laravel (Eloquent + migrations), not the Supabase REST/JS client. If you're actually going through the JS client / RLS, A2 / A3 / B1 change.
 - **Topics JSON confirmed** at `resources/data/history-topics.json` — a static file read by a Livewire component today. A2 backs it with an Eloquent `Topic` model on Supabase Postgres while keeping the same JSON shape (step one is a one-off import of this file into the table). Which topics it *should* contain is a content-strategy decision — see the research findings shared separately (anchor to a chronological ancient-world spine).
 

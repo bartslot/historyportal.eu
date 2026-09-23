@@ -14,7 +14,7 @@
 #
 set -euo pipefail
 
-# ssh.historyportal.eu, NOT ssh.thelearningportal.us: the marketing site moved to a separate
+# ssh.historyportal.eu, NOT ssh.historyportal.eu: the marketing site moved to a separate
 # SiteGround server, taking that hostname with it, so the old one now resolves to a machine
 # this key cannot open and the app is not on. The SSH host has to follow the app.
 HOST="u2628-emomoo15slu6@ssh.historyportal.eu"

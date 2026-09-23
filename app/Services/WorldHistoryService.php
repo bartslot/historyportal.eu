@@ -18,7 +18,7 @@ class WorldHistoryService
 
     private const SEARCH_URL = 'https://www.worldhistory.org/search/';
 
-    private const USER_AGENT = 'TheLearningPortal/1.0 (https://thelearningportal.us; bartslot@gmail.com)';
+    private const USER_AGENT = 'HistoryPortal/1.0 (https://historyportal.eu; bartslot@gmail.com)';
 
     private const TIMEOUT = 12;
 

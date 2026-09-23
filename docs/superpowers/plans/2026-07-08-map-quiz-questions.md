@@ -37,7 +37,7 @@ Run tests with: `composer test` (or `vendor/bin/phpunit --filter <Name>` for one
 - [ ] **Step 1: Create feature branch**
 
 ```bash
-cd /Users/bartslot/BartsAutomation/BartsDev/apps/thelearningportal.us
+cd /Users/bartslot/BartsAutomation/BartsDev/apps/historyportal.eu
 git checkout -b feat/map-quiz
 ```
 

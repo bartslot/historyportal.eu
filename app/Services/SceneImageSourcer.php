@@ -26,7 +26,7 @@ use Throwable;
  */
 class SceneImageSourcer
 {
-    private const UA = 'LearningPortal/1.0 (https://thelearningportal.us; classroom lesson imagery)';
+    private const UA = 'HistoryPortal/1.0 (https://historyportal.eu; classroom lesson imagery)';
 
     /** Commons renders thumbnails up to this width; beyond it we take the original file. */
     private const TARGET_WIDTH = 2000;

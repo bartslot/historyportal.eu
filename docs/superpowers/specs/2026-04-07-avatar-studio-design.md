@@ -3,7 +3,7 @@ _Date: 2026-04-07_
 
 ## Goal
 
-Build a resource-efficient, API-free talking avatar system for thelearningportal.us. A single portrait image (e.g. Julius Caesar) animates in real-time on the client using audio amplitude data and face landmark detection. No GPU, no AI API, no video encoding. Runs on Vercel Hobby (free tier) + Laravel on SiteGround.
+Build a resource-efficient, API-free talking avatar system for historyportal.eu. A single portrait image (e.g. Julius Caesar) animates in real-time on the client using audio amplitude data and face landmark detection. No GPU, no AI API, no video encoding. Runs on Vercel Hobby (free tier) + Laravel on SiteGround.
 
 ---
 

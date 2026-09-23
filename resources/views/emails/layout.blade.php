@@ -64,7 +64,7 @@
                     </tr>
                     <tr>
                         <td align="center" bgcolor="#040B1A" style="background-color: #040B1A; padding: 0 24px;">
-                            <span style="font-family: Helvetica, Arial, sans-serif; font-size: 11px; line-height: 1.6; color: #94a3b8;">&copy; {{ date('Y') }} {{ config('app.name') ?: 'History Portal' }} &middot; thelearningportal.us<br>{{ __('You are receiving this email because of your account on :app.', ['app' => config('app.name') ?: 'History Portal']) }}</span>
+                            <span style="font-family: Helvetica, Arial, sans-serif; font-size: 11px; line-height: 1.6; color: #94a3b8;">&copy; {{ date('Y') }} {{ config('app.name') ?: 'History Portal' }} &middot; historyportal.eu<br>{{ __('You are receiving this email because of your account on :app.', ['app' => config('app.name') ?: 'History Portal']) }}</span>
                         </td>
                     </tr>
 

@@ -10,7 +10,7 @@ import { join } from 'node:path'
  * resources/views/livewire/wizard/step3-scene-configurator.blade.php transfers "361 KB per poll,
  * 423 MB/hour". That number came from a run that (a) averaged POLL responses together with
  * scene-SWITCH responses, and (b) measured `php artisan serve`, which sends no Content-Encoding.
- * Production is nginx with gzip (verified: `content-encoding: gzip` on https://thelearningportal.us/).
+ * Production is nginx with gzip (verified: `content-encoding: gzip` on https://historyportal.eu/).
  *
  * So this spec measures three separate things instead of one blended one:
  *   1. the real CADENCE while the tab is visible and the teacher does nothing,

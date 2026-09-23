@@ -46,7 +46,7 @@ class EnrichPolities extends Command
             // file that may never have been fetched, and the card then requests a 404.
             $flagPath = null;
             if ($data['flag_commons']) {
-                $response = Http::withHeaders(['User-Agent' => 'TheLearningPortal/1.0 (https://thelearningportal.us; bartslot@gmail.com) educational'])
+                $response = Http::withHeaders(['User-Agent' => 'HistoryPortal/1.0 (https://historyportal.eu; bartslot@gmail.com) educational'])
                     ->get('https://commons.wikimedia.org/wiki/Special:FilePath/'.rawurlencode($data['flag_commons']).'?width=80');
 
                 if ($response->successful() && str_starts_with($response->body(), self::PNG_MAGIC)) {
