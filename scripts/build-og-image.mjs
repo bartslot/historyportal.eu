@@ -31,7 +31,7 @@ const html = `<!doctype html><html><head><meta charset="utf-8">
     <h1>History lessons that<br>tell the story</h1>
     <p>Narrated, illustrated history for the classroom. Built in minutes, played on any device.</p>
   </div>
-  <div class="foot"><span class="dot"></span>history.thelearningportal.us</div>
+  <div class="foot"><span class="dot"></span>history.historyportal.eu</div>
   <div class="langs">EN · NL · DE · FR · IT</div>
 </body></html>`
 

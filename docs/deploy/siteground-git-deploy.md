@@ -1,4 +1,4 @@
-# SiteGround Git Deployment — thelearningportal.us
+# SiteGround Git Deployment — historyportal.eu
 
 Deploy this Laravel 12 app to **SiteGround shared hosting** via **Site Tools → Git**.
 The production database stays on **Supabase Postgres** (cloud) — there is **no MySQL** and
@@ -21,7 +21,7 @@ APP_NAME=theLearningPortal
 APP_ENV=production
 APP_KEY=                                   # >> SECRET <<  php artisan key:generate
 APP_DEBUG=false
-APP_URL=https://thelearningportal.us
+APP_URL=https://historyportal.eu
 APP_LOCALE=us
 APP_FALLBACK_LOCALE=en
 APP_AUTO_LOGIN=false                        # dev auto-login OFF in prod
@@ -55,7 +55,7 @@ CORPUS_DB_PERSISTENT=false                  # pooler drops idle conns — keep O
 # ── Session / Cache / Queue (all DB-backed, no Redis on SiteGround) ───────────
 SESSION_DRIVER=database
 SESSION_LIFETIME=120
-SESSION_DOMAIN=.thelearningportal.us
+SESSION_DOMAIN=.historyportal.eu
 SESSION_SECURE_COOKIE=true
 SESSION_SAME_SITE=lax
 CACHE_STORE=database
@@ -72,7 +72,7 @@ MAIL_PORT=587
 MAIL_USERNAME=                              # >> SECRET <<
 MAIL_PASSWORD=                              # >> SECRET <<
 MAIL_SCHEME=tls
-MAIL_FROM_ADDRESS="noreply@thelearningportal.us"
+MAIL_FROM_ADDRESS="noreply@historyportal.eu"
 MAIL_FROM_NAME="${APP_NAME}"
 
 # ── LLM / TTS / images (hosted APIs — local AI services are NOT used in prod) ─
@@ -128,8 +128,8 @@ MAX_LESSON_GENERATION_ATTEMPTS=3
 SiteGround supports Git two ways. **Option A (recommended): push to SiteGround's own repo.**
 
 1. **Site Tools → Devs → Git → Create Repo.** Pick the domain
-   (`thelearningportal.us`). SiteGround creates a bare repo and shows an SSH remote like:
-   `ssh://USER@gitREGION.siteground.us/home/customer/www/thelearningportal.us/private/repository.git`
+   (`historyportal.eu`). SiteGround creates a bare repo and shows an SSH remote like:
+   `ssh://USER@gitREGION.siteground.us/home/customer/www/historyportal.eu/private/repository.git`
 2. Locally add it as a remote and push the deploy branch:
    ```bash
    git remote add siteground ssh://USER@gitREGION.siteground.us/.../repository.git
@@ -153,7 +153,7 @@ Run these over **SSH** (Site Tools → Devs → SSH Keys Manager to enable SSH) 
 root after every deploy. SiteGround does **not** run them automatically.
 
 ```bash
-cd /home/customer/www/thelearningportal.us/public_html   # adjust to your real app root
+cd /home/customer/www/historyportal.eu/public_html   # adjust to your real app root
 
 # 1. PHP deps (production, no dev packages)
 composer install --no-dev --optimize-autoloader
@@ -210,13 +210,13 @@ from cron. Add these in **Site Tools → Devs → Cron Jobs**.
 **Queue worker — drain pending jobs each minute, then exit:**
 
 ```cron
-* * * * * cd /home/customer/www/thelearningportal.us/public_html && /usr/local/bin/php artisan queue:work database --queue=default,worldlabs --stop-when-empty --max-time=55 --tries=3 >> storage/logs/queue.log 2>&1
+* * * * * cd /home/customer/www/historyportal.eu/public_html && /usr/local/bin/php artisan queue:work database --queue=default,worldlabs --stop-when-empty --max-time=55 --tries=3 >> storage/logs/queue.log 2>&1
 ```
 
 **Scheduler — runs `elevenlabs:warm` (every 50 min) and any future scheduled tasks:**
 
 ```cron
-* * * * * cd /home/customer/www/thelearningportal.us/public_html && /usr/local/bin/php artisan schedule:run >> storage/logs/schedule.log 2>&1
+* * * * * cd /home/customer/www/historyportal.eu/public_html && /usr/local/bin/php artisan schedule:run >> storage/logs/schedule.log 2>&1
 ```
 
 **Rationale**
@@ -271,7 +271,7 @@ npm ci && npm run build && git add -f public/build && git commit -m "build: asse
 git push siteground main
 
 # over SSH on the server:
-cd /home/customer/www/thelearningportal.us/public_html \
+cd /home/customer/www/historyportal.eu/public_html \
   && composer install --no-dev --optimize-autoloader \
   && php artisan migrate --force \
   && php artisan optimize:clear \

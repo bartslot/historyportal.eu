@@ -149,7 +149,7 @@ SITE_URL=$(ssh -p "$PORT" -i "$KEY" "$HOST" "cd $DEST && php -r \"
   foreach (file('.env', FILE_IGNORE_NEW_LINES) as \\\$l) {
     if (preg_match('/^APP_URL=(.+)\\\$/', \\\$l, \\\$m)) { echo trim(\\\$m[1], '\\\"'); break; }
   }\"" 2>/dev/null | tail -1 | tr -d '\r')
-SITE_URL=${SITE_URL:-https://history.thelearningportal.us}
+SITE_URL=${SITE_URL:-https://history.historyportal.eu}
 CODE=$(curl -s -o /dev/null -w '%{http_code}' "$SITE_URL" --max-time 25)
 echo "  homepage      $CODE  $SITE_URL"
 MEDIA=$(ssh -p "$PORT" -i "$KEY" "$HOST" "cd $DEST && php artisan tinker --execute=\"

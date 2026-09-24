@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { sameOriginMediaUrl } from '../media-url.js'
 
 const LOCAL = 'http://localhost:8000'
-const LIVE = 'https://history.thelearningportal.us'
+const LIVE = 'https://history.historyportal.eu'
 
 describe('sameOriginMediaUrl', () => {
   // Why the rewrite exists at all: the page is served from localhost while a stored URL says

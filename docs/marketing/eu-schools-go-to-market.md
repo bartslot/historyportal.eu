@@ -123,7 +123,7 @@ your own address, with your name on it. Two drafts, deliberately short and hones
 > We are preparing for wider classroom use rather than claiming to be finished. If you try it, the
 > thing I would most like to know is where it does not fit your curriculum.
 >
-> [name] · history.thelearningportal.us
+> [name] · history.historyportal.eu
 
 ### 3b. To a school or department lead
 
@@ -142,7 +142,7 @@ your own address, with your name on it. Two drafts, deliberately short and hones
 > We are getting ready for the new school year and I would rather hear what your curriculum needs
 > than pitch you. Would a 20-minute call be useful?
 >
-> [name] · history.thelearningportal.us
+> [name] · history.historyportal.eu
 
 **Do not** send either of these as a bulk mail. Cold bulk mail to schools is both ineffective and,
 in several EU countries, legally fraught. Ten researched, individual emails will outperform a

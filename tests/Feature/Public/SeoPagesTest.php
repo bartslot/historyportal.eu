@@ -147,7 +147,7 @@ class SeoPagesTest extends TestCase
     {
         $robots = file_get_contents(public_path('robots.txt'));
 
-        $this->assertStringContainsString('Sitemap: https://history.thelearningportal.us/sitemap.xml', $robots);
+        $this->assertStringContainsString('Sitemap: https://history.historyportal.eu/sitemap.xml', $robots);
         $this->assertStringContainsString('Disallow: /teacher/', $robots);
     }
 

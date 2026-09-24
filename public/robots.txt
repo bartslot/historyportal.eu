@@ -7,4 +7,4 @@ Disallow: /settings
 Disallow: /help
 Disallow: /login
 
-Sitemap: https://history.thelearningportal.us/sitemap.xml
+Sitemap: https://history.historyportal.eu/sitemap.xml
