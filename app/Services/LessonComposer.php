@@ -74,6 +74,9 @@ class LessonComposer
             // is what every spec was before this key existed. Nothing infers it from the text: a
             // guess here means a Dutch class gets an English lesson, so it has to be declared.
             'language' => (string) ($spec['language'] ?? 'en'),
+            // Links this lesson to its siblings in other languages (Lesson::translations()). A
+            // spec that does not say has none, same as before this key existed.
+            'translation_group' => $spec['translation_group'] ?? null,
             'grade_level' => (string) ($spec['grade_level'] ?? '6'),
             'tone' => (string) ($spec['tone'] ?? 'storytelling'),
             'source_mode' => 'internet',

@@ -577,6 +577,34 @@
             {{-- Animated film grain — heavier than normal (0.12 opacity) --}}
             <div class="skybox-grain-overlay" style="opacity: 0.22; z-index: 2;"></div>
 
+            {{-- Language switch — top LEFT corner (QR takes top right; editor-nav convention keeps
+                 player chrome in the top corners). Only shown when this lesson has playable
+                 siblings in another language (Lesson::translations()). Switches the LESSON's
+                 language by opening the sibling's own player page; it never touches the interface
+                 locale. --}}
+            @if($translations->isNotEmpty())
+                <div class="dropdown absolute top-6 left-6 hidden sm:block" style="z-index:10">
+                    <div tabindex="0" role="button"
+                         class="btn btn-sm btn-ghost gap-2 border-none bg-black/40 text-white/80 backdrop-blur hover:bg-black/60 hover:text-white"
+                         data-tooltip="{{ __('Lesson language') }}">
+                        <x-dynamic-component :component="'flags.'.\App\Support\Locales::flag($lesson->language)" class="block h-4 w-6 rounded-[2px]" />
+                        <span class="text-xs font-semibold uppercase tracking-wide">{{ \App\Support\Locales::name($lesson->language) }}</span>
+                    </div>
+                    <ul tabindex="0" class="menu dropdown-content z-20 mt-2 w-48 rounded-box bg-base-200/95 p-2 shadow-lg backdrop-blur">
+                        <li class="menu-title">{{ __('Lesson language') }}</li>
+                        @foreach($translations as $sibling)
+                            <li>
+                                <a href="{{ route('lesson.play', ['lessonCode' => $sibling->lesson_code]) }}"
+                                   data-tooltip="{{ \App\Support\Locales::name($sibling->language) }}">
+                                    <x-dynamic-component :component="'flags.'.\App\Support\Locales::flag($sibling->language)" class="block h-4 w-6 rounded-[2px]" />
+                                    {{ \App\Support\Locales::name($sibling->language) }}
+                                </a>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
             {{-- Narrator card — framed + brightened portrait beside the label/name/era. Narrator
                  thumbnails are often dark, so a warm ring + shadow + brightness lifts it off the
                  dark cover so it reads as "on the forefront" (not a dark blob). --}}

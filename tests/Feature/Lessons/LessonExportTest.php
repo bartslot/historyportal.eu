@@ -119,6 +119,23 @@ class LessonExportTest extends TestCase
         ];
     }
 
+    public function test_a_translation_group_in_the_spec_is_set_on_the_lesson(): void
+    {
+        $spec = $this->spec();
+        $spec['translation_group'] = 'dante';
+
+        $lesson = app(LessonComposer::class)->build($spec, $this->teacher, narrate: false);
+
+        $this->assertSame('dante', $lesson->fresh()->translation_group);
+    }
+
+    public function test_a_spec_with_no_translation_group_sets_it_to_null(): void
+    {
+        $lesson = app(LessonComposer::class)->build($this->spec(), $this->teacher, narrate: false);
+
+        $this->assertNull($lesson->fresh()->translation_group);
+    }
+
     public function test_a_composed_lesson_exports_back_to_the_spec_that_built_it(): void
     {
         $spec = $this->spec();

@@ -62,6 +62,8 @@ class LessonPlayerController extends Controller
             abort(404, 'Lesson not found or not yet published.');
         }
 
-        return view('lesson.player', compact('lesson'));
+        $translations = $lesson->translations();
+
+        return view('lesson.player', compact('lesson', 'translations'));
     }
 }
