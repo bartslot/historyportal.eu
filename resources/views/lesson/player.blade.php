@@ -356,7 +356,10 @@
             <div class="pointer-events-none absolute inset-x-0 top-0 transition-opacity duration-300"
                  :class="(readingOverlay || (isPlaying && !zoneHover && !zoneFlash && !chaptersOpen)) ? 'opacity-0' : 'opacity-100'"
                  style="z-index:48">
-                <div class="pointer-events-none absolute inset-x-0 top-0 h-36 bg-linear-to-b from-black/70 to-transparent"></div>
+                {{-- A line-art scene (backdropShade off) keeps its paper white to the edge: no
+                     full-width scrim. Its controls carry their own local plate instead (the Edit
+                     button already has one; the logo gets one below). --}}
+                <div x-show="backdropShade" class="pointer-events-none absolute inset-x-0 top-0 h-36 bg-linear-to-b from-black/70 to-transparent"></div>
                 <div class="relative flex items-center gap-2.5 p-3.5 sm:px-16">
                     @if ($canEdit)
                         {{-- No back arrow here on purpose. The wizard already draws one in this exact
@@ -369,7 +372,8 @@
                             {{ __('Edit scene') }}
                         </button>
                     @else
-                        <img src="{{ asset('assets/logo.svg') }}" alt="The Learning Portal" class="h-24 w-auto shadow-sm">
+                        <img src="{{ asset('assets/logo.svg') }}" alt="The Learning Portal" class="h-24 w-auto shadow-sm"
+                             :class="!backdropShade && 'rounded-xl border border-white/10 bg-black/70 p-2 backdrop-blur-md'">
                     @endif
                 </div>
             </div>
@@ -390,11 +394,13 @@
                  style="z-index:45">
                 {{-- No data-tooltip here on purpose: a 96px glyph in the middle of the stage says
                      what it is, and a hover hint floating over the scene is noise. The deck's small
-                     play/pause carries the label and the K shortcut. --}}
+                     play/pause carries the label and the K shortcut. On a line-art scene a white
+                     glyph on white paper vanishes, so there (only) it sits on the deck's plate. --}}
                 <button type="button" @click="togglePlayback()"
                         :aria-label="playbackPaused ? @js(__('Play')) : @js(__('Pause'))"
                         class="group flex h-24 w-24 items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
-                        :class="(!readingOverlay && (playbackPaused || playbackGlyph)) ? 'pointer-events-auto' : 'pointer-events-none'">
+                        :class="[(!readingOverlay && (playbackPaused || playbackGlyph)) ? 'pointer-events-auto' : 'pointer-events-none',
+                                 !backdropShade && 'border border-white/10 bg-black/70 backdrop-blur-md']">
 
                     <svg x-show="playbackPaused" class="h-14 w-14 text-white drop-shadow-[0_4px_14px_rgba(0,0,0,0.8)] transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95" viewBox="0 0 21 23" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path fill-rule="evenodd" clip-rule="evenodd" d="M0 2.52873C0 0.608107 2.05916 -0.609418 3.74205 0.316169L19.2842 8.86436C21.0285 9.82373 21.0285 12.3301 19.2842 13.2895L3.74205 21.8377C2.05916 22.7633 0 21.5457 0 19.6251V2.52873Z" fill="white"/>
@@ -410,8 +416,10 @@
                 </button>
             </div>
 
-            {{-- Bottom scrim keeps the white icons and captions readable over bright scenes. --}}
-            <div x-show="phase === 'INTRO' || phase === 'GAME_ACTIVE' || phase === 'GAME_BRIEF'"
+            {{-- Bottom scrim keeps the white icons and captions readable over bright scenes. A
+                 line-art scene drops it (the paper stays white to the edge) and the deck and the
+                 chapter line carry a local plate instead, below. --}}
+            <div x-show="backdropShade && (phase === 'INTRO' || phase === 'GAME_ACTIVE' || phase === 'GAME_BRIEF')"
                  x-cloak
                  class="pointer-events-none absolute inset-x-0 bottom-0 h-44 bg-linear-to-t from-black/80 via-black/40 to-transparent transition-opacity duration-300"
                  :class="(readingOverlay || (isPlaying && !zoneHover && !zoneFlash && !chaptersOpen)) && 'opacity-0'"
@@ -456,7 +464,8 @@
                          top date chip instead. --}}
                     <div x-show="(phase === 'INTRO' || phase === 'GAME_ACTIVE') && !infoAtTop"
                          x-cloak
-                         class="lp-chapter-line flex h-9 items-center gap-2">
+                         class="lp-chapter-line flex h-9 items-center gap-2"
+                         :class="!backdropShade && 'rounded-xl border border-white/10 bg-black/70 px-3 backdrop-blur-md'">
                         <svg class="h-4 w-auto shrink-0 text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]"
                              viewBox="0 0 21 26" fill="currentColor" aria-hidden="true">
                             <path d="M10.3329 0C4.63543 0 0 4.63543 0 10.3329C0 19.3812 9.58334 25.4792 9.9913 25.735L10.334 25.9493L10.6767 25.735C11.0848 25.4795 20.668 19.3812 20.668 10.3329C20.668 4.63543 16.0326 0 10.3351 0H10.3329ZM10.3329 15.5C7.47996 15.5 5.16584 13.1871 5.16584 10.3329C5.16584 7.47996 7.47872 5.16584 10.3329 5.16584C13.1859 5.16584 15.5 7.47872 15.5 10.3329C15.5 13.1859 13.1871 15.5 10.3329 15.5Z"/>
@@ -469,6 +478,11 @@
                               x-text="infoDate || lessonYear"></span>
                     </div>
 
+                    {{-- A line-art scene has no bottom scrim, so the progress bar and the transport row
+                         sit on a local plate (the chapter list's surface). Not around the chapter line
+                         or the list: backdrop-filter would become the containing block of the line's
+                         corner float, and the list has its own plate. --}}
+                    <div :class="!backdropShade && 'rounded-xl border border-white/10 bg-black/70 px-2 backdrop-blur-md'">
                     {{-- Segmented progress — one bar per chapter, width ∝ duration; click to jump.
                          The track thickens slightly under the pointer, Netflix-style. --}}
                     <div x-show="chapters.length > 1 && !currentIsGame && phase !== 'GAME_BRIEF'"
@@ -565,6 +579,7 @@
                                 </svg>
                             </button>
                         </div>
+                    </div>
                     </div>
                 </div>
             </div>
