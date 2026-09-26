@@ -97,8 +97,8 @@ class ArtBakeoff extends Command
     private function anchorPlan(): array
     {
         $subjects = [
-            'people' => ['a sheet of 4 medieval figures with equipment', 2048, 2048],
-            'environment' => ['a street with buildings, trees and hills', 2560, 1440],
+            'people' => ['a sheet of 4 standing figures from Florence around 1300: a citizen in a long lucco and cap, a foot soldier with spear and kettle hat, a scribe holding a codex, a woman in a long gamurra dress; on a plain white background', 2048, 2048],
+            'environment' => ['a street in Florence around 1300: stone tower houses, a Romanesque church, wooden shop shutters, a few cypress trees and Tuscan hills beyond, one or two people in medieval dress; nothing later than 1300', 2560, 1440],
         ];
         $plan = [];
         foreach ($subjects as $anchor => [$subject, $w, $h]) {

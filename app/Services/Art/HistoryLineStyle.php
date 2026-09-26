@@ -20,6 +20,8 @@ final class HistoryLineStyle
         .'Use clear outer contours and only essential interior construction lines. '
         .'Keep useful structural detail in people, clothing, faces, equipment and architecture. '
         .'Simplify landscape, terrain, vegetation, water, sky and distant elements into broad readable shapes with fewer lines. '
+        .'Outlines only: every shape is drawn as a black contour with white paper inside it. '
+        .'No solid black fills, no silhouettes, no black masses, no spot blacks. '
         .'No shading. No hatching. No cross-hatching. No grey wash. No halftone. No graphite texture. '
         .'No decorative micro-detail. No synthetic texture. Keep large areas white and visually quiet. '
         .'If an object is ambiguous, simplify it rather than inventing detail.';

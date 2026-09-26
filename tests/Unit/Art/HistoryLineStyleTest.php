@@ -22,7 +22,7 @@ class HistoryLineStyleTest extends TestCase
     #[DataProvider('prompts')]
     public function test_every_prompt_forbids_shading_and_hatching(string $prompt): void
     {
-        foreach (['No shading', 'No hatching', 'No cross-hatching'] as $rule) {
+        foreach (['No shading', 'No hatching', 'No cross-hatching', 'No solid black fills'] as $rule) {
             $this->assertStringContainsString($rule, $prompt);
         }
     }
