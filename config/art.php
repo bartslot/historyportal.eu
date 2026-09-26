@@ -24,7 +24,11 @@ return [
 
     'models' => [
         'generate' => env('FAL_ART_GENERATE_MODEL', 'fal-ai/bytedance/seedream/v4.5/text-to-image'),
-        'edit' => env('FAL_ART_EDIT_MODEL', 'fal-ai/bytedance/seedream/v4.5/edit'),
+        // Bake-off 2026-09-26 (storage/app/bakeoff/20260926_122253): Nano Banana Pro kept the source
+        // composition, drew period-correct helmets and kept sheet cells isolated; Seedream broke the
+        // grid and lost the composition. Pro has no text-to-image twin: every art call is edit()
+        // with the two style anchors as references.
+        'edit' => env('FAL_ART_EDIT_MODEL', 'fal-ai/nano-banana-pro/edit'),
     ],
 
     // Candidates for the bake-off (T0.6). Ids verified against fal's OpenAPI schemas 2026-09-25.
