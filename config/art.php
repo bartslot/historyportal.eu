@@ -86,10 +86,4 @@ return [
     'library_path' => resource_path('icons'),
     // Raw fal output kept for audit (gitignored storage).
     'raw_path' => storage_path('app/art-raw'),
-
-    'artkit' => [
-        'python' => env('ARTKIT_PYTHON', base_path('tools/artkit/.venv/bin/python')),
-        'script' => base_path('tools/artkit/artkit.py'),
-        'inbox' => storage_path('app/art-inbox'),
-    ],
 ];
