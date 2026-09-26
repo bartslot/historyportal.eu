@@ -194,6 +194,10 @@ Alpine.data('lessonGame', (lesson) => ({
     // while the lesson is actually paused. Nothing else brings it back.
     playbackGlyph: false,
     readingOverlay: false,  // a gallery/reading surface owns the screen → the player shows no chrome
+    // The stage-wide shade that darkens every backdrop (a painting or photo reads as a lit screen
+    // without it). Line art is ink on white paper: shaded, it turns a flat grey while the figures
+    // above the shade stay white and look pasted on. A scene opts out with config.backdrop_shade=false.
+    backdropShade: true,
     // The bottom-left chapter line. A voyage leg reports its own place + date (they change as the
     // ship sails); everything else falls back to the scene's chapter name and year.
     infoPlace: '',
@@ -1228,6 +1232,7 @@ Alpine.data('lessonGame', (lesson) => ({
       // its own within the frame, anything else falls back to its chapter name and year.
       this.infoPlace = ''
       this.infoDate = ''
+      this.backdropShade = scene.config?.backdrop_shade !== false
 
       // Whatever was narrating belongs to the scene we are leaving — silence it before anything
       // else, or jumping chapters layers voice over voice.

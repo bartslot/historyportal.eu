@@ -271,8 +271,11 @@
         </div>
     @endif
 
-    {{-- ── LAYER 1: Shadow gradient overlay ────────────────────────────── --}}
-    <div class="absolute inset-0 z-10 pointer-events-none bg-linear-to-b from-black/50 to-[#0C2033]/50"></div>
+    {{-- ── LAYER 1: Shadow gradient overlay ──────────────────────────────
+         Shades paintings and photos; a line-art scene turns it off (backdropShade) so the paper stays
+         white. Subtitles and the chrome carry their own scrims, so they stay legible either way. --}}
+    <div class="absolute inset-0 z-10 pointer-events-none bg-linear-to-b from-black/50 to-[#0C2033]/50 transition-opacity duration-700"
+         :class="backdropShade ? 'opacity-100' : 'opacity-0'"></div>
 
     {{-- Cinematic film-grain overlay (reuses the .lp-grain brand utility). --}}
     <div class="lp-grain pointer-events-none absolute inset-0 z-11"></div>

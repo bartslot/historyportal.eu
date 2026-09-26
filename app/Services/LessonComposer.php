@@ -737,6 +737,12 @@ class LessonComposer
      * Background from the art library. The file is COPIED into the scene's own folder, the same
      * place a sourced background lands, so removing an asset from the library never blanks a lesson.
      */
+    /** The history-line library is ink on white paper: the player's backdrop shade would grey it. */
+    private function isLineArt(string $ref): bool
+    {
+        return str_starts_with($ref, 'history-line/');
+    }
+
     private function attachLibraryBackdrop(Scene $scene, string $ref, int $order): void
     {
         $asset = $this->libraryAsset($ref, $this->sceneLabel(['location' => $scene->location, 'chapter' => $scene->chapter_name], $order));
@@ -749,7 +755,7 @@ class LessonComposer
             'config' => array_merge((array) ($scene->config ?? []), [
                 'image_credit' => $asset->credit(),
                 'background_focus' => 'center',
-            ]),
+            ], $this->isLineArt($ref) ? ['backdrop_shade' => false] : []),
         ]);
     }
 

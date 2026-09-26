@@ -71,6 +71,19 @@ class LessonComposerArtLibraryTest extends TestCase
         $this->assertSame('bytes-of-history-line/backdrops/florence/firenze-strada', Storage::disk('public')->get($expected));
     }
 
+    public function test_a_line_art_backdrop_turns_the_players_backdrop_shade_off(): void
+    {
+        // Ink on white paper: the player's stage shade greyed it while the figures stayed white.
+        $this->libraryAsset('history-line/backdrops/florence/firenze-strada', 'webp');
+        $this->libraryAsset('paintings/some-oil-painting', 'webp');
+
+        $lineArt = $this->compose(['type' => 'story', 'script' => 'Firenze.', 'backdrop' => 'history-line/backdrops/florence/firenze-strada']);
+        $painting = $this->compose(['type' => 'story', 'script' => 'Olio.', 'backdrop' => 'paintings/some-oil-painting']);
+
+        $this->assertFalse($lineArt->config['backdrop_shade']);
+        $this->assertArrayNotHasKey('backdrop_shade', $painting->config);   // paintings keep the shade
+    }
+
     public function test_layers_resolve_from_the_library_with_editor_defaults(): void
     {
         $this->libraryAsset('history-line/backdrops/florence/firenze-strada', 'webp');
