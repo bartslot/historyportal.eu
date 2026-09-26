@@ -163,12 +163,13 @@ export class ParallaxScene {
    * @param {{bgUrl?: string, heroUrl?: string|null, layers?: PlaneSpec[],
    *          motion?: {panX?: number, panY?: number, zoom?: number},
    *          dof?: {focus?: number, strength?: number},
-   *          fit?: 'cover'|'contain', matte?: string|null}} shot
+   *          fit?: 'cover'|'contain', matte?: string|null, subject?: object[]|null}} shot
    *
    * fit 'contain' ("Whole image") shows the cover plate whole: every plane lives in the plate's
-   * letterboxed box (plate-box.js) on a `matte` colour, and the camera holds still.
+   * letterboxed box (plate-box.js) on a `matte` colour, and the camera holds still. On a portrait
+   * stage that box is cover-fitted around the figures in `subject` (the scene's full layer list) instead.
    */
-  show ({ bgUrl = null, heroUrl = null, layers = null, motion = null, dof = null, fit = 'cover', matte = null } = {}) {
+  show ({ bgUrl = null, heroUrl = null, layers = null, motion = null, dof = null, fit = 'cover', matte = null, subject = null } = {}) {
     // Classic form requires a background — a hero floating on nothing is never intended.
     const specs = Array.isArray(layers) && layers.length
       ? layers.filter(l => l && l.url)
@@ -198,7 +199,7 @@ export class ParallaxScene {
       plate.style.cssText = 'position:absolute;inset:0;overflow:hidden;'
       root.appendChild(plate)
       const coverUrl = specs.find(l => (l.kind ?? 'cover') === 'cover')?.url
-      plateAspect(coverUrl).then(aspect => { if (this._root === root) fitToPlate(plate, root, aspect) })
+      plateAspect(coverUrl).then(aspect => { if (this._root === root) fitToPlate(plate, root, aspect, subject) })
     }
 
     this._planes = specs.map((spec, index) => {

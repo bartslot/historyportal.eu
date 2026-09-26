@@ -899,6 +899,9 @@ Alpine.data('lessonGame', (lesson) => ({
           // Whole image: the plate shows whole, letterboxed on the scene's own colour.
           fit,
           matte: this._bgMatte || null,
+          // Portrait stage: the crop centres on the scene's figures. Figures are ArtworkOverlay's,
+          // so this reads the FULL layer list — the same one _renderSceneArtwork fits its host with.
+          subject: shot.layers,
         })
       } catch (e) {
         console.warn('lesson-player: parallax scene failed, falling back to flat', e)
@@ -1833,7 +1836,7 @@ Alpine.data('lessonGame', (lesson) => ({
       const cover = ((scene.shots || [])[0]?.layers || []).find(l => l?.url && !isClipartLayer(l))
       const aspect = (scene.config || {}).background_fit === 'contain' && cover ? await plateAspect(cover.url) : null
       if (req !== this._artReq) return   // a newer scene took the stage while the plate loaded
-      fitToPlate(host, host.parentElement, aspect)
+      fitToPlate(host, host.parentElement, aspect, (scene.shots || [])[0]?.layers)
       // Layers pinned to a place need the map before they are seeded, or the first paint puts
       // them at whatever x/y the editor's camera happened to leave behind. Same projector, same
       // host box, as the text labels above.
