@@ -68,6 +68,16 @@ return [
             ],
         ],
         [
+            'name' => 'dante-poses', 'category' => 'figures', 'subcategory' => 'dante', 'grid' => '2x2', 'figures' => true,
+            'era' => 'c. 1289-1315', 'place' => 'Tuscany and northern Italy',
+            'items' => [
+                'dante-cammina' => 'Dante Alighieri about 45 walking into exile, side view facing right, gaunt face, strong aquiline nose, long plain robe, hood wrapped around the head, walking staff, travel bag, full body mid-stride',
+                'dante-cavaliere' => 'young Dante Alighieri aged 24 as a Florentine cavalryman of 1289 on a horse, mail hauberk, surcoat, flat-topped great helm carried in the crook of his arm so his beardless face shows, side view facing left',
+                'dante-scrive' => 'Dante Alighieri about 45 seated on a wooden chair writing in a large codex on his knees with a quill, hood around the head, full figure including chair legs and feet',
+                'dante-legge' => 'Dante Alighieri about 50 standing, reading aloud from an open book held in both hands, laurel-less plain hood, long robe, full body',
+            ],
+        ],
+        [
             'name' => 'objects', 'category' => 'props', 'subcategory' => 'medieval', 'grid' => '3x3', 'figures' => false,
             'era' => 'c. 1300', 'place' => 'Italy',
             'items' => [
