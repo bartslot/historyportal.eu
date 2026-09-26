@@ -341,8 +341,12 @@
 
             {{-- Top edge: scrim + the only text chrome that exists (teacher escape hatch or logo).
                  No phase gate — on the title screen nothing is playing, so it is simply visible. --}}
-            <div class="absolute inset-x-0 top-0 transition-opacity duration-300"
-                 :class="(readingOverlay || (isPlaying && !zoneHover && !zoneFlash && !chaptersOpen)) ? 'opacity-0 pointer-events-none' : 'opacity-100'"
+            {{-- pointer-events-none on the row itself: it is a full-width scrim, most of which has
+                 nothing to click, and at z-index:48 it was sitting over the top-left language
+                 switch (z-index:10) during TITLE_SCREEN and eating its clicks. Only the actual
+                 controls (the "Edit scene" button below) opt back in with pointer-events-auto. --}}
+            <div class="pointer-events-none absolute inset-x-0 top-0 transition-opacity duration-300"
+                 :class="(readingOverlay || (isPlaying && !zoneHover && !zoneFlash && !chaptersOpen)) ? 'opacity-0' : 'opacity-100'"
                  style="z-index:48">
                 <div class="pointer-events-none absolute inset-x-0 top-0 h-36 bg-linear-to-b from-black/70 to-transparent"></div>
                 <div class="relative flex items-center gap-2.5 p-3.5 sm:px-16">
@@ -579,22 +583,30 @@
             {{-- Animated film grain — heavier than normal (0.12 opacity) --}}
             <div class="skybox-grain-overlay" style="opacity: 0.22; z-index: 2;"></div>
 
-            {{-- Language switch — top LEFT corner (QR takes top right; editor-nav convention keeps
-                 player chrome in the top corners). Only shown when this lesson has playable
-                 siblings in another language (Lesson::translations()). Switches the LESSON's
-                 language by opening the sibling's own player page; it never touches the interface
-                 locale. --}}
+            {{-- Language switch — top LEFT, under the logo/"Edit scene" row (QR takes top right;
+                 editor-nav convention keeps player chrome in the top corners). Only shown when this
+                 lesson has playable siblings in another language (Lesson::translations()). Switches
+                 the LESSON's language by opening the sibling's own player page; it never touches
+                 the interface locale.
+
+                 128px clears the logo/button row above it (its tallest content is the h-24 logo,
+                 ~110px including padding) at every width, so the two never overlap — they did,
+                 directly, when both sat at top-6 left-6. Inline top (not a top-32 utility class):
+                 this view's compiled CSS is a static build this environment cannot rebuild, and a
+                 Tailwind class this file never used before does not exist in it — it silently no-ops
+                 instead of erroring, which is how the overlap above shipped unnoticed. z-index on
+                 this same style attribute is already handled the same way elsewhere in this file. --}}
             @if($translations->isNotEmpty())
                 {{-- min-h-11/min-w-11 (44px) keeps the tap target legal at 375px width, where the
                      name is dropped for the bare code (flag + "IT") so it never runs into the
                      title (bottom of the screen) or the QR code (top right, also hidden below sm). --}}
-                <div class="dropdown absolute top-4 left-4 sm:top-6 sm:left-6" style="z-index:10">
+                <div class="dropdown absolute left-4" style="top:128px; z-index:10">
                     <div tabindex="0" role="button"
                          class="btn btn-ghost min-h-11 h-11 min-w-11 gap-2 border-none bg-black/40 px-3 text-white/80 backdrop-blur hover:bg-black/60 hover:text-white"
                          data-tooltip="{{ __('Lesson language') }}">
                         <x-dynamic-component :component="'flags.'.\App\Support\Locales::flag($lesson->language)" class="block h-4 w-6 rounded-[2px]" />
-                        <span class="text-xs font-semibold uppercase tracking-wide sm:hidden">{{ $lesson->language }}</span>
-                        <span class="hidden text-xs font-semibold uppercase tracking-wide sm:inline">{{ \App\Support\Locales::name($lesson->language) }}</span>
+                        <span lang="{{ $lesson->language }}" class="text-xs font-semibold uppercase tracking-wide sm:hidden">{{ $lesson->language }}</span>
+                        <span lang="{{ $lesson->language }}" class="hidden text-xs font-semibold uppercase tracking-wide sm:inline">{{ \App\Support\Locales::name($lesson->language) }}</span>
                     </div>
                     <ul tabindex="0" class="menu dropdown-content z-20 mt-2 w-48 rounded-box bg-base-200/95 p-2 shadow-lg backdrop-blur">
                         <li class="menu-title">{{ __('Lesson language') }}</li>
@@ -604,7 +616,7 @@
                                    class="min-h-11"
                                    data-tooltip="{{ \App\Support\Locales::name($sibling->language) }}">
                                     <x-dynamic-component :component="'flags.'.\App\Support\Locales::flag($sibling->language)" class="block h-4 w-6 rounded-[2px]" />
-                                    {{ \App\Support\Locales::name($sibling->language) }}
+                                    <span lang="{{ $sibling->language }}">{{ \App\Support\Locales::name($sibling->language) }}</span>
                                 </a>
                             </li>
                         @endforeach
