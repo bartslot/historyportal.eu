@@ -183,7 +183,7 @@ class ArtMake extends Command
             $path = $job['outputs'][$slug];
             if ($this->option('force') || ! is_file($path)) {
                 $closed = (array) (($def['cut_off'] ?? [])[$slug] ?? []);
-                $this->writeWebp($path, $this->lineClean->cutout($cells[$i], closed: $closed));
+                $this->writeWebp($path, $this->lineClean->cutout($cells[$i], closed: $closed), self::MAX_EDGE_CUTOUT);
             }
         }
 
@@ -226,7 +226,7 @@ class ArtMake extends Command
 
     private function finishPlate(array $job, string $raw): void
     {
-        $this->writeWebp($job['outputs'][$job['def']['slug']], $this->lineClean->plate($raw));
+        $this->writeWebp($job['outputs'][$job['def']['slug']], $this->lineClean->plate($raw), self::MAX_EDGE_PLATE);
     }
 
     /** One fal call; the raw output is kept for audit. */
@@ -282,19 +282,41 @@ class ArtMake extends Command
         return (bool) preg_match('/^(public domain|PD\b|PD-|CC0)/i', trim($license));
     }
 
-    private function writeWebp(string $path, string $png): void
+    /** Longest edge a library file keeps: sharp on a 1440p screen, light on school wifi. */
+    private const MAX_EDGE_PLATE = 2880;
+
+    /** Cut-outs never fill more than ~75% of the stage height. */
+    private const MAX_EDGE_CUTOUT = 1600;
+
+    private function writeWebp(string $path, string $png, int $maxEdge): void
     {
         $img = @imagecreatefromstring($png);
         if ($img === false) {
             throw new RuntimeException('cleaned image could not be decoded');
         }
         imagepalettetotruecolor($img);
+        $img = $this->capEdge($img, $maxEdge);
         imagealphablending($img, false);
         imagesavealpha($img, true);
         File::ensureDirectoryExists(dirname($path));
         if (! imagewebp($img, $path, 90)) {
             throw new RuntimeException("could not write {$path}");
         }
+    }
+
+    private function capEdge(\GdImage $img, int $maxEdge): \GdImage
+    {
+        $long = max(imagesx($img), imagesy($img));
+        if ($long <= $maxEdge) {
+            return $img;
+        }
+        $scale = $maxEdge / $long;
+        $out = imagecreatetruecolor((int) round(imagesx($img) * $scale), (int) round(imagesy($img) * $scale));
+        imagealphablending($out, false);
+        imagesavealpha($out, true);
+        imagecopyresampled($out, $img, 0, 0, 0, 0, imagesx($out), imagesy($out), imagesx($img), imagesy($img));
+
+        return $out;
     }
 
     /** @param  array<string, list<array>>  $credits */
