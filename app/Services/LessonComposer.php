@@ -72,7 +72,17 @@ class LessonComposer
 
         // Narration (TTS) runs inside this transaction: long, but this is a CLI command, and a
         // failure anywhere rolls the lesson back to exactly what it was.
-        $lesson = DB::transaction(fn (): Lesson => $this->rebuild($spec, $teacher, $narrate, $key));
+        try {
+            $lesson = DB::transaction(fn (): Lesson => $this->rebuild($spec, $teacher, $narrate, $key));
+        } catch (Throwable $e) {
+            // The rollback restores the old scene rows but not the files copied for the new ones.
+            // ponytail: a brand-new lesson's id is rolled back with it, so its copies stay (only
+            // on a first compose that fails); record copied paths in rebuild() if that ever matters.
+            if ($existing) {
+                Storage::disk('public')->delete(array_values(array_diff($this->sceneCopies($existing), $stale)));
+            }
+            throw $e;
+        }
 
         // Files go only once the new build is committed; a rollback cannot un-delete a file.
         $this->deleteStaleCopies($lesson, $spec, $stale);

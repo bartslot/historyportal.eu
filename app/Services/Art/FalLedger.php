@@ -37,6 +37,10 @@ final class FalLedger
     /** @param  float|null  $runCap  --max-usd for the current command, if any */
     public function assertAffordable(float $usd, ?float $runCap = null, float $runSpent = 0.0): void
     {
+        // ponytail: check-then-insert, not atomic with open(). Two concurrent art:make runs can
+        // each pass this check and overshoot the budget by one call each. Runs are one-at-a-time
+        // CLI today; if they ever go concurrent, take a DB advisory lock (or lock the ledger rows)
+        // around assertAffordable() + open().
         if ($usd > $this->remainingUsd()) {
             throw new FalBudgetExceeded(sprintf('fal budget: need $%.2f, $%.2f left of $%.2f.',
                 $usd, $this->remainingUsd(), (float) config('art.budget_usd')));

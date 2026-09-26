@@ -276,6 +276,32 @@ class LessonComposerArtLibraryTest extends TestCase
         Storage::disk('public')->assertExists($bg);
     }
 
+    public function test_a_build_that_fails_mid_way_leaves_no_copies_behind(): void
+    {
+        $this->libraryAsset('history-line/backdrops/florence/firenze-strada', 'webp');
+        $backdrop = ['type' => 'story', 'backdrop' => 'history-line/backdrops/florence/firenze-strada'];
+        $first = $this->compose($backdrop);
+        $disk = Storage::disk('public');
+        $before = $disk->allFiles("lessons/{$first->lesson_id}/scenes");
+
+        // Scene 1 copies its backdrop into a new scene folder, then scene 2 dies: the transaction
+        // rolls that scene row back, so nothing would ever name (or clean) the copy.
+        $this->mock(\App\Services\SceneImageSourcer::class)
+            ->shouldReceive('find')->andThrow(new \RuntimeException('Commons is down'));
+
+        try {
+            app(LessonComposer::class)->build([
+                'key' => 'Art library test',
+                'scenes' => [$backdrop, ['type' => 'story', 'image' => 'Some painting']],
+            ], $this->teacher, narrate: false);
+            $this->fail('The sourcing failure must propagate.');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('Commons is down', $e->getMessage());
+        }
+
+        $this->assertSame($before, $disk->allFiles("lessons/{$first->lesson_id}/scenes"));
+    }
+
     public function test_a_spec_that_is_not_valid_utf8_deletes_no_files(): void
     {
         $this->libraryAsset('history-line/backdrops/florence/firenze-strada', 'webp');
