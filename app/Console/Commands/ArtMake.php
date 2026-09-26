@@ -53,6 +53,9 @@ class ArtMake extends Command
 
     public function handle(FalImageService $fal, FalLedger $ledger, LineClean $lineClean, CommonsImageService $commons): int
     {
+        // Nano Banana Pro returns 5504x3072 plates; GD needs ~70 MB per copy, and the default
+        // 128M died SILENTLY (exit 255, no message) after the paid call. Local CLI tool only.
+        ini_set('memory_limit', '1G');
         [$this->fal, $this->ledger, $this->lineClean, $this->commons] = [$fal, $ledger, $lineClean, $commons];
         $this->manifestName = (string) $this->argument('manifest');
         $path = rtrim((string) config('art.manifests_path'), '/')."/{$this->manifestName}.php";
