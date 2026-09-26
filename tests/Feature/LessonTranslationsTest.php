@@ -62,10 +62,17 @@ class LessonTranslationsTest extends TestCase
         $italian = $this->playableLesson(['language' => 'it', 'translation_group' => 'dante']);
         $english = $this->playableLesson(['language' => 'en', 'translation_group' => 'dante']);
 
-        $this->get(route('lesson.play', ['lessonCode' => $italian->lesson_code]))
+        $response = $this->get(route('lesson.play', ['lessonCode' => $italian->lesson_code]))
             ->assertOk()
             ->assertSee(route('lesson.play', ['lessonCode' => $english->lesson_code]), false)
             ->assertSee('English');
+
+        // Students watch on phones: the switch must never be hidden below sm, only shrink to a
+        // compact flag + code below it (checked against the language-switch container specifically,
+        // since other unrelated elements on this page ARE legitimately hidden below sm).
+        preg_match('/<div class="dropdown[^"]*"/', $response->getContent(), $switch);
+        $this->assertNotEmpty($switch, 'language switch container not found in the page');
+        $this->assertStringNotContainsString('hidden', $switch[0]);
     }
 
     public function test_the_player_shows_no_language_switch_without_a_group(): void
