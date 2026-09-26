@@ -170,6 +170,7 @@ class LessonComposer
 
             $this->library->applyLayers($scene, $sceneSpec, $order);
             $this->applyPassthrough($scene, $sceneSpec);
+            $this->nameIdentityAfterChapter($scene);
 
             $this->say("  #{$order} {$type} — ".($scene->location ?: $scene->chapter_name ?: '…'));
 
@@ -281,6 +282,27 @@ class LessonComposer
         }
 
         $scene->update($update);
+    }
+
+    /**
+     * The big title above a scene's year (SceneOverlay) is the scene's `identity_title`, else the
+     * lesson's topic. A wizard lesson's topic is the subject the teacher typed ("Utrecht"), but a
+     * composed lesson's topic is the spec `key` — its identity for rebuilds ("Dante Alighieri
+     * (it)"), never meant to be read by a class. So a composed scene names itself after its
+     * chapter, through the same per-scene override the editor writes. A spec that sets
+     * `extra_config.identity_title` itself keeps it.
+     */
+    private function nameIdentityAfterChapter(Scene $scene): void
+    {
+        $chapter = trim((string) $scene->chapter_name);
+        $config = (array) ($scene->config ?? []);
+
+        if ($chapter === '' || isset($config['identity_title'])) {
+            return;
+        }
+
+        // 80 = the editor's own cap on a typed title (Step3SceneConfigurator).
+        $scene->update(['config' => [...$config, 'identity_title' => mb_substr($chapter, 0, 80)]]);
     }
 
     /**

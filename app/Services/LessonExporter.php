@@ -139,6 +139,11 @@ class LessonExporter
                 }
             }
         }
+        // The composer titles a scene after its chapter (nameIdentityAfterChapter); only a
+        // teacher's own title travels.
+        if (isset($config['identity_title']) && $config['identity_title'] === mb_substr(trim((string) $scene->chapter_name), 0, 80)) {
+            $composed[] = 'identity_title';
+        }
         $extra = $this->withoutKeys($config, $composed);
         if ($extra !== []) {
             $spec['extra_config'] = $extra;
