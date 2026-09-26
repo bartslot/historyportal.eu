@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Art;
 
+use App\Console\Commands\ArtMake;
 use App\Models\FalLedgerEntry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Process;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class ArtMakeCommandTest extends TestCase
@@ -111,6 +113,55 @@ class ArtMakeCommandTest extends TestCase
         $credits = json_decode((string) file_get_contents("{$this->dir}/library/history-line/credits.json"), true);
         $this->assertSame([['source' => 'Old master.jpg', 'credit' => 'Gustave Doré, via Wikimedia Commons', 'license' => 'Public domain']],
             $credits['converted']);
+    }
+
+    public function test_a_kept_raw_image_is_cleaned_again_without_calling_fal(): void
+    {
+        $this->requirePillow();
+        Http::fake();
+        $this->manifest(sheets: [$this->sheet()], conversions: [$this->conversion()]);
+        File::ensureDirectoryExists("{$this->dir}/raw/pack");
+        file_put_contents("{$this->dir}/raw/pack/test-sheet.png", $this->sheetPng());
+        file_put_contents("{$this->dir}/raw/pack/converted.png", $this->sheetPng());
+
+        $this->artisan('art:make', ['manifest' => 'pack'])
+            ->expectsOutputToContain('reuse raw')
+            ->expectsOutputToContain('Total: $0.00')
+            ->assertSuccessful();
+
+        Http::assertNothingSent();
+        $this->assertSame(0, FalLedgerEntry::count());
+        foreach ([...array_map(fn ($s) => "figures/test/{$s}", array_keys(self::ITEMS)), 'backdrops/test/converted'] as $out) {
+            $this->assertFileExists("{$this->dir}/library/history-line/{$out}.webp");
+        }
+    }
+
+    public function test_regenerate_calls_fal_even_with_a_kept_raw(): void
+    {
+        $this->manifest(sheets: [$this->sheet()]);
+        File::ensureDirectoryExists("{$this->dir}/raw/pack");
+        file_put_contents("{$this->dir}/raw/pack/test-sheet.png", $this->sheetPng());
+
+        $this->artisan('art:make', ['manifest' => 'pack', '--regenerate' => true, '--dry-run' => true])
+            ->expectsOutputToContain('Total: $0.30')
+            ->assertSuccessful();
+    }
+
+    #[DataProvider('licenses')]
+    public function test_only_licences_that_start_public_domain_or_cc0_pass(string $license, bool $allowed): void
+    {
+        $this->assertSame($allowed, ArtMake::isPublicDomain($license));
+    }
+
+    public static function licenses(): array
+    {
+        return [
+            'not public domain' => ['not public domain', false],
+            'CC BY-SA 4.0' => ['CC BY-SA 4.0', false],
+            'Public domain' => ['Public domain', true],
+            'PD-old-100' => ['PD-old-100', true],
+            'CC0' => ['CC0', true],
+        ];
     }
 
     private function requirePillow(): void

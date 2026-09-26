@@ -70,6 +70,8 @@ final class HistoryLineStyle
         ));
         $figure = $figures
             ? ' Full body, feet visible, all standing on the same invisible ground line, neutral expression, respectful non-caricatured features.'
+                .' The whole figure, from the top of the head to the soles of both feet, sits inside its own cell with clear white margin all round;'
+                .' the figure takes at most 85% of the cell height. Never crop a figure at the cell edge.'
             : '';
 
         return "A {$rows}x{$cols} sheet of {$count} separate isolated items for a historical educational comic, {$era}, {$place}. {$list}. "

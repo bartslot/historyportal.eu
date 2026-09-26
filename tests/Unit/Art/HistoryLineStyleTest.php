@@ -43,6 +43,15 @@ class HistoryLineStyleTest extends TestCase
         $this->assertStringContainsString('A 2x2 sheet of 4', $prompt);
     }
 
+    public function test_a_figure_sheet_keeps_every_figure_whole_inside_its_cell(): void
+    {
+        $prompt = HistoryLineStyle::sheet(['a', 'b', 'c', 'd'], 2, 2, 'c. 1300', 'Florence', figures: true);
+
+        $this->assertStringContainsString('soles of both feet', $prompt);
+        $this->assertStringContainsString('Never crop a figure at the cell edge', $prompt);
+        $this->assertStringNotContainsString('soles of both feet', HistoryLineStyle::sheet(['a'], 1, 1, 'c. 1300', 'Florence'));
+    }
+
     public function test_convert_appends_scene_constraints_only_when_given(): void
     {
         $this->assertStringEndsWith('keep the howdah readable', HistoryLineStyle::convert('keep the howdah readable'));

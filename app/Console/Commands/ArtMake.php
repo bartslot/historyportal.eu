@@ -26,7 +26,8 @@ class ArtMake extends Command
     protected $signature = 'art:make
         {manifest : name in resources/art/manifests}
         {--only= : comma list of sheet names / plate or conversion slugs}
-        {--force : regenerate outputs that already exist}
+        {--force : rewrite outputs that already exist (from the kept raw when there is one)}
+        {--regenerate : call fal again even when a raw image for the job is kept}
         {--dry-run : print the plan and stop, no HTTP}
         {--max-usd=6 : cap for this run}';
 
@@ -107,8 +108,11 @@ class ArtMake extends Command
             $outputs[$slug] = "{$dir}/{$slug}.webp";
         }
         $skip = ! $this->option('force') && array_filter($outputs, fn (string $p) => ! is_file($p)) === [];
+        // A raw image was paid for: cleanup re-runs from it for free unless --regenerate.
+        $raw = rtrim((string) config('art.raw_path'), '/')."/{$this->manifestName}/{$name}.png";
+        $reuse = ! $this->option('regenerate') && is_file($raw);
 
-        return compact('kind', 'name', 'def', 'outputs', 'refs', 'skip');
+        return compact('kind', 'name', 'def', 'outputs', 'refs', 'skip', 'raw', 'reuse');
     }
 
     private function printPlan(array $jobs): void
@@ -116,10 +120,15 @@ class ArtMake extends Command
         $model = (string) config('art.models.edit');
         $total = 0.0;
         $rows = array_map(function (array $job) use ($model, &$total): array {
-            $usd = $job['skip'] ? 0.0 : $this->fal->estimate($model);
+            $action = match (true) {
+                $job['skip'] => 'skip',
+                $job['reuse'] => 'reuse raw',
+                default => 'run',
+            };
+            $usd = $action === 'run' ? $this->fal->estimate($model) : 0.0;
             $total += $usd;
 
-            return [$job['kind'], $job['name'], count($job['outputs']), $job['refs'], sprintf('$%.2f', $usd), $job['skip'] ? 'skip' : 'run'];
+            return [$job['kind'], $job['name'], count($job['outputs']), $job['refs'], sprintf('$%.2f', $usd), $action];
         }, $jobs);
 
         $this->table(['kind', 'name', 'outputs', 'refs', 'est. USD', 'action'], $rows);
@@ -162,7 +171,7 @@ class ArtMake extends Command
         $prompt = HistoryLineStyle::sheet(array_values($def['items']), $rows, $cols,
             (string) $def['era'], (string) $def['place'], figures: (bool) ($def['figures'] ?? false));
 
-        $raw = $this->generate($job, $prompt, array_values($this->anchors()), self::SHEET_SIZE);
+        $raw = $job['reuse'] ? $this->readRaw($job) : $this->generate($job, $prompt, array_values($this->anchors()), self::SHEET_SIZE);
         $cells = $this->lineClean->slice($raw, $rows, $cols, 0.02);
         foreach (array_keys($def['items']) as $i => $slug) {
             $path = $job['outputs'][$slug];
@@ -176,6 +185,12 @@ class ArtMake extends Command
 
     private function makePlate(array $job): array
     {
+        if ($job['reuse']) {
+            // Sources and credits were fetched on the paid run; credits.json already holds them.
+            $this->finishPlate($job, $this->readRaw($job));
+
+            return [];
+        }
         $def = $job['def'];
         $sources = array_map(fn (string $ref) => $this->source($ref), (array) ($def['sources'] ?? []));
         $prompt = HistoryLineStyle::plate((string) $def['prompt'], (string) ($def['constraints'] ?? ''));
@@ -188,6 +203,11 @@ class ArtMake extends Command
 
     private function makeConversion(array $job): array
     {
+        if ($job['reuse']) {
+            $this->finishPlate($job, $this->readRaw($job));
+
+            return [];
+        }
         $def = $job['def'];
         $source = $this->source((string) $def['source']);
         $prompt = HistoryLineStyle::convert((string) ($def['constraints'] ?? ''));
@@ -208,11 +228,17 @@ class ArtMake extends Command
         $bytes = $this->fal->edit((string) config('art.models.edit'), $prompt, $refs, $size[0], $size[1],
             "art-{$job['kind']}", ['command' => 'art:make', 'manifest' => $this->manifestName, 'job' => $job['name']]);
 
-        $raw = rtrim((string) config('art.raw_path'), '/')."/{$this->manifestName}/{$job['name']}.png";
-        File::ensureDirectoryExists(dirname($raw));
-        file_put_contents($raw, $bytes);
+        File::ensureDirectoryExists(dirname($job['raw']));
+        file_put_contents($job['raw'], $bytes);
 
         return $bytes;
+    }
+
+    private function readRaw(array $job): string
+    {
+        $this->line("reusing raw {$job['raw']}");
+
+        return (string) file_get_contents($job['raw']);
     }
 
     /**
@@ -230,7 +256,7 @@ class ArtMake extends Command
         if ($meta === null) {
             throw new RuntimeException("source refused: '{$file}' not found on Commons or not freely licensed");
         }
-        if (! $this->licenseAllowed((string) $meta['license'])) {
+        if (config('art.source_filter') !== 'off' && ! self::isPublicDomain((string) $meta['license'])) {
             throw new RuntimeException("source refused: '{$file}' is {$meta['license']}, not public domain / CC0");
         }
         $bytes = Http::withHeaders(['User-Agent' => 'LearningPortal/1.0 (thelearningportal.us)'])
@@ -243,13 +269,10 @@ class ArtMake extends Command
         ]];
     }
 
-    private function licenseAllowed(string $license): bool
+    /** Only a licence that STARTS with Public domain / PD / CC0 ('not public domain' is not one). */
+    public static function isPublicDomain(string $license): bool
     {
-        if (config('art.source_filter') === 'off') {
-            return true;
-        }
-
-        return (bool) preg_match('/public domain|^PD\b|^PD-|CC0/i', $license);
+        return (bool) preg_match('/^(public domain|PD\b|PD-|CC0)/i', trim($license));
     }
 
     private function writeWebp(string $path, string $png): void
