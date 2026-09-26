@@ -131,6 +131,42 @@
         </select>
     </label>
 
+    {{-- Ambient motion (resources/js/scene/ambient.js): clouds drift, trees move in the breeze,
+         boats bob, birds flutter. The canvas previews every change in place; `change` saves. --}}
+    <div class="space-y-2" x-data="{ amb: @js($layer['ambient'] ?? 'none') }">
+        <label class="flex items-center gap-2">
+            <span class="w-12 shrink-0 text-[10px] uppercase tracking-wide text-slate-500">{{ __('Motion') }}</span>
+            <select x-model="amb"
+                    x-on:input="window.__lessonArtworkLayer?.setLayerProp?.({{ $aid }}, 'ambient', $event.target.value)"
+                    wire:change="updateArtworkLayer({{ $aid }}, 'ambient', $event.target.value)"
+                    class="select select-xs select-bordered flex-1 border-slate-700 bg-slate-900 text-slate-300">
+                @foreach ([
+                    'none' => __('None'),
+                    'drift' => __('Drift'),
+                    'breeze' => __('Breeze'),
+                    'bob' => __('Bob'),
+                    'flutter' => __('Flutter'),
+                ] as $mv => $ml)
+                    <option value="{{ $mv }}" @selected(($layer['ambient'] ?? 'none') === $mv)>{{ $ml }}</option>
+                @endforeach
+            </select>
+        </label>
+        @foreach ([
+            ['ambient_speed', __('Speed'), 0.25, 3],
+            ['ambient_amount', __('Amount'), 0, 2],
+        ] as [$field, $label, $min, $max])
+            <label class="flex items-center gap-2" x-show="amb !== 'none'" x-cloak>
+                <span class="w-12 shrink-0 text-[10px] uppercase tracking-wide text-slate-500">{{ $label }}</span>
+                <input type="range" min="{{ $min }}" max="{{ $max }}" step="0.05"
+                       value="{{ $layer[$field] ?? 1 }}"
+                       x-on:input="window.__lessonArtworkLayer?.setLayerProp?.({{ $aid }}, '{{ $field }}', $event.target.value)"
+                       wire:change="updateArtworkLayer({{ $aid }}, '{{ $field }}', $event.target.value)"
+                       class="range range-xs flex-1" />
+                <span class="w-9 text-right font-mono text-[10px] text-slate-400">{{ rtrim(rtrim(number_format((float) ($layer[$field] ?? 1), 2), '0'), '.') }}</span>
+            </label>
+        @endforeach
+    </div>
+
     {{-- Colour treatment. Drop White is the one that changes what a scan can be used for: an
          engraving arrives as ink on paper, and keying the paper out leaves just the ink, which can
          then be drained and recoloured to sit with the lesson's palette. --}}

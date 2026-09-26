@@ -1,4 +1,5 @@
 import { filterMarkup, layerFilterId } from './layer-filters.js'
+import { applyAmbient, trackStage } from './ambient.js'
 /**
  * ParallaxScene — multiplane webcomic shot: N depth-sorted layers (E3c).
  *
@@ -127,7 +128,8 @@ function prefersReducedMotion () {
  * @property {'cover'|'figure'|'strip'} [kind='cover']
  * @property {number} [scale=1]      Constant "nearness" scale bump (hero: 1.03).
  * @property {number} [height]       figure/strip height in % of stage (figure 80, strip 28).
- * @property {boolean} [sway]        Breathing (figure) / breeze (strip) animation.
+ * @property {boolean} [sway]        Breathing (figure) / breeze (strip) animation (legacy).
+ * @property {string}  [ambient]     drift | breeze | bob | flutter — see ambient.js.
  *
  * Artistic controls (Photoshop-style, all GPU-cheap):
  * @property {number} [z]            Explicit stacking override; default = array order.
@@ -182,13 +184,13 @@ export class ParallaxScene {
     root.style.cssText = 'position:absolute;inset:0;overflow:hidden;opacity:0;'
       + `transition:opacity ${FADE_IN_MS}ms ease-in-out;`
 
-    this._planes = specs.map(spec => {
+    this._planes = specs.map((spec, index) => {
       // Depth-of-field: unfocused planes blur with distance, unless explicitly set.
       // Rounded to 0.1px — clean CSS values, no float-noise like blur(1.9999px).
       const blur = spec.blur ?? (dof
         ? Math.round(Math.abs((spec.depth ?? 1) - (dof.focus ?? 1)) * (dof.strength ?? 3) * 10) / 10
         : 0)
-      const el = this._buildPlane({ ...spec, blur })
+      const el = this._buildPlane({ ...spec, blur }, index)
       root.appendChild(el)
       // Free-positioned figures apply their own scale on the img, so the plane's baseScale is 1
       // (parallax pan/zoom only) — otherwise the user scale would be applied twice.
@@ -201,6 +203,7 @@ export class ParallaxScene {
 
     this.host.appendChild(root)
     this._root = root
+    this._stageObserver = trackStage(root)
     this.update(0)
 
     // Fade in on the next frame so the opacity transition actually runs.
@@ -209,7 +212,7 @@ export class ParallaxScene {
   }
 
   /** @param {PlaneSpec} spec */
-  _buildPlane (spec) {
+  _buildPlane (spec, index = 0) {
     const { url, kind = 'cover', depth = 1, height, sway } = spec
     const layer = document.createElement('div')
     const animate = sway && ! prefersReducedMotion()
@@ -224,7 +227,7 @@ export class ParallaxScene {
       img.alt = ''
       img.draggable = false
       img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;'
-      layer.appendChild(img)
+      layer.appendChild(ambientWrap(img, spec, index))
       return this._applyArtisticProps(layer, spec)
     }
 
@@ -261,7 +264,7 @@ export class ParallaxScene {
       if (animate) img.classList.add('px-breeze')
     }
 
-    layer.appendChild(img)
+    layer.appendChild(ambientWrap(img, spec, index))
     return this._applyArtisticProps(layer, spec)
   }
 
@@ -316,6 +319,8 @@ export class ParallaxScene {
 
   /** Remove all layer DOM. Safe to call twice. */
   destroy () {
+    this._stageObserver?.disconnect()
+    this._stageObserver = null
     if (this._root) this._root.remove()
     this._root = null
     this._bgLayer = null
@@ -323,6 +328,25 @@ export class ParallaxScene {
     this._planes = []
     if (window.__parallax === this) delete window.__parallax
   }
+}
+
+/**
+ * The ambient motion's own element, between the plane (parallax transform) and the image (its
+ * placement). Full-stage, so its transform-origin is set to the image's bottom-centre: a tree
+ * sways about its trunk, not about the middle of the stage.
+ */
+function ambientWrap (img, spec, index) {
+  const wrap = document.createElement('div')
+  wrap.className = 'px-ambient'
+  wrap.style.cssText = 'position:absolute;inset:0;pointer-events:none;'
+  if (spec.kind === 'figure' && Number.isFinite(spec.x) && Number.isFinite(spec.y)) {
+    const s = Number.isFinite(spec.scale) ? spec.scale : 1
+    wrap.style.transformOrigin = `${spec.x}% ${spec.y + ((spec.height ?? 40) * s) / 2}%`
+  }
+  wrap.appendChild(img)
+  applyAmbient(wrap, spec, index)
+
+  return wrap
 }
 
 function applyTransform (layer, { translateX, translateY, scale }) {

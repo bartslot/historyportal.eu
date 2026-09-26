@@ -1442,5 +1442,11 @@
     "Play timeline": "Tijdlijn afspelen",
     "Pause timeline": "Tijdlijn pauzeren",
     "Timeline year": "Jaar op de tijdlijn",
-    "Year (negative for BCE)": "Jaar (negatief voor v.Chr.)"
+    "Year (negative for BCE)": "Jaar (negatief voor v.Chr.)",
+    "Motion": "Beweging",
+    "Drift": "Drijven",
+    "Breeze": "Bries",
+    "Bob": "Deinen",
+    "Flutter": "Fladderen",
+    "Amount": "Sterkte"
 }

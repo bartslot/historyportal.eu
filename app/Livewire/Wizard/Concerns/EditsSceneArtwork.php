@@ -6,6 +6,7 @@ namespace App\Livewire\Wizard\Concerns;
 
 use App\Models\Scene;
 use App\Models\SvgAsset;
+use App\Services\Support\LayerAmbient;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 
@@ -375,6 +376,10 @@ trait EditsSceneArtwork
             'ink_fill' => ['auto', 'none', 'wash', 'hatch', 'cross'],
             'draw_time' => [2, 20],   // seconds for the full draw-on
             'y' => [0, 100],
+            // Ambient motion, played by resources/js/scene/ambient.js.
+            'ambient' => LayerAmbient::MODES,
+            'ambient_speed' => LayerAmbient::SPEED,
+            'ambient_amount' => LayerAmbient::AMOUNT,
         ];
 
         if (! array_key_exists($field, $whitelist)) {
@@ -396,10 +401,11 @@ trait EditsSceneArtwork
         // "leave the artwork alone" or a hex colour. Anything else is dropped.
         // Coerce and clamp the value.
         $coercedValue = match ($field) {
-            'depth', 'scale', 'opacity', 'blur', 'x', 'y', 'draw_time', 'anim_delay' => (float) $value,
+            'depth', 'scale', 'opacity', 'blur', 'x', 'y', 'draw_time', 'anim_delay',
+            'ambient_speed', 'ambient_amount' => (float) $value,
             'height', 'wobble' => (int) $value,
             'sway', 'grayscale' => (bool) $value,
-            'kind', 'blend', 'ink_preset', 'ink_fill', 'anim', 'anim_ease' => (string) $value,
+            'kind', 'blend', 'ink_preset', 'ink_fill', 'anim', 'anim_ease', 'anim_out', 'anim_out_ease', 'ambient' => (string) $value,
             default => $value,
         };
 
@@ -429,7 +435,7 @@ trait EditsSceneArtwork
         }
 
         // Validate enum-like fields.
-        if (in_array($field, ['kind', 'blend', 'ink_preset', 'ink_fill', 'anim', 'anim_ease'], true)) {
+        if (in_array($field, ['kind', 'blend', 'ink_preset', 'ink_fill', 'anim', 'anim_ease', 'anim_out', 'anim_out_ease', 'ambient'], true)) {
             if (! in_array($coercedValue, $whitelist[$field], true)) {
                 return;
             }

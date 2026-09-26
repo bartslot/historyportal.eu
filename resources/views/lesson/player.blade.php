@@ -123,6 +123,8 @@
                         'z'       => isset($l['z']) ? (int) $l['z'] : null,
                         // 3D / video layers ride as an iframe embed instead of an image.
                         'embed'   => isset($l['embed']) && is_array($l['embed']) ? $l['embed'] : null,
+                        // Ambient motion (drift / breeze / bob / flutter), validated to the known vocabulary.
+                        ...\App\Services\Support\LayerAmbient::payload($l),
                     ])->filter(fn($l) => $l['url'] || $l['embed'])->values()->all() ?: null,
                     'anchor_sentence' => $shot['anchor_sentence'] ?? null,
                     // Keep a shot with EITHER a background image OR clipart layers — a voyage scene's

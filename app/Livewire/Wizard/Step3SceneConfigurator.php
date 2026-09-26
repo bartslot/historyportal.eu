@@ -21,6 +21,7 @@ use App\Models\Lesson;
 use App\Models\Scene;
 use App\Models\StrategyGame;
 use App\Services\Billing\NarrationCreditLedger;
+use App\Services\Support\LayerAmbient;
 use App\Support\NarrationBudget;
 use App\Support\PolityCapitals;
 use App\Support\PortraitFocus;
@@ -240,6 +241,8 @@ class Step3SceneConfigurator extends Component
                 'draw_time' => isset($l['draw_time']) ? (float) $l['draw_time'] : null,
                 // Embed layers (3D / video) carry an iframe embed instead of an image url.
                 'embed' => isset($l['embed']) && is_array($l['embed']) ? $l['embed'] : null,
+                // Ambient motion (drift / breeze / bob / flutter), validated to the known vocabulary.
+                ...LayerAmbient::payload($l),
             ])->filter(fn ($l) => $l['url'] || $l['embed'])->values()->all() ?: null,
             // Keep a shot when it has EITHER a background image OR clipart layers. Map-backed scenes
             // (voyage / map) carry layer-only shots — the MAP is the backdrop, so there's no image_url,

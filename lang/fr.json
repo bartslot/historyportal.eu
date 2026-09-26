@@ -1397,5 +1397,11 @@
     "Play timeline": "Lire la chronologie",
     "Pause timeline": "Mettre la chronologie en pause",
     "Timeline year": "Année sur la chronologie",
-    "Year (negative for BCE)": "Année (négatif pour av. J.-C.)"
+    "Year (negative for BCE)": "Année (négatif pour av. J.-C.)",
+    "Motion": "Mouvement",
+    "Drift": "Dériver",
+    "Breeze": "Brise",
+    "Bob": "Tanguer",
+    "Flutter": "Voleter",
+    "Amount": "Intensité"
 }
