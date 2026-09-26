@@ -303,7 +303,9 @@ class Lesson extends Model
      *
      * Empty when the lesson has no group, and never includes a sibling a visitor could not open —
      * same playable rule as LessonPlayerController (published/previewable, a lesson_code to open
-     * it by, has scenes), so the language switch never links to a lesson that would 404.
+     * it by, has scenes), so the language switch never links to a lesson that would 404. Only the
+     * same owner's lessons: a group name is a free string, and another account's lesson that shares
+     * it (a guest's sandbox copy, say) is not a translation of this one.
      */
     public function translations(): \Illuminate\Database\Eloquent\Collection
     {
@@ -313,6 +315,7 @@ class Lesson extends Model
 
         return static::query()
             ->where('translation_group', $this->translation_group)
+            ->where('teacher_id', $this->teacher_id)
             ->where('id', '!=', $this->id)
             ->whereIn('status', [LessonStatus::Published, LessonStatus::Previewable])
             ->whereNotNull('lesson_code')

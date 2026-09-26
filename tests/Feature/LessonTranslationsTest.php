@@ -20,10 +20,15 @@ class LessonTranslationsTest extends TestCase
 {
     use RefreshDatabase;
 
+    private ?User $owner = null;
+
+    /** Siblings share an owner by default: a translation group only spans one teacher's lessons. */
     private function playableLesson(array $attributes = []): Lesson
     {
+        $this->owner ??= User::factory()->teacher()->create();
+
         $lesson = Lesson::factory()->create(array_merge([
-            'teacher_id' => User::factory()->teacher(),
+            'teacher_id' => $this->owner->id,
             'status' => LessonStatus::Published->value,
         ], $attributes));
 
@@ -43,6 +48,11 @@ class LessonTranslationsTest extends TestCase
 
         // Same group, but a draft: not playable, so not a sibling either.
         $this->playableLesson(['language' => 'de', 'translation_group' => 'dante', 'status' => LessonStatus::Draft->value]);
+
+        // Same group, but somebody else's lesson (a guest sandbox copy, say): never a sibling.
+        $this->playableLesson([
+            'language' => 'fr', 'translation_group' => 'dante', 'teacher_id' => User::factory()->teacher()->create()->id,
+        ]);
 
         $translations = $italian->translations();
 
