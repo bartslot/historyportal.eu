@@ -149,7 +149,9 @@ export function renderLessonMap (el, opts = {}) {
   // `fit: 'labels'` (set by the lesson composer on blocks that pin places) goes further: the camera
   // frames the pins and STAYS there; the polity is still highlighted, it just no longer moves the
   // camera. Without the flag, today's polity fit applies.
-  const labelsFit = opts.fit === 'labels' ? labelsView({ annotations, labels: placeLabels }) : null
+  const labelsFit = opts.fit === 'labels'
+    ? labelsView({ annotations, labels: placeLabels }, { width: el.clientWidth || 1280, height: el.clientHeight || 720 })
+    : null
   const opening = labelsFit || openingView({ annotations, labels: placeLabels })
 
   const map = new maplibregl.Map({
@@ -290,7 +292,8 @@ export function renderLessonMap (el, opts = {}) {
     },
     center: opening.center,
     zoom: opening.zoom,
-    maxZoom: 6,
+    // A labels fit may frame a region closer than the atlas default (see LABELS_MAX_ZOOM).
+    maxZoom: Math.max(6, labelsFit?.zoom ?? 0),
     // A voyage revisits the same water on the way out and the way home, and the default cache is
     // small enough that a long crossing evicts the tiles the return leg is about to want — which
     // shows up as the sea reloading in a place the class has already been.
@@ -924,7 +927,7 @@ export function renderLessonMap (el, opts = {}) {
         totalMs,
         // A labels-fit block keeps its framing: open on it and visit each stop at that zoom, instead
         // of pulling back to the continent-wide overview and country-level stops.
-        ...(labelsFit ? { overview: labelsFit, stopZoom: Math.max(labelsFit.zoom, 4.6) } : {}),
+        ...(labelsFit ? { overview: labelsFit, stopZoom: labelsFit.zoom } : {}),
       })
       whenStyleReady(() => itinerary?.start())
       return itinerary
