@@ -230,6 +230,54 @@ class LessonComposerArtLibraryTest extends TestCase
         $disk->assertExists("{$lessonDir}/gallery/dore-inferno.webp");
     }
 
+    public function test_a_bad_ref_on_a_later_scene_leaves_the_existing_lesson_untouched(): void
+    {
+        $this->libraryAsset('history-line/backdrops/florence/firenze-strada', 'webp');
+        $composer = app(LessonComposer::class);
+        $good = [
+            'key' => 'Art library test',
+            'scenes' => [
+                ['type' => 'quiz', 'when' => 'pre', 'questions' => [['q' => 'Where?', 'o' => ['A', 'B'], 'c' => 0]]],
+                ['type' => 'story', 'backdrop' => 'history-line/backdrops/florence/firenze-strada'],
+            ],
+        ];
+        $lesson = $composer->build($good, $this->teacher, narrate: false);
+        $this->assertTrue($composer->publish($lesson));
+        $sceneIds = $lesson->scenes()->orderBy('order')->pluck('id')->all();
+        $bg = $lesson->scenes()->whereNotNull('image_path')->value('image_path');
+
+        $bad = $good;
+        $bad['scenes'][] = ['type' => 'story', 'layers' => [['asset' => 'history-line/figures/dante/typo']]];
+
+        try {
+            $composer->build($bad, $this->teacher, narrate: false);
+            $this->fail('A bad library ref must throw.');
+        } catch (\InvalidArgumentException $e) {
+            $this->assertStringContainsString('scene #3', $e->getMessage());
+        }
+
+        $lesson->refresh();
+        $this->assertSame($sceneIds, $lesson->scenes()->orderBy('order')->pluck('id')->all());
+        $this->assertSame(1, $lesson->quizQuestions()->count());
+        $this->assertSame(\App\Enums\LessonStatus::Published, $lesson->status);
+        Storage::disk('public')->assertExists($bg);
+    }
+
+    public function test_a_spec_that_is_not_valid_utf8_deletes_no_files(): void
+    {
+        $this->libraryAsset('history-line/backdrops/florence/firenze-strada', 'webp');
+        $first = $this->compose(['type' => 'story', 'backdrop' => 'history-line/backdrops/florence/firenze-strada']);
+
+        // Never stored, so the build succeeds; only the spec-wide path match is in doubt.
+        app(LessonComposer::class)->build([
+            'key' => 'Art library test',
+            'note' => "bad \xB1 bytes",
+            'scenes' => [['type' => 'story', 'backdrop' => 'history-line/backdrops/florence/firenze-strada']],
+        ], $this->teacher, narrate: false);
+
+        Storage::disk('public')->assertExists($first->image_path);
+    }
+
     public function test_an_unknown_gallery_asset_fails_loudly(): void
     {
         $this->expectException(\InvalidArgumentException::class);

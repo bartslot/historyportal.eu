@@ -10,6 +10,7 @@ use App\Models\Lesson;
 use App\Models\Scene;
 use App\Models\SvgAsset;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
 
@@ -61,6 +62,28 @@ class LessonComposer
     {
         $key = (string) ($spec['key'] ?? throw new \InvalidArgumentException('Spec needs a stable "key".'));
 
+        // A bad library ref must fail BEFORE anything is deleted: a rebuild that dies on scene 5
+        // would leave a published lesson half-gone and back in Draft.
+        $this->preflight($spec);
+
+        $existing = Lesson::withTrashed()->where('teacher_id', $teacher->id)->where('topic', $key)->first();
+        $stale = $existing ? $this->sceneCopies($existing) : [];
+
+        // Narration (TTS) runs inside this transaction: long, but this is a CLI command, and a
+        // failure anywhere rolls the lesson back to exactly what it was.
+        $lesson = DB::transaction(fn (): Lesson => $this->rebuild($spec, $teacher, $narrate, $key));
+
+        // Files go only once the new build is committed; a rollback cannot un-delete a file.
+        $this->deleteStaleCopies($lesson, $spec, $stale);
+
+        return $lesson;
+    }
+
+    /**
+     * @param  array<string,mixed>  $spec
+     */
+    private function rebuild(array $spec, User $teacher, bool $narrate, string $key): Lesson
+    {
         $lesson = Lesson::withTrashed()->firstOrNew([
             'teacher_id' => $teacher->id,
             'topic' => $key,
@@ -116,7 +139,6 @@ class LessonComposer
         // The spec owns the structure — rebuild every scene (and its questions) on each run.
         $lesson->quizQuestions()->delete();
         $lesson->scenes()->forceDelete();
-        $this->clearSceneCopies($lesson, $spec);
 
         $this->say("Building '{$lesson->title}' ({$lesson->lesson_code})…");
 
@@ -159,36 +181,84 @@ class LessonComposer
     }
 
     /**
-     * Delete the files the previous build copied in for its scenes: `scenes/` (backgrounds, audio,
-     * keyed by scene ids that no longer exist) and `gallery/`. Everything else under the lesson
-     * (narration-cache/, paintings/, ...) stays, and so does any file the spec itself still names,
-     * since an exported spec carries the paths of the scene it was exported from.
+     * Resolve every library ref in the spec without writing anything. Throws what the build
+     * itself would throw, so an invalid spec never gets as far as deleting the old lesson.
      *
      * @param  array<string,mixed>  $spec
      */
-    private function clearSceneCopies(Lesson $lesson, array $spec): void
+    private function preflight(array $spec): void
+    {
+        foreach (array_values((array) ($spec['scenes'] ?? [])) as $i => $s) {
+            $order = $i + 1;
+            if (! empty($s['backdrop'])) {
+                $this->libraryAsset((string) $s['backdrop'], $this->sceneLabel($s, $order));
+            }
+            $this->buildLayers($s, $order);
+            if (($s['type'] ?? 'story') === 'gallery') {
+                foreach ((array) ($s['images'] ?? []) as $entry) {
+                    if (is_string($entry) && str_starts_with($entry, 'asset:')) {
+                        $this->libraryAsset(substr($entry, 6), "Spec scene #{$order} gallery");
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * The files the previous build copied in for its scenes: `scenes/` (backgrounds, audio, keyed
+     * by scene ids a rebuild throws away) and `gallery/`. Everything else under the lesson
+     * (narration-cache/, paintings/, ...) is never a candidate.
+     *
+     * @return list<string>
+     */
+    private function sceneCopies(Lesson $lesson): array
     {
         $disk = Storage::disk('public');
-        $named = json_encode($spec, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_IGNORE) ?: '';
 
-        foreach (['scenes', 'gallery'] as $dir) {
-            $root = "lessons/{$lesson->id}/{$dir}";
-            $kept = false;
-            foreach ($disk->allFiles($root) as $file) {
-                if (str_contains($named, $file)) {
-                    $kept = true;
+        return [
+            ...$disk->allFiles("lessons/{$lesson->id}/scenes"),
+            ...$disk->allFiles("lessons/{$lesson->id}/gallery"),
+        ];
+    }
 
-                    continue;
-                }
+    /**
+     * Delete the previous build's copies, except any file the spec or the rebuilt lesson still
+     * names: an exported spec carries the paths of the scene it came from, a rebuilt gallery copy
+     * lands on the same name as the old one, and a kept poster may point at an old background.
+     *
+     * @param  array<string,mixed>  $spec
+     * @param  list<string>  $stale
+     */
+    private function deleteStaleCopies(Lesson $lesson, array $spec, array $stale): void
+    {
+        if ($stale === []) {
+            return;
+        }
+
+        $named = json_encode([
+            $spec,
+            $lesson->poster_image,
+            $lesson->scenes()->get(['image_path', 'audio_path', 'shots', 'config'])->toArray(),
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        // Not valid UTF-8 → the match below would be a guess. Never delete on a guess.
+        if ($named === false) {
+            $this->say('     ! spec is not valid UTF-8, previous scene files left in place');
+
+            return;
+        }
+
+        $disk = Storage::disk('public');
+        foreach ($stale as $file) {
+            if (! str_contains($named, $file)) {
                 $disk->delete($file);
             }
-            if (! $kept) {
-                $disk->deleteDirectory($root);
+        }
 
-                continue;
-            }
-            // Drop the folders the deletes emptied.
-            foreach (array_reverse($disk->allDirectories($root)) as $sub) {
+        // Drop the folders the deletes emptied, deepest first.
+        foreach (['scenes', 'gallery'] as $dir) {
+            $root = "lessons/{$lesson->id}/{$dir}";
+            foreach ([...array_reverse($disk->allDirectories($root)), $root] as $sub) {
                 if ($disk->allFiles($sub) === []) {
                     $disk->deleteDirectory($sub);
                 }
@@ -707,11 +777,30 @@ class LessonComposer
      */
     private function applyLayers(Scene $scene, array $s, int $order): void
     {
-        $entries = (array) ($s['layers'] ?? []);
-        if ($entries === []) {
+        $layers = $this->buildLayers($s, $order);
+        if ($layers === []) {
             return;
         }
 
+        $scene->refresh();
+        $shot = $scene->image_path
+            ? ['order' => 0, 'image_path' => $scene->image_path, 'layers' => [
+                ['path' => $scene->image_path, 'kind' => 'cover', 'depth' => 0.4], ...$layers,
+            ]]
+            : ['order' => 0, 'layers' => $layers];
+
+        $scene->update(['shots' => [$shot]]);
+    }
+
+    /**
+     * A spec's `layers`, validated and resolved against the library (throws on any bad entry).
+     *
+     * @param  array<string,mixed>  $s
+     * @return list<array<string,mixed>>
+     */
+    private function buildLayers(array $s, int $order): array
+    {
+        $entries = (array) ($s['layers'] ?? []);
         $where = $this->sceneLabel($s, $order);
         $layers = [];
         foreach ($entries as $i => $entry) {
@@ -728,20 +817,16 @@ class LessonComposer
             );
         }
 
-        $scene->refresh();
-        $shot = $scene->image_path
-            ? ['order' => 0, 'image_path' => $scene->image_path, 'layers' => [
-                ['path' => $scene->image_path, 'kind' => 'cover', 'depth' => 0.4], ...$layers,
-            ]]
-            : ['order' => 0, 'layers' => $layers];
-
-        $scene->update(['shots' => [$shot]]);
+        return $layers;
     }
 
     /** Give the lesson a cover image (first gallery/story image that resolved). */
     private function assignPoster(Lesson $lesson, array $spec): void
     {
-        if (! empty($lesson->poster_image)) {
+        // A poster that is one of our own scene copies belongs to the build just thrown away, so it
+        // is re-picked; a poster set any other way (uploaded, a CDN cover) is the teacher's choice.
+        $ownCopy = str_starts_with((string) $lesson->poster_image, "lessons/{$lesson->id}/scenes/");
+        if (! empty($lesson->poster_image) && ! $ownCopy) {
             return;
         }
         $first = $lesson->scenes()->whereNotNull('image_path')->orderBy('order')->first();
