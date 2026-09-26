@@ -38,10 +38,10 @@ return [
         'type' => 'story', 'year' => 1265,
         'backdrop' => "{$h}/backdrops/florence/firenze-strada",
         'layers' => [
-            $cloud(1, 22, 8, 9),
-            $cloud(2, 74, 11, 12),
-            $birds(58, 18),
-            $person('citizens/frate', 80, 84, 26, 0.9, ['depth' => 0.85]),
+            $cloud(1, 46, 7, 8),
+            $cloud(2, 64, 13, 7),
+            $birds(55, 22),
+            $person('citizens/frate', 75, 93, 28, 0.9, ['depth' => 0.9]),
             $person('citizens/mercante', 30, 92, 42, 0.4),
             $person('citizens/donna-fiorentina', 64, 92, 40, 0.7),
         ],
@@ -52,8 +52,8 @@ return [
         'layers' => [
             $cloud(3, 30, 10, 8),
             $birds(70, 16),
-            $person('dante/guido-cavalcanti', 86, 90, 40, 0.9, ['depth' => 0.9]),
-            $person('dante/beatrice', 64, 94, 58, 1.4),
+            $person('dante/guido-cavalcanti', 88, 100, 50, 0.9, ['depth' => 1.05]),
+            $person('dante/beatrice', 63, 100, 64, 1.4, ['depth' => 1.1]),
             // Half-length: bottom edge on the frame edge.
             ['asset' => "{$h}/figures/dante/dante-giovane", 'x' => 26, 'y' => 64, 'height' => 72,
                 'depth' => 1.15, 'anim' => 'slide-right', 'anim_delay' => 0.3],
@@ -98,8 +98,8 @@ return [
         'type' => 'story', 'year' => 1302,
         'backdrop' => "{$h}/backdrops/italy/strada-appennino",
         'layers' => [
-            $cloud(1, 20, 9, 9),
-            $cloud(3, 66, 13, 7),
+            $cloud(1, 42, 8, 9),
+            $cloud(3, 68, 14, 7),
             $birds(80, 20),
             ['asset' => "{$h}/nature/tuscany/cipresso", 'x' => 88, 'y' => 58, 'height' => 52,
                 'depth' => 1.0, 'ambient' => 'breeze'],
@@ -142,8 +142,8 @@ return [
         // The same Florentine street and townspeople as the opening scene: now they can read him.
         'backdrop' => "{$h}/backdrops/florence/firenze-strada",
         'layers' => [
-            $cloud(2, 30, 10, 11),
-            $person('citizens/frate', 84, 86, 28, 1.2, ['depth' => 0.85]),
+            $cloud(2, 52, 9, 9),
+            $person('citizens/frate', 78, 93, 28, 1.2, ['depth' => 0.9]),
             $person('citizens/mercante', 22, 93, 42, 0.8),
             $person('citizens/donna-fiorentina', 70, 93, 40, 1.0),
             $person('dante/dante-legge', 47, 95, 54, 0.3),
@@ -153,8 +153,8 @@ return [
         'type' => 'story', 'year' => 1321,
         'backdrop' => "{$h}/backdrops/ravenna/ravenna",
         'layers' => [
-            $cloud(1, 70, 9, 9),
-            $birds(30, 16),
+            $cloud(1, 82, 7, 8),
+            $birds(30, 18),
             ['asset' => "{$h}/nature/tuscany/cipresso", 'x' => 90, 'y' => 60, 'height' => 50,
                 'depth' => 1.0, 'ambient' => 'breeze'],
             ['asset' => "{$h}/figures/dante/dante-esule", 'x' => 24, 'y' => 64, 'height' => 72,
