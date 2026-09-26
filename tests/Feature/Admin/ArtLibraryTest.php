@@ -135,4 +135,35 @@ class ArtLibraryTest extends TestCase
             ->assertSet('previewId', $this->dante->id)
             ->assertSee(route('teacher.lessons.wizard', $lesson));
     }
+
+    public function test_a_crafted_collection_never_reaches_the_file_system(): void
+    {
+        // A client write to the collection is refused outright.
+        $this->expectException(\Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException::class);
+
+        Livewire::actingAs($this->admin)->test(ArtLibrary::class)->set('collection', '../../x');
+    }
+
+    public function test_an_unknown_collection_falls_back_to_the_first_one(): void
+    {
+        $page = Livewire::actingAs($this->admin)->withQueryParams(['collection' => '../../x'])->test(ArtLibrary::class);
+        $page->assertSet('collection', 'history-line');
+
+        $page->call('selectCollection', '../../x')->assertSet('collection', 'history-line');
+        $page->call('selectCollection', 'line-art')->assertSet('collection', 'line-art');
+
+        // Even with the property forced past the guards, credits() reads nothing outside
+        // resources/icons: a real credits.json one level up (collection '..') is never opened.
+        $outside = resource_path('credits.json');
+        file_put_contents($outside, json_encode(['leak' => [['credit' => 'outside', 'license' => 'x']]]));
+
+        try {
+            $component = $page->instance();
+            $component->collection = '..';
+            unset($component->credits);
+            $this->assertSame([], $component->credits());
+        } finally {
+            @unlink($outside);
+        }
+    }
 }

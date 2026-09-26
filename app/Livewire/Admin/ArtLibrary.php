@@ -12,6 +12,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -30,6 +31,8 @@ class ArtLibrary extends Component
     /** Tab order: the house style first, then the older sets. Anything unlisted follows A-Z. */
     private const ORDER = ['history-line', 'line-art', 'arrows', 'shapes'];
 
+    /** Locked: only the tab method changes it, and it is checked on every use. */
+    #[Locked]
     #[Url]
     public string $collection = '';
 
@@ -46,13 +49,12 @@ class ArtLibrary extends Component
 
     public function mount(): void
     {
-        if (! array_key_exists($this->collection, $this->collections())) {
-            $this->collection = (string) array_key_first($this->collections());
-        }
+        $this->collection = $this->knownCollection($this->collection);
     }
 
-    public function updatedCollection(): void
+    public function selectCollection(string $collection): void
     {
+        $this->collection = $this->knownCollection($collection);
         $this->category = '';
         $this->subcategory = '';
         $this->resetPage();
@@ -77,6 +79,28 @@ class ArtLibrary extends Component
     public function preview(int $assetId): void
     {
         $this->previewId = $this->library()->whereKey($assetId)->exists() ? $assetId : null;
+    }
+
+    /**
+     * The collection name, or the first bundled one when it is not a real collection. The name
+     * ends up in a file path (credits.json), so nothing else may ever get through.
+     */
+    private function knownCollection(string $collection): string
+    {
+        return array_key_exists($collection, $this->collections())
+            ? $collection
+            : (string) array_key_first($this->collections());
+    }
+
+    /** Folder name as a reader sees it: "history-line" -> "History line". */
+    public function label(?string $name): string
+    {
+        return ucfirst(str_replace('-', ' ', (string) $name));
+    }
+
+    public function categoryPath(SvgAsset $asset): string
+    {
+        return collect([$asset->category, $asset->subcategory])->filter()->map($this->label(...))->implode(' / ');
     }
 
     /** @return Builder<SvgAsset> */
@@ -195,6 +219,10 @@ class ArtLibrary extends Component
     #[Computed]
     public function credits(): array
     {
+        if ($this->knownCollection($this->collection) !== $this->collection) {
+            return [];
+        }
+
         $file = resource_path("icons/{$this->collection}/credits.json");
         $json = is_file($file) ? json_decode((string) file_get_contents($file), true) : null;
 

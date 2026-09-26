@@ -27,7 +27,6 @@
         $assets = $this->assets();
         $reuse = $this->reuse();
         $collections = $this->collections();
-        $label = fn (string $name): string => ucfirst(str_replace('-', ' ', $name));
     @endphp
 
     <div class="flex items-end justify-between gap-3">
@@ -49,10 +48,10 @@
         <div role="tablist" class="tabs tabs-border overflow-x-auto flex-nowrap">
             @foreach ($collections as $name => $count)
                 <button type="button" role="tab" wire:key="tab-{{ $name }}"
-                        wire:click="$set('collection', @js($name))"
+                        wire:click="selectCollection(@js($name))"
                         aria-selected="{{ $collection === $name ? 'true' : 'false' }}"
                         class="tab shrink-0 gap-2 {{ $collection === $name ? 'tab-active' : '' }}">
-                    {{ $label($name) }}
+                    {{ $this->label($name) }}
                     <span class="badge badge-sm {{ $collection === $name ? 'badge-primary' : 'badge-ghost' }} tabular-nums">{{ $count }}</span>
                 </button>
             @endforeach
@@ -62,7 +61,7 @@
             <select wire:model.live="category" class="select select-sm w-full sm:w-44" aria-label="{{ __('Category') }}">
                 <option value="">{{ __('All categories') }}</option>
                 @foreach ($this->categories() as $option)
-                    <option value="{{ $option }}">{{ $label($option) }}</option>
+                    <option value="{{ $option }}">{{ $this->label($option) }}</option>
                 @endforeach
             </select>
 
@@ -70,7 +69,7 @@
                     @disabled($this->subcategories() === [])>
                 <option value="">{{ __('All subcategories') }}</option>
                 @foreach ($this->subcategories() as $option)
-                    <option value="{{ $option }}">{{ $label($option) }}</option>
+                    <option value="{{ $option }}">{{ $this->label($option) }}</option>
                 @endforeach
             </select>
 
@@ -126,10 +125,10 @@
                             <td class="hidden sm:table-cell">
                                 <div class="flex flex-wrap gap-1">
                                     @if ($asset->category)
-                                        <span class="badge badge-sm badge-soft">{{ $label($asset->category) }}</span>
+                                        <span class="badge badge-sm badge-soft">{{ $this->label($asset->category) }}</span>
                                     @endif
                                     @if ($asset->subcategory)
-                                        <span class="badge badge-sm badge-ghost">{{ $label($asset->subcategory) }}</span>
+                                        <span class="badge badge-sm badge-ghost">{{ $this->label($asset->subcategory) }}</span>
                                     @endif
                                 </div>
                             </td>
@@ -232,7 +231,7 @@
 
                         <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
                             <dt class="opacity-60">{{ __('Category') }}</dt>
-                            <dd>{{ collect([$preview->category, $preview->subcategory])->filter()->map($label)->implode(' / ') }}</dd>
+                            <dd>{{ $this->categoryPath($preview) }}</dd>
                             <dt class="opacity-60">{{ __('Kind') }}</dt>
                             <dd>{{ $preview->isRaster() ? __('Raster') : __('Vector') }}</dd>
                             @if ($preview->width && $preview->height)
