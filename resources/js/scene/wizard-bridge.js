@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { Avatar3DPlayer } from '../avatar-3d.js'
 import { isTopAnchored, normalizeFit, PORTRAIT_TOP_BIAS } from './background-fit.js'
 import { mountEmbedBg, embedBgSignature } from './embed-bg.js'
+import { isClipartLayer } from './layer-filters.js'
 
 /**
  * Push every alignment entry earlier by VISEME_LEAD_SECONDS. The avatar player
@@ -938,8 +939,8 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
 
             // Split: the background plane(s) render as parallax; free clipart (asset_id) is
             // rendered by the editable overlay so teachers can move + scale it directly.
-            const bgLayers = layers.filter(l => l.kind === 'cover' || l.asset_id == null)
-            const artLayers = layers.filter(l => l.asset_id != null && l.kind !== 'cover')
+            const bgLayers = layers.filter(l => !isClipartLayer(l))
+            const artLayers = layers.filter(isClipartLayer)
 
             if (!_parallaxMod) _parallaxMod = await import('./ParallaxScene.js')
             if (!isCurrent()) return false

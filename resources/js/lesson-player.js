@@ -18,6 +18,7 @@ import QRCode from 'qrcode'
 import { resolveAnchorTime, pickShotIndex } from './scene/shot-sync.js'
 import { renderGallery } from './gallery-scene.js'
 import { isTopAnchored, normalizeFit, PORTRAIT_TOP_CSS } from './scene/background-fit.js'
+import { isClipartLayer } from './scene/layer-filters.js'
 import { mountEmbedBg } from './scene/embed-bg.js'
 import { sameOriginMediaUrl } from './media-url.js'
 import { sceneTransitionFrames, easingBezier, EASINGS } from './scene/animations.js'
@@ -886,7 +887,8 @@ Alpine.data('lessonGame', (lesson) => ({
           bgUrl: shot.bg_url,
           heroUrl: shot.hero_url || null,
           // Multiplane shots (E3c): ordered back→front, each {url, depth, kind, …}.
-          layers: Array.isArray(shot.layers) && shot.layers.length ? shot.layers : null,
+          // Library clipart is ArtworkOverlay's (see _renderSceneArtwork), so it is left out here.
+          layers: Array.isArray(shot.layers) && shot.layers.length ? shot.layers.filter(l => !isClipartLayer(l)) : null,
           motion,
         })
       } catch (e) {
@@ -1810,7 +1812,7 @@ Alpine.data('lessonGame', (lesson) => ({
     async _renderSceneArtwork (scene) {
       const host = document.getElementById('lesson-voyage-art')
       if (!host) return
-      const layers = ((scene.shots || [])[0]?.layers || []).filter(l => l && (l.url || l.embed) && l.asset_id != null)
+      const layers = ((scene.shots || [])[0]?.layers || []).filter(l => (l?.url || l?.embed) && isClipartLayer(l))
       if (!layers.length && !this._artLayer) { host.style.display = 'none'; return }
       const { ArtworkOverlay } = await import('./scene/ArtworkOverlay.js')
       this._artLayer = this._artLayer || new ArtworkOverlay(host, { readonly: true })

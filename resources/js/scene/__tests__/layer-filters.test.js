@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { filterMarkup, hasTreatment, applyLayerFilter, layerFilterId } from '../layer-filters.js'
+import { filterMarkup, hasTreatment, applyLayerFilter, layerFilterId, isClipartLayer } from '../layer-filters.js'
 
 describe('layer colour treatment', () => {
   it('asks for nothing when the layer is untreated', () => {
@@ -94,5 +94,21 @@ describe('applyLayerFilter', () => {
 
     expect(css).toBe('')
     expect(el.querySelector('svg')).toBeNull()
+  })
+})
+
+describe('which renderer owns a layer', () => {
+  it('gives library figures to the overlay and the backdrop to the parallax scene, never both', () => {
+    const layers = [
+      { kind: 'cover', url: 'bg.webp', asset_id: null },
+      { kind: 'figure', url: 'dante.webp', asset_id: 243 },
+      { kind: 'cover', url: 'library-bg.webp', asset_id: 12 },
+    ]
+
+    const clipart = layers.filter(isClipartLayer)
+    const parallax = layers.filter(l => !isClipartLayer(l))
+
+    expect(clipart.map(l => l.url)).toEqual(['dante.webp'])
+    expect(parallax.map(l => l.url)).toEqual(['bg.webp', 'library-bg.webp'])
   })
 })
