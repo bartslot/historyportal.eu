@@ -77,6 +77,14 @@ return [
 
     'source_filter' => env('ART_SOURCE_FILTER', 'pd_cc0'), // 'pd_cc0' | 'off'
 
+    // art:make (asset packs). python3 with Pillow runs tools/artkit/lineclean.py.
+    'python' => env('ART_PYTHON', 'python3'),
+    'manifests_path' => resource_path('art/manifests'),
+    // The shared library, committed to git: <collection>/<category>/<subcategory>/<slug>.webp.
+    'library_path' => resource_path('icons'),
+    // Raw fal output kept for audit (gitignored storage).
+    'raw_path' => storage_path('app/art-raw'),
+
     'artkit' => [
         'python' => env('ARTKIT_PYTHON', base_path('tools/artkit/.venv/bin/python')),
         'script' => base_path('tools/artkit/artkit.py'),

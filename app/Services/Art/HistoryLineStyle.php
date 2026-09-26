@@ -41,6 +41,20 @@ final class HistoryLineStyle
     }
 
     /**
+     * Wide empty stage: a scene backdrop that figures are placed on later as layers.
+     * Reference order: people anchor, environment anchor, then optional real sources.
+     */
+    public static function plate(string $scene, string $constraints = ''): string
+    {
+        return 'A wide 16:9 backdrop for a historical educational comic. '.$scene.' '
+            .'Keep the foreground empty for figures to be placed later, no main characters. '
+            .'Match the line style of reference images 1 and 2 exactly. '
+            .'Follow the architecture and historical details of any further reference images, but leave out their figures. '
+            .self::BASE.' '.self::SAFETY
+            .($constraints !== '' ? ' '.$constraints : '');
+    }
+
+    /**
      * Isolated asset sheet. $items: one short description per cell, top-left → bottom-right.
      * Reference order: people anchor, environment anchor, then optional content references.
      *

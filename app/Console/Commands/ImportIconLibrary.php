@@ -22,6 +22,7 @@ use Symfony\Component\Finder\Finder;
  *
  *   resources/icons/<collection>/<category>/<subcategory>/*.svg   →  line-art
  *   resources/icons/<collection>/*.svg                            →  arrows, shapes
+ *   resources/icons/<collection>/<category>/<subcategory>/*.webp|png  →  art:make packs (stored as-is)
  *
  * Re-running is safe: each file is keyed on its path, so an edited icon is replaced in
  * place and the scenes already using it keep pointing at the same asset id.
@@ -71,7 +72,7 @@ class ImportIconLibrary extends Command
         $failed = 0;
 
         foreach ($collections as $collection) {
-            foreach ($this->svgFiles($root.'/'.$collection) as $file) {
+            foreach ($this->libraryFiles($root.'/'.$collection) as $file) {
                 $ref = $collection.'/'.str_replace('\\', '/', $file->getRelativePathname());
                 $seen[] = $ref;
 
@@ -97,9 +98,29 @@ class ImportIconLibrary extends Command
     }
 
     /** @return iterable<SplFileInfo> */
-    private function svgFiles(string $dir): iterable
+    private function libraryFiles(string $dir): iterable
     {
-        return Finder::create()->files()->in($dir)->name('*.svg')->sortByName();
+        return Finder::create()->files()->in($dir)->name(['*.svg', '*.webp', '*.png'])->sortByName();
+    }
+
+    private function isRaster(SplFileInfo $file): bool
+    {
+        return in_array(strtolower($file->getExtension()), ['webp', 'png'], true);
+    }
+
+    /**
+     * Raster art (art:make packs) is our own output, not third-party markup: stored as-is.
+     *
+     * @return array{bytes: string, width: int, height: int, view_box: null}
+     */
+    private function raster(string $raw): array
+    {
+        $size = @getimagesizefromstring($raw);
+        if ($size === false) {
+            throw new RuntimeException('not a readable image');
+        }
+
+        return ['bytes' => $raw, 'width' => (int) $size[0], 'height' => (int) $size[1], 'view_box' => null];
     }
 
     private function importOne(SvgSanitizer $sanitizer, string $collection, SplFileInfo $file, string $ref): void
@@ -109,11 +130,11 @@ class ImportIconLibrary extends Command
             throw new RuntimeException('unreadable');
         }
 
-        $clean = $sanitizer->sanitize($raw);
+        $clean = $this->isRaster($file) ? $this->raster($raw) : $sanitizer->sanitize($raw);
 
         // Mirror the source tree on the disk so a stored file is traceable back to its icon.
         $path = self::DISK_ROOT.'/'.$this->diskPath($ref);
-        Storage::disk('public')->put($path, $clean['svg']);
+        Storage::disk('public')->put($path, $clean['bytes'] ?? $clean['svg']);
 
         // NOT updateOrCreate: its attribute match compiles `user_id = null`, which no row ever
         // satisfies in SQL, so every run would insert a duplicate instead of updating.
@@ -127,7 +148,9 @@ class ImportIconLibrary extends Command
             'category' => $category,
             'subcategory' => $subcategory,
             'source_url' => '',
-            'title' => $this->title($file->getFilenameWithoutExtension()),
+            'title' => $this->isRaster($file)
+                ? Str::ucfirst(str_replace(['-', '_'], ' ', $file->getFilenameWithoutExtension()))
+                : $this->title($file->getFilenameWithoutExtension()),
             'license' => (string) $this->option('license'),
             'attribution' => (string) $this->option('attribution') ?: null,
             'svg_path' => $path,
@@ -157,7 +180,7 @@ class ImportIconLibrary extends Command
         $filename = array_pop($parts);
 
         return implode('/', array_map(fn (string $p) => Str::slug($p), $parts))
-            .'/'.Str::slug(pathinfo($filename, PATHINFO_FILENAME)).'.svg';
+            .'/'.Str::slug(pathinfo($filename, PATHINFO_FILENAME)).'.'.strtolower(pathinfo($filename, PATHINFO_EXTENSION));
     }
 
     /**
