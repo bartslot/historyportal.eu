@@ -1423,6 +1423,7 @@ Alpine.data('lessonGame', (lesson) => ({
         stage.appendChild(inner)
         _mapInstance = window.renderLessonMap(inner, {
           qid: cfg.qid || null,
+          fit: cfg.fit || null,                 // 'labels' → frame the pins, not the polity
           year: cfg.year ?? 1600,
           projection: cfg.projection || 'mercator',
           interactive: mode === 'interactive',

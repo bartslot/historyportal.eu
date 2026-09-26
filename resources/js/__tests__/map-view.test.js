@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { openingView, contentBox, boxView, FALLBACK_VIEW } from '../map-view.js'
+import { openingView, contentBox, boxView, labelsView, FALLBACK_VIEW, LABELS_MAX_ZOOM } from '../map-view.js'
 
 // A US Civil War block: focus cities on the eastern seaboard, no European coordinate anywhere.
 const US_FOCUS = [
@@ -63,5 +63,44 @@ describe('boxView', () => {
 
     expect(small.center).toEqual([0, 45])
     expect(small.zoom).toBeGreaterThan(large.zoom)
+  })
+})
+
+describe('labelsView', () => {
+  // Dante 1289: the polity fit (Italy) framed half of Europe and these three shared one blot.
+  const TUSCANY = [
+    { type: 'focus', lng: 11.7, lat: 43.75, label: 'Campaldino' },
+    { type: 'focus', lng: 11.2558, lat: 43.7696, label: 'Firenze' },
+    { type: 'focus', lng: 11.3308, lat: 43.3188, label: 'Siena' },
+  ]
+
+  it('frames Tuscany at regional zoom, far closer than the polity/opening view', () => {
+    const v = labelsView({ annotations: TUSCANY })
+
+    expect(v.center[0]).toBeCloseTo((11.2558 + 11.7) / 2, 5)
+    expect(v.center[1]).toBeCloseTo((43.3188 + 43.7696) / 2, 5)
+    expect(v.zoom).toBeGreaterThan(openingView({ annotations: TUSCANY }).zoom)
+    expect(v.zoom).toBeLessThanOrEqual(LABELS_MAX_ZOOM)
+  })
+
+  it('pads the box 15% each side', () => {
+    // 20° wide box: span 20 * 1.3 = 26 → zoom log2(300/26); tall side smaller so width rules.
+    const v = labelsView({ annotations: [
+      { type: 'focus', lng: 0, lat: 40, label: 'a' },
+      { type: 'focus', lng: 20, lat: 42, label: 'b' },
+    ] })
+    expect(v.zoom).toBeCloseTo(Math.log2(300 / 26), 5)
+  })
+
+  it('never zooms a single pin to street level', () => {
+    const v = labelsView({ annotations: [TUSCANY[1]] })
+    expect(v.center).toEqual([11.2558, 43.7696])
+    // min span 1.5° (x1.7 for height) → log2(300 / 2.55) ≈ 6.9, capped at the map's own max.
+    expect(v.zoom).toBe(LABELS_MAX_ZOOM)
+    expect(labelsView({ annotations: [TUSCANY[1]] })).toEqual(labelsView({ annotations: [TUSCANY[1], TUSCANY[1]] }))
+  })
+
+  it('returns null when the block names no place, so the caller keeps its old camera', () => {
+    expect(labelsView({})).toBeNull()
   })
 })

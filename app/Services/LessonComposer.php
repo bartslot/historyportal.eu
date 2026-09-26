@@ -442,7 +442,10 @@ class LessonComposer
             'script_segment' => $s['script'] ?? null,
             'status' => 'ready',
             'config' => array_filter([
-                'qid' => $s['qid'] ?? null,             // the ONLY camera control
+                // With pins, the camera frames the pins (the polity would frame half a continent
+                // and stack towns 40 km apart); without, the polity is the camera control.
+                'qid' => $s['qid'] ?? null,
+                'fit' => $annotations !== [] ? 'labels' : null,
                 'year' => $s['year'] ?? null,
                 'projection' => (string) ($s['projection'] ?? 'mercator'),
                 'playback_mode' => 'interactive',

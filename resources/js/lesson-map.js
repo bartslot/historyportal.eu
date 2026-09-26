@@ -14,7 +14,7 @@ import { renderAnnotations, focusLabelLayout } from './map-annotations.js'
 import { placeLabelLayout, placeLabelPaint } from './map-place-label.js'
 import { mapTextProjector } from './map-text-projector.js'
 import { SATELLITE_SOURCE, SATELLITE_DETAIL_SOURCE, DETAIL_FADE_START, DETAIL_FADE_END, DEM_SOURCE, RELIEF, PITCH } from './map-imagery.js'
-import { boxView, openingView } from './map-view.js'
+import { boxView, openingView, labelsView } from './map-view.js'
 import { itineraryTour } from './map-itinerary.js'
 import { cityPriority, cityTextSize, cityDotRadius } from './map-city-scale.js'
 
@@ -145,7 +145,12 @@ export function renderLessonMap (el, opts = {}) {
   // not a hardcoded Europe (see map-view.js). The polity fit still refines it once the territory's
   // polygon streams in; this is what the teacher and the student see in the meantime, and what
   // they keep when no territory is linked.
-  const opening = openingView({ annotations, labels: placeLabels })
+  //
+  // `fit: 'labels'` (set by the lesson composer on blocks that pin places) goes further: the camera
+  // frames the pins and STAYS there; the polity is still highlighted, it just no longer moves the
+  // camera. Without the flag, today's polity fit applies.
+  const labelsFit = opts.fit === 'labels' ? labelsView({ annotations, labels: placeLabels }) : null
+  const opening = labelsFit || openingView({ annotations, labels: placeLabels })
 
   const map = new maplibregl.Map({
     container: el,
@@ -318,7 +323,8 @@ export function renderLessonMap (el, opts = {}) {
     return { minX, minY, maxX, maxY, area: (maxX - minX) * (maxY - minY) }
   }
 
-  const fitToPolity = () => {
+  // `force` = an explicit re-link (setPolity) — that one moves the camera even on a labels-fit block.
+  const fitToPolity = (force = false) => {
     if (!activeQid) return
     const feats = map.querySourceFeatures('cliopatria', {
       sourceLayer: 'boundaries',
@@ -336,6 +342,7 @@ export function renderLessonMap (el, opts = {}) {
     // Fit to the LARGEST polygon part so far-flung overseas territories don't zoom the map
     // out to the whole globe (e.g. France 1815–1830 still carried Guiana in South America).
     if (didFit) return
+    if (labelsFit && !force) { didFit = true; return }   // the pins own the camera; borders still draw
     const parts = []
     feats.forEach((f) => {
       const g = f.geometry
@@ -395,7 +402,7 @@ export function renderLessonMap (el, opts = {}) {
     activeQid = newQid
     if (newQid && !polityInView(newQid)) {
       didFit = false
-      fitToPolity()
+      fitToPolity(true)
     } else {
       // Already in view (or nothing linked): keep the camera. Mark the fit handled so the
       // `idle` auto-fit handler doesn't fire fitToPolity a tick later and yank the view.
@@ -912,7 +919,13 @@ export function renderLessonMap (el, opts = {}) {
         .filter((a) => a && a.type === 'focus')
         .map((a, i) => ({ lng: Number(a.lng), lat: Number(a.lat), number: i + 1 }))
       if (stops.length < 2) return null   // one city is not an itinerary; the opening view is enough
-      itinerary = itineraryTour(map, stops, { hostEl: itineraryHost(), totalMs })
+      itinerary = itineraryTour(map, stops, {
+        hostEl: itineraryHost(),
+        totalMs,
+        // A labels-fit block keeps its framing: open on it and visit each stop at that zoom, instead
+        // of pulling back to the continent-wide overview and country-level stops.
+        ...(labelsFit ? { overview: labelsFit, stopZoom: Math.max(labelsFit.zoom, 4.6) } : {}),
+      })
       whenStyleReady(() => itinerary?.start())
       return itinerary
     },

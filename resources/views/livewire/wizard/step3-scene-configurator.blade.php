@@ -733,6 +733,7 @@
             if (window.renderLessonMap) {
                 inst = window.renderLessonMap(inner, {
                     qid: cfg.qid || null,
+                    fit: cfg.fit || null,
                     year,
                     projection: cfg.projection || 'mercator',
                     interactive: true,

@@ -6,6 +6,7 @@
  *
  *   openingView({ annotations, labels })   // → { center, zoom } for a fresh map
  *   boxView(box)                           // → { center, zoom } framing a lng/lat box
+ *   labelsView({ annotations, labels })    // → { center, zoom } framing ONLY the pins, or null
  */
 
 // Where a map opens when the block itself says nothing about where it is (Switzerland — the
@@ -17,13 +18,14 @@ export const FALLBACK_VIEW = { center: [8.23, 46.8], zoom: 3 }
  * their subject the same way.
  *
  * @param {{minX:number, minY:number, maxX:number, maxY:number}} box
- * @param {{ pad?: number, maxZoom?: number }} [opts] pad widens the box (1 = tight); maxZoom caps
- *   how close we go, which matters for a single point, where the box has no span at all.
+ * @param {{ pad?: number, maxZoom?: number, minSpan?: number }} [opts] pad widens the box (1 = tight);
+ *   maxZoom caps how close we go, which matters for a single point, where the box has no span at
+ *   all; minSpan (degrees) is the smallest box we will ever frame.
  * @returns {{ center: [number, number], zoom: number }}
  */
-export function boxView (box, { pad = 1, maxZoom = 6 } = {}) {
-  const spanX = Math.max(0.4, (box.maxX - box.minX) * pad)
-  const spanY = Math.max(0.4, (box.maxY - box.minY) * pad)
+export function boxView (box, { pad = 1, maxZoom = 6, minSpan = 0.4 } = {}) {
+  const spanX = Math.max(minSpan, (box.maxX - box.minX) * pad)
+  const spanY = Math.max(minSpan, (box.maxY - box.minY) * pad)
   return {
     center: [(box.minX + box.maxX) / 2, (box.minY + box.maxY) / 2],
     zoom: Math.min(maxZoom, Math.max(1.6, Math.log2(300 / Math.max(spanX, spanY * 1.7)))),
@@ -69,4 +71,24 @@ export function contentBox ({ annotations = [], labels = [] } = {}) {
 export function openingView (content) {
   const box = contentBox(content)
   return box ? boxView(box, { pad: 1.6, maxZoom: 5 }) : FALLBACK_VIEW
+}
+
+export const LABELS_PAD = 1.3            // 15% each side
+export const LABELS_MIN_SPAN = 1.5       // degrees, ~150 km
+export const LABELS_MAX_ZOOM = 6         // the lesson map's own maxZoom
+
+/**
+ * Framing for a map block whose camera follows its PINS, not its polity (config `fit: 'labels'`).
+ *
+ * The polity fit frames the whole territory, which for Italy in 1295 is half of Europe, and three
+ * Tuscan towns 40 km apart then share one blot of pixels. A block that pins its own places is about
+ * those places, so frame them: 15% air on every side, and never tighter than LABELS_MIN_SPAN
+ * degrees, so a single pin opens on its region instead of on a street.
+ *
+ * @param {{ annotations?: Array<object>, labels?: Array<object> }} content
+ * @returns {{ center: [number, number], zoom: number }|null} null when the block names no place
+ */
+export function labelsView (content) {
+  const box = contentBox(content)
+  return box ? boxView(box, { pad: LABELS_PAD, minSpan: LABELS_MIN_SPAN, maxZoom: LABELS_MAX_ZOOM }) : null
 }
