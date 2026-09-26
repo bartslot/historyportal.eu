@@ -12,6 +12,10 @@
     <x-js-lang />
 </head>
 <body class="h-full overflow-hidden bg-[#020617]">
+{{-- <html lang> is the INTERFACE locale (the chrome is translated into it). The lesson itself is
+     written in its own language, so every surface that shows lesson content carries that one, or a
+     screen reader reads Dante's Italian with a Dutch voice. --}}
+@php $contentLang = $lesson->language ?: str_replace('_', '-', app()->getLocale()); @endphp
 
 {{-- ── Lesson data passed to JS ────────────────────────────────────────────── --}}
 @php
@@ -180,7 +184,7 @@
 
     {{-- Teacher text annotations per scene (links open an iframe modal). z-31: above the map stage
          (z-20) so text a teacher placed on a voyage/history map is visible, below the quiz overlay. --}}
-    <div id="lesson-text-overlay" class="absolute inset-0 z-31 pointer-events-none"></div>
+    <div id="lesson-text-overlay" lang="{{ $contentLang }}" class="absolute inset-0 z-31 pointer-events-none"></div>
     {{-- Teacher clipart layers a scene carries ON TOP of the voyage map. z-30 (below text) by default,
          raised to z-32 when the teacher stacked clipart above text — mirrors the editor's ordering.
          Read-only in playback (pointer-events:none) so it never steals a map pan. --}}
@@ -190,7 +194,7 @@
     <div id="lesson-voyage-art" class="absolute inset-0 pointer-events-none" style="display:none"></div>
 
     {{-- Quiz question cards (QuizOverlay mounts here during quiz segments). --}}
-    <div id="lesson-game-overlay" class="absolute inset-0 z-30 pointer-events-none"></div>
+    <div id="lesson-game-overlay" lang="{{ $contentLang }}" class="absolute inset-0 z-30 pointer-events-none"></div>
 
     {{-- ── LAYER 0b: Title-screen background (Wikipedia lead image) ──────────
          Pinned during TITLE_SCREEN so the catalog topic's image is the hero backdrop,
@@ -207,7 +211,7 @@
     </template>
 
     {{-- ── Map block slide — full-bleed historical atlas, shown while a map scene plays. --}}
-    <div id="lesson-map-stage" class="absolute inset-0 z-20" style="display:none" aria-hidden="true"></div>
+    <div id="lesson-map-stage" lang="{{ $contentLang }}" class="absolute inset-0 z-20" style="display:none" aria-hidden="true"></div>
     {{-- Continue button for interactive map blocks (timed blocks auto-advance). Voyage lessons
          advance with the → / B keys (arrows-only nav), so the big button is hidden there. --}}
     <button x-show="showMapContinue && lesson.game_type !== 'voyage'" x-transition
@@ -307,7 +311,7 @@
             style="z-index:47"
             aria-live="polite"
         >
-            <p x-text="captionText"
+            <p x-text="captionText" lang="{{ $contentLang }}"
                class="inline-block rounded-lg bg-black/70 px-4 py-2 text-balance text-lg leading-snug text-white shadow-lg backdrop-blur-sm sm:text-xl"></p>
         </div>
 
@@ -453,7 +457,7 @@
                              viewBox="0 0 21 26" fill="currentColor" aria-hidden="true">
                             <path d="M10.3329 0C4.63543 0 0 4.63543 0 10.3329C0 19.3812 9.58334 25.4792 9.9913 25.735L10.334 25.9493L10.6767 25.735C11.0848 25.4795 20.668 19.3812 20.668 10.3329C20.668 4.63543 16.0326 0 10.3351 0H10.3329ZM10.3329 15.5C7.47996 15.5 5.16584 13.1871 5.16584 10.3329C5.16584 7.47996 7.47872 5.16584 10.3329 5.16584C13.1859 5.16584 15.5 7.47872 15.5 10.3329C15.5 13.1859 13.1871 15.5 10.3329 15.5Z"/>
                         </svg>
-                        <span class="truncate text-sm font-bold text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]"
+                        <span lang="{{ $contentLang }}" class="truncate text-sm font-bold text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]"
                               x-text="infoPlace || currentChapterName || lessonLocation"></span>
                         <span x-show="infoDate || lessonYear" class="h-1 w-1 shrink-0 rounded-full bg-slate-400"></span>
                         <span x-show="infoDate || lessonYear"
@@ -690,7 +694,7 @@
                               drop-shadow-[0_1px_8px_rgba(0,0,0,1)]"></p>
 
                     {{-- Title --}}
-                    <h1
+                    <h1 lang="{{ $contentLang }}"
                         x-html="lesson.title.includes(': ')
                             ? lesson.title.replace(/^(.*?):\s*(.+)$/, '<span style=\'font-weight:300\'>$1:</span> <span style=\'font-weight:700\'>$2</span>')
                             : lesson.title"
@@ -700,7 +704,7 @@
                     ></h1>
 
                     {{-- Intro text — hidden on very small screens --}}
-                    <p x-show="lesson.intro_text"
+                    <p x-show="lesson.intro_text" lang="{{ $contentLang }}"
                        x-text="lesson.intro_text"
                        class="mt-4 text-sm leading-relaxed text-slate-300/75 font-light hidden sm:block
                               drop-shadow-[0_1px_8px_rgba(0,0,0,0.9)]"></p>
