@@ -79,7 +79,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-_V6nh5TL.js",
+    "file": "assets/app--_PXkbvf.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -212,7 +212,7 @@
     "isDynamicEntry": true
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-KInBh1n4.js",
+    "file": "assets/index-DF4G78wS.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,

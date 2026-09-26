@@ -2593,9 +2593,14 @@
                     const rootEl       = document.getElementById('lesson-canvas-root');
                     const characterUrl = rootEl?.dataset.characterUrl || null;
 
+                    const sceneId = this.$wire.selectedSceneId;
                     window.__lessonStage = await window.LessonScene.mountWizardScene({
-                        canvasEl, overlayEl, timerEl, scenes, characterUrl,
+                        canvasEl, overlayEl, timerEl, scenes, characterUrl, initialSceneId: sceneId,
                     });
+                    // mount()'s scene:load fired during hydration, before the bridge was listening,
+                    // so the stage only had the partial first-paint payload (no sceneId,
+                    // identity, quiz questions, voyage route …). Ask for the full one, as a click does.
+                    if (window.__lessonStage && sceneId) this.$wire.selectScene(sceneId);
                 },
 
                 // App nav height (h-16 = 64px) — the fixed panel sits flush under it, no gap.

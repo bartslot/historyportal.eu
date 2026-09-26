@@ -24,7 +24,7 @@ function shiftAlignment(alignment) {
  * Mount the 3D stage for Step 3 / Step 4. Reuses Avatar3DPlayer's built-in skybox
  * shader pipeline (player.setSkyboxFromUrl) instead of stacking a second sphere.
  */
-export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, characterUrl }) {
+export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, characterUrl, initialSceneId = null }) {
     const Scene = window.LessonScene
     if (!Scene) {
         console.warn('[wizard-bridge] window.LessonScene not loaded')
@@ -1178,28 +1178,32 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     // button hit cached audio on first ▶.
     normalizedScenes.forEach(s => preloadAudio(s.audio_path))
 
+    // First paint without a scene:load (it fires during hydration, before this bridge exists):
+    // paint the scene the editor has OPEN, not the lesson's first one. A deep link to scene 9
+    // used to paint scene 1 (usually a quiz title card) under scene 9's inspector.
+    const first = normalizedScenes.find(s => s.id === initialSceneId) ?? normalizedScenes[0]
     if (pendingScene) {
         await applyScene(pendingScene)
-    } else if (normalizedScenes[0]) {
+    } else if (first) {
         // Apply even without an image — an imageless scene must paint its solid brand
         // backdrop instead of leaving the renderer's default (white) showing through.
         await applyScene({
-            imageUrl:  normalizedScenes[0].image_path,
-            sceneView: normalizedScenes[0].scene_view ?? 'slideshow',
-            year:      normalizedScenes[0].year,
-            location:  normalizedScenes[0].location,
-            kind:      normalizedScenes[0].kind,
-            duration:  normalizedScenes[0].duration_seconds,
-            backgroundColor: normalizedScenes[0].background_color,
-            kbAnimated:  normalizedScenes[0].kb_animated,
-            kbDirection: normalizedScenes[0].kb_direction,
-            focus: normalizedScenes[0].config?.background_focus,
-            fit: normalizedScenes[0].config?.background_fit,
+            imageUrl:  first.image_path,
+            sceneView: first.scene_view ?? 'slideshow',
+            year:      first.year,
+            location:  first.location,
+            kind:      first.kind,
+            duration:  first.duration_seconds,
+            backgroundColor: first.background_color,
+            kbAnimated:  first.kb_animated,
+            kbDirection: first.kb_direction,
+            focus: first.config?.background_focus,
+            fit: first.config?.background_fit,
             // The scene config rides along so first paint honours per-scene flags
             // (background focus, clipart-above-text stacking, …).
-            config: normalizedScenes[0].config ?? null,
+            config: first.config ?? null,
             // Multiplane layers (E3c) ride along so the first paint is layered too.
-            shots: normalizedScenes[0].shots ?? [],
+            shots: first.shots ?? [],
         })
     }
 
