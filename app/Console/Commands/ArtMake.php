@@ -176,6 +176,9 @@ class ArtMake extends Command
 
         $raw = $job['reuse'] ? $this->readRaw($job) : $this->generate($job, $prompt, array_values($this->anchors()), self::SHEET_SIZE);
         $cells = $this->lineClean->slice($raw, $rows, $cols, 0.02);
+        $this->lineClean->lastSliceWarning === ''
+            ? $this->line("{$job['name']}: cut per detected figure")
+            : $this->warn("{$job['name']}: {$this->lineClean->lastSliceWarning}");
         foreach (array_keys($def['items']) as $i => $slug) {
             $path = $job['outputs'][$slug];
             if ($this->option('force') || ! is_file($path)) {

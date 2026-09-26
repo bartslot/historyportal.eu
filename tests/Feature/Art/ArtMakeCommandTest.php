@@ -69,7 +69,9 @@ class ArtMakeCommandTest extends TestCase
         $this->fakeFal();
         $this->manifest(sheets: [$this->sheet()]);
 
-        $this->artisan('art:make', ['manifest' => 'pack', '--max-usd' => 1])->assertSuccessful();
+        $this->artisan('art:make', ['manifest' => 'pack', '--max-usd' => 1])
+            ->expectsOutputToContain('test-sheet: cut per detected figure')
+            ->assertSuccessful();
 
         foreach (array_keys(self::ITEMS) as $slug) {
             $path = "{$this->dir}/library/history-line/figures/test/{$slug}.webp";
