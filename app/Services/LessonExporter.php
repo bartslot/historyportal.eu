@@ -131,8 +131,13 @@ class LessonExporter
         };
 
         $composed = self::COMPOSED_CONFIG_KEYS[$scene->kind] ?? [];
-        if (isset($spec['backdrop']) && LibraryLayers::isLineArt($spec['backdrop']) && ($config['backdrop_shade'] ?? null) === false) {
-            $composed[] = 'backdrop_shade';   // the composer writes this for line art itself
+        if (isset($spec['backdrop']) && LibraryLayers::isLineArt($spec['backdrop'])) {
+            // The composer writes these for line art itself; only a teacher's change travels.
+            foreach (LibraryLayers::LINE_ART_CONFIG as $key => $value) {
+                if (($config[$key] ?? null) === $value) {
+                    $composed[] = $key;
+                }
+            }
         }
         $extra = $this->withoutKeys($config, $composed);
         if ($extra !== []) {

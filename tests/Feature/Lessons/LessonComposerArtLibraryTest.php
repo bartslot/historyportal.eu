@@ -82,6 +82,12 @@ class LessonComposerArtLibraryTest extends TestCase
 
         $this->assertFalse($lineArt->config['backdrop_shade']);
         $this->assertArrayNotHasKey('backdrop_shade', $painting->config);   // paintings keep the shade
+
+        // The drawn room shows whole ("Whole image"), letterboxed on its own white paper, camera still.
+        $this->assertSame('contain', $lineArt->config['background_fit']);
+        $this->assertSame('#ffffff', $lineArt->background_color);
+        $this->assertFalse($lineArt->kb_animated);
+        $this->assertArrayNotHasKey('background_fit', $painting->config);
     }
 
     public function test_layers_resolve_from_the_library_with_editor_defaults(): void

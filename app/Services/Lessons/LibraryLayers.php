@@ -94,7 +94,17 @@ class LibraryLayers
      */
     private const COVER_DEPTH = 1.0;
 
-    /** The history-line library is ink on white paper: the player's backdrop shade would grey it. */
+    /**
+     * What a line-art backdrop sets in the scene config. Ink on white paper: the player's backdrop
+     * shade would grey it, and the plate is drawn as one framed room, so it shows WHOLE (the
+     * editor's "Whole image" fit), letterboxed on the same white paper.
+     */
+    public const LINE_ART_CONFIG = ['backdrop_shade' => false, 'background_fit' => 'contain'];
+
+    /** The paper the line-art plates are drawn on: the letterbox around a whole plate. */
+    private const LINE_ART_PAPER = '#ffffff';
+
+    /** The history-line library: ink drawings on white paper. */
     public static function isLineArt(string $ref): bool
     {
         return str_starts_with($ref, 'history-line/');
@@ -115,14 +125,14 @@ class LibraryLayers
             'image_path' => $path,
             // A composed line-art stage keeps its camera still: a Ken Burns push crops the room and
             // drags the floor away from the figures. The life comes from the layers' ambient motion.
-            ...(self::isLineArt($ref) ? ['kb_animated' => false] : []),
+            ...(self::isLineArt($ref) ? ['kb_animated' => false, 'background_color' => self::LINE_ART_PAPER] : []),
             'config' => array_merge((array) ($scene->config ?? []), [
                 'image_credit' => $asset->credit(),
                 'background_focus' => 'center',
                 // The ref itself, so lessons:export can write `backdrop` back instead of a copy
                 // under this scene's folder that no other machine has.
                 'backdrop' => trim($ref, '/ '),
-            ], self::isLineArt($ref) ? ['backdrop_shade' => false] : []),
+            ], self::isLineArt($ref) ? self::LINE_ART_CONFIG : []),
         ]);
     }
 
