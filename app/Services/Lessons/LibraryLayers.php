@@ -43,7 +43,7 @@ class LibraryLayers
      * Layer keys a spec may set, beyond `asset`. The editor's per-layer settings
      * (EditsSceneArtwork::updateArtworkLayer) plus the map pin and the ambient motion keys.
      */
-    private const LAYER_KEYS = [
+    public const LAYER_KEYS = [
         'kind', 'depth', 'scale', 'height', 'x', 'y', 'opacity', 'blend', 'white_key', 'rotation',
         'blur', 'wobble', 'sway', 'grayscale', 'tint', 'tint_opacity', 'z',
         'anim', 'anim_delay', 'anim_duration', 'anim_ease',
@@ -85,8 +85,14 @@ class LibraryLayers
         return "Spec scene #{$order}".($name ? " '{$name}'" : '');
     }
 
+    /** attachArtwork()'s defaults: x/y is the CENTRE of the figure, in % of the stage. */
+    private const LAYER_DEFAULTS = ['kind' => 'figure', 'depth' => 1.3, 'scale' => 1.0, 'height' => 40, 'sway' => false, 'x' => 50.0, 'y' => 58.0];
+
+    /** The cover layer applyLayers() puts under the figures when the scene has an image. */
+    private const COVER_LAYER = ['kind' => 'cover', 'depth' => 0.4];
+
     /** The history-line library is ink on white paper: the player's backdrop shade would grey it. */
-    private function isLineArt(string $ref): bool
+    public static function isLineArt(string $ref): bool
     {
         return str_starts_with($ref, 'history-line/');
     }
@@ -107,7 +113,10 @@ class LibraryLayers
             'config' => array_merge((array) ($scene->config ?? []), [
                 'image_credit' => $asset->credit(),
                 'background_focus' => 'center',
-            ], $this->isLineArt($ref) ? ['backdrop_shade' => false] : []),
+                // The ref itself, so lessons:export can write `backdrop` back instead of a copy
+                // under this scene's folder that no other machine has.
+                'backdrop' => trim($ref, '/ '),
+            ], self::isLineArt($ref) ? ['backdrop_shade' => false] : []),
         ]);
     }
 
@@ -115,7 +124,9 @@ class LibraryLayers
      * A gallery image from the art library, copied into the lesson. Root-relative URL, the same
      * shape the editor stores for a picked painting (Storage::url() would bake in APP_URL).
      *
-     * @return array{url:string,credit:?string}
+     * `asset` keeps the ref, so lessons:export writes `asset:<ref>` back instead of this copy.
+     *
+     * @return array{url:string,credit:?string,asset:string}
      */
     public function copyLibraryImage(Lesson $lesson, string $ref, int $order): array
     {
@@ -123,7 +134,7 @@ class LibraryLayers
         $path = "lessons/{$lesson->id}/gallery/".basename($asset->svg_path);
         Storage::disk('public')->put($path, Storage::disk('public')->get($asset->svg_path));
 
-        return ['url' => '/storage/'.$path, 'credit' => $asset->credit()];
+        return ['url' => '/storage/'.$path, 'credit' => $asset->credit(), 'asset' => trim($ref, '/ ')];
     }
 
     /**
@@ -146,7 +157,7 @@ class LibraryLayers
         $scene->refresh();
         $shot = $scene->image_path
             ? ['order' => 0, 'image_path' => $scene->image_path, 'layers' => [
-                ['path' => $scene->image_path, 'kind' => 'cover', 'depth' => 0.4], ...$layers,
+                ['path' => $scene->image_path, ...self::COVER_LAYER], ...$layers,
             ]]
             : ['order' => 0, 'layers' => $layers];
 
@@ -171,13 +182,56 @@ class LibraryLayers
             }
             $asset = $this->libraryAsset((string) ($entry['asset'] ?? ''), $where);
             $layers[] = array_merge(
-                // attachArtwork()'s defaults: x/y is the CENTRE of the figure, in % of the stage.
-                ['kind' => 'figure', 'depth' => 1.3, 'scale' => 1.0, 'height' => 40, 'sway' => false, 'x' => 50.0, 'y' => 58.0],
+                self::LAYER_DEFAULTS,
                 array_diff_key((array) $entry, ['asset' => true]),
                 ['asset_id' => $asset->id, 'path' => $asset->svg_path],
             );
         }
 
         return $layers;
+    }
+
+    /**
+     * The inverse of applyLayers(): a scene's shots as the spec `layers` that rebuild them, or null
+     * when they hold anything a spec cannot say (a second shot, a key beyond LAYER_KEYS, an asset
+     * outside the bundled library) and must travel verbatim instead.
+     *
+     * @param  array<int,mixed>  $shots
+     * @return list<array<string,mixed>>|null
+     */
+    public function specLayers(array $shots, ?string $imagePath): ?array
+    {
+        $shot = count($shots) === 1 ? (array) $shots[0] : [];
+        $layers = (array) ($shot['layers'] ?? []);
+        $frame = $imagePath ? ['order' => 0, 'image_path' => $imagePath] : ['order' => 0];
+        if ($layers === [] || array_diff_key($shot, ['layers' => true]) != $frame) {
+            return null;
+        }
+        if ($imagePath) {
+            if ($layers[0] != ['path' => $imagePath, ...self::COVER_LAYER]) {
+                return null;
+            }
+            array_shift($layers);
+        }
+
+        $assets = SvgAsset::query()->bundled()->where('source', 'bundled')
+            ->whereIn('id', array_filter(array_column($layers, 'asset_id')))->get()->keyBy('id');
+
+        $entries = [];
+        foreach ($layers as $layer) {
+            $asset = $assets->get($layer['asset_id'] ?? null);
+            $unknown = array_diff_key($layer, array_flip(['asset_id', 'path', ...self::LAYER_KEYS]));
+            if (! $asset || $asset->svg_path !== ($layer['path'] ?? null) || $unknown !== []) {
+                return null;
+            }
+            $settings = array_filter(
+                array_intersect_key($layer, array_flip(self::LAYER_KEYS)),
+                fn ($value, $key) => ! array_key_exists($key, self::LAYER_DEFAULTS) || self::LAYER_DEFAULTS[$key] != $value,
+                ARRAY_FILTER_USE_BOTH,
+            );
+            $entries[] = ['asset' => preg_replace('/\.[^.\/]+$/', '', $asset->source_ref)] + $settings;
+        }
+
+        return $entries;
     }
 }

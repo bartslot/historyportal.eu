@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Lessons;
 
+use App\Models\SvgAsset;
 use App\Models\User;
 use App\Services\LessonComposer;
 use App\Services\LessonExporter;
@@ -138,12 +139,59 @@ class LessonExportTest extends TestCase
 
     public function test_a_composed_lesson_exports_back_to_the_spec_that_built_it(): void
     {
-        $spec = $this->spec();
+        // Language and group are lesson columns, not scene config: without them an exported
+        // Italian Dante rebuilds as an English lesson outside its language switch.
+        $spec = $this->spec() + ['language' => 'it', 'translation_group' => 'dante'];
 
         $lesson = app(LessonComposer::class)->build($spec, $this->teacher, narrate: false);
         $exported = app(LessonExporter::class)->toSpec($lesson->fresh());
 
         $this->assertEquals($spec, $exported);
+    }
+
+    public function test_a_lesson_built_from_the_art_library_exports_as_library_refs(): void
+    {
+        foreach (['history-line/backdrops/florence/firenze-strada.webp', 'history-line/figures/dante/dante-giovane.webp'] as $file) {
+            Storage::disk('public')->put("svg-assets/bundled/{$file}", 'bytes');
+            SvgAsset::factory()->create([
+                'user_id' => null,
+                'source' => 'bundled',
+                'source_ref' => $file,
+                'svg_path' => "svg-assets/bundled/{$file}",
+                'title' => basename($file),
+            ]);
+        }
+
+        $spec = [
+            'key' => 'Library round trip',
+            'title' => 'Library round trip',
+            'subject' => 'history',
+            'grade_level' => '6',
+            'tone' => 'storytelling',
+            'language' => 'en',
+            'scenes' => [[
+                'type' => 'story',
+                'chapter' => 'Firenze',
+                // Line art: the composer turns the backdrop shade off, which must not come back
+                // out as wizard extra_config, nor the copied bg as an unresolvable image.
+                'backdrop' => 'history-line/backdrops/florence/firenze-strada',
+                'layers' => [
+                    ['asset' => 'history-line/figures/dante/dante-giovane', 'x' => 30, 'y' => 78, 'anim' => 'fade'],
+                ],
+                'script' => 'Dante.',
+            ], [
+                // The copy lands under this lesson's own gallery/ folder; the ref is what travels.
+                'type' => 'gallery',
+                'fit' => 'cover',
+                'images' => ['asset:history-line/backdrops/florence/firenze-strada'],
+            ]],
+        ];
+
+        $exporter = app(LessonExporter::class);
+        $lesson = app(LessonComposer::class)->build($spec, $this->teacher, narrate: false);
+
+        $this->assertEquals($spec, $exporter->toSpec($lesson->fresh()));
+        $this->assertSame([], $exporter->unresolvedImages());
     }
 
     public function test_the_exported_spec_rebuilds_into_an_identical_lesson(): void
