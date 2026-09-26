@@ -6,6 +6,7 @@ namespace App\Livewire\Wizard\Concerns;
 
 use App\Models\Scene;
 use App\Models\SvgAsset;
+use App\Services\SceneLayers;
 use App\Services\Support\LayerAmbient;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
@@ -75,19 +76,12 @@ trait EditsSceneArtwork
         $scene = $this->lesson->scenes()->findOrFail($this->selectedSceneId);
 
         $shots = $scene->shots ?? [];
-        $newLayer = [
-            'asset_id' => $asset->id,
-            'path' => $asset->svg_path,
-            'kind' => 'figure',
-            'depth' => (float) 1.3,
-            'scale' => (float) 1.0,
-            'height' => (int) 40,
-            'sway' => false,
-            // Free position on the stage (centre anchor, % of the stage) — teacher drags it
-            // on the canvas. Defaults to just-below-centre where a figure usually reads best.
-            'x' => $x !== null ? max(0.0, min(100.0, $x)) : 50.0,
-            'y' => $y !== null ? max(0.0, min(100.0, $y)) : 58.0,
-        ];
+        // Free position on the stage (centre anchor, % of the stage) — teacher drags it on the
+        // canvas. Without a drop point it takes SceneLayers' default spot, just below centre.
+        $newLayer = SceneLayers::figure($asset, array_filter([
+            'x' => $x !== null ? max(0.0, min(100.0, $x)) : null,
+            'y' => $y !== null ? max(0.0, min(100.0, $y)) : null,
+        ], fn ($v) => $v !== null));
 
         // Dropped over a live map → the icon belongs to that PLACE, not to that pixel, so it
         // keeps sitting on it through every pan and zoom. Same anchor a text label uses.
@@ -99,45 +93,12 @@ trait EditsSceneArtwork
 
         // Immutable transformation: build new arrays, never mutate in place
         if (empty($shots)) {
-            // Scenes that draw their own backdrop (map, voyage, panorama) have no flat background
-            // image — the MAP or the sphere IS the backdrop. Still allow a layer on top: create a
-            // shot carrying ONLY the asset layer (no cover). Editor and player both render these
-            // over the map; serializeShots keeps layer-only shots.
-            if (! $scene->image_path) {
-                // A layer-only shot: no cover, just the asset. This used to be reserved for scenes
-                // that draw their own backdrop (map, voyage, panorama) and everything else was
-                // refused with "generate a scene background first".
-                //
-                // That refusal was wrong. Bart: "Should add icons as layers regardless if there's a
-                // background image." A scene with nothing behind it still has background_color, so
-                // there is always something for a layer to sit on — and placing the figure before
-                // the backdrop is an ordinary way to build a scene. It also read as nonsense on a
-                // slideshow scene, which shows its pictures through `shots` without carrying an
-                // image_path: the teacher was looking straight at artwork and being told to make a
-                // background first.
-                $shots = [[
-                    'order' => 0,
-                    'layers' => [$newLayer],
-                ]];
-                $scene->update(['shots' => $shots]);
-                $this->selectSceneInternal($scene->id);
-                $this->svgLibraryOpen = false;
-
-                return;
-            }
-
-            // Create a single shot with both the base cover layer and the asset layer.
-            $coverLayer = [
-                'path' => $scene->image_path,
-                'kind' => 'cover',
-                'depth' => (float) 0.4,
-            ];
-
-            $shots = [[
-                'order' => 0,
-                'image_path' => $scene->image_path,
-                'layers' => [$coverLayer, $newLayer],
-            ]];
+            // One shot: the scene image as a cover under the asset, or the asset alone when there
+            // is no image. Scenes that draw their own backdrop (map, voyage, panorama) have none,
+            // and neither does a scene the teacher is building figure-first. Bart: "Should add
+            // icons as layers regardless if there's a background image." A scene with nothing
+            // behind it still has background_color, so a layer always has something to sit on.
+            $shots = [SceneLayers::shot($scene->image_path, [$newLayer])];
         } else {
             // Shots exist. Append layers to each, preserving order with foreach.
             $updatedShots = [];
@@ -154,11 +115,7 @@ trait EditsSceneArtwork
 
                 // If no layers but there's an image_path and no bg_path, prepend a cover layer.
                 if (empty($layers) && ! empty($shot['image_path']) && empty($shot['bg_path'])) {
-                    $layers[] = [
-                        'path' => $shot['image_path'],
-                        'kind' => 'cover',
-                        'depth' => (float) 0.4,
-                    ];
+                    $layers[] = SceneLayers::cover($shot['image_path']);
                 }
 
                 // Append the new asset layer.
@@ -241,23 +198,12 @@ trait EditsSceneArtwork
         $shots = $scene->shots ?? [];
 
         if (empty($shots)) {
-            if ($scene->image_path) {
-                $shots = [[
-                    'order' => 0,
-                    'image_path' => $scene->image_path,
-                    'layers' => [
-                        ['path' => $scene->image_path, 'kind' => 'cover', 'depth' => 0.4],
-                        $newLayer,
-                    ],
-                ]];
-            } else {
-                // Map-backed (voyage) scene — layer-only shot, the map is the backdrop.
-                $shots = [['order' => 0, 'layers' => [$newLayer]]];
-            }
+            // Map-backed (voyage) scenes get a layer-only shot: the map is the backdrop.
+            $shots = [SceneLayers::shot($scene->image_path, [$newLayer])];
         } else {
             $layers = $shots[0]['layers'] ?? [];
             if (empty($layers) && ! empty($shots[0]['image_path'])) {
-                $layers[] = ['path' => $shots[0]['image_path'], 'kind' => 'cover', 'depth' => 0.4];
+                $layers[] = SceneLayers::cover($shots[0]['image_path']);
             }
             $layers[] = $newLayer;
             $shots[0] = array_merge($shots[0], ['layers' => $layers]);
@@ -284,13 +230,7 @@ trait EditsSceneArtwork
             return null;
         }
 
-        $cover = ['path' => $newImagePath, 'kind' => 'cover', 'depth' => (float) 0.4];
-
-        return [[
-            'order' => 0,
-            'image_path' => $newImagePath,
-            'layers' => array_merge([$cover], $assetLayers),
-        ]];
+        return [SceneLayers::shot($newImagePath, $assetLayers)];
     }
 
     public function detachArtwork(int $assetId): void
