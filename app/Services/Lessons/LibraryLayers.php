@@ -7,6 +7,7 @@ namespace App\Services\Lessons;
 use App\Models\Lesson;
 use App\Models\Scene;
 use App\Models\SvgAsset;
+use App\Services\SceneLayers;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -85,11 +86,13 @@ class LibraryLayers
         return "Spec scene #{$order}".($name ? " '{$name}'" : '');
     }
 
-    /** attachArtwork()'s defaults: x/y is the CENTRE of the figure, in % of the stage. */
-    private const LAYER_DEFAULTS = ['kind' => 'figure', 'depth' => 1.3, 'scale' => 1.0, 'height' => 40, 'sway' => false, 'x' => 50.0, 'y' => 58.0];
-
-    /** The cover layer applyLayers() puts under the figures when the scene has an image. */
-    private const COVER_LAYER = ['kind' => 'cover', 'depth' => 0.4];
+    /**
+     * The depth of the cover layer under composed figures. Depth 1, the same as a standing figure:
+     * people stand ON the backdrop's floor, so they must move with it. At the editor's default
+     * (SceneLayers::COVER_DEPTH) the floor slid under their feet and every figure looked afloat.
+     * Clouds and birds keep their own lower depth and still parallax.
+     */
+    private const COVER_DEPTH = 1.0;
 
     /** The history-line library is ink on white paper: the player's backdrop shade would grey it. */
     public static function isLineArt(string $ref): bool
@@ -110,6 +113,9 @@ class LibraryLayers
 
         $scene->update([
             'image_path' => $path,
+            // A composed line-art stage keeps its camera still: a Ken Burns push crops the room and
+            // drags the floor away from the figures. The life comes from the layers' ambient motion.
+            ...(self::isLineArt($ref) ? ['kb_animated' => false] : []),
             'config' => array_merge((array) ($scene->config ?? []), [
                 'image_credit' => $asset->credit(),
                 'background_focus' => 'center',
@@ -138,9 +144,9 @@ class LibraryLayers
     }
 
     /**
-     * Build shots[0] from a spec's `layers`, exactly as the editor's attachArtwork() does: the scene
-     * image as a cover layer first (or a layer-only shot when there is none, e.g. a map), then one
-     * layer per entry with the editor's attach defaults under whatever the spec sets.
+     * Build shots[0] from a spec's `layers` with SceneLayers, the code the editor's attachArtwork()
+     * writes through: the scene image as a cover layer first (or a layer-only shot when there is
+     * none, e.g. a map), then one figure per entry, the editor's defaults under what the spec sets.
      *
      * The same asset may appear twice (two cypresses). Both layers carry the real asset_id, since
      * the editor drops a layer whose id has no SvgAsset row; the editor then selects them as one.
@@ -155,13 +161,7 @@ class LibraryLayers
         }
 
         $scene->refresh();
-        $shot = $scene->image_path
-            ? ['order' => 0, 'image_path' => $scene->image_path, 'layers' => [
-                ['path' => $scene->image_path, ...self::COVER_LAYER], ...$layers,
-            ]]
-            : ['order' => 0, 'layers' => $layers];
-
-        $scene->update(['shots' => [$shot]]);
+        $scene->update(['shots' => [SceneLayers::shot($scene->image_path, $layers, self::COVER_DEPTH)]]);
     }
 
     /**
@@ -181,11 +181,7 @@ class LibraryLayers
                 throw new \InvalidArgumentException("{$where}, layer {$i}: unknown key(s) ".implode(', ', $unknown).'.');
             }
             $asset = $this->libraryAsset((string) ($entry['asset'] ?? ''), $where);
-            $layers[] = array_merge(
-                self::LAYER_DEFAULTS,
-                array_diff_key((array) $entry, ['asset' => true]),
-                ['asset_id' => $asset->id, 'path' => $asset->svg_path],
-            );
+            $layers[] = SceneLayers::figure($asset, array_diff_key((array) $entry, ['asset' => true]));
         }
 
         return $layers;
@@ -208,7 +204,7 @@ class LibraryLayers
             return null;
         }
         if ($imagePath) {
-            if ($layers[0] != ['path' => $imagePath, ...self::COVER_LAYER]) {
+            if ($layers[0] != SceneLayers::cover($imagePath, self::COVER_DEPTH)) {
                 return null;
             }
             array_shift($layers);
@@ -226,7 +222,7 @@ class LibraryLayers
             }
             $settings = array_filter(
                 array_intersect_key($layer, array_flip(self::LAYER_KEYS)),
-                fn ($value, $key) => ! array_key_exists($key, self::LAYER_DEFAULTS) || self::LAYER_DEFAULTS[$key] != $value,
+                fn ($value, $key) => ! array_key_exists($key, SceneLayers::FIGURE_DEFAULTS) || SceneLayers::FIGURE_DEFAULTS[$key] != $value,
                 ARRAY_FILTER_USE_BOTH,
             );
             $entries[] = ['asset' => preg_replace('/\.[^.\/]+$/', '', $asset->source_ref)] + $settings;

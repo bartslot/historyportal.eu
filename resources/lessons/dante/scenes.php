@@ -125,8 +125,6 @@ return [
         'backdrop' => "{$h}/backdrops/interiors/scrittoio",
         'layers' => [
             $person('dante/dante-scrive', 40, 96, 62, 0.3, ['ambient' => 'none']),
-            // Virgil as the guide Dante imagines: faint, floating.
-            $person('power/virgilio', 76, 90, 56, 2.0, ['opacity' => 0.45, 'ambient_amount' => 1.2]),
         ],
     ],
     'commedia-galleria' => [

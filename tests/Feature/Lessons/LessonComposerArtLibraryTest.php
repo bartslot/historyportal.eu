@@ -106,7 +106,8 @@ class LessonComposerArtLibraryTest extends TestCase
         $this->assertSame($scene->image_path, $shot['image_path']);
 
         [$cover, $figure, $treeA, $treeB] = $shot['layers'];
-        $this->assertSame(['path' => $scene->image_path, 'kind' => 'cover', 'depth' => 0.4], $cover);
+        // Depth 1, not the editor's 0.4: the figures stand on this floor, so it moves with them.
+        $this->assertEquals(['path' => $scene->image_path, 'kind' => 'cover', 'depth' => 1.0], $cover);
 
         $this->assertSame($dante->id, $figure['asset_id']);
         $this->assertSame($dante->svg_path, $figure['path']);
