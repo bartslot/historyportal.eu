@@ -65,6 +65,8 @@ return [
     'budget_usd' => (float) env('FAL_IMAGE_BUDGET_USD', 17.0),
     'timeout' => (int) env('FAL_ART_TIMEOUT', 300),
     'poll_seconds' => (int) env('FAL_ART_POLL_SECONDS', 2),
+    // Seconds to wait before each retry of a failed status/response GET (network blip, 5xx).
+    'poll_retry_backoff' => [1, 2, 4, 8, 15],
 
     // Grid + pixel size per sheet type. Seedream 4.5: each side 1920–4096 px,
     // or total pixels between 2560×1440 and 4096×4096.

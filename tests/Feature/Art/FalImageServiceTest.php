@@ -26,6 +26,7 @@ class FalImageServiceTest extends TestCase
         config([
             'services.falai.api_key' => 'test',
             'art.poll_seconds' => 0,
+            'art.poll_retry_backoff' => [0, 0, 0, 0, 0],
             'art.budget_usd' => 1.0,
         ]);
     }
@@ -51,6 +52,59 @@ class FalImageServiceTest extends TestCase
             ]),
             'x.test/*' => Http::response($this->png()),
         ]);
+    }
+
+    public function test_polling_rides_out_network_blips_without_posting_again(): void
+    {
+        Http::fake([
+            'queue.fal.run/*/status' => Http::sequence()
+                ->pushFailedConnection()
+                ->pushFailedConnection()
+                ->push(['status' => 'COMPLETED']),
+            'queue.fal.run/*/requests/r1' => Http::sequence()
+                ->push('', 502)
+                ->push(['images' => [['url' => 'https://x.test/img.png']]]),
+            'queue.fal.run/*' => Http::response([
+                'request_id' => 'r1',
+                'status_url' => 'https://queue.fal.run/'.self::MODEL.'/requests/r1/status',
+                'response_url' => 'https://queue.fal.run/'.self::MODEL.'/requests/r1',
+            ]),
+            'x.test/*' => Http::response($this->png()),
+        ]);
+
+        $bytes = app(FalImageService::class)->edit(self::MODEL, 'draw it', ['https://src.test/a.jpg'], 2560, 1440, 'bakeoff');
+
+        $this->assertSame($this->png(), $bytes);
+        $this->assertSame('completed', FalLedgerEntry::sole()->status);
+        $this->assertCount(2, Http::recorded(fn (Request $r) => str_ends_with($r->url(), '/requests/r1')), 'the 502 was retried');
+        $this->assertCount(1, Http::recorded(fn (Request $r) => $r->method() === 'POST'), 'exactly one paid POST');
+    }
+
+    public function test_polling_gives_up_after_the_retries_run_out(): void
+    {
+        config(['art.poll_retry_backoff' => [0, 0]]);
+        $polls = 0;
+        Http::fake([
+            'queue.fal.run/*/status' => function () use (&$polls) {
+                $polls++;
+                throw new \Illuminate\Http\Client\ConnectionException('cURL error 28');
+            },
+            'queue.fal.run/*' => Http::response([
+                'request_id' => 'r1',
+                'status_url' => 'https://queue.fal.run/'.self::MODEL.'/requests/r1/status',
+                'response_url' => 'https://queue.fal.run/'.self::MODEL.'/requests/r1',
+            ]),
+        ]);
+
+        try {
+            app(FalImageService::class)->edit(self::MODEL, 'draw it', ['https://src.test/a.jpg'], 2560, 1440, 'bakeoff');
+            $this->fail('expected the blip to win in the end');
+        } catch (\Illuminate\Http\Client\ConnectionException) {
+        }
+
+        $this->assertSame(3, $polls, '1 try + 2 retries');
+        $this->assertCount(1, Http::recorded(fn (Request $r) => $r->method() === 'POST'));
+        $this->assertSame('failed', FalLedgerEntry::sole()->status);
     }
 
     public function test_happy_path_returns_bytes_and_records_a_completed_row(): void

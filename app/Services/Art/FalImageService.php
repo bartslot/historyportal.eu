@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Art;
 
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
@@ -85,9 +89,10 @@ final class FalImageService
             $submit = $http->post(self::QUEUE_URL.$model, $input)->throw()->json();
             $entry->update(['request_id' => $submit['request_id'] ?? null]);
 
-            $this->waitUntilCompleted($http, (string) $submit['status_url'], $model);
+            $deadline = time() + (int) config('art.timeout', 300);
+            $this->waitUntilCompleted($http, (string) $submit['status_url'], $model, $deadline);
 
-            $out = $http->get((string) $submit['response_url'])->throw()->json();
+            $out = $this->getWithRetry($http, (string) $submit['response_url'], $deadline)->json();
             $this->ledger->complete($entry);
 
             return $out;
@@ -97,15 +102,35 @@ final class FalImageService
         }
     }
 
-    private function waitUntilCompleted(\Illuminate\Http\Client\PendingRequest $http, string $statusUrl, string $model): void
+    private function waitUntilCompleted(PendingRequest $http, string $statusUrl, string $model, int $deadline): void
     {
-        $timeout = (int) config('art.timeout', 300);
-        $deadline = time() + $timeout;
-        while ($http->get($statusUrl)->throw()->json('status') !== 'COMPLETED') {
+        while ($this->getWithRetry($http, $statusUrl, $deadline)->json('status') !== 'COMPLETED') {
             if (time() > $deadline) {
-                throw new RuntimeException("fal timeout after {$timeout}s for {$model}");
+                throw new RuntimeException('fal timeout after '.config('art.timeout', 300)."s for {$model}");
             }
             sleep((int) config('art.poll_seconds', 2));
+        }
+    }
+
+    /**
+     * GET a status/response URL, riding out a network blip (connection error, cURL timeout, 5xx)
+     * with backoff inside the deadline. Only ever GETs: the job is already paid for, and a
+     * re-POST would pay for it twice.
+     */
+    private function getWithRetry(PendingRequest $http, string $url, int $deadline): Response
+    {
+        $backoff = (array) config('art.poll_retry_backoff', [1, 2, 4, 8, 15]);
+        for ($attempt = 0; ; $attempt++) {
+            try {
+                return $http->get($url)->throw();
+            } catch (ConnectionException|RequestException $e) {
+                $transient = $e instanceof ConnectionException || $e->response->serverError();
+                $delay = (int) ($backoff[$attempt] ?? -1);
+                if (! $transient || $delay < 0 || time() + $delay > $deadline) {
+                    throw $e;
+                }
+                sleep($delay);
+            }
         }
     }
 
