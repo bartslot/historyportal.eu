@@ -6,23 +6,73 @@ declare(strict_types=1);
  * Dante Alighieri: the visual skeleton, shared by every language. Keyed by scene id, in play order.
  * The words (chapter, location, script, questions, label names) live in text/{lang}.php.
  *
- * PLACEHOLDER imagery: story scenes use sourced `image` fallbacks so the lesson composes before
- * the history-line art pack exists. Swap in `backdrop` + `layers` once it does.
+ * Every picture comes from the shared history-line library (resources/art/manifests/dante.php →
+ * `php artisan art:make dante` → `php artisan icons:import --collection=history-line`): an empty
+ * backdrop plus cut-out figures placed as layers, so the same street, clouds and people are reused
+ * across scenes and by later lessons. Layer x/y is the CENTRE of the cut-out in % of the stage and
+ * height is % of stage height, so a figure standing on ground line G has y = G - height / 2. A
+ * half-length figure (cut at the knee in its sheet) sits with its bottom edge on the frame edge.
  */
+
+$h = 'history-line';
+
+/** A cloud that drifts slowly; depth < 1 keeps it far away in the parallax. */
+$cloud = fn (int $n, float $x, float $y, float $height) => [
+    'asset' => "{$h}/nature/tuscany/nuvola-{$n}", 'x' => $x, 'y' => $y, 'height' => $height,
+    'depth' => 0.3, 'ambient' => 'drift', 'anim' => 'fade',
+];
+$birds = fn (float $x, float $y) => [
+    'asset' => "{$h}/nature/tuscany/stormo", 'x' => $x, 'y' => $y, 'height' => 7,
+    'depth' => 0.5, 'ambient' => 'flutter', 'anim' => 'fade', 'anim_delay' => 1.2,
+];
+/** A standing person: $ground is where the feet are, in % of stage height. */
+$person = fn (string $ref, float $x, float $ground, float $height, float $delay = 0.3, array $extra = []) => [
+    'asset' => "{$h}/figures/{$ref}", 'x' => $x, 'y' => $ground - $height / 2, 'height' => $height,
+    'depth' => 1.0, 'anim' => 'fade', 'anim_delay' => $delay, 'ambient' => 'bob', 'ambient_amount' => 0.3,
+] + $extra;
+
 return [
     'pre-quiz' => ['type' => 'quiz', 'when' => 'pre'],
 
     'firenze-1265' => [
-        'type' => 'story', 'year' => 1265, 'prefer' => 'art',
-        'image' => 'commons:Dante Domenico di Michelino Duomo Florence.jpg',
+        'type' => 'story', 'year' => 1265,
+        'backdrop' => "{$h}/backdrops/florence/firenze-strada",
+        'layers' => [
+            $cloud(1, 22, 8, 9),
+            $cloud(2, 74, 11, 12),
+            $birds(58, 18),
+            $person('citizens/frate', 80, 84, 26, 0.9, ['depth' => 0.85]),
+            $person('citizens/mercante', 30, 92, 42, 0.4),
+            $person('citizens/donna-fiorentina', 64, 92, 40, 0.7),
+        ],
     ],
     'poesia-beatrice' => [
-        'type' => 'story', 'year' => 1285, 'prefer' => 'art',
-        'image' => 'Dante and Beatrice Henry Holiday',
+        'type' => 'story', 'year' => 1285,
+        'backdrop' => "{$h}/backdrops/florence/lungarno",
+        'layers' => [
+            $cloud(3, 30, 10, 8),
+            $birds(70, 16),
+            $person('dante/guido-cavalcanti', 86, 90, 40, 0.9, ['depth' => 0.9]),
+            $person('dante/beatrice', 64, 94, 58, 1.4),
+            // Half-length: bottom edge on the frame edge.
+            ['asset' => "{$h}/figures/dante/dante-giovane", 'x' => 26, 'y' => 64, 'height' => 72,
+                'depth' => 1.15, 'anim' => 'slide-right', 'anim_delay' => 0.3],
+        ],
     ],
     'campaldino-1289' => [
-        'type' => 'story', 'year' => 1289, 'prefer' => 'art',
-        'image' => 'Battle of Campaldino',
+        'type' => 'story', 'year' => 1289,
+        'backdrop' => "{$h}/backdrops/tuscany/campaldino-piana",
+        'layers' => [
+            $cloud(1, 30, 10, 10),
+            $cloud(2, 78, 7, 9),
+            $person('soldiers/cavaliere-guelfo', 70, 80, 34, 0.9, ['depth' => 0.8]),
+            $person('soldiers/fante', 86, 84, 34, 1.1, ['depth' => 0.9]),
+            ['asset' => "{$h}/props/medieval/stendardo", 'x' => 54, 'y' => 60, 'height' => 30,
+                'depth' => 0.9, 'anim' => 'fade', 'anim_delay' => 1.3, 'ambient' => 'breeze', 'ambient_amount' => 1.4],
+            $person('dante/dante-cavaliere', 30, 100.5, 60, 0.3, ['depth' => 1.1, 'ambient_amount' => 0.5]),
+            ['asset' => "{$h}/nature/tuscany/erba", 'x' => 8, 'y' => 92, 'height' => 16,
+                'depth' => 1.4, 'ambient' => 'breeze'],
+        ],
     ],
     'mappa-fazioni' => [
         'type' => 'map', 'year' => 1295, 'qid' => 'Q38', 'projection' => 'mercator',
@@ -36,12 +86,27 @@ return [
         ],
     ],
     'priore-1300' => [
-        'type' => 'story', 'year' => 1300, 'prefer' => 'art',
-        'image' => 'Palazzo Vecchio Florence',
+        'type' => 'story', 'year' => 1300,
+        'backdrop' => "{$h}/backdrops/florence/sala-priori",
+        'layers' => [
+            $person('power/priore', 30, 94, 56, 0.4),
+            $person('dante/dante-legge', 58, 94, 58, 0.8),
+            $person('power/messo', 84, 94, 50, 1.4, ['anim' => 'slide-left']),
+        ],
     ],
     'esilio-1302' => [
-        'type' => 'story', 'year' => 1302, 'prefer' => 'art',
-        'image' => 'Dante in exile',
+        'type' => 'story', 'year' => 1302,
+        'backdrop' => "{$h}/backdrops/italy/strada-appennino",
+        'layers' => [
+            $cloud(1, 20, 9, 9),
+            $cloud(3, 66, 13, 7),
+            $birds(80, 20),
+            ['asset' => "{$h}/nature/tuscany/cipresso", 'x' => 88, 'y' => 58, 'height' => 52,
+                'depth' => 1.0, 'ambient' => 'breeze'],
+            $person('dante/dante-cammina', 42, 90, 46, 0.4, ['anim' => 'slide-right', 'anim_duration' => 2200]),
+            ['asset' => "{$h}/nature/tuscany/erba", 'x' => 14, 'y' => 93, 'height' => 15,
+                'depth' => 1.4, 'ambient' => 'breeze'],
+        ],
     ],
     'mappa-esilio' => [
         'type' => 'map', 'year' => 1305, 'qid' => 'Q38', 'projection' => 'mercator',
@@ -56,24 +121,53 @@ return [
         ],
     ],
     'commedia-nasce' => [
-        'type' => 'story', 'year' => 1306, 'prefer' => 'art',
-        'image' => 'Dante Alighieri portrait Botticelli',
+        'type' => 'story', 'year' => 1306,
+        'backdrop' => "{$h}/backdrops/interiors/scrittoio",
+        'layers' => [
+            $person('dante/dante-scrive', 40, 96, 62, 0.3, ['ambient' => 'none']),
+            // Virgil as the guide Dante imagines: faint, floating.
+            $person('power/virgilio', 76, 90, 56, 2.0, ['opacity' => 0.45, 'ambient_amount' => 1.2]),
+        ],
     ],
     'commedia-galleria' => [
-        'type' => 'gallery', 'year' => 1310, 'prefer' => 'art',
-        'images' => ['Gustave Doré Inferno', 'Botticelli Map of Hell', 'Dante and Virgil'],
+        'type' => 'gallery', 'year' => 1310,
+        'images' => [
+            "asset:{$h}/backdrops/commedia/dore-inferno",
+            "asset:{$h}/backdrops/commedia/dore-purgatorio",
+            "asset:{$h}/backdrops/commedia/dore-paradiso",
+        ],
     ],
     'volgare' => [
-        'type' => 'story', 'year' => 1312, 'prefer' => 'art',
-        'image' => 'Divina Commedia manuscript',
+        'type' => 'story', 'year' => 1312,
+        // The same Florentine street and townspeople as the opening scene: now they can read him.
+        'backdrop' => "{$h}/backdrops/florence/firenze-strada",
+        'layers' => [
+            $cloud(2, 30, 10, 11),
+            $person('citizens/frate', 84, 86, 28, 1.2, ['depth' => 0.85]),
+            $person('citizens/mercante', 22, 93, 42, 0.8),
+            $person('citizens/donna-fiorentina', 70, 93, 40, 1.0),
+            $person('dante/dante-legge', 47, 95, 54, 0.3),
+        ],
     ],
     'ravenna-1321' => [
-        'type' => 'story', 'year' => 1321, 'prefer' => 'art',
-        'image' => 'Tomba di Dante Ravenna',
+        'type' => 'story', 'year' => 1321,
+        'backdrop' => "{$h}/backdrops/ravenna/ravenna",
+        'layers' => [
+            $cloud(1, 70, 9, 9),
+            $birds(30, 16),
+            ['asset' => "{$h}/nature/tuscany/cipresso", 'x' => 90, 'y' => 60, 'height' => 50,
+                'depth' => 1.0, 'ambient' => 'breeze'],
+            ['asset' => "{$h}/figures/dante/dante-esule", 'x' => 24, 'y' => 64, 'height' => 72,
+                'depth' => 1.15, 'anim' => 'fade', 'anim_delay' => 0.4, 'anim_duration' => 1800],
+        ],
     ],
     'eredita' => [
-        'type' => 'story', 'year' => 2021, 'prefer' => 'photo',
-        'image' => 'Dante statue Piazza Santa Croce Florence',
+        'type' => 'story', 'year' => 2021,
+        'backdrop' => "{$h}/backdrops/commedia/michelino-tre-regni",
+        'layers' => [
+            ['asset' => "{$h}/props/medieval/corona-alloro", 'x' => 88, 'y' => 16, 'height' => 18,
+                'depth' => 0.8, 'anim' => 'pop', 'anim_delay' => 2.5, 'ambient' => 'bob', 'ambient_amount' => 0.6],
+        ],
     ],
 
     'post-quiz' => ['type' => 'quiz', 'when' => 'post'],

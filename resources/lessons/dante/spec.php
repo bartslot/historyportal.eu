@@ -49,5 +49,7 @@ return function (string $lang, ?array $text = null): array {
         'translation_group' => 'dante',
         'grade_level' => (string) $text['grade_level'],
         'scenes' => $scenes,
-    ];
+        // Dutch lessons are read by Ron Slot's cloned ElevenLabs voice (house rule); the other
+        // languages have no narrator and fall through to Azure's native HD voice for the locale.
+    ] + ($lang === 'nl' ? ['avatar' => 'ron-slot'] : []);
 };
