@@ -20,6 +20,9 @@ WHITE_POINT = 215
 DARK = 100          # below this a pixel counts as ink
 FILL_KERNEL = 9     # a pixel whose whole 9x9 neighbourhood is ink sits inside a solid fill
 PAPER = 235         # at or above this a pixel counts as paper for the outside flood fill
+SEAL = 0.006        # outline gaps up to ~2x this fraction of the crop's long side are closed
+CUT_BAND = 0.05     # on a cut side, strokes ending within this fraction of the edge run on to it
+HEM_BAND = 0.25     # on a side the manifest marks cut off, rows this far in are filled stroke to stroke
 
 # auto slicing: find one ink blob per figure, whatever grid the model actually drew
 BLOB_INK = 200      # below this (after levels) a pixel is ink
@@ -53,20 +56,104 @@ def plate(src, dst):
     clean(src).convert('RGB').save(dst, 'PNG')
 
 
-def outside_mask(gray):
-    """255 where the pixel is paper connected to the image border, else 0."""
+def silhouette(gray, hems=()):
+    """255 inside the figure's silhouette, 0 outside: the alpha of a cut-out.
+
+    Lines are thickened by r before the outside is flooded in from the border, so a small gap
+    in an outline no longer lets the outside leak into a robe; the result is then shrunk by r
+    again so the edge hugs the lines. An edge the ink touches (a figure the model cut off) is
+    not flooded from, so an open hem stays closed.
+    """
     w, h = gray.size
-    paper = gray.point(lambda v: 255 if v >= PAPER else 0)
-    # A 1px paper frame joins every border pixel, so one seed floods the whole outside.
-    framed = Image.new('L', (w + 2, h + 2), 255)
-    framed.paste(paper, (1, 1))
-    ImageDraw.floodfill(framed, (0, 0), 128, thresh=0)
-    return framed.crop((1, 1, w + 1, h + 1)).point(lambda v: 255 if v == 128 else 0)
+    r = max(1, round(SEAL * max(w, h)))
+    ink = gray.point(lambda v: 255 if v < PAPER else 0)
+    sealed = ink
+    for _ in range(r):
+        sealed = sealed.filter(ImageFilter.MaxFilter(3))
+
+    framed = Image.new('L', (w + 2, h + 2), 0)
+    framed.paste(ImageChops.invert(sealed), (1, 1))     # 255 = passable paper
+    draw = ImageDraw.Draw(framed)
+    strong = gray.point(lambda v: 255 if v < DARK else 0)
+    edges = {'top': (0, 0, w, 1), 'bottom': (0, h - 1, w, h), 'left': (0, 0, 1, h), 'right': (w - 1, 0, w, h)}
+    frame = {'top': [0, 0, w + 1, 0], 'bottom': [0, h + 1, w + 1, h + 1], 'left': [0, 0, 0, h + 1], 'right': [w + 1, 0, w + 1, h + 1]}
+    open_edges = [name for name, box in edges.items() if strong.crop(box).getbbox() is None]
+    for name in edges.keys() - set(open_edges):
+        drip(framed, sealed, name)
+    for name in hems:
+        hem(framed, sealed, name)
+    for name in open_edges:
+        draw.line(frame[name], fill=255)
+    if not open_edges:
+        return Image.new('L', (w, h), 255)
+    seed = {'top': (0, 0), 'left': (0, 0), 'bottom': (w + 1, h + 1), 'right': (w + 1, h + 1)}[open_edges[0]]
+    ImageDraw.floodfill(framed, seed, 128, thresh=0)
+
+    opaque = framed.crop((1, 1, w + 1, h + 1)).point(lambda v: 0 if v == 128 else 255)
+    for _ in range(r):
+        opaque = opaque.filter(ImageFilter.MinFilter(3))
+    return opaque
 
 
-def cutout(src, dst, margin):
+def to_bottom(side):
+    """Transpose that turns `side` into the bottom edge (each one is its own inverse)."""
+    return {'bottom': None, 'top': Image.Transpose.FLIP_TOP_BOTTOM,
+            'right': Image.Transpose.TRANSPOSE, 'left': Image.Transpose.TRANSVERSE}[side]
+
+
+def hem(framed, ink, side):
+    """A cut-off robe whose fold lines fade out: in the band next to the cut, fill each row from
+    its first to its last stroke, so the paper between the loose lines is robe, not background."""
+    turn = to_bottom(side)
+    m = ink if turn is None else ink.transpose(turn)
+    w, h = m.size
+    band = max(1, round(HEM_BAND * h))
+    data = m.tobytes()
+    walls = Image.new('L', (w, h), 0)
+    draw = ImageDraw.Draw(walls)
+    for y in range(h - band, h):
+        first = data.find(b'\xff', y * w, (y + 1) * w)
+        if first >= 0:
+            draw.line([first - y * w, y, data.rfind(b'\xff', y * w, (y + 1) * w) - y * w, y], fill=255)
+    if turn is not None:
+        walls = walls.transpose(turn)
+    framed.paste(0, (1, 1), walls)
+
+
+def drip(framed, ink, side):
+    """Close a cut side: every stroke ending within the edge band runs on to the edge as a wall.
+
+    The model fades a cut-off robe's fold lines out at different heights; without this the paper
+    between those line ends would let the outside flood into the robe from the neighbouring edges.
+    """
+    turn = to_bottom(side)
+    m = ink if turn is None else ink.transpose(turn)
+    w, h = m.size
+    band = max(1, round(CUT_BAND * h))
+    columns = m.crop((0, h - band, w, h)).transpose(Image.Transpose.TRANSPOSE).tobytes()
+    walls = Image.new('L', (w, h), 0)
+    draw = ImageDraw.Draw(walls)
+    for x in range(w):
+        top = columns.find(b'\xff', x * band, (x + 1) * band)
+        if top >= 0:
+            draw.line([x, h - band + top - x * band, x, h - 1], fill=255)
+    if turn is not None:
+        walls = walls.transpose(turn)
+    framed.paste(0, (1, 1), walls)
+
+
+def cutout(src, dst, margin, closed=()):
+    """closed: sides where the model cut the figure off ('bottom', ...). The drawing is cropped tight
+    there, so the ink touches that edge and the silhouette keeps the open hem closed."""
     gray = clean(src)
-    alpha = ImageChops.invert(outside_mask(gray))
+    ink = gray.point(lambda v: 255 if v < PAPER else 0).getbbox()
+    if closed and ink:
+        side = {'left': 0, 'top': 1, 'right': 2, 'bottom': 3}
+        box = [0, 0, gray.width, gray.height]
+        for name in closed:
+            box[side[name]] = ink[side[name]]
+        gray = gray.crop(tuple(box))
+    alpha = silhouette(gray, closed)
     box = alpha.getbbox()
     if box is None:
         raise ValueError('image is blank: nothing inside the outside paper')
@@ -210,6 +297,7 @@ def main(argv):
     a.add_argument('src')
     a.add_argument('dst')
     a.add_argument('--margin', type=int, default=24)
+    a.add_argument('--closed', default='', help='comma list of cut-off sides: top,bottom,left,right')
     a = sub.add_parser('slice')
     a.add_argument('src')
     a.add_argument('outdir')
@@ -223,7 +311,11 @@ def main(argv):
         if args.cmd == 'plate':
             plate(args.src, args.dst)
         elif args.cmd == 'cutout':
-            cutout(args.src, args.dst, max(0, args.margin))
+            closed = [c for c in args.closed.split(',') if c]
+            bad = set(closed) - {'top', 'bottom', 'left', 'right'}
+            if bad:
+                raise ValueError(f'unknown side(s): {", ".join(sorted(bad))}')
+            cutout(args.src, args.dst, max(0, args.margin), closed)
         else:
             slice_sheet(args.src, args.outdir, args.rows, args.cols, args.inset, args.mode)
     except (OSError, ValueError) as e:

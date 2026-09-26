@@ -25,11 +25,18 @@ final class LineClean
         });
     }
 
-    /** Same cleanup, outside paper transparent, cropped to the figure + margin (RGBA). */
-    public function cutout(string $bytes, int $margin = 24): string
+    /**
+     * Same cleanup; the figure's silhouette is opaque, the outside transparent, cropped to the
+     * figure + margin (RGBA). $closed: sides where the model cut the figure off (e.g. ['bottom']),
+     * kept shut so an open hem does not turn see-through.
+     *
+     * @param  list<string>  $closed
+     */
+    public function cutout(string $bytes, int $margin = 24, array $closed = []): string
     {
-        return $this->inTemp(function (string $dir) use ($bytes, $margin): string {
-            $this->run(['cutout', $this->put($dir, 'in.png', $bytes), "{$dir}/out.png", '--margin', (string) $margin]);
+        return $this->inTemp(function (string $dir) use ($bytes, $margin, $closed): string {
+            $this->run(['cutout', $this->put($dir, 'in.png', $bytes), "{$dir}/out.png",
+                '--margin', (string) $margin, '--closed', implode(',', $closed)]);
 
             return (string) file_get_contents("{$dir}/out.png");
         });

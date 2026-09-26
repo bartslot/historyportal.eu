@@ -182,7 +182,8 @@ class ArtMake extends Command
         foreach (array_keys($def['items']) as $i => $slug) {
             $path = $job['outputs'][$slug];
             if ($this->option('force') || ! is_file($path)) {
-                $this->writeWebp($path, $this->lineClean->cutout($cells[$i]));
+                $closed = (array) (($def['cut_off'] ?? [])[$slug] ?? []);
+                $this->writeWebp($path, $this->lineClean->cutout($cells[$i], closed: $closed));
             }
         }
 

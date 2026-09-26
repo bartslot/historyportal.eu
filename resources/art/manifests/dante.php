@@ -29,6 +29,8 @@ return [
     'sheets' => [
         [
             'name' => 'dante-circle', 'category' => 'figures', 'subcategory' => 'dante', 'grid' => '2x2', 'figures' => true,
+            // Sides the model cut off in the kept raw: cut-out keeps them shut (drop after a regenerate).
+            'cut_off' => ['dante-giovane' => 'bottom', 'dante-esule' => 'bottom'],
             'era' => 'c. 1300', 'place' => 'Florence',
             'items' => [
                 'dante-giovane' => 'young Dante Alighieri about 20 years old, slim, beardless, long lucco robe and close-fitting cap, holding a small book, thoughtful',
@@ -39,6 +41,7 @@ return [
         ],
         [
             'name' => 'dante-power', 'category' => 'figures', 'subcategory' => 'power', 'grid' => '2x2', 'figures' => true,
+            'cut_off' => ['papa-bonifacio' => 'bottom'],
             'era' => 'c. 1300', 'place' => 'Florence and Rome',
             'items' => [
                 'virgilio' => 'the Roman poet Virgil as medieval artists imagined him: long ancient robe, mantle, laurel wreath, holding a scroll, a guide gesturing forward',
@@ -69,6 +72,7 @@ return [
         ],
         [
             'name' => 'dante-poses', 'category' => 'figures', 'subcategory' => 'dante', 'grid' => '2x2', 'figures' => true,
+            'cut_off' => ['dante-cavaliere' => 'bottom'],
             'era' => 'c. 1289-1315', 'place' => 'Tuscany and northern Italy',
             'items' => [
                 'dante-cammina' => 'Dante Alighieri about 45 walking into exile, side view facing right, gaunt face, strong aquiline nose, long plain robe, hood wrapped around the head, walking staff, travel bag, full body mid-stride',

@@ -38,6 +38,69 @@ def test_cutout_clears_the_outside_and_keeps_enclosed_paper(tmp):
     assert out.getpixel((cx, cy)) == (255, 255, 255, 255), 'enclosed interior stays opaque white'
 
 
+def cut(tmp, img, margin=0):
+    src, dst = os.path.join(tmp, 'in.png'), os.path.join(tmp, 'cut.png')
+    img.save(src)
+    lineclean.cutout(src, dst, margin)
+    return Image.open(dst)
+
+
+def test_cutout_keeps_a_figure_cut_off_at_the_bottom_edge_closed(tmp):
+    img = Image.new('L', (400, 400), 255)
+    d = ImageDraw.Draw(img)
+    d.line([(100, 399), (100, 100), (300, 100), (300, 399)], fill=0, width=4)   # U upside down, open hem on the edge
+    out = cut(tmp, img)
+    assert out.getpixel((out.width // 2, out.height - 5))[3] == 255, 'the open hem stays opaque'
+    assert out.getpixel((out.width // 2, out.height // 2))[3] == 255, 'the robe interior is opaque'
+
+
+def test_cutout_keeps_a_cut_hem_closed_when_its_lines_fade_out_at_different_heights(tmp):
+    img = Image.new('L', (400, 400), 255)
+    d = ImageDraw.Draw(img)
+    d.line([(100, 380), (100, 100), (300, 100), (300, 399)], fill=0, width=4)   # left contour stops 20px short
+    d.line([(200, 150), (200, 390)], fill=0, width=3)                            # a fold line
+    out = cut(tmp, img)
+    assert out.getpixel((150, out.height - 3))[3] == 255, 'no leak round the short contour'
+
+
+def test_a_closed_side_keeps_a_hem_shut_even_when_it_ends_above_the_crop_edge(tmp):
+    img = Image.new('L', (400, 400), 255)
+    d = ImageDraw.Draw(img)
+    d.line([(100, 340), (100, 100), (300, 100), (300, 350)], fill=0, width=4)   # robe fades out 50px above the edge
+    d.line([(200, 150), (200, 345)], fill=0, width=3)
+    src, dst = os.path.join(tmp, 'in.png'), os.path.join(tmp, 'cut.png')
+    img.save(src)
+    lineclean.cutout(src, dst, 0)
+    assert Image.open(dst).getpixel((50, 230))[3] == 0, 'without the hint the hem is open'
+    lineclean.cutout(src, dst, 0, ['bottom'])
+    out = Image.open(dst)
+    assert out.getpixel((50, out.height - 3))[3] == 255, 'with it the hem is closed'
+    assert out.getpixel((150, out.height - 3))[3] == 255
+
+
+def test_a_marked_hem_fills_between_fold_lines_that_fade_out_early(tmp):
+    img = Image.new('L', (400, 400), 255)
+    d = ImageDraw.Draw(img)
+    d.line([(100, 330), (100, 100), (300, 100), (300, 350)], fill=0, width=4)   # left contour stops 20px short
+    d.line([(200, 150), (200, 300)], fill=0, width=3)                           # a fold line fading out early
+    src, dst = os.path.join(tmp, 'in.png'), os.path.join(tmp, 'cut.png')
+    img.save(src)
+    lineclean.cutout(src, dst, 0, ['bottom'])
+    out = Image.open(dst)
+    assert out.getpixel((150 - 98, 300 - 98))[3] == 255, 'the robe above the fading lines is not see-through'
+
+
+def test_cutout_closes_a_small_gap_in_an_outline(tmp):
+    img = Image.new('L', (400, 400), 255)
+    d = ImageDraw.Draw(img)
+    d.rectangle([100, 100, 300, 300], outline=0, width=3)
+    d.rectangle([198, 297, 201, 303], fill=255)                             # 4px gap in the bottom line
+    out = cut(tmp, img, margin=10)
+    assert out.getpixel((out.width // 2, out.height // 2))[3] == 255, 'the interior does not leak'
+    assert out.getpixel((0, 0))[3] == 0, 'the outside is still transparent'
+    assert out.getpixel((15, 15))[3] == 255 and out.getpixel((5, 5))[3] == 0, 'the edge hugs the line again'
+
+
 def test_slice_writes_rows_times_cols_cells(tmp):
     src = os.path.join(tmp, 'grid.png')
     Image.new('RGB', (300, 200), 'white').save(src)
@@ -89,7 +152,7 @@ def test_auto_keeps_small_pieces_with_the_nearest_figure(tmp):
     first = Image.open(os.path.join(outdir, 'cell_0.png')).convert('L')
     # the figure alone is 140px wide (x 60..200); the birds reach x=258
     assert first.width >= 258 - 60, f'the birds came along: width {first.width}'
-    assert min(first.crop((first.width - 30, 0, first.width, first.height)).getdata()) < 100, 'bird ink is kept'
+    assert first.crop((first.width - 30, 0, first.width, first.height)).getextrema()[0] < 100, 'bird ink is kept'
 
 
 def test_auto_falls_back_to_the_grid_when_the_figure_count_is_off(tmp):
