@@ -19,6 +19,7 @@ import { resolveAnchorTime, pickShotIndex } from './scene/shot-sync.js'
 import { renderGallery } from './gallery-scene.js'
 import { isTopAnchored, normalizeFit, PORTRAIT_TOP_CSS } from './scene/background-fit.js'
 import { isClipartLayer } from './scene/layer-filters.js'
+import { fitToPlate, plateAspect } from './scene/plate-box.js'
 import { mountEmbedBg } from './scene/embed-bg.js'
 import { sameOriginMediaUrl } from './media-url.js'
 import { sceneTransitionFrames, easingBezier, EASINGS } from './scene/animations.js'
@@ -876,7 +877,8 @@ Alpine.data('lessonGame', (lesson) => ({
         // Derive pan/zoom from the same Ken Burns move a flat scene would have used.
         this._kbIndex = (this._kbIndex || 0) + 1
         let motion = { panX: 0, panY: 0, zoom: 1 }   // Motion off → calm static layers
-        if (this._kbAnimated !== false) {
+        const fit = this._bgFit === 'contain' ? 'contain' : 'cover'
+        if (this._kbAnimated !== false && fit !== 'contain') {   // 'contain' is always static
           const kb = pickKbDirection(this._kbIndex, this._kbNamedDirection)
           // Classic Ken Burns moves SHRINK (1.10 → 1.05); as a layer end-scale that would
           // dip below 1 and expose edges past the 6% bleed. Layers start at scale 1, so
@@ -894,6 +896,9 @@ Alpine.data('lessonGame', (lesson) => ({
           // Library clipart is ArtworkOverlay's (see _renderSceneArtwork), so it is left out here.
           layers: Array.isArray(shot.layers) && shot.layers.length ? shot.layers.filter(l => !isClipartLayer(l)) : null,
           motion,
+          // Whole image: the plate shows whole, letterboxed on the scene's own colour.
+          fit,
+          matte: this._bgMatte || null,
         })
       } catch (e) {
         console.warn('lesson-player: parallax scene failed, falling back to flat', e)
@@ -1325,6 +1330,7 @@ Alpine.data('lessonGame', (lesson) => ({
       this._bgFocus = scene.config?.background_focus || scene.focus || 'center'
       // How the background fills the stage: 'cover' (fill, crop) or 'contain' (whole image, bars).
       this._bgFit = scene.config?.background_fit || scene.background_fit || 'cover'
+      this._bgMatte = scene.background_color || null
 
       // How this scene replaces the one before it (Animate tab). Read before the swap below so
       // _showBgImage / _showFlatColor apply it to whichever layer is coming in.
@@ -1810,6 +1816,8 @@ Alpine.data('lessonGame', (lesson) => ({
     // the text overlay (both full-bleed, above the map stage), so a layer sits where the editor
     // showed it. Any non-voyage scene has no such layers → the host hides itself.
     async _renderSceneArtwork (scene) {
+      // A number, not the scene: Alpine hands back a reactive proxy, never the object stored.
+      const req = this._artReq = (this._artReq || 0) + 1
       const host = document.getElementById('lesson-voyage-art')
       if (!host) return
       const layers = ((scene.shots || [])[0]?.layers || []).filter(l => (l?.url || l?.embed) && isClipartLayer(l))
@@ -1820,6 +1828,12 @@ Alpine.data('lessonGame', (lesson) => ({
       this._artLayer.setOnTop(onTop)
       this._artLayer.setStackLevels(30, 32)   // on the nodes: a z-index on the host would kill blending
       host.style.display = layers.length ? '' : 'none'
+      // Whole image: the figures share the backdrop plate's box (see ParallaxScene), so their x/y
+      // land on the same spot of the drawn floor at any screen shape. Otherwise the whole stage.
+      const cover = ((scene.shots || [])[0]?.layers || []).find(l => l?.url && !isClipartLayer(l))
+      const aspect = (scene.config || {}).background_fit === 'contain' && cover ? await plateAspect(cover.url) : null
+      if (req !== this._artReq) return   // a newer scene took the stage while the plate loaded
+      fitToPlate(host, host.parentElement, aspect)
       // Layers pinned to a place need the map before they are seeded, or the first paint puts
       // them at whatever x/y the editor's camera happened to leave behind. Same projector, same
       // host box, as the text labels above.

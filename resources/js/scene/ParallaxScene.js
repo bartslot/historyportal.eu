@@ -1,5 +1,6 @@
 import { filterMarkup, layerFilterId } from './layer-filters.js'
 import { applyAmbient, trackStage } from './ambient.js'
+import { fitToPlate, plateAspect } from './plate-box.js'
 /**
  * ParallaxScene — multiplane webcomic shot: N depth-sorted layers (E3c).
  *
@@ -161,9 +162,13 @@ export class ParallaxScene {
    *
    * @param {{bgUrl?: string, heroUrl?: string|null, layers?: PlaneSpec[],
    *          motion?: {panX?: number, panY?: number, zoom?: number},
-   *          dof?: {focus?: number, strength?: number}}} shot
+   *          dof?: {focus?: number, strength?: number},
+   *          fit?: 'cover'|'contain', matte?: string|null}} shot
+   *
+   * fit 'contain' ("Whole image") shows the cover plate whole: every plane lives in the plate's
+   * letterboxed box (plate-box.js) on a `matte` colour, and the camera holds still.
    */
-  show ({ bgUrl = null, heroUrl = null, layers = null, motion = null, dof = null } = {}) {
+  show ({ bgUrl = null, heroUrl = null, layers = null, motion = null, dof = null, fit = 'cover', matte = null } = {}) {
     // Classic form requires a background — a hero floating on nothing is never intended.
     const specs = Array.isArray(layers) && layers.length
       ? layers.filter(l => l && l.url)
@@ -177,12 +182,24 @@ export class ParallaxScene {
 
     injectStyles()
     this.destroy()
+    const contain = fit === 'contain'
     if (motion) this._motion = { panX: 0, panY: 0, zoom: 1, ...motion }
+    if (contain) this._motion = { panX: 0, panY: 0, zoom: 1 }
 
     const root = document.createElement('div')
     root.className = 'px-scene'
     root.style.cssText = 'position:absolute;inset:0;overflow:hidden;opacity:0;'
       + `transition:opacity ${FADE_IN_MS}ms ease-in-out;`
+    // The planes' box: the whole stage, or (contain) the plate's letterboxed box on the matte.
+    const plate = contain ? document.createElement('div') : root
+    if (contain) {
+      if (matte) root.style.background = matte
+      plate.className = 'px-plate'
+      plate.style.cssText = 'position:absolute;inset:0;overflow:hidden;'
+      root.appendChild(plate)
+      const coverUrl = specs.find(l => (l.kind ?? 'cover') === 'cover')?.url
+      plateAspect(coverUrl).then(aspect => { if (this._root === root) fitToPlate(plate, root, aspect) })
+    }
 
     this._planes = specs.map((spec, index) => {
       // Depth-of-field: unfocused planes blur with distance, unless explicitly set.
@@ -191,7 +208,7 @@ export class ParallaxScene {
         ? Math.round(Math.abs((spec.depth ?? 1) - (dof.focus ?? 1)) * (dof.strength ?? 3) * 10) / 10
         : 0)
       const el = this._buildPlane({ ...spec, blur }, index)
-      root.appendChild(el)
+      plate.appendChild(el)
       // Free-positioned figures apply their own scale on the img, so the plane's baseScale is 1
       // (parallax pan/zoom only) — otherwise the user scale would be applied twice.
       const positioned = spec.kind === 'figure' && Number.isFinite(spec.x) && Number.isFinite(spec.y)
@@ -218,8 +235,9 @@ export class ParallaxScene {
     const animate = sway && ! prefersReducedMotion()
 
     if (kind === 'cover') {
-      // Bleed grows with depth: a foreground plane pans depth× as far.
-      const bleed = LAYER_BLEED_PCT * Math.max(1, depth)
+      // Bleed grows with depth: a foreground plane pans depth× as far. A still camera needs none,
+      // and any bleed there only enlarges the picture past its own framing.
+      const bleed = isStill(this._motion) ? 0 : LAYER_BLEED_PCT * Math.max(1, depth)
       layer.className = 'px-layer px-layer-bg'
       layer.style.cssText = `position:absolute;inset:-${bleed}%;will-change:transform;`
       const img = document.createElement('img')
@@ -321,6 +339,7 @@ export class ParallaxScene {
   destroy () {
     this._stageObserver?.disconnect()
     this._stageObserver = null
+    this._root?.querySelector('.px-plate')?.__plateObserver?.disconnect()
     if (this._root) this._root.remove()
     this._root = null
     this._bgLayer = null
@@ -347,6 +366,11 @@ function ambientWrap (img, spec, index) {
   applyAmbient(wrap, spec, index)
 
   return wrap
+}
+
+/** No pan, no zoom: the camera holds still for the whole shot. */
+export function isStill ({ panX = 0, panY = 0, zoom = 1 } = {}) {
+  return Math.abs(panX) < 0.01 && Math.abs(panY) < 0.01 && Math.abs(zoom - 1) < 0.001
 }
 
 function applyTransform (layer, { translateX, translateY, scale }) {

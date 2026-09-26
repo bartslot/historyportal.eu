@@ -3,6 +3,7 @@ import { Avatar3DPlayer } from '../avatar-3d.js'
 import { isTopAnchored, normalizeFit, PORTRAIT_TOP_BIAS } from './background-fit.js'
 import { mountEmbedBg, embedBgSignature } from './embed-bg.js'
 import { isClipartLayer } from './layer-filters.js'
+import { fitToPlate, plateAspect } from './plate-box.js'
 
 /**
  * Push every alignment entry earlier by VISEME_LEAD_SECONDS. The avatar player
@@ -834,7 +835,8 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     // Ken Burns direction → ParallaxScene motion, so the ANIMATED + direction settings drive
     // the background pan/zoom on layered scenes too (not just flat ones). Static when off.
     const kbMotion = (payload) => {
-        if (payload.kbAnimated === false) return { panX: 0, panY: 0, zoom: 1 }
+        // 'contain' is always static, as on a flat scene: a pan would crop the whole-image view.
+        if (payload.kbAnimated === false || normalizeFit(payload.fit) === 'contain') return { panX: 0, panY: 0, zoom: 1 }
         switch (payload.kbDirection) {
             case 'left_right': return { panX: 6, panY: 0, zoom: 1.03 }
             case 'right_left': return { panX: -6, panY: 0, zoom: 1.03 }
@@ -962,13 +964,15 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             // Strip the ?v=<updated_at> cache-buster: it changes on EVERY scene save (a caption
             // toggle, a script edit), which would otherwise force a bg re-fade = flicker.
             const stripV = (u) => String(u || '').split('?')[0]
-            const bgSig = JSON.stringify([bgLayers.map(l => stripV(l.url)), motion, animated])
+            const fit = normalizeFit(payload.fit)
+            const matte = payload.backgroundColor || null
+            const bgSig = JSON.stringify([bgLayers.map(l => stripV(l.url)), motion, animated, fit, matte])
             if (bgSig !== _bgSig || !_wizardLayeredScene) {
                 _bgSig = bgSig
                 if (_wizardLayeredRaf) { cancelAnimationFrame(_wizardLayeredRaf); _wizardLayeredRaf = 0 }
                 if (_wizardLayeredScene) { try { _wizardLayeredScene.destroy() } catch (_) {} }
                 _wizardLayeredScene = new _parallaxMod.ParallaxScene(host)
-                _wizardLayeredScene.show({ layers: bgLayers.length ? bgLayers : layers, motion })
+                _wizardLayeredScene.show({ layers: bgLayers.length ? bgLayers : layers, motion, fit, matte })
                 if (animated) {
                     // Ping-pong so the pan/zoom previews in a loop (playback drives it monotonically).
                     const CYCLE_MS = 12000, start = performance.now()
@@ -991,6 +995,12 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
 
             const mode = payload.slideshowMode || (parallax ? 'parallax' : 'standard')
             const artHost = wizardArtworkHost()
+            // Whole image: the figures share the plate's box, so their x/y stay on the drawn floor.
+            if (artHost) {
+                const aspect = fit === 'contain' ? await plateAspect(bgLayers[0]?.url) : null
+                if (!isCurrent()) return false
+                fitToPlate(artHost, canvasEl.parentElement, aspect)
+            }
 
             if (mode === 'drawing' && artHost && artLayers.length) {
                 // Drawing mode: each clipart draws itself stroke-by-stroke (looped preview). Not
