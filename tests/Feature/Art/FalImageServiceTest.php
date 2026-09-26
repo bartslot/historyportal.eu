@@ -144,6 +144,17 @@ class FalImageServiceTest extends TestCase
         });
     }
 
+    public function test_fixed_model_input_is_sent_with_every_call(): void
+    {
+        $this->fakeFal();
+
+        app(FalImageService::class)->edit('fal-ai/nano-banana-pro/edit', 'x', ['https://src.test/a.jpg'], 4096, 4096, 'bakeoff');
+
+        Http::assertSent(fn (Request $r) => $r->method() === 'POST'
+            && ($r->data()['resolution'] ?? null) === '4K'
+            && ($r->data()['aspect_ratio'] ?? null) === '1:1');
+    }
+
     public function test_aspect_ratio_models_get_the_nearest_ratio_instead_of_pixels(): void
     {
         $this->fakeFal();

@@ -31,7 +31,7 @@ class ArtBakeoffCommandTest extends TestCase
             'art.poll_seconds' => 0,
             'art.budget_usd' => 17.0,
             'art.anchors' => ['people' => "{$this->dir}/people.png", 'environment' => "{$this->dir}/environment.png"],
-            'art.bakeoff_models' => ['fal-ai/bytedance/seedream/v4.5/edit', 'fal-ai/flux-pro/kontext/max/multi', 'fal-ai/nano-banana/edit'],
+            'art.bakeoff_models' => ['fal-ai/bytedance/seedream/v4.5/edit', 'fal-ai/flux-pro/kontext/max/multi', 'fal-ai/nano-banana-pro/edit'],
         ]);
     }
 
@@ -57,7 +57,7 @@ class ArtBakeoffCommandTest extends TestCase
 
         $this->artisan('art:bakeoff', ['--dry-run' => true, '--source' => "{$this->dir}/source.png"])
             ->expectsOutputToContain('no price: skipped')
-            ->expectsOutputToContain('Total: $0.24')
+            ->expectsOutputToContain('Total: $1.02')
             ->assertSuccessful();
 
         Http::assertNothingSent();

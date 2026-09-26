@@ -35,7 +35,7 @@ final class FalImageService
     /** Text → image. Returns image bytes. */
     public function generate(string $model, string $prompt, int $w, int $h, string $purpose, array $meta = [], array $extra = []): string
     {
-        $input = array_merge(['prompt' => $prompt, 'num_images' => 1], $this->sizeInput($model, $w, $h), $extra);
+        $input = array_merge(['prompt' => $prompt, 'num_images' => 1], $this->sizeInput($model, $w, $h), $this->modelInput($model), $extra);
 
         return $this->firstImage($this->run($model, $input, $purpose, $meta));
     }
@@ -52,6 +52,7 @@ final class FalImageService
         $input = array_merge(
             ['prompt' => $prompt, 'image_urls' => array_map(fn (string $r) => $this->asUrl($r), array_values($refs)), 'num_images' => 1],
             $this->sizeInput($model, $w, $h),
+            $this->modelInput($model),
             $extra,
         );
 
@@ -119,6 +120,11 @@ final class FalImageService
         uasort($ratios, fn (float $a, float $b) => abs($a - $target) <=> abs($b - $target));
 
         return ['aspect_ratio' => array_key_first($ratios)];
+    }
+
+    private function modelInput(string $model): array
+    {
+        return (array) ((config('art.model_input') ?? [])[$model] ?? []);
     }
 
     private function asUrl(string $ref): string

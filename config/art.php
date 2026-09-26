@@ -31,7 +31,8 @@ return [
     'bakeoff_models' => [
         'fal-ai/bytedance/seedream/v4.5/edit',
         'fal-ai/flux-pro/kontext/max/multi',
-        'fal-ai/nano-banana/edit',
+        // Pro, not plain nano-banana: the plain one outputs ~1K whatever size is asked for.
+        'fal-ai/nano-banana-pro/edit',
     ],
 
     // USD per output image, from each model's fal page (2026-09-25). A model without a
@@ -40,7 +41,8 @@ return [
         'fal-ai/bytedance/seedream/v4.5/text-to-image' => 0.04,
         'fal-ai/bytedance/seedream/v4.5/edit' => 0.04,
         'fal-ai/nano-banana/edit' => 0.039,
-        'fal-ai/nano-banana-pro/edit' => 0.15, // 4K output is billed double
+        // $0.15 base, billed double at 4K — and model_input below always asks for 4K.
+        'fal-ai/nano-banana-pro/edit' => 0.30,
     ],
 
     // How each model takes its output size. Default 'image_size' = {width,height}.
@@ -48,6 +50,11 @@ return [
         'fal-ai/flux-pro/kontext/max/multi' => 'aspect_ratio',
         'fal-ai/nano-banana/edit' => 'aspect_ratio',
         'fal-ai/nano-banana-pro/edit' => 'aspect_ratio',
+    ],
+
+    // Fixed extra input per model, sent with every call (the caller's $extra still wins).
+    'model_input' => [
+        'fal-ai/nano-banana-pro/edit' => ['resolution' => '4K'],
     ],
 
     // Global ceiling across ALL fal art calls ever recorded in fal_ledger.
