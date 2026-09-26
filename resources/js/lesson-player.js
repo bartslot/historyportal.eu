@@ -1349,19 +1349,35 @@ Alpine.data('lessonGame', (lesson) => ({
         return
       }
 
-      // Narrator is a flat 2D portrait badge — play the scene audio directly.
-      // Every handler is gated on `a` still being the CURRENT track: if the student jumps away
-      // mid-sentence, this element is discarded and must not advance the queue behind them.
+      // Narrator is a flat 2D portrait badge — play the scene audio directly; its end moves on.
+      this._startNarration(scene, { onEnded: () => this._afterSceneAudio(index, scene) })
+    },
+
+    /**
+     * The ONE way a scene's narration starts, whatever the scene kind: a fresh track with the
+     * chosen volume, subtitles/script tags wired to it, and every handler gated on the track still
+     * being the CURRENT one — a student who jumps away mid-sentence discards it, and it must not
+     * pace or advance anything behind them.
+     *
+     * @param {object} scene has audio_url + script
+     * @param {{ onDuration?: (sec:number)=>void, onEnded?: ()=>void }} [hooks]
+     *   onDuration: the track's real length is known (pace a map tour / slideshow against it).
+     *   onEnded: the narration finished — only for scenes the VOICE paces (story, game intro).
+     *   A voice-over (map, voyage, gallery) leaves it off: the class moves on with Continue.
+     */
+    _startNarration (scene, { onDuration = null, onEnded = null } = {}) {
       const a = this._audio = new Audio(scene.audio_url)
       this._attachAudioListeners()
       this._lastEventIndex = 0
       a.addEventListener('loadedmetadata', () => {
         if (this._audio !== a) return
         this._scriptEvents = parseScriptTags(scene.script, a.duration)
+        if (onDuration) onDuration(a.duration)
       })
       a.addEventListener('timeupdate', () => { if (this._audio === a) this._processScriptEvents() })
-      a.addEventListener('ended', () => { if (this._audio === a) this._afterSceneAudio(index, scene) }, { once: true })
+      if (onEnded) a.addEventListener('ended', () => { if (this._audio === a) onEnded() }, { once: true })
       a.play().catch(e => console.warn('lesson-player: autoplay blocked', e))
+      return a
     },
 
     // ── Game scene (quiz / strategy / debate) ──────────────────────────
@@ -1375,17 +1391,7 @@ Alpine.data('lessonGame', (lesson) => ({
         this._showFlatColor(scene.background_color)
       }
       if (scene.audio_url) {
-        // Same discipline as _playScene: a discarded track must not start the quiz behind the student.
-        const a = this._audio = new Audio(scene.audio_url)
-        this._attachAudioListeners()
-        this._lastEventIndex = 0
-        a.addEventListener('loadedmetadata', () => {
-          if (this._audio !== a) return
-          this._scriptEvents = parseScriptTags(scene.script, a.duration)
-        })
-        a.addEventListener('timeupdate', () => { if (this._audio === a) this._processScriptEvents() })
-        a.addEventListener('ended', () => { if (this._audio === a) this._afterSceneAudio(index, scene) }, { once: true })
-        a.play().catch(e => console.warn('lesson-player: autoplay blocked', e))
+        this._startNarration(scene, { onEnded: () => this._afterSceneAudio(index, scene) })
       } else {
         this._afterSceneAudio(index, scene)   // no narration → begin the quiz/challenge now
       }
@@ -1443,19 +1449,10 @@ Alpine.data('lessonGame', (lesson) => ({
       // audio, so this must not be wired to _afterSceneAudio or it would advance the queue twice.
       // Without this the script authored for a map scene was generated and stored but never heard.
       if (scene.audio_url) {
-        const a = this._audio = new Audio(scene.audio_url)
-        this._attachAudioListeners()
-        this._lastEventIndex = 0
-        a.addEventListener('loadedmetadata', () => {
-          if (this._audio !== a) return
-          this._scriptEvents = parseScriptTags(scene.script, a.duration)
-          // Walk the camera through the focus cities in the order the script names them, paced to
-          // this narration. Started here rather than at mount because the pacing needs the duration,
-          // and MapLibre needs the style up before it will ease anywhere.
-          this._startMapItinerary(a.duration * 1000)
-        })
-        a.addEventListener('timeupdate', () => { if (this._audio === a) this._processScriptEvents() })
-        a.play().catch(e => console.warn('lesson-player: autoplay blocked', e))
+        // Walk the camera through the focus cities in the order the script names them, paced to
+        // this narration. Started once the duration is known rather than at mount because the
+        // pacing needs it, and MapLibre needs the style up before it will ease anywhere.
+        this._startNarration(scene, { onDuration: (sec) => this._startMapItinerary(sec * 1000) })
       } else {
         this._startMapItinerary(null)   // no narration — the itinerary's own natural pace
       }
@@ -1491,17 +1488,7 @@ Alpine.data('lessonGame', (lesson) => ({
       // _startVoyageAuto), not by the length of the audio, so the track must never advance
       // the queue. Without this the narration authored for each leg was generated and stored
       // but never heard.
-      if (scene.audio_url) {
-        const a = this._audio = new Audio(scene.audio_url)
-        this._attachAudioListeners()
-        this._lastEventIndex = 0
-        a.addEventListener('loadedmetadata', () => {
-          if (this._audio !== a) return
-          this._scriptEvents = parseScriptTags(scene.script, a.duration)
-        })
-        a.addEventListener('timeupdate', () => { if (this._audio === a) this._processScriptEvents() })
-        a.play().catch(e => console.warn('lesson-player: autoplay blocked', e))
-      }
+      if (scene.audio_url) this._startNarration(scene)
       if (!window.renderVoyageTour) {
         try {
           await import('./voyage-tour.js')
@@ -1625,14 +1612,21 @@ Alpine.data('lessonGame', (lesson) => ({
     },
 
     // ── Image gallery (kind 'gallery') — auto-cycling slideshow, Next/Previous to leave ──
+    //
+    // Narrated like a map block: a VOICE-OVER (subtitles and all) with Continue to leave, not wired
+    // to _afterSceneAudio. And paced like the map's itinerary: once the narration's length is known
+    // the images spread across it, instead of a fixed 5 s cycle that ran out long before the voice.
+    // It used to stop the audio and never start its own, so the narration was generated but unheard.
     _playGalleryScene (index, scene) {
-      if (this._audio && !this._audio.paused) { this._audio.pause(); this.audioPlaying = false }
       const cfg = scene.config || {}
       const stage = document.getElementById('lesson-map-stage')
       if (!stage) { this._advanceScene(index); return }
       stage.style.display = 'block'
       stage.innerHTML = ''
-      _galleryInstance = renderGallery(stage, cfg)
+      const gallery = _galleryInstance = renderGallery(stage, cfg)
+      if (scene.audio_url) {
+        this._startNarration(scene, { onDuration: (sec) => { if (_galleryInstance === gallery) gallery.pace(sec * 1000) } })
+      }
       this.showMapContinue = true
     },
 

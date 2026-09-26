@@ -9,9 +9,12 @@
 // opts.startIndex opens the slideshow on a specific image (e.g. the thumbnail the user clicked).
 // opts.editable (wizard only) makes the date/title/story contenteditable; opts.onEdit(field, value)
 // fires on blur with the new text so the caller can persist it (student player leaves both off).
-// Returns a handle whose destroy() stops the interval and clears the host.
+// Returns a handle whose destroy() stops the interval and clears the host, and whose pace(totalMs)
+// stretches the slideshow over the scene's narration.
 
 const CYCLE_MS = 5000;
+// Floor for a narration-paced cycle: many images over a short voice must still be seen, not flicker.
+const MIN_PACED_CYCLE_MS = 2500;
 
 // Escape user text before injecting into innerHTML (title/date/story come from the DB).
 const esc = (s) => String(s == null ? '' : s)
@@ -89,14 +92,26 @@ export function renderGallery(el, cfg = {}, { startIndex = 0, editable = false, 
     cursor++;
   };
   show();
-  let timer = images.length > 1 ? setInterval(show, CYCLE_MS) : null;
+  let cycleMs = CYCLE_MS;
+  let timer = images.length > 1 ? setInterval(show, cycleMs) : null;
   // Auto-cycle only makes sense with 2+ images — keep the interval in sync when the set changes live.
   const syncTimer = () => {
-    if (images.length > 1 && !timer) timer = setInterval(show, CYCLE_MS);
+    if (images.length > 1 && !timer) timer = setInterval(show, cycleMs);
     else if (images.length <= 1 && timer) { clearInterval(timer); timer = null; }
   };
 
   return {
+    /**
+     * Spread the images evenly over `totalMs` (the scene's narration): image i appears at
+     * i * totalMs / n, so the last one is on screen as the voice finishes. The player calls this
+     * once the audio reports its length; without it the fixed 5 s cycle stands.
+     */
+    pace(totalMs) {
+      if (!(Number(totalMs) > 0) || images.length < 2) return;
+      cycleMs = Math.max(MIN_PACED_CYCLE_MS, Number(totalMs) / images.length);
+      if (timer) clearInterval(timer);
+      timer = setInterval(show, cycleMs);
+    },
     destroy() {
       if (timer) clearInterval(timer);
       el.innerHTML = '';
