@@ -62,6 +62,15 @@ class SvgAsset extends Model
         return Storage::disk('public')->url($this->svg_path);
     }
 
+    /**
+     * A painted pack (art:make webp/png) rather than an SVG. Rasters are shown as the picture
+     * they are: never inverted or tinted through a mask the way black SVG line art is.
+     */
+    public function isRaster(): bool
+    {
+        return in_array(strtolower(pathinfo($this->svg_path, PATHINFO_EXTENSION)), ['webp', 'png'], true);
+    }
+
     /** Short human credit line, e.g. "Jane Roe — CC BY-SA 4.0 (Wikimedia Commons)". */
     public function credit(): string
     {

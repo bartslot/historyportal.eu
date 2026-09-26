@@ -472,6 +472,21 @@
     animation: lp-shimmer 3s linear infinite;
 }
 
+/* ─── Paper tile: the ground line art is judged on ─────────────────────
+   The house illustrations are black ink on white or transparent. On the dark app chrome they
+   need a sheet of paper under them, and a faint check so a transparent ground reads as
+   transparent rather than as white. */
+:root {
+    --lp-paper: oklch(96.5% 0.012 85);
+    --lp-paper-check: oklch(0% 0 0 / 0.05);
+}
+.lp-paper {
+    background-color: var(--lp-paper);
+    background-image: conic-gradient(var(--lp-paper-check) 25%, transparent 0 50%, var(--lp-paper-check) 0 75%, transparent 0);
+    background-size: 14px 14px;
+    color: oklch(20% 0.02 264);
+}
+
 /* ─── Film grain overlay (add class to any section / card) ───────────── */
 .lp-grain {
     position: relative;

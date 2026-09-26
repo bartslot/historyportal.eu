@@ -436,6 +436,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/dashboard', function () {
         return view('admin.dashboard', [
             'narratorCount' => Narrator::count(),
+            'artCount' => \App\Models\SvgAsset::query()->bundled()->where('source', 'bundled')->count(),
         ]);
     })->name('dashboard');
 
@@ -454,6 +455,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 
     // Story catalog review queue (draft → reviewed → published)
     Route::get('/stories', \App\Livewire\Admin\StoryReview::class)->name('stories.review');
+
+    // The shared art library (bundled svg_assets): what ships, and how often lessons reuse it.
+    Route::get('/art', \App\Livewire\Admin\ArtLibrary::class)->name('art');
 
     // Toggle active status
     Route::patch('/narrators/{narrator}/toggle', function (Narrator $narrator) {
