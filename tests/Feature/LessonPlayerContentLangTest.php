@@ -12,32 +12,49 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * The player chrome speaks the interface locale; the lesson speaks its own language. A screen
- * reader must read Dante's Italian as Italian, even for a visitor whose interface is English.
+ * The player speaks the LESSON's language: an Italian lesson shows Italian buttons, quiz screens,
+ * pause and score screens, whatever the visitor's interface language is, because the class in
+ * front of it is following an Italian lesson. A lesson in a language the interface doesn't ship
+ * keeps the visitor's interface language.
  */
 class LessonPlayerContentLangTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_lesson_content_carries_the_lesson_language_and_html_keeps_the_ui_locale(): void
+    private function playerHtml(string $language): string
     {
         app()->setLocale('en');
         $lesson = Lesson::factory()->create([
             'teacher_id' => User::factory()->teacher(),
             'status' => LessonStatus::Published->value,
-            'language' => 'it',
+            'language' => $language,
         ]);
         Scene::create(['lesson_id' => $lesson->id, 'order' => 1, 'kind' => 'narration', 'status' => 'ready']);
 
-        $html = $this->get(route('lesson.play', ['lessonCode' => $lesson->lesson_code]))
+        return $this->withHeader('Accept-Language', 'en')
+            ->get(route('lesson.play', ['lessonCode' => $lesson->lesson_code]))
             ->assertOk()
             ->getContent();
+    }
 
-        $this->assertMatchesRegularExpression('/<html lang="en"/', $html);
+    public function test_an_italian_lesson_renders_the_whole_player_in_italian(): void
+    {
+        $html = $this->playerHtml('it');
+
+        $this->assertMatchesRegularExpression('/<html lang="it"/', $html);
+        $this->assertStringContainsString('Inizia la lezione', $html);        // title screen (Blade)
+        $this->assertStringContainsString('Quiz in pausa', $html);            // pause screen (JS dictionary)
+        $this->assertStringContainsString('Entra in classifica', $html);      // score screen leaderboard
         foreach (['lesson-text-overlay', 'lesson-game-overlay', 'lesson-map-stage'] as $id) {
             $this->assertMatchesRegularExpression("/id=\"{$id}\" lang=\"it\"/", $html, "#{$id} must be lang=it");
         }
-        $this->assertMatchesRegularExpression('/x-text="captionText" lang="it"/', $html);
-        $this->assertMatchesRegularExpression('/<h1 lang="it"/', $html);
+    }
+
+    public function test_a_lesson_in_an_unshipped_language_keeps_the_visitors_interface_language(): void
+    {
+        $html = $this->playerHtml('es');
+
+        $this->assertMatchesRegularExpression('/<html lang="en"/', $html);
+        $this->assertStringNotContainsString('Entra in classifica', $html);
     }
 }

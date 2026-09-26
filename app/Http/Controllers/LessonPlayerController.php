@@ -7,7 +7,10 @@ namespace App\Http\Controllers;
 use App\Enums\LessonStatus;
 use App\Models\Lesson;
 use App\Models\StrategyGame;
+use App\Support\Locales;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\View\View;
 
@@ -60,6 +63,13 @@ class LessonPlayerController extends Controller
 
         if (! $lesson) {
             abort(404, 'Lesson not found or not yet published.');
+        }
+
+        // The player speaks the LESSON's language (buttons, quiz, pause and score screens), not the
+        // visitor's: the class is following an Italian lesson. Unshipped languages keep the UI locale.
+        if (Locales::isSupported($lesson->language)) {
+            App::setLocale($lesson->language);
+            Carbon::setLocale($lesson->language);
         }
 
         $translations = $lesson->translations();

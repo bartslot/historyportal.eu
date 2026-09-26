@@ -12,9 +12,10 @@
     <x-js-lang />
 </head>
 <body class="h-full overflow-hidden bg-[#020617]">
-{{-- <html lang> is the INTERFACE locale (the chrome is translated into it). The lesson itself is
-     written in its own language, so every surface that shows lesson content carries that one, or a
-     screen reader reads Dante's Italian with a Dutch voice. --}}
+{{-- LessonPlayerController switches the locale to the lesson's language when the interface ships
+     it, so <html lang>, the chrome and the JS strings all speak the lesson's language. Content
+     surfaces still carry the lesson language explicitly: for a lesson in a language the interface
+     doesn't ship, the chrome stays in the visitor's locale while the content is read correctly. --}}
 @php $contentLang = $lesson->language ?: str_replace('_', '-', app()->getLocale()); @endphp
 
 {{-- ── Lesson data passed to JS ────────────────────────────────────────────── --}}
