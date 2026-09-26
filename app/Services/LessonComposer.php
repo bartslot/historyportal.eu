@@ -116,6 +116,7 @@ class LessonComposer
         // The spec owns the structure — rebuild every scene (and its questions) on each run.
         $lesson->quizQuestions()->delete();
         $lesson->scenes()->forceDelete();
+        $this->clearSceneCopies($lesson, $spec);
 
         $this->say("Building '{$lesson->title}' ({$lesson->lesson_code})…");
 
@@ -155,6 +156,44 @@ class LessonComposer
         $this->assignPoster($lesson, $spec);
 
         return $lesson->fresh();
+    }
+
+    /**
+     * Delete the files the previous build copied in for its scenes: `scenes/` (backgrounds, audio,
+     * keyed by scene ids that no longer exist) and `gallery/`. Everything else under the lesson
+     * (narration-cache/, paintings/, ...) stays, and so does any file the spec itself still names,
+     * since an exported spec carries the paths of the scene it was exported from.
+     *
+     * @param  array<string,mixed>  $spec
+     */
+    private function clearSceneCopies(Lesson $lesson, array $spec): void
+    {
+        $disk = Storage::disk('public');
+        $named = json_encode($spec, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_IGNORE) ?: '';
+
+        foreach (['scenes', 'gallery'] as $dir) {
+            $root = "lessons/{$lesson->id}/{$dir}";
+            $kept = false;
+            foreach ($disk->allFiles($root) as $file) {
+                if (str_contains($named, $file)) {
+                    $kept = true;
+
+                    continue;
+                }
+                $disk->delete($file);
+            }
+            if (! $kept) {
+                $disk->deleteDirectory($root);
+
+                continue;
+            }
+            // Drop the folders the deletes emptied.
+            foreach (array_reverse($disk->allDirectories($root)) as $sub) {
+                if ($disk->allFiles($sub) === []) {
+                    $disk->deleteDirectory($sub);
+                }
+            }
+        }
     }
 
     /**

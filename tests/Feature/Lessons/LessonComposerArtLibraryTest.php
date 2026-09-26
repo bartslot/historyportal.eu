@@ -194,6 +194,42 @@ class LessonComposerArtLibraryTest extends TestCase
         $this->assertSame('https://example.test/one.jpg', $images[1]['url']);
     }
 
+    public function test_recompose_clears_the_previous_scene_copies_only(): void
+    {
+        $this->libraryAsset('history-line/backdrops/florence/firenze-strada', 'webp');
+        $this->libraryAsset('history-line/backdrops/commedia/dore-inferno', 'webp');
+        $spec = [
+            ['type' => 'story', 'backdrop' => 'history-line/backdrops/florence/firenze-strada'],
+            ['type' => 'gallery', 'images' => ['asset:history-line/backdrops/commedia/dore-inferno']],
+        ];
+
+        $first = $this->compose($spec[0]);
+        $disk = Storage::disk('public');
+        $lessonDir = "lessons/{$first->lesson_id}";
+        $disk->put("{$lessonDir}/narration-cache/abc.mp3", 'audio');
+        $disk->put("{$lessonDir}/paintings/kept.jpg", 'painting');
+        $disk->put("{$lessonDir}/gallery/stale.webp", 'stale');
+        // A path an exported spec still points at survives, even inside the cleared folders.
+        $disk->put("{$lessonDir}/scenes/999/upload.png", 'referenced');
+
+        $second = app(LessonComposer::class)->build([
+            'key' => 'Art library test',
+            'scenes' => [
+                $spec[0] + ['shots' => [['order' => 0, 'layers' => [['asset_id' => 1, 'path' => "{$lessonDir}/scenes/999/upload.png"]]]]],
+                $spec[1],
+            ],
+        ], $this->teacher, narrate: false)->scenes()->orderBy('order')->firstOrFail();
+
+        $this->assertSame($first->lesson_id, $second->lesson_id);
+        $disk->assertMissing("{$lessonDir}/scenes/{$first->id}");
+        $disk->assertExists($second->image_path);
+        $disk->assertExists("{$lessonDir}/narration-cache/abc.mp3");
+        $disk->assertExists("{$lessonDir}/paintings/kept.jpg");
+        $disk->assertExists("{$lessonDir}/scenes/999/upload.png");
+        $disk->assertMissing("{$lessonDir}/gallery/stale.webp");
+        $disk->assertExists("{$lessonDir}/gallery/dore-inferno.webp");
+    }
+
     public function test_an_unknown_gallery_asset_fails_loudly(): void
     {
         $this->expectException(\InvalidArgumentException::class);
