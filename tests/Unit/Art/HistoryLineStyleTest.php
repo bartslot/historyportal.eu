@@ -20,9 +20,9 @@ class HistoryLineStyleTest extends TestCase
     }
 
     #[DataProvider('prompts')]
-    public function test_every_prompt_forbids_shading_and_hatching(string $prompt): void
+    public function test_every_prompt_carries_the_controlled_hatching_rule(string $prompt): void
     {
-        foreach (['No shading', 'No hatching', 'No cross-hatching', 'No solid black fills'] as $rule) {
+        foreach (['10 to 14% black coverage', 'single-direction hatching for medium shadows', 'no more than 20% of the shaded area', '65 to 75% white space', 'No solid black fills'] as $rule) {
             $this->assertStringContainsString($rule, $prompt);
         }
     }
@@ -30,7 +30,7 @@ class HistoryLineStyleTest extends TestCase
     #[DataProvider('prompts')]
     public function test_no_prompt_carries_the_old_style_language(string $prompt): void
     {
-        foreach (['crosshatch', 'halftone shading', 'etching', 'engraved', 'sumi-e', '% black'] as $old) {
+        foreach (['dense crosshatching', 'halftone shading', 'etching', 'engraved', 'sumi-e', 'copperplate'] as $old) {
             $this->assertStringNotContainsStringIgnoringCase($old, $prompt);
         }
     }

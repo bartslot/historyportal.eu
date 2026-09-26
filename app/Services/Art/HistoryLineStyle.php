@@ -6,8 +6,8 @@ namespace App\Services\Art;
 
 /**
  * The ONE History Portal illustration style and the single source of its prompt text.
- * Line only, black on white, no tonal shading. Never add hatching words here: the old
- * multi-style experiments (etching, engraved, sumi-e ink) are what this replaces.
+ * Fine black ink line on white, shading only by controlled line hatching (Bart's prompt, 2026-09-26).
+ * Never add dense cross-hatching / engraving language: the old etching, engraved and sumi-e styles are what this replaces.
  */
 final class HistoryLineStyle
 {
@@ -16,13 +16,16 @@ final class HistoryLineStyle
     public const VERSION = 'history-line@1';
 
     public const BASE = 'Clean black-and-white historical comic line drawing. High-contrast black lines on white. '
-        .'Preserve accurate silhouettes, proportions, poses, architecture, vehicles, ships, animals and important historical objects. '
+        .'Preserve accurate shapes, proportions, poses, architecture, vehicles, ships, animals and important historical objects. '
         .'Use clear outer contours and only essential interior construction lines. '
         .'Keep useful structural detail in people, clothing, faces, equipment and architecture. '
         .'Simplify landscape, terrain, vegetation, water, sky and distant elements into broad readable shapes with fewer lines. '
-        .'Outlines only: every shape is drawn as a black contour with white paper inside it. '
-        .'No solid black fills, no silhouettes, no black masses, no spot blacks. '
-        .'No shading. No hatching. No cross-hatching. No grey wash. No halftone. No graphite texture. '
+        // Shading rule from Bart's own prompt behind the reference images (2026-09-26). It replaces the
+        // earlier "no hatching at all" wording: controlled hatching is the look, dense engraving is not.
+        .'Add approximately 10 to 14% black coverage, built from lines and never from solid fills. '
+        .'Use single-direction hatching for medium shadows and no more than two intersecting directions for deep shadows. '
+        .'Keep 65 to 75% white space. Cross-hatching should occupy no more than 20% of the shaded area. '
+        .'No solid black fills, no silhouettes, no black masses. No grey wash. No halftone. No graphite texture. '
         .'No decorative micro-detail. No synthetic texture. Keep large areas white and visually quiet. '
         .'If an object is ambiguous, simplify it rather than inventing detail.';
 
