@@ -40,7 +40,7 @@ def main() -> None:
     cam = json.loads(args.camera.read_text())
     bg = Image.open(args.bg).convert("RGB")
     k = OUT_W / bg.width
-    bg = bg.resize((OUT_W, round(bg.height * k)), Image.LANCZOS)
+    bg = bg.resize((OUT_W, round(bg.height * k) // 2 * 2), Image.LANCZOS)   # even height: H.264 needs it
     masters = [Image.open(args.frames / f"frame_{i}.png").convert("RGBA") for i in range(DRAWINGS)]
     (x0, y0), (x1, y1) = (tuple(float(v) for v in s.split(",")) for s in (args.start, args.end))
     dist = ((x1 - x0) ** 2 + (y1 - y0) ** 2) ** 0.5
