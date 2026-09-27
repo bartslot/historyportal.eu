@@ -148,7 +148,18 @@ def camera(sc, name, loc, yaw_deg=0.0, pitch_deg=0.0, lens=LENS, shift_y=None, f
     return cam
 
 
-def mannequin(c, name, loc, yaw_deg=0.0, height=1.70, seated=False, seat_h=0.46):
+def costume(rgb):
+    """A flat matte colour for a mannequin: the paint pass is told which colour is which character."""
+    name = "costume_%02x%02x%02x" % tuple(round(v * 255) for v in rgb)
+    m = bpy.data.materials.get(name)
+    if not m:
+        m = bpy.data.materials.new(name); m.use_nodes = True
+        b = m.node_tree.nodes["Principled BSDF"]; b.inputs["Base Color"].default_value = (*rgb, 1)
+        b.inputs["Roughness"].default_value = 0.9
+    return m
+
+
+def mannequin(c, name, loc, yaw_deg=0.0, height=1.70, seated=False, seat_h=0.46, rgb=None, shin_h=None):
     """Blocking figure from primitives; faces +y at yaw 0. Not rendered in background passes."""
     s = height / 1.70
     ps = []
@@ -156,7 +167,8 @@ def mannequin(c, name, loc, yaw_deg=0.0, height=1.70, seated=False, seat_h=0.46)
     if seated:
         hip = seat_h + 0.10 * s
         ps.append(box(c, name + "_thighs", (0.34 * s, 0.46 * s, 0.14 * s), (0, 0.18 * s, seat_h + 0.07 * s), "figure"))
-        ps.append(box(c, name + "_shins", (0.30 * s, 0.12 * s, seat_h), (0, 0.40 * s, seat_h / 2), "figure"))
+        shin = shin_h or seat_h        # shin_h: legs hang from a saddle instead of reaching the floor
+        ps.append(box(c, name + "_shins", (0.30 * s, 0.12 * s, shin), (0, 0.40 * s, seat_h - shin / 2), "figure"))
     else:
         hip = 0.90 * s
         for sx in (-1, 1):
@@ -167,6 +179,8 @@ def mannequin(c, name, loc, yaw_deg=0.0, height=1.70, seated=False, seat_h=0.46)
     ps.append(head)
     ps.append(box(c, name + "_nose", (0.04, 0.06, 0.04), (0, 0.11 * s, hip + 0.74 * s), "figure"))
     o = join(ps, name)
+    if rgb:
+        o.data.materials.clear(); o.data.materials.append(costume(rgb))
     o["part"] = "figure"; o["height_m"] = height; o["seated"] = seated
     o["head_m"] = [round(x, 3), round(y, 3), round(z + hip + 0.74 * s, 3)]
     o.location = (x, y, z); o.rotation_euler = (0, 0, math.radians(yaw_deg))
@@ -232,7 +246,16 @@ def render_shot(sc, cam, outdir, shot, meta=None, blocking=True, figures=None, h
         _sun(sc); sc.render.engine = 'BLENDER_EEVEE'; sc.render.use_freestyle = False
         _set_world(sc, tuple(sc.get("sky_rgb", (0.78, 0.82, 0.88))))   # a pack may darken the fill for deep shadows
         sc.view_settings.view_transform = 'AgX'
+        for k, v in (("use_gtao", True), ("use_raytracing", True), ("use_shadows", True)):
+            if hasattr(sc.eevee, k):   # ambient occlusion + ray-traced contact shadows: nothing floats (Bart)
+                setattr(sc.eevee, k, v)
         sc.render.filepath = p("shaded"); bpy.ops.render.render(write_still=True, scene=sc.name)
+        if any(o.get("part") == "figure" for o in objs(sc)) and figures != []:
+            # the same frame with the costume-coloured mannequins: the paint pass turns each colour into
+            # its character, at the right size and perspective (comic panels, 2026-09-27)
+            _figures_visible(sc, True, figures)
+            sc.render.filepath = p("shadedfig"); bpy.ops.render.render(write_still=True, scene=sc.name)
+            _figures_visible(sc, False)
         sc.view_settings.view_transform = 'Standard'
     sun = bpy.data.objects.get(sc.name + ".hp1_sun")
     if sun:

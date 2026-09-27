@@ -6,7 +6,10 @@
 # floor stays calm, and haze makes each layer lighter than the one in front.
 import random
 
-OUT = ASSETS_ROOT + "/Dante/packs/forest3d"
+# MOOD: "day" (default) or "dawn" (the poem's hour: the wood cool and dim, only the opening glows).
+# Set it by sending a one-line file first:  bl.py --render --lib mood_dawn.py packs/dante_forest.py
+MOOD = globals().get("MOOD", "day")
+OUT = ASSETS_ROOT + "/Dante/packs/forest3d" + ("" if MOOD == "day" else "_" + MOOD)
 sc = new_scene("forest")
 G, T, U, B = (coll(sc, n) for n in ("ground", "trees", "plants", "blocking"))
 rnd = random.Random(1300)
@@ -250,9 +253,15 @@ wn = sc.world.node_tree
 if wn.nodes.get("haze"):          # an earlier attempt: a world volume is infinitely deep, the frame went black
     wn.nodes.remove(wn.nodes["haze"])
 sun = _sun(sc)
-sun.rotation_euler = (math.radians(-45), 0, math.radians(-62))   # high-ish, from the side: stripes across the path
-sun.data.energy = 11.0; sun.data.angle = math.radians(1.5)   # crisp shadow edges
-sc["sky_rgb"] = (0.30, 0.32, 0.30)   # shade must stay readable: near-black path shade was painted as holes and puddles                          # low fill: shadows stay deep
+sun.data.angle = math.radians(1.5)   # crisp shadow edges
+if MOOD == "dawn":   # low warm sun from behind the opening, cool blue fill: the wood dim, the gap glowing
+    sun.rotation_euler = (math.radians(-70), 0, math.radians(-15))
+    sun.data.energy = 8.0; sun.data.color = (1.0, 0.72, 0.45)
+    sc["sky_rgb"] = (0.20, 0.25, 0.34)   # dim but not black (near-black shade gets painted as holes and puddles)
+else:
+    sun.rotation_euler = (math.radians(-45), 0, math.radians(-62))   # high-ish, from the side: stripes across the path
+    sun.data.energy = 11.0; sun.data.color = (1.0, 1.0, 1.0)
+    sc["sky_rgb"] = (0.30, 0.32, 0.30)   # shade must stay readable: near-black path shade was painted as holes and puddles
 # rays: a bounded box of thin haze over the tunnel only; the sun's shadows through the canopy become shafts
 rays = box(G, "rays", (30, 70, 22), (0, 30, 11), "sky")
 rays["shaded_only"] = True
@@ -260,7 +269,7 @@ rays.data.materials.clear()
 vm = bpy.data.materials.get("forest_rays") or bpy.data.materials.new("forest_rays"); vm.use_nodes = True
 vn = vm.node_tree; vn.nodes.clear()
 pv = vn.nodes.new("ShaderNodeVolumePrincipled"); pv.inputs["Density"].default_value = 0.010
-pv.inputs["Color"].default_value = (1.0, 0.96, 0.85, 1)
+pv.inputs["Color"].default_value = (1.0, 0.85, 0.65, 1) if MOOD == "dawn" else (1.0, 0.96, 0.85, 1)
 vn.links.new(pv.outputs[0], vn.nodes.new("ShaderNodeOutputMaterial").inputs["Volume"])
 rays.data.materials.append(vm)
 ee = sc.eevee
@@ -273,11 +282,12 @@ for k, v in (("volumetric_end", 120.0), ("volumetric_tile_size", '4'), ("use_vol
         setattr(ee, k, v)
 
 # blocking: Dante on the path facing the light; Virgil ahead, turning to him
-dan = mannequin(B, "dante", (path_x(9.0) - 0.4, 9.0, 0), yaw_deg=0, height=1.72)
-vir = mannequin(B, "virgil", (path_x(12.5) + 0.6, 12.5, 0), yaw_deg=180 + 20, height=1.78)
+# costume colours tell the paint pass who is who: Dante the pilgrim in his red lucco, Virgil in grey-blue
+dan = mannequin(B, "dante", (path_x(9.0) - 0.4, 9.0, 0), yaw_deg=0, height=1.72, rgb=(0.72, 0.10, 0.08))
+vir = mannequin(B, "virgil", (path_x(12.5) + 0.6, 12.5, 0), yaw_deg=180 + 20, height=1.78, rgb=(0.55, 0.62, 0.72))
 
 SHOTS = [
-    ("fo02_path_and_hill", camera(sc, "fo02", (path_x(0.0) - 0.2, 0.0, EYE)), []),
+    ("fo02_path_and_hill", camera(sc, "fo02", (path_x(0.0) - 0.2, 0.0, EYE)), ["dante"]),   # Dante from behind, towards the light
     ("fo03_two_shot",      camera(sc, "fo03", (path_x(3.5) - 0.7, 3.5, EYE), yaw_deg=-3), ["dante", "virgil"]),
     ("fo01_establishing_high", camera(sc, "fo01", (path_x(-4) + 1.0, -4.0, 30.0), yaw_deg=-4, pitch_deg=-52, shift_y=0.0, family="high"), ["dante"]),
 ]
