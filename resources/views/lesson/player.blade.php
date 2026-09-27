@@ -687,6 +687,7 @@
                     <h1 lang="{{ $contentLang }}"
                         x-bind:aria-hidden="lesson.title_logo_url ? 'true' : null"
                         x-bind:style="lesson.title_logo_url ? 'font-size: clamp(1.4rem, 3vw, 3rem)' : 'font-size: clamp(2.2rem, 6vw, 7rem)'"
+                        x-bind:class="lesson.title_logo_url ? '!font-comic !font-bold' : ''"
                         x-html="lesson.title_logo_url
                             ? lesson.title.replace(/^.*?:\s*/, '')
                             : lesson.title.includes(': ')
