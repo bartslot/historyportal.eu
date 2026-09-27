@@ -106,7 +106,7 @@ def main():
     if a.kind == "paint":
         # organic scenes (forests): painted gouache straight from the render, no ink at all. Bart: lines for
         # characters and buildings only; foliage and trees get none, "like Ghibli" (2026-09-27)
-        prompt = (a.prompt_file or HERE / "prompts" / "paint_gouache_forest.txt").read_text()
+        prompt = (a.prompt_file or HERE / "prompts" / "paint_watercolour_forest.txt").read_text()   # our own soft look; gouache read as Ghibli (Bart)
         a.src = lifted(a.src)
         a.ref = Path("none")
     elif a.kind == "ink":

@@ -36,13 +36,76 @@ vs = [[bm.verts.new((X0 + (X1 - X0) * i / NX, Y0 + (Y1 - Y0) * j / NY,
 for i in range(NX):
     for j in range(NY):
         bm.faces.new((vs[i][j], vs[i + 1][j], vs[i + 1][j + 1], vs[i][j + 1]))
-set_mat(_mesh_obj("ground", bm, G, "floor"), "stony_dirt_path")
+ground = _mesh_obj("ground", bm, G, "floor")
+# one floor, two materials blended by a painted mask: earth on the path fading softly into a green,
+# mossy forest floor (Bart: "much more green"; a separate path strip gave a hard, flat edge)
+pm = ground.data.color_attributes.new("pathmask", 'FLOAT_COLOR', 'POINT')
+for v in ground.data.vertices:
+    d = abs(v.co.x - path_x(v.co.y))
+    t = max(0.0, min(1.0, (d - 0.9) / 1.3))          # 0 on the path, 1 on the floor, soft edge in between
+    t = t * t * (3 - 2 * t)
+    pm.data[v.index].color = (t, t, t, 1)
+
+
+def floor_material():
+    m = bpy.data.materials.get("forest_floor")
+    if m:
+        bpy.data.materials.remove(m)
+    m = bpy.data.materials.new("forest_floor"); m.use_nodes = True
+    nt = m.node_tree; bsdf = nt.nodes["Principled BSDF"]; bsdf.inputs["Roughness"].default_value = 0.95
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+
+    def tex(tid, key, non_colour):
+        d = os.path.join(ASSETS_ROOT, "_polyhaven_tex", tid); info = json.load(open(os.path.join(d, "credit.json")))
+        mp = nt.nodes.new("ShaderNodeMapping"); tw, th = info["tile_m"]
+        mp.inputs["Scale"].default_value = (1 / tw, 1 / th, 1)
+        t = nt.nodes.new("ShaderNodeTexImage")
+        t.image = bpy.data.images.load(os.path.join(d, info["maps"][key]), check_existing=True)
+        t.image.colorspace_settings.name = "Non-Color" if non_colour else "sRGB"
+        nt.links.new(tc.outputs["Object"], mp.inputs["Vector"]); nt.links.new(mp.outputs[0], t.inputs["Vector"])
+        return t.outputs["Color"]
+    mask = nt.nodes.new("ShaderNodeAttribute"); mask.attribute_name = "pathmask"
+    green = nt.nodes.new("ShaderNodeHueSaturation")          # push the grass towards a fresh, mossy green
+    green.inputs["Saturation"].default_value = 1.6; green.inputs["Value"].default_value = 1.15
+    green.inputs["Hue"].default_value = 0.53
+    nt.links.new(tex("leafy_grass", "diff", False), green.inputs["Color"])
+    mix = nt.nodes.new("ShaderNodeMix"); mix.data_type = 'RGBA'
+    nt.links.new(mask.outputs["Fac"], mix.inputs["Factor"])
+    nt.links.new(tex("mud_forest", "diff", False), mix.inputs[6]); nt.links.new(green.outputs[0], mix.inputs[7])
+    nt.links.new(mix.outputs[2], bsdf.inputs["Base Color"])
+    nm = nt.nodes.new("ShaderNodeNormalMap"); nt.links.new(tex("leafy_grass", "nor", True), nm.inputs["Color"])
+    nt.links.new(nm.outputs[0], bsdf.inputs["Normal"])
+    return m
+
+
+ground.data.materials.append(floor_material())
 box(G, "meadow", (400, 140, 0.1), (0, 200, -0.05), "floor")
 sf(G, "hill", HILLS, "floor", loc=(8, 235, -0.2), size=300)
 
 
+BASES = []   # (x, y, trunk radius) of every big trunk: they get dressed where they meet the ground
+
+
 def tree(name, uid, x, y, h, yaw=0.0, pick=None, coll_=T, part="plant"):
-    return sf(coll_, name, uid, part, loc=(x, y, ground_h(x, y) - 0.15), yaw_deg=yaw, height=h, pick=pick)
+    if coll_ is T and h > 6:
+        BASES.append((x, y, 0.5))
+    return sf(coll_, name, uid, part, loc=(x, y, ground_h(x, y) - 0.35), yaw_deg=yaw, height=h, pick=pick)   # sunk in, no floating root flare
+
+
+def dress_base(i, x, y, r):
+    """Trunk meets floor (Bart: "more realistic contact"): roots spreading into the soil, moss on the
+    root flare, grass and small woodland plants gathering at the foot, a few rocks half buried."""
+    for k in range(2):
+        a = rnd.uniform(0, 360)
+        ph(U, "root_%d_%d" % (i, k), rnd.choice(["root_cluster_01", "root_cluster_02"]), "plant",
+           loc=(x + math.cos(math.radians(a)) * r, y + math.sin(math.radians(a)) * r, ground_h(x, y) - 0.1),
+           yaw_deg=a, size=rnd.uniform(1.4, 2.2))
+    for k in range(7):
+        a = math.radians(rnd.uniform(0, 360)); d = r + rnd.uniform(0.2, 1.4)
+        gx, gy = x + math.cos(a) * d, y + math.sin(a) * d
+        asset = "fern_02"
+        ph(U, "foot_%d_%d" % (i, k), asset, "plant", loc=(gx, gy, ground_h(gx, gy) - 0.03), yaw_deg=rnd.uniform(0, 360),
+           height=rnd.uniform(0.25, 0.55))
 
 
 def bark():
@@ -73,7 +136,7 @@ def limb(name, pts, r0, r1, coll_=T):
         bp.co = p; bp.handle_left_type = bp.handle_right_type = 'AUTO'
         bp.radius = r0 + (r1 - r0) * i / (len(pts) - 1)
     o = bpy.data.objects.new("forest." + name, cu); coll_.objects.link(o)
-    cu.materials.append(bark()); o["part"] = "plant"
+    cu.materials.append(pbr("jolcham_oak_bark_01")); o["part"] = "plant"
     return o
 
 
@@ -134,6 +197,44 @@ for i in range(70):
 for i, (x, y) in enumerate([(-14, 58), (-9, 64), (13, 60), (18, 70), (-22, 75)]):
     tree("far_%d" % i, PACK, x, y, 14, yaw=i * 70, pick=["Oak_25"])
 
+# where trunks meet the floor, and grass softening the path edges into the forest floor
+BASES += [(path_x(8.0) + 3.8, 8.0, 0.6), (path_x(4.0) - 3.2, 4.0, 0.75)]   # the arch and the S-trunk
+for i, (x, y, r) in enumerate(BASES):
+    if abs(x) < 16 and y < 60:
+        dress_base(i, x, y, r)
+for i in range(90):
+    y = rnd.uniform(-2, 44); x = path_x(y) + rnd.choice((-1, 1)) * rnd.uniform(1.2, 2.6)
+    ph(U, "edge_%d" % i, "fern_02", "plant",
+       loc=(x, y, ground_h(x, y) - 0.03), yaw_deg=rnd.uniform(0, 360), height=rnd.uniform(0.2, 0.4))
+
+# (no Poly Haven moss_01/celandine/periwinkle/weed_plant: moss_01 is a row of variants that renders as
+# black leaf shards; the moss green comes from the floor texture)
+# the floor is alive: moss carpets, dense grass, woodland flowers, twigs and bark everywhere (Bart)
+def floor_spot(off_path=1.4, y0=-4, y1=46):
+    while True:
+        y = rnd.uniform(y0, y1); x = path_x(y) + rnd.uniform(-12, 12)
+        if abs(x - path_x(y)) > off_path:
+            return x, y
+
+
+for i in range(260):
+    x, y = floor_spot(1.2)
+    ph(U, "smallfern_%d" % i, "fern_02", "plant",   # not grass_medium: black spikes here
+       loc=(x, y, ground_h(x, y) - 0.03), yaw_deg=rnd.uniform(0, 360), height=rnd.uniform(0.25, 0.5))
+for i in range(60):
+    x, y = floor_spot()
+    ph(U, "flower_%d" % i, "fern_02", "plant",
+       loc=(x, y, ground_h(x, y) - 0.03), yaw_deg=rnd.uniform(0, 360), height=rnd.uniform(0.2, 0.4))
+for i in range(140):   # twigs also cross the path
+    x, y = floor_spot(0.0 if i % 3 == 0 else 1.2)
+    ph(U, "twigs_%d" % i, "dry_branches_medium_01", "wood", loc=(x, y, ground_h(x, y) + 0.01),
+       yaw_deg=rnd.uniform(0, 360), size=rnd.uniform(0.5, 1.3))
+for i in range(40):
+    x, y = floor_spot(0.0)
+    ph(U, "bark_%d" % i, "bark_debris_01", "wood", loc=(x, y, ground_h(x, y) + 0.01), yaw_deg=rnd.uniform(0, 360), size=rnd.uniform(0.3, 0.7))
+for i, (dx, y, yaw) in enumerate([(-5.5, 18.0, 20), (6.0, 27.0, -35)]):
+    ph(T, "deadlog_%d" % i, "dead_tree_trunk_02", "wood", loc=(path_x(y) + dx, y, ground_h(path_x(y) + dx, y) - 0.1), yaw_deg=yaw, size=6.0)
+
 # giant ferns right in front of the lens (bottom corners), then smaller ones edging the path
 for i, (dx, y, h) in enumerate([(-1.6, 1.3, 1.5), (1.9, 1.7, 1.7), (-2.7, 3.0, 1.3), (2.9, 4.2, 1.2)]):
     tree("bigfern_%d" % i, BIGFERN, path_x(y) + dx, y, h, yaw=i * 83, coll_=U)
@@ -163,6 +264,9 @@ pv.inputs["Color"].default_value = (1.0, 0.96, 0.85, 1)
 vn.links.new(pv.outputs[0], vn.nodes.new("ShaderNodeOutputMaterial").inputs["Volume"])
 rays.data.materials.append(vm)
 ee = sc.eevee
+for k, v in (("use_gtao", True), ("gtao_distance", 1.5), ("use_shadows", True), ("fast_gi_distance", 1.5)):
+    if hasattr(ee, k):   # soft occlusion where trunks, roots and plants meet the ground
+        setattr(ee, k, v)
 for k, v in (("volumetric_end", 120.0), ("volumetric_tile_size", '4'), ("use_volumetric_shadows", True),
              ("volumetric_shadow_samples", 32), ("volumetric_samples", 128)):
     if hasattr(ee, k):
