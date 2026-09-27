@@ -65,6 +65,11 @@
         // joins this on the same line, because a CC BY image has to say who made it.
         'source_attribution'    => $lesson->sourceAttribution(),
         'title_bg_url'          => $lesson->titleBgUrl(),
+        // A lesson series with its own wordmark (public/lesson-logos/{translation_group}.svg) shows it
+        // on the title screen instead of the plain title's lead-in.
+        'title_logo_url'        => $lesson->translation_group && is_file(public_path("lesson-logos/{$lesson->translation_group}.svg"))
+                                    ? asset("lesson-logos/{$lesson->translation_group}.svg")
+                                    : null,
         'intro_text'            => $lesson->outline['scene_briefs'][0]['scenePurpose']
                                     ?? $lesson->details
                                     ?? $lesson->topic,
@@ -673,14 +678,22 @@
                        class="mb-4 border-l-2 border-amber-400 pl-3 text-xs font-bold tracking-[0.18em] text-amber-400
                               drop-shadow-[0_1px_8px_rgba(0,0,0,1)]"></p>
 
+                    {{-- Series wordmark: the logo carries the name, the title keeps only its subtitle --}}
+                    <img x-show="lesson.title_logo_url" x-bind:src="lesson.title_logo_url" x-bind:alt="lesson.title"
+                         class="mb-5 block h-auto -rotate-2 origin-bottom-left"
+                         style="width: clamp(16rem, 46vw, 52rem); filter: drop-shadow(0.5rem 0.6rem 0 rgba(0,0,0,0.85)) drop-shadow(0 0 3rem rgba(0,0,0,0.6));">
+
                     {{-- Title --}}
                     <h1 lang="{{ $contentLang }}"
-                        x-html="lesson.title.includes(': ')
+                        x-bind:aria-hidden="lesson.title_logo_url ? 'true' : null"
+                        x-bind:style="lesson.title_logo_url ? 'font-size: clamp(1.4rem, 3vw, 3rem)' : 'font-size: clamp(2.2rem, 6vw, 7rem)'"
+                        x-html="lesson.title_logo_url
+                            ? lesson.title.replace(/^.*?:\s*/, '')
+                            : lesson.title.includes(': ')
                             ? lesson.title.replace(/^(.*?):\s*(.+)$/, '<span style=\'font-weight:300\'>$1:</span> <span style=\'font-weight:700\'>$2</span>')
                             : lesson.title"
                         class="font-history text-white leading-[0.95] tracking-tight
                                drop-shadow-[0_2px_40px_rgba(0,0,0,1)]"
-                        style="font-size: clamp(2.2rem, 6vw, 7rem);"
                     ></h1>
 
                     {{-- Intro text — hidden on very small screens --}}
