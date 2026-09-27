@@ -84,9 +84,9 @@ and one `{PALETTE}` line, both checked by the historian (a sandstone palette is 
 - `asset_place.py place` puts it at Blender coordinates (metres): height from the shot camera, the same
   distance → ink curve as the background, an atmospheric colour fade (`ATMOS` 0.55 at 40 m) and a contact
   shadow. The same master works near and far.
-- **Open:** an asset has to be coloured with the **same house colour prompt** as the backgrounds. The test
-  stand-in (a comic character sheet coloured separately) is visibly flatter and more saturated than the
-  watercolour street. Asset pack generation itself is not settled by this study.
+- Assets are coloured with the **same house colour prompt** (Qwen, 1 MP) and a figure palette
+  (`prompts/house/colour_figure_dante.txt`): confirmed to sit in the watercolour street without a style clash.
+  Earlier stand-in note, for the record: a separately coloured comic sheet did clash. Asset pack generation itself is not settled by this study.
 - **Open:** historical costume. Words alone give Dante a turban instead of a cappuccio; a costume reference
   (e.g. Botticelli 1495, which is later iconography, not evidence) must be used with an explicit
   role and a note of what is supported and what is convention.
