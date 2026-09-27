@@ -396,7 +396,7 @@ Alpine.data('lessonGame', (lesson) => ({
       const opts = (width) => ({ width, margin: 1, color: { dark: '#ffffff', light: '#00000000' } })
 
       const small = document.getElementById('title-qr-canvas')
-      if (small) QRCode.toCanvas(small, url, opts(160)).catch(() => {})
+      if (small) QRCode.toCanvas(small, url, opts(112)).catch(() => {})
 
       const large = document.getElementById('qr-modal-canvas')
       if (large) QRCode.toCanvas(large, url, opts(320)).catch(() => {})

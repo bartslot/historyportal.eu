@@ -611,13 +611,27 @@
             {{-- Animated film grain — heavier than normal (0.12 opacity) --}}
             <div class="skybox-grain-overlay" style="opacity: 0.22; z-index: 2;"></div>
 
-            <x-lesson.language-switch :lesson="$lesson" :translations="$translations" />
+            {{-- Bottom right, on the same edges as the Start button's bar (px-8/12, pb-10/14):
+                 the language switch and the join QR, bottoms aligned. --}}
+            <div class="absolute bottom-10 right-8 sm:bottom-14 sm:right-12 flex items-end gap-4" style="z-index:20">
+                <x-lesson.language-switch :lesson="$lesson" :translations="$translations" />
+                {{-- QR code, clickable to open the modal --}}
+                <button onclick="document.getElementById('qr-modal').showModal()"
+                        class="hidden sm:flex flex-col items-center gap-1.5 cursor-pointer group"
+                        style="background:none; border:none; padding:0">
+                    <canvas id="title-qr-canvas"
+                            class="rounded-xl opacity-90 transition group-hover:opacity-100 group-hover:scale-105"
+                            style="image-rendering: pixelated;"></canvas>
+                    <p class="text-sm font-mono font-bold tracking-[0.25em] text-white/80 uppercase"
+                       x-text="lesson.lesson_code"></p>
+                    <p class="text-[10px] text-white/40 tracking-widest uppercase group-hover:text-white/60 transition">Scan to join</p>
+                </button>
+            </div>
 
             {{-- Series wordmark (comic cover style): the logo carries the name, top left under the
-                 "Edit scene" row, with only the title's subtitle lettered beneath it. The QR code
-                 owns the top right from sm up, so the width stops short of it. --}}
+                 "Edit scene" row, with only the title's subtitle lettered beneath it. --}}
             <template x-if="lesson.title_logo_url">
-                <h1 lang="{{ $contentLang }}" class="absolute left-6 sm:left-12 top-24 pointer-events-none" style="z-index:10">
+                <h1 lang="{{ $contentLang }}" class="absolute left-8 sm:left-12 top-24 pointer-events-none" style="z-index:10">
                     <img x-bind:src="lesson.title_logo_url" x-bind:alt="lesson.title"
                          class="block h-auto -rotate-2 origin-bottom-left"
                          style="width: clamp(18rem, 58vw, 68rem); filter: drop-shadow(0.6rem 0.8rem 0 rgba(0,0,0,0.85)) drop-shadow(0 0 3rem rgba(0,0,0,0.6));">
@@ -632,7 +646,7 @@
                  dark cover so it reads as "on the forefront" (not a dark blob). --}}
             @php $narratorImg = $lesson->narrator?->thumbnailUrl() ?? $lesson->narrator?->portraitUrl(); @endphp
             @if($lesson->narrator?->name || $lesson->historical_figure)
-                <div class="absolute right-8 sm:right-12 hidden sm:flex items-center gap-4" style="z-index:20; bottom: {{ $translations->isNotEmpty() ? '6.5rem' : '2.5rem' }}">
+                <div class="absolute right-8 sm:right-12 hidden sm:flex items-center gap-4" style="z-index:20; bottom: 14rem">
                     <div class="flex flex-col items-end gap-0.5 text-right">
                         <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-400/80">{{ __('Narrated by') }}</p>
                         <p class="font-history text-2xl font-semibold leading-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
@@ -653,17 +667,6 @@
                 </div>
             @endif
 
-            {{-- QR code — top right, clickable to open modal --}}
-            <button onclick="document.getElementById('qr-modal').showModal()"
-                    class="absolute top-6 right-6 hidden sm:flex flex-col items-center gap-2 cursor-pointer group"
-                    style="z-index:10; background:none; border:none; padding:0">
-                <canvas id="title-qr-canvas"
-                        class="rounded-xl opacity-90 transition group-hover:opacity-100 group-hover:scale-105"
-                        style="image-rendering: pixelated;"></canvas>
-                <p class="text-base font-mono font-bold tracking-[0.25em] text-white/80 uppercase"
-                   x-text="lesson.lesson_code"></p>
-                <p class="text-[10px] text-white/40 tracking-widest uppercase group-hover:text-white/60 transition">Scan to join</p>
-            </button>
 
             {{-- QR modal --}}
             <dialog id="qr-modal" class="modal">
