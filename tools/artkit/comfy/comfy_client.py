@@ -4,7 +4,7 @@ Mac-side client for the LAN ComfyUI render server (Bart's PC, RTX 3090 Ti).
 Usage:
   python3 comfy_client.py [--config comfy.json] wake
   python3 comfy_client.py [--config comfy.json] ping
-  python3 comfy_client.py [--config comfy.json] run  <workflow> <image> [-o outdir] [--prompt-file f] [--seed n] [--mp 1|2] [--steps n]
+  python3 comfy_client.py [--config comfy.json] run  <workflow> <image> [-o outdir] [--prompt-file f] [--seed n] [--mp 1|2] [--steps n] [--ref style.png]
   python3 comfy_client.py [--config comfy.json] watch <folder> <workflow> [--prompt-file f] [--mp 1|2] [--interval s]
 
 Why: per-image cloud conversion (Nano Banana 2, $0.03-0.10) does not fit a freemium product, so
@@ -121,14 +121,25 @@ def job_hash(image_bytes: bytes, wf: dict, values: dict) -> str:
 
 # --- network --------------------------------------------------------------------------------------
 
-def wake(mac: str, broadcast: str = "255.255.255.255", port: int = 9) -> None:
+def wake(mac: str, broadcast: str | list[str] = "255.255.255.255", port: int = 9) -> None:
+    """Send the magic packet to every address in `broadcast`. macOS refuses some broadcast addresses
+    at times ("No route to host" for 255.255.255.255 while 192.168.0.255 works, and the other way
+    round), so one refusal must not stop the rest. Raises only when no address could be sent to."""
     raw = bytes.fromhex(mac.replace(":", "").replace("-", ""))
     if len(raw) != 6:
         raise ValueError(f"bad MAC address: {mac}")
     packet = b"\xff" * 6 + raw * 16
+    addrs = [broadcast] if isinstance(broadcast, str) else list(broadcast)
+    errors = []
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
         s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        s.sendto(packet, (broadcast, port))
+        for addr in addrs:
+            try:
+                s.sendto(packet, (addr, port))
+            except OSError as e:
+                errors.append(f"{addr}: {e}")
+    if len(errors) == len(addrs):
+        raise OSError("magic packet not sent: " + "; ".join(errors))
 
 
 def http_json(url: str, data: bytes | None = None, headers: dict | None = None, timeout: float = 30):
@@ -152,9 +163,12 @@ def ensure_up(cfg: dict, wait: float = 180) -> None:
     if not cfg.get("mac"):
         sys.exit(f"ComfyUI at {base_url(cfg)} is not answering and no 'mac' is configured to wake it")
     print(f"waking {cfg['mac']} ...", file=sys.stderr)
-    wake(cfg["mac"], cfg.get("broadcast", "255.255.255.255"))
     deadline = time.monotonic() + wait
+    next_packet = 0.0
     while time.monotonic() < deadline:
+        if time.monotonic() >= next_packet:  # repeat: a NIC that is still settling into sleep can miss one
+            wake(cfg["mac"], cfg.get("broadcast", "255.255.255.255"))
+            next_packet = time.monotonic() + 20
         time.sleep(3)
         if is_up(cfg):
             return
@@ -213,10 +227,12 @@ def download(cfg: dict, img: dict) -> bytes:
 # --- jobs -----------------------------------------------------------------------------------------
 
 def run_one(cfg: dict, workflow: str, src: Path, outdir: Path, prompt: str | None,
-            seed: int, mp: float, steps: int | None) -> Path:
+            seed: int, mp: float, steps: int | None, ref: Path | None = None) -> Path:
+    """`ref` is an optional style-reference image, sent as the workflow's second image ("ref" node)."""
     wf, nodes = load_workflow(cfg, workflow)
     w, h = size_for(*image_size(src), mp)
-    values = {"prompt": prompt, "seed": seed, "width": w, "height": h, "megapixels": mp, "steps": steps}
+    values = {"prompt": prompt, "seed": seed, "width": w, "height": h, "megapixels": mp, "steps": steps,
+              "ref_sha": hashlib.sha256(ref.read_bytes()).hexdigest() if ref else None}
     digest = job_hash(src.read_bytes(), wf, values)
     dst = outdir / f"{src.stem}__{workflow}__{digest[:10]}.png"
     if dst.exists():
@@ -226,21 +242,24 @@ def run_one(cfg: dict, workflow: str, src: Path, outdir: Path, prompt: str | Non
     ensure_up(cfg)
     t0 = time.monotonic()
     values["image"] = upload(cfg, src, f"{digest[:16]}{src.suffix.lower()}")
+    if ref:
+        values["ref"] = upload(cfg, ref, f"ref_{values['ref_sha'][:16]}{ref.suffix.lower()}")
     images = wait_for(cfg, queue(cfg, patch(wf, nodes, values)))
     if not images:
         raise RuntimeError(f"job for {src.name} finished with no output image (is there a SaveImage node?)")
     outdir.mkdir(parents=True, exist_ok=True)
     dst.write_bytes(download(cfg, images[0]))
     secs = time.monotonic() - t0
-    meta = {k: v for k, v in values.items() if k != "image"}
-    meta.update(source=str(src), workflow=workflow, hash=digest, seconds=round(secs, 1))
+    meta = {k: v for k, v in values.items() if k not in ("image", "ref")}
+    meta.update(source=str(src), ref=str(ref) if ref else None, workflow=workflow, hash=digest,
+                seconds=round(secs, 1))
     dst.with_suffix(".json").write_text(json.dumps(meta, indent=2) + "\n")
     print(f"done    {dst.name}  {secs:.1f}s")
     return dst
 
 
 def watch(cfg: dict, folder: Path, workflow: str, prompt: str | None, seed: int, mp: float,
-          steps: int | None, interval: float) -> None:
+          steps: int | None, interval: float, ref: Path | None = None) -> None:
     """Convert every image dropped into <folder>/in into <folder>/out. The hash cache means a restart
     re-queues nothing that already finished. Failures are logged and retried on the next pass."""
     inbox, outbox = folder / "in", folder / "out"
@@ -249,7 +268,7 @@ def watch(cfg: dict, folder: Path, workflow: str, prompt: str | None, seed: int,
     while True:
         for src in sorted(p for p in inbox.iterdir() if p.suffix.lower() in IMAGE_EXTS):
             try:
-                run_one(cfg, workflow, src, outbox, prompt, seed, mp, steps)
+                run_one(cfg, workflow, src, outbox, prompt, seed, mp, steps, ref)
             except (RuntimeError, TimeoutError, urllib.error.URLError, OSError, ValueError) as e:
                 print(f"failed  {src.name}: {e}", file=sys.stderr)
         time.sleep(interval)
@@ -275,6 +294,7 @@ def main(argv: list[str] | None = None) -> None:
         p.add_argument("--seed", type=int, default=1)
         p.add_argument("--mp", type=float, default=1.0)
         p.add_argument("--steps", type=int)
+        p.add_argument("--ref", type=Path, help="style-reference image (workflows with a 'ref' node)")
     args = ap.parse_args(argv)
     cfg = load_config(args.config)
 
@@ -289,9 +309,10 @@ def main(argv: list[str] | None = None) -> None:
         prompt = args.prompt_file.read_text().strip() if args.prompt_file else None
         if args.cmd == "run":
             run_one(cfg, args.workflow, args.image, args.outdir or args.image.parent / "converted",
-                    prompt, args.seed, args.mp, args.steps)
+                    prompt, args.seed, args.mp, args.steps, args.ref)
         else:
-            watch(cfg, args.folder, args.workflow, prompt, args.seed, args.mp, args.steps, args.interval)
+            watch(cfg, args.folder, args.workflow, prompt, args.seed, args.mp, args.steps, args.interval,
+                  args.ref)
 
 
 if __name__ == "__main__":

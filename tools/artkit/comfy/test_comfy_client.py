@@ -102,6 +102,13 @@ class WakeTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             cc.wake("00:11:22")
 
+    def test_one_refused_address_does_not_stop_the_rest(self):
+        cc.wake("50:EB:F6:BE:88:99", ["300.1.1.1", "127.0.0.1"])
+
+    def test_all_addresses_refused_is_loud(self):
+        with self.assertRaises(OSError):
+            cc.wake("50:EB:F6:BE:88:99", ["300.1.1.1", "999.0.0.1"])
+
 
 class RoundTripTest(unittest.TestCase):
     def setUp(self):
@@ -137,6 +144,25 @@ class RoundTripTest(unittest.TestCase):
 
         cc.run_one(self.cfg, "klein4b", self.src, out, "ink", 6, 1.0, None)
         self.assertEqual(len(FakeComfy.queued), 2, "a new seed is a new job")
+
+    def test_style_reference_is_uploaded_and_part_of_the_hash(self):
+        wf = {**WORKFLOW, "5": {"class_type": "LoadImage", "inputs": {"image": "style.png"}}}
+        (Path(self.tmp.name) / "wf.json").write_text(json.dumps(wf))
+        self.cfg["workflows"]["klein4b"]["nodes"] = {**NODES, "ref": "5.image"}
+        out = Path(self.tmp.name) / "converted"
+        ref_a, ref_b = Path(self.tmp.name) / "a.png", Path(self.tmp.name) / "b.png"
+        ref_a.write_bytes(png(8, 8))
+        ref_b.write_bytes(png(9, 9))
+
+        cc.run_one(self.cfg, "klein4b", self.src, out, "ink", 5, 1.0, None, ref=ref_a)
+        self.assertEqual(FakeComfy.queued[0]["5"]["inputs"]["image"], "up.png")
+        self.assertEqual(FakeComfy.uploads, 2, "source and reference are both uploaded")
+
+        cc.run_one(self.cfg, "klein4b", self.src, out, "ink", 5, 1.0, None, ref=ref_a)
+        self.assertEqual(len(FakeComfy.queued), 1, "same reference hits the cache")
+
+        cc.run_one(self.cfg, "klein4b", self.src, out, "ink", 5, 1.0, None, ref=ref_b)
+        self.assertEqual(len(FakeComfy.queued), 2, "another reference is a new job")
 
 
 if __name__ == "__main__":
