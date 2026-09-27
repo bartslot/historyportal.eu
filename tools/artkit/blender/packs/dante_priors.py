@@ -95,15 +95,27 @@ cut_many(back, [niche])
 for j in range(3):
     box(P, "niche_roll_%d" % j, (0.55, 0.10, 0.10), (-3.3, BACK + 0.10, 0.27 + j * 0.11), "props")
 
+def rnd_h(n):   # slightly different heights: not copy-paste
+    return 1.66 + (sum(map(ord, n)) % 7) * 0.02
+
+
 # blocking: six priors (one per sesto) + Dante among them; the speaking prior centre-left
-seats = [(-1.5, "prior_1"), (-0.55, "prior_speaker"), (0.45, "dante"), (1.4, "prior_4")]
-for sx, n in seats:
-    mannequin(B, n, (sx, TY + 0.95, 0), yaw_deg=180, height=1.70, seated=True, seat_h=0.47)
-mannequin(B, "prior_5", (-(TL / 2 + 0.60), TY, 0), yaw_deg=-90, height=1.70, seated=True, seat_h=0.47)
-mannequin(B, "prior_6", ((TL / 2 + 0.60), TY, 0), yaw_deg=90, height=1.70, seated=True, seat_h=0.47)
-fig = {o.name.split(".", 1)[1]: tuple(o["head_m"]) for o in objs(sc) if o.get("part") == "figure"}
+# posed figures (figure.py). Costume codes for the paint pass: orange = Dante at 35, green = the prior who
+# speaks (he points at the list), brown-grey = the other priors (listening, each a little different)
+DANTE35, SPEAKER, PRIOR = (0.80, 0.32, 0.10), (0.30, 0.50, 0.36), (0.50, 0.45, 0.40)
+seats = [(-1.5, "prior_1", PRIOR, "sit_listen", (0, 0, 12)), (-0.55, "prior_speaker", SPEAKER, "sit_point", (0, 0, 0)),
+         (0.45, "dante", DANTE35, "sit_listen", (18, 0, 0)), (1.4, "prior_4", PRIOR, "sit_listen", (0, 0, -18))]
+fig = {}
+for sx, n, rgb, pose, head in seats:
+    f = figure(B, n, (sx, TY + 0.80, 0), yaw_deg=180, height=rnd_h(n), pose=pose, rgb=rgb, seat_z=0.47, extra={"head": head})
+    fig[n] = tuple(f["head_m"])
+for n, x, yaw in (("prior_5", -(TL / 2 + 0.50), -90), ("prior_6", TL / 2 + 0.50, 90)):
+    f = figure(B, n, (x, TY, 0), yaw_deg=yaw, height=rnd_h(n), pose="sit_listen", rgb=PRIOR, seat_z=0.47,
+               extra={"head": (8, 0, 20 if yaw < 0 else -20)})
+    fig[n] = tuple(f["head_m"])
 DH, SH = fig["dante"], fig["prior_speaker"]
 
+sc["sky_rgb"] = (0.36, 0.36, 0.38)   # a dim hall: the daylight fill washed it white
 shots = [
   ("pr01_wide_room",     camera(sc, "pr01", (0.0, 0.0, EYE)),                                             None),
   ("pr02_table_top",     camera(sc, "pr02", (0.15, TY - 0.05, TH + 0.95), pitch_deg=-90, shift_y=0.0, family="top"), []),
@@ -115,5 +127,6 @@ out = {}
 for name, cam, figs in shots:
     info = render_shot(sc, cam, OUT, name, meta={"pack": "dante_priors", "period": "Florence 1300"}, figures=figs)
     out[name] = info["horizon_y_px"]
-bpy.ops.wm.save_as_mainfile(filepath=ASSETS_ROOT + "/Dante/packs/dante_packs.blend")
 result = {"shots": out, "objects": len(objs(sc))}
+
+save_pack(sc, OUT, "dante_priors")   # the composition, for adjusting by hand

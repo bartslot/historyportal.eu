@@ -169,25 +169,34 @@ for o in objs(sc):
         set_mat(o, "wooden_gate")
 
 # blocking
-bea = mannequin(B, "beatrice", (-0.6, 9.0, 0), yaw_deg=180 - 25, height=1.60)
-l1 = mannequin(B, "lady_1", (-1.3, 9.6, 0), yaw_deg=180, height=1.58)
-l2 = mannequin(B, "lady_2", (0.1, 9.7, 0), yaw_deg=180, height=1.57)
-dan = mannequin(B, "dante", (1.1, 5.2, 0), yaw_deg=35, height=1.72)
-gui = mannequin(B, "guido", (HALF - 0.75, NOTICE[1] - 0.15, 0), yaw_deg=-90, height=1.76)
+# posed Human Base Mesh figures (figure.py); costume colours tell the paint pass who is who:
+# white = Beatrice (Vita nuova III: dressed in white), sage and brown = the two older ladies,
+# blue = Dante at 18, wine red = Guido (scene 2). Poses carry the beat.
+BEATRICE, LADY_A, LADY_B, DANTE18, GUIDO = (0.95, 0.94, 0.90), (0.50, 0.58, 0.44), (0.55, 0.42, 0.32), (0.26, 0.36, 0.62), (0.48, 0.14, 0.24)
+bea = figure(B, "beatrice", (-0.6, 9.0, 0), yaw_deg=180 - 25, height=1.60, pose="turn_greet", body="female", rgb=BEATRICE)
+l1 = figure(B, "lady_1", (-1.3, 9.6, 0), yaw_deg=180, height=1.58, pose="walk", body="female", rgb=LADY_A)
+l2 = figure(B, "lady_2", (0.1, 9.9, 0), yaw_deg=185, height=1.57, pose="walk", body="female", rgb=LADY_B,
+            extra={"leg_upper.L": (30, 0, 0), "leg_upper.R": (-30, 0, 0)})      # the other foot forward: not copy-paste
+dan = figure(B, "dante", (1.1, 5.2, 0), yaw_deg=35, height=1.72, pose="startled", rgb=DANTE18)
+gui = figure(B, "guido", (HALF - 0.75, NOTICE[1] - 0.15, 0), yaw_deg=-90, height=1.76, pose="stand", rgb=GUIDO,
+             extra={"neck": (10, 0, 0), "head": (12, 0, 12)})   # arms down, head bent to the notice: reading, still
 BH, DHd, GH = (tuple(m["head_m"]) for m in (bea, dan, gui))
 
 S1 = ["beatrice", "lady_1", "lady_2", "dante"]
 shots = [
   ("sr01_wide_street",   camera(sc, "sr01", (0.5, -1.0, EYE)),                                    S1, ["notice"]),
   ("sr02_notice_wall",   camera(sc, "sr02", (-1.7, NOTICE[1] - 4.2, EYE), yaw_deg=-40),           ["guido"], []),
-  ("sr03_ots_dante",     camera_look(sc, "sr03", (DHd[0] + 0.45, DHd[1] - 0.75, DHd[2] + 0.02), BH, lens=35, family="ots"), S1, ["notice"]),
+  # over Dante's shoulder: his shoulder and cheek on the left edge, Beatrice clear on the right third
+  ("sr03_ots_dante",     camera_look(sc, "sr03", (DHd[0] + 0.95, DHd[1] - 1.35, DHd[2] + 0.05), (BH[0] - 0.6, BH[1], BH[2] - 0.1), lens=40, family="ots"), S1, ["notice"]),
   ("sr04_cu_beatrice",   camera_look(sc, "sr04", (DHd[0] - 0.2, DHd[1] + 0.35, DHd[2] - 0.05), BH, lens=60), ["beatrice", "lady_1", "lady_2"], ["notice"]),
   ("sr05_cu_dante",      camera_look(sc, "sr05", (BH[0] + 0.4, BH[1] - 1.9, BH[2] + 0.05), DHd, lens=60), ["dante"], ["notice"]),
-  ("sr06_cu_guido",      camera_look(sc, "sr06", (GH[0] - 1.4, GH[1] - 0.9, GH[2]), GH, lens=55),     ["guido"], []),
+  # Guido from along the wall, facing him: his face and the notice in one frame
+  ("sr06_cu_guido",      camera_look(sc, "sr06", (HALF - 0.2, GH[1] + 1.35, GH[2] + 0.02), (GH[0] - 0.1, GH[1] - 0.35, GH[2] - 0.05), lens=40), ["guido"], []),
 ]
 out = {}
 for name, cam, figs, hide in shots:
     info = render_shot(sc, cam, OUT, name, meta={"pack": "dante_street", "period": "Florence c.1283-1300"}, figures=figs, hide=hide, lines=False)
     out[name] = info["horizon_y_px"]
-bpy.ops.wm.save_as_mainfile(filepath=ASSETS_ROOT + "/Dante/packs/dante_packs.blend")
 result = {"shots": out, "objects": len(sc.collection.all_objects)}
+
+save_pack(sc, OUT, "dante_street")   # the composition, for adjusting by hand

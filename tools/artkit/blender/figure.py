@@ -14,13 +14,35 @@ POSES = {
     "walk": {"leg_upper.L": (-22, 0, 0), "leg_lower.L": (18, 0, 0), "leg_upper.R": (16, 0, 0), "leg_lower.R": (6, 0, 0),
              "arm_upper.L": (14, 0, 0), "arm_upper.R": (-16, 0, 0)},
     "sit": {"leg_upper.L": (-88, 0, 0), "leg_upper.R": (-88, 0, 0), "leg_lower.L": (88, 0, 0), "leg_lower.R": (88, 0, 0)},
-    "ride": {"leg_upper.L": (-70, -24, 0), "leg_upper.R": (-70, 24, 0), "leg_lower.L": (62, 0, 0), "leg_lower.R": (62, 0, 0),
-             "arm_upper.L": (-40, 0, 0), "arm_upper.R": (-40, 0, 0), "arm_lower.L": (-50, 0, 0), "arm_lower.R": (-50, 0, 0)},
+    "ride": {"leg_upper.L": (-55, -28, 0), "leg_upper.R": (-55, 28, 0), "leg_lower.L": (70, 0, 0), "leg_lower.R": (70, 0, 0),
+             "belly": (-10, 0, 0), "arm_upper.L": (-30, 0, 0), "arm_upper.R": (-30, 0, 0), "arm_lower.L": (-55, 0, 0), "arm_lower.R": (-55, 0, 0)},   # hands on the reins
+    "charge": {"leg_upper.L": (-55, -28, 0), "leg_upper.R": (-55, 28, 0), "leg_lower.L": (70, 0, 0), "leg_lower.R": (70, 0, 0),
+               "belly": (-18, 0, 0), "chest": (-8, 0, 0), "arm_upper.L": (-50, 0, 10), "arm_lower.L": (-40, 0, 0),
+               "arm_upper.R": (-150, 30, 0), "arm_lower.R": (-25, 0, 0)},   # right arm raised: sword or banner up
     "greet": {"arm_upper.R": (-20, -70, 0), "arm_lower.R": (-80, 0, 0)},
+    "point": {"arm_upper.R": (-80, 0, -10), "arm_lower.R": (-10, 0, 0), "head": (0, 0, -10)},
+    "read": {"arm_upper.L": (-25, 0, -15), "arm_upper.R": (-25, 0, 15), "arm_lower.L": (-60, 0, 0), "arm_lower.R": (-60, 0, 0),
+             "neck": (15, 0, 0), "head": (18, 0, 0)},
+    "turn_greet": {"leg_upper.L": (-15, 0, 0), "leg_lower.L": (12, 0, 0), "leg_upper.R": (10, 0, 0),
+                   "chest": (0, 0, 15), "neck": (0, 0, 20), "head": (0, 0, 25), "arm_upper.R": (-15, 0, 0)},
+    "startled": {"arm_upper.L": (-20, 0, 0), "arm_upper.R": (-20, 0, 0), "arm_lower.L": (-30, 0, 0), "arm_lower.R": (-30, 0, 0),
+                 "chest": (6, 0, 0), "head": (-8, 0, 0), "leg_upper.R": (12, 0, 0)},
+    "sit_point": {"leg_upper.L": (-88, 0, 0), "leg_upper.R": (-88, 0, 0), "leg_lower.L": (88, 0, 0), "leg_lower.R": (88, 0, 0),
+                  "arm_upper.R": (-62, 0, -12), "arm_lower.R": (5, 0, 0), "arm_upper.L": (-32, 0, 0), "arm_lower.L": (-22, 0, 0),
+                  "head": (18, 0, 0)},   # right hand points down at the list on the table
+    "sit_listen": {"leg_upper.L": (-88, 0, 0), "leg_upper.R": (-88, 0, 0), "leg_lower.L": (88, 0, 0), "leg_lower.R": (88, 0, 0),
+                   "arm_upper.L": (-30, 0, 6), "arm_upper.R": (-30, 0, -6), "arm_lower.L": (-22, 0, 0), "arm_lower.R": (-22, 0, 0),
+                   "head": (10, 0, 0)},   # forearms resting on the table
+    "sleep": {"neck": (-10, 0, 0)},
     "write": {"leg_upper.L": (-88, 0, 0), "leg_upper.R": (-88, 0, 0), "leg_lower.L": (88, 0, 0), "leg_lower.R": (88, 0, 0),
-              "arm_upper.L": (-45, 0, 8), "arm_upper.R": (-50, 0, -8), "arm_lower.L": (-55, 0, 0), "arm_lower.R": (-60, 0, 0),
+              "arm_upper.L": (-40, 0, 8), "arm_upper.R": (-45, 0, -8), "arm_lower.L": (-30, 0, 0), "arm_lower.R": (-35, 0, 0),
               "neck": (18, 0, 0), "head": (12, 0, 0)},
 }
+
+
+# The base mesh stands in an A-pose (arms ~40 degrees out). Every pose except "greet" starts from arms at
+# the sides: +y rotation lowers the left arm (+x side), -y the right.
+ARMS_DOWN = {"arm_upper.L": (0, 38, 0), "arm_upper.R": (0, -38, 0)}
 
 
 def _part_key(name):
@@ -64,7 +86,7 @@ def _to_joints(parts):
             mw = o.matrix_world.copy(); o.parent = par; o.matrix_world = mw
 
 
-def figure(c, name, loc, yaw_deg=0.0, height=1.72, pose="stand", body="male", rgb=None, extra=None):
+def figure(c, name, loc, yaw_deg=0.0, height=1.72, pose="stand", body="male", rgb=None, extra=None, seat_z=None):
     """A posed person made of Human Base Mesh parts, standing on loc (feet on z) and facing +y at yaw 0
     (like mannequin()). rgb: costume colour for the paint pass; extra: {part: (x, y, z)} added to the pose."""
     from mathutils import Matrix, Euler
@@ -75,6 +97,7 @@ def figure(c, name, loc, yaw_deg=0.0, height=1.72, pose="stand", body="male", rg
     parts = [o for o in col.all_objects if o.type == 'MESH']
     for o in parts:
         o["hbm_parent"] = o.parent.name if o.parent else ""
+        o["key"] = _part_key(o.name)             # names change below; the key does not
         if o.data.users > 1:
             o.data = o.data.copy()                   # .L and .R share one mesh: moving a pivot would move both
         for m in o.modifiers:
@@ -88,7 +111,9 @@ def figure(c, name, loc, yaw_deg=0.0, height=1.72, pose="stand", body="male", rg
     bpy.context.view_layer.update()
     pts = [o.matrix_world @ v.co for o in parts for v in o.data.vertices]
     k = height / (max(p.z for p in pts) - min(p.z for p in pts))   # measured in the rest pose
-    rest = POSES.get(pose, {}).copy()
+    rest = {} if pose == "stand_a" else dict(ARMS_DOWN)
+    for kk, v in POSES.get(pose, {}).items():
+        rest[kk] = tuple(a + b for a, b in zip(rest.get(kk, (0, 0, 0)), v))
     for kk, v in (extra or {}).items():
         rest[kk] = tuple(a + b for a, b in zip(rest.get(kk, (0, 0, 0)), v))
     def depth(o):
@@ -100,15 +125,16 @@ def figure(c, name, loc, yaw_deg=0.0, height=1.72, pose="stand", body="male", rg
     # of a leg = negative x), about the joint, parents first so children follow. Never overwrite a part's
     # rotation_euler: the parts carry rest rotations from the file (and the .R side a mirror scale).
     for o in sorted(parts, key=depth):
-        r = rest.get(_part_key(o.name))
+        r = rest.get(o["key"])
         if r:
             bpy.context.view_layer.update()
             pv = o.matrix_world.translation.copy()
-            R = Euler(tuple(math.radians(a) for a in r), 'XYZ').to_matrix().to_4x4()
+            # 'YXZ': the Y part (arms down from the A-pose, legs apart) first, then the X swing forward/back
+            R = Euler(tuple(math.radians(a) for a in r), 'YXZ').to_matrix().to_4x4()
             o.matrix_world = Matrix.Translation(pv) @ R @ Matrix.Translation(-pv) @ o.matrix_world
     for o in parts:
         o["part"] = "figure"
-        o.name = "%s.%s.%s" % (c.name.split(":")[0], name, _part_key(o.name))
+        o.name = "%s.%s.%s" % (c.name.split(":")[0], name, o["key"])
         if rgb:
             o.data.materials.clear(); o.data.materials.append(costume(rgb))
     root.scale = (k, k, k)
@@ -117,5 +143,14 @@ def figure(c, name, loc, yaw_deg=0.0, height=1.72, pose="stand", body="male", rg
     pts = [o.matrix_world @ v.co for o in parts for v in o.data.vertices]
     cx = sum(p.x for p in pts) / len(pts); cy = sum(p.y for p in pts) / len(pts); zmin = min(p.z for p in pts)
     root.location = (root.location.x + loc[0] - cx, root.location.y + loc[1] - cy, root.location.z + loc[2] - zmin)
+    if seat_z is not None:   # riders and sitters: the pelvis rests on the seat instead of feet on loc z
+        bpy.context.view_layer.update()
+        pz = min((root.matrix_world @ v.co).z for v in root.data.vertices)
+        root.location.z += seat_z - pz
+    bpy.context.view_layer.update()
+    head = next(o for o in parts if o["key"] == "head")
+    hv = [head.matrix_world @ v.co for v in head.data.vertices]
+    root["head_m"] = [round(sum(p[i] for p in hv) / len(hv), 3) for i in range(3)]
+    root["fig_name"] = name; root["seated"] = pose in ("sit", "write", "ride", "charge")
     root["height_m"] = height; root["pose"] = pose
     return root

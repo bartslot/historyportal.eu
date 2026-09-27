@@ -69,18 +69,23 @@ cyl(P, "inkwell", 0.035, 0.06, (-0.18, DY + 0.45, DH + 0.03), "props")
 cyl(P, "candle_holder", 0.05, 0.02, (-0.30, DY + 0.58, DH + 0.01), "props")
 cyl(P, "candle", 0.018, 0.16, (-0.30, DY + 0.58, DH + 0.10), "props")
 
-dante = mannequin(B, "dante_seated", (0, SY - 0.05, 0), yaw_deg=0, height=1.70, seated=True, seat_h=SH)
-HEAD = head_of(dante, seated=True, seat_h=SH)
+# Dante at 18 on the stool, writing: a posed figure (figure.py) in his blue costume code, pelvis on the seat
+dante = figure(B, "dante_seated", (0, SY + 0.10, 0), yaw_deg=0, height=1.72, pose="write", rgb=(0.26, 0.36, 0.62), seat_z=SH)
+HEAD = tuple(dante["head_m"])
 
+sc["sky_rgb"] = (0.38, 0.38, 0.40)   # a dim interior: the default daylight fill washed the room out
 anchors = {"dante_head_m": [round(v, 3) for v in HEAD], "stool_seat_top_m": [0, SY, SH], "desk_top_z_m": DH, "desk_front_y_m": DY}
 shots = {
   "st01_wide_front":   camera(sc, "st01", (0, -0.30, EYE)),
   "st02_profile":      camera(sc, "st02", (-2.15, SY + 0.10, EYE), yaw_deg=-90),
+  # close on Dante reading the replies: from the desk's right end, level with his eyes
+  "st04_cu_reading":   camera_look(sc, "st04", (0.95, DY + 0.15, HEAD[2] + 0.05), (HEAD[0] - 0.05, HEAD[1], HEAD[2] - 0.12), lens=40, family="cu"),
 
 }
 out = {}
 for name, cam in shots.items():
     info = render_shot(sc, cam, OUT, name, meta={"pack": "dante_study", "period": "Florence 1283", "anchors": anchors})
     out[name] = info["horizon_y_px"]
-bpy.ops.wm.save_as_mainfile(filepath=ASSETS_ROOT + "/Dante/packs/dante_packs.blend")
 result = {"shots": out}
+
+save_pack(sc, OUT, "dante_study_b")   # the composition, for adjusting by hand

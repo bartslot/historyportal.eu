@@ -283,13 +283,32 @@ for k, v in (("volumetric_end", 120.0), ("volumetric_tile_size", '4'), ("use_vol
 
 # blocking: Dante on the path facing the light; Virgil ahead, turning to him
 # costume colours tell the paint pass who is who: Dante the pilgrim in his red lucco, Virgil in grey-blue
-dan = mannequin(B, "dante", (path_x(9.0) - 0.4, 9.0, 0), yaw_deg=0, height=1.72, rgb=(0.72, 0.10, 0.08))
-vir = mannequin(B, "virgil", (path_x(12.5) + 0.6, 12.5, 0), yaw_deg=180 + 20, height=1.78, rgb=(0.55, 0.62, 0.72))
+# posed figures (figure.py): Dante walks up the path towards the light, head raised; Virgil steps out of
+# the trees and raises a hand
+dan = figure(B, "dante", (path_x(9.0) - 0.4, 9.0, 0), yaw_deg=0, height=1.72, pose="walk", rgb=(0.72, 0.10, 0.08),
+             extra={"head": (-12, 0, 0), "neck": (-6, 0, 0)})
+vir = figure(B, "virgil", (path_x(12.5) + 0.6, 12.5, 0), yaw_deg=180 + 20, height=1.78, pose="greet", rgb=(0.55, 0.62, 0.72))
+# the last beat ("Per cominciare, non sul colle"): the same Virgil, now pointing away from the light, to the side
+vir_pt = figure(B, "virgil_point", (path_x(12.5) + 0.6, 12.5, 0), yaw_deg=180 + 20, height=1.78, pose="point",
+                rgb=(0.55, 0.62, 0.72), extra={"arm_upper.R": (0, 0, -55), "head": (0, 0, -25)})
+dan_turn = figure(B, "dante_turn", (path_x(9.0) - 0.4, 9.0, 0), yaw_deg=25, height=1.72, pose="stand",
+                  rgb=(0.72, 0.10, 0.08), extra={"head": (-8, 0, 30)})   # he looks back up at the light
 
+DH = dan["head_m"]
+FO1_CAM = clear_view(sc, [DH, (DH[0], DH[1], 0.1), (DH[0], DH[1] + 3.0, 0.05)], 9.0,
+                     elev_deg=(62, 55, 68, 50, 72), azim_deg=(200, 160, 230, 130, 180, 250, 110, 270, 90)) or (path_x(9) + 2, 3, 9)
+VH = vir_pt["head_m"]; DT = dan_turn["head_m"]
+FO4_CAM = clear_view(sc, [VH, DT, (VH[0], VH[1], 0.3), (DT[0], DT[1], 0.3)], 5.5,
+                     elev_deg=(4, 8, 12), azim_deg=(235, 215, 250, 200, 265, 185, 280)) or (path_x(10) - 3.5, 7.0, 1.6)
 SHOTS = [
-    ("fo02_path_and_hill", camera(sc, "fo02", (path_x(0.0) - 0.2, 0.0, EYE)), ["dante"]),   # Dante from behind, towards the light
-    ("fo03_two_shot",      camera(sc, "fo03", (path_x(3.5) - 0.7, 3.5, EYE), yaw_deg=-3), ["dante", "virgil"]),
-    ("fo01_establishing_high", camera(sc, "fo01", (path_x(-4) + 1.0, -4.0, 30.0), yaw_deg=-4, pitch_deg=-52, shift_y=0.0, family="high"), ["dante"]),
+    ("fo02_path_and_hill", camera(sc, "fo02", (path_x(0.0) - 0.2, 0.0, EYE)), ["dante"]),
+    # side two-shot, closer: Virgil points the other way, Dante still looking up at the light
+    ("fo04_other_way", camera_look(sc, "fo04", FO4_CAM, (path_x(10.8) + 0.1, 10.8, 1.35), lens=32, family="ms"),
+     ["dante_turn", "virgil_point"]),   # Dante from behind, towards the light
+    ("fo03_two_shot",      camera(sc, "fo03", (path_x(3.5) - 0.7, 3.5, EYE), yaw_deg=-3), ["dante", "virgil"]),   # names: no _point/_turn
+    # high and steep, looking down at Dante small and lost on the path: the first clear line of sight
+    # (clear_view ray-casts past trunks and crowns; guessed cameras kept landing behind a trunk)
+    ("fo01_establishing_high", camera_look(sc, "fo01", FO1_CAM, (path_x(9.0) - 0.4, 9.5, 0.4), lens=26, family="high"), ["dante"]),
 ]
 out = []
 for name, cam, figs in SHOTS:
@@ -297,3 +316,5 @@ for name, cam, figs in SHOTS:
                 hide=("rays",) if name.startswith("fo01") else ())   # from above the ray box is just fog
     out.append(name)
 result = {"shots": out, "objects": len(objs(sc))}
+
+save_pack(sc, OUT, "dante_forest")   # the composition, for adjusting by hand

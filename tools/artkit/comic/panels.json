@@ -1,0 +1,147 @@
+[
+ {
+  "id": "s1p1_street",
+  "src": "street/sr01_wide_street_shadedfig.png",
+  "prompt": [
+   "chars_sr1.txt",
+   "style_city.txt"
+  ]
+ },
+ {
+  "id": "s1p2_ots",
+  "src": "street/sr03_ots_dante_shadedfig.png",
+  "prompt": [
+   "chars_sr1.txt",
+   "style_city.txt"
+  ]
+ },
+ {
+  "id": "s1p3_cu_dante",
+  "src": "street/sr05_cu_dante_shadedfig.png",
+  "prompt": [
+   "chars_sr1.txt",
+   "style_city.txt"
+  ]
+ },
+ {
+  "id": "cap1_front",
+  "src": "campaldino/ca02_front_shadedfig.png",
+  "prompt": [
+   "chars_ca.txt",
+   "style_battle.txt"
+  ]
+ },
+ {
+  "id": "cap2_side",
+  "src": "campaldino/ca01_side_shadedfig.png",
+  "prompt": [
+   "chars_ca.txt",
+   "style_battle.txt"
+  ]
+ },
+ {
+  "id": "s2p4_notice",
+  "src": "street/sr02_notice_wall_shadedfig.png",
+  "prompt": [
+   "chars_guido.txt",
+   "style_city.txt"
+  ]
+ },
+ {
+  "id": "s2p5_cu_guido",
+  "src": "street/sr06_cu_guido_shadedfig.png",
+  "prompt": [
+   "chars_guido.txt",
+   "style_city.txt"
+  ]
+ },
+ {
+  "id": "s3p1_high",
+  "src": "forest3d_dawn/fo01_establishing_high_shadedfig.png",
+  "prompt": [
+   "chars_fo01.txt",
+   "style_forest.txt"
+  ]
+ },
+ {
+  "id": "s3p2_path",
+  "src": "forest3d_dawn/fo02_path_and_hill_shadedfig.png",
+  "prompt": [
+   "chars_fo02.txt",
+   "style_forest.txt"
+  ]
+ },
+ {
+  "id": "s3p3_wolf",
+  "src": "forest3d_dawn/fo02_path_and_hill_shadedfig.png",
+  "prompt": [
+   "chars_wolf.txt",
+   "style_forest.txt"
+  ]
+ },
+ {
+  "id": "s3p4_virgil",
+  "src": "forest3d_dawn/fo03_two_shot_shadedfig.png",
+  "prompt": [
+   "chars_fo03.txt",
+   "style_forest.txt"
+  ]
+ },
+ {
+  "id": "s1p4_write",
+  "src": "study_b/st02_profile_shadedfig.png",
+  "prompt": [
+   "chars_study_write.txt",
+   "style_interior.txt"
+  ]
+ },
+ {
+  "id": "s1p5_wide_write",
+  "src": "study_b/st01_wide_front_shadedfig.png",
+  "prompt": [
+   "chars_study_write.txt",
+   "style_interior.txt"
+  ]
+ },
+ {
+  "id": "s1p6_read",
+  "src": "study_b/st04_cu_reading_shadedfig.png",
+  "prompt": [
+   "chars_study_read.txt",
+   "style_interior.txt"
+  ]
+ },
+ {
+  "id": "s2p1_hall",
+  "src": "priors/pr01_wide_room_shadedfig.png",
+  "prompt": [
+   "chars_priors.txt",
+   "style_interior.txt"
+  ]
+ },
+ {
+  "id": "s2p2_speaker",
+  "src": "priors/pr05_two_shot_shadedfig.png",
+  "prompt": [
+   "chars_priors_two.txt",
+   "style_interior.txt"
+  ],
+  "seed": 3
+ },
+ {
+  "id": "s2p3_cu_dante",
+  "src": "priors/pr04_cu_dante_shadedfig.png",
+  "prompt": [
+   "chars_priors_cu.txt",
+   "style_interior.txt"
+  ]
+ },
+ {
+  "id": "s3p6_other_way",
+  "src": "forest3d_dawn/fo04_other_way_shadedfig.png",
+  "prompt": [
+   "chars_fo04.txt",
+   "style_forest.txt"
+  ]
+ }
+]

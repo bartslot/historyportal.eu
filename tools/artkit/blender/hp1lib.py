@@ -221,10 +221,15 @@ def _sync(sc):
     _depsgraph(sc)
 
 
+def _is_fig(o, names):
+    """Box mannequins are one object "<scene>.<name>"; posed figures are parts "<scene>.<name>.<part>"."""
+    return any(o.name.endswith("." + n) or ("." + n + ".") in o.name for n in names)
+
+
 def _figures_visible(sc, on, only=None):
     for o in objs(sc):
         if o.get("part") == "figure":
-            o.hide_render = not (on and (only is None or any(o.name.endswith("." + n) for n in only)))
+            o.hide_render = not (on and (only is None or _is_fig(o, only)))
     _sync(sc)
 
 
@@ -301,8 +306,7 @@ def render_shot(sc, cam, outdir, shot, meta=None, blocking=True, figures=None, h
     sc.display.render_aa = '8'
     sc.render.filepath = p("clay"); bpy.ops.render.render(write_still=True, scene=sc.name)
     # blocking (clay with the mannequins)
-    has_fig = any(o.get("part") == "figure" and (figures is None or any(o.name.endswith("." + n) for n in figures))
-                  for o in objs(sc))
+    has_fig = any(o.get("part") == "figure" and (figures is None or _is_fig(o, figures)) for o in objs(sc))
     if blocking and has_fig:
         _figures_visible(sc, True, figures)
         sc.render.filepath = p("blocking"); bpy.ops.render.render(write_still=True, scene=sc.name)
@@ -334,8 +338,8 @@ def render_shot(sc, cam, outdir, shot, meta=None, blocking=True, figures=None, h
     }
     figs = {}
     for o in objs(sc):
-        if o.get("part") == "figure" and (figures is None or any(o.name.endswith("." + n) for n in figures)):
-            figs[o.name.split(".", 1)[1]] = {"feet_m": [round(v, 3) for v in o.location], "head_m": list(o.get("head_m") or []),
+        if o.get("part") == "figure" and o.get("head_m") and (figures is None or _is_fig(o, figures)):
+            figs[o.get("fig_name") or o.name.split(".", 1)[1]] = {"feet_m": [round(v, 3) for v in o.location], "head_m": list(o.get("head_m") or []),
                                             "height_m": o.get("height_m"), "seated": o.get("seated", False)}
     info["figures"] = figs
     if meta:
@@ -357,6 +361,27 @@ def camera_look(sc, name, loc, target, lens=50.0, family="cu"):
     cam["family"] = family
     cam["target_m"] = list(target)
     return cam
+
+
+def clear_view(sc, target_pts, dist, elev_deg, azim_deg, ignore=("figure",)):
+    """First camera position (dist from target_pts[0], at each elevation x azimuth tried in order) from which
+    every target point is visible: no scene geometry between (ray casts). For high shots in dense scenes,
+    where a guessed camera kept landing behind a trunk or inside a crown."""
+    dg = _depsgraph(sc)
+    t0 = Vector(target_pts[0])
+    for el in elev_deg:
+        for az in azim_deg:
+            e, a = math.radians(el), math.radians(az)
+            cam = t0 + Vector((math.cos(e) * math.sin(a), -math.cos(e) * math.cos(a), math.sin(e))) * dist
+            ok = True
+            for t in target_pts:
+                d = Vector(t) - cam
+                hit, loc, _, _, ob, _ = sc.ray_cast(dg, cam, d.normalized(), distance=d.length - 0.05)
+                if hit and ob.get("part") not in ignore:
+                    ok = False; break
+            if ok:
+                return tuple(cam)
+    return None
 
 
 def head_of(mannequin_obj, height=1.70, seated=False, seat_h=0.46):
@@ -530,3 +555,11 @@ def _sun(sc):
         s.rotation_euler = (math.radians(52), math.radians(8), math.radians(38))
         s["part"] = "light"
     return s
+
+
+def save_pack(sc, outdir, name):
+    """Keep the composition (Bart, 2026-09-27): a .blend next to the renders, with only this pack's scene,
+    so it can be opened, adjusted and re-rendered by hand. Written as a copy: the MCP session stays as is."""
+    path = os.path.join(outdir, name + ".blend")
+    bpy.ops.wm.save_as_mainfile(filepath=path, copy=True, compress=True)
+    return path
