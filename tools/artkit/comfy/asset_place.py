@@ -25,8 +25,8 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 import depth_lines as dl
 
-ATMOS = 0.55          # share of the way to paper colour a figure fades at FAR_M (matches the washed-out far street)
-SHADOW_ALPHA = 110
+ATMOS = 0.0           # Bart 2026-09-27: no gradient fog; depth will be per-plane treatment (TODO)
+SHADOW_ALPHA = 175
 PAPER_TOL = 38          # colour distance to the corner paper colour that still counts as paper
 FEATHER_PX = 1
 
@@ -65,7 +65,7 @@ def project(cam: dict, p: tuple[float, float, float]) -> tuple[float, float, flo
 
 
 def place(bg: Image.Image, cam: dict, master: Image.Image, at: tuple[float, float, float], height_m: float,
-          depth_lines: bool = True, shadow: bool = True) -> Image.Image:
+          depth_lines: bool = False, shadow: bool = True) -> Image.Image:
     W, _ = cam["resolution"]
     k = bg.width / W                                     # background may be upscaled
     u, v, dist = project(cam, at)
@@ -84,14 +84,15 @@ def place(bg: Image.Image, cam: dict, master: Image.Image, at: tuple[float, floa
     out = bg.convert("RGBA")
     x0, y0 = int(round(u * k - fig.width / 2)), int(round(v * k - fig.height))
     if shadow:
-        out.alpha_composite(contact_shadow(fig.width, h_px), (x0 - fig.width // 4, y0 + fig.height - max(2, h_px // 40)))
+        sh = contact_shadow(fig.width, h_px)   # ellipse sits in the middle third: centre it on the feet line
+        out.alpha_composite(sh, (x0 - (sh.width - fig.width) // 2, y0 + fig.height - sh.height // 2))
     out.alpha_composite(fig, (x0, y0))
     return out.convert("RGB")
 
 
 def contact_shadow(fig_w: int, h_px: int) -> Image.Image:
     """Soft grey-brown ellipse under the feet, so a placed figure stands instead of floats."""
-    w, h = int(fig_w * 1.5), max(4, h_px // 18)
+    w, h = int(fig_w * 1.25), max(5, h_px // 14)
     sh = Image.new("RGBA", (w, h * 3), (0, 0, 0, 0))
     ImageDraw.Draw(sh).ellipse((w * 0.1, h, w * 0.9, h * 2), fill=(70, 55, 40, SHADOW_ALPHA))
     return sh.filter(ImageFilter.GaussianBlur(max(1, h // 2)))
@@ -104,13 +105,13 @@ def main() -> None:
     c.add_argument("-o", "--out", type=Path, required=True)
     p = sub.add_parser("place"); p.add_argument("bg", type=Path); p.add_argument("camera", type=Path)
     p.add_argument("master", type=Path); p.add_argument("--at", required=True); p.add_argument("--height", type=float, required=True)
-    p.add_argument("--no-depth", action="store_true"); p.add_argument("-o", "--out", type=Path, required=True)
+    p.add_argument("--no-line-fade", action="store_true", help="keep full-strength lines at any distance"); p.add_argument("-o", "--out", type=Path, required=True)
     a = ap.parse_args()
     if a.cmd == "cutout":
         res = cutout(Image.open(a.sheet), tuple(int(x) for x in a.box.split(",")))
     else:
         res = place(Image.open(a.bg), json.loads(a.camera.read_text()), Image.open(a.master),
-                    tuple(float(x) for x in a.at.split(",")), a.height, not a.no_depth)
+                    tuple(float(x) for x in a.at.split(",")), a.height, not a.no_line_fade)
     a.out.parent.mkdir(parents=True, exist_ok=True)
     res.save(a.out)
     print(a.out)

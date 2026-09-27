@@ -28,6 +28,7 @@ PROMPTS = HERE / "prompts" / "house"
 UPSCAYL = "/opt/upscayl/bin/upscayl-bin"
 UPSCAYL_MODEL = "upscayl-standard-4x"   # digital-art-4x re-hardens faded far lines and flattens washes
 UPSCAYL_SCALE = 2
+LINE_FADE = False  # Bart 2026-09-27: no smooth per-pixel fade (reads as fake fog); depth = per-object planes, TODO
 COLOUR_MP = 1.0   # Qwen-Image-Edit drifts (zoom/shift, recall 0.61-0.79) at 2 MP; at 1 MP recall 0.98-0.99
 
 
@@ -73,16 +74,16 @@ def run(shot: Path, family: str, out: Path, ink_seeds: int, colour_seeds: int, m
         if not final.exists():
             final.parent.mkdir(parents=True, exist_ok=True)
             src = dl.Image.open(up)
-            dl.adjust(src, dl.load_depth(depth, src.size), dl.FAR_OPACITY, dl.NEAR_M, dl.FAR_M).save(final)
+            (dl.adjust(src, dl.load_depth(depth, src.size), dl.FAR_OPACITY, dl.NEAR_M, dl.FAR_M)
+             if LINE_FADE else src.convert("RGB")).save(final)
         if not rich.exists():
             # Layers kept apart so nothing gets blurred: the black-and-white ink is enlarged by Upscayl (sharp) and
             # faded by distance (lighter, same width); the washes only get an aerial fade toward paper.
             rich.parent.mkdir(parents=True, exist_ok=True)
             ink_up = dl.Image.open(upscale(ink_master, out / "upscaled" / ink_master.name))
-            z = dl.load_depth(depth, ink_up.size)
-            ink_faded = dl.adjust(ink_up, z, dl.FAR_OPACITY, dl.NEAR_M, dl.FAR_M)
-            far = dl.smooth(dl.far_fraction(z), ink_up.width)
-            wi.composite(dl.Image.open(up), ink_faded, far).save(rich)
+            if LINE_FADE:   # lighten the black-and-white ink layer only; washes untouched
+                ink_up = dl.adjust(ink_up, dl.load_depth(depth, ink_up.size), dl.FAR_OPACITY, dl.NEAR_M, dl.FAR_M)
+            wi.composite(dl.Image.open(up), ink_up).save(rich)
         report["colour"].append({"seed": s, "colour_master": col.name, "final": str(final), "final_rich": str(rich)})
     (out / f"{shot.name}_chain.json").write_text(json.dumps(report, indent=2) + "\n")
     return report
