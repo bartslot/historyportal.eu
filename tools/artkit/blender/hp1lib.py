@@ -214,8 +214,9 @@ def _figures_visible(sc, on, only=None):
     _sync(sc)
 
 
-def render_shot(sc, cam, outdir, shot, meta=None, blocking=True, figures=None, hide=()):
-    """Writes <shot>_lines.png, _clay.png, _mask.png, (_blocking.png) and _camera.json.
+def render_shot(sc, cam, outdir, shot, meta=None, blocking=True, figures=None, hide=(), lines=True, shaded=True):
+    """Writes <shot>_shaded.png (materials, GPU), _lines.png (Freestyle, CPU: skip for heavy scenes),
+    _clay.png, _mask.png, (_blocking.png) and _camera.json.
     figures: names of the blocking mannequins to show (None = all); hide: objects left out of this shot."""
     for o in objs(sc):
         if o.get("part") != "figure":
@@ -225,13 +226,24 @@ def render_shot(sc, cam, outdir, shot, meta=None, blocking=True, figures=None, h
     sc.camera = cam
     wm = bpy.data.materials
     white = _white_mat()
+    p = lambda k: os.path.join(outdir, "%s_%s.png" % (shot, k))
+    originals = {o.name: list(o.data.materials) for o in objs(sc) if o.type == 'MESH'}
+    if shaded:   # materials as assigned (Poly Haven textures, glTF props), sun + sky, Eevee on the GPU
+        _figures_visible(sc, False)
+        _sun(sc); sc.render.engine = 'BLENDER_EEVEE'; sc.render.use_freestyle = False
+        _set_world(sc, (0.78, 0.82, 0.88))
+        sc.view_settings.view_transform = 'AgX'
+        sc.render.filepath = p("shaded"); bpy.ops.render.render(write_still=True, scene=sc.name)
+        sc.view_settings.view_transform = 'Standard'
+    sun = bpy.data.objects.get(sc.name + ".hp1_sun")
+    if sun:
+        sun.hide_render = True
     for o in objs(sc):
         if o.type == 'MESH':
             o.data.materials.clear(); o.data.materials.append(white)
             rgb = PARTS.get(o.get("part", "wall"), (128, 128, 128))
             o.color = (rgb[0] / 255, rgb[1] / 255, rgb[2] / 255, 1)
     d = sc.display.shading
-    p = lambda k: os.path.join(outdir, "%s_%s.png" % (shot, k))
 
     _figures_visible(sc, False)
     # lines
@@ -252,7 +264,8 @@ def render_shot(sc, cam, outdir, shot, meta=None, blocking=True, figures=None, h
         lp.select_by_edge_types = True
         lp.select_silhouette = True; lp.select_border = True; lp.select_crease = False
         lp.linestyle.color = (0, 0, 0); lp.linestyle.thickness = 1.1
-    sc.render.filepath = p("lines"); bpy.ops.render.render(write_still=True, scene=sc.name)
+    if lines:
+        sc.render.filepath = p("lines"); bpy.ops.render.render(write_still=True, scene=sc.name)
     sc.render.use_freestyle = False
     # clay
     sc.render.engine = 'BLENDER_WORKBENCH'; _set_world(sc, (1, 1, 1))
@@ -273,6 +286,13 @@ def render_shot(sc, cam, outdir, shot, meta=None, blocking=True, figures=None, h
     sc.display.render_aa = 'OFF'
     sc.render.filepath = p("mask"); bpy.ops.render.render(write_still=True, scene=sc.name)
     _set_world(sc, (1, 1, 1))
+    for o in objs(sc):      # give every mesh its own materials back for the next shot
+        if o.name in originals:
+            o.data.materials.clear()
+            for m in originals[o.name]:
+                o.data.materials.append(m)
+    if sun:
+        sun.hide_render = False
     # camera sidecar
     cd = cam.data
     f_px = (RES_X / 2) / (cd.sensor_width / 2 / cd.lens)
@@ -337,10 +357,17 @@ def import_asset(c, name, gltf_path, part, loc=(0, 0, 0), yaw_deg=0.0, height=No
     new = [o for o in bpy.data.objects if o not in before]
     meshes = [o for o in new if o.type == 'MESH']
     bm = bmesh.new()
-    for o in meshes:
-        m = o.data.copy(); m.transform(o.matrix_world); bm.from_mesh(m); bpy.data.meshes.remove(m)
+    mats = []
+    for o in meshes:   # keep each part's materials: offset its material indices into one shared slot list
+        m = o.data.copy(); m.transform(o.matrix_world)
+        base = len(mats); mats.extend(o.data.materials)
+        for poly in m.polygons:
+            poly.material_index += base
+        bm.from_mesh(m); bpy.data.meshes.remove(m)
     me = bpy.data.meshes.new(c.name.split(":")[0] + "." + name)
     bm.to_mesh(me); bm.free()
+    for mt in mats:
+        me.materials.append(mt)
     for o in new:
         bpy.data.objects.remove(o, do_unlink=True)
     xs = [v.co.x for v in me.vertices]; ys = [v.co.y for v in me.vertices]; zs = [v.co.z for v in me.vertices]
@@ -389,3 +416,56 @@ def stone_patch(c, name, plane, centre, radius, rng_seed=1, course=0.17, gap=0.0
             u += L
         z += h; row += 1
     return join(blocks, name) if blocks else None
+
+
+def pbr(tid):
+    """Poly Haven CC0 texture as a real-scale material (box projection in object space, metres)."""
+    name = "pbr_" + tid
+    m = bpy.data.materials.get(name)
+    if m:
+        return m
+    d = os.path.join(ASSETS_ROOT, "_polyhaven_tex", tid)
+    info = json.load(open(os.path.join(d, "credit.json")))
+    tw, th = info["tile_m"]
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    nt = m.node_tree; nt.nodes.clear()
+    out = nt.nodes.new("ShaderNodeOutputMaterial"); bsdf = nt.nodes.new("ShaderNodeBsdfPrincipled")
+    nt.links.new(bsdf.outputs[0], out.inputs[0])
+    tc = nt.nodes.new("ShaderNodeTexCoord"); mp = nt.nodes.new("ShaderNodeMapping")
+    mp.inputs["Scale"].default_value = (1 / tw, 1 / th, 1 / th)
+    nt.links.new(tc.outputs["Object"], mp.inputs["Vector"])
+
+    def tex(fname, non_colour):
+        t = nt.nodes.new("ShaderNodeTexImage")
+        t.image = bpy.data.images.load(os.path.join(d, fname), check_existing=True)
+        t.image.colorspace_settings.name = "Non-Color" if non_colour else "sRGB"
+        t.projection = 'BOX'; t.projection_blend = 0.25
+        nt.links.new(mp.outputs[0], t.inputs["Vector"])
+        return t
+    maps = info["maps"]
+    if "diff" in maps:
+        nt.links.new(tex(maps["diff"], False).outputs["Color"], bsdf.inputs["Base Color"])
+    if "rough" in maps:
+        nt.links.new(tex(maps["rough"], True).outputs["Color"], bsdf.inputs["Roughness"])
+    if "nor" in maps:
+        nm = nt.nodes.new("ShaderNodeNormalMap")
+        nt.links.new(tex(maps["nor"], True).outputs["Color"], nm.inputs["Color"])
+        nt.links.new(nm.outputs["Normal"], bsdf.inputs["Normal"])
+    return m
+
+
+def set_mat(o, tid):
+    if o.type == 'MESH':
+        o.data.materials.clear(); o.data.materials.append(pbr(tid))
+
+
+def _sun(sc):
+    """Soft afternoon sun + light sky for the shaded pass (created once per scene)."""
+    name = sc.name + ".hp1_sun"
+    s = bpy.data.objects.get(name)
+    if not s:
+        ld = bpy.data.lights.new(name, 'SUN'); ld.energy = 3.2; ld.angle = math.radians(6)
+        s = bpy.data.objects.new(name, ld); coll(sc, "lights").objects.link(s)
+        s.rotation_euler = (math.radians(52), math.radians(8), math.radians(38))
+        s["part"] = "light"
+    return s

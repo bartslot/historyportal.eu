@@ -21,6 +21,12 @@ REF_DIR = Path("/Users/bartslot/BartsAutomation/BartsDev/apps/historyportal.eu/l
 DEFAULT_REF = {"ink": REF_DIR / "ink_study_approved.jpg", "colour": None}
 INK_LEAD = ("Image 1 is a clean perspective line drawing of the scene. Image 2 is only a style reference: "
             "copy its drawing style, never its content. ")
+# Shaded Blender renders carry real stone, joints, cobbles and wood grain: keep them as linework (the house
+# prompt's "faintly suggested" made Qwen draw bare white walls, 2026-09-27).
+INK_LEAD_SHADED = ("Image 1 is a rendered 3D scene with real materials. Image 2 is only a style reference: copy its "
+                   "drawing style, never its content. Translate every material of image 1 into ink: outline the "
+                   "individual stones and their joints, the cobbles, the planks and wood grain, with lighter and "
+                   "fewer lines in the distance. Ignore the instruction to keep stone faint; about 60% white. ")
 # Bart's colour prompt names boats and water; without this guard Qwen painted a harbour with ships into
 # the closed shutters of Dante's study (2026-09-27).
 COLOUR_GUARD = ("Colour only what is already drawn. Add nothing: no new objects, no views through windows, "
@@ -72,13 +78,19 @@ def main():
     ap.add_argument("--ref", type=Path)
     ap.add_argument("--mp", type=float, default=2.0)
     ap.add_argument("--seed", type=int, default=1)
+    ap.add_argument("--scene", choices=["inland", "harbour"], default="inland",
+                    help="inland drops 'boats' and 'water' from the colour prompt (they get painted in otherwise)")
     ap.add_argument("-o", "--outdir", type=Path, required=True)
     a = ap.parse_args()
     if a.kind == "ink":
-        prompt = INK_LEAD + a.prompt_file.read_text()
+        lead = INK_LEAD_SHADED if "_shaded" in a.src.name else INK_LEAD
+        prompt = lead + a.prompt_file.read_text()
     else:
-        prompt = COLOUR_GUARD + (COLOUR_LEAD if a.ref else "") + (HERE / "prompts" / "colour_pass.txt").read_text()
-    run(a.kind, a.src, prompt, a.ref or DEFAULT_REF[a.kind], a.outdir, a.mp, a.seed)
+        prompt = COLOUR_GUARD + (COLOUR_LEAD if a.ref else "") + (HERE / "prompts" / ("colour_pass.txt" if a.scene == "harbour" else "colour_pass_inland.txt")).read_text()
+    ref = None if (a.ref and str(a.ref) == "none") else (a.ref or DEFAULT_REF[a.kind])
+    if ref is None and a.kind == "ink":
+        prompt = prompt.replace(" Image 2 is only a style reference: copy its drawing style, never its content.", "")
+    run(a.kind, a.src, prompt, ref, a.outdir, a.mp, a.seed)
 
 
 if __name__ == "__main__":

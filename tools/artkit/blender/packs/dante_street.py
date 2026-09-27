@@ -7,8 +7,7 @@ HALF = 2.3                      # half street width
 FLOOR1, STOREY = 3.8, 3.3       # top of the ground floor, height of upper storeys
 
 box(G, "ground", (HALF * 2 + 0.2, 90, 0.1), (0, 40, -0.05), "floor")
-for i in range(0, 60, 3):       # a few stone slabs, flush, for scale lines
-    box(G, "slab_%02d" % i, (1.1, 0.9, 0.02), ((-1) ** i * 0.9, 2 + i * 1.3, 0.005), "floor")
+# (no flat slabs: with a textured cobble street, Qwen drew them as manhole covers, 2026-09-27)
 
 def facade_cut(side, y, z, w, h, depth=0.45, pointed=False, name="op"):
     """Opening cutter in the facade plane x = side*HALF, recessed into the wall, overshooting into the street."""
@@ -95,7 +94,7 @@ PL = coll(sc, "plants")
 FIG_SPOTS = [(-0.6, 9.0), (-1.3, 9.6), (0.1, 9.7), (1.1, 5.2)]     # keep the blocking spots free
 def free(x, y, r=0.9):
     return all((x - fx) ** 2 + (y - fy) ** 2 > r * r for fx, fy in FIG_SPOTS)
-WARES = ["ceramic_pot", "jug_01", "wooden_bowl_01", "antique_ceramic_vase_01", "wooden_bowl_02", "wooden_cutting_board"]
+WARES = ["ceramic_pot", "jug_01", "wooden_bowl_01", "wooden_bowl_02", "wooden_cutting_board"]   # no antique_ceramic_vase_01: blue-and-white porcelain dates it (JEV/historian)
 n = 0
 for kind, side, y, tag in FEATURES:
     xf = side * HALF
@@ -153,6 +152,22 @@ R2Y = -3.0 + 6.0 + 0.05
 NOTICE = (HALF - 0.01, R2Y + 1.6, 1.65)
 box(P, "notice", (0.01, 0.42, 0.58), NOTICE, "props")
 
+
+# ---- materials (Poly Haven CC0, real scale) for the shaded pass -----------------------------------
+WALLS = ["medieval_blocks_02", "rough_block_wall", "plaster_stone_wall_01", "plastered_stone_wall", "old_stone_wall", "sandstone_blocks_04"]
+for o in objs(sc):
+    part, n = o.get("part"), o.name.split(".", 1)[-1]
+    if o.get("source"):                       # imported props keep their own scanned materials
+        continue
+    if part == "wall":
+        set_mat(o, WALLS[sum(map(ord, n.split("_")[0])) % len(WALLS)])   # one stone per house
+    elif part == "floor":
+        set_mat(o, "stone_pavers" if n.startswith("slab") else "cobblestone_floor_02")
+    elif part in ("wood", "roof"):
+        set_mat(o, "weathered_planks" if part == "roof" else "medieval_wood")
+    elif part == "opening":
+        set_mat(o, "wooden_gate")
+
 # blocking
 bea = mannequin(B, "beatrice", (-0.6, 9.0, 0), yaw_deg=180 - 25, height=1.60)
 l1 = mannequin(B, "lady_1", (-1.3, 9.6, 0), yaw_deg=180, height=1.58)
@@ -172,7 +187,7 @@ shots = [
 ]
 out = {}
 for name, cam, figs, hide in shots:
-    info = render_shot(sc, cam, OUT, name, meta={"pack": "dante_street", "period": "Florence c.1283-1300"}, figures=figs, hide=hide)
+    info = render_shot(sc, cam, OUT, name, meta={"pack": "dante_street", "period": "Florence c.1283-1300"}, figures=figs, hide=hide, lines=False)
     out[name] = info["horizon_y_px"]
 bpy.ops.wm.save_as_mainfile(filepath=ASSETS_ROOT + "/Dante/packs/dante_packs.blend")
 result = {"shots": out, "objects": len(sc.collection.all_objects)}
