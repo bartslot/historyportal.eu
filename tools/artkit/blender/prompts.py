@@ -32,6 +32,7 @@ PACKS = {
                "pointed windows with open wooden shutters and an iron bar, a heater shield with a lily drawn in outline, "
                "papers, a written list, a clay inkwell, a quill, a wax seal, a bound register, candles, an iron-banded chest."),
 }
+PACKS["study_b"] = PACKS["study"]   # A/B test: same room with scanned props and masonry as geometry
 EXTRA = {"sr02_notice_wall": "A handwritten paper notice is nailed to the wall. ",
          "sr06_cu_guido": "A handwritten paper notice is nailed to the wall. "}
 

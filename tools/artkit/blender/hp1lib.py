@@ -299,3 +299,65 @@ def head_of(mannequin_obj, height=1.70, seated=False, seat_h=0.46):
     hip = (seat_h + 0.10 * s) if seated else 0.90 * s
     x, y, z = mannequin_obj.location
     return (x, y, z + hip + 0.74 * s)
+
+
+def import_asset(c, name, gltf_path, part, loc=(0, 0, 0), yaw_deg=0.0, height=None, size=None):
+    """Import a glTF (e.g. Poly Haven CC0), bake it into one mesh object in collection c.
+    height: scale so the object is this tall (m); size: scale so its longest side is this long."""
+    before = set(bpy.data.objects)
+    bpy.ops.import_scene.gltf(filepath=gltf_path)
+    new = [o for o in bpy.data.objects if o not in before]
+    meshes = [o for o in new if o.type == 'MESH']
+    bm = bmesh.new()
+    for o in meshes:
+        m = o.data.copy(); m.transform(o.matrix_world); bm.from_mesh(m); bpy.data.meshes.remove(m)
+    me = bpy.data.meshes.new(c.name.split(":")[0] + "." + name)
+    bm.to_mesh(me); bm.free()
+    for o in new:
+        bpy.data.objects.remove(o, do_unlink=True)
+    xs = [v.co.x for v in me.vertices]; ys = [v.co.y for v in me.vertices]; zs = [v.co.z for v in me.vertices]
+    dims = (max(xs) - min(xs), max(ys) - min(ys), max(zs) - min(zs))
+    k = 1.0
+    if height:
+        k = height / dims[2]
+    elif size:
+        k = size / max(dims)
+    # origin at the bottom centre, then scale
+    cx, cy, z0 = (max(xs) + min(xs)) / 2, (max(ys) + min(ys)) / 2, min(zs)
+    for v in me.vertices:
+        v.co.x, v.co.y, v.co.z = (v.co.x - cx) * k, (v.co.y - cy) * k, (v.co.z - z0) * k
+    o = bpy.data.objects.new(me.name, me); c.objects.link(o)
+    o["part"] = part; o.location = loc; o.rotation_euler = (0, 0, math.radians(yaw_deg))
+    o["source"] = gltf_path
+    return o
+
+
+def stone_patch(c, name, plane, centre, radius, rng_seed=1, course=0.17, gap=0.016, proud=0.012):
+    """Exposed masonry where plaster has fallen off: stone blocks as real geometry (their joints
+    become lines in the line render). plane: ('y', value, facing) for a wall facing -y/+y, or
+    ('x', value, facing) for a wall facing -x/+x; centre: (u, z) on the wall; radius: (ru, rz)."""
+    import random
+    rnd = random.Random(rng_seed)
+    axis, value, facing = plane
+    u0, z0c = centre
+    ru, rz = radius
+    blocks = []
+    z = z0c - rz
+    row = 0
+    while z < z0c + rz:
+        h = course * rnd.uniform(0.75, 1.3)
+        u = u0 - ru - rnd.uniform(0, 0.25)
+        while u < u0 + ru:
+            L = rnd.uniform(0.18, 0.42)
+            cu, cz = u + L / 2, z + h / 2 + rnd.uniform(-0.012, 0.012)   # rubble courses are not ruled
+            if ((cu - u0) / ru) ** 2 + ((cz - z0c) / rz) ** 2 < 1.0 - rnd.uniform(0, 0.25):
+                tilt = math.radians(rnd.uniform(-2.5, 2.5))
+                hh = (h - gap) * rnd.uniform(0.85, 1.0)
+                if axis == 'y':
+                    pos = (cu, value + facing * proud / 2, cz); sz = (L - gap, proud, hh); rot = (0, tilt, 0)
+                else:
+                    pos = (value + facing * proud / 2, cu, cz); sz = (proud, L - gap, hh); rot = (tilt, 0, 0)
+                blocks.append(box(c, "%s_%d_%d" % (name, row, len(blocks)), sz, pos, "wall", rot=rot))
+            u += L
+        z += h; row += 1
+    return join(blocks, name) if blocks else None
