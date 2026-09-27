@@ -33,7 +33,10 @@ Each part ends with a check; don't move on until it passes.
    grow, because the recovery partition sits between C: and this space. Create D: after Linux is installed (B-6).
 6. Network adapter → Properties → Advanced: **Wake on Magic Packet = Enabled** (and *Shutdown Wake-On-Lan*
    if listed). Write down the **MAC address** (`getmac /v`).
-7. Router: give the PC a **DHCP reservation** (fixed LAN IP). Note the IP and the subnet (e.g. `192.168.1.0/24`).
+7. Router (optional): a **DHCP reservation** (fixed LAN IP) if the router offers one. On Sky hubs, use the web page
+   `http://192.168.0.1` (Advanced → LAN IP Setup → Address Reservation), not the app; newer models may not
+   have it. Not required: Linux announces itself as **`render.local`** (part C), so the Mac finds it by name,
+   and Wake-on-LAN goes by MAC address. Note the current IP and the subnet (Bart: `192.168.0.98`, `192.168.0.0/24`).
 
 ✅ Check: Disk Management shows ~976 GB **Unallocated** after the recovery partition.
 
@@ -58,12 +61,13 @@ Each part ends with a check; don't move on until it passes.
      them), **and the 5 GB `UBUNTU` installer partition if you used B-2**, since the installer is running from it.
      The installer reuses the existing EFI partition for the boot loader.
    - **Install OpenSSH server: yes.** No featured snaps.
-   - User: `bart` (or your choice).
+   - Your server's name: **`render`**. User: `bart` (or your choice).
 4. Reboot. It should come up in Ubuntu (text login).
-5. From the Mac: `ssh-copy-id bart@<pc-ip>`, and add to `~/.ssh/config`:
+5. On the PC's screen, log in and run `ip -4 addr` to get its IP. From the Mac: `ssh-copy-id bart@<that ip>`, and add
+   this to `~/.ssh/config` (switch `HostName` to `render.local` once part C has installed avahi):
    ```
    Host render
-     HostName <pc-ip>
+     HostName <that ip>
      User bart
    ```
 
@@ -125,6 +129,11 @@ sudo systemctl restart ssh
 
 # Windows keeps the hardware clock in local time; match it, or the clock jumps when switching OS
 sudo timedatectl set-local-rtc 1
+
+# Announce the PC as render.local on the LAN (mDNS), so the Mac needn't know its IP
+sudo apt install -y avahi-daemon
+sudo hostnamectl set-hostname render
+# ✅ From the Mac: `ping -c1 render.local` answers. Then set `HostName render.local` in ~/.ssh/config.
 ```
 
 Boot menu: Linux by default, Windows one reboot away.
@@ -244,11 +253,11 @@ Security: custom nodes run arbitrary Python. Install only well-known nodes that 
 needs, and list each one in the report.
 
 ✅ Check: `curl -s http://127.0.0.1:8188/system_stats` shows the 3090 Ti. From the Mac,
-`http://<pc-ip>:8188` opens the ComfyUI page. **The UI runs in the Mac's browser**, since the PC has no desktop.
+`http://render.local:8188` opens the ComfyUI page. **The UI runs in the Mac's browser**, since the PC has no desktop.
 
 ## F. Models and the two API workflows
 
-In the Mac's browser, at `http://<pc-ip>:8188`:
+In the Mac's browser, at `http://render.local:8188`:
 
 1. Workflow → **Browse Templates** → the image-edit templates for **FLUX.2 [klein] 4B** and
    **Qwen-Image-Edit** (latest, **fp8**). Each template lists its exact model files and target folders.
@@ -345,7 +354,7 @@ LAN, plus DHCP. IPv6 is dropped.
 sudo tee /etc/nftables.conf >/dev/null <<'EOF'
 #!/usr/sbin/nft -f
 flush ruleset
-define LAN = 192.168.1.0/24
+define LAN = 192.168.0.0/24
 
 table inet filter {
   chain input {
@@ -354,6 +363,7 @@ table inet filter {
     ct state established,related accept
     ip saddr $LAN tcp dport { 22, 8188 } accept
     ip saddr $LAN icmp type echo-request accept
+    ip saddr $LAN udp dport 5353 accept          # mDNS (render.local)
     udp sport 67 udp dport 68 accept
   }
   chain output {
@@ -361,6 +371,7 @@ table inet filter {
     oif lo accept
     ct state established,related accept
     ip daddr $LAN accept
+    ip daddr 224.0.0.251 udp dport 5353 accept   # mDNS (render.local)
     udp dport 67 accept
   }
   chain forward {
