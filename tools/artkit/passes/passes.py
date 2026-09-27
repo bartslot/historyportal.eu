@@ -37,6 +37,25 @@ INK_LEAD_LIGHT = ("Make it an open, light line drawing like a hand-coloured book
 LIFT_GAMMA = 0.55   # < 1 brightens the shadows of the render before inking
 
 
+ABSTRACT_MEDIAN = 7    # px at half resolution: removes bark photo texture and single 3D leaf cards (13 lost the arch)
+ABSTRACT_COLOURS = 40
+
+
+def abstracted(src):
+    """An underpainting of src: edge-preserving simplification into flat colour shapes. The paint model
+    copies whatever detail it is given; with the photo bark and leaf cards still in, it painted washes
+    beside them and one tree carried three textures (Bart, 2026-09-27). Given only shapes and light,
+    it paints all the detail itself, in one brush language."""
+    from PIL import Image, ImageFilter
+    dst = src.with_name(src.stem + "_abstract.png")
+    im = Image.open(src).convert("RGB")
+    w, h = im.size
+    small = im.resize((w // 2, h // 2), Image.LANCZOS).filter(ImageFilter.MedianFilter(ABSTRACT_MEDIAN))
+    small = small.quantize(ABSTRACT_COLOURS).convert("RGB")
+    small.resize((w, h), Image.LANCZOS).filter(ImageFilter.GaussianBlur(1.5)).save(dst)
+    return dst
+
+
 def lifted(src):
     """A copy of src with its shadows lifted (gamma), so dark areas read as form, not as black."""
     from PIL import Image
@@ -107,7 +126,7 @@ def main():
         # organic scenes (forests): painted gouache straight from the render, no ink at all. Bart: lines for
         # characters and buildings only; foliage and trees get none, "like Ghibli" (2026-09-27)
         prompt = (a.prompt_file or HERE / "prompts" / "paint_watercolour_forest.txt").read_text()   # our own soft look; gouache read as Ghibli (Bart)
-        a.src = lifted(a.src)
+        a.src = abstracted(lifted(a.src))
         a.ref = Path("none")
     elif a.kind == "ink":
         lead = INK_LEAD_SHADED if "_shaded" in a.src.name else INK_LEAD

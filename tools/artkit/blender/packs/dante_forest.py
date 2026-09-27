@@ -252,7 +252,7 @@ if wn.nodes.get("haze"):          # an earlier attempt: a world volume is infini
 sun = _sun(sc)
 sun.rotation_euler = (math.radians(-45), 0, math.radians(-62))   # high-ish, from the side: stripes across the path
 sun.data.energy = 11.0; sun.data.angle = math.radians(1.5)   # crisp shadow edges
-sc["sky_rgb"] = (0.12, 0.13, 0.14)                          # low fill: shadows stay deep
+sc["sky_rgb"] = (0.30, 0.32, 0.30)   # shade must stay readable: near-black path shade was painted as holes and puddles                          # low fill: shadows stay deep
 # rays: a bounded box of thin haze over the tunnel only; the sun's shadows through the canopy become shafts
 rays = box(G, "rays", (30, 70, 22), (0, 30, 11), "sky")
 rays["shaded_only"] = True
