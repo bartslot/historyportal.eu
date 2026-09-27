@@ -30,8 +30,19 @@ def new_scene(name):
     sc.view_settings.view_transform = 'Standard'
     if not sc.world:
         sc.world = bpy.data.worlds.new(name + "_world")
-    bpy.context.window_manager.windows[0].scene = sc   # booleans need this scene's depsgraph
+    wins = bpy.context.window_manager.windows
+    if wins:                                   # interactive Blender; headless has no window
+        wins[0].scene = sc
     return sc
+
+
+def _depsgraph(sc):
+    """This scene's evaluated depsgraph, with or without a window (headless render PC)."""
+    vl = sc.view_layers[0]
+    with bpy.context.temp_override(scene=sc, view_layer=vl):
+        dg = bpy.context.evaluated_depsgraph_get()
+    dg.update()
+    return dg
 
 
 def coll(sc, name):
@@ -105,7 +116,7 @@ def boolean(target, cutter, op='DIFFERENCE', keep=False):
     """Apply a boolean through the depsgraph (no operator context needed)."""
     m = target.modifiers.new("b", 'BOOLEAN'); m.operation = op; m.object = cutter; m.solver = 'EXACT'
     m.use_self = True; m.use_hole_tolerant = True     # cutters are overlapping parts (box + arch)
-    dg = bpy.context.evaluated_depsgraph_get(); dg.update()
+    dg = _depsgraph(target.users_scene[0])
     ev = target.evaluated_get(dg)
     me = bpy.data.meshes.new_from_object(ev, depsgraph=dg)
     old = target.data
@@ -190,17 +201,17 @@ def objs(sc):
     return out
 
 
-def _sync():
+def _sync(sc):
     """Visibility flips inside one script must reach the depsgraph before the next render."""
-    bpy.context.view_layer.update()
-    bpy.context.evaluated_depsgraph_get().update()
+    sc.view_layers[0].update()
+    _depsgraph(sc)
 
 
 def _figures_visible(sc, on, only=None):
     for o in objs(sc):
         if o.get("part") == "figure":
             o.hide_render = not (on and (only is None or any(o.name.endswith("." + n) for n in only)))
-    _sync()
+    _sync(sc)
 
 
 def render_shot(sc, cam, outdir, shot, meta=None, blocking=True, figures=None, hide=()):
@@ -209,7 +220,7 @@ def render_shot(sc, cam, outdir, shot, meta=None, blocking=True, figures=None, h
     for o in objs(sc):
         if o.get("part") != "figure":
             o.hide_render = any(o.name.endswith("." + h) for h in hide)
-    _sync()
+    _sync(sc)
     os.makedirs(outdir, exist_ok=True)
     sc.camera = cam
     wm = bpy.data.materials

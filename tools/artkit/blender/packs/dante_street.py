@@ -1,6 +1,6 @@
 # Pack: a Florentine street, c.1283-1300. Stone tower-houses, shops with counters, wooden overhangs,
 # a tall tower. Street along +y, 4.6 m wide. Scene 1 (1283: Beatrice's greeting) and scene 2 (1300: the notice).
-OUT = "/Users/bartslot/BartsAutomation/BartsDev/apps/historyportal.eu/lesson_assets/Dante/packs/street"
+OUT = ASSETS_ROOT + "/Dante/packs/street"
 sc = new_scene("street")
 G, BL, WD, P, B = (coll(sc, n) for n in ("ground", "buildings", "wood", "props", "blocking"))
 HALF = 2.3                      # half street width
@@ -108,5 +108,5 @@ out = {}
 for name, cam, figs, hide in shots:
     info = render_shot(sc, cam, OUT, name, meta={"pack": "dante_street", "period": "Florence c.1283-1300"}, figures=figs, hide=hide)
     out[name] = info["horizon_y_px"]
-bpy.ops.wm.save_as_mainfile(filepath="/Users/bartslot/BartsAutomation/BartsDev/apps/historyportal.eu/lesson_assets/Dante/packs/dante_packs.blend")
+bpy.ops.wm.save_as_mainfile(filepath=ASSETS_ROOT + "/Dante/packs/dante_packs.blend")
 result = {"shots": out, "objects": len(sc.collection.all_objects)}

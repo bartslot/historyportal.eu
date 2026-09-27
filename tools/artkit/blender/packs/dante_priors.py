@@ -1,6 +1,6 @@
 # Pack: the priors' room, Florence 1300. In 1300 the priors still met in borrowed seats (the Torre della
 # Castagna) while the Palazzo dei Priori was being built: a sober stone hall, timber beams, a trestle table.
-OUT = "/Users/bartslot/BartsAutomation/BartsDev/apps/historyportal.eu/lesson_assets/Dante/packs/priors"
+OUT = ASSETS_ROOT + "/Dante/packs/priors"
 sc = new_scene("priors")
 R, F, P, B = (coll(sc, n) for n in ("room", "furniture", "props", "blocking"))
 W, BACK, FRONT, H, T = 8.0, 8.4, -2.0, 3.9, 0.45
@@ -115,5 +115,5 @@ out = {}
 for name, cam, figs in shots:
     info = render_shot(sc, cam, OUT, name, meta={"pack": "dante_priors", "period": "Florence 1300"}, figures=figs)
     out[name] = info["horizon_y_px"]
-bpy.ops.wm.save_as_mainfile(filepath="/Users/bartslot/BartsAutomation/BartsDev/apps/historyportal.eu/lesson_assets/Dante/packs/dante_packs.blend")
+bpy.ops.wm.save_as_mainfile(filepath=ASSETS_ROOT + "/Dante/packs/dante_packs.blend")
 result = {"shots": out, "objects": len(objs(sc))}

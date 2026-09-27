@@ -8,7 +8,7 @@ import json, math, os, subprocess, sys
 from PIL import Image
 import numpy as np
 
-UPSCAYL = "/Applications/Upscayl.app/Contents/Resources/bin/upscayl-bin"
+UPSCAYL = os.environ.get("UPSCAYL", "/Applications/Upscayl.app/Contents/Resources/bin/upscayl-bin")   # render PC: /opt/upscayl/bin/upscayl-bin
 # plate: (pack, source shot, character, zoom, where the head sits: 'left'|'centre'|'right' third)
 PLATES = [
     ("study", "st01_wide_front", "dante_seated", 3.0, "centre", "st04_cu_dante"),

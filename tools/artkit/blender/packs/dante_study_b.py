@@ -1,6 +1,6 @@
 # Pack: Dante's study, version B for the A/B test: scanned CC0 props (Poly Haven) + exposed masonry as geometry.
-PH = "/Users/bartslot/BartsAutomation/BartsDev/apps/historyportal.eu/lesson_assets/_polyhaven/"
-OUT = "/Users/bartslot/BartsAutomation/BartsDev/apps/historyportal.eu/lesson_assets/Dante/packs/study_b"
+PH = ASSETS_ROOT + "/_polyhaven/"
+OUT = ASSETS_ROOT + "/Dante/packs/study_b"
 sc = new_scene("study_b")
 R, D, S, P, B = (coll(sc, n) for n in ("room", "desk", "stool", "props", "blocking"))
 
@@ -82,5 +82,5 @@ out = {}
 for name, cam in shots.items():
     info = render_shot(sc, cam, OUT, name, meta={"pack": "dante_study", "period": "Florence 1283", "anchors": anchors})
     out[name] = info["horizon_y_px"]
-bpy.ops.wm.save_as_mainfile(filepath="/Users/bartslot/BartsAutomation/BartsDev/apps/historyportal.eu/lesson_assets/Dante/packs/dante_packs.blend")
+bpy.ops.wm.save_as_mainfile(filepath=ASSETS_ROOT + "/Dante/packs/dante_packs.blend")
 result = {"shots": out}

@@ -8,7 +8,7 @@ import glob, os, subprocess, sys
 from PIL import Image
 import numpy as np
 
-UPSCAYL = "/Applications/Upscayl.app/Contents/Resources/bin/upscayl-bin"
+UPSCAYL = os.environ.get("UPSCAYL", "/Applications/Upscayl.app/Contents/Resources/bin/upscayl-bin")   # render PC: /opt/upscayl/bin/upscayl-bin
 MODEL = "digital-art-4x"        # Upscayl's "Digital Art" model; -s 2 gives 2x
 PAPER = 235                     # pixels this light become pure white (removes paper texture)
 
