@@ -45,6 +45,14 @@ are all kept for a human pick. Every stage output is kept, so a changed Upscayl 
   goal image's elephants in Dante's study; here: a harbour). Palette comes from words.
 - **Hard ink threshold in the fade**: ghostly double exposure on coloured wood at 100%. Now a soft ramp.
 
+### Colour hints from the Blender mask (follow-up, recommended)
+`hint_tint.py hint <ink> <mask> <camera.json> --palette street` puts a pale flat colour per mask part under the
+ink; the colour pass then uses `prompts/house/colour_street_hinted.txt` ("keep the hue of every area as hinted").
+Colours become consistent across seeds and follow the historian-set palette table instead of the model's
+guess. Blender's view transform shifts mask colours (255,128,0 → 255,188,0); `hint_tint` matches both.
+Limit: masks tag parts, not materials; tag `water`, `stone`, `plaster`, `wood`, `cloth`, `terracotta` in the packs
+to get "blue for water". `hint_tint.py wash` is a no-AI fallback (flat, predictable).
+
 ## The system prompt (house style, two stage prompts with slots)
 
 Files in `prompts/house/`. One shared style spec, two stage-specific prompts; a single chat-style
