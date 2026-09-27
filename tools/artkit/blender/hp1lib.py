@@ -230,13 +230,16 @@ def render_shot(sc, cam, outdir, shot, meta=None, blocking=True, figures=None, h
     if shaded:   # materials as assigned (Poly Haven textures, glTF props), sun + sky, Eevee on the GPU
         _figures_visible(sc, False)
         _sun(sc); sc.render.engine = 'BLENDER_EEVEE'; sc.render.use_freestyle = False
-        _set_world(sc, (0.78, 0.82, 0.88))
+        _set_world(sc, tuple(sc.get("sky_rgb", (0.78, 0.82, 0.88))))   # a pack may darken the fill for deep shadows
         sc.view_settings.view_transform = 'AgX'
         sc.render.filepath = p("shaded"); bpy.ops.render.render(write_still=True, scene=sc.name)
         sc.view_settings.view_transform = 'Standard'
     sun = bpy.data.objects.get(sc.name + ".hp1_sun")
     if sun:
         sun.hide_render = True
+    only_shaded = [o for o in objs(sc) if o.get("shaded_only")]   # e.g. a ray volume: a solid box in clay/mask
+    for o in only_shaded:
+        o.hide_render = True
     # white via the view layer override: clearing mesh slots would reset every face to slot 0
     # (multi-material assets then kept bark on their leaves in every later shot)
     sc.view_layers[0].material_override = white
@@ -290,6 +293,8 @@ def render_shot(sc, cam, outdir, shot, meta=None, blocking=True, figures=None, h
     sc.view_layers[0].material_override = None
     if sun:
         sun.hide_render = False
+    for o in only_shaded:
+        o.hide_render = False
     # camera sidecar
     cd = cam.data
     f_px = (RES_X / 2) / (cd.sensor_width / 2 / cd.lens)

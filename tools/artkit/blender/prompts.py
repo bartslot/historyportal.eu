@@ -33,10 +33,10 @@ PACKS = {
                "papers, a written list, a clay inkwell, a quill, a wax seal, a bound register, candles, an iron-banded chest."),
 }
 PACKS["forest3d"] = ("Inferno I, just before dawn", "the dark wood where Dante is lost",
-                      "old twisted oak trunks with deep bark furrows, low crooked branches, thorny bare shrubs and ferns "
-                      "crowding a narrow earth path, a fallen trunk, mossy rocks; foliage as masses with a few edge strokes, "
-                      "never leaf by leaf; the distant hill almost white, lit by the first sun. Bare earth path; "
-                      "no fences, posts, gates, signs or boardwalks.")
+                      "sinuous old trunks with deep bark furrows arching over the path like a gate, giant ferns close "
+                      "in front, deep shadow masses in hatching, dappled light patches left white on the earth path, "
+                      "a few sun rays slanting through the canopy, the bright opening at the end almost white. "
+                      "Bare earth path; no fences, posts, gates or signs.")
 PACKS["study_b"] = PACKS["study"]   # A/B test: same room with scanned props and masonry as geometry
 EXTRA = {"sr02_notice_wall": "A handwritten paper notice is nailed to the wall. ",
          "sr06_cu_guido": "A handwritten paper notice is nailed to the wall. "}
