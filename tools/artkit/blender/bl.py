@@ -28,5 +28,8 @@ while b"\0" not in buf:
         break
     buf += chunk
 reply = json.loads(buf.split(b"\0")[0])
-print(json.dumps(reply, indent=1)[:12000])
+out = dict(reply)
+if "stdout" in out:   # glTF imports log hundreds of lines; keep the tail only
+    out["stdout"] = out["stdout"][-800:]
+print(json.dumps(out, indent=1))
 sys.exit(0 if reply.get("status") == "ok" else 1)

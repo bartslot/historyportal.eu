@@ -11,7 +11,7 @@ LENS = 18.0 / math.tan(math.radians(HFOV / 2))          # 28.25 mm on a 36 mm se
 PARTS = {
     "floor": (255, 0, 0), "wall": (255, 255, 0), "opening": (0, 255, 0), "furniture": (0, 255, 255),
     "seat": (0, 0, 255), "props": (255, 0, 255), "wood": (255, 128, 0), "roof": (128, 0, 255),
-    "sky": (0, 0, 0),
+    "plant": (0, 128, 0), "sky": (0, 0, 0),
 }
 
 
@@ -243,6 +243,15 @@ def render_shot(sc, cam, outdir, shot, meta=None, blocking=True, figures=None, h
     ls.select_by_visibility = True; ls.visibility = 'VISIBLE'
     ls.select_silhouette = ls.select_border = ls.select_crease = True
     ls.linestyle.color = (0, 0, 0); ls.linestyle.thickness = 2.0
+    plants = bpy.data.collections.get(sc.name + ":plants")
+    if plants:   # dense foliage: thin silhouette-only lines, or it renders as a black blob
+        ls.select_by_collection = True; ls.collection = plants; ls.collection_negation = 'EXCLUSIVE'
+        lp = fs.linesets.get("plants") or fs.linesets.new("plants")
+        lp.select_by_visibility = True; lp.visibility = 'VISIBLE'
+        lp.select_by_collection = True; lp.collection = plants; lp.collection_negation = 'INCLUSIVE'
+        lp.select_by_edge_types = True
+        lp.select_silhouette = True; lp.select_border = True; lp.select_crease = False
+        lp.linestyle.color = (0, 0, 0); lp.linestyle.thickness = 1.1
     sc.render.filepath = p("lines"); bpy.ops.render.render(write_still=True, scene=sc.name)
     sc.render.use_freestyle = False
     # clay
@@ -310,6 +319,14 @@ def head_of(mannequin_obj, height=1.70, seated=False, seat_h=0.46):
     hip = (seat_h + 0.10 * s) if seated else 0.90 * s
     x, y, z = mannequin_obj.location
     return (x, y, z + hip + 0.74 * s)
+
+
+def ph(c, name, asset_id, part, loc=(0, 0, 0), yaw_deg=0.0, height=None, size=None):
+    """Poly Haven (CC0) asset by id from ASSETS_ROOT/_polyhaven (see tools/artkit/fetch_polyhaven.py)."""
+    d = os.path.join(ASSETS_ROOT, "_polyhaven", asset_id)
+    gl = json.load(open(os.path.join(d, "credit.json"))).get("gltf") or \
+        next(f for f in os.listdir(d) if f.endswith(".gltf"))
+    return import_asset(c, name, os.path.join(d, gl), part, loc, yaw_deg, height, size)
 
 
 def import_asset(c, name, gltf_path, part, loc=(0, 0, 0), yaw_deg=0.0, height=None, size=None):

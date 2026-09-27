@@ -15,6 +15,9 @@ def facade_cut(side, y, z, w, h, depth=0.45, pointed=False, name="op"):
     xf = side * HALF
     return arch_cutter(BL, name, w, h, depth, (xf + side * (depth / 2 - 0.12), y, z), rot=(0, 0, math.radians(90)), pointed=pointed)
 
+FEATURES = []   # (kind, side, y) of shops and doors, for set dressing
+
+
 def building(tag, side, y0, w, h, shop=True, door=True, sporto=False, windows=True):
     D = 9.0
     cx = side * (HALF + D / 2)
@@ -24,12 +27,14 @@ def building(tag, side, y0, w, h, shop=True, door=True, sporto=False, windows=Tr
     yc = y0 + w / 2
     if shop:
         sy = y0 + 0.4 + 1.25
+        FEATURES.append(("shop", side, sy, tag))
         cuts.append(facade_cut(side, sy, -0.1, 2.5, 3.1, name=tag + "_shop"))
         box(WD, tag + "_counter", (0.55, 2.3, 0.9), (xf - side * 0.12, sy, 0.45), "wood")
         box(WD, tag + "_counter_top", (0.7, 2.45, 0.06), (xf - side * 0.2, sy, 0.93), "wood")
         box(WD, tag + "_shop_shutter", (0.05, 2.3, 0.9), (xf - side * 0.45, sy, 2.45), "wood", rot=(0, side * math.radians(55), 0))
     if door:
         dy = y0 + w - 0.9 if shop else yc
+        FEATURES.append(("door", side, dy, tag))
         cuts.append(facade_cut(side, dy, -0.1, 1.1, 2.55, name=tag + "_door"))
         box(WD, tag + "_door_leaf", (0.06, 1.05, 2.2), (xf + side * 0.30, dy, 1.1), "opening")
     first = 1
@@ -81,6 +86,67 @@ for tag, w, h, shop, door, sp in RIGHT:
 end = box(BL, "end_house", (9.0, 9.0, 13.0), (1.5, 43.5 + 4.5, 6.5), "wall")
 cut_many(end, [arch_cutter(BL, "end_door", 1.2, 2.6, 0.6, (1.5, 43.4, -0.1)),
                arch_cutter(BL, "end_w1", 0.8, 1.5, 0.6, (0.0, 43.4, 5.0)), arch_cutter(BL, "end_w2", 0.8, 1.5, 0.6, (3.0, 43.4, 5.0))])
+
+
+# ---- set dressing (Poly Haven CC0 + simple built props) -------------------------------------------
+import random
+rnd = random.Random(1283)
+PL = coll(sc, "plants")
+FIG_SPOTS = [(-0.6, 9.0), (-1.3, 9.6), (0.1, 9.7), (1.1, 5.2)]     # keep the blocking spots free
+def free(x, y, r=0.9):
+    return all((x - fx) ** 2 + (y - fy) ** 2 > r * r for fx, fy in FIG_SPOTS)
+WARES = ["ceramic_pot", "jug_01", "wooden_bowl_01", "antique_ceramic_vase_01", "wooden_bowl_02", "wooden_cutting_board"]
+n = 0
+for kind, side, y, tag in FEATURES:
+    xf = side * HALF
+    if kind == "shop":
+        for k in range(3):   # wares on the counter top (z 0.96)
+            ph(P, "%s_ware_%d" % (tag, k), rnd.choice(WARES), "props", loc=(xf - side * 0.22, y - 0.8 + k * 0.8, 0.96), yaw_deg=rnd.uniform(0, 360), size=rnd.uniform(0.22, 0.34))
+        box(P, tag + "_awning", (1.0, 2.7, 0.02), (xf - side * 0.5, y, 3.05), "wood", rot=(0, side * math.radians(-18), 0))
+        for k, yy in enumerate((y - 1.3, y + 1.3)):
+            box(P, "%s_awning_pole_%d" % (tag, k), (0.04, 0.04, 0.9), (xf - side * 0.95, yy, 2.55), "wood")
+        bx, by = xf - side * 0.45, y + 1.75
+        if free(bx, by):
+            if rnd.random() < 0.5:
+                ph(P, tag + "_barrel", rnd.choice(["wine_barrel_01", "Barrel_01", "Barrel_02"]), "props", loc=(bx, by, 0), yaw_deg=rnd.uniform(0, 360), height=0.95)
+            else:
+                ph(P, tag + "_crate_a", "wooden_crate_01", "props", loc=(bx, by, 0), yaw_deg=rnd.uniform(-10, 10), size=0.55)
+                ph(P, tag + "_crate_b", "wooden_crate_02", "props", loc=(bx, by, 0.5), yaw_deg=rnd.uniform(-15, 15), size=0.45)
+    else:
+        dx, dy = xf - side * 0.45, y + side * 0.0 + 0.85
+        if not free(dx, dy):
+            continue
+        pick = rnd.choice(["stool", "bucket", "pot"])
+        if pick == "stool":
+            ph(P, tag + "_stool", rnd.choice(["wooden_stool_01", "wooden_stool_02"]), "seat", loc=(dx, dy, 0), yaw_deg=rnd.uniform(0, 360), height=0.45)
+        elif pick == "bucket":
+            ph(P, tag + "_bucket", rnd.choice(["wooden_bucket_01", "wooden_bucket_02"]), "props", loc=(dx, dy, 0), yaw_deg=rnd.uniform(0, 360), height=0.35)
+        else:
+            ph(P, tag + "_pot", "planter_pot_clay", "props", loc=(dx, dy, 0), height=0.45)
+            ph(PL, tag + "_pot_plant", rnd.choice(["nettle_plant", "weed_plant_02", "shrub_03"]), "plant", loc=(dx, dy, 0.40), size=0.5)
+# weeds and grass at the foot of the walls
+for k in range(26):
+    side = rnd.choice((-1, 1)); y = rnd.uniform(-1.0, 36.0)
+    x = side * (HALF - 0.12)
+    if free(x, y):
+        ph(PL, "weed_%02d" % k, rnd.choice(["grass_medium_01", "grass_medium_02", "weed_plant_02", "dandelion_01", "celandine_01"]), "plant", loc=(x, y, 0), yaw_deg=rnd.uniform(0, 360), size=rnd.uniform(0.25, 0.45))   # size caps patch-sized models
+# washing line between upper windows, a ladder, a handcart, lanterns on brackets
+box(P, "line_rope", (HALF * 2, 0.012, 0.012), (0, 14.5, 7.4), "props")
+for k, (x, w, h) in enumerate(((-1.2, 0.55, 0.8), (-0.3, 0.7, 0.55), (0.7, 0.5, 0.9), (1.5, 0.4, 0.6))):
+    box(P, "laundry_%d" % k, (w, 0.02, h), (x, 14.5, 7.4 - h / 2), "props", rot=(0, math.radians(rnd.uniform(-4, 4)), 0))
+ph(P, "ladder", "wooden_ladder", "wood", loc=(HALF - 0.45, 21.5, 0), yaw_deg=90, height=3.2)
+CX, CY = -1.35, 18.0
+box(P, "cart_bed", (0.9, 1.5, 0.08), (CX, CY, 0.62), "wood")
+for sx in (-1, 1):
+    box(P, "cart_side_%d" % sx, (0.04, 1.5, 0.28), (CX + sx * 0.43, CY, 0.8), "wood")
+    cyl(P, "cart_wheel_%d" % sx, 0.42, 0.06, (CX + sx * 0.52, CY + 0.2, 0.42), "wood", rot=(0, math.radians(90), 0))
+    box(P, "cart_shaft_%d" % sx, (0.05, 1.3, 0.05), (CX + sx * 0.3, CY - 1.3, 0.55), "wood", rot=(math.radians(12), 0, 0))
+ph(P, "cart_load_a", "wooden_crate_01", "props", loc=(CX, CY - 0.3, 0.66), size=0.5)
+ph(P, "cart_load_b", "wine_barrel_01", "props", loc=(CX, CY + 0.35, 0.66), height=0.7)
+for k, (side, y) in enumerate(((-1, 7.4), (1, 12.2), (-1, 24.0))):
+    xf = side * HALF
+    box(P, "lantern_arm_%d" % k, (0.45, 0.04, 0.04), (xf - side * 0.22, y, 2.85), "props")
+    ph(P, "lantern_%d" % k, "wooden_lantern_01", "props", loc=(xf - side * 0.42, y, 2.35), height=0.42)
 
 # the notice (scene 2, 1300 only): on R2's plain wall
 R2Y = -3.0 + 6.0 + 0.05
