@@ -32,6 +32,11 @@ PACKS = {
                "pointed windows with open wooden shutters and an iron bar, a heater shield with a lily drawn in outline, "
                "papers, a written list, a clay inkwell, a quill, a wax seal, a bound register, candles, an iron-banded chest."),
 }
+PACKS["forest3d"] = ("Inferno I, just before dawn", "the dark wood where Dante is lost",
+                      "old twisted oak trunks with deep bark furrows, low crooked branches, thorny bare shrubs and ferns "
+                      "crowding a narrow earth path, a fallen trunk, mossy rocks; foliage as masses with a few edge strokes, "
+                      "never leaf by leaf; the distant hill almost white, lit by the first sun. Bare earth path; "
+                      "no fences, posts, gates, signs or boardwalks.")
 PACKS["study_b"] = PACKS["study"]   # A/B test: same room with scanned props and masonry as geometry
 EXTRA = {"sr02_notice_wall": "A handwritten paper notice is nailed to the wall. ",
          "sr06_cu_guido": "A handwritten paper notice is nailed to the wall. "}
@@ -53,11 +58,14 @@ def kind_of(shot):
 DERIVED = ("st04", "st05", "sr04", "sr05", "sr06", "pr03", "pr04", "pr05")
 
 root = sys.argv[1]
-for lines in sorted(glob.glob(os.path.join(root, "*", "*_lines.png"))):
+# heavy packs render no Freestyle lines (lines=False): their shaded render is the conversion input
+sources = {p.rsplit("_", 1)[0]: p for p in sorted(glob.glob(os.path.join(root, "*", "*_shaded.png")) +
+                                                   glob.glob(os.path.join(root, "*", "*_lines.png")))}
+for base, lines in sorted(sources.items()):
     pack = os.path.basename(os.path.dirname(lines))
     if pack not in PACKS:
         continue
-    shot = os.path.basename(lines)[:-len("_lines.png")]
+    shot = os.path.basename(base)
     if shot.startswith(DERIVED):
         stale = os.path.join(os.path.dirname(lines), shot + "_prompt.txt")
         if os.path.exists(stale):

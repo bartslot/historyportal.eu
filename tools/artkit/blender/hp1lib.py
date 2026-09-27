@@ -227,7 +227,6 @@ def render_shot(sc, cam, outdir, shot, meta=None, blocking=True, figures=None, h
     wm = bpy.data.materials
     white = _white_mat()
     p = lambda k: os.path.join(outdir, "%s_%s.png" % (shot, k))
-    originals = {o.name: list(o.data.materials) for o in objs(sc) if o.type == 'MESH'}
     if shaded:   # materials as assigned (Poly Haven textures, glTF props), sun + sky, Eevee on the GPU
         _figures_visible(sc, False)
         _sun(sc); sc.render.engine = 'BLENDER_EEVEE'; sc.render.use_freestyle = False
@@ -238,9 +237,11 @@ def render_shot(sc, cam, outdir, shot, meta=None, blocking=True, figures=None, h
     sun = bpy.data.objects.get(sc.name + ".hp1_sun")
     if sun:
         sun.hide_render = True
+    # white via the view layer override: clearing mesh slots would reset every face to slot 0
+    # (multi-material assets then kept bark on their leaves in every later shot)
+    sc.view_layers[0].material_override = white
     for o in objs(sc):
         if o.type == 'MESH':
-            o.data.materials.clear(); o.data.materials.append(white)
             rgb = PARTS.get(o.get("part", "wall"), (128, 128, 128))
             o.color = (rgb[0] / 255, rgb[1] / 255, rgb[2] / 255, 1)
     d = sc.display.shading
@@ -286,11 +287,7 @@ def render_shot(sc, cam, outdir, shot, meta=None, blocking=True, figures=None, h
     sc.display.render_aa = 'OFF'
     sc.render.filepath = p("mask"); bpy.ops.render.render(write_still=True, scene=sc.name)
     _set_world(sc, (1, 1, 1))
-    for o in objs(sc):      # give every mesh its own materials back for the next shot
-        if o.name in originals:
-            o.data.materials.clear()
-            for m in originals[o.name]:
-                o.data.materials.append(m)
+    sc.view_layers[0].material_override = None
     if sun:
         sun.hide_render = False
     # camera sidecar
@@ -343,48 +340,84 @@ def head_of(mannequin_obj, height=1.70, seated=False, seat_h=0.46):
 
 def ph(c, name, asset_id, part, loc=(0, 0, 0), yaw_deg=0.0, height=None, size=None):
     """Poly Haven (CC0) asset by id from ASSETS_ROOT/_polyhaven (see tools/artkit/fetch_polyhaven.py)."""
-    d = os.path.join(ASSETS_ROOT, "_polyhaven", asset_id)
+    return _library(c, name, "_polyhaven", asset_id, part, loc, yaw_deg, height, size)
+
+
+def sf(c, name, uid, part, loc=(0, 0, 0), yaw_deg=0.0, height=None, size=None, pick=None):
+    """Free Sketchfab model by uid from ASSETS_ROOT/_sketchfab (see tools/artkit/fetch_sketchfab.py).
+    pick: node-name substrings, to take one tree out of a pack or one LOD out of several."""
+    return _library(c, name, "_sketchfab", uid, part, loc, yaw_deg, height, size, pick)
+
+
+def _library(c, name, lib, asset_id, part, loc, yaw_deg, height, size, pick=None):
+    d = os.path.join(ASSETS_ROOT, lib, asset_id)
     gl = json.load(open(os.path.join(d, "credit.json"))).get("gltf") or \
-        next(f for f in os.listdir(d) if f.endswith(".gltf"))
-    return import_asset(c, name, os.path.join(d, gl), part, loc, yaw_deg, height, size)
+        next(f for f in os.listdir(d) if f.endswith((".gltf", ".glb")))
+    return import_asset(c, name, os.path.join(d, gl), part, loc, yaw_deg, height, size, pick)
 
 
-def import_asset(c, name, gltf_path, part, loc=(0, 0, 0), yaw_deg=0.0, height=None, size=None):
-    """Import a glTF (e.g. Poly Haven CC0), bake it into one mesh object in collection c.
-    height: scale so the object is this tall (m); size: scale so its longest side is this long."""
+def _picked(o, pick):
+    while o:
+        if any(k in o.name for k in pick):
+            return True
+        o = o.parent
+    return False
+
+
+_ASSET_MESHES = {}   # (path, pick) -> mesh with its origin at the bottom centre, native size
+
+
+def import_asset(c, name, gltf_path, part, loc=(0, 0, 0), yaw_deg=0.0, height=None, size=None, pick=None):
+    """Import a glTF (Poly Haven, Sketchfab), baked into one mesh; later calls with the same file and
+    pick share that mesh, so twenty trees cost one import. height: scale so the object is this tall (m);
+    size: scale so its longest side is this long. The scale lives on the object."""
+    key = (gltf_path, tuple(pick or ()))
+    me = _ASSET_MESHES.get(key)
+    if me is None or me.name not in bpy.data.meshes:
+        me = _bake_gltf(gltf_path, pick, c.name.split(":")[0] + "." + name)
+        _ASSET_MESHES[key] = me
+    dims = me["dims"]
+    k = height / dims[2] if height else (size / max(dims) if size else 1.0)
+    o = bpy.data.objects.new(c.name.split(":")[0] + "." + name, me); c.objects.link(o)
+    o["part"] = part; o.location = loc; o.rotation_euler = (0, 0, math.radians(yaw_deg))
+    o.scale = (k, k, k)
+    o["source"] = gltf_path
+    return o
+
+
+def _bake_gltf(gltf_path, pick, mesh_name):
     before = set(bpy.data.objects)
     bpy.ops.import_scene.gltf(filepath=gltf_path)
     new = [o for o in bpy.data.objects if o not in before]
-    meshes = [o for o in new if o.type == 'MESH']
+    meshes = [o for o in new if o.type == 'MESH' and (not pick or _picked(o, pick))]
+    if not meshes:
+        raise ValueError("no mesh in %s matches pick %s" % (gltf_path, pick))
     bm = bmesh.new()
     mats = []
     for o in meshes:   # keep each part's materials: offset its material indices into one shared slot list
         m = o.data.copy(); m.transform(o.matrix_world)
+        # one UV layer under one name, or bmesh drops the UVs of every part named differently
+        # (leaf cards then sample one texel: opaque grey sheets instead of leaves)
+        for uv in list(m.uv_layers)[1:]:
+            m.uv_layers.remove(uv)
+        if m.uv_layers:
+            m.uv_layers[0].name = "UVMap"
         base = len(mats); mats.extend(o.data.materials)
         for poly in m.polygons:
             poly.material_index += base
         bm.from_mesh(m); bpy.data.meshes.remove(m)
-    me = bpy.data.meshes.new(c.name.split(":")[0] + "." + name)
+    me = bpy.data.meshes.new(mesh_name)
     bm.to_mesh(me); bm.free()
     for mt in mats:
         me.materials.append(mt)
     for o in new:
         bpy.data.objects.remove(o, do_unlink=True)
     xs = [v.co.x for v in me.vertices]; ys = [v.co.y for v in me.vertices]; zs = [v.co.z for v in me.vertices]
-    dims = (max(xs) - min(xs), max(ys) - min(ys), max(zs) - min(zs))
-    k = 1.0
-    if height:
-        k = height / dims[2]
-    elif size:
-        k = size / max(dims)
-    # origin at the bottom centre, then scale
     cx, cy, z0 = (max(xs) + min(xs)) / 2, (max(ys) + min(ys)) / 2, min(zs)
-    for v in me.vertices:
-        v.co.x, v.co.y, v.co.z = (v.co.x - cx) * k, (v.co.y - cy) * k, (v.co.z - z0) * k
-    o = bpy.data.objects.new(me.name, me); c.objects.link(o)
-    o["part"] = part; o.location = loc; o.rotation_euler = (0, 0, math.radians(yaw_deg))
-    o["source"] = gltf_path
-    return o
+    for v in me.vertices:   # origin at the bottom centre
+        v.co.x, v.co.y, v.co.z = v.co.x - cx, v.co.y - cy, v.co.z - z0
+    me["dims"] = [max(xs) - min(xs), max(ys) - min(ys), max(zs) - min(zs)]
+    return me
 
 
 def stone_patch(c, name, plane, centre, radius, rng_seed=1, course=0.17, gap=0.016, proud=0.012):
