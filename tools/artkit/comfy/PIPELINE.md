@@ -24,8 +24,8 @@ ASSETS       character/prop master (RGBA) ──► placed at its Blender distan
 | 1b. Pick | `stage_check.py` | rank by recall − 5 × ink on empty walls | the ink master | catches invented objects on protected walls |
 | 2. Colour | ComfyUI `qwen` (Qwen-Image-Edit 2511 + Lightning 4-step LoRA) | **1 MP**, 3 seeds, no style reference | pale washes, line character | at 2 MP Qwen zooms/shifts (recall 0.61-0.79); at 1 MP 0.98-0.99. klein colours too saturated (patchwork paving) |
 | 3. Upscale | Upscayl `upscayl-standard-4x`, `-s 2` | on the PC, about 6 s | texture character | `digital-art-4x` re-hardens faded far lines and flattens washes into blotches |
-| 3b. Rich (C1) | `wash_ink.py` | median 1/240 of width, multiply | klein's hatching + Qwen's washes | the 1 MP colour pass drops most of klein's hatching; this puts it back. No visible double contours on the tested streets |
-| 4. Depth fade | `depth_lines.py adjust` | near 3 m, far 40 m, log, gamma 1.8, far opacity 0.35, thin 0.8, soft ink ramp 100-200, smoothing w/480 | the near/far hierarchy | **must be last**: the colour pass and the upscaler both re-darken faded far lines |
+| 3b. Rich (C1) | `wash_ink.py` | ink master via Upscayl (sharp) + depth fade on the B/W ink only; washes: median 1/320, aerial blend to paper; multiply | klein's hatching + Qwen's washes | the 1 MP colour pass drops most of klein's hatching; this puts it back. No visible double contours on the tested streets |
+| 4. Depth fade | `depth_lines.py adjust` | near 3 m, far 40 m, log, gamma 1.8, far opacity 0.35, no thinning, soft ink ramp 100-200, smoothing w/480 (on the weight only) | the near/far hierarchy | **must be last**: the colour pass and the upscaler both re-darken faded far lines |
 
 `chain.py <shot> --family street|study -o OUT` runs stages 1-4 and writes both finals plus `<shot>_chain.json`.
 **Recommendation: `final_rich`** (Bart, 2026-09-27: finished renders must be much richer in texture); `final` is
@@ -132,3 +132,7 @@ dominant cost; the study did not measure it.
 - Motion (pan/zoom) check of placed assets at several depths; discrete near/mid/far variants were not needed
   because placement applies the curve continuously.
 - Bart's review of the style match against `city_*.png`; the metrics here are diagnostics, not taste.
+
+## Sharpness rule (Bart, 2026-09-27: "not blurry, just very light but visible")
+Never blur or thin a line to push it back. Distance only changes ink **opacity**, on the pure black-and-white ink
+layer, after Upscayl has enlarged that layer. Washes may be softened, lines never.

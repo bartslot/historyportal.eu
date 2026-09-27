@@ -70,14 +70,19 @@ def run(shot: Path, family: str, out: Path, ink_seeds: int, colour_seeds: int, m
         up = upscale(col, out / "upscaled" / col.name)
         final = out / "final" / col.name            # "clean": Qwen's own (redrawn, lighter) ink
         rich = out / "final_rich" / col.name        # "rich" (C1): Qwen washes x the klein ink master
-        for dst, img in ((final, None), (rich, "c1")):
-            if dst.exists():
-                continue
-            dst.parent.mkdir(parents=True, exist_ok=True)
+        if not final.exists():
+            final.parent.mkdir(parents=True, exist_ok=True)
             src = dl.Image.open(up)
-            if img == "c1":
-                src = wi.composite(src, dl.Image.open(ink_master))
-            dl.adjust(src, dl.load_depth(depth, src.size), dl.FAR_OPACITY, dl.NEAR_M, dl.FAR_M).save(dst)
+            dl.adjust(src, dl.load_depth(depth, src.size), dl.FAR_OPACITY, dl.NEAR_M, dl.FAR_M).save(final)
+        if not rich.exists():
+            # Layers kept apart so nothing gets blurred: the black-and-white ink is enlarged by Upscayl (sharp) and
+            # faded by distance (lighter, same width); the washes only get an aerial fade toward paper.
+            rich.parent.mkdir(parents=True, exist_ok=True)
+            ink_up = dl.Image.open(upscale(ink_master, out / "upscaled" / ink_master.name))
+            z = dl.load_depth(depth, ink_up.size)
+            ink_faded = dl.adjust(ink_up, z, dl.FAR_OPACITY, dl.NEAR_M, dl.FAR_M)
+            far = dl.smooth(dl.far_fraction(z), ink_up.width)
+            wi.composite(dl.Image.open(up), ink_faded, far).save(rich)
         report["colour"].append({"seed": s, "colour_master": col.name, "final": str(final), "final_rich": str(rich)})
     (out / f"{shot.name}_chain.json").write_text(json.dumps(report, indent=2) + "\n")
     return report

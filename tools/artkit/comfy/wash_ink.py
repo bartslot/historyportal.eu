@@ -17,8 +17,8 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageFilter
 
-MEDIAN_FRAC = 1 / 240   # median window as a share of width: removes strokes up to ~half this wide
-SOFTEN_FRAC = 1 / 1400  # a touch of blur so the median's blocky edges don't show
+MEDIAN_FRAC = 1 / 320   # median window as a share of width: removes strokes up to ~half this wide
+ATMOS = 0.45            # washes this far toward paper at FAR_M
 
 
 def odd(n: float) -> int:
@@ -27,14 +27,19 @@ def odd(n: float) -> int:
 
 
 def wash(colour: Image.Image) -> Image.Image:
-    w = colour.width
-    return colour.convert("RGB").filter(ImageFilter.MedianFilter(odd(w * MEDIAN_FRAC))).filter(
-        ImageFilter.GaussianBlur(max(1.0, w * SOFTEN_FRAC)))
+    """Median only: removes the colour pass's own thin lines, keeps colour edges where they are (no bleed)."""
+    return colour.convert("RGB").filter(ImageFilter.MedianFilter(odd(colour.width * MEDIAN_FRAC)))
 
 
-def composite(colour: Image.Image, ink: Image.Image) -> Image.Image:
-    wsh = np.asarray(wash(colour), dtype=np.float32)
-    ink_l = np.asarray(ink.convert("L").resize(colour.size, Image.LANCZOS), dtype=np.float32)[..., None]
+def composite(colour: Image.Image, ink: Image.Image, far: np.ndarray | None = None, atmos: float = ATMOS) -> Image.Image:
+    """Output at the INK's size (the ink carries the detail; washes are soft anyway, so they are the ones resized).
+    `far` (0 near .. 1 far, ink-sized) fades the washes toward paper for aerial perspective: a blend, never a blur.
+    Fade the ink itself separately (depth_lines.adjust on the black-and-white ink) so lines get lighter, not softer."""
+    wsh = np.asarray(wash(colour).resize(ink.size, Image.BICUBIC), dtype=np.float32)
+    if far is not None:
+        paper = np.percentile(wsh.reshape(-1, 3), 97, axis=0)
+        wsh = wsh + (paper - wsh) * (atmos * far)[..., None]
+    ink_l = np.asarray(ink.convert("L"), dtype=np.float32)[..., None]
     return Image.fromarray(np.clip(wsh * ink_l / 255.0, 0, 255).astype(np.uint8))
 
 

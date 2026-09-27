@@ -25,7 +25,7 @@ from PIL import Image, ImageFilter
 
 NEAR_M, FAR_M = 3.0, 40.0        # house anchors: full weight at or before NEAR_M, finest at FAR_M and beyond
 FAR_OPACITY = 0.35               # ink strength left at FAR_M (1.0 = no fading)
-THIN = 0.8                       # far strokes also 1 px narrower, blended in by distance
+THIN = 0.0                       # off: blending with a thinner copy smears far strokes grey (Bart: 'blurry'); fade = lighter only
 GAMMA = 1.8                      # >1 keeps the middle ground strong; only real distance fades (study 2026-09-27)
 SMOOTH_FRAC = 1 / 480              # depth-weight blur radius as a share of image width
 EDGE_PX = 5                      # min-filter window: a contour takes the nearest depth around it
