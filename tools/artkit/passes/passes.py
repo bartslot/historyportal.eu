@@ -78,15 +78,17 @@ def main():
     ap.add_argument("--ref", type=Path)
     ap.add_argument("--mp", type=float, default=2.0)
     ap.add_argument("--seed", type=int, default=1)
-    ap.add_argument("--scene", choices=["inland", "harbour"], default="inland",
-                    help="inland drops 'boats' and 'water' from the colour prompt (they get painted in otherwise)")
+    ap.add_argument("--scene", choices=["inland", "harbour", "forest"], default="inland",
+                    help="inland drops 'boats' and 'water' from the colour prompt (they get painted in otherwise); "
+                         "forest = full local colour like Bart's goal image (his prompt stays restrained for towns)")
     ap.add_argument("-o", "--outdir", type=Path, required=True)
     a = ap.parse_args()
     if a.kind == "ink":
         lead = INK_LEAD_SHADED if "_shaded" in a.src.name else INK_LEAD
         prompt = lead + a.prompt_file.read_text()
     else:
-        prompt = COLOUR_GUARD + (COLOUR_LEAD if a.ref else "") + (HERE / "prompts" / ("colour_pass.txt" if a.scene == "harbour" else "colour_pass_inland.txt")).read_text()
+        prompt = COLOUR_GUARD + (COLOUR_LEAD if a.ref else "") + (HERE / "prompts" / {"harbour": "colour_pass.txt", "inland": "colour_pass_inland.txt",
+                                                "forest": "colour_pass_forest.txt"}[a.scene]).read_text()
     ref = None if (a.ref and str(a.ref) == "none") else (a.ref or DEFAULT_REF[a.kind])
     if ref is None and a.kind == "ink":
         prompt = prompt.replace(" Image 2 is only a style reference: copy its drawing style, never its content.", "")
