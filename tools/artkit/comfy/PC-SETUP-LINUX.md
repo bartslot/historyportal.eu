@@ -38,8 +38,13 @@ Each part ends with a check; don't move on until it passes.
    - **ErP / EuP / Deep Sleep: Disabled.** When it's on, it cuts standby power to the network card and WoL dies.
    - Leave Secure Boot on (see the driver step) or turn it off. Either works.
 2. Get the installer booted, **with a wired connection**. Either:
-   - **USB stick:** flash **Ubuntu Server 24.04 LTS** with balenaEtcher or Rufus, then boot it. Or
-   - **No USB stick:** use the installer partition in B-2 below, then come back to step 3.
+   - **USB stick:** flash **Ubuntu Server 24.04 LTS** with balenaEtcher or Rufus, then boot it. This wipes the stick. Or
+   - **Any FAT32 USB stick or SD card (in a USB reader), without wiping it:** check its file system
+     is FAT32 (Explorer → Properties); exFAT won't boot. It needs about 3 GB free and no top-level `EFI` folder.
+     Mount the ISO and `robocopy E:\ F:\ /E` onto it (the ISO is `E:`, the card is `F:`), next to what's
+     already there. Boot it from the boot-menu key. Afterwards, delete the copied folders (`EFI`, `boot`,
+     `casper`, `.disk`, `dists`, `pool`, `install`) and the loose files. Or
+   - **No USB storage at all:** use the installer partition in B-2 below, then come back to step 3.
 3. Installer choices:
    - Base: **Ubuntu Server (minimized)**.
    - Storage: **Custom storage layout**. Select the **~300 GB free space** → add an **ext4** partition
