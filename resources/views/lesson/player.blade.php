@@ -613,12 +613,26 @@
 
             <x-lesson.language-switch :lesson="$lesson" :translations="$translations" />
 
+            {{-- Series wordmark (comic cover style): the logo carries the name, top left under the
+                 "Edit scene" row, with only the title's subtitle lettered beneath it. The QR code
+                 owns the top right from sm up, so the width stops short of it. --}}
+            <template x-if="lesson.title_logo_url">
+                <h1 lang="{{ $contentLang }}" class="absolute left-6 sm:left-12 top-24 pointer-events-none" style="z-index:10">
+                    <img x-bind:src="lesson.title_logo_url" x-bind:alt="lesson.title"
+                         class="block h-auto -rotate-2 origin-bottom-left"
+                         style="width: clamp(18rem, 58vw, 68rem); filter: drop-shadow(0.6rem 0.8rem 0 rgba(0,0,0,0.85)) drop-shadow(0 0 3rem rgba(0,0,0,0.6));">
+                    <span aria-hidden="true" x-text="lesson.title.replace(/^.*?:\s*/, '')"
+                          class="mt-4 block font-comic font-bold leading-tight text-white drop-shadow-[0_2px_20px_rgba(0,0,0,1)]"
+                          style="font-size: clamp(1.4rem, 3.4vw, 3.6rem);"></span>
+                </h1>
+            </template>
+
             {{-- Narrator card — framed + brightened portrait beside the label/name/era. Narrator
                  thumbnails are often dark, so a warm ring + shadow + brightness lifts it off the
                  dark cover so it reads as "on the forefront" (not a dark blob). --}}
             @php $narratorImg = $lesson->narrator?->thumbnailUrl() ?? $lesson->narrator?->portraitUrl(); @endphp
             @if($lesson->narrator?->name || $lesson->historical_figure)
-                <div class="absolute bottom-10 right-8 sm:right-12 hidden sm:flex items-center gap-4" style="z-index:20">
+                <div class="absolute right-8 sm:right-12 hidden sm:flex items-center gap-4" style="z-index:20; bottom: {{ $translations->isNotEmpty() ? '6.5rem' : '2.5rem' }}">
                     <div class="flex flex-col items-end gap-0.5 text-right">
                         <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-400/80">{{ __('Narrated by') }}</p>
                         <p class="font-history text-2xl font-semibold leading-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
@@ -678,19 +692,10 @@
                        class="mb-4 border-l-2 border-amber-400 pl-3 text-xs font-bold tracking-[0.18em] text-amber-400
                               drop-shadow-[0_1px_8px_rgba(0,0,0,1)]"></p>
 
-                    {{-- Series wordmark: the logo carries the name, the title keeps only its subtitle --}}
-                    <img x-show="lesson.title_logo_url" x-bind:src="lesson.title_logo_url" x-bind:alt="lesson.title"
-                         class="mb-5 block h-auto -rotate-2 origin-bottom-left"
-                         style="width: clamp(16rem, 46vw, 52rem); filter: drop-shadow(0.5rem 0.6rem 0 rgba(0,0,0,0.85)) drop-shadow(0 0 3rem rgba(0,0,0,0.6));">
-
                     {{-- Title --}}
-                    <h1 lang="{{ $contentLang }}"
-                        x-bind:aria-hidden="lesson.title_logo_url ? 'true' : null"
-                        x-bind:style="lesson.title_logo_url ? 'font-size: clamp(1.4rem, 3vw, 3rem)' : 'font-size: clamp(2.2rem, 6vw, 7rem)'"
-                        x-bind:class="lesson.title_logo_url ? '!font-comic !font-bold' : ''"
-                        x-html="lesson.title_logo_url
-                            ? lesson.title.replace(/^.*?:\s*/, '')
-                            : lesson.title.includes(': ')
+                    <h1 x-show="!lesson.title_logo_url" lang="{{ $contentLang }}"
+                        style="font-size: clamp(2.2rem, 6vw, 7rem);"
+                        x-html="lesson.title.includes(': ')
                             ? lesson.title.replace(/^(.*?):\s*(.+)$/, '<span style=\'font-weight:300\'>$1:</span> <span style=\'font-weight:700\'>$2</span>')
                             : lesson.title"
                         class="font-history text-white leading-[0.95] tracking-tight
