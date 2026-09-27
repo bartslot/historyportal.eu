@@ -18,7 +18,7 @@ HERE = Path(__file__).resolve().parent
 REF_DIR = Path("/Users/bartslot/BartsAutomation/BartsDev/apps/historyportal.eu/lesson_assets/_reference")
 # colour: no reference by default. Qwen-Image-Edit treats image2 as content: the goal image's elephants and
 # raft were pasted into Dante's study (2026-09-27). The palette comes from Bart's colour prompt instead.
-DEFAULT_REF = {"ink": REF_DIR / "ink_study_approved.jpg", "colour": None}
+DEFAULT_REF = {"ink": REF_DIR / "ink_study_approved.jpg", "colour": None, "paint": None}
 INK_LEAD = ("Image 1 is a clean perspective line drawing of the scene. Image 2 is only a style reference: "
             "copy its drawing style, never its content. ")
 # Shaded Blender renders carry real stone, joints, cobbles and wood grain: keep them as linework (the house
@@ -27,6 +27,25 @@ INK_LEAD_SHADED = ("Image 1 is a rendered 3D scene with real materials. Image 2 
                    "drawing style, never its content. Translate every material of image 1 into ink: outline the "
                    "individual stones and their joints, the cobbles, the planks and wood grain, with lighter and "
                    "fewer lines in the distance. Ignore the instruction to keep stone faint; about 60% white. ")
+# --light: an open ink drawing that leaves room for colour (Bart's goal image), not a dark engraving.
+# The forest render is dark on purpose (deep shadows); Qwen inks darkness as black, so the input's
+# shadows are lifted first and the prompt keeps shadow areas as paper (2026-09-27).
+INK_LEAD_LIGHT = ("Make it an open, light line drawing like a hand-coloured book illustration: clear outlines, "
+                  "the bark furrows, leaf clusters and fern fronds drawn as lines, and only sparse parallel hatching "
+                  "in the shadows. Shadow areas stay mostly white paper; a colour wash will add the depth later. "
+                  "At least 80% white, under 8% black, no solid black masses, no dense cross-hatching. ")
+LIFT_GAMMA = 0.55   # < 1 brightens the shadows of the render before inking
+
+
+def lifted(src):
+    """A copy of src with its shadows lifted (gamma), so dark areas read as form, not as black."""
+    from PIL import Image
+    dst = src.with_name(src.stem + "_lifted.png")
+    im = Image.open(src).convert("RGB")
+    im.point(lambda v: round(255 * (v / 255) ** LIFT_GAMMA)).save(dst)
+    return dst
+
+
 # Bart's colour prompt names boats and water; without this guard Qwen painted a harbour with ships into
 # the closed shutters of Dante's study (2026-09-27).
 COLOUR_GUARD = ("Colour only what is already drawn. Add nothing: no new objects, no views through windows, "
@@ -72,7 +91,7 @@ def run(kind, src, prompt, ref, outdir, mp, seed, ref_mp=0.6):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("kind", choices=["ink", "colour"])
+    ap.add_argument("kind", choices=["ink", "colour", "paint"])
     ap.add_argument("src", type=Path)
     ap.add_argument("prompt_file", type=Path, nargs="?")
     ap.add_argument("--ref", type=Path)
@@ -81,11 +100,21 @@ def main():
     ap.add_argument("--scene", choices=["inland", "harbour", "forest"], default="inland",
                     help="inland drops 'boats' and 'water' from the colour prompt (they get painted in otherwise); "
                          "forest = full local colour like Bart's goal image (his prompt stays restrained for towns)")
+    ap.add_argument("--light", action="store_true", help="ink: open linework with room for colour")
     ap.add_argument("-o", "--outdir", type=Path, required=True)
     a = ap.parse_args()
-    if a.kind == "ink":
+    if a.kind == "paint":
+        # organic scenes (forests): painted gouache straight from the render, no ink at all. Bart: lines for
+        # characters and buildings only; foliage and trees get none, "like Ghibli" (2026-09-27)
+        prompt = (a.prompt_file or HERE / "prompts" / "paint_gouache_forest.txt").read_text()
+        a.src = lifted(a.src)
+        a.ref = Path("none")
+    elif a.kind == "ink":
         lead = INK_LEAD_SHADED if "_shaded" in a.src.name else INK_LEAD
         prompt = lead + a.prompt_file.read_text()
+        if a.light:
+            prompt = INK_LEAD_LIGHT + prompt.replace(" about 60% white.", "")
+            a.src = lifted(a.src)
     else:
         prompt = COLOUR_GUARD + (COLOUR_LEAD if a.ref else "") + (HERE / "prompts" / {"harbour": "colour_pass.txt", "inland": "colour_pass_inland.txt",
                                                 "forest": "colour_pass_forest.txt"}[a.scene]).read_text()

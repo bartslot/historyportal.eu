@@ -34,7 +34,7 @@ PACKS = {
 }
 PACKS["forest3d"] = ("Inferno I, just before dawn", "the dark wood where Dante is lost",
                       "sinuous old trunks with deep bark furrows arching over the path like a gate, giant ferns close "
-                      "in front, deep shadow masses in hatching, dappled light patches left white on the earth path, "
+                      "in front, shadows as light sparse hatching, dappled light patches left white on the earth path, "
                       "a few sun rays slanting through the canopy, the bright opening at the end almost white. "
                       "Bare earth path; no fences, posts, gates or signs.")
 PACKS["study_b"] = PACKS["study"]   # A/B test: same room with scanned props and masonry as geometry
