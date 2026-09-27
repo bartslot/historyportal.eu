@@ -361,11 +361,12 @@
             <div class="pointer-events-none absolute inset-x-0 top-0 transition-opacity duration-300"
                  :class="(readingOverlay || (isPlaying && !zoneHover && !zoneFlash && !chaptersOpen)) ? 'opacity-0' : 'opacity-100'"
                  style="z-index:48">
+                {{-- Side padding = the title screen bar's gutter (px-8/12), so Edit scene lines up with Start. --}}
                 {{-- A line-art scene (backdropShade off) keeps its paper white to the edge: no
                      full-width scrim. Its controls carry their own local plate instead (the Edit
                      button already has one; the logo gets one below). --}}
                 <div x-show="backdropShade" class="pointer-events-none absolute inset-x-0 top-0 h-36 bg-linear-to-b from-black/70 to-transparent"></div>
-                <div class="relative flex items-center gap-2.5 p-3.5 sm:px-16">
+                <div class="relative flex items-center gap-2.5 px-8 py-3.5 sm:px-12">
                     @if ($canEdit)
                         {{-- No back arrow here on purpose. The wizard already draws one in this exact
                              corner, so the two stacked into a confusing double control. "Edit scene"
