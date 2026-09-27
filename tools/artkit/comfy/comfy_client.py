@@ -158,7 +158,8 @@ def ensure_up(cfg: dict, wait: float = 180) -> None:
         time.sleep(3)
         if is_up(cfg):
             return
-    sys.exit(f"ComfyUI at {base_url(cfg)} did not come up within {wait:.0f}s")
+    sys.exit(f"ComfyUI at {base_url(cfg)} did not come up within {wait:.0f}s "
+             "(if the PC is booted into Windows for gaming, the render server isn't running)")
 
 
 def upload(cfg: dict, path: Path, name: str) -> str:

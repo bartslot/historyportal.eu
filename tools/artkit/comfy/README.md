@@ -6,6 +6,8 @@ and `setup_2026-09-27_1005_comfyui-render-server-pc` in the `memory/historyporta
 
 Standard library only. No `pip install`.
 
+Setting up the PC itself (Ubuntu dual-boot, headless, LAN only): [`PC-SETUP-LINUX.md`](PC-SETUP-LINUX.md).
+
 ## Once the PC's "Report back" is in
 
 1. `cp comfy.example.json comfy.json` (git-ignored: it holds the LAN IP and MAC address).
