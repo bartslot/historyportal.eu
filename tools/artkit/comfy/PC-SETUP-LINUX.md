@@ -5,7 +5,9 @@ Replaces the Windows brief (`setup_2026-09-27_1005_comfyui-render-server-pc`). T
   the LAN, and sleeps when idle.
 - **Windows** is for gaming, picked from the boot menu. Its internet access doesn't change.
 
-Hardware: RTX 3090 Ti 24 GB, 32 GB RAM, one SSD with ~800 GB of it on Windows.
+Hardware: RTX 3090 Ti 24 GB, 32 GB RAM, one 2 TB SSD (Disk 0):
+EFI 100 MB | C: 885 GB NTFS (only ~52 GB free) | Recovery 773 MB | **partition 5: 976 GB RAW**.
+Linux goes into partition 5, so C: is not shrunk (at 6% free it couldn't give up 300 GB anyway).
 
 **Who does what.** Bart does parts A and B by hand. After that, **Claude on the Mac** does everything
 over SSH (`ssh render ...`). Claude Code needs the internet, so it doesn't run on the locked-down PC.
@@ -22,14 +24,18 @@ Each part ends with a check; don't move on until it passes.
    settings that are currently unavailable → untick *Turn on fast startup*. It locks the disk and breaks
    Wake-on-LAN.
 4. Clear out the junk. Then, in an admin terminal: `powercfg /h off` (hibernation off, which frees a big file).
-5. **Shrink C:** Disk Management → right-click C: → Shrink Volume → **300 GB** (307200 MB). If it won't
-   go that far, temporarily turn off the page file (System → Advanced → Performance → Virtual memory),
-   reboot, shrink, and turn it back on.
+5. **Partition 5 (976 GB RAW).** RAW means Windows can't read it, not that it's empty. Confirm nothing
+   is on it: did it ever hold an earlier Linux install or a backup? In an admin terminal, run
+   `diskpart` → `select disk 0` → `select partition 5` → `detail partition`.
+   `Type: ebd0a0a2-…` (Windows basic data, never formatted) is expected. `0fc63daf-…` means it held Linux.
+   Once you're sure, Disk Management → right-click it → **Delete Volume**. It becomes ~976 GB **Unallocated**.
+   Plan for it: **300 GB Linux** plus **~670 GB NTFS `D:` for Windows games**. C: is 94% full and can't
+   grow, because the recovery partition sits between C: and this space. Create D: after Linux is installed (B-6).
 6. Network adapter → Properties → Advanced: **Wake on Magic Packet = Enabled** (and *Shutdown Wake-On-Lan*
    if listed). Write down the **MAC address** (`getmac /v`).
 7. Router: give the PC a **DHCP reservation** (fixed LAN IP). Note the IP and the subnet (e.g. `192.168.1.0/24`).
 
-✅ Check: Disk Management shows ~300 GB **Unallocated** after C: (305 GB if you have no USB stick; see B-2).
+✅ Check: Disk Management shows ~976 GB **Unallocated** after the recovery partition.
 
 ## B. BIOS and Ubuntu install (Bart)
 
@@ -47,8 +53,8 @@ Each part ends with a check; don't move on until it passes.
    - **No USB storage at all:** use the installer partition in B-2 below, then come back to step 3.
 3. Installer choices:
    - Base: **Ubuntu Server (minimized)**.
-   - Storage: **Custom storage layout**. Select the **~300 GB free space** → add an **ext4** partition
-     mounted at `/` using all of it. Leave the existing EFI and Windows partitions alone (don't format
+   - Storage: **Custom storage layout**. Select the **~976 GB free space** → add an **ext4** partition,
+     **size 300G**, mounted at `/`. Leave the rest free, for D:. Leave the existing EFI and Windows partitions alone (don't format
      them), **and the 5 GB `UBUNTU` installer partition if you used B-2**, since the installer is running from it.
      The installer reuses the existing EFI partition for the boot loader.
    - **Install OpenSSH server: yes.** No featured snaps.
@@ -61,6 +67,9 @@ Each part ends with a check; don't move on until it passes.
      User bart
    ```
 
+6. Games drive: boot Windows (GRUB menu) → Disk Management → right-click the remaining ~670 GB
+   unallocated → **New Simple Volume** → NTFS, letter `D:`. In Steam and other launchers, add `D:` as a library folder.
+
 ✅ Check: `ssh render hostname` works from the Mac without a password.
 
 ### B-2. No USB stick: boot the installer from a partition on the SSD
@@ -68,9 +77,9 @@ Each part ends with a check; don't move on until it passes.
 The PC's UEFI firmware can boot any FAT32 partition that contains `EFI\BOOT\BOOTX64.EFI`, and the
 Ubuntu ISO has one. So a small partition stands in for the stick. All of this happens in Windows.
 
-1. In A-5, shrink C: by **305 GB** (312320 MB) instead of 300.
+1. Do A-5 first, so the old partition 5 is deleted and ~976 GB is unallocated.
 2. Disk Management → right-click the unallocated space → **New Simple Volume** → **5 GB** (5120 MB),
-   **FAT32**, label `UBUNTU`, give it a drive letter (say `U:`). Leave the remaining ~300 GB unallocated.
+   **FAT32**, label `UBUNTU`, give it a drive letter (say `U:`). Leave the rest unallocated.
 3. Download `ubuntu-24.04.x-live-server-amd64.iso` from ubuntu.com/download/server. Verify it against
    the `SHA256SUMS` published next to it: `certutil -hashfile <iso> SHA256`.
 4. Double-click the ISO to mount it (say it appears as `E:`), then copy **everything**, including the
@@ -89,10 +98,9 @@ Ubuntu ISO has one. So a small partition stands in for the stick. All of this ha
    - Secure Boot can stay on; the ISO's loader is signed.
 6. The GRUB menu shows **Try or Install Ubuntu Server**. Continue with step 3 above.
 
-**Afterwards, reclaim the 5 GB (optional).** Once Linux boots on its own (step 4 above), go to Windows →
-Disk Management → delete the `UBUNTU` volume → right-click C: → **Extend Volume** into the freed space.
-This only works if it sits directly after C:, which it will if it was created first in step 2. Otherwise
-leave it; it's 5 GB.
+**Afterwards:** once Linux boots on its own (step 4 above), the `UBUNTU` partition isn't needed any more.
+It isn't next to C: or D:, so it can't be merged into either. Leave it as a small spare drive, or delete it
+in Disk Management. It's 5 GB.
 
 ---
 
