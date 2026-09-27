@@ -136,3 +136,27 @@ dominant cost; the study did not measure it.
 ## Sharpness rule (Bart, 2026-09-27: "not blurry, just very light but visible")
 Never blur or thin a line to push it back. Distance only changes ink **opacity**, on the pure black-and-white ink
 layer, after Upscayl has enlarged that layer. Washes may be softened, lines never.
+
+## Characters: costume master and walk sprites (2026-09-27, evening)
+
+**Costume master.** Words alone fail (turbans, beards). Use a period portrait as image 2 with `klein4b_ref` on a
+blank sheet (`prompts/dante_costume_ref.txt`), then the house colour prompt with a face guard ("colour only, do not
+redraw the face: clean-shaven, no beard") and every garment colour named. Record which details are portrait
+*convention* (Botticelli c. 1495 for Dante) and which are evidence. The master lives in the vault
+(`historyportal/dante-assets/`) and is never edited by later steps.
+
+**Walk sprites** (research: vault `research_2026-09-27_1850_ghibli-walk-animation-techniques`):
+
+```
+blender_walk/walk_poses.py   8 keys (contact, down, passing, up x2), mannequin with face + trailing gown,
+                              part-ID render in its own `blender -b` process
+blender_walk/walk_lines.py   part IDs -> clean lines; cut into one cell per pose
+klein4b_ref per frame        prompts/walk_frame.txt, image 2 = the character's line master   (NOT the whole strip)
+qwen colour per frame        house figure palette, ONE fixed seed per view (stable colours)
+asset_place.cutout           transparent frames -> sprite sheet + JSON (cell, foot point, fps 24, hold 3, 1.4 m/cycle)
+comfy/walk_street.py         drawings on threes along a metre path; size, depth fade, shadow per distance
+```
+
+What failed: one AI job for the whole 8-frame strip (models skip poses); a faceless mannequin (read as a back
+view); headless Freestyle in Blender 5.1 (draws nothing). The render PC's idle-suspend now treats `blender` and
+`upscayl-bin` as busy.
