@@ -65,6 +65,36 @@ box(P, "quill", (0.01, 0.30, 0.01), (0.46, TY + 0.10, TH + 0.01), "props", rot=(
 cyl(P, "candle_l", 0.03, 0.22, (-1.0, TY + 0.32, TH + 0.11), "props")
 cyl(P, "candle_r", 0.03, 0.22, (1.5, TY + 0.32, TH + 0.11), "props")
 
+# dressing at head height, so close-ups have lines to follow
+BY = TY + 0.85
+for k in range(19):   # high plank backrest behind the bench
+    box(F, "backrest_plank_%02d" % k, (0.19, 0.04, 1.30), (-1.8 + k * 0.2, BY + 0.24, 0.47 + 0.65), "wood")
+box(F, "backrest_rail", (3.9, 0.07, 0.08), (0, BY + 0.24, 1.80), "wood")
+box(F, "backrest_cap", (3.95, 0.14, 0.05), (0, BY + 0.22, 1.86), "wood")
+for k, bx in enumerate((-1.9, 1.9)):
+    box(F, "backrest_post_%d" % k, (0.09, 0.09, 1.92), (bx, BY + 0.24, 0.96), "wood")
+for zc, nm in ((1.05, "course_low"), (3.05, "course_high")):     # stone courses along the back wall
+    box(R, nm, (W, 0.06, 0.10), (0, BACK - 0.03, zc), "wall")
+for k, wx in enumerate((-2.1, 2.1)):   # quoins: dressed blocks framing each window
+    for j in range(6):
+        zz = 1.35 + j * 0.30
+        wq = 0.30 if j % 2 == 0 else 0.20
+        for sx in (-1, 1):
+            box(R, "quoin_%d_%d_%d" % (k, j, sx), (wq, 0.04, 0.26), (wx + sx * (0.5 + wq / 2), BACK - 0.02, zz), "wall")
+for k, wx in enumerate((-1.05, 1.05)):  # iron candle sconces
+    box(P, "sconce_plate_%d" % k, (0.10, 0.03, 0.22), (wx, BACK - 0.015, 1.95), "props")
+    box(P, "sconce_arm_%d" % k, (0.03, 0.22, 0.03), (wx, BACK - 0.13, 1.90), "props")
+    cyl(P, "sconce_dish_%d" % k, 0.06, 0.02, (wx, BACK - 0.24, 1.91), "props")
+    cyl(P, "sconce_candle_%d" % k, 0.022, 0.18, (wx, BACK - 0.24, 2.01), "props")
+for k, bx in enumerate((-3.3, 3.3)):    # two hanging banners on poles
+    box(P, "banner_pole_%d" % k, (0.9, 0.04, 0.04), (bx, BACK - 0.20, 3.00), "wood")
+    box(P, "banner_%d" % k, (0.75, 0.02, 1.45), (bx, BACK - 0.22, 2.25), "props")
+    box(P, "banner_tail_%d" % k, (0.53, 0.02, 0.53), (bx, BACK - 0.22, 1.52), "props", rot=(0, math.radians(45), 0))
+niche = arch_cutter(R, "niche_cut", 0.70, 0.95, 0.30, (-3.3, BACK + 0.10, 0.20))
+cut_many(back, [niche])
+for j in range(3):
+    box(P, "niche_roll_%d" % j, (0.55, 0.10, 0.10), (-3.3, BACK + 0.10, 0.27 + j * 0.11), "props")
+
 # blocking: six priors (one per sesto) + Dante among them; the speaking prior centre-left
 seats = [(-1.5, "prior_1"), (-0.55, "prior_speaker"), (0.45, "dante"), (1.4, "prior_4")]
 for sx, n in seats:

@@ -11,6 +11,9 @@ drawing with Nano Banana 2 in Figma; `finish.py` upscales the result (Upscayl di
   `camera_look()` (close-ups), `mannequin()`, `render_shot()`.
 - `packs/*.py` build one place each and list its shots. Output: `lesson_assets/<lesson>/packs/<pack>/`.
 - `prompts.py` writes a Figma prompt per shot (under 1,200 characters, Figma cuts at ~1,500).
+- `plates.py` cuts close-ups from a converted wide/medium shot at the character's head (camera math from
+  the shot's camera file). Close-ups are never converted on their own: a flat wall has no perspective
+  cues and Nano Banana invents a new perspective.
 - `sheet.py` makes a contact sheet; `finish.py` upscales `<pack>/converted/*` into `<pack>/final/`.
 
 Gotchas found building the Dante packs:

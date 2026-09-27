@@ -47,12 +47,21 @@ def kind_of(shot):
     return "wide"
 
 
+# Close-ups are cut from a converted wide/medium shot (plates.py): a separate conversion of a flat
+# wall has no perspective cues and Nano Banana invents a new perspective (Bart, 2026-09-27).
+DERIVED = ("st04", "st05", "sr04", "sr05", "sr06", "pr03", "pr04", "pr05")
+
 root = sys.argv[1]
 for lines in sorted(glob.glob(os.path.join(root, "*", "*_lines.png"))):
     pack = os.path.basename(os.path.dirname(lines))
     if pack not in PACKS:
         continue
     shot = os.path.basename(lines)[:-len("_lines.png")]
+    if shot.startswith(DERIVED):
+        stale = os.path.join(os.path.dirname(lines), shot + "_prompt.txt")
+        if os.path.exists(stale):
+            os.remove(stale)
+        continue
     when, place, details = PACKS[pack]
     text = (HEAD.format(when=when, place=place) + KIND[kind_of(shot)] + STYLE +
             "Add period detail inside the existing shapes only: " + EXTRA.get(shot, "") + details + "\n" + TAIL)
