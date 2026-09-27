@@ -1,0 +1,29 @@
+{
+  "host": "192.168.1.50",
+  "port": 8188,
+  "mac": "00:00:00:00:00:00",
+  "broadcast": "255.255.255.255",
+  "workflows": {
+    "klein4b": {
+      "file": "workflows/klein4b_edit_api.json",
+      "nodes": {
+        "image": "LOADIMAGE_ID.image",
+        "prompt": "PROMPT_ID.text",
+        "seed": "SAMPLER_ID.seed",
+        "width": "LATENT_ID.width",
+        "height": "LATENT_ID.height",
+        "steps": "SAMPLER_ID.steps"
+      }
+    },
+    "qwen": {
+      "file": "workflows/qwen_edit_api.json",
+      "nodes": {
+        "image": "LOADIMAGE_ID.image",
+        "prompt": "PROMPT_ID.prompt",
+        "seed": "SAMPLER_ID.seed",
+        "megapixels": "SCALE_ID.megapixels",
+        "steps": "SAMPLER_ID.steps"
+      }
+    }
+  }
+}
