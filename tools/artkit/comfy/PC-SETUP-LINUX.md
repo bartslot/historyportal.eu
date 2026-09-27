@@ -118,8 +118,10 @@ sudo apt install -y git curl python3-venv python3-pip ethtool nftables os-prober
 
 # Strip what a headless render box doesn't need
 sudo systemctl disable --now snapd.socket snapd.service 2>/dev/null; sudo apt purge -y snapd
-sudo apt purge -y unattended-upgrades cloud-init
-sudo rm -rf /etc/cloud /var/lib/cloud
+sudo apt purge -y unattended-upgrades
+# Don't purge cloud-init: that deletes the netplan config it wrote, and autoremove then removes
+# netplan too. The network is gone after the next reboot (happened 2026-09-27). Disable it instead:
+sudo touch /etc/cloud/cloud-init.disabled
 sudo systemctl disable --now bluetooth.service ModemManager.service 2>/dev/null
 sudo apt autoremove -y
 
