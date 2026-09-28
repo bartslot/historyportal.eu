@@ -14,6 +14,12 @@ drawing with Nano Banana 2 in Figma; `finish.py` upscales the result (Upscayl di
 - `plates.py` cuts close-ups from a converted wide/medium shot at the character's head (camera math from
   the shot's camera file). Close-ups are never converted on their own: a flat wall has no perspective
   cues and Nano Banana invents a new perspective.
+- `trees.py` builds procedural tree packs with friggog/tree-gen (addon symlinked on the render PC at
+  `~/.config/blender/5.1/scripts/addons/tree_gen`): 18 species x 3 seeds, each a marked asset collection
+  (`<species>_<seed>`: `_bark` + `_leaves` meshes, metres, root at 0,0,0) in `lesson_assets/_trees/<species>.blend`,
+  plus `<species>_clay.png`. Run headless on the render PC:
+  `blender --background --python trees.py -- ~/artkit/lesson_assets/_trees [species ...] [--seeds 1,2,3]`.
+  Trees are heavy (oak 1.5M faces, willow 10M): fine for renders, instance them, don't copy.
 - `sheet.py` makes a contact sheet; `finish.py` upscales `<pack>/converted/*` into `<pack>/final/`.
 
 Gotchas found building the Dante packs:
