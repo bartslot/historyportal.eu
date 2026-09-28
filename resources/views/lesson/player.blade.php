@@ -635,12 +635,14 @@
             {{-- Series wordmark (comic cover style): the logo carries the name, top left under the
                  "Edit scene" row, with only the title's subtitle lettered beneath it. --}}
             <template x-if="lesson.title_logo_url">
-                <h1 lang="{{ $contentLang }}" class="absolute left-8 sm:left-12 top-24 pointer-events-none" style="z-index:10">
+                {{-- The width is the logo's, so the subtitle wraps inside it and is never wider. --}}
+                <h1 lang="{{ $contentLang }}" class="absolute left-8 sm:left-12 top-24 pointer-events-none"
+                    style="z-index:10; width: clamp(18rem, 58vw, 68rem)">
                     <img x-bind:src="lesson.title_logo_url" x-bind:alt="lesson.title"
-                         class="block h-auto -rotate-2 origin-bottom-left"
-                         style="width: clamp(18rem, 58vw, 68rem); filter: drop-shadow(0.6rem 0.8rem 0 rgba(0,0,0,0.85)) drop-shadow(0 0 3rem rgba(0,0,0,0.6));">
+                         class="block h-auto w-full -rotate-2 origin-bottom-left"
+                         style="filter: drop-shadow(0.6rem 0.8rem 0 rgba(0,0,0,0.85)) drop-shadow(0 0 3rem rgba(0,0,0,0.6));">
                     <span aria-hidden="true" x-text="lesson.title.replace(/^.*?:\s*/, '')"
-                          class="mt-4 block font-comic font-bold leading-tight text-white drop-shadow-[0_2px_20px_rgba(0,0,0,1)]"
+                          class="mt-4 block text-balance font-comic font-bold leading-tight text-white drop-shadow-[0_2px_20px_rgba(0,0,0,1)]"
                           style="font-size: clamp(1.4rem, 3.4vw, 3.6rem);"></span>
                 </h1>
             </template>
