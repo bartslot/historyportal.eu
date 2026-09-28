@@ -88,3 +88,7 @@ harness/*/.build/
 # python bytecode from the bake scripts
 scripts/__pycache__/
 harness/**/__pycache__/
+
+# Art working files (Blender packs, renders, downloads). Lessons use only the finished
+# images, which live on the lesson (Cloudinary), never in the repo.
+/lesson_assets/
