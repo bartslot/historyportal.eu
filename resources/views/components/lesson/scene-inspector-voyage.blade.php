@@ -350,7 +350,7 @@
                 @php
                     $vm = fn ($k, $d) => $voyageMap[$k] ?? $d;
                     $swatch = 'h-5 w-7 shrink-0 cursor-pointer rounded border border-slate-600 bg-slate-900';
-                    $mini = 'range range-xs range-warning';
+                    $mini = 'range range-panel';
                 @endphp
 
                 {{-- WAYPOINT TITLES — the landfall names pinned along the route --}}
@@ -364,7 +364,9 @@
                             <input type="color" value="{{ $vm('label_color', '#3a2c1a') }}" wire:change="setVoyageMap('label_color', $event.target.value)" class="{{ $swatch }}" title="Label colour" />
                             <label class="flex flex-1 items-center gap-1.5">
                                 <span class="text-2xs text-slate-500">Size</span>
-                                <input type="range" min="0.5" max="2.2" step="0.1" value="{{ $vm('label_size', 1.0) }}" wire:change="setVoyageMap('label_size', $event.target.value)" class="{{ $mini }}" />
+                                <span class="range-panel-knob min-w-0 flex-1">
+                                    <input type="range" min="0.5" max="2.2" step="0.1" value="{{ $vm('label_size', 1.0) }}" wire:change="setVoyageMap('label_size', $event.target.value)" class="{{ $mini }}" />
+                                </span>
                             </label>
                         </div>
                     @endif
@@ -381,7 +383,9 @@
                             <input type="color" value="{{ $vm('city_color', '#3a2c1a') }}" wire:change="setVoyageMap('city_color', $event.target.value)" class="{{ $swatch }}" title="City name colour" />
                             <label class="flex flex-1 items-center gap-1.5">
                                 <span class="text-2xs text-slate-500">Size</span>
-                                <input type="range" min="0.5" max="2.2" step="0.1" value="{{ $vm('city_size', 1.0) }}" wire:change="setVoyageMap('city_size', $event.target.value)" class="{{ $mini }}" />
+                                <span class="range-panel-knob min-w-0 flex-1">
+                                    <input type="range" min="0.5" max="2.2" step="0.1" value="{{ $vm('city_size', 1.0) }}" wire:change="setVoyageMap('city_size', $event.target.value)" class="{{ $mini }}" />
+                                </span>
                             </label>
                         </div>
                     @endif
@@ -399,12 +403,16 @@
                                 <input type="color" value="{{ $vm('border_color', '#5b4a36') }}" wire:change="setVoyageMap('border_color', $event.target.value)" class="{{ $swatch }}" title="Border colour" />
                                 <label class="flex flex-1 items-center gap-1.5">
                                     <span class="text-2xs text-slate-500">Width</span>
-                                    <input type="range" min="0.2" max="4" step="0.2" value="{{ $vm('border_width', 0.6) }}" wire:change="setVoyageMap('border_width', $event.target.value)" class="{{ $mini }}" />
+                                    <span class="range-panel-knob min-w-0 flex-1">
+                                        <input type="range" min="0.2" max="4" step="0.2" value="{{ $vm('border_width', 0.6) }}" wire:change="setVoyageMap('border_width', $event.target.value)" class="{{ $mini }}" />
+                                    </span>
                                 </label>
                             </div>
                             <label class="flex items-center gap-1.5">
                                 <span class="w-9 text-2xs text-slate-500">Opacity</span>
-                                <input type="range" min="0" max="1" step="0.05" value="{{ $vm('border_opacity', 0.3) }}" wire:change="setVoyageMap('border_opacity', $event.target.value)" class="{{ $mini }} flex-1" />
+                                <span class="range-panel-knob min-w-0 flex-1">
+                                    <input type="range" min="0" max="1" step="0.05" value="{{ $vm('border_opacity', 0.3) }}" wire:change="setVoyageMap('border_opacity', $event.target.value)" class="{{ $mini }}" />
+                                </span>
                             </label>
                         </div>
                     @endif
@@ -462,9 +470,11 @@
                     {{-- Brush size — shared between Paint and Erase (the value stays put when you switch). --}}
                     <label class="mt-2 block">
                         <span class="flex justify-between text-2xs text-slate-300">Brush size <span class="text-slate-500" x-text="brush + ' km'"></span></span>
-                        <input type="range" min="60" max="600" step="20" x-model.number="brush"
-                               x-on:input="window.__voyagePaint.brushKm = brush"
-                               class="range range-xs mt-1" :class="erase ? 'range-error' : 'range-warning'" />
+                        <span class="range-panel-knob min-w-0 mt-1">
+                            <input type="range" min="60" max="600" step="20" x-model.number="brush"
+                                   x-on:input="window.__voyagePaint.brushKm = brush"
+                                   class="range range-panel" />
+                        </span>
                     </label>
                 </div>
             </div>
@@ -615,9 +625,11 @@
 
             <label class="mt-3 block">
                 <span class="flex justify-between text-2xs text-slate-300">Ship size <span class="text-slate-500">{{ number_format((float) $vmr('ship_scale', 1.0), 1) }}×</span></span>
-                <input type="range" min="0.4" max="2.5" step="0.1" value="{{ $vmr('ship_scale', 1.0) }}"
-                       wire:change="setVoyageMap('ship_scale', $event.target.value)"
-                       class="range range-xs range-warning mt-1" />
+                <span class="range-panel-knob min-w-0 mt-1">
+                    <input type="range" min="0.4" max="2.5" step="0.1" value="{{ $vmr('ship_scale', 1.0) }}"
+                           wire:change="setVoyageMap('ship_scale', $event.target.value)"
+                           class="range range-panel" />
+                </span>
             </label>
 
             <label class="mt-2 flex items-center justify-between gap-2">
@@ -632,9 +644,11 @@
                  ship dead still on the water. --}}
             <label class="mt-3 block">
                 <span class="flex justify-between text-2xs text-slate-300">Animation <span class="text-slate-500">{{ (int) $vmr('motion', 100) }}%</span></span>
-                <input type="range" min="0" max="100" step="5" value="{{ (int) $vmr('motion', 100) }}"
-                       wire:change="setVoyageMap('motion', $event.target.value)"
-                       class="range range-xs range-warning mt-1" />
+                <span class="range-panel-knob min-w-0 mt-1">
+                    <input type="range" min="0" max="100" step="5" value="{{ (int) $vmr('motion', 100) }}"
+                           wire:change="setVoyageMap('motion', $event.target.value)"
+                           class="range range-panel" />
+                </span>
                 <span class="mt-0.5 flex justify-between text-2xs text-slate-500"><span>Still</span><span>Full rock</span></span>
             </label>
 
@@ -642,9 +656,11 @@
                  island; 100 = a continental view (never the whole world). --}}
             <label class="mt-3 block">
                 <span class="flex justify-between text-2xs text-slate-300">Sailing zoom <span class="text-slate-500">{{ (int) $vmr('ocean_zoom', 30) }}%</span></span>
-                <input type="range" min="0" max="100" step="5" value="{{ (int) $vmr('ocean_zoom', 30) }}"
-                       wire:change="setVoyageMap('ocean_zoom', $event.target.value)"
-                       class="range range-xs range-warning mt-1" />
+                <span class="range-panel-knob min-w-0 mt-1">
+                    <input type="range" min="0" max="100" step="5" value="{{ (int) $vmr('ocean_zoom', 30) }}"
+                           wire:change="setVoyageMap('ocean_zoom', $event.target.value)"
+                           class="range range-panel" />
+                </span>
                 <span class="mt-0.5 flex justify-between text-2xs text-slate-500"><span>Ship + island</span><span>Continental</span></span>
             </label>
 
@@ -684,25 +700,31 @@
                 {{-- Opacity --}}
                 <label class="block">
                     <span class="flex justify-between text-2xs text-slate-300">Opacity <span class="text-slate-500">{{ number_format((float) $rl['opacity'], 2) }}</span></span>
-                    <input type="range" min="0" max="1" step="0.05" value="{{ $rl['opacity'] }}"
-                           wire:change="setRouteLine('opacity', $event.target.value)"
-                           class="range range-xs range-warning mt-1" />
+                    <span class="range-panel-knob min-w-0 mt-1">
+                        <input type="range" min="0" max="1" step="0.05" value="{{ $rl['opacity'] }}"
+                               wire:change="setRouteLine('opacity', $event.target.value)"
+                               class="range range-panel" />
+                    </span>
                 </label>
 
                 {{-- Thickness --}}
                 <label class="block">
                     <span class="flex justify-between text-2xs text-slate-300">Thickness <span class="text-slate-500">{{ (float) $rl['thickness'] }}px</span></span>
-                    <input type="range" min="0.5" max="12" step="0.5" value="{{ $rl['thickness'] }}"
-                           wire:change="setRouteLine('thickness', $event.target.value)"
-                           class="range range-xs range-warning mt-1" />
+                    <span class="range-panel-knob min-w-0 mt-1">
+                        <input type="range" min="0.5" max="12" step="0.5" value="{{ $rl['thickness'] }}"
+                               wire:change="setRouteLine('thickness', $event.target.value)"
+                               class="range range-panel" />
+                    </span>
                 </label>
 
                 {{-- Wobble --}}
                 <label class="block">
                     <span class="flex justify-between text-2xs text-slate-300">Wobble <span class="text-slate-500">{{ number_format((float) $rl['wobble'], 2) }}</span></span>
-                    <input type="range" min="0" max="1" step="0.05" value="{{ $rl['wobble'] }}"
-                           wire:change="setRouteLine('wobble', $event.target.value)"
-                           class="range range-xs range-warning mt-1" />
+                    <span class="range-panel-knob min-w-0 mt-1">
+                        <input type="range" min="0" max="1" step="0.05" value="{{ $rl['wobble'] }}"
+                               wire:change="setRouteLine('wobble', $event.target.value)"
+                               class="range range-panel" />
+                    </span>
                 </label>
 
                 {{-- Curve: straight vs bezier --}}

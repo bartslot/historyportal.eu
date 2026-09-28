@@ -90,4 +90,63 @@ export const EASING = {
   easeInQuint: (t) => t * t * t * t * t,                               // power4.in
   easeOutQuint: (t) => 1 + (--t) * t * t * t * t,                      // power4.out
   easeInOutQuint: (t) => (t < 0.5 ? 16 * t * t * t * t * t : 1 + 16 * (--t) * t * t * t * t), // power4.inOut
+  // Figma's "back" presets: overshoot by GSAP's default 1.7.
+  easeInBack: (t) => t * t * (2.7 * t - 1.7),                                           // back.in(1.7)
+  easeOutBack: (t) => 1 + (t - 1) * (t - 1) * (2.7 * (t - 1) + 1.7),                    // back.out(1.7)
+  easeInOutBack: (t) => (t < 0.5                                                        // back.inOut(1.7)
+    ? (2 * t) * (2 * t) * (2.7 * 2 * t - 1.7) / 2
+    : 1 - (2 - 2 * t) * (2 - 2 * t) * (2.7 * (2 - 2 * t) - 1.7) / 2),
 };
+
+// ── Custom Bézier (Figma's "Custom bezier"). Stored as the CSS string, so the editor, the saved
+//    value and anything CSS draws are one value. ──────────────────────────────────────────────
+
+const BEZIER_RE = /^cubic-bezier\(\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*\)$/
+
+/** `cubic-bezier(x1, y1, x2, y2)` → [x1, y1, x2, y2], or null. x is clamped to 0..1, as CSS requires. */
+export const parseBezier = (value) => {
+  const m = BEZIER_RE.exec(String(value ?? '').trim())
+  if (!m) return null
+  const [x1, y1, x2, y2] = m.slice(1).map(Number)
+  const clamp01 = (v) => Math.min(1, Math.max(0, v))
+  return [clamp01(x1), y1, clamp01(x2), y2]
+}
+
+const round3 = (v) => Math.round(v * 1000) / 1000
+
+export const formatBezier = ([x1, y1, x2, y2]) =>
+  `cubic-bezier(${round3(x1)}, ${round3(y1)}, ${round3(x2)}, ${round3(y2)})`
+
+/**
+ * progress → value for a CSS cubic-bezier. Newton on x (fast, converges for ordinary curves),
+ * falling back to bisection when the slope is flat, then y at that parameter.
+ */
+export const cubicBezier = (x1, y1, x2, y2) => {
+  const cx = 3 * x1, bx = 3 * (x2 - x1) - cx, ax = 1 - cx - bx
+  const cy = 3 * y1, by = 3 * (y2 - y1) - cy, ay = 1 - cy - by
+  const X = (t) => ((ax * t + bx) * t + cx) * t
+  const Y = (t) => ((ay * t + by) * t + cy) * t
+  const dX = (t) => (3 * ax * t + 2 * bx) * t + cx
+
+  const solve = (x) => {
+    let t = x
+    for (let i = 0; i < 8; i++) {
+      const e = X(t) - x
+      if (Math.abs(e) < 1e-7) return t
+      const d = dX(t)
+      if (Math.abs(d) < 1e-6) break
+      t -= e / d
+    }
+    let lo = 0, hi = 1
+    t = x
+    for (let i = 0; i < 40; i++) {
+      const v = X(t)
+      if (Math.abs(v - x) < 1e-7) return t
+      if (v < x) lo = t; else hi = t
+      t = (lo + hi) / 2
+    }
+    return t
+  }
+
+  return (u) => (u <= 0 ? 0 : u >= 1 ? 1 : Y(solve(u)))
+}

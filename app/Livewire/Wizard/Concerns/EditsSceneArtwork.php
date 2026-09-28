@@ -341,7 +341,13 @@ trait EditsSceneArtwork
         $whitelist = [
             'depth' => [0, 3],
             'scale' => [0.2, 6],   // 6x: big enough to fill the stage with one detail
-            'height' => [5, 100],
+            // The layer's box on the stage, both in % of stage height/width. `height` has always
+            // been stored; `width` is new and OPTIONAL — absent means "take the width from the
+            // image's own aspect", which is what every layer created before the Dimensions row
+            // did and still does. Both are floats: the panel edits them to two decimals, and an
+            // int would quietly round a locked 10:3 box off its proportion on every keystroke.
+            'height' => [1, 200],
+            'width' => [1, 200],
             'wobble' => [0, 2],
             'opacity' => [0.05, 1],
             'kind' => ['figure', 'strip', 'cover'],
@@ -363,6 +369,12 @@ trait EditsSceneArtwork
             'anim_out_ease' => ['enter', 'move', 'exit', 'pop', 'linear'],
             'anim_out_duration' => [100, 5000],
             'grayscale' => null,   // boolean
+            // Mirroring, as two independent booleans. Absent means unflipped, so nothing authored
+            // before the Angle control changes. Deliberately NOT folded into rotation: a
+            // 180-degree turn and a horizontal flip are identical on a symmetrical shape and
+            // completely different on a ship or a portrait.
+            'flip_x' => null,      // boolean
+            'flip_y' => null,      // boolean
             'tint' => null,        // #rrggbb or '' to clear
             // Animate tab: how the layer arrives, how long it waits first, and on which curve.
             // The vocabulary is shared with resources/js/scene/animations.js, which plays it.
@@ -396,9 +408,10 @@ trait EditsSceneArtwork
         // "leave the artwork alone" or a hex colour. Anything else is dropped.
         // Coerce and clamp the value.
         $coercedValue = match ($field) {
-            'depth', 'scale', 'opacity', 'blur', 'x', 'y', 'draw_time', 'anim_delay' => (float) $value,
-            'height', 'wobble' => (int) $value,
-            'sway', 'grayscale' => (bool) $value,
+            'depth', 'scale', 'opacity', 'blur', 'x', 'y', 'draw_time', 'anim_delay',
+            'height', 'width', 'rotation', 'white_key', 'tint_opacity' => (float) $value,
+            'wobble' => (int) $value,
+            'sway', 'grayscale', 'flip_x', 'flip_y' => (bool) $value,
             'kind', 'blend', 'ink_preset', 'ink_fill', 'anim', 'anim_ease' => (string) $value,
             default => $value,
         };
@@ -409,9 +422,9 @@ trait EditsSceneArtwork
             // Clamp: use floats for min/max to preserve float results when clamping floats
             $coercedValue = max((float) $min, min((float) $max, (float) $coercedValue));
             // Re-cast after clamping to preserve float/int type
-            if (in_array($field, ['depth', 'scale', 'opacity', 'blur', 'x', 'y', 'anim_delay'], true)) {
+            if (in_array($field, ['depth', 'scale', 'opacity', 'blur', 'x', 'y', 'anim_delay', 'height', 'width', 'rotation', 'white_key', 'tint_opacity'], true)) {
                 $coercedValue = (float) $coercedValue;
-            } elseif (in_array($field, ['height', 'wobble'], true)) {
+            } elseif ($field === 'wobble') {
                 $coercedValue = (int) $coercedValue;
             }
         }
@@ -531,7 +544,7 @@ trait EditsSceneArtwork
      * text overlay uses). The Livewire re-render still refreshes the Layers panel thumbnails.
      */
     #[On('artwork:move')]
-    public function moveArtworkLayer(int $assetId, float $x, float $y, float $scale, ?string $anchor = null, ?float $lng = null, ?float $lat = null): void
+    public function moveArtworkLayer(int $assetId, float $x, float $y, float $scale, ?string $anchor = null, ?float $lng = null, ?float $lat = null, ?float $rotation = null): void
     {
         if (! $this->selectedSceneId) {
             return;
@@ -554,12 +567,21 @@ trait EditsSceneArtwork
         $lng = $pinned ? max(-180.0, min(180.0, $lng)) : null;
         $lat = $pinned ? max(-90.0, min(90.0, $lat)) : null;
 
-        $shots = collect($shots)->map(function (array $shot) use ($assetId, $x, $y, $scale, $anchor, $pinned, $lng, $lat): array {
-            $layers = collect($shot['layers'] ?? [])->map(function (array $l) use ($assetId, $x, $y, $scale, $anchor, $pinned, $lng, $lat): array {
+        // The rotate handle turns the layer on the canvas, and until now nothing carried that
+        // angle back: the drag ended, the node stayed turned, and the next render put it flat
+        // again because the saved layer had never heard about it. Optional, like $anchor — a
+        // caller that sends none leaves the stored angle alone.
+        $rotation = $rotation === null ? null : max(-180.0, min(180.0, $rotation));
+
+        $shots = collect($shots)->map(function (array $shot) use ($assetId, $x, $y, $scale, $anchor, $pinned, $lng, $lat, $rotation): array {
+            $layers = collect($shot['layers'] ?? [])->map(function (array $l) use ($assetId, $x, $y, $scale, $anchor, $pinned, $lng, $lat, $rotation): array {
                 if (($l['asset_id'] ?? null) === $assetId) {
                     $l['x'] = $x;
                     $l['y'] = $y;
                     $l['scale'] = $scale;
+                    if ($rotation !== null) {
+                        $l['rotation'] = $rotation;
+                    }
                     // Only an overlay that knows about anchoring sends one; an older caller
                     // that doesn't leaves whatever the layer already had alone.
                     if ($anchor !== null) {

@@ -6,12 +6,21 @@ import { createTour } from './onboarding/tour.js';
 import { initTooltips } from './tooltip.js';
 import { watchCarousels } from './carousel.js';
 import { easingPreview } from './easing-preview.js';
+import { animationTimeline } from './anim/timeline-panel.js';
 import { setupHeroLessonDemo } from './hero/lesson-demo.js';
 import { setupSiteHeader } from './site-header.js';
 import { clampToViewport, restorePosition, savePosition, defaultPosition, isViewportUsable } from './ui/floating-window.js';
 // Dev settings sliders. Imported unconditionally because it is a registry and nothing more until
 // something registers a knob — it builds no DOM and adds no listeners beyond one window event.
 import './dev/tuner.js';
+import { settingsPanelTuner } from './dev/settings-panel-tuner.js';
+import { layerSizeRow } from './ui/layer-size-row.js';
+import { layerAngleRow } from './ui/angle-dial.js';
+import { initScrub } from './ui/scrub.js';
+import { initRangeFill } from './ui/range-fill.js';
+import { initNumericFields } from './ui/numeric-field.js';
+import { layerOverlay, setLayerPropEverywhere, selectLayerEverywhere } from './scene/layer-overlays.js';
+import { isTypingTarget } from './ui/keyboard.js';
 
 window.Sortable = Sortable;
 
@@ -40,6 +49,51 @@ window.onboardingTour = createTour;
 // Animated easing swatches for the wizard's Animate tab: x-data="easingPreview('enter')".
 // Same global-factory pattern, for the same reason.
 window.easingPreview = easingPreview;
+
+// The settings panel's geometry knobs: x-data="settingsPanelTuner()". Same global-factory pattern.
+// It registers a tuner group while an inspector is open and unregisters when it closes, so the
+// knobs follow the panel rather than sitting in the list on every page.
+window.settingsPanelTuner = settingsPanelTuner;
+
+// The inspector's Dimensions row: x-data="layerSizeRow({ ... })". Same global-factory pattern.
+// The proportion maths it drives lives in resources/js/ui/aspect-lock.js, where aspect-lock.test.js
+// holds it — a lock that recomputes its ratio from the rounded fields drifts a square out of
+// square with every individual step still looking right, so it is not left in a template.
+window.layerSizeRow = layerSizeRow;
+
+// A map or voyage scene keeps TWO artwork overlays alive over the same layers, so "set this
+// property live" has to reach both and "measure this layer" has to read the one on screen. See
+// resources/js/scene/layer-overlays.js — the panel's live previews all go through these.
+window.__layerOverlay = layerOverlay;
+window.__setLayerProp = setLayerPropEverywhere;
+window.__selectLayer = selectLayerEverywhere;
+
+// The rotation dial: x-data="layerAngleRow({ ... })". Same global-factory pattern.
+window.layerAngleRow = layerAngleRow;
+
+// Drag a field's label sideways to change its number, app-wide. ONE delegated listener — these
+// panels are morphed constantly by Livewire and a per-element binding would quietly stop working
+// on whichever row was re-rendered last. Opt in with `data-scrub` on the label.
+initScrub();
+
+// The panel sliders paint their fill INTO the track (see .range-panel in app.css), so the stop
+// position has to follow the value. Server-rendered for the first frame; this handles the drag.
+initRangeFill();
+
+// How the panel's numeric fields behave beyond typing: Esc restores the value they were focused
+// with, double-clicking a label resets that property to its default, and a pasted "50%" is a 50.
+// Delegated for the same reason as the two above: Livewire morphs these panels constantly.
+initNumericFields();
+
+// The wizard's Timeline tab: x-data="animationTimeline({...})". Registered from a bundled
+// module because the dock is morphed in, and a <script> that arrives through a morph never runs.
+window.animationTimeline = animationTimeline;
+
+// "Is someone typing?" — the guard every global shortcut owes a teacher before it takes a key.
+// A global as well as an import because the wizard's own shortcuts (⌘Z, Delete) live in an inline
+// <script> that cannot import a module, and they used to carry their own copy of the same test.
+// See resources/js/ui/keyboard.js.
+window.__isTypingTarget = isTypingTarget;
 
 // The 3D scene system (three.js, ~1.7 MB) is used ONLY by the lesson-creation wizard. Load it on
 // demand via window.loadLessonScene() so the landing page and other app pages never download three.

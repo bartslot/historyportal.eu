@@ -17,6 +17,12 @@
     // paragraph; double Enter splits into a new paragraph (its own timecode + TTS topic).
     $paragraphs = $scene?->scriptParagraphs() ?? [];
     $audioUrl = $scene?->audioUrl();
+    // Whether a recording is being made for this scene RIGHT NOW, decided on the server.
+    // Pressing Re-narrate makes the wizard re-render, and that morph tears this panel down and
+    // builds a new one — measured: destroy and init 300ms after the click. Everything the panel
+    // only knew in the browser went with it, so the teacher was left looking at a play bar that
+    // had forgotten it was waiting for anything, for ever. State the server owns survives that.
+    $narrating = $scene?->status === 'generating' && ! $scene?->hasFreshAudio();
 @endphp
 
 {{-- {{ $attributes }} carries the wire:key="script-{sceneId}" from the parent so a scene change
@@ -24,7 +30,7 @@
      the wire:ignore'd lines below would freeze the previous scene's script. --}}
 <div x-show="$store.view.script" x-cloak
      {{ $attributes }}
-     x-data="scriptEditor(@js($audioUrl), @js($paragraphs), {{ $scene?->id ?? 'null' }})"
+     x-data="scriptEditor(@js($audioUrl), @js($paragraphs), {{ $scene?->id ?? 'null' }}, @js($narrating))"
      class="fixed bottom-0 z-30 flex flex-col overflow-hidden border-t border-slate-700/70 bg-base-300"
      :style="`left:var(--rail-w,11rem);right:var(--work-right,16rem);height:${panelH}px`">
 
@@ -41,6 +47,10 @@
     {{-- Which tab the dock is showing. Lives in $store.view alongside the panel toggles, so it
          survives a scene change (this component is rebuilt per scene) and a reload. --}}
     <div role="tablist" class="tabs tabs-boxed tabs-sm">
+        <button type="button" role="tab" x-on:click="$store.view.showTab('timeline')"
+                :aria-selected="$store.view.bottomTab === 'timeline'"
+                :class="$store.view.bottomTab === 'timeline' ? 'tab-active' : ''"
+                class="tab" data-tab="timeline">{{ __('Timeline') }}</button>
         <button type="button" role="tab" x-on:click="$store.view.showTab('icons')"
                 :aria-selected="$store.view.bottomTab === 'icons'"
                 :class="$store.view.bottomTab === 'icons' ? 'tab-active' : ''"
@@ -49,6 +59,12 @@
                 :aria-selected="$store.view.bottomTab === 'script'"
                 :class="$store.view.bottomTab === 'script' ? 'tab-active' : ''"
                 class="tab">{{ __('Script') }}</button>
+    </div>
+
+    {{-- ── Timeline tab ──────────────────────────────────────────────────────────
+         The rows are the scene's objects; a camera is one a map scene has. --}}
+    <div x-show="$store.view.bottomTab === 'timeline'" x-cloak class="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <x-lesson.animation-timeline :scene="$scene ?? null" />
     </div>
 
     {{-- ── Icons tab ─────────────────────────────────────────────────────────────
@@ -119,10 +135,13 @@
 
         {{-- Script editing toolbar — shown while a paragraph is focused. Regenerate rewrites the
              focused paragraph from a short prompt; Summarize to list drops an on-slide bullet card.
-             mousedown.prevent keeps the paragraph's focus (and focusedPara) alive through the click. --}}
+             Cancelling mousedown keeps the paragraph's focus (and focusedPara) alive through a click
+             on a BUTTON. It must not be cancelled over the toolbar's own prompt field, because the
+             default action being cancelled IS the focus: the field could never be clicked into, and
+             everything the teacher typed went into the narration behind it instead. --}}
         <div x-show="focusedPara !== null" x-cloak
              class="flex shrink-0 flex-wrap items-center gap-2 border-t border-slate-700/60 bg-base-200/40 px-3"
-             x-on:mousedown.prevent>
+             x-on:mousedown="$event.target.closest('input, textarea, [contenteditable]') || $event.preventDefault()">
             <span class="text-2xs font-semibold uppercase tracking-widest text-slate-500">{{ __('Paragraph') }}</span>
             {{-- Regenerate with a prompt (inline expanding input). --}}
             <div class="flex items-center gap-1" x-show="!promptOpen">
@@ -201,7 +220,10 @@
         const SCRIPT_MIN_H = 40;    // px — drag below this on release → hide
         const SCRIPT_DEF_H = 240;   // px — default / reopened height
         const SCRIPT_H_KEY = 'wizard.script.h';   // persist the resized height across scene changes
-        window.scriptEditor = window.scriptEditor || function (url, paragraphs, sceneId) {
+        // Narration is a queued job. If the worker never runs, or dies without writing a status,
+        // nothing comes back to switch the waiting state off — so give up out loud after this.
+        const NARRATE_GIVE_UP_MS = 180_000;
+        window.scriptEditor = window.scriptEditor || function (url, paragraphs, sceneId, narrating) {
             return {
                 ws: null,
                 sceneId: sceneId ?? null,
@@ -238,17 +260,31 @@
                 // Does this scene have a recording at all? Drives Narrate vs Play — a scene that has
                 // never been narrated used to show a disabled play button and nothing else.
                 hasAudio: !!url,
-                // Edited-since-narration state: the audio is stale until re-narrated.
-                dirty: false,
+                // Edited-since-narration state: the audio is stale until re-narrated. Both of these
+                // are seeded from the server so a rebuilt panel comes back still waiting: while a
+                // recording is being made the words on the scene are, by definition, not the words
+                // in the recording.
+                dirty: !!narrating,
                 dirtyLines: [],
-                regenerating: false,
+                regenerating: !!narrating,
                 _narrateTimer: null,
                 _ro: null,
                 _waveRo: null,
                 _lastSaved: '',
+                _savedBefore: '',
                 _unwatchAudio: null,
 
+                // The panel's own root element. $el is NOT it: Alpine binds $el to the element the
+                // expression sits on, so inside a handler on a paragraph it is that paragraph and
+                // inside one on the toolbar it is that button. Anything asking "is this node mine?"
+                // or "where are my boxes?" has to ask the root, which only init() can see.
+                _root: null,
+
                 async init() {
+                    this._root = this.$el;
+                    // Mounted while a recording is being made (a fresh panel after a morph, or a
+                    // reload mid-job): keep waiting, and keep the give-up timer that goes with it.
+                    if (this.regenerating) this._armGiveUpTimer();
                     this.paras = this._seed.map((p) => ({ id: this._pid++, text: p.text || '', dirty: false }));
                     this.starts = this._seed.map((p) => p.start || 0);   // server timecodes until audio loads
                     this.$nextTick(() => { this.reserveSpace(); this._lastSaved = this._currentScriptText(); });
@@ -263,7 +299,17 @@
                     this._unwatchAudio = window.Livewire.on('scene:load', (e) => {
                         const p = Array.isArray(e) ? e[0]?.payload : e?.payload;
                         if (!p || !this.regenerating || p.sceneId !== this.sceneId) return;
-                        if (p.audioUrl) { this.reloadAudio(p.audioUrl); return; }
+                        // 'generating' is the server ACCEPTING the request, not answering it: it
+                        // re-fires scene:load the moment it queues the job, and the payload still
+                        // carries the OLD recording. Taking that as the answer cleared the whole
+                        // narrating state within 200ms and put the panel back to "this audio matches
+                        // your words" while the words were the edited ones and the audio was not.
+                        if (p.status === 'generating') return;
+                        // Same trap one step earlier: pressing Re-narrate saves the edit first, and
+                        // that save answers with a scene:load of its own carrying the audio we are
+                        // replacing. audioFresh is the server saying the recording matches the words
+                        // on the scene, which only the finished job can make true.
+                        if (p.audioUrl && p.audioFresh) { this.reloadAudio(p.audioUrl); return; }
                         // The narrator could not record it (no TTS service, a bad voice, a refusal).
                         // Say so and give the button back — this used to spin for ever.
                         if (p.status === 'failed') this.narrationFailed(p.errorMessage);
@@ -277,6 +323,15 @@
                     this._unwatchSummary = window.Livewire.on('scene:summarize-done', (e) => {
                         const p = Array.isArray(e) ? e[0] : e;
                         if (p && p.sceneId === this.sceneId) this.summarizing = false;
+                    });
+                    // The server refused the save (the lesson's script-editing allowance is spent).
+                    // We had already written the text down as saved, so the next attempt — including
+                    // the one Re-narrate makes — was skipped as "no change" and the scene would have
+                    // been spoken from the words the teacher no longer has on screen.
+                    this._unwatchRejected = window.Livewire.on('scene:script-rejected', (e) => {
+                        const p = Array.isArray(e) ? e[0] : e;
+                        if (!p || p.sceneId !== this.sceneId) return;
+                        this._lastSaved = this._savedBefore;
                     });
 
                     if (url) await this.mountWave(url);
@@ -325,7 +380,7 @@
                 // Pull each box's live text back into paras, then serialise: soft newlines (single
                 // \n) stay inside a paragraph; paragraphs join with \n\n so the model — and TTS —
                 // treat each as its own topic.
-                _boxes() { return [...this.$el.querySelectorAll('[data-line]')]; },
+                _boxes() { return [...(this._root ?? this.$el).querySelectorAll('[data-line]')]; },
                 _syncFromDom() {
                     this._boxes().forEach((el, i) => { if (this.paras[i]) this.paras[i].text = el.textContent; });
                 },
@@ -340,14 +395,46 @@
                 },
                 saveScript() {
                     const text = this._currentScriptText();
-                    // Never persist an empty script: a focusout can fire mid-teardown (scene switch
-                    // rebuilds this component) when the boxes are already gone → text would be ''
-                    // and wipe the scene's narration. Deleting all narration isn't an inline edit.
-                    if (!text) return;
+                    // Never persist an empty script: deleting all narration isn't an inline edit,
+                    // and the server refuses it too (updateSceneScript returns early on empty).
+                    if (!text) {
+                        // A focusout can also fire mid-teardown (a scene switch rebuilds this
+                        // component) when the boxes are already gone. Nothing was emptied then, so
+                        // there is nothing to say and nothing to put back.
+                        if (!this._boxes().length) return;
+                        // The teacher emptied the box by hand. The panel used to keep showing that
+                        // empty box, so the narration looked deleted while the words were still in
+                        // the database and still read aloud to students.
+                        this._refuseEdit(@js(__('Narration cannot be emptied here, so the previous words are back. Delete the scene instead.')));
+
+                        return;
+                    }
                     if (text === this._lastSaved) return;   // no change → no round-trip
+                    this._savedBefore = this._lastSaved;    // to fall back on if the server refuses
                     this._lastSaved = text;
                     // sceneId lets the server reject a stale save aimed at a scene we already left.
                     try { window.Livewire.dispatch('scene:update-script', { text, sceneId: this.sceneId }); } catch (_) {}
+                },
+
+                /** Put the stored words back on screen and say why the edit did not land. */
+                _refuseEdit(message) {
+                    this._reseed(this._lastSaved);
+                    try { window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'warning', message } })); } catch (_) {}
+                },
+
+                /** Rebuild the boxes from a stored script, so the panel shows what is really saved. */
+                _reseed(text) {
+                    const chunks = String(text || '').split(/\n{2,}/).map((t) => t.trim()).filter(Boolean);
+                    this.paras = chunks.map((t) => ({ id: this._pid++, text: t, dirty: false }));
+                    this._lastSaved = chunks.join('\n\n');
+                    // Nothing is unsaved any more — unless a recording is still being made, which
+                    // keeps the audio out of date whatever the boxes say.
+                    this.dirty = this.regenerating;
+                    this.recomputeStarts();
+                    // Fresh ids mean x-for builds new boxes and x-init seeds them, but write the
+                    // text in as well: a reused node never re-runs x-init and would keep the old
+                    // characters on screen.
+                    this.$nextTick(() => this._boxes().forEach((el, i) => { el.textContent = this.paras[i]?.text ?? ''; }));
                 },
 
                 refreshWave() {
@@ -364,6 +451,7 @@
                     if (this._unwatchAudio) { try { this._unwatchAudio(); } catch (_) {} }
                     if (this._unwatchPara) { try { this._unwatchPara(); } catch (_) {} }
                     if (this._unwatchSummary) { try { this._unwatchSummary(); } catch (_) {} }
+                    if (this._unwatchRejected) { try { this._unwatchRejected(); } catch (_) {} }
                     document.getElementById('lesson-canvas-root')?.style.setProperty('--work-bottom', '0px');
                     document.documentElement.style.setProperty('--work-bottom', '0px');
                 },
@@ -576,8 +664,12 @@
                 // ── Script-editing toolbar (regenerate paragraph / summarize to list) ──
                 onFocusOut(e) {
                     this.saveScript();
-                    // Close the toolbar only when focus left the whole script panel.
-                    if (!this.$el.contains(e.relatedTarget)) { this.focusedPara = null; this.closePrompt(); }
+                    // Close the toolbar only when focus left the whole script panel. Measured
+                    // against the panel ROOT: $el here is the scroller this handler sits on, whose
+                    // sibling is the toolbar — so every move from a paragraph INTO the toolbar read
+                    // as "focus left the panel", and the prompt field was hidden the instant it
+                    // took focus, which made Rewrite text impossible to use at all.
+                    if (!this._root.contains(e.relatedTarget)) { this.focusedPara = null; this.closePrompt(); }
                 },
                 openPrompt() { this.promptOpen = true; this.promptText = ''; this.$nextTick(() => this.$refs.prompt?.focus()); },
                 closePrompt() { this.promptOpen = false; this.promptText = ''; },
@@ -616,9 +708,17 @@
                 },
 
                 // ── Edited-text → stale audio ────────────────────────────────────────────
+                // Stale means "the recording no longer says what the words say". Only a change that
+                // survives serialisation can do that: _currentScriptText trims each paragraph, so
+                // typing a space used to take the Play button away, disable the waveform and offer
+                // a re-narration for an edit that could never be saved and vanished on reload.
                 markDirty(i) {
-                    this.dirty = true;
-                    if (this.paras[i]) this.paras[i].dirty = true;
+                    const changed = this._currentScriptText() !== this._lastSaved;
+                    // While a recording is being made the audio is out of date whatever the text
+                    // does, so typing and undoing must not hand the Play button back mid-job.
+                    this.dirty = changed || this.regenerating;
+                    if (this.paras[i]) this.paras[i].dirty = changed;
+                    if (!changed) this.paras.forEach((p) => { p.dirty = false; });
                 },
                 _clearDirty() { this.dirty = false; this.paras.forEach((p) => { p.dirty = false; }); },
                 onPlay() {
@@ -630,11 +730,13 @@
                     this.saveScript();               // persist the edited text first
                     if (this.sceneId == null) { this._clearDirty(); return; }
                     this.regenerating = true;
-                    // Last resort. Narration is a queued job: if the worker never runs, or dies
-                    // without writing a status, nothing would ever come back to switch this off.
-                    clearTimeout(this._narrateTimer);
-                    this._narrateTimer = setTimeout(() => this.narrationFailed(null), 180_000);
+                    this._armGiveUpTimer();
                     try { window.Livewire.dispatch('scene:renarrate', { sceneId: this.sceneId }); } catch (_) {}
+                },
+                /** Never wait for ever: say the recording could not be made and give the button back. */
+                _armGiveUpTimer() {
+                    clearTimeout(this._narrateTimer);
+                    this._narrateTimer = setTimeout(() => this.narrationFailed(null), NARRATE_GIVE_UP_MS);
                 },
                 narrationFailed(reason) {
                     clearTimeout(this._narrateTimer);

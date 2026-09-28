@@ -207,6 +207,11 @@ class Step3SceneConfigurator extends Component
                 'kind' => in_array($l['kind'] ?? 'cover', ['cover', 'figure', 'strip'], true) ? ($l['kind'] ?? 'cover') : 'cover',
                 'scale' => (float) ($l['scale'] ?? 1),
                 'height' => isset($l['height']) ? (float) $l['height'] : null,
+                // The layer's own width, once a teacher has released the aspect lock and given it
+                // one. Absent for everything authored before the Dimensions row, and absent MEANS
+                // "take the width from the image's aspect" — so it stays null rather than being
+                // defaulted to something.
+                'width' => isset($l['width']) ? (float) $l['width'] : null,
                 'sway' => (bool) ($l['sway'] ?? false),
                 'blur' => isset($l['blur']) ? (float) $l['blur'] : null,
                 'opacity' => isset($l['opacity']) ? (float) $l['opacity'] : null,
@@ -226,6 +231,10 @@ class Step3SceneConfigurator extends Component
                 'white_key' => isset($l['white_key']) ? (float) $l['white_key'] : null,
                 'tint_opacity' => isset($l['tint_opacity']) ? (float) $l['tint_opacity'] : null,
                 'rotation' => isset($l['rotation']) ? (float) $l['rotation'] : null,
+                // Mirroring, which is not rotation: a half turn and a horizontal flip are the same
+                // on a symmetrical shape and opposite headings on a ship.
+                'flip_x' => ! empty($l['flip_x']),
+                'flip_y' => ! empty($l['flip_y']),
                 'anim_duration' => isset($l['anim_duration']) ? (int) $l['anim_duration'] : null,
                 'anim_out' => $l['anim_out'] ?? null,
                 'anim_out_delay' => isset($l['anim_out_delay']) ? (float) $l['anim_out_delay'] : null,
@@ -311,6 +320,11 @@ class Step3SceneConfigurator extends Component
             'shots' => $this->serializeShots($scene),
             'hasSkyboxImage' => ! empty($scene->skybox_image_path),
             'audioUrl' => $scene->audioUrl(),
+            // Does that recording actually say what the script now says? The Script panel waits for
+            // a re-narration by watching these events, and every OTHER thing that re-fires one —
+            // the save it makes just before asking, above all — carries the recording being
+            // replaced. Without this the panel took the first of those as the answer.
+            'audioFresh' => $scene->hasFreshAudio(),
             // The Script panel spins while narration is being made; without these it had no way to
             // learn the job had failed and kept spinning for good.
             'status' => (string) $scene->status,
@@ -1903,6 +1917,83 @@ class Step3SceneConfigurator extends Component
             return;
         }
         $this->selectedScene['config']['overview_anim'] = $anim;
+        $this->saveSelected();
+    }
+
+    /**
+     * Timeline tab: the scene's keyframed animation.
+     *
+     * Written into the scene config SNAPSHOT and saved through saveSelected(), like every other
+     * config edit — writing straight to the model is overwritten by the next save, which rebuilds
+     * config from that snapshot.
+     *
+     * The payload comes from the browser, so it is rebuilt here field by field rather than
+     * trusted: a track names an object and one of its properties, and carries keyframes of
+     * {time, value, easing}. Anything else is dropped.
+     *
+     * @param  array{duration?: mixed, tracks?: mixed}  $timeline
+     */
+    public function setTimeline(array $timeline): void
+    {
+        if (! $this->selectedScene || ! $this->selectedSceneId) {
+            return;
+        }
+
+        $duration = max(0.0, min(3600.0, (float) ($timeline['duration'] ?? 0)));
+
+        // The objects on this scene. A camera EXISTS whether or not anything is keyed on it, so it
+        // cannot be inferred from the tracks — inferring it is what left scenes holding an empty
+        // track for a property that no longer exists.
+        $targets = [];
+        foreach ((array) ($timeline['targets'] ?? []) as $target) {
+            if (is_string($target) && in_array(strtok($target, ':'), ['camera'], true)) {
+                $targets[] = $target;
+            }
+        }
+
+        $tracks = [];
+
+        foreach ((array) ($timeline['tracks'] ?? []) as $track) {
+            if (! is_array($track)) {
+                continue;
+            }
+
+            $target = (string) ($track['target'] ?? '');
+            $property = (string) ($track['property'] ?? '');
+            // The vocabulary is shared with resources/js/anim/properties.js, which plays it back.
+            $allowed = match (strtok($target, ':')) {
+                'camera' => ['lng', 'lat', 'zoom', 'heading', 'tilt'],
+                'text' => ['x', 'y'],
+                'rect' => ['opacity'],
+                'art' => ['x', 'y', 'width', 'scale', 'rotation', 'opacity'],
+                default => [],
+            };
+
+            if (! in_array($property, $allowed, true)) {
+                continue;
+            }
+
+            $keyframes = [];
+            foreach ((array) ($track['keyframes'] ?? []) as $key) {
+                if (! is_array($key) || ! isset($key['time']) || ! is_numeric($key['time'])) {
+                    continue;
+                }
+                $keyframes[] = [
+                    'time' => max(0.0, min($duration ?: 3600.0, (float) $key['time'])),
+                    'value' => (float) ($key['value'] ?? 0),
+                    'easing' => is_string($key['easing'] ?? null) ? $key['easing'] : 'easeInOutCubic',
+                ];
+            }
+
+            usort($keyframes, fn (array $a, array $b): int => $a['time'] <=> $b['time']);
+            $tracks[] = ['target' => $target, 'property' => $property, 'keyframes' => $keyframes];
+        }
+
+        $this->selectedScene['config']['timeline'] = [
+            'duration' => $duration,
+            'targets' => array_values(array_unique($targets)),
+            'tracks' => $tracks,
+        ];
         $this->saveSelected();
     }
 
@@ -5030,6 +5121,11 @@ class Step3SceneConfigurator extends Component
 
         if (! NarrationBudget::charge($this->lesson, $cost)) {
             $this->warnBudgetSpent();
+            // Say it to the panel as well as to the teacher. The panel writes an edit down as
+            // saved the moment it sends it, so a refusal left it believing the scene held words
+            // it does not: the next save was skipped as "no change", and a re-narration would
+            // have spoken the OLD script while the new one sat on screen looking safe.
+            $this->dispatch('scene:script-rejected', sceneId: $this->selectedSceneId);
 
             return;   // the edit is refused, so nothing is charged and nothing is re-narrated
         }

@@ -157,9 +157,10 @@
         });
         document.addEventListener('keydown', (e) => {
             if ((e.key !== 'z' && e.key !== 'Z') || !(e.metaKey || e.ctrlKey) || e.shiftKey) return;
-            // Never steal the shortcut from a field the teacher is typing in.
-            const t = e.target;
-            if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+            // Never steal the shortcut from a field the teacher is typing in. One shared guard —
+            // resources/js/ui/keyboard.js — so this and Delete below and the timeline's Space all
+            // agree on what "typing" means.
+            if (window.__isTypingTarget?.(e.target)) return;
             e.preventDefault();
             window.__undoLastEdit();
         });
@@ -275,6 +276,7 @@
         // window.__lessonArtworkLayer.
         let artOverlay = null
         let artSig = null
+        let artIdent = null
         const voyageArtHost = () => document.getElementById('lesson-voyage-art')
         const ensureArtOverlay = () => {
             if (artOverlay) return artOverlay
@@ -300,6 +302,7 @@
                         : null
                     window.Livewire.dispatch('artwork:move', {
                         assetId, x: t.x, y: t.y, scale: t.scale,
+                        rotation: t.rotation,
                         anchor: ll ? 'map' : null,
                         lng: ll ? ll.lng : null,
                         lat: ll ? ll.lat : null,
@@ -346,7 +349,18 @@
             // Before the layers, never after: a pinned layer has no usable x/y of its own, so a
             // seed without the projector paints it at a stale position for one frame.
             wireArtProjector()
-            if (sig !== artSig) { artSig = sig; overlay.setLayers(layers); overlay.playEntrances() }
+            // A REBUILD IS VISIBLE, so only rebuild when the set of layers actually changed.
+            // setLayers() tears every node down and playEntrances() then re-flies them in; doing
+            // that after each saved edit is what made the scene flicker and distort every time a
+            // teacher nudged a value. When the same layers are present and only their numbers
+            // moved, syncProps applies the changes to the live nodes and nothing is torn down.
+            if (sig !== artSig) {
+                const ident = window.LessonScene.layersIdentity(layers)
+                const inPlace = ident === artIdent && overlay.syncProps?.(layers)
+                if (!inPlace) { overlay.setLayers(layers); overlay.playEntrances() }
+                artSig = sig
+                artIdent = ident
+            }
             // A dedicated handle the object list reads on voyage scenes — the SHARED handle can be
             // repointed by a slideshow render (wizard-bridge), so it isn't reliable here.
             window.__voyageArtworkLayer = overlay
@@ -356,6 +370,7 @@
             const h = voyageArtHost()
             if (h) h.style.display = 'none'
             artSig = null
+            artIdent = null
             if (artOverlay) { try { artOverlay.clear() } catch (_) {} }
             window.__voyageArtworkLayer = null
             // Release the shared handle only if it still points at MY overlay (a slideshow scene
@@ -783,12 +798,26 @@
                     // sceneId may still be null before the first scene:load — the server
                     // falls back to the currently selected scene in that case.
                     window.Livewire.dispatch('sceneTextsChanged', { sceneId: textSceneId ?? null, texts, selectedTextId })
+                    // The timeline lists the scene's OBJECTS, so adding or removing a text layer
+                    // changes its rows. Same event the object list uses.
+                    announceObjects()
                 },
             })
             window.__lessonTextLayer = textLayer
+            // The overlay mounts LAZILY, long after the timeline's init() has already asked what is
+            // on the scene and been told nothing. Nobody dispatched this event — it was listened
+            // for in two places and fired by none — so the Timeline tab read "Nothing on this scene
+            // can be animated yet" with a Title sitting on the canvas. Say so the moment there is
+            // something to say.
+            announceObjects()
             wireMapProjectors()   // a map block may already be live — pin labels to it now
             return textLayer
         }
+        /** Tell every panel that lists the scene's objects to look again. */
+        function announceObjects () {
+            try { window.dispatchEvent(new CustomEvent('scene-objects-changed')) } catch (_) { /* noop */ }
+        }
+
         window.Livewire.on('scene:text-updated', (e) => {
             const payload = Array.isArray(e) ? e[0] : e
             if (!payload || payload.sceneId !== textSceneId) return
@@ -878,7 +907,10 @@
            x-on:inspector-state-request.window="window.dispatchEvent(new CustomEvent('inspector-state', { detail: { open: inspectorOpen, view: '{{ $panelView }}' } }))"
            style="right:0; left:auto; top:64px; bottom:0;"
            class="card card-compact fixed z-50 overflow-hidden rounded-none border border-r-0 border-t-0 border-slate-700 bg-base-300 shadow-2xl
-                  {{ $inspectorSceneModel?->kind === 'game' ? 'w-[min(48rem,calc(100vw-1rem))]' : 'w-[min(16rem,calc(100vw-1rem))]' }}">
+                  {{-- 19.375rem is the Figma panel's 310px. The old 16rem was narrow enough that a
+                       row label and its control competed for the same space, which is where the
+                       three different label widths came from. --}}
+                  {{ $inspectorSceneModel?->kind === 'game' ? 'w-[min(48rem,calc(100vw-1rem))]' : 'w-[min(19.375rem,calc(100vw-1rem))]' }}">
         <div x-show="inspectorOpen"
              x-transition.opacity.duration.150ms
              {{-- overflow-x-hidden, not the default `auto`: anything a shade too wide for the panel
@@ -895,18 +927,27 @@
                  Format is what the layer LOOKS like; Animate is how it arrives. Alpine-local so
                  switching tabs never costs a round trip; keyed per layer so selecting a different
                  one starts on Format rather than inheriting the last layer's tab. --}}
-            <div x-data="{ tab: 'format' }" wire:key="layer-tabs-{{ $al['asset_id'] ?? 0 }}" class="space-y-3">
-                <div role="tablist" class="tabs tabs-boxed tabs-xs">
-                    <button type="button" role="tab" @click="tab = 'format'"
-                            :class="tab === 'format' ? 'tab-active' : ''" class="tab">{{ __('Format') }}</button>
-                    <button type="button" role="tab" @click="tab = 'animate'"
-                            :class="tab === 'animate' ? 'tab-active' : ''" class="tab">{{ __('Animate') }}</button>
-                </div>
+            {{-- Figma order (settings-Maps-panel): title, then the tab row, then the sections. The
+                 title and tabs bleed to the panel edges, so they cancel the card-body padding. --}}
+            <div x-data="{ tab: 'format' }" wire:key="layer-tabs-{{ $al['asset_id'] ?? 0 }}">
+                <x-lesson.layer-panel-title :layer="$al" class="-mx-4 -mt-4" />
+
+                <x-ui.panel-tabs class="-mx-4 mb-1" name="layer-tabs-{{ $al['asset_id'] ?? 0 }}"
+                                 :tabs="[['format', __('Format')], ['animate', __('Animate')]]">
+                    <x-slot:breadcrumb>
+                        {{-- Back to the scene's own settings. Also clears the canvas ring and the
+                             JS dedupe guard, or the layer stays visibly selected with nothing
+                             selected. --}}
+                        <x-ui.panel-breadcrumb :label="__('Scene')"
+                                               wire:click="clearActiveLayer"
+                                               x-on:click="window.__selectLayer?.(null); window.__clearLayerGuard?.()" />
+                    </x-slot:breadcrumb>
+                </x-ui.panel-tabs>
 
                 <div x-show="tab === 'format'">
-                    <x-lesson.scene-layer-inspector :layer="$al" :scene="$this->selectedSceneModel" />
+                    <x-lesson.settings-map-panel :layer="$al" :scene="$this->selectedSceneModel" />
                 </div>
-                <div x-show="tab === 'animate'" x-cloak>
+                <div x-show="tab === 'animate'" x-cloak class="pt-3">
                     <x-lesson.animate-inspector mode="layer" :layer="$al" :scene="$this->selectedSceneModel" />
                 </div>
             </div>
@@ -922,12 +963,10 @@
                 {{-- Same two tabs as a layer, for the same reason: what the scene looks like, and
                      how it arrives. Every scene kind gets Animate — a map or a gallery replaces the
                      scene before it just as a narration scene does. --}}
-                <div role="tablist" class="tabs tabs-boxed tabs-sm">
-                    <button type="button" role="tab" @click="tab = 'format'"
-                            :class="tab === 'format' ? 'tab-active' : ''" class="tab">{{ __('Format') }}</button>
-                    <button type="button" role="tab" @click="tab = 'animate'"
-                            :class="tab === 'animate' ? 'tab-active' : ''" class="tab">{{ __('Animate') }}</button>
-                </div>
+                {{-- Same tab row as a selected layer gets. The two panels sat side by side with
+                     different tab treatments, and a tab is a tab wherever it appears. --}}
+                <x-ui.panel-tabs class="-mx-4" name="scene-tabs-{{ $sceneModel->id }}"
+                                 :tabs="[['format', __('Format')], ['animate', __('Animate')]]" />
 
                 <div x-show="tab === 'animate'" x-cloak>
                     <x-lesson.animate-inspector mode="scene" :scene="$sceneModel" />
@@ -1000,7 +1039,7 @@
                     </span>
                     <input type="checkbox" @checked($lesson->subtitles)
                            wire:change="setSubtitles($event.target.checked)"
-                           class="toggle toggle-sm toggle-warning shrink-0" />
+                           class="toggle toggle-sm shrink-0" />
                 </label>
             </div>
 
@@ -1050,7 +1089,7 @@
                     </span>
                     <input type="checkbox" @checked($lesson->background_music)
                            wire:change="setBackgroundMusic($event.target.checked)"
-                           class="toggle toggle-sm toggle-warning shrink-0" />
+                           class="toggle toggle-sm shrink-0" />
                 </label>
             </div>
             @endif
@@ -1989,8 +2028,7 @@
         window.addEventListener('keydown', (e) => {
             if (e.key !== 'Backspace' && e.key !== 'Delete') return;
             if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
-            const a = document.activeElement;
-            if (a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return;
+            if (window.__isTypingTarget?.(document.activeElement)) return;
             const sel = window.getSelection?.();
             if (sel && !sel.isCollapsed && sel.anchorNode?.parentElement?.closest?.('[contenteditable], input, textarea')) return;
             const id = window.__artOverlay()?._selectedId || window.__lessonTextLayer?._selectedId;
@@ -2149,12 +2187,14 @@
                            :disabled="!offered(row.key)"
                            :aria-label="offered(row.key) ? row.label : row.label + ' — ' + why(row.key)">
                     <span class="w-24 shrink-0 truncate text-xs text-slate-300" x-text="row.label"></span>
-                    <input type="range" min="0" :max="row.max" step="0.05"
-                           class="range range-xs grow"
-                           x-model.number="state[row.key].value"
-                           :disabled="!offered(row.key) || !state[row.key].visible"
-                           @input="push(row.key)"
-                           :aria-label="row.label + ' — {{ __('opacity') }}'">
+                    <span class="range-panel-knob min-w-0 grow">
+                        <input type="range" min="0" :max="row.max" step="0.05"
+                               class="range range-panel"
+                               x-model.number="state[row.key].value"
+                               :disabled="!offered(row.key) || !state[row.key].visible"
+                               @input="push(row.key)"
+                               :aria-label="row.label + ' — {{ __('opacity') }}'">
+                    </span>
                 </div>
             </template>
 
@@ -2168,12 +2208,14 @@
                        x-model="state[reference.key].visible" @change="push(reference.key)"
                        :aria-label="reference.label">
                 <span class="w-24 shrink-0 truncate text-xs text-slate-300" x-text="reference.label"></span>
-                <input type="range" min="0" :max="reference.max" step="0.05"
-                       class="range range-xs grow"
-                       x-model.number="state[reference.key].value"
-                       :disabled="!state[reference.key].visible"
-                       @input="push(reference.key)"
-                       :aria-label="reference.label + ' — {{ __('opacity') }}'">
+                <span class="range-panel-knob min-w-0 grow">
+                    <input type="range" min="0" :max="reference.max" step="0.05"
+                           class="range range-panel"
+                           x-model.number="state[reference.key].value"
+                           :disabled="!state[reference.key].visible"
+                           @input="push(reference.key)"
+                           :aria-label="reference.label + ' — {{ __('opacity') }}'">
+                </span>
             </div>
         </div>
     </div>

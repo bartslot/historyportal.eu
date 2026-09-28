@@ -134,6 +134,61 @@
     --font-history: 'History', ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
     --color-dropdown: #18293f;
     --color-dropdown-border: #2e425a;
+
+    /* The panels had drifted into text-[10px] and text-[11px] used interchangeably for the same
+       kind of label, which is two names for one intention; they are merged here at 11px, the size
+       Figma's LABEL_BIGGER carries. This is the SECTION-TITLE step — the row labels under it are
+       text-3xs below, which is a different style in the file, not a rounding of this one. */
+    --text-2xs: 0.6875rem;        /* 11px — Figma's LABEL_BIGGER (section titles) */
+    --text-2xs--line-height: 1.1;
+
+    /* Figma's LABEL_SMALL_UI: the uppercase row labels in a settings panel.
+       This is a SECOND small step, and it is deliberate. An earlier pass merged everything small
+       into text-2xs on the reading that the file had one band; it has two — LABEL_SMALL_UI at 8
+       and LABEL_BIGGER at 11 — and collapsing them made every row label sit three pixels too
+       heavy and forced the label column 23px wider than the design to fit. */
+    --text-3xs: 0.5rem;           /* 8px */
+    --text-3xs--line-height: 1.2;
+
+    /* Slider parts, measured off `row-rotate` (1471:2104). Named here rather than written as hex
+       at the point of use so the theme stays the one place a colour is decided. The rail is thin
+       and the fill is a muted indigo: a white fill on a fat pill reads as a progress bar, which is
+       what this looked like before and is not what the file draws. */
+    --color-slider-track: #222b3d;
+    --color-slider-fill: #586291;
+    --color-slider-knob: #d9d9d9;
+
+    /* Settings-panel geometry (Figma settings-Maps-panel, 1470:1877).
+
+       Variables rather than literals in the markup because every one of these started as a
+       measurement off a picture, and a number nobody has squinted at on a real screen is still a
+       guess. The dev tuner registers all five — see resources/js/dev/settings-panel-tuner.js —
+       and moves them live by rewriting these properties, which only works while the panel READS
+       them. Hard-coding any of these back into a class is what silently unhooks the control. */
+    --settings-panel-w: 19.375rem;      /* 310px */
+    --settings-panel-label-w: 3.0625rem;   /* 49px — the file's, and 8px labels fit it */
+    --settings-panel-thumb-h: 4rem;     /* 64px map-style card */
+    --settings-panel-row-h: 2rem;       /* 32px field height */
+    --settings-panel-pad: 1rem;         /* 16px side padding */
+
+    /* Animation timeline (Figma Animation - Timeline, 1417:1999). Sampled off the file's own
+       render rather than guessed: the ground is darker than the panel, the lanes are the same
+       hairline the section rules use — so the lane is bg-panel-hairline and gets NO token of its
+       own, a second name for one colour being how a palette drifts — and the playhead and the
+       keyframes share one colour so the mark that says "here" and the marks that say "and here"
+       read as one family. */
+    --color-timeline-ground: #08101e;
+    --color-timeline-mark: #394658;   /* playhead line AND keyframe diamond */
+    --color-timeline-strip: #0f1929;  /* the transport row above the lanes */
+    /* The span bars. A track with two or more keyframes draws a bar from its first to its last,
+       which is the one thing a lane of bare diamonds cannot say: how long the move actually takes.
+       Two weights so a group summarises its children without competing with them — the object's
+       bar is the quieter of the pair, because the property rows are what you edit. */
+    --color-timeline-bar: #2f6fb8;        /* a property's own span */
+    --color-timeline-bar-group: #3b3f6b;  /* the object's span, summarising its properties */
+    --timeline-lane-h: 1.3125rem;     /* 21px */
+    --timeline-row-pitch: 1.5rem;     /* 24px — lane plus its gap */
+    --timeline-label-col: 14.125rem;  /* 226px — labels and value fields, lanes start after it */
 }
 
 @font-face {
@@ -200,6 +255,198 @@
     font-weight: 700;
     font-style: normal;
     font-display: swap;
+}
+
+/* ─── The settings panel's tab strip — Figma `tab-header` (1470:1879) ─ */
+/**
+ * DaisyUI's tabs-box, brought to the file's appearance through its own variables.
+ *
+ * THE CONTRAST WAS INVERTED, which is why this was rejected by eye twice. tabs-box paints the TRAY
+ * as a filled pill (base-200) and leaves the active tab base-100 — on this dark theme that makes
+ * the active tab DARKER than its surroundings, so the eye reads the tray as the object and the
+ * selected tab as a hole in it. The file is the other way round: a flat bordered strip with no
+ * fill, and the active tab a LIGHTER box inside it.
+ *
+ * So the tray gives up its fill, its pill radius, its inset shadow and its padding — the strip's
+ * border and spacing belong to <x-ui.panel-tabs>, which is the 1px #162235 rule the file draws —
+ * and --tab-bg carries the active box at #121b2c, a token whose comment already reads "the active
+ * tab, the button rail".
+ *
+ * UNLAYERED for the same reason as .range-panel below: DaisyUI declares these in @layer utilities,
+ * which outranks @layer components, and an override that half-applies looks deliberate.
+ */
+.tabs-panel {
+    background-color: transparent;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0;
+    gap: 0.25rem;                                /* the file's 4px */
+    --tab-height: 1.75rem;                       /* 28px */
+    --radius-field: 6px;                         /* the active box's corner */
+}
+
+/**
+ * --tab-bg AND --tab-p GO ON THE CHILD, not the container.
+ *
+ * DaisyUI declares both inside `.tab` itself, so a value inherited from `.tabs` never reaches them:
+ * setting --tab-bg on the strip left the active tab resolving to base-100 — near-black, the exact
+ * inverted contrast this skin exists to fix — while every other property applied and made it look
+ * like the override had worked. Same failure mode as the layer trap on .range-panel, one level down.
+ */
+.tabs-panel > .tab {
+    color: var(--color-panel-label);
+    font-weight: 500;
+    font-size: 0.8125rem;                        /* 13px */
+    --tab-p: 0.875rem;                           /* 14px */
+    --tab-bg: var(--color-card-surface-raised);  /* #121b2c — LIGHTER than the strip */
+}
+
+/* The active tab is a flat box, not a raised one: tabs-box adds a lift shadow that the file's
+   `tab-format-active` does not have, and on a strip with no fill it reads as a floating chip. */
+.tabs-panel > :is(.tab-active, [aria-selected='true'], input:checked, label:has(:checked)) {
+    color: var(--color-panel-value);
+    font-weight: 600;
+    box-shadow: none;
+}
+
+/* ─── The settings panel's slider — Figma `row-rotate` (1471:2104) ──── */
+/**
+ * DaisyUI's range, drawn to the file. DaisyUI keeps the behaviour — keyboard stepping, RTL, the
+ * focus ring — and Figma decides every pixel of the appearance.
+ *
+ * THE RAIL, THE FILL AND THE KNOB ARE THREE DIFFERENT BOXES, and the third attempt at this failed
+ * because only the first was addressed. Setting variables on the ELEMENT got the rail's colour and
+ * the thumb's size, and left two things wrong that a teacher sees immediately:
+ *
+ *   • The FILL was knob-height. DaisyUI paints it with an enormous box-shadow spread sideways off
+ *     the THUMB, so it is 14px tall while the rail behind it is 7px — a fat purple bar with a thin
+ *     grey tail. Bart: "the purple bar is less big than the knob, same height as the affordance."
+ *     A shadow cannot be shorter than the element casting it, so the shadow-fill is switched off
+ *     (--range-fill: 0, box-shadow: none) and the fill is painted INTO the track as a hard-stop
+ *     gradient — the same technique .lp-volume already uses in this file. The track is the rail,
+ *     so the fill is rail-height by construction.
+ *
+ *   • The KNOB was a rounded square. --radius-selector fed the thumb as well as the track, so the
+ *     file's rx 3 for the rail squared off the knob. The two radii are now set on their own
+ *     pseudo-elements: 3px on the rail, 50% on the knob.
+ *
+ * MEASURE THIS IN A BROWSER, AND NOT WITH getComputedStyle(el, '::-webkit-slider-thumb') — Chrome
+ * answers that with the ELEMENT's style, so it cheerfully reports a 147px-wide "thumb". Screenshot
+ * the row magnified and look at it.
+ *
+ * UNLAYERED, like everything that has to beat DaisyUI: it declares `.range` in @layer utilities,
+ * which outranks @layer components.
+ */
+.range-panel {
+    --range-thumb-size: 0.875rem;      /* 14px knob */
+    --range-rail-h: 0.4375rem;         /* 7px rail */
+    --range-p: 0px;                    /* solid knob, no ring */
+    --range-fill: 0;                   /* off: the fill is the track's gradient, not the knob's shadow */
+    /* How much of the rail is filled. Server-rendered per row so there is no unfilled first frame,
+       then updated on input by resources/js/ui/range-fill.js. */
+    --range-pct: 0%;
+
+    /**
+     * DaisyUI sets `overflow: hidden` on .range, and it is what made this look wrong for three
+     * rounds. A knob taller than the rail has to be lifted to sit centred on it, and the lift
+     * pushed it straight out of the clipping box: it rendered as a DOME, half a circle sitting on
+     * the rail. With the knob cut to half height a 7px rail then looks as tall as it — which is
+     * exactly what was reported, "the purple bar is same height as the affordance", and why the
+     * rail kept getting blamed for a knob problem.
+     */
+    overflow: visible;
+}
+
+/* The native track only sizes the input; the rail you see is .range-panel-knob::before. */
+.range-panel::-webkit-slider-runnable-track {
+    height: var(--range-rail-h);
+    background: transparent;
+}
+
+/**
+ * THE NATIVE RAIL AND KNOB ARE INVISIBLE; WHAT YOU SEE IS .range-panel-knob::before AND ::after.
+ *
+ * Where a browser puts its own thumb vertically is the browser's decision, and it would not sit
+ * centred on a 7px rail: every margin that fixed it in one engine (or at one device scale) broke it
+ * in another. So the native thumb keeps the jobs only it can do — hit area, drag, keyboard
+ * stepping, focus — with a transparent fill, and the visible rail and knob are drawn by a wrapper
+ * we position ourselves. BOTH, not just the knob: with only the knob ours, the browser's rail still
+ * snapped to its own device grid and they parted by half a pixel at 2x. Centred by the same rule
+ * (top 50%, translateY(-50%)), they share a centre at every scale.
+ */
+.range-panel::-webkit-slider-thumb {
+    appearance: none;
+    -webkit-appearance: none;
+    width: var(--range-thumb-size);
+    height: var(--range-thumb-size);
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    box-shadow: none;
+}
+
+.range-panel::-moz-range-track {
+    height: var(--range-rail-h);
+    background: transparent;
+}
+
+.range-panel::-moz-range-thumb {
+    width: var(--range-thumb-size);
+    height: var(--range-thumb-size);
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    box-shadow: none;
+}
+
+/* The wrapper that draws the knob. It carries --range-t (0..1, rendered by the server and kept in
+   step by range-fill.js), so the knob, the fill and the native thumb all read the same number. */
+.range-panel-knob {
+    --range-thumb-size: 0.875rem;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.range-panel-knob > .range-panel { width: 100%; }
+
+/* The rail and its fill: a hard-stop gradient, so the fill can never be a different height from
+   the rail. The stop is at the KNOB'S CENTRE (half a knob in, then --range-t of the remaining
+   travel), so purple always runs up under the knob. */
+.range-panel-knob::before {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    top: 50%;
+    height: 0.4375rem;
+    border-radius: 3px;
+    background: linear-gradient(to right,
+        var(--color-slider-fill) calc(var(--range-thumb-size) / 2 + (100% - var(--range-thumb-size)) * var(--range-t, 0)),
+        var(--color-slider-track) calc(var(--range-thumb-size) / 2 + (100% - var(--range-thumb-size)) * var(--range-t, 0)));
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+
+.range-panel-knob::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: calc((100% - var(--range-thumb-size)) * var(--range-t, 0));
+    width: var(--range-thumb-size);
+    height: var(--range-thumb-size);
+    border-radius: 50%;
+    background: var(--color-slider-knob);
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+
+/* A disabled slider dims, rail and knob together — the native one did that on its own. */
+.range-panel-knob:has(.range-panel:disabled) { opacity: 0.4; }
+
+/* The focus ring the invisible native thumb can no longer show, on the knob that can be seen. */
+.range-panel-knob:has(.range-panel:focus-visible)::after {
+    outline: 2px solid var(--color-slider-fill);
+    outline-offset: 2px;
 }
 
 /* ─── DaisyUI component overrides — Learning Portal brand ───────────── */
