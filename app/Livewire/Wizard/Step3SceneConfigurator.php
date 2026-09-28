@@ -3035,7 +3035,7 @@ class Step3SceneConfigurator extends Component
     /** A picture dropped on the background slot in the inspector, which means the background, always. */
     public $droppedBackground;
 
-    /** The PNG the quick mask produced for the active layer (uploaded by the mask dialog, then saveMaskedLayer). */
+    /** The picture (WebP, or PNG) the quick mask produced for the active layer (uploaded by the mask dialog, then saveMaskedLayer). */
     public $maskedImage;
 
     /**
@@ -3054,7 +3054,7 @@ class Step3SceneConfigurator extends Component
         }
 
         try {
-            $this->validate(['maskedImage' => 'image|mimes:png|max:'.UploadLimit::kilobytes(self::DROPPED_IMAGE_CEILING_BYTES)]);
+            $this->validate(['maskedImage' => 'image|mimes:png,webp|max:'.UploadLimit::kilobytes(self::DROPPED_IMAGE_CEILING_BYTES)]);
         } catch (ValidationException $e) {
             $this->reset('maskedImage');
             $this->dispatch('toast', message: $e->validator->errors()->first('maskedImage'), type: 'error');

@@ -1435,5 +1435,6 @@
     "Tolerance": "Tolleranza",
     "Reset": "Ripristina",
     "Mask saved.": "Maschera salvata.",
-    "That layer is gone. Select it again and retry.": "Quel livello non c'è più. Selezionalo di nuovo e riprova."
+    "That layer is gone. Select it again and retry.": "Quel livello non c'è più. Selezionalo di nuovo e riprova.",
+    "The mask could not be uploaded. Try again, or use a smaller picture.": "Non è stato possibile caricare la maschera. Riprova o usa un'immagine più piccola."
 }

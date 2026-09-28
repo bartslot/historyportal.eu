@@ -186,7 +186,9 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}) 
     return {
         undo() { if (history.length) { current = history.pop(); paint(); emit(); } },
         reset() { push(new Uint8ClampedArray(original)); },
-        toBlob: () => new Promise((resolve) => canvas.toBlob(resolve, 'image/png')),
+        // WebP with alpha, like the library itself: a big figure as PNG is several MB and fails an
+        // ordinary upload limit (PHP's default is 2 MB). A browser that cannot encode WebP gives PNG.
+        toBlob: () => new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', 0.92)),
         destroy() {
             for (const [t, f] of [['pointerdown', down], ['pointermove', move], ['pointerup', up], ['pointercancel', up]]) {
                 canvas.removeEventListener(t, f);

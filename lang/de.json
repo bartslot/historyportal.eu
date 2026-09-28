@@ -1435,5 +1435,6 @@
     "Tolerance": "Toleranz",
     "Reset": "Zurücksetzen",
     "Mask saved.": "Maske gespeichert.",
-    "That layer is gone. Select it again and retry.": "Diese Ebene gibt es nicht mehr. Wähle sie erneut aus und versuche es noch einmal."
+    "That layer is gone. Select it again and retry.": "Diese Ebene gibt es nicht mehr. Wähle sie erneut aus und versuche es noch einmal.",
+    "The mask could not be uploaded. Try again, or use a smaller picture.": "Die Maske konnte nicht hochgeladen werden. Versuche es noch einmal oder nimm ein kleineres Bild."
 }

@@ -17,10 +17,14 @@
             if (!this.mask || this.busy) return;
             this.busy = true;
             const blob = await this.mask.toBlob();
-            const file = new File([blob], 'mask.png', { type: 'image/png' });
+            const file = new File([blob], blob.type === 'image/webp' ? 'mask.webp' : 'mask.png', { type: blob.type });
             $wire.upload('maskedImage', file,
                 () => { this.close(); this.busy = false; $wire.saveMaskedLayer({{ (int) $aid }}); },
-                () => { this.busy = false; });
+                () => {
+                    this.busy = false;
+                    window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error',
+                        message: @js(__('The mask could not be uploaded. Try again, or use a smaller picture.')) } }));
+                });
         },
      }" wire:ignore>
     <button type="button" x-on:click="start()"
@@ -47,8 +51,8 @@
             {{-- Checkerboard shows what is transparent; the red film on top is the live selection. --}}
             <div class="relative grid min-h-0 flex-1 place-items-center overflow-hidden rounded"
                  style="background: repeating-conic-gradient(var(--color-base-300) 0 25%, var(--color-base-200) 0 50%) 0 0 / 20px 20px;">
-                <div class="relative">
-                    <canvas x-ref="art" class="block max-h-[70vh] max-w-full cursor-crosshair touch-none"></canvas>
+                <div class="relative max-h-full max-w-full">
+                    <canvas x-ref="art" class="block h-auto max-h-[70vh] w-auto max-w-full cursor-crosshair touch-none"></canvas>
                     <canvas x-ref="film" class="pointer-events-none absolute inset-0 h-full w-full"></canvas>
                 </div>
             </div>
