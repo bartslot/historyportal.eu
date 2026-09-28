@@ -535,6 +535,7 @@
             const _vcfg = p.config || {}
             const _gal = _vcfg.gallery || {}
             window.__objScene = {
+                sceneId: p.sceneId,   // the copy/paste keys remember which scene an object came from
                 kind: p.kind,
                 hasGallery: !!(_gal.title || _gal.story || (_gal.images && _gal.images.length) || (_vcfg.stop_images && _vcfg.stop_images.length)),
             }
@@ -1259,6 +1260,11 @@
                 if (!obj || obj.bg) return;
                 window.Livewire.dispatch('scene:delete-object', { objectId: obj.id });
             },
+            // Same server route as Cmd-D (scene:duplicate-objects); the copy comes back selected.
+            duplicateObject(obj) {
+                if (!obj || obj.bg) return;
+                window.__duplicateObjects([obj.id]);
+            },
             // Hover "adjust" icon → select the object, then open its editor: focus a text box
             // (reveals its font/size/align toolbar) or surface the panel's side/colour bar.
             edit(obj) {
@@ -1865,17 +1871,26 @@
                          data-obj-adjust hides both in the compact (icons-only) rail. --}}
                     {{-- Adjust — select the object and open its Format inspector. --}}
                     <button type="button" data-nodrag data-obj-adjust @click.stop="edit(obj)"
-                            class="btn btn-ghost btn-xs btn-square shrink-0 text-slate-400 opacity-0 transition hover:text-amber-300 group-hover:opacity-100"
+                            class="btn btn-ghost btn-xs btn-square shrink-0 text-base-content/50 opacity-0 transition hover:text-primary group-hover:opacity-100"
                             aria-label="{{ __('Adjust settings') }}" :title="@js(__('Adjust settings'))">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />
+                        </svg>
+                    </button>
+                    {{-- Duplicate THIS object (Cmd-D does the same). --}}
+                    <button type="button" data-nodrag data-obj-adjust x-show="!obj.bg"
+                            @click.stop="duplicateObject(obj)"
+                            class="btn btn-ghost btn-xs btn-square shrink-0 text-base-content/50 opacity-0 transition hover:text-primary group-hover:opacity-100"
+                            aria-label="{{ __('Duplicate object') }}" :data-tooltip="@js(__('Duplicate') . ' (⌘D)')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25" />
                         </svg>
                     </button>
                     {{-- Delete THIS object (any type — deleteObject routes by obj.id: art_/txt_/rect_).
                          Hidden on the background row (not deletable). No confirm — one click removes it. --}}
                     <button type="button" data-nodrag data-obj-adjust x-show="!obj.bg"
                             @click.stop="deleteObject(obj)"
-                            class="btn btn-ghost btn-xs btn-square shrink-0 text-slate-500 opacity-0 transition hover:text-rose-400 group-hover:opacity-100"
+                            class="btn btn-ghost btn-xs btn-square shrink-0 text-base-content/50 opacity-0 transition hover:text-primary group-hover:opacity-100"
                             aria-label="{{ __('Delete object') }}" :title="@js(__('Delete'))">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"></path>
@@ -1984,6 +1999,54 @@
             const mapBacked = kind === 'map' || kind === 'voyage';
             return (mapBacked && window.__voyageArtworkLayer) || window.__lessonArtworkLayer;
         };
+
+        // Duplicate / copy / paste. The copy lives here, not on the system clipboard: it is a
+        // reference (object ids + the scene they sit on), so Cmd-V works in any scene of this
+        // lesson. Copying real text anywhere else clears it, so Cmd-V goes back to pasting text.
+        window.__duplicateObjects = (ids, sourceSceneId = null) => {
+            window.Livewire.dispatch('scene:duplicate-objects', { objectIds: ids, sourceSceneId });
+        };
+        let objClipboard = null;
+        document.addEventListener('copy', () => { objClipboard = null; });
+        window.Livewire.on('scene:objects-duplicated', (e) => {
+            const p = Array.isArray(e) ? e[0] : e;
+            const id = p?.objectIds?.[p.objectIds.length - 1];
+            if (!id) return;
+            // scene:load in the same response re-seeds the overlays first; select once it has.
+            requestAnimationFrame(() => {
+                if (id.startsWith('art_')) window.__artOverlay()?.select?.(id);
+                else window.__lessonTextLayer?.select?.(id);
+            });
+        });
+
+        const typingIn = () => {
+            const a = document.activeElement;
+            if (a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return true;
+            const sel = window.getSelection?.();
+            return !!(sel && !sel.isCollapsed && sel.anchorNode?.parentElement?.closest?.('[contenteditable], input, textarea'));
+        };
+        const selectedObjectId = () => {
+            const id = window.__artOverlay()?._selectedId || window.__lessonTextLayer?._selectedId;
+            return id && !id.startsWith('__') ? id : null;
+        };
+
+        window.addEventListener('keydown', (e) => {
+            if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey || e.defaultPrevented) return;
+            const key = e.key.toLowerCase();
+            if (!['d', 'c', 'v'].includes(key) || typingIn()) return;
+            if (key === 'v') {
+                if (!objClipboard) return;   // nothing of ours → the browser pastes as usual
+                e.preventDefault();
+                window.__duplicateObjects(objClipboard.ids, objClipboard.sceneId);
+                return;
+            }
+            if (key === 'c' && !window.getSelection?.()?.isCollapsed) return;   // copying page text
+            const id = selectedObjectId();
+            if (!id) return;
+            e.preventDefault();              // Cmd-D would bookmark the page
+            if (key === 'd') window.__duplicateObjects([id]);
+            else objClipboard = { ids: [id], sceneId: (window.__objScene || {}).sceneId ?? null };
+        });
 
         window.addEventListener('keydown', (e) => {
             if (e.key !== 'Backspace' && e.key !== 'Delete') return;
