@@ -635,44 +635,17 @@
             {{-- Series wordmark (comic cover style): the logo carries the name, top left under the
                  "Edit scene" row, with only the title's subtitle lettered beneath it. --}}
             <template x-if="lesson.title_logo_url">
-                {{-- The width is the logo's, so the subtitle wraps inside it and is never wider. --}}
+                {{-- The width is the logo's; the subtitle is fitted to exactly that width (fitSubtitle). --}}
                 <h1 lang="{{ $contentLang }}" class="absolute left-8 sm:left-12 top-24 pointer-events-none"
                     style="z-index:10; width: clamp(18rem, 58vw, 68rem)">
                     <img x-bind:src="lesson.title_logo_url" x-bind:alt="lesson.title"
                          class="block h-auto w-full -rotate-2 origin-bottom-left"
                          style="filter: drop-shadow(0.6rem 0.8rem 0 rgba(0,0,0,0.85)) drop-shadow(0 0 3rem rgba(0,0,0,0.6));">
-                    <span aria-hidden="true" x-text="lesson.title.replace(/^.*?:\s*/, '')"
-                          class="mt-4 block text-balance font-comic font-bold leading-tight text-white drop-shadow-[0_2px_20px_rgba(0,0,0,1)]"
+                    <span aria-hidden="true" x-text="lesson.title.replace(/^.*?:\s*/, '')" x-init="$nextTick(() => fitSubtitle($el))"
+                          class="mt-4 inline-block whitespace-nowrap font-comic font-bold leading-tight text-white drop-shadow-[0_2px_20px_rgba(0,0,0,1)]"
                           style="font-size: clamp(1.4rem, 3.4vw, 3.6rem);"></span>
                 </h1>
             </template>
-
-            {{-- Narrator card — framed + brightened portrait beside the label/name/era. Narrator
-                 thumbnails are often dark, so a warm ring + shadow + brightness lifts it off the
-                 dark cover so it reads as "on the forefront" (not a dark blob). --}}
-            @php $narratorImg = $lesson->narrator?->thumbnailUrl() ?? $lesson->narrator?->portraitUrl(); @endphp
-            @if($lesson->narrator?->name || $lesson->historical_figure)
-                <div class="absolute right-8 sm:right-12 hidden sm:flex items-center gap-4" style="z-index:20; bottom: 14rem">
-                    <div class="flex flex-col items-end gap-0.5 text-right">
-                        <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-400/80">{{ __('Narrated by') }}</p>
-                        <p class="font-history text-2xl font-semibold leading-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
-                            {{ $lesson->narrator?->name ?? $lesson->historical_figure }}
-                        </p>
-                        {{-- The narrator's ROLE (e.g. "Historian"), not the lesson era — the narrator is a
-                             timeless guide, not a figure from the lesson's period. Falls back to era. --}}
-                        @php $narratorRole = $lesson->narrator?->avatar_title ?: ($lesson->narrator?->era ?? $lesson->era); @endphp
-                        @if($narratorRole)
-                            <p class="text-xs text-slate-300/80">{{ $narratorRole }}</p>
-                        @endif
-                    </div>
-                    @if($narratorImg)
-                        <img src="{{ $narratorImg }}" alt="{{ $lesson->narrator?->name }}"
-                             class="h-28 w-28 shrink-0 rounded-2xl object-cover shadow-[0_10px_34px_rgba(0,0,0,0.6)] ring-2 ring-amber-400/50"
-                             style="filter: brightness(1.18) contrast(1.06) saturate(1.05);">
-                    @endif
-                </div>
-            @endif
-
 
             {{-- QR modal --}}
             <dialog id="qr-modal" class="modal">

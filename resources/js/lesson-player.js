@@ -40,6 +40,36 @@ import { Sfx } from './scene/sfx.js'
 import { t } from './i18n.js'
 import { mountBigCountdown } from './big-countdown.js'
 
+/**
+ * Where the drawing in an image starts and ends across, as fractions of its width ([0, 1] when it
+ * cannot be read). For fitting text to a wordmark's letters rather than to its file's box.
+ */
+function inkSpan (img) {
+  return new Promise((resolve) => {
+    const read = () => {
+      try {
+        const w = 400
+        const h = Math.max(1, Math.round(w * img.naturalHeight / img.naturalWidth))
+        const c = Object.assign(document.createElement('canvas'), { width: w, height: h })
+        const g = c.getContext('2d')
+        g.drawImage(img, 0, 0, w, h)
+        const px = g.getImageData(0, 0, w, h).data
+        let lo = w
+        let hi = -1
+        for (let x = 0; x < w; x++) {
+          for (let y = 0; y < h; y++) {
+            if (px[(y * w + x) * 4 + 3] > 32) { lo = Math.min(lo, x); hi = Math.max(hi, x); break }
+          }
+        }
+        resolve(hi > lo ? [lo / w, (hi + 1) / w] : [0, 1])
+      } catch (_) { resolve([0, 1]) }
+    }
+    if (img?.complete && img.naturalWidth) read()
+    else if (img) img.addEventListener('load', read, { once: true })
+    else resolve([0, 1])
+  })
+}
+
 // The 3D avatar CHARACTER is retired — the narrator is a flat 2D portrait badge (player.blade.php).
 // The 3D SKYBOX background stays an OPT-IN: a lesson with any scene_view:'skybox' scene lazy-loads
 // the Three.js chunk (avatar-3d.js, via the dynamic import in _initBgScene) for the skybox; pure-2D
@@ -2156,6 +2186,28 @@ Alpine.data('lessonGame', (lesson) => ({
     },
 
     /** Pick a state outright (the subtitles menu); toggleCaptions is the keyboard's way in. */
+    /**
+     * The title's subtitle spans exactly the series logo's LETTERS: one line, its font scaled to
+     * the ink, not the image box (a wordmark file has room around its letters). Again once the
+     * lettering font has loaded and whenever the logo's box changes size.
+     */
+    fitSubtitle (el) {
+      const box = el.parentElement
+      const logo = box.querySelector('img')
+      let ink = [0, 1]
+      const fit = () => {
+        const w = box.clientWidth
+        if (!w) return
+        el.style.marginLeft = `${ink[0] * w}px`
+        el.style.fontSize = '100px'
+        el.style.fontSize = `${(100 * (ink[1] - ink[0]) * w) / el.offsetWidth}px`
+      }
+      fit()
+      document.fonts?.ready.then(fit)
+      inkSpan(logo).then(span => { ink = span; fit() })
+      if (typeof ResizeObserver === 'function') new ResizeObserver(fit).observe(box)
+    },
+
     setCaptions (on) {
       this.captionsOn = !!on
       // Someone who needs captions needs them in every lesson, so the choice outlives this one.
