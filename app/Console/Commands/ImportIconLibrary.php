@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Models\SvgAsset;
+use App\Services\Lessons\LibraryCdn;
 use App\Services\Svg\SvgSanitizer;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
@@ -23,6 +24,8 @@ use Symfony\Component\Finder\Finder;
  *   resources/icons/<collection>/<category>/<subcategory>/*.svg   →  line-art
  *   resources/icons/<collection>/*.svg                            →  arrows, shapes
  *   resources/icons/<collection>/<category>/<subcategory>/*.webp|png  →  art:make packs (stored as-is)
+ *   resources/icons/<collection>/cdn.json  →  pictures already on Cloudinary (LibraryCdn). Their
+ *       files are not in git, so a picture listed here is imported from its URL alone.
  *
  * Re-running is safe: each file is keyed on its path, so an edited icon is replaced in
  * place and the scenes already using it keep pointing at the same asset id.
@@ -72,18 +75,28 @@ class ImportIconLibrary extends Command
         $failed = 0;
 
         foreach ($collections as $collection) {
+            $cdn = LibraryCdn::manifest($collection, $root);
             foreach ($this->libraryFiles($root.'/'.$collection) as $file) {
-                $ref = $collection.'/'.str_replace('\\', '/', $file->getRelativePathname());
+                $rest = str_replace('\\', '/', $file->getRelativePathname());
+                $ref = $collection.'/'.$rest;
                 $seen[] = $ref;
 
                 try {
-                    $this->importOne($sanitizer, $collection, $file, $ref);
+                    $this->importOne($sanitizer, $collection, $file, $ref, $cdn[$rest]['url'] ?? null);
                     $imported++;
                 } catch (RuntimeException $e) {
                     // One malformed file must not abort a 128-file publish — name it and carry on.
                     $failed++;
                     $this->warn("  skipped {$ref}: {$e->getMessage()}");
                 }
+                unset($cdn[$rest]);
+            }
+            // What is left in the manifest has no file here: it lives on Cloudinary only.
+            foreach ($cdn as $rest => $entry) {
+                $ref = $collection.'/'.$rest;
+                $seen[] = $ref;
+                $this->importFromCdn($collection, $ref, (array) $entry);
+                $imported++;
             }
             $this->line("  {$collection}");
         }
@@ -123,7 +136,7 @@ class ImportIconLibrary extends Command
         return ['bytes' => $raw, 'width' => (int) $size[0], 'height' => (int) $size[1], 'view_box' => null];
     }
 
-    private function importOne(SvgSanitizer $sanitizer, string $collection, SplFileInfo $file, string $ref): void
+    private function importOne(SvgSanitizer $sanitizer, string $collection, SplFileInfo $file, string $ref, ?string $cdnUrl = null): void
     {
         $raw = file_get_contents($file->getPathname());
         if ($raw === false) {
@@ -136,28 +149,69 @@ class ImportIconLibrary extends Command
         $path = self::DISK_ROOT.'/'.$this->diskPath($ref);
         Storage::disk('public')->put($path, $clean['bytes'] ?? $clean['svg']);
 
-        // NOT updateOrCreate: its attribute match compiles `user_id = null`, which no row ever
-        // satisfies in SQL, so every run would insert a duplicate instead of updating.
-        $asset = SvgAsset::query()->whereNull('user_id')->where('source', 'bundled')->where('source_ref', $ref)->first()
-            ?? new SvgAsset(['user_id' => null, 'source' => 'bundled', 'source_ref' => $ref]);
+        [$category, $subcategory] = $this->taxonomy($file->getRelativePath());
 
-        [$category, $subcategory] = $this->taxonomy($file);
-
-        $asset->fill([
+        $this->bundledRow($ref)->fill([
             'collection' => $collection,
             'category' => $category,
             'subcategory' => $subcategory,
             'source_url' => '',
             'title' => $this->isRaster($file)
-                ? Str::ucfirst(str_replace(['-', '_'], ' ', $file->getFilenameWithoutExtension()))
+                ? $this->rasterTitle($file->getFilenameWithoutExtension())
                 : $this->title($file->getFilenameWithoutExtension()),
             'license' => (string) $this->option('license'),
             'attribution' => (string) $this->option('attribution') ?: null,
             'svg_path' => $path,
+            // A picture re-exported with the same name keeps its CDN copy only while the manifest
+            // still lists it; drop the line from cdn.json to have the next lesson re-upload it.
+            'cdn_url' => $cdnUrl,
             'width' => $clean['width'],
             'height' => $clean['height'],
             'view_box' => $clean['view_box'],
         ])->save();
+    }
+
+    /**
+     * A picture that lives on Cloudinary only (listed in cdn.json, file not on this machine). The
+     * row points at the CDN; svg_path is where the file WOULD be, so the ref and its paths match
+     * what a machine that has the file writes.
+     *
+     * @param  array<string,mixed>  $entry
+     */
+    private function importFromCdn(string $collection, string $ref, array $entry): void
+    {
+        $rest = substr($ref, strlen($collection) + 1);
+        [$category, $subcategory] = $this->taxonomy(dirname($rest) === '.' ? '' : dirname($rest));
+
+        $this->bundledRow($ref)->fill([
+            'collection' => $collection,
+            'category' => $category,
+            'subcategory' => $subcategory,
+            'source_url' => '',
+            'title' => $this->rasterTitle(pathinfo($rest, PATHINFO_FILENAME)),
+            'license' => (string) $this->option('license'),
+            'attribution' => (string) $this->option('attribution') ?: null,
+            'svg_path' => self::DISK_ROOT.'/'.$this->diskPath($ref),
+            'cdn_url' => (string) ($entry['url'] ?? ''),
+            'width' => isset($entry['width']) ? (int) $entry['width'] : null,
+            'height' => isset($entry['height']) ? (int) $entry['height'] : null,
+            'view_box' => null,
+        ])->save();
+    }
+
+    /**
+     * The bundled row for a ref, or a new one. NOT updateOrCreate: its attribute match compiles
+     * `user_id = null`, which no row ever satisfies in SQL, so every run would insert a duplicate.
+     */
+    private function bundledRow(string $ref): SvgAsset
+    {
+        return SvgAsset::query()->whereNull('user_id')->where('source', 'bundled')->where('source_ref', $ref)->first()
+            ?? new SvgAsset(['user_id' => null, 'source' => 'bundled', 'source_ref' => $ref]);
+    }
+
+    private function rasterTitle(string $filename): string
+    {
+        return Str::ucfirst(str_replace(['-', '_'], ' ', $filename));
     }
 
     /**
@@ -166,9 +220,9 @@ class ImportIconLibrary extends Command
      *
      * @return array{0: ?string, 1: ?string}
      */
-    private function taxonomy(SplFileInfo $file): array
+    private function taxonomy(string $relativeDir): array
     {
-        $parts = array_values(array_filter(explode('/', str_replace('\\', '/', $file->getRelativePath()))));
+        $parts = array_values(array_filter(explode('/', str_replace('\\', '/', $relativeDir))));
 
         return [$parts[0] ?? null, $parts[1] ?? null];
     }
@@ -213,7 +267,7 @@ class ImportIconLibrary extends Command
             ->get();
 
         foreach ($stale as $asset) {
-            Storage::disk('public')->delete($asset->svg_path);
+            Storage::disk('public')->delete($asset->svg_path);   // a CDN-only row has none: a no-op
             $asset->delete();
         }
 

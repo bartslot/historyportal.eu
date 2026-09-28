@@ -8,6 +8,7 @@ use App\Enums\LessonStatus;
 use App\Models\AnimationClip;
 use App\Models\Lesson;
 use App\Models\Scene;
+use App\Support\MediaUrl;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -108,7 +109,7 @@ class Step4Preview extends Component
     {
         return [
             'sceneId' => $scene->id,
-            'imageUrl' => $scene->image_path ? asset('storage/'.$scene->image_path) : null,
+            'imageUrl' => MediaUrl::of($scene->image_path),
             'audioUrl' => $scene->audioUrl(),
             'animationClipUrl' => $this->animationGlbUrlFor($scene, $clips),
             'year' => $scene->year,

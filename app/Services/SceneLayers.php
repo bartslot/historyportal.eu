@@ -27,7 +27,7 @@ final class SceneLayers
      */
     public static function figure(SvgAsset $asset, array $settings = []): array
     {
-        return ['asset_id' => $asset->id, 'path' => $asset->svg_path, ...self::FIGURE_DEFAULTS, ...$settings];
+        return ['asset_id' => $asset->id, 'path' => $asset->src(), ...self::FIGURE_DEFAULTS, ...$settings];
     }
 
     /** @return array{path:string,kind:string,depth:float} */

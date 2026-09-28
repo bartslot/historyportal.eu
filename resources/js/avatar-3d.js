@@ -786,6 +786,9 @@ export class Avatar3DPlayer {
   _loadSkyboxTexture (url, blur) {
     return new Promise((resolve, reject) => {
       const img = new Image()
+      // A Cloudinary picture is cross-origin: without CORS the canvas below is tainted and the
+      // WebGL upload throws. Cloudinary sends Access-Control-Allow-Origin, our own disk is same-origin.
+      img.crossOrigin = 'anonymous'
       img.onload = () => {
         const MAX_W = 2048
         const scale = Math.min(1, MAX_W / img.naturalWidth)

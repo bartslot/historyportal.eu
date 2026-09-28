@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\LessonStatus;
 use App\Enums\NarrativeFramework;
 use App\Models\Concerns\BelongsToTeacher;
+use App\Support\MediaUrl;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -371,6 +372,9 @@ class Lesson extends Model
     {
         if (! $path) {
             return null;
+        }
+        if (MediaUrl::isRemote($path)) {
+            return $path;   // a Cloudinary picture: nothing on our disk to find
         }
 
         $publicDisk = Storage::disk('public');

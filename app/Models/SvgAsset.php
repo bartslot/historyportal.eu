@@ -30,6 +30,7 @@ use Illuminate\Support\Facades\Storage;
  * @property string $license
  * @property string|null $attribution
  * @property string $svg_path
+ * @property string|null $cdn_url
  * @property int|null $width
  * @property int|null $height
  * @property string|null $view_box
@@ -43,7 +44,7 @@ class SvgAsset extends Model
         'user_id', 'source', 'source_ref', 'source_url',
         'collection', 'category', 'subcategory',
         'title', 'license', 'attribution',
-        'svg_path', 'width', 'height', 'view_box',
+        'svg_path', 'cdn_url', 'width', 'height', 'view_box',
     ];
 
     protected $casts = [
@@ -56,10 +57,19 @@ class SvgAsset extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
-    /** Public URL of the stored SVG file. */
+    /** Public URL of the picture: the CDN copy once there is one, else the file on our disk. */
     public function url(): string
     {
-        return Storage::disk('public')->url($this->svg_path);
+        return $this->cdn_url ?: Storage::disk('public')->url($this->svg_path);
+    }
+
+    /**
+     * What a scene stores to point at this picture: the CDN URL once uploaded, else the public-disk
+     * path. MediaUrl::of() turns either into something a browser can load.
+     */
+    public function src(): string
+    {
+        return $this->cdn_url ?: $this->svg_path;
     }
 
     /**

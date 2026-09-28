@@ -44,10 +44,8 @@
                 @php
                     $slug = Seo::lessonSlug($lesson);
                     $poster = $lesson->poster_image
-                        ? \Illuminate\Support\Facades\Storage::disk('public')->url($lesson->poster_image)
-                        : ($lesson->firstScene?->image_path
-                            ? \Illuminate\Support\Facades\Storage::disk('public')->url($lesson->firstScene->image_path)
-                            : null);
+                        ? \App\Support\MediaUrl::of($lesson->poster_image)
+                        : \App\Support\MediaUrl::of($lesson->firstScene?->image_path);
                 @endphp
                 <article class="group overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/40 transition hover:-translate-y-0.5 hover:border-amber-500/40">
                     <a href="{{ Seo::url('lesson', ['slug' => $slug]) }}" class="block">
