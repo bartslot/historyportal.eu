@@ -42,15 +42,56 @@ export function paintFill (input) {
   }
 }
 
-/** Install the one document-level handler. Idempotent. */
+const isPanelRange = (el) =>
+  el instanceof HTMLInputElement && el.type === 'range' && el.classList.contains('range-panel')
+
+/**
+ * Keep every drawn knob on its value, however the value got there.
+ *
+ * The knob is drawn from --range-t, not by the browser, so a value that changes WITHOUT an input
+ * event would leave it behind: x-model writing `el.value`, a reset button, a Livewire morph putting
+ * the server's value back, a slider arriving in a morph. Four routes, one per mechanism:
+ *
+ *   - `input` / `change` for a hand on the slider;
+ *   - the `value` property setter, which is what x-model and every script assign through;
+ *   - a MutationObserver for sliders that arrive in the DOM and `value` attributes a morph rewrites;
+ *   - one pass over what is already on the page.
+ */
 export function initRangeFill (root = document) {
   if (root.__rangeFillReady) return
   root.__rangeFillReady = true
 
-  root.addEventListener('input', (e) => {
-    const el = e.target
-    if (el instanceof HTMLInputElement && el.type === 'range' && el.classList.contains('range-panel')) {
-      paintFill(el)
-    }
-  })
+  const onEvent = (e) => { if (isPanelRange(e.target)) paintFill(e.target) }
+  root.addEventListener('input', onEvent)
+  root.addEventListener('change', onEvent)
+
+  const proto = HTMLInputElement.prototype
+  const value = Object.getOwnPropertyDescriptor(proto, 'value')
+  if (value?.set && !proto.__rangeFillPatched) {
+    proto.__rangeFillPatched = true
+    Object.defineProperty(proto, 'value', {
+      ...value,
+      set (v) {
+        value.set.call(this, v)
+        if (isPanelRange(this)) paintFill(this)
+      },
+    })
+  }
+
+  const paintWithin = (node) => {
+    if (isPanelRange(node)) paintFill(node)
+    node.querySelectorAll?.('input.range-panel').forEach((el) => { if (isPanelRange(el)) paintFill(el) })
+  }
+  paintWithin(root.documentElement ?? root)
+
+  if (typeof MutationObserver !== 'undefined') {
+    new MutationObserver((records) => {
+      for (const r of records) {
+        if (r.type === 'attributes') { if (isPanelRange(r.target)) paintFill(r.target); continue }
+        r.addedNodes.forEach(paintWithin)
+      }
+    }).observe(root.documentElement ?? root, {
+      subtree: true, childList: true, attributes: true, attributeFilter: ['value', 'min', 'max'],
+    })
+  }
 }

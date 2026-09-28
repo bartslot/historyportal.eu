@@ -185,10 +185,12 @@
              },
          }">
         <span class="text-xs font-medium opacity-70">{{ __('Colour') }}</span>
-        <input type="range" min="0" max="100" step="5" x-model.number="v"
-               x-on:input="window.__tmSetColorStrength && window.__tmSetColorStrength(v / 100)"
-               class="range range-xs range-primary w-28"
-               aria-label="{{ __('Territory colour strength') }}">
+        <span class="range-panel-knob min-w-0 w-28">
+            <input type="range" min="0" max="100" step="5" x-model.number="v"
+                   x-on:input="window.__tmSetColorStrength && window.__tmSetColorStrength(v / 100)"
+                   class="range range-panel"
+                   aria-label="{{ __('Territory colour strength') }}">
+        </span>
     </div>
 
     {{-- Settings: a cog that fans out to a map-style palette and a sound (read-aloud) toggle.

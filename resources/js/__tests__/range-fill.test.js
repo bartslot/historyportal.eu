@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import { fillPercent } from '../ui/range-fill.js'
+import { describe, it, expect, beforeAll } from 'vitest'
+import { fillPercent, initRangeFill } from '../ui/range-fill.js'
 
 /** A stand-in for the input, since only min/max/value are read. */
 const range = (min, max, value) => ({ min: String(min), max: String(max), value: String(value) })
@@ -40,5 +40,49 @@ describe('how far along the rail the fill stops', () => {
   it('reports nothing filled for a value it cannot read', () => {
     expect(fillPercent(range(0, 100, ''))).toBe(0)
     expect(fillPercent({ min: '', max: '', value: 'abc' })).toBe(0)
+  })
+})
+
+/**
+ * The knob is drawn from --range-t, so it must follow a value set WITHOUT an input event — the
+ * way x-model, a reset and a Livewire morph set it — or the drawn knob stays where it was.
+ */
+const slider = (value = '0') => {
+  const wrap = document.createElement('span')
+  wrap.className = 'range-panel-knob'
+  wrap.innerHTML = `<input type="range" class="range range-panel" min="0" max="10" value="${value}">`
+  return { wrap, input: wrap.querySelector('input') }
+}
+const settle = () => new Promise((r) => setTimeout(r, 0))
+
+describe('range-fill keeps the drawn knob on the value', () => {
+  beforeAll(() => initRangeFill(document))
+
+  it('follows a value assigned by script, on the wrapper that draws the knob', () => {
+    const { wrap, input } = slider()
+    document.body.append(wrap)
+    input.value = '5'
+    expect(wrap.style.getPropertyValue('--range-t')).toBe('0.5')
+    expect(input.style.getPropertyValue('--range-t')).toBe('0.5')
+  })
+
+  it('paints a slider that arrives in the page, and one whose value attribute a morph rewrites', async () => {
+    const { wrap, input } = slider('10')
+    document.body.append(wrap)
+    await settle()
+    expect(wrap.style.getPropertyValue('--range-t')).toBe('1')
+
+    input.setAttribute('value', '2')
+    input.value = '2'
+    await settle()
+    expect(wrap.style.getPropertyValue('--range-t')).toBe('0.2')
+  })
+
+  it('leaves a plain range alone', () => {
+    const plain = document.createElement('input')
+    plain.type = 'range'
+    document.body.append(plain)
+    plain.value = '30'
+    expect(plain.style.getPropertyValue('--range-t')).toBe('')
   })
 })

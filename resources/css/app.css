@@ -440,6 +440,9 @@
     pointer-events: none;
 }
 
+/* A disabled slider dims, rail and knob together — the native one did that on its own. */
+.range-panel-knob:has(.range-panel:disabled) { opacity: 0.4; }
+
 /* The focus ring the invisible native thumb can no longer show, on the knob that can be seen. */
 .range-panel-knob:has(.range-panel:focus-visible)::after {
     outline: 2px solid var(--color-slider-fill);

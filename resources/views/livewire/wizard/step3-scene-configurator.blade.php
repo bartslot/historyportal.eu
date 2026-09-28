@@ -2187,12 +2187,14 @@
                            :disabled="!offered(row.key)"
                            :aria-label="offered(row.key) ? row.label : row.label + ' — ' + why(row.key)">
                     <span class="w-24 shrink-0 truncate text-xs text-slate-300" x-text="row.label"></span>
-                    <input type="range" min="0" :max="row.max" step="0.05"
-                           class="range range-xs grow"
-                           x-model.number="state[row.key].value"
-                           :disabled="!offered(row.key) || !state[row.key].visible"
-                           @input="push(row.key)"
-                           :aria-label="row.label + ' — {{ __('opacity') }}'">
+                    <span class="range-panel-knob min-w-0 grow">
+                        <input type="range" min="0" :max="row.max" step="0.05"
+                               class="range range-panel"
+                               x-model.number="state[row.key].value"
+                               :disabled="!offered(row.key) || !state[row.key].visible"
+                               @input="push(row.key)"
+                               :aria-label="row.label + ' — {{ __('opacity') }}'">
+                    </span>
                 </div>
             </template>
 
@@ -2206,12 +2208,14 @@
                        x-model="state[reference.key].visible" @change="push(reference.key)"
                        :aria-label="reference.label">
                 <span class="w-24 shrink-0 truncate text-xs text-slate-300" x-text="reference.label"></span>
-                <input type="range" min="0" :max="reference.max" step="0.05"
-                       class="range range-xs grow"
-                       x-model.number="state[reference.key].value"
-                       :disabled="!state[reference.key].visible"
-                       @input="push(reference.key)"
-                       :aria-label="reference.label + ' — {{ __('opacity') }}'">
+                <span class="range-panel-knob min-w-0 grow">
+                    <input type="range" min="0" :max="reference.max" step="0.05"
+                           class="range range-panel"
+                           x-model.number="state[reference.key].value"
+                           :disabled="!state[reference.key].visible"
+                           @input="push(reference.key)"
+                           :aria-label="reference.label + ' — {{ __('opacity') }}'">
+                </span>
             </div>
         </div>
     </div>

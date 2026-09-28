@@ -166,18 +166,22 @@
                             <span class="font-mono text-slate-200"
                                   x-text="Number(s.{{ $key }}).toFixed({{ $step < 1 ? 2 : 0 }}) + '{{ $unit }}'"></span>
                         </span>
-                        <input type="range" min="{{ $min }}" max="{{ $max }}" step="{{ $step }}"
-                               x-model.number="s.{{ $key }}" @change="apply()"
-                               class="range range-xs mt-0.5 w-full">
+                        <span class="range-panel-knob min-w-0 mt-0.5 w-full">
+                            <input type="range" min="{{ $min }}" max="{{ $max }}" step="{{ $step }}"
+                                   x-model.number="s.{{ $key }}" @change="apply()"
+                                   class="range range-panel">
+                        </span>
                     </label>
                 @endforeach
             </div>
 
             <label class="mt-3 block">
                 <span class="text-2xs text-slate-400">Scrub</span>
-                <input type="range" min="0" max="100" step="0.5"
-                       x-model.number="scrub" @input="onScrub()"
-                       class="range range-xs range-secondary mt-0.5 w-full">
+                <span class="range-panel-knob min-w-0 mt-0.5 w-full">
+                    <input type="range" min="0" max="100" step="0.5"
+                           x-model.number="scrub" @input="onScrub()"
+                           class="range range-panel">
+                </span>
             </label>
 
             <div class="mt-2 flex gap-1.5">

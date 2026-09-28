@@ -391,11 +391,13 @@
                 <label class="text-2xs uppercase tracking-widest text-slate-500">Blur</label>
                 <span class="text-2xs font-mono text-base-content/85" x-text="Number(blur).toFixed(2)"></span>
             </div>
-            <input type="range" min="0.01" max="0.9" step="0.01"
-                   x-model.number="blur"
-                   @input="emitBlur()"
-                   @change="$wire.set('selectedScene.skybox_blur', Number(blur)); $wire.call('saveSelected')"
-                   class="range range-xs w-full" />
+            <span class="range-panel-knob min-w-0 w-full">
+                <input type="range" min="0.01" max="0.9" step="0.01"
+                       x-model.number="blur"
+                       @input="emitBlur()"
+                       @change="$wire.set('selectedScene.skybox_blur', Number(blur)); $wire.call('saveSelected')"
+                       class="range range-panel" />
+            </span>
         </div>
 
         {{-- Opacity --}}
@@ -404,11 +406,13 @@
                 <label class="text-2xs uppercase tracking-widest text-slate-500">Opacity</label>
                 <span class="text-2xs font-mono text-base-content/85" x-text="Math.round(opacity * 100) + '%'"></span>
             </div>
-            <input type="range" min="0" max="1" step="0.01"
-                   x-model.number="opacity"
-                   @input="emitOpacity()"
-                   @change="$wire.set('selectedScene.skybox_opacity', Number(opacity)); $wire.call('saveSelected')"
-                   class="range range-xs w-full" />
+            <span class="range-panel-knob min-w-0 w-full">
+                <input type="range" min="0" max="1" step="0.01"
+                       x-model.number="opacity"
+                       @input="emitOpacity()"
+                       @change="$wire.set('selectedScene.skybox_opacity', Number(opacity)); $wire.call('saveSelected')"
+                       class="range range-panel" />
+            </span>
         </div>
 
         {{-- Background color --}}
@@ -487,8 +491,10 @@
                         <label class="text-2xs uppercase tracking-widest text-slate-500">World Y</label>
                         <span class="text-2xs font-mono text-base-content/85" x-text="(charYOffset >= 0 ? '+' : '') + Number(charYOffset).toFixed(2)"></span>
                     </div>
-                    <input type="range" min="-3" max="3" step="0.01" x-model.number="charYOffset"
-                           @input="emitCharY()" class="range range-xs w-full" />
+                    <span class="range-panel-knob min-w-0 w-full">
+                        <input type="range" min="-3" max="3" step="0.01" x-model.number="charYOffset"
+                               @input="emitCharY()" class="range range-panel" />
+                    </span>
                     <button @click="charYOffset = 0; emitCharY()" class="text-[9px] text-slate-500 hover:text-slate-300 mt-1">reset</button>
                 </div>
                 <div>
@@ -496,8 +502,10 @@
                         <label class="text-2xs uppercase tracking-widest text-slate-500">World Scale</label>
                         <span class="text-2xs font-mono text-base-content/85" x-text="Number(worldScale).toFixed(2) + '×'"></span>
                     </div>
-                    <input type="range" min="0.1" max="5" step="0.01" x-model.number="worldScale"
-                           @input="emitWorldScale()" class="range range-xs w-full" />
+                    <span class="range-panel-knob min-w-0 w-full">
+                        <input type="range" min="0.1" max="5" step="0.01" x-model.number="worldScale"
+                               @input="emitWorldScale()" class="range range-panel" />
+                    </span>
                     <button @click="worldScale = 1; emitWorldScale()" class="text-[9px] text-slate-500 hover:text-slate-300 mt-1">reset</button>
                 </div>
                 <div>
@@ -505,8 +513,10 @@
                         <label class="text-2xs uppercase tracking-widest text-slate-500">Char Scale</label>
                         <span class="text-2xs font-mono text-base-content/85" x-text="Number(charScale).toFixed(2) + '×'"></span>
                     </div>
-                    <input type="range" min="0.1" max="3" step="0.01" x-model.number="charScale"
-                           @input="emitCharScale()" class="range range-xs w-full" />
+                    <span class="range-panel-knob min-w-0 w-full">
+                        <input type="range" min="0.1" max="3" step="0.01" x-model.number="charScale"
+                               @input="emitCharScale()" class="range range-panel" />
+                    </span>
                     <button @click="charScale = 1; emitCharScale()" class="text-[9px] text-slate-500 hover:text-slate-300 mt-1">reset</button>
                 </div>
                 <button @click="dirty && save()"
