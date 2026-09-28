@@ -16,6 +16,9 @@ class TtsService
     /** Which rung of the fallback chain actually produced the last audio. */
     private ?string $generatedProvider = null;
 
+    /** The provider's own bytes from the last call, before the AAC encode (see lastSourceAudio()). */
+    private ?string $sourceAudio = null;
+
     /** The voice that rung actually spoke with — not the one the caller asked for. */
     private ?string $generatedVoice = null;
 
@@ -109,9 +112,19 @@ class TtsService
      * audio is compressed exactly once; any other provider's MP3 is converted, which costs nothing
      * extra at the provider (ElevenLabs credits are per character, not per format).
      */
+    /**
+     * The provider's own audio from the last generateAudioRaw(), before the AAC encode: what an
+     * ElevenLabs recording is kept as (Ron Slot's voice is re-bought never, and kept at full quality).
+     */
+    public function lastSourceAudio(): ?string
+    {
+        return $this->sourceAudio;
+    }
+
     public function generateAudioRaw(string $text, string $voiceId, float $speed = 1.0, string $provider = 'auto', ?array &$timingData = null): ?string
     {
         $audio = $this->generateFromProviders($text, $voiceId, $speed, $provider, $timingData);
+        $this->sourceAudio = $audio;
         $from = $this->generatedAudioExtension;
         if ($audio === null || ! in_array($from, ['wav', 'mp3'], true) || ! AudioEncoder::available()) {
             return $audio;

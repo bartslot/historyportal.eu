@@ -115,6 +115,15 @@ class GenerateSceneAudio implements ShouldQueue
                 throw new \RuntimeException('TTS service returned no audio.');
             }
 
+            // An ElevenLabs recording (Ron Slot, Bart's father) is kept at full quality in the narration
+            // library, by sentence: a rebuilt or new lesson reuses it instead of buying it again.
+            if ($tts->lastProvider() === 'elevenlabs' && $tts->lastSourceAudio() !== null) {
+                $kept = \App\Services\LessonComposer::NARRATION_LIBRARY.'/'.sha1($script).'.mp3';
+                if (! Storage::disk('public')->exists($kept)) {
+                    Storage::disk('public')->put($kept, $tts->lastSourceAudio());
+                }
+            }
+
             $ext = $tts->lastExtension();
             $path = "lessons/{$scene->lesson_id}/scenes/{$scene->id}/narration.{$ext}";
             Storage::disk('public')->put($path, $audio);
