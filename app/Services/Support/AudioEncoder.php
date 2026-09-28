@@ -23,7 +23,17 @@ final class AudioEncoder
     public const EXTENSION = 'm4a';
 
     /** Goes into the narration cache key, so changing the encode actually re-renders. */
-    public const FINGERPRINT = 'aac-lc-32k-mono-24k';
+    public const FINGERPRINT = 'aac-lc-32k-mono-24k-lufs16';
+
+    /**
+     * Every clip is levelled to this integrated loudness before encoding. The Storia research said "no
+     * filters" for ONE consistent narrator; a cast is different: the ElevenLabs voices came out between
+     * -31 and -20 LUFS, so each change of speaker jumped in volume (Bart). -16 LUFS is the usual level
+     * for speech on phones and laptops; true peak stays under -1.5 dBTP so the AAC encode cannot clip.
+     */
+    public const LOUDNESS_LUFS = -16;
+
+    private const TRUE_PEAK_DB = -1.5;
 
     public static function available(): bool
     {
@@ -46,6 +56,8 @@ final class AudioEncoder
         file_put_contents($in, $audio);
 
         try {
+            $in = self::level($in, "{$dir}/level.wav") ?? $in;
+
             foreach (self::commands($in, $out) as $command) {
                 @unlink($out);
                 $run = Process::timeout(120)->run($command);
@@ -58,9 +70,41 @@ final class AudioEncoder
             return null;
         } finally {
             @unlink($in);
+            @unlink("{$dir}/in.{$inputExtension}");
+            @unlink("{$dir}/level.wav");
             @unlink($out);
             @rmdir($dir);
         }
+    }
+
+    /**
+     * Two-pass loudness levelling: measure (ffmpeg loudnorm, EBU R128), then one gain for the whole
+     * clip so the voice keeps its own dynamics and a shout stays a shout. Returns the levelled
+     * 24 kHz mono WAV, or null (no ffmpeg, or the measurement failed) and the clip goes on as it was.
+     */
+    private static function level(string $in, string $out): ?string
+    {
+        $ffmpeg = self::binary('ffmpeg');
+        if ($ffmpeg === null) {
+            return null;
+        }
+        $target = 'I='.self::LOUDNESS_LUFS.':TP='.self::TRUE_PEAK_DB.':LRA=11';
+        $measure = Process::timeout(60)->run([$ffmpeg, '-hide_banner', '-i', $in, '-af', "loudnorm={$target}:print_format=json", '-f', 'null', '-']);
+        if (! preg_match('/\{[^{}]*"input_i"[^{}]*\}/s', $measure->errorOutput(), $m)) {
+            return null;
+        }
+        $v = json_decode($m[0], true);
+        if (! is_array($v) || ! is_numeric($v['input_i'] ?? null) || (float) $v['input_i'] < -70) {
+            return null;   // silence or unreadable: nothing to level
+        }
+        // One gain to the target, then a limiter for the few peaks that would pass -1.5 dBTP. Linear
+        // loudnorm refuses to raise a clip past its own peaks, which left a quiet voice 7 LU short.
+        $gain = self::LOUDNESS_LUFS - (float) $v['input_i'];
+        $limit = round(10 ** (self::TRUE_PEAK_DB / 20), 3);
+        $apply = sprintf('volume=%.2fdB,alimiter=limit=%s:attack=5:release=50:level=false', $gain, $limit);
+        $run = Process::timeout(60)->run([$ffmpeg, '-y', '-loglevel', 'error', '-i', $in, '-af', $apply, '-ar', '24000', '-ac', '1', '-c:a', 'pcm_s16le', $out]);
+
+        return $run->successful() && is_file($out) && filesize($out) > 0 ? $out : null;
     }
 
     /** @return list<list<string>> */
