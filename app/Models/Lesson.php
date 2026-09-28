@@ -665,6 +665,13 @@ class Lesson extends Model
             return null;
         }
 
+        // Our own storage, saved as a full URL (the picker stored the address it was shown):
+        // that address dies with the host that wrote it (another port, the renamed domain), so
+        // keep only the same-site path.
+        if (preg_match('#^(?:https?:)?//[^/]+(/storage/.+)$#i', $poster, $own)) {
+            return $own[1];
+        }
+
         // Full URLs (Cloudinary/Commons) and root-relative paths pass through; a bare storage
         // path is resolved on the public disk like every other stored image.
         return preg_match('#^(https?:)?//#i', $poster) || str_starts_with($poster, '/')

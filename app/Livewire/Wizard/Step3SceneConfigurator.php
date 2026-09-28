@@ -4963,7 +4963,8 @@ class Step3SceneConfigurator extends Component
         if ($url === '' || ! $isOwn) {
             return;
         }
-        $this->lesson->update(['poster_image' => $url]);
+        // Our own files are kept as a same-site path, never as the host they were shown on.
+        $this->lesson->update(['poster_image' => preg_replace('#^(?:https?:)?//[^/]+(?=/storage/)#i', '', $url)]);
         $this->lesson->refresh();
     }
 
