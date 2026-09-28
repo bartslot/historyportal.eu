@@ -528,6 +528,9 @@
 
         window.Livewire.on('scene:load', (e) => {
             const p = Array.isArray(e) ? e[0]?.payload : e?.payload
+            // Globe layers only make sense over a map: a slide keeps its background settings alone.
+            const view = window.Alpine?.store('view')
+            if (view) view.mapScene = !!p && (p.kind === 'map' || p.kind === 'voyage')
             if (!p) { destroy(); wireMapProjectors(); return }
 
             // Tell the object/layers list what KIND of scene is on stage, so a Route waypoint scene can
@@ -1326,6 +1329,8 @@
         if (!window.Alpine || window.Alpine.store('view')) return;
         Alpine.store('view', {
             scenes: true, objects: false, rulers: false, notes: false, script: true, layers: false, railLast: 176,
+            // Not persisted: set from each scene:load, so Globe layers never shows over a slide.
+            mapScene: false,
             // Which tab the bottom dock is showing: 'icons' | 'script'.
             bottomTab: 'script',
             objectsW: 208,   // object-list width (px); drag-resizable, ≤108px → icons-only
@@ -1416,7 +1421,7 @@
                     { k: 'notes',   label: @js(__('Internal notes')) },
                     { k: 'layers',  label: @js(__('Globe layers')) },
                 ]" :key="item.k">
-                    <button type="button"
+                    <button type="button" x-show="item.k !== 'layers' || $store.view.mapScene"
                             @click="(item.k === 'scenes' ? $store.view.toggleScenes() : $store.view.toggle(item.k)); viewOpen = false"
                             class="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-slate-200 hover:bg-slate-800">
                         <span class="flex h-4 w-4 shrink-0 items-center justify-center text-amber-400">
@@ -2070,7 +2075,7 @@
          is a syntax error and the whole expression is silently dropped. The try/catch stays
          regardless — localStorage throws outright in a browser that blocks storage. --}}
     <x-ui.floating-window name="layers" :title="__('Globe layers')"
-                          show="$store.view.layers" on-close="$store.view.hide('layers')">
+                          show="$store.view.layers && $store.view.mapScene" on-close="$store.view.hide('layers')">
     <div x-data="{
              rows: @js($globeLayerRows),
              reference: @js($globeReferenceRow),
