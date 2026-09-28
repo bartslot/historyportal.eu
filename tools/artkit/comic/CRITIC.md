@@ -19,3 +19,19 @@ Look at `<shot>_shadedfig.png` (and `_clay.png`) and score each line 0-2. Paint 
 Then ask JEV (text) for every *content* choice in the shot (props, costume, banners, landscape): plausible or not,
 keep or cut. For dramatic staging, plausibility is enough; it need not be documented (Bart: "shots like these don't
 have to be historically correct as it's plausible it happened").
+
+# Part 2: inspection of the PAINTED panel (before anyone sees it)
+
+Bart (2026-09-28): extra feet at every saddle, nobody steering, "almost all images have something not logical".
+Composition grades from thumbnails do not catch this. Open the painted panel at full size; crop every person and
+animal; answer in writing. One "no" = fix (Blender or prompt), repaint, inspect again.
+
+- [ ] People: exactly the script's cast; no extra passers-by or duplicates (one Dante per panel).
+- [ ] Each person: 2 arms, 2 hands, 2 legs, 2 feet, one head; hands do the beat (write, hold, point, reins).
+- [ ] Riders: sit in the saddle, one hand on the reins at least, feet in stirrups on the horse's flank, no extra legs.
+- [ ] Animals: 4 legs, attached; horses harnessed; a moving horse's legs in a real gait.
+- [ ] Objects exist once and make sense (a notice on the wall is not also in the hand; banners are carried).
+- [ ] Rooms are closed rooms (walls, ceiling); streets are streets.
+- [ ] Period: no glass windows, sash frames, potted plants, drainpipes, lever handles, modern chairs, knit jumpers,
+      tiled ceilings, lettering.
+- [ ] Faces match the character sheet (Dante clean-shaven; Guido as written).

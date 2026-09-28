@@ -100,6 +100,12 @@ def rider(k, x, y, heading_deg, rgb, pose="ride", flag=False):
     return name
 
 
+# PLATE: the empty plain only (lesson backgrounds; riders become separate sprites, Bart 2026-09-28).
+# Send plate_mode.py first:  bl.py --render --lib figure.py plate_mode.py packs/dante_campaldino.py
+PLATE = globals().get("PLATE", False)
+if PLATE:
+    OUT = OUT + "_plate"
+    rider = lambda *a, **k: None                    # noqa: E731  no horses, riders or banners
 # Dante leads in the nearest rank, arm raised; the charge follows in uneven echelons
 rider(0, 3.0, 2.0, 4, DANTE, pose="charge")
 k = 1

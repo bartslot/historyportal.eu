@@ -262,6 +262,22 @@ def render_shot(sc, cam, outdir, shot, meta=None, blocking=True, figures=None, h
             sc.render.filepath = p("shadedfig"); bpy.ops.render.render(write_still=True, scene=sc.name)
             _figures_visible(sc, False)
         sc.view_settings.view_transform = 'Standard'
+    if shaded:   # depth: metres from the camera plane, 16-bit PNG, 0 = at the camera, 65535 = DEPTH_MAX or farther.
+        # For foreground cut-outs (a street corner, a table, ferns) that sprites walk behind (Bart, 2026-09-28).
+        _figures_visible(sc, False)
+        dm = _depth_mat()
+        sc.view_layers[0].material_override = dm
+        vt, look = sc.view_settings.view_transform, sc.view_settings.look
+        sc.view_settings.view_transform = 'Standard'; sc.view_settings.look = 'None'
+        wc = tuple(sc.world.color); _set_world(sc, (1, 1, 1))     # sky = far
+        fmt = sc.render.image_settings
+        old = (fmt.color_depth, fmt.color_mode)
+        fmt.color_depth = '16'; fmt.color_mode = 'BW'
+        sc.render.filepath = p("depth"); bpy.ops.render.render(write_still=True, scene=sc.name)
+        fmt.color_depth, fmt.color_mode = old
+        sc.view_layers[0].material_override = None
+        sc.view_settings.view_transform, sc.view_settings.look = vt, look
+        _set_world(sc, wc)
     sun = bpy.data.objects.get(sc.name + ".hp1_sun")
     if sun:
         sun.hide_render = True
@@ -346,6 +362,25 @@ def render_shot(sc, cam, outdir, shot, meta=None, blocking=True, figures=None, h
         info.update(meta)
     json.dump(info, open(os.path.join(outdir, shot + "_camera.json"), "w"), indent=1)
     return info
+
+
+DEPTH_MAX = 200.0   # metres at white in _depth.png
+
+
+def _depth_mat():
+    """Emission = camera Z distance / DEPTH_MAX (linear, unlit), for the depth pass."""
+    m = bpy.data.materials.get("hp1_depth")
+    if m:
+        return m
+    m = bpy.data.materials.new("hp1_depth"); m.use_nodes = True
+    nt = m.node_tree; nt.nodes.clear()
+    cam = nt.nodes.new("ShaderNodeCameraData")
+    div = nt.nodes.new("ShaderNodeMath"); div.operation = 'DIVIDE'; div.inputs[1].default_value = DEPTH_MAX
+    em = nt.nodes.new("ShaderNodeEmission")
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    nt.links.new(cam.outputs["View Z Depth"], div.inputs[0]); nt.links.new(div.outputs[0], em.inputs["Color"])
+    nt.links.new(em.outputs[0], out.inputs["Surface"])
+    return m
 
 
 def camera_look(sc, name, loc, target, lens=50.0, family="cu"):
