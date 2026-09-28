@@ -1473,5 +1473,11 @@
     "Subcategory": "Subcategorie",
     "Table": "Tabel",
     "Used in": "Gebruikt in",
-    "Vector": "Vector"
+    "Vector": "Vector",
+    "Quick mask": "Snelmasker",
+    "Quick mask: press on a colour and drag to cut it out. Alt+press brings it back.": "Snelmasker: druk op een kleur en sleep om die weg te knippen. Alt+klik zet het terug.",
+    "Tolerance": "Tolerantie",
+    "Reset": "Herstellen",
+    "Mask saved.": "Masker opgeslagen.",
+    "That layer is gone. Select it again and retry.": "Die laag bestaat niet meer. Selecteer hem opnieuw en probeer het nog eens."
 }

@@ -3035,6 +3035,53 @@ class Step3SceneConfigurator extends Component
     /** A picture dropped on the background slot in the inspector, which means the background, always. */
     public $droppedBackground;
 
+    /** The PNG the quick mask produced for the active layer (uploaded by the mask dialog, then saveMaskedLayer). */
+    public $maskedImage;
+
+    /**
+     * Quick mask → save. The masked picture becomes the teacher's own asset and replaces the layer's
+     * picture in this scene only; the original (a shared library icon, say) is never touched, so other
+     * lessons that use it keep it as it was.
+     */
+    public function saveMaskedLayer(int $assetId): void
+    {
+        $old = \App\Models\SvgAsset::query()->availableTo((int) auth()->id())->find($assetId);
+        if (! $old || ! $this->selectedSceneId) {
+            $this->reset('maskedImage');
+            $this->dispatch('toast', message: __('That layer is gone. Select it again and retry.'), type: 'error');
+
+            return;
+        }
+
+        try {
+            $this->validate(['maskedImage' => 'image|mimes:png|max:'.UploadLimit::kilobytes(self::DROPPED_IMAGE_CEILING_BYTES)]);
+        } catch (ValidationException $e) {
+            $this->reset('maskedImage');
+            $this->dispatch('toast', message: $e->validator->errors()->first('maskedImage'), type: 'error');
+
+            return;
+        }
+
+        $path = $this->maskedImage->store("lessons/{$this->lesson->id}/uploads", 'public');
+        $this->reset('maskedImage');
+
+        $asset = $this->upsertPictureAsset('mask', md5((string) $path), [
+            'source_url' => '/storage/'.$path,
+            'title' => $old->title,
+            'license' => $old->license,
+            'attribution' => $old->attribution,
+            'width' => $old->width,
+            'height' => $old->height,
+            'svg_path' => $path,
+        ]);
+
+        // path first: writeLayerField finds the layer by asset_id, so the id changes last.
+        $this->writeLayerField($assetId, 'path', $path);
+        $this->writeLayerField($assetId, 'asset_id', $asset->id);
+        $this->setActiveLayer($asset->id);
+        $this->dispatch('toast', message: __('Mask saved.'), type: 'success');
+    }
+
     /** What we are willing to take for a dropped picture, before PHP gets a say (UploadLimit takes the smaller). */
     private const DROPPED_IMAGE_CEILING_BYTES = 8 * 1024 * 1024;
 

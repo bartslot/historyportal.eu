@@ -43,6 +43,9 @@ window.easingPreview = easingPreview;
 // The 3D scene system (three.js, ~1.7 MB) is used ONLY by the lesson-creation wizard. Load it on
 // demand via window.loadLessonScene() so the landing page and other app pages never download three.
 // The wizard step views await this before touching window.LessonScene.
+// Quick mask (Instant Alpha) for an image layer: only the wizard's Mask dialog loads it.
+window.loadQuickMask = () => import('./scene/quick-mask.js');
+
 window.loadLessonScene = () => import('./scene/index.js').then((module) => {
     window.LessonScene = module;
     return module;

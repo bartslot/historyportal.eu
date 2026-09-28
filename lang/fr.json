@@ -1429,5 +1429,11 @@
     "Subcategory": "Sous-catégorie",
     "Table": "Tableau",
     "Used in": "Utilisé dans",
-    "Vector": "Vectoriel"
+    "Vector": "Vectoriel",
+    "Quick mask": "Masque rapide",
+    "Quick mask: press on a colour and drag to cut it out. Alt+press brings it back.": "Masque rapide : appuyez sur une couleur et faites glisser pour la découper. Alt+clic la rétablit.",
+    "Tolerance": "Tolérance",
+    "Reset": "Réinitialiser",
+    "Mask saved.": "Masque enregistré.",
+    "That layer is gone. Select it again and retry.": "Ce calque n'existe plus. Sélectionnez-le de nouveau et réessayez."
 }

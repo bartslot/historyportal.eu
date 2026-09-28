@@ -76,6 +76,9 @@
         <img src="{{ $layer['url'] }}" alt="{{ $layer['title'] ?? '' }}"
              class="h-9 w-9 shrink-0 rounded bg-base-100 object-contain" />
         <h3 class="min-w-0 flex-1 truncate font-semibold text-amber-300">{{ $layer['title'] ?? __('Icon') }}</h3>
+        @if (preg_match('/\.(png|webp|jpe?g|gif)$/i', (string) ($layer['url'] ?? '')))
+            <x-lesson.quick-mask :aid="$aid" :url="$layer['url']" :title="$layer['title'] ?? ''" />
+        @endif
         <button type="button" wire:click="detachArtwork({{ $aid }})"
                 class="btn btn-ghost btn-xs btn-square text-slate-500 hover:text-rose-400"
                 aria-label="{{ __('Remove layer') }}">

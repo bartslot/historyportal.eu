@@ -1429,5 +1429,11 @@
     "Subcategory": "Unterkategorie",
     "Table": "Tabelle",
     "Used in": "Verwendet in",
-    "Vector": "Vektor"
+    "Vector": "Vektor",
+    "Quick mask": "Schnellmaske",
+    "Quick mask: press on a colour and drag to cut it out. Alt+press brings it back.": "Schnellmaske: auf eine Farbe drücken und ziehen, um sie auszuschneiden. Alt+Klick holt sie zurück.",
+    "Tolerance": "Toleranz",
+    "Reset": "Zurücksetzen",
+    "Mask saved.": "Maske gespeichert.",
+    "That layer is gone. Select it again and retry.": "Diese Ebene gibt es nicht mehr. Wähle sie erneut aus und versuche es noch einmal."
 }
