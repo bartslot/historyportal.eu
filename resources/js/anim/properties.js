@@ -10,7 +10,7 @@
  * fly-to that crosses the Pacific the long way round and hangs in space on the way.
  */
 
-import { sortedKeys, segmentAt, easingFn, lerp, DEFAULT_EASING } from './keyframes.js'
+import { sortedKeys, segmentAt, easingFn, lerp, segmentEasing } from './keyframes.js'
 import { unwrapAngle, lerpAltitude } from '../map/camera-track.js'
 
 /** How a pair of keyed values becomes every value between them. */
@@ -84,7 +84,7 @@ const sampleOne = (track, time, interpolate) => {
   if (time >= keys[keys.length - 1].time) return keys[keys.length - 1].value
 
   const seg = segmentAt(keys, time)
-  const t = easingFn(seg.a.easing ?? track?.easing ?? DEFAULT_EASING)(seg.u)
+  const t = easingFn(segmentEasing(seg.a, seg.index, keys.length - 1, track))(seg.u)
   return interpolate(seg.a.value, seg.b.value, t)
 }
 

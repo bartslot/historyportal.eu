@@ -6,6 +6,9 @@
     /** Inert marker only: an Alpine expression that fills the diamond when true — a key under the
      *  playhead, or a selected key on a lane. Filled vs outlined, so the state is not colour alone. */
     'on' => null,
+    /** Inert marker only: a solid white diamond, for keys on a timeline lane. Selected ones get a
+     *  ring, because a filled diamond cannot fill any further. */
+    'solid' => false,
 ])
 
 {{-- The per-property keyframe marker — the small outlined rhombus the file puts after Colour, X,
@@ -41,8 +44,14 @@
 @else
     <span {{ $attributes->class(['flex shrink-0 items-center justify-center']) }}
           style="width: 12.872px; height: 12.872px" aria-hidden="true">
-        <span class="-rotate-45 rounded-[1px] border border-panel-label"
-              @if ($on) x-bind:class="({{ $on }}) && 'bg-panel-label'" @endif
-              style="width: 9.102px; height: 9.102px"></span>
+        @if ($solid)
+            <span class="-rotate-45 rounded-[1px] border border-white bg-white"
+                  @if ($on) x-bind:class="({{ $on }}) && 'outline-2 outline-offset-2 outline-white'" @endif
+                  style="width: 9.102px; height: 9.102px"></span>
+        @else
+            <span class="-rotate-45 rounded-[1px] border border-panel-label"
+                  @if ($on) x-bind:class="({{ $on }}) && 'bg-panel-label'" @endif
+                  style="width: 9.102px; height: 9.102px"></span>
+        @endif
     </span>
 @endif

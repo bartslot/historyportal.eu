@@ -1457,5 +1457,20 @@
     "years old": "Jahre alt",
     "you": "du",
     "“Enough is enough!” a politician shouts, slamming his fist on the wooden table.": "„Jetzt reicht es!“ ruft ein Politiker und schlägt mit der Faust auf den Holztisch.",
-    "Update keyframe": "Keyframe aktualisieren"
+    "Update keyframe": "Keyframe aktualisieren",
+    "Automatic": "Automatisch",
+    "Linear": "Linear",
+    "Ease in": "Beschleunigen",
+    "Ease out": "Abbremsen",
+    "Ease in and out": "Beschleunigen und abbremsen",
+    "Ease in back": "Beschleunigen mit Rückschwung",
+    "Ease out back": "Abbremsen mit Überschwingen",
+    "Ease in and out back": "Ein und aus mit Überschwingen",
+    "Hold": "Halten",
+    "Auto-keyframe off": "Auto-Keyframe aus",
+    "Auto-keyframe on": "Auto-Keyframe an",
+    "Collapse all": "Alle einklappen",
+    "Expand all": "Alle ausklappen",
+    "Loop": "Wiederholen",
+    "Looping": "Wiederholt"
 }

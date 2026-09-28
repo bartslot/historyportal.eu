@@ -9,7 +9,7 @@
  * properties.js. There is no fixed list anywhere.
  */
 
-import { addKeyframe, sortedKeys, sameTime } from './keyframes.js'
+import { addKeyframe, sortedKeys, sameTime, segmentEasing, easingFn } from './keyframes.js'
 import { keyId, moveKeys, deleteKeys, snapToNearest } from './timeline-edit.js'
 import { propertiesFor, sampleFrame, kindOfTarget } from './properties.js'
 import { wordSpans, snapTime, wordAt } from './narration-clock.js'
@@ -19,6 +19,12 @@ import {
   fitZoom, timeAtX, toleranceSeconds, tickStep, ticksFor, formatTime,
   DRAG_THRESHOLD_PX, LANE_PAD_PX, zoomFromSlider, sliderFromZoom,
 } from './timeline-view.js'
+
+/** Figma's Bézier easing presets, by our easing.js names. 'hold' is Figma's Hold: a cut. */
+const EASING_PRESETS = [
+  'linear', 'easeInCubic', 'easeOutCubic', 'easeInOutCubic',
+  'easeInBack', 'easeOutBack', 'easeInOutBack', 'hold',
+]
 
 /** Wheel pixels to zoom factor for Cmd/Ctrl+wheel and trackpad pinch. */
 const WHEEL_ZOOM_RATE = 0.01
@@ -518,7 +524,7 @@ export const animationTimeline = (config = {}) => ({
       // A click on a key that was already part of a selection narrows the selection to it; a
       // Shift+click on a selected key takes it out. Both wait for the release, because the same
       // press might have been the start of dragging the whole selection.
-      if (memory?.kind === 'key' && !memory.moved && memory.onClick) this.selected = memory.onClick
+      if (memory?.kind === 'key' && !memory.moved) memory.onClick?.()
       if (memory?.kind === 'marquee' && !memory.moved) this.selected = memory.base
       dragMemory.delete(this.drag.el)
     }
@@ -528,6 +534,7 @@ export const animationTimeline = (config = {}) => ({
 
   /** Esc cancels a drag in flight, and otherwise clears the selection. */
   onEscape () {
+    if (this.easingMenu) { this.closeEasing(); return }
     if (!this.drag) { if (this.transportHasTheKeyboard) this.selected = []; return }
     const memory = dragMemory.get(this.drag.el)
     if (memory?.kind === 'scrub') this.seek(memory.startTime)
@@ -805,21 +812,149 @@ export const animationTimeline = (config = {}) => ({
     const wasSelected = this.selected.includes(id)
     let onClick = null
     if (event.shiftKey) {
-      if (wasSelected) onClick = this.selected.filter((s) => s !== id)
+      if (wasSelected) onClick = () => { this.selected = this.selected.filter((s) => s !== id) }
       else this.selected = [...this.selected, id]
     } else if (wasSelected) {
-      onClick = [id]
+      onClick = () => { this.selected = [id] }
     } else {
       this.selected = [id]
     }
+    this.startMove(event, this.selectedRefs, time, onClick)
+  },
 
+  /** Begin moving `refs` with the pointer, `anchorTime` being the time that snaps. */
+  startMove (event, refs, anchorTime, onClick = null) {
+    this.easingMenu = null
     const el = event.currentTarget
     el.setPointerCapture?.(event.pointerId)
     dragMemory.set(el, {
-      kind: 'key', anchorTime: time, startX: event.clientX, startY: event.clientY, moved: false, onClick,
-      baseTracks: this.tracks, baseSelected: [...this.selected], refs: this.selectedRefs,
+      kind: 'key', anchorTime, startX: event.clientX, startY: event.clientY, moved: false, onClick,
+      baseTracks: this.tracks, baseSelected: [...this.selected], refs,
     })
     this.drag = { el }
+  },
+
+  // ── Bars. Drag one to move the whole animation; click between two keys to choose easing ────
+
+  /** Every key of one property, or of every property of an object. */
+  refsOf (target, property = null) {
+    return this.tracks
+      .filter((t) => t.target === target && (property === null || t.property === property))
+      .flatMap((t) => sortedKeys(t).map((k) => ({ target, property: t.property, time: k.time })))
+  },
+
+  /**
+   * Press on a property's segment. A drag moves the whole track — Figma's "drag layer tracks to
+   * reposition them"; a click opens the Easing menu for that segment, which is where Figma puts it.
+   */
+  startSegment (event, target, property, index) {
+    if (event.button !== 0) return
+    event.stopPropagation()
+    this.pause()
+    const refs = this.refsOf(target, property)
+    const anchor = Math.min(...refs.map((r) => r.time))
+    const rect = event.currentTarget.getBoundingClientRect()
+    this.startMove(event, refs, anchor, () => this.openEasing(target, property, index, rect))
+  },
+
+  /** Press on an object's bar: drag moves everything it does; a click selects all its keys. */
+  startObjectBar (event, target) {
+    if (event.button !== 0) return
+    event.stopPropagation()
+    this.pause()
+    const refs = this.refsOf(target)
+    const anchor = Math.min(...refs.map((r) => r.time))
+    this.startMove(event, refs, anchor, () => { this.selected = refs.map(keyId) })
+  },
+
+  /** The stretches between consecutive keys, each with the easing it will actually play. */
+  segmentsOf (target, property) {
+    const track = this.trackFor(target, property)
+    const keys = sortedKeys(track)
+    return keys.slice(0, -1).map((a, index) => ({
+      index, from: a.time, to: keys[index + 1].time,
+      easing: segmentEasing(a, index, keys.length - 1, track),
+      chosen: !!a.easing,
+    }))
+  },
+
+  // ── Easing ──────────────────────────────────────────────────────────────────────────────
+
+  /** The open Easing menu: which segment, and where on screen. Null when closed. */
+  easingMenu: null,
+
+  openEasing (target, property, index, rect) {
+    const below = rect.bottom + 6
+    const menuH = 330
+    const top = below + menuH > window.innerHeight ? Math.max(8, rect.top - menuH - 6) : below
+    const left = Math.min(window.innerWidth - 216, Math.max(8, rect.left + rect.width / 2 - 104))
+    this.easingMenu = { target, property, index, top, left }
+  },
+
+  closeEasing () { this.easingMenu = null },
+
+  /** Figma's Bézier presets, in Figma's order. Labels come translated from the server. */
+  get easingOptions () {
+    const seg = this.easingSegment
+    const auto = seg ? segmentEasing({}, seg.index, this.segmentsOf(this.easingMenu.target, this.easingMenu.property).length) : 'easeInOutCubic'
+    return [
+      { name: 'auto', curve: auto, label: `${this.easingLabel('auto')} · ${this.easingLabel(auto)}` },
+      ...EASING_PRESETS.map((name) => ({ name, curve: name, label: this.easingLabel(name) })),
+    ]
+  },
+
+  /** 'auto' when the stretch follows the positional default, otherwise the chosen name. */
+  get currentEasingName () {
+    const seg = this.easingSegment
+    return !seg ? null : (seg.chosen ? seg.easing : 'auto')
+  },
+
+  easingLabel (name) { return config.easingLabels?.[name] ?? name },
+
+  isOpenSegment (target, property, index) {
+    const m = this.easingMenu
+    return !!m && m.target === target && m.property === property && m.index === index
+  },
+
+  /** The segment the menu is about, with its easing resolved. */
+  get easingSegment () {
+    const m = this.easingMenu
+    return m ? this.segmentsOf(m.target, m.property)[m.index] ?? null : null
+  },
+
+  /**
+   * Put an easing on the open segment. It lives on the key the segment LEAVES, which is what the
+   * sampler reads. 'auto' removes the choice, so the positional default applies again.
+   */
+  chooseEasing (name) {
+    const m = this.easingMenu
+    if (!m) return
+    this.writeTrack(m.target, m.property, (track) => {
+      const keys = sortedKeys(track)
+      const leaving = keys[m.index]
+      if (!leaving) return track
+      return {
+        ...track,
+        keyframes: keys.map((k) => {
+          if (k !== leaving) return k
+          const { easing, ...rest } = k
+          return name === 'auto' ? rest : { ...rest, easing: name }
+        }),
+      }
+    })
+    this.applyFrame()
+    this.save()
+  },
+
+  /** A 40x24 polyline of an easing curve, for the menu's preview. Back easings overshoot the box. */
+  curvePath (name) {
+    const fn = easingFn(name)
+    const points = []
+    for (let i = 0; i <= 24; i++) {
+      const u = i / 24
+      points.push(`${(u * 36 + 2).toFixed(1)},${(20 - fn(u) * 16).toFixed(1)}`)
+    }
+    return name === 'hold' ? 'M2,20 L38,20 L38,4' : `M${points.join(' L')}`
   },
 
   /**

@@ -90,4 +90,10 @@ export const EASING = {
   easeInQuint: (t) => t * t * t * t * t,                               // power4.in
   easeOutQuint: (t) => 1 + (--t) * t * t * t * t,                      // power4.out
   easeInOutQuint: (t) => (t < 0.5 ? 16 * t * t * t * t * t : 1 + 16 * (--t) * t * t * t * t), // power4.inOut
+  // Figma's "back" presets: overshoot by GSAP's default 1.7.
+  easeInBack: (t) => t * t * (2.7 * t - 1.7),                                           // back.in(1.7)
+  easeOutBack: (t) => 1 + (t - 1) * (t - 1) * (2.7 * (t - 1) + 1.7),                    // back.out(1.7)
+  easeInOutBack: (t) => (t < 0.5                                                        // back.inOut(1.7)
+    ? (2 * t) * (2 * t) * (2.7 * 2 * t - 1.7) / 2
+    : 1 - (2 - 2 * t) * (2 - 2 * t) * (2.7 * (2 - 2 * t) - 1.7) / 2),
 };

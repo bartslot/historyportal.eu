@@ -50,6 +50,7 @@ const EASING_IS = {
   easeInCubic: 'power2.in', easeOutCubic: 'power2.out', easeInOutCubic: 'power2.inOut',
   easeInQuart: 'power3.in', easeOutQuart: 'power3.out', easeInOutQuart: 'power3.inOut',
   easeInQuint: 'power4.in', easeOutQuint: 'power4.out', easeInOutQuint: 'power4.inOut',
+  easeInBack: 'back.in(1.7)', easeOutBack: 'back.out(1.7)', easeInOutBack: 'back.inOut(1.7)',
 }
 
 /** `cubic-bezier(x1,y1,x2,y2)` as a progress→value function: Newton on x, then read y. */

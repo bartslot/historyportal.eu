@@ -1457,5 +1457,20 @@
     "years old": "anni",
     "you": "tu",
     "“Enough is enough!” a politician shouts, slamming his fist on the wooden table.": "«Ora basta!» grida un politico, battendo il pugno sul tavolo di legno.",
-    "Update keyframe": "Aggiorna fotogramma chiave"
+    "Update keyframe": "Aggiorna fotogramma chiave",
+    "Automatic": "Automatico",
+    "Linear": "Lineare",
+    "Ease in": "Accelera",
+    "Ease out": "Rallenta",
+    "Ease in and out": "Accelera e rallenta",
+    "Ease in back": "Accelera con rinculo",
+    "Ease out back": "Rallenta con rimbalzo",
+    "Ease in and out back": "Entrata e uscita con rimbalzo",
+    "Hold": "Mantieni",
+    "Auto-keyframe off": "Fotogrammi chiave automatici disattivati",
+    "Auto-keyframe on": "Fotogrammi chiave automatici attivi",
+    "Collapse all": "Comprimi tutto",
+    "Expand all": "Espandi tutto",
+    "Loop": "Ripeti",
+    "Looping": "In ripetizione"
 }

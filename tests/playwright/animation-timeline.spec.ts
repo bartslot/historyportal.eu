@@ -313,3 +313,57 @@ test('a keyframe is selected by a click, jumped to by a double-click, and remove
 
   expect(errors, `console errors:\n${errors.join('\n')}`).toEqual([]);
 });
+
+/**
+ * Easing, as Figma does it: click the stretch between two keys, pick from the Easing menu. The
+ * default depends on where the stretch sits (Bart): ease in from the first key, ease out into
+ * the last, linear between. Dragging a bar moves the whole animation.
+ */
+test('clicking between two keys chooses the easing, and dragging the bar moves the animation', async ({ page }) => {
+  const errors = watchConsole(page);
+  await openTimeline(page);
+
+  await page.evaluate(() => {
+    const c = (document.querySelector('[data-timeline]') as any)._x_dataStack[0];
+    c.targets = ['camera']; c.refreshObjects();
+    c.tracks = [{ target: 'camera', property: 'zoom', keyframes: [{ time: 0, value: 3 }, { time: 2, value: 5 }, { time: 4, value: 6 }] }];
+    c.selected = []; c.seek(0); c.save();
+  });
+  await page.waitForTimeout(2000);
+  const state = () => page.evaluate(() => {
+    const c = (document.querySelector('[data-timeline]') as any)._x_dataStack[0];
+    return {
+      segs: c.segmentsOf('camera', 'zoom').map((s: any) => s.easing),
+      keys: c.tracks[0].keyframes.map((k: any) => [k.time, k.easing ?? null]),
+      zoom: c.zoom,
+    };
+  });
+  expect((await state()).segs).toEqual(['easeInCubic', 'easeOutCubic']);
+
+  const seg = (await page.locator('[data-timeline-segment="camera:zoom:0"]').boundingBox())!;
+  await walkTo(page, seg.x + seg.width / 2, seg.y + seg.height / 2);
+  await page.mouse.down(); await page.mouse.up();
+  await expect(page.locator('[data-timeline-easing-menu]')).toBeVisible();
+
+  const linear = (await page.locator('[data-easing="linear"]').boundingBox())!;
+  await walkTo(page, linear.x + 20, linear.y + linear.height / 2);
+  await page.mouse.down(); await page.mouse.up();
+  await page.waitForTimeout(500);
+  expect((await state()).segs).toEqual(['linear', 'easeOutCubic']);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('[data-timeline-easing-menu]')).toHaveCount(0);
+
+  // Alt: place freely, so the move is exactly the pointer's travel.
+  const { zoom } = await state();
+  const bar = (await page.locator('[data-timeline-segment="camera:zoom:1"]').boundingBox())!;
+  await walkTo(page, bar.x + bar.width / 2, bar.y + bar.height / 2);
+  await page.keyboard.down('Alt');
+  await page.mouse.down();
+  await walkTo(page, bar.x + bar.width / 2 + zoom * 0.5, bar.y + bar.height / 2, 10);
+  await page.mouse.up();
+  await page.keyboard.up('Alt');
+  await page.waitForTimeout(800);
+  expect((await state()).keys).toEqual([[0.5, 'linear'], [2.5, null], [4.5, null]]);
+
+  expect(errors, `console errors:\n${errors.join('\n')}`).toEqual([]);
+});

@@ -42,6 +42,17 @@
         'alignment' => $alignment,
         'targets'   => $timeline['targets'] ?? [],
         'tracks'    => $timeline['tracks'] ?? [],
+        'easingLabels' => [
+            'auto'           => __('Automatic'),
+            'linear'         => __('Linear'),
+            'easeInCubic'    => __('Ease in'),
+            'easeOutCubic'   => __('Ease out'),
+            'easeInOutCubic' => __('Ease in and out'),
+            'easeInBack'     => __('Ease in back'),
+            'easeOutBack'    => __('Ease out back'),
+            'easeInOutBack'  => __('Ease in and out back'),
+            'hold'           => __('Hold'),
+        ],
      ]) }}"
      x-data="animationTimeline(JSON.parse($el.dataset.timelineConfig))"
      x-on:pointermove.window="onPointerMove($event)"
@@ -357,9 +368,12 @@
                         {{-- The object's own lane: one bar covering everything its properties do,
                              so a collapsed group still says when it moves. --}}
                         <div class="relative" style="height: 38px">
+                            {{-- Drag it to move everything this object does; click it to select all
+                                 of its keys (Figma selects a layer's keys from its track). --}}
                             <div x-show="objectSpan(object.target)"
-                                 class="absolute rounded-[3px]"
+                                 class="absolute cursor-grab rounded-[3px]"
                                  :data-timeline-bar-group="object.target"
+                                 x-on:pointerdown="startObjectBar($event, object.target)"
                                  :style="barStyle(objectSpan(object.target)) + '; top: 9px; height: var(--timeline-lane-h); background: var(--color-timeline-bar-group)'"></div>
                         </div>
                         <template x-for="property in propertiesOf(object.target)" :key="property.key">
@@ -373,12 +387,23 @@
                                      drag, and replacing one with the other would have cost the
                                      gestures that are already there. --}}
                                 <div x-show="spanOf(object.target, property.key)"
-                                     class="absolute grid place-items-center overflow-hidden rounded-[2px]"
+                                     class="pointer-events-none absolute grid place-items-center overflow-hidden rounded-[2px]"
                                      :data-timeline-bar="object.target + ':' + property.key"
                                      :style="barStyle(spanOf(object.target, property.key)) + '; top: 0; height: var(--timeline-lane-h); background: var(--color-timeline-bar)'">
-                                    <span class="pointer-events-none select-none truncate px-2 text-3xs font-medium text-white/90"
+                                    <span class="select-none truncate px-2 text-3xs font-medium text-white/90"
                                           x-text="property.label"></span>
                                 </div>
+                                {{-- One hit area per stretch between two keys, over the bar. Click:
+                                     the Easing menu for that stretch (Figma: "click the line between
+                                     two keyframes"). Drag: the whole property's animation moves. --}}
+                                <template x-for="segment in segmentsOf(object.target, property.key)" :key="segment.index">
+                                    <div class="absolute cursor-grab rounded-[2px] hover:bg-white/10"
+                                         :class="isOpenSegment(object.target, property.key, segment.index) && 'bg-white/20'"
+                                         :data-timeline-segment="object.target + ':' + property.key + ':' + segment.index"
+                                         :data-tooltip="easingLabel(segment.easing)"
+                                         :style="barStyle(segment) + '; top: 0; height: var(--timeline-lane-h)'"
+                                         x-on:pointerdown="startSegment($event, object.target, property.key, segment.index)"></div>
+                                </template>
                                 {{-- Click selects (filled), Shift+click adds, drag moves the whole
                                      selection, double-click jumps the playhead here — Figma's
                                      gestures. Delete/Backspace removes what is selected. --}}
@@ -390,7 +415,7 @@
                                           :aria-selected="isSelected(object.target, property.key, key.time) ? 'true' : 'false'"
                                           x-on:pointerdown.stop="startKeyDrag($event, object.target, property.key, key.time)"
                                           x-on:dblclick.stop="jumpToKey(object.target, property.key, key.time)">
-                                        <x-ui.keyframe-diamond on="isSelected(object.target, property.key, key.time)" />
+                                        <x-ui.keyframe-diamond solid on="isSelected(object.target, property.key, key.time)" />
                                     </span>
                                 </template>
                             </div>
@@ -411,4 +436,30 @@
             </div>
         </div>
     </div>
+
+    {{-- The Easing menu for the stretch that was clicked — Figma's presets, each with its curve.
+         Fixed to the viewport so the short dock never clips it; Esc and a click outside close it. --}}
+    <template x-if="easingMenu">
+        <div class="fixed z-50 w-52 rounded-box border border-panel-hairline bg-base-200 p-1 shadow-xl"
+             data-timeline-easing-menu
+             :style="`top: ${easingMenu.top}px; left: ${easingMenu.left}px`"
+             x-on:pointerdown.outside="closeEasing()" x-on:pointerdown.stop>
+            <ul class="menu menu-sm w-full p-0">
+                <template x-for="option in easingOptions" :key="option.name">
+                    <li>
+                        <button type="button" class="flex items-center gap-2"
+                                :class="currentEasingName === option.name && 'menu-active'"
+                                :data-easing="option.name"
+                                x-on:click="chooseEasing(option.name)">
+                            <svg viewBox="0 0 40 24" class="h-4 w-7 shrink-0 overflow-visible" aria-hidden="true">
+                                <path :d="curvePath(option.curve)" fill="none" stroke="currentColor" stroke-width="1.5"
+                                      stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span class="flex-1 text-left text-xs" x-text="option.label"></span>
+                        </button>
+                    </li>
+                </template>
+            </ul>
+        </div>
+    </template>
 </div>

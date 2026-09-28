@@ -1457,5 +1457,20 @@
     "years old": "ans",
     "you": "toi",
     "“Enough is enough!” a politician shouts, slamming his fist on the wooden table.": "« Trop, c’est trop ! » crie un homme politique en frappant du poing sur la table en bois.",
-    "Update keyframe": "Mettre à jour l'image clé"
+    "Update keyframe": "Mettre à jour l'image clé",
+    "Automatic": "Automatique",
+    "Linear": "Linéaire",
+    "Ease in": "Accélération",
+    "Ease out": "Décélération",
+    "Ease in and out": "Accélération et décélération",
+    "Ease in back": "Accélération avec recul",
+    "Ease out back": "Décélération avec rebond",
+    "Ease in and out back": "Entrée et sortie avec rebond",
+    "Hold": "Maintenir",
+    "Auto-keyframe off": "Images clés auto désactivées",
+    "Auto-keyframe on": "Images clés auto activées",
+    "Collapse all": "Tout replier",
+    "Expand all": "Tout déplier",
+    "Loop": "Boucle",
+    "Looping": "En boucle"
 }

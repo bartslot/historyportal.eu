@@ -33,7 +33,34 @@ export const TIME_EPSILON = 1e-6
 
 export const sameTime = (a, b) => Math.abs(a - b) < TIME_EPSILON
 
-export const easingFn = (name) => EASING[name] || EASING[DEFAULT_EASING]
+/** 'hold' keeps the value until the next key: a cut, Figma's Hold preset. */
+const HOLD = () => 0
+
+export const easingFn = (name) => (name === 'hold' ? HOLD : EASING[name] || EASING[DEFAULT_EASING])
+
+/**
+ * The easing a segment uses when nobody chose one, by where it sits.
+ *
+ * Bart: *"make linear the standard if a keyframe is in the middle. ease out when you have an end
+ * keyframe and ease in for start keyframe."* Leaving the first key eases in, arriving at the last
+ * eases out, a single segment does both, and middle segments are linear — so a multi-stop move
+ * does not brake at every key it passes through. An explicit choice (on the key, then the track)
+ * always wins.
+ *
+ * @param {object} a       the keyframe the segment leaves
+ * @param {number} index   the segment's index
+ * @param {number} count   how many segments the track has
+ */
+export const segmentEasing = (a, index, count, track = null) => {
+  if (a?.easing) return a.easing
+  if (track?.easing) return track.easing
+  const first = index === 0
+  const last = index === count - 1
+  if (first && last) return DEFAULT_EASING
+  if (first) return 'easeInCubic'
+  if (last) return 'easeOutCubic'
+  return 'linear'
+}
 
 const num = (v) => (Number.isFinite(v) ? v : 0)
 
@@ -84,7 +111,7 @@ export const sampleNumber = (track, time) => {
   if (time >= keys[keys.length - 1].time) return num(keys[keys.length - 1].value)
 
   const seg = segmentAt(keys, time)
-  const t = easingFn(seg.a.easing ?? track?.easing ?? DEFAULT_EASING)(seg.u)
+  const t = easingFn(segmentEasing(seg.a, seg.index, keys.length - 1, track))(seg.u)
   return lerp(num(seg.a.value), num(seg.b.value), t)
 }
 

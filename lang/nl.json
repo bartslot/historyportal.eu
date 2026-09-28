@@ -1502,5 +1502,20 @@
     "years old": "jaar oud",
     "you": "jij",
     "“Enough is enough!” a politician shouts, slamming his fist on the wooden table.": "“Het is genoeg geweest!” roept een politicus, terwijl hij met zijn vuist op de houten tafel slaat.",
-    "Update keyframe": "Keyframe bijwerken"
+    "Update keyframe": "Keyframe bijwerken",
+    "Automatic": "Automatisch",
+    "Linear": "Lineair",
+    "Ease in": "Versnellen",
+    "Ease out": "Vertragen",
+    "Ease in and out": "Versnellen en vertragen",
+    "Ease in back": "Versnellen met terugslag",
+    "Ease out back": "Vertragen met doorschieten",
+    "Ease in and out back": "In en uit met doorschieten",
+    "Hold": "Vasthouden",
+    "Auto-keyframe off": "Automatisch keyframen uit",
+    "Auto-keyframe on": "Automatisch keyframen aan",
+    "Collapse all": "Alles inklappen",
+    "Expand all": "Alles uitklappen",
+    "Loop": "Herhalen",
+    "Looping": "Herhaalt"
 }

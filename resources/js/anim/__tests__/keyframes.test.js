@@ -181,3 +181,31 @@ describe('sameTime', () => {
     expect(TIME_EPSILON).toBe(1e-6)
   })
 })
+
+/**
+ * Bart: "make linear the standard if a keyframe is in the middle. ease out when you have an end
+ * keyframe and ease in for start keyframe." A segment leaving the FIRST key eases in, one arriving
+ * at the LAST eases out, and one that is both — a two-key move — does both. Middle segments are
+ * linear, so a multi-stop move does not stop at every key like a bus. An explicit choice wins.
+ */
+describe('default easing depends on where the segment sits', () => {
+  it('names the curve by position', async () => {
+    const { segmentEasing } = await import('../keyframes.js')
+    expect(segmentEasing({}, 0, 1)).toBe('easeInOutCubic')
+    expect(segmentEasing({}, 0, 3)).toBe('easeInCubic')
+    expect(segmentEasing({}, 1, 3)).toBe('linear')
+    expect(segmentEasing({}, 2, 3)).toBe('easeOutCubic')
+    expect(segmentEasing({ easing: 'easeOutBack' }, 1, 3)).toBe('easeOutBack')
+  })
+
+  it('samples a middle segment linearly and holds when asked to', () => {
+    const track = { keyframes: [{ time: 0, value: 0 }, { time: 1, value: 10 }, { time: 2, value: 20 }, { time: 3, value: 30 }] }
+    expect(sampleNumber(track, 1.5)).toBeCloseTo(15)          // middle: linear, exactly halfway
+    expect(sampleNumber(track, 0.5)).toBeCloseTo(1.25)        // first: power2.in at 0.5 = 0.125
+    expect(sampleNumber(track, 2.5)).toBeCloseTo(28.75)       // last: power2.out at 0.5 = 0.875
+
+    const held = { keyframes: [{ time: 0, value: 0, easing: 'hold' }, { time: 1, value: 10 }] }
+    expect(sampleNumber(held, 0.99)).toBe(0)
+    expect(sampleNumber(held, 1)).toBe(10)
+  })
+})
