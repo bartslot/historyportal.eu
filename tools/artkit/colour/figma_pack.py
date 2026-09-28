@@ -72,17 +72,30 @@ def pack():
     print("packed", len(lines) - 2, "->", PASS)
 
 
+def paper_to_white(col, orig):
+    """Nano Banana sometimes tints the white paper yellow. The pixels outside the original cut-out are that paper:
+    scale each channel so their median becomes white (keeps enclosed whites and edge pixels from staying yellow)."""
+    import numpy as np
+    c = np.asarray(col).astype(np.float32)
+    bg = np.asarray(orig.split()[3]) == 0
+    if bg.sum() < 1000:
+        return col
+    gain = 255.0 / np.maximum(np.median(c[bg], axis=0), 1.0)
+    return Image.fromarray(np.clip(c * gain, 0, 255).astype(np.uint8))
+
+
 def do_import():
     n = 0
     for out in sorted((PASS / "out").iterdir()):
         if out.suffix.lower() not in (".png", ".jpg", ".jpeg", ".webp"):
             continue
-        rel = Path(out.stem.replace("__", "/"))
+        stem = re.sub(r" \d+$", "", out.stem)   # Figma exports "name 1.jpg"
+        rel = Path(stem.replace("__", "/"))
         keep = KEEP / rel.with_suffix(".webp")
         if not keep.exists():
             print("skip (no original):", out.name); continue
         orig = Image.open(keep).convert("RGBA")
-        col = Image.open(out).convert("RGB").resize(orig.size, Image.LANCZOS)
+        col = paper_to_white(Image.open(out).convert("RGB").resize(orig.size, Image.LANCZOS), orig)
         col.putalpha(orig.split()[3])
         col.save(LIB / rel.with_suffix(".webp"), "WEBP", quality=90)
         n += 1; print("imported", rel)
