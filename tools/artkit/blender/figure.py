@@ -86,7 +86,43 @@ def _to_joints(parts):
             mw = o.matrix_world.copy(); o.parent = par; o.matrix_world = mw
 
 
-def figure(c, name, loc, yaw_deg=0.0, height=1.72, pose="stand", body="male", rgb=None, extra=None, seat_z=None):
+def figure_points(root, cam, sc):
+    """Balloon/anchor metadata for one posed figure, in render pixels (x right, y down) and world metres:
+    mouth (below the nose tip, in front of the face), head_top, feet (lowest point). Sitting, standing, riding
+    or fighting figures all differ, so it is measured per pose (Bart, 2026-09-28)."""
+    from bpy_extras.object_utils import world_to_camera_view
+    bpy.context.view_layer.update()
+    tag = root.name.rsplit(".", 1)[0] + "."            # "<scene>.<name>."
+    parts = [o for o in objs(sc) if o.type == 'MESH' and o.name.startswith(tag)]
+    by = {o["key"]: o for o in parts if "key" in o}
+    head, nose = by["head"], by.get("nose")
+    hv = [head.matrix_world @ v.co for v in head.data.vertices]
+    top = max(hv, key=lambda v: v.z)
+    hc = sum(hv, Vector()) / len(hv)
+    if nose:
+        nv = [nose.matrix_world @ v.co for v in nose.data.vertices]
+        tip = max(nv, key=lambda v: (v - hc).length)          # the nose point farthest from the head centre
+        down = -(top - hc).normalized()                         # the head's own "down", works when it tilts
+        mouth = tip + down * (0.045 * root.scale[0] / 1.0) - (tip - hc).normalized() * 0.01
+    else:
+        mouth = hc
+    allv = [o.matrix_world @ v.co for o in parts for v in o.data.vertices]
+    feet = min(allv, key=lambda v: v.z)
+    W, H = sc.render.resolution_x, sc.render.resolution_y
+
+    def px(p):
+        c = world_to_camera_view(sc, cam, p)
+        return [round(c.x * W, 1), round((1 - c.y) * H, 1)]
+    return {"mouth_px": px(mouth), "head_top_px": px(top), "feet_px": px(feet),
+            "mouth_m": [round(v, 3) for v in mouth], "pose": root.get("pose")}
+
+
+SKIN_PARTS = ("head", "neck", "ear", "nose", "eye", "eyelid", "hand", "finger", "thumb")
+SKIN_RGB = (0.86, 0.66, 0.52)
+
+
+def figure(c, name, loc, yaw_deg=0.0, height=1.72, pose="stand", body="male", rgb=None, extra=None, seat_z=None,
+           skin=SKIN_RGB):
     """A posed person made of Human Base Mesh parts, standing on loc (feet on z) and facing +y at yaw 0
     (like mannequin()). rgb: costume colour for the paint pass; extra: {part: (x, y, z)} added to the pose."""
     from mathutils import Matrix, Euler
@@ -135,8 +171,9 @@ def figure(c, name, loc, yaw_deg=0.0, height=1.72, pose="stand", body="male", rg
     for o in parts:
         o["part"] = "figure"
         o.name = "%s.%s.%s" % (c.name.split(":")[0], name, o["key"])
-        if rgb:
-            o.data.materials.clear(); o.data.materials.append(costume(rgb))
+        if rgb:   # costume colour on the body, skin colour on head and hands: an all-blue mannequin got blue skin
+            is_skin = skin and any(o["key"].startswith(k) for k in SKIN_PARTS)
+            o.data.materials.clear(); o.data.materials.append(costume(skin if is_skin else rgb))
     root.scale = (k, k, k)
     root.rotation_euler[2] += math.radians(yaw_deg + 180)   # base mesh faces -y; ours face +y at yaw 0
     bpy.context.view_layer.update()
