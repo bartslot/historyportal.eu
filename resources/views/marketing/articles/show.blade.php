@@ -46,7 +46,7 @@
                 {{ __('Every lesson in the library is narrated and free to play in the browser.') }}
             </p>
             <a href="{{ Seo::url('lessons') }}"
-               class="mt-4 inline-flex items-center gap-2 rounded-lg bg-amber-400 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-amber-300">
+               class="btn btn-primary mt-4">
                 {{ __('Browse the lesson library') }}
             </a>
         </aside>

@@ -22,9 +22,9 @@
                     <x-icons.photo class="h-7 w-7 opacity-60" />
                 </span>
             @endif
-            <span class="absolute bottom-1 left-1 right-1 text-[10px] uppercase tracking-wider text-white drop-shadow">{{ $s['label'] }}</span>
+            <span class="absolute bottom-1 left-1 right-1 text-2xs uppercase tracking-wider text-white drop-shadow">{{ $s['label'] }}</span>
             @if (in_array($s['key'], $recommended, true))
-                <span class="absolute top-1 right-1 text-[8px] uppercase bg-amber-500 text-slate-950 font-bold px-1.5 py-0.5 rounded">{{ __('Recommended') }}</span>
+                <span class="absolute top-1 right-1 text-3xs uppercase bg-amber-500 text-slate-950 font-bold px-1.5 py-0.5 rounded">{{ __('Recommended') }}</span>
             @endif
         </button>
     @endforeach

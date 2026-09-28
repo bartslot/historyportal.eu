@@ -66,7 +66,7 @@ class HeroCopyTest extends TestCase
         DemoLesson::forget();
 
         $this->assertNull(DemoLesson::resolve());
-        $this->get('/')->assertOk()->assertSee('Where storytelling meets learning.', escape: false);
+        $this->get('/')->assertOk()->assertSee('The lesson they talk about after class.', escape: false);
     }
 
     public function test_the_line_under_the_title_sells_the_product_rather_than_repeating_it(): void

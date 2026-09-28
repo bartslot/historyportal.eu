@@ -152,6 +152,29 @@ Route::get('/map/historical-cities.geojson', HistoricalCitiesController::class)-
 Route::post('/stripe/webhook', \App\Http\Controllers\Billing\StripeWebhookController::class)
     ->name('stripe.webhook');
 
+// Which polities have a flag PNG, so the map never 404-probes for one.
+//
+// A FALLBACK, not the primary: timemap:sync-cliopatria-polities writes public/flags/manifest.json
+// and the web server serves that file directly, never reaching this route. This exists because
+// public/flags is gitignored — a fresh clone or worktree has no flags and no manifest, and the
+// fetch then 404s on every page load. That is a real console error, so it failed the shell test,
+// and it would have been just as wrong to commit an empty [] to silence it: a stub says "no flags
+// exist" in the one environment that has them too.
+//
+// Read from disk rather than served as a constant, so it cannot disagree with what is actually
+// there. An empty list is the honest answer when the directory is missing.
+Route::get('/flags/manifest.json', function () {
+    $dir = public_path('flags');
+    $qids = is_dir($dir)
+        ? array_values(array_map(
+            static fn (string $path): string => basename($path, '.png'),
+            glob($dir.'/*.png') ?: [],
+        ))
+        : [];
+
+    return response()->json($qids);
+})->name('flags.manifest');
+
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
 Route::middleware('guest')->group(function () {
@@ -190,7 +213,15 @@ Route::middleware(['auth', \App\Http\Middleware\RestrictGuestDemo::class])->get(
 
 // Help centre — how the app works, for any signed-in user. Shares its copy with the welcome tour
 // (App\Support\HelpGuide), and holds the button that replays that tour.
-Route::middleware(['auth', \App\Http\Middleware\RestrictGuestDemo::class])->get('/help', \App\Livewire\Help::class)->name('help.index');
+// PUBLIC, deliberately. An invitation email points a teacher at the help centre before they have
+// an account, and it was gated behind BOTH auth and RestrictGuestDemo — so it 302'd to /login for
+// an invited stranger AND for the /try sandbox account the invitation actually sends them to. The
+// help centre was unreachable by exactly the people it was written for.
+//
+// Safe to open: App\Livewire\Help guards every user read with `$user instanceof User`,
+// startTutorial() returns early without one, and admin-audience entries are already filtered out
+// for anyone who is not an admin. A guest simply sees the public articles and no tour button.
+Route::get('/help', \App\Livewire\Help::class)->name('help.index');
 
 // RestrictGuestDemo fences landing-page demo guests (App\Services\GuestDemoSession) into the
 // wizard for their own copy — they hold a real teacher account, so without it the whole
@@ -256,6 +287,12 @@ Route::middleware(['auth', \App\Http\Middleware\RestrictGuestDemo::class])
 
             return response()->json(['url' => "/{$rel}"]);
         })->name('timemap.speak');
+
+        // "Something not right? Report" on the territory card. A teacher who spots a wrong border
+        // is the cheapest reviewer this dataset has; read what has come in with
+        // `timemap:territory-reports`.
+        Route::post('/timemap/report', [\App\Http\Controllers\TerritoryReportController::class, 'store'])
+            ->name('timemap.report');
 
         Route::get('/timemap/polity/{osmId}', function (\Illuminate\Http\Request $request, string $osmId) {
             $corpus = \Illuminate\Support\Facades\DB::connection('pgsql_corpus');
@@ -434,3 +471,14 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     })->name('narrators.toggle');
 
 });
+
+// Dev settings-panel presets. Registered ONLY when the app is local, because it writes named value
+// sets into the source tree (resources/js/dev/tuning.json) so a tuned look arrives as a reviewable
+// diff rather than as something living in one browser's storage. The controller guards again.
+if (app()->environment('local')) {
+    Route::middleware(['auth'])->prefix('dev/tuning')->name('dev.tuning.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\TuningPresetController::class, 'index'])->name('index');
+        Route::post('/', [\App\Http\Controllers\TuningPresetController::class, 'store'])->name('store');
+        Route::delete('/', [\App\Http\Controllers\TuningPresetController::class, 'destroy'])->name('destroy');
+    });
+}

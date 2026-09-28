@@ -8,14 +8,15 @@
 @endphp
 
 <footer id="contact" class="relative border-t border-white/10">
-    <div
-        class="relative -mt-px bg-cover bg-center"
-        style="bg-blue-800"
-    >
+    {{-- This band had a background (footer-bg.svg over a gradient) until dde6356 replaced the
+         declaration with the string "bg-blue-800" — a Tailwind class inside a style attribute,
+         which sets nothing. It has rendered flat ever since, and bg-cover/bg-center had no image
+         to size. public/footer-bg.svg is still there; what belongs here is a design decision. --}}
+    <div class="relative -mt-px">
         <div class="section-container flex flex-col items-center justify-end py-12 text-center">
             <p class="text-sm uppercase tracking-[0.8em] text-sky-50/70">Contact</p>
             <h2 class="mt-3 font-history text-3xl text-white md:text-4xl">
-                Feel free to connect on social media.
+                Tell me what you think of it.
             </h2>
 
             <div class="mt-8 flex flex-wrap justify-center gap-3">
@@ -24,7 +25,7 @@
                         href="{{ $social['href'] }}"
                         target="_blank"
                         rel="noreferrer"
-                        class="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm uppercase text-white/90 transition hover:bg-white/20"
+                        class="btn btn-sm btn-outline uppercase"
                     >
                         {{ $social['label'] }}
                     </a>
@@ -35,7 +36,7 @@
                 
                 <a
                     href="mailto:info@thelearningportal.us"
-                    class="inline-flex items-center rounded-full border border-white/15 bg-white px-7 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-100"
+                    class="btn"
                 >
                     Let&apos;s talk
                 </a>

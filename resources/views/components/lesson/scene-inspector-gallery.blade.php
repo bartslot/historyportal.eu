@@ -55,13 +55,13 @@
                 Fit
             </button>
         </div>
-        <span class="mt-1 text-[10px] text-slate-500">Cover fills the frame (may crop). Fit shows the whole image on a blurred backdrop.</span>
+        <span class="mt-1 text-2xs text-slate-500">Cover fills the frame (may crop). Fit shows the whole image on a blurred backdrop.</span>
     </div>
 
     {{-- IMAGES — [{url, credit}]. Auto-cycling slideshow; drag to reorder, add from paintings, upload, or URL. --}}
     <div class="form-control border-t border-slate-700/50 pt-3" x-data="{ url: '', drag: null }">
         <span class="text-xs uppercase tracking-wider text-slate-400">Images</span>
-        <span class="mt-0.5 block text-[10px] text-slate-500">Shown as a cross-fading slideshow. Drag to reorder.</span>
+        <span class="mt-0.5 block text-2xs text-slate-500">Shown as a cross-fading slideshow. Drag to reorder.</span>
 
         @if (count($images))
             <ul class="mt-2 space-y-2">
@@ -77,13 +77,13 @@
                             <span class="shrink-0 select-none text-slate-600" aria-hidden="true" title="Drag to reorder">⠿</span>
                             <img src="{{ $src }}" alt="" class="h-9 w-9 shrink-0 rounded object-cover"
                                  onerror="this.style.visibility='hidden'" />
-                            <span class="min-w-0 flex-1 truncate text-[11px] text-slate-400">{{ $src }}</span>
+                            <span class="min-w-0 flex-1 truncate text-2xs text-slate-400">{{ $src }}</span>
                             <button type="button" wire:click="moveGalleryImage({{ $i }}, {{ $i - 1 }})" @disabled($i === 0)
                                     class="shrink-0 px-1 text-slate-400 hover:text-slate-200 disabled:opacity-30" title="Move up" aria-label="Move up">↑</button>
                             <button type="button" wire:click="moveGalleryImage({{ $i }}, {{ $i + 1 }})" @disabled($i === count($images) - 1)
                                     class="shrink-0 px-1 text-slate-400 hover:text-slate-200 disabled:opacity-30" title="Move down" aria-label="Move down">↓</button>
                             <button type="button" wire:click="removeGalleryImage({{ $i }})"
-                                    class="shrink-0 px-1 text-rose-300 hover:text-rose-200" title="Remove" aria-label="Remove">✕</button>
+                                    class="shrink-0 px-1 text-error/80 hover:text-error" title="Remove" aria-label="Remove">✕</button>
                         </div>
                         <input type="text" value="{{ is_array($img) ? ($img['credit'] ?? '') : '' }}"
                                wire:change="setGalleryImageCredit({{ $i }}, $event.target.value)"
@@ -93,7 +93,7 @@
                 @endforeach
             </ul>
         @else
-            <p class="mt-1 text-[10px] text-slate-500">No images yet.</p>
+            <p class="mt-1 text-2xs text-slate-500">No images yet.</p>
         @endif
 
         {{-- Consistent "+ Add image" affordance (same picker as voyage — paintings + upload). --}}
@@ -111,5 +111,5 @@
 
     <button type="button" wire:click="deleteScene({{ $scene->id }})"
             wire:confirm="{{ __('Delete this gallery?') }}"
-            class="mt-2 text-xs text-rose-300 underline hover:text-rose-200">{{ __('Delete gallery') }}</button>
+            class="mt-2 text-xs text-error/80 underline hover:text-error">{{ __('Delete gallery') }}</button>
 </div>

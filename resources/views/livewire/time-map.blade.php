@@ -16,176 +16,154 @@
     <div class="pointer-events-none absolute inset-0 z-5"
          style="mix-blend-mode:overlay;opacity:0.2;background-image:url('{{ asset('timemap/parchment.png') }}');background-repeat:repeat;background-size:360px 360px"></div>
 
+    {{-- Film grain, the same .lp-grain the player and the wizard canvas use. The map had the
+         parchment overlay but never this one, so the Settings panel's grain controls set variables
+         nothing on this page read — sliders that did nothing at all.
+         A SIBLING of the canvas, not a wrapper: the map is WebGL and CSS cannot reach inside it. --}}
+    <div class="lp-grain pointer-events-none absolute inset-0 z-6"></div>
+
     {{-- Clouds are now rendered as a native MapLibre 3D custom layer instead of a 2D screen overlay. --}}
 
-    {{-- Polity info panel — a floating card that overlays the map only after a region is clicked. --}}
-    <aside x-data="{ tab: 'summary', polity: null, loading: false, thumb: null, lead: null, leadLoading: false, leadFailed: false, selected: [] }"
-           x-show="polity || loading"
-           x-transition.opacity.duration.150ms
-           x-on:polity-selected.window="
-                window.__timemapStopSpeak && window.__timemapStopSpeak();
-                if (!$event.detail.id) { polity = null; loading = false; return; }
-                tab = 'summary'; selected = [];
-                if ($event.detail.articleUrl) {
-                    // Curated external-article marker (e.g. worldhistory.org) — render directly, no server call.
-                    polity = { label: $event.detail.name, summary: $event.detail.summary || null,
-                               wikipedia_url: $event.detail.articleUrl,
-                               inception: $event.detail.inception ?? null, dissolution: $event.detail.dissolution ?? null,
-                               flag_path: null, predecessor: null, successor: null };
-                    loading = false;
-                    window.__timemapHydratePanel && window.__timemapHydratePanel($data, polity);
-                    {{-- Auto read-aloud removed: it hit ElevenLabs on every territory click and
-                         drained credits fast. Read-aloud can return later as an explicit button
-                         routed through a cheap TTS provider. --}}
-                    return;
-                }
-                // Instant from the prefetch cache when available; else fetch (and cache).
-                const cached = (window.__polityCache || {})[$event.detail.id];
-                if (cached) {
-                    polity = { ...cached, label: $event.detail.name || cached.label }; loading = false;
-                    window.__timemapHydratePanel && window.__timemapHydratePanel($data, polity);
-                    {{-- Auto read-aloud removed: it hit ElevenLabs on every territory click and
-                         drained credits fast. Read-aloud can return later as an explicit button
-                         routed through a cheap TTS provider. --}}
-                    return;
-                }
-                loading = true; polity = null;
-                fetch('/teacher/timemap/polity/' + $event.detail.id + '?name=' + encodeURIComponent($event.detail.name || '') + ($event.detail.qid ? '&qid=' + encodeURIComponent($event.detail.qid) : ''))
-                    .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-                    .then(d => { polity = d; loading = false; (window.__polityCache = window.__polityCache || {})[$event.detail.id] = d; window.__timemapHydratePanel && window.__timemapHydratePanel($data, polity); })
-                    {{-- No catch at all before this: when the endpoint failed, the promise rejected,
-                         `loading` stayed true and the panel span forever with nothing in it. The
-                         corpus database went away on production and every region click became an
-                         infinite spinner, which reads as a hung page rather than a broken lookup.
-                         A failure has to be visible AND leave the panel usable. --}}
-                    .catch(e => {
-                        loading = false;
-                        polity = { label: $event.detail.name || '', summary: null, lookup_failed: true };
-                        console.warn('timemap: polity lookup failed', e);
-                    });
-           "
-           {{-- Mobile: start below the settings cog (right-4 top-4, z-30) — at w-80 on a phone the
-                cog lands exactly on the panel's ✕ close button and steals its taps. --}}
-           class="absolute left-4 top-18 z-20 max-h-[calc(100%-10.5rem)] w-80 overflow-y-auto rounded-box bg-base-100/95 p-4 shadow-xl sm:top-4 sm:max-h-[calc(100%-7rem)]"
-           style="display:none">
-        <template x-if="loading">
-            <p class="flex items-center gap-2"><span class="loading loading-spinner loading-sm"></span> {{ __('Loading…') }}</p>
-        </template>
-        <template x-if="polity">
-            <div>
+    {{-- The year you are scrubbing to, called out where your eyes already are. Driven by
+         resources/js/timemap/year-flash.js; empty and invisible until the first scrub. --}}
+    <div data-timemap-year-flash
+         class="pointer-events-none absolute inset-x-0 top-8 z-20 select-none text-center font-history font-semibold tabular-nums text-card-title"
+         style="opacity:0;font-size:var(--scrubber-flash-size);line-height:1;text-shadow:0 1px 18px rgb(0 0 0 / 0.65)"
+         aria-hidden="true"></div>
+
+    {{-- Their side also carried an inline copy of the polity panel. main extracted that into
+         <x-timemap.information-card /> below, so only the year flash is taken from the
+         scrubber branch — keeping both would have restored the old card AND the new one. --}}
+    {{-- The territory information card. Figma node 1462:1886; see the history-portal-ui skill.
+         Lives in its own component because this file is edited by nearly every map session and
+         150 lines of card in the middle of it made every one of them a conflict. --}}
+    <x-timemap.information-card />
+
+
+    {{-- THE REPORT DIALOG — a SIBLING of the panel, not a child of it, and that is the whole point.
+
+         It used to live inside the <aside>, which is x-show'd on there being an open polity. A
+         <dialog> under a display:none ancestor cannot be shown at all, so any control outside that
+         panel could never open it — and the information-card work is moving the card into its own
+         component, where the footer will be exactly that: outside.
+
+         So the dialog owns reporting and listens for `timemap-report-requested`. Anything that can
+         name a territory can raise it: this page's footer, the information card's footer, or a
+         control that does not exist yet. One dialog, one endpoint, any number of callers. --}}
+    <div x-data="{
+             context: null, comment: '', state: 'idle', year: 0,
+             eraLabel(y) { return y < 0 ? Math.abs(y) + ' BCE' : y + ' CE'; },
+             {{-- The year is CAPTURED when the dialog opens, not read again when Send is pressed.
+                  Two reasons, and the second is the bug that made this a method rather than an
+                  inline expression. A teacher may scrub the slider between opening this and
+                  sending it, and what they are reporting is what was on screen when they decided
+                  something was wrong. And `window.__portal` is not an Alpine dependency, so an
+                  x-text reading it directly evaluated once at first render and never again — the
+                  dialog showed \'0 CE\' while correctly sending 9. A number shown to a teacher
+                  that differs from the number sent is worse than showing none. --}}
+             open(detail) {
+                 this.context = { ...(detail || {}) };
+                 this.comment = '';
+                 this.state = 'idle';
+                 this.year = Number.isFinite(detail?.year)
+                     ? Math.round(detail.year)
+                     : Math.round(window.__portal?.year ?? 0);
+                 $refs.reportDialog.showModal();
+             },
+             send() {
+                 if (this.state === 'sending' || this.comment.trim().length < 3) return;
+                 this.state = 'sending';
+                 fetch('{{ route('teacher.timemap.report') }}', {
+                     method: 'POST',
+                     headers: {
+                         'Content-Type': 'application/json',
+                         'Accept': 'application/json',
+                         'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content ?? '',
+                     },
+                     body: JSON.stringify({ ...this.context, year: this.year, comment: this.comment }),
+                 })
+                     .then((r) => { this.state = r.ok ? 'sent' : 'failed'; })
+                     .catch(() => { this.state = 'failed'; });
+             },
+         }"
+         x-on:timemap-report-requested.window="open($event.detail)">
+        {{-- The report dialog. Native <dialog>, so Esc and the DaisyUI backdrop form close it for
+             free; the ✕ is the third way. --}}
+        <dialog x-ref="reportDialog" class="modal">
+            <div class="modal-box max-w-md">
                 <div class="flex items-start justify-between gap-2">
-                    <div class="flex items-center gap-2">
-                        <template x-if="polity.flag_path"><img :src="polity.flag_path" class="h-5 rounded-sm shadow" alt=""></template>
-                        <h2 class="text-lg font-bold" x-text="polity.label"></h2>
-                    </div>
-                    <button class="btn btn-ghost btn-xs" x-on:click="polity = null; window.__timemapStopSpeak && window.__timemapStopSpeak()">✕</button>
+                    <h3 class="text-lg font-bold">{{ __('Report an incorrect territory') }}</h3>
+                    <button type="button" class="btn btn-ghost btn-xs"
+                            aria-label="{{ __('Close') }}"
+                            x-on:click="$refs.reportDialog.close()">✕</button>
                 </div>
-                {{-- The lookup failed. Say so, and keep the territory's own name on screen so the
-                     click still did something: the teacher at least learns what they clicked. --}}
-                <template x-if="polity.lookup_failed">
-                    <p class="mt-2 text-sm opacity-70">{{ __('We could not load the details for this region just now.') }}</p>
-                </template>
-                {{-- Both years scrub the timeline to that era. --}}
-                <p class="text-xs opacity-70">
-                    <template x-if="polity.inception != null">
-                        <a class="link link-hover cursor-pointer font-medium"
-                           x-on:click="window.__setTimemapYear && window.__setTimemapYear(polity.inception)"
-                           x-text="polity.inception < 0 ? Math.abs(polity.inception)+' BCE' : polity.inception+' CE'"></a>
-                    </template>
-                    <template x-if="polity.inception == null"><span>?</span></template>
-                    <span> – </span>
-                    <template x-if="polity.dissolution != null">
-                        <a class="link link-hover cursor-pointer font-medium"
-                           x-on:click="window.__setTimemapYear && window.__setTimemapYear(polity.dissolution)"
-                           x-text="polity.dissolution < 0 ? Math.abs(polity.dissolution)+' BCE' : polity.dissolution+' CE'"></a>
-                    </template>
+
+                {{-- What the report will carry, shown rather than described. A teacher can see the
+                     year is included, which is the part they would otherwise type out by hand. --}}
+                <p class="lp-card-label mt-2" x-show="context">
+                    <span x-text="context?.label"></span>
+                    <span x-show="context"> · </span>
+                    <span x-text="eraLabel(year)"></span>
                 </p>
 
-                {{-- Wikipedia thumbnail (fetched client-side from the CORS REST API). --}}
-                <template x-if="thumb">
-                    <figure class="mt-3 overflow-hidden rounded-lg">
-                        <img :src="thumb" :alt="polity.label" class="h-36 w-full object-cover" loading="lazy">
-                        <figcaption class="bg-base-200 px-2 py-0.5 text-[10px] opacity-60">{{ __('Image: Wikimedia Commons') }}</figcaption>
-                    </figure>
+                <template x-if="state !== 'sent'">
+                    <div>
+                        <textarea x-model="comment" rows="4"
+                                  class="textarea textarea-bordered mt-3 w-full"
+                                  :disabled="state === 'sending'"
+                                  placeholder="{{ __('What looks wrong?') }}"></textarea>
+
+                        <p x-show="state === 'failed'" class="mt-2 text-sm text-error" style="display:none">
+                            {{ __('That did not send. Please try again.') }}
+                        </p>
+
+                        <div class="modal-action">
+                            <button type="button" class="btn btn-ghost btn-sm"
+                                    x-on:click="$refs.reportDialog.close()">{{ __('Cancel') }}</button>
+                            <button type="button" class="btn btn-warning btn-sm"
+                                    :disabled="state === 'sending' || comment.trim().length < 3"
+                                    x-on:click="send()">
+                                <span x-show="state === 'sending'" class="loading loading-spinner loading-xs"></span>
+                                {{ __('Send report') }}
+                            </button>
+                        </div>
+                    </div>
                 </template>
 
-                {{-- Start a lesson about this territory (prefills the wizard topic). --}}
-                <a :href="'{{ route('teacher.lessons.create') }}?topic=' + encodeURIComponent(polity.label) + (selected.length ? '&protagonist_qid=' + encodeURIComponent(selected[0].qid) + '&protagonist_name=' + encodeURIComponent(selected[0].name) : '')"
-                   wire:navigate
-                   class="btn btn-warning btn-sm mt-3 w-full gap-2 font-semibold">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.957a1 1 0 00.95.69h4.162c.969 0 1.371 1.24.588 1.81l-3.368 2.447a1 1 0 00-.364 1.118l1.287 3.957c.3.922-.755 1.688-1.54 1.118l-3.367-2.447a1 1 0 00-1.175 0l-3.367 2.447c-.784.57-1.838-.196-1.539-1.118l1.286-3.957a1 1 0 00-.363-1.118L2.343 9.384c-.783-.57-.38-1.81.588-1.81h4.162a1 1 0 00.95-.69l1.286-3.957z"/></svg>
-                    <span x-text="selected.length ? @js(__('Create lesson with').' ') + selected[0].name + (selected.length > 1 ? ' +' + (selected.length - 1) : '') : @js(__('Create lesson'))"></span>
-                </a>
-
-                {{-- flex-1/px-1: the three labels (esp. Dutch "Samenvatting/Personen/Door de tijd")
-                     overflow the 320px panel with default tab padding and wrap onto the content. --}}
-                <div role="tablist" class="tabs tabs-bordered mt-3">
-                    <a role="tab" class="tab flex-1 whitespace-nowrap px-1" :class="tab==='summary' && 'tab-active'" x-on:click="tab='summary'">{{ __('Summary') }}</a>
-                    <a role="tab" class="tab flex-1 whitespace-nowrap px-1" :class="tab==='people' && 'tab-active'" x-on:click="tab='people'">{{ __('People') }}</a>
-                    <a role="tab" class="tab flex-1 whitespace-nowrap px-1" :class="tab==='overtime' && 'tab-active'" x-on:click="tab='overtime'">{{ __('Over Time') }}</a>
-                </div>
-
-                <div class="mt-3 text-sm">
-                    {{-- Summary, with the Wikipedia article link underneath it. --}}
-                    <div x-show="tab==='summary'" class="space-y-2">
-                        <p x-text="polity.summary || @js(__('No summary yet.'))"></p>
-                        <template x-if="polity.wikipedia_url && polity.wikipedia_url.includes('wikipedia.org')">
-                            <div>
-                                <p x-show="lead" x-text="lead" class="whitespace-pre-line leading-relaxed"></p>
-                                <button x-show="!lead && !leadLoading && !leadFailed"
-                                        x-on:click="window.__timemapPanelReadMore && window.__timemapPanelReadMore($data, polity)"
-                                        class="btn btn-outline btn-xs mt-1">{{ __('Read more') }}</button>
-                                <p x-show="leadLoading" class="flex items-center gap-2 opacity-70"><span class="loading loading-spinner loading-xs"></span> {{ __('Loading article…') }}</p>
-                                <a :href="polity.wikipedia_url" target="_blank" rel="noopener"
-                                   class="link link-primary mt-1 inline-block text-xs">{{ __('Open on Wikipedia') }} ↗</a>
-                            </div>
-                        </template>
-                        <template x-if="polity.wikipedia_url && !polity.wikipedia_url.includes('wikipedia.org')">
-                            <a :href="polity.wikipedia_url" target="_blank" rel="noopener" class="link link-primary text-xs"
-                               x-text="@js(__('Open on World History Encyclopedia')) + ' ↗'"></a>
-                        </template>
+                <template x-if="state === 'sent'">
+                    <div>
+                        <p class="mt-3">{{ __('Thank you. We have it, with the year you were looking at.') }}</p>
+                        <div class="modal-action">
+                            <button type="button" class="btn btn-sm"
+                                    x-on:click="$refs.reportDialog.close()">{{ __('Close') }}</button>
+                        </div>
                     </div>
-
-                    {{-- People: rulers + notable figures of this polity (corpus). The toggle selects a figure
-                         for the "Create lesson" button, feeding it into the lesson wizard as the protagonist. --}}
-                    <div x-show="tab==='people'" class="space-y-2">
-                        <template x-if="!polity.figures || polity.figures.length === 0">
-                            <p class="opacity-70">{{ __('No people linked yet for this territory.') }}</p>
-                        </template>
-                        <template x-for="f in (polity.figures || [])" :key="f.qid">
-                            <div class="flex items-center gap-3 rounded-lg border border-base-300 p-2">
-                                <div class="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-base-300">
-                                    <template x-if="f.image_url">
-                                        <img :src="f.image_url + '?width=80'" :alt="f.name" class="h-full w-full object-cover" loading="lazy">
-                                    </template>
-                                </div>
-                                <div class="min-w-0 flex-1">
-                                    {{-- Full name, wrapping — truncation made most figures unidentifiable in the 320px panel. --}}
-                                    <p class="wrap-break-word font-semibold leading-tight" :title="f.name" x-text="f.name"></p>
-                                    <p class="truncate text-xs capitalize opacity-60" x-text="[f.kind, f.era].filter(Boolean).join(' · ')"></p>
-                                </div>
-                                <button type="button"
-                                        x-on:click="selected.some(s => s.qid === f.qid) ? (selected = selected.filter(s => s.qid !== f.qid)) : (selected = [...selected, f])"
-                                        class="btn btn-xs shrink-0"
-                                        :class="selected.some(s => s.qid === f.qid) ? 'btn-success' : 'btn-outline'"
-                                        x-text="selected.some(s => s.qid === f.qid) ? @js('✓ '.__('Selected')) : @js(__('Use in lesson'))">
-                                </button>
-                            </div>
-                        </template>
-                    </div>
-                    <div x-show="tab==='overtime'" class="space-y-1">
-                        <p><span class="opacity-70">{{ __('Preceded by') }}:</span> <span x-text="polity.predecessor || '—'"></span></p>
-                        <p><span class="opacity-70">{{ __('Succeeded by') }}:</span> <span x-text="polity.successor || '—'"></span></p>
-                    </div>
-                </div>
+                </template>
             </div>
-        </template>
-    </aside>
+            <form method="dialog" class="modal-backdrop">
+                <button aria-label="{{ __('Close') }}">{{ __('Close') }}</button>
+            </form>
+        </dialog>
+    </div>
 
-    {{-- Time slider (oldmapsonline-style) --}}
-    <div class="absolute bottom-0 left-1/2 z-10 mb-6 w-176 max-w-[92vw] -translate-x-1/2 rounded-box bg-base-100/95 px-5 py-3 shadow-xl"
+    {{-- The time scrubber — Figma node 1471:2238. One bar: no padding, no shadow, no second row;
+         everything it needs sits inside those 47px. Its geometry is tokens, so the dev panel can
+         move it without this file knowing. --}}
+    {{-- data-timemap-deck: the map measures this to know how much of its own container it cannot
+         be seen in, and shrinks itself so the globe centres in what is left. Without it the earth
+         sits half the deck's height too low and the southern hemisphere hides behind this card. --}}
+    <div class="absolute bottom-0 left-1/2 z-10 mb-6 max-w-[92vw] -translate-x-1/2 rounded-card bg-scrubber-surface"
+         style="width: var(--scrubber-width); height: var(--scrubber-height)"
+         data-timemap-deck
          x-ref="sliderbox"
-         x-init="$nextTick(() => window.mountAtlasSlider($refs.sliderbox, $refs.map, {{ $year }}))">
+         {{-- The play control is icon-only, so its tooltip is the name a teacher actually reads —
+              which makes these five-language strings, and they can only be translated here. --}}
+         x-init="$nextTick(() => window.mountAtlasSlider($refs.sliderbox, $refs.map, {{ $year }}, @js([
+             'play' => __('Play timeline'),
+             'pause' => __('Pause timeline'),
+             'track' => __('Timeline year'),
+             'year' => __('Year (negative for BCE)'),
+         ])))">
     </div>
 
     {{-- Colour strength: scales territory fill intensity. National colours (NL orange, France
@@ -216,18 +194,51 @@
     {{-- Settings: a cog that fans out to a sound (read-aloud) toggle. The map-style palette that
          used to live here is gone — there is one ground now (see timemap/index.js). --}}
     <div class="absolute right-4 top-4 z-30"
-         x-data="{ settingsOpen: false,
-                   sound: (window.localStorage.getItem('tm-sound') === '1') }"
-         x-on:click.outside="settingsOpen = false">
+         x-data="{ settingsOpen: false, paletteOpen: false,
+                   style: (window.localStorage.getItem('tm-style') || 'soft-atlas'),
+                   sound: (window.localStorage.getItem('tm-sound') === '1'),
+                   {{-- Soft Atlas, Night and Earth only. Antique and Tolkien read almost identically
+                        to Soft Atlas, and Earth is Satellite v2 — all three stay DEFINED so existing
+                        saved choices keep working and nothing 404s, they are simply not offered. --}}
+                   items: [['soft-atlas','Soft Atlas'],['night','Night'],['earth','Earth']] }"
+         x-on:click.outside="settingsOpen = false; paletteOpen = false">
 
         {{-- Cog --}}
-        <button type="button" x-on:click="settingsOpen = !settingsOpen"
+        <button type="button" x-on:click="settingsOpen = !settingsOpen; if (!settingsOpen) paletteOpen = false"
                 aria-label="{{ __('Settings') }}"
                 class="btn btn-circle border-none bg-warning text-black shadow-lg hover:bg-warning">
             <svg class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                 <path fill-rule="evenodd" clip-rule="evenodd" d="M11.078 2.25c-.917 0-1.699.663-1.85 1.567L9.05 4.889c-.02.12-.115.26-.297.348a7.493 7.493 0 0 0-.986.57c-.166.115-.334.126-.45.083L6.3 5.508a1.875 1.875 0 0 0-2.282.819l-.922 1.597a1.875 1.875 0 0 0 .432 2.385l.84.692c.095.078.17.229.154.43a7.6 7.6 0 0 0 0 1.139c.016.2-.059.352-.153.43l-.841.692a1.875 1.875 0 0 0-.432 2.385l.922 1.597a1.875 1.875 0 0 0 2.282.818l1.019-.382c.115-.043.283-.031.45.082.312.214.641.405.985.57.182.088.277.228.297.35l.178 1.071c.151.904.933 1.567 1.85 1.567h1.844c.916 0 1.699-.663 1.85-1.567l.178-1.072c.02-.12.114-.26.297-.349.344-.165.673-.356.985-.57.167-.114.335-.125.45-.082l1.02.382a1.875 1.875 0 0 0 2.28-.819l.923-1.597a1.875 1.875 0 0 0-.432-2.385l-.84-.692c-.095-.078-.17-.229-.154-.43a7.6 7.6 0 0 0 0-1.139c-.016-.2.059-.352.153-.43l.84-.692c.708-.582.891-1.59.433-2.385l-.922-1.597a1.875 1.875 0 0 0-2.282-.818l-1.02.382c-.114.043-.282.031-.449-.083a7.49 7.49 0 0 0-.985-.57c-.183-.087-.277-.227-.297-.348l-.179-1.072a1.875 1.875 0 0 0-1.85-1.567h-1.843ZM12 15.75a3.75 3.75 0 1 0 0-7.5 3.75 3.75 0 0 0 0 7.5Z"/>
             </svg>
         </button>
+
+        {{-- Palette sub-button (to the left).
+
+             LOST IN THE MERGE AND PUT BACK. polishing-1 removed this in its fewer-choices pass and
+             that deletion auto-merged, while the x-data holding `paletteOpen`, `style` and `items`
+             was inside a conflict and kept map-integration's side. The result was state with no UI:
+             three styles defined, a variable to hold the choice, and nothing on screen that could
+             make one. Reported as "I can't switch styles on 8030", which is exactly what it was. --}}
+        {{-- Palette sub-button (to the left) --}}
+        <div class="absolute top-0" style="right: 3.75rem; display: none;" x-show="settingsOpen" x-transition>
+            <button type="button" x-on:click="paletteOpen = !paletteOpen" aria-label="{{ __('Map style') }}"
+                    class="btn btn-circle border-none bg-base-100 text-base-content shadow-lg">
+                <svg class="h-6 w-6" viewBox="0 0 100 100" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="m71.34 26.148c-7.8477-7.0195-18.648-9.7305-28.879-7.2461-10.234 2.4805-18.59 9.8398-22.348 19.676-3.7578 9.8359-2.4375 20.891 3.5312 29.566 5.9727 8.6719 15.824 13.855 26.355 13.855h2.3398c3.9023-0.003906 7.418-2.3555 8.9141-5.9609 1.4922-3.6055 0.67188-7.7539-2.082-10.52l-4.6914-4.6914c-0.47266-0.47266-0.61328-1.1836-0.35547-1.8008 0.25391-0.62109 0.85547-1.0234 1.5234-1.0273h18.352c2.1211 0 4.1562-0.84375 5.6562-2.3438s2.3438-3.5352 2.3438-5.6562c-0.003906-9.1016-3.8828-17.773-10.66-23.852zm-15.691 23.852c-3.9023 0.003906-7.418 2.3555-8.9102 5.9609-1.4961 3.6055-0.67188 7.7539 2.082 10.52l4.6914 4.6914c0.46875 0.47266 0.60938 1.1836 0.35547 1.8008-0.25781 0.62109-0.85938 1.0234-1.5273 1.0273h-2.3398c-8.2656 0.023438-15.961-4.2031-20.371-11.191-4.4062-6.9922-4.9102-15.758-1.332-23.207 3.582-7.4453 10.742-12.531 18.953-13.453 0.91406-0.097657 1.832-0.14844 2.75-0.14844 5.9102-0.023438 11.613 2.1602 16 6.1211 5.0898 4.5508 7.9961 11.051 8 17.879z"/>
+                    <path d="m62 38c0 5.332-8 5.332-8 0s8-5.332 8 0"/>
+                    <path d="m46 38c0 5.332-8 5.332-8 0s8-5.332 8 0"/>
+                    <path d="m42 54c0 5.332-8 5.332-8 0s8-5.332 8 0"/>
+                </svg>
+            </button>
+            <ul x-show="paletteOpen" x-transition.opacity style="display:none"
+                class="menu absolute right-0 mt-2 w-56 rounded-box bg-base-100/95 p-2 shadow-xl">
+                <li class="menu-title text-xs">{{ __('Map style') }}</li>
+                <template x-for="it in items" :key="it[0]">
+                    <li><a x-on:click="style = it[0]; window.__applyMapStyle && window.__applyMapStyle(it[0]); paletteOpen = false"
+                           :class="{ 'active font-semibold': style === it[0] }" x-text="it[1]"></a></li>
+                </template>
+            </ul>
+        </div>
 
         {{-- Sound sub-button (bottom-left): read summaries aloud via ElevenLabs --}}
         <div class="absolute" style="right: 2.5rem; top: 3.75rem; display: none;" x-show="settingsOpen" x-transition>

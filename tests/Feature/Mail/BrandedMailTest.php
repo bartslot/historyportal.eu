@@ -20,7 +20,12 @@ class BrandedMailTest extends TestCase
     /** The brand mark is an image now, not a text wordmark. */
     private const LOGO_FILE = 'assets/email/logo-history-portal.png';
 
-    private const TAGLINE = 'Where Storytelling Meets Learning.';
+    /**
+     * The footer line. It is a sentence, not a slogan: the old "Where Storytelling Meets Learning."
+     * was rejected by Bart as "AI slop", along with the argument that a tagline is a brand asset
+     * exempt from translation. This one goes through __() like every other line in the message.
+     */
+    private const FOOTER_LINE = 'History lessons your class wants to see the end of.';
 
     private function renderMail(): string
     {
@@ -76,11 +81,18 @@ class BrandedMailTest extends TestCase
         $this->assertStringContainsString(self::BRAND_NAVY_HEX, $html);
     }
 
-    public function test_rendered_mail_contains_tagline(): void
+    public function test_rendered_mail_contains_the_footer_line(): void
     {
         $html = $this->renderMail();
 
-        $this->assertStringContainsString(self::TAGLINE, $html);
+        $this->assertStringContainsString(self::FOOTER_LINE, $html);
+    }
+
+    public function test_the_rejected_tagline_is_gone_from_the_mail(): void
+    {
+        $html = $this->renderMail();
+
+        $this->assertStringNotContainsStringIgnoringCase('storytelling meets', $html);
     }
 
     public function test_rendered_mail_contains_lesson_credit_details(): void

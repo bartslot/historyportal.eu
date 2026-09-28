@@ -9,7 +9,23 @@ or PWA.
 The **History Portal** is the first subject vertical (history lessons with AI avatars of
 historical figures like Julius Caesar). Future verticals: Science, Literature, Civics.
 
-**Tagline:** "Where Storytelling Meets Learning. AI-Powered. Teacher-Centric. Results-Driven."
+**There is no tagline. Do not write one.** The old line, "Where Storytelling Meets Learning.
+AI-Powered. Teacher-Centric. Results-Driven.", was removed in full on Bart's instruction:
+*"this looks like AI slop. The typical title and subtitle with a subheading. Companies with
+good UX don't use that."*
+
+The standard for every marketing and shell line is his own, written in Dutch:
+
+> **Verhalen waarvan je klas wil weten hoe het afloopt.**
+>
+> Wat als geschiedenis niet voelt als een les? Ontdek echte schilderijen, meeslepende verhalen
+> en een spel waarmee je klas zelf verder gaat.
+
+Match why it works, never its words: promise an **experience**, not a category; open on the
+teacher's real problem; be concrete about what you get; say "your class", never "learners",
+"users" or "educators". No balanced "Where X Meets Y" clause, no wordplay, no title + tagline
++ subheading stack. **The test: if a line could sit on any EdTech homepage, it is wrong.**
+See `docs/brand-guidelines.md` for the full voice section.
 
 ---
 

@@ -95,7 +95,7 @@ return [
     // Fine print under the cards. Keep the auto-renewal disclosure clear and
     // conspicuous — required for negative-option billing (FTC) and EU/UK
     // consumer law, especially for public-funded school buyers.
-    'fine_print' => 'All plans include a 14-day free trial — no credit card required. '
+    'fine_print' => 'All plans include a 14-day free trial, no credit card required. '
         .'Plans automatically renew for one additional year at the then-current rate when your term ends; '
         .'we email you 30 days before renewal and you can cancel anytime from your account.',
 

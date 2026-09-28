@@ -18,7 +18,7 @@
 >
     <header class="flex flex-col gap-6 border-b border-slate-800 pb-8 sm:flex-row sm:items-end sm:justify-between">
         <div>
-            <p class="text-xs font-medium uppercase tracking-[0.18em] text-amber-400">{{ __('Help') }}</p>
+            <p class="text-xs font-medium uppercase tracking-eyebrow text-amber-400">{{ __('Help') }}</p>
             <h1 class="mt-2 font-history text-4xl font-light tracking-tight text-slate-100 sm:text-5xl">
                 {{ __('How the portal works') }}
             </h1>
@@ -51,7 +51,7 @@
         >
         @if ($searching)
             <button type="button" wire:click="clearSearch" aria-label="{{ __('Clear search') }}"
-                    class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-500 transition hover:text-slate-200">
+                    class="btn btn-ghost btn-circle btn-sm absolute inset-y-0 right-1 my-auto text-slate-500 hover:text-slate-200">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5" aria-hidden="true">
                     <path stroke-linecap="round" d="M6 6l12 12M18 6 6 18" />
                 </svg>
@@ -84,7 +84,7 @@
             <x-icons.magnifying-glass class="mx-auto h-7 w-7 text-slate-600" />
             <p class="mt-3 text-sm font-medium text-slate-300">{{ __('Nothing here matches ":search"', ['search' => $this->search]) }}</p>
             <p class="mt-1 text-sm text-slate-500">{{ __('Try a shorter word, or read the subjects below.') }}</p>
-            <button type="button" wire:click="clearSearch" class="mt-4 text-sm text-amber-400 transition hover:text-amber-300">
+            <button type="button" wire:click="clearSearch" class="btn btn-link btn-sm mt-4 px-0">
                 {{ __('Show everything again') }}
             </button>
         </div>
@@ -103,7 +103,7 @@
                             <x-dynamic-component :component="'icons.'.$topic['icon']" class="mt-0.5 h-4 w-4 shrink-0" />
                             <span>{{ $topic['title'] }}</span>
                             @if (($topic['audience'] ?? 'all') === 'admin')
-                                <span class="ml-auto shrink-0 rounded bg-rose-400/10 px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-rose-300">{{ __('Admin') }}</span>
+                                <span class="ml-auto shrink-0 rounded bg-error/10 px-1.5 py-0.5 text-3xs font-semibold uppercase tracking-wide text-error">{{ __('Admin') }}</span>
                             @endif
                         </a>
                     </li>
@@ -125,7 +125,7 @@
                             <h2 id="{{ $topic['id'] }}-heading" class="flex flex-wrap items-center gap-2 font-history text-2xl font-light text-slate-100">
                                 {{ $topic['title'] }}
                                 @if (($topic['audience'] ?? 'all') === 'admin')
-                                    <span class="rounded bg-rose-400/10 px-1.5 py-0.5 font-sans text-[0.6rem] font-semibold uppercase tracking-wide text-rose-300">{{ __('Admin only') }}</span>
+                                    <span class="rounded bg-error/10 px-1.5 py-0.5 font-sans text-3xs font-semibold uppercase tracking-wide text-error">{{ __('Admin only') }}</span>
                                 @endif
                             </h2>
                             <p class="mt-1.5 text-sm leading-relaxed text-slate-400">{{ $topic['summary'] }}</p>
@@ -158,12 +158,12 @@
                                     <figure class="mt-4" data-help-figure>
                                         <button type="button"
                                                 @click="show(@js($section['image_url']), @js($section['heading']))"
-                                                class="group relative block w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-950 transition hover:border-amber-500/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                                                class="group relative block w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-950 transition hover:border-primary/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                                                 aria-label="{{ __('Enlarge the picture of :subject', ['subject' => $section['heading']]) }}">
                                             <img src="{{ $section['image_url'] }}" alt="{{ $section['heading'] }}"
                                                  loading="lazy" decoding="async"
-                                                 class="block w-full transition duration-300 ease-[cubic-bezier(0.215,0.61,0.355,1)] group-hover:scale-[1.01] motion-reduce:transition-none">
-                                            <span class="absolute bottom-2 right-2 flex items-center gap-1.5 rounded-lg bg-slate-950/80 px-2 py-1 text-[0.65rem] text-slate-300 opacity-0 backdrop-blur-sm transition group-hover:opacity-100 group-focus-visible:opacity-100">
+                                                 class="block w-full transition duration-300 ease-enter group-hover:scale-[1.01] motion-reduce:transition-none">
+                                            <span class="absolute bottom-2 right-2 flex items-center gap-1.5 rounded-lg bg-slate-950/80 px-2 py-1 text-2xs text-slate-300 opacity-0 backdrop-blur-sm transition group-hover:opacity-100 group-focus-visible:opacity-100">
                                                 <x-icons.magnifying-glass class="h-3.5 w-3.5" />
                                                 {{ __('Enlarge') }}
                                             </span>
@@ -175,7 +175,7 @@
 
                         @if ($topic['link'])
                             <a href="{{ route($topic['link']['route']) }}"
-                               class="inline-flex items-center gap-1.5 text-sm text-amber-400 transition hover:text-amber-300">
+                               class="btn btn-link btn-sm px-0">
                                 {{ $topic['link']['label'] }}
                                 <x-icons.chevron-right class="h-4 w-4" />
                             </a>
@@ -191,7 +191,7 @@
                         {{ __('If something does not work the way this page describes, mail us and tell us what you were doing. That is the fastest way to get it fixed.') }}
                     </p>
                     {{-- Same address as the public site footer. --}}
-                    <a href="mailto:info@thelearningportal.us" class="mt-3 inline-flex items-center gap-1.5 text-sm text-amber-400 transition hover:text-amber-300">
+                    <a href="mailto:info@thelearningportal.us" class="btn btn-link btn-sm mt-3 px-0">
                         info@thelearningportal.us
                         <x-icons.chevron-right class="h-4 w-4" />
                     </a>
@@ -204,9 +204,9 @@
     <div x-show="lightbox.open" x-cloak
          class="fixed inset-0 z-[70] flex items-center justify-center p-4 sm:p-8"
          role="dialog" aria-modal="true" :aria-label="lightbox.caption"
-         x-transition:enter="transition duration-200 ease-[cubic-bezier(0.215,0.61,0.355,1)]"
+         x-transition:enter="transition duration-200 ease-enter"
          x-transition:enter-start="opacity-0"
-         x-transition:leave="transition duration-150 ease-[cubic-bezier(0.55,0.055,0.675,0.19)]"
+         x-transition:leave="transition duration-150 ease-exit"
          x-transition:leave-end="opacity-0">
         <div class="absolute inset-0 bg-slate-950/90 backdrop-blur-sm" @click="hide()"></div>
 
@@ -216,7 +216,7 @@
             <div class="flex shrink-0 items-start justify-between gap-4 pb-3">
                 <p class="text-sm text-slate-300" x-text="lightbox.caption"></p>
                 <button type="button" @click="hide()" aria-label="{{ __('Close') }}"
-                        class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-white/10 hover:text-slate-200">
+                        class="btn btn-ghost btn-circle btn-sm shrink-0 text-slate-400 hover:text-slate-200">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5" aria-hidden="true">
                         <path stroke-linecap="round" d="M6 6l12 12M18 6 6 18" />
                     </svg>

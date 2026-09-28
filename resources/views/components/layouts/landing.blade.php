@@ -16,7 +16,7 @@
              so the live home page rendered "The Learning Portal · The Learning Portal". Same rule
              x-seo already applies for the pages that use it; this is the fallback path. --}}
         <title>{{ $title === 'The Learning Portal' ? $title : $title.' · The Learning Portal' }}</title>
-        <meta name="description" content="{{ __('Narrated, story-driven history lessons that a teacher can build in minutes and a class can play on any device.') }}">
+        <meta name="description" content="{{ __('History lessons your class wants to see the end of. Real paintings, a narrated story, and a game they finish themselves. Built in minutes, plays anywhere.') }}">
     @endisset
 
     {{-- The narration audio and museum imagery come from the same origin, but fonts and tiles do

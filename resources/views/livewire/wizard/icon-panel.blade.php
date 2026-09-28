@@ -16,7 +16,7 @@
     <div class="flex flex-wrap items-center gap-1.5">
         @foreach ($this->collections() as $set)
             <button type="button" wire:click="selectCollection('{{ $set }}')"
-                    class="rounded-full px-3 py-1 text-[11px] font-medium transition-colors
+                    class="rounded-full px-3 py-1 text-2xs font-medium transition-colors
                            {{ $collection === $set
                                ? 'bg-amber-500 text-slate-950'
                                : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200' }}">
@@ -27,7 +27,7 @@
         {{-- The teacher's own SVG imports still live in their library modal — one way in, kept
              out of the pill row because it is not another set of icons. --}}
         <button type="button" x-on:click="Livewire.dispatch('open-svg-library')"
-                class="ml-auto rounded-full px-3 py-1 text-[11px] font-medium text-slate-500 transition-colors hover:text-slate-200">
+                class="ml-auto rounded-full px-3 py-1 text-2xs font-medium text-slate-500 transition-colors hover:text-slate-200">
             {{ __('Import…') }}
         </button>
     </div>
@@ -37,7 +37,7 @@
     @if ($this->groups())
         <div class="flex items-center gap-1.5 overflow-x-auto pb-0.5">
             <button type="button" wire:click="selectGroup('', '')"
-                    class="shrink-0 rounded-full px-3 py-1 text-[11px] font-medium transition-colors
+                    class="shrink-0 rounded-full px-3 py-1 text-2xs font-medium transition-colors
                            {{ $category === ''
                                ? 'bg-amber-500 text-slate-950'
                                : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200' }}">
@@ -47,7 +47,7 @@
                 @php $active = $category === $group['category'] && $subcategory === $group['subcategory']; @endphp
                 <button type="button"
                         wire:click="selectGroup(@js($group['category']), @js($group['subcategory']))"
-                        class="shrink-0 rounded-full px-3 py-1 text-[11px] transition-colors
+                        class="shrink-0 rounded-full px-3 py-1 text-2xs transition-colors
                                {{ $group['subcategory'] === '' ? 'font-semibold' : 'font-medium' }}
                                {{ $active
                                    ? 'bg-amber-500 text-slate-950'

@@ -171,12 +171,12 @@
             >
 
             <div class="flex flex-col items-center sm:items-start">
-                <h1 data-reveal-item class="text-balance text-4xl leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-6xl">
+                <h1 data-reveal-item class="text-balance text-4xl leading-display tracking-tight text-white sm:text-5xl lg:text-6xl">
                     {{ __('History Portal is now live') }}
                 </h1>
 
                 <p data-reveal-item class="mt-5 max-w-md text-balance text-sm leading-relaxed text-white/60 sm:text-base">
-                    {{ __('Story-driven history lessons, narrated and ready for your class.') }}
+                    {{ __('Real paintings, a narrated story, and a game your class finishes by themselves.') }}
                 </p>
 
                 <div data-reveal-item class="mt-8 flex flex-wrap items-center justify-center gap-3 sm:justify-start">
@@ -217,8 +217,8 @@
                  moment DemoLesson::resolve() found nothing playable the ENTIRE LANDING PAGE threw
                  "Attempt to read property title on null". The front door of the product, 500ing
                  because a lesson was mid-rebuild. --}}
-            <h1 data-reveal-item class="text-balance text-4xl leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-6xl">
-                {{ $demoLesson?->title ?? __('Where storytelling meets learning.') }}
+            <h1 data-reveal-item class="text-balance text-4xl leading-display tracking-tight text-white sm:text-5xl lg:text-6xl">
+                {{ $demoLesson?->title ?? __('The lesson they talk about after class.') }}
             </h1>
 
             {{-- What the product IS, under the name of what it just made. This used to read "Check
@@ -262,7 +262,7 @@
     <button
         type="button"
         data-demo-skip
-        class="hero-skip absolute bottom-8 right-6 z-30 text-xs uppercase tracking-widest text-white/35 transition hover:text-white/80"
+        class="hero-skip btn btn-ghost btn-xs absolute bottom-8 right-6 z-30 uppercase tracking-widest text-white/35 hover:text-white/80"
     >{{ __('Skip') }}</button>
 
 </section>

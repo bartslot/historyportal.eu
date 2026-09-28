@@ -42,11 +42,11 @@ export function renderGallery(el, cfg = {}, { startIndex = 0, editable = false, 
       <img data-bg="b" alt="" style="position:absolute;inset:-6%;width:112%;height:112%;object-fit:cover;filter:blur(28px) brightness(0.5);opacity:0;transition:opacity 1.1s ease;">
       <img data-slide="a" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:${objFit};opacity:0;transition:opacity 1s ease, transform 9s linear;">
       <img data-slide="b" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:${objFit};opacity:0;transition:opacity 1s ease, transform 9s linear;">
-      <p data-credit style="position:absolute;left:1rem;bottom:0.75rem;margin:0;color:#cbd5e1;font-size:0.72rem;opacity:0.8;text-shadow:0 1px 3px rgba(0,0,0,.7);"></p>
+      <p data-credit style="position:absolute;left:1rem;bottom:0.75rem;margin:0;color:#cbd5e1;font-size:var(--text-2xs);opacity:0.8;text-shadow:0 1px 3px rgba(0,0,0,.7);"></p>
     </div>
     <div style="width:22rem;max-width:38%;padding:2.2rem 1.8rem;background:rgba(9,16,30,0.92);color:#e2e8f0;display:flex;flex-direction:column;justify-content:center;">
-      <p data-field="date_label" ${edit('date_label', 'Date…')} style="margin:0;font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:#93a4bd;">${esc(cfg.date_label)}</p>
-      <h2 data-field="title" ${edit('title', 'Title…')} style="margin:0.4rem 0 0;font-size:1.5rem;line-height:1.2;color:#fff;">${esc(cfg.title)}</h2>
+      <p data-field="date_label" ${edit('date_label', 'Date…')} style="margin:0;font-size:var(--text-2xs);letter-spacing:0.1em;text-transform:uppercase;color:#93a4bd;">${esc(cfg.date_label)}</p>
+      <h2 data-field="title" ${edit('title', 'Title…')} style="margin:0.4rem 0 0;font-size:var(--text-2xl);line-height:1.2;color:#fff;">${esc(cfg.title)}</h2>
       <p data-field="story" ${edit('story', 'Tell what happened at this stop…')} style="margin-top:1rem;font-size:0.95rem;line-height:1.65;white-space:pre-wrap;">${esc(cfg.story)}</p>
     </div>`;
   el.appendChild(host);

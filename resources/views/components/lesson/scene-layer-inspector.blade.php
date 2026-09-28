@@ -37,8 +37,8 @@
             </div>
 
             <label class="mt-2 flex items-center justify-between gap-2">
-                <span class="text-[11px] text-slate-300">{{ __('Interact') }}
-                    <span class="block text-[10px] text-slate-500">{{ __('The class can grab the model and turn it.') }}</span>
+                <span class="text-2xs text-slate-300">{{ __('Interact') }}
+                    <span class="block text-2xs text-slate-500">{{ __('The class can grab the model and turn it.') }}</span>
                 </span>
                 <input type="checkbox" @checked($eo['interact'])
                        wire:change="setEmbedOption({{ $aid }}, 'interact', $event.target.checked)"
@@ -46,8 +46,8 @@
             </label>
 
             <label class="mt-2 flex items-center justify-between gap-2">
-                <span class="text-[11px] text-slate-300">{{ __('Turn by itself') }}
-                    <span class="block text-[10px] text-slate-500">{{ __('Slowly rotates while the scene plays.') }}</span>
+                <span class="text-2xs text-slate-300">{{ __('Turn by itself') }}
+                    <span class="block text-2xs text-slate-500">{{ __('Slowly rotates while the scene plays.') }}</span>
                 </span>
                 <input type="checkbox" @checked($eo['autospin'])
                        wire:change="setEmbedOption({{ $aid }}, 'autospin', $event.target.checked)"
@@ -55,18 +55,18 @@
             </label>
 
             <div class="mt-2.5">
-                <span class="text-[11px] text-slate-300">{{ __('Behind the model') }}</span>
+                <span class="text-2xs text-slate-300">{{ __('Behind the model') }}</span>
                 <div class="mt-1 grid grid-cols-3 gap-1">
                     @foreach ([['none', __('None')], ['glass', __('Glass')], ['#0f172a', __('Solid')]] as [$val, $label])
                         <button type="button" wire:click="setEmbedOption({{ $aid }}, 'bg', '{{ $val }}')"
                                 @class([
-                                    'rounded-md border px-2 py-1 text-[11px] transition',
+                                    'rounded-md border px-2 py-1 text-2xs transition',
                                     'border-amber-400 bg-amber-400/10 text-amber-300' => $eo['bg'] === $val,
                                     'border-slate-700 text-slate-400 hover:border-slate-500' => $eo['bg'] !== $val,
                                 ])>{{ $label }}</button>
                     @endforeach
                 </div>
-                <p class="mt-1 text-[10px] text-slate-500">{{ __('None cuts the model out of its studio backdrop.') }}</p>
+                <p class="mt-1 text-2xs text-slate-500">{{ __('None cuts the model out of its studio backdrop.') }}</p>
             </div>
         </section>
     @endif
@@ -77,7 +77,7 @@
              class="h-9 w-9 shrink-0 rounded bg-base-100 object-contain" />
         <h3 class="min-w-0 flex-1 truncate font-semibold text-amber-300">{{ $layer['title'] ?? __('Icon') }}</h3>
         <button type="button" wire:click="detachArtwork({{ $aid }})"
-                class="btn btn-ghost btn-xs btn-square text-slate-500 hover:text-rose-400"
+                class="btn btn-ghost btn-xs btn-square text-slate-500 hover:text-error"
                 aria-label="{{ __('Remove layer') }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -85,7 +85,7 @@
         </button>
     </div>
 
-    <p class="text-[11px] leading-tight text-slate-500">{{ __('Drag on the canvas to move. Adjust placement and size here; reorder in the object list.') }}</p>
+    <p class="text-2xs leading-tight text-slate-500">{{ __('Drag on the canvas to move. Adjust placement and size here; reorder in the object list.') }}</p>
 
     {{-- Placement, size, and visual treatment stay in the Format panel. --}}
     @foreach (array_merge(
@@ -100,13 +100,13 @@
         ]
     ) as [$field, $label, $min, $max, $step, $default])
         <label class="flex items-center gap-2">
-            <span class="w-12 shrink-0 text-[10px] uppercase tracking-wide text-slate-500">{{ $label }}</span>
+            <span class="w-12 shrink-0 text-2xs uppercase tracking-wide text-slate-500">{{ $label }}</span>
             <input type="range" min="{{ $min }}" max="{{ $max }}" step="{{ $step }}"
                    value="{{ $layer[$field] ?? $default }}"
                    x-on:input="window.__lessonArtworkLayer?.setLayerProp?.({{ $aid }}, '{{ $field }}', $event.target.value)"
                    wire:change="updateArtworkLayer({{ $aid }}, '{{ $field }}', $event.target.value)"
                    class="range range-xs flex-1" />
-            <span class="w-9 text-right font-mono text-[10px] text-slate-400">{{ rtrim(rtrim(number_format((float) ($layer[$field] ?? $default), 2), '0'), '.') }}</span>
+            <span class="w-9 text-right font-mono text-2xs text-slate-400">{{ rtrim(rtrim(number_format((float) ($layer[$field] ?? $default), 2), '0'), '.') }}</span>
         </label>
     @endforeach
 
@@ -114,7 +114,7 @@
          it drops the white paper out of an engraving or a scanned map so the artwork sits ON the
          scene instead of in a box on top of it. --}}
     <label class="flex items-center gap-2">
-        <span class="w-12 shrink-0 text-[10px] uppercase tracking-wide text-slate-500">{{ __('Blend') }}</span>
+        <span class="w-12 shrink-0 text-2xs uppercase tracking-wide text-slate-500">{{ __('Blend') }}</span>
         <select x-on:input="window.__lessonArtworkLayer?.setLayerProp?.({{ $aid }}, 'blend', $event.target.value)"
                 wire:change="updateArtworkLayer({{ $aid }}, 'blend', $event.target.value)"
                 class="select select-xs select-bordered flex-1 border-slate-700 bg-slate-900 text-slate-300">
@@ -136,17 +136,17 @@
          then be drained and recoloured to sit with the lesson's palette. --}}
     <div class="space-y-2 border-t border-slate-700/50 pt-2">
         <label class="flex items-center gap-2">
-            <span class="w-12 shrink-0 text-[10px] uppercase tracking-wide text-slate-500">{{ __('Drop white') }}</span>
+            <span class="w-12 shrink-0 text-2xs uppercase tracking-wide text-slate-500">{{ __('Drop white') }}</span>
             <input type="range" min="0" max="0.5" step="0.01"
                    value="{{ $layer['white_key'] ?? 0 }}"
                    x-on:input="window.__lessonArtworkLayer?.setLayerProp?.({{ $aid }}, 'white_key', $event.target.value)"
                    wire:change="updateArtworkLayer({{ $aid }}, 'white_key', $event.target.value)"
                    class="range range-xs flex-1" />
-            <span class="w-9 text-right font-mono text-[10px] text-slate-400">{{ round(((float) ($layer['white_key'] ?? 0)) * 100) }}%</span>
+            <span class="w-9 text-right font-mono text-2xs text-slate-400">{{ round(((float) ($layer['white_key'] ?? 0)) * 100) }}%</span>
         </label>
 
         <label class="flex items-center justify-between gap-2">
-            <span class="text-[11px] text-slate-300">{{ __('Grayscale') }}</span>
+            <span class="text-2xs text-slate-300">{{ __('Grayscale') }}</span>
             <input type="checkbox" @checked($layer['grayscale'] ?? false)
                    x-on:input="window.__lessonArtworkLayer?.setLayerProp?.({{ $aid }}, 'grayscale', $event.target.checked)"
                    wire:change="updateArtworkLayer({{ $aid }}, 'grayscale', $event.target.checked)"
@@ -154,7 +154,7 @@
         </label>
 
         <label class="flex items-center gap-2">
-            <span class="w-12 shrink-0 text-[10px] uppercase tracking-wide text-slate-500">{{ __('Tint') }}</span>
+            <span class="w-12 shrink-0 text-2xs uppercase tracking-wide text-slate-500">{{ __('Tint') }}</span>
             {{-- `input` fires on every move of the hue; `change` only when the picker closes. The
                  canvas follows the drag locally, and only the value the teacher settles on is
                  saved — one round-trip instead of hundreds. --}}
@@ -163,19 +163,19 @@
                    wire:change="updateArtworkLayer({{ $aid }}, 'tint', $event.target.value)"
                    class="h-6 w-10 shrink-0 cursor-pointer rounded border border-slate-700 bg-slate-900" />
             <button type="button" wire:click="updateArtworkLayer({{ $aid }}, 'tint', '')"
-                    class="flex-1 rounded-md border border-slate-700 px-2 py-1 text-[11px] text-slate-400 transition hover:border-slate-500 hover:text-slate-200">
+                    class="flex-1 rounded-md border border-slate-700 px-2 py-1 text-2xs text-slate-400 transition hover:border-slate-500 hover:text-slate-200">
                 {{ __('No tint') }}
             </button>
         </label>
         <label class="flex items-center gap-2">
-            <span class="w-12 shrink-0 text-[10px] uppercase tracking-wide text-slate-500">{{ __('Strength') }}</span>
+            <span class="w-12 shrink-0 text-2xs uppercase tracking-wide text-slate-500">{{ __('Strength') }}</span>
             <input type="range" min="0" max="1" step="0.05" value="{{ $layer['tint_opacity'] ?? 1 }}"
                    x-on:input="window.__lessonArtworkLayer?.setLayerProp?.({{ $aid }}, 'tint_opacity', $event.target.value)"
                    wire:change="updateArtworkLayer({{ $aid }}, 'tint_opacity', $event.target.value)"
                    class="range range-xs flex-1" />
-            <span class="w-9 text-right font-mono text-[10px] text-slate-400">{{ round(((float) ($layer['tint_opacity'] ?? 1)) * 100) }}%</span>
+            <span class="w-9 text-right font-mono text-2xs text-slate-400">{{ round(((float) ($layer['tint_opacity'] ?? 1)) * 100) }}%</span>
         </label>
-        <p class="text-[10px] leading-tight text-slate-500">{{ __('A photograph keeps its own colours until you raise the strength.') }}</p>
+        <p class="text-2xs leading-tight text-slate-500">{{ __('A photograph keeps its own colours until you raise the strength.') }}</p>
         {{-- A line-art icon is black ink on nothing: there is no paper to key out, so Tint alone
              is what rescues it from a night scene. It reaches the ink either way — the flood is
              composited INTO the source's alpha, which for an icon is the strokes themselves. --}}
@@ -187,7 +187,7 @@
     @if ($isMapScene)
         <div class="space-y-1 border-t border-slate-700/50 pt-3">
             <label class="flex items-center justify-between gap-3">
-                <span class="text-[10px] uppercase tracking-widest text-slate-500">{{ __('Pin to map') }}</span>
+                <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Pin to map') }}</span>
                 {{-- The map scene's overlay by its OWN handle first: the shared one can be
                      repointed by a slideshow render, and pinning the wrong overlay's layer
                      would silently do nothing. --}}
@@ -195,7 +195,7 @@
                        x-on:change="(window.__voyageArtworkLayer || window.__lessonArtworkLayer)?.togglePin?.({{ $aid }})"
                        class="toggle toggle-sm toggle-warning shrink-0" />
             </label>
-            <p class="text-[10px] leading-tight text-slate-500">
+            <p class="text-2xs leading-tight text-slate-500">
                 {{ $isPinned
                     ? __('Stays on this place as the map pans and zooms.')
                     : __('Sits at a fixed spot on the screen. Pin it to stick to the place underneath.') }}
@@ -206,14 +206,14 @@
     {{-- Ink draw-on controls — only in Drawing mode. --}}
     @if ($slideshowMode === 'drawing')
         <div class="space-y-2 border-t border-slate-700/50 pt-2">
-            <span class="block text-[10px] uppercase tracking-widest text-amber-400/70">{{ __('Ink draw-on') }}</span>
+            <span class="block text-2xs uppercase tracking-widest text-amber-400/70">{{ __('Ink draw-on') }}</span>
             <label class="flex items-center gap-2">
-                <span class="w-12 shrink-0 text-[10px] uppercase tracking-wide text-slate-500">{{ __('Speed') }}</span>
+                <span class="w-12 shrink-0 text-2xs uppercase tracking-wide text-slate-500">{{ __('Speed') }}</span>
                 <input type="range" min="2" max="20" step="0.5"
                        value="{{ $layer['draw_time'] ?? 7 }}"
                        wire:change="updateArtworkLayer({{ $aid }}, 'draw_time', $event.target.value)"
                        class="range range-xs flex-1" title="{{ __('Seconds for the full draw-on') }}" />
-                <span class="w-9 text-right font-mono text-[10px] text-slate-400">{{ rtrim(rtrim(number_format((float) ($layer['draw_time'] ?? 7), 1), '0'), '.') }}s</span>
+                <span class="w-9 text-right font-mono text-2xs text-slate-400">{{ rtrim(rtrim(number_format((float) ($layer['draw_time'] ?? 7), 1), '0'), '.') }}s</span>
             </label>
             <div class="flex items-center gap-2">
                 <select wire:change="updateArtworkLayer({{ $aid }}, 'ink_preset', $event.target.value)"

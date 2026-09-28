@@ -13,7 +13,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import { renderAnnotations, focusLabelLayout } from './map-annotations.js'
 import { placeLabelLayout, placeLabelPaint } from './map-place-label.js'
 import { mapTextProjector } from './map-text-projector.js'
-import { SATELLITE_SOURCE, DEM_SOURCE, RELIEF, PITCH } from './map-imagery.js'
+import { SATELLITE_SOURCE, SATELLITE_DETAIL_SOURCE, DETAIL_FADE_START, DETAIL_FADE_END, DEM_SOURCE, RELIEF, PITCH } from './map-imagery.js'
 import { boxView, openingView } from './map-view.js'
 import { itineraryTour } from './map-itinerary.js'
 import { cityPriority, cityTextSize, cityDotRadius } from './map-city-scale.js'
@@ -179,6 +179,10 @@ export function renderLessonMap (el, opts = {}) {
         // True coastline, for the faint shore guide over the imagery.
         coastline: { type: 'geojson', data: `${location.origin}/timemap/coastline.geojson` },
         satellite: bounded(SATELLITE_SOURCE),
+        // Close-range ground: Sentinel-2 at ~10 m/px against Blue Marble's ~500. Its layer's
+        // opacity is a zoom expression, so MapLibre requests nothing from EOX while a lesson stays
+        // at globe zoom — a map that never leans in costs exactly what it did before.
+        'satellite-detail': bounded(SATELLITE_DETAIL_SOURCE),
         // Height map behind the 3D ground.
         dem: bounded(DEM_SOURCE),
         // Teacher-authored period place labels (voyages) — filled via setLabels()/the `labels` opt.
@@ -192,6 +196,18 @@ export function renderLessonMap (el, opts = {}) {
         // `raster-fade-duration` is the only easing MapLibre gives a raster, and it is what stops a
         // tile popping in. 700ms reads as the photograph developing rather than snapping on.
         { id: 'satellite', type: 'raster', source: 'satellite', paint: { 'raster-fade-duration': 700 } },
+        // Sentinel-2 crossfades in OVER Blue Marble across one zoom level, rather than replacing it
+        // at a threshold: the two disagree (no bathymetry, no relief shading in Sentinel), and a
+        // hard swap reads as the earth changing colour instead of as detail arriving.
+        {
+          id: 'satellite-detail',
+          type: 'raster',
+          source: 'satellite-detail',
+          paint: {
+            'raster-fade-duration': 700,
+            'raster-opacity': ['interpolate', ['linear'], ['zoom'], DETAIL_FADE_START, 0, DETAIL_FADE_END, 1],
+          },
+        },
         {
           id: 'rivers', type: 'line', source: 'rivers', 'source-layer': 'rivers',
           paint: {
@@ -440,7 +456,7 @@ export function renderLessonMap (el, opts = {}) {
   // Paint the palette the moment the style is parsed, not at 'load' — 'load' also waits on every
   // source, and a slow (or failing) tileset would leave the map sitting in the raw default colours
   // with no satellite ground under a voyage. Idempotent, so the 'load' pass below still runs.
-  map.once('styledata', () => { paintLateLayers(); applyRelief(activeRelief) })
+  map.once('styledata', () => { paintLateLayers(); applyRelief(activeRelief); applyGlobe() })
 
   // Anything that wants to move the CAMERA has to wait for the style — MapLibre silently drops an
   // easeTo issued before it, which is a nasty failure mode because every timer still fires on
@@ -665,6 +681,120 @@ export function renderLessonMap (el, opts = {}) {
     paint('focus-label', 'text-halo-blur', 0.4)
     // Letterbox bars (map narrower than the stage) match the sea.
     try { el.style.backgroundColor = GROUND.water } catch (_) {}
+  }
+
+  /**
+   * The globe render, over the one ground there is.
+   *
+   * The sea lit as water, the terminator, the haze band at the limb, the cloud deck, and the sky
+   * bodies behind the planet. On the Time-Map this rides on a style called Earth, chosen from a
+   * palette. Here there is no palette to choose from: the five drawn atlases were removed and the
+   * single remaining ground is photography of the real planet, so the globe is simply what that
+   * ground looks like rather than one option among several.
+   *
+   * Loaded as its own chunk because it carries shaders and texture fields. That is worth keeping
+   * even now that it always runs — it stays out of the main bundle, so the wizard and every page
+   * that never renders a lesson map pay nothing for it.
+   *
+   * The date decides where the sun is, and therefore which half of the planet is in daylight — so a
+   * lesson set in 1600 is lit for 1600. Year alone is enough for the terminator to be somewhere
+   * defensible; it is not a claim about the hour of day, which no scene carries.
+   */
+  let globe = null
+  let globeLoading = false
+  let globeWaiting = false
+
+  /** Midsummer noon UTC of the scene's year — a defensible sun for a lesson that carries no hour. */
+  const globeDate = () => new Date(Date.UTC(Number.isFinite(year) ? year : 2000, 5, 21, 12))
+
+  /**
+   * The device profile, read from THE MAP'S OWN GL CONTEXT.
+   *
+   * Not a throwaway canvas: MAX_TEXTURE_SIZE is a property of the context that will actually hold
+   * the texture, and a second context can be granted different limits — or refused outright once a
+   * browser's WebGL context budget is spent, which would report "no WebGL" on a machine happily
+   * rendering the map behind it.
+   *
+   * webgl2 is asked for first because getContext returns null for a type the canvas was not created
+   * with, and MapLibre v5 takes webgl2 where it can. Reversing these two silently yields null on
+   * every modern browser, and a null context reads as the weakest possible device.
+   */
+  const readGlobeProfile = (quality) => {
+    let gl = null
+    try {
+      const canvas = map.getCanvas()
+      gl = canvas.getContext('webgl2') || canvas.getContext('webgl')
+    } catch (_) { /* a canvas that has gone away; the profile falls back below */ }
+    return quality.readCapabilities({ gl, navigator, window, document })
+  }
+
+  function applyGlobe () {
+    if (globe || globeLoading) return
+    // addLayer throws "Style is not done loading" outright rather than queueing, and this is called
+    // from the styledata pass that also runs before the async terrain and city layers arrive.
+    //
+    // A one-shot `once('idle')` was not enough: two identical runs disagreed about whether the
+    // layers arrived at all, because whether that single event lands after the style settles is a
+    // race with the async layers. So subscribe until it works. The guard above makes this
+    // idempotent, so an idle tick once the globe exists costs one comparison.
+    if (!map.isStyleLoaded()) {
+      if (!globeWaiting) {
+        globeWaiting = true
+        map.on('idle', () => applyGlobe())
+      }
+      return
+    }
+    globeLoading = true
+    Promise.all([import('./map-globe-layers.js'), import('./timemap/quality/index.js'), import('./timemap/quality/availability.js')])
+      .then(([{ addGlobeLayers }, quality, availability]) => {
+        globeLoading = false
+
+        /**
+         * WHAT THIS DEVICE CAN AFFORD, before a single texture is requested.
+         *
+         * The lesson map's surface budget is 1.5 MB of assets and 32 MB resident — a tenth of the
+         * Time-Map's, because this map appears inside a lesson a class is already waiting on, and
+         * on the hardware a school actually owns. The cloud atlas alone is 1.8 MB, over the 1 MB
+         * single-asset ceiling on its own, so this is not a theoretical trim: resolveQuality drops
+         * or halves layers until the plan fits, and `permitted` stops the rest being fetched.
+         *
+         * The profile and plan are published for the Globe layers panel, which greys out what is
+         * not on offer and says why. Written before addGlobeLayers so the panel can never read a
+         * plan that disagrees with the map it is looking at.
+         */
+        const profile = readGlobeProfile(quality)
+        const plan = quality.resolveQuality({ profile, surface: 'lessonMap', optIn: true })
+        window.__globeQuality = { profile, plan, surface: 'lessonMap' }
+        // A FUNCTION, not a table: the panel owns its own row keys and they change without this
+        // file knowing. Handing over the plan and letting Blade re-derive the rule would put a
+        // second copy of "what counts as a network problem" in an Alpine expression, where it is
+        // untestable and would drift from availability.test.js the first time either side moved.
+        window.__globeAvailability = (keys) => availability.layerAvailability({ plan, profile, keys })
+        window.dispatchEvent(new CustomEvent('globe-quality', { detail: window.__globeQuality }))
+
+        globe = addGlobeLayers(map, {
+          date: globeDate(),
+          permitted: availability.globeLayerPermitted(plan),
+          reduceMotion: window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true,
+          /**
+           * Everything from the city dots up is annotation and belongs above the planet; everything
+           * below them — imagery, land, coast, borders, the territory wash — is the planet's
+           * surface and belongs under the sea, exactly as on the Time-Map.
+           *
+           * This was missing once, and MapLibre's answer to a missing anchor is "put it on top". So
+           * the sea went over the writing and erased each name where it crossed water:
+           * Constantinople cut in half at the Bosphorus, Carthage stopping at the coast, Athens
+           * down to "Ath".
+           */
+          beforeId: 'city-dots',
+        })
+      })
+      .catch((e) => {
+        globeLoading = false
+        // Loudly: a silent failure here is a lesson that quietly renders as plain imagery, and
+        // plain imagery is close enough to right that nobody would report it.
+        console.error('[lesson-map] Earth layers failed to load — falling back to plain imagery', e)
+      })
   }
 
   /**

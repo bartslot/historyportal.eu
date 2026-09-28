@@ -1,21 +1,100 @@
 {
-  "version": "0.0.1",
-  "configurations": [
-    {
-      "//": "Attach-only (url, no command): connects to the `composer dev` server already on :8000 instead of racing it for the port. The port is NOT interchangeable, so autoPort must stay off \u2014 APP_URL is pinned to http://localhost:8000 and every asset('storage/...') URL the player loads is absolute against it, so a reassigned port would break lesson media and session cookies.",
-      "name": "serve",
-      "url": "http://localhost:8000",
-      "port": 8000
-    },
-    {
-      "//": "Fallback for when `composer dev` is not running (e.g. a long test run took it down). Same pinned port for the same reason as above: APP_URL and every asset() URL are absolute against :8000. PHP_INI_SCAN_DIR lifts PHP's 2 MB upload ceiling to the 8 MB the image picker offers — this machine loads no php.ini, so without it the compiled defaults apply. See build/php-ini/.",
-      "name": "serve-standalone",
-      "runtimeExecutable": "bash",
-      "runtimeArgs": [
-        "-c",
-        "PHP_INI_SCAN_DIR=$PWD/build/php-ini php artisan serve --host=127.0.0.1 --port=8000"
-      ],
-      "port": 8000
-    }
-  ]
+    "version": "0.0.1",
+    "configurations": [
+        {
+            "//": "Attach-only (url, no command): connects to the `composer dev` server already on :8000 instead of racing it for the port. The port is NOT interchangeable, so autoPort must stay off \u2014 APP_URL is pinned to http://localhost:8000 and every asset('storage/...') URL the player loads is absolute against it, so a reassigned port would break lesson media and session cookies.",
+            "name": "serve",
+            "url": "http://localhost:8000",
+            "port": 8000
+        },
+        {
+            "//": "Fallback for when `composer dev` is not running (e.g. a long test run took it down). Same pinned port for the same reason as above: APP_URL and every asset() URL are absolute against :8000. PHP_INI_SCAN_DIR lifts PHP's 2 MB upload ceiling to the 8 MB the image picker offers \u2014 this machine loads no php.ini, so without it the compiled defaults apply. See build/php-ini/.",
+            "name": "serve-standalone",
+            "runtimeExecutable": "bash",
+            "runtimeArgs": [
+                "-c",
+                "PHP_INI_SCAN_DIR=$PWD/build/php-ini php artisan serve --host=127.0.0.1 --port=8000"
+            ],
+            "port": 8000
+        },
+        {
+            "//": "The release candidate: polishing-1 + map-integration merged, for review before anything reaches main. Its own port because :8000 is the shared checkout and :8021 is the map-integration worktree \u2014 three trees, three ports, and a curl against the wrong one returns a confident 200 from somebody else's code.",
+            "name": "serve-release-candidate",
+            "runtimeExecutable": "php",
+            "runtimeArgs": [
+                "artisan",
+                "serve",
+                "--port=8030"
+            ],
+            "port": 8030
+        },
+        {
+            "//": "This worktree's own app server. NOT :8000 above \u2014 that belongs to whichever session is running `composer dev` in the shared checkout, and attaching there renders THAT tree's code while looking exactly like success. 8021 rather than 8010 because 8010 was already answering when this was set up; with eight sessions running, assume every obvious port is taken and check. Set APP_URL to match. Needs `serve-vite` below for assets.",
+            "name": "serve-worktree",
+            "runtimeExecutable": "php",
+            "runtimeArgs": [
+                "artisan",
+                "serve",
+                "--port=8021"
+            ],
+            "port": 8021
+        },
+        {
+            "//": "Vite for the worktree app server above, on a port clear of the shared checkout's :5173 and of the other sessions' harnesses. NB: it caches transforms hard \u2014 after editing a module that app.js imports, a reload can still serve the old one, and the symptom is a global that is `undefined` while the source plainly defines it. Restart it with --force rather than hunting the bug.",
+            "name": "serve-vite",
+            "runtimeExecutable": "npx",
+            "runtimeArgs": [
+                "vite",
+                "--port",
+                "5185",
+                "--strictPort"
+            ],
+            "port": 5185
+        },
+        {
+            "//": "The globe lighting measurement harness (resources/js/timemap/__harness__). Standalone Vite, nothing to do with the Laravel app \u2014 it serves one page plus public/, where the relief map and cloud fields live. On 5198 rather than 5199: the tile-pyramid harness below claimed 5199 first, and two harnesses on one port is a race that presents as a blank page.",
+            "name": "globe-harness",
+            "runtimeExecutable": "npx",
+            "runtimeArgs": [
+                "vite",
+                "--config",
+                "vite.harness.config.js"
+            ],
+            "port": 5198
+        },
+        {
+            "//": "Development only, for measuring the tile pyramid \u2014 see resources/js/timemap/tiles/__harness__. A bare Vite dev server on its own port, so it never races the app's :5173 that other sessions are using.",
+            "name": "tiled-lod-harness",
+            "runtimeExecutable": "npx",
+            "runtimeArgs": [
+                "vite",
+                "--port",
+                "5199",
+                "--strictPort",
+                "--host",
+                "127.0.0.1"
+            ],
+            "port": 5199
+        },
+        {
+            "//": "Standalone globe-layer harness: esbuild bundle plus the baked ocean fields, no Laravel involved. Exists because the ocean layer cannot be judged from a screenshot \u2014 it is measured with gl.readPixels from inside a render pass. Port 5183 keeps it clear of the two Vite harnesses above.",
+            "name": "ocean-harness",
+            "runtimeExecutable": "node",
+            "runtimeArgs": [
+                "harness/ocean/serve.mjs"
+            ],
+            "port": 5183
+        },
+        {
+            "name": "serve-quizzical-vaughan",
+            "runtimeExecutable": "php",
+            "runtimeArgs": [
+                "artisan",
+                "serve",
+                "--host=127.0.0.1",
+                "--port=8211"
+            ],
+            "port": 8211
+        }
+    ]
 }

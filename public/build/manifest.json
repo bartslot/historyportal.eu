@@ -1,31 +1,44 @@
 {
+  "../../../node_modules/three/build/three.module.js": {
+    "file": "assets/three.module-CpB-wl7P.js",
+    "name": "three.module",
+    "src": "../../../node_modules/three/build/three.module.js",
+    "isDynamicEntry": true
+  },
   "_GLTFLoader-Et3HGvr1.js": {
     "file": "assets/GLTFLoader-Et3HGvr1.js",
     "name": "GLTFLoader",
     "imports": [
-      "node_modules/three/build/three.module.js"
+      "../../../node_modules/three/build/three.module.js"
     ]
   },
-  "__commonjsHelpers-CqkleIqs.js": {
-    "file": "assets/_commonjsHelpers-CqkleIqs.js",
+  "__commonjsHelpers-DqutJMZx.js": {
+    "file": "assets/_commonjsHelpers-DqutJMZx.js",
     "name": "_commonjsHelpers"
   },
-  "_animations-gLnxhqbs.js": {
-    "file": "assets/animations-gLnxhqbs.js",
+  "_animations-Cu3PUxsB.js": {
+    "file": "assets/animations-Cu3PUxsB.js",
     "name": "animations",
     "imports": [
-      "_easing-CafrHVyY.js"
+      "_easing-ewk2GCDD.js"
     ]
   },
-  "_big-countdown-CbpssisK.js": {
-    "file": "assets/big-countdown-CbpssisK.js",
+  "_big-countdown-CX1Dvr_1.js": {
+    "file": "assets/big-countdown-CX1Dvr_1.js",
     "name": "big-countdown",
     "imports": [
-      "_easing-CafrHVyY.js"
+      "_easing-ewk2GCDD.js"
     ]
   },
-  "_easing-CafrHVyY.js": {
-    "file": "assets/easing-CafrHVyY.js",
+  "_border-sweep-DMLmipml.js": {
+    "file": "assets/border-sweep-DMLmipml.js",
+    "name": "border-sweep",
+    "imports": [
+      "_easing-ewk2GCDD.js"
+    ]
+  },
+  "_easing-ewk2GCDD.js": {
+    "file": "assets/easing-ewk2GCDD.js",
     "name": "easing"
   },
   "_index-DDlvirwQ.js": {
@@ -36,36 +49,38 @@
     "file": "assets/layer-filters-Dlw3KxFY.js",
     "name": "layer-filters"
   },
-  "_map-imagery-DNVN2dqC.css": {
-    "file": "assets/map-imagery-DNVN2dqC.css",
-    "src": "_map-imagery-DNVN2dqC.css"
+  "_map-globe-layers-pNfRnKLw.js": {
+    "file": "assets/map-globe-layers-pNfRnKLw.js",
+    "name": "map-globe-layers",
+    "isDynamicEntry": true,
+    "imports": [
+      "_map-imagery-CNBQh7cm.js",
+      "_tuner-CRmbf7-R.js"
+    ]
   },
-  "_map-imagery-DjHM75-k.js": {
-    "file": "assets/map-imagery-DjHM75-k.js",
+  "_map-imagery-CNBQh7cm.js": {
+    "file": "assets/map-imagery-CNBQh7cm.js",
     "name": "map-imagery",
     "imports": [
-      "__commonjsHelpers-CqkleIqs.js"
+      "__commonjsHelpers-DqutJMZx.js"
     ],
     "css": [
       "assets/map-imagery-DNVN2dqC.css"
     ]
   },
-  "_preload-helper-DIdkKO6w.js": {
-    "file": "assets/preload-helper-DIdkKO6w.js",
-    "name": "preload-helper"
+  "_map-imagery-DNVN2dqC.css": {
+    "file": "assets/map-imagery-DNVN2dqC.css",
+    "src": "_map-imagery-DNVN2dqC.css"
   },
-  "_voyages-BiVvqUxt.js": {
-    "file": "assets/voyages-BiVvqUxt.js",
-    "name": "voyages"
-  },
-  "node_modules/three/build/three.module.js": {
-    "file": "assets/three.module-CpB-wl7P.js",
-    "name": "three.module",
-    "src": "node_modules/three/build/three.module.js",
-    "isDynamicEntry": true
+  "_tuner-CRmbf7-R.js": {
+    "file": "assets/tuner-CRmbf7-R.js",
+    "name": "tuner",
+    "imports": [
+      "_easing-ewk2GCDD.js"
+    ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-wheI5wBg.css",
+    "file": "assets/app-BpXv1_-x.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -74,32 +89,33 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-CTZEyt4V.js",
+    "file": "assets/app-BcNxx2dl.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
     "imports": [
-      "_preload-helper-DIdkKO6w.js",
+      "__commonjsHelpers-DqutJMZx.js",
       "_index-DDlvirwQ.js",
-      "__commonjsHelpers-CqkleIqs.js",
-      "_animations-gLnxhqbs.js",
-      "_easing-CafrHVyY.js"
+      "_easing-ewk2GCDD.js",
+      "_animations-Cu3PUxsB.js",
+      "_tuner-CRmbf7-R.js"
     ],
     "dynamicImports": [
       "resources/js/scene/index.js",
-      "node_modules/three/build/three.module.js"
+      "../../../node_modules/three/build/three.module.js"
     ],
     "css": [
       "assets/app-AEfMPvIN.css"
     ]
   },
   "resources/js/argument-map.js": {
-    "file": "assets/argument-map-B0aFImoa.js",
+    "file": "assets/argument-map-TGsJ1wec.js",
     "name": "argument-map",
     "src": "resources/js/argument-map.js",
     "isEntry": true,
     "imports": [
-      "_index-DDlvirwQ.js"
+      "_index-DDlvirwQ.js",
+      "_easing-ewk2GCDD.js"
     ]
   },
   "resources/js/avatar-3d.js": {
@@ -108,40 +124,44 @@
     "src": "resources/js/avatar-3d.js",
     "isDynamicEntry": true,
     "imports": [
-      "node_modules/three/build/three.module.js",
+      "../../../node_modules/three/build/three.module.js",
       "_GLTFLoader-Et3HGvr1.js"
     ]
   },
   "resources/js/gallery-scene.js": {
-    "file": "assets/gallery-scene-CejKUhtD.js",
+    "file": "assets/gallery-scene-wVRElogI.js",
     "name": "gallery-scene",
     "src": "resources/js/gallery-scene.js",
     "isEntry": true
   },
   "resources/js/lesson-map.js": {
-    "file": "assets/lesson-map-8WjyyHBm.js",
+    "file": "assets/lesson-map-CFfhVUip.js",
     "name": "lesson-map",
     "src": "resources/js/lesson-map.js",
     "isEntry": true,
     "isDynamicEntry": true,
     "imports": [
-      "_map-imagery-DjHM75-k.js",
-      "_easing-CafrHVyY.js",
-      "__commonjsHelpers-CqkleIqs.js"
+      "__commonjsHelpers-DqutJMZx.js",
+      "_map-imagery-CNBQh7cm.js",
+      "_easing-ewk2GCDD.js"
+    ],
+    "dynamicImports": [
+      "_map-globe-layers-pNfRnKLw.js",
+      "resources/js/timemap/quality/index.js",
+      "resources/js/timemap/quality/availability.js"
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-CYv55iu4.js",
+    "file": "assets/lesson-player-yfcHjb8G.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
     "imports": [
-      "_preload-helper-DIdkKO6w.js",
-      "__commonjsHelpers-CqkleIqs.js",
+      "__commonjsHelpers-DqutJMZx.js",
       "resources/js/gallery-scene.js",
-      "_big-countdown-CbpssisK.js",
-      "_animations-gLnxhqbs.js",
-      "_easing-CafrHVyY.js"
+      "_big-countdown-CX1Dvr_1.js",
+      "_animations-Cu3PUxsB.js",
+      "_easing-ewk2GCDD.js"
     ],
     "dynamicImports": [
       "resources/js/scene/StoryGameEngine.js",
@@ -155,14 +175,14 @@
     ]
   },
   "resources/js/scene/ArtworkOverlay.js": {
-    "file": "assets/ArtworkOverlay-viDWT9lv.js",
+    "file": "assets/ArtworkOverlay-DV9Brpnk.js",
     "name": "ArtworkOverlay",
     "src": "resources/js/scene/ArtworkOverlay.js",
     "isDynamicEntry": true,
     "imports": [
-      "_animations-gLnxhqbs.js",
+      "_animations-Cu3PUxsB.js",
       "_layer-filters-Dlw3KxFY.js",
-      "_easing-CafrHVyY.js"
+      "_easing-ewk2GCDD.js"
     ]
   },
   "resources/js/scene/InkDrawEngine.js": {
@@ -181,29 +201,29 @@
     ]
   },
   "resources/js/scene/QuizOverlay.js": {
-    "file": "assets/QuizOverlay-laez5uNT.js",
+    "file": "assets/QuizOverlay-Cu-eXtii.js",
     "name": "QuizOverlay",
     "src": "resources/js/scene/QuizOverlay.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-CbpssisK.js",
-      "_easing-CafrHVyY.js"
+      "_big-countdown-CX1Dvr_1.js",
+      "_easing-ewk2GCDD.js"
     ]
   },
   "resources/js/scene/StoryGameEngine.js": {
-    "file": "assets/StoryGameEngine-B0M1DXDA.js",
+    "file": "assets/StoryGameEngine-KCdYyJ0s.js",
     "name": "StoryGameEngine",
     "src": "resources/js/scene/StoryGameEngine.js",
     "isDynamicEntry": true
   },
   "resources/js/scene/TextOverlayLayer.js": {
-    "file": "assets/TextOverlayLayer-CXRRVaJL.js",
+    "file": "assets/TextOverlayLayer-B2E8zFne.js",
     "name": "TextOverlayLayer",
     "src": "resources/js/scene/TextOverlayLayer.js",
     "isDynamicEntry": true
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-CUcvYnzN.js",
+    "file": "assets/index-BlgcJZjt.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
@@ -211,12 +231,12 @@
       "resources/js/scene/QuizOverlay.js",
       "resources/js/scene/TextOverlayLayer.js",
       "resources/js/scene/ArtworkOverlay.js",
-      "_preload-helper-DIdkKO6w.js",
+      "__commonjsHelpers-DqutJMZx.js",
       "resources/js/avatar-3d.js",
-      "_big-countdown-CbpssisK.js",
-      "node_modules/three/build/three.module.js",
-      "_animations-gLnxhqbs.js",
-      "_easing-CafrHVyY.js",
+      "_big-countdown-CX1Dvr_1.js",
+      "../../../node_modules/three/build/three.module.js",
+      "_animations-Cu3PUxsB.js",
+      "_easing-ewk2GCDD.js",
       "_layer-filters-Dlw3KxFY.js",
       "_GLTFLoader-Et3HGvr1.js"
     ],
@@ -227,33 +247,72 @@
     ]
   },
   "resources/js/timemap/index.js": {
-    "file": "assets/index-DpvoozC2.js",
+    "file": "assets/index-D4l-xZ7m.js",
     "name": "index",
     "src": "resources/js/timemap/index.js",
     "isEntry": true,
     "imports": [
-      "_preload-helper-DIdkKO6w.js",
-      "_map-imagery-DjHM75-k.js",
-      "_voyages-BiVvqUxt.js",
-      "__commonjsHelpers-CqkleIqs.js"
+      "__commonjsHelpers-DqutJMZx.js",
+      "_map-imagery-CNBQh7cm.js",
+      "_easing-ewk2GCDD.js",
+      "_border-sweep-DMLmipml.js",
+      "_map-globe-layers-pNfRnKLw.js",
+      "_tuner-CRmbf7-R.js"
     ],
     "dynamicImports": [
       "resources/js/timemap/voyage-ships.js"
     ]
   },
+  "resources/js/timemap/quality/availability.js": {
+    "file": "assets/availability-CRYs5nTZ.js",
+    "name": "availability",
+    "src": "resources/js/timemap/quality/availability.js",
+    "isDynamicEntry": true
+  },
+  "resources/js/timemap/quality/index.js": {
+    "file": "assets/index-CGDBY-jT.js",
+    "name": "index",
+    "src": "resources/js/timemap/quality/index.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "__commonjsHelpers-DqutJMZx.js"
+    ],
+    "dynamicImports": [
+      "resources/js/timemap/quality/video-fallback.js"
+    ]
+  },
+  "resources/js/timemap/quality/video-fallback.js": {
+    "file": "assets/video-fallback-CGPrlFhv.js",
+    "name": "video-fallback",
+    "src": "resources/js/timemap/quality/video-fallback.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "__commonjsHelpers-DqutJMZx.js"
+    ],
+    "dynamicImports": [
+      "resources/js/timemap/quality/video-unpack.js"
+    ]
+  },
+  "resources/js/timemap/quality/video-unpack.js": {
+    "file": "assets/video-unpack-DxgEhvaQ.js",
+    "name": "video-unpack",
+    "src": "resources/js/timemap/quality/video-unpack.js",
+    "isDynamicEntry": true
+  },
   "resources/js/timemap/voyage-ships.js": {
-    "file": "assets/voyage-ships-DNXMo4kO.js",
+    "file": "assets/voyage-ships-BjJYo6Cm.js",
     "name": "voyage-ships",
     "src": "resources/js/timemap/voyage-ships.js",
     "isDynamicEntry": true,
     "imports": [
-      "node_modules/three/build/three.module.js",
+      "../../../node_modules/three/build/three.module.js",
       "_GLTFLoader-Et3HGvr1.js",
-      "_voyages-BiVvqUxt.js"
+      "_border-sweep-DMLmipml.js",
+      "_easing-ewk2GCDD.js"
     ]
   },
   "resources/js/voyage-tour.js": {
-    "file": "assets/voyage-tour-D4dP5MbV.js",
+    "file": "assets/voyage-tour-CPKQchKP.js",
     "name": "voyage-tour",
     "src": "resources/js/voyage-tour.js",
     "isEntry": true,
@@ -261,12 +320,12 @@
     "imports": [
       "resources/js/lesson-map.js",
       "resources/js/gallery-scene.js",
-      "_easing-CafrHVyY.js",
-      "_voyages-BiVvqUxt.js",
+      "_easing-ewk2GCDD.js",
+      "_border-sweep-DMLmipml.js",
       "resources/js/timemap/voyage-ships.js",
-      "__commonjsHelpers-CqkleIqs.js",
-      "_map-imagery-DjHM75-k.js",
-      "node_modules/three/build/three.module.js",
+      "__commonjsHelpers-DqutJMZx.js",
+      "_map-imagery-CNBQh7cm.js",
+      "../../../node_modules/three/build/three.module.js",
       "_GLTFLoader-Et3HGvr1.js"
     ]
   }
