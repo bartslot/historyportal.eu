@@ -22,7 +22,7 @@
     @if ($isPanel)
         <div>
             <h3 class="font-semibold text-amber-300">{{ __('Background panel') }}</h3>
-            <p class="mt-1 text-[11px] leading-tight text-slate-500">{{ __('A readable backing panel behind the scene text.') }}</p>
+            <p class="mt-1 text-2xs leading-tight text-slate-500">{{ __('A readable backing panel behind the scene text.') }}</p>
         </div>
 
         <label class="form-control">
@@ -52,7 +52,7 @@
     @else
         <div>
             <h3 class="font-semibold text-amber-300">{{ __('Text') }}</h3>
-            <p class="mt-1 text-[11px] leading-tight text-slate-500">{{ __('Edit content directly on the canvas. Adjust its appearance here.') }}</p>
+            <p class="mt-1 text-2xs leading-tight text-slate-500">{{ __('Edit content directly on the canvas. Adjust its appearance here.') }}</p>
         </div>
 
         <div class="grid grid-cols-2 gap-2">

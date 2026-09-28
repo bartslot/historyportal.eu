@@ -69,7 +69,7 @@
 <div class="space-y-3" @if ($isLayer) x-data="{ build: 'in' }" @endif>
     @if ($isLayer)
         {{-- Build In / Build Out, the two halves of a layer's life on the scene. --}}
-        <div role="tablist" class="flex rounded-lg bg-slate-900/70 p-0.5 text-[11px]">
+        <div role="tablist" class="flex rounded-lg bg-slate-900/70 p-0.5 text-2xs">
             @foreach (['in' => __('In'), 'out' => __('Out')] as $key => $label)
                 <button type="button" role="tab" @click="build = '{{ $key }}'"
                         :class="build === '{{ $key }}'
@@ -80,7 +80,7 @@
         </div>
     @endif
 
-    <p class="text-[11px] leading-tight text-slate-500">
+    <p class="text-2xs leading-tight text-slate-500">
         @if ($isLayer)
             <span x-show="build === 'in'">{{ __('How this layer arrives when the scene starts.') }}</span>
             <span x-show="build === 'out'" x-cloak>{{ __('How this layer leaves at the end of the scene.') }}</span>
@@ -111,7 +111,7 @@
                                  on-change="setOverviewAnim('duration', $event.target.value)" />
 
                 <label class="flex items-center justify-between gap-2">
-                    <span class="text-[11px] text-slate-300">{{ __('Number the stops as it goes') }}</span>
+                    <span class="text-2xs text-slate-300">{{ __('Number the stops as it goes') }}</span>
                     <input type="checkbox" @checked($routeAnim['stops'])
                            wire:change="setOverviewAnim('stops', $event.target.checked)"
                            class="toggle toggle-xs toggle-warning" />
@@ -207,7 +207,7 @@
                         {{-- The entity: a dot running the curve on the shared clock. --}}
                         <circle :cx="dot(opt.key).x" :cy="dot(opt.key).y" r="3.2" fill="currentColor" />
                     </svg>
-                    <span class="text-[9px] leading-none" x-text="opt.label"></span>
+                    <span class="text-2xs leading-none" x-text="opt.label"></span>
                 </button>
             </template>
         </div>

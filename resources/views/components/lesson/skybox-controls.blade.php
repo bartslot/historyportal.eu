@@ -146,13 +146,13 @@
                          class="h-14 w-24 shrink-0 rounded object-cover ring-1 ring-slate-700"
                          alt="{{ __('Current scene background') }}" />
                 @else
-                    <div class="flex h-14 w-24 shrink-0 items-center justify-center rounded bg-slate-800 text-[9px] font-medium uppercase tracking-wider text-slate-500 ring-1 ring-dashed ring-slate-600">
+                    <div class="flex h-14 w-24 shrink-0 items-center justify-center rounded bg-slate-800 text-2xs font-medium uppercase tracking-wider text-slate-500 ring-1 ring-dashed ring-slate-600">
                         {{ __('none') }}
                     </div>
                 @endif
                 <div class="min-w-0 leading-tight">
                     <span class="block text-2xs font-semibold uppercase tracking-wider text-slate-400">{{ __('Current image') }}</span>
-                    <span class="block truncate text-[11px] text-slate-500">{{ $backgroundImageUrl ? __('Scene background') : __('No background selected') }}</span>
+                    <span class="block truncate text-2xs text-slate-500">{{ $backgroundImageUrl ? __('Scene background') : __('No background selected') }}</span>
                 </div>
             </div>
 
@@ -211,13 +211,13 @@
 
             {{-- AI generated — Regenerate / Edit prompt (Figma item 5) --}}
             <div x-show="imgSrc === 'ai'" x-cloak class="space-y-2">
-                <span class="block text-[11px] font-medium text-slate-300">{{ __('AI Generated image') }}</span>
+                <span class="block text-2xs font-medium text-slate-300">{{ __('AI Generated image') }}</span>
                 <div class="flex flex-col gap-1.5">
                     <button type="button"
                             wire:click="regenerate({{ $scene->id }}, 'image')"
                             wire:loading.attr="disabled" wire:target="regenerate"
                             @disabled($isBusy)
-                            class="inline-flex items-center gap-1.5 text-[12px] text-slate-300 transition hover:text-base-content disabled:opacity-50">
+                            class="inline-flex items-center gap-1.5 text-xs text-slate-300 transition hover:text-base-content disabled:opacity-50">
                         @if ($isGenerating)
                             <x-icons.spinner class="h-3.5 w-3.5 animate-spin" /><span>{{ __('Generating…') }}</span>
                         @else
@@ -225,7 +225,7 @@
                         @endif
                     </button>
                     <button type="button" @click="promptOpen = !promptOpen"
-                            class="inline-flex items-center gap-1.5 text-[12px] text-slate-300 transition hover:text-base-content">
+                            class="inline-flex items-center gap-1.5 text-xs text-slate-300 transition hover:text-base-content">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-3.5 w-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" /></svg>
                         <span>{{ __('Edit prompt') }}</span>
                     </button>
@@ -262,7 +262,7 @@
             <div x-show="imgSrc === 'url'" x-cloak class="space-y-1.5">
                 <button type="button"
                         @click="$wire.call('setSlideshowMode', 'drawing')"
-                        class="inline-flex items-center gap-1.5 text-[12px] text-slate-300 transition hover:text-base-content">
+                        class="inline-flex items-center gap-1.5 text-xs text-slate-300 transition hover:text-base-content">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-3.5 w-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" /></svg>
                     <span>{{ __('Draw this background') }}</span>
                 </button>
@@ -289,7 +289,7 @@
                     <div class="aspect-video overflow-hidden rounded-lg ring-1 ring-slate-700">
                         <iframe src="{{ $bgEmbed['src'] }}" class="h-full w-full" style="border:0" allow="autoplay; fullscreen; xr-spatial-tracking" allowfullscreen></iframe>
                     </div>
-                    <button type="button" wire:click="clearBgEmbed" class="text-[11px] text-error/80 underline hover:text-error">{{ __('Remove 3D background') }}</button>
+                    <button type="button" wire:click="clearBgEmbed" class="text-2xs text-error/80 underline hover:text-error">{{ __('Remove 3D background') }}</button>
                 @endif
             </div>
         </div>
@@ -495,7 +495,7 @@
                         <input type="range" min="-3" max="3" step="0.01" x-model.number="charYOffset"
                                @input="emitCharY()" class="range range-panel" />
                     </span>
-                    <button @click="charYOffset = 0; emitCharY()" class="text-[9px] text-slate-500 hover:text-slate-300 mt-1">reset</button>
+                    <button @click="charYOffset = 0; emitCharY()" class="text-2xs text-slate-500 hover:text-slate-300 mt-1">reset</button>
                 </div>
                 <div>
                     <div class="flex items-center justify-between mb-1">
@@ -506,7 +506,7 @@
                         <input type="range" min="0.1" max="5" step="0.01" x-model.number="worldScale"
                                @input="emitWorldScale()" class="range range-panel" />
                     </span>
-                    <button @click="worldScale = 1; emitWorldScale()" class="text-[9px] text-slate-500 hover:text-slate-300 mt-1">reset</button>
+                    <button @click="worldScale = 1; emitWorldScale()" class="text-2xs text-slate-500 hover:text-slate-300 mt-1">reset</button>
                 </div>
                 <div>
                     <div class="flex items-center justify-between mb-1">
@@ -517,7 +517,7 @@
                         <input type="range" min="0.1" max="3" step="0.01" x-model.number="charScale"
                                @input="emitCharScale()" class="range range-panel" />
                     </span>
-                    <button @click="charScale = 1; emitCharScale()" class="text-[9px] text-slate-500 hover:text-slate-300 mt-1">reset</button>
+                    <button @click="charScale = 1; emitCharScale()" class="text-2xs text-slate-500 hover:text-slate-300 mt-1">reset</button>
                 </div>
                 <button @click="dirty && save()"
                         :disabled="!dirty"

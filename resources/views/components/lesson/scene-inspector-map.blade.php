@@ -68,7 +68,7 @@
                             @if (filled($c->historical_name))
                                 <span class="truncate text-sm text-slate-200">
                                     <span class="font-semibold">{{ $c->historical_name }}</span>
-                                    <span class="text-[11px] text-slate-400">({{ $c->name }})</span>
+                                    <span class="text-2xs text-slate-400">({{ $c->name }})</span>
                                 </span>
                             @else
                                 <span class="truncate text-sm text-slate-200">{{ $c->name }}</span>
@@ -83,7 +83,7 @@
 
         <button type="button"
                 onclick="window.dispatchEvent(new CustomEvent('lessonmap:add-focus'))"
-                class="mt-1 text-[11px] text-sky-300 underline hover:text-sky-200">or drop a pin on the map</button>
+                class="mt-1 text-2xs text-sky-300 underline hover:text-sky-200">or drop a pin on the map</button>
 
         @php $annotations = $scene->config['annotations'] ?? []; @endphp
         @if (count($annotations))
@@ -127,7 +127,7 @@
                     <p class="text-2xs text-slate-500">{{ $qid }} · red boundary, fit at the chosen year</p>
                 </div>
                 <button type="button" wire:click="unlinkTerritory"
-                        class="shrink-0 text-[11px] text-error/80 underline hover:text-error">Change</button>
+                        class="shrink-0 text-2xs text-error/80 underline hover:text-error">Change</button>
             </div>
         @else
             <input type="search" wire:model.live.debounce.400ms="territoryQuery"

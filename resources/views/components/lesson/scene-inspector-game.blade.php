@@ -50,14 +50,14 @@
         <div class="space-y-3 border-t border-white/10 pt-3">
             <div class="flex items-center justify-between">
                 <p class="text-xs uppercase tracking-wider text-slate-400">Quiz questions</p>
-                <span class="text-[11px] text-slate-500">{{ count($quizDraft) }} total</span>
+                <span class="text-2xs text-slate-500">{{ count($quizDraft) }} total</span>
             </div>
 
             {{-- Difficulty (1-3 stars) + regenerate-all at that level. Difficulty applies to
                  every AI generation: per-question sparkles and the full regenerate. --}}
             <div class="flex flex-wrap items-center justify-between gap-2">
                 <div class="flex items-center gap-1.5">
-                    <span class="text-[11px] text-slate-400">{{ __('Difficulty') }}</span>
+                    <span class="text-2xs text-slate-400">{{ __('Difficulty') }}</span>
                     @foreach ([1 => __('Easy'), 2 => __('Medium'), 3 => __('Hard')] as $level => $label)
                         <button type="button" wire:click="setQuizDifficulty({{ $level }})"
                                 class="transition {{ $quizDifficulty >= $level ? 'text-amber-400 hover:text-amber-300' : 'text-slate-600 hover:text-slate-400' }}"
@@ -66,16 +66,16 @@
                             <x-icons.star />
                         </button>
                     @endforeach
-                    <span class="text-[11px] text-slate-500 ml-1">{{ [1 => __('Easy'), 2 => __('Medium'), 3 => __('Hard')][$quizDifficulty] ?? __('Medium') }}</span>
+                    <span class="text-2xs text-slate-500 ml-1">{{ [1 => __('Easy'), 2 => __('Medium'), 3 => __('Hard')][$quizDifficulty] ?? __('Medium') }}</span>
                 </div>
                 <div class="flex items-center gap-1.5">
-                    <span class="text-[11px] text-slate-400">{{ __('Scope') }}</span>
+                    <span class="text-2xs text-slate-400">{{ __('Scope') }}</span>
                     <x-ui.segmented panel name="quiz-scope-{{ $scene->id }}" :value="$quizScope"
                                     :options="[['taught', __('Taught so far')], ['full', __('Whole story')]]"
                                     on-change="$wire.call('setQuizScope', $event.target.value)" />
                 </div>
                 <div class="flex items-center gap-1.5">
-                    <span class="text-[11px] text-slate-400">{{ __('Shuffle') }}</span>
+                    <span class="text-2xs text-slate-400">{{ __('Shuffle') }}</span>
                     <select wire:change="setQuizShuffle($event.target.value)" class="select select-xs select-bordered bg-slate-900">
                         <option value="per_player" @selected($quizShuffle === 'per_player')>{{ __('Per player') }}</option>
                         <option value="once" @selected($quizShuffle === 'once')>{{ __('Same for class (digibord/paper)') }}</option>
@@ -111,7 +111,7 @@
                      wire:key="quiz-q-{{ $i }}">
                     <div class="flex items-center justify-between gap-2">
                         <span class="flex items-center gap-2">
-                            <span class="text-[11px] font-semibold text-base-content/85">{{ __('Question') }} {{ $i + 1 }}</span>
+                            <span class="text-2xs font-semibold text-base-content/85">{{ __('Question') }} {{ $i + 1 }}</span>
                             @if (! empty($q['asks_ahead']))
                                 <span class="badge badge-xs badge-warning badge-outline gap-1"
                                       title="{{ __('Tests material that comes later in the story — students will be guessing (that\'s the point of a prior-knowledge check).') }}">
@@ -120,7 +120,7 @@
                             @endif
                         </span>
                         <button type="button" wire:click="removeQuizQuestion({{ $i }})"
-                                class="text-error/80 hover:text-error text-[11px] underline">{{ __('Remove') }}</button>
+                                class="text-error/80 hover:text-error text-2xs underline">{{ __('Remove') }}</button>
                     </div>
 
                     {{-- Question + AI-generate: drafts the question WITH its linked correct answer
@@ -161,7 +161,7 @@
                             <div class="flex items-center gap-1.5" wire:key="quiz-q-{{ $i }}-opt-{{ $oi }}">
                                 <span class="quiz-drag-handle cursor-grab active:cursor-grabbing text-slate-500 hover:text-slate-300 shrink-0"
                                       title="{{ __('Drag to reorder') }}"><x-icons.reorder /></span>
-                                <span class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[11px] font-bold text-white"
+                                <span class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-2xs font-bold text-white"
                                       style="background-color: {{ $palette[$oi] }}">{{ $letter }}</span>
 
                                 @if ($isCorrect)
@@ -193,7 +193,7 @@
                     </div>
 
                     @if (! empty($quizErrors[$i]))
-                        <ul class="text-[11px] text-error/80 list-disc list-inside space-y-0.5">
+                        <ul class="text-2xs text-error/80 list-disc list-inside space-y-0.5">
                             @foreach ($quizErrors[$i] as $err)<li>{{ $err }}</li>@endforeach
                         </ul>
                     @endif
@@ -207,12 +207,12 @@
                 <button type="button" wire:click="addQuizQuestion" class="btn btn-xs btn-outline">+ Add question</button>
                 {{-- Edits autosave — no manual save button. --}}
                 <span wire:loading wire:target="autosaveQuiz, updatedQuizDraft, removeQuizQuestion, moveQuizOption"
-                      class="text-[11px] text-slate-400 inline-flex items-center gap-1">
+                      class="text-2xs text-slate-400 inline-flex items-center gap-1">
                     <span class="loading loading-spinner loading-xs"></span> {{ __('Saving…') }}
                 </span>
                 @if ($quizSaved)
                     <span wire:loading.remove wire:target="autosaveQuiz, updatedQuizDraft"
-                          class="text-[11px] text-success">✓ {{ __('Saved automatically') }}</span>
+                          class="text-2xs text-success">✓ {{ __('Saved automatically') }}</span>
                 @endif
             </div>
         </div>
