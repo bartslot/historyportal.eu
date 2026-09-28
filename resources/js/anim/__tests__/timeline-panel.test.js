@@ -323,3 +323,31 @@ describe('Delete removes the selected keys, and only when nobody is typing', () 
     expect(p.isDeleteKey(key(document.body))).toBe(false)
   })
 })
+
+describe('the canvas and the timeline agree on which layer is active', () => {
+  it('maps a canvas selection id onto its timeline row', () => {
+    const p = panel()
+    p.objects = [{ target: 'art:231', kind: 'art' }, { target: 'text:txt_ab', kind: 'text' }, { target: 'rect:r1', kind: 'rect' }]
+    expect(p.targetFromObjectId('art_231')).toBe('art:231')
+    expect(p.targetFromObjectId('txt_ab')).toBe('text:txt_ab')
+    expect(p.targetFromObjectId('r1')).toBe('rect:r1')
+    expect(p.targetFromObjectId('')).toBeNull()        // background: nothing active
+  })
+
+  it('a row name selects the layer on the canvas AND its keys; a canvas click selects no keys', () => {
+    const select = vi.fn()
+    window.__lessonTextLayer.select = select
+    const p = panel([{ target: TEXT, property: 'x', keyframes: [{ time: 0, value: 1 }, { time: 2, value: 3 }] }])
+    p.objects = [{ target: TEXT, kind: 'text' }]
+    p.$nextTick = () => {}
+    p.$el = { querySelectorAll: () => [] }
+
+    p.onObjectSelected('1')
+    expect(p.activeTarget).toBe(TEXT)
+    expect(p.selected).toEqual([])
+
+    p.selectObject(TEXT)
+    expect(select).toHaveBeenCalledWith('1')
+    expect(p.selected).toEqual(['text:1|x|0', 'text:1|x|2'])
+  })
+})

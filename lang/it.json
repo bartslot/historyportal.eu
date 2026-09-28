@@ -1472,5 +1472,8 @@
     "Collapse all": "Comprimi tutto",
     "Expand all": "Espandi tutto",
     "Loop": "Ripeti",
-    "Looping": "In ripetizione"
+    "Looping": "In ripetizione",
+    "Collapse": "Comprimi",
+    "Expand": "Espandi",
+    "Custom bezier": "Bézier personalizzata"
 }

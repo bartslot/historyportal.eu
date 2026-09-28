@@ -15,6 +15,7 @@ import { propertiesFor, sampleFrame, kindOfTarget } from './properties.js'
 import { wordSpans, snapTime, wordAt } from './narration-clock.js'
 import { textObjects, artObjects, readObjectProperty, writeObjectProperty, setObjectHidden } from './scene-objects.js'
 import { isPlayPauseKey, isTypingTarget } from '../ui/keyboard.js'
+import { EASE, parseBezier, formatBezier } from '../easing.js'
 import {
   fitZoom, timeAtX, toleranceSeconds, tickStep, ticksFor, formatTime,
   DRAG_THRESHOLD_PX, LANE_PAD_PX, zoomFromSlider, sliderFromZoom,
@@ -25,6 +26,24 @@ const EASING_PRESETS = [
   'linear', 'easeInCubic', 'easeOutCubic', 'easeInOutCubic',
   'easeInBack', 'easeOutBack', 'easeInOutBack', 'hold',
 ]
+
+/**
+ * The handles a preset starts the Custom bezier editor from. Where easing.js already states the
+ * curve as CSS it is used verbatim; the back curves are the standard CSS approximations.
+ */
+const PRESET_BEZIER = {
+  linear: [0, 0, 1, 1],
+  hold: [0, 0, 1, 1],
+  easeInCubic: parseBezier(EASE.exit),
+  easeOutCubic: parseBezier(EASE.enter),
+  easeInOutCubic: parseBezier(EASE.move),
+  easeInBack: [0.6, -0.28, 0.735, 0.045],
+  easeOutBack: [0.175, 0.885, 0.32, 1.275],
+  easeInOutBack: [0.68, -0.55, 0.265, 1.55],
+}
+
+/** The editor's plot, in SVG units: 0..1 maps onto a 128-unit square, with room for overshoot. */
+const PLOT = { left: 12, size: 128, zeroY: 168, minV: -0.3, maxV: 1.3 }
 
 /** Wheel pixels to zoom factor for Cmd/Ctrl+wheel and trackpad pinch. */
 const WHEEL_ZOOM_RATE = 0.01
@@ -504,6 +523,7 @@ export const animationTimeline = (config = {}) => ({
     const memory = dragMemory.get(this.drag.el)
     if (!memory) return
 
+    if (memory.kind === 'bezier') return this.dragHandle(memory, event)
     if (!memory.moved && Math.abs(event.clientX - memory.startX) < DRAG_THRESHOLD_PX
         && Math.abs(event.clientY - (memory.startY ?? event.clientY)) < DRAG_THRESHOLD_PX) return
     if (!memory.moved) {
@@ -520,7 +540,7 @@ export const animationTimeline = (config = {}) => ({
   onPointerUp () {
     if (this.drag) {
       const memory = dragMemory.get(this.drag.el)
-      if (memory?.kind === 'key' && memory.moved) this.save()
+      if ((memory?.kind === 'key' && memory.moved) || memory?.kind === 'bezier') this.save()
       // A click on a key that was already part of a selection narrows the selection to it; a
       // Shift+click on a selected key takes it out. Both wait for the release, because the same
       // press might have been the start of dragging the whole selection.
@@ -534,12 +554,13 @@ export const animationTimeline = (config = {}) => ({
 
   /** Esc cancels a drag in flight, and otherwise clears the selection. */
   onEscape () {
-    if (this.easingMenu) { this.closeEasing(); return }
+    if (this.easingMenu && !this.drag) { this.closeEasing(); return }
     if (!this.drag) { if (this.transportHasTheKeyboard) this.selected = []; return }
     const memory = dragMemory.get(this.drag.el)
     if (memory?.kind === 'scrub') this.seek(memory.startTime)
     if (memory?.kind === 'key') { this.tracks = memory.baseTracks; this.selected = memory.baseSelected; this.applyFrame() }
     if (memory?.kind === 'marquee') this.selected = memory.base
+    if (memory?.kind === 'bezier') { this.bezierDraft = memory.before; this.setSegmentEasing(formatBezier(memory.before)) }
     dragMemory.delete(this.drag.el)
     this.drag = null
     this.marquee = null
@@ -834,6 +855,48 @@ export const animationTimeline = (config = {}) => ({
     this.drag = { el }
   },
 
+  // ── The active object: the layer selected on the canvas, highlighted here ─────────────────
+
+  /** The timeline target of the object selected on the canvas (or by its row here), or null. */
+  activeTarget: null,
+
+  /** A canvas selection id — `art_<asset>` for artwork, the text id for text — as a target. */
+  targetFromObjectId (id) {
+    if (!id) return null
+    if (String(id).startsWith('art_')) return `art:${String(id).slice(4)}`
+    const text = this.objects.find((o) => (o.kind === 'text' || o.kind === 'rect') && o.target.slice(o.target.indexOf(':') + 1) === String(id))
+    return text?.target ?? null
+  },
+
+  /**
+   * Clicking a layer on the canvas highlights its row, opens its group and scrolls it into view.
+   * It does NOT select the layer's keys: Delete pressed to remove the layer would take its
+   * animation with it. Selecting keys stays a timeline gesture.
+   */
+  onObjectSelected (id) {
+    const target = this.targetFromObjectId(id)
+    this.activeTarget = target
+    if (!target) return
+    if (!this.openGroups[target]) { this.openGroups[target] = true; this.remember() }
+    this.$nextTick(() => {
+      const row = [...this.$el.querySelectorAll('[data-timeline-group]')].find((el) => el.dataset.timelineGroup === target)
+      row?.scrollIntoView({ block: 'nearest' })
+    })
+  },
+
+  /**
+   * Clicking a row's NAME: the other direction. The layer is selected on the canvas, and — as in
+   * Figma, where selecting a layer in the timeline selects its keyframes — all its keys are.
+   */
+  selectObject (target) {
+    this.activeTarget = target
+    this.selected = this.refsOf(target).map(keyId)
+    const [kind, ...rest] = String(target).split(':')
+    const id = rest.join(':')
+    if (kind === 'art') (window.__artOverlay?.() ?? window.__lessonArtworkLayer)?.select?.(`art_${id}`)
+    else if (kind === 'text' || kind === 'rect') window.__lessonTextLayer?.select?.(id)
+  },
+
   // ── Bars. Drag one to move the whole animation; click between two keys to choose easing ────
 
   /** Every key of one property, or of every property of an object. */
@@ -885,7 +948,7 @@ export const animationTimeline = (config = {}) => ({
 
   openEasing (target, property, index, rect) {
     const below = rect.bottom + 6
-    const menuH = 330
+    const menuH = 400   // the taller of the two views, the bezier editor
     const top = below + menuH > window.innerHeight ? Math.max(8, rect.top - menuH - 6) : below
     const left = Math.min(window.innerWidth - 216, Math.max(8, rect.left + rect.width / 2 - 104))
     this.easingMenu = { target, property, index, top, left }
@@ -900,13 +963,16 @@ export const animationTimeline = (config = {}) => ({
     return [
       { name: 'auto', curve: auto, label: `${this.easingLabel('auto')} · ${this.easingLabel(auto)}` },
       ...EASING_PRESETS.map((name) => ({ name, curve: name, label: this.easingLabel(name) })),
+      { name: 'custom', curve: seg && parseBezier(seg.easing) ? seg.easing : 'cubic-bezier(0.2, 0.9, 0.3, 0.6)', label: this.easingLabel('custom') },
     ]
   },
 
   /** 'auto' when the stretch follows the positional default, otherwise the chosen name. */
   get currentEasingName () {
     const seg = this.easingSegment
-    return !seg ? null : (seg.chosen ? seg.easing : 'auto')
+    if (!seg) return null
+    if (!seg.chosen) return 'auto'
+    return parseBezier(seg.easing) ? 'custom' : seg.easing
   },
 
   easingLabel (name) { return config.easingLabels?.[name] ?? name },
@@ -927,6 +993,14 @@ export const animationTimeline = (config = {}) => ({
    * sampler reads. 'auto' removes the choice, so the positional default applies again.
    */
   chooseEasing (name) {
+    if (name === 'custom') return this.openBezier()
+    this.setSegmentEasing(name)
+    this.save()
+  },
+
+  /** Write an easing onto the open segment and show it, without saving (the bezier drag calls
+   *  this every frame; the save waits for the release). */
+  setSegmentEasing (name) {
     const m = this.easingMenu
     if (!m) return
     this.writeTrack(m.target, m.property, (track) => {
@@ -943,6 +1017,65 @@ export const animationTimeline = (config = {}) => ({
       }
     })
     this.applyFrame()
+  },
+
+  // ── Custom bezier: two handles on a curve, or a cubic-bezier() typed in ───────────────────
+
+  /** The handles being edited, [x1, y1, x2, y2]. */
+  bezierDraft: [0.42, 0, 0.58, 1],
+
+  /** Open the editor on the curve the segment already has, so nothing jumps. */
+  openBezier () {
+    const current = this.easingSegment?.easing
+    this.bezierDraft = parseBezier(current) ?? PRESET_BEZIER[current] ?? [0.42, 0, 0.58, 1]
+    this.easingMenu = { ...this.easingMenu, editing: true }
+    this.setSegmentEasing(formatBezier(this.bezierDraft))
+    this.save()
+  },
+
+  backToPresets () { this.easingMenu = { ...this.easingMenu, editing: false } },
+
+  get bezierText () { return formatBezier(this.bezierDraft) },
+
+  plotX (u) { return PLOT.left + u * PLOT.size },
+  plotY (v) { return PLOT.zeroY - v * PLOT.size },
+
+  /** The curve, drawn as SVG's own cubic from the same four numbers the sampler uses. */
+  get bezierPath () {
+    const [x1, y1, x2, y2] = this.bezierDraft
+    return `M${this.plotX(0)},${this.plotY(0)} C${this.plotX(x1)},${this.plotY(y1)} ${this.plotX(x2)},${this.plotY(y2)} ${this.plotX(1)},${this.plotY(1)}`
+  },
+
+  startHandle (event, which) {
+    if (event.button !== 0) return
+    event.stopPropagation()
+    event.preventDefault()
+    const el = event.currentTarget
+    el.setPointerCapture?.(event.pointerId)
+    dragMemory.set(el, { kind: 'bezier', which, svg: el.ownerSVGElement, before: [...this.bezierDraft], moved: true })
+    this.drag = { el }
+  },
+
+  /** Handle x is held to 0..1 (CSS requires it); y may overshoot, which is what a back curve is. */
+  dragHandle (memory, event) {
+    const matrix = memory.svg.getScreenCTM()?.inverse()
+    if (!matrix) return
+    const p = new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix)
+    const u = Math.min(1, Math.max(0, (p.x - PLOT.left) / PLOT.size))
+    const v = Math.min(PLOT.maxV, Math.max(PLOT.minV, (PLOT.zeroY - p.y) / PLOT.size))
+    const next = [...this.bezierDraft]
+    next[memory.which * 2] = u
+    next[memory.which * 2 + 1] = v
+    this.bezierDraft = next
+    this.setSegmentEasing(formatBezier(next))
+  },
+
+  /** Typed in the field: applied on Enter/blur, refused (and the field put back) if unreadable. */
+  typeBezier (text) {
+    const parsed = parseBezier(text)
+    if (!parsed) return
+    this.bezierDraft = parsed
+    this.setSegmentEasing(formatBezier(parsed))
     this.save()
   },
 

@@ -52,6 +52,7 @@
             'easeOutBack'    => __('Ease out back'),
             'easeInOutBack'  => __('Ease in and out back'),
             'hold'           => __('Hold'),
+            'custom'         => __('Custom bezier'),
         ],
      ]) }}"
      x-data="animationTimeline(JSON.parse($el.dataset.timelineConfig))"
@@ -68,6 +69,7 @@
           actually taken the key. --}}
      x-on:keydown.window="onKeydown($event)"
      x-on:scene-object-edited.window="recordCanvasEdit($event.detail.target, $event.detail.values)"
+     x-on:scene-object-selected.window="onObjectSelected($event.detail?.id)"
      data-timeline
      class="flex min-h-0 flex-1 flex-col overflow-hidden"
      style="background: var(--color-timeline-ground)">
@@ -236,12 +238,16 @@
                          the eye is its own command and a button inside a button is not markup a
                          browser will honour. The row's border and height live here so the
                          geometry is unchanged by the split. --}}
+                    {{-- The NAME selects the layer (on the canvas too) and its keys, as in Figma;
+                         the CHEVRON opens and closes the group. Selecting the layer on the canvas
+                         lights this row up — the active object. --}}
                     <div class="flex w-full items-center border-t border-panel-hairline"
+                         :class="activeTarget === object.target && 'bg-white/5'"
+                         :data-timeline-active="activeTarget === object.target ? 'true' : 'false'"
                          style="height: 38px">
-                    <button type="button" x-on:click="toggleGroup(object.target)"
-                            class="flex min-w-0 flex-1 items-center gap-2 px-4 text-left"
-                            style="height: 38px" :data-timeline-group="object.target"
-                            :aria-expanded="openGroups[object.target] ? 'true' : 'false'">
+                    <button type="button" x-on:click="selectObject(object.target)"
+                            class="flex min-w-0 flex-1 cursor-pointer items-center gap-2 pl-4 text-left"
+                            style="height: 38px" :data-timeline-group="object.target">
 {{-- A text layer says T; a camera gets Bart's glyph from the file (13x8, stroke 1.33333). --}}
                         <svg x-show="object.kind !== 'camera'" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                              stroke-width="1.5" class="h-3 w-3 shrink-0 text-panel-icon" aria-hidden="true">
@@ -251,9 +257,15 @@
                              class="shrink-0 text-panel-icon" aria-hidden="true">
                             <path d="M7.9834 0.666992L8.0918 0.671875C8.59069 0.723453 8.98766 1.12018 9.04004 1.61914L9.0459 1.72754V3.5791L10.0664 2.94043L12.1113 1.65918C12.2007 1.60333 12.2661 1.58345 12.3037 1.5752C12.3089 1.58957 12.3164 1.60809 12.3213 1.63281L12.335 1.7832V6.14551C12.3349 6.24973 12.3175 6.31464 12.3047 6.35059C12.2674 6.34246 12.2025 6.3233 12.1133 6.26758L10.0654 4.98828L9.0459 4.35059V6.20312C9.04312 6.78886 8.56842 7.26242 7.9834 7.26367H1.72852C1.17907 7.26189 0.728515 6.84471 0.672852 6.30957L0.666992 6.20117V1.72852C0.668771 1.17918 1.08513 0.728656 1.62012 0.672852L1.72852 0.666992H7.9834Z" stroke-width="1.33333"/>
                         </svg>
-                        <span class="text-2xs font-semibold text-panel-value" x-text="object.label"></span>
+                        <span class="truncate text-2xs font-semibold text-panel-value" x-text="object.label"></span>
+                    </button>
+                    <button type="button" x-on:click="toggleGroup(object.target)"
+                            :data-timeline-toggle="object.target"
+                            :aria-expanded="openGroups[object.target] ? 'true' : 'false'"
+                            :aria-label="openGroups[object.target] ? @js(__('Collapse')) : @js(__('Expand'))"
+                            class="grid h-6 w-6 shrink-0 cursor-pointer place-items-center rounded text-panel-label hover:bg-white/5 hover:text-white">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-                             class="ml-auto h-3 w-3 shrink-0 text-panel-label transition-transform"
+                             class="h-3 w-3 transition-transform"
                              :class="openGroups[object.target] && 'rotate-90'" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/>
                         </svg>
@@ -364,7 +376,7 @@
                 </div>
 
                 <template x-for="object in objects" :key="object.target">
-                    <div>
+                    <div :class="activeTarget === object.target && 'bg-white/5'">
                         {{-- The object's own lane: one bar covering everything its properties do,
                              so a collapsed group still says when it moves. --}}
                         <div class="relative" style="height: 38px">
@@ -444,7 +456,7 @@
              data-timeline-easing-menu
              :style="`top: ${easingMenu.top}px; left: ${easingMenu.left}px`"
              x-on:pointerdown.outside="closeEasing()" x-on:pointerdown.stop>
-            <ul class="menu menu-sm w-full p-0">
+            <ul class="menu menu-sm w-full p-0" x-show="!easingMenu.editing">
                 <template x-for="option in easingOptions" :key="option.name">
                     <li>
                         <button type="button" class="flex items-center gap-2"
@@ -460,6 +472,38 @@
                     </li>
                 </template>
             </ul>
+
+            {{-- Custom bezier: drag the two handles, or type the curve. The canvas follows the
+                 drag live; the save waits for the release. Esc mid-drag puts the handle back. --}}
+            <div x-show="easingMenu.editing" class="p-1" data-timeline-bezier>
+                <button type="button" class="btn btn-ghost btn-xs mb-1 gap-1 px-1" x-on:click="backToPresets()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-3 w-3" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/>
+                    </svg>
+                    <span class="text-xs">{{ __('Custom bezier') }}</span>
+                </button>
+                <svg viewBox="0 0 152 216" class="w-full touch-none select-none" data-timeline-bezier-plot>
+                    {{-- the unit square: where 0 and 1 are --}}
+                    <rect :x="plotX(0)" :y="plotY(1)" :width="plotX(1) - plotX(0)" :height="plotY(0) - plotY(1)"
+                          fill="none" stroke="currentColor" stroke-opacity="0.15"/>
+                    <line :x1="plotX(0)" :y1="plotY(0)" :x2="plotX(bezierDraft[0])" :y2="plotY(bezierDraft[1])"
+                          stroke="currentColor" stroke-opacity="0.45"/>
+                    <line :x1="plotX(1)" :y1="plotY(1)" :x2="plotX(bezierDraft[2])" :y2="plotY(bezierDraft[3])"
+                          stroke="currentColor" stroke-opacity="0.45"/>
+                    <path :d="bezierPath" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                    <circle :cx="plotX(bezierDraft[0])" :cy="plotY(bezierDraft[1])" r="6" fill="white"
+                            class="cursor-grab" data-timeline-bezier-handle="0"
+                            x-on:pointerdown="startHandle($event, 0)"/>
+                    <circle :cx="plotX(bezierDraft[2])" :cy="plotY(bezierDraft[3])" r="6" fill="white"
+                            class="cursor-grab" data-timeline-bezier-handle="1"
+                            x-on:pointerdown="startHandle($event, 1)"/>
+                </svg>
+                <input type="text" spellcheck="false" data-timeline-bezier-text
+                       :value="bezierText"
+                       x-on:change="typeBezier($event.target.value); $event.target.value = bezierText"
+                       x-on:keydown.escape.stop="$event.target.value = bezierText; $event.target.blur()"
+                       class="input input-xs mt-1 w-full font-mono text-3xs" />
+            </div>
         </div>
     </template>
 </div>

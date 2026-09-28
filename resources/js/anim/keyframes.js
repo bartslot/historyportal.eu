@@ -11,7 +11,7 @@
  * undo stack without cloning by hand.
  */
 
-import { EASING } from '../easing.js'
+import { EASING, parseBezier, cubicBezier } from '../easing.js'
 
 /** The camera convention in easing.js (EASE.move). Shared so a layer eases like the camera does. */
 export const DEFAULT_EASING = 'easeInOutCubic'
@@ -36,7 +36,12 @@ export const sameTime = (a, b) => Math.abs(a - b) < TIME_EPSILON
 /** 'hold' keeps the value until the next key: a cut, Figma's Hold preset. */
 const HOLD = () => 0
 
-export const easingFn = (name) => (name === 'hold' ? HOLD : EASING[name] || EASING[DEFAULT_EASING])
+export const easingFn = (name) => {
+  if (name === 'hold') return HOLD
+  const bezier = parseBezier(name)
+  if (bezier) return cubicBezier(...bezier)
+  return EASING[name] || EASING[DEFAULT_EASING]
+}
 
 /**
  * The easing a segment uses when nobody chose one, by where it sits.

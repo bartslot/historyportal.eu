@@ -1517,5 +1517,8 @@
     "Collapse all": "Alles inklappen",
     "Expand all": "Alles uitklappen",
     "Loop": "Herhalen",
-    "Looping": "Herhaalt"
+    "Looping": "Herhaalt",
+    "Collapse": "Inklappen",
+    "Expand": "Uitklappen",
+    "Custom bezier": "Eigen bézier"
 }

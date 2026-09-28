@@ -1472,5 +1472,8 @@
     "Collapse all": "Alle einklappen",
     "Expand all": "Alle ausklappen",
     "Loop": "Wiederholen",
-    "Looping": "Wiederholt"
+    "Looping": "Wiederholt",
+    "Collapse": "Einklappen",
+    "Expand": "Ausklappen",
+    "Custom bezier": "Eigene Bézierkurve"
 }

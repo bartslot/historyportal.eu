@@ -1472,5 +1472,8 @@
     "Collapse all": "Tout replier",
     "Expand all": "Tout déplier",
     "Loop": "Boucle",
-    "Looping": "En boucle"
+    "Looping": "En boucle",
+    "Collapse": "Replier",
+    "Expand": "Déplier",
+    "Custom bezier": "Bézier personnalisée"
 }

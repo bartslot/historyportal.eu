@@ -367,3 +367,83 @@ test('clicking between two keys chooses the easing, and dragging the bar moves t
 
   expect(errors, `console errors:\n${errors.join('\n')}`).toEqual([]);
 });
+
+/** Figma's Custom bezier: the handles move the curve, the scene follows live, Esc puts it back. */
+test('the custom bezier editor drives the scene live and saves on release', async ({ page }) => {
+  const errors = watchConsole(page);
+  await openTimeline(page);
+  await page.evaluate(() => {
+    const c = (document.querySelector('[data-timeline]') as any)._x_dataStack[0];
+    c.targets = ['camera']; c.refreshObjects();
+    c.tracks = [{ target: 'camera', property: 'zoom', keyframes: [{ time: 0, value: 3 }, { time: 4, value: 6 }] }];
+    c.selected = []; c.seek(2); c.save();
+  });
+  await page.waitForTimeout(2000);
+  const easing = () => page.evaluate(() => (document.querySelector('[data-timeline]') as any)._x_dataStack[0].tracks[0].keyframes[0].easing ?? null);
+  const mapZoom = () => page.evaluate(() => (window as any).__lessonMap.getZoom());
+
+  const seg = (await page.locator('[data-timeline-segment="camera:zoom:0"]').boundingBox())!;
+  await walkTo(page, seg.x + seg.width * 0.3, seg.y + seg.height / 2);
+  await page.mouse.down(); await page.mouse.up();
+  const custom = (await page.locator('[data-easing="custom"]').boundingBox())!;
+  await walkTo(page, custom.x + 30, custom.y + custom.height / 2);
+  await page.mouse.down(); await page.mouse.up();
+  await expect(page.locator('[data-timeline-bezier]')).toBeVisible();
+  const opened = await easing();
+  expect(opened).toMatch(/^cubic-bezier\(/);
+
+  const zoomBefore = await mapZoom();
+  const h = (await page.locator('[data-timeline-bezier-handle="0"]').boundingBox())!;
+  await walkTo(page, h.x + h.width / 2, h.y + h.height / 2);
+  await page.mouse.down();
+  await walkTo(page, h.x + h.width / 2 - 40, h.y - 60, 10);
+  expect(await easing(), 'the curve changes during the drag').not.toBe(opened);
+  expect(Math.abs((await mapZoom()) - zoomBefore), 'and the map follows it live').toBeGreaterThan(0.1);
+  await page.keyboard.press('Escape');
+  await page.mouse.up();
+  expect(await easing(), 'Esc mid-drag puts the curve back').toBe(opened);
+
+  const field = page.locator('[data-timeline-bezier-text]');
+  await field.click(); await field.fill('cubic-bezier(0.1, 0.9, 0.2, 1)'); await page.keyboard.press('Enter');
+  await page.waitForTimeout(500);
+  expect(await easing()).toBe('cubic-bezier(0.1, 0.9, 0.2, 1)');
+
+  expect(errors, `console errors:\n${errors.join('\n')}`).toEqual([]);
+});
+
+/** Canvas → timeline: click a layer, its row lights up and no keys are selected. Row name →
+ *  canvas: the layer is selected there. */
+test('selecting a layer on the canvas highlights its row, and a row name selects the layer', async ({ page }) => {
+  const errors = watchConsole(page);
+  await openTimeline(page);
+  // The quiz scene carries a text layer and an artwork; the map scene has neither.
+  await page.locator(`[wire\\:click="selectScene(${Number(process.env.PW_TIMELINE_LAYER_SCENE_ID ?? 4781)})"]`).first().click();
+  await page.waitForTimeout(6000);
+  const state = () => page.evaluate(() => {
+    const c = (document.querySelector('[data-timeline]') as any)._x_dataStack[0];
+    return { active: c.activeTarget, keys: c.selected.length, objects: c.objects.map((o: any) => o.target) };
+  });
+
+  const text = page.locator('[data-text-id]').first();
+  const tb = (await text.boundingBox())!;
+  await walkTo(page, tb.x + tb.width / 2, tb.y + tb.height / 2);
+  await page.mouse.down(); await page.mouse.up();
+  await page.waitForTimeout(500);
+  const s1 = await state();
+  expect(s1.active).toMatch(/^text:/);
+  expect(s1.keys, 'a canvas click never selects keys: Delete would take the animation').toBe(0);
+  await expect(page.locator(`[data-timeline-active="true"]`)).toHaveCount(1);
+
+  const art = s1.objects.find((o: string) => o.startsWith('art:'))!;
+  const row = page.locator(`[data-timeline-group="${art}"]`);
+  await row.scrollIntoViewIfNeeded();
+  const rb = (await row.boundingBox())!;
+  await walkTo(page, rb.x + 40, rb.y + rb.height / 2);
+  await page.mouse.down(); await page.mouse.up();
+  await page.waitForTimeout(300);
+  expect((await state()).active).toBe(art);
+  const onCanvas = await page.evaluate(() => ((window as any).__artOverlay?.() ?? (window as any).__lessonArtworkLayer)?._selectedId);
+  expect(onCanvas).toBe(art.replace('art:', 'art_'));
+
+  expect(errors, `console errors:\n${errors.join('\n')}`).toEqual([]);
+});

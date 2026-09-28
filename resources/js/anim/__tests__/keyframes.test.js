@@ -209,3 +209,36 @@ describe('default easing depends on where the segment sits', () => {
     expect(sampleNumber(held, 1)).toBe(10)
   })
 })
+
+/**
+ * Custom Bezier, Figma's "Custom bezier": the easing is stored as the CSS string
+ * `cubic-bezier(x1, y1, x2, y2)`, so what the editor shows, what is saved and what CSS would draw
+ * are one value.
+ */
+describe('custom cubic-bezier easing', () => {
+  it('is the identity for the linear curve, and hits its end points', async () => {
+    const { easingFn } = await import('../keyframes.js')
+    const lin = easingFn('cubic-bezier(0.25, 0.25, 0.75, 0.75)')
+    for (const u of [0, 0.1, 0.5, 0.9, 1]) expect(lin(u)).toBeCloseTo(u, 5)
+  })
+
+  it('matches CSS ease-in-out, the known curve, at its midpoint and quarter', async () => {
+    const { easingFn } = await import('../keyframes.js')
+    const f = easingFn('cubic-bezier(0.42, 0, 0.58, 1)')
+    expect(f(0.5)).toBeCloseTo(0.5, 5)            // symmetric
+    expect(f(0.25)).toBeCloseTo(0.1291, 3)        // CSS ease-in-out at 25% time (reference value)
+  })
+
+  it('overshoots when a handle sits above the box, as a back curve does', async () => {
+    const { easingFn } = await import('../keyframes.js')
+    const f = easingFn('cubic-bezier(0.3, 1.6, 0.6, 1)')
+    expect(Math.max(...[0.3, 0.4, 0.5, 0.6].map(f))).toBeGreaterThan(1)
+  })
+
+  it('reads and writes the same string', async () => {
+    const { parseBezier, formatBezier } = await import('../../easing.js')
+    expect(parseBezier('cubic-bezier(0.1, -0.2, 0.3, 1.4)')).toEqual([0.1, -0.2, 0.3, 1.4])
+    expect(formatBezier([0.1, -0.2, 0.3, 1.4])).toBe('cubic-bezier(0.1, -0.2, 0.3, 1.4)')
+    expect(parseBezier('easeInCubic')).toBeNull()
+  })
+})
