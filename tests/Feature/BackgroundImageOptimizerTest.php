@@ -32,6 +32,7 @@ class BackgroundImageOptimizerTest extends TestCase
         ?CanvasFactory $canvases = null,
         ?string $avifencPath = null,
         ?string $cwebpPath = null,
+        ?string $tempDirectory = null,
     ): BackgroundImageOptimizer {
         return new BackgroundImageOptimizer(
             maxBytes: $maxBytes,
@@ -43,6 +44,7 @@ class BackgroundImageOptimizerTest extends TestCase
             speed: 8,      // faster than the production default; these are tests, not deliverables
             cwebpPath: $cwebpPath ?? (string) config('services.imagery.cwebp_path', 'cwebp'),
             canvases: $canvases ?? new CanvasFactory,
+            tempDirectory: $tempDirectory,
         );
     }
 
@@ -304,6 +306,67 @@ class BackgroundImageOptimizerTest extends TestCase
         $this->expectExceptionMessage('no usable image encoder');
 
         $optimiser->optimise($source);
+    }
+
+    // ── Temp-file hygiene ────────────────────────────────────────────────────────────────────
+
+    /**
+     * A directory of this test's own, so the assertion sees only files this test caused.
+     *
+     * Watching the shared system temp directory looks simpler and cannot be trusted: a bulk
+     * `lessons:encode-originals` run on the same machine holds a source file for the whole length
+     * of its quality search, and a glob of /tmp catches it mid-encode and blames this test for it.
+     */
+    private function privateTempDirectory(): string
+    {
+        $directory = sys_get_temp_dir().'/bg-hygiene-'.bin2hex(random_bytes(6));
+        mkdir($directory);
+
+        return $directory;
+    }
+
+    /**
+     * What is left in the directory, which is then removed — so a failing run reports the leak
+     * instead of tripping over its own leftovers on the way out.
+     *
+     * @return list<string>
+     */
+    private function drainTempDirectory(string $directory): array
+    {
+        $left = glob($directory.'/*') ?: [];
+        foreach ($left as $path) {
+            @unlink($path);
+        }
+        @rmdir($directory);
+
+        return array_values(array_map('basename', $left));
+    }
+
+    public function test_optimising_a_background_leaves_nothing_in_the_temp_directory(): void
+    {
+        // A quality search is five encodes, each with its own destination file, on top of the one
+        // source file. Left uncleaned that is six files per background, forever, on a shared host —
+        // and it went unnoticed for months because every one of them is zero bytes.
+        $directory = $this->privateTempDirectory();
+
+        $this->optimiser(tempDirectory: $directory)->optimise($this->noisyPhoto(1200, 800));
+
+        $leaked = $this->drainTempDirectory($directory);
+
+        $this->assertSame([], $leaked,
+            count($leaked).' temp file(s) left behind: '.implode(', ', $leaked));
+    }
+
+    public function test_archiving_an_image_leaves_nothing_in_the_temp_directory(): void
+    {
+        $directory = $this->privateTempDirectory();
+
+        $this->optimiser(tempDirectory: $directory)->archive($this->noisyPhoto(900, 600));
+
+        $leaked = $this->drainTempDirectory($directory);
+
+        $this->assertSame([], $leaked,
+            count($leaked).' temp file(s) left behind: '.implode(', ', $leaked));
     }
 
     public function test_the_canvas_factory_can_be_pinned_to_a_backend(): void

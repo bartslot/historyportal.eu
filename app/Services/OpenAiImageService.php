@@ -392,13 +392,20 @@ class OpenAiImageService
             // attempt (it idles ~90s during the previous render, then breaks identically each time).
             // Forcing a new TCP+TLS handshake per attempt is what actually recovers — and reuse is
             // worthless on 90-second requests anyway (scene-3 incident, 2026-07-17).
+            // Phase 0 instrumentation: count the call up front (a failed call still cost a try),
+            // and count each retry the backoff performs. Best-effort — never throws.
+            \App\Services\Support\GenerationRunRecorder::count('image_calls');
             $response = Http::withToken($key)
                 ->withOptions([
                     'version' => '1.1',
                     'curl' => [CURLOPT_FRESH_CONNECT => true, CURLOPT_FORBID_REUSE => true],
                 ])
                 ->timeout((int) config('services.openai.image_timeout', 180))
-                ->retry([2000, 8000, 20000], when: fn ($e, $req) => true, throw: false)
+                ->retry([2000, 8000, 20000], when: function ($e, $req) {
+                    \App\Services\Support\GenerationRunRecorder::count('image_retries');
+
+                    return true;
+                }, throw: false)
                 ->post(rtrim($base, '/').'/images/generations', $payload);
         } catch (\Throwable $e) {
             throw new RuntimeException('Image API request failed: '.$e->getMessage(), previous: $e);

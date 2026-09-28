@@ -16,6 +16,7 @@
 import Alpine from 'alpinejs'
 import QRCode from 'qrcode'
 import { resolveAnchorTime, pickShotIndex } from './scene/shot-sync.js'
+import { createTelemetry } from './lesson-telemetry.js'
 import { renderGallery } from './gallery-scene.js'
 import { isTopAnchored, normalizeFit, PORTRAIT_TOP_CSS } from './scene/background-fit.js'
 import { mountEmbedBg } from './scene/embed-bg.js'
@@ -214,10 +215,11 @@ Alpine.data('lessonGame', (lesson) => ({
     chaptersOpen:      false,
 
     // Map block
-    showMapContinue: false,  // interactive map slide → show the Continue button
+    showMapContinue: false,  // stage slide waiting on the student (interactive map, gallery, video, landfall)
     autoAdvanceProgress: 0,  // 0..1 — voyage auto-advance progress line at the arrival
 
     // Internals
+    _tel:               { log: () => {}, flush: () => {} }, // replaced in init(); stub keeps HMR re-mounts safe
     _audio:             null,
     _intelAudio:        null,   // intel-drop sfx — tracked so teardown can stop it
     _kbHandler:         null,   // keydown listener ref — removed on destroy()
@@ -243,6 +245,11 @@ Alpine.data('lessonGame', (lesson) => ({
       // on the same page load. Skip if already running.
       if (_initDone) return
       _initDone = true
+
+      // Anonymous engagement telemetry (Phase 0 experiment) — per-page-load session id, no
+      // identity, batched delivery. An inert stub when there is no lesson code, so every
+      // call site below can log unconditionally. See resources/js/lesson-telemetry.js.
+      this._tel = createTelemetry(lesson.lesson_code)
 
       // Normalise OUR media URLs to the page origin so a localhost vs 127.0.0.1 mismatch doesn't
       // block audio. Anything on another host — a CDN-hosted cover, say — is left alone: rewriting
@@ -366,7 +373,19 @@ Alpine.data('lessonGame', (lesson) => ({
       // new Audio() objects play independently of the DOM, so without explicit
       // teardown the narration keeps playing after the user leaves the page —
       // including the app's wire:navigate SPA transitions. Stop it on the way out.
-      this._navStop = () => this._stopAllAudio()
+      this._navStop = () => {
+        // Exit telemetry BEFORE audio teardown, while position is still readable. Fires on
+        // tab close, navigation and SPA transitions; skipped after a normal completion.
+        if (this.phase !== 'ENDED') {
+          this._tel.log('lesson_exited', {
+            sceneIndex: this._sceneIndex,
+            sceneId: _sceneQueue[this._sceneIndex]?.id,
+            position: this._audio?.currentTime,
+          })
+        }
+        this._tel.flush(true)
+        this._stopAllAudio()
+      }
       window.addEventListener('pagehide', this._navStop)
       document.addEventListener('livewire:navigating', this._navStop)
 
@@ -398,6 +417,7 @@ Alpine.data('lessonGame', (lesson) => ({
 
     // ── Title screen "Start lesson" button ─────────────────────────────
     async startLesson () {
+      this._tel.log('lesson_started')
       // Locked-mode (best effort): go fullscreen on the user's play gesture so tab/app
       // switching takes deliberate effort. Not supported on iPhone Safari — never block.
       // Skip when embedded (the wizard preview iframe) — no gesture, and fullscreen would be wrong.
@@ -1172,6 +1192,11 @@ Alpine.data('lessonGame', (lesson) => ({
     goToChapter (i) {
       this.chaptersOpen = false
       if (i == null || i < 0 || i >= _sceneQueue.length || i === this._sceneIndex) return
+      this._tel.log(i > this._sceneIndex ? 'seek_forward' : 'seek_backward', {
+        sceneIndex: this._sceneIndex,
+        sceneId: _sceneQueue[this._sceneIndex]?.id,
+        position: this._audio?.currentTime,
+      })
       this._sceneIndex = i
       this._playScene(i)
     },
@@ -1205,6 +1230,8 @@ Alpine.data('lessonGame', (lesson) => ({
     _playScene (index) {
       const scene = _sceneQueue[index]
       if (!scene) { this._onAudioEnded(); return }
+
+      this._tel.log('scene_started', { sceneIndex: index, sceneId: scene.id })
 
       // A landfall gallery freezes this scene's auto-advance while it is open, and it is a GLOBAL
       // flag. If a tour is torn down with its modal still up, nothing ever clears it and every
@@ -1283,6 +1310,12 @@ Alpine.data('lessonGame', (lesson) => ({
         _voyageInstance = null
         this._cancelVoyageAuto()
       }
+
+      // Same for any other stage slide (map, gallery). Next/Previous tear the stage down on the way
+      // out, but a chapter jump comes straight here, so a map left open covered the narration scene
+      // after it and kept its "waiting on the student" state. Idempotent, and a voyage lesson's
+      // persistent map survives it (see _teardownStageScene).
+      this._teardownStageScene()
 
       // Teacher text annotations for this scene (URLs render as link chips → iframe modal).
       // Before the map early-return, so a map scene clears the previous scene's texts too.
@@ -1643,12 +1676,35 @@ Alpine.data('lessonGame', (lesson) => ({
       this.showMapContinue = true
     },
 
-    // Called by the Continue button (interactive) and the timer (timed).
+    // Called by Next on a stage slide (interactive) and the timer (timed).
     advanceMap () {
       this._advanceFromMap(this._sceneIndex)
     },
 
-    // Previous slide for voyage lessons (← / A). Replays the previous scene from its start.
+    // The deck's skip controls. Prev / next work like a music player's: they are there on every
+    // scene, greyed out on a quiz (a student answers it, never skips it) unless the viewer is the
+    // teacher testing their own lesson.
+    get _hasSlides () {
+      return _sceneQueue.length > 1
+    },
+    get canSkip () {
+      if (!this._hasSlides) return false
+      const onQuiz = this.currentIsGame || this.phase === 'GAME_BRIEF'
+      return !onQuiz || !!lesson.can_skip_quiz
+    },
+    get hasNextSlide () {
+      return this._sceneIndex < _sceneQueue.length - 1
+    },
+
+    // Next slide (→). A stage slide leaves through its own exits (Build Out, the voyage's persistent
+    // map); a narrated scene jumps like a chapter click.
+    nextSlide () {
+      if (!this.canSkip) return
+      if (this.showMapContinue || lesson.game_type === 'voyage') { this.advanceMap(); return }
+      this.goToChapter(this._sceneIndex + 1)
+    },
+
+    // Previous slide (←). Replays the previous scene from its start.
     previousSlide () {
       if (this._sceneIndex <= 0) return
       this._teardownStageScene()
@@ -1704,6 +1760,7 @@ Alpine.data('lessonGame', (lesson) => ({
     },
 
     _advanceSceneNow (index) {
+      this._tel.log('scene_completed', { sceneIndex: index, sceneId: _sceneQueue[index]?.id })
       const next = index + 1
       if (next < _sceneQueue.length) {
         this._sceneIndex = next
@@ -1780,6 +1837,7 @@ Alpine.data('lessonGame', (lesson) => ({
         this._beginGameFlow(scene)
         return
       }
+      this._tel.log('scene_completed', { sceneIndex: index, sceneId: _sceneQueue[index]?.id })
       const next = index + 1
       if (next < _sceneQueue.length) {
         this._sceneIndex = next
@@ -1837,6 +1895,7 @@ Alpine.data('lessonGame', (lesson) => ({
     // Quiz segment: step through the lesson's questions in the card overlay, then
     // resume the story where it left off.
     async _beginQuizFlow (questions, shuffleMode = 'per_player', quizSceneId = null) {
+      this._tel.log('quiz_started', { sceneIndex: this._sceneIndex, sceneId: quizSceneId ?? undefined })
       const host = document.getElementById('lesson-game-overlay')
       if (!host) { this._resumeAfterQuiz(); return }
       const { QuizOverlay } = await import('./scene/QuizOverlay.js')
@@ -1887,6 +1946,8 @@ Alpine.data('lessonGame', (lesson) => ({
     },
 
     _endLesson () {
+      this._tel.log('lesson_completed', { sceneIndex: this._sceneIndex })
+      this._tel.flush()
       if (this._audio && !this._audio.paused) this._audio.pause()
       if (this._timerInterval) clearInterval(this._timerInterval)
       // The bed fades away over the closing screen rather than cutting on the last word.
@@ -1976,9 +2037,11 @@ Alpine.data('lessonGame', (lesson) => ({
      * "Playing" for the overlay is broader than narration: on a voyage the ship sailing
      * between stops IS playback (showMapContinue only turns true at a landfall). The
      * player chrome hides while this is true and the pointer is away from the edges.
+     * A stage slide waiting on the student (interactive map, gallery, video, landfall) never
+     * counts: Next is the only way on, so the deck stays up even while its narration plays.
      */
     get isPlaying () {
-      if (this.playbackPaused) return false
+      if (this.playbackPaused || this.showMapContinue) return false
       if (this.audioPlaying) return true
       return lesson.game_type === 'voyage'
         && (this.phase === 'INTRO' || this.phase === 'GAME_ACTIVE')
@@ -2011,6 +2074,12 @@ Alpine.data('lessonGame', (lesson) => ({
     setPlaybackPaused (pause) {
       this.playbackPaused = !!pause
       this._flashPlaybackGlyph()
+
+      this._tel.log(this.playbackPaused ? 'pause' : 'resume', {
+        sceneIndex: this._sceneIndex,
+        sceneId: _sceneQueue[this._sceneIndex]?.id,
+        position: this._audio?.currentTime,
+      })
 
       if (this._audio) {
         if (this.playbackPaused) {
@@ -2129,21 +2198,23 @@ Alpine.data('lessonGame', (lesson) => ({
       this._kbHandler = (e) => {
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
 
-        // Voyage lessons are slide decks: next = → or B, previous = ← or A. Nothing else needed.
-        if (lesson.game_type === 'voyage' && (e.code === 'ArrowRight' || e.code === 'KeyB')) {
-          e.preventDefault()
-          this._advanceFromMap(this._sceneIndex)
-          return
-        }
-        if (lesson.game_type === 'voyage' && (e.code === 'ArrowLeft' || e.code === 'KeyA')) {
-          e.preventDefault()
-          this.previousSlide()
-          return
-        }
         // The keys students already know from YouTube: K play/pause (Space too), M mute,
-        // C subtitles, F fullscreen, ↑/↓ volume. A modifier means the key belongs to the
-        // browser (⌘F is Find), so leave those alone.
+        // C subtitles, F fullscreen, ↑/↓ volume — plus ←/→ previous/next slide, as in any slide
+        // deck (voyages keep A/B too). A modifier means the key belongs to the browser (⌘F is
+        // Find), so leave those alone.
         if (e.metaKey || e.ctrlKey || e.altKey) return
+
+        const isVoyage = lesson.game_type === 'voyage'
+        if (e.code === 'ArrowRight' || (isVoyage && e.code === 'KeyB')) {
+          e.preventDefault()
+          this.nextSlide()
+          return
+        }
+        if (e.code === 'ArrowLeft' || (isVoyage && e.code === 'KeyA')) {
+          e.preventDefault()
+          if (this.canSkip) this.previousSlide()
+          return
+        }
 
         if (e.code === 'Space' || e.code === 'KeyK') {
           e.preventDefault()

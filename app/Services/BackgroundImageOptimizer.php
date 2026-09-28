@@ -62,6 +62,8 @@ class BackgroundImageOptimizer
         private readonly int $speed,
         private readonly string $cwebpPath = 'cwebp',
         private readonly CanvasFactory $canvases = new CanvasFactory,
+        /** Null means the system temp directory; a test passes its own so it can watch one. */
+        private readonly ?string $tempDirectory = null,
     ) {}
 
     public static function fromConfig(): self
@@ -204,10 +206,29 @@ class BackgroundImageOptimizer
     /** The CLI encoders read a file, not a stream, so the resized image lands on disk once. */
     private function writeTemporarySource(ImageCanvas $canvas): string
     {
-        $path = tempnam(sys_get_temp_dir(), 'bg-src-').'.png';
+        $path = $this->temporaryPath('bg-src-', 'png');
         $canvas->writePng($path);
 
         return $path;
+    }
+
+    /**
+     * A unique temp path carrying the extension the CLI encoders need.
+     *
+     * NOT tempnam(). tempnam() creates the file it names, so `tempnam(...).'.png'` hands back a
+     * path to a file that does not exist yet and silently leaves the extension-less original
+     * sitting in the temp directory — which no @unlink() of the suffixed path can ever reach. At
+     * six of those per optimised background (one source, five quality probes) a single Mac had
+     * accumulated three thousand zero-byte files, and a shared host has nobody to sweep up.
+     *
+     * Losing tempnam() costs nothing here: it only ever protected the unsuffixed name, and the
+     * suffixed path the code actually wrote to was never protected in the first place.
+     */
+    private function temporaryPath(string $prefix, string $extension): string
+    {
+        $directory = $this->tempDirectory ?? sys_get_temp_dir();
+
+        return $directory.'/'.$prefix.bin2hex(random_bytes(8)).'.'.$extension;
     }
 
     /**
@@ -259,7 +280,7 @@ class BackgroundImageOptimizer
             return null;
         }
 
-        $destination = tempnam(sys_get_temp_dir(), 'bg-out-').'.avif';
+        $destination = $this->temporaryPath('bg-out-', 'avif');
 
         try {
             $process = new Process([
@@ -297,7 +318,7 @@ class BackgroundImageOptimizer
             return null;
         }
 
-        $destination = tempnam(sys_get_temp_dir(), 'bg-out-').'.webp';
+        $destination = $this->temporaryPath('bg-out-', 'webp');
 
         try {
             $process = new Process([

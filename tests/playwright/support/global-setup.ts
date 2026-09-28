@@ -57,6 +57,22 @@ const scenes = (l: Lesson) => l.counts?.scenes ?? 0;
 const hasFormat = (l: Lesson, f: string) => (l.taxonomy?.formats ?? []).includes(f);
 
 /**
+ * Does this lesson CONTAIN a scene of this kind?
+ *
+ * A lesson has no single type. It is a sequence of scenes, and the scenes carry the kind — a
+ * lesson can hold a voyage, a story, a quiz and a gallery at once, the way a slide deck holds
+ * mixed media. Picking a fixture by the lesson-level `formats` label asks the wrong question and
+ * gets the wrong answer: it once chose a lesson whose voyage scenes were fine but whose optional
+ * per-lesson route override was absent, and reported that as missing data.
+ *
+ * The specs need a SCENE they can open, so ask about scenes.
+ */
+async function sceneKinds(ctx: Awaited<ReturnType<typeof request.newContext>>, code: string) {
+  const scenes = await scenePayload(ctx, code);
+  return new Set(scenes.map((s) => s.kind));
+}
+
+/**
  * Pick by lowest id, NOT by scene count.
  *
  * The wizard specs edit the lesson they open — adding text boxes, adding and deleting map blocks —
@@ -74,26 +90,38 @@ const pick = (ls: Lesson[]) => [...ls].sort((a, b) => a.id - b.id)[0];
  * ?scene= — the same parameter the wizard's own deep-link spec covers.
  */
 async function firstVoyageSceneId(ctx: Awaited<ReturnType<typeof request.newContext>>, code: string) {
-  const html = await (await ctx.get(`/lesson/${code}`)).text();
-  const start = html.indexOf('"scenes":[');
-  if (start === -1) return null;
+  const scenes = await scenePayload(ctx, code);
+  return scenes.find((s) => s.kind === 'voyage')?.id ?? null;
+}
 
-  // Scan to the matching bracket rather than regexing: scene configs contain nested arrays,
-  // and a lazy match would stop at the first inner "]".
-  let depth = 0;
-  let end = -1;
-  for (let i = html.indexOf('[', start); i < html.length; i++) {
-    if (html[i] === '[') depth++;
-    else if (html[i] === ']' && --depth === 0) { end = i + 1; break; }
-  }
-  if (end === -1) return null;
+/** The player page inlines every scene with its id and kind. Read it once, cache per lesson. */
+const payloadCache = new Map<string, Array<{ id: number; kind: string }>>();
 
+async function scenePayload(ctx: Awaited<ReturnType<typeof request.newContext>>, code: string) {
+  const cached = payloadCache.get(code);
+  if (cached) return cached;
+
+  let scenes: Array<{ id: number; kind: string }> = [];
   try {
-    const parsed = JSON.parse(html.slice(html.indexOf('[', start), end)) as Array<{ id: number; kind: string }>;
-    return parsed.find((s) => s.kind === 'voyage')?.id ?? null;
+    const html = await (await ctx.get(`/lesson/${code}`)).text();
+    const start = html.indexOf('"scenes":[');
+    if (start !== -1) {
+      // Scan to the matching bracket rather than regexing: scene configs contain nested arrays,
+      // and a lazy match would stop at the first inner "]".
+      let depth = 0;
+      let end = -1;
+      for (let i = html.indexOf('[', start); i < html.length; i++) {
+        if (html[i] === '[') depth++;
+        else if (html[i] === ']' && --depth === 0) { end = i + 1; break; }
+      }
+      if (end !== -1) scenes = JSON.parse(html.slice(html.indexOf('[', start), end));
+    }
   } catch {
-    return null;   // payload shape changed — fall back to the plain wizard URL
+    scenes = [];   // unreachable page or a changed payload shape — treated as "no scenes known"
   }
+
+  payloadCache.set(code, scenes);
+  return scenes;
 }
 
 export default async function globalSetup(config: FullConfig) {
@@ -138,7 +166,18 @@ export default async function globalSetup(config: FullConfig) {
     ? lessons.find((l) => String(l.id) === pinnedId)
       ?? ({ id: Number(pinnedId), code: child?.code ?? process.env.VOYAGE_LESSON_CODE ?? '', title: 'pinned' } as Lesson)
     : undefined;
-  const voyage = pinnedVoyage ?? pick(published.filter((l) => hasFormat(l, 'voyage')));
+  // Ask which lessons actually CONTAIN a voyage scene, rather than trusting the lesson-level
+  // label. Richest first: a spec that needs an overview or several legs wants the fullest lesson,
+  // and `formats` cannot tell a 6-leg voyage from a 1-leg one.
+  let voyage = pinnedVoyage;
+  if (!voyage) {
+    const byScenes = [...published].sort((a, b) => scenes(b) - scenes(a));
+    for (const candidate of byScenes) {
+      if (!hasFormat(candidate, 'voyage')) continue;      // cheap filter first, then verify
+      const kinds = await sceneKinds(ctx, candidate.code);
+      if (kinds.has('voyage')) { voyage = candidate; break; }
+    }
+  }
   if (!voyage) {
     throw new Error(
       'Playwright global setup: no published VOYAGE lesson found — the voyage specs have nothing to open.\n' +

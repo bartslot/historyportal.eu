@@ -49,6 +49,7 @@ class GenerateLessonScript implements ShouldQueue
     public function handle(#[Llm('script')] OpenAiLlmService $llm): void
     {
         $lesson = Lesson::with(['source', 'teacher', 'scenes'])->findOrFail($this->lessonId);
+        \App\Services\Support\GenerationRunRecorder::activate($lesson->id);
 
         try {
             // Map blocks render the live atlas — they have no narration.
@@ -82,6 +83,10 @@ class GenerateLessonScript implements ShouldQueue
             if ($critique !== null) {
                 $lesson->update(['outline' => array_merge($lesson->outline ?? [], ['critique' => $critique])]);
             }
+
+            // Phase 0: snapshot the run now that the scripts the visuals will illustrate exist
+            // (code hashes, models, condition, visual policy — see GenerationRunRecorder).
+            \App\Services\Support\GenerationRunRecorder::snapshot($lesson->fresh(['scenes']));
 
             $this->dispatchAssetJobs($lesson, $scenes);
 
@@ -180,19 +185,44 @@ class GenerateLessonScript implements ShouldQueue
     {
         $useShots = \App\Services\Support\GridSlicer::parseGrid((string) config('lessons.shot_grid', '3x3')) !== null;
 
+        // Sensitive-topic gate (zero tolerance, WITH a fallback): documentary lessons never
+        // route through the people-allowed narrative shot pipeline — they take the single-image
+        // path, which prefers real sourced imagery and falls back to a restrained no-people
+        // environment. See App\Services\SensitiveTopicPolicy + docs/experiment/phase0-protocol.md.
+        $documentary = \App\Services\SensitiveTopicPolicy::isDocumentary($lesson);
+        if ($documentary && $useShots) {
+            Log::info("GenerateLessonScript #{$lesson->id}: documentary visual policy — shot grids disabled for this lesson");
+            $useShots = false;
+        }
+
         $packedSceneIds = $this->assignPackShots($lesson, $scenes);
 
         $jobs = [];
         foreach ($scenes as $scene) {
             if (! $packedSceneIds->contains($scene->id) && $scene->image_path === null) {
                 $jobs[] = $useShots ? new GenerateSceneShots($scene->id) : new GenerateSceneImage($scene->id);
+                \App\Services\Support\GenerationRunRecorder::recordPath(
+                    $lesson->id,
+                    $scene->id,
+                    $useShots ? 'ai_grid' : 'single_image',
+                );
+            } else {
+                \App\Services\Support\GenerationRunRecorder::recordPath(
+                    $lesson->id,
+                    $scene->id,
+                    $packedSceneIds->contains($scene->id) ? 'asset_pack' : 'pre_assigned',
+                );
             }
             $jobs[] = new GenerateSceneAudio($scene->id);
         }
 
+        $lessonId = $lesson->id;
         Bus::batch($jobs)
             ->name("lesson:{$lesson->id}:scenes")
-            ->then(fn (Batch $batch) => GenerateLessonQuiz::dispatch($lesson->id))
+            ->then(function (Batch $batch) use ($lessonId) {
+                \App\Services\Support\GenerationRunRecorder::finish($lessonId);
+                GenerateLessonQuiz::dispatch($lessonId);
+            })
             ->dispatch();
     }
 

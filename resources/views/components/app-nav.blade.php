@@ -120,7 +120,7 @@
                                 <div class="dropdown" @mouseenter="move($el)">
                                     <div tabindex="0" role="button"
                                          @isset($item['tour']) data-tour="{{ $item['tour'] }}" @endisset
-                                         class="text-sm flex cursor-pointer items-center gap-1.5 whitespace-nowrap transition-colors {{ $active ? 'text-amber-400' : 'text-slate-400 hover:text-white' }}">
+                                         class="text-sm flex cursor-pointer items-center gap-1.5 whitespace-nowrap transition-colors {{ $active ? 'text-amber-400' : 'text-slate-200 hover:text-white' }}">
                                         <span>{{ __($item['label']) }}</span>
                                         <x-icons.chevron-down class="h-3.5 w-3.5 opacity-60" />
                                     </div>
@@ -142,7 +142,7 @@
                                 <a href="{{ route($item['route']) }}"
                                    @isset($item['tour']) data-tour="{{ $item['tour'] }}" @endisset
                                    @mouseenter="move($el)"
-                                   class="text-sm flex items-center gap-1.5 whitespace-nowrap transition-colors {{ $active ? 'text-amber-400' : 'text-slate-400 hover:text-white' }}">
+                                   class="text-sm flex items-center gap-1.5 whitespace-nowrap transition-colors {{ $active ? 'text-amber-400' : 'text-slate-200 hover:text-white' }}">
                                     <span>{{ __($item['label']) }}</span>
                                     @if (!empty($item['badge']))
                                         <span class="text-2xs bg-amber-400 text-slate-900 px-1.5 py-0.5 rounded font-semibold">
@@ -156,7 +156,7 @@
 
                     {{-- Help is one click away from every page, for every signed-in user. --}}
                     <a href="{{ route('help.index') }}" title="{{ __('Help') }}" aria-label="{{ __('Help') }}" data-tour="help"
-                       class="btn btn-ghost btn-circle btn-sm {{ request()->routeIs('help.index') ? 'text-primary' : 'text-slate-400 hover:text-white' }}">
+                       class="btn btn-ghost btn-circle btn-sm {{ request()->routeIs('help.index') ? 'text-primary' : 'text-slate-200 hover:text-white' }}">
                         <x-icons.question-mark-circle class="h-5 w-5" />
                     </a>
 

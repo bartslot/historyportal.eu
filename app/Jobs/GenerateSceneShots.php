@@ -53,10 +53,22 @@ class GenerateSceneShots implements ShouldQueue
         if ($scene->hasManualBackground()) {
             return;
         }
+        \App\Services\Support\GenerationRunRecorder::activate($scene->lesson_id);
+
+        // Sensitive-topic gate, enforced HERE as well as at dispatch (this job is also
+        // dispatched directly from the wizard): documentary lessons never generate synthetic
+        // human reenactment grids — they take the sourced-imagery/environment path instead.
+        if (\App\Services\SensitiveTopicPolicy::isDocumentary($scene->lesson)) {
+            \App\Services\Support\GenerationRunRecorder::recordPath($scene->lesson_id, $scene->id, 'single_image');
+            GenerateSceneImage::dispatch($this->sceneId);
+
+            return;
+        }
 
         $grid = GridSlicer::parseGrid((string) config('lessons.shot_grid', '3x3'));
         if ($grid === null || trim((string) $scene->script_segment) === '') {
             // Shots disabled or nothing to storyboard — legacy single-image pipeline.
+            \App\Services\Support\GenerationRunRecorder::recordPath($scene->lesson_id, $scene->id, 'single_image');
             GenerateSceneImage::dispatch($this->sceneId);
 
             return;
@@ -64,8 +76,19 @@ class GenerateSceneShots implements ShouldQueue
         [$rows, $cols] = $grid;
         $shotCount = $rows * $cols;
 
+        // Phase 0 candidate condition: shot count follows the narration length (one visual
+        // state per ~6.5s, clamped 3–8) and the grid layout follows the count — preferring
+        // 2x3 over 3x3 so each panel keeps enough vertical resolution for faces and action.
+        // Baseline (narrative_shots=false) keeps the fixed configured grid, unchanged.
+        $narrative = (bool) config('lessons.narrative_shots', false);
+        if ($narrative) {
+            $shotCount = ShotListPrompt::shotCountFor($scene);
+            [$rows, $cols] = ShotListPrompt::gridForCount($shotCount);
+            $shotCount = $rows * $cols; // fill the grid — a 5-shot plan renders as 2x3
+        }
+
         try {
-            $shots = $this->storyboard($llm, $scene, $shotCount);
+            $shots = $this->storyboard($llm, $scene, $shotCount, $narrative);
             $validation = $this->validateVisuals($llm, $appearance, $scene);
 
             $prompt = ImageStyleTemplate::buildShotGrid(
@@ -74,6 +97,7 @@ class GenerateSceneShots implements ShouldQueue
                 style: (string) ($scene->image_style ?? $scene->lesson->image_style ?? 'realistic'),
                 rows: $rows,
                 cols: $cols,
+                narrative: $narrative,
             );
 
             $bytes = $image->generateGridBytesFromPrompt(
@@ -153,14 +177,14 @@ class GenerateSceneShots implements ShouldQueue
      *
      * @return list<array{order: int, anchor_sentence: string, composition: string, description: string}>
      */
-    private function storyboard(OpenAiLlmService $llm, Scene $scene, int $shotCount): array
+    private function storyboard(OpenAiLlmService $llm, Scene $scene, int $shotCount, bool $narrative = false): array
     {
         $script = (string) $scene->script_segment;
         $best = [];
 
         foreach ([1, 2] as $attempt) {
             $result = $llm->json(
-                system: ShotListPrompt::system($shotCount),
+                system: ShotListPrompt::system($shotCount, $narrative),
                 user: ShotListPrompt::user($scene, $shotCount),
             );
 
@@ -168,12 +192,18 @@ class GenerateSceneShots implements ShouldQueue
                 ->filter(fn ($shot) => is_array($shot)
                     && trim((string) ($shot['description'] ?? '')) !== ''
                     && self::anchorMatches($script, (string) ($shot['anchor_sentence'] ?? '')))
-                ->map(fn (array $shot, int $index) => [
+                ->map(fn (array $shot, int $index) => array_filter([
                     'order' => $index + 1,
                     'anchor_sentence' => (string) $shot['anchor_sentence'],
                     'composition' => (string) ($shot['composition'] ?? ''),
                     'description' => (string) $shot['description'],
-                ])
+                    // Narrative-mode fields (Phase 0) — persisted for the scoring rubric
+                    // (action_match is scored against `action`, not the free description).
+                    'subject' => trim((string) ($shot['subject'] ?? '')) ?: null,
+                    'action' => trim((string) ($shot['action'] ?? '')) ?: null,
+                    'shot_size' => trim((string) ($shot['shot_size'] ?? '')) ?: null,
+                    'narrative_function' => trim((string) ($shot['narrative_function'] ?? '')) ?: null,
+                ], fn ($value) => $value !== null))
                 ->values()
                 ->all();
 
