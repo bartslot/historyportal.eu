@@ -798,12 +798,26 @@
                     // sceneId may still be null before the first scene:load — the server
                     // falls back to the currently selected scene in that case.
                     window.Livewire.dispatch('sceneTextsChanged', { sceneId: textSceneId ?? null, texts, selectedTextId })
+                    // The timeline lists the scene's OBJECTS, so adding or removing a text layer
+                    // changes its rows. Same event the object list uses.
+                    announceObjects()
                 },
             })
             window.__lessonTextLayer = textLayer
+            // The overlay mounts LAZILY, long after the timeline's init() has already asked what is
+            // on the scene and been told nothing. Nobody dispatched this event — it was listened
+            // for in two places and fired by none — so the Timeline tab read "Nothing on this scene
+            // can be animated yet" with a Title sitting on the canvas. Say so the moment there is
+            // something to say.
+            announceObjects()
             wireMapProjectors()   // a map block may already be live — pin labels to it now
             return textLayer
         }
+        /** Tell every panel that lists the scene's objects to look again. */
+        function announceObjects () {
+            try { window.dispatchEvent(new CustomEvent('scene-objects-changed')) } catch (_) { /* noop */ }
+        }
+
         window.Livewire.on('scene:text-updated', (e) => {
             const payload = Array.isArray(e) ? e[0] : e
             if (!payload || payload.sceneId !== textSceneId) return

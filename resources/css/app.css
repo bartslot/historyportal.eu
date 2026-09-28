@@ -180,6 +180,12 @@
     --color-timeline-ground: #08101e;
     --color-timeline-mark: #394658;   /* playhead line AND keyframe diamond */
     --color-timeline-strip: #0f1929;  /* the transport row above the lanes */
+    /* The span bars. A track with two or more keyframes draws a bar from its first to its last,
+       which is the one thing a lane of bare diamonds cannot say: how long the move actually takes.
+       Two weights so a group summarises its children without competing with them — the object's
+       bar is the quieter of the pair, because the property rows are what you edit. */
+    --color-timeline-bar: #2f6fb8;        /* a property's own span */
+    --color-timeline-bar-group: #3b3f6b;  /* the object's span, summarising its properties */
     --timeline-lane-h: 1.3125rem;     /* 21px */
     --timeline-row-pitch: 1.5rem;     /* 24px — lane plus its gap */
     --timeline-label-col: 14.125rem;  /* 226px — labels and value fields, lanes start after it */

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   sortedKeys, segmentAt, sampleNumber,
-  addKeyframe, removeKeyframe, updateKeyframe, setDuration, trackDuration,
+  addKeyframe, removeKeyframe, updateKeyframe, setDuration, trackDuration, sameTime, TIME_EPSILON,
 } from '../keyframes.js'
 
 /**
@@ -116,6 +116,23 @@ describe('editing returns a new track and never touches the old one', () => {
     expect(t.keyframes[1].value).toBe(99)
   })
 
+  /**
+   * A playhead is a float. Click the lane at what looks like 1.0 and it lands at 1.0000000001, so
+   * an exact `time !==` test calls that a different moment and stacks a second keyframe a
+   * ten-millionth of a second from the first: two diamonds drawn on the same pixel, one of which
+   * you cannot select, and a segment of zero length between them.
+   */
+  it('addKeyframe replaces a keyframe a float hair away rather than stacking one beside it', () => {
+    const t = addKeyframe(track([at(0, 0), at(2, 20)]), at(2 + TIME_EPSILON / 2, 99))
+    expect(t.keyframes).toHaveLength(2)
+    expect(t.keyframes[1].value).toBe(99)
+  })
+
+  it('addKeyframe still inserts when the time is genuinely different', () => {
+    const t = addKeyframe(track([at(0, 0), at(2, 20)]), at(2 + TIME_EPSILON * 100, 99))
+    expect(t.keyframes).toHaveLength(3)
+  })
+
   it('addKeyframe leaves the original alone', () => {
     const original = track([at(0, 0)])
     addKeyframe(original, at(1, 10))
@@ -145,5 +162,22 @@ describe('editing returns a new track and never touches the old one', () => {
   it('setDuration refuses a track with no length and a duration of zero', () => {
     expect(setDuration(track([at(0, 0)]), 5).keyframes.map((k) => k.time)).toEqual([0])
     expect(setDuration(track([at(0, 0), at(2, 20)]), 0).keyframes.map((k) => k.time)).toEqual([0, 2])
+  })
+})
+
+describe('sameTime', () => {
+  it('is true for two moments closer than the epsilon', () => {
+    expect(sameTime(2, 2 + TIME_EPSILON / 2)).toBe(true)
+    expect(sameTime(2, 2)).toBe(true)
+  })
+
+  it('is false at a hundred epsilons apart, which is still a hair on any ruler', () => {
+    expect(sameTime(2, 2 + TIME_EPSILON * 100)).toBe(false)
+  })
+
+  // An absolute, so the constant cannot drift into uselessness unnoticed: at 1e-6 seconds, two
+  // keyframes are a microsecond apart. The narrowest ruler here is 2000 px/s — half a nanometre.
+  it('holds the epsilon at one microsecond', () => {
+    expect(TIME_EPSILON).toBe(1e-6)
   })
 })

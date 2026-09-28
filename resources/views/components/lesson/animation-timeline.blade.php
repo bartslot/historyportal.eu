@@ -20,14 +20,30 @@
 
      The ruler is in SECONDS of narration, not abstract milliseconds, because scenes.audio_alignment
      already gives every spoken word a timestamp. Dragging a keyframe snaps it to a word. --}}
-<div x-data="animationTimeline({
-        sceneId: @js($scene?->id),
-        sceneKind: @js($scene?->kind),
-        duration: @js($duration),
-        alignment: @js($alignment),
-        targets: @js($timeline['targets'] ?? []),
-        tracks: @js($timeline['tracks'] ?? []),
-     })"
+{{-- The config rides a DATA ATTRIBUTE, and the x-data expression is a CONSTANT string. That is
+     load-bearing, and it is not a style choice.
+
+     Spelling the tracks into the x-data expression put server state inside the expression itself,
+     so every save rewrote the attribute and Livewire's morph then rebuilt the Alpine component.
+     The panel ended up with two of them: the elements the morph PRESERVED (this div's .window
+     handlers, the lanes div and its pointerdown) kept listeners closed over the ORIGINAL scope,
+     while the rows inside x-for were re-created against the NEW one. Dragging the playhead moved
+     the old component's clock; typing a value asked the new component what time it was, got the
+     stale answer, and wrote the keyframe back over the one at 0 — so a recorded keyframe silently
+     replaced its predecessor instead of joining it.
+
+     A constant expression gives Alpine no reason to re-evaluate x-data, so there is exactly ONE
+     component for the life of the panel. Switching scenes still rebuilds it, because that changes
+     the dock's wire:key and the element is destroyed outright rather than morphed. --}}
+<div data-timeline-config="{{ json_encode([
+        'sceneId'   => $scene?->id,
+        'sceneKind' => $scene?->kind,
+        'duration'  => $duration,
+        'alignment' => $alignment,
+        'targets'   => $timeline['targets'] ?? [],
+        'tracks'    => $timeline['tracks'] ?? [],
+     ]) }}"
+     x-data="animationTimeline(JSON.parse($el.dataset.timelineConfig))"
      x-on:pointermove.window="onPointerMove($event)"
      x-on:pointerup.window="onPointerUp()"
      x-on:pointercancel.window="onPointerUp()"
@@ -84,6 +100,23 @@
         </button>
         </span>
 
+        {{-- Auto-key. A value change records itself at the playhead; this is the way to stop it.
+
+             A button that stays pressed, not a switch: the HIG reserves the switch style for a
+             list row, and asks for an interface icon whose BACKGROUND changes with the state —
+             never colour alone. So the diamond fills when recording is live. --}}
+        <button type="button" x-on:click="autoKey = !autoKey; remember()" data-timeline-autokey
+                :aria-pressed="autoKey ? 'true' : 'false'"
+                :class="autoKey ? 'bg-white/10 text-panel-value' : 'text-panel-label'"
+                class="grid h-7 w-7 shrink-0 cursor-pointer place-items-center rounded hover:text-white"
+                :data-tooltip="autoKey ? @js(__('Auto-keyframe on')) : @js(__('Auto-keyframe off'))"
+                :aria-label="autoKey ? @js(__('Auto-keyframe on')) : @js(__('Auto-keyframe off'))">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M12 8.5 15.5 12 12 15.5 8.5 12Z" :fill="autoKey ? 'currentColor' : 'none'"/>
+            </svg>
+        </button>
+
         {{-- Current time, and the WORD being spoken there, which is the readout that means
              something to a teacher. --}}
         <label class="flex shrink-0 items-center gap-1.5" data-scrub-scope>
@@ -106,6 +139,34 @@
                    class="h-7 w-16 rounded bg-panel-hairline px-1.5 text-right font-mono text-2xs text-panel-value focus:outline-none" />
             <span class="text-3xs text-panel-label">ms</span>
         </label>
+
+        {{-- Loop, which is how you watch a two-second build twenty times while tuning it. --}}
+        <button type="button" x-on:click="loop = !loop; remember()" data-timeline-loop
+                :aria-pressed="loop ? 'true' : 'false'"
+                :class="loop ? 'bg-white/10 text-panel-value' : 'text-panel-label'"
+                class="grid h-7 w-7 shrink-0 cursor-pointer place-items-center rounded hover:text-white"
+                :data-tooltip="loop ? @js(__('Looping')) : @js(__('Loop'))"
+                :aria-label="loop ? @js(__('Looping')) : @js(__('Loop'))">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992V4.356M20.015 9.348a8.25 8.25 0 0 0-14.03-3.028L3 8.25m0 6.402h4.992v4.992M3 14.652a8.25 8.25 0 0 0 14.03 3.028L21 15.75"/>
+            </svg>
+        </button>
+
+        <span class="h-4 w-px shrink-0 bg-panel-hairline" aria-hidden="true"></span>
+
+        {{-- Collapse every group, or open them all when none is open. One button, because the
+             rows themselves say which half of the pair the next press gives you. --}}
+        <button type="button" x-on:click="toggleAllGroups()" data-timeline-collapse-all
+                :aria-expanded="anyGroupOpen ? 'true' : 'false'"
+                class="grid h-7 w-7 shrink-0 cursor-pointer place-items-center rounded text-panel-label hover:text-white"
+                :data-tooltip="anyGroupOpen ? @js(__('Collapse all')) : @js(__('Expand all'))"
+                :aria-label="anyGroupOpen ? @js(__('Collapse all')) : @js(__('Expand all'))">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6h16.5M3.75 10.5h10.5M3.75 15h6"/>
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      :d="anyGroupOpen ? 'M15.5 13.5 18.5 16.5 21.5 13.5' : 'M15.5 16.5 18.5 13.5 21.5 16.5'"/>
+            </svg>
+        </button>
 
         <span data-timeline-word class="min-w-0 truncate text-2xs italic text-panel-label" x-text="spokenWord"></span>
 
@@ -155,8 +216,14 @@
                 <div>
                     {{-- "Camera >" — the file puts the chevron at the trailing edge, not before
                          the name, and the icon says which kind of object this is. --}}
+                    {{-- The row is a DIV holding two buttons, not one button holding another:
+                         the eye is its own command and a button inside a button is not markup a
+                         browser will honour. The row's border and height live here so the
+                         geometry is unchanged by the split. --}}
+                    <div class="flex w-full items-center border-t border-panel-hairline"
+                         style="height: 38px">
                     <button type="button" x-on:click="toggleGroup(object.target)"
-                            class="flex w-full items-center gap-2 border-t border-panel-hairline px-4 text-left"
+                            class="flex min-w-0 flex-1 items-center gap-2 px-4 text-left"
                             style="height: 38px" :data-timeline-group="object.target"
                             :aria-expanded="openGroups[object.target] ? 'true' : 'false'">
 {{-- A text layer says T; a camera gets Bart's glyph from the file (13x8, stroke 1.33333). --}}
@@ -176,12 +243,42 @@
                         </svg>
                     </button>
 
+                    {{-- The eye takes this object off the canvas while you work on the one behind
+                         it. A WORKING state — it is never saved, because "hidden while I was
+                         positioning the title" must not follow the lesson into a classroom.
+
+                         The icon CHANGES rather than only its colour, which is what the HIG asks
+                         for: not everyone can perceive a tint. --}}
+                    <button type="button" x-on:click="toggleHidden(object.target)"
+                            :data-timeline-eye="object.target"
+                            :aria-pressed="isHidden(object.target) ? 'true' : 'false'"
+                            :class="isHidden(object.target) ? 'text-panel-label' : 'text-panel-icon'"
+                            class="mr-3 grid h-6 w-6 shrink-0 cursor-pointer place-items-center rounded hover:bg-white/5 hover:text-white"
+                            :data-tooltip="isHidden(object.target) ? @js(__('Show')) : @js(__('Hide'))"
+                            :aria-label="isHidden(object.target) ? @js(__('Show')) : @js(__('Hide'))">
+                        <svg x-show="!isHidden(object.target)" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                             stroke-width="1.5" class="h-3.5 w-3.5" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.964-7.178Z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
+                        </svg>
+                        <svg x-show="isHidden(object.target)" x-cloak viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                             stroke-width="1.5" class="h-3.5 w-3.5" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243"/>
+                        </svg>
+                    </button>
+                    </div>
+
                     <template x-for="property in propertiesOf(object.target)" :key="property.key">
-                        <label class="flex items-center gap-1.5 px-4" data-scrub-scope
+                        <label class="flex items-center gap-1.5 pl-2 pr-4" data-scrub-scope
                                x-show="openGroups[object.target]"
                                style="height: var(--timeline-row-pitch)">
+                            {{-- The elbow that says this row belongs to the object above it. Drawn
+                                 rather than indented, because indentation alone stops reading as
+                                 hierarchy the moment two objects are open at once. --}}
+                            <span class="mb-2 h-2.5 w-2 shrink-0 rounded-bl-[2px] border-b border-l border-panel-hairline"
+                                  aria-hidden="true"></span>
                             <span data-scrub class="shrink-0 cursor-col-resize select-none text-3xs uppercase tracking-wide text-panel-label"
-                                  style="width: var(--settings-panel-label-w)" x-text="property.label"></span>
+                                  style="width: calc(var(--settings-panel-label-w) - 0.75rem)" x-text="property.label"></span>
                             <input type="number" step="any" data-timeline-value
                                    :value="valueAt(object.target, property.key)"
                                    x-on:change="setValue(object.target, property.key, Number($event.target.value))"
@@ -249,13 +346,31 @@
 
                 <template x-for="object in objects" :key="object.target">
                     <div>
-                        <div style="height: 38px"></div>
+                        {{-- The object's own lane: one bar covering everything its properties do,
+                             so a collapsed group still says when it moves. --}}
+                        <div class="relative" style="height: 38px">
+                            <div x-show="objectSpan(object.target)"
+                                 class="absolute rounded-[3px]"
+                                 :data-timeline-bar-group="object.target"
+                                 :style="barStyle(objectSpan(object.target)) + '; top: 9px; height: var(--timeline-lane-h); background: var(--color-timeline-bar-group)'"></div>
+                        </div>
                         <template x-for="property in propertiesOf(object.target)" :key="property.key">
                             <div class="relative" x-show="openGroups[object.target]"
                                  style="height: var(--timeline-row-pitch)">
                                 <div class="absolute inset-x-0 top-0 rounded-[2px]"
                                      style="height: var(--timeline-lane-h); background: var(--color-panel-hairline)"
                                      :data-timeline-lane="object.target + ':' + property.key"></div>
+                                {{-- The span, drawn BEHIND the diamonds rather than instead of
+                                     them: the bar is what you read, the diamonds are what you
+                                     drag, and replacing one with the other would have cost the
+                                     gestures that are already there. --}}
+                                <div x-show="spanOf(object.target, property.key)"
+                                     class="absolute grid place-items-center overflow-hidden rounded-[2px]"
+                                     :data-timeline-bar="object.target + ':' + property.key"
+                                     :style="barStyle(spanOf(object.target, property.key)) + '; top: 0; height: var(--timeline-lane-h); background: var(--color-timeline-bar)'">
+                                    <span class="pointer-events-none select-none truncate px-2 text-3xs font-medium text-white/90"
+                                          x-text="property.label"></span>
+                                </div>
                                 <template x-for="key in keysOf(object.target, property.key)" :key="key.time">
                                     <span class="absolute grid place-items-center"
                                           :style="`left: ${xOf(key.time) - 6}px; top: 4px`"

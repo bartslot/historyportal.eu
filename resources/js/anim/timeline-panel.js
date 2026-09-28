@@ -9,10 +9,10 @@
  * properties.js. There is no fixed list anywhere.
  */
 
-import { addKeyframe, removeKeyframe, sortedKeys } from './keyframes.js'
+import { addKeyframe, removeKeyframe, sortedKeys, sameTime } from './keyframes.js'
 import { propertiesFor, sampleFrame, kindOfTarget } from './properties.js'
 import { wordSpans, snapTime, wordAt } from './narration-clock.js'
-import { textObjects, artObjects, readObjectProperty, writeObjectProperty } from './scene-objects.js'
+import { textObjects, artObjects, readObjectProperty, writeObjectProperty, setObjectHidden } from './scene-objects.js'
 import { isPlayPauseKey } from '../ui/keyboard.js'
 import {
   fitZoom, timeAtX, xAtTime, toleranceSeconds, tickStep, ticksFor, formatTime, toMs, fromMs,
@@ -78,6 +78,10 @@ export const animationTimeline = (config = {}) => ({
   drag: null,
   scrollLeft: 0,
 
+  loop: false,               // playback returns to 0 at the end instead of stopping
+  autoKey: true,             // a value change records itself at the playhead
+  hiddenObjects: {},         // objects the author has taken off the canvas while working
+
   zoomIsMine: false,          // true once the teacher has touched the zoom control
 
   init () {
@@ -99,10 +103,47 @@ export const animationTimeline = (config = {}) => ({
     for (const event of ['scene-objects-changed', 'objscene-changed']) {
       window.addEventListener(event, () => this.refreshObjects())
     }
+
+    /**
+     * Ask again whenever the tab is opened, because the event alone arrives too early.
+     *
+     * The text overlay mounts LAZILY — measured at 3.45s on a narration scene — and this panel is
+     * built after it. So the one announcement lands on nobody, init()'s own refreshObjects() has
+     * already run against an empty overlay, and the tab reads "Nothing on this scene can be
+     * animated yet" with a Title sitting on the canvas. Listening was never going to be enough on
+     * its own; the moment a teacher looks at the timeline is the moment to look at the scene.
+     */
+    this.$watch('$store.view.bottomTab', (tab) => { if (tab === 'timeline') this.refreshObjects() })
+    this.waitForObjects()
     this.$nextTick(() => { if (!this.zoomIsMine) this.fit() })
     // Only refit while the zoom is still ours to choose. Refitting on every resize threw away a
     // zoom the teacher had just set, which reads as the control not working.
     new ResizeObserver(() => { if (!this.zoomIsMine) this.fit() }).observe(this.$refs.lanes ?? this.$el)
+  },
+
+  /**
+   * Keep asking what is on the scene until it answers.
+   *
+   * The overlays mount on their own schedule — measured at ~3.5s on a narration scene — and none of
+   * the three signals covers every order on its own. init() can run first and see nothing; the
+   * announcement can arrive before this panel exists to hear it; and the tab watcher never fires
+   * when the tab was ALREADY open, which is what a reload gives you. That last one is the ugly
+   * case: reload the wizard on a scene you had animated, and the tracks come back from the server
+   * while the ROWS stay empty, so a teacher sees their work gone when it is safely in the database.
+   *
+   * So this asks, on a budget, and stops the moment there is an answer. Twenty seconds rather than
+   * five: a heavy scene — a globe, a video, a gallery of paintings — takes its time, and a budget
+   * that expires first leaves the teacher looking at "nothing can be animated" on a scene full of
+   * layers. Two array reads every 250ms costs nothing next to that. Bounded rather than a standing
+   * poll, because a scene that is genuinely empty should stop being asked.
+   */
+  waitForObjects (tries = 80) {
+    if (!tries || this.objects.length || !this.$el?.isConnected) return
+    setTimeout(() => {
+      if (!this.$el?.isConnected) return   // scene switched; this component is gone
+      this.refreshObjects()
+      this.waitForObjects(tries - 1)
+    }, 250)
   },
 
   /** Remember everything a morph would otherwise throw away. */
@@ -110,6 +151,12 @@ export const animationTimeline = (config = {}) => ({
     SESSIONS.set(config.sceneId, {
       time: this.time, zoom: this.zoom, zoomIsMine: this.zoomIsMine, duration: this.duration,
       openGroups: { ...this.openGroups },
+      loop: this.loop, autoKey: this.autoKey, hiddenObjects: { ...this.hiddenObjects },
+      // The tracks too, because between a save and the next server render the CLIENT holds the
+      // newer copy. A rebuild reads the config attribute the server last rendered, which can still
+      // be the state before the keyframe you just set — and the keyframes vanish off the lane
+      // while sitting safely in the database. Measured: two diamonds to none, no action taken.
+      tracks: this.tracks, targets: this.targets,
     })
   },
 
@@ -164,6 +211,65 @@ export const animationTimeline = (config = {}) => ({
 
   toggleGroup (target) {
     this.openGroups[target] = !this.openGroups[target]
+    this.remember()
+  },
+
+  /** Are any groups open? Drives whether the collapse-all button collapses or expands. */
+  get anyGroupOpen () { return this.objects.some((o) => this.openGroups[o.target]) },
+
+  /**
+   * Collapse every group, or open every group when none is open.
+   *
+   * One button rather than two, because the state is visible in the rows themselves — there is
+   * never a moment when you cannot tell which half of the pair you would get.
+   */
+  toggleAllGroups () {
+    const open = !this.anyGroupOpen
+    for (const o of this.objects) this.openGroups[o.target] = open
+    this.remember()
+  },
+
+  // ── Spans. A track's bar runs from its first keyframe to its last ────────────────────────
+
+  /**
+   * The stretch of time a property is animated over, or null when it is not animated.
+   *
+   * ONE keyframe returns null on purpose: a single key is a stored position, not a movement, and
+   * a zero-length bar would claim otherwise. It is the same rule applyFrame() plays by.
+   */
+  spanOf (target, property) {
+    const keys = this.keysOf(target, property)
+    if (keys.length < 2) return null
+    return { from: keys[0].time, to: keys[keys.length - 1].time }
+  },
+
+  /** The union of every property's span — the object's own bar on its group row. */
+  objectSpan (target) {
+    const spans = this.propertiesOf(target)
+      .map((p) => this.spanOf(target, p.key))
+      .filter(Boolean)
+    if (!spans.length) return null
+    return {
+      from: Math.min(...spans.map((s) => s.from)),
+      to: Math.max(...spans.map((s) => s.to)),
+    }
+  },
+
+  /** A span as pixels on the lane. Kept above zero so a bar is never invisible. */
+  barStyle (span) {
+    if (!span) return 'display: none'
+    const left = this.xOf(span.from)
+    const width = Math.max(2, this.xOf(span.to) - left)
+    return `left: ${left}px; width: ${width}px`
+  },
+
+  // ── Visibility. The eye takes an object off the canvas while you work on another ─────────
+
+  isHidden (target) { return !!this.hiddenObjects[target] },
+
+  toggleHidden (target) {
+    this.hiddenObjects[target] = !this.hiddenObjects[target]
+    setObjectHidden(target, this.hiddenObjects[target])
     this.remember()
   },
 
@@ -338,7 +444,13 @@ export const animationTimeline = (config = {}) => ({
       if (!this.playing) return
       const elapsed = (performance.now() - this._startedAt) / 1000
       const t = this._startedFrom + elapsed
-      if (t >= this.duration) { this.seek(this.duration); return this.pause() }
+      if (t >= this.duration) {
+        // Loop returns to the start rather than stopping, which is how you watch a build over and
+        // over while tuning it. Restarting the clock beats seeking to 0 and calling play() again:
+        // that would rebuild the rAF chain every lap and drift.
+        if (this.loop) { this._startedFrom = 0; this._startedAt = performance.now(); this.seek(0) }
+        else { this.seek(this.duration); return this.pause() }
+      }
       this.seek(t)
       this.revealPlayhead()
       this._raf = requestAnimationFrame(step)
@@ -400,10 +512,15 @@ export const animationTimeline = (config = {}) => ({
    */
   toggleKey (target, property) {
     const map = window.__lessonMap
-    const value = kindOfTarget(target) === 'camera'
+    const live = kindOfTarget(target) === 'camera'
       ? (map ? cameraFromMap(map)[property] : undefined)
       : readObjectProperty(target, property)
-    if (!Number.isFinite(value)) return
+
+    // A layer nobody has moved yet stores NOTHING for x — it is positioned by the stylesheet, and
+    // the property reads null. Bailing on that made the diamond do nothing at all on a fresh
+    // layer, silently, which is the worst way for a control to refuse. Key what the row is
+    // SHOWING instead: the field says 0, so the keyframe says 0, and the two agree.
+    const value = Number.isFinite(live) ? live : 0
 
     this.writeTrack(target, property, (track) => addKeyframe(track, { time: this.time, value }))
     this.save()
@@ -411,7 +528,7 @@ export const animationTimeline = (config = {}) => ({
 
   /** Is there a key exactly under the playhead? Drives the diamond's pressed state. */
   hasKeyHere (target, property) {
-    return this.keysOf(target, property).some((k) => Math.abs(k.time - this.time) < 1e-6)
+    return this.keysOf(target, property).some((k) => sameTime(k.time, this.time))
   },
 
   /** What this property reads at the playhead: the sampled value when it is animated, and the
@@ -430,20 +547,38 @@ export const animationTimeline = (config = {}) => ({
     return Number.isFinite(live) ? round1(live) : 0
   },
 
-  /** Typing a number moves the object AND, if this property is keyed here, moves that key's value.
-   *  Editing a value at a keyframe that then ignored it is the sort of thing nobody reports. */
+  /**
+   * Is this property animated? Which is to say: has anyone put a keyframe on it.
+   *
+   * The gate on auto-keying, and the reason there is one. Recording every value change on every
+   * property would mean nudging a title into place on an untouched scene starts an animation
+   * nobody asked for, and leaves no way to simply POSITION something. The diamond is what starts
+   * an animation; from the first key onwards, the timeline records what you do.
+   */
+  isAnimated (target, property) { return this.keysOf(target, property).length > 0 },
+
+  /**
+   * Typing a number moves the object, and records it at the playhead.
+   *
+   * Bart: *"Timeline should register new keyframes upon value change. if the time has moved (not
+   * same as previous keyframe)"*. Before this it wrote only to a key that was ALREADY under the
+   * playhead, so the common act — scrub forward, reposition, scrub forward, reposition — moved the
+   * layer and recorded none of it unless you remembered the diamond each time.
+   *
+   * The two cases are one call: addKeyframe replaces a key at the same moment and inserts at a new
+   * one, and "the same moment" is the epsilon test, not `===`, because a playhead dropped by
+   * clicking the lane is a float. That is the whole of *"not same as previous keyframe"*.
+   */
   setValue (target, property, value) {
     if (!Number.isFinite(value)) return
     const map = window.__lessonMap
     if (kindOfTarget(target) === 'camera') { if (map) applyCamera(map, { [property]: value }) }
     else writeObjectProperty(target, property, value)
 
-    if (!this.hasKeyHere(target, property)) return
-    this.writeTrack(target, property, (track) => ({
-      ...track,
-      keyframes: sortedKeys(track).map((k) => (Math.abs(k.time - this.time) < 1e-6 ? { ...k, value } : k)),
-    }))
+    if (!this.autoKey || !this.isAnimated(target, property)) return
+    this.writeTrack(target, property, (track) => addKeyframe(track, { time: this.time, value }))
     this.save()
+    this.announce()
   },
 
   /** The keys of every property of this object, so the arrows step through the OBJECT's timing
@@ -457,11 +592,11 @@ export const animationTimeline = (config = {}) => ({
   },
 
   prevKeyTime (target) {
-    return this.keyTimesOf(target).filter((t) => t < this.time - 1e-6).at(-1) ?? null
+    return this.keyTimesOf(target).filter((t) => t < this.time && !sameTime(t, this.time)).at(-1) ?? null
   },
 
   nextKeyTime (target) {
-    return this.keyTimesOf(target).find((t) => t > this.time + 1e-6) ?? null
+    return this.keyTimesOf(target).find((t) => t > this.time && !sameTime(t, this.time)) ?? null
   },
 
   /** @param {-1|1} direction */
@@ -521,6 +656,7 @@ export const animationTimeline = (config = {}) => ({
   },
 
   save () {
+    this.remember()   // the client's copy is the newer one until the server renders again
     this.$wire?.setTimeline?.({ duration: this.duration, targets: this.targets, tracks: this.tracks })
   },
 })

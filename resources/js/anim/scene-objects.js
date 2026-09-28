@@ -49,6 +49,27 @@ export const readObjectProperty = (target, property) => {
   return Number.isFinite(value) ? value : null
 }
 
+/**
+ * Take an object off the canvas, or put it back — the eye on its timeline row.
+ *
+ * A WORKING state, not lesson data, so it is written straight onto the rendered node and never
+ * saved. Hiding a title while you position the one behind it must not follow the lesson to a
+ * classroom, and a flag that persisted would do exactly that.
+ *
+ * Every match is hidden, not the first: a map or voyage scene keeps TWO artwork overlays alive
+ * over the same layers, so hiding one node leaves the copy nobody was looking at on screen.
+ */
+export const setObjectHidden = (target, hidden) => {
+  const [kind, id] = String(target).split(':')
+  const selector = kind === 'art'
+    ? `[data-layer-id="art_${id}"], [data-layer-chrome="art_${id}"]`
+    : `[data-text-id="${id}"]`
+
+  for (const node of document.querySelectorAll(selector)) {
+    node.style.visibility = hidden ? 'hidden' : ''
+  }
+}
+
 /** Put one property back on the live layer. */
 export const writeObjectProperty = (target, property, value) => {
   const [kind, id] = String(target).split(':')

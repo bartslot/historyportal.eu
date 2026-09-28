@@ -19,6 +19,20 @@ export const DEFAULT_EASING = 'easeInOutCubic'
 export const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v))
 export const lerp = (a, b, t) => a + (b - a) * t
 
+/**
+ * How close two keyframe times have to be to count as the same moment.
+ *
+ * A playhead is a float: click the lane at what looks like 1.0 and it lands at 1.0000000001. An
+ * exact `===` calls that a different moment, so anything keying there stacks a second keyframe a
+ * ten-millionth of a second from the first — two diamonds on one pixel, one of them unselectable,
+ * and a zero-length segment between them. A microsecond is far below anything a ruler can show
+ * (the narrowest here is 2000 px/s, which puts a microsecond at half a nanometre) and far above
+ * the float error, so it separates a real second keyframe from a rounding artefact.
+ */
+export const TIME_EPSILON = 1e-6
+
+export const sameTime = (a, b) => Math.abs(a - b) < TIME_EPSILON
+
 export const easingFn = (name) => EASING[name] || EASING[DEFAULT_EASING]
 
 const num = (v) => (Number.isFinite(v) ? v : 0)
@@ -94,10 +108,11 @@ export const catmullRom = (p0, p1, p2, p3, t) => {
 
 // ── Editing. Every one of these returns a NEW track; nothing here mutates what it is handed. ──
 
-/** Insert a keyframe, keeping the track in time order. Replaces any keyframe at the same time. */
+/** Insert a keyframe, keeping the track in time order. Replaces any keyframe at the same moment —
+ *  same to within TIME_EPSILON, because the time being keyed at is usually a float. */
 export const addKeyframe = (track, keyframe) => ({
   ...track,
-  keyframes: [...(track?.keyframes ?? []).filter((k) => k.time !== keyframe.time), { ...keyframe }]
+  keyframes: [...(track?.keyframes ?? []).filter((k) => !sameTime(k.time, keyframe.time)), { ...keyframe }]
     .sort((a, b) => a.time - b.time),
 })
 
