@@ -1520,5 +1520,7 @@
     "Looping": "Herhaalt",
     "Collapse": "Inklappen",
     "Expand": "Uitklappen",
-    "Custom bezier": "Eigen bézier"
+    "Custom bezier": "Eigen bézier",
+    "Duplicate object": "Object dupliceren",
+    "That object no longer exists.": "Dat object bestaat niet meer."
 }

@@ -1475,5 +1475,7 @@
     "Looping": "In ripetizione",
     "Collapse": "Comprimi",
     "Expand": "Espandi",
-    "Custom bezier": "Bézier personalizzata"
+    "Custom bezier": "Bézier personalizzata",
+    "Duplicate object": "Duplica oggetto",
+    "That object no longer exists.": "Questo oggetto non esiste più."
 }

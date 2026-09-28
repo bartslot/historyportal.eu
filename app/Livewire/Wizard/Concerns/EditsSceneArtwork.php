@@ -735,7 +735,7 @@ trait EditsSceneArtwork
 
         // Collect asset_ids and fetch the assets in one query.
         $assetIds = collect($layers)
-            ->map(fn ($l) => $l['asset_id'] ?? null)
+            ->map(fn ($l) => $l['src_asset_id'] ?? $l['asset_id'] ?? null)
             ->filter()
             ->unique()
             ->values()
@@ -751,7 +751,8 @@ trait EditsSceneArtwork
         return collect($layers)
             ->filter(fn ($l) => ($l['asset_id'] ?? null) !== null)
             ->map(function (array $l) use ($assets) {
-                $asset = $assets->get($l['asset_id'] ?? null);
+                // A duplicate carries a synthetic asset_id; src_asset_id names the real asset.
+                $asset = $assets->get($l['src_asset_id'] ?? $l['asset_id'] ?? null);
                 if (! $asset) {
                     return null;
                 }

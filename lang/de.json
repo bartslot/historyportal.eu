@@ -1475,5 +1475,7 @@
     "Looping": "Wiederholt",
     "Collapse": "Einklappen",
     "Expand": "Ausklappen",
-    "Custom bezier": "Eigene Bézierkurve"
+    "Custom bezier": "Eigene Bézierkurve",
+    "Duplicate object": "Objekt duplizieren",
+    "That object no longer exists.": "Dieses Objekt gibt es nicht mehr."
 }

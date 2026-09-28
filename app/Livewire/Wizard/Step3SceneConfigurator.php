@@ -12,6 +12,7 @@ use App\Jobs\GenerateSkyboxCandidates;
 use App\Jobs\GenerateSkyboxImage;
 use App\Jobs\GenerateWorldLabsScene;
 use App\Livewire\Wizard\Concerns\BlocksGuestDemoSpending;
+use App\Livewire\Wizard\Concerns\DuplicatesSceneObjects;
 use App\Livewire\Wizard\Concerns\EditsQuizQuestions;
 use App\Livewire\Wizard\Concerns\EditsSceneArtwork;
 use App\Livewire\Wizard\Concerns\EditsStoryGame;
@@ -40,6 +41,7 @@ use Livewire\WithFileUploads;
 class Step3SceneConfigurator extends Component
 {
     use BlocksGuestDemoSpending;
+    use DuplicatesSceneObjects;
     use EditsQuizQuestions;
     use EditsSceneArtwork;
     use EditsStoryGame;
@@ -200,7 +202,8 @@ class Step3SceneConfigurator extends Component
                 'url' => ! empty($l['path']) ? asset('storage/'.$l['path']).'?v='.$ts : ($l['url'] ?? null),
                 // asset_id + x/y let the on-canvas editor identify and free-position each layer.
                 'asset_id' => isset($l['asset_id']) ? (int) $l['asset_id'] : null,
-                'title' => isset($l['asset_id']) ? ($titles[$l['asset_id']] ?? null) : null,
+                // A duplicated layer has its own synthetic id; its title lives on the original asset.
+                'title' => isset($l['asset_id']) ? ($titles[$l['src_asset_id'] ?? $l['asset_id']] ?? null) : null,
                 'x' => isset($l['x']) ? (float) $l['x'] : null,
                 'y' => isset($l['y']) ? (float) $l['y'] : null,
                 'depth' => (float) ($l['depth'] ?? 1),
@@ -267,7 +270,7 @@ class Step3SceneConfigurator extends Component
     {
         $ids = collect($scenes)
             ->flatMap(fn ($s) => collect($s->shots ?? [])
-                ->flatMap(fn ($shot) => collect($shot['layers'] ?? [])->pluck('asset_id')))
+                ->flatMap(fn ($shot) => collect($shot['layers'] ?? [])->map(fn ($l) => $l['src_asset_id'] ?? $l['asset_id'] ?? null)))
             ->filter()->unique()->values();
 
         return $ids->isNotEmpty()
