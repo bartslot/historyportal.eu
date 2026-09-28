@@ -89,3 +89,29 @@ describe('milliseconds on the face, seconds in the model', () => {
     for (const s of [0, 0.4, 2.856, 8]) expect(fromMs(toMs(s))).toBeCloseTo(s, 3)
   })
 })
+
+describe('the zoom slider: whole timeline to 20x closer, logarithmic', () => {
+  it('runs from the fitted zoom to 20 times it, and round-trips', async () => {
+    const { zoomFromSlider, sliderFromZoom } = await import('../timeline-view.js')
+    expect(zoomFromSlider(0, 110)).toBeCloseTo(110)
+    expect(zoomFromSlider(1000, 110)).toBeCloseTo(2200)
+    expect(sliderFromZoom(zoomFromSlider(437, 110), 110)).toBe(437)
+  })
+
+  // 88px slider: one pixel is ~11.4 steps. Linear 2-600 moved ~7px/s per pixel, x1.6 over 10px
+  // at the usual zoom and a doubling per pixel at the low end.
+  it('changes zoom by about 3.5% per slider pixel, the same at both ends', async () => {
+    const { zoomFromSlider } = await import('../timeline-view.js')
+    const perPixel = 1000 / 88
+    const low = zoomFromSlider(perPixel, 110) / zoomFromSlider(0, 110)
+    const high = zoomFromSlider(1000, 110) / zoomFromSlider(1000 - perPixel, 110)
+    expect(low).toBeCloseTo(high, 6)
+    expect(low).toBeLessThan(1.04)
+  })
+
+  it('pins a zoom outside the range to the nearest end', async () => {
+    const { sliderFromZoom } = await import('../timeline-view.js')
+    expect(sliderFromZoom(50, 110)).toBe(0)
+    expect(sliderFromZoom(99999, 110)).toBe(1000)
+  })
+})

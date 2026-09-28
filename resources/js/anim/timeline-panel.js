@@ -17,7 +17,7 @@ import { textObjects, artObjects, readObjectProperty, writeObjectProperty, setOb
 import { isPlayPauseKey, isTypingTarget } from '../ui/keyboard.js'
 import {
   fitZoom, timeAtX, toleranceSeconds, tickStep, ticksFor, formatTime,
-  DRAG_THRESHOLD_PX, LANE_PAD_PX,
+  DRAG_THRESHOLD_PX, LANE_PAD_PX, zoomFromSlider, sliderFromZoom,
 } from './timeline-view.js'
 
 /** Wheel pixels to zoom factor for Cmd/Ctrl+wheel and trackpad pinch. */
@@ -138,10 +138,10 @@ export const animationTimeline = (config = {}) => ({
     this.$watch('$store.view.bottomTab', (tab) => { if (tab === 'timeline') this.refreshObjects() })
     this.waitForObjects()
     this.listenToCanvas()
-    this.$nextTick(() => { if (!this.zoomIsMine) this.fit() })
+    this.$nextTick(() => { if (this.zoomIsMine) this.measureFit(); else this.fit() })
     // Only refit while the zoom is still ours to choose. Refitting on every resize threw away a
     // zoom the teacher had just set, which reads as the control not working.
-    new ResizeObserver(() => { if (!this.zoomIsMine) this.fit() }).observe(this.$refs.lanes ?? this.$el)
+    new ResizeObserver(() => { if (this.zoomIsMine) this.measureFit(); else this.fit() }).observe(this.$refs.lanes ?? this.$el)
   },
 
   /**
@@ -360,9 +360,18 @@ export const animationTimeline = (config = {}) => ({
 
   // ── Geometry ────────────────────────────────────────────────────────────────────────────
 
-  fit () {
+  /** The zoom at which the whole timeline fits the lanes — the slider's zoomed-out end. Kept up to
+   *  date on every resize even once the teacher owns the zoom, so the slider stays calibrated. */
+  fittedZoom: 100,
+
+  measureFit () {
     const width = (this.$refs.lanes?.clientWidth ?? 0) - 2 * LANE_PAD_PX
-    if (width > 0 && this.duration > 0) this.zoom = fitZoom(width, this.duration)
+    if (width > 0 && this.duration > 0) this.fittedZoom = fitZoom(width, this.duration)
+  },
+
+  fit () {
+    this.measureFit()
+    this.zoom = this.fittedZoom
   },
 
   get ticks () { return ticksFor(this.duration, tickStep(this.zoom)) },
@@ -385,6 +394,9 @@ export const animationTimeline = (config = {}) => ({
     })
   },
 
+  get zoomSlider () { return sliderFromZoom(this.zoom, this.fittedZoom) },
+  setZoomFromSlider (value) { this.setZoom(zoomFromSlider(value, this.fittedZoom)) },
+
   /** Cmd/Ctrl+wheel and trackpad pinch (which arrives as a ctrl+wheel) zoom about the pointer.
    *  A plain wheel is left to the browser: it scrolls the lanes. */
   onWheel (event) {
@@ -398,7 +410,7 @@ export const animationTimeline = (config = {}) => ({
   setDuration (seconds) {
     this.duration = Math.min(3600, Math.max(0.1, Number(seconds) || DEFAULT_DURATION))
     if (this.time > this.duration) this.seek(this.duration)
-    if (!this.zoomIsMine) this.fit()
+    if (this.zoomIsMine) this.measureFit(); else this.fit()
     this.remember()
     this.save()
   },

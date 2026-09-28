@@ -376,9 +376,10 @@
     border-radius: 50%;
     background: var(--color-slider-knob);
     box-shadow: none;
-    /* A native range centres the thumb on the INPUT box, not on the painted rail, so a 14px knob on
-       a 7px rail rides high by half the difference. */
-    margin-top: calc((var(--range-rail-h) - var(--range-thumb-size)) / 2);
+    /* NO margin-top. DaisyUI's .range already centres the thumb on the rail (`top: 50%;
+       transform: translateY(-50%)`), and a margin that "centred" it again lifted every panel knob
+       by half the difference, 3.5px — measured: knob rows 13-26 on a rail at 20-26, its bottom
+       flush with the rail's bottom. */
 }
 
 .range-panel::-moz-range-track {

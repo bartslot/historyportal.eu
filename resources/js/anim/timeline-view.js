@@ -62,3 +62,24 @@ export const toMs = (seconds) => Math.round((Number.isFinite(seconds) ? Math.max
 export const fromMs = (ms) => (Number.isFinite(ms) ? Math.max(0, ms) : 0) / 1000
 
 export const formatTime = (seconds) => `${toMs(seconds)}`
+
+/**
+ * The zoom slider: from "the whole timeline fits" (`base`) to ZOOM_SLIDER_RANGE times closer, on a
+ * LOGARITHMIC scale.
+ *
+ * It was linear over 2–600 px/s on an 88px slider: a 300x span in 88 pixels, most of it zoomed out
+ * past the end of the timeline where there is nothing to see, and ~7 px/s per pixel — a doubling
+ * per pixel at the low end. Zoom is a ratio, so each step multiplies it by the same factor (about
+ * 3.5% per slider pixel). Cmd/Ctrl+wheel still reaches past either end.
+ */
+export const ZOOM_SLIDER_RANGE = 20
+export const ZOOM_SLIDER_STEPS = 1000
+
+export const zoomFromSlider = (value, base) =>
+  base * ZOOM_SLIDER_RANGE ** (Math.min(ZOOM_SLIDER_STEPS, Math.max(0, Number(value) || 0)) / ZOOM_SLIDER_STEPS)
+
+export const sliderFromZoom = (zoom, base) => {
+  if (!(base > 0) || !(zoom > 0)) return 0
+  const steps = ZOOM_SLIDER_STEPS * Math.log(zoom / base) / Math.log(ZOOM_SLIDER_RANGE)
+  return Math.round(Math.min(ZOOM_SLIDER_STEPS, Math.max(0, steps)))
+}
