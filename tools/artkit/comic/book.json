@@ -47,18 +47,28 @@
      }
     ]
    }
+  ],
+  [
+   {
+    "id": "s1p35_dream",
+    "captions": [
+     {
+      "tag": "IL SOGNO",
+      "text": "Nella Vita nuova, Dante racconta il saluto e il sogno che gli arriva dopo.",
+      "at": [
+       0.02,
+       0.8
+      ],
+      "w": 0.62
+     }
+    ]
+   }
   ]
  ],
  [
   [
    {
     "id": "s1p5_wide_write",
-    "captions": [
-     {
-      "text": "Nella Vita nuova, Dante racconta il saluto e il sogno che gli arriva dopo.",
-      "w": 0.5
-     }
-    ],
     "balloons": [
      {
       "who": "DANTE",

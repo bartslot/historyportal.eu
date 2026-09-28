@@ -561,5 +561,13 @@ def save_pack(sc, outdir, name):
     """Keep the composition (Bart, 2026-09-27): a .blend next to the renders, with only this pack's scene,
     so it can be opened, adjusted and re-rendered by hand. Written as a copy: the MCP session stays as is."""
     path = os.path.join(outdir, name + ".blend")
+    # the MCP session holds every pack's scene (a first save was ~980 MB): drop the others, purge orphans.
+    # Safe: every pack rebuilds its own scene from scratch when it runs.
+    for other in [x for x in bpy.data.scenes if x != sc]:
+        for o in list(objs(other)):
+            if not any(o.name in c.all_objects for c in [sc.collection]):
+                bpy.data.objects.remove(o, do_unlink=True)
+        bpy.data.scenes.remove(other)
+    bpy.data.orphans_purge(do_local_ids=True, do_linked_ids=True, do_recursive=True)
     bpy.ops.wm.save_as_mainfile(filepath=path, copy=True, compress=True)
     return path

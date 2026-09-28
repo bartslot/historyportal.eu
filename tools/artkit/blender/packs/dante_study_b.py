@@ -74,17 +74,55 @@ dante = figure(B, "dante_seated", (0, SY + 0.10, 0), yaw_deg=0, height=1.72, pos
 HEAD = tuple(dante["head_m"])
 
 sc["sky_rgb"] = (0.38, 0.38, 0.40)   # a dim interior: the default daylight fill washed the room out
+
+# THE DREAM (Vita nuova III): in the same room, "una nebula di colore di fuoco" (a fire-coloured cloud).
+# JEV: Amore as a stern young man (not a cupid), a heart wrapped in flame, Beatrice asleep in a crimson cloth;
+# no white void, no eating, no blood. Amore stands mid-room facing the door; his left arm carries Beatrice.
+AMORE_RGB, BEA_RGB = (0.85, 0.62, 0.20), (0.62, 0.06, 0.10)
+amore = figure(B, "amore", (0.25, DY - 1.55, 0), yaw_deg=180 - 10, height=1.86, pose="stand", rgb=AMORE_RGB,
+               extra={"arm_upper.L": (-40, 0, 20), "arm_lower.L": (-75, 0, 0), "arm_upper.R": (-125, 0, -12),
+                      "arm_lower.R": (-15, 0, 0), "head": (-8, 0, 0)})
+bea = figure(B, "beatrice_held", (0, 0, 0), yaw_deg=0, height=1.50, body="female", pose="stand", rgb=BEA_RGB,
+             extra={"head": (0, 0, 20)})
+bea.rotation_euler = (math.radians(-15), math.radians(78), math.radians(-25))   # lying across Amore's forearm, head raised
+bpy.context.view_layer.update()
+fore = next(o for o in objs(sc) if o.name.endswith("amore.arm_lower.L"))
+fv = [fore.matrix_world @ v.co for v in fore.data.vertices]
+fc = sum(fv, Vector()) / len(fv)                       # her waist rests on the middle of his forearm
+bpy.context.view_layer.update()
+bv = [o.matrix_world @ v.co for o in objs(sc) if o.type == 'MESH' and ".beatrice_held." in o.name for v in o.data.vertices]
+bc = sum(bv, Vector()) / len(bv)
+bea.location = bea.location + (fc - bc) + Vector((0, -0.05, 0.12))
+glow = bpy.data.materials.get("dream_heart") or bpy.data.materials.new("dream_heart"); glow.use_nodes = True
+glow.node_tree.nodes["Principled BSDF"].inputs["Emission Color"].default_value = (1.0, 0.35, 0.05, 1)
+glow.node_tree.nodes["Principled BSDF"].inputs["Emission Strength"].default_value = 12.0
+hand = next(o for o in objs(sc) if o.name.endswith("amore.hand.R"))
+bm = bmesh.new(); bmesh.ops.create_uvsphere(bm, u_segments=16, v_segments=8, radius=0.07)
+heart = _mesh_obj("dream_heart", bm, B, "figure"); heart.data.materials.append(glow)
+heart.location = hand.matrix_world.translation + Vector((0, -0.05, 0.12))
+heart.name = sc.name + ".amore.heart"                     # shown with Amore
+cloud = box(B, "dream_cloud", (3.2, 3.0, 2.8), (0.3, DY - 1.7, 1.4), "sky"); cloud["shaded_only"] = True
+cloud.name = sc.name + ".amore.cloud"; cloud["part"] = "figure"
+cm = bpy.data.materials.get("dream_cloud") or bpy.data.materials.new("dream_cloud"); cm.use_nodes = True
+cn = cm.node_tree; cn.nodes.clear()
+cv = cn.nodes.new("ShaderNodeVolumePrincipled"); cv.inputs["Density"].default_value = 0.07
+cv.inputs["Color"].default_value = (1.0, 0.45, 0.15, 1); cv.inputs["Emission Strength"].default_value = 0.6
+cv.inputs["Emission Color"].default_value = (1.0, 0.4, 0.1, 1)
+cn.links.new(cv.outputs[0], cn.nodes.new("ShaderNodeOutputMaterial").inputs["Volume"])
+cloud.data.materials.clear(); cloud.data.materials.append(cm)
 anchors = {"dante_head_m": [round(v, 3) for v in HEAD], "stool_seat_top_m": [0, SY, SH], "desk_top_z_m": DH, "desk_front_y_m": DY}
 shots = {
   "st01_wide_front":   camera(sc, "st01", (0, -0.30, EYE)),
   "st02_profile":      camera(sc, "st02", (-2.15, SY + 0.10, EYE), yaw_deg=-90),
   # close on Dante reading the replies: from the desk's right end, level with his eyes
+  "st06_dream":        camera_look(sc, "st06", (-1.0, -0.2, 1.35), (0.45, DY - 1.75, 1.35), lens=30, family="ms"),
   "st04_cu_reading":   camera_look(sc, "st04", (0.95, DY + 0.15, HEAD[2] + 0.05), (HEAD[0] - 0.05, HEAD[1], HEAD[2] - 0.12), lens=40, family="cu"),
 
 }
 out = {}
 for name, cam in shots.items():
-    info = render_shot(sc, cam, OUT, name, meta={"pack": "dante_study", "period": "Florence 1283", "anchors": anchors})
+    figs = ["amore", "beatrice_held"] if name == "st06_dream" else ["dante_seated"]
+    info = render_shot(sc, cam, OUT, name, meta={"pack": "dante_study", "period": "Florence 1283", "anchors": anchors}, figures=figs)
     out[name] = info["horizon_y_px"]
 result = {"shots": out}
 

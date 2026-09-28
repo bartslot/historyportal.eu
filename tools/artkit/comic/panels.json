@@ -143,5 +143,13 @@
    "chars_fo04.txt",
    "style_forest.txt"
   ]
+ },
+ {
+  "id": "s1p35_dream",
+  "src": "study_b/st06_dream_shadedfig.png",
+  "prompt": [
+   "chars_dream.txt",
+   "style_interior.txt"
+  ]
  }
 ]
