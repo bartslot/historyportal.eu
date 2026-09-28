@@ -22,8 +22,8 @@ use Illuminate\Support\Str;
  */
 final class WebpEncoder
 {
-    /** Longest side we keep: the stage is 1920 wide. Bart: "no more 2400+ scaled images". */
-    public const MAX_SIDE = 1920;
+    /** Longest side we keep. 2880, not the 1920 stage: the camera zooms in and pans (Bart). */
+    public const MAX_SIDE = 2880;
 
     /** Bart: "80% quality". */
     public const UPLOAD_QUALITY = 80;

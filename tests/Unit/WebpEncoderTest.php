@@ -9,17 +9,17 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
-/** Bart: every stored picture is WebP, never over 1920px, at 80% quality; cut-outs keep their alpha. */
+/** Bart: every stored picture is WebP, never over 2880px, at 80% quality; cut-outs keep their alpha. */
 class WebpEncoderTest extends TestCase
 {
     public function test_an_uploaded_png_is_stored_as_capped_webp_with_its_transparency(): void
     {
         Storage::fake('public');
-        $img = imagecreatetruecolor(3000, 1500);
+        $img = imagecreatetruecolor(4000, 2000);
         imagealphablending($img, false);
         imagesavealpha($img, true);
         imagefill($img, 0, 0, imagecolorallocatealpha($img, 255, 255, 255, 127));   // fully clear
-        imagefilledrectangle($img, 1000, 500, 2000, 1000, imagecolorallocate($img, 200, 30, 30));
+        imagefilledrectangle($img, 1500, 700, 2500, 1300, imagecolorallocate($img, 200, 30, 30));
         ob_start();
         imagepng($img);
         $png = (string) ob_get_clean();
@@ -29,10 +29,10 @@ class WebpEncoderTest extends TestCase
 
         $this->assertSame('lessons/1/uploads/portrait.webp', $path);
         $stored = imagecreatefromstring(Storage::disk('public')->get($path));
-        $this->assertSame(1920, imagesx($stored));
-        $this->assertSame(960, imagesy($stored));
+        $this->assertSame(2880, imagesx($stored));
+        $this->assertSame(1440, imagesy($stored));
         $this->assertSame(127, (imagecolorat($stored, 5, 5) >> 24) & 0x7F);                // corner still clear
-        $this->assertSame(0, (imagecolorat($stored, 960, 480) >> 24) & 0x7F);             // red block opaque
+        $this->assertSame(0, (imagecolorat($stored, 1440, 720) >> 24) & 0x7F);             // red block opaque
     }
 
     public function test_a_gif_is_stored_as_it_came(): void

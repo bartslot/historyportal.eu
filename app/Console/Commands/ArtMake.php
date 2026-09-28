@@ -283,7 +283,7 @@ class ArtMake extends Command
     }
 
     /** Longest edge a library backdrop keeps: sharp on a 1440p screen. Bart keeps these big (2026-09-28). */
-    private const MAX_EDGE_PLATE = 2880;
+    private const MAX_EDGE_PLATE = \App\Services\Support\WebpEncoder::MAX_SIDE;
 
     /** Cut-outs never fill more than ~75% of the stage height. */
     private const MAX_EDGE_CUTOUT = 1600;
