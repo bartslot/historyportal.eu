@@ -198,6 +198,9 @@
          A positioned host with a z-index is a stacking context, which would trap a layer's blend
          mode inside this overlay and leave Multiply with nothing to blend against. --}}
     <div id="lesson-voyage-art" class="absolute inset-0 pointer-events-none" style="display:none"></div>
+    {{-- Speech balloons of a scene told in lines (BalloonLayer.js): above the figures and texts,
+         below the subtitles and the player chrome. --}}
+    <div id="lesson-balloons" lang="{{ $contentLang }}" class="absolute inset-0 pointer-events-none" style="z-index:33"></div>
 
     {{-- Quiz question cards (QuizOverlay mounts here during quiz segments). --}}
     <div id="lesson-game-overlay" lang="{{ $contentLang }}" class="absolute inset-0 z-30 pointer-events-none"></div>

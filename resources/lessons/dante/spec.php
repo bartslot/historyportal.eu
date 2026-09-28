@@ -49,6 +49,22 @@ return function (string $lang, ?array $text = null): array {
         'translation_group' => 'dante',
         'grade_level' => (string) $text['grade_level'],
         'scenes' => $scenes,
+        // Who speaks in the scenes told in lines (SceneDialogue): Azure voices, never American, each
+        // distinct from the narrator of that language.
+        'cast' => [
+            'dante' => ['voice' => [
+                'it' => 'it-IT-Giuseppe:DragonHDLatestNeural', 'en' => 'en-GB-Ryan:DragonHDLatestNeural',
+                'de' => 'de-DE-Klaus:MAI-Voice-2', 'nl' => 'nl-NL-Sander:MAI-Voice-2',
+            ]],
+            'beatrice' => ['voice' => [
+                'it' => 'it-IT-Isabella:DragonHDLatestNeural', 'en' => 'en-GB-Ada:DragonHDLatestNeural',
+                'de' => 'de-DE-Seraphina:DragonHDLatestNeural', 'nl' => 'nl-NL-Fleur:MAI-Voice-2',
+            ]],
+            'guido' => ['voice' => [
+                'it' => 'it-IT-Luca:MAI-Voice-2', 'en' => 'en-GB-ElliotNeural',
+                'de' => 'de-DE-KillianNeural', 'nl' => 'nl-NL-MaartenNeural',
+            ]],
+        ],
         // Dutch lessons are read by Ron Slot's cloned ElevenLabs voice (house rule); the other
         // languages have no narrator and fall through to Azure's native HD voice for the locale.
     ] + ($lang === 'nl' ? ['avatar' => 'ron-slot'] : []);

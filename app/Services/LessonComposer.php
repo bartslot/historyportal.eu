@@ -10,6 +10,7 @@ use App\Models\Lesson;
 use App\Models\Scene;
 use App\Models\User;
 use App\Services\Lessons\LibraryLayers;
+use App\Services\Lessons\SceneDialogue;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
@@ -37,6 +38,7 @@ class LessonComposer
     public function __construct(
         private readonly SceneImageSourcer $images,
         private readonly LibraryLayers $library,
+        private readonly SceneDialogue $dialogue,
     ) {}
 
     /** Progress callback: fn(string $message): void */
@@ -174,7 +176,10 @@ class LessonComposer
 
             $this->say("  #{$order} {$type} — ".($scene->location ?: $scene->chapter_name ?: '…'));
 
-            if ($narrate && $scene->script_segment) {
+            // A scene told in lines (narrator + characters) records its own track and cues.
+            if (! empty($sceneSpec['lines'])) {
+                $this->dialogue->apply($scene, $sceneSpec, (array) ($spec['cast'] ?? []), (string) ($spec['language'] ?? 'en'), $narrate);
+            } elseif ($narrate && $scene->script_segment) {
                 $this->narrate($scene);
             }
 
@@ -371,7 +376,10 @@ class LessonComposer
             'location' => $s['location'] ?? null,
             'chapter_name' => $s['chapter'] ?? null,
             'year' => $s['year'] ?? null,
-            'script_segment' => $s['script'] ?? null,
+            // A scene in lines keeps their words here too: the wizard, search and the audio hash read it.
+            'script_segment' => $s['script'] ?? (isset($s['lines'])
+                ? implode(' ', array_map(fn ($l): string => (string) (array_values((array) $l)[1] ?? ''), (array) $s['lines']))
+                : null),
             'status' => 'pending',
             'kb_animated' => true,
             'config' => [],

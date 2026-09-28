@@ -186,15 +186,41 @@ class LibraryLayers
         $where = $this->sceneLabel($s, $order);
         $layers = [];
         foreach ($entries as $i => $entry) {
-            $unknown = array_diff(array_keys((array) $entry), ['asset', ...self::LAYER_KEYS]);
+            $unknown = array_diff(array_keys((array) $entry), ['asset', 'speaks', ...self::LAYER_KEYS]);
             if ($unknown !== []) {
                 throw new \InvalidArgumentException("{$where}, layer {$i}: unknown key(s) ".implode(', ', $unknown).'.');
             }
             $asset = $this->libraryAsset((string) ($entry['asset'] ?? ''), $where);
-            $layers[] = SceneLayers::figure($asset, array_diff_key((array) $entry, ['asset' => true]));
+            $layers[] = SceneLayers::figure($asset, array_diff_key((array) $entry, ['asset' => true, 'speaks' => true]));
         }
 
         return $layers;
+    }
+
+    /**
+     * Who speaks from which layer: `'speaks' => 'dante'` on a spec layer. Only a human figure can
+     * speak, so the layer must be one of the library's figures.
+     *
+     * @param  array<string,mixed>  $s
+     * @return array<string, array{asset_id: int, ref: string}>
+     */
+    public function speakers(array $s, int $order): array
+    {
+        $where = $this->sceneLabel($s, $order);
+        $speakers = [];
+        foreach ((array) ($s['layers'] ?? []) as $i => $entry) {
+            $speaker = (string) ($entry['speaks'] ?? '');
+            if ($speaker === '') {
+                continue;
+            }
+            $ref = trim((string) ($entry['asset'] ?? ''), '/ ');
+            if (! str_contains($ref, '/figures/')) {
+                throw new \InvalidArgumentException("{$where}, layer {$i}: only a figure can speak, '{$ref}' is not one.");
+            }
+            $speakers[$speaker] = ['asset_id' => $this->libraryAsset($ref, $where)->id, 'ref' => $ref];
+        }
+
+        return $speakers;
     }
 
     /**

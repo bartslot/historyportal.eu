@@ -34,7 +34,7 @@ const BIG_TIMER_MS = 5000
 const BIG_TIMER_RED_FROM_SECS = 120
 const BIG_TIMER_DIGIT = (secs) =>
   `font-history text-[20vw] ${secs <= BIG_TIMER_RED_FROM_SECS ? 'text-error' : 'text-warning'}`
-import { buildCues, cueAt } from './scene/captions.js'
+import { buildCues, cueAt, lineCues } from './scene/captions.js'
 import { createBackgroundMusic } from './scene/background-music.js'
 import { Sfx } from './scene/sfx.js'
 import { t } from './i18n.js'
@@ -946,6 +946,7 @@ Alpine.data('lessonGame', (lesson) => ({
       }
 
       this._updateCaptions()
+      this._balloons?.update(this._audio.currentTime)
 
       if (!this._shotPlan || this._shotPlan.length < 2) return
 
@@ -1284,7 +1285,7 @@ Alpine.data('lessonGame', (lesson) => ({
       // Subtitles follow the narration of THIS scene. Cues are built on the first timeupdate,
       // once the audio has reported its real length — every scene here goes on to play (or skip)
       // its own track, so resetting for all of them keeps the last scene's lines off this one.
-      this._captionSource = { script: scene.script, alignment: scene.alignment || null }
+      this._captionSource = { script: scene.script, alignment: scene.alignment || null, lines: scene.config?.lines || null }
       this._cues = []
       this._cueDuration = 0
       this.captionText = ''
@@ -1305,6 +1306,8 @@ Alpine.data('lessonGame', (lesson) => ({
       // Teacher clipart layers a voyage scene carries ON TOP of the map (read-only in playback).
       // Also before the early-returns, so leaving a decorated scene clears its clipart.
       this._renderSceneArtwork(scene)
+      // Speech balloons of a scene told in lines; any other scene clears the last one's.
+      this._renderSceneBalloons(scene)
 
       // Embed background (Sketchfab 3D / video) — a full-bleed iframe behind the scene overlay.
       // Works for flat AND game scenes (quiz/debate); map/voyage own their whole stage so skip them.
@@ -1815,6 +1818,24 @@ Alpine.data('lessonGame', (lesson) => ({
       }
     },
 
+    // Balloons sit in the plate's box, the same box as the figures, so a mouth given in % of it
+    // lands on the drawn mouth at any screen shape.
+    async _renderSceneBalloons (scene) {
+      const req = this._balloonReq = (this._balloonReq || 0) + 1
+      const host = document.getElementById('lesson-balloons')
+      if (!host) return
+      const lines = scene?.config?.lines || []
+      if (!lines.length && !this._balloons) return
+      const { BalloonLayer } = await import('./scene/BalloonLayer.js')
+      this._balloons = this._balloons || new BalloonLayer(host)
+      const layers = (scene.shots || [])[0]?.layers
+      const cover = (layers || []).find(l => l?.url && !isClipartLayer(l))
+      const aspect = (scene.config || {}).background_fit === 'contain' && cover ? await plateAspect(cover.url) : null
+      if (req !== this._balloonReq) return
+      fitToPlate(host, host.parentElement, aspect, layers)
+      this._balloons.setLines(lines)
+    },
+
     // Read-only clipart layers a teacher placed ON TOP of a voyage map. Same %-coordinate box as
     // the text overlay (both full-bleed, above the map stage), so a layer sits where the editor
     // showed it. Any non-voyage scene has no such layers → the host hides itself.
@@ -2124,7 +2145,10 @@ Alpine.data('lessonGame', (lesson) => ({
       if (!Number.isFinite(duration) || duration <= 0) return
 
       if (!this._cues.length || this._cueDuration !== duration) {
-        this._cues = buildCues(this._captionSource?.script, duration, this._captionSource?.alignment)
+        // A scene in lines has exact times per line: only the narrator's become captions.
+        this._cues = this._captionSource?.lines?.length
+          ? lineCues(this._captionSource.lines)
+          : buildCues(this._captionSource?.script, duration, this._captionSource?.alignment)
         this._cueDuration = duration
       }
 

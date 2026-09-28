@@ -31,6 +31,8 @@ return [
             'name' => 'dante-circle', 'category' => 'figures', 'subcategory' => 'dante', 'grid' => '2x2', 'figures' => true,
             // Sides the model cut off in the kept raw: cut-out keeps them shut (drop after a regenerate).
             'cut_off' => ['dante-giovane' => 'bottom', 'dante-esule' => 'bottom'],
+            // Where each mouth is on its picture, [x, y] as a fraction (FigureMouth; else predicted).
+            'mouths' => ['dante-giovane' => [0.513, 0.219], 'beatrice' => [0.648, 0.131]],
             'era' => 'c. 1300', 'place' => 'Florence',
             'items' => [
                 'dante-giovane' => 'young Dante Alighieri about 20 years old, slim, beardless, long lucco robe and close-fitting cap, holding a small book, thoughtful',
@@ -52,6 +54,7 @@ return [
         ],
         [
             'name' => 'campaldino', 'category' => 'figures', 'subcategory' => 'soldiers', 'grid' => '2x2', 'figures' => true,
+            'poses' => ['cavaliere-guelfo' => 'rider'],
             'era' => 'c. 1289', 'place' => 'Tuscany, battle of Campaldino',
             'items' => [
                 'cavaliere-guelfo' => 'mounted Florentine Guelf cavalryman of 1289 on a horse, flat-topped great helm, mail hauberk, surcoat, lance upright, shield; side view',
@@ -73,6 +76,8 @@ return [
         [
             'name' => 'dante-poses', 'category' => 'figures', 'subcategory' => 'dante', 'grid' => '2x2', 'figures' => true,
             'cut_off' => ['dante-cavaliere' => 'bottom'],
+            // How tall each picture stands for (FigureMouth); unlisted = standing, cut off = half.
+            'poses' => ['dante-cavaliere' => 'rider-half', 'dante-scrive' => 'seated'],
             'era' => 'c. 1289-1315', 'place' => 'Tuscany and northern Italy',
             'items' => [
                 'dante-cammina' => 'Dante Alighieri about 45 walking into exile, side view facing right, gaunt face, strong aquiline nose, long plain robe, hood wrapped around the head, walking staff, travel bag, full body mid-stride',

@@ -168,6 +168,41 @@
     font-display: swap;
 }
 
+/* ─── Comic Neue (OFL): speech balloon lettering (BalloonLayer.js) ─── */
+@font-face {
+    font-family: 'Comic Neue';
+    src: url('/fonts/ComicNeue/ComicNeue-Regular.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Comic Neue';
+    src: url('/fonts/ComicNeue/ComicNeue-Bold.ttf') format('truetype');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* Speech balloons: white paper, ink outline, no name tag (the tail says who speaks). Sizes are
+   set in JS from the stage width, so a balloon keeps its proportion on a phone and a board. */
+.lp-balloon { position: absolute; inset: 0; pointer-events: none; }
+.lp-balloon__bubble {
+    position: absolute;
+    box-sizing: border-box;
+    background: #fffdf7;
+    color: #1b1712;
+    border: 2px solid #1b1712;
+    border-radius: 1.4em;
+    font-family: 'Comic Neue', 'Comic Relief', 'Comic Sans MS', ui-rounded, sans-serif;
+    font-weight: 700;
+    line-height: 1.22;
+    text-align: center;
+    text-wrap: balance;
+    box-shadow: 0 0.2em 0.6em rgb(0 0 0 / 0.25);
+}
+.lp-balloon__tail { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+
 /* ─── DaisyUI component overrides — Learning Portal brand ───────────── */
 @layer components {
 

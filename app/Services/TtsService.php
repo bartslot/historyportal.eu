@@ -172,9 +172,9 @@ class TtsService
             return null;
         }
 
-        // Reject non-Azure voice IDs (Azure voices match xx-XX-NameNeural, optionally :DragonHD…)
+        // Reject non-Azure voice IDs (xx-XX-NameNeural, optionally :DragonHD…, or xx-XX-Name:MAI-Voice-2)
         $candidateVoice = $voiceId;
-        if (! preg_match('/^[a-z]{2}-[A-Z]{2}-.+Neural$/', $candidateVoice)) {
+        if (! preg_match('/^[a-z]{2}-[A-Z]{2}-.+(Neural|:MAI-Voice-[0-9][\w-]*)$/', $candidateVoice)) {
             Log::warning('[Azure TTS] skipped — voice ID does not look like an Azure Neural voice: '.$candidateVoice);
 
             return null;

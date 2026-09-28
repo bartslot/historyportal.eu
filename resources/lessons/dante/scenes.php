@@ -13,7 +13,6 @@ declare(strict_types=1);
  * height is % of stage height, so a figure standing on ground line G has y = G - height / 2. A
  * half-length figure (cut at the knee in its sheet) sits with its bottom edge on the frame edge.
  */
-
 $h = 'history-line';
 
 /** A cloud that drifts slowly; depth < 1 keeps it far away in the parallax. */
@@ -57,6 +56,19 @@ return [
             // Half-length: bottom edge on the frame edge.
             ['asset' => "{$h}/figures/dante/dante-giovane", 'x' => 26, 'y' => 64, 'height' => 72,
                 'depth' => 1.15, 'anim' => 'slide-right', 'anim_delay' => 0.3],
+        ],
+    ],
+    // Told in lines, not one script (SceneDialogue): a figure layer that `speaks` gets that
+    // speaker's balloons. Guido has no layer: his answer arrives on paper, so his balloon speaks
+    // from off-frame.
+    'il-foglio' => [
+        'type' => 'story', 'year' => 1283,
+        'backdrop' => "{$h}/backdrops/florence/lungarno",
+        'layers' => [
+            $cloud(2, 44, 9, 8),
+            $person('dante/beatrice', 68, 100, 64, 0.3, ['depth' => 1.1, 'speaks' => 'beatrice']),
+            ['asset' => "{$h}/figures/dante/dante-giovane", 'x' => 24, 'y' => 64, 'height' => 72,
+                'depth' => 1.15, 'anim' => 'slide-right', 'anim_delay' => 0.3, 'speaks' => 'dante'],
         ],
     ],
     'campaldino-1289' => [

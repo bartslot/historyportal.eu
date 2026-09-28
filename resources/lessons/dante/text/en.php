@@ -65,6 +65,25 @@ return [
             'script' => "As a young man, Dante discovers poetry. His dearest friend is Guido Cavalcanti, a poet older than him. Dante calls him his first friend. With other young poets he writes in a new way, gentle and refined, which today we call the dolce stil novo, the sweet new style. Their most important theme is love. A few years after 1290, Dante writes the Vita nova, poems and prose for Beatrice. She is usually identified as Bice Portinari, who died in 1290. But careful: this is literature, not a diary.",
         ],
 
+        'il-foglio' => [
+            'chapter' => "The sheet that comes back",
+            'location' => 'Florence',
+            'lines' => [
+                ['beatrice', "Good morning. Yes, I mean you."],
+                ['dante', "Good m..."],
+                ['narrator', "In the Vita nova, Dante tells of that greeting, and of the dream that came after it."],
+                ['dante', "Love was holding my heart. He woke Beatrice and made her eat it. In a dream! And then he wept. Somebody tell me what that means."],
+                ['dante', "«To every captive soul and gentle heart»."],
+                ['dante', "A sonnet for the poets: my dream in fourteen lines. Now you answer me."],
+                ['dante', "Dante da Maiano says I'm raving and should go and see a doctor."],
+                ['dante', "I asked the poets. I didn't ask for a doctor's appointment."],
+                ['guido', "«You saw, it seems to me, all worth there is»."],
+                ['guido', "Love took your heart away without hurting you. That is what I see in your dream."],
+                ['dante', "He answers me in verse. He listened."],
+                ['narrator', "Later Dante will call Guido «the first of my friends». He says that answer was almost the beginning of their friendship."],
+            ],
+        ],
+
         'campaldino-1289' => [
             'chapter' => "The Battle of Campaldino",
             'location' => 'Campaldino',

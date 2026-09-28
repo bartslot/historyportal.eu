@@ -65,6 +65,25 @@ return [
             'script' => "Als junger Mann entdeckt Dante die Dichtung. Sein engster Freund ist Guido Cavalcanti, ein Dichter, der älter ist als er. Dante nennt ihn seinen ersten Freund. Mit anderen jungen Leuten schreiben sie auf eine neue Art, sanft und fein. Heute nennen wir das den dolce stil novo, den süßen neuen Stil. Das wichtigste Thema ist die Liebe. Einige Jahre nach 1290 schreibt Dante die Vita nova, Gedichte und Prosa für Beatrice. Meistens denkt man dabei an Bice Portinari, die 1290 starb. Aber Vorsicht, das ist Literatur und kein Tagebuch.",
         ],
 
+        'il-foglio' => [
+            'chapter' => "Das Blatt, das zurückkommt",
+            'location' => 'Florenz',
+            'lines' => [
+                ['beatrice', "Guten Tag. Ja, Euch meine ich."],
+                ['dante', "Gu..."],
+                ['narrator', "In der Vita nova erzählt Dante von diesem Gruß und von dem Traum, der danach kam."],
+                ['dante', "Amor hielt mein Herz in der Hand. Er weckte Beatrice und ließ sie es essen. Im Traum! Und dann weinte er. Kann mir jemand erklären, was das bedeutet?"],
+                ['dante', "«An jede gefangene Seele und jedes edle Herz»."],
+                ['dante', "Ein Sonett für die Dichter: mein Traum in vierzehn Versen. Antwortet ihr mir."],
+                ['dante', "Dante da Maiano sagt, ich fantasiere und sollte zum Arzt gehen."],
+                ['dante', "Ich habe Dichter gefragt. Nicht nach einem Termin beim Arzt."],
+                ['guido', "«Ihr saht, so scheint es mir, jeden Wert»."],
+                ['guido', "Amor hat dir das Herz genommen, ohne dir wehzutun. Das sehe ich in deinem Traum."],
+                ['dante', "Er antwortet mir in Versen. Er hat zugehört."],
+                ['narrator', "Später nennt Dante Guido «den ersten meiner Freunde». Er sagt, diese Antwort sei fast der Anfang ihrer Freundschaft gewesen."],
+            ],
+        ],
+
         'campaldino-1289' => [
             'chapter' => "Die Schlacht von Campaldino",
             'location' => 'Campaldino',

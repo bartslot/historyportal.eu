@@ -65,6 +65,25 @@ return [
             'script' => "Da giovane Dante scopre la poesia. Il suo amico più caro è Guido Cavalcanti, un poeta più grande di lui. Dante lo chiama il suo primo amico. Con altri giovani scrivono in un modo nuovo, dolce e raffinato, che oggi chiamiamo dolce stil novo. Il tema più importante è l'amore. Qualche anno dopo il 1290 Dante compone la Vita nova, poesie e prose per Beatrice. Di solito si pensa a Bice Portinari, morta nel 1290. Ma attenzione: è un libro di letteratura, non un diario.",
         ],
 
+        'il-foglio' => [
+            'chapter' => "Il foglio che torna indietro",
+            'location' => 'Firenze',
+            'lines' => [
+                ['beatrice', "Buon giorno. Sì, proprio a voi."],
+                ['dante', "Buo..."],
+                ['narrator', "Nella Vita nuova, Dante racconta il saluto e il sogno che gli arriva dopo."],
+                ['dante', "Amore aveva in mano il mio cuore. Ha svegliato Beatrice e gliel'ha fatto mangiare. Nel sogno! E poi piangeva. Qualcuno mi spieghi che cosa significa."],
+                ['dante', "«A ciascun'alma presa e gentil core»."],
+                ['dante', "Un sonetto per i poeti: il mio sogno in quattordici versi. Rispondetemi voi."],
+                ['dante', "Dante da Maiano dice che farnetico e dovrei farmi vedere da un medico."],
+                ['dante', "Ho chiesto ai poeti, non un appuntamento dal medico."],
+                ['guido', "«Vedeste, al mio parere, ogni valore»."],
+                ['guido', "Amore ti ha portato via il cuore senza farti male. È questo che vedo nel tuo sogno."],
+                ['dante', "Lui mi risponde in versi. Lui ha ascoltato."],
+                ['narrator', "Più tardi Dante chiamerà Guido «il primo dei miei amici». Dice che quella risposta fu quasi l'inizio della loro amicizia."],
+            ],
+        ],
+
         'campaldino-1289' => [
             'chapter' => "La battaglia di Campaldino",
             'location' => 'Campaldino',

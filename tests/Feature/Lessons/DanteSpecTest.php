@@ -13,12 +13,12 @@ use Tests\TestCase;
 class DanteSpecTest extends TestCase
 {
     private const IDS = [
-        'pre-quiz', 'firenze-1265', 'poesia-beatrice', 'campaldino-1289', 'mappa-fazioni', 'priore-1300',
+        'pre-quiz', 'firenze-1265', 'poesia-beatrice', 'il-foglio', 'campaldino-1289', 'mappa-fazioni', 'priore-1300',
         'esilio-1302', 'mappa-esilio', 'commedia-nasce', 'commedia-galleria', 'volgare', 'ravenna-1321',
         'eredita', 'post-quiz',
     ];
 
-    public function test_every_language_spec_merges_into_fourteen_scenes(): void
+    public function test_every_language_spec_merges_into_fifteen_scenes(): void
     {
         foreach (['it', 'en', 'nl', 'de'] as $lang) {
             $spec = require resource_path("lessons/dante-{$lang}.php");
@@ -30,11 +30,20 @@ class DanteSpecTest extends TestCase
             $this->assertSame('history', $spec['subject']);
             $this->assertSame($text['title'], $spec['title']);
             $this->assertSame($text['grade_level'], $spec['grade_level']);
-            $this->assertCount(14, $spec['scenes']);
+            $this->assertCount(15, $spec['scenes']);
             $this->assertSame(['quiz', 'pre'], [$spec['scenes'][0]['type'], $spec['scenes'][0]['when']]);
-            $this->assertSame(['quiz', 'post'], [$spec['scenes'][13]['type'], $spec['scenes'][13]['when']]);
+            $this->assertSame(['quiz', 'post'], [$spec['scenes'][14]['type'], $spec['scenes'][14]['when']]);
             $this->assertSame($text['scenes']['firenze-1265']['script'], $spec['scenes'][1]['script']);
             $this->assertNotEmpty($spec['scenes'][0]['questions']);
+
+            // The scene told in lines: every character who speaks has a voice in this language.
+            $lines = $spec['scenes'][3]['lines'];
+            $this->assertCount(12, $lines);
+            foreach ($lines as [$speaker]) {
+                if ($speaker !== 'narrator') {
+                    $this->assertNotEmpty($spec['cast'][$speaker]['voice'][$lang] ?? null, "{$speaker} has no {$lang} voice");
+                }
+            }
         }
     }
 
@@ -42,13 +51,13 @@ class DanteSpecTest extends TestCase
     {
         $spec = require resource_path('lessons/dante-en.php');
         $text = require resource_path('lessons/dante/text/en.php');
-        $map = $spec['scenes'][4];
+        $map = $spec['scenes'][5];
 
         $this->assertSame('map', $map['type']);
         $this->assertSame('Q38', $map['qid']);
         $this->assertContains([$text['scenes']['mappa-fazioni']['labels']['firenze'], 11.2558, 43.7696], $map['labels']);
         $this->assertCount(6, $map['labels']);
-        $this->assertCount(7, $spec['scenes'][7]['labels']);
+        $this->assertCount(7, $spec['scenes'][8]['labels']);
     }
 
     public function test_a_text_missing_a_skeleton_scene_throws(): void
