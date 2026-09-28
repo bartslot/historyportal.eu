@@ -22,6 +22,7 @@ use App\Models\Scene;
 use App\Models\StrategyGame;
 use App\Services\Billing\NarrationCreditLedger;
 use App\Services\Support\LayerAmbient;
+use App\Services\Support\WebpEncoder;
 use App\Support\NarrationBudget;
 use App\Support\PolityCapitals;
 use App\Support\PortraitFocus;
@@ -3062,7 +3063,7 @@ class Step3SceneConfigurator extends Component
             return;
         }
 
-        $path = $this->maskedImage->store("lessons/{$this->lesson->id}/uploads", 'public');
+        $path = WebpEncoder::storeUpload($this->maskedImage, "lessons/{$this->lesson->id}/uploads");
         $this->reset('maskedImage');
 
         $asset = $this->upsertPictureAsset('mask', md5((string) $path), [
@@ -3171,7 +3172,7 @@ class Step3SceneConfigurator extends Component
         // object list.
         $name = pathinfo((string) $this->{$property}->getClientOriginalName(), PATHINFO_FILENAME) ?: null;
 
-        $path = $this->{$property}->store("lessons/{$this->lesson->id}/uploads", 'public');
+        $path = WebpEncoder::storeUpload($this->{$property}, "lessons/{$this->lesson->id}/uploads");
         $this->reset($property);
 
         return $path ?: null;
@@ -3315,7 +3316,7 @@ class Step3SceneConfigurator extends Component
             $url = $cloud->configured()
                 ? $cloud->uploadBytes($this->uploadImage->get(), "lessons/{$this->lesson->id}")
                 : null;
-            $url ??= '/storage/'.$this->uploadImage->store("lessons/{$this->lesson->id}/uploads", 'public');
+            $url ??= '/storage/'.WebpEncoder::storeUpload($this->uploadImage, "lessons/{$this->lesson->id}/uploads");
             $this->reset('uploadImage');
             match ($mode) {
                 'voyage_stop' => $this->addStopImage($url),
@@ -3326,7 +3327,7 @@ class Step3SceneConfigurator extends Component
             return;
         }
 
-        $path = $this->uploadImage->store("lessons/{$this->lesson->id}/uploads", 'public');
+        $path = WebpEncoder::storeUpload($this->uploadImage, "lessons/{$this->lesson->id}/uploads");
         $this->reset('uploadImage');
         $this->applyUploadedBackground($path);
     }

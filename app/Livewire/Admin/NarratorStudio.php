@@ -431,7 +431,7 @@ class NarratorStudio extends Component
         try {
             $imageBytes   = file_get_contents($this->portraitUpload->getRealPath());
             $resized      = app(\App\Services\NarratorService::class)->resizePortraitPublic($imageBytes);
-            $portraitPath = "avatars/{$this->narrator->id}/portrait.jpg";
+            $portraitPath = "avatars/{$this->narrator->id}/portrait.webp";
             Storage::disk('public')->put($portraitPath, $resized);
 
             $this->narrator->update(['portrait_path' => $portraitPath]);

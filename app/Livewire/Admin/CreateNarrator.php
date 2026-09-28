@@ -156,7 +156,7 @@ class CreateNarrator extends Component
     {
         $validated = $this->validate();
         $slug = $this->uniqueSlug($validated['name']);
-        $portraitPath = $this->portrait->store('avatars/portraits', 'public');
+        $portraitPath = \App\Services\Support\WebpEncoder::storeUpload($this->portrait, 'avatars/portraits');
         $introVideoPath = null;
         $narrator = null;
 

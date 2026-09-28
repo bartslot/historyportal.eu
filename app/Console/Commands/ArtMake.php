@@ -282,8 +282,8 @@ class ArtMake extends Command
         return (bool) preg_match('/^(public domain|PD\b|PD-|CC0)/i', trim($license));
     }
 
-    /** Longest edge a library file keeps: sharp on a 1440p screen, light on school wifi. */
-    private const MAX_EDGE_PLATE = 2880;
+    /** Longest edge a library file keeps: the 1920 stage (Bart: "no more 2400+ scaled images"). */
+    private const MAX_EDGE_PLATE = \App\Services\Support\WebpEncoder::MAX_SIDE;
 
     /** Cut-outs never fill more than ~75% of the stage height. */
     private const MAX_EDGE_CUTOUT = 1600;
@@ -299,7 +299,7 @@ class ArtMake extends Command
         imagealphablending($img, false);
         imagesavealpha($img, true);
         File::ensureDirectoryExists(dirname($path));
-        if (! imagewebp($img, $path, 90)) {
+        if (! imagewebp($img, $path, \App\Services\Support\WebpEncoder::UPLOAD_QUALITY)) {
             throw new RuntimeException("could not write {$path}");
         }
     }

@@ -97,7 +97,7 @@ def do_import():
         orig = Image.open(keep).convert("RGBA")
         col = paper_to_white(Image.open(out).convert("RGB").resize(orig.size, Image.LANCZOS), orig)
         col.putalpha(orig.split()[3])
-        col.save(LIB / rel.with_suffix(".webp"), "WEBP", quality=90)
+        col.save(LIB / rel.with_suffix(".webp"), "WEBP", quality=80)
         n += 1; print("imported", rel)
     print(n, "imported; now: php artisan icons:import --collection=history-line")
 
