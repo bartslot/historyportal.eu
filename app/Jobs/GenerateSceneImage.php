@@ -42,6 +42,7 @@ class GenerateSceneImage implements ShouldQueue
         if ($scene->hasManualBackground()) {
             return;
         }
+        \App\Services\Support\GenerationRunRecorder::activate($scene->lesson_id);
 
         // Real historical imagery is the default. Generating a background costs money per scene and
         // invents a picture of something that actually happened; a sourced painting comes with an
@@ -65,6 +66,10 @@ class GenerateSceneImage implements ShouldQueue
             );
 
             Storage::disk('public')->put($destination, $bytes);
+
+            // Environment-style generation (people/faces excluded by the environment negatives) —
+            // this is also the documentary fallback when no real imagery could be sourced.
+            \App\Services\Support\GenerationRunRecorder::recordPath($scene->lesson_id, $scene->id, 'generated_environment');
 
             $path = $destination;
 
@@ -134,12 +139,14 @@ class GenerateSceneImage implements ShouldQueue
             // loses the face, which is the whole reason the sourcer works out a focus at all.
             $config['background_focus'] = (string) ($hit['focus'] ?? 'center');
             $scene->update(['image_path' => $path, 'config' => $config, 'upscale_status' => null]);
+            \App\Services\Support\GenerationRunRecorder::recordPath($scene->lesson_id, $scene->id, 'sourced_artwork');
             $this->maybeMarkReady($scene->fresh());
 
             return;
         }
 
         Log::info('GenerateSceneImage: no real imagery found', ['scene' => $scene->id, 'tried' => $queries]);
+        \App\Services\Support\GenerationRunRecorder::recordPath($scene->lesson_id, $scene->id, 'none');
         $this->maybeMarkReady($scene->fresh());
     }
 

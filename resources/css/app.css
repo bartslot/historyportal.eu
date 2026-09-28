@@ -408,11 +408,11 @@
 }
 
 /* ─── Wizard progressive-disclosure flow (step 1 settings) ───────────
-   Each setting group is ~75vh so one is in focus at a time; the rest dim.
+   Each setting group is ~50vh so one is in focus at a time; the rest dim.
    Lives here (not an inline <style>) so Livewire DOM morphs — triggered on
    every keystroke by the wire:model.live topic field — can never strip it. */
 .wizard-flow-group {
-    min-height: 75vh;
+    min-height: 50vh;
     scroll-margin-top: 5rem;
     transition: opacity .35s ease, filter .35s ease;
 }
@@ -1396,4 +1396,8 @@
     .landing-shell * {
         cursor: none !important;
     }
+}
+
+.maplibregl-ctrl.maplibregl-ctrl-attribution {
+    display: none !important;
 }

@@ -151,6 +151,8 @@
         'leaderboard_url'       => route('lesson.leaderboard', ['lessonCode' => $lesson->lesson_code]),
         'quiz_score_url'        => route('lesson.quiz-score', ['lessonCode' => $lesson->lesson_code]),
         'has_classroom'         => $lesson->classrooms()->exists(),
+        // A student can't skip a quiz question; the teacher testing their own lesson can.
+        'can_skip_quiz'         => (bool) auth()->user()?->canManage($lesson),
     ];
 @endphp
 {{-- The lesson payload is the heaviest thing on this page (mostly per-character narration timings:
@@ -206,36 +208,11 @@
 
     {{-- ── Map block slide — full-bleed historical atlas, shown while a map scene plays. --}}
     <div id="lesson-map-stage" class="absolute inset-0 z-20" style="display:none" aria-hidden="true"></div>
-    {{-- Continue button for interactive map blocks (timed blocks auto-advance). Voyage lessons
-         advance with the → / B keys (arrows-only nav), so the big button is hidden there. --}}
-    <button x-show="showMapContinue && lesson.game_type !== 'voyage'" x-transition
-            @click="advanceMap()"
-            class="absolute bottom-10 left-1/2 z-40 -translate-x-1/2 flex items-center gap-2 rounded-full
-                   bg-amber-500 px-7 py-3 text-base font-bold text-slate-950 shadow-[0_0_48px_rgba(245,158,11,0.4)]
-                   transition hover:bg-amber-400 active:scale-95 pointer-events-auto">
-        {{ __('Continue') }}
-        <svg class="h-5 w-5 fill-slate-950" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-    </button>
-
-    {{-- Voyage carousel: prev/next arrows on the sides + a minimal auto-advance progress line.
-         Shown at the landfall (showMapContinue); the countdown auto-advances after 10s. --}}
-    <template x-if="lesson.game_type === 'voyage'">
-        <div>
-            <button x-show="showMapContinue && _sceneIndex > 0" x-transition @click="previousSlide()"
-                    aria-label="{{ __('Previous') }}"
-                    class="fixed left-3 top-1/2 z-40 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white/80 backdrop-blur transition hover:bg-black/60 hover:text-white pointer-events-auto">
-                <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-            </button>
-            <button x-show="showMapContinue" x-transition @click="advanceMap()"
-                    aria-label="{{ __('Next') }}"
-                    class="fixed right-3 top-1/2 z-40 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white/80 backdrop-blur transition hover:bg-black/60 hover:text-white pointer-events-auto">
-                <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-            </button>
-            <div x-show="showMapContinue" class="fixed inset-x-0 bottom-0 z-40 h-1 bg-white/10 pointer-events-none">
-                <div class="h-full bg-amber-400/90" :style="`width: ${autoAdvanceProgress * 100}%`"></div>
-            </div>
-        </div>
-    </template>
+    {{-- Voyage landfall: a minimal auto-advance progress line (the countdown moves on after 10s).
+         Previous / next live in the deck, like every other scene. --}}
+    <div x-show="showMapContinue && lesson.game_type === 'voyage'" class="fixed inset-x-0 bottom-0 z-40 h-1 bg-white/10 pointer-events-none">
+        <div class="h-full bg-amber-400/90" :style="`width: ${autoAdvanceProgress * 100}%`"></div>
+    </div>
 
     {{-- ── Narrator welcome video ───────────────────────────────────────────
          Plays once, full-screen, right after "Start lesson" is clicked and before
@@ -472,10 +449,23 @@
                         </template>
                     </div>
 
-                    {{-- Transport row — plain white Heroicons (outline, 1.5), no chrome: playback on
-                         the left, subtitles + chapters on the right. Icons grow a touch on hover. --}}
+                    {{-- Transport row — plain white Heroicons (outline, 1.5), no chrome: previous /
+                         play / next on the left, subtitles + chapters on the right. Icons grow a touch on hover. --}}
                     <div class="mt-0.5 flex items-center justify-between">
                         <div class="flex items-center gap-1 sm:gap-2">
+                            {{-- Previous / Next — skip glyphs drawn to the Heroicons grid (24, round joins) since
+                                 Heroicons has no skip icon; filled like the play glyph beside them. --}}
+                            <button type="button" x-show="_hasSlides" @click="previousSlide()" :disabled="!canSkip || _sceneIndex <= 0"
+                                    data-tooltip="{{ __('Previous') }}" data-tooltip-key="←" aria-label="{{ __('Previous') }}"
+                                    class="group flex h-10 w-10 items-center justify-center rounded-lg text-white/85 transition hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 disabled:pointer-events-none disabled:opacity-35">
+                                <svg class="h-6 w-6 shadow-sm transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
+                                     viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                    <g transform="matrix(-1 0 0 1 24 0)">
+                                        <path stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" d="M4.5 6.6c0-.87.95-1.4 1.7-.96l8.9 5.4a1.12 1.12 0 0 1 0 1.92l-8.9 5.4c-.75.45-1.7-.09-1.7-.96V6.6Z"/>
+                                        <rect x="17.25" y="5.25" width="2.25" height="13.5" rx="1.125"/>
+                                    </g>
+                                </svg>
+                            </button>
                             {{-- Play / pause — the same control as the centre glyph and Space. --}}
                             <button type="button" @click="togglePlayback()"
                                     :data-tooltip="playbackPaused ? @js(__('Play')) : @js(__('Pause'))" data-tooltip-key="K"
@@ -488,6 +478,18 @@
                                 <svg x-show="!playbackPaused" x-cloak class="h-8 w-8 shadow-sm transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
                                      viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5"/>
+                                </svg>
+                            </button>
+                            <button type="button" x-show="_hasSlides" @click="nextSlide()" :disabled="!canSkip || !hasNextSlide"
+                                    :data-stage-waiting="showMapContinue"
+                                    data-tooltip="{{ __('Next') }}" data-tooltip-key="→" aria-label="{{ __('Next') }}"
+                                    class="group flex h-10 w-10 items-center justify-center rounded-lg text-white/85 transition hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 disabled:pointer-events-none disabled:opacity-35">
+                                <svg class="h-6 w-6 shadow-sm transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
+                                     viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                    <g>
+                                        <path stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" d="M4.5 6.6c0-.87.95-1.4 1.7-.96l8.9 5.4a1.12 1.12 0 0 1 0 1.92l-8.9 5.4c-.75.45-1.7-.09-1.7-.96V6.6Z"/>
+                                        <rect x="17.25" y="5.25" width="2.25" height="13.5" rx="1.125"/>
+                                    </g>
                                 </svg>
                             </button>
 

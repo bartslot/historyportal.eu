@@ -43,4 +43,10 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
 Route::prefix('lesson')->name('api.lesson.')->group(function () {
     Route::get('/{lessonCode}/teams', [LessonTeamController::class, 'index'])->middleware('throttle:class-join')->name('teams.index');
     Route::post('/{lessonCode}/teams', [LessonTeamController::class, 'store'])->middleware('throttle:class-join')->name('teams.store');
+
+    // Anonymous player telemetry (Phase 0 experiment) — batch ingest, addressed by the same
+    // public lesson code students watch with. No auth by design; see LessonTelemetryController.
+    Route::post('/{lessonCode}/telemetry', [\App\Http\Controllers\Api\LessonTelemetryController::class, 'store'])
+        ->middleware('throttle:60,1')
+        ->name('telemetry.store');
 });

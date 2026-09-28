@@ -198,6 +198,16 @@ class OpenAiLlmService
             throw new RuntimeException("OpenAI API returned {$response->status()}");
         }
 
+        // Phase 0 experiment instrumentation — best-effort, never throws. A vision call is one
+        // whose message content carries an image part (describeImage); everything else is a
+        // plain LLM call. Token usage lands on the active lesson's generation run.
+        $isVision = collect($payload['messages'] ?? [])->contains(
+            fn ($m) => is_array($m['content'] ?? null)
+                && collect($m['content'])->contains(fn ($part) => ($part['type'] ?? '') === 'image_url'),
+        );
+        \App\Services\Support\GenerationRunRecorder::count($isVision ? 'vision_calls' : 'llm_calls');
+        \App\Services\Support\GenerationRunRecorder::addUsage($response->json('usage'));
+
         $msg = $response->json('choices.0.message') ?? [];
 
         // Primary field

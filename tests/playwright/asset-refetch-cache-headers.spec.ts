@@ -230,7 +230,7 @@ test('the same image is re-downloaded under the dev server and reused under Apac
 
 const ADVANCE = [
     'button[data-opt="0"]:not([disabled])',
-    'button[x-show*="showMapContinue"]',
+    'button[aria-label="Next"][data-stage-waiting]',
     'button:has-text("Continue")',
     'button[data-done]',
 ]

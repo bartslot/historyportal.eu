@@ -122,7 +122,7 @@ test('student LYTVSK: the pre-narration gates are authored scenes, and the app a
     const ADVANCE = [
         'button[data-done]',                    // "Skip ›" past the leaderboard card
         'button[data-opt="0"]:not([disabled])', // an intro-challenge answer
-        'button[x-show*="showMapContinue"]',
+        'button[aria-label="Next"][data-stage-waiting]',
     ]
 
     /*
@@ -168,7 +168,7 @@ test('student LYTVSK: the pre-narration gates are authored scenes, and the app a
                 const marks = (window as any).__audioMarks ?? []
                 if (marks.some((m: any) => /\/storage\/lessons\/.*\.(mp3|m4a|wav|ogg)/.test(m.src))) return true
                 const next = document.querySelector(
-                    'button[data-done], button[data-opt="0"]:not([disabled]), button[x-show*="showMapContinue"]') as HTMLElement | null
+                    'button[data-done], button[data-opt="0"]:not([disabled]), button[aria-label="Next"][data-stage-waiting]') as HTMLElement | null
                 if (!next || next.offsetParent === null) return false
                 return (next.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 30) !== prev
             },

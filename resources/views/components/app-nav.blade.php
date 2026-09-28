@@ -78,7 +78,7 @@
     }
 @endphp
 
-<nav class="sticky top-0 z-50 border-b border-slate-800 bg-slate-900/80 backdrop-blur-sm">
+<nav class="sticky top-0 z-50 border-none hover:border-b border-slate-800 hover:bg-slate-900/80 bg-slate-900/0 hover:backdrop-blur-sm transition-colors">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="flex h-16 items-center justify-between">
             <a href="{{ route('home') }}" class="flex items-center gap-3">
@@ -97,7 +97,7 @@
                                  tour finds no anchor, and the step falls back to a centred card. --}}
                             <a href="{{ route($item['route']) }}"
                                @isset($item['tour']) data-tour="{{ $item['tour'] }}" @endisset
-                               class="text-sm flex items-center gap-1.5 whitespace-nowrap transition-colors {{ $active ? 'text-amber-400' : 'text-slate-400 hover:text-white' }}">
+                               class="text-sm flex items-center gap-1.5 whitespace-nowrap transition-colors {{ $active ? 'text-amber-400' : 'text-slate-200 hover:text-white' }}">
                                 <span>{{ __($item['label']) }}</span>
                                 @if (!empty($item['badge']))
                                     <span class="text-[0.55rem] bg-amber-400 text-slate-900 px-1.5 py-0.5 rounded font-semibold">
@@ -110,7 +110,7 @@
 
                     {{-- Help is one click away from every page, for every signed-in user. --}}
                     <a href="{{ route('help.index') }}" title="{{ __('Help') }}" aria-label="{{ __('Help') }}" data-tour="help"
-                       class="flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-slate-800/60 {{ request()->routeIs('help.index') ? 'text-amber-400' : 'text-slate-400 hover:text-white' }}">
+                       class="flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-slate-800/60 {{ request()->routeIs('help.index') ? 'text-white' : 'text-slate-200 hover:text-white' }}">
                         <x-icons.question-mark-circle class="h-5 w-5" />
                     </a>
 

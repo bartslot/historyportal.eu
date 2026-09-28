@@ -44,7 +44,7 @@ export function mountTimeSlider(el, { min, max, value, onYear, onPlay }) {
       </button>
     </div>
 
-    <div class="tm-readout mt-0.5 text-center text-xs opacity-70"></div>
+    <div class="tm-readout mt-0.5 text-center text-xs opacity-70" hidden></div>
 
     <div class="tm-track relative mt-2 h-12 overflow-hidden"
          role="slider" tabindex="0"

@@ -31,14 +31,39 @@ final class ImageStyleTemplate
         .'realistic scale, suitable for use as a spherical VR skybox';
 
     /**
-     * Universal negative prompt — appended to every image prompt (flat and skybox).
+     * ENVIRONMENT negative prompt — for skyboxes, backdrops and documentary/environment
+     * images, where excluding people is intentional. Appended to every non-narrative prompt.
+     *
+     * (Phase 0 fix, 2026-08-24: this used to be THE universal negative prompt, which meant
+     * narrative shot grids were told to remove the very people the script prompt demands.
+     * Narrative shots now use NARRATIVE_NEGATIVE_PROMPT below instead — see
+     * docs/experiment/phase0-protocol.md.)
      */
-    public const NEGATIVE_PROMPT = 'Avoid: people, faces, modern objects, modern buildings, '
+    public const ENVIRONMENT_NEGATIVE_PROMPT = 'Avoid: people, faces, modern objects, modern buildings, '
         .'cars, bicycles, motorcycles, electric lamps, power lines, antennas, asphalt, '
         .'plastic, glass skyscrapers, modern road signs, readable text, logos, '
         .'fantasy elements, sci-fi elements, inaccurate monuments, '
         .'distorted perspective, duplicated architecture, warped buildings, '
         .'broken horizon, fisheye lens, black borders, frame, watermark';
+
+    /**
+     * Back-compat alias — existing callers keep the environment behaviour.
+     *
+     * @deprecated use ENVIRONMENT_NEGATIVE_PROMPT (environments) or NARRATIVE_NEGATIVE_PROMPT (story shots)
+     */
+    public const NEGATIVE_PROMPT = self::ENVIRONMENT_NEGATIVE_PROMPT;
+
+    /**
+     * NARRATIVE negative prompt — for story shots that SHOW historical people acting.
+     * People, faces, hands and interactions are explicitly wanted; what stays excluded is
+     * anachronism, unusable rendering, and anything that breaks classroom trust.
+     */
+    public const NARRATIVE_NEGATIVE_PROMPT = 'Avoid: modern objects, modern clothing, modern buildings, '
+        .'cars, electric lamps, power lines, asphalt, plastic, readable text, logos, '
+        .'fantasy elements, sci-fi elements, inaccurate monuments, '
+        .'duplicated people, extra limbs, malformed hands, distorted faces, '
+        .'graphic gore, sexualized depiction, '
+        .'distorted perspective, broken horizon, fisheye lens, black borders, frame, watermark';
 
     public const GAME_HINT = 'battle/scene illustration, dim mid-tones suitable for overlaid UI, no clutter';
 
@@ -187,7 +212,7 @@ final class ImageStyleTemplate
      * @param  list<string>  $panelDescriptions  ordered left-to-right, top-to-bottom
      * @param  array<string, mixed>  $validation  HistoricalImageValidationPrompt output (or [])
      */
-    public static function buildShotGrid(array $panelDescriptions, array $validation, string $style, int $rows, int $cols): string
+    public static function buildShotGrid(array $panelDescriptions, array $validation, string $style, int $rows, int $cols, bool $narrative = false): string
     {
         $styleClause = self::STYLES[$style] ?? self::STYLES['realistic'];
         $count = count($panelDescriptions);
@@ -198,9 +223,14 @@ final class ImageStyleTemplate
             array_keys($panelDescriptions),
         ));
 
+        // Narrative mode (Phase 0 candidate): the storyboard exists to SHOW people acting, so
+        // people/faces leave the avoid-list and the negatives switch to the narrative set.
+        // Baseline keeps the original environment behaviour byte-for-byte.
         $avoidList = array_merge(
             $validation['anachronismsToAvoid'] ?? [],
-            ['people in close-up', 'faces', 'readable text'],
+            $narrative
+                ? ['readable text']
+                : ['people in close-up', 'faces', 'readable text'],
         );
         $avoidStr = 'avoid: '.implode(', ', array_unique($avoidList));
 
@@ -212,6 +242,14 @@ final class ImageStyleTemplate
             .'Compose EVERY panel on the rule of thirds: the focal subject sits on a third-line '
             .'intersection (never centered), horizons lie on a horizontal third line.';
 
+        if ($narrative) {
+            $gridSpec .= ' The panels tell a STORY: historical people visibly performing the '
+                .'described actions — decisions, movement, interaction. The same person keeps the '
+                .'same face, build, hair and clothing in every panel they appear in. Faces and '
+                .'hands are rendered carefully; medium shots and close-ups are welcome where the '
+                .'panel description asks for them.';
+        }
+
         $parts = array_filter([
             $gridSpec,
             $panels,
@@ -219,7 +257,7 @@ final class ImageStyleTemplate
             $styleClause,
             self::SAFETY_GUARDRAIL,
             $avoidStr,
-            self::NEGATIVE_PROMPT,
+            $narrative ? self::NARRATIVE_NEGATIVE_PROMPT : self::ENVIRONMENT_NEGATIVE_PROMPT,
         ]);
 
         return implode('. ', $parts);
