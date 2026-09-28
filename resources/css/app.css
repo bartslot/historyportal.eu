@@ -357,16 +357,23 @@
     overflow: visible;
 }
 
-/* The rail, and the fill inside it. A hard-stop gradient rather than two elements: one box, so the
-   fill can never be a different height from the rail it sits in. */
+/* The native track only sizes the input; the rail you see is .range-panel-knob::before. */
 .range-panel::-webkit-slider-runnable-track {
     height: var(--range-rail-h);
-    border-radius: 3px;
-    background: linear-gradient(to right,
-        var(--color-slider-fill) var(--range-pct),
-        var(--color-slider-track) var(--range-pct));
+    background: transparent;
 }
 
+/**
+ * THE NATIVE RAIL AND KNOB ARE INVISIBLE; WHAT YOU SEE IS .range-panel-knob::before AND ::after.
+ *
+ * Where a browser puts its own thumb vertically is the browser's decision, and it would not sit
+ * centred on a 7px rail: every margin that fixed it in one engine (or at one device scale) broke it
+ * in another. So the native thumb keeps the jobs only it can do — hit area, drag, keyboard
+ * stepping, focus — with a transparent fill, and the visible rail and knob are drawn by a wrapper
+ * we position ourselves. BOTH, not just the knob: with only the knob ours, the browser's rail still
+ * snapped to its own device grid and they parted by half a pixel at 2x. Centred by the same rule
+ * (top 50%, translateY(-50%)), they share a centre at every scale.
+ */
 .range-panel::-webkit-slider-thumb {
     appearance: none;
     -webkit-appearance: none;
@@ -374,20 +381,13 @@
     height: var(--range-thumb-size);
     border: none;
     border-radius: 50%;
-    background: var(--color-slider-knob);
+    background: transparent;
     box-shadow: none;
-    /* NO margin-top. DaisyUI's .range already centres the thumb on the rail (`top: 50%;
-       transform: translateY(-50%)`), and a margin that "centred" it again lifted every panel knob
-       by half the difference, 3.5px — measured: knob rows 13-26 on a rail at 20-26, its bottom
-       flush with the rail's bottom. */
 }
 
 .range-panel::-moz-range-track {
     height: var(--range-rail-h);
-    border-radius: 3px;
-    background: linear-gradient(to right,
-        var(--color-slider-fill) var(--range-pct),
-        var(--color-slider-track) var(--range-pct));
+    background: transparent;
 }
 
 .range-panel::-moz-range-thumb {
@@ -395,8 +395,55 @@
     height: var(--range-thumb-size);
     border: none;
     border-radius: 50%;
-    background: var(--color-slider-knob);
+    background: transparent;
     box-shadow: none;
+}
+
+/* The wrapper that draws the knob. It carries --range-t (0..1, rendered by the server and kept in
+   step by range-fill.js), so the knob, the fill and the native thumb all read the same number. */
+.range-panel-knob {
+    --range-thumb-size: 0.875rem;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.range-panel-knob > .range-panel { width: 100%; }
+
+/* The rail and its fill: a hard-stop gradient, so the fill can never be a different height from
+   the rail. The stop is at the KNOB'S CENTRE (half a knob in, then --range-t of the remaining
+   travel), so purple always runs up under the knob. */
+.range-panel-knob::before {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    top: 50%;
+    height: 0.4375rem;
+    border-radius: 3px;
+    background: linear-gradient(to right,
+        var(--color-slider-fill) calc(var(--range-thumb-size) / 2 + (100% - var(--range-thumb-size)) * var(--range-t, 0)),
+        var(--color-slider-track) calc(var(--range-thumb-size) / 2 + (100% - var(--range-thumb-size)) * var(--range-t, 0)));
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+
+.range-panel-knob::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: calc((100% - var(--range-thumb-size)) * var(--range-t, 0));
+    width: var(--range-thumb-size);
+    height: var(--range-thumb-size);
+    border-radius: 50%;
+    background: var(--color-slider-knob);
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+
+/* The focus ring the invisible native thumb can no longer show, on the knob that can be seen. */
+.range-panel-knob:has(.range-panel:focus-visible)::after {
+    outline: 2px solid var(--color-slider-fill);
+    outline-offset: 2px;
 }
 
 /* ─── DaisyUI component overrides — Learning Portal brand ───────────── */

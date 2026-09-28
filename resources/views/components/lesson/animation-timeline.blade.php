@@ -180,11 +180,13 @@
              readout beside it is the only thing here allowed to shrink. --}}
         <div class="ml-auto flex shrink-0 items-center gap-2">
             {{-- Logarithmic: every step multiplies the zoom, so it is equally gentle at both ends. --}}
-            <input type="range" min="0" max="1000" step="1" :value="zoomSlider"
-                   :style="`--range-pct: ${zoomSlider / 10}%`"
-                   x-on:input="setZoomFromSlider($event.target.value)"
-                   aria-label="{{ __('Zoom') }}" data-tooltip="{{ __('Zoom') }}"
-                   data-timeline-zoom class="range-panel range range-xs" style="width: 88px" />
+            <span class="range-panel-knob" style="width: 88px" :style="{ '--range-t': zoomSlider / 1000 }">
+                <input type="range" min="0" max="1000" step="1" :value="zoomSlider"
+                       :style="{ '--range-t': zoomSlider / 1000 }"
+                       x-on:input="setZoomFromSlider($event.target.value)"
+                       aria-label="{{ __('Zoom') }}" data-tooltip="{{ __('Zoom') }}"
+                       data-timeline-zoom class="range-panel range range-xs" />
+            </span>
         </div>
     </div>
 

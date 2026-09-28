@@ -25,9 +25,21 @@ export function fillPercent (input) {
   return Math.min(100, Math.max(0, pct))
 }
 
-/** Paint one slider's fill. */
+/**
+ * Paint one slider's fill and move its knob.
+ *
+ * --range-t (0..1) positions both: the fill's stop inside the track, and the knob drawn by the
+ * `.range-panel-knob` wrapper's ::after (the native thumb is invisible). It goes on the input AND
+ * the wrapper: the server renders it inline on both, and an inline value is not overridden by
+ * inheritance. --range-pct stays for anything still reading it.
+ */
 export function paintFill (input) {
-  input.style.setProperty('--range-pct', fillPercent(input) + '%')
+  const pct = fillPercent(input)
+  for (const el of [input, input.closest('.range-panel-knob')]) {
+    if (!el) continue
+    el.style.setProperty('--range-pct', pct + '%')
+    el.style.setProperty('--range-t', String(pct / 100))
+  }
 }
 
 /** Install the one document-level handler. Idempotent. */

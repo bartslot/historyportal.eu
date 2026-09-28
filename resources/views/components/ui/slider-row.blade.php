@@ -73,13 +73,17 @@
 <x-ui.panel-row :label="$label" :default="$default" :keyframe="$keyframe"
                 :keyframe-target="$keyframeTarget" :keyframe-property="$keyframeProperty"
                 {{ $attributes }}>
-    <input type="range" min="{{ $min }}" max="{{ $max }}" step="{{ $step }}" value="{{ $value }}"
-           aria-label="{{ $label }}"
-           @if ($default !== null) data-default="{{ $default }}" @endif
-           @if ($onInput) x-on:input="{{ $onInput }}" @endif
-           @if ($onChange) wire:change="{{ $onChange }}" @endif
-           style="--range-pct: {{ round($fillPct, 2) }}%"
-           class="range range-panel min-w-0 flex-1" />
+    {{-- The wrapper draws the knob (.range-panel-knob::after); the native thumb is invisible. --}}
+    <span class="range-panel-knob min-w-0 flex-1"
+          style="--range-pct: {{ round($fillPct, 2) }}%; --range-t: {{ round($fillPct / 100, 4) }}">
+        <input type="range" min="{{ $min }}" max="{{ $max }}" step="{{ $step }}" value="{{ $value }}"
+               aria-label="{{ $label }}"
+               @if ($default !== null) data-default="{{ $default }}" @endif
+               @if ($onInput) x-on:input="{{ $onInput }}" @endif
+               @if ($onChange) wire:change="{{ $onChange }}" @endif
+               style="--range-pct: {{ round($fillPct, 2) }}%; --range-t: {{ round($fillPct / 100, 4) }}"
+               class="range range-panel min-w-0" />
+    </span>
 
     <span class="flex w-11 shrink-0 items-baseline justify-end gap-0.5">
         <span class="text-xs font-medium text-panel-value">{{ $display ?? $value }}</span>
