@@ -38,6 +38,12 @@ class LessonComposer
     /** An old cached narration at or above this (bits/s) is converted rather than re-rendered. */
     private const CONVERTIBLE_BITRATE = 96000;
 
+    /**
+     * Recordings kept by sentence, across lessons: <sha1(script)>.mp3 on the public disk. Outside
+     * lessons/, so rebuilding or deleting a lesson never touches it.
+     */
+    public const NARRATION_LIBRARY = 'narration-library';
+
     public function __construct(
         private readonly SceneImageSourcer $images,
         private readonly LibraryLayers $library,
@@ -374,12 +380,18 @@ class LessonComposer
      * but only a high-bitrate one (ElevenLabs' 128k): converting that to 32k is a single audible
      * step, and a re-render would spend ElevenLabs credits. Azure's old 48k MP3 is NOT converted
      * (a second lossy generation from an already small file); it re-renders from text for cents.
+     *
+     * Looked for in this lesson's own cache first, then in NARRATION_LIBRARY: recordings kept by
+     * sentence across lessons (Ron Slot's, Bart's father: they are never re-bought and never lost to
+     * a lesson being rebuilt under a new id). The library file itself is only read, never changed.
      */
     private function convertHighBitrateNarration(string $dir, string $hash, string $key): ?string
     {
         $disk = Storage::disk('public');
-        $old = "{$dir}/{$hash}.mp3";
-        if (! $disk->exists($old) || (AudioEncoder::bitrate($disk->path($old)) ?? 0) < self::CONVERTIBLE_BITRATE) {
+        $old = collect(["{$dir}/{$hash}.mp3", self::NARRATION_LIBRARY."/{$hash}.mp3"])
+            ->first(fn (string $path) => $disk->exists($path)
+                && (AudioEncoder::bitrate($disk->path($path)) ?? 0) >= self::CONVERTIBLE_BITRATE);
+        if ($old === null) {
             return null;
         }
         $aac = AudioEncoder::toAac((string) $disk->get($old), 'mp3');

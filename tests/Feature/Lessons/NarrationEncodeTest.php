@@ -90,4 +90,23 @@ class NarrationEncodeTest extends TestCase
         $key = sha1('Nel mezzo del cammin di nostra vita.|'.AudioEncoder::FINGERPRINT);
         Storage::disk('public')->assertExists("lessons/{$lesson->id}/narration-cache/{$key}.m4a");
     }
+
+    public function test_a_kept_recording_in_the_narration_library_is_used_for_a_new_lesson_and_left_untouched(): void
+    {
+        $script = 'In augustus 1642 vertrekken twee schepen uit Batavia.';
+        $mp3 = tempnam(sys_get_temp_dir(), 'ron').'.mp3';
+        Process::run(['ffmpeg', '-y', '-loglevel', 'error', '-f', 'lavfi', '-i', 'sine=frequency=180:duration=2', '-ac', '1', '-b:a', '128k', $mp3])->throw();
+        $kept = LessonComposer::NARRATION_LIBRARY.'/'.sha1($script).'.mp3';
+        Storage::disk('public')->put($kept, $original = (string) file_get_contents($mp3));
+        @unlink($mp3);
+        Http::fake();
+
+        $scene = app(LessonComposer::class)
+            ->build(['key' => 'Brand new lesson', 'scenes' => [['type' => 'story', 'script' => $script]]], User::factory()->create(), narrate: true)
+            ->scenes()->firstOrFail();
+
+        Http::assertNothingSent();
+        $this->assertStringEndsWith('/narration.m4a', $scene->audio_path);
+        $this->assertSame($original, Storage::disk('public')->get($kept), 'the kept recording is never changed');
+    }
 }
