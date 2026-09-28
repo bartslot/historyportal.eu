@@ -3,6 +3,9 @@
     'target' => null,
     /** Which of that object's properties, e.g. "opacity". Null leaves it inert. */
     'property' => null,
+    /** Inert marker only: an Alpine expression that fills the diamond when true — a key under the
+     *  playhead, or a selected key on a lane. Filled vs outlined, so the state is not colour alone. */
+    'on' => null,
 ])
 
 {{-- The per-property keyframe marker — the small outlined rhombus the file puts after Colour, X,
@@ -28,7 +31,7 @@
             x-on:timeline-changed.window="sync()"
             x-on:click.prevent.stop="window.__timelineKeying?.key(this.target, this.property); sync()"
             :aria-pressed="on ? 'true' : 'false'"
-            :title="on ? @js(__('Remove keyframe')) : @js(__('Add keyframe'))"
+            :data-tooltip="on ? @js(__('Update keyframe')) : @js(__('Add keyframe'))"
             {{ $attributes->class(['flex shrink-0 cursor-pointer items-center justify-center rounded hover:bg-white/5']) }}
             style="width: 12.872px; height: 12.872px">
         <span class="-rotate-45 rounded-[1px] border"
@@ -39,6 +42,7 @@
     <span {{ $attributes->class(['flex shrink-0 items-center justify-center']) }}
           style="width: 12.872px; height: 12.872px" aria-hidden="true">
         <span class="-rotate-45 rounded-[1px] border border-panel-label"
+              @if ($on) x-bind:class="({{ $on }}) && 'bg-panel-label'" @endif
               style="width: 9.102px; height: 9.102px"></span>
     </span>
 @endif

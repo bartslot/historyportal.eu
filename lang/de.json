@@ -899,7 +899,6 @@
     "Remove 3D background": "3D-Hintergrund entfernen",
     "Remove :focus": ":focus entfernen",
     "Remove :name from this class?": ":name aus dieser Klasse entfernen?",
-    "Remove keyframe": "Keyframe entfernen",
     "Remove layer": "Ebene entfernen",
     "Remove panel": "Fläche entfernen",
     "Remove session and start a new lesson": "Sitzung entfernen und neue Stunde beginnen",
@@ -1457,5 +1456,6 @@
     "validation.required": "Dieses Feld ist erforderlich.",
     "years old": "Jahre alt",
     "you": "du",
-    "“Enough is enough!” a politician shouts, slamming his fist on the wooden table.": "„Jetzt reicht es!“ ruft ein Politiker und schlägt mit der Faust auf den Holztisch."
+    "“Enough is enough!” a politician shouts, slamming his fist on the wooden table.": "„Jetzt reicht es!“ ruft ein Politiker und schlägt mit der Faust auf den Holztisch.",
+    "Update keyframe": "Keyframe aktualisieren"
 }

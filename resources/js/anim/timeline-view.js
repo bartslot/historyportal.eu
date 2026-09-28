@@ -13,6 +13,10 @@ export const SNAP_PX = 8
 /** Apple's drag threshold, about three points. Under it a press is still a press. */
 export const DRAG_THRESHOLD_PX = 3
 
+/** Room before 0 and after the end, so a key sitting on either edge is a whole diamond you can
+ *  grab rather than half of one clipped by the scroller. */
+export const LANE_PAD_PX = 10
+
 /** Zoom (pixels per second) that makes `duration` exactly fill `width`. */
 export const fitZoom = (width, duration) => (duration > 0 && width > 0 ? width / duration : 100)
 

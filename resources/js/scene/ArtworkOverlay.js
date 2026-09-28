@@ -1002,5 +1002,9 @@ export class ArtworkOverlay {
       lng: Number.isFinite(item.lng) ? item.lng : null,
       lat: Number.isFinite(item.lat) ? item.lat : null,
     })
+    // The timeline records a canvas move as a keyframe when the property is animated.
+    window.dispatchEvent(new CustomEvent('scene-object-edited', {
+      detail: { target: `art:${item.asset_id}`, values: { x: item.x, y: item.y, scale: item.scale, rotation: item.rotation || 0 } },
+    }))
   }
 }

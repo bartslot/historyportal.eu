@@ -11,15 +11,19 @@ import { test, expect, Page } from '@playwright/test';
  * word marks and the snapping have real data under them.
  */
 
-// Resolved at run time: every worktree has its OWN database, so a hardcoded pair is a spec that
-// only passes where it was written. Override with PW_LESSON_ID / PW_SCENE_ID.
-const LESSON = Number(process.env.PW_LESSON_ID ?? 359);
-const SCENE = Number(process.env.PW_SCENE_ID ?? 4786);
+// Its OWN variables: global-setup presets PW_LESSON_ID to a general lesson, which paired that
+// lesson with this map scene and opened the wizard on a quiz. Override with PW_TIMELINE_LESSON_ID
+// / PW_TIMELINE_SCENE_ID in a database where 359/4786 do not exist.
+const LESSON = Number(process.env.PW_TIMELINE_LESSON_ID ?? 359);
+const SCENE = Number(process.env.PW_TIMELINE_SCENE_ID ?? 4786);
 const URL = `/teacher/lessons/${LESSON}/wizard?step=4&scene=${SCENE}`;
 
 function watchConsole(page: Page): string[] {
   const errors: string[] = [];
-  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+  // A missing painting or tile in a local database is data, not this panel: count script errors.
+  page.on('console', (m) => {
+    if (m.type() === 'error' && !m.text().startsWith('Failed to load resource')) errors.push(m.text());
+  });
   page.on('pageerror', (e) => errors.push(String(e)));
   return errors;
 }
@@ -35,6 +39,9 @@ async function openTimeline(page: Page) {
   // helper was riding its own timeout. Wait for the thing we actually need instead.
   await page.waitForLoadState('domcontentloaded');
   await page.locator('[data-tab="timeline"]').waitFor({ state: 'visible', timeout: 30000 });
+  // The ?scene= deep link is not reliable on its own — the wizard can open on its first scene —
+  // so select the scene the way a teacher does, from the rail.
+  await page.locator(`[wire\\:click="selectScene(${SCENE})"]`).first().click();
   await page.waitForTimeout(8000);            // the globe needs a beat; a black frame is loading
 
   const tab = page.locator('[data-tab="timeline"]');
@@ -111,7 +118,8 @@ test('dragging the playhead scrubs, and the readout names the spoken word', asyn
   const errors = watchConsole(page);
   await openTimeline(page);
 
-  const lanes = page.locator('[data-timeline-lanes]');
+  // The RULER scrubs; the tracks below it select keyframes, as in Figma.
+  const lanes = page.locator('[data-timeline-ruler]');
   const box = (await lanes.boundingBox())!;
   const y = box.y + 20;
 
@@ -211,9 +219,19 @@ test('pressing play moves the map — the whole point, and it is asserted on the
   // With nothing keyed, play must refuse rather than run for 30s and change nothing.
   await expect(page.locator('[data-timeline-play]')).toBeDisabled();
 
-  // Frame one, at the start.
+  // Frame one, at the start: the diamonds key where the map is now.
   await keyRow('lng');
   await keyRow('lat');
+
+  // Figma's auto-keyframe flow: move the playhead, then move the OBJECT — the canvas edit records
+  // itself. Scrubbed on the ruler.
+  const lanes = page.locator('[data-timeline-ruler]');
+  const lb = (await lanes.boundingBox())!;
+  await walkTo(page, lb.x + 10, lb.y + 20);
+  await page.mouse.down();
+  await walkTo(page, lb.x + lb.width * 0.6, lb.y + 20, 14);
+  await page.mouse.up();
+  await page.waitForTimeout(500);
 
   // Move the map with a REAL mouse drag on the globe, the way a teacher frames a shot.
   // MUST be the maplibre canvas: a map scene stacks the artwork overlay's canvas over it, and
@@ -225,18 +243,7 @@ test('pressing play moves the map — the whole point, and it is asserted on the
   await page.mouse.down();
   await walkTo(page, cb.x + cb.width * 0.3, cb.y + cb.height * 0.45, 16);
   await page.mouse.up();
-  await page.waitForTimeout(1200);
-
-  // Frame two, later in the narration.
-  const lanes = page.locator('[data-timeline-lanes]');
-  const lb = (await lanes.boundingBox())!;
-  await walkTo(page, lb.x + 10, lb.y + 20);
-  await page.mouse.down();
-  await walkTo(page, lb.x + lb.width * 0.6, lb.y + 20, 14);
-  await page.mouse.up();
-  await page.waitForTimeout(500);
-  await keyRow('lng');
-  await keyRow('lat');
+  await page.waitForTimeout(1600);
 
   await expect(page.locator('[data-timeline-play]')).toBeEnabled();
 
@@ -263,6 +270,46 @@ test('pressing play moves the map — the whole point, and it is asserted on the
     .toBeGreaterThan(0.05);
   expect(moved(during, later), `map stopped moving mid-playback: ${JSON.stringify({ during, later })}`)
     .toBeGreaterThan(0.05);
+
+  expect(errors, `console errors:\n${errors.join('\n')}`).toEqual([]);
+});
+
+/**
+ * Figma's keyframe gestures (help.figma.com, "Add, select, and delete keyframes"): click selects,
+ * Delete removes the selection, double-click JUMPS to the key. Double-click used to delete here,
+ * which is the one gesture a Figma user would try first to get to a key.
+ */
+test('a keyframe is selected by a click, jumped to by a double-click, and removed by Delete', async ({ page }) => {
+  const errors = watchConsole(page);
+  await openTimeline(page);
+
+  await page.evaluate(() => {
+    const c = (document.querySelector('[data-timeline]') as any)._x_dataStack[0];
+    c.targets = ['camera']; c.refreshObjects();
+    c.tracks = [{ target: 'camera', property: 'zoom', keyframes: [{ time: 0, value: 3 }, { time: 2, value: 5 }] }];
+    c.seek(0); c.save();
+  });
+  await page.waitForTimeout(2000);
+  const state = () => page.evaluate(() => {
+    const c = (document.querySelector('[data-timeline]') as any)._x_dataStack[0];
+    return { time: c.time, selected: [...c.selected], times: c.tracks[0].keyframes.map((k: any) => k.time) };
+  });
+
+  const key = page.locator('[data-timeline-diamond="camera:zoom"]').nth(1);
+  const kb = (await key.boundingBox())!;
+  await walkTo(page, kb.x + kb.width / 2, kb.y + kb.height / 2);
+  await page.mouse.down(); await page.mouse.up();
+  expect((await state()).selected).toEqual(['camera|zoom|2']);
+  await expect(key).toHaveAttribute('aria-selected', 'true');
+
+  await page.mouse.dblclick(kb.x + kb.width / 2, kb.y + kb.height / 2);
+  await page.waitForTimeout(300);
+  expect((await state()).time, 'double-click jumps the playhead to the key').toBe(2);
+  expect((await state()).times, 'and deletes nothing').toEqual([0, 2]);
+
+  await page.keyboard.press('Delete');
+  await page.waitForTimeout(800);
+  expect((await state()).times).toEqual([0]);
 
   expect(errors, `console errors:\n${errors.join('\n')}`).toEqual([]);
 });

@@ -899,7 +899,6 @@
     "Remove 3D background": "Retirer le fond 3D",
     "Remove :focus": "Retirer :focus",
     "Remove :name from this class?": "Retirer :name de cette classe ?",
-    "Remove keyframe": "Supprimer l'image clé",
     "Remove layer": "Supprimer le calque",
     "Remove panel": "Supprimer le panneau",
     "Remove session and start a new lesson": "Supprimer la session et commencer une nouvelle leçon",
@@ -1457,5 +1456,6 @@
     "validation.required": "Ce champ est obligatoire.",
     "years old": "ans",
     "you": "toi",
-    "“Enough is enough!” a politician shouts, slamming his fist on the wooden table.": "« Trop, c’est trop ! » crie un homme politique en frappant du poing sur la table en bois."
+    "“Enough is enough!” a politician shouts, slamming his fist on the wooden table.": "« Trop, c’est trop ! » crie un homme politique en frappant du poing sur la table en bois.",
+    "Update keyframe": "Mettre à jour l'image clé"
 }

@@ -289,6 +289,13 @@ export class TextOverlayLayer {
   clear() { this.setTexts([]) }
 
   _emitChange() {
+    const selected = this._texts.find(t => t.id === this._selectedId)
+    if (selected) {
+      // The timeline records a canvas move as a keyframe when the property is animated.
+      window.dispatchEvent(new CustomEvent('scene-object-edited', {
+        detail: { target: `${selected.kind === 'rect' ? 'rect' : 'text'}:${selected.id}`, values: { ...selected } },
+      }))
+    }
     this.onChange?.(
       this._texts
         .filter(t => t.kind === 'rect' || (typeof t.text === 'string' && t.text.trim() !== ''))

@@ -928,7 +928,6 @@
     "Remove 3D background": "3D-achtergrond verwijderen",
     "Remove :focus": ":focus verwijderen",
     "Remove :name from this class?": ":name uit deze klas halen?",
-    "Remove keyframe": "Keyframe verwijderen",
     "Remove layer": "Laag verwijderen",
     "Remove panel": "Vlak verwijderen",
     "Remove session and start a new lesson": "Sessie verwijderen en een nieuwe les beginnen",
@@ -1502,5 +1501,6 @@
     "validation.required": "Dit veld is verplicht.",
     "years old": "jaar oud",
     "you": "jij",
-    "“Enough is enough!” a politician shouts, slamming his fist on the wooden table.": "“Het is genoeg geweest!” roept een politicus, terwijl hij met zijn vuist op de houten tafel slaat."
+    "“Enough is enough!” a politician shouts, slamming his fist on the wooden table.": "“Het is genoeg geweest!” roept een politicus, terwijl hij met zijn vuist op de houten tafel slaat.",
+    "Update keyframe": "Keyframe bijwerken"
 }

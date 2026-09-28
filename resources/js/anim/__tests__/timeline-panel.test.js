@@ -180,17 +180,18 @@ describe('spans — the bar a track draws', () => {
     expect(panel([track([{ time: 1, value: 0 }])]).objectSpan(TEXT)).toBeNull()
   })
 
-  // Absolute pixels, worked out by hand: zoom 100px/s, so 1s→100px and a 3.5s span is 350px wide.
+  // Absolute pixels, worked out by hand: zoom 100px/s, so 1s→100px plus the 10px lane pad that
+  // keeps a key on 0 whole, and a 3.5s span is 350px wide.
   it('places the bar in pixels at the current zoom', () => {
     const p = panel()
     p.zoom = 100
-    expect(p.barStyle({ from: 1, to: 4.5 })).toBe('left: 100px; width: 350px')
+    expect(p.barStyle({ from: 1, to: 4.5 })).toBe('left: 110px; width: 350px')
   })
 
   it('keeps a bar visible even when its span is far below a pixel', () => {
     const p = panel()
     p.zoom = 100
-    expect(p.barStyle({ from: 1, to: 1.001 })).toBe('left: 100px; width: 2px')
+    expect(p.barStyle({ from: 1, to: 1.001 })).toBe('left: 110px; width: 2px')
   })
 
   it('hides the bar when there is no span at all', () => {
@@ -264,5 +265,61 @@ describe('the diamond on a layer nobody has moved yet', () => {
     p.toggleKey(TEXT, 'x')
 
     expect(keys(p, TEXT, 'x')).toEqual([{ time: 2, value: 12 }])
+  })
+})
+
+describe('canvas edits record keyframes, the way Figma auto-keyframe does', () => {
+  const animated = () => panel([{ target: TEXT, property: 'x', keyframes: [{ time: 0, value: 12 }] }])
+
+  it('keys an animated property moved on the canvas, at the playhead', () => {
+    const p = animated()
+    p.time = 2
+    p.recordCanvasEdit(TEXT, { x: 50, y: 99 })
+    expect(keys(p, TEXT, 'x').map((k) => [k.time, k.value])).toEqual([[0, 12], [2, 50]])
+    expect(keys(p, TEXT, 'y')).toEqual([])   // y was never animated: a move is just a move
+  })
+
+  it('ignores the timeline writing its own sample back', () => {
+    const p = animated()
+    p.time = 2
+    p.recordCanvasEdit(TEXT, { x: 12 })
+    expect(keys(p, TEXT, 'x')).toHaveLength(1)
+  })
+
+  it('records nothing with auto-key off', () => {
+    const p = animated()
+    p.autoKey = false
+    p.time = 2
+    p.recordCanvasEdit(TEXT, { x: 50 })
+    expect(keys(p, TEXT, 'x')).toHaveLength(1)
+  })
+})
+
+describe('Delete removes the selected keys, and only when nobody is typing', () => {
+  const withKeys = () => {
+    const p = panel([{ target: TEXT, property: 'x', keyframes: [{ time: 0, value: 1 }, { time: 2, value: 2 }] }])
+    p.$store = { view: { script: true, bottomTab: 'timeline' } }
+    p.selected = ['text:1|x|2']
+    return p
+  }
+  const key = (target, k = 'Delete') => ({ key: k, target, defaultPrevented: false })
+
+  it('takes the key on the timeline and deletes the selection', () => {
+    const p = withKeys()
+    expect(p.isDeleteKey(key(document.body))).toBe(true)
+    p.deleteSelected()
+    expect(keys(p, TEXT, 'x').map((k) => k.time)).toEqual([0])
+    expect(p.selected).toEqual([])
+  })
+
+  it('leaves Backspace alone in a field', () => {
+    const p = withKeys()
+    expect(p.isDeleteKey(key(document.createElement('input'), 'Backspace'))).toBe(false)
+  })
+
+  it('leaves it alone when the Timeline is not the tab on screen', () => {
+    const p = withKeys()
+    p.$store.view.bottomTab = 'script'
+    expect(p.isDeleteKey(key(document.body))).toBe(false)
   })
 })

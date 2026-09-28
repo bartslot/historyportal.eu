@@ -56,6 +56,7 @@
           ignores fields, ignores modifiers, and only cancels the page's scroll once it has
           actually taken the key. --}}
      x-on:keydown.window="onKeydown($event)"
+     x-on:scene-object-edited.window="recordCanvasEdit($event.detail.target, $event.detail.values)"
      data-timeline
      class="flex min-h-0 flex-1 flex-col overflow-hidden"
      style="background: var(--color-timeline-ground)">
@@ -291,7 +292,7 @@
                             <button type="button" x-on:click.prevent="jumpKey(object.target, -1)"
                                     :disabled="prevKeyTime(object.target) === null"
                                     :data-timeline-prev="object.target"
-                                    title="{{ __('Previous keyframe') }}"
+                                    data-tooltip="{{ __('Previous keyframe') }}"
                                     class="shrink-0 rounded p-0.5 text-panel-label hover:bg-white/5 disabled:opacity-25">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3 w-3" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/>
@@ -299,15 +300,15 @@
                             </button>
                             <button type="button" x-on:click.prevent="toggleKey(object.target, property.key)"
                                     :data-timeline-key="object.target + ':' + property.key"
-                                    :aria-pressed="hasKeyHere(object.target, property.key)"
-                                    :title="hasKeyHere(object.target, property.key) ? @js(__('Remove keyframe')) : @js(__('Add keyframe'))"
+                                    :aria-pressed="hasKeyHere(object.target, property.key) ? 'true' : 'false'"
+                                    :data-tooltip="hasKeyHere(object.target, property.key) ? @js(__('Update keyframe')) : @js(__('Add keyframe'))"
                                     class="shrink-0 rounded p-0.5 hover:bg-white/5">
-                                <x-ui.keyframe-diamond ::class="hasKeyHere(object.target, property.key) ? 'text-timeline-mark' : 'text-panel-label'" />
+                                <x-ui.keyframe-diamond on="hasKeyHere(object.target, property.key)" />
                             </button>
                             <button type="button" x-on:click.prevent="jumpKey(object.target, 1)"
                                     :disabled="nextKeyTime(object.target) === null"
                                     :data-timeline-next="object.target"
-                                    title="{{ __('Next keyframe') }}"
+                                    data-tooltip="{{ __('Next keyframe') }}"
                                     class="shrink-0 rounded p-0.5 text-panel-label hover:bg-white/5 disabled:opacity-25">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3 w-3" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/>
@@ -325,14 +326,17 @@
              against a scrollLeft the component tracked itself, inside overflow-hidden — so zooming
              in past a second or two put the playhead somewhere off to the right with no way to
              reach it, which is what made the zoom control feel broken. --}}
-        {{-- col-resize, the same handle the scrubby labels wear: dragging here moves the playhead,
-             and nothing said so. It is the panel's main gesture and it was silent. --}}
-        <div x-ref="lanes" data-timeline-lanes class="relative min-w-0 flex-1 cursor-col-resize overflow-x-auto"
-             x-on:pointerdown="startScrub($event)">
-            <div class="relative" :style="`width: ${Math.max(contentWidth, 100)}px`">
+        {{-- Figma's split: the RULER scrubs (col-resize says so), the TRACKS select — press a key,
+             Shift+press to add, drag across empty track for a marquee, press empty track to
+             clear. Cmd/Ctrl+wheel and pinch zoom about the pointer. --}}
+        <div x-ref="lanes" data-timeline-lanes class="relative min-w-0 flex-1 overflow-x-auto"
+             x-on:wheel="onWheel($event)">
+            <div x-ref="content" class="relative select-none" :style="`width: ${Math.max(contentWidth, 100)}px`"
+                 x-on:pointerdown="startMarquee($event)">
 
                 {{-- Ruler --}}
-                <div class="relative shrink-0 select-none" style="height: 38px">
+                <div class="relative shrink-0 cursor-col-resize select-none" style="height: 38px"
+                     data-timeline-ruler x-on:pointerdown="startScrub($event)">
                     <template x-for="t in ticks" :key="t">
                         <span class="absolute top-1.5 text-3xs text-panel-label"
                               :style="`left: ${xOf(t)}px`" x-text="Math.round(t * 1000)"></span>
@@ -371,19 +375,29 @@
                                     <span class="pointer-events-none select-none truncate px-2 text-3xs font-medium text-white/90"
                                           x-text="property.label"></span>
                                 </div>
+                                {{-- Click selects (filled), Shift+click adds, drag moves the whole
+                                     selection, double-click jumps the playhead here — Figma's
+                                     gestures. Delete/Backspace removes what is selected. --}}
                                 <template x-for="key in keysOf(object.target, property.key)" :key="key.time">
-                                    <span class="absolute grid place-items-center"
+                                    <span class="absolute grid cursor-grab place-items-center"
                                           :style="`left: ${xOf(key.time) - 6}px; top: 4px`"
                                           :data-timeline-diamond="object.target + ':' + property.key"
+                                          :data-key-id="object.target + '|' + property.key + '|' + key.time"
+                                          :aria-selected="isSelected(object.target, property.key, key.time) ? 'true' : 'false'"
                                           x-on:pointerdown.stop="startKeyDrag($event, object.target, property.key, key.time)"
-                                          x-on:dblclick.stop="removeKeyAt(object.target, property.key, key.time)">
-                                        <x-ui.keyframe-diamond class="cursor-grab text-timeline-mark" />
+                                          x-on:dblclick.stop="jumpToKey(object.target, property.key, key.time)">
+                                        <x-ui.keyframe-diamond on="isSelected(object.target, property.key, key.time)" />
                                     </span>
                                 </template>
                             </div>
                         </template>
                     </div>
                 </template>
+
+                {{-- The marquee, while one is being drawn. --}}
+                <div x-show="marquee" x-cloak data-timeline-marquee
+                     class="pointer-events-none absolute rounded-[2px] border border-white/40 bg-white/10"
+                     :style="marquee && `left: ${marquee.x}px; top: ${marquee.y}px; width: ${marquee.w}px; height: ${marquee.h}px`"></div>
 
                 {{-- Playhead: a plain light line, per the house rule that the mark saying "here"
                      needs no accent, no arrowhead and no glow. --}}

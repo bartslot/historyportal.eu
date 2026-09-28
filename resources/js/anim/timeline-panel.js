@@ -9,15 +9,21 @@
  * properties.js. There is no fixed list anywhere.
  */
 
-import { addKeyframe, removeKeyframe, sortedKeys, sameTime } from './keyframes.js'
+import { addKeyframe, sortedKeys, sameTime } from './keyframes.js'
+import { keyId, moveKeys, deleteKeys, snapToNearest } from './timeline-edit.js'
 import { propertiesFor, sampleFrame, kindOfTarget } from './properties.js'
 import { wordSpans, snapTime, wordAt } from './narration-clock.js'
 import { textObjects, artObjects, readObjectProperty, writeObjectProperty, setObjectHidden } from './scene-objects.js'
-import { isPlayPauseKey } from '../ui/keyboard.js'
+import { isPlayPauseKey, isTypingTarget } from '../ui/keyboard.js'
 import {
-  fitZoom, timeAtX, xAtTime, toleranceSeconds, tickStep, ticksFor, formatTime, toMs, fromMs,
-  DRAG_THRESHOLD_PX,
+  fitZoom, timeAtX, toleranceSeconds, tickStep, ticksFor, formatTime,
+  DRAG_THRESHOLD_PX, LANE_PAD_PX,
 } from './timeline-view.js'
+
+/** Wheel pixels to zoom factor for Cmd/Ctrl+wheel and trackpad pinch. */
+const WHEEL_ZOOM_RATE = 0.01
+const MIN_ZOOM = 2
+const MAX_ZOOM = 2000
 /** Per-element drag memory lives OUTSIDE the DOM: a Livewire morph strips any attribute the
  *  server has never heard of, and this state is invented client-side. */
 const dragMemory = new WeakMap()
@@ -59,12 +65,21 @@ export const cameraFromMap = (map) => {
   }
 }
 
+/** True while the timeline itself is moving the camera, so its own move is not taken for an edit. */
+let applyingCamera = false
+
 /** Put those five numbers back. jumpTo, not easeTo: the timeline owns the timing. */
 export const applyCamera = (map, values) => {
   const current = cameraFromMap(map)
   const next = { ...current, ...values }
-  map.jumpTo({ center: [next.lng, next.lat], zoom: next.zoom, bearing: next.heading, pitch: next.tilt })
+  applyingCamera = true
+  try {
+    map.jumpTo({ center: [next.lng, next.lat], zoom: next.zoom, bearing: next.heading, pitch: next.tilt })
+  } finally {
+    applyingCamera = false
+  }
 }
+
 
 export const animationTimeline = (config = {}) => ({
   time: 0,
@@ -83,6 +98,13 @@ export const animationTimeline = (config = {}) => ({
   hiddenObjects: {},         // objects the author has taken off the canvas while working
 
   zoomIsMine: false,          // true once the teacher has touched the zoom control
+
+  /** Selected keyframes, as keyId strings. Figma: click selects, Shift+click adds, Delete removes. */
+  selected: [],
+  /** The marquee rectangle while one is being drawn, in lane-content pixels. */
+  marquee: null,
+  /** Bumped whenever the canvas moves something, so fields that read live values re-render. */
+  canvasTick: 0,
 
   init () {
     this.spans = wordSpans(config.alignment ?? [])
@@ -115,6 +137,7 @@ export const animationTimeline = (config = {}) => ({
      */
     this.$watch('$store.view.bottomTab', (tab) => { if (tab === 'timeline') this.refreshObjects() })
     this.waitForObjects()
+    this.listenToCanvas()
     this.$nextTick(() => { if (!this.zoomIsMine) this.fit() })
     // Only refit while the zoom is still ours to choose. Refitting on every resize threw away a
     // zoom the teacher had just set, which reads as the control not working.
@@ -144,6 +167,53 @@ export const animationTimeline = (config = {}) => ({
       this.refreshObjects()
       this.waitForObjects(tries - 1)
     }, 250)
+  },
+
+  /**
+   * The canvas and the panel are one control.
+   *
+   * Pan the map or drag a layer and the fields follow live; with auto-key on, the change records
+   * itself at the playhead on every property already animated — Figma's auto-keyframe takes
+   * canvas edits as well as typed ones. Before this the fields went stale, and the next scrub
+   * snapped the object back to the keyed value, throwing the teacher's move away.
+   *
+   * The timeline's own writes are skipped: the camera through `applyingCamera` (jumpTo fires its
+   * events synchronously), layers because recordCanvasEdit only keys a value that differs from
+   * the sample at the playhead, and the timeline only ever writes the sample.
+   *
+   * The map listener is attached once per MAP and looks the panel up when it fires, because the
+   * panel is rebuilt on every scene switch while the map outlives it.
+   */
+  listenToCanvas () {
+    const hookMap = (tries = 80) => {
+      const map = window.__lessonMap
+      if (!this.$el?.isConnected) return
+      if (!map) { if (tries) setTimeout(() => hookMap(tries - 1), 250); return }
+      if (map.__timelineHooked) return
+      map.__timelineHooked = true
+      const panel = () => document.querySelector('[data-timeline]')?._x_dataStack?.[0]
+      map.on('move', () => { const p = panel(); if (p) p.canvasTick++ })
+      map.on('moveend', () => {
+        if (applyingCamera) return
+        panel()?.recordCanvasEdit('camera', cameraFromMap(map))
+      })
+    }
+    hookMap()
+  },
+
+  /** Canvas edit → keyframes, for animated properties whose value really changed. */
+  recordCanvasEdit (target, values) {
+    this.canvasTick++
+    if (this.playing || this.drag || !this.autoKey) return
+    const frame = sampleFrame(this.tracks.filter((t) => sortedKeys(t).length), this.time)[target] ?? {}
+    let changed = false
+    for (const [property, value] of Object.entries(values ?? {})) {
+      if (!Number.isFinite(value) || !this.isAnimated(target, property)) continue
+      if (Math.abs((frame[property] ?? NaN) - value) < 1e-3) continue
+      this.writeTrack(target, property, (track) => addKeyframe(track, { time: this.time, value }))
+      changed = true
+    }
+    if (changed) { this.save(); this.announce() }
   },
 
   /** Remember everything a morph would otherwise throw away. */
@@ -291,31 +361,37 @@ export const animationTimeline = (config = {}) => ({
   // ── Geometry ────────────────────────────────────────────────────────────────────────────
 
   fit () {
-    const width = this.$refs.lanes?.clientWidth ?? 0
+    const width = (this.$refs.lanes?.clientWidth ?? 0) - 2 * LANE_PAD_PX
     if (width > 0 && this.duration > 0) this.zoom = fitZoom(width, this.duration)
   },
 
   get ticks () { return ticksFor(this.duration, tickStep(this.zoom)) },
-  get playheadX () { return xAtTime(this.time, 0, this.zoom) },
-  get contentWidth () { return Math.max(0, this.duration * this.zoom) },
+  get playheadX () { return this.xOf(this.time) },
+  get contentWidth () { return Math.max(0, this.duration * this.zoom) + 2 * LANE_PAD_PX },
   get readout () { return formatTime(this.time) },
 
   /**
-   * Zoom about the PLAYHEAD, not about the left edge.
-   *
-   * Zooming away from what you are looking at is the thing that made this feel broken: the lane
-   * was pinned to zero, so going in far enough left the playhead somewhere off to the right with
-   * no way to reach it.
+   * Zoom about a moment that stays put on screen: the playhead for the slider, the pointer for
+   * Cmd/Ctrl+wheel and pinch, which is what Figma's timeline does.
    */
-  setZoom (next) {
+  setZoom (next, anchorTime = this.time) {
     const lanes = this.$refs.lanes
-    const before = this.time * this.zoom - (lanes?.scrollLeft ?? 0)   // playhead, in screen pixels
-    this.zoom = Math.min(2000, Math.max(2, Number(next) || 2))
+    const before = this.xOf(anchorTime) - (lanes?.scrollLeft ?? 0)   // anchor, in screen pixels
+    this.zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Number(next) || MIN_ZOOM))
     this.zoomIsMine = true
     this.$nextTick(() => {
-      if (lanes) lanes.scrollLeft = Math.max(0, this.time * this.zoom - before)
+      if (lanes) lanes.scrollLeft = Math.max(0, this.xOf(anchorTime) - before)
       this.remember()
     })
+  },
+
+  /** Cmd/Ctrl+wheel and trackpad pinch (which arrives as a ctrl+wheel) zoom about the pointer.
+   *  A plain wheel is left to the browser: it scrolls the lanes. */
+  onWheel (event) {
+    if (!event.ctrlKey && !event.metaKey) return
+    event.preventDefault()
+    const anchor = this.rawTimeFromEvent(event)
+    this.setZoom(this.zoom * Math.exp(-event.deltaY * WHEEL_ZOOM_RATE), anchor)
   },
 
   /** The timeline's length. Keys outside it stay where they are; the ruler simply stops there. */
@@ -331,7 +407,7 @@ export const animationTimeline = (config = {}) => ({
   revealPlayhead () {
     const lanes = this.$refs.lanes
     if (!lanes) return
-    const x = this.time * this.zoom
+    const x = this.xOf(this.time)
     const margin = 40
     if (x < lanes.scrollLeft + margin) lanes.scrollLeft = Math.max(0, x - margin)
     else if (x > lanes.scrollLeft + lanes.clientWidth - margin) lanes.scrollLeft = x - lanes.clientWidth + margin
@@ -340,19 +416,26 @@ export const animationTimeline = (config = {}) => ({
   /** The word under the playhead, which is the only readout that means anything to a teacher. */
   get spokenWord () { return wordAt(this.spans, this.time)?.word ?? '' },
 
-  xOf (t) { return xAtTime(t, 0, this.zoom) },
+  xOf (t) { return LANE_PAD_PX + t * this.zoom },
 
-  timeFromEvent (event) {
+  /** Seconds under the pointer, unclamped. */
+  rawTimeFromEvent (event) {
     const lane = this.$refs.lanes
     if (!lane) return 0
-    const raw = timeAtX(event.clientX, lane.getBoundingClientRect().left, lane.scrollLeft, this.zoom)
-    return Math.min(this.duration, Math.max(0, raw))
+    return timeAtX(event.clientX, lane.getBoundingClientRect().left + LANE_PAD_PX, lane.scrollLeft, this.zoom)
   },
 
-  // ── Scrubbing. The playhead is dragged, and the map follows it live rather than on release ──
+  timeFromEvent (event) {
+    return Math.min(this.duration, Math.max(0, this.rawTimeFromEvent(event)))
+  },
 
+  // ── Pointer. The ruler scrubs; the tracks select (Figma: click, Shift+click, marquee) ──────
+
+  /** Pressing the RULER scrubs the playhead, and the scene follows live. Playback yields to it. */
   startScrub (event) {
     if (event.button !== 0) return
+    event.stopPropagation()
+    this.pause()
     const el = event.currentTarget
     el.setPointerCapture?.(event.pointerId)
     dragMemory.set(el, { kind: 'scrub', startX: event.clientX, startTime: this.time, moved: false })
@@ -360,12 +443,51 @@ export const animationTimeline = (config = {}) => ({
     this.seek(this.timeFromEvent(event))
   },
 
+  /** Pressing an empty stretch of TRACK starts a marquee; a press with no drag clears the
+   *  selection, which is how every canvas and timeline deselects. */
+  startMarquee (event) {
+    if (event.button !== 0) return
+    const el = event.currentTarget
+    el.setPointerCapture?.(event.pointerId)
+    const origin = this.contentPoint(event)
+    dragMemory.set(el, {
+      kind: 'marquee', startX: event.clientX, moved: false, origin,
+      base: event.shiftKey ? [...this.selected] : [],
+    })
+    this.drag = { el }
+  },
+
+  /** A pointer position in lane-content pixels, so a marquee survives horizontal scrolling. */
+  contentPoint (event) {
+    const box = this.$refs.content.getBoundingClientRect()
+    return { x: event.clientX - box.left, y: event.clientY - box.top }
+  },
+
+  updateMarquee (memory, event) {
+    const p = this.contentPoint(event)
+    const o = memory.origin
+    this.marquee = { x: Math.min(o.x, p.x), y: Math.min(o.y, p.y), w: Math.abs(p.x - o.x), h: Math.abs(p.y - o.y) }
+    const box = this.$refs.content.getBoundingClientRect()
+    const rect = { left: box.left + this.marquee.x, top: box.top + this.marquee.y }
+    rect.right = rect.left + this.marquee.w
+    rect.bottom = rect.top + this.marquee.h
+    const hit = [...this.$refs.content.querySelectorAll('[data-key-id]')]
+      .filter((node) => node.offsetParent)            // a collapsed group's keys are not selectable
+      .filter((node) => {
+        const r = node.getBoundingClientRect()
+        return r.right >= rect.left && r.left <= rect.right && r.bottom >= rect.top && r.top <= rect.bottom
+      })
+      .map((node) => node.dataset.keyId)
+    this.selected = [...new Set([...memory.base, ...hit])]
+  },
+
   onPointerMove (event) {
     if (!this.drag) return
     const memory = dragMemory.get(this.drag.el)
     if (!memory) return
 
-    if (!memory.moved && Math.abs(event.clientX - memory.startX) < DRAG_THRESHOLD_PX) return
+    if (!memory.moved && Math.abs(event.clientX - memory.startX) < DRAG_THRESHOLD_PX
+        && Math.abs(event.clientY - (memory.startY ?? event.clientY)) < DRAG_THRESHOLD_PX) return
     if (!memory.moved) {
       memory.moved = true
       // Only now: preventDefault on pointerdown would have swallowed the double-click.
@@ -374,26 +496,34 @@ export const animationTimeline = (config = {}) => ({
 
     if (memory.kind === 'scrub') return this.seek(this.timeFromEvent(event))
     if (memory.kind === 'key') return this.dragKey(memory, event)
+    if (memory.kind === 'marquee') return this.updateMarquee(memory, event)
   },
 
   onPointerUp () {
     if (this.drag) {
       const memory = dragMemory.get(this.drag.el)
       if (memory?.kind === 'key' && memory.moved) this.save()
+      // A click on a key that was already part of a selection narrows the selection to it; a
+      // Shift+click on a selected key takes it out. Both wait for the release, because the same
+      // press might have been the start of dragging the whole selection.
+      if (memory?.kind === 'key' && !memory.moved && memory.onClick) this.selected = memory.onClick
+      if (memory?.kind === 'marquee' && !memory.moved) this.selected = memory.base
       dragMemory.delete(this.drag.el)
     }
     this.drag = null
+    this.marquee = null
   },
 
-  /** Esc returns the value to what it was when the drag started — the thing nobody notices
-   *  until it is missing. */
+  /** Esc cancels a drag in flight, and otherwise clears the selection. */
   onEscape () {
-    if (!this.drag) return
+    if (!this.drag) { if (this.transportHasTheKeyboard) this.selected = []; return }
     const memory = dragMemory.get(this.drag.el)
     if (memory?.kind === 'scrub') this.seek(memory.startTime)
-    if (memory?.kind === 'key') this.moveKey(memory.target, memory.property, memory.keyTime, memory.startTime)
+    if (memory?.kind === 'key') { this.tracks = memory.baseTracks; this.selected = memory.baseSelected; this.applyFrame() }
+    if (memory?.kind === 'marquee') this.selected = memory.base
     dragMemory.delete(this.drag.el)
     this.drag = null
+    this.marquee = null
   },
 
   seek (time) {
@@ -443,13 +573,17 @@ export const animationTimeline = (config = {}) => ({
     const step = () => {
       if (!this.playing) return
       const elapsed = (performance.now() - this._startedAt) / 1000
-      const t = this._startedFrom + elapsed
+      let t = this._startedFrom + elapsed
       if (t >= this.duration) {
         // Loop returns to the start rather than stopping, which is how you watch a build over and
         // over while tuning it. Restarting the clock beats seeking to 0 and calling play() again:
-        // that would rebuild the rAF chain every lap and drift.
-        if (this.loop) { this._startedFrom = 0; this._startedAt = performance.now(); this.seek(0) }
-        else { this.seek(this.duration); return this.pause() }
+        // that would rebuild the rAF chain every lap and drift. The lap WRAPS the time, it does
+        // not seek twice: seeking 0 and then the overshoot clamped every lap to one frame at the
+        // end, a visible flash back to the final pose.
+        if (!this.loop) { this.seek(this.duration); return this.pause() }
+        t %= this.duration
+        this._startedFrom = 0
+        this._startedAt = performance.now() - t * 1000
       }
       this.seek(t)
       this.revealPlayhead()
@@ -488,6 +622,10 @@ export const animationTimeline = (config = {}) => ({
    * component that declared it, which is the same reason Escape is bound that way already.
    */
   onKeydown (event) {
+    if (this.isDeleteKey(event)) {
+      event.preventDefault()
+      return this.deleteSelected()
+    }
     if (!isPlayPauseKey(event) || !this.transportHasTheKeyboard) return
 
     // Play refuses under two keyframes, and the refusal has to look like nothing happened rather
@@ -534,6 +672,7 @@ export const animationTimeline = (config = {}) => ({
   /** What this property reads at the playhead: the sampled value when it is animated, and the
    *  map's own value when it is not, so the field never shows a number nothing is using. */
   valueAt (target, property) {
+    void this.canvasTick   // a reactive read: the canvas moved, so the live value may have too
     const keys = this.keysOf(target, property)
     if (keys.length) {
       const frame = sampleFrame(this.tracks, this.time)
@@ -607,43 +746,96 @@ export const animationTimeline = (config = {}) => ({
     this.revealPlayhead()
   },
 
-  removeKeyAt (target, property, time) {
-    this.writeTrack(target, property, (track) => {
-      const index = sortedKeys(track).findIndex((k) => k.time === time)
-      return index < 0 ? track : removeKeyframe({ ...track, keyframes: sortedKeys(track) }, index)
-    })
-    this.save()
+  // ── Selection ───────────────────────────────────────────────────────────────────────────
+
+  isSelected (target, property, time) { return this.selected.includes(keyId({ target, property, time })) },
+
+  /** Every selected key as a reference, dropping any whose key no longer exists. */
+  get selectedRefs () {
+    return this.tracks.flatMap((track) => sortedKeys(track)
+      .map((k) => ({ target: track.target, property: track.property, time: k.time }))
+      .filter((ref) => this.selected.includes(keyId(ref))))
   },
 
+  /** Delete/Backspace on the timeline, never while the caret is in a field. */
+  isDeleteKey (event) {
+    if (event.key !== 'Delete' && event.key !== 'Backspace') return false
+    if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return false
+    return this.transportHasTheKeyboard && !isTypingTarget(event.target) && this.selected.length > 0
+  },
+
+  deleteSelected () {
+    this.tracks = deleteKeys(this.tracks, this.selectedRefs)
+    this.selected = []
+    this.applyFrame()
+    this.save()
+    this.announce()
+  },
+
+  /** Double-click a keyframe: the playhead jumps to it, as in Figma, so its value can be edited. */
+  jumpToKey (target, property, time) {
+    this.pause()
+    this.selected = [keyId({ target, property, time })]
+    this.seek(time)
+    this.revealPlayhead()
+  },
+
+  /**
+   * Press on a keyframe. Selection follows Figma: a plain press on an unselected key selects only
+   * it, Shift adds it. A press on an already selected key keeps the selection, so the drag that
+   * may follow moves all of it; if no drag follows, the release decides (see onPointerUp).
+   */
   startKeyDrag (event, target, property, time) {
     if (event.button !== 0) return
     event.stopPropagation()
+    this.pause()
+    const id = keyId({ target, property, time })
+    const wasSelected = this.selected.includes(id)
+    let onClick = null
+    if (event.shiftKey) {
+      if (wasSelected) onClick = this.selected.filter((s) => s !== id)
+      else this.selected = [...this.selected, id]
+    } else if (wasSelected) {
+      onClick = [id]
+    } else {
+      this.selected = [id]
+    }
+
     const el = event.currentTarget
     el.setPointerCapture?.(event.pointerId)
     dragMemory.set(el, {
-      kind: 'key', target, property, keyTime: time, startTime: time,
-      startX: event.clientX, moved: false,
+      kind: 'key', anchorTime: time, startX: event.clientX, startY: event.clientY, moved: false, onClick,
+      baseTracks: this.tracks, baseSelected: [...this.selected], refs: this.selectedRefs,
     })
     this.drag = { el }
   },
 
+  /**
+   * Move the selection by how far the POINTER has travelled, not to where it is: grabbing a
+   * diamond off-centre used to jump it half a diamond before it followed.
+   *
+   * The grabbed key snaps and the rest keep their spacing. Default snap is to a spoken word;
+   * Shift snaps to the playhead and to other keys (Figma's Shift); Alt places freely.
+   */
   dragKey (memory, event) {
-    const wanted = this.timeFromEvent(event)
-    const snapped = event.altKey
-      ? wanted
-      : snapTime(this.spans, wanted, toleranceSeconds(this.zoom))
+    const wanted = memory.anchorTime + (event.clientX - memory.startX) / this.zoom
+    const tolerance = toleranceSeconds(this.zoom)
+    let snapped = wanted
+    if (event.shiftKey) {
+      const moving = new Set(memory.refs.map(keyId))
+      const others = memory.baseTracks.flatMap((track) => sortedKeys(track)
+        .filter((k) => !moving.has(keyId({ target: track.target, property: track.property, time: k.time })))
+        .map((k) => k.time))
+      snapped = snapToNearest(wanted, [this.time, ...others], tolerance)
+    } else if (!event.altKey) {
+      snapped = snapTime(this.spans, wanted, tolerance)
+    }
 
-    if (snapped === memory.keyTime) return
-    this.moveKey(memory.target, memory.property, memory.keyTime, snapped)
-    memory.keyTime = snapped
-    this.seek(snapped)
-  },
-
-  moveKey (target, property, from, to) {
-    this.writeTrack(target, property, (track) => ({
-      ...track,
-      keyframes: sortedKeys(track).map((k) => (k.time === from ? { ...k, time: to } : k)),
-    }))
+    const { tracks, delta } = moveKeys(memory.baseTracks, memory.refs, snapped - memory.anchorTime, 0, this.duration)
+    this.tracks = tracks
+    this.selected = memory.refs.map((ref) => keyId({ ...ref, time: ref.time + delta }))
+    if (!event.shiftKey) this.seek(memory.anchorTime + delta)
+    else this.applyFrame()
   },
 
   /** Every edit replaces the track; nothing here mutates one in place. */
