@@ -1491,3 +1491,80 @@
         cursor: none !important;
     }
 }
+
+/* ── Shape ────────────────────────────────────────────────────────────────────────────────────
+   Bart: "We need fully rounded buttons everywhere, no more squared rounded buttons." Pills.
+
+   Set as --radius-field ON the button rather than as a border-radius, because that is the variable
+   DaisyUI reads for the corner AND the one `.join` reads to round the ends of a button group. A
+   flat `border-radius` here would give a three-button join three separate pills; going through the
+   variable gives it one pill with square seams, which is what a joined group should look like.
+
+   Scoped to .btn so inputs and selects keep --radius-field at the theme's 0.5rem. They are not
+   buttons and Bart's instruction was not about them. */
+.btn {
+    --radius-btn: calc(infinity * 1px);   /* the same value Tailwind's own `rounded-full` emits */
+    --radius-field: var(--radius-btn);
+}
+
+/* ── Colour, and which surface you are on ─────────────────────────────────────────────────────
+   Bart: "Make sure Amber buttons would be used only on frontend, not on backend. Backend uses
+   solid white, fully rounded."
+
+   So the colour of a primary action is a property of the SURFACE, not of the button, and a button
+   never names it. The marketing site, the lesson player, the sign-in page — anything a visitor or
+   a class sees — gets the brand amber. The teacher app gets a white pill.
+
+   That white pill is not a new invention: brand-kit.css already carries --color-card-action and
+   --color-card-action-label from the Figma information card, where Bart made the same call for the
+   same reason ("it's white now — we shouldn't put so much colour in our UI while our footage is
+   already very colourful"). This generalises that one card to the whole workspace.
+
+   A surface declares itself with `data-surface="teacher"` on <html>. See layouts/app.blade.php. */
+:root {
+    --btn-action:       var(--color-primary);
+    --btn-action-label: var(--color-primary-content);
+}
+
+[data-surface="teacher"] {
+    --btn-action:       var(--color-card-action);        /* #ffffff */
+    --btn-action-label: var(--color-card-action-label);  /* #18293f */
+}
+
+.btn-primary {
+    --btn-color: var(--btn-action);
+}
+
+/* A btn-link is still a button, so it follows the surface too. Without this it keeps DaisyUI's own
+   fallback of --color-primary and stays amber, which put an amber "All results" beside a white
+   "New lesson" on the teacher dashboard: the exact split Bart's instruction closes. White and
+   underlined is also what brand-kit.css already does with a link on the information card. */
+.btn-link {
+    --btn-color: var(--btn-action);
+}
+
+/* The label is set separately, and the :not() is load-bearing. btn-outline, btn-dash, btn-ghost,
+   btn-soft and btn-link all re-derive --btn-fg FROM --btn-color, because a button with no fill has
+   to draw itself in the action colour instead. Setting --btn-fg unconditionally here overrode that
+   and painted `btn-outline btn-primary` in the teacher app's navy label on a transparent dark
+   panel: invisible. Caught in the browser, not in review. */
+.btn-primary:not(.btn-outline, .btn-dash, .btn-ghost, .btn-soft, .btn-link) {
+    --btn-fg: var(--btn-action-label);
+}
+
+/* ── The pointer ──────────────────────────────────────────────────────────────────────────────
+   Tailwind v4 dropped the `cursor: pointer` its preflight used to give buttons, and DaisyUI only
+   puts it back on .btn — so every button that had not been converted yet showed the arrow. That is
+   37 of them, counted, including all three sign-in submits.
+
+   One rule rather than 37 patches, and in @layer base so that a `cursor-*` utility on any single
+   button still wins. :disabled is excluded because a dead control must not invite a click, and
+   [aria-busy] because a button mid-request is not clickable either. */
+@layer base {
+    button:not(:disabled, [aria-disabled="true"], [aria-busy="true"]),
+    [role="button"]:not([aria-disabled="true"]),
+    label:has(> input[type="file"]),
+    summary {
+        cursor: pointer;
+    }
+}
