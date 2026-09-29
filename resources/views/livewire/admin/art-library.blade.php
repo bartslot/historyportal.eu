@@ -172,7 +172,7 @@
                     <figcaption class="mt-1.5 flex items-start justify-between gap-2 px-0.5">
                         <div class="min-w-0">
                             <div class="truncate text-sm font-medium">{{ $asset->title }}</div>
-                            <div class="truncate font-mono text-[11px] opacity-50">{{ basename($asset->source_ref) }}</div>
+                            <div class="truncate font-mono text-2xs opacity-50">{{ basename($asset->source_ref) }}</div>
                         </div>
                         <span class="badge badge-sm shrink-0 tabular-nums {{ $used['lessons'] ? 'badge-primary' : 'badge-ghost opacity-60' }}"
                               data-tooltip="{{ __('Lessons') }}">{{ $used['lessons'] }}</span>

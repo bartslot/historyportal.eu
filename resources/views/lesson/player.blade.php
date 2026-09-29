@@ -630,7 +630,7 @@
                             style="image-rendering: pixelated;"></canvas>
                     <p class="text-sm font-mono font-bold tracking-[0.25em] text-white/80 uppercase"
                        x-text="lesson.lesson_code"></p>
-                    <p class="text-[10px] text-white/40 tracking-widest uppercase group-hover:text-white/60 transition">Scan to join</p>
+                    <p class="text-2xs text-white/40 tracking-widest uppercase group-hover:text-white/60 transition">Scan to join</p>
                 </button>
             </div>
 
