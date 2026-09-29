@@ -1497,7 +1497,7 @@
                 <p class="px-2 py-1 text-2xs uppercase tracking-widest text-slate-500">{{ __('Show') }}</p>
                 <template x-for="item in [
                     { k: 'scenes',  label: @js(__('Scenes')) },
-                    { k: 'script',  label: @js(__('Icons & Script')) },
+                    { k: 'script',  label: @js(__('Assets & Script')) },
                     { k: 'objects', label: @js(__('Object list')) },
                     { k: 'rulers',  label: @js(__('Rulers')) },
                     { k: 'notes',   label: @js(__('Internal notes')) },
@@ -1565,7 +1565,7 @@
                 <button type="button" @click="$store.view.showTab('icons'); addOpen = false"
                         class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
                     <x-icons.puzzle-piece class="h-4 w-4 shrink-0 text-slate-400" />
-                    <span>{{ __('Icons') }}</span>
+                    <span>{{ __('Assets') }}</span>
                 </button>
                 {{-- 3D model / video AS A LAYER (an iframe layer on top of the scene, like clipart). --}}
                 {{-- Opens OUR picker (the paintings modal, searching Sketchfab) rather than a browser

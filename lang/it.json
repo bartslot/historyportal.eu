@@ -1532,5 +1532,8 @@
     "Lesson poster": "Locandina della lezione",
     "No poster yet": "Nessuna locandina",
     "No scene has a picture yet.": "Nessuna scena ha ancora un’immagine.",
-    "Scene :n": "Scena :n"
+    "Scene :n": "Scena :n",
+    "Assets": "Risorse",
+    "Assets & Script": "Risorse e copione",
+    "No assets in this set yet.": "Ancora nessuna risorsa in questa raccolta."
 }

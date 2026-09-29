@@ -142,7 +142,7 @@ class IconPanelTest extends TestCase
         $this->panel()
             ->assertSet('collection', 'arrows')
             ->assertSee('Arrow straight')
-            ->assertDontSee('No icons in this set yet.');
+            ->assertDontSee('No assets in this set yet.');
     }
 
     public function test_history_line_shows_its_five_main_categories_not_the_repeating_sub_folders(): void

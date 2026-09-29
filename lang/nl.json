@@ -1576,5 +1576,8 @@
     "Lesson poster": "Lesposter",
     "No poster yet": "Nog geen poster",
     "No scene has a picture yet.": "Nog geen enkele scène heeft een afbeelding.",
-    "Scene :n": "Scène :n"
+    "Scene :n": "Scène :n",
+    "Assets": "Assets",
+    "Assets & Script": "Assets & script",
+    "No assets in this set yet.": "Nog geen assets in deze set."
 }

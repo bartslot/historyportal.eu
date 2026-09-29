@@ -65,7 +65,7 @@
     <div class="min-h-0 flex-1 overflow-y-auto">
         @if ($this->icons()->isEmpty())
             <p class="px-1 py-6 text-center text-xs text-slate-500">
-                {{ __('No icons in this set yet.') }}
+                {{ __('No assets in this set yet.') }}
             </p>
         @else
             <div class="grid grid-cols-[repeat(auto-fill,minmax(56px,1fr))] gap-1">

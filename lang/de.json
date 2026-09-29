@@ -1532,5 +1532,8 @@
     "Lesson poster": "Lektionsposter",
     "No poster yet": "Noch kein Poster",
     "No scene has a picture yet.": "Noch keine Szene hat ein Bild.",
-    "Scene :n": "Szene :n"
+    "Scene :n": "Szene :n",
+    "Assets": "Assets",
+    "Assets & Script": "Assets & Skript",
+    "No assets in this set yet.": "Noch keine Assets in dieser Sammlung."
 }

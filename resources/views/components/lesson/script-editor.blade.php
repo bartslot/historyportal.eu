@@ -54,7 +54,7 @@
         <button type="button" role="tab" x-on:click="$store.view.showTab('icons')"
                 :aria-selected="$store.view.bottomTab === 'icons'"
                 :class="$store.view.bottomTab === 'icons' ? 'tab-active' : ''"
-                class="tab">{{ __('Icons') }}</button>
+                class="tab">{{ __('Assets') }}</button>
         <button type="button" role="tab" x-on:click="$store.view.showTab('script')"
                 :aria-selected="$store.view.bottomTab === 'script'"
                 :class="$store.view.bottomTab === 'script' ? 'tab-active' : ''"
