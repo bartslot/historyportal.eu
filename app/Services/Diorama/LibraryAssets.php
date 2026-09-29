@@ -69,15 +69,19 @@ final class LibraryAssets
         }
         $pxPerM = $drawnPx / $a->height_m;
 
+        // An animated asset is a sprite sheet: its frames stand side by side, one frame is drawn.
+        $frames = max(1, (int) ($a->sheet['frames'] ?? 1));
+
         return [
             'url' => MediaUrl::of($a->src()),
             'label' => $a->title,
             'description' => $a->description,
             'px_per_m' => round($pxPerM, 3),
             'height_m' => $a->height_m,
-            'frame_m' => [round($a->width / $pxPerM, 4), round($a->height / $pxPerM, 4)],
-            // Bottom centre of the drawing, as fractions of the picture.
+            'frame_m' => [round($a->width / $frames / $pxPerM, 4), round($a->height / $pxPerM, 4)],
+            // Bottom centre of the drawing, as fractions of one frame.
             'anchor' => [round(($box[0] + $box[2]) / 2, 4), $box[3]],
+            ...($a->sheet ? ['sheet' => $a->sheet] : []),
         ];
     }
 }

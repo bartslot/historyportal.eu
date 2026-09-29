@@ -5,10 +5,14 @@ declare(strict_types=1);
 namespace App\Livewire\Wizard;
 
 use App\Models\SvgAsset;
+use App\Services\Assets\SequenceImporter;
 use Illuminate\Contracts\View\View;
+use InvalidArgumentException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Session;
 use Livewire\Component;
+use Livewire\WithFileUploads;
+use RuntimeException;
 
 /**
  * The Icons tab of the bottom dock: the icon set that ships with the app, filed under
@@ -20,6 +24,49 @@ use Livewire\Component;
  */
 class IconPanel extends Component
 {
+    use WithFileUploads;
+
+    /** "Import sequence": numbered frames from the art pipeline (name_clip_0001.png). */
+    public array $sequenceFiles = [];
+
+    public string $sequenceWhat = '';
+
+    public string $sequenceCategory = 'figures';
+
+    private const MAX_SEQUENCE_FRAMES = 240;
+
+    /**
+     * Frames → one animated library asset (SequenceImporter). Admins only: it writes into the
+     * library every teacher sees. Any problem (a gap in the numbers, two assets, JEV unreachable)
+     * is shown in the dialog and nothing is stored.
+     */
+    public function importSequence(SequenceImporter $importer): void
+    {
+        abort_unless(auth()->user()?->isAdmin(), 403);
+        $this->validate([
+            'sequenceFiles' => 'required|array|max:'.self::MAX_SEQUENCE_FRAMES,
+            'sequenceFiles.*' => 'file|mimes:png,webp|max:12288',
+            'sequenceWhat' => 'required|string|max:500',
+            'sequenceCategory' => 'required|in:'.implode(',', SequenceImporter::CATEGORIES),
+        ]);
+
+        try {
+            $asset = $importer->import(array_values($this->sequenceFiles), $this->sequenceWhat, $this->sequenceCategory);
+        } catch (InvalidArgumentException|RuntimeException $e) {
+            $this->addError('sequenceFiles', $e->getMessage());
+
+            return;
+        }
+
+        $this->reset('sequenceFiles', 'sequenceWhat');
+        $this->collection = 'history-line';
+        $this->category = $asset->category;
+        $this->subcategory = '';
+        unset($this->icons, $this->groups);
+        $this->dispatch('sequence-imported');
+        $this->dispatch('toast', message: __(':name is in the library, :m m tall.', ['name' => $asset->title, 'm' => $asset->height_m]), type: 'success');
+    }
+
     // The dock is rebuilt whenever the teacher picks another scene, so the filters are kept in
     // the session — otherwise every scene change would throw them back to the first set.
 

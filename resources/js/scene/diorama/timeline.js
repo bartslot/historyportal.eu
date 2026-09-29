@@ -39,17 +39,18 @@ export function poseAt (item, t, cellM) {
 }
 
 /**
- * Which sheet frame to show. A walk plays its frames once per `stride_m` walked; standing shows
- * the sheet's idle frame (or frame 0).
+ * Which sheet frame to show. A walk clip (it has `stride_m`) plays its frames once per stride walked,
+ * so the feet match the floor at any speed; any other clip (it has `fps`) plays by time. Standing
+ * shows the sheet's idle clip (looping by time when it has an fps), else frame 0.
  * @param {{frames: number, anims: object}|undefined} sheet
+ * @param {number} t  seconds into the scene, for clips that play by time
  */
-export function frameFor (sheet, anim, walkedM) {
+export function frameFor (sheet, anim, walkedM, t = 0) {
   if (!sheet) return 0
-  const walk = anim && sheet.anims?.[anim]
-  if (walk?.stride_m) {
-    const n = walk.frames.length
-    const i = Math.floor((walkedM / walk.stride_m) * n) % n
-    return walk.frames[i]
-  }
-  return sheet.anims?.idle?.frames?.[0] ?? 0
+  const clip = (anim && sheet.anims?.[anim]) || sheet.anims?.idle
+  if (!clip?.frames?.length) return 0
+  const n = clip.frames.length
+  if (anim && clip.stride_m) return clip.frames[Math.floor((walkedM / clip.stride_m) * n) % n]
+  if (clip.fps) return clip.frames[Math.floor(Math.max(0, t) * clip.fps) % n]
+  return clip.frames[0]
 }

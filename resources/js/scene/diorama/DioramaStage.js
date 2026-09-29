@@ -254,7 +254,7 @@ export class DioramaStage {
       if (!p) { img.style.display = 'none'; continue }
       const at = this._toStage(p)
       const frames = asset.sheet?.frames ?? 1
-      const frame = frameFor(asset.sheet, pose.anim, pose.walkedM)
+      const frame = frameFor(asset.sheet, pose.anim, pose.walkedM, this._time ?? 0)
       const flipped = this._flips(item, asset, pose)
       const flip = flipped ? ' scaleX(-1)' : ''
       const boxW = asset.frame_m[0] * asset.px_per_m * p.scale * at.scale

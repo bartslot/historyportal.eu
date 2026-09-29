@@ -62,3 +62,20 @@ describe('frameFor: frames follow distance, not time', () => {
     expect(frameFor(undefined, 'walk', 2)).toBe(0)
   })
 })
+
+describe('clips that play by time', () => {
+  const waver = { frames: 6, anims: { idle: { frames: [0, 1], fps: 2 }, wave: { frames: [2, 3, 4, 5], fps: 8 } } }
+
+  it('a standing figure loops its idle clip at its frame rate', () => {
+    expect([0, 0.49, 0.5, 1.0].map(t => frameFor(waver, null, 0, t))).toEqual([0, 0, 1, 0])
+  })
+
+  it('a named clip without a stride plays by time', () => {
+    expect([0, 0.125, 0.25, 0.5].map(t => frameFor(waver, 'wave', 0, t))).toEqual([2, 3, 4, 2])
+  })
+
+  it('a walk still follows distance, not time', () => {
+    expect(frameFor(sheet, 'walk', 0.375, 99)).toBe(2)
+  })
+})
+
