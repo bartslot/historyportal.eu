@@ -1160,6 +1160,7 @@
             items: [],
             dragging: false,
             selectedId: null,
+            compact: false,   // icons-only rail (narrow drawer); drives :data-compact
             _sig: null,
             init() {
                 this.refresh();
@@ -1169,7 +1170,10 @@
                 // Compact (icons-only) toggle via a data attribute, NOT a CSS container query:
                 // container-type would make this panel a containing block for SortableJS's
                 // position:fixed drag ghost, offsetting/clipping it and breaking layer reordering.
-                const setCompact = () => { this.$el.dataset.compact = this.$el.clientWidth <= 108 ? '1' : ''; };
+                // Alpine owns the attribute (:data-compact below): `dataset.compact = ''` left an EMPTY
+                // attribute that [data-compact] still matched, so the labels stayed hidden at full
+                // width until a Livewire re-render happened to strip it.
+                const setCompact = () => { this.compact = this.$el.clientWidth <= 108; };
                 setCompact();
                 new ResizeObserver(setCompact).observe(this.$el);
             },
@@ -1910,7 +1914,7 @@
     <div x-show="$store.view.objects" x-cloak x-data="objectList()" x-init="init()"
          @scene-objects-changed.window="refresh()"
          @scene-object-selected.window="selectedId = $event.detail.id"
-         data-objlist-col
+         data-objlist-col :data-compact="compact ? '1' : null"
          class="fixed z-30 overflow-hidden border-r border-slate-700 bg-slate-900"
          style="left: var(--rail-w, 11rem); width: var(--objlist-w, 13rem); top: 4rem; bottom: 0;">
         <div x-ref="list" class="h-full space-y-0.5 overflow-y-auto p-1.5">
