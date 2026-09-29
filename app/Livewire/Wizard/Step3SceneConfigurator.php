@@ -16,6 +16,7 @@ use App\Livewire\Wizard\Concerns\DuplicatesSceneObjects;
 use App\Livewire\Wizard\Concerns\EditsQuizQuestions;
 use App\Livewire\Wizard\Concerns\EditsSceneArtwork;
 use App\Livewire\Wizard\Concerns\EditsStoryGame;
+use App\Livewire\Wizard\Concerns\EditsTitleScreen;
 use App\Models\AnimationClip;
 use App\Models\City;
 use App\Models\Lesson;
@@ -48,6 +49,7 @@ class Step3SceneConfigurator extends Component
     use BlocksGuestDemoSpending;
     use DuplicatesSceneObjects;
     use EditsQuizQuestions;
+    use EditsTitleScreen;
     use EditsSceneArtwork;
     use EditsStoryGame;
     use WithFileUploads;
@@ -147,6 +149,8 @@ class Step3SceneConfigurator extends Component
         if ($target) {
             $this->selectSceneInternal($target);
         }
+        $this->titleSelected = ! $deepScene;
+        $this->refreshTitleFrame();
         $this->openModalOnLoad = request()->boolean('modal');
     }
 
@@ -173,6 +177,17 @@ class Step3SceneConfigurator extends Component
     public function selectScene(int $id): void
     {
         $this->selectSceneInternal($id);
+    }
+
+    /**
+     * The stage's first full payload, requested once it has mounted. Not a teacher's click, so an
+     * editor that opened on the title screen stays there.
+     */
+    public function loadStageScene(int $id): void
+    {
+        $onTitle = $this->titleSelected;
+        $this->selectSceneInternal($id);
+        $this->titleSelected = $onTitle;
     }
 
     #[On('scene:add')]
@@ -307,6 +322,8 @@ class Step3SceneConfigurator extends Component
 
     private function selectSceneInternal(int $id): void
     {
+        // Opening a scene leaves the title screen; the status poller below keeps it.
+        $this->titleSelected = false;
         if ($this->selectedSceneId !== $id) {
             $this->activeLayerId = null;
             $this->activeTextId = null;
@@ -5570,7 +5587,8 @@ class Step3SceneConfigurator extends Component
         $currentStatus = (string) $scene->status;
 
         if ($currentStatus !== $this->prevSelectedStatus) {
-            $this->selectSceneInternal($scene->id);
+            // A background status change must not pull the teacher off the title screen.
+            $this->loadStageScene($scene->id);
         }
 
         $this->prevSelectedStatus = $currentStatus;

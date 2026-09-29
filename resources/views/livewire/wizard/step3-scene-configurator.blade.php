@@ -924,7 +924,10 @@
                   "Transition" read as "RANSITION". Nothing in an inspector wants sideways scroll. --}}
              class="card-body overflow-y-auto overflow-x-hidden p-4"
              :style="inspectorBodyStyle()">
-            @if ($activeTextId && ($activeText = $this->activeText))
+            @if ($this->titleSelected && $panelView === 'scene')
+            {{-- The pinned title screen's Format: its picture, where the title sits, the QR code. --}}
+            <x-lesson.title-screen-inspector :lesson="$lesson" />
+            @elseif ($activeTextId && ($activeText = $this->activeText))
             {{-- Text and backing-panel controls live in Format, never over the canvas object. --}}
             <x-lesson.scene-text-inspector :text="$activeText" :scene="$this->selectedSceneModel" />
             @elseif ($activeLayerId && ($al = $this->activeLayer))
@@ -1050,37 +1053,12 @@
 
             {{-- POSTER — the lesson's cover image. Never empty: auto-picks an image already loaded in
                  the lesson, overridable by clicking any candidate below. --}}
-            @php $posterCandidates = $this->lesson->posterCandidates(); $posterOverride = trim((string) ($lesson->poster_image ?? '')) !== ''; @endphp
-            <div class="mt-6 pt-4 border-t border-slate-700/50">
-                <div class="mb-2 flex items-center justify-between">
-                    <span class="text-2xs uppercase tracking-widest text-slate-500">Poster</span>
-                    @if ($posterOverride)
-                        <button wire:click="resetPoster" class="text-2xs text-slate-500 transition-colors hover:text-primary">↺ auto</button>
-                    @else
-                        <span class="text-2xs text-slate-600">auto-picked</span>
-                    @endif
-                </div>
-                <div class="flex gap-3">
-                    <img src="{{ $this->lesson->posterUrl() }}" alt="Lesson poster"
-                         class="h-24 w-16 shrink-0 rounded-lg object-cover ring-1 ring-slate-600" />
-                    @if (count($posterCandidates))
-                        <div class="grid grid-cols-4 gap-1.5 content-start">
-                            @foreach ($posterCandidates as $cand)
-                                <button type="button" wire:click="selectPoster(@js($cand['url']))" title="{{ $cand['label'] }}"
-                                        @class([
-                                            'aspect-square overflow-hidden rounded ring-1 transition',
-                                            'ring-primary' => $posterOverride && ($lesson->poster_image === $cand['url']),
-                                            'ring-slate-700 hover:ring-slate-400' => ! ($posterOverride && ($lesson->poster_image === $cand['url'])),
-                                        ])>
-                                    <img src="{{ $cand['url'] }}" alt="{{ $cand['label'] }}" class="h-full w-full object-cover" onerror="this.closest('button').style.display='none'" />
-                                </button>
-                            @endforeach
-                        </div>
-                    @else
-                        <p class="self-center text-2xs text-slate-500">Add images to the lesson to choose a poster.</p>
-                    @endif
-                </div>
-            </div>
+            <x-lesson.image-choice class="mt-6 border-t border-slate-700/50 pt-4" portrait
+                                   :label="__('Poster')"
+                                   :current="$this->lesson->posterUrl()"
+                                   :candidates="$this->lesson->posterCandidates()"
+                                   :chosen="$lesson->poster_image"
+                                   select="selectPoster" reset="resetPoster" />
 
             {{-- BACKGROUND MUSIC — a quiet bed under the narration. One switch, not a picker: there
                  is one soundtrack, and the player shuffles and crossfades it by itself. Off unless
@@ -2291,7 +2269,8 @@
     </x-ui.floating-window>
 
     {{-- Scene rail (vertical, left edge) --}}
-    <x-lesson.timeline :scenes="$this->scenes" :selected-scene-id="$selectedSceneId" editable />
+    <x-lesson.timeline :scenes="$this->scenes" :selected-scene-id="$this->titleSelected ? null : $selectedSceneId" editable
+                       :title-screen="['title' => $lesson->title, 'image' => $lesson->titleBgUrl(), 'selected' => $this->titleSelected]" />
 
     {{-- Rail resize handle — drag the rail's right edge to resize it; drag it under 24px (near
          the edge) and it disappears completely. Sits at the rail's right edge; when the rail is
@@ -2710,7 +2689,7 @@
                     // mount()'s scene:load fired during hydration, before the bridge was listening,
                     // so the stage only had the partial first-paint payload (no sceneId,
                     // identity, quiz questions, voyage route …). Ask for the full one, as a click does.
-                    if (window.__lessonStage && sceneId) this.$wire.selectScene(sceneId);
+                    if (window.__lessonStage && sceneId) this.$wire.loadStageScene(sceneId);
                 },
 
                 // App nav height (h-16 = 64px) — the fixed panel sits flush under it, no gap.
@@ -2739,6 +2718,39 @@
         } else {
             document.addEventListener('alpine:init', registerStep3);
         }
+    })();
+
+    // The title screen on the stage: the REAL player, embedded at its title screen, over the
+    // canvas. Inert (pointer-events-none): it is a picture of the title, edited in Format.
+    // Lives inside #lesson-canvas-root so it takes the stage's exact box; that root is
+    // wire:ignore, so the frame is managed here rather than rendered by Blade.
+    // The frame renders at a full-screen size and is scaled down to the stage, so the title screen
+    // looks as students see it; at the stage's own size the player laid out for a phone.
+    (function () {
+        const FRAME_W = 1600, FRAME_H = 900;   // the stage is 16:9, so one scale fits both ways
+        let resize = null;
+        const showTitleFrame = () => {
+            const stage = document.getElementById('lesson-canvas-root');
+            if (!stage) return;
+            let frame = stage.querySelector('iframe[data-title-frame]');
+            if (!$wire.titleSelected) { frame?.remove(); resize?.disconnect(); resize = null; return; }
+            if (!frame) {
+                frame = document.createElement('iframe');
+                frame.dataset.titleFrame = '';
+                frame.title = @js(__('Title screen'));
+                frame.setAttribute('tabindex', '-1');
+                frame.className = 'pointer-events-none absolute left-0 top-0 z-40 origin-top-left border-0 bg-slate-950';
+                frame.style.width = FRAME_W + 'px';
+                frame.style.height = FRAME_H + 'px';
+                stage.appendChild(frame);
+                resize = new ResizeObserver(() => { frame.style.transform = `scale(${stage.clientWidth / FRAME_W})`; });
+                resize.observe(stage);
+            }
+            if (frame.getAttribute('src') !== $wire.titleFrameSrc) frame.setAttribute('src', $wire.titleFrameSrc);
+        };
+        showTitleFrame();
+        $wire.$watch('titleSelected', showTitleFrame);
+        $wire.$watch('titleFrameSrc', showTitleFrame);
     })();
 </script>
 @endscript

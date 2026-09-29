@@ -1519,5 +1519,17 @@
     "The mask could not be uploaded. Try again, or use a smaller picture.": "Le masque n'a pas pu être envoyé. Réessayez ou utilisez une image plus petite.",
     "This is the correct answer. Editing it changes what counts as right.": "C'est la bonne réponse. La modifier change ce qui compte comme juste.",
     "Previous question": "Question précédente",
-    "Next question": "Question suivante"
+    "Next question": "Question suivante",
+    "Title screen": "Écran titre",
+    "Picture": "Image",
+    "Title position": "Position du titre",
+    "QR code": "Code QR",
+    "Top left": "En haut à gauche",
+    "Top right": "En haut à droite",
+    "Centre": "Centre",
+    "Bottom centre": "En bas au centre",
+    "auto": "auto",
+    "auto-picked": "choisie automatiquement",
+    "Add images to the lesson to choose one.": "Ajoutez des images à la leçon pour en choisir une.",
+    "Poster": "Affiche"
 }

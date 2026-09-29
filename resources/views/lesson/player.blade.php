@@ -347,7 +347,8 @@
                      button already has one; the logo gets one below). --}}
                 <div x-show="backdropShade" class="pointer-events-none absolute inset-x-0 top-0 h-36 bg-linear-to-b from-black/70 to-transparent"></div>
                 <div class="relative flex items-center gap-2.5 px-8 py-3.5 sm:px-12">
-                    @if ($canEdit)
+                    {{-- title_preview: the editor's title-screen frame shows what students see. --}}
+                    @if ($canEdit && ! request()->boolean('title_preview'))
                         {{-- No back arrow here on purpose. The wizard already draws one in this exact
                              corner, so the two stacked into a confusing double control. "Edit scene"
                              below is the way into the editing view. --}}
@@ -622,7 +623,8 @@
                  the language switch and the join QR, bottoms aligned. --}}
             <div class="absolute bottom-10 right-8 sm:bottom-14 sm:right-12 flex items-end gap-4" style="z-index:20">
                 <x-lesson.language-switch :lesson="$lesson" :translations="$translations" />
-                {{-- QR code, clickable to open the modal --}}
+                {{-- QR code, clickable to open the modal. The teacher can hide it (title screen Format). --}}
+                @if ($lesson->show_qr ?? true)
                 <button onclick="document.getElementById('qr-modal').showModal()"
                         class="hidden sm:flex flex-col items-center gap-1.5 cursor-pointer group"
                         style="background:none; border:none; padding:0">
@@ -633,6 +635,7 @@
                        x-text="lesson.lesson_code"></p>
                     <p class="text-2xs text-white/40 tracking-widest uppercase group-hover:text-white/60 transition">Scan to join</p>
                 </button>
+                @endif
             </div>
 
             {{-- Series wordmark (comic cover style): the logo carries the name, top left under the
@@ -664,12 +667,25 @@
                 <form method="dialog" class="modal-backdrop"><button>close</button></form>
             </dialog>
 
-            {{-- Full-width bottom bar: text left, QR right --}}
-            <div class="absolute inset-x-0 bottom-0 flex items-end justify-between gap-8 px-8 pb-10 sm:px-12 sm:pb-14"
+            {{-- The title block, where the teacher put it (TitlePosition presets; bottom left by
+                 default). Bottom right is never offered: the QR code lives there. --}}
+            @php
+                $titlePos = $lesson->title_position ?? \App\Enums\TitlePosition::BottomLeft;
+                $titleBar = match ($titlePos) {
+                    \App\Enums\TitlePosition::TopLeft => 'inset-x-0 top-0 items-start justify-start pt-24 sm:pt-28',
+                    \App\Enums\TitlePosition::TopCenter => 'inset-x-0 top-0 items-start justify-center pt-24 sm:pt-28 text-center',
+                    \App\Enums\TitlePosition::TopRight => 'inset-x-0 top-0 items-start justify-end pt-24 sm:pt-28 text-right',
+                    \App\Enums\TitlePosition::Center => 'inset-0 items-center justify-center text-center',
+                    \App\Enums\TitlePosition::BottomLeft => 'inset-x-0 bottom-0 items-end justify-between pb-10 sm:pb-14',
+                    \App\Enums\TitlePosition::BottomCenter => 'inset-x-0 bottom-0 items-end justify-center pb-10 sm:pb-14 text-center',
+                };
+                $titleRows = $titlePos->isCentred() ? 'justify-center' : ($titlePos === \App\Enums\TitlePosition::TopRight ? 'justify-end' : '');
+            @endphp
+            <div class="absolute flex gap-8 px-8 sm:px-12 {{ $titleBar }}" data-title-position="{{ $titlePos->value }}"
                  style="z-index: 10;">
 
-                {{-- ── Left: title + meta + CTA ── --}}
-                <div class="min-w-0 flex-1 max-w-6xl">
+                {{-- ── Title + meta + CTA ── --}}
+                <div @class(['min-w-0 max-w-6xl', 'flex-1' => $titlePos === \App\Enums\TitlePosition::BottomLeft])>
 
                     {{-- Era / region --}}
                     <p x-show="lesson.era || lesson.region"
@@ -694,7 +710,7 @@
                               drop-shadow-[0_1px_8px_rgba(0,0,0,0.9)]"></p>
 
                     {{-- Meta row --}}
-                    <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+                    <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 {{ $titleRows }}">
                         <span x-show="lesson.grade_level" x-text="lesson.grade_level"
                               class="text-xs font-light text-slate-500"></span>
                         <span x-show="lesson.grade_level && lesson.subject" class="text-slate-700 text-xs">·</span>
@@ -717,7 +733,7 @@
                     </div>
 
                     {{-- CTA --}}
-                    <div class="mt-6 sm:mt-8">
+                    <div class="mt-6 flex sm:mt-8 {{ $titleRows }}">
                         <template x-if="canStart">
                             <button role="button"
                                 @click="startLesson()"

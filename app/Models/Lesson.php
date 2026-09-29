@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enums\LessonStatus;
 use App\Enums\NarrativeFramework;
+use App\Enums\TitlePosition;
 use App\Models\Concerns\BelongsToTeacher;
 use App\Support\MediaUrl;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -47,6 +48,9 @@ class Lesson extends Model
         'focus',
         'focus_tags',
         'title_bg_path',
+        'title_image',
+        'title_position',
+        'show_qr',
         'poster_image',
         'subject',
         'grade_level',
@@ -159,6 +163,8 @@ class Lesson extends Model
             'focus_tags' => 'array',
             'subtitles' => 'boolean',
             'background_music' => 'boolean',
+            'title_position' => TitlePosition::class,
+            'show_qr' => 'boolean',
         ];
     }
 
@@ -481,8 +487,15 @@ class Lesson extends Model
     }
 
     /** Wikipedia lead image used as the lesson title-screen background (catalog lessons). */
+    /** The title screen's picture: the teacher's choice, else the automatic lead image. */
     public function titleBgUrl(): ?string
     {
+        $chosen = trim((string) ($this->title_image ?? ''));
+        if ($chosen !== '') {
+            // Picked from the lesson's own pictures, kept site-relative like poster_image.
+            return str_starts_with($chosen, '/') ? $chosen : $this->publicMediaUrl($chosen);
+        }
+
         return $this->title_bg_path ? $this->publicMediaUrl($this->title_bg_path) : null;
     }
 

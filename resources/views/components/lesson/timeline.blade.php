@@ -5,6 +5,8 @@
     'clientSwitch'    => false,
     // Play step only: [sceneId => stage payload], so a click can swap the stage with no round trip.
     'payloads'        => [],
+    // Configure only: the pinned title screen item, ['title' => string, 'image' => ?string, 'selected' => bool].
+    'titleScreen'     => null,
 ])
 
 {{-- Vertical scene rail (LessonUp/Keynote-style): numbered thumbnails down the left edge.
@@ -41,6 +43,40 @@
                 {{ __('Scenes') }} · {{ $scenes->count() }}
             </span>
         </div>
+
+        {{-- The title screen: always first, never deleted or dragged. It sits OUTSIDE the sortable
+             track, so no scene can be dropped above it and it stays put while the scenes scroll. --}}
+        @if ($titleScreen)
+            <div class="px-3 pt-2">
+                <button type="button"
+                        wire:click="selectTitle"
+                        data-thumb data-title-thumb
+                        aria-label="{{ __('Title screen') }}"
+                        @if ($titleScreen['selected']) data-thumb-selected aria-current="true" @endif
+                        @class([
+                            'group relative aspect-video w-full overflow-hidden rounded-xl transition-all',
+                            'ring-2 ring-primary ring-offset-2 ring-offset-slate-900' => $titleScreen['selected'],
+                            'ring-1 ring-slate-700/50 hover:ring-slate-500' => ! $titleScreen['selected'],
+                        ])>
+                    <span data-thumb-full class="contents">
+                        <div class="absolute inset-0 bg-slate-800/60"></div>
+                        @if ($titleScreen['image'])
+                            <img src="{{ $titleScreen['image'] }}" onerror="this.style.display='none'"
+                                 class="relative h-full w-full object-cover" alt="" />
+                        @endif
+                        <span class="absolute inset-0 bg-linear-to-t from-black/80 to-transparent"></span>
+                        <span class="absolute inset-x-1.5 bottom-1 truncate text-left font-history text-xs font-bold text-white">
+                            {{ $titleScreen['title'] }}
+                        </span>
+                        <span class="absolute left-1 top-1 rounded bg-black/60 px-1 text-2xs font-semibold leading-4 text-white/80">
+                            {{ __('Title') }}
+                        </span>
+                    </span>
+                    <span data-thumb-compact aria-hidden="true"
+                          class="pointer-events-none absolute inset-0 hidden items-center justify-center font-mono text-sm font-semibold text-slate-400">T</span>
+                </button>
+            </div>
+        @endif
 
         {{-- p-3 (not just pb-3): the selected thumb's ring-offset-2 overspill would be clipped
              by overflow-y-auto without top/side breathing room. See overflow-clips-rings memory. --}}

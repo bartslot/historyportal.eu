@@ -33,6 +33,7 @@ trait EditsQuizQuestions
     public ?int $quizDraftSceneId = null;
 
     private const QUIZ_OPTION_COUNT = 4;     // A/B/C/D — matches QuizPrompt + the player
+
     private const QUIZ_MAX_QUESTIONS = 12;
 
     private const QUIZ_TEXT_MAX = 500;
