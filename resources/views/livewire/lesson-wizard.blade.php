@@ -14,8 +14,8 @@
              their way out is the site they came from. --}}
         @php($wizardExitUrl = auth()->user()?->isGuestDemo() ? route('home') : route('teacher.lessons.index'))
         <a href="{{ $wizardExitUrl }}" wire:navigate
-           class="btn btn-circle btn-sm fixed left-3 top-3 z-60 shadow-lg"
-           title="{{ __('Back to lessons') }}" aria-label="{{ __('Back to lessons') }}">
+           class="btn btn-circle btn-sm fixed left-3 top-3 z-60 border-0 bg-transparent shadow-none hover:bg-white/10"
+           data-tooltip="{{ __('Back to lessons') }}" aria-label="{{ __('Back to lessons') }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-5 w-5" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
             </svg>
