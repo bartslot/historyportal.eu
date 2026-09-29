@@ -147,6 +147,28 @@ class IconPanelTest extends TestCase
         $this->panel()->assertSeeHtml("Livewire.dispatch('open-svg-library')");
     }
 
+    public function test_a_raster_asset_shows_its_own_picture_on_a_paper_tile(): void
+    {
+        SvgAsset::create([
+            'user_id' => null, 'source' => 'bundled', 'source_ref' => 'history-line/figures/dante/beatrice.webp',
+            'collection' => 'history-line', 'category' => 'figures', 'subcategory' => 'dante', 'source_url' => '',
+            'title' => 'Beatrice', 'license' => 'Royalty-free (commercial)',
+            'svg_path' => 'svg-assets/library/history-line/figures/dante/beatrice.webp',
+        ]);
+
+        $html = $this->panel()->call('selectCollection', 'history-line')->html();
+
+        // A raster is not inverted like the black SVG line art: that would turn the picture into
+        // its negative (or a solid slab where the webp has a white ground).
+        $this->assertMatchesRegularExpression('/<img src="[^"]*beatrice\\.webp"[^>]*class="(?![^"]*\\binvert\\b)[^"]*"/', $html);
+        $this->assertStringContainsString('lp-paper', $html);
+    }
+
+    public function test_svg_line_art_is_still_inverted_for_the_dark_dock(): void
+    {
+        $this->assertMatchesRegularExpression('/<img src="[^"]*pharaoh\\.svg"[^>]*class="[^"]*\\binvert\\b/', $this->panel()->html());
+    }
+
     // ── Placing an icon ────────────────────────────────────────────────────
 
     public function test_picking_an_icon_asks_the_scene_to_place_it(): void

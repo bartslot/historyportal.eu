@@ -132,6 +132,7 @@
     --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
     --font-history: 'History', ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
+    --font-comic: 'Comic Relief', 'Comic Neue', 'Comic Sans MS', ui-rounded, sans-serif;
     --color-dropdown: #18293f;
     --color-dropdown-border: #2e425a;
 
@@ -448,6 +449,49 @@
     outline: 2px solid var(--color-slider-fill);
     outline-offset: 2px;
 }
+/* ─── Comic Relief (OFL) — self-hosted, the comic lessons' lettering ─── */
+@font-face {
+    font-family: 'Comic Relief';
+    src: url('/fonts/ComicRelief/ComicRelief-Bold.ttf') format('truetype');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* ─── Comic Neue (OFL): speech balloon lettering (BalloonLayer.js) ─── */
+@font-face {
+    font-family: 'Comic Neue';
+    src: url('/fonts/ComicNeue/ComicNeue-Regular.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Comic Neue';
+    src: url('/fonts/ComicNeue/ComicNeue-Bold.ttf') format('truetype');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* Speech balloons: white paper, ink outline, no name tag (the tail says who speaks). Sizes are
+   set in JS from the stage width, so a balloon keeps its proportion on a phone and a board. */
+.lp-balloon { position: absolute; inset: 0; pointer-events: none; }
+.lp-balloon__bubble {
+    position: absolute;
+    box-sizing: border-box;
+    background: #fffdf7;
+    color: #1b1712;
+    border: 2px solid #1b1712;
+    border-radius: 1.4em;
+    font-family: 'Comic Neue', 'Comic Relief', 'Comic Sans MS', ui-rounded, sans-serif;
+    font-weight: 700;
+    line-height: 1.22;
+    text-align: center;
+    text-wrap: balance;
+    box-shadow: 0 0.2em 0.6em rgb(0 0 0 / 0.25);
+}
+.lp-balloon__tail { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 
 /* ─── DaisyUI component overrides — Learning Portal brand ───────────── */
 @layer components {
@@ -749,6 +793,21 @@
     -webkit-text-fill-color: transparent;
     background-clip: text;
     animation: lp-shimmer 3s linear infinite;
+}
+
+/* ─── Paper tile: the ground line art is judged on ─────────────────────
+   The house illustrations are black ink on white or transparent. On the dark app chrome they
+   need a sheet of paper under them, and a faint check so a transparent ground reads as
+   transparent rather than as white. */
+:root {
+    --lp-paper: oklch(96.5% 0.012 85);
+    --lp-paper-check: oklch(0% 0 0 / 0.05);
+}
+.lp-paper {
+    background-color: var(--lp-paper);
+    background-image: conic-gradient(var(--lp-paper-check) 25%, transparent 0 50%, var(--lp-paper-check) 0 75%, transparent 0);
+    background-size: 14px 14px;
+    color: oklch(20% 0.02 264);
 }
 
 /* ─── Film grain overlay (add class to any section / card) ───────────── */

@@ -24,8 +24,10 @@ class LessonCopier
     {
         return DB::transaction(function () use ($source, $owner, $overrides): Lesson {
             // lesson_code is excluded so the copy gets its own; game_pack_path because it points at
-            // a generated PDF, and letting the copy regenerate over it would rewrite the original's.
-            $lesson = $source->replicate(['lesson_code', 'game_pack_path']);
+            // a generated PDF, and letting the copy regenerate over it would rewrite the original's;
+            // translation_group because a copy is not another language of the original, and a
+            // guest's edited sandbox would otherwise be offered in the original's language switch.
+            $lesson = $source->replicate(['lesson_code', 'game_pack_path', 'translation_group']);
             $lesson->teacher_id = $owner->id;
             $lesson->scheduled_publish_at = null;
 

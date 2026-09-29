@@ -58,8 +58,10 @@
         </div>
     @endif
 
-    {{-- The grid. The icons are black line art, so they are inverted to read on the dark dock —
-         the scene keeps the original artwork (and its own tint control). --}}
+    {{-- The grid. The SVG icons are black line art, so they are inverted to read on the dark dock;
+         the scene keeps the original artwork (and its own tint control). A raster (a painted
+         art:make pack) is a picture, not a glyph: inverting it gives its negative, so it sits on a
+         paper tile as it is. --}}
     <div class="min-h-0 flex-1 overflow-y-auto">
         @if ($this->icons()->isEmpty())
             <p class="px-1 py-6 text-center text-xs text-slate-500">
@@ -80,11 +82,12 @@
                                 ? window.__placeIcon({{ $icon->id }})
                                 : $wire.place({{ $icon->id }})"
                             data-tooltip="{{ $icon->title }}"
-                            class="flex aspect-square cursor-grab items-center justify-center rounded-lg p-2
-                                   transition-colors hover:bg-slate-700/60 active:cursor-grabbing"
+                            class="flex aspect-square cursor-grab items-center justify-center rounded-lg
+                                   transition-colors active:cursor-grabbing
+                                   {{ $icon->isRaster() ? 'lp-paper p-1 hover:ring-2 hover:ring-primary' : 'p-2 hover:bg-slate-700/60' }}"
                             aria-label="{{ $icon->title }}">
-                        <img src="{{ $icon->url() }}" alt="" draggable="false"
-                             class="pointer-events-none h-full w-full object-contain invert" />
+                        <img src="{{ $icon->url() }}" alt="" draggable="false" loading="lazy"
+                             class="pointer-events-none h-full w-full object-contain {{ $icon->isRaster() ? '' : 'invert' }}" />
                     </button>
                 @endforeach
             </div>

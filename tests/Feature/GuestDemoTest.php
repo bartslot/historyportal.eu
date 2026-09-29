@@ -84,6 +84,23 @@ class GuestDemoTest extends TestCase
         $this->assertNotSame($demo->lesson_code, $copy->lesson_code);
     }
 
+    public function test_a_guest_copy_never_joins_the_originals_language_switch(): void
+    {
+        $demo = $this->publishedDemoLesson();
+        $demo->update(['language' => 'en', 'translation_group' => 'dante']);
+        DemoLesson::forget();
+
+        $this->get(route('demo.configure'));
+
+        $copy = Lesson::where('teacher_id', User::where('is_guest_demo', true)->sole()->id)->sole();
+        // A sandbox reaches Previewable the moment its guest presses Play; that is the state in
+        // which the group would have listed a stranger's edited copy as another language of Dante.
+        $copy->update(['status' => LessonStatus::Previewable, 'language' => 'it']);
+
+        $this->assertNull($copy->refresh()->translation_group);
+        $this->assertFalse($demo->refresh()->translations()->contains('id', $copy->id));
+    }
+
     public function test_editing_the_copy_leaves_the_original_lesson_alone(): void
     {
         $demo = $this->publishedDemoLesson();

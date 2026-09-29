@@ -2,6 +2,8 @@ import * as THREE from 'three'
 import { Avatar3DPlayer } from '../avatar-3d.js'
 import { isTopAnchored, normalizeFit, PORTRAIT_TOP_BIAS } from './background-fit.js'
 import { mountEmbedBg, embedBgSignature } from './embed-bg.js'
+import { isClipartLayer } from './layer-filters.js'
+import { fitToPlate, plateAspect } from './plate-box.js'
 
 /**
  * Push every alignment entry earlier by VISEME_LEAD_SECONDS. The avatar player
@@ -23,7 +25,7 @@ function shiftAlignment(alignment) {
  * Mount the 3D stage for Step 3 / Step 4. Reuses Avatar3DPlayer's built-in skybox
  * shader pipeline (player.setSkyboxFromUrl) instead of stacking a second sphere.
  */
-export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, characterUrl }) {
+export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, characterUrl, initialSceneId = null }) {
     const Scene = window.LessonScene
     if (!Scene) {
         console.warn('[wizard-bridge] window.LessonScene not loaded')
@@ -833,7 +835,8 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     // Ken Burns direction → ParallaxScene motion, so the ANIMATED + direction settings drive
     // the background pan/zoom on layered scenes too (not just flat ones). Static when off.
     const kbMotion = (payload) => {
-        if (payload.kbAnimated === false) return { panX: 0, panY: 0, zoom: 1 }
+        // 'contain' is always static, as on a flat scene: a pan would crop the whole-image view.
+        if (payload.kbAnimated === false || normalizeFit(payload.fit) === 'contain') return { panX: 0, panY: 0, zoom: 1 }
         switch (payload.kbDirection) {
             case 'left_right': return { panX: 6, panY: 0, zoom: 1.03 }
             case 'right_left': return { panX: -6, panY: 0, zoom: 1.03 }
@@ -940,8 +943,8 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
 
             // Split: the background plane(s) render as parallax; free clipart (asset_id) is
             // rendered by the editable overlay so teachers can move + scale it directly.
-            const bgLayers = layers.filter(l => l.kind === 'cover' || l.asset_id == null)
-            const artLayers = layers.filter(l => l.asset_id != null && l.kind !== 'cover')
+            const bgLayers = layers.filter(l => !isClipartLayer(l))
+            const artLayers = layers.filter(isClipartLayer)
 
             if (!_parallaxMod) _parallaxMod = await import('./ParallaxScene.js')
             if (!isCurrent()) return false
@@ -963,13 +966,15 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             // Strip the ?v=<updated_at> cache-buster: it changes on EVERY scene save (a caption
             // toggle, a script edit), which would otherwise force a bg re-fade = flicker.
             const stripV = (u) => String(u || '').split('?')[0]
-            const bgSig = JSON.stringify([bgLayers.map(l => stripV(l.url)), motion, animated])
+            const fit = normalizeFit(payload.fit)
+            const matte = payload.backgroundColor || null
+            const bgSig = JSON.stringify([bgLayers.map(l => stripV(l.url)), motion, animated, fit, matte])
             if (bgSig !== _bgSig || !_wizardLayeredScene) {
                 _bgSig = bgSig
                 if (_wizardLayeredRaf) { cancelAnimationFrame(_wizardLayeredRaf); _wizardLayeredRaf = 0 }
                 if (_wizardLayeredScene) { try { _wizardLayeredScene.destroy() } catch (_) {} }
                 _wizardLayeredScene = new _parallaxMod.ParallaxScene(host)
-                _wizardLayeredScene.show({ layers: bgLayers.length ? bgLayers : layers, motion })
+                _wizardLayeredScene.show({ layers: bgLayers.length ? bgLayers : layers, motion, fit, matte })
                 if (animated) {
                     // Ping-pong so the pan/zoom previews in a loop (playback drives it monotonically).
                     const CYCLE_MS = 12000, start = performance.now()
@@ -992,6 +997,12 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
 
             const mode = payload.slideshowMode || (parallax ? 'parallax' : 'standard')
             const artHost = wizardArtworkHost()
+            // Whole image: the figures share the plate's box, so their x/y stay on the drawn floor.
+            if (artHost) {
+                const aspect = fit === 'contain' ? await plateAspect(bgLayers[0]?.url) : null
+                if (!isCurrent()) return false
+                fitToPlate(artHost, canvasEl.parentElement, aspect)
+            }
 
             if (mode === 'drawing' && artHost && artLayers.length) {
                 // Drawing mode: each clipart draws itself stroke-by-stroke (looped preview). Not
@@ -1188,28 +1199,32 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     // button hit cached audio on first ▶.
     normalizedScenes.forEach(s => preloadAudio(s.audio_path))
 
+    // First paint without a scene:load (it fires during hydration, before this bridge exists):
+    // paint the scene the editor has OPEN, not the lesson's first one. A deep link to scene 9
+    // used to paint scene 1 (usually a quiz title card) under scene 9's inspector.
+    const first = normalizedScenes.find(s => s.id === initialSceneId) ?? normalizedScenes[0]
     if (pendingScene) {
         await applyScene(pendingScene)
-    } else if (normalizedScenes[0]) {
+    } else if (first) {
         // Apply even without an image — an imageless scene must paint its solid brand
         // backdrop instead of leaving the renderer's default (white) showing through.
         await applyScene({
-            imageUrl:  normalizedScenes[0].image_path,
-            sceneView: normalizedScenes[0].scene_view ?? 'slideshow',
-            year:      normalizedScenes[0].year,
-            location:  normalizedScenes[0].location,
-            kind:      normalizedScenes[0].kind,
-            duration:  normalizedScenes[0].duration_seconds,
-            backgroundColor: normalizedScenes[0].background_color,
-            kbAnimated:  normalizedScenes[0].kb_animated,
-            kbDirection: normalizedScenes[0].kb_direction,
-            focus: normalizedScenes[0].config?.background_focus,
-            fit: normalizedScenes[0].config?.background_fit,
+            imageUrl:  first.image_path,
+            sceneView: first.scene_view ?? 'slideshow',
+            year:      first.year,
+            location:  first.location,
+            kind:      first.kind,
+            duration:  first.duration_seconds,
+            backgroundColor: first.background_color,
+            kbAnimated:  first.kb_animated,
+            kbDirection: first.kb_direction,
+            focus: first.config?.background_focus,
+            fit: first.config?.background_fit,
             // The scene config rides along so first paint honours per-scene flags
             // (background focus, clipart-above-text stacking, …).
-            config: normalizedScenes[0].config ?? null,
+            config: first.config ?? null,
             // Multiplane layers (E3c) ride along so the first paint is layered too.
-            shots: normalizedScenes[0].shots ?? [],
+            shots: first.shots ?? [],
         })
     }
 

@@ -129,3 +129,15 @@ export const cueAt = (cues, t) => {
 
   return null;
 };
+
+/**
+ * Captions for a scene told in lines (SceneDialogue): only the narrator's lines are captions, the
+ * characters speak in balloons. Each narrator line is already timed on the track, so its own
+ * sentences are spread over just that stretch.
+ *
+ * @param {Array<{speaker: string, text: string, start: number, end: number}>} lines
+ * @returns {Array<{start: number, end: number, text: string}>}
+ */
+export const lineCues = (lines) => (Array.isArray(lines) ? lines : [])
+  .filter(l => l?.speaker === 'narrator' && l.end > l.start)
+  .flatMap(l => buildCues(l.text, l.end - l.start).map(c => ({ ...c, start: c.start + l.start, end: c.end + l.start })))

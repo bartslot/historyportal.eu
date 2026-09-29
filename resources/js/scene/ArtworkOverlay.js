@@ -20,6 +20,7 @@
  */
 import { playEntrance, playExit } from './animations.js'
 import { applyLayerFilter } from './layer-filters.js'
+import { applyAmbient, trackStage } from './ambient.js'
 
 const DRAG_THRESHOLD_PX = 4
 const MIN_SCALE = 0.2
@@ -120,6 +121,7 @@ export function layersSignature(layers) {
     l.anim, l.anim_delay, l.anim_ease, l.anim_duration,
     l.anim_out, l.anim_out_delay, l.anim_out_ease, l.anim_out_duration,
     l.kind,
+    l.ambient, l.ambient_speed, l.ambient_amount,
     l.anchor, l.lng, l.lat, l.flip_x, l.flip_y,
     l.embed ? JSON.stringify(l.embed.opts || null) : null,
   ]))
@@ -180,6 +182,10 @@ export function normalizeLayer(l) {
         kind: l.kind || 'figure',
         // 'map' pins the layer to lng/lat and lets the projector place it; 'screen' (default)
         // keeps it at its x/y on the stage.
+        // Ambient motion (drift / breeze / bob / flutter); ambient.js reads and clamps these.
+        ambient: l.ambient || 'none',
+        ambient_speed: l.ambient_speed ?? null,
+        ambient_amount: l.ambient_amount ?? null,
         anchor: l.anchor === 'map' ? 'map' : 'screen',
         lng: Number.isFinite(l.lng) ? l.lng : null,
         lat: Number.isFinite(l.lat) ? l.lat : null,
@@ -203,6 +209,7 @@ export class ArtworkOverlay {
     // beneath this overlay. Null on a slideshow scene, where positions are stage-relative.
     this._projector = null
     this.host.style.pointerEvents = 'none'   // the host is transparent; only layer nodes catch events
+    trackStage(this.host)   // stage size for ambient drift distances (ambient.js)
     // Deselect when something that isn't one of MY layers is selected (mutually-exclusive
     // selection across text, artwork and background — no re-dispatch, so no loop).
     window.addEventListener('scene-object-selected', (e) => {
@@ -475,6 +482,11 @@ export class ArtworkOverlay {
       case 'flip_y':
         node.style.transform = this._transform(item)
         this._syncChrome(item)
+        break
+      case 'ambient':
+      case 'ambient_speed':
+      case 'ambient_amount':
+        applyAmbient(node.querySelector('.art-ambient'), item, this._layers.indexOf(item))
         break
       case 'x':
       case 'y':
@@ -806,7 +818,14 @@ export class ArtworkOverlay {
     // context, so a blend on the img would only ever mix with the node's own empty backdrop.
     // On the node it mixes with whatever the overlay sits over — which is the point of Multiply.
     if (item.blend && item.blend !== 'normal') node.style.mixBlendMode = item.blend
-    node.appendChild(img)
+    // Ambient motion on its own inner wrapper, so it composes with the node's transform (position,
+    // rotation, parallax, entrance) instead of replacing it. Origin bottom-centre = the image's base.
+    const amb = document.createElement('div')
+    amb.className = 'art-ambient'
+    amb.style.cssText = 'height:100%; transform-origin:50% 100%; pointer-events:none;'
+    amb.appendChild(img)
+    applyAmbient(amb, item, this._layers.indexOf(item))
+    node.appendChild(amb)
 
     this._wireDrag(item, node)
     return node

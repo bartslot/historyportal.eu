@@ -184,6 +184,42 @@
         </div>
     </x-ui.settings-section>
 
+    {{-- ── Motion: ambient life (resources/js/scene/ambient.js) — clouds drift, trees move in the
+         breeze, boats bob, birds flutter. The canvas previews every change in place. ────────── --}}
+    <x-ui.settings-section :title="__('Motion')" name="motion">
+        <div class="space-y-2" x-data="{ amb: @js($val('ambient', 'none')) }">
+            <label class="flex items-center justify-between gap-2">
+                <span style="width: var(--settings-panel-label-w, 3.0625rem)"
+                      class="shrink-0 text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Motion') }}</span>
+                <div class="min-w-0 flex-1">
+                    <select x-model="amb" x-on:input="{{ $live('ambient') }}" wire:change="{{ $save('ambient') }}"
+                            aria-label="{{ __('Motion') }}"
+                            style="height: var(--settings-panel-row-h, 2rem)"
+                            class="select select-xs w-full text-2xs">
+                        @foreach ([
+                            'none' => __('None'),
+                            'drift' => __('Drift'),
+                            'breeze' => __('Breeze'),
+                            'bob' => __('Bob'),
+                            'flutter' => __('Flutter'),
+                        ] as $mv => $ml)
+                            <option value="{{ $mv }}" @selected($val('ambient', 'none') === $mv)>{{ $ml }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </label>
+
+            <div x-show="amb !== 'none'" x-cloak class="space-y-2">
+                <x-ui.slider-row :label="__('Speed')" :min="0.25" :max="3" :step="0.05"
+                                 :value="$val('ambient_speed', 1)" :display="rtrim(rtrim(number_format((float) $val('ambient_speed', 1), 2), '0'), '.')" unit="×" :default="1"
+                                 :on-input="$live('ambient_speed')" :on-change="$save('ambient_speed')" />
+                <x-ui.slider-row :label="__('Amount')" :min="0" :max="2" :step="0.05"
+                                 :value="$val('ambient_amount', 1)" :display="rtrim(rtrim(number_format((float) $val('ambient_amount', 1), 2), '0'), '.')" unit="×" :default="1"
+                                 :on-input="$live('ambient_amount')" :on-change="$save('ambient_amount')" />
+            </div>
+        </div>
+    </x-ui.settings-section>
+
     {{-- ── 3D model — how a Sketchfab layer behaves once it is on the slide ───────────────── --}}
     @php
         $embed = $layer['embed'] ?? null;

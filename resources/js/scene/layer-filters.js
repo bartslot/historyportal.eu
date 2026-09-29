@@ -14,6 +14,13 @@
 //                  of white lands on alpha 0 and everything darker stays fully opaque
 //   3. tint        flood the chosen colour and keep it only where the alpha survived
 
+/**
+ * A layer from the asset library (a figure, a cloud, a prop) rather than the scene's own backdrop.
+ * These belong to ArtworkOverlay; ParallaxScene draws only the rest. Both renderers drawing the
+ * same layer put a second copy on screen that the parallax pan slides away from the first.
+ */
+export const isClipartLayer = (l) => !!l && l.asset_id != null && l.kind !== 'cover'
+
 /** '#rrggbb' → [r, g, b] in 0..1, the range feColorMatrix works in. */
 export function hexToUnit(hex) {
   const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ''))

@@ -198,11 +198,12 @@ export function renderItineraryPins (map, hostEl, stops, { hidden = false } = {}
  * @param {HTMLElement} opts.hostEl host for the numbered pins
  * @param {number|null} [opts.totalMs] narration duration to pace against
  * @param {number} [opts.stopZoom] how close the camera gets to a single city
+ * @param {{center:[number,number], zoom:number}|null} [opts.overview] opening shot; default frames every stop
  * @param {(i:number, stop:object)=>void} [opts.onArrive]
  * @returns {{ start():void, pause():void, resume():void, goTo(i:number):void, destroy():void }}
  */
 export function itineraryTour (map, stops, {
-  hostEl, totalMs = null, stopZoom = 4.6, onArrive = null, timing = {},
+  hostEl, totalMs = null, stopZoom = 4.6, onArrive = null, timing = {}, overview = null,
 } = {}) {
   const list = (Array.isArray(stops) ? stops : []).filter(
     (s) => Number.isFinite(Number(s.lng)) && Number.isFinite(Number(s.lat)),
@@ -259,7 +260,7 @@ export function itineraryTour (map, stops, {
       // script asks for, and it is the only moment the class sees the whole span at once.
       const box = stopsBox(list)
       if (box) {
-        const v = boxView(box, { pad: 1.5, maxZoom: 5 })
+        const v = overview || boxView(box, { pad: 1.5, maxZoom: 5 })
         try { map.easeTo({ ...v, pitch: PITCH, duration: 1200, essential: true }) } catch (_) { /* torn down */ }
       }
       startedAt = performance.now()

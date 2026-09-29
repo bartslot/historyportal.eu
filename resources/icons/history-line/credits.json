@@ -1,0 +1,37 @@
+{
+    "dore-inferno": [
+        {
+            "source": "Gustave Doré - Dante Alighieri - Inferno - Plate 1 (I found myself within a forest dark...).jpg",
+            "credit": "Gustave Doré, via Wikimedia Commons",
+            "license": "Public domain"
+        }
+    ],
+    "dore-paradiso": [
+        {
+            "source": "Paradiso Canto 31 (148200393).jpg",
+            "credit": "Gustave Doré, via Wikimedia Commons",
+            "license": "Public domain"
+        }
+    ],
+    "dore-purgatorio": [
+        {
+            "source": "Gustove Dore, The Divine Comedy, Purgatory, plate 79, The Boat of Souls.jpg",
+            "credit": "Gustave Dore, via Wikimedia Commons",
+            "license": "Public domain"
+        }
+    ],
+    "lungarno": [
+        {
+            "source": "Henry Holiday - Dante and Beatrice - Google Art Project.jpg",
+            "credit": "Henry Holiday (1883), via Wikimedia Commons",
+            "license": "Public domain"
+        }
+    ],
+    "michelino-tre-regni": [
+        {
+            "source": "Dante Domenico di Michelino Duomo Florence.jpg",
+            "credit": "Domenico di Michelino / After Alesso Baldovinetti, via Wikimedia Commons",
+            "license": "Public domain"
+        }
+    ]
+}
