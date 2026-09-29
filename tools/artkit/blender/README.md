@@ -16,10 +16,14 @@ drawing with Nano Banana 2 in Figma; `finish.py` upscales the result (Upscayl di
   cues and Nano Banana invents a new perspective.
 - `trees.py` builds procedural tree packs with friggog/tree-gen (addon symlinked on the render PC at
   `~/.config/blender/5.1/scripts/addons/tree_gen`): 18 species x 3 seeds, each a marked asset collection
-  (`<species>_<seed>`: `_bark` + `_leaves` meshes, metres, root at 0,0,0) in `lesson_assets/_trees/<species>.blend`,
-  plus `<species>_clay.png`. Run headless on the render PC:
-  `blender --background --python trees.py -- ~/artkit/lesson_assets/_trees [species ...] [--seeds 1,2,3]`.
-  Trees are heavy (oak 1.5M faces, willow 10M): fine for renders, instance them, don't copy.
+  (`<species>_<seed>`: `_bark` + `_leaves` meshes, metres, root at 0,0,0) plus `<species>_clay.png`.
+  `--lod hero` (300k verts a tree, `lesson_assets/_trees`) or `--lod forest` (80k, `_trees_forest`);
+  budgets in `tree_budget.py`. Stock tree-gen made 7.6M verts per oak: the finest twig level and 45-vert oak
+  leaves were most of it. `tree_roots.py` adds buttress lobes and surface roots that dive into the soil.
+  Our preset fixes (the weeping willow) live in `OVERRIDES`; `--set JSON` tunes any parameter.
+  `blender --background --python trees.py -- ~/artkit/lesson_assets/_trees_forest --lod forest [species ...]`.
+  In a pack: `pt(coll, name, species, seed, loc, yaw_deg, scale)` from `hp1lib.py` (copies share meshes).
+- `packs/woodland.py`: reusable temperate European woodland from forest-LOD trees (species mix checked with JEV).
 - `sheet.py` makes a contact sheet; `finish.py` upscales `<pack>/converted/*` into `<pack>/final/`.
 
 Gotchas found building the Dante packs:

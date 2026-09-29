@@ -437,6 +437,58 @@ def sf(c, name, uid, part, loc=(0, 0, 0), yaw_deg=0.0, height=None, size=None, p
     return _library(c, name, "_sketchfab", uid, part, loc, yaw_deg, height, size, pick)
 
 
+_TREE_MESHES = {}   # (pack, species, seed) -> (bark mesh, leaves mesh or None), shared by every copy
+TREE_LOOK = {        # shaded-pass materials per species: (bark: Poly Haven id or rgb, leaf rgb)
+    "silver_birch": ((0.78, 0.76, 0.72), (0.30, 0.42, 0.14)),
+    "quaking_aspen": ((0.62, 0.62, 0.56), (0.34, 0.45, 0.16)),
+    "hill_cherry": ("jolcham_oak_bark_01", (0.26, 0.38, 0.12)),
+}
+TREE_LOOK_DEFAULT = ("jolcham_oak_bark_01", (0.20, 0.32, 0.10))
+
+
+def _flat(name, rgb):
+    m = bpy.data.materials.get(name) or bpy.data.materials.new(name)
+    m.use_nodes = True
+    b = m.node_tree.nodes.get("Principled BSDF")
+    b.inputs["Base Color"].default_value = (*rgb, 1)
+    b.inputs["Roughness"].default_value = 0.85
+    m.diffuse_color = (*rgb, 1)
+    return m
+
+
+def _tree_meshes(pack, species, seed):
+    key = (pack, species, seed)
+    if key in _TREE_MESHES and all(m is None or m.name in bpy.data.meshes for m in _TREE_MESHES[key]):
+        return _TREE_MESHES[key]
+    base = "%s_%02d" % (species, seed)
+    path = os.path.join(ASSETS_ROOT, pack, species + ".blend")
+    with bpy.data.libraries.load(path, link=False) as (src, dst):
+        dst.meshes = [n for n in src.meshes if n in (base + "_bark", base + "_leaves")]
+    by = {m.name.split(".")[0]: m for m in dst.meshes}
+    bark_look, leaf_rgb = TREE_LOOK.get(species, TREE_LOOK_DEFAULT)
+    bark, leaves = by[base + "_bark"], by.get(base + "_leaves")
+    bark.materials.clear()
+    bark.materials.append(pbr(bark_look) if isinstance(bark_look, str) else _flat("tree_bark_" + species, bark_look))
+    if leaves:
+        leaves.materials.clear(); leaves.materials.append(_flat("tree_leaf_" + species, leaf_rgb))
+    _TREE_MESHES[key] = (bark, leaves)
+    return bark, leaves
+
+
+def pt(c, name, species, seed, loc=(0, 0, 0), yaw_deg=0.0, scale=1.0, pack="_trees_forest"):
+    """Procedural tree (tools/artkit/blender/trees.py) from ASSETS_ROOT/<pack>/<species>.blend, real metres,
+    root at loc. Copies of one species+seed share their meshes. Returns [bark, leaves] objects (part plant)."""
+    out = []
+    for me in _tree_meshes(pack, species, seed):
+        if me is None:
+            continue
+        o = bpy.data.objects.new(c.name.split(":")[0] + "." + name + ("_leaves" if me.name.endswith("_leaves") else ""), me)
+        c.objects.link(o)
+        o["part"] = "plant"; o.location = loc; o.rotation_euler = (0, 0, math.radians(yaw_deg)); o.scale = (scale,) * 3
+        out.append(o)
+    return out
+
+
 def _library(c, name, lib, asset_id, part, loc, yaw_deg, height, size, pick=None):
     d = os.path.join(ASSETS_ROOT, lib, asset_id)
     gl = json.load(open(os.path.join(d, "credit.json"))).get("gltf") or \
