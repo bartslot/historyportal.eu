@@ -161,4 +161,32 @@ class DioramaCommandsTest extends TestCase
             ->expectsOutputToContain('is not a diorama yet')
             ->assertFailed();
     }
+
+    public function test_a_drag_in_the_editor_saves_the_new_cell(): void
+    {
+        $this->artisan('diorama:import', ['scene' => $this->scene->id, 'file' => $this->example()])->assertSuccessful();
+
+        Livewire::actingAs($this->teacher)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
+            ->call('selectScene', $this->scene->id)
+            ->dispatch('diorama:move', itemId: 'barrel_1', floor: 'quay', cell: [3.25, 7.5])
+            ->assertNotDispatched('scene:load');
+
+        $items = $this->scene->fresh()->config['diorama']['items'];
+        $this->assertSame([3.25, 7.5], $items[1]['cell']);
+        $this->assertSame([10, 30], $items[0]['cell'], 'the other items are untouched');
+    }
+
+    public function test_a_drag_off_the_grid_is_refused_and_says_so(): void
+    {
+        $this->artisan('diorama:import', ['scene' => $this->scene->id, 'file' => $this->example()])->assertSuccessful();
+
+        Livewire::actingAs($this->teacher)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
+            ->call('selectScene', $this->scene->id)
+            ->dispatch('diorama:move', itemId: 'barrel_1', floor: 'quay', cell: [3, 99])
+            ->assertDispatched('toast');
+
+        $this->assertSame([2, 6], $this->scene->fresh()->config['diorama']['items'][1]['cell']);
+    }
 }

@@ -183,23 +183,27 @@ export function panDepth (depth, focalDepth) {
 }
 
 /**
- * Plate pixel → stage pixel for a plate shown `object-fit: cover` on a `stageW × stageH` stage
- * (centred crop). Everything placed on the plate goes through this, so a phone and a
- * whiteboard crop the same scene the same way.
+ * Plate pixel → stage pixel for a plate shown `object-fit: cover` on a `stageW × stageH` stage.
+ * The crop centres on plate column `focusU` (default the middle) as far as the plate's edges
+ * allow: on a portrait phone that keeps the figures in view instead of the empty middle, the
+ * way plate-box.js does for layered shots. Landscape stages crop top and bottom only, so focus
+ * does nothing there. Everything placed on the plate goes through this.
  */
-export function plateToStage (camera, stageW, stageH, { u, v }) {
-  const s = Math.max(stageW / camera.width, stageH / camera.height)
-  return {
-    x: (u - camera.width / 2) * s + stageW / 2,
-    y: (v - camera.height / 2) * s + stageH / 2,
-    scale: s,
-  }
+export function plateToStage (camera, stageW, stageH, { u, v }, focusU = camera.width / 2) {
+  const { s, left, top } = coverBox(camera, stageW, stageH, focusU)
+  return { x: left + u * s, y: top + v * s, scale: s }
 }
 
 /** Stage pixel → plate pixel (the inverse of plateToStage), for pointer events. */
-export function stageToPlate (camera, stageW, stageH, { x, y }) {
+export function stageToPlate (camera, stageW, stageH, { x, y }, focusU = camera.width / 2) {
+  const { s, left, top } = coverBox(camera, stageW, stageH, focusU)
+  return { u: (x - left) / s, v: (y - top) / s }
+}
+
+function coverBox (camera, stageW, stageH, focusU) {
   const s = Math.max(stageW / camera.width, stageH / camera.height)
-  return { u: (x - stageW / 2) / s + camera.width / 2, v: (y - stageH / 2) / s + camera.height / 2 }
+  const left = Math.min(0, Math.max(stageW - camera.width * s, stageW / 2 - focusU * s))
+  return { s, left, top: (stageH - camera.height * s) / 2 }
 }
 
 /**

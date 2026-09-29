@@ -1560,5 +1560,6 @@
     "Reset": "Herstellen",
     "Mask saved.": "Masker opgeslagen.",
     "That layer is gone. Select it again and retry.": "Die laag bestaat niet meer. Selecteer hem opnieuw en probeer het nog eens.",
-    "The mask could not be uploaded. Try again, or use a smaller picture.": "Het masker kon niet worden geüpload. Probeer het opnieuw of gebruik een kleinere afbeelding."
+    "The mask could not be uploaded. Try again, or use a smaller picture.": "Het masker kon niet worden geüpload. Probeer het opnieuw of gebruik een kleinere afbeelding.",
+    "That spot is not on the floor. The move was not saved.": "Die plek ligt niet op de vloer. De verplaatsing is niet opgeslagen."
 }

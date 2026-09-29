@@ -169,6 +169,22 @@ describe('responsive crop', () => {
     expect(back.v).toBeCloseTo(480, 9)
   })
 
+  it('a portrait crop centres on the focus column, but never past the plate edge', () => {
+    const phone = [390, 844]
+    const s = 844 / 1440
+    expect(plateToStage(camera, ...phone, { u: 2000, v: 0 }, 2000).x).toBeCloseTo(195, 9)      // focus in the middle of the phone
+    expect(plateToStage(camera, ...phone, { u: 2560, v: 0 }, 2500).x).toBeCloseTo(390, 9)      // clamped: the right edge meets the stage edge
+    expect(plateToStage(camera, ...phone, { u: 0, v: 0 }, 50).x).toBe(0)                      // clamped on the left
+    const back = stageToPlate(camera, ...phone, plateToStage(camera, ...phone, { u: 1800, v: 700 }, 2000), 2000)
+    expect(back.u).toBeCloseTo(1800, 9)
+    expect(back.v).toBeCloseTo(700, 9)
+    expect(s).toBeGreaterThan(0)
+  })
+
+  it('a landscape stage ignores the focus: only top and bottom are cropped', () => {
+    expect(plateToStage(camera, 1920, 1000, { u: 0, v: 0 }, 2400).x).toBe(0)   // wider than 16:9
+  })
+
   it('a figure keeps its proportions to the plate at any stage size', () => {
     const feet = golden.cases[0].points.find(q => q.part === 'feet' && q.floor === 'quay' && q.distance_m === 4 && q.side_m === 0)
     const head = golden.cases[0].points.find(q => q.part === 'head' && q.floor === 'quay' && q.distance_m === 4 && q.side_m === 0)

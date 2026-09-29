@@ -13,6 +13,7 @@ use App\Jobs\GenerateSkyboxImage;
 use App\Jobs\GenerateWorldLabsScene;
 use App\Livewire\Wizard\Concerns\BlocksGuestDemoSpending;
 use App\Livewire\Wizard\Concerns\DuplicatesSceneObjects;
+use App\Livewire\Wizard\Concerns\EditsDiorama;
 use App\Livewire\Wizard\Concerns\EditsQuizQuestions;
 use App\Livewire\Wizard\Concerns\EditsSceneArtwork;
 use App\Livewire\Wizard\Concerns\EditsStoryGame;
@@ -47,6 +48,7 @@ class Step3SceneConfigurator extends Component
 {
     use BlocksGuestDemoSpending;
     use DuplicatesSceneObjects;
+    use EditsDiorama;
     use EditsQuizQuestions;
     use EditsSceneArtwork;
     use EditsStoryGame;

@@ -1516,5 +1516,6 @@
     "Reset": "Zurücksetzen",
     "Mask saved.": "Maske gespeichert.",
     "That layer is gone. Select it again and retry.": "Diese Ebene gibt es nicht mehr. Wähle sie erneut aus und versuche es noch einmal.",
-    "The mask could not be uploaded. Try again, or use a smaller picture.": "Die Maske konnte nicht hochgeladen werden. Versuche es noch einmal oder nimm ein kleineres Bild."
+    "The mask could not be uploaded. Try again, or use a smaller picture.": "Die Maske konnte nicht hochgeladen werden. Versuche es noch einmal oder nimm ein kleineres Bild.",
+    "That spot is not on the floor. The move was not saved.": "Diese Stelle liegt nicht auf dem Boden. Die Verschiebung wurde nicht gespeichert."
 }

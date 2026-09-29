@@ -107,7 +107,13 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         if (playerReady && !_pendingView) {
             const view = dbView
             try {
-                if (payload.kind === 'video') {
+                if (!payload.config?.diorama) hideDiorama()
+                if (payload.config?.diorama) {
+                    // A diorama owns the stage: its plate, occluders and items, placed on floor grids.
+                    destroyWizardLayers()
+                    applySlideshowCameraMode(activePlayer)
+                    await showDiorama(payload, isCurrent)
+                } else if (payload.kind === 'video') {
                     // The film owns the stage: clear whatever the scene before left on the canvas, so
                     // a video scene with no link yet reads as black rather than the last picture.
                     applySlideshowCameraMode(activePlayer)
@@ -915,6 +921,44 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         if (getComputedStyle(parent).position === 'static') parent.style.position = 'relative'
         _embedBg = mountEmbedBg(parent, embed, { zIndex: 2 })
         _embedSig = _embedBg ? sig : null
+    }
+
+    // ── Diorama (config.diorama) ───────────────────────────────────────────────────────────
+    // Drawn by DioramaStage, the same renderer as the player. scene:load re-fires on every edit
+    // and poll, so an unchanged diorama is left alone: re-mounting would drop a drag in progress.
+    let _dioramaMod = null
+    let _diorama = null
+    let _dioramaHost = null
+    let _dioramaSceneId = null
+
+    function hideDiorama() {
+        _diorama?.destroy()
+        _dioramaHost?.remove()
+        _diorama = _dioramaHost = _dioramaSceneId = null
+    }
+
+    async function showDiorama(payload, isCurrent) {
+        const spec = payload.config.diorama
+        if (_diorama && _dioramaSceneId === payload.sceneId && _diorama.matches(spec)) return
+        if (!_dioramaMod) _dioramaMod = await import('./diorama/DioramaStage.js')
+        const assets = await _dioramaMod.loadDioramaAssets(spec)
+        if (!isCurrent()) return
+        const parent = canvasEl.parentElement
+        if (!parent) return
+        if (getComputedStyle(parent).position === 'static') parent.style.position = 'relative'
+        hideDiorama()
+        const host = document.createElement('div')
+        host.className = 'wizard-diorama-host'
+        // Above the canvas and the parallax host (z-1), below the text overlay (z-7).
+        host.style.cssText = 'position:absolute;inset:0;z-index:2;pointer-events:none;'
+        parent.appendChild(host)
+        _dioramaHost = host
+        _diorama = new _dioramaMod.DioramaStage(host)
+        _dioramaSceneId = payload.sceneId
+        _diorama.show(spec, assets, {
+            editable: true,
+            onMove: ({ itemId, floor, cell }) => window.Livewire?.dispatch('diorama:move', { itemId, floor, cell }),
+        })
     }
 
     function destroyWizardLayers() {

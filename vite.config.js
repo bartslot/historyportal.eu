@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
 import tailwindcss from '@tailwindcss/vite';
+import { fileURLToPath } from 'node:url';
 
 export default defineConfig({
     plugins: [
@@ -21,7 +22,10 @@ export default defineConfig({
         host: '127.0.0.1',
         port: 5173,
         watch: {
-            ignored: ['**/storage/framework/views/**', '**/.claude/**'],
+            // This project's own .claude folder (the worktrees live there), anchored to the root: a
+            // bare '**/.claude/**' also matched the root itself when Vite runs INSIDE a worktree
+            // (.claude/worktrees/<name>/…), so no source edit there ever reached the browser.
+            ignored: ['**/storage/framework/views/**', fileURLToPath(new URL('./.claude/**', import.meta.url))],
         },
         proxy: {
             '/fonts': 'http://127.0.0.1:8000',
