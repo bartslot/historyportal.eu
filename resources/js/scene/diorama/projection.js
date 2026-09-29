@@ -201,3 +201,21 @@ export function stageToPlate (camera, stageW, stageH, { x, y }) {
   const s = Math.max(stageW / camera.width, stageH / camera.height)
   return { u: (x - stageW / 2) / s + camera.width / 2, v: (y - stageH / 2) / s + camera.height / 2 }
 }
+
+/**
+ * The paint order of a diorama shot, back to front: the plate first, then occluders (wall, rail)
+ * and items interleaved by depth. An occluder counts at its NEAR depth: anything further than its
+ * front face is behind it (a sailor in a doorway stands inside the wall's thickness and must be
+ * framed by the jambs). An item exactly at the front face stands in front.
+ * @param {object} spec  diorama JSON (uses plate.occluders)
+ * @param {Array<{id: string, depth: number, v: number}>} placements  from placeItem, with ids
+ * @returns {Array<{kind: 'plate'|'occluder'|'item', id: string}>}
+ */
+export function stackOrder (spec, placements) {
+  const occluders = (spec.plate?.occluders ?? []).map(o => ({ kind: 'occluder', id: o.id, depth: o.depth_m[0], v: -Infinity }))
+  const items = placements.map(p => ({ kind: 'item', id: p.id, depth: p.depth, v: p.v }))
+  const isOccluder = e => Number(e.kind === 'occluder')
+  const sorted = [...occluders, ...items].sort((a, b) =>
+    (b.depth - a.depth) || (isOccluder(b) - isOccluder(a)) || (a.v - b.v))   // tie: occluder paints first
+  return [{ kind: 'plate', id: 'plate' }, ...sorted.map(({ kind, id }) => ({ kind, id }))]
+}

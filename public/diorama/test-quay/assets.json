@@ -1,0 +1,40 @@
+{
+ "test/sailor": {
+  "image": "sailor.webp",
+  "px_per_m": 400,
+  "frame_m": [
+   1.0,
+   2.0
+  ],
+  "height_m": 1.75,
+  "points": {
+   "mouth": [
+    0.5,
+    0.18
+   ],
+   "head_top": [
+    0.5,
+    0.125
+   ],
+   "feet": [
+    0.5,
+    1.0
+   ]
+  }
+ },
+ "test/barrel": {
+  "image": "barrel.webp",
+  "px_per_m": 400,
+  "frame_m": [
+   1.0,
+   1.0
+  ],
+  "height_m": 0.9,
+  "points": {
+   "feet": [
+    0.5,
+    1.0
+   ]
+  }
+ }
+}

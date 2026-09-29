@@ -111,4 +111,27 @@ class DioramaSpecTest extends TestCase
 
         $this->assertRejected($spec, 'items[1].id: expected a readable id');
     }
+
+    public function test_the_blender_test_quay_scene_is_valid(): void
+    {
+        $spec = json_decode((string) file_get_contents(__DIR__.'/../../../public/diorama/test-quay/scene.json'), true, 64, JSON_THROW_ON_ERROR);
+
+        $this->assertSame([], DioramaSpec::errors($spec));
+        $this->assertSame(['wall', 'rail'], array_column($spec['plate']['occluders'], 'id'));
+    }
+
+    public function test_an_occluder_needs_a_picture_and_a_sane_depth_range(): void
+    {
+        $spec = $this->example();
+        $spec['plate'] = ['image' => 'bg.webp', 'occluders' => [
+            ['id' => 'wall', 'image' => 'wall.webp', 'depth_m' => [14.4, 14.0]],
+            ['id' => 'wall', 'depth_m' => [6, 6.1]],
+        ]];
+
+        $errors = DioramaSpec::errors($spec);
+
+        $this->assertContains('plate.occluders[0].depth_m: expected [near, far] in metres from the camera, near > 0 and near <= far', $errors);
+        $this->assertContains('plate.occluders[1].id: "wall" is used twice', $errors);
+        $this->assertContains("plate.occluders[1].image: expected the picture's file name", $errors);
+    }
 }

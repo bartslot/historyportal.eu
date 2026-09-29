@@ -19,6 +19,11 @@ namespace App\Services\Diorama;
  * - Every layer anchors at its bottom centre, so an item has no anchor field.
  * - Resizing is depth, never world height, so an item has no scale field.
  *
+ * Optional `plate`: the background picture and its occluders (wall, rail, table), each a separate
+ * transparent picture rendered with real pixels behind it, with its depth range `[near, far]` in
+ * metres. An item further than an occluder's near depth is drawn behind it. `base` is the URL
+ * folder the picture names are relative to.
+ *
  * Axes follow Blender: x right, y forward (away from the camera), z up, metres. A floor cell
  * [cx, cy] sits at origin_m + cell × cell_m on that floor.
  */
@@ -50,6 +55,9 @@ final class DioramaSpec
         }
 
         $errors = self::cameraErrors($spec['camera'] ?? null);
+        if (array_key_exists('plate', $spec)) {
+            array_push($errors, ...self::plateErrors($spec['plate']));
+        }
 
         $floors = self::listOf($spec, 'floors', $errors);
         $spots = self::listOf($spec, 'spots', $errors, required: false);
@@ -103,6 +111,35 @@ final class DioramaSpec
         }
         if (($camera['level'] ?? null) !== true) {
             $errors[] = 'camera.level: must be true (a pitched or rolled camera is not supported in version 1)';
+        }
+
+        return $errors;
+    }
+
+    /** @return list<string> */
+    private static function plateErrors(mixed $plate): array
+    {
+        if (! is_array($plate)) {
+            return ['plate: expected an object'];
+        }
+
+        $errors = [];
+        foreach (['base', 'image'] as $key) {
+            if (array_key_exists($key, $plate) && (! is_string($plate[$key]) || $plate[$key] === '')) {
+                $errors[] = "plate.{$key}: expected a non-empty string";
+            }
+        }
+        $occluders = self::listOf($plate, 'occluders', $errors, required: false);
+        self::indexById($occluders, 'plate.occluders', $errors);
+        foreach ($occluders as $i => $occluder) {
+            $path = "plate.occluders[{$i}]";
+            if (! is_string($occluder['image'] ?? null) || $occluder['image'] === '') {
+                $errors[] = "{$path}.image: expected the picture's file name";
+            }
+            $depth = $occluder['depth_m'] ?? null;
+            if (! self::isVector($depth, 2) || $depth[0] <= 0 || $depth[0] > $depth[1]) {
+                $errors[] = "{$path}.depth_m: expected [near, far] in metres from the camera, near > 0 and near <= far";
+            }
         }
 
         return $errors;
