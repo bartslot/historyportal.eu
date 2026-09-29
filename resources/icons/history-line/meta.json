@@ -1,0 +1,692 @@
+{
+  "architecture/florence/battistero.webp": {
+    "description": "The Baptistery of San Giovanni in Florence: an octagonal building with green and white marble bands and a small lantern on top of its dome, drawn whole from the ground to the tip of the lantern.",
+    "placement": "stands",
+    "opaque_box": [
+      0.0156,
+      0.0119,
+      0.9844,
+      0.9881
+    ],
+    "height_m": 34.0,
+    "jev": {
+      "probabilities": {
+        "28": 0.27,
+        "34": 0.58,
+        "22": 0.15
+      },
+      "confidence": 0.37
+    }
+  },
+  "architecture/florence/casa-torre.webp": {
+    "description": "A medieval Florentine tower house: a tall square stone tower with a wooden balcony high up, drawn whole from the ground to the top of its battlements.",
+    "placement": "stands",
+    "opaque_box": [
+      0.0205,
+      0.0112,
+      0.9795,
+      0.9888
+    ],
+    "height_m": 25.0,
+    "jev": {
+      "probabilities": {
+        "40": 0.24,
+        "15": 0.12,
+        "25": 0.64
+      },
+      "confidence": 0.47
+    }
+  },
+  "architecture/florence/chiesa-romanica.webp": {
+    "description": "A Romanesque church facade with a round rose window, arched doorway and small bell turret, drawn whole from the ground to the top of the gable.",
+    "placement": "stands",
+    "opaque_box": [
+      0.0138,
+      0.0144,
+      0.9862,
+      0.9856
+    ],
+    "height_m": 18.0,
+    "jev": {
+      "probabilities": {
+        "18": 0.6,
+        "12": 0.21,
+        "25": 0.19
+      },
+      "confidence": 0.4
+    }
+  },
+  "architecture/florence/porta-citta.webp": {
+    "description": "A medieval city gate: a square crenellated stone tower with a tall archway through it and a stretch of crenellated town wall, drawn from the ground to the top of the tower.",
+    "placement": "stands",
+    "opaque_box": [
+      0.0131,
+      0.014,
+      0.9869,
+      0.986
+    ],
+    "height_m": 18.0,
+    "jev": {
+      "probabilities": {
+        "18": 0.58,
+        "12": 0.34,
+        "25": 0.08
+      },
+      "confidence": 0.37
+    }
+  },
+  "figures/citizens/frate.webp": {
+    "description": "A friar in a brown habit with a knotted rope belt and sandals, standing, hands together.",
+    "placement": "stands",
+    "opaque_box": [
+      0.035,
+      0.0125,
+      0.965,
+      0.9875
+    ],
+    "height_m": 1.68,
+    "jev": {
+      "probabilities": {
+        "1.78": 0.01,
+        "1.68": 0.96,
+        "1.6": 0.03
+      },
+      "confidence": 0.94
+    }
+  },
+  "figures/citizens/scriba.webp": {
+    "description": "A scribe standing at a tall wooden writing desk, writing with a quill; the figure's head is the highest point.",
+    "placement": "stands",
+    "opaque_box": [
+      0.0244,
+      0.0131,
+      0.9756,
+      0.9869
+    ],
+    "height_m": 1.68,
+    "jev": {
+      "probabilities": {
+        "1.78": 0.09,
+        "1.68": 0.87,
+        "1.6": 0.04
+      },
+      "confidence": 0.81
+    }
+  },
+  "figures/citizens/donna-fiorentina.webp": {
+    "description": "A Florentine woman in a long dress and blue veil, standing, carrying a basket.",
+    "placement": "stands",
+    "opaque_box": [
+      0.0278,
+      0.0131,
+      0.9722,
+      0.9869
+    ],
+    "height_m": 1.6,
+    "jev": {
+      "probabilities": {
+        "1.52": 0.04,
+        "1.68": 0.04,
+        "1.6": 0.92
+      },
+      "confidence": 0.88
+    }
+  },
+  "figures/citizens/mercante.webp": {
+    "description": "A merchant in a long light tunic with a belt purse, standing, one hand out.",
+    "placement": "stands",
+    "opaque_box": [
+      0.0275,
+      0.0125,
+      0.9725,
+      0.9875
+    ],
+    "height_m": 1.68,
+    "jev": {
+      "probabilities": {
+        "1.78": 0.04,
+        "1.68": 0.94,
+        "1.6": 0.02
+      },
+      "confidence": 0.91
+    }
+  },
+  "figures/dante/beatrice.webp": {
+    "description": "Beatrice, a young Florentine woman in a long white gown and veil, standing.",
+    "placement": "stands",
+    "opaque_box": [
+      0.0251,
+      0.0119,
+      0.9749,
+      0.9881
+    ],
+    "height_m": 1.6,
+    "jev": {
+      "probabilities": {
+        "1.52": 0.02,
+        "1.68": 0.05,
+        "1.6": 0.93
+      },
+      "confidence": 0.88
+    }
+  },
+  "figures/dante/dante-cavaliere.webp": {
+    "description": "Dante as a young cavalryman in chain mail and a red surcoat, riding a saddled horse; the rider's head is the highest point.",
+    "placement": "stands",
+    "opaque_box": [
+      0.0121,
+      0.0119,
+      0.9879,
+      1.0
+    ],
+    "height_m": 2.45,
+    "jev": {
+      "probabilities": {
+        "2.45": 0.6,
+        "2.2": 0.29,
+        "2.7": 0.11
+      },
+      "confidence": 0.4
+    }
+  },
+  "figures/dante/dante-esule.webp": {
+    "description": "Dante in exile: an older man in a red hooded robe with a walking staff and a shoulder bag, standing.",
+    "placement": "stands",
+    "opaque_box": [
+      0.0192,
+      0.0125,
+      0.9808,
+      1.0
+    ],
+    "height_m": 1.68,
+    "jev": {
+      "probabilities": {
+        "1.78": 0.36,
+        "1.68": 0.62,
+        "1.6": 0.02
+      },
+      "confidence": 0.44
+    }
+  },
+  "figures/dante/dante-scrive.webp": {
+    "description": "Dante seated on a wooden chair, writing in a book on his lap; figure and chair are one drawing, his head is the highest point.",
+    "placement": "stands",
+    "opaque_box": [
+      0.0185,
+      0.0125,
+      0.9815,
+      0.9875
+    ],
+    "height_m": 1.3,
+    "jev": {
+      "probabilities": {
+        "1.15": 0.28,
+        "1.45": 0.3,
+        "1.3": 0.42
+      },
+      "confidence": 0.13
+    }
+  },
+  "figures/dante/dante-cammina.webp": {
+    "description": "Dante walking with a staff, in a red robe and white cap, a bag at his side.",
+    "placement": "stands",
+    "opaque_box": [
+      0.0212,
+      0.0119,
+      0.9788,
+      0.9881
+    ],
+    "height_m": 1.68,
+    "jev": {
+      "probabilities": {
+        "1.78": 0.34,
+        "1.68": 0.65,
+        "1.6": 0.01
+      },
+      "confidence": 0.47
+    }
+  },
+  "figures/dante/dante-legge.webp": {
+    "description": "Dante standing in a long red robe and red cap, reading a book held in both hands.",
+    "placement": "stands",
+    "opaque_box": [
+      0.026,
+      0.0119,
+      0.974,
+      0.9881
+    ],
+    "height_m": 1.68,
+    "jev": {
+      "probabilities": {
+        "1.78": 0.25,
+        "1.68": 0.74,
+        "1.6": 0.01
+      },
+      "confidence": 0.6
+    }
+  },
+  "figures/dante/guido-cavalcanti.webp": {
+    "description": "Guido Cavalcanti, a young Florentine nobleman in a short red tunic, cloak and hose, standing, holding a scroll.",
+    "placement": "stands",
+    "opaque_box": [
+      0.0235,
+      0.0119,
+      0.9765,
+      0.9881
+    ],
+    "height_m": 1.72,
+    "jev": {
+      "probabilities": {
+        "1.72": 0.85,
+        "1.62": 0.11,
+        "1.82": 0.04
+      },
+      "confidence": 0.78
+    }
+  },
+  "figures/dante/dante-giovane.webp": {
+    "description": "Young Dante in a red robe reading a book, drawn from the knees up (the lower legs and feet are cut off).",
+    "placement": "cropped",
+    "opaque_box": [
+      0.0197,
+      0.0125,
+      0.9803,
+      1.0
+    ]
+  },
+  "figures/power/messo.webp": {
+    "description": "A messenger in a short tunic with a satchel, standing, holding a sealed letter.",
+    "placement": "stands",
+    "opaque_box": [
+      0.027,
+      0.0125,
+      0.973,
+      0.9875
+    ],
+    "height_m": 1.68,
+    "jev": {
+      "probabilities": {
+        "1.78": 0.01,
+        "1.68": 0.96,
+        "1.6": 0.03
+      },
+      "confidence": 0.94
+    }
+  },
+  "figures/power/priore.webp": {
+    "description": "A prior, a Florentine city magistrate, in a long red gown with a blue collar and black cap, standing, reading a document.",
+    "placement": "stands",
+    "opaque_box": [
+      0.026,
+      0.0125,
+      0.974,
+      0.9875
+    ],
+    "height_m": 1.68,
+    "jev": {
+      "probabilities": {
+        "1.78": 0.24,
+        "1.68": 0.74,
+        "1.6": 0.02
+      },
+      "confidence": 0.6
+    }
+  },
+  "figures/power/virgilio.webp": {
+    "description": "Virgil, the Roman poet, in a white toga with a laurel wreath, standing, one hand raised.",
+    "placement": "stands",
+    "opaque_box": [
+      0.0139,
+      0.0063,
+      0.9861,
+      0.9938
+    ],
+    "height_m": 1.72,
+    "jev": {
+      "probabilities": {
+        "1.72": 0.54,
+        "1.82": 0.39,
+        "1.62": 0.07
+      },
+      "confidence": 0.31
+    }
+  },
+  "figures/power/papa-bonifacio.webp": {
+    "description": "Pope Boniface VIII standing in papal vestments and a tall papal tiara, raising a hand in blessing; the top of the tiara is the highest point.",
+    "placement": "stands",
+    "opaque_box": [
+      0.019,
+      0.0125,
+      0.981,
+      1.0
+    ],
+    "height_m": 1.95,
+    "jev": {
+      "probabilities": {
+        "2.1": 0.14,
+        "1.95": 0.6,
+        "1.8": 0.26
+      },
+      "confidence": 0.41
+    }
+  },
+  "figures/soldiers/cavaliere-guelfo.webp": {
+    "description": "A Guelph knight in a great helm and a white surcoat with a red cross, on a white horse, holding a lance upright; the lance tip is the highest point.",
+    "placement": "stands",
+    "opaque_box": [
+      0.0173,
+      0.0119,
+      0.9827,
+      1.0
+    ],
+    "height_m": 3.6,
+    "jev": {
+      "probabilities": {
+        "3.6": 0.67,
+        "3": 0.23,
+        "4.2": 0.1
+      },
+      "confidence": 0.49
+    }
+  },
+  "figures/soldiers/fante.webp": {
+    "description": "A foot soldier in a padded coat and kettle helmet, standing, holding an upright spear and a painted shield; the spear tip is the highest point.",
+    "placement": "stands",
+    "opaque_box": [
+      0.0269,
+      0.0131,
+      0.9731,
+      0.9869
+    ],
+    "height_m": 2.1,
+    "jev": {
+      "probabilities": {
+        "2.9": 0.13,
+        "2.1": 0.54,
+        "2.5": 0.33
+      },
+      "confidence": 0.3
+    }
+  },
+  "figures/soldiers/cavallo.webp": {
+    "description": "A saddled riding horse without a rider, standing, head up; the top of the head is the highest point.",
+    "placement": "stands",
+    "opaque_box": [
+      0.0139,
+      0.0125,
+      0.9861,
+      0.9875
+    ],
+    "height_m": 1.8,
+    "jev": {
+      "probabilities": {
+        "2.1": 0.17,
+        "2.4": 0.03,
+        "1.8": 0.8
+      },
+      "confidence": 0.7
+    }
+  },
+  "figures/soldiers/balestriere.webp": {
+    "description": "A crossbowman kneeling on one knee, aiming a crossbow, in a quilted coat and kettle helmet.",
+    "placement": "stands",
+    "opaque_box": [
+      0.0149,
+      0.0138,
+      0.9851,
+      0.9862
+    ],
+    "height_m": 1.25,
+    "jev": {
+      "probabilities": {
+        "1.4": 0.41,
+        "1.1": 0.13,
+        "1.25": 0.46
+      },
+      "confidence": 0.2
+    }
+  },
+  "nature/tuscany/erba.webp": {
+    "description": "A tuft of wild grass with a few poppies and daisies.",
+    "placement": "stands",
+    "opaque_box": [
+      0.0214,
+      0.0248,
+      0.9786,
+      0.9752
+    ],
+    "height_m": 0.35,
+    "jev": {
+      "probabilities": {
+        "0.9": 0.02,
+        "0.6": 0.35,
+        "0.35": 0.63
+      },
+      "confidence": 0.44
+    }
+  },
+  "nature/tuscany/cespuglio.webp": {
+    "description": "A rounded green shrub.",
+    "placement": "stands",
+    "opaque_box": [
+      0.0223,
+      0.0304,
+      0.9777,
+      0.9696
+    ],
+    "height_m": 1.3,
+    "jev": {
+      "probabilities": {
+        "0.8": 0.47,
+        "1.3": 0.51,
+        "2": 0.02
+      },
+      "confidence": 0.26
+    }
+  },
+  "nature/tuscany/quercia.webp": {
+    "description": "A broad oak tree with a spreading crown.",
+    "placement": "stands",
+    "opaque_box": [
+      0.0188,
+      0.0215,
+      0.9812,
+      0.9785
+    ],
+    "height_m": 18.0,
+    "jev": {
+      "probabilities": {
+        "18": 0.5,
+        "8": 0.12,
+        "12": 0.38
+      },
+      "confidence": 0.26
+    }
+  },
+  "nature/tuscany/ulivo.webp": {
+    "description": "An olive tree with a twisted trunk and a silvery crown.",
+    "placement": "stands",
+    "opaque_box": [
+      0.0188,
+      0.0205,
+      0.9812,
+      0.9795
+    ],
+    "height_m": 6.0,
+    "jev": {
+      "probabilities": {
+        "8": 0.25,
+        "6": 0.55,
+        "4": 0.2
+      },
+      "confidence": 0.32
+    }
+  },
+  "nature/tuscany/cipresso.webp": {
+    "description": "An Italian cypress: a tall narrow evergreen.",
+    "placement": "stands",
+    "opaque_box": [
+      0.0674,
+      0.0185,
+      0.9326,
+      0.9815
+    ],
+    "height_m": 22.0,
+    "jev": {
+      "probabilities": {
+        "16": 0.34,
+        "10": 0.12,
+        "22": 0.54
+      },
+      "confidence": 0.31
+    }
+  },
+  "nature/tuscany/nuvola-1.webp": {
+    "description": "A long flat white cloud.",
+    "placement": "sky",
+    "opaque_box": [
+      0.0187,
+      0.0541,
+      0.9813,
+      0.9459
+    ]
+  },
+  "nature/tuscany/nuvola-2.webp": {
+    "description": "A puffy cumulus cloud tinted pink and yellow.",
+    "placement": "sky",
+    "opaque_box": [
+      0.0216,
+      0.0355,
+      0.9784,
+      0.9645
+    ]
+  },
+  "nature/tuscany/nuvola-3.webp": {
+    "description": "A wispy, windswept cloud.",
+    "placement": "sky",
+    "opaque_box": [
+      0.0216,
+      0.0526,
+      0.9784,
+      0.9474
+    ]
+  },
+  "nature/tuscany/stormo.webp": {
+    "description": "A small flock of birds in flight.",
+    "placement": "sky",
+    "opaque_box": [
+      0.0265,
+      0.0459,
+      0.9735,
+      0.9541
+    ]
+  },
+  "props/medieval/lanterna.webp": {
+    "description": "An iron hand lantern with glass panes, a lit candle inside and a ring handle on top, standing upright.",
+    "placement": "stands",
+    "opaque_box": [
+      0.0377,
+      0.0189,
+      0.9623,
+      0.9811
+    ],
+    "height_m": 0.3,
+    "jev": {
+      "probabilities": {
+        "0.3": 0.48,
+        "0.45": 0.47,
+        "0.6": 0.05
+      },
+      "confidence": 0.22
+    }
+  },
+  "props/medieval/bisaccia.webp": {
+    "description": "A leather satchel with two buckled straps and a shoulder strap, standing upright.",
+    "placement": "stands",
+    "opaque_box": [
+      0.0174,
+      0.0225,
+      0.9826,
+      0.9775
+    ],
+    "height_m": 0.35,
+    "jev": {
+      "probabilities": {
+        "0.45": 0.16,
+        "0.25": 0.09,
+        "0.35": 0.75
+      },
+      "confidence": 0.62
+    }
+  },
+  "props/medieval/stendardo.webp": {
+    "description": "A war banner: a white cloth with a red cross hanging from a crossbar with a spear-point finial, on a short piece of pole.",
+    "placement": "held",
+    "opaque_box": [
+      0.0254,
+      0.0171,
+      0.9746,
+      0.9829
+    ]
+  },
+  "props/medieval/fiorino.webp": {
+    "description": "A gold florin coin with the Florentine lily, drawn large as a close-up.",
+    "placement": "closeup",
+    "opaque_box": [
+      0.0239,
+      0.0227,
+      0.9761,
+      0.9773
+    ]
+  },
+  "props/medieval/corona-alloro.webp": {
+    "description": "A laurel wreath, drawn as a close-up.",
+    "placement": "closeup",
+    "opaque_box": [
+      0.0198,
+      0.02,
+      0.9802,
+      0.98
+    ]
+  },
+  "props/medieval/codice-aperto.webp": {
+    "description": "An open manuscript book with handwritten pages, drawn as a close-up.",
+    "placement": "closeup",
+    "opaque_box": [
+      0.0152,
+      0.0222,
+      0.9848,
+      0.9778
+    ]
+  },
+  "props/medieval/pergamena-sigillata.webp": {
+    "description": "A rolled parchment tied with cord and a red wax seal, drawn as a close-up.",
+    "placement": "closeup",
+    "opaque_box": [
+      0.0192,
+      0.0206,
+      0.9808,
+      0.9794
+    ]
+  },
+  "props/medieval/penna-calamaio.webp": {
+    "description": "A goose-feather quill standing in a glass inkwell, drawn as a close-up.",
+    "placement": "closeup",
+    "opaque_box": [
+      0.0275,
+      0.0192,
+      0.9725,
+      0.9808
+    ]
+  },
+  "props/medieval/bastone.webp": {
+    "description": "A plain wooden walking staff drawn lying diagonally, as a close-up.",
+    "placement": "closeup",
+    "opaque_box": [
+      0.0209,
+      0.0196,
+      0.9791,
+      0.9804
+    ]
+  }
+}

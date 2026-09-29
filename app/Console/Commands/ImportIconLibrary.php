@@ -48,6 +48,9 @@ class ImportIconLibrary extends Command
     /** Where the sanitised copies live on the public disk. */
     private const DISK_ROOT = 'svg-assets/library';
 
+    /** @var array<string, array<string, mixed>> the current collection's meta.json */
+    private array $meta = [];
+
     public function handle(SvgSanitizer $sanitizer): int
     {
         $root = (string) ($this->option('path') ?: resource_path('icons'));
@@ -76,6 +79,7 @@ class ImportIconLibrary extends Command
 
         foreach ($collections as $collection) {
             $cdn = LibraryCdn::manifest($collection, $root);
+            $this->meta = $this->metaManifest($root.'/'.$collection);
             foreach ($this->libraryFiles($root.'/'.$collection) as $file) {
                 $rest = str_replace('\\', '/', $file->getRelativePathname());
                 $ref = $collection.'/'.$rest;
@@ -168,6 +172,7 @@ class ImportIconLibrary extends Command
             'width' => $clean['width'],
             'height' => $clean['height'],
             'view_box' => $clean['view_box'],
+            ...$this->metaFor($ref, $collection, $this->isRaster($file)),
         ])->save();
     }
 
@@ -196,7 +201,49 @@ class ImportIconLibrary extends Command
             'width' => isset($entry['width']) ? (int) $entry['width'] : null,
             'height' => isset($entry['height']) ? (int) $entry['height'] : null,
             'view_box' => null,
+            ...$this->metaFor($ref, $collection, true),
         ])->save();
+    }
+
+    /**
+     * meta.json beside a collection: per picture WHAT it is and how tall the drawn thing really is
+     * (written by tools/diorama/library_heights.py, heights decided by JEV).
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    private function metaManifest(string $dir): array
+    {
+        $file = $dir.'/meta.json';
+        if (! is_file($file)) {
+            return [];
+        }
+        $meta = json_decode((string) file_get_contents($file), true);
+        if (! is_array($meta)) {
+            throw new RuntimeException("{$file} is not valid JSON.");
+        }
+
+        return $meta;
+    }
+
+    /**
+     * The real-world fields for one picture. A raster picture without them is imported but named:
+     * every picture we add must say what it is and how tall it is (Bart, 2026-09-29).
+     *
+     * @return array{description: ?string, placement: ?string, height_m: ?float, opaque_box: ?array<int, float>}
+     */
+    private function metaFor(string $ref, string $collection, bool $isRaster): array
+    {
+        $entry = $this->meta[substr($ref, strlen($collection) + 1)] ?? null;
+        if ($entry === null && $isRaster) {
+            $this->warn("  {$ref}: no entry in meta.json (what it is, placement, height)");
+        }
+
+        return [
+            'description' => $entry['description'] ?? null,
+            'placement' => $entry['placement'] ?? null,
+            'height_m' => isset($entry['height_m']) ? (float) $entry['height_m'] : null,
+            'opaque_box' => $entry['opaque_box'] ?? null,
+        ];
     }
 
     /**
