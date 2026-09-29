@@ -1,6 +1,6 @@
 # Audit — What We Might Have Missed
 
-**Subject:** thelearningportal.us — AI-generated, story-driven K-12 history lessons narrated by AI avatars, consumed by **teachers** and **children** via web + a Flutter/PWA app.
+**Subject:** historyportal.eu — AI-generated, story-driven K-12 history lessons narrated by AI avatars, consumed by **teachers** and **children** via web + a Flutter/PWA app.
 **Audit date:** 2026-06-24 · **Branch:** `main`
 **Lenses:** (A) Agent/LLM pipeline architecture · (B) Ed-tech product readiness for a child-facing product.
 **Method:** Direct code reading + targeted searches. Every finding cites `file:line` or states **absent**. No padding.

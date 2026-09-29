@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Http;
  */
 final class WikidataEntityResolver
 {
-    private const UA = 'TheLearningPortal/1.0 (https://thelearningportal.us; bartslot@gmail.com)';
+    private const UA = 'HistoryPortal/1.0 (https://historyportal.eu; bartslot@gmail.com)';
     private const TIMEOUT = 12;
     private const CACHE_TTL = 86400;   // 24h
 

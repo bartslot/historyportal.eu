@@ -3710,7 +3710,7 @@ class Step3SceneConfigurator extends Component
 
         try {
             $response = \Illuminate\Support\Facades\Http::withHeaders([
-                'User-Agent' => 'LearningPortal/1.0 (thelearningportal.us; lesson voyage images)',
+                'User-Agent' => 'HistoryPortal/1.0 (historyportal.eu; lesson voyage images)',
             ])->timeout(30)->get($imageUrl.'?width=1600');
             if (! $response->successful() || $response->body() === '') {
                 throw new \RuntimeException('HTTP '.$response->status());
@@ -4279,7 +4279,7 @@ class Step3SceneConfigurator extends Component
 
         try {
             $response = \Illuminate\Support\Facades\Http::withHeaders([
-                'User-Agent' => 'LearningPortal/1.0 (thelearningportal.us; lesson backgrounds)',
+                'User-Agent' => 'HistoryPortal/1.0 (historyportal.eu; lesson backgrounds)',
             ])->timeout(30)->get($imageUrl.'?width=1920');
             if (! $response->successful() || $response->body() === '') {
                 throw new \RuntimeException('HTTP '.$response->status());
@@ -4375,7 +4375,7 @@ class Step3SceneConfigurator extends Component
 
         try {
             $response = \Illuminate\Support\Facades\Http::withHeaders([
-                'User-Agent' => 'LearningPortal/1.0 (thelearningportal.us; lesson image layers)',
+                'User-Agent' => 'HistoryPortal/1.0 (historyportal.eu; lesson image layers)',
             ])->timeout(30)->get($imageUrl.'?width=1600');
             if (! $response->successful() || $response->body() === '') {
                 throw new \RuntimeException('HTTP '.$response->status());
@@ -4491,7 +4491,7 @@ class Step3SceneConfigurator extends Component
 
         try {
             $response = \Illuminate\Support\Facades\Http::withHeaders([
-                'User-Agent' => 'LearningPortal/1.0 (thelearningportal.us; lesson backgrounds)',
+                'User-Agent' => 'HistoryPortal/1.0 (historyportal.eu; lesson backgrounds)',
             ])
                 // Image URLs redirect constantly (http→https, CDN shuffles), so redirects stay ON —
                 // but every hop is re-checked, because validating only the URL the teacher typed let

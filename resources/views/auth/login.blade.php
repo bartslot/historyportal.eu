@@ -78,7 +78,7 @@
 
         <p class="mt-5 text-center text-xs text-slate-400">
             {{ __('Students: use the') }}
-            <a href="#" class="text-amber-400 hover:underline">Learning Portal app</a>
+            <a href="#" class="text-amber-400 hover:underline">History Portal app</a>
             {{ __('to access your lessons.') }}
         </p>
     </div>

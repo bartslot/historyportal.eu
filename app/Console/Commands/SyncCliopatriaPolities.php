@@ -24,7 +24,7 @@ class SyncCliopatriaPolities extends Command
 
     protected $description = 'Enrich Cliopatria polities (by Wikidata QID) into polities + download flags';
 
-    private const UA = 'TheLearningPortal/1.0 (https://thelearningportal.us; bartslot@gmail.com) educational';
+    private const UA = 'HistoryPortal/1.0 (https://historyportal.eu; bartslot@gmail.com) educational';
 
     /** PNG signature. Commons answers a 200 with an HTML error page often enough to check. */
     private const PNG_MAGIC = "\x89PNG\r\n\x1a\n";

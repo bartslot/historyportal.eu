@@ -10,7 +10,7 @@ Assets are pre-built and committed (`public/build`), so **no `npm` is needed on 
 
 ## 1. Code
 ```bash
-cd ~/www/thelearningportal.us      # your SiteGround app root
+cd ~/www/historyportal.eu      # your SiteGround app root
 git pull origin main
 composer install --no-dev --optimize-autoloader
 ```
@@ -20,7 +20,7 @@ Copy `.env.example` → `.env` and set:
 ```env
 APP_ENV=production
 APP_DEBUG=false
-APP_URL=https://thelearningportal.us
+APP_URL=https://historyportal.eu
 # APP_KEY — generate a fresh one:  php artisan key:generate
 
 # App DB — SiteGround LOCAL Postgres (sub-ms; NOT a remote cloud DB). Create the

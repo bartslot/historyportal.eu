@@ -13,9 +13,9 @@
         {{ $head }}
     @else
         {{-- Carry the brand once. A page whose title already IS the brand had it appended anyway,
-             so the live home page rendered "The Learning Portal · The Learning Portal". Same rule
+             so the live home page rendered "History Portal · History Portal". Same rule
              x-seo already applies for the pages that use it; this is the fallback path. --}}
-        <title>{{ $title === 'The Learning Portal' ? $title : $title.' · The Learning Portal' }}</title>
+        <title>{{ $title === 'History Portal' ? $title : $title.' · History Portal' }}</title>
         <meta name="description" content="{{ __('History lessons your class wants to see the end of. Real paintings, a narrated story, and a game they finish themselves. Built in minutes, plays anywhere.') }}">
     @endisset
 

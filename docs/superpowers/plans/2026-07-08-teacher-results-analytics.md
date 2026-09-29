@@ -1601,7 +1601,7 @@ Route (under the results routes):
         @endforeach
         <div class="footer">
             <span>{{ $lesson->lesson_code }}</span>
-            <span>thelearningportal.us · {{ __('sheet') }} v1</span>
+            <span>historyportal.eu · {{ __('sheet') }} v1</span>
         </div>
     </div>
 </body>

@@ -3,7 +3,7 @@
      variant has been chosen; the real hero lives in components/landing/hero.blade.php. --}}
 <x-layouts.landing title="Hero preview">
     <x-slot:head>
-        <title>Hero preview · The Learning Portal</title>
+        <title>Hero preview · History Portal</title>
         <meta name="robots" content="noindex, nofollow">
     </x-slot:head>
 

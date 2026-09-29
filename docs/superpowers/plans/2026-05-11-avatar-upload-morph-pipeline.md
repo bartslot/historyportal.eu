@@ -64,7 +64,7 @@ return new class extends Migration
 - [ ] **Step 2: Run migration**
 
 ```bash
-cd /Users/bartslot/BartsAutomation/BartsDev/apps/thelearningportal.us
+cd /Users/bartslot/BartsAutomation/BartsDev/apps/historyportal.eu
 php artisan migrate
 ```
 
@@ -414,7 +414,7 @@ class TransferAvatarMorphs implements ShouldQueue
 - [ ] **Step 2: Verify queue config accepts 10-minute jobs**
 
 ```bash
-grep -E "QUEUE_CONNECTION|retry_after" /Users/bartslot/BartsAutomation/BartsDev/apps/thelearningportal.us/config/queue.php | head -10
+grep -E "QUEUE_CONNECTION|retry_after" /Users/bartslot/BartsAutomation/BartsDev/apps/historyportal.eu/config/queue.php | head -10
 ```
 
 If `retry_after` is less than 600 for the database driver, increase it to 660:
@@ -952,7 +952,7 @@ No automated test for this flow (it requires Blender). Manual verification check
 - [ ] **Step 1: Start the queue worker**
 
 ```bash
-cd /Users/bartslot/BartsAutomation/BartsDev/apps/thelearningportal.us
+cd /Users/bartslot/BartsAutomation/BartsDev/apps/historyportal.eu
 php artisan queue:work --timeout=660
 ```
 

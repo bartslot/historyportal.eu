@@ -240,7 +240,7 @@ SSML;
                 // PCM when we can encode it ourselves: one lossy step instead of two, and Azure
                 // bills per character, not per format. MP3 only on a machine with no encoder.
                 'X-Microsoft-OutputFormat' => $pcm ? 'riff-24khz-16bit-mono-pcm' : 'audio-24khz-48kbitrate-mono-mp3',
-                'User-Agent' => 'TheLearningPortal',
+                'User-Agent' => 'HistoryPortal',
             ])
             // A full scene of narration is a minute or more of speech, and Azure streams it back as
             // it synthesises. From SiteGround that regularly ran past 25s with ~280 KB already
@@ -547,7 +547,7 @@ PY;
         }
 
         try {
-            $tempDir = sys_get_temp_dir().'/thelearningportal-tts';
+            $tempDir = sys_get_temp_dir().'/historyportal-tts';
 
             if (! is_dir($tempDir)) {
                 @mkdir($tempDir, 0777, true);

@@ -17,7 +17,7 @@ from pathlib import Path
 # CONFIGURATION
 # ============================================================================
 
-PROJECT_ROOT = "/Users/bartslot/Projects/thelearningportal.us"
+PROJECT_ROOT = "/Users/bartslot/Projects/historyportal.eu"
 AVATARS_DIR = os.path.join(PROJECT_ROOT, "public/avatars")
 ARKIT_52 = [
     "aa", "ch", "dd", "ee", "ff", "gg", "ih", "jj", "kk", "ll", "mm", "nn",

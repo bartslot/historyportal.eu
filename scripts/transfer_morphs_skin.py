@@ -10,7 +10,7 @@ import os
 import shutil
 
 DONOR_GLB   = "/Users/bartslot/Downloads/Avatars/ready-player-me-avatar/source/617b091cfb622cf1cd9cc537.glb"
-AVATARS_DIR = "/Users/bartslot/BartsAutomation/BartsDev/apps/thelearningportal.us/public/avatars"
+AVATARS_DIR = "/Users/bartslot/BartsAutomation/BartsDev/apps/historyportal.eu/public/avatars"
 
 AVATAR_IDS = [
     # (avatar_id, node_name_in_blender, mesh_name_in_glb)

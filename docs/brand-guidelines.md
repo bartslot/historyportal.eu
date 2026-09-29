@@ -7,7 +7,7 @@
 ## Identity
 
 **Product name:** The Learning Portal  
-**Domain:** thelearningportal.us  
+**Domain:** historyportal.eu  
 **Tagline:** none. There is no tagline and none should be written — see **Voice & Tone** below.  
 **Category:** AI-powered K-12 EdTech — cinematic, premium, multimedia  
 **Mood reference:** Netflix × Disney+ × museum-quality documentary  
@@ -419,7 +419,7 @@ colors: {
 Use this block when prompting Claude, ChatGPT, Gemini, or any AI for UI/design work:
 
 ```
-You are designing for The Learning Portal (thelearningportal.us), an AI-powered K-12 EdTech 
+You are designing for The Learning Portal (historyportal.eu), an AI-powered K-12 EdTech 
 platform. Visual reference: Netflix × Disney+ × cinematic documentary.
 
 PALETTE:

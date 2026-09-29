@@ -18,7 +18,7 @@ use Symfony\Component\DomCrawler\Crawler;
  */
 abstract class AbstractDomStorySource implements StoryImageSource
 {
-    protected const UA = 'TheLearningPortal/1.0 (https://thelearningportal.us; bartslot@gmail.com)';
+    protected const UA = 'HistoryPortal/1.0 (https://historyportal.eu; bartslot@gmail.com)';
     protected const TIMEOUT = 20;
 
     abstract public function key(): string;

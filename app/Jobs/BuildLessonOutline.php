@@ -186,7 +186,7 @@ class BuildLessonOutline implements ShouldQueue
                 if ($imgUrl) {
                     try {
                         $bytes = \Illuminate\Support\Facades\Http::timeout(20)
-                            ->withUserAgent('TheLearningPortal/1.0 (https://thelearningportal.us; bartslot@gmail.com)')
+                            ->withUserAgent('HistoryPortal/1.0 (https://historyportal.eu; bartslot@gmail.com)')
                             ->get($imgUrl)->body();
                         if ($bytes !== '') {
                             $ext = pathinfo(parse_url($imgUrl, PHP_URL_PATH) ?? '', PATHINFO_EXTENSION) ?: 'jpg';

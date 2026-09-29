@@ -130,7 +130,7 @@ final class Seo
                     '@type' => 'WebSite',
                     '@id' => url('/').'#website',
                     'url' => url('/'),
-                    'name' => 'The Learning Portal',
+                    'name' => 'History Portal',
                     'publisher' => ['@id' => url('/').'#organization'],
                     'inLanguage' => array_map(fn (string $c) => Locales::region($c), Locales::codes()),
                 ],
