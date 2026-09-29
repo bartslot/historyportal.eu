@@ -3,6 +3,7 @@ import {
   cellForScreenHeight, stackOrder, plateToStage, stageToPlate,
 } from './projection.js'
 import { poseAt, frameFor } from './timeline.js'
+import { alphaAt, loadAlphaMask, DRAWN_ALPHA } from './alpha-mask.js'
 
 /**
  * DioramaStage — draws a diorama scene (config.diorama) into a host element: the plate, its
@@ -76,6 +77,8 @@ export class DioramaStage {
     for (const o of spec.plate?.occluders ?? []) this._layerEls.set(o.id, plateImg(o.image, o.id))
 
     this._itemEls = new Map()
+    this._shown = new Map()           // per item: the frame, flip and picture on screen (for hit tests)
+    this._masks = new Map()           // picture URL → alpha mask (null = treat as all drawn)
     for (const item of spec.items ?? []) {
       const asset = assets[item.asset]
       if (!asset) continue
@@ -90,7 +93,14 @@ export class DioramaStage {
         + `pointer-events:${editable ? 'auto' : 'none'};touch-action:none;${editable ? 'cursor:grab;' : ''}`
       root.appendChild(img)
       this._itemEls.set(item.id, img)
-      if (editable) this._wireDrag(item.id, img)
+      if (editable) {
+        this._wireDrag(item.id, img)
+        const url = asset.url ?? base + asset.image
+        if (!this._masks.has(url)) {
+          this._masks.set(url, null)
+          loadAlphaMask(url).then(mask => { if (mask) this._masks.set(url, mask) })
+        }
+      }
     }
 
     if (editable) {
@@ -109,6 +119,7 @@ export class DioramaStage {
         + 'background:var(--color-base-100);border:2px solid var(--color-primary);'
       root.appendChild(this._handle)
       this._wireResize()
+      this._wireDragMoves()
     }
 
     this._focusU = this._itemFocusU()
@@ -172,7 +183,15 @@ export class DioramaStage {
       const at = this._toStage(p)
       const frames = asset.sheet?.frames ?? 1
       const frame = frameFor(asset.sheet, pose.anim, pose.walkedM)
-      const flip = this._flips(item, asset, pose) ? ' scaleX(-1)' : ''
+      const flipped = this._flips(item, asset, pose)
+      const flip = flipped ? ' scaleX(-1)' : ''
+      const boxW = asset.frame_m[0] * asset.px_per_m * p.scale * at.scale
+      const boxH = asset.frame_m[1] * asset.px_per_m * p.scale * at.scale
+      const [ax, ay] = asset.anchor ?? [0.5, 1]
+      this._shown.set(item.id, {
+        frame, frames, flipped, url: asset.url ?? (this.spec.plate?.base ?? '') + asset.image,
+        box: { x: at.x - ax * boxW, y: at.y - ay * boxH, w: boxW, h: boxH },   // stage px, as drawn
+      })
       Object.assign(img.style, {
         display: '', left: `${at.x}px`, top: `${at.y}px`,
         width: `${asset.frame_m[0] * asset.px_per_m * p.scale * at.scale}px`,
@@ -265,9 +284,39 @@ export class DioramaStage {
     return this.spec.floors.filter(f => f.on === id).map(f => f.id)
   }
 
-  _wireDrag (id, el) {
-    el.addEventListener('pointerdown', (ev) => {
+  /**
+   * The front-most item whose DRAWN pixels are under a page point: a press on a picture's
+   * transparent margin reaches the item beneath it. Null when nothing is drawn there.
+   */
+  pickAt (clientX, clientY) {
+    const host = this.host.getBoundingClientRect()
+    const x = clientX - host.left
+    const y = clientY - host.top
+    const hits = [...this._itemEls.entries()]
+      .filter(([id, el]) => el.style.display !== 'none' && this._shown.has(id))
+      .sort(([, a], [, b]) => Number(b.style.zIndex) - Number(a.style.zIndex))
+    for (const [id] of hits) {
+      const shown = this._shown.get(id)
+      const { box } = shown
+      if (x < box.x || x > box.x + box.w || y < box.y || y > box.y + box.h) continue
+      const mask = this._masks.get(shown.url)
+      if (!mask) return id                       // not measured (yet): the whole picture counts
+      let fx = (x - box.x) / box.w
+      if (shown.flipped) fx = 1 - fx
+      const fy = (y - box.y) / box.h
+      if (alphaAt(mask, (shown.frame + fx) / shown.frames, fy) > DRAWN_ALPHA) return id
+    }
+    return null
+  }
+
+  _wireDrag (ownId, ownEl) {
+    ownEl.addEventListener('pointerdown', (ev) => {
+      // The item that is DRAWN under the pointer, which may be one behind this picture.
+      const id = this.pickAt(ev.clientX, ev.clientY)
+      if (!id) return
+      const el = this._itemEls.get(id)
       ev.preventDefault()
+      ev.stopPropagation()
       capture(el, ev)
       this.select(id)
       const item = this._item(id)
@@ -279,8 +328,13 @@ export class DioramaStage {
       this._showGrid(item.floor)
       this._placeHandle()
     })
-    el.addEventListener('pointermove', (ev) => {
-      if (!this._drag || this._drag.id !== id) return
+  }
+
+  /** Moving and letting go, for whichever item is being dragged: one pair of listeners per stage. */
+  _wireDragMoves () {
+    const move = (ev) => {
+      if (!this._drag) return
+      const { id } = this._drag
       const p = this._pointerPlate(ev)
       const hit = hitTest(this.spec.camera, this._floors, p.u + this._drag.du, p.v + this._drag.dv, { except: this._ownFloors(id) })
       if (!hit) return                                   // no floor here: stay on the last one
@@ -289,17 +343,24 @@ export class DioramaStage {
       this._setItem(id, { floor: hit.floor, cell: clampCell(floor, snapCell(hit.cell, SNAP_STEP)) })
       this._showGrid(hit.floor)
       this._showChip(id)
-    })
+    }
     const end = () => {
-      if (!this._drag || this._drag.id !== id) return
-      const { moved } = this._drag
+      if (!this._drag) return
+      const { id, moved } = this._drag
       this._drag = null
-      el.style.cursor = 'grab'
+      const el = this._itemEls.get(id)
+      if (el) el.style.cursor = 'grab'
       this._hideGuides()
       if (moved) this._emitMove(id)
     }
-    el.addEventListener('pointerup', end)
-    el.addEventListener('pointercancel', end)
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', end)
+    window.addEventListener('pointercancel', end)
+    this._unwireDragMoves = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', end)
+      window.removeEventListener('pointercancel', end)
+    }
   }
 
   _wireResize () {
@@ -424,6 +485,8 @@ export class DioramaStage {
   }
 
   destroy () {
+    this._unwireDragMoves?.()
+    this._unwireDragMoves = null
     if (this._raf) cancelAnimationFrame(this._raf)
     this._raf = 0
     this._resize?.disconnect()
