@@ -11,6 +11,10 @@ WZ0, WW, WH = 1.05, 0.95, 1.05
 wall = box(R, "wall_back", (W, T, H), (0, BACK + T / 2, H / 2), "wall")
 cut_many(wall, [box(R, "win_cut", (WW, T + 0.2, WH), (0, BACK + T / 2, WZ0 + WH / 2), "cut")])
 box(R, "window_sill", (WW + 0.12, 0.42, 0.05), (0, BACK + 0.12, WZ0 - 0.025), "opening")
+# a stone courtyard wall 2 m outside the window: a bright empty opening was painted as a glazed sash window
+# with blinds (anachronism, 2026-09-28); with a wall behind, it reads as a deep window in a thick wall
+outside = box(R, "courtyard_wall", (4.0, 0.3, 4.0), (0, BACK + T + 2.0, 1.8), "wall")
+set_mat(outside, "rough_block_wall")
 wl = box(R, "wall_left", (T, BACK + 2, H), (-W / 2 - T / 2, BACK / 2 - 0.5, H / 2), "wall")
 box(R, "wall_right", (T, BACK + 2, H), (W / 2 + T / 2, BACK / 2 - 0.5, H / 2), "wall")
 FRONT = -1.2

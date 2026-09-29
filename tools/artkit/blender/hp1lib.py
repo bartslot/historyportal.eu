@@ -262,6 +262,22 @@ def render_shot(sc, cam, outdir, shot, meta=None, blocking=True, figures=None, h
             sc.render.filepath = p("shadedfig"); bpy.ops.render.render(write_still=True, scene=sc.name)
             _figures_visible(sc, False)
         sc.view_settings.view_transform = 'Standard'
+    if shaded:   # depth: metres from the camera plane, 16-bit PNG, 0 = at the camera, 65535 = DEPTH_MAX or farther.
+        # For foreground cut-outs (a street corner, a table, ferns) that sprites walk behind (Bart, 2026-09-28).
+        _figures_visible(sc, False)
+        dm = _depth_mat()
+        sc.view_layers[0].material_override = dm
+        vt, look = sc.view_settings.view_transform, sc.view_settings.look
+        sc.view_settings.view_transform = 'Standard'; sc.view_settings.look = 'None'
+        wc = tuple(sc.world.color); _set_world(sc, (1, 1, 1))     # sky = far
+        fmt = sc.render.image_settings
+        old = (fmt.color_depth, fmt.color_mode)
+        fmt.color_depth = '16'; fmt.color_mode = 'BW'
+        sc.render.filepath = p("depth"); bpy.ops.render.render(write_still=True, scene=sc.name)
+        fmt.color_depth, fmt.color_mode = old
+        sc.view_layers[0].material_override = None
+        sc.view_settings.view_transform, sc.view_settings.look = vt, look
+        _set_world(sc, wc)
     sun = bpy.data.objects.get(sc.name + ".hp1_sun")
     if sun:
         sun.hide_render = True
@@ -348,6 +364,25 @@ def render_shot(sc, cam, outdir, shot, meta=None, blocking=True, figures=None, h
     return info
 
 
+DEPTH_MAX = 200.0   # metres at white in _depth.png
+
+
+def _depth_mat():
+    """Emission = camera Z distance / DEPTH_MAX (linear, unlit), for the depth pass."""
+    m = bpy.data.materials.get("hp1_depth")
+    if m:
+        return m
+    m = bpy.data.materials.new("hp1_depth"); m.use_nodes = True
+    nt = m.node_tree; nt.nodes.clear()
+    cam = nt.nodes.new("ShaderNodeCameraData")
+    div = nt.nodes.new("ShaderNodeMath"); div.operation = 'DIVIDE'; div.inputs[1].default_value = DEPTH_MAX
+    em = nt.nodes.new("ShaderNodeEmission")
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    nt.links.new(cam.outputs["View Z Depth"], div.inputs[0]); nt.links.new(div.outputs[0], em.inputs["Color"])
+    nt.links.new(em.outputs[0], out.inputs["Surface"])
+    return m
+
+
 def camera_look(sc, name, loc, target, lens=50.0, family="cu"):
     """Close-up / over-the-shoulder camera aimed at a point (e.g. a head). No lens shift;
     the composer frames the face on a third afterwards."""
@@ -400,6 +435,58 @@ def sf(c, name, uid, part, loc=(0, 0, 0), yaw_deg=0.0, height=None, size=None, p
     """Free Sketchfab model by uid from ASSETS_ROOT/_sketchfab (see tools/artkit/fetch_sketchfab.py).
     pick: node-name substrings, to take one tree out of a pack or one LOD out of several."""
     return _library(c, name, "_sketchfab", uid, part, loc, yaw_deg, height, size, pick)
+
+
+_TREE_MESHES = {}   # (pack, species, seed) -> (bark mesh, leaves mesh or None), shared by every copy
+TREE_LOOK = {        # shaded-pass materials per species: (bark: Poly Haven id or rgb, leaf rgb)
+    "silver_birch": ((0.78, 0.76, 0.72), (0.30, 0.42, 0.14)),
+    "quaking_aspen": ((0.62, 0.62, 0.56), (0.34, 0.45, 0.16)),
+    "hill_cherry": ("jolcham_oak_bark_01", (0.26, 0.38, 0.12)),
+}
+TREE_LOOK_DEFAULT = ("jolcham_oak_bark_01", (0.20, 0.32, 0.10))
+
+
+def _flat(name, rgb):
+    m = bpy.data.materials.get(name) or bpy.data.materials.new(name)
+    m.use_nodes = True
+    b = m.node_tree.nodes.get("Principled BSDF")
+    b.inputs["Base Color"].default_value = (*rgb, 1)
+    b.inputs["Roughness"].default_value = 0.85
+    m.diffuse_color = (*rgb, 1)
+    return m
+
+
+def _tree_meshes(pack, species, seed):
+    key = (pack, species, seed)
+    if key in _TREE_MESHES and all(m is None or m.name in bpy.data.meshes for m in _TREE_MESHES[key]):
+        return _TREE_MESHES[key]
+    base = "%s_%02d" % (species, seed)
+    path = os.path.join(ASSETS_ROOT, pack, species + ".blend")
+    with bpy.data.libraries.load(path, link=False) as (src, dst):
+        dst.meshes = [n for n in src.meshes if n in (base + "_bark", base + "_leaves")]
+    by = {m.name.split(".")[0]: m for m in dst.meshes}
+    bark_look, leaf_rgb = TREE_LOOK.get(species, TREE_LOOK_DEFAULT)
+    bark, leaves = by[base + "_bark"], by.get(base + "_leaves")
+    bark.materials.clear()
+    bark.materials.append(pbr(bark_look) if isinstance(bark_look, str) else _flat("tree_bark_" + species, bark_look))
+    if leaves:
+        leaves.materials.clear(); leaves.materials.append(_flat("tree_leaf_" + species, leaf_rgb))
+    _TREE_MESHES[key] = (bark, leaves)
+    return bark, leaves
+
+
+def pt(c, name, species, seed, loc=(0, 0, 0), yaw_deg=0.0, scale=1.0, pack="_trees_forest"):
+    """Procedural tree (tools/artkit/blender/trees.py) from ASSETS_ROOT/<pack>/<species>.blend, real metres,
+    root at loc. Copies of one species+seed share their meshes. Returns [bark, leaves] objects (part plant)."""
+    out = []
+    for me in _tree_meshes(pack, species, seed):
+        if me is None:
+            continue
+        o = bpy.data.objects.new(c.name.split(":")[0] + "." + name + ("_leaves" if me.name.endswith("_leaves") else ""), me)
+        c.objects.link(o)
+        o["part"] = "plant"; o.location = loc; o.rotation_euler = (0, 0, math.radians(yaw_deg)); o.scale = (scale,) * 3
+        out.append(o)
+    return out
 
 
 def _library(c, name, lib, asset_id, part, loc, yaw_deg, height, size, pick=None):

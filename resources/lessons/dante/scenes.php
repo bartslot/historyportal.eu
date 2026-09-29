@@ -35,24 +35,22 @@ return [
 
     'firenze-1265' => [
         'type' => 'story', 'year' => 1265,
-        'backdrop' => "{$h}/backdrops/florence/firenze-strada",
+        // Painted plates (Blender scene -> watercolour paint pass, tools/artkit): house camera hp1, horizon on the
+        // upper third, so a standing adult's head reaches ~31% and height = ground - 31 (Bart, 2026-09-28).
+        'backdrop' => "{$h}/backdrops/dante/strada-avviso",
         'layers' => [
-            $cloud(1, 46, 7, 8),
-            $cloud(2, 64, 13, 7),
-            $birds(55, 22),
-            $person('citizens/frate', 75, 93, 28, 0.9, ['depth' => 0.9]),
-            $person('citizens/mercante', 30, 92, 42, 0.4),
-            $person('citizens/donna-fiorentina', 64, 92, 40, 0.7),
+            // no clouds or birds: the painted street has no open sky where they used to float
+            $person('citizens/frate', 72, 80, 49, 0.9, ['depth' => 0.9]),
+            $person('citizens/mercante', 30, 93, 62, 0.4),
+            $person('citizens/donna-fiorentina', 62, 92, 59, 0.7),
         ],
     ],
     'poesia-beatrice' => [
         'type' => 'story', 'year' => 1285,
-        'backdrop' => "{$h}/backdrops/florence/lungarno",
+        'backdrop' => "{$h}/backdrops/dante/strada-saluto",
         'layers' => [
-            $cloud(3, 30, 10, 8),
-            $birds(70, 16),
-            $person('dante/guido-cavalcanti', 88, 100, 50, 0.9, ['depth' => 1.05]),
-            $person('dante/beatrice', 63, 100, 64, 1.4, ['depth' => 1.1]),
+            $person('dante/guido-cavalcanti', 88, 100, 69, 0.9, ['depth' => 1.05]),
+            $person('dante/beatrice', 63, 100, 66, 1.4, ['depth' => 1.1]),
             // Half-length: bottom edge on the frame edge.
             ['asset' => "{$h}/figures/dante/dante-giovane", 'x' => 26, 'y' => 64, 'height' => 72,
                 'depth' => 1.15, 'anim' => 'slide-right', 'anim_delay' => 0.3],
@@ -73,7 +71,7 @@ return [
     ],
     'campaldino-1289' => [
         'type' => 'story', 'year' => 1289,
-        'backdrop' => "{$h}/backdrops/tuscany/campaldino-piana",
+        'backdrop' => "{$h}/backdrops/dante/campaldino",
         'layers' => [
             $cloud(1, 30, 10, 10),
             $cloud(2, 78, 7, 9),
@@ -99,11 +97,11 @@ return [
     ],
     'priore-1300' => [
         'type' => 'story', 'year' => 1300,
-        'backdrop' => "{$h}/backdrops/florence/sala-priori",
+        'backdrop' => "{$h}/backdrops/dante/sala-priori-1300",
         'layers' => [
-            $person('power/priore', 30, 94, 56, 0.4),
-            $person('dante/dante-legge', 58, 94, 58, 0.8),
-            $person('power/messo', 84, 94, 50, 1.4, ['anim' => 'slide-left']),
+            $person('power/priore', 30, 95, 64, 0.4),
+            $person('dante/dante-legge', 58, 95, 64, 0.8),
+            $person('power/messo', 84, 95, 62, 1.4, ['anim' => 'slide-left']),
         ],
     ],
     'esilio-1302' => [
@@ -134,7 +132,7 @@ return [
     ],
     'commedia-nasce' => [
         'type' => 'story', 'year' => 1306,
-        'backdrop' => "{$h}/backdrops/interiors/scrittoio",
+        'backdrop' => "{$h}/backdrops/dante/scrittoio-1283",
         'layers' => [
             $person('dante/dante-scrive', 40, 96, 62, 0.3, ['ambient' => 'none']),
         ],
@@ -142,6 +140,7 @@ return [
     'commedia-galleria' => [
         'type' => 'gallery', 'year' => 1310,
         'images' => [
+            "asset:{$h}/backdrops/dante/selva",           // the dark wood where the poem begins
             "asset:{$h}/backdrops/commedia/dore-inferno",
             "asset:{$h}/backdrops/commedia/dore-purgatorio",
             "asset:{$h}/backdrops/commedia/dore-paradiso",
@@ -150,13 +149,12 @@ return [
     'volgare' => [
         'type' => 'story', 'year' => 1312,
         // The same Florentine street and townspeople as the opening scene: now they can read him.
-        'backdrop' => "{$h}/backdrops/florence/firenze-strada",
+        'backdrop' => "{$h}/backdrops/dante/strada-avviso",
         'layers' => [
-            $cloud(2, 52, 9, 9),
-            $person('citizens/frate', 78, 93, 28, 1.2, ['depth' => 0.9]),
-            $person('citizens/mercante', 22, 93, 42, 0.8),
-            $person('citizens/donna-fiorentina', 70, 93, 40, 1.0),
-            $person('dante/dante-legge', 47, 95, 54, 0.3),
+            $person('citizens/frate', 78, 80, 49, 1.2, ['depth' => 0.9]),
+            $person('citizens/mercante', 20, 93, 62, 0.8),
+            $person('citizens/donna-fiorentina', 72, 93, 60, 1.0),
+            $person('dante/dante-legge', 46, 96, 65, 0.3),
         ],
     ],
     'ravenna-1321' => [

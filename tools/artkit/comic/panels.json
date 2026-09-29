@@ -151,5 +151,58 @@
    "chars_dream.txt",
    "style_interior.txt"
   ]
+ },
+ {
+  "id": "plate_street_wide",
+  "src": "street/sr01_wide_street_shaded.png",
+  "prompt": [
+   "plate_street.txt",
+   "style_city_plate.txt"
+  ],
+  "seed": 2
+ },
+ {
+  "id": "plate_street_notice",
+  "src": "street/sr02_notice_wall_shaded.png",
+  "prompt": [
+   "plate_street.txt",
+   "style_city_plate.txt"
+  ],
+  "seed": 2
+ },
+ {
+  "id": "plate_study",
+  "src": "study_b/st02_profile_shaded.png",
+  "prompt": [
+   "plate_study.txt",
+   "style_interior_plate.txt"
+  ],
+  "seed": 2
+ },
+ {
+  "id": "plate_hall",
+  "src": "priors/pr01_wide_room_shaded.png",
+  "prompt": [
+   "plate_hall.txt",
+   "style_interior_plate.txt"
+  ],
+  "seed": 2
+ },
+ {
+  "id": "plate_campaldino",
+  "src": "campaldino_plate/ca01_side_shaded.png",
+  "prompt": [
+   "plate_campaldino.txt",
+   "style_battle_plate.txt"
+  ],
+  "seed": 2
+ },
+ {
+  "id": "plate_wood",
+  "src": "forest3d_dawn/fo02_path_and_hill_shaded.png",
+  "prompt": [
+   "plate_wood.txt",
+   "style_forest.txt"
+  ]
  }
 ]

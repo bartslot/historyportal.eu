@@ -1,0 +1,80 @@
+{
+ "plate_street_wide": {
+  "_why": "downpipe, empty wall plaque, cable across the street, iron balcony railing, a thin pipe, a tiny lamp post: not 1283",
+  "rects": [
+   [
+    1452,
+    0,
+    1488,
+    292
+   ],
+   [
+    1798,
+    84,
+    1900,
+    166
+   ],
+   [
+    1078,
+    212,
+    1182,
+    272
+   ],
+   [
+    444,
+    160,
+    464,
+    316
+   ],
+   [
+    944,
+    398,
+    964,
+    434
+   ]
+  ],
+  "lines": [
+   [
+    800,
+    243,
+    1100,
+    280,
+    10
+   ],
+   [
+    740,
+    262,
+    1030,
+    282,
+    18
+   ]
+  ]
+ },
+ "plate_street_notice": {
+  "_why": "a double pipe/cable along the facade and a downpipe: not 1300; the blank notice stays (Guido's notice is a layer)",
+  "lines": [
+   [
+    688,
+    280,
+    1722,
+    -14,
+    46
+   ],
+   [
+    1355,
+    104,
+    1650,
+    -6,
+    18
+   ]
+  ],
+  "rects": [
+   [
+    1790,
+    0,
+    1814,
+    380
+   ]
+  ]
+ }
+}

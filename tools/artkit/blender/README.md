@@ -14,6 +14,16 @@ drawing with Nano Banana 2 in Figma; `finish.py` upscales the result (Upscayl di
 - `plates.py` cuts close-ups from a converted wide/medium shot at the character's head (camera math from
   the shot's camera file). Close-ups are never converted on their own: a flat wall has no perspective
   cues and Nano Banana invents a new perspective.
+- `trees.py` builds procedural tree packs with friggog/tree-gen (addon symlinked on the render PC at
+  `~/.config/blender/5.1/scripts/addons/tree_gen`): 18 species x 3 seeds, each a marked asset collection
+  (`<species>_<seed>`: `_bark` + `_leaves` meshes, metres, root at 0,0,0) plus `<species>_clay.png`.
+  `--lod hero` (300k verts a tree, `lesson_assets/_trees`) or `--lod forest` (80k, `_trees_forest`);
+  budgets in `tree_budget.py`. Stock tree-gen made 7.6M verts per oak: the finest twig level and 45-vert oak
+  leaves were most of it. `tree_roots.py` adds buttress lobes and surface roots that dive into the soil.
+  Our preset fixes (the weeping willow) live in `OVERRIDES`; `--set JSON` tunes any parameter.
+  `blender --background --python trees.py -- ~/artkit/lesson_assets/_trees_forest --lod forest [species ...]`.
+  In a pack: `pt(coll, name, species, seed, loc, yaw_deg, scale)` from `hp1lib.py` (copies share meshes).
+- `packs/woodland.py`: reusable temperate European woodland from forest-LOD trees (species mix checked with JEV).
 - `sheet.py` makes a contact sheet; `finish.py` upscales `<pack>/converted/*` into `<pack>/final/`.
 
 Gotchas found building the Dante packs:

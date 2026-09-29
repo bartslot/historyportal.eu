@@ -1509,5 +1509,12 @@
     "Subcategory": "Sottocategoria",
     "Table": "Tabella",
     "Used in": "Usato in",
-    "Vector": "Vettoriale"
+    "Vector": "Vettoriale",
+    "Quick mask": "Maschera rapida",
+    "Quick mask: press on a colour and drag to cut it out. Alt+press brings it back.": "Maschera rapida: premi su un colore e trascina per ritagliarlo. Alt+clic lo ripristina.",
+    "Tolerance": "Tolleranza",
+    "Reset": "Ripristina",
+    "Mask saved.": "Maschera salvata.",
+    "That layer is gone. Select it again and retry.": "Quel livello non c'è più. Selezionalo di nuovo e riprova.",
+    "The mask could not be uploaded. Try again, or use a smaller picture.": "Non è stato possibile caricare la maschera. Riprova o usa un'immagine più piccola."
 }

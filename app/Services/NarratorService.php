@@ -25,7 +25,7 @@ class NarratorService
 
             if ($response->successful()) {
                 $imageData = $this->resizePortrait($response->body());
-                $portraitPath = "lessons/{$lessonId}/portrait.jpg";
+                $portraitPath = "lessons/{$lessonId}/portrait.webp";
                 $this->lessonDisk()->put($portraitPath, $imageData);
                 return $portraitPath;
             }
@@ -50,7 +50,7 @@ class NarratorService
         }
 
         $imageData = $this->resizePortrait(file_get_contents($fallbackFile));
-        $portraitPath = "lessons/{$lessonId}/portrait.jpg";
+        $portraitPath = "lessons/{$lessonId}/portrait.webp";
         $this->lessonDisk()->put($portraitPath, $imageData);
 
         return $portraitPath;
@@ -65,7 +65,7 @@ class NarratorService
     }
 
     /**
-     * Resize an image to at most $maxDim × $maxDim using GD, and output as JPEG.
+     * Resize an image to at most $maxDim × $maxDim using GD, and output as WebP.
      * Falls back to returning the original bytes if GD is unavailable or parsing fails.
      */
     private function resizePortrait(string $imageData, int $maxDim = 512): string
@@ -84,9 +84,9 @@ class NarratorService
         $origH = imagesy($src);
 
         if ($origW <= $maxDim && $origH <= $maxDim) {
-            // Already small enough — just re-encode as JPEG to normalise format
+            // Already small enough — just re-encode as WebP to normalise format
             ob_start();
-            imagejpeg($src, null, 88);
+            imagewebp($src, null, \App\Services\Support\WebpEncoder::UPLOAD_QUALITY);
             $output = ob_get_clean();
             imagedestroy($src);
             return $output ?: $imageData;
@@ -100,7 +100,7 @@ class NarratorService
         imagecopyresampled($dst, $src, 0, 0, 0, 0, $newW, $newH, $origW, $origH);
 
         ob_start();
-        imagejpeg($dst, null, 88);
+        imagewebp($dst, null, \App\Services\Support\WebpEncoder::UPLOAD_QUALITY);
         $output = ob_get_clean();
 
         imagedestroy($src);

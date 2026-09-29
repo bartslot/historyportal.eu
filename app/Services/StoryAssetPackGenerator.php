@@ -67,13 +67,13 @@ final class StoryAssetPackGenerator
         try {
             $backgroundEntries = [];
             foreach ($plan['backgrounds'] as $background) {
-                $path = "{$batchDir}/bg_{$background['tag']}.png";
+                $base = "{$batchDir}/bg_{$background['tag']}";
                 $bytes = $this->images->generateStillPngBytes(
                     $this->backgroundPrompt($background),
                     self::BACKGROUND_SIZE,
                     false,
                 );
-                Storage::disk('public')->put($path, $bytes);
+                $path = \App\Services\Support\WebpEncoder::put($bytes, $base, 'png');
                 $written[] = $path;
                 $backgroundEntries[] = [
                     'tag' => $background['tag'],
@@ -84,13 +84,13 @@ final class StoryAssetPackGenerator
 
             $heroEntries = [];
             foreach ($plan['hero_poses'] as $pose) {
-                $path = "{$batchDir}/hero_{$pose['pose']}.png";
+                $base = "{$batchDir}/hero_{$pose['pose']}";
                 $bytes = $this->images->generateStillPngBytes(
                     $this->heroPrompt($story, $pose),
                     self::HERO_SIZE,
                     true,
                 );
-                Storage::disk('public')->put($path, $bytes);
+                $path = \App\Services\Support\WebpEncoder::put($bytes, $base, 'png');
                 $written[] = $path;
                 $heroEntries[] = [
                     'pose' => $pose['pose'],

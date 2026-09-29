@@ -23,6 +23,7 @@ use App\Models\Scene;
 use App\Models\StrategyGame;
 use App\Services\Billing\NarrationCreditLedger;
 use App\Services\Support\LayerAmbient;
+use App\Services\Support\WebpEncoder;
 use App\Support\NarrationBudget;
 use App\Support\PolityCapitals;
 use App\Support\PortraitFocus;
@@ -3132,6 +3133,53 @@ class Step3SceneConfigurator extends Component
     /** A picture dropped on the background slot in the inspector, which means the background, always. */
     public $droppedBackground;
 
+    /** The picture (WebP, or PNG) the quick mask produced for the active layer (uploaded by the mask dialog, then saveMaskedLayer). */
+    public $maskedImage;
+
+    /**
+     * Quick mask → save. The masked picture becomes the teacher's own asset and replaces the layer's
+     * picture in this scene only; the original (a shared library icon, say) is never touched, so other
+     * lessons that use it keep it as it was.
+     */
+    public function saveMaskedLayer(int $assetId): void
+    {
+        $old = \App\Models\SvgAsset::query()->availableTo((int) auth()->id())->find($assetId);
+        if (! $old || ! $this->selectedSceneId) {
+            $this->reset('maskedImage');
+            $this->dispatch('toast', message: __('That layer is gone. Select it again and retry.'), type: 'error');
+
+            return;
+        }
+
+        try {
+            $this->validate(['maskedImage' => 'image|mimes:png,webp|max:'.UploadLimit::kilobytes(self::DROPPED_IMAGE_CEILING_BYTES)]);
+        } catch (ValidationException $e) {
+            $this->reset('maskedImage');
+            $this->dispatch('toast', message: $e->validator->errors()->first('maskedImage'), type: 'error');
+
+            return;
+        }
+
+        $path = WebpEncoder::storeUpload($this->maskedImage, "lessons/{$this->lesson->id}/uploads");
+        $this->reset('maskedImage');
+
+        $asset = $this->upsertPictureAsset('mask', md5((string) $path), [
+            'source_url' => '/storage/'.$path,
+            'title' => $old->title,
+            'license' => $old->license,
+            'attribution' => $old->attribution,
+            'width' => $old->width,
+            'height' => $old->height,
+            'svg_path' => $path,
+        ]);
+
+        // path first: writeLayerField finds the layer by asset_id, so the id changes last.
+        $this->writeLayerField($assetId, 'path', $path);
+        $this->writeLayerField($assetId, 'asset_id', $asset->id);
+        $this->setActiveLayer($asset->id);
+        $this->dispatch('toast', message: __('Mask saved.'), type: 'success');
+    }
+
     /** What we are willing to take for a dropped picture, before PHP gets a say (UploadLimit takes the smaller). */
     private const DROPPED_IMAGE_CEILING_BYTES = 8 * 1024 * 1024;
 
@@ -3221,7 +3269,7 @@ class Step3SceneConfigurator extends Component
         // object list.
         $name = pathinfo((string) $this->{$property}->getClientOriginalName(), PATHINFO_FILENAME) ?: null;
 
-        $path = $this->{$property}->store("lessons/{$this->lesson->id}/uploads", 'public');
+        $path = WebpEncoder::storeUpload($this->{$property}, "lessons/{$this->lesson->id}/uploads");
         $this->reset($property);
 
         return $path ?: null;
@@ -3365,7 +3413,7 @@ class Step3SceneConfigurator extends Component
             $url = $cloud->configured()
                 ? $cloud->uploadBytes($this->uploadImage->get(), "lessons/{$this->lesson->id}")
                 : null;
-            $url ??= '/storage/'.$this->uploadImage->store("lessons/{$this->lesson->id}/uploads", 'public');
+            $url ??= '/storage/'.WebpEncoder::storeUpload($this->uploadImage, "lessons/{$this->lesson->id}/uploads");
             $this->reset('uploadImage');
             match ($mode) {
                 'voyage_stop' => $this->addStopImage($url),
@@ -3376,7 +3424,7 @@ class Step3SceneConfigurator extends Component
             return;
         }
 
-        $path = $this->uploadImage->store("lessons/{$this->lesson->id}/uploads", 'public');
+        $path = WebpEncoder::storeUpload($this->uploadImage, "lessons/{$this->lesson->id}/uploads");
         $this->reset('uploadImage');
         $this->applyUploadedBackground($path);
     }

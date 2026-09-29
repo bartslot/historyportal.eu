@@ -44,6 +44,11 @@
         {{ $layer['title'] ?? __('Layer') }}
     </h2>
 
+    {{-- Quick mask (art/dante): cut a raster layer out of its background in place. --}}
+    @if (preg_match('/\.(png|webp|jpe?g|gif)$/i', (string) ($layer['url'] ?? '')))
+        <x-lesson.quick-mask :aid="$aid" :url="$layer['url']" :title="$layer['title'] ?? ''" />
+    @endif
+
     <button type="button" wire:click="detachArtwork({{ $aid }})"
             data-tooltip="{{ __('Remove layer') }}"
             class="btn btn-ghost btn-sm btn-circle shrink-0 text-base-content/40 hover:text-error"
