@@ -1,0 +1,200 @@
+[
+ {
+  "id": "dante_knees",
+  "case": "Illustration of Dante's study: Dante sits on his own stool writing a book on his knees, next to the room's empty chair and desk.",
+  "verdict": "reject",
+  "source": "2026-09-26"
+ },
+ {
+  "id": "echo_narrator",
+  "case": "Script rule: dramatised character lines may only repeat what the narrator has already stated as fact.",
+  "verdict": "reject",
+  "source": "2026-09-26"
+ },
+ {
+  "id": "flat_random",
+  "case": "A flat stage where the characters are placed at random spots on the backdrop; their sizes are about right.",
+  "verdict": "reject",
+  "source": "2026-09-26 B0 review"
+ },
+ {
+  "id": "blurry_figures",
+  "case": "A scene where the characters and the background are soft and blurry.",
+  "verdict": "reject",
+  "source": "2026-09-26 B0 review"
+ },
+ {
+  "id": "cloud_opacity",
+  "case": "Cloud layers drawn semi-transparent so they mix with each other and the lines behind them.",
+  "verdict": "reject",
+  "source": "2026-09-26 B0 review"
+ },
+ {
+  "id": "forest_high",
+  "case": "A forest background seen from above: a dense tangled wood with a winding path, clean ink lines, mostly white, to open the scene where Dante is lost.",
+  "verdict": "approve",
+  "source": "2026-09-27 'number 4 is my favorite'"
+ },
+ {
+  "id": "forest_dark",
+  "case": "Forest backgrounds converted from 3D screenshots that came out dark and grey, unlike the other white line drawings.",
+  "verdict": "reject",
+  "source": "2026-09-27 'look out of place'"
+ },
+ {
+  "id": "cu_flat_wall",
+  "case": "A close-up background made on its own from a flat wall with no floor or converging lines; the image model redrew it with a different perspective.",
+  "verdict": "reject",
+  "source": "2026-09-27 'completely changes perspective'"
+ },
+ {
+  "id": "cu_sparse",
+  "case": "Close-up backgrounds of the council hall with mostly empty wall and too little detail for the image model to follow.",
+  "verdict": "reject",
+  "source": "2026-09-27"
+ },
+ {
+  "id": "blender_study",
+  "case": "Dante's study built in Blender at a fixed camera in real metres, converted to clean ink lines with stone patches, plank floor, shutters with iron hinges, a manuscript on a lectern.",
+  "verdict": "approve",
+  "source": "2026-09-27 'I am impressed, this is the new way'"
+ },
+ {
+  "id": "us_voice",
+  "case": "English narration read by an American (Texan) voice.",
+  "verdict": "reject",
+  "source": "2026-08"
+ },
+ {
+  "id": "tagline",
+  "case": "Landing page: product name, then 'Where Storytelling Meets Learning', then an explanatory subheading.",
+  "verdict": "reject",
+  "source": "2026-08-19"
+ },
+ {
+  "id": "em_dash",
+  "case": "Error toast: 'Quiz regeneration failed — try again!'",
+  "verdict": "reject",
+  "source": "2026-08"
+ },
+ {
+  "id": "solid_black",
+  "case": "A figure drawn as a solid black silhouette with filled black cloak.",
+  "verdict": "reject",
+  "source": "style rule"
+ },
+ {
+  "id": "engraving",
+  "case": "A background in dense copperplate engraving style with heavy cross-hatching everywhere.",
+  "verdict": "reject",
+  "source": "2026-09-24"
+ },
+ {
+  "id": "sea_floor",
+  "case": "A realistic globe that shows sea-floor relief because a reference screenshot happened to show it.",
+  "verdict": "reject",
+  "source": "2026-08"
+ },
+ {
+  "id": "clouds_ancient",
+  "case": "Real satellite cloud imagery on a map of the world in 10,000 BC.",
+  "verdict": "approve",
+  "source": "2026-08-12"
+ },
+ {
+  "id": "city_lights",
+  "case": "City lights glowing at night on a map of the Roman Empire.",
+  "verdict": "reject",
+  "source": "2026-08-12"
+ },
+ {
+  "id": "individual_roles",
+  "case": "Class game where one individual pupil gets a special role card and has to sit out when penalised.",
+  "verdict": "reject",
+  "source": "teacher feedback 2026-07-09"
+ },
+ {
+  "id": "team_roles",
+  "case": "Class game where roles and penalties apply to teams of 3-4 pupils.",
+  "verdict": "approve",
+  "source": "teacher feedback 2026-07-09"
+ },
+ {
+  "id": "glass_disc",
+  "case": "Player UI: a glass disc added behind the centre play icon that was a bare icon in the design.",
+  "verdict": "reject",
+  "source": "2026-07-30"
+ },
+ {
+  "id": "ai_painting",
+  "case": "Using an AI-generated oil painting as a scene background instead of a real historical painting from the collection.",
+  "verdict": "reject",
+  "source": "2026-07-17"
+ },
+ {
+  "id": "guido_1274",
+  "case": "Script line placing Guido Cavalcanti at Dante's first sight of Beatrice in 1274 (they met through Dante's 1283 sonnet).",
+  "verdict": "reject",
+  "source": "2026-09-26"
+ },
+ {
+  "id": "maiano_paraphrase",
+  "case": "Age-appropriate paraphrase of Dante da Maiano's mocking reply ('you are raving, see a doctor'), marked as paraphrase with its source.",
+  "verdict": "approve",
+  "source": "2026-09-27 script v2"
+ },
+ {
+  "id": "duomo_1300",
+  "case": "Background for a scene in 1300 showing Florence cathedral with Brunelleschi's dome and the marble facade.",
+  "verdict": "reject",
+  "source": "2026-09-27 historian note"
+ },
+ {
+  "id": "more_panels",
+  "case": "A scene told in one wide image with narration over it, no close-ups.",
+  "verdict": "reject",
+  "source": "2026-09-27 'kids will be bored'"
+ },
+ {
+  "id": "speaking_characters",
+  "case": "Characters speak in comic balloons with their own voices and facial expressions, the narrator only frames the scene.",
+  "verdict": "approve",
+  "source": "2026-09-26"
+ },
+ {
+  "id": "two_wrong_options",
+  "case": "Asking the reviewer to choose between two images that both break the same rule (neither shows Dante at the desk).",
+  "verdict": "reject",
+  "source": "2026-09-26"
+ },
+ {
+  "id": "campaldino-lances",
+  "case": "A comic panel of Florentine cavalry at Campaldino 1289 adds long lances to every rider as thin poles.",
+  "verdict": "reject",
+  "source": "Bart 2026-09-27: 'lances? no. just dont' (visual clutter; JEV rated them historically plausible)"
+ },
+ {
+  "id": "forest-gouache",
+  "case": "A forest background painted as opaque gouache with saturated leaf clusters, like an animated-film background.",
+  "verdict": "reject",
+  "source": "Bart 2026-09-27: immediately reads as another studio's style; we want our own soft watercolour"
+ },
+ {
+  "id": "forest-ink-foliage",
+  "case": "Foliage, trees and ferns drawn with dense black ink lines and hatching.",
+  "verdict": "reject",
+  "source": "Bart 2026-09-27: 'WAY too much' line for organic matter; lines for characters and buildings only"
+ },
+ {
+  "id": "forest-watercolour-pencil",
+  "case": "A forest painted as soft transparent watercolour on white paper with light broken pencil lines on trunk and path edges, one brush language per tree.",
+  "verdict": "approve",
+  "source": "Bart 2026-09-27 asked for slight pencil strokes on edges on top of the soft watercolour"
+ },
+ {
+  "id": "render-textures-in-paint",
+  "case": "A painted forest where photographic bark and individual 3D leaf cards from the render remain visible next to painted washes.",
+  "verdict": "reject",
+  "source": "Bart 2026-09-27: 'still looks like a pumped up render'"
+ }
+]

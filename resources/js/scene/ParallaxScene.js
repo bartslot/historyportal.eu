@@ -1,4 +1,6 @@
 import { filterMarkup, layerFilterId } from './layer-filters.js'
+import { applyAmbient, trackStage } from './ambient.js'
+import { fitToPlate, plateAspect } from './plate-box.js'
 /**
  * ParallaxScene — multiplane webcomic shot: N depth-sorted layers (E3c).
  *
@@ -127,7 +129,8 @@ function prefersReducedMotion () {
  * @property {'cover'|'figure'|'strip'} [kind='cover']
  * @property {number} [scale=1]      Constant "nearness" scale bump (hero: 1.03).
  * @property {number} [height]       figure/strip height in % of stage (figure 80, strip 28).
- * @property {boolean} [sway]        Breathing (figure) / breeze (strip) animation.
+ * @property {boolean} [sway]        Breathing (figure) / breeze (strip) animation (legacy).
+ * @property {string}  [ambient]     drift | breeze | bob | flutter — see ambient.js.
  *
  * Artistic controls (Photoshop-style, all GPU-cheap):
  * @property {number} [z]            Explicit stacking override; default = array order.
@@ -159,9 +162,14 @@ export class ParallaxScene {
    *
    * @param {{bgUrl?: string, heroUrl?: string|null, layers?: PlaneSpec[],
    *          motion?: {panX?: number, panY?: number, zoom?: number},
-   *          dof?: {focus?: number, strength?: number}}} shot
+   *          dof?: {focus?: number, strength?: number},
+   *          fit?: 'cover'|'contain', matte?: string|null, subject?: object[]|null}} shot
+   *
+   * fit 'contain' ("Whole image") shows the cover plate whole: every plane lives in the plate's
+   * letterboxed box (plate-box.js) on a `matte` colour, and the camera holds still. On a portrait
+   * stage that box is cover-fitted around the figures in `subject` (the scene's full layer list) instead.
    */
-  show ({ bgUrl = null, heroUrl = null, layers = null, motion = null, dof = null } = {}) {
+  show ({ bgUrl = null, heroUrl = null, layers = null, motion = null, dof = null, fit = 'cover', matte = null, subject = null } = {}) {
     // Classic form requires a background — a hero floating on nothing is never intended.
     const specs = Array.isArray(layers) && layers.length
       ? layers.filter(l => l && l.url)
@@ -175,21 +183,33 @@ export class ParallaxScene {
 
     injectStyles()
     this.destroy()
+    const contain = fit === 'contain'
     if (motion) this._motion = { panX: 0, panY: 0, zoom: 1, ...motion }
+    if (contain) this._motion = { panX: 0, panY: 0, zoom: 1 }
 
     const root = document.createElement('div')
     root.className = 'px-scene'
     root.style.cssText = 'position:absolute;inset:0;overflow:hidden;opacity:0;'
       + `transition:opacity ${FADE_IN_MS}ms ease-in-out;`
+    // The planes' box: the whole stage, or (contain) the plate's letterboxed box on the matte.
+    const plate = contain ? document.createElement('div') : root
+    if (contain) {
+      if (matte) root.style.background = matte
+      plate.className = 'px-plate'
+      plate.style.cssText = 'position:absolute;inset:0;overflow:hidden;'
+      root.appendChild(plate)
+      const coverUrl = specs.find(l => (l.kind ?? 'cover') === 'cover')?.url
+      plateAspect(coverUrl).then(aspect => { if (this._root === root) fitToPlate(plate, root, aspect, subject) })
+    }
 
-    this._planes = specs.map(spec => {
+    this._planes = specs.map((spec, index) => {
       // Depth-of-field: unfocused planes blur with distance, unless explicitly set.
       // Rounded to 0.1px — clean CSS values, no float-noise like blur(1.9999px).
       const blur = spec.blur ?? (dof
         ? Math.round(Math.abs((spec.depth ?? 1) - (dof.focus ?? 1)) * (dof.strength ?? 3) * 10) / 10
         : 0)
-      const el = this._buildPlane({ ...spec, blur })
-      root.appendChild(el)
+      const el = this._buildPlane({ ...spec, blur }, index)
+      plate.appendChild(el)
       // Free-positioned figures apply their own scale on the img, so the plane's baseScale is 1
       // (parallax pan/zoom only) — otherwise the user scale would be applied twice.
       const positioned = spec.kind === 'figure' && Number.isFinite(spec.x) && Number.isFinite(spec.y)
@@ -201,6 +221,7 @@ export class ParallaxScene {
 
     this.host.appendChild(root)
     this._root = root
+    this._stageObserver = trackStage(root)
     this.update(0)
 
     // Fade in on the next frame so the opacity transition actually runs.
@@ -209,14 +230,20 @@ export class ParallaxScene {
   }
 
   /** @param {PlaneSpec} spec */
-  _buildPlane (spec) {
-    const { url, kind = 'cover', depth = 1, height, sway } = spec
+  _buildPlane (spec, index = 0) {
+    const { url, kind = 'cover', depth = 1, height, width, sway } = spec
+    // Mirroring, matching ArtworkOverlay._transform: applied AFTER the rotation so a flipped layer
+    // mirrors about its own axes. Absent means unflipped.
+    const mirror = (spec.flip_x || spec.flip_y)
+      ? ` scale(${spec.flip_x ? -1 : 1}, ${spec.flip_y ? -1 : 1})`
+      : ''
     const layer = document.createElement('div')
     const animate = sway && ! prefersReducedMotion()
 
     if (kind === 'cover') {
-      // Bleed grows with depth: a foreground plane pans depth× as far.
-      const bleed = LAYER_BLEED_PCT * Math.max(1, depth)
+      // Bleed grows with depth: a foreground plane pans depth× as far. A still camera needs none,
+      // and any bleed there only enlarges the picture past its own framing.
+      const bleed = isStill(this._motion) ? 0 : LAYER_BLEED_PCT * Math.max(1, depth)
       layer.className = 'px-layer px-layer-bg'
       layer.style.cssText = `position:absolute;inset:-${bleed}%;will-change:transform;`
       const img = document.createElement('img')
@@ -224,7 +251,7 @@ export class ParallaxScene {
       img.alt = ''
       img.draggable = false
       img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;'
-      layer.appendChild(img)
+      layer.appendChild(ambientWrap(img, spec, index))
       return this._applyArtisticProps(layer, spec)
     }
 
@@ -242,9 +269,19 @@ export class ParallaxScene {
         // The plane wrapper carries the parallax pan (baseScale forced to 1 in show() so this
         // scale isn't doubled). No sway — a placed object stays put.
         const s = Number.isFinite(spec.scale) ? spec.scale : 1
+        // An explicit width is optional and rare: it exists only once a teacher has unlocked the
+        // aspect in the Dimensions row. Without one the figure keeps `object-fit:contain` and its
+        // own aspect, which is what every layer authored before that row does. With one, the box
+        // is theirs, so the picture fills it — the editor renders the same two cases the same way
+        // (ArtworkOverlay._widthCss), and playback disagreeing with the editor is the whole bug
+        // class this mirrors.
+        const box = Number.isFinite(width)
+          ? `height:${height ?? 40}%;width:${width}%;max-width:none;object-fit:fill;`
+          : `height:${height ?? 40}%;max-width:none;object-fit:contain;`
+        const spin = Number.isFinite(spec.rotation) && spec.rotation ? ` rotate(${spec.rotation}deg)` : ''
         img.style.cssText = `position:absolute;left:${spec.x}%;top:${spec.y}%;`
-          + `height:${height ?? 40}%;max-width:none;object-fit:contain;`
-          + `transform:translate(-50%,-50%) scale(${s});`
+          + box
+          + `transform:translate(-50%,-50%) scale(${s})${spin}${mirror};`
       } else {
         // Centered + bottom-anchored figure; translateX(-50%) lives in the sway keyframes
         // too, so the breathing animation composes with the centering instead of fighting it.
@@ -261,7 +298,7 @@ export class ParallaxScene {
       if (animate) img.classList.add('px-breeze')
     }
 
-    layer.appendChild(img)
+    layer.appendChild(ambientWrap(img, spec, index))
     return this._applyArtisticProps(layer, spec)
   }
 
@@ -316,6 +353,9 @@ export class ParallaxScene {
 
   /** Remove all layer DOM. Safe to call twice. */
   destroy () {
+    this._stageObserver?.disconnect()
+    this._stageObserver = null
+    this._root?.querySelector('.px-plate')?.__plateObserver?.disconnect()
     if (this._root) this._root.remove()
     this._root = null
     this._bgLayer = null
@@ -323,6 +363,30 @@ export class ParallaxScene {
     this._planes = []
     if (window.__parallax === this) delete window.__parallax
   }
+}
+
+/**
+ * The ambient motion's own element, between the plane (parallax transform) and the image (its
+ * placement). Full-stage, so its transform-origin is set to the image's bottom-centre: a tree
+ * sways about its trunk, not about the middle of the stage.
+ */
+function ambientWrap (img, spec, index) {
+  const wrap = document.createElement('div')
+  wrap.className = 'px-ambient'
+  wrap.style.cssText = 'position:absolute;inset:0;pointer-events:none;'
+  if (spec.kind === 'figure' && Number.isFinite(spec.x) && Number.isFinite(spec.y)) {
+    const s = Number.isFinite(spec.scale) ? spec.scale : 1
+    wrap.style.transformOrigin = `${spec.x}% ${spec.y + ((spec.height ?? 40) * s) / 2}%`
+  }
+  wrap.appendChild(img)
+  applyAmbient(wrap, spec, index)
+
+  return wrap
+}
+
+/** No pan, no zoom: the camera holds still for the whole shot. */
+export function isStill ({ panX = 0, panY = 0, zoom = 1 } = {}) {
+  return Math.abs(panX) < 0.01 && Math.abs(panY) < 0.01 && Math.abs(zoom - 1) < 0.001
 }
 
 function applyTransform (layer, { translateX, translateY, scale }) {

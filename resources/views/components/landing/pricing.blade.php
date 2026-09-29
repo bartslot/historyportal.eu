@@ -17,10 +17,10 @@
         <div class="mx-auto max-w-2xl text-center">
             <p class="text-xs uppercase tracking-[0.45em] text-sky-100/60">Pricing</p>
             <h2 class="mt-3 font-history font-semibold text-3xl tracking-tight text-white md:text-4xl">
-                Plans that grow with your school
+                What a year of this costs
             </h2>
             <p class="mt-4 text-base leading-relaxed text-slate-400">
-                Cinematic, AI-narrated history lessons your teachers build in minutes.
+                Every plan starts with a 14-day trial and no card.
                 Commit longer and lock a lower rate. Most schools choose the 2-year plan.
             </p>
         </div>
@@ -29,19 +29,19 @@
         <div class="mt-10 flex justify-center">
             <div class="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1">
                 @foreach ($terms as $key => $term)
+                    {{-- A segmented control is still a row of buttons: the chosen term is the
+                         primary action, the others are the same button with no fill. --}}
                     <button
                         type="button"
                         @click="term = '{{ $key }}'"
-                        :class="term === '{{ $key }}'
-                            ? 'lp-bg-amber-cta text-slate-950 shadow-[0_2px_12px_rgba(245,158,11,0.4)]'
-                            : 'text-slate-300 hover:text-white'"
-                        class="inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-semibold transition"
+                        :class="term === '{{ $key }}' ? 'btn-primary' : 'btn-ghost'"
+                        class="btn btn-sm"
                     >
                         {{ $term['label'] }}
                         @if ($term['save'])
                             <span
                                 :class="term === '{{ $key }}' ? 'bg-slate-950/15 text-slate-900' : 'bg-amber-500/15 text-amber-300'"
-                                class="rounded-full px-2 py-0.5 text-[0.65rem] font-medium uppercase tracking-[0.08em]"
+                                class="rounded-full px-2 py-0.5 text-2xs font-medium uppercase tracking-[0.08em]"
                             >{{ $term['save'] }}</span>
                         @endif
                     </button>
@@ -58,7 +58,7 @@
                     'border border-white/10 bg-white/4 shadow-[0_16px_40px_rgba(0,0,0,0.35)] hover:-translate-y-1 hover:border-amber-400/30 hover:bg-white/6' => ! $tier['featured'],
                 ])>
                     @if (! empty($tier['badge']))
-                        <span class="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full border border-amber-400/40 bg-amber-500/15 px-3 py-1 text-[0.7rem] font-medium uppercase tracking-[0.1em] text-amber-300">
+                        <span class="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full border border-amber-400/40 bg-amber-500/15 px-3 py-1 text-2xs font-medium uppercase tracking-widest text-amber-300">
                             {{ $tier['badge'] }}
                         </span>
                     @endif
@@ -117,9 +117,9 @@
                     <a
                         href="{{ $tier['href'] }}"
                         @class([
-                            'mt-8 inline-flex w-full items-center justify-center rounded-full px-6 py-3 text-sm font-semibold transition',
-                            'lp-bg-amber-cta text-slate-950 shadow-[0_2px_12px_rgba(245,158,11,0.4)] hover:shadow-[0_0_40px_rgba(245,158,11,0.45)]' => $tier['featured'],
-                            'border border-amber-400/45 text-amber-300 hover:border-amber-400 hover:bg-amber-500/10' => ! $tier['featured'],
+                            'btn mt-8 w-full',
+                            'btn-primary' => $tier['featured'],
+                            'btn-outline btn-primary' => ! $tier['featured'],
                         ])
                     >
                         {{ $tier['cta'] }}

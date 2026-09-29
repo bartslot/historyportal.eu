@@ -4,7 +4,7 @@
         <h1 class="text-xl font-semibold text-slate-100 mb-6 text-center">{{ __('Choose a new password') }}</h1>
 
         @if($errors->any())
-            <div class="mb-4 rounded-lg border border-rose-700 bg-rose-900/30 px-4 py-3 text-sm text-rose-300">
+            <div class="mb-4 rounded-lg border border-error/40 bg-error/10 px-4 py-3 text-sm text-error">
                 {{ $errors->first() }}
             </div>
         @endif
@@ -66,9 +66,7 @@
 
             <button
                 type="submit"
-                class="w-full rounded-lg bg-amber-500 px-4 py-3 text-sm font-semibold text-slate-950
-                       hover:bg-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2
-                       focus:ring-offset-slate-900 transition-colors"
+                class="btn btn-primary w-full"
             >
                 {{ __('Change password') }}
             </button>

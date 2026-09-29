@@ -157,9 +157,10 @@
         });
         document.addEventListener('keydown', (e) => {
             if ((e.key !== 'z' && e.key !== 'Z') || !(e.metaKey || e.ctrlKey) || e.shiftKey) return;
-            // Never steal the shortcut from a field the teacher is typing in.
-            const t = e.target;
-            if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+            // Never steal the shortcut from a field the teacher is typing in. One shared guard —
+            // resources/js/ui/keyboard.js — so this and Delete below and the timeline's Space all
+            // agree on what "typing" means.
+            if (window.__isTypingTarget?.(e.target)) return;
             e.preventDefault();
             window.__undoLastEdit();
         });
@@ -275,6 +276,7 @@
         // window.__lessonArtworkLayer.
         let artOverlay = null
         let artSig = null
+        let artIdent = null
         const voyageArtHost = () => document.getElementById('lesson-voyage-art')
         const ensureArtOverlay = () => {
             if (artOverlay) return artOverlay
@@ -300,6 +302,7 @@
                         : null
                     window.Livewire.dispatch('artwork:move', {
                         assetId, x: t.x, y: t.y, scale: t.scale,
+                        rotation: t.rotation,
                         anchor: ll ? 'map' : null,
                         lng: ll ? ll.lng : null,
                         lat: ll ? ll.lat : null,
@@ -346,7 +349,18 @@
             // Before the layers, never after: a pinned layer has no usable x/y of its own, so a
             // seed without the projector paints it at a stale position for one frame.
             wireArtProjector()
-            if (sig !== artSig) { artSig = sig; overlay.setLayers(layers); overlay.playEntrances() }
+            // A REBUILD IS VISIBLE, so only rebuild when the set of layers actually changed.
+            // setLayers() tears every node down and playEntrances() then re-flies them in; doing
+            // that after each saved edit is what made the scene flicker and distort every time a
+            // teacher nudged a value. When the same layers are present and only their numbers
+            // moved, syncProps applies the changes to the live nodes and nothing is torn down.
+            if (sig !== artSig) {
+                const ident = window.LessonScene.layersIdentity(layers)
+                const inPlace = ident === artIdent && overlay.syncProps?.(layers)
+                if (!inPlace) { overlay.setLayers(layers); overlay.playEntrances() }
+                artSig = sig
+                artIdent = ident
+            }
             // A dedicated handle the object list reads on voyage scenes — the SHARED handle can be
             // repointed by a slideshow render (wizard-bridge), so it isn't reliable here.
             window.__voyageArtworkLayer = overlay
@@ -356,6 +370,7 @@
             const h = voyageArtHost()
             if (h) h.style.display = 'none'
             artSig = null
+            artIdent = null
             if (artOverlay) { try { artOverlay.clear() } catch (_) {} }
             window.__voyageArtworkLayer = null
             // Release the shared handle only if it still points at MY overlay (a slideshow scene
@@ -528,6 +543,9 @@
 
         window.Livewire.on('scene:load', (e) => {
             const p = Array.isArray(e) ? e[0]?.payload : e?.payload
+            // Globe layers only make sense over a map: a slide keeps its background settings alone.
+            const view = window.Alpine?.store('view')
+            if (view) view.mapScene = !!p && (p.kind === 'map' || p.kind === 'voyage')
             if (!p) { destroy(); wireMapProjectors(); return }
 
             // Tell the object/layers list what KIND of scene is on stage, so a Route waypoint scene can
@@ -535,6 +553,7 @@
             const _vcfg = p.config || {}
             const _gal = _vcfg.gallery || {}
             window.__objScene = {
+                sceneId: p.sceneId,   // the copy/paste keys remember which scene an object came from
                 kind: p.kind,
                 hasGallery: !!(_gal.title || _gal.story || (_gal.images && _gal.images.length) || (_vcfg.stop_images && _vcfg.stop_images.length)),
             }
@@ -733,6 +752,7 @@
             if (window.renderLessonMap) {
                 inst = window.renderLessonMap(inner, {
                     qid: cfg.qid || null,
+                    fit: cfg.fit || null,
                     year,
                     projection: cfg.projection || 'mercator',
                     interactive: true,
@@ -783,12 +803,26 @@
                     // sceneId may still be null before the first scene:load — the server
                     // falls back to the currently selected scene in that case.
                     window.Livewire.dispatch('sceneTextsChanged', { sceneId: textSceneId ?? null, texts, selectedTextId })
+                    // The timeline lists the scene's OBJECTS, so adding or removing a text layer
+                    // changes its rows. Same event the object list uses.
+                    announceObjects()
                 },
             })
             window.__lessonTextLayer = textLayer
+            // The overlay mounts LAZILY, long after the timeline's init() has already asked what is
+            // on the scene and been told nothing. Nobody dispatched this event — it was listened
+            // for in two places and fired by none — so the Timeline tab read "Nothing on this scene
+            // can be animated yet" with a Title sitting on the canvas. Say so the moment there is
+            // something to say.
+            announceObjects()
             wireMapProjectors()   // a map block may already be live — pin labels to it now
             return textLayer
         }
+        /** Tell every panel that lists the scene's objects to look again. */
+        function announceObjects () {
+            try { window.dispatchEvent(new CustomEvent('scene-objects-changed')) } catch (_) { /* noop */ }
+        }
+
         window.Livewire.on('scene:text-updated', (e) => {
             const payload = Array.isArray(e) ? e[0] : e
             if (!payload || payload.sceneId !== textSceneId) return
@@ -878,7 +912,10 @@
            x-on:inspector-state-request.window="window.dispatchEvent(new CustomEvent('inspector-state', { detail: { open: inspectorOpen, view: '{{ $panelView }}' } }))"
            style="right:0; left:auto; top:64px; bottom:0;"
            class="card card-compact fixed z-50 overflow-hidden rounded-none border border-r-0 border-t-0 border-slate-700 bg-base-300 shadow-2xl
-                  {{ $inspectorSceneModel?->kind === 'game' ? 'w-[min(48rem,calc(100vw-1rem))]' : 'w-[min(16rem,calc(100vw-1rem))]' }}">
+                  {{-- 19.375rem is the Figma panel's 310px. The old 16rem was narrow enough that a
+                       row label and its control competed for the same space, which is where the
+                       three different label widths came from. --}}
+                  {{ $inspectorSceneModel?->kind === 'game' ? 'w-[min(48rem,calc(100vw-1rem))]' : 'w-[min(19.375rem,calc(100vw-1rem))]' }}">
         <div x-show="inspectorOpen"
              x-transition.opacity.duration.150ms
              {{-- overflow-x-hidden, not the default `auto`: anything a shade too wide for the panel
@@ -895,18 +932,27 @@
                  Format is what the layer LOOKS like; Animate is how it arrives. Alpine-local so
                  switching tabs never costs a round trip; keyed per layer so selecting a different
                  one starts on Format rather than inheriting the last layer's tab. --}}
-            <div x-data="{ tab: 'format' }" wire:key="layer-tabs-{{ $al['asset_id'] ?? 0 }}" class="space-y-3">
-                <div role="tablist" class="tabs tabs-boxed tabs-xs">
-                    <button type="button" role="tab" @click="tab = 'format'"
-                            :class="tab === 'format' ? 'tab-active' : ''" class="tab">{{ __('Format') }}</button>
-                    <button type="button" role="tab" @click="tab = 'animate'"
-                            :class="tab === 'animate' ? 'tab-active' : ''" class="tab">{{ __('Animate') }}</button>
-                </div>
+            {{-- Figma order (settings-Maps-panel): title, then the tab row, then the sections. The
+                 title and tabs bleed to the panel edges, so they cancel the card-body padding. --}}
+            <div x-data="{ tab: 'format' }" wire:key="layer-tabs-{{ $al['asset_id'] ?? 0 }}">
+                <x-lesson.layer-panel-title :layer="$al" class="-mx-4 -mt-4" />
+
+                <x-ui.panel-tabs class="-mx-4 mb-1" name="layer-tabs-{{ $al['asset_id'] ?? 0 }}"
+                                 :tabs="[['format', __('Format')], ['animate', __('Animate')]]">
+                    <x-slot:breadcrumb>
+                        {{-- Back to the scene's own settings. Also clears the canvas ring and the
+                             JS dedupe guard, or the layer stays visibly selected with nothing
+                             selected. --}}
+                        <x-ui.panel-breadcrumb :label="__('Scene')"
+                                               wire:click="clearActiveLayer"
+                                               x-on:click="window.__selectLayer?.(null); window.__clearLayerGuard?.()" />
+                    </x-slot:breadcrumb>
+                </x-ui.panel-tabs>
 
                 <div x-show="tab === 'format'">
-                    <x-lesson.scene-layer-inspector :layer="$al" :scene="$this->selectedSceneModel" />
+                    <x-lesson.settings-map-panel :layer="$al" :scene="$this->selectedSceneModel" />
                 </div>
-                <div x-show="tab === 'animate'" x-cloak>
+                <div x-show="tab === 'animate'" x-cloak class="pt-3">
                     <x-lesson.animate-inspector mode="layer" :layer="$al" :scene="$this->selectedSceneModel" />
                 </div>
             </div>
@@ -922,12 +968,10 @@
                 {{-- Same two tabs as a layer, for the same reason: what the scene looks like, and
                      how it arrives. Every scene kind gets Animate — a map or a gallery replaces the
                      scene before it just as a narration scene does. --}}
-                <div role="tablist" class="tabs tabs-boxed tabs-sm">
-                    <button type="button" role="tab" @click="tab = 'format'"
-                            :class="tab === 'format' ? 'tab-active' : ''" class="tab">{{ __('Format') }}</button>
-                    <button type="button" role="tab" @click="tab = 'animate'"
-                            :class="tab === 'animate' ? 'tab-active' : ''" class="tab">{{ __('Animate') }}</button>
-                </div>
+                {{-- Same tab row as a selected layer gets. The two panels sat side by side with
+                     different tab treatments, and a tab is a tab wherever it appears. --}}
+                <x-ui.panel-tabs class="-mx-4" name="scene-tabs-{{ $sceneModel->id }}"
+                                 :tabs="[['format', __('Format')], ['animate', __('Animate')]]" />
 
                 <div x-show="tab === 'animate'" x-cloak>
                     <x-lesson.animate-inspector mode="scene" :scene="$sceneModel" />
@@ -980,7 +1024,7 @@
                  looking at. A button that appears to do nothing is worse than no button. --}}
             @unless (auth()->user()?->isGuestDemo())
             <div class="space-y-1.5">
-                <span class="text-[10px] uppercase tracking-widest text-slate-500">{{ __('Story') }}</span>
+                <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Story') }}</span>
                 <p class="text-xs text-slate-400">{{ __('The narrative arc and framework this lesson is built on.') }}</p>
                 <a href="{{ route('teacher.lessons.wizard', ['lesson' => $lesson->id, 'step' => 2]) }}" wire:navigate
                    class="btn btn-sm btn-outline mt-1 border-slate-600 text-slate-200 hover:border-amber-400 hover:text-amber-300">
@@ -995,12 +1039,12 @@
             <div class="mt-6 border-t border-slate-700/50 pt-4">
                 <label class="flex items-center justify-between gap-3">
                     <span>
-                        <span class="text-[10px] uppercase tracking-widest text-slate-500">{{ __('Subtitles') }}</span>
+                        <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Subtitles') }}</span>
                         <span class="mt-0.5 block text-xs text-slate-400">{{ __('Show the narration as text while it plays.') }}</span>
                     </span>
                     <input type="checkbox" @checked($lesson->subtitles)
                            wire:change="setSubtitles($event.target.checked)"
-                           class="toggle toggle-sm toggle-warning shrink-0" />
+                           class="toggle toggle-sm shrink-0" />
                 </label>
             </div>
 
@@ -1009,11 +1053,11 @@
             @php $posterCandidates = $this->lesson->posterCandidates(); $posterOverride = trim((string) ($lesson->poster_image ?? '')) !== ''; @endphp
             <div class="mt-6 pt-4 border-t border-slate-700/50">
                 <div class="mb-2 flex items-center justify-between">
-                    <span class="text-[10px] uppercase tracking-widest text-slate-500">Poster</span>
+                    <span class="text-2xs uppercase tracking-widest text-slate-500">Poster</span>
                     @if ($posterOverride)
-                        <button wire:click="resetPoster" class="text-[10px] text-slate-500 transition-colors hover:text-amber-300">↺ auto</button>
+                        <button wire:click="resetPoster" class="text-2xs text-slate-500 transition-colors hover:text-amber-300">↺ auto</button>
                     @else
-                        <span class="text-[10px] text-slate-600">auto-picked</span>
+                        <span class="text-2xs text-slate-600">auto-picked</span>
                     @endif
                 </div>
                 <div class="flex gap-3">
@@ -1033,7 +1077,7 @@
                             @endforeach
                         </div>
                     @else
-                        <p class="self-center text-[11px] text-slate-500">Add images to the lesson to choose a poster.</p>
+                        <p class="self-center text-2xs text-slate-500">Add images to the lesson to choose a poster.</p>
                     @endif
                 </div>
             </div>
@@ -1045,12 +1089,12 @@
             <div class="mt-6 border-t border-slate-700/50 pt-4">
                 <label class="flex items-center justify-between gap-3">
                     <span>
-                        <span class="text-[10px] uppercase tracking-widest text-slate-500">{{ __('Background music') }}</span>
+                        <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Background music') }}</span>
                         <span class="mt-0.5 block text-xs text-slate-400">{{ __('Play a quiet music bed under the narration.') }}</span>
                     </span>
                     <input type="checkbox" @checked($lesson->background_music)
                            wire:change="setBackgroundMusic($event.target.checked)"
-                           class="toggle toggle-sm toggle-warning shrink-0" />
+                           class="toggle toggle-sm shrink-0" />
                 </label>
             </div>
             @endif
@@ -1068,7 +1112,7 @@
              x-data x-init="setTimeout(() => $wire.set('publishNotice', null), 5000)">
             <div @class([
                 'flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm shadow-2xl',
-                'border-emerald-600 bg-emerald-950 text-emerald-200' => $publishOk,
+                'border-success/40 bg-success/10 text-success' => $publishOk,
                 'border-amber-600 bg-amber-950 text-amber-200' => ! $publishOk,
             ])>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4 shrink-0" aria-hidden="true">
@@ -1259,6 +1303,11 @@
                 if (!obj || obj.bg) return;
                 window.Livewire.dispatch('scene:delete-object', { objectId: obj.id });
             },
+            // Same server route as Cmd-D (scene:duplicate-objects); the copy comes back selected.
+            duplicateObject(obj) {
+                if (!obj || obj.bg) return;
+                window.__duplicateObjects([obj.id]);
+            },
             // Hover "adjust" icon → select the object, then open its editor: focus a text box
             // (reveals its font/size/align toolbar) or surface the panel's side/colour bar.
             edit(obj) {
@@ -1325,6 +1374,8 @@
         if (!window.Alpine || window.Alpine.store('view')) return;
         Alpine.store('view', {
             scenes: true, objects: false, rulers: false, notes: false, script: true, layers: false, railLast: 176,
+            // Not persisted: set from each scene:load, so Globe layers never shows over a slide.
+            mapScene: false,
             // Which tab the bottom dock is showing: 'icons' | 'script'.
             bottomTab: 'script',
             objectsW: 208,   // object-list width (px); drag-resizable, ≤108px → icons-only
@@ -1402,11 +1453,11 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25a2.25 2.25 0 0 1-2.25-2.25v-2.25Z" />
                 </svg>
-                <span class="text-[10px] font-medium">{{ __('View') }}</span>
+                <span class="text-2xs font-medium">{{ __('View') }}</span>
             </button>
             <div x-show="viewOpen" x-cloak @click.outside="viewOpen = false" x-transition.opacity.duration.150ms
                  class="absolute left-0 top-full z-50 mt-1.5 w-56 rounded-xl border border-slate-700 bg-slate-900 p-1.5 shadow-2xl">
-                <p class="px-2 py-1 text-[10px] uppercase tracking-widest text-slate-500">{{ __('Show') }}</p>
+                <p class="px-2 py-1 text-2xs uppercase tracking-widest text-slate-500">{{ __('Show') }}</p>
                 <template x-for="item in [
                     { k: 'scenes',  label: @js(__('Scenes')) },
                     { k: 'script',  label: @js(__('Icons & Script')) },
@@ -1415,7 +1466,7 @@
                     { k: 'notes',   label: @js(__('Internal notes')) },
                     { k: 'layers',  label: @js(__('Globe layers')) },
                 ]" :key="item.k">
-                    <button type="button"
+                    <button type="button" x-show="item.k !== 'layers' || $store.view.mapScene"
                             @click="(item.k === 'scenes' ? $store.view.toggleScenes() : $store.view.toggle(item.k)); viewOpen = false"
                             class="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-slate-200 hover:bg-slate-800">
                         <span class="flex h-4 w-4 shrink-0 items-center justify-center text-amber-400">
@@ -1439,7 +1490,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 0 1 0 1.971l-11.54 6.347a1.125 1.125 0 0 1-1.667-.985V5.653Z" />
             </svg>
-            <span class="text-[10px] font-medium">{{ __('Play') }}</span>
+            <span class="text-2xs font-medium">{{ __('Play') }}</span>
         </button>
 
         <div class="relative">
@@ -1449,11 +1500,11 @@
                     aria-haspopup="menu" :aria-expanded="addOpen.toString()"
                     title="{{ __('Add a scene, text, image, or icon') }}" aria-label="{{ __('Add') }}">
                 <x-icons.plus class="h-6 w-6" />
-                <span class="text-[10px] font-medium">{{ __('Add') }}</span>
+                <span class="text-2xs font-medium">{{ __('Add') }}</span>
             </button>
             <div x-show="addOpen" x-cloak @click.outside="addOpen = false" x-transition.opacity.duration.150ms
                  class="absolute left-0 top-full z-50 mt-1.5 w-56 rounded-xl border border-slate-700 bg-base-300 p-1.5 shadow-2xl" role="menu">
-                <p class="px-2 py-1 text-[10px] uppercase tracking-widest text-slate-500">{{ __('Add Scene') }}</p>
+                <p class="px-2 py-1 text-2xs uppercase tracking-widest text-slate-500">{{ __('Add Scene') }}</p>
                 <button type="button" @click="Livewire.dispatch('scene:add'); addOpen = false"
                         class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
                     <x-icons.plus class="h-4 w-4 shrink-0 text-amber-400" />
@@ -1461,7 +1512,7 @@
                     <span class="text-xs text-slate-500">{{ __('Below current') }}</span>
                 </button>
                 <div class="my-1 border-t border-slate-700" role="separator"></div>
-                <p class="px-2 py-1 text-[10px] uppercase tracking-widest text-slate-500">{{ __('Add Layer') }}</p>
+                <p class="px-2 py-1 text-2xs uppercase tracking-widest text-slate-500">{{ __('Add Layer') }}</p>
                 <button type="button" @click="window.dispatchEvent(new CustomEvent('lesson:add-text')); addOpen = false"
                         class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
                     <x-icons.pencil class="h-4 w-4 shrink-0 text-slate-400" />
@@ -1526,7 +1577,7 @@
             <svg viewBox="0 0 100 100" fill="currentColor" class="h-6 w-6" aria-hidden="true">
                 <path d="m79.168 26.043h-12.203l-7.8867-11.793c-1.9961-3.0508-5.3828-4.875-9.0742-4.875s-7.0781 1.8242-9.0547 4.8477l-7.9023 11.82h-12.203c-6.3203 0-11.457 5.1367-11.457 11.457v41.668c0 6.3203 5.1367 11.457 11.457 11.457h58.332c6.3203 0 11.457-5.1367 11.457-11.457v-41.668c0-6.3203-5.1367-11.457-11.457-11.457zm-33.008-8.375c1.6445-2.5195 6.0195-2.5508 7.6992 0.027343l5.582 8.3477h-18.883zm38.215 61.5c0 2.8711-2.3359 5.207-5.207 5.207h-58.336c-2.8711 0-5.207-2.3359-5.207-5.207v-2.457l13.109-8.4141c2.8125-1.4141 6.1172-1.3125 9.0273 0.35156l18.918 9.168c0.4375 0.21094 0.90234 0.3125 1.3633 0.3125 1.1602 0 2.2734-0.64453 2.8125-1.7617 0.75391-1.5547 0.10547-3.4219-1.4492-4.1758l-0.66406-0.32031 4.7578-1.1914c1.9258-0.47656 3.9141-0.34766 5.7539 0.39062l15.113 6.0469v2.0508zm0-8.7852-12.797-5.1172c-3.0703-1.2344-6.3906-1.4531-9.5898-0.64844l-12.016 3.0039-9.2891-4.4961c-4.543-2.6172-10.059-2.7656-15.035-0.25781l-10.023 6.4219v-31.789c0-2.8711 2.3359-5.207 5.207-5.207h58.332c2.8711 0 5.207 2.3359 5.207 5.207v32.883zm-30.207-31.84c-6.3203 0-11.457 5.1367-11.457 11.457s5.1367 11.457 11.457 11.457c6.3203 0 11.457-5.1367 11.457-11.457s-5.1367-11.457-11.457-11.457zm0 16.668c-2.8711 0-5.207-2.3359-5.207-5.207s2.3359-5.207 5.207-5.207c2.8711 0 5.207 2.3359 5.207 5.207s-2.3359 5.207-5.207 5.207z"/>
             </svg>
-            <span class="text-[10px] font-medium">{{ __('Format') }}</span>
+            <span class="text-2xs font-medium">{{ __('Format') }}</span>
         </button>
 
         {{-- Settings — global class/lesson settings (Story + Music). Lives on the toolbar, not
@@ -1542,7 +1593,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.24-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
             </svg>
-            <span class="text-[10px] font-medium">{{ __('Settings') }}</span>
+            <span class="text-2xs font-medium">{{ __('Settings') }}</span>
         </button>
 
         {{-- Publishing belongs to account holders. A landing-page demo guest is editing a
@@ -1555,7 +1606,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM4 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 10.374 21c-2.331 0-4.512-.645-6.374-1.766Z" />
             </svg>
-            <span class="text-[10px] font-medium">{{ __('Sign up') }}</span>
+            <span class="text-2xs font-medium">{{ __('Sign up') }}</span>
         </a>
         @else
         {{-- Share with other teachers. Next to Publish because they are the pair of visibility
@@ -1570,7 +1621,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z" />
             </svg>
-            <span class="text-[0.6rem] leading-none">{{ $lesson->is_public ? __('Shared') : __('Share') }}</span>
+            <span class="text-2xs leading-none">{{ $lesson->is_public ? __('Shared') : __('Share') }}</span>
         </button>
 
         {{-- Publish — now, or schedule for later (every scene must be ready) --}}
@@ -1583,7 +1634,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z" />
                     @php
                         $statusColor = match (true) {
-                            $lesson->status === \App\Enums\LessonStatus::Published => 'fill-emerald-500',
+                            $lesson->status === \App\Enums\LessonStatus::Published => 'fill-success',
                             $lesson->scheduled_publish_at !== null => 'fill-amber-400',
                             default => 'fill-purple-500',
                         };
@@ -1593,7 +1644,7 @@
                             class="{{ $statusColor }} stroke-slate-900"
                             stroke-width="1.5" />
                 </svg>
-                <span class="text-[10px] font-medium">{{ __('Publish') }}</span>
+                <span class="text-2xs font-medium">{{ __('Publish') }}</span>
             </button>
             <div x-show="open" x-transition x-cloak
                  class="absolute right-0 top-full z-70 mt-1 w-64 rounded-xl border border-slate-700 bg-base-300 p-2 text-left shadow-2xl">
@@ -1603,7 +1654,7 @@
                     {{ __('Publish now') }}
                 </button>
                 <div class="mt-2 border-t border-slate-700/50 pt-2">
-                    <span class="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">{{ __('Schedule for later') }}</span>
+                    <span class="mb-1 block text-2xs font-semibold uppercase tracking-wider text-slate-400">{{ __('Schedule for later') }}</span>
                     <input type="datetime-local" x-model="when"
                            class="input input-xs input-bordered w-full bg-slate-900" />
                     <button type="button" x-bind:disabled="!when"
@@ -1614,9 +1665,9 @@
                     </button>
                 </div>
                 @if ($lesson->scheduled_publish_at)
-                    <div class="mt-2 flex items-center justify-between gap-2 border-t border-slate-700/50 pt-2 text-[11px] text-amber-300">
+                    <div class="mt-2 flex items-center justify-between gap-2 border-t border-slate-700/50 pt-2 text-2xs text-amber-300">
                         <span>{{ __('Scheduled') }}: {{ $lesson->scheduled_publish_at->isoFormat('D MMM, HH:mm') }}</span>
-                        <button type="button" wire:click="cancelSchedule" class="text-rose-300 underline hover:text-rose-200">{{ __('Cancel') }}</button>
+                        <button type="button" wire:click="cancelSchedule" class="text-error/80 underline hover:text-error">{{ __('Cancel') }}</button>
                     </div>
                 @endif
             </div>
@@ -1634,7 +1685,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
             </svg>
-            <span class="text-[10px] font-medium">{{ __('Help') }}</span>
+            <span class="text-2xs font-medium">{{ __('Help') }}</span>
         </a>
         </div>
     </div>
@@ -1672,8 +1723,8 @@
             let html = '';
             for (let n = 0; n <= len; n += 100) {
                 html += axis === 'x'
-                    ? `<span style="position:absolute;left:${n + 2}px;bottom:1px;font-size:8px;line-height:1;color:#94a3b8;font-variant-numeric:tabular-nums">${n}</span>`
-                    : `<span style="position:absolute;top:${n + 1}px;left:2px;font-size:8px;line-height:1;color:#94a3b8;font-variant-numeric:tabular-nums">${n}</span>`;
+                    ? `<span style="position:absolute;left:${n + 2}px;bottom:1px;font-size:var(--text-3xs);line-height:1;color:#94a3b8;font-variant-numeric:tabular-nums">${n}</span>`
+                    : `<span style="position:absolute;top:${n + 1}px;left:2px;font-size:var(--text-3xs);line-height:1;color:#94a3b8;font-variant-numeric:tabular-nums">${n}</span>`;
             }
             layer.innerHTML = html;
         };
@@ -1866,17 +1917,26 @@
                          data-obj-adjust hides both in the compact (icons-only) rail. --}}
                     {{-- Adjust — select the object and open its Format inspector. --}}
                     <button type="button" data-nodrag data-obj-adjust @click.stop="edit(obj)"
-                            class="btn btn-ghost btn-xs btn-square shrink-0 text-slate-400 opacity-0 transition hover:text-amber-300 group-hover:opacity-100"
+                            class="btn btn-ghost btn-xs btn-square shrink-0 text-base-content/50 opacity-0 transition hover:text-primary group-hover:opacity-100"
                             aria-label="{{ __('Adjust settings') }}" :title="@js(__('Adjust settings'))">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />
+                        </svg>
+                    </button>
+                    {{-- Duplicate THIS object (Cmd-D does the same). --}}
+                    <button type="button" data-nodrag data-obj-adjust x-show="!obj.bg"
+                            @click.stop="duplicateObject(obj)"
+                            class="btn btn-ghost btn-xs btn-square shrink-0 text-base-content/50 opacity-0 transition hover:text-primary group-hover:opacity-100"
+                            aria-label="{{ __('Duplicate object') }}" :data-tooltip="@js(__('Duplicate') . ' (⌘D)')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25" />
                         </svg>
                     </button>
                     {{-- Delete THIS object (any type — deleteObject routes by obj.id: art_/txt_/rect_).
                          Hidden on the background row (not deletable). No confirm — one click removes it. --}}
                     <button type="button" data-nodrag data-obj-adjust x-show="!obj.bg"
                             @click.stop="deleteObject(obj)"
-                            class="btn btn-ghost btn-xs btn-square shrink-0 text-slate-500 opacity-0 transition hover:text-rose-400 group-hover:opacity-100"
+                            class="btn btn-ghost btn-xs btn-square shrink-0 text-base-content/50 opacity-0 transition hover:text-primary group-hover:opacity-100"
                             aria-label="{{ __('Delete object') }}" :title="@js(__('Delete'))">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"></path>
@@ -1986,11 +2046,58 @@
             return (mapBacked && window.__voyageArtworkLayer) || window.__lessonArtworkLayer;
         };
 
+        // Duplicate / copy / paste. The copy lives here, not on the system clipboard: it is a
+        // reference (object ids + the scene they sit on), so Cmd-V works in any scene of this
+        // lesson. Copying real text anywhere else clears it, so Cmd-V goes back to pasting text.
+        window.__duplicateObjects = (ids, sourceSceneId = null) => {
+            window.Livewire.dispatch('scene:duplicate-objects', { objectIds: ids, sourceSceneId });
+        };
+        let objClipboard = null;
+        document.addEventListener('copy', () => { objClipboard = null; });
+        window.Livewire.on('scene:objects-duplicated', (e) => {
+            const p = Array.isArray(e) ? e[0] : e;
+            const id = p?.objectIds?.[p.objectIds.length - 1];
+            if (!id) return;
+            // scene:load in the same response re-seeds the overlays first; select once it has.
+            requestAnimationFrame(() => {
+                if (id.startsWith('art_')) window.__artOverlay()?.select?.(id);
+                else window.__lessonTextLayer?.select?.(id);
+            });
+        });
+
+        const typingIn = () => {
+            const a = document.activeElement;
+            if (a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return true;
+            const sel = window.getSelection?.();
+            return !!(sel && !sel.isCollapsed && sel.anchorNode?.parentElement?.closest?.('[contenteditable], input, textarea'));
+        };
+        const selectedObjectId = () => {
+            const id = window.__artOverlay()?._selectedId || window.__lessonTextLayer?._selectedId;
+            return id && !id.startsWith('__') ? id : null;
+        };
+
+        window.addEventListener('keydown', (e) => {
+            if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey || e.defaultPrevented) return;
+            const key = e.key.toLowerCase();
+            if (!['d', 'c', 'v'].includes(key) || typingIn()) return;
+            if (key === 'v') {
+                if (!objClipboard) return;   // nothing of ours → the browser pastes as usual
+                e.preventDefault();
+                window.__duplicateObjects(objClipboard.ids, objClipboard.sceneId);
+                return;
+            }
+            if (key === 'c' && !window.getSelection?.()?.isCollapsed) return;   // copying page text
+            const id = selectedObjectId();
+            if (!id) return;
+            e.preventDefault();              // Cmd-D would bookmark the page
+            if (key === 'd') window.__duplicateObjects([id]);
+            else objClipboard = { ids: [id], sceneId: (window.__objScene || {}).sceneId ?? null };
+        });
+
         window.addEventListener('keydown', (e) => {
             if (e.key !== 'Backspace' && e.key !== 'Delete') return;
             if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
-            const a = document.activeElement;
-            if (a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return;
+            if (window.__isTypingTarget?.(document.activeElement)) return;
             const sel = window.getSelection?.();
             if (sel && !sel.isCollapsed && sel.anchorNode?.parentElement?.closest?.('[contenteditable], input, textarea')) return;
             const id = window.__artOverlay()?._selectedId || window.__lessonTextLayer?._selectedId;
@@ -2015,7 +2122,7 @@
          class="fixed bottom-0 z-40 w-72 overflow-hidden border-l border-t border-slate-700 bg-base-300"
          style="right: var(--work-right, 16rem);">
         <div class="flex items-center justify-between border-b border-slate-700/60 bg-base-200/60 px-3 py-2">
-            <span class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">{{ __('Internal notes') }}</span>
+            <span class="text-2xs font-semibold uppercase tracking-widest text-slate-400">{{ __('Internal notes') }}</span>
             <button type="button" @click="$store.view.hide('notes')" class="text-slate-500 hover:text-slate-200" aria-label="Close">✕</button>
         </div>
         <textarea x-model="note" @input.debounce.400ms="save()" rows="6"
@@ -2069,7 +2176,7 @@
          is a syntax error and the whole expression is silently dropped. The try/catch stays
          regardless — localStorage throws outright in a browser that blocks storage. --}}
     <x-ui.floating-window name="layers" :title="__('Globe layers')"
-                          show="$store.view.layers" on-close="$store.view.hide('layers')">
+                          show="$store.view.layers && $store.view.mapScene" on-close="$store.view.hide('layers')">
     <div x-data="{
              rows: @js($globeLayerRows),
              reference: @js($globeReferenceRow),
@@ -2149,12 +2256,14 @@
                            :disabled="!offered(row.key)"
                            :aria-label="offered(row.key) ? row.label : row.label + ' — ' + why(row.key)">
                     <span class="w-24 shrink-0 truncate text-xs text-slate-300" x-text="row.label"></span>
-                    <input type="range" min="0" :max="row.max" step="0.05"
-                           class="range range-xs grow"
-                           x-model.number="state[row.key].value"
-                           :disabled="!offered(row.key) || !state[row.key].visible"
-                           @input="push(row.key)"
-                           :aria-label="row.label + ' — {{ __('opacity') }}'">
+                    <span class="range-panel-knob min-w-0 grow">
+                        <input type="range" min="0" :max="row.max" step="0.05"
+                               class="range range-panel"
+                               x-model.number="state[row.key].value"
+                               :disabled="!offered(row.key) || !state[row.key].visible"
+                               @input="push(row.key)"
+                               :aria-label="row.label + ' — {{ __('opacity') }}'">
+                    </span>
                 </div>
             </template>
 
@@ -2168,12 +2277,14 @@
                        x-model="state[reference.key].visible" @change="push(reference.key)"
                        :aria-label="reference.label">
                 <span class="w-24 shrink-0 truncate text-xs text-slate-300" x-text="reference.label"></span>
-                <input type="range" min="0" :max="reference.max" step="0.05"
-                       class="range range-xs grow"
-                       x-model.number="state[reference.key].value"
-                       :disabled="!state[reference.key].visible"
-                       @input="push(reference.key)"
-                       :aria-label="reference.label + ' — {{ __('opacity') }}'">
+                <span class="range-panel-knob min-w-0 grow">
+                    <input type="range" min="0" :max="reference.max" step="0.05"
+                           class="range range-panel"
+                           x-model.number="state[reference.key].value"
+                           :disabled="!state[reference.key].visible"
+                           @input="push(reference.key)"
+                           :aria-label="reference.label + ' — {{ __('opacity') }}'">
+                </span>
             </div>
         </div>
     </div>
@@ -2372,7 +2483,7 @@
                     @endforeach
 
                     <span class="mx-1 hidden h-4 w-px flex-none bg-slate-700 sm:block"></span>
-                    <span class="hidden flex-none text-[10px] font-semibold uppercase tracking-wider text-slate-500 lg:block">{{ __('Region') }}</span>
+                    <span class="hidden flex-none text-2xs font-semibold uppercase tracking-wider text-slate-500 lg:block">{{ __('Region') }}</span>
                     {{-- Region chips need ~26rem — on smaller screens they overflowed the modal,
                          so below lg they collapse into a compact dropdown. --}}
                     <div class="hidden flex-none items-center gap-2 lg:flex">
@@ -2448,17 +2559,17 @@
                             <img src="{{ $art['thumb'] }}" loading="lazy" alt=""
                                  class="h-full w-full object-cover transition group-hover:scale-105" />
                             @if (($art['kind'] ?? 'painting') === 'city_map')
-                                <span class="absolute right-1 top-1 rounded bg-sky-600/90 px-1 text-[8px] font-semibold uppercase tracking-wider text-white">
+                                <span class="absolute right-1 top-1 rounded bg-sky-600/90 px-1 text-3xs font-semibold uppercase tracking-wider text-white">
                                     {{ __('plan') }}
                                 </span>
                             @endif
                             @if (! empty($art['correctness']))
-                                <span class="absolute left-1 top-1 rounded bg-emerald-600/90 px-1 text-[8px] font-semibold uppercase tracking-wider text-white"
+                                <span class="absolute left-1 top-1 rounded bg-success px-1 text-3xs font-semibold uppercase tracking-wider text-white"
                                       title="{{ __('Match correctness: soft criteria met') }}">
                                     ✓ {{ $art['correctness'] }}
                                 </span>
                             @endif
-                            <span class="absolute inset-x-0 bottom-0 truncate bg-black/70 px-2 py-1 text-left text-[10px] text-white">
+                            <span class="absolute inset-x-0 bottom-0 truncate bg-black/70 px-2 py-1 text-left text-2xs text-white">
                                 {{ $art['title'] }}@if($art['caption']) · {{ $art['caption'] }}@endif
                             </span>
                         </button>
@@ -2518,9 +2629,9 @@
                     </label>
                 </div>
                 @error('uploadImage')
-                    <p class="mt-1 text-[11px] text-rose-300">{{ $message }}</p>
+                    <p class="mt-1 text-2xs text-error">{{ $message }}</p>
                 @enderror
-                <p class="mt-3 text-[11px] text-slate-500">
+                <p class="mt-3 text-2xs text-slate-500">
                     {{-- Not "public-domain works": the license filter admits CC BY and CC BY-SA too
                          (it only rejects NC/ND), so the grid genuinely serves openly licensed
                          photographs alongside public-domain art. Saying "public domain" told
@@ -2592,9 +2703,14 @@
                     const rootEl       = document.getElementById('lesson-canvas-root');
                     const characterUrl = rootEl?.dataset.characterUrl || null;
 
+                    const sceneId = this.$wire.selectedSceneId;
                     window.__lessonStage = await window.LessonScene.mountWizardScene({
-                        canvasEl, overlayEl, timerEl, scenes, characterUrl,
+                        canvasEl, overlayEl, timerEl, scenes, characterUrl, initialSceneId: sceneId,
                     });
+                    // mount()'s scene:load fired during hydration, before the bridge was listening,
+                    // so the stage only had the partial first-paint payload (no sceneId,
+                    // identity, quiz questions, voyage route …). Ask for the full one, as a click does.
+                    if (window.__lessonStage && sceneId) this.$wire.selectScene(sceneId);
                 },
 
                 // App nav height (h-16 = 64px) — the fixed panel sits flush under it, no gap.

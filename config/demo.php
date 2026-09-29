@@ -53,7 +53,7 @@ return [
     |
     | An entry naming a lesson nobody has written yet costs nothing: it falls
     | through to English, which is the documented behaviour rather than an
-    | accident. That is what 'de' and 'it' are doing here.
+    | accident.
     |
     | English is deliberately NOT listed here. It comes from `lesson_title` and
     | `lesson_goal` above, so DEMO_LESSON_TITLE stays the one env var that pins
@@ -67,11 +67,9 @@ return [
     'by_language' => [
         'nl' => ['title' => 'De reis van Abel Tasman', 'goal' => 'Abel Tasman en de reis van 1642', 'footage' => 'public/lessons/tasman/animation'],
         'fr' => ['title' => 'La Révolution française et l\'ascension de Napoléon', 'goal' => 'La Révolution française, et comment Bonaparte a pris le pouvoir'],
-
-        // No German or Italian lesson exists yet. Listed so the intent is visible and so writing
-        // one is a content job, not a code change — until then both fall through to English.
-        'de' => ['title' => null, 'goal' => null],
-        'it' => ['title' => null, 'goal' => null],
+        // Both from resources/lessons/dante: the titles must match text/{de,it}.php exactly.
+        'de' => ['title' => 'Dante Alighieri: das Leben eines Dichters im Exil', 'goal' => 'Dante Alighieri und wie er im Exil die Commedia schrieb'],
+        'it' => ['title' => 'Dante Alighieri: la vita di un poeta in esilio', 'goal' => 'Dante Alighieri e come scrisse la Commedia in esilio'],
     ],
 
     /*

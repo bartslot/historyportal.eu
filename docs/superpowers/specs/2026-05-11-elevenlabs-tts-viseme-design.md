@@ -1,6 +1,6 @@
 # ElevenLabs TTS + Viseme Fix — Design Spec
 **Date:** 2026-05-11  
-**Scope:** Learning Portal (`thelearningportal.us`) + TTS Playground (`ttsplayground`)
+**Scope:** Learning Portal (`historyportal.eu`) + TTS Playground (`ttsplayground`)
 
 ---
 

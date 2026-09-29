@@ -623,7 +623,7 @@ class Step1Settings extends Component
         $lesson->save();
 
         if ($this->portrait) {
-            $path = $this->portrait->storeAs("lessons/{$lesson->id}", 'portrait.jpg', 'public');
+            $path = \App\Services\Support\WebpEncoder::storeUpload($this->portrait, "lessons/{$lesson->id}", 'portrait');
             $lesson->update(['portrait_path' => $path]);
         }
 

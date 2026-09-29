@@ -1,16 +1,26 @@
 import './bootstrap';
 import { gsap } from 'gsap';
+import { GSAP_EASE } from './easing.js';
 import Sortable                from 'sortablejs';
 import { createTour } from './onboarding/tour.js';
 import { initTooltips } from './tooltip.js';
 import { watchCarousels } from './carousel.js';
 import { easingPreview } from './easing-preview.js';
+import { animationTimeline } from './anim/timeline-panel.js';
 import { setupHeroLessonDemo } from './hero/lesson-demo.js';
 import { setupSiteHeader } from './site-header.js';
 import { clampToViewport, restorePosition, savePosition, defaultPosition, isViewportUsable } from './ui/floating-window.js';
 // Dev settings sliders. Imported unconditionally because it is a registry and nothing more until
 // something registers a knob — it builds no DOM and adds no listeners beyond one window event.
 import './dev/tuner.js';
+import { settingsPanelTuner } from './dev/settings-panel-tuner.js';
+import { layerSizeRow } from './ui/layer-size-row.js';
+import { layerAngleRow } from './ui/angle-dial.js';
+import { initScrub } from './ui/scrub.js';
+import { initRangeFill } from './ui/range-fill.js';
+import { initNumericFields } from './ui/numeric-field.js';
+import { layerOverlay, setLayerPropEverywhere, selectLayerEverywhere } from './scene/layer-overlays.js';
+import { isTypingTarget } from './ui/keyboard.js';
 
 window.Sortable = Sortable;
 
@@ -40,9 +50,57 @@ window.onboardingTour = createTour;
 // Same global-factory pattern, for the same reason.
 window.easingPreview = easingPreview;
 
+// The settings panel's geometry knobs: x-data="settingsPanelTuner()". Same global-factory pattern.
+// It registers a tuner group while an inspector is open and unregisters when it closes, so the
+// knobs follow the panel rather than sitting in the list on every page.
+window.settingsPanelTuner = settingsPanelTuner;
+
+// The inspector's Dimensions row: x-data="layerSizeRow({ ... })". Same global-factory pattern.
+// The proportion maths it drives lives in resources/js/ui/aspect-lock.js, where aspect-lock.test.js
+// holds it — a lock that recomputes its ratio from the rounded fields drifts a square out of
+// square with every individual step still looking right, so it is not left in a template.
+window.layerSizeRow = layerSizeRow;
+
+// A map or voyage scene keeps TWO artwork overlays alive over the same layers, so "set this
+// property live" has to reach both and "measure this layer" has to read the one on screen. See
+// resources/js/scene/layer-overlays.js — the panel's live previews all go through these.
+window.__layerOverlay = layerOverlay;
+window.__setLayerProp = setLayerPropEverywhere;
+window.__selectLayer = selectLayerEverywhere;
+
+// The rotation dial: x-data="layerAngleRow({ ... })". Same global-factory pattern.
+window.layerAngleRow = layerAngleRow;
+
+// Drag a field's label sideways to change its number, app-wide. ONE delegated listener — these
+// panels are morphed constantly by Livewire and a per-element binding would quietly stop working
+// on whichever row was re-rendered last. Opt in with `data-scrub` on the label.
+initScrub();
+
+// The panel sliders paint their fill INTO the track (see .range-panel in app.css), so the stop
+// position has to follow the value. Server-rendered for the first frame; this handles the drag.
+initRangeFill();
+
+// How the panel's numeric fields behave beyond typing: Esc restores the value they were focused
+// with, double-clicking a label resets that property to its default, and a pasted "50%" is a 50.
+// Delegated for the same reason as the two above: Livewire morphs these panels constantly.
+initNumericFields();
+
+// The wizard's Timeline tab: x-data="animationTimeline({...})". Registered from a bundled
+// module because the dock is morphed in, and a <script> that arrives through a morph never runs.
+window.animationTimeline = animationTimeline;
+
+// "Is someone typing?" — the guard every global shortcut owes a teacher before it takes a key.
+// A global as well as an import because the wizard's own shortcuts (⌘Z, Delete) live in an inline
+// <script> that cannot import a module, and they used to carry their own copy of the same test.
+// See resources/js/ui/keyboard.js.
+window.__isTypingTarget = isTypingTarget;
+
 // The 3D scene system (three.js, ~1.7 MB) is used ONLY by the lesson-creation wizard. Load it on
 // demand via window.loadLessonScene() so the landing page and other app pages never download three.
 // The wizard step views await this before touching window.LessonScene.
+// Quick mask (Instant Alpha) for an image layer: only the wizard's Mask dialog loads it.
+window.loadQuickMask = () => import('./scene/quick-mask.js');
+
 window.loadLessonScene = () => import('./scene/index.js').then((module) => {
     window.LessonScene = module;
     return module;
@@ -76,9 +134,9 @@ const setupLandingCursor = () => {
     // means the browser counted each one toward Cumulative Layout Shift. Moving the mouse for a few
     // seconds was enough to log ninety-odd shift entries and climb the score without limit.
     // A transform is composited: it moves the dot without touching layout at all.
-    const xTo = gsap.quickTo(cursor, 'x', { duration: 0.12, ease: 'power3.out' });
-    const yTo = gsap.quickTo(cursor, 'y', { duration: 0.12, ease: 'power3.out' });
-    const scaleTo = gsap.quickTo(cursor, 'scale', { duration: 0.2, ease: 'power2.out' });
+    const xTo = gsap.quickTo(cursor, 'x', { duration: 0.12, ease: GSAP_EASE.enter });
+    const yTo = gsap.quickTo(cursor, 'y', { duration: 0.12, ease: GSAP_EASE.enter });
+    const scaleTo = gsap.quickTo(cursor, 'scale', { duration: 0.2, ease: GSAP_EASE.enter });
     let isMouseDown = false;
     let isBackgroundHover = false;
 
@@ -105,7 +163,7 @@ const setupLandingCursor = () => {
         xTo(x);
         yTo(y);
         syncCursorState();
-        gsap.to(cursor, { autoAlpha: 1, duration: 0.08, ease: 'none', overwrite: 'auto' });
+        gsap.to(cursor, { autoAlpha: 1, duration: 0.08, ease: GSAP_EASE.enter, overwrite: 'auto' });
     };
 
     window.addEventListener('pointermove', (event) => {
@@ -116,7 +174,7 @@ const setupLandingCursor = () => {
         isBackgroundHover = false;
         cursor.classList.remove('landing-cursor--portal-bg');
         scaleTo(0.7);
-        gsap.to(cursor, { autoAlpha: 1, duration: 0.18, ease: 'sine.out', overwrite: 'auto' });
+        gsap.to(cursor, { autoAlpha: 1, duration: 0.18, ease: GSAP_EASE.enter, overwrite: 'auto' });
     });
 
     window.addEventListener('mousedown', () => {
@@ -174,7 +232,7 @@ const setupWheelMotion = () => {
         breathingTween = gsap.to(wheel, {
             scale,
             duration,
-            ease: 'sine.inOut',
+            ease: GSAP_EASE.move,
             repeat: -1,
             yoyo: true,
             overwrite: true,
@@ -183,10 +241,10 @@ const setupWheelMotion = () => {
 
     startBreathing();
 
-    const wheelX = gsap.quickTo(wheel, 'x', { duration: 0.9, ease: 'power3.out' });
-    const wheelY = gsap.quickTo(wheel, 'y', { duration: 0.9, ease: 'power3.out' });
-    const wheelRotation = gsap.quickTo(wheel, 'rotation', { duration: 1.1, ease: 'power3.out' });
-    const wheelOpacity = gsap.quickTo(wheel, 'opacity', { duration: 0.3, ease: 'sine.out' });
+    const wheelX = gsap.quickTo(wheel, 'x', { duration: 0.9, ease: GSAP_EASE.enter });
+    const wheelY = gsap.quickTo(wheel, 'y', { duration: 0.9, ease: GSAP_EASE.enter });
+    const wheelRotation = gsap.quickTo(wheel, 'rotation', { duration: 1.1, ease: GSAP_EASE.enter });
+    const wheelOpacity = gsap.quickTo(wheel, 'opacity', { duration: 0.3, ease: GSAP_EASE.enter });
 
     const moveWheel = (clientX, clientY, target) => {
         if (!finePointer || document.documentElement.classList.contains('portal-exiting')) {
@@ -242,16 +300,16 @@ const setupHeroParallax = () => {
 
     gsap.set([glow, spotlight, orb, copy, cta], { willChange: 'transform' });
 
-    const glowX = gsap.quickTo(glow, 'x', { duration: 1.4, ease: 'power3.out' });
-    const glowY = gsap.quickTo(glow, 'y', { duration: 1.4, ease: 'power3.out' });
-    const spotlightX = gsap.quickTo(spotlight, 'x', { duration: 1.6, ease: 'power3.out' });
-    const spotlightY = gsap.quickTo(spotlight, 'y', { duration: 1.6, ease: 'power3.out' });
-    const orbX = gsap.quickTo(orb, 'x', { duration: 1.8, ease: 'power3.out' });
-    const orbY = gsap.quickTo(orb, 'y', { duration: 1.8, ease: 'power3.out' });
-    const copyX = gsap.quickTo(copy, 'x', { duration: 1.0, ease: 'power3.out' });
-    const copyY = gsap.quickTo(copy, 'y', { duration: 1.0, ease: 'power3.out' });
-    const ctaX = gsap.quickTo(cta, 'x', { duration: 0.9, ease: 'power3.out' });
-    const ctaY = gsap.quickTo(cta, 'y', { duration: 0.9, ease: 'power3.out' });
+    const glowX = gsap.quickTo(glow, 'x', { duration: 1.4, ease: GSAP_EASE.enter });
+    const glowY = gsap.quickTo(glow, 'y', { duration: 1.4, ease: GSAP_EASE.enter });
+    const spotlightX = gsap.quickTo(spotlight, 'x', { duration: 1.6, ease: GSAP_EASE.enter });
+    const spotlightY = gsap.quickTo(spotlight, 'y', { duration: 1.6, ease: GSAP_EASE.enter });
+    const orbX = gsap.quickTo(orb, 'x', { duration: 1.8, ease: GSAP_EASE.enter });
+    const orbY = gsap.quickTo(orb, 'y', { duration: 1.8, ease: GSAP_EASE.enter });
+    const copyX = gsap.quickTo(copy, 'x', { duration: 1.0, ease: GSAP_EASE.enter });
+    const copyY = gsap.quickTo(copy, 'y', { duration: 1.0, ease: GSAP_EASE.enter });
+    const ctaX = gsap.quickTo(cta, 'x', { duration: 0.9, ease: GSAP_EASE.enter });
+    const ctaY = gsap.quickTo(cta, 'y', { duration: 0.9, ease: GSAP_EASE.enter });
 
     const moveHero = (clientX, clientY) => {
         if (!finePointer || document.documentElement.classList.contains('portal-exiting')) {
@@ -483,7 +541,7 @@ const setupPortalExitAnimation = () => {
             };
 
             const tl = gsap.timeline({
-                defaults: { ease: 'power4.out' },
+                defaults: { ease: GSAP_EASE.enter },
                 onComplete: cleanup,
             });
 
@@ -494,7 +552,7 @@ const setupPortalExitAnimation = () => {
                     opacity: 0.08,
                     rotation: currentWheelRotation + 24,
                     duration: 0.18,
-                    ease: 'expo.in',
+                    ease: GSAP_EASE.exit,
                 }, 0)
                 .to(copy, { opacity: 1, duration: 0.01 }, 0)
                 .to(cta, { opacity: 1, duration: 0.01 }, 0);
@@ -531,40 +589,40 @@ const setupPortalExitAnimation = () => {
                     .to(material, {
                         opacity: 0.98,
                         duration: 0.28,
-                        ease: 'sine.out',
+                        ease: GSAP_EASE.enter,
                     }, 0)
                     .to(mesh.position, {
                         x: nearX,
                         y: nearY,
                         z: driftZ,
                         duration: 1.05,
-                        ease: 'expo.out',
+                        ease: GSAP_EASE.enter,
                     }, 0)
                     .to(mesh.scale, {
                         x: nearScale,
                         y: nearScale,
                         z: nearScale,
                         duration: 1.05,
-                        ease: 'expo.out',
+                        ease: GSAP_EASE.enter,
                     }, 0)
                     .to(mesh.rotation, {
                         x: (spinX * Math.PI) / 180,
                         y: (spinY * Math.PI) / 180,
                         z: (spinZ * Math.PI) / 180,
                         duration: 1.05,
-                        ease: 'expo.out',
+                        ease: GSAP_EASE.enter,
                     }, 0)
                     .to(material, {
                         opacity: 0.92,
                         duration: 0.32,
-                        ease: 'sine.out',
+                        ease: GSAP_EASE.enter,
                     }, 0.24)
                     .to(mesh.position, {
                         x: nearX + arcX,
                         y: nearY + arcY,
                         z: driftZ + gsap.utils.random(-40, 120),
                         duration: 0.8,
-                        ease: 'sine.inOut',
+                        ease: GSAP_EASE.move,
                     }, 1.06);
 
                 tl.add(burst, burstDelay);
@@ -574,7 +632,7 @@ const setupPortalExitAnimation = () => {
                 opacity: 0,
                 y: -18,
                 duration: 0.45,
-                ease: 'power2.out',
+                ease: GSAP_EASE.enter,
             }, 1.15);
 
             if (signup) {
@@ -584,7 +642,7 @@ const setupPortalExitAnimation = () => {
                         opacity: 1,
                         y: 0,
                         duration: 0.5,
-                        ease: 'power2.out',
+                        ease: GSAP_EASE.enter,
                     }, 1.22);
             }
         } catch (error) {

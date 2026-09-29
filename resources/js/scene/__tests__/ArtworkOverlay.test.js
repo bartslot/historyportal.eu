@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { ArtworkOverlay } from '../ArtworkOverlay.js'
+import { ArtworkOverlay, layersIdentity, layersSignature } from '../ArtworkOverlay.js'
 
 const host = () => document.createElement('div')
 const layer = (extra = {}) => ({ asset_id: 1, url: '/a.png', x: 50, y: 58, scale: 1, height: 40, ...extra })
@@ -279,5 +279,227 @@ describe('ArtworkOverlay — live preview while dragging a control', () => {
     overlay.setLayers([layer()])
 
     expect(() => overlay.setLayerProp(999, 'tint', '#000000')).not.toThrow()
+  })
+})
+
+describe('ArtworkOverlay — measuring a layer for the Dimensions row', () => {
+  /**
+   * jsdom reports 0 for every offset/client dimension, so the boxes are stubbed. That is the whole
+   * point of the test: what matters is which boxes the ratio is built from, not what a real browser
+   * would return.
+   */
+  const stub = (el, { width, height }) => {
+    Object.defineProperty(el, 'offsetWidth', { value: width, configurable: true })
+    Object.defineProperty(el, 'offsetHeight', { value: height, configurable: true })
+  }
+  const stubHost = (el, { width, height }) => {
+    Object.defineProperty(el, 'clientWidth', { value: width, configurable: true })
+    Object.defineProperty(el, 'clientHeight', { value: height, configurable: true })
+  }
+
+  it('reports the box as a width-% to height-% ratio, not as two percentages', () => {
+    // Arrange — a 16:9 stage with a square layer on it. A square is 22.5% as wide as the stage
+    // when it is 40% as tall, so the ratio the row wants is 0.5625, not 1.
+    const el = host()
+    stubHost(el, { width: 1600, height: 900 })
+    const overlay = new ArtworkOverlay(el)
+    overlay.setLayers([layer()])
+    stub(el.querySelector('[data-layer-id="art_1"]'), { width: 360, height: 360 })
+
+    // Act
+    const box = overlay.measure(1)
+
+    // Assert
+    expect(box.ratio).toBeCloseTo(0.5625, 6)
+  })
+
+  /**
+   * THE BUG THIS REPLACED. The row multiplies the ratio by the layer's STORED height, so the ratio
+   * must not depend on which box the node's percentage height resolved against. A node rendered
+   * twice as tall as its stored height (its offset parent being half the host) has to yield the
+   * same shape, or the lock captures a proportion the layer never had — measured live as a layer
+   * stored at height 40 that reported 71.8, whose lock then took a halved width to 35.9 and not 20.
+   */
+  it('gives the same shape however tall the node happens to render', () => {
+    const el = host()
+    stubHost(el, { width: 1600, height: 900 })
+    const overlay = new ArtworkOverlay(el)
+    overlay.setLayers([layer()])
+    const node = el.querySelector('[data-layer-id="art_1"]')
+
+    stub(node, { width: 360, height: 360 })
+    const small = overlay.measure(1).ratio
+
+    stub(node, { width: 720, height: 720 })
+    const large = overlay.measure(1).ratio
+
+    expect(large).toBeCloseTo(small, 9)
+  })
+
+  it('reports nothing while the image has not decoded', () => {
+    const el = host()
+    stubHost(el, { width: 1600, height: 900 })
+    const overlay = new ArtworkOverlay(el)
+    overlay.setLayers([layer()])
+    stub(el.querySelector('[data-layer-id="art_1"]'), { width: 0, height: 0 })
+
+    expect(overlay.measure(1)).toBeNull()
+  })
+})
+
+describe('keeping the canvas steady while a teacher edits', () => {
+  /**
+   * THE FLICKER. Every saved edit changed the layers' signature, and the callers answered a
+   * signature change by tearing every node down (setLayers) and replaying the entrance animations.
+   * Nudging one slider re-flew the whole scene in. Reported as "every change, either changing
+   * position of layer or anything else, it flickers or distorts".
+   */
+  it('does not count a value change as a change of WHICH layers are present', () => {
+    const before = [layer()]
+    const after = [layer({ x: 20, rotation: 45 })]
+
+    expect(layersSignature(after)).not.toBe(layersSignature(before))   // something did change…
+    expect(layersIdentity(after)).toBe(layersIdentity(before))         // …but not the cast
+  })
+
+  it('treats a new layer, a removed one and a swapped image as a change of cast', () => {
+    const one = [layer()]
+    expect(layersIdentity([layer(), layer({ asset_id: 2 })])).not.toBe(layersIdentity(one))
+    expect(layersIdentity([])).not.toBe(layersIdentity(one))
+    expect(layersIdentity([layer({ url: '/b.png' })])).not.toBe(layersIdentity(one))
+  })
+
+  it('applies moved values to the live nodes instead of rebuilding them', () => {
+    const el = host()
+    const overlay = new ArtworkOverlay(el)
+    overlay.setLayers([layer()])
+    const node = el.querySelector('[data-layer-id="art_1"]')
+
+    const handled = overlay.syncProps([layer({ x: 20, rotation: 45, opacity: 0.5 })])
+
+    expect(handled).toBe(true)
+    expect(el.querySelector('[data-layer-id="art_1"]')).toBe(node)   // the SAME node, not a new one
+    expect(node.style.left).toBe('20%')
+    expect(node.style.transform).toContain('rotate(45deg)')
+  })
+
+  /**
+   * A property setLayerProp cannot paint has to force the long way round. Applying it here would
+   * update the held item and nothing on screen, which reads exactly like a save that did not take.
+   */
+  it('refuses the fast path for a property it cannot paint', () => {
+    const el = host()
+    const overlay = new ArtworkOverlay(el)
+    overlay.setLayers([layer()])
+
+    expect(overlay.syncProps([layer({ depth: 2 })])).toBe(false)
+    expect(overlay.syncProps([layer({ anim: 'zoom' })])).toBe(false)
+  })
+
+  it('refuses the fast path for a layer it does not hold', () => {
+    const el = host()
+    const overlay = new ArtworkOverlay(el)
+    overlay.setLayers([layer()])
+
+    expect(overlay.syncProps([layer({ asset_id: 99 })])).toBe(false)
+  })
+
+  /**
+   * Metadata the node never renders must not drag the whole scene into a rebuild. `path` and
+   * `title` ride along on the server payload and the normalised item does not hold them at all.
+   */
+  it('ignores payload metadata the node does not render', () => {
+    const el = host()
+    const overlay = new ArtworkOverlay(el)
+    overlay.setLayers([layer()])
+
+    expect(overlay.syncProps([layer({ path: 'lessons/1/a.png', title: 'Hannibal' })])).toBe(true)
+  })
+
+  /**
+   * A width the payload still carries must survive a sync. The server sends `width` on every
+   * layer, so this is the ordinary case — an edit to something else must not disturb the box.
+   */
+  it('leaves a width alone when the payload still carries it', () => {
+    const el = host()
+    const overlay = new ArtworkOverlay(el)
+    overlay.setLayers([layer({ width: 30 })])
+    const node = el.querySelector('[data-layer-id="art_1"]')
+
+    overlay.syncProps([layer({ width: 30, opacity: 0.5 })])
+
+    expect(node.style.width).toBe('30%')
+  })
+
+  /**
+   * `width: null` is not an absence, it is the server saying "this layer has no width of its own"
+   * — which is what a teacher re-engaging the aspect lock produces. The node has to go back to
+   * taking its width from the image's aspect rather than keeping the last explicit one.
+   */
+  it('returns a layer to its own aspect when the payload clears the width', () => {
+    const el = host()
+    const overlay = new ArtworkOverlay(el)
+    overlay.setLayers([layer({ width: 30 })])
+    const node = el.querySelector('[data-layer-id="art_1"]')
+
+    overlay.syncProps([layer({ width: null })])
+
+    expect(node.style.width).not.toBe('30%')
+  })
+})
+
+describe('syncProps against the payload the server actually sends', () => {
+  /**
+   * THE FIXTURE TRAP. Every test above hands syncProps a layer already in the overlay's own
+   * normalised shape, and they all passed while the fast path was firing for nobody: the real
+   * `scene:load` payload sends `anchor: null` where the item holds `'screen'`, `anim: null` where
+   * it holds `'none'`, `blend: null` where it holds `'normal'`, and so on. The diff found an
+   * unsyncable "change" on every load and fell straight back to a rebuild.
+   *
+   * This fixture is shaped like Step3SceneConfigurator::serializeShots, nulls and all.
+   */
+  const serverLayer = (extra = {}) => ({
+    url: '/a.png?v=1699999999',
+    asset_id: 1,
+    title: 'Hannibal',
+    x: 50, y: 58, depth: 1, kind: 'figure', scale: 1, height: 40, width: null,
+    sway: false, blur: null, opacity: null, blend: null,
+    anchor: null, lng: null, lat: null,
+    anim: null, anim_delay: null, anim_ease: null, wobble: null,
+    white_key: null, tint_opacity: null, rotation: null,
+    anim_duration: null, anim_out: null, anim_out_delay: null,
+    anim_out_ease: null, anim_out_duration: null,
+    grayscale: false, tint: null, z: null, flip_x: false, flip_y: false,
+    ink_preset: null, ink_fill: null, draw_time: null, embed: null,
+    ...extra,
+  })
+
+  it('takes the in-place path for a real payload whose values moved', () => {
+    const el = host()
+    const overlay = new ArtworkOverlay(el)
+    overlay.setLayers([serverLayer()])
+    const node = el.querySelector('[data-layer-id="art_1"]')
+
+    const handled = overlay.syncProps([serverLayer({ scale: 2.4 })])
+
+    expect(handled).toBe(true)
+    expect(el.querySelector('[data-layer-id="art_1"]')).toBe(node)   // never torn down
+    expect(node.style.height).toBe('96%')                            // 40 × 2.4
+  })
+
+  it('takes the in-place path even when nothing moved at all', () => {
+    const el = host()
+    const overlay = new ArtworkOverlay(el)
+    overlay.setLayers([serverLayer()])
+
+    expect(overlay.syncProps([serverLayer()])).toBe(true)
+  })
+
+  it('still rebuilds when a real payload changes something it cannot paint', () => {
+    const el = host()
+    const overlay = new ArtworkOverlay(el)
+    overlay.setLayers([serverLayer()])
+
+    expect(overlay.syncProps([serverLayer({ depth: 2 })])).toBe(false)
   })
 })

@@ -69,7 +69,7 @@
 <div class="space-y-3" @if ($isLayer) x-data="{ build: 'in' }" @endif>
     @if ($isLayer)
         {{-- Build In / Build Out, the two halves of a layer's life on the scene. --}}
-        <div role="tablist" class="flex rounded-lg bg-slate-900/70 p-0.5 text-[11px]">
+        <div role="tablist" class="flex rounded-lg bg-slate-900/70 p-0.5 text-2xs">
             @foreach (['in' => __('In'), 'out' => __('Out')] as $key => $label)
                 <button type="button" role="tab" @click="build = '{{ $key }}'"
                         :class="build === '{{ $key }}'
@@ -80,7 +80,7 @@
         </div>
     @endif
 
-    <p class="text-[11px] leading-tight text-slate-500">
+    <p class="text-2xs leading-tight text-slate-500">
         @if ($isLayer)
             <span x-show="build === 'in'">{{ __('How this layer arrives when the scene starts.') }}</span>
             <span x-show="build === 'out'" x-cloak>{{ __('How this layer leaves at the end of the scene.') }}</span>
@@ -95,7 +95,7 @@
              else in this tab (a choice, then a time), so it reads as one panel. --}}
         <section class="space-y-2 rounded-lg border border-slate-700/60 bg-slate-900/40 p-2">
             <label class="block space-y-1">
-                <span class="block text-[10px] uppercase tracking-wide text-slate-500">{{ __('Route') }}</span>
+                <span class="block text-2xs uppercase tracking-wide text-slate-500">{{ __('Route') }}</span>
                 <select class="select select-xs select-bordered w-full border-slate-700 bg-slate-900 text-slate-300"
                         wire:change="setOverviewAnim('route', $event.target.value)">
                     @foreach ($routeReveals as $value => $label)
@@ -105,16 +105,13 @@
             </label>
 
             <div @class(['space-y-2', 'pointer-events-none opacity-40' => $routeAnim['route'] === 'none'])>
-                <label class="flex items-center gap-2">
-                    <span class="w-12 shrink-0 text-[10px] uppercase tracking-wide text-slate-500">{{ __('Time') }}</span>
-                    <input type="range" min="0.5" max="10" step="0.5" value="{{ $routeAnim['duration'] }}"
-                           wire:change="setOverviewAnim('duration', $event.target.value)"
-                           class="range range-xs flex-1" />
-                    <span class="w-9 text-right font-mono text-[10px] text-slate-400">{{ rtrim(rtrim(number_format((float) $routeAnim['duration'], 1), '0'), '.') }}s</span>
-                </label>
+                <x-ui.slider-row :label="__('Time')" :min="0.5" :max="10" :step="0.5"
+                                 :value="$routeAnim['duration']"
+                                 :display="rtrim(rtrim(number_format((float) $routeAnim['duration'], 1), '0'), '.')" unit="s"
+                                 on-change="setOverviewAnim('duration', $event.target.value)" />
 
                 <label class="flex items-center justify-between gap-2">
-                    <span class="text-[11px] text-slate-300">{{ __('Number the stops as it goes') }}</span>
+                    <span class="text-2xs text-slate-300">{{ __('Number the stops as it goes') }}</span>
                     <input type="checkbox" @checked($routeAnim['stops'])
                            wire:change="setOverviewAnim('stops', $event.target.checked)"
                            class="toggle toggle-xs toggle-warning" />
@@ -126,7 +123,7 @@
     {{-- Movement. The label sits ABOVE its control rather than in the 3rem gutter the sliders use:
          "Transition" does not fit there and was rendering clipped. --}}
     <label class="block space-y-1">
-        <span class="block text-[10px] uppercase tracking-wide text-slate-500">
+        <span class="block text-2xs uppercase tracking-wide text-slate-500">
             {{ $isLayer ? __('Appear') : __('Transition') }}
         </span>
         @if ($isLayer)
@@ -156,40 +153,40 @@
 
     {{-- Delay: how long the layer waits before it moves. --}}
     @if ($isLayer)
+        {{-- NOTHING BUT ATTRIBUTES between `<x-…` and `>`. These rows carried
+             `@if ($half === 'out') x-cloak @endif` inside the tag, and Blade's component parser
+             cannot read a directive there: the tag silently failed to compile, landed in the page
+             verbatim, and Alpine then evaluated `:label="__('Delay')"` as JavaScript — which is
+             where a flood of "__ is not defined", "$vals is not defined" and "rtrim is not
+             defined" came from. x-cloak is unconditional now; cloaking both halves costs one frame
+             before Alpine boots, and the panel is Alpine-gated anyway. --}}
         @foreach ([['in', $current, 'anim_delay'], ['out', $out, 'anim_out_delay']] as [$half, $vals, $field])
-            <label class="flex items-center gap-2" x-show="build === '{{ $half }}'" @if ($half === 'out') x-cloak @endif>
-                <span class="w-12 shrink-0 text-[10px] uppercase tracking-wide text-slate-500">{{ __('Delay') }}</span>
-                <input type="range" min="0" max="10" step="0.1" value="{{ $vals['delay'] }}"
-                       wire:change="updateArtworkLayer({{ $aid }}, '{{ $field }}', $event.target.value)"
-                       class="range range-xs flex-1" />
-                <span class="w-9 text-right font-mono text-[10px] text-slate-400">{{ rtrim(rtrim(number_format($vals['delay'], 1), '0'), '.') ?: '0' }}s</span>
-            </label>
+            <x-ui.slider-row :label="__('Delay')" :min="0" :max="10" :step="0.1"
+                             :value="$vals['delay']"
+                             :display="rtrim(rtrim(number_format($vals['delay'], 1), '0'), '.') ?: '0'" unit="s"
+                             :on-change="'updateArtworkLayer(' . $aid . ', \'' . $field . '\', $event.target.value)'"
+                             x-show="build === '{{ $half }}'" x-cloak />
         @endforeach
 
         {{-- Duration — the industry term for how long the movement itself takes (Keynote, After
              Effects, CSS all call it that). Stored in ms to match the Web Animations API. --}}
         @foreach ([['in', $current, 'anim_duration'], ['out', $out, 'anim_out_duration']] as [$half, $vals, $field])
-            <label class="flex items-center gap-2" x-show="build === '{{ $half }}'" @if ($half === 'out') x-cloak @endif>
-                <span class="w-12 shrink-0 text-[10px] uppercase tracking-wide text-slate-500">{{ __('Duration') }}</span>
-                <input type="range" min="100" max="5000" step="50" value="{{ $vals['duration'] }}"
-                       wire:change="updateArtworkLayer({{ $aid }}, '{{ $field }}', $event.target.value)"
-                       class="range range-xs flex-1" />
-                <span class="w-9 text-right font-mono text-[10px] text-slate-400">{{ rtrim(rtrim(number_format($vals['duration'] / 1000, 2), '0'), '.') }}s</span>
-            </label>
+            <x-ui.slider-row :label="__('Duration')" :min="100" :max="5000" :step="50"
+                             :value="$vals['duration']"
+                             :display="rtrim(rtrim(number_format($vals['duration'] / 1000, 2), '0'), '.')" unit="s"
+                             :on-change="'updateArtworkLayer(' . $aid . ', \'' . $field . '\', $event.target.value)'"
+                             x-show="build === '{{ $half }}'" x-cloak />
         @endforeach
     @else
-        <label class="flex items-center gap-2">
-            <span class="w-12 shrink-0 text-[10px] uppercase tracking-wide text-slate-500">{{ __('Duration') }}</span>
-            <input type="range" min="0" max="3" step="0.1" value="{{ $current['delay'] }}"
-                   wire:change="setSceneTransition('duration', $event.target.value)"
-                   class="range range-xs flex-1" />
-            <span class="w-9 text-right font-mono text-[10px] text-slate-400">{{ rtrim(rtrim(number_format($current['delay'], 1), '0'), '.') ?: '0' }}s</span>
-        </label>
+        <x-ui.slider-row :label="__('Duration')" :min="0" :max="3" :step="0.1"
+                         :value="$current['delay']"
+                         :display="rtrim(rtrim(number_format($current['delay'], 1), '0'), '.') ?: '0'" unit="s"
+                         on-change="setSceneTransition('duration', $event.target.value)" />
     @endif
 
     {{-- Easing, chosen from live curves rather than a list of names --}}
     <div class="space-y-1.5" wire:ignore>
-        <span class="block text-[10px] uppercase tracking-wide text-slate-500">{{ __('Easing') }}</span>
+        <span class="block text-2xs uppercase tracking-wide text-slate-500">{{ __('Easing') }}</span>
         {{-- auto-fit rather than a fixed 3 columns: the panel is resizable, and three fixed columns
              overflowed it at narrow widths, which is what pushed the whole tab sideways. --}}
         <div x-data="easingPreview(@js($current['ease']))" x-init="init()" x-on:destroy="destroy()"
@@ -210,7 +207,7 @@
                         {{-- The entity: a dot running the curve on the shared clock. --}}
                         <circle :cx="dot(opt.key).x" :cy="dot(opt.key).y" r="3.2" fill="currentColor" />
                     </svg>
-                    <span class="text-[9px] leading-none" x-text="opt.label"></span>
+                    <span class="text-2xs leading-none" x-text="opt.label"></span>
                 </button>
             </template>
         </div>

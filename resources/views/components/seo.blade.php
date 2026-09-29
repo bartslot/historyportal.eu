@@ -24,7 +24,7 @@
     $canonical = $page ? Seo::url($page, $params) : url()->current();
     $alternates = $page ? Seo::alternates($page, $params) : [];
     $image = $image ?: asset('images/og-default.png');
-    $siteName = 'The Learning Portal';
+    $siteName = 'History Portal';
     // The title tag carries the brand once; the OG title does not repeat it.
     $fullTitle = $title === $siteName ? $siteName : $title.' · '.$siteName;
 @endphp

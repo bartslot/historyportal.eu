@@ -12,6 +12,7 @@ use App\Jobs\GenerateSkyboxCandidates;
 use App\Jobs\GenerateSkyboxImage;
 use App\Jobs\GenerateWorldLabsScene;
 use App\Livewire\Wizard\Concerns\BlocksGuestDemoSpending;
+use App\Livewire\Wizard\Concerns\DuplicatesSceneObjects;
 use App\Livewire\Wizard\Concerns\EditsQuizQuestions;
 use App\Livewire\Wizard\Concerns\EditsSceneArtwork;
 use App\Livewire\Wizard\Concerns\EditsStoryGame;
@@ -21,11 +22,16 @@ use App\Models\Lesson;
 use App\Models\Scene;
 use App\Models\StrategyGame;
 use App\Services\Billing\NarrationCreditLedger;
+use App\Services\Support\LayerAmbient;
+use App\Services\Support\WebpEncoder;
+use App\Services\Support\WhiteCutout;
+use App\Support\MediaUrl;
 use App\Support\NarrationBudget;
 use App\Support\PolityCapitals;
 use App\Support\PortraitFocus;
 use App\Support\SafeOutboundUrl;
 use App\Support\UploadLimit;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -40,6 +46,7 @@ use Livewire\WithFileUploads;
 class Step3SceneConfigurator extends Component
 {
     use BlocksGuestDemoSpending;
+    use DuplicatesSceneObjects;
     use EditsQuizQuestions;
     use EditsSceneArtwork;
     use EditsStoryGame;
@@ -190,23 +197,29 @@ class Step3SceneConfigurator extends Component
         $titles ??= $this->assetTitlesFor([$scene]);
 
         return collect($scene->shots ?? [])->map(fn ($shot) => [
-            'image_url' => ! empty($shot['image_path']) ? asset('storage/'.$shot['image_path']).'?v='.$ts : null,
+            'image_url' => MediaUrl::versioned($shot['image_path'] ?? null, $ts),
             // bg_url/hero_url (E3b story-pack shots) — parallax layers, see ParallaxScene.js.
-            'bg_url' => ! empty($shot['bg_path']) ? asset('storage/'.$shot['bg_path']).'?v='.$ts : null,
-            'hero_url' => ! empty($shot['hero_path']) ? asset('storage/'.$shot['hero_path']).'?v='.$ts : null,
+            'bg_url' => MediaUrl::versioned($shot['bg_path'] ?? null, $ts),
+            'hero_url' => MediaUrl::versioned($shot['hero_path'] ?? null, $ts),
             'anchor_sentence' => $shot['anchor_sentence'] ?? null,
             // Multiplane layers (E3c): [{path|url, depth, kind, scale, height, sway}] back→front.
             'layers' => collect($shot['layers'] ?? [])->map(fn ($l) => [
-                'url' => ! empty($l['path']) ? asset('storage/'.$l['path']).'?v='.$ts : ($l['url'] ?? null),
+                'url' => ! empty($l['path']) ? MediaUrl::versioned($l['path'], $ts) : ($l['url'] ?? null),
                 // asset_id + x/y let the on-canvas editor identify and free-position each layer.
                 'asset_id' => isset($l['asset_id']) ? (int) $l['asset_id'] : null,
-                'title' => isset($l['asset_id']) ? ($titles[$l['asset_id']] ?? null) : null,
+                // A duplicated layer has its own synthetic id; its title lives on the original asset.
+                'title' => isset($l['asset_id']) ? ($titles[$l['src_asset_id'] ?? $l['asset_id']] ?? null) : null,
                 'x' => isset($l['x']) ? (float) $l['x'] : null,
                 'y' => isset($l['y']) ? (float) $l['y'] : null,
                 'depth' => (float) ($l['depth'] ?? 1),
                 'kind' => in_array($l['kind'] ?? 'cover', ['cover', 'figure', 'strip'], true) ? ($l['kind'] ?? 'cover') : 'cover',
                 'scale' => (float) ($l['scale'] ?? 1),
                 'height' => isset($l['height']) ? (float) $l['height'] : null,
+                // The layer's own width, once a teacher has released the aspect lock and given it
+                // one. Absent for everything authored before the Dimensions row, and absent MEANS
+                // "take the width from the image's aspect" — so it stays null rather than being
+                // defaulted to something.
+                'width' => isset($l['width']) ? (float) $l['width'] : null,
                 'sway' => (bool) ($l['sway'] ?? false),
                 'blur' => isset($l['blur']) ? (float) $l['blur'] : null,
                 'opacity' => isset($l['opacity']) ? (float) $l['opacity'] : null,
@@ -226,6 +239,10 @@ class Step3SceneConfigurator extends Component
                 'white_key' => isset($l['white_key']) ? (float) $l['white_key'] : null,
                 'tint_opacity' => isset($l['tint_opacity']) ? (float) $l['tint_opacity'] : null,
                 'rotation' => isset($l['rotation']) ? (float) $l['rotation'] : null,
+                // Mirroring, which is not rotation: a half turn and a horizontal flip are the same
+                // on a symmetrical shape and opposite headings on a ship.
+                'flip_x' => ! empty($l['flip_x']),
+                'flip_y' => ! empty($l['flip_y']),
                 'anim_duration' => isset($l['anim_duration']) ? (int) $l['anim_duration'] : null,
                 'anim_out' => $l['anim_out'] ?? null,
                 'anim_out_delay' => isset($l['anim_out_delay']) ? (float) $l['anim_out_delay'] : null,
@@ -240,6 +257,8 @@ class Step3SceneConfigurator extends Component
                 'draw_time' => isset($l['draw_time']) ? (float) $l['draw_time'] : null,
                 // Embed layers (3D / video) carry an iframe embed instead of an image url.
                 'embed' => isset($l['embed']) && is_array($l['embed']) ? $l['embed'] : null,
+                // Ambient motion (drift / breeze / bob / flutter), validated to the known vocabulary.
+                ...LayerAmbient::payload($l),
             ])->filter(fn ($l) => $l['url'] || $l['embed'])->values()->all() ?: null,
             // Keep a shot when it has EITHER a background image OR clipart layers. Map-backed scenes
             // (voyage / map) carry layer-only shots — the MAP is the backdrop, so there's no image_url,
@@ -258,7 +277,7 @@ class Step3SceneConfigurator extends Component
     {
         $ids = collect($scenes)
             ->flatMap(fn ($s) => collect($s->shots ?? [])
-                ->flatMap(fn ($shot) => collect($shot['layers'] ?? [])->pluck('asset_id')))
+                ->flatMap(fn ($shot) => collect($shot['layers'] ?? [])->map(fn ($l) => $l['src_asset_id'] ?? $l['asset_id'] ?? null)))
             ->filter()->unique()->values();
 
         return $ids->isNotEmpty()
@@ -307,10 +326,15 @@ class Step3SceneConfigurator extends Component
 
         $this->dispatch('scene:load', payload: [
             'sceneId' => $scene->id,
-            'imageUrl' => $imagePath ? asset('storage/'.$imagePath).'?v='.$ts : null,
+            'imageUrl' => MediaUrl::versioned($imagePath, $ts),
             'shots' => $this->serializeShots($scene),
             'hasSkyboxImage' => ! empty($scene->skybox_image_path),
             'audioUrl' => $scene->audioUrl(),
+            // Does that recording actually say what the script now says? The Script panel waits for
+            // a re-narration by watching these events, and every OTHER thing that re-fires one —
+            // the save it makes just before asking, above all — carries the recording being
+            // replaced. Without this the panel took the first of those as the answer.
+            'audioFresh' => $scene->hasFreshAudio(),
             // The Script panel spins while narration is being made; without these it had no way to
             // learn the job had failed and kept spinning for good.
             'status' => (string) $scene->status,
@@ -526,7 +550,9 @@ class Step3SceneConfigurator extends Component
             // Config carries the map block's year/projection (and other per-kind settings) —
             // without this, editing the map YEAR saved fine but never re-fired scene:load,
             // so the live preview kept filtering borders/cities by the old year.
-            || ($payload['config'] ?? []) != ($scene->config ?? []);
+            // Not the timeline: its panel drives the canvas live, and a re-fired scene:load
+            // replayed the scene (a quiz started over) on every length or keyframe change.
+            || Arr::except($payload['config'] ?? [], 'timeline') != Arr::except($scene->config ?? [], 'timeline');
 
         $scene->update($payload);
 
@@ -1929,6 +1955,83 @@ class Step3SceneConfigurator extends Component
     }
 
     /**
+     * Timeline tab: the scene's keyframed animation.
+     *
+     * Written into the scene config SNAPSHOT and saved through saveSelected(), like every other
+     * config edit — writing straight to the model is overwritten by the next save, which rebuilds
+     * config from that snapshot.
+     *
+     * The payload comes from the browser, so it is rebuilt here field by field rather than
+     * trusted: a track names an object and one of its properties, and carries keyframes of
+     * {time, value, easing}. Anything else is dropped.
+     *
+     * @param  array{duration?: mixed, tracks?: mixed}  $timeline
+     */
+    public function setTimeline(array $timeline): void
+    {
+        if (! $this->selectedScene || ! $this->selectedSceneId) {
+            return;
+        }
+
+        $duration = max(0.0, min(3600.0, (float) ($timeline['duration'] ?? 0)));
+
+        // The objects on this scene. A camera EXISTS whether or not anything is keyed on it, so it
+        // cannot be inferred from the tracks — inferring it is what left scenes holding an empty
+        // track for a property that no longer exists.
+        $targets = [];
+        foreach ((array) ($timeline['targets'] ?? []) as $target) {
+            if (is_string($target) && in_array(strtok($target, ':'), ['camera'], true)) {
+                $targets[] = $target;
+            }
+        }
+
+        $tracks = [];
+
+        foreach ((array) ($timeline['tracks'] ?? []) as $track) {
+            if (! is_array($track)) {
+                continue;
+            }
+
+            $target = (string) ($track['target'] ?? '');
+            $property = (string) ($track['property'] ?? '');
+            // The vocabulary is shared with resources/js/anim/properties.js, which plays it back.
+            $allowed = match (strtok($target, ':')) {
+                'camera' => ['lng', 'lat', 'zoom', 'heading', 'tilt'],
+                'text' => ['x', 'y'],
+                'rect' => ['opacity'],
+                'art' => ['x', 'y', 'width', 'scale', 'rotation', 'opacity'],
+                default => [],
+            };
+
+            if (! in_array($property, $allowed, true)) {
+                continue;
+            }
+
+            $keyframes = [];
+            foreach ((array) ($track['keyframes'] ?? []) as $key) {
+                if (! is_array($key) || ! isset($key['time']) || ! is_numeric($key['time'])) {
+                    continue;
+                }
+                $keyframes[] = [
+                    'time' => max(0.0, min($duration ?: 3600.0, (float) $key['time'])),
+                    'value' => (float) ($key['value'] ?? 0),
+                    'easing' => is_string($key['easing'] ?? null) ? $key['easing'] : 'easeInOutCubic',
+                ];
+            }
+
+            usort($keyframes, fn (array $a, array $b): int => $a['time'] <=> $b['time']);
+            $tracks[] = ['target' => $target, 'property' => $property, 'keyframes' => $keyframes];
+        }
+
+        $this->selectedScene['config']['timeline'] = [
+            'duration' => $duration,
+            'targets' => array_values(array_unique($targets)),
+            'tracks' => $tracks,
+        ];
+        $this->saveSelected();
+    }
+
+    /**
      * Give a leg that has no scene one, so the class can actually see that stop.
      *
      * A route can end up with more legs than scenes — an added crossing, a deleted scene — and the
@@ -2960,7 +3063,9 @@ class Step3SceneConfigurator extends Component
             array_column($scene->shots ?? [], 'image_path'),
         ));
         foreach ($paths as $path) {
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($path);
+            if (! MediaUrl::isRemote($path)) {   // a CDN picture may be shared by other lessons
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($path);
+            }
         }
 
         $scene->update([
@@ -3054,6 +3159,53 @@ class Step3SceneConfigurator extends Component
     /** A picture dropped on the background slot in the inspector, which means the background, always. */
     public $droppedBackground;
 
+    /** The picture (WebP, or PNG) the quick mask produced for the active layer (uploaded by the mask dialog, then saveMaskedLayer). */
+    public $maskedImage;
+
+    /**
+     * Quick mask → save. The masked picture becomes the teacher's own asset and replaces the layer's
+     * picture in this scene only; the original (a shared library icon, say) is never touched, so other
+     * lessons that use it keep it as it was.
+     */
+    public function saveMaskedLayer(int $assetId): void
+    {
+        $old = \App\Models\SvgAsset::query()->availableTo((int) auth()->id())->find($assetId);
+        if (! $old || ! $this->selectedSceneId) {
+            $this->reset('maskedImage');
+            $this->dispatch('toast', message: __('That layer is gone. Select it again and retry.'), type: 'error');
+
+            return;
+        }
+
+        try {
+            $this->validate(['maskedImage' => 'image|mimes:png,webp|max:'.UploadLimit::kilobytes(self::DROPPED_IMAGE_CEILING_BYTES)]);
+        } catch (ValidationException $e) {
+            $this->reset('maskedImage');
+            $this->dispatch('toast', message: $e->validator->errors()->first('maskedImage'), type: 'error');
+
+            return;
+        }
+
+        $path = WebpEncoder::storeUpload($this->maskedImage, "lessons/{$this->lesson->id}/uploads");
+        $this->reset('maskedImage');
+
+        $asset = $this->upsertPictureAsset('mask', md5((string) $path), [
+            'source_url' => '/storage/'.$path,
+            'title' => $old->title,
+            'license' => $old->license,
+            'attribution' => $old->attribution,
+            'width' => $old->width,
+            'height' => $old->height,
+            'svg_path' => $path,
+        ]);
+
+        // path first: writeLayerField finds the layer by asset_id, so the id changes last.
+        $this->writeLayerField($assetId, 'path', $path);
+        $this->writeLayerField($assetId, 'asset_id', $asset->id);
+        $this->setActiveLayer($asset->id);
+        $this->dispatch('toast', message: __('Mask saved.'), type: 'success');
+    }
+
     /** What we are willing to take for a dropped picture, before PHP gets a say (UploadLimit takes the smaller). */
     private const DROPPED_IMAGE_CEILING_BYTES = 8 * 1024 * 1024;
 
@@ -3076,6 +3228,10 @@ class Step3SceneConfigurator extends Component
         $scene = $this->lesson->scenes()->findOrFail($this->selectedSceneId);
 
         if ($this->showsAPicture($scene)) {
+            // A layer sits on top of something, so a drawing on white paper loses its paper.
+            // Only as a layer: a background keeps its white.
+            $this->cutOutWhite($path);
+
             // A local /storage URL: libraryImagePath() reuses the file in place rather than
             // re-fetching it, so this costs nothing beyond the upload we already did.
             $this->addLibraryImageLayer('/storage/'.$path, $name);
@@ -3084,6 +3240,26 @@ class Step3SceneConfigurator extends Component
         }
 
         $this->applyUploadedBackground($path);
+    }
+
+    /**
+     * Make the white around an uploaded layer picture transparent, in place (WhiteCutout: only white
+     * connected to the edge, only when the picture sits on white). A photo is left as it is.
+     */
+    private function cutOutWhite(string $path): void
+    {
+        $disk = \Illuminate\Support\Facades\Storage::disk('public');
+        if (strtolower(pathinfo($path, PATHINFO_EXTENSION)) !== 'webp' || ! function_exists('imagewebp')) {
+            return;   // a GIF keeps its frames; without WebP support there is nothing to write
+        }
+        $img = WhiteCutout::apply((string) $disk->get($path));
+        if ($img === null) {
+            return;
+        }
+        ob_start();
+        imagewebp($img, null, WebpEncoder::UPLOAD_QUALITY);
+        $disk->put($path, (string) ob_get_clean());
+        imagedestroy($img);
     }
 
     /**
@@ -3143,7 +3319,7 @@ class Step3SceneConfigurator extends Component
         // object list.
         $name = pathinfo((string) $this->{$property}->getClientOriginalName(), PATHINFO_FILENAME) ?: null;
 
-        $path = $this->{$property}->store("lessons/{$this->lesson->id}/uploads", 'public');
+        $path = WebpEncoder::storeUpload($this->{$property}, "lessons/{$this->lesson->id}/uploads");
         $this->reset($property);
 
         return $path ?: null;
@@ -3287,7 +3463,7 @@ class Step3SceneConfigurator extends Component
             $url = $cloud->configured()
                 ? $cloud->uploadBytes($this->uploadImage->get(), "lessons/{$this->lesson->id}")
                 : null;
-            $url ??= '/storage/'.$this->uploadImage->store("lessons/{$this->lesson->id}/uploads", 'public');
+            $url ??= '/storage/'.WebpEncoder::storeUpload($this->uploadImage, "lessons/{$this->lesson->id}/uploads");
             $this->reset('uploadImage');
             match ($mode) {
                 'voyage_stop' => $this->addStopImage($url),
@@ -3298,7 +3474,7 @@ class Step3SceneConfigurator extends Component
             return;
         }
 
-        $path = $this->uploadImage->store("lessons/{$this->lesson->id}/uploads", 'public');
+        $path = WebpEncoder::storeUpload($this->uploadImage, "lessons/{$this->lesson->id}/uploads");
         $this->reset('uploadImage');
         $this->applyUploadedBackground($path);
     }
@@ -3556,7 +3732,7 @@ class Step3SceneConfigurator extends Component
 
         try {
             $response = \Illuminate\Support\Facades\Http::withHeaders([
-                'User-Agent' => 'LearningPortal/1.0 (thelearningportal.us; lesson voyage images)',
+                'User-Agent' => 'HistoryPortal/1.0 (historyportal.eu; lesson voyage images)',
             ])->timeout(30)->get($imageUrl.'?width=1600');
             if (! $response->successful() || $response->body() === '') {
                 throw new \RuntimeException('HTTP '.$response->status());
@@ -4125,7 +4301,7 @@ class Step3SceneConfigurator extends Component
 
         try {
             $response = \Illuminate\Support\Facades\Http::withHeaders([
-                'User-Agent' => 'LearningPortal/1.0 (thelearningportal.us; lesson backgrounds)',
+                'User-Agent' => 'HistoryPortal/1.0 (historyportal.eu; lesson backgrounds)',
             ])->timeout(30)->get($imageUrl.'?width=1920');
             if (! $response->successful() || $response->body() === '') {
                 throw new \RuntimeException('HTTP '.$response->status());
@@ -4221,7 +4397,7 @@ class Step3SceneConfigurator extends Component
 
         try {
             $response = \Illuminate\Support\Facades\Http::withHeaders([
-                'User-Agent' => 'LearningPortal/1.0 (thelearningportal.us; lesson image layers)',
+                'User-Agent' => 'HistoryPortal/1.0 (historyportal.eu; lesson image layers)',
             ])->timeout(30)->get($imageUrl.'?width=1600');
             if (! $response->successful() || $response->body() === '') {
                 throw new \RuntimeException('HTTP '.$response->status());
@@ -4337,7 +4513,7 @@ class Step3SceneConfigurator extends Component
 
         try {
             $response = \Illuminate\Support\Facades\Http::withHeaders([
-                'User-Agent' => 'LearningPortal/1.0 (thelearningportal.us; lesson backgrounds)',
+                'User-Agent' => 'HistoryPortal/1.0 (historyportal.eu; lesson backgrounds)',
             ])
                 // Image URLs redirect constantly (http→https, CDN shuffles), so redirects stay ON —
                 // but every hop is re-checked, because validating only the URL the teacher typed let
@@ -4982,7 +5158,8 @@ class Step3SceneConfigurator extends Component
         if ($url === '' || ! $isOwn) {
             return;
         }
-        $this->lesson->update(['poster_image' => $url]);
+        // Our own files are kept as a same-site path, never as the host they were shown on.
+        $this->lesson->update(['poster_image' => preg_replace('#^(?:https?:)?//[^/]+(?=/storage/)#i', '', $url)]);
         $this->lesson->refresh();
     }
 
@@ -5052,6 +5229,11 @@ class Step3SceneConfigurator extends Component
 
         if (! NarrationBudget::charge($this->lesson, $cost)) {
             $this->warnBudgetSpent();
+            // Say it to the panel as well as to the teacher. The panel writes an edit down as
+            // saved the moment it sends it, so a refusal left it believing the scene held words
+            // it does not: the next save was skipped as "no change", and a re-narration would
+            // have spoken the OLD script while the new one sat on screen looking safe.
+            $this->dispatch('scene:script-rejected', sceneId: $this->selectedSceneId);
 
             return;   // the edit is refused, so nothing is charged and nothing is re-narrated
         }

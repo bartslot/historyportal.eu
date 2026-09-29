@@ -36,7 +36,7 @@ class HarvestCanonArtworks extends Command
     private const ENDPOINT = 'https://query.wikidata.org/sparql';
 
     /** Wikimedia asks for a descriptive agent with a contact; anonymous bulk querying gets throttled. */
-    private const AGENT = 'LearningPortal/1.0 (thelearningportal.us; corpus canon harvest)';
+    private const AGENT = 'HistoryPortal/1.0 (historyportal.eu; corpus canon harvest)';
 
     /** Copyright expires 70 years after the author's death in the EU; leave a year of margin. */
     private const PD_YEARS = 71;

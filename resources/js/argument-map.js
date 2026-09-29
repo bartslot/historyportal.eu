@@ -10,6 +10,7 @@
 
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { GSAP_EASE } from './easing.js';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -69,7 +70,7 @@ function drawConnectors(section, animate) {
             const len = path.getTotalLength();
             gsap.fromTo(path,
                 { strokeDasharray: len, strokeDashoffset: len },
-                { strokeDashoffset: 0, duration: 0.75, delay: i * 0.055, ease: 'power2.inOut' }
+                { strokeDashoffset: 0, duration: 0.75, delay: i * 0.055, ease: GSAP_EASE.drawOn }
             );
         }
     });
@@ -90,8 +91,8 @@ function initCards(section) {
             const open = card.dataset.open === 'true';
 
             if (open) {
-                gsap.to(body, { height: 0, opacity: 0, duration: 0.3, ease: 'power2.inOut' });
-                gsap.to(icon, { rotation: 0, duration: 0.3, ease: 'power2.out' });
+                gsap.to(body, { height: 0, opacity: 0, duration: 0.3, ease: GSAP_EASE.exit });
+                gsap.to(icon, { rotation: 0, duration: 0.3, ease: GSAP_EASE.move });
                 card.dataset.open = 'false';
             } else {
                 // Measure natural height
@@ -99,9 +100,9 @@ function initCards(section) {
                 const naturalH = body.offsetHeight;
                 gsap.fromTo(body,
                     { height: 0, opacity: 0 },
-                    { height: naturalH, opacity: 1, duration: 0.38, ease: 'power2.out' }
+                    { height: naturalH, opacity: 1, duration: 0.38, ease: GSAP_EASE.enter }
                 );
-                gsap.to(icon, { rotation: 180, duration: 0.3, ease: 'power2.out' });
+                gsap.to(icon, { rotation: 180, duration: 0.3, ease: GSAP_EASE.move });
                 card.dataset.open = 'true';
             }
 
@@ -127,7 +128,7 @@ function initScrollAnimations(section) {
             gsap.to('#map-root-card', {
                 autoAlpha: 1, y: 0,
                 duration:  0.72,
-                ease:      'power3.out',
+                ease:      GSAP_EASE.enter,
             });
 
             // 2 — branch cards, staggered from centre outward
@@ -135,7 +136,7 @@ function initScrollAnimations(section) {
                 autoAlpha: 1, y: 0,
                 duration:  0.56,
                 stagger:   { amount: 0.68, from: 'center' },
-                ease:      'power3.out',
+                ease:      GSAP_EASE.enter,
                 delay:     0.32,
                 onComplete() {
                     drawConnectors(section, true);

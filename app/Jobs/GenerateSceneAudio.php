@@ -48,60 +48,7 @@ class GenerateSceneAudio implements ShouldQueue
             // script keeps the correct written form.
             $text = PronunciationLexicon::apply($text, $scene->lesson->teacher?->locale);
 
-            // Temporary global override (e.g. ElevenLabs → Azure backup) wins over the narrator's
-            // provider. A non-ElevenLabs backup can't use the narrator's ElevenLabs voice_id, so the
-            // voice follows the lesson's CONTENT language (see the precedence below): native
-            // narrator per language, multilingual fallback otherwise. TTS_PROVIDER_OVERRIDE_VOICE,
-            // when set, pins one voice globally.
-            $override = (string) config('services.tts.provider_override', '');
-            $provider = $override !== '' ? $override : ($narrator?->voice_provider ?? 'elevenlabs');
-
-            // A demo guest never spends ElevenLabs credits, whatever narrator the lesson names.
-            //
-            // /try hands an anonymous visitor a throwaway teacher account and a copy of the demo
-            // lesson in the real wizard. Re-narrating a scene there is one click, the account costs
-            // nothing to create, and there is no rate limit that would stop somebody doing it a
-            // thousand times. Azure is a fraction of the price and the demo still speaks.
-            //
-            // This does NOT silence the demo lesson: its narration is generated ahead of time by
-            // `lessons:compose` under a real teacher, so what a visitor hears is already the
-            // ElevenLabs recording. Only NEW audio a guest asks for is downgraded.
-            if ($provider === 'elevenlabs' && $scene->lesson->teacher?->isGuestDemo()) {
-                $provider = 'azure';
-            }
-
-            // For NARRATION the script itself is the authority: these are the actual words being
-            // read aloud, and an English sentence read by a Dutch voice is wrong no matter what the
-            // teacher's settings say. The teaching language (and then the interface locale) is only
-            // the fallback for text too short or ambiguous to call.
-            //
-            // Note this is the opposite priority to LessonScriptPrompt::contentLanguage, which asks
-            // a different question: what language should we WRITE the next lesson in. That one
-            // rightly follows the teacher's teaching language.
-            $teacher = $scene->lesson->teacher;
-            $locale = ScriptLanguage::detect($text, $teacher?->teachingLocale() ?? 'en');
-            $voiceId = match (true) {
-                // Self-hosted Piper: pick the voice by language (Dutch pim, English ryan) so an
-                // English lesson isn't narrated in a Dutch accent.
-                $provider === 'piper' => NarrationVoice::piper($locale),
-                $override !== '' && $override !== 'elevenlabs' => NarrationVoice::azure(
-                    $locale, (string) config('services.tts.provider_override_voice', ''),
-                ),
-                // Narrator-driven: the studio's per-language preferred voice (voice_map)
-                // wins for the lesson's language; falls back to the narrator's base voice.
-                default => $narrator?->voiceFor($locale) ?? '',
-            };
-
-            // A lesson with no narrator at all resolves to an empty voice id. Sent down the chain
-            // that way it used to reach tryAzure's old en-US default, so a FRENCH lesson came back
-            // read by an American voice. There is no ElevenLabs voice to use without a narrator,
-            // so route it to Azure deliberately, on the native voice for the language it is
-            // actually written in.
-            if ($voiceId === '') {
-                $provider = 'azure';
-                $voiceId = NarrationVoice::azure($locale);
-                Log::info("[Narration] scene {$scene->id}: lesson names no narrator; using the native {$locale} voice {$voiceId}.");
-            }
+            ['provider' => $provider, 'voice' => $voiceId, 'locale' => $locale] = self::narratorVoice($scene, $text);
 
             $timing = null;
             $audio = $tts->generateAudioRaw(
@@ -113,6 +60,15 @@ class GenerateSceneAudio implements ShouldQueue
             );
             if ($audio === null) {
                 throw new \RuntimeException('TTS service returned no audio.');
+            }
+
+            // An ElevenLabs recording (Ron Slot, Bart's father) is kept at full quality in the narration
+            // library, by sentence: a rebuilt or new lesson reuses it instead of buying it again.
+            if ($tts->lastProvider() === 'elevenlabs' && $tts->lastSourceAudio() !== null) {
+                $kept = \App\Services\LessonComposer::NARRATION_LIBRARY.'/'.sha1($script).'.mp3';
+                if (! Storage::disk('public')->exists($kept)) {
+                    Storage::disk('public')->put($kept, $tts->lastSourceAudio());
+                }
             }
 
             $ext = $tts->lastExtension();
@@ -161,6 +117,73 @@ class GenerateSceneAudio implements ShouldQueue
             $scene->update(['status' => 'failed', 'error_message' => $e->getMessage()]);
             throw $e;
         }
+    }
+
+    /**
+     * Who reads a scene's narrator text: the provider, the voice and the language it is in. Shared
+     * with SceneDialogue, whose narrator lines must sound exactly like a plain narrated scene.
+     *
+     * @return array{provider: string, voice: string, locale: string}
+     */
+    public static function narratorVoice(Scene $scene, string $text): array
+    {
+        $narrator = $scene->lesson->narrator;
+        // Temporary global override (e.g. ElevenLabs → Azure backup) wins over the narrator's
+        // provider. A non-ElevenLabs backup can't use the narrator's ElevenLabs voice_id, so the
+        // voice follows the lesson's CONTENT language (see the precedence below): native
+        // narrator per language, multilingual fallback otherwise. TTS_PROVIDER_OVERRIDE_VOICE,
+        // when set, pins one voice globally.
+        $override = (string) config('services.tts.provider_override', '');
+        $provider = $override !== '' ? $override : ($narrator?->voice_provider ?? 'elevenlabs');
+
+        // A demo guest never spends ElevenLabs credits, whatever narrator the lesson names.
+        //
+        // /try hands an anonymous visitor a throwaway teacher account and a copy of the demo
+        // lesson in the real wizard. Re-narrating a scene there is one click, the account costs
+        // nothing to create, and there is no rate limit that would stop somebody doing it a
+        // thousand times. Azure is a fraction of the price and the demo still speaks.
+        //
+        // This does NOT silence the demo lesson: its narration is generated ahead of time by
+        // `lessons:compose` under a real teacher, so what a visitor hears is already the
+        // ElevenLabs recording. Only NEW audio a guest asks for is downgraded.
+        if ($provider === 'elevenlabs' && $scene->lesson->teacher?->isGuestDemo()) {
+            $provider = 'azure';
+        }
+
+        // For NARRATION the script itself is the authority: these are the actual words being
+        // read aloud, and an English sentence read by a Dutch voice is wrong no matter what the
+        // teacher's settings say. The teaching language (and then the interface locale) is only
+        // the fallback for text too short or ambiguous to call.
+        //
+        // Note this is the opposite priority to LessonScriptPrompt::contentLanguage, which asks
+        // a different question: what language should we WRITE the next lesson in. That one
+        // rightly follows the teacher's teaching language.
+        $teacher = $scene->lesson->teacher;
+        $locale = ScriptLanguage::detect($text, $teacher?->teachingLocale() ?? 'en');
+        $voiceId = match (true) {
+            // Self-hosted Piper: pick the voice by language (Dutch pim, English ryan) so an
+            // English lesson isn't narrated in a Dutch accent.
+            $provider === 'piper' => NarrationVoice::piper($locale),
+            $override !== '' && $override !== 'elevenlabs' => NarrationVoice::azure(
+                $locale, (string) config('services.tts.provider_override_voice', ''),
+            ),
+            // Narrator-driven: the studio's per-language preferred voice (voice_map)
+            // wins for the lesson's language; falls back to the narrator's base voice.
+            default => $narrator?->voiceFor($locale) ?? '',
+        };
+
+        // A lesson with no narrator at all resolves to an empty voice id. Sent down the chain
+        // that way it used to reach tryAzure's old en-US default, so a FRENCH lesson came back
+        // read by an American voice. There is no ElevenLabs voice to use without a narrator,
+        // so route it to Azure deliberately, on the native voice for the language it is
+        // actually written in.
+        if ($voiceId === '') {
+            $provider = 'azure';
+            $voiceId = NarrationVoice::azure($locale);
+            Log::info("[Narration] scene {$scene->id}: lesson names no narrator; using the native {$locale} voice {$voiceId}.");
+        }
+
+        return ['provider' => $provider, 'voice' => $voiceId, 'locale' => $locale];
     }
 
     /**

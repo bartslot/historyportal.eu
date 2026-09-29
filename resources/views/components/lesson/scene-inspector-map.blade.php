@@ -15,7 +15,7 @@
         <input type="number" wire:model.blur.number="selectedScene.config.year" wire:change="saveSelected"
                placeholder="e.g. 1600"
                class="input input-sm input-bordered bg-slate-900 mt-1" />
-        <span class="mt-1 text-[10px] text-slate-500">Negative = BCE. Sets the map's time slider.</span>
+        <span class="mt-1 text-2xs text-slate-500">Negative = BCE. Sets the map's time slider.</span>
     </label>
 
     <label class="form-control">
@@ -41,20 +41,11 @@
     @php $projection = $scene->config['projection'] ?? 'mercator'; @endphp
     <div class="form-control">
         <span class="text-xs uppercase tracking-wider text-slate-400">View</span>
-        <div class="mt-1 inline-flex overflow-hidden rounded-lg border border-slate-700/60">
-            <button type="button"
-                    wire:click="setProjection('mercator')"
-                    onclick="window.dispatchEvent(new CustomEvent('lessonmap:projection',{detail:{type:'mercator'}}))"
-                    class="flex-1 px-3 py-1.5 text-xs font-medium transition-colors {{ $projection === 'globe' ? 'bg-slate-800 text-slate-400' : 'bg-amber-500 text-slate-950' }}">
-                Flat 2D
-            </button>
-            <button type="button"
-                    wire:click="setProjection('globe')"
-                    onclick="window.dispatchEvent(new CustomEvent('lessonmap:projection',{detail:{type:'globe'}}))"
-                    class="flex-1 px-3 py-1.5 text-xs font-medium transition-colors {{ $projection === 'globe' ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400' }}">
-                Globe 3D
-            </button>
-        </div>
+        {{-- The projection flips the live preview instantly (the dispatched event) and persists
+             the choice (the wire call) so it survives a re-mount. --}}
+        <x-ui.segmented panel class="mt-1" name="map-projection" :value="$projection"
+                        :options="[['mercator', __('Flat 2D')], ['globe', __('Globe 3D')]]"
+                        on-change="window.dispatchEvent(new CustomEvent('lessonmap:projection', { detail: { type: $event.target.value } })); $wire.call('setProjection', $event.target.value)" />
     </div>
 
     {{-- Focus cities — search the cities corpus (modern OR historical name), then drop a red dot
@@ -77,7 +68,7 @@
                             @if (filled($c->historical_name))
                                 <span class="truncate text-sm text-slate-200">
                                     <span class="font-semibold">{{ $c->historical_name }}</span>
-                                    <span class="text-[11px] text-slate-400">({{ $c->name }})</span>
+                                    <span class="text-2xs text-slate-400">({{ $c->name }})</span>
                                 </span>
                             @else
                                 <span class="truncate text-sm text-slate-200">{{ $c->name }}</span>
@@ -87,12 +78,12 @@
                 @endforeach
             </ul>
         @elseif (filled($cityQuery))
-            <p class="mt-1 text-[10px] text-slate-500">No city matches “{{ $cityQuery }}”. Try a different spelling, or drop a pin below.</p>
+            <p class="mt-1 text-2xs text-slate-500">No city matches “{{ $cityQuery }}”. Try a different spelling, or drop a pin below.</p>
         @endif
 
         <button type="button"
                 onclick="window.dispatchEvent(new CustomEvent('lessonmap:add-focus'))"
-                class="mt-1 text-[11px] text-sky-300 underline hover:text-sky-200">or drop a pin on the map</button>
+                class="mt-1 text-2xs text-sky-300 underline hover:text-sky-200">or drop a pin on the map</button>
 
         @php $annotations = $scene->config['annotations'] ?? []; @endphp
         @if (count($annotations))
@@ -113,14 +104,14 @@
                                    class="input input-xs input-bordered bg-slate-900 flex-1"
                                    @if ($isCapital) title="Territory capital (auto-added)" @endif />
                             <button type="button" wire:click="removeFocus({{ $i }})"
-                                    class="shrink-0 text-rose-300 hover:text-rose-200 text-xs px-1"
+                                    class="shrink-0 text-error/80 hover:text-error text-xs px-1"
                                     title="Remove focus city" aria-label="Remove focus city">✕</button>
                         </li>
                     @endif
                 @endforeach
             </ul>
         @else
-            <p class="mt-1 text-[10px] text-slate-500">No focus cities yet — search above or drop a pin to mark a key place on the map.</p>
+            <p class="mt-1 text-2xs text-slate-500">No focus cities yet — search above or drop a pin to mark a key place on the map.</p>
         @endif
     </div>
 
@@ -130,20 +121,20 @@
         <span class="text-xs uppercase tracking-wider text-slate-400">Territory</span>
 
         @if ($qid)
-            <div class="mt-1 flex items-center justify-between gap-2 rounded-lg border border-emerald-700/40 bg-emerald-950/30 px-2.5 py-1.5">
+            <div class="mt-1 flex items-center justify-between gap-2 rounded-lg border border-success/40 bg-success/10 px-2.5 py-1.5">
                 <div class="min-w-0">
-                    <p class="truncate text-sm text-emerald-200">{{ $scene->location ?? $qid }}</p>
-                    <p class="text-[10px] text-slate-500">{{ $qid }} · red boundary, fit at the chosen year</p>
+                    <p class="truncate text-sm text-success">{{ $scene->location ?? $qid }}</p>
+                    <p class="text-2xs text-slate-500">{{ $qid }} · red boundary, fit at the chosen year</p>
                 </div>
                 <button type="button" wire:click="unlinkTerritory"
-                        class="shrink-0 text-[11px] text-rose-300 underline hover:text-rose-200">Change</button>
+                        class="shrink-0 text-2xs text-error/80 underline hover:text-error">Change</button>
             </div>
         @else
             <input type="search" wire:model.live.debounce.400ms="territoryQuery"
                    placeholder="Search an empire/kingdom — e.g. Byzantine Empire"
                    class="input input-sm input-bordered bg-slate-900 mt-1" />
-            <p class="mt-1 text-[10px] text-amber-400/70">No territory linked — search a polity (cities: link the empire that ruled it).</p>
-            <p class="mt-1 text-[10px] text-sky-300/80">Don't know its name? Hover the map to see territory names, then click one to link it.</p>
+            <p class="mt-1 text-2xs text-base-content/55">No territory linked — search a polity (cities: link the empire that ruled it).</p>
+            <p class="mt-1 text-2xs text-sky-300/80">Don't know its name? Hover the map to see territory names, then click one to link it.</p>
 
             @if (filled($territoryQuery) && $territoryResults && $territoryResults->isNotEmpty())
                 <ul class="mt-1 max-h-48 overflow-y-auto rounded-lg border border-slate-700/60 divide-y divide-slate-800 bg-slate-900/95">
@@ -158,14 +149,14 @@
                             <button type="button" wire:click="linkTerritory('{{ $t->qid }}')"
                                     class="flex w-full items-center justify-between gap-2 px-2.5 py-1.5 text-left hover:bg-slate-800/70">
                                 <span class="truncate text-sm text-slate-200">{{ $t->name }}</span>
-                                <span class="shrink-0 text-[10px] text-slate-500" title="Active era">{{ $era }}</span>
+                                <span class="shrink-0 text-2xs text-slate-500" title="Active era">{{ $era }}</span>
                             </button>
                         </li>
                     @endforeach
                 </ul>
             @elseif (filled($territoryQuery))
                 @php $blockYear = $scene->config['year'] ?? null; @endphp
-                <p class="mt-1 text-[10px] text-slate-500">
+                <p class="mt-1 text-2xs text-slate-500">
                     @if ($blockYear !== null)
                         No “{{ $territoryQuery }}” existed around {{ $blockYear < 0 ? abs($blockYear).' BCE' : $blockYear }}. Try the empire that ruled it then (e.g. a larger kingdom or monarchy).
                     @else
@@ -178,5 +169,5 @@
 
     <button type="button" wire:click="deleteScene({{ $scene->id }})"
             wire:confirm="Delete this map block?"
-            class="text-rose-300 hover:text-rose-200 text-xs underline mt-2">Delete block</button>
+            class="text-error/80 hover:text-error text-xs underline mt-2">Delete block</button>
 </div>

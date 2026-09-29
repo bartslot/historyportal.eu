@@ -1,0 +1,53 @@
+{
+  "host": "render.local",
+  "port": 8188,
+  "mac": "00:00:00:00:00:00",
+  "broadcast": [
+    "192.168.0.255",
+    "255.255.255.255"
+  ],
+  "workflows": {
+    "klein4b": {
+      "file": "workflows/klein4b_edit_api.json",
+      "nodes": {
+        "image": "1.image",
+        "prompt": "7.text",
+        "seed": "16.noise_seed",
+        "megapixels": "2.megapixels",
+        "steps": "14.steps"
+      }
+    },
+    "qwen": {
+      "file": "workflows/qwen_edit_api.json",
+      "nodes": {
+        "image": "1.image",
+        "prompt": "9.prompt",
+        "seed": "14.seed",
+        "megapixels": "2.megapixels",
+        "steps": "14.steps"
+      }
+    },
+    "qwen_ref": {
+      "file": "workflows/qwen_ref_api.json",
+      "nodes": {
+        "image": "1.image",
+        "prompt": "9.prompt",
+        "seed": "14.seed",
+        "megapixels": "2.megapixels",
+        "steps": "14.steps",
+        "ref": "17.image"
+      }
+    },
+    "klein4b_ref": {
+      "file": "workflows/klein4b_ref_api.json",
+      "nodes": {
+        "image": "1.image",
+        "prompt": "7.text",
+        "seed": "16.noise_seed",
+        "megapixels": "2.megapixels",
+        "steps": "14.steps",
+        "ref": "20.image"
+      }
+    }
+  }
+}

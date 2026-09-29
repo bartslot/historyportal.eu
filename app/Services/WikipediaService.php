@@ -13,7 +13,7 @@ class WikipediaService
 
     private const SEARCH_API = 'https://en.wikipedia.org/w/api.php';
 
-    private const USER_AGENT = 'TheLearningPortal/1.0 (https://thelearningportal.us; bartslot@gmail.com)';
+    private const USER_AGENT = 'HistoryPortal/1.0 (https://historyportal.eu; bartslot@gmail.com)';
 
     private function http(int $timeout = 10): \Illuminate\Http\Client\PendingRequest
     {

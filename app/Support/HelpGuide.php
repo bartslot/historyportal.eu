@@ -29,7 +29,7 @@ final class HelpGuide
         return [
             [
                 'id' => 'overview',
-                'title' => __('What The Learning Portal does'),
+                'title' => __('What History Portal does'),
                 'icon' => 'academic-cap',
                 'summary' => __('You describe a topic, the portal builds a narrated story lesson your class can play on any device.'),
                 'sections' => [
@@ -433,7 +433,7 @@ final class HelpGuide
                 'key' => 'welcome',
                 'anchor' => null,
                 'placement' => 'center',
-                'title' => __('Welcome to The Learning Portal'),
+                'title' => __('Welcome to History Portal'),
                 'body' => __('In about a minute, here is everything you need to build your first lesson. You can leave at any point and pick this up again later.'),
                 'bullets' => [],
                 'icon' => 'academic-cap',

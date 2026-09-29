@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Models\Lesson;
 use App\Models\QuizQuestion;
 use App\Models\Scene;
+use App\Services\Lessons\LibraryLayers;
 use App\Services\Support\PhpSpecPrinter;
 
 /**
@@ -30,6 +31,7 @@ class LessonExporter
 {
     public function __construct(
         private readonly PhpSpecPrinter $printer,
+        private readonly LibraryLayers $library,
     ) {}
 
     /**
@@ -39,10 +41,10 @@ class LessonExporter
      * @var array<string,list<string>>
      */
     private const COMPOSED_CONFIG_KEYS = [
-        'narration' => ['image_credit', 'image_source_url', 'background_focus', 'bg_embed'],
+        'narration' => ['image_credit', 'image_source_url', 'background_focus', 'bg_embed', 'backdrop'],
         'video' => ['bg_embed'],
         'gallery' => ['title', 'date_label', 'story', 'fit', 'images'],
-        'map' => ['qid', 'year', 'projection', 'playback_mode', 'annotations'],
+        'map' => ['qid', 'fit', 'year', 'projection', 'playback_mode', 'annotations'],
         'voyage' => ['voyage', 'leg', 'view', 'intro', 'stop_images', 'gallery'],
         'game' => ['quiz_scope', 'quiz_shuffle', 'quiz_difficulty', 'hide_identity'],
     ];
@@ -76,7 +78,12 @@ class LessonExporter
             'subject' => (string) ($lesson->subject ?: 'history'),
             'grade_level' => (string) ($lesson->grade_level ?: '6'),
             'tone' => (string) ($lesson->tone ?: 'storytelling'),
+            'language' => (string) ($lesson->language ?: 'en'),
         ];
+
+        if ($lesson->translation_group !== null) {
+            $spec['translation_group'] = (string) $lesson->translation_group;
+        }
 
         $gameConfig = $this->withoutKeys((array) ($lesson->game_config ?? []), self::GAME_CONFIG_SCRATCH);
         if ($gameConfig !== []) {
@@ -123,14 +130,33 @@ class LessonExporter
             default => $this->story($scene, $config),
         };
 
-        $extra = $this->withoutKeys($config, self::COMPOSED_CONFIG_KEYS[$scene->kind] ?? []);
+        $composed = self::COMPOSED_CONFIG_KEYS[$scene->kind] ?? [];
+        if (isset($spec['backdrop']) && LibraryLayers::isLineArt($spec['backdrop'])) {
+            // The composer writes these for line art itself; only a teacher's change travels.
+            foreach (LibraryLayers::LINE_ART_CONFIG as $key => $value) {
+                if (($config[$key] ?? null) === $value) {
+                    $composed[] = $key;
+                }
+            }
+        }
+        // The composer titles a scene after its chapter (nameIdentityAfterChapter); only a
+        // teacher's own title travels.
+        if (isset($config['identity_title']) && $config['identity_title'] === mb_substr(trim((string) $scene->chapter_name), 0, 80)) {
+            $composed[] = 'identity_title';
+        }
+        $extra = $this->withoutKeys($config, $composed);
         if ($extra !== []) {
             $spec['extra_config'] = $extra;
         }
 
         $shots = (array) ($scene->shots ?? []);
         if ($shots !== []) {
-            $spec['shots'] = $shots;
+            $layers = $this->library->specLayers($shots, $scene->image_path);
+            if ($layers !== null) {
+                $spec['layers'] = $layers;
+            } else {
+                $spec['shots'] = $shots;
+            }
         }
 
         return $spec;
@@ -139,12 +165,16 @@ class LessonExporter
     /** @return array<string,mixed> */
     private function story(Scene $scene, array $config): array
     {
+        // A library backdrop is a ref any machine can resolve; the scene's copy of it is not.
+        $backdrop = empty($config['image_source_url']) ? ($config['backdrop'] ?? null) : null;
+
         return array_filter([
             'type' => 'story',
             'chapter' => $scene->chapter_name,
             'location' => $scene->location,
             'year' => $this->year($scene),
-            'image' => $this->image($scene, $config),
+            'backdrop' => $backdrop,
+            'image' => $backdrop === null ? $this->image($scene, $config) : null,
             'script' => $scene->script_segment,
         ], $this->keep(...));
     }
@@ -295,12 +325,17 @@ class LessonExporter
 
     /**
      * @param  array<mixed>  $images
-     * @return list<array<string,string>>
+     * @return list<array<string,string>|string>
      */
     private function imageList(array $images): array
     {
         $out = [];
         foreach ($images as $image) {
+            if (is_array($image) && ! empty($image['asset'])) {
+                $out[] = 'asset:'.$image['asset'];
+
+                continue;
+            }
             $url = (string) (is_array($image) ? ($image['url'] ?? '') : $image);
             if ($url === '') {
                 continue;

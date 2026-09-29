@@ -1,0 +1,499 @@
+[
+ [
+  [
+   {
+    "id": "s1p1_street",
+    "captions": [
+     {
+      "tag": "DAL RACCONTO DI DANTE · Firenze, intorno al 1283"
+     }
+    ]
+   }
+  ],
+  [
+   {
+    "id": "s1p2_ots",
+    "balloons": [
+     {
+      "who": "BEATRICE",
+      "text": "Buon giorno. Sì, proprio a voi.",
+      "at": [
+       0.74,
+       0.18
+      ],
+      "tail": [
+       0.57,
+       0.44
+      ],
+      "w": 0.34
+     }
+    ]
+   },
+   {
+    "id": "s1p3_cu_dante",
+    "balloons": [
+     {
+      "who": "DANTE",
+      "text": "Buo...",
+      "at": [
+       0.6,
+       0.13
+      ],
+      "tail": [
+       0.76,
+       0.33
+      ],
+      "w": 0.2
+     }
+    ]
+   }
+  ],
+  [
+   {
+    "id": "s1p35_dream",
+    "captions": [
+     {
+      "tag": "IL SOGNO",
+      "text": "Nella Vita nuova, Dante racconta il saluto e il sogno che gli arriva dopo.",
+      "at": [
+       0.02,
+       0.8
+      ],
+      "w": 0.62
+     }
+    ]
+   }
+  ]
+ ],
+ [
+  [
+   {
+    "id": "s1p5_wide_write",
+    "balloons": [
+     {
+      "who": "DANTE",
+      "text": "Amore aveva in mano il mio cuore. Ha svegliato Beatrice e gliel'ha fatto mangiare. Nel sogno! E poi piangeva. Qualcuno mi spieghi che cosa significa.",
+      "at": [
+       0.79,
+       0.5
+      ],
+      "tail": [
+       0.52,
+       0.42
+      ],
+      "w": 0.34
+     }
+    ]
+   }
+  ],
+  [
+   {
+    "id": "s1p4_write",
+    "balloons": [
+     {
+      "who": "DANTE",
+      "text": "«A ciascun'alma presa e gentil core»",
+      "at": [
+       0.3,
+       0.13
+      ],
+      "tail": [
+       0.5,
+       0.46
+      ],
+      "w": 0.44,
+      "verse": true
+     },
+     {
+      "who": "DANTE",
+      "text": "Un sonetto per i poeti: il mio sogno in quattordici versi. Rispondetemi voi.",
+      "at": [
+       0.74,
+       0.36
+      ],
+      "tail": [
+       0.56,
+       0.5
+      ],
+      "w": 0.4
+     }
+    ]
+   },
+   {
+    "id": "s1p6_read",
+    "balloons": [
+     {
+      "who": "DANTE",
+      "text": "Dante da Maiano dice che farnetico e dovrei farmi vedere da un medico.",
+      "at": [
+       0.78,
+       0.17
+      ],
+      "tail": [
+       0.55,
+       0.28
+      ],
+      "w": 0.4
+     },
+     {
+      "who": "DANTE",
+      "text": "Ho chiesto ai poeti, non un appuntamento dal medico.",
+      "at": [
+       0.8,
+       0.84
+      ],
+      "tail": [
+       0.62,
+       0.62
+      ],
+      "w": 0.34
+     }
+    ]
+   }
+  ],
+  [
+   {
+    "id": "s1p4_write",
+    "crop": [
+     0.08,
+     0.45,
+     0.58,
+     0.95
+    ],
+    "captions": [
+     {
+      "tag": "LA RISPOSTA DI GUIDO",
+      "text": "«Vedeste, al mio parere, ogni valore»",
+      "w": 0.6
+     },
+     {
+      "text": "Amore ti ha portato via il cuore senza farti male. È questo che vedo nel tuo sogno.",
+      "at": [
+       0.02,
+       0.24
+      ],
+      "w": 0.5
+     },
+     {
+      "text": "Più tardi Dante chiamerà Guido «il primo dei miei amici». Dice che quella risposta fu quasi l'inizio della loro amicizia.",
+      "at": [
+       0.02,
+       0.78
+      ],
+      "w": 0.75
+     }
+    ],
+    "balloons": [
+     {
+      "who": "DANTE",
+      "text": "Lui mi risponde in versi. Lui ha ascoltato.",
+      "at": [
+       0.82,
+       0.16
+      ],
+      "tail": [
+       0.74,
+       0.34
+      ],
+      "w": 0.28
+     }
+    ]
+   }
+  ]
+ ],
+ [
+  [
+   {
+    "id": "cap2_side",
+    "captions": [
+     {
+      "tag": "FIRENZE STORICA · Campaldino, 11 giugno 1289",
+      "text": "Secondo un suo biografo, Dante, 24 anni, combatte a cavallo nella prima schiera dei fiorentini.",
+      "w": 0.5
+     }
+    ]
+   }
+  ],
+  [
+   {
+    "id": "cap1_front"
+   }
+  ]
+ ],
+ [
+  [
+   {
+    "id": "s2p1_hall",
+    "captions": [
+     {
+      "tag": "FIRENZE STORICA · 1300",
+      "text": "Firenze, 1300. Dante è uno dei priori, i governanti della città. Le fazioni, gruppi politici rivali, si affrontano.",
+      "w": 0.55
+     }
+    ],
+    "crop": [
+     0.14,
+     0.0,
+     0.86,
+     0.72
+    ]
+   }
+  ],
+  [
+   {
+    "id": "s2p2_speaker",
+    "balloons": [
+     {
+      "who": "PRIORE",
+      "text": "Se allontaniamo i capi di una parte soltanto, l'altra griderà al favore. Qui ci sono nomi di entrambe.",
+      "at": [
+       0.27,
+       0.17
+      ],
+      "tail": [
+       0.33,
+       0.37
+      ],
+      "w": 0.46
+     },
+     {
+      "who": "DANTE",
+      "text": "Anche Guido.",
+      "at": [
+       0.82,
+       0.14
+      ],
+      "tail": [
+       0.66,
+       0.35
+      ],
+      "w": 0.2
+     }
+    ]
+   },
+   {
+    "id": "s2p3_cu_dante",
+    "balloons": [
+     {
+      "who": "PRIORE",
+      "text": "Anche Guido Cavalcanti. I priori devono decidere per la città intera.",
+      "at": [
+       0.22,
+       0.17
+      ],
+      "tail": [
+       0.0,
+       0.32
+      ],
+      "w": 0.36
+     },
+     {
+      "who": "DANTE",
+      "text": "Una volta era il suo nome su una risposta al mio sonetto.",
+      "at": [
+       0.79,
+       0.8
+      ],
+      "tail": [
+       0.6,
+       0.6
+      ],
+      "w": 0.36
+     }
+    ]
+   }
+  ],
+  [
+   {
+    "id": "s2p4_notice"
+   },
+   {
+    "id": "s2p5_cu_guido",
+    "balloons": [
+     {
+      "who": "GUIDO",
+      "text": "A una poesia posso rispondere. A questo foglio, no.",
+      "at": [
+       0.78,
+       0.15
+      ],
+      "tail": [
+       0.58,
+       0.33
+      ],
+      "w": 0.38
+     }
+    ],
+    "captions": [
+     {
+      "text": "Il governo manda Guido a Sarzana. Torna a Firenze malato e muore nell'agosto del 1300.",
+      "at": [
+       0.02,
+       0.78
+      ],
+      "w": 0.72
+     }
+    ]
+   }
+  ]
+ ],
+ [
+  [
+   {
+    "id": "s3p1_high",
+    "captions": [
+     {
+      "tag": "NEL POEMA · viaggio immaginato nel 1300",
+      "text": "Più tardi, durante l'esilio, Dante scrive un poema. Immagina che il viaggio cominci nel 1300.",
+      "w": 0.5
+     }
+    ],
+    "balloons": [
+     {
+      "who": "DANTE",
+      "text": "«Nel mezzo del cammin di nostra vita»",
+      "at": [
+       0.74,
+       0.64
+      ],
+      "tail": [
+       0.5,
+       0.46
+      ],
+      "w": 0.34,
+      "verse": true
+     }
+    ]
+   }
+  ],
+  [
+   {
+    "id": "s3p2_path",
+    "balloons": [
+     {
+      "who": "DANTE",
+      "text": "Lassù c'è il sole. Un passo ancora e...",
+      "at": [
+       0.27,
+       0.15
+      ],
+      "tail": [
+       0.53,
+       0.33
+      ],
+      "w": 0.4
+     }
+    ]
+   },
+   {
+    "id": "s3p3_wolf"
+   }
+  ]
+ ],
+ [
+  [
+   {
+    "id": "s3p4_virgil",
+    "balloons": [
+     {
+      "who": "DANTE",
+      "text": "Chi sei? Ombra o uomo vero?",
+      "at": [
+       0.3,
+       0.18
+      ],
+      "tail": [
+       0.55,
+       0.33
+      ],
+      "w": 0.3
+     },
+     {
+      "who": "VIRGILIO",
+      "text": "«Non omo, omo già fui»",
+      "at": [
+       0.84,
+       0.2
+      ],
+      "tail": [
+       0.63,
+       0.34
+      ],
+      "w": 0.26,
+      "verse": true
+     }
+    ]
+   }
+  ],
+  [
+   {
+    "id": "s3p4_virgil",
+    "crop": [
+     0.32,
+     0.12,
+     0.82,
+     0.62
+    ],
+    "balloons": [
+     {
+      "who": "DANTE",
+      "text": "Sei tu Virgilio, il poeta? Ho letto i tuoi versi.",
+      "at": [
+       0.22,
+       0.16
+      ],
+      "tail": [
+       0.46,
+       0.42
+      ],
+      "w": 0.4
+     },
+     {
+      "who": "VIRGILIO",
+      "text": "La lupa non ti lascia passare da lì. Ti serve un'altra via. Se mi segui, sarò la tua guida.",
+      "at": [
+       0.79,
+       0.22
+      ],
+      "tail": [
+       0.6,
+       0.44
+      ],
+      "w": 0.38
+     }
+    ]
+   },
+   {
+    "id": "s3p6_other_way",
+    "balloons": [
+     {
+      "who": "DANTE",
+      "text": "E dove mi porti?",
+      "at": [
+       0.82,
+       0.14
+      ],
+      "tail": [
+       0.68,
+       0.38
+      ],
+      "w": 0.28
+     },
+     {
+      "who": "VIRGILIO",
+      "text": "Per cominciare, non sul colle.",
+      "at": [
+       0.27,
+       0.13
+      ],
+      "tail": [
+       0.25,
+       0.38
+      ],
+      "w": 0.34
+     }
+    ]
+   }
+  ]
+ ]
+]

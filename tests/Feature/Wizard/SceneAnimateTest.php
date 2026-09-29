@@ -109,6 +109,72 @@ class SceneAnimateTest extends TestCase
         $this->assertSame(10.0, (float) $this->layer()['anim_delay']);
     }
 
+    /** anim_out used to be saved as-is; an exit the player cannot play is now refused like an entrance. */
+    public function test_an_exit_the_player_cannot_play_is_refused(): void
+    {
+        $this->wizard()
+            ->call('updateArtworkLayer', $this->asset->id, 'anim_out', 'fade')
+            ->call('updateArtworkLayer', $this->asset->id, 'anim_out_ease', 'exit')
+            ->call('updateArtworkLayer', $this->asset->id, 'anim_out', 'explode')
+            ->call('updateArtworkLayer', $this->asset->id, 'anim_out_ease', 'bouncy');
+
+        $layer = $this->layer();
+
+        $this->assertSame('fade', $layer['anim_out']);
+        $this->assertSame('exit', $layer['anim_out_ease']);
+    }
+
+    public function test_a_layer_remembers_its_ambient_motion(): void
+    {
+        $this->wizard()
+            ->call('updateArtworkLayer', $this->asset->id, 'ambient', 'breeze')
+            ->call('updateArtworkLayer', $this->asset->id, 'ambient_speed', '1.5')
+            ->call('updateArtworkLayer', $this->asset->id, 'ambient_amount', '0.5');
+
+        $layer = $this->layer();
+
+        $this->assertSame('breeze', $layer['ambient']);
+        $this->assertSame(1.5, (float) $layer['ambient_speed']);
+        $this->assertSame(0.5, (float) $layer['ambient_amount']);
+    }
+
+    public function test_an_ambient_motion_the_player_cannot_play_is_refused(): void
+    {
+        $this->wizard()
+            ->call('updateArtworkLayer', $this->asset->id, 'ambient', 'drift')
+            ->call('updateArtworkLayer', $this->asset->id, 'ambient', 'spin');
+
+        $this->assertSame('drift', $this->layer()['ambient']);
+    }
+
+    public function test_ambient_speed_and_amount_are_clamped(): void
+    {
+        $this->wizard()
+            ->call('updateArtworkLayer', $this->asset->id, 'ambient_speed', '50')
+            ->call('updateArtworkLayer', $this->asset->id, 'ambient_amount', '-4');
+
+        $layer = $this->layer();
+
+        $this->assertSame(3.0, (float) $layer['ambient_speed']);
+        $this->assertSame(0.0, (float) $layer['ambient_amount']);
+    }
+
+    /** The saved motion reaches the canvas: the editor's layer payload forwards it, validated. */
+    public function test_the_editor_payload_forwards_ambient_motion(): void
+    {
+        $shots = $this->scene->shots;
+        $shots[0]['layers'][1] = array_merge($shots[0]['layers'][1], ['ambient' => 'bob', 'ambient_speed' => 9]);
+        $shots[0]['layers'][0]['ambient'] = 'spin';
+        $this->scene->update(['shots' => $shots]);
+
+        $layers = $this->wizard()->instance()->serializeShots($this->scene->refresh())[0]['layers'];
+
+        $this->assertNull($layers[0]['ambient']);
+        $this->assertSame('bob', $layers[1]['ambient']);
+        $this->assertSame(3.0, $layers[1]['ambient_speed']);
+        $this->assertNull($layers[1]['ambient_amount']);
+    }
+
     public function test_a_scene_remembers_how_it_replaces_the_one_before_it(): void
     {
         $this->wizard()

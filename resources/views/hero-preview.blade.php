@@ -3,7 +3,7 @@
      variant has been chosen; the real hero lives in components/landing/hero.blade.php. --}}
 <x-layouts.landing title="Hero preview">
     <x-slot:head>
-        <title>Hero preview · The Learning Portal</title>
+        <title>Hero preview · History Portal</title>
         <meta name="robots" content="noindex, nofollow">
     </x-slot:head>
 
@@ -123,8 +123,8 @@
         <div class="flex flex-col items-center sm:items-start">
             {{-- Kept word for word in step with components/landing/hero.blade.php. This page exists to
                  preview that hero, so copy that drifts here previews something nobody ships. --}}
-            <h1 data-reveal-item class="text-balance text-4xl leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-6xl">
-                {{ $demoLesson?->title ?? __('Where storytelling meets learning.') }}
+            <h1 data-reveal-item class="text-balance text-4xl leading-display tracking-tight text-white sm:text-5xl lg:text-6xl">
+                {{ $demoLesson?->title ?? __('The lesson they talk about after class.') }}
             </h1>
 
             <p data-reveal-item class="mt-5 max-w-md text-balance text-sm leading-relaxed text-white/60 sm:text-base">

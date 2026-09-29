@@ -381,7 +381,7 @@ test('teacher: opening the preview step', async ({ page }) => {
  */
 const ADVANCE = [
     'button[data-opt="0"]:not([disabled])',       // an intro-challenge answer
-    'button[x-show*="showMapContinue"]',          // the map block's Continue, whatever it is called
+    'button[aria-label="Next"][data-stage-waiting]',          // the deck's Next, while a stage slide waits
     'button:has-text("Continue")',                // fallbacks, in case the binding is refactored
     'button:has-text("Continuer")',
     'button:has-text("Verder")',

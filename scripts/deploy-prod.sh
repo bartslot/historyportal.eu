@@ -16,7 +16,7 @@
 #
 set -euo pipefail
 
-# ssh.historyportal.eu, NOT ssh.thelearningportal.us: the marketing site moved to a separate
+# ssh.historyportal.eu, NOT ssh.historyportal.eu: the marketing site moved to a separate
 # SiteGround server, taking that hostname with it, so the old one now resolves to a machine
 # this key cannot open and the app is not on. The SSH host has to follow the app.
 HOST="u2628-emomoo15slu6@ssh.historyportal.eu"
@@ -32,8 +32,8 @@ DRY=""
 # second, unserved copy of the app, leaving the real site untouched and the deploy reporting success.
 #
 # So: ask the server which directory holds an artisan file. Exactly one does.
-# Counted by REAL path: a hostname can be a symlink to the site it shares (historyportal.eu and
-# history.historyportal.eu are one app reached two ways), and counting those as two apps made this
+# Counted by REAL path: a hostname can be a symlink to the site it shares (two hostnames, one app
+# reached two ways), and counting those as two apps made this
 # refuse a perfectly ordinary deploy. Two DISTINCT real paths still means a half-finished move, and
 # guessing between them is how the wrong one gets deployed to.
 APPS=$(ssh -p "$PORT" -i "$KEY" "$HOST" \
@@ -149,7 +149,7 @@ SITE_URL=$(ssh -p "$PORT" -i "$KEY" "$HOST" "cd $DEST && php -r \"
   foreach (file('.env', FILE_IGNORE_NEW_LINES) as \\\$l) {
     if (preg_match('/^APP_URL=(.+)\\\$/', \\\$l, \\\$m)) { echo trim(\\\$m[1], '\\\"'); break; }
   }\"" 2>/dev/null | tail -1 | tr -d '\r')
-SITE_URL=${SITE_URL:-https://history.thelearningportal.us}
+SITE_URL=${SITE_URL:-https://historyportal.eu}
 CODE=$(curl -s -o /dev/null -w '%{http_code}' "$SITE_URL" --max-time 25)
 echo "  homepage      $CODE  $SITE_URL"
 MEDIA=$(ssh -p "$PORT" -i "$KEY" "$HOST" "cd $DEST && php artisan tinker --execute=\"

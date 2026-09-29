@@ -30,11 +30,11 @@
                                 // Open an existing lesson on Preview; see Lesson::cardEntryStep().
                                 $entryStep = $lesson->cardEntryStep();
                                 $statusClass = match($lesson->status) {
-                                    \App\Enums\LessonStatus::Failed => 'bg-rose-400',
+                                    \App\Enums\LessonStatus::Failed => 'bg-error',
                                     \App\Enums\LessonStatus::Ready,
                                     \App\Enums\LessonStatus::Published,
                                     \App\Enums\LessonStatus::Previewable,
-                                    \App\Enums\LessonStatus::Configuring => 'bg-emerald-400',
+                                    \App\Enums\LessonStatus::Configuring => 'bg-success',
                                     default => 'bg-amber-400',
                                 };
                             @endphp
@@ -65,7 +65,7 @@
 
                                 <div class="absolute left-3 top-3 opacity-0 flex items-center gap-1.5 rounded-full bg-slate-950/80 px-2.5 py-1 backdrop-blur-sm group-hover:opacity-100 transition duration-300">
                                     <span class="h-1.5 w-1.5 rounded-full {{ $statusClass }} {{ $isGenerating ? 'animate-pulse' : '' }}"></span>
-                                    <span class="text-[0.65rem] text-slate-300">{{ $lesson->status->label() }}</span>
+                                    <span class="text-2xs text-slate-300">{{ $lesson->status->label() }}</span>
                                 </div>
 
                                 <h4 class="absolute inset-x-0 bottom-0 group-hover:translate-y-[-2em] p-4 text-base font-semibold leading-snug text-slate-100 drop-shadow group-hover:opacity-100 transition-transform">
@@ -111,7 +111,7 @@
                             @endif
                             <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950 via-slate-950/70 to-transparent p-3 pt-10">
                                 <p class="line-clamp-2 text-sm font-semibold text-slate-100">{{ $lesson->title ?: $lesson->topic }}</p>
-                                <p class="mt-0.5 text-[0.65rem] text-slate-400">{{ $lesson->teacher?->name }}</p>
+                                <p class="mt-0.5 text-2xs text-slate-400">{{ $lesson->teacher?->name }}</p>
                             </div>
                         </a>
 

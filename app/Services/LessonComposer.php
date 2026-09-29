@@ -9,6 +9,10 @@ use App\Jobs\GenerateSceneAudio;
 use App\Models\Lesson;
 use App\Models\Scene;
 use App\Models\User;
+use App\Services\Lessons\LibraryLayers;
+use App\Services\Lessons\SceneDialogue;
+use App\Services\Support\AudioEncoder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
 
@@ -32,8 +36,19 @@ use Throwable;
  */
 class LessonComposer
 {
+    /** An old cached narration at or above this (bits/s) is converted rather than re-rendered. */
+    private const CONVERTIBLE_BITRATE = 96000;
+
+    /**
+     * Recordings kept by sentence, across lessons: <sha1(script)>.mp3 on the public disk. Outside
+     * lessons/, so rebuilding or deleting a lesson never touches it.
+     */
+    public const NARRATION_LIBRARY = 'narration-library';
+
     public function __construct(
         private readonly SceneImageSourcer $images,
+        private readonly LibraryLayers $library,
+        private readonly SceneDialogue $dialogue,
     ) {}
 
     /** Progress callback: fn(string $message): void */
@@ -60,6 +75,38 @@ class LessonComposer
     {
         $key = (string) ($spec['key'] ?? throw new \InvalidArgumentException('Spec needs a stable "key".'));
 
+        // A bad library ref must fail BEFORE anything is deleted: a rebuild that dies on scene 5
+        // would leave a published lesson half-gone and back in Draft.
+        $this->library->preflight($spec);
+
+        $existing = Lesson::withTrashed()->where('teacher_id', $teacher->id)->where('topic', $key)->first();
+        $stale = $existing ? $this->sceneCopies($existing) : [];
+
+        // Narration (TTS) runs inside this transaction: long, but this is a CLI command, and a
+        // failure anywhere rolls the lesson back to exactly what it was.
+        try {
+            $lesson = DB::transaction(fn (): Lesson => $this->rebuild($spec, $teacher, $narrate, $key));
+        } catch (Throwable $e) {
+            // The rollback restores the old scene rows but not the files copied for the new ones.
+            // ponytail: a brand-new lesson's id is rolled back with it, so its copies stay (only
+            // on a first compose that fails); record copied paths in rebuild() if that ever matters.
+            if ($existing) {
+                Storage::disk('public')->delete(array_values(array_diff($this->sceneCopies($existing), $stale)));
+            }
+            throw $e;
+        }
+
+        // Files go only once the new build is committed; a rollback cannot un-delete a file.
+        $this->deleteStaleCopies($lesson, $spec, $stale);
+
+        return $lesson;
+    }
+
+    /**
+     * @param  array<string,mixed>  $spec
+     */
+    private function rebuild(array $spec, User $teacher, bool $narrate, string $key): Lesson
+    {
         $lesson = Lesson::withTrashed()->firstOrNew([
             'teacher_id' => $teacher->id,
             'topic' => $key,
@@ -74,6 +121,9 @@ class LessonComposer
             // is what every spec was before this key existed. Nothing infers it from the text: a
             // guess here means a Dutch class gets an English lesson, so it has to be declared.
             'language' => (string) ($spec['language'] ?? 'en'),
+            // Links this lesson to its siblings in other languages (Lesson::translations()). A
+            // spec that does not say has none, same as before this key existed.
+            'translation_group' => $spec['translation_group'] ?? null,
             'grade_level' => (string) ($spec['grade_level'] ?? '6'),
             'tone' => (string) ($spec['tone'] ?? 'storytelling'),
             'source_mode' => 'internet',
@@ -130,11 +180,16 @@ class LessonComposer
                 default => $this->storyScene($lesson, $sceneSpec, $order),
             };
 
+            $this->library->applyLayers($scene, $sceneSpec, $order);
             $this->applyPassthrough($scene, $sceneSpec);
+            $this->nameIdentityAfterChapter($scene);
 
             $this->say("  #{$order} {$type} — ".($scene->location ?: $scene->chapter_name ?: '…'));
 
-            if ($narrate && $scene->script_segment) {
+            // A scene told in lines (narrator + characters) records its own track and cues.
+            if (! empty($sceneSpec['lines'])) {
+                $this->dialogue->apply($scene, $sceneSpec, (array) ($spec['cast'] ?? []), (string) ($spec['language'] ?? 'en'), $narrate);
+            } elseif ($narrate && $scene->script_segment) {
                 $this->narrate($scene);
             }
 
@@ -150,6 +205,68 @@ class LessonComposer
         $this->assignPoster($lesson, $spec);
 
         return $lesson->fresh();
+    }
+
+    /**
+     * The files the previous build copied in for its scenes: `scenes/` (backgrounds, audio, keyed
+     * by scene ids a rebuild throws away) and `gallery/`. Everything else under the lesson
+     * (narration-cache/, paintings/, ...) is never a candidate.
+     *
+     * @return list<string>
+     */
+    private function sceneCopies(Lesson $lesson): array
+    {
+        $disk = Storage::disk('public');
+
+        return [
+            ...$disk->allFiles("lessons/{$lesson->id}/scenes"),
+            ...$disk->allFiles("lessons/{$lesson->id}/gallery"),
+        ];
+    }
+
+    /**
+     * Delete the previous build's copies, except any file the spec or the rebuilt lesson still
+     * names: an exported spec carries the paths of the scene it came from, a rebuilt gallery copy
+     * lands on the same name as the old one, and a kept poster may point at an old background.
+     *
+     * @param  array<string,mixed>  $spec
+     * @param  list<string>  $stale
+     */
+    private function deleteStaleCopies(Lesson $lesson, array $spec, array $stale): void
+    {
+        if ($stale === []) {
+            return;
+        }
+
+        $named = json_encode([
+            $spec,
+            $lesson->poster_image,
+            $lesson->scenes()->get(['image_path', 'audio_path', 'shots', 'config'])->toArray(),
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        // Not valid UTF-8 → the match below would be a guess. Never delete on a guess.
+        if ($named === false) {
+            $this->say('     ! spec is not valid UTF-8, previous scene files left in place');
+
+            return;
+        }
+
+        $disk = Storage::disk('public');
+        foreach ($stale as $file) {
+            if (! str_contains($named, $file)) {
+                $disk->delete($file);
+            }
+        }
+
+        // Drop the folders the deletes emptied, deepest first.
+        foreach (['scenes', 'gallery'] as $dir) {
+            $root = "lessons/{$lesson->id}/{$dir}";
+            foreach ([...array_reverse($disk->allDirectories($root)), $root] as $sub) {
+                if ($disk->allFiles($sub) === []) {
+                    $disk->deleteDirectory($sub);
+                }
+            }
+        }
     }
 
     /**
@@ -183,22 +300,47 @@ class LessonComposer
     }
 
     /**
+     * The big title above a scene's year (SceneOverlay) is the scene's `identity_title`, else the
+     * lesson's topic. A wizard lesson's topic is the subject the teacher typed ("Utrecht"), but a
+     * composed lesson's topic is the spec `key` — its identity for rebuilds ("Dante Alighieri
+     * (it)"), never meant to be read by a class. So a composed scene names itself after its
+     * chapter, through the same per-scene override the editor writes. A spec that sets
+     * `extra_config.identity_title` itself keeps it.
+     */
+    private function nameIdentityAfterChapter(Scene $scene): void
+    {
+        $chapter = trim((string) $scene->chapter_name);
+        $config = (array) ($scene->config ?? []);
+
+        if ($chapter === '' || isset($config['identity_title'])) {
+            return;
+        }
+
+        // 80 = the editor's own cap on a typed title (Step3SceneConfigurator).
+        $scene->update(['config' => [...$config, 'identity_title' => mb_substr($chapter, 0, 80)]]);
+    }
+
+    /**
      * Narrate a scene with the configured TTS provider (Azure locally), tolerating failure.
      *
      * Rebuilding a lesson recreates its scenes, so the naive path re-synthesises every line even
-     * when the script never changed. Audio is therefore cached by script hash under the LESSON
-     * (not the scene) and copied back into place — editing one sentence in a spec then costs one
-     * TTS call, not sixteen.
+     * when the script never changed. Audio is therefore cached under the LESSON (not the scene) and
+     * copied back into place — editing one sentence in a spec then costs one TTS call, not sixteen.
+     *
+     * The cache key is the script AND the encode (AudioEncoder::FINGERPRINT): keyed on the text
+     * alone, changing the bitrate re-rendered nothing (the Storia trap).
      */
     private function narrate(Scene $scene): void
     {
         $script = (string) $scene->script_segment;
         $hash = sha1($script);
-        $cached = "lessons/{$scene->lesson_id}/narration-cache/{$hash}.mp3";
+        $key = sha1($script.'|'.AudioEncoder::FINGERPRINT);
+        $dir = "lessons/{$scene->lesson_id}/narration-cache";
         $disk = Storage::disk('public');
 
-        if ($disk->exists($cached)) {
-            $path = "lessons/{$scene->lesson_id}/scenes/{$scene->id}/narration.mp3";
+        $cached = $this->cachedNarration($dir, $key) ?? $this->convertHighBitrateNarration($dir, $hash, $key);
+        if ($cached !== null) {
+            $path = "lessons/{$scene->lesson_id}/scenes/{$scene->id}/narration.".pathinfo($cached, PATHINFO_EXTENSION);
             $disk->put($path, $disk->get($cached));
             $scene->update([
                 'audio_path' => $path,
@@ -219,11 +361,53 @@ class LessonComposer
             GenerateSceneAudio::dispatchSync($scene->id);
             $scene->refresh();
             if ($scene->audio_path && $disk->exists($scene->audio_path)) {
-                $disk->put($cached, $disk->get($scene->audio_path));
+                $disk->put("{$dir}/{$key}.".pathinfo($scene->audio_path, PATHINFO_EXTENSION), $disk->get($scene->audio_path));
             }
         } catch (Throwable $e) {
             $this->say('     ! narration failed: '.substr($e->getMessage(), 0, 90));
         }
+    }
+
+    /** The cached narration for this key, whatever extension it was stored with. */
+    private function cachedNarration(string $dir, string $key): ?string
+    {
+        foreach ([AudioEncoder::EXTENSION, 'mp3', 'wav'] as $ext) {
+            if (Storage::disk('public')->exists("{$dir}/{$key}.{$ext}")) {
+                return "{$dir}/{$key}.{$ext}";
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Narration cached before the encode was part of the key, converted instead of re-rendered —
+     * but only a high-bitrate one (ElevenLabs' 128k): converting that to 32k is a single audible
+     * step, and a re-render would spend ElevenLabs credits. Azure's old 48k MP3 is NOT converted
+     * (a second lossy generation from an already small file); it re-renders from text for cents.
+     *
+     * Looked for in this lesson's own cache first, then in NARRATION_LIBRARY: recordings kept by
+     * sentence across lessons (Ron Slot's, Bart's father: they are never re-bought and never lost to
+     * a lesson being rebuilt under a new id). The library file itself is only read, never changed.
+     */
+    private function convertHighBitrateNarration(string $dir, string $hash, string $key): ?string
+    {
+        $disk = Storage::disk('public');
+        $old = collect(["{$dir}/{$hash}.mp3", self::NARRATION_LIBRARY."/{$hash}.mp3"])
+            ->first(fn (string $path) => $disk->exists($path)
+                && (AudioEncoder::bitrate($disk->path($path)) ?? 0) >= self::CONVERTIBLE_BITRATE);
+        if ($old === null) {
+            return null;
+        }
+        $aac = AudioEncoder::toAac((string) $disk->get($old), 'mp3');
+        if ($aac === null) {
+            return null;
+        }
+        $path = "{$dir}/{$key}.".AudioEncoder::EXTENSION;
+        $disk->put($path, $aac);
+        $this->say('     ↳ narration converted to AAC 32k from the high-bitrate cache (no TTS call)');
+
+        return $path;
     }
 
     /** Spoken length estimate (~2.6 words/sec) — mirrors GenerateSceneAudio's fallback. */
@@ -248,13 +432,18 @@ class LessonComposer
             'location' => $s['location'] ?? null,
             'chapter_name' => $s['chapter'] ?? null,
             'year' => $s['year'] ?? null,
-            'script_segment' => $s['script'] ?? null,
+            // A scene in lines keeps their words here too: the wizard, search and the audio hash read it.
+            'script_segment' => $s['script'] ?? (isset($s['lines'])
+                ? implode(' ', array_map(fn ($l): string => (string) (array_values((array) $l)[1] ?? ''), (array) $s['lines']))
+                : null),
             'status' => 'pending',
             'kb_animated' => true,
             'config' => [],
         ]);
 
-        if (! empty($s['image'])) {
+        if (! empty($s['backdrop'])) {
+            $this->library->attachLibraryBackdrop($scene, (string) $s['backdrop'], $order);
+        } elseif (! empty($s['image'])) {
             $this->attachBackground($scene, $s['image'], $s['year'] ?? null, (string) ($s['prefer'] ?? 'auto'), $s['focus'] ?? null);
         }
 
@@ -268,7 +457,7 @@ class LessonComposer
      */
     private function galleryScene(Lesson $lesson, array $s, int $order): Scene
     {
-        $images = $this->resolveImages($s);
+        $images = $this->resolveImages($s, $lesson, $order);
 
         return $lesson->scenes()->create([
             'order' => $order,
@@ -326,7 +515,10 @@ class LessonComposer
             'script_segment' => $s['script'] ?? null,
             'status' => 'ready',
             'config' => array_filter([
-                'qid' => $s['qid'] ?? null,             // the ONLY camera control
+                // With pins, the camera frames the pins (the polity would frame half a continent
+                // and stack towns 40 km apart); without, the polity is the camera control.
+                'qid' => $s['qid'] ?? null,
+                'fit' => $annotations !== [] ? 'labels' : null,
                 'year' => $s['year'] ?? null,
                 'projection' => (string) ($s['projection'] ?? 'mercator'),
                 'playback_mode' => 'interactive',
@@ -490,10 +682,15 @@ class LessonComposer
      * @param  array<string,mixed>  $s
      * @return list<array{url:string,credit:?string}>
      */
-    private function resolveImages(array $s): array
+    private function resolveImages(array $s, ?Lesson $lesson = null, int $order = 0): array
     {
         $images = [];
         foreach ((array) ($s['images'] ?? []) as $entry) {
+            if ($lesson && is_string($entry) && str_starts_with($entry, 'asset:')) {
+                $images[] = $this->library->copyLibraryImage($lesson, substr($entry, 6), $order);
+
+                continue;
+            }
             $hit = $this->resolveImage($entry, $s['year'] ?? null, (string) ($s['prefer'] ?? 'auto'));
             if (! $hit) {
                 $label = is_array($entry) ? ($entry['url'] ?? '?') : $entry;
@@ -566,7 +763,10 @@ class LessonComposer
     /** Give the lesson a cover image (first gallery/story image that resolved). */
     private function assignPoster(Lesson $lesson, array $spec): void
     {
-        if (! empty($lesson->poster_image)) {
+        // A poster that is one of our own scene copies belongs to the build just thrown away, so it
+        // is re-picked; a poster set any other way (uploaded, a CDN cover) is the teacher's choice.
+        $ownCopy = str_starts_with((string) $lesson->poster_image, "lessons/{$lesson->id}/scenes/");
+        if (! empty($lesson->poster_image) && ! $ownCopy) {
             return;
         }
         $first = $lesson->scenes()->whereNotNull('image_path')->orderBy('order')->first();

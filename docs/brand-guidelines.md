@@ -7,8 +7,8 @@
 ## Identity
 
 **Product name:** The Learning Portal  
-**Domain:** thelearningportal.us  
-**Tagline:** "Where Storytelling Meets Learning. AI-Powered. Teacher-Centric. Results-Driven."  
+**Domain:** historyportal.eu  
+**Tagline:** none. There is no tagline and none should be written — see **Voice & Tone** below.  
 **Category:** AI-powered K-12 EdTech — cinematic, premium, multimedia  
 **Mood reference:** Netflix × Disney+ × museum-quality documentary  
 **Key emotion:** wonder, trust, cinematic excitement — NOT childish, NOT corporate
@@ -302,16 +302,53 @@ Thumbnail images inside cards get: `object-fit: cover` + vignette overlay + `.lp
 
 ## Voice & Tone
 
+### The standard
+
+Bart wrote the reference line himself, in Dutch. Every marketing and shell line is measured
+against it:
+
+> **Verhalen waarvan je klas wil weten hoe het afloopt.**
+>
+> Wat als geschiedenis niet voelt als een les? Ontdek echte schilderijen, meeslepende verhalen
+> en een spel waarmee je klas zelf verder gaat.
+
+Copy **why it works**, never its words:
+
+- It promises an **experience** (they want to know how it ends), not a category.
+- It opens on the teacher's real problem: history feeling like a lesson.
+- It is concrete about what you get: real paintings, immersive stories, a game the class
+  continues on its own.
+- It speaks to **your class**, the teacher's own class.
+- No abstraction, no wordplay, no balanced clause.
+
+**The test for every line: if it could sit on any EdTech homepage, it is wrong.**
+
+### There is no tagline
+
+The old one, "Where Storytelling Meets Learning. AI-Powered. Teacher-Centric. Results-Driven.",
+was removed everywhere it appeared. Bart: *"this looks like AI slop. The typical title and
+subtitle with a subheading. Companies with good UX don't use that. I don't like that catchphrase
+either on the email templates."* Do not reinstate it and do not write a replacement slogan. Where
+a surface needs words, write a sentence that says a true and specific thing.
+
+### Per surface
+
 | Context | Tone |
 |---------|------|
-| Hero / marketing | Epic, cinematic — "History lives again" |
+| Hero / marketing | Name the experience, not the product. "The lesson they talk about after class." |
 | Teacher dashboard | Confident, efficient — "Your lesson is ready" |
 | Student app | Encouraging, adventurous — "Julius Caesar wants to tell you something" |
 | Error states | Calm, helpful — "Something went wrong. Try again." |
-| Empty states | Inviting — "No lessons yet — create your first in 2 minutes" |
+| Empty states | Inviting — "No lessons yet. Your first takes about ten minutes." |
+| Auth screens | No marketing copy at all. The wordmark, then the form. |
 
-**Avoid:** "amazing!", exclamation spam, corporate buzzwords, dumbed-down language.  
-**Use:** active verbs, short sentences, present tense.
+**Never:** the "Where X Meets Y" formula; a title + tagline + subheading stack; "learners",
+"users", "educators", "solutions", "empowering", "transforming", "cutting-edge", "seamless";
+"amazing!"; exclamation spam; dumbed-down language.
+
+**Never (mechanical):** em dashes in user-facing copy. Emoji anywhere a teacher can see.
+
+**Use:** active verbs, short sentences, present tense, "your class", numbers you can be held to.
 
 ---
 
@@ -382,7 +419,7 @@ colors: {
 Use this block when prompting Claude, ChatGPT, Gemini, or any AI for UI/design work:
 
 ```
-You are designing for The Learning Portal (thelearningportal.us), an AI-powered K-12 EdTech 
+You are designing for The Learning Portal (historyportal.eu), an AI-powered K-12 EdTech 
 platform. Visual reference: Netflix × Disney+ × cinematic documentary.
 
 PALETTE:

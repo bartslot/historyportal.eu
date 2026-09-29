@@ -33,7 +33,7 @@ class SvgAssetService
 
     private const COMMONS_API = 'https://commons.wikimedia.org/w/api.php';
 
-    private const UA = 'LearningPortal/1.0 (thelearningportal.us; teacher SVG import)';
+    private const UA = 'HistoryPortal/1.0 (historyportal.eu; teacher SVG import)';
 
     private const TIMEOUT = 12;
 

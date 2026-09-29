@@ -67,7 +67,7 @@
 
   The migration files still exist, so rollback can find them:
   ```bash
-  cd /Users/bartslot/Projects/thelearningportal.us
+  cd /Users/bartslot/Projects/historyportal.eu
   php artisan migrate:rollback --step=2
   ```
   Expected output:

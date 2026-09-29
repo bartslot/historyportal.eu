@@ -33,6 +33,7 @@ class User extends Authenticatable
         'onboarded_at',
         'onboarding_status',
         'onboarding_step',
+        'ui_scale',
     ];
 
     protected $hidden = [
@@ -50,6 +51,7 @@ class User extends Authenticatable
             'onboarded_at' => 'datetime',
             'onboarding_status' => OnboardingStatus::class,
             'onboarding_step' => 'integer',
+            'ui_scale' => 'integer',
         ];
     }
 

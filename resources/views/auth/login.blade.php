@@ -5,14 +5,14 @@
 
         {{-- Carries the "your password has been changed" line back from the reset flow. --}}
         @if(session('status'))
-            <div class="mb-4 rounded-lg border border-emerald-700 bg-emerald-900/30 px-4 py-3 text-sm text-emerald-300">
+            <div class="mb-4 rounded-lg border border-success/40 bg-success/10 px-4 py-3 text-sm text-success">
                 {{ session('status') }}
             </div>
         @endif
 
         {{-- Validation errors --}}
         @if($errors->any())
-            <div class="mb-4 rounded-lg border border-rose-700 bg-rose-900/30 px-4 py-3 text-sm text-rose-300">
+            <div class="mb-4 rounded-lg border border-error/40 bg-error/10 px-4 py-3 text-sm text-error">
                 {{ $errors->first() }}
             </div>
         @endif
@@ -70,9 +70,7 @@
             {{-- Submit --}}
             <button
                 type="submit"
-                class="w-full rounded-lg bg-amber-500 px-4 py-3 text-sm font-semibold text-slate-950
-                       hover:bg-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2
-                       focus:ring-offset-slate-900 transition-colors"
+                class="btn btn-primary w-full"
             >
                 {{ __('Sign in') }}
             </button>
@@ -80,7 +78,7 @@
 
         <p class="mt-5 text-center text-xs text-slate-400">
             {{ __('Students: use the') }}
-            <a href="#" class="text-amber-400 hover:underline">Learning Portal app</a>
+            <a href="#" class="text-amber-400 hover:underline">History Portal app</a>
             {{ __('to access your lessons.') }}
         </p>
     </div>

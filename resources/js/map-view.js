@@ -6,6 +6,7 @@
  *
  *   openingView({ annotations, labels })   // → { center, zoom } for a fresh map
  *   boxView(box)                           // → { center, zoom } framing a lng/lat box
+ *   labelsView({ annotations, labels })    // → { center, zoom } framing ONLY the pins, or null
  */
 
 // Where a map opens when the block itself says nothing about where it is (Switzerland — the
@@ -69,4 +70,37 @@ export function contentBox ({ annotations = [], labels = [] } = {}) {
 export function openingView (content) {
   const box = contentBox(content)
   return box ? boxView(box, { pad: 1.6, maxZoom: 5 }) : FALLBACK_VIEW
+}
+
+export const LABELS_PAD = 1.3            // 15% each side
+export const LABELS_MIN_SPAN = 1.5       // degrees, ~150 km: a lone pin opens on its region
+// The closest a labels fit goes: the satellite imagery's own max zoom (map-imagery.js). The atlas
+// default of 6 frames a whole country, which is what put three Tuscan towns on one blot.
+export const LABELS_MAX_ZOOM = 8
+const TILE = 512
+
+/**
+ * Framing for a map block whose camera follows its PINS, not its polity (config `fit: 'labels'`).
+ *
+ * The polity fit frames the whole territory, which for Italy in 1295 is half of Europe, and three
+ * Tuscan towns 40 km apart then share one blot of pixels. A block that pins its own places is about
+ * those places, so frame them in the actual viewport: 15% air on every side, and never tighter than
+ * LABELS_MIN_SPAN degrees, so a single pin opens on its region instead of on a street.
+ *
+ * @param {{ annotations?: Array<object>, labels?: Array<object> }} content
+ * @param {{ width: number, height: number }} viewport the map container, in CSS pixels
+ * @returns {{ center: [number, number], zoom: number }|null} null when the block names no place
+ */
+export function labelsView (content, { width, height }) {
+  const box = contentBox(content)
+  if (!box) return null
+  const spanX = Math.max(LABELS_MIN_SPAN, (box.maxX - box.minX) * LABELS_PAD)
+  // Web Mercator stretches latitude by 1/cos(lat): a degree north is taller on screen than a degree east.
+  const midLat = ((box.minY + box.maxY) / 2) * Math.PI / 180
+  const spanY = Math.max(LABELS_MIN_SPAN, (box.maxY - box.minY) * LABELS_PAD) / Math.cos(midLat)
+  const pxPerDeg = Math.min(width / spanX, height / spanY)
+  return {
+    center: [(box.minX + box.maxX) / 2, (box.minY + box.maxY) / 2],
+    zoom: Math.min(LABELS_MAX_ZOOM, Math.max(1.6, Math.log2(pxPerDeg * 360 / TILE))),
+  }
 }

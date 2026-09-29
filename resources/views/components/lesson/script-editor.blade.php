@@ -17,6 +17,12 @@
     // paragraph; double Enter splits into a new paragraph (its own timecode + TTS topic).
     $paragraphs = $scene?->scriptParagraphs() ?? [];
     $audioUrl = $scene?->audioUrl();
+    // Whether a recording is being made for this scene RIGHT NOW, decided on the server.
+    // Pressing Re-narrate makes the wizard re-render, and that morph tears this panel down and
+    // builds a new one — measured: destroy and init 300ms after the click. Everything the panel
+    // only knew in the browser went with it, so the teacher was left looking at a play bar that
+    // had forgotten it was waiting for anything, for ever. State the server owns survives that.
+    $narrating = $scene?->status === 'generating' && ! $scene?->hasFreshAudio();
 @endphp
 
 {{-- {{ $attributes }} carries the wire:key="script-{sceneId}" from the parent so a scene change
@@ -24,7 +30,7 @@
      the wire:ignore'd lines below would freeze the previous scene's script. --}}
 <div x-show="$store.view.script" x-cloak
      {{ $attributes }}
-     x-data="scriptEditor(@js($audioUrl), @js($paragraphs), {{ $scene?->id ?? 'null' }})"
+     x-data="scriptEditor(@js($audioUrl), @js($paragraphs), {{ $scene?->id ?? 'null' }}, @js($narrating))"
      class="fixed bottom-0 z-30 flex flex-col overflow-hidden border-t border-slate-700/70 bg-base-300"
      :style="`left:var(--rail-w,11rem);right:var(--work-right,16rem);height:${panelH}px`">
 
@@ -41,6 +47,10 @@
     {{-- Which tab the dock is showing. Lives in $store.view alongside the panel toggles, so it
          survives a scene change (this component is rebuilt per scene) and a reload. --}}
     <div role="tablist" class="tabs tabs-boxed tabs-sm">
+        <button type="button" role="tab" x-on:click="$store.view.showTab('timeline')"
+                :aria-selected="$store.view.bottomTab === 'timeline'"
+                :class="$store.view.bottomTab === 'timeline' ? 'tab-active' : ''"
+                class="tab" data-tab="timeline">{{ __('Timeline') }}</button>
         <button type="button" role="tab" x-on:click="$store.view.showTab('icons')"
                 :aria-selected="$store.view.bottomTab === 'icons'"
                 :class="$store.view.bottomTab === 'icons' ? 'tab-active' : ''"
@@ -49,6 +59,12 @@
                 :aria-selected="$store.view.bottomTab === 'script'"
                 :class="$store.view.bottomTab === 'script' ? 'tab-active' : ''"
                 class="tab">{{ __('Script') }}</button>
+    </div>
+
+    {{-- ── Timeline tab ──────────────────────────────────────────────────────────
+         The rows are the scene's objects; a camera is one a map scene has. --}}
+    <div x-show="$store.view.bottomTab === 'timeline'" x-cloak class="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <x-lesson.animation-timeline :scene="$scene ?? null" />
     </div>
 
     {{-- ── Icons tab ─────────────────────────────────────────────────────────────
@@ -71,7 +87,7 @@
             {{ __('No narration yet. Write a few lines here and they will be read aloud over this scene.') }}
         </p>
         <button type="button" x-on:click="addNarration()"
-                class="flex items-center gap-1.5 rounded-lg border border-slate-600/70 px-3 py-1.5 text-[12px] font-medium text-slate-200 transition hover:border-amber-400 hover:text-amber-200">
+                class="flex items-center gap-1.5 rounded-lg border border-slate-600/70 px-3 py-1.5 text-xs font-medium text-slate-200 transition hover:border-amber-400 hover:text-amber-200">
             <!-- <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z"/>
             </svg> -->
@@ -94,7 +110,7 @@
                     <div class="flex gap-3">
                         {{-- Timecode seeks; the paragraph is editable in place. --}}
                         <button type="button" x-on:click="seek(i)"
-                                class="mt-0.5 w-9 shrink-0 cursor-pointer text-right font-mono text-[10px] tabular-nums text-slate-500 transition hover:text-amber-300"
+                                class="mt-0.5 w-9 shrink-0 cursor-pointer text-right font-mono text-2xs tabular-nums text-slate-500 transition hover:text-amber-300"
                                 x-text="fmt(starts[i] ?? 0)"></button>
                         {{-- contenteditable paragraph. white-space:pre-wrap keeps soft newlines (single
                              Enter). Double Enter splits into a new box; Backspace at start merges up.
@@ -119,15 +135,18 @@
 
         {{-- Script editing toolbar — shown while a paragraph is focused. Regenerate rewrites the
              focused paragraph from a short prompt; Summarize to list drops an on-slide bullet card.
-             mousedown.prevent keeps the paragraph's focus (and focusedPara) alive through the click. --}}
+             Cancelling mousedown keeps the paragraph's focus (and focusedPara) alive through a click
+             on a BUTTON. It must not be cancelled over the toolbar's own prompt field, because the
+             default action being cancelled IS the focus: the field could never be clicked into, and
+             everything the teacher typed went into the narration behind it instead. --}}
         <div x-show="focusedPara !== null" x-cloak
              class="flex shrink-0 flex-wrap items-center gap-2 border-t border-slate-700/60 bg-base-200/40 px-3"
-             x-on:mousedown.prevent>
-            <span class="text-[10px] font-semibold uppercase tracking-widest text-slate-500">{{ __('Paragraph') }}</span>
+             x-on:mousedown="$event.target.closest('input, textarea, [contenteditable]') || $event.preventDefault()">
+            <span class="text-2xs font-semibold uppercase tracking-widest text-slate-500">{{ __('Paragraph') }}</span>
             {{-- Regenerate with a prompt (inline expanding input). --}}
             <div class="flex items-center gap-1" x-show="!promptOpen">
                 <button type="button" x-on:click="openPrompt()"
-                        class="flex items-center gap-1 rounded-md border border-slate-600/70 px-2 py-1 text-[11px] text-slate-200 transition hover:border-amber-400 hover:text-amber-200 disabled:opacity-40"
+                        class="flex items-center gap-1 rounded-md border border-slate-600/70 px-2 py-1 text-2xs text-slate-200 transition hover:border-amber-400 hover:text-amber-200 disabled:opacity-40"
                         :disabled="regenPara"
                         title="{{ __('Rewrite this paragraph from a prompt') }}">
                     <svg x-show="!regenPara" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="h-3.5 w-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
@@ -142,15 +161,15 @@
                        x-on:keydown.enter.stop.prevent="submitPrompt()"
                        x-on:keydown.escape.stop.prevent="closePrompt()"
                        placeholder="{{ __('e.g. make it shorter and more dramatic') }}"
-                       class="min-w-0 flex-1 rounded-md border border-slate-600/70 bg-base-300 px-2 py-1 text-[12px] text-slate-100 placeholder:text-slate-500 focus:border-amber-400 focus:outline-none" />
+                       class="min-w-0 flex-1 rounded-md border border-slate-600/70 bg-base-300 px-2 py-1 text-xs text-slate-100 placeholder:text-slate-500 focus:border-amber-400 focus:outline-none" />
                 <button type="button" x-on:click="submitPrompt()" :disabled="regenPara"
-                        class="rounded-md bg-amber-500 px-2 py-1 text-[11px] font-semibold text-slate-950 transition hover:bg-amber-400 disabled:opacity-40">{{ __('Rewrite') }}</button>
+                        class="rounded-md bg-amber-500 px-2 py-1 text-2xs font-semibold text-slate-950 transition hover:bg-amber-400 disabled:opacity-40">{{ __('Rewrite') }}</button>
                 <button type="button" x-on:click="closePrompt()"
-                        class="rounded-md px-1.5 py-1 text-[11px] text-slate-400 hover:text-slate-200">✕</button>
+                        class="rounded-md px-1.5 py-1 text-2xs text-slate-400 hover:text-slate-200">✕</button>
             </div>
             {{-- Summarize the whole scene to an on-slide bullet list. --}}
             <button type="button" x-on:click="summarizeToList()" :disabled="summarizing"
-                    class="flex items-center gap-1 rounded-md border border-slate-600/70 px-2 py-1 text-[11px] text-slate-200 transition hover:border-amber-400 hover:text-amber-200 disabled:opacity-40"
+                    class="flex items-center gap-1 rounded-md border border-slate-600/70 px-2 py-1 text-2xs text-slate-200 transition hover:border-amber-400 hover:text-amber-200 disabled:opacity-40"
                     title="{{ __('Summarize the narration into a bullet list on the slide') }}">
                 <svg x-show="!summarizing" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="h-3.5 w-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"/></svg>
                 <svg x-show="summarizing" x-cloak class="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.4 0 0 5.4 0 12h4z"/></svg>
@@ -166,7 +185,7 @@
                · audio up to date → the round Play/Pause. --}}
         <div class="flex shrink-0 items-center gap-2.5 border-t border-slate-700/60 bg-base-200/60 px-3 py-1.5">
             <button type="button" x-show="!hasAudio || dirty" x-on:click="renarrate()" :disabled="regenerating"
-                    class="flex shrink-0 items-center gap-1.5 rounded-full bg-amber-500 px-3 py-1 text-[11px] font-semibold text-slate-950 transition hover:bg-amber-400 disabled:opacity-40"
+                    class="flex shrink-0 items-center gap-1.5 rounded-full bg-amber-500 px-3 py-1 text-2xs font-semibold text-slate-950 transition hover:bg-amber-400 disabled:opacity-40"
                     :title="hasAudio ? @js(__('Re-narrate the edited audio')) : @js(__('Record the narration for this scene'))">
                 <svg x-show="regenerating" x-cloak class="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.4 0 0 5.4 0 12h4z"/></svg>
                 {{-- Microphone: this makes a recording, it does not touch the words. --}}
@@ -185,10 +204,10 @@
             {{-- wire:ignore so Livewire morphs never wipe WaveSurfer's rendered canvas. --}}
             <div x-ref="waveform" wire:ignore x-show="hasAudio" class="h-7 min-w-0 flex-1 cursor-pointer transition-opacity"
                  :class="dirty && 'pointer-events-none opacity-40'"></div>
-            <span x-show="!hasAudio && !regenerating" class="min-w-0 flex-1 truncate text-[11px] text-slate-500">
+            <span x-show="!hasAudio && !regenerating" class="min-w-0 flex-1 truncate text-2xs text-slate-500">
                 {{ __('No narration yet') }}
             </span>
-            <span class="shrink-0 font-mono text-[10px] tabular-nums text-slate-400"
+            <span class="shrink-0 font-mono text-2xs tabular-nums text-slate-400"
                   x-text="regenerating ? @js(__('recording…')) : (hasAudio ? (fmt(t) + ' / ' + fmt(dur)) : '–:––')"></span>
         </div>
     </div>
@@ -201,7 +220,10 @@
         const SCRIPT_MIN_H = 40;    // px — drag below this on release → hide
         const SCRIPT_DEF_H = 240;   // px — default / reopened height
         const SCRIPT_H_KEY = 'wizard.script.h';   // persist the resized height across scene changes
-        window.scriptEditor = window.scriptEditor || function (url, paragraphs, sceneId) {
+        // Narration is a queued job. If the worker never runs, or dies without writing a status,
+        // nothing comes back to switch the waiting state off — so give up out loud after this.
+        const NARRATE_GIVE_UP_MS = 180_000;
+        window.scriptEditor = window.scriptEditor || function (url, paragraphs, sceneId, narrating) {
             return {
                 ws: null,
                 sceneId: sceneId ?? null,
@@ -238,17 +260,31 @@
                 // Does this scene have a recording at all? Drives Narrate vs Play — a scene that has
                 // never been narrated used to show a disabled play button and nothing else.
                 hasAudio: !!url,
-                // Edited-since-narration state: the audio is stale until re-narrated.
-                dirty: false,
+                // Edited-since-narration state: the audio is stale until re-narrated. Both of these
+                // are seeded from the server so a rebuilt panel comes back still waiting: while a
+                // recording is being made the words on the scene are, by definition, not the words
+                // in the recording.
+                dirty: !!narrating,
                 dirtyLines: [],
-                regenerating: false,
+                regenerating: !!narrating,
                 _narrateTimer: null,
                 _ro: null,
                 _waveRo: null,
                 _lastSaved: '',
+                _savedBefore: '',
                 _unwatchAudio: null,
 
+                // The panel's own root element. $el is NOT it: Alpine binds $el to the element the
+                // expression sits on, so inside a handler on a paragraph it is that paragraph and
+                // inside one on the toolbar it is that button. Anything asking "is this node mine?"
+                // or "where are my boxes?" has to ask the root, which only init() can see.
+                _root: null,
+
                 async init() {
+                    this._root = this.$el;
+                    // Mounted while a recording is being made (a fresh panel after a morph, or a
+                    // reload mid-job): keep waiting, and keep the give-up timer that goes with it.
+                    if (this.regenerating) this._armGiveUpTimer();
                     this.paras = this._seed.map((p) => ({ id: this._pid++, text: p.text || '', dirty: false }));
                     this.starts = this._seed.map((p) => p.start || 0);   // server timecodes until audio loads
                     this.$nextTick(() => { this.reserveSpace(); this._lastSaved = this._currentScriptText(); });
@@ -263,7 +299,17 @@
                     this._unwatchAudio = window.Livewire.on('scene:load', (e) => {
                         const p = Array.isArray(e) ? e[0]?.payload : e?.payload;
                         if (!p || !this.regenerating || p.sceneId !== this.sceneId) return;
-                        if (p.audioUrl) { this.reloadAudio(p.audioUrl); return; }
+                        // 'generating' is the server ACCEPTING the request, not answering it: it
+                        // re-fires scene:load the moment it queues the job, and the payload still
+                        // carries the OLD recording. Taking that as the answer cleared the whole
+                        // narrating state within 200ms and put the panel back to "this audio matches
+                        // your words" while the words were the edited ones and the audio was not.
+                        if (p.status === 'generating') return;
+                        // Same trap one step earlier: pressing Re-narrate saves the edit first, and
+                        // that save answers with a scene:load of its own carrying the audio we are
+                        // replacing. audioFresh is the server saying the recording matches the words
+                        // on the scene, which only the finished job can make true.
+                        if (p.audioUrl && p.audioFresh) { this.reloadAudio(p.audioUrl); return; }
                         // The narrator could not record it (no TTS service, a bad voice, a refusal).
                         // Say so and give the button back — this used to spin for ever.
                         if (p.status === 'failed') this.narrationFailed(p.errorMessage);
@@ -277,6 +323,15 @@
                     this._unwatchSummary = window.Livewire.on('scene:summarize-done', (e) => {
                         const p = Array.isArray(e) ? e[0] : e;
                         if (p && p.sceneId === this.sceneId) this.summarizing = false;
+                    });
+                    // The server refused the save (the lesson's script-editing allowance is spent).
+                    // We had already written the text down as saved, so the next attempt — including
+                    // the one Re-narrate makes — was skipped as "no change" and the scene would have
+                    // been spoken from the words the teacher no longer has on screen.
+                    this._unwatchRejected = window.Livewire.on('scene:script-rejected', (e) => {
+                        const p = Array.isArray(e) ? e[0] : e;
+                        if (!p || p.sceneId !== this.sceneId) return;
+                        this._lastSaved = this._savedBefore;
                     });
 
                     if (url) await this.mountWave(url);
@@ -325,7 +380,7 @@
                 // Pull each box's live text back into paras, then serialise: soft newlines (single
                 // \n) stay inside a paragraph; paragraphs join with \n\n so the model — and TTS —
                 // treat each as its own topic.
-                _boxes() { return [...this.$el.querySelectorAll('[data-line]')]; },
+                _boxes() { return [...(this._root ?? this.$el).querySelectorAll('[data-line]')]; },
                 _syncFromDom() {
                     this._boxes().forEach((el, i) => { if (this.paras[i]) this.paras[i].text = el.textContent; });
                 },
@@ -340,14 +395,46 @@
                 },
                 saveScript() {
                     const text = this._currentScriptText();
-                    // Never persist an empty script: a focusout can fire mid-teardown (scene switch
-                    // rebuilds this component) when the boxes are already gone → text would be ''
-                    // and wipe the scene's narration. Deleting all narration isn't an inline edit.
-                    if (!text) return;
+                    // Never persist an empty script: deleting all narration isn't an inline edit,
+                    // and the server refuses it too (updateSceneScript returns early on empty).
+                    if (!text) {
+                        // A focusout can also fire mid-teardown (a scene switch rebuilds this
+                        // component) when the boxes are already gone. Nothing was emptied then, so
+                        // there is nothing to say and nothing to put back.
+                        if (!this._boxes().length) return;
+                        // The teacher emptied the box by hand. The panel used to keep showing that
+                        // empty box, so the narration looked deleted while the words were still in
+                        // the database and still read aloud to students.
+                        this._refuseEdit(@js(__('Narration cannot be emptied here, so the previous words are back. Delete the scene instead.')));
+
+                        return;
+                    }
                     if (text === this._lastSaved) return;   // no change → no round-trip
+                    this._savedBefore = this._lastSaved;    // to fall back on if the server refuses
                     this._lastSaved = text;
                     // sceneId lets the server reject a stale save aimed at a scene we already left.
                     try { window.Livewire.dispatch('scene:update-script', { text, sceneId: this.sceneId }); } catch (_) {}
+                },
+
+                /** Put the stored words back on screen and say why the edit did not land. */
+                _refuseEdit(message) {
+                    this._reseed(this._lastSaved);
+                    try { window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'warning', message } })); } catch (_) {}
+                },
+
+                /** Rebuild the boxes from a stored script, so the panel shows what is really saved. */
+                _reseed(text) {
+                    const chunks = String(text || '').split(/\n{2,}/).map((t) => t.trim()).filter(Boolean);
+                    this.paras = chunks.map((t) => ({ id: this._pid++, text: t, dirty: false }));
+                    this._lastSaved = chunks.join('\n\n');
+                    // Nothing is unsaved any more — unless a recording is still being made, which
+                    // keeps the audio out of date whatever the boxes say.
+                    this.dirty = this.regenerating;
+                    this.recomputeStarts();
+                    // Fresh ids mean x-for builds new boxes and x-init seeds them, but write the
+                    // text in as well: a reused node never re-runs x-init and would keep the old
+                    // characters on screen.
+                    this.$nextTick(() => this._boxes().forEach((el, i) => { el.textContent = this.paras[i]?.text ?? ''; }));
                 },
 
                 refreshWave() {
@@ -364,6 +451,7 @@
                     if (this._unwatchAudio) { try { this._unwatchAudio(); } catch (_) {} }
                     if (this._unwatchPara) { try { this._unwatchPara(); } catch (_) {} }
                     if (this._unwatchSummary) { try { this._unwatchSummary(); } catch (_) {} }
+                    if (this._unwatchRejected) { try { this._unwatchRejected(); } catch (_) {} }
                     document.getElementById('lesson-canvas-root')?.style.setProperty('--work-bottom', '0px');
                     document.documentElement.style.setProperty('--work-bottom', '0px');
                 },
@@ -576,8 +664,12 @@
                 // ── Script-editing toolbar (regenerate paragraph / summarize to list) ──
                 onFocusOut(e) {
                     this.saveScript();
-                    // Close the toolbar only when focus left the whole script panel.
-                    if (!this.$el.contains(e.relatedTarget)) { this.focusedPara = null; this.closePrompt(); }
+                    // Close the toolbar only when focus left the whole script panel. Measured
+                    // against the panel ROOT: $el here is the scroller this handler sits on, whose
+                    // sibling is the toolbar — so every move from a paragraph INTO the toolbar read
+                    // as "focus left the panel", and the prompt field was hidden the instant it
+                    // took focus, which made Rewrite text impossible to use at all.
+                    if (!this._root.contains(e.relatedTarget)) { this.focusedPara = null; this.closePrompt(); }
                 },
                 openPrompt() { this.promptOpen = true; this.promptText = ''; this.$nextTick(() => this.$refs.prompt?.focus()); },
                 closePrompt() { this.promptOpen = false; this.promptText = ''; },
@@ -616,9 +708,17 @@
                 },
 
                 // ── Edited-text → stale audio ────────────────────────────────────────────
+                // Stale means "the recording no longer says what the words say". Only a change that
+                // survives serialisation can do that: _currentScriptText trims each paragraph, so
+                // typing a space used to take the Play button away, disable the waveform and offer
+                // a re-narration for an edit that could never be saved and vanished on reload.
                 markDirty(i) {
-                    this.dirty = true;
-                    if (this.paras[i]) this.paras[i].dirty = true;
+                    const changed = this._currentScriptText() !== this._lastSaved;
+                    // While a recording is being made the audio is out of date whatever the text
+                    // does, so typing and undoing must not hand the Play button back mid-job.
+                    this.dirty = changed || this.regenerating;
+                    if (this.paras[i]) this.paras[i].dirty = changed;
+                    if (!changed) this.paras.forEach((p) => { p.dirty = false; });
                 },
                 _clearDirty() { this.dirty = false; this.paras.forEach((p) => { p.dirty = false; }); },
                 onPlay() {
@@ -630,11 +730,13 @@
                     this.saveScript();               // persist the edited text first
                     if (this.sceneId == null) { this._clearDirty(); return; }
                     this.regenerating = true;
-                    // Last resort. Narration is a queued job: if the worker never runs, or dies
-                    // without writing a status, nothing would ever come back to switch this off.
-                    clearTimeout(this._narrateTimer);
-                    this._narrateTimer = setTimeout(() => this.narrationFailed(null), 180_000);
+                    this._armGiveUpTimer();
                     try { window.Livewire.dispatch('scene:renarrate', { sceneId: this.sceneId }); } catch (_) {}
+                },
+                /** Never wait for ever: say the recording could not be made and give the button back. */
+                _armGiveUpTimer() {
+                    clearTimeout(this._narrateTimer);
+                    this._narrateTimer = setTimeout(() => this.narrationFailed(null), NARRATE_GIVE_UP_MS);
                 },
                 narrationFailed(reason) {
                     clearTimeout(this._narrateTimer);

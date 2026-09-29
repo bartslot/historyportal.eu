@@ -16,9 +16,9 @@
     <div class="flex flex-wrap items-center gap-1.5">
         @foreach ($this->collections() as $set)
             <button type="button" wire:click="selectCollection('{{ $set }}')"
-                    class="rounded-full px-3 py-1 text-[11px] font-medium transition-colors
+                    class="rounded-full px-3 py-1 text-2xs font-medium transition-colors
                            {{ $collection === $set
-                               ? 'bg-amber-500 text-slate-950'
+                               ? 'bg-base-content text-base-100'
                                : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200' }}">
                 {{ $collectionLabels[$set] ?? ucfirst(str_replace('-', ' ', $set)) }}
             </button>
@@ -27,7 +27,7 @@
         {{-- The teacher's own SVG imports still live in their library modal — one way in, kept
              out of the pill row because it is not another set of icons. --}}
         <button type="button" x-on:click="Livewire.dispatch('open-svg-library')"
-                class="ml-auto rounded-full px-3 py-1 text-[11px] font-medium text-slate-500 transition-colors hover:text-slate-200">
+                class="ml-auto rounded-full px-3 py-1 text-2xs font-medium text-slate-500 transition-colors hover:text-slate-200">
             {{ __('Import…') }}
         </button>
     </div>
@@ -37,9 +37,9 @@
     @if ($this->groups())
         <div class="flex items-center gap-1.5 overflow-x-auto pb-0.5">
             <button type="button" wire:click="selectGroup('', '')"
-                    class="shrink-0 rounded-full px-3 py-1 text-[11px] font-medium transition-colors
+                    class="shrink-0 rounded-full px-3 py-1 text-2xs font-medium transition-colors
                            {{ $category === ''
-                               ? 'bg-amber-500 text-slate-950'
+                               ? 'bg-base-content text-base-100'
                                : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200' }}">
                 {{ __('All') }}
             </button>
@@ -47,10 +47,10 @@
                 @php $active = $category === $group['category'] && $subcategory === $group['subcategory']; @endphp
                 <button type="button"
                         wire:click="selectGroup(@js($group['category']), @js($group['subcategory']))"
-                        class="shrink-0 rounded-full px-3 py-1 text-[11px] transition-colors
+                        class="shrink-0 rounded-full px-3 py-1 text-2xs transition-colors
                                {{ $group['subcategory'] === '' ? 'font-semibold' : 'font-medium' }}
                                {{ $active
-                                   ? 'bg-amber-500 text-slate-950'
+                                   ? 'bg-base-content text-base-100'
                                    : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200' }}">
                     {{ $group['label'] }}
                 </button>
@@ -58,8 +58,10 @@
         </div>
     @endif
 
-    {{-- The grid. The icons are black line art, so they are inverted to read on the dark dock —
-         the scene keeps the original artwork (and its own tint control). --}}
+    {{-- The grid. The SVG icons are black line art, so they are inverted to read on the dark dock;
+         the scene keeps the original artwork (and its own tint control). A raster (a painted
+         art:make pack) is a picture, not a glyph: inverting it gives its negative, so it sits on a
+         paper tile as it is. --}}
     <div class="min-h-0 flex-1 overflow-y-auto">
         @if ($this->icons()->isEmpty())
             <p class="px-1 py-6 text-center text-xs text-slate-500">
@@ -80,11 +82,12 @@
                                 ? window.__placeIcon({{ $icon->id }})
                                 : $wire.place({{ $icon->id }})"
                             data-tooltip="{{ $icon->title }}"
-                            class="flex aspect-square cursor-grab items-center justify-center rounded-lg p-2
-                                   transition-colors hover:bg-slate-700/60 active:cursor-grabbing"
+                            class="flex aspect-square cursor-grab items-center justify-center rounded-lg
+                                   transition-colors active:cursor-grabbing
+                                   {{ $icon->isRaster() ? 'lp-paper p-1 hover:ring-2 hover:ring-primary' : 'p-2 hover:bg-slate-700/60' }}"
                             aria-label="{{ $icon->title }}">
-                        <img src="{{ $icon->url() }}" alt="" draggable="false"
-                             class="pointer-events-none h-full w-full object-contain invert" />
+                        <img src="{{ $icon->url() }}" alt="" draggable="false" loading="lazy"
+                             class="pointer-events-none h-full w-full object-contain {{ $icon->isRaster() ? '' : 'invert' }}" />
                     </button>
                 @endforeach
             </div>

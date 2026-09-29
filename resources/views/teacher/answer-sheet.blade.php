@@ -17,7 +17,7 @@
 </head>
 <body>
     <div class="no-print">
-        <button onclick="window.print()">{{ __('Print') }}</button>
+        <button type="button" class="btn btn-primary" onclick="window.print()">{{ __('Print') }}</button>
         {{ __('Tip: print one sheet per student. Show the answer options on the digibord.') }}
     </div>
     <div class="sheet">
@@ -36,7 +36,7 @@
         @endforeach
         <div class="footer">
             <span>{{ $lesson->lesson_code }}</span>
-            <span>thelearningportal.us · {{ __('sheet') }} v1</span>
+            <span>historyportal.eu · {{ __('sheet') }} v1</span>
         </div>
     </div>
 </body>

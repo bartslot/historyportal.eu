@@ -19,7 +19,15 @@
  *    for most of the move and then falls the last stretch.
  */
 
-import { EASING } from '../easing.js'
+import {
+  addKeyframe, removeKeyframe, updateKeyframe, setDuration, trackDuration,
+  sortedKeys, segmentAt, easingFn, catmullRom, lerp, DEFAULT_EASING,
+} from '../anim/keyframes.js'
+
+// The keyframe mechanics — ordering, segment finding, immutable edits — are property-agnostic and
+// shared with every other animatable thing. Re-exported so existing callers keep one import, while
+// there stays exactly ONE implementation of them.
+export { addKeyframe, removeKeyframe, updateKeyframe, setDuration, trackDuration }
 
 /** Where the camera is and how it looks — Earth Studio's model. Altitude is metres above sea level. */
 export const DEFAULT_POSE = Object.freeze({
@@ -27,10 +35,6 @@ export const DEFAULT_POSE = Object.freeze({
 })
 
 const POSE_KEYS = ['lng', 'lat', 'altitude', 'heading', 'tilt']
-const DEFAULT_EASING = 'easeInOutCubic'   // EASE.move — the camera convention in easing.js
-
-const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v))
-const lerp = (a, b, t) => a + (b - a) * t
 
 /** Shift `angle` into the same 360° turn as `near`, so interpolation takes the short way round. */
 export const unwrapAngle = (angle, near) => angle + 360 * Math.round((near - angle) / 360)
@@ -40,14 +44,9 @@ export const lerpAltitude = (a, b, t) => (a > 0 && b > 0
   ? Math.exp(lerp(Math.log(a), Math.log(b), t))
   : lerp(a, b, t))
 
-const easingFn = (name) => EASING[name] || EASING[DEFAULT_EASING]
-
 /** Keyframes in time order, with longitude and heading unwrapped into one continuous frame. */
 const prepare = (track) => {
-  const keys = [...(track?.keyframes ?? [])]
-    .filter((k) => k && Number.isFinite(k.time))
-    .sort((a, b) => a.time - b.time)
-    .map((k) => ({ ...DEFAULT_POSE, ...k }))
+  const keys = sortedKeys(track).map((k) => ({ ...DEFAULT_POSE, ...k }))
 
   for (let i = 1; i < keys.length; i++) {
     keys[i] = {
@@ -57,20 +56,6 @@ const prepare = (track) => {
     }
   }
   return keys
-}
-
-/** Total run time of a track, in the same unit its keyframe times use (seconds by convention). */
-export const trackDuration = (track) => {
-  const keys = prepare(track)
-  return keys.length ? keys[keys.length - 1].time : 0
-}
-
-// Catmull-Rom through four values, for `smooth` tracks. Per-segment easing alone makes a multi-stop
-// move stutter: it eases to a halt at every keyframe it passes through, like a bus at every stop.
-const catmullRom = (p0, p1, p2, p3, t) => {
-  const t2 = t * t
-  const t3 = t2 * t
-  return 0.5 * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (-p0 + 3 * p1 - 3 * p2 + p3) * t3)
 }
 
 /**
@@ -86,14 +71,9 @@ export const samplePose = (track, time) => {
   if (keys.length === 1 || time <= keys[0].time) return pickPose(keys[0])
   if (time >= keys[keys.length - 1].time) return pickPose(keys[keys.length - 1])
 
-  let i = 0
-  while (i < keys.length - 2 && time > keys[i + 1].time) i++
-  const a = keys[i]
-  const b = keys[i + 1]
-  const span = b.time - a.time
-  const raw = span > 0 ? clamp((time - a.time) / span, 0, 1) : 0
+  const { index: i, a, b, u } = segmentAt(keys, time)
   // The easing belongs to the segment being left, so a keyframe can hold a hard cut or a slow start.
-  const t = easingFn(a.easing ?? track.easing ?? DEFAULT_EASING)(raw)
+  const t = easingFn(a.easing ?? track.easing ?? DEFAULT_EASING)(u)
 
   if (!track.smooth || keys.length < 3) {
     return {
@@ -118,30 +98,3 @@ export const samplePose = (track, time) => {
 }
 
 const pickPose = (k) => POSE_KEYS.reduce((pose, key) => ({ ...pose, [key]: k[key] }), {})
-
-// ── Editing. Every one of these returns a NEW track; nothing here mutates what it is handed. ──
-
-/** Insert a keyframe, keeping the track in time order. Replaces any keyframe at the same time. */
-export const addKeyframe = (track, keyframe) => ({
-  ...track,
-  keyframes: [...(track?.keyframes ?? []).filter((k) => k.time !== keyframe.time), { ...keyframe }]
-    .sort((a, b) => a.time - b.time),
-})
-
-export const removeKeyframe = (track, index) => ({
-  ...track,
-  keyframes: (track?.keyframes ?? []).filter((_, i) => i !== index),
-})
-
-export const updateKeyframe = (track, index, patch) => ({
-  ...track,
-  keyframes: (track?.keyframes ?? []).map((k, i) => (i === index ? { ...k, ...patch } : k)),
-})
-
-/** Rescale every keyframe time so the whole move runs for `seconds`. */
-export const setDuration = (track, seconds) => {
-  const current = trackDuration(track)
-  if (!(current > 0) || !(seconds > 0)) return { ...track }
-  const scale = seconds / current
-  return { ...track, keyframes: (track.keyframes ?? []).map((k) => ({ ...k, time: k.time * scale })) }
-}

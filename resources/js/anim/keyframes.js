@@ -1,0 +1,168 @@
+/**
+ * keyframes.js — the property-agnostic half of a keyframe track.
+ *
+ * A camera pose, a layer's x, and an opacity all need the same things: keys in time order, the
+ * segment a given moment falls in, and immutable edits. Only the INTERPOLATION differs — longitude
+ * wraps, altitude is logarithmic, a plain number is neither. So the mechanics live here and
+ * camera-track.js keeps what is genuinely about a pose.
+ *
+ * Everything is pure. The same time always yields the same value, which is what lets a track be
+ * scrubbed, resumed and tested; and every edit returns a NEW track, so an editor can hold an
+ * undo stack without cloning by hand.
+ */
+
+import { EASING, parseBezier, cubicBezier } from '../easing.js'
+
+/** The camera convention in easing.js (EASE.move). Shared so a layer eases like the camera does. */
+export const DEFAULT_EASING = 'easeInOutCubic'
+
+export const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v))
+export const lerp = (a, b, t) => a + (b - a) * t
+
+/**
+ * How close two keyframe times have to be to count as the same moment.
+ *
+ * A playhead is a float: click the lane at what looks like 1.0 and it lands at 1.0000000001. An
+ * exact `===` calls that a different moment, so anything keying there stacks a second keyframe a
+ * ten-millionth of a second from the first — two diamonds on one pixel, one of them unselectable,
+ * and a zero-length segment between them. A microsecond is far below anything a ruler can show
+ * (the narrowest here is 2000 px/s, which puts a microsecond at half a nanometre) and far above
+ * the float error, so it separates a real second keyframe from a rounding artefact.
+ */
+export const TIME_EPSILON = 1e-6
+
+export const sameTime = (a, b) => Math.abs(a - b) < TIME_EPSILON
+
+/** 'hold' keeps the value until the next key: a cut, Figma's Hold preset. */
+const HOLD = () => 0
+
+export const easingFn = (name) => {
+  if (name === 'hold') return HOLD
+  const bezier = parseBezier(name)
+  if (bezier) return cubicBezier(...bezier)
+  return EASING[name] || EASING[DEFAULT_EASING]
+}
+
+/**
+ * The easing a segment uses when nobody chose one, by where it sits.
+ *
+ * Bart: *"make linear the standard if a keyframe is in the middle. ease out when you have an end
+ * keyframe and ease in for start keyframe."* Leaving the first key eases in, arriving at the last
+ * eases out, a single segment does both, and middle segments are linear — so a multi-stop move
+ * does not brake at every key it passes through. An explicit choice (on the key, then the track)
+ * always wins.
+ *
+ * @param {object} a       the keyframe the segment leaves
+ * @param {number} index   the segment's index
+ * @param {number} count   how many segments the track has
+ */
+export const segmentEasing = (a, index, count, track = null) => {
+  if (a?.easing) return a.easing
+  if (track?.easing) return track.easing
+  const first = index === 0
+  const last = index === count - 1
+  if (first && last) return DEFAULT_EASING
+  if (first) return 'easeInCubic'
+  if (last) return 'easeOutCubic'
+  return 'linear'
+}
+
+const num = (v) => (Number.isFinite(v) ? v : 0)
+
+/**
+ * Keyframes in time order. A key with no usable time is DROPPED rather than sorted to the front —
+ * a NaN compares false against everything and would otherwise sit wherever the sort left it.
+ * Never mutates the track it is given.
+ */
+export const sortedKeys = (track) => [...(track?.keyframes ?? [])]
+  .filter((k) => k && Number.isFinite(k.time))
+  .sort((a, b) => a.time - b.time)
+
+/**
+ * The pair of keyframes `time` falls between, and how far across it sits.
+ *
+ * Clamps at both ends: before the first key it is the opening segment at u = 0, after the last it
+ * is the closing segment at u = 1, so a caller never has to special-case the edges. Null when
+ * there is no segment at all (nothing, or a single key).
+ *
+ * @returns {{index: number, a: object, b: object, u: number}|null}
+ */
+export const segmentAt = (keys, time) => {
+  if (!keys || keys.length < 2) return null
+
+  let i = 0
+  while (i < keys.length - 2 && time > keys[i + 1].time) i++
+
+  const a = keys[i]
+  const b = keys[i + 1]
+  const span = b.time - a.time
+  // Two keys stacked on the same frame: hold the first rather than divide by zero.
+  const u = span > 0 ? clamp((time - a.time) / span, 0, 1) : 0
+
+  return { index: i, a, b, u }
+}
+
+/**
+ * The value of a plain numeric track at `time`. Outside the track it holds the nearest key, because
+ * a property has a value at every moment.
+ *
+ * The easing belongs to the segment being LEFT, so one keyframe can hold a hard cut and the next a
+ * slow start. Falls back to the track's own easing, then to the default.
+ */
+export const sampleNumber = (track, time) => {
+  const keys = sortedKeys(track)
+  if (!keys.length) return 0
+  if (keys.length === 1 || time <= keys[0].time) return num(keys[0].value)
+  if (time >= keys[keys.length - 1].time) return num(keys[keys.length - 1].value)
+
+  const seg = segmentAt(keys, time)
+  const t = easingFn(segmentEasing(seg.a, seg.index, keys.length - 1, track))(seg.u)
+  return lerp(num(seg.a.value), num(seg.b.value), t)
+}
+
+/** Total run time, in the unit the keyframe times use (seconds by convention). */
+export const trackDuration = (track) => {
+  const keys = sortedKeys(track)
+  return keys.length ? keys[keys.length - 1].time : 0
+}
+
+/**
+ * Catmull-Rom through four values, for tracks that should not stop at every key.
+ *
+ * Per-segment easing alone makes a multi-stop move stutter: it eases to a halt at every keyframe it
+ * passes through, like a bus at every stop.
+ */
+export const catmullRom = (p0, p1, p2, p3, t) => {
+  const t2 = t * t
+  const t3 = t2 * t
+  return 0.5 * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (-p0 + 3 * p1 - 3 * p2 + p3) * t3)
+}
+
+// ── Editing. Every one of these returns a NEW track; nothing here mutates what it is handed. ──
+
+/** Insert a keyframe, keeping the track in time order. Replaces any keyframe at the same moment —
+ *  same to within TIME_EPSILON, because the time being keyed at is usually a float. */
+export const addKeyframe = (track, keyframe) => ({
+  ...track,
+  keyframes: [...(track?.keyframes ?? []).filter((k) => !sameTime(k.time, keyframe.time)), { ...keyframe }]
+    .sort((a, b) => a.time - b.time),
+})
+
+export const removeKeyframe = (track, index) => ({
+  ...track,
+  keyframes: (track?.keyframes ?? []).filter((_, i) => i !== index),
+})
+
+export const updateKeyframe = (track, index, patch) => ({
+  ...track,
+  keyframes: (track?.keyframes ?? []).map((k, i) => (i === index ? { ...k, ...patch } : k)),
+})
+
+/** Rescale every keyframe time so the whole move runs for `seconds`. */
+export const setDuration = (track, seconds) => {
+  const current = trackDuration(track)
+  if (!(current > 0) || !(seconds > 0)) return { ...track }
+
+  const scale = seconds / current
+  return { ...track, keyframes: (track.keyframes ?? []).map((k) => ({ ...k, time: k.time * scale })) }
+}

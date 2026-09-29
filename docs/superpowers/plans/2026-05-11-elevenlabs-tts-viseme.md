@@ -12,7 +12,7 @@
 
 ## File Map
 
-### Learning Portal (`apps/thelearningportal.us/`)
+### Learning Portal (`apps/historyportal.eu/`)
 
 | File | Status | Responsibility |
 |---|---|---|
@@ -224,7 +224,7 @@ class ElevenLabsServiceTest extends TestCase
 - [ ] **Step 2: Run tests — expect failure**
 
 ```bash
-cd /Users/bartslot/BartsAutomation/BartsDev/apps/thelearningportal.us
+cd /Users/bartslot/BartsAutomation/BartsDev/apps/historyportal.eu
 php artisan test tests/Unit/ElevenLabsServiceTest.php
 ```
 

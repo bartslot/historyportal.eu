@@ -6,6 +6,8 @@ namespace App\Livewire\Wizard\Concerns;
 
 use App\Models\Scene;
 use App\Models\SvgAsset;
+use App\Services\SceneLayers;
+use App\Services\Support\LayerAmbient;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 
@@ -74,19 +76,12 @@ trait EditsSceneArtwork
         $scene = $this->lesson->scenes()->findOrFail($this->selectedSceneId);
 
         $shots = $scene->shots ?? [];
-        $newLayer = [
-            'asset_id' => $asset->id,
-            'path' => $asset->svg_path,
-            'kind' => 'figure',
-            'depth' => (float) 1.3,
-            'scale' => (float) 1.0,
-            'height' => (int) 40,
-            'sway' => false,
-            // Free position on the stage (centre anchor, % of the stage) — teacher drags it
-            // on the canvas. Defaults to just-below-centre where a figure usually reads best.
-            'x' => $x !== null ? max(0.0, min(100.0, $x)) : 50.0,
-            'y' => $y !== null ? max(0.0, min(100.0, $y)) : 58.0,
-        ];
+        // Free position on the stage (centre anchor, % of the stage) — teacher drags it on the
+        // canvas. Without a drop point it takes SceneLayers' default spot, just below centre.
+        $newLayer = SceneLayers::figure($asset, array_filter([
+            'x' => $x !== null ? max(0.0, min(100.0, $x)) : null,
+            'y' => $y !== null ? max(0.0, min(100.0, $y)) : null,
+        ], fn ($v) => $v !== null));
 
         // Dropped over a live map → the icon belongs to that PLACE, not to that pixel, so it
         // keeps sitting on it through every pan and zoom. Same anchor a text label uses.
@@ -98,45 +93,12 @@ trait EditsSceneArtwork
 
         // Immutable transformation: build new arrays, never mutate in place
         if (empty($shots)) {
-            // Scenes that draw their own backdrop (map, voyage, panorama) have no flat background
-            // image — the MAP or the sphere IS the backdrop. Still allow a layer on top: create a
-            // shot carrying ONLY the asset layer (no cover). Editor and player both render these
-            // over the map; serializeShots keeps layer-only shots.
-            if (! $scene->image_path) {
-                // A layer-only shot: no cover, just the asset. This used to be reserved for scenes
-                // that draw their own backdrop (map, voyage, panorama) and everything else was
-                // refused with "generate a scene background first".
-                //
-                // That refusal was wrong. Bart: "Should add icons as layers regardless if there's a
-                // background image." A scene with nothing behind it still has background_color, so
-                // there is always something for a layer to sit on — and placing the figure before
-                // the backdrop is an ordinary way to build a scene. It also read as nonsense on a
-                // slideshow scene, which shows its pictures through `shots` without carrying an
-                // image_path: the teacher was looking straight at artwork and being told to make a
-                // background first.
-                $shots = [[
-                    'order' => 0,
-                    'layers' => [$newLayer],
-                ]];
-                $scene->update(['shots' => $shots]);
-                $this->selectSceneInternal($scene->id);
-                $this->svgLibraryOpen = false;
-
-                return;
-            }
-
-            // Create a single shot with both the base cover layer and the asset layer.
-            $coverLayer = [
-                'path' => $scene->image_path,
-                'kind' => 'cover',
-                'depth' => (float) 0.4,
-            ];
-
-            $shots = [[
-                'order' => 0,
-                'image_path' => $scene->image_path,
-                'layers' => [$coverLayer, $newLayer],
-            ]];
+            // One shot: the scene image as a cover under the asset, or the asset alone when there
+            // is no image. Scenes that draw their own backdrop (map, voyage, panorama) have none,
+            // and neither does a scene the teacher is building figure-first. Bart: "Should add
+            // icons as layers regardless if there's a background image." A scene with nothing
+            // behind it still has background_color, so a layer always has something to sit on.
+            $shots = [SceneLayers::shot($scene->image_path, [$newLayer])];
         } else {
             // Shots exist. Append layers to each, preserving order with foreach.
             $updatedShots = [];
@@ -153,11 +115,7 @@ trait EditsSceneArtwork
 
                 // If no layers but there's an image_path and no bg_path, prepend a cover layer.
                 if (empty($layers) && ! empty($shot['image_path']) && empty($shot['bg_path'])) {
-                    $layers[] = [
-                        'path' => $shot['image_path'],
-                        'kind' => 'cover',
-                        'depth' => (float) 0.4,
-                    ];
+                    $layers[] = SceneLayers::cover($shot['image_path']);
                 }
 
                 // Append the new asset layer.
@@ -240,23 +198,12 @@ trait EditsSceneArtwork
         $shots = $scene->shots ?? [];
 
         if (empty($shots)) {
-            if ($scene->image_path) {
-                $shots = [[
-                    'order' => 0,
-                    'image_path' => $scene->image_path,
-                    'layers' => [
-                        ['path' => $scene->image_path, 'kind' => 'cover', 'depth' => 0.4],
-                        $newLayer,
-                    ],
-                ]];
-            } else {
-                // Map-backed (voyage) scene — layer-only shot, the map is the backdrop.
-                $shots = [['order' => 0, 'layers' => [$newLayer]]];
-            }
+            // Map-backed (voyage) scenes get a layer-only shot: the map is the backdrop.
+            $shots = [SceneLayers::shot($scene->image_path, [$newLayer])];
         } else {
             $layers = $shots[0]['layers'] ?? [];
             if (empty($layers) && ! empty($shots[0]['image_path'])) {
-                $layers[] = ['path' => $shots[0]['image_path'], 'kind' => 'cover', 'depth' => 0.4];
+                $layers[] = SceneLayers::cover($shots[0]['image_path']);
             }
             $layers[] = $newLayer;
             $shots[0] = array_merge($shots[0], ['layers' => $layers]);
@@ -283,13 +230,7 @@ trait EditsSceneArtwork
             return null;
         }
 
-        $cover = ['path' => $newImagePath, 'kind' => 'cover', 'depth' => (float) 0.4];
-
-        return [[
-            'order' => 0,
-            'image_path' => $newImagePath,
-            'layers' => array_merge([$cover], $assetLayers),
-        ]];
+        return [SceneLayers::shot($newImagePath, $assetLayers)];
     }
 
     public function detachArtwork(int $assetId): void
@@ -341,7 +282,13 @@ trait EditsSceneArtwork
         $whitelist = [
             'depth' => [0, 3],
             'scale' => [0.2, 6],   // 6x: big enough to fill the stage with one detail
-            'height' => [5, 100],
+            // The layer's box on the stage, both in % of stage height/width. `height` has always
+            // been stored; `width` is new and OPTIONAL — absent means "take the width from the
+            // image's own aspect", which is what every layer created before the Dimensions row
+            // did and still does. Both are floats: the panel edits them to two decimals, and an
+            // int would quietly round a locked 10:3 box off its proportion on every keystroke.
+            'height' => [1, 200],
+            'width' => [1, 200],
             'wobble' => [0, 2],
             'opacity' => [0.05, 1],
             'kind' => ['figure', 'strip', 'cover'],
@@ -363,6 +310,12 @@ trait EditsSceneArtwork
             'anim_out_ease' => ['enter', 'move', 'exit', 'pop', 'linear'],
             'anim_out_duration' => [100, 5000],
             'grayscale' => null,   // boolean
+            // Mirroring, as two independent booleans. Absent means unflipped, so nothing authored
+            // before the Angle control changes. Deliberately NOT folded into rotation: a
+            // 180-degree turn and a horizontal flip are identical on a symmetrical shape and
+            // completely different on a ship or a portrait.
+            'flip_x' => null,      // boolean
+            'flip_y' => null,      // boolean
             'tint' => null,        // #rrggbb or '' to clear
             // Animate tab: how the layer arrives, how long it waits first, and on which curve.
             // The vocabulary is shared with resources/js/scene/animations.js, which plays it.
@@ -375,6 +328,10 @@ trait EditsSceneArtwork
             'ink_fill' => ['auto', 'none', 'wash', 'hatch', 'cross'],
             'draw_time' => [2, 20],   // seconds for the full draw-on
             'y' => [0, 100],
+            // Ambient motion, played by resources/js/scene/ambient.js.
+            'ambient' => LayerAmbient::MODES,
+            'ambient_speed' => LayerAmbient::SPEED,
+            'ambient_amount' => LayerAmbient::AMOUNT,
         ];
 
         if (! array_key_exists($field, $whitelist)) {
@@ -396,10 +353,11 @@ trait EditsSceneArtwork
         // "leave the artwork alone" or a hex colour. Anything else is dropped.
         // Coerce and clamp the value.
         $coercedValue = match ($field) {
-            'depth', 'scale', 'opacity', 'blur', 'x', 'y', 'draw_time', 'anim_delay' => (float) $value,
-            'height', 'wobble' => (int) $value,
-            'sway', 'grayscale' => (bool) $value,
-            'kind', 'blend', 'ink_preset', 'ink_fill', 'anim', 'anim_ease' => (string) $value,
+            'depth', 'scale', 'opacity', 'blur', 'x', 'y', 'draw_time', 'anim_delay',
+            'height', 'width', 'rotation', 'white_key', 'tint_opacity', 'ambient_speed', 'ambient_amount' => (float) $value,
+            'wobble' => (int) $value,
+            'sway', 'grayscale', 'flip_x', 'flip_y' => (bool) $value,
+            'kind', 'blend', 'ink_preset', 'ink_fill', 'anim', 'anim_ease', 'anim_out', 'anim_out_ease', 'ambient' => (string) $value,
             default => $value,
         };
 
@@ -409,9 +367,9 @@ trait EditsSceneArtwork
             // Clamp: use floats for min/max to preserve float results when clamping floats
             $coercedValue = max((float) $min, min((float) $max, (float) $coercedValue));
             // Re-cast after clamping to preserve float/int type
-            if (in_array($field, ['depth', 'scale', 'opacity', 'blur', 'x', 'y', 'anim_delay'], true)) {
+            if (in_array($field, ['depth', 'scale', 'opacity', 'blur', 'x', 'y', 'anim_delay', 'height', 'width', 'rotation', 'white_key', 'tint_opacity'], true)) {
                 $coercedValue = (float) $coercedValue;
-            } elseif (in_array($field, ['height', 'wobble'], true)) {
+            } elseif ($field === 'wobble') {
                 $coercedValue = (int) $coercedValue;
             }
         }
@@ -429,7 +387,7 @@ trait EditsSceneArtwork
         }
 
         // Validate enum-like fields.
-        if (in_array($field, ['kind', 'blend', 'ink_preset', 'ink_fill', 'anim', 'anim_ease'], true)) {
+        if (in_array($field, ['kind', 'blend', 'ink_preset', 'ink_fill', 'anim', 'anim_ease', 'anim_out', 'anim_out_ease', 'ambient'], true)) {
             if (! in_array($coercedValue, $whitelist[$field], true)) {
                 return;
             }
@@ -531,7 +489,7 @@ trait EditsSceneArtwork
      * text overlay uses). The Livewire re-render still refreshes the Layers panel thumbnails.
      */
     #[On('artwork:move')]
-    public function moveArtworkLayer(int $assetId, float $x, float $y, float $scale, ?string $anchor = null, ?float $lng = null, ?float $lat = null): void
+    public function moveArtworkLayer(int $assetId, float $x, float $y, float $scale, ?string $anchor = null, ?float $lng = null, ?float $lat = null, ?float $rotation = null): void
     {
         if (! $this->selectedSceneId) {
             return;
@@ -554,12 +512,21 @@ trait EditsSceneArtwork
         $lng = $pinned ? max(-180.0, min(180.0, $lng)) : null;
         $lat = $pinned ? max(-90.0, min(90.0, $lat)) : null;
 
-        $shots = collect($shots)->map(function (array $shot) use ($assetId, $x, $y, $scale, $anchor, $pinned, $lng, $lat): array {
-            $layers = collect($shot['layers'] ?? [])->map(function (array $l) use ($assetId, $x, $y, $scale, $anchor, $pinned, $lng, $lat): array {
+        // The rotate handle turns the layer on the canvas, and until now nothing carried that
+        // angle back: the drag ended, the node stayed turned, and the next render put it flat
+        // again because the saved layer had never heard about it. Optional, like $anchor — a
+        // caller that sends none leaves the stored angle alone.
+        $rotation = $rotation === null ? null : max(-180.0, min(180.0, $rotation));
+
+        $shots = collect($shots)->map(function (array $shot) use ($assetId, $x, $y, $scale, $anchor, $pinned, $lng, $lat, $rotation): array {
+            $layers = collect($shot['layers'] ?? [])->map(function (array $l) use ($assetId, $x, $y, $scale, $anchor, $pinned, $lng, $lat, $rotation): array {
                 if (($l['asset_id'] ?? null) === $assetId) {
                     $l['x'] = $x;
                     $l['y'] = $y;
                     $l['scale'] = $scale;
+                    if ($rotation !== null) {
+                        $l['rotation'] = $rotation;
+                    }
                     // Only an overlay that knows about anchoring sends one; an older caller
                     // that doesn't leaves whatever the layer already had alone.
                     if ($anchor !== null) {
@@ -713,7 +680,7 @@ trait EditsSceneArtwork
 
         // Collect asset_ids and fetch the assets in one query.
         $assetIds = collect($layers)
-            ->map(fn ($l) => $l['asset_id'] ?? null)
+            ->map(fn ($l) => $l['src_asset_id'] ?? $l['asset_id'] ?? null)
             ->filter()
             ->unique()
             ->values()
@@ -729,7 +696,8 @@ trait EditsSceneArtwork
         return collect($layers)
             ->filter(fn ($l) => ($l['asset_id'] ?? null) !== null)
             ->map(function (array $l) use ($assets) {
-                $asset = $assets->get($l['asset_id'] ?? null);
+                // A duplicate carries a synthetic asset_id; src_asset_id names the real asset.
+                $asset = $assets->get($l['src_asset_id'] ?? $l['asset_id'] ?? null);
                 if (! $asset) {
                     return null;
                 }

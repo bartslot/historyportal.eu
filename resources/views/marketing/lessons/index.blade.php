@@ -17,7 +17,7 @@
 
     <main class="mx-auto max-w-6xl px-4 pb-16 pt-32 sm:px-6 lg:px-8">
         <header class="max-w-3xl">
-            <p class="text-xs font-medium uppercase tracking-[0.18em] text-amber-400">{{ __('Lesson library') }}</p>
+            <p class="text-xs font-medium uppercase tracking-eyebrow text-amber-400">{{ __('Lesson library') }}</p>
             <h1 class="mt-3 font-history text-4xl font-light tracking-tight text-white sm:text-5xl">
                 {{ $title }}
             </h1>
@@ -44,10 +44,8 @@
                 @php
                     $slug = Seo::lessonSlug($lesson);
                     $poster = $lesson->poster_image
-                        ? \Illuminate\Support\Facades\Storage::disk('public')->url($lesson->poster_image)
-                        : ($lesson->firstScene?->image_path
-                            ? \Illuminate\Support\Facades\Storage::disk('public')->url($lesson->firstScene->image_path)
-                            : null);
+                        ? \App\Support\MediaUrl::of($lesson->poster_image)
+                        : \App\Support\MediaUrl::of($lesson->firstScene?->image_path);
                 @endphp
                 <article class="group overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/40 transition hover:-translate-y-0.5 hover:border-amber-500/40">
                     <a href="{{ Seo::url('lesson', ['slug' => $slug]) }}" class="block">
@@ -93,7 +91,7 @@
                 {{ __('The portal speaks English, Dutch, German, French and Italian, and a lesson takes minutes to build from your own topic. We are preparing for wider classroom use and are glad to hear what your curriculum needs.') }}
             </p>
             <a href="mailto:info@thelearningportal.us?subject={{ rawurlencode(__('Classroom use')) }}"
-               class="mt-5 inline-flex items-center gap-2 rounded-lg bg-amber-400 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-amber-300">
+               class="btn btn-primary mt-5">
                 {{ __('Talk to us') }}
             </a>
         </section>

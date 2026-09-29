@@ -33,6 +33,26 @@ class CloudinaryService
      */
     private const COVER_TRANSFORM = 'f_webp,q_60,c_limit,w_480';
 
+    /**
+     * Delivery transformation for pictures drawn in a lesson (backdrops, cut-outs, uploads): AVIF
+     * where the browser has it (WebP otherwise; both keep transparency) at the fixed quality in
+     * config('lessons.image_quality'). Fixed rather than q_auto: Bart chose the number by eye. The
+     * 2880px cap is the backdrop size the camera's zoom and pan need; smaller pictures pass through.
+     */
+    public function lessonTransform(): string
+    {
+        return 'f_auto,q_'.(int) config('lessons.image_quality', 20).',c_limit,w_2880,h_2880';
+    }
+
+    /**
+     * Upload a lesson picture under a fixed public id (re-runs replace it). Null when Cloudinary is
+     * not configured or the upload failed: the caller keeps the picture on our own disk.
+     */
+    public function uploadLessonPicture(string $bytes, string $publicId): ?string
+    {
+        return $this->uploadBytes($bytes, 'lessons', $publicId, $this->lessonTransform());
+    }
+
     /** How many of our own images the library shelf pulls in one Admin API call. */
     private const LIBRARY_LIMIT = 60;
 
@@ -125,7 +145,7 @@ class CloudinaryService
         }
         try {
             $response = Http::timeout(30)
-                ->withHeaders(['User-Agent' => 'TheLearningPortal/1.0 (educational; +https://thelearningportal.us)'])
+                ->withHeaders(['User-Agent' => 'HistoryPortal/1.0 (educational; +https://historyportal.eu)'])
                 ->get($url);
             if ($response->successful()) {
                 $hosted = $this->uploadBytes($response->body(), $folder, $publicId);

@@ -9,9 +9,12 @@
 // opts.startIndex opens the slideshow on a specific image (e.g. the thumbnail the user clicked).
 // opts.editable (wizard only) makes the date/title/story contenteditable; opts.onEdit(field, value)
 // fires on blur with the new text so the caller can persist it (student player leaves both off).
-// Returns a handle whose destroy() stops the interval and clears the host.
+// Returns a handle whose destroy() stops the interval and clears the host, and whose pace(totalMs)
+// stretches the slideshow over the scene's narration.
 
 const CYCLE_MS = 5000;
+// Floor for a narration-paced cycle: many images over a short voice must still be seen, not flicker.
+const MIN_PACED_CYCLE_MS = 2500;
 
 // Escape user text before injecting into innerHTML (title/date/story come from the DB).
 const esc = (s) => String(s == null ? '' : s)
@@ -42,11 +45,11 @@ export function renderGallery(el, cfg = {}, { startIndex = 0, editable = false, 
       <img data-bg="b" alt="" style="position:absolute;inset:-6%;width:112%;height:112%;object-fit:cover;filter:blur(28px) brightness(0.5);opacity:0;transition:opacity 1.1s ease;">
       <img data-slide="a" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:${objFit};opacity:0;transition:opacity 1s ease, transform 9s linear;">
       <img data-slide="b" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:${objFit};opacity:0;transition:opacity 1s ease, transform 9s linear;">
-      <p data-credit style="position:absolute;left:1rem;bottom:0.75rem;margin:0;color:#cbd5e1;font-size:0.72rem;opacity:0.8;text-shadow:0 1px 3px rgba(0,0,0,.7);"></p>
+      <p data-credit style="position:absolute;left:1rem;bottom:0.75rem;margin:0;color:#cbd5e1;font-size:var(--text-2xs);opacity:0.8;text-shadow:0 1px 3px rgba(0,0,0,.7);"></p>
     </div>
     <div style="width:22rem;max-width:38%;padding:2.2rem 1.8rem;background:rgba(9,16,30,0.92);color:#e2e8f0;display:flex;flex-direction:column;justify-content:center;">
-      <p data-field="date_label" ${edit('date_label', 'Date…')} style="margin:0;font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:#93a4bd;">${esc(cfg.date_label)}</p>
-      <h2 data-field="title" ${edit('title', 'Title…')} style="margin:0.4rem 0 0;font-size:1.5rem;line-height:1.2;color:#fff;">${esc(cfg.title)}</h2>
+      <p data-field="date_label" ${edit('date_label', 'Date…')} style="margin:0;font-size:var(--text-2xs);letter-spacing:0.1em;text-transform:uppercase;color:#93a4bd;">${esc(cfg.date_label)}</p>
+      <h2 data-field="title" ${edit('title', 'Title…')} style="margin:0.4rem 0 0;font-size:var(--text-2xl);line-height:1.2;color:#fff;">${esc(cfg.title)}</h2>
       <p data-field="story" ${edit('story', 'Tell what happened at this stop…')} style="margin-top:1rem;font-size:0.95rem;line-height:1.65;white-space:pre-wrap;">${esc(cfg.story)}</p>
     </div>`;
   el.appendChild(host);
@@ -89,14 +92,26 @@ export function renderGallery(el, cfg = {}, { startIndex = 0, editable = false, 
     cursor++;
   };
   show();
-  let timer = images.length > 1 ? setInterval(show, CYCLE_MS) : null;
+  let cycleMs = CYCLE_MS;
+  let timer = images.length > 1 ? setInterval(show, cycleMs) : null;
   // Auto-cycle only makes sense with 2+ images — keep the interval in sync when the set changes live.
   const syncTimer = () => {
-    if (images.length > 1 && !timer) timer = setInterval(show, CYCLE_MS);
+    if (images.length > 1 && !timer) timer = setInterval(show, cycleMs);
     else if (images.length <= 1 && timer) { clearInterval(timer); timer = null; }
   };
 
   return {
+    /**
+     * Spread the images evenly over `totalMs` (the scene's narration): image i appears at
+     * i * totalMs / n, so the last one is on screen as the voice finishes. The player calls this
+     * once the audio reports its length; without it the fixed 5 s cycle stands.
+     */
+    pace(totalMs) {
+      if (!(Number(totalMs) > 0) || images.length < 2) return;
+      cycleMs = Math.max(MIN_PACED_CYCLE_MS, Number(totalMs) / images.length);
+      if (timer) clearInterval(timer);
+      timer = setInterval(show, cycleMs);
+    },
     destroy() {
       if (timer) clearInterval(timer);
       el.innerHTML = '';

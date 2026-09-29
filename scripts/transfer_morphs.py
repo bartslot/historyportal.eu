@@ -20,7 +20,7 @@ import os
 import shutil
 
 DONOR_GLB  = "/Users/bartslot/Downloads/Avatars/ready-player-me-avatar/source/617b091cfb622cf1cd9cc537.glb"
-AVATARS_DIR = "/Users/bartslot/BartsAutomation/BartsDev/apps/thelearningportal.us/public/avatars"
+AVATARS_DIR = "/Users/bartslot/BartsAutomation/BartsDev/apps/historyportal.eu/public/avatars"
 
 # Avatars with Wolf3D_Head or Wolf3D_Skin at 2123v needing morph transfer
 AVATAR_IDS = [

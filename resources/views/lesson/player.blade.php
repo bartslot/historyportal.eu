@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $lesson->title }} — The Learning Portal</title>
+    <title>{{ $lesson->title }} — History Portal</title>
     {{-- lesson-map.js (+ the ~1 MB MapLibre/volcanoes chunk) is loaded on demand by
          lesson-player.js only when a lesson actually contains a map scene. --}}
     @vite(['resources/css/app.css', 'resources/js/app.js', 'resources/js/lesson-player.js'])
@@ -12,6 +12,11 @@
     <x-js-lang />
 </head>
 <body class="h-full overflow-hidden bg-[#020617]">
+{{-- LessonPlayerController switches the locale to the lesson's language when the interface ships
+     it, so <html lang>, the chrome and the JS strings all speak the lesson's language. Content
+     surfaces still carry the lesson language explicitly: for a lesson in a language the interface
+     doesn't ship, the chrome stays in the visitor's locale while the content is read correctly. --}}
+@php $contentLang = $lesson->language ?: str_replace('_', '-', app()->getLocale()); @endphp
 
 {{-- ── Lesson data passed to JS ────────────────────────────────────────────── --}}
 @php
@@ -60,11 +65,16 @@
         // joins this on the same line, because a CC BY image has to say who made it.
         'source_attribution'    => $lesson->sourceAttribution(),
         'title_bg_url'          => $lesson->titleBgUrl(),
+        // A lesson series with its own wordmark (public/lesson-logos/{translation_group}.svg) shows it
+        // on the title screen instead of the plain title's lead-in.
+        'title_logo_url'        => $lesson->translation_group && is_file(public_path("lesson-logos/{$lesson->translation_group}.svg"))
+                                    ? asset("lesson-logos/{$lesson->translation_group}.svg")
+                                    : null,
         'intro_text'            => $lesson->outline['scene_briefs'][0]['scenePurpose']
                                     ?? $lesson->details
                                     ?? $lesson->topic,
         'scene_images'          => $lesson->relationLoaded('scenes')
-            ? $lesson->scenes->where('image_path', '!=', null)->map(fn($s) => ['url' => \Illuminate\Support\Facades\Storage::disk('public')->url($s->image_path)])->values()
+            ? $lesson->scenes->where('image_path', '!=', null)->map(fn($s) => ['url' => \App\Support\MediaUrl::of($s->image_path)])->values()
             : [],
         'scenes'                => $lesson->relationLoaded('scenes')
             ? $lesson->scenes->map(fn($s) => [
@@ -82,19 +92,19 @@
                 'scene_view'  => $s->scene_view,
                 'audio_url'   => $s->audioUrl(),
                 'script'      => $s->script_segment,
-                'image_url'   => $s->image_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($s->image_path) : null,
+                'image_url'   => \App\Support\MediaUrl::of($s->image_path),
                 // Attribution for a sourced painting or photograph. Commons images are mostly CC BY
                 // or CC BY-SA, which oblige us to name the author wherever the image is shown.
                 'image_credit' => $s->config['image_credit'] ?? null,
                 'shots'       => collect($s->shots ?? [])->map(fn($shot) => [
-                    'image_url'       => !empty($shot['image_path']) ? \Illuminate\Support\Facades\Storage::disk('public')->url($shot['image_path']) : null,
+                    'image_url'       => \App\Support\MediaUrl::of($shot['image_path'] ?? null),
                     // bg_url/hero_url (E3b story-pack shots): the player renders these as
                     // parallax layers when bg_url is present, flat image_url otherwise.
-                    'bg_url'          => !empty($shot['bg_path']) ? \Illuminate\Support\Facades\Storage::disk('public')->url($shot['bg_path']) : null,
-                    'hero_url'        => !empty($shot['hero_path']) ? \Illuminate\Support\Facades\Storage::disk('public')->url($shot['hero_path']) : null,
+                    'bg_url'          => \App\Support\MediaUrl::of($shot['bg_path'] ?? null),
+                    'hero_url'        => \App\Support\MediaUrl::of($shot['hero_path'] ?? null),
                     // Multiplane layers (E3c): [{path|url, depth, kind, scale, height, sway}] back→front.
                     'layers'          => collect($shot['layers'] ?? [])->map(fn($l) => [
-                        'url'    => !empty($l['path']) ? \Illuminate\Support\Facades\Storage::disk('public')->url($l['path']) : ($l['url'] ?? null),
+                        'url'    => !empty($l['path']) ? \App\Support\MediaUrl::of($l['path']) : ($l['url'] ?? null),
                         // asset_id + x/y drive the free-positioned clipart overlay (voyage-map layers).
                         'asset_id' => isset($l['asset_id']) ? (int) $l['asset_id'] : null,
                         'x'      => isset($l['x']) ? (float) $l['x'] : null,
@@ -123,6 +133,8 @@
                         'z'       => isset($l['z']) ? (int) $l['z'] : null,
                         // 3D / video layers ride as an iframe embed instead of an image.
                         'embed'   => isset($l['embed']) && is_array($l['embed']) ? $l['embed'] : null,
+                        // Ambient motion (drift / breeze / bob / flutter), validated to the known vocabulary.
+                        ...\App\Services\Support\LayerAmbient::payload($l),
                     ])->filter(fn($l) => $l['url'] || $l['embed'])->values()->all() ?: null,
                     'anchor_sentence' => $shot['anchor_sentence'] ?? null,
                     // Keep a shot with EITHER a background image OR clipart layers — a voyage scene's
@@ -151,6 +163,8 @@
         'leaderboard_url'       => route('lesson.leaderboard', ['lessonCode' => $lesson->lesson_code]),
         'quiz_score_url'        => route('lesson.quiz-score', ['lessonCode' => $lesson->lesson_code]),
         'has_classroom'         => $lesson->classrooms()->exists(),
+        // A student can't skip a quiz question; the teacher testing their own lesson can.
+        'can_skip_quiz'         => (bool) auth()->user()?->canManage($lesson),
     ];
 @endphp
 {{-- The lesson payload is the heaviest thing on this page (mostly per-character narration timings:
@@ -178,7 +192,7 @@
 
     {{-- Teacher text annotations per scene (links open an iframe modal). z-31: above the map stage
          (z-20) so text a teacher placed on a voyage/history map is visible, below the quiz overlay. --}}
-    <div id="lesson-text-overlay" class="absolute inset-0 z-31 pointer-events-none"></div>
+    <div id="lesson-text-overlay" lang="{{ $contentLang }}" class="absolute inset-0 z-31 pointer-events-none"></div>
     {{-- Teacher clipart layers a scene carries ON TOP of the voyage map. z-30 (below text) by default,
          raised to z-32 when the teacher stacked clipart above text — mirrors the editor's ordering.
          Read-only in playback (pointer-events:none) so it never steals a map pan. --}}
@@ -186,9 +200,12 @@
          A positioned host with a z-index is a stacking context, which would trap a layer's blend
          mode inside this overlay and leave Multiply with nothing to blend against. --}}
     <div id="lesson-voyage-art" class="absolute inset-0 pointer-events-none" style="display:none"></div>
+    {{-- Speech balloons of a scene told in lines (BalloonLayer.js): above the figures and texts,
+         below the subtitles and the player chrome. --}}
+    <div id="lesson-balloons" lang="{{ $contentLang }}" class="absolute inset-0 pointer-events-none" style="z-index:33"></div>
 
     {{-- Quiz question cards (QuizOverlay mounts here during quiz segments). --}}
-    <div id="lesson-game-overlay" class="absolute inset-0 z-30 pointer-events-none"></div>
+    <div id="lesson-game-overlay" lang="{{ $contentLang }}" class="absolute inset-0 z-30 pointer-events-none"></div>
 
     {{-- ── LAYER 0b: Title-screen background (Wikipedia lead image) ──────────
          Pinned during TITLE_SCREEN so the catalog topic's image is the hero backdrop,
@@ -200,42 +217,17 @@
                  :style="`background-image:url('${lesson.title_bg_url}')`"></div>
             {{-- Darken for title legibility --}}
             <div class="absolute inset-0 bg-black/55"></div>
-            <span class="absolute bottom-2 right-3 text-[10px] text-white/40">{{ __('Image: Wikimedia Commons') }}</span>
+            <span class="absolute bottom-2 right-3 text-2xs text-white/40">{{ __('Image: Wikimedia Commons') }}</span>
         </div>
     </template>
 
     {{-- ── Map block slide — full-bleed historical atlas, shown while a map scene plays. --}}
-    <div id="lesson-map-stage" class="absolute inset-0 z-20" style="display:none" aria-hidden="true"></div>
-    {{-- Continue button for interactive map blocks (timed blocks auto-advance). Voyage lessons
-         advance with the → / B keys (arrows-only nav), so the big button is hidden there. --}}
-    <button x-show="showMapContinue && lesson.game_type !== 'voyage'" x-transition
-            @click="advanceMap()"
-            class="absolute bottom-10 left-1/2 z-40 -translate-x-1/2 flex items-center gap-2 rounded-full
-                   bg-amber-500 px-7 py-3 text-base font-bold text-slate-950 shadow-[0_0_48px_rgba(245,158,11,0.4)]
-                   transition hover:bg-amber-400 active:scale-95 pointer-events-auto">
-        {{ __('Continue') }}
-        <svg class="h-5 w-5 fill-slate-950" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-    </button>
-
-    {{-- Voyage carousel: prev/next arrows on the sides + a minimal auto-advance progress line.
-         Shown at the landfall (showMapContinue); the countdown auto-advances after 10s. --}}
-    <template x-if="lesson.game_type === 'voyage'">
-        <div>
-            <button x-show="showMapContinue && _sceneIndex > 0" x-transition @click="previousSlide()"
-                    aria-label="{{ __('Previous') }}"
-                    class="fixed left-3 top-1/2 z-40 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white/80 backdrop-blur transition hover:bg-black/60 hover:text-white pointer-events-auto">
-                <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-            </button>
-            <button x-show="showMapContinue" x-transition @click="advanceMap()"
-                    aria-label="{{ __('Next') }}"
-                    class="fixed right-3 top-1/2 z-40 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white/80 backdrop-blur transition hover:bg-black/60 hover:text-white pointer-events-auto">
-                <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-            </button>
-            <div x-show="showMapContinue" class="fixed inset-x-0 bottom-0 z-40 h-1 bg-white/10 pointer-events-none">
-                <div class="h-full bg-amber-400/90" :style="`width: ${autoAdvanceProgress * 100}%`"></div>
-            </div>
-        </div>
-    </template>
+    <div id="lesson-map-stage" lang="{{ $contentLang }}" class="absolute inset-0 z-20" style="display:none" aria-hidden="true"></div>
+    {{-- Voyage landfall: a minimal auto-advance progress line (the countdown moves on after 10s).
+         Previous / next live in the deck, like every other scene. --}}
+    <div x-show="showMapContinue && lesson.game_type === 'voyage'" class="fixed inset-x-0 bottom-0 z-40 h-1 bg-white/10 pointer-events-none">
+        <div class="h-full bg-amber-400/90" :style="`width: ${autoAdvanceProgress * 100}%`"></div>
+    </div>
 
     {{-- ── Narrator welcome video ───────────────────────────────────────────
          Plays once, full-screen, right after "Start lesson" is clicked and before
@@ -265,8 +257,11 @@
         </div>
     @endif
 
-    {{-- ── LAYER 1: Shadow gradient overlay ────────────────────────────── --}}
-    <div class="absolute inset-0 z-10 pointer-events-none bg-linear-to-b from-black/50 to-[#0C2033]/50"></div>
+    {{-- ── LAYER 1: Shadow gradient overlay ──────────────────────────────
+         Shades paintings and photos; a line-art scene turns it off (backdropShade) so the paper stays
+         white. Subtitles and the chrome carry their own scrims, so they stay legible either way. --}}
+    <div class="absolute inset-0 z-10 pointer-events-none bg-linear-to-b from-black/50 to-[#0C2033]/50 transition-opacity duration-700"
+         :class="backdropShade ? 'opacity-100' : 'opacity-0'"></div>
 
     {{-- Cinematic film-grain overlay (reuses the .lp-grain brand utility). --}}
     <div class="lp-grain pointer-events-none absolute inset-0 z-11"></div>
@@ -290,7 +285,7 @@
              Reactive rather than server-rendered because it now also names the artist of the scene
              on screen, and that changes as the lesson plays. --}}
         <p x-show="attributionLine" x-text="attributionLine" x-cloak
-           class="absolute bottom-1 left-1/2 -translate-x-1/2 max-w-[92vw] truncate text-[10px] text-white/35 pointer-events-none"
+           class="absolute bottom-1 left-1/2 -translate-x-1/2 max-w-[92vw] truncate text-2xs text-white/35 pointer-events-none"
            style="z-index:40"></p>
 
         {{-- ── Subtitles — the narration written along the bottom while it is spoken ─────────── --}}
@@ -305,7 +300,7 @@
             style="z-index:47"
             aria-live="polite"
         >
-            <p x-text="captionText"
+            <p x-text="captionText" lang="{{ $contentLang }}"
                class="inline-block rounded-lg bg-black/70 px-4 py-2 text-balance text-lg leading-snug text-white shadow-lg backdrop-blur-sm sm:text-xl"></p>
         </div>
 
@@ -339,11 +334,19 @@
 
             {{-- Top edge: scrim + the only text chrome that exists (teacher escape hatch or logo).
                  No phase gate — on the title screen nothing is playing, so it is simply visible. --}}
-            <div class="absolute inset-x-0 top-0 transition-opacity duration-300"
-                 :class="(readingOverlay || (isPlaying && !zoneHover && !zoneFlash && !chaptersOpen)) ? 'opacity-0 pointer-events-none' : 'opacity-100'"
+            {{-- pointer-events-none on the row itself: it is a full-width scrim, most of which has
+                 nothing to click, and at z-index:48 it was sitting over the top-left language
+                 switch (z-index:10) during TITLE_SCREEN and eating its clicks. Only the actual
+                 controls (the "Edit scene" button below) opt back in with pointer-events-auto. --}}
+            <div class="pointer-events-none absolute inset-x-0 top-0 transition-opacity duration-300"
+                 :class="(readingOverlay || (isPlaying && !zoneHover && !zoneFlash && !chaptersOpen)) ? 'opacity-0' : 'opacity-100'"
                  style="z-index:48">
-                <div class="pointer-events-none absolute inset-x-0 top-0 h-36 bg-linear-to-b from-black/70 to-transparent"></div>
-                <div class="relative flex items-center gap-2.5 p-3.5 sm:px-16">
+                {{-- Side padding = the title screen bar's gutter (px-8/12), so Edit scene lines up with Start. --}}
+                {{-- A line-art scene (backdropShade off) keeps its paper white to the edge: no
+                     full-width scrim. Its controls carry their own local plate instead (the Edit
+                     button already has one; the logo gets one below). --}}
+                <div x-show="backdropShade" class="pointer-events-none absolute inset-x-0 top-0 h-36 bg-linear-to-b from-black/70 to-transparent"></div>
+                <div class="relative flex items-center gap-2.5 px-8 py-3.5 sm:px-12">
                     @if ($canEdit)
                         {{-- No back arrow here on purpose. The wizard already draws one in this exact
                              corner, so the two stacked into a confusing double control. "Edit scene"
@@ -355,7 +358,8 @@
                             {{ __('Edit scene') }}
                         </button>
                     @else
-                        <img src="{{ asset('assets/logo.svg') }}" alt="The Learning Portal" class="h-24 w-auto shadow-sm">
+                        <img src="{{ asset('assets/logo.svg') }}" alt="History Portal" class="h-24 w-auto shadow-sm"
+                             :class="!backdropShade && 'rounded-xl border border-white/10 bg-black/70 p-2 backdrop-blur-md'">
                     @endif
                 </div>
             </div>
@@ -376,11 +380,13 @@
                  style="z-index:45">
                 {{-- No data-tooltip here on purpose: a 96px glyph in the middle of the stage says
                      what it is, and a hover hint floating over the scene is noise. The deck's small
-                     play/pause carries the label and the K shortcut. --}}
+                     play/pause carries the label and the K shortcut. On a line-art scene a white
+                     glyph on white paper vanishes, so there (only) it sits on the deck's plate. --}}
                 <button type="button" @click="togglePlayback()"
                         :aria-label="playbackPaused ? @js(__('Play')) : @js(__('Pause'))"
                         class="group flex h-24 w-24 items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
-                        :class="(!readingOverlay && (playbackPaused || playbackGlyph)) ? 'pointer-events-auto' : 'pointer-events-none'">
+                        :class="[(!readingOverlay && (playbackPaused || playbackGlyph)) ? 'pointer-events-auto' : 'pointer-events-none',
+                                 !backdropShade && 'border border-white/10 bg-black/70 backdrop-blur-md']">
 
                     <svg x-show="playbackPaused" class="h-14 w-14 text-white drop-shadow-[0_4px_14px_rgba(0,0,0,0.8)] transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95" viewBox="0 0 21 23" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path fill-rule="evenodd" clip-rule="evenodd" d="M0 2.52873C0 0.608107 2.05916 -0.609418 3.74205 0.316169L19.2842 8.86436C21.0285 9.82373 21.0285 12.3301 19.2842 13.2895L3.74205 21.8377C2.05916 22.7633 0 21.5457 0 19.6251V2.52873Z" fill="white"/>
@@ -396,8 +402,10 @@
                 </button>
             </div>
 
-            {{-- Bottom scrim keeps the white icons and captions readable over bright scenes. --}}
-            <div x-show="phase === 'INTRO' || phase === 'GAME_ACTIVE' || phase === 'GAME_BRIEF'"
+            {{-- Bottom scrim keeps the white icons and captions readable over bright scenes. A
+                 line-art scene drops it (the paper stays white to the edge) and the deck and the
+                 chapter line carry a local plate instead, below. --}}
+            <div x-show="backdropShade && (phase === 'INTRO' || phase === 'GAME_ACTIVE' || phase === 'GAME_BRIEF')"
                  x-cloak
                  class="pointer-events-none absolute inset-x-0 bottom-0 h-44 bg-linear-to-t from-black/80 via-black/40 to-transparent transition-opacity duration-300"
                  :class="(readingOverlay || (isPlaying && !zoneHover && !zoneFlash && !chaptersOpen)) && 'opacity-0'"
@@ -442,12 +450,13 @@
                          top date chip instead. --}}
                     <div x-show="(phase === 'INTRO' || phase === 'GAME_ACTIVE') && !infoAtTop"
                          x-cloak
-                         class="lp-chapter-line flex h-9 items-center gap-2">
+                         class="lp-chapter-line flex h-9 items-center gap-2"
+                         :class="!backdropShade && 'rounded-xl border border-white/10 bg-black/70 px-3 backdrop-blur-md'">
                         <svg class="h-4 w-auto shrink-0 text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]"
                              viewBox="0 0 21 26" fill="currentColor" aria-hidden="true">
                             <path d="M10.3329 0C4.63543 0 0 4.63543 0 10.3329C0 19.3812 9.58334 25.4792 9.9913 25.735L10.334 25.9493L10.6767 25.735C11.0848 25.4795 20.668 19.3812 20.668 10.3329C20.668 4.63543 16.0326 0 10.3351 0H10.3329ZM10.3329 15.5C7.47996 15.5 5.16584 13.1871 5.16584 10.3329C5.16584 7.47996 7.47872 5.16584 10.3329 5.16584C13.1859 5.16584 15.5 7.47872 15.5 10.3329C15.5 13.1859 13.1871 15.5 10.3329 15.5Z"/>
                         </svg>
-                        <span class="truncate text-sm font-bold text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]"
+                        <span lang="{{ $contentLang }}" class="truncate text-sm font-bold text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]"
                               x-text="infoPlace || currentChapterName || lessonLocation"></span>
                         <span x-show="infoDate || lessonYear" class="h-1 w-1 shrink-0 rounded-full bg-slate-400"></span>
                         <span x-show="infoDate || lessonYear"
@@ -455,6 +464,11 @@
                               x-text="infoDate || lessonYear"></span>
                     </div>
 
+                    {{-- A line-art scene has no bottom scrim, so the progress bar and the transport row
+                         sit on a local plate (the chapter list's surface). Not around the chapter line
+                         or the list: backdrop-filter would become the containing block of the line's
+                         corner float, and the list has its own plate. --}}
+                    <div :class="!backdropShade && 'rounded-xl border border-white/10 bg-black/70 px-2 backdrop-blur-md'">
                     {{-- Segmented progress — one bar per chapter, width ∝ duration; click to jump.
                          The track thickens slightly under the pointer, Netflix-style. --}}
                     <div x-show="chapters.length > 1 && !currentIsGame && phase !== 'GAME_BRIEF'"
@@ -472,10 +486,23 @@
                         </template>
                     </div>
 
-                    {{-- Transport row — plain white Heroicons (outline, 1.5), no chrome: playback on
-                         the left, subtitles + chapters on the right. Icons grow a touch on hover. --}}
+                    {{-- Transport row — plain white Heroicons (outline, 1.5), no chrome: previous /
+                         play / next on the left, subtitles + chapters on the right. Icons grow a touch on hover. --}}
                     <div class="mt-0.5 flex items-center justify-between">
                         <div class="flex items-center gap-1 sm:gap-2">
+                            {{-- Previous / Next — skip glyphs drawn to the Heroicons grid (24, round joins) since
+                                 Heroicons has no skip icon; filled like the play glyph beside them. --}}
+                            <button type="button" x-show="_hasSlides" @click="previousSlide()" :disabled="!canSkip || _sceneIndex <= 0"
+                                    data-tooltip="{{ __('Previous') }}" data-tooltip-key="←" aria-label="{{ __('Previous') }}"
+                                    class="group flex h-10 w-10 items-center justify-center rounded-lg text-white/85 transition hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 disabled:pointer-events-none disabled:opacity-35">
+                                <svg class="h-6 w-6 shadow-sm transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
+                                     viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                    <g transform="matrix(-1 0 0 1 24 0)">
+                                        <path stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" d="M4.5 6.6c0-.87.95-1.4 1.7-.96l8.9 5.4a1.12 1.12 0 0 1 0 1.92l-8.9 5.4c-.75.45-1.7-.09-1.7-.96V6.6Z"/>
+                                        <rect x="17.25" y="5.25" width="2.25" height="13.5" rx="1.125"/>
+                                    </g>
+                                </svg>
+                            </button>
                             {{-- Play / pause — the same control as the centre glyph and Space. --}}
                             <button type="button" @click="togglePlayback()"
                                     :data-tooltip="playbackPaused ? @js(__('Play')) : @js(__('Pause'))" data-tooltip-key="K"
@@ -488,6 +515,18 @@
                                 <svg x-show="!playbackPaused" x-cloak class="h-8 w-8 shadow-sm transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
                                      viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5"/>
+                                </svg>
+                            </button>
+                            <button type="button" x-show="_hasSlides" @click="nextSlide()" :disabled="!canSkip || !hasNextSlide"
+                                    :data-stage-waiting="showMapContinue"
+                                    data-tooltip="{{ __('Next') }}" data-tooltip-key="→" aria-label="{{ __('Next') }}"
+                                    class="group flex h-10 w-10 items-center justify-center rounded-lg text-white/85 transition hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 disabled:pointer-events-none disabled:opacity-35">
+                                <svg class="h-6 w-6 shadow-sm transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
+                                     viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                    <g>
+                                        <path stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" d="M4.5 6.6c0-.87.95-1.4 1.7-.96l8.9 5.4a1.12 1.12 0 0 1 0 1.92l-8.9 5.4c-.75.45-1.7-.09-1.7-.96V6.6Z"/>
+                                        <rect x="17.25" y="5.25" width="2.25" height="13.5" rx="1.125"/>
+                                    </g>
                                 </svg>
                             </button>
 
@@ -552,6 +591,7 @@
                             </button>
                         </div>
                     </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -577,43 +617,37 @@
             {{-- Animated film grain — heavier than normal (0.12 opacity) --}}
             <div class="skybox-grain-overlay" style="opacity: 0.22; z-index: 2;"></div>
 
-            {{-- Narrator card — framed + brightened portrait beside the label/name/era. Narrator
-                 thumbnails are often dark, so a warm ring + shadow + brightness lifts it off the
-                 dark cover so it reads as "on the forefront" (not a dark blob). --}}
-            @php $narratorImg = $lesson->narrator?->thumbnailUrl() ?? $lesson->narrator?->portraitUrl(); @endphp
-            @if($lesson->narrator?->name || $lesson->historical_figure)
-                <div class="absolute bottom-10 right-8 sm:right-12 hidden sm:flex items-center gap-4" style="z-index:20">
-                    <div class="flex flex-col items-end gap-0.5 text-right">
-                        <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-400/80">{{ __('Narrated by') }}</p>
-                        <p class="font-history text-2xl font-semibold leading-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
-                            {{ $lesson->narrator?->name ?? $lesson->historical_figure }}
-                        </p>
-                        {{-- The narrator's ROLE (e.g. "Historian"), not the lesson era — the narrator is a
-                             timeless guide, not a figure from the lesson's period. Falls back to era. --}}
-                        @php $narratorRole = $lesson->narrator?->avatar_title ?: ($lesson->narrator?->era ?? $lesson->era); @endphp
-                        @if($narratorRole)
-                            <p class="text-xs text-slate-300/80">{{ $narratorRole }}</p>
-                        @endif
-                    </div>
-                    @if($narratorImg)
-                        <img src="{{ $narratorImg }}" alt="{{ $lesson->narrator?->name }}"
-                             class="h-28 w-28 shrink-0 rounded-2xl object-cover shadow-[0_10px_34px_rgba(0,0,0,0.6)] ring-2 ring-amber-400/50"
-                             style="filter: brightness(1.18) contrast(1.06) saturate(1.05);">
-                    @endif
-                </div>
-            @endif
+            {{-- Bottom right, on the same edges as the Start button's bar (px-8/12, pb-10/14):
+                 the language switch and the join QR, bottoms aligned. --}}
+            <div class="absolute bottom-10 right-8 sm:bottom-14 sm:right-12 flex items-end gap-4" style="z-index:20">
+                <x-lesson.language-switch :lesson="$lesson" :translations="$translations" />
+                {{-- QR code, clickable to open the modal --}}
+                <button onclick="document.getElementById('qr-modal').showModal()"
+                        class="hidden sm:flex flex-col items-center gap-1.5 cursor-pointer group"
+                        style="background:none; border:none; padding:0">
+                    <canvas id="title-qr-canvas"
+                            class="rounded-xl opacity-90 transition group-hover:opacity-100 group-hover:scale-105"
+                            style="image-rendering: pixelated;"></canvas>
+                    <p class="text-sm font-mono font-bold tracking-[0.25em] text-white/80 uppercase"
+                       x-text="lesson.lesson_code"></p>
+                    <p class="text-2xs text-white/40 tracking-widest uppercase group-hover:text-white/60 transition">Scan to join</p>
+                </button>
+            </div>
 
-            {{-- QR code — top right, clickable to open modal --}}
-            <button onclick="document.getElementById('qr-modal').showModal()"
-                    class="absolute top-6 right-6 hidden sm:flex flex-col items-center gap-2 cursor-pointer group"
-                    style="z-index:10; background:none; border:none; padding:0">
-                <canvas id="title-qr-canvas"
-                        class="rounded-xl opacity-90 transition group-hover:opacity-100 group-hover:scale-105"
-                        style="image-rendering: pixelated;"></canvas>
-                <p class="text-base font-mono font-bold tracking-[0.25em] text-white/80 uppercase"
-                   x-text="lesson.lesson_code"></p>
-                <p class="text-[10px] text-white/40 tracking-widest uppercase group-hover:text-white/60 transition">Scan to join</p>
-            </button>
+            {{-- Series wordmark (comic cover style): the logo carries the name, top left under the
+                 "Edit scene" row, with only the title's subtitle lettered beneath it. --}}
+            <template x-if="lesson.title_logo_url">
+                {{-- The width is the logo's; the subtitle is fitted to exactly that width (fitSubtitle). --}}
+                <h1 lang="{{ $contentLang }}" class="absolute left-8 sm:left-12 top-24 pointer-events-none"
+                    style="z-index:10; width: clamp(18rem, 58vw, 68rem)">
+                    <img x-bind:src="lesson.title_logo_url" x-bind:alt="lesson.title"
+                         class="block h-auto w-full -rotate-2 origin-bottom-left"
+                         style="filter: drop-shadow(0.6rem 0.8rem 0 rgba(0,0,0,0.85)) drop-shadow(0 0 3rem rgba(0,0,0,0.6));">
+                    <span aria-hidden="true" x-text="lesson.title.replace(/^.*?:\s*/, '')" x-init="$nextTick(() => fitSubtitle($el))"
+                          class="mt-4 inline-block whitespace-nowrap font-comic font-bold leading-tight text-white drop-shadow-[0_2px_20px_rgba(0,0,0,1)]"
+                          style="font-size: clamp(1.4rem, 3.4vw, 3.6rem);"></span>
+                </h1>
+            </template>
 
             {{-- QR modal --}}
             <dialog id="qr-modal" class="modal">
@@ -639,21 +673,21 @@
                     {{-- Era / region --}}
                     <p x-show="lesson.era || lesson.region"
                        x-text="[lesson.era, lesson.region].filter(Boolean).join(' · ').toUpperCase()"
-                       class="mb-4 border-l-2 border-amber-400 pl-3 text-xs font-bold tracking-[0.18em] text-amber-400
+                       class="mb-4 border-l-2 border-amber-400 pl-3 text-xs font-bold tracking-eyebrow text-amber-400
                               drop-shadow-[0_1px_8px_rgba(0,0,0,1)]"></p>
 
                     {{-- Title --}}
-                    <h1
+                    <h1 x-show="!lesson.title_logo_url" lang="{{ $contentLang }}"
+                        style="font-size: clamp(2.2rem, 6vw, 7rem);"
                         x-html="lesson.title.includes(': ')
                             ? lesson.title.replace(/^(.*?):\s*(.+)$/, '<span style=\'font-weight:300\'>$1:</span> <span style=\'font-weight:700\'>$2</span>')
                             : lesson.title"
-                        class="font-history text-white leading-[0.95] tracking-tight
+                        class="font-history text-white leading-history tracking-tight
                                drop-shadow-[0_2px_40px_rgba(0,0,0,1)]"
-                        style="font-size: clamp(2.2rem, 6vw, 7rem);"
                     ></h1>
 
                     {{-- Intro text — hidden on very small screens --}}
-                    <p x-show="lesson.intro_text"
+                    <p x-show="lesson.intro_text" lang="{{ $contentLang }}"
                        x-text="lesson.intro_text"
                        class="mt-4 text-sm leading-relaxed text-slate-300/75 font-light hidden sm:block
                               drop-shadow-[0_1px_8px_rgba(0,0,0,0.9)]"></p>
@@ -721,7 +755,7 @@
             class="absolute inset-0 flex items-center justify-center bg-slate-950/92 backdrop-blur-md pointer-events-auto px-5 py-8 overflow-y-auto"
         >
             <div class="w-full max-w-2xl rounded-3xl border border-amber-500/40 bg-slate-950/95 p-7 sm:p-9 shadow-2xl">
-                <p class="text-amber-400 text-[11px] font-semibold uppercase tracking-[0.3em] mb-3">{{ __('Your Challenge') }}</p>
+                <p class="text-amber-400 text-2xs font-semibold uppercase tracking-[0.3em] mb-3">{{ __('Your Challenge') }}</p>
                 <h2 x-text="lesson.game_title || 'Strategy Challenge'"
                     class="font-history text-2xl sm:text-4xl font-bold text-[#E1EEF4] leading-tight mb-5 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]"></h2>
                 <div x-text="lesson.game_instructions || 'Work in your teams to decide your strategy, then present it to the class.'"

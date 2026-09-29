@@ -5,7 +5,7 @@
 
     $borderColor = fn(string $type) => match($type) {
         'meta'     => 'border-l-sky-400/60',
-        'solution' => 'border-l-emerald-400/60',
+        'solution' => 'border-l-success/60',
         default    => 'border-l-amber-500/60',
     };
 
@@ -114,7 +114,7 @@
                                 <path d="M6 9l6 6 6-6"/>
                             </svg>
                         </div>
-                        <p class="mt-2 text-[10px] text-slate-600">
+                        <p class="mt-2 text-2xs text-slate-600">
                             {{ $childCount }} {{ $hasChildren ? 'nodes' : 'points' }}, tap to expand
                         </p>
                     </button>
@@ -131,15 +131,15 @@
                                         ? 'border border-sky-400/20 bg-sky-400/5'
                                         : 'border border-white/6 bg-white/3' }}"
                                     >
-                                        <h4 class="mb-1.5 text-[11px] font-semibold leading-snug
+                                        <h4 class="mb-1.5 text-2xs font-semibold leading-snug
                                             {{ $isCounter ? 'text-sky-300' : 'text-amber-300/80' }}">
                                             {{ $child['label'] }}
                                         </h4>
                                         @if(!empty($child['points']))
                                             <ul class="space-y-1">
                                                 @foreach($child['points'] as $point)
-                                                    <li class="flex items-start gap-1.5 text-[10px] leading-relaxed text-slate-400/80">
-                                                        <span class="mt-0.5 shrink-0 text-[8px]
+                                                    <li class="flex items-start gap-1.5 text-2xs leading-relaxed text-slate-400/80">
+                                                        <span class="mt-0.5 shrink-0 text-3xs
                                                             {{ $isCounter ? 'text-sky-400/50' : 'text-amber-500/40' }}">
                                                             &#9656;
                                                         </span>
@@ -154,8 +154,8 @@
                             @else
                                 {{-- Solution leaf: show points directly --}}
                                 @foreach(($branch['points'] ?? []) as $point)
-                                    <div class="flex items-start gap-2 py-1 text-[11px] text-slate-300/80">
-                                        <svg class="mt-0.5 h-3 w-3 shrink-0 text-emerald-400"
+                                    <div class="flex items-start gap-2 py-1 text-2xs text-slate-300/80">
+                                        <svg class="mt-0.5 h-3 w-3 shrink-0 text-success"
                                             viewBox="0 0 24 24" fill="none"
                                             stroke="currentColor" stroke-width="2.5"
                                             aria-hidden="true"
@@ -175,7 +175,7 @@
         </div>
 
         {{-- ── Footer note ──────────────────────────────────────────────────── --}}
-        <p class="mt-10 text-center text-[11px] text-slate-700">
+        <p class="mt-10 text-center text-2xs text-slate-700">
             Argument map · Will AI Take the Teaching Job? · History / Social Studies · The Learning Portal Thesis
         </p>
 

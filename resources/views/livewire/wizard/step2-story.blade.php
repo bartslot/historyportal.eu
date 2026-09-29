@@ -20,7 +20,7 @@
                     <span class="text-sm font-medium text-white">{{ $fw->label() }}</span>
                     <span class="text-xs text-slate-400 leading-snug">{{ $fw->description() }}</span>
                     @if ($fw === NarrativeFramework::default())
-                        <span class="mt-0.5 text-[10px] uppercase tracking-wide text-amber-300/70">default</span>
+                        <span class="mt-0.5 text-2xs uppercase tracking-wide text-amber-300/70">default</span>
                     @endif
                 </button>
             @endforeach
@@ -75,7 +75,7 @@
                        placeholder="…or type a hero's name"
                        class="input input-bordered input-sm bg-slate-900 w-full" />
                 @if ($protagonist_name && ! $protagonist_qid)
-                    <span class="text-xs text-emerald-400/80 mt-1 inline-block">Using "{{ $protagonist_name }}".</span>
+                    <span class="text-xs text-success/80 mt-1 inline-block">Using "{{ $protagonist_name }}".</span>
                 @endif
             </div>
         </div>

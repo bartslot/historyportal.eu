@@ -22,11 +22,11 @@
     @if ($isPanel)
         <div>
             <h3 class="font-semibold text-amber-300">{{ __('Background panel') }}</h3>
-            <p class="mt-1 text-[11px] leading-tight text-slate-500">{{ __('A readable backing panel behind the scene text.') }}</p>
+            <p class="mt-1 text-2xs leading-tight text-slate-500">{{ __('A readable backing panel behind the scene text.') }}</p>
         </div>
 
         <label class="form-control">
-            <span class="text-[10px] uppercase tracking-widest text-slate-500">{{ __('Side') }}</span>
+            <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Side') }}</span>
             <select class="select select-sm select-bordered mt-1 bg-slate-900"
                     wire:change="updateSceneText(@js($id), 'side', $event.target.value)">
                 <option value="left" @selected(($text['side'] ?? 'left') === 'left')>{{ __('Left') }}</option>
@@ -35,7 +35,7 @@
         </label>
 
         <div class="flex items-center justify-between gap-3">
-            <span class="text-[10px] uppercase tracking-widest text-slate-500">{{ __('Color') }}</span>
+            <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Color') }}</span>
             {{-- @input patches the canvas overlay instantly while the picker is open;
                  wire:change persists once the teacher commits. --}}
             <input type="color" value="{{ $text['color'] ?? '#0f172a' }}"
@@ -44,23 +44,20 @@
                    class="h-8 w-12 cursor-pointer rounded border border-slate-700 bg-slate-900 p-1" />
         </div>
 
-        <label class="flex items-center gap-2">
-            <span class="w-14 shrink-0 text-[10px] uppercase tracking-wide text-slate-500">{{ __('Opacity') }}</span>
-            <input type="range" min="0.1" max="0.95" step="0.05" value="{{ $text['opacity'] ?? 0.5 }}"
-                   @input="window.__lessonTextLayer?.patch?.(@js($id), { opacity: parseFloat($event.target.value) })"
-                   wire:change="updateSceneText(@js($id), 'opacity', $event.target.value)"
-                   class="range range-xs flex-1" />
-            <span class="w-9 text-right font-mono text-[10px] text-slate-400">{{ rtrim(rtrim(number_format((float) ($text['opacity'] ?? 0.5), 2), '0'), '.') }}</span>
-        </label>
+        <x-ui.slider-row :label="__('Opacity')" :min="0.1" :max="0.95" :step="0.05"
+                         :value="$text['opacity'] ?? 0.5"
+                         :display="rtrim(rtrim(number_format((float) ($text['opacity'] ?? 0.5), 2), '0'), '.')"
+                         :on-input="'window.__lessonTextLayer?.patch?.(' . \Illuminate\Support\Js::from($id) . ', { opacity: parseFloat($event.target.value) })'"
+                         :on-change="'updateSceneText(' . \Illuminate\Support\Js::from($id) . ', \'opacity\', $event.target.value)'" />
     @else
         <div>
             <h3 class="font-semibold text-amber-300">{{ __('Text') }}</h3>
-            <p class="mt-1 text-[11px] leading-tight text-slate-500">{{ __('Edit content directly on the canvas. Adjust its appearance here.') }}</p>
+            <p class="mt-1 text-2xs leading-tight text-slate-500">{{ __('Edit content directly on the canvas. Adjust its appearance here.') }}</p>
         </div>
 
         <div class="grid grid-cols-2 gap-2">
             <label class="form-control">
-                <span class="text-[10px] uppercase tracking-widest text-slate-500">{{ __('Font') }}</span>
+                <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Font') }}</span>
                 <select class="select select-sm select-bordered mt-1 bg-slate-900"
                         wire:change="updateSceneText(@js($id), 'font', $event.target.value)">
                     @foreach (['sans' => __('Sans'), 'history' => __('History'), 'cinzel' => __('Display')] as $value => $label)
@@ -69,7 +66,7 @@
                 </select>
             </label>
             <label class="form-control">
-                <span class="text-[10px] uppercase tracking-widest text-slate-500">{{ __('Size') }}</span>
+                <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Size') }}</span>
                 <select class="select select-sm select-bordered mt-1 bg-slate-900"
                         wire:change="updateSceneText(@js($id), 'size', $event.target.value)">
                     @foreach (['sm' => __('Small'), 'md' => __('Medium'), 'lg' => __('Large'), 'xl' => __('Extra large')] as $value => $label)
@@ -78,7 +75,7 @@
                 </select>
             </label>
             <label class="form-control">
-                <span class="text-[10px] uppercase tracking-widest text-slate-500">{{ __('Align') }}</span>
+                <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Align') }}</span>
                 <select class="select select-sm select-bordered mt-1 bg-slate-900"
                         wire:change="updateSceneText(@js($id), 'align', $event.target.value)">
                     @foreach (['left' => __('Left'), 'center' => __('Center'), 'right' => __('Right')] as $value => $label)
@@ -87,7 +84,7 @@
                 </select>
             </label>
             <label class="form-control">
-                <span class="text-[10px] uppercase tracking-widest text-slate-500">{{ __('List') }}</span>
+                <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('List') }}</span>
                 <select class="select select-sm select-bordered mt-1 bg-slate-900"
                         wire:change="updateSceneText(@js($id), 'list', $event.target.value)">
                     @foreach (['none' => __('None'), 'bullet' => __('Bullets'), 'number' => __('Numbered')] as $value => $label)
@@ -98,7 +95,7 @@
         </div>
 
         <label class="flex cursor-pointer items-center justify-between gap-2 rounded-lg bg-slate-800/40 px-3 py-2">
-            <span class="text-[10px] uppercase tracking-widest text-slate-400">{{ __('Glass background') }}</span>
+            <span class="text-2xs uppercase tracking-widest text-slate-400">{{ __('Glass background') }}</span>
             <input type="checkbox" class="toggle toggle-sm toggle-warning"
                    @checked($isGlass)
                    wire:click="updateSceneText(@js($id), 'bg', {{ $isGlass ? 'false' : 'true' }})" />
@@ -106,20 +103,17 @@
 
         @if ($isGlass)
             <div class="flex items-center justify-between gap-3">
-                <span class="text-[10px] uppercase tracking-widest text-slate-500">{{ __('Glass color') }}</span>
+                <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Glass color') }}</span>
                 <input type="color" value="{{ $text['bgColor'] ?? '#0f172a' }}"
                        @input="window.__lessonTextLayer?.patch?.(@js($id), { bgColor: $event.target.value })"
                        wire:change="updateSceneText(@js($id), 'bgColor', $event.target.value)"
                        class="h-8 w-12 cursor-pointer rounded border border-slate-700 bg-slate-900 p-1" />
             </div>
-            <label class="flex items-center gap-2">
-                <span class="w-14 shrink-0 text-[10px] uppercase tracking-wide text-slate-500">{{ __('Opacity') }}</span>
-                <input type="range" min="0.05" max="0.95" step="0.05" value="{{ $text['bgOpacity'] ?? 0.3 }}"
-                       @input="window.__lessonTextLayer?.patch?.(@js($id), { bgOpacity: parseFloat($event.target.value) })"
-                       wire:change="updateSceneText(@js($id), 'bgOpacity', $event.target.value)"
-                       class="range range-xs flex-1" />
-                <span class="w-9 text-right font-mono text-[10px] text-slate-400">{{ rtrim(rtrim(number_format((float) ($text['bgOpacity'] ?? 0.3), 2), '0'), '.') }}</span>
-            </label>
+            <x-ui.slider-row :label="__('Opacity')" :min="0.05" :max="0.95" :step="0.05"
+                             :value="$text['bgOpacity'] ?? 0.3"
+                             :display="rtrim(rtrim(number_format((float) ($text['bgOpacity'] ?? 0.3), 2), '0'), '.')"
+                             :on-input="'window.__lessonTextLayer?.patch?.(' . \Illuminate\Support\Js::from($id) . ', { bgOpacity: parseFloat($event.target.value) })'"
+                             :on-change="'updateSceneText(' . \Illuminate\Support\Js::from($id) . ', \'bgOpacity\', $event.target.value)'" />
         @endif
 
         {{-- Pin to map — only meaningful where a map sits under the text. A pinned label stores the
@@ -129,12 +123,12 @@
         @if ($isMapScene)
             <div class="space-y-1 border-t border-slate-700/50 pt-3">
                 <label class="flex items-center justify-between gap-3">
-                    <span class="text-[10px] uppercase tracking-widest text-slate-500">{{ __('Pin to map') }}</span>
+                    <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Pin to map') }}</span>
                     <input type="checkbox" @checked($isPinned)
                            x-on:change="window.__lessonTextLayer?.togglePin?.(@js($id))"
                            class="toggle toggle-sm toggle-warning shrink-0" />
                 </label>
-                <p class="text-[10px] leading-tight text-slate-500">
+                <p class="text-2xs leading-tight text-slate-500">
                     {{ $isPinned
                         ? __('Stays on this place as the map pans and zooms.')
                         : __('Sits at a fixed spot on the screen. Pin it to stick to the place underneath.') }}
@@ -144,15 +138,11 @@
 
         @if (! $isPinned)
             <div class="space-y-2 border-t border-slate-700/50 pt-3">
-                <span class="block text-[10px] uppercase tracking-widest text-slate-500">{{ __('Placement') }}</span>
+                <span class="block text-2xs uppercase tracking-widest text-slate-500">{{ __('Placement') }}</span>
                 @foreach ([['x', __('Horizontal'), 0, 100, 1, $text['x'] ?? 40], ['y', __('Vertical'), 0, 100, 1, $text['y'] ?? 40], ['w', __('Width'), 5, 95, 1, $text['w'] ?? 46]] as [$field, $label, $min, $max, $step, $value])
-                    <label class="flex items-center gap-2">
-                        <span class="w-14 shrink-0 text-[10px] uppercase tracking-wide text-slate-500">{{ $label }}</span>
-                        <input type="range" min="{{ $min }}" max="{{ $max }}" step="{{ $step }}" value="{{ $value }}"
-                               wire:change="updateSceneText(@js($id), '{{ $field }}', $event.target.value)"
-                               class="range range-xs flex-1" />
-                        <span class="w-7 text-right font-mono text-[10px] text-slate-400">{{ round((float) $value) }}</span>
-                    </label>
+                    <x-ui.slider-row :label="$label" :min="$min" :max="$max" :step="$step"
+                                     :value="$value" :display="round((float) $value)"
+                                     :on-change="'updateSceneText(' . \Illuminate\Support\Js::from($id) . ', \'' . $field . '\', $event.target.value)'" />
                 @endforeach
             </div>
         @endif
@@ -160,7 +150,7 @@
 
     <button type="button" wire:click="deleteSceneText(@js($id))"
             wire:confirm="{{ $isPanel ? __('Remove this background panel?') : __('Remove this text?') }}"
-            class="text-xs text-rose-300 underline transition hover:text-rose-200">
+            class="text-xs text-error/80 underline transition hover:text-error">
         {{ $isPanel ? __('Remove panel') : __('Remove text') }}
     </button>
 </div>

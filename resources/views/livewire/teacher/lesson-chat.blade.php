@@ -314,7 +314,7 @@
                                             type="button"
                                             wire:click="toggleFocusTag('{{ $slot }}')"
                                             title="{{ __('Remove :focus', ['focus' => __($focusAll[$slot]['label'] ?? $slot)]) }}"
-                                            class="group inline-flex items-center gap-1 rounded-md border border-primary/50 bg-primary/15 px-2 py-1 text-[11px] font-medium text-primary transition hover:border-error/60 hover:bg-error/10 hover:text-error"
+                                            class="group inline-flex items-center gap-1 rounded-md border border-primary/50 bg-primary/15 px-2 py-1 text-2xs font-medium text-primary transition hover:border-error/60 hover:bg-error/10 hover:text-error"
                                         >
                                             {{ __($focusAll[$slot]['label'] ?? $slot) }}
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3 w-3 opacity-60 group-hover:opacity-100" aria-hidden="true">
@@ -379,11 +379,11 @@
                                 class="group flex min-h-28 flex-col items-start bg-base-200 px-4 py-3.5 text-left transition hover:bg-base-300 focus-visible:relative focus-visible:z-10"
                             >
                                 <span class="flex w-full items-center justify-between gap-3">
-                                    <span class="text-[0.62rem] font-semibold uppercase tracking-[0.13em] text-base-content/45">
+                                    <span class="text-2xs font-semibold uppercase tracking-[0.13em] text-base-content/45">
                                         {{ __('Hoofdlijn :number', ['number' => $option['number']]) }}
                                     </span>
                                     @if ($option['suggested'])
-                                        <span class="rounded-full bg-primary/15 px-2 py-0.5 text-[0.6rem] font-semibold text-primary">
+                                        <span class="rounded-full bg-primary/15 px-2 py-0.5 text-2xs font-semibold text-primary">
                                             {{ __('Suggested') }}
                                         </span>
                                     @endif
@@ -393,8 +393,8 @@
                                 </strong>
                                 <span class="mt-0.5 text-xs text-base-content/50">{{ $option['subtitle'] }}</span>
                                 <span @class([
-                                    'mt-auto pt-3 text-[0.68rem] font-medium',
-                                    'text-emerald-300' => $option['status'] === 'taught',
+                                    'mt-auto pt-3 text-2xs font-medium',
+                                    'text-success' => $option['status'] === 'taught',
                                     'text-sky-300' => $option['status'] === 'prepared',
                                     'text-amber-300' => $option['status'] === 'untaught',
                                 ])>

@@ -23,7 +23,7 @@ Queried the local `pgsql_corpus.public.artworks` table for Tasman-related histor
 
 ## Wikimedia Commons Search Results
 
-All images sourced via verified Wikimedia Commons API (`commons.wikimedia.org/w/api.php`) with User-Agent: `TheLearningPortal/1.0 (https://thelearningportal.us; bartslot@gmail.com)`.
+All images sourced via verified Wikimedia Commons API (`commons.wikimedia.org/w/api.php`) with User-Agent: `HistoryPortal/1.0 (https://historyportal.eu; bartslot@gmail.com)`.
 
 ### Downloaded Files (7 total, all Public Domain)
 

@@ -34,7 +34,7 @@ import sys
 import os
 
 # Add project root to path
-sys.path.insert(0, '/Users/bartslot/Projects/thelearningportal.us')
+sys.path.insert(0, '/Users/bartslot/Projects/historyportal.eu')
 
 from blender_avatar_processor import process_avatar
 

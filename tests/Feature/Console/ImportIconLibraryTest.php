@@ -141,6 +141,28 @@ class ImportIconLibraryTest extends TestCase
         $this->assertNotNull(SvgAsset::bundled()->where('source_ref', $keptRef)->first());
     }
 
+    public function test_a_bundled_webp_is_imported_as_is_with_its_pixel_size(): void
+    {
+        $img = imagecreatetruecolor(30, 20);
+        imagesavealpha($img, true);
+        $path = $this->root.'/history-line/figures/dante/dante-giovane.webp';
+        File::ensureDirectoryExists(dirname($path));
+        imagewebp($img, $path, 90);
+
+        $this->import()->assertSuccessful();
+
+        $dante = SvgAsset::bundled()->where('source_ref', 'history-line/figures/dante/dante-giovane.webp')->firstOrFail();
+        $this->assertSame(['history-line', 'figures', 'dante'], [$dante->collection, $dante->category, $dante->subcategory]);
+        $this->assertSame('Dante giovane', $dante->title);
+        $this->assertSame([30, 20], [$dante->width, $dante->height]);
+        $this->assertSame('svg-assets/library/history-line/figures/dante/dante-giovane.webp', $dante->svg_path);
+        $this->assertSame(file_get_contents($path), Storage::disk('public')->get($dante->svg_path), 'stored byte for byte');
+
+        File::delete($path);
+        $this->import('--prune')->assertSuccessful();
+        $this->assertNull(SvgAsset::bundled()->where('source_ref', 'history-line/figures/dante/dante-giovane.webp')->first());
+    }
+
     public function test_it_never_touches_a_teachers_own_imports(): void
     {
         $mine = SvgAsset::create([

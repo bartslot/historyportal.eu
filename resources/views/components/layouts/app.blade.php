@@ -1,10 +1,19 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full" data-theme="learningportal">
+{{-- data-surface="teacher" is what turns the primary action white in here. Every page that
+     renders this shell is the workspace — the dashboard, the wizard, the Time-Map, settings, the
+     help centre, admin — and Bart's rule for the workspace is a white pill, not an amber one:
+     "Make sure Amber buttons would be used only on frontend, not on backend."
+
+     The marker is on the CHROME rather than on the auth middleware, and those two are not the same
+     set: /help is public but wears this shell, and a signed-in teacher reading the marketing home
+     page is on the landing shell and should still see amber there. What decides is which app the
+     page looks like, which is the thing a teacher can actually see. See app.css, THE BUTTON. --}}
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full" data-theme="learningportal" data-surface="teacher">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $title ?? config('app.name') }} · The Learning Portal</title>
+    <title>{{ $title ?? config('app.name') }} · History Portal</title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <x-audio-manifest />

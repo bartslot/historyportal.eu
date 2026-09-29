@@ -5,28 +5,32 @@
     // in one place. A card whose lesson is not built or published simply renders without a link.
     $popular = \App\Support\TrendingTopics::cards();
 
+    // What the hour actually contains, one card per moment. These used to be category badges
+    // ("Interactive Lessons", "Engaged Students") over sentences about engagement and retention,
+    // which is copy any EdTech homepage could run. Each card now names a thing that happens and
+    // a claim the product can be held to.
     $features = [
         [
-            'title' => 'Interactive Lessons',
-            'description' => 'Interaction energizes your class. Techniques that prompt students to respond in real time keep attention high and make the material easier to absorb.',
+            'title' => 'The lesson stops and asks',
+            'description' => 'Questions appear while it plays, and the class answers on their own screens. You see where the room stands before you carry on.',
             'image' => asset('history/6history.webp'),
             'icon' => 'book-open',
         ],
         [
-            'title' => 'Engaged Students',
-            'description' => 'Learning can be fun. With gamification, lessons feel active and memorable, improving engagement and retention in class.',
+            'title' => 'Then the game starts',
+            'description' => 'Teams of three or four take a role, make a call, and live with what it costs. This is the part they are still arguing about at the door.',
             'image' => asset('history/12history.webp'),
             'icon' => 'puzzle-piece',
         ],
         [
-            'title' => 'Track Progress',
-            'description' => "Track each student's progress and see how lessons perform through a clear dashboard built for teachers.",
+            'title' => 'You see who got stuck',
+            'description' => 'Every answer is kept, so you can find the one question that lost half the class and reteach that, instead of the whole hour.',
             'image' => asset('history/18history.webp'),
             'icon' => 'chart-bar',
         ],
         [
-            'title' => 'Made for Teachers',
-            'description' => 'The editor helps teachers refine, adjust, and enhance content. Building a new lesson is faster and easier with the right tools.',
+            'title' => 'Nothing is fixed',
+            'description' => 'Rewrite a line, swap a painting, retake a voice. And nothing reaches your students until you publish it yourself.',
             'image' => asset('history/24history.webp'),
             'icon' => 'academic-cap',
         ],
@@ -75,17 +79,17 @@
 
                         <div class="absolute inset-x-0 bottom-0 p-8 text-white">
                             <div>
-                                <h3 class="text-2xl font-semibold leading-[1.05] tracking-tight text-white">
+                                <h3 class="text-2xl font-semibold leading-display tracking-tight text-white">
                                     {{ $item['title'] }}
-                                    <p class="truncate text-[14px] pt-2 font-medium text-white/85">{{ $item['category'] }}</p>
+                                    <p class="truncate text-sm pt-2 font-medium text-white/85">{{ $item['category'] }}</p>
                                 </h3>
-                                <div class="max-h-0 overflow-hidden opacity-0 transition-all duration-300 ease-out-ease-[cubic-bezier(0.95,0.05,0.795,0.035)] group-hover:max-h-32 group-hover:opacity-100">
-                                <p class="text-[11px] leading-5 text-slate-200/90">
+                                <div class="max-h-0 overflow-hidden opacity-0 transition-all duration-300 ease-enter group-hover:max-h-32 group-hover:opacity-100">
+                                <p class="text-2xs leading-5 text-slate-200/90">
                                         {{ $item['description'] }}
                                     </p>
                                     <div class="min-w-0">
                                         @if ($lesson)
-                                            <span class="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-sky-200">
+                                            <span class="mt-2 inline-flex items-center gap-1.5 text-2xs font-semibold text-sky-200">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-3.5 w-3.5" aria-hidden="true">
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 0 1 0 1.971l-11.54 6.347a1.125 1.125 0 0 1-1.667-.985V5.653Z" />
                                                 </svg>
@@ -103,13 +107,13 @@
         </div>
 
         <div id="features" class="mt-20">
-            <h2 class="mt-3 font-history font-semibold text-3xl tracking-tight text-white md:text-4xl">Built for better history teaching</h2>
+            <h2 class="mt-3 font-history font-semibold text-3xl tracking-tight text-white md:text-4xl">What the hour actually looks like</h2>
 
             <div class="relative overflow-hidden rounded-[2rem] mt-8">
                 <!-- <div class="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-slate-950 via-slate-950/75 to-transparent"></div> -->
                 <div class="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-slate-950 via-slate-950/75 to-transparent"></div>
 
-                <x-carousel aria-label="{{ __('Built for better history teaching') }}">
+                <x-carousel aria-label="{{ __('What the hour actually looks like') }}">
                     @foreach ($features as $feature)
                     <article class="carousel-cell group relative mx-2 w-[15rem] shrink-0 sm:w-[16rem] lg:w-[17rem]">
                         <div class="relative aspect-[5/8] overflow-hidden rounded-[1.35rem] border border-white/10 bg-white/5 shadow-[0_16px_34px_rgba(0,0,0,0.25)] transition duration-300 ease-out hover:-translate-y-1 hover:border-sky-400/20 hover:bg-white/7">
@@ -126,8 +130,8 @@
                                         {{ $loop->iteration }}
                                     </span>
                                     <div class="min-w-0">
-                                        <p class="text-[9px] font-semibold uppercase tracking-[0.3em] text-sky-100/70">Tool</p>
-                                        <p class="truncate text-[10px] font-medium text-white/85 flex items-center gap-1">
+                                        <p class="text-2xs font-semibold uppercase tracking-[0.3em] text-sky-100/70">Tool</p>
+                                        <p class="truncate text-2xs font-medium text-white/85 flex items-center gap-1">
                                             <x-dynamic-component :component="'icons.'.$feature['icon']" class="w-4 h-4 flex-shrink-0" />
                                             <span>{{ $feature['title'] }}</span>
                                         </p>
@@ -141,7 +145,7 @@
                                         {{ $feature['title'] }}
                                     </h3>
                                     <div class="max-h-0 overflow-hidden opacity-0 transition-all duration-300 ease-out group-hover:max-h-28 group-hover:opacity-100">
-                                        <p class="text-[11px] leading-5 text-slate-300">
+                                        <p class="text-2xs leading-5 text-slate-300">
                                             {{ $feature['description'] }}
                                         </p>
                                     </div>
@@ -155,14 +159,14 @@
         </div>
 
         <div class="mt-20 text-center">
-            <p class="text-xs uppercase tracking-[0.45em] text-sky-100/60">Learning through play</p>
+            <p class="text-xs uppercase tracking-[0.45em] text-sky-100/60">The part they remember</p>
             <h2 class="mx-auto mt-4 max-w-4xl font-history text-4xl leading-tight text-white md:text-6xl">
-                Places a fully engaged class within reach.
+                They will ask you to play the next one.
             </h2>
 
             <a
                 href="#contact"
-                class="mt-8 inline-flex items-center gap-3 rounded-full border border-sky-400/40 bg-sky-600 px-7 py-3.5 text-sm font-semibold text-white shadow-[0_20px_40px_rgba(14,165,233,0.25)] transition hover:bg-sky-500"
+                class="btn btn-info mt-8"
             >
                 <span>Start Teaching History</span>
                 <span aria-hidden="true">→</span>

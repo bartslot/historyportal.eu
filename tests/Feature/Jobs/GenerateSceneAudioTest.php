@@ -62,6 +62,7 @@ class GenerateSceneAudioTest extends TestCase
             );
             $mock->shouldReceive('lastExtension')->andReturn('mp3');
             $mock->shouldReceive('lastProvider')->andReturn('elevenlabs');
+            $mock->shouldReceive('lastSourceAudio')->andReturn(null);
             $mock->shouldReceive('lastVoice')->andReturn('voice-x');
         });
 
@@ -101,6 +102,7 @@ class GenerateSceneAudioTest extends TestCase
             );
             $mock->shouldReceive('lastExtension')->andReturn('mp3');
             $mock->shouldReceive('lastProvider')->andReturn('elevenlabs');
+            $mock->shouldReceive('lastSourceAudio')->andReturn(null);
             $mock->shouldReceive('lastVoice')->andReturn('voice-x');
         });
 

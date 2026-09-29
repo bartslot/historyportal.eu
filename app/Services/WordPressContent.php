@@ -13,9 +13,9 @@ use Illuminate\Support\Str;
 /**
  * Reads the marketing site's WordPress as a headless CMS.
  *
- * thelearningportal.us runs WordPress (Elementor) with the public REST API open, so published posts
+ * historyportal.eu runs WordPress (Elementor) with the public REST API open, so published posts
  * can be pulled with no credentials — Bart writes in WordPress, and the article appears on
- * history.thelearningportal.us in the app's own design, with the app's SEO tags and inside its
+ * historyportal.eu in the app's own design, with the app's SEO tags and inside its
  * sitemap. Nothing is written back; this is read-only by design.
  *
  * Everything here fails soft. The marketing site being slow or down must never take the subdomain

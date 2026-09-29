@@ -2,7 +2,7 @@
 <div class="space-y-8">
 
     <div>
-        <p class="text-xs uppercase tracking-widest text-rose-400">Super Admin</p>
+        <p class="text-xs uppercase tracking-widest text-error">Super Admin</p>
         <h1 class="font-history text-2xl font-semibold text-slate-100 md:text-3xl xl:text-4xl">Admin dashboard</h1>
     </div>
 
@@ -14,6 +14,15 @@
             </div>
             <h2 class="font-semibold text-slate-200 group-hover:text-amber-400 transition-colors">Narrators</h2>
             <p class="text-sm text-slate-500 mt-1">{{ $narratorCount }} configured</p>
+        </a>
+
+        <a href="{{ route('admin.art') }}"
+           class="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 hover:border-amber-600/50 transition-colors group">
+            <div class="mb-3">
+                <x-icons.photo class="w-8 h-8 text-slate-500" />
+            </div>
+            <h2 class="font-semibold text-slate-200 group-hover:text-amber-400 transition-colors">{{ __('Art library') }}</h2>
+            <p class="text-sm text-slate-500 mt-1">{{ $artCount }}</p>
         </a>
 
         <a href="{{ route('teacher.dashboard') }}"

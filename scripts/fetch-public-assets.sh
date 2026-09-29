@@ -14,7 +14,7 @@
 #
 set -euo pipefail
 
-HOST="${ASSET_HOST:-https://thelearningportal.us}"
+HOST="${ASSET_HOST:-https://historyportal.eu}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FLAGS_DIR="$ROOT/public/flags"
 

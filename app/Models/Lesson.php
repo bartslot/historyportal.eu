@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\LessonStatus;
 use App\Enums\NarrativeFramework;
 use App\Models\Concerns\BelongsToTeacher;
+use App\Support\MediaUrl;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -36,6 +37,7 @@ class Lesson extends Model
         'strategy_game_id',
         'title',
         'language',
+        'translation_group',
         'narration_edit_characters',
         'topic',
         'topic_id',
@@ -297,6 +299,32 @@ class Lesson extends Model
         return $this->hasOne(LessonSource::class)->latestOfMany();
     }
 
+    /**
+     * The other lessons in this lesson's translation group, ordered by language.
+     *
+     * Empty when the lesson has no group, and never includes a sibling a visitor could not open —
+     * same playable rule as LessonPlayerController (published/previewable, a lesson_code to open
+     * it by, has scenes), so the language switch never links to a lesson that would 404. Only the
+     * same owner's lessons: a group name is a free string, and another account's lesson that shares
+     * it (a guest's sandbox copy, say) is not a translation of this one.
+     */
+    public function translations(): \Illuminate\Database\Eloquent\Collection
+    {
+        if (! $this->translation_group) {
+            return new \Illuminate\Database\Eloquent\Collection;
+        }
+
+        return static::query()
+            ->where('translation_group', $this->translation_group)
+            ->where('teacher_id', $this->teacher_id)
+            ->where('id', '!=', $this->id)
+            ->whereIn('status', [LessonStatus::Published, LessonStatus::Previewable])
+            ->whereNotNull('lesson_code')
+            ->has('scenes')
+            ->orderBy('language')
+            ->get();
+    }
+
     public function startGenerationPipeline(): void
     {
         if (! $this->source()->exists()) {
@@ -344,6 +372,9 @@ class Lesson extends Model
     {
         if (! $path) {
             return null;
+        }
+        if (MediaUrl::isRemote($path)) {
+            return $path;   // a Cloudinary picture: nothing on our disk to find
         }
 
         $publicDisk = Storage::disk('public');
@@ -636,6 +667,13 @@ class Lesson extends Model
         $poster = trim((string) ($this->poster_image ?? ''));
         if ($poster === '') {
             return null;
+        }
+
+        // Our own storage, saved as a full URL (the picker stored the address it was shown):
+        // that address dies with the host that wrote it (another port, the renamed domain), so
+        // keep only the same-site path.
+        if (preg_match('#^(?:https?:)?//[^/]+(/storage/.+)$#i', $poster, $own)) {
+            return $own[1];
         }
 
         // Full URLs (Cloudinary/Commons) and root-relative paths pass through; a bare storage
