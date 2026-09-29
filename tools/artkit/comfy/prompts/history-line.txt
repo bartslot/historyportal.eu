@@ -1,0 +1,1 @@
+Black ink line drawing on pure white paper. Ignore the source lighting: everything that is not a line becomes white. No grey, no solid black fills. At least 70-75% white space. Clean contour lines, single-direction hatching only for medium shadows, at most two hatch directions in deep shadow. Keep the exact composition, perspective and objects of the source image.
