@@ -87,17 +87,31 @@ class Topic extends Model
      *
      * @template T
      *
+     * Pass a $fallback to survive a corpus that is DOWN, not just dropped: the retry fails too, the
+     * failure is logged, and the fallback comes back instead of a 500. Without one it still throws,
+     * which is right for commands. The whole wizard 500'd on 2026-09-29 when the corpus project
+     * stopped resolving, because Step 1 renders topic suggestions.
+     *
      * @param  callable():T  $query
      * @return T
      */
-    public static function resilient(callable $query)
+    public static function resilient(callable $query, mixed $fallback = null)
     {
         try {
             return $query();
         } catch (\Illuminate\Database\QueryException $e) {
-            DB::connection('pgsql_corpus')->reconnect();
+            try {
+                DB::connection('pgsql_corpus')->reconnect();
 
-            return $query();
+                return $query();
+            } catch (\Illuminate\Database\QueryException $retry) {
+                if (func_num_args() < 2) {
+                    throw $retry;
+                }
+                \Illuminate\Support\Facades\Log::warning('Corpus unreachable, using fallback', ['error' => $retry->getMessage()]);
+
+                return $fallback;
+            }
         }
     }
 

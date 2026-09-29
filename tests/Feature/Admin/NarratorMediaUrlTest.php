@@ -41,6 +41,7 @@ class NarratorMediaUrlTest extends TestCase
     public function test_an_uploaded_portrait_resolves_to_the_storage_url(): void
     {
         // The exact shape NarratorStudio writes: the public DISK, under an `avatars/` path.
+        Storage::fake('public');
         Storage::disk('public')->put('avatars/1/portrait.jpg', 'jpeg-bytes');
         $narrator = $this->narrator(['portrait_path' => 'avatars/1/portrait.jpg']);
 
@@ -54,6 +55,8 @@ class NarratorMediaUrlTest extends TestCase
     public function test_the_add_narrator_form_shape_also_resolves(): void
     {
         // CreateNarrator stores under avatars/portraits/… — the same prefix, the same old bug.
+        // Faked: unfaked, this wrote 'jpeg-bytes' over the real Ron Slot portrait on every run.
+        Storage::fake('public');
         Storage::disk('public')->put('avatars/portraits/ron-slot.jpg', 'jpeg-bytes');
         $narrator = $this->narrator(['portrait_path' => 'avatars/portraits/ron-slot.jpg']);
 

@@ -155,7 +155,7 @@ class Step1Settings extends Component
             if (is_string($tid = request()->query('topic_id')) && trim($tid) !== '') {
                 $this->selectTopic(trim($tid));
             } elseif (is_string($t = request()->query('topic')) && trim($t) !== '') {
-                $match = \App\Models\Corpus\Topic::search(trim($t), 1)->first();
+                $match = \App\Models\Corpus\Topic::resilient(fn () => \App\Models\Corpus\Topic::search(trim($t), 1)->first(), null);
                 if ($match) {
                     $this->selectTopic($match->id);
                 } else {
@@ -289,7 +289,8 @@ class Step1Settings extends Component
         }
 
         return \App\Models\Corpus\Topic::resilient(
-            fn () => \App\Models\Corpus\Topic::search($this->topic, 10)->get()
+            fn () => \App\Models\Corpus\Topic::search($this->topic, 10)->get(),
+            collect(),
         )->map(fn ($t) => [
             'id' => $t->id,
             'name' => $t->name,
@@ -343,7 +344,7 @@ class Step1Settings extends Component
 
         // Reuse the corpus topic link when the story has one (map block, figures, flag).
         if ($story->topic_id) {
-            $topic = \App\Models\Corpus\Topic::resilient(fn () => \App\Models\Corpus\Topic::find($story->topic_id));
+            $topic = \App\Models\Corpus\Topic::resilient(fn () => \App\Models\Corpus\Topic::find($story->topic_id), null);
             if ($topic) {
                 $this->topicId = $topic->id;
                 $this->topicWikipediaUrl = $topic->wikipedia_url;
@@ -504,7 +505,8 @@ class Step1Settings extends Component
 
         $exists = $this->topicId
             && \App\Models\Corpus\Topic::resilient(
-                fn () => \App\Models\Corpus\Topic::whereKey($this->topicId)->exists()
+                fn () => \App\Models\Corpus\Topic::whereKey($this->topicId)->exists(),
+                true, // picked from the catalog earlier; an outage must not block saving it
             );
         if (! $exists) {
             $this->addError('topic', __('Choose a topic from the list. It grounds the lesson in a real source.'));
