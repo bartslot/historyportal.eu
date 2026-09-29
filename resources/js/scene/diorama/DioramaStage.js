@@ -23,6 +23,9 @@ const GRID_MAX_LINES = 60         // per direction; big floors draw every n-th l
 const HANDLE_PX = 14
 /** Opacity of anything in front of the selected item that covers it (Bart: see what you place). */
 export const BLOCKER_OPACITY = 0.3
+/** Editor zoom range: out far enough to see well past the picture, in to 2× for detail. */
+export const ZOOM_MIN = 0.25
+export const ZOOM_MAX = 2
 /** Sample points per side when testing whether one drawing covers another. */
 const COVER_SAMPLES = 8
 
@@ -53,6 +56,7 @@ export class DioramaStage {
     this.onMove = onMove
     this._selected = null
     this._time = null
+    this._view = { zoom: 1, panX: 0, panY: 0 }
     const base = spec.plate?.base ?? ''
 
     const root = document.createElement('div')
@@ -123,6 +127,13 @@ export class DioramaStage {
       root.appendChild(this._handle)
       this._wireResize()
       this._wireDragMoves()
+      this._wireZoom()
+      this._zoomChip = document.createElement('button')
+      this._zoomChip.type = 'button'
+      this._zoomChip.className = 'btn btn-xs'
+      this._zoomChip.style.cssText = 'position:absolute;right:8px;bottom:8px;z-index:9999;display:none;pointer-events:auto;'
+      this._zoomChip.addEventListener('click', () => this.setZoom(1))   // back to what the class sees
+      root.appendChild(this._zoomChip)
       // Another object picked elsewhere (object list, a text box): this stage lets go of its item.
       this._onOtherSelected = (e) => {
         if (this._selected && e.detail?.id !== 'dio_' + this._selected) this.select(null)
@@ -144,7 +155,51 @@ export class DioramaStage {
 
   /** Plate pixel → stage pixel with this stage's crop focus. */
   _toStage (p) {
-    return plateToStage(this.spec.camera, ...this._stage, p, this._focusU)
+    return plateToStage(this.spec.camera, ...this._stage, p, this._focusU, this._view)
+  }
+
+  _toPlate (x, y) {
+    return stageToPlate(this.spec.camera, ...this._stage, { x, y }, this._focusU, this._view)
+  }
+
+  /**
+   * Editor zoom about a stage point (default the centre): the plate point under it stays put.
+   * Zoomed out, the floors beyond the picture's edges show and items can be dragged out there.
+   */
+  setZoom (zoom, atX = this._stage[0] / 2, atY = this._stage[1] / 2) {
+    const z = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom))
+    const anchor = this._toPlate(atX, atY)
+    this._view = { ...this._view, zoom: z }
+    const moved = this._toStage(anchor)
+    this._view = { ...this._view, panX: this._view.panX + atX - moved.x, panY: this._view.panY + atY - moved.y }
+    if (Math.abs(z - 1) < 1e-6) this._view = { zoom: 1, panX: 0, panY: 0 }   // back to the student's view
+    this.layout()
+  }
+
+  /** The editor's zoom and pan, to carry over when the same scene re-mounts. */
+  get view () { return { ...this._view } }
+  set view (v) { this._view = { zoom: 1, panX: 0, panY: 0, ...v }; this.layout() }
+
+  _panBy (dx, dy) {
+    this._view = { ...this._view, panX: this._view.panX - dx, panY: this._view.panY - dy }
+    this.layout()
+  }
+
+  _wireZoom () {
+    const target = this.host.parentElement ?? this.host
+    this._onWheel = (e) => {
+      if (!this._root) return
+      const r = this.host.getBoundingClientRect()
+      if (e.ctrlKey || e.metaKey) {                     // Cmd/Ctrl+wheel, and a trackpad pinch
+        e.preventDefault()
+        this.setZoom(this._view.zoom * Math.exp(-e.deltaY * 0.01), e.clientX - r.left, e.clientY - r.top)
+      } else if (this._view.zoom !== 1) {               // zoomed: a plain scroll pans
+        e.preventDefault()
+        this._panBy(e.deltaX, e.deltaY)
+      }
+    }
+    target.addEventListener('wheel', this._onWheel, { passive: false })
+    this._wheelTarget = target
   }
 
   /**
@@ -223,6 +278,12 @@ export class DioramaStage {
     }]))
     this._fadeBlockers()
     this._placeHandle()
+    if (!this._drag && !this._resizing) this._showZoomGrid()
+    if (this._zoomChip) {
+      const zoomed = this._view.zoom !== 1
+      this._zoomChip.style.display = zoomed ? '' : 'none'
+      this._zoomChip.textContent = `${Math.round(this._view.zoom * 100)}%`
+    }
   }
 
   /** The item's top centre in stage px (for the resize handle). */
@@ -266,7 +327,7 @@ export class DioramaStage {
   cellAt (clientX = null, clientY = null) {
     const r = this.host.getBoundingClientRect()
     const tryAt = (x, y) => {
-      const p = stageToPlate(this.spec.camera, ...this._stage, { x, y }, this._focusU)
+      const p = this._toPlate(x, y)
       const hit = hitTest(this.spec.camera, this._floors, p.u, p.v)
       return hit && { floor: hit.floor, cell: clampCell(this._floors.get(hit.floor), snapCell(hit.cell, SNAP_STEP)) }
     }
@@ -290,7 +351,7 @@ export class DioramaStage {
 
   _pointerPlate (ev) {
     const r = this.host.getBoundingClientRect()
-    return stageToPlate(this.spec.camera, ...this._stage, { x: ev.clientX - r.left, y: ev.clientY - r.top }, this._focusU)
+    return this._toPlate(ev.clientX - r.left, ev.clientY - r.top)
   }
 
   /** Floors carried by this item (a boat's deck): dragging the boat must not land on them. */
@@ -418,8 +479,14 @@ export class DioramaStage {
   }
 
   /** The perspective grid of one floor: lines to the vanishing point and cross lines. */
-  _showGrid (floorId) {
-    const floor = this._floors.get(floorId)
+  _showGrid (floorIds) {
+    const ids = Array.isArray(floorIds) ? floorIds : [floorIds]
+    this._grid.innerHTML = ids.map(id => this._gridPath(this._floors.get(id))).join('')
+    this._grid.style.display = ''
+  }
+
+  /** The perspective grid of one floor as an SVG path. */
+  _gridPath (floor) {
     const [[x0, y0], [x1, y1]] = floor.cells
     const cam = this.spec.camera
     const stagePt = (cell) => {
@@ -441,12 +508,19 @@ export class DioramaStage {
     let d = ''
     for (let x = Math.ceil(x0); x <= x1; x += every(x0, x1)) d += segment([x, y0], [x, y1])
     for (let y = Math.ceil(y0); y <= y1; y += every(y0, y1)) d += segment([x0, y], [x1, y])
-    this._grid.innerHTML = `<path d="${d}" fill="none" style="stroke:var(--color-primary);stroke-opacity:0.55;stroke-width:1px"/>`   // var() only works as CSS, not as an SVG attribute
-    this._grid.style.display = ''
+    return `<path d="${d}" fill="none" style="stroke:var(--color-primary);stroke-opacity:0.55;stroke-width:1px"/>`   // var() only works as CSS, not as an SVG attribute
+  }
+
+  /** Zoomed out, the floors stay drawn: they carry on past the picture, and so can the items. */
+  _showZoomGrid () {
+    if (!this._grid || this._drag || this._resizing) return
+    if (this._view.zoom < 1) this._showGrid(this.spec.floors.filter(f => !f.on).map(f => f.id))
+    else this._grid.style.display = 'none'
   }
 
   _hideGuides () {
     if (this._grid) this._grid.style.display = 'none'
+    this._showZoomGrid()
     if (this._chip) this._chip.style.display = 'none'
     this._placeHandle()
   }
@@ -541,6 +615,8 @@ export class DioramaStage {
   destroy () {
     this._unwireDragMoves?.()
     this._unwireDragMoves = null
+    this._wheelTarget?.removeEventListener('wheel', this._onWheel)
+    this._wheelTarget = null
     if (this._onOtherSelected) window.removeEventListener('scene-object-selected', this._onOtherSelected)
     this._onOtherSelected = null
     if (this._raf) cancelAnimationFrame(this._raf)

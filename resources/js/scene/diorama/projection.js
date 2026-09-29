@@ -188,22 +188,34 @@ export function panDepth (depth, focalDepth) {
  * allow: on a portrait phone that keeps the figures in view instead of the empty middle, the
  * way plate-box.js does for layered shots. Landscape stages crop top and bottom only, so focus
  * does nothing there. Everything placed on the plate goes through this.
+ *
+ * `view` is the editor's zoom: {zoom, panX, panY} (stage px). Zoomed out (zoom < 1) the plate
+ * shrinks inside the stage and what lies beyond its edges shows; the player always uses none.
  */
-export function plateToStage (camera, stageW, stageH, { u, v }, focusU = camera.width / 2) {
-  const { s, left, top } = coverBox(camera, stageW, stageH, focusU)
+export function plateToStage (camera, stageW, stageH, { u, v }, focusU = camera.width / 2, view = null) {
+  const { s, left, top } = coverBox(camera, stageW, stageH, focusU, view)
   return { x: left + u * s, y: top + v * s, scale: s }
 }
 
 /** Stage pixel → plate pixel (the inverse of plateToStage), for pointer events. */
-export function stageToPlate (camera, stageW, stageH, { x, y }, focusU = camera.width / 2) {
-  const { s, left, top } = coverBox(camera, stageW, stageH, focusU)
+export function stageToPlate (camera, stageW, stageH, { x, y }, focusU = camera.width / 2, view = null) {
+  const { s, left, top } = coverBox(camera, stageW, stageH, focusU, view)
   return { u: (x - left) / s, v: (y - top) / s }
 }
 
-function coverBox (camera, stageW, stageH, focusU) {
-  const s = Math.max(stageW / camera.width, stageH / camera.height)
-  const left = Math.min(0, Math.max(stageW - camera.width * s, stageW / 2 - focusU * s))
-  return { s, left, top: (stageH - camera.height * s) / 2 }
+function coverBox (camera, stageW, stageH, focusU, view) {
+  const cover = Math.max(stageW / camera.width, stageH / camera.height)
+  const left = Math.min(0, Math.max(stageW - camera.width * cover, stageW / 2 - focusU * cover))
+  const top = (stageH - camera.height * cover) / 2
+  if (!view || view.zoom === 1 && !view.panX && !view.panY) return { s: cover, left, top }
+  // Zoom about the stage centre, then pan: the cover crop is the zoom-1 view.
+  const cx = stageW / 2
+  const cy = stageH / 2
+  return {
+    s: cover * view.zoom,
+    left: cx + (left - cx) * view.zoom + (view.panX ?? 0),
+    top: cy + (top - cy) * view.zoom + (view.panY ?? 0),
+  }
 }
 
 /**

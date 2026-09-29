@@ -948,6 +948,8 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         const parent = canvasEl.parentElement
         if (!parent) return
         if (getComputedStyle(parent).position === 'static') parent.style.position = 'relative'
+        // A drop or delete re-mounts the same scene: keep the teacher's zoom and pan.
+        const keepView = _diorama && _dioramaSceneId === payload.sceneId ? _diorama.view : null
         hideDiorama()
         const host = document.createElement('div')
         host.className = 'wizard-diorama-host'
@@ -962,6 +964,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             editable: true,
             onMove: ({ itemId, floor, cell }) => window.Livewire?.dispatch('diorama:move', { itemId, floor, cell }),
         })
+        if (keepView) _diorama.view = keepView
     }
 
     function destroyWizardLayers() {

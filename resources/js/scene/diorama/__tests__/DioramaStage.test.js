@@ -217,3 +217,48 @@ describe('the wall fades while the item behind it is selected', () => {
   })
 })
 
+describe('canvas zoom (editor)', () => {
+  it('zooming out keeps the plate point under the pointer where it is, and shows past the picture', () => {
+    const at = [900, 500]
+    const before = stage._toPlate(...at)
+    stage.setZoom(0.5, ...at)
+    const after = stage._toPlate(...at)
+    expect(after.u).toBeCloseTo(before.u, 6)
+    expect(after.v).toBeCloseTo(before.v, 6)
+    const plate = host.querySelector('[data-diorama-layer="plate"]')
+    expect(px(plate.style.width)).toBeCloseTo(W / 2, 3)               // the picture is half as wide
+    expect(host.querySelector('button.btn').textContent).toBe('50%')
+  })
+
+  it('zoomed out, an item can be dragged onto the floor beyond the picture\'s edge', () => {
+    stage.setZoom(0.4)
+    const barrel = spec.items.find(i => i.id === 'barrel_1')
+    const start = feetOf(barrel)
+    const toClient = p => stage._toStage(p)
+    const fire2 = (target, type, p) => {
+      const at = toClient(p)
+      const ev = new Event(type, { bubbles: true })
+      Object.assign(ev, { clientX: at.x, clientY: at.y, pointerId: 1 })
+      target.dispatchEvent(ev)
+    }
+    fire2(el('barrel_1'), 'pointerdown', start)
+    fire2(window, 'pointermove', { u: -600, v: start.v })             // left of the picture
+    fire2(window, 'pointerup', { u: -600, v: start.v })
+    expect(moves).toHaveLength(1)
+    const onPlate = stage._toStage(feetOf({ ...barrel, cell: moves[0].cell }))
+    expect(onPlate.x).toBeLessThan(stage._toStage({ u: 0, v: 0 }).x)   // its feet are past the left edge
+  })
+
+  it('the chip takes you back to what the class sees', () => {
+    stage.setZoom(0.5)
+    host.querySelector('button.btn').click()
+    expect(stage.view).toEqual({ zoom: 1, panX: 0, panY: 0 })
+    expect(host.querySelector('button.btn').style.display).toBe('none')
+  })
+
+  it('the player (read-only) is never zoomed and has no chip', () => {
+    stage.show(spec, assets)
+    expect(host.querySelector('button.btn')).toBeNull()
+  })
+})
+
