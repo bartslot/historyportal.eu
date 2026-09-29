@@ -1561,5 +1561,10 @@
     "Mask saved.": "Masker opgeslagen.",
     "That layer is gone. Select it again and retry.": "Die laag bestaat niet meer. Selecteer hem opnieuw en probeer het nog eens.",
     "The mask could not be uploaded. Try again, or use a smaller picture.": "Het masker kon niet worden geüpload. Probeer het opnieuw of gebruik een kleinere afbeelding.",
-    "That spot is not on the floor. The move was not saved.": "Die plek ligt niet op de vloer. De verplaatsing is niet opgeslagen."
+    "That spot is not on the floor. The move was not saved.": "Die plek ligt niet op de vloer. De verplaatsing is niet opgeslagen.",
+    "Clouds and birds belong in the sky, not on the floor.": "Wolken en vogels horen in de lucht, niet op de vloer.",
+    "This is carried by a figure. It cannot stand on the floor alone.": "Dit wordt door een figuur gedragen. Het kan niet los op de vloer staan.",
+    "This is a close-up drawing, not an object in the scene.": "Dit is een close-uptekening, geen voorwerp in de scène.",
+    "This drawing is cut off at the bottom, so it cannot stand on a floor.": "Deze tekening is onderaan afgesneden en kan dus niet op een vloer staan.",
+    "This picture has no real height yet, so it cannot stand on a floor.": "Deze afbeelding heeft nog geen echte hoogte en kan dus niet op een vloer staan."
 }

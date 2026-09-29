@@ -169,3 +169,40 @@ describe('DioramaStage editing', () => {
     expect(stage.matches({ ...spec, items: [] })).toBe(false)
   })
 })
+
+describe('DioramaStage for the editor panels', () => {
+  it('cellAt: a drop point becomes the snapped floor cell under it', () => {
+    const barrel = spec.items.find(i => i.id === 'barrel_1')
+    const at = plateToStage(spec.camera, W, H, feetOf(barrel))
+    const hit = stage.cellAt(at.x, at.y)
+    expect(hit.floor).toBe('quay')
+    expect(hit.cell[0]).toBeCloseTo(barrel.cell[0], 0)
+    expect(hit.cell[1]).toBeCloseTo(barrel.cell[1], 0)
+    for (const c of hit.cell) expect(c * 4).toBe(Math.round(c * 4))
+  })
+
+  it('cellAt: no point, or sky under it, still lands on a floor (never off the grid)', () => {
+    expect(stage.cellAt().floor).toBe('quay')
+    expect(stage.cellAt(W / 2, 5).floor).toBe('quay')
+  })
+
+  it('select: shows the handle and tells the object list', () => {
+    const seen = []
+    const on = e => seen.push(e.detail.id)
+    window.addEventListener('scene-object-selected', on)
+    stage.select('barrel_1')
+    window.removeEventListener('scene-object-selected', on)
+    expect(seen).toEqual(['dio_barrel_1'])
+    expect(host.querySelector('[data-diorama-handle]').style.display).toBe('')
+  })
+
+  it('a library picture stands on the bottom centre of its drawing, and says what it is', () => {
+    const lib = { url: 'https://cdn.example/donna.webp', px_per_m: 800, height_m: 1.6, frame_m: [1.25, 2], anchor: [0.4, 0.9], description: 'A Florentine woman, standing.' }
+    stage.show({ ...spec, items: [{ id: 'donna_1', asset: 'library:9', asset_version: 1, floor: 'quay', cell: [0, 12] }] }, { 'library:9': lib }, { editable: true })
+    const d = el('donna_1')
+    expect(d.style.transform).toBe('translate(-40%,-90%)')
+    expect(d.style.backgroundImage).toContain('https://cdn.example/donna.webp')
+    expect(d.getAttribute('aria-label')).toBe('A Florentine woman, standing.')
+  })
+})
+

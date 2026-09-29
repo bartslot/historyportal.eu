@@ -57,13 +57,16 @@ export class DioramaStage {
     this._root = root
 
     this._plateEls = []
+    // A plate picture is a file beside the scene JSON, or a full URL (a library backdrop).
+    const urlOf = src => /^(https?:)?\/\//.test(src) || src.startsWith('/') ? src : base + src
     const plateImg = (src, id) => {
       const img = document.createElement('img')
-      img.src = base + src
+      img.src = urlOf(src)
       img.alt = ''
       img.draggable = false
       img.dataset.dioramaLayer = id
-      img.style.cssText = 'position:absolute;max-width:none;pointer-events:none;'
+      // cover: a backdrop painted at another size still fills the camera's frame
+      img.style.cssText = 'position:absolute;max-width:none;pointer-events:none;object-fit:cover;'
       root.appendChild(img)
       this._plateEls.push(img)
       return img
@@ -79,11 +82,11 @@ export class DioramaStage {
       // A div with the picture as background: a sprite sheet shows one frame at a time.
       const img = document.createElement('div')
       img.setAttribute('role', 'img')
-      img.setAttribute('aria-label', item.label ?? '')
+      img.setAttribute('aria-label', asset.description ?? item.label ?? '')
       img.dataset.dioramaItem = item.id
       const frames = asset.sheet?.frames ?? 1
       img.style.cssText = 'position:absolute;background-repeat:no-repeat;'
-        + `background-image:url("${base + asset.image}");background-size:${frames * 100}% 100%;`
+        + `background-image:url("${asset.url ?? base + asset.image}");background-size:${frames * 100}% 100%;`
         + `pointer-events:${editable ? 'auto' : 'none'};touch-action:none;${editable ? 'cursor:grab;' : ''}`
       root.appendChild(img)
       this._itemEls.set(item.id, img)
@@ -175,7 +178,8 @@ export class DioramaStage {
         width: `${asset.frame_m[0] * asset.px_per_m * p.scale * at.scale}px`,
         height: `${asset.frame_m[1] * asset.px_per_m * p.scale * at.scale}px`,
         backgroundPosition: frames > 1 ? `${(frame / (frames - 1)) * 100}% 0` : '0 0',
-        transform: `translate(-50%,-100%)${flip}`,
+        // The anchor (bottom centre of the DRAWING, default the picture's) sits on the floor point.
+        transform: `translate(${-(asset.anchor?.[0] ?? 0.5) * 100}%,${-(asset.anchor?.[1] ?? 1) * 100}%)${flip}`,
       })
       placements.push({ id: item.id, depth: p.depth, v: p.v })
     }
@@ -206,6 +210,41 @@ export class DioramaStage {
     if (top) Object.assign(this._handle.style, { left: `${top.x}px`, top: `${top.y - HANDLE_PX}px` })
   }
 
+  /** The items, for the object list. */
+  items () {
+    return this.spec?.items ?? []
+  }
+
+  /** Select an item (object list row, or a press on it): shows its resize handle. */
+  select (id) {
+    this._selected = this._item(id) ? id : null
+    this._placeHandle()
+    if (this._selected) {
+      window.dispatchEvent(new CustomEvent('scene-object-selected', { detail: { id: 'dio_' + id } }))
+    }
+  }
+
+  /**
+   * The floor cell under a page point, snapped: where a picture dropped from the Icons panel lands.
+   * No point (a click in the panel), or no floor under it: the floor in the middle of the lower
+   * stage, else the middle of the first floor. Never off the grid.
+   * @returns {{floor: string, cell: number[]}}
+   */
+  cellAt (clientX = null, clientY = null) {
+    const r = this.host.getBoundingClientRect()
+    const tryAt = (x, y) => {
+      const p = stageToPlate(this.spec.camera, ...this._stage, { x, y }, this._focusU)
+      const hit = hitTest(this.spec.camera, this._floors, p.u, p.v)
+      return hit && { floor: hit.floor, cell: clampCell(this._floors.get(hit.floor), snapCell(hit.cell, SNAP_STEP)) }
+    }
+    const [w, h] = this._stage
+    const at = (clientX !== null && tryAt(clientX - r.left, clientY - r.top)) || tryAt(w / 2, h * 0.8)
+    if (at) return at
+    const floor = this.spec.floors.find(f => !f.on) ?? this.spec.floors[0]
+    const [[x0, y0], [x1, y1]] = floor.cells
+    return { floor: floor.id, cell: snapCell([(x0 + x1) / 2, (y0 + y1) / 2], SNAP_STEP) }
+  }
+
   _item (id) {
     return this.spec.items.find(i => i.id === id)
   }
@@ -230,7 +269,7 @@ export class DioramaStage {
     el.addEventListener('pointerdown', (ev) => {
       ev.preventDefault()
       capture(el, ev)
-      this._selected = id
+      this.select(id)
       const item = this._item(id)
       const start = this._pointerPlate(ev)
       const feet = projectPoint(this.spec.camera, cellToWorld(this._floors.get(item.floor), item.cell))
@@ -396,17 +435,21 @@ export class DioramaStage {
   }
 }
 
-/** Fetch `${plate.base}assets.json` (cached per base). */
+/**
+ * The scene's own pictures: `${plate.base}assets.json` (cached per base). A scene built only from
+ * library pictures has no base and needs none. A missing file loses only those pictures, never
+ * the stage: the plate, the grid and the library pictures still draw.
+ */
 const _assetCache = new Map()
 export function loadDioramaAssets (spec) {
-  const base = spec.plate?.base ?? ''
+  const base = spec.plate?.base
+  if (!base) return Promise.resolve({})
   if (!_assetCache.has(base)) {
-    // ponytail: assets.json beside the plate is the pilot's asset registry; a real library with
-    // asset versions replaces it once lessons use shared figures.
-    _assetCache.set(base, fetch(`${base}assets.json`).then(r => {
-      if (!r.ok) throw new Error(`diorama assets: ${r.status} for ${base}assets.json`)
-      return r.json()
-    }).catch(err => { _assetCache.delete(base); throw err }))
+    // ponytail: assets.json beside the plate is the pilot's registry for Blender-made pictures;
+    // library pictures come from svg_assets (LibraryAssets.php).
+    _assetCache.set(base, fetch(`${base}assets.json`)
+      .then(r => { if (!r.ok) throw new Error(`${r.status} for ${base}assets.json`); return r.json() })
+      .catch(err => { console.warn('diorama assets:', err.message); _assetCache.delete(base); return {} }))
   }
   return _assetCache.get(base)
 }

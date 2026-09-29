@@ -135,6 +135,16 @@ class IconPanelTest extends TestCase
         $panel->assertSet('category', '')->assertSet('subcategory', '');
     }
 
+    public function test_a_remembered_collection_that_is_not_here_falls_back_to_one_that_is(): void
+    {
+        SvgAsset::query()->where('collection', 'line-art')->delete();   // this machine only has arrows
+
+        $this->panel()
+            ->assertSet('collection', 'arrows')
+            ->assertSee('Arrow straight')
+            ->assertDontSee('No icons in this set yet.');
+    }
+
     public function test_an_unknown_collection_is_ignored(): void
     {
         $this->panel()->call('selectCollection', 'nonsense')->assertSet('collection', 'line-art');

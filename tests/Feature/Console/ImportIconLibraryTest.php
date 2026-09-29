@@ -204,6 +204,17 @@ class ImportIconLibraryTest extends TestCase
         $this->assertCount(1, array_unique(array_column($dante, 'height_m')));
     }
 
+    public function test_a_checkout_without_cdn_json_leaves_the_cdn_urls_alone(): void
+    {
+        $this->import()->assertSuccessful();
+        $row = SvgAsset::bundled()->where('source_ref', 'arrows/arrow-straight.svg')->firstOrFail();
+        $row->update(['cdn_url' => 'https://res.cloudinary.com/x/arrow.svg']);
+
+        $this->import()->assertSuccessful();   // this fixture tree has no cdn.json
+
+        $this->assertSame('https://res.cloudinary.com/x/arrow.svg', $row->fresh()->cdn_url);
+    }
+
     public function test_it_never_touches_a_teachers_own_imports(): void
     {
         $mine = SvgAsset::create([

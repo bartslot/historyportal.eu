@@ -935,11 +935,13 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         _diorama?.destroy()
         _dioramaHost?.remove()
         _diorama = _dioramaHost = _dioramaSceneId = null
+        window.__diorama = null
     }
 
     async function showDiorama(payload, isCurrent) {
         const spec = payload.config.diorama
         if (_diorama && _dioramaSceneId === payload.sceneId && _diorama.matches(spec)) return
+        // payload.dioramaAssets: library pictures in this diorama, sized from their real height.
         if (!_dioramaMod) _dioramaMod = await import('./diorama/DioramaStage.js')
         const assets = await _dioramaMod.loadDioramaAssets(spec)
         if (!isCurrent()) return
@@ -955,7 +957,8 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         _dioramaHost = host
         _diorama = new _dioramaMod.DioramaStage(host)
         _dioramaSceneId = payload.sceneId
-        _diorama.show(spec, assets, {
+        window.__diorama = _diorama       // the Icons panel drops onto it, the object list lists it
+        _diorama.show(spec, { ...assets, ...(payload.dioramaAssets ?? {}) }, {
             editable: true,
             onMove: ({ itemId, floor, cell }) => window.Livewire?.dispatch('diorama:move', { itemId, floor, cell }),
         })

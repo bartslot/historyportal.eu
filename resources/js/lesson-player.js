@@ -977,7 +977,7 @@ Alpine.data('lessonGame', (lesson) => ({
         this._destroyParallax()
         this._destroyDiorama()
         _diorama = new _dioramaMod.DioramaStage(host)
-        _diorama.show(scene.config.diorama, assets)
+        _diorama.show(scene.config.diorama, { ...assets, ...(scene.diorama_assets ?? {}) })
         // Keyframes follow the narration clock, like the speech balloons.
         _diorama.play(() => this._audio?.currentTime ?? 0)
       } catch (e) {
@@ -1068,7 +1068,7 @@ Alpine.data('lessonGame', (lesson) => ({
         _sceneQueue = lesson.scenes
           .map(s => ({
             id: s.id ?? null,   // needed by editSceneHref → deep-link "Edit scene" to THIS exact scene
-            kind: s.kind, game_type: s.game_type ?? null, config: s.config ?? null, scene_view: s.scene_view,
+            kind: s.kind, game_type: s.game_type ?? null, config: s.config ?? null, diorama_assets: s.diorama_assets ?? {}, scene_view: s.scene_view,
             branch_group: s.branch_group ?? null, branch_role: s.branch_role ?? null,
             branch_choice_label: s.branch_choice_label ?? null,
             audio_url: s.audio_url, script: s.script, image_url: s.image_url,

@@ -51,6 +51,8 @@ class ImportIconLibrary extends Command
     /** @var array<string, array<string, mixed>> the current collection's meta.json */
     private array $meta = [];
 
+    private bool $hasCdnManifest = false;
+
     public function handle(SvgSanitizer $sanitizer): int
     {
         $root = (string) ($this->option('path') ?: resource_path('icons'));
@@ -79,6 +81,9 @@ class ImportIconLibrary extends Command
 
         foreach ($collections as $collection) {
             $cdn = LibraryCdn::manifest($collection, $root);
+            // No cdn.json at all (a checkout without it) says nothing about the CDN: keep what the
+            // rows have. Only a manifest that exists and leaves a picture out clears its URL.
+            $this->hasCdnManifest = is_file(LibraryCdn::manifestPath($collection, $root));
             $this->meta = $this->metaManifest($root.'/'.$collection);
             foreach ($this->libraryFiles($root.'/'.$collection) as $file) {
                 $rest = str_replace('\\', '/', $file->getRelativePathname());
@@ -168,7 +173,7 @@ class ImportIconLibrary extends Command
             'svg_path' => $path,
             // A picture re-exported with the same name keeps its CDN copy only while the manifest
             // still lists it; drop the line from cdn.json to have the next lesson re-upload it.
-            'cdn_url' => $cdnUrl,
+            ...($this->hasCdnManifest ? ['cdn_url' => $cdnUrl] : []),
             'width' => $clean['width'],
             'height' => $clean['height'],
             'view_box' => $clean['view_box'],

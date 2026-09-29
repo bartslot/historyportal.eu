@@ -82,6 +82,7 @@
                 'order'       => $s->order,
                 'kind'        => $s->kind,
                 'config'      => $s->config,
+                'diorama_assets' => $s->isDiorama() ? \App\Services\Diorama\LibraryAssets::forSpec($s->config['diorama']) : [],
                 'chapter_name' => $s->chapterName(),
                 'year'        => $s->year,
                 'location'    => $s->location,

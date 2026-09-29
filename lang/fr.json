@@ -1517,5 +1517,10 @@
     "Mask saved.": "Masque enregistré.",
     "That layer is gone. Select it again and retry.": "Ce calque n'existe plus. Sélectionnez-le de nouveau et réessayez.",
     "The mask could not be uploaded. Try again, or use a smaller picture.": "Le masque n'a pas pu être envoyé. Réessayez ou utilisez une image plus petite.",
-    "That spot is not on the floor. The move was not saved.": "Cet endroit n’est pas sur le sol. Le déplacement n’a pas été enregistré."
+    "That spot is not on the floor. The move was not saved.": "Cet endroit n’est pas sur le sol. Le déplacement n’a pas été enregistré.",
+    "Clouds and birds belong in the sky, not on the floor.": "Les nuages et les oiseaux vont dans le ciel, pas sur le sol.",
+    "This is carried by a figure. It cannot stand on the floor alone.": "Un personnage le porte. Il ne peut pas tenir seul sur le sol.",
+    "This is a close-up drawing, not an object in the scene.": "C’est un dessin en gros plan, pas un objet de la scène.",
+    "This drawing is cut off at the bottom, so it cannot stand on a floor.": "Ce dessin est coupé en bas, il ne peut donc pas tenir sur un sol.",
+    "This picture has no real height yet, so it cannot stand on a floor.": "Cette image n’a pas encore de hauteur réelle, elle ne peut donc pas tenir sur un sol."
 }

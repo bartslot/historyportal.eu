@@ -148,6 +148,15 @@ class IconPanel extends Component
 
     public function render(): View
     {
+        // The remembered (or default) collection may not exist here: show the first one that does,
+        // instead of an empty set under a pill for another collection.
+        $available = $this->collections();
+        if ($available !== [] && ! in_array($this->collection, $available, true)) {
+            $this->collection = $available[0];
+            $this->category = $this->subcategory = '';
+            unset($this->icons, $this->groups);
+        }
+
         return view('livewire.wizard.icon-panel');
     }
 }

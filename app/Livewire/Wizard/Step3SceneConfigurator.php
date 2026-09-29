@@ -23,6 +23,7 @@ use App\Models\Lesson;
 use App\Models\Scene;
 use App\Models\StrategyGame;
 use App\Services\Billing\NarrationCreditLedger;
+use App\Services\Diorama\LibraryAssets;
 use App\Services\Support\LayerAmbient;
 use App\Services\Support\WebpEncoder;
 use App\Services\Support\WhiteCutout;
@@ -355,6 +356,8 @@ class Step3SceneConfigurator extends Component
             'config' => $scene->kind === 'voyage'
                 ? array_merge($scene->config ?? [], ['view' => $this->voyageView()])
                 : $scene->config,
+            // Library pictures standing in a diorama, sized from their real height.
+            'dioramaAssets' => $scene->isDiorama() ? LibraryAssets::forSpec($scene->config['diorama']) : [],
             // Voyage scenes preview against the lesson's editable route copy (falls back to the
             // shared catalog until the first edit clones it) — the wizard overlay passes this to
             // renderVoyageTour as `def`.
@@ -1028,6 +1031,11 @@ class Step3SceneConfigurator extends Component
         }
         if (preg_match('/^art_(\d+)$/', $objectId, $m)) {
             $this->detachArtwork((int) $m[1]);
+
+            return;
+        }
+        if (str_starts_with($objectId, 'dio_')) {
+            $this->removeDioramaItem(substr($objectId, 4));
 
             return;
         }

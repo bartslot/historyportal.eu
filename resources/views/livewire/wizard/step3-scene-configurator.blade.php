@@ -474,6 +474,13 @@
             const r = stage ? stage.getBoundingClientRect() : null
             if (!assetId || !r || !r.width || !r.height) return
 
+            // A diorama scene: the picture stands on the floor cell under the point, never off the grid.
+            if (window.__diorama) {
+                const at = window.__diorama.cellAt(clientX, clientY)
+                window.Livewire.dispatch('diorama:add', { assetId, floor: at.floor, cell: at.cell })
+                return
+            }
+
             const x = clientX === null ? 50 : ((clientX - r.left) / r.width) * 100
             const y = clientY === null ? 58 : ((clientY - r.top) / r.height) * 100
             // Over a live map the icon belongs to the PLACE under that point, not to the pixel,
@@ -1196,13 +1203,16 @@
                 const objKind = (window.__objScene || {}).kind;
                 const artLayer = this.artOverlay();
                 const arts = (artLayer && artLayer._layers) || [];
+                // Diorama items (config.diorama): front-most first, like the rest of the list.
+                const dioItems = [...(window.__diorama?.items() ?? [])].reverse().map((i) =>
+                    ({ id: 'dio_' + i.id, icon: 'photo', label: i.label || i.id, bg: false, dio: true }));
                 const artItems = [...arts].reverse().map((a) =>
                     ({ id: 'art_' + a.asset_id, icon: a.embed ? (a.embed.type === 'video' ? 'photo' : 'map') : 'photo',
                        label: a.title || (a.embed ? (a.embed.type === 'video' ? 'Video' : '3D model') : @js(__('Icon'))), bg: false, art: true }));
                 // The clipart group sits above the text objects only when the teacher dragged it there
                 // (config.clipart_on_top → the overlay host's z-index is raised above the text layer).
                 const onTop = !!(artLayer && artLayer.onTop);
-                const items = onTop ? [...artItems, ...textItems] : [...textItems, ...artItems];
+                const items = [...(onTop ? [...artItems, ...textItems] : [...textItems, ...artItems]), ...dioItems];
                 // Bottom layer(s), pinned (not drag-reorderable). A Route waypoint scene lists its own
                 // stack — the Gallery overlay ON TOP of the Waypoint map — instead of a bare Background;
                 // every other scene lists a single Background (or Slideshow for a standalone gallery).
@@ -1230,7 +1240,8 @@
                     // No handle — the whole row drags. Background ([data-bg]) is pinned, and the
                     // adjust button ([data-nodrag]) opts out so tapping it doesn't start a drag.
                     draggable: '[data-obj-id]',
-                    filter: '[data-bg], [data-nodrag]',
+                    // Diorama rows stack by depth on the floor, never by hand: pinned like the background.
+                    filter: '[data-bg], [data-nodrag], [data-dio]',
                     preventOnFilter: false,         // keep the adjust button's own click working
                     // Pointer-based dragging (not native HTML5 DnD): more reliable inside this
                     // fixed-position panel and works consistently across browsers.
@@ -1247,7 +1258,7 @@
                         // …then restack each layer system and rebuild. Text and clipart are two
                         // separate overlays, so split the dropped order by type and reorder each.
                         const isArt = (id) => id.startsWith('art_');
-                        const textIds = ids.filter((id) => !isArt(id));
+                        const textIds = ids.filter((id) => !isArt(id) && !id.startsWith('dio_'));
                         const artIds = ids.filter(isArt);
                         if (textIds.length) window.__lessonTextLayer?.reorder(textIds);
                         if (artIds.length) this.reorderClipart(ids, textIds, artIds);
@@ -1287,6 +1298,10 @@
                 if (obj.bg) {
                     window.__lessonTextLayer?.select?.('__bg__');   // clears any canvas object ring
                     this.locate(obj);                                // route to the Background inspector
+                    return;
+                }
+                if (obj.dio) {
+                    window.__diorama?.select(obj.id.slice(4));
                     return;
                 }
                 if (obj.art) {
@@ -1902,7 +1917,7 @@
             <template x-for="obj in items" :key="obj.id">
                 {{-- The whole row is the drag handle (grab cursor); only the adjust button opts out.
                      Text and clipart rows reorder; the background is pinned to the bottom ([data-bg]). --}}
-                <div :data-obj-id="obj.bg ? null : obj.id" :data-bg="obj.bg ? '1' : null"
+                <div :data-obj-id="obj.bg ? null : obj.id" :data-bg="obj.bg ? '1' : null" :data-dio="obj.dio ? '1' : null"
                      data-obj-row
                      @click="select(obj)"
                      :class="[
