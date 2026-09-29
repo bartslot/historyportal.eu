@@ -1527,5 +1527,10 @@
     "Nature": "Natur",
     "Architecture": "Architektur",
     "Misc": "Sonstiges",
-    "Backdrops": "Hintergründe"
+    "Backdrops": "Hintergründe",
+    "Poster": "Poster",
+    "Lesson poster": "Lektionsposter",
+    "No poster yet": "Noch kein Poster",
+    "No scene has a picture yet.": "Noch keine Szene hat ein Bild.",
+    "Scene :n": "Szene :n"
 }

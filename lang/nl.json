@@ -1571,5 +1571,10 @@
     "Nature": "Natuur",
     "Architecture": "Architectuur",
     "Misc": "Overig",
-    "Backdrops": "Achtergronden"
+    "Backdrops": "Achtergronden",
+    "Poster": "Poster",
+    "Lesson poster": "Lesposter",
+    "No poster yet": "Nog geen poster",
+    "No scene has a picture yet.": "Nog geen enkele scène heeft een afbeelding.",
+    "Scene :n": "Scène :n"
 }

@@ -1527,5 +1527,10 @@
     "Nature": "Nature",
     "Architecture": "Architecture",
     "Misc": "Divers",
-    "Backdrops": "Arrière-plans"
+    "Backdrops": "Arrière-plans",
+    "Poster": "Affiche",
+    "Lesson poster": "Affiche de la leçon",
+    "No poster yet": "Pas encore d’affiche",
+    "No scene has a picture yet.": "Aucune scène n’a encore d’image.",
+    "Scene :n": "Scène :n"
 }

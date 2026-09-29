@@ -723,6 +723,34 @@ class Lesson extends Model
         return null;
     }
 
+    /**
+     * One picture per scene, in scene order, for the poster's "Scene" choice: its generated image,
+     * else its first shot's picture, else a diorama's background, else its panorama.
+     *
+     * @return array<int, array{url: string, label: string}>
+     */
+    public function scenePosterOptions(): array
+    {
+        $out = [];
+        foreach ($this->scenes()->ordered()->get() as $i => $scene) {
+            $cfg = $scene->config ?? [];
+            $shot = ($scene->shots ?? [])[0] ?? [];
+            $plate = $cfg['diorama']['plate'] ?? null;
+            $plateUrl = is_array($plate) && ! empty($plate['image'])
+                ? (preg_match('#^(https?:)?//|^/#', $plate['image']) ? $plate['image'] : ($plate['base'] ?? '').$plate['image'])
+                : null;
+            $url = $this->publicMediaUrl($scene->image_path)
+                ?? $this->publicMediaUrl($shot['bg_path'] ?? $shot['image_path'] ?? null)
+                ?? $plateUrl
+                ?? $this->publicMediaUrl($scene->skybox_image_path);
+            if ($url) {
+                $out[] = ['url' => $url, 'label' => __('Scene :n', ['n' => $i + 1])];
+            }
+        }
+
+        return $out;
+    }
+
     public function posterCandidates(): array
     {
         $out = [];
@@ -741,6 +769,10 @@ class Lesson extends Model
             $push($img['url'] ?? null, $img['title'] ?? 'Slideshow image');
         }
 
+        // One picture per scene (the poster's "Scene" choice), then everything else each scene holds.
+        foreach ($this->scenePosterOptions() as $option) {
+            $push($option['url'], $option['label']);
+        }
         // Per-scene imagery, in order — includes voyage/gallery config images (URLs already absolute).
         foreach ($this->scenes()->ordered()->get() as $scene) {
             $push($this->publicMediaUrl($scene->skybox_image_path), 'Scene panorama');

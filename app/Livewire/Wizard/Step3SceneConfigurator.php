@@ -42,6 +42,7 @@ use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
+use Livewire\Attributes\Validate;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -5171,6 +5172,22 @@ class Step3SceneConfigurator extends Component
         // Our own files are kept as a same-site path, never as the host they were shown on.
         $this->lesson->update(['poster_image' => preg_replace('#^(?:https?:)?//[^/]+(?=/storage/)#i', '', $url)]);
         $this->lesson->refresh();
+    }
+
+    /** A poster uploaded in the Settings panel ("Image"). Stored as WebP like every picture we keep. */
+    #[Validate('nullable|image|max:8192')]
+    public $posterUpload = null;
+
+    public function updatedPosterUpload(): void
+    {
+        $this->validateOnly('posterUpload');
+        if (! $this->posterUpload) {
+            return;
+        }
+        $path = WebpEncoder::storeUpload($this->posterUpload, "lessons/{$this->lesson->id}/poster");
+        $this->lesson->update(['poster_image' => $path]);
+        $this->lesson->refresh();
+        $this->posterUpload = null;
     }
 
     /** Clear the override → the lesson auto-picks its poster again. */

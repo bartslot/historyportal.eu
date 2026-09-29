@@ -1055,37 +1055,55 @@
                 </label>
             </div>
 
-            {{-- POSTER — the lesson's cover image. Never empty: auto-picks an image already loaded in
-                 the lesson, overridable by clicking any candidate below. --}}
-            @php $posterCandidates = $this->lesson->posterCandidates(); $posterOverride = trim((string) ($lesson->poster_image ?? '')) !== ''; @endphp
-            <div class="mt-6 pt-4 border-t border-slate-700/50">
-                <div class="mb-2 flex items-center justify-between">
-                    <span class="text-2xs uppercase tracking-widest text-slate-500">Poster</span>
-                    @if ($posterOverride)
-                        <button wire:click="resetPoster" class="text-2xs text-slate-500 transition-colors hover:text-amber-300">↺ auto</button>
+            {{-- POSTER — the lesson's cover image (Bart, 2026-09-29): Auto (the first picture the lesson
+                 has) | Scene (one scene's picture) | Image (an upload). Never a stand-in portrait:
+                 no picture yet shows as an empty tile. --}}
+            @php
+                $sceneOptions = $this->lesson->scenePosterOptions();
+                $override = $this->lesson->posterOverrideUrl();
+                $autoPick = $this->lesson->posterCandidates()[0]['url'] ?? null;
+                $posterMode = $override === null ? 'auto'
+                    : (collect($sceneOptions)->contains('url', $override) ? 'scene' : 'image');
+                $posterShown = $override ?? $autoPick;
+            @endphp
+            <div class="mt-6 pt-4 border-t border-slate-700/50" x-data="{ mode: @js($posterMode) }">
+                <span class="mb-2 block text-2xs uppercase tracking-widest text-slate-500">{{ __('Poster') }}</span>
+                <x-ui.segmented panel name="poster-mode" model="mode"
+                                :options="[['auto', __('Auto')], ['scene', __('Scene')], ['image', __('Image')]]"
+                                on-change="$event.target.value === 'auto' && $wire.call('resetPoster')" />
+                <div class="mt-3 flex gap-3">
+                    @if ($posterShown)
+                        <img src="{{ $posterShown }}" alt="{{ __('Lesson poster') }}"
+                             class="h-24 w-16 shrink-0 rounded-lg object-cover ring-1 ring-slate-600" />
                     @else
-                        <span class="text-2xs text-slate-600">auto-picked</span>
+                        <div class="h-24 w-16 shrink-0 rounded-lg border border-dashed border-slate-600" aria-label="{{ __('No poster yet') }}"></div>
                     @endif
-                </div>
-                <div class="flex gap-3">
-                    <img src="{{ $this->lesson->posterUrl() }}" alt="Lesson poster"
-                         class="h-24 w-16 shrink-0 rounded-lg object-cover ring-1 ring-slate-600" />
-                    @if (count($posterCandidates))
-                        <div class="grid grid-cols-4 gap-1.5 content-start">
-                            @foreach ($posterCandidates as $cand)
-                                <button type="button" wire:click="selectPoster(@js($cand['url']))" title="{{ $cand['label'] }}"
-                                        @class([
-                                            'aspect-square overflow-hidden rounded ring-1 transition',
-                                            'ring-amber-400' => $posterOverride && ($lesson->poster_image === $cand['url']),
-                                            'ring-slate-700 hover:ring-slate-400' => ! ($posterOverride && ($lesson->poster_image === $cand['url'])),
-                                        ])>
-                                    <img src="{{ $cand['url'] }}" alt="{{ $cand['label'] }}" class="h-full w-full object-cover" onerror="this.closest('button').style.display='none'" />
-                                </button>
-                            @endforeach
-                        </div>
-                    @else
-                        <p class="self-center text-2xs text-slate-500">Add images to the lesson to choose a poster.</p>
-                    @endif
+
+                    {{-- Scene: one picture per scene --}}
+                    <div x-show="mode === 'scene'" x-cloak class="grid grid-cols-4 content-start gap-1.5">
+                        @forelse ($sceneOptions as $option)
+                            <button type="button" wire:click="selectPoster(@js($option['url']))" title="{{ $option['label'] }}"
+                                    @class([
+                                        'aspect-square overflow-hidden rounded ring-1 transition',
+                                        'ring-amber-400' => $override === $option['url'],
+                                        'ring-slate-700 hover:ring-slate-400' => $override !== $option['url'],
+                                    ])>
+                                <img src="{{ $option['url'] }}" alt="{{ $option['label'] }}" class="h-full w-full object-cover" onerror="this.closest('button').style.display='none'" />
+                            </button>
+                        @empty
+                            <p class="col-span-4 self-center text-2xs text-slate-500">{{ __('No scene has a picture yet.') }}</p>
+                        @endforelse
+                    </div>
+
+                    {{-- Image: upload one --}}
+                    <div x-show="mode === 'image'" x-cloak class="flex flex-col justify-center gap-1.5">
+                        <label class="btn btn-sm">
+                            <span wire:loading.remove wire:target="posterUpload">{{ __('Upload image') }}</span>
+                            <span wire:loading wire:target="posterUpload">{{ __('Uploading…') }}</span>
+                            <input type="file" accept="image/*" wire:model="posterUpload" class="hidden" />
+                        </label>
+                        @error('posterUpload') <p class="text-2xs text-error">{{ $message }}</p> @enderror
+                    </div>
                 </div>
             </div>
 
