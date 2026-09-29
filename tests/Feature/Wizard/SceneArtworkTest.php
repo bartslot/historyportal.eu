@@ -554,21 +554,27 @@ class SceneArtworkTest extends TestCase
      * centre — so it sits past Publish behind a divider rather than reading as a fourth thing you
      * do to the lesson.
      */
-    public function test_help_sits_after_publish_in_the_toolbar(): void
+    /**
+     * Bart, 2026-09-30: Help in the middle, one Settings button (Format and Settings merged) and
+     * Publish (with Share folded in) in the far right corner.
+     */
+    public function test_toolbar_is_tools_then_help_then_settings_and_publish(): void
     {
         $html = Livewire::actingAs($this->teacher)
             ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
             ->html();
 
-        $format = strpos($html, 'aria-label="Format"');
-        $settings = strpos($html, 'aria-label="Settings"');
+        $add = strpos($html, 'aria-label="Add"');
         $help = strpos($html, 'aria-label="Help"');
+        $settings = strpos($html, 'aria-label="Settings"');
+        $publish = strpos($html, 'aria-label="Publish"');
 
-        $this->assertNotFalse($format);
-        $this->assertNotFalse($settings);
-        $this->assertNotFalse($help);
-        $this->assertLessThan($settings, $format, 'Format comes first');
-        $this->assertLessThan($help, $settings, 'Help must not sit between Format and Settings');
+        $this->assertStringNotContainsString('aria-label="Format"', $html, 'Format merged into Settings');
+        $this->assertNotFalse($add);
+        $this->assertLessThan($help, $add);
+        $this->assertLessThan($settings, $help, 'Help sits between the tools and Settings');
+        $this->assertLessThan($publish, $settings, 'Publish is the last, far-right button');
+        $this->assertStringContainsString('Share with every teacher', substr($html, $publish), 'Share lives in the Publish menu');
     }
 
     public function test_detaching_the_last_clipart_from_a_voyage_scene_collapses_shots_to_null(): void

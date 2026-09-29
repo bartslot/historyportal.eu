@@ -144,7 +144,9 @@ class SceneTextLabelsTest extends TestCase
             ->dispatch('scene:selection-changed', objectId: 'txt_rome')
             ->assertSet('activeTextId', 'txt_rome')
             ->assertSee('Edit content directly on the canvas.')
-            ->assertSeeHtml("new CustomEvent('inspector-open')")
+            // (No inspector-open markup check: the code that opens the panel on a selection is a
+            // pushed script this component render never contains. The check only ever matched the
+            // toolbar's old Format/Settings buttons, removed when they merged.)
             ->dispatch('scene:selection-changed', objectId: '__bg__')
             ->assertSet('activeTextId', null)
             ->assertSee('Scene details')

@@ -177,6 +177,8 @@ class Step3SceneConfigurator extends Component
     public function selectScene(int $id): void
     {
         $this->selectSceneInternal($id);
+        // A click on a scene means "show me this scene", even from the Lesson tab.
+        $this->panelView = 'scene';
     }
 
     /**
@@ -5408,7 +5410,8 @@ class Step3SceneConfigurator extends Component
      * The rules live in LessonSharing, which the library page uses too, so there is one answer to
      * "who may share this" rather than one per screen.
      */
-    public function toggleSharing(): void
+    /** Returns whether the lesson is shared afterwards: the Publish menu's switch shows that, not a guess. */
+    public function toggleSharing(): bool
     {
         try {
             app(\App\Services\LessonSharing::class)
@@ -5416,13 +5419,15 @@ class Step3SceneConfigurator extends Component
         } catch (\RuntimeException $e) {
             $this->dispatch('toast', message: $e->getMessage(), type: 'error');
 
-            return;
+            return (bool) $this->lesson->is_public;
         }
 
         $this->lesson->refresh();
         $this->dispatch('toast', message: $this->lesson->is_public
             ? __('Shared. Other teachers can now find and copy this lesson.')
             : __('No longer shared. Only you can see this lesson.'));
+
+        return (bool) $this->lesson->is_public;
     }
 
     /**

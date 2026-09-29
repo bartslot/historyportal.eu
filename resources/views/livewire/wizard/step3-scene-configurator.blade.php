@@ -916,6 +916,15 @@
                        row label and its control competed for the same space, which is where the
                        three different label widths came from. --}}
                   {{ $inspectorSceneModel?->kind === 'game' ? 'w-[min(48rem,calc(100vw-1rem))]' : 'w-[min(19.375rem,calc(100vw-1rem))]' }}">
+        {{-- One panel, two subjects: what is selected on the stage, or the lesson as a whole.
+             These tabs replaced the toolbar's separate Format and Settings buttons. Selecting
+             anything on the stage switches back to Selection by itself (panelView 'scene'). --}}
+        <div x-show="inspectorOpen" x-ref="inspectorTabs" class="flex shrink-0 border-b border-panel-hairline px-4 py-2">
+            <x-ui.segmented panel name="inspector-subject" class="w-full" tab-class="flex-1"
+                            :value="$panelView === 'settings' ? 'settings' : 'scene'"
+                            :options="[['scene', __('Selection')], ['settings', __('Lesson')]]"
+                            on-change="$wire.call($event.target.value === 'settings' ? 'openSettings' : 'openFormat')" />
+        </div>
         <div x-show="inspectorOpen"
              x-transition.opacity.duration.150ms
              {{-- overflow-x-hidden, not the default `auto`: anything a shade too wide for the panel
@@ -1533,40 +1542,31 @@
                 </div>
             </div>
         </div>
-
-        <div class="mx-1 my-1.5 w-px bg-slate-700"></div>
         </div>
 
-        {{-- Right group: global actions, pushed to the far right --}}
-        <div class="flex items-stretch gap-0.5">
-        {{-- Format — show/hide the fixed inspector panel. The toolbar sits in its own small
-             Alpine scope (a SIBLING of step3SceneConfigurator), so this goes via a window
-             event the panel component listens for. --}}
-        {{-- Selector, not a blind toggle: open + switch to Format; only close when Format is
-             already the shown view (so Settings → Format switches instead of closing). --}}
-        <button type="button"
-                @click="fmtOpen && fmtView !== 'settings'
-                    ? window.dispatchEvent(new CustomEvent('inspector-toggle'))
-                    : (Livewire.dispatch('open-lesson-format'), window.dispatchEvent(new CustomEvent('inspector-open')))"
-                class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-slate-300 transition hover:bg-slate-800 hover:text-primary"
-                :class="fmtOpen && fmtView !== 'settings' && 'bg-sky-500/15 text-sky-300'"
-                title="{{ __('Show or hide the Format panel') }}" aria-label="{{ __('Format') }}">
-            {{-- Painting/picture icon (Noun Project, filled) — reads as "scene formatting". --}}
-            <svg viewBox="0 0 100 100" fill="currentColor" class="h-6 w-6" aria-hidden="true">
-                <path d="m79.168 26.043h-12.203l-7.8867-11.793c-1.9961-3.0508-5.3828-4.875-9.0742-4.875s-7.0781 1.8242-9.0547 4.8477l-7.9023 11.82h-12.203c-6.3203 0-11.457 5.1367-11.457 11.457v41.668c0 6.3203 5.1367 11.457 11.457 11.457h58.332c6.3203 0 11.457-5.1367 11.457-11.457v-41.668c0-6.3203-5.1367-11.457-11.457-11.457zm-33.008-8.375c1.6445-2.5195 6.0195-2.5508 7.6992 0.027343l5.582 8.3477h-18.883zm38.215 61.5c0 2.8711-2.3359 5.207-5.207 5.207h-58.336c-2.8711 0-5.207-2.3359-5.207-5.207v-2.457l13.109-8.4141c2.8125-1.4141 6.1172-1.3125 9.0273 0.35156l18.918 9.168c0.4375 0.21094 0.90234 0.3125 1.3633 0.3125 1.1602 0 2.2734-0.64453 2.8125-1.7617 0.75391-1.5547 0.10547-3.4219-1.4492-4.1758l-0.66406-0.32031 4.7578-1.1914c1.9258-0.47656 3.9141-0.34766 5.7539 0.39062l15.113 6.0469v2.0508zm0-8.7852-12.797-5.1172c-3.0703-1.2344-6.3906-1.4531-9.5898-0.64844l-12.016 3.0039-9.2891-4.4961c-4.543-2.6172-10.059-2.7656-15.035-0.25781l-10.023 6.4219v-31.789c0-2.8711 2.3359-5.207 5.207-5.207h58.332c2.8711 0 5.207 2.3359 5.207 5.207v32.883zm-30.207-31.84c-6.3203 0-11.457 5.1367-11.457 11.457s5.1367 11.457 11.457 11.457c6.3203 0 11.457-5.1367 11.457-11.457s-5.1367-11.457-11.457-11.457zm0 16.668c-2.8711 0-5.207-2.3359-5.207-5.207s2.3359-5.207 5.207-5.207c2.8711 0 5.207 2.3359 5.207 5.207s-2.3359 5.207-5.207 5.207z"/>
+        {{-- Help, centred: it leaves the lesson (a new tab, the help centre), so it stands
+             apart from both the tools on the left and the lesson actions on the right. The rule
+             is the same as the panels': the editor carries controls and short labels, and the
+             how-to lives here. --}}
+        <a href="{{ route('help.index') }}#edit" target="_blank" rel="noopener"
+           class="absolute left-1/2 top-1/2 flex w-14 -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-primary"
+           data-tooltip="{{ __('How the editor works') }}" aria-label="{{ __('Help') }}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
             </svg>
-            <span class="text-2xs font-medium">{{ __('Format') }}</span>
-        </button>
+            <span class="text-2xs font-medium">{{ __('Help') }}</span>
+        </a>
 
-        {{-- Settings — global class/lesson settings (Story + Music). Lives on the toolbar, not
-             inside the per-scene inspector. --}}
+        {{-- Right group: Settings, then Publish in the far corner --}}
+        <div class="flex items-stretch gap-0.5">
+        {{-- Settings — the one panel. What it shows is picked by the tabs at its top: the
+             selection (scene, layer, text, background, quiz, title screen) or the lesson. This
+             used to be two buttons, Format and Settings, for one panel. --}}
         <button type="button"
-                @click="fmtOpen && fmtView === 'settings'
-                    ? window.dispatchEvent(new CustomEvent('inspector-toggle'))
-                    : (Livewire.dispatch('open-lesson-settings'), window.dispatchEvent(new CustomEvent('inspector-open')))"
+                @click="window.dispatchEvent(new CustomEvent('inspector-toggle'))"
                 class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-slate-300 transition hover:bg-slate-800 hover:text-primary"
-                :class="fmtOpen && fmtView === 'settings' && 'bg-sky-500/15 text-sky-300'"
-                title="{{ __('Class & lesson settings') }}" aria-label="{{ __('Settings') }}">
+                :class="fmtOpen && 'bg-sky-500/15 text-sky-300'"
+                data-tooltip="{{ __('Settings') }}" aria-label="{{ __('Settings') }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.24-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
@@ -1587,27 +1587,16 @@
             <span class="text-2xs font-medium">{{ __('Sign up') }}</span>
         </a>
         @else
-        {{-- Share with other teachers. Next to Publish because they are the pair of visibility
-             decisions, but deliberately separate: Publish decides whether a CLASS can play this,
-             Share decides whether other TEACHERS can find and copy it. Heroicons outline, 24x24,
-             stroke 1.5 — the house standard. --}}
-        <button type="button" wire:click="toggleSharing"
-                class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 transition hover:bg-slate-800 {{ $lesson->is_public ? 'text-primary' : 'text-slate-300 hover:text-primary' }}"
-                data-tooltip="{{ $lesson->is_public ? __('Shared with every teacher. Click to make private.') : __('Share with every teacher') }}"
-                aria-pressed="{{ $lesson->is_public ? 'true' : 'false' }}"
-                aria-label="{{ __('Share with every teacher') }}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z" />
-            </svg>
-            <span class="text-2xs leading-none">{{ $lesson->is_public ? __('Shared') : __('Share') }}</span>
-        </button>
-
-        {{-- Publish — now, or schedule for later (every scene must be ready) --}}
-        <div x-data="{ open: false, when: '' }" class="relative" @click.outside="open = false" @keydown.escape.window="open = false">
+        {{-- Publish — who can see this lesson: share it with other teachers, publish it to a class
+             now, or schedule that. Share lives here because it is the other visibility decision:
+             Publish decides whether a CLASS can play it, Share whether other TEACHERS can find
+             and copy it. `shared` is local because the toolbar is wire:ignore and never
+             re-renders; it takes the server's answer, since sharing can be refused. --}}
+        <div x-data="{ open: false, when: '', shared: @js((bool) $lesson->is_public) }" class="relative" @click.outside="open = false" @keydown.escape.window="open = false">
             <button type="button" @click="open = !open"
                     class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-slate-300 transition hover:bg-slate-800 hover:text-primary"
                     :class="open && 'bg-primary/15 text-primary'"
-                    title="{{ __('Publish this lesson') }}" aria-label="{{ __('Publish') }}">
+                    data-tooltip="{{ __('Publish') }}" aria-label="{{ __('Publish') }}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z" />
                     @php
@@ -1626,6 +1615,11 @@
             </button>
             <div x-show="open" x-transition x-cloak
                  class="absolute right-0 top-full z-70 mt-1 w-64 rounded-xl border border-slate-700 bg-base-300 p-2 text-left shadow-2xl">
+                <label class="mb-2 flex cursor-pointer items-center justify-between gap-3 border-b border-slate-700/50 px-1 pb-2">
+                    <span class="text-sm text-slate-200">{{ __('Share with every teacher') }}</span>
+                    <input type="checkbox" class="toggle toggle-sm shrink-0" :checked="shared"
+                           @change="shared = await $wire.toggleSharing()" />
+                </label>
                 <button type="button" @click="open = false; Livewire.dispatch('lesson:publish')"
                         class="flex w-full items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-slate-950 transition hover:brightness-110">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-4 w-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z"/></svg>
@@ -1652,19 +1646,6 @@
         </div>
         @endif
 
-        {{-- Help sits apart, past Publish: Format, Settings and Publish all act on THIS lesson,
-             and Help leaves it entirely (a new tab, the help centre). Grouping it with the three
-             made it look like a fourth thing you do to the lesson. The rule is the same as the
-             panels': the editor carries controls and short labels, and the how-to lives here. --}}
-        <div class="mx-1 my-1.5 w-px bg-slate-700"></div>
-        <a href="{{ route('help.index') }}#edit" target="_blank" rel="noopener"
-           class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-primary"
-           data-tooltip="{{ __('How the editor works') }}" aria-label="{{ __('Help') }}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
-            </svg>
-            <span class="text-2xs font-medium">{{ __('Help') }}</span>
-        </a>
         </div>
     </div>
 
@@ -2696,8 +2677,9 @@
                 _headerOffset: 64,
 
                 inspectorBodyStyle() {
-                    // viewport − header − card title bar
-                    return `max-height:${window.innerHeight - this._headerOffset - 44}px;`;
+                    // viewport − header − the Selection/Lesson tabs above the body
+                    const tabs = this.$refs.inspectorTabs?.offsetHeight ?? 44;
+                    return `max-height:${window.innerHeight - this._headerOffset - tabs}px;`;
                 },
 
                 toggleInspector() {
