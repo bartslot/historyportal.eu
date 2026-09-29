@@ -227,15 +227,16 @@
                                 <li class="my-1 border-t border-slate-800"></li>
                             @endif
 
+                            {{-- The button is the menu item itself; the form lives outside the <li>. With the
+                                 form as the item, DaisyUI painted a block around it AND the button painted
+                                 its own, which read as a bug. Red text only, no hover block. --}}
                             <li>
-                                <form method="POST" action="{{ route('logout') }}" class="w-full">
-                                    @csrf
-                                    <button type="submit" class="w-full text-left text-sm text-slate-300 hover:bg-slate-800 hover:text-error">
-                                        {{ __('Sign out') }}
-                                    </button>
-                                </form>
+                                <button type="submit" form="nav-logout-form" class="w-full text-left text-sm text-slate-300 hover:bg-transparent hover:text-error focus-visible:bg-transparent focus-visible:text-error">
+                                    {{ __('Sign out') }}
+                                </button>
                             </li>
                         </ul>
+                        <form id="nav-logout-form" method="POST" action="{{ route('logout') }}" class="hidden">@csrf</form>
                     </div>
 
                     {{-- Below lg the nav links collapse in here, and it sits last: the menu
