@@ -302,7 +302,8 @@ export const animationTimeline = (config = {}) => ({
    * is exactly how it read.
    */
   get nothingToPlay () {
-    return !this.tracks.some((t) => sortedKeys(t).length >= 2)
+    return !this.tracks.some((t) => sortedKeys(t).length >= 2) &&
+      !this.objects.some((o) => o.kind === 'dio' && this.dioramaClip(o.target))
   },
 
   toggleGroup (target) {

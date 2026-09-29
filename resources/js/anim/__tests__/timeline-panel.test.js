@@ -31,7 +31,7 @@ beforeEach(() => {
   window.__lessonTextLayer = { _texts: [{ id: 1, kind: 'text', x: 12, y: 15 }], patch: vi.fn() }
 })
 
-afterEach(() => { delete window.__lessonTextLayer })
+afterEach(() => { delete window.__lessonTextLayer; delete window.__diorama })
 
 describe('setValue records a keyframe at the playhead', () => {
   it('adds one when the property is animated and the playhead has moved off the last key', () => {
@@ -125,6 +125,13 @@ describe('setValue records a keyframe at the playhead', () => {
     p.time = 3.601
     p.setValue(TEXT, 'x', 40)
 
+    expect(p.nothingToPlay).toBe(false)
+  })
+
+  it('a diorama figure with a path plays, with no keyframe tracks at all', () => {
+    window.__diorama = { items: () => [{ id: 'sailor_1', keys: [{ t: 0, cell: [0, 0] }, { t: 3, cell: [6, 0] }] }] }
+    const p = panel()
+    p.objects = [{ target: 'dio:sailor_1', kind: 'dio' }]
     expect(p.nothingToPlay).toBe(false)
   })
 })

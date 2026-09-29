@@ -1,9 +1,9 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import laravel from 'laravel-vite-plugin';
 import tailwindcss from '@tailwindcss/vite';
 import { fileURLToPath } from 'node:url';
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
     plugins: [
         laravel({
             input: ['resources/css/app.css', 'resources/js/app.js', 'resources/js/argument-map.js', 'resources/js/lesson-player.js', 'resources/js/timemap/index.js', 'resources/js/lesson-map.js', 'resources/js/voyage-tour.js', 'resources/js/gallery-scene.js'],
@@ -28,7 +28,8 @@ export default defineConfig({
             ignored: ['**/storage/framework/views/**', fileURLToPath(new URL('./.claude/**', import.meta.url))],
         },
         proxy: {
-            '/fonts': 'http://127.0.0.1:8000',
+            // This tree's own app server (APP_URL): a worktree on another port has no :8000.
+            '/fonts': loadEnv(mode, process.cwd(), '').APP_URL || 'http://127.0.0.1:8000',
         },
     },
-});
+}));
