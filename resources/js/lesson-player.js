@@ -39,6 +39,7 @@ import { buildCues, cueAt, lineCues } from './scene/captions.js'
 import { createBackgroundMusic } from './scene/background-music.js'
 import { Sfx } from './scene/sfx.js'
 import { captionVisible } from './scene/SceneOverlay.js'
+import { gradientCss } from './scene/background-gradient.js'
 import { t } from './i18n.js'
 import { mountBigCountdown } from './big-countdown.js'
 
@@ -691,7 +692,7 @@ Alpine.data('lessonGame', (lesson) => ({
     },
 
     // No image on this scene: a solid brand-navy backdrop instead of a stale leftover photo.
-    _showFlatColor (color) {
+    _showFlatColor (color, gradient = null) {
       this._destroyParallax()
       if (_bgCanvas) _bgCanvas.style.opacity = '0'
       const bgLayer = document.getElementById('background-layer')
@@ -700,7 +701,8 @@ Alpine.data('lessonGame', (lesson) => ({
 
       const el = this._bgActive === 'A' ? this._bgLayerB : this._bgLayerA
       if (!el) return
-      el.style.backgroundImage = 'none'
+      // A gradient paints over the colour; without one it is the plain colour (brand navy by default).
+      el.style.backgroundImage = gradientCss(gradient) || 'none'
       el.style.backgroundColor = color || '#0f172a'
       el.style.transform = 'none'
       el.style.opacity = '1'
@@ -1025,7 +1027,7 @@ Alpine.data('lessonGame', (lesson) => ({
             // shots entries carry image_url + anchor_sentence, plus optional bg_url/hero_url
             // (layered parallax shots, E3b) — the whole array passes through untouched.
             shots: s.shots ?? null, alignment: s.alignment ?? null,
-            background_color: s.background_color ?? null,
+            background_color: s.background_color ?? null, background_gradient: s.background_gradient ?? null,
             kb_animated: s.kb_animated, kb_direction: s.kb_direction ?? null,
             quiz_questions: s.quiz_questions ?? null,
             quiz_shuffle: s.quiz_shuffle ?? 'per_player',
@@ -1396,7 +1398,7 @@ Alpine.data('lessonGame', (lesson) => ({
           this._showShot(scene.shots?.[0], scene.image_url)     // flat 2D Ken Burns, or layered when the shot has bg_url
         }
       } else if (scene.kind !== 'map') {
-        this._showFlatColor(scene.background_color)
+        this._showFlatColor(scene.background_color, scene.background_gradient)
       }
 
       // No narration audio (e.g. a not-yet-narrated scene): hold on the visual for its set duration
@@ -1447,7 +1449,7 @@ Alpine.data('lessonGame', (lesson) => ({
       if (scene.image_url || scene.shots?.length) {
         this._showShot(scene.shots?.[0], scene.image_url)
       } else {
-        this._showFlatColor(scene.background_color)
+        this._showFlatColor(scene.background_color, scene.background_gradient)
       }
       if (scene.audio_url) {
         this._startNarration(scene, { onEnded: () => this._afterSceneAudio(index, scene) })
@@ -1695,7 +1697,7 @@ Alpine.data('lessonGame', (lesson) => ({
     _playVideoScene (index, scene) {
       if (this._audio && !this._audio.paused) { this._audio.pause(); this.audioPlaying = false }
       this._teardownStageScene()   // a map/gallery stage from the scene before would cover the film
-      if (!scene.config?.bg_embed?.src) { this._showFlatColor(scene.background_color) }
+      if (!scene.config?.bg_embed?.src) { this._showFlatColor(scene.background_color, scene.background_gradient) }
       this.showMapContinue = true
     },
 

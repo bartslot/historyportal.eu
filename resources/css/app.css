@@ -949,6 +949,12 @@
     z-index: 1;
 }
 
+/* The editor's Settings drawer, once dragged wider or narrower: that width wins over its per-kind
+   default. On <html> because Livewire rewrites the aside's own style on every morph. */
+html[data-inspector-w] aside[data-resizable-drawer] {
+    width: var(--inspector-w) !important;
+}
+
 /* Room for a card's hover lift and shadow. Flickity sizes the viewport to the tallest cell and
    clips at that edge, so a card rising 4px lost its top and its shadow was cut flat. Content-box
    so the padding adds to Flickity's inline height instead of eating it; the slider (absolute,

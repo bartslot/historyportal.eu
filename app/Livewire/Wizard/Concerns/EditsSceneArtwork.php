@@ -219,7 +219,7 @@ trait EditsSceneArtwork
      * teacher's manually-placed clipart. Returns null when there is no clipart to preserve — the
      * caller then keeps the simpler flat-background behaviour (shots = null).
      */
-    private function shotsPreservingArtwork(Scene $scene, string $newImagePath): ?array
+    private function shotsPreservingArtwork(Scene $scene, ?string $newImagePath): ?array
     {
         $assetLayers = collect($scene->shots[0]['layers'] ?? [])
             ->filter(fn ($l) => ($l['asset_id'] ?? null) !== null)

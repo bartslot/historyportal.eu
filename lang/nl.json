@@ -1576,5 +1576,11 @@
     "auto-picked": "automatisch gekozen",
     "Add images to the lesson to choose one.": "Voeg afbeeldingen toe aan de les om er een te kiezen.",
     "Poster": "Poster",
-    "Selection": "Selectie"
+    "Selection": "Selectie",
+    "Gradient": "Kleurverloop",
+    "From": "Van",
+    "To": "Naar",
+    "Video link": "Videolink",
+    "Background": "Achtergrond",
+    "That doesn't look like a YouTube or Vimeo link.": "Dat lijkt geen YouTube- of Vimeo-link."
 }

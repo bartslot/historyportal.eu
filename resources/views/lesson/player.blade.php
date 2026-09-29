@@ -143,6 +143,7 @@
                 'alignment'   => $s->audio_alignment ?: null,
                 'duration_seconds' => $s->duration_seconds,
                 'background_color' => $s->background_color,
+                'background_gradient' => $s->config['background_gradient'] ?? null,
                 // Same deliberate trade-off as lesson-level quiz_questions above:
                 // correct_index is client-visible; grading stays client-side for v1.
                 'quiz_questions' => $s->kind === 'game'

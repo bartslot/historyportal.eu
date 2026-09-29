@@ -1532,5 +1532,11 @@
     "auto-picked": "scelta automatica",
     "Add images to the lesson to choose one.": "Aggiungi immagini alla lezione per sceglierne una.",
     "Poster": "Poster",
-    "Selection": "Selezione"
+    "Selection": "Selezione",
+    "Gradient": "Sfumatura",
+    "From": "Da",
+    "To": "A",
+    "Video link": "Link del video",
+    "Background": "Sfondo",
+    "That doesn't look like a YouTube or Vimeo link.": "Non sembra un link di YouTube o Vimeo."
 }

@@ -5,6 +5,7 @@ import { mountEmbedBg, embedBgSignature } from './embed-bg.js'
 import { isClipartLayer } from './layer-filters.js'
 import { fitToPlate, plateAspect } from './plate-box.js'
 import { t } from '../i18n.js'
+import { gradientCanvas } from './background-gradient.js'
 
 /**
  * Push every alignment entry earlier by VISEME_LEAD_SECONDS. The avatar player
@@ -124,6 +125,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                         kbAnimated: payload.kbAnimated,
                         kbDirection: payload.kbDirection,
                         backgroundColor: payload.backgroundColor,
+                        gradient: payload.backgroundGradient ?? payload.config?.background_gradient,
                         focus: payload.focus ?? payload.config?.background_focus,
                         fit: payload.fit ?? payload.config?.background_fit,
                         layers: firstShot?.layers ?? null,
@@ -433,7 +435,15 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         if (!url) {
             kenBurnsState = null
             if (activePlayer._skyboxSphere) activePlayer._skyboxSphere.visible = false
-            activePlayer._scene.background = new THREE.Color(motion.backgroundColor || '#0f172a')
+            // A gradient, drawn the way the player's CSS draws it (background-gradient.js); else the colour.
+            const canvas = gradientCanvas(motion.gradient)
+            if (canvas) {
+                const tex = new THREE.CanvasTexture(canvas)
+                tex.colorSpace = THREE.SRGBColorSpace
+                activePlayer._scene.background = tex
+            } else {
+                activePlayer._scene.background = new THREE.Color(motion.backgroundColor || '#0f172a')
+            }
             return
         }
         try {

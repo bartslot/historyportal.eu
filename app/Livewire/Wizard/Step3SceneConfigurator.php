@@ -15,6 +15,7 @@ use App\Livewire\Wizard\Concerns\BlocksGuestDemoSpending;
 use App\Livewire\Wizard\Concerns\DuplicatesSceneObjects;
 use App\Livewire\Wizard\Concerns\EditsQuizQuestions;
 use App\Livewire\Wizard\Concerns\EditsSceneArtwork;
+use App\Livewire\Wizard\Concerns\EditsSceneBackground;
 use App\Livewire\Wizard\Concerns\EditsStoryGame;
 use App\Livewire\Wizard\Concerns\EditsTitleScreen;
 use App\Models\AnimationClip;
@@ -50,6 +51,7 @@ class Step3SceneConfigurator extends Component
     use DuplicatesSceneObjects;
     use EditsQuizQuestions;
     use EditsTitleScreen;
+    use EditsSceneBackground;
     use EditsSceneArtwork;
     use EditsStoryGame;
     use WithFileUploads;
@@ -397,6 +399,7 @@ class Step3SceneConfigurator extends Component
             'skyboxBlur' => (float) ($scene->skybox_blur ?? 0.5),
             'skyboxOpacity' => (float) ($scene->skybox_opacity ?? 1.0),
             'backgroundColor' => (string) ($scene->background_color ?? '#000000'),
+            'backgroundGradient' => $scene->config['background_gradient'] ?? null,
             'kbAnimated' => (bool) ($scene->kb_animated ?? true),
             'kbDirection' => $scene->kb_direction,
             'focus' => $scene->config['background_focus'] ?? null,   // 'top' for portraits

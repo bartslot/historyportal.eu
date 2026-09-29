@@ -47,7 +47,7 @@
              each has up to four colour-coded options (A/B/C/D) with exactly one marked correct. This
              is the actual quiz content — the field below is only the spoken intro, not the questions. --}}
         @php $letters = ['A', 'B', 'C', 'D']; $palette = ['#e11d48', '#0284c7', '#fcd34d', '#059669']; @endphp
-        <div class="space-y-3 border-t border-white/10 pt-3">
+        <div data-quiz-section class="space-y-3 border-t border-white/10 pt-3">
             <div class="flex items-center justify-between">
                 <p class="text-xs uppercase tracking-wider text-slate-400">Quiz questions</p>
                 <span class="text-2xs text-slate-500">{{ count($quizDraft) }} total</span>

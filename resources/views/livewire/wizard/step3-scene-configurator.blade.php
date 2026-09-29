@@ -555,6 +555,7 @@
             window.__objScene = {
                 sceneId: p.sceneId,   // the copy/paste keys remember which scene an object came from
                 kind: p.kind,
+                gameType: p.gameType || null,   // a quiz lists its Quiz as an object
                 hasGallery: !!(_gal.title || _gal.story || (_gal.images && _gal.images.length) || (_vcfg.stop_images && _vcfg.stop_images.length)),
             }
             try { window.dispatchEvent(new CustomEvent('objscene-changed')) } catch (_) { /* noop */ }
@@ -911,11 +912,39 @@
            x-init="$nextTick(() => window.dispatchEvent(new CustomEvent('inspector-state', { detail: { open: inspectorOpen, view: '{{ $panelView }}' } })))"
            x-on:inspector-state-request.window="window.dispatchEvent(new CustomEvent('inspector-state', { detail: { open: inspectorOpen, view: '{{ $panelView }}' } }))"
            style="right:0; left:auto; top:64px; bottom:0;"
+           data-resizable-drawer
            class="card card-compact fixed z-50 overflow-hidden rounded-none border border-r-0 border-t-0 border-slate-700 bg-base-300 shadow-2xl
                   {{-- 19.375rem is the Figma panel's 310px. The old 16rem was narrow enough that a
                        row label and its control competed for the same space, which is where the
                        three different label widths came from. --}}
                   {{ $inspectorSceneModel?->kind === 'game' ? 'w-[min(48rem,calc(100vw-1rem))]' : 'w-[min(19.375rem,calc(100vw-1rem))]' }}">
+        {{-- Drag the left edge to resize the drawer; double-click it for the default width again.
+             The width lives on <html> (--inspector-w, remembered per browser), not on this aside:
+             every Livewire morph rewrites the aside's own style attribute. The stage follows by
+             itself (the --work-right sync measures the aside). --}}
+        <div aria-hidden="true"
+             class="absolute inset-y-0 left-0 z-20 w-1.5 cursor-col-resize transition-colors hover:bg-primary/40"
+             x-data="{
+                set(w) {
+                    const root = document.documentElement
+                    if (w === null) { root.style.removeProperty('--inspector-w'); delete root.dataset.inspectorW; return }
+                    root.style.setProperty('--inspector-w', w + 'px'); root.dataset.inspectorW = ''
+                },
+                drag() {
+                    const move = (e) => {
+                        const w = Math.round(Math.min(Math.max(window.innerWidth - e.clientX, 280), window.innerWidth * 0.75))
+                        this.set(w)
+                        try { localStorage.setItem('wizard.inspector.w', String(w)) } catch (_) {}
+                    }
+                    const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); document.body.style.userSelect = '' }
+                    document.body.style.userSelect = 'none'
+                    window.addEventListener('pointermove', move)
+                    window.addEventListener('pointerup', up)
+                },
+             }"
+             x-init="(() => { let w = null; try { w = Number(localStorage.getItem('wizard.inspector.w')) || null } catch (_) {} ; if (w) set(w) })()"
+             @pointerdown.prevent="drag()"
+             @dblclick="set(null); try { localStorage.removeItem('wizard.inspector.w') } catch (_) {}"></div>
         {{-- One panel, two subjects: what is selected on the stage, or the lesson as a whole.
              These tabs replaced the toolbar's separate Format and Settings buttons. Selecting
              anything on the stage switches back to Selection by itself (panelView 'scene'). --}}
@@ -1132,6 +1161,7 @@
         photo:  '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M2.25 15.75L7.409 10.591C7.61793 10.3821 7.86597 10.2163 8.13896 10.1033C8.41194 9.99018 8.70452 9.93198 9 9.93198C9.29548 9.93198 9.58806 9.99018 9.86104 10.1033C10.134 10.2163 10.3821 10.3821 10.591 10.591L15.75 15.75M14.25 14.25L15.659 12.841C15.8679 12.6321 16.116 12.4663 16.389 12.3533C16.6619 12.2402 16.9545 12.182 17.25 12.182C17.5455 12.182 17.8381 12.2402 18.111 12.3533C18.384 12.4663 18.6321 12.6321 18.841 12.841L21.75 15.75M3.75 19.5H20.25C20.6478 19.5 21.0294 19.342 21.3107 19.0607C21.592 18.7794 21.75 18.3978 21.75 18V6C21.75 5.60218 21.592 5.22064 21.3107 4.93934C21.0294 4.65804 20.6478 4.5 20.25 4.5H3.75C3.35218 4.5 2.97064 4.65804 2.68934 4.93934C2.40804 5.22064 2.25 5.60218 2.25 6V18C2.25 18.3978 2.40804 18.7794 2.68934 19.0607C2.97064 19.342 3.35218 19.5 3.75 19.5ZM14.625 8.25C14.625 8.66421 14.2892 9 13.875 9C13.4608 9 13.125 8.66421 13.125 8.25C13.125 7.83579 13.4608 7.5 13.875 7.5C14.2892 7.5 14.625 7.83579 14.625 8.25Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
         solid:  '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M20.0049 19.6379H9.00488C8.73967 19.6379 8.48531 19.5325 8.29778 19.345C8.11024 19.1574 8.00488 18.9031 8.00488 18.6379V10.6379C8.00488 10.3727 8.11024 10.1183 8.29778 9.93077C8.48531 9.74324 8.73967 9.63788 9.00488 9.63788H20.0049C20.2701 9.63788 20.5245 9.74324 20.712 9.93077C20.8995 10.1183 21.0049 10.3727 21.0049 10.6379V18.6379C21.0049 18.9031 20.8995 19.1574 20.712 19.345C20.5245 19.5325 20.2701 19.6379 20.0049 19.6379Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M14.1345 9.6989C14.1345 6.75148 11.7451 4.36212 8.79772 4.36212C5.8503 4.36212 3.46095 6.75148 3.46095 9.6989C3.44224 11.3303 4.45651 14.5767 8.41688 14.5767" stroke="currentColor" stroke-width="1.5"/></svg>',
         map:    '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M9 6.75 3.75 4.5v12.75L9 19.5m0-12.75 6 2.25m-6-2.25v12.75m6-10.5 5.25-2.25V15L15 17.25m0-10.5v10.5m0 0-6-2.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        quiz:   '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M9 12l2 2 4-4m-9 8h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     };
     // Object list — reads the live text layer (title/text boxes + backing panels) so the teacher
     // can find, flash-locate, and restack objects that overlap on the stage.
@@ -1197,7 +1227,12 @@
                     items.push({ id: '__gallery__', icon: 'photo', label: 'Gallery', bg: true, voyage: 'gallery' });
                     items.push({ id: '__waypoint__', icon: 'map', label: 'Waypoint', bg: true, voyage: 'waypoint' });
                 } else {
-                    items.push({ id: '__bg__', icon: 'photo', label: objKind === 'gallery' ? 'Slideshow' : 'Background', bg: true });
+                    // A quiz is an object on its scene too: its row opens the questions. Pinned like
+                    // the background (bg: true = no drag, no delete), just above it.
+                    if (objKind === 'game' && (window.__objScene || {}).gameType === 'quiz') {
+                        items.push({ id: '__quiz__', icon: 'quiz', label: @js(__('Quiz')), bg: true, section: 'quiz' });
+                    }
+                    items.push({ id: '__bg__', icon: 'photo', label: objKind === 'gallery' ? 'Slideshow' : @js(__('Background')), bg: true, section: 'bg' });
                 }
                 // Skip the re-render (and its churn under SortableJS) when nothing actually changed —
                 // the 2s poll would otherwise rebuild identical rows and fight the drag layer.
@@ -1273,7 +1308,7 @@
                 }
                 if (obj.bg) {
                     window.__lessonTextLayer?.select?.('__bg__');   // clears any canvas object ring
-                    this.locate(obj);                                // route to the Background inspector
+                    this.locate(obj);                                // open Settings on its section
                     return;
                 }
                 if (obj.art) {
@@ -1304,17 +1339,21 @@
             },
             locate(obj) {
                 if (obj.bg) {
-                    // Route to the Background settings in the inspector (scroll + flash them).
-                    const insp = document.querySelector('aside[x-ref="inspectorPanel"]');
-                    const label = insp && [...insp.querySelectorAll('*')].find(
-                        (el) => el.children.length === 0 && el.textContent.trim().toUpperCase() === 'BACKGROUND');
-                    const target = label?.parentElement || label;
-                    if (target) {
+                    // Open Settings on the Selection tab, then scroll to and flash the row's section
+                    // (the background controls, or the quiz questions). Opening was missing: the
+                    // row used to scroll a panel that might not even be showing.
+                    window.dispatchEvent(new CustomEvent('inspector-open'));
+                    const panel = () => document.querySelector('aside[x-ref="inspectorPanel"]');
+                    const find = () => panel()?.querySelector(obj.section === 'quiz' ? '[data-quiz-section]' : '[data-bg-section]');
+                    const flash = (target) => {
                         target.scrollIntoView({ block: 'center', behavior: 'smooth' });
                         target.style.transition = 'box-shadow .2s';
                         target.style.boxShadow = '0 0 0 2px #38bdf8';
                         setTimeout(() => { target.style.boxShadow = ''; }, 900);
-                    }
+                    };
+                    if (find()) { flash(find()); return; }
+                    // Not rendered yet (the Lesson tab was showing): switch, then look again.
+                    this.$wire.call('openFormat').then(() => { const t = find(); if (t) flash(t); });
                     return;
                 }
                 const node = document.querySelector(`[data-text-id="${obj.id}"]`);
@@ -1544,21 +1583,19 @@
         </div>
         </div>
 
-        {{-- Help, centred: it leaves the lesson (a new tab, the help centre), so it stands
-             apart from both the tools on the left and the lesson actions on the right. The rule
-             is the same as the panels': the editor carries controls and short labels, and the
-             how-to lives here. --}}
+        {{-- Right group: Help | Settings, then Publish in the far corner --}}
+        <div class="flex items-stretch gap-0.5">
+        {{-- Help leaves the lesson (a new tab, the help centre), so a divider keeps it apart from
+             the two things you do TO the lesson. Bart tried it centred first: it read as weird. --}}
         <a href="{{ route('help.index') }}#edit" target="_blank" rel="noopener"
-           class="absolute left-1/2 top-1/2 flex w-14 -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-primary"
+           class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-primary"
            data-tooltip="{{ __('How the editor works') }}" aria-label="{{ __('Help') }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
             </svg>
             <span class="text-2xs font-medium">{{ __('Help') }}</span>
         </a>
-
-        {{-- Right group: Settings, then Publish in the far corner --}}
-        <div class="flex items-stretch gap-0.5">
+        <div class="mx-1 my-1.5 w-px bg-slate-700"></div>
         {{-- Settings — the one panel. What it shows is picked by the tabs at its top: the
              selection (scene, layer, text, background, quiz, title screen) or the lesson. This
              used to be two buttons, Format and Settings, for one panel. --}}

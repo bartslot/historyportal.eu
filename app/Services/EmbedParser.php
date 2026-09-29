@@ -112,7 +112,7 @@ class EmbedParser
      * Build the final video iframe src with the scene's playback settings applied per provider.
      *
      * @param  array{provider?:string,src?:string}  $embed
-     * @param  array{autoplay?:bool,start?:int,end?:int,controls?:bool}  $opts
+     * @param  array{autoplay?:bool,start?:int,end?:int,controls?:bool,loop?:bool}  $opts
      */
     public function embedVideoSrc(array $embed, array $opts = []): string
     {
@@ -124,6 +124,7 @@ class EmbedParser
         $controls = array_key_exists('controls', $opts) ? (bool) $opts['controls'] : true;
         $start = max(0, (int) ($opts['start'] ?? 0));
         $end = max(0, (int) ($opts['end'] ?? 0));
+        $loop = ! empty($opts['loop']);   // a background video plays on a loop
 
         $params = [];
         $hash = '';
@@ -141,12 +142,19 @@ class EmbedParser
                 if ($end > $start) {
                     $params['end'] = $end;
                 }
+                if ($loop && ! empty($embed['id'])) {
+                    $params['loop'] = 1;
+                    $params['playlist'] = $embed['id'];   // YouTube only loops a playlist, even of one
+                }
                 break;
             case 'vimeo':
                 $params['autoplay'] = $autoplay ? 1 : 0;
                 $params['muted'] = $autoplay ? 1 : 0;
                 $params['controls'] = $controls ? 1 : 0;
                 $params['playsinline'] = 1;
+                if ($loop) {
+                    $params['loop'] = 1;
+                }
                 if ($start > 0) {
                     $hash = '#t='.$start.'s';   // Vimeo takes start via the fragment
                 }

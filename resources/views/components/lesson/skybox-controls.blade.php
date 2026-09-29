@@ -21,6 +21,16 @@
     $srcDefault     = $bgKind === 'painting' ? 'paintings' : ($bgKind === 'url' ? 'url' : 'ai');
     $backgroundFit  = ($scene->config['background_fit'] ?? 'cover') === 'contain' ? 'contain' : 'cover';
     $backgroundImageUrl = \App\Support\MediaUrl::versioned($scene->image_path, $scene->updated_at?->timestamp);
+    $bgEmbed        = ($scene->config ?? [])['bg_embed'] ?? null;
+    $gradient       = ($scene->config ?? [])['background_gradient'] ?? null;
+    $bgType         = match (true) {
+        ($bgEmbed['kind'] ?? '') === 'sketchfab' => '3d',
+        ! empty($bgEmbed['src'])                 => 'video',
+        ! empty($scene->image_path)              => 'image',
+        is_array($gradient)                      => 'gradient',
+        default                                  => 'color',
+    };
+    $gradientDraft  = is_array($gradient) ? $gradient : ['from' => $bgColor, 'to' => '#0f172a', 'angle' => 180];
 @endphp
 
 <div class="mt-2 space-y-3"
@@ -108,18 +118,59 @@
             </p>
         </div>
 
-        {{-- Background — how this scene is filled. Keynote model: a scene has ONE
-             background (image / video / 3D). Clipart and other objects go ON TOP via
-             the Insert tools, not here. --}}
-        {{-- Video is NOT a background: a film needs its own transport and its own place in the
-             running order, so it is a scene type of its own (Add ▸ Video). --}}
-        <div x-data="{ bgType: @js($srcDefault === '3d' ? '3d' : 'image'), imgSrc: @js(in_array($srcDefault, ['ai', 'paintings', 'url'], true) ? $srcDefault : 'ai'), promptOpen: false }" class="space-y-2">
-            {{-- Background type — a dropdown (Figma "Background image"). --}}
-            <select x-model="bgType"
+        {{-- Background — how this scene is filled, ONE thing at a time (Keynote model):
+             a colour, an image, a gradient, a video or a 3D model. Objects go ON TOP via the Add
+             tools, not here. Switching the dropdown only shows that type's controls; nothing is
+             replaced until a value is set, so a mis-click never wipes a picture.
+             A video background is an iframe (YouTube/Vimeo), never hosted by us, muted and
+             looping. A film the class WATCHES is still a Video scene (Add ▸ Video). --}}
+        <div data-bg-section x-data="{ bgType: @js($bgType), imgSrc: @js(in_array($srcDefault, ['ai', 'paintings', 'url'], true) ? $srcDefault : 'ai'), promptOpen: false }" class="space-y-2">
+            <select x-model="bgType" aria-label="{{ __('Background') }}"
                     class="select select-sm select-bordered w-full bg-base-100 font-medium text-slate-200">
-                <option value="image">{{ __('Background image') }}</option>
-                <option value="3d">{{ __('3D background') }}</option>
+                <option value="color">{{ __('Colour') }}</option>
+                <option value="image">{{ __('Image') }}</option>
+                <option value="gradient">{{ __('Gradient') }}</option>
+                <option value="video">{{ __('Video') }}</option>
+                <option value="3d">{{ __('3D model') }}</option>
             </select>
+
+            {{-- Colour --}}
+            <div x-show="bgType === 'color'" x-cloak class="flex items-center gap-2">
+                <input type="color" value="{{ $bgColor }}" aria-label="{{ __('Colour') }}"
+                       @change="$wire.setBackgroundColor($event.target.value)"
+                       class="h-8 w-12 cursor-pointer rounded border border-slate-600 bg-transparent" />
+                <span class="font-mono text-xs text-slate-400">{{ $bgColor }}</span>
+            </div>
+
+            {{-- Gradient: two colours and a direction; the swatch previews it before it is saved. --}}
+            <div x-show="bgType === 'gradient'" x-cloak x-data="{ g: @js($gradientDraft), save() { $wire.setBackgroundGradient(this.g.from, this.g.to, Number(this.g.angle)) } }" class="space-y-2">
+                <div class="h-10 rounded-md ring-1 ring-slate-700" :style="`background: linear-gradient(${g.angle}deg, ${g.from}, ${g.to})`"></div>
+                <div class="flex items-center gap-2">
+                    <input type="color" x-model="g.from" @change="save()" aria-label="{{ __('From') }}"
+                           class="h-8 w-10 cursor-pointer rounded border border-slate-600 bg-transparent" />
+                    <input type="color" x-model="g.to" @change="save()" aria-label="{{ __('To') }}"
+                           class="h-8 w-10 cursor-pointer rounded border border-slate-600 bg-transparent" />
+                    <input type="range" min="0" max="359" step="1" x-model.number="g.angle" @change="save()"
+                           aria-label="{{ __('Angle') }}" class="range range-xs flex-1" />
+                    <span class="w-10 text-right font-mono text-xs text-slate-400" x-text="`${g.angle}°`"></span>
+                </div>
+            </div>
+
+            {{-- Video: a YouTube or Vimeo link, shown in an iframe behind everything. --}}
+            <div x-show="bgType === 'video'" x-cloak class="space-y-2" x-data="{ link: '' }">
+                <div class="flex gap-1.5">
+                    <input type="url" x-model="link" placeholder="https://www.youtube.com/watch?v=…" aria-label="{{ __('Video link') }}"
+                           class="input input-xs input-bordered flex-1 bg-slate-900" />
+                    <button type="button" @click="if (link.trim()) { $wire.setBackgroundVideo(link); link = '' }"
+                            class="btn btn-xs btn-neutral">{{ __('Set') }}</button>
+                </div>
+                @if ($bgType === 'video')
+                    <div class="aspect-video overflow-hidden rounded-lg ring-1 ring-slate-700">
+                        <iframe src="{{ $bgEmbed['src'] }}" class="h-full w-full" style="border:0" allow="autoplay; fullscreen" allowfullscreen></iframe>
+                    </div>
+                    <button type="button" wire:click="clearBgEmbed" class="text-2xs text-error/80 underline hover:text-error">{{ __('Remove video') }}</button>
+                @endif
+            </div>
 
           {{-- Image — where the background image comes from: AI, a painting, or a drawing --}}
           <div x-show="bgType === 'image'" x-cloak class="space-y-2">
@@ -267,8 +318,6 @@
                 <p class="text-2xs text-slate-500">{{ __('The scene draws itself as an ink line-art animation (sets the render mode to Drawing).') }}</p>
             </div>
           </div>{{-- /image sub-sources --}}
-
-            @php $bgEmbed = ($scene->config ?? [])['bg_embed'] ?? null; @endphp
 
             {{-- 3D — Sketchfab model as the scene background --}}
             <div x-show="bgType === '3d'" x-cloak class="space-y-2">
