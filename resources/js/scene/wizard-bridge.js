@@ -962,9 +962,11 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         window.__diorama = _diorama       // the Icons panel drops onto it, the object list lists it
         _diorama.show(spec, { ...assets, ...(payload.dioramaAssets ?? {}) }, {
             editable: true,
-            onMove: ({ itemId, floor, cell }) => window.Livewire?.dispatch('diorama:move', { itemId, floor, cell }),
+            onMove: ({ itemId, floor, cell, keys }) => window.Livewire?.dispatch('diorama:move', { itemId, floor, cell, keys: keys ?? null }),
         })
         if (keepView) _diorama.view = keepView
+        // The object list and the timeline list what is on the stage: tell them it changed.
+        window.dispatchEvent(new CustomEvent('scene-objects-changed'))
     }
 
     function destroyWizardLayers() {

@@ -189,4 +189,32 @@ class DioramaCommandsTest extends TestCase
 
         $this->assertSame([2, 6], $this->scene->fresh()->config['diorama']['items'][1]['cell']);
     }
+
+    public function test_moving_an_item_with_a_path_saves_the_shifted_path(): void
+    {
+        $this->artisan('diorama:import', ['scene' => $this->scene->id, 'file' => $this->example()])->assertSuccessful();
+        $keys = [['t' => 0, 'cell' => [-2, 0]], ['t' => 4.5, 'cell' => [-2, 6.25], 'walk' => 'walk']];
+
+        Livewire::actingAs($this->teacher)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
+            ->call('selectScene', $this->scene->id)
+            ->dispatch('diorama:move', itemId: 'sailor_1', floor: 'boat.deck', cell: [-2, 0], keys: $keys);
+
+        $this->assertEquals($keys, $this->scene->fresh()->config['diorama']['items'][2]['keys']);
+    }
+
+    public function test_a_stretched_clip_saves_its_new_times_and_a_path_off_the_floor_is_refused(): void
+    {
+        $this->artisan('diorama:import', ['scene' => $this->scene->id, 'file' => $this->example()])->assertSuccessful();
+        $editor = Livewire::actingAs($this->teacher)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
+            ->call('selectScene', $this->scene->id);
+
+        $editor->dispatch('diorama:keys', itemId: 'sailor_1', keys: [['t' => 1, 'cell' => [-3, 0]], ['t' => 10, 'cell' => [-3, 6.25], 'walk' => 'walk']]);
+        $this->assertSame(10, $this->scene->fresh()->config['diorama']['items'][2]['keys'][1]['t']);
+
+        $editor->dispatch('diorama:keys', itemId: 'sailor_1', keys: [['t' => 1, 'cell' => [-3, 0]], ['t' => 5, 'cell' => [-3, 99]]])
+            ->assertDispatched('toast');
+        $this->assertSame(10, $this->scene->fresh()->config['diorama']['items'][2]['keys'][1]['t']);
+    }
 }

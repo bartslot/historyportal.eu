@@ -1535,5 +1535,7 @@
     "Scene :n": "Scena :n",
     "Assets": "Risorse",
     "Assets & Script": "Risorse e copione",
-    "No assets in this set yet.": "Ancora nessuna risorsa in questa raccolta."
+    "No assets in this set yet.": "Ancora nessuna risorsa in questa raccolta.",
+    "Walk": "Camminata",
+    "Move": "Movimento"
 }

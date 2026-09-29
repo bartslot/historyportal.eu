@@ -13,7 +13,8 @@ import { addKeyframe, sortedKeys, sameTime, segmentEasing, easingFn } from './ke
 import { keyId, moveKeys, deleteKeys, snapToNearest } from './timeline-edit.js'
 import { propertiesFor, sampleFrame, kindOfTarget } from './properties.js'
 import { wordSpans, snapTime, wordAt } from './narration-clock.js'
-import { textObjects, artObjects, readObjectProperty, writeObjectProperty, setObjectHidden } from './scene-objects.js'
+import { textObjects, artObjects, dioramaObjects, readObjectProperty, writeObjectProperty, setObjectHidden } from './scene-objects.js'
+import { clipOf, shiftClip, stretchClip } from '../scene/diorama/clip.js'
 import { isPlayPauseKey, isTypingTarget } from '../ui/keyboard.js'
 import { EASE, parseBezier, formatBezier } from '../easing.js'
 import {
@@ -269,7 +270,7 @@ export const animationTimeline = (config = {}) => ({
   refreshObjects () {
     const cameras = this.targets.filter((t) => kindOfTarget(t) === 'camera')
       .map((target) => ({ target, kind: 'camera', label: 'Camera' }))
-    this.objects = [...cameras, ...artObjects(), ...textObjects()]
+    this.objects = [...cameras, ...artObjects(), ...textObjects(), ...dioramaObjects()]
     for (const o of this.objects) if (!(o.target in this.openGroups)) this.openGroups[o.target] = true
   },
 
@@ -340,6 +341,7 @@ export const animationTimeline = (config = {}) => ({
 
   /** The union of every property's span — the object's own bar on its group row. */
   objectSpan (target) {
+    if (kindOfTarget(target) === 'dio') return this.dioramaClip(target)
     const spans = this.propertiesOf(target)
       .map((p) => this.spanOf(target, p.key))
       .filter(Boolean)
@@ -596,6 +598,56 @@ export const animationTimeline = (config = {}) => ({
       if (kindOfTarget(target) === 'camera') { if (map) applyCamera(map, values); continue }
       for (const [property, value] of Object.entries(values)) writeObjectProperty(target, property, value)
     }
+    // A diorama plays its own paths (walks, facing, depth order) from the same clock.
+    window.__diorama?.update(this.time)
+  },
+
+  // ── Diorama clips. An item's path is ONE clip: drag it to move the walk in time, drag an end
+  //    to stretch or squeeze it (Bart, 2026-09-29). The keys live in the diorama JSON, not here.
+
+  /** The item behind a `dio:<id>` target, from the live stage. */
+  dioramaItem (target) {
+    const id = String(target).slice(4)
+    return window.__diorama?.items().find((i) => i.id === id) ?? null
+  },
+
+  dioramaClip (target) { return clipOf(this.dioramaItem(target)) },
+
+  /** True when the item's picture has a walk animation: its clip is a walk, not a glide. */
+  dioramaWalks (target) {
+    const item = this.dioramaItem(target)
+    return !!(item && window.__diorama?.assets?.[item.asset]?.sheet?.anims?.walk)
+  },
+
+  startDioramaClip (event, target) {
+    if (event.button !== 0) return
+    event.stopPropagation()
+    this.pause()
+    const stage = window.__diorama
+    const item = this.dioramaItem(target)
+    if (!stage || !item?.keys?.length) return
+    const keys0 = item.keys
+    const bar = event.currentTarget.getBoundingClientRect()
+    const EDGE_PX = 8
+    const mode = event.clientX - bar.left < EDGE_PX ? 'start' : bar.right - event.clientX < EDGE_PX ? 'end' : 'move'
+    const t0 = this.rawTimeFromEvent(event)
+    let keys = keys0
+    let moved = false
+    const onMove = (e) => {
+      if (!moved && Math.abs(e.clientX - event.clientX) < DRAG_THRESHOLD_PX) return
+      moved = true
+      const dt = this.rawTimeFromEvent(e) - t0
+      keys = mode === 'move' ? shiftClip(keys0, dt)
+        : stretchClip(keys0, mode, (mode === 'end' ? keys0[keys0.length - 1].t : keys0[0].t) + dt)
+      stage.setKeys(item.id, keys)
+      stage.update(this.time)
+    }
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove)
+      if (moved) window.Livewire?.dispatch('diorama:keys', { itemId: item.id, keys })
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp, { once: true })
   },
 
   // ── Transport ───────────────────────────────────────────────────────────────────────────
@@ -922,6 +974,7 @@ export const animationTimeline = (config = {}) => ({
 
   /** Press on an object's bar: drag moves everything it does; a click selects all its keys. */
   startObjectBar (event, target) {
+    if (kindOfTarget(target) === 'dio') return this.startDioramaClip(event, target)
     if (event.button !== 0) return
     event.stopPropagation()
     this.pause()

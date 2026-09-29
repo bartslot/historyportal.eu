@@ -1932,7 +1932,7 @@
     <div x-show="$store.view.objects" x-cloak x-data="objectList()" x-init="init()"
          @scene-objects-changed.window="refresh()"
          @scene-object-selected.window="selectedId = $event.detail.id"
-         data-objlist-col :data-compact="compact ? '1' : null"
+         data-objlist-col :data-compact="$data.compact ? '1' : null"
          class="fixed z-30 overflow-hidden border-r border-slate-700 bg-slate-900"
          style="left: var(--rail-w, 11rem); width: var(--objlist-w, 13rem); top: 4rem; bottom: 0;">
         <div x-ref="list" class="h-full space-y-0.5 overflow-y-auto p-1.5">

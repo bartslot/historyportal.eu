@@ -116,19 +116,20 @@ describe('DioramaStage playback', () => {
 
 describe('DioramaStage editing', () => {
   it('dragging snaps to quarter cells on the floor and reports the move once, on release', () => {
-    const sailor = spec.items.find(i => i.id === 'sailor_1')
-    const start = feetOf(sailor)
-    pointer(el('sailor_1'), 'pointerdown', start)
-    pointer(el('sailor_1'), 'pointermove', { u: start.u - 400, v: start.v - 60 })
+    const barrel = spec.items.find(i => i.id === 'barrel_1')
+    const start = feetOf(barrel)
+    pointer(el('barrel_1'), 'pointerdown', start)
+    pointer(window, 'pointermove', { u: start.u - 200, v: start.v - 30 })
     expect(moves).toEqual([])
-    pointer(el('sailor_1'), 'pointerup', { u: start.u - 400, v: start.v - 60 })
+    pointer(window, 'pointerup', { u: start.u - 200, v: start.v - 30 })
 
     expect(moves).toHaveLength(1)
-    const [{ itemId, floor, cell }] = moves
-    expect(itemId).toBe('sailor_1')
+    const [{ itemId, floor, cell, keys }] = moves
+    expect(itemId).toBe('barrel_1')
     expect(floor).toBe('quay')
+    expect(keys).toBeUndefined()                       // a still item has no path to carry
     for (const c of cell) expect(c * 4).toBe(Math.round(c * 4))
-    expect(cell[1]).toBeGreaterThan(sailor.cell[1])    // up the picture = further away
+    expect(cell[1]).toBeGreaterThan(barrel.cell[1])    // up the picture = further away
   })
 
   it('a drag above the horizon has no floor: the item stays where it last stood', () => {
@@ -207,10 +208,10 @@ describe('DioramaStage for the editor panels', () => {
 })
 
 describe('the wall fades while the item behind it is selected', () => {
-  it('the sailor in the room: selecting him fades the wall in front, letting go restores it', () => {
-    stage._setItem('sailor_1', { cell: [-6, 32] })   // through the doorway, behind the wall
+  it('a barrel in the room: selecting it fades the wall in front, letting go restores it', () => {
+    stage._setItem('barrel_1', { cell: [-6, 32] })   // through the doorway, behind the wall
     const wall = host.querySelector('[data-diorama-layer="wall"]')
-    stage.select('sailor_1')
+    stage.select('barrel_1')
     expect(wall.style.opacity).toBe('0.3')
     stage.select(null)
     expect(wall.style.opacity).toBe('')
@@ -289,6 +290,42 @@ describe('the player\'s portrait crop follows the walking figure', () => {
     const before = stage._focusU
     stage.update(8)
     expect(stage._focusU).toBe(before)
+  })
+})
+
+describe('a keyed item in the editor', () => {
+  const sailor = () => stage.spec.items.find(i => i.id === 'sailor_1')
+
+  it('stands where its path starts when the editor has no playhead', () => {
+    const start = feetOf({ ...sailor(), cell: sailor().keys[0].cell })
+    const at = plateToStage(spec.camera, W, H, start)
+    expect(px(el('sailor_1').style.left)).toBeCloseTo(at.x, 1)
+  })
+
+  it('dragging it moves the whole path, and the move carries the new keys', () => {
+    const before = sailor().keys.map(k => k.cell)
+    const start = feetOf({ ...sailor(), cell: before[0] })
+    pointer(el('sailor_1'), 'pointerdown', start)
+    pointer(window, 'pointermove', { u: start.u - 300, v: start.v })
+    pointer(window, 'pointerup', { u: start.u - 300, v: start.v })
+    const [move] = moves
+    const dx = move.keys[0].cell[0] - before[0][0]
+    expect(dx).toBeLessThan(0)
+    move.keys.forEach((k, i) => {
+      expect(k.cell[0] - before[i][0]).toBeCloseTo(dx, 9)
+      expect(k.cell[1]).toBeCloseTo(before[i][1], 9)
+    })
+    expect(move.keys.map(k => k.t)).toEqual(sailor().keys.map(k => k.t))   // times untouched
+  })
+
+  it('setKeys shows a stretched clip at once', () => {
+    const keys = sailor().keys.map(k => ({ ...k, t: k.t * 2 }))
+    stage.setKeys('sailor_1', keys)
+    stage.update(2)
+    const at2 = px(el('sailor_1').style.left)
+    stage.setKeys('sailor_1', sailor().keys.map(k => ({ ...k, t: k.t / 2 })))
+    stage.update(2)
+    expect(px(el('sailor_1').style.left)).not.toBeCloseTo(at2, 0)
   })
 })
 

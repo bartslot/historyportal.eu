@@ -1535,5 +1535,7 @@
     "Scene :n": "Szene :n",
     "Assets": "Assets",
     "Assets & Script": "Assets & Skript",
-    "No assets in this set yet.": "Noch keine Assets in dieser Sammlung."
+    "No assets in this set yet.": "Noch keine Assets in dieser Sammlung.",
+    "Walk": "Gehen",
+    "Move": "Bewegung"
 }

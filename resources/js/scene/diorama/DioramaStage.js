@@ -4,6 +4,7 @@ import {
 } from './projection.js'
 import { poseAt, frameFor } from './timeline.js'
 import { alphaAt, loadAlphaMask, DRAWN_ALPHA } from './alpha-mask.js'
+import { shiftPath } from './clip.js'
 
 /**
  * DioramaStage — draws a diorama scene (config.diorama) into a host element: the plate, its
@@ -396,9 +397,11 @@ export class DioramaStage {
       this.select(id)
       const item = this._item(id)
       const start = this._pointerPlate(ev)
-      const feet = projectPoint(this.spec.camera, cellToWorld(this._floors.get(item.floor), item.cell))
+      const at = this._poseOf(item).cell             // where it stands now (a keyed item: at the playhead)
+      const feet = projectPoint(this.spec.camera, cellToWorld(this._floors.get(item.floor), at))
       // Grab offset: the item keeps its place under the pointer instead of jumping its feet to it.
-      this._drag = { id, du: feet.u - start.u, dv: feet.v - start.v, moved: false }
+      // A keyed item moves its WHOLE path (Bart, 2026-09-29): remember it to shift from.
+      this._drag = { id, du: feet.u - start.u, dv: feet.v - start.v, moved: false, from: at, cell0: item.cell, keys0: item.keys ?? null }
       el.style.cursor = 'grabbing'
       this._showGrid(item.floor)
       this._placeHandle()
@@ -414,8 +417,21 @@ export class DioramaStage {
       const hit = hitTest(this.spec.camera, this._floors, p.u + this._drag.du, p.v + this._drag.dv, { except: this._ownFloors(id) })
       if (!hit) return                                   // no floor here: stay on the last one
       const floor = this._floors.get(hit.floor)
+      const cell = clampCell(floor, snapCell(hit.cell, SNAP_STEP))
       this._drag.moved = true
-      this._setItem(id, { floor: hit.floor, cell: clampCell(floor, snapCell(hit.cell, SNAP_STEP)) })
+      const { keys0, from, cell0 } = this._drag
+      if (keys0?.length) {
+        // The whole path moves by one snapped step (snapping the destination instead would drag an
+        // off-grid path onto the grid), no further than keeps every key on its floor.
+        const [[x0, y0], [x1, y1]] = this._floors.get(this._item(id).floor).cells
+        const lo = [Math.min(...keys0.map(k => k.cell[0])), Math.min(...keys0.map(k => k.cell[1]))]
+        const hi = [Math.max(...keys0.map(k => k.cell[0])), Math.max(...keys0.map(k => k.cell[1]))]
+        const step = snapCell([hit.cell[0] - from[0], hit.cell[1] - from[1]], SNAP_STEP)
+        const dc = [Math.min(x1 - hi[0], Math.max(x0 - lo[0], step[0])), Math.min(y1 - hi[1], Math.max(y0 - lo[1], step[1]))]
+        this._setItem(id, { keys: shiftPath(keys0, dc), cell: [cell0[0] + dc[0], cell0[1] + dc[1]] })
+      } else {
+        this._setItem(id, { floor: hit.floor, cell })
+      }
       this._showGrid(hit.floor)
       this._showChip(id)
     }
@@ -474,7 +490,12 @@ export class DioramaStage {
 
   _emitMove (id) {
     const item = this._item(id)
-    this.onMove?.({ itemId: id, floor: item.floor, cell: item.cell })
+    this.onMove?.({ itemId: id, floor: item.floor, cell: item.cell, ...(item.keys?.length ? { keys: item.keys } : {}) })
+  }
+
+  /** New keys for an item (the timeline clip was moved or stretched): shown at once, not saved here. */
+  setKeys (id, keys) {
+    this._setItem(id, { keys })
   }
 
   _showChip (id) {
@@ -583,9 +604,11 @@ export class DioramaStage {
 
   /** Where an item is at the current playback time (its own cell when nothing plays). */
   _poseOf (item) {
-    if (this._time == null) return { cell: item.cell, anim: null, walkedM: 0, dir: null }
+    // No clock (the editor before the timeline has a playhead): a keyed item stands where its
+    // path starts, a still one at its cell.
+    if (this._time == null && !item.keys?.length) return { cell: item.cell, anim: null, walkedM: 0, dir: null }
     const floors = this._floors ?? resolveFloors(this.spec)
-    return poseAt(item, this._time, floors.get(item.floor).cellM)
+    return poseAt(item, this._time ?? 0, floors.get(item.floor).cellM)
   }
 
   /**

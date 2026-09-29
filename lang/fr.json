@@ -1535,5 +1535,7 @@
     "Scene :n": "Scène :n",
     "Assets": "Ressources",
     "Assets & Script": "Ressources et script",
-    "No assets in this set yet.": "Aucune ressource dans cet ensemble pour l’instant."
+    "No assets in this set yet.": "Aucune ressource dans cet ensemble pour l’instant.",
+    "Walk": "Marche",
+    "Move": "Déplacement"
 }

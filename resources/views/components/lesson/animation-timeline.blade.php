@@ -386,7 +386,18 @@
                                  class="absolute cursor-grab rounded-[3px]"
                                  :data-timeline-bar-group="object.target"
                                  x-on:pointerdown="startObjectBar($event, object.target)"
-                                 :style="barStyle(objectSpan(object.target)) + '; top: 9px; height: var(--timeline-lane-h); background: var(--color-timeline-bar-group)'"></div>
+                                 :style="barStyle(objectSpan(object.target)) + '; top: 9px; height: var(--timeline-lane-h); background: var(--color-timeline-bar-group)'">
+                                {{-- A diorama item's path is one clip: its body moves it in time, its
+                                     ends stretch it (slower) or squeeze it (faster). --}}
+                                <template x-if="object.kind === 'dio'">
+                                    <div class="pointer-events-none absolute inset-0 flex items-center justify-between overflow-hidden">
+                                        <span class="h-full w-1.5 cursor-ew-resize rounded-l-[3px] bg-base-content/40"></span>
+                                        <span class="truncate px-1 text-3xs text-base-content/80"
+                                              x-text="dioramaWalks(object.target) ? @js(__('Walk')) : @js(__('Move'))"></span>
+                                        <span class="h-full w-1.5 cursor-ew-resize rounded-r-[3px] bg-base-content/40"></span>
+                                    </div>
+                                </template>
+                            </div>
                         </div>
                         <template x-for="property in propertiesOf(object.target)" :key="property.key">
                             <div class="relative" x-show="openGroups[object.target]"

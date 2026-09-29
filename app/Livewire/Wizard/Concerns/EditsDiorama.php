@@ -20,9 +20,33 @@ use Livewire\Attributes\On;
  */
 trait EditsDiorama
 {
-    /** @param  array<int, mixed>  $cell */
+    /**
+     * A drag on the stage. An item with a path moves the WHOLE path (Bart, 2026-09-29), so the
+     * stage sends its shifted keys along; a still item sends only its new cell.
+     *
+     * @param  array<int, mixed>  $cell
+     * @param  array<int, mixed>|null  $keys
+     */
     #[On('diorama:move')]
-    public function moveDioramaItem(string $itemId, string $floor, array $cell): void
+    public function moveDioramaItem(string $itemId, string $floor, array $cell, ?array $keys = null): void
+    {
+        $this->patchDioramaItem($itemId, ['floor' => $floor, 'cell' => array_values($cell), ...($keys !== null ? ['keys' => array_values($keys)] : [])]);
+    }
+
+    /**
+     * The item's clip on the timeline was moved or stretched: its keys at new times. Validated
+     * like any import, so a clip can never put the item off its floor.
+     *
+     * @param  array<int, mixed>  $keys
+     */
+    #[On('diorama:keys')]
+    public function setDioramaKeys(string $itemId, array $keys): void
+    {
+        $this->patchDioramaItem($itemId, ['keys' => array_values($keys)]);
+    }
+
+    /** @param  array<string, mixed>  $patch */
+    private function patchDioramaItem(string $itemId, array $patch): void
     {
         $scene = $this->dioramaScene();
         if (! $scene) {
@@ -30,11 +54,11 @@ trait EditsDiorama
         }
         $spec = $scene->config['diorama'];
         $spec['items'] = array_map(
-            fn (array $item): array => ($item['id'] ?? null) === $itemId ? [...$item, 'floor' => $floor, 'cell' => array_values($cell)] : $item,
+            fn (array $item): array => ($item['id'] ?? null) === $itemId ? [...$item, ...$patch] : $item,
             $spec['items'] ?? [],
         );
 
-        // No scene:load re-dispatch: the stage already shows the new place (same rule as artwork:move).
+        // No scene:load re-dispatch: the stage already shows it (same rule as artwork:move).
         $this->saveDiorama($scene, $spec);
     }
 

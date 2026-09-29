@@ -32,6 +32,16 @@ export const artObjects = () => {
   }))
 }
 
+/**
+ * Diorama items (config.diorama), front-most last like the stage lists them. They have no property
+ * rows: an item's movement is ONE clip, its path, moved and stretched as a whole (clip.js).
+ */
+export const dioramaObjects = () => (window.__diorama?.items() ?? []).map((i) => ({
+  target: `dio:${i.id}`,
+  kind: 'dio',
+  label: i.label || i.id,
+}))
+
 /** Read one animatable property off the live layer, so a row never shows a number nothing uses. */
 export const readObjectProperty = (target, property) => {
   const [kind, id] = String(target).split(':')
