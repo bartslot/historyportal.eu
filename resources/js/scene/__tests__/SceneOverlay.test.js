@@ -1,5 +1,15 @@
 import { describe, it, expect } from 'vitest'
-import { SceneOverlay } from '../SceneOverlay.js'
+import { SceneOverlay, captionVisible } from '../SceneOverlay.js'
+
+describe('captionVisible', () => {
+  it('needs both the opt-in and a location', () => {
+    expect(captionVisible({ location: 'Batavia', config: { show_caption: true } })).toBe(true)
+    // A generated location alone is not a request to show it.
+    expect(captionVisible({ location: 'Batavia', config: {} })).toBe(false)
+    expect(captionVisible({ location: '  ', config: { show_caption: true } })).toBe(false)
+    expect(captionVisible({ location: 'Batavia' })).toBe(false)
+  })
+})
 
 describe('SceneOverlay', () => {
   it('mounts year and location text into the host element', () => {

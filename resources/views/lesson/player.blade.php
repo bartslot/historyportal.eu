@@ -446,9 +446,10 @@
                          copy inside the map HUD, which both doubled up with this one and stayed on
                          screen while the lesson played; the tour now reports its place + date
                          (lesson:chapter-info) and this renders them. Everything else falls back to
-                         the scene's chapter name and year. Hidden entirely when the teacher chose the
+                         nothing: outside a voyage leg the line only shows for a scene whose caption the
+                         teacher switched on (captionVisible). Hidden entirely when the teacher chose the
                          top date chip instead. --}}
-                    <div x-show="(phase === 'INTRO' || phase === 'GAME_ACTIVE') && !infoAtTop"
+                    <div x-show="(phase === 'INTRO' || phase === 'GAME_ACTIVE') && !infoAtTop && (infoPlace || sceneCaption)"
                          x-cloak
                          class="lp-chapter-line flex h-9 items-center gap-2"
                          :class="!backdropShade && 'rounded-xl border border-white/10 bg-black/70 px-3 backdrop-blur-md'">
@@ -457,11 +458,11 @@
                             <path d="M10.3329 0C4.63543 0 0 4.63543 0 10.3329C0 19.3812 9.58334 25.4792 9.9913 25.735L10.334 25.9493L10.6767 25.735C11.0848 25.4795 20.668 19.3812 20.668 10.3329C20.668 4.63543 16.0326 0 10.3351 0H10.3329ZM10.3329 15.5C7.47996 15.5 5.16584 13.1871 5.16584 10.3329C5.16584 7.47996 7.47872 5.16584 10.3329 5.16584C13.1859 5.16584 15.5 7.47872 15.5 10.3329C15.5 13.1859 13.1871 15.5 10.3329 15.5Z"/>
                         </svg>
                         <span lang="{{ $contentLang }}" class="truncate text-sm font-bold text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]"
-                              x-text="infoPlace || currentChapterName || lessonLocation"></span>
-                        <span x-show="infoDate || lessonYear" class="h-1 w-1 shrink-0 rounded-full bg-slate-400"></span>
-                        <span x-show="infoDate || lessonYear"
+                              x-text="infoPlace || sceneCaption?.place"></span>
+                        <span x-show="infoPlace ? infoDate : sceneCaption?.year" class="h-1 w-1 shrink-0 rounded-full bg-slate-400"></span>
+                        <span x-show="infoPlace ? infoDate : sceneCaption?.year"
                               class="shrink-0 text-sm font-medium text-slate-400 drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]"
-                              x-text="infoDate || lessonYear"></span>
+                              x-text="infoPlace ? infoDate : sceneCaption?.year"></span>
                     </div>
 
                     {{-- A line-art scene has no bottom scrim, so the progress bar and the transport row

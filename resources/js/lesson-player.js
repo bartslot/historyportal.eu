@@ -38,6 +38,7 @@ const BIG_TIMER_DIGIT = (secs) =>
 import { buildCues, cueAt, lineCues } from './scene/captions.js'
 import { createBackgroundMusic } from './scene/background-music.js'
 import { Sfx } from './scene/sfx.js'
+import { captionVisible } from './scene/SceneOverlay.js'
 import { t } from './i18n.js'
 import { mountBigCountdown } from './big-countdown.js'
 
@@ -152,21 +153,6 @@ function parseScriptTags (script, audioDuration) {
   return events.sort((a, b) => a.time - b.time)
 }
 
-// ── Extract year and location from topic/title ────────────────────────────────
-function extractYearAndLocation (lesson) {
-  const text = (lesson.title ?? '') + ' ' + (lesson.topic ?? '')
-
-  // Match 4-digit year or year with BC/AD suffix
-  const yearMatch = text.match(/\b(\d{1,4}\s*(?:BC|AD|BCE|CE)?)\b/i)
-  const year = yearMatch ? yearMatch[1].replace(/\s+/, '').toUpperCase() : ''
-
-  // Extract location: look for "in <Location>" or use topic as fallback
-  const locMatch = text.match(/\bin\s+([A-Z][a-zA-Z\s,]+?)(?:\s*[,.]|$)/i)
-  const location = locMatch ? locMatch[1].trim() : lesson.topic ?? ''
-
-  return { year, location }
-}
-
 // ── Module-level Avatar3D instance ───────────────────────────────────────────
 // Three.js objects contain non-configurable properties (modelViewMatrix etc.) that
 // break when stored inside Alpine's reactive Proxy. Keep the instance here, outside
@@ -201,8 +187,6 @@ Alpine.data('lessonGame', (lesson) => ({
     },
 
     // Location/Year overlay
-    lessonYear:     '',
-    lessonLocation: '',
 
     // Countdown timer
     timerSeconds:       0,
@@ -234,7 +218,8 @@ Alpine.data('lessonGame', (lesson) => ({
     // ship sails); everything else falls back to the scene's chapter name and year.
     infoPlace: '',
     infoDate: '',
-    infoAtTop: false,       // teacher chose the top date chip instead of the bottom line
+    infoAtTop: false,
+    sceneCaption: null,     // { place, year } when this scene opted into the caption, else null       // teacher chose the top date chip instead of the bottom line
 
     // Subtitles — the narration written along the bottom while it is spoken. The teacher sets
     // the starting state per lesson; a student toggling it (C) is remembered for this browser,
@@ -245,7 +230,6 @@ Alpine.data('lessonGame', (lesson) => ({
 
     // Chapters (Micrio-style serial-tour bar + list)
     chapters:          [],   // [{name, dur, index, kind}] — games excluded; `index` = queue index
-    currentChapterName: '',
     currentIsGame:     false, // current scene is a quiz/game → hide the chapter bar
     sceneProgress:     0,    // 0-1 through the current chapter's audio
     chaptersOpen:      false,
@@ -308,10 +292,6 @@ Alpine.data('lessonGame', (lesson) => ({
       // so the first correct answer isn't waiting on a download.
       this._syncSoundLevels()
       Sfx.preload('correct')
-
-      const { year, location } = extractYearAndLocation(lesson)
-      this.lessonYear     = year
-      this.lessonLocation = location
 
       // Build image list: cover first, then slideshow images, then scene renders as fallback
       const coverImg    = lesson.cover_image_url ? [{ url: lesson.cover_image_url }] : []
@@ -1040,7 +1020,7 @@ Alpine.data('lessonGame', (lesson) => ({
             branch_choice_label: s.branch_choice_label ?? null,
             audio_url: s.audio_url, script: s.script, image_url: s.image_url,
             image_credit: s.image_credit ?? null,   // shown under the deck — CC BY obliges us to
-            chapter_name: s.chapter_name ?? null, year: s.year ?? null,
+            chapter_name: s.chapter_name ?? null, year: s.year ?? null, location: s.location ?? null,
             duration_seconds: s.duration_seconds ?? null,
             // shots entries carry image_url + anchor_sentence, plus optional bg_url/hero_url
             // (layered parallax shots, E3b) — the whole array passes through untouched.
@@ -1065,7 +1045,6 @@ Alpine.data('lessonGame', (lesson) => ({
           kind: s.kind,
         }))
         .filter(c => c.kind !== 'game')
-      this.currentChapterName = this.chapters[0]?.name || ''
 
       // Warm every narrated scene up front, BEFORE the early return below — a lesson can open with
       // a quiz or map scene that has no audio of its own, and those lessons need warming most.
@@ -1298,6 +1277,7 @@ Alpine.data('lessonGame', (lesson) => ({
       // its own within the frame, anything else falls back to its chapter name and year.
       this.infoPlace = ''
       this.infoDate = ''
+      this.sceneCaption = captionVisible(scene) ? { place: scene.location, year: scene.year || '' } : null
       this.backdropShade = scene.config?.backdrop_shade !== false
 
       // Whatever was narrating belongs to the scene we are leaving — silence it before anything
@@ -1324,7 +1304,6 @@ Alpine.data('lessonGame', (lesson) => ({
       // Chapter caption + bar (Micrio serial-tour). Chapters are filtered (no games), so look the
       // current one up by its queue index. A game scene (quiz) is not a chapter → hide the bar.
       this.currentIsGame = scene.kind === 'game'
-      this.currentChapterName = (this.chapters?.find(c => c.index === index)?.name) || scene.chapter_name || ''
       this.sceneProgress = 0
 
       // Story game: 'hold' = engine shows its choice overlay and resumes via onAdvanceTo;

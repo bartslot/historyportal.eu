@@ -46,7 +46,7 @@ class LessonExporter
         'gallery' => ['title', 'date_label', 'story', 'fit', 'images'],
         'map' => ['qid', 'fit', 'year', 'projection', 'playback_mode', 'annotations'],
         'voyage' => ['voyage', 'leg', 'view', 'intro', 'stop_images', 'gallery'],
-        'game' => ['quiz_scope', 'quiz_shuffle', 'quiz_difficulty', 'hide_identity'],
+        'game' => ['quiz_scope', 'quiz_shuffle', 'quiz_difficulty'],
     ];
 
     /** Editor scratch state, not content — undo history should never reach a spec file. */

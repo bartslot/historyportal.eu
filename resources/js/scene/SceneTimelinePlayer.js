@@ -1,3 +1,5 @@
+import { captionVisible } from './SceneOverlay.js'
+
 export class SceneTimelinePlayer {
   constructor({ scenes, skybox, overlay, timer, avatar, quiz = null }) {
     this.scenes  = scenes
@@ -81,7 +83,7 @@ export class SceneTimelinePlayer {
     this.overlay.update({
       year: scene.year,
       location: scene.location,
-      hidden: !!(scene.config && scene.config.hide_identity),
+      hidden: !captionVisible(scene),
     })
 
     if (scene.animation_clip_id) {

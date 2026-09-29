@@ -346,7 +346,7 @@ class Step3SceneConfigurator extends Component
             'chapter_name' => $scene->chapter_name,
             // Editable scene identity: a per-scene title override + a hide flag.
             'identityTitle' => $scene->config['identity_title'] ?? null,
-            'hideIdentity' => (bool) ($scene->config['hide_identity'] ?? false),
+            'hideIdentity' => ! $scene->showsCaption(),
             'kind' => $scene->kind,
             // For voyages the projection is GLOBAL — inject the lesson-wide voyage_view so every
             // waypoint previews with the same flat/globe setting (the JS reads config.view).
@@ -552,6 +552,13 @@ class Step3SceneConfigurator extends Component
             // Not the timeline: its panel drives the canvas live, and a re-fired scene:load
             // replayed the scene (a quiz started over) on every length or keyframe change.
             || Arr::except($payload['config'] ?? [], 'timeline') != Arr::except($scene->config ?? [], 'timeline');
+
+        // Entering a location is how a teacher asks for the caption; see Scene::showsCaption().
+        $newLocation = trim((string) ($payload['location'] ?? ''));
+        if ($newLocation !== '' && $newLocation !== trim((string) $scene->location)) {
+            $payload['config'] = ['show_caption' => true] + ($payload['config'] ?? $scene->config ?? []);
+            $stageDirty = true;
+        }
 
         $scene->update($payload);
 
@@ -1133,7 +1140,7 @@ class Step3SceneConfigurator extends Component
             }
         }
         if (array_key_exists('hidden', $patch)) {
-            $config['hide_identity'] = (bool) $patch['hidden'];
+            $config['show_caption'] = ! (bool) $patch['hidden'];
         }
         $scene->config = $config;
         $scene->save();
@@ -1154,7 +1161,7 @@ class Step3SceneConfigurator extends Component
         }
         $scene = $this->lesson->scenes()->findOrFail($this->selectedSceneId);
         $config = $scene->config ?? [];
-        $config['hide_identity'] = ! (bool) ($config['hide_identity'] ?? false);
+        $config['show_caption'] = ! (bool) ($config['show_caption'] ?? false);
         $scene->config = $config;
         $scene->save();
 

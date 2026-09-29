@@ -241,6 +241,16 @@ class Scene extends Model
      * (auto-derived, editable) name; falls back to the location or a numbered label so
      * the chapter bar/list always has something readable.
      */
+    /**
+     * The year/location caption is opt-in: the teacher entered a location (which switches
+     * config.show_caption on) and has not switched it off. A generated location alone does not
+     * count; it is there for picture matching. Mirrors captionVisible() in SceneOverlay.js.
+     */
+    public function showsCaption(): bool
+    {
+        return ($this->config['show_caption'] ?? false) === true && trim((string) $this->location) !== '';
+    }
+
     public function chapterName(): string
     {
         $name = trim((string) $this->chapter_name);

@@ -652,7 +652,6 @@ class LessonComposer
                 'quiz_scope' => $isPre ? 'full' : 'taught',
                 'quiz_shuffle' => 'per_player',
                 'quiz_difficulty' => $isPre ? 1 : 2,
-                'hide_identity' => true,
             ],
         ]);
 

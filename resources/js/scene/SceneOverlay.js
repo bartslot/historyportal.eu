@@ -3,6 +3,15 @@ const LOCATION_PIN_SVG = `
   <path d="M10.3329 0C4.63543 0 0 4.63543 0 10.3329C0 19.3812 9.58334 25.4792 9.9913 25.735L10.334 25.9493L10.6767 25.735C11.0848 25.4795 20.668 19.3812 20.668 10.3329C20.668 4.63543 16.0326 0 10.3351 0H10.3329ZM10.3329 15.5C7.47996 15.5 5.16584 13.1871 5.16584 10.3329C5.16584 7.47996 7.47872 5.16584 10.3329 5.16584C13.1859 5.16584 15.5 7.47872 15.5 10.3329C15.5 13.1859 13.1871 15.5 10.3329 15.5Z" fill="white"/>
 </svg>`
 
+/**
+ * The year/location caption is opt-in per scene: the teacher enters a location (which switches
+ * config.show_caption on) and can switch it off again. Generated scenes carry a location for
+ * picture matching, so a location alone is not a request to show it. Bart, 2026-09-29: "unnecessary
+ * for most of the scenes". Mirrors Scene::showsCaption() on the server.
+ */
+export const captionVisible = (scene) =>
+  scene?.config?.show_caption === true && String(scene?.location ?? '').trim() !== ''
+
 const escapeHtml = (s) =>
   String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
 
@@ -132,7 +141,7 @@ export class SceneOverlay {
 
   _emit(patch) { this.onChange?.({ sceneId: this._sceneId, ...patch }) }
 
-  /** Hide/show the whole identity block (persisted per scene as config.hide_identity). */
+  /** Hide/show the whole identity block (opt-in per scene: config.show_caption, see captionVisible). */
   setHidden(hidden) {
     if (!this.mounted) this.mount()
     this.yearWrap.style.display = hidden ? 'none' : ''
