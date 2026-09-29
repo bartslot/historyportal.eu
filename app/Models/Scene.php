@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Services\Editor\SceneHistory;
 use App\Services\Support\NarrationTiming;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -76,6 +77,9 @@ class Scene extends Model
 
         static::saved($forgetPlayerCache);
         static::deleted($forgetPlayerCache);
+
+        // The editor's undo (SceneHistory): remember the scene as it was before this save.
+        static::updating(static fn (Scene $scene) => SceneHistory::remember($scene));
     }
 
     public function lesson(): BelongsTo

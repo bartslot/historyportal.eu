@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Diorama;
 
+use App\Models\Scene;
 use App\Models\SvgAsset;
 use App\Support\MediaUrl;
 
@@ -16,6 +17,18 @@ use App\Support\MediaUrl;
 final class LibraryAssets
 {
     public const PREFIX = 'library:';
+
+    /**
+     * The library pictures a scene's diorama needs, or none for any other scene. Every stage payload
+     * (the editor, the preview, the first paint) carries these: one that did not left its library
+     * figures undrawn whenever it was the last to arrive.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public static function forScene(Scene $scene): array
+    {
+        return $scene->isDiorama() ? self::forSpec($scene->config['diorama']) : [];
+    }
 
     /**
      * Stage assets for every library item in a diorama spec, keyed by the item's asset key.

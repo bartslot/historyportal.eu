@@ -1598,5 +1598,7 @@
     "The frames are empty: nothing is drawn in them.": "De beelden zijn leeg: er staat niets op.",
     ":file is not a readable image.": ":file is geen leesbare afbeelding.",
     "JEV gave no height. Try again.": "JEV gaf geen hoogte. Probeer het opnieuw.",
-    ":file is not named name_clip_0001.webp.": ":file heet niet naam_clip_0001.webp."
+    ":file is not named name_clip_0001.webp.": ":file heet niet naam_clip_0001.webp.",
+    "Undone.": "Ongedaan gemaakt.",
+    "Redone.": "Opnieuw gedaan."
 }

@@ -152,6 +152,8 @@
                     ->whenEmpty(fn () => $lesson->quizQuestions->whereNull('scene_id')->values())
                     ->map->only(['question', 'options', 'correct_index', 'asks_ahead', 'explanation'])->values()
                 : null],
+            {{-- A diorama's library figures: without them the preview drew only the scene's own. --}}
+            ['dioramaAssets' => \App\Services\Diorama\LibraryAssets::forScene($s)],
         ))->toJson() !!}
     </script>
     {{-- Does this lesson play a music bed? The tracks themselves come from the page's audio

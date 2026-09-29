@@ -17,6 +17,7 @@ use App\Livewire\Wizard\Concerns\EditsDiorama;
 use App\Livewire\Wizard\Concerns\EditsQuizQuestions;
 use App\Livewire\Wizard\Concerns\EditsSceneArtwork;
 use App\Livewire\Wizard\Concerns\EditsStoryGame;
+use App\Livewire\Wizard\Concerns\UndoesSceneEdits;
 use App\Models\AnimationClip;
 use App\Models\City;
 use App\Models\Lesson;
@@ -54,6 +55,7 @@ class Step3SceneConfigurator extends Component
     use EditsQuizQuestions;
     use EditsSceneArtwork;
     use EditsStoryGame;
+    use UndoesSceneEdits;
     use WithFileUploads;
 
     /** Teacher's own image file, uploaded from the Add-image modal. */
@@ -306,6 +308,8 @@ class Step3SceneConfigurator extends Component
             // config carries per-scene flags the first paint needs (background focus, clipart-on-top …).
             ['config' => $s->config ?? null],
             ['shots' => $this->serializeShots($s, $titles)],
+            // A diorama's library figures, sized from their real height: the first paint needs them.
+            ['dioramaAssets' => LibraryAssets::forScene($s)],
         ))->all();
     }
 
@@ -359,7 +363,7 @@ class Step3SceneConfigurator extends Component
                 ? array_merge($scene->config ?? [], ['view' => $this->voyageView()])
                 : $scene->config,
             // Library pictures standing in a diorama, sized from their real height.
-            'dioramaAssets' => $scene->isDiorama() ? LibraryAssets::forSpec($scene->config['diorama']) : [],
+            'dioramaAssets' => LibraryAssets::forScene($scene),
             // Voyage scenes preview against the lesson's editable route copy (falls back to the
             // shared catalog until the first edit clones it) — the wizard overlay passes this to
             // renderVoyageTour as `def`.
@@ -5048,7 +5052,14 @@ class Step3SceneConfigurator extends Component
             return;
         }
 
-        $this->undoVoyage();
+        // The route only on the voyage scene: anywhere else Cmd-Z silently took back a route edit.
+        if ($this->selectedScene && ($this->selectedScene['kind'] ?? null) === 'voyage') {
+            $this->undoVoyage();
+
+            return;
+        }
+
+        $this->undoSceneEdit();
     }
 
     /**

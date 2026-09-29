@@ -1554,5 +1554,7 @@
     "The frames are empty: nothing is drawn in them.": "I fotogrammi sono vuoti: non c’è niente disegnato.",
     ":file is not a readable image.": ":file non è un’immagine leggibile.",
     "JEV gave no height. Try again.": "JEV non ha dato un’altezza. Riprova.",
-    ":file is not named name_clip_0001.webp.": ":file non si chiama nome_clip_0001.webp."
+    ":file is not named name_clip_0001.webp.": ":file non si chiama nome_clip_0001.webp.",
+    "Undone.": "Annullato.",
+    "Redone.": "Ripristinato."
 }

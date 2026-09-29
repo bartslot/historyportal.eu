@@ -156,12 +156,17 @@
             window.location.href = @js(route('teacher.credits.index', ['lesson' => $lesson->id]));
         });
         document.addEventListener('keydown', (e) => {
-            if ((e.key !== 'z' && e.key !== 'Z') || !(e.metaKey || e.ctrlKey) || e.shiftKey) return;
+            if ((e.key !== 'z' && e.key !== 'Z') || !(e.metaKey || e.ctrlKey)) return;
             // Never steal the shortcut from a field the teacher is typing in. One shared guard —
             // resources/js/ui/keyboard.js — so this and Delete below and the timeline's Space all
             // agree on what "typing" means.
             if (window.__isTypingTarget?.(e.target)) return;
             e.preventDefault();
+            if (e.shiftKey) {                       // Cmd-Shift-Z: redo
+                const w = window.__step3Wire();
+                if (w && typeof w.redoLastEdit === 'function') { try { w.redoLastEdit(); } catch (_) {} }
+                return;
+            }
             window.__undoLastEdit();
         });
     }

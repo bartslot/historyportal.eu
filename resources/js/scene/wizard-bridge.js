@@ -948,7 +948,11 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
 
     async function showDiorama(payload, isCurrent) {
         const spec = payload.config.diorama
-        if (_diorama && _dioramaSceneId === payload.sceneId && _diorama.matches(spec)) return
+        // Same scene, same JSON: leave it. Unless this payload brings library pictures the stage
+        // lacks: the first paint can come from the page's own scene list, which carries none, and
+        // skipping the server's echo then left every library figure undrawn.
+        const newAssets = Object.keys(payload.dioramaAssets ?? {}).some((k) => !_diorama?.assets?.[k])
+        if (_diorama && _dioramaSceneId === payload.sceneId && _diorama.matches(spec) && !newAssets) return
         // payload.dioramaAssets: library pictures in this diorama, sized from their real height.
         if (!_dioramaMod) _dioramaMod = await import('./diorama/DioramaStage.js')
         const assets = await _dioramaMod.loadDioramaAssets(spec)
@@ -1292,6 +1296,9 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             config: first.config ?? null,
             // Multiplane layers (E3c) ride along so the first paint is layered too.
             shots: first.shots ?? [],
+            // A diorama's library figures: without them the first paint drew only the scene's own.
+            sceneId: first.id,
+            dioramaAssets: first.dioramaAssets ?? {},
         })
     }
 
@@ -1315,6 +1322,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                 // too — without it every scene change here tore the embed back down.
                 config: scene?.config ?? null,
                 textsReadonly: scene?.config?.texts || [],
+                dioramaAssets: scene?.dioramaAssets ?? {},
             }),
         },
         overlay,
