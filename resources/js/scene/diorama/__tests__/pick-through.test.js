@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { DioramaStage } from '../DioramaStage.js'
+import { DioramaStage, BLOCKER_OPACITY } from '../DioramaStage.js'
 import { alphaAt } from '../alpha-mask.js'
 
 globalThis.ResizeObserver ??= class { observe () {} disconnect () {} }
@@ -67,3 +67,36 @@ describe('pick through transparent pixels', () => {
     expect(stage._drag.id).toBe('far')
   })
 })
+
+describe('what blocks the selected item fades', () => {
+  const opacity = id => host.querySelector(`[data-diorama-item="${id}"]`).style.opacity
+
+  it('selecting the item behind fades the one in front that covers it, only while selected', () => {
+    stage._masks.set('big.png', solid)              // the front figure covers the back one
+    stage.select('far')
+    expect(opacity('near')).toBe(String(BLOCKER_OPACITY))
+    expect(opacity('far')).toBe('')
+    stage.select(null)
+    expect(opacity('near')).toBe('')
+  })
+
+  it('a front picture whose drawn part misses the item does not fade', () => {
+    stage._masks.set('big.png', leftThird)          // drawn only in its left third, the far one is in the middle
+    stage.select('far')
+    expect(opacity('near')).toBe('')
+  })
+
+  it('nothing behind the selected item fades', () => {
+    stage._masks.set('big.png', solid)
+    stage.select('near')
+    expect(opacity('far')).toBe('')
+  })
+
+  it('selecting something else in the editor lets go of the item', () => {
+    stage._masks.set('big.png', solid)
+    stage.select('far')
+    window.dispatchEvent(new CustomEvent('scene-object-selected', { detail: { id: 'txt_title' } }))
+    expect(opacity('near')).toBe('')
+  })
+})
+

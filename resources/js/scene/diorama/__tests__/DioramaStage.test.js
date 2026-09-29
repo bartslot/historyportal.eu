@@ -206,3 +206,14 @@ describe('DioramaStage for the editor panels', () => {
   })
 })
 
+describe('the wall fades while the item behind it is selected', () => {
+  it('the sailor in the room: selecting him fades the wall in front, letting go restores it', () => {
+    stage._setItem('sailor_1', { cell: [-6, 32] })   // through the doorway, behind the wall
+    const wall = host.querySelector('[data-diorama-layer="wall"]')
+    stage.select('sailor_1')
+    expect(wall.style.opacity).toBe('0.3')
+    stage.select(null)
+    expect(wall.style.opacity).toBe('')
+  })
+})
+

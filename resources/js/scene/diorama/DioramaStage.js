@@ -21,6 +21,10 @@ import { alphaAt, loadAlphaMask, DRAWN_ALPHA } from './alpha-mask.js'
 const SNAP_STEP = 0.25            // cells
 const GRID_MAX_LINES = 60         // per direction; big floors draw every n-th line
 const HANDLE_PX = 14
+/** Opacity of anything in front of the selected item that covers it (Bart: see what you place). */
+export const BLOCKER_OPACITY = 0.3
+/** Sample points per side when testing whether one drawing covers another. */
+const COVER_SAMPLES = 8
 
 /** Keep receiving the drag outside the element. A pointer that is already gone (a very quick tap) throws; the drag still works while over it. */
 function capture (el, ev) {
@@ -57,6 +61,7 @@ export class DioramaStage {
     root.style.cssText = 'position:absolute;inset:0;overflow:hidden;isolation:isolate;'
     this._root = root
 
+    this._masks = new Map()           // picture URL → alpha mask (null = treat as all drawn)
     this._plateEls = []
     // A plate picture is a file beside the scene JSON, or a full URL (a library backdrop).
     const urlOf = src => /^(https?:)?\/\//.test(src) || src.startsWith('/') ? src : base + src
@@ -74,11 +79,13 @@ export class DioramaStage {
     }
     this._layerEls = new Map()
     if (spec.plate?.image) this._layerEls.set('plate', plateImg(spec.plate.image, 'plate'))
-    for (const o of spec.plate?.occluders ?? []) this._layerEls.set(o.id, plateImg(o.image, o.id))
+    for (const o of spec.plate?.occluders ?? []) {
+      this._layerEls.set(o.id, plateImg(o.image, o.id))
+      if (editable) this._loadMask(urlOf(o.image))
+    }
 
     this._itemEls = new Map()
     this._shown = new Map()           // per item: the frame, flip and picture on screen (for hit tests)
-    this._masks = new Map()           // picture URL → alpha mask (null = treat as all drawn)
     for (const item of spec.items ?? []) {
       const asset = assets[item.asset]
       if (!asset) continue
@@ -95,11 +102,7 @@ export class DioramaStage {
       this._itemEls.set(item.id, img)
       if (editable) {
         this._wireDrag(item.id, img)
-        const url = asset.url ?? base + asset.image
-        if (!this._masks.has(url)) {
-          this._masks.set(url, null)
-          loadAlphaMask(url).then(mask => { if (mask) this._masks.set(url, mask) })
-        }
+        this._loadMask(asset.url ?? base + asset.image)
       }
     }
 
@@ -120,6 +123,11 @@ export class DioramaStage {
       root.appendChild(this._handle)
       this._wireResize()
       this._wireDragMoves()
+      // Another object picked elsewhere (object list, a text box): this stage lets go of its item.
+      this._onOtherSelected = (e) => {
+        if (this._selected && e.detail?.id !== 'dio_' + this._selected) this.select(null)
+      }
+      window.addEventListener('scene-object-selected', this._onOtherSelected)
     }
 
     this._focusU = this._itemFocusU()
@@ -209,6 +217,11 @@ export class DioramaStage {
       const el = entry.kind === 'item' ? this._itemEls.get(entry.id) : this._layerEls.get(entry.id)
       if (el) el.style.zIndex = String(2 * i)
     })
+    const plateBox = { x: origin.x, y: origin.y, w: camera.width * origin.scale, h: camera.height * origin.scale }
+    this._occShown = new Map((this.spec.plate?.occluders ?? []).map(o => [o.id, {
+      url: this._layerEls.get(o.id)?.src, frame: 0, frames: 1, flipped: false, box: plateBox,
+    }]))
+    this._fadeBlockers()
     this._placeHandle()
   }
 
@@ -238,6 +251,7 @@ export class DioramaStage {
   select (id) {
     this._selected = this._item(id) ? id : null
     this._placeHandle()
+    this._fadeBlockers()
     if (this._selected) {
       window.dispatchEvent(new CustomEvent('scene-object-selected', { detail: { id: 'dio_' + id } }))
     }
@@ -296,15 +310,7 @@ export class DioramaStage {
       .filter(([id, el]) => el.style.display !== 'none' && this._shown.has(id))
       .sort(([, a], [, b]) => Number(b.style.zIndex) - Number(a.style.zIndex))
     for (const [id] of hits) {
-      const shown = this._shown.get(id)
-      const { box } = shown
-      if (x < box.x || x > box.x + box.w || y < box.y || y > box.y + box.h) continue
-      const mask = this._masks.get(shown.url)
-      if (!mask) return id                       // not measured (yet): the whole picture counts
-      let fx = (x - box.x) / box.w
-      if (shown.flipped) fx = 1 - fx
-      const fy = (y - box.y) / box.h
-      if (alphaAt(mask, (shown.frame + fx) / shown.frames, fy) > DRAWN_ALPHA) return id
+      if (this._drawnAt(this._shown.get(id), x, y)) return id
     }
     return null
   }
@@ -313,7 +319,7 @@ export class DioramaStage {
     ownEl.addEventListener('pointerdown', (ev) => {
       // The item that is DRAWN under the pointer, which may be one behind this picture.
       const id = this.pickAt(ev.clientX, ev.clientY)
-      if (!id) return
+      if (!id) { this.select(null); return }         // an empty margin: deselect, nothing grabbed
       const el = this._itemEls.get(id)
       ev.preventDefault()
       ev.stopPropagation()
@@ -445,6 +451,54 @@ export class DioramaStage {
     this._placeHandle()
   }
 
+  _loadMask (url) {
+    if (this._masks.has(url)) return
+    this._masks.set(url, null)
+    loadAlphaMask(url).then(mask => { if (mask && this._root) { this._masks.set(url, mask); this._fadeBlockers() } })
+  }
+
+  /** Is `shown` (a laid-out picture) drawn at stage point (x, y)? No mask yet = its whole box. */
+  _drawnAt (shown, x, y) {
+    const { box } = shown
+    if (x < box.x || x > box.x + box.w || y < box.y || y > box.y + box.h) return false
+    const mask = this._masks.get(shown.url)
+    if (!mask) return true
+    let fx = (x - box.x) / box.w
+    if (shown.flipped) fx = 1 - fx
+    return alphaAt(mask, (shown.frame + fx) / shown.frames, (y - box.y) / box.h) > DRAWN_ALPHA
+  }
+
+  /**
+   * While an item is selected, whatever is in front of it AND drawn over its drawn pixels (another
+   * figure, the wall, the rail) goes to BLOCKER_OPACITY, so the teacher sees what she is placing.
+   */
+  _fadeBlockers () {
+    if (!this.editable || !this._shown) return
+    const target = this._selected && this._shown.get(this._selected)
+    const targetZ = target ? Number(this._itemEls.get(this._selected).style.zIndex) : Infinity
+    const layers = [
+      ...[...this._itemEls.entries()].map(([id, el]) => [el, id === this._selected ? null : this._shown.get(id)]),
+      ...[...this._layerEls.entries()].filter(([id]) => id !== 'plate').map(([id, el]) => [el, this._occShown?.get(id)]),
+    ]
+    for (const [el, shown] of layers) {
+      const covers = target && shown && Number(el.style.zIndex) > targetZ && this._covers(shown, target)
+      el.style.opacity = covers ? String(BLOCKER_OPACITY) : ''
+    }
+  }
+
+  /** Does `front` draw over any drawn pixel of `back`? Sampled on a grid over back's box. */
+  _covers (front, back) {
+    const { box } = back
+    for (let i = 0; i < COVER_SAMPLES; i++) {
+      for (let j = 0; j < COVER_SAMPLES; j++) {
+        const x = box.x + box.w * (i + 0.5) / COVER_SAMPLES
+        const y = box.y + box.h * (j + 0.5) / COVER_SAMPLES
+        if (this._drawnAt(back, x, y) && this._drawnAt(front, x, y)) return true
+      }
+    }
+    return false
+  }
+
   /** Where an item is at the current playback time (its own cell when nothing plays). */
   _poseOf (item) {
     if (this._time == null) return { cell: item.cell, anim: null, walkedM: 0, dir: null }
@@ -487,6 +541,8 @@ export class DioramaStage {
   destroy () {
     this._unwireDragMoves?.()
     this._unwireDragMoves = null
+    if (this._onOtherSelected) window.removeEventListener('scene-object-selected', this._onOtherSelected)
+    this._onOtherSelected = null
     if (this._raf) cancelAnimationFrame(this._raf)
     this._raf = 0
     this._resize?.disconnect()
