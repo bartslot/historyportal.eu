@@ -2,6 +2,7 @@ import {
   resolveFloors, placeItem, projectPoint, cellToWorld, hitTest, snapCell, clampCell,
   cellForScreenHeight, stackOrder, plateToStage, stageToPlate,
 } from './projection.js'
+import { poseAt, frameFor } from './timeline.js'
 
 /**
  * DioramaStage — draws a diorama scene (config.diorama) into a host element: the plate, its
@@ -46,6 +47,7 @@ export class DioramaStage {
     this.editable = editable
     this.onMove = onMove
     this._selected = null
+    this._time = null
     const base = spec.plate?.base ?? ''
 
     const root = document.createElement('div')
@@ -74,12 +76,14 @@ export class DioramaStage {
     for (const item of spec.items ?? []) {
       const asset = assets[item.asset]
       if (!asset) continue
-      const img = document.createElement('img')
-      img.src = base + asset.image
-      img.alt = item.label ?? ''
-      img.draggable = false
+      // A div with the picture as background: a sprite sheet shows one frame at a time.
+      const img = document.createElement('div')
+      img.setAttribute('role', 'img')
+      img.setAttribute('aria-label', item.label ?? '')
       img.dataset.dioramaItem = item.id
-      img.style.cssText = 'position:absolute;max-width:none;transform:translate(-50%,-100%);'
+      const frames = asset.sheet?.frames ?? 1
+      img.style.cssText = 'position:absolute;background-repeat:no-repeat;'
+        + `background-image:url("${base + asset.image}");background-size:${frames * 100}% 100%;`
         + `pointer-events:${editable ? 'auto' : 'none'};touch-action:none;${editable ? 'cursor:grab;' : ''}`
       root.appendChild(img)
       this._itemEls.set(item.id, img)
@@ -159,12 +163,19 @@ export class DioramaStage {
       const img = this._itemEls.get(item.id)
       const asset = this.assets[item.asset]
       if (!img || !asset) continue
-      const p = placeItem(camera, this._floors, item, asset.px_per_m)
+      const pose = this._poseOf(item)
+      const p = placeItem(camera, this._floors, { ...item, cell: pose.cell }, asset.px_per_m)
       if (!p) { img.style.display = 'none'; continue }
       const at = this._toStage(p)
+      const frames = asset.sheet?.frames ?? 1
+      const frame = frameFor(asset.sheet, pose.anim, pose.walkedM)
+      const flip = this._flips(item, asset, pose) ? ' scaleX(-1)' : ''
       Object.assign(img.style, {
         display: '', left: `${at.x}px`, top: `${at.y}px`,
         width: `${asset.frame_m[0] * asset.px_per_m * p.scale * at.scale}px`,
+        height: `${asset.frame_m[1] * asset.px_per_m * p.scale * at.scale}px`,
+        backgroundPosition: frames > 1 ? `${(frame / (frames - 1)) * 100}% 0` : '0 0',
+        transform: `translate(-50%,-100%)${flip}`,
       })
       placements.push({ id: item.id, depth: p.depth, v: p.v })
     }
@@ -334,10 +345,48 @@ export class DioramaStage {
     this._placeHandle()
   }
 
-  /** Playback progress 0..1. Items stand still in the pilot; keyframes come later. */
-  update () {}
+  /** Where an item is at the current playback time (its own cell when nothing plays). */
+  _poseOf (item) {
+    if (this._time == null) return { cell: item.cell, anim: null, walkedM: 0, dir: null }
+    return poseAt(item, this._time, this._floors.get(item.floor).cellM)
+  }
+
+  /**
+   * Mirror the picture? Only assets that say which way they are drawn (`faces`) turn: while moving
+   * they face the way they go on screen, standing they face `item.facing`.
+   */
+  _flips (item, asset, pose) {
+    if (!asset.faces) return false
+    let facing = item.facing ?? asset.faces
+    if (pose.dir) {
+      const floor = this._floors.get(item.floor)
+      const here = projectPoint(this.spec.camera, cellToWorld(floor, pose.cell))
+      const ahead = projectPoint(this.spec.camera, cellToWorld(floor, [pose.cell[0] + pose.dir[0] * 0.01, pose.cell[1] + pose.dir[1] * 0.01]))
+      if (here && ahead && Math.abs(ahead.u - here.u) > 1e-6) facing = ahead.u < here.u ? 'left' : 'right'
+    }
+    return facing !== asset.faces
+  }
+
+  /** Show the scene at `seconds` (keyframes, walk frames); null = the editing pose. */
+  update (seconds) {
+    this._time = seconds
+    this.layout()
+  }
+
+  /** Follow a clock (the narration's currentTime) every frame until destroyed. */
+  play (clock) {
+    const tick = () => {
+      if (!this._root) return
+      const t = clock()
+      if (t !== this._time) this.update(t)
+      this._raf = requestAnimationFrame(tick)
+    }
+    this._raf = requestAnimationFrame(tick)
+  }
 
   destroy () {
+    if (this._raf) cancelAnimationFrame(this._raf)
+    this._raf = 0
     this._resize?.disconnect()
     this._resize = null
     this._root?.remove()

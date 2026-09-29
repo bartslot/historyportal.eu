@@ -85,6 +85,35 @@ describe('DioramaStage layout', () => {
   })
 })
 
+describe('DioramaStage playback', () => {
+  const sailorEl = () => el('sailor_1')
+  it('walks the sailor along his keys, flips him to face the way he walks, and steps through the sheet', () => {
+    const at = t => { stage.update(t); return { x: px(sailorEl().style.left), bg: sailorEl().style.backgroundPosition, flip: sailorEl().style.transform.includes('scaleX(-1)') } }
+    const standing = at(0.5)
+    const walking = at(2.0)
+    const later = at(2.3)
+    expect(walking.x).toBeLessThan(standing.x)          // heading left along the rail
+    expect(walking.flip).toBe(true)                      // drawn facing right, walking left
+    expect(standing.bg).toMatch(/^0% 0/)                    // idle frame
+    expect(walking.bg).not.toMatch(/^0% 0/)                // a walk frame
+    expect(later.bg).not.toBe(walking.bg)                // the cycle moves on
+  })
+
+  it('goes behind the wall when he steps through the doorway', () => {
+    stage.update(11.9)
+    const z = sel => Number(host.querySelector(sel).style.zIndex)
+    expect(z('[data-diorama-item="sailor_1"]')).toBeLessThan(z('[data-diorama-layer="wall"]'))
+    stage.update(0)
+    expect(z('[data-diorama-item="sailor_1"]')).toBeGreaterThan(z('[data-diorama-layer="rail"]'))
+  })
+
+  it('without a clock (the editor) the item stands at its own cell', () => {
+    const before = px(sailorEl().style.left)
+    stage.update(null)
+    expect(px(sailorEl().style.left)).toBe(before)
+  })
+})
+
 describe('DioramaStage editing', () => {
   it('dragging snaps to quarter cells on the floor and reports the move once, on release', () => {
     const sailor = spec.items.find(i => i.id === 'sailor_1')

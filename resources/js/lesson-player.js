@@ -978,6 +978,8 @@ Alpine.data('lessonGame', (lesson) => ({
         this._destroyDiorama()
         _diorama = new _dioramaMod.DioramaStage(host)
         _diorama.show(scene.config.diorama, assets)
+        // Keyframes follow the narration clock, like the speech balloons.
+        _diorama.play(() => this._audio?.currentTime ?? 0)
       } catch (e) {
         console.warn('lesson-player: diorama failed, falling back to flat', e)
         this._showFlatScene(scene.image_url)

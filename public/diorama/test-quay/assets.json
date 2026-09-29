@@ -22,6 +22,45 @@
    ]
   }
  },
+ "test/sailor_walk": {
+  "image": "sailor_walk.webp",
+  "px_per_m": 400,
+  "frame_m": [
+   1.0,
+   2.0
+  ],
+  "height_m": 1.75,
+  "faces": "right",
+  "sheet": {
+   "frames": 5,
+   "anims": {
+    "idle": {
+     "frames": [
+      0
+     ]
+    },
+    "walk": {
+     "frames": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "stride_m": 1.521
+    }
+   }
+  },
+  "points": {
+   "feet": [
+    0.5,
+    1.0
+   ],
+   "head_top": [
+    0.5,
+    0.125
+   ]
+  }
+ },
  "test/barrel": {
   "image": "barrel.webp",
   "px_per_m": 400,

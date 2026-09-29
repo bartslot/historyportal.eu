@@ -125,6 +125,87 @@ def cutout(name, o, width_m, height_m):
 sailor_top = cutout("sailor", sailor, 1.0, 2.0)
 barrel_top = cutout("barrel", barrel, 1.0, 1.0)
 
+# ── walker: side view, parts that swing, frames stitched into one sprite sheet ──
+# Faces +x (right in the picture). A full cycle is two steps: 2 × (2 × leg × sin(swing)).
+LEG_L, HIP_Z, SWING = 0.90, 0.90, 25.0
+STRIDE_M = round(2 * (2 * LEG_L * math.sin(math.radians(SWING))), 3)
+WALK_POSES = [0.0, SWING, 0.0, -SWING, 0.0]          # idle, then contact / pass / contact / pass
+
+
+def limb(name, r, length, top):
+    """A cylinder hanging from its top end, so rotating it swings it from the hip or shoulder."""
+    o = cyl(c, name, r, length, (0, 0, 0), "figure", v=16)
+    for v in o.data.vertices:
+        v.co.z -= length / 2
+    o.location = top
+    return tint(o, "sailor")
+
+
+walker_parts = [
+    tint(box(c, "w_torso", (0.24, 0.40, 0.58), (0, 0, HIP_Z + 0.29), "figure"), "sailor"),
+    tint(box(c, "w_nose", (0.06, 0.04, 0.04), (0.13, 0, HIP_Z + 0.76), "figure"), "sailor"),
+]
+bm_head = __import__("bmesh").new()
+__import__("bmesh").ops.create_uvsphere(bm_head, u_segments=24, v_segments=12, radius=0.11)
+from hp1lib import _mesh_obj  # noqa: E402
+head = tint(_mesh_obj("w_head", bm_head, c, "figure"), "sailor"); head.location = (0, 0, HIP_Z + 0.74)
+walker_parts.append(head)
+legs = [limb("w_leg_l", 0.07, LEG_L, (0, -0.10, HIP_Z)), limb("w_leg_r", 0.07, LEG_L, (0, 0.10, HIP_Z))]
+arms = [limb("w_arm_l", 0.05, 0.62, (0, -0.24, HIP_Z + 0.55)), limb("w_arm_r", 0.05, 0.62, (0, 0.24, HIP_Z + 0.55))]
+walker = walker_parts + legs + arms
+for o in walker:
+    o.location.x += 200                                  # out of every other view until posed
+
+
+def walk_sheet(name, width_m=1.0, height_m=2.0):
+    """Render WALK_POSES side by side into <name>.webp: one shared crop, feet on the bottom row."""
+    import numpy as np
+    cd = bpy.data.cameras.new(name + "_ortho")
+    cd.type = "ORTHO"; cd.sensor_fit = "VERTICAL"; cd.ortho_scale = height_m
+    oc = bpy.data.objects.new(name + "_ortho", cd)
+    c.objects.link(oc)
+    oc.location = (0, -10, height_m / 2); oc.rotation_euler = (math.radians(90), 0, 0)
+    sc.camera = oc
+    fw, fh = round(width_m * PX_PER_M), round(height_m * PX_PER_M)
+    sc.render.resolution_x, sc.render.resolution_y = fw, fh
+    for o in all_objects():
+        o.hide_render = o not in walker
+    sc.render.film_transparent = True
+    for o in walker:
+        o.location.x -= 200
+        o["rest_z"] = o.location.z
+    frames = []
+    fmt.file_format = "PNG"
+    for i, a in enumerate(WALK_POSES):
+        for leg, sign in zip(legs, (1, -1)):
+            leg.rotation_euler = (0, math.radians(sign * a), 0)
+        for arm, sign in zip(arms, (-1, 1)):             # arms swing against the legs
+            arm.rotation_euler = (0, math.radians(sign * a * 0.8), 0)
+        # A swung leg reaches less far down: the hips drop so both feet stay on the ground.
+        drop = LEG_L * (1 - math.cos(math.radians(a)))
+        for o in walker:
+            o.location.z = o["rest_z"] - drop
+        path = os.path.join(OUT, "_frame%d.png" % i)
+        sc.render.filepath = path
+        bpy.ops.render.render(write_still=True, scene=sc.name)
+        img = bpy.data.images.load(path)
+        frames.append(np.array(img.pixels[:], dtype=np.float32).reshape(fh, fw, 4))
+        bpy.data.images.remove(img)
+        os.remove(path)
+    fmt.file_format = "WEBP"
+    out = bpy.data.images.new(name, width=fw * len(frames), height=fh, alpha=True)
+    out.pixels = np.concatenate(frames, axis=1).ravel()
+    out.save_render(os.path.join(OUT, name + ".webp"), scene=sc)
+    for o in walker:
+        o.location.x += 200
+        o.location.z = o["rest_z"]
+    for leg in legs + arms:
+        leg.rotation_euler = (0, 0, 0)
+    return max(top_of(o) for o in walker_parts)
+
+
+walker_top = walk_sheet("sailor_walk")
+
 # Truth render: everything in 3D at the cells scene.json gives them.
 SAILOR_AT, BARREL_AT = (2.5, RAIL_Y - 0.6), (-1.0, 9.0)   # both inside the frame
 sailor.location = (*SAILOR_AT, 0)
@@ -149,6 +230,10 @@ mouth_z = sailor["head_m"][2]
 assets = {
     "test/sailor": {"image": "sailor.webp", "px_per_m": PX_PER_M, "frame_m": [1.0, 2.0], "height_m": round(sailor_top, 3),
                     "points": {"mouth": [0.5, round(1 - mouth_z / 2.0, 4)], "head_top": [0.5, round(1 - sailor_top / 2.0, 4)], "feet": [0.5, 1.0]}},
+    "test/sailor_walk": {"image": "sailor_walk.webp", "px_per_m": PX_PER_M, "frame_m": [1.0, 2.0], "height_m": round(walker_top, 3),
+                         "faces": "right",
+                         "sheet": {"frames": len(WALK_POSES), "anims": {"idle": {"frames": [0]}, "walk": {"frames": [1, 2, 3, 4], "stride_m": STRIDE_M}}},
+                         "points": {"feet": [0.5, 1.0], "head_top": [0.5, round(1 - walker_top / 2.0, 4)]}},
     "test/barrel": {"image": "barrel.webp", "px_per_m": PX_PER_M, "frame_m": [1.0, 1.0], "height_m": round(barrel_top, 3),
                     "points": {"feet": [0.5, 1.0]}},
 }
@@ -166,6 +251,21 @@ camera_json = {
 }
 
 CELL = 0.5
+WALK_SPEED = 1.3        # m/s, an easy walking pace
+
+
+def walk_keys():
+    """Stand a second at the rail, walk left round its end, cross past the barrel to the doorway
+    and go through it into the room: behind the wall, seen only through the door."""
+    route = [SAILOR_AT, (-0.8, SAILOR_AT[1]), (DOOR_X, WALL_Y - 0.4), (DOOR_X, WALL_Y + 2.0)]
+    keys, t = [{"t": 0, "cell": [SAILOR_AT[0] / CELL, SAILOR_AT[1] / CELL]}], 1.0
+    keys.append({"t": t, "cell": keys[0]["cell"]})
+    for (x0, y0), (x1, y1) in zip(route, route[1:]):
+        t += math.hypot(x1 - x0, y1 - y0) / WALK_SPEED
+        keys.append({"t": round(t, 2), "cell": [round(x1 / CELL, 3), round(y1 / CELL, 3)], "walk": "walk"})
+    return keys
+
+
 scene_json = {
     "diorama": 1,
     "camera": {"width": RES_X, "height": RES_Y, "focal_px": focal_px, "principal_px": [RES_X / 2, horizon],
@@ -185,8 +285,8 @@ scene_json = {
         {"id": "at_the_rail", "floor": "quay", "cell": [2.5 / CELL, (RAIL_Y - 0.6) / CELL], "facing": "left"},
     ],
     "items": [
-        {"id": "sailor_1", "label": "Sailor", "asset": "test/sailor", "asset_version": 1, "floor": "quay",
-         "cell": [SAILOR_AT[0] / CELL, SAILOR_AT[1] / CELL], "facing": "left"},
+        {"id": "sailor_1", "label": "Sailor", "asset": "test/sailor_walk", "asset_version": 1, "floor": "quay",
+         "cell": [SAILOR_AT[0] / CELL, SAILOR_AT[1] / CELL], "facing": "left", "keys": walk_keys()},
         {"id": "barrel_1", "label": "Barrel", "asset": "test/barrel", "asset_version": 1, "floor": "quay",
          "cell": [BARREL_AT[0] / CELL, BARREL_AT[1] / CELL]},
     ],

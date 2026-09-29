@@ -84,14 +84,54 @@
   {
    "id": "sailor_1",
    "label": "Sailor",
-   "asset": "test/sailor",
+   "asset": "test/sailor_walk",
    "asset_version": 1,
    "floor": "quay",
    "cell": [
     5.0,
     10.8
    ],
-   "facing": "left"
+   "facing": "left",
+   "keys": [
+    {
+     "t": 0,
+     "cell": [
+      5.0,
+      10.8
+     ]
+    },
+    {
+     "t": 1.0,
+     "cell": [
+      5.0,
+      10.8
+     ]
+    },
+    {
+     "t": 3.54,
+     "cell": [
+      -1.6,
+      10.8
+     ],
+     "walk": "walk"
+    },
+    {
+     "t": 10.07,
+     "cell": [
+      -6.0,
+      27.2
+     ],
+     "walk": "walk"
+    },
+    {
+     "t": 11.92,
+     "cell": [
+      -6.0,
+      32.0
+     ],
+     "walk": "walk"
+    }
+   ]
   },
   {
    "id": "barrel_1",
