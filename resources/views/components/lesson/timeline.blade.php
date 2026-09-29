@@ -38,23 +38,17 @@
 <aside {{ $attributes->merge(['class' => 'fixed left-0 top-0 bottom-0 z-30 overflow-hidden border-r border-slate-700 bg-base-300']) }}
        style="width: var(--rail-w, 11rem)">
     <div class="flex h-full flex-col pt-20" data-rail-col>
-        <div class="px-3 pb-1 pt-3">
-            <span data-rail-label class="text-2xs font-semibold uppercase tracking-widest text-slate-500">
-                {{ __('Scenes') }} · {{ $scenes->count() }}
-            </span>
-        </div>
-
         {{-- The title screen: always first, never deleted or dragged. It sits OUTSIDE the sortable
              track, so no scene can be dropped above it and it stays put while the scenes scroll. --}}
         @if ($titleScreen)
-            <div class="px-3 pt-2">
+            <div class="px-3 pt-3">
                 <button type="button"
                         wire:click="selectTitle"
                         data-thumb data-title-thumb
                         aria-label="{{ __('Title screen') }}"
                         @if ($titleScreen['selected']) data-thumb-selected aria-current="true" @endif
                         @class([
-                            'group relative aspect-video w-full overflow-hidden rounded-xl transition-all',
+                            'group relative aspect-video w-full overflow-hidden rounded-md transition-all',
                             'ring-2 ring-primary ring-offset-2 ring-offset-slate-900' => $titleScreen['selected'],
                             'ring-1 ring-slate-700/50 hover:ring-slate-500' => ! $titleScreen['selected'],
                         ])>
@@ -123,7 +117,7 @@
                 <button type="button"
                         data-no-drag data-rail-add
                         wire:click="$set('addSceneOpen', true)"
-                        class="aspect-video w-full rounded-xl border-2 border-dashed border-white/20 text-white/40 transition-all hover:border-primary hover:text-primary"
+                        class="aspect-video w-full rounded-md border-2 border-dashed border-white/20 text-white/40 transition-all hover:border-primary hover:text-primary"
                         title="{{ __('Add scene') }}" aria-label="{{ __('Add scene') }}">
                     <span class="block text-2xl leading-none">+</span>
                     <span data-rail-label class="mt-1 block text-2xs font-semibold uppercase tracking-widest">{{ __('Add Scene') }}</span>
