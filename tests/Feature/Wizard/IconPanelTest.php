@@ -145,6 +145,17 @@ class IconPanelTest extends TestCase
             ->assertDontSee('No icons in this set yet.');
     }
 
+    public function test_history_line_shows_its_five_main_categories_not_the_repeating_sub_folders(): void
+    {
+        foreach ([['figures', 'dante'], ['backdrops', 'florence'], ['architecture', 'florence'], ['props', 'medieval'], ['nature', 'tuscany']] as [$category, $sub]) {
+            $this->bundled('history-line', $category, $sub, ucfirst($category).' '.$sub);
+        }
+
+        $labels = array_column($this->panel()->call('selectCollection', 'history-line')->instance()->groups(), 'label');
+
+        $this->assertSame(['Characters', 'Nature', 'Architecture', 'Misc', 'Backdrops'], $labels);
+    }
+
     public function test_an_unknown_collection_is_ignored(): void
     {
         $this->panel()->call('selectCollection', 'nonsense')->assertSet('collection', 'line-art');

@@ -1522,5 +1522,10 @@
     "This is carried by a figure. It cannot stand on the floor alone.": "Das trägt eine Figur. Es kann nicht allein auf dem Boden stehen.",
     "This is a close-up drawing, not an object in the scene.": "Das ist eine Nahaufnahme, kein Gegenstand in der Szene.",
     "This drawing is cut off at the bottom, so it cannot stand on a floor.": "Diese Zeichnung ist unten abgeschnitten und kann nicht auf einem Boden stehen.",
-    "This picture has no real height yet, so it cannot stand on a floor.": "Dieses Bild hat noch keine echte Höhe und kann nicht auf einem Boden stehen."
+    "This picture has no real height yet, so it cannot stand on a floor.": "Dieses Bild hat noch keine echte Höhe und kann nicht auf einem Boden stehen.",
+    "Characters": "Figuren",
+    "Nature": "Natur",
+    "Architecture": "Architektur",
+    "Misc": "Sonstiges",
+    "Backdrops": "Hintergründe"
 }

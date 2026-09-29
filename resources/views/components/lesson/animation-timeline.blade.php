@@ -79,7 +79,7 @@
          at 1280px that leaves 336px for four controls, and the zoom slider fell off the end
          entirely. Rather than hide something, the row scrolls — nothing here is ever unreachable,
          and at a normal width there is nothing to scroll. --}}
-    <div class="flex shrink-0 items-center gap-2 overflow-x-auto px-4"
+    <div data-drag-scroll class="no-scrollbar flex shrink-0 items-center gap-2 overflow-x-auto px-4"
          style="height: 44px; background: var(--color-timeline-strip)">
 
         {{-- Disabled until two keyframes exist, because one keyframe is a position and not a

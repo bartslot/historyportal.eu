@@ -44,6 +44,15 @@ class IconPanel extends Component
      */
     private const ORDER = ['line-art', 'arrows', 'shapes'];
 
+    /**
+     * Collections whose second row is ONE row of main categories, in this order and under these
+     * names (Bart, 2026-09-29). Their sub-folders (florence, dante …) repeat across categories and
+     * read as duplicates. Folder names stay as they are: stored paths and CDN URLs depend on them.
+     */
+    private const MAIN_CATEGORIES = [
+        'history-line' => ['figures' => 'Characters', 'nature' => 'Nature', 'architecture' => 'Architecture', 'props' => 'Misc', 'backdrops' => 'Backdrops'],
+    ];
+
     public function selectCollection(string $collection): void
     {
         if (! in_array($collection, $this->collections(), true)) {
@@ -105,6 +114,15 @@ class IconPanel extends Component
     #[Computed]
     public function groups(): array
     {
+        if ($main = self::MAIN_CATEGORIES[$this->collection] ?? null) {
+            $present = SvgAsset::query()->bundled()->where('collection', $this->collection)->distinct()->pluck('category')->all();
+
+            return collect($main)
+                ->filter(fn (string $label, string $category) => in_array($category, $present, true))
+                ->map(fn (string $label, string $category) => ['category' => $category, 'subcategory' => '', 'label' => __($label)])
+                ->values()->all();
+        }
+
         $rows = SvgAsset::query()
             ->bundled()
             ->where('collection', $this->collection)

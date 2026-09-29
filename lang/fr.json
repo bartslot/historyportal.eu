@@ -1522,5 +1522,10 @@
     "This is carried by a figure. It cannot stand on the floor alone.": "Un personnage le porte. Il ne peut pas tenir seul sur le sol.",
     "This is a close-up drawing, not an object in the scene.": "C’est un dessin en gros plan, pas un objet de la scène.",
     "This drawing is cut off at the bottom, so it cannot stand on a floor.": "Ce dessin est coupé en bas, il ne peut donc pas tenir sur un sol.",
-    "This picture has no real height yet, so it cannot stand on a floor.": "Cette image n’a pas encore de hauteur réelle, elle ne peut donc pas tenir sur un sol."
+    "This picture has no real height yet, so it cannot stand on a floor.": "Cette image n’a pas encore de hauteur réelle, elle ne peut donc pas tenir sur un sol.",
+    "Characters": "Personnages",
+    "Nature": "Nature",
+    "Architecture": "Architecture",
+    "Misc": "Divers",
+    "Backdrops": "Arrière-plans"
 }

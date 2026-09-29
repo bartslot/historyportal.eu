@@ -1566,5 +1566,10 @@
     "This is carried by a figure. It cannot stand on the floor alone.": "Dit wordt door een figuur gedragen. Het kan niet los op de vloer staan.",
     "This is a close-up drawing, not an object in the scene.": "Dit is een close-uptekening, geen voorwerp in de scène.",
     "This drawing is cut off at the bottom, so it cannot stand on a floor.": "Deze tekening is onderaan afgesneden en kan dus niet op een vloer staan.",
-    "This picture has no real height yet, so it cannot stand on a floor.": "Deze afbeelding heeft nog geen echte hoogte en kan dus niet op een vloer staan."
+    "This picture has no real height yet, so it cannot stand on a floor.": "Deze afbeelding heeft nog geen echte hoogte en kan dus niet op een vloer staan.",
+    "Characters": "Personages",
+    "Nature": "Natuur",
+    "Architecture": "Architectuur",
+    "Misc": "Overig",
+    "Backdrops": "Achtergronden"
 }

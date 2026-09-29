@@ -35,7 +35,7 @@
     {{-- Row 2 — a whole period, or one people inside it. Hidden for the flat sets (arrows, shapes),
          which have nothing to narrow down. Scrolls sideways rather than wrapping into the grid. --}}
     @if ($this->groups())
-        <div class="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+        <div data-drag-scroll class="no-scrollbar flex items-center gap-1.5 overflow-x-auto pb-0.5">
             <button type="button" wire:click="selectGroup('', '')"
                     class="shrink-0 rounded-full px-3 py-1 text-2xs font-medium transition-colors
                            {{ $category === ''

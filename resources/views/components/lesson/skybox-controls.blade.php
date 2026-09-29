@@ -183,7 +183,7 @@
                                 class="flex h-8 w-5 shrink-0 items-center justify-center rounded text-slate-400 transition hover:bg-slate-800 hover:text-slate-100">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="h-4 w-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15 6l-6 6 6 6"/></svg>
                         </button>
-                        <div x-ref="strip" class="flex flex-1 gap-1.5 overflow-x-auto scroll-smooth [&::-webkit-scrollbar]:hidden" style="scrollbar-width:none">
+                        <div x-ref="strip" data-drag-scroll class="flex flex-1 gap-1.5 overflow-x-auto scroll-smooth [&::-webkit-scrollbar]:hidden" style="scrollbar-width:none">
                             @foreach ($reuseImages as $img)
                                 <button type="button" wire:click="useLessonImageBackground(@js($img['url']))" title="{{ $img['label'] ?? '' }}"
                                         @class([
