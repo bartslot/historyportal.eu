@@ -29,6 +29,8 @@ export const BLOCKER_OPACITY = 0.3
 /** Editor zoom range: out far enough to see well past the picture, in to 2× for detail. */
 export const ZOOM_MIN = 0.25
 export const ZOOM_MAX = 2
+/** Editor: the backdrop is the camera frame, set off from the dark page by a shadow to black. */
+export const FRAME_SHADOW = '0 0 48px 6px rgb(0 0 0 / 0.85)'
 /** Sample points per side when testing whether one drawing covers another. */
 const COVER_SAMPLES = 8
 
@@ -65,7 +67,11 @@ export class DioramaStage {
     const root = document.createElement('div')
     root.className = 'diorama-stage'
     // isolation: the layers' z-indexes stack among themselves, never against the host's siblings.
-    root.style.cssText = 'position:absolute;inset:0;overflow:hidden;isolation:isolate;'
+    // The editor is not cut off at the canvas (Bart, 2026-09-29): zoomed or panned, the floors and
+    // items carry on past it. Around the picture it is the page's own dark blue, so the backdrop
+    // itself reads as the camera frame.
+    root.style.cssText = 'position:absolute;inset:0;isolation:isolate;'
+      + (editable ? 'overflow:visible;background:var(--color-base-200);' : 'overflow:hidden;')
     this._root = root
 
     this._masks = new Map()           // picture URL → alpha mask (null = treat as all drawn)
@@ -85,7 +91,12 @@ export class DioramaStage {
       return img
     }
     this._layerEls = new Map()
-    if (spec.plate?.image) this._layerEls.set('plate', plateImg(spec.plate.image, 'plate'))
+    if (spec.plate?.image) {
+      const plate = plateImg(spec.plate.image, 'plate')
+      // The frame: a shadow falling off to black around what the camera records (editor only).
+      if (editable) plate.style.boxShadow = FRAME_SHADOW
+      this._layerEls.set('plate', plate)
+    }
     for (const o of spec.plate?.occluders ?? []) {
       this._layerEls.set(o.id, plateImg(o.image, o.id))
       if (editable) this._loadMask(urlOf(o.image))
@@ -116,7 +127,8 @@ export class DioramaStage {
     if (editable) {
       this._grid = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
       this._grid.setAttribute('aria-hidden', 'true')
-      this._grid.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;display:none;z-index:1;'
+      // overflow visible: zoomed out, the floor lines carry on past the canvas like the floor does.
+      this._grid.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;display:none;z-index:1;'
       root.appendChild(this._grid)
       this._chip = document.createElement('div')
       this._chip.className = 'badge badge-neutral badge-sm'

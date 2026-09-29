@@ -260,6 +260,21 @@ describe('canvas zoom (editor)', () => {
   it('the player (read-only) is never zoomed and has no chip', () => {
     stage.show(spec, assets)
     expect(host.querySelector('button.btn')).toBeNull()
+    expect(host.querySelector('.diorama-stage').style.overflow).toBe('hidden')
+  })
+
+  it('the editor is not cut off at the canvas, and around the picture it is the app\'s dark blue', () => {
+    const root = host.querySelector('.diorama-stage')
+    expect(root.style.overflow).toBe('visible')
+    expect(root.style.background).toContain('--color-base-200')   // the page around it, not the 3D canvas's grey
+  })
+
+  it('the backdrop is the frame: a shadow to black around it in the editor, none in the player', () => {
+    const plate = () => host.querySelector('[data-diorama-layer="plate"]')
+    expect(plate().style.boxShadow).not.toBe('')
+    expect(host.querySelector('[data-diorama-layer="wall"]').style.boxShadow).toBe('')   // occluders cover the plate: one shadow
+    stage.show(spec, assets)
+    expect(plate().style.boxShadow).toBe('')
   })
 })
 
