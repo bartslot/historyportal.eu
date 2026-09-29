@@ -57,49 +57,42 @@
     {{-- Full thumbnail (image / year / place / badges). Hidden by the compact @container rule. --}}
     <span data-thumb-full class="contents">
     @if ($scene->kind === 'map')
-        <div class="w-full h-full bg-sky-800/30 border border-sky-600/30 flex flex-col items-center justify-center text-white gap-1">
-            <x-lesson.icon-map class="h-7 w-7 opacity-90" />
-            <span class="text-2xs font-bold uppercase tracking-widest">Map</span>
-            <span class="text-2xs opacity-70">{{ $scene->year ?? '—' }}</span>
+        <div class="w-full h-full bg-sky-800/30 border border-sky-600/30 flex flex-col items-center justify-center gap-1 px-2 text-white [&>*]:shrink-0">
+            <x-lesson.icon-map class="h-8 w-8 opacity-90" />
+            <span class="text-2xs leading-snug opacity-70">{{ $scene->year ?? '—' }}</span>
         </div>
     @elseif ($scene->kind === 'game')
-        <div class="w-full h-full bg-teal-700/30 border border-teal-600/30 flex flex-col items-center justify-center text-white gap-1">
+        <div class="w-full h-full bg-teal-700/30 border border-teal-600/30 flex flex-col items-center justify-center gap-1 px-2 text-white [&>*]:shrink-0">
             @switch($scene->game_type)
-                @case('strategy') <x-lesson.icon-strategy class="h-7 w-7 opacity-90" /> @break
-                @case('debate') <x-lesson.icon-debate class="h-6 w-6 opacity-90" /> @break
-                @case('story_game') <x-lesson.icon-branching-story class="h-7 w-7 opacity-90" /> @break
+                @case('strategy') <x-lesson.icon-strategy class="h-8 w-8 opacity-90" /> @break
+                @case('debate') <x-lesson.icon-debate class="h-7 w-7 opacity-90" /> @break
+                @case('story_game') <x-lesson.icon-branching-story class="h-8 w-8 opacity-90" /> @break
                 @default
                     {{-- Quiz (no bespoke icon): a checklist glyph. --}}
-                    <svg class="h-6 w-6 opacity-90" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m-9 8h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z"/></svg>
+                    <svg class="h-7 w-7 opacity-90" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m-9 8h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z"/></svg>
             @endswitch
-            <span class="text-2xs font-bold tracking-widest">{{ strtoupper($scene->game_type ?? 'game') }}</span>
-            <span class="text-2xs opacity-70">Seg {{ $scene->game_segment_index }}</span>
         </div>
     @elseif ($scene->kind === 'voyage')
         {{-- The itinerary scene is a voyage scene that stops nowhere, so it has no landfall to name.
              It gets its own glyph (the route with its stops numbered) and reads simply "Overview" —
              one word, no "Voyage" above it, because the icon already says which it belongs to. --}}
         @php $isVoyageOverview = (bool) ($scene->config['overview'] ?? false); @endphp
-        <div class="w-full h-full bg-indigo-800/30 border border-indigo-500/30 flex flex-col items-center justify-center text-white gap-1">
+        <div class="w-full h-full bg-indigo-800/30 border border-indigo-500/30 flex flex-col items-center justify-center gap-1 px-2 text-white [&>*]:shrink-0">
             @if ($isVoyageOverview)
-                <x-lesson.icon-voyage-overview class="h-8 w-auto opacity-90" />
-                <span class="text-2xs font-bold uppercase tracking-widest">{{ __('Overview') }}</span>
+                <x-lesson.icon-voyage-overview class="h-9 w-auto opacity-90" />
             @else
-                <x-lesson.icon-voyage class="h-7 w-7 opacity-90" />
-                <span class="text-2xs font-bold uppercase tracking-widest">{{ __('Route') }}</span>
-                <span class="text-2xs opacity-70 truncate max-w-[90%]">{{ $scene->location ?? '—' }}</span>
+                <x-lesson.icon-voyage class="h-8 w-8 opacity-90" />
+                <span class="text-2xs leading-snug opacity-70 truncate max-w-[90%]">{{ $scene->location ?? '—' }}</span>
             @endif
         </div>
     @elseif ($scene->kind === 'video')
-        <div class="w-full h-full bg-indigo-900/30 border border-indigo-500/30 flex flex-col items-center justify-center text-white gap-1">
-            <x-lesson.icon-video class="h-7 w-auto opacity-90" />
-            <span class="text-2xs font-bold uppercase tracking-widest">{{ __('Video') }}</span>
+        <div class="w-full h-full bg-indigo-900/30 border border-indigo-500/30 flex flex-col items-center justify-center gap-1 px-2 text-white [&>*]:shrink-0">
+            <x-lesson.icon-video class="h-8 w-auto opacity-90" />
         </div>
     @elseif ($scene->kind === 'gallery')
-        <div class="w-full h-full bg-violet-800/30 border border-violet-500/30 flex flex-col items-center justify-center text-white gap-1">
-            <x-lesson.icon-slideshow class="h-7 w-7 opacity-90" />
-            <span class="text-2xs font-bold uppercase tracking-widest">Slideshow</span>
-            <span class="text-2xs opacity-70 truncate max-w-[90%]">{{ $scene->location ?? '—' }}</span>
+        <div class="w-full h-full bg-violet-800/30 border border-violet-500/30 flex flex-col items-center justify-center gap-1 px-2 text-white [&>*]:shrink-0">
+            <x-lesson.icon-slideshow class="h-8 w-8 opacity-90" />
+            <span class="text-2xs leading-snug opacity-70 truncate max-w-[90%]">{{ $scene->location ?? '—' }}</span>
         </div>
     @else
         {{-- Placeholder sits underneath; a present image covers it. If the image 404s
@@ -120,7 +113,7 @@
     @endif
 
     @if ($number !== null)
-        <span class="absolute top-1 left-1 min-w-4 rounded bg-black/60 px-1 text-center text-2xs font-semibold leading-4 text-white/80">
+        <span class="absolute left-1.5 top-1 text-3xs font-semibold leading-none text-white/75 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
             {{ $number }}
         </span>
     @endif

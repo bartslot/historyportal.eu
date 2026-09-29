@@ -68,7 +68,7 @@
                         <span class="absolute inset-x-1.5 bottom-1 truncate text-left font-history text-xs font-bold text-white">
                             {{ $titleScreen['title'] }}
                         </span>
-                        <span class="absolute left-1 top-1 rounded bg-black/60 px-1 text-2xs font-semibold leading-4 text-white/80">
+                        <span class="absolute left-1.5 top-1 text-3xs font-semibold leading-none text-white/75 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
                             {{ __('Title') }}
                         </span>
                     </span>
