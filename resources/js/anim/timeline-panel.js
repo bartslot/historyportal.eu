@@ -146,6 +146,8 @@ export const animationTimeline = (config = {}) => ({
       key: (target, property) => { this.toggleKey(target, property); this.announce() },
       has: (target, property) => this.hasKeyHere(target, property),
       time: () => this.time,
+      // A diorama drag records a key at the playhead while this is on (never during playback).
+      autoKey: () => this.autoKey && !this.playing,
     }
 
     for (const event of ['scene-objects-changed', 'objscene-changed']) {

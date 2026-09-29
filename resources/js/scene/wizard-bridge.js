@@ -931,7 +931,15 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     let _dioramaHost = null
     let _dioramaSceneId = null
 
+    // The scene's title block sits on the camera frame, not the canvas box: zoomed or panned, it
+    // stays on the picture the class will see (Bart, 2026-09-29).
+    const FRAME_KEYS = ['inset', 'left', 'top', 'width', 'height']
+    function pinOverlayToFrame({ x, y, w, h }) {
+        Object.assign(overlayEl.style, { inset: 'auto', left: `${x}px`, top: `${y}px`, width: `${w}px`, height: `${h}px` })
+    }
+
     function hideDiorama() {
+        if (_diorama) FRAME_KEYS.forEach(k => overlayEl.style.removeProperty(k))
         _diorama?.destroy()
         _dioramaHost?.remove()
         _diorama = _dioramaHost = _dioramaSceneId = null
@@ -962,7 +970,13 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         window.__diorama = _diorama       // the Icons panel drops onto it, the object list lists it
         _diorama.show(spec, { ...assets, ...(payload.dioramaAssets ?? {}) }, {
             editable: true,
-            onMove: ({ itemId, floor, cell, keys }) => window.Livewire?.dispatch('diorama:move', { itemId, floor, cell, keys: keys ?? null }),
+            onMove: ({ itemId, floor, cell, keys }) => {
+                window.Livewire?.dispatch('diorama:move', { itemId, floor, cell, keys: keys ?? null })
+                // An auto-keyed drag may have given the item its first path: the timeline shows it now.
+                window.dispatchEvent(new CustomEvent('scene-objects-changed'))
+            },
+            onFrame: pinOverlayToFrame,
+            recording: () => window.__timelineKeying?.autoKey?.() === true,
         })
         if (keepView) _diorama.view = keepView
         // The object list and the timeline list what is on the stage: tell them it changed.

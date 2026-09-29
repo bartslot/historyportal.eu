@@ -26,6 +26,9 @@ export function formatYearHtml(raw) {
   return s
 }
 
+/** Editor only: the title block fades this long after a scene shows (Bart: all that text all the time). */
+export const IDLE_FADE_MS = 4000
+
 export class SceneOverlay {
   /**
    * @param {{ editable?: boolean, onChange?: (patch: {sceneId:?number} & object) => void }} [opts]
@@ -128,7 +131,29 @@ export class SceneOverlay {
     }
     // Show/hide is driven by the "Caption" toggle in the scene inspector — not an on-canvas
     // control — so there's no × or restore chip here.
+
+    // Idle fade: back under the pointer and while a field is being edited, gone 4 s after.
+    this.yearWrap.addEventListener('pointerenter', () => this._show(false))
+    this.yearWrap.addEventListener('pointerleave', () => this._show(true))
+    this.yearWrap.addEventListener('focusin', () => this._show(false))
+    this.yearWrap.addEventListener('focusout', () => this._show(true))
   }
+
+  /** Editor: show the block now; `thenFade` starts the idle timer (skipped while editing). */
+  _show(thenFade) {
+    this._idle = false
+    this.yearWrap.style.opacity = '1'
+    clearTimeout(this._idleTimer)
+    if (!thenFade) return
+    this._idleTimer = setTimeout(() => {
+      if (this.yearWrap.contains(document.activeElement)) return
+      this._idle = true
+      this.yearWrap.style.opacity = '0'
+    }, IDLE_FADE_MS)
+  }
+
+  /** Opacity for a shown block: the editor keeps it faded while idle, whatever re-renders. */
+  _shownOpacity() { return this.editable && this._idle ? '0' : '1' }
 
   _emit(patch) { this.onChange?.({ sceneId: this._sceneId, ...patch }) }
 
@@ -161,15 +186,16 @@ export class SceneOverlay {
 
   update({ year, location, sceneId, hidden } = {}) {
     if (!this.mounted) this.mount()
+    const newScene = sceneId !== undefined && sceneId !== this._sceneId
     if (sceneId !== undefined) this._sceneId = sceneId
     this._raw.year = year || ''
     this._raw.location = String(location ?? '').trim()
 
     if (year) {
       this.yearEl.innerHTML = formatYearHtml(year)
-      this.yearWrap.style.opacity = '1'
+      this.yearWrap.style.opacity = this._shownOpacity()
     } else {
-      this.yearWrap.style.opacity = this.editable ? '1' : '0'
+      this.yearWrap.style.opacity = this.editable ? this._shownOpacity() : '0'
       if (this.editable) this.yearEl.textContent = ''
     }
 
@@ -186,6 +212,7 @@ export class SceneOverlay {
     }
 
     this.setHidden(!!hidden)
+    if (this.editable && newScene) this._show(true)
   }
 
   destroy() {

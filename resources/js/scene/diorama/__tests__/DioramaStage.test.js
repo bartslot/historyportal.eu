@@ -269,6 +269,15 @@ describe('canvas zoom (editor)', () => {
     expect(root.style.background).toContain('--color-base-200')   // the page around it, not the 3D canvas's grey
   })
 
+  it('reports the camera frame, so the title overlay stays on the scene, not the canvas', () => {
+    const frames = []
+    stage.show(spec, assets, { editable: true, onFrame: f => frames.push(f) })
+    expect(frames.at(-1)).toEqual({ x: 0, y: 0, w: W, h: H })
+    stage.setZoom(0.5)
+    const f = frames.at(-1)
+    for (const [k, v] of Object.entries({ x: W / 4, y: H / 4, w: W / 2, h: H / 2 })) expect(f[k]).toBeCloseTo(v, 3)
+  })
+
   it('the backdrop is the frame: a shadow to black around it in the editor, none in the player', () => {
     const plate = () => host.querySelector('[data-diorama-layer="plate"]')
     expect(plate().style.boxShadow).not.toBe('')
@@ -344,3 +353,44 @@ describe('a keyed item in the editor', () => {
   })
 })
 
+
+describe('auto-key: scrub, drag, and the item gets a key at the playhead', () => {
+  const drag = (id, from, to) => {
+    pointer(el(id), 'pointerdown', from)
+    pointer(window, 'pointermove', to)
+    pointer(window, 'pointerup', to)
+  }
+
+  it('a still barrel dragged at 2 s gets a key at 0 where it stood and one at 2 s where it is now', () => {
+    stage.show(spec, assets, { editable: true, onMove: m => moves.push(m), recording: () => true })
+    stage.update(2)
+    const barrel = spec.items.find(i => i.id === 'barrel_1')
+    const start = feetOf(barrel)
+    drag('barrel_1', start, { u: start.u - 200, v: start.v - 30 })
+    const [move] = moves
+    expect(move.keys.map(k => k.t)).toEqual([0, 2])
+    expect(move.keys[0].cell).toEqual(barrel.cell)
+    expect(move.keys[1].cell).not.toEqual(barrel.cell)
+    expect(move.cell).toEqual(barrel.cell)              // the item's own cell is where its path starts
+  })
+
+  it('the walking sailor dragged mid-walk gets a new key there; the rest of his path stays', () => {
+    stage.show(spec, assets, { editable: true, onMove: m => moves.push(m), recording: () => true })
+    const sailor = spec.items.find(i => i.id === 'sailor_1')
+    const t = (sailor.keys[1].t + sailor.keys[2].t) / 2
+    stage.update(t)
+    const now = projectPoint(spec.camera, cellToWorld(resolveFloors(spec).get(sailor.floor), stage._poseOf(sailor).cell))
+    drag('sailor_1', now, { u: now.u, v: now.v + 40 })
+    const [move] = moves
+    expect(move.keys).toHaveLength(sailor.keys.length + 1)
+    expect(move.keys.map(k => k.t)).toEqual([...sailor.keys.map(k => k.t), t].sort((a, b) => a - b))
+    for (const k of sailor.keys) expect(move.keys).toContainEqual(k)
+  })
+
+  it('with auto-key off, dragging still moves the whole path', () => {
+    const sailor = spec.items.find(i => i.id === 'sailor_1')
+    const start = feetOf({ ...sailor, cell: sailor.keys[0].cell })
+    drag('sailor_1', start, { u: start.u - 300, v: start.v })
+    expect(moves[0].keys).toHaveLength(sailor.keys.length)
+  })
+})

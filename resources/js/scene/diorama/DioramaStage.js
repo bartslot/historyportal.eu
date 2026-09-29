@@ -4,7 +4,7 @@ import {
 } from './projection.js'
 import { poseAt, frameFor } from './timeline.js'
 import { alphaAt, loadAlphaMask, DRAWN_ALPHA } from './alpha-mask.js'
-import { shiftPath } from './clip.js'
+import { shiftPath, recordKey } from './clip.js'
 
 /**
  * DioramaStage — draws a diorama scene (config.diorama) into a host element: the plate, its
@@ -51,10 +51,16 @@ export class DioramaStage {
   /**
    * @param {object} spec    the diorama JSON
    * @param {object} assets  asset key → {image, px_per_m, height_m, frame_m}
-   * @param {{editable?: boolean, onMove?: (move: {itemId: string, floor: string, cell: number[]}) => void}} opts
+   * @param {{editable?: boolean, onMove?: (move: {itemId: string, floor: string, cell: number[]}) => void,
+   *   onFrame?: (frame: {x: number, y: number, w: number, h: number}) => void}} opts
+   *   onFrame: the camera frame in stage px after every layout (zoom and pan move it).
+   *   recording: true while the timeline auto-keys; a drag then records a key at the playhead
+   *   instead of moving the whole path.
    */
-  show (spec, assets, { editable = false, onMove = null } = {}) {
+  show (spec, assets, { editable = false, onMove = null, onFrame = null, recording = () => false } = {}) {
     this.destroy()
+    this.onFrame = onFrame
+    this.recording = recording
     this.spec = structuredClone(spec)
     this.assets = assets
     this.editable = editable
@@ -191,6 +197,15 @@ export class DioramaStage {
     this.layout()
   }
 
+  /** What the camera records, in stage px: the whole stage at 100%, moved by zoom and pan. */
+  frameRect () {
+    const [w, h] = this._stage
+    const still = { zoom: 1, panX: 0, panY: 0 }
+    const [a, b] = [{ x: 0, y: 0 }, { x: w, y: h }]
+      .map(p => this._toStage(stageToPlate(this.spec.camera, w, h, p, this._focusU, still)))
+    return { x: a.x, y: a.y, w: b.x - a.x, h: b.y - a.y }
+  }
+
   /** The editor's zoom and pan, to carry over when the same scene re-mounts. */
   get view () { return { ...this._view } }
   set view (v) { this._view = { zoom: 1, panX: 0, panY: 0, ...v }; this.layout() }
@@ -305,12 +320,14 @@ export class DioramaStage {
       this._zoomChip.style.display = zoomed ? '' : 'none'
       this._zoomChip.textContent = `${Math.round(this._view.zoom * 100)}%`
     }
+    this.onFrame?.(this.frameRect())
   }
 
   /** The item's top centre in stage px (for the resize handle). */
   _topOf (item) {
     const asset = this.assets[item.asset]
-    const p = placeItem(this.spec.camera, this._floors, item, asset.px_per_m)
+    // Where it stands at the playhead: a keyed item is not at its own cell.
+    const p = placeItem(this.spec.camera, this._floors, { ...item, cell: this._poseOf(item).cell }, asset.px_per_m)
     if (!p) return null
     const heightPx = asset.height_m * asset.px_per_m * p.scale
     return this._toStage({ u: p.u, v: p.v - heightPx })
@@ -430,8 +447,22 @@ export class DioramaStage {
       if (!hit) return                                   // no floor here: stay on the last one
       const floor = this._floors.get(hit.floor)
       const cell = clampCell(floor, snapCell(hit.cell, SNAP_STEP))
-      this._drag.moved = true
       const { keys0, from, cell0 } = this._drag
+      const item = this._item(id)
+      if (this.recording()) {
+        // Auto-key (Bart, 2026-09-29): scrub, drag, and the item gets a key at the playhead.
+        if (hit.floor !== item.floor) return               // a path stays on one floor
+        const walk = this.assets[item.asset]?.sheet?.anims?.walk ? 'walk' : null
+        const keys = recordKey(keys0, cell0, this._time ?? 0, cell, walk)
+        if (keys) {
+          this._drag.moved = true
+          this._setItem(id, { keys, cell: keys[0].cell })
+          this._showGrid(hit.floor)
+          this._showChip(id)
+          return
+        }
+      }
+      this._drag.moved = true
       if (keys0?.length) {
         // The whole path moves by one snapped step (snapping the destination instead would drag an
         // off-grid path onto the grid), no further than keeps every key on its floor.
@@ -513,7 +544,7 @@ export class DioramaStage {
   _showChip (id) {
     const item = this._item(id)
     const asset = this.assets[item.asset]
-    const p = placeItem(this.spec.camera, this._floors, item, asset.px_per_m)
+    const p = placeItem(this.spec.camera, this._floors, { ...item, cell: this._poseOf(item).cell }, asset.px_per_m)
     const at = this._toStage(p)
     this._chip.textContent = `${asset.height_m.toFixed(2)} m · ${p.depth.toFixed(1)} m · ${item.floor}`
     Object.assign(this._chip.style, { display: '', left: `${at.x}px`, top: `${at.y}px` })

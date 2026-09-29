@@ -44,3 +44,22 @@ export function stretchClip (keys, edge, time) {
 export function shiftPath (keys, dc) {
   return keys.map(k => ({ ...k, cell: [k.cell[0] + dc[0], k.cell[1] + dc[1]] }))
 }
+
+/** Two keys this close in time are the same key (the playhead lands on ms, keys round to ms). */
+const SAME_KEY_S = 0.001
+
+/**
+ * Auto-key (Bart, 2026-09-29): the item was moved to `cell` with the playhead at `t`. A key there
+ * moves (it keeps its walk); otherwise one is added in time order. A still item moved later on
+ * gets its first two keys, where it stood at 0 and where it is now. A still item moved at 0 is only
+ * moved: null, no keys. `walk` names the clip for a new stretch (null = a glide).
+ */
+export function recordKey (keys, cell0, t, cell, walk) {
+  const at = round(Math.max(0, t))
+  if (!keys?.length) {
+    return at < SAME_KEY_S ? null : [{ t: 0, cell: cell0 }, { t: at, cell, ...(walk ? { walk } : {}) }]
+  }
+  const hit = keys.find(k => Math.abs(k.t - at) < SAME_KEY_S)
+  const key = hit ? { ...hit, cell } : { t: at, cell, ...(walk ? { walk } : {}) }
+  return [...keys.filter(k => k !== hit), key].sort((a, b) => a.t - b.t)
+}
