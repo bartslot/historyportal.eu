@@ -1560,5 +1560,8 @@
     "Reset": "Herstellen",
     "Mask saved.": "Masker opgeslagen.",
     "That layer is gone. Select it again and retry.": "Die laag bestaat niet meer. Selecteer hem opnieuw en probeer het nog eens.",
-    "The mask could not be uploaded. Try again, or use a smaller picture.": "Het masker kon niet worden geüpload. Probeer het opnieuw of gebruik een kleinere afbeelding."
+    "The mask could not be uploaded. Try again, or use a smaller picture.": "Het masker kon niet worden geüpload. Probeer het opnieuw of gebruik een kleinere afbeelding.",
+    "This is the correct answer. Editing it changes what counts as right.": "Dit is het goede antwoord. Pas je het aan, dan verandert wat als goed telt.",
+    "Previous question": "Vorige vraag",
+    "Next question": "Volgende vraag"
 }

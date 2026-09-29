@@ -33,6 +33,10 @@
          the component instead, so a teacher recognises a message wherever it fires. --}}
     <x-toast-host />
 
+    {{-- Strings the JavaScript renders (the editor's quiz slides among them), translated. Without
+         it every t() in the app shell fell back to English. --}}
+    <x-js-lang />
+
     @foreach (['success', 'error', 'warning', 'info'] as $flashType)
         @if (session($flashType))
             <script data-flash-toast>

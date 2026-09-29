@@ -949,15 +949,6 @@
     z-index: 1;
 }
 
-/* ─── Carousel arrows ───────────────────────────────────────────────────
-   The app's one card row (resources/js/carousel.js) in our colours instead of
-   Flickity's white default.
-
-   Deliberately NOT in @layer components: flickity.css arrives unlayered from
-   the JS import, and unlayered CSS outranks every layer, so these lost every
-   time and the arrows stayed white on every page. Unlayered they win on
-   specificity (.js-disney-carousel .flickity-button beats .flickity-button),
-   which is safe here because no Tailwind utility targets Flickity's classes. */
 /* Room for a card's hover lift and shadow. Flickity sizes the viewport to the tallest cell and
    clips at that edge, so a card rising 4px lost its top and its shadow was cut flat. Content-box
    so the padding adds to Flickity's inline height instead of eating it; the slider (absolute,
@@ -967,7 +958,19 @@
     padding-block: 1rem 2rem;
 }
 
-.js-disney-carousel .flickity-button {
+/* ─── Carousel arrows ───────────────────────────────────────────────────
+   The app's one card row (resources/js/carousel.js) in our colours instead of
+   Flickity's white default. `.hp-slide-arrow` is the same arrow for anything
+   else that pages sideways (the quiz slides in the editor), so there is one
+   look for "next".
+
+   Deliberately NOT in @layer components: flickity.css arrives unlayered from
+   the JS import, and unlayered CSS outranks every layer, so these lost every
+   time and the arrows stayed white on every page. Unlayered they win on
+   specificity (.js-disney-carousel .flickity-button beats .flickity-button),
+   which is safe here because no Tailwind utility targets Flickity's classes. */
+.js-disney-carousel .flickity-button,
+.hp-slide-arrow {
     width: 2.35rem;
     height: 2.35rem;
     border-radius: 9999px;
@@ -976,11 +979,19 @@
     backdrop-filter: blur(12px);
 }
 
-.js-disney-carousel .flickity-button:hover {
+.hp-slide-arrow {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.js-disney-carousel .flickity-button:hover,
+.hp-slide-arrow:hover {
     background: rgba(15, 23, 42, 0.88);
 }
 
-.js-disney-carousel .flickity-button:disabled {
+.js-disney-carousel .flickity-button:disabled,
+.hp-slide-arrow:disabled {
     opacity: 0;                 /* nothing further that way — do not tease it */
     pointer-events: none;
 }

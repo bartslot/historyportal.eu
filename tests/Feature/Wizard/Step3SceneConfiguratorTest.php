@@ -545,6 +545,28 @@ class Step3SceneConfiguratorTest extends TestCase
         $this->assertCount(2, $component->get('quizDraft'), 'Draft keeps the incomplete question');
     }
 
+    public function test_a_stage_edit_lands_on_the_question_the_stage_showed(): void
+    {
+        $this->s2->update(['game_type' => 'quiz']);
+
+        // The stage shows SAVED questions only, so its index 0 is draft 1 here (draft 0 is
+        // half-typed), and its option 1 is draft slot 2 (slot 1 is empty).
+        $component = Livewire::actingAs($this->teacher)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
+            ->call('selectScene', $this->s2->id)
+            ->call('addQuizQuestion')
+            ->call('addQuizQuestion')
+            ->set('quizDraft.0.question', 'Unfinished question…')
+            ->set('quizDraft.1.question', 'Why did the empire fall?')
+            ->set('quizDraft.1.options', ['Overexpansion', '', 'Bad weather', 'Aliens'])
+            ->dispatch('quizStageEdited', question: 0, option: 1, text: 'Plague')
+            ->assertDispatched('quiz:questions-updated');
+
+        $this->assertSame('Plague', $component->get('quizDraft')[1]['options'][2]);
+        $this->assertSame('Unfinished question…', $component->get('quizDraft')[0]['question']);
+        $this->assertSame(['Overexpansion', 'Plague', 'Aliens'], $this->lesson->quizQuestions()->first()->options);
+    }
+
     public function test_quiz_autosave_marks_the_scene_ready_once_it_has_a_complete_question(): void
     {
         // A manually added quiz scene starts 'pending'; without this it never becomes ready and

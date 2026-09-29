@@ -5,6 +5,7 @@ export { SceneOverlay } from './SceneOverlay.js';
 export { SceneTimelinePlayer } from './SceneTimelinePlayer.js';
 export { GameTimerOverlay } from './GameTimerOverlay.js';
 export { QuizOverlay } from './QuizOverlay.js';
+export { QuizEditorSlides } from './QuizEditorSlides.js';
 export { TextOverlayLayer } from './TextOverlayLayer.js';
 // layersIdentity belongs on the PUBLIC surface, not just in the module: step3-scene-configurator
 // reaches for it through window.LessonScene (which is this module), and a function that exists in

@@ -6,7 +6,9 @@ namespace App\Livewire\Wizard\Concerns;
 
 use App\Models\QuizQuestion;
 use App\Models\Scene;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\On;
 
 /**
  * Quiz-question editing for the scene configurator's Quiz inspector.
@@ -32,6 +34,8 @@ trait EditsQuizQuestions
 
     private const QUIZ_OPTION_COUNT = 4;     // A/B/C/D — matches QuizPrompt + the player
     private const QUIZ_MAX_QUESTIONS = 12;
+
+    private const QUIZ_TEXT_MAX = 500;
 
     /**
      * Load (or keep) the editable draft for the scene being opened. Only reloads from the DB when the
@@ -392,7 +396,7 @@ trait EditsQuizQuestions
             $filled = array_values(array_filter($rawOptions, fn ($o) => $o !== ''));
 
             $isUntouched = $question === '' && $filled === [];
-            $isComplete = $question !== '' && count($filled) >= 2 && $correctValue !== '';
+            $isComplete = self::draftIsComplete($q);
 
             if (! $isComplete) {
                 // Only nag about questions the teacher has actually started.
@@ -455,6 +459,77 @@ trait EditsQuizQuestions
 
         // No draft reload: reloading would clobber half-typed questions mid-edit.
         $this->quizSaved = true;
+
+        // The stage's editable slides show the SAVED questions; send them the new set so an
+        // inspector edit appears there at once instead of on the next scene select.
+        // The cached relation still holds the rows just replaced; the next scene payload reads it.
+        $this->lesson->unsetRelation('quizQuestions');
+        if ($this->quizDraftSceneId) {
+            $this->dispatch('quiz:questions-updated',
+                sceneId: $this->quizDraftSceneId,
+                questions: self::stageQuizQuestions($this->lesson->quizQuestions, $this->quizDraftSceneId),
+            );
+        }
+    }
+
+    /**
+     * An edit typed straight onto the stage (QuizEditorSlides.js). The stage shows the SAVED set,
+     * which skips incomplete drafts and empty option slots, so its indexes are mapped back onto the
+     * draft before the text lands there. Then the same autosave as an inspector edit.
+     */
+    #[On('quizStageEdited')]
+    public function quizStageEdited(int $question, ?int $option, string $text): void
+    {
+        $text = mb_substr(trim($text), 0, self::QUIZ_TEXT_MAX);
+        if ($text === '' || $this->quizDraftSceneId === null) {
+            return;
+        }
+
+        $complete = array_keys(array_filter($this->quizDraft, fn ($q) => self::draftIsComplete($q)));
+        $draftIndex = $complete[$question] ?? null;
+        if ($draftIndex === null) {
+            return;
+        }
+
+        if ($option === null) {
+            $this->quizDraft[$draftIndex]['question'] = $text;
+        } else {
+            $filledSlots = array_keys(array_filter(
+                $this->quizDraft[$draftIndex]['options'] ?? [],
+                fn ($o) => trim((string) $o) !== '',
+            ));
+            $slot = $filledSlots[$option] ?? null;
+            if ($slot === null) {
+                return;
+            }
+            $this->quizDraft[$draftIndex]['options'][$slot] = $text;
+        }
+
+        $this->autosaveQuiz();
+    }
+
+    /** A question autosave will persist: a prompt, two filled answers, and a filled correct one. */
+    private static function draftIsComplete(array $q): bool
+    {
+        $options = array_map(fn ($o) => trim((string) $o), $q['options'] ?? []);
+        $filled = array_filter($options, fn ($o) => $o !== '');
+
+        return trim((string) ($q['question'] ?? '')) !== ''
+            && count($filled) >= 2
+            && ($options[(int) ($q['correct_index'] ?? 0)] ?? '') !== '';
+    }
+
+    /**
+     * What the stage shows for one quiz scene: its own questions, else a legacy scene-less pool.
+     *
+     * @param  Collection<int, QuizQuestion>  $pool
+     * @return list<array<string, mixed>>
+     */
+    private static function stageQuizQuestions(Collection $pool, int $sceneId): array
+    {
+        return $pool->where('scene_id', $sceneId)->values()
+            ->whenEmpty(fn () => $pool->whereNull('scene_id')->values())
+            ->map->only(['question', 'options', 'correct_index', 'asks_ahead', 'explanation'])->values()->all();
     }
 
     /** @deprecated Autosave replaced the manual save — kept for any stray callers. */

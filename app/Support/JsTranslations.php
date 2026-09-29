@@ -36,7 +36,22 @@ final class JsTranslations
     /** @return array<string, string> */
     public static function forBrowser(): array
     {
-        return array_merge(self::quiz(), self::player());
+        return array_merge(self::quiz(), self::player(), self::editor());
+    }
+
+    /**
+     * The quiz as the teacher edits it on the stage (QuizEditorSlides.js).
+     *
+     * @return array<string, string>
+     */
+    private static function editor(): array
+    {
+        return [
+            'Correct answer' => __('Correct answer'),
+            'This is the correct answer. Editing it changes what counts as right.' => __('This is the correct answer. Editing it changes what counts as right.'),
+            'Previous question' => __('Previous question'),
+            'Next question' => __('Next question'),
+        ];
     }
 
     /**

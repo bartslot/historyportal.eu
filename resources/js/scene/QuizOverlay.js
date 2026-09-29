@@ -30,10 +30,11 @@ import { Sfx } from './sfx.js'
 import { t } from '../i18n.js'
 import { mountBigCountdown, BIG_COUNTDOWN_LEAVE_MS } from '../big-countdown.js'
 
-const LETTERS = ['A', 'B', 'C', 'D']
+export const LETTERS = ['A', 'B', 'C', 'D']
 // The four answer letters keep their Kahoot-style colour coding, drawn from the theme's
 // semantic palette rather than raw hexes.
-const LETTER_CLASSES = [
+export const LETTER_CHIP = 'inline-flex h-[30px] w-9 shrink-0 items-center justify-center rounded-lg text-[15px] font-extrabold'
+export const LETTER_CLASSES = [
   'bg-error text-error-content',
   'bg-info text-info-content',
   'bg-warning text-warning-content',
@@ -45,8 +46,10 @@ const STREAK_FROM = 3
 
 // Shared chrome. `qz-card` carries the entrance animation (app.css). No border: the Figma card is
 // the gradient and a shadow, and an outline drawn around it is chrome the design does not have.
-const SCRIM = 'absolute inset-0 flex items-center justify-center bg-base-100/90 backdrop-blur-md'
-const CARD = 'qz-card card hp-modals rounded-box shadow-2xl text-base-content'
+// CARD_STILL is the same card without the entrance, for the editor's static slides.
+export const SCRIM = 'absolute inset-0 flex items-center justify-center bg-base-100/90 backdrop-blur-md'
+export const CARD_STILL = 'card hp-modals rounded-box shadow-2xl text-base-content'
+const CARD = `qz-card ${CARD_STILL}`
 
 // ── The read-gate, as the Figma tells it ───────────────────────────────────────────────────────
 // Blank bars stand where the answers are, a number counts down in the middle of them, and then the
@@ -331,8 +334,7 @@ export class QuizOverlay {
         <button data-opt="${i}" ${answered || gated ? 'disabled' : ''}
                 class="${anim} ${tone} ${cursor} relative flex w-full items-center gap-4 rounded-xl border px-4 py-3
                        text-left text-xl font-medium transition-[background-color,border-color,transform,opacity] duration-150">
-          <span class="${LETTER_CLASSES[i]} inline-flex h-[30px] w-9 shrink-0 items-center justify-center
-                       rounded-lg text-[15px] font-extrabold">${LETTERS[i]}</span>
+          <span class="${LETTER_CLASSES[i]} ${LETTER_CHIP}">${LETTERS[i]}</span>
           <span>${this._escape(opt)}</span>
           ${ghost}
         </button>`

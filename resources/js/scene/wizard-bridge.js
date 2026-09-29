@@ -4,6 +4,7 @@ import { isTopAnchored, normalizeFit, PORTRAIT_TOP_BIAS } from './background-fit
 import { mountEmbedBg, embedBgSignature } from './embed-bg.js'
 import { isClipartLayer } from './layer-filters.js'
 import { fitToPlate, plateAspect } from './plate-box.js'
+import { t } from '../i18n.js'
 
 /**
  * Push every alignment entry earlier by VISEME_LEAD_SECONDS. The avatar player
@@ -56,6 +57,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     let overlay       = null
     let timer         = null
     let quizOverlay   = null
+    let quizEditor    = null
     let baseTerritory = ''   // lesson-level territory title (fallback when a scene has no override)
     let baseFlag      = ''
     let readonlyTextLayer = null
@@ -192,12 +194,14 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         // "0:00" in Configure only confuses teachers. Keep it hidden here.
         timer?.hide()
 
-        // Selecting a quiz scene in Configure previews its questions right on the canvas
-        // (navigable, answerable). Any other selection clears the overlay.
+        // Selecting a quiz scene in Configure shows its questions as still, editable slides. Only
+        // Play runs the timed student quiz (SceneTimelinePlayer, whose payloads carry no
+        // quizQuestions). Any other selection clears both.
+        quizOverlay?.hide()
         if (payload.kind === 'game' && payload.gameType === 'quiz' && payload.quizQuestions?.length) {
-            quizOverlay?.show({ questions: payload.quizQuestions })
+            quizEditor?.show({ questions: payload.quizQuestions, sceneId: payload.sceneId })
         } else {
-            quizOverlay?.hide()
+            quizEditor?.hide()
         }
 
         // Preview playback: render teacher text annotations read-only. (Configure uses its
@@ -1180,6 +1184,18 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     overlay.setTerritory({ title: baseTerritory, flagUrl: baseFlag })
     timer        = new Scene.GameTimerOverlay(timerEl)
     quizOverlay  = new Scene.QuizOverlay(timerEl)   // same full-bleed host layer as the timer
+    // Stage edits go into the same draft the inspector edits (EditsQuizQuestions::quizStageEdited),
+    // which autosaves and sends the questions back as quiz:questions-updated.
+    quizEditor   = new Scene.QuizEditorSlides(timerEl, {
+        onEdit: (edit) => window.Livewire?.dispatch('quizStageEdited', edit),
+        onCorrectFocus: () => window.dispatchEvent(new CustomEvent('toast', { detail: {
+            type: 'warning',
+            message: t('This is the correct answer. Editing it changes what counts as right.'),
+        } })),
+    })
+    window.addEventListener('quiz:questions-updated', (e) => {
+        if (quizEditor.isVisible && e.detail?.sceneId === quizEditor.sceneId) quizEditor.update(e.detail.questions)
+    })
 
     // DB stores asset paths as relative (e.g. "lessons/31/scenes/241/narration.mp3").
     // The sequencer feeds these straight to the avatar player / skybox, where the
