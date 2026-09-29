@@ -6,6 +6,7 @@ namespace App\Jobs;
 
 use App\Models\Scene;
 use App\Services\WorldLabsService;
+use App\Support\MediaUrl;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -51,10 +52,12 @@ class GenerateWorldLabsScene implements ShouldQueue
         try {
             $service  = new WorldLabsService($apiKey, maxPollSeconds: 660);
 
-            // WorldLabs needs a publicly reachable URL. Upload to fal storage
-            // so it works in local dev (where 127.0.0.1 isn't reachable externally).
-            $imageBytes = Storage::disk('public')->get($scene->image_path);
-            $imageUrl   = $service->uploadImageToFal($imageBytes, $scene->image_path);
+            // WorldLabs needs a publicly reachable URL. A Cloudinary picture already is one;
+            // a file on our disk goes to fal storage first, so it works in local dev (where
+            // 127.0.0.1 isn't reachable externally).
+            $imageUrl = MediaUrl::isRemote($scene->image_path)
+                ? $scene->image_path
+                : $service->uploadImageToFal(Storage::disk('public')->get($scene->image_path), $scene->image_path);
 
             $prefix = "lessons/{$scene->lesson_id}/scenes/{$scene->id}/world";
             $name     = "scene-{$scene->id}";

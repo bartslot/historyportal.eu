@@ -87,4 +87,16 @@ return [
     'telemetry_enabled' => (bool) env('LESSON_TELEMETRY', true),
     'telemetry_retention_days' => (int) env('LESSON_TELEMETRY_RETENTION_DAYS', 90),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Lesson picture compression
+    |--------------------------------------------------------------------------
+    | AVIF quality Cloudinary delivers lesson pictures at (f_auto: AVIF, WebP for
+    | browsers without it; transparency kept). 20 is Bart's pick after comparing
+    | 60/40/30/20/10/5 on the history-line art: the artefacts read as watercolour,
+    | 10 starts breaking thin lines. Cheaper bandwidth matters more than the
+    | faintest hatching. Changing it only affects pictures uploaded afterwards.
+    */
+    'image_quality' => (int) env('LESSON_IMAGE_QUALITY', 20),
+
 ];

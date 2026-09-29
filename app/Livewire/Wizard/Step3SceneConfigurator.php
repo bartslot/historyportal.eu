@@ -24,6 +24,8 @@ use App\Models\StrategyGame;
 use App\Services\Billing\NarrationCreditLedger;
 use App\Services\Support\LayerAmbient;
 use App\Services\Support\WebpEncoder;
+use App\Services\Support\WhiteCutout;
+use App\Support\MediaUrl;
 use App\Support\NarrationBudget;
 use App\Support\PolityCapitals;
 use App\Support\PortraitFocus;
@@ -195,14 +197,14 @@ class Step3SceneConfigurator extends Component
         $titles ??= $this->assetTitlesFor([$scene]);
 
         return collect($scene->shots ?? [])->map(fn ($shot) => [
-            'image_url' => ! empty($shot['image_path']) ? asset('storage/'.$shot['image_path']).'?v='.$ts : null,
+            'image_url' => MediaUrl::versioned($shot['image_path'] ?? null, $ts),
             // bg_url/hero_url (E3b story-pack shots) — parallax layers, see ParallaxScene.js.
-            'bg_url' => ! empty($shot['bg_path']) ? asset('storage/'.$shot['bg_path']).'?v='.$ts : null,
-            'hero_url' => ! empty($shot['hero_path']) ? asset('storage/'.$shot['hero_path']).'?v='.$ts : null,
+            'bg_url' => MediaUrl::versioned($shot['bg_path'] ?? null, $ts),
+            'hero_url' => MediaUrl::versioned($shot['hero_path'] ?? null, $ts),
             'anchor_sentence' => $shot['anchor_sentence'] ?? null,
             // Multiplane layers (E3c): [{path|url, depth, kind, scale, height, sway}] back→front.
             'layers' => collect($shot['layers'] ?? [])->map(fn ($l) => [
-                'url' => ! empty($l['path']) ? asset('storage/'.$l['path']).'?v='.$ts : ($l['url'] ?? null),
+                'url' => ! empty($l['path']) ? MediaUrl::versioned($l['path'], $ts) : ($l['url'] ?? null),
                 // asset_id + x/y let the on-canvas editor identify and free-position each layer.
                 'asset_id' => isset($l['asset_id']) ? (int) $l['asset_id'] : null,
                 // A duplicated layer has its own synthetic id; its title lives on the original asset.
@@ -324,7 +326,7 @@ class Step3SceneConfigurator extends Component
 
         $this->dispatch('scene:load', payload: [
             'sceneId' => $scene->id,
-            'imageUrl' => $imagePath ? asset('storage/'.$imagePath).'?v='.$ts : null,
+            'imageUrl' => MediaUrl::versioned($imagePath, $ts),
             'shots' => $this->serializeShots($scene),
             'hasSkyboxImage' => ! empty($scene->skybox_image_path),
             'audioUrl' => $scene->audioUrl(),
@@ -3039,7 +3041,9 @@ class Step3SceneConfigurator extends Component
             array_column($scene->shots ?? [], 'image_path'),
         ));
         foreach ($paths as $path) {
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($path);
+            if (! MediaUrl::isRemote($path)) {   // a CDN picture may be shared by other lessons
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($path);
+            }
         }
 
         $scene->update([
@@ -3202,6 +3206,10 @@ class Step3SceneConfigurator extends Component
         $scene = $this->lesson->scenes()->findOrFail($this->selectedSceneId);
 
         if ($this->showsAPicture($scene)) {
+            // A layer sits on top of something, so a drawing on white paper loses its paper.
+            // Only as a layer: a background keeps its white.
+            $this->cutOutWhite($path);
+
             // A local /storage URL: libraryImagePath() reuses the file in place rather than
             // re-fetching it, so this costs nothing beyond the upload we already did.
             $this->addLibraryImageLayer('/storage/'.$path, $name);
@@ -3210,6 +3218,26 @@ class Step3SceneConfigurator extends Component
         }
 
         $this->applyUploadedBackground($path);
+    }
+
+    /**
+     * Make the white around an uploaded layer picture transparent, in place (WhiteCutout: only white
+     * connected to the edge, only when the picture sits on white). A photo is left as it is.
+     */
+    private function cutOutWhite(string $path): void
+    {
+        $disk = \Illuminate\Support\Facades\Storage::disk('public');
+        if (strtolower(pathinfo($path, PATHINFO_EXTENSION)) !== 'webp' || ! function_exists('imagewebp')) {
+            return;   // a GIF keeps its frames; without WebP support there is nothing to write
+        }
+        $img = WhiteCutout::apply((string) $disk->get($path));
+        if ($img === null) {
+            return;
+        }
+        ob_start();
+        imagewebp($img, null, WebpEncoder::UPLOAD_QUALITY);
+        $disk->put($path, (string) ob_get_clean());
+        imagedestroy($img);
     }
 
     /**

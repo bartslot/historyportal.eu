@@ -30,6 +30,9 @@
         <env name="DB_HOST" value="127.0.0.1"/>
         <env name="DB_PORT" value="5432"/>
         <env name="DB_DATABASE" value="learningportal_test"/>
+        <!-- Never the real account: a test that uploads would publish to Bart's Cloudinary. Tests that
+             need it set a fake URL and Http::fake(). -->
+        <env name="CLOUDINARY_URL" value="" force="true"/>
         <env name="DB_USERNAME" value="bartslot"/>
         <env name="DB_PASSWORD" value=""/>
         <env name="DB_SSLMODE" value="prefer"/>

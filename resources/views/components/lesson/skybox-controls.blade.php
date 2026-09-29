@@ -20,9 +20,7 @@
     $bgKind         = $scene->config['background_credit']['kind'] ?? null;
     $srcDefault     = $bgKind === 'painting' ? 'paintings' : ($bgKind === 'url' ? 'url' : 'ai');
     $backgroundFit  = ($scene->config['background_fit'] ?? 'cover') === 'contain' ? 'contain' : 'cover';
-    $backgroundImageUrl = $scene->image_path
-        ? asset('storage/' . $scene->image_path) . '?v=' . ($scene->updated_at?->timestamp ?? '')
-        : null;
+    $backgroundImageUrl = \App\Support\MediaUrl::versioned($scene->image_path, $scene->updated_at?->timestamp);
 @endphp
 
 <div class="mt-2 space-y-3"
@@ -80,7 +78,7 @@
                 @change="
                     window.dispatchEvent(new CustomEvent('lesson:scene:view', { detail: {
                         view:     view,
-                        imageUrl: {{ $scene->image_path ? json_encode(asset('storage/' . $scene->image_path)) : 'null' }},
+                        imageUrl: {{ json_encode(\App\Support\MediaUrl::of($scene->image_path)) }},
                         sceneId:  {{ $scene->id }},
                         duration: {{ $scene->duration_seconds ?? 10 }},
                     }}));

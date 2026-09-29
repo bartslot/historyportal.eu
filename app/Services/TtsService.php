@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Services\Support\AudioEncoder;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -14,6 +15,9 @@ class TtsService
 
     /** Which rung of the fallback chain actually produced the last audio. */
     private ?string $generatedProvider = null;
+
+    /** The provider's own bytes from the last call, before the AAC encode (see lastSourceAudio()). */
+    private ?string $sourceAudio = null;
 
     /** The voice that rung actually spoke with — not the one the caller asked for. */
     private ?string $generatedVoice = null;
@@ -102,7 +106,40 @@ class TtsService
         return $this->generatedVoice;
     }
 
+    /**
+     * Narration bytes in the house encode (AudioEncoder: AAC-LC 32k mono .m4a) whenever an encoder
+     * is installed; lastExtension() says what came out. Azure is asked for uncompressed PCM so its
+     * audio is compressed exactly once; any other provider's MP3 is converted, which costs nothing
+     * extra at the provider (ElevenLabs credits are per character, not per format).
+     */
+    /**
+     * The provider's own audio from the last generateAudioRaw(), before the AAC encode: what an
+     * ElevenLabs recording is kept as (Ron Slot's voice is re-bought never, and kept at full quality).
+     */
+    public function lastSourceAudio(): ?string
+    {
+        return $this->sourceAudio;
+    }
+
     public function generateAudioRaw(string $text, string $voiceId, float $speed = 1.0, string $provider = 'auto', ?array &$timingData = null): ?string
+    {
+        $audio = $this->generateFromProviders($text, $voiceId, $speed, $provider, $timingData);
+        $this->sourceAudio = $audio;
+        $from = $this->generatedAudioExtension;
+        if ($audio === null || ! in_array($from, ['wav', 'mp3'], true) || ! AudioEncoder::available()) {
+            return $audio;
+        }
+
+        $aac = AudioEncoder::toAac($audio, $from);
+        if ($aac === null) {
+            return $audio;   // encoder failed: the provider's own audio still plays
+        }
+        $this->generatedAudioExtension = AudioEncoder::EXTENSION;
+
+        return $aac;
+    }
+
+    private function generateFromProviders(string $text, string $voiceId, float $speed, string $provider, ?array &$timingData): ?string
     {
         $this->generatedAudioExtension = 'mp3'; // default; overridden by tryMacosTts
         $this->generatedProvider = null;
@@ -186,6 +223,7 @@ class TtsService
         $ratePct = (int) round(($speed - 1.0) * 100);   // 1.0 → +0%, 1.1 → +10%, etc.
         $rateAttr = ($ratePct >= 0 ? '+' : '').$ratePct.'%';
         $escaped = htmlspecialchars($text, ENT_XML1 | ENT_QUOTES, 'UTF-8');
+        $pcm = AudioEncoder::available();
 
         $ssml = <<<SSML
 <speak version="1.0" xml:lang="{$lang}">
@@ -199,7 +237,9 @@ SSML;
             $response = Http::withHeaders([
                 'Ocp-Apim-Subscription-Key' => $key,
                 'Content-Type' => 'application/ssml+xml',
-                'X-Microsoft-OutputFormat' => 'audio-24khz-48kbitrate-mono-mp3',
+                // PCM when we can encode it ourselves: one lossy step instead of two, and Azure
+                // bills per character, not per format. MP3 only on a machine with no encoder.
+                'X-Microsoft-OutputFormat' => $pcm ? 'riff-24khz-16bit-mono-pcm' : 'audio-24khz-48kbitrate-mono-mp3',
                 'User-Agent' => 'TheLearningPortal',
             ])
             // A full scene of narration is a minute or more of speech, and Azure streams it back as
@@ -217,7 +257,7 @@ SSML;
                 return null;
             }
 
-            $this->generatedAudioExtension = 'mp3';
+            $this->generatedAudioExtension = $pcm ? 'wav' : 'mp3';
             $this->generatedProvider = 'azure';
             $this->generatedVoice = $voice;
 

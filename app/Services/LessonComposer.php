@@ -11,6 +11,7 @@ use App\Models\Scene;
 use App\Models\User;
 use App\Services\Lessons\LibraryLayers;
 use App\Services\Lessons\SceneDialogue;
+use App\Services\Support\AudioEncoder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
@@ -35,6 +36,15 @@ use Throwable;
  */
 class LessonComposer
 {
+    /** An old cached narration at or above this (bits/s) is converted rather than re-rendered. */
+    private const CONVERTIBLE_BITRATE = 96000;
+
+    /**
+     * Recordings kept by sentence, across lessons: <sha1(script)>.mp3 on the public disk. Outside
+     * lessons/, so rebuilding or deleting a lesson never touches it.
+     */
+    public const NARRATION_LIBRARY = 'narration-library';
+
     public function __construct(
         private readonly SceneImageSourcer $images,
         private readonly LibraryLayers $library,
@@ -314,19 +324,23 @@ class LessonComposer
      * Narrate a scene with the configured TTS provider (Azure locally), tolerating failure.
      *
      * Rebuilding a lesson recreates its scenes, so the naive path re-synthesises every line even
-     * when the script never changed. Audio is therefore cached by script hash under the LESSON
-     * (not the scene) and copied back into place — editing one sentence in a spec then costs one
-     * TTS call, not sixteen.
+     * when the script never changed. Audio is therefore cached under the LESSON (not the scene) and
+     * copied back into place — editing one sentence in a spec then costs one TTS call, not sixteen.
+     *
+     * The cache key is the script AND the encode (AudioEncoder::FINGERPRINT): keyed on the text
+     * alone, changing the bitrate re-rendered nothing (the Storia trap).
      */
     private function narrate(Scene $scene): void
     {
         $script = (string) $scene->script_segment;
         $hash = sha1($script);
-        $cached = "lessons/{$scene->lesson_id}/narration-cache/{$hash}.mp3";
+        $key = sha1($script.'|'.AudioEncoder::FINGERPRINT);
+        $dir = "lessons/{$scene->lesson_id}/narration-cache";
         $disk = Storage::disk('public');
 
-        if ($disk->exists($cached)) {
-            $path = "lessons/{$scene->lesson_id}/scenes/{$scene->id}/narration.mp3";
+        $cached = $this->cachedNarration($dir, $key) ?? $this->convertHighBitrateNarration($dir, $hash, $key);
+        if ($cached !== null) {
+            $path = "lessons/{$scene->lesson_id}/scenes/{$scene->id}/narration.".pathinfo($cached, PATHINFO_EXTENSION);
             $disk->put($path, $disk->get($cached));
             $scene->update([
                 'audio_path' => $path,
@@ -347,11 +361,53 @@ class LessonComposer
             GenerateSceneAudio::dispatchSync($scene->id);
             $scene->refresh();
             if ($scene->audio_path && $disk->exists($scene->audio_path)) {
-                $disk->put($cached, $disk->get($scene->audio_path));
+                $disk->put("{$dir}/{$key}.".pathinfo($scene->audio_path, PATHINFO_EXTENSION), $disk->get($scene->audio_path));
             }
         } catch (Throwable $e) {
             $this->say('     ! narration failed: '.substr($e->getMessage(), 0, 90));
         }
+    }
+
+    /** The cached narration for this key, whatever extension it was stored with. */
+    private function cachedNarration(string $dir, string $key): ?string
+    {
+        foreach ([AudioEncoder::EXTENSION, 'mp3', 'wav'] as $ext) {
+            if (Storage::disk('public')->exists("{$dir}/{$key}.{$ext}")) {
+                return "{$dir}/{$key}.{$ext}";
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Narration cached before the encode was part of the key, converted instead of re-rendered —
+     * but only a high-bitrate one (ElevenLabs' 128k): converting that to 32k is a single audible
+     * step, and a re-render would spend ElevenLabs credits. Azure's old 48k MP3 is NOT converted
+     * (a second lossy generation from an already small file); it re-renders from text for cents.
+     *
+     * Looked for in this lesson's own cache first, then in NARRATION_LIBRARY: recordings kept by
+     * sentence across lessons (Ron Slot's, Bart's father: they are never re-bought and never lost to
+     * a lesson being rebuilt under a new id). The library file itself is only read, never changed.
+     */
+    private function convertHighBitrateNarration(string $dir, string $hash, string $key): ?string
+    {
+        $disk = Storage::disk('public');
+        $old = collect(["{$dir}/{$hash}.mp3", self::NARRATION_LIBRARY."/{$hash}.mp3"])
+            ->first(fn (string $path) => $disk->exists($path)
+                && (AudioEncoder::bitrate($disk->path($path)) ?? 0) >= self::CONVERTIBLE_BITRATE);
+        if ($old === null) {
+            return null;
+        }
+        $aac = AudioEncoder::toAac((string) $disk->get($old), 'mp3');
+        if ($aac === null) {
+            return null;
+        }
+        $path = "{$dir}/{$key}.".AudioEncoder::EXTENSION;
+        $disk->put($path, $aac);
+        $this->say('     ↳ narration converted to AAC 32k from the high-bitrate cache (no TTS call)');
+
+        return $path;
     }
 
     /** Spoken length estimate (~2.6 words/sec) — mirrors GenerateSceneAudio's fallback. */

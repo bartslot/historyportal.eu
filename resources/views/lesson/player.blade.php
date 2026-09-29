@@ -74,7 +74,7 @@
                                     ?? $lesson->details
                                     ?? $lesson->topic,
         'scene_images'          => $lesson->relationLoaded('scenes')
-            ? $lesson->scenes->where('image_path', '!=', null)->map(fn($s) => ['url' => \Illuminate\Support\Facades\Storage::disk('public')->url($s->image_path)])->values()
+            ? $lesson->scenes->where('image_path', '!=', null)->map(fn($s) => ['url' => \App\Support\MediaUrl::of($s->image_path)])->values()
             : [],
         'scenes'                => $lesson->relationLoaded('scenes')
             ? $lesson->scenes->map(fn($s) => [
@@ -92,19 +92,19 @@
                 'scene_view'  => $s->scene_view,
                 'audio_url'   => $s->audioUrl(),
                 'script'      => $s->script_segment,
-                'image_url'   => $s->image_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($s->image_path) : null,
+                'image_url'   => \App\Support\MediaUrl::of($s->image_path),
                 // Attribution for a sourced painting or photograph. Commons images are mostly CC BY
                 // or CC BY-SA, which oblige us to name the author wherever the image is shown.
                 'image_credit' => $s->config['image_credit'] ?? null,
                 'shots'       => collect($s->shots ?? [])->map(fn($shot) => [
-                    'image_url'       => !empty($shot['image_path']) ? \Illuminate\Support\Facades\Storage::disk('public')->url($shot['image_path']) : null,
+                    'image_url'       => \App\Support\MediaUrl::of($shot['image_path'] ?? null),
                     // bg_url/hero_url (E3b story-pack shots): the player renders these as
                     // parallax layers when bg_url is present, flat image_url otherwise.
-                    'bg_url'          => !empty($shot['bg_path']) ? \Illuminate\Support\Facades\Storage::disk('public')->url($shot['bg_path']) : null,
-                    'hero_url'        => !empty($shot['hero_path']) ? \Illuminate\Support\Facades\Storage::disk('public')->url($shot['hero_path']) : null,
+                    'bg_url'          => \App\Support\MediaUrl::of($shot['bg_path'] ?? null),
+                    'hero_url'        => \App\Support\MediaUrl::of($shot['hero_path'] ?? null),
                     // Multiplane layers (E3c): [{path|url, depth, kind, scale, height, sway}] back→front.
                     'layers'          => collect($shot['layers'] ?? [])->map(fn($l) => [
-                        'url'    => !empty($l['path']) ? \Illuminate\Support\Facades\Storage::disk('public')->url($l['path']) : ($l['url'] ?? null),
+                        'url'    => !empty($l['path']) ? \App\Support\MediaUrl::of($l['path']) : ($l['url'] ?? null),
                         // asset_id + x/y drive the free-positioned clipart overlay (voyage-map layers).
                         'asset_id' => isset($l['asset_id']) ? (int) $l['asset_id'] : null,
                         'x'      => isset($l['x']) ? (float) $l['x'] : null,

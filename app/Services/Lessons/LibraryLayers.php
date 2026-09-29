@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Storage;
  */
 class LibraryLayers
 {
+    public function __construct(private readonly LibraryCdn $cdn) {}
+
     /**
      * Resolve every library ref in the spec without writing anything. Throws what the build
      * itself would throw, so an invalid spec never gets as far as deleting the old lesson.
@@ -71,7 +73,7 @@ class LibraryLayers
             // LIKE 'a/b.%' also matches 'a/b.old/x.png' — only a bare extension counts.
             ->first(fn (SvgAsset $a) => $a->source_ref === $ref || ! str_contains(substr($a->source_ref, strlen($ref) + 1), '/'));
 
-        if (! $asset || ! Storage::disk('public')->exists($asset->svg_path)) {
+        if (! $asset || (! $asset->cdn_url && ! Storage::disk('public')->exists($asset->svg_path))) {
             throw new \InvalidArgumentException("{$where}: no library asset '{$ref}'. Is it in resources/icons, and has `php artisan icons:import` run?");
         }
 
@@ -111,15 +113,19 @@ class LibraryLayers
     }
 
     /**
-     * Background from the art library. The file is COPIED into the scene's own folder, the same
-     * place a sourced background lands, so removing an asset from the library never blanks a lesson.
+     * Background from the art library: its Cloudinary URL, uploaded on first use. Without Cloudinary
+     * the file is COPIED into the scene's own folder, the same place a sourced background lands, so
+     * removing an asset from the library never blanks a lesson.
      */
     public function attachLibraryBackdrop(Scene $scene, string $ref, int $order): void
     {
         $asset = $this->libraryAsset($ref, $this->sceneLabel(['location' => $scene->location, 'chapter' => $scene->chapter_name], $order));
-        $ext = pathinfo($asset->svg_path, PATHINFO_EXTENSION) ?: 'png';
-        $path = "lessons/{$scene->lesson_id}/scenes/{$scene->id}/bg.{$ext}";
-        Storage::disk('public')->copy($asset->svg_path, $path);
+        $path = $this->cdn->ensure($asset);
+        if ($path === null) {
+            $ext = pathinfo($asset->svg_path, PATHINFO_EXTENSION) ?: 'png';
+            $path = "lessons/{$scene->lesson_id}/scenes/{$scene->id}/bg.{$ext}";
+            Storage::disk('public')->copy($asset->svg_path, $path);
+        }
 
         $scene->update([
             'image_path' => $path,
@@ -137,8 +143,9 @@ class LibraryLayers
     }
 
     /**
-     * A gallery image from the art library, copied into the lesson. Root-relative URL, the same
-     * shape the editor stores for a picked painting (Storage::url() would bake in APP_URL).
+     * A gallery image from the art library: its Cloudinary URL, or without Cloudinary a copy in the
+     * lesson. Root-relative for the copy, the same shape the editor stores for a picked painting
+     * (Storage::url() would bake in APP_URL).
      *
      * `asset` keeps the ref, so lessons:export writes `asset:<ref>` back instead of this copy.
      *
@@ -147,10 +154,14 @@ class LibraryLayers
     public function copyLibraryImage(Lesson $lesson, string $ref, int $order): array
     {
         $asset = $this->libraryAsset($ref, "Spec scene #{$order} gallery");
-        $path = "lessons/{$lesson->id}/gallery/".basename($asset->svg_path);
-        Storage::disk('public')->put($path, Storage::disk('public')->get($asset->svg_path));
+        $url = $this->cdn->ensure($asset);
+        if ($url === null) {
+            $path = "lessons/{$lesson->id}/gallery/".basename($asset->svg_path);
+            Storage::disk('public')->put($path, Storage::disk('public')->get($asset->svg_path));
+            $url = '/storage/'.$path;
+        }
 
-        return ['url' => '/storage/'.$path, 'credit' => $asset->credit(), 'asset' => trim($ref, '/ ')];
+        return ['url' => $url, 'credit' => $asset->credit(), 'asset' => trim($ref, '/ ')];
     }
 
     /**
@@ -165,7 +176,7 @@ class LibraryLayers
      */
     public function applyLayers(Scene $scene, array $s, int $order): void
     {
-        $layers = $this->buildLayers($s, $order);
+        $layers = $this->buildLayers($s, $order, upload: true);
         if ($layers === []) {
             return;
         }
@@ -180,7 +191,7 @@ class LibraryLayers
      * @param  array<string,mixed>  $s
      * @return list<array<string,mixed>>
      */
-    private function buildLayers(array $s, int $order): array
+    private function buildLayers(array $s, int $order, bool $upload = false): array
     {
         $entries = (array) ($s['layers'] ?? []);
         $where = $this->sceneLabel($s, $order);
@@ -191,6 +202,9 @@ class LibraryLayers
                 throw new \InvalidArgumentException("{$where}, layer {$i}: unknown key(s) ".implode(', ', $unknown).'.');
             }
             $asset = $this->libraryAsset((string) ($entry['asset'] ?? ''), $where);
+            if ($upload) {
+                $this->cdn->ensure($asset);   // preflight only resolves; the real build uploads
+            }
             $layers[] = SceneLayers::figure($asset, array_diff_key((array) $entry, ['asset' => true, 'speaks' => true]));
         }
 
@@ -253,7 +267,7 @@ class LibraryLayers
         foreach ($layers as $layer) {
             $asset = $assets->get($layer['asset_id'] ?? null);
             $unknown = array_diff_key($layer, array_flip(['asset_id', 'path', ...self::LAYER_KEYS]));
-            if (! $asset || $asset->svg_path !== ($layer['path'] ?? null) || $unknown !== []) {
+            if (! $asset || ! in_array($layer['path'] ?? null, [$asset->svg_path, $asset->cdn_url], true) || $unknown !== []) {
                 return null;
             }
             $settings = array_filter(

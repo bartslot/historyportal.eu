@@ -31,7 +31,7 @@ INK_LEAD_SHADED = ("Image 1 is a rendered 3D scene with real materials. Image 2 
 # The forest render is dark on purpose (deep shadows); Qwen inks darkness as black, so the input's
 # shadows are lifted first and the prompt keeps shadow areas as paper (2026-09-27).
 INK_LEAD_LIGHT = ("Make it an open, light line drawing like a hand-coloured book illustration: clear outlines, "
-                  "the bark furrows, leaf clusters and fern fronds drawn as lines, and only sparse parallel hatching "
+                  "the surface textures drawn as lines, and only sparse parallel hatching "
                   "in the shadows. Shadow areas stay mostly white paper; a colour wash will add the depth later. "
                   "At least 80% white, under 8% black, no solid black masses, no dense cross-hatching. ")
 LIFT_GAMMA = 0.55   # < 1 brightens the shadows of the render before inking
@@ -85,9 +85,20 @@ def ref_workflow(cfg, ref_mp):
     return wf, dict(nodes, ref="21.image")
 
 
-def run(kind, src, prompt, ref, outdir, mp, seed, ref_mp=0.6):
-    cfg = cc.load_config(CLIENT_DIR / "comfy.json")
-    wf, nodes = ref_workflow(cfg, ref_mp) if ref else cc.load_workflow(cfg, "qwen")
+def resolved(cfg):
+    """cfg with render.local looked up ONCE. macOS spends ~2 s on every .local (mDNS) lookup and a job
+    makes about ten requests: 19 of a job's 32 s went to name lookups, the GPU needs 13 (2026-09-28).
+    Resolved per run, not hard-coded: the PC's DHCP address changes."""
+    import socket
+    try:
+        return dict(cfg, host=socket.gethostbyname(cfg["host"]))
+    except OSError:
+        return cfg      # asleep or unresolvable: ensure_up() wakes it by MAC and retries by name
+
+
+def run(kind, src, prompt, ref, outdir, mp, seed, ref_mp=0.6, model="qwen"):
+    cfg = resolved(cc.load_config(CLIENT_DIR / "comfy.json"))
+    wf, nodes = ref_workflow(cfg, ref_mp) if ref else cc.load_workflow(cfg, model)
     values = {"prompt": prompt, "seed": seed, "megapixels": mp, "steps": None}
     digest = cc.job_hash(src.read_bytes() + (ref.read_bytes() if ref else b""), wf, values)
     dst = outdir / f"{src.stem.replace('_lines', '')}__{kind}__{digest[:8]}.png"
@@ -116,10 +127,14 @@ def main():
     ap.add_argument("--ref", type=Path)
     ap.add_argument("--mp", type=float, default=2.0)
     ap.add_argument("--seed", type=int, default=1)
-    ap.add_argument("--scene", choices=["inland", "harbour", "forest"], default="inland",
+    ap.add_argument("--scene", choices=["inland", "harbour", "forest", "sea", "voyage", "tasman_cast"], default="inland",
                     help="inland drops 'boats' and 'water' from the colour prompt (they get painted in otherwise); "
                          "forest = full local colour like Bart's goal image (his prompt stays restrained for towns)")
     ap.add_argument("--light", action="store_true", help="ink: open linework with room for colour")
+    # The render-PC study (PIPELINE.md): klein inks about twice as fast as Qwen and keeps the Blender
+    # geometry (contour recall 0.97-1.00 vs 0.73-0.89); on the Tasman sails it was also better. Qwen stays for colour.
+    ap.add_argument("--model", choices=["klein4b", "qwen"], default=None,
+                    help="default: klein4b for ink without a reference, qwen otherwise")
     ap.add_argument("-o", "--outdir", type=Path, required=True)
     a = ap.parse_args()
     if a.kind == "paint":
@@ -136,11 +151,12 @@ def main():
             a.src = lifted(a.src)
     else:
         prompt = COLOUR_GUARD + (COLOUR_LEAD if a.ref else "") + (HERE / "prompts" / {"harbour": "colour_pass.txt", "inland": "colour_pass_inland.txt",
-                                                "forest": "colour_pass_forest.txt"}[a.scene]).read_text()
+                                                "forest": "colour_pass_forest.txt", "sea": "colour_pass_sea.txt", "voyage": "colour_pass_voyage.txt", "tasman_cast": "colour_pass_tasman_cast.txt"}[a.scene]).read_text()
     ref = None if (a.ref and str(a.ref) == "none") else (a.ref or DEFAULT_REF[a.kind])
     if ref is None and a.kind == "ink":
         prompt = prompt.replace(" Image 2 is only a style reference: copy its drawing style, never its content.", "")
-    run(a.kind, a.src, prompt, ref, a.outdir, a.mp, a.seed)
+    model = a.model or ("klein4b" if a.kind == "ink" and ref is None else "qwen")
+    run(a.kind, a.src, prompt, ref, a.outdir, a.mp, a.seed, model=model)
 
 
 if __name__ == "__main__":

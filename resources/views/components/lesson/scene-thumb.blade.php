@@ -110,7 +110,7 @@
             <span class="text-2xs tracking-widest">{{ __('SCENE') }} {{ $scene->order }}</span>
         </div>
         @if ($scene->image_path)
-            <img src="{{ asset('storage/' . $scene->image_path) }}"
+            <img src="{{ \App\Support\MediaUrl::of($scene->image_path) }}"
                  onerror="this.style.display='none'"
                  class="relative w-full h-full object-cover" alt="" />
         @endif
