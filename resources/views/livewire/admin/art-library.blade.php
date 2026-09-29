@@ -45,7 +45,7 @@
     </div>
 
     @if ($collections)
-        <div role="tablist" class="tabs tabs-border overflow-x-auto flex-nowrap">
+        <div role="tablist" data-drag-scroll class="no-scrollbar tabs tabs-border overflow-x-auto flex-nowrap">
             @foreach ($collections as $name => $count)
                 <button type="button" role="tab" wire:key="tab-{{ $name }}"
                         wire:click="selectCollection(@js($name))"

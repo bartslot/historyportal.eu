@@ -156,12 +156,17 @@
             window.location.href = @js(route('teacher.credits.index', ['lesson' => $lesson->id]));
         });
         document.addEventListener('keydown', (e) => {
-            if ((e.key !== 'z' && e.key !== 'Z') || !(e.metaKey || e.ctrlKey) || e.shiftKey) return;
+            if ((e.key !== 'z' && e.key !== 'Z') || !(e.metaKey || e.ctrlKey)) return;
             // Never steal the shortcut from a field the teacher is typing in. One shared guard —
             // resources/js/ui/keyboard.js — so this and Delete below and the timeline's Space all
             // agree on what "typing" means.
             if (window.__isTypingTarget?.(e.target)) return;
             e.preventDefault();
+            if (e.shiftKey) {                       // Cmd-Shift-Z: redo
+                const w = window.__step3Wire();
+                if (w && typeof w.redoLastEdit === 'function') { try { w.redoLastEdit(); } catch (_) {} }
+                return;
+            }
             window.__undoLastEdit();
         });
     }
@@ -473,6 +478,13 @@
             const stage = document.getElementById('lesson-canvas-root')
             const r = stage ? stage.getBoundingClientRect() : null
             if (!assetId || !r || !r.width || !r.height) return
+
+            // A diorama scene: the picture stands on the floor cell under the point, never off the grid.
+            if (window.__diorama) {
+                const at = window.__diorama.cellAt(clientX, clientY)
+                window.Livewire.dispatch('diorama:add', { assetId, floor: at.floor, cell: at.cell })
+                return
+            }
 
             const x = clientX === null ? 50 : ((clientX - r.left) / r.width) * 100
             const y = clientY === null ? 58 : ((clientY - r.top) / r.height) * 100
@@ -997,6 +1009,9 @@
                     <x-lesson.animate-inspector mode="layer" :layer="$al" :scene="$this->selectedSceneModel" />
                 </div>
             </div>
+            @elseif ($activeDioramaId)
+            {{-- A diorama item: where it stands (X, Z on its floor), keyed like the timeline rows. --}}
+            <x-lesson.diorama-item-inspector :item-id="$activeDioramaId" wire:key="dio-inspector-{{ $activeDioramaId }}" />
             @elseif ($panelView === 'scene')
             @php $sceneModel = $this->selectedSceneModel; @endphp
             @if ($sceneModel)
@@ -1089,14 +1104,57 @@
                 </label>
             </div>
 
-            {{-- POSTER — the lesson's cover image. Never empty: auto-picks an image already loaded in
-                 the lesson, overridable by clicking any candidate below. --}}
-            <x-lesson.image-choice class="mt-6 border-t border-slate-700/50 pt-4" portrait
-                                   :label="__('Poster')"
-                                   :current="$this->lesson->posterUrl()"
-                                   :candidates="$this->lesson->posterCandidates()"
-                                   :chosen="$lesson->poster_image"
-                                   select="selectPoster" reset="resetPoster" />
+            {{-- POSTER — the lesson's cover image (Bart, 2026-09-29): Auto (the first picture the lesson
+                 has) | Scene (one scene's picture) | Image (an upload). Never a stand-in portrait:
+                 no picture yet shows as an empty tile. --}}
+            @php
+                $sceneOptions = $this->lesson->scenePosterOptions();
+                $override = $this->lesson->posterOverrideUrl();
+                $autoPick = $this->lesson->posterCandidates()[0]['url'] ?? null;
+                $posterMode = $override === null ? 'auto'
+                    : (collect($sceneOptions)->contains('url', $override) ? 'scene' : 'image');
+                $posterShown = $override ?? $autoPick;
+            @endphp
+            <div class="mt-6 pt-4 border-t border-slate-700/50" x-data="{ mode: @js($posterMode) }">
+                <span class="mb-2 block text-2xs uppercase tracking-widest text-slate-500">{{ __('Poster') }}</span>
+                <x-ui.segmented panel name="poster-mode" model="mode"
+                                :options="[['auto', __('Auto')], ['scene', __('Scene')], ['image', __('Image')]]"
+                                on-change="$event.target.value === 'auto' && $wire.call('resetPoster')" />
+                <div class="mt-3 flex gap-3">
+                    @if ($posterShown)
+                        <img src="{{ $posterShown }}" alt="{{ __('Lesson poster') }}"
+                             class="h-24 w-16 shrink-0 rounded-lg object-cover ring-1 ring-slate-600" />
+                    @else
+                        <div class="h-24 w-16 shrink-0 rounded-lg border border-dashed border-slate-600" aria-label="{{ __('No poster yet') }}"></div>
+                    @endif
+
+                    {{-- Scene: one picture per scene --}}
+                    <div x-show="mode === 'scene'" x-cloak class="grid grid-cols-4 content-start gap-1.5">
+                        @forelse ($sceneOptions as $option)
+                            <button type="button" wire:click="selectPoster(@js($option['url']))" data-tooltip="{{ $option['label'] }}"
+                                    @class([
+                                        'aspect-square overflow-hidden rounded ring-1 transition',
+                                        'ring-primary' => $override === $option['url'],
+                                        'ring-slate-700 hover:ring-slate-400' => $override !== $option['url'],
+                                    ])>
+                                <img src="{{ $option['url'] }}" alt="{{ $option['label'] }}" class="h-full w-full object-cover" onerror="this.closest('button').style.display='none'" />
+                            </button>
+                        @empty
+                            <p class="col-span-4 self-center text-2xs text-slate-500">{{ __('No scene has a picture yet.') }}</p>
+                        @endforelse
+                    </div>
+
+                    {{-- Image: upload one --}}
+                    <div x-show="mode === 'image'" x-cloak class="flex flex-col justify-center gap-1.5">
+                        <label class="btn btn-sm">
+                            <span wire:loading.remove wire:target="posterUpload">{{ __('Upload image') }}</span>
+                            <span wire:loading wire:target="posterUpload">{{ __('Uploading…') }}</span>
+                            <input type="file" accept="image/*" wire:model="posterUpload" class="hidden" />
+                        </label>
+                        @error('posterUpload') <p class="text-2xs text-error">{{ $message }}</p> @enderror
+                    </div>
+                </div>
+            </div>
 
             {{-- BACKGROUND MUSIC — a quiet bed under the narration. One switch, not a picker: there
                  is one soundtrack, and the player shuffles and crossfades it by itself. Off unless
@@ -1163,6 +1221,37 @@
         map:    '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M9 6.75 3.75 4.5v12.75L9 19.5m0-12.75 6 2.25m-6-2.25v12.75m6-10.5 5.25-2.25V15L15 17.25m0-10.5v10.5m0 0-6-2.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
         quiz:   '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M9 12l2 2 4-4m-9 8h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     };
+    // A diorama item's Format panel (components/lesson/diorama-item-inspector): read off the live stage at
+    // the playhead, written back through it (the canvas drag's rules). Defined here, not in the
+    // component: a script a morph brings in never runs.
+    window.dioramaInspector = function dioramaInspector(id) {
+        const round2 = (v) => Math.round(v * 100) / 100;
+        return {
+            label: '', description: '', heightM: null, x: 0, z: 0,
+            init() { this.sync(); },
+            sync() {
+                const stage = window.__diorama;
+                const item = stage?.items().find((i) => i.id === id);
+                if (!item) return;
+                const asset = stage.assets?.[item.asset] ?? {};
+                this.label = item.label || asset.title || id;
+                this.description = asset.description || '';
+                this.heightM = asset.height_m ?? null;
+                const cell = stage.poseCell(id);
+                if (cell) { this.x = round2(cell[0]); this.z = round2(cell[1]); }
+            },
+            set(axis, value) {
+                const v = Number(value);
+                const cell = window.__diorama?.poseCell(id);
+                if (!Number.isFinite(v) || !cell) return;
+                const next = [...cell];
+                next[axis] = v;
+                window.__diorama.placeCell(id, next);
+                this.sync();
+            },
+        };
+    };
+
     // Object list — reads the live text layer (title/text boxes + backing panels) so the teacher
     // can find, flash-locate, and restack objects that overlap on the stage.
     window.objectList = function objectList() {
@@ -1170,6 +1259,7 @@
             items: [],
             dragging: false,
             selectedId: null,
+            compact: false,   // icons-only rail (narrow drawer); drives :data-compact
             _sig: null,
             init() {
                 this.refresh();
@@ -1179,7 +1269,10 @@
                 // Compact (icons-only) toggle via a data attribute, NOT a CSS container query:
                 // container-type would make this panel a containing block for SortableJS's
                 // position:fixed drag ghost, offsetting/clipping it and breaking layer reordering.
-                const setCompact = () => { this.$el.dataset.compact = this.$el.clientWidth <= 108 ? '1' : ''; };
+                // Alpine owns the attribute (:data-compact below): `dataset.compact = ''` left an EMPTY
+                // attribute that [data-compact] still matched, so the labels stayed hidden at full
+                // width until a Livewire re-render happened to strip it.
+                const setCompact = () => { this.compact = this.$el.clientWidth <= 108; };
                 setCompact();
                 new ResizeObserver(setCompact).observe(this.$el);
             },
@@ -1213,17 +1306,24 @@
                 const objKind = (window.__objScene || {}).kind;
                 const artLayer = this.artOverlay();
                 const arts = (artLayer && artLayer._layers) || [];
+                // Diorama items (config.diorama): front-most first, like the rest of the list.
+                const dioItems = [...(window.__diorama?.items() ?? [])].reverse().map((i) =>
+                    ({ id: 'dio_' + i.id, icon: 'photo', label: i.label || i.id, bg: false, dio: true }));
                 const artItems = [...arts].reverse().map((a) =>
                     ({ id: 'art_' + a.asset_id, icon: a.embed ? (a.embed.type === 'video' ? 'photo' : 'map') : 'photo',
                        label: a.title || (a.embed ? (a.embed.type === 'video' ? 'Video' : '3D model') : @js(__('Icon'))), bg: false, art: true }));
                 // The clipart group sits above the text objects only when the teacher dragged it there
                 // (config.clipart_on_top → the overlay host's z-index is raised above the text layer).
                 const onTop = !!(artLayer && artLayer.onTop);
-                const items = onTop ? [...artItems, ...textItems] : [...textItems, ...artItems];
+                const items = [...(onTop ? [...artItems, ...textItems] : [...textItems, ...artItems]), ...dioItems];
                 // Bottom layer(s), pinned (not drag-reorderable). A Route waypoint scene lists its own
                 // stack — the Gallery overlay ON TOP of the Waypoint map — instead of a bare Background;
                 // every other scene lists a single Background (or Slideshow for a standalone gallery).
-                if (objKind === 'voyage') {
+                if (this.$wire?.titleSelected) {
+                    // The title screen is selected: the scene still loaded under it is not what is
+                    // being edited, so none of its objects are listed. (The 2s poll re-reads this.)
+                    items.length = 0;
+                } else if (objKind === 'voyage') {
                     items.push({ id: '__gallery__', icon: 'photo', label: 'Gallery', bg: true, voyage: 'gallery' });
                     items.push({ id: '__waypoint__', icon: 'map', label: 'Waypoint', bg: true, voyage: 'waypoint' });
                 } else {
@@ -1252,7 +1352,8 @@
                     // No handle — the whole row drags. Background ([data-bg]) is pinned, and the
                     // adjust button ([data-nodrag]) opts out so tapping it doesn't start a drag.
                     draggable: '[data-obj-id]',
-                    filter: '[data-bg], [data-nodrag]',
+                    // Diorama rows stack by depth on the floor, never by hand: pinned like the background.
+                    filter: '[data-bg], [data-nodrag], [data-dio]',
                     preventOnFilter: false,         // keep the adjust button's own click working
                     // Pointer-based dragging (not native HTML5 DnD): more reliable inside this
                     // fixed-position panel and works consistently across browsers.
@@ -1269,7 +1370,7 @@
                         // …then restack each layer system and rebuild. Text and clipart are two
                         // separate overlays, so split the dropped order by type and reorder each.
                         const isArt = (id) => id.startsWith('art_');
-                        const textIds = ids.filter((id) => !isArt(id));
+                        const textIds = ids.filter((id) => !isArt(id) && !id.startsWith('dio_'));
                         const artIds = ids.filter(isArt);
                         if (textIds.length) window.__lessonTextLayer?.reorder(textIds);
                         if (artIds.length) this.reorderClipart(ids, textIds, artIds);
@@ -1309,6 +1410,10 @@
                 if (obj.bg) {
                     window.__lessonTextLayer?.select?.('__bg__');   // clears any canvas object ring
                     this.locate(obj);                                // open Settings on its section
+                    return;
+                }
+                if (obj.dio) {
+                    window.__diorama?.select(obj.id.slice(4));
                     return;
                 }
                 if (obj.art) {
@@ -1376,8 +1481,9 @@
         window.addEventListener('scene-object-selected', (e) => {
             const id = (e.detail && e.detail.id) || '';
             const isArtwork = id.indexOf('art_') === 0;
+            const isDiorama = id.indexOf('dio_') === 0;
             const isText = !!window.__lessonTextLayer?._texts?.some((text) => text.id === id);
-            const objectId = (isArtwork || isText) ? id : '';
+            const objectId = (isArtwork || isDiorama || isText) ? id : '';
             if (objectId) window.dispatchEvent(new CustomEvent('inspector-open'));
             if (objectId === lastSelection) return;
             lastSelection = objectId;
@@ -1486,7 +1592,7 @@
                 <p class="px-2 py-1 text-2xs uppercase tracking-widest text-slate-500">{{ __('Show') }}</p>
                 <template x-for="item in [
                     { k: 'scenes',  label: @js(__('Scenes')) },
-                    { k: 'script',  label: @js(__('Icons & Script')) },
+                    { k: 'script',  label: @js(__('Assets & Script')) },
                     { k: 'objects', label: @js(__('Object list')) },
                     { k: 'rulers',  label: @js(__('Rulers')) },
                     { k: 'notes',   label: @js(__('Internal notes')) },
@@ -1554,7 +1660,7 @@
                 <button type="button" @click="$store.view.showTab('icons'); addOpen = false"
                         class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
                     <x-icons.puzzle-piece class="h-4 w-4 shrink-0 text-slate-400" />
-                    <span>{{ __('Icons') }}</span>
+                    <span>{{ __('Assets') }}</span>
                 </button>
                 {{-- 3D model / video AS A LAYER (an iframe layer on top of the scene, like clipart). --}}
                 {{-- Opens OUR picker (the paintings modal, searching Sketchfab) rather than a browser
@@ -1891,14 +1997,14 @@
     <div x-show="$store.view.objects" x-cloak x-data="objectList()" x-init="init()"
          @scene-objects-changed.window="refresh()"
          @scene-object-selected.window="selectedId = $event.detail.id"
-         data-objlist-col
+         data-objlist-col :data-compact="$data.compact ? '1' : null"
          class="fixed z-30 overflow-hidden border-r border-slate-700 bg-slate-900"
          style="left: var(--rail-w, 11rem); width: var(--objlist-w, 13rem); top: 4rem; bottom: 0;">
         <div x-ref="list" class="h-full space-y-0.5 overflow-y-auto p-1.5">
             <template x-for="obj in items" :key="obj.id">
                 {{-- The whole row is the drag handle (grab cursor); only the adjust button opts out.
                      Text and clipart rows reorder; the background is pinned to the bottom ([data-bg]). --}}
-                <div :data-obj-id="obj.bg ? null : obj.id" :data-bg="obj.bg ? '1' : null"
+                <div :data-obj-id="obj.bg ? null : obj.id" :data-bg="obj.bg ? '1' : null" :data-dio="obj.dio ? '1' : null"
                      data-obj-row
                      @click="select(obj)"
                      :class="[
@@ -1908,12 +2014,15 @@
                      class="group flex w-full select-none items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-sm">
                     <span class="shrink-0 text-slate-400" x-html="iconSvg(obj)" aria-hidden="true" :title="obj.label"></span>
                     <span data-obj-label class="flex-1 truncate" x-text="obj.label"></span>
-                    {{-- Row actions (hover-revealed, Keynote-style). data-nodrag stops a press here
+                    {{-- Row actions (hover-revealed, Keynote-style). HIDDEN until hover, not transparent:
+                         an invisible button still took the label's room, so a wide list read "Be...".
+                         No delete button: Backspace deletes, and so does the Format panel.
+                         data-nodrag stops a press here
                          from starting a Sortable drag; @click.stop keeps the row's select from firing.
                          data-obj-adjust hides both in the compact (icons-only) rail. --}}
                     {{-- Adjust — select the object and open its Format inspector. --}}
                     <button type="button" data-nodrag data-obj-adjust @click.stop="edit(obj)"
-                            class="btn btn-ghost btn-xs btn-square shrink-0 text-base-content/50 opacity-0 transition hover:text-primary group-hover:opacity-100"
+                            class="btn btn-ghost btn-xs btn-square hidden shrink-0 text-base-content/50 hover:text-primary group-hover:inline-flex group-focus-within:inline-flex"
                             aria-label="{{ __('Adjust settings') }}" :title="@js(__('Adjust settings'))">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />
@@ -1922,20 +2031,10 @@
                     {{-- Duplicate THIS object (Cmd-D does the same). --}}
                     <button type="button" data-nodrag data-obj-adjust x-show="!obj.bg"
                             @click.stop="duplicateObject(obj)"
-                            class="btn btn-ghost btn-xs btn-square shrink-0 text-base-content/50 opacity-0 transition hover:text-primary group-hover:opacity-100"
+                            class="btn btn-ghost btn-xs btn-square hidden shrink-0 text-base-content/50 hover:text-primary group-hover:inline-flex group-focus-within:inline-flex"
                             aria-label="{{ __('Duplicate object') }}" :data-tooltip="@js(__('Duplicate') . ' (⌘D)')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25" />
-                        </svg>
-                    </button>
-                    {{-- Delete THIS object (any type — deleteObject routes by obj.id: art_/txt_/rect_).
-                         Hidden on the background row (not deletable). No confirm — one click removes it. --}}
-                    <button type="button" data-nodrag data-obj-adjust x-show="!obj.bg"
-                            @click.stop="deleteObject(obj)"
-                            class="btn btn-ghost btn-xs btn-square shrink-0 text-base-content/50 opacity-0 transition hover:text-primary group-hover:opacity-100"
-                            aria-label="{{ __('Delete object') }}" :title="@js(__('Delete'))">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"></path>
                         </svg>
                     </button>
                 </div>
@@ -1944,7 +2043,8 @@
     </div>
 
     {{-- Object-list resize handle — sits at the panel's right edge (rail + objlist). Drag to
-         resize; drag it under 40px and the list hides (View ▸ Object list re-opens). Only
+         resize; it stops at the icons, and a pull to the rail edge hides it (View ▸ Object list
+         re-opens). Only
          rendered while the list is shown. --}}
     <div x-show="$store.view.objects" x-cloak id="objlist-resize" wire:ignore tabindex="0"
          class="group fixed z-40 -ml-1.5 w-3 cursor-col-resize focus:outline-none focus-visible:bg-sky-400/20"
@@ -1959,6 +2059,11 @@
         const rootEl = document.documentElement;   // --objlist-w lives on <html> so the stage inherits it
         const railW = () => parseFloat(getComputedStyle(rootEl).getPropertyValue('--rail-w')) || 0;
         const clamp = (v) => Math.max(0, Math.min(320, v));
+        // Dragging narrow stops at the icon (its left padding kept); only a pull to the very edge
+        // hides the list (Bart, 2026-09-29: it hid too early, while the icons still fitted).
+        const ICONS_W = 44;   // p-1.5 + px-2 + the 16px icon + the same on the right
+        const HIDE_W = 12;    // the pointer this close to the rail edge: hide
+        const widthFor = (raw) => (raw <= HIDE_W ? 0 : Math.max(ICONS_W, clamp(raw)));
         const boot = () => {
             const handle = document.getElementById('objlist-resize');
             if (!handle || handle.__wired) return;
@@ -1970,7 +2075,7 @@
             });
             handle.addEventListener('pointermove', (e) => {
                 if (!dragging) return;
-                rootEl.style.setProperty('--objlist-w', clamp(e.clientX - railW()) + 'px');
+                rootEl.style.setProperty('--objlist-w', widthFor(e.clientX - railW()) + 'px');
             });
             const end = (e) => {
                 if (!dragging) return;
@@ -1978,14 +2083,12 @@
                 try { handle.releasePointerCapture(e.pointerId); } catch (_) {}
                 document.body.style.userSelect = '';
                 const rawO = parseFloat(rootEl.style.getPropertyValue('--objlist-w'));
-                let w = clamp(Number.isFinite(rawO) ? rawO : 208);   // keep a real 0 (don't let || swallow the hide gesture)
+                const w = Number.isFinite(rawO) ? rawO : 208;   // keep a real 0 (don't let || swallow the hide gesture)
                 const store = window.Alpine?.store('view');
-                if (w < 40) {                     // dragged to the edge → hide the list
-                    rootEl.style.setProperty('--objlist-w', '0px');
+                if (w === 0) {                    // pulled to the edge → hide the list
                     if (store) { store.objects = false; store._save?.(); }
                     return;
                 }
-                if (w < 56) w = 56;               // icons-only floor
                 rootEl.style.setProperty('--objlist-w', w + 'px');
                 if (store) { store.objectsW = w; store._save?.(); }
             };
@@ -2001,10 +2104,9 @@
                 else if (e.key === 'End') w = 0;
                 else return;
                 e.preventDefault();
-                w = clamp(w);
+                w = e.key === 'End' ? 0 : Math.max(ICONS_W, clamp(w));
                 const store = window.Alpine?.store('view');
-                if (w < 40) { rootEl.style.setProperty('--objlist-w', '0px'); if (store) { store.objects = false; store._save?.(); } return; }
-                if (w < 56) w = 56;
+                if (w === 0) { rootEl.style.setProperty('--objlist-w', '0px'); if (store) { store.objects = false; store._save?.(); } return; }
                 rootEl.style.setProperty('--objlist-w', w + 'px');
                 if (store) { store.objectsW = w; store._save?.(); }
             });
@@ -2752,6 +2854,8 @@
             const stage = document.getElementById('lesson-canvas-root');
             if (!stage) return;
             let frame = stage.querySelector('iframe[data-title-frame]');
+            // The object list follows the title selection (it reads $wire.titleSelected) — nudge it.
+            window.dispatchEvent(new CustomEvent('objscene-changed'));
             if (!$wire.titleSelected) { frame?.remove(); resize?.disconnect(); resize = null; return; }
             if (!frame) {
                 frame = document.createElement('iframe');

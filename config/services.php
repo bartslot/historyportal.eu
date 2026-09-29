@@ -105,6 +105,12 @@ return [
         'elevenlabs_min_characters' => (int) env('ELEVENLABS_ALERT_MIN_CHARACTERS', 20000),
     ],
 
+    // JEV (TypeSafe System One): picks from options, e.g. an imported clip's real height.
+    'jev' => [
+        'key' => env('JEV_AI'),
+        'url' => env('JEV_URL', 'https://api.typesafe.ai/v1/systemone'),
+    ],
+
     'elevenlabs' => [
         'api_key' => env('ELEVENLABS_API_KEY'),
         'base_url' => 'https://api.elevenlabs.io',

@@ -6,9 +6,9 @@
        Script — the scene's narration as timecoded lines synced to a REAL WaveSurfer play bar.
 
      One dock, so there is one height, one --work-bottom reservation and one resize grip however
-     many tabs it grows: the canvas shrinks above it and it never overlays the scene. Drag the TOP
-     EDGE to resize (it can go compact for small screens); drag it very small to hide (View ▸ Script
-     re-opens). No close button, no cogwheel.
+     many tabs it grows: the canvas shrinks above it and it never overlays the scene. Its height is
+     fixed: the drag-to-resize edge was grabbed by accident too often (Bart, 2026-09-29). View ▸
+     Script hides and shows it. No close button, no cogwheel.
 
      It still lives in this file because the dock's geometry — height, resize, reserved space — is
      owned by the script editor's Alpine component. --}}
@@ -34,15 +34,7 @@
      class="fixed bottom-0 z-30 flex flex-col overflow-hidden border-t border-slate-700/70 bg-base-300"
      :style="`left:var(--rail-w,11rem);right:var(--work-right,16rem);height:${panelH}px`">
 
-    {{-- Top edge = resize handle. Drag up/down to resize; drag it small to hide. --}}
-    <div class="relative flex shrink-0 cursor-ns-resize touch-none select-none items-center justify-center border-t border-slate-700/60 pb-1"
-         x-on:pointerdown="dragStart($event)"
-         x-on:pointermove.window="dragMove($event)"
-         x-on:pointerup.window="dragEnd($event)"
-         x-on:pointercancel.window="dragEnd($event)"
-         role="separator" aria-orientation="horizontal"
-         aria-label="{{ __('Resize the panel · drag small to hide') }}">
-    </div>
+    <div class="shrink-0 pb-1"></div>
 
     {{-- Which tab the dock is showing. Lives in $store.view alongside the panel toggles, so it
          survives a scene change (this component is rebuilt per scene) and a reload. --}}
@@ -54,7 +46,7 @@
         <button type="button" role="tab" x-on:click="$store.view.showTab('icons')"
                 :aria-selected="$store.view.bottomTab === 'icons'"
                 :class="$store.view.bottomTab === 'icons' ? 'tab-active' : ''"
-                class="tab">{{ __('Icons') }}</button>
+                class="tab">{{ __('Assets') }}</button>
         <button type="button" role="tab" x-on:click="$store.view.showTab('script')"
                 :aria-selected="$store.view.bottomTab === 'script'"
                 :class="$store.view.bottomTab === 'script' ? 'tab-active' : ''"
@@ -217,9 +209,7 @@
 @once
     @push('scripts')
     <script>
-        const SCRIPT_MIN_H = 40;    // px — drag below this on release → hide
-        const SCRIPT_DEF_H = 240;   // px — default / reopened height
-        const SCRIPT_H_KEY = 'wizard.script.h';   // persist the resized height across scene changes
+        const SCRIPT_DEF_H = 240;   // px — the dock's fixed height
         // Narration is a queued job. If the worker never runs, or dies without writing a status,
         // nothing comes back to switch the waiting state off — so give up out loud after this.
         const NARRATE_GIVE_UP_MS = 180_000;
@@ -244,19 +234,8 @@
                 promptText: '',
                 regenPara: false,
                 summarizing: false,
-                // Resize (drag the top edge). panelH is the panel's live height; seeded from the
-                // last resized height so switching scenes (which rebuilds this component via
-                // wire:key) doesn't snap the panel back to the default. Re-clamped to the current
-                // viewport so a height saved on a tall window can't exceed a shorter one (which
-                // would push the resize grip off-screen and collapse the stage).
-                panelH: (() => {
-                    const h = parseFloat(localStorage.getItem(SCRIPT_H_KEY));
-                    const max = Math.max(120, Math.round((window.innerHeight || 800) * 0.6));
-                    return h > 0 ? Math.min(h, max) : SCRIPT_DEF_H;
-                })(),
-                dragging: false,
-                _startY: 0,
-                _startH: 0,
+                // Fixed height, capped on a short window so the stage keeps its room.
+                panelH: Math.min(SCRIPT_DEF_H, Math.max(120, Math.round((window.innerHeight || 800) * 0.6))),
                 // Does this scene have a recording at all? Drives Narrate vs Play — a scene that has
                 // never been narrated used to show a disabled play button and nothing else.
                 hasAudio: !!url,
@@ -803,32 +782,6 @@
                     this.active = a;
                 },
 
-                // Drag the TOP edge to resize. Up = taller, down = shorter. On release, if the
-                // panel was dragged very small, hide it (View ▸ Script re-opens at the default).
-                dragStart(e) {
-                    this.dragging = true;
-                    this._startY = e.clientY;
-                    this._startH = this.panelH;
-                    try { e.target.setPointerCapture?.(e.pointerId); } catch (_) {}
-                },
-                dragMove(e) {
-                    if (!this.dragging) return;
-                    const maxH = Math.round(window.innerHeight * 0.6);
-                    // clientY drops as you drag up → grow; rises as you drag down → shrink.
-                    this.panelH = Math.min(maxH, Math.max(SCRIPT_MIN_H, this._startH + (this._startY - e.clientY)));
-                    this.refreshWave();
-                },
-                dragEnd() {
-                    if (!this.dragging) return;
-                    this.dragging = false;
-                    if (this.panelH <= SCRIPT_MIN_H + 24) {   // dragged down to the floor → hide
-                        this.$store.view.hide('script');
-                        this.panelH = SCRIPT_DEF_H;            // reopen at a sensible height
-                    }
-                    // Persist so a scene change (which rebuilds this component) keeps the height.
-                    try { localStorage.setItem(SCRIPT_H_KEY, String(Math.round(this.panelH))); } catch (_) {}
-                    this.$nextTick(() => { this.reserveSpace(); this.refreshWave(); });
-                },
                 fmt(s) {
                     s = Math.max(0, Math.round(s || 0));
                     return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');

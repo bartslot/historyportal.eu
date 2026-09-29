@@ -30,12 +30,57 @@
                 class="ml-auto rounded-full px-3 py-1 text-2xs font-medium text-slate-500 transition-colors hover:text-slate-200">
             {{ __('Import…') }}
         </button>
+
+        {{-- An animation from the art pipeline: numbered frames (name_clip_0001.webp, or .png) become one
+             animated library asset. Admins only: it writes into the shared library. --}}
+        @if (auth()->user()?->isAdmin())
+            <span x-data x-on:sequence-imported.window="$refs.sequenceDialog.close()">
+                <button type="button" x-on:click="$refs.sequenceDialog.showModal()"
+                        class="rounded-full px-3 py-1 text-2xs font-medium text-slate-500 transition-colors hover:text-slate-200">
+                    {{ __('Import sequence…') }}
+                </button>
+                <dialog x-ref="sequenceDialog" class="modal" wire:ignore.self>
+                    <div class="modal-box max-w-md">
+                        <form method="dialog"><button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" aria-label="{{ __('Close') }}">✕</button></form>
+                        <h3 class="text-base font-semibold">{{ __('Import sequence') }}</h3>
+                        <form wire:submit="importSequence" class="mt-4 space-y-3">
+                            <label class="block">
+                                <span class="text-xs text-base-content/70">{{ __('Frames') }} <span class="text-base-content/40">name_clip_0001.webp</span></span>
+                                <input type="file" multiple accept="image/png,image/webp" wire:model="sequenceFiles" class="file-input file-input-sm mt-1 w-full" />
+                            </label>
+                            <label class="block">
+                                <span class="text-xs text-base-content/70">{{ __('What is it?') }}</span>
+                                <textarea wire:model="sequenceWhat" rows="2" class="textarea textarea-sm mt-1 w-full"></textarea>
+                            </label>
+                            <label class="block">
+                                <span class="text-xs text-base-content/70">{{ __('Where it belongs') }}</span>
+                                <select wire:model="sequenceCategory" class="select select-sm mt-1 w-full">
+                                    <option value="figures">{{ __('Characters') }}</option>
+                                    <option value="nature">{{ __('Nature') }}</option>
+                                    <option value="architecture">{{ __('Architecture') }}</option>
+                                    <option value="props">{{ __('Misc') }}</option>
+                                </select>
+                            </label>
+                            @error('sequenceFiles') <p class="text-xs text-error">{{ $message }}</p> @enderror
+                            @error('sequenceFiles.*') <p class="text-xs text-error">{{ $message }}</p> @enderror
+                            <div class="modal-action">
+                                <button type="submit" class="btn btn-primary btn-sm" wire:loading.attr="disabled" wire:target="importSequence,sequenceFiles">
+                                    <span wire:loading.remove wire:target="importSequence">{{ __('Import') }}</span>
+                                    <span wire:loading wire:target="importSequence">{{ __('Importing…') }}</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    <form method="dialog" class="modal-backdrop"><button>{{ __('Close') }}</button></form>
+                </dialog>
+            </span>
+        @endif
     </div>
 
     {{-- Row 2 — a whole period, or one people inside it. Hidden for the flat sets (arrows, shapes),
          which have nothing to narrow down. Scrolls sideways rather than wrapping into the grid. --}}
     @if ($this->groups())
-        <div class="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+        <div data-drag-scroll class="no-scrollbar flex items-center gap-1.5 overflow-x-auto pb-0.5">
             <button type="button" wire:click="selectGroup('', '')"
                     class="shrink-0 rounded-full px-3 py-1 text-2xs font-medium transition-colors
                            {{ $category === ''
@@ -65,7 +110,7 @@
     <div class="min-h-0 flex-1 overflow-y-auto">
         @if ($this->icons()->isEmpty())
             <p class="px-1 py-6 text-center text-xs text-slate-500">
-                {{ __('No icons in this set yet.') }}
+                {{ __('No assets in this set yet.') }}
             </p>
         @else
             <div class="grid grid-cols-[repeat(auto-fill,minmax(56px,1fr))] gap-1">

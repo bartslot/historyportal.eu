@@ -66,6 +66,12 @@ const REGISTRY = {
     P('rotation', 'Angle', 'angle', '°'),
     P('opacity', 'Opacity', 'linear', ''),
   ],
+  /** A diorama item: its place on its floor, in cells. X runs left-right, Z away from the camera.
+   *  No Y: nothing leaves the floor. The keys live in the diorama JSON, not in timeline tracks. */
+  dio: [
+    P('x', 'X', 'linear', ''),
+    P('z', 'Z', 'linear', ''),
+  ],
 }
 
 /** The properties of an object kind, or an empty list for one that cannot be animated yet. */

@@ -170,6 +170,8 @@ let _music          = null   // BackgroundMusic bed (owns its own Audio elements
 let _initDone       = false  // guard: prevent double-init from Vite HMR / Alpine re-mount
 let _parallax       = null   // live ParallaxScene instance (layered bg+hero shot, E3b)
 let _parallaxMod    = null   // cached ./scene/ParallaxScene.js module (lazy-loaded once)
+let _diorama        = null   // live DioramaStage (a scene with config.diorama)
+let _dioramaMod     = null   // cached ./scene/diorama/DioramaStage.js module
 
 // ── Alpine component ──────────────────────────────────────────────────────────
 // Alpine is imported directly (no Livewire on this page) — register before start()
@@ -941,6 +943,37 @@ Alpine.data('lessonGame', (lesson) => ({
       }
     },
 
+    // A diorama scene (plate, occluders, items placed on floor grids) — the same DioramaStage the
+    // editor uses, read-only. Drawn into the layer host like a layered shot.
+    async _showDiorama (scene) {
+      const req = ++this._parallaxReq
+      try {
+        if (!_dioramaMod) _dioramaMod = await import('./scene/diorama/DioramaStage.js')
+        const assets = await _dioramaMod.loadDioramaAssets(scene.config.diorama)
+        if (req !== this._parallaxReq) return
+        const host = document.getElementById('background-layer')
+        if (!host) return
+        if (_bgCanvas) _bgCanvas.style.opacity = '0'
+        host.style.opacity = '1'
+        if (this._kbInterval) { clearInterval(this._kbInterval); this._kbInterval = null }
+        this._destroyParallax()
+        this._destroyDiorama()
+        _diorama = new _dioramaMod.DioramaStage(host)
+        _diorama.show(scene.config.diorama, { ...assets, ...(scene.diorama_assets ?? {}) })
+        // Keyframes follow the narration clock, like the speech balloons.
+        _diorama.play(() => this._audio?.currentTime ?? 0)
+      } catch (e) {
+        console.warn('lesson-player: diorama failed, falling back to flat', e)
+        this._showFlatScene(scene.image_url)
+      }
+    },
+
+    _destroyDiorama () {
+      if (!_diorama) return
+      try { _diorama.destroy() } catch (_) { /* already detached */ }
+      _diorama = null
+    },
+
     _destroyParallax () {
       if (!_parallax) return
       try { _parallax.destroy() } catch (_) { /* already detached */ }
@@ -1017,7 +1050,7 @@ Alpine.data('lessonGame', (lesson) => ({
         _sceneQueue = lesson.scenes
           .map(s => ({
             id: s.id ?? null,   // needed by editSceneHref → deep-link "Edit scene" to THIS exact scene
-            kind: s.kind, game_type: s.game_type ?? null, config: s.config ?? null, scene_view: s.scene_view,
+            kind: s.kind, game_type: s.game_type ?? null, config: s.config ?? null, diorama_assets: s.diorama_assets ?? {}, scene_view: s.scene_view,
             branch_group: s.branch_group ?? null, branch_role: s.branch_role ?? null,
             branch_choice_label: s.branch_choice_label ?? null,
             audio_url: s.audio_url, script: s.script, image_url: s.image_url,
@@ -1343,6 +1376,7 @@ Alpine.data('lessonGame', (lesson) => ({
       // after it and kept its "waiting on the student" state. Idempotent, and a voyage lesson's
       // persistent map survives it (see _teardownStageScene).
       this._teardownStageScene()
+      this._destroyDiorama()
 
       // Teacher text annotations for this scene (URLs render as link chips → iframe modal).
       // Before the map early-return, so a map scene clears the previous scene's texts too.
@@ -1388,7 +1422,9 @@ Alpine.data('lessonGame', (lesson) => ({
 
       // Swap background. Default scenes are a flat Ken Burns slide (2D); skybox is opt-in per
       // scene; no image at all = the scene's solid backdrop (brand navy by default).
-      if (scene.image_url || scene.shots?.length) {
+      if (scene.config?.diorama) {
+        this._showDiorama(scene)                              // plate + occluders + items on floor grids
+      } else if (scene.image_url || scene.shots?.length) {
         if (scene.scene_view === 'skybox' && _bgInstance) {
           this._showBgScene()                                   // reveal the 3D canvas, fade out the flat layer
           _bgInstance.setSkyboxFromUrl(scene.image_url, 0.3).catch(() => {})

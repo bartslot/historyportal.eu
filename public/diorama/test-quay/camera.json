@@ -1,0 +1,25 @@
+{
+ "shot": "test_quay",
+ "family": "hp1",
+ "resolution": [
+  2560,
+  1440
+ ],
+ "camera_location_m": [
+  0.0,
+  0.0,
+  1.600000023841858
+ ],
+ "camera_rotation_deg": [
+  90.00000250447816,
+  0.0,
+  0.0
+ ],
+ "lens_mm": 28.25434112548828,
+ "sensor_width_mm": 36.0,
+ "shift_y": -0.09375,
+ "focal_px": 2009.1975911458333,
+ "horizon_y_px": 480.0,
+ "eye_height_m": 1.6,
+ "axes": "x right, y forward, z up, metres; camera yaw 0 looks +y"
+}

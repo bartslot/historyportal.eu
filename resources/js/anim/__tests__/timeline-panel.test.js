@@ -31,7 +31,7 @@ beforeEach(() => {
   window.__lessonTextLayer = { _texts: [{ id: 1, kind: 'text', x: 12, y: 15 }], patch: vi.fn() }
 })
 
-afterEach(() => { delete window.__lessonTextLayer })
+afterEach(() => { delete window.__lessonTextLayer; delete window.__diorama })
 
 describe('setValue records a keyframe at the playhead', () => {
   it('adds one when the property is animated and the playhead has moved off the last key', () => {
@@ -125,6 +125,13 @@ describe('setValue records a keyframe at the playhead', () => {
     p.time = 3.601
     p.setValue(TEXT, 'x', 40)
 
+    expect(p.nothingToPlay).toBe(false)
+  })
+
+  it('a diorama figure with a path plays, with no keyframe tracks at all', () => {
+    window.__diorama = { items: () => [{ id: 'sailor_1', keys: [{ t: 0, cell: [0, 0] }, { t: 3, cell: [6, 0] }] }] }
+    const p = panel()
+    p.objects = [{ target: 'dio:sailor_1', kind: 'dio' }]
     expect(p.nothingToPlay).toBe(false)
   })
 })
@@ -349,5 +356,57 @@ describe('the canvas and the timeline agree on which layer is active', () => {
     p.selectObject(TEXT)
     expect(select).toHaveBeenCalledWith('1')
     expect(p.selected).toEqual(['text:1|x|0', 'text:1|x|2'])
+  })
+})
+
+describe('diorama items have X and Z rows (their path in the diorama JSON)', () => {
+  const DIO = 'dio:sailor_1'
+  const stage = (keys) => {
+    const calls = []
+    const item = { id: 'sailor_1', cell: [0, 5], keys }
+    window.__diorama = {
+      items: () => [item],
+      poseCell: () => [1.5, 6],
+      placeCell: (id, cell) => calls.push(['place', id, cell]),
+      keyHere: (id) => calls.push(['key', id]),
+      removeKeys: (id, times) => calls.push(['remove', id, times]),
+      update () {},
+      select () {},
+    }
+    return calls
+  }
+
+  it('lists X and Z, with the path\'s keys as each row\'s keys', () => {
+    stage([{ t: 0, cell: [0, 5] }, { t: 2, cell: [4, 7] }])
+    const p = panel()
+    expect(p.propertiesOf(DIO).map(r => r.key)).toEqual(['x', 'z'])
+    expect(p.keysOf(DIO, 'x').map(k => [k.time, k.value])).toEqual([[0, 0], [2, 4]])
+    expect(p.keysOf(DIO, 'z').map(k => [k.time, k.value])).toEqual([[0, 5], [2, 7]])
+    p.time = 2
+    expect(p.hasKeyHere(DIO, 'x')).toBe(true)
+  })
+
+  it('the field shows where it stands at the playhead; typing moves it through the stage', () => {
+    const calls = stage([])
+    const p = panel()
+    expect(p.valueAt(DIO, 'x')).toBe(1.5)
+    expect(p.valueAt(DIO, 'z')).toBe(6)
+    p.setValue(DIO, 'z', 9)
+    expect(calls).toEqual([['place', 'sailor_1', [1.5, 9]]])
+    expect(p.$wire.setTimeline).not.toHaveBeenCalled()      // never a timeline track
+  })
+
+  it('the diamond keys it at the playhead through the stage', () => {
+    const calls = stage([])
+    panel().toggleKey(DIO, 'x')
+    expect(calls).toEqual([['key', 'sailor_1']])
+  })
+
+  it('Delete removes its selected keys through the stage', () => {
+    const calls = stage([{ t: 0, cell: [0, 5] }, { t: 2, cell: [4, 7] }])
+    const p = panel()
+    p.selected = [`${DIO}|x|2`]
+    p.deleteSelected()
+    expect(calls).toEqual([['remove', 'sailor_1', [2]]])
   })
 })

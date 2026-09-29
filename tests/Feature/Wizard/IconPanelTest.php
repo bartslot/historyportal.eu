@@ -135,6 +135,27 @@ class IconPanelTest extends TestCase
         $panel->assertSet('category', '')->assertSet('subcategory', '');
     }
 
+    public function test_a_remembered_collection_that_is_not_here_falls_back_to_one_that_is(): void
+    {
+        SvgAsset::query()->where('collection', 'line-art')->delete();   // this machine only has arrows
+
+        $this->panel()
+            ->assertSet('collection', 'arrows')
+            ->assertSee('Arrow straight')
+            ->assertDontSee('No assets in this set yet.');
+    }
+
+    public function test_history_line_shows_its_five_main_categories_not_the_repeating_sub_folders(): void
+    {
+        foreach ([['figures', 'dante'], ['backdrops', 'florence'], ['architecture', 'florence'], ['props', 'medieval'], ['nature', 'tuscany']] as [$category, $sub]) {
+            $this->bundled('history-line', $category, $sub, ucfirst($category).' '.$sub);
+        }
+
+        $labels = array_column($this->panel()->call('selectCollection', 'history-line')->instance()->groups(), 'label');
+
+        $this->assertSame(['Characters', 'Nature', 'Architecture', 'Misc', 'Backdrops'], $labels);
+    }
+
     public function test_an_unknown_collection_is_ignored(): void
     {
         $this->panel()->call('selectCollection', 'nonsense')->assertSet('collection', 'line-art');

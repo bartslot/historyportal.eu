@@ -110,7 +110,13 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         if (playerReady && !_pendingView) {
             const view = dbView
             try {
-                if (payload.kind === 'video') {
+                if (!payload.config?.diorama) hideDiorama()
+                if (payload.config?.diorama) {
+                    // A diorama owns the stage: its plate, occluders and items, placed on floor grids.
+                    destroyWizardLayers()
+                    applySlideshowCameraMode(activePlayer)
+                    await showDiorama(payload, isCurrent)
+                } else if (payload.kind === 'video') {
                     // The film owns the stage: clear whatever the scene before left on the canvas, so
                     // a video scene with no link yet reads as black rather than the last picture.
                     applySlideshowCameraMode(activePlayer)
@@ -931,6 +937,71 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         _embedSig = _embedBg ? sig : null
     }
 
+    // ── Diorama (config.diorama) ───────────────────────────────────────────────────────────
+    // Drawn by DioramaStage, the same renderer as the player. scene:load re-fires on every edit
+    // and poll, so an unchanged diorama is left alone: re-mounting would drop a drag in progress.
+    let _dioramaMod = null
+    let _diorama = null
+    let _dioramaHost = null
+    let _dioramaSceneId = null
+
+    // The scene's title block sits on the camera frame, not the canvas box: zoomed or panned, it
+    // stays on the picture the class will see (Bart, 2026-09-29).
+    const FRAME_KEYS = ['inset', 'left', 'top', 'width', 'height']
+    function pinOverlayToFrame({ x, y, w, h }) {
+        Object.assign(overlayEl.style, { inset: 'auto', left: `${x}px`, top: `${y}px`, width: `${w}px`, height: `${h}px` })
+    }
+
+    function hideDiorama() {
+        if (_diorama) FRAME_KEYS.forEach(k => overlayEl.style.removeProperty(k))
+        _diorama?.destroy()
+        _dioramaHost?.remove()
+        _diorama = _dioramaHost = _dioramaSceneId = null
+        window.__diorama = null
+    }
+
+    async function showDiorama(payload, isCurrent) {
+        const spec = payload.config.diorama
+        // Same scene, same JSON: leave it. Unless this payload brings library pictures the stage
+        // lacks: the first paint can come from the page's own scene list, which carries none, and
+        // skipping the server's echo then left every library figure undrawn.
+        const newAssets = Object.keys(payload.dioramaAssets ?? {}).some((k) => !_diorama?.assets?.[k])
+        if (_diorama && _dioramaSceneId === payload.sceneId && _diorama.matches(spec) && !newAssets) return
+        // payload.dioramaAssets: library pictures in this diorama, sized from their real height.
+        if (!_dioramaMod) _dioramaMod = await import('./diorama/DioramaStage.js')
+        const assets = await _dioramaMod.loadDioramaAssets(spec)
+        if (!isCurrent()) return
+        const parent = canvasEl.parentElement
+        if (!parent) return
+        if (getComputedStyle(parent).position === 'static') parent.style.position = 'relative'
+        // A drop or delete re-mounts the same scene: keep the teacher's zoom and pan.
+        const keepView = _diorama && _dioramaSceneId === payload.sceneId ? _diorama.view : null
+        hideDiorama()
+        const host = document.createElement('div')
+        host.className = 'wizard-diorama-host'
+        // Above the canvas and the parallax host (z-1), below the text overlay (z-7).
+        host.style.cssText = 'position:absolute;inset:0;z-index:2;pointer-events:none;'
+        parent.appendChild(host)
+        _dioramaHost = host
+        _diorama = new _dioramaMod.DioramaStage(host)
+        _dioramaSceneId = payload.sceneId
+        window.__diorama = _diorama       // the Icons panel drops onto it, the object list lists it
+        _diorama.show(spec, { ...assets, ...(payload.dioramaAssets ?? {}) }, {
+            editable: true,
+            onMove: ({ itemId, floor, cell, keys }) => {
+                window.Livewire?.dispatch('diorama:move', { itemId, floor, cell, keys: keys ?? null })
+                // An auto-keyed drag may have given the item its first path: the timeline shows it now.
+                window.dispatchEvent(new CustomEvent('scene-objects-changed'))
+                window.dispatchEvent(new CustomEvent('timeline-changed'))   // the Format panel's diamonds re-read
+            },
+            onFrame: pinOverlayToFrame,
+            recording: () => window.__timelineKeying?.autoKey?.() === true,
+        })
+        if (keepView) _diorama.view = keepView
+        // The object list and the timeline list what is on the stage: tell them it changed.
+        window.dispatchEvent(new CustomEvent('scene-objects-changed'))
+    }
+
     function destroyWizardLayers() {
         if (_wizardLayeredRaf) { cancelAnimationFrame(_wizardLayeredRaf); _wizardLayeredRaf = 0 }
         if (_wizardLayeredScene) {
@@ -1251,6 +1322,9 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             config: first.config ?? null,
             // Multiplane layers (E3c) ride along so the first paint is layered too.
             shots: first.shots ?? [],
+            // A diorama's library figures: without them the first paint drew only the scene's own.
+            sceneId: first.id,
+            dioramaAssets: first.dioramaAssets ?? {},
         })
     }
 
@@ -1274,6 +1348,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                 // too — without it every scene change here tore the embed back down.
                 config: scene?.config ?? null,
                 textsReadonly: scene?.config?.texts || [],
+                dioramaAssets: scene?.dioramaAssets ?? {},
             }),
         },
         overlay,

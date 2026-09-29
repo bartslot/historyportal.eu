@@ -27,8 +27,8 @@
       "_easing-ChRyoIXo.js"
     ]
   },
-  "_big-countdown-Dznm-4Y8.js": {
-    "file": "assets/big-countdown-Dznm-4Y8.js",
+  "_big-countdown-Bpw2kFIR.js": {
+    "file": "assets/big-countdown-Bpw2kFIR.js",
     "name": "big-countdown",
     "imports": [
       "_easing-ChRyoIXo.js"
@@ -40,6 +40,10 @@
     "imports": [
       "_easing-ChRyoIXo.js"
     ]
+  },
+  "_clip-W780-tgz.js": {
+    "file": "assets/clip-W780-tgz.js",
+    "name": "clip"
   },
   "_easing-ChRyoIXo.js": {
     "file": "assets/easing-ChRyoIXo.js",
@@ -80,7 +84,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-DVsALkGZ.css",
+    "file": "assets/app-BwuvcfUq.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -89,7 +93,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-Dx38w01C.js",
+    "file": "assets/app-BVY9ZICH.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -98,6 +102,7 @@
       "_index-DDlvirwQ.js",
       "_easing-ChRyoIXo.js",
       "_animations-Bw164z87.js",
+      "_clip-W780-tgz.js",
       "_tuner-UCS8z5jE.js"
     ],
     "dynamicImports": [
@@ -153,14 +158,14 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-CnlVadto.js",
+    "file": "assets/lesson-player-mJczZNCY.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
     "imports": [
       "__commonjsHelpers-DqutJMZx.js",
       "resources/js/gallery-scene.js",
-      "_big-countdown-Dznm-4Y8.js",
+      "_big-countdown-Bpw2kFIR.js",
       "_animations-Bw164z87.js",
       "_easing-ChRyoIXo.js"
     ],
@@ -168,6 +173,7 @@
       "resources/js/scene/StoryGameEngine.js",
       "resources/js/avatar-3d.js",
       "resources/js/scene/ParallaxScene.js",
+      "resources/js/scene/diorama/DioramaStage.js",
       "resources/js/lesson-map.js",
       "resources/js/voyage-tour.js",
       "resources/js/scene/TextOverlayLayer.js",
@@ -177,13 +183,13 @@
     ]
   },
   "resources/js/scene/ArtworkOverlay.js": {
-    "file": "assets/ArtworkOverlay-CLBBGXjs.js",
+    "file": "assets/ArtworkOverlay-DjmeV3OJ.js",
     "name": "ArtworkOverlay",
     "src": "resources/js/scene/ArtworkOverlay.js",
     "isDynamicEntry": true,
     "imports": [
       "_animations-Bw164z87.js",
-      "_big-countdown-Dznm-4Y8.js",
+      "_big-countdown-Bpw2kFIR.js",
       "_ambient-Czq03Fno.js",
       "_easing-ChRyoIXo.js"
     ]
@@ -204,23 +210,23 @@
     "isDynamicEntry": true
   },
   "resources/js/scene/ParallaxScene.js": {
-    "file": "assets/ParallaxScene-yyQkRUqw.js",
+    "file": "assets/ParallaxScene-CfM5D3S-.js",
     "name": "ParallaxScene",
     "src": "resources/js/scene/ParallaxScene.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-Dznm-4Y8.js",
+      "_big-countdown-Bpw2kFIR.js",
       "_ambient-Czq03Fno.js",
       "_easing-ChRyoIXo.js"
     ]
   },
   "resources/js/scene/QuizOverlay.js": {
-    "file": "assets/QuizOverlay-Dhtu5TKc.js",
+    "file": "assets/QuizOverlay-CyPJ0zBI.js",
     "name": "QuizOverlay",
     "src": "resources/js/scene/QuizOverlay.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-Dznm-4Y8.js",
+      "_big-countdown-Bpw2kFIR.js",
       "_easing-ChRyoIXo.js"
     ]
   },
@@ -236,13 +242,22 @@
     "src": "resources/js/scene/TextOverlayLayer.js",
     "isDynamicEntry": true
   },
+  "resources/js/scene/diorama/DioramaStage.js": {
+    "file": "assets/DioramaStage-CCdosoig.js",
+    "name": "DioramaStage",
+    "src": "resources/js/scene/diorama/DioramaStage.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "_clip-W780-tgz.js"
+    ]
+  },
   "resources/js/scene/index.js": {
-    "file": "assets/index-BvmATTho.js",
+    "file": "assets/index-Dne0nZtS.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-Dznm-4Y8.js",
+      "_big-countdown-Bpw2kFIR.js",
       "resources/js/scene/QuizOverlay.js",
       "resources/js/scene/TextOverlayLayer.js",
       "resources/js/scene/ArtworkOverlay.js",
@@ -255,6 +270,7 @@
       "_GLTFLoader-Et3HGvr1.js"
     ],
     "dynamicImports": [
+      "resources/js/scene/diorama/DioramaStage.js",
       "resources/js/scene/ParallaxScene.js",
       "resources/js/scene/InkDrawEngine.js",
       "resources/js/scene/ArtworkOverlay.js"

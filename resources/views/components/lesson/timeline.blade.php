@@ -32,7 +32,7 @@
         [data-rail-col] [data-thumb-selected] { background: rgba(252,211,77, 0.14) !important; }
         [data-rail-col] [data-thumb-selected] [data-thumb-compact] { color: #fcd34d !important; }
         [data-rail-col] [data-rail-label] { display: none !important; }
-        [data-rail-col] [data-rail-add] { aspect-ratio: auto !important; height: 2.1rem !important; }
+        [data-rail-col] [data-rail-add] { aspect-ratio: auto !important; height: 2.1rem !important; border-radius: 0.5rem !important; }
     }
 </style>
 <aside {{ $attributes->merge(['class' => 'fixed left-0 top-0 bottom-0 z-30 overflow-hidden border-r border-slate-700 bg-base-300']) }}
@@ -117,10 +117,12 @@
                 <button type="button"
                         data-no-drag data-rail-add
                         wire:click="$set('addSceneOpen', true)"
-                        class="aspect-video w-full rounded-md border-2 border-dashed border-white/20 text-white/40 transition-all hover:border-primary hover:text-primary"
-                        title="{{ __('Add scene') }}" aria-label="{{ __('Add scene') }}">
-                    <span class="block text-2xl leading-none">+</span>
-                    <span data-rail-label class="mt-1 block text-2xs font-semibold uppercase tracking-widest">{{ __('Add Scene') }}</span>
+                        class="flex aspect-video w-full flex-col items-center justify-center rounded-md border-2 border-dashed border-white/20 text-white/40 transition-all hover:border-primary hover:text-primary"
+                        data-tooltip="{{ __('Add scene') }}" aria-label="{{ __('Add scene') }}">
+                    {{-- A drawn plus, not the "+" glyph: a font's plus sits off its box's centre. --}}
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-5 w-5" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                    </svg>
                 </button>
             @endif
         </div>

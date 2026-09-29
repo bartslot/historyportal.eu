@@ -14,6 +14,7 @@
             window.__narratorPickerAudio.play().catch(() => {});
         }
     }"
+    data-drag-scroll
     class="flex gap-3 overflow-x-auto pb-2"
 >
     @foreach ($narrators as $narrator)

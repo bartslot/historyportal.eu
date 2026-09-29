@@ -5,10 +5,14 @@ declare(strict_types=1);
 namespace App\Livewire\Wizard;
 
 use App\Models\SvgAsset;
+use App\Services\Assets\SequenceImporter;
 use Illuminate\Contracts\View\View;
+use InvalidArgumentException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Session;
 use Livewire\Component;
+use Livewire\WithFileUploads;
+use RuntimeException;
 
 /**
  * The Icons tab of the bottom dock: the icon set that ships with the app, filed under
@@ -20,6 +24,49 @@ use Livewire\Component;
  */
 class IconPanel extends Component
 {
+    use WithFileUploads;
+
+    /** "Import sequence": numbered frames from the art pipeline (name_clip_0001.webp or .png). */
+    public array $sequenceFiles = [];
+
+    public string $sequenceWhat = '';
+
+    public string $sequenceCategory = 'figures';
+
+    private const MAX_SEQUENCE_FRAMES = 240;
+
+    /**
+     * Frames → one animated library asset (SequenceImporter). Admins only: it writes into the
+     * library every teacher sees. Any problem (a gap in the numbers, two assets, JEV unreachable)
+     * is shown in the dialog and nothing is stored.
+     */
+    public function importSequence(SequenceImporter $importer): void
+    {
+        abort_unless(auth()->user()?->isAdmin(), 403);
+        $this->validate([
+            'sequenceFiles' => 'required|array|max:'.self::MAX_SEQUENCE_FRAMES,
+            'sequenceFiles.*' => 'file|mimes:png,webp|max:12288',
+            'sequenceWhat' => 'required|string|max:500',
+            'sequenceCategory' => 'required|in:'.implode(',', SequenceImporter::CATEGORIES),
+        ]);
+
+        try {
+            $asset = $importer->import(array_values($this->sequenceFiles), $this->sequenceWhat, $this->sequenceCategory);
+        } catch (InvalidArgumentException|RuntimeException $e) {
+            $this->addError('sequenceFiles', $e->getMessage());
+
+            return;
+        }
+
+        $this->reset('sequenceFiles', 'sequenceWhat');
+        $this->collection = 'history-line';
+        $this->category = $asset->category;
+        $this->subcategory = '';
+        unset($this->icons, $this->groups);
+        $this->dispatch('sequence-imported');
+        $this->dispatch('toast', message: __(':name is in the library, :m m tall.', ['name' => $asset->title, 'm' => $asset->height_m]), type: 'success');
+    }
+
     // The dock is rebuilt whenever the teacher picks another scene, so the filters are kept in
     // the session — otherwise every scene change would throw them back to the first set.
 
@@ -43,6 +90,15 @@ class IconPanel extends Component
      * A collection missing from this list still shows, after the ones that are in it.
      */
     private const ORDER = ['line-art', 'arrows', 'shapes'];
+
+    /**
+     * Collections whose second row is ONE row of main categories, in this order and under these
+     * names (Bart, 2026-09-29). Their sub-folders (florence, dante …) repeat across categories and
+     * read as duplicates. Folder names stay as they are: stored paths and CDN URLs depend on them.
+     */
+    private const MAIN_CATEGORIES = [
+        'history-line' => ['figures' => 'Characters', 'nature' => 'Nature', 'architecture' => 'Architecture', 'props' => 'Misc', 'backdrops' => 'Backdrops'],
+    ];
 
     public function selectCollection(string $collection): void
     {
@@ -105,6 +161,15 @@ class IconPanel extends Component
     #[Computed]
     public function groups(): array
     {
+        if ($main = self::MAIN_CATEGORIES[$this->collection] ?? null) {
+            $present = SvgAsset::query()->bundled()->where('collection', $this->collection)->distinct()->pluck('category')->all();
+
+            return collect($main)
+                ->filter(fn (string $label, string $category) => in_array($category, $present, true))
+                ->map(fn (string $label, string $category) => ['category' => $category, 'subcategory' => '', 'label' => __($label)])
+                ->values()->all();
+        }
+
         $rows = SvgAsset::query()
             ->bundled()
             ->where('collection', $this->collection)
@@ -148,6 +213,15 @@ class IconPanel extends Component
 
     public function render(): View
     {
+        // The remembered (or default) collection may not exist here: show the first one that does,
+        // instead of an empty set under a pill for another collection.
+        $available = $this->collections();
+        if ($available !== [] && ! in_array($this->collection, $available, true)) {
+            $this->collection = $available[0];
+            $this->category = $this->subcategory = '';
+            unset($this->icons, $this->groups);
+        }
+
         return view('livewire.wizard.icon-panel');
     }
 }

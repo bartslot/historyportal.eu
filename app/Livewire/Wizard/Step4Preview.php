@@ -8,6 +8,7 @@ use App\Enums\LessonStatus;
 use App\Models\AnimationClip;
 use App\Models\Lesson;
 use App\Models\Scene;
+use App\Services\Diorama\LibraryAssets;
 use App\Support\MediaUrl;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -128,6 +129,8 @@ class Step4Preview extends Component
             'config' => $scene->config,
             // Teacher text annotations — read-only here (editing lives in Configure).
             'textsReadonly' => (array) (($scene->config ?? [])['texts'] ?? []),
+            // A diorama's library figures, sized from their real height.
+            'dioramaAssets' => LibraryAssets::forScene($scene),
             // Quiz scenes preview their questions on the canvas, same as Configure.
             'quizQuestions' => $scene->kind === 'game' && ($scene->game_type ?? null) === 'quiz'
                 ? $this->lesson->quizQuestions->map->only(['question', 'options', 'correct_index', 'explanation'])->values()->all()

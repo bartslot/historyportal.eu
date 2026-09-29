@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Services\Editor\SceneHistory;
 use App\Services\Support\NarrationTiming;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -76,6 +77,9 @@ class Scene extends Model
 
         static::saved($forgetPlayerCache);
         static::deleted($forgetPlayerCache);
+
+        // The editor's undo (SceneHistory): remember the scene as it was before this save.
+        static::updating(static fn (Scene $scene) => SceneHistory::remember($scene));
     }
 
     public function lesson(): BelongsTo
@@ -181,6 +185,15 @@ class Scene extends Model
      * finished to the teacher but carry no image_path, so "no image_path" must never be read as
      * "this scene has no background yet" — that is what used to refuse a picture on a map.
      */
+    /**
+     * A diorama scene places its layers on floor grids from `config.diorama` (DioramaSpec);
+     * every other scene is the legacy free-layer kind.
+     */
+    public function isDiorama(): bool
+    {
+        return is_array($this->config['diorama'] ?? null);
+    }
+
     public function drawsOwnBackdrop(): bool
     {
         return in_array($this->kind, ['map', 'voyage'], true)

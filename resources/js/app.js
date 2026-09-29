@@ -21,6 +21,7 @@ import { initRangeFill } from './ui/range-fill.js';
 import { initNumericFields } from './ui/numeric-field.js';
 import { layerOverlay, setLayerPropEverywhere, selectLayerEverywhere } from './scene/layer-overlays.js';
 import { isTypingTarget } from './ui/keyboard.js';
+import { initDragScroll } from './ui/drag-scroll.js';
 
 window.Sortable = Sortable;
 
@@ -40,6 +41,9 @@ initTooltips();
 
 // Card rows, app-wide: any .js-disney-carousel becomes the one shared carousel.
 watchCarousels();
+
+// Pill lists and strips wider than their space, app-wide: data-drag-scroll → mouse drag scrolls.
+initDragScroll();
 
 // Alpine factory for the onboarding spotlight: x-data="onboardingTour(@js($config))".
 // Registered as a global (like wavePlayer in the app layout) so the Blade view can call it without

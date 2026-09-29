@@ -13,17 +13,20 @@ use App\Jobs\GenerateSkyboxImage;
 use App\Jobs\GenerateWorldLabsScene;
 use App\Livewire\Wizard\Concerns\BlocksGuestDemoSpending;
 use App\Livewire\Wizard\Concerns\DuplicatesSceneObjects;
+use App\Livewire\Wizard\Concerns\EditsDiorama;
 use App\Livewire\Wizard\Concerns\EditsQuizQuestions;
 use App\Livewire\Wizard\Concerns\EditsSceneArtwork;
 use App\Livewire\Wizard\Concerns\EditsSceneBackground;
 use App\Livewire\Wizard\Concerns\EditsStoryGame;
 use App\Livewire\Wizard\Concerns\EditsTitleScreen;
+use App\Livewire\Wizard\Concerns\UndoesSceneEdits;
 use App\Models\AnimationClip;
 use App\Models\City;
 use App\Models\Lesson;
 use App\Models\Scene;
 use App\Models\StrategyGame;
 use App\Services\Billing\NarrationCreditLedger;
+use App\Services\Diorama\LibraryAssets;
 use App\Services\Support\LayerAmbient;
 use App\Services\Support\WebpEncoder;
 use App\Services\Support\WhiteCutout;
@@ -42,6 +45,7 @@ use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
+use Livewire\Attributes\Validate;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -49,11 +53,13 @@ class Step3SceneConfigurator extends Component
 {
     use BlocksGuestDemoSpending;
     use DuplicatesSceneObjects;
+    use EditsDiorama;
     use EditsQuizQuestions;
     use EditsTitleScreen;
     use EditsSceneBackground;
     use EditsSceneArtwork;
     use EditsStoryGame;
+    use UndoesSceneEdits;
     use WithFileUploads;
 
     /** Teacher's own image file, uploaded from the Add-image modal. */
@@ -321,6 +327,8 @@ class Step3SceneConfigurator extends Component
             // config carries per-scene flags the first paint needs (background focus, clipart-on-top …).
             ['config' => $s->config ?? null],
             ['shots' => $this->serializeShots($s, $titles)],
+            // A diorama's library figures, sized from their real height: the first paint needs them.
+            ['dioramaAssets' => LibraryAssets::forScene($s)],
         ))->all();
     }
 
@@ -331,6 +339,7 @@ class Step3SceneConfigurator extends Component
         if ($this->selectedSceneId !== $id) {
             $this->activeLayerId = null;
             $this->activeTextId = null;
+            $this->activeDioramaId = null;
         }
 
         $scene = $this->lesson->scenes()->findOrFail($id);
@@ -374,6 +383,8 @@ class Step3SceneConfigurator extends Component
             'config' => $scene->kind === 'voyage'
                 ? array_merge($scene->config ?? [], ['view' => $this->voyageView()])
                 : $scene->config,
+            // Library pictures standing in a diorama, sized from their real height.
+            'dioramaAssets' => LibraryAssets::forScene($scene),
             // Voyage scenes preview against the lesson's editable route copy (falls back to the
             // shared catalog until the first edit clones it) — the wizard overlay passes this to
             // renderVoyageTour as `def`.
@@ -555,6 +566,7 @@ class Step3SceneConfigurator extends Component
                 $payload[$nullable] = null;
             }
         }
+        $payload = $this->withStoredDiorama($payload, $scene);
         $scriptDirty = ($scene->script_segment ?? '') !== ($payload['script_segment'] ?? '');
 
         // Detect changes that should re-paint the 3D stage so the canvas updates.
@@ -589,6 +601,27 @@ class Step3SceneConfigurator extends Component
         if ($stageDirty) {
             $this->selectSceneInternal($scene->id);
         }
+    }
+
+    /**
+     * The diorama block has its own writers (diorama:import, agents, JEV), so the page's snapshot
+     * of it is stale by design: always keep what is stored, never what the page loaded.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function withStoredDiorama(array $payload, Scene $scene): array
+    {
+        if (! array_key_exists('config', $payload) || (! is_array($payload['config']) && ! $scene->isDiorama())) {
+            return $payload;
+        }
+        $config = is_array($payload['config']) ? $payload['config'] : [];
+        unset($config['diorama']);
+        if ($scene->isDiorama()) {
+            $config['diorama'] = $scene->config['diorama'];
+        }
+
+        return [...$payload, 'config' => $config];
     }
 
     // ── Map block: territory picker ──────────────────────────────────────
@@ -899,9 +932,20 @@ class Step3SceneConfigurator extends Component
     {
         $this->activeLayerId = null;
         $this->activeTextId = null;
+        $this->activeDioramaId = null;
         $this->panelView = 'scene';
 
         if (! $objectId) {
+            return;
+        }
+
+        // A diorama item (DioramaStage selects 'dio_<id>'): its own Format panel.
+        if (str_starts_with($objectId, 'dio_')) {
+            $itemId = substr($objectId, 4);
+            if (collect($this->selectedScene['config']['diorama']['items'] ?? [])->contains('id', $itemId)) {
+                $this->activeDioramaId = $itemId;
+            }
+
             return;
         }
 
@@ -1034,6 +1078,11 @@ class Step3SceneConfigurator extends Component
 
             return;
         }
+        if (str_starts_with($objectId, 'dio_')) {
+            $this->removeDioramaItem(substr($objectId, 4));
+
+            return;
+        }
         $this->deleteSceneText($objectId);
     }
 
@@ -1124,6 +1173,7 @@ class Step3SceneConfigurator extends Component
 
         if ($selectedTextId && collect($clean)->contains(fn ($text) => ($text['id'] ?? null) === $selectedTextId)) {
             $this->activeLayerId = null;
+            $this->activeDioramaId = null;
             $this->activeTextId = $selectedTextId;
             $this->panelView = 'scene';
             unset($this->activeText);
@@ -5029,7 +5079,14 @@ class Step3SceneConfigurator extends Component
             return;
         }
 
-        $this->undoVoyage();
+        // The route only on the voyage scene: anywhere else Cmd-Z silently took back a route edit.
+        if ($this->selectedScene && ($this->selectedScene['kind'] ?? null) === 'voyage') {
+            $this->undoVoyage();
+
+            return;
+        }
+
+        $this->undoSceneEdit();
     }
 
     /**
@@ -5166,6 +5223,22 @@ class Step3SceneConfigurator extends Component
         // Our own files are kept as a same-site path, never as the host they were shown on.
         $this->lesson->update(['poster_image' => preg_replace('#^(?:https?:)?//[^/]+(?=/storage/)#i', '', $url)]);
         $this->lesson->refresh();
+    }
+
+    /** A poster uploaded in the Settings panel ("Image"). Stored as WebP like every picture we keep. */
+    #[Validate('nullable|image|max:8192')]
+    public $posterUpload = null;
+
+    public function updatedPosterUpload(): void
+    {
+        $this->validateOnly('posterUpload');
+        if (! $this->posterUpload) {
+            return;
+        }
+        $path = WebpEncoder::storeUpload($this->posterUpload, "lessons/{$this->lesson->id}/poster");
+        $this->lesson->update(['poster_image' => $path]);
+        $this->lesson->refresh();
+        $this->posterUpload = null;
     }
 
     /** Clear the override → the lesson auto-picks its poster again. */

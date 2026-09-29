@@ -95,6 +95,31 @@
                 "--port=8211"
             ],
             "port": 8211
+        },
+        {
+            "//": "Diorama worktree (diorama-magnetic-3d-grid-f17f0e): its own app server. APP_URL in this worktree's .env is pinned to :8231.",
+            "name": "serve-diorama",
+            "runtimeExecutable": "php",
+            "runtimeArgs": [
+                "artisan",
+                "serve",
+                "--host=127.0.0.1",
+                "--port=8231"
+            ],
+            "port": 8231
+        },
+        {
+            "//": "Vite for serve-diorama, clear of every other session's port.",
+            "name": "vite-diorama",
+            "runtimeExecutable": "npx",
+            "runtimeArgs": [
+                "vite",
+                "--port",
+                "5231",
+                "--strictPort",
+                "--force"
+            ],
+            "port": 5231
         }
     ]
 }

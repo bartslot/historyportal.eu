@@ -163,6 +163,58 @@ class ImportIconLibraryTest extends TestCase
         $this->assertNull(SvgAsset::bundled()->where('source_ref', 'history-line/figures/dante/dante-giovane.webp')->first());
     }
 
+    public function test_a_picture_carries_what_it_is_and_its_real_height_from_meta_json(): void
+    {
+        $img = imagecreatetruecolor(30, 20);
+        imagesavealpha($img, true);
+        foreach (['figures/citizens/frate.webp', 'figures/citizens/mercante.webp'] as $rel) {
+            File::ensureDirectoryExists(dirname($this->root.'/history-line/'.$rel));
+            imagewebp($img, $this->root.'/history-line/'.$rel, 90);
+        }
+        File::put($this->root.'/history-line/meta.json', json_encode([
+            'figures/citizens/frate.webp' => [
+                'description' => 'A friar in a brown habit, standing.', 'placement' => 'stands',
+                'height_m' => 1.68, 'opaque_box' => [0.1, 0.02, 0.9, 1.0],
+            ],
+        ]));
+
+        $this->import()
+            ->expectsOutputToContain('history-line/figures/citizens/mercante.webp: no entry in meta.json')
+            ->assertSuccessful();
+
+        $frate = SvgAsset::bundled()->where('source_ref', 'history-line/figures/citizens/frate.webp')->firstOrFail();
+        $this->assertSame('A friar in a brown habit, standing.', $frate->description);
+        $this->assertSame('stands', $frate->placement);
+        $this->assertSame(1.68, $frate->height_m);
+        $this->assertEquals([0.1, 0.02, 0.9, 1.0], $frate->opaque_box);
+        $this->assertNull(SvgAsset::bundled()->where('source_ref', 'history-line/figures/citizens/mercante.webp')->firstOrFail()->height_m);
+    }
+
+    public function test_the_shipped_library_describes_every_figure_prop_and_plant(): void
+    {
+        $meta = json_decode((string) file_get_contents(resource_path('icons/history-line/meta.json')), true);
+        foreach ($meta as $ref => $entry) {
+            $this->assertNotEmpty($entry['description'], $ref);
+            $this->assertContains($entry['placement'], ['stands', 'sky', 'held', 'closeup', 'cropped'], $ref);
+            $this->assertSame($entry['placement'] === 'stands', isset($entry['height_m']), "{$ref}: a thing that stands needs a height, nothing else has one");
+            $this->assertFileExists(resource_path('icons/history-line/'.$ref));
+        }
+        // One person is one height in every standing pose.
+        $dante = array_filter($meta, fn ($e, $ref) => str_contains($ref, '/dante-') && $e['placement'] === 'stands' && ! str_contains($e['description'], 'seated') && ! str_contains($e['description'], 'riding'), ARRAY_FILTER_USE_BOTH);
+        $this->assertCount(1, array_unique(array_column($dante, 'height_m')));
+    }
+
+    public function test_a_checkout_without_cdn_json_leaves_the_cdn_urls_alone(): void
+    {
+        $this->import()->assertSuccessful();
+        $row = SvgAsset::bundled()->where('source_ref', 'arrows/arrow-straight.svg')->firstOrFail();
+        $row->update(['cdn_url' => 'https://res.cloudinary.com/x/arrow.svg']);
+
+        $this->import()->assertSuccessful();   // this fixture tree has no cdn.json
+
+        $this->assertSame('https://res.cloudinary.com/x/arrow.svg', $row->fresh()->cdn_url);
+    }
+
     public function test_it_never_touches_a_teachers_own_imports(): void
     {
         $mine = SvgAsset::create([
