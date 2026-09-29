@@ -314,6 +314,7 @@ class Step3SceneConfigurator extends Component
         if ($this->selectedSceneId !== $id) {
             $this->activeLayerId = null;
             $this->activeTextId = null;
+            $this->activeDioramaId = null;
         }
 
         $scene = $this->lesson->scenes()->findOrFail($id);
@@ -900,9 +901,20 @@ class Step3SceneConfigurator extends Component
     {
         $this->activeLayerId = null;
         $this->activeTextId = null;
+        $this->activeDioramaId = null;
         $this->panelView = 'scene';
 
         if (! $objectId) {
+            return;
+        }
+
+        // A diorama item (DioramaStage selects 'dio_<id>'): its own Format panel.
+        if (str_starts_with($objectId, 'dio_')) {
+            $itemId = substr($objectId, 4);
+            if (collect($this->selectedScene['config']['diorama']['items'] ?? [])->contains('id', $itemId)) {
+                $this->activeDioramaId = $itemId;
+            }
+
             return;
         }
 
@@ -1130,6 +1142,7 @@ class Step3SceneConfigurator extends Component
 
         if ($selectedTextId && collect($clean)->contains(fn ($text) => ($text['id'] ?? null) === $selectedTextId)) {
             $this->activeLayerId = null;
+            $this->activeDioramaId = null;
             $this->activeTextId = $selectedTextId;
             $this->panelView = 'scene';
             unset($this->activeText);

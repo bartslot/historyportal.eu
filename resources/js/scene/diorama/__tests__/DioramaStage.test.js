@@ -394,3 +394,46 @@ describe('auto-key: scrub, drag, and the item gets a key at the playhead', () =>
     expect(moves[0].keys).toHaveLength(sailor.keys.length)
   })
 })
+
+describe('the stage API the timeline rows and the Format panel use', () => {
+  const item = id => stage.spec.items.find(i => i.id === id)
+
+  it('poseCell: where the item stands at the playhead', () => {
+    const sailor = spec.items.find(i => i.id === 'sailor_1')
+    stage.update(0)
+    expect(stage.poseCell('sailor_1')).toEqual(sailor.keys[0].cell)
+    expect(stage.poseCell('barrel_1')).toEqual(spec.items.find(i => i.id === 'barrel_1').cell)
+  })
+
+  it('placeCell on a still item at 0 moves it, snapped to quarter cells and kept on its floor', () => {
+    stage.update(0)
+    stage.placeCell('barrel_1', [3.1, 99])
+    const [move] = moves
+    expect(move.cell[0]).toBe(3)
+    expect(move.cell[1]).toBeLessThanOrEqual(40)          // the quay ends at 40
+    expect(move.keys).toBeUndefined()
+  })
+
+  it('placeCell while recording at 2 s gives a still item its first path', () => {
+    stage.show(spec, assets, { editable: true, onMove: m => moves.push(m), recording: () => true })
+    stage.update(2)
+    const cell0 = item('barrel_1').cell
+    stage.placeCell('barrel_1', [cell0[0] + 2, cell0[1]])
+    expect(moves[0].keys).toEqual([{ t: 0, cell: cell0 }, { t: 2, cell: [cell0[0] + 2, cell0[1]] }])
+  })
+
+  it('keyHere: a key at the playhead where the item stands; at 0 on a still item, a single key', () => {
+    stage.update(0)
+    stage.keyHere('barrel_1')
+    expect(moves.at(-1).keys).toEqual([{ t: 0, cell: item('barrel_1').cell }])
+  })
+
+  it('removeKeys: takes the keys at those times away and says so, even down to none', () => {
+    const sailor = spec.items.find(i => i.id === 'sailor_1')
+    stage.removeKeys('sailor_1', [sailor.keys[1].t])
+    expect(moves.at(-1).keys).toHaveLength(sailor.keys.length - 1)
+    stage.removeKeys('sailor_1', item('sailor_1').keys.map(k => k.t))
+    expect(moves.at(-1).keys).toEqual([])
+    expect(moves.at(-1).cell).toEqual(sailor.keys[0].cell)   // it stays where its path started
+  })
+})

@@ -450,13 +450,11 @@ export class DioramaStage {
       const { keys0, from, cell0 } = this._drag
       const item = this._item(id)
       if (this.recording()) {
-        // Auto-key (Bart, 2026-09-29): scrub, drag, and the item gets a key at the playhead.
         if (hit.floor !== item.floor) return               // a path stays on one floor
-        const walk = this.assets[item.asset]?.sheet?.anims?.walk ? 'walk' : null
-        const keys = recordKey(keys0, cell0, this._time ?? 0, cell, walk)
-        if (keys) {
+        const patch = this._recorded({ ...item, keys: keys0, cell: cell0 }, cell)
+        if (patch) {
           this._drag.moved = true
-          this._setItem(id, { keys, cell: keys[0].cell })
+          this._setItem(id, patch)
           this._showGrid(hit.floor)
           this._showChip(id)
           return
@@ -533,7 +531,67 @@ export class DioramaStage {
 
   _emitMove (id) {
     const item = this._item(id)
-    this.onMove?.({ itemId: id, floor: item.floor, cell: item.cell, ...(item.keys?.length ? { keys: item.keys } : {}) })
+    // An item that HAS a keys list says so, empty included: the last key removed must reach the save.
+    this.onMove?.({ itemId: id, floor: item.floor, cell: item.cell, ...(Array.isArray(item.keys) ? { keys: item.keys } : {}) })
+  }
+
+  /**
+   * Auto-key (Bart, 2026-09-29): the patch that records `cell` at the playhead while the timeline
+   * records, or null (not recording, or a still item at 0, which is simply moved).
+   */
+  _recorded (item, cell) {
+    if (!this.recording()) return null
+    const walk = this.assets[item.asset]?.sheet?.anims?.walk ? 'walk' : null
+    const keys = recordKey(item.keys, item.cell, this._time ?? 0, cell, walk)
+    return keys && { keys, cell: keys[0].cell }
+  }
+
+  // ── For the timeline rows and the Format panel: the same rules as dragging on the canvas ────
+
+  /** Where the item stands at the playhead, in cells. */
+  poseCell (id) {
+    const item = this._item(id)
+    return item ? this._poseOf(item).cell : null
+  }
+
+  /**
+   * Put the item at `cell` (typed in a field): snapped, kept on its floor, then like a drag:
+   * recorded at the playhead while recording, else a keyed item's whole path moves along.
+   */
+  placeCell (id, cell) {
+    const item = this._item(id)
+    if (!item) return
+    const to = clampCell(this._floors.get(item.floor), snapCell(cell, SNAP_STEP))
+    const patch = this._recorded(item, to) ?? (item.keys?.length
+      ? (() => {
+          const at = this._poseOf(item).cell
+          const d = [to[0] - at[0], to[1] - at[1]]
+          return { keys: shiftPath(item.keys, d), cell: [item.cell[0] + d[0], item.cell[1] + d[1]] }
+        })()
+      : { cell: to })
+    this._setItem(id, patch)
+    this._emitMove(id)
+  }
+
+  /** The diamond: a key at the playhead where the item stands now (a single key at 0 on a still item). */
+  keyHere (id) {
+    const item = this._item(id)
+    if (!item) return
+    const cell = this._poseOf(item).cell
+    const walk = this.assets[item.asset]?.sheet?.anims?.walk ? 'walk' : null
+    const keys = recordKey(item.keys, item.cell, this._time ?? 0, cell, walk) ?? [{ t: 0, cell }]
+    this._setItem(id, { keys, cell: keys[0].cell })
+    this._emitMove(id)
+  }
+
+  /** Delete keys (the timeline's Delete): the item keeps standing where its path now starts. */
+  removeKeys (id, times) {
+    const item = this._item(id)
+    if (!item?.keys?.length) return
+    const gone = t => times.some(x => Math.abs(x - t) < 0.001)
+    const keys = item.keys.filter(k => !gone(k.t))
+    this._setItem(id, { keys, cell: keys[0]?.cell ?? item.keys[0].cell })
+    this._emitMove(id)
   }
 
   /** New keys for an item (the timeline clip was moved or stretched): shown at once, not saved here. */

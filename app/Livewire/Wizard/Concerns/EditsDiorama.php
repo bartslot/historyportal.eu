@@ -20,6 +20,9 @@ use Livewire\Attributes\On;
  */
 trait EditsDiorama
 {
+    /** The diorama item whose Format panel is open (its id in config.diorama.items), or null. */
+    public ?string $activeDioramaId = null;
+
     /**
      * A drag on the stage. An item with a path moves the WHOLE path (Bart, 2026-09-29), so the
      * stage sends its shifted keys along; a still item sends only its new cell.
@@ -136,6 +139,9 @@ trait EditsDiorama
         $spec['spots'] = array_values(array_filter($spec['spots'] ?? [], fn ($s) => in_array($s['floor'], array_column($spec['floors'], 'id'), true)));
 
         if ($this->saveDiorama($scene, $spec)) {
+            if (in_array($this->activeDioramaId, $gone, true)) {
+                $this->activeDioramaId = null;          // its Format panel goes with it
+            }
             $this->selectSceneInternal($scene->id);
         }
     }

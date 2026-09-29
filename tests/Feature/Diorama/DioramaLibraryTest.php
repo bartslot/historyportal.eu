@@ -126,4 +126,18 @@ class DioramaLibraryTest extends TestCase
         $this->assertSame($items, $spec['items'], 'the figures stay where they stand');
         $this->assertSame('/diorama/x/', $spec['plate']['base'], 'the scene keeps where its own pictures live');
     }
+
+    public function test_selecting_a_diorama_item_opens_its_own_format_panel(): void
+    {
+        $this->editor()
+            ->call('selectInspectorTarget', 'dio_sailor_1')
+            ->assertSet('activeDioramaId', 'sailor_1')
+            ->assertSeeHtml('data-diorama-inspector="sailor_1"')
+            ->call('selectInspectorTarget', 'dio_nobody')
+            ->assertSet('activeDioramaId', null)
+            ->call('selectInspectorTarget', 'dio_sailor_1')
+            ->call('selectInspectorTarget', '')
+            ->assertSet('activeDioramaId', null)
+            ->assertDontSeeHtml('data-diorama-inspector=');
+    }
 }

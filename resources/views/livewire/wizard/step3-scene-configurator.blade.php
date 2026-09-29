@@ -963,6 +963,9 @@
                     <x-lesson.animate-inspector mode="layer" :layer="$al" :scene="$this->selectedSceneModel" />
                 </div>
             </div>
+            @elseif ($activeDioramaId)
+            {{-- A diorama item: where it stands (X, Z on its floor), keyed like the timeline rows. --}}
+            <x-lesson.diorama-item-inspector :item-id="$activeDioramaId" wire:key="dio-inspector-{{ $activeDioramaId }}" />
             @elseif ($panelView === 'scene')
             @php $sceneModel = $this->selectedSceneModel; @endphp
             @if ($sceneModel)
@@ -1171,6 +1174,37 @@
         solid:  '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M20.0049 19.6379H9.00488C8.73967 19.6379 8.48531 19.5325 8.29778 19.345C8.11024 19.1574 8.00488 18.9031 8.00488 18.6379V10.6379C8.00488 10.3727 8.11024 10.1183 8.29778 9.93077C8.48531 9.74324 8.73967 9.63788 9.00488 9.63788H20.0049C20.2701 9.63788 20.5245 9.74324 20.712 9.93077C20.8995 10.1183 21.0049 10.3727 21.0049 10.6379V18.6379C21.0049 18.9031 20.8995 19.1574 20.712 19.345C20.5245 19.5325 20.2701 19.6379 20.0049 19.6379Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M14.1345 9.6989C14.1345 6.75148 11.7451 4.36212 8.79772 4.36212C5.8503 4.36212 3.46095 6.75148 3.46095 9.6989C3.44224 11.3303 4.45651 14.5767 8.41688 14.5767" stroke="currentColor" stroke-width="1.5"/></svg>',
         map:    '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M9 6.75 3.75 4.5v12.75L9 19.5m0-12.75 6 2.25m-6-2.25v12.75m6-10.5 5.25-2.25V15L15 17.25m0-10.5v10.5m0 0-6-2.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     };
+    // A diorama item's Format panel (components/lesson/diorama-item-inspector): read off the live stage at
+    // the playhead, written back through it (the canvas drag's rules). Defined here, not in the
+    // component: a script a morph brings in never runs.
+    window.dioramaInspector = function dioramaInspector(id) {
+        const round2 = (v) => Math.round(v * 100) / 100;
+        return {
+            label: '', description: '', heightM: null, x: 0, z: 0,
+            init() { this.sync(); },
+            sync() {
+                const stage = window.__diorama;
+                const item = stage?.items().find((i) => i.id === id);
+                if (!item) return;
+                const asset = stage.assets?.[item.asset] ?? {};
+                this.label = item.label || asset.title || id;
+                this.description = asset.description || '';
+                this.heightM = asset.height_m ?? null;
+                const cell = stage.poseCell(id);
+                if (cell) { this.x = round2(cell[0]); this.z = round2(cell[1]); }
+            },
+            set(axis, value) {
+                const v = Number(value);
+                const cell = window.__diorama?.poseCell(id);
+                if (!Number.isFinite(v) || !cell) return;
+                const next = [...cell];
+                next[axis] = v;
+                window.__diorama.placeCell(id, next);
+                this.sync();
+            },
+        };
+    };
+
     // Object list — reads the live text layer (title/text boxes + backing panels) so the teacher
     // can find, flash-locate, and restack objects that overlap on the stage.
     window.objectList = function objectList() {
@@ -1387,8 +1421,9 @@
         window.addEventListener('scene-object-selected', (e) => {
             const id = (e.detail && e.detail.id) || '';
             const isArtwork = id.indexOf('art_') === 0;
+            const isDiorama = id.indexOf('dio_') === 0;
             const isText = !!window.__lessonTextLayer?._texts?.some((text) => text.id === id);
-            const objectId = (isArtwork || isText) ? id : '';
+            const objectId = (isArtwork || isDiorama || isText) ? id : '';
             if (objectId) window.dispatchEvent(new CustomEvent('inspector-open'));
             if (objectId === lastSelection) return;
             lastSelection = objectId;
@@ -1978,7 +2013,8 @@
     </div>
 
     {{-- Object-list resize handle — sits at the panel's right edge (rail + objlist). Drag to
-         resize; drag it under 40px and the list hides (View ▸ Object list re-opens). Only
+         resize; it stops at the icons, and a pull to the rail edge hides it (View ▸ Object list
+         re-opens). Only
          rendered while the list is shown. --}}
     <div x-show="$store.view.objects" x-cloak id="objlist-resize" wire:ignore tabindex="0"
          class="group fixed z-40 -ml-1.5 w-3 cursor-col-resize focus:outline-none focus-visible:bg-sky-400/20"
@@ -1993,6 +2029,11 @@
         const rootEl = document.documentElement;   // --objlist-w lives on <html> so the stage inherits it
         const railW = () => parseFloat(getComputedStyle(rootEl).getPropertyValue('--rail-w')) || 0;
         const clamp = (v) => Math.max(0, Math.min(320, v));
+        // Dragging narrow stops at the icon (its left padding kept); only a pull to the very edge
+        // hides the list (Bart, 2026-09-29: it hid too early, while the icons still fitted).
+        const ICONS_W = 44;   // p-1.5 + px-2 + the 16px icon + the same on the right
+        const HIDE_W = 12;    // the pointer this close to the rail edge: hide
+        const widthFor = (raw) => (raw <= HIDE_W ? 0 : Math.max(ICONS_W, clamp(raw)));
         const boot = () => {
             const handle = document.getElementById('objlist-resize');
             if (!handle || handle.__wired) return;
@@ -2004,7 +2045,7 @@
             });
             handle.addEventListener('pointermove', (e) => {
                 if (!dragging) return;
-                rootEl.style.setProperty('--objlist-w', clamp(e.clientX - railW()) + 'px');
+                rootEl.style.setProperty('--objlist-w', widthFor(e.clientX - railW()) + 'px');
             });
             const end = (e) => {
                 if (!dragging) return;
@@ -2012,14 +2053,12 @@
                 try { handle.releasePointerCapture(e.pointerId); } catch (_) {}
                 document.body.style.userSelect = '';
                 const rawO = parseFloat(rootEl.style.getPropertyValue('--objlist-w'));
-                let w = clamp(Number.isFinite(rawO) ? rawO : 208);   // keep a real 0 (don't let || swallow the hide gesture)
+                const w = Number.isFinite(rawO) ? rawO : 208;   // keep a real 0 (don't let || swallow the hide gesture)
                 const store = window.Alpine?.store('view');
-                if (w < 40) {                     // dragged to the edge → hide the list
-                    rootEl.style.setProperty('--objlist-w', '0px');
+                if (w === 0) {                    // pulled to the edge → hide the list
                     if (store) { store.objects = false; store._save?.(); }
                     return;
                 }
-                if (w < 56) w = 56;               // icons-only floor
                 rootEl.style.setProperty('--objlist-w', w + 'px');
                 if (store) { store.objectsW = w; store._save?.(); }
             };
@@ -2035,10 +2074,9 @@
                 else if (e.key === 'End') w = 0;
                 else return;
                 e.preventDefault();
-                w = clamp(w);
+                w = e.key === 'End' ? 0 : Math.max(ICONS_W, clamp(w));
                 const store = window.Alpine?.store('view');
-                if (w < 40) { rootEl.style.setProperty('--objlist-w', '0px'); if (store) { store.objects = false; store._save?.(); } return; }
-                if (w < 56) w = 56;
+                if (w === 0) { rootEl.style.setProperty('--objlist-w', '0px'); if (store) { store.objects = false; store._save?.(); } return; }
                 rootEl.style.setProperty('--objlist-w', w + 'px');
                 if (store) { store.objectsW = w; store._save?.(); }
             });

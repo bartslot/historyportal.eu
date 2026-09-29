@@ -974,6 +974,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                 window.Livewire?.dispatch('diorama:move', { itemId, floor, cell, keys: keys ?? null })
                 // An auto-keyed drag may have given the item its first path: the timeline shows it now.
                 window.dispatchEvent(new CustomEvent('scene-objects-changed'))
+                window.dispatchEvent(new CustomEvent('timeline-changed'))   // the Format panel's diamonds re-read
             },
             onFrame: pinOverlayToFrame,
             recording: () => window.__timelineKeying?.autoKey?.() === true,

@@ -15,6 +15,9 @@ import { propertiesFor, sampleFrame, kindOfTarget } from './properties.js'
 import { wordSpans, snapTime, wordAt } from './narration-clock.js'
 import { textObjects, artObjects, dioramaObjects, readObjectProperty, writeObjectProperty, setObjectHidden } from './scene-objects.js'
 import { clipOf, shiftClip, stretchClip } from '../scene/diorama/clip.js'
+
+/** Which part of a diorama cell a row edits: X across, Z away from the camera. */
+const DIO_AXIS = { x: 0, z: 1 }
 import { isPlayPauseKey, isTypingTarget } from '../ui/keyboard.js'
 import { EASE, parseBezier, formatBezier } from '../easing.js'
 import {
@@ -151,7 +154,7 @@ export const animationTimeline = (config = {}) => ({
     }
 
     for (const event of ['scene-objects-changed', 'objscene-changed']) {
-      window.addEventListener(event, () => this.refreshObjects())
+      window.addEventListener(event, () => { this.refreshObjects(); this.canvasTick++ })   // a diorama path changed: its rows re-read
     }
 
     /**
@@ -386,7 +389,10 @@ export const animationTimeline = (config = {}) => ({
     return this.tracks.find((t) => t.target === target && t.property === property) ?? null
   },
 
-  keysOf (target, property) { return sortedKeys(this.trackFor(target, property)) },
+  keysOf (target, property) {
+    if (kindOfTarget(target) === 'dio') return this.dioramaKeys(target, property)
+    return sortedKeys(this.trackFor(target, property))
+  },
 
   // ── Geometry ────────────────────────────────────────────────────────────────────────────
 
@@ -616,6 +622,13 @@ export const animationTimeline = (config = {}) => ({
 
   dioramaClip (target) { return clipOf(this.dioramaItem(target)) },
 
+  /** A diorama row's keys as timeline keys: the path's keys, one component of each cell. */
+  dioramaKeys (target, property) {
+    void this.canvasTick   // reactive: the stage changed the path
+    const i = DIO_AXIS[property]
+    return (this.dioramaItem(target)?.keys ?? []).map((k) => ({ time: k.t, value: k.cell[i] }))
+  },
+
   /** True when the item's picture has a walk animation: its clip is a walk, not a glide. */
   dioramaWalks (target) {
     const item = this.dioramaItem(target)
@@ -744,6 +757,7 @@ export const animationTimeline = (config = {}) => ({
    * diamond in the lane, where the thing being removed is the thing under the pointer.
    */
   toggleKey (target, property) {
+    if (kindOfTarget(target) === 'dio') { window.__diorama?.keyHere(target.slice(4)); return }
     const map = window.__lessonMap
     const live = kindOfTarget(target) === 'camera'
       ? (map ? cameraFromMap(map)[property] : undefined)
@@ -768,6 +782,11 @@ export const animationTimeline = (config = {}) => ({
    *  map's own value when it is not, so the field never shows a number nothing is using. */
   valueAt (target, property) {
     void this.canvasTick   // a reactive read: the canvas moved, so the live value may have too
+    if (kindOfTarget(target) === 'dio') {
+      void this.time
+      const cell = window.__diorama?.poseCell(target.slice(4))
+      return cell ? Math.round(cell[DIO_AXIS[property]] * 100) / 100 : 0
+    }
     const keys = this.keysOf(target, property)
     if (keys.length) {
       const frame = sampleFrame(this.tracks, this.time)
@@ -805,6 +824,14 @@ export const animationTimeline = (config = {}) => ({
    */
   setValue (target, property, value) {
     if (!Number.isFinite(value)) return
+    if (kindOfTarget(target) === 'dio') {
+      // The stage applies the canvas rules: snapped, on its floor, recorded while auto-key is on.
+      const id = target.slice(4)
+      const cell = [...(window.__diorama?.poseCell(id) ?? [0, 0])]
+      cell[DIO_AXIS[property]] = value
+      window.__diorama?.placeCell(id, cell)
+      return
+    }
     const map = window.__lessonMap
     if (kindOfTarget(target) === 'camera') { if (map) applyCamera(map, { [property]: value }) }
     else writeObjectProperty(target, property, value)
@@ -860,6 +887,13 @@ export const animationTimeline = (config = {}) => ({
   },
 
   deleteSelected () {
+    // Diorama keys live in the diorama JSON: one removal per item, at the selected times.
+    const dioTimes = {}
+    for (const id of this.selected) {
+      const [target, , time] = id.split('|')
+      if (kindOfTarget(target) === 'dio') (dioTimes[target] ??= []).push(Number(time))
+    }
+    for (const [target, times] of Object.entries(dioTimes)) window.__diorama?.removeKeys(target.slice(4), [...new Set(times)])
     this.tracks = deleteKeys(this.tracks, this.selectedRefs)
     this.selected = []
     this.applyFrame()
@@ -885,6 +919,10 @@ export const animationTimeline = (config = {}) => ({
     event.stopPropagation()
     this.pause()
     const id = keyId({ target, property, time })
+    if (kindOfTarget(target) === 'dio') {   // select only: a diorama path moves in time as one clip
+      this.selected = event.shiftKey ? [...new Set([...this.selected, id])] : [id]
+      return
+    }
     const wasSelected = this.selected.includes(id)
     let onClick = null
     if (event.shiftKey) {
@@ -919,6 +957,7 @@ export const animationTimeline = (config = {}) => ({
   targetFromObjectId (id) {
     if (!id) return null
     if (String(id).startsWith('art_')) return `art:${String(id).slice(4)}`
+    if (String(id).startsWith('dio_')) return `dio:${String(id).slice(4)}`
     const text = this.objects.find((o) => (o.kind === 'text' || o.kind === 'rect') && o.target.slice(o.target.indexOf(':') + 1) === String(id))
     return text?.target ?? null
   },
@@ -950,6 +989,7 @@ export const animationTimeline = (config = {}) => ({
     const id = rest.join(':')
     if (kind === 'art') (window.__artOverlay?.() ?? window.__lessonArtworkLayer)?.select?.(`art_${id}`)
     else if (kind === 'text' || kind === 'rect') window.__lessonTextLayer?.select?.(id)
+    else if (kind === 'dio') window.__diorama?.select?.(id)
   },
 
   // ── Bars. Drag one to move the whole animation; click between two keys to choose easing ────
