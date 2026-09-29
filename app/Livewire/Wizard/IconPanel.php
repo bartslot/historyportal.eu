@@ -26,7 +26,7 @@ class IconPanel extends Component
 {
     use WithFileUploads;
 
-    /** "Import sequence": numbered frames from the art pipeline (name_clip_0001.png). */
+    /** "Import sequence": numbered frames from the art pipeline (name_clip_0001.webp or .png). */
     public array $sequenceFiles = [];
 
     public string $sequenceWhat = '';

@@ -30,6 +30,9 @@ class SequenceImportTest extends TestCase
     /** A 200 × 400 frame, transparent except a figure in rows 100..399 whose x-offset is $shift. */
     private function frame(string $name, int $shift = 0): UploadedFile
     {
+        if (str_ends_with($name, '.webp')) {
+            return UploadedFile::fake()->createWithContent($name, $this->webp($shift));
+        }
         $img = imagecreatetruecolor(200, 400);
         imagesavealpha($img, true);
         imagealphablending($img, false);
@@ -123,5 +126,42 @@ class SequenceImportTest extends TestCase
             ->set('sequenceWhat', 'A foot soldier.')
             ->call('importSequence')
             ->assertForbidden();
+    }
+
+    private function webp(int $shift): string
+    {
+        $img = imagecreatetruecolor(200, 400);
+        imagesavealpha($img, true);
+        imagealphablending($img, false);
+        imagefill($img, 0, 0, imagecolorallocatealpha($img, 0, 0, 0, 127));
+        imagefilledrectangle($img, 60 + $shift, 100, 139 + $shift, 399, imagecolorallocatealpha($img, 40, 60, 120, 0));
+        ob_start();
+        imagewebp($img, null, 80);
+
+        return (string) ob_get_clean();
+    }
+
+    public function test_webp_frames_import_like_png_and_keep_their_transparency(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        Livewire::actingAs($admin)->test(IconPanel::class)
+            ->set('sequenceFiles', [$this->frame('fante_walk_0001.webp'), $this->frame('fante_walk_0002.webp', 8), $this->frame('fante_idle_0001.webp')])
+            ->set('sequenceWhat', 'A foot soldier with a spear.')
+            ->call('importSequence')
+            ->assertHasNoErrors();
+
+        $asset = \App\Models\SvgAsset::where('source', 'sequence')->firstOrFail();
+        $this->assertSame(3, $asset->sheet['frames']);
+        // The crop is the drawn figure, not the whole 200 × 400 canvas: the transparency survived.
+        $this->assertLessThan(200 * 3, $asset->width);
+        $this->assertLessThan(400, $asset->height);
+    }
+
+    public function test_png_and_webp_frames_can_be_mixed_in_one_sequence(): void
+    {
+        $asset = app(SequenceImporter::class)->import([$this->frame('boy_walk_1.png'), $this->frame('boy_walk_2.webp', 6)], 'A boy walking.', 'figures');
+
+        $this->assertSame(['frames' => [0, 1], 'stride_m' => 1.45], $asset->sheet['anims']['walk']);
     }
 }

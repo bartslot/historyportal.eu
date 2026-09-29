@@ -63,7 +63,7 @@ final class SequenceImporter
         $parsed = [];
         foreach ($names as $i => $file) {
             if (! preg_match(self::PATTERN, basename($file), $m)) {
-                throw new InvalidArgumentException(__(':file is not named name_clip_0001.png.', ['file' => basename($file)]));
+                throw new InvalidArgumentException(__(':file is not named name_clip_0001.webp.', ['file' => basename($file)]));
             }
             $parsed[$i] = [Str::lower($m['name']), Str::lower($m['clip']), (int) $m['n']];
         }

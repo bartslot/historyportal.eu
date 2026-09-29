@@ -1547,7 +1547,6 @@
     "Importing…": "Importazione…",
     ":name is in the library, :m m tall.": ":name è nella libreria, alto :m m.",
     "Choose the frames of one animation.": "Scegli i fotogrammi di una sola animazione.",
-    ":file is not named name_clip_0001.png.": ":file non si chiama nome_clip_0001.png.",
     "These frames belong to more than one asset: :names.": "Questi fotogrammi appartengono a più risorse: :names.",
     "Frame :n of :clip is there twice.": "Il fotogramma :n di :clip è doppio.",
     ":clip is missing frame :n.": ":clip manca del fotogramma :n.",
@@ -1556,5 +1555,6 @@
     "Every frame must be the same size.": "Tutti i fotogrammi devono avere la stessa dimensione.",
     "The frames are empty: nothing is drawn in them.": "I fotogrammi sono vuoti: non c’è niente disegnato.",
     ":file is not a readable image.": ":file non è un’immagine leggibile.",
-    "JEV gave no height. Try again.": "JEV non ha dato un’altezza. Riprova."
+    "JEV gave no height. Try again.": "JEV non ha dato un’altezza. Riprova.",
+    ":file is not named name_clip_0001.webp.": ":file non si chiama nome_clip_0001.webp."
 }

@@ -31,7 +31,7 @@
             {{ __('Import…') }}
         </button>
 
-        {{-- An animation from the art pipeline: numbered frames (name_clip_0001.png) become one
+        {{-- An animation from the art pipeline: numbered frames (name_clip_0001.webp, or .png) become one
              animated library asset. Admins only: it writes into the shared library. --}}
         @if (auth()->user()?->isAdmin())
             <span x-data x-on:sequence-imported.window="$refs.sequenceDialog.close()">
@@ -45,7 +45,7 @@
                         <h3 class="text-base font-semibold">{{ __('Import sequence') }}</h3>
                         <form wire:submit="importSequence" class="mt-4 space-y-3">
                             <label class="block">
-                                <span class="text-xs text-base-content/70">{{ __('Frames') }} <span class="text-base-content/40">name_clip_0001.png</span></span>
+                                <span class="text-xs text-base-content/70">{{ __('Frames') }} <span class="text-base-content/40">name_clip_0001.webp</span></span>
                                 <input type="file" multiple accept="image/png,image/webp" wire:model="sequenceFiles" class="file-input file-input-sm mt-1 w-full" />
                             </label>
                             <label class="block">

@@ -28,7 +28,7 @@ class SequencePlanTest extends TestCase
     public static function badSequences(): array
     {
         return [
-            'no number' => [['sailor_walk.png'], 'is not named name_clip_0001.png'],
+            'no number' => [['sailor_walk.png'], 'is not named name_clip_0001.webp'],
             'a gap' => [['sailor_walk_0001.png', 'sailor_walk_0003.png'], 'walk is missing frame 2'],
             'twice' => [['sailor_walk_0001.png', 'sailor_walk_001.png'], 'Frame 1 of walk is there twice'],
             'two assets' => [['sailor_walk_0001.png', 'dante_walk_0001.png'], 'more than one asset'],
