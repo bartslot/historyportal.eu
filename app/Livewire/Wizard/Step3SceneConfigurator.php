@@ -27,6 +27,7 @@ use App\Support\PolityCapitals;
 use App\Support\PortraitFocus;
 use App\Support\SafeOutboundUrl;
 use App\Support\UploadLimit;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -542,7 +543,9 @@ class Step3SceneConfigurator extends Component
             // Config carries the map block's year/projection (and other per-kind settings) —
             // without this, editing the map YEAR saved fine but never re-fired scene:load,
             // so the live preview kept filtering borders/cities by the old year.
-            || ($payload['config'] ?? []) != ($scene->config ?? []);
+            // Not the timeline: its panel drives the canvas live, and a re-fired scene:load
+            // replayed the scene (a quiz started over) on every length or keyframe change.
+            || Arr::except($payload['config'] ?? [], 'timeline') != Arr::except($scene->config ?? [], 'timeline');
 
         $scene->update($payload);
 
