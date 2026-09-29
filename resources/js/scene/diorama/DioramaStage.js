@@ -21,6 +21,8 @@ import { alphaAt, loadAlphaMask, DRAWN_ALPHA } from './alpha-mask.js'
 const SNAP_STEP = 0.25            // cells
 const GRID_MAX_LINES = 60         // per direction; big floors draw every n-th line
 const HANDLE_PX = 14
+/** Seconds the player's portrait crop takes to catch up with a walking figure (eased, not a jump). */
+export const FOLLOW_SECONDS = 0.6
 /** Opacity of anything in front of the selected item that covers it (Bart: see what you place). */
 export const BLOCKER_OPACITY = 0.3
 /** Editor zoom range: out far enough to see well past the picture, in to 2× for detail. */
@@ -203,18 +205,24 @@ export class DioramaStage {
   }
 
   /**
-   * The plate column a portrait crop centres on: the NEAREST item (the biggest on screen, in
-   * practice the character, not the barrel behind him). A midpoint between items far apart cut
-   * both in half on a phone. Fixed when the stage is shown: re-centring during a drag would slide
-   * the scene under the pointer.
+   * Who a portrait crop keeps in view: the nearest item that ACTS (has keyframes), else the
+   * nearest item. "Nearest" alone picked a figure standing still in front while the one walking
+   * left the frame. Returns its plate point now, or null for an empty scene.
    */
+  _subject () {
+    const floors = this._floors ?? resolveFloors(this.spec)
+    const placed = (this.spec.items ?? [])
+      .filter(item => this.assets[item.asset])
+      .map(item => ({ item, p: placeItem(this.spec.camera, floors, { ...item, cell: this._poseOf(item).cell }, 1) }))
+      .filter(({ p }) => p)
+    const actors = placed.filter(({ item }) => item.keys?.length)
+    const pool = actors.length ? actors : placed
+    return pool.sort((a, b) => a.p.depth - b.p.depth)[0]?.p ?? null
+  }
+
+  /** The plate column a portrait crop starts on: the subject. Fixed in the editor while editing. */
   _itemFocusU () {
-    const floors = resolveFloors(this.spec)
-    const nearest = (this.spec.items ?? [])
-      .map(item => this.assets[item.asset] && placeItem(this.spec.camera, floors, item, 1))
-      .filter(Boolean)
-      .sort((a, b) => a.depth - b.depth)[0]
-    return nearest ? nearest.u : this.spec.camera.width / 2
+    return this._subject()?.u ?? this.spec.camera.width / 2
   }
 
   /** Re-place everything for the current spec and host size. */
@@ -576,7 +584,8 @@ export class DioramaStage {
   /** Where an item is at the current playback time (its own cell when nothing plays). */
   _poseOf (item) {
     if (this._time == null) return { cell: item.cell, anim: null, walkedM: 0, dir: null }
-    return poseAt(item, this._time, this._floors.get(item.floor).cellM)
+    const floors = this._floors ?? resolveFloors(this.spec)
+    return poseAt(item, this._time, floors.get(item.floor).cellM)
   }
 
   /**
@@ -598,7 +607,22 @@ export class DioramaStage {
   /** Show the scene at `seconds` (keyframes, walk frames); null = the editing pose. */
   update (seconds) {
     this._time = seconds
+    if (!this.editable && seconds != null) this._follow()
     this.layout()
+  }
+
+  /**
+   * Player only: the portrait crop follows the subject (see _subject) where it is NOW (Bart, 2026-09-29),
+   * gliding there over FOLLOW_SECONDS so a walk out of frame keeps him in view. Landscape stages
+   * are unaffected: their crop is already clamped to the picture's full width.
+   */
+  _follow () {
+    const nearest = this._subject()
+    if (!nearest) return
+    const now = performance.now()
+    const dt = this._followAt ? Math.min(0.25, (now - this._followAt) / 1000) : 1
+    this._followAt = now
+    this._focusU += (nearest.u - this._focusU) * (1 - Math.exp(-dt * 3 / FOLLOW_SECONDS))
   }
 
   /** Follow a clock (the narration's currentTime) every frame until destroyed. */

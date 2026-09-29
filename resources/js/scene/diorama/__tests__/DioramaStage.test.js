@@ -262,3 +262,33 @@ describe('canvas zoom (editor)', () => {
   })
 })
 
+describe('the player\'s portrait crop follows the walking figure', () => {
+  it('on a phone the sailor stays in frame from the rail to the doorway', () => {
+    const phone = document.createElement('div')
+    Object.defineProperty(phone, 'clientWidth', { value: 390 })
+    Object.defineProperty(phone, 'clientHeight', { value: 844 })
+    document.body.appendChild(phone)
+    const player = new DioramaStage(phone)
+    // A figure standing still NEARER the camera than the sailor: the crop must still follow him.
+    const bystander = { id: 'bystander', asset: 'test/barrel', asset_version: 1, floor: 'quay', cell: [8, 7] }
+    player.show({ ...spec, items: [...spec.items, bystander] }, assets)
+    const sailorX = () => px(phone.querySelector('[data-diorama-item="sailor_1"]').style.left)
+    let now = 0
+    const realNow = performance.now
+    performance.now = () => now
+    try {
+      for (let t = 0; t <= 12; t += 1 / 30) { now += 1000 / 30; player.update(t) }   // play it at 30 fps
+    } finally { performance.now = realNow }
+    expect(sailorX()).toBeGreaterThan(0)
+    expect(sailorX()).toBeLessThan(390)                // at the doorway, still on the phone
+    player.destroy()
+    phone.remove()
+  })
+
+  it('the editor never follows: the view stays where the teacher put it', () => {
+    const before = stage._focusU
+    stage.update(8)
+    expect(stage._focusU).toBe(before)
+  })
+})
+
