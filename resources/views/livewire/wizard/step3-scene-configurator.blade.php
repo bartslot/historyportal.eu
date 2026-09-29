@@ -208,7 +208,7 @@
             cursor.setAttribute('stroke', isErase() ? 'rgba(248,113,113,0.95)' : 'rgba(226,232,240,0.9)');
             cursor.setAttribute('fill', isErase() ? 'rgba(248,113,113,0.15)' : 'rgba(148,163,184,0.18)');
             cursor.style.display = 'block';
-            path.setAttribute('stroke', isErase() ? 'rgba(248,113,113,0.55)' : 'rgba(245,158,11,0.5)');
+            path.setAttribute('stroke', isErase() ? 'rgba(248,113,113,0.55)' : 'rgba(252,211,77,0.5)');
             path.setAttribute('stroke-width', Math.max(4, lastR * 2));   // the drawn band == the painted band
         };
         overlay.addEventListener('pointerdown', (e) => {
@@ -1027,7 +1027,7 @@
                 <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Story') }}</span>
                 <p class="text-xs text-slate-400">{{ __('The narrative arc and framework this lesson is built on.') }}</p>
                 <a href="{{ route('teacher.lessons.wizard', ['lesson' => $lesson->id, 'step' => 2]) }}" wire:navigate
-                   class="btn btn-sm btn-outline mt-1 border-slate-600 text-slate-200 hover:border-amber-400 hover:text-amber-300">
+                   class="btn btn-sm btn-outline mt-1 border-slate-600 text-slate-200 hover:border-primary hover:text-primary">
                     {{ __('Edit story') }}
                 </a>
             </div>
@@ -1055,7 +1055,7 @@
                 <div class="mb-2 flex items-center justify-between">
                     <span class="text-2xs uppercase tracking-widest text-slate-500">Poster</span>
                     @if ($posterOverride)
-                        <button wire:click="resetPoster" class="text-2xs text-slate-500 transition-colors hover:text-amber-300">↺ auto</button>
+                        <button wire:click="resetPoster" class="text-2xs text-slate-500 transition-colors hover:text-primary">↺ auto</button>
                     @else
                         <span class="text-2xs text-slate-600">auto-picked</span>
                     @endif
@@ -1069,7 +1069,7 @@
                                 <button type="button" wire:click="selectPoster(@js($cand['url']))" title="{{ $cand['label'] }}"
                                         @class([
                                             'aspect-square overflow-hidden rounded ring-1 transition',
-                                            'ring-amber-400' => $posterOverride && ($lesson->poster_image === $cand['url']),
+                                            'ring-primary' => $posterOverride && ($lesson->poster_image === $cand['url']),
                                             'ring-slate-700 hover:ring-slate-400' => ! ($posterOverride && ($lesson->poster_image === $cand['url'])),
                                         ])>
                                     <img src="{{ $cand['url'] }}" alt="{{ $cand['label'] }}" class="h-full w-full object-cover" onerror="this.closest('button').style.display='none'" />
@@ -1113,7 +1113,7 @@
             <div @class([
                 'flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm shadow-2xl',
                 'border-success/40 bg-success/10 text-success' => $publishOk,
-                'border-amber-600 bg-amber-950 text-amber-200' => ! $publishOk,
+                'border-primary bg-amber-950 text-amber-200' => ! $publishOk,
             ])>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4 shrink-0" aria-hidden="true">
                     @if ($publishOk)
@@ -1447,7 +1447,7 @@
         {{-- View menu — show/hide workspace surfaces (Keynote's View) --}}
         <div class="relative">
             <button type="button" @click="viewOpen = !viewOpen"
-                    class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-slate-300 transition hover:bg-slate-800 hover:text-amber-300"
+                    class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-slate-300 transition hover:bg-slate-800 hover:text-primary"
                     :class="viewOpen && 'bg-sky-500/15 text-sky-300'"
                     title="{{ __('Show or hide workspace panels') }}" aria-label="{{ __('View') }}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
@@ -1469,7 +1469,7 @@
                     <button type="button" x-show="item.k !== 'layers' || $store.view.mapScene"
                             @click="(item.k === 'scenes' ? $store.view.toggleScenes() : $store.view.toggle(item.k)); viewOpen = false"
                             class="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-slate-200 hover:bg-slate-800">
-                        <span class="flex h-4 w-4 shrink-0 items-center justify-center text-amber-400">
+                        <span class="flex h-4 w-4 shrink-0 items-center justify-center text-primary">
                             <svg x-show="$store.view[item.k]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="h-3.5 w-3.5" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                             </svg>
@@ -1485,7 +1485,7 @@
         {{-- Play → open the player (step 5) --}}
         <button type="button"
                 onclick="Livewire.dispatch('lesson:play')"
-                class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-slate-300 transition hover:bg-base-200 hover:text-amber-300"
+                class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-slate-300 transition hover:bg-base-200 hover:text-primary"
                 title="{{ __('Play the lesson') }}" aria-label="{{ __('Play the lesson') }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 0 1 0 1.971l-11.54 6.347a1.125 1.125 0 0 1-1.667-.985V5.653Z" />
@@ -1495,7 +1495,7 @@
 
         <div class="relative">
             <button type="button" @click="addOpen = !addOpen"
-                    class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-slate-300 transition hover:bg-base-200 hover:text-amber-300"
+                    class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-slate-300 transition hover:bg-base-200 hover:text-primary"
                     :class="addOpen && 'bg-sky-500/15 text-sky-300'"
                     aria-haspopup="menu" :aria-expanded="addOpen.toString()"
                     title="{{ __('Add a scene, text, image, or icon') }}" aria-label="{{ __('Add') }}">
@@ -1507,7 +1507,7 @@
                 <p class="px-2 py-1 text-2xs uppercase tracking-widest text-slate-500">{{ __('Add Scene') }}</p>
                 <button type="button" @click="Livewire.dispatch('scene:add'); addOpen = false"
                         class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
-                    <x-icons.plus class="h-4 w-4 shrink-0 text-amber-400" />
+                    <x-icons.plus class="h-4 w-4 shrink-0 text-primary" />
                     <span class="flex-1 font-medium">{{ __('Add Scene') }}</span>
                     <span class="text-xs text-slate-500">{{ __('Below current') }}</span>
                 </button>
@@ -1549,9 +1549,9 @@
                     </svg>
                     <span class="flex-1">{{ __('Panel') }}</span>
                     <button type="button" @click="window.dispatchEvent(new CustomEvent('lesson:add-rect', { detail: { side: 'left' } })); addOpen = false"
-                            class="rounded border border-slate-600 px-1.5 py-0.5 text-xs text-slate-300 transition hover:border-amber-400 hover:text-amber-300">{{ __('Left') }}</button>
+                            class="rounded border border-slate-600 px-1.5 py-0.5 text-xs text-slate-300 transition hover:border-primary hover:text-primary">{{ __('Left') }}</button>
                     <button type="button" @click="window.dispatchEvent(new CustomEvent('lesson:add-rect', { detail: { side: 'right' } })); addOpen = false"
-                            class="rounded border border-slate-600 px-1.5 py-0.5 text-xs text-slate-300 transition hover:border-amber-400 hover:text-amber-300">{{ __('Right') }}</button>
+                            class="rounded border border-slate-600 px-1.5 py-0.5 text-xs text-slate-300 transition hover:border-primary hover:text-primary">{{ __('Right') }}</button>
                 </div>
             </div>
         </div>
@@ -1570,7 +1570,7 @@
                 @click="fmtOpen && fmtView !== 'settings'
                     ? window.dispatchEvent(new CustomEvent('inspector-toggle'))
                     : (Livewire.dispatch('open-lesson-format'), window.dispatchEvent(new CustomEvent('inspector-open')))"
-                class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-slate-300 transition hover:bg-slate-800 hover:text-amber-300"
+                class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-slate-300 transition hover:bg-slate-800 hover:text-primary"
                 :class="fmtOpen && fmtView !== 'settings' && 'bg-sky-500/15 text-sky-300'"
                 title="{{ __('Show or hide the Format panel') }}" aria-label="{{ __('Format') }}">
             {{-- Painting/picture icon (Noun Project, filled) — reads as "scene formatting". --}}
@@ -1586,7 +1586,7 @@
                 @click="fmtOpen && fmtView === 'settings'
                     ? window.dispatchEvent(new CustomEvent('inspector-toggle'))
                     : (Livewire.dispatch('open-lesson-settings'), window.dispatchEvent(new CustomEvent('inspector-open')))"
-                class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-slate-300 transition hover:bg-slate-800 hover:text-amber-300"
+                class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-slate-300 transition hover:bg-slate-800 hover:text-primary"
                 :class="fmtOpen && fmtView === 'settings' && 'bg-sky-500/15 text-sky-300'"
                 title="{{ __('Class & lesson settings') }}" aria-label="{{ __('Settings') }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
@@ -1601,7 +1601,7 @@
              the one thing that would make their edits keepable. --}}
         @if (auth()->user()?->isGuestDemo())
         <a href="{{ route('login') }}"
-           class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-amber-300 transition hover:bg-slate-800"
+           class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-primary transition hover:bg-slate-800"
            data-tooltip="{{ __('Create an account to keep this lesson') }}" aria-label="{{ __('Create an account') }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM4 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 10.374 21c-2.331 0-4.512-.645-6.374-1.766Z" />
@@ -1614,7 +1614,7 @@
              Share decides whether other TEACHERS can find and copy it. Heroicons outline, 24x24,
              stroke 1.5 — the house standard. --}}
         <button type="button" wire:click="toggleSharing"
-                class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 transition hover:bg-slate-800 {{ $lesson->is_public ? 'text-amber-300' : 'text-slate-300 hover:text-amber-300' }}"
+                class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 transition hover:bg-slate-800 {{ $lesson->is_public ? 'text-primary' : 'text-slate-300 hover:text-primary' }}"
                 data-tooltip="{{ $lesson->is_public ? __('Shared with every teacher. Click to make private.') : __('Share with every teacher') }}"
                 aria-pressed="{{ $lesson->is_public ? 'true' : 'false' }}"
                 aria-label="{{ __('Share with every teacher') }}">
@@ -1627,15 +1627,15 @@
         {{-- Publish — now, or schedule for later (every scene must be ready) --}}
         <div x-data="{ open: false, when: '' }" class="relative" @click.outside="open = false" @keydown.escape.window="open = false">
             <button type="button" @click="open = !open"
-                    class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-slate-300 transition hover:bg-slate-800 hover:text-amber-300"
-                    :class="open && 'bg-amber-500/15 text-amber-300'"
+                    class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-slate-300 transition hover:bg-slate-800 hover:text-primary"
+                    :class="open && 'bg-primary/15 text-primary'"
                     title="{{ __('Publish this lesson') }}" aria-label="{{ __('Publish') }}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z" />
                     @php
                         $statusColor = match (true) {
                             $lesson->status === \App\Enums\LessonStatus::Published => 'fill-success',
-                            $lesson->scheduled_publish_at !== null => 'fill-amber-400',
+                            $lesson->scheduled_publish_at !== null => 'fill-primary',
                             default => 'fill-purple-500',
                         };
                     @endphp
@@ -1649,7 +1649,7 @@
             <div x-show="open" x-transition x-cloak
                  class="absolute right-0 top-full z-70 mt-1 w-64 rounded-xl border border-slate-700 bg-base-300 p-2 text-left shadow-2xl">
                 <button type="button" @click="open = false; Livewire.dispatch('lesson:publish')"
-                        class="flex w-full items-center gap-2 rounded-lg bg-amber-500 px-3 py-2 text-sm font-semibold text-slate-950 transition hover:bg-amber-400">
+                        class="flex w-full items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-slate-950 transition hover:brightness-110">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-4 w-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z"/></svg>
                     {{ __('Publish now') }}
                 </button>
@@ -1665,7 +1665,7 @@
                     </button>
                 </div>
                 @if ($lesson->scheduled_publish_at)
-                    <div class="mt-2 flex items-center justify-between gap-2 border-t border-slate-700/50 pt-2 text-2xs text-amber-300">
+                    <div class="mt-2 flex items-center justify-between gap-2 border-t border-slate-700/50 pt-2 text-2xs text-primary">
                         <span>{{ __('Scheduled') }}: {{ $lesson->scheduled_publish_at->isoFormat('D MMM, HH:mm') }}</span>
                         <button type="button" wire:click="cancelSchedule" class="text-error/80 underline hover:text-error">{{ __('Cancel') }}</button>
                     </div>
@@ -1680,7 +1680,7 @@
              panels': the editor carries controls and short labels, and the how-to lives here. --}}
         <div class="mx-1 my-1.5 w-px bg-slate-700"></div>
         <a href="{{ route('help.index') }}#edit" target="_blank" rel="noopener"
-           class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-amber-300"
+           class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-primary"
            data-tooltip="{{ __('How the editor works') }}" aria-label="{{ __('Help') }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
@@ -1766,7 +1766,7 @@
     @push('scripts')
     <script>
     (() => {
-        const AMBER = '#f59e0b';
+        const AMBER = '#fcd34d';
         const boot = () => {
             const canvas = document.getElementById('lesson-canvas-root');
             const rTop = document.getElementById('ruler-top');
@@ -2376,44 +2376,44 @@
 
             <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 <button type="button" wire:click="addScene('narration')"
-                        class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-amber-400">
+                        class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
                     <x-lesson.scene-type-thumb kind="narration" />
                     <span class="text-sm font-medium text-slate-200">Story</span>
                 </button>
                 <button type="button" wire:click="addScene('game', 'quiz')"
-                        class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-amber-400">
+                        class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
                     <x-lesson.scene-type-thumb kind="game" game-type="quiz" />
                     <span class="text-sm font-medium text-slate-200">Quiz</span>
                 </button>
                 <button type="button" wire:click="addScene('game', 'strategy')"
-                        class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-amber-400">
+                        class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
                     <x-lesson.scene-type-thumb kind="game" game-type="strategy" />
                     <span class="text-sm font-medium text-slate-200">Strategy game</span>
                 </button>
                 <button type="button" wire:click="addScene('game', 'debate')"
-                        class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-amber-400">
+                        class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
                     <x-lesson.scene-type-thumb kind="game" game-type="debate" />
                     <span class="text-sm font-medium text-slate-200">Debate</span>
                 </button>
                 <button type="button" wire:click="addScene('map')"
-                        class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-amber-400">
+                        class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
                     <x-lesson.scene-type-thumb kind="map" />
                     <span class="text-sm font-medium text-slate-200">Map</span>
                 </button>
                 <button type="button" wire:click="addScene('gallery')"
-                        class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-amber-400">
+                        class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
                     <x-lesson.scene-type-thumb kind="gallery" />
                     <span class="text-sm font-medium text-slate-200">Gallery</span>
                 </button>
                 <button type="button" wire:click="addScene('video')"
-                        class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-amber-400">
+                        class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
                     <x-lesson.scene-type-thumb kind="video" />
                     <span class="text-sm font-medium text-slate-200">{{ __('Video') }}</span>
                 </button>
                 {{-- Branching is meaningless on a voyage lesson, whose spine is the route. --}}
                 @if (($lesson->game_type ?? null) !== 'voyage')
                     <button type="button" wire:click="addScene('branch')"
-                            class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-amber-400">
+                            class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
                         <x-lesson.scene-type-thumb kind="branch" />
                         <span class="text-sm font-medium text-slate-200">Decision point</span>
                     </button>
@@ -2422,14 +2422,14 @@
                     {{-- Drop the new leg's destination at the current map centre (fallback in PHP if none). --}}
                     <button type="button"
                             @click="const c = (window.__voyageCenter && window.__voyageCenter()) || null; $wire.addScene('voyage', null, c ? c.lng : null, c ? c.lat : null)"
-                            class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-amber-400">
+                            class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
                         <x-lesson.scene-type-thumb kind="voyage" />
                         <span class="text-sm font-medium text-slate-200">{{ __('Route') }}</span>
                     </button>
                     {{-- The itinerary: the whole trip on one screen. Same scene kind as a stop on the
                          route — it just stops nowhere — so it belongs beside it here. --}}
                     <button type="button" wire:click="addScene('voyage-overview')"
-                            class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-amber-400">
+                            class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
                         <div class="grid aspect-video place-items-center rounded-box border border-slate-700/60 bg-base-300/60 text-indigo-300">
                             <x-lesson.icon-voyage-overview class="h-10 w-auto" />
                         </div>
@@ -2477,7 +2477,7 @@
                          Commons find nothing, so the teacher is never left with an empty modal. --}}
                     @foreach (['' => __('Everything'), 'painting' => __('Paintings'), 'city_map' => __('City plans'), 'library' => __('Library')] as $kindVal => $kindLabel)
                         <button type="button" wire:click="$set('paintingKind', '{{ $kindVal }}')"
-                                class="btn btn-xs flex-none {{ $paintingKind === $kindVal ? 'bg-amber-500 text-slate-950 border-0 hover:bg-amber-400' : 'btn-outline border-slate-600 text-slate-400 hover:border-amber-400 hover:text-amber-300' }}">
+                                class="btn btn-xs flex-none {{ $paintingKind === $kindVal ? 'bg-primary text-slate-950 border-0 hover:brightness-110' : 'btn-outline border-slate-600 text-slate-400 hover:border-primary hover:text-primary' }}">
                             {{ $kindLabel }}
                         </button>
                     @endforeach
@@ -2504,7 +2504,7 @@
 
                     <button type="button" x-show="!searching"
                             @click="searching = true; $nextTick(() => $refs.psearch.focus())"
-                            class="btn btn-xs btn-circle btn-ghost ml-auto flex-none text-slate-400 hover:text-amber-300"
+                            class="btn btn-xs btn-circle btn-ghost ml-auto flex-none text-slate-400 hover:text-primary"
                             aria-label="{{ __('Search paintings') }}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-4 w-4">
                             <circle cx="11" cy="11" r="7"/><path stroke-linecap="round" d="m20 20-3.5-3.5"/>
@@ -2514,7 +2514,7 @@
 
                 {{-- Overlay search bar, revealed by the icon --}}
                 <div x-show="searching" x-cloak x-transition.opacity.duration.150ms
-                     class="absolute inset-x-0 -top-2.5 z-20 flex items-center gap-3 rounded-xl border border-amber-500/50 bg-base-200 px-4 py-3 shadow-2xl">
+                     class="absolute inset-x-0 -top-2.5 z-20 flex items-center gap-3 rounded-xl border border-primary/50 bg-base-200 px-4 py-3 shadow-2xl">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5 flex-none text-slate-400">
                         <circle cx="11" cy="11" r="7"/><path stroke-linecap="round" d="m20 20-3.5-3.5"/>
                     </svg>
@@ -2553,7 +2553,7 @@
                                 wire:key="art-{{ md5($art['source'].$art['key']) }}"
                                 @click="dismissing = true; $wire.applyPaintingChoice(@js($art['source']), @js($art['key']))"
                                 wire:loading.attr="disabled" wire:target="applyPaintingChoice"
-                                class="group relative block overflow-hidden rounded-lg ring-1 ring-slate-700 transition hover:ring-2 hover:ring-amber-400 disabled:cursor-wait"
+                                class="group relative block overflow-hidden rounded-lg ring-1 ring-slate-700 transition hover:ring-2 hover:ring-primary disabled:cursor-wait"
                                 style="aspect-ratio:16/10"
                                 title="{{ trim($art['title'].' — '.$art['caption'], ' —') }}">
                             <img src="{{ $art['thumb'] }}" loading="lazy" alt=""
@@ -2617,7 +2617,7 @@
                     @endunless
 
                     {{-- Upload your own image — routed to the current mode (landfall / gallery / background). --}}
-                    <label class="btn btn-sm border-0 bg-amber-500 text-slate-950 hover:bg-amber-400 inline-flex cursor-pointer items-center gap-1.5">
+                    <label class="btn btn-sm border-0 bg-primary text-slate-950 hover:brightness-110 inline-flex cursor-pointer items-center gap-1.5">
                         <span wire:loading.remove wire:target="uploadImage" class="inline-flex items-center gap-1.5">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/></svg>
                             {{ __('Upload image') }}

@@ -17,7 +17,7 @@
         </div>
 
         {{-- The app's shared card row — see resources/views/components/carousel.blade.php. --}}
-        <div class="relative overflow-hidden rounded-[2rem]">
+        <div class="relative">
             <x-carousel aria-label="{{ __('Lessons ready to play') }}">
                 @foreach ($lessons as $lesson)
                     <x-lesson-poster-card

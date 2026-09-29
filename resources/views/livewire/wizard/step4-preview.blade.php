@@ -61,7 +61,7 @@
             {{-- Primary: play + share --}}
             <div class="grid grid-cols-2 gap-3">
                 <a href="{{ $playUrl }}"
-                   class="flex items-center justify-center gap-2 rounded-2xl bg-amber-500 px-5 py-4 text-base font-semibold text-slate-950 transition hover:bg-amber-400">
+                   class="flex items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-4 text-base font-semibold text-slate-950 transition hover:brightness-110">
                     <x-icons.play class="h-5 w-5" /> {{ __('Play lesson') }}
                 </a>
                 <button type="button"
@@ -101,7 +101,7 @@
                             </button>
                         @empty
                             <a href="{{ route('teacher.classes.index') }}" wire:navigate
-                               class="block rounded-lg px-3 py-2 text-sm text-amber-300 hover:bg-white/10">{{ __('Create a class first') }} →</a>
+                               class="block rounded-lg px-3 py-2 text-sm text-primary hover:bg-white/10">{{ __('Create a class first') }} →</a>
                         @endforelse
                     </div>
                 </div>
@@ -130,7 +130,7 @@
          teacher returns to editing via the top-left navigation, not a redundant bottom link. --}}
     <div class="fixed bottom-6 inset-x-0 z-30 flex items-center justify-center gap-3 pl-44">
         <button type="button" @click="togglePlay()"
-                class="btn btn-circle bg-amber-500 text-slate-950 hover:bg-amber-400 border-0 w-14 h-14 flex items-center justify-center">
+                class="btn btn-circle bg-primary text-slate-950 hover:brightness-110 border-0 w-14 h-14 flex items-center justify-center">
             <span x-show="!playing"><x-icons.play class="w-5 h-5" /></span>
             <span x-show="playing"  x-cloak><x-icons.pause class="w-5 h-5" /></span>
         </button>

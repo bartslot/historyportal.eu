@@ -46,7 +46,7 @@
         {{-- Multiple-choice question editor. Questions are lesson-level (shared across quiz segments);
              each has up to four colour-coded options (A/B/C/D) with exactly one marked correct. This
              is the actual quiz content — the field below is only the spoken intro, not the questions. --}}
-        @php $letters = ['A', 'B', 'C', 'D']; $palette = ['#e11d48', '#0284c7', '#d97706', '#059669']; @endphp
+        @php $letters = ['A', 'B', 'C', 'D']; $palette = ['#e11d48', '#0284c7', '#fcd34d', '#059669']; @endphp
         <div class="space-y-3 border-t border-white/10 pt-3">
             <div class="flex items-center justify-between">
                 <p class="text-xs uppercase tracking-wider text-slate-400">Quiz questions</p>
@@ -60,7 +60,7 @@
                     <span class="text-2xs text-slate-400">{{ __('Difficulty') }}</span>
                     @foreach ([1 => __('Easy'), 2 => __('Medium'), 3 => __('Hard')] as $level => $label)
                         <button type="button" wire:click="setQuizDifficulty({{ $level }})"
-                                class="transition {{ $quizDifficulty >= $level ? 'text-amber-400 hover:text-amber-300' : 'text-slate-600 hover:text-slate-400' }}"
+                                class="transition {{ $quizDifficulty >= $level ? 'text-primary hover:text-primary' : 'text-slate-600 hover:text-slate-400' }}"
                                 title="{{ $label }}" aria-label="{{ __('Set difficulty to :label', ['label' => $label]) }}"
                                 aria-pressed="{{ $quizDifficulty === $level ? 'true' : 'false' }}">
                             <x-icons.star />
@@ -94,7 +94,7 @@
 
             @if ($quizScope === 'full')
                 {{-- The house notification shape: a neutral card with an accent line and an icon,
-                     never a full-bleed colour block. It was `bg-amber-500/10` with amber text,
+                     never a full-bleed colour block. It was `bg-primary/10` with amber text,
                      which spent the warning colour on an explanation; DaisyUI's `alert-info` fixed
                      the colour and broke the shape, painting the whole note bright cyan. --}}
                 <div class="flex gap-2 rounded-lg border border-base-300/70 border-l-2 border-l-info bg-base-200/60 px-3 py-2 text-xs text-base-content/80">

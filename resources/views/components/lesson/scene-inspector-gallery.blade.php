@@ -47,11 +47,11 @@
         <span class="text-xs uppercase tracking-wider text-slate-400">Image fit</span>
         <div class="mt-1 inline-flex overflow-hidden rounded-lg border border-slate-700/60">
             <button type="button" wire:click="setGalleryFit('cover')"
-                    class="px-3 py-1 text-xs font-medium transition-colors {{ $fit === 'cover' ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400' }}">
+                    class="px-3 py-1 text-xs font-medium transition-colors {{ $fit === 'cover' ? 'bg-primary text-slate-950' : 'bg-slate-800 text-slate-400' }}">
                 Cover
             </button>
             <button type="button" wire:click="setGalleryFit('fit')"
-                    class="px-3 py-1 text-xs font-medium transition-colors {{ $fit === 'fit' ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400' }}">
+                    class="px-3 py-1 text-xs font-medium transition-colors {{ $fit === 'fit' ? 'bg-primary text-slate-950' : 'bg-slate-800 text-slate-400' }}">
                 Fit
             </button>
         </div>

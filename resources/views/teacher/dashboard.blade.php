@@ -2,7 +2,7 @@
 <div class="space-y-14">
     <header class="flex flex-col gap-6 border-b border-slate-800 pb-8 sm:flex-row sm:items-end sm:justify-between">
         <div>
-            <p class="text-xs font-medium uppercase tracking-eyebrow text-amber-400">{{ __('Teacher workspace') }}</p>
+            <p class="text-xs font-medium uppercase tracking-eyebrow text-primary">{{ __('Teacher workspace') }}</p>
             <h1>
                 {{ __('Overview') }}
             </h1>
@@ -52,7 +52,7 @@
                                 <img src="{{ $narratorImage }}" alt="" class="h-12 w-12 rounded-lg object-cover">
                             @endif
                             <div class="min-w-0">
-                                <p class="text-xs uppercase tracking-wider text-amber-400">{{ __('Your narrator') }}</p>
+                                <p class="text-xs uppercase tracking-wider text-primary">{{ __('Your narrator') }}</p>
                                 <p class="mt-1 truncate text-sm font-semibold text-slate-100">{{ $narrator->name }}</p>
                                 @if($narrator->avatar_title || $narrator->era)
                                     <p class="truncate text-xs text-slate-400">{{ $narrator->avatar_title ?: $narrator->era }}</p>
@@ -73,7 +73,7 @@
     <section aria-labelledby="classes-heading">
         <div class="mb-5 flex items-end justify-between gap-4">
             <div class="flex items-start gap-3">
-                <span class="mt-0.5 flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900 text-amber-400">
+                <span class="mt-0.5 flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900 text-primary">
                     <x-icons.users class="h-5 w-5" />
                 </span>
                 <div>
@@ -90,7 +90,7 @@
             <div class="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-800 px-6 py-10 text-center">
                 <x-icons.users class="h-7 w-7 text-slate-600" />
                 <p class="mt-3 text-sm font-medium text-slate-300">{{ __('No active classes yet') }}</p>
-                <a href="{{ route('teacher.classes.index') }}" class="mt-3 text-sm text-amber-400 hover:text-amber-300">
+                <a href="{{ route('teacher.classes.index') }}" class="mt-3 text-sm text-primary hover:text-primary">
                     {{ __('Create a class') }}
                 </a>
             </div>
@@ -100,11 +100,11 @@
                     @php $classResult = $classResults[$classroom->id] ?? null; @endphp
                     <a
                         href="{{ route('teacher.classes.manage', $classroom) }}"
-                        class="group rounded-xl border border-slate-800 bg-slate-900/30 p-5 transition hover:-translate-y-0.5 hover:border-amber-500/30 hover:bg-slate-900/60"
+                        class="group rounded-xl border border-slate-800 bg-slate-900/30 p-5 transition hover:-translate-y-0.5 hover:border-primary/30 hover:bg-slate-900/60"
                     >
                         <div class="flex items-start justify-between gap-3">
                             <div class="min-w-0">
-                                <h3 class="truncate text-sm font-semibold text-slate-100 group-hover:text-amber-300">
+                                <h3 class="truncate text-sm font-semibold text-slate-100 group-hover:text-primary">
                                     {{ $classroom->name }}
                                 </h3>
                                 <p class="mt-1 text-xs text-slate-500">
@@ -144,7 +144,7 @@
     <section aria-labelledby="results-heading">
         <div class="mb-5 flex items-end justify-between gap-4">
             <div class="flex items-start gap-3">
-                <span class="mt-0.5 flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900 text-amber-400">
+                <span class="mt-0.5 flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900 text-primary">
                     <x-icons.chart-bar class="h-5 w-5" />
                 </span>
                 <div>
@@ -162,7 +162,7 @@
             <div class="min-w-0">
                 <div class="flex flex-wrap gap-x-10 gap-y-5">
                     <div>
-                        <p class="font-history text-3xl font-light text-amber-300">{{ $results['average'] }}%</p>
+                        <p class="font-history text-3xl font-light text-primary">{{ $results['average'] }}%</p>
                         <p class="mt-1 text-xs text-slate-500">{{ __('Average correct') }}</p>
                     </div>
                     <div>
@@ -187,8 +187,8 @@
                     >
                         <defs>
                             <linearGradient id="dashboard-chart-fill" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stop-color="#f59e0b" stop-opacity=".22" />
-                                <stop offset="100%" stop-color="#f59e0b" stop-opacity="0" />
+                                <stop offset="0%" stop-color="#fcd34d" stop-opacity=".22" />
+                                <stop offset="100%" stop-color="#fcd34d" stop-opacity="0" />
                             </linearGradient>
                         </defs>
                         <path d="M4 6H96 M4 22H96 M4 38H96" fill="none" stroke="rgba(148,163,184,.14)" stroke-width=".35" />
@@ -197,7 +197,7 @@
                             <polyline
                                 points="{{ $results['chart_points'] }}"
                                 fill="none"
-                                stroke="#f59e0b"
+                                stroke="#fcd34d"
                                 stroke-width="1.15"
                                 stroke-linecap="round"
                                 stroke-linejoin="round"

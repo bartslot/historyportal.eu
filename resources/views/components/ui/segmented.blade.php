@@ -33,7 +33,7 @@
      (daisyui.com/components/tab/#tabs-box-using-radio-inputs): the browser owns the exclusivity and
      the arrow-key roving, and the label rides on `aria-label`.
 
-     NO AMBER. These rows were `bg-amber-500 text-slate-950` on the active segment. Amber is the
+     NO AMBER. These rows were `bg-primary text-slate-950` on the active segment. Amber is the
      public site's; inside the teacher app the chosen state is the theme's own lighter surface,
      which is what tabs-box already paints, and the pill is fully rounded like every other control.
      Amber in the teacher app is the exact pattern being removed, so nothing here reintroduces it. --}}

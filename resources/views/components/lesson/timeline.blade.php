@@ -27,8 +27,8 @@
         }
         [data-rail-col] [data-thumb-full] { display: none !important; }
         [data-rail-col] [data-thumb-compact] { display: flex !important; }
-        [data-rail-col] [data-thumb-selected] { background: rgba(245, 158, 11, 0.14) !important; }
-        [data-rail-col] [data-thumb-selected] [data-thumb-compact] { color: #fbbf24 !important; }
+        [data-rail-col] [data-thumb-selected] { background: rgba(252,211,77, 0.14) !important; }
+        [data-rail-col] [data-thumb-selected] [data-thumb-compact] { color: #fcd34d !important; }
         [data-rail-col] [data-rail-label] { display: none !important; }
         [data-rail-col] [data-rail-add] { aspect-ratio: auto !important; height: 2.1rem !important; }
     }
@@ -87,7 +87,7 @@
                 <button type="button"
                         data-no-drag data-rail-add
                         wire:click="$set('addSceneOpen', true)"
-                        class="aspect-video w-full rounded-xl border-2 border-dashed border-white/20 text-white/40 transition-all hover:border-amber-400 hover:text-amber-300"
+                        class="aspect-video w-full rounded-xl border-2 border-dashed border-white/20 text-white/40 transition-all hover:border-primary hover:text-primary"
                         title="{{ __('Add scene') }}" aria-label="{{ __('Add scene') }}">
                     <span class="block text-2xl leading-none">+</span>
                     <span data-rail-label class="mt-1 block text-2xs font-semibold uppercase tracking-widest">{{ __('Add Scene') }}</span>

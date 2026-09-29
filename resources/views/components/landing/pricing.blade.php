@@ -10,7 +10,7 @@
     <style>[x-cloak]{display:none!important}</style>
 
     {{-- soft amber portal glow, top-center --}}
-    <div class="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(ellipse_at_top,_rgba(245,158,11,0.12),_transparent_60%)]"></div>
+    <div class="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(ellipse_at_top,_rgba(252,211,77,0.12),_transparent_60%)]"></div>
 
     <div class="section-container relative" x-data="{ term: '{{ $defaultTerm }}' }">
         {{-- ── Heading ──────────────────────────────────────────────────── --}}
@@ -40,7 +40,7 @@
                         {{ $term['label'] }}
                         @if ($term['save'])
                             <span
-                                :class="term === '{{ $key }}' ? 'bg-slate-950/15 text-slate-900' : 'bg-amber-500/15 text-amber-300'"
+                                :class="term === '{{ $key }}' ? 'bg-slate-950/15 text-slate-900' : 'bg-primary/15 text-primary'"
                                 class="rounded-full px-2 py-0.5 text-2xs font-medium uppercase tracking-[0.08em]"
                             >{{ $term['save'] }}</span>
                         @endif
@@ -54,11 +54,11 @@
             @foreach ($tiers as $tier)
                 <div @class([
                     'group relative flex flex-col rounded-[1.5rem] p-8 transition duration-300 ease-out',
-                    'border border-amber-400/40 bg-gradient-to-b from-slate-800/90 to-slate-900/90 shadow-[0_24px_60px_rgba(245,158,11,0.18)] ring-1 ring-amber-400/30 lg:-my-3 lg:py-11' => $tier['featured'],
-                    'border border-white/10 bg-white/4 shadow-[0_16px_40px_rgba(0,0,0,0.35)] hover:-translate-y-1 hover:border-amber-400/30 hover:bg-white/6' => ! $tier['featured'],
+                    'border border-primary/40 bg-gradient-to-b from-slate-800/90 to-slate-900/90 shadow-[0_24px_60px_rgba(252,211,77,0.18)] ring-1 ring-primary/30 lg:-my-3 lg:py-11' => $tier['featured'],
+                    'border border-white/10 bg-white/4 shadow-[0_16px_40px_rgba(0,0,0,0.35)] hover:-translate-y-1 hover:border-primary/30 hover:bg-white/6' => ! $tier['featured'],
                 ])>
                     @if (! empty($tier['badge']))
-                        <span class="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full border border-amber-400/40 bg-amber-500/15 px-3 py-1 text-2xs font-medium uppercase tracking-widest text-amber-300">
+                        <span class="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full border border-primary/40 bg-primary/15 px-3 py-1 text-2xs font-medium uppercase tracking-widest text-primary">
                             {{ $tier['badge'] }}
                         </span>
                     @endif
@@ -99,13 +99,13 @@
                     </div>
 
                     {{-- divider glow --}}
-                    <div class="mt-5 h-px w-full bg-gradient-to-r from-transparent via-amber-500/40 to-transparent"></div>
+                    <div class="mt-5 h-px w-full bg-gradient-to-r from-transparent via-primary/40 to-transparent"></div>
 
                     {{-- features --}}
                     <ul class="mt-6 flex-1 space-y-3 text-sm">
                         @foreach ($tier['features'] as $feature)
                             <li class="flex items-start gap-3 text-slate-300">
-                                <svg class="mt-0.5 h-5 w-5 flex-none text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <svg class="mt-0.5 h-5 w-5 flex-none text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                     <path d="M20 6 9 17l-5-5" />
                                 </svg>
                                 <span>{{ $feature }}</span>

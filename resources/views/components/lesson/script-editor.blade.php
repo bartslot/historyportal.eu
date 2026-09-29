@@ -87,7 +87,7 @@
             {{ __('No narration yet. Write a few lines here and they will be read aloud over this scene.') }}
         </p>
         <button type="button" x-on:click="addNarration()"
-                class="flex items-center gap-1.5 rounded-lg border border-slate-600/70 px-3 py-1.5 text-xs font-medium text-slate-200 transition hover:border-amber-400 hover:text-amber-200">
+                class="flex items-center gap-1.5 rounded-lg border border-slate-600/70 px-3 py-1.5 text-xs font-medium text-slate-200 transition hover:border-primary hover:text-amber-200">
             <!-- <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z"/>
             </svg> -->
@@ -110,7 +110,7 @@
                     <div class="flex gap-3">
                         {{-- Timecode seeks; the paragraph is editable in place. --}}
                         <button type="button" x-on:click="seek(i)"
-                                class="mt-0.5 w-9 shrink-0 cursor-pointer text-right font-mono text-2xs tabular-nums text-slate-500 transition hover:text-amber-300"
+                                class="mt-0.5 w-9 shrink-0 cursor-pointer text-right font-mono text-2xs tabular-nums text-slate-500 transition hover:text-primary"
                                 x-text="fmt(starts[i] ?? 0)"></button>
                         {{-- contenteditable paragraph. white-space:pre-wrap keeps soft newlines (single
                              Enter). Double Enter splits into a new box; Backspace at start merges up.
@@ -125,9 +125,9 @@
                            :class="{
                                'text-amber-100': active === i,
                                'text-slate-300': active !== i,
-                               'border-l-2 border-amber-500/60 pl-2': p.dirty,
+                               'border-l-2 border-primary/60 pl-2': p.dirty,
                            }"
-                           class="min-h-[1.6em] min-w-0 flex-1 cursor-text whitespace-pre-wrap rounded font-serif text-[15px] leading-relaxed transition hover:bg-white/5 focus:bg-white/10 focus:outline-none focus:ring-1 focus:ring-amber-500/40"></p>
+                           class="min-h-[1.6em] min-w-0 flex-1 cursor-text whitespace-pre-wrap rounded font-serif text-[15px] leading-relaxed transition hover:bg-white/5 focus:bg-white/10 focus:outline-none focus:ring-1 focus:ring-primary/40"></p>
                     </div>
                 </template>
             </div>
@@ -146,7 +146,7 @@
             {{-- Regenerate with a prompt (inline expanding input). --}}
             <div class="flex items-center gap-1" x-show="!promptOpen">
                 <button type="button" x-on:click="openPrompt()"
-                        class="flex items-center gap-1 rounded-md border border-slate-600/70 px-2 py-1 text-2xs text-slate-200 transition hover:border-amber-400 hover:text-amber-200 disabled:opacity-40"
+                        class="flex items-center gap-1 rounded-md border border-slate-600/70 px-2 py-1 text-2xs text-slate-200 transition hover:border-primary hover:text-amber-200 disabled:opacity-40"
                         :disabled="regenPara"
                         title="{{ __('Rewrite this paragraph from a prompt') }}">
                     <svg x-show="!regenPara" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="h-3.5 w-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
@@ -161,15 +161,15 @@
                        x-on:keydown.enter.stop.prevent="submitPrompt()"
                        x-on:keydown.escape.stop.prevent="closePrompt()"
                        placeholder="{{ __('e.g. make it shorter and more dramatic') }}"
-                       class="min-w-0 flex-1 rounded-md border border-slate-600/70 bg-base-300 px-2 py-1 text-xs text-slate-100 placeholder:text-slate-500 focus:border-amber-400 focus:outline-none" />
+                       class="min-w-0 flex-1 rounded-md border border-slate-600/70 bg-base-300 px-2 py-1 text-xs text-slate-100 placeholder:text-slate-500 focus:border-primary focus:outline-none" />
                 <button type="button" x-on:click="submitPrompt()" :disabled="regenPara"
-                        class="rounded-md bg-amber-500 px-2 py-1 text-2xs font-semibold text-slate-950 transition hover:bg-amber-400 disabled:opacity-40">{{ __('Rewrite') }}</button>
+                        class="rounded-md bg-primary px-2 py-1 text-2xs font-semibold text-slate-950 transition hover:brightness-110 disabled:opacity-40">{{ __('Rewrite') }}</button>
                 <button type="button" x-on:click="closePrompt()"
                         class="rounded-md px-1.5 py-1 text-2xs text-slate-400 hover:text-slate-200">✕</button>
             </div>
             {{-- Summarize the whole scene to an on-slide bullet list. --}}
             <button type="button" x-on:click="summarizeToList()" :disabled="summarizing"
-                    class="flex items-center gap-1 rounded-md border border-slate-600/70 px-2 py-1 text-2xs text-slate-200 transition hover:border-amber-400 hover:text-amber-200 disabled:opacity-40"
+                    class="flex items-center gap-1 rounded-md border border-slate-600/70 px-2 py-1 text-2xs text-slate-200 transition hover:border-primary hover:text-amber-200 disabled:opacity-40"
                     title="{{ __('Summarize the narration into a bullet list on the slide') }}">
                 <svg x-show="!summarizing" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="h-3.5 w-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"/></svg>
                 <svg x-show="summarizing" x-cloak class="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.4 0 0 5.4 0 12h4z"/></svg>
@@ -185,7 +185,7 @@
                · audio up to date → the round Play/Pause. --}}
         <div class="flex shrink-0 items-center gap-2.5 border-t border-slate-700/60 bg-base-200/60 px-3 py-1.5">
             <button type="button" x-show="!hasAudio || dirty" x-on:click="renarrate()" :disabled="regenerating"
-                    class="flex shrink-0 items-center gap-1.5 rounded-full bg-amber-500 px-3 py-1 text-2xs font-semibold text-slate-950 transition hover:bg-amber-400 disabled:opacity-40"
+                    class="flex shrink-0 items-center gap-1.5 rounded-full bg-primary px-3 py-1 text-2xs font-semibold text-slate-950 transition hover:brightness-110 disabled:opacity-40"
                     :title="hasAudio ? @js(__('Re-narrate the edited audio')) : @js(__('Record the narration for this scene'))">
                 <svg x-show="regenerating" x-cloak class="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.4 0 0 5.4 0 12h4z"/></svg>
                 {{-- Microphone: this makes a recording, it does not touch the words. --}}
@@ -194,7 +194,7 @@
             </button>
 
             <button type="button" x-show="hasAudio && !dirty" x-on:click="toggle()" :disabled="!ready"
-                    class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-500 text-slate-950 transition hover:bg-amber-400 disabled:opacity-40"
+                    class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-slate-950 transition hover:brightness-110 disabled:opacity-40"
                     :title="playing ? @js(__('Pause')) : @js(__('Play'))"
                     aria-label="{{ __('Play narration') }}">
                 <svg x-show="!playing" viewBox="0 0 24 24" fill="currentColor" class="h-3.5 w-3.5"><path d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 0 1 0 1.971l-11.54 6.347a1.125 1.125 0 0 1-1.667-.985V5.653Z"/></svg>
@@ -352,8 +352,8 @@
                         this.ws = WS.create({
                             container: this.$refs.waveform,
                             waveColor: '#475569',      // slate-600
-                            progressColor: '#f59e0b',  // amber-500
-                            cursorColor: '#fbbf24',    // amber-400 playhead
+                            progressColor: '#fcd34d',  // amber-500
+                            cursorColor: '#fcd34d',    // amber-400 playhead
                             barWidth: 2, barGap: 1, barRadius: 2, height: 32, normalize: true,
                         });
                         this._load(src);

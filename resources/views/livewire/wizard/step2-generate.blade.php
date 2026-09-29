@@ -149,7 +149,7 @@ $machineState = $isFailed ? 'error' : ($isStalled ? 'stalled' : ($isDone ? 'read
                             {{ $isDone ? __('Ready to configure') : __('Travelling backwards through the source material') }}
                         </p>
                     </div>
-                    <span class="shrink-0 font-history text-2xl tabular-nums text-amber-300">{{ $displayPct }}%</span>
+                    <span class="shrink-0 font-history text-2xl tabular-nums text-primary">{{ $displayPct }}%</span>
                 </div>
                 <div
                     class="mt-4 h-px overflow-hidden bg-slate-800"
@@ -159,7 +159,7 @@ $machineState = $isFailed ? 'error' : ($isStalled ? 'stalled' : ($isDone ? 'read
                     aria-valuemax="100"
                     aria-valuenow="{{ $displayPct }}"
                 >
-                    <div class="h-full bg-amber-400 transition-[width] duration-700 ease-out" style="width: {{ $displayPct }}%"></div>
+                    <div class="h-full bg-primary transition-[width] duration-700 ease-out" style="width: {{ $displayPct }}%"></div>
                 </div>
             </div>
         </section>
@@ -176,9 +176,9 @@ $machineState = $isFailed ? 'error' : ($isStalled ? 'stalled' : ($isDone ? 'read
                     <span class="inline-flex items-center gap-1 text-xs text-slate-500" aria-label="{{ __('Thinking') }}">
                         <span>{{ __('Thinking') }}</span>
                         <span class="inline-flex w-5 justify-start gap-0.5" aria-hidden="true">
-                            <span class="h-1 w-1 animate-pulse rounded-full bg-amber-300"></span>
-                            <span class="h-1 w-1 animate-pulse rounded-full bg-amber-300 [animation-delay:160ms]"></span>
-                            <span class="h-1 w-1 animate-pulse rounded-full bg-amber-300 [animation-delay:320ms]"></span>
+                            <span class="h-1 w-1 animate-pulse rounded-full bg-primary"></span>
+                            <span class="h-1 w-1 animate-pulse rounded-full bg-primary [animation-delay:160ms]"></span>
+                            <span class="h-1 w-1 animate-pulse rounded-full bg-primary [animation-delay:320ms]"></span>
                         </span>
                     </span>
                 @endunless
@@ -198,7 +198,7 @@ $machineState = $isFailed ? 'error' : ($isStalled ? 'stalled' : ($isDone ? 'read
                                      (rose, static) instead of spinning forever as if work continued. --}}
                                 <svg viewBox="0 0 20 20" @class([
                                     'h-4 w-4',
-                                    'animate-spin text-amber-300' => ! $isFailed,
+                                    'animate-spin text-primary' => ! $isFailed,
                                     'text-error' => $isFailed,
                                 ])>
                                     <circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="30 20" />
@@ -228,11 +228,11 @@ $machineState = $isFailed ? 'error' : ($isStalled ? 'stalled' : ($isDone ? 'read
             @class([
                 'mx-auto mt-10 max-w-3xl border p-5 sm:p-6',
                 'border-error/40 bg-error/10' => $isFailed,
-                'border-orange-400/35 bg-orange-400/6' => $isStalled && ! $isFailed,
+                'border-primary/35 bg-primary/6' => $isStalled && ! $isFailed,
             ])
         >
             <div class="flex items-start gap-4">
-                <svg viewBox="0 0 24 24" class="mt-0.5 h-5 w-5 shrink-0 text-orange-300" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                <svg viewBox="0 0 24 24" class="mt-0.5 h-5 w-5 shrink-0 text-primary" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
                     <path d="M12 8v5m0 3.5v.01M10.2 4.5 2.7 18a2 2 0 0 0 1.75 3h15.1a2 2 0 0 0 1.75-3L13.8 4.5a2.05 2.05 0 0 0-3.6 0Z" stroke-linecap="round" stroke-linejoin="round" />
                 </svg>
                 <div class="min-w-0 flex-1">
@@ -311,14 +311,14 @@ $machineState = $isFailed ? 'error' : ($isStalled ? 'stalled' : ($isDone ? 'read
                                             'h-1.5 w-1.5 shrink-0 rounded-full',
                                             'bg-success' => $has,
                                             'bg-error' => ! $has && $scene->status === 'failed',
-                                            'animate-pulse bg-amber-300' => ! $has && $scene->status !== 'failed',
+                                            'animate-pulse bg-primary' => ! $has && $scene->status !== 'failed',
                                         ])></span>
                                         <span class="text-slate-400">{{ $label }}</span>
                                         @if (! $has && $scene->status === 'failed')
                                             <button
                                                 type="button"
                                                 wire:click="retryAsset({{ $scene->id }}, '{{ $asset }}')"
-                                                class="ms-auto text-amber-300 hover:text-amber-200"
+                                                class="ms-auto text-primary hover:text-amber-200"
                                             >{{ __('Retry') }}</button>
                                         @endif
                                     </div>

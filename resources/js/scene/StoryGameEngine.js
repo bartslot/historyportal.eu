@@ -217,7 +217,7 @@ export class StoryGameEngine {
   _buildHud () {
     if (!this._meterDefs.length) return
     const hud = el('div', 'fixed top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 px-4 py-2 ' +
-      'rounded-2xl bg-slate-900/80 backdrop-blur border border-amber-500/25 shadow-lg pointer-events-none')
+      'rounded-2xl bg-slate-900/80 backdrop-blur border border-primary/25 shadow-lg pointer-events-none')
     hud.dataset.sgHud = '1'
 
     this._hudFills = {}
@@ -228,12 +228,12 @@ export class StoryGameEngine {
       // Icon: tabler class name from config — validated to a safe token, set as a
       // class (never markup). Missing/invalid icons just render the label alone.
       const icon = String(m.icon || '')
-      if (/^[a-z0-9-]+$/i.test(icon)) top.appendChild(el('i', `ti ${icon} text-amber-400 text-xs`))
+      if (/^[a-z0-9-]+$/i.test(icon)) top.appendChild(el('i', `ti ${icon} text-primary text-xs`))
       top.appendChild(el('span', 'text-2xs font-semibold text-slate-200 truncate max-w-[110px]', m.label || m.key))
       seg.appendChild(top)
 
       const track = el('div', 'h-1.5 w-full rounded-full bg-white/10 overflow-hidden')
-      const fill = el('div', 'h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-300')
+      const fill = el('div', 'h-full rounded-full bg-gradient-to-r from-primary to-primary')
       fill.style.width = `${this._meters[m.key]}%`
       fill.style.transition = 'width 0.6s cubic-bezier(0.22, 1, 0.36, 1)'
       track.appendChild(fill)
@@ -284,14 +284,14 @@ export class StoryGameEngine {
     wrap.dataset.sgChoice = String(group.id)
 
     const card = el('div', 'sg-card w-full max-w-2xl')
-    card.appendChild(el('p', 'text-center text-xs font-bold uppercase tracking-[0.2em] text-amber-400 mb-4', 'Wat doe je?'))
+    card.appendChild(el('p', 'text-center text-xs font-bold uppercase tracking-[0.2em] text-primary mb-4', 'Wat doe je?'))
 
     const row = el('div', 'flex flex-col sm:flex-row gap-4')
     for (const option of group.options) {
       const btn = el('button',
-        'flex-1 px-6 py-5 rounded-2xl bg-slate-900/90 backdrop-blur border-2 border-amber-500/40 ' +
+        'flex-1 px-6 py-5 rounded-2xl bg-slate-900/90 backdrop-blur border-2 border-primary/40 ' +
         'text-slate-100 text-lg font-semibold leading-snug shadow-xl transition-transform ' +
-        'hover:border-amber-400 hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-left',
+        'hover:border-primary hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-left',
         option.label) // untrusted label → textContent
       btn.dataset.sgOption = option.role
       btn.addEventListener('click', () => this._pick(group, option, wrap))
@@ -372,14 +372,14 @@ export class StoryGameEngine {
     const card = el('div', 'sg-card max-w-xl w-full rounded-2xl bg-slate-900 border border-error/40 shadow-2xl p-8 text-center')
     card.appendChild(el('h2', 'font-history text-2xl sm:text-3xl font-bold text-error mb-4', 'Zo liep de geschiedenis bijna anders…'))
     if (historicalNote) {
-      const note = el('div', 'rounded-xl border border-amber-500/30 bg-amber-500/10 px-5 py-4 mb-6')
-      note.appendChild(el('p', 'text-2xs font-bold uppercase tracking-eyebrow text-amber-400 mb-1', 'Wat er echt gebeurde'))
+      const note = el('div', 'rounded-xl border border-primary/30 bg-primary/10 px-5 py-4 mb-6')
+      note.appendChild(el('p', 'text-2xs font-bold uppercase tracking-eyebrow text-primary mb-1', 'Wat er echt gebeurde'))
       note.appendChild(el('p', 'text-slate-200 text-sm leading-relaxed', historicalNote)) // untrusted → textContent
       card.appendChild(note)
     }
 
     const restartBtn = el('button',
-      'w-full px-6 py-3.5 rounded-xl bg-amber-500 text-slate-950 font-bold text-base cursor-pointer ' +
+      'w-full px-6 py-3.5 rounded-xl bg-primary text-slate-950 font-bold text-base cursor-pointer ' +
       'transition-transform hover:scale-[1.02] active:scale-[0.98]',
       'Opnieuw vanaf dit keuzemoment')
     restartBtn.dataset.sgRestart = '1'
@@ -430,10 +430,10 @@ export class StoryGameEngine {
     container.style.pointerEvents = 'auto'
 
     const wrap = el('div', 'sg-fade absolute inset-0 z-40 flex items-center justify-center p-6 bg-slate-950/85 overflow-y-auto')
-    const card = el('div', 'sg-card max-w-xl w-full rounded-2xl bg-slate-900 border border-amber-500/30 shadow-2xl p-8')
+    const card = el('div', 'sg-card max-w-xl w-full rounded-2xl bg-slate-900 border border-primary/30 shadow-2xl p-8')
     card.dataset.sgSummary = '1'
 
-    card.appendChild(el('h2', 'font-history text-2xl font-bold text-amber-300 mb-1 text-center', 'Jullie verhaal'))
+    card.appendChild(el('h2', 'font-history text-2xl font-bold text-primary mb-1 text-center', 'Jullie verhaal'))
     const outcome = this._survived ? 'Overleefd!' : 'Niet overleefd'
     const sub = this._restarts > 0
       ? `${outcome} · ${this._restarts}× opnieuw geprobeerd`
@@ -447,7 +447,7 @@ export class StoryGameEngine {
       groupIds.forEach((id, i) => {
         const choice = this._choices[id]
         const row = el('div', 'flex items-center gap-3 rounded-xl bg-white/5 px-4 py-2.5')
-        row.appendChild(el('span', 'flex-shrink-0 w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 text-xs font-bold flex items-center justify-center', i + 1))
+        row.appendChild(el('span', 'flex-shrink-0 w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-bold flex items-center justify-center', i + 1))
         row.appendChild(el('span', 'text-sm text-slate-200 leading-snug', choice ? choice.label : '—')) // untrusted label → textContent
         list.appendChild(row)
       })
@@ -460,10 +460,10 @@ export class StoryGameEngine {
       const row = el('div', '')
       const top = el('div', 'flex items-center justify-between mb-1')
       top.appendChild(el('span', 'text-xs font-semibold text-slate-300', m.label || m.key)) // untrusted → textContent
-      top.appendChild(el('span', 'text-xs font-bold text-amber-400', this._meters[m.key]))
+      top.appendChild(el('span', 'text-xs font-bold text-primary', this._meters[m.key]))
       row.appendChild(top)
       const track = el('div', 'h-2 w-full rounded-full bg-white/10 overflow-hidden')
-      const fill = el('div', 'h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-300')
+      const fill = el('div', 'h-full rounded-full bg-gradient-to-r from-primary to-primary')
       fill.style.width = `${this._meters[m.key]}%`
       track.appendChild(fill)
       row.appendChild(track)

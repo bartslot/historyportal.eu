@@ -60,28 +60,28 @@
     <div role="group" aria-label="{{ __('Route view') }}" class="mt-3 grid grid-cols-2 gap-1 rounded-xl bg-slate-800/60 p-1">
         <button type="button" wire:click="setVoyageOverview(false)"
                 x-on:click="if (wide) { wide = false; window.__voyageTour?.hideOverview?.() }"
-                :class="!wide ? 'bg-amber-500 text-slate-950 shadow-sm' : 'text-slate-300 hover:text-slate-100'"
+                :class="!wide ? 'bg-primary text-slate-950 shadow-sm' : 'text-slate-300 hover:text-slate-100'"
                 class="rounded-lg py-1.5 text-xs font-medium transition-colors">{{ __('Single') }}</button>
         <button type="button" wire:click="setVoyageOverview(true)"
                 x-on:click="if (!wide) { wide = true; if (tab === 'leg') tab = 'map'; window.__voyageTour?.showOverview?.() }"
-                :class="wide ? 'bg-amber-500 text-slate-950 shadow-sm' : 'text-slate-300 hover:text-slate-100'"
+                :class="wide ? 'bg-primary text-slate-950 shadow-sm' : 'text-slate-300 hover:text-slate-100'"
                 class="rounded-lg py-1.5 text-xs font-medium transition-colors">{{ __('Overview') }}</button>
     </div>
 
     {{-- TABS --}}
     <div role="tablist" class="mt-3 grid gap-1 rounded-xl bg-slate-800/60 p-1" :class="wide ? 'grid-cols-2' : 'grid-cols-3'">
         <button type="button" role="tab" x-on:click="tab = 'leg'" x-show="!wide"
-                :class="tab === 'leg' ? 'bg-amber-500 text-slate-950 shadow-sm' : 'text-slate-300 hover:text-slate-100'"
+                :class="tab === 'leg' ? 'bg-primary text-slate-950 shadow-sm' : 'text-slate-300 hover:text-slate-100'"
                 class="rounded-lg py-1.5 text-xs font-medium transition-colors">
             Waypoint
         </button>
         <button type="button" role="tab" x-on:click="tab = 'map'"
-                :class="tab === 'map' ? 'bg-amber-500 text-slate-950 shadow-sm' : 'text-slate-300 hover:text-slate-100'"
+                :class="tab === 'map' ? 'bg-primary text-slate-950 shadow-sm' : 'text-slate-300 hover:text-slate-100'"
                 class="rounded-lg py-1.5 text-xs font-medium transition-colors">
             Map
         </button>
         <button type="button" role="tab" x-on:click="tab = 'route'"
-                :class="tab === 'route' ? 'bg-amber-500 text-slate-950 shadow-sm' : 'text-slate-300 hover:text-slate-100'"
+                :class="tab === 'route' ? 'bg-primary text-slate-950 shadow-sm' : 'text-slate-300 hover:text-slate-100'"
                 class="rounded-lg py-1.5 text-xs font-medium transition-colors">
             Route
         </button>
@@ -130,7 +130,7 @@
                 {{-- How to drag the Destination X and bend the sailing line lives in Help, not here:
                      a teacher edits the same lesson dozens of times and reads the instructions once. --}}
             @else
-                <p class="mt-2 rounded-lg border border-amber-700/40 bg-amber-950/20 px-2.5 py-1.5 text-2xs text-amber-300/80">
+                <p class="mt-2 rounded-lg border border-amber-700/40 bg-amber-950/20 px-2.5 py-1.5 text-2xs text-primary/80">
                     This voyage has no waypoint data yet — dates can't be edited.
                 </p>
             @endif
@@ -168,7 +168,7 @@
                                 title="{{ $t['hint'] }}"
                                 @class([
                                     'group flex flex-col items-center gap-1 rounded-lg border p-1.5 transition',
-                                    'border-amber-400 bg-amber-400/10 ring-2 ring-amber-400/60' => $legMarkerImage === '' && $legTransport === $t['id'],
+                                    'border-primary bg-primary/10 ring-2 ring-primary/60' => $legMarkerImage === '' && $legTransport === $t['id'],
                                     'border-slate-700 bg-slate-900/60 hover:border-slate-500' => $legMarkerImage !== '' || $legTransport !== $t['id'],
                                 ])>
                             <span class="flex aspect-square w-full items-center justify-center overflow-hidden rounded-md bg-slate-950/60">
@@ -176,7 +176,7 @@
                             </span>
                             <span @class([
                                 'text-2xs font-medium',
-                                'text-amber-300' => $legMarkerImage === '' && $legTransport === $t['id'],
+                                'text-primary' => $legMarkerImage === '' && $legTransport === $t['id'],
                                 'text-slate-400' => $legMarkerImage !== '' || $legTransport !== $t['id'],
                             ])>{{ $t['label'] }}</span>
                         </button>
@@ -188,12 +188,12 @@
                 <div class="mt-2.5 flex items-center gap-2 rounded-lg border border-slate-700/50 bg-slate-900/40 p-2">
                     @if ($legMarkerImage !== '')
                         <img src="{{ $legMarkerImage }}" alt=""
-                             class="h-16 w-16 shrink-0 rounded-full object-cover ring-2 ring-amber-400" />
+                             class="h-16 w-16 shrink-0 rounded-full object-cover ring-2 ring-primary" />
                         <div class="min-w-0 flex-1">
                             <p class="text-2xs text-slate-300">A picture travels this leg.</p>
                             <div class="mt-1 flex gap-2">
                                 <button type="button" wire:click="openMarkerImagePicker"
-                                        class="text-2xs text-amber-300 underline hover:text-amber-200">Change</button>
+                                        class="text-2xs text-primary underline hover:text-amber-200">Change</button>
                                 <button type="button" wire:click="clearLegMarkerImage"
                                         class="text-2xs text-slate-400 underline hover:text-slate-200">Use a model</button>
                             </div>
@@ -204,7 +204,7 @@
                         </span>
                         <div class="min-w-0 flex-1">
                             <button type="button" wire:click="openMarkerImagePicker"
-                                    class="text-2xs text-amber-300 underline hover:text-amber-200">{{ __('Use a picture instead') }}</button>
+                                    class="text-2xs text-primary underline hover:text-amber-200">{{ __('Use a picture instead') }}</button>
                         </div>
                     @endif
                 </div>
@@ -254,9 +254,9 @@
                 <span class="text-2xs uppercase tracking-wider text-slate-500">Image fit</span>
                 <div class="inline-flex overflow-hidden rounded-lg border border-slate-700/60">
                     <button type="button" wire:click="setGalleryFit('cover')"
-                            class="px-2.5 py-1 text-xs font-medium transition-colors {{ $gfit === 'cover' ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400' }}">Cover</button>
+                            class="px-2.5 py-1 text-xs font-medium transition-colors {{ $gfit === 'cover' ? 'bg-primary text-slate-950' : 'bg-slate-800 text-slate-400' }}">Cover</button>
                     <button type="button" wire:click="setGalleryFit('fit')"
-                            class="px-2.5 py-1 text-xs font-medium transition-colors {{ $gfit === 'fit' ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400' }}">Fit</button>
+                            class="px-2.5 py-1 text-xs font-medium transition-colors {{ $gfit === 'fit' ? 'bg-primary text-slate-950' : 'bg-slate-800 text-slate-400' }}">Fit</button>
                 </div>
             </div>
 
@@ -319,11 +319,11 @@
                     <span class="text-2xs uppercase tracking-wider text-slate-400">View</span>
                     <div class="mt-1 inline-flex overflow-hidden rounded-lg border border-slate-700/60">
                         <button type="button" wire:click="setVoyageView('flat')"
-                                class="px-2.5 py-1 text-xs font-medium transition-colors {{ $view === 'globe' ? 'bg-slate-800 text-slate-400' : 'bg-amber-500 text-slate-950' }}">
+                                class="px-2.5 py-1 text-xs font-medium transition-colors {{ $view === 'globe' ? 'bg-slate-800 text-slate-400' : 'bg-primary text-slate-950' }}">
                             Flat
                         </button>
                         <button type="button" wire:click="setVoyageView('globe')"
-                                class="px-2.5 py-1 text-xs font-medium transition-colors {{ $view === 'globe' ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400' }}">
+                                class="px-2.5 py-1 text-xs font-medium transition-colors {{ $view === 'globe' ? 'bg-primary text-slate-950' : 'bg-slate-800 text-slate-400' }}">
                             Globe
                         </button>
                     </div>
@@ -448,7 +448,7 @@
                  x-init="window.__voyagePaint = window.__voyagePaint || {}; window.__voyagePaint.brushKm = brush; window.__voyagePaint.erase = false">
                 <button type="button"
                         x-on:click="paint = !paint; window.__voyagePaint.active = paint; if(!paint){erase=false; window.__voyagePaint.erase=false;} window.dispatchEvent(new Event('voyage-paint-changed'))"
-                        :class="paint ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-300 hover:text-slate-100'"
+                        :class="paint ? 'bg-primary text-slate-950' : 'bg-slate-800 text-slate-300 hover:text-slate-100'"
                         class="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-medium transition-colors">
                     <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.53 16.122a3 3 0 0 0-5.78 1.128 2.25 2.25 0 0 1-2.4 2.245 4.5 4.5 0 0 0 8.4-2.245c0-.399-.078-.78-.22-1.128Zm0 0a15.998 15.998 0 0 0 3.388-1.62m-5.043-.025a15.994 15.994 0 0 1 1.622-3.395m3.42 3.42a15.995 15.995 0 0 0 4.764-4.648l3.876-5.814a1.151 1.151 0 0 0-1.597-1.597L14.146 6.32a15.996 15.996 0 0 0-4.649 4.763m3.42 3.42a6.776 6.776 0 0 0-3.42-3.42"/></svg>
                     <span x-show="!paint">Paint undiscovered land</span>
@@ -459,7 +459,7 @@
                     <div class="mt-2 grid grid-cols-2 gap-1 rounded-lg bg-slate-800/60 p-0.5">
                         <button type="button"
                                 x-on:click="erase = false; window.__voyagePaint.erase = false; window.dispatchEvent(new Event('voyage-paint-changed'))"
-                                :class="!erase ? 'bg-amber-500 text-slate-950' : 'text-slate-300 hover:text-slate-100'"
+                                :class="!erase ? 'bg-primary text-slate-950' : 'text-slate-300 hover:text-slate-100'"
                                 class="rounded-md py-1 text-2xs font-medium transition-colors">Paint</button>
                         <button type="button"
                                 x-on:click="erase = true; window.__voyagePaint.erase = true; window.dispatchEvent(new Event('voyage-paint-changed'))"
@@ -548,7 +548,7 @@
                                 {{-- A stop the class cannot watch: this leg has no scene. One click makes
                                      one, rather than leaving a row that only says something is wrong. --}}
                                 <button type="button" data-nodrag wire:click.stop="addVoyageSceneForLeg({{ $stop['leg'] }})"
-                                        class="btn btn-ghost btn-xs shrink-0 gap-1 text-amber-300 hover:text-amber-200"
+                                        class="btn btn-ghost btn-xs shrink-0 gap-1 text-primary hover:text-amber-200"
                                         title="{{ __('This stop has no scene yet') }}">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-3.5 w-3.5" aria-hidden="true">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -587,7 +587,7 @@
                     @foreach ($fleet as $ship)
                         <span class="inline-flex items-center gap-1 rounded-full border border-slate-700/50 bg-slate-900/60 px-2 py-0.5 text-2xs text-slate-300">
                             {{ $ship['name'] ?? 'Ship' }}
-                            @if ($ship['flagship'] ?? false)<span class="text-2xs font-semibold text-amber-300">★</span>@endif
+                            @if ($ship['flagship'] ?? false)<span class="text-2xs font-semibold text-primary">★</span>@endif
                         </span>
                     @endforeach
                 </div>
@@ -615,7 +615,7 @@
                         <button type="button" wire:click="setVoyageMap('info_position', '{{ $pos }}')"
                                 @class([
                                     'rounded-md border px-2 py-1 text-2xs transition',
-                                    'border-amber-400 bg-amber-400/10 text-amber-300' => $vmr('info_position', 'bottom') === $pos,
+                                    'border-primary bg-primary/10 text-primary' => $vmr('info_position', 'bottom') === $pos,
                                     'border-slate-700 text-slate-400 hover:border-slate-500' => $vmr('info_position', 'bottom') !== $pos,
                                 ])>{{ $label }}</button>
                     @endforeach
@@ -732,11 +732,11 @@
                     <span class="text-2xs text-slate-300">Line style</span>
                     <div class="mt-1 inline-flex overflow-hidden rounded-lg border border-slate-700/60">
                         <button type="button" wire:click="setRouteLine('curve', 'bezier')"
-                                class="px-3 py-1 text-xs font-medium transition-colors {{ ($rl['curve'] ?? 'bezier') === 'straight' ? 'bg-slate-800 text-slate-400' : 'bg-amber-500 text-slate-950' }}">
+                                class="px-3 py-1 text-xs font-medium transition-colors {{ ($rl['curve'] ?? 'bezier') === 'straight' ? 'bg-slate-800 text-slate-400' : 'bg-primary text-slate-950' }}">
                             Curved
                         </button>
                         <button type="button" wire:click="setRouteLine('curve', 'straight')"
-                                class="px-3 py-1 text-xs font-medium transition-colors {{ ($rl['curve'] ?? 'bezier') === 'straight' ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400' }}">
+                                class="px-3 py-1 text-xs font-medium transition-colors {{ ($rl['curve'] ?? 'bezier') === 'straight' ? 'bg-primary text-slate-950' : 'bg-slate-800 text-slate-400' }}">
                             Straight
                         </button>
                     </div>
@@ -750,7 +750,7 @@
         <button type="button" wire:click="undoVoyage"
                 @disabled(! $this->canUndoVoyage)
                 class="mt-3 flex items-center gap-1.5 border-t border-slate-700/50 pt-3 text-2xs transition
-                       {{ $this->canUndoVoyage ? 'text-slate-300 hover:text-amber-300' : 'cursor-not-allowed text-slate-600' }}">
+                       {{ $this->canUndoVoyage ? 'text-slate-300 hover:text-primary' : 'cursor-not-allowed text-slate-600' }}">
             <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"/></svg>
             {{ __('Undo last route change') }}
             <span class="ml-auto font-mono text-2xs text-slate-500">⌘Z</span>
@@ -758,7 +758,7 @@
 
         <button type="button" wire:click="resetVoyageRoute"
                 wire:confirm="Reset the whole route to its original shape? Your dragged waypoints and bends will be discarded (dates, gallery and map settings stay)."
-                class="mt-2 flex items-center gap-1.5 border-t border-slate-700/50 pt-3 text-2xs text-slate-400 hover:text-amber-300">
+                class="mt-2 flex items-center gap-1.5 border-t border-slate-700/50 pt-3 text-2xs text-slate-400 hover:text-primary">
             <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"/></svg>
             Reset route to original
         </button>

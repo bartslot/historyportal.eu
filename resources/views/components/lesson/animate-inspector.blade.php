@@ -73,7 +73,7 @@
             @foreach (['in' => __('In'), 'out' => __('Out')] as $key => $label)
                 <button type="button" role="tab" @click="build = '{{ $key }}'"
                         :class="build === '{{ $key }}'
-                            ? 'bg-slate-700 text-amber-300'
+                            ? 'bg-slate-700 text-primary'
                             : 'text-slate-400 hover:text-slate-200'"
                         class="flex-1 rounded-md px-2 py-1 font-medium transition">{{ $label }}</button>
             @endforeach
@@ -195,7 +195,7 @@
                 <button type="button"
                         @click="choose(opt.key, (k) => $wire.{{ $isLayer ? "updateArtworkLayer($aid, build === 'out' ? 'anim_out_ease' : 'anim_ease', k)" : "setSceneTransition('ease', k)" }})"
                         :class="selected === opt.key
-                            ? 'border-amber-400 bg-slate-900 text-amber-300'
+                            ? 'border-primary bg-slate-900 text-primary'
                             : 'border-slate-700 bg-slate-900/60 text-slate-400 hover:border-slate-500'"
                         class="flex flex-col items-center gap-0.5 rounded-lg border p-1 transition">
                     <svg viewBox="0 0 72 44" class="h-8 w-full" aria-hidden="true">

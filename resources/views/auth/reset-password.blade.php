@@ -25,7 +25,7 @@
                     required
                     value="{{ old('email', $email) }}"
                     class="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500
-                           focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 transition-colors"
+                           focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
                     placeholder="you@school.edu"
                 >
             </div>
@@ -42,7 +42,7 @@
                     required
                     autofocus
                     class="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500
-                           focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 transition-colors"
+                           focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
                     placeholder="••••••••"
                 >
                 <p class="mt-1.5 text-xs text-slate-500">{{ __('At least 8 characters.') }}</p>
@@ -59,7 +59,7 @@
                     autocomplete="new-password"
                     required
                     class="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500
-                           focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 transition-colors"
+                           focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
                     placeholder="••••••••"
                 >
             </div>

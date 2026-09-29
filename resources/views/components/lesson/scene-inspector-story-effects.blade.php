@@ -2,9 +2,9 @@
 
 {{-- Story-game "Game effects" panel — shown only for branch OPTION scenes of a
      story_game lesson. All fields autosave via EditsStoryGame::saveStoryEffectsDraft(). --}}
-<div class="mt-4 space-y-3 rounded-box border border-amber-500/30 bg-base-200/60 p-3">
+<div class="mt-4 space-y-3 rounded-box border border-primary/30 bg-base-200/60 p-3">
     <div>
-        <h4 class="text-xs font-semibold uppercase tracking-widest text-amber-300">{{ __('Game effects') }}</h4>
+        <h4 class="text-xs font-semibold uppercase tracking-widest text-primary">{{ __('Game effects') }}</h4>
         <p class="mt-1 text-2xs text-slate-500">{{ __('What this choice does to the class meters, and what the game master says next.') }}</p>
     </div>
 

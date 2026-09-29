@@ -25,7 +25,7 @@
         <summary class="cursor-pointer list-none text-2xs font-semibold uppercase tracking-widest text-slate-500 transition hover:text-slate-300">
             {{ __('Scene details') }}
             @if ($needsScript)
-                <span class="ml-1 normal-case tracking-normal text-amber-400/80">{{ __('add the story text') }}</span>
+                <span class="ml-1 normal-case tracking-normal text-primary/80">{{ __('add the story text') }}</span>
             @endif
         </summary>
         <div class="mt-3 space-y-3">
@@ -65,7 +65,7 @@
                     @if ($scene->hasFreshAudio() && ! $isGenerating)
                         <button type="button"
                                 wire:click="playSelected"
-                                class="btn btn-xs border-0 bg-amber-500 text-slate-950 hover:bg-amber-400 inline-flex items-center gap-1.5">
+                                class="btn btn-xs border-0 bg-primary text-slate-950 hover:brightness-110 inline-flex items-center gap-1.5">
                             <x-icons.play class="h-3 w-3" />
                             <span>{{ __('Play') }}</span>
                         </button>
@@ -74,7 +74,7 @@
                                 wire:click="regenerate({{ $scene->id }}, 'audio')"
                                 wire:loading.attr="disabled" wire:target="regenerate"
                                 @disabled($isGenerating)
-                                class="btn btn-xs border-0 bg-amber-500 text-slate-950 hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-50 inline-flex items-center gap-1.5">
+                                class="btn btn-xs border-0 bg-primary text-slate-950 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 inline-flex items-center gap-1.5">
                             {{-- A scene with no recording yet is NARRATED, not re-narrated. Same
                                  wording as the Script panel's button, so one action reads one way. --}}
                             @if ($isGenerating)
@@ -95,7 +95,7 @@
                             wire:click="summarizeScriptToList({{ $scene->id }})"
                             wire:loading.attr="disabled" wire:target="summarizeScriptToList"
                             @disabled(empty($scene->script_segment))
-                            class="btn btn-xs btn-outline border-slate-600 text-slate-300 hover:border-amber-400 hover:text-amber-300 disabled:cursor-not-allowed disabled:opacity-50 inline-flex items-center gap-1.5"
+                            class="btn btn-xs btn-outline border-slate-600 text-slate-300 hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50 inline-flex items-center gap-1.5"
                             title="{{ __('Summarize the script into a bullet list over a half-screen backing panel') }}">
                         <span wire:loading wire:target="summarizeScriptToList"><x-icons.spinner class="h-3 w-3 animate-spin" /></span>
                         <svg wire:loading.remove wire:target="summarizeScriptToList" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3 w-3">

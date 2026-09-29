@@ -5,7 +5,7 @@
         <div class="rating rating-md">
             @for ($star = 1; $star <= 5; $star++)
                 <input type="radio" name="lesson-rating-{{ $lesson->id }}"
-                       class="mask mask-star-2 bg-amber-400"
+                       class="mask mask-star-2 bg-primary"
                        aria-label="{{ $star }} {{ __('stars') }}"
                        wire:click="rate({{ $star }})"
                        @checked($rating === $star) />

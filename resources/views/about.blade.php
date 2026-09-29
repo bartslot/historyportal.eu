@@ -66,10 +66,10 @@
                 {{-- ── Right: feature cards (desktop only) ─────────────────── --}}
                 <div class="hidden grid-cols-1 gap-3 lg:grid">
 
-                    <div class="card lp-grain border border-amber-500/15"
+                    <div class="card lp-grain border border-primary/15"
                          style="background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);">
                         <div class="card-body p-5">
-                            <span class="lp-label mb-2 text-amber-400">AI Narration</span>
+                            <span class="lp-label mb-2 text-primary">AI Narration</span>
                             <p class="text-sm leading-relaxed text-slate-300/80">
                                 Historical figures narrate their own lessons. Every voice is generated from
                                 primary sources, never invented.

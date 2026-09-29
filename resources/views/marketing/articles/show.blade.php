@@ -20,7 +20,7 @@
 
     <main class="mx-auto max-w-3xl px-4 pb-16 pt-32 sm:px-6">
         <nav class="text-xs text-slate-500" aria-label="{{ __('Breadcrumb') }}">
-            <a href="{{ Seo::url('articles') }}" class="hover:text-amber-300">{{ __('Articles') }}</a>
+            <a href="{{ Seo::url('articles') }}" class="hover:text-primary">{{ __('Articles') }}</a>
             <span class="mx-2">/</span>
             <span class="text-slate-400">{{ $article['title'] }}</span>
         </nav>

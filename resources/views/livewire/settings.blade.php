@@ -47,7 +47,7 @@
 
             <div>
                 <button type="button" wire:click="save"
-                        class="btn border-0 bg-amber-500 text-slate-950 hover:bg-amber-400">
+                        class="btn border-0 bg-primary text-slate-950 hover:brightness-110">
                     {{ __('Save') }}
                 </button>
             </div>

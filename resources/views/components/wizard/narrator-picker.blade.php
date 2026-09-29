@@ -32,8 +32,8 @@
                 aria-label="Select {{ $narrator->name }}{{ $greetingUrl ? ' and play voice preview' : '' }}"
                 aria-pressed="{{ $selectedId === $narrator->id ? 'true' : 'false' }}"
                 @class([
-                    'group shrink-0 w-32 h-32 rounded-xl overflow-hidden transition-all relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900',
-                    'ring-2 ring-amber-400 ring-offset-2 ring-offset-slate-900' => $selectedId === $narrator->id,
+                    'group shrink-0 w-32 h-32 rounded-xl overflow-hidden transition-all relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900',
+                    'ring-2 ring-primary ring-offset-2 ring-offset-slate-900' => $selectedId === $narrator->id,
                     'ring-1 ring-slate-700/50 hover:ring-slate-500' => $selectedId !== $narrator->id,
                 ])>
             <img src="{{ $narrator->portraitUrl() ?? asset('assets/avatar-fallback.png') }}"

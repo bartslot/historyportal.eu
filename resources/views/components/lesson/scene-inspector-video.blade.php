@@ -20,7 +20,7 @@
                    @keydown.enter.prevent="if (link.trim()) { $wire.setVideoEmbed(link); link = '' }"
                    class="input input-xs input-bordered flex-1 bg-slate-900" />
             <button type="button" @click="if (link.trim()) { $wire.setVideoEmbed(link); link = '' }"
-                    class="btn btn-xs border-0 bg-amber-500 font-semibold text-slate-950 hover:bg-amber-400">{{ __('Set') }}</button>
+                    class="btn btn-xs border-0 bg-primary font-semibold text-slate-950 hover:brightness-110">{{ __('Set') }}</button>
         </div>
     </div>
 
@@ -50,8 +50,8 @@
             <div class="flex items-center justify-between gap-2">
                 <span class="text-2xs text-slate-300">{{ __('Fit') }}</span>
                 <div class="inline-flex overflow-hidden rounded-lg border border-slate-700/60">
-                    <button type="button" @click="fit = 'cover'; save()" :class="fit === 'cover' ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400'" class="px-2.5 py-1 text-xs font-medium">{{ __('Cover') }}</button>
-                    <button type="button" @click="fit = 'fit'; save()" :class="fit === 'fit' ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400'" class="px-2.5 py-1 text-xs font-medium">{{ __('Fit') }}</button>
+                    <button type="button" @click="fit = 'cover'; save()" :class="fit === 'cover' ? 'bg-primary text-slate-950' : 'bg-slate-800 text-slate-400'" class="px-2.5 py-1 text-xs font-medium">{{ __('Cover') }}</button>
+                    <button type="button" @click="fit = 'fit'; save()" :class="fit === 'fit' ? 'bg-primary text-slate-950' : 'bg-slate-800 text-slate-400'" class="px-2.5 py-1 text-xs font-medium">{{ __('Fit') }}</button>
                 </div>
             </div>
             <div class="grid grid-cols-2 gap-2">

@@ -15,7 +15,7 @@
 
     <main class="mx-auto max-w-4xl px-4 pb-16 pt-32 sm:px-6">
         <header class="max-w-2xl">
-            <p class="text-xs font-medium uppercase tracking-eyebrow text-amber-400">{{ __('Articles') }}</p>
+            <p class="text-xs font-medium uppercase tracking-eyebrow text-primary">{{ __('Articles') }}</p>
             <h1 class="mt-3 font-history text-4xl font-light tracking-tight text-white sm:text-5xl">{{ $title }}</h1>
             <p class="mt-5 text-lg leading-relaxed text-slate-300">{{ $description }}</p>
         </header>
@@ -23,7 +23,7 @@
         @forelse ($articles as $article)
             <article class="mt-12 border-t border-slate-800 pt-8">
                 <h2 class="text-xl font-semibold text-slate-100">
-                    <a href="{{ Seo::url('article', ['slug' => $article['slug']]) }}" class="hover:text-amber-300">
+                    <a href="{{ Seo::url('article', ['slug' => $article['slug']]) }}" class="hover:text-primary">
                         {{ $article['title'] }}
                     </a>
                 </h2>

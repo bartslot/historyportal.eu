@@ -6,7 +6,7 @@
     $borderColor = fn(string $type) => match($type) {
         'meta'     => 'border-l-sky-400/60',
         'solution' => 'border-l-success/60',
-        default    => 'border-l-amber-500/60',
+        default    => 'border-l-primary/60',
     };
 
     $badgeClass = fn(string $type) => match($type) {
@@ -30,7 +30,7 @@
 >
 
     {{-- Ambient glow blobs --}}
-    <div class="pointer-events-none absolute left-1/4 top-0 h-96 w-96 -translate-x-1/2 rounded-full bg-amber-500/5 blur-3xl"></div>
+    <div class="pointer-events-none absolute left-1/4 top-0 h-96 w-96 -translate-x-1/2 rounded-full bg-primary/5 blur-3xl"></div>
     <div class="pointer-events-none absolute right-1/4 bottom-0 h-96 w-96 translate-x-1/2 rounded-full bg-sky-400/4 blur-3xl"></div>
 
     {{-- SVG connector overlay (desktop only — hidden on mobile via CSS) --}}
@@ -58,11 +58,11 @@
         {{-- ── Root node ────────────────────────────────────────────────────── --}}
         <div
             id="map-root-card"
-            class="card mx-auto mb-12 max-w-2xl border border-amber-500/25 lp-grain"
-            style="background: linear-gradient(135deg, rgba(245,158,11,0.10) 0%, rgba(245,158,11,0.04) 100%);"
+            class="card mx-auto mb-12 max-w-2xl border border-primary/25 lp-grain"
+            style="background: linear-gradient(135deg, rgba(252,211,77,0.10) 0%, rgba(252,211,77,0.04) 100%);"
         >
             <div class="card-body py-7 text-center">
-                <span class="lp-label mx-auto mb-3 w-fit text-amber-400">Core Question</span>
+                <span class="lp-label mx-auto mb-3 w-fit text-primary">Core Question</span>
                 <h3 class="font-history text-2xl leading-snug text-white md:text-3xl">
                     {{ $root['label'] }}
                 </h3>
@@ -107,7 +107,7 @@
                             </div>
                             {{-- Chevron icon --}}
                             <svg
-                                class="map-toggle-icon mt-0.5 h-4 w-4 shrink-0 text-amber-400/60"
+                                class="map-toggle-icon mt-0.5 h-4 w-4 shrink-0 text-primary/60"
                                 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                                 aria-hidden="true"
                             >
@@ -132,7 +132,7 @@
                                         : 'border border-white/6 bg-white/3' }}"
                                     >
                                         <h4 class="mb-1.5 text-2xs font-semibold leading-snug
-                                            {{ $isCounter ? 'text-sky-300' : 'text-amber-300/80' }}">
+                                            {{ $isCounter ? 'text-sky-300' : 'text-primary/80' }}">
                                             {{ $child['label'] }}
                                         </h4>
                                         @if(!empty($child['points']))
@@ -140,7 +140,7 @@
                                                 @foreach($child['points'] as $point)
                                                     <li class="flex items-start gap-1.5 text-2xs leading-relaxed text-slate-400/80">
                                                         <span class="mt-0.5 shrink-0 text-3xs
-                                                            {{ $isCounter ? 'text-sky-400/50' : 'text-amber-500/40' }}">
+                                                            {{ $isCounter ? 'text-sky-400/50' : 'text-primary/40' }}">
                                                             &#9656;
                                                         </span>
                                                         {{ $point }}

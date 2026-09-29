@@ -13,14 +13,14 @@
                         wire:click="selectFramework('{{ $fw->value }}')"
                         @class([
                             'flex flex-col items-start gap-1.5 rounded-xl border-2 p-3.5 text-left transition-all',
-                            'border-amber-400 bg-amber-500/10' => $narrative_framework === $fw->value,
+                            'border-primary bg-primary/10' => $narrative_framework === $fw->value,
                             'border-slate-600 hover:border-slate-400' => $narrative_framework !== $fw->value,
                         ])>
-                    <i class="ti {{ $fw->icon() }} text-xl @if($narrative_framework === $fw->value) text-amber-300 @else text-slate-300 @endif"></i>
+                    <i class="ti {{ $fw->icon() }} text-xl @if($narrative_framework === $fw->value) text-primary @else text-slate-300 @endif"></i>
                     <span class="text-sm font-medium text-white">{{ $fw->label() }}</span>
                     <span class="text-xs text-slate-400 leading-snug">{{ $fw->description() }}</span>
                     @if ($fw === NarrativeFramework::default())
-                        <span class="mt-0.5 text-2xs uppercase tracking-wide text-amber-300/70">default</span>
+                        <span class="mt-0.5 text-2xs uppercase tracking-wide text-primary/70">default</span>
                     @endif
                 </button>
             @endforeach
@@ -42,7 +42,7 @@
                             wire:key="hero-{{ $hero->qid }}"
                             @class([
                                 'flex items-center gap-3 rounded-lg border-2 p-2.5 text-left transition-all',
-                                'border-amber-400 bg-amber-500/10' => $protagonist_qid === $hero->qid,
+                                'border-primary bg-primary/10' => $protagonist_qid === $hero->qid,
                                 'border-slate-600 hover:border-slate-400' => $protagonist_qid !== $hero->qid,
                             ])>
                         @if ($hero->image_url)
@@ -58,7 +58,7 @@
                         <span class="flex flex-col min-w-0">
                             <span class="text-sm font-medium text-white truncate">{{ $hero->name }}</span>
                             <span class="text-xs text-slate-400">
-                                @if ($hero->figure_kind === 'ruler')<span class="text-amber-300/80">Ruler</span> · @endif
+                                @if ($hero->figure_kind === 'ruler')<span class="text-primary/80">Ruler</span> · @endif
                                 {{ $hero->era_start ? ($hero->era_start < 0 ? abs($hero->era_start).' BCE' : $hero->era_start.' CE') : '' }}
                             </span>
                         </span>
@@ -82,7 +82,7 @@
     @elseif ($narrative_framework === 'branching')
         <div class="bg-base-300/60 rounded-2xl px-6 py-4 space-y-3">
             <p class="text-sm text-slate-300 flex items-center gap-2">
-                <i class="ti ti-git-branch text-amber-300"></i>
+                <i class="ti ti-git-branch text-primary"></i>
                 {{ $story_game
                     ? __('Spel-verhaal: 3 choice points, class meters and a game master. The class survives the story together, and the history stays true.')
                     : __('The AI adds one choice point mid-lesson. You can edit both paths in Configure.') }}

@@ -12,7 +12,7 @@
 <div class="space-y-3 text-sm" wire:key="text-inspector-{{ $id }}">
     <button type="button" wire:click="clearActiveText"
             x-on:click="window.__lessonTextLayer?.select?.(null); window.__clearLayerGuard?.()"
-            class="inline-flex items-center gap-1 text-xs text-slate-400 transition hover:text-amber-300">
+            class="inline-flex items-center gap-1 text-xs text-slate-400 transition hover:text-primary">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3.5 w-3.5" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
         </svg>
@@ -21,7 +21,7 @@
 
     @if ($isPanel)
         <div>
-            <h3 class="font-semibold text-amber-300">{{ __('Background panel') }}</h3>
+            <h3 class="font-semibold text-primary">{{ __('Background panel') }}</h3>
             <p class="mt-1 text-2xs leading-tight text-slate-500">{{ __('A readable backing panel behind the scene text.') }}</p>
         </div>
 
@@ -51,7 +51,7 @@
                          :on-change="'updateSceneText(' . \Illuminate\Support\Js::from($id) . ', \'opacity\', $event.target.value)'" />
     @else
         <div>
-            <h3 class="font-semibold text-amber-300">{{ __('Text') }}</h3>
+            <h3 class="font-semibold text-primary">{{ __('Text') }}</h3>
             <p class="mt-1 text-2xs leading-tight text-slate-500">{{ __('Edit content directly on the canvas. Adjust its appearance here.') }}</p>
         </div>
 

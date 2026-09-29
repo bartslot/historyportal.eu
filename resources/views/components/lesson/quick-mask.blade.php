@@ -28,7 +28,7 @@
         },
      }" wire:ignore>
     <button type="button" x-on:click="start()"
-            class="btn btn-ghost btn-xs btn-square text-slate-500 hover:text-amber-300"
+            class="btn btn-ghost btn-xs btn-square text-slate-500 hover:text-primary"
             aria-label="{{ __('Quick mask') }}"
             data-tooltip="{{ __('Quick mask: press on a colour and drag to cut it out. Alt+press brings it back.') }}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">

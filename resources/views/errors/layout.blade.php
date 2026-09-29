@@ -42,7 +42,7 @@
             </a>
 
             @auth
-                <a href="{{ route('help.index') }}" class="text-sm text-amber-400 hover:underline">{{ __('Open the help centre') }}</a>
+                <a href="{{ route('help.index') }}" class="text-sm text-primary hover:underline">{{ __('Open the help centre') }}</a>
             @endauth
         </div>
 

@@ -45,7 +45,7 @@
             </div>
         </div>
 
-        <div class="relative overflow-hidden rounded-[2rem]">
+        <div class="relative">
             <!-- <div class="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-slate-950 via-slate-950/75 to-transparent"></div> -->
             <!-- <div class="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-slate-950 via-slate-950/75 to-transparent"></div> -->
 
@@ -109,7 +109,7 @@
         <div id="features" class="mt-20">
             <h2 class="mt-3 font-history font-semibold text-3xl tracking-tight text-white md:text-4xl">What the hour actually looks like</h2>
 
-            <div class="relative overflow-hidden rounded-[2rem] mt-8">
+            <div class="relative mt-8">
                 <!-- <div class="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-slate-950 via-slate-950/75 to-transparent"></div> -->
                 <div class="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-slate-950 via-slate-950/75 to-transparent"></div>
 

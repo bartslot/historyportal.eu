@@ -3,15 +3,15 @@
 
     <div class="mt-7 grid gap-10 lg:grid-cols-[minmax(0,1fr)_18rem]">
         <main>
-            <p class="text-xs font-semibold uppercase tracking-[0.22em] text-amber-400">Narrator Studio · New narrator</p>
+            <p class="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Narrator Studio · New narrator</p>
             <h1 class="mt-2 font-history text-5xl font-semibold leading-none text-slate-100 md:text-6xl">Build a voice<br>students remember.</h1>
 
             <nav aria-label="Narrator setup progress" class="mt-10 grid grid-cols-4 border-b border-slate-800">
                 @foreach([1 => 'Identity', 2 => 'Portrait', 3 => 'Voice', 4 => 'Review'] as $number => $label)
                     <button type="button" wire:click="goToStep({{ $number }})" @disabled($number > $step)
-                            class="relative pb-3 text-left text-xs font-semibold uppercase tracking-wider {{ $step === $number ? 'text-amber-300' : ($number < $step ? 'text-slate-300' : 'text-slate-600') }} disabled:cursor-not-allowed">
+                            class="relative pb-3 text-left text-xs font-semibold uppercase tracking-wider {{ $step === $number ? 'text-primary' : ($number < $step ? 'text-slate-300' : 'text-slate-600') }} disabled:cursor-not-allowed">
                         <span class="mr-1.5">0{{ $number }}</span> {{ $label }}
-                        @if($step === $number)<span class="absolute inset-x-0 -bottom-px h-0.5 bg-amber-400"></span>@endif
+                        @if($step === $number)<span class="absolute inset-x-0 -bottom-px h-0.5 bg-primary"></span>@endif
                     </button>
                 @endforeach
             </nav>
@@ -108,7 +108,7 @@
                 @else
                     <section wire:key="review" class="max-w-2xl space-y-7">
                         <div><h2 class="text-2xl font-semibold text-slate-100">Ready for the first lesson?</h2><p class="mt-1 text-sm text-slate-500">The narrator can stay backstage until you finish testing the voice.</p></div>
-                        <div class="flex items-center gap-5 border-y border-slate-800 py-6">@if($portrait)<img src="{{ $portrait->temporaryUrl() }}" alt="" class="h-24 w-24 rounded-2xl object-cover">@endif<div><p class="text-xl font-semibold text-slate-100">{{ $name }}</p><p class="text-sm text-amber-300">{{ $avatar_title ?: 'Narrator' }} · {{ ucfirst($subject === 'all' ? 'all subjects' : $subject) }}</p><p class="mt-2 text-sm text-slate-500">{{ $description ?: 'No description added.' }}</p>@if($intro_video)<span class="badge badge-success badge-outline mt-3">Introduction video ready</span>@else<span class="badge badge-ghost mt-3">No introduction video</span>@endif</div></div>
+                        <div class="flex items-center gap-5 border-y border-slate-800 py-6">@if($portrait)<img src="{{ $portrait->temporaryUrl() }}" alt="" class="h-24 w-24 rounded-2xl object-cover">@endif<div><p class="text-xl font-semibold text-slate-100">{{ $name }}</p><p class="text-sm text-primary">{{ $avatar_title ?: 'Narrator' }} · {{ ucfirst($subject === 'all' ? 'all subjects' : $subject) }}</p><p class="mt-2 text-sm text-slate-500">{{ $description ?: 'No description added.' }}</p>@if($intro_video)<span class="badge badge-success badge-outline mt-3">Introduction video ready</span>@else<span class="badge badge-ghost mt-3">No introduction video</span>@endif</div></div>
                         <label class="card flex cursor-pointer flex-row items-start gap-3 p-4"><input wire:model="is_active" type="checkbox" class="checkbox checkbox-primary checkbox-sm mt-0.5"><span><span class="block text-sm font-semibold text-base-content">Make available to teachers now</span><span class="mt-0.5 block text-xs text-base-content/50">Leave this off if you want to test and refine the narrator first.</span></span></label>
                     </section>
                 @endif
@@ -120,6 +120,6 @@
             </form>
         </main>
 
-        <aside class="hidden border-l border-slate-800 pl-8 lg:block"><div class="sticky top-8"><p class="text-xs font-semibold uppercase tracking-widest text-slate-600">Cast note</p><blockquote class="mt-4 font-history text-2xl leading-snug text-slate-300">“A narrator is the thread students follow through the story.”</blockquote><div class="mt-8 h-px bg-gradient-to-r from-amber-400/60 to-transparent"></div><p class="mt-5 text-sm leading-6 text-slate-500">New narrators begin inactive by default. Preview the portrait and voice in the Studio before introducing them to teachers.</p></div></aside>
+        <aside class="hidden border-l border-slate-800 pl-8 lg:block"><div class="sticky top-8"><p class="text-xs font-semibold uppercase tracking-widest text-slate-600">Cast note</p><blockquote class="mt-4 font-history text-2xl leading-snug text-slate-300">“A narrator is the thread students follow through the story.”</blockquote><div class="mt-8 h-px bg-gradient-to-r from-primary/60 to-transparent"></div><p class="mt-5 text-sm leading-6 text-slate-500">New narrators begin inactive by default. Preview the portrait and voice in the Studio before introducing them to teachers.</p></div></aside>
     </div>
 </div>

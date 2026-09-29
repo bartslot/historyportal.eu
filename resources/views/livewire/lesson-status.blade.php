@@ -12,7 +12,7 @@
     <div class="h-1.5 w-full rounded-full bg-slate-800 overflow-hidden">
         <div
             class="h-full rounded-full transition-all duration-700 ease-out
-                {{ $lesson->status === \App\Enums\LessonStatus::Failed ? 'bg-error' : 'bg-amber-400' }}"
+                {{ $lesson->status === \App\Enums\LessonStatus::Failed ? 'bg-error' : 'bg-primary' }}"
             style="width: {{ round(($this->completedCount / 5) * 100) }}%"
         ></div>
     </div>
@@ -34,8 +34,8 @@
 
                     @elseif($step['state'] === 'active')
                         {{-- Spinning amber --}}
-                        <span class="flex h-6 w-6 items-center justify-center rounded-full bg-amber-500/20 border border-amber-500">
-                            <svg class="h-3.5 w-3.5 text-amber-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <span class="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 border border-primary">
+                            <svg class="h-3.5 w-3.5 text-primary animate-spin" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                             </svg>
@@ -62,7 +62,7 @@
                                 {{-- Retry icon (loading state) --}}
                                 <svg
                                     wire:loading wire:target="runStep('{{ $step['key'] }}')"
-                                    class="h-3 w-3 text-amber-400 animate-spin"
+                                    class="h-3 w-3 text-primary animate-spin"
                                     fill="none" viewBox="0 0 24 24"
                                 >
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -71,7 +71,7 @@
                                 {{-- Retry icon (idle state) --}}
                                 <svg
                                     wire:loading.remove wire:target="runStep('{{ $step['key'] }}')"
-                                    class="h-3 w-3 text-amber-600 group-hover:text-amber-400 transition-colors"
+                                    class="h-3 w-3 text-primary group-hover:text-primary transition-colors"
                                     viewBox="0 0 100 100" fill="currentColor"
                                     aria-hidden="true"
                                 >
@@ -99,7 +99,7 @@
                 <div class="flex-1 min-w-0">
                     <p class="text-sm font-medium
                         {{ $step['state'] === 'done'    ? 'text-success' : '' }}
-                        {{ $step['state'] === 'active'  ? 'text-amber-300'   : '' }}
+                        {{ $step['state'] === 'active'  ? 'text-primary'   : '' }}
                         {{ $step['state'] === 'failed'  ? 'text-error'    : '' }}
                         {{ $step['state'] === 'skipped' ? 'text-slate-500'   : '' }}
                         {{ $step['state'] === 'pending' ? 'text-slate-400'   : '' }}
@@ -107,7 +107,7 @@
                     @if($step['state'] === 'skipped' && ! empty($step['skipReason']))
                         <p class="text-xs text-slate-500 italic">{{ $step['skipReason'] }}</p>
                     @elseif($step['state'] === 'active')
-                        <p class="text-xs text-amber-400/70"
+                        <p class="text-xs text-primary/70"
                            x-data="{ elapsed: 0, timer: null }"
                            x-init="timer = setInterval(() => elapsed++, 1000)"
                            x-effect="if (!$el.closest('[wire\\:poll]')) { clearInterval(timer) }"
@@ -144,7 +144,7 @@
             ✓ All steps complete — lesson is ready to review and publish.
         </p>
     @elseif($lesson->status === \App\Enums\LessonStatus::Ready)
-        <div class="rounded-xl border border-amber-800 bg-amber-950/40 px-4 py-3 text-xs text-amber-300 border-t border-slate-800 mt-4">
+        <div class="rounded-xl border border-amber-800 bg-amber-950/40 px-4 py-3 text-xs text-primary border-t border-slate-800 mt-4">
             <p class="font-semibold mb-1">Lesson marked ready, but steps are still missing</p>
             <p class="text-amber-200/80">The pipeline should be regenerated so the missing quiz, portrait, audio, or video artifacts are created.</p>
         </div>

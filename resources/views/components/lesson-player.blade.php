@@ -75,7 +75,7 @@
             @foreach($images as $i => $img)
                 <button
                     @click="jumpTo({{ $i }})"
-                    :class="currentIndex === {{ $i }} ? 'bg-amber-400 w-4' : 'bg-slate-600 w-1.5'"
+                    :class="currentIndex === {{ $i }} ? 'bg-primary w-4' : 'bg-slate-600 w-1.5'"
                     class="h-1.5 rounded-full transition-all duration-300"
                     aria-label="Slide {{ $i + 1 }}"
                 ></button>
@@ -130,7 +130,7 @@
 
                 {{-- Progress bar --}}
                 <div class="w-full h-1 bg-slate-800 rounded-full overflow-hidden">
-                    <div class="h-full bg-amber-400 rounded-full transition-none"
+                    <div class="h-full bg-primary rounded-full transition-none"
                          :style="`width: ${progress}%`"></div>
                 </div>
 
@@ -147,9 +147,9 @@
             {{-- Generating placeholder --}}
             <div class="flex flex-col items-center gap-3 text-center">
                 <div class="flex gap-1.5">
-                    <span class="h-2 w-2 rounded-full bg-amber-400 animate-bounce" style="animation-delay:0ms"></span>
-                    <span class="h-2 w-2 rounded-full bg-amber-400 animate-bounce" style="animation-delay:150ms"></span>
-                    <span class="h-2 w-2 rounded-full bg-amber-400 animate-bounce" style="animation-delay:300ms"></span>
+                    <span class="h-2 w-2 rounded-full bg-primary animate-bounce" style="animation-delay:0ms"></span>
+                    <span class="h-2 w-2 rounded-full bg-primary animate-bounce" style="animation-delay:150ms"></span>
+                    <span class="h-2 w-2 rounded-full bg-primary animate-bounce" style="animation-delay:300ms"></span>
                 </div>
                 <p class="text-sm text-slate-400">Generating your lesson…</p>
             </div>
@@ -174,8 +174,8 @@
         <button
             @click="toggleSlideshow()"
             class="absolute top-3 right-3 z-20 flex h-8 w-8 items-center justify-center rounded-full
-                   bg-slate-950/60 text-slate-300 backdrop-blur-sm hover:bg-slate-900 hover:text-amber-400
-                   transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500"
+                   bg-slate-950/60 text-slate-300 backdrop-blur-sm hover:bg-slate-900 hover:text-primary
+                   transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
             :aria-label="slideshowPaused ? 'Play slideshow' : 'Pause slideshow'"
         >
             <template x-if="slideshowPaused">

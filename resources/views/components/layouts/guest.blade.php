@@ -14,7 +14,7 @@
         <div class="mb-8 text-center">
             <a href="{{ route('home') }}" class="inline-flex flex-col items-center gap-2">
                 <x-logo class="h-14 w-14" />
-                <span class="font-cinzel text-2xl font-bold tracking-wide text-amber-400">
+                <span class="font-cinzel text-2xl font-bold tracking-wide text-primary">
                     History Portal
                 </span>
             </a>

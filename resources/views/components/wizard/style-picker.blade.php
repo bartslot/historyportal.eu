@@ -11,7 +11,7 @@
                 wire:click="$set('{{ $wireModel }}', '{{ $s['key'] }}')"
                 @class([
                     'relative aspect-square rounded-xl overflow-hidden transition-all',
-                    'ring-2 ring-amber-400 ring-offset-2 ring-offset-slate-900' => $selected === $s['key'],
+                    'ring-2 ring-primary ring-offset-2 ring-offset-slate-900' => $selected === $s['key'],
                     'ring-1 ring-slate-700/50 hover:ring-slate-500' => $selected !== $s['key'],
                 ])>
             @if (!empty($s['thumb']))
@@ -24,7 +24,7 @@
             @endif
             <span class="absolute bottom-1 left-1 right-1 text-2xs uppercase tracking-wider text-white drop-shadow">{{ $s['label'] }}</span>
             @if (in_array($s['key'], $recommended, true))
-                <span class="absolute top-1 right-1 text-3xs uppercase bg-amber-500 text-slate-950 font-bold px-1.5 py-0.5 rounded">{{ __('Recommended') }}</span>
+                <span class="absolute top-1 right-1 text-3xs uppercase bg-primary text-slate-950 font-bold px-1.5 py-0.5 rounded">{{ __('Recommended') }}</span>
             @endif
         </button>
     @endforeach

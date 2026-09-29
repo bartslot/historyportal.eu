@@ -36,7 +36,7 @@
 
         {{-- Title block --}}
         <div class="absolute inset-x-0 bottom-0 p-4 text-white">
-            <p class="truncate text-2xs font-medium uppercase tracking-wide text-amber-400/90">
+            <p class="truncate text-2xs font-medium uppercase tracking-wide text-primary/90">
                 {{ $lesson->subject }}@if ($lesson->era) · {{ $lesson->era }}@endif
             </p>
             <h3 class="mt-1 text-base font-semibold leading-tight tracking-tight text-white line-clamp-2">

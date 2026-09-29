@@ -64,12 +64,12 @@
         @elseif (count($this->storyChoices) > 0)
             <div class="form-control space-y-2">
                 <span class="label-text text-xs uppercase tracking-wider text-slate-400">
-                    {{ __('Pick a story') }} <span class="text-amber-400/70 normal-case tracking-normal">· {{ __('curated, with learning goals') }}</span>
+                    {{ __('Pick a story') }} <span class="text-primary/70 normal-case tracking-normal">· {{ __('curated, with learning goals') }}</span>
                 </span>
                 <div class="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-72 overflow-y-auto pr-1">
                     @foreach ($this->storyChoices as $choice)
                         <button type="button" wire:click="selectStory({{ $choice['id'] }})"
-                                class="card bg-slate-900 hover:bg-slate-800 border border-white/10 hover:border-amber-500/50 text-left transition">
+                                class="card bg-slate-900 hover:bg-slate-800 border border-white/10 hover:border-primary/50 text-left transition">
                             <div class="card-body p-3 gap-1">
                                 <span class="text-sm text-white font-medium leading-tight">{{ $choice['title'] }}</span>
                                 @if ($choice['subtitle'])
@@ -90,7 +90,7 @@
         {{-- Topic — locked to the curated, Wikipedia-grounded catalog (A1) --}}
         <div x-data="{ open: false }" class="relative form-control" @if($storyId) style="display:none" @endif>
             <span class="label-text text-xs uppercase tracking-wider text-slate-400">
-                {{ __('Topic') }} <span class="text-amber-400/70 normal-case tracking-normal">· {{ __('pick from the catalog') }}</span>
+                {{ __('Topic') }} <span class="text-primary/70 normal-case tracking-normal">· {{ __('pick from the catalog') }}</span>
             </span>
             <div class="relative">
                 <input id="lw-topic" name="topic" type="text"
@@ -114,7 +114,7 @@
                     {!! __('Grounded in :link.', ['link' => '<a href="'.e($topicWikipediaUrl).'" target="_blank" rel="noopener" class="underline">'.e(__('this Wikipedia article')).'</a>']) !!}
                 </span>
             @elseif (strlen(trim($topic)) >= 2 && !$topicId)
-                <span class="text-xs text-amber-400/70 mt-1">{{ __('Select an entry from the list to continue.') }}</span>
+                <span class="text-xs text-primary/70 mt-1">{{ __('Select an entry from the list to continue.') }}</span>
             @endif
 
             {{-- Catalog dropdown --}}
@@ -151,7 +151,7 @@
                                         {{ __('Place') }}
                                     </span>
                                 @elseif ($s['type'] === 'event')
-                                    <span class="badge badge-sm badge-outline border-amber-500/40 text-amber-300 shrink-0">
+                                    <span class="badge badge-sm badge-outline border-primary/40 text-primary shrink-0">
                                         {{ __('Event') }}
                                     </span>
                                 @endif
@@ -197,7 +197,7 @@
                         @if ($slot)
                             <button type="button" wire:click="toggleFocusTag('{{ $slot }}')"
                                     title="{{ __('Remove') }}"
-                                    class="group inline-flex items-center gap-1 rounded-md border border-amber-500/50 bg-amber-500/15 px-2 py-1 text-2xs font-medium text-amber-300 transition hover:border-error/60 hover:bg-error/10 hover:text-error">
+                                    class="group inline-flex items-center gap-1 rounded-md border border-primary/50 bg-primary/15 px-2 py-1 text-2xs font-medium text-primary transition hover:border-error/60 hover:bg-error/10 hover:text-error">
                                 {{ __($focusAll[$slot]['label'] ?? $slot) }}
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3 w-3 opacity-60 group-hover:opacity-100" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -279,7 +279,7 @@
                                 x-on:mousedown.prevent
                                 wire:click="$set('focus', @js($angle))"
                                 x-on:click="open = false"
-                                class="btn btn-xs btn-outline border-white/15 font-normal normal-case text-slate-300 hover:border-amber-500/50 hover:text-amber-300">
+                                class="btn btn-xs btn-outline border-white/15 font-normal normal-case text-slate-300 hover:border-primary/50 hover:text-primary">
                             {{ $angle }}
                         </button>
                     @endforeach
@@ -497,7 +497,7 @@
                                         @foreach ($tierDef['options'] as $opt)
                                             <button type="button"
                                                     x-on:click="pickGrade('{{ $opt['value'] }}', '{{ $tierDef['key'] }}')"
-                                                    :class="grade === '{{ $opt['value'] }}' && activeTier === '{{ $tierDef['key'] }}' ? 'border-amber-400 bg-amber-500/10 text-white' : 'border-slate-600 text-slate-300 hover:border-slate-400'"
+                                                    :class="grade === '{{ $opt['value'] }}' && activeTier === '{{ $tierDef['key'] }}' ? 'border-primary bg-primary/10 text-white' : 'border-slate-600 text-slate-300 hover:border-slate-400'"
                                                     class="px-4 py-2 rounded-lg text-sm border-2 transition-all">
                                                 {{ $opt['label'] }}
                                             </button>
@@ -514,7 +514,7 @@
                                             @foreach ($tierDef['tracks'] as $t)
                                                 <button type="button"
                                                         x-on:click="track = '{{ $t['key'] }}'; jaar = 1"
-                                                        :class="track === '{{ $t['key'] }}' ? 'border-amber-400 bg-amber-500/10 text-white' : 'border-slate-600 text-slate-300 hover:border-slate-400'"
+                                                        :class="track === '{{ $t['key'] }}' ? 'border-primary bg-primary/10 text-white' : 'border-slate-600 text-slate-300 hover:border-slate-400'"
                                                         class="px-4 py-2 rounded-lg text-sm border-2 transition-all">
                                                     {{ $t['label'] }}
                                                 </button>
@@ -541,7 +541,7 @@
                                         @foreach ($tierDef['tracks'] as $t)
                                             <button type="button"
                                                     x-on:click="track = '{{ $t['key'] }}'"
-                                                    :class="track === '{{ $t['key'] }}' ? 'border-amber-400 bg-amber-500/10 text-white' : 'border-slate-600 text-slate-300 hover:border-slate-400'"
+                                                    :class="track === '{{ $t['key'] }}' ? 'border-primary bg-primary/10 text-white' : 'border-slate-600 text-slate-300 hover:border-slate-400'"
                                                     class="px-3 py-1.5 rounded-lg text-xs border-2 transition-all">
                                                 {{ $t['label'] }}
                                             </button>
@@ -600,15 +600,15 @@
                                 wire:click="$set('tone', '{{ $tone === $key ? '' : $key }}')"
                                 @class([
                                     'flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm transition-all duration-150 cursor-pointer',
-                                    'bg-amber-400 text-black font-bold border-2 border-amber-400'   => $tone === $key,
-                                    'bg-slate-800 border-2 border-amber-400 text-amber-400 font-semibold' => $tone !== $key && $isRec,
+                                    'bg-primary text-black font-bold border-2 border-primary'   => $tone === $key,
+                                    'bg-slate-800 border-2 border-primary text-primary font-semibold' => $tone !== $key && $isRec,
                                     'bg-slate-800 border border-slate-600 text-slate-400'            => $tone !== $key && !$isRec,
                                 ])
                             >
                                 <x-dynamic-component :component="'icons.'.$t['icon']" class="w-3.5 h-3.5" />
                                 <span>{{ $t['label'] }}</span>
                                 @if ($isRec)
-                                    <x-icons.star class="w-3 h-3 text-amber-400" />
+                                    <x-icons.star class="w-3 h-3 text-primary" />
                                 @endif
                             </button>
 
@@ -632,7 +632,7 @@
                             wire:click="$set('tone', '')"
                             @class([
                                 'flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm transition-all duration-150 cursor-pointer',
-                                'bg-amber-400 text-black font-bold border-2 border-amber-400'   => $tone === '',
+                                'bg-primary text-black font-bold border-2 border-primary'   => $tone === '',
                                 'bg-slate-800 border border-slate-600 text-slate-400'            => $tone !== '',
                             ])
                         >
@@ -649,8 +649,8 @@
                         </div>
                     </div>
                 </div>
-                <p class="text-xs text-amber-500 mt-2 flex items-center gap-1">
-                    <x-icons.star class="w-3 h-3 inline-block text-amber-400" />
+                <p class="text-xs text-primary mt-2 flex items-center gap-1">
+                    <x-icons.star class="w-3 h-3 inline-block text-primary" />
                     <span>{{ __('Recommended for age :age', ['age' => $audience_age]) }}</span>
                 </p>
             </div>
@@ -684,7 +684,7 @@
                         wire:click="$set('source_mode', 'internet')"
                         @class([
                             'px-4 py-2 rounded-lg text-sm border-2 transition-all',
-                            'border-amber-400 bg-amber-500/10 text-white' => $source_mode === 'internet',
+                            'border-primary bg-primary/10 text-white' => $source_mode === 'internet',
                             'border-slate-600 text-slate-300 hover:border-slate-400' => $source_mode !== 'internet',
                         ])>
                     {{ __('Internet') }}
@@ -694,7 +694,7 @@
                         wire:click="$set('source_mode', 'local')"
                         @class([
                             'px-4 py-2 rounded-lg text-sm border-2 transition-all',
-                            'border-amber-400 bg-amber-500/10 text-white' => $source_mode === 'local',
+                            'border-primary bg-primary/10 text-white' => $source_mode === 'local',
                             'border-slate-600 text-slate-300 hover:border-slate-400' => $source_mode !== 'local',
                         ])>
                     {{ __('Local source') }}
@@ -782,7 +782,7 @@
                                     wire:click="$set('game_type', '{{ $val }}')"
                                     @class([
                                         'px-4 py-2 rounded-lg text-sm border-2 transition-all',
-                                        'border-amber-400 bg-amber-500/10 text-white' => $game_type === $val,
+                                        'border-primary bg-primary/10 text-white' => $game_type === $val,
                                         'border-slate-600 text-slate-300 hover:border-slate-400' => $game_type !== $val,
                                     ])>{{ $label }}</button>
                         @endforeach
@@ -809,7 +809,7 @@
                                                 wire:click="$set('quiz_timing', '{{ $val }}')"
                                                 @class([
                                                     'px-3 py-2 rounded-lg text-sm border-2 transition-all text-center',
-                                                    'border-amber-400 bg-amber-500/10 text-white' => $quiz_timing === $val,
+                                                    'border-primary bg-primary/10 text-white' => $quiz_timing === $val,
                                                     'border-slate-600 text-slate-300 hover:border-slate-400' => $quiz_timing !== $val,
                                                 ])>{{ $label }}</button>
                                     @endforeach
@@ -841,7 +841,7 @@
                 class="btn btn-outline absolute left-0">{{ __('Save as draft') }}</button>
         <button type="button" wire:click="generate"
                 wire:loading.attr="disabled" wire:target="generate"
-                class="btn bg-amber-500 text-slate-950 hover:bg-amber-400 border-0">
+                class="btn bg-primary text-slate-950 hover:brightness-110 border-0">
             <span wire:loading.remove wire:target="generate">{{ __('Next: Story') }} →</span>
             <span wire:loading wire:target="generate" class="flex items-center gap-2">
                 <span class="w-4 h-4 border-2 border-slate-950/40 border-t-slate-950 rounded-full animate-spin"></span>

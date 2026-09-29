@@ -226,7 +226,7 @@
     {{-- Voyage landfall: a minimal auto-advance progress line (the countdown moves on after 10s).
          Previous / next live in the deck, like every other scene. --}}
     <div x-show="showMapContinue && lesson.game_type === 'voyage'" class="fixed inset-x-0 bottom-0 z-40 h-1 bg-white/10 pointer-events-none">
-        <div class="h-full bg-amber-400/90" :style="`width: ${autoAdvanceProgress * 100}%`"></div>
+        <div class="h-full bg-primary/90" :style="`width: ${autoAdvanceProgress * 100}%`"></div>
     </div>
 
     {{-- ── Narrator welcome video ───────────────────────────────────────────
@@ -425,7 +425,7 @@
                         <template x-for="(c, i) in chapters" :key="c.index">
                             <button type="button" @click="goToChapter(c.index)"
                                     class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition hover:bg-white/10"
-                                    :class="c.index === _sceneIndex ? 'text-amber-300' : 'text-white/70'">
+                                    :class="c.index === _sceneIndex ? 'text-primary' : 'text-white/70'">
                                 <span class="w-6 shrink-0 font-mono text-xs tabular-nums opacity-70" x-text="String(i + 1).padStart(2, '0')"></span>
                                 <span class="text-sm" :class="c.index === _sceneIndex ? 'font-bold' : 'font-medium'" x-text="c.name"></span>
                             </button>
@@ -573,7 +573,7 @@
                                     <rect x="2.75" y="5.25" width="18.5" height="13.5" rx="2.25"/>
                                     <path stroke-linecap="round" d="M10 10.4a2.4 2.4 0 1 0 0 3.2M18 10.4a2.4 2.4 0 1 0 0 3.2"/>
                                 </svg>
-                                <span x-show="captionsOn" class="absolute bottom-1 left-1/2 h-0.5 w-5 -translate-x-1/2 rounded-full bg-amber-400"></span>
+                                <span x-show="captionsOn" class="absolute bottom-1 left-1/2 h-0.5 w-5 -translate-x-1/2 rounded-full bg-primary"></span>
                             </button>
 
                             {{-- Chapter-list toggle. Hidden on game scenes like the old chapter bar:
@@ -673,7 +673,7 @@
                     {{-- Era / region --}}
                     <p x-show="lesson.era || lesson.region"
                        x-text="[lesson.era, lesson.region].filter(Boolean).join(' · ').toUpperCase()"
-                       class="mb-4 border-l-2 border-amber-400 pl-3 text-xs font-bold tracking-eyebrow text-amber-400
+                       class="mb-4 border-l-2 border-primary pl-3 text-xs font-bold tracking-eyebrow text-primary
                               drop-shadow-[0_1px_8px_rgba(0,0,0,1)]"></p>
 
                     {{-- Title --}}
@@ -722,7 +722,7 @@
                                 @click="startLesson()"
                                 class="group flex items-center gap-3 rounded-full bg-white px-6 py-3 sm:px-8 sm:py-3.5
                                        text-sm sm:text-base font-bold text-slate-950
-                                       transition duration-150 hover:bg-amber-400 hover:shadow-[0_0_64px_rgba(245,158,11,0.5)]
+                                       transition duration-150 hover:brightness-110 hover:shadow-[0_0_64px_rgba(252,211,77,0.5)]
                                        active:scale-95"
                             > 
                                 <svg width="16" height="17" class="w-4 h-4 fill-none stroke-current text-slate-950" viewBox="0 0 16 17" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -754,8 +754,8 @@
             x-transition:enter-end="opacity-100 scale-100"
             class="absolute inset-0 flex items-center justify-center bg-slate-950/92 backdrop-blur-md pointer-events-auto px-5 py-8 overflow-y-auto"
         >
-            <div class="w-full max-w-2xl rounded-3xl border border-amber-500/40 bg-slate-950/95 p-7 sm:p-9 shadow-2xl">
-                <p class="text-amber-400 text-2xs font-semibold uppercase tracking-[0.3em] mb-3">{{ __('Your Challenge') }}</p>
+            <div class="w-full max-w-2xl rounded-3xl border border-primary/40 bg-slate-950/95 p-7 sm:p-9 shadow-2xl">
+                <p class="text-primary text-2xs font-semibold uppercase tracking-[0.3em] mb-3">{{ __('Your Challenge') }}</p>
                 <h2 x-text="lesson.game_title || 'Strategy Challenge'"
                     class="font-history text-2xl sm:text-4xl font-bold text-[#E1EEF4] leading-tight mb-5 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]"></h2>
                 <div x-text="lesson.game_instructions || 'Work in your teams to decide your strategy, then present it to the class.'"
@@ -771,7 +771,7 @@
                     </span>
                 </div>
                 <button @click="beginGame()"
-                    class="mt-7 flex w-full items-center justify-center gap-3 rounded-full bg-amber-500 px-8 py-3.5 text-base font-bold text-slate-950 shadow-[0_0_48px_rgba(245,158,11,0.35)] transition hover:bg-amber-400 active:scale-95 sm:w-auto">
+                    class="mt-7 flex w-full items-center justify-center gap-3 rounded-full bg-primary px-8 py-3.5 text-base font-bold text-slate-950 shadow-[0_0_48px_rgba(252,211,77,0.35)] transition hover:brightness-110 active:scale-95 sm:w-auto">
                     <svg class="h-5 w-5 fill-slate-950" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                     <span>{{ __('Begin the challenge') }}</span>
                 </button>
@@ -786,7 +786,7 @@
             <div class="absolute bottom-6 right-6 flex items-center gap-2">
                 <span
                     x-text="timerDisplay"
-                    :class="timerSeconds <= 120 ? 'text-red-400' : timerSeconds <= 300 ? 'text-amber-400' : 'text-[#E1EEF4]'"
+                    :class="timerSeconds <= 120 ? 'text-red-400' : timerSeconds <= 300 ? 'text-primary' : 'text-[#E1EEF4]'"
                     class="font-history text-5xl font-bold drop-shadow-[0_4px_8px_rgba(0,0,0,0.9)] tabular-nums"
                 ></span>
             </div>
@@ -806,12 +806,12 @@
             class="absolute inset-0 flex items-center justify-center bg-slate-950/70 pointer-events-auto"
         >
             <div class="text-center">
-                <p class="font-history text-8xl font-bold text-amber-400 drop-shadow-[0_8px_16px_rgba(0,0,0,0.9)] animate-pulse">
+                <p class="font-history text-8xl font-bold text-primary drop-shadow-[0_8px_16px_rgba(0,0,0,0.9)] animate-pulse">
                     TIME'S UP
                 </p>
                 <p class="text-slate-300 text-xl mt-4">{{ __('Present your strategy to the class.') }}</p>
                 <button @click="resumeAfterGame()" x-show="canResumeAfterGame"
-                    class="mt-8 inline-flex items-center gap-2 rounded-full border border-amber-500/50 bg-amber-500/10 px-6 py-3 text-sm font-semibold text-amber-300 transition hover:bg-amber-500/20 active:scale-95">
+                    class="mt-8 inline-flex items-center gap-2 rounded-full border border-primary/50 bg-primary/10 px-6 py-3 text-sm font-semibold text-primary transition hover:bg-primary/20 active:scale-95">
                     <span>{{ __('Continue the lesson') }}</span>
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
                 </button>
@@ -826,8 +826,8 @@
             x-transition:enter-end="opacity-100 translate-y-0"
             class="absolute bottom-16 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 pointer-events-none"
         >
-            <div class="rounded-2xl border border-amber-500/40 bg-slate-900/90 backdrop-blur-sm px-6 py-4 shadow-2xl">
-                <p class="text-amber-400 text-sm font-semibold uppercase tracking-widest mb-1">{{ __('New Intelligence') }}</p>
+            <div class="rounded-2xl border border-primary/40 bg-slate-900/90 backdrop-blur-sm px-6 py-4 shadow-2xl">
+                <p class="text-primary text-sm font-semibold uppercase tracking-widest mb-1">{{ __('New Intelligence') }}</p>
                 <p x-text="intelDropMessage" class="text-[#E1EEF4] text-base leading-relaxed"></p>
             </div>
         </div>

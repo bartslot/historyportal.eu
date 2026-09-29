@@ -23,10 +23,10 @@
             <img
                 src="{{ $narrator->portraitUrl() }}"
                 alt="{{ $narrator->name }}"
-                class="h-20 w-20 rounded-2xl object-cover border-2 border-amber-500/30"
+                class="h-20 w-20 rounded-2xl object-cover border-2 border-primary/30"
             >
             <div>
-                <p class="text-xs uppercase tracking-widest text-amber-400">Narrator Studio · Admin</p>
+                <p class="text-xs uppercase tracking-widest text-primary">Narrator Studio · Admin</p>
                 <h1 class="mt-1 text-3xl font-semibold text-slate-100">{{ $narrator->name }}</h1>
                 <p class="mt-1 text-sm text-slate-400">{{ $narrator->description }}</p>
             </div>
@@ -59,7 +59,7 @@
                 <button
                     @click="activeTab = '{{ $tab }}'"
                     :class="activeTab === '{{ $tab }}'
-                        ? 'border-amber-400 text-amber-400'
+                        ? 'border-primary text-primary'
                         : 'border-transparent text-slate-500 hover:text-slate-300'"
                     class="border-b-2 px-4 py-3 text-sm font-medium transition-colors -mb-px"
                 >{{ $label }}</button>
@@ -75,7 +75,7 @@
         <div x-show="activeTab === 'image'" x-cloak class="space-y-6">
             <div class="flex items-start gap-6">
                 <img src="{{ $narrator->portraitUrl() }}" alt="{{ $narrator->name }}"
-                     class="h-32 w-32 rounded-2xl object-cover border-2 border-amber-500/30">
+                     class="h-32 w-32 rounded-2xl object-cover border-2 border-primary/30">
                 <div class="space-y-1">
                     <p class="text-sm font-medium text-slate-200">Current image</p>
                     <p class="text-xs text-slate-500">512 × 512 px recommended. Shown while the ElevenLabs voice speaks.</p>
@@ -86,7 +86,7 @@
                 <div>
                     <label class="block text-sm font-medium text-slate-300 mb-2">Upload new image</label>
                     <input type="file" wire:model="portraitUpload" accept="image/*"
-                           class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-medium file:bg-amber-500/10 file:text-amber-400 hover:file:bg-amber-500/20">
+                           class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-medium file:bg-primary/10 file:text-primary hover:file:bg-primary/20">
                     @error('portraitUpload') <p class="mt-1 text-xs text-error">{{ $message }}</p> @enderror
                 </div>
                 <button type="submit"
@@ -123,9 +123,9 @@
 
             {{-- Current active voice --}}
             <div class="rounded-2xl border border-amber-800/40 bg-amber-950/20 p-5 flex items-center gap-4">
-                <x-icons.microphone class="w-8 h-8 text-amber-400 flex-shrink-0" />
+                <x-icons.microphone class="w-8 h-8 text-primary flex-shrink-0" />
                 <div>
-                    <p class="text-xs text-amber-400 uppercase tracking-widest mb-0.5">Active voice</p>
+                    <p class="text-xs text-primary uppercase tracking-widest mb-0.5">Active voice</p>
                     <p class="text-sm font-medium text-slate-100">
                         {{ $this->voices[$voice_id] ?? $voice_id }}
                         <span class="text-slate-500">· speed {{ $voice_speed }}×</span>
@@ -179,7 +179,7 @@
                                 @foreach([['name', __('Voice')], ['language', __('Language')], ['gender', __('Gender')]] as [$col, $label])
                                     <th wire:click="sortTable('{{ $col }}')" class="cursor-pointer select-none whitespace-nowrap hover:text-slate-200">
                                         {{ $label }}
-                                        @if($sortBy === $col)<span class="text-amber-400">{{ $sortDir === 'asc' ? '▲' : '▼' }}</span>@endif
+                                        @if($sortBy === $col)<span class="text-primary">{{ $sortDir === 'asc' ? '▲' : '▼' }}</span>@endif
                                     </th>
                                 @endforeach
                                 <th class="whitespace-nowrap text-right">{{ __('Used') }}</th>
@@ -195,7 +195,7 @@
                                         @if($row['preview_url'])
                                             <button x-on:click="playPreview('{{ $row['id'] }}', '{{ $row['preview_url'] }}')"
                                                     class="btn btn-ghost btn-xs"
-                                                    :class="{ 'text-amber-400': playingId === '{{ $row['id'] }}' }">
+                                                    :class="{ 'text-primary': playingId === '{{ $row['id'] }}' }">
                                                 <span x-show="playingId !== '{{ $row['id'] }}'">▶</span>
                                                 <span x-show="playingId === '{{ $row['id'] }}'">◼</span>
                                             </button>
@@ -211,7 +211,7 @@
                                     <td x-on:click.stop class="text-right">
                                         @if($previewProvider === 'edge_tts')
                                             {{-- Edge voice: tick = use for ITS language --}}
-                                            <label class="flex items-center justify-end gap-1.5 cursor-pointer text-xs {{ ($narrator->voice_map[$row['lang']] ?? null) === $row['id'] ? 'text-amber-300 font-medium' : 'text-slate-400' }}">
+                                            <label class="flex items-center justify-end gap-1.5 cursor-pointer text-xs {{ ($narrator->voice_map[$row['lang']] ?? null) === $row['id'] ? 'text-primary font-medium' : 'text-slate-400' }}">
                                                 <input type="checkbox" class="checkbox checkbox-xs checkbox-warning"
                                                        wire:click="useVoice('{{ $row['lang'] }}', '{{ $row['id'] }}')"
                                                        @checked(($narrator->voice_map[$row['lang']] ?? null) === $row['id'])>
@@ -243,13 +243,13 @@
                 <div class="grid gap-4 sm:grid-cols-2">
                     <div>
                         <label class="mb-1.5 block text-xs font-medium uppercase tracking-wider text-slate-400">
-                            Speed: <span class="text-amber-400">{{ $previewVoiceSpeed }}×</span>
+                            Speed: <span class="text-primary">{{ $previewVoiceSpeed }}×</span>
                         </label>
                         <input
                             type="range"
                             wire:model.live="previewVoiceSpeed"
                             min="0.5" max="1.5" step="0.05"
-                            class="w-full accent-amber-400"
+                            class="w-full accent-primary"
                         >
                         <div class="flex justify-between text-xs text-slate-600 mt-1">
                             <span>0.5× slow</span><span>1.0× normal</span><span>1.5× fast</span>
@@ -269,7 +269,7 @@
                             wire:model="customPhrase"
                             type="text"
                             class="flex-1 rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm text-slate-100
-                                placeholder-slate-600 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                placeholder-slate-600 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                             placeholder="Type any phrase to hear the Professor say it..."
                         >
                         <button
@@ -299,7 +299,7 @@
                                 </div>
                                 <div class="flex items-center gap-2 flex-shrink-0">
                                     @if($sample->voice_id === $narrator->voice_id && round($sample->voice_speed, 2) === round($narrator->voice_speed, 2))
-                                        <span class="text-xs text-amber-400 font-medium">● Active</span>
+                                        <span class="text-xs text-primary font-medium">● Active</span>
                                     @else
                                         <button
                                             wire:click="applyVoice({{ $sample->id }})"
@@ -374,7 +374,7 @@
                     <label class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400">Full name</label>
                     <input wire:model="name" type="text"
                         class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100
-                                focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                         placeholder="The Professor">
                     @error('name') <p class="mt-1 text-sm text-error">{{ $message }}</p> @enderror
                 </div>
@@ -387,7 +387,7 @@
                         </label>
                         <input wire:model.live="short_name" type="text"
                             class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100
-                                    focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                    focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                             placeholder="The Professor">
                         <p class="mt-1 text-xs text-slate-600">"I am <em>{{ $short_name ?: $name }}</em>"</p>
                     </div>
@@ -397,7 +397,7 @@
                         </label>
                         <input wire:model.live="avatar_title" type="text"
                             class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100
-                                    focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                    focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                             placeholder="History Professor">
                         <p class="mt-1 text-xs text-slate-600">"a <em>{{ $avatar_title ?: 'Professor' }}</em> here at…"</p>
                     </div>
@@ -410,7 +410,7 @@
                     </label>
                     <textarea wire:model="description" rows="2"
                             class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100
-                                    resize-none focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"></textarea>
+                                    resize-none focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"></textarea>
                     @error('description') <p class="mt-1 text-sm text-error">{{ $message }}</p> @enderror
                 </div>
 
@@ -419,7 +419,7 @@
                     <label class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400">Subject</label>
                     <select wire:model="subject"
                             class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100
-                                focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500">
+                                focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary">
                         <option value="all">All subjects</option>
                         <option value="history">History</option>
                         <option value="science">Science</option>
@@ -433,7 +433,7 @@
                     <label class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400">Voice provider</label>
                     <select wire:model.live="voice_provider"
                             class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100
-                                focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500">
+                                focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary">
                         <option value="elevenlabs">ElevenLabs</option>
                         <option value="edge_tts">edge-tts (free)</option>
                         <option value="pocket_tts">Pocket TTS</option>
@@ -446,7 +446,7 @@
                     <label class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400">Voice ID</label>
                     <input wire:model="voice_id" type="text"
                         class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100
-                                focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                         placeholder="e.g. ElevenLabs voice ID or edge-tts locale">
                     <p class="mt-1.5 text-xs text-slate-600">Use the Voice Studio tab to audition and select a voice.</p>
                 </div>
@@ -454,11 +454,11 @@
                 {{-- Speed --}}
                 <div>
                     <label class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400">
-                        Narration speed: <span class="text-amber-400">{{ $voice_speed }}×</span>
+                        Narration speed: <span class="text-primary">{{ $voice_speed }}×</span>
                     </label>
                     <input type="range" wire:model.live="voice_speed"
                         min="0.5" max="1.5" step="0.05"
-                        class="w-full accent-amber-400">
+                        class="w-full accent-primary">
                     <div class="flex justify-between text-xs text-slate-600 mt-1">
                         <span>0.5× (slow)</span><span>0.9× (professor)</span><span>1.5× (fast)</span>
                     </div>
@@ -467,7 +467,7 @@
                 {{-- Active toggle --}}
                 <div class="flex items-center gap-3">
                     <input type="checkbox" wire:model="is_active" id="is_active"
-                        class="rounded border-slate-700 bg-slate-800 text-amber-500 focus:ring-amber-500">
+                        class="rounded border-slate-700 bg-slate-800 text-primary focus:ring-primary">
                     <label for="is_active" class="text-sm text-slate-300">Narrator is active (visible to teachers)</label>
                 </div>
 

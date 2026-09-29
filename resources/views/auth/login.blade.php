@@ -33,7 +33,7 @@
                     required
                     value="{{ old('email') }}"
                     class="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500
-                           focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 transition-colors"
+                           focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
                     placeholder="you@school.edu"
                 >
             </div>
@@ -50,7 +50,7 @@
                     autocomplete="current-password"
                     required
                     class="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500
-                           focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 transition-colors"
+                           focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
                     placeholder="••••••••"
                 >
             </div>
@@ -59,10 +59,10 @@
             <div class="flex items-center justify-between gap-2">
                 <div class="flex items-center gap-2">
                     <input id="remember" name="remember" type="checkbox"
-                           class="rounded border-slate-700 bg-slate-800 text-amber-500 focus:ring-amber-500">
+                           class="rounded border-slate-700 bg-slate-800 text-primary focus:ring-primary">
                     <label for="remember" class="text-sm text-slate-400">{{ __('Keep me signed in') }}</label>
                 </div>
-                <a href="{{ route('password.request') }}" class="text-sm text-amber-400 hover:underline">
+                <a href="{{ route('password.request') }}" class="text-sm text-primary hover:underline">
                     {{ __('Forgot password?') }}
                 </a>
             </div>
@@ -78,7 +78,7 @@
 
         <p class="mt-5 text-center text-xs text-slate-400">
             {{ __('Students: use the') }}
-            <a href="#" class="text-amber-400 hover:underline">History Portal app</a>
+            <a href="#" class="text-primary hover:underline">History Portal app</a>
             {{ __('to access your lessons.') }}
         </p>
     </div>

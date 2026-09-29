@@ -36,7 +36,7 @@
         {{-- The spotlight ring. Its huge spread shadow dims everything except the element inside.
              That shadow is a class, not an inline style: Alpine's :style binding replaces the whole
              style attribute on every reposition, which would wipe an inline shadow after one move. --}}
-        <div class="pointer-events-none fixed z-[61] rounded-xl ring-2 ring-amber-400/90 shadow-[0_0_0_9999px_rgba(2,6,23,0.85)] transition-all duration-300 ease-move motion-reduce:transition-none"
+        <div class="pointer-events-none fixed z-[61] rounded-xl ring-2 ring-primary/90 shadow-[0_0_0_9999px_rgba(2,6,23,0.85)] transition-all duration-300 ease-move motion-reduce:transition-none"
              :style="spotlightStyle"
              aria-hidden="true"></div>
 
@@ -47,7 +47,7 @@
             aria-modal="true"
             :aria-labelledby="`welcome-tour-title-${index}`"
             x-on:keydown="trapFocus($event)"
-            class="lp-bg-card fixed z-[62] border border-amber-500/30 bg-base-200 shadow-2xl outline-none transition-[top,left,opacity] duration-200 ease-enter motion-reduce:transition-none"
+            class="lp-bg-card fixed z-[62] border border-primary/30 bg-base-200 shadow-2xl outline-none transition-[top,left,opacity] duration-200 ease-enter motion-reduce:transition-none"
             :class="[
                 compact
                     ? 'inset-x-0 bottom-0 max-h-[85vh] w-full overflow-y-auto rounded-t-3xl border-b-0 p-6 pb-8'
@@ -59,7 +59,7 @@
             {{-- Pointer towards the spotlighted element. Hidden when the card is centred, pinned as
                  a sheet, or clamped so far that the arrow would miss its target. --}}
             <div x-show="!compact && arrow !== null" x-cloak aria-hidden="true"
-                 class="absolute h-3 w-3 rotate-45 border border-amber-500/30 bg-base-200"
+                 class="absolute h-3 w-3 rotate-45 border border-primary/30 bg-base-200"
                  :class="{
                      'bottom-[-0.4rem] border-l-0 border-t-0': placement === 'top',
                      'top-[-0.4rem] border-b-0 border-r-0': placement === 'bottom',
@@ -75,7 +75,7 @@
                 </svg>
             </button>
 
-            <p class="pr-8 text-xs font-medium uppercase tracking-eyebrow text-amber-400">
+            <p class="pr-8 text-xs font-medium uppercase tracking-eyebrow text-primary">
                 {{ __('Getting started') }}
                 <span class="ml-2 text-slate-500" aria-live="polite"
                       x-text="`${index + 1} / ${total}`"></span>
@@ -83,7 +83,7 @@
 
             @foreach ($steps as $index => $step)
                 <div x-show="index === {{ $index }}" x-cloak class="mt-5">
-                    <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-amber-400">
+                    <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-primary">
                         <x-dynamic-component :component="'icons.'.$step['icon']" class="h-5 w-5" />
                     </span>
 
@@ -97,7 +97,7 @@
                         <ul class="mt-3 space-y-1.5">
                             @foreach ($step['bullets'] as $bullet)
                                 <li class="flex items-start gap-2.5 text-sm text-slate-400">
-                                    <span class="mt-[0.45rem] h-1 w-1 shrink-0 rounded-full bg-amber-400"></span>
+                                    <span class="mt-[0.45rem] h-1 w-1 shrink-0 rounded-full bg-primary"></span>
                                     <span>{{ $bullet }}</span>
                                 </li>
                             @endforeach
@@ -133,7 +133,7 @@
                                 :aria-selected="index === {{ $dotIndex }}"
                                 aria-label="{{ $dotStep['title'] }}"
                                 class="h-1.5 rounded-full transition-all duration-200 ease-enter motion-reduce:transition-none"
-                                :class="index === {{ $dotIndex }} ? 'w-5 bg-amber-400' : 'w-1.5 bg-slate-700 hover:bg-slate-600'"></button>
+                                :class="index === {{ $dotIndex }} ? 'w-5 bg-primary' : 'w-1.5 bg-slate-700 hover:bg-slate-600'"></button>
                     @endforeach
                 </div>
 

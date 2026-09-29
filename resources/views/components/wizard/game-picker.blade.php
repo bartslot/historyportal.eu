@@ -34,7 +34,7 @@
                         wire:click="$set('game_split_count', {{ $i }})"
                         @class([
                             'flex-1 py-2 rounded-lg border-2 text-sm font-semibold transition-all',
-                            'border-amber-400 bg-amber-500/10 text-amber-300' => $splitCount === $i,
+                            'border-primary bg-primary/10 text-primary' => $splitCount === $i,
                             'border-slate-600 text-slate-300 hover:border-slate-400' => $splitCount !== $i,
                         ])>{{ $i }}</button>
             @endfor

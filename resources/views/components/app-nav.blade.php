@@ -120,7 +120,7 @@
                                 <div class="dropdown" @mouseenter="move($el)">
                                     <div tabindex="0" role="button"
                                          @isset($item['tour']) data-tour="{{ $item['tour'] }}" @endisset
-                                         class="text-sm flex cursor-pointer items-center gap-1.5 whitespace-nowrap transition-colors {{ $active ? 'text-amber-400' : 'text-slate-200 hover:text-white' }}">
+                                         class="text-sm flex cursor-pointer items-center gap-1.5 whitespace-nowrap transition-colors {{ $active ? 'text-primary' : 'text-slate-200 hover:text-white' }}">
                                         <span>{{ __($item['label']) }}</span>
                                         <x-icons.chevron-down class="h-3.5 w-3.5 opacity-60" />
                                     </div>
@@ -128,7 +128,7 @@
                                         @foreach ($item['children'] as $child)
                                             <li>
                                                 <a href="{{ route($child['route']) }}"
-                                                   class="text-sm {{ request()->routeIs($child['route']) ? 'text-amber-400' : 'text-slate-300' }}">
+                                                   class="text-sm {{ request()->routeIs($child['route']) ? 'text-primary' : 'text-slate-300' }}">
                                                     {{ __($child['label']) }}
                                                 </a>
                                             </li>
@@ -142,10 +142,10 @@
                                 <a href="{{ route($item['route']) }}"
                                    @isset($item['tour']) data-tour="{{ $item['tour'] }}" @endisset
                                    @mouseenter="move($el)"
-                                   class="text-sm flex items-center gap-1.5 whitespace-nowrap transition-colors {{ $active ? 'text-amber-400' : 'text-slate-200 hover:text-white' }}">
+                                   class="text-sm flex items-center gap-1.5 whitespace-nowrap transition-colors {{ $active ? 'text-primary' : 'text-slate-200 hover:text-white' }}">
                                     <span>{{ __($item['label']) }}</span>
                                     @if (!empty($item['badge']))
-                                        <span class="text-2xs bg-amber-400 text-slate-900 px-1.5 py-0.5 rounded font-semibold">
+                                        <span class="text-2xs bg-primary text-slate-900 px-1.5 py-0.5 rounded font-semibold">
                                             {{ $item['badge'] }}
                                         </span>
                                     @endif
@@ -163,7 +163,7 @@
                     <div class="dropdown dropdown-end">
                         <div tabindex="0" role="button"
                              class="flex items-center gap-2 rounded-full pl-1 pr-3 py-1 transition-colors hover:bg-slate-800/60 cursor-pointer">
-                            <span class="flex h-8 w-8 items-center justify-center rounded-full bg-amber-400 text-xs font-semibold text-slate-900">
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-slate-900">
                                 {{ $initials }}
                             </span>
                             <svg class="h-3.5 w-3.5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -180,7 +180,7 @@
                                         <div class="truncate text-xs text-slate-400">{{ $user->email }}</div>
                                     </div>
                                     @if ($roleLabel)
-                                        <span class="shrink-0 rounded bg-amber-400/10 px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-wide text-amber-400">
+                                        <span class="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-wide text-primary">
                                             {{ __($roleLabel) }}
                                         </span>
                                     @endif
@@ -196,7 +196,7 @@
                                     @php $active = request()->routeIs(...(array) $item['pattern']); @endphp
                                     <li>
                                         <a href="{{ route($item['route']) }}"
-                                           class="text-sm {{ $active ? 'text-amber-400' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
+                                           class="text-sm {{ $active ? 'text-primary' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
                                             {{ __($item['label']) }}
                                         </a>
                                     </li>
@@ -253,10 +253,10 @@
                                 @php $active = request()->routeIs(...(array) $item['pattern']); @endphp
                                 <li>
                                     <a href="{{ route($item['route']) }}"
-                                       class="text-sm {{ $active ? 'text-amber-400' : 'text-slate-300 hover:text-white' }}">
+                                       class="text-sm {{ $active ? 'text-primary' : 'text-slate-300 hover:text-white' }}">
                                         {{ __($item['label']) }}
                                         @if (!empty($item['badge']))
-                                            <span class="text-2xs bg-amber-400 text-slate-900 px-1.5 py-0.5 rounded font-semibold">
+                                            <span class="text-2xs bg-primary text-slate-900 px-1.5 py-0.5 rounded font-semibold">
                                                 {{ $item['badge'] }}
                                             </span>
                                         @endif
@@ -266,7 +266,7 @@
                         </ul>
                     </div>
                 @else
-                    <a href="{{ route('login') }}" class="text-sm text-slate-300 transition-colors hover:text-amber-400">
+                    <a href="{{ route('login') }}" class="text-sm text-slate-300 transition-colors hover:text-primary">
                         {{ __('Sign in') }}
                     </a>
                 @endauth

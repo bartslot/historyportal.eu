@@ -28,7 +28,7 @@
 
     <main class="mx-auto max-w-4xl px-4 pb-16 pt-32 sm:px-6">
         <nav class="text-xs text-slate-500" aria-label="{{ __('Breadcrumb') }}">
-            <a href="{{ Seo::url('lessons') }}" class="hover:text-amber-300">{{ __('Lesson library') }}</a>
+            <a href="{{ Seo::url('lessons') }}" class="hover:text-primary">{{ __('Lesson library') }}</a>
             <span class="mx-2">/</span>
             <span class="text-slate-400">{{ $heading }}</span>
         </nav>
@@ -99,7 +99,7 @@
                     @foreach ($related as $other)
                         <li>
                             <a href="{{ Seo::url('lesson', ['slug' => Seo::lessonSlug($other)]) }}"
-                               class="block rounded-xl border border-slate-800 bg-slate-900/40 p-4 text-sm text-slate-200 transition hover:border-amber-500/40 hover:text-amber-300">
+                               class="block rounded-xl border border-slate-800 bg-slate-900/40 p-4 text-sm text-slate-200 transition hover:border-primary/40 hover:text-primary">
                                 {{ $other->title ?: $other->topic }}
                             </a>
                         </li>

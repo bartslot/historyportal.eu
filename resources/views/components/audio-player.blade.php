@@ -33,9 +33,9 @@
             :disabled="!ready"
             :title="playing ? 'Pause' : 'Play'"
             class="flex-shrink-0 flex h-9 w-9 items-center justify-center rounded-full border transition-all
-                   focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-slate-900"
+                   focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-slate-900"
             :class="ready
-                ? 'border-amber-500 bg-amber-500/10 hover:bg-amber-500/25 text-amber-400'
+                ? 'border-primary bg-primary/10 hover:bg-primary/25 text-primary'
                 : 'border-slate-700 text-slate-600 cursor-not-allowed'"
         >
             {{-- Loading spinner --}}
@@ -64,7 +64,7 @@
             ></div>
             <div
                 x-show="ready"
-                class="pointer-events-none absolute inset-y-1 w-[2px] rounded-full bg-amber-300/90 shadow-[0_0_8px_rgba(251,191,36,0.65)] transition-[left] duration-75 ease-linear"
+                class="pointer-events-none absolute inset-y-1 w-[2px] rounded-full bg-primary/90 shadow-[0_0_8px_rgba(252,211,77,0.65)] transition-[left] duration-75 ease-linear"
                 :style="`left: calc(${progressPct}% - 1px)`"
             ></div>
         </div>
@@ -82,7 +82,7 @@
             <template x-for="(word, idx) in words" :key="`${word}-${idx}`">
                 <span
                     class="transition-opacity duration-100"
-                    :class="idx === activeWordIndex ? 'opacity-100 text-amber-300' : 'opacity-80 text-slate-300'"
+                    :class="idx === activeWordIndex ? 'opacity-100 text-primary' : 'opacity-80 text-slate-300'"
                     x-text="`${word} `"
                 ></span>
             </template>

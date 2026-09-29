@@ -21,7 +21,7 @@
                 {{-- The shared carousel — same drag/swipe/arrows as the landing shelves. It brings
                      its own arrow buttons, so the hand-rolled scroll-by-a-page pair that used to
                      live here is gone. --}}
-                <div class="relative overflow-hidden rounded-[2rem]">
+                <div class="relative">
                     <x-carousel aria-label="{{ __($shelf['label']) }}">
                         @foreach($shelf['lessons'] as $lesson)
                             @php
@@ -35,7 +35,7 @@
                                     \App\Enums\LessonStatus::Published,
                                     \App\Enums\LessonStatus::Previewable,
                                     \App\Enums\LessonStatus::Configuring => 'bg-success',
-                                    default => 'bg-amber-400',
+                                    default => 'bg-primary',
                                 };
                             @endphp
 
@@ -45,7 +45,7 @@
                             <a href="{{ $entryStep
                                     ? route('teacher.lessons.wizard', ['lesson' => $lesson->id, 'step' => $entryStep])
                                     : route('teacher.lessons.show', $lesson) }}"
-                               class="carousel-cell group relative mx-2 block aspect-2/3 w-52 overflow-hidden rounded-xl border border-slate-800 bg-slate-900 transition duration-300 hover:-translate-y-1 hover:border-amber-500/40 hover:shadow-[0_18px_40px_rgba(0,0,0,0.5)] sm:w-[15rem]">
+                               class="carousel-cell group relative mx-2 block aspect-2/3 w-52 overflow-hidden rounded-xl border border-slate-800 bg-slate-900 transition duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_18px_40px_rgba(0,0,0,0.5)] sm:w-[15rem]">
                                 @if($cardImage)
                                     <img
                                         src="{{ $cardImage }}"
@@ -98,7 +98,7 @@
             {{ __('Take a copy to change one for your own class. The original stays with its author.') }}
         </p>
 
-        <div class="relative overflow-hidden rounded-[2rem]">
+        <div class="relative">
             <x-carousel aria-label="{{ __('Shared by other teachers') }}">
                 @foreach($sharedLessons as $lesson)
                     <div class="group relative block aspect-[2/3] w-40 shrink-0 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 sm:w-44">

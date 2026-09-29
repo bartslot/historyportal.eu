@@ -503,8 +503,8 @@
         box-shadow: 0 4px 24px rgba(0,0,0,0.55), 0 1px 4px rgba(0,0,0,0.35);
     }
     .card:hover {
-        border-color: rgba(245,158,11,0.28);
-        box-shadow: 0 4px 24px rgba(0,0,0,0.55), 0 0 32px rgba(245,158,11,0.18);
+        border-color: rgba(252,211,77,0.28);
+        box-shadow: 0 4px 24px rgba(0,0,0,0.55), 0 0 32px rgba(252,211,77,0.18);
     }
 
     /* The .btn-primary and .btn-ghost overrides that used to sit here — an amber gradient, an
@@ -519,8 +519,8 @@
 
     /* Badge / label — Netflix-style category chip */
     .badge-primary {
-        background: rgba(245,158,11,0.12);
-        border: 1px solid rgba(245,158,11,0.28);
+        background: rgba(252,211,77,0.12);
+        border: 1px solid rgba(252,211,77,0.28);
         color: var(--color-link);
         font-size: 0.68rem;
         font-weight: 500;
@@ -573,8 +573,8 @@
     }
 
     .input:focus, .select:focus, .textarea:focus {
-        border-color: rgba(245,158,11,0.55);
-        box-shadow: 0 0 0 2px rgba(245,158,11,0.18);
+        border-color: rgba(252,211,77,0.55);
+        box-shadow: 0 0 0 2px rgba(252,211,77,0.18);
         outline: none;
     }
 
@@ -595,11 +595,11 @@
 
     /* Progress: amber fill with glow */
     .progress::-webkit-progress-value {
-        background: linear-gradient(90deg, #f59e0b, var(--color-link));
-        box-shadow: 0 0 8px rgba(245,158,11,0.5);
+        background: linear-gradient(90deg, #fcd34d, var(--color-link));
+        box-shadow: 0 0 8px rgba(252,211,77,0.5);
     }
     .progress::-moz-progress-bar {
-        background: linear-gradient(90deg, #f59e0b, var(--color-link));
+        background: linear-gradient(90deg, #fcd34d, var(--color-link));
     }
     .tabs {
         @apply border-b border-slate-700 px-2;
@@ -617,7 +617,7 @@
     /* Alert overrides */
     .alert-info    { background: rgba(56,189,248,0.10); border-color: rgba(56,189,248,0.25); }
     .alert-success { background: rgba(52,211,153,0.10); border-color: rgba(52,211,153,0.25); }
-    .alert-warning { background: rgba(245,158,11,0.10); border-color: rgba(245,158,11,0.30); }
+    .alert-warning { background: rgba(252,211,77,0.10); border-color: rgba(252,211,77,0.30); }
     .alert-error   { background: rgba(239,68,68,0.10);  border-color: rgba(239,68,68,0.25); }
 
     /* Chat bubble size adjustment for tighter bubbles */
@@ -787,7 +787,7 @@
 }
 
 .lp-text-shimmer {
-    background: linear-gradient(90deg, #fde68a 0%, #f59e0b 40%, #fde68a 80%);
+    background: linear-gradient(90deg, #fde68a 0%, #fcd34d 40%, #fde68a 80%);
     background-size: 200% auto;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -958,6 +958,15 @@
    time and the arrows stayed white on every page. Unlayered they win on
    specificity (.js-disney-carousel .flickity-button beats .flickity-button),
    which is safe here because no Tailwind utility targets Flickity's classes. */
+/* Room for a card's hover lift and shadow. Flickity sizes the viewport to the tallest cell and
+   clips at that edge, so a card rising 4px lost its top and its shadow was cut flat. Content-box
+   so the padding adds to Flickity's inline height instead of eating it; the slider (absolute,
+   top:auto) sits below the top padding by itself. */
+.js-disney-carousel .flickity-viewport {
+    box-sizing: content-box;
+    padding-block: 1rem 2rem;
+}
+
 .js-disney-carousel .flickity-button {
     width: 2.35rem;
     height: 2.35rem;

@@ -43,14 +43,14 @@
             x-bind:data-thumb-selected="selected === {{ $scene->id }} ? '' : null"
             x-bind:aria-current="selected === {{ $scene->id }} ? 'true' : null"
             x-bind:class="selected === {{ $scene->id }}
-                ? 'ring-2 ring-amber-400 ring-offset-2 ring-offset-slate-900'
+                ? 'ring-2 ring-primary ring-offset-2 ring-offset-slate-900'
                 : '{{ $scene->status === 'failed' ? 'ring-1 ring-error/50' : 'ring-1 ring-slate-700/50 hover:ring-slate-500' }}'"
         @endif
         @class([
             'group relative shrink-0 aspect-video rounded-xl overflow-hidden transition-all',
             'w-full' => $wide,
             'w-32' => ! $wide,
-            'ring-2 ring-amber-400 ring-offset-2 ring-offset-slate-900'        => $selected && ! $clientSwitch,
+            'ring-2 ring-primary ring-offset-2 ring-offset-slate-900'        => $selected && ! $clientSwitch,
             'ring-1 ring-slate-700/50 hover:ring-slate-500'                    => ! $clientSwitch && ! $selected && $scene->status !== 'failed',
             'ring-1 ring-error/50'                                          => ! $clientSwitch && $scene->status === 'failed',
         ])>

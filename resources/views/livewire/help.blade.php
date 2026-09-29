@@ -18,7 +18,7 @@
 >
     <header class="flex flex-col gap-6 border-b border-slate-800 pb-8 sm:flex-row sm:items-end sm:justify-between">
         <div>
-            <p class="text-xs font-medium uppercase tracking-eyebrow text-amber-400">{{ __('Help') }}</p>
+            <p class="text-xs font-medium uppercase tracking-eyebrow text-primary">{{ __('Help') }}</p>
             <h1 class="mt-2 font-history text-4xl font-light tracking-tight text-slate-100 sm:text-5xl">
                 {{ __('How the portal works') }}
             </h1>
@@ -28,7 +28,7 @@
         </div>
 
         @if ($this->canRunTour())
-            <button type="button" wire:click="startTutorial" class="btn btn-outline btn-sm shrink-0 border-slate-700 text-slate-300 hover:border-amber-500/60 hover:text-amber-300">
+            <button type="button" wire:click="startTutorial" class="btn btn-outline btn-sm shrink-0 border-slate-700 text-slate-300 hover:border-primary/60 hover:text-primary">
                 <x-icons.play class="h-4 w-4" />
                 {{ $this->tourResumable() ? __('Resume the welcome tour') : __('Replay the welcome tour') }}
             </button>
@@ -47,7 +47,7 @@
             wire:model.live.debounce.250ms="search"
             placeholder="{{ __('Search help, for example: lesson code, results, class') }}"
             autocomplete="off"
-            class="w-full rounded-xl border border-slate-700 bg-slate-900 py-3 pl-11 pr-11 text-sm text-slate-100 placeholder:text-slate-500 focus:border-amber-500/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40"
+            class="w-full rounded-xl border border-slate-700 bg-slate-900 py-3 pl-11 pr-11 text-sm text-slate-100 placeholder:text-slate-500 focus:border-primary/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
         >
         @if ($searching)
             <button type="button" wire:click="clearSearch" aria-label="{{ __('Clear search') }}"
@@ -65,12 +65,12 @@
             <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 @foreach ($shortcuts as $shortcut)
                     <a href="{{ route($shortcut['route']) }}"
-                       class="group flex items-start gap-3 rounded-xl border border-slate-800 bg-slate-900/40 p-4 transition hover:-translate-y-0.5 hover:border-amber-500/30 hover:bg-slate-900/70">
-                        <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-amber-400">
+                       class="group flex items-start gap-3 rounded-xl border border-slate-800 bg-slate-900/40 p-4 transition hover:-translate-y-0.5 hover:border-primary/30 hover:bg-slate-900/70">
+                        <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-primary">
                             <x-dynamic-component :component="'icons.'.$shortcut['icon']" class="h-4 w-4" />
                         </span>
                         <span class="min-w-0">
-                            <span class="block text-sm font-medium text-slate-100 group-hover:text-amber-300">{{ $shortcut['label'] }}</span>
+                            <span class="block text-sm font-medium text-slate-100 group-hover:text-primary">{{ $shortcut['label'] }}</span>
                             <span class="mt-0.5 block text-xs leading-relaxed text-slate-500">{{ $shortcut['description'] }}</span>
                         </span>
                     </a>
@@ -99,7 +99,7 @@
                 @forelse ($topics as $topic)
                     <li>
                         <a href="#{{ $topic['id'] }}"
-                           class="flex items-start gap-2.5 rounded-lg px-2 py-2 text-sm text-slate-400 transition hover:bg-slate-900/60 hover:text-amber-300">
+                           class="flex items-start gap-2.5 rounded-lg px-2 py-2 text-sm text-slate-400 transition hover:bg-slate-900/60 hover:text-primary">
                             <x-dynamic-component :component="'icons.'.$topic['icon']" class="mt-0.5 h-4 w-4 shrink-0" />
                             <span>{{ $topic['title'] }}</span>
                             @if (($topic['audience'] ?? 'all') === 'admin')
@@ -118,7 +118,7 @@
                 @php $sections = $topic['matched_sections'] ?? $topic['sections']; @endphp
                 <section id="{{ $topic['id'] }}" class="scroll-mt-24" aria-labelledby="{{ $topic['id'] }}-heading">
                     <div class="flex items-start gap-3">
-                        <span class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-amber-400">
+                        <span class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-primary">
                             <x-dynamic-component :component="'icons.'.$topic['icon']" class="h-5 w-5" />
                         </span>
                         <div class="min-w-0">
@@ -145,7 +145,7 @@
                                     <ul class="mt-3 space-y-2">
                                         @foreach ($section['steps'] as $stepText)
                                             <li class="flex items-start gap-2.5 text-sm leading-relaxed text-slate-400">
-                                                <span class="mt-[0.45rem] h-1 w-1 shrink-0 rounded-full bg-amber-400/70"></span>
+                                                <span class="mt-[0.45rem] h-1 w-1 shrink-0 rounded-full bg-primary/70"></span>
                                                 <span>{{ $stepText }}</span>
                                             </li>
                                         @endforeach

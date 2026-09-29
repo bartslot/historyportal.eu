@@ -35,7 +35,7 @@
                     autofocus
                     value="{{ old('email') }}"
                     class="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500
-                           focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 transition-colors"
+                           focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
                     placeholder="you@school.edu"
                 >
             </div>
@@ -49,7 +49,7 @@
         </form>
 
         <p class="mt-5 text-center text-xs text-slate-400">
-            <a href="{{ route('login') }}" class="text-amber-400 hover:underline">{{ __('Back to sign in') }}</a>
+            <a href="{{ route('login') }}" class="text-primary hover:underline">{{ __('Back to sign in') }}</a>
         </p>
     </div>
 

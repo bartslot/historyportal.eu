@@ -4,7 +4,7 @@
     $key = $kind === 'game' ? ($gameType ?? 'quiz') : $kind;
     // Per-type accent colour (the icons inherit currentColor).
     $tint = [
-        'narration' => 'text-amber-300', 'quiz' => 'text-amber-300', 'strategy' => 'text-teal-300',
+        'narration' => 'text-primary', 'quiz' => 'text-primary', 'strategy' => 'text-teal-300',
         'debate' => 'text-teal-300', 'story_game' => 'text-teal-300', 'branch' => 'text-teal-300',
         'map' => 'text-sky-300', 'voyage' => 'text-indigo-300', 'gallery' => 'text-violet-300',
         'video' => 'text-indigo-300',
