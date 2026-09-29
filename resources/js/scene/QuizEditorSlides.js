@@ -21,6 +21,11 @@ import { LETTERS, LETTER_CLASSES, LETTER_CHIP, SCRIM, CARD_STILL } from './QuizO
 const CHEVRON_LEFT = 'M15.75 19.5 8.25 12l7.5-7.5'
 const CHEVRON_RIGHT = 'm8.25 4.5 7.5 7.5-7.5 7.5'
 
+// The slide is laid out at one fixed 16:9 size and scaled to the stage (like the title screen's
+// frame), so four answers always fit, however short the stage is.
+const SLIDE_W = 960
+const SLIDE_H = 540
+
 const EDITABLE = 'rounded-md outline-none focus:ring-2 focus:ring-primary/60 cursor-text'
 
 const escapeHtml = (s) =>
@@ -71,7 +76,21 @@ export class QuizEditorSlides {
     this._render()
   }
 
+  /** Scale the fixed-size slide to the stage, whatever size the stage is. */
+  _fit() {
+    const slide = this.host.querySelector('[data-slide]')
+    if (!slide) return
+    const scale = Math.min(this.host.clientWidth / SLIDE_W, this.host.clientHeight / SLIDE_H) || 1
+    slide.style.transform = `scale(${scale})`
+    if (!this._resize) {
+      this._resize = new ResizeObserver(() => this._fit())
+      this._resize.observe(this.host)
+    }
+  }
+
   hide() {
+    this._resize?.disconnect()
+    this._resize = null
     this._questions = []
     this._pending = null
     this.host.innerHTML = ''
@@ -105,7 +124,7 @@ export class QuizEditorSlides {
         ? `<span class="badge badge-success badge-sm absolute -top-2.5 right-3 font-semibold">${escapeHtml(t('Correct answer'))}</span>`
         : ''
       return `
-        <div data-row="${i}" class="${tone} relative flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-base font-medium @lg:gap-4 @lg:px-4 @lg:py-3 @lg:text-xl">
+        <div data-row="${i}" class="${tone} relative flex w-full items-center gap-3 rounded-lg border px-3 py-2 text-lg font-medium">
           <span class="${LETTER_CLASSES[i]} ${LETTER_CHIP}">${LETTERS[i]}</span>
           <span data-edit="option" data-opt="${i}" ${isCorrect ? 'data-correct' : ''} contenteditable="plaintext-only" spellcheck="true"
                 class="${EDITABLE} min-w-0 flex-1 px-1">${escapeHtml(opt)}</span>
@@ -118,18 +137,22 @@ export class QuizEditorSlides {
               class="${i === this._index ? 'bg-primary' : 'bg-base-content/25 hover:bg-base-content/50'} h-2 w-2 rounded-full"></button>`).join('')
 
     this.host.innerHTML = `
-      <div class="${SCRIM} @container">
-        <div class="${CARD_STILL} relative mx-3 max-h-[calc(100%-1.5rem)] w-full max-w-3xl overflow-y-auto px-14 py-6 @lg:py-10">
-          <div data-edit="question" contenteditable="plaintext-only" spellcheck="true"
-               class="${EDITABLE} mb-6 text-center text-xl leading-snug font-medium @lg:mb-8 @lg:text-4xl">${escapeHtml(q.question)}</div>
-          <div class="flex flex-col gap-2.5">${rows}</div>
-          <div class="mt-6 flex items-center justify-center gap-1.5">${dots}</div>
-          <div class="mt-2 text-center text-sm text-base-content/60">${this._index + 1} / ${total}</div>
+      <div class="${SCRIM} overflow-hidden">
+        <div data-slide class="relative flex shrink-0 items-center justify-center"
+             style="width: ${SLIDE_W}px; height: ${SLIDE_H}px">
+          <div class="${CARD_STILL} relative max-h-[calc(100%-2rem)] w-[46rem] overflow-y-auto px-16 py-8">
+            <div data-edit="question" contenteditable="plaintext-only" spellcheck="true"
+                 class="${EDITABLE} mb-6 text-center text-3xl leading-snug font-medium">${escapeHtml(q.question)}</div>
+            <div class="flex flex-col gap-2.5">${rows}</div>
+            <div class="mt-5 flex items-center justify-center gap-1.5">${dots}</div>
+            <div class="mt-1.5 text-center text-sm text-base-content/60">${this._index + 1} / ${total}</div>
+          </div>
+          ${arrow(-1, CHEVRON_LEFT, t('Previous question'), this._index === 0)}
+          ${arrow(1, CHEVRON_RIGHT, t('Next question'), this._index === total - 1)}
         </div>
-        ${arrow(-1, CHEVRON_LEFT, t('Previous question'), this._index === 0)}
-        ${arrow(1, CHEVRON_RIGHT, t('Next question'), this._index === total - 1)}
       </div>`
     this.host.style.pointerEvents = 'auto'
+    this._fit()
     this._wire(q)
   }
 
