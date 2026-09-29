@@ -511,6 +511,7 @@ class Step3SceneConfigurator extends Component
                 $payload[$nullable] = null;
             }
         }
+        $payload = $this->withStoredDiorama($payload, $scene);
         $scriptDirty = ($scene->script_segment ?? '') !== ($payload['script_segment'] ?? '');
 
         // Detect changes that should re-paint the 3D stage so the canvas updates.
@@ -536,6 +537,27 @@ class Step3SceneConfigurator extends Component
         if ($stageDirty) {
             $this->selectSceneInternal($scene->id);
         }
+    }
+
+    /**
+     * The diorama block has its own writers (diorama:import, agents, JEV), so the page's snapshot
+     * of it is stale by design: always keep what is stored, never what the page loaded.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function withStoredDiorama(array $payload, Scene $scene): array
+    {
+        if (! array_key_exists('config', $payload) || (! is_array($payload['config']) && ! $scene->isDiorama())) {
+            return $payload;
+        }
+        $config = is_array($payload['config']) ? $payload['config'] : [];
+        unset($config['diorama']);
+        if ($scene->isDiorama()) {
+            $config['diorama'] = $scene->config['diorama'];
+        }
+
+        return [...$payload, 'config' => $config];
     }
 
     // ── Map block: territory picker ──────────────────────────────────────
