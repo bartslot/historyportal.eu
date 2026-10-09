@@ -122,10 +122,6 @@ Route::get('/lesson/{lessonCode}', LessonPlayerController::class)->name('lesson.
 // demonstrating it. Its own page so the landing page keeps doing its job.
 Route::view('/launch', 'launch')->name('launch');
 
-// TEMPORARY: preview of the reworked hero animation for review on production. Unlinked and
-// noindex; delete with resources/views/hero-preview.blade.php once a variant is chosen.
-Route::view('/hero-preview', 'hero-preview')->name('hero.preview');
-
 // "Configure" on the landing page: hands a visitor with no account a throwaway teacher account
 // and a private copy of the demo lesson, then opens the real wizard on it. Throttled because each
 // hit writes a user + a lesson + its scenes.

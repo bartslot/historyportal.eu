@@ -35,13 +35,6 @@ return [
         ],
     ],
 
-    // ── Local AI Services ─────────────────────────────────────────────────────
-
-    'ollama' => [
-        'url' => env('OLLAMA_URL', 'http://localhost:11434'),
-        'model' => env('OLLAMA_MODEL', 'llama3.1:8b'),
-    ],
-
     // ── Production AI APIs ────────────────────────────────────────────────────
 
     // ── Imagery policy ────────────────────────────────────────────────────────
@@ -81,7 +74,6 @@ return [
         'api_key' => env('OPENAI_API_KEY'),
         // Dedicated key for image generation (gpt-image-1 needs a verified org); falls back to the main key.
         'image_api_key' => env('OPENAI_API_KEY_IMG', env('OPENAI_API_KEY')),
-        'organization' => env('OPENAI_ORGANIZATION'),
         'model' => env('OPENAI_MODEL', 'gpt-4o-mini'),
         'json_format' => env('OPENAI_JSON_FORMAT', 'json_object'), // set empty to skip response_format (LM Studio)
         'image_model' => env('OPENAI_IMAGE_MODEL', 'gpt-image-1'),
@@ -90,12 +82,10 @@ return [
         'skybox_size' => env('OPENAI_SKYBOX_SIZE', env('OPENAI_IMAGE_SIZE', '1536x1024')),
         'image_format' => env('OPENAI_IMAGE_FORMAT', 'webp'),       // png|jpeg|webp
         'image_compression' => (int) env('OPENAI_IMAGE_COMPRESSION', 60), // webp/jpeg quality: 100≈lossless/~1.5MB, 60≈high-res/~110KB, lower=smaller
-        'image_stitch' => filter_var(env('OPENAI_IMAGE_STITCH', true), FILTER_VALIDATE_BOOLEAN), // 2-image stitched panorama
         'base_url' => env('OPENAI_BASE_URL', 'https://api.openai.com/v1'),
         'timeout' => (int) env('OPENAI_TIMEOUT', 60),
         'max_tokens' => (int) env('OPENAI_MAX_TOKENS', 2048),
         'tts_model' => env('OPENAI_TTS_MODEL', 'tts-1'),
-        'tts_voice' => env('OPENAI_TTS_VOICE', 'alloy'),
     ],
 
     'alerts' => [
@@ -115,7 +105,6 @@ return [
         'api_key' => env('ELEVENLABS_API_KEY'),
         'base_url' => 'https://api.elevenlabs.io',
         // Narration voice for the Time-Map "read summary aloud" feature (George by default).
-        'voice_id' => env('ELEVENLABS_VOICE_ID', 'JBFqnCBsd6RMkjVDRZzb'),
     ],
 
     'tts' => [
@@ -127,10 +116,6 @@ return [
         // e.g. Azure's en-US-GuyNeural).
         'provider_override' => env('TTS_PROVIDER_OVERRIDE'),
         'provider_override_voice' => env('TTS_PROVIDER_OVERRIDE_VOICE'),
-    ],
-
-    'anthropic' => [
-        'api_key' => env('ANTHROPIC_API_KEY'),
     ],
 
     // ── Stripe (teachers buy narration credits) ───────────────────────────────

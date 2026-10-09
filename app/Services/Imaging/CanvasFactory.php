@@ -37,11 +37,6 @@ class CanvasFactory
         return new self(self::GD);
     }
 
-    public static function imagick(): self
-    {
-        return new self(self::IMAGICK);
-    }
-
     /**
      * @throws RuntimeException when no usable backend is installed, or the bytes are not an image
      */

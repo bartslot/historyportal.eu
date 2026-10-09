@@ -269,43 +269,6 @@ SSML;
         }
     }
 
-    /**
-     * Convert text to speech and save the audio file.
-     * Returns the storage path or null on failure.
-     */
-    public function generateAudio(string $text, string $lessonId, string $voice = 'alloy', float $speed = 1.0): ?string
-    {
-        $text = $this->prepareSpeechText($text);
-        $this->generatedAudioExtension = 'mp3';
-        $this->generatedProvider = null;
-        $this->generatedVoice = null;
-        $timingData = null;
-
-        // If the narrator explicitly chose edge_tts, try it first
-        if (str_starts_with($voice, 'es-') || str_starts_with($voice, 'en-GB-') || str_starts_with($voice, 'en-US-')) {
-            $audioContent = $this->tryEdgeTts($text, $voice, $speed)
-                ?? $this->tryPocketTts($text)
-                ?? $this->tryMacosTts($text);
-        } else {
-            $audioContent = $this->tryElevenLabs($text, $voice, $timingData)
-                ?? $this->tryPocketTts($text, $voice)
-                ?? $this->tryEdgeTts($text, 'es-ES-AlvaroNeural', $speed)
-                ?? $this->tryMacosTts($text);
-        }
-
-        if ($audioContent === null) {
-            Log::error("TtsService: all providers failed for lesson {$lessonId}");
-
-            return null;
-        }
-
-        $audioPath = "lessons/{$lessonId}/audio.{$this->generatedAudioExtension}";
-
-        $this->lessonDisk()->put($audioPath, $audioContent);
-
-        return $audioPath;
-    }
-
     private function tryElevenLabs(string $text, string $voiceId, ?array &$timingData = null): ?string
     {
         /** @var \App\Services\ElevenLabsService $service */
@@ -648,18 +611,6 @@ PY;
     private function commandExists(string $command): bool
     {
         exec("command -v {$command} 2>/dev/null", $out, $rc);
-
-        return $rc === 0;
-    }
-
-    private function pythonModuleAvailable(string $python, string $module): bool
-    {
-        $command = escapeshellcmd($python)
-            .' -c "import importlib.util,sys; sys.exit(0 if importlib.util.find_spec('
-            .var_export($module, true)
-            .') else 1)" 2>/dev/null';
-
-        exec($command, $out, $rc);
 
         return $rc === 0;
     }

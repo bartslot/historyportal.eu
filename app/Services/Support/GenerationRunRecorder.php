@@ -33,11 +33,6 @@ final class GenerationRunRecorder
         self::$lessonId = $lessonId;
     }
 
-    public static function deactivate(): void
-    {
-        self::$lessonId = null;
-    }
-
     /** Increment a counter column on the active lesson's open run. */
     public static function count(string $column, int $amount = 1): void
     {

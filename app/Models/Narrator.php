@@ -75,22 +75,11 @@ class Narrator extends Model
         return $this->hasMany(NarratorVoiceSample::class, 'avatar_id')->latest();
     }
 
-    public function teacherFeedback(): HasMany
-    {
-        return $this->hasMany(NarratorTeacherFeedback::class, 'avatar_id');
-    }
-
     // ── Scopes ────────────────────────────────────────────────────────────────
 
     public function scopeActive($query)
     {
         return $query->where('is_active', true)->orderBy('sort_order');
-    }
-
-    public function scopeForSubject($query, string $subject)
-    {
-        return $query->where(fn ($q) => $q->where('subject', $subject)->orWhere('subject', 'all')
-        );
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -171,37 +160,7 @@ class Narrator extends Model
 
     // ── Greeting ──────────────────────────────────────────────────────────────
 
-    /**
-     * Build the personalised greeting text for a teacher.
-     *
-     * "Hi there Sarah. I am The Professor, a History Professor
-     *  here at The History Portal. Do you like my voice?"
-     */
-    public function greetingText(string $teacherFirstName): string
-    {
-        $narratorName = $this->short_name ?? $this->name;
-        $narratorTitle = $this->avatar_title ?? 'Professor';
-
-        return "Hi there {$teacherFirstName}. "
-             ."I am {$narratorName}, a {$narratorTitle} here at The History Portal. "
-             .'Do you like my voice?';
-    }
-
     // ── Voice config ──────────────────────────────────────────────────────────
-
-    /**
-     * Voice config array passed to TtsService.
-     */
-    public function voiceConfig(): array
-    {
-        return [
-            'provider' => $this->voice_provider,
-            'voice_id' => $this->voice_id,
-            'speed' => $this->voice_speed,
-            'pitch' => $this->voice_pitch,
-            'settings' => $this->voice_settings ?? [],
-        ];
-    }
 
     /**
      * Structured edge-tts catalog, EUROPEAN-focused (founder direction 2026-07-11).

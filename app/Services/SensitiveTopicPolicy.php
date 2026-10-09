@@ -31,17 +31,6 @@ final class SensitiveTopicPolicy
 
     public const DOCUMENTARY = 'documentary';
 
-    /** Visual roles the documentary path may use (recorded in the generation run + rubric). */
-    public const DOCUMENTARY_ALLOWED_ROLES = [
-        'historical_artwork',
-        'photograph',
-        'document',
-        'artifact',
-        'map',
-        'location',
-        'restrained_environment',
-    ];
-
     public static function policyFor(Lesson $lesson): string
     {
         $override = (string) (($lesson->game_config ?? [])['visual_policy'] ?? '');

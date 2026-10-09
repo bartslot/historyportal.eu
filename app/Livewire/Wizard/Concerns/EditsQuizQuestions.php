@@ -533,12 +533,6 @@ trait EditsQuizQuestions
             ->map->only(['question', 'options', 'correct_index', 'asks_ahead', 'explanation'])->values()->all();
     }
 
-    /** @deprecated Autosave replaced the manual save — kept for any stray callers. */
-    public function saveQuiz(): void
-    {
-        $this->autosaveQuiz();
-    }
-
     /**
      * The narration the student has heard BEFORE this quiz segment — the only material a
      * question may test. Null when no quiz scene is selected (fall back to the whole lesson).

@@ -109,14 +109,9 @@
                 ['typeSpeed', 'Typing speed', 5, 60, 1, 'ch/s'],
                 ['inhale', 'Inhale (held breath)', 0, 3, 0.1, 's'],
                 ['windUp', 'Wind-up', 0.5, 10, 0.1, 's'],
-                ['brake', 'Brake', 0.3, 4, 0.1, 's'],
                 ['timeScaleStart', 'Time scale, story', 0.2, 2, 0.05, '×'],
-                ['timeScaleWarp', 'Time scale, warp', 0.5, 5, 0.1, '×'],
-                ['warpRate', 'Warp rate', 0.2, 8, 0.1, 'e/s'],
-                ['warpSpin', 'Warp spin', 0, 4, 0.05, 'rad/s'],
-                ['warpTrail', 'Streak length', 0.05, 1, 0.01, ''],
-                ['warpDensity', 'Card density', 0.1, 1, 0.05, ''],
-                ['warpGlow', 'Mouth glow', 0, 1, 0.05, ''],
+                ['warpSpin', 'Wheel spin', 0, 4, 0.05, 'rad/s'],
+                ['warpGlow', 'Centre glow', 0, 1, 0.05, ''],
             ];
         @endphp
 
@@ -144,18 +139,6 @@
                 <span class="text-2xs font-semibold uppercase tracking-wide text-slate-500">Hero demo</span>
                 <button type="button" @click="window.heroDemo.reset(); s = window.heroDemo.settings; scrub = 0"
                         class="text-2xs text-slate-500 underline hover:text-slate-300">reset</button>
-            </div>
-
-            {{-- The four warp characters. Scored in resources/js/hero/__tests__/variants.bench.test.js
-                 on how many lesson pictures a teacher can actually read. --}}
-            <div class="mb-2 flex flex-wrap gap-1">
-                <template x-for="(label, name) in (window.heroDemo?.variants ?? {})" :key="name">
-                    <button type="button"
-                            @click="window.heroDemo.setVariant(name); s = window.heroDemo.settings; scrub = 0"
-                            class="btn btn-xs"
-                            :class="s.variant === name ? 'btn-primary' : 'btn-outline'"
-                            x-text="label"></button>
-                </template>
             </div>
 
             <div class="space-y-2">

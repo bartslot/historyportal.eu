@@ -14,8 +14,6 @@ declare(strict_types=1);
 */
 
 return [
-    'style_version' => 'history-line@1',
-
     // Approved style references (T0.5). Both are sent with every art generation.
     'anchors' => [
         'people' => resource_path('art/style-anchors/history-line@1/people-equipment.png'),

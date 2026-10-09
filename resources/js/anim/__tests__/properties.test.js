@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { propertiesFor, sampleFrame, INTERPOLATE } from '../properties.js'
+import { propertiesFor, sampleFrame, INTERPOLATE, unwrapAngle, lerpAltitude } from '../properties.js'
 
 /**
  * What each kind of object can be animated on, and how each property gets from one key to the next.
@@ -110,5 +110,27 @@ describe('sampleFrame', () => {
   it('ignores a track for a property the registry does not know', () => {
     const frame = sampleFrame([track('camera', 'nonsense', [at(0, 0), at(2, 10)])], 1)
     expect(frame).toEqual({})
+  })
+})
+
+describe('unwrapAngle', () => {
+  it('takes the short way across the date line', () => {
+    expect(unwrapAngle(-170, 170)).toBe(190)     // 20° east, not 340° west
+    expect(unwrapAngle(170, -170)).toBe(-190)
+  })
+
+  it('leaves an angle already in frame alone', () => {
+    expect(unwrapAngle(20, 10)).toBe(20)
+    expect(unwrapAngle(-45, 0)).toBe(-45)
+  })
+})
+
+describe('lerpAltitude', () => {
+  it('passes through the geometric mean, so a descent reads as even', () => {
+    expect(lerpAltitude(100, 10000, 0.5)).toBeCloseTo(1000, 6)
+  })
+
+  it('falls back to linear when an altitude is not positive', () => {
+    expect(lerpAltitude(0, 100, 0.5)).toBe(50)
   })
 })

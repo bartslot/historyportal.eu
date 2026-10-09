@@ -6,9 +6,6 @@
  * and they drifted.
  */
 
-/** Taller than wide by this much ⇒ a portrait. Above 1.0 so square-ish art is not caught. */
-export const PORTRAIT_ASPECT = 1.05
-
 /**
  * Where a top-anchored crop starts, as a fraction of the slack being cropped away:
  * 0 = dead centre, 1 = flush with the image's top edge.
@@ -20,11 +17,6 @@ export const PORTRAIT_TOP_BIAS = 0.6
 
 /** The same anchor for CSS `background-position` — a face sits 20% down from the top. */
 export const PORTRAIT_TOP_CSS = 'center 20%'
-
-/** Mirrors App\Support\PortraitFocus::PORTRAIT_ASPECT — keep the two in step. */
-export function isPortraitShape (width, height) {
-  return width > 0 && height > 0 && height > width * PORTRAIT_ASPECT
-}
 
 /** Only two fits are supported; anything unknown means the default. */
 export function normalizeFit (fit) {

@@ -66,14 +66,4 @@ final class HelpMedia
     {
         return public_path(self::DIRECTORY."/{$locale}");
     }
-
-    /** Languages that already have at least one screenshot on disk. */
-    public static function capturedLocales(): array
-    {
-        return array_values(array_filter(
-            Locales::codes(),
-            fn (string $code) => File::isDirectory(self::directoryFor($code))
-                && File::files(self::directoryFor($code)) !== [],
-        ));
-    }
 }

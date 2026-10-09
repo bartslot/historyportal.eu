@@ -184,8 +184,6 @@ export const createCardwheel = (canvas, image, options = {}) => {
         scale: 1,
         burst: 0, // 0 = nothing out yet, 1 = every lesson picture has been thrown at the viewer
         burstSpeed: 0.55, // how fast a thrown card crosses the room
-        speed: 0, // unused here; kept so the storyboard can tween one shape of state
-        density: 1,
         spread: 1,
     };
 
@@ -462,9 +460,6 @@ export const createCardwheel = (canvas, image, options = {}) => {
                 card.lastSize = 0;
             });
         },
-        /** Put the ring back. The storyboard tweens `pull` home, so this only exists to match the
-         *  tunnel engine's shape — there is nothing to recycle here. */
-        recede() {},
         advance(seconds) {
             render((lastTime || 0) + seconds * 1000);
         },

@@ -37,12 +37,6 @@ enum NarrationCreditReason: string
         };
     }
 
-    /** Did money change hands? Purchases and reversals have an amount; spends do not. */
-    public function movesMoney(): bool
-    {
-        return in_array($this, [self::Purchase, self::Refund, self::Chargeback], true);
-    }
-
     /** What a teacher reads on their own credit history. */
     public function label(): string
     {

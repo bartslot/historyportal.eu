@@ -10,13 +10,9 @@
         "check:assets": "node scripts/check-asset-budget.mjs"
     },
     "devDependencies": {
-        "@mapbox/vector-tile": "^3.0.0",
         "@playwright/test": "^1.60.0",
         "@tailwindcss/vite": "^4.1.18",
         "@turf/turf": "^7.3.5",
-        "@vitest/coverage-v8": "^4.1.10",
-        "@vitest/ui": "^4.1.6",
-        "axios": "^1.11.0",
         "concurrently": "^9.0.1",
         "daisyui": "^5.5.19",
         "jsdom": "^29.1.1",

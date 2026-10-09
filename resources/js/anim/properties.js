@@ -11,7 +11,14 @@
  */
 
 import { sortedKeys, segmentAt, easingFn, lerp, segmentEasing } from './keyframes.js'
-import { unwrapAngle, lerpAltitude } from '../map/camera-track.js'
+
+/** Shift `angle` into the same 360° turn as `near`, so interpolation takes the short way round. */
+export const unwrapAngle = (angle, near) => angle + 360 * Math.round((near - angle) / 360)
+
+/** Altitude interpolates through its geometric mean; 0 and negatives fall back to linear. */
+export const lerpAltitude = (a, b, t) => (a > 0 && b > 0
+  ? Math.exp(lerp(Math.log(a), Math.log(b), t))
+  : lerp(a, b, t))
 
 /** How a pair of keyed values becomes every value between them. */
 export const INTERPOLATE = {

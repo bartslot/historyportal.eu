@@ -111,18 +111,6 @@ final class NarrationBudget
     }
 
     /**
-     * Whether this edit looks like it fits. ADVISORY ONLY — for showing a hint, never for deciding.
-     *
-     * Reads the balance without holding a lock, so by the time a caller acts on the answer another
-     * request may have spent the same characters. charge() is the only safe way to find out, and it
-     * answers the same question atomically.
-     */
-    public static function canAfford(Lesson $lesson, string $before, string $after): bool
-    {
-        return self::costOfEdit($before, $after) <= self::remainingFor($lesson);
-    }
-
-    /**
      * Take payment for an edit, free allowance first and credits after. Call BEFORE saving.
      *
      * Returns false when the teacher cannot afford it, having charged nothing — the caller must

@@ -40,41 +40,6 @@ final class ScrapedArticle
         return array_merge(...array_map(fn (ScrapedSection $s) => $s->images, $this->sections)) ?: [];
     }
 
-    /** Only the images we may legally reuse (resolved originals are open-licensed). */
-    public function freeImages(): array
-    {
-        return array_values(array_filter($this->images(), fn (ScrapedImage $i) => $i->isFree));
-    }
-
-    /**
-     * Per-section scene plan: word budget (proportional to length, capped to the
-     * narration total) and the resulting image-swap count at ~9s each.
-     *
-     * @return list<array{anchor:string,title:string,words:int,budget:int,seconds:int,imageBeats:int,images:int}>
-     */
-    public function scenePlan(int $narrationWords = self::DEFAULT_NARRATION_WORDS, int $wpm = 130): array
-    {
-        $total = max(1, $this->totalWords());
-        $ratio = min(1.0, $narrationWords / $total);   // never pad; only compress
-
-        $plan = [];
-        foreach ($this->sections as $s) {
-            $budget = (int) round($s->wordCount * $ratio);
-            $seconds = (int) round($budget / max(1, $wpm) * 60);
-            $plan[] = [
-                'anchor' => $s->anchor,
-                'title' => $s->title,
-                'words' => $s->wordCount,
-                'budget' => $budget,
-                'seconds' => $seconds,
-                'imageBeats' => max(1, (int) ceil($seconds / self::SECONDS_PER_IMAGE)),
-                'images' => count($s->images),
-            ];
-        }
-
-        return $plan;
-    }
-
     /** article words ÷ narration budget, e.g. 2.9 means "compress ~3:1". */
     public function shrinkRatio(int $narrationWords = self::DEFAULT_NARRATION_WORDS): float
     {

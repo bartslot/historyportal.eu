@@ -29,7 +29,7 @@ class MarketingVoiceTest extends TestCase
     use RefreshDatabase;
 
     /** Every public marketing page, by path. */
-    private const PUBLIC_PAGES = ['/', '/about', '/launch', '/hero-preview'];
+    private const PUBLIC_PAGES = ['/', '/about', '/launch'];
 
     /**
      * The rejected tagline, in every casing it was found in. Matched case-insensitively on a

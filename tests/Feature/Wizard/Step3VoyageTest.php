@@ -10,8 +10,6 @@ use App\Models\Lesson;
 use App\Models\Scene;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -120,33 +118,6 @@ class Step3VoyageTest extends TestCase
         $this->wizardOn($this->voyageScene)->call('setLegArrive', '05-09-1642');
         // No clone / no write should have happened for a malformed date.
         $this->assertArrayNotHasKey('voyage_def', $this->lesson->fresh()->game_config);
-    }
-
-    public function test_stop_images_can_be_added_and_removed(): void
-    {
-        $this->wizardOn($this->voyageScene)->call('addStopImage', '/lessons/tasman/mauritius-voc.jpg');
-        $this->assertSame(['/lessons/tasman/mauritius-voc.jpg'], $this->voyageScene->fresh()->config['stop_images']);
-
-        $this->wizardOn($this->voyageScene)->call('removeStopImage', 0);
-        $this->assertSame([], $this->voyageScene->fresh()->config['stop_images']);
-    }
-
-    public function test_uploading_a_landfall_image_stores_it_and_adds_it_to_stop_images(): void
-    {
-        // Force the local fallback path (no Cloudinary in the test env) so the assertion is
-        // deterministic — the live Cloudinary upload + AVIF/WebP optimisation is verified separately.
-        config(['services.cloudinary.url' => null]);
-        Storage::fake('public');
-
-        Livewire::actingAs($this->teacher)
-            ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
-            ->call('selectScene', $this->voyageScene->id)
-            ->call('openStopImagePicker')
-            ->set('uploadImage', UploadedFile::fake()->image('landfall.jpg', 1200, 800));
-
-        $stored = $this->voyageScene->fresh()->config['stop_images'];
-        $this->assertCount(1, $stored);
-        $this->assertStringStartsWith('/storage/lessons/'.$this->lesson->id, $stored[0]);
     }
 
     public function test_standalone_gallery_scene_images_route_to_config_images_not_config_gallery(): void

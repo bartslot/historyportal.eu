@@ -92,18 +92,4 @@ class NarrationCredit extends Model
     {
         return $query->where('reason', NarrationCreditReason::Purchase);
     }
-
-    /** Purchases whose characters are still spendable. A null expires_at never dies. */
-    public function scopeUnexpired(Builder $query): Builder
-    {
-        return $query->where(function (Builder $q): void {
-            $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
-        });
-    }
-
-    /** Has this batch run out of time? Always false while expiry is switched off. */
-    public function hasExpired(): bool
-    {
-        return $this->expires_at !== null && $this->expires_at->isPast();
-    }
 }

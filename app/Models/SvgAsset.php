@@ -125,10 +125,4 @@ class SvgAsset extends Model
     {
         $query->whereNull('user_id');
     }
-
-    /** True for an icon that ships with the app — no teacher may delete or edit it. */
-    public function isBundled(): bool
-    {
-        return $this->user_id === null;
-    }
 }

@@ -459,11 +459,6 @@ class Lesson extends Model
         return $this->publicMediaUrl($this->audio_path);
     }
 
-    public function audioMimeType(): ?string
-    {
-        return $this->publicMediaMimeType($this->audio_path);
-    }
-
     public function portraitUrl(): string
     {
         return $this->publicMediaUrl($this->portrait_path) ?? asset('assets/professor.webp');

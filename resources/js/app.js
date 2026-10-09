@@ -1,4 +1,3 @@
-import './bootstrap';
 import { gsap } from 'gsap';
 import { GSAP_EASE } from './easing.js';
 import Sortable                from 'sortablejs';

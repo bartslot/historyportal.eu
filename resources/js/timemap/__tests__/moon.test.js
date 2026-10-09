@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { moonPosition, moonVector, moonPhase } from '../moon.js'
 import { sunDirection } from '../sun.js'
-import { gmstDegrees, wrapLongitude } from '../celestial-frames.js'
+import { gmstDegrees } from '../celestial.js'
 import horizons from './fixtures/horizons-j2000-ecliptic.json'
+
+const wrapLongitude = (deg) => ((((deg + 180) % 360) + 360) % 360) - 180
 
 /**
  * Where the moon is.

@@ -85,8 +85,8 @@
     <div class="hero-spotlight pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_50%_40%_at_50%_60%,rgba(30,80,140,0.45)_0%,transparent_70%)] bg-blend-overlay"></div>
     <div class="hero-orb pointer-events-none absolute left-1/2 top-[16%] z-0 h-[34rem] w-[34rem] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(56,189,248,0.14)_0%,rgba(56,189,248,0.05)_35%,transparent_72%)] blur-3xl"></div>
 
-    {{-- The timewarp field. One sprite sheet, 24 cells, drawn as depth-sorted cards by
-         resources/js/hero/timewarp.js. --}}
+    {{-- The card field. One sprite sheet, 24 cells, drawn as a wheel of cards by
+         resources/js/hero/cardwheel.js. --}}
     <canvas data-timewarp-canvas class="hero-timewarp pointer-events-none absolute inset-0 z-20 h-full w-full" aria-hidden="true"></canvas>
     @if ($warpAtlas)
         <img

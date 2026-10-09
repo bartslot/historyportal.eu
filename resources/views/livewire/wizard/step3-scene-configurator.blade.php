@@ -2558,7 +2558,6 @@
                 <h2 class="text-sm font-semibold text-slate-200">
                     @switch($paintingPickerMode)
                         @case('layer') {{ __('Add an image on the slide') }} @break
-                        @case('voyage_stop') {{ __('Add a landfall image') }} @break
                         @case('gallery_image') {{ __('Add a gallery image') }} @break
                         @case('model3d') {{ __('Add a 3D model') }} @break
                         @default {{ __('Set the scene background') }}

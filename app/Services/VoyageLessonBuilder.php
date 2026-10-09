@@ -134,21 +134,6 @@ class VoyageLessonBuilder
         return $lesson->refresh();
     }
 
-    /** True when the catalog voyage is lesson-ready (has legs). Used to populate UI pickers. */
-    public function isPlayable(string $voyageId): bool
-    {
-        // A question, not an assertion: an id that isn't in the catalogue at all is simply not
-        // playable. catalogEntry() throws for an unknown id, which would turn a UI availability
-        // check into a 500.
-        try {
-            $entry = $this->catalogEntry($voyageId);
-        } catch (RuntimeException) {
-            return false;
-        }
-
-        return ! empty($entry['legs']);
-    }
-
     /**
      * Voyages that can become a lesson right now (have legs), as [id => name] for a UI picker.
      *

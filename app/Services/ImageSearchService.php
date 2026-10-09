@@ -28,7 +28,6 @@ class ImageSearchService
 {
     private const EUROPEANA_SEARCH = 'https://api.europeana.eu/record/v2/search.json';
     private const WIKIMEDIA_MEDIA  = 'https://en.wikipedia.org/api/rest_v1/page/media-list/';
-    private const WIKIMEDIA_SEARCH = 'https://en.wikipedia.org/w/api.php';
 
     // ── Public API ───────────────────────────────────────────────────────────
 

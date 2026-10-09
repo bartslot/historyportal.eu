@@ -7,7 +7,6 @@ namespace App\Livewire\Wizard;
 use App\Enums\NarrativeFramework;
 use App\Models\Corpus\Figure;
 use App\Models\Lesson;
-use App\Models\StrategyGame;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -111,12 +110,6 @@ class Step2Story extends Component
         );
     }
 
-    #[Computed]
-    public function games()
-    {
-        return StrategyGame::active()->orderBy('title')->get();
-    }
-
     public function selectFramework(string $value): void
     {
         $framework = NarrativeFramework::tryFrom($value) ?? NarrativeFramework::default();
@@ -174,30 +167,6 @@ class Step2Story extends Component
     public function updatedProtagonistName(): void
     {
         $this->protagonist_qid = null;
-    }
-
-    public function updatedIncludeGame(): void
-    {
-        if ($this->include_game) {
-            $this->game_type = $this->framework()->defaultGameType() ?? 'quiz';
-            $this->quiz_timing = 'after';
-        } else {
-            $this->game_type = null;
-            $this->quiz_question_count = 4;
-            $this->quiz_timing = null;
-            $this->strategy_game = null;
-            $this->strategy_game_id = null;
-            $this->team_count = null;
-            $this->game_split_count = 1;
-        }
-    }
-
-    public function updatedGameType(): void
-    {
-        $this->quiz_question_count = 4;
-        $this->quiz_timing = 'after';
-        $this->strategy_game = null;
-        $this->strategy_game_id = null;
     }
 
     /** Persist the story + game choices, start generation, advance to the Generate step. */
