@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scene Engine MVP</title>
+<style>
+  :root {
+    --bg: #1c1c1e; --panel: #232326; --line: #333338; --text: #e6e6e6; --dim: #8a8a90;
+    --accent: #f5a524; --accent-ink: #1c1c1e; --key: #f5a524;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font: 12px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; overflow: hidden; }
+  #app { display: grid; height: 100vh;
+    grid-template-columns: 52px 200px 1fr 220px; grid-template-rows: 40px 1fr 96px; }
+  header { grid-column: 1 / -1; display: flex; align-items: center; gap: 16px; padding: 0 14px;
+    border-bottom: 1px solid var(--line); background: var(--panel); }
+  header b { font-size: 13px; }
+  header .hint { margin-left: auto; color: var(--dim); }
+  #rail { grid-row: 2 / 4; border-right: 1px solid var(--line); background: var(--panel);
+    display: flex; flex-direction: column; align-items: center; gap: 6px; padding-top: 10px; }
+  #rail button { width: 36px; height: 36px; border-radius: 6px; border: 0; background: transparent;
+    color: var(--text); cursor: pointer; font-size: 15px; }
+  #rail button.on { background: rgba(255,255,255,.12); }
+  aside { background: var(--panel); border-right: 1px solid var(--line); overflow: auto; padding: 10px; }
+  aside.right { border-right: 0; border-left: 1px solid var(--line); grid-column: 4; grid-row: 2 / 4; }
+  h3 { margin: 4px 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--dim); }
+  .list button, .btn { display: block; width: 100%; text-align: left; padding: 7px 9px; margin-bottom: 4px;
+    border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text); cursor: pointer; }
+  .list button:hover, .btn:hover { border-color: var(--dim); }
+  .sky { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .sky img { width: 100%; aspect-ratio: 2/1; object-fit: cover; border-radius: 4px; cursor: pointer;
+    border: 2px solid transparent; }
+  .sky img.on { border-color: var(--accent); }
+  #stage { position: relative; grid-column: 3; grid-row: 2; }
+  canvas { width: 100%; height: 100%; display: block; outline: none; touch-action: none; }
+  #sel { position: absolute; left: 10px; top: 10px; padding: 4px 8px; border-radius: 4px;
+    background: rgba(0,0,0,.5); color: var(--text); pointer-events: none; }
+  #timeline { grid-column: 3; grid-row: 3; border-top: 1px solid var(--line); background: var(--panel);
+    display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; padding: 10px 14px; align-items: center; }
+  #controls { display: flex; gap: 6px; align-items: center; grid-column: 1 / -1; }
+  #controls button { padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line);
+    background: var(--bg); color: var(--text); cursor: pointer; }
+  #controls button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  #controls label { color: var(--dim); display: flex; gap: 4px; align-items: center; }
+  #time { font-variant-numeric: tabular-nums; min-width: 92px; }
+  #track { grid-column: 1 / -1; position: relative; height: 26px; }
+  #scrub { position: absolute; inset: 0; width: 100%; margin: 0; }
+  #marks { position: absolute; left: 0; right: 0; top: 0; height: 8px; pointer-events: none; }
+  #marks i { position: absolute; top: 0; width: 8px; height: 8px; margin-left: -4px;
+    background: var(--key); transform: rotate(45deg); }
+  input[type=range] { accent-color: var(--accent); }
+  .small { color: var(--dim); margin-top: 8px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <b>Scene Engine MVP</b><span class="small" style="margin:0">Babylon.js</span>
+    <span class="hint">Click object to select · W move · E rotate · R scale · K key · Space play · Del delete</span>
+  </header>
+
+  <nav id="rail">
+    <button data-mode="move" class="on" data-tooltip="Move (W)">✥</button>
+    <button data-mode="rotate" data-tooltip="Rotate (E)">⟳</button>
+    <button data-mode="scale" data-tooltip="Scale (R)">⤢</button>
+  </nav>
+
+  <aside>
+    <h3>Add model</h3>
+    <div class="list" id="models"></div>
+    <p class="small">Animated models play their own walk/idle loop. The timeline moves them around.</p>
+  </aside>
+
+  <main id="stage">
+    <canvas id="c"></canvas>
+    <div id="sel">Nothing selected</div>
+  </main>
+
+  <aside class="right">
+    <h3>Skybox</h3>
+    <div class="sky" id="skies"></div>
+    <label class="btn" style="margin-top:8px">Upload panorama (2:1)
+      <input type="file" id="skyUpload" accept="image/*" hidden></label>
+    <h3 style="margin-top:16px">Ground</h3>
+    <label class="small" style="display:flex;gap:6px;align-items:center;margin:0">
+      <input type="checkbox" id="grid" checked> Grid on ground</label>
+    <h3 style="margin-top:16px">Engine tools</h3>
+    <button class="btn" id="inspector">Inspector + curve editor</button>
+    <p class="small">In the inspector, select an object, open its Animations and press Edit for the curve editor.</p>
+  </aside>
+
+  <section id="timeline">
+    <div id="controls">
+      <button id="play" class="primary">▶ Play</button>
+      <button id="key">◆ Key</button>
+      <button id="unkey">◇ Remove key</button>
+      <span id="time">0.00 s</span>
+      <label><input type="checkbox" id="autokey" checked> Auto-key on drag</label>
+      <label>Length <input type="number" id="len" value="10" min="1" max="120" style="width:52px"> s</label>
+    </div>
+    <div id="track">
+      <div id="marks"></div>
+      <input type="range" id="scrub" min="0" max="300" value="0" step="1">
+    </div>
+  </section>
+</div>
+
+<script src="https://cdn.babylonjs.com/babylon.js"></script>
+<script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+<script src="https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
