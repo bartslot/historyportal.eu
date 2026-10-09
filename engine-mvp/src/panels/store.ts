@@ -15,10 +15,12 @@ export type PanelDef = {
 }
 
 export const PANELS: PanelDef[] = [
+  { id: 'scenes', title: 'Scenes', place: 'left', closable: true, open: true, size: 220, min: 120, max: 400, inView: true },
   { id: 'objects', title: 'Objects', place: 'left', closable: true, open: false, size: 200, min: 160, max: 360, inView: true },
   { id: 'inspector', title: 'Inspector', place: 'right', closable: true, open: true, size: 310, min: 280, max: 520, inView: true },
   { id: 'dock', title: 'Assets & timeline', place: 'bottom', closable: false, open: true, size: 352, inView: true },
   { id: 'notes', title: 'Notes', place: 'floating', closable: true, open: false, inView: true },
+  { id: 'lesson-menu', title: 'Lesson', place: 'menu', closable: true, open: false, inView: false },
   { id: 'view-menu', title: 'View', place: 'menu', closable: true, open: false, inView: false },
   { id: 'add-menu', title: 'Add', place: 'menu', closable: true, open: false, inView: false },
   { id: 'publish-menu', title: 'Publish', place: 'menu', closable: true, open: false, inView: false },
@@ -26,7 +28,8 @@ export const PANELS: PanelDef[] = [
 const def = (id: string) => PANELS.find((p) => p.id === id)!
 
 const KEY = 'studio.panels'
-type Saved = { open: Record<string, boolean>; size: Record<string, number>; dockTab: DockTab }
+type Saved = { open: Record<string, boolean>; size: Record<string, number>; dockTab: DockTab; railView: RailView }
+export type RailView = 'preview' | 'list'
 export type DockTab = 'assets' | 'timeline'
 
 function load(): Saved {
@@ -34,6 +37,7 @@ function load(): Saved {
     open: Object.fromEntries(PANELS.map((p) => [p.id, p.open])),
     size: Object.fromEntries(PANELS.filter((p) => p.size).map((p) => [p.id, p.size!])),
     dockTab: 'timeline',
+    railView: 'list',
   }
   try {
     const saved = JSON.parse(localStorage.getItem(KEY) ?? 'null')
@@ -41,7 +45,7 @@ function load(): Saved {
     const docked = (id: string) => ['left', 'right', 'bottom'].includes(def(id)?.place)
     // only docked panels come back open: a menu or modal left open is not a state to restore
     const open = Object.fromEntries(Object.entries({ ...fresh.open, ...saved.open }).map(([id, v]) => [id, docked(id) || id === 'notes' ? !!v : false]))
-    return { open, size: { ...fresh.size, ...saved.size }, dockTab: saved.dockTab ?? fresh.dockTab }
+    return { open, size: { ...fresh.size, ...saved.size }, dockTab: saved.dockTab ?? fresh.dockTab, railView: saved.railView ?? fresh.railView }
   } catch { return fresh }
 }
 
@@ -49,7 +53,7 @@ let state: Saved & { order: string[] } = { ...load(), order: [] }
 const listeners = new Set<() => void>()
 function set(patch: Partial<typeof state>) {
   state = { ...state, ...patch }
-  try { localStorage.setItem(KEY, JSON.stringify({ open: state.open, size: state.size, dockTab: state.dockTab })) } catch { /* private window */ }
+  try { localStorage.setItem(KEY, JSON.stringify({ open: state.open, size: state.size, dockTab: state.dockTab, railView: state.railView })) } catch { /* private window */ }
   listeners.forEach((l) => l())
 }
 
@@ -70,6 +74,7 @@ export const panels = {
     set({ size: { ...state.size, [id]: Math.round(Math.min(d.max ?? Infinity, Math.max(d.min ?? 0, px))) } })
   },
   resetSize(id: string) { set({ size: { ...state.size, [id]: def(id).size! } }) },
+  setRailView(view: RailView) { set({ railView: view }) },
   showDockTab(tab: DockTab) { set({ dockTab: tab, open: { ...state.open, dock: true } }) },
   /** Esc: the most recently opened OVERLAY (menu, floating). Docked panels close with X or View. */
   closeTopOverlay() {

@@ -230,5 +230,6 @@
   ui.shuffle.onclick = () => { seed = Math.floor(Math.random() * 1e9); rebuild(); };
   ui.size.onchange = () => { if (town()) rebuild(); };   // on release: a big town takes a moment
   ui.wall.onchange = () => { if (town()) rebuild(); };
-  window.__city = { buildTown };
+  // a saved scene stores the seed, so loading it builds the same town
+  window.__city = { buildTown, getSeed: () => seed, setSeed: (s) => { seed = s; } };
 })();

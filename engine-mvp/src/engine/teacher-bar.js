@@ -75,19 +75,28 @@
   stage.appendChild(strip);
   const shots = [];
 
-  function saveShot() {
+  /** A small picture of the stage as it is now (shots, scene thumbnails). */
+  function stageImage(width = THUMB_W) {
     const canvas = engine.getRenderingCanvas();
     const thumb = document.createElement('canvas');
-    thumb.width = THUMB_W;
-    thumb.height = Math.round(THUMB_W * canvas.height / canvas.width);
+    thumb.width = width;
+    thumb.height = Math.round(width * canvas.height / canvas.width);
+    // the scene only: the handles (ring, dot, footprint) live on the utility layer and stay out of the picture
+    const layer = BABYLON.UtilityLayerRenderer.DefaultUtilityLayer;
+    const was = layer.shouldRender;
+    layer.shouldRender = false;
     scene.render(); // the drawing buffer is only guaranteed right after a render
     thumb.getContext('2d').drawImage(canvas, 0, 0, thumb.width, thumb.height);
-    const shot = { alpha: camera.alpha, beta: camera.beta, radius: camera.radius, target: camera.target.clone() };
+    layer.shouldRender = was;
+    return thumb.toDataURL('image/jpeg', 0.8);
+  }
+
+  function addTile(shot) {
     shots.push(shot);
     const tile = document.createElement('div');
     tile.className = 'shot';
     const img = document.createElement('img');
-    img.src = thumb.toDataURL('image/jpeg', 0.8);
+    img.src = shot.image;
     img.alt = 'Shot ' + shots.length;
     img.onclick = () => goToShot(shot);
     const del = document.createElement('button');
@@ -96,6 +105,17 @@
     del.onclick = () => { shots.splice(shots.indexOf(shot), 1); tile.remove(); };
     tile.append(img, del);
     strip.insertBefore(tile, add);
+  }
+
+  function saveShot() {
+    addTile({ alpha: camera.alpha, beta: camera.beta, radius: camera.radius, target: camera.target.clone(), image: stageImage() });
+  }
+
+  /** Replace every shot (a scene being loaded). Targets arrive as plain [x, y, z]. */
+  function setShots(list) {
+    shots.length = 0;
+    strip.querySelectorAll('.shot').forEach((t) => t.remove());
+    list.forEach((s) => addTile({ ...s, target: BABYLON.Vector3.FromArray(s.target) }));
   }
 
   let tween = null;
@@ -118,5 +138,6 @@
     });
   }
 
-  mvp.shots = { list: () => shots, save: saveShot, goTo: goToShot };
+  mvp.shots = { list: () => shots, save: saveShot, goTo: goToShot, set: setShots };
+  mvp.stageImage = stageImage;
 })();

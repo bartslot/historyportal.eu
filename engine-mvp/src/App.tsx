@@ -7,6 +7,7 @@ import { Dock } from './shell/Dock'
 import { Inspector } from './shell/Inspector'
 import { Notes } from './shell/Notes'
 import { ObjectsPanel } from './shell/ObjectsPanel'
+import { ScenesPanel } from './shell/ScenesPanel'
 import { TopBar } from './shell/TopBar'
 
 function Stage() {
@@ -33,11 +34,12 @@ export function App() {
   return (
     <div className="studio grid h-dvh bg-base-200 text-panel-value"
          style={{
-           gridTemplateColumns: 'auto minmax(0, 1fr) auto',
+           gridTemplateColumns: 'auto auto minmax(0, 1fr) auto',
            gridTemplateRows: '3rem minmax(0, 1fr) auto',
-           gridTemplateAreas: '"top top top" "objects stage inspector" "dock dock inspector"',
+           gridTemplateAreas: '"top top top top" "scenes objects stage inspector" "scenes dock dock inspector"',
          }}>
       <TopBar />
+      <ScenesPanel />
       <ObjectsPanel />
       <Stage />
       <Inspector />

@@ -173,10 +173,14 @@
     drawSky(c.getContext('2d'), 0);
     return c.toDataURL('image/png');
   }
-  const skyTex = new BABYLON.DynamicTexture('plain-sky', { width: 1024, height: 512 }, mvp.scene, false);
+  // a NEW texture each time: replacing the dome disposes the old one with it, and drawing on a
+  // disposed texture's context crashed every later day/night change
+  let skyTex = null;
   let plainActive = false;
+  const setPhotoSky = mvp.setSky;
   function usePlainSky() {
-    mvp.setSky(img.src);
+    setPhotoSky(img.src);
+    skyTex = new BABYLON.DynamicTexture('plain-sky', { width: 1024, height: 512 }, mvp.scene, false);
     mvp.getDome().photoTexture = skyTex;
     plainActive = true;
     drawSky(skyTex.getContext(), dayness);
@@ -191,11 +195,13 @@
   skies.appendChild(img);
   skies.addEventListener('click', (e) => { if (e.target !== img) plainActive = false; }, true);
   usePlainSky();
+  // a saved scene asks for its sky by url: the plain sky comes back through its own route
+  mvp.setSky = (url) => { if (url === img.src) usePlainSky(); else { plainActive = false; setPhotoSky(url); } };
 
   function setDayness(t) {
     dayness = t;
     recolor();
-    if (plainActive) { drawSky(skyTex.getContext(), t); skyTex.update(); }
+    if (plainActive && skyTex && !skyTex.isDisposed?.()) { drawSky(skyTex.getContext(), t); skyTex.update(); }
   }
 
   // a camera farther out than the grid would hide the rings; open the far plane

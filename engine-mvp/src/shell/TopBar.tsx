@@ -3,6 +3,7 @@
 import { useRef, type ReactNode } from 'react'
 import { Panel } from '../panels/Panel'
 import { PANELS, panels, usePanels } from '../panels/store'
+import * as L from '../lesson/store'
 
 const CHECK = 'm4.5 12.75 6 6 9-13.5'
 
@@ -30,6 +31,9 @@ function Item({ children, onClick, checked }: { children: ReactNode; onClick: ()
 
 export function TopBar() {
   const st = usePanels()
+  const { lesson, saved } = L.useLesson()
+  const lessonBtn = useRef<HTMLButtonElement>(null)
+  const fileIn = useRef<HTMLInputElement>(null)
   const addBtn = useRef<HTMLButtonElement>(null)
   const viewBtn = useRef<HTMLButtonElement>(null)
   const publishBtn = useRef<HTMLButtonElement>(null)
@@ -42,12 +46,27 @@ export function TopBar() {
   return (
     <header className="flex items-center gap-2 border-b border-panel-hairline px-4" style={{ gridArea: 'top' }}>
       <span className="text-sm font-semibold text-panel-value">History Portal</span>
-      <span className="mr-2 text-xs text-panel-label">Untitled scene</span>
+      <input aria-label="Lesson title" value={lesson.title} onChange={(e) => L.setTitle(e.target.value)}
+             className="w-48 rounded bg-transparent px-1 text-xs text-panel-value hover:bg-panel-hairline focus:bg-panel-hairline focus:outline-none" />
+      <span className="mr-2 text-3xs uppercase tracking-wide text-panel-label" aria-live="polite">{saved === 'saving' ? 'Saving' : saved === 'saved' ? 'Saved' : 'Not saved'}</span>
+      <MenuButton id="lesson-menu" label="Lesson" anchor={lessonBtn} />
       <MenuButton id="add-menu" label="Add" anchor={addBtn} />
       <MenuButton id="view-menu" label="View" anchor={viewBtn} />
       <span className="ml-auto" />
       <MenuButton id="publish-menu" label="Publish" primary anchor={publishBtn} />
 
+      <Panel id="lesson-menu" anchor={lessonBtn}>
+        <ul>
+          <Item onClick={() => { panels.close('lesson-menu'); void L.exportLesson() }}>Export lesson file</Item>
+          <Item onClick={() => { panels.close('lesson-menu'); fileIn.current?.click() }}>Open lesson file</Item>
+        </ul>
+      </Panel>
+      <input ref={fileIn} type="file" accept=".json,application/json" hidden aria-label="Open lesson file"
+             onChange={(e) => {
+               const f = e.target.files?.[0]
+               e.target.value = ''
+               if (f) L.importLesson(f).catch((err) => (window as any).__mvp.flash(err instanceof Error ? err.message : String(err)))
+             }} />
       <Panel id="add-menu" anchor={addBtn}>
         <ul>{folders.map((f) => <Item key={f} onClick={() => addFrom(f)}>{f}</Item>)}</ul>
       </Panel>
