@@ -264,6 +264,7 @@
     const entry = {
       name: item.name,
       build: item.build,
+      snaps_to: 'wall',
       onCreate: (root) => { root.metadata.opening = { ...item.opening }; root.metadata.doorKeys = []; },
     };
     mvp.CATALOG.push(entry);

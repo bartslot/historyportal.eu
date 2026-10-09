@@ -187,7 +187,7 @@
   });
 
   [['Tree (Ghibli, round)', 'round'], ['Tree (Ghibli, tall)', 'tall']].forEach(([name, kind]) => {
-    const item = { name, build: () => buildTree(kind) };
+    const item = { name, build: () => buildTree(kind), footprint: [2, 2], turn_step: 45 }; // the trunk's ground, not the crown
     mvp.CATALOG.push(item); // shown in the asset drawer
   });
 })();

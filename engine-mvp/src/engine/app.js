@@ -3,19 +3,20 @@
 /* global BABYLON */
 'use strict';
 import * as TL from '../timeline/model';
+import { CELL_M, contractOf, cellsFor, turnedFootprint, snapCentre, cellsCovered, overlaps } from '../placement/contract';
 import { isPlayPauseKey, isTypingTarget } from '@hp/ui/keyboard.js';
 
 const FPS = 30;
-const GRID_STEP = 0.5;          // metres; placement snaps to this
-const ROTATE_STEP = Math.PI / 4; // [ and ] rotate by 45 degrees, like Sims build mode
+const GRID_STEP = CELL_M;       // metres; one grid line per footprint cell, so what you see is what snaps
 
 const SKIES = ['assets/sky/sky1.avif', 'assets/sky/sky2.avif', 'assets/sky/sky3.avif', 'assets/sky/sky4.avif'];
 
-// height = metres the model is scaled to, so everything shares one real-world scale
+// Every entry follows the asset contract (src/placement/contract.ts): height_m is the real height the
+// model is scaled to, footprint the cells it stands on (omitted = measured), turn_step its ring step.
 const CATALOG = [
-  { name: 'Girl (animated)', url: 'https://assets.babylonjs.com/meshes/HVGirl.glb', height: 1.6 },
-  { name: 'Mannequin (animated)', url: 'https://assets.babylonjs.com/meshes/Xbot.glb', height: 1.8 },
-  { name: 'Tree (low poly)', build: buildTree },
+  { name: 'Girl (animated)', url: 'https://assets.babylonjs.com/meshes/HVGirl.glb', height_m: 1.6, footprint: [1, 1], turn_step: 45 },
+  { name: 'Mannequin (animated)', url: 'https://assets.babylonjs.com/meshes/Xbot.glb', height_m: 1.8, footprint: [1, 1], turn_step: 45 },
+  { name: 'Tree (low poly)', build: buildTree, footprint: [2, 2], turn_step: 45 },
   { name: 'Rock (low poly)', build: buildRock },
   { name: 'House (low poly)', build: buildHouse },
   { name: 'Crate', build: buildCrate },
@@ -54,7 +55,7 @@ ground.isPickable = true;
 const gridMat = new BABYLON.GridMaterial('grid', scene);
 gridMat.mainColor = new BABYLON.Color3(0.42, 0.40, 0.33);
 gridMat.lineColor = new BABYLON.Color3(0.55, 0.53, 0.45);
-gridMat.gridRatio = GRID_STEP * 2;
+gridMat.gridRatio = GRID_STEP;
 gridMat.majorUnitFrequency = 5;
 gridMat.opacity = 0.98;
 const plainMat = new BABYLON.StandardMaterial('plain', scene);
@@ -137,6 +138,7 @@ function fitToHeight(root, height) {
 }
 
 async function addFromCatalog(item, at = null) {
+  const asset = contractOf(item); // refuses a malformed entry before anything is built
   let root;
   if (item.build) {
     root = makeActor(item.name, item.build());
@@ -149,13 +151,15 @@ async function addFromCatalog(item, at = null) {
     root.metadata.clips = groups;
     const clip = groups.find((g) => /idle/i.test(g.name)) || groups.find((g) => /walk/i.test(g.name)) || groups[0];
     if (clip) { playClip(root, clip.name); clip.goToFrame(clip.from); }
-    fitToHeight(root, item.height);
+    fitToHeight(root, asset.height_m);
   }
-  root.metadata.forward = item.forward || 0;
+  root.metadata.forward = asset.forward;
+  root.metadata.asset = asset;
   root.metadata.item = item; // what Duplicate rebuilds from
   if (item.onCreate) item.onCreate(root);
   if (window.__mvp.bendActor) window.__mvp.bendActor(root); // hand-made bend, before the grab box is measured
   addHitbox(root);
+  root.metadata.footprint = asset.snaps_to !== 'floor' ? null : asset.footprint !== undefined ? asset.footprint : measuredFootprint(root);
   if (at) {
     root.position.set(snap(at.x), 0, snap(at.z));
     if (at.turn) root.rotationQuaternion = BABYLON.Quaternion.RotationAxis(BABYLON.Axis.Y, at.turn * Math.PI / 180);
@@ -264,12 +268,40 @@ function select(actor) {
 let placing = null;   // actor following the mouse until the click that drops it
 let dragging = null;  // actor being dragged over the floor
 let dragOffset = BABYLON.Vector3.Zero();
+let dragStart = null; // where a dragged object stood, to go back to when it is let go where it does not fit
 
 function isSmall(actor) {
   const { min, max } = actorBounds(actor);
   return Math.max(max.x - min.x, max.z - min.z) < GRAB_AT_ONCE_M;
 }
 function snap(v) { return Math.round(v / GRID_STEP) * GRID_STEP; }
+
+// ---------- footprints (the asset contract): where a floor object stands, cell by cell ----------
+const yawDegOf = (a) => a.rotationQuaternion.toEulerAngles().y * 180 / Math.PI;
+// measured at turn 0, right after it is built (an entry may declare it instead)
+function measuredFootprint(a) {
+  const { min, max } = actorBounds(a);
+  return [cellsFor(max.x - min.x), cellsFor(max.z - min.z)];
+}
+const footprintNow = (a) => (a.metadata.footprint ? turnedFootprint(a.metadata.footprint, yawDegOf(a)) : null);
+const cellsOf = (a) => { const fp = footprintNow(a); return fp ? cellsCovered(a.position.x, a.position.z, fp) : null; };
+// nothing else stands on any of its cells; things without a footprint (a town, a door, a cloud) always fit
+function fits(a) {
+  const mine = cellsOf(a);
+  if (!mine) return true;
+  return !actors.some((o) => o !== a && !o.isDisposed() && o.isEnabled() && o.metadata.footprint && overlaps(mine, cellsOf(o)));
+}
+// put its centre where its footprint lies exactly on the cells
+function snapToFootprint(a, x = a.position.x, z = a.position.z) {
+  const [w, d] = footprintNow(a) || [1, 1];
+  a.position.x = snapCentre(x, w);
+  a.position.z = snapCentre(z, d);
+}
+function whyNot(a) {
+  if (!fits(a)) return 'No room: something already stands there';
+  if (a.metadata.opening) return 'A door can only be placed on a wall';
+  return 'Cannot be placed here';
+}
 function floorPoint() {
   const hit = scene.pick(scene.pointerX, scene.pointerY, (m) => m === ground);
   return hit && hit.hit ? hit.pickedPoint : null;
@@ -290,7 +322,7 @@ scene.onPointerObservable.add((info) => {
   if (type === BABYLON.PointerEventTypes.POINTERDOWN) {
     if (info.event.button !== 0 || info.event.altKey) return; // right-drag pans, Alt+drag always turns the camera
     if (placing) { // drop it, unless something forbids it here (a door off a wall)
-      if (!dropAllowed(placing)) { flash(placing.metadata.opening ? 'A door can only be placed on a wall' : 'Cannot be placed here'); return; }
+      if (!dropAllowed(placing)) { flash(whyNot(placing)); return; }
       placing = null;
       camera.attachControl(canvas, true);
       autoKey();
@@ -307,6 +339,7 @@ scene.onPointerObservable.add((info) => {
         const p = floorPoint();
         dragOffset = p ? p.subtract(actor.position) : BABYLON.Vector3.Zero();
         dragOffset.y = 0;
+        dragStart = { position: actor.position.clone(), rotation: actor.rotationQuaternion.clone() };
         dragging = actor;
         camera.detachControl();
       }
@@ -317,14 +350,20 @@ scene.onPointerObservable.add((info) => {
     return;
   }
   if (type === BABYLON.PointerEventTypes.POINTERUP && dragging) {
-    if (!dropAllowed(dragging)) {                     // let go off a wall: back to where it last stood
-      flash('A door can only be placed on a wall');
-      if (!(window.__mvp.onInvalidDrop && window.__mvp.onInvalidDrop(dragging))) { const a = dragging; dragging = null; window.__mvp.deleteActor(a); }
+    const a = dragging;
+    const ok = dropAllowed(a);
+    if (!ok) {                                        // no room, or a door off its wall: back to where it stood
+      flash(whyNot(a));
+      if (!(window.__mvp.onInvalidDrop && window.__mvp.onInvalidDrop(a))) {
+        a.position.copyFrom(dragStart.position);
+        a.rotationQuaternion = dragStart.rotation.clone();
+      }
     }
     dragging = null;
+    dragStart = null;
     dragOffset = BABYLON.Vector3.Zero();
     camera.attachControl(canvas, true);
-    autoKey();
+    if (ok) autoKey();
   }
 });
 
@@ -334,27 +373,32 @@ function moveUnderPointer(target) {
   if (window.__mvp.placeHooks.some((hook) => hook(target))) return;
   const p = floorPoint();
   if (!p) return;
-  target.position.x = snap(p.x - dragOffset.x);
-  target.position.z = snap(p.z - dragOffset.z);
+  snapToFootprint(target, p.x - dragOffset.x, p.z - dragOffset.z);
   target.position.y = 0;
 }
 
+// [ and ]: one turn step of this asset's own (90° for furniture, 45° for people), refused if it no longer fits
 function rotateSelected(dir) {
   if (!selected) return;
-  const q = BABYLON.Quaternion.RotationAxis(BABYLON.Axis.Y, dir * ROTATE_STEP);
-  selected.rotationQuaternion = q.multiply(selected.rotationQuaternion);
+  const a = selected;
+  const before = { rotation: a.rotationQuaternion.clone(), position: a.position.clone() };
+  const step = (a.metadata.asset?.turn_step ?? 90) * Math.PI / 180; // clouds and the like are made without a catalog entry
+  a.rotationQuaternion = BABYLON.Quaternion.RotationAxis(BABYLON.Axis.Y, dir * step).multiply(before.rotation);
+  if (a.metadata.footprint) snapToFootprint(a);
+  if (!fits(a)) { flash(whyNot(a)); a.rotationQuaternion = before.rotation; a.position.copyFrom(before.position); return; }
   autoKey();
 }
 
 function deleteSelected() {
   if (!selected) return;
   const a = selected;
+  const target = TL.targetOf(a);              // before dispose: Babylon nulls metadata
   select(null);
   actors.splice(actors.indexOf(a), 1);
   a.dispose(false, true);
   // doors belong to their wall: deleting a house disposed its doors too, drop them from the list
   for (let i = actors.length - 1; i >= 0; i--) if (actors[i].isDisposed()) actors.splice(i, 1);
-  TL.removeTarget(TL.targetOf(a));
+  TL.removeTarget(target);
 }
 
 // ---------- timeline ----------
@@ -437,6 +481,7 @@ window.__mvp = {
   getTracks: () => TL.getState().tracks, setTracks: (tracks) => TL.setTracks(tracks),
   getDome: () => dome,
   makeActor, addHitbox, actorBounds,
+  fits, whyNot, snapToFootprint, footprintNow, getMoving: () => placing || dragging,
   placeHooks: [], // (actor) => true when it positioned the actor itself (wall snap, sky drag)
   dropGuards: [], // (actor) => false when it may not be dropped where it is (a door off a wall)
   getSelected: () => selected,
@@ -444,3 +489,4 @@ window.__mvp = {
   getSkyIndex: () => SKIES.indexOf(dome && dome.metadata && dome.metadata.url),
   deleteActor: (a) => { select(a); deleteSelected(); },
 };
+window.__mvp.dropGuards.push(fits);

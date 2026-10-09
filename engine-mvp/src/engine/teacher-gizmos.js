@@ -1,5 +1,6 @@
 // Teacher gizmos: the selected object gets two handles and nothing else.
-//   turn ring   a thin circle on the floor around it; drag along the ring to turn it (15° steps, Shift = free)
+//   turn ring   a thin circle on the floor around it; drag along the ring to turn it in the asset's own
+//               turn_step (90° furniture, 45° people; Shift = free)
 //   depth knob  a dot above it; drag up = further from the camera, down = nearer. Its real height never
 //               changes (a figure is as tall as it is), it only moves in depth, feet on the floor grid.
 // Both live on Babylon's utility layer, which draws after the storybook post chain, so the handles stay
@@ -12,7 +13,7 @@
   const scene = mvp.scene;
   const camera = mvp.camera;
 
-  const TURN_STEP = Math.PI / 12;   // 15°
+  const DEFAULT_TURN_DEG = 90;      // when an object has no asset contract
   const RING_MARGIN = 0.35;         // metres beyond the object's footprint
   const RING_SEGMENTS = 96;
   const RING_GRAB = 0.3;            // metres, the invisible tube that catches the pointer
@@ -105,16 +106,27 @@
     if (!target) return;
     busy = true;
     camera.detachControl();
-    turnStart = { angle: yawOf(e.dragPlanePoint, target.position), q: target.rotationQuaternion.clone() };
+    const step = (target.metadata.asset?.turn_step ?? DEFAULT_TURN_DEG) * Math.PI / 180;
+    turnStart = { angle: yawOf(e.dragPlanePoint, target.position), q: target.rotationQuaternion.clone(), pos: target.position.clone(), step };
   });
   turn.onDragObservable.add((e) => {
     if (!turnStart || !target) return;
     let delta = yawOf(e.dragPlanePoint, target.position) - turnStart.angle;
-    if (!(lastEvent && lastEvent.shiftKey)) delta = Math.round(delta / TURN_STEP) * TURN_STEP;
+    if (!(lastEvent && lastEvent.shiftKey)) delta = Math.round(delta / turnStart.step) * turnStart.step;
     // atan2 runs counter-clockwise seen from above; Babylon's +Y rotation runs clockwise, so negate
     target.rotationQuaternion = BABYLON.Quaternion.RotationAxis(BABYLON.Axis.Y, -delta).multiply(turnStart.q);
+    if (target.metadata.footprint) mvp.snapToFootprint(target, turnStart.pos.x, turnStart.pos.z); // a turned footprint may change its cells
   });
-  turn.onDragEndObservable.add(() => { if (turnStart) end(); turnStart = null; });
+  turn.onDragEndObservable.add(() => {
+    if (!turnStart) return;
+    if (target && !mvp.fits(target)) {         // turned into something: back to how it stood
+      mvp.flash(mvp.whyNot(target));
+      target.rotationQuaternion = turnStart.q;
+      target.position.copyFrom(turnStart.pos);
+    }
+    end();
+    turnStart = null;
+  });
 
   // ---- depth knob ----
   const depth = new BABYLON.PointerDragBehavior({ dragPlaneNormal: BABYLON.Axis.Z });
@@ -136,10 +148,18 @@
     const rise = (depthStart.y - scene.pointerY) / scene.getEngine().getRenderHeight(); // up = further
     const metres = Math.max(NEAREST - depthStart.dist, rise * DEPTH_GAIN * depthStart.dist);
     const p = depthStart.pos.add(depthStart.dir.scale(metres));
-    target.position.set(mvp.snap(p.x), 0, mvp.snap(p.z));
+    mvp.snapToFootprint(target, p.x, p.z);
     place(target);
   });
-  depth.onDragEndObservable.add(() => { if (depthStart) end(); depthStart = null; });
+  depth.onDragEndObservable.add(() => {
+    if (!depthStart) return;
+    if (target && !mvp.fits(target)) {         // pushed into something: back to where it stood
+      mvp.flash(mvp.whyNot(target));
+      target.position.copyFrom(depthStart.pos);
+    }
+    end();
+    depthStart = null;
+  });
 
   function end() {
     busy = false;
@@ -156,5 +176,5 @@
     canvas.style.cursor = over === knob ? 'ns-resize' : over === ringHit ? 'grab' : '';
   });
 
-  mvp.gizmos = { ring: ringHit, knob, getTarget: () => target };
+  mvp.gizmos = { ring: ringHit, knob, getTarget: () => target, getBusy: () => (busy ? target : null) };
 })();

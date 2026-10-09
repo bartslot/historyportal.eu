@@ -66,6 +66,7 @@
   // ---------- drag over the stage: a live preview that follows the cursor ----------
   let dragItem = null;
   let preview = null;          // the actor being dragged in
+  mvp.getDragIn = () => preview; // the placement ghost draws its footprint too
   let pending = null;          // its creation (models load asynchronously)
 
   function pointerFrom(e) {
@@ -110,7 +111,7 @@
       pointerFrom(e);
       const a = await mvp.addFromCatalog(mvp.cardItem(f.name.replace(/\.[^.]+$/, ''), URL.createObjectURL(f), 'Images'), { x: 0, z: 0 });
       mvp.moveUnderPointer(a);
-      if (!mvp.dropAllowed(a)) { mvp.flash('Drop pictures on a wall, the floor or an object'); mvp.deleteActor(a); }
+      if (!mvp.dropAllowed(a)) { mvp.deleteActor(a); mvp.flash('Drop pictures on a wall, the floor or an object'); }
     }
   });
   canvas.addEventListener('drop', async (e) => {
@@ -124,8 +125,9 @@
     if (a) {
       mvp.moveUnderPointer(a);
       if (!mvp.dropAllowed(a)) {
-        mvp.flash(a.metadata.opening ? 'A door can only be placed on a wall' : 'Cannot be placed here');
+        const why = mvp.whyNot(a);
         mvp.deleteActor(a);
+        mvp.flash(why);                        // after: deleting resets the stage label
       } else {
         mvp.select(a);
         mvp.autoKey();

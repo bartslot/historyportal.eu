@@ -78,7 +78,7 @@
   // ---------- catalog: the library from History Portal (assets/images/images.json) ----------
   function cardItem(name, url, folder, sub) {
     return {
-      name, folder, sub, image: url,
+      name, folder, sub, image: url, snaps_to: 'surface',
       build: () => [makeCard(url)],
       onCreate: (root) => { root.metadata.decal = true; root.metadata.scenery = true; },
     };

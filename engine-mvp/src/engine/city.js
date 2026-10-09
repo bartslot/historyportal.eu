@@ -214,7 +214,7 @@
   }
 
   // ---------- catalog + panel: one path for the mouse, the AI animator and the slider ----------
-  const item = { name: 'Town (procedural)', build: buildTown };
+  const item = { name: 'Town (procedural)', build: buildTown, footprint: null }; // a whole town: things stand in its streets
   mvp.CATALOG.push(item);
   const town = () => mvp.actors.find((a) => a.name === item.name);
   async function rebuild() {
