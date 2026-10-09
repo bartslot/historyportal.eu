@@ -87,6 +87,19 @@
     background: var(--bg); color: var(--text); cursor: pointer; }
   .row button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
   .row button:disabled { opacity: .5; cursor: default; }
+  #selbar { position: absolute; left: 0; top: 0; display: flex; gap: 2px; padding: 3px; border-radius: 999px;
+    background: rgba(15,23,42,.9); border: 1px solid rgba(255,255,255,.12); }
+  #selbar[hidden] { display: none; }
+  #selbar button { border: 0; background: transparent; color: var(--text); font: inherit; font-size: 13px; padding: 8px 14px; border-radius: 999px; cursor: pointer; }
+  #selbar button:hover { background: rgba(255,255,255,.1); }
+  #shots { position: absolute; left: 12px; bottom: 12px; display: flex; gap: 8px; align-items: flex-end; }
+  .shot { position: relative; }
+  .shot img { width: 96px; display: block; border-radius: 4px; border: 1px solid rgba(255,255,255,.3); cursor: pointer; }
+  .shot button { position: absolute; top: 2px; right: 2px; width: 22px; height: 22px; border: 0; border-radius: 999px;
+    background: rgba(15,23,42,.85); color: var(--text); cursor: pointer; opacity: 0; }
+  .shot:hover button { opacity: 1; }
+  #shots .add { border: 1px solid rgba(255,255,255,.2); background: rgba(15,23,42,.9); color: var(--text); font: inherit; font-size: 13px;
+    padding: 8px 14px; border-radius: 999px; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -212,28 +225,6 @@
   </section>
 </div>
 
-<script src="https://cdn.babylonjs.com/babylon.js"></script>
-<script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
-<script src="https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
-<script src="https://cdn.babylonjs.com/earcut.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/mp4-muxer@5.1.3/build/mp4-muxer.js"></script>
-<script src="app.js"></script>
-<script src="assistant.js"></script>
-<script src="backdrop.js"></script>
-<script src="look-shaders.js"></script>
-<script src="look.js"></script>
-<script src="bend.js"></script>
-<script src="door.js"></script>
-<script src="cloud-meta.js"></script>
-<script src="cloud-cumulus.js"></script>
-<script src="cloud-volume.js"></script>
-<script src="ghibli-tree.js"></script>
-<script src="bake.js"></script>
-<script src="cards.js"></script>
-<script src="drawer.js"></script>
-<script src="teacher-gizmos.js"></script>
-<script src="clouds.js"></script>
-<script src="town-plan.js"></script>
-<script src="city.js"></script>
+<script type="module" src="/src/main.ts"></script>
 </body>
 </html>

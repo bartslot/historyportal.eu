@@ -122,12 +122,25 @@
             "port": 5231
         },
         {
+            "//": "Babylon studio API (AI animator + MP4 bake), worktree feat/engine-mvp",
             "name": "engine-mvp",
             "runtimeExecutable": "python3",
             "runtimeArgs": [
-                "engine-mvp/server.py"
+                "/Users/bartslot/BartsAutomation/BartsDev/apps/historyportal.eu/.claude/worktrees/engine-mvp/engine-mvp/server.py"
             ],
             "port": 8090
+        },
+        {
+            "//": "React + Babylon lesson studio (Vite), worktree feat/engine-mvp; proxies /assist and /bake to engine-mvp",
+            "name": "studio",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": [
+                "--prefix",
+                "/Users/bartslot/BartsAutomation/BartsDev/apps/historyportal.eu/.claude/worktrees/engine-mvp/engine-mvp",
+                "run",
+                "dev"
+            ],
+            "port": 5190
         }
     ]
 }

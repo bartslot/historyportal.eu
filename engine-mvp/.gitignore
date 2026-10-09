@@ -1,4 +1,6 @@
-assets/images/*
-!assets/images/images.json
-assets/sky/
-assets/clouds/
+public/assets/images/*
+!public/assets/images/images.json
+public/assets/sky/
+public/assets/clouds/
+node_modules/
+dist/
