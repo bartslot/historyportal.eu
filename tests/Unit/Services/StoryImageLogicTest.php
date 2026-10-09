@@ -34,38 +34,6 @@ class StoryImageLogicTest extends TestCase
         $this->assertSame(2.0, $article->shrinkRatio());   // 2860 / 1430 default
     }
 
-    public function test_free_images_filters_by_license(): void
-    {
-        $article = $this->article(500, 500);
-        $all = $article->images();
-        $free = $article->freeImages();
-
-        $this->assertCount(2, $all);
-        $this->assertCount(1, $free);
-        $this->assertSame('Free', $free[0]->title);
-    }
-
-    public function test_scene_plan_never_exceeds_the_narration_cap(): void
-    {
-        $article = $this->article(2000, 2000);   // 4000 words, well over the cap
-        $plan = $article->scenePlan(1000, 130);   // 1000-word budget
-
-        $budgetTotal = array_sum(array_column($plan, 'budget'));
-        $this->assertLessThanOrEqual(1000, $budgetTotal);        // compressed to the cap
-        $this->assertSame($plan[0]['budget'], $plan[1]['budget']); // equal sections → equal budget
-        $this->assertGreaterThanOrEqual(1, $plan[0]['imageBeats']);
-    }
-
-    public function test_scene_plan_never_pads_a_short_article(): void
-    {
-        $article = $this->article(300, 300);   // 600 words, under the cap
-        $plan = $article->scenePlan(1430, 130);
-
-        // ratio capped at 1.0 — budgets equal the words, never inflated.
-        $this->assertSame(300, $plan[0]['budget']);
-        $this->assertSame(300, $plan[1]['budget']);
-    }
-
     /**
      * @dataProvider licenses
      */

@@ -29,15 +29,6 @@ class NarrativeFrameworkTest extends TestCase
         }
     }
 
-    public function test_default_game_pairing_matches_the_spec(): void
-    {
-        $this->assertSame('quiz', NarrativeFramework::HerosJourney->defaultGameType());
-        $this->assertSame('quiz', NarrativeFramework::InMediasRes->defaultGameType());
-        $this->assertSame('strategy', NarrativeFramework::RiseAndFall->defaultGameType());
-        $this->assertSame('quiz', NarrativeFramework::Mystery->defaultGameType());
-        $this->assertNull(NarrativeFramework::Branching->defaultGameType());
-    }
-
     public function test_every_case_has_a_label_description_and_outline_icon(): void
     {
         foreach (NarrativeFramework::cases() as $framework) {

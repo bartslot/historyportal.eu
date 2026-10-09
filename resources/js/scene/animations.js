@@ -1,51 +1,12 @@
 // Scene and layer motion — one vocabulary, shared by the wizard's Animate tab, the editor
-// preview and the student player. Adding a movement here makes it available in all three; the
-// picker builds its options from these lists rather than repeating them in Blade.
+// preview and the student player. The picker's option lists live in
+// resources/views/components/lesson/animate-inspector.blade.php.
 //
 // Easing is chosen by INTENT, per the easing conventions: a teacher picks "Settle" or "Overshoot",
 // not a cubic-bezier. The curves come from resources/js/easing.js so motion in a lesson matches
 // motion in the app chrome.
 
 import { EASE, CURVE, EASING } from '../easing.js'
-
-/** How a layer arrives on the scene. `none` shows it immediately. */
-export const ENTRANCES = [
-  { key: 'none', label: 'None' },
-  { key: 'fade', label: 'Fade in' },
-  { key: 'slide-left', label: 'In from left' },
-  { key: 'slide-right', label: 'In from right' },
-  { key: 'slide-up', label: 'In from below' },
-  { key: 'slide-down', label: 'In from above' },
-  { key: 'zoom', label: 'Zoom in' },
-  { key: 'pop', label: 'Pop' },
-]
-
-/**
- * How a layer LEAVES, at the end of the scene — Keynote's Build Out.
- *
- * Deliberately mirrored from ENTRANCES so "in from left / out to left" reads as one movement
- * continuing, not two unrelated effects.
- */
-export const EXITS = [
-  { key: 'none', label: 'Stay' },
-  { key: 'fade', label: 'Fade out' },
-  { key: 'slide-left', label: 'Out to left' },
-  { key: 'slide-right', label: 'Out to right' },
-  { key: 'slide-up', label: 'Out upwards' },
-  { key: 'slide-down', label: 'Out downwards' },
-  { key: 'zoom', label: 'Zoom out' },
-  { key: 'pop', label: 'Pop out' },
-]
-
-/** How one scene becomes the next. */
-export const SCENE_TRANSITIONS = [
-  { key: 'crossfade', label: 'Crossfade' },
-  { key: 'slide-left', label: 'Slide left' },
-  { key: 'slide-right', label: 'Slide right' },
-  { key: 'slide-up', label: 'Slide up' },
-  { key: 'slide-down', label: 'Slide down' },
-  { key: 'cut', label: 'Cut' },
-]
 
 /**
  * The easing menu. `curve` drives the live preview graph, `bezier` drives the real animation.

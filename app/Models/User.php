@@ -7,7 +7,6 @@ namespace App\Models;
 use App\Enums\OnboardingStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -69,11 +68,6 @@ class User extends Authenticatable
         return $this->teaching_locale ?: ($this->locale ?: 'en');
     }
 
-    public function hasOnboarded(): bool
-    {
-        return $this->onboardingStatus()->isFinished();
-    }
-
     /** Never null: rows written before the column existed read as Pending. */
     public function onboardingStatus(): OnboardingStatus
     {
@@ -83,11 +77,6 @@ class User extends Authenticatable
     public function isTeacher(): bool
     {
         return $this->role === 'teacher';
-    }
-
-    public function isStudent(): bool
-    {
-        return $this->role === 'student';
     }
 
     /** A throwaway account created by the landing-page demo: a real teacher, fenced in and swept
@@ -124,12 +113,6 @@ class User extends Authenticatable
     }
 
     // ── Student relationships ───────────────────────────────────────────────
-
-    public function enrolledClassrooms(): BelongsToMany
-    {
-        return $this->belongsToMany(Classroom::class, 'classroom_student', 'student_id', 'classroom_id')
-            ->withPivot('joined_at');
-    }
 
     public function progress(): HasMany
     {

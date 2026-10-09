@@ -22,17 +22,6 @@ final class StripeCustomers
 {
     private ?StripeClient $client = null;
 
-    /**
-     * Swap the Stripe client, for tests.
-     *
-     * Not a constructor argument on purpose: StripeClient can be built with no arguments, so the
-     * container would autowire a keyless one and every call would go out unauthenticated.
-     */
-    public function useClient(StripeClient $client): void
-    {
-        $this->client = $client;
-    }
-
     /** Is this key a live one? Decides which stored Customer ids are usable. */
     public function keyIsLive(): bool
     {

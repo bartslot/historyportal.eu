@@ -61,17 +61,4 @@ enum NarrativeFramework: string
     {
         return $this === self::HerosJourney;
     }
-
-    /**
-     * The game pre-selected when this arc is chosen (teacher can override). Branching needs no
-     * game — the choices are the interactivity.
-     */
-    public function defaultGameType(): ?string
-    {
-        return match ($this) {
-            self::HerosJourney, self::InMediasRes, self::Mystery => 'quiz',
-            self::RiseAndFall => 'strategy',
-            self::Branching   => null,
-        };
-    }
 }

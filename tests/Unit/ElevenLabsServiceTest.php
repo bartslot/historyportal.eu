@@ -104,26 +104,4 @@ class ElevenLabsServiceTest extends TestCase
 
         $this->assertNull($result);
     }
-
-    public function test_get_voice_preview_url_returns_from_cache(): void
-    {
-        Http::fake([
-            'api.elevenlabs.io/v1/voices' => Http::response([
-                'voices' => [
-                    [
-                        'voice_id'    => 'abc123',
-                        'name'        => 'Alice',
-                        'preview_url' => 'https://cdn.elevenlabs.io/alice.mp3',
-                        'labels'      => ['accent' => 'american', 'gender' => 'female'],
-                    ],
-                ],
-            ], 200),
-        ]);
-
-        $this->service->getVoices(); // warm cache
-        $url = $this->service->getVoicePreviewUrl('abc123');
-
-        $this->assertEquals('https://cdn.elevenlabs.io/alice.mp3', $url);
-        Http::assertSentCount(1); // no extra API call
-    }
 }

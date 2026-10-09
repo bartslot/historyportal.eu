@@ -174,19 +174,6 @@ class ElevenLabsService
         }
     }
 
-    public function getVoicePreviewUrl(string $voiceId): ?string
-    {
-        $voices = $this->getVoices();
-
-        foreach ($voices as $voice) {
-            if ($voice['id'] === $voiceId) {
-                return $voice['preview_url'] !== '' ? $voice['preview_url'] : null;
-            }
-        }
-
-        return null;
-    }
-
     private function buildLabel(array $voice): string
     {
         $name   = $voice['name'] ?? '';

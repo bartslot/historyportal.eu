@@ -17,7 +17,6 @@
 
 // Full period (seconds, at speed 1) of each mode's main movement.
 const PERIOD_S = { drift: 40, breeze: 6, bob: 5, flutter: 18 }
-export const AMBIENT_MODES = ['none', ...Object.keys(PERIOD_S)]
 const SPEED_RANGE = [0.25, 3]
 const AMOUNT_RANGE = [0, 2]
 const MODE_CLASSES = Object.keys(PERIOD_S).map(m => `amb-${m}`)

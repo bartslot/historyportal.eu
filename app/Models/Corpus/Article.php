@@ -19,14 +19,4 @@ class Article extends Model
     public $timestamps = false;
 
     protected $guarded = [];
-
-    /** Articles whose era brackets the given year, for a macro-region. */
-    public function scopeForRegionYear($query, string $region, int $year)
-    {
-        return $query->where('region', $region)
-            ->whereNotNull('era_start')
-            ->whereNotNull('era_end')
-            ->where('era_start', '<=', $year)
-            ->where('era_end', '>=', $year);
-    }
 }

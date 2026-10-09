@@ -87,11 +87,6 @@ class Scene extends Model
         return $this->belongsTo(Lesson::class);
     }
 
-    public function animationClip(): BelongsTo
-    {
-        return $this->belongsTo(AnimationClip::class);
-    }
-
     public function strategyGame(): BelongsTo
     {
         return $this->belongsTo(StrategyGame::class);

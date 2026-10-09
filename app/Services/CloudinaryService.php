@@ -126,12 +126,6 @@ class CloudinaryService
         return null;
     }
 
-    /** Upload a local file by path. */
-    public function uploadFile(string $absolutePath, string $folder = 'lessons', ?string $publicId = null): ?string
-    {
-        return is_file($absolutePath) ? $this->uploadBytes((string) file_get_contents($absolutePath), $folder, $publicId) : null;
-    }
-
     /**
      * Fetch a remote image and host it on Cloudinary. Returns the optimized Cloudinary URL, or the
      * original $url as a graceful fallback when Cloudinary isn't configured or the fetch/upload fails

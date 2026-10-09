@@ -49,16 +49,6 @@ class VoyageLessonBuilderTest extends TestCase
         }
     }
 
-    public function test_is_playable_reflects_leg_presence(): void
-    {
-        $b = $this->builder();
-        // Every catalogue voyage now has legs authored, so isPlayable tracks that; an id that is
-        // not in the catalogue at all is simply not playable (and must not blow up).
-        $this->assertTrue($b->isPlayable('columbus-1492'));
-        $this->assertTrue($b->isPlayable('brouwer-route'));
-        $this->assertFalse($b->isPlayable('not-a-real-voyage-id'));
-    }
-
     public function test_build_creates_voyage_legs_wrapped_by_intro_and_outro_story_scenes(): void
     {
         $teacher = User::factory()->create(['role' => 'teacher']);

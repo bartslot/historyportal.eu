@@ -1,7 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
 import {
-  ENTRANCES,
-  SCENE_TRANSITIONS,
   EASINGS,
   easingBezier,
   easingCurve,
@@ -9,24 +7,9 @@ import {
   playEntrance,
   sceneTransitionFrames,
   playExit,
-  EXITS,
 } from '../animations.js'
 
 describe('animation vocabulary', () => {
-  // The Blade picker, the whitelist in EditsSceneArtwork and setSceneTransition all repeat these
-  // keys. If one drifts, a teacher picks an option the server rejects and nothing happens.
-  it('offers the entrances the inspector lists', () => {
-    expect(ENTRANCES.map(e => e.key)).toEqual(
-      ['none', 'fade', 'slide-left', 'slide-right', 'slide-up', 'slide-down', 'zoom', 'pop'],
-    )
-  })
-
-  it('offers the scene transitions the inspector lists', () => {
-    expect(SCENE_TRANSITIONS.map(t => t.key)).toEqual(
-      ['crossfade', 'slide-left', 'slide-right', 'slide-up', 'slide-down', 'cut'],
-    )
-  })
-
   it('names every easing and gives each a curve and a bezier', () => {
     expect(EASINGS.map(e => e.key)).toEqual(['enter', 'move', 'exit', 'pop', 'linear'])
     for (const e of EASINGS) {
@@ -150,9 +133,5 @@ describe('exits — Keynote\'s Build Out', () => {
 
   it('does nothing for a layer that should stay', () => {
     expect(playExit(el(), { anim: 'none' })).toBeNull()
-  })
-
-  it('offers an exit for every entrance, so the two lists stay in step', () => {
-    expect(EXITS.map(e => e.key)).toEqual(ENTRANCES.map(e => e.key))
   })
 })

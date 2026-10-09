@@ -2739,58 +2739,6 @@ class Step3SceneConfigurator extends Component
         $this->selectSceneInternal($this->selectedSceneId);
     }
 
-    /** Voyage scene: append a coastal thumbnail pin (URL string) shown at the landfall. */
-    public function addStopImage(string $url): void
-    {
-        if (! $this->selectedScene) {
-            return;
-        }
-        $url = trim($url);
-        if ($url === '') {
-            return;
-        }
-        $imgs = array_values((array) ($this->selectedScene['config']['stop_images'] ?? []));
-        if (count($imgs) >= self::STOP_IMAGES_MAX) {
-            $this->dispatch('toast', message: __('Maximum of :n stop images reached.', ['n' => self::STOP_IMAGES_MAX]), type: 'warning');
-
-            return;
-        }
-        $imgs[] = $url;
-        $this->selectedScene['config']['stop_images'] = $imgs;
-        $this->saveSelected();
-    }
-
-    /** Voyage scene: remove the stop image at $index. */
-    public function removeStopImage(int $index): void
-    {
-        if (! $this->selectedScene) {
-            return;
-        }
-        $imgs = array_values((array) ($this->selectedScene['config']['stop_images'] ?? []));
-        if (! isset($imgs[$index])) {
-            return;
-        }
-        array_splice($imgs, $index, 1);
-        $this->selectedScene['config']['stop_images'] = array_values($imgs);
-        $this->saveSelected();
-    }
-
-    /** Voyage scene: reorder a stop image from one slot to another. */
-    public function moveStopImage(int $from, int $to): void
-    {
-        if (! $this->selectedScene) {
-            return;
-        }
-        $imgs = array_values((array) ($this->selectedScene['config']['stop_images'] ?? []));
-        if (! isset($imgs[$from]) || $to < 0 || $to >= count($imgs)) {
-            return;
-        }
-        $moved = array_splice($imgs, $from, 1);
-        array_splice($imgs, $to, 0, $moved);
-        $this->selectedScene['config']['stop_images'] = array_values($imgs);
-        $this->saveSelected();
-    }
-
     // Two gallery shapes share these mutators: a VOYAGE landfall gallery lives at
     // config.gallery.images (opened by the hotspot), while a STANDALONE story slide (kind 'gallery',
     // the intro/outro) keeps its images at config.images. Route to the right path by scene kind so
@@ -3009,28 +2957,6 @@ class Step3SceneConfigurator extends Component
         });
 
         $this->syncGameSceneIndexes();
-    }
-
-    public function generateSkyboxImage(int $sceneId): void
-    {
-        if ($this->guestDemoCannotGenerate()) {
-            return;
-        }
-
-        $scene = $this->lesson->scenes()->findOrFail($sceneId);
-
-        if (! $scene->image_path) {
-            $this->dispatch('toast', message: 'Generate the flat image first.', type: 'warning');
-
-            return;
-        }
-
-        $scene->update(['status' => 'generating', 'error_message' => null]);
-        GenerateSkyboxImage::dispatch($sceneId);
-
-        if ($this->selectedSceneId === $sceneId) {
-            $this->selectSceneInternal($sceneId);
-        }
     }
 
     /**
@@ -3394,14 +3320,6 @@ class Step3SceneConfigurator extends Component
         $this->openPaintingPickerCommon();
     }
 
-    /** Voyage inspector "+ Add image" → pick art to pin at the landfall as a stop image. */
-    public function openStopImagePicker(): void
-    {
-        $this->paintingPickerMode = 'voyage_stop';
-        $this->openPaintingPickerCommon();
-        $this->seedLandfallImageSearch();
-    }
-
     /**
      * "3D model" → search Sketchfab in OUR modal.
      *
@@ -3513,7 +3431,7 @@ class Step3SceneConfigurator extends Component
         // Landfall/gallery images are referenced by URL in scene config, so host them on Cloudinary
         // (falls back to local storage when Cloudinary isn't configured). The scene BACKGROUND uses a
         // relative image_path rendered via asset('storage/…'), so that one stays local for now.
-        if (in_array($mode, ['voyage_stop', 'voyage_marker', 'gallery_image'], true)) {
+        if (in_array($mode, ['voyage_marker', 'gallery_image'], true)) {
             $cloud = app(\App\Services\CloudinaryService::class);
             $url = $cloud->configured()
                 ? $cloud->uploadBytes($this->uploadImage->get(), "lessons/{$this->lesson->id}")
@@ -3521,7 +3439,6 @@ class Step3SceneConfigurator extends Component
             $url ??= '/storage/'.WebpEncoder::storeUpload($this->uploadImage, "lessons/{$this->lesson->id}/uploads");
             $this->reset('uploadImage');
             match ($mode) {
-                'voyage_stop' => $this->addStopImage($url),
                 'voyage_marker' => $this->setLegMarkerImage($url),
                 default => $this->addGalleryImage($url, ''),
             };
@@ -3710,26 +3627,12 @@ class Step3SceneConfigurator extends Component
 
         match ($this->paintingPickerMode) {
             'layer' => $this->applyPaintingAsLayer($source, $key),
-            'voyage_stop' => $this->applyPaintingAsStopImage($source, $key),
             'voyage_marker' => $this->applyPaintingAsMarkerImage($source, $key),
             // A Sketchfab uid is all addEmbedLayer needs — EmbedParser reads the 32-hex id.
             'model3d' => $this->applyModelChoice($key),
             'gallery_image' => $this->applyPaintingAsGalleryImage($source, $key),
             default => $this->applyPaintingBackground($source, $key),
         };
-    }
-
-    /** Download a picked painting to lesson storage and pin it as this voyage leg's stop image. */
-    public function applyPaintingAsStopImage(string $source, string $key): void
-    {
-        if (! $this->selectedSceneId) {
-            return;
-        }
-        $this->paintingPickerOpen = false;
-        $stored = $this->storePickedPainting($source, $key, 'stop');
-        if ($stored) {
-            $this->addStopImage($stored['url']);
-        }
     }
 
     /** Drop the chosen Sketchfab model onto the scene as a free-positioned 3D layer. */
@@ -4025,7 +3928,7 @@ class Step3SceneConfigurator extends Component
                 $live = collect();
                 // Landfall art is often maps / engravings / views, not "paintings" — appending that
                 // word buries the good period results, so search the raw term for voyage modes.
-                $isLandfall = in_array($this->paintingPickerMode, ['voyage_stop', 'gallery_image'], true);
+                $isLandfall = $this->paintingPickerMode === 'gallery_image';
                 if ($term !== '') {
                     $live = collect($commons->searchText($isLandfall ? $term : $term.' painting'));
                 } else {
@@ -4164,7 +4067,6 @@ class Step3SceneConfigurator extends Component
 
         match ($this->paintingPickerMode) {
             'layer' => $this->addLibraryImageLayer($url),
-            'voyage_stop' => $this->addStopImage($url),
             'voyage_marker' => $this->setLegMarkerImage($url),
             'gallery_image' => $this->addGalleryImage($url),
             default => $this->useLessonImageBackground($url),
