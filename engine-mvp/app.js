@@ -150,6 +150,7 @@ async function addFromCatalog(item, at = null) {
     fitToHeight(root, item.height);
   }
   root.metadata.forward = item.forward || 0;
+  root.metadata.item = item; // what Duplicate rebuilds from
   if (item.onCreate) item.onCreate(root);
   if (window.__mvp.bendActor) window.__mvp.bendActor(root); // hand-made bend, before the grab box is measured
   addHitbox(root);
