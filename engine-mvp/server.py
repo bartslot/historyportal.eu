@@ -379,6 +379,17 @@ def director_review(text, who, data, assistant):
     return str(ask_claude(d['model'], member_prompt(d, assistant), ask, TALK_SCHEMA, 'high').get('reply', ''))[:MAX_REPLY]
 
 
+UNTITLED = 'Untitled lesson'
+TITLE_WORDS = ('titel', 'title', 'titre', 'titolo', 'naam van de les')
+
+
+def title_open(data: dict) -> bool:
+    """The writer names the lesson once; after that only when the client asks (enforced, not prompted)."""
+    lesson = data.get('lesson') if isinstance(data.get('lesson'), dict) else {}
+    said = str(data.get('message', '')).lower()
+    return str(lesson.get('title', UNTITLED)).strip() in ('', UNTITLED) or any(w in said for w in TITLE_WORDS)
+
+
 def ask_member(m, assistant, question, data, direct=False):
     # the client's own words travel with the question: a summary loses facts (the class age, for one)
     said = str(data.get('message', ''))[:MAX_PROMPT]
@@ -387,7 +398,7 @@ def ask_member(m, assistant, question, data, direct=False):
                         member_schema(m, direct), MEMBER_EFFORT)
     msg = {'who': m['id'], 'text': str(answer.get('reply', ''))[:MAX_REPLY]}
     title = str(answer.get('title') or '').strip()[:80]
-    if title and m['id'] == 'writer':
+    if title and m['id'] == 'writer' and title_open(data):
         msg['title'] = title
     if may_change(m, direct):
         commands, dropped = validate(answer.get('commands') or [])

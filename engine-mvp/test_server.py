@@ -60,3 +60,8 @@ except RuntimeError as e:
 fake.write_text('#!/bin/sh\necho \'{"is_error":false,"result":"{}","structured_output":{"reply":"ok"}}\'\n')
 assert s.ask_claude('m', 'sys', 'hi', s.TALK_SCHEMA, 'low') == {'reply': 'ok'}
 print('crew offline checks ok')
+
+assert s.title_open({'lesson': {'title': 'Untitled lesson'}, 'message': 'hoi'}), 'an untitled lesson gets its name'
+assert not s.title_open({'lesson': {'title': 'De Gouden Eeuw'}, 'message': 'maak het dag'}), 'a named lesson keeps it'
+assert s.title_open({'lesson': {'title': 'De Gouden Eeuw'}, 'message': 'Bedenk een betere titel'})
+print('title rule ok')
