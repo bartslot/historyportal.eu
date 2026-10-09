@@ -49,8 +49,10 @@
     }`;
 
   const materials = [];
+  const byHex = {};
   const sun = scene.lights.find((l) => l instanceof BABYLON.DirectionalLight);
   function buildingMaterial(hex) {
+    if (byHex[hex]) return byHex[hex];
     const m = new BABYLON.ShaderMaterial('building-' + hex, scene, { vertex: 'building', fragment: 'building' }, {
       attributes: ['position', 'normal'],
       uniforms: ['world', 'viewProjection', 'color', 'sunDir', 'toon', 'holeCount', 'holes'],
@@ -58,12 +60,12 @@
     m.setColor3('color', BABYLON.Color3.FromHexString(hex));
     m.backFaceCulling = false; // through an opening you see the inside of the far wall
     materials.push(m);
+    byHex[hex] = m;
     return m;
   }
 
   // ---------- the openings ----------
-  const holeArray = new Float32Array(16 * MAX_HOLES);
-  const tmp = new BABYLON.Matrix();
+  const holeMatrices = Array.from({ length: MAX_HOLES }, () => BABYLON.Matrix.Identity()); // reused every frame
   scene.onBeforeRenderObservable.add(() => {
     const doors = mvp.actors.filter((a) => a.metadata.opening);
     let n = 0;
@@ -71,16 +73,15 @@
       const o = d.metadata.opening;
       // opening box in the door's own space: centred on the wall plane, standing on the floor
       const local = BABYLON.Matrix.Compose(new BABYLON.Vector3(o.w, o.h, o.depth), BABYLON.Quaternion.Identity(), new BABYLON.Vector3(0, o.h / 2, 0));
-      local.multiplyToRef(d.computeWorldMatrix(true), tmp);
-      tmp.invert();
-      tmp.copyToArray(holeArray, n * 16);
+      local.multiplyToRef(d.computeWorldMatrix(true), holeMatrices[n]);
+      holeMatrices[n].invert();
       n++;
     });
     const toon = document.getElementById('lookOn').checked && document.getElementById('lookToon').checked ? 1 : 0;
     const dir = sun ? sun.direction.normalizeToNew() : new BABYLON.Vector3(-0.4, -1, -0.3).normalize();
     materials.forEach((m) => {
       m.setFloat('holeCount', n);
-      m.setMatrices('holes', holeArray);
+      m.setMatrices('holes', holeMatrices);
       m.setVector3('sunDir', dir);
       m.setFloat('toon', toon);
     });
@@ -99,28 +100,40 @@
     b.material = flat(hex);
     return b;
   }
-  // local frame: x along the wall, y up, z out of the wall (wall plane at z = 0)
+  // local frame: x along the wall, y up, z out of the wall (wall plane at z = 0).
+  // Leaves hang on hinges (TransformNodes at their outer edge) so they can swing open.
+  function hinge(name, x) {
+    const h = new BABYLON.TransformNode(name, scene);
+    h.position.x = x;
+    return h;
+  }
   function buildDoor() {
     const W = 1.1, H = 2.2, T = 0.12;
+    const h = hinge('hinge', -W / 2);
+    const leaf = part('leaf', W, H, 0.06, W / 2, H / 2, -0.08, '#7a5232');
+    const handle = part('handle', 0.06, 0.18, 0.08, W - 0.15, 1.05, 0.0, '#2b2b2b');
+    leaf.parent = h; handle.parent = h;
+    h.metadata = { swing: -1 };                          // opens inwards, into the house
     return [
       part('frame-l', T, H + T, 0.3, -W / 2 - T / 2, (H + T) / 2, 0, '#5a3d24'),
       part('frame-r', T, H + T, 0.3, W / 2 + T / 2, (H + T) / 2, 0, '#5a3d24'),
       part('frame-top', W + 2 * T, T, 0.3, 0, H + T / 2, 0, '#5a3d24'),
-      part('leaf', W, H, 0.06, 0, H / 2, -0.08, '#7a5232'),
-      part('handle', 0.06, 0.18, 0.08, W / 2 - 0.15, 1.05, 0.0, '#2b2b2b'),
+      h,
     ];
   }
   function buildGate() {
-    const W = 3.2, H = 4.0;
-    const leafL = part('leaf-l', W / 2 - 0.05, H - 0.4, 0.1, -W / 4, (H - 0.4) / 2, -0.2, '#6b4a2b');
-    const leafR = part('leaf-r', W / 2 - 0.05, H - 0.4, 0.1, W / 4, (H - 0.4) / 2, -0.2, '#6b4a2b');
-    leafL.rotation.y = 0.5; // gate leaves stand half open
-    leafR.rotation.y = -0.5;
+    const W = 3.2, H = 4.0, LW = W / 2 - 0.05;
+    const hl = hinge('hinge-l', -W / 2);
+    const hr = hinge('hinge-r', W / 2);
+    part('leaf-l', LW, H - 0.4, 0.1, LW / 2, (H - 0.4) / 2, -0.2, '#6b4a2b').parent = hl;
+    part('leaf-r', LW, H - 0.4, 0.1, -LW / 2, (H - 0.4) / 2, -0.2, '#6b4a2b').parent = hr;
+    hl.metadata = { swing: -1 };
+    hr.metadata = { swing: 1 };
     return [
       part('post-l', 0.6, H + 0.6, 1.8, -W / 2 - 0.3, (H + 0.6) / 2, 0, '#9b9488'),
       part('post-r', 0.6, H + 0.6, 1.8, W / 2 + 0.3, (H + 0.6) / 2, 0, '#9b9488'),
       part('lintel', W + 1.2, 0.6, 1.8, 0, H + 0.3, 0, '#9b9488'),
-      leafL, leafR,
+      hl, hr,
     ];
   }
 
@@ -131,31 +144,145 @@
     { name: 'Gate', build: buildGate, opening: { w: 3.2, h: 4.0, depth: 2.4 } },
   ];
 
-  // ---------- snapping onto walls while placing / dragging ----------
-  const isWall = (m) => m.material && materials.includes(m.material);
-  mvp.wallSnap = (actor) => {
-    if (!actor.metadata.opening) return false;
-    const pick = scene.pick(scene.pointerX, scene.pointerY, (m) => isWall(m) && m.isEnabled());
-    if (!pick || !pick.hit) return false;
-    const n = pick.getNormal(true, true);
-    if (!n || Math.abs(n.y) > 0.4) return false;         // only vertical faces are walls
-    const out = new BABYLON.Vector3(n.x, 0, n.z).normalize();
-    actor.position.set(pick.pickedPoint.x, 0, pick.pickedPoint.z);
+  // ---------- a door is part of a wall ----------
+  const isWall = (m) => m.material && materials.includes(m.material) && m.isEnabled();
+  const hostOf = (mesh) => (mesh.metadata && mesh.metadata.actor) || null;
+  const SNAP_RANGE = 30;              // metres: how far the AI animator looks for a wall
+
+  function poseOnWall(actor, point, normal, host) {
+    const out = new BABYLON.Vector3(normal.x, 0, normal.z).normalize();
+    actor.setParent(null);
+    actor.position.set(point.x, 0, point.z);
     actor.rotationQuaternion = BABYLON.Quaternion.RotationAxis(BABYLON.Axis.Y, Math.atan2(out.x, out.z));
+    if (host && host !== actor) actor.setParent(host);   // the door belongs to its wall: moves and dies with it
+    actor.metadata.onWall = true;
+    actor.metadata.lastValid = { parent: actor.parent, position: actor.position.clone(), rotation: actor.rotationQuaternion.clone() };
+    ghost(actor, false);
+  }
+  function ghost(actor, invalid) {
+    actor.getChildMeshes().forEach((m) => { if (m.name !== 'hitbox') m.visibility = invalid ? 0.4 : 1; });
+  }
+
+  // while placing or dragging: on a wall it snaps on; anywhere else it follows the cursor, see-through,
+  // and cannot be dropped there
+  mvp.placeHooks.push((actor) => {
+    if (!actor.metadata.opening) return false;
+    const pick = scene.pick(scene.pointerX, scene.pointerY, isWall);
+    const n = pick && pick.hit ? pick.getNormal(true, true) : null;
+    if (n && Math.abs(n.y) < 0.4) { poseOnWall(actor, pick.pickedPoint, n, hostOf(pick.pickedMesh)); return true; }
+    const floor = scene.pick(scene.pointerX, scene.pointerY, (m) => m.name === 'ground');
+    actor.setParent(null);
+    if (floor && floor.hit) actor.position.set(floor.pickedPoint.x, 0, floor.pickedPoint.z);
+    actor.metadata.onWall = false;
+    ghost(actor, true);
+    return true;
+  });
+  mvp.dropGuards.push((actor) => !actor.metadata.opening || actor.metadata.onWall);
+  mvp.onInvalidDrop = (actor) => {
+    const v = actor.metadata.lastValid;
+    if (!v) return false;                                  // never was on a wall: caller cancels it
+    actor.setParent(null);
+    actor.position.copyFrom(v.position);
+    actor.rotationQuaternion = v.rotation.clone();
+    if (v.parent) actor.parent = v.parent;
+    actor.metadata.onWall = true;
+    ghost(actor, false);
     return true;
   };
 
+  // AI animator: put the door on the nearest wall around (x, z); false when there is none
+  mvp.snapToNearestWall = (actor) => {
+    const from = actor.getAbsolutePosition().add(new BABYLON.Vector3(0, 1.2, 0));
+    let best = null;
+    for (let i = 0; i < 24; i++) {
+      const a = (i / 24) * Math.PI * 2;
+      const hit = scene.pickWithRay(new BABYLON.Ray(from, new BABYLON.Vector3(Math.cos(a), 0, Math.sin(a)), SNAP_RANGE), isWall);
+      if (hit && hit.hit && (!best || hit.distance < best.distance)) best = hit;
+    }
+    if (!best) return false;
+    const n = best.getNormal(true, true);
+    if (!n || Math.abs(n.y) > 0.4) return false;
+    poseOnWall(actor, best.pickedPoint, n, hostOf(best.pickedMesh));
+    return true;
+  };
+
+  // ---------- open / closed, on the timeline (so it is in the baked MP4 too) ----------
+  const SWING_FRAMES = 18;            // 0.6 s at 30 fps
+  const OPEN_ANGLE = 1.75;            // radians, about 100 degrees
+  const ease = (k) => (k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2); // in-out: a door is pushed, then settles
+  // a key means "fully open/closed AT this frame"; the swing happens in the SWING_FRAMES before it,
+  // so the state you set is exactly what you see at the playhead
+  function openAt(actor, frame) {
+    const keys = actor.metadata.doorKeys || [];
+    let state = 0;
+    for (const k of keys) {
+      if (frame >= k.frame) { state = k.open; continue; }
+      const t = (frame - (k.frame - SWING_FRAMES)) / SWING_FRAMES;
+      if (t > 0) state += (k.open - state) * ease(t);
+      break;
+    }
+    return state;
+  }
+  const PREVIEW_MS = 600; // while editing, a click also plays the swing live
+  scene.onBeforeRenderObservable.add(() => {
+    const f = mvp.getFrame();
+    mvp.actors.forEach((a) => {
+      if (!a.metadata.opening) return;
+      let o = openAt(a, f);
+      const tw = a.metadata.tween;
+      if (tw && !mvp.isPlaying()) {
+        const k = Math.min(1, (performance.now() - tw.t0) / PREVIEW_MS);
+        o = tw.from + (tw.to - tw.from) * ease(k);
+        if (k >= 1) a.metadata.tween = null;
+      }
+      a.getDescendants(false).forEach((n) => { if (n.metadata && n.metadata.swing) n.rotation.y = n.metadata.swing * o * OPEN_ANGLE; });
+    });
+  });
+  function setDoor(actor, open, frame = mvp.getFrame()) {
+    if (!actor || !actor.metadata.opening || !actor.metadata.onWall) return false; // only once it is placed
+    actor.metadata.tween = { from: openAt(actor, frame), to: open ? 1 : 0, t0: performance.now() };
+    const keys = (actor.metadata.doorKeys || []).filter((k) => k.frame !== frame);
+    actor.metadata.doorKeys = [...keys, { frame, open: open ? 1 : 0 }].sort((a, b) => a.frame - b.frame);
+    return true;
+  }
+  mvp.setDoor = setDoor;
+  // click a placed door (no drag) to open or close it; O does the same for the selected door
+  scene.onPointerObservable.add((info) => {
+    if (info.type !== BABYLON.PointerEventTypes.POINTERTAP || info.event.button !== 0) return;
+    const m = info.pickInfo && info.pickInfo.pickedMesh;
+    const a = m && m.metadata && m.metadata.actor;
+    if (a && a.metadata.opening && a.metadata.onWall) setDoor(a, openAt(a, mvp.getFrame()) < 0.5);
+  });
+  window.addEventListener('keydown', (e) => {
+    if (e.key.toLowerCase() !== 'o' || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    const a = mvp.getSelected();
+    if (a && a.metadata.opening) setDoor(a, openAt(a, mvp.getFrame()) < 0.5);
+  });
+
+  // ---------- catalog: no wall in the scene, no doors ----------
+  const buttons = [];
   ITEMS.forEach((item) => {
     const entry = {
       name: item.name,
       build: item.build,
-      onCreate: (root) => { root.metadata.opening = { ...item.opening }; },
+      onCreate: (root) => { root.metadata.opening = { ...item.opening }; root.metadata.doorKeys = []; },
     };
     mvp.CATALOG.push(entry);
     const b = document.createElement('button');
-    b.textContent = item.name + ' (snaps to walls)';
+    b.textContent = item.name + ' (on a wall)';
     b.onclick = () => mvp.addFromCatalog(entry);
     document.getElementById('models').appendChild(b);
+    buttons.push(b);
+  });
+  let tick = 0;
+  scene.onAfterRenderObservable.add(() => {
+    if (++tick % 30) return;
+    const hasWall = scene.meshes.some(isWall);
+    buttons.forEach((b) => {
+      b.disabled = !hasWall;
+      if (hasWall) delete b.dataset.tooltip; else b.dataset.tooltip = 'Add a house, town or wall first';
+      b.style.opacity = hasWall ? 1 : 0.45;
+    });
   });
 
   window.__door = { buildingMaterial, materials };

@@ -39,6 +39,7 @@
     uniform float densityK;
     uniform float bands;       // 0 smooth .. 1 strongly banded (painterly cel)
     uniform float sunPower;
+    const float ABSORB = 0.38;   // light lost per unit of cloud towards the sun (higher = deeper shade)
     float hash(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
     float dens(vec3 p) { return texture(density, p + 0.5).r; }
     float hg(float c, float g) { float g2 = g * g; return (1.0 - g2) / pow(1.0 + g2 - 2.0 * g * c, 1.5) / 12.566; }
@@ -75,9 +76,9 @@
         if (d > 0.01) {
           float od = 0.0;                                       // cloud between here and the sun
           for (int j = 1; j <= 6; j++) od += dens(p + lstep * float(j));
-          float sun = exp(-od * 1.6) * sunPower;
-          float sky = 0.35 + 0.45 * (p.y + 0.5);                // more sky light higher up
-          float L = clamp(sun * phase * 0.55 + sky * 0.45 - 0.1, 0.0, 1.0);
+          float sun = exp(-od * ABSORB) * sunPower;               // how much sunlight reaches this point
+          float sky = 0.3 + 0.7 * (p.y + 0.5);                  // sky light from above: tops bright, base navy
+          float L = clamp(sun * phase * 0.75 + sky * 0.45 - 0.08, 0.0, 1.0);
           float a = 1.0 - exp(-d * densityK * stepM);
           acc += T * a * ramp(L);
           T *= 1.0 - a;

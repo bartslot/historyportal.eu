@@ -12,9 +12,9 @@
   // One colour per KIND of thing, not per distance: no automatic fade with depth (it reads as fake fog).
   // "Distance paleness" exists as an explicit per-scene slider, default 0.
   const LAYERS = [
-    { key: 'hills', label: 'Hills', radius: 230, color: '#6d7d6a', profile: hills },
-    { key: 'town', label: 'Town', radius: 125, color: '#8a7f6c', profile: town },
-    { key: 'trees', label: 'Tree line', radius: 72, color: '#44593f', profile: trees },
+    { key: 'hills', label: 'Hills', radius: 230, color: '#6d7d6a', day: '#7fa36a', profile: hills },
+    { key: 'town', label: 'Town', radius: 125, color: '#8a7f6c', day: '#c4ab86', profile: town },
+    { key: 'trees', label: 'Tree line', radius: 72, color: '#44593f', day: '#4f7f3c', profile: trees },
   ];
 
   // ---------- seeded randomness so "Shuffle" is repeatable ----------
@@ -34,42 +34,44 @@
     return (t) => 22 + 12 * n(t * 2);
   }
   function town(rand) {
-    // buildings along the arc: gable roofs, now and then a church tower with a spire
+    // buildings along the arc, in metres converted to angle at this radius, with real proportions:
+    // houses 5-12 m wide with low gables (roof <= 0.4 x width), now and then a church tower whose
+    // spire is as wide as the tower and at most 1.5 x that width tall. No needles.
+    const R = 125;
     const blocks = [];
     let t = 0;
     while (t < Math.PI * 2) {
-      const gap = rand() < 0.25 ? 0.02 + rand() * 0.08 : 0; // open fields between quarters
-      t += gap;
-      const w = 0.012 + rand() * 0.03;
-      const tower = rand() < 0.06;
-      blocks.push({ a: t, b: t + w, h: tower ? 16 + rand() * 8 : 6 + rand() * 6, roof: tower ? 10 + rand() * 6 : 2 + rand() * 3, tower });
-      t += w;
+      if (rand() < 0.2) t += (6 + rand() * 20) / R;            // open ground between quarters
+      const tower = rand() < 0.03;
+      const wM = tower ? 6 + rand() * 3 : 5 + rand() * 7;      // width in metres
+      const h = tower ? 18 + rand() * 8 : 6 + rand() * 6;
+      const roof = tower ? wM * (1 + rand() * 0.5) : wM * (0.25 + rand() * 0.15);
+      blocks.push({ a: t, b: t + wM / R, h, roof, tower });
+      t += wM / R;
     }
     return (x) => {
       const blk = blocks.find((k) => x >= k.a && x < k.b);
       if (!blk) return 0.5;
       const u = (x - blk.a) / (blk.b - blk.a);
-      if (blk.tower) { // narrow shaft + spire in the middle third
-        if (u < 0.3 || u > 0.7) return blk.h * 0.45;
-        const v = (u - 0.3) / 0.4;
-        return blk.h + blk.roof * (1 - Math.abs(2 * v - 1));
-      }
-      return blk.h + blk.roof * (1 - Math.abs(2 * u - 1));
+      return blk.h + blk.roof * (1 - Math.abs(2 * u - 1));     // gable or spire over the full width
     };
   }
   function trees(rand) {
-    // rounded crowns overlapping, with a few conifers poking out
+    // rounded crowns overlapping, a few conifers; sizes in metres at this radius so nothing becomes a needle
+    const R = 72;
     const crowns = [];
-    for (let t = 0; t < Math.PI * 2; t += 0.004 + rand() * 0.012) {
+    for (let t = 0; t < Math.PI * 2; t += (2 + rand() * 4) / R) {
       const conifer = rand() < 0.15;
-      crowns.push({ c: t, w: conifer ? 0.006 + rand() * 0.004 : 0.01 + rand() * 0.012, h: conifer ? 9 + rand() * 6 : 6 + rand() * 5, conifer });
+      const halfW = conifer ? 2 + rand() * 1.5 : 3 + rand() * 3;      // half width, metres
+      const h = conifer ? 10 + rand() * 5 : 7 + rand() * 5;
+      crowns.push({ c: t, w: halfW / R, h, conifer });
     }
     return (x) => {
       let h = 2.5;
       for (const k of crowns) {
         const d = Math.abs(x - k.c) / k.w;
         if (d >= 1) continue;
-        h = Math.max(h, k.conifer ? k.h * (1 - d) + 2 : 3 + (k.h - 3) * Math.sqrt(1 - d * d));
+        h = Math.max(h, k.conifer ? 3 + (k.h - 3) * (1 - d) : 3 + (k.h - 3) * Math.sqrt(1 - d * d));
       }
       return h;
     };
@@ -121,10 +123,11 @@
     toggles: Object.fromEntries(LAYERS.map((l) => [l.key, document.getElementById('bd-' + l.key)])),
   };
   let meshes = {};
+  let dayness = 0; // 0 = night colours, 1 = day colours (set by the look's Time of day)
 
   function colorFor(layer) {
     // explicit paleness: mixes towards the horizon colour by distance, only as far as the slider says
-    const base = BABYLON.Color3.FromHexString(layer.color);
+    const base = BABYLON.Color3.Lerp(BABYLON.Color3.FromHexString(layer.color), BABYLON.Color3.FromHexString(layer.day), dayness);
     const horizon = BABYLON.Color3.FromHexString('#c9cfd2');
     const k = Number(ui.paleness.value) * Math.min(1, layer.radius / 230);
     return BABYLON.Color3.Lerp(base, horizon, k);
@@ -143,7 +146,7 @@
   }
   function recolor() {
     LAYERS.forEach((layer) => { if (meshes[layer.key]) meshes[layer.key].material.emissiveColor = colorFor(layer); });
-    farMat.emissiveColor = BABYLON.Color3.FromHexString('#7a7a62');
+    farMat.emissiveColor = BABYLON.Color3.Lerp(BABYLON.Color3.FromHexString('#7a7a62'), BABYLON.Color3.FromHexString('#7f9a5a'), dayness);
   }
 
   Object.values(ui.toggles).forEach((el) => { el.onchange = rebuild; });
@@ -151,32 +154,54 @@
   ui.paleness.oninput = recolor;
 
   // ---------- plain painted-sky placeholder (a gradient, for trying silhouettes against) ----------
+  // night -> day: deep night blue to a clear day blue; redrawn in place so a fade costs nothing
+  // eye-level shots only see ~0-20 degrees above the horizon (v 0.39-0.5), so the blue must reach down there
+  const SKY = { night: ['#16233a', '#2f4766', '#7d8c9c'], day: ['#3d7cc2', '#6aa6dc', '#cfe3ef'] };
+  const mixHex = (a, b, t) => BABYLON.Color3.Lerp(BABYLON.Color3.FromHexString(a), BABYLON.Color3.FromHexString(b), t).toHexString();
+  function drawSky(g, t) {
+    const grad = g.createLinearGradient(0, 0, 0, 512);
+    grad.addColorStop(0, mixHex(SKY.night[0], SKY.day[0], t));
+    grad.addColorStop(0.44, mixHex(SKY.night[1], SKY.day[1], t));
+    grad.addColorStop(0.5, mixHex(SKY.night[2], SKY.day[2], t));
+    grad.addColorStop(1, mixHex(SKY.night[2], SKY.day[2], t));
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 1024, 512);
+  }
   function plainSky() {
     const c = document.createElement('canvas');
     c.width = 1024; c.height = 512;
-    const g = c.getContext('2d');
-    const grad = g.createLinearGradient(0, 0, 0, 512);
-    grad.addColorStop(0, '#2c4a6e');
-    grad.addColorStop(0.45, '#7e9bb5');
-    grad.addColorStop(0.5, '#d9dfdf');
-    grad.addColorStop(1, '#d9dfdf');
-    g.fillStyle = grad;
-    g.fillRect(0, 0, 1024, 512);
+    drawSky(c.getContext('2d'), 0);
     return c.toDataURL('image/png');
+  }
+  const skyTex = new BABYLON.DynamicTexture('plain-sky', { width: 1024, height: 512 }, mvp.scene, false);
+  let plainActive = false;
+  function usePlainSky() {
+    mvp.setSky(img.src);
+    mvp.getDome().photoTexture = skyTex;
+    plainActive = true;
+    drawSky(skyTex.getContext(), dayness);
+    skyTex.update();
   }
   const skies = document.getElementById('skies');
   const img = document.createElement('img');
   img.src = plainSky();
   img.dataset.url = img.src;
   img.title = 'Plain sky';
-  img.onclick = () => mvp.setSky(img.src);
+  img.onclick = usePlainSky;
   skies.appendChild(img);
-  mvp.setSky(img.src);
+  skies.addEventListener('click', (e) => { if (e.target !== img) plainActive = false; }, true);
+  usePlainSky();
+
+  function setDayness(t) {
+    dayness = t;
+    recolor();
+    if (plainActive) { drawSky(skyTex.getContext(), t); skyTex.update(); }
+  }
 
   // a camera farther out than the grid would hide the rings; open the far plane
   mvp.camera.maxZ = 2000;
   mvp.camera.upperRadiusLimit = 120;
 
   rebuild();
-  window.__backdrop = { rebuild, LAYERS };
+  window.__backdrop = { rebuild, LAYERS, setDayness };
 })();

@@ -21,8 +21,8 @@
       time: +(mvp.getFrame() / mvp.FPS).toFixed(2),
       length: mvp.getLength(),
       sky: mvp.getSkyIndex(),
-      catalog: mvp.CATALOG.map((c) => c.name),
-      objects: mvp.actors.map((a) => {
+      catalog: mvp.CATALOG.filter((c) => !c.image).map((c) => c.name), // 3D items only: 240 images would flood the prompt
+      objects: mvp.actors.filter((a) => !a.metadata.scenery).map((a) => {
         const st = mvp.stateAt(a, mvp.getFrame());
         const yaw = st.rotation.toEulerAngles().y;
         return {
@@ -87,14 +87,21 @@
     const done = [];
     for (const c of commands) {
       const a = c.id ? resolve(c.id) : null;
-      const needsActor = ['move', 'walk', 'turn', 'face', 'scale', 'clip', 'delete'].includes(c.cmd);
+      const needsActor = ['move', 'walk', 'turn', 'face', 'scale', 'clip', 'delete', 'door'].includes(c.cmd);
       if (needsActor && !a) { done.push('skipped ' + c.cmd + ': no object ' + c.id); continue; }
       switch (c.cmd) {
         case 'add': {
           const item = mvp.CATALOG.find((i) => i.name.toLowerCase() === c.model.toLowerCase())
             || mvp.CATALOG.find((i) => i.name.toLowerCase().includes(c.model.toLowerCase()));
           if (!item) { done.push('skipped add: unknown model ' + c.model); break; }
-          added.push(await mvp.addFromCatalog(item, { x: c.x, z: c.z, turn: c.turn }));
+          const a2 = await mvp.addFromCatalog(item, { x: c.x, z: c.z, turn: c.turn });
+          if (a2.metadata.opening && !mvp.snapToNearestWall(a2)) {   // a door only exists on a wall
+            mvp.deleteActor(a2);
+            added.push(null);
+            done.push('skipped ' + item.name + ': no wall within 30 m of that spot');
+            break;
+          }
+          added.push(a2);
           done.push('added ' + item.name);
           break;
         }
@@ -143,6 +150,9 @@
         }
         case 'clip':
           done.push(mvp.playClip(a, c.name) ? a.name + ' plays ' + c.name : 'skipped clip: ' + c.name + ' not on ' + a.name);
+          break;
+        case 'door':
+          done.push(mvp.setDoor(a, c.open > 0.5, sec(c.at)) ? (c.open > 0.5 ? 'opened ' : 'closed ') + a.name : 'skipped door: ' + a.name + ' is not a placed door');
           break;
         case 'delete':
           mvp.deleteActor(a);

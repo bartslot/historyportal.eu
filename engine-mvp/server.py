@@ -12,6 +12,7 @@ import os
 import pathlib
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
@@ -21,6 +22,8 @@ ENV_FILE = pathlib.Path(os.environ.get('HP_ENV_FILE', HERE.parents[3] / '.env'))
 PORT = int(os.environ.get('PORT', '8090'))
 MAX_COMMANDS = 40
 MAX_PROMPT = 1000
+MAX_BAKE_BYTES = 1_000_000_000          # a published MP4 may be large, but not unbounded
+BAKES = HERE / 'bakes'
 
 
 def load_env(path):
@@ -53,6 +56,7 @@ COMMANDS = {
     'length': {'seconds': 'num'},
     'sky': {'index': 'num'},
     'camera': {'target': 'str', 'distance?': 'num', 'angle?': 'num', 'height?': 'num'},
+    'door': {'id': 'str', 'open': 'num', 'at?': 'num'},
     'play': {},
 }
 RANGES = {'x': (-29, 29), 'z': (-29, 29), 'at': (0, 120), 'start': (0, 120), 'end': (0, 120),
@@ -78,8 +82,11 @@ Commands (JSON objects, "cmd" plus arguments):
 - {"cmd":"length","seconds":n}                       timeline length; make it long enough for your keys
 - {"cmd":"sky","index":n}                            choose skybox 0-3
 - {"cmd":"camera","target":id,"distance":n?,"angle":deg?,"height":deg?}  frame an object; height 5-85 degrees above the ground
+- {"cmd":"door","id":s,"open":1|0,"at":t?}            open (1) or close (0) a placed door or gate at time t
 - {"cmd":"play"}                                     start playback at the end
 
+Doors and gates only exist on a wall: add them next to a house/town (they snap to the nearest wall) and
+only after that building exists. They start closed.
 Rules: use only ids that exist in the scene or new1.. you add. Use only catalog names given. Keep objects
 apart by at least 1.5 m unless asked. Prefer few, clear keyframes. If the request is impossible, return no
 commands and say why in "reply".
@@ -138,6 +145,11 @@ class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *a, **kw):
         super().__init__(*a, directory=str(HERE), **kw)
 
+    def end_headers(self):
+        # the editor changes often: never let the browser run a stale script
+        self.send_header('Cache-Control', 'no-store')
+        super().end_headers()
+
     def _json(self, status, data):
         raw = json.dumps(data).encode()
         self.send_response(status)
@@ -147,6 +159,8 @@ class Handler(SimpleHTTPRequestHandler):
         self.wfile.write(raw)
 
     def do_POST(self):
+        if self.path.startswith('/bake'):
+            return self._save_bake()
         if self.path != '/assist':
             return self._json(404, {'error': 'not found'})
         try:
@@ -168,6 +182,36 @@ class Handler(SimpleHTTPRequestHandler):
             print('assist failed:', repr(e), file=sys.stderr)
             return self._json(500, {'error': 'The assistant failed: ' + type(e).__name__})
 
+
+def safe_name(raw):
+    """Only a plain file name ending in .mp4: no folders, no tricks."""
+    name = pathlib.PurePosixPath(urllib.parse.unquote(raw)).name
+    name = ''.join(c for c in name if c.isalnum() or c in '-_.')
+    return name if name.endswith('.mp4') and len(name) > 4 else None
+
+
+def _save_bake(self):
+    query = urllib.parse.urlparse(self.path).query
+    name = safe_name(urllib.parse.parse_qs(query).get('name', [''])[0])
+    length = int(self.headers.get('Content-Length', 0))
+    if not name:
+        return self._json(422, {'error': 'name must be a plain .mp4 file name'})
+    if not 0 < length <= MAX_BAKE_BYTES:
+        return self._json(413, {'error': 'video missing or too large'})
+    BAKES.mkdir(exist_ok=True)
+    with open(BAKES / name, 'wb') as f:
+        remaining = length
+        while remaining:
+            chunk = self.rfile.read(min(remaining, 1 << 20))
+            if not chunk:
+                break
+            f.write(chunk)
+            remaining -= len(chunk)
+    print(f'published {name} ({length / 1e6:.1f} MB)')
+    return self._json(200, {'url': 'bakes/' + name})
+
+
+Handler._save_bake = _save_bake
 
 if __name__ == '__main__':
     print(f'Scene Engine MVP on http://127.0.0.1:{PORT}  (assistant model: {MODEL})')

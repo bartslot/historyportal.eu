@@ -13,7 +13,7 @@
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
     font: 12px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; overflow: hidden; }
   #app { display: grid; height: 100vh;
-    grid-template-columns: 52px 200px 1fr 220px; grid-template-rows: 40px 1fr 96px; }
+    grid-template-columns: 52px 200px 1fr 220px; grid-template-rows: 40px 1fr auto; }
   header { grid-column: 1 / -1; display: flex; align-items: center; gap: 16px; padding: 0 14px;
     border-bottom: 1px solid var(--line); background: var(--panel); }
   header b { font-size: 13px; }
@@ -23,7 +23,9 @@
   #rail button { width: 36px; height: 36px; border-radius: 6px; border: 0; background: transparent;
     color: var(--text); cursor: pointer; font-size: 15px; }
   #rail button.on { background: rgba(255,255,255,.12); }
-  aside { background: var(--panel); border-right: 1px solid var(--line); overflow: auto; padding: 10px; }
+  aside { background: var(--panel); border-right: 1px solid var(--line); overflow: auto; padding: 10px; min-height: 0; }
+  #app > * { min-height: 0; min-width: 0; } /* long panels scroll; they must never stretch the stage */
+  #stage { overflow: hidden; }
   aside.right { border-right: 0; border-left: 1px solid var(--line); grid-column: 4; grid-row: 2 / 4; }
   h3 { margin: 4px 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--dim); }
   .list button, .btn { display: block; width: 100%; text-align: left; padding: 7px 9px; margin-bottom: 4px;
@@ -33,12 +35,31 @@
   .sky img { width: 100%; aspect-ratio: 2/1; object-fit: cover; border-radius: 4px; cursor: pointer;
     border: 2px solid transparent; }
   .sky img.on { border-color: var(--accent); }
+  .tex-chip { display: flex; align-items: center; justify-content: center; aspect-ratio: 2/1; border-radius: 4px; border: 2px solid var(--line); cursor: pointer; color: var(--dim); }
+  .tex-chip.on { border-color: var(--accent); color: var(--text); }
   #stage { position: relative; grid-column: 3; grid-row: 2; }
   canvas { width: 100%; height: 100%; display: block; outline: none; touch-action: none; }
   #sel { position: absolute; left: 10px; top: 10px; padding: 4px 8px; border-radius: 4px;
     background: rgba(0,0,0,.5); color: var(--text); pointer-events: none; }
   #timeline { grid-column: 3; grid-row: 3; border-top: 1px solid var(--line); background: var(--panel);
     display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; padding: 10px 14px; align-items: center; }
+  #drawer { grid-column: 1 / -1; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+  #drawer .head { display: flex; gap: 6px; align-items: center; }
+  #drawer .toggle { border: 0; background: none; color: var(--text); font-weight: 600; cursor: pointer; padding: 2px 6px 2px 0; }
+  #drawer .tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+  #drawer .tabs button { padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); color: var(--dim); cursor: pointer; }
+  #drawer .tabs button.on { color: var(--text); border-color: var(--dim); }
+  #drawer .tiles { display: flex; gap: 8px; overflow-x: auto; padding-top: 8px; }
+  #drawer.closed .tiles, #drawer.closed .tabs { display: none; }
+  #drawer .tile { flex: 0 0 auto; width: 104px; height: 64px; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--bg); color: var(--text); display: flex; flex-direction: column; justify-content: center;
+    padding: 6px 8px; cursor: grab; user-select: none; }
+  #drawer .tile:hover { border-color: var(--dim); }
+  #drawer .tile small { color: var(--dim); font-size: 10px; margin-top: 2px; }
+  #drawer .tile.image { height: 92px; align-items: center; text-align: center; padding: 4px; background: #e9e6df; color: #333; }
+  #drawer .tile.image img { width: 64px; height: 50px; object-fit: contain; pointer-events: none; }
+  #drawer .tile.image span { font-size: 10px; line-height: 1.1; max-height: 22px; overflow: hidden; }
+  #drawer .tile.image small { display: none; }
   #controls { display: flex; gap: 6px; align-items: center; grid-column: 1 / -1; }
   #controls button { padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line);
     background: var(--bg); color: var(--text); cursor: pointer; }
@@ -52,13 +73,35 @@
     background: var(--key); transform: rotate(45deg); }
   input[type=range] { accent-color: var(--accent); }
   .small { color: var(--dim); margin-top: 8px; }
+  aside.right { display: flex; flex-direction: column; }
+  #look label, #look2 label, .look label { display: flex; justify-content: space-between; align-items: center; gap: 8px; color: var(--dim); margin-bottom: 4px; }
+  #look input[type=range], #look2 input[type=range], .look input[type=range] { width: 100px; }
+  #look select { background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 4px; max-width: 130px; }
+  #ai { margin-top: 16px; display: flex; flex-direction: column; min-height: 260px; flex: 1; }
+  #aiLog { flex: 1; overflow: auto; border: 1px solid var(--line); border-radius: 6px; padding: 6px;
+    background: var(--bg); min-height: 120px; }
+  .msg { margin: 0 0 6px; padding: 5px 7px; border-radius: 6px; white-space: pre-wrap; }
+  .msg.you { background: #2e2e33; }
+  .msg.ai { border-left: 3px solid var(--accent); }
+  .msg.sys { color: var(--dim); font-size: 11px; }
+  .msg.err { border-left: 3px solid #e5484d; }
+  #aiPrompt { width: 100%; margin-top: 6px; min-height: 54px; resize: vertical; border-radius: 6px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--text); padding: 6px; font: inherit; }
+  .row { display: flex; gap: 6px; margin-top: 6px; }
+  .row button { flex: 1; padding: 6px; border-radius: 999px; border: 1px solid var(--line);
+    background: var(--bg); color: var(--text); cursor: pointer; }
+  .row button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .row button:disabled { opacity: .5; cursor: default; }
 </style>
 </head>
 <body>
 <div id="app">
   <header>
     <b>Scene Engine MVP</b><span class="small" style="margin:0">Babylon.js</span>
-    <span class="hint">Click object to select · W move · E rotate · R scale · K key · Space play · Del delete</span>
+    <button id="publish" class="btn" style="width:auto;margin:0;background:var(--accent);color:var(--accent-ink);border-color:var(--accent);border-radius:999px;padding:5px 14px">Publish (bake MP4)</button>
+    <select id="publishRes" style="background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:4px"><option value="720">720p</option><option value="1080" selected>1080p</option></select>
+    <span id="publishStatus" class="small" style="margin:0"></span>
+    <span class="hint">Click to select, drag a selected object to move it, drag elsewhere (or Alt+drag) to turn the camera, right-drag to pan · W move · E rotate · R scale · K key · click a door to open/close · Space play · Del delete</span>
   </header>
 
   <nav id="rail">
@@ -71,6 +114,13 @@
     <h3>Add model</h3>
     <div class="list" id="models"></div>
     <p class="small">Animated models play their own walk/idle loop. The timeline moves them around.</p>
+    <h3 style="margin-top:16px">Procedural town</h3>
+    <div class="look" id="cityPanel">
+      <label>City size <input type="range" id="citySize" min="0" max="1" step="0.05" value="0.35"></label>
+      <label><input type="checkbox" id="cityWall" checked> Town wall</label>
+      <div class="row"><button id="cityBuild" class="primary">Build town</button><button id="cityShuffle">Shuffle</button></div>
+      <p class="small">Drawn from a street map: square, winding streets, rings, plots, wall and gates.</p>
+    </div>
   </aside>
 
   <main id="stage">
@@ -81,6 +131,19 @@
   <aside class="right">
     <h3>Skybox</h3>
     <div class="sky" id="skies"></div>
+    <h3 style="margin-top:12px">Clouds</h3>
+    <div class="look">
+      <label>Source <select id="cloudSource" style="background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:4px">
+        <option value="volume">Volumetric cumulus (Ghibli)</option><option value="cumulus">Comic cumulus (sunlit)</option><option value="procedural">Watercolour (metaballs)</option><option value="painted">Painted (PNG)</option></select></label>
+      <label>Cloud ink <input type="range" id="cloudLines" min="0" max="1" step="0.05" value="0.8"></label>
+      <label>Sun glow <input type="range" id="cloudGlow" min="0" max="1.5" step="0.05" value="0.6"></label>
+      <label>Cloud bands <input type="range" id="cloudBands" min="0" max="1" step="0.05" value="0.5"></label>
+      <label>Cloud volume <input type="range" id="cloudVolume" min="0" max="1" step="0.05" value="0.65"></label>
+      <label>Cloudiness <input type="range" id="cloudAmount" min="0" max="1" step="0.02" value="0.3"></label>
+      <label>Shot <select id="cloudShot" style="background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:4px">
+        <option value="normal">Normal (thin)</option><option value="cinematic">Cinematic (puffy)</option><option value="mixed">Mixed</option></select></label>
+      <button class="btn" id="cloudShuffle">Shuffle clouds</button>
+    </div>
     <label class="btn" style="margin-top:8px">Upload panorama (2:1)
       <input type="file" id="skyUpload" accept="image/*" hidden></label>
     <h3 style="margin-top:16px">Ground</h3>
@@ -89,9 +152,61 @@
     <h3 style="margin-top:16px">Engine tools</h3>
     <button class="btn" id="inspector">Inspector + curve editor</button>
     <p class="small">In the inspector, select an object, open its Animations and press Edit for the curve editor.</p>
+    <h3 style="margin-top:16px">Storybook look</h3>
+    <div id="look">
+      <label><input type="checkbox" id="lookOn" checked> On (2D and 3D alike)</label>
+      <label><input type="checkbox" id="lookToon" checked> Toon shading on 3D</label>
+      <label>Preset <select id="lookPreset"></select></label>
+      <label>Time of day <input type="range" id="lookTime" min="0" max="1" step="0.01" value="0"></label>
+      <label>Hand-made bend <input type="range" id="lookBend" min="0" max="2" step="0.05" value="0.8"></label>
+      <label>Wash <input type="range" id="lookWash" min="0" max="5" step="1" value="2"></label>
+      <label>Line wobble <input type="range" id="lookWobble" min="0" max="1.5" step="0.05" value="0.6"></label>
+      <label>Ink <input type="range" id="lookInk" min="0" max="1.5" step="0.05" value="0.9"></label>
+      <label>Ink opacity <input type="range" id="lookInkOpacity" min="0" max="1" step="0.05" value="0.85"></label>
+      <label>Ink blend <select id="lookInkBlend"><option value="0">Normal</option><option value="1">Multiply</option><option value="2" selected>Pencil</option></select></label>
+      <label>Paint over lines <input type="range" id="lookPaintOver" min="0" max="1" step="0.05" value="0.3"></label>
+      <label>Ink darkness <input type="range" id="lookInkDark" min="0" max="1" step="0.05" value="1"></label>
+      <label>Outline weight <input type="range" id="lookOutline" min="1" max="3" step="0.1" value="1.6"></label>
+      <label>Line width <input type="range" id="lookWidth" min="0.6" max="3" step="0.1" value="1.1"></label>
+      <label>Full lines up to (m) <input type="range" id="lookNear" min="3" max="60" step="1" value="14"></label>
+      <label>Far line strength <input type="range" id="lookFarInk" min="0" max="1" step="0.05" value="0.3"></label>
+      <label>Lines in images <input type="range" id="lookColorInk" min="0" max="1" step="0.05" value="0.45"></label>
+      <label>Wet edges <input type="range" id="lookWet" min="0" max="1.5" step="0.05" value="0.7"></label>
+      <label>Stains <input type="range" id="lookStains" min="0" max="1.5" step="0.05" value="0.8"></label>
+      <label>Blooms <input type="range" id="lookBlooms" min="0" max="1.5" step="0.05" value="0.6"></label>
+      <label>Dark pigment <input type="range" id="lookDark" min="0" max="1.5" step="0.05" value="0.6"></label>
+      <label>Granulation <input type="range" id="lookGrain" min="0" max="1.5" step="0.05" value="0.7"></label>
+      <label>Own texture <input type="range" id="lookTex" min="0" max="1" step="0.05" value="0.6"></label>
+      <label>Texture size (m) <input type="range" id="lookTexScale" min="0.5" max="20" step="0.5" value="4"></label>
+      <label>Blend <select id="lookBlend"><option value="0">Multiply</option><option value="1">Overlay</option><option value="2">Soft light</option></select></label>
+      <div id="texList" class="sky" style="margin:4px 0"></div>
+      <label class="btn" style="margin:4px 0">Upload aquarelle texture <input type="file" id="lookTexUpload" accept="image/*" hidden></label>
+      <label>Palette <select id="lookPaletteMode"><option value="0">Natural</option><option value="1">Indigo night</option><option value="2">Sepia</option></select></label>
+      <label>Palette strength <input type="range" id="lookPalette" min="0" max="1" step="0.05" value="0.85"></label>
+      <label>Paper <input type="range" id="lookPaper" min="0" max="1" step="0.05" value="0.5"></label>
+      <label>Paper edge <input type="range" id="lookEdge" min="0" max="1.5" step="0.05" value="0.6"></label>
+    </div>
+    <h3 style="margin-top:16px">Backdrop (parallax)</h3>
+    <div id="look2" class="look">
+      <label><input type="checkbox" id="bd-hills" checked> Hills (230 m)</label>
+      <label><input type="checkbox" id="bd-town" checked> Town (125 m)</label>
+      <label><input type="checkbox" id="bd-trees" checked> Tree line (72 m)</label>
+      <label>Distance paleness <input type="range" id="bdPale" min="0" max="1" step="0.05" value="0"></label>
+      <button class="btn" id="bdShuffle">Shuffle silhouettes</button>
+    </div>
+    <div id="ai">
+      <h3>AI animator</h3>
+      <div id="aiLog"><p class="msg sys">Tell me what should happen, e.g. "Add a girl at the house, let her walk to the tree in 4 seconds, then face the horse."</p></div>
+      <textarea id="aiPrompt" placeholder="What should happen?"></textarea>
+      <div class="row"><button id="aiSend" class="primary">Send</button><button id="aiUndo" disabled>Undo</button></div>
+    </div>
   </aside>
 
   <section id="timeline">
+    <div id="drawer">
+      <div class="head"><button class="toggle">Assets ▾</button><div class="tabs"></div></div>
+      <div class="tiles"></div>
+    </div>
     <div id="controls">
       <button id="play" class="primary">▶ Play</button>
       <button id="key">◆ Key</button>
@@ -110,6 +225,24 @@
 <script src="https://cdn.babylonjs.com/babylon.js"></script>
 <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
 <script src="https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
+<script src="https://cdn.babylonjs.com/earcut.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mp4-muxer@5.1.3/build/mp4-muxer.js"></script>
 <script src="app.js"></script>
+<script src="assistant.js"></script>
+<script src="backdrop.js"></script>
+<script src="look-shaders.js"></script>
+<script src="look.js"></script>
+<script src="bend.js"></script>
+<script src="door.js"></script>
+<script src="cloud-meta.js"></script>
+<script src="cloud-cumulus.js"></script>
+<script src="cloud-volume.js"></script>
+<script src="ghibli-tree.js"></script>
+<script src="bake.js"></script>
+<script src="cards.js"></script>
+<script src="drawer.js"></script>
+<script src="clouds.js"></script>
+<script src="town-plan.js"></script>
+<script src="city.js"></script>
 </body>
 </html>

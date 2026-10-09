@@ -35,10 +35,11 @@
                      mix(dot(hash3(i + vec3(0, 1, 1)), f - vec3(0, 1, 1)), dot(hash3(i + vec3(1, 1, 1)), f - vec3(1, 1, 1)), u.x), u.y), u.z);
     }
     // fbm in world metres; 'scale' = size of the largest feature, 'ps' = pixel size in metres
-    float fbm3(vec3 w, float scale, float ps) {
+    float fbm3o(vec3 w, float scale, float ps, float octaves) {
       vec3 p = w / scale;
       float s = 0.0, a = 0.5, f = 1.0, norm = 0.0;
       for (int i = 0; i < 6; i++) {
+        if (float(i) >= octaves) break;
         float keep = smoothstep(2.0, 6.0, (scale / f) / ps);  // drop octaves finer than a few pixels
         s += a * keep * perlin(p * f);
         norm += a;
@@ -46,7 +47,18 @@
       }
       return s / norm * 2.0;                                   // roughly -1..1
     }
-    float lum(vec3 c) { return dot(c, vec3(0.299, 0.587, 0.114)); }`;
+    float fbm3(vec3 w, float scale, float ps) { return fbm3o(w, scale, ps, 6.0); }
+    float lum(vec3 c) { return dot(c, vec3(0.299, 0.587, 0.114)); }
+    // the sheet itself: a ragged paper border fixed to the frame (the picture's edge, not a texture on it);
+    // 1 = picture, 0 = bare paper
+    float paperMask(vec2 uv, float edge) {
+      if (edge <= 0.0) return 1.0;
+      float aspect = resolution.x / resolution.y;
+      float e = min(min(uv.x * aspect, (1.0 - uv.x) * aspect), min(uv.y, 1.0 - uv.y));
+      float rag = edge * (0.02 + 0.03 * (0.5 + 0.5 * perlin(vec3(uv * resolution / 14.0, 0.0))));
+      return smoothstep(rag, rag + 0.004, e);
+    }
+    const vec3 PAPER_WHITE = vec3(0.95, 0.94, 0.91);`;
 
   BABYLON.Effect.ShadersStore.washFragmentShader = `
     precision highp float;
@@ -54,14 +66,9 @@
     uniform sampler2D textureSampler;
     uniform vec2 texel;
     uniform float radius;
-    uniform float wobble;
     ${WORLD}
     void main(void) {
-      float d = depthAt(vUV);
-      vec3 w = worldAt(vUV, d);
-      float ps = pixelSize(d);
-      // hand tremor: edges wander, but the wander belongs to the surface, not the screen
-      vec2 uv = vUV + vec2(fbm3(w, 0.8, ps), fbm3(w + 17.0, 0.8, ps)) * wobble * texel * 3.0;
+      vec2 uv = vUV;
       int r = int(radius);
       if (r < 1) { gl_FragColor = texture2D(textureSampler, uv); return; }
       vec3 m0 = vec3(0.0), m1 = vec3(0.0), m2 = vec3(0.0), m3 = vec3(0.0);
@@ -106,6 +113,10 @@
     uniform float wobble;
     uniform float darkness;             // 1 = true black lines
     uniform float outline;              // silhouette weight relative to inner lines
+    uniform float paperEdge;
+    uniform float inkOpacity;
+    uniform float inkBlend;             // 0 normal, 1 multiply, 2 pencil
+    uniform float paintOver;            // 0 = lines keep their own colour, 1 = the wash tints them
     uniform vec3 inkColor;
     ${WORLD}
     float geoEdge(vec2 uv, vec2 o, float d, vec3 nC, out float sil) {
@@ -154,10 +165,24 @@
       float strength = ink * mix(farInk, 1.0, near) * pen;
       float hard = clamp(max(sil, crease), 0.0, 1.0) * strength;     // model lines: real black
       float soft = clamp(sob * colorInk, 0.0, 1.0) * strength * 0.6; // lines inside images: lighter
-      vec3 lineColor = mix(inkColor, vec3(0.02, 0.02, 0.025), darkness);
-      vec3 outC = mix(col, lineColor, clamp(hard, 0.0, 1.0));
-      outC = mix(outC, lineColor, clamp(soft, 0.0, 1.0) * (1.0 - hard));
-      gl_FragColor = vec4(outC, 1.0);
+      vec3 ownColor = mix(inkColor, vec3(0.02, 0.02, 0.025), darkness);
+      float a = clamp(hard + soft * (1.0 - hard), 0.0, 1.0) * inkOpacity;
+      // graphite: greyer, broken up by the paper tooth (world-anchored grain that fades out far away)
+      if (inkBlend > 1.5) {
+        ownColor = mix(ownColor, vec3(0.30, 0.30, 0.33), 0.45);
+        a *= smoothstep(-0.55, 0.25, fbm3(w0 + 41.0, 0.03, ps0));
+      }
+      vec3 outC;
+      if (inkBlend < 0.5) {
+        // normal: the line is painted on top; with paint-over it takes a deep version of the wash colour
+        outC = mix(col, mix(ownColor, col * 0.28, paintOver), a);
+      } else {
+        // multiply / pencil: the line darkens what is under it, as graphite does under a watercolour wash;
+        // paint-over keeps the hue of the wash in the line instead of neutral grey
+        vec3 factor = mix(ownColor, vec3(0.28), paintOver);
+        outC = col * mix(vec3(1.0), factor, a);
+      }
+      gl_FragColor = vec4(mix(PAPER_WHITE, outC, paperMask(vUV, paperEdge)), 1.0); // the border covers the lines too
     }`;
 
   BABYLON.Effect.ShadersStore.watercolorFragmentShader = `
@@ -172,6 +197,7 @@
     uniform float blendMode;
     uniform float stains;
     uniform float blooms;
+    uniform float dark;
     uniform float wetEdge;
     uniform float granulation;
     uniform float palette;
@@ -204,6 +230,9 @@
       float d = depthAt(vUV);
       vec3 w = worldAt(vUV, d);
       float ps = pixelSize(d);
+      // surface pigment belongs to surfaces: the far sky dome (a painted wash already) gets none of it,
+      // otherwise metre-scale noise shrinks to speckles 500 m away
+      float surf = 1.0 - smoothstep(150.0, 320.0, d);
 
       // wet edges: pigment pools at the rim of a wash (an image-space edge effect; it follows edges, not the frame)
       float lb = 0.0;
@@ -212,22 +241,33 @@
         lb += lum(texture2D(textureSampler, vUV + vec2(cos(a), sin(a)) * texel * 5.0).rgb);
       }
       lb /= 8.0;
-      c *= 1.0 - wetEdge * 0.45 * smoothstep(0.01, 0.12, lb - lc);
+      // only real colour edges pool pigment; small noise-level differences must not draw lines
+      c *= 1.0 - wetEdge * 0.4 * smoothstep(0.05, 0.18, lb - lc);
 
-      // pigment stains: large, soft density changes inside a wash (Perlin, metres-scale, on the surface)
-      c *= 1.0 + stains * 0.35 * fbm3(w, 3.0, ps) * (1.0 - 0.5 * lc);
+      // pigment stains: big, smooth, and mostly LIGHTER (paper showing through a thinner wash),
+      // only 3 octaves so a wash never looks dirty or mottled
+      float sn = fbm3o(w, 6.0, ps, 3.0);
+      vec3 paperC = vec3(0.96, 0.95, 0.92);
+      c = mix(c, paperC, surf * stains * 0.22 * max(sn, 0.0));
+      c *= 1.0 - surf * stains * 0.08 * max(-sn, 0.0);
 
-      // blooms (backruns): a darker rim where a wetter patch pushed pigment outwards
-      float bn = fbm3(w + 31.0, 5.0, ps);
-      float rim = 1.0 - smoothstep(0.0, 0.06, abs(bn - 0.15));
-      c *= 1.0 - blooms * 0.22 * rim;
-      c += blooms * 0.04 * step(0.15, bn) * (1.0 - lc);
+      // blooms: soft, very large lighter patches where the wash ran wetter. No rims: contour rims of noise
+      // draw vein-like lines across every surface.
+      float bn = fbm3o(w + 31.0, 14.0, ps, 2.0);
+      c = mix(c, paperC, surf * blooms * 0.18 * smoothstep(0.15, 0.6, bn));
 
-      // granulation: pigment settling in the paper tooth, strongest in dark washes
-      c *= 1.0 + granulation * 0.45 * fbm3(w + 7.0, 0.12, ps) * (1.0 - lc);
+      // dark pigment: where the wash went on thicker, the same hue goes deeper and a little richer.
+      // A soft ramp over the noise (no threshold line), so it reads as pooled pigment, not a stain.
+      float dn = fbm3o(w + 53.0, 4.0, ps, 3.0);
+      float pool = smoothstep(0.05, 0.55, -dn);
+      vec3 deeper = mix(vec3(lum(c)), c, 1.3) * 0.68;
+      c = mix(c, clamp(deeper, 0.0, 1.0), surf * dark * 0.65 * pool);
 
-      // paper fibre, also on the surface; fades away where it would be finer than a pixel
-      c *= 1.0 + paper * 0.12 * fbm3(w + 3.0, 0.035, ps);
+      // granulation: fine pigment grain, only in darker washes, small amplitude
+      c *= 1.0 + surf * granulation * 0.18 * fbm3(w + 7.0, 0.12, ps) * (1.0 - lc);
+
+      // paper fibre, faint
+      c *= 1.0 + paper * 0.05 * fbm3(w + 3.0, 0.035, ps);
 
       // optional aquarelle texture (your scan or a ChatGPT image), triplanar in world space
       if (useTex > 0.5) {
@@ -240,13 +280,6 @@
 
       if (paletteMode > 0.5) c = mix(c, ramp(lum(c), paletteMode), palette);
 
-      // the sheet itself: a ragged paper border fixed to the frame (the picture's edge, not a texture on it)
-      if (paperEdge > 0.0) {
-        float aspect = resolution.x / resolution.y;
-        float e = min(min(vUV.x * aspect, (1.0 - vUV.x) * aspect), min(vUV.y, 1.0 - vUV.y));
-        float rag = paperEdge * (0.02 + 0.03 * (0.5 + 0.5 * perlin(vec3(vUV * resolution / 14.0, 0.0))));
-        c = mix(vec3(0.95, 0.94, 0.91), c, smoothstep(rag, rag + 0.004, e));
-      }
       gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
     }`;
 })();

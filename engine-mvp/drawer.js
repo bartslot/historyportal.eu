@@ -15,8 +15,10 @@
     { name: 'Buildings', test: /house|town|city|church|tower/i },
     { name: 'Doors & gates', test: /door|gate/i },
     { name: 'Props', test: /./ },                   // everything else
+    // 2D images that become cards on walls and floors (folder set by cards.js)
+    { name: 'Line art', test: null }, { name: 'History line', test: null }, { name: 'Shapes', test: null }, { name: 'Arrows', test: null },
   ];
-  const folderOf = (item) => FOLDERS.find((f) => f.test.test(item.name)).name;
+  const folderOf = (item) => item.folder || FOLDERS.find((f) => f.test && f.test.test(item.name)).name;
 
   const drawer = document.getElementById('drawer');
   const tabs = drawer.querySelector('.tabs');
@@ -37,10 +39,17 @@
     tiles.innerHTML = '';
     mvp.CATALOG.filter((item) => folderOf(item) === folder).forEach((item) => {
       const tile = document.createElement('div');
-      tile.className = 'tile';
+      tile.className = item.image ? 'tile image' : 'tile';
       tile.draggable = true;
-      tile.textContent = item.name.replace(/\s*\(.*\)$/, '');
-      const sub = item.name.match(/\((.*)\)$/);
+      if (item.image) {                                   // image cards: show the picture itself
+        const img = document.createElement('img');
+        img.src = item.image; img.alt = item.name; img.loading = 'lazy'; img.draggable = false;
+        tile.appendChild(img);
+      }
+      const label = document.createElement('span');
+      label.textContent = item.name.replace(/\s*\(.*\)$/, '');
+      tile.appendChild(label);
+      const sub = item.sub ? [null, item.sub] : item.name.match(/\((.*)\)$/);
       if (sub) { const s = document.createElement('small'); s.textContent = sub[1]; tile.appendChild(s); }
       tile.dataset.tooltip = 'Drag into the scene';
       tile.addEventListener('dragstart', (e) => {
@@ -96,7 +105,21 @@
     preview = null;
   });
   let dropped = false;
+  // image files from the desktop: each becomes a card on the surface where it is dropped
+  canvas.addEventListener('dragover', (e) => { if (!dragItem && e.dataTransfer.types.includes('Files')) e.preventDefault(); });
   canvas.addEventListener('drop', async (e) => {
+    const files = [...e.dataTransfer.files].filter((f) => f.type.startsWith('image/'));
+    if (dragItem || !files.length) return;
+    e.preventDefault();
+    for (const f of files) {
+      pointerFrom(e);
+      const a = await mvp.addFromCatalog(mvp.cardItem(f.name.replace(/\.[^.]+$/, ''), URL.createObjectURL(f), 'Images'), { x: 0, z: 0 });
+      mvp.moveUnderPointer(a);
+      if (!mvp.dropAllowed(a)) { mvp.flash('Drop pictures on a wall, the floor or an object'); mvp.deleteActor(a); }
+    }
+  });
+  canvas.addEventListener('drop', async (e) => {
+    if (!dragItem) return;
     e.preventDefault();
     dropped = true;
     pointerFrom(e);

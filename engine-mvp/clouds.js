@@ -19,7 +19,7 @@
   const WIDTH = { normal: [70, 150], cinematic: [90, 170] }; // metres wide on screen at that distance
 
   const $ = (id) => document.getElementById(id);
-  const ui = { amount: $('cloudAmount'), shot: $('cloudShot'), shuffle: $('cloudShuffle') };
+  const ui = { amount: $('cloudAmount'), shot: $('cloudShot'), shuffle: $('cloudShuffle'), source: $('cloudSource') };
   let seed = 3;
   let dayness = 0;
   let info = {};              // name -> {w, h}
@@ -39,20 +39,29 @@
     tex.hasAlpha = true;
     m.diffuseTexture = tex;
     m.useAlphaFromDiffuseTexture = true;
-    m.disableLighting = true;                 // painted cut-out, coloured only by the time-of-day tint
-    m.emissiveColor = BABYLON.Color3.Black();
-    m.diffuseColor = tint();
+    // painted cut-out, unlit: with lighting disabled Babylon draws texture x emissive colour, so the
+    // time-of-day tint goes in the emissive colour (diffuse black would leave it black, as it did)
+    m.disableLighting = true;
+    m.diffuseColor = BABYLON.Color3.Black();
+    m.emissiveColor = tint();
     m.backFaceCulling = false;
+    // alpha-test as well as blend: transparent pixels then stay out of the depth buffer, so the look
+    // neither outlines the cloud's rectangle nor paints world texture onto empty sky
+    m.transparencyMode = BABYLON.Material.MATERIAL_ALPHATESTANDBLEND;
+    m.alphaCutOff = 0.08;
     materials[name] = m;
     return m;
   }
 
-  function makeCloud(name, widthM) {
+  function paintedPlane(name, widthM) {
     const { w, h } = info[name];
     const plane = BABYLON.MeshBuilder.CreatePlane('sky-cloud', { width: widthM, height: widthM * h / w }, scene);
     plane.material = material(name);
     plane.billboardMode = BABYLON.Mesh.BILLBOARDMODE_Y; // always faces the camera around the vertical axis
     plane.position.y = (widthM * h / w) / 2;            // the actor's origin sits at the cloud's base
+    return plane;
+  }
+  function makeCloud(name, plane) {
     const root = mvp.makeActor(name, [plane]);
     root.metadata.scenery = true;                       // not shown to the AI animator as a character/prop
     root.metadata.cloud = true;
@@ -66,8 +75,11 @@
     // remove the scattered (unpinned) clouds, keep hand-placed ones
     mvp.actors.filter((a) => a.metadata.cloud && !a.metadata.pinned).forEach((a) => mvp.deleteActor(a));
     const shot = ui.shot.value;
+    const procedural = ui.source.value === 'procedural';
+    const cumulus = ui.source.value === 'cumulus';
+    const volume = ui.source.value === 'volume';
     const names = SETS[shot].filter((n) => info[n]);
-    if (!names.length) return;
+    if (!procedural && !cumulus && !volume && !names.length) return;
     const count = Math.round(Number(ui.amount.value) * MAX_CLOUDS);
     const rand = rng(seed);
     const [wMin, wMax] = WIDTH[shot === 'cinematic' ? 'cinematic' : 'normal'];
@@ -75,7 +87,25 @@
       // golden-angle spread around the sky so clouds never bunch into one quarter
       const angle = i * 2.39996 + rand() * 0.6;
       const dist = DIST[0] + rand() * (DIST[1] - DIST[0]);
-      const cloud = makeCloud(names[Math.floor(rand() * names.length)], wMin + rand() * (wMax - wMin));
+      const width = wMin + rand() * (wMax - wMin);
+      let cloud;
+      if (volume) {
+        // volumetric Ghibli cumulus: real 3D lumps that shade each other; towers for cinematic shots
+        const kind = shot === 'cinematic' || (shot === 'mixed' && rand() < 0.4) ? 'tower' : 'puff';
+        cloud = makeCloud('Cumulus 3D (' + kind + ')', window.__volumeClouds.makeVolumeCloud(kind, width * (kind === 'tower' ? 1.1 : 0.7), rand));
+      } else if (cumulus) {
+        // comic cumulus lit by the sun: towers for cinematic shots, small puffs for normal shots
+        const kind = shot === 'cinematic' || (shot === 'mixed' && rand() < 0.4) ? 'tower' : 'puff';
+        const w = kind === 'tower' ? width * 1.4 : width * 0.6;
+        cloud = makeCloud('Cumulus (' + kind + ')', window.__cumulus.makeCumulus(kind, w, rand, tint()));
+      } else if (procedural) {
+        // metaball clouds: puffy for cinematic shots, thin strands for normal shots, both for mixed
+        const kind = shot === 'cinematic' || (shot === 'mixed' && rand() < 0.5) ? 'puffy' : 'thin';
+        cloud = makeCloud('Cloud (' + kind + ')', window.__metaClouds.makeMetaCloud(kind, width, rand, tint()));
+      } else {
+        const name = names[Math.floor(rand() * names.length)];
+        cloud = makeCloud(name, paintedPlane(name, width));
+      }
       cloud.position.set(Math.cos(angle) * dist, HEIGHT[0] + rand() * (HEIGHT[1] - HEIGHT[0]), Math.sin(angle) * dist);
     }
     mvp.select(null);
@@ -95,12 +125,16 @@
 
   function setDayness(t) {
     dayness = t;
-    Object.values(materials).forEach((m) => { m.diffuseColor = tint(); });
+    Object.values(materials).forEach((m) => { m.emissiveColor = tint(); });
+    if (window.__metaClouds) window.__metaClouds.setTint(tint());
+    if (window.__cumulus) window.__cumulus.setTint(tint());
+    if (window.__volumeClouds) window.__volumeClouds.setDayness(t);
   }
 
   let pending = null;
   ui.amount.oninput = () => { cancelAnimationFrame(pending); pending = requestAnimationFrame(scatter); };
   ui.shot.onchange = scatter;
+  ui.source.onchange = scatter;
   ui.shuffle.onclick = () => { seed = Math.floor(Math.random() * 1e9); scatter(); };
 
   fetch('assets/clouds/clouds.json').then((r) => r.json()).then((list) => {

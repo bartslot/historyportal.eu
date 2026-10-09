@@ -25,7 +25,8 @@
 
   function prepare(mesh) {
     if (mesh.metadata && mesh.metadata.unbent) return true;
-    if (mesh.skeleton || mesh.name === 'hitbox' || mesh.name.startsWith('sky') || !mesh.getTotalVertices()) return false;
+    // skinned bodies bend by bones; leaf cards are corner-expanded in their shader (subdividing breaks them)
+    if (mesh.skeleton || mesh.name === 'hitbox' || mesh.name.startsWith('sky') || mesh.name === 'tree-leaves' || mesh.name === 'decal' || !mesh.getTotalVertices()) return false;
     const n = mesh.getTotalVertices();
     const perEdge = n < 600 ? 4 : n < 6000 ? 2 : 0; // enough vertices to curve, never an explosion
     try { if (perEdge) mesh.increaseVertices(perEdge); } catch (err) { console.warn('bend: cannot subdivide', mesh.name, err.message); }

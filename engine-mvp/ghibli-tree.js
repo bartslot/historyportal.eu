@@ -149,7 +149,7 @@
       const from = new BABYLON.Vector3(0, trunkH * (0.6 + rand() * 0.25), 0);
       const to = new BABYLON.Vector3(bx * 0.75, by * 0.92, bz * 0.75);
       const len = BABYLON.Vector3.Distance(from, to);
-      const br = BABYLON.MeshBuilder.CreateCylinder('branch', { height: len, diameterTop: H * 0.012, diameterBottom: H * 0.03, tessellation: 6 }, scene);
+      const br = BABYLON.MeshBuilder.CreateCylinder('tree-branch', { height: len, diameterTop: H * 0.012, diameterBottom: H * 0.03, tessellation: 6 }, scene);
       br.position = from.add(to).scale(0.5);
       const dir = to.subtract(from).normalize();
       br.rotationQuaternion = BABYLON.Quaternion.FromUnitVectorsToRef(BABYLON.Axis.Y, dir, new BABYLON.Quaternion());
@@ -179,10 +179,11 @@
     materials.forEach((m) => { m.setVector3('toSun', toSun); m.setVector3('toCam', toCam); m.setFloat('lightK', k); });
   });
 
-  // keep leaf cards out of the depth pass (their quads would get outlined); colour edges still ink them
+  // keep leaf cards out of the depth pass (their quads would get outlined), and the branches inside the
+  // crown too (otherwise the ink pass outlines them straight through the leaves); colour edges still ink
   scene.onBeforeRenderObservable.add(() => {
     const g = scene.geometryBufferRenderer;
-    if (g && g.renderList) g.renderList = g.renderList.filter((m) => m.name !== 'tree-leaves');
+    if (g && g.renderList) g.renderList = g.renderList.filter((m) => m.name !== 'tree-leaves' && m.name !== 'tree-branch');
   });
 
   [['Tree (Ghibli, round)', 'round'], ['Tree (Ghibli, tall)', 'tall']].forEach(([name, kind]) => {
