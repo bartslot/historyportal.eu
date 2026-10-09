@@ -344,6 +344,8 @@ export class Avatar3DPlayer {
     this._animPlaying        = false  // is animation currently playing
     this._fbxLoader          = new FBXLoader()
     this._bodyAction         = null
+    this._animSpeed          = 1.0   // playback speed multiplier (0.25 – 2.0)
+    this._animExpressiveness = 1.0   // blend weight (0.0 – 1.0)
 
     // Idle
     this._blinkTimer = 0
@@ -1182,6 +1184,24 @@ export class Avatar3DPlayer {
     this._headZoomY = headY
   }
 
+  /** Apply a pose instantly (no interpolation) — used on first load. */
+  _applyPoseInstant (poseName) {
+    const pose = POSES[poseName]
+    if (!pose) return
+    for (const [name, val] of Object.entries(pose)) {
+      if (name.startsWith('_')) continue
+      const bone = this._boneMap[name]
+      const restQ = this._boneRestQ[name]
+      if (!bone || !restQ) continue
+      const [rx, ry, rz] = val
+      const offset = new THREE.Quaternion()
+      offset.setFromEuler(new THREE.Euler(rx * DEG, ry * DEG, rz * DEG, 'XYZ'))
+      bone.quaternion.copy(restQ).multiply(offset)
+    }
+    const hips = this._boneMap['Hips']
+    if (hips) hips.position.y = this._boneRestY + (pose._hipsY ?? 0)
+  }
+
   // ── Preview playback ───────────────────────────────────────────────────────
 
   async loadPreview (audioUrl, blendShapesUrl) {
@@ -1367,6 +1387,37 @@ export class Avatar3DPlayer {
     this._animAction.play()
     this._animPlaying  = true
   }
+
+  /** Toggle animation play / pause. */
+  toggleAnimation () {
+    if (!this._animMixer) return
+    if (this._animPlaying) {
+      this._animMixer.timeScale = 0
+      this._animPlaying = false
+    } else {
+      this._animMixer.timeScale = 1
+      this._animPlaying = true
+    }
+  }
+
+  /** Seek to a normalised position (0–1) in the animation clip. */
+  seekAnimation (progress) {
+    if (!this._animAction || !this._animDuration) return
+    this._animAction.time = Math.max(0, Math.min(this._animDuration, progress * this._animDuration))
+    this._animMixer.update(0) // force a frame update while paused
+  }
+
+  /** Normalised playhead position (0–1). */
+  get animProgress () {
+    if (!this._animAction || !this._animDuration) return 0
+    return this._animAction.time / this._animDuration
+  }
+
+  /** True while the animation is running. */
+  get animIsPlaying () { return this._animPlaying }
+
+  /** Duration of the loaded clip in seconds. */
+  get animDuration () { return this._animDuration }
 
   // ── Render loop ────────────────────────────────────────────────────────────
 
@@ -1739,8 +1790,30 @@ export class Avatar3DPlayer {
 
     const action = this._animMixer.clipAction(clip, this._characterRoot)
     action.reset().fadeIn(0.3).play()
-    this._animMixer.timeScale = 1
+    action.setEffectiveWeight(this._animExpressiveness)
+    this._animMixer.timeScale = this._animSpeed
     this._bodyAction = action
+  }
+
+  // ── Animation tweaks ──────────────────────────────────────────────────────
+
+  /**
+   * Set animation playback speed.
+   * @param {number} speed — multiplier, e.g. 0.5 = half speed, 2.0 = double speed
+   */
+  setAnimationSpeed (speed) {
+    this._animSpeed = speed
+    if (this._animMixer) this._animMixer.timeScale = speed
+  }
+
+  /**
+   * Set animation expressiveness — scales the influence (weight) of the current action.
+   * 0 = frozen in bind pose, 1 = full animation, values > 1 exaggerate.
+   * @param {number} weight — 0.0 to 1.5
+   */
+  setAnimationExpressiveness (weight) {
+    this._animExpressiveness = weight
+    if (this._bodyAction) this._bodyAction.setEffectiveWeight(weight)
   }
 
   // ── WorldLabs (SPZ Gaussian splat + GLB ground) ────────────────────────────
