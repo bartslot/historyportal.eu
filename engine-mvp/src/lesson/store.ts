@@ -26,7 +26,8 @@ state.current = Tree.scenesInOrder(state.lesson.tree)[0].id
 const listeners = new Set<() => void>()
 const set = (patch: Partial<State>) => { state = { ...state, ...patch }; listeners.forEach((l) => l()) }
 export const getLesson = () => state
-export const useLesson = () => useSyncExternalStore((l) => { listeners.add(l); return () => { listeners.delete(l) } }, () => state)
+export const subscribe = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l) } }
+export const useLesson = () => useSyncExternalStore(subscribe, getLesson)
 
 const io = () => (window as any).__mvp.sceneIO
 const stageImage = (w: number) => (window as any).__mvp.stageImage(w)

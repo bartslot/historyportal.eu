@@ -102,7 +102,10 @@ export function keyTimesOf(target: string) {
 export const prevKeyTime = (target: string) => keyTimesOf(target).filter((t) => t < state.time && !sameTime(t, state.time)).at(-1) ?? null
 export const nextKeyTime = (target: string) => keyTimesOf(target).find((t) => t > state.time && !sameTime(t, state.time)) ?? null
 
-export const nothingToPlay = () => !state.tracks.some((t) => sortedKeys(t).length >= 2)
+/** Something else the scene plays besides keyframes (the narration registers itself). */
+let otherPlayable = () => false
+export const setOtherPlayable = (fn: () => boolean) => { otherPlayable = fn }
+export const nothingToPlay = () => !state.tracks.some((t) => sortedKeys(t).length >= 2) && !otherPlayable()
 
 /** What a property reads at the playhead: sampled when animated, live otherwise. */
 export function valueAt(target: string, property: string) {

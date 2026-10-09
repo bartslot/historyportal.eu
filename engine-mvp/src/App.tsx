@@ -8,6 +8,7 @@ import { Inspector } from './shell/Inspector'
 import { Notes } from './shell/Notes'
 import { ObjectsPanel } from './shell/ObjectsPanel'
 import { ScenesPanel } from './shell/ScenesPanel'
+import { ScriptPanel, StageCaption } from './shell/ScriptPanel'
 import { TopBar } from './shell/TopBar'
 
 function Stage() {
@@ -15,6 +16,7 @@ function Stage() {
     <main id="stage" className="relative min-h-0 min-w-0" style={{ gridArea: 'stage' }}>
       <canvas id="c" className="block h-full w-full outline-none" style={{ touchAction: 'none' }} />
       <div id="sel" className="pointer-events-none absolute left-3 top-3 rounded px-2 py-1 text-xs text-panel-value" />
+      <StageCaption />
       <Notes />
     </main>
   )
@@ -34,14 +36,15 @@ export function App() {
   return (
     <div className="studio grid h-dvh bg-base-200 text-panel-value"
          style={{
-           gridTemplateColumns: 'auto auto minmax(0, 1fr) auto',
+           gridTemplateColumns: 'auto auto minmax(0, 1fr) auto auto',
            gridTemplateRows: '3rem minmax(0, 1fr) auto',
-           gridTemplateAreas: '"top top top top" "scenes objects stage inspector" "scenes dock dock inspector"',
+           gridTemplateAreas: '"top top top top top" "scenes objects stage script inspector" "scenes dock dock script inspector"',
          }}>
       <TopBar />
       <ScenesPanel />
       <ObjectsPanel />
       <Stage />
+      <ScriptPanel />
       <Inspector />
       <Dock />
     </div>

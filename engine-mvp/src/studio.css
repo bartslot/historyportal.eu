@@ -88,3 +88,16 @@ html.panel-resizing .panel-slot { transition: none; }
 .panel-resize[data-place="right"] { left: 0; }
 .panel-resize[data-place="left"] { right: 0; }
 .panel-resize:hover, .panel-resize:focus-visible { background: var(--color-panel-hairline); outline: none; }
+
+/* ---- the script document (src/shell/ScriptPanel) ---- */
+.script-doc { outline: none; color: var(--color-panel-value); font-size: 15px; line-height: 1.6; padding-bottom: 40vh; }
+.script-doc p { margin: 0 0 0.6em; padding: 2px 6px 2px 8px; border-left: 2px solid transparent; border-radius: 2px; }
+.script-doc p[data-speaker]::before { content: attr(data-speaker); display: block; font-size: 8px; font-weight: 600; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--color-panel-label); }
+.script-doc p.is-speaking { border-left-color: var(--color-panel-value); background: var(--color-panel-hairline); }
+.script-doc .script-scene { margin: 1.4em 0 0.5em; font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--color-panel-title); cursor: pointer; border-top: 1px solid var(--color-panel-hairline); padding-top: 0.8em; user-select: none; }
+.script-doc .script-scene:first-child { margin-top: 0; border-top: 0; padding-top: 0; }
+/* subtitle text: underlined, not coloured (form carries the meaning, legible for everyone) */
+.script-doc .script-subtitle { text-decoration: underline; text-decoration-style: dashed; text-underline-offset: 4px; }
+.script-doc .is-empty::before { content: attr(data-placeholder); float: left; height: 0; pointer-events: none; color: var(--color-panel-label); }

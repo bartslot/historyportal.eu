@@ -10,6 +10,8 @@ import {
 } from '@hp/anim/timeline-view.js'
 import * as TL from './model'
 import { useEngine } from '../bridge'
+import { usePlacedLines } from '../script/player'
+import { panels } from '../panels/store'
 import { KeyframeDiamond } from '../ui/kit'
 
 const GROUP_H = 38
@@ -72,6 +74,7 @@ type Drag =
 
 export function Timeline() {
   const st = TL.useTimeline()
+  const lines = usePlacedLines()
   // the object list follows the scene (things are added and deleted on the canvas); only floor objects animate
   const objects: TL.TimelineObject[] = useEngine().objects.filter((o) => o.kind === 'model').map((o) => ({ target: o.target, label: o.name }))
   const [zoom, setZoom] = useState(100)
@@ -315,7 +318,12 @@ export function Timeline() {
         {/* labels and value fields */}
         <div className="shrink-0 border-r border-panel-hairline" style={{ width: 'var(--timeline-label-col)' }}>
           <div className="shrink-0" style={{ height: GROUP_H }} />
-          {!objects.length && <p className="px-4 pb-3 text-2xs text-panel-label">Nothing on this scene can be animated yet.</p>}
+          {lines.length > 0 && (
+            <div className="flex w-full items-center border-t border-panel-hairline pl-4" style={{ height: GROUP_H }}>
+              <span className="truncate text-2xs font-semibold text-panel-value">Narration</span>
+            </div>
+          )}
+          {!objects.length && !lines.length && <p className="px-4 pb-3 text-2xs text-panel-label">Nothing on this scene can be animated yet.</p>}
           {objects.map((o) => (
             <div key={o.target}>
               <div className={`flex w-full items-center border-t border-panel-hairline ${st.activeTarget === o.target ? 'bg-white/5' : ''}`} style={{ height: GROUP_H }}>
@@ -372,6 +380,19 @@ export function Timeline() {
                 <span key={t} className="absolute top-1.5 text-3xs text-panel-label" style={{ left: xOf(t) }}>{Math.round(t * 1000)}</span>
               ))}
             </div>
+            {lines.length > 0 && (
+              <div className="relative" style={{ height: GROUP_H }} data-timeline-narration>
+                {lines.map((l) => (
+                  <button key={l.id} type="button" data-line-bar={l.id} data-tooltip={l.text}
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={() => { TL.pause(); TL.seek(l.start); panels.open('script'); window.dispatchEvent(new CustomEvent('script:focus-line', { detail: l.id })) }}
+                          className="absolute cursor-pointer overflow-hidden rounded-[3px] px-1.5 text-left text-3xs text-white/90 hover:brightness-125"
+                          style={{ left: xOf(l.start), width: Math.max(2, (l.end - l.start) * zoom), top: 9, height: 'var(--timeline-lane-h)', background: 'var(--color-timeline-bar-group)' }}>
+                    <span className="block truncate leading-[var(--timeline-lane-h)]">{l.speaker ? `${l.speaker}: ` : ''}{l.text}</span>
+                  </button>
+                ))}
+              </div>
+            )}
             {objects.map((o) => (
               <div key={o.target} className={st.activeTarget === o.target ? 'bg-white/5' : ''}>
                 <div className="relative" style={{ height: GROUP_H }}>
