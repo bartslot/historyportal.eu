@@ -31,9 +31,9 @@ const subscribe = (l: () => void) => { listeners.add(l); return () => { listener
 export const useCrew = () => useSyncExternalStore(subscribe, () => state)
 
 /** Name and role of whoever wrote a line. */
-export function speaker(who: string): { name: string; role: string } {
+export function speaker(who: string, as?: string): { name: string; role: string } {
   if (who === 'client') return { name: 'You', role: 'Client' }
-  if (who === 'assistant') return { name: ASSISTANTS[state.assistant].name, role: 'Set assistant' }
+  if (who === 'assistant') return { name: ASSISTANTS[as && as in ASSISTANTS ? (as as AssistantId) : state.assistant].name, role: 'Set assistant' }
   const m = MEMBERS.find((x) => x.id === who)
   return m ? { name: m.name, role: m.role } : { name: who, role: '' }
 }
@@ -93,11 +93,16 @@ async function applyAnswer(msg: any): Promise<{ changes: string[]; undo: UndoEnt
   }
 }
 
-/** The Undo on a line, only while that line's lesson and scene are open. */
+/** The newest line in this lesson and scene that can still be undone, or -1. Pure, so it can be tested. */
+export function latestUndoable(entries: Record<number, UndoEntry>, lesson: string, scene: string): number {
+  return Math.max(-1, ...Object.entries(entries).filter(([, u]) => u.lesson === lesson && u.scene === scene).map(([i]) => Number(i)))
+}
+
+/** The Undo on a line: a stack, so only the most recent undoable line of the open lesson and scene has one
+ *  (each undo reloads the scene as it was before that answer, which would wipe every later change). */
 export function undoFor(index: number): UndoEntry | null {
-  const u = state.undo[index]
   const { lesson, current } = L.getLesson()
-  return u && u.lesson === lesson.id && u.scene === current ? u : null
+  return latestUndoable(state.undo, lesson.id, current) === index ? state.undo[index] : null
 }
 
 export async function undo(index: number) {
@@ -115,12 +120,16 @@ export async function undo(index: number) {
   L.setCrew(lines.map((l, i) => (i === index ? { ...l, changes: [...(l.changes ?? []), 'Undone'] } : l)))
 }
 
-export async function send(text: string) {
+/** Resolves false when the message could not be sent (the client's line is taken back so the draft can return). */
+export async function send(text: string): Promise<boolean> {
   const message = text.trim()
-  if (!message || state.busy || L.getLesson().busy) return
+  if (!message) return true
+  if (state.busy || L.getLesson().busy) return false
   const { lesson, current } = L.getLesson()
   const before = lesson.crew ?? []
-  const lines = [...before, { who: 'client', text: message }]
+  const mine = { who: 'client', text: message }
+  const lines = [...before, mine]
+  let answered = false
   L.setCrew(lines)
   set({ busy: true, error: null })
   try {
@@ -130,7 +139,7 @@ export async function send(text: string) {
       body: JSON.stringify({
         message, to: state.to, assistant: state.assistant,
         history: [{ who: 'assistant', text: greeting() }, ...before].slice(-HISTORY)
-          .map((l) => ({ who: `${speaker(l.who).name} (${speaker(l.who).role})`, text: l.text })),
+          .map((l) => ({ who: `${speaker(l.who, l.as).name} (${speaker(l.who, l.as).role})`, text: l.text })),
         scene: animator().snapshot(),
         settings: readSettings(),
         lesson: { title: lesson.title, scenes: Object.keys(lesson.scenes).length, script: scriptText(lesson.script) },
@@ -152,13 +161,19 @@ export async function send(text: string) {
       if (!msg.text && !changes.length) continue
       const jev = cleanJev(msg.jev)
       const review = cleanReview(msg.review)
-      const out = [...(L.getLesson().lesson.crew ?? lines), { who: String(msg.who), text: String(msg.text ?? ''), ...(changes.length ? { changes } : {}), ...(jev ? { jev } : {}), ...(review ? { review } : {}) }]
+      const out = [...(L.getLesson().lesson.crew ?? lines), { who: String(msg.who), ...(msg.who === 'assistant' ? { as: state.assistant } : {}), text: String(msg.text ?? ''), ...(changes.length ? { changes } : {}), ...(jev ? { jev } : {}), ...(review ? { review } : {}) }]
+      answered = true
       L.setCrew(out) // line by line: an error further on never loses an answer already applied
       if (r && (r.changes.length || r.failed)) set({ undo: { ...state.undo, [out.length - 1]: r.undo } })
     }
   } catch (err) {
     set({ error: 'The crew could not answer: ' + (err instanceof Error ? err.message : String(err)) })
+    if (!answered) { // nothing came back: take the client's line away again, the caller restores the draft
+      L.setCrew((L.getLesson().lesson.crew ?? []).filter((l) => l !== mine))
+      return false
+    }
   } finally {
     set({ busy: false })
   }
+  return true
 }

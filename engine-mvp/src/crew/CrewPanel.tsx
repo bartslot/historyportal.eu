@@ -12,12 +12,12 @@ const UNDO = 'M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3'
 const SIZE = { sm: 'h-8 w-8 text-xs', md: 'h-10 w-10 text-sm', lg: 'h-24 w-24 text-2xl' } as const
 
 /** A portrait from public/portraits/<id>.webp; the initial while it is missing. */
-function Face({ id, size = 'sm' }: { id: string; size?: keyof typeof SIZE }) {
+function Face({ id, as, size = 'sm' }: { id: string; as?: string; size?: keyof typeof SIZE }) {
   const { assistant } = useCrew()
-  const file = id === 'assistant' ? assistant : id
+  const file = id === 'assistant' ? (as && as in ASSISTANTS ? as : assistant) : id
   const [failed, setFailed] = useState(false)
   useEffect(() => setFailed(false), [file])
-  const { name } = speaker(id)
+  const { name } = speaker(id, as)
   return (
     <span className={`grid shrink-0 place-items-center overflow-hidden rounded-full border border-panel-hairline bg-base-100 font-semibold text-panel-label ${SIZE[size]}`}>
       {failed ? name.slice(0, 1) : <img src={`/portraits/${file}.webp`} alt="" className="h-full w-full object-cover" onError={() => setFailed(true)} />}
@@ -25,7 +25,7 @@ function Face({ id, size = 'sm' }: { id: string; size?: keyof typeof SIZE }) {
   )
 }
 
-function Card({ id, onClose }: { id: string; onClose: () => void }) {
+function Card({ id, onClose, onAsk }: { id: string; onClose: () => void; onAsk: () => void }) {
   const { assistant } = useCrew()
   const isAssistant = id === 'assistant'
   const m = MEMBERS.find((x) => x.id === id)
@@ -51,9 +51,9 @@ function Card({ id, onClose }: { id: string; onClose: () => void }) {
         </div>
       )}
       {m && (
-        <button type="button" className="btn btn-sm sticky bottom-0 shrink-0" onClick={() => { talkTo(m.id); onClose() }}>
-          Ask {name}
-        </button>
+        <div className="sticky bottom-0 -mb-4 w-full shrink-0 bg-base-100 pb-4 pt-2">
+          <button type="button" className="btn btn-sm" onClick={() => { talkTo(m.id); onClose(); onAsk() }}>Ask {name}</button>
+        </div>
       )}
     </div>
   )
@@ -61,17 +61,17 @@ function Card({ id, onClose }: { id: string; onClose: () => void }) {
 
 const jevTone = (s: number) => (s >= 0.9 ? 'badge-success' : s >= 0.5 ? 'badge-warning' : 'badge-error')
 
-function Line({ index, who, text, changes, jev, review }: { index: number; who: string; text: string; changes?: string[]; jev?: CrewLine['jev']; review?: CrewLine['review'] }) {
+function Line({ index, who, as, text, changes, jev, review }: { index: number; who: string; as?: string; text: string; changes?: string[]; jev?: CrewLine['jev']; review?: CrewLine['review'] }) {
   useCrew()
   L.useLesson() // the Undo shows only while this line's scene is open
   const canUndo = !!undoFor(index)
   if (who === 'client') {
     return <p className="ml-8 self-end whitespace-pre-wrap rounded-lg bg-base-100 px-3 py-2 text-xs text-panel-value">{text}</p>
   }
-  const { name, role } = speaker(who)
+  const { name, role } = speaker(who, as)
   return (
     <div className="flex gap-2">
-      <Face id={who} />
+      <Face id={who} as={as} />
       <div className="min-w-0 flex-1">
         <p className="text-3xs font-semibold uppercase tracking-wide text-panel-label">{name} · {role}</p>
         {text && <p className="whitespace-pre-wrap text-xs text-panel-value">{text}</p>}
@@ -109,9 +109,16 @@ export function CrewPanel() {
   const [card, setCard] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const log = useRef<HTMLDivElement>(null)
+  const box = useRef<HTMLTextAreaElement>(null)
+  useEffect(() => {
+    if (!card) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !e.defaultPrevented) setCard(null) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [card])
   useEffect(() => { log.current?.scrollTo({ top: log.current.scrollHeight }) }, [lines.length, crew.busy])
   const to = crew.to ? speaker(crew.to).name : null
-  const submit = () => { const t = draft; setDraft(''); void send(t) }
+  const submit = () => { const t = draft; setDraft(''); void send(t).then((ok) => { if (!ok) setDraft((d) => d || t) }) }
 
   return (
     <Panel id="crew" className="flex h-full flex-col">
@@ -122,15 +129,17 @@ export function CrewPanel() {
           <p className="text-xs text-panel-label">Set assistant</p>
         </div>
       </div>
-      <div className="flex flex-wrap gap-1.5 px-4 pb-3" role="list" aria-label="The crew">
+      <ul className="flex flex-wrap gap-1.5 px-4 pb-3" role="list" aria-label="The crew">
         {MEMBERS.map((m) => (
-          <button key={m.id} type="button" role="listitem" onClick={() => setCard(m.id)} data-tooltip={`${m.name}, ${m.role}`}
-                  aria-label={`${m.name}, ${m.role}`} aria-pressed={card === m.id}>
-            <Face id={m.id} />
-          </button>
+          <li key={m.id}>
+            <button type="button" onClick={() => setCard(m.id)} data-tooltip={`${m.name}, ${m.role}`}
+                    aria-label={`${m.name}, ${m.role}`} aria-pressed={card === m.id}>
+              <Face id={m.id} />
+            </button>
+          </li>
         ))}
-      </div>
-      {card && <Card id={card} onClose={() => setCard(null)} />}
+      </ul>
+      {card && <Card id={card} onClose={() => setCard(null)} onAsk={() => box.current?.focus()} />}
 
       <div ref={log} className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto border-t border-panel-hairline px-4 py-3" aria-live="polite">
         <Line index={-1} who="assistant" text={greeting()} />
@@ -148,10 +157,11 @@ export function CrewPanel() {
             </button>
           </span>
         )}
-        <textarea rows={3} value={draft} placeholder={to ? `Ask ${to}` : 'Tell the crew what you want'} aria-label="Message to the crew"
+        <textarea ref={box} rows={3} value={draft} placeholder={to ? `Ask ${to}` : 'Tell the crew what you want'} aria-label="Message to the crew"
                   onChange={(e) => setDraft(e.target.value)}
                   onKeyDown={(e) => {
                     e.stopPropagation() // typing must not trigger editor shortcuts
+                    if (e.key === 'Escape') setCard(null)
                     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit() }
                   }}
                   className="textarea textarea-sm w-full border-panel-hairline bg-base-100 text-panel-value" />
