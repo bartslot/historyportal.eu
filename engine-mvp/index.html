@@ -13,20 +13,15 @@
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
     font: 12px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; overflow: hidden; }
   #app { display: grid; height: 100vh;
-    grid-template-columns: 52px 200px 1fr 220px; grid-template-rows: 40px 1fr auto; }
+    grid-template-columns: 200px 1fr 220px; grid-template-rows: 40px 1fr auto; }
   header { grid-column: 1 / -1; display: flex; align-items: center; gap: 16px; padding: 0 14px;
     border-bottom: 1px solid var(--line); background: var(--panel); }
   header b { font-size: 13px; }
   header .hint { margin-left: auto; color: var(--dim); }
-  #rail { grid-row: 2 / 4; border-right: 1px solid var(--line); background: var(--panel);
-    display: flex; flex-direction: column; align-items: center; gap: 6px; padding-top: 10px; }
-  #rail button { width: 36px; height: 36px; border-radius: 6px; border: 0; background: transparent;
-    color: var(--text); cursor: pointer; font-size: 15px; }
-  #rail button.on { background: rgba(255,255,255,.12); }
-  aside { background: var(--panel); border-right: 1px solid var(--line); overflow: auto; padding: 10px; min-height: 0; }
+  aside { grid-row: 2 / 4; background: var(--panel); border-right: 1px solid var(--line); overflow: auto; padding: 10px; min-height: 0; }
   #app > * { min-height: 0; min-width: 0; } /* long panels scroll; they must never stretch the stage */
   #stage { overflow: hidden; }
-  aside.right { border-right: 0; border-left: 1px solid var(--line); grid-column: 4; grid-row: 2 / 4; }
+  aside.right { border-right: 0; border-left: 1px solid var(--line); grid-column: 3; grid-row: 2 / 4; }
   h3 { margin: 4px 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--dim); }
   .list button, .btn { display: block; width: 100%; text-align: left; padding: 7px 9px; margin-bottom: 4px;
     border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text); cursor: pointer; }
@@ -37,11 +32,11 @@
   .sky img.on { border-color: var(--accent); }
   .tex-chip { display: flex; align-items: center; justify-content: center; aspect-ratio: 2/1; border-radius: 4px; border: 2px solid var(--line); cursor: pointer; color: var(--dim); }
   .tex-chip.on { border-color: var(--accent); color: var(--text); }
-  #stage { position: relative; grid-column: 3; grid-row: 2; }
+  #stage { position: relative; grid-column: 2; grid-row: 2; }
   canvas { width: 100%; height: 100%; display: block; outline: none; touch-action: none; }
   #sel { position: absolute; left: 10px; top: 10px; padding: 4px 8px; border-radius: 4px;
     background: rgba(0,0,0,.5); color: var(--text); pointer-events: none; }
-  #timeline { grid-column: 3; grid-row: 3; border-top: 1px solid var(--line); background: var(--panel);
+  #timeline { grid-column: 2; grid-row: 3; border-top: 1px solid var(--line); background: var(--panel);
     display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; padding: 10px 14px; align-items: center; }
   #drawer { grid-column: 1 / -1; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
   #drawer .head { display: flex; gap: 6px; align-items: center; }
@@ -101,14 +96,9 @@
     <button id="publish" class="btn" style="width:auto;margin:0;background:var(--accent);color:var(--accent-ink);border-color:var(--accent);border-radius:999px;padding:5px 14px">Publish (bake MP4)</button>
     <select id="publishRes" style="background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:4px"><option value="720">720p</option><option value="1080" selected>1080p</option></select>
     <span id="publishStatus" class="small" style="margin:0"></span>
-    <span class="hint">Click to select, drag a selected object to move it, drag elsewhere (or Alt+drag) to turn the camera, right-drag to pan · W move · E rotate · R scale · K key · click a door to open/close · Space play · Del delete</span>
+    <span class="hint">Drag to move · ring turns · dot sets depth · drag empty space to look around · Del deletes</span>
   </header>
 
-  <nav id="rail">
-    <button data-mode="move" class="on" data-tooltip="Move (W)">✥</button>
-    <button data-mode="rotate" data-tooltip="Rotate (E)">⟳</button>
-    <button data-mode="scale" data-tooltip="Scale (R)">⤢</button>
-  </nav>
 
   <aside>
     <h3>Add model</h3>
@@ -241,6 +231,7 @@
 <script src="bake.js"></script>
 <script src="cards.js"></script>
 <script src="drawer.js"></script>
+<script src="teacher-gizmos.js"></script>
 <script src="clouds.js"></script>
 <script src="town-plan.js"></script>
 <script src="city.js"></script>

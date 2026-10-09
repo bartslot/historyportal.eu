@@ -246,10 +246,8 @@ function buildCrate() {
 }
 
 // ---------- selection + gizmos ----------
-const gizmos = new BABYLON.GizmoManager(scene);
-gizmos.usePointerToAttachGizmos = false;
-gizmos.positionGizmoEnabled = false; // move = Sims drag over the floor, no arrows
-let gizmoMode = 'move';
+// Moving is a drag over the floor; turning and depth are the handles in teacher-gizmos.js. No axis arrows, no modes.
+const GRAB_AT_ONCE_M = 12; // objects narrower than this move on the first press; bigger ones (a town) select first
 const selLabel = document.getElementById('sel');
 const dropAllowed = (a) => window.__mvp.dropGuards.every((guard) => guard(a));
 let flashTimer = null;
@@ -261,37 +259,20 @@ function flash(text) { // short message in the stage label, then back to the sel
 
 function select(actor) {
   selected = actor;
-  gizmos.attachToNode(actor);
   selLabel.textContent = actor ? actor.name : 'Nothing selected';
   drawMarks();
 }
 
-function setMode(mode) {
-  gizmoMode = mode;
-  gizmos.rotationGizmoEnabled = mode === 'rotate';
-  gizmos.scaleGizmoEnabled = mode === 'scale';
-  gizmos.attachToNode(selected);
-  hookGizmos();
-  document.querySelectorAll('#rail button').forEach((b) => b.classList.toggle('on', b.dataset.mode === mode));
-}
-document.querySelectorAll('#rail button').forEach((b) => { b.onclick = () => setMode(b.dataset.mode); });
-
-const hooked = new WeakSet();
-function hookGizmos() {
-  const g = gizmos.gizmos;
-  [g.positionGizmo, g.rotationGizmo, g.scaleGizmo].forEach((gz) => {
-    if (!gz || hooked.has(gz)) return;
-    hooked.add(gz);
-    gz.onDragEndObservable.add(() => autoKey());
-  });
-}
-hookGizmos();
 
 // ---------- Sims-style placing and dragging over the floor ----------
 let placing = null;   // actor following the mouse until the click that drops it
 let dragging = null;  // actor being dragged over the floor
 let dragOffset = BABYLON.Vector3.Zero();
 
+function isSmall(actor) {
+  const { min, max } = actorBounds(actor);
+  return Math.max(max.x - min.x, max.z - min.z) < GRAB_AT_ONCE_M;
+}
 function snap(v) { return Math.round(v / GRID_STEP) * GRID_STEP; }
 function floorPoint() {
   const hit = scene.pick(scene.pointerX, scene.pointerY, (m) => m === ground);
@@ -326,7 +307,7 @@ scene.onPointerObservable.add((info) => {
       // (a house, a whole town) would swallow every drag and the camera could never turn.
       const wasSelected = actor === selected;
       select(actor);
-      if (wasSelected && gizmoMode === 'move') { // grab and slide over the floor
+      if (wasSelected || isSmall(actor)) { // grab and slide over the floor
         const p = floorPoint();
         dragOffset = p ? p.subtract(actor.position) : BABYLON.Vector3.Zero();
         dragOffset.y = 0;
@@ -537,10 +518,7 @@ document.getElementById('inspector').onclick = () => {
 window.addEventListener('keydown', (e) => {
   if (e.target.tagName === 'INPUT') return;
   const k = e.key.toLowerCase();
-  if (k === 'w') setMode('move');
-  else if (k === 'e') setMode('rotate');
-  else if (k === 'r') setMode('scale');
-  else if (k === '[') rotateSelected(-1);
+  if (k === '[') rotateSelected(-1);
   else if (k === ']') rotateSelected(1);
   else if (k === 'k') document.getElementById('key').click();
   else if (k === ' ') { e.preventDefault(); togglePlay(); }
@@ -556,7 +534,7 @@ window.__mvp = {
   togglePlay, isPlaying: () => playing, getFrame: () => frame, getLength: () => lengthFrames / FPS,
   setLengthSeconds: (sec) => { lenInput.value = sec; setLength(); },
   getDome: () => dome,
-  makeActor, addHitbox,
+  makeActor, addHitbox, actorBounds,
   placeHooks: [], // (actor) => true when it positioned the actor itself (wall snap, sky drag)
   dropGuards: [], // (actor) => false when it may not be dropped where it is (a door off a wall)
   getSelected: () => selected,
