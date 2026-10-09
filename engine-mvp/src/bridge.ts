@@ -7,10 +7,11 @@ import * as TL from './timeline/model'
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Mvp = any
 export type Picked = { id: string; name: string; kind: 'model' | 'picture' | 'door' | 'cloud'; yaw: number; x: number; z: number; keyed: boolean }
-export type Snapshot = { ready: boolean; selected: Picked | null; playing: boolean }
+export type SceneObject = { target: string; name: string; kind: Picked['kind'] }
+export type Snapshot = { ready: boolean; selected: Picked | null; playing: boolean; objects: SceneObject[] }
 
 const REFRESH_EVERY = 6 // frames
-let snap: Snapshot = { ready: false, selected: null, playing: false }
+let snap: Snapshot = { ready: false, selected: null, playing: false, objects: [] }
 const listeners = new Set<() => void>()
 const mvp = (): Mvp => (window as any).__mvp
 
@@ -30,7 +31,10 @@ function read(): Snapshot {
     x: +a.position.x.toFixed(2), z: +a.position.z.toFixed(2),
     keyed: TL.hasKeyHere(TL.targetOf(a), 'turn'),
   } : null
-  return { ready: true, selected, playing: m.isPlaying() }
+  const objects = m.actors
+    .filter((x: any) => !x.isDisposed() && !x.metadata.cloud)
+    .map((x: any) => ({ target: TL.targetOf(x), name: x.name, kind: kindOf(x) }))
+  return { ready: true, selected, playing: m.isPlaying(), objects }
 }
 
 export function engineReady() {
@@ -43,6 +47,7 @@ export function engineReady() {
     listeners.forEach((l) => l())
   }
   m.scene.onAfterRenderObservable.add(() => { if (++n % REFRESH_EVERY === 0) refresh() })
+  TL.subscribe(refresh) // an edit through the timeline shows at once, not a few frames later
   refresh()
 }
 

@@ -2,13 +2,14 @@
 // ported once, same classes and tokens. Figma's split: the RULER scrubs, the TRACKS select (click,
 // Shift+click, marquee); dragging a key moves the whole selection; double-click jumps to a key;
 // a stretch between keys opens its easing; Cmd/Ctrl+wheel zooms about the pointer.
-import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type PointerEvent as RPE, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as RPE, type ReactNode } from 'react'
 import { keyId, snapToNearest } from '@hp/anim/timeline-edit.js'
 import { easingFn, sortedKeys } from '@hp/anim/keyframes.js'
 import {
   DRAG_THRESHOLD_PX, LANE_PAD_PX, fitZoom, sliderFromZoom, tickStep, ticksFor, timeAtX, toleranceSeconds, zoomFromSlider,
 } from '@hp/anim/timeline-view.js'
 import * as TL from './model'
+import { useEngine } from '../bridge'
 import { KeyframeDiamond } from '../ui/kit'
 
 const GROUP_H = 38
@@ -70,8 +71,9 @@ type Drag =
   | { kind: 'key'; startX: number; startY: number; moved: boolean; anchor: number; refs: TL.KeyRef[]; baseTracks: TL.Track[]; onClick: (() => void) | null }
 
 export function Timeline() {
-  const st = useSyncExternalStore(TL.subscribe, TL.getState)
-  const [objects, setObjects] = useState<TL.TimelineObject[]>([])
+  const st = TL.useTimeline()
+  // the object list follows the scene (things are added and deleted on the canvas); only floor objects animate
+  const objects: TL.TimelineObject[] = useEngine().objects.filter((o) => o.kind === 'model').map((o) => ({ target: o.target, label: o.name }))
   const [zoom, setZoom] = useState(100)
   const [fitted, setFitted] = useState(100)
   const [zoomIsMine, setZoomIsMine] = useState(false)
@@ -80,17 +82,6 @@ export function Timeline() {
   const lanes = useRef<HTMLDivElement>(null)
   const content = useRef<HTMLDivElement>(null)
   const drag = useRef<Drag | null>(null)
-
-  // the object list follows the scene (things are added and deleted on the canvas)
-  useEffect(() => {
-    const read = () => setObjects((prev) => {
-      const next = TL.objects()
-      return JSON.stringify(next) === JSON.stringify(prev) ? prev : next
-    })
-    read()
-    const t = setInterval(read, 500)
-    return () => clearInterval(t)
-  }, [])
 
   // fit the duration to the lanes until the teacher takes the zoom
   useLayoutEffect(() => {

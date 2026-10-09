@@ -23,8 +23,6 @@
   const drawer = document.getElementById('drawer');
   const tabs = drawer.querySelector('.tabs');
   const tiles = drawer.querySelector('.tiles');
-  const toggle = drawer.querySelector('.assets-toggle');
-  let open = true;
   let folder = 'Characters';
 
   function render() {
@@ -61,12 +59,9 @@
       tiles.appendChild(tile);
     });
   }
-  toggle.onclick = () => {
-    open = !open;
-    drawer.classList.toggle('closed', !open);
-    toggle.textContent = open ? 'Assets ▾' : 'Assets ▸';
-    scene.getEngine().resize();
-  };
+  // open/close belongs to the studio's panel system (the bottom dock), not to the drawer itself
+  mvp.showAssetFolder = (name) => { if (FOLDERS.some((f) => f.name === name)) { folder = name; render(); } };
+  mvp.assetFolders = FOLDERS.map((f) => f.name);
 
   // ---------- drag over the stage: a live preview that follows the cursor ----------
   let dragItem = null;

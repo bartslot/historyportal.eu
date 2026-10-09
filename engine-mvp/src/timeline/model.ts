@@ -6,6 +6,7 @@
 //   - the easing of a stretch belongs to the key it leaves; 'auto' follows the key's position
 // Targets are `actor:<id>`; their rows come from the shared registry (properties.js, kind 'actor').
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { useSyncExternalStore } from 'react'
 import { addKeyframe, sameTime, segmentEasing, sortedKeys } from '@hp/anim/keyframes.js'
 import { deleteKeys, keyId, moveKeys } from '@hp/anim/timeline-edit.js'
 import { kindOfTarget, propertiesFor, sampleFrame as sampleAny } from '@hp/anim/properties.js'
@@ -37,11 +38,13 @@ const set = (patch: Partial<State>) => { state = { ...state, ...patch }; listene
 
 export const getState = () => state
 export const subscribe = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l) } }
+export const useTimeline = () => useSyncExternalStore(subscribe, getState)
 
 // ---------- the engine side: what an actor target reads and writes ----------
 const mvp = (): any => (window as any).__mvp
 const B = (): any => (window as any).BABYLON
-export const targetOf = (actor: any) => `actor:${actor.metadata.id}`
+export const targetOfId = (id: string) => `actor:${id}`
+export const targetOf = (actor: any) => targetOfId(actor.metadata.id)
 export const actorOf = (target: string): any => mvp()?.actors.find((a: any) => targetOf(a) === target) ?? null
 const yawDeg = (a: any) => ((a.rotationQuaternion.toEulerAngles().y * 180 / Math.PI) % 360 + 360) % 360
 
@@ -62,12 +65,6 @@ function writeProperty(target: string, property: string, value: number) {
   else if (property === 'turn') a.rotationQuaternion = B().Quaternion.RotationAxis(B().Axis.Y, value * Math.PI / 180)
 }
 
-/** Every actor that can be animated: floor objects, not wall pictures, doors or clouds. */
-export function objects(): TimelineObject[] {
-  return (mvp()?.actors ?? [])
-    .filter((a: any) => !a.isDisposed() && !a.metadata.opening && !a.metadata.cloud && !a.metadata.decal)
-    .map((a: any) => ({ target: targetOf(a), label: a.name }))
-}
 
 export const propertiesOf = (target: string) => propertiesFor(kindOfTarget(target)) as { key: string; label: string; unit: string }[]
 

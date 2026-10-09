@@ -426,6 +426,8 @@ window.addEventListener('keydown', (e) => {
 
 engine.runRenderLoop(() => scene.render());
 window.addEventListener('resize', () => engine.resize());
+// panels slide in and out and the stage gives way: follow the canvas's own size, not just the window's
+new ResizeObserver(() => engine.resize()).observe(canvas);
 window.__mvp = {
   scene, camera, actors, CATALOG, SKIES, FPS,
   goTo, rebuildTimeline, addFromCatalog, setSky, select, playClip, keyAt, stateAt, yawTowards, snap,

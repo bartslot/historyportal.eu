@@ -427,26 +427,5 @@ export const ADVANCED: { group: string; controls: Control[] }[] = [
         "label": "Town wall"
       }
     ]
-  },
-  {
-    "group": "Publish",
-    "controls": [
-      {
-        "type": "select",
-        "id": "publishRes",
-        "label": "Video size",
-        "options": [
-          [
-            "720",
-            "720p"
-          ],
-          [
-            "1080",
-            "1080p"
-          ]
-        ],
-        "default": "1080"
-      }
-    ]
   }
 ]

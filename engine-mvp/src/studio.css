@@ -14,12 +14,10 @@ html, body, #root { height: 100%; margin: 0; overflow: hidden; }
 #sel { background: color-mix(in oklch, var(--color-base-100) 70%, transparent); }
 
 #drawer .head { display: flex; gap: 6px; align-items: center; }
-#drawer .assets-toggle { border: 0; background: none; color: var(--color-panel-title); font-size: 11px; font-weight: 600; cursor: pointer; padding: 2px 8px 2px 0; }
 #drawer .tabs { display: flex; gap: 2px; flex-wrap: wrap; }
 #drawer .tabs button { padding: 4px 10px; border-radius: 999px; border: 0; background: transparent; color: var(--color-panel-label); font-size: 12px; cursor: pointer; }
 #drawer .tabs button.on { color: var(--color-panel-value); background: var(--color-panel-hairline); }
 #drawer .tiles { display: flex; gap: 8px; overflow-x: auto; padding-top: 8px; }
-#drawer.closed .tiles, #drawer.closed .tabs { display: none; }
 #drawer .tile { flex: 0 0 auto; width: 112px; height: 72px; border: 1px solid var(--color-panel-hairline); border-radius: 8px;
   background: var(--color-base-100); color: var(--color-panel-value); display: flex; flex-direction: column; justify-content: flex-end;
   padding: 8px; cursor: grab; font-size: 12px; user-select: none; }
@@ -52,3 +50,41 @@ html, body, #root { height: 100%; margin: 0; overflow: hidden; }
 .shot:hover button, .shot button:focus-visible { opacity: 1; }
 #shots .add { border: 1px solid var(--color-panel-hairline); background: color-mix(in oklch, var(--color-base-200) 92%, transparent); color: var(--color-panel-value);
   font-size: 13px; padding: 8px 14px; border-radius: 999px; cursor: pointer; }
+
+/* ---- panels (src/panels): ONE motion for every panel ----
+   Open = --ease-enter over --panel-in, close = --ease-exit over --panel-out (easing.js intents).
+   A docked panel's SLOT animates its width/height so the stage gives way; its BODY keeps its size and
+   slides in from its own edge, so the content never reflows mid-motion. */
+:root { --panel-in: 200ms; --panel-out: 150ms; }
+@media (prefers-reduced-motion: reduce) { :root { --panel-in: 1ms; --panel-out: 1ms; } }
+
+.panel-slot { position: relative; overflow: hidden; min-width: 0; min-height: 0;
+  transition: width var(--panel-out) var(--ease-exit), height var(--panel-out) var(--ease-exit); }
+.panel-slot[data-open="true"] { transition-duration: var(--panel-in); transition-timing-function: var(--ease-enter); }
+html.panel-resizing .panel-slot { transition: none; }
+
+.panel-body { background: var(--color-base-200);
+  transition: transform var(--panel-out) var(--ease-exit), opacity var(--panel-out) var(--ease-exit), visibility 0s linear var(--panel-out); }
+.panel-body[data-open="true"] { transition: transform var(--panel-in) var(--ease-enter), opacity var(--panel-in) var(--ease-enter), visibility 0s; }
+.panel-body[data-open="false"] { visibility: hidden; }
+
+.panel-slot > .panel-body { position: absolute; display: flex; flex-direction: column; }
+.panel-body[data-place="right"]  { top: 0; bottom: 0; right: 0; border-left: 1px solid var(--color-panel-hairline); overflow-y: auto; }
+.panel-body[data-place="left"]   { top: 0; bottom: 0; left: 0; border-right: 1px solid var(--color-panel-hairline); overflow-y: auto; }
+.panel-body[data-place="bottom"] { top: 0; left: 0; right: 0; border-top: 1px solid var(--color-panel-hairline); }
+.panel-body[data-place="right"][data-open="false"]  { transform: translateX(100%); }
+.panel-body[data-place="left"][data-open="false"]   { transform: translateX(-100%); }
+.panel-body[data-place="bottom"][data-open="false"] { transform: translateY(100%); }
+
+.panel-body[data-place="floating"] { position: absolute; right: 12px; bottom: 12px; width: 280px; z-index: 20;
+  border: 1px solid var(--color-panel-hairline); border-radius: var(--radius-box); }
+.panel-body[data-place="floating"][data-open="false"] { transform: translateY(8px); opacity: 0; }
+
+.panel-body[data-place="menu"] { position: fixed; z-index: 50; min-width: 13.5rem; padding: 4px;
+  border: 1px solid var(--color-panel-hairline); border-radius: var(--radius-box); }
+.panel-body[data-place="menu"][data-open="false"] { transform: translateY(-4px); opacity: 0; }
+
+.panel-resize { position: absolute; top: 0; bottom: 0; width: 6px; cursor: col-resize; z-index: 5; }
+.panel-resize[data-place="right"] { left: 0; }
+.panel-resize[data-place="left"] { right: 0; }
+.panel-resize:hover, .panel-resize:focus-visible { background: var(--color-panel-hairline); outline: none; }
