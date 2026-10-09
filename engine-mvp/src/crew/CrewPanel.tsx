@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from 'react'
 import { Panel } from '../panels/Panel'
 import { SettingsSection } from '../ui/kit'
 import * as L from '../lesson/store'
-import { ASSISTANTS, MEMBERS, chooseAssistant, greeting, send, speaker, talkTo, undo, undoFor, useCrew, type AssistantId } from './store'
+import type { CrewLine } from '../lesson/store'
+import { ASSISTANTS, ASSISTANT_TASKS, MEMBERS, chooseAssistant, greeting, send, speaker, talkTo, undo, undoFor, useCrew, type AssistantId } from './store'
 
 const X_MARK = 'M6 18 18 6M6 6l12 12'
 const UNDO = 'M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3'
@@ -30,8 +31,9 @@ function Card({ id, onClose }: { id: string; onClose: () => void }) {
   const m = MEMBERS.find((x) => x.id === id)
   const { name, role } = speaker(id)
   const story = isAssistant ? ASSISTANTS[assistant].backstory : m?.backstory
+  const tasks = isAssistant ? ASSISTANT_TASKS : m?.tasks ?? []
   return (
-    <div className="relative mx-3 mb-3 flex flex-col items-center gap-2 rounded-lg border border-panel-hairline bg-base-100 p-4 text-center">
+    <div className="relative mx-3 mb-3 flex max-h-[40vh] flex-col items-center gap-2 overflow-y-auto rounded-lg border border-panel-hairline bg-base-100 p-4 text-center">
       <button type="button" aria-label="Close card" data-tooltip="Close" onClick={onClose}
               className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded text-panel-label hover:bg-white/5 hover:text-white">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-4 w-4" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d={X_MARK} /></svg>
@@ -42,8 +44,14 @@ function Card({ id, onClose }: { id: string; onClose: () => void }) {
         <p className="text-3xs font-semibold uppercase tracking-wide text-panel-label">{role}</p>
       </div>
       <p className="text-xs text-panel-value">{story}</p>
+      {tasks.length > 0 && (
+        <div className="w-full text-left">
+          <p className="text-3xs font-semibold uppercase tracking-wide text-panel-label">Tasks</p>
+          <ul className="mt-1 list-disc pl-4 text-xs text-panel-value">{tasks.map((t, i) => <li key={i}>{t}</li>)}</ul>
+        </div>
+      )}
       {m && (
-        <button type="button" className="btn btn-sm" onClick={() => { talkTo(m.id); onClose() }}>
+        <button type="button" className="btn btn-sm sticky bottom-0 shrink-0" onClick={() => { talkTo(m.id); onClose() }}>
           Ask {name}
         </button>
       )}
@@ -51,7 +59,9 @@ function Card({ id, onClose }: { id: string; onClose: () => void }) {
   )
 }
 
-function Line({ index, who, text, changes }: { index: number; who: string; text: string; changes?: string[] }) {
+const jevTone = (s: number) => (s >= 0.9 ? 'badge-success' : s >= 0.5 ? 'badge-warning' : 'badge-error')
+
+function Line({ index, who, text, changes, jev, review }: { index: number; who: string; text: string; changes?: string[]; jev?: CrewLine['jev']; review?: CrewLine['review'] }) {
   useCrew()
   L.useLesson() // the Undo shows only while this line's scene is open
   const canUndo = !!undoFor(index)
@@ -65,6 +75,18 @@ function Line({ index, who, text, changes }: { index: number; who: string; text:
       <div className="min-w-0 flex-1">
         <p className="text-3xs font-semibold uppercase tracking-wide text-panel-label">{name} · {role}</p>
         {text && <p className="whitespace-pre-wrap text-xs text-panel-value">{text}</p>}
+        {jev && (
+          <span className={`badge badge-xs mt-1 ${jevTone(jev.score)}`} data-tooltip="JEV: chance every historical claim holds">JEV {jev.score.toFixed(2)}</span>
+        )}
+        {review && (
+          <div className="mt-1 flex gap-2 border-l border-panel-hairline pl-2">
+            <Face id="director" />
+            <div className="min-w-0 flex-1">
+              <p className="text-3xs font-semibold uppercase tracking-wide text-panel-label">Marten · Director</p>
+              <p className="whitespace-pre-wrap text-xs text-panel-value">{review.text}</p>
+            </div>
+          </div>
+        )}
         {changes && (
           <div className="mt-1 flex items-start gap-2">
             <ul className="flex-1 text-2xs text-panel-label">{changes.map((c, i) => <li key={i}>{c}</li>)}</ul>

@@ -5,18 +5,19 @@ The teacher (the client) talks to the set assistant, who asks one or two crew me
 (src/crew/crew.json); each answers in their own name and may change settings and the scene.
 The model only proposes scene commands from COMMANDS and setting values from the list the
 browser sent; anything else is dropped here, so the browser never runs free-form model output.
-The API key stays on this side.
+Nothing leaves this machine except through the local `claude` CLI (Bart's subscription) and the JEV grader.
 
-Model: LLM_ROLE_CREW, else GEMINI_MODEL, else the app's "mechanical" role (LLM_ROLE_MECHANICAL), from
-the History Portal .env; Gemini via its OpenAI-compatible endpoint.
+Models: per member in crew.json, run through `claude -p`. CREW_JEV=0 switches the JEV grading off.
 """
+import concurrent.futures
 import json
 import os
 import pathlib
+import re
+import subprocess
 import sys
-import urllib.error
+import tempfile
 import urllib.parse
-import urllib.request
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 HERE = pathlib.Path(__file__).resolve().parent
@@ -43,15 +44,15 @@ def load_env(path):
     return env
 
 
-ENV = load_env(ENV_FILE)
-# the crew talks to a teacher and stays in character: a step up from the cheap "mechanical" model
-ROLE = (ENV.get('LLM_ROLE_CREW') or (ENV.get('GEMINI_MODEL') and 'gemini:' + ENV['GEMINI_MODEL'])
-        or ENV.get('LLM_ROLE_MECHANICAL', 'gemini:gemini-3.5-flash-lite'))
-MODEL = ROLE.split(':', 1)[1] if ':' in ROLE else 'gemini-3.5-flash-lite'
-API_KEY = ENV.get('GEMINI_API_KEY', '')
-BASE_URL = ENV.get('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta/openai')
-if not API_KEY:
-    sys.exit(f'GEMINI_API_KEY missing in {ENV_FILE}')
+ROUTER_MODEL, ROUTER_EFFORT = 'claude-sonnet-5-5', 'low'
+MEMBER_EFFORT = 'medium'
+DIRECTOR = 'director'
+CLAUDE_BIN = os.environ.get('CREW_CLAUDE_BIN', 'claude')
+CLAUDE_TIMEOUT = 180
+JEV_ON = os.environ.get('CREW_JEV', '1') != '0'
+JEV_IDS = {'historian', 'writer', 'learning', 'comedian'}   # the members whose answers carry claims
+JEV_MIN_SCORE = 0.9                                         # below this the director gives a second opinion
+JEV_DIR = HERE.parents[3] / 'tools' / 'artkit' / 'jev'
 
 # name -> {arg: type}; "?" marks optional. Numbers are clamped below.
 COMMANDS = {
@@ -131,23 +132,98 @@ def validate(commands):
     return clean, dropped
 
 
-def ask_model(system, user, temperature=0.4):
-    body = {
-        'model': MODEL,
-        'messages': [{'role': 'system', 'content': system}, {'role': 'user', 'content': user}],
-        'response_format': {'type': 'json_object'},
-        'temperature': temperature,
-    }
-    req = urllib.request.Request(BASE_URL + '/chat/completions', data=json.dumps(body).encode(),
-                                 headers={'Authorization': 'Bearer ' + API_KEY, 'Content-Type': 'application/json'})
-    with urllib.request.urlopen(req, timeout=60) as r:
-        content = json.load(r)['choices'][0]['message']['content']
-    start, end = content.find('{'), content.rfind('}')
-    return json.loads(content[start:end + 1])
+def ask_claude(model, system, user, schema, effort):
+    """One structured answer from the local claude CLI. No ANTHROPIC_API_KEY in the env, so it
+    bills the subscription; no tools, settings or MCP, so it only thinks."""
+    cmd = [CLAUDE_BIN, '-p', '--model', model, '--system-prompt', system, '--tools', '',
+           '--setting-sources', '', '--strict-mcp-config', '--no-session-persistence',
+           '--effort', effort, '--output-format', 'json', '--json-schema', json.dumps(schema)]
+    env = {k: v for k, v in os.environ.items() if k != 'ANTHROPIC_API_KEY'}
+    with tempfile.TemporaryDirectory() as cwd:
+        try:
+            r = subprocess.run(cmd, input=user, capture_output=True, text=True, timeout=CLAUDE_TIMEOUT,
+                               env=env, cwd=cwd)
+        except subprocess.TimeoutExpired:
+            raise RuntimeError(f'claude timed out after {CLAUDE_TIMEOUT}s ({model})') from None
+    # stderr may hold a harmless "[claude-code:unrecognized_model]" line: only the exit code and JSON count
+    try:
+        out = json.loads(r.stdout)
+    except ValueError:
+        raise RuntimeError(f'claude gave no JSON (exit {r.returncode}): {r.stderr.strip()[:200]}') from None
+    if r.returncode != 0 or out.get('is_error'):
+        raise RuntimeError(f'claude failed (exit {r.returncode}): {str(out.get("result"))[:200]}')
+    if isinstance(out.get('structured_output'), dict):
+        return out['structured_output']
+    return json.loads(out['result'])
+
+
+# ---------- strict JSON schemas for --json-schema ----------
+def _obj(props, required):
+    return {'type': 'object', 'properties': props, 'required': required, 'additionalProperties': False}
+
+
+_REPLY = {'type': 'string'}
+ROUTER_SCHEMA = _obj({
+    'reply': _REPLY,
+    'ask': {'type': 'array', 'items': _obj({'crew': {'type': 'string'}, 'question': {'type': 'string'}},
+                                           ['crew', 'question'])},
+}, ['reply', 'ask'])
+_TITLE = {'type': 'string'}
+_SETTINGS = {'type': 'array', 'items': _obj({'id': {'type': 'string'},
+                                              'value': {'type': ['number', 'boolean', 'string']}}, ['id', 'value'])}
+_COMMANDS = {'type': 'array', 'items': {'type': 'object'}}   # free objects: validate() decides what survives
+STAGE_SCHEMA = _obj({'reply': _REPLY, 'settings': _SETTINGS, 'commands': _COMMANDS, 'title': _TITLE},
+                    ['reply', 'settings', 'commands'])
+STAGE_SCHEMA_NO_TITLE = _obj({k: v for k, v in STAGE_SCHEMA['properties'].items() if k != 'title'},
+                             ['reply', 'settings', 'commands'])
+TALK_SCHEMA = _obj({'reply': _REPLY}, ['reply'])
+TALK_SCHEMA_WRITER = _obj({'reply': _REPLY, 'title': _TITLE}, ['reply'])
+
+
+def member_schema(m, direct):
+    if m.get('reviews_only'):
+        return TALK_SCHEMA
+    if may_change(m, direct):
+        return STAGE_SCHEMA if m['id'] == 'writer' else STAGE_SCHEMA_NO_TITLE
+    return TALK_SCHEMA_WRITER if m['id'] == 'writer' else TALK_SCHEMA
+
+
+# ---------- skill packs: house rules appended to each prompt ----------
+_SKILL_CACHE: dict = {}
+_FRONTMATTER = re.compile(r'\A---\s*\n.*?\n---\s*\n', re.S)
+
+
+def load_skill(path):
+    """Text of one skill file without its YAML frontmatter; '' (logged once) when it is missing."""
+    if path in _SKILL_CACHE:
+        return _SKILL_CACHE[path]
+    f = pathlib.Path(path.replace('~', str(pathlib.Path.home()), 1) if path.startswith('~') else path)
+    if not f.is_absolute():
+        f = HERE / f
+    try:
+        text = _FRONTMATTER.sub('', f.read_text(), count=1).strip()
+    except OSError as e:
+        print('crew skill missing, skipped:', f, repr(e), file=sys.stderr)
+        text = ''
+    _SKILL_CACHE[path] = text
+    return text
+
+
+def tasks_and_skills(tasks, skills):
+    out = ''
+    if tasks:
+        out += '\nYour tasks:\n' + '\n'.join('- ' + t for t in tasks)
+    texts = [t for t in (load_skill(p) for p in skills or []) if t]
+    if texts:
+        out += '\n\nYour skill pack (house rules; follow them):\n\n' + '\n\n---\n\n'.join(texts)
+    return out
 
 
 # ---------- the crew ----------
 MEMBERS = {m['id']: m for m in CREW['crew']}
+for _m in MEMBERS.values():   # read every skill file once, at startup
+    for _p in _m.get('skills', []):
+        load_skill(_p)
 SHARED = """You work in the crew that makes a history lesson in the History Portal studio, a 3D stage where a
 teacher builds a narrated, story-driven lesson for their class. The teacher is the CLIENT: their goal, their class,
 their final say. A value the client set by hand stays as it is unless the client asks you to change it now.
@@ -185,7 +261,8 @@ How you decide:
 - At most {MAX_ASKS} crew members per turn. The director only when the client asks for a review of the result
   or says the lesson is finished.
 - If the client just chats or thanks you, answer yourself and ask no one.
-Answer ONLY with JSON: {{"reply": "<what you tell the client>", "ask": [{{"crew": "<id>", "question": "<what you ask them, with the client's context>"}}]}}"""
+Answer ONLY with JSON: {{"reply": "<what you tell the client>", "ask": [{{"crew": "<id>", "question": "<what you ask them, with the client's context>"}}]}}
+"ask" is [] when you ask no one.{tasks_and_skills(CREW.get('assistant_tasks'), [])}"""
 
 
 STAGE_OWNERS = {'set', 'actors'}
@@ -213,7 +290,7 @@ Settings: the list "settings" below (id, label, type, range or options, current 
 {{"id": "<id>", "value": <number | true/false | option value>}}. {title}
 The stage, with scene commands:
 {SCENE_RULES}"""
-        fmt = ('{"reply": "<to the client, in your own voice>", "settings": [ ... ], "commands": [ ... ]'
+        fmt = ('{"reply": "<to the client, in your own voice>", "settings": [ {"id": "<id>", "value": <value>} ], "commands": [ ... ]'
                + (', "title": "<only to rename the lesson>"}' if title else '}'))
     return f"""{SHARED}
 
@@ -223,7 +300,7 @@ You own: {m['owns']}
 The set assistant {assistant['name']} brings you the client's request; the client reads your answer directly.
 If the client asks about you, answer as yourself, from your backstory, briefly.
 {powers}
-Answer ONLY with JSON: {fmt}"""
+Answer ONLY with JSON: {fmt}{tasks_and_skills(m.get('tasks'), m.get('skills'))}"""
 
 
 def clean_settings(proposed, offered):
@@ -260,22 +337,79 @@ def context(data):
             f"Settings: {json.dumps(data.get('settings', []))[:12000]}\nStage: {json.dumps(data.get('scene', {}))[:12000]}")
 
 
+def jev_score(resp):
+    """{'score': P(sound), 'choice': ...} out of a JEV response, or None when it has no usable answer."""
+    ans = (resp.get('answers') or resp).get('sound')
+    if not isinstance(ans, dict):
+        return None
+    probs = ans.get('probabilities') or {}
+    score = probs.get('sound')
+    if score is None:   # a bare choice with no probabilities: certain only on the label itself
+        score = 1.0 if ans.get('choice') == 'sound' else 0.0
+    return {'score': round(float(score), 2), 'choice': ans.get('choice')}
+
+
+def jev_grade(m, text, data):
+    """Grade one answer with the house grader JEV. Never raises: a grader failure never fails the turn."""
+    try:
+        sys.path.insert(0, str(JEV_DIR))
+        import jev
+        lesson = data.get('lesson') if isinstance(data.get('lesson'), dict) else {}
+        state = {'product': 'History Portal, history lessons for school pupils', 'house_bar': jev.bar(),
+                 'lesson': f"{str(lesson.get('title', ''))[:200]}\n{str(data.get('message', ''))[:MAX_PROMPT]}".strip(),
+                 'answer_by': f"{m['name']}, {m['role']}", 'answer': text}
+        question = {'sound': {'type': 'choice', 'criteria': {
+            'sound': 'every historical claim is correct and anything invented is clearly named as invented',
+            'unsound': 'a historical claim is wrong, unsupported, or invention is presented as history'},
+            'instructions': "Grade this crew member's answer for a history lesson."}}
+        return jev_score(jev.ask(state, question))
+    except (Exception, SystemExit) as e:  # noqa: BLE001 - jev.py exits on HTTP errors
+        print('jev failed:', m['id'], repr(e), file=sys.stderr)
+        return None
+
+
+def director_review(text, who, data, assistant):
+    """The app's advisor step: the director's short second opinion on an answer JEV is unsure about."""
+    d = MEMBERS[DIRECTOR]
+    ask = (f"{context(data)}\n\nThe client just said: {str(data.get('message', ''))[:MAX_PROMPT]}\n"
+           f"{who} answered: {text}\n\nOur fact-checker is unsure about this answer. In at most 60 words, "
+           "in the client's language: what is wrong or unsure, and the correction.")
+    return str(ask_claude(d['model'], member_prompt(d, assistant), ask, TALK_SCHEMA, 'high').get('reply', ''))[:MAX_REPLY]
+
+
 def ask_member(m, assistant, question, data, direct=False):
     # the client's own words travel with the question: a summary loses facts (the class age, for one)
     said = str(data.get('message', ''))[:MAX_PROMPT]
-    answer = ask_model(member_prompt(m, assistant, direct),
-                       context(data) + f"\n\nThe client just said: {said}\nRequest to you: {question[:MAX_PROMPT]}")
+    answer = ask_claude(m['model'], member_prompt(m, assistant, direct),
+                        context(data) + f"\n\nThe client just said: {said}\nRequest to you: {question[:MAX_PROMPT]}",
+                        member_schema(m, direct), MEMBER_EFFORT)
     msg = {'who': m['id'], 'text': str(answer.get('reply', ''))[:MAX_REPLY]}
     title = str(answer.get('title') or '').strip()[:80]
     if title and m['id'] == 'writer':
         msg['title'] = title
-    if not may_change(m, direct):
-        return msg
-    commands, dropped = validate(answer.get('commands') or [])
-    msg['settings'] = clean_settings(answer.get('settings'), data.get('settings'))
-    msg['commands'] = commands
-    msg['dropped'] = len(dropped)
+    if may_change(m, direct):
+        commands, dropped = validate(answer.get('commands') or [])
+        msg['settings'] = clean_settings(answer.get('settings'), data.get('settings'))
+        msg['commands'] = commands
+        msg['dropped'] = len(dropped)
+    if JEV_ON and m['id'] in JEV_IDS and msg['text'].strip():
+        grade = jev_grade(m, msg['text'], data)
+        if grade:
+            msg['jev'] = grade
+            if grade['score'] < JEV_MIN_SCORE:
+                try:
+                    msg['review'] = {'who': DIRECTOR, 'text': director_review(msg['text'], m['name'], data, assistant)}
+                except Exception as e:  # noqa: BLE001 - the answer stands without its second opinion
+                    print('director review failed:', repr(e), file=sys.stderr)
     return msg
+
+
+def _safe_member(a, assistant, message, data):
+    try:  # one member failing never loses the assistant's reply or the others' answers
+        return ask_member(MEMBERS[a['crew']], assistant, str(a.get('question') or message), data)
+    except Exception as e:  # noqa: BLE001 - reported to the client in the chat, detail logged
+        print('crew member failed:', a['crew'], repr(e), file=sys.stderr)
+        return {'who': a['crew'], 'text': '(could not answer this time, ask again)'}
 
 
 def crew_turn(data):
@@ -284,16 +418,14 @@ def crew_turn(data):
     to = data.get('to')
     if isinstance(to, str) and to in MEMBERS:   # the client talks to one crew member directly
         return [ask_member(MEMBERS[to], assistant, message, data, direct=True)]
-    plan = ask_model(router_prompt(assistant), context(data) + '\n\nClient: ' + message, temperature=0.3)
+    plan = ask_claude(ROUTER_MODEL, router_prompt(assistant), context(data) + '\n\nClient: ' + message,
+                      ROUTER_SCHEMA, ROUTER_EFFORT)
     out = [{'who': 'assistant', 'text': str(plan.get('reply', ''))[:800]}]
     asks = plan.get('ask') if isinstance(plan.get('ask'), list) else []
     asks = [a for a in asks if isinstance(a, dict) and isinstance(a.get('crew'), str) and a['crew'] in MEMBERS][:MAX_ASKS]
-    for a in asks:
-        try:  # one member failing never loses the assistant's reply or the others' answers
-            out.append(ask_member(MEMBERS[a['crew']], assistant, str(a.get('question') or message), data))
-        except Exception as e:  # noqa: BLE001 - reported to the client in the chat, detail logged
-            print('crew member failed:', a['crew'], repr(e), file=sys.stderr)
-            out.append({'who': a['crew'], 'text': '(could not answer this time, ask again)'})
+    if asks:   # parallel; map keeps the order of the asks
+        with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_ASKS) as pool:
+            out += list(pool.map(lambda a: _safe_member(a, assistant, message, data), asks))
     return out
 
 
@@ -326,11 +458,7 @@ class Handler(SimpleHTTPRequestHandler):
             data = json.loads(self.rfile.read(length) or b'{}')
             if not isinstance(data, dict) or not str(data.get('message', '')).strip():
                 return self._json(422, {'error': 'Type a message.'})
-            return self._json(200, {'messages': crew_turn(data), 'model': MODEL})
-        except urllib.error.HTTPError as e:
-            detail = e.read()[:300].decode(errors='replace')
-            print('model error', e.code, detail, file=sys.stderr)
-            return self._json(502, {'error': f'The model service answered {e.code}.'})
+            return self._json(200, {'messages': crew_turn(data), 'model': ROUTER_MODEL})
         except Exception as e:  # noqa: BLE001 - report every failure to the editor, log the detail
             print('crew failed:', repr(e), file=sys.stderr)
             return self._json(500, {'error': 'The crew could not answer: ' + type(e).__name__})
@@ -367,5 +495,6 @@ def _save_bake(self):
 Handler._save_bake = _save_bake
 
 if __name__ == '__main__':
-    print(f'Scene Engine MVP on http://127.0.0.1:{PORT}  (crew model: {MODEL})')
+    print(f'Scene Engine MVP on http://127.0.0.1:{PORT}  (crew models: router {ROUTER_MODEL}, '
+          + ', '.join(f"{i} {m['model']}" for i, m in MEMBERS.items()) + ')')
     ThreadingHTTPServer(('127.0.0.1', PORT), Handler).serve_forever()

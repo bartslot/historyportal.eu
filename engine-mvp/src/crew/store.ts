@@ -10,6 +10,7 @@ import { applySettings, readSettings, type Change } from './settings'
 export type AssistantId = keyof typeof CREW.assistants
 export type Member = (typeof CREW.crew)[number]
 export const MEMBERS: Member[] = CREW.crew
+export const ASSISTANT_TASKS: string[] = CREW.assistant_tasks
 export const ASSISTANTS = CREW.assistants
 
 const ASSISTANT_KEY = 'studio.crew.assistant'
@@ -35,6 +36,15 @@ export function speaker(who: string): { name: string; role: string } {
   if (who === 'assistant') return { name: ASSISTANTS[state.assistant].name, role: 'Set assistant' }
   const m = MEMBERS.find((x) => x.id === who)
   return m ? { name: m.name, role: m.role } : { name: who, role: '' }
+}
+
+/** The server's JEV and review fields are untrusted: keep only well-shaped ones. */
+export function cleanJev(v: any): { score: number; choice: string } | undefined {
+  return v && typeof v.score === 'number' && Number.isFinite(v.score) && v.score >= 0 && v.score <= 1 && typeof v.choice === 'string'
+    ? { score: v.score, choice: v.choice } : undefined
+}
+export function cleanReview(v: any): { who: string; text: string } | undefined {
+  return v && typeof v.who === 'string' && typeof v.text === 'string' && v.text.trim() ? { who: v.who, text: v.text } : undefined
 }
 
 export function greeting(): string {
@@ -140,7 +150,9 @@ export async function send(text: string) {
       if (r?.failed) changes.push('Stopped halfway: ' + r.failed)
       if (msg.dropped) changes.push(`${msg.dropped} unknown stage command(s) ignored`)
       if (!msg.text && !changes.length) continue
-      const out = [...(L.getLesson().lesson.crew ?? lines), { who: String(msg.who), text: String(msg.text ?? ''), ...(changes.length ? { changes } : {}) }]
+      const jev = cleanJev(msg.jev)
+      const review = cleanReview(msg.review)
+      const out = [...(L.getLesson().lesson.crew ?? lines), { who: String(msg.who), text: String(msg.text ?? ''), ...(changes.length ? { changes } : {}), ...(jev ? { jev } : {}), ...(review ? { review } : {}) }]
       L.setCrew(out) // line by line: an error further on never loses an answer already applied
       if (r && (r.changes.length || r.failed)) set({ undo: { ...state.undo, [out.length - 1]: r.undo } })
     }
