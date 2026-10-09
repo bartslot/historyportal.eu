@@ -10,7 +10,9 @@
     "checkJs": false,
     "noEmit": true,
     "skipLibCheck": true,
-    "isolatedModules": true
+    "isolatedModules": true,
+    "baseUrl": ".",
+    "paths": { "@hp/*": ["../resources/js/*"] }
   },
   "include": ["src"]
 }

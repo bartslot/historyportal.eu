@@ -1,7 +1,9 @@
 // Scene Engine MVP: Babylon.js scene with a skybox, a ground plane, low-poly models placed
-// Sims-style (pick, drop, drag over the floor), and a keyframe timeline on Babylon's own animations.
+// Sims-style (pick, drop, drag over the floor), animated by the History Portal timeline (src/timeline/).
 /* global BABYLON */
 'use strict';
+import * as TL from '../timeline/model';
+import { isPlayPauseKey, isTypingTarget } from '@hp/ui/keyboard.js';
 
 const FPS = 30;
 const GRID_STEP = 0.5;          // metres; placement snaps to this
@@ -102,7 +104,7 @@ function makeActor(name, meshes) {
     m.receiveShadows = true;
   });
   // id: stable handle for the AI animator; clips: the model's own loops; schedule: walk clips on the timeline
-  root.metadata = { keys: [], id: 'a' + nextId++, clips: [], clip: null, playing: null, schedule: [] };
+  root.metadata = { id: 'a' + nextId++, clips: [], clip: null, playing: null, schedule: [] };
   actors.push(root);
   return root;
 }
@@ -254,7 +256,7 @@ function flash(text) { // short message in the stage label, then back to the sel
 function select(actor) {
   selected = actor;
   selLabel.textContent = actor ? actor.name : '';
-  drawMarks();
+  TL.setActive(actor ? TL.targetOf(actor) : null);
 }
 
 
@@ -352,64 +354,38 @@ function deleteSelected() {
   a.dispose(false, true);
   // doors belong to their wall: deleting a house disposed its doors too, drop them from the list
   for (let i = actors.length - 1; i >= 0; i--) if (actors[i].isDisposed()) actors.splice(i, 1);
-  rebuildTimeline();
+  TL.removeTarget(TL.targetOf(a));
 }
 
 // ---------- timeline ----------
-// Each actor keeps its own keyframes; one AnimationGroup plays them all on a shared clock.
-const scrub = document.getElementById('scrub');
-const timeLabel = document.getElementById('time');
-const playBtn = document.getElementById('play');
-const lenInput = document.getElementById('len');
-let lengthFrames = 10 * FPS;
-let frame = 0;
-let group = null;
-let playing = false;
-
-function setLength() {
-  lengthFrames = Math.max(1, Number(lenInput.value) || 10) * FPS;
-  scrub.max = lengthFrames;
-  rebuildTimeline();
-}
-lenInput.onchange = setLength;
-
-function keyNow(actor) {
-  const keys = actor.metadata.keys.filter((k) => k.frame !== frame);
-  keys.push({
-    frame,
-    position: actor.position.clone(),
-    rotation: actor.rotationQuaternion.clone(),
-    scaling: actor.scaling.clone(),
-  });
-  keys.sort((a, b) => a.frame - b.frame);
-  actor.metadata.keys = keys;
-}
+// The History Portal timeline owns time and keys (src/timeline/model.ts: per-property tracks on the
+// wizard's own keyframe modules). These are the engine's old entry points, kept for the AI animator,
+// the bake and the doors; they speak frames, the timeline speaks seconds.
+const frameNow = () => Math.round(TL.getState().time * FPS);
+const turnOf = (q) => q.toEulerAngles().y * 180 / Math.PI;
 
 function autoKey() {
-  if (!selected || playing) return; // every move at the playhead is a key: no Key button to remember
-  keyNow(selected);
-  rebuildTimeline();
+  if (selected) TL.recordCanvasEdit(TL.targetOf(selected));
 }
 
-// Transform an actor holds at a frame: the last key at or before it, else its first key, else where it stands.
+// Transform an actor holds at a frame, from its tracks (or where it stands when it has none).
 function stateAt(actor, f) {
-  const keys = actor.metadata.keys;
-  const before = keys.filter((k) => k.frame <= f).pop() || keys[0];
-  if (before) return { position: before.position.clone(), rotation: before.rotation.clone(), scaling: before.scaling.clone() };
-  return { position: actor.position.clone(), rotation: actor.rotationQuaternion.clone(), scaling: actor.scaling.clone() };
+  const target = TL.targetOf(actor);
+  const t = f / FPS;
+  return {
+    position: new BABYLON.Vector3(TL.sampleAt(target, 'x', t), 0, TL.sampleAt(target, 'z', t)),
+    rotation: BABYLON.Quaternion.RotationAxis(BABYLON.Axis.Y, TL.sampleAt(target, 'turn', t) * Math.PI / 180),
+    scaling: actor.scaling.clone(),
+  };
 }
 
-// Write one key at frame f, changing only what `patch` names. The first key on an actor also pins
-// where it starts at frame 0, so a later key never drags it there from nowhere.
+// Key what `patch` names at frame f. Size is not animated (resize = depth): a scale patch just applies.
 function keyAt(actor, f, patch = {}) {
-  f = Math.max(0, Math.round(f));
-  if (actor.metadata.keys.length === 0 && f > 0) {
-    actor.metadata.keys = [{ frame: 0, ...stateAt(actor, 0) }];
-  }
-  const base = stateAt(actor, f);
-  const key = { frame: f, ...base, ...patch };
-  actor.metadata.keys = [...actor.metadata.keys.filter((k) => k.frame !== f), key].sort((a, b) => a.frame - b.frame);
-  if (f > lengthFrames) { lenInput.value = Math.ceil(f / FPS); setLength(); }
+  const target = TL.targetOf(actor);
+  const t = Math.max(0, f) / FPS;
+  if (patch.position) { TL.keyAt(target, 'x', t, patch.position.x); TL.keyAt(target, 'z', t, patch.position.z); }
+  if (patch.rotation) TL.keyAt(target, 'turn', t, turnOf(patch.rotation));
+  if (patch.scaling) actor.scaling.copyFrom(patch.scaling);
 }
 
 // Yaw that makes an actor look along (dx, dz); `forward` corrects models that face another way.
@@ -417,55 +393,14 @@ function yawTowards(actor, dx, dz) {
   return BABYLON.Quaternion.RotationAxis(BABYLON.Axis.Y, Math.atan2(dx, dz) + (actor.metadata.forward || 0));
 }
 
-function animationsFor(actor) {
-  const keys = actor.metadata.keys;
-  if (keys.length === 0) return [];
-  const make = (prop, type, pick) => {
-    const anim = new BABYLON.Animation(actor.name + '.' + prop, prop, FPS, type, BABYLON.Animation.ANIMATIONLOOPMODE_CYCLE);
-    anim.setKeys(keys.map((k) => ({ frame: k.frame, value: pick(k) })));
-    const ease = new BABYLON.CubicEase();
-    ease.setEasingMode(BABYLON.EasingFunction.EASINGMODE_EASEINOUT);
-    anim.setEasingFunction(ease);
-    return anim;
-  };
-  return [
-    make('position', BABYLON.Animation.ANIMATIONTYPE_VECTOR3, (k) => k.position),
-    make('rotationQuaternion', BABYLON.Animation.ANIMATIONTYPE_QUATERNION, (k) => k.rotation),
-    make('scaling', BABYLON.Animation.ANIMATIONTYPE_VECTOR3, (k) => k.scaling),
-  ];
-}
+const rebuildTimeline = () => TL.applyFrame();
+const goTo = (f) => TL.seek(f / FPS);
+const togglePlay = () => TL.togglePlay();
+const playingNow = () => TL.getState().playing;
 
-function rebuildTimeline() {
-  if (group) { group.stop(); group.dispose(); }
-  group = new BABYLON.AnimationGroup('timeline', scene);
-  actors.forEach((actor) => {
-    actor.animations = animationsFor(actor); // so the inspector's curve editor sees them
-    actor.animations.forEach((anim) => group.addTargetedAnimation(anim, actor));
-  });
-  if (group.targetedAnimations.length) {
-    group.normalize(0, lengthFrames);
-    group.start(true, 1, 0, lengthFrames);
-    if (!playing) { group.pause(); group.goToFrame(frame); }
-  }
-  drawMarks();
-}
-
-function goTo(f) {
-  frame = Math.max(0, Math.min(lengthFrames, Math.round(f)));
-  scrub.value = frame;
-  timeLabel.textContent = (frame / FPS).toFixed(2) + ' s';
-  if (group && group.targetedAnimations.length) group.goToFrame(frame);
-}
-scrub.oninput = () => { if (playing) togglePlay(); goTo(Number(scrub.value)); };
-
-function togglePlay() {
-  if (!group || !group.targetedAnimations.length) return;
-  playing = !playing;
-  playBtn.textContent = playing ? '❚❚ Pause' : '▶ Play';
-  if (playing) { group.play(true); } else { group.pause(); }
-}
-playBtn.onclick = togglePlay;
+scene.onBeforeRenderObservable.add(() => TL.tick());
 scene.onBeforeRenderObservable.add(() => {
+  const frame = frameNow();
   actors.forEach((a) => {
     if (!a.metadata.clips.length) return;
     const span = a.metadata.schedule.find((w) => frame >= w.start && frame < w.end);
@@ -473,37 +408,19 @@ scene.onBeforeRenderObservable.add(() => {
     if (want && want !== a.metadata.playing) playClip(a, want, false);
   });
 });
-scene.onBeforeRenderObservable.add(() => {
-  if (!playing || !group) return;
-  const a = group.animatables[0];
-  if (!a) return;
-  frame = Math.round(a.masterFrame) % (lengthFrames + 1);
-  scrub.value = frame;
-  timeLabel.textContent = (frame / FPS).toFixed(2) + ' s';
-});
-
-
-function drawMarks() {
-  const marks = document.getElementById('marks');
-  marks.innerHTML = '';
-  if (!selected) return;
-  selected.metadata.keys.forEach((k) => {
-    const i = document.createElement('i');
-    i.style.left = (k.frame / lengthFrames * 100) + '%';
-    marks.appendChild(i);
-  });
-}
 
 
 // ---------- keyboard ----------
 window.addEventListener('keydown', (e) => {
-  if (e.target.tagName === 'INPUT') return;
+  if (isTypingTarget(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
   const k = e.key.toLowerCase();
   if (k === '[') rotateSelected(-1);
   else if (k === ']') rotateSelected(1);
-  else if (k === 'k' && selected) { keyNow(selected); rebuildTimeline(); }
-  else if (k === ' ') { e.preventDefault(); togglePlay(); }
-  else if (k === 'delete' || k === 'backspace') deleteSelected();
+  else if (k === 'k' && selected) TL.propertiesOf(TL.targetOf(selected)).forEach((p) => TL.toggleKey(TL.targetOf(selected), p.key));
+  else if (isPlayPauseKey(e)) { if (playingNow() || !TL.nothingToPlay()) { e.preventDefault(); togglePlay(); } }
+  else if (k === 'delete' || k === 'backspace') {      // selected keyframes first (Figma), else the object
+    if (TL.getState().selected.length) TL.deleteSelected(); else deleteSelected();
+  }
   else if (k === 'escape' && placing) { const a = placing; placing = null; camera.attachControl(canvas, true); select(a); deleteSelected(); }
 });
 
@@ -512,8 +429,10 @@ window.addEventListener('resize', () => engine.resize());
 window.__mvp = {
   scene, camera, actors, CATALOG, SKIES, FPS,
   goTo, rebuildTimeline, addFromCatalog, setSky, select, playClip, keyAt, stateAt, yawTowards, snap,
-  togglePlay, isPlaying: () => playing, getFrame: () => frame, getLength: () => lengthFrames / FPS,
-  setLengthSeconds: (sec) => { lenInput.value = sec; setLength(); },
+  togglePlay, isPlaying: playingNow, getFrame: frameNow, getLength: () => TL.getState().duration,
+  setLengthSeconds: (sec) => TL.setDuration(sec),
+  keyTimes: (actor) => TL.keyTimesOf(TL.targetOf(actor)),
+  getTracks: () => TL.getState().tracks, setTracks: (tracks) => TL.setTracks(tracks),
   getDome: () => dome,
   makeActor, addHitbox, actorBounds,
   placeHooks: [], // (actor) => true when it positioned the actor itself (wall snap, sky drag)

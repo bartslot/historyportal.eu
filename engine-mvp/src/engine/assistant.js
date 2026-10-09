@@ -32,7 +32,7 @@
           z: +st.position.z.toFixed(2),
           facing_degrees: deg(yaw),
           clips: a.metadata.clips.map((g) => g.name),
-          key_times: a.metadata.keys.map((k) => +(k.frame / mvp.FPS).toFixed(2)),
+          key_times: mvp.keyTimes(a).map((t) => +t.toFixed(2)),
         };
       }),
     };
@@ -43,9 +43,9 @@
     return {
       length: mvp.getLength(),
       sky: mvp.getSkyIndex(),
+      tracks: mvp.getTracks(),                 // immutable: every timeline edit makes new tracks
       actors: mvp.actors.map((a) => ({
         actor: a,
-        keys: a.metadata.keys.map((k) => ({ ...k, position: k.position.clone(), rotation: k.rotation.clone(), scaling: k.scaling.clone() })),
         position: a.position.clone(),
         rotation: a.rotationQuaternion.clone(),
         scaling: a.scaling.clone(),
@@ -58,7 +58,6 @@
     const keep = new Set(state.actors.map((s) => s.actor));
     [...mvp.actors].filter((a) => !keep.has(a)).forEach((a) => mvp.deleteActor(a));
     state.actors.forEach((s) => {
-      s.actor.metadata.keys = s.keys;
       s.actor.position.copyFrom(s.position);
       s.actor.rotationQuaternion.copyFrom(s.rotation);
       s.actor.scaling.copyFrom(s.scaling);
@@ -67,7 +66,7 @@
     });
     if (state.sky >= 0) mvp.setSky(mvp.SKIES[state.sky]);
     mvp.setLengthSeconds(state.length);
-    mvp.rebuildTimeline();
+    mvp.setTracks(state.tracks);
   }
   undoBtn.onclick = () => {
     const state = undoStack.pop();

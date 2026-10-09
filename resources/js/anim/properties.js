@@ -72,6 +72,14 @@ const REGISTRY = {
     P('x', 'X', 'linear', ''),
     P('z', 'Z', 'linear', ''),
   ],
+  /** A 3D actor in the Babylon studio: metres on the floor grid (X across, Z away from the camera)
+   *  and its turn about the vertical axis. No Y and no size: things stand on the floor at their
+   *  real height (resize = depth). */
+  actor: [
+    P('x', 'X', 'linear', 'm'),
+    P('z', 'Z', 'linear', 'm'),
+    P('turn', 'Turn', 'angle', '°'),
+  ],
 }
 
 /** The properties of an object kind, or an empty list for one that cannot be animated yet. */

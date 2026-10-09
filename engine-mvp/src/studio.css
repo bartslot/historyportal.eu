@@ -14,7 +14,7 @@ html, body, #root { height: 100%; margin: 0; overflow: hidden; }
 #sel { background: color-mix(in oklch, var(--color-base-100) 70%, transparent); }
 
 #drawer .head { display: flex; gap: 6px; align-items: center; }
-#drawer .drawer-toggle { border: 0; background: none; color: var(--color-panel-title); font-size: 11px; font-weight: 600; cursor: pointer; padding: 2px 8px 2px 0; }
+#drawer .assets-toggle { border: 0; background: none; color: var(--color-panel-title); font-size: 11px; font-weight: 600; cursor: pointer; padding: 2px 8px 2px 0; }
 #drawer .tabs { display: flex; gap: 2px; flex-wrap: wrap; }
 #drawer .tabs button { padding: 4px 10px; border-radius: 999px; border: 0; background: transparent; color: var(--color-panel-label); font-size: 12px; cursor: pointer; }
 #drawer .tabs button.on { color: var(--color-panel-value); background: var(--color-panel-hairline); }

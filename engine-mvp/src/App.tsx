@@ -3,7 +3,8 @@
 // Elements with an id belong to the engine: it finds them once at load, so they are always rendered.
 import { useEngine, actions, type Picked } from './bridge'
 import { ADVANCED, type Control } from './scene-controls'
-import { GroupLabel, KeyframeDiamond, PanelRow, SelectRow, SettingsSection, SliderRow, ToggleRow } from './ui/kit'
+import { Timeline } from './timeline/Timeline'
+import { GroupLabel, KeyframeDiamond, SelectRow, SettingsSection, SliderRow, ToggleRow } from './ui/kit'
 
 const ADV_LABEL_W = '6.5rem'
 const KIND_LABEL: Record<Picked['kind'], string> = { model: '3D model', picture: 'Picture', door: 'Door', cloud: 'Cloud' }
@@ -46,7 +47,7 @@ function ObjectPanel({ picked }: { picked: Picked }) {
       {floor && (
         <SettingsSection title="Format" name="object-format">
           <SliderRow label="Turn" min={0} max={359} step={1} value={picked.yaw} onChange={actions.turnTo} format={deg}
-                     keyframe={<KeyframeDiamond on={picked.keyed} onClick={actions.key} />} />
+                     keyframe={<KeyframeDiamond on={picked.keyed} onClick={actions.keyTurn} />} />
         </SettingsSection>
       )}
       {floor && (
@@ -138,24 +139,12 @@ function SidePanel() {
 
 function Bottom() {
   return (
-    <section className="border-t border-panel-hairline px-4 pb-3 pt-2" style={{ gridArea: 'bottom' }}>
-      <div id="drawer">
-        <div className="head"><button type="button" className="drawer-toggle">Assets</button><div className="tabs" /></div>
+    <section className="flex min-h-0 flex-col border-t border-panel-hairline" style={{ gridArea: 'bottom' }}>
+      <div id="drawer" className="px-4 pb-2 pt-2">
+        <div className="head"><button type="button" className="assets-toggle">Assets</button><div className="tabs" /></div>
         <div className="tiles" />
       </div>
-      <div id="controls" className="mt-2 flex items-center gap-3">
-        <button type="button" id="play" className="btn btn-sm">Play</button>
-        <span id="time" className="w-16 text-xs tabular-nums text-panel-value">0.00 s</span>
-        <PanelRow label="Length">
-          <input type="number" id="len" defaultValue={10} min={1} max={120}
-                 className="input input-xs w-14 border-panel-hairline bg-base-100 text-panel-value" />
-          <span className="text-3xs font-semibold uppercase tracking-wide text-panel-label">s</span>
-        </PanelRow>
-      </div>
-      <div id="track" className="relative mt-1 h-6">
-        <div id="marks" />
-        <input type="range" id="scrub" min={0} max={300} defaultValue={0} step={1} className="absolute inset-0 w-full" />
-      </div>
+      <Timeline />
     </section>
   )
 }
@@ -163,7 +152,7 @@ function Bottom() {
 export function App() {
   return (
     <div className="studio grid h-dvh bg-base-200 text-panel-value"
-         style={{ gridTemplateColumns: '1fr var(--settings-panel-w, 19.375rem)', gridTemplateRows: '3rem 1fr auto', gridTemplateAreas: '"top top" "stage panel" "bottom panel"' }}>
+         style={{ gridTemplateColumns: '1fr var(--settings-panel-w, 19.375rem)', gridTemplateRows: '3rem minmax(0, 1fr) 22rem', gridTemplateAreas: '"top top" "stage panel" "bottom panel"' }}>
       <TopBar />
       <Stage />
       <SidePanel />

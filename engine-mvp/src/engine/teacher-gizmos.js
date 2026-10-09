@@ -81,6 +81,17 @@
     if (target && !busy) place(target);
   });
 
+  // The ring's far half passes BEHIND the object, and the overlay layer is always picked before the
+  // scene, so a press on the object's own body turned it instead of moving it. Before every pointer
+  // event (registered first, ahead of the overlay), the ring stops catching the pointer wherever the
+  // object itself is under it.
+  const ownedBy = (m, a) => m && m.metadata && m.metadata.actor === a;
+  scene.onPrePointerObservable.add(() => {
+    if (busy || !target) { ringHit.isPickable = true; return; }
+    const hit = scene.pick(scene.pointerX, scene.pointerY, (m) => ownedBy(m, target));
+    ringHit.isPickable = !(hit && hit.hit);
+  }, undefined, true);
+
   // ---- turn ring ----
   let lastEvent = null; // Shift = free turning: the modifier keys of the latest pointer event
   ui.onPrePointerObservable.add((info) => { lastEvent = info.event; });

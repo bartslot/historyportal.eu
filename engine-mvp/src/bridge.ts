@@ -2,6 +2,7 @@
 // own functions to change it. The snapshot is refreshed after renders, a few times a second, and only
 // a real change re-renders the panels.
 import { useSyncExternalStore } from 'react'
+import * as TL from './timeline/model'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Mvp = any
@@ -27,7 +28,7 @@ function read(): Snapshot {
     id: a.metadata.id, name: a.name, kind: kindOf(a),
     yaw: Math.round(((a.rotationQuaternion.toEulerAngles().y * 180 / Math.PI) + 360) % 360),
     x: +a.position.x.toFixed(2), z: +a.position.z.toFixed(2),
-    keyed: a.metadata.keys.some((k: any) => k.frame === m.getFrame()),
+    keyed: TL.hasKeyHere(TL.targetOf(a), 'turn'),
   } : null
   return { ready: true, selected, playing: m.isPlaying() }
 }
@@ -50,18 +51,14 @@ export function useEngine(): Snapshot {
 }
 
 // ---------- actions: thin calls into the engine's own functions ----------
-const sel = () => mvp().getSelected()
+// The panel edits through the timeline, so a value typed here keys itself exactly like one typed in
+// the timeline's own rows: auto-key on an animated property, a plain change otherwise.
+const target = () => { const a = mvp().getSelected(); return a ? TL.targetOf(a) : null }
 export const actions = {
-  turnTo(deg: number) {
-    const a = sel(); if (!a) return
-    const B = (window as any).BABYLON
-    a.rotationQuaternion = B.Quaternion.RotationAxis(B.Axis.Y, deg * Math.PI / 180)
-    mvp().autoKey()
-  },
+  turnTo(deg: number) { const t = target(); if (t) TL.setValue(t, 'turn', deg) },
   moveTo(x: number, z: number) {
-    const a = sel(); if (!a) return
-    a.position.x = mvp().snap(x); a.position.z = mvp().snap(z)
-    mvp().autoKey()
+    const t = target(); if (!t) return
+    TL.setValue(t, 'x', mvp().snap(x)); TL.setValue(t, 'z', mvp().snap(z))
   },
-  key() { mvp().autoKey() },
+  keyTurn() { const t = target(); if (t) TL.toggleKey(t, 'turn') },
 }
