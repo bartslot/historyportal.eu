@@ -20,7 +20,9 @@ function savedAssistant(): AssistantId {
   try { const v = localStorage.getItem(ASSISTANT_KEY); return v && v in ASSISTANTS ? (v as AssistantId) : 'sofie' } catch { return 'sofie' }
 }
 
-type State = { assistant: AssistantId; to: string | null; busy: boolean; error: string | null; undo: Record<number, () => Promise<void>> }
+/** An undo belongs to one lesson and one scene: it only runs there (never over another scene's stage). */
+export type UndoEntry = { lesson: string; scene: string; run: () => Promise<void> }
+type State = { assistant: AssistantId; to: string | null; busy: boolean; error: string | null; undo: Record<number, UndoEntry> }
 let state: State = { assistant: savedAssistant(), to: null, busy: false, error: null, undo: {} }
 const listeners = new Set<() => void>()
 const set = (patch: Partial<State>) => { state = { ...state, ...patch }; listeners.forEach((l) => l()) }
@@ -60,30 +62,39 @@ const fmt = (c: Change, labels: Map<string, string>) => `${labels.get(c.id) ?? c
 
 // Undo takes the whole scene back (objects, keys, look and sky settings) with the lesson's own scene
 // save/load, plus the title: the same data a saved lesson holds, so nothing a crew member did is missed.
-async function applyAnswer(msg: any): Promise<{ changes: string[]; undo: (() => Promise<void>) | null }> {
+// The undo exists before the first change is made, so a failure halfway can still be taken back.
+async function applyAnswer(msg: any): Promise<{ changes: string[]; undo: UndoEntry; failed: string | null }> {
   const labels = new Map(readSettings().map((s) => [s.id, s.label]))
-  const scene = sceneIO().serialize()
-  const title = L.getLesson().lesson.title
+  const { lesson, current } = L.getLesson()
+  const doc = sceneIO().serialize()
+  const title = lesson.title
+  const undo: UndoEntry = { lesson: lesson.id, scene: current, run: async () => { await sceneIO().load(doc); L.setTitle(title) } }
   const changes: string[] = []
-  if (Array.isArray(msg.settings) && msg.settings.length) {
-    changes.push(...applySettings(msg.settings).map((c) => fmt(c, labels)))
+  try {
+    if (Array.isArray(msg.settings) && msg.settings.length) changes.push(...applySettings(msg.settings).map((c) => fmt(c, labels)))
+    if (Array.isArray(msg.commands) && msg.commands.length) changes.push(...await animator().run(msg.commands))
+    if (typeof msg.title === 'string' && msg.title) {
+      L.setTitle(msg.title)
+      changes.push(`Lesson title: ${msg.title}`)
+    }
+    return { changes, undo, failed: null }
+  } catch (err) {
+    return { changes, undo, failed: err instanceof Error ? err.message : String(err) }
   }
-  if (Array.isArray(msg.commands) && msg.commands.length) {
-    changes.push(...await animator().run(msg.commands))
-  }
-  if (typeof msg.title === 'string' && msg.title) {
-    L.setTitle(msg.title)
-    changes.push(`Lesson title: ${msg.title}`)
-  }
-  if (!changes.length) return { changes, undo: null }
-  return { changes, undo: async () => { await sceneIO().load(scene); L.setTitle(title) } }
+}
+
+/** The Undo on a line, only while that line's lesson and scene are open. */
+export function undoFor(index: number): UndoEntry | null {
+  const u = state.undo[index]
+  const { lesson, current } = L.getLesson()
+  return u && u.lesson === lesson.id && u.scene === current ? u : null
 }
 
 export async function undo(index: number) {
-  const fn = state.undo[index]
-  if (!fn || state.busy) return
+  const u = undoFor(index)
+  if (!u || state.busy || L.getLesson().busy) return
   set({ busy: true, error: null })
-  try { await fn() } catch (err) {
+  try { await u.run() } catch (err) {
     set({ busy: false, error: 'Could not undo: ' + (err instanceof Error ? err.message : String(err)) })
     return
   }
@@ -96,8 +107,8 @@ export async function undo(index: number) {
 
 export async function send(text: string) {
   const message = text.trim()
-  if (!message || state.busy) return
-  const { lesson } = L.getLesson()
+  if (!message || state.busy || L.getLesson().busy) return
+  const { lesson, current } = L.getLesson()
   const before = lesson.crew ?? []
   const lines = [...before, { who: 'client', text: message }]
   L.setCrew(lines)
@@ -118,17 +129,21 @@ export async function send(text: string) {
     if (!(res.headers.get('content-type') || '').includes('json')) throw new Error('the crew server is not running (start "python3 server.py" in engine-mvp)')
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
-    let out = L.getLesson().lesson.crew ?? lines
-    const undos: Record<number, () => Promise<void>> = {}
-    for (const msg of data.messages ?? []) {
-      const { changes, undo: u } = await applyAnswer(msg)
+    // the client switched scene or lesson while the crew was thinking: show the answers, change nothing
+    const moved = L.getLesson().current !== current || L.getLesson().lesson.id !== lesson.id
+    for (const msg of Array.isArray(data.messages) ? data.messages : []) {
+      if (!msg || typeof msg !== 'object') continue
+      const wants = !!(msg.settings?.length || msg.commands?.length || msg.title)
+      const r = wants && !moved ? await applyAnswer(msg) : null
+      const changes = r?.changes ?? []
+      if (wants && moved) changes.push('Not applied: the scene changed while the crew was answering')
+      if (r?.failed) changes.push('Stopped halfway: ' + r.failed)
       if (msg.dropped) changes.push(`${msg.dropped} unknown stage command(s) ignored`)
       if (!msg.text && !changes.length) continue
-      out = [...out, { who: String(msg.who), text: String(msg.text ?? ''), ...(changes.length ? { changes } : {}) }]
-      if (u) undos[out.length - 1] = u
+      const out = [...(L.getLesson().lesson.crew ?? lines), { who: String(msg.who), text: String(msg.text ?? ''), ...(changes.length ? { changes } : {}) }]
+      L.setCrew(out) // line by line: an error further on never loses an answer already applied
+      if (r && (r.changes.length || r.failed)) set({ undo: { ...state.undo, [out.length - 1]: r.undo } })
     }
-    L.setCrew(out)
-    set({ undo: { ...state.undo, ...undos } })
   } catch (err) {
     set({ error: 'The crew could not answer: ' + (err instanceof Error ? err.message : String(err)) })
   } finally {

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Panel } from '../panels/Panel'
 import { SettingsSection } from '../ui/kit'
 import * as L from '../lesson/store'
-import { ASSISTANTS, MEMBERS, chooseAssistant, greeting, send, speaker, talkTo, undo, useCrew, type AssistantId } from './store'
+import { ASSISTANTS, MEMBERS, chooseAssistant, greeting, send, speaker, talkTo, undo, undoFor, useCrew, type AssistantId } from './store'
 
 const X_MARK = 'M6 18 18 6M6 6l12 12'
 const UNDO = 'M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3'
@@ -52,7 +52,9 @@ function Card({ id, onClose }: { id: string; onClose: () => void }) {
 }
 
 function Line({ index, who, text, changes }: { index: number; who: string; text: string; changes?: string[] }) {
-  const { undo: undos } = useCrew()
+  useCrew()
+  L.useLesson() // the Undo shows only while this line's scene is open
+  const canUndo = !!undoFor(index)
   if (who === 'client') {
     return <p className="ml-8 self-end whitespace-pre-wrap rounded-lg bg-base-100 px-3 py-2 text-xs text-panel-value">{text}</p>
   }
@@ -66,7 +68,7 @@ function Line({ index, who, text, changes }: { index: number; who: string; text:
         {changes && (
           <div className="mt-1 flex items-start gap-2">
             <ul className="flex-1 text-2xs text-panel-label">{changes.map((c, i) => <li key={i}>{c}</li>)}</ul>
-            {undos[index] && (
+            {canUndo && (
               <button type="button" className="btn btn-ghost btn-xs" onClick={() => undo(index)}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-3.5 w-3.5" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d={UNDO} /></svg>
                 Undo

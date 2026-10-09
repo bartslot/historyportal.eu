@@ -27,6 +27,7 @@ MAX_COMMANDS = 40
 MAX_PROMPT = 1000
 MAX_HISTORY = 16
 MAX_REPLY = 2000
+MAX_BODY = 2_000_000
 MAX_ASKS = 2
 CREW = json.loads((HERE / 'src' / 'crew' / 'crew.json').read_text())
 MAX_BAKE_BYTES = 1_000_000_000          # a published MP4 may be large, but not unbounded
@@ -100,6 +101,8 @@ and say why."""
 
 def validate(commands):
     clean, dropped = [], []
+    if not isinstance(commands, list):
+        return clean, [commands]
     for c in commands[:MAX_COMMANDS]:
         if not isinstance(c, dict) or c.get('cmd') not in COMMANDS:
             dropped.append(c)
@@ -225,10 +228,10 @@ Answer ONLY with JSON: {fmt}"""
 
 def clean_settings(proposed, offered):
     """Only ids the browser offered; numbers clamped to their range, options from their list."""
-    by_id = {o.get('id'): o for o in offered if isinstance(o, dict)}
+    by_id = {o.get('id'): o for o in offered if isinstance(o, dict) and isinstance(o.get('id'), str)} if isinstance(offered, list) else {}
     out = []
     for p in proposed[:MAX_COMMANDS] if isinstance(proposed, list) else []:
-        o = by_id.get(p.get('id')) if isinstance(p, dict) else None
+        o = by_id.get(p.get('id')) if isinstance(p, dict) and isinstance(p.get('id'), str) else None
         if not o:
             continue
         v = p.get('value')
@@ -250,7 +253,7 @@ def clean_settings(proposed, offered):
 
 
 def context(data):
-    hist = [h for h in data.get('history', []) if isinstance(h, dict)][-MAX_HISTORY:]
+    hist = [h for h in (data.get('history') if isinstance(data.get('history'), list) else []) if isinstance(h, dict)][-MAX_HISTORY:]
     talk = '\n'.join(f"{str(h.get('who', ''))[:40]}: {str(h.get('text', ''))[:600]}" for h in hist)
     lesson = data.get('lesson', {}) if isinstance(data.get('lesson'), dict) else {}
     return (f"Lesson: {json.dumps(lesson)[:2000]}\nConversation so far:\n{talk or '(none)'}\n"
@@ -269,7 +272,7 @@ def ask_member(m, assistant, question, data, direct=False):
     if not may_change(m, direct):
         return msg
     commands, dropped = validate(answer.get('commands') or [])
-    msg['settings'] = clean_settings(answer.get('settings') or [], data.get('settings', []))
+    msg['settings'] = clean_settings(answer.get('settings'), data.get('settings'))
     msg['commands'] = commands
     msg['dropped'] = len(dropped)
     return msg
@@ -277,15 +280,20 @@ def ask_member(m, assistant, question, data, direct=False):
 
 def crew_turn(data):
     message = str(data.get('message', ''))[:MAX_PROMPT].strip()
-    assistant = CREW['assistants'].get(data.get('assistant')) or next(iter(CREW['assistants'].values()))
+    assistant = CREW['assistants'].get(str(data.get('assistant'))) or next(iter(CREW['assistants'].values()))
     to = data.get('to')
-    if to in MEMBERS:   # the client talks to one crew member directly
+    if isinstance(to, str) and to in MEMBERS:   # the client talks to one crew member directly
         return [ask_member(MEMBERS[to], assistant, message, data, direct=True)]
     plan = ask_model(router_prompt(assistant), context(data) + '\n\nClient: ' + message, temperature=0.3)
     out = [{'who': 'assistant', 'text': str(plan.get('reply', ''))[:800]}]
-    asks = [a for a in (plan.get('ask') or []) if isinstance(a, dict) and a.get('crew') in MEMBERS][:MAX_ASKS]
+    asks = plan.get('ask') if isinstance(plan.get('ask'), list) else []
+    asks = [a for a in asks if isinstance(a, dict) and isinstance(a.get('crew'), str) and a['crew'] in MEMBERS][:MAX_ASKS]
     for a in asks:
-        out.append(ask_member(MEMBERS[a['crew']], assistant, str(a.get('question') or message), data))
+        try:  # one member failing never loses the assistant's reply or the others' answers
+            out.append(ask_member(MEMBERS[a['crew']], assistant, str(a.get('question') or message), data))
+        except Exception as e:  # noqa: BLE001 - reported to the client in the chat, detail logged
+            print('crew member failed:', a['crew'], repr(e), file=sys.stderr)
+            out.append({'who': a['crew'], 'text': '(could not answer this time, ask again)'})
     return out
 
 
@@ -312,7 +320,9 @@ class Handler(SimpleHTTPRequestHandler):
         if self.path != '/crew':
             return self._json(404, {'error': 'not found'})
         try:
-            length = min(int(self.headers.get('Content-Length', 0)), 400_000)
+            length = int(self.headers.get('Content-Length', 0))
+            if length > MAX_BODY:
+                return self._json(413, {'error': 'Too much to send at once.'})
             data = json.loads(self.rfile.read(length) or b'{}')
             if not isinstance(data, dict) or not str(data.get('message', '')).strip():
                 return self._json(422, {'error': 'Type a message.'})

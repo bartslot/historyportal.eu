@@ -52,7 +52,11 @@ export function readSettings(root: ParentNode = document): Setting[] {
 /** Apply through the real controls; returns what was applied. */
 export function applySettings(changes: Change[], root: ParentNode = document): Change[] {
   const applied: Change[] = []
-  for (const c of planChanges(readSettings(root), changes)) {
+  const offered = readSettings(root)
+  const isSelect = (c: Change) => offered.find((s) => s.id === c.id)?.type === 'select'
+  // selects first: a preset rewrites the look sliders, which the other changes then set
+  const ordered = planChanges(offered, changes).sort((a, b) => Number(isSelect(b)) - Number(isSelect(a)))
+  for (const c of ordered) {
     const el = root.querySelector<HTMLInputElement | HTMLSelectElement>(`[data-settings] #${CSS.escape(c.id)}`)
     if (!el) continue
     if (el instanceof HTMLInputElement && el.type === 'checkbox') el.checked = c.value as boolean
