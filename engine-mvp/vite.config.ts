@@ -3,8 +3,8 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { fileURLToPath } from 'node:url'
 
-// server.py keeps the two server-side jobs: the AI animator (/assist, holds the API key) and the MP4 bake.
-const API = 'http://127.0.0.1:8090'
+// server.py keeps the two server-side jobs: the lesson crew (/crew, holds the API key) and the MP4 bake.
+const API = process.env.STUDIO_API ?? 'http://127.0.0.1:8090'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -13,7 +13,7 @@ export default defineConfig({
   server: {
     port: 5190,
     strictPort: true,
-    proxy: { '/assist': API, '/bake': API },
+    proxy: { '/crew': API, '/bake': API },
     fs: { allow: ['..', '../../../../resources/css'] },
   },
 })

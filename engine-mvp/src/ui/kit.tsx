@@ -114,7 +114,7 @@ export function ToggleRow({ label, id, defaultChecked }: { label: string; id: st
 export function SelectRow({ label, id, defaultValue, options, labelWidth }: { label: string; id: string; defaultValue?: string; options?: [string, string][]; labelWidth?: string }) {
   return (
     <PanelRow label={label} labelWidth={labelWidth}>
-      <select id={id} defaultValue={defaultValue}
+      <select id={id} defaultValue={defaultValue} aria-label={label}
               className="w-full appearance-none rounded-lg border border-panel-hairline bg-base-100 py-1 pl-3 pr-7 text-xs text-panel-value">
         {options?.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
       </select>

@@ -89,29 +89,13 @@ function ScenePanel() {
   )
 }
 
-function Assistant() {
-  return (
-    <SettingsSection title="Ask" name="ask">
-      <div id="ai" className="flex flex-col gap-2">
-        <div id="aiLog" className="max-h-56 overflow-auto text-xs" />
-        <textarea id="aiPrompt" rows={3} placeholder="What should happen?"
-                  className="textarea textarea-sm w-full border-panel-hairline bg-base-100 text-panel-value" />
-        <div className="flex gap-2">
-          <button type="button" id="aiSend" className="btn btn-sm flex-1">Send</button>
-          <button type="button" id="aiUndo" className="btn btn-ghost btn-sm" disabled>Undo</button>
-        </div>
-      </div>
-    </SettingsSection>
-  )
-}
-
 export function Inspector() {
   const { selected } = useEngine()
   return (
     <Panel id="inspector">
       {selected && <ObjectPanel picked={selected} />}
-      <div hidden={!!selected}><ScenePanel /></div>
-      <Assistant />
+      {/* data-settings: every control in here is open to the crew too (src/crew/settings.ts) */}
+      <div hidden={!!selected} data-settings><ScenePanel /></div>
     </Panel>
   )
 }

@@ -1,11 +1,14 @@
-"""Scene Engine MVP server: serves the static editor and proxies the AI animator.
+"""Scene Engine MVP server: serves the static editor and runs the lesson crew.
 
-POST /assist {prompt, scene} -> {reply, commands[]}
-The model only proposes commands from COMMANDS below; anything else is dropped here, so the
-browser never runs free-form model output. The API key stays on this side.
+POST /crew {message, to?, assistant, history[], scene, settings[], lesson} -> {messages[]}
+The teacher (the client) talks to the set assistant, who asks one or two crew members
+(src/crew/crew.json); each answers in their own name and may change settings and the scene.
+The model only proposes scene commands from COMMANDS and setting values from the list the
+browser sent; anything else is dropped here, so the browser never runs free-form model output.
+The API key stays on this side.
 
-Model = the app's "mechanical" role (cheap, low-level work): LLM_ROLE_MECHANICAL in the
-History Portal .env, Gemini via its OpenAI-compatible endpoint.
+Model: LLM_ROLE_CREW, else the app's "mechanical" role (LLM_ROLE_MECHANICAL) in the History
+Portal .env, Gemini via its OpenAI-compatible endpoint.
 """
 import json
 import os
@@ -22,6 +25,9 @@ ENV_FILE = pathlib.Path(os.environ.get('HP_ENV_FILE', HERE.parents[3] / '.env'))
 PORT = int(os.environ.get('PORT', '8090'))
 MAX_COMMANDS = 40
 MAX_PROMPT = 1000
+MAX_HISTORY = 16
+MAX_ASKS = 2
+CREW = json.loads((HERE / 'src' / 'crew' / 'crew.json').read_text())
 MAX_BAKE_BYTES = 1_000_000_000          # a published MP4 may be large, but not unbounded
 BAKES = HERE / 'bakes'
 
@@ -36,7 +42,7 @@ def load_env(path):
 
 
 ENV = load_env(ENV_FILE)
-ROLE = ENV.get('LLM_ROLE_MECHANICAL', 'gemini:gemini-3.5-flash-lite')
+ROLE = ENV.get('LLM_ROLE_CREW') or ENV.get('LLM_ROLE_MECHANICAL', 'gemini:gemini-3.5-flash-lite')
 MODEL = ROLE.split(':', 1)[1] if ':' in ROLE else 'gemini-3.5-flash-lite'
 API_KEY = ENV.get('GEMINI_API_KEY', '')
 BASE_URL = ENV.get('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta/openai')
@@ -63,10 +69,7 @@ RANGES = {'x': (-29, 29), 'z': (-29, 29), 'at': (0, 120), 'start': (0, 120), 'en
           'degrees': (-720, 720), 'turn': (-360, 360), 'factor': (0.2, 5), 'seconds': (1, 120),
           'index': (0, 20), 'distance': (2, 60), 'angle': (-360, 360), 'height': (5, 85)}
 
-SYSTEM = """You are a low-level animation assistant inside a 3D scene editor for history lessons.
-You turn the teacher's request into a short list of commands. You do not chat at length.
-
-World: flat ground from -29 to 29 on x and z, metres, y is up. Camera looks from -z towards +z by default.
+SCENE_RULES = """World: flat ground from -29 to 29 on x and z, metres, y is up. Camera looks from -z towards +z by default.
 Time is in seconds on one timeline. Objects keep their position between keyframes; movement between two
 keyframes is eased. Animated models also loop one of their own clips (idle, walk, ...).
 
@@ -88,9 +91,8 @@ Commands (JSON objects, "cmd" plus arguments):
 Doors and gates only exist on a wall: add them next to a house/town (they snap to the nearest wall) and
 only after that building exists. They start closed.
 Rules: use only ids that exist in the scene or new1.. you add. Use only catalog names given. Keep objects
-apart by at least 1.5 m unless asked. Prefer few, clear keyframes. If the request is impossible, return no
-commands and say why in "reply".
-Answer ONLY with JSON: {"reply": "<one short sentence to the teacher>", "commands": [ ... ]}"""
+apart by at least 1.5 m unless asked. Prefer few, clear keyframes. If something is impossible, use no commands
+and say why."""
 
 
 def validate(commands):
@@ -123,15 +125,12 @@ def validate(commands):
     return clean, dropped
 
 
-def ask_model(prompt, scene):
+def ask_model(system, user, temperature=0.4):
     body = {
         'model': MODEL,
-        'messages': [
-            {'role': 'system', 'content': SYSTEM},
-            {'role': 'user', 'content': 'Scene:\n' + json.dumps(scene) + '\n\nRequest: ' + prompt},
-        ],
+        'messages': [{'role': 'system', 'content': system}, {'role': 'user', 'content': user}],
         'response_format': {'type': 'json_object'},
-        'temperature': 0.2,
+        'temperature': temperature,
     }
     req = urllib.request.Request(BASE_URL + '/chat/completions', data=json.dumps(body).encode(),
                                  headers={'Authorization': 'Bearer ' + API_KEY, 'Content-Type': 'application/json'})
@@ -139,6 +138,128 @@ def ask_model(prompt, scene):
         content = json.load(r)['choices'][0]['message']['content']
     start, end = content.find('{'), content.rfind('}')
     return json.loads(content[start:end + 1])
+
+
+# ---------- the crew ----------
+MEMBERS = {m['id']: m for m in CREW['crew']}
+SHARED = """You work in the crew that makes a history lesson in the History Portal studio, a 3D stage where a
+teacher builds a narrated, story-driven lesson for their class. The teacher is the CLIENT: their goal, their class,
+their final say. A value the client set by hand stays as it is unless the client asks you to change it now.
+Say "your class", never "learners" or "users". Short, plain, concrete; no tagline-style sentences.
+Answer in the language the client writes in."""
+
+
+def roster(assistant):
+    lines = [f"- {m['id']}: {m['name']}, {m['role']}: {m['mission']}" for m in CREW['crew']]
+    return f"- you: {assistant['name']}, set assistant\n" + '\n'.join(lines)
+
+
+def router_prompt(assistant):
+    return f"""{SHARED}
+
+You are {assistant['name']}, the SET ASSISTANT ({assistant['pronoun']}). {assistant['backstory']}
+The client talks to you. You do no specialist work yourself: you decide which crew member(s) to ask, and say so
+in one or two friendly sentences. The crew:
+{roster(assistant)}
+
+How you decide:
+- Nothing known yet about the lesson (no topic, no class age): do not ask anyone. Ask the client what kind of
+  lesson or story they want: the topic, the age of their class, a story or a game, and how long.
+- A question or request for one specialist: ask that one. Facts and sources: historian. Story, angle, script:
+  writer. Age, words, outcomes, quiz: learning. Jokes: comedian. Voices, how lines are said, characters moving:
+  actors. The stage, objects, sky, light, look, town: set.
+- At most {MAX_ASKS} crew members per turn. The director only when the client asks for a review of the result
+  or says the lesson is finished.
+- If the client just chats or thanks you, answer yourself and ask no one.
+Answer ONLY with JSON: {{"reply": "<what you tell the client>", "ask": [{{"crew": "<id>", "question": "<what you ask them, with the client's context>"}}]}}"""
+
+
+def member_prompt(m, assistant):
+    if m.get('reviews_only'):
+        powers = 'You do NOT change anything yourself. Give notes, each to one crew member by name, with one reason.'
+        fmt = '{"reply": "<your notes to the client>"}'
+    else:
+        powers = f"""You can change every studio setting and the stage, like the client can by hand.
+Change only what the request or your job needs; every change is shown to the client and can be undone.
+Settings: the list "settings" below (id, label, type, range or options, current value). Set a value with
+{{"id": "<id>", "value": <number | true/false | option value>}}.
+The lesson title: "title".
+The stage, with scene commands:
+{SCENE_RULES}"""
+        fmt = '{"reply": "<to the client, in your own voice>", "settings": [ ... ], "commands": [ ... ], "title": "<only to rename the lesson>"}'
+    return f"""{SHARED}
+
+You are {m['name']}, the {m['role'].lower()}. {m['backstory']}
+Mission: {m['mission']}
+You own: {m['owns']}
+You speak like this: "{m['speaks_like']}"
+The set assistant {assistant['name']} brings you the client's request; the client reads your answer directly.
+If the client asks about you, answer as yourself, from your backstory, briefly.
+{powers}
+Answer ONLY with JSON: {fmt}"""
+
+
+def clean_settings(proposed, offered):
+    """Only ids the browser offered; numbers clamped to their range, options from their list."""
+    by_id = {o.get('id'): o for o in offered if isinstance(o, dict)}
+    out = []
+    for p in proposed[:MAX_COMMANDS] if isinstance(proposed, list) else []:
+        o = by_id.get(p.get('id')) if isinstance(p, dict) else None
+        if not o:
+            continue
+        v = p.get('value')
+        if o.get('type') == 'range':
+            try:
+                v = max(float(o['min']), min(float(o['max']), float(v)))
+            except (TypeError, ValueError, KeyError):
+                continue
+        elif o.get('type') == 'toggle':
+            v = v in (True, 1, '1', 'true', 'on')
+        elif o.get('type') == 'select':
+            if str(v) not in [str(opt[0]) for opt in o.get('options', [])]:
+                continue
+            v = str(v)
+        else:
+            continue
+        out.append({'id': o['id'], 'value': v})
+    return out
+
+
+def context(data):
+    hist = [h for h in data.get('history', []) if isinstance(h, dict)][-MAX_HISTORY:]
+    talk = '\n'.join(f"{str(h.get('who', ''))[:40]}: {str(h.get('text', ''))[:600]}" for h in hist)
+    lesson = data.get('lesson', {}) if isinstance(data.get('lesson'), dict) else {}
+    return (f"Lesson: {json.dumps(lesson)[:2000]}\nConversation so far:\n{talk or '(none)'}\n"
+            f"Settings: {json.dumps(data.get('settings', []))[:12000]}\nStage: {json.dumps(data.get('scene', {}))[:12000]}")
+
+
+def ask_member(m, assistant, question, data):
+    answer = ask_model(member_prompt(m, assistant), context(data) + '\n\nRequest: ' + question[:MAX_PROMPT])
+    msg = {'who': m['id'], 'text': str(answer.get('reply', ''))[:1200]}
+    if m.get('reviews_only'):
+        return msg
+    commands, dropped = validate(answer.get('commands') or [])
+    msg['settings'] = clean_settings(answer.get('settings') or [], data.get('settings', []))
+    msg['commands'] = commands
+    msg['dropped'] = len(dropped)
+    title = str(answer.get('title') or '').strip()[:80]
+    if title:
+        msg['title'] = title
+    return msg
+
+
+def crew_turn(data):
+    message = str(data.get('message', ''))[:MAX_PROMPT].strip()
+    assistant = CREW['assistants'].get(data.get('assistant')) or next(iter(CREW['assistants'].values()))
+    to = data.get('to')
+    if to in MEMBERS:   # the client talks to one crew member directly
+        return [ask_member(MEMBERS[to], assistant, message, data)]
+    plan = ask_model(router_prompt(assistant), context(data) + '\n\nClient: ' + message, temperature=0.3)
+    out = [{'who': 'assistant', 'text': str(plan.get('reply', ''))[:800]}]
+    asks = [a for a in (plan.get('ask') or []) if isinstance(a, dict) and a.get('crew') in MEMBERS][:MAX_ASKS]
+    for a in asks:
+        out.append(ask_member(MEMBERS[a['crew']], assistant, str(a.get('question') or message), data))
+    return out
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -161,26 +282,21 @@ class Handler(SimpleHTTPRequestHandler):
     def do_POST(self):
         if self.path.startswith('/bake'):
             return self._save_bake()
-        if self.path != '/assist':
+        if self.path != '/crew':
             return self._json(404, {'error': 'not found'})
         try:
-            length = min(int(self.headers.get('Content-Length', 0)), 200_000)
+            length = min(int(self.headers.get('Content-Length', 0)), 400_000)
             data = json.loads(self.rfile.read(length) or b'{}')
-            prompt = str(data.get('prompt', ''))[:MAX_PROMPT].strip()
-            scene = data.get('scene', {})
-            if not prompt:
-                return self._json(422, {'error': 'Type what should happen.'})
-            answer = ask_model(prompt, scene)
-            commands, dropped = validate(answer.get('commands') or [])
-            return self._json(200, {'reply': str(answer.get('reply', ''))[:400], 'commands': commands,
-                                    'dropped': len(dropped), 'model': MODEL})
+            if not isinstance(data, dict) or not str(data.get('message', '')).strip():
+                return self._json(422, {'error': 'Type a message.'})
+            return self._json(200, {'messages': crew_turn(data), 'model': MODEL})
         except urllib.error.HTTPError as e:
             detail = e.read()[:300].decode(errors='replace')
             print('model error', e.code, detail, file=sys.stderr)
             return self._json(502, {'error': f'The model service answered {e.code}.'})
         except Exception as e:  # noqa: BLE001 - report every failure to the editor, log the detail
-            print('assist failed:', repr(e), file=sys.stderr)
-            return self._json(500, {'error': 'The assistant failed: ' + type(e).__name__})
+            print('crew failed:', repr(e), file=sys.stderr)
+            return self._json(500, {'error': 'The crew could not answer: ' + type(e).__name__})
 
 
 def safe_name(raw):
@@ -214,5 +330,5 @@ def _save_bake(self):
 Handler._save_bake = _save_bake
 
 if __name__ == '__main__':
-    print(f'Scene Engine MVP on http://127.0.0.1:{PORT}  (assistant model: {MODEL})')
+    print(f'Scene Engine MVP on http://127.0.0.1:{PORT}  (crew model: {MODEL})')
     ThreadingHTTPServer(('127.0.0.1', PORT), Handler).serve_forever()

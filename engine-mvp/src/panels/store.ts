@@ -18,6 +18,7 @@ export const PANELS: PanelDef[] = [
   { id: 'scenes', title: 'Scenes', place: 'left', closable: true, open: true, size: 220, min: 120, max: 400, inView: true },
   { id: 'objects', title: 'Objects', place: 'left', closable: true, open: false, size: 200, min: 160, max: 360, inView: true },
   { id: 'script', title: 'Script', place: 'right', closable: true, open: false, size: 420, min: 320, max: 760, inView: true },
+  { id: 'crew', title: 'Crew', place: 'right', closable: true, open: true, size: 340, min: 300, max: 560, inView: true },
   { id: 'inspector', title: 'Inspector', place: 'right', closable: true, open: true, size: 310, min: 280, max: 520, inView: true },
   { id: 'dock', title: 'Assets & timeline', place: 'bottom', closable: false, open: true, size: 352, inView: true },
   { id: 'notes', title: 'Notes', place: 'floating', closable: true, open: false, inView: true },

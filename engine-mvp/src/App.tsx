@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { isTypingTarget } from '@hp/ui/keyboard.js'
 import { panels } from './panels/store'
+import { CrewPanel } from './crew/CrewPanel'
 import { Dock } from './shell/Dock'
 import { Inspector } from './shell/Inspector'
 import { Notes } from './shell/Notes'
@@ -36,9 +37,9 @@ export function App() {
   return (
     <div className="studio grid h-dvh bg-base-200 text-panel-value"
          style={{
-           gridTemplateColumns: 'auto auto minmax(0, 1fr) auto auto',
+           gridTemplateColumns: 'auto auto minmax(0, 1fr) auto auto auto',
            gridTemplateRows: '3rem minmax(0, 1fr) auto',
-           gridTemplateAreas: '"top top top top top" "scenes objects stage script inspector" "scenes dock dock script inspector"',
+           gridTemplateAreas: '"top top top top top top" "scenes objects stage script inspector crew" "scenes dock dock script inspector crew"',
          }}>
       <TopBar />
       <ScenesPanel />
@@ -46,6 +47,7 @@ export function App() {
       <Stage />
       <ScriptPanel />
       <Inspector />
+      <CrewPanel />
       <Dock />
     </div>
   )
