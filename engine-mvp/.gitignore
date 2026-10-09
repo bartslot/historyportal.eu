@@ -1,0 +1,4 @@
+assets/images/*
+!assets/images/images.json
+assets/sky/
+assets/clouds/

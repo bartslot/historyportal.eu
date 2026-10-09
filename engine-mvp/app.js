@@ -11,8 +11,6 @@ const SKIES = ['assets/sky/sky1.avif', 'assets/sky/sky2.avif', 'assets/sky/sky3.
 
 // height = metres the model is scaled to, so everything shares one real-world scale
 const CATALOG = [
-  { name: 'Horse (walk)', url: 'assets/models/horse-walk.glb', height: 1.6 },
-  { name: 'Camel (walk)', url: 'assets/models/camel-walk.glb', height: 2.0 },
   { name: 'Girl (animated)', url: 'https://assets.babylonjs.com/meshes/HVGirl.glb', height: 1.6 },
   { name: 'Mannequin (animated)', url: 'https://assets.babylonjs.com/meshes/Xbot.glb', height: 1.8 },
   { name: 'Tree (low poly)', build: buildTree },

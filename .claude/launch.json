@@ -120,6 +120,14 @@
                 "--force"
             ],
             "port": 5231
+        },
+        {
+            "name": "engine-mvp",
+            "runtimeExecutable": "python3",
+            "runtimeArgs": [
+                "engine-mvp/server.py"
+            ],
+            "port": 8090
         }
     ]
 }
