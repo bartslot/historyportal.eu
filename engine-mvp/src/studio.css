@@ -1,0 +1,54 @@
+/* The app's own stylesheet: DaisyUI `learningportal`, the brand kit, the panel tokens and .range-panel.
+   One theme for the wizard and the studio; nothing here restates a colour it defines. */
+@import '../../resources/css/app.css';
+@source './';
+
+html, body, #root { height: 100%; margin: 0; overflow: hidden; }
+
+/* ---- engine-drawn chrome (the engine builds these elements itself) ---- */
+.sky { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.sky img { width: 100%; aspect-ratio: 2 / 1; object-fit: cover; border-radius: 6px; cursor: pointer; border: 1px solid var(--color-panel-hairline); }
+.sky img.on { outline: 1px solid var(--color-panel-value); outline-offset: 1px; }
+
+#sel:empty { display: none; }
+#sel { background: color-mix(in oklch, var(--color-base-100) 70%, transparent); }
+
+#drawer .head { display: flex; gap: 6px; align-items: center; }
+#drawer .drawer-toggle { border: 0; background: none; color: var(--color-panel-title); font-size: 11px; font-weight: 600; cursor: pointer; padding: 2px 8px 2px 0; }
+#drawer .tabs { display: flex; gap: 2px; flex-wrap: wrap; }
+#drawer .tabs button { padding: 4px 10px; border-radius: 999px; border: 0; background: transparent; color: var(--color-panel-label); font-size: 12px; cursor: pointer; }
+#drawer .tabs button.on { color: var(--color-panel-value); background: var(--color-panel-hairline); }
+#drawer .tiles { display: flex; gap: 8px; overflow-x: auto; padding-top: 8px; }
+#drawer.closed .tiles, #drawer.closed .tabs { display: none; }
+#drawer .tile { flex: 0 0 auto; width: 112px; height: 72px; border: 1px solid var(--color-panel-hairline); border-radius: 8px;
+  background: var(--color-base-100); color: var(--color-panel-value); display: flex; flex-direction: column; justify-content: flex-end;
+  padding: 8px; cursor: grab; font-size: 12px; user-select: none; }
+#drawer .tile:hover { border-color: var(--color-panel-label); }
+#drawer .tile small { color: var(--color-panel-label); font-size: 10px; margin-top: 2px; }
+#drawer .tile.image { height: 96px; align-items: center; text-align: center; padding: 4px; background: #e9e6df; color: #333; }
+#drawer .tile.image img { width: 64px; height: 52px; object-fit: contain; pointer-events: none; }
+#drawer .tile.image span { font-size: 10px; line-height: 1.1; max-height: 22px; overflow: hidden; }
+#drawer .tile.image small { display: none; }
+
+#marks { position: absolute; left: 0; right: 0; top: 0; height: 8px; pointer-events: none; }
+#marks i { position: absolute; top: 0; width: 8px; height: 8px; margin-left: -4px; background: var(--color-panel-value); transform: rotate(45deg); }
+
+.msg { margin: 0 0 6px; padding: 5px 7px; border-radius: 6px; white-space: pre-wrap; }
+.msg.you { background: var(--color-panel-hairline); }
+.msg.sys { color: var(--color-panel-label); }
+.msg.err { color: var(--color-error); }
+
+/* ---- selection bar + shots (teacher-bar.js) ---- */
+#selbar { position: absolute; left: 0; top: 0; display: flex; gap: 2px; padding: 3px; border-radius: 999px;
+  background: color-mix(in oklch, var(--color-base-200) 92%, transparent); border: 1px solid var(--color-panel-hairline); }
+#selbar[hidden] { display: none; }
+#selbar button { border: 0; background: transparent; color: var(--color-panel-value); font-size: 13px; padding: 8px 14px; border-radius: 999px; cursor: pointer; }
+#selbar button:hover { background: var(--color-panel-hairline); }
+#shots { position: absolute; left: 12px; bottom: 12px; display: flex; gap: 8px; align-items: flex-end; }
+.shot { position: relative; }
+.shot img { width: 96px; display: block; border-radius: 6px; border: 1px solid var(--color-panel-label); cursor: pointer; }
+.shot button { position: absolute; top: 2px; right: 2px; width: 22px; height: 22px; border: 0; border-radius: 999px;
+  background: color-mix(in oklch, var(--color-base-200) 90%, transparent); color: var(--color-panel-value); cursor: pointer; opacity: 0; }
+.shot:hover button, .shot button:focus-visible { opacity: 1; }
+#shots .add { border: 1px solid var(--color-panel-hairline); background: color-mix(in oklch, var(--color-base-200) 92%, transparent); color: var(--color-panel-value);
+  font-size: 13px; padding: 8px 14px; border-radius: 999px; cursor: pointer; }

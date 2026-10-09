@@ -23,7 +23,7 @@
   const drawer = document.getElementById('drawer');
   const tabs = drawer.querySelector('.tabs');
   const tiles = drawer.querySelector('.tiles');
-  const toggle = drawer.querySelector('.toggle');
+  const toggle = drawer.querySelector('.drawer-toggle');
   let open = true;
   let folder = 'Characters';
 

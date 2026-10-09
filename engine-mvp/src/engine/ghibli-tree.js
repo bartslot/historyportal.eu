@@ -188,10 +188,6 @@
 
   [['Tree (Ghibli, round)', 'round'], ['Tree (Ghibli, tall)', 'tall']].forEach(([name, kind]) => {
     const item = { name, build: () => buildTree(kind) };
-    mvp.CATALOG.push(item);
-    const b = document.createElement('button');
-    b.textContent = name;
-    b.onclick = () => mvp.addFromCatalog(item);
-    document.getElementById('models').appendChild(b);
+    mvp.CATALOG.push(item); // shown in the asset drawer
   });
 })();

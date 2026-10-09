@@ -259,8 +259,7 @@
     if (a && a.metadata.opening) setDoor(a, openAt(a, mvp.getFrame()) < 0.5);
   });
 
-  // ---------- catalog: no wall in the scene, no doors ----------
-  const buttons = [];
+  // ---------- catalog (shown in the asset drawer; a door dropped off a wall is refused there) ----------
   ITEMS.forEach((item) => {
     const entry = {
       name: item.name,
@@ -268,21 +267,6 @@
       onCreate: (root) => { root.metadata.opening = { ...item.opening }; root.metadata.doorKeys = []; },
     };
     mvp.CATALOG.push(entry);
-    const b = document.createElement('button');
-    b.textContent = item.name + ' (on a wall)';
-    b.onclick = () => mvp.addFromCatalog(entry);
-    document.getElementById('models').appendChild(b);
-    buttons.push(b);
-  });
-  let tick = 0;
-  scene.onAfterRenderObservable.add(() => {
-    if (++tick % 30) return;
-    const hasWall = scene.meshes.some(isWall);
-    buttons.forEach((b) => {
-      b.disabled = !hasWall;
-      if (hasWall) delete b.dataset.tooltip; else b.dataset.tooltip = 'Add a house, town or wall first';
-      b.style.opacity = hasWall ? 1 : 0.45;
-    });
   });
 
   window.__door = { buildingMaterial, materials };

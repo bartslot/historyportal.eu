@@ -191,13 +191,6 @@ function addHitbox(root) {
   box.doNotSyncBoundingInfo = true;
 }
 
-const modelList = document.getElementById('models');
-CATALOG.forEach((item) => {
-  const b = document.createElement('button');
-  b.textContent = item.name;
-  b.onclick = () => addFromCatalog(item).catch((err) => alert('Could not load ' + item.name + ': ' + err.message));
-  modelList.appendChild(b);
-});
 
 // ---------- low-poly builders ----------
 function flat(color) {
@@ -255,12 +248,12 @@ let flashTimer = null;
 function flash(text) { // short message in the stage label, then back to the selection
   selLabel.textContent = text;
   clearTimeout(flashTimer);
-  flashTimer = setTimeout(() => { selLabel.textContent = selected ? selected.name : 'Nothing selected'; }, 1800);
+  flashTimer = setTimeout(() => { selLabel.textContent = selected ? selected.name : ''; }, 1800);
 }
 
 function select(actor) {
   selected = actor;
-  selLabel.textContent = actor ? actor.name : 'Nothing selected';
+  selLabel.textContent = actor ? actor.name : '';
   drawMarks();
 }
 
@@ -393,7 +386,7 @@ function keyNow(actor) {
 }
 
 function autoKey() {
-  if (!selected || !document.getElementById('autokey').checked || playing) return;
+  if (!selected || playing) return; // every move at the playhead is a key: no Key button to remember
   keyNow(selected);
   rebuildTimeline();
 }
@@ -489,12 +482,6 @@ scene.onBeforeRenderObservable.add(() => {
   timeLabel.textContent = (frame / FPS).toFixed(2) + ' s';
 });
 
-document.getElementById('key').onclick = () => { if (selected) { keyNow(selected); rebuildTimeline(); } };
-document.getElementById('unkey').onclick = () => {
-  if (!selected) return;
-  selected.metadata.keys = selected.metadata.keys.filter((k) => k.frame !== frame);
-  rebuildTimeline();
-};
 
 function drawMarks() {
   const marks = document.getElementById('marks');
@@ -507,13 +494,6 @@ function drawMarks() {
   });
 }
 
-// ---------- engine inspector (Babylon's own panels, incl. the animation curve editor) ----------
-document.getElementById('inspector').onclick = () => {
-  if (scene.debugLayer.isVisible()) { scene.debugLayer.hide(); return; }
-  scene.debugLayer.show({ embedMode: true, overlay: true }).then(() => {
-    if (selected) scene.debugLayer.select(selected);
-  });
-};
 
 // ---------- keyboard ----------
 window.addEventListener('keydown', (e) => {
@@ -521,7 +501,7 @@ window.addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
   if (k === '[') rotateSelected(-1);
   else if (k === ']') rotateSelected(1);
-  else if (k === 'k') document.getElementById('key').click();
+  else if (k === 'k' && selected) { keyNow(selected); rebuildTimeline(); }
   else if (k === ' ') { e.preventDefault(); togglePlay(); }
   else if (k === 'delete' || k === 'backspace') deleteSelected();
   else if (k === 'escape' && placing) { const a = placing; placing = null; camera.attachControl(canvas, true); select(a); deleteSelected(); }

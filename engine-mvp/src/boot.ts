@@ -1,3 +1,4 @@
+// The engine, loaded after React has drawn every element it binds to by id.
 // Load order matters: app.js creates the scene and window.__mvp, every other module reads it on import.
 import './globals'
 import './engine/app.js'
