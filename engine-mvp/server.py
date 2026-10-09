@@ -372,8 +372,10 @@ def director_review(text, who, data, assistant):
     """The app's advisor step: the director's short second opinion on an answer JEV is unsure about."""
     d = MEMBERS[DIRECTOR]
     ask = (f"{context(data)}\n\nThe client just said: {str(data.get('message', ''))[:MAX_PROMPT]}\n"
-           f"{who} answered: {text}\n\nOur fact-checker is unsure about this answer. In at most 60 words, "
-           "in the client's language: what is wrong or unsure, and the correction.")
+           f"{who} answered: {text}\n\nOur fact-checker is unsure about the HISTORICAL CLAIMS in this answer. "
+           "Judge only those (not the lesson's state, title or style). In at most 60 words, in the client's "
+           "language: which claim is wrong or unsure, and the correction. If every claim holds, say so in one "
+           "sentence.")
     return str(ask_claude(d['model'], member_prompt(d, assistant), ask, TALK_SCHEMA, 'high').get('reply', ''))[:MAX_REPLY]
 
 
@@ -455,7 +457,10 @@ class Handler(SimpleHTTPRequestHandler):
             length = int(self.headers.get('Content-Length', 0))
             if length > MAX_BODY:
                 return self._json(413, {'error': 'Too much to send at once.'})
-            data = json.loads(self.rfile.read(length) or b'{}')
+            try:
+                data = json.loads(self.rfile.read(length) or b'{}')
+            except ValueError:
+                return self._json(400, {'error': 'The request was not readable.'})
             if not isinstance(data, dict) or not str(data.get('message', '')).strip():
                 return self._json(422, {'error': 'Type a message.'})
             return self._json(200, {'messages': crew_turn(data), 'model': ROUTER_MODEL})
