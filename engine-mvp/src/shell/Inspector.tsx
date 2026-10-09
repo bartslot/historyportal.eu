@@ -57,6 +57,7 @@ function ScenePanel() {
       <SettingsSection title="Look" name="scene-look">
         <SelectRow label="Style" id="lookPreset" />
         <SliderRow label="Time" id="lookTime" min={0} max={1} step={0.01} defaultValue={0}
+                   hint="time of day: 0-0.25 night, 0.25-0.5 dusk, 0.5-0.75 dawn, 0.75-1 day"
                    format={(v) => (v < 0.25 ? 'Night' : v < 0.5 ? 'Dusk' : v < 0.75 ? 'Dawn' : 'Day')} />
         <SliderRow label="Clouds" id="cloudAmount" min={0} max={1} step={0.02} defaultValue={0.3}
                    format={(v) => `${Math.round(v * 100)}`} unit="%" />

@@ -198,7 +198,11 @@
       if (k >= 1) { scene.onBeforeRenderObservable.remove(fade); fade = null; }
     });
   }
-  ui.time.oninput = () => applyTime(val(ui.time));
+  // a time set by hand (or by a saved scene, or the crew) wins over a preset's fade still running
+  ui.time.oninput = () => {
+    if (fade) { scene.onBeforeRenderObservable.remove(fade); fade = null; }
+    applyTime(val(ui.time));
+  };
 
   const presetSel = $('lookPreset');
   Object.keys(PRESETS).forEach((name) => presetSel.add(new Option(name, name)));

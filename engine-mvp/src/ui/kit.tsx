@@ -68,10 +68,12 @@ type SliderProps = {
   /** React-bound */
   value?: number; onChange?: (v: number) => void
   unit?: string; format?: (v: number) => string; keyframe?: ReactNode; labelWidth?: string
+  /** what the numbers mean, for the crew (src/crew/settings.ts) */
+  hint?: string
 }
 
 /** ONE slider row (Figma `row-rotate` 1471:2104): label, thin rail with a muted fill, value. */
-export function SliderRow({ label, min, max, step, id, defaultValue, value, onChange, unit, format, keyframe, labelWidth }: SliderProps) {
+export function SliderRow({ label, min, max, step, id, defaultValue, value, onChange, unit, format, keyframe, labelWidth, hint }: SliderProps) {
   const ref = useRef<HTMLInputElement>(null)
   const [own, setOwn] = useState(defaultValue ?? min)
   const v = value ?? own
@@ -90,7 +92,7 @@ export function SliderRow({ label, min, max, step, id, defaultValue, value, onCh
   return (
     <PanelRow label={label} keyframe={keyframe} labelWidth={labelWidth}>
       <span className="range-panel-knob min-w-0 flex-1" style={fill}>
-        <input ref={ref} id={id} type="range" min={min} max={max} step={step} aria-label={label}
+        <input ref={ref} id={id} type="range" min={min} max={max} step={step} aria-label={label} data-hint={hint}
                {...(value !== undefined ? { value, onChange: (e) => onChange?.(Number(e.target.value)) } : { defaultValue })}
                style={fill} className="range range-panel min-w-0" />
       </span>

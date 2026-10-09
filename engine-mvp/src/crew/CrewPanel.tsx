@@ -10,7 +10,7 @@ const X_MARK = 'M6 18 18 6M6 6l12 12'
 const UNDO = 'M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3'
 const SIZE = { sm: 'h-8 w-8 text-xs', md: 'h-10 w-10 text-sm', lg: 'h-24 w-24 text-2xl' } as const
 
-/** A portrait from public/crew/<id>.webp; the initial while it is missing. */
+/** A portrait from public/portraits/<id>.webp; the initial while it is missing. */
 function Face({ id, size = 'sm' }: { id: string; size?: keyof typeof SIZE }) {
   const { assistant } = useCrew()
   const file = id === 'assistant' ? assistant : id
@@ -19,7 +19,7 @@ function Face({ id, size = 'sm' }: { id: string; size?: keyof typeof SIZE }) {
   const { name } = speaker(id)
   return (
     <span className={`grid shrink-0 place-items-center overflow-hidden rounded-full border border-panel-hairline bg-base-100 font-semibold text-panel-label ${SIZE[size]}`}>
-      {failed ? name.slice(0, 1) : <img src={`/crew/${file}.webp`} alt="" className="h-full w-full object-cover" onError={() => setFailed(true)} />}
+      {failed ? name.slice(0, 1) : <img src={`/portraits/${file}.webp`} alt="" className="h-full w-full object-cover" onError={() => setFailed(true)} />}
     </span>
   )
 }

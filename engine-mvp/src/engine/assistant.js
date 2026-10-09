@@ -1,6 +1,6 @@
 // The stage side of the lesson crew: what a crew member sees of the scene (snapshot) and the typed
-// commands they send back (server.py /crew, validated there), run against the scene. Every crew answer
-// that changes the stage can be undone in one step. The chat itself is React (src/crew).
+// commands they send back (server.py /crew, validated there), run against the scene. Undo and the chat
+// itself live in React (src/crew).
 /* global BABYLON */
 'use strict';
 
@@ -34,36 +34,6 @@
     };
   }
 
-  // ---------- undo: the whole scene state before a request ----------
-  function capture() {
-    return {
-      length: mvp.getLength(),
-      sky: mvp.getSkyIndex(),
-      tracks: mvp.getTracks(),                 // immutable: every timeline edit makes new tracks
-      actors: mvp.actors.map((a) => ({
-        actor: a,
-        position: a.position.clone(),
-        rotation: a.rotationQuaternion.clone(),
-        scaling: a.scaling.clone(),
-        clip: a.metadata.clip,
-        schedule: [...a.metadata.schedule],
-      })),
-    };
-  }
-  function restore(state) {
-    const keep = new Set(state.actors.map((s) => s.actor));
-    [...mvp.actors].filter((a) => !keep.has(a)).forEach((a) => mvp.deleteActor(a));
-    state.actors.forEach((s) => {
-      s.actor.position.copyFrom(s.position);
-      s.actor.rotationQuaternion.copyFrom(s.rotation);
-      s.actor.scaling.copyFrom(s.scaling);
-      s.actor.metadata.schedule = s.schedule;
-      if (s.clip) mvp.playClip(s.actor, s.clip);
-    });
-    if (state.sky >= 0) mvp.setSky(mvp.SKIES[state.sky]);
-    mvp.setLengthSeconds(state.length);
-    mvp.setTracks(state.tracks);
-  }
   // ---------- the commands ----------
   async function run(commands) {
     const added = [];
@@ -176,12 +146,5 @@
     return done;
   }
 
-  // one crew answer = one undo step: the whole stage as it was before, handed back to the caller
-  async function apply(commands) {
-    const before = capture();
-    const done = await run(commands);
-    return { done, undo: () => { restore(before); mvp.rebuildTimeline(); } };
-  }
-
-  window.__animator = { snapshot, apply };
+  window.__animator = { snapshot, run };
 })();

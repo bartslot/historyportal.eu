@@ -7,8 +7,8 @@ The model only proposes scene commands from COMMANDS and setting values from the
 browser sent; anything else is dropped here, so the browser never runs free-form model output.
 The API key stays on this side.
 
-Model: LLM_ROLE_CREW, else the app's "mechanical" role (LLM_ROLE_MECHANICAL) in the History
-Portal .env, Gemini via its OpenAI-compatible endpoint.
+Model: LLM_ROLE_CREW, else GEMINI_MODEL, else the app's "mechanical" role (LLM_ROLE_MECHANICAL), from
+the History Portal .env; Gemini via its OpenAI-compatible endpoint.
 """
 import json
 import os
@@ -26,6 +26,7 @@ PORT = int(os.environ.get('PORT', '8090'))
 MAX_COMMANDS = 40
 MAX_PROMPT = 1000
 MAX_HISTORY = 16
+MAX_REPLY = 2000
 MAX_ASKS = 2
 CREW = json.loads((HERE / 'src' / 'crew' / 'crew.json').read_text())
 MAX_BAKE_BYTES = 1_000_000_000          # a published MP4 may be large, but not unbounded
@@ -42,7 +43,9 @@ def load_env(path):
 
 
 ENV = load_env(ENV_FILE)
-ROLE = ENV.get('LLM_ROLE_CREW') or ENV.get('LLM_ROLE_MECHANICAL', 'gemini:gemini-3.5-flash-lite')
+# the crew talks to a teacher and stays in character: a step up from the cheap "mechanical" model
+ROLE = (ENV.get('LLM_ROLE_CREW') or (ENV.get('GEMINI_MODEL') and 'gemini:' + ENV['GEMINI_MODEL'])
+        or ENV.get('LLM_ROLE_MECHANICAL', 'gemini:gemini-3.5-flash-lite'))
 MODEL = ROLE.split(':', 1)[1] if ':' in ROLE else 'gemini-3.5-flash-lite'
 API_KEY = ENV.get('GEMINI_API_KEY', '')
 BASE_URL = ENV.get('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta/openai')
@@ -145,8 +148,13 @@ MEMBERS = {m['id']: m for m in CREW['crew']}
 SHARED = """You work in the crew that makes a history lesson in the History Portal studio, a 3D stage where a
 teacher builds a narrated, story-driven lesson for their class. The teacher is the CLIENT: their goal, their class,
 their final say. A value the client set by hand stays as it is unless the client asks you to change it now.
-Say "your class", never "learners" or "users". Short, plain, concrete; no tagline-style sentences.
-Answer in the language the client writes in."""
+Say "your class", never "learners" or "users". Short, plain, concrete; no tagline-style sentences, no
+greetings, no compliments, no introducing yourself unless asked. Plain text, no markdown (no **, no #,
+no bullets with *); at most 120 words.
+Never present an invented event as history: say plainly which parts are made up.
+ALWAYS write in the language of the client's last message (Dutch in, Dutch out), whatever language the
+rest of this prompt or the conversation is in. Talk about THIS lesson only; examples below are about other
+lessons and only show the tone: never repeat them."""
 
 
 def roster(assistant):
@@ -158,11 +166,14 @@ def router_prompt(assistant):
     return f"""{SHARED}
 
 You are {assistant['name']}, the SET ASSISTANT ({assistant['pronoun']}). {assistant['backstory']}
-The client talks to you. You do no specialist work yourself: you decide which crew member(s) to ask, and say so
-in one or two friendly sentences. The crew:
+The client talks to you. You do no specialist work and change nothing yourself: you decide which crew
+member(s) to ask, and say so in one or two friendly sentences. Never promise a change you are not handing to
+someone: anything on the stage (sky, light, time of day, look, objects, town) goes to set. The crew:
 {roster(assistant)}
 
 How you decide:
+- The client asks for ANY change on the stage (sky, light, time of day, day or night, look, style, objects,
+  people, buildings, town): ask set (Jules) for it. Only set and actors can change the stage.
 - Nothing known yet about the lesson (no topic, no class age): do not ask anyone. Ask the client what kind of
   lesson or story they want: the topic, the age of their class, a story or a game, and how long.
 - A question or request for one specialist: ask that one. Facts and sources: historian. Story, angle, script:
@@ -174,25 +185,38 @@ How you decide:
 Answer ONLY with JSON: {{"reply": "<what you tell the client>", "ask": [{{"crew": "<id>", "question": "<what you ask them, with the client's context>"}}]}}"""
 
 
-def member_prompt(m, assistant):
+STAGE_OWNERS = {'set', 'actors'}
+TITLE_RULE = 'The lesson title: "title", only when the lesson is still untitled or the client asks for a new one.'
+
+
+def may_change(m, direct):
+    """Every crew member CAN change every setting; the stage owners always, the others only when the
+    client talks to them directly. Enforced here, not left to the prompt."""
+    return not m.get('reviews_only') and (m['id'] in STAGE_OWNERS or direct)
+
+
+def member_prompt(m, assistant, direct=False):
+    title = TITLE_RULE if m['id'] == 'writer' else ''
     if m.get('reviews_only'):
         powers = 'You do NOT change anything yourself. Give notes, each to one crew member by name, with one reason.'
         fmt = '{"reply": "<your notes to the client>"}'
+    elif not may_change(m, direct):
+        powers = f'You do not change the stage or settings: that is for set and actors. {title}'
+        fmt = '{"reply": "<to the client, in your own voice>"' + (', "title": "<only to rename the lesson>"}' if title else '}')
     else:
-        powers = f"""You can change every studio setting and the stage, like the client can by hand.
-Change only what the request or your job needs; every change is shown to the client and can be undone.
-Settings: the list "settings" below (id, label, type, range or options, current value). Set a value with
-{{"id": "<id>", "value": <number | true/false | option value>}}.
-The lesson title: "title".
+        powers = f"""You can change every studio setting and the stage, like the client can by hand. Change what the
+request needs, nothing more. Every change is shown to the client and can be undone.
+Settings: the list "settings" below (id, label, type, range or options, current value, hint). Set a value with
+{{"id": "<id>", "value": <number | true/false | option value>}}. {title}
 The stage, with scene commands:
 {SCENE_RULES}"""
-        fmt = '{"reply": "<to the client, in your own voice>", "settings": [ ... ], "commands": [ ... ], "title": "<only to rename the lesson>"}'
+        fmt = ('{"reply": "<to the client, in your own voice>", "settings": [ ... ], "commands": [ ... ]'
+               + (', "title": "<only to rename the lesson>"}' if title else '}'))
     return f"""{SHARED}
 
 You are {m['name']}, the {m['role'].lower()}. {m['backstory']}
 Mission: {m['mission']}
 You own: {m['owns']}
-You speak like this: "{m['speaks_like']}"
 The set assistant {assistant['name']} brings you the client's request; the client reads your answer directly.
 If the client asks about you, answer as yourself, from your backstory, briefly.
 {powers}
@@ -233,18 +257,21 @@ def context(data):
             f"Settings: {json.dumps(data.get('settings', []))[:12000]}\nStage: {json.dumps(data.get('scene', {}))[:12000]}")
 
 
-def ask_member(m, assistant, question, data):
-    answer = ask_model(member_prompt(m, assistant), context(data) + '\n\nRequest: ' + question[:MAX_PROMPT])
-    msg = {'who': m['id'], 'text': str(answer.get('reply', ''))[:1200]}
-    if m.get('reviews_only'):
+def ask_member(m, assistant, question, data, direct=False):
+    # the client's own words travel with the question: a summary loses facts (the class age, for one)
+    said = str(data.get('message', ''))[:MAX_PROMPT]
+    answer = ask_model(member_prompt(m, assistant, direct),
+                       context(data) + f"\n\nThe client just said: {said}\nRequest to you: {question[:MAX_PROMPT]}")
+    msg = {'who': m['id'], 'text': str(answer.get('reply', ''))[:MAX_REPLY]}
+    title = str(answer.get('title') or '').strip()[:80]
+    if title and m['id'] == 'writer':
+        msg['title'] = title
+    if not may_change(m, direct):
         return msg
     commands, dropped = validate(answer.get('commands') or [])
     msg['settings'] = clean_settings(answer.get('settings') or [], data.get('settings', []))
     msg['commands'] = commands
     msg['dropped'] = len(dropped)
-    title = str(answer.get('title') or '').strip()[:80]
-    if title:
-        msg['title'] = title
     return msg
 
 
@@ -253,7 +280,7 @@ def crew_turn(data):
     assistant = CREW['assistants'].get(data.get('assistant')) or next(iter(CREW['assistants'].values()))
     to = data.get('to')
     if to in MEMBERS:   # the client talks to one crew member directly
-        return [ask_member(MEMBERS[to], assistant, message, data)]
+        return [ask_member(MEMBERS[to], assistant, message, data, direct=True)]
     plan = ask_model(router_prompt(assistant), context(data) + '\n\nClient: ' + message, temperature=0.3)
     out = [{'who': 'assistant', 'text': str(plan.get('reply', ''))[:800]}]
     asks = [a for a in (plan.get('ask') or []) if isinstance(a, dict) and a.get('crew') in MEMBERS][:MAX_ASKS]

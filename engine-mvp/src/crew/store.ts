@@ -20,7 +20,7 @@ function savedAssistant(): AssistantId {
   try { const v = localStorage.getItem(ASSISTANT_KEY); return v && v in ASSISTANTS ? (v as AssistantId) : 'sofie' } catch { return 'sofie' }
 }
 
-type State = { assistant: AssistantId; to: string | null; busy: boolean; error: string | null; undo: Record<number, () => void> }
+type State = { assistant: AssistantId; to: string | null; busy: boolean; error: string | null; undo: Record<number, () => Promise<void>> }
 let state: State = { assistant: savedAssistant(), to: null, busy: false, error: null, undo: {} }
 const listeners = new Set<() => void>()
 const set = (patch: Partial<State>) => { state = { ...state, ...patch }; listeners.forEach((l) => l()) }
@@ -55,36 +55,39 @@ function scriptText(doc: any): string {
 }
 
 const animator = () => (window as any).__animator
+const sceneIO = () => (window as any).__mvp.sceneIO
 const fmt = (c: Change, labels: Map<string, string>) => `${labels.get(c.id) ?? c.id}: ${typeof c.value === 'number' ? +c.value.toFixed(2) : String(c.value)}`
 
-async function applyAnswer(msg: any): Promise<{ changes: string[]; undo: (() => void) | null }> {
+// Undo takes the whole scene back (objects, keys, look and sky settings) with the lesson's own scene
+// save/load, plus the title: the same data a saved lesson holds, so nothing a crew member did is missed.
+async function applyAnswer(msg: any): Promise<{ changes: string[]; undo: (() => Promise<void>) | null }> {
   const labels = new Map(readSettings().map((s) => [s.id, s.label]))
+  const scene = sceneIO().serialize()
+  const title = L.getLesson().lesson.title
   const changes: string[] = []
-  const undos: (() => void)[] = []
   if (Array.isArray(msg.settings) && msg.settings.length) {
-    const { applied, before } = applySettings(msg.settings)
-    changes.push(...applied.map((c) => fmt(c, labels)))
-    if (applied.length) undos.push(() => { applySettings(before) })
+    changes.push(...applySettings(msg.settings).map((c) => fmt(c, labels)))
   }
   if (Array.isArray(msg.commands) && msg.commands.length) {
-    const { done, undo } = await animator().apply(msg.commands)
-    changes.push(...done)
-    undos.push(undo)
+    changes.push(...await animator().run(msg.commands))
   }
   if (typeof msg.title === 'string' && msg.title) {
-    const was = L.getLesson().lesson.title
     L.setTitle(msg.title)
     changes.push(`Lesson title: ${msg.title}`)
-    undos.push(() => L.setTitle(was))
   }
-  // undo in reverse order: the last change made is the first taken back
-  return { changes, undo: undos.length ? () => undos.reverse().forEach((u) => u()) : null }
+  if (!changes.length) return { changes, undo: null }
+  return { changes, undo: async () => { await sceneIO().load(scene); L.setTitle(title) } }
 }
 
-export function undo(index: number) {
+export async function undo(index: number) {
   const fn = state.undo[index]
-  if (!fn) return
-  fn()
+  if (!fn || state.busy) return
+  set({ busy: true, error: null })
+  try { await fn() } catch (err) {
+    set({ busy: false, error: 'Could not undo: ' + (err instanceof Error ? err.message : String(err)) })
+    return
+  }
+  set({ busy: false })
   const { [index]: _gone, ...rest } = state.undo
   set({ undo: rest })
   const lines = L.getLesson().lesson.crew ?? []
@@ -116,7 +119,7 @@ export async function send(text: string) {
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
     let out = L.getLesson().lesson.crew ?? lines
-    const undos: Record<number, () => void> = {}
+    const undos: Record<number, () => Promise<void>> = {}
     for (const msg of data.messages ?? []) {
       const { changes, undo: u } = await applyAnswer(msg)
       if (msg.dropped) changes.push(`${msg.dropped} unknown stage command(s) ignored`)
