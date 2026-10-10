@@ -34,3 +34,19 @@ Every /crew and /crew/stream body may carry `context` (built by src/crew/context
   recent: [{ago: <seconds ago>, what: <short English sentence>}]   (last 10 client actions, newest first) }
 The server shows it to the router and every member as "What the client is doing right now", and
 resolves "this / dit / hier" to the selected object or current scene.
+
+## Choices (decisions that are the client's)
+Any assistant or member answer may carry `choices` instead of guessing:
+  choices: { question: str, options: [{label: str, why: str, recommended?: bool}] (2-4, at most ONE
+             recommended, put first), scope?: true }
+- The panel shows the question with one button per option (recommended first, marked "Recommended",
+  its `why` under it) plus "Something else" (focuses the box). Clicking sends the label as the client's
+  next message, addressed to whoever asked.
+- Restyling (look, colours, palette, style, time of day, mood) ALWAYS starts with a scope question
+  unless the client already said it: options "Whole lesson" / "This scene" (`scope: true`). The chosen
+  scope travels as `scope: "lesson" | "scene"` in the next request body.
+- Then the look options, each with a reason drawn from the script/lesson ("Moody and dark:
+  the script covers a dark period in Dante's life; darker colours carry that feeling.").
+- A member's settings with scope "lesson" are applied to the current scene live AND written into
+  every other scene's saved settings (one undo restores all of them).
+- Events: /crew/stream `message` (and `assistant`) events may include `choices`.
