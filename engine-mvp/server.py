@@ -11,6 +11,7 @@ Models: per member in crew.json, run through `claude -p`. CREW_JEV=0 switches th
 """
 import concurrent.futures
 import json
+import math
 import os
 import pathlib
 import random
@@ -237,7 +238,10 @@ no bullets with *); at most 120 words.
 Never present an invented event as history: say plainly which parts are made up.
 ALWAYS write in the language of the client's last message (Dutch in, Dutch out), whatever language the
 rest of this prompt or the conversation is in. Talk about THIS lesson only; examples below are about other
-lessons and only show the tone: never repeat them."""
+lessons and only show the tone: never repeat them.
+When the client says this, dit, hier, deze, that or "it" without naming something, they mean the SELECTED object,
+else the current scene (see "What the client is doing right now"). Use what they just did to understand the
+request; do not recite that context back to them."""
 
 
 def roster(assistant):
@@ -274,7 +278,9 @@ The "ack" of each ask is a fresh line in the voice of the member you ask, never 
 
 How you decide:
 - The client asks for ANY change on the stage (sky, light, time of day, day or night, look, style, objects,
-  people, buildings, town): ask set (Jules) for it. Only set and actors can change the stage.
+  people, buildings, town): ask set (Jules) for it.
+- Use what the client is doing: a selected building plus "klopt dit voor 1642?" means historian (is it right for
+  that year) and set (fix it); put the selected object's name in each question you ask. Only set and actors can change the stage.
 - Nothing known yet about the lesson (no topic, no class age): do not ask anyone. Ask the client what kind of
   lesson or story they want: the topic, the age of their class, a story or a game, and how long.
 - A question or request for one specialist: ask that one. Facts and sources: historian. Story, angle, script:
@@ -352,12 +358,69 @@ def clean_settings(proposed, offered):
     return out
 
 
+def _txt(v, n):
+    return v.strip()[:n] if isinstance(v, str) else ''
+
+
+def _num(v):
+    return round(float(v), 2) if isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) else None
+
+
+def clean_client(raw):
+    """The client's `context` object is untrusted: whitelist the contract keys, cap every string, list and number."""
+    if not isinstance(raw, dict):
+        return {}
+    les = raw.get('lesson') if isinstance(raw.get('lesson'), dict) else {}
+    scenes = [{'id': _txt(x.get('id'), 80), 'title': _txt(x.get('title'), 120)}
+              for x in (les.get('scenes') if isinstance(les.get('scenes'), list) else [])[:40] if isinstance(x, dict)]
+    sel = raw.get('selected') if isinstance(raw.get('selected'), dict) else None
+    sel = ({'name': _txt(sel.get('name'), 80), 'kind': _txt(sel.get('kind'), 80), 'x': _num(sel.get('x')),
+            'z': _num(sel.get('z')), 'yaw': _num(sel.get('yaw'))} if sel and _txt(sel.get('name'), 80) else None)
+    rec = [{'ago': _num(x.get('ago')), 'what': _txt(x.get('what'), 160)}
+           for x in (raw.get('recent') if isinstance(raw.get('recent'), list) else [])[:10] if isinstance(x, dict)]
+    return {'title': _txt(les.get('title'), 120), 'scenes': scenes, 'current': _txt(les.get('current'), 80),
+            'currentTitle': _txt(les.get('currentTitle'), 120), 'scriptWords': _num(les.get('scriptWords')),
+            'step': _txt(raw.get('step'), 40), 'selected': sel,
+            'objects': [_txt(o, 80) for o in (raw.get('objects') if isinstance(raw.get('objects'), list) else [])[:40] if _txt(o, 80)],
+            'time': _num(raw.get('time')), 'recent': [r for r in rec if r['what']]}
+
+
+def client_block(raw):
+    """A compact 'What the client is doing right now' block; '' when the client sent nothing usable."""
+    c = clean_client(raw)
+    lines = []
+    if c.get('title'):
+        lines.append(f"Lesson: {c['title']}")
+    if c.get('scenes') or c.get('currentTitle'):
+        ids = [x['id'] for x in c['scenes']]
+        n = f"scene {ids.index(c['current']) + 1} of {len(ids)}" if c['current'] in ids else f"{len(ids)} scenes, current scene"
+        lines.append(f"{n}: {c['currentTitle']}".rstrip(': '))
+    if c.get('step'):
+        lines.append(f"Step: {c['step']}")
+    sel = c.get('selected')
+    if sel:
+        pos = ', '.join(f"{k}={sel[k]}" for k in ('x', 'z', 'yaw') if sel[k] is not None)
+        lines.append(f"Selected object: {sel['name']} ({sel['kind'] or 'object'}; {pos})" if pos else f"Selected object: {sel['name']}")
+    else:
+        lines.append('Selected object: none')
+    if c.get('objects'):
+        lines.append('On stage: ' + ', '.join(c['objects']))
+    if c.get('time') is not None:
+        lines.append(f"Timeline at {c['time']}s")
+    if c.get('scriptWords') is not None:
+        lines.append(f"Script: {int(c['scriptWords'])} words")
+    if c.get('recent'):
+        lines.append('Just did: ' + '; '.join(f"{r['what']} ({int(r['ago'] or 0)}s ago)" for r in c['recent']))
+    return ('What the client is doing right now:\n' + '\n'.join(lines)) if len(lines) > 1 or sel else ''
+
+
 def context(data):
     hist = [h for h in (data.get('history') if isinstance(data.get('history'), list) else []) if isinstance(h, dict)][-MAX_HISTORY:]
     talk = '\n'.join(f"{str(h.get('who', ''))[:40]}: {str(h.get('text', ''))[:600]}" for h in hist)
     lesson = data.get('lesson', {}) if isinstance(data.get('lesson'), dict) else {}
     return (f"Lesson: {json.dumps(lesson)[:2000]}\nConversation so far:\n{talk or '(none)'}\n"
-            f"Settings: {json.dumps(data.get('settings', []))[:12000]}\nStage: {json.dumps(data.get('scene', {}))[:12000]}")
+            f"Settings: {json.dumps(data.get('settings', []))[:12000]}\nStage: {json.dumps(data.get('scene', {}))[:12000]}"
+            + (f"\n{block}" if (block := client_block(data.get('context'))) else ''))
 
 
 def jev_score(resp):
