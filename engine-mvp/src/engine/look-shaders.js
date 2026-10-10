@@ -118,6 +118,7 @@
     uniform float inkBlend;             // 0 normal, 1 multiply, 2 pencil
     uniform float paintOver;            // 0 = lines keep their own colour, 1 = the wash tints them
     uniform vec3 inkColor;
+    uniform sampler2D animeSampler;     // blue = an anime actor (anime-cast.ts), whose lines are its own
     ${WORLD}
     float geoEdge(vec2 uv, vec2 o, float d, vec3 nC, out float sil) {
       float crease = 0.0;
@@ -167,6 +168,10 @@
       float soft = clamp(sob * colorInk, 0.0, 1.0) * strength * 0.6; // lines inside images: lighter
       vec3 ownColor = mix(inkColor, vec3(0.02, 0.02, 0.025), darkness);
       float a = clamp(hard + soft * (1.0 - hard), 0.0, 1.0) * inkOpacity;
+      // inside an anime actor (all neighbours anime too) no post ink: only its silhouette may be inked
+      float animeIn = min(min(texture2D(animeSampler, suv + vec2(o.x, 0.0)).b, texture2D(animeSampler, suv - vec2(o.x, 0.0)).b),
+                          min(texture2D(animeSampler, suv + vec2(0.0, o.y)).b, texture2D(animeSampler, suv - vec2(0.0, o.y)).b));
+      a *= 1.0 - animeIn;
       // graphite: greyer, broken up by the paper tooth (world-anchored grain that fades out far away)
       if (inkBlend > 1.5) {
         ownColor = mix(ownColor, vec3(0.30, 0.30, 0.33), 0.45);

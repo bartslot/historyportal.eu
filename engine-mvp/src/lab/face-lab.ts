@@ -1,10 +1,10 @@
 // Face lab: one actor, close up, with every anime-look number on a slider. Dev page (face-lab.html).
 import {
-  ArcRotateCamera, Axis, Color4, DirectionalLight, Engine, ImportMeshAsync, Quaternion, Scene, Vector3,
+  ArcRotateCamera, Color4, DirectionalLight, Engine, ImportMeshAsync, Scene, Vector3,
   type AbstractMesh, type MorphTarget,
 } from '@babylonjs/core'
 import '@babylonjs/loaders/glTF'
-import { animeShadows, applyAnimeLook, readMToon, DEFAULTS, type AnimeHandle, type AnimeSettings } from '../engine/anime-look'
+import { addAnimeCasters, animeShadowGenerator, applyAnimeLook, readMToon, vroidArms, DEFAULTS, type AnimeHandle, type AnimeSettings } from '../engine/anime-look'
 import { animeCastShadows } from '../engine/anime-cast'
 
 const MODEL = new URLSearchParams(location.search).get('model') ?? 'assets/models/anime-sample.vrm'
@@ -48,32 +48,19 @@ async function main() {
   const result = await ImportMeshAsync(MODEL, scene, { pluginExtension: '.glb' })
   result.animationGroups.forEach((g) => g.stop())
   const look = applyAnimeLook(result.meshes, scene, mtoon, settings)
-  animeShadows(key, [...result.meshes, ...look.hulls])
+  addAnimeCasters(animeShadowGenerator(key), result.meshes)
   animeCastShadows(look, result.meshes, key, camera, scene)
   const headY = headHeight(result.meshes)
   view('face', headY)
-  const arms = armPose()
-  arms(70)
+  const setArms = vroidArms(result.meshes[0])
+  const arms = (deg: number) => { armDeg = deg; setArms(deg) }
+  arms(armDeg)
   buildUi(look, headY, morphs(result.meshes), arms)
   msg.textContent = `${result.meshes.length} meshes, ${look.hulls.length} ink hulls, mtoon materials: ${mtoon.size}`
   Object.assign(window, { __lab: { scene, camera, settings, look, view: (n: string) => view(n, headY) } })
 }
 
-// VRM rests in a T-pose; lower both upper arms (degrees) so the bust is not a scarecrow
 let armDeg = 70
-function armPose() {
-  // the sleeve hangs on VRoid's aim/twist helpers, siblings of the arm that VRM constraints would
-  // aim at it; Babylon does not run VRM constraints, so they turn with the arm by hand
-  const NAMES = ['J_Bip_?_UpperArm', 'J_Aim_?_TopsUpperArm', 'J_Aim_?_Shoulder']
-  const bones = (['L', 'R'] as const).flatMap((side) => NAMES.map((n) => {
-    const node = scene.getTransformNodeByName(n.replace('?', side))
-    return node ? { node, rest: (node.rotationQuaternion ?? Quaternion.Identity()).clone(), sign: side === 'L' ? -1 : 1 } : null
-  })).filter((b) => b !== null)
-  return (deg: number) => {
-    armDeg = deg
-    bones.forEach((b) => { b.node.rotationQuaternion = Quaternion.RotationAxis(Axis.Z, (b.sign * deg * Math.PI) / 180).multiply(b.rest) })
-  }
-}
 
 function headHeight(meshes: AbstractMesh[]) {
   const face = meshes.find((m) => m.material?.name.startsWith('Face_00_SKIN')) ?? meshes.find((m) => /face/i.test(m.name))
@@ -112,6 +99,7 @@ function buildUi(look: AnimeHandle, headY: number, targets: MorphTarget[], arms:
   slider('Cast shadow px', 0, 40, 0.5, () => settings.castPx, (v) => { settings.castPx = v })
   slider('Cast strength', 0, 1, 0.01, () => settings.castStrength, (v) => { settings.castStrength = v })
   slider('Face sphere', 0, 1, 0.01, () => settings.faceSphere, (v) => look.setFaceSphere(v))
+  slider('Face light max pitch', 0, 90, 1, () => settings.facePitchMax, (v) => { settings.facePitchMax = v })
   slider('Arms down', 0, 85, 1, () => armDeg, arms)
   slider('Light yaw', -90, 90, 1, () => lightYaw, (v) => { lightYaw = v; aimLight() })
   slider('Light pitch', -30, 80, 1, () => lightPitch, (v) => { lightPitch = v; aimLight() })

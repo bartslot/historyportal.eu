@@ -7,7 +7,8 @@
 //                 geometry and post edges cannot find a line on a smooth cheek
 // Settings come from the model's own VRMC_materials_mtoon block when it is a VRM, else defaults.
 import {
-  Color3, Mesh, PBRMaterial, RawTexture, ShadowGenerator, StandardMaterial, Texture, Vector2, Vector3, VertexBuffer, VertexData,
+  Axis, Color3, Mesh, PBRMaterial, Quaternion, RawTexture, ShadowGenerator, StandardMaterial, Texture, TransformNode, Vector2, Vector3,
+  VertexBuffer, VertexData,
   type DirectionalLight,
   type AbstractMesh, type BaseTexture, type Scene,
 } from '@babylonjs/core'
@@ -23,7 +24,7 @@ export type ToonParams = {
 }
 
 export type AnimeSettings = {
-  outlinePx: number         // ink width at the actor's scale, in pixels
+  outlinePx: number         // ink width in pixels on a 1080-pixel-high frame (scales with the frame)
   outlineColor: Color3 | null // null = each material's own
   toonyBoost: number        // added to every material's toony
   shiftBoost: number
@@ -32,14 +33,15 @@ export type AnimeSettings = {
   castPx: number            // screen-space hair / chin shadow: how far it falls, in pixels at 1 m
   castStrength: number      // 0 off .. 1 full shade
   faceSphere: number        // 0 the model's face normals .. 1 an ellipsoid's (one clean shadow curve)
+  facePitchMax: number      // degrees: the face's own key light is the sun, but never steeper than this
 }
 
 // Who receives the screen-space cast shadow: the face gets the fringe's, the body skin the chin's.
 export type CastRole = 'none' | 'face' | 'skin'
-export type CastShared = { tex: BaseTexture | null; offset: Vector2; res: Vector2 }
+export type CastShared = { tex: BaseTexture | null; offset: Vector2; res: Vector2; faceLight: Vector3 }
 
 export const DEFAULTS: AnimeSettings = {
-  outlinePx: 2,
+  outlinePx: 3,
   outlineColor: null,
   toonyBoost: 0,
   shiftBoost: 0,
@@ -47,8 +49,11 @@ export const DEFAULTS: AnimeSettings = {
   rim: 0.15,
   castPx: 14,
   castStrength: 1,
-  faceSphere: 0.8,
+  faceSphere: 1,
+  facePitchMax: 35,
 }
+
+const REF_HEIGHT = 1080 // ink widths are authored for a 1080p frame
 
 const toGamma = (c: number[]) => new Color3(c[0] ** (1 / 2.2), c[1] ** (1 / 2.2), c[2] ** (1 / 2.2))
 
@@ -111,6 +116,7 @@ function celMaterial(name: string, base: BaseTexture | null, alphaCut: boolean, 
   m.AddUniform('castRes', 'vec2', null)
   m.AddUniform('castRole', 'float', null)
   m.AddUniform('castStrength', 'float', null)
+  m.AddUniform('faceLight', 'vec3', null)
   m.Fragment_Before_FragColor(`
     vec3 n = normalize(vNormalW);
     #ifdef DIFFUSE
@@ -121,14 +127,23 @@ function celMaterial(name: string, base: BaseTexture | null, alphaCut: boolean, 
     // the scene's own lights did the work: diffuseBase = N·L x shadow x light colour, summed.
     // One hard step turns it into lit / shade, so cast shadows (hair on the forehead) step too.
     float light = dot(diffuseBase, vec3(0.299, 0.587, 0.114));
+    // the face: lit by the key light's HORIZONTAL angle only (as anime face shadow maps are), so the
+    // shadow sweeps across the cheek as the light turns and never climbs up from the chin
+    if (castRole > 0.5 && castRole < 1.5) {
+      vec2 lh = -faceLight.xz;
+      light = length(lh) < 1e-3 ? 1.0 : max(dot(normalize(vec3(n.x, 0.0, n.z) + vec3(0.0, 0.0, 1e-4)), normalize(vec3(lh.x, 0.0, lh.y))), 0.0);
+    }
     float thr = clamp(0.12 - toonShift, 0.01, 0.99);
     float soft = (1.0 - clamp(toony, 0.0, 0.999)) * 0.5;
     float lit = smoothstep(thr - soft, thr + soft, light);
     // anime cast shadow: the hair (and for the neck, the head) mask, shifted along the light on screen
     if (castRole > 0.5) {
-      vec4 mk = texture2D(castMask, gl_FragCoord.xy / castRes - castOffset);
+      // four taps a pixel apart + a narrow ramp: a crisp edge, without the mask's pixel staircase
+      vec2 suv = gl_FragCoord.xy / castRes - castOffset, px = 1.0 / castRes;
+      vec4 mk = 0.25 * (texture2D(castMask, suv + vec2(-px.x, -px.y)) + texture2D(castMask, suv + vec2(px.x, -px.y))
+                      + texture2D(castMask, suv + vec2(-px.x, px.y)) + texture2D(castMask, suv + vec2(px.x, px.y)));
       float castHit = castRole > 1.5 ? max(mk.r, mk.g) : mk.r;
-      lit = min(lit, 1.0 - step(0.5, castHit) * castStrength);
+      lit = min(lit, 1.0 - smoothstep(0.35, 0.65, castHit) * castStrength);
     }
     vec3 shade = mix(tex.rgb, tex.rgb * shadeTint, shadeMix);
     vec3 c = mix(shade, tex.rgb, lit);
@@ -150,6 +165,7 @@ function celMaterial(name: string, base: BaseTexture | null, alphaCut: boolean, 
     e.setVector2('castRes', cast.res)
     e.setFloat('castRole', !cast.tex || role === 'none' ? 0 : role === 'face' ? 1 : 2)
     e.setFloat('castStrength', cur.castStrength)
+    e.setVector3('faceLight', cast.faceLight)
   })
   if (alphaCut) { m.alphaCutOff = 0.5; m.transparencyMode = 1 } // ALPHATEST: painted lines keep a hard edge
   return m
@@ -207,7 +223,7 @@ function hullMaterial(name: string, p: ToonParams, s: () => AnimeSettings, scene
     const cur = s()
     const cam = scene.activeCamera!
     const h = scene.getEngine().getRenderHeight()
-    e.setFloat('inkPx', cur.outlinePx * 2 * Math.tan(cam.fov / 2) / h)
+    e.setFloat('inkPx', (cur.outlinePx * h / REF_HEIGHT) * 2 * Math.tan(cam.fov / 2) / h)
     e.setColor3('inkColor', cur.outlineColor ?? p.outlineColor)
     e.setFloat('useWidthTex', p.widthTex ? 1 : 0)
     e.setTexture('widthTex', p.widthTex)
@@ -222,7 +238,7 @@ function addHull(mesh: Mesh, p: ToonParams, s: () => AnimeSettings, scene: Scene
   hull.morphTargetManager = mesh.morphTargetManager // blinks and mouths move the ink too
   hull.material = hullMaterial(mesh.name, p, s, scene)
   hull.isPickable = false
-  hull.metadata = { ...(hull.metadata || {}), inkHull: true }
+  hull.metadata = { ...(hull.metadata || {}), inkHull: true, anime: true }
   return hull
 }
 
@@ -251,7 +267,8 @@ export function sphereFaceNormals(mesh: Mesh, amount: number) {
     const l = Math.hypot(x, y, z) || 1
     out[i] = x / l; out[i + 1] = y / l; out[i + 2] = z / l
   }
-  mesh.updateVerticesData(VertexBuffer.NormalKind, out)
+  // set, not update: a glTF normal buffer is not updatable, and updating it silently does nothing
+  mesh.setVerticesData(VertexBuffer.NormalKind, out, true)
 }
 
 // ---------- apply to a loaded model ----------
@@ -273,7 +290,7 @@ export function applyAnimeLook(meshes: AbstractMesh[], scene: Scene, mtoon = new
   const hulls: Mesh[] = []
   const faces: Mesh[] = []
   const roles = new Map<AbstractMesh, CastRole>()
-  const cast: CastShared = { tex: null, offset: new Vector2(0, 0), res: new Vector2(1, 1) }
+  const cast: CastShared = { tex: null, offset: new Vector2(0, 0), res: new Vector2(1, 1), faceLight: new Vector3(0, -0.5, -1).normalize() }
   meshes.forEach((am) => {
     const mesh = am as Mesh
     if (!mesh.getTotalVertices || mesh.getTotalVertices() === 0 || !mesh.material) return
@@ -284,6 +301,7 @@ export function applyAnimeLook(meshes: AbstractMesh[], scene: Scene, mtoon = new
     const role = roleOf(old.name)
     roles.set(mesh, role)
     mesh.material = celMaterial(old.name, base, cut, p, s, role, cast, scene)
+    mesh.metadata = { ...(mesh.metadata || {}), anime: true } // look.js's own cel pass skips it
     if (role === 'face') { faces.push(mesh); sphereFaceNormals(mesh, settings.faceSphere) }
     if (p.outline) hulls.push(addHull(mesh, p, s, scene))
   })
@@ -295,20 +313,51 @@ export function applyAnimeLook(meshes: AbstractMesh[], scene: Scene, mtoon = new
 }
 
 // ---------- cast shadows the anime way ----------
-// Hair and clothes cast; everything receives. The face itself never casts, so the nose throws no
-// shadow across the cheek (anime faces stay clean; only the fringe shades the forehead).
-export function animeShadows(light: DirectionalLight, meshes: AbstractMesh[], mapSize = 2048): ShadowGenerator {
+export function animeShadowGenerator(light: DirectionalLight, mapSize = 2048): ShadowGenerator {
   const gen = new ShadowGenerator(mapSize, light)
   gen.usePercentageCloserFiltering = true
   gen.filteringQuality = ShadowGenerator.QUALITY_HIGH
-  // a head is 20 cm: biases in millimetres, or the fringe's contact shadow on the forehead vanishes
-  gen.bias = 0.0004
+  gen.bias = 0.0004       // a head is 20 cm: biases in millimetres
   gen.normalBias = 0.002
+  return gen
+}
+
+// `receive`: take the map's shadows on the body too. Only with a sharp map sized for the actor: a soft
+// map sized for a whole set (the studio's blurred ESM) darkens the entire figure.
+export function addAnimeCasters(gen: ShadowGenerator, meshes: AbstractMesh[], receive = true) {
   meshes.forEach((m) => {
     if (m.metadata?.inkHull || m.getTotalVertices() === 0) return
-    m.receiveShadows = true
-    const mat = m.material?.name ?? ''
-    if (!/FACE|EYE|Face_00_SKIN/i.test(mat)) gen.addShadowCaster(m, false)
+    const isFace = /FACE|EYE|Face_00_SKIN/i.test(m.material?.name ?? '')
+    // the face neither casts (no nose shadow) nor receives: under a high sun the whole hair cap would
+    // shade it; anime faces only take the fringe's band, which anime-cast.ts draws
+    m.receiveShadows = receive && !isFace
+    if (isFace) gen.removeShadowCaster(m, false)
+    else gen.addShadowCaster(m, false)
   })
-  return gen
+}
+
+// ---------- VRoid rest pose ----------
+// VRM rests in a T-pose; lower both upper arms (degrees). The sleeve hangs on VRoid's aim/twist
+// helpers, siblings of the arm that VRM constraints would aim at it; Babylon does not run VRM
+// constraints, so they turn with the arm by hand. Bones are looked up under THIS actor only.
+const ARM_BONES = ['J_Bip_?_UpperArm', 'J_Aim_?_TopsUpperArm', 'J_Aim_?_Shoulder']
+export function vroidArms(root: TransformNode): (deg: number) => void {
+  const nodes = root.getDescendants(false).filter((n): n is TransformNode => n instanceof TransformNode)
+  const bones = (['L', 'R'] as const).flatMap((side) => ARM_BONES.map((name) => {
+    const node = nodes.find((n) => n.name === name.replace('?', side))
+    return node ? { node, rest: (node.rotationQuaternion ?? Quaternion.Identity()).clone(), sign: side === 'L' ? -1 : 1 } : null
+  })).filter((b) => b !== null)
+  return (deg) => bones.forEach((b) => {
+    b.node.rotationQuaternion = Quaternion.RotationAxis(Axis.Z, (b.sign * deg * Math.PI) / 180).multiply(b.rest)
+  })
+}
+
+// The face's key light: the sun's direction, tilted up to at most `maxDeg` below the horizon.
+// A noon sun lights a real face from above (eyes in shadow); drawn faces stay readable.
+export function clampPitch(dir: Vector3, maxDeg: number): Vector3 {
+  const d = dir.normalizeToNew()
+  const flat = Math.hypot(d.x, d.z)
+  const max = Math.tan((maxDeg * Math.PI) / 180)
+  if (flat < 1e-4 || -d.y / flat <= max) return d
+  return new Vector3(d.x / flat, -max, d.z / flat).normalize()
 }

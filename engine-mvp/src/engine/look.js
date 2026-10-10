@@ -7,6 +7,7 @@
 // Nothing texture-like is tied to the screen, so camera moves never make the paint slide. GLSL: look-shaders.js.
 /* global BABYLON */
 'use strict';
+import { animeMask } from './anime-cast';
 
 (() => {
   const mvp = window.__mvp;
@@ -29,6 +30,7 @@
   const val = (el) => Number(el.value);
   let aquarelTex = null;
   const blankTex = new BABYLON.RawTexture(new Uint8Array([255, 255, 255, 255]), 1, 1, BABYLON.Engine.TEXTUREFORMAT_RGBA, scene);
+  const blankBlack = new BABYLON.RawTexture(new Uint8Array([0, 0, 0, 255]), 1, 1, BABYLON.Engine.TEXTUREFORMAT_RGBA, scene); // no anime actors
   function useTexture(url) {
     if (aquarelTex) aquarelTex.dispose();
     aquarelTex = null;
@@ -112,10 +114,11 @@
     // ink last: over the finished watercolour, so lines stay black; colour edges come from the clean wash
     const inkPP = new BABYLON.PostProcess('ink', 'ink',
       ['texel', 'ink', 'width', 'colorInk', 'nearDist', 'farInk', 'inkColor', 'wobble', 'darkness', 'outline', 'paperEdge', 'inkOpacity', 'inkBlend', 'paintOver', ...WORLD_UNIFORMS],
-      ['washSampler', ...WORLD_SAMPLERS], 1, camera);
+      ['washSampler', 'animeSampler', ...WORLD_SAMPLERS], 1, camera);
     inkPP.onApply = (fx) => {
       setWorld(fx, inkPP);
       fx.setTextureFromPostProcessOutput('washSampler', wash);
+      fx.setTexture('animeSampler', animeMask(scene) || blankBlack);
       fx.setVector2('texel', texel(inkPP));
       fx.setFloat('ink', val(ui.ink)); fx.setFloat('width', val(ui.width)); fx.setFloat('colorInk', val(ui.colorInk));
       fx.setFloat('nearDist', val(ui.nearDist)); fx.setFloat('farInk', val(ui.farInk)); fx.setFloat('wobble', val(ui.wobble));
@@ -130,7 +133,8 @@
   // ---------- toon (cel) materials on every 3D model, including ones added later ----------
   // backdrop silhouettes and the sky stay flat: they are cut-out planes, not lit objects
   const skip = (m) => m.name === 'hitbox' || m.name === 'ground' || m.name.startsWith('sky') || m.name.startsWith('backdrop') || m.name === 'decal'
-    || !m.material || m.material instanceof BABYLON.ShaderMaterial || m.getTotalVertices() === 0; // buildings: own toon shader
+    || !m.material || m.material instanceof BABYLON.ShaderMaterial || m.getTotalVertices() === 0 // buildings: own toon shader
+    || (m.metadata && m.metadata.anime); // anime actors: own cel shade + ink (anime-look.ts)
   function toCel(mesh) {
     if (mesh.metadata && mesh.metadata.cel) { mesh.material = mesh.metadata.cel; return; }
     const old = mesh.material;
