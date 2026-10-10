@@ -175,7 +175,7 @@ function stage() {
 export function readFacts(): Facts {
   const { lesson, current } = L.getLesson()
   const s = stage()
-  const step = typeof document !== 'undefined' ? (document.body.dataset.step || document.querySelector<HTMLElement>('[data-step]')?.dataset.step) : undefined
+  const step = L.stepOf(lesson) // Script, Visual or Animate: one source of truth, the lesson store
   return {
     title: lesson.title, scenes: Tree.scenesInOrder(lesson.tree).map(({ id, title }) => ({ id, title })), current,
     scriptWords: words(lesson.script), selected: s.selected, objects: s.objects.map((o: { name: string }) => o.name),

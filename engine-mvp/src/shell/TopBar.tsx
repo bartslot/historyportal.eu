@@ -2,7 +2,7 @@
 // Add (opens the asset drawer at a folder), View (every panel, from the one registry), Publish.
 import { useRef, type ReactNode } from 'react'
 import { Panel } from '../panels/Panel'
-import { PANELS, panels, usePanels } from '../panels/store'
+import { PANELS, inStep, panels, usePanels } from '../panels/store'
 import * as L from '../lesson/store'
 
 const CHECK = 'm4.5 12.75 6 6 9-13.5'
@@ -29,9 +29,32 @@ function Item({ children, onClick, checked }: { children: ReactNode; onClick: ()
   )
 }
 
+const STEP_LABEL: Record<L.Step, string> = { script: 'Script', visual: 'Visual', animate: 'Animate' }
+
+/** 1 Script, 2 Visual, 3 Animate: strictly in order; a locked step says why when pressed. */
+function Stepper({ step }: { step: L.Step }) {
+  return (
+    <nav aria-label="Steps" className="flex items-center gap-1">
+      {L.STEPS.map((s, i) => {
+        const locked = L.lockedReason(s)
+        const on = s === step
+        return (
+          <button key={s} type="button" aria-current={on ? 'step' : undefined} aria-disabled={!!locked} data-tooltip={locked ?? undefined}
+                  onClick={() => { if (locked) (window as any).__mvp?.flash(locked); else L.goToStep(s) }}
+                  className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs ${on ? 'bg-white/10 text-panel-value' : locked ? 'cursor-default text-panel-label/60' : 'text-panel-label hover:text-white'}`}>
+            <span className={`grid h-4 w-4 place-items-center rounded-full border text-3xs ${on ? 'border-panel-value' : 'border-panel-label/60'}`}>{i + 1}</span>
+            {STEP_LABEL[s]}
+          </button>
+        )
+      })}
+    </nav>
+  )
+}
+
 export function TopBar() {
   const st = usePanels()
   const { lesson, saved } = L.useLesson()
+  const step = L.stepOf(lesson)
   const lessonBtn = useRef<HTMLButtonElement>(null)
   const fileIn = useRef<HTMLInputElement>(null)
   const addBtn = useRef<HTMLButtonElement>(null)
@@ -50,12 +73,16 @@ export function TopBar() {
              className="w-48 rounded bg-transparent px-1 text-xs text-panel-value hover:bg-panel-hairline focus:bg-panel-hairline focus:outline-none" />
       <span className="mr-2 text-3xs uppercase tracking-wide text-panel-label" aria-live="polite">{saved === 'saving' ? 'Saving' : saved === 'saved' ? 'Saved' : 'Not saved'}</span>
       <MenuButton id="lesson-menu" label="Lesson" anchor={lessonBtn} />
-      <MenuButton id="add-menu" label="Add" anchor={addBtn} />
+      {step === 'visual' && <MenuButton id="add-menu" label="Add" anchor={addBtn} />}
       <MenuButton id="view-menu" label="View" anchor={viewBtn} />
       <span className="ml-auto" />
-      <button type="button" aria-pressed={!!st.open.script} onClick={() => panels.toggle('script')}
-              className={`btn btn-sm ${st.open.script ? 'btn-active' : 'btn-ghost'} text-panel-value`}>Script</button>
-      <MenuButton id="publish-menu" label="Publish" primary anchor={publishBtn} />
+      <Stepper step={step} />
+      <span className="ml-auto" />
+      <button type="button" aria-pressed={!!st.open.help} onClick={() => panels.toggle('help')}
+              className={`btn btn-sm ${st.open.help ? 'btn-active' : 'btn-ghost'} text-panel-value`}>Help</button>
+      {step === 'script' && <button type="button" className="btn btn-primary btn-sm" onClick={L.approveScript}>Approve script</button>}
+      {step === 'visual' && <button type="button" className="btn btn-primary btn-sm" onClick={L.finishVisual}>Next: Animate</button>}
+      <span hidden={step !== 'animate'}><MenuButton id="publish-menu" label="Publish" primary anchor={publishBtn} /></span>
 
       <Panel id="lesson-menu" anchor={lessonBtn}>
         <ul>
@@ -73,7 +100,7 @@ export function TopBar() {
         <ul>{folders.map((f) => <Item key={f} onClick={() => addFrom(f)}>{f}</Item>)}</ul>
       </Panel>
       <Panel id="view-menu" anchor={viewBtn}>
-        <ul>{PANELS.filter((p) => p.inView).map((p) => <Item key={p.id} checked={!!st.open[p.id]} onClick={() => { panels.close('view-menu'); panels.toggle(p.id) }}>{p.title}</Item>)}</ul>
+        <ul>{PANELS.filter((p) => p.inView && inStep(p.id, step)).map((p) => <Item key={p.id} checked={!!st.open[p.id]} onClick={() => { panels.close('view-menu'); panels.toggle(p.id) }}>{p.title}</Item>)}</ul>
       </Panel>
       <Panel id="publish-menu" anchor={publishBtn} className="flex flex-col gap-2 p-3">
         <label className="flex items-center justify-between gap-3">

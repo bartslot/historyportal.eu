@@ -16,7 +16,14 @@ const THUMB_EVERY = 3
 export type SceneEntry = { doc: any | null; thumb: string | null }
 /** One line of the crew chat, kept with the lesson (src/crew). */
 export type CrewLine = { who: string; as?: string; text: string; changes?: string[]; jev?: { score: number; choice: string }; review?: { who: string; text: string }; thoughts?: string; draft?: string; stopped?: boolean; error?: string; turn?: string | number; status?: 'working'; interrupted?: boolean }
-export type Lesson = { version: number; id: string; title: string; tree: Tree.TreeNode[]; scenes: Record<string, SceneEntry>; script: any | null; crew?: CrewLine[] }
+/** The three steps, strictly in order (Bart 2026-10-10): plan the story, build it, make it move. */
+export const STEPS = ['script', 'visual', 'animate'] as const
+export type Step = (typeof STEPS)[number]
+export type Lesson = {
+  version: number; id: string; title: string; tree: Tree.TreeNode[]; scenes: Record<string, SceneEntry>; script: any | null; crew?: CrewLine[]
+  /** the step being worked on, the furthest one opened, and whether the teacher approved the script */
+  step?: Step; reached?: Step; approved?: boolean
+}
 type State = { lesson: Lesson; current: string; busy: boolean; saved: 'saved' | 'saving' | 'unsaved'; error: string | null }
 
 function freshLesson(): Lesson {
@@ -122,6 +129,39 @@ export async function deleteNode(id: string) {
 export function editTree(fn: (t: Tree.TreeNode[]) => Tree.TreeNode[]) {
   set({ lesson: { ...state.lesson, tree: fn(state.lesson.tree) } })
   void persist(state.lesson)
+}
+
+/** Swap in a whole lesson (an opened file; tests). The engine is not touched. */
+export function replaceLesson(lesson: Lesson) {
+  set({ lesson, current: Tree.scenesInOrder(lesson.tree)[0]?.id ?? state.current })
+}
+
+// ---------- steps ----------
+export const stepOf = (l: Lesson = state.lesson): Step => l.step ?? 'script'
+const reachedOf = (l: Lesson): Step => l.reached ?? 'script'
+const rank = (s: Step) => STEPS.indexOf(s)
+
+/** Why a step cannot be opened yet, or null when it can. Going back is always allowed. */
+export function lockedReason(step: Step, l: Lesson = state.lesson): string | null {
+  if (step === 'visual' && !l.approved) return 'Approve the script first'
+  if (step === 'animate' && rank(reachedOf(l)) < rank('animate')) return 'Finish the visual step first'
+  return null
+}
+
+export function goToStep(step: Step) {
+  if (lockedReason(step)) return false
+  set({ lesson: { ...state.lesson, step }, saved: 'unsaved' })
+  return true
+}
+
+/** The teacher approves the script: the Visual step opens. */
+export function approveScript() {
+  set({ lesson: { ...state.lesson, approved: true, reached: rank(reachedOf(state.lesson)) < rank('visual') ? 'visual' : reachedOf(state.lesson), step: 'visual' }, saved: 'unsaved' })
+}
+
+/** Done with the picture: the Animate step opens. */
+export function finishVisual() {
+  set({ lesson: { ...state.lesson, reached: 'animate', step: 'animate' }, saved: 'unsaved' })
 }
 
 export function setTitle(title: string) {

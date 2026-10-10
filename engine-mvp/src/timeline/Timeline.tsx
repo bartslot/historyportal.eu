@@ -11,7 +11,7 @@ import {
 import * as TL from './model'
 import { useEngine } from '../bridge'
 import { usePlacedLines } from '../script/player'
-import { panels } from '../panels/store'
+import * as L from '../lesson/store'
 import { KeyframeDiamond } from '../ui/kit'
 import { ICON, Icon } from '../ui/icons'
 
@@ -379,7 +379,7 @@ export function Timeline() {
                 {lines.map((l) => (
                   <button key={l.id} type="button" data-line-bar={l.id} data-tooltip={l.text}
                           onPointerDown={(e) => e.stopPropagation()}
-                          onClick={() => { TL.pause(); TL.seek(l.start); panels.open('script'); window.dispatchEvent(new CustomEvent('script:focus-line', { detail: l.id })) }}
+                          onClick={() => { TL.pause(); TL.seek(l.start); L.goToStep('script'); window.dispatchEvent(new CustomEvent('script:focus-line', { detail: l.id })) }}
                           className="absolute cursor-pointer overflow-hidden rounded-[3px] px-1.5 text-left text-3xs text-white/90 hover:brightness-125"
                           style={{ left: xOf(l.start), width: Math.max(2, (l.end - l.start) * zoom), top: 9, height: 'var(--timeline-lane-h)', background: 'var(--color-timeline-bar-group)' }}>
                     <span className="block truncate leading-[var(--timeline-lane-h)]">{l.speaker ? `${l.speaker}: ` : ''}{l.text}</span>

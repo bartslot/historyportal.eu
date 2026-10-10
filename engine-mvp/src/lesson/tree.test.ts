@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { group, insert, move, parentOf, remove, rename, scenesInOrder, toggleOpen, type TreeNode } from './tree'
+import { dropOn, group, insert, move, parentOf, remove, rename, scenesInOrder, toggleOpen, type TreeNode } from './tree'
 
 const s = (id: string): TreeNode => ({ kind: 'scene', id, title: id })
 const base: TreeNode[] = [s('a'), { kind: 'group', id: 'g', title: 'Act 1', open: true, children: [s('b'), { kind: 'group', id: 'h', title: 'Sub', open: true, children: [s('c')] }] }, s('d')]
@@ -27,5 +27,10 @@ describe('scene tree', () => {
     expect(rename(base, 'b', 'Market')[1]).not.toBe(base[1])
     expect((toggleOpen(base, 'g')[1] as any).open).toBe(false)
     expect((base[1] as any).open).toBe(true)
+  })
+  it('drops onto a scene before it, onto a group inside it', () => {
+    expect(scenesInOrder(dropOn(base, 'd', 'b')).map((n) => n.id)).toEqual(['a', 'd', 'b', 'c'])
+    expect(parentOf(dropOn(base, 'a', 'h'), 'a')).toBe('h')
+    expect(dropOn(base, 'b', 'b')).toBe(base)
   })
 })

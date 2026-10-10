@@ -4,10 +4,13 @@
 // Closing: X on every closable panel; Esc closes the newest overlay (menu, floating); an outside
 // press closes a menu. The body stays mounted when closed: the engine binds to its controls by id.
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
-import { panels, usePanels } from './store'
+import { PANELS, inStep, panels, usePanels } from './store'
+import { stepOf, useLesson } from '../lesson/store'
 import { ResizeHandle } from './ResizeHandle'
 
 const X_MARK = 'M6 18 18 6M6 6l12 12'
+/** The bottom dock never takes more than this share of the screen height: the canvas keeps the rest. */
+const BOTTOM_MAX_VH = 40
 
 export function CloseButton({ id }: { id: string }) {
   return (
@@ -24,8 +27,11 @@ type Props = { id: string; children: ReactNode; anchor?: RefObject<HTMLElement |
 
 export function Panel({ id, children, anchor, className = '', style }: Props) {
   const st = usePanels()
+  const step = stepOf(useLesson().lesson)
   const d = panels.def(id)
-  const open = !!st.open[id]
+  const open = !!st.open[id] && inStep(id, step)
+  // a side holding more than one panel in this step shows them as tabs (Settings | Crew)
+  const siblings = d.place === 'left' || d.place === 'right' ? PANELS.filter((p) => p.place === d.place && inStep(p.id, step)) : []
   const size = panels.sizeOf(id)
   const body = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
@@ -55,8 +61,18 @@ export function Panel({ id, children, anchor, className = '', style }: Props) {
   const inner = (
     <div ref={body} className={`panel-body ${className}`} data-panel={id} data-place={d.place} data-open={open} inert={!open}
          aria-hidden={!open} role={d.place === 'menu' ? 'menu' : 'region'} aria-label={d.title}
-         style={{ ...(docked ? (d.place === 'bottom' ? { height: size } : { width: size }) : {}), ...(d.place === 'menu' && pos ? { top: pos.top, left: pos.left } : {}), ...style }}>
+         style={{ ...(docked ? (d.place === 'bottom' ? { height: `min(${size}px, ${BOTTOM_MAX_VH}dvh)` } : { width: size }) : {}), ...(d.place === 'menu' && pos ? { top: pos.top, left: pos.left } : {}), ...style }}>
       {showX && <CloseButton id={id} />}
+      {siblings.length > 1 && (
+        <div className="flex shrink-0 items-center border-b border-panel-hairline py-1.5 pl-3 pr-10">
+          <div className="tabs tabs-box tabs-panel" role="tablist" aria-label={`${d.place} panels`}>
+            {siblings.map((p) => (
+              <input key={p.id} type="radio" name={`side-${id}`} className="tab" role="tab" aria-label={p.title}
+                     checked={p.id === id} onChange={() => panels.open(p.id)} />
+            ))}
+          </div>
+        </div>
+      )}
       {children}
       {docked && d.min !== undefined && <ResizeHandle id={id} />}
     </div>
@@ -65,7 +81,7 @@ export function Panel({ id, children, anchor, className = '', style }: Props) {
   // the slot animates its width/height (the stage gives way); the body slides inside it
   return (
     <div className="panel-slot" data-place={d.place} data-open={open}
-         style={{ [d.place === 'bottom' ? 'height' : 'width']: open ? size : 0, gridArea: id }}>
+         style={{ [d.place === 'bottom' ? 'height' : 'width']: open ? (d.place === 'bottom' ? `min(${size}px, ${BOTTOM_MAX_VH}dvh)` : size) : 0, gridArea: id }}>
       {inner}
     </div>
   )

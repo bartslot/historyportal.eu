@@ -61,3 +61,15 @@ export function group(tree: TreeNode[], id: string, title: string): { tree: Tree
   const siblings = parent === null ? tree : (find(tree, parent) as GroupNode).children
   return { tree: insert(remove(tree, id), g, parent, siblings.findIndex((n) => n.id === id)), groupId: g.id }
 }
+
+/** Drag-and-drop: onto a group puts it inside; onto a scene puts it just before that scene. */
+export function dropOn(tree: TreeNode[], id: string, targetId: string): TreeNode[] {
+  if (id === targetId) return tree
+  const target = find(tree, targetId)
+  if (!target) return tree
+  if (target.kind === 'group') return move(tree, id, target.id)
+  const parent = parentOf(tree, targetId) ?? null
+  const without = remove(tree, id)
+  const siblings = parent === null ? without : ((find(without, parent) as GroupNode | null)?.children ?? [])
+  return move(tree, id, parent, siblings.findIndex((n) => n.id === targetId))
+}
