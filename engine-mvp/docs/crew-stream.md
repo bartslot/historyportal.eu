@@ -50,3 +50,17 @@ Any assistant or member answer may carry `choices` instead of guessing:
 - A member's settings with scope "lesson" are applied to the current scene live AND written into
   every other scene's saved settings (one undo restores all of them).
 - Events: /crew/stream `message` (and `assistant`) events may include `choices`.
+
+## Revision after Marten (the maker fixes it)
+When Marten reviews an answer (JEV < 0.8), the member gets ONE revision pass with Marten's note and must
+correct the facts in their own answer. The stream then sends a second `message` for the same turn+who with
+`revised: true` (text = corrected answer, new `jev`, `review` kept as the reason). The client replaces the
+line (upsert by turn+who) and shows "Revised after Marten's note". Never more than one revision.
+
+## Scene sketches (Script step)
+A member writing or changing a scene (mostly the writer) may return `sketch: str` (one sentence: who, where,
+when, what happens, composition; English, for the image model). The server renders it on the render PC
+(ComfyUI, FLUX.2 klein 4B, the house history-line ink prompt, 512x288, a few seconds) and streams
+{type:"image", who, url, caption} where url is served by server.py under /sketches/<file>.webp (proxied by
+Vite). The client shows it as a small thumbnail under that member's line (click: larger). A failed render
+never fails the turn (an `error` event with who, or nothing). Sketch images are saved with the line (url).
