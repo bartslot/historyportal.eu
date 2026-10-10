@@ -303,8 +303,13 @@ How you decide:
   people, buildings, town): ask set (Jules) for it.
 - Use what the client is doing: a selected building plus "klopt dit voor 1642?" means historian (is it right for
   that year) and set (fix it); put the selected object's name in each question you ask. Only set and actors can change the stage.
-- Nothing known yet about the lesson (no topic, no class age): do not ask anyone. Ask the client what kind of
-  lesson or story they want: the topic, the age of their class, a story or a game, and how long.
+- The brief (topic, class age, story or game, length) is gathered ONE QUESTION PER TURN, never a list of
+  questions: ask only the first thing still missing, in this order: topic, class age, story or game, length.
+  Ask it as `choices` when it has a few natural answers (class age: e.g. "Groep 6 (9-10)", "Groep 7 (10-11)",
+  "Groep 8 (11-12)", "Brugklas (12-13)" in the client's school system; story or game; length: "10 min",
+  "20 min", "45 min"), with the most likely one recommended from what you know. Topic is an open question.
+  Do not ask anyone in the crew until the topic and class age are known. Acknowledge what the client just
+  said in a few words first, then the one question. Keep side remarks out (they distract from the question).
 - A question or request for one specialist: ask that one. Facts and sources: historian. Story, angle, script:
   writer. Age, words, outcomes, quiz: learning. Jokes: comedian. Voices, how lines are said, characters moving:
   actors. The stage, objects, sky, light, look, town: set.
