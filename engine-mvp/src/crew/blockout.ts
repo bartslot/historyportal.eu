@@ -3,7 +3,7 @@
 import { SKETCH_MAX, cleanSketch, type Sketch } from './stream'
 
 export const SETTLE_MS = 600
-export const THUMB_WIDTH = 480
+export const THUMB_WIDTH = 960 // sharp enough to open large; shown small in the chat
 export const JPEG_QUALITY = 0.7
 const BLANK_MEAN = 6 // mean brightness (0-255) below which the stage counts as black/empty
 
@@ -14,11 +14,12 @@ export function isBlank(rgba: ArrayLike<number>): boolean {
   return seen === 0 || sum / (seen * 3) < BLANK_MEAN
 }
 
-/** The caption: the writer's sketch sentence if there is one, else the first sentence of the designer's text. */
+/** The caption: the designer's own first sentence (it describes the blockout that is really there); the writer's
+ * sketch sentence only when the designer said nothing (it describes the imagined final picture, not the blockout). */
 export function blockoutCaption(sketch: string | undefined, text: string): string {
-  const s = (sketch ?? '').trim()
-  if (s) return s
-  return (text.trim().match(/^.*?[.!?](?=\s|$)/)?.[0] ?? text.trim())
+  const t = text.trim()
+  if (t) return t.match(/^.*?[.!?](?=\s|$)/)?.[0] ?? t
+  return (sketch ?? '').trim()
 }
 
 const frame = () => new Promise<void>((r) => requestAnimationFrame(() => r()))

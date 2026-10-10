@@ -812,8 +812,10 @@ BLOCKOUT_ACKS = {'nl': ['Mouwen omhoog, ik zet een blockout neer.', 'Ik zet er s
 BLOCKOUT_ASK = ("Build a quick 3D blockout of this scene on the current stage: {sketch}. Use simple stand-in figures "
                 "(the catalog's mannequin/character models) and a few large props/buildings for the setting, placed for the "
                 "camera (one focal point), plus a `camera` command framing the focal figure. Keep it to the essentials "
-                "(max ~8 objects); this is a blockout, not the final set. In your reply, also give the scene's key spoken line "
-                "in one sentence: who says it, and the line.")
+                "(max ~8 objects); this is a blockout, not the final set. Add to the stage; never delete or move what is already "
+                "there (the client may have placed it). In your reply, start with one sentence that says what the blockout "
+                "shows (it is the caption under the picture), then quote the scene's key spoken line WORD FOR WORD from "
+                "the writer's scene (who says it); never invent a line.")
 
 
 def stream_member(m, assistant, question, data, direct, state, emit, blockout=False):

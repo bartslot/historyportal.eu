@@ -12,7 +12,7 @@ export type Sketch = { url: string; caption: string }
 export const CAPTION_CAP = 300
 export const BEFORE_CAP = 4000
 
-export const SKETCH_MAX = 200_000 // chars of data URL kept with a line
+export const SKETCH_MAX = 400_000 // chars of data URL kept with a line
 
 /** A blockout thumbnail is a small image data URL; anything else (or too big) is dropped. The caption is cut to size. */
 export function cleanSketch(url: unknown, caption: unknown): Sketch | null {

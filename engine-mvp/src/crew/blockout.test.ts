@@ -10,8 +10,9 @@ describe('isBlank', () => {
 })
 describe('blockoutCaption', () => {
   it('prefers the writer sketch, else the first sentence of the designer text', () => {
-    expect(blockoutCaption('A harbour at dawn.', 'Built it. More.')).toBe('A harbour at dawn.')
+    expect(blockoutCaption('A harbour at dawn.', 'Built it. More.')).toBe('Built it.')
     expect(blockoutCaption(undefined, 'Built the harbour. Added ships.')).toBe('Built the harbour.')
     expect(blockoutCaption('  ', 'No stop')).toBe('No stop')
+    expect(blockoutCaption('A harbour at dawn.', '  ')).toBe('A harbour at dawn.')
   })
 })

@@ -1,6 +1,7 @@
 // The crew panel: the client talks to the set assistant, who brings in the crew. Every face opens that
 // person's card (portrait, backstory, "Ask ..."), so the client can see the whole team and talk to anyone.
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Panel } from '../panels/Panel'
 import * as L from '../lesson/store'
 import type { CrewLine } from '../lesson/store'
@@ -238,16 +239,16 @@ function SketchOverlay({ sketch, onClose }: { sketch: Sketch; onClose: () => voi
     return () => window.removeEventListener('keydown', onKey, true)
   }, [onClose])
   return (
-    <div className="absolute inset-0 z-20 grid place-items-center bg-base-100/80 p-3" onClick={onClose}>
-      <div role="dialog" aria-modal="true" aria-label="Blockout" className="relative max-w-[90%] rounded-md border border-panel-hairline bg-base-100 p-2" onClick={(e) => e.stopPropagation()}>
+    createPortal(<div className="fixed inset-0 z-50 grid place-items-center bg-base-100/80 p-6" onClick={onClose}>
+      <div role="dialog" aria-modal="true" aria-label="Blockout" className="relative max-w-[80vw] rounded-md border border-panel-hairline bg-base-100 p-2" onClick={(e) => e.stopPropagation()}>
         <button type="button" aria-label="Close" data-tooltip="Close" onClick={onClose}
                 className="absolute right-1 top-1 grid h-7 w-7 place-items-center rounded bg-base-100 text-panel-label hover:text-white">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-4 w-4" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d={X_MARK} /></svg>
         </button>
-        <img src={sketch.url} alt={sketch.caption || 'Blockout of the scene'} className="w-full rounded" />
-        {sketch.caption && <p className="mt-1 text-xs text-panel-value">{sketch.caption}</p>}
+        <img src={sketch.url} alt={sketch.caption || 'Blockout of the scene'} className="max-h-[75vh] w-auto max-w-full rounded" />
+        {sketch.caption && <p className="mt-1 max-w-prose text-xs text-panel-value">{sketch.caption}</p>}
       </div>
-    </div>
+    </div>, document.body)
   )
 }
 
