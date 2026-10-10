@@ -2,7 +2,6 @@
 // person's card (portrait, backstory, "Ask ..."), so the client can see the whole team and talk to anyone.
 import { useEffect, useRef, useState } from 'react'
 import { Panel } from '../panels/Panel'
-import { SettingsSection } from '../ui/kit'
 import * as L from '../lesson/store'
 import type { CrewLine } from '../lesson/store'
 import { noteCardOpened, useLiveContext } from './context'
@@ -97,7 +96,7 @@ function Card({ id, onClose, onAsk }: { id: string; onClose: () => void; onAsk: 
   const story = isAssistant ? ASSISTANTS[assistant].backstory : m?.backstory
   const tasks = isAssistant ? ASSISTANT_TASKS : m?.tasks ?? []
   return (
-    <div className="relative mx-3 mb-3 flex max-h-[40vh] shrink-0 flex-col items-center gap-2 overflow-y-auto [&>*]:shrink-0 rounded-lg border border-panel-hairline bg-base-100 p-4 text-center">
+    <div className="relative mx-3 mb-3 flex max-h-[40vh] shrink-0 flex-col items-center gap-2 overflow-y-auto [&>*]:shrink-0 rounded-md border border-panel-hairline bg-base-100 p-4 text-center">
       <button type="button" aria-label="Close card" data-tooltip="Close" onClick={onClose}
               className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded text-panel-label hover:bg-white/5 hover:text-white">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-4 w-4" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d={X_MARK} /></svg>
@@ -112,6 +111,17 @@ function Card({ id, onClose, onAsk }: { id: string; onClose: () => void; onAsk: 
         <div className="w-full text-left">
           <p className="text-3xs font-semibold uppercase tracking-wide text-panel-label">Tasks</p>
           <ul className="mt-1 list-disc pl-4 text-xs text-panel-value">{tasks.map((t, i) => <li key={i}>{t}</li>)}</ul>
+        </div>
+      )}
+      {isAssistant && (
+        <div className="flex w-full items-center justify-between gap-3 text-left">
+          <span className="text-3xs font-semibold uppercase tracking-wide text-panel-label">Your set assistant</span>
+          <div className="join">
+            {(Object.keys(ASSISTANTS) as AssistantId[]).map((k) => (
+              <button key={k} type="button" aria-pressed={assistant === k} onClick={() => chooseAssistant(k)}
+                      className={`btn join-item btn-xs ${assistant === k ? 'btn-active' : 'btn-ghost'}`}>{ASSISTANTS[k].name}</button>
+            ))}
+          </div>
         </div>
       )}
       {m && (
@@ -290,14 +300,13 @@ export function CrewPanel() {
 
   return (
     <Panel id="crew" className="flex h-full flex-col [&_.btn]:rounded-md">
-      <div className="flex items-center gap-3 py-3 pl-4 pr-10">
-        <button type="button" onClick={() => setCard('assistant')} aria-label={`About ${speaker('assistant').name}`}><Face id="assistant" size="md" /></button>
-        <div className="min-w-0">
-          <p className="truncate text-base font-semibold text-panel-value">{speaker('assistant').name}</p>
-          <p className="text-xs text-panel-label">Set assistant</p>
-        </div>
+      <div className="flex items-center gap-2 py-2 pl-4 pr-10">
+        <button type="button" onClick={() => setCard('assistant')} aria-label={`About ${speaker('assistant').name}`}><Face id="assistant" /></button>
+        <p className="min-w-0 truncate text-sm font-semibold text-panel-value">
+          {speaker('assistant').name} <span className="text-xs font-normal text-panel-label">Set assistant</span>
+        </p>
       </div>
-      <ul className="flex flex-wrap gap-1.5 px-4 pb-3" role="list" aria-label="The crew">
+      <ul className="flex flex-wrap gap-1.5 px-4 pb-2" role="list" aria-label="The crew">
         {MEMBERS.map((m) => (
           <li key={m.id}>
             <button type="button" onClick={() => (crew.live[m.id]?.status === 'working' ? toggle(m.id) : setCard(m.id))}
@@ -321,7 +330,7 @@ export function CrewPanel() {
         {crew.error && <p role="alert" className="text-xs text-error">{crew.error}</p>}
       </div>
 
-      <div className="flex flex-col gap-2 border-t border-panel-hairline px-4 py-3">
+      <div className="flex flex-col gap-1.5 border-t border-panel-hairline px-3 py-2">
         <p className="flex min-w-0 items-baseline gap-2" data-tooltip={live.tip}>
           <span className="text-3xs font-semibold uppercase tracking-wide text-panel-label">Sees</span>
           <span className="truncate text-xs text-panel-value">{live.sees}</span>
@@ -334,31 +343,25 @@ export function CrewPanel() {
             </button>
           </span>
         )}
-        <textarea ref={box} rows={3} value={draft} placeholder={to ? `Ask ${to}` : 'Tell the crew what you want'} aria-label="Message to the crew"
+        <div className="flex items-end gap-1 rounded-md border border-panel-hairline bg-base-100 p-1 focus-within:border-panel-label">
+        <textarea ref={box} rows={2} value={draft} placeholder={to ? `Ask ${to}` : 'Tell the crew what you want'} aria-label="Message to the crew"
                   onChange={(e) => setDraft(e.target.value)}
                   onKeyDown={(e) => {
                     e.stopPropagation() // typing must not trigger editor shortcuts
                     if (e.key === 'Escape') { setCard(null); finishAllTyping() }
                     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit() }
                   }}
-                  className="textarea textarea-sm w-full border-panel-hairline bg-base-100 text-panel-value" />
-        <div className="flex gap-2">
-          <button type="button" className="btn btn-primary btn-sm flex-1" disabled={(crew.busy && !crew.partial) || !draft.trim()} onClick={submit}>Send</button>
-          {working.length > 0 && <button type="button" className="btn btn-sm" onClick={() => void stopAll()}>Stop all</button>}
+                  className="min-h-0 flex-1 resize-none bg-transparent px-2 py-1 text-xs text-panel-value outline-none placeholder:text-panel-label" />
+          {working.length > 0 && (
+            <button type="button" className="btn btn-ghost btn-xs" onClick={() => void stopAll()} data-tooltip="Stop all">Stop all</button>
+          )}
+          <button type="button" className="btn btn-primary btn-xs btn-square" aria-label="Send" data-tooltip="Send"
+                  disabled={(crew.busy && !crew.partial) || !draft.trim()} onClick={submit}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-4 w-4" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 10.5 12 3m0 0 7.5 7.5M12 3v18" /></svg>
+          </button>
         </div>
       </div>
 
-      <SettingsSection title="Settings" open={false} name="crew-settings">
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-3xs font-semibold uppercase tracking-wide text-panel-label">Set assistant</span>
-          <div className="join">
-            {(Object.keys(ASSISTANTS) as AssistantId[]).map((id) => (
-              <button key={id} type="button" aria-pressed={crew.assistant === id} onClick={() => chooseAssistant(id)}
-                      className={`btn join-item btn-xs ${crew.assistant === id ? 'btn-active' : 'btn-ghost'}`}>{ASSISTANTS[id].name}</button>
-            ))}
-          </div>
-        </div>
-      </SettingsSection>
     </Panel>
   )
 }
