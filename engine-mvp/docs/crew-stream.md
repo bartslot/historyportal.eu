@@ -23,3 +23,14 @@ Events (every event has `turn`, the id of this turn):
 POST /crew/stop {turn, who?} -> {stopped:[who...]}   who omitted = the whole turn. Kills that member's
 claude process; its worker emits "stopped" and no "message".
 Interrupt = client stops `who`, then sends a new turn with to=who and partial={who, text: draft so far}.
+
+## Context (what the client is doing)
+Every /crew and /crew/stream body may carry `context` (built by src/crew/context.ts, untrusted, capped):
+{ lesson: {title, scenes: [{id, title}], current: <scene id>, currentTitle, scriptWords},
+  step?: "script"|"visual"|"animate"|string,
+  selected: {name, kind, x, z, yaw} | null,
+  objects: [names on the current scene's stage, max 40],
+  time: <timeline seconds>,
+  recent: [{ago: <seconds ago>, what: <short English sentence>}]   (last 10 client actions, newest first) }
+The server shows it to the router and every member as "What the client is doing right now", and
+resolves "this / dit / hier" to the selected object or current scene.
