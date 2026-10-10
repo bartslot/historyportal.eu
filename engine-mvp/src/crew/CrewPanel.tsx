@@ -9,6 +9,7 @@ import { noteCardOpened, useLiveContext } from './context'
 import { ASSISTANTS, ASSISTANT_TASKS, MEMBERS, chooseAssistant, interrupt, isFreshRevised, pickChoice, send, speaker, stopAll, stopMember, talkTo, undo, undoFor, useCrew, type AssistantId } from './store'
 import type { Live } from './stream'
 import type { Sketch } from './stream'
+import { SelectionMenu } from './SelectionMenu'
 import { TypedView } from './Typed'
 import { firstSentence, latestTurnStart } from './turns'
 import { finishAllTyping, useTypewriter } from './typewriter'
@@ -430,6 +431,7 @@ export function CrewPanel() {
       <div ref={log} className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto border-t border-panel-hairline px-4 py-3" aria-live="polite">
         <Line index={-1} who="assistant" text={live.greeting} />
         {lines.map((l, i) => <Line key={`${i}${l.revised ? 'r' : ''}`} index={i} latest={i >= turnStart} fresh={i >= base.current.n || isFreshRevised(l)} onSketch={setZoom} active={!lines.slice(i + 1).some((x) => x.who === 'client')} {...l} />)}
+        <SelectionMenu />
         {working.map(([who, l]) => (
           <WorkingBubble key={who} who={who} live={l} open={!!open[key(who)]} onToggle={() => toggle(who)}
                          onTalk={() => { void interrupt(who); box.current?.focus() }} />

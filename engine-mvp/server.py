@@ -186,12 +186,15 @@ _SKETCH = {'type': 'string'}   # one sentence describing a scene the member wrot
 _SETTINGS = {'type': 'array', 'items': _obj({'id': {'type': 'string'},
                                               'value': {'type': ['number', 'boolean', 'string']}}, ['id', 'value'])}
 _COMMANDS = {'type': 'array', 'items': {'type': 'object'}}   # free objects: validate() decides what survives
-STAGE_SCHEMA = _obj({'reply': _REPLY, 'choices': _CHOICES, 'settings': _SETTINGS, 'commands': _COMMANDS, 'title': _TITLE, 'sketch': _SKETCH},
-                    ['reply', 'settings', 'commands'])
-STAGE_SCHEMA_NO_TITLE = _obj({k: v for k, v in STAGE_SCHEMA['properties'].items() if k != 'title'},
+# the writer's script data (docs/crew-stream.md "Script on the page"): a scene, or the rewritten selected lines
+_SCENE = _obj({'lines': {'type': 'array', 'items': _obj({'speaker': {'type': ['string', 'null']}, 'text': {'type': 'string'}}, ['speaker', 'text'])}}, ['lines'])
+_LINES = {'type': 'array', 'items': _obj({'id': {'type': 'string'}, 'speaker': {'type': ['string', 'null']}, 'text': {'type': 'string'}}, ['id', 'speaker', 'text'])}
+STAGE_SCHEMA = _obj({'reply': _REPLY, 'choices': _CHOICES, 'settings': _SETTINGS, 'commands': _COMMANDS, 'title': _TITLE, 'sketch': _SKETCH,
+                     'scene': _SCENE, 'lines': _LINES}, ['reply', 'settings', 'commands'])
+STAGE_SCHEMA_NO_TITLE = _obj({k: v for k, v in STAGE_SCHEMA['properties'].items() if k not in ('title', 'scene', 'lines')},
                              ['reply', 'settings', 'commands'])
 TALK_SCHEMA = _obj({'reply': _REPLY, 'choices': _CHOICES}, ['reply'])
-TALK_SCHEMA_WRITER = _obj({'reply': _REPLY, 'choices': _CHOICES, 'title': _TITLE, 'sketch': _SKETCH}, ['reply'])
+TALK_SCHEMA_WRITER = _obj({'reply': _REPLY, 'choices': _CHOICES, 'title': _TITLE, 'sketch': _SKETCH, 'scene': _SCENE, 'lines': _LINES}, ['reply'])
 TALK_SCHEMA_MEMBER = _obj({'reply': _REPLY, 'choices': _CHOICES, 'sketch': _SKETCH}, ['reply'])   # the director's TALK_SCHEMA has no sketch
 
 
@@ -334,6 +337,12 @@ what they are about to do (e.g. "Ik zoek de data even op."). "ask" is [] when yo
 STAGE_OWNERS = {'set', 'actors'}
 SKETCH_RULE = ('When you write or change a scene in the Script step, add "sketch": one English sentence describing the picture '
                '(who, where, when, what happens, composition), for a quick 3D blockout of the scene.')
+WRITER_RULE = ('SCRIPT ON THE PAGE: when you write or change a scene, put it in "scene": {"lines": [{"speaker": null for the narrator or the '
+               'character\'s name, "text": "..."}]} (2 to 40 lines, each at most 400 characters; characters carry the story: let them speak, the '
+               'narrator only links). It replaces the current scene on the script page, so write the whole scene. Your "reply" is then ONE short '
+               'sentence about what you did, never the scene itself. If the context has a "Selection in the script" with action rewrite, answer '
+               'with "lines": [{"id","speaker","text"}] only: the complete rewritten version of the line(s) the selection sits in, each with the '
+               'id of the line it replaces (only ids from the selection), changing nothing else; reply: one short sentence.')
 TITLE_RULE = 'The lesson title: "title", only when the lesson is still untitled or the client asks for a new one.'
 
 
@@ -361,6 +370,9 @@ The stage, with scene commands:
         fmt = ('{"reply": "<to the client, in your own voice>", "choices": <optional, see DECISIONS>, "settings": [ {"id": "<id>", "value": <value>} ], "commands": [ ... ]'
                + (', "title": "<only to rename the lesson>"' if title else '') + ', "sketch": <optional>}')
     sketch = '' if m.get('reviews_only') else '\n' + SKETCH_RULE
+    if m['id'] == 'writer':
+        sketch += '\n' + WRITER_RULE
+        fmt = fmt.replace(', "sketch": <optional>}', ', "sketch": <optional>, "scene": <optional>, "lines": <optional>}')
     return f"""{SHARED}
 
 You are {m['name']}, the {m['role'].lower()}. {m['backstory']}{voice_line(m)}
@@ -449,6 +461,52 @@ def clean_choices(raw, lang=None):
     return {'question': question, 'options': opts, **({'scope': True} if raw.get('scope') is True else {})}
 
 
+SELECTION_ACTIONS = ('rewrite', 'check', 'ask')
+MAX_SELECTION_LINES = 20
+MAX_SCENE_LINES = 40
+
+
+def clean_selection(raw):
+    """The client's script selection {action, how?, text, lineIds, sceneId, scene[]} or None when it is not well-formed."""
+    if not isinstance(raw, dict) or raw.get('action') not in SELECTION_ACTIONS:
+        return None
+    text, scene_id = _txt(raw.get('text'), 2000), _txt(raw.get('sceneId'), 80)
+    ids = [_txt(i, 80) for i in (raw.get('lineIds') if isinstance(raw.get('lineIds'), list) else [])[:MAX_SELECTION_LINES] if isinstance(i, str)]
+    ids = [i for i in ids if i]
+    if not text or not scene_id or (raw['action'] == 'rewrite' and not ids):
+        return None
+    scene = [{'id': _txt(x.get('id'), 80), 'speaker': _txt(x.get('speaker'), 40) or None, 'text': _txt(x.get('text'), 1000)}
+             for x in (raw.get('scene') if isinstance(raw.get('scene'), list) else [])[:MAX_SCENE_LINES] if isinstance(x, dict)]
+    return {'action': raw['action'], 'how': _txt(raw.get('how'), 60), 'text': text, 'lineIds': ids, 'sceneId': scene_id, 'scene': scene}
+
+
+def selection_block(sel):
+    if not sel:
+        return ''
+    lines = '\n'.join(f"[{x['id']}] {x['speaker'] or 'Narrator'}: {x['text']}" for x in sel['scene'])
+    how = f", how: {sel['how']}" if sel['how'] else ''
+    return (f"Selection in the script (action {sel['action']}{how}; line ids {', '.join(sel['lineIds']) or 'none'}):\n\"{sel['text']}\"\n"
+            f"The scene's lines now:\n{lines or '(none)'}")
+
+
+def clean_scene(raw, limit=MAX_SCENE_LINES):
+    """The writer's scene {lines:[{speaker,text}]} or None: 2-40 lines, text <= 400, speaker <= 40, empty lines dropped."""
+    rows = raw.get('lines') if isinstance(raw, dict) and isinstance(raw.get('lines'), list) else []
+    out = [{'speaker': _txt(x.get('speaker'), 40) or None, 'text': _txt(x.get('text'), 400)} for x in rows if isinstance(x, dict)]
+    out = [x for x in out if x['text']]
+    return {'lines': out[:limit]} if 2 <= len(out) else None
+
+
+def clean_rewrite(raw, sel):
+    """The writer's rewritten lines [{id, speaker, text}]: only ids from the selection, 1-40 lines, or None."""
+    if not sel or sel['action'] != 'rewrite' or not isinstance(raw, list):
+        return None
+    out = [{'id': _txt(x.get('id'), 80), 'speaker': _txt(x.get('speaker'), 40) or None, 'text': _txt(x.get('text'), 400)}
+           for x in raw[:MAX_SCENE_LINES] if isinstance(x, dict)]
+    out = [x for x in out if x['id'] in sel['lineIds'] and x['text']]
+    return out or None
+
+
 def clean_client(raw):
     """The client's `context` object is untrusted: whitelist the contract keys, cap every string, list and number."""
     if not isinstance(raw, dict):
@@ -504,6 +562,7 @@ def context(data):
     return (f"Lesson: {json.dumps(lesson)[:2000]}\nConversation so far:\n{talk or '(none)'}\n"
             f"Settings: {json.dumps(data.get('settings', []))[:12000]}\nStage: {json.dumps(data.get('scene', {}))[:12000]}"
             + (f"\n{block}" if (block := client_block(data.get('context'))) else '')
+            + (f"\n{block}" if (block := selection_block(clean_selection(data.get('selection')))) else '')
             + (f"\nScope chosen by the client: {SCOPES[scope]}." if (scope := clean_scope(data)) else ''))
 
 
@@ -581,6 +640,11 @@ def finish_member(m, answer, data, direct):
     title = str(answer.get('title') or '').strip()[:80]
     if title and m['id'] == 'writer' and title_open(data):
         msg['title'] = title
+    if m['id'] == 'writer':
+        if scene := clean_scene(answer.get('scene')):
+            msg['scene'] = scene
+        if lines := clean_rewrite(answer.get('lines'), clean_selection(data.get('selection'))):
+            msg['lines'] = lines
     if may_change(m, direct):
         commands, dropped = validate(answer.get('commands') or [])
         msg['settings'] = clean_settings(answer.get('settings'), data.get('settings'))
@@ -589,11 +653,18 @@ def finish_member(m, answer, data, direct):
     return msg
 
 
+def graded_text(msg):
+    """What JEV and the director read: the reply plus the scene or lines it put on the script page."""
+    rows = (msg.get('scene') or {}).get('lines') or msg.get('lines') or []
+    return '\n'.join([msg['text']] + [f"{x['speaker'] or 'Narrator'}: {x['text']}" for x in rows])
+
+
 def grade_member(m, msg, data, assistant, emit=None, review=True):
     """JEV grade, and the director's second opinion when unsure. Adds jev/review to msg; emit gets events."""
-    if not (JEV_ON and m['id'] in JEV_IDS and msg['text'].strip()):
+    text = graded_text(msg)
+    if not (JEV_ON and m['id'] in JEV_IDS and text.strip()):
         return
-    grade = jev_grade(m, msg['text'], data)
+    grade = jev_grade(m, text, data)
     if not grade:
         return
     msg['jev'] = grade
@@ -601,7 +672,7 @@ def grade_member(m, msg, data, assistant, emit=None, review=True):
         emit({'type': 'jev', 'who': m['id'], **grade})
     if review and grade['score'] < JEV_MIN_SCORE:
         try:
-            msg['review'] = {'who': DIRECTOR, 'text': director_review(msg['text'], m['name'], data, assistant)}
+            msg['review'] = {'who': DIRECTOR, 'text': director_review(graded_text(msg), m['name'], data, assistant)}
             if emit:
                 emit({'type': 'review', 'who': m['id'], 'text': msg['review']['text']})
         except Exception as e:  # noqa: BLE001 - the answer stands without its second opinion
@@ -647,6 +718,9 @@ def crew_turn(data):
     message = str(data.get('message', ''))[:MAX_PROMPT].strip()
     assistant = CREW['assistants'].get(str(data.get('assistant'))) or next(iter(CREW['assistants'].values()))
     to = data.get('to')
+    sel = clean_selection(data.get('selection'))
+    if sel and sel['action'] in SELECTION_ROUTES:
+        return [ask_member(MEMBERS[SELECTION_ROUTES[sel['action']]], assistant, selection_question(sel), data)]
     if isinstance(to, str) and to in MEMBERS:   # the client talks to one crew member directly
         return [ask_member(MEMBERS[to], assistant, message, data, direct=True)]
     plan = ask_claude(ROUTER_MODEL, router_prompt(assistant), context(data) + '\n\nClient: ' + message,
@@ -839,7 +913,7 @@ def stream_member(m, assistant, question, data, direct, state, emit, blockout=Fa
             final = stream_revision(m, assistant, data, direct, state, emit, system, user, schema, msg) or msg
             if state.is_stopped(who):
                 return emit({'type': 'stopped', 'who': who})
-        if not blockout and who != 'set' and final.get('sketch') and clean_client(data.get('context')).get('step') == 'script':
+        if not blockout and who != 'set' and final.get('sketch') and not final.get('lines') and clean_client(data.get('context')).get('step') == 'script':
             stream_blockout(final['sketch'], assistant, data, state, emit)
     except Exception as e:  # noqa: BLE001 - one member failing never ends the turn
         print('crew member failed:', who, repr(e), file=sys.stderr)
@@ -896,10 +970,25 @@ def with_partial(message, to, partial):
     return message
 
 
+SELECTION_ROUTES = {'rewrite': 'writer', 'check': 'historian'}
+
+
+def selection_question(sel):
+    if sel['action'] == 'rewrite':
+        return (f"Rewrite the selected text of the script{': ' + sel['how'] if sel['how'] else ''}. Answer with `lines` "
+                "(the full rewritten lines, same ids). Do not touch the rest of the scene.")
+    return 'Check the history in the selected text of the script: say in a few words what holds, what does not, and the correction.'
+
+
 def crew_stream(data, emit, state):
     message = str(data.get('message', ''))[:MAX_PROMPT].strip()
     assistant = CREW['assistants'].get(str(data.get('assistant'))) or next(iter(CREW['assistants'].values()))
     to = data.get('to')
+    sel = clean_selection(data.get('selection'))
+    if sel and sel['action'] in SELECTION_ROUTES:   # rewrite -> the writer, check -> the historian, straight away
+        who = SELECTION_ROUTES[sel['action']]
+        emit({'type': 'routed', 'who': who, 'ack': direct_ack(MEMBERS[who], message)})
+        return stream_member(MEMBERS[who], assistant, selection_question(sel), data, False, state, emit)
     if isinstance(to, str) and to in MEMBERS:
         emit({'type': 'routed', 'who': to, 'ack': direct_ack(MEMBERS[to], message)})
         question = with_partial(message, to, data.get('partial'))

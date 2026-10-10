@@ -10,6 +10,8 @@ import { applySettings, lessonPatch, readSettings, type Change } from './setting
 import { cleanChoices, scopeOf, type Scope } from './choices'
 import { blockoutCaption, captureBlockout } from './blockout'
 import { asCrew, buildContext, currentGreeting } from './context'
+import { replaceLines, replaceSceneLines, textOfLines, type NewLine, type Selection } from './scriptEdit'
+import { scenesInOrder } from '../lesson/tree'
 import { attachSketch, buildPartial, parseEvent, reduceLive, reviseLine, savedThoughts, upsertLine, splitLines, type CrewEvent, type LiveMap, type Turn } from './stream'
 
 export type AssistantId = keyof typeof CREW.assistants
@@ -26,12 +28,15 @@ function savedAssistant(): AssistantId {
   try { const v = localStorage.getItem(ASSISTANT_KEY); return v && v in ASSISTANTS ? (v as AssistantId) : 'sofie' } catch { return 'sofie' }
 }
 
+/** A proposed rewrite of selected script lines, waiting for Replace or Keep (this visit only, never saved). */
+export type Rewrite = { id: string; lesson: string; scene: string; lineIds: string[]; before: string; lines: NewLine[]; index: number }
+
 /** An undo belongs to one lesson and one scene: it only runs there (never over another scene's stage). */
 export type UndoEntry = { lesson: string; scene: string; run: () => Promise<void>; seq?: number }
 let undoSeq = 0
 /** partial: the draft of a member the client interrupted; the next send hands it back to them. */
-type State = { assistant: AssistantId; to: string | null; busy: boolean; error: string | null; undo: Record<number, UndoEntry>; live: LiveMap; partial: { who: string; text: string } | null; scope: Scope | null }
-let state: State = { assistant: savedAssistant(), to: null, busy: false, error: null, undo: {}, live: {}, partial: null, scope: null }
+type State = { assistant: AssistantId; to: string | null; busy: boolean; error: string | null; undo: Record<number, UndoEntry>; live: LiveMap; partial: { who: string; text: string } | null; scope: Scope | null; rewrites: Rewrite[] }
+let state: State = { assistant: savedAssistant(), to: null, busy: false, error: null, undo: {}, live: {}, partial: null, scope: null, rewrites: [] }
 const listeners = new Set<() => void>()
 const set = (patch: Partial<State>) => { state = { ...state, ...patch }; listeners.forEach((l) => l()) }
 const subscribe = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l) } }
@@ -82,8 +87,9 @@ async function applyAnswer(msg: any, scope: Scope | null): Promise<{ changes: st
   const { lesson, current } = L.getLesson()
   const doc = sceneIO().serialize()
   const title = lesson.title
+  const script = lesson.script
   let others: Record<string, any> = {} // the other scenes' docs before a whole-lesson restyle
-  const undo: UndoEntry = { lesson: lesson.id, scene: current, run: async () => { await sceneIO().load(doc); L.setTitle(title); L.restoreSceneDocs(others) } }
+  const undo: UndoEntry = { lesson: lesson.id, scene: current, run: async () => { await sceneIO().load(doc); L.setTitle(title); L.restoreSceneDocs(others); L.setScript(script) } }
   const changes: string[] = []
   try {
     if (Array.isArray(msg.settings) && msg.settings.length) {
@@ -97,6 +103,12 @@ async function applyAnswer(msg: any, scope: Scope | null): Promise<{ changes: st
       }
     }
     if (Array.isArray(msg.commands) && msg.commands.length) changes.push(...await animator().run(msg.commands))
+    const sceneLines = cleanNewLines(msg.scene?.lines)
+    if (sceneLines.length) {
+      const name = scenesInOrder(lesson.tree).find((s) => s.id === current)?.title ?? ''
+      L.setScript(replaceSceneLines(script ?? { type: 'doc', content: [] }, current, sceneLines, name))
+      changes.push(`Script: scene ${name || 'text'} written (${sceneLines.length} lines)`)
+    }
     if (typeof msg.title === 'string' && msg.title) {
       L.setTitle(msg.title)
       changes.push(`Lesson title: ${msg.title}`)
@@ -105,6 +117,11 @@ async function applyAnswer(msg: any, scope: Scope | null): Promise<{ changes: st
   } catch (err) {
     return { changes, undo, failed: err instanceof Error ? err.message : String(err) }
   }
+}
+
+/** The server's lines are untrusted: keep only well-shaped ones. */
+function cleanNewLines(raw: any): NewLine[] {
+  return (Array.isArray(raw) ? raw : []).flatMap((l: any) => (l && typeof l.text === 'string' && l.text.trim() ? [{ speaker: typeof l.speaker === 'string' && l.speaker.trim() ? l.speaker.trim() : null, text: l.text.trim() }] : []))
 }
 
 /** The newest line in this lesson and scene that can still be undone, or -1. Pure, so it can be tested. */
@@ -166,9 +183,10 @@ async function addBlockout(turn: Turn, who: string, text: string, lessonId: stri
 
 /** One final answer: apply it (unless the scene moved on), list the changes, keep the transcript.
  *  A revised answer (Marten's note) replaces the member's finished line of this turn in place. */
-async function commitMessage(msg: any, moved: boolean, turn: Turn, extra: Partial<CrewLine>): Promise<boolean> {
+async function commitMessage(msg: any, moved: boolean, turn: Turn, extra: Partial<CrewLine>, selected?: Selection | null): Promise<boolean> {
   const revised = msg.revised === true
-  const wants = !!(msg.settings?.length || msg.commands?.length || msg.title)
+  const wants = !!(msg.settings?.length || msg.commands?.length || msg.title || msg.scene?.lines?.length)
+  const rewrite = Array.isArray(msg.lines) && msg.lines.length && !moved ? cleanNewLines(msg.lines) : []
   const { lesson: startLesson, current: startScene } = L.getLesson()
   const r = wants && !moved ? await asCrew(() => applyAnswer(msg, msg.scope === 'lesson' ? 'lesson' : null)) : null
   const changes = r?.changes ?? []
@@ -177,7 +195,7 @@ async function commitMessage(msg: any, moved: boolean, turn: Turn, extra: Partia
   if (msg.dropped) changes.push(`${msg.dropped} unknown stage command(s) ignored`)
   const choices = cleanChoices(msg.choices)
   if (typeof msg.sketch === 'string' && msg.sketch.trim()) sketchOf.set(String(turn), msg.sketch.trim().slice(0, 300))
-  if (!msg.text && !changes.length && !choices) { // nothing to show: the "on it" line goes too
+  if (!msg.text && !changes.length && !choices && !rewrite.length) { // nothing to show: the "on it" line goes too
     const crew = L.getLesson().lesson.crew ?? []
     L.setCrew(crew.filter((l) => !(l.status === 'working' && l.who === String(msg.who) && l.turn === turn)))
     return false
@@ -202,6 +220,10 @@ async function commitMessage(msg: any, moved: boolean, turn: Turn, extra: Partia
     const entry: UndoEntry = prior ? { ...r.undo, run: async () => { await r.undo.run(); await prior.run() }, seq: ++undoSeq } : { ...r.undo, seq: ++undoSeq }
     set({ undo: { ...state.undo, [i]: entry } })
   }
+  if (rewrite.length && selected) {
+    const before = textOfLines(L.getLesson().lesson.script, selected.lineIds)
+    set({ rewrites: [...state.rewrites, { id: `${turn}:${msg.who}`, lesson: startLesson.id, scene: startScene, lineIds: selected.lineIds, before, lines: rewrite, index: i }] })
+  }
   if (msg.blockout === true && r && !r.failed && !moved && msg.commands?.length) void addBlockout(turn, String(msg.who), line.text, startLesson.id, startScene)
   return true
 }
@@ -223,8 +245,29 @@ export async function interrupt(who: string) {
 
 let streams = 0
 
+/** "Ask the crew" about a selection: it goes along with the client's next message. */
+let askSelection: Selection | null = null
+export const setAskSelection = (s: Selection | null) => { askSelection = s }
+
+/** Replace: the proposed lines go onto the script page for good (one Undo takes them back). */
+export function acceptRewrite(id: string) {
+  const rw = state.rewrites.find((r) => r.id === id)
+  if (!rw) return
+  set({ rewrites: state.rewrites.filter((r) => r.id !== id) })
+  const { lesson } = L.getLesson()
+  const script = lesson.script
+  const next = replaceLines(script, rw.lineIds, rw.lines)
+  if (lesson.id !== rw.lesson || next === script) { set({ error: 'Those lines changed or are gone, nothing was replaced' }); return }
+  L.setScript(next)
+  const lines = lesson.crew ?? []
+  L.setCrew(lines.map((l, i) => (i === rw.index ? { ...l, changes: [...(l.changes ?? []), `Script: ${rw.lineIds.length} line(s) rewritten`] } : l)))
+  set({ undo: { ...state.undo, [rw.index]: { lesson: rw.lesson, scene: rw.scene, run: async () => { L.setScript(script) }, seq: ++undoSeq } } })
+  void L.saveNow()
+}
+export const dismissRewrite = (id: string) => set({ rewrites: state.rewrites.filter((r) => r.id !== id) })
+
 /** Resolves false when the message could not be sent (the client's line is taken back so the draft can return). */
-export async function send(text: string, pick = false): Promise<boolean> {
+export async function send(text: string, pick = false, selection: Selection | null = askSelection): Promise<boolean> {
   const message = text.trim()
   if (!message) return true
   if ((state.busy && !state.partial) || L.getLesson().busy) return false
@@ -232,6 +275,7 @@ export async function send(text: string, pick = false): Promise<boolean> {
   const before = lesson.crew ?? []
   const mine = { who: 'client', text: message }
   const partial = state.partial
+  askSelection = null
   const scope = state.scope // a pick keeps it; a free-typed message ends it after this turn
   let answered = false
   let myTurn: CrewEvent['turn'] | null = null
@@ -247,7 +291,7 @@ export async function send(text: string, pick = false): Promise<boolean> {
     else if (ev.type === 'assistant') { if (ev.text.trim() || ev.choices) { answered = true; appendLine({ who: 'assistant', as: ev.as && ev.as in ASSISTANTS ? ev.as : state.assistant, text: ev.text, ...(ev.choices ? { choices: ev.choices } : {}) }) } }
     else if (ev.type === 'message') {
       const l = mineNow(ev.who)
-      if (await commitMessage(ev.msg, moved(), ev.turn, l ? savedThoughts(l) : {})) answered = true
+      if (await commitMessage(ev.msg, moved(), ev.turn, l ? savedThoughts(l) : {}, selection)) answered = true
       if (l) set({ live: withoutLive(ev.who) })
     } else if (ev.type === 'stopped' || (ev.type === 'error' && ev.who)) {
       const who = ev.who as string
@@ -267,7 +311,7 @@ export async function send(text: string, pick = false): Promise<boolean> {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        message, to: state.to, assistant: state.assistant, ...(scope ? { scope } : {}),
+        message, to: state.to, assistant: state.assistant, ...(scope ? { scope } : {}), ...(selection ? { selection } : {}),
         ...(partial ? { partial } : {}),
         history: [{ who: 'assistant', text: greeting() }, ...before].slice(-HISTORY)
           .map((l) => ({ who: `${speaker(l.who, l.as).name} (${speaker(l.who, l.as).role})`, text: l.text })),
