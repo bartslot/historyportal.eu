@@ -4,3 +4,4 @@ public/assets/sky/
 public/assets/clouds/
 node_modules/
 dist/
+__pycache__/
