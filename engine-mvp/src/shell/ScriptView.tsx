@@ -6,7 +6,6 @@ import { useEffect, useRef, useState } from 'react'
 import { EditorContent, useEditor, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
-import { Panel } from '../panels/Panel'
 import * as L from '../lesson/store'
 import * as TL from '../timeline/model'
 import { scenesInOrder } from '../lesson/tree'
@@ -43,7 +42,8 @@ function ToolButton({ label, onClick, pressed, disabled, children }: { label: st
   )
 }
 
-export function ScriptPanel() {
+/** The Script step: the document takes the stage's place (it stays mounted in the other steps, hidden). */
+export function ScriptView() {
   const { lesson } = L.useLesson()
   const emitted = useRef<unknown>(null)
   const saveTimer = useRef<number | undefined>(undefined)
@@ -170,9 +170,8 @@ export function ScriptPanel() {
   const speakers = [...new Set<string>((function collect(n: any): string[] { return [n.attrs?.speaker, ...(n.content ?? []).flatMap(collect)].filter(Boolean) })(lesson.script ?? {}))]
 
   return (
-    <Panel id="script">
-      <div className="flex shrink-0 flex-wrap items-center gap-1 border-b border-panel-hairline py-1.5 pl-3 pr-10">
-        <span className="mr-1 text-2xs font-semibold tracking-wide text-panel-title">Script</span>
+    <section aria-label="Script" hidden={L.stepOf(lesson) !== 'script'} className="absolute inset-0 z-10 flex flex-col bg-base-200">
+      <div className="mx-auto flex w-full max-w-3xl shrink-0 flex-wrap items-center gap-1 border-b border-panel-hairline px-4 py-1.5">
         <ToolButton label="Bold" pressed={editor?.isActive('bold')} onClick={() => editor?.chain().focus().toggleBold().run()}><b>B</b></ToolButton>
         <ToolButton label="Italic" pressed={editor?.isActive('italic')} onClick={() => editor?.chain().focus().toggleItalic().run()}><i>I</i></ToolButton>
         <ToolButton label="Subtitle: show this text on screen" pressed={editor?.isActive('subtitle')} onClick={() => editor?.chain().focus().toggleMark('subtitle').run()}>Subtitle</ToolButton>
@@ -190,10 +189,10 @@ export function ScriptPanel() {
           {reading ? 'Stop' : 'Read aloud'}
         </ToolButton>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-3">
-        <EditorContent editor={editor} />
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="mx-auto w-full max-w-3xl px-6 py-4"><EditorContent editor={editor} /></div>
       </div>
-    </Panel>
+    </section>
   )
 }
 

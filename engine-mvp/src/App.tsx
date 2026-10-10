@@ -1,6 +1,7 @@
 // The studio shell: the stage in the middle, every panel around it from ONE registry (src/panels).
 // Docked panels take their room from the stage as they slide in; overlays sit above it.
 import { useEffect } from 'react'
+import { stepOf, useLesson } from './lesson/store'
 import { isTypingTarget } from '@hp/ui/keyboard.js'
 import { panels } from './panels/store'
 import { CrewPanel } from './crew/CrewPanel'
@@ -9,8 +10,7 @@ import { Inspector } from './shell/Inspector'
 import { HelpPanel } from './shell/HelpPanel'
 import { Notes } from './shell/Notes'
 import { ObjectsPanel } from './shell/ObjectsPanel'
-import { ScenesPanel } from './shell/ScenesPanel'
-import { ScriptPanel, StageCaption } from './shell/ScriptPanel'
+import { ScriptView, StageCaption } from './shell/ScriptView'
 import { TopBar } from './shell/TopBar'
 
 function Stage() {
@@ -19,10 +19,19 @@ function Stage() {
       <canvas id="c" className="block h-full w-full outline-none" style={{ touchAction: 'none' }} />
       <div id="sel" className="pointer-events-none absolute left-3 top-3 rounded px-2 py-1 text-xs text-panel-value" />
       <StageCaption />
+      <ScriptView />
       <Notes />
       <HelpPanel />
     </main>
   )
+}
+
+/** Entering a step arranges its panels (one per side at most; the canvas keeps the rest). Renders nothing:
+ *  only this component listens to the lesson, so typing in the script does not re-render the studio. */
+function StepLayout() {
+  const step = stepOf(useLesson().lesson)
+  useEffect(() => { panels.layoutFor(step) }, [step])
+  return null
 }
 
 export function App() {
@@ -39,15 +48,14 @@ export function App() {
   return (
     <div className="studio grid h-dvh bg-base-200 text-panel-value"
          style={{
-           gridTemplateColumns: 'auto auto minmax(0, 1fr) auto auto auto',
+           gridTemplateColumns: 'auto minmax(0, 1fr) auto auto',
            gridTemplateRows: '3rem minmax(0, 1fr) auto',
-           gridTemplateAreas: '"top top top top top top" "scenes objects stage script inspector crew" "scenes dock dock script inspector crew"',
+           gridTemplateAreas: '"top top top top" "objects stage inspector crew" "dock dock dock dock"',
          }}>
+      <StepLayout />
       <TopBar />
-      <ScenesPanel />
       <ObjectsPanel />
       <Stage />
-      <ScriptPanel />
       <Inspector />
       <CrewPanel />
       <Dock />
