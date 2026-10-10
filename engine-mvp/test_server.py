@@ -34,6 +34,26 @@ assert 'What the client is doing right now' not in s.context({'message': 'hi'})
 assert 'SELECTED object' in s.SHARED
 print('client context ok')
 
+# ---- choices: untrusted model output ----
+opt = lambda l, r=False, w='because': {'label': l, 'why': w, 'recommended': r}
+ch = s.clean_choices({'question': 'Q' * 300, 'scope': True, 'options': [opt('A'), opt('B', True, 'w' * 500), opt('C', True), opt('D'), opt('E'), opt('L' * 90, False)]})
+assert len(ch['question']) == 200 and ch['scope'] is True and len(ch['options']) == 4, 'capped at 4'
+assert ch['options'][0]['label'] == 'B' and ch['options'][0]['recommended'] and len(ch['options'][0]['why']) == 200, 'recommended moves first'
+assert [o['recommended'] for o in ch['options']] == [True, False, False, False], 'only the first recommended survives'
+assert s.clean_choices({'question': 'q', 'options': [opt('A'), opt('B')]}) == {'question': 'q', 'options': [opt('A'), opt('B')]}, 'no scope key unless True'
+assert 'scope' not in s.clean_choices({'question': 'q', 'scope': 'yes', 'options': [opt('A'), opt('B')]})
+assert len(s.clean_choices({'question': 'q', 'options': [opt('L' * 90), opt('B')]})['options'][0]['label']) == 60
+for junk in (None, 'x', [], {}, {'question': 'q', 'options': [opt('A')]}, {'question': '', 'options': [opt('A'), opt('B')]},
+             {'question': 'q', 'options': [opt(''), 5, None, opt('A')]}, {'question': 'q', 'options': 'AB'}):
+    assert s.clean_choices(junk) is None, junk
+assert s.clean_choices({'question': 'q', 'options': [opt('A'), 'junk', opt('B', 'yes')]})['options'][1]['recommended'] is False
+assert s.clean_scope({'scope': 'lesson'}) == 'lesson' and s.clean_scope({'scope': 'all'}) is None and s.clean_scope({'scope': ['lesson']}) is None
+assert 'Scope chosen by the client: whole lesson.' in s.context({'scope': 'lesson'}) and 'Scope chosen' not in s.context({'scope': 'x'})
+m = s.finish_member(s.MEMBERS['set'], {'reply': 'r', 'choices': {'question': 'q', 'options': [opt('A'), opt('B', True)]}}, {'scope': 'scene'}, False)
+assert m['choices']['options'][0]['label'] == 'B' and m['scope'] == 'scene'
+assert 'choices' not in s.finish_member(s.MEMBERS['set'], {'reply': 'r', 'choices': 'junk'}, {}, False)
+print('choices guards ok')
+
 # ---- claude CLI, schemas, skills, JEV: all offline ----
 import os
 import pathlib
@@ -52,6 +72,8 @@ def strict(sch):
 
 for sch in (s.ROUTER_SCHEMA, s.STAGE_SCHEMA, s.STAGE_SCHEMA_NO_TITLE, s.TALK_SCHEMA, s.TALK_SCHEMA_WRITER):
     strict(sch)
+    assert 'choices' in sch['properties'] and 'choices' not in sch['required'], 'choices are optional everywhere'
+assert set(s.ROUTER_SCHEMA['properties']['choices']['properties']) == {'question', 'options', 'scope'}
 assert 'title' not in s.member_schema(s.MEMBERS['set'], False)['properties']
 assert 'title' in s.member_schema(s.MEMBERS['writer'], False)['properties']
 assert 'settings' not in s.member_schema(s.MEMBERS['director'], True)['properties']
@@ -180,3 +202,40 @@ c3, r3 = post('/crew/stop', {'turn': 'nope'})
 assert r3.status == 404
 srv.shutdown()
 print('stop ok:', seen + rest)
+
+# ---- choices flow through the stream (fake claude) ----
+CH = {"question": "Voor de hele les of alleen deze scene?", "scope": True,
+      "options": [{"label": "Deze scene", "why": "x", "recommended": False},
+                  {"label": "Hele les", "why": "Een kleurkeuze draagt het verhaal.", "recommended": True},
+                  {"label": "Derde", "why": "", "recommended": True}]}
+fake_ch = tmp / 'choiceclaude'
+fake_ch.write_text('''#!/usr/bin/env python3
+import sys, json
+sys.stdin.read()
+CH = json.loads(%r)
+if "stream-json" not in sys.argv:
+    print(json.dumps({"is_error": False, "result": "{}", "structured_output": {"reply": "Eerst even weten.", "choices": CH, "ask": [
+        {"crew": "set", "question": "q", "ack": "Ik kijk."}]}}))
+else:
+    print(json.dumps({"type": "result", "is_error": False, "result": "{}", "structured_output": {
+        "reply": "Kies een look.", "choices": CH, "settings": [], "commands": []}}))
+''' % json.dumps(CH))
+fake_ch.chmod(fake_ch.stat().st_mode | stat.S_IEXEC)
+s.CLAUDE_BIN = str(fake_ch)
+srv = ThreadingHTTPServer(('127.0.0.1', 0), s.Handler)
+threading.Thread(target=srv.serve_forever, daemon=True).start()
+PORT = srv.server_address[1]
+want = [{"label": "Hele les", "why": "Een kleurkeuze draagt het verhaal.", "recommended": True},
+        {"label": "Deze scene", "why": "x", "recommended": False}, {"label": "Derde", "why": "", "recommended": False}]
+c, r = post('/crew/stream', {'message': 'Kunnen we andere kleuren proberen?', 'settings': []})   # router asks the scope itself
+evs = list(events(r))
+a = next(e for e in evs if e['type'] == 'assistant')
+assert a['choices']['options'] == want and a['choices']['scope'] is True, a
+assert not [e for e in evs if e['type'] in ('routed', 'start', 'message')], 'the client decides before anyone is asked'
+c, r = post('/crew/stream', {'message': 'Hele les', 'to': 'set', 'scope': 'lesson', 'settings': []})   # a member offers options
+msg = next(e for e in list(events(r)) if e['type'] == 'message')
+assert msg['choices']['options'] == want and msg['scope'] == 'lesson', msg
+c, r = post('/crew', {'message': 'Kunnen we andere kleuren proberen?', 'settings': []})
+assert json.loads(r.read())['messages'][0]['choices']['options'] == want
+srv.shutdown()
+print('choices stream ok')

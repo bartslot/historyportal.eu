@@ -168,8 +168,16 @@ def _obj(props, required):
 
 
 _REPLY = {'type': 'string'}
+# optional in every answer: a decision that is the client's (docs/crew-stream.md "Choices"); clean_choices() guards it
+_CHOICES = _obj({
+    'question': {'type': 'string'},
+    'options': {'type': 'array', 'items': _obj({'label': {'type': 'string'}, 'why': {'type': 'string'},
+                                                'recommended': {'type': 'boolean'}}, ['label', 'why', 'recommended'])},
+    'scope': {'type': 'boolean'},
+}, ['question', 'options'])
 ROUTER_SCHEMA = _obj({
     'reply': _REPLY,
+    'choices': _CHOICES,
     'ask': {'type': 'array', 'items': _obj({'crew': {'type': 'string'}, 'question': {'type': 'string'},
                                             'ack': {'type': 'string'}}, ['crew', 'question', 'ack'])},
 }, ['reply', 'ask'])
@@ -177,12 +185,12 @@ _TITLE = {'type': 'string'}
 _SETTINGS = {'type': 'array', 'items': _obj({'id': {'type': 'string'},
                                               'value': {'type': ['number', 'boolean', 'string']}}, ['id', 'value'])}
 _COMMANDS = {'type': 'array', 'items': {'type': 'object'}}   # free objects: validate() decides what survives
-STAGE_SCHEMA = _obj({'reply': _REPLY, 'settings': _SETTINGS, 'commands': _COMMANDS, 'title': _TITLE},
+STAGE_SCHEMA = _obj({'reply': _REPLY, 'choices': _CHOICES, 'settings': _SETTINGS, 'commands': _COMMANDS, 'title': _TITLE},
                     ['reply', 'settings', 'commands'])
 STAGE_SCHEMA_NO_TITLE = _obj({k: v for k, v in STAGE_SCHEMA['properties'].items() if k != 'title'},
                              ['reply', 'settings', 'commands'])
-TALK_SCHEMA = _obj({'reply': _REPLY}, ['reply'])
-TALK_SCHEMA_WRITER = _obj({'reply': _REPLY, 'title': _TITLE}, ['reply'])
+TALK_SCHEMA = _obj({'reply': _REPLY, 'choices': _CHOICES}, ['reply'])
+TALK_SCHEMA_WRITER = _obj({'reply': _REPLY, 'choices': _CHOICES, 'title': _TITLE}, ['reply'])
 
 
 def member_schema(m, direct):
@@ -237,13 +245,25 @@ greetings, no compliments, no introducing yourself unless asked. Plain text, no 
 no bullets with *); at most 120 words.
 Never present an invented event as history: say plainly which parts are made up.
 Your own voice is flavour, never a code: plain words a teacher understands at once, no jargon, and never end
-with a question tag like "Copy?", "Over." or "Roger?".
+with a question tag like "Copy?", "Over." or "Roger?". No theatre or film jargon either ("plaatsen verdelen", "cue", "places").
 ALWAYS write in the language of the client's last message (Dutch in, Dutch out), whatever language the
 rest of this prompt or the conversation is in. Talk about THIS lesson only; examples below are about other
 lessons and only show the tone: never repeat them.
 When the client says this, dit, hier, deze, that or "it" without naming something, they mean the SELECTED object,
 else the current scene (see "What the client is doing right now"). Use what they just did to understand the
-request; do not recite that context back to them."""
+request; do not recite that context back to them.
+DECISIONS THAT ARE THE CLIENT'S: when the next step is a choice that belongs to the client (a style, mood, colour or
+look; which angle or story; which character; the length; what to cut), do not guess and do not ask an open question.
+Return "choices": {"question": "<short question>", "options": [{"label": "<2-5 words>", "why": "<one short sentence>",
+"recommended": true|false}]} with 2 to 4 concrete options. Exactly ONE option is recommended and it comes first; its
+"why" is grounded in THIS lesson (its script, period, the age of the class, what they are doing right now), in one
+short sentence, in your own voice and the client's language. For looks, options differ in MOOD and the
+recommendation follows the emotional tone of the script (a dark period asks for a darker, moodier look). Give the other options a short "why" too. Keep "reply"
+to one short lead-in sentence and change nothing yet: wait for the pick.
+RESTYLING (look, colours, palette, style, time of day, mood) ALWAYS starts by asking the scope: choices with
+"scope": true and exactly the two options "Whole lesson" and "This scene" (translated to the client's language), unless
+the context says "Scope chosen by the client" or the client already said it. With the scope known, ask the look
+choices; once the client picked an option, act on it."""
 
 
 def roster(assistant):
@@ -288,10 +308,15 @@ How you decide:
 - A question or request for one specialist: ask that one. Facts and sources: historian. Story, angle, script:
   writer. Age, words, outcomes, quiz: learning. Jokes: comedian. Voices, how lines are said, characters moving:
   actors. The stage, objects, sky, light, look, town: set.
+- RESTYLING (look, colours, palette, style, time of day, mood, "andere kleuren"): if the context has no "Scope chosen
+  by the client", YOU ask the scope now: "ask" is [] and "choices" is the scope question ("scope": true, options
+  "Whole lesson" / "This scene", recommend the one that fits what they are doing). With the scope known, ask set and
+  put the scope in your question to them; set then offers the look options. The lesson script is in "Lesson" above:
+  use it for any recommendation you make.
 - At most {MAX_ASKS} crew members per turn. The director only when the client asks for a review of the result
   or says the lesson is finished.
 - If the client just chats or thanks you, answer yourself and ask no one.
-Answer ONLY with JSON: {{"reply": "<what you tell the client>", "ask": [{{"crew": "<id>", "question": "<what you ask them, with the client's context>", "ack": "<that member's one-line 'on it' bubble>"}}]}}
+Answer ONLY with JSON: {{"reply": "<what you tell the client>", "choices": <optional, see DECISIONS THAT ARE THE CLIENT'S>, "ask": [{{"crew": "<id>", "question": "<what you ask them, with the client's context>", "ack": "<that member's one-line 'on it' bubble>"}}]}}
 "ack" is written in THAT member's own voice, first person, in the client's language, at most 12 words, and says
 what they are about to do (e.g. "Ik zoek de data even op."). "ask" is [] when you ask no one.{tasks_and_skills(CREW.get('assistant_tasks'), [])}"""
 
@@ -310,10 +335,10 @@ def member_prompt(m, assistant, direct=False):
     title = TITLE_RULE if m['id'] == 'writer' else ''
     if m.get('reviews_only'):
         powers = 'You do NOT change anything yourself. Give notes, each to one crew member by name, with one reason.'
-        fmt = '{"reply": "<your notes to the client>"}'
+        fmt = '{"reply": "<your notes to the client>", "choices": <optional, see DECISIONS>}'
     elif not may_change(m, direct):
         powers = f'You do not change the stage or settings: that is for set and actors. {title}'
-        fmt = '{"reply": "<to the client, in your own voice>"' + (', "title": "<only to rename the lesson>"}' if title else '}')
+        fmt = '{"reply": "<to the client, in your own voice>", "choices": <optional, see DECISIONS>' + (', "title": "<only to rename the lesson>"}' if title else '}')
     else:
         powers = f"""You can change every studio setting and the stage, like the client can by hand. Change what the
 request needs, nothing more. Every change is shown to the client and can be undone.
@@ -321,7 +346,7 @@ Settings: the list "settings" below (id, label, type, range or options, current 
 {{"id": "<id>", "value": <number | true/false | option value>}}. {title}
 The stage, with scene commands:
 {SCENE_RULES}"""
-        fmt = ('{"reply": "<to the client, in your own voice>", "settings": [ {"id": "<id>", "value": <value>} ], "commands": [ ... ]'
+        fmt = ('{"reply": "<to the client, in your own voice>", "choices": <optional, see DECISIONS>, "settings": [ {"id": "<id>", "value": <value>} ], "commands": [ ... ]'
                + (', "title": "<only to rename the lesson>"}' if title else '}'))
     return f"""{SHARED}
 
@@ -366,6 +391,35 @@ def _txt(v, n):
 
 def _num(v):
     return round(float(v), 2) if isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) else None
+
+
+MAX_OPTIONS = 4
+SCOPES = {'lesson': 'whole lesson', 'scene': 'this scene'}
+
+
+def clean_scope(data):
+    """'lesson' | 'scene' from the request body, else None."""
+    v = data.get('scope')
+    return v if isinstance(v, str) and v in SCOPES else None
+
+
+def clean_choices(raw):
+    """Model output is untrusted: a capped, well-formed `choices` or None. 2-4 options with a label, at most one
+    recommended (the first one flagged wins and moves first), `scope: true` kept only as a real True."""
+    if not isinstance(raw, dict):
+        return None
+    question = _txt(raw.get('question'), 200)
+    opts = [{'label': _txt(o.get('label'), 60), 'why': _txt(o.get('why'), 200), 'recommended': o.get('recommended') is True}
+            for o in (raw.get('options') if isinstance(raw.get('options'), list) else []) if isinstance(o, dict)]
+    opts = [o for o in opts if o['label']]
+    star = next((i for i, o in enumerate(opts) if o['recommended']), None)
+    opts = [{**o, 'recommended': i == star} for i, o in enumerate(opts)]
+    if star:
+        opts.insert(0, opts.pop(star))
+    opts = opts[:MAX_OPTIONS]
+    if not question or len(opts) < 2:
+        return None
+    return {'question': question, 'options': opts, **({'scope': True} if raw.get('scope') is True else {})}
 
 
 def clean_client(raw):
@@ -422,7 +476,8 @@ def context(data):
     lesson = data.get('lesson', {}) if isinstance(data.get('lesson'), dict) else {}
     return (f"Lesson: {json.dumps(lesson)[:2000]}\nConversation so far:\n{talk or '(none)'}\n"
             f"Settings: {json.dumps(data.get('settings', []))[:12000]}\nStage: {json.dumps(data.get('scene', {}))[:12000]}"
-            + (f"\n{block}" if (block := client_block(data.get('context'))) else ''))
+            + (f"\n{block}" if (block := client_block(data.get('context'))) else '')
+            + (f"\nScope chosen by the client: {SCOPES[scope]}." if (scope := clean_scope(data)) else ''))
 
 
 def jev_score(resp):
@@ -490,6 +545,10 @@ def member_request(m, assistant, question, data, direct):
 def finish_member(m, answer, data, direct):
     """The member's raw structured answer -> the guarded message (title, settings, commands)."""
     msg = {'who': m['id'], 'text': str(answer.get('reply', ''))[:MAX_REPLY]}
+    if choices := clean_choices(answer.get('choices')):
+        msg['choices'] = choices
+    if scope := clean_scope(data):
+        msg['scope'] = scope
     title = str(answer.get('title') or '').strip()[:80]
     if title and m['id'] == 'writer' and title_open(data):
         msg['title'] = title
@@ -543,8 +602,9 @@ def crew_turn(data):
         return [ask_member(MEMBERS[to], assistant, message, data, direct=True)]
     plan = ask_claude(ROUTER_MODEL, router_prompt(assistant), context(data) + '\n\nClient: ' + message,
                       ROUTER_SCHEMA, ROUTER_EFFORT)
-    out = [{'who': 'assistant', 'text': str(plan.get('reply', ''))[:800]}]
-    asks = plan.get('ask') if isinstance(plan.get('ask'), list) else []
+    choices = clean_choices(plan.get('choices'))
+    out = [{'who': 'assistant', 'text': str(plan.get('reply', ''))[:800], **({'choices': choices} if choices else {})}]
+    asks = [] if choices else plan.get('ask') if isinstance(plan.get('ask'), list) else []   # the client decides first
     asks = [a for a in asks if isinstance(a, dict) and isinstance(a.get('crew'), str) and a['crew'] in MEMBERS][:MAX_ASKS]
     if asks:   # parallel; map keeps the order of the asks
         with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_ASKS) as pool:
@@ -752,8 +812,10 @@ def crew_stream(data, emit, state):
         return stream_member(MEMBERS[to], assistant, question, data, True, state, emit)
     plan = ask_claude(ROUTER_MODEL, router_prompt(assistant), context(data) + '\n\nClient: ' + message,
                       ROUTER_SCHEMA, ROUTER_EFFORT)
-    emit({'type': 'assistant', 'as': assistant['name'], 'text': str(plan.get('reply', ''))[:800]})
-    asks = plan.get('ask') if isinstance(plan.get('ask'), list) else []
+    choices = clean_choices(plan.get('choices'))
+    emit({'type': 'assistant', 'as': assistant['name'], 'text': str(plan.get('reply', ''))[:800],
+          **({'choices': choices} if choices else {})})
+    asks = [] if choices else plan.get('ask') if isinstance(plan.get('ask'), list) else []   # the client decides first
     asks = [a for a in asks if isinstance(a, dict) and isinstance(a.get('crew'), str) and a['crew'] in MEMBERS][:MAX_ASKS]
     for a in asks:
         emit({'type': 'routed', 'who': a['crew'], 'ack': str(a.get('ack') or direct_ack(MEMBERS[a['crew']], message))[:200]})

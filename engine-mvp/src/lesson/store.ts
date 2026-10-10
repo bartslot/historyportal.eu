@@ -5,6 +5,7 @@
 import { useSyncExternalStore } from 'react'
 import { idbGet, idbPut } from './idb'
 import * as Tree from './tree'
+import { sweepInterrupted } from '../crew/stream'
 
 export const LESSON_VERSION = 1
 const KEY = 'current'
@@ -14,7 +15,7 @@ const THUMB_EVERY = 3
 
 export type SceneEntry = { doc: any | null; thumb: string | null }
 /** One line of the crew chat, kept with the lesson (src/crew). */
-export type CrewLine = { who: string; as?: string; text: string; changes?: string[]; jev?: { score: number; choice: string }; review?: { who: string; text: string }; thoughts?: string; draft?: string; stopped?: boolean; error?: string }
+export type CrewLine = { who: string; as?: string; text: string; changes?: string[]; jev?: { score: number; choice: string }; review?: { who: string; text: string }; thoughts?: string; draft?: string; stopped?: boolean; error?: string; turn?: string | number; status?: 'working'; interrupted?: boolean }
 export type Lesson = { version: number; id: string; title: string; tree: Tree.TreeNode[]; scenes: Record<string, SceneEntry>; script: any | null; crew?: CrewLine[] }
 type State = { lesson: Lesson; current: string; busy: boolean; saved: 'saved' | 'saving' | 'unsaved'; error: string | null }
 
@@ -166,7 +167,7 @@ export async function initLesson() {
     if (saved) {
       const lesson = checkLesson(saved.lesson)
       const current = lesson.scenes[saved.current] ? saved.current : Tree.scenesInOrder(lesson.tree)[0].id
-      set({ lesson, current })
+      set({ lesson: lesson.crew ? { ...lesson, crew: sweepInterrupted(lesson.crew) } : lesson, current })
       await loadScene(current)
     }
   } catch (err) {

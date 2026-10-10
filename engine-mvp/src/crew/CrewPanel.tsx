@@ -5,7 +5,8 @@ import { Panel } from '../panels/Panel'
 import { SettingsSection } from '../ui/kit'
 import * as L from '../lesson/store'
 import type { CrewLine } from '../lesson/store'
-import { ASSISTANTS, ASSISTANT_TASKS, MEMBERS, chooseAssistant, greeting, interrupt, send, speaker, stopAll, stopMember, talkTo, undo, undoFor, useCrew, type AssistantId } from './store'
+import { noteCardOpened, useLiveContext } from './context'
+import { ASSISTANTS, ASSISTANT_TASKS, MEMBERS, chooseAssistant, interrupt, send, speaker, stopAll, stopMember, talkTo, undo, undoFor, useCrew, type AssistantId } from './store'
 import type { Live } from './stream'
 
 const X_MARK = 'M6 18 18 6M6 6l12 12'
@@ -116,10 +117,11 @@ function Card({ id, onClose, onAsk }: { id: string; onClose: () => void; onAsk: 
 
 const jevTone = (s: number) => (s >= 0.8 ? 'badge-success' : s >= 0.5 ? 'badge-warning' : 'badge-error')
 
-function Line({ index, who, as, text, changes, jev, review, thoughts, draft, stopped, error }: { index: number; who: string; as?: string; text: string; changes?: string[]; jev?: CrewLine['jev']; review?: CrewLine['review']; thoughts?: string; draft?: string; stopped?: boolean; error?: string }) {
+function Line({ index, who, as, text, changes, jev, review, thoughts, draft, stopped, error, status, interrupted }: { index: number; who: string; as?: string; text: string; changes?: string[]; jev?: CrewLine['jev']; review?: CrewLine['review']; thoughts?: string; draft?: string; stopped?: boolean; error?: string; status?: 'working'; interrupted?: boolean; turn?: string | number }) {
   useCrew()
   L.useLesson() // the Undo shows only while this line's scene is open
   const canUndo = !!undoFor(index)
+  if (status === 'working') return null // shown live, as a working bubble
   if (who === 'client') {
     return <p className="ml-8 self-end whitespace-pre-wrap rounded-lg bg-base-100 px-3 py-2 text-xs text-panel-value">{text}</p>
   }
@@ -131,6 +133,7 @@ function Line({ index, who, as, text, changes, jev, review, thoughts, draft, sto
         <p className="text-3xs font-semibold uppercase tracking-wide text-panel-label">{name} · {role}</p>
         {text && <p className="whitespace-pre-wrap text-xs text-panel-value">{text}</p>}
         {stopped && <p className="text-xs text-panel-label">Stopped</p>}
+        {interrupted && <p className="text-xs text-panel-label">Interrupted (page reloaded)</p>}
         {error && <p role="alert" className="text-xs text-error">{error}</p>}
         {jev && (
           <span className={`badge badge-xs mt-1 ${jevTone(jev.score)}`} data-tooltip="JEV: chance every historical claim holds">JEV {jev.score.toFixed(2)}</span>
@@ -173,7 +176,8 @@ export function CrewPanel() {
   const [draft, setDraft] = useState('')
   const [open, setOpen] = useState<Record<string, boolean>>({})
   const working = Object.entries(crew.live).filter(([, l]) => l.status === 'working')
-  const toggle = (who: string) => setOpen((o) => ({ ...o, [who]: !o[who] }))
+  const key = (who: string) => `${crew.live[who]?.turn ?? ''}:${who}` // open state belongs to one bubble: a new turn starts closed
+  const toggle = (who: string) => setOpen((o) => ({ ...o, [key(who)]: !o[key(who)] }))
   const log = useRef<HTMLDivElement>(null)
   const box = useRef<HTMLTextAreaElement>(null)
   useEffect(() => {
@@ -182,6 +186,8 @@ export function CrewPanel() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [card])
+  const live = useLiveContext(crew.assistant)
+  useEffect(() => { if (card) noteCardOpened(speaker(card).name) }, [card])
   useEffect(() => { log.current?.scrollTo({ top: log.current.scrollHeight }) }, [lines.length, crew.busy, working.length])
   const to = crew.to ? speaker(crew.to).name : null
   const submit = () => { const t = draft; setDraft(''); void send(t).then((ok) => { if (!ok) setDraft((d) => d || t) }) }
@@ -209,10 +215,10 @@ export function CrewPanel() {
       {card && <Card id={card} onClose={() => setCard(null)} onAsk={() => box.current?.focus()} />}
 
       <div ref={log} className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto border-t border-panel-hairline px-4 py-3" aria-live="polite">
-        <Line index={-1} who="assistant" text={greeting()} />
+        <Line index={-1} who="assistant" text={live.greeting} />
         {lines.map((l, i) => <Line key={i} index={i} {...l} />)}
         {working.map(([who, l]) => (
-          <WorkingBubble key={who} who={who} live={l} open={!!open[who]} onToggle={() => toggle(who)}
+          <WorkingBubble key={who} who={who} live={l} open={!!open[key(who)]} onToggle={() => toggle(who)}
                          onTalk={() => { void interrupt(who); box.current?.focus() }} />
         ))}
         {crew.busy && !working.length && <p className="text-xs text-panel-label">{to ?? speaker('assistant').name} is on it…</p>}
@@ -220,6 +226,10 @@ export function CrewPanel() {
       </div>
 
       <div className="flex flex-col gap-2 border-t border-panel-hairline px-4 py-3">
+        <p className="flex min-w-0 items-baseline gap-2" data-tooltip={live.tip}>
+          <span className="text-3xs font-semibold uppercase tracking-wide text-panel-label">Sees</span>
+          <span className="truncate text-xs text-panel-value">{live.sees}</span>
+        </p>
         {to && (
           <span className="badge badge-sm gap-1 self-start">
             To {to}

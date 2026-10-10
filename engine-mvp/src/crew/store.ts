@@ -7,7 +7,8 @@ import * as L from '../lesson/store'
 import type { CrewLine } from '../lesson/store'
 import CREW from './crew.json'
 import { applySettings, readSettings, type Change } from './settings'
-import { parseEvent, reduceLive, savedThoughts, splitLines, type CrewEvent, type LiveMap } from './stream'
+import { asCrew, buildContext, currentGreeting } from './context'
+import { buildPartial, parseEvent, reduceLive, savedThoughts, upsertLine, splitLines, type CrewEvent, type LiveMap, type Turn } from './stream'
 
 export type AssistantId = keyof typeof CREW.assistants
 export type Member = (typeof CREW.crew)[number]
@@ -24,7 +25,8 @@ function savedAssistant(): AssistantId {
 }
 
 /** An undo belongs to one lesson and one scene: it only runs there (never over another scene's stage). */
-export type UndoEntry = { lesson: string; scene: string; run: () => Promise<void> }
+export type UndoEntry = { lesson: string; scene: string; run: () => Promise<void>; seq?: number }
+let undoSeq = 0
 /** partial: the draft of a member the client interrupted; the next send hands it back to them. */
 type State = { assistant: AssistantId; to: string | null; busy: boolean; error: string | null; undo: Record<number, UndoEntry>; live: LiveMap; partial: { who: string; text: string } | null }
 let state: State = { assistant: savedAssistant(), to: null, busy: false, error: null, undo: {}, live: {}, partial: null }
@@ -50,10 +52,7 @@ export function cleanReview(v: any): { who: string; text: string } | undefined {
   return v && typeof v.who === 'string' && typeof v.text === 'string' && v.text.trim() ? { who: v.who, text: v.text } : undefined
 }
 
-export function greeting(): string {
-  const a = ASSISTANTS[state.assistant]
-  return `Hello, I'm ${a.name}, your set assistant. What kind of lesson or story do you want to make? Tell me the topic, the age of your class, and whether it should be a story or a game.`
-}
+export const greeting = (): string => currentGreeting(state.assistant)
 
 export function chooseAssistant(id: AssistantId) {
   try { localStorage.setItem(ASSISTANT_KEY, id) } catch { /* private window: this visit only */ }
@@ -98,7 +97,9 @@ async function applyAnswer(msg: any): Promise<{ changes: string[]; undo: UndoEnt
 
 /** The newest line in this lesson and scene that can still be undone, or -1. Pure, so it can be tested. */
 export function latestUndoable(entries: Record<number, UndoEntry>, lesson: string, scene: string): number {
-  return Math.max(-1, ...Object.entries(entries).filter(([, u]) => u.lesson === lesson && u.scene === scene).map(([i]) => Number(i)))
+  // newest = last applied (seq), not last in the list: a line is updated in place when its member finishes
+  const mine = Object.entries(entries).filter(([, u]) => u.lesson === lesson && u.scene === scene)
+  return mine.reduce((best, [i, u]) => ((u.seq ?? Number(i)) >= best.seq ? { seq: u.seq ?? Number(i), i: Number(i) } : best), { seq: -1, i: -1 }).i
 }
 
 /** The Undo on a line: a stack, so only the most recent undoable line of the open lesson and scene has one
@@ -124,21 +125,32 @@ export async function undo(index: number) {
 }
 
 const withoutLive = (who: string): LiveMap => { const { [who]: _gone, ...rest } = state.live; return rest }
-const appendLine = (line: CrewLine) => { const out = [...(L.getLesson().lesson.crew ?? []), line]; L.setCrew(out); return out.length - 1 }
+/** Saved at once, so a reload right after still finds it. */
+const putLine = (turn: Turn | null, line: CrewLine) => {
+  const r = upsertLine(L.getLesson().lesson.crew ?? [], turn, line)
+  L.setCrew(r.lines)
+  void L.saveNow()
+  return r.index
+}
+const appendLine = (line: CrewLine) => putLine(null, line)
 
 /** One final answer: apply it (unless the scene moved on), list the changes, keep the transcript. */
-async function commitMessage(msg: any, moved: boolean, extra: Partial<CrewLine>): Promise<boolean> {
+async function commitMessage(msg: any, moved: boolean, turn: Turn, extra: Partial<CrewLine>): Promise<boolean> {
   const wants = !!(msg.settings?.length || msg.commands?.length || msg.title)
-  const r = wants && !moved ? await applyAnswer(msg) : null
+  const r = wants && !moved ? await asCrew(() => applyAnswer(msg)) : null
   const changes = r?.changes ?? []
   if (wants && moved) changes.push('Not applied: the scene changed while the crew was answering')
   if (r?.failed) changes.push('Stopped halfway: ' + r.failed)
   if (msg.dropped) changes.push(`${msg.dropped} unknown stage command(s) ignored`)
-  if (!msg.text && !changes.length) return false
+  if (!msg.text && !changes.length) { // nothing to show: the "on it" line goes too
+    const crew = L.getLesson().lesson.crew ?? []
+    L.setCrew(crew.filter((l) => !(l.status === 'working' && l.who === String(msg.who) && l.turn === turn)))
+    return false
+  }
   const jev = cleanJev(msg.jev)
   const review = cleanReview(msg.review)
-  const i = appendLine({ who: String(msg.who), ...(msg.who === 'assistant' ? { as: state.assistant } : {}), text: String(msg.text ?? ''), ...(changes.length ? { changes } : {}), ...(jev ? { jev } : {}), ...(review ? { review } : {}), ...extra })
-  if (r && (r.changes.length || r.failed)) set({ undo: { ...state.undo, [i]: r.undo } })
+  const i = putLine(turn, { who: String(msg.who), ...(msg.who === 'assistant' ? { as: state.assistant } : {}), text: String(msg.text ?? ''), ...(changes.length ? { changes } : {}), ...(jev ? { jev } : {}), ...(review ? { review } : {}), ...extra })
+  if (r && (r.changes.length || r.failed)) set({ undo: { ...state.undo, [i]: { ...r.undo, seq: ++undoSeq } } })
   return true
 }
 
@@ -152,9 +164,9 @@ export function stopAll() {
 export async function interrupt(who: string) {
   const l = state.live[who]
   if (l?.status !== 'working') return
-  const draft = l.draft
+  const partial = buildPartial(who, l)
   await stopMember(who)
-  set({ to: who, partial: { who, text: draft } })
+  set({ to: who, partial })
 }
 
 let streams = 0
@@ -171,6 +183,7 @@ export async function send(text: string): Promise<boolean> {
   let answered = false
   let myTurn: CrewEvent['turn'] | null = null
   L.setCrew([...before, mine])
+  void L.saveNow()
   streams++
   set({ busy: true, error: null, partial: null })
   const handle = async (ev: CrewEvent) => {
@@ -181,18 +194,18 @@ export async function send(text: string): Promise<boolean> {
     else if (ev.type === 'assistant') { if (ev.text.trim()) { answered = true; appendLine({ who: 'assistant', as: ev.as && ev.as in ASSISTANTS ? ev.as : state.assistant, text: ev.text }) } }
     else if (ev.type === 'message') {
       const l = mineNow(ev.who)
-      if (await commitMessage(ev.msg, moved(), l ? savedThoughts(l) : {})) answered = true
+      if (await commitMessage(ev.msg, moved(), ev.turn, l ? savedThoughts(l) : {})) answered = true
       if (l) set({ live: withoutLive(ev.who) })
     } else if (ev.type === 'stopped' || (ev.type === 'error' && ev.who)) {
       const who = ev.who as string
       const l = mineNow(who)
       if (!l) return
       answered = true
-      appendLine({ who, text: '', ...(ev.type === 'stopped' ? { stopped: true } : { error: ev.error }), ...savedThoughts(l) })
+      putLine(ev.turn, { who, text: '', ...(ev.type === 'stopped' ? { stopped: true } : { error: ev.error }), ...savedThoughts(l) })
       set({ live: withoutLive(who) })
     } else if (ev.type === 'error') set({ error: 'The crew could not answer: ' + ev.error })
     else if (ev.type !== 'done') {
-      if (ev.type === 'routed') answered = true
+      if (ev.type === 'routed') { answered = true; appendLine({ who: ev.who, text: ev.ack, status: 'working', turn: ev.turn }) }
       set({ live: reduceLive(state.live, ev, message) })
     }
   }
@@ -207,6 +220,7 @@ export async function send(text: string): Promise<boolean> {
           .map((l) => ({ who: `${speaker(l.who, l.as).name} (${speaker(l.who, l.as).role})`, text: l.text })),
         scene: animator().snapshot(),
         settings: readSettings(),
+        context: buildContext(),
         lesson: { title: lesson.title, scenes: Object.keys(lesson.scenes).length, script: scriptText(lesson.script) },
       }),
     })
@@ -235,7 +249,7 @@ export async function send(text: string): Promise<boolean> {
     // a member still working when the stream is over lost their connection
     for (const [who, l] of Object.entries(state.live)) {
       if (l.status !== 'working' || l.turn !== myTurn) continue
-      appendLine({ who, text: '', error: 'Lost connection', ...savedThoughts(l) })
+      putLine(l.turn, { who, text: '', error: 'Lost connection', ...savedThoughts(l) })
       set({ live: withoutLive(who) })
     }
     streams--

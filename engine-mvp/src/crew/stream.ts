@@ -83,3 +83,31 @@ export const savedThoughts = (l: Live) => ({
   ...(l.thinking ? { thoughts: l.thinking.slice(0, SAVED_CAP) } : {}),
   ...(l.draft ? { draft: l.draft.slice(0, SAVED_CAP) } : {}),
 })
+
+export const PARTIAL_TAIL = 1500
+
+/** What an interrupted member hands back: the reply draft, or (when none yet) the tail of their thinking, marked. */
+export function buildPartial(who: string, l: Pick<Live, 'draft' | 'thinking'>): { who: string; text: string } {
+  if (l.draft) return { who, text: l.draft }
+  return { who, text: l.thinking ? '(still thinking) ' + l.thinking.slice(-PARTIAL_TAIL) : '' }
+}
+
+/** A chat line as far as these helpers care (the full CrewLine lives in lesson/store). */
+type Keyed = { who: string; turn?: Turn; status?: 'working'; interrupted?: boolean }
+
+/** Put `line` where the same member's in-flight line of this turn is (index stays), else append. */
+export function upsertLine<T extends Keyed>(lines: T[], turn: Turn | null, line: T): { lines: T[]; index: number } {
+  const at = turn === null ? -1 : lines.map((l) => l.status === 'working' && l.who === line.who && l.turn === turn).lastIndexOf(true)
+  if (at < 0) return { lines: [...lines, line], index: lines.length }
+  return { lines: lines.map((l, i) => (i === at ? line : l)), index: at }
+}
+
+/** On load nothing is in flight any more: lines still "working" were cut off by a page reload. */
+export function sweepInterrupted<T extends Keyed>(lines: T[]): T[] {
+  if (!lines.some((l) => l.status === 'working')) return lines
+  return lines.map((l) => {
+    if (l.status !== 'working') return l
+    const { status: _s, ...rest } = l
+    return { ...rest, interrupted: true } as T
+  })
+}
