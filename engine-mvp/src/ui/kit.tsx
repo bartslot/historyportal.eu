@@ -68,10 +68,12 @@ type SliderProps = {
   /** React-bound */
   value?: number; onChange?: (v: number) => void
   unit?: string; format?: (v: number) => string; keyframe?: ReactNode; labelWidth?: string
+  /** what the numbers mean, for the crew (src/crew/settings.ts) */
+  hint?: string
 }
 
 /** ONE slider row (Figma `row-rotate` 1471:2104): label, thin rail with a muted fill, value. */
-export function SliderRow({ label, min, max, step, id, defaultValue, value, onChange, unit, format, keyframe, labelWidth }: SliderProps) {
+export function SliderRow({ label, min, max, step, id, defaultValue, value, onChange, unit, format, keyframe, labelWidth, hint }: SliderProps) {
   const ref = useRef<HTMLInputElement>(null)
   const [own, setOwn] = useState(defaultValue ?? min)
   const v = value ?? own
@@ -90,7 +92,7 @@ export function SliderRow({ label, min, max, step, id, defaultValue, value, onCh
   return (
     <PanelRow label={label} keyframe={keyframe} labelWidth={labelWidth}>
       <span className="range-panel-knob min-w-0 flex-1" style={fill}>
-        <input ref={ref} id={id} type="range" min={min} max={max} step={step} aria-label={label}
+        <input ref={ref} id={id} type="range" min={min} max={max} step={step} aria-label={label} data-hint={hint}
                {...(value !== undefined ? { value, onChange: (e) => onChange?.(Number(e.target.value)) } : { defaultValue })}
                style={fill} className="range range-panel min-w-0" />
       </span>
@@ -114,7 +116,7 @@ export function ToggleRow({ label, id, defaultChecked }: { label: string; id: st
 export function SelectRow({ label, id, defaultValue, options, labelWidth }: { label: string; id: string; defaultValue?: string; options?: [string, string][]; labelWidth?: string }) {
   return (
     <PanelRow label={label} labelWidth={labelWidth}>
-      <select id={id} defaultValue={defaultValue}
+      <select id={id} defaultValue={defaultValue} aria-label={label}
               className="w-full appearance-none rounded-lg border border-panel-hairline bg-base-100 py-1 pl-3 pr-7 text-xs text-panel-value">
         {options?.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
       </select>

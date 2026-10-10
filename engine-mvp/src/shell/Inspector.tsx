@@ -57,6 +57,7 @@ function ScenePanel() {
       <SettingsSection title="Look" name="scene-look">
         <SelectRow label="Style" id="lookPreset" />
         <SliderRow label="Time" id="lookTime" min={0} max={1} step={0.01} defaultValue={0}
+                   hint="time of day: 0-0.25 night, 0.25-0.5 dusk, 0.5-0.75 dawn, 0.75-1 day"
                    format={(v) => (v < 0.25 ? 'Night' : v < 0.5 ? 'Dusk' : v < 0.75 ? 'Dawn' : 'Day')} />
         <SliderRow label="Clouds" id="cloudAmount" min={0} max={1} step={0.02} defaultValue={0.3}
                    format={(v) => `${Math.round(v * 100)}`} unit="%" />
@@ -89,29 +90,13 @@ function ScenePanel() {
   )
 }
 
-function Assistant() {
-  return (
-    <SettingsSection title="Ask" name="ask">
-      <div id="ai" className="flex flex-col gap-2">
-        <div id="aiLog" className="max-h-56 overflow-auto text-xs" />
-        <textarea id="aiPrompt" rows={3} placeholder="What should happen?"
-                  className="textarea textarea-sm w-full border-panel-hairline bg-base-100 text-panel-value" />
-        <div className="flex gap-2">
-          <button type="button" id="aiSend" className="btn btn-sm flex-1">Send</button>
-          <button type="button" id="aiUndo" className="btn btn-ghost btn-sm" disabled>Undo</button>
-        </div>
-      </div>
-    </SettingsSection>
-  )
-}
-
 export function Inspector() {
   const { selected } = useEngine()
   return (
     <Panel id="inspector">
       {selected && <ObjectPanel picked={selected} />}
-      <div hidden={!!selected}><ScenePanel /></div>
-      <Assistant />
+      {/* data-settings: every control in here is open to the crew too (src/crew/settings.ts) */}
+      <div hidden={!!selected} data-settings><ScenePanel /></div>
     </Panel>
   )
 }

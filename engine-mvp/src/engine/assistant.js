@@ -1,15 +1,11 @@
-// AI animator: the teacher types what should happen, a low-level model (server.py, /assist) returns
-// typed commands, and this file runs them against the scene. Every request can be undone in one step.
+// The stage side of the lesson crew: what a crew member sees of the scene (snapshot) and the typed
+// commands they send back (server.py /crew, validated there), run against the scene. Undo and the chat
+// itself live in React (src/crew).
 /* global BABYLON */
 'use strict';
 
 (() => {
   const mvp = window.__mvp;
-  const log = document.getElementById('aiLog');
-  const input = document.getElementById('aiPrompt');
-  const send = document.getElementById('aiSend');
-  const undoBtn = document.getElementById('aiUndo');
-  const undoStack = [];
 
   const byId = (id) => mvp.actors.find((a) => a.metadata.id === id);
   const sec = (t) => (t == null ? mvp.getFrame() : Math.round(t * mvp.FPS));
@@ -37,44 +33,6 @@
       }),
     };
   }
-
-  // ---------- undo: the whole scene state before a request ----------
-  function capture() {
-    return {
-      length: mvp.getLength(),
-      sky: mvp.getSkyIndex(),
-      tracks: mvp.getTracks(),                 // immutable: every timeline edit makes new tracks
-      actors: mvp.actors.map((a) => ({
-        actor: a,
-        position: a.position.clone(),
-        rotation: a.rotationQuaternion.clone(),
-        scaling: a.scaling.clone(),
-        clip: a.metadata.clip,
-        schedule: [...a.metadata.schedule],
-      })),
-    };
-  }
-  function restore(state) {
-    const keep = new Set(state.actors.map((s) => s.actor));
-    [...mvp.actors].filter((a) => !keep.has(a)).forEach((a) => mvp.deleteActor(a));
-    state.actors.forEach((s) => {
-      s.actor.position.copyFrom(s.position);
-      s.actor.rotationQuaternion.copyFrom(s.rotation);
-      s.actor.scaling.copyFrom(s.scaling);
-      s.actor.metadata.schedule = s.schedule;
-      if (s.clip) mvp.playClip(s.actor, s.clip);
-    });
-    if (state.sky >= 0) mvp.setSky(mvp.SKIES[state.sky]);
-    mvp.setLengthSeconds(state.length);
-    mvp.setTracks(state.tracks);
-  }
-  undoBtn.onclick = () => {
-    const state = undoStack.pop();
-    if (!state) return;
-    restore(state);
-    note('Undone.', 'sys');
-    undoBtn.disabled = undoStack.length === 0;
-  };
 
   // ---------- the commands ----------
   async function run(commands) {
@@ -187,54 +145,6 @@
     if (commands.some((c) => c.cmd === 'play') && !mvp.isPlaying()) mvp.togglePlay();
     return done;
   }
-
-  // ---------- chat ----------
-  function note(text, who) {
-    const p = document.createElement('p');
-    p.className = 'msg ' + who;
-    p.textContent = text;
-    log.appendChild(p);
-    log.scrollTop = log.scrollHeight;
-  }
-
-  async function ask() {
-    const prompt = input.value.trim();
-    if (!prompt) return;
-    note(prompt, 'you');
-    input.value = '';
-    send.disabled = true;
-    send.textContent = 'Thinking…';
-    try {
-      const res = await fetch('/assist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, scene: snapshot() }),
-      });
-      if (res.status === 501 || !(res.headers.get('content-type') || '').includes('json')) {
-        throw new Error('this page is served by a plain static server. Stop it and start "python3 server.py" in the engine-mvp folder.');
-      }
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'HTTP ' + res.status);
-      if (data.reply) note(data.reply, 'ai');
-      if (data.commands.length) {
-        undoStack.push(capture());
-        undoBtn.disabled = false;
-        const done = await run(data.commands);
-        note(done.join(' · '), 'sys');
-      }
-      if (data.dropped) note(data.dropped + ' unknown command(s) ignored.', 'sys');
-    } catch (err) {
-      note('Could not reach the animator: ' + err.message, 'err');
-    } finally {
-      send.disabled = false;
-      send.textContent = 'Send';
-    }
-  }
-  send.onclick = ask;
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(); }
-    e.stopPropagation(); // typing must not trigger editor shortcuts (W/E/R/Delete)
-  });
 
   window.__animator = { snapshot, run };
 })();

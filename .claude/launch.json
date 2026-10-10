@@ -141,6 +141,26 @@
                 "dev"
             ],
             "port": 5190
+        },
+        {
+            "//": "Lesson studio crew API (engine-mvp/server.py) for the studio-crew worktree. 8091: 8090 is the engine-mvp worktree's.",
+            "name": "crew-api",
+            "runtimeExecutable": "bash",
+            "runtimeArgs": [
+                "-c",
+                "cd engine-mvp && PORT=8091 python3 server.py"
+            ],
+            "port": 8091
+        },
+        {
+            "//": "Lesson studio (React) for the studio-crew worktree, proxying /crew to crew-api.",
+            "name": "crew-studio",
+            "runtimeExecutable": "bash",
+            "runtimeArgs": [
+                "-c",
+                "cd engine-mvp && STUDIO_API=http://127.0.0.1:8091 npx vite --port 5192 --strictPort"
+            ],
+            "port": 5192
         }
     ]
 }

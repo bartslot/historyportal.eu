@@ -13,7 +13,9 @@ const THUMB_W = 160
 const THUMB_EVERY = 3
 
 export type SceneEntry = { doc: any | null; thumb: string | null }
-export type Lesson = { version: number; id: string; title: string; tree: Tree.TreeNode[]; scenes: Record<string, SceneEntry>; script: any | null }
+/** One line of the crew chat, kept with the lesson (src/crew). */
+export type CrewLine = { who: string; as?: string; text: string; changes?: string[]; jev?: { score: number; choice: string }; review?: { who: string; text: string } }
+export type Lesson = { version: number; id: string; title: string; tree: Tree.TreeNode[]; scenes: Record<string, SceneEntry>; script: any | null; crew?: CrewLine[] }
 type State = { lesson: Lesson; current: string; busy: boolean; saved: 'saved' | 'saving' | 'unsaved'; error: string | null }
 
 function freshLesson(): Lesson {
@@ -127,6 +129,10 @@ export function setTitle(title: string) {
 
 export function setScript(script: any) {
   set({ lesson: { ...state.lesson, script }, saved: 'unsaved' })
+}
+
+export function setCrew(crew: CrewLine[]) {
+  set({ lesson: { ...state.lesson, crew }, saved: 'unsaved' })
 }
 
 // ---------- files ----------
