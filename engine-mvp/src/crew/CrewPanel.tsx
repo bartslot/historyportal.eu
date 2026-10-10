@@ -8,6 +8,8 @@ import type { CrewLine } from '../lesson/store'
 import { noteCardOpened, useLiveContext } from './context'
 import { ASSISTANTS, ASSISTANT_TASKS, MEMBERS, chooseAssistant, interrupt, pickChoice, send, speaker, stopAll, stopMember, talkTo, undo, undoFor, useCrew, type AssistantId } from './store'
 import type { Live } from './stream'
+import { TypedView } from './Typed'
+import { finishAllTyping, useTypewriter } from './typewriter'
 
 const X_MARK = 'M6 18 18 6M6 6l12 12'
 const UNDO = 'M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3'
@@ -41,6 +43,12 @@ function Dots() {
 
 const cutTail = (t: string, n = 4000) => (t.length > n ? '…' + t.slice(-n) : t)
 
+/** Text that types itself in while it arrives (animate), a click completes it. */
+function Typed({ text, animate = true }: { text: string; animate?: boolean }) {
+  const t = useTypewriter(text, animate)
+  return <span onClick={t.typing ? t.finish : undefined}><TypedView full={text} shown={t.shown} typing={t.typing} /></span>
+}
+
 /** What a member was asked, thought and wrote so far; `live` follows the stream, `saved` is what a line kept. */
 function Thoughts({ live, thoughts, draft, open }: { live?: Live; thoughts?: string; draft?: string; open?: boolean }) {
   const box = useRef<HTMLDivElement>(null)
@@ -52,7 +60,7 @@ function Thoughts({ live, thoughts, draft, open }: { live?: Live; thoughts?: str
     <div ref={box} className="mt-1 max-h-40 space-y-1 overflow-auto rounded border border-panel-hairline p-2 text-xs text-panel-label">
       {live?.asked && <p><span className={label}>Asked </span>{live.asked}</p>}
       {text && <p className="whitespace-pre-wrap"><span className={label}>Thinking </span>{cutTail(text)}</p>}
-      {reply && <p className="whitespace-pre-wrap"><span className={label}>Reply </span>{cutTail(reply)}</p>}
+      {reply && <p className="whitespace-pre-wrap"><span className={label}>Reply </span><Typed text={cutTail(reply)} animate={!!live} /></p>}
       {live?.jev && <p><span className={label}>JEV </span>{live.jev.score.toFixed(2)}, {live.jev.choice}</p>}
       {live && !live.jev && live.draft && <p>JEV checking</p>}
       {live?.review ? <p className="whitespace-pre-wrap"><span className={label}>Marten </span>{live.review}</p> : live?.jev ? <p>Marten reviewing</p> : null}
@@ -69,7 +77,7 @@ function WorkingBubble({ who, live, open, onToggle, onTalk }: { who: string; liv
       <button type="button" onClick={onToggle} aria-expanded={open} aria-label={`Thought process of ${name}`} data-tooltip="Thought process"><Face id={who} working /></button>
       <div className="min-w-0 flex-1">
         <p className="text-3xs font-semibold uppercase tracking-wide text-panel-label">{name} · {role}</p>
-        <button type="button" onClick={onToggle} className="block text-left text-xs text-panel-value">{live.ack || 'Working'}</button>
+        <button type="button" onClick={onToggle} className="block text-left text-xs text-panel-value">{live.ack ? <Typed text={live.ack} /> : 'Working'}</button>
         <Dots />
         <div className="mt-1 flex gap-1">
           <button type="button" className="btn btn-ghost btn-xs" onClick={() => void stopMember(who)}>Stop</button>
@@ -115,55 +123,85 @@ function Card({ id, onClose, onAsk }: { id: string; onClose: () => void; onAsk: 
   )
 }
 
-/** The options of a question, like Claude's picker: arrows move, Enter or 1-4 picks. */
-function ChoiceList({ index, choices, onElse }: { index: number; choices: NonNullable<CrewLine['choices']>; onElse: () => void }) {
+const CHECK = 'm4.5 12.75 6 6 9-13.5'
+const PENCIL = 'm16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10'
+const Icon = ({ d }: { d: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-4 w-4 shrink-0" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d={d} /></svg>
+)
+const ROW = 'flex w-full gap-3 border-t border-t-panel-hairline border-l-2 px-3 py-2.5 text-left outline-none'
+
+/** The options of a question, like Claude's picker: one card of rows; arrows move, Enter or 1-4 picks. */
+function ChoiceList({ index, choices }: { index: number; choices: NonNullable<CrewLine['choices']> }) {
   const box = useRef<HTMLDivElement>(null)
+  const [at, setAt] = useState(0)
+  const [own, setOwn] = useState<string | null>(null) // the "Something else" row is a text input while this is a string
   const buttons = () => [...(box.current?.querySelectorAll<HTMLButtonElement>('button[data-option]') ?? [])]
   useEffect(() => {
     const a = document.activeElement
     if (!a || a === document.body || (a instanceof HTMLTextAreaElement && !a.value)) buttons()[0]?.focus()
   }, [])
   const onKey = (e: React.KeyboardEvent) => {
+    if (own !== null) return
     const all = buttons()
-    const at = all.indexOf(document.activeElement as HTMLButtonElement)
+    const cur = all.indexOf(document.activeElement as HTMLButtonElement)
     const n = Number(e.key)
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault(); e.stopPropagation()
-      all[(at + (e.key === 'ArrowDown' ? 1 : -1) + all.length) % all.length]?.focus()
+      all[(cur + (e.key === 'ArrowDown' ? 1 : -1) + all.length) % all.length]?.focus()
     } else if (n >= 1 && n <= choices.options.length) {
       e.preventDefault(); e.stopPropagation()
       void pickChoice(index, choices.options[n - 1].label)
     }
   }
+  const row = (i: number) => `${ROW} ${at === i ? 'border-l-primary bg-base-200' : 'border-l-transparent hover:bg-base-200'}`
+  const elseAt = choices.options.length
   return (
-    <div ref={box} role="group" aria-label={choices.question} onKeyDown={onKey} className="mt-2 flex flex-col gap-1.5">
-      <p className="text-xs text-panel-value">{choices.question}</p>
+    <div ref={box} role="group" aria-label={choices.question} onKeyDown={onKey} className="crew-in mt-2 overflow-hidden rounded-md border border-panel-hairline">
+      <p className="px-3 py-2 text-xs font-semibold text-panel-value">{choices.question}</p>
       {choices.options.map((o, i) => (
         <button key={o.label} type="button" data-option onClick={() => void pickChoice(index, o.label)}
-                className="btn btn-sm h-auto w-full justify-start py-2 text-left">
-          <span className="flex min-w-0 flex-col items-start gap-0.5">
-            <span className="flex items-center gap-2 text-xs font-semibold text-panel-value">
-              <span className="text-panel-label">{i + 1}</span>{o.label}
-              {o.recommended && <span className="badge badge-xs">Recommended</span>}
+                onFocus={() => setAt(i)} onMouseEnter={() => setAt(i)} className={`${row(i)} items-start`}>
+          <span className="grid h-5 w-5 shrink-0 place-items-center rounded border border-panel-hairline text-2xs text-panel-label">{i + 1}</span>
+          <span className="flex min-w-0 flex-col gap-0.5">
+            <span className="flex flex-wrap items-center gap-2 text-xs font-medium text-panel-value">
+              {o.label}
+              {o.recommended && <span className="rounded border border-primary/40 px-1.5 py-px text-3xs font-semibold uppercase tracking-wide text-primary">Recommended</span>}
             </span>
-            {o.why && <span className="whitespace-normal text-xs font-normal text-panel-label">{o.why}</span>}
+            {o.why && <span className="whitespace-normal text-xs text-panel-label">{o.why}</span>}
           </span>
         </button>
       ))}
-      <button type="button" className="btn btn-ghost btn-sm justify-start" onClick={onElse}>Something else</button>
+      {own === null ? (
+        <button type="button" data-option onClick={() => setOwn('')} onFocus={() => setAt(elseAt)} onMouseEnter={() => setAt(elseAt)} className={`${row(elseAt)} items-center text-xs text-panel-label`}>
+          <Icon d={PENCIL} />Something else
+        </button>
+      ) : (
+        <div className={`${ROW} items-center border-l-primary bg-base-200`}>
+          <Icon d={PENCIL} />
+          <input autoFocus value={own} placeholder="Type your own answer" aria-label="Type your own answer"
+                 onChange={(e) => setOwn(e.target.value)}
+                 onKeyDown={(e) => {
+                   e.stopPropagation() // typing must not trigger editor shortcuts
+                   if (e.key === 'Escape') { e.preventDefault(); setOwn(null) }
+                   if (e.key === 'Enter' && own.trim()) { e.preventDefault(); void pickChoice(index, own.trim()) }
+                 }}
+                 className="min-w-0 flex-1 bg-transparent text-xs text-panel-value outline-none placeholder:text-panel-label" />
+        </div>
+      )}
     </div>
   )
 }
 
 const jevTone = (s: number) => (s >= 0.8 ? 'badge-success' : s >= 0.5 ? 'badge-warning' : 'badge-error')
 
-function Line({ index, active, onElse, choices, answered, who, as, text, changes, jev, review, thoughts, draft, stopped, error, status, interrupted }: { index: number; active?: boolean; onElse?: () => void; choices?: CrewLine['choices']; answered?: string; who: string; as?: string; text: string; changes?: string[]; jev?: CrewLine['jev']; review?: CrewLine['review']; thoughts?: string; draft?: string; stopped?: boolean; error?: string; status?: 'working'; interrupted?: boolean; turn?: string | number }) {
+function Line({ index, fresh, active, choices, answered, who, as, text, changes, jev, review, thoughts, draft, stopped, error, status, interrupted }: { index: number; fresh?: boolean; active?: boolean; choices?: CrewLine['choices']; answered?: string; who: string; as?: string; text: string; changes?: string[]; jev?: CrewLine['jev']; review?: CrewLine['review']; thoughts?: string; draft?: string; stopped?: boolean; error?: string; status?: 'working'; interrupted?: boolean; turn?: string | number }) {
   useCrew()
+  const typed = useTypewriter(text, !!fresh && who !== 'client')
   L.useLesson() // the Undo shows only while this line's scene is open
   const canUndo = !!undoFor(index)
   if (status === 'working') return null // shown live, as a working bubble
   if (who === 'client') {
-    return <p className="ml-8 self-end whitespace-pre-wrap rounded-lg bg-base-100 px-3 py-2 text-xs text-panel-value">{text}</p>
+    return <p className="ml-8 self-end whitespace-pre-wrap rounded-md bg-base-100 px-3 py-2 text-xs text-panel-value">{text}</p>
   }
   const { name, role } = speaker(who, as)
   return (
@@ -171,7 +209,7 @@ function Line({ index, active, onElse, choices, answered, who, as, text, changes
       <Face id={who} as={as} />
       <div className="min-w-0 flex-1">
         <p className="text-3xs font-semibold uppercase tracking-wide text-panel-label">{name} · {role}</p>
-        {text && <p className="whitespace-pre-wrap text-xs text-panel-value">{text}</p>}
+        {text && <p className="whitespace-pre-wrap text-xs text-panel-value" onClick={typed.typing ? typed.finish : undefined}><TypedView full={text} shown={typed.shown} typing={typed.typing} /></p>}
         {stopped && <p className="text-xs text-panel-label">Stopped</p>}
         {interrupted && <p className="text-xs text-panel-label">Interrupted (page reloaded)</p>}
         {error && <p role="alert" className="text-xs text-error">{error}</p>}
@@ -187,9 +225,9 @@ function Line({ index, active, onElse, choices, answered, who, as, text, changes
             </div>
           </div>
         )}
-        {choices && (answered
-          ? <p className="mt-1 text-xs text-panel-label">You chose: {answered}</p>
-          : active ? <ChoiceList index={index} choices={choices} onElse={onElse ?? (() => {})} />
+        {choices && !typed.typing && (answered
+          ? <p className="mt-1 flex items-center gap-1.5 text-xs text-panel-label"><Icon d={CHECK} />You chose: {answered}</p>
+          : active ? <ChoiceList index={index} choices={choices} />
             : <p className="mt-1 text-xs text-panel-label">{choices.question} (not answered)</p>)}
         {changes && (
           <div className="mt-1 flex items-start gap-2">
@@ -223,6 +261,11 @@ export function CrewPanel() {
   const key = (who: string) => `${crew.live[who]?.turn ?? ''}:${who}` // open state belongs to one bubble: a new turn starts closed
   const toggle = (who: string) => setOpen((o) => ({ ...o, [key(who)]: !o[key(who)] }))
   const log = useRef<HTMLDivElement>(null)
+  const lessonId = L.useLesson().lesson.id
+  const base = useRef({ id: lessonId, n: lines.length }) // lines present when the panel opened are never typed
+  if (base.current.id !== lessonId) base.current = { id: lessonId, n: lines.length }
+  else if (lines.length < base.current.n) base.current.n = lines.length
+  const stick = useRef(true) // follow the typed text unless the reader scrolled up
   const box = useRef<HTMLTextAreaElement>(null)
   useEffect(() => {
     if (!card) return
@@ -233,11 +276,20 @@ export function CrewPanel() {
   const live = useLiveContext(crew.assistant)
   useEffect(() => { if (card) noteCardOpened(speaker(card).name) }, [card])
   useEffect(() => { log.current?.scrollTo({ top: log.current.scrollHeight }) }, [lines.length, crew.busy, working.length])
+  useEffect(() => {
+    const el = log.current
+    if (!el) return
+    const onScroll = () => { stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 48 }
+    const mo = new MutationObserver(() => { if (stick.current) el.scrollTo({ top: el.scrollHeight }) })
+    mo.observe(el, { childList: true, subtree: true, characterData: true })
+    el.addEventListener('scroll', onScroll)
+    return () => { mo.disconnect(); el.removeEventListener('scroll', onScroll) }
+  }, [])
   const to = crew.to ? speaker(crew.to).name : null
   const submit = () => { const t = draft; setDraft(''); void send(t).then((ok) => { if (!ok) setDraft((d) => d || t) }) }
 
   return (
-    <Panel id="crew" className="flex h-full flex-col">
+    <Panel id="crew" className="flex h-full flex-col [&_.btn]:rounded-md">
       <div className="flex items-center gap-3 py-3 pl-4 pr-10">
         <button type="button" onClick={() => setCard('assistant')} aria-label={`About ${speaker('assistant').name}`}><Face id="assistant" size="md" /></button>
         <div className="min-w-0">
@@ -260,7 +312,7 @@ export function CrewPanel() {
 
       <div ref={log} className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto border-t border-panel-hairline px-4 py-3" aria-live="polite">
         <Line index={-1} who="assistant" text={live.greeting} />
-        {lines.map((l, i) => <Line key={i} index={i} active={!lines.slice(i + 1).some((x) => x.who === 'client')} onElse={() => box.current?.focus()} {...l} />)}
+        {lines.map((l, i) => <Line key={i} index={i} fresh={i >= base.current.n} active={!lines.slice(i + 1).some((x) => x.who === 'client')} {...l} />)}
         {working.map(([who, l]) => (
           <WorkingBubble key={who} who={who} live={l} open={!!open[key(who)]} onToggle={() => toggle(who)}
                          onTalk={() => { void interrupt(who); box.current?.focus() }} />
@@ -286,7 +338,7 @@ export function CrewPanel() {
                   onChange={(e) => setDraft(e.target.value)}
                   onKeyDown={(e) => {
                     e.stopPropagation() // typing must not trigger editor shortcuts
-                    if (e.key === 'Escape') setCard(null)
+                    if (e.key === 'Escape') { setCard(null); finishAllTyping() }
                     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit() }
                   }}
                   className="textarea textarea-sm w-full border-panel-hairline bg-base-100 text-panel-value" />

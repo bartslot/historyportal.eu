@@ -109,3 +109,8 @@ html.panel-resizing .panel-slot { transition: none; }
 .crew-dot:nth-child(2) { animation-delay: .15s }
 .crew-dot:nth-child(3) { animation-delay: .3s }
 @media (prefers-reduced-motion: reduce) { .crew-dot { animation-name: crew-dot-fade } }
+.crew-caret { display: inline-block; width: 1px; height: 1em; margin-left: 1px; vertical-align: text-bottom; background: currentColor; animation: crew-caret 1s steps(1) infinite }
+@keyframes crew-caret { 50% { opacity: 0 } }
+@keyframes crew-in { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: none } }
+.crew-in { animation: crew-in 120ms ease-out }
+@media (prefers-reduced-motion: reduce) { .crew-caret, .crew-in { animation: none } }
