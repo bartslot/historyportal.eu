@@ -53,6 +53,8 @@ export function TopBar() {
       <MenuButton id="add-menu" label="Add" anchor={addBtn} />
       <MenuButton id="view-menu" label="View" anchor={viewBtn} />
       <span className="ml-auto" />
+      <button type="button" aria-pressed={!!st.open.help} onClick={() => panels.toggle('help')}
+              className={`btn btn-sm ${st.open.help ? 'btn-active' : 'btn-ghost'} text-panel-value`}>Help</button>
       <button type="button" aria-pressed={!!st.open.script} onClick={() => panels.toggle('script')}
               className={`btn btn-sm ${st.open.script ? 'btn-active' : 'btn-ghost'} text-panel-value`}>Script</button>
       <MenuButton id="publish-menu" label="Publish" primary anchor={publishBtn} />

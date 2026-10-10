@@ -21,6 +21,7 @@ export const PANELS: PanelDef[] = [
   { id: 'crew', title: 'Crew', place: 'right', closable: true, open: true, size: 340, min: 300, max: 560, inView: true },
   { id: 'inspector', title: 'Inspector', place: 'right', closable: true, open: true, size: 310, min: 280, max: 520, inView: true },
   { id: 'dock', title: 'Assets & timeline', place: 'bottom', closable: false, open: true, size: 352, inView: true },
+  { id: 'help', title: 'Help', place: 'floating', closable: true, open: false, inView: false },
   { id: 'notes', title: 'Notes', place: 'floating', closable: true, open: false, inView: true },
   { id: 'lesson-menu', title: 'Lesson', place: 'menu', closable: true, open: false, inView: false },
   { id: 'view-menu', title: 'View', place: 'menu', closable: true, open: false, inView: false },

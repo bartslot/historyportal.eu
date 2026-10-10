@@ -6,6 +6,7 @@ import { panels } from './panels/store'
 import { CrewPanel } from './crew/CrewPanel'
 import { Dock } from './shell/Dock'
 import { Inspector } from './shell/Inspector'
+import { HelpPanel } from './shell/HelpPanel'
 import { Notes } from './shell/Notes'
 import { ObjectsPanel } from './shell/ObjectsPanel'
 import { ScenesPanel } from './shell/ScenesPanel'
@@ -19,6 +20,7 @@ function Stage() {
       <div id="sel" className="pointer-events-none absolute left-3 top-3 rounded px-2 py-1 text-xs text-panel-value" />
       <StageCaption />
       <Notes />
+      <HelpPanel />
     </main>
   )
 }
