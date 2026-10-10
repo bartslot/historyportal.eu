@@ -64,3 +64,19 @@ when, what happens, composition; English, for the image model). The server rende
 {type:"image", who, url, caption} where url is served by server.py under /sketches/<file>.webp (proxied by
 Vite). The client shows it as a small thumbnail under that member's line (click: larger). A failed render
 never fails the turn (an `error` event with who, or nothing). Sketch images are saved with the line (url).
+
+## Script on the page, not in the chat
+The writer returns a scene as data: `scene: {lines: [{speaker: str|null, text: str}]}` (speaker null =
+narrator; 2-40 lines; text <= 400 each). The client writes it into lesson.script (the TipTap doc) for the
+CURRENT scene (context.lesson.current), replacing that scene's lines (new line ids; the sceneHeading stays);
+one Undo restores the previous script. The chat reply is one short sentence ("De openingsscène staat in
+het script."). Chat replies are capped at 60 words.
+
+## Selection actions (script page)
+Selecting text in the script shows a small menu: Rewrite (Shorter / Simpler for my class / More lively /
+in a character's voice), Check history, Ask the crew. The request body gets
+`selection: {action: "rewrite"|"check"|"ask", how?: str, text: str, lineIds: [str], sceneId: str}`.
+- rewrite -> writer returns `lines: [{id, speaker, text}]` replacing exactly those lineIds (shown in the chat
+  as a small before/after card with Replace / Keep; Replace writes it into lesson.script, undoable).
+- check -> historian answers about the selected claims (JEV-graded as usual), no script change.
+- ask -> the client's own question about the selection goes to the assistant as usual, with the selection.
