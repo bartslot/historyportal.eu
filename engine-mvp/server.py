@@ -13,10 +13,14 @@ import concurrent.futures
 import json
 import os
 import pathlib
+import random
 import re
+import signal
 import subprocess
 import sys
 import tempfile
+import threading
+import uuid
 import urllib.parse
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
@@ -165,8 +169,8 @@ def _obj(props, required):
 _REPLY = {'type': 'string'}
 ROUTER_SCHEMA = _obj({
     'reply': _REPLY,
-    'ask': {'type': 'array', 'items': _obj({'crew': {'type': 'string'}, 'question': {'type': 'string'}},
-                                           ['crew', 'question'])},
+    'ask': {'type': 'array', 'items': _obj({'crew': {'type': 'string'}, 'question': {'type': 'string'},
+                                            'ack': {'type': 'string'}}, ['crew', 'question', 'ack'])},
 }, ['reply', 'ask'])
 _TITLE = {'type': 'string'}
 _SETTINGS = {'type': 'array', 'items': _obj({'id': {'type': 'string'},
@@ -241,6 +245,20 @@ def roster(assistant):
     return f"- you: {assistant['name']}, set assistant\n" + '\n'.join(lines)
 
 
+def voice_line(who):
+    v = who.get('voice')
+    return f"\nYour voice (always speak like this, in the client's language): {v}" if v else ''
+
+
+def ack_examples():
+    """Per asked-able member: their voice and sample 'on it' lines, so the router writes a fresh one in their style."""
+    out = []
+    for m in CREW['crew']:
+        ex = ' / '.join(a for lang in ('nl', 'en') for a in (m.get('acks') or {}).get(lang, [])[:2])
+        out.append(f"- {m['id']} ({m['name']}): {m.get('voice', '')} e.g. {m['name']} says: {ex}")
+    return '\n'.join(out)
+
+
 def router_prompt(assistant):
     return f"""{SHARED}
 
@@ -249,6 +267,10 @@ The client talks to you. You do no specialist work and change nothing yourself: 
 member(s) to ask, and say so in one or two friendly sentences. Never promise a change you are not handing to
 someone: anything on the stage (sky, light, time of day, look, objects, town) goes to set. The crew:
 {roster(assistant)}
+{voice_line(assistant)}
+
+The "ack" of each ask is a fresh line in the voice of the member you ask, never a generic one. Their voices:
+{ack_examples()}
 
 How you decide:
 - The client asks for ANY change on the stage (sky, light, time of day, day or night, look, style, objects,
@@ -261,8 +283,9 @@ How you decide:
 - At most {MAX_ASKS} crew members per turn. The director only when the client asks for a review of the result
   or says the lesson is finished.
 - If the client just chats or thanks you, answer yourself and ask no one.
-Answer ONLY with JSON: {{"reply": "<what you tell the client>", "ask": [{{"crew": "<id>", "question": "<what you ask them, with the client's context>"}}]}}
-"ask" is [] when you ask no one.{tasks_and_skills(CREW.get('assistant_tasks'), [])}"""
+Answer ONLY with JSON: {{"reply": "<what you tell the client>", "ask": [{{"crew": "<id>", "question": "<what you ask them, with the client's context>", "ack": "<that member's one-line 'on it' bubble>"}}]}}
+"ack" is written in THAT member's own voice, first person, in the client's language, at most 12 words, and says
+what they are about to do (e.g. "Ik zoek de data even op."). "ask" is [] when you ask no one.{tasks_and_skills(CREW.get('assistant_tasks'), [])}"""
 
 
 STAGE_OWNERS = {'set', 'actors'}
@@ -294,7 +317,7 @@ The stage, with scene commands:
                + (', "title": "<only to rename the lesson>"}' if title else '}'))
     return f"""{SHARED}
 
-You are {m['name']}, the {m['role'].lower()}. {m['backstory']}
+You are {m['name']}, the {m['role'].lower()}. {m['backstory']}{voice_line(m)}
 Mission: {m['mission']}
 You own: {m['owns']}
 The set assistant {assistant['name']} brings you the client's request; the client reads your answer directly.
@@ -390,12 +413,17 @@ def title_open(data: dict) -> bool:
     return str(lesson.get('title', UNTITLED)).strip() in ('', UNTITLED) or any(w in said for w in TITLE_WORDS)
 
 
-def ask_member(m, assistant, question, data, direct=False):
+def member_request(m, assistant, question, data, direct):
+    """(system prompt, user prompt, schema) for one member's call."""
     # the client's own words travel with the question: a summary loses facts (the class age, for one)
     said = str(data.get('message', ''))[:MAX_PROMPT]
-    answer = ask_claude(m['model'], member_prompt(m, assistant, direct),
-                        context(data) + f"\n\nThe client just said: {said}\nRequest to you: {question[:MAX_PROMPT]}",
-                        member_schema(m, direct), MEMBER_EFFORT)
+    return (member_prompt(m, assistant, direct),
+            context(data) + f"\n\nThe client just said: {said}\nRequest to you: {question[:MAX_PROMPT]}",
+            member_schema(m, direct))
+
+
+def finish_member(m, answer, data, direct):
+    """The member's raw structured answer -> the guarded message (title, settings, commands)."""
     msg = {'who': m['id'], 'text': str(answer.get('reply', ''))[:MAX_REPLY]}
     title = str(answer.get('title') or '').strip()[:80]
     if title and m['id'] == 'writer' and title_open(data):
@@ -405,15 +433,32 @@ def ask_member(m, assistant, question, data, direct=False):
         msg['settings'] = clean_settings(answer.get('settings'), data.get('settings'))
         msg['commands'] = commands
         msg['dropped'] = len(dropped)
-    if JEV_ON and m['id'] in JEV_IDS and msg['text'].strip():
-        grade = jev_grade(m, msg['text'], data)
-        if grade:
-            msg['jev'] = grade
-            if grade['score'] < JEV_MIN_SCORE:
-                try:
-                    msg['review'] = {'who': DIRECTOR, 'text': director_review(msg['text'], m['name'], data, assistant)}
-                except Exception as e:  # noqa: BLE001 - the answer stands without its second opinion
-                    print('director review failed:', repr(e), file=sys.stderr)
+    return msg
+
+
+def grade_member(m, msg, data, assistant, emit=None):
+    """JEV grade, and the director's second opinion when unsure. Adds jev/review to msg; emit gets events."""
+    if not (JEV_ON and m['id'] in JEV_IDS and msg['text'].strip()):
+        return
+    grade = jev_grade(m, msg['text'], data)
+    if not grade:
+        return
+    msg['jev'] = grade
+    if emit:
+        emit({'type': 'jev', 'who': m['id'], **grade})
+    if grade['score'] < JEV_MIN_SCORE:
+        try:
+            msg['review'] = {'who': DIRECTOR, 'text': director_review(msg['text'], m['name'], data, assistant)}
+            if emit:
+                emit({'type': 'review', 'who': m['id'], 'text': msg['review']['text']})
+        except Exception as e:  # noqa: BLE001 - the answer stands without its second opinion
+            print('director review failed:', repr(e), file=sys.stderr)
+
+
+def ask_member(m, assistant, question, data, direct=False):
+    system, user, schema = member_request(m, assistant, question, data, direct)
+    msg = finish_member(m, ask_claude(m['model'], system, user, schema, MEMBER_EFFORT), data, direct)
+    grade_member(m, msg, data, assistant)
     return msg
 
 
@@ -442,6 +487,218 @@ def crew_turn(data):
     return out
 
 
+# ---------- live streaming: POST /crew/stream, POST /crew/stop (docs/crew-stream.md) ----------
+class ReplyExtractor:
+    """Pulls the value of the "reply" string out of JSON that arrives in arbitrary chunks, and returns
+    only the characters that are new. Tolerant: ignores anything before the key, waits on a split escape."""
+    _KEY = re.compile(r'"reply"\s*:\s*"')
+    _SIMPLE = {'n': '\n', 't': '\t', 'r': '\r', 'b': '\b', 'f': '\f', '/': '/', '"': '"', '\\': '\\'}
+
+    def __init__(self):
+        self.buf, self.pos, self.state = '', 0, 'seek'   # seek -> in -> done
+
+    def feed(self, chunk):
+        self.buf += chunk
+        if self.state == 'seek':
+            m = self._KEY.search(self.buf)
+            if not m:
+                return ''
+            self.pos, self.state = m.end(), 'in'
+        if self.state != 'in':
+            return ''
+        out, b = [], self.buf
+        while self.pos < len(b):
+            c = b[self.pos]
+            if c == '"':
+                self.state = 'done'
+                break
+            if c != '\\':
+                out.append(c)
+                self.pos += 1
+                continue
+            if self.pos + 1 >= len(b):
+                break                                    # split right after the backslash
+            e = b[self.pos + 1]
+            if e == 'u':
+                if self.pos + 6 > len(b):
+                    break
+                try:
+                    cp = int(b[self.pos + 2:self.pos + 6], 16)
+                except ValueError:
+                    cp = 0xFFFD
+                step = 6
+                if 0xD800 <= cp < 0xDC00:                # a surrogate pair needs its second half
+                    if self.pos + 12 > len(b):
+                        break
+                    try:
+                        lo = int(b[self.pos + 8:self.pos + 12], 16)
+                        cp, step = 0x10000 + ((cp - 0xD800) << 10) + (lo - 0xDC00), 12
+                    except ValueError:
+                        cp = 0xFFFD
+                out.append(chr(cp) if cp < 0x110000 else '\ufffd')
+                self.pos += step
+            else:
+                out.append(self._SIMPLE.get(e, e))
+                self.pos += 2
+        return ''.join(out)
+
+
+class TurnState:
+    """One /crew/stream turn: its claude processes, and who the client has stopped."""
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.procs, self.stopped, self.all_stopped = {}, set(), False
+
+    def is_stopped(self, who):
+        return self.all_stopped or who in self.stopped
+
+    def register(self, who, proc):
+        with self.lock:
+            self.procs[who] = proc
+            if self.is_stopped(who):
+                kill_proc(proc)
+
+    def stop(self, who=None):
+        with self.lock:
+            if who is None:
+                self.all_stopped = True
+            else:
+                self.stopped.add(who)
+            hit = [w for w in self.procs if who in (None, w) and self.procs[w].poll() is None]
+            for w in hit:
+                kill_proc(self.procs[w])
+        return hit
+
+
+TURNS: dict = {}
+TURNS_LOCK = threading.Lock()
+
+
+def kill_proc(proc):
+    try:
+        os.killpg(proc.pid, signal.SIGKILL)   # claude runs in its own session: take its children too
+    except (ProcessLookupError, PermissionError):
+        pass
+
+
+def stream_claude(m, system, user, schema, effort, who, state, emit):
+    """Run one member's claude call, emitting thinking/text events as they arrive.
+    Returns the structured answer, or None when the client stopped it."""
+    cmd = [CLAUDE_BIN, '-p', '--model', m['model'], '--system-prompt', system, '--tools', '',
+           '--setting-sources', '', '--strict-mcp-config', '--no-session-persistence',
+           '--effort', effort, '--output-format', 'stream-json', '--verbose', '--include-partial-messages',
+           '--thinking-display', 'summarized', '--json-schema', json.dumps(schema)]
+    env = {k: v for k, v in os.environ.items() if k != 'ANTHROPIC_API_KEY'}
+    with tempfile.TemporaryDirectory() as cwd:
+        proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                                text=True, env=env, cwd=cwd, start_new_session=True)
+        state.register(who, proc)
+        timer = threading.Timer(CLAUDE_TIMEOUT, kill_proc, [proc])
+        timer.start()
+        try:
+            try:
+                proc.stdin.write(user)
+                proc.stdin.close()
+            except BrokenPipeError:
+                pass
+            ext, streamed, result = ReplyExtractor(), '', None
+            for line in proc.stdout:
+                try:
+                    o = json.loads(line)
+                except ValueError:
+                    continue
+                if o.get('type') == 'result':
+                    result = o
+                elif o.get('type') == 'stream_event':
+                    d = (o.get('event') or {}).get('delta') or {}
+                    if d.get('type') == 'thinking_delta' and d.get('thinking'):
+                        emit({'type': 'thinking', 'who': who, 'text': d['thinking']})
+                    elif d.get('type') in ('input_json_delta', 'text_delta'):
+                        new = ext.feed(d.get('partial_json') if d['type'] == 'input_json_delta' else d.get('text', ''))
+                        if new:
+                            streamed += new
+                            emit({'type': 'text', 'who': who, 'text': new})
+            proc.wait()
+        finally:
+            timer.cancel()
+            kill_proc(proc)
+    if state.is_stopped(who):
+        return None
+    if result is None or result.get('is_error'):
+        raise RuntimeError(f'claude failed (exit {proc.returncode}): {str((result or {}).get("result"))[:200]}')
+    answer = result['structured_output'] if isinstance(result.get('structured_output'), dict) else json.loads(result['result'])
+    final = str(answer.get('reply', ''))
+    if final.startswith(streamed) and len(final) > len(streamed):   # the scanner missed a tail: send it
+        emit({'type': 'text', 'who': who, 'text': final[len(streamed):]})
+    return answer
+
+
+def stream_member(m, assistant, question, data, direct, state, emit):
+    who = m['id']
+    try:
+        if state.is_stopped(who):
+            return emit({'type': 'stopped', 'who': who})
+        emit({'type': 'start', 'who': who})
+        system, user, schema = member_request(m, assistant, question, data, direct)
+        answer = stream_claude(m, system, user, schema, MEMBER_EFFORT, who, state, emit)
+        if answer is None:
+            return emit({'type': 'stopped', 'who': who})
+        msg = finish_member(m, answer, data, direct)
+        grade_member(m, msg, data, assistant, emit)
+        if state.is_stopped(who):
+            return emit({'type': 'stopped', 'who': who})
+        emit({'type': 'message', **msg})
+    except Exception as e:  # noqa: BLE001 - one member failing never ends the turn
+        print('crew member failed:', who, repr(e), file=sys.stderr)
+        emit({'type': 'error', 'who': who, 'error': 'could not answer this time, ask again'})
+
+
+DUTCH = re.compile(r'\b(de|het|een|en|ik|je|wat|wanneer|waarom|hoe|maak|kun|kan|dit|dat|niet|voor|met|van)\b', re.I)
+GERMAN = re.compile(r'\b(der|die|das|und|ich|nicht|wann|warum|wie|ein|eine|mit|von|f\u00fcr|ist)\b', re.I)
+
+
+def guess_lang(message):
+    nl, de = len(DUTCH.findall(message)), len(GERMAN.findall(message))
+    return 'de' if de > nl else 'nl' if nl else 'en'
+
+
+def direct_ack(m, message):
+    """One of the member's own 'on it' lines in the client's language (nl/en/de, else en), varied."""
+    acks = m.get('acks') or {}
+    pool = acks.get(guess_lang(message)) or acks.get('en') or ['On it.']
+    return random.choice(pool)
+
+
+def with_partial(message, to, partial):
+    """The interrupted member gets its own draft back with the client's new words."""
+    if isinstance(partial, dict) and partial.get('who') == to and str(partial.get('text', '')).strip():
+        return (f"You were interrupted by the client. Your draft so far: {str(partial['text'])[:MAX_REPLY]}. "
+                f"The client now says: {message}. Continue or change course as they ask.")[:MAX_PROMPT + MAX_REPLY + 200]
+    return message
+
+
+def crew_stream(data, emit, state):
+    message = str(data.get('message', ''))[:MAX_PROMPT].strip()
+    assistant = CREW['assistants'].get(str(data.get('assistant'))) or next(iter(CREW['assistants'].values()))
+    to = data.get('to')
+    if isinstance(to, str) and to in MEMBERS:
+        emit({'type': 'routed', 'who': to, 'ack': direct_ack(MEMBERS[to], message)})
+        question = with_partial(message, to, data.get('partial'))
+        return stream_member(MEMBERS[to], assistant, question, data, True, state, emit)
+    plan = ask_claude(ROUTER_MODEL, router_prompt(assistant), context(data) + '\n\nClient: ' + message,
+                      ROUTER_SCHEMA, ROUTER_EFFORT)
+    emit({'type': 'assistant', 'as': assistant['name'], 'text': str(plan.get('reply', ''))[:800]})
+    asks = plan.get('ask') if isinstance(plan.get('ask'), list) else []
+    asks = [a for a in asks if isinstance(a, dict) and isinstance(a.get('crew'), str) and a['crew'] in MEMBERS][:MAX_ASKS]
+    for a in asks:
+        emit({'type': 'routed', 'who': a['crew'], 'ack': str(a.get('ack') or direct_ack(MEMBERS[a['crew']], message))[:200]})
+    if asks:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_ASKS) as pool:
+            for f in [pool.submit(stream_member, MEMBERS[a['crew']], assistant, str(a.get('question') or message),
+                                  data, False, state, emit) for a in asks]:
+                f.result()
+
+
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *a, **kw):
         super().__init__(*a, directory=str(HERE), **kw)
@@ -459,25 +716,83 @@ class Handler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(raw)
 
+    def _body(self):
+        """The parsed JSON object, or None after answering the error."""
+        length = int(self.headers.get('Content-Length', 0))
+        if length > MAX_BODY:
+            self._json(413, {'error': 'Too much to send at once.'})
+            return None
+        try:
+            data = json.loads(self.rfile.read(length) or b'{}')
+        except ValueError:
+            data = None
+        if not isinstance(data, dict):
+            self._json(400, {'error': 'The request was not readable.'})
+            return None
+        return data
+
     def do_POST(self):
         if self.path.startswith('/bake'):
             return self._save_bake()
-        if self.path != '/crew':
+        if self.path == '/crew/stop':
+            return self._stop()
+        if self.path not in ('/crew', '/crew/stream'):
             return self._json(404, {'error': 'not found'})
         try:
-            length = int(self.headers.get('Content-Length', 0))
-            if length > MAX_BODY:
-                return self._json(413, {'error': 'Too much to send at once.'})
-            try:
-                data = json.loads(self.rfile.read(length) or b'{}')
-            except ValueError:
-                return self._json(400, {'error': 'The request was not readable.'})
-            if not isinstance(data, dict) or not str(data.get('message', '')).strip():
+            data = self._body()
+            if data is None:
+                return
+            if not str(data.get('message', '')).strip():
                 return self._json(422, {'error': 'Type a message.'})
+            if self.path == '/crew/stream':
+                return self._stream(data)
             return self._json(200, {'messages': crew_turn(data), 'model': ROUTER_MODEL})
         except Exception as e:  # noqa: BLE001 - report every failure to the editor, log the detail
             print('crew failed:', repr(e), file=sys.stderr)
             return self._json(500, {'error': 'The crew could not answer: ' + type(e).__name__})
+
+    def _stop(self):
+        data = self._body()
+        if data is None:
+            return
+        with TURNS_LOCK:
+            state = TURNS.get(str(data.get('turn')))
+        if not state:
+            return self._json(404, {'error': 'unknown turn'})
+        who = data.get('who')
+        return self._json(200, {'stopped': state.stop(who if isinstance(who, str) else None)})
+
+    def _stream(self, data):
+        turn, state, lock = uuid.uuid4().hex[:8], TurnState(), threading.Lock()
+        with TURNS_LOCK:
+            TURNS[turn] = state
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/x-ndjson')
+        self.end_headers()
+        gone = []
+
+        def emit(ev):
+            if gone:
+                return
+            line = (json.dumps({**ev, 'turn': turn}) + '\n').encode()
+            with lock:
+                try:
+                    self.wfile.write(line)
+                    self.wfile.flush()
+                except OSError:      # the client left: stop paying for answers nobody reads
+                    gone.append(1)
+                    state.stop()
+        try:
+            emit({'type': 'turn'})
+            crew_stream(data, emit, state)
+        except Exception as e:  # noqa: BLE001
+            print('crew stream failed:', repr(e), file=sys.stderr)
+            emit({'type': 'error', 'error': 'The crew could not answer: ' + type(e).__name__})
+        finally:
+            emit({'type': 'done'})
+            with TURNS_LOCK:
+                TURNS.pop(turn, None)
+            self.close_connection = True
 
 
 def safe_name(raw):

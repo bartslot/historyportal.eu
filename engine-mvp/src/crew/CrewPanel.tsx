@@ -5,23 +5,78 @@ import { Panel } from '../panels/Panel'
 import { SettingsSection } from '../ui/kit'
 import * as L from '../lesson/store'
 import type { CrewLine } from '../lesson/store'
-import { ASSISTANTS, ASSISTANT_TASKS, MEMBERS, chooseAssistant, greeting, send, speaker, talkTo, undo, undoFor, useCrew, type AssistantId } from './store'
+import { ASSISTANTS, ASSISTANT_TASKS, MEMBERS, chooseAssistant, greeting, interrupt, send, speaker, stopAll, stopMember, talkTo, undo, undoFor, useCrew, type AssistantId } from './store'
+import type { Live } from './stream'
 
 const X_MARK = 'M6 18 18 6M6 6l12 12'
 const UNDO = 'M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3'
 const SIZE = { sm: 'h-8 w-8 text-xs', md: 'h-10 w-10 text-sm', lg: 'h-24 w-24 text-2xl' } as const
 
 /** A portrait from public/portraits/<id>.webp; the initial while it is missing. */
-function Face({ id, as, size = 'sm' }: { id: string; as?: string; size?: keyof typeof SIZE }) {
+function Face({ id, as, size = 'sm', working }: { id: string; as?: string; size?: keyof typeof SIZE; working?: boolean }) {
   const { assistant } = useCrew()
   const file = id === 'assistant' ? (as && as in ASSISTANTS ? as : assistant) : id
   const [failed, setFailed] = useState(false)
   useEffect(() => setFailed(false), [file])
   const { name } = speaker(id, as)
   return (
-    <span className={`grid shrink-0 place-items-center overflow-hidden rounded-full border border-panel-hairline bg-base-100 font-semibold text-panel-label ${SIZE[size]}`}>
-      {failed ? name.slice(0, 1) : <img src={`/portraits/${file}.webp`} alt="" className="h-full w-full object-cover" onError={() => setFailed(true)} />}
+    <span className="relative inline-flex shrink-0">
+      <span className={`grid place-items-center overflow-hidden rounded-full border border-panel-hairline bg-base-100 font-semibold text-panel-label ${SIZE[size]}`}>
+        {failed ? name.slice(0, 1) : <img src={`/portraits/${file}.webp`} alt="" className="h-full w-full object-cover" onError={() => setFailed(true)} />}
+      </span>
+      {working && <span className="status status-info absolute -right-0.5 -top-0.5" data-tooltip="Working" aria-label="Working" />}
     </span>
+  )
+}
+
+// Three rounded dots in a row (.crew-dot in studio.css); reduced motion pulses them instead.
+function Dots() {
+  return (
+    <span className="mt-1 inline-flex items-center gap-1" role="status" aria-label="Working">
+      {[0, 1, 2].map((i) => <span key={i} className="crew-dot h-1.5 w-1.5 rounded-full bg-base-content" />)}
+    </span>
+  )
+}
+
+const cutTail = (t: string, n = 4000) => (t.length > n ? '…' + t.slice(-n) : t)
+
+/** What a member was asked, thought and wrote so far; `live` follows the stream, `saved` is what a line kept. */
+function Thoughts({ live, thoughts, draft, open }: { live?: Live; thoughts?: string; draft?: string; open?: boolean }) {
+  const box = useRef<HTMLDivElement>(null)
+  const text = live?.thinking ?? thoughts
+  const reply = live?.draft ?? draft
+  useEffect(() => { if (open) box.current?.scrollTo({ top: box.current.scrollHeight }) }, [open, text, reply, live?.review, live?.jev])
+  const label = 'text-3xs font-semibold uppercase tracking-wide text-panel-label'
+  return (
+    <div ref={box} className="mt-1 max-h-40 space-y-1 overflow-auto rounded border border-panel-hairline p-2 text-xs text-panel-label">
+      {live?.asked && <p><span className={label}>Asked </span>{live.asked}</p>}
+      {text && <p className="whitespace-pre-wrap"><span className={label}>Thinking </span>{cutTail(text)}</p>}
+      {reply && <p className="whitespace-pre-wrap"><span className={label}>Reply </span>{cutTail(reply)}</p>}
+      {live?.jev && <p><span className={label}>JEV </span>{live.jev.score.toFixed(2)}, {live.jev.choice}</p>}
+      {live && !live.jev && live.draft && <p>JEV checking</p>}
+      {live?.review ? <p className="whitespace-pre-wrap"><span className={label}>Marten </span>{live.review}</p> : live?.jev ? <p>Marten reviewing</p> : null}
+      {!text && !reply && !live?.jev && <p>Nothing to show yet.</p>}
+    </div>
+  )
+}
+
+/** A member who is working: their "on it" bubble, dots, Stop / Talk to, and the live thought process. */
+function WorkingBubble({ who, live, open, onToggle, onTalk }: { who: string; live: Live; open: boolean; onToggle: () => void; onTalk: () => void }) {
+  const { name, role } = speaker(who)
+  return (
+    <div className="flex gap-2">
+      <button type="button" onClick={onToggle} aria-expanded={open} aria-label={`Thought process of ${name}`} data-tooltip="Thought process"><Face id={who} working /></button>
+      <div className="min-w-0 flex-1">
+        <p className="text-3xs font-semibold uppercase tracking-wide text-panel-label">{name} · {role}</p>
+        <button type="button" onClick={onToggle} className="block text-left text-xs text-panel-value">{live.ack || 'Working'}</button>
+        <Dots />
+        <div className="mt-1 flex gap-1">
+          <button type="button" className="btn btn-ghost btn-xs" onClick={() => void stopMember(who)}>Stop</button>
+          <button type="button" className="btn btn-ghost btn-xs" onClick={onTalk}>Talk to {name}</button>
+        </div>
+        {open && <Thoughts live={live} open />}
+      </div>
+    </div>
   )
 }
 
@@ -61,7 +116,7 @@ function Card({ id, onClose, onAsk }: { id: string; onClose: () => void; onAsk: 
 
 const jevTone = (s: number) => (s >= 0.8 ? 'badge-success' : s >= 0.5 ? 'badge-warning' : 'badge-error')
 
-function Line({ index, who, as, text, changes, jev, review }: { index: number; who: string; as?: string; text: string; changes?: string[]; jev?: CrewLine['jev']; review?: CrewLine['review'] }) {
+function Line({ index, who, as, text, changes, jev, review, thoughts, draft, stopped, error }: { index: number; who: string; as?: string; text: string; changes?: string[]; jev?: CrewLine['jev']; review?: CrewLine['review']; thoughts?: string; draft?: string; stopped?: boolean; error?: string }) {
   useCrew()
   L.useLesson() // the Undo shows only while this line's scene is open
   const canUndo = !!undoFor(index)
@@ -75,6 +130,8 @@ function Line({ index, who, as, text, changes, jev, review }: { index: number; w
       <div className="min-w-0 flex-1">
         <p className="text-3xs font-semibold uppercase tracking-wide text-panel-label">{name} · {role}</p>
         {text && <p className="whitespace-pre-wrap text-xs text-panel-value">{text}</p>}
+        {stopped && <p className="text-xs text-panel-label">Stopped</p>}
+        {error && <p role="alert" className="text-xs text-error">{error}</p>}
         {jev && (
           <span className={`badge badge-xs mt-1 ${jevTone(jev.score)}`} data-tooltip="JEV: chance every historical claim holds">JEV {jev.score.toFixed(2)}</span>
         )}
@@ -98,6 +155,12 @@ function Line({ index, who, as, text, changes, jev, review }: { index: number; w
             )}
           </div>
         )}
+        {(thoughts || draft) && (
+          <details className="mt-1">
+            <summary className="cursor-pointer text-2xs text-panel-label">Thought process</summary>
+            <Thoughts thoughts={thoughts} draft={draft} />
+          </details>
+        )}
       </div>
     </div>
   )
@@ -108,6 +171,9 @@ export function CrewPanel() {
   const lines = L.useLesson().lesson.crew ?? []
   const [card, setCard] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
+  const [open, setOpen] = useState<Record<string, boolean>>({})
+  const working = Object.entries(crew.live).filter(([, l]) => l.status === 'working')
+  const toggle = (who: string) => setOpen((o) => ({ ...o, [who]: !o[who] }))
   const log = useRef<HTMLDivElement>(null)
   const box = useRef<HTMLTextAreaElement>(null)
   useEffect(() => {
@@ -116,7 +182,7 @@ export function CrewPanel() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [card])
-  useEffect(() => { log.current?.scrollTo({ top: log.current.scrollHeight }) }, [lines.length, crew.busy])
+  useEffect(() => { log.current?.scrollTo({ top: log.current.scrollHeight }) }, [lines.length, crew.busy, working.length])
   const to = crew.to ? speaker(crew.to).name : null
   const submit = () => { const t = draft; setDraft(''); void send(t).then((ok) => { if (!ok) setDraft((d) => d || t) }) }
 
@@ -132,9 +198,10 @@ export function CrewPanel() {
       <ul className="flex flex-wrap gap-1.5 px-4 pb-3" role="list" aria-label="The crew">
         {MEMBERS.map((m) => (
           <li key={m.id}>
-            <button type="button" onClick={() => setCard(m.id)} data-tooltip={`${m.name}, ${m.role}`}
+            <button type="button" onClick={() => (crew.live[m.id]?.status === 'working' ? toggle(m.id) : setCard(m.id))}
+                    data-tooltip={crew.live[m.id]?.status === 'working' ? `${m.name}, working: thought process` : `${m.name}, ${m.role}`}
                     aria-label={`${m.name}, ${m.role}`} aria-pressed={card === m.id}>
-              <Face id={m.id} />
+              <Face id={m.id} working={crew.live[m.id]?.status === 'working'} />
             </button>
           </li>
         ))}
@@ -144,7 +211,11 @@ export function CrewPanel() {
       <div ref={log} className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto border-t border-panel-hairline px-4 py-3" aria-live="polite">
         <Line index={-1} who="assistant" text={greeting()} />
         {lines.map((l, i) => <Line key={i} index={i} {...l} />)}
-        {crew.busy && <p className="text-xs text-panel-label">{to ?? speaker('assistant').name} is on it…</p>}
+        {working.map(([who, l]) => (
+          <WorkingBubble key={who} who={who} live={l} open={!!open[who]} onToggle={() => toggle(who)}
+                         onTalk={() => { void interrupt(who); box.current?.focus() }} />
+        ))}
+        {crew.busy && !working.length && <p className="text-xs text-panel-label">{to ?? speaker('assistant').name} is on it…</p>}
         {crew.error && <p role="alert" className="text-xs text-error">{crew.error}</p>}
       </div>
 
@@ -165,7 +236,10 @@ export function CrewPanel() {
                     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit() }
                   }}
                   className="textarea textarea-sm w-full border-panel-hairline bg-base-100 text-panel-value" />
-        <button type="button" className="btn btn-primary btn-sm" disabled={crew.busy || !draft.trim()} onClick={submit}>Send</button>
+        <div className="flex gap-2">
+          <button type="button" className="btn btn-primary btn-sm flex-1" disabled={(crew.busy && !crew.partial) || !draft.trim()} onClick={submit}>Send</button>
+          {working.length > 0 && <button type="button" className="btn btn-sm" onClick={() => void stopAll()}>Stop all</button>}
+        </div>
       </div>
 
       <SettingsSection title="Settings" open={false} name="crew-settings">

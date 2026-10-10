@@ -101,3 +101,11 @@ html.panel-resizing .panel-slot { transition: none; }
 /* subtitle text: underlined, not coloured (form carries the meaning, legible for everyone) */
 .script-doc .script-subtitle { text-decoration: underline; text-decoration-style: dashed; text-underline-offset: 4px; }
 .script-doc .is-empty::before { content: attr(data-placeholder); float: left; height: 0; pointer-events: none; color: var(--color-panel-label); }
+
+/* crew working dots (src/crew/CrewPanel.tsx): a soft wave; reduced motion only pulses */
+@keyframes crew-dot { 0%, 80%, 100% { transform: translateY(0); opacity: .4 } 40% { transform: translateY(-3px); opacity: 1 } }
+@keyframes crew-dot-fade { 0%, 100% { opacity: .3 } 50% { opacity: 1 } }
+.crew-dot { animation: crew-dot 1.2s ease-in-out infinite }
+.crew-dot:nth-child(2) { animation-delay: .15s }
+.crew-dot:nth-child(3) { animation-delay: .3s }
+@media (prefers-reduced-motion: reduce) { .crew-dot { animation-name: crew-dot-fade } }
