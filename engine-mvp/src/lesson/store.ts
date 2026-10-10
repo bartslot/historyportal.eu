@@ -13,9 +13,11 @@ const AUTOSAVE_MS = 5000
 const THUMB_W = 160
 const THUMB_EVERY = 3
 
+export type Choice = { label: string; why: string; recommended?: boolean }
+export type Choices = { question: string; options: Choice[]; scope?: boolean }
 export type SceneEntry = { doc: any | null; thumb: string | null }
 /** One line of the crew chat, kept with the lesson (src/crew). */
-export type CrewLine = { who: string; as?: string; text: string; changes?: string[]; jev?: { score: number; choice: string }; review?: { who: string; text: string }; thoughts?: string; draft?: string; stopped?: boolean; error?: string; turn?: string | number; status?: 'working'; interrupted?: boolean }
+export type CrewLine = { who: string; as?: string; text: string; changes?: string[]; jev?: { score: number; choice: string }; review?: { who: string; text: string }; thoughts?: string; draft?: string; stopped?: boolean; error?: string; turn?: string | number; status?: 'working'; interrupted?: boolean; choices?: Choices; answered?: string }
 /** The three steps, strictly in order (Bart 2026-10-10): plan the story, build it, make it move. */
 export const STEPS = ['script', 'visual', 'animate'] as const
 export type Step = (typeof STEPS)[number]
@@ -170,6 +172,33 @@ export function setTitle(title: string) {
 
 export function setScript(script: any) {
   set({ lesson: { ...state.lesson, script }, saved: 'unsaved' })
+}
+
+/** Write look/sky settings (control id to value) into other scenes' saved docs, so they open with them.
+ *  A scene never opened has no doc yet: it gets an empty one that only carries the settings.
+ *  Returns the previous docs to hand back to restoreSceneDocs (one undo). Saved at once. */
+export function patchSceneSettings(ids: string[], patch: Record<string, number | boolean | string>): Record<string, any | null> {
+  const prev: Record<string, any | null> = {}
+  const scenes = { ...state.lesson.scenes }
+  for (const id of ids) {
+    const entry = scenes[id]
+    if (!entry) continue
+    prev[id] = entry.doc
+    const doc = entry.doc ?? { version: 1, actors: [] }
+    const settings = { ...(doc.settings ?? {}), ...Object.fromEntries(Object.entries(patch).map(([k, v]) => [k, typeof v === 'boolean' ? v : String(v)])) }
+    scenes[id] = { ...entry, doc: { ...doc, settings } }
+  }
+  set({ lesson: { ...state.lesson, scenes }, saved: 'unsaved' })
+  void persist(state.lesson)
+  return prev
+}
+
+/** Put back docs returned by patchSceneSettings. */
+export function restoreSceneDocs(prev: Record<string, any | null>) {
+  const scenes = { ...state.lesson.scenes }
+  for (const [id, doc] of Object.entries(prev)) if (scenes[id]) scenes[id] = { ...scenes[id], doc }
+  set({ lesson: { ...state.lesson, scenes }, saved: 'unsaved' })
+  void persist(state.lesson)
 }
 
 export function setCrew(crew: CrewLine[]) {

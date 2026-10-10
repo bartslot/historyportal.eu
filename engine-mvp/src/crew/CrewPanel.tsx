@@ -6,7 +6,7 @@ import { SettingsSection } from '../ui/kit'
 import * as L from '../lesson/store'
 import type { CrewLine } from '../lesson/store'
 import { noteCardOpened, useLiveContext } from './context'
-import { ASSISTANTS, ASSISTANT_TASKS, MEMBERS, chooseAssistant, interrupt, send, speaker, stopAll, stopMember, talkTo, undo, undoFor, useCrew, type AssistantId } from './store'
+import { ASSISTANTS, ASSISTANT_TASKS, MEMBERS, chooseAssistant, interrupt, pickChoice, send, speaker, stopAll, stopMember, talkTo, undo, undoFor, useCrew, type AssistantId } from './store'
 import type { Live } from './stream'
 
 const X_MARK = 'M6 18 18 6M6 6l12 12'
@@ -115,9 +115,49 @@ function Card({ id, onClose, onAsk }: { id: string; onClose: () => void; onAsk: 
   )
 }
 
+/** The options of a question, like Claude's picker: arrows move, Enter or 1-4 picks. */
+function ChoiceList({ index, choices, onElse }: { index: number; choices: NonNullable<CrewLine['choices']>; onElse: () => void }) {
+  const box = useRef<HTMLDivElement>(null)
+  const buttons = () => [...(box.current?.querySelectorAll<HTMLButtonElement>('button[data-option]') ?? [])]
+  useEffect(() => {
+    const a = document.activeElement
+    if (!a || a === document.body || (a instanceof HTMLTextAreaElement && !a.value)) buttons()[0]?.focus()
+  }, [])
+  const onKey = (e: React.KeyboardEvent) => {
+    const all = buttons()
+    const at = all.indexOf(document.activeElement as HTMLButtonElement)
+    const n = Number(e.key)
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault(); e.stopPropagation()
+      all[(at + (e.key === 'ArrowDown' ? 1 : -1) + all.length) % all.length]?.focus()
+    } else if (n >= 1 && n <= choices.options.length) {
+      e.preventDefault(); e.stopPropagation()
+      void pickChoice(index, choices.options[n - 1].label)
+    }
+  }
+  return (
+    <div ref={box} role="group" aria-label={choices.question} onKeyDown={onKey} className="mt-2 flex flex-col gap-1.5">
+      <p className="text-xs text-panel-value">{choices.question}</p>
+      {choices.options.map((o, i) => (
+        <button key={o.label} type="button" data-option onClick={() => void pickChoice(index, o.label)}
+                className="btn btn-sm h-auto w-full justify-start py-2 text-left">
+          <span className="flex min-w-0 flex-col items-start gap-0.5">
+            <span className="flex items-center gap-2 text-xs font-semibold text-panel-value">
+              <span className="text-panel-label">{i + 1}</span>{o.label}
+              {o.recommended && <span className="badge badge-xs">Recommended</span>}
+            </span>
+            {o.why && <span className="whitespace-normal text-xs font-normal text-panel-label">{o.why}</span>}
+          </span>
+        </button>
+      ))}
+      <button type="button" className="btn btn-ghost btn-sm justify-start" onClick={onElse}>Something else</button>
+    </div>
+  )
+}
+
 const jevTone = (s: number) => (s >= 0.8 ? 'badge-success' : s >= 0.5 ? 'badge-warning' : 'badge-error')
 
-function Line({ index, who, as, text, changes, jev, review, thoughts, draft, stopped, error, status, interrupted }: { index: number; who: string; as?: string; text: string; changes?: string[]; jev?: CrewLine['jev']; review?: CrewLine['review']; thoughts?: string; draft?: string; stopped?: boolean; error?: string; status?: 'working'; interrupted?: boolean; turn?: string | number }) {
+function Line({ index, active, onElse, choices, answered, who, as, text, changes, jev, review, thoughts, draft, stopped, error, status, interrupted }: { index: number; active?: boolean; onElse?: () => void; choices?: CrewLine['choices']; answered?: string; who: string; as?: string; text: string; changes?: string[]; jev?: CrewLine['jev']; review?: CrewLine['review']; thoughts?: string; draft?: string; stopped?: boolean; error?: string; status?: 'working'; interrupted?: boolean; turn?: string | number }) {
   useCrew()
   L.useLesson() // the Undo shows only while this line's scene is open
   const canUndo = !!undoFor(index)
@@ -147,6 +187,10 @@ function Line({ index, who, as, text, changes, jev, review, thoughts, draft, sto
             </div>
           </div>
         )}
+        {choices && (answered
+          ? <p className="mt-1 text-xs text-panel-label">You chose: {answered}</p>
+          : active ? <ChoiceList index={index} choices={choices} onElse={onElse ?? (() => {})} />
+            : <p className="mt-1 text-xs text-panel-label">{choices.question} (not answered)</p>)}
         {changes && (
           <div className="mt-1 flex items-start gap-2">
             <ul className="flex-1 text-2xs text-panel-label">{changes.map((c, i) => <li key={i}>{c}</li>)}</ul>
@@ -216,7 +260,7 @@ export function CrewPanel() {
 
       <div ref={log} className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto border-t border-panel-hairline px-4 py-3" aria-live="polite">
         <Line index={-1} who="assistant" text={live.greeting} />
-        {lines.map((l, i) => <Line key={i} index={i} {...l} />)}
+        {lines.map((l, i) => <Line key={i} index={i} active={!lines.slice(i + 1).some((x) => x.who === 'client')} onElse={() => box.current?.focus()} {...l} />)}
         {working.map(([who, l]) => (
           <WorkingBubble key={who} who={who} live={l} open={!!open[key(who)]} onToggle={() => toggle(who)}
                          onTalk={() => { void interrupt(who); box.current?.focus() }} />

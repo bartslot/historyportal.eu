@@ -6,7 +6,8 @@ import { useSyncExternalStore } from 'react'
 import * as L from '../lesson/store'
 import type { CrewLine } from '../lesson/store'
 import CREW from './crew.json'
-import { applySettings, readSettings, type Change } from './settings'
+import { applySettings, lessonPatch, readSettings, type Change } from './settings'
+import { cleanChoices, scopeOf, type Scope } from './choices'
 import { asCrew, buildContext, currentGreeting } from './context'
 import { buildPartial, parseEvent, reduceLive, savedThoughts, upsertLine, splitLines, type CrewEvent, type LiveMap, type Turn } from './stream'
 
@@ -28,8 +29,8 @@ function savedAssistant(): AssistantId {
 export type UndoEntry = { lesson: string; scene: string; run: () => Promise<void>; seq?: number }
 let undoSeq = 0
 /** partial: the draft of a member the client interrupted; the next send hands it back to them. */
-type State = { assistant: AssistantId; to: string | null; busy: boolean; error: string | null; undo: Record<number, UndoEntry>; live: LiveMap; partial: { who: string; text: string } | null }
-let state: State = { assistant: savedAssistant(), to: null, busy: false, error: null, undo: {}, live: {}, partial: null }
+type State = { assistant: AssistantId; to: string | null; busy: boolean; error: string | null; undo: Record<number, UndoEntry>; live: LiveMap; partial: { who: string; text: string } | null; scope: Scope | null }
+let state: State = { assistant: savedAssistant(), to: null, busy: false, error: null, undo: {}, live: {}, partial: null, scope: null }
 const listeners = new Set<() => void>()
 const set = (patch: Partial<State>) => { state = { ...state, ...patch }; listeners.forEach((l) => l()) }
 const subscribe = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l) } }
@@ -75,15 +76,25 @@ const fmt = (c: Change, labels: Map<string, string>) => `${labels.get(c.id) ?? c
 // Undo takes the whole scene back (objects, keys, look and sky settings) with the lesson's own scene
 // save/load, plus the title: the same data a saved lesson holds, so nothing a crew member did is missed.
 // The undo exists before the first change is made, so a failure halfway can still be taken back.
-async function applyAnswer(msg: any): Promise<{ changes: string[]; undo: UndoEntry; failed: string | null }> {
+async function applyAnswer(msg: any, scope: Scope | null): Promise<{ changes: string[]; undo: UndoEntry; failed: string | null }> {
   const labels = new Map(readSettings().map((s) => [s.id, s.label]))
   const { lesson, current } = L.getLesson()
   const doc = sceneIO().serialize()
   const title = lesson.title
-  const undo: UndoEntry = { lesson: lesson.id, scene: current, run: async () => { await sceneIO().load(doc); L.setTitle(title) } }
+  let others: Record<string, any> = {} // the other scenes' docs before a whole-lesson restyle
+  const undo: UndoEntry = { lesson: lesson.id, scene: current, run: async () => { await sceneIO().load(doc); L.setTitle(title); L.restoreSceneDocs(others) } }
   const changes: string[] = []
   try {
-    if (Array.isArray(msg.settings) && msg.settings.length) changes.push(...applySettings(msg.settings).map((c) => fmt(c, labels)))
+    if (Array.isArray(msg.settings) && msg.settings.length) {
+      const before = readSettings()
+      const applied = applySettings(msg.settings)
+      changes.push(...applied.map((c) => fmt(c, labels)))
+      const rest = Object.keys(lesson.scenes).filter((id) => id !== current)
+      if (scope === 'lesson' && applied.length && rest.length) {
+        others = L.patchSceneSettings(rest, lessonPatch(before, readSettings(), applied))
+        changes.push(`Applied to all ${rest.length + 1} scenes`)
+      }
+    }
     if (Array.isArray(msg.commands) && msg.commands.length) changes.push(...await animator().run(msg.commands))
     if (typeof msg.title === 'string' && msg.title) {
       L.setTitle(msg.title)
@@ -137,19 +148,20 @@ const appendLine = (line: CrewLine) => putLine(null, line)
 /** One final answer: apply it (unless the scene moved on), list the changes, keep the transcript. */
 async function commitMessage(msg: any, moved: boolean, turn: Turn, extra: Partial<CrewLine>): Promise<boolean> {
   const wants = !!(msg.settings?.length || msg.commands?.length || msg.title)
-  const r = wants && !moved ? await asCrew(() => applyAnswer(msg)) : null
+  const r = wants && !moved ? await asCrew(() => applyAnswer(msg, msg.scope === 'lesson' ? 'lesson' : null)) : null
   const changes = r?.changes ?? []
   if (wants && moved) changes.push('Not applied: the scene changed while the crew was answering')
   if (r?.failed) changes.push('Stopped halfway: ' + r.failed)
   if (msg.dropped) changes.push(`${msg.dropped} unknown stage command(s) ignored`)
-  if (!msg.text && !changes.length) { // nothing to show: the "on it" line goes too
+  const choices = cleanChoices(msg.choices)
+  if (!msg.text && !changes.length && !choices) { // nothing to show: the "on it" line goes too
     const crew = L.getLesson().lesson.crew ?? []
     L.setCrew(crew.filter((l) => !(l.status === 'working' && l.who === String(msg.who) && l.turn === turn)))
     return false
   }
   const jev = cleanJev(msg.jev)
   const review = cleanReview(msg.review)
-  const i = putLine(turn, { who: String(msg.who), ...(msg.who === 'assistant' ? { as: state.assistant } : {}), text: String(msg.text ?? ''), ...(changes.length ? { changes } : {}), ...(jev ? { jev } : {}), ...(review ? { review } : {}), ...extra })
+  const i = putLine(turn, { who: String(msg.who), ...(msg.who === 'assistant' ? { as: state.assistant } : {}), text: String(msg.text ?? ''), ...(changes.length ? { changes } : {}), ...(jev ? { jev } : {}), ...(review ? { review } : {}), ...(choices ? { choices } : {}), ...extra })
   if (r && (r.changes.length || r.failed)) set({ undo: { ...state.undo, [i]: { ...r.undo, seq: ++undoSeq } } })
   return true
 }
@@ -172,7 +184,7 @@ export async function interrupt(who: string) {
 let streams = 0
 
 /** Resolves false when the message could not be sent (the client's line is taken back so the draft can return). */
-export async function send(text: string): Promise<boolean> {
+export async function send(text: string, pick = false): Promise<boolean> {
   const message = text.trim()
   if (!message) return true
   if ((state.busy && !state.partial) || L.getLesson().busy) return false
@@ -180,18 +192,19 @@ export async function send(text: string): Promise<boolean> {
   const before = lesson.crew ?? []
   const mine = { who: 'client', text: message }
   const partial = state.partial
+  const scope = state.scope // a pick keeps it; a free-typed message ends it after this turn
   let answered = false
   let myTurn: CrewEvent['turn'] | null = null
   L.setCrew([...before, mine])
   void L.saveNow()
   streams++
-  set({ busy: true, error: null, partial: null })
+  set({ busy: true, error: null, partial: null, ...(pick ? {} : { scope: null }) })
   const handle = async (ev: CrewEvent) => {
     // the client switched scene or lesson while the crew was thinking: show the answers, change nothing
     const moved = () => L.getLesson().current !== current || L.getLesson().lesson.id !== lesson.id
     const mineNow = (who: string) => state.live[who]?.turn === ev.turn ? state.live[who] : undefined
     if (ev.type === 'turn') myTurn = ev.turn
-    else if (ev.type === 'assistant') { if (ev.text.trim()) { answered = true; appendLine({ who: 'assistant', as: ev.as && ev.as in ASSISTANTS ? ev.as : state.assistant, text: ev.text }) } }
+    else if (ev.type === 'assistant') { if (ev.text.trim() || ev.choices) { answered = true; appendLine({ who: 'assistant', as: ev.as && ev.as in ASSISTANTS ? ev.as : state.assistant, text: ev.text, ...(ev.choices ? { choices: ev.choices } : {}) }) } }
     else if (ev.type === 'message') {
       const l = mineNow(ev.who)
       if (await commitMessage(ev.msg, moved(), ev.turn, l ? savedThoughts(l) : {})) answered = true
@@ -214,7 +227,7 @@ export async function send(text: string): Promise<boolean> {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        message, to: state.to, assistant: state.assistant,
+        message, to: state.to, assistant: state.assistant, ...(scope ? { scope } : {}),
         ...(partial ? { partial } : {}),
         history: [{ who: 'assistant', text: greeting() }, ...before].slice(-HISTORY)
           .map((l) => ({ who: `${speaker(l.who, l.as).name} (${speaker(l.who, l.as).role})`, text: l.text })),
@@ -256,4 +269,19 @@ export async function send(text: string): Promise<boolean> {
     set({ busy: streams > 0 })
   }
   return true
+}
+
+/** The client picked an option: it goes out as their next message to whoever asked, and a scope question
+ *  also sets the scope for this and the following turns. */
+export async function pickChoice(index: number, label: string): Promise<boolean> {
+  const crew = L.getLesson().lesson.crew ?? []
+  const line = crew[index]
+  if (!line?.choices || line.answered) return false
+  const to = line.who === 'assistant' ? null : line.who
+  const mark = (answered?: string) => L.setCrew((L.getLesson().lesson.crew ?? []).map((l, i) => (i === index ? { ...l, answered } : l)))
+  mark(label)
+  set({ to, ...(line.choices.scope ? { scope: scopeOf(label) } : {}) })
+  const ok = await send(label, true)
+  if (!ok) mark(undefined)
+  return ok
 }

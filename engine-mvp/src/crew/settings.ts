@@ -67,3 +67,13 @@ export function applySettings(changes: Change[], root: ParentNode = document): C
   }
   return applied
 }
+
+/** What a whole-lesson restyle writes into the other scenes: the changes made, plus any setting a preset
+ *  rewrote on the way (read before and after), so the other scenes end up looking the same. Pure. */
+export function lessonPatch(before: Setting[], after: Setting[], applied: Change[]): Record<string, number | boolean | string> {
+  const was = new Map(before.map((s) => [s.id, s.value]))
+  const out: Record<string, number | boolean | string> = {}
+  for (const s of after) if (was.get(s.id) !== s.value) out[s.id] = s.value
+  for (const c of applied) out[c.id] = c.value
+  return out
+}

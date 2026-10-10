@@ -403,7 +403,17 @@ def clean_scope(data):
     return v if isinstance(v, str) and v in SCOPES else None
 
 
-def clean_choices(raw):
+SCOPE_LABELS = {'nl': ('Hele les', 'Deze scène'), 'en': ('Whole lesson', 'This scene'), 'de': ('Ganze Lektion', 'Diese Szene')}
+WHOLE = re.compile(r'whole|hele|ganze|\ball\b|alle|lesson|\bles\b|lektion', re.I)
+
+
+def scope_labels(opts, lang):
+    """The scope question's two labels in the client's language, whatever the model wrote (it drifts to English)."""
+    whole, scene = SCOPE_LABELS.get(lang, SCOPE_LABELS['en'])
+    return [{**o, 'label': whole if WHOLE.search(o['label']) else scene} for o in opts]
+
+
+def clean_choices(raw, lang=None):
     """Model output is untrusted: a capped, well-formed `choices` or None. 2-4 options with a label, at most one
     recommended (the first one flagged wins and moves first), `scope: true` kept only as a real True."""
     if not isinstance(raw, dict):
@@ -419,6 +429,9 @@ def clean_choices(raw):
     opts = opts[:MAX_OPTIONS]
     if not question or len(opts) < 2:
         return None
+    if raw.get('scope') is True and len(opts) == 2:
+        # the question is written in the client's language, more reliably than a short client message
+        opts = scope_labels(opts, guess_lang(question) if guess_lang(question) != 'en' else (lang or 'en'))
     return {'question': question, 'options': opts, **({'scope': True} if raw.get('scope') is True else {})}
 
 
@@ -545,7 +558,7 @@ def member_request(m, assistant, question, data, direct):
 def finish_member(m, answer, data, direct):
     """The member's raw structured answer -> the guarded message (title, settings, commands)."""
     msg = {'who': m['id'], 'text': str(answer.get('reply', ''))[:MAX_REPLY]}
-    if choices := clean_choices(answer.get('choices')):
+    if choices := clean_choices(answer.get('choices'), guess_lang(str(data.get('message', '')))):
         msg['choices'] = choices
     if scope := clean_scope(data):
         msg['scope'] = scope
@@ -602,7 +615,7 @@ def crew_turn(data):
         return [ask_member(MEMBERS[to], assistant, message, data, direct=True)]
     plan = ask_claude(ROUTER_MODEL, router_prompt(assistant), context(data) + '\n\nClient: ' + message,
                       ROUTER_SCHEMA, ROUTER_EFFORT)
-    choices = clean_choices(plan.get('choices'))
+    choices = clean_choices(plan.get('choices'), guess_lang(message))
     out = [{'who': 'assistant', 'text': str(plan.get('reply', ''))[:800], **({'choices': choices} if choices else {})}]
     asks = [] if choices else plan.get('ask') if isinstance(plan.get('ask'), list) else []   # the client decides first
     asks = [a for a in asks if isinstance(a, dict) and isinstance(a.get('crew'), str) and a['crew'] in MEMBERS][:MAX_ASKS]
@@ -812,7 +825,7 @@ def crew_stream(data, emit, state):
         return stream_member(MEMBERS[to], assistant, question, data, True, state, emit)
     plan = ask_claude(ROUTER_MODEL, router_prompt(assistant), context(data) + '\n\nClient: ' + message,
                       ROUTER_SCHEMA, ROUTER_EFFORT)
-    choices = clean_choices(plan.get('choices'))
+    choices = clean_choices(plan.get('choices'), guess_lang(message))
     emit({'type': 'assistant', 'as': assistant['name'], 'text': str(plan.get('reply', ''))[:800],
           **({'choices': choices} if choices else {})})
     asks = [] if choices else plan.get('ask') if isinstance(plan.get('ask'), list) else []   # the client decides first

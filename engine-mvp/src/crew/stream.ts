@@ -1,6 +1,8 @@
 // The crew stream (docs/crew-stream.md): pure helpers. Lines are split out of arbitrary chunks, every event is
 // validated (the server is untrusted), and a reducer folds events into one live state per working member.
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import type { Choices } from '../lesson/store'
+import { cleanChoices } from './choices'
 
 export const LIVE_CAP = 8000 // what a working member keeps while streaming
 export const SAVED_CAP = 4000 // what is saved with the final line
@@ -8,7 +10,7 @@ export const SAVED_CAP = 4000 // what is saved with the final line
 export type Turn = string | number
 export type CrewEvent =
   | { type: 'turn'; turn: Turn }
-  | { type: 'assistant'; turn: Turn; as?: string; text: string }
+  | { type: 'assistant'; turn: Turn; as?: string; text: string; choices?: Choices }
   | { type: 'routed'; turn: Turn; who: string; ack: string }
   | { type: 'start'; turn: Turn; who: string }
   | { type: 'thinking' | 'text' | 'review'; turn: Turn; who: string; text: string }
@@ -42,7 +44,11 @@ export function parseEvent(line: string): CrewEvent | null {
   const turn: Turn = str(e.turn) || typeof e.turn === 'number' ? e.turn : ''
   switch (e.type) {
     case 'turn': case 'done': return { type: e.type, turn }
-    case 'assistant': return str(e.text) ? { type: 'assistant', turn, ...(str(e.as) ? { as: e.as } : {}), text: e.text } : null
+    case 'assistant': {
+      if (!str(e.text)) return null
+      const choices = cleanChoices(e.choices)
+      return { type: 'assistant', turn, ...(str(e.as) ? { as: e.as } : {}), text: e.text, ...(choices ? { choices } : {}) }
+    }
     case 'routed': return str(e.who) && str(e.ack) ? { type: 'routed', turn, who: e.who, ack: e.ack } : null
     case 'start': case 'stopped': return str(e.who) ? { type: e.type, turn, who: e.who } : null
     case 'thinking': case 'text': case 'review': return str(e.who) && str(e.text) ? { type: e.type, turn, who: e.who, text: e.text } : null

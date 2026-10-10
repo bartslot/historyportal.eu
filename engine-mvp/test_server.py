@@ -239,3 +239,7 @@ c, r = post('/crew', {'message': 'Kunnen we andere kleuren proberen?', 'settings
 assert json.loads(r.read())['messages'][0]['choices']['options'] == want
 srv.shutdown()
 print('choices stream ok')
+
+sc = s.clean_choices({'question': 'Waar?', 'scope': True, 'options': [{'label': 'This scene', 'why': 'a', 'recommended': True}, {'label': 'Whole lesson', 'why': 'b'}]}, 'nl')
+assert [o['label'] for o in sc['options']] == ['Deze scène', 'Hele les'], sc
+print('scope labels ok')
