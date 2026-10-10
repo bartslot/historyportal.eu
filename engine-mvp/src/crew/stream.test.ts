@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildPartial, parseEvent, reduceLive, splitLines, sweepInterrupted, upsertLine, type CrewEvent, type LiveMap } from './stream'
+import { BEFORE_CAP, SKETCH_MAX, attachSketch, buildPartial, cleanSketch, parseEvent, reduceLive, reviseLine, splitLines, sweepInterrupted, upsertLine, type CrewEvent, type LiveMap } from './stream'
 
 const run = (evs: object[], asked = 'make it dusk'): LiveMap =>
   evs.reduce<LiveMap>((m, e) => { const p = parseEvent(JSON.stringify(e)); return p ? reduceLive(m, p, asked, 1) : m }, {})
@@ -103,5 +103,54 @@ describe('sweepInterrupted', () => {
   it('returns the same array when nothing was in flight', () => {
     const a = [{ who: 'a', text: 'ok' }]
     expect(sweepInterrupted(a)).toBe(a)
+  })
+})
+
+describe('cleanSketch', () => {
+  const ok = 'data:image/jpeg;base64,/9j/4AAQ'
+  it('keeps an image data URL and cuts the caption', () => {
+    expect(cleanSketch(ok, 'x'.repeat(400))).toEqual({ url: ok, caption: 'x'.repeat(300) })
+  })
+  it('drops other URLs, wrong types and oversize images', () => {
+    expect(cleanSketch('/sketches/a.webp', 'c')).toBeNull()
+    expect(cleanSketch('https://x.test/a.jpg', 'c')).toBeNull()
+    expect(cleanSketch('data:text/html;base64,AAAA', 'c')).toBeNull()
+    expect(cleanSketch(ok + 'A'.repeat(SKETCH_MAX), 'c')).toBeNull()
+    expect(cleanSketch(5, 'c')).toBeNull()
+  })
+})
+
+describe('reviseLine', () => {
+  type T = { who: string; text: string; turn?: number; status?: 'working'; before?: string; revised?: boolean; sketch?: { url: string; caption: string } }
+  const sk = { url: 'data:image/jpeg;base64,AA', caption: 'c' }
+  it('replaces the finished line in place and keeps the first text as before', () => {
+    const lines: T[] = [{ who: 'client', text: 'q' }, { who: 'a', turn: 1, text: 'first', sketch: sk }, { who: 'b', turn: 1, text: 'other' }]
+    const r = reviseLine(lines, 1, { who: 'a', turn: 1, text: 'fixed' })
+    expect(r.index).toBe(1)
+    expect(r.lines[1]).toMatchObject({ text: 'fixed', before: 'first', revised: true, sketch: sk })
+    expect(r.old?.text).toBe('first')
+    expect(lines[1].text).toBe('first')
+  })
+  it('keeps the very first text when the line is revised twice, capped', () => {
+    const first = reviseLine<T>([{ who: 'a', turn: 1, text: 'x'.repeat(5000) }], 1, { who: 'a', turn: 1, text: 'v2' })
+    expect(first.lines[0].before).toHaveLength(BEFORE_CAP)
+    const again = reviseLine(first.lines, 1, { who: 'a', turn: 1, text: 'v3' })
+    expect(again.lines[0].before).toHaveLength(BEFORE_CAP)
+  })
+  it('appends when there is no finished line, and never touches a working one', () => {
+    const w: T = { who: 'a', turn: 1, text: 'ack', status: 'working' }
+    const r = reviseLine([w], 1, { who: 'a', turn: 1, text: 'fixed' })
+    expect(r.index).toBe(1)
+    expect(r.old).toBeNull()
+  })
+})
+
+describe('attachSketch', () => {
+  it('puts the sketch on that member finished line of the turn, else returns null', () => {
+    const sk = { url: 'data:image/jpeg;base64,AA', caption: 'c' }
+    const lines: { who: string; turn: number; text: string; sketch?: typeof sk }[] = [{ who: 'set', turn: 1, text: 'built' }, { who: 'set', turn: 2, text: 'again' }]
+    expect(attachSketch(lines, 1, 'set', sk)?.[0].sketch).toEqual(sk)
+    expect(attachSketch(lines, 1, 'set', sk)?.[1].sketch).toBeUndefined()
+    expect(attachSketch(lines, 3, 'set', sk)).toBeNull()
   })
 })

@@ -5,8 +5,9 @@ import { Panel } from '../panels/Panel'
 import * as L from '../lesson/store'
 import type { CrewLine } from '../lesson/store'
 import { noteCardOpened, useLiveContext } from './context'
-import { ASSISTANTS, ASSISTANT_TASKS, MEMBERS, chooseAssistant, interrupt, pickChoice, send, speaker, stopAll, stopMember, talkTo, undo, undoFor, useCrew, type AssistantId } from './store'
+import { ASSISTANTS, ASSISTANT_TASKS, MEMBERS, chooseAssistant, interrupt, isFreshRevised, pickChoice, send, speaker, stopAll, stopMember, talkTo, undo, undoFor, useCrew, type AssistantId } from './store'
 import type { Live } from './stream'
+import type { Sketch } from './stream'
 import { TypedView } from './Typed'
 import { finishAllTyping, useTypewriter } from './typewriter'
 
@@ -71,6 +72,7 @@ function Thoughts({ live, thoughts, draft, open }: { live?: Live; thoughts?: str
 /** A member who is working: their "on it" bubble, dots, Stop / Talk to, and the live thought process. */
 function WorkingBubble({ who, live, open, onToggle, onTalk }: { who: string; live: Live; open: boolean; onToggle: () => void; onTalk: () => void }) {
   const { name, role } = speaker(who)
+  const step = L.stepOf(L.useLesson().lesson)
   return (
     <div className="flex gap-2">
       <button type="button" onClick={onToggle} aria-expanded={open} aria-label={`Thought process of ${name}`} data-tooltip="Thought process"><Face id={who} working /></button>
@@ -78,6 +80,7 @@ function WorkingBubble({ who, live, open, onToggle, onTalk }: { who: string; liv
         <p className="text-3xs font-semibold uppercase tracking-wide text-panel-label">{name} · {role}</p>
         <button type="button" onClick={onToggle} className="block text-left text-xs text-panel-value">{live.ack ? <Typed text={live.ack} /> : 'Working'}</button>
         <Dots />
+        {who === 'set' && step === 'script' && <SketchSkeleton />}
         <div className="mt-1 flex gap-1">
           <button type="button" className="btn btn-ghost btn-xs" onClick={() => void stopMember(who)}>Stop</button>
           <button type="button" className="btn btn-ghost btn-xs" onClick={onTalk}>Talk to {name}</button>
@@ -202,9 +205,55 @@ function ChoiceList({ index, choices }: { index: number; choices: NonNullable<Cr
   )
 }
 
+const SKETCH_BOX = 'aspect-video w-full max-w-[220px] rounded border border-panel-hairline'
+const LABEL = 'text-3xs font-semibold uppercase tracking-wide text-panel-label'
+
+/** The blockout thumbnail under a line: click to see it larger. */
+function SketchThumb({ sketch, onOpen }: { sketch: Sketch; onOpen: () => void }) {
+  return (
+    <div className="mt-1 max-w-[220px]">
+      <button type="button" onClick={onOpen} aria-label="Enlarge the blockout" data-tooltip="Enlarge" className="block w-full">
+        <img src={sketch.url} alt={sketch.caption || 'Blockout of the scene'} loading="lazy" className={`${SKETCH_BOX} object-cover`} />
+      </button>
+      {sketch.caption && <p className="line-clamp-2 text-3xs text-panel-label">{sketch.caption}</p>}
+    </div>
+  )
+}
+
+/** The blockout is being built (Jules works in the Script step). */
+function SketchSkeleton() {
+  return (
+    <div className="mt-1 max-w-[220px]" role="status">
+      <div className={`${SKETCH_BOX} skeleton`} />
+      <p className="text-3xs text-panel-label">Building the blockout…</p>
+    </div>
+  )
+}
+
+/** The blockout larger, inside the panel: X, Esc and the backdrop close it. */
+function SketchOverlay({ sketch, onClose }: { sketch: Sketch; onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); onClose() } }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [onClose])
+  return (
+    <div className="absolute inset-0 z-20 grid place-items-center bg-base-100/80 p-3" onClick={onClose}>
+      <div role="dialog" aria-modal="true" aria-label="Blockout" className="relative max-w-[90%] rounded-md border border-panel-hairline bg-base-100 p-2" onClick={(e) => e.stopPropagation()}>
+        <button type="button" aria-label="Close" data-tooltip="Close" onClick={onClose}
+                className="absolute right-1 top-1 grid h-7 w-7 place-items-center rounded bg-base-100 text-panel-label hover:text-white">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-4 w-4" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d={X_MARK} /></svg>
+        </button>
+        <img src={sketch.url} alt={sketch.caption || 'Blockout of the scene'} className="w-full rounded" />
+        {sketch.caption && <p className="mt-1 text-xs text-panel-value">{sketch.caption}</p>}
+      </div>
+    </div>
+  )
+}
+
 const jevTone = (s: number) => (s >= 0.8 ? 'badge-success' : s >= 0.5 ? 'badge-warning' : 'badge-error')
 
-function Line({ index, fresh, active, choices, answered, who, as, text, changes, jev, review, thoughts, draft, stopped, error, status, interrupted }: { index: number; fresh?: boolean; active?: boolean; choices?: CrewLine['choices']; answered?: string; who: string; as?: string; text: string; changes?: string[]; jev?: CrewLine['jev']; review?: CrewLine['review']; thoughts?: string; draft?: string; stopped?: boolean; error?: string; status?: 'working'; interrupted?: boolean; turn?: string | number }) {
+function Line({ index, fresh, active, onSketch, sketching, revised, before, sketch, choices, answered, who, as, text, changes, jev, review, thoughts, draft, stopped, error, status, interrupted }: { index: number; fresh?: boolean; onSketch?: (s: Sketch) => void; sketching?: boolean; revised?: boolean; before?: string; sketch?: Sketch; active?: boolean; choices?: CrewLine['choices']; answered?: string; who: string; as?: string; text: string; changes?: string[]; jev?: CrewLine['jev']; review?: CrewLine['review']; thoughts?: string; draft?: string; stopped?: boolean; error?: string; status?: 'working'; interrupted?: boolean; turn?: string | number }) {
   useCrew()
   const typed = useTypewriter(text, !!fresh && who !== 'client')
   L.useLesson() // the Undo shows only while this line's scene is open
@@ -220,6 +269,13 @@ function Line({ index, fresh, active, choices, answered, who, as, text, changes,
       <div className="min-w-0 flex-1">
         <p className="text-3xs font-semibold uppercase tracking-wide text-panel-label">{name} · {role}</p>
         {text && <p className="whitespace-pre-wrap text-xs text-panel-value" onClick={typed.typing ? typed.finish : undefined}><TypedView full={text} shown={typed.shown} typing={typed.typing} /></p>}
+        {revised && (
+          <div className="mt-0.5">
+            <p className={LABEL}>Revised after Marten's note</p>
+            {before && <details><summary className="cursor-pointer text-2xs text-panel-label">Before the correction</summary><p className="mt-1 whitespace-pre-wrap text-xs text-panel-label">{before}</p></details>}
+          </div>
+        )}
+        {sketch ? <SketchThumb sketch={sketch} onOpen={() => onSketch?.(sketch)} /> : sketching && <SketchSkeleton />}
         {stopped && <p className="text-xs text-panel-label">Stopped</p>}
         {interrupted && <p className="text-xs text-panel-label">Interrupted (page reloaded)</p>}
         {error && <p role="alert" className="text-xs text-error">{error}</p>}
@@ -265,6 +321,7 @@ export function CrewPanel() {
   const crew = useCrew()
   const lines = L.useLesson().lesson.crew ?? []
   const [card, setCard] = useState<string | null>(null)
+  const [zoom, setZoom] = useState<Sketch | null>(null)
   const [draft, setDraft] = useState('')
   const [open, setOpen] = useState<Record<string, boolean>>({})
   const working = Object.entries(crew.live).filter(([, l]) => l.status === 'working')
@@ -299,7 +356,7 @@ export function CrewPanel() {
   const submit = () => { const t = draft; setDraft(''); void send(t).then((ok) => { if (!ok) setDraft((d) => d || t) }) }
 
   return (
-    <Panel id="crew" className="flex h-full flex-col [&_.btn]:rounded-md">
+    <Panel id="crew" className="relative flex h-full flex-col [&_.btn]:rounded-md">
       <div className="flex items-center gap-2 py-2 pl-4 pr-10">
         <button type="button" onClick={() => setCard('assistant')} aria-label={`About ${speaker('assistant').name}`}><Face id="assistant" /></button>
         <p className="min-w-0 truncate text-sm font-semibold text-panel-value">
@@ -321,7 +378,7 @@ export function CrewPanel() {
 
       <div ref={log} className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto border-t border-panel-hairline px-4 py-3" aria-live="polite">
         <Line index={-1} who="assistant" text={live.greeting} />
-        {lines.map((l, i) => <Line key={i} index={i} fresh={i >= base.current.n} active={!lines.slice(i + 1).some((x) => x.who === 'client')} {...l} />)}
+        {lines.map((l, i) => <Line key={`${i}${l.revised ? 'r' : ''}`} index={i} fresh={i >= base.current.n || isFreshRevised(l)} onSketch={setZoom} active={!lines.slice(i + 1).some((x) => x.who === 'client')} {...l} />)}
         {working.map(([who, l]) => (
           <WorkingBubble key={who} who={who} live={l} open={!!open[key(who)]} onToggle={() => toggle(who)}
                          onTalk={() => { void interrupt(who); box.current?.focus() }} />
@@ -362,6 +419,7 @@ export function CrewPanel() {
         </div>
       </div>
 
+      {zoom && <SketchOverlay sketch={zoom} onClose={() => setZoom(null)} />}
     </Panel>
   )
 }

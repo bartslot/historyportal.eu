@@ -8,8 +8,9 @@ import type { CrewLine } from '../lesson/store'
 import CREW from './crew.json'
 import { applySettings, lessonPatch, readSettings, type Change } from './settings'
 import { cleanChoices, scopeOf, type Scope } from './choices'
+import { blockoutCaption, captureBlockout } from './blockout'
 import { asCrew, buildContext, currentGreeting } from './context'
-import { buildPartial, parseEvent, reduceLive, savedThoughts, upsertLine, splitLines, type CrewEvent, type LiveMap, type Turn } from './stream'
+import { attachSketch, buildPartial, parseEvent, reduceLive, reviseLine, savedThoughts, upsertLine, splitLines, type CrewEvent, type LiveMap, type Turn } from './stream'
 
 export type AssistantId = keyof typeof CREW.assistants
 export type Member = (typeof CREW.crew)[number]
@@ -145,15 +146,37 @@ const putLine = (turn: Turn | null, line: CrewLine) => {
 }
 const appendLine = (line: CrewLine) => putLine(null, line)
 
-/** One final answer: apply it (unless the scene moved on), list the changes, keep the transcript. */
+/** The writer's sketch sentence of each turn: the caption of the designer's blockout thumbnail. */
+const sketchOf = new Map<string, string>()
+/** Lines whose revised text should type in (this visit only, never saved). */
+const freshRevised = new Set<string>()
+export const revisedKey = (l: { turn?: Turn; who: string }) => `${l.turn ?? ''}:${l.who}`
+export const isFreshRevised = (l: { turn?: Turn; who: string }) => freshRevised.has(revisedKey(l))
+
+/** Capture the stage after a blockout was applied and keep it on that member's line (same lesson and scene only). */
+async function addBlockout(turn: Turn, who: string, text: string, lessonId: string, scene: string) {
+  const sketch = await captureBlockout(blockoutCaption(sketchOf.get(String(turn)), text))
+  const g = L.getLesson()
+  if (!sketch || g.lesson.id !== lessonId || g.current !== scene) return
+  const lines = attachSketch(g.lesson.crew ?? [], turn, who, sketch)
+  if (!lines) return
+  L.setCrew(lines)
+  void L.saveNow()
+}
+
+/** One final answer: apply it (unless the scene moved on), list the changes, keep the transcript.
+ *  A revised answer (Marten's note) replaces the member's finished line of this turn in place. */
 async function commitMessage(msg: any, moved: boolean, turn: Turn, extra: Partial<CrewLine>): Promise<boolean> {
+  const revised = msg.revised === true
   const wants = !!(msg.settings?.length || msg.commands?.length || msg.title)
+  const { lesson: startLesson, current: startScene } = L.getLesson()
   const r = wants && !moved ? await asCrew(() => applyAnswer(msg, msg.scope === 'lesson' ? 'lesson' : null)) : null
   const changes = r?.changes ?? []
   if (wants && moved) changes.push('Not applied: the scene changed while the crew was answering')
   if (r?.failed) changes.push('Stopped halfway: ' + r.failed)
   if (msg.dropped) changes.push(`${msg.dropped} unknown stage command(s) ignored`)
   const choices = cleanChoices(msg.choices)
+  if (typeof msg.sketch === 'string' && msg.sketch.trim()) sketchOf.set(String(turn), msg.sketch.trim().slice(0, 300))
   if (!msg.text && !changes.length && !choices) { // nothing to show: the "on it" line goes too
     const crew = L.getLesson().lesson.crew ?? []
     L.setCrew(crew.filter((l) => !(l.status === 'working' && l.who === String(msg.who) && l.turn === turn)))
@@ -161,8 +184,25 @@ async function commitMessage(msg: any, moved: boolean, turn: Turn, extra: Partia
   }
   const jev = cleanJev(msg.jev)
   const review = cleanReview(msg.review)
-  const i = putLine(turn, { who: String(msg.who), ...(msg.who === 'assistant' ? { as: state.assistant } : {}), text: String(msg.text ?? ''), ...(changes.length ? { changes } : {}), ...(jev ? { jev } : {}), ...(review ? { review } : {}), ...(choices ? { choices } : {}), ...extra })
-  if (r && (r.changes.length || r.failed)) set({ undo: { ...state.undo, [i]: { ...r.undo, seq: ++undoSeq } } })
+  const line: CrewLine = { who: String(msg.who), turn, ...(msg.who === 'assistant' ? { as: state.assistant } : {}), text: String(msg.text ?? ''), ...(changes.length ? { changes } : {}), ...(jev ? { jev } : {}), ...(review ? { review } : {}), ...(choices ? { choices } : {}), ...extra }
+  let i: number
+  let old: CrewLine | null = null
+  if (revised) {
+    const rv = reviseLine(L.getLesson().lesson.crew ?? [], turn, line)
+    old = rv.old
+    // the first answer's changes stay on the line, the revision's are added
+    const merged = old?.changes?.length ? { ...rv.lines[rv.index], changes: [...old.changes, ...(line.changes ?? [])] } : rv.lines[rv.index]
+    L.setCrew(rv.lines.map((l, k) => (k === rv.index ? merged : l)))
+    void L.saveNow()
+    i = rv.index
+    freshRevised.add(revisedKey(line))
+  } else i = putLine(turn, line)
+  if (r && (r.changes.length || r.failed)) {
+    const prior = old ? state.undo[i] : undefined // revised: one Undo takes back the revision, then the first answer
+    const entry: UndoEntry = prior ? { ...r.undo, run: async () => { await r.undo.run(); await prior.run() }, seq: ++undoSeq } : { ...r.undo, seq: ++undoSeq }
+    set({ undo: { ...state.undo, [i]: entry } })
+  }
+  if (msg.blockout === true && r && !r.failed && !moved && msg.commands?.length) void addBlockout(turn, String(msg.who), line.text, startLesson.id, startScene)
   return true
 }
 

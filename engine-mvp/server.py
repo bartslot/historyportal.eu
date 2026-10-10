@@ -182,15 +182,17 @@ ROUTER_SCHEMA = _obj({
                                             'ack': {'type': 'string'}}, ['crew', 'question', 'ack'])},
 }, ['reply', 'ask'])
 _TITLE = {'type': 'string'}
+_SKETCH = {'type': 'string'}   # one sentence describing a scene the member wrote or changed (<= 300, capped in finish_member)
 _SETTINGS = {'type': 'array', 'items': _obj({'id': {'type': 'string'},
                                               'value': {'type': ['number', 'boolean', 'string']}}, ['id', 'value'])}
 _COMMANDS = {'type': 'array', 'items': {'type': 'object'}}   # free objects: validate() decides what survives
-STAGE_SCHEMA = _obj({'reply': _REPLY, 'choices': _CHOICES, 'settings': _SETTINGS, 'commands': _COMMANDS, 'title': _TITLE},
+STAGE_SCHEMA = _obj({'reply': _REPLY, 'choices': _CHOICES, 'settings': _SETTINGS, 'commands': _COMMANDS, 'title': _TITLE, 'sketch': _SKETCH},
                     ['reply', 'settings', 'commands'])
 STAGE_SCHEMA_NO_TITLE = _obj({k: v for k, v in STAGE_SCHEMA['properties'].items() if k != 'title'},
                              ['reply', 'settings', 'commands'])
 TALK_SCHEMA = _obj({'reply': _REPLY, 'choices': _CHOICES}, ['reply'])
-TALK_SCHEMA_WRITER = _obj({'reply': _REPLY, 'choices': _CHOICES, 'title': _TITLE}, ['reply'])
+TALK_SCHEMA_WRITER = _obj({'reply': _REPLY, 'choices': _CHOICES, 'title': _TITLE, 'sketch': _SKETCH}, ['reply'])
+TALK_SCHEMA_MEMBER = _obj({'reply': _REPLY, 'choices': _CHOICES, 'sketch': _SKETCH}, ['reply'])   # the director's TALK_SCHEMA has no sketch
 
 
 def member_schema(m, direct):
@@ -198,7 +200,7 @@ def member_schema(m, direct):
         return TALK_SCHEMA
     if may_change(m, direct):
         return STAGE_SCHEMA if m['id'] == 'writer' else STAGE_SCHEMA_NO_TITLE
-    return TALK_SCHEMA_WRITER if m['id'] == 'writer' else TALK_SCHEMA
+    return TALK_SCHEMA_WRITER if m['id'] == 'writer' else TALK_SCHEMA_MEMBER
 
 
 # ---------- skill packs: house rules appended to each prompt ----------
@@ -329,6 +331,8 @@ what they are about to do (e.g. "Ik zoek de data even op."). "ask" is [] when yo
 
 
 STAGE_OWNERS = {'set', 'actors'}
+SKETCH_RULE = ('When you write or change a scene in the Script step, add "sketch": one English sentence describing the picture '
+               '(who, where, when, what happens, composition), for a quick 3D blockout of the scene.')
 TITLE_RULE = 'The lesson title: "title", only when the lesson is still untitled or the client asks for a new one.'
 
 
@@ -345,7 +349,7 @@ def member_prompt(m, assistant, direct=False):
         fmt = '{"reply": "<your notes to the client>", "choices": <optional, see DECISIONS>}'
     elif not may_change(m, direct):
         powers = f'You do not change the stage or settings: that is for set and actors. {title}'
-        fmt = '{"reply": "<to the client, in your own voice>", "choices": <optional, see DECISIONS>' + (', "title": "<only to rename the lesson>"}' if title else '}')
+        fmt = '{"reply": "<to the client, in your own voice>", "choices": <optional, see DECISIONS>' + (', "title": "<only to rename the lesson>"' if title else '') + ', "sketch": <optional>}'
     else:
         powers = f"""You can change every studio setting and the stage, like the client can by hand. Change what the
 request needs, nothing more. Every change is shown to the client and can be undone.
@@ -354,7 +358,8 @@ Settings: the list "settings" below (id, label, type, range or options, current 
 The stage, with scene commands:
 {SCENE_RULES}"""
         fmt = ('{"reply": "<to the client, in your own voice>", "choices": <optional, see DECISIONS>, "settings": [ {"id": "<id>", "value": <value>} ], "commands": [ ... ]'
-               + (', "title": "<only to rename the lesson>"}' if title else '}'))
+               + (', "title": "<only to rename the lesson>"' if title else '') + ', "sketch": <optional>}')
+    sketch = '' if m.get('reviews_only') else '\n' + SKETCH_RULE
     return f"""{SHARED}
 
 You are {m['name']}, the {m['role'].lower()}. {m['backstory']}{voice_line(m)}
@@ -362,7 +367,7 @@ Mission: {m['mission']}
 You own: {m['owns']}
 The set assistant {assistant['name']} brings you the client's request; the client reads your answer directly.
 If the client asks about you, answer as yourself, from your backstory, briefly.
-{powers}
+{powers}{sketch}
 Answer ONLY with JSON: {fmt}{tasks_and_skills(m.get('tasks'), m.get('skills'))}"""
 
 
@@ -401,6 +406,7 @@ def _num(v):
 
 
 MAX_OPTIONS = 4
+MAX_SKETCH = 300
 SCOPES = {'lesson': 'whole lesson', 'scene': 'this scene'}
 
 
@@ -569,6 +575,8 @@ def finish_member(m, answer, data, direct):
         msg['choices'] = choices
     if scope := clean_scope(data):
         msg['scope'] = scope
+    if sketch := _txt(answer.get('sketch'), MAX_SKETCH):
+        msg['sketch'] = sketch
     title = str(answer.get('title') or '').strip()[:80]
     if title and m['id'] == 'writer' and title_open(data):
         msg['title'] = title
@@ -580,7 +588,7 @@ def finish_member(m, answer, data, direct):
     return msg
 
 
-def grade_member(m, msg, data, assistant, emit=None):
+def grade_member(m, msg, data, assistant, emit=None, review=True):
     """JEV grade, and the director's second opinion when unsure. Adds jev/review to msg; emit gets events."""
     if not (JEV_ON and m['id'] in JEV_IDS and msg['text'].strip()):
         return
@@ -590,7 +598,7 @@ def grade_member(m, msg, data, assistant, emit=None):
     msg['jev'] = grade
     if emit:
         emit({'type': 'jev', 'who': m['id'], **grade})
-    if grade['score'] < JEV_MIN_SCORE:
+    if review and grade['score'] < JEV_MIN_SCORE:
         try:
             msg['review'] = {'who': DIRECTOR, 'text': director_review(msg['text'], m['name'], data, assistant)}
             if emit:
@@ -599,10 +607,30 @@ def grade_member(m, msg, data, assistant, emit=None):
             print('director review failed:', repr(e), file=sys.stderr)
 
 
+def revision_user(user, first, note):
+    """The member's revision request: the original call plus their answer and the director's note."""
+    return (f"{user}\n\nYour answer was: {first['text']}\n\nMarten, the director, checked your answer: {note} "
+            "Rewrite your answer so every claim is correct and complete as he says. Keep your voice, keep it short, "
+            "keep your choices/questions if they still apply. Do not mention that you were corrected unless it matters to the client.")
+
+
+def revised_message(m, first, rev_answer, data, direct, assistant, emit=None):
+    """Finish + re-grade the revision (never reviewed again); it carries the original review."""
+    msg = finish_member(m, rev_answer, data, direct)
+    grade_member(m, msg, data, assistant, emit, review=False)
+    return {**msg, 'revised': True, 'review': first['review']}
+
+
 def ask_member(m, assistant, question, data, direct=False):
     system, user, schema = member_request(m, assistant, question, data, direct)
     msg = finish_member(m, ask_claude(m['model'], system, user, schema, MEMBER_EFFORT), data, direct)
     grade_member(m, msg, data, assistant)
+    if msg.get('review'):   # ONE revision, never a review of the revision
+        try:
+            rev = ask_claude(m['model'], system, revision_user(user, msg, msg['review']['text']), schema, MEMBER_EFFORT)
+            return revised_message(m, msg, rev, data, direct, assistant)
+        except Exception as e:  # noqa: BLE001 - the first answer stands
+            print('revision failed:', m['id'], repr(e), file=sys.stderr)
     return msg
 
 
@@ -778,7 +806,17 @@ def stream_claude(m, system, user, schema, effort, who, state, emit):
     return answer
 
 
-def stream_member(m, assistant, question, data, direct, state, emit):
+BLOCKOUT_ACKS = {'nl': ['Mouwen omhoog, ik zet een blockout neer.', 'Ik zet er snel een blockout bij.'],
+                 'en': ["Sleeves up, I'll block it out.", "I'll put a quick blockout down."],
+                 'de': ['\u00c4rmel hoch, ich stelle einen Blockout hin.']}
+BLOCKOUT_ASK = ("Build a quick 3D blockout of this scene on the current stage: {sketch}. Use simple stand-in figures "
+                "(the catalog's mannequin/character models) and a few large props/buildings for the setting, placed for the "
+                "camera (one focal point), plus a `camera` command framing the focal figure. Keep it to the essentials "
+                "(max ~8 objects); this is a blockout, not the final set. In your reply, also give the scene's key spoken line "
+                "in one sentence: who says it, and the line.")
+
+
+def stream_member(m, assistant, question, data, direct, state, emit, blockout=False):
     who = m['id']
     try:
         if state.is_stopped(who):
@@ -792,10 +830,43 @@ def stream_member(m, assistant, question, data, direct, state, emit):
         grade_member(m, msg, data, assistant, emit)
         if state.is_stopped(who):
             return emit({'type': 'stopped', 'who': who})
-        emit({'type': 'message', **msg})
+        emit({'type': 'message', **msg, **({'blockout': True} if blockout else {})})
+        final = msg
+        if msg.get('review'):
+            final = stream_revision(m, assistant, data, direct, state, emit, system, user, schema, msg) or msg
+            if state.is_stopped(who):
+                return emit({'type': 'stopped', 'who': who})
+        if not blockout and who != 'set' and final.get('sketch') and clean_client(data.get('context')).get('step') == 'script':
+            stream_blockout(final['sketch'], assistant, data, state, emit)
     except Exception as e:  # noqa: BLE001 - one member failing never ends the turn
         print('crew member failed:', who, repr(e), file=sys.stderr)
         emit({'type': 'error', 'who': who, 'error': 'could not answer this time, ask again'})
+
+
+def stream_revision(m, assistant, data, direct, state, emit, system, user, schema, first):
+    """ONE revision after the director's note; returns the revised message (emitted) or None (kept first answer)."""
+    who = m['id']
+    try:
+        rev = stream_claude(m, system, revision_user(user, first, first['review']['text']), schema, MEMBER_EFFORT,
+                            who, state, lambda ev: None)   # the client sees only the final revised message
+        if rev is None or state.is_stopped(who):
+            return None
+        msg = revised_message(m, first, rev, data, direct, assistant, emit)
+        if state.is_stopped(who):
+            return None
+        emit({'type': 'message', **msg})
+        return msg
+    except Exception as e:  # noqa: BLE001 - the first message stands
+        print('revision failed:', who, repr(e), file=sys.stderr)
+        return None
+
+
+def stream_blockout(sketch, assistant, data, state, emit):
+    """Script step: the set designer builds a quick 3D blockout of the sketched scene (his message carries blockout: true)."""
+    jules = MEMBERS['set']
+    pool = BLOCKOUT_ACKS.get(guess_lang(str(data.get('message', ''))), BLOCKOUT_ACKS['en'])
+    emit({'type': 'routed', 'who': 'set', 'ack': random.choice(pool)})
+    stream_member(jules, assistant, BLOCKOUT_ASK.format(sketch=sketch), data, False, state, emit, blockout=True)
 
 
 DUTCH = re.compile(r'\b(de|het|een|en|ik|je|wat|wanneer|waarom|hoe|maak|kun|kan|dit|dat|niet|voor|met|van)\b', re.I)

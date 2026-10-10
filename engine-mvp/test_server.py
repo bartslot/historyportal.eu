@@ -243,3 +243,92 @@ print('choices stream ok')
 sc = s.clean_choices({'question': 'Waar?', 'scope': True, 'options': [{'label': 'This scene', 'why': 'a', 'recommended': True}, {'label': 'Whole lesson', 'why': 'b'}]}, 'nl')
 assert [o['label'] for o in sc['options']] == ['Deze scène', 'Hele les'], sc
 print('scope labels ok')
+
+# ---- sketch field, revision loop, blockout follow-up (fake claude, JEV monkeypatched) ----
+for sch in (s.STAGE_SCHEMA, s.STAGE_SCHEMA_NO_TITLE, s.TALK_SCHEMA_WRITER, s.TALK_SCHEMA_MEMBER):
+    strict(sch)
+    assert 'sketch' in sch['properties'] and 'sketch' not in sch['required']
+assert 'sketch' not in s.member_schema(s.MEMBERS['director'], True)['properties'], 'the director does not sketch'
+assert 'sketch' in s.member_schema(s.MEMBERS['historian'], False)['properties']
+assert s.finish_member(s.MEMBERS['writer'], {'reply': 'r', 'sketch': 'x' * 500}, {}, True)['sketch'] == 'x' * 300
+assert 'sketch' not in s.finish_member(s.MEMBERS['writer'], {'reply': 'r', 'sketch': 5}, {}, True)
+assert '"sketch"' in s.member_prompt(s.MEMBERS['writer'], next(iter(s.CREW['assistants'].values())), True)
+
+rv = tmp / 'revclaude'   # first answer / revision (prompt holds Marten's note) / set blockout, told apart by the prompt
+rv.write_text('''#!/usr/bin/env python3
+import sys, json, time, os
+prompt = sys.stdin.read()
+def out(o): print(json.dumps(o), flush=True)
+if "Our fact-checker is unsure" in prompt:   # the director's review (non-stream)
+    out({"is_error": False, "result": "{}", "structured_output": {"reply": "Priors: zes, twee maanden."}}); sys.exit()
+if "checked your answer" in prompt:
+    time.sleep(float(os.environ.get("REV_SLEEP", "0")))
+    ans = {"reply": "Een van zes priors, juni tot augustus 1300.", "sketch": "Dante, prior, Florence 1300, signing a decree."}
+elif "quick 3D blockout" in prompt:
+    if "FAIL_SET" in prompt: sys.exit(1)
+    ans = {"reply": "Blockout staat.", "settings": [], "commands": [{"cmd": "add", "model": "mannequin", "x": 0, "z": 2}, {"cmd": "camera", "target": "new1"}, {"cmd": "evil"}]}
+else:
+    ans = {"reply": "Dante was prior.", "sketch": "Dante, prior, Florence 1300, signing a decree."}
+out({"type": "result", "is_error": False, "result": "{}", "structured_output": ans} if "stream-json" in sys.argv else
+    {"is_error": False, "result": "{}", "structured_output": ans})
+''')
+rv.chmod(rv.stat().st_mode | stat.S_IEXEC)
+s.CLAUDE_BIN, s.JEV_ON = str(rv), True
+real_grade = s.jev_grade
+s.jev_grade = lambda m, text, data: {'score': 0.5, 'choice': 'unsound'} if 'zes' not in text and 'zes priors' not in text and 'Een van zes' not in text else {'score': 0.9, 'choice': 'sound'}
+srv = ThreadingHTTPServer(('127.0.0.1', 0), s.Handler)
+threading.Thread(target=srv.serve_forever, daemon=True).start()
+PORT = srv.server_address[1]
+wb = {'message': 'Schrijf de scene over Dante', 'to': 'writer', 'settings': [], 'context': {'step': 'script'}}
+
+c, r = post('/crew/stream', wb)
+evs = list(events(r))
+msgs = [e for e in evs if e['type'] == 'message']
+assert [bool(e.get('revised')) for e in msgs] == [False, True, False], [(e['who'], e.get('revised')) for e in msgs]
+first, revised, blk = msgs
+assert first['text'] == 'Dante was prior.' and first['review']['text'] and first['jev']['score'] == 0.5
+assert revised['text'].startswith('Een van zes') and revised['jev']['score'] == 0.9 and revised['review'] == first['review']
+assert [e['type'] for e in evs].count('review') == 1, 'the revision is never reviewed'
+assert blk['who'] == 'set' and blk['blockout'] is True and 'blockout' not in first and 'blockout' not in revised
+assert blk['commands'] == [{'cmd': 'add', 'model': 'mannequin', 'x': 0.0, 'z': 2.0}, {'cmd': 'camera', 'target': 'new1'}] and blk['dropped'] == 1
+types = [e['type'] for e in evs]
+assert types.index('routed', 2) > types.index('message') and types[-1] == 'done', types
+assert [e for e in evs if e['type'] == 'routed' and e['who'] == 'set'][0]['ack']
+print('revision + blockout stream ok')
+
+c, r = post('/crew/stream', {**wb, 'context': {'step': 'visual'}})
+evs = list(events(r))
+assert not [e for e in evs if e.get('who') == 'set'], 'no blockout outside the script step'
+assert sum(e['type'] == 'message' for e in evs) == 2
+c, r = post('/crew/stream', {**wb, 'message': 'Schrijf FAIL_SET'})   # set fails: error for set, turn still ends
+evs = list(events(r))
+assert [e for e in evs if e['type'] == 'error' and e.get('who') == 'set'] and evs[-1]['type'] == 'done'
+print('blockout only in script step; set failure contained')
+
+os.environ['REV_SLEEP'] = '30'   # stop during the revision: stopped, no revised message
+c, r = post('/crew/stream', wb)
+turn = json.loads(r.readline())['turn']
+got = []
+for line in r:
+    e = json.loads(line)
+    got.append(e)
+    if e['type'] == 'message':   # the first message is out: the revision call is now running
+        time.sleep(1)
+        post('/crew/stop', {'turn': turn, 'who': 'writer'})[1].read()
+        break
+got += list(events(r))
+tt = [e['type'] for e in got]
+assert tt.count('message') == 1 and 'stopped' in tt and tt[-1] == 'done' and not [e for e in got if e.get('who') == 'set' and e['type'] != 'stopped'], tt
+os.environ['REV_SLEEP'] = '0'
+print('stop during revision ok')
+
+c, r = post('/crew', wb)   # non-stream: the revised message replaces the first
+m1 = json.loads(r.read())['messages']
+assert len(m1) == 1 and m1[0]['revised'] is True and m1[0]['text'].startswith('Een van zes'), m1
+s.jev_grade = lambda m, text, data: {'score': 0.95, 'choice': 'sound'}
+c, r = post('/crew/stream', wb)
+evs = list(events(r))
+assert not [e for e in evs if e.get('revised')] and sum(e['type'] == 'message' for e in evs) == 2, 'good score: no revision'
+srv.shutdown()
+s.jev_grade = real_grade
+print('revision non-stream and no-revision ok')

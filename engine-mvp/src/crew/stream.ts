@@ -8,6 +8,17 @@ export const LIVE_CAP = 8000 // what a working member keeps while streaming
 export const SAVED_CAP = 4000 // what is saved with the final line
 
 export type Turn = string | number
+export type Sketch = { url: string; caption: string }
+export const CAPTION_CAP = 300
+export const BEFORE_CAP = 4000
+
+export const SKETCH_MAX = 200_000 // chars of data URL kept with a line
+
+/** A blockout thumbnail is a small image data URL; anything else (or too big) is dropped. The caption is cut to size. */
+export function cleanSketch(url: unknown, caption: unknown): Sketch | null {
+  if (!str(url) || url.length > SKETCH_MAX || !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(url)) return null
+  return { url, caption: str(caption) ? caption.slice(0, CAPTION_CAP) : '' }
+}
 export type CrewEvent =
   | { type: 'turn'; turn: Turn }
   | { type: 'assistant'; turn: Turn; as?: string; text: string; choices?: Choices }
@@ -100,6 +111,32 @@ export function buildPartial(who: string, l: Pick<Live, 'draft' | 'thinking'>): 
 
 /** A chat line as far as these helpers care (the full CrewLine lives in lesson/store). */
 type Keyed = { who: string; turn?: Turn; status?: 'working'; interrupted?: boolean }
+type Revisable = Keyed & { text: string; before?: string; revised?: boolean; sketch?: Sketch; thoughts?: string; draft?: string; review?: { who: string; text: string } }
+
+/** Index of the member's finished line of this turn, or -1. */
+const finalAt = <T extends Keyed>(lines: T[], turn: Turn, who: string) =>
+  lines.map((l) => !l.status && l.who === who && l.turn === turn).lastIndexOf(true)
+
+/** Marten's note made the maker correct their answer: replace the finished line in place, keep the first
+ *  text as `before`, and keep what the first answer had (review, sketch, transcript) when the new one has none. */
+export function reviseLine<T extends Revisable>(lines: T[], turn: Turn, line: T): { lines: T[]; index: number; old: T | null } {
+  const at = finalAt(lines, turn, line.who)
+  if (at < 0) return { lines: [...lines, line], index: lines.length, old: null }
+  const old = lines[at]
+  const before = (old.before ?? old.text).slice(0, BEFORE_CAP)
+  const next = { ...line, revised: true, ...(before ? { before } : {}),
+    ...(line.sketch || !old.sketch ? {} : { sketch: old.sketch }),
+    ...(line.review || !old.review ? {} : { review: old.review }),
+    ...(line.thoughts || !old.thoughts ? {} : { thoughts: old.thoughts }),
+    ...(line.draft || !old.draft ? {} : { draft: old.draft }) }
+  return { lines: lines.map((l, i) => (i === at ? next : l)), index: at, old }
+}
+
+/** An image that arrives after its member's message: put it on that finished line (null when there is none). */
+export function attachSketch<T extends Keyed & { sketch?: Sketch }>(lines: T[], turn: Turn, who: string, sketch: Sketch): T[] | null {
+  const at = finalAt(lines, turn, who)
+  return at < 0 ? null : lines.map((l, i) => (i === at ? { ...l, sketch } : l))
+}
 
 /** Put `line` where the same member's in-flight line of this turn is (index stays), else append. */
 export function upsertLine<T extends Keyed>(lines: T[], turn: Turn | null, line: T): { lines: T[]; index: number } {

@@ -17,7 +17,7 @@ export type Choice = { label: string; why: string; recommended?: boolean }
 export type Choices = { question: string; options: Choice[]; scope?: boolean }
 export type SceneEntry = { doc: any | null; thumb: string | null }
 /** One line of the crew chat, kept with the lesson (src/crew). */
-export type CrewLine = { who: string; as?: string; text: string; changes?: string[]; jev?: { score: number; choice: string }; review?: { who: string; text: string }; thoughts?: string; draft?: string; stopped?: boolean; error?: string; turn?: string | number; status?: 'working'; interrupted?: boolean; choices?: Choices; answered?: string }
+export type CrewLine = { who: string; as?: string; text: string; changes?: string[]; jev?: { score: number; choice: string }; review?: { who: string; text: string }; thoughts?: string; draft?: string; stopped?: boolean; error?: string; turn?: string | number; status?: 'working'; interrupted?: boolean; choices?: Choices; answered?: string; revised?: boolean; before?: string; sketch?: { url: string; caption: string } }
 /** The three steps, strictly in order (Bart 2026-10-10): plan the story, build it, make it move. */
 export const STEPS = ['script', 'visual', 'animate'] as const
 export type Step = (typeof STEPS)[number]
