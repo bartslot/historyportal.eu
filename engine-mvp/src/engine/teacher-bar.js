@@ -26,16 +26,23 @@
     bar.appendChild(b);
     return b;
   };
-  const dupBtn = button('Duplicate', duplicate);
+  const dupBtn = button('Duplicate', () => duplicate());
   const faceBtn = button('Face camera', faceCamera);
   button('Delete', () => { const a = mvp.getSelected(); if (a) mvp.deleteActor(a); });
   stage.appendChild(bar);
 
-  async function duplicate() {
-    const a = mvp.getSelected();
+  async function duplicate(a = mvp.getSelected()) {
     if (!a || !a.metadata.item) return;
     const yaw = a.rotationQuaternion.toEulerAngles().y * 180 / Math.PI;
     const copy = await mvp.addFromCatalog(a.metadata.item, { x: a.position.x + DUPLICATE_OFFSET_M, z: a.position.z, turn: yaw });
+    if (!copy.metadata.footprint) { mvp.select(copy); mvp.autoKey(); return; }
+    // a floor object: beside the original, on the first side with room for its footprint
+    const sides = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    const free = sides.find(([dx, dz]) => {
+      mvp.snapToFootprint(copy, a.position.x + dx * DUPLICATE_OFFSET_M, a.position.z + dz * DUPLICATE_OFFSET_M);
+      return mvp.fits(copy);
+    });
+    if (!free) { mvp.deleteActor(copy); mvp.flash('No room next to it for a copy'); return; }
     mvp.select(copy);
     mvp.autoKey();
   }
@@ -140,4 +147,5 @@
 
   mvp.shots = { list: () => shots, save: saveShot, goTo: goToShot, set: setShots };
   mvp.stageImage = stageImage;
+  mvp.duplicate = duplicate;
 })();

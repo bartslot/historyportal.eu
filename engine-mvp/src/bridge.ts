@@ -7,7 +7,11 @@ import * as TL from './timeline/model'
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Mvp = any
 export type Picked = { id: string; name: string; kind: 'model' | 'picture' | 'door' | 'cloud'; yaw: number; x: number; z: number; keyed: boolean }
-export type SceneObject = { target: string; name: string; kind: Picked['kind'] }
+/** What the object list shows: where each thing is, what it hangs on, whether it moves. */
+export type SceneObject = {
+  target: string; name: string; kind: Picked['kind']; character: boolean
+  parent: string | null; x: number; z: number; animated: boolean; hidden: boolean
+}
 export type Snapshot = { ready: boolean; selected: Picked | null; playing: boolean; objects: SceneObject[] }
 
 const REFRESH_EVERY = 6 // frames
@@ -31,9 +35,17 @@ function read(): Snapshot {
     x: +a.position.x.toFixed(2), z: +a.position.z.toFixed(2),
     keyed: TL.hasKeyHere(TL.targetOf(a), 'turn'),
   } : null
-  const objects = m.actors
-    .filter((x: any) => !x.isDisposed() && !x.metadata.cloud)
-    .map((x: any) => ({ target: TL.targetOf(x), name: x.name, kind: kindOf(x) }))
+  const animated = new Set(TL.getState().tracks.filter((t) => t.keyframes.length >= 2).map((t) => t.target))
+  const live = m.actors.filter((x: any) => !x.isDisposed() && !x.metadata.cloud)
+  const objects: SceneObject[] = live.map((x: any) => {
+    const p = x.getAbsolutePosition()
+    const host = x.parent && live.includes(x.parent) ? TL.targetOf(x.parent) : null
+    return {
+      target: TL.targetOf(x), name: x.name, kind: kindOf(x), character: !!x.metadata.clips?.length,
+      parent: host, x: Math.round(p.x * 10) / 10, z: Math.round(p.z * 10) / 10,
+      animated: animated.has(TL.targetOf(x)), hidden: !x.isEnabled(),
+    }
+  })
   return { ready: true, selected, playing: m.isPlaying(), objects }
 }
 

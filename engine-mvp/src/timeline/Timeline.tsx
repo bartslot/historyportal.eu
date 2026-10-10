@@ -13,6 +13,7 @@ import { useEngine } from '../bridge'
 import { usePlacedLines } from '../script/player'
 import { panels } from '../panels/store'
 import { KeyframeDiamond } from '../ui/kit'
+import { ICON, Icon } from '../ui/icons'
 
 const GROUP_H = 38
 const WHEEL_ZOOM_RATE = 0.01
@@ -35,16 +36,11 @@ function curvePath(name: string) {
   }).join(' ')
 }
 
-const Icon = ({ d, className = 'h-4 w-4', width = 1.5 }: { d: string; className?: string; width?: number }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={width} className={className} aria-hidden="true">
-    <path strokeLinecap="round" strokeLinejoin="round" d={d} />
-  </svg>
-)
 const PLAY = 'M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 0 1 0 1.971l-11.54 6.347a1.125 1.125 0 0 1-1.667-.985V5.653Z'
 const PAUSE = 'M15.75 5.25v13.5m-7.5-13.5v13.5'
 const LOOP = 'M16.023 9.348h4.992V4.356M20.015 9.348a8.25 8.25 0 0 0-14.03-3.028L3 8.25m0 6.402h4.992v4.992M3 14.652a8.25 8.25 0 0 0 14.03 3.028L21 15.75'
-const CHEVRON_L = 'M15.75 19.5 8.25 12l7.5-7.5'
-const CHEVRON_R = 'm8.25 4.5 7.5 7.5-7.5 7.5'
+const CHEVRON_L = ICON.chevronLeft
+const CHEVRON_R = ICON.chevronRight
 
 function ToolButton({ label, pressed, disabled, onClick, children }: { label: string; pressed?: boolean; disabled?: boolean; onClick: () => void; children: ReactNode }) {
   return (
@@ -339,9 +335,7 @@ export function Timeline() {
                 <button type="button" onClick={() => TL.toggleHidden(o.target)} aria-pressed={!!st.hidden[o.target]}
                         data-tooltip={st.hidden[o.target] ? 'Show' : 'Hide'} aria-label={st.hidden[o.target] ? 'Show' : 'Hide'}
                         className={`mr-3 grid h-6 w-6 shrink-0 cursor-pointer place-items-center rounded hover:bg-white/5 hover:text-white ${st.hidden[o.target] ? 'text-panel-label' : 'text-panel-icon'}`}>
-                  {st.hidden[o.target]
-                    ? <Icon className="h-3.5 w-3.5" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243" />
-                    : <Icon className="h-3.5 w-3.5" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.964-7.178ZM15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />}
+                  <Icon className="h-3.5 w-3.5" d={st.hidden[o.target] ? ICON.eyeOff : ICON.eye} />
                 </button>
               </div>
               {st.openGroups[o.target] && TL.propertiesOf(o.target).map((p) => (
