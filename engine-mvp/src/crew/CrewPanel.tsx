@@ -33,7 +33,7 @@ function Card({ id, onClose, onAsk }: { id: string; onClose: () => void; onAsk: 
   const story = isAssistant ? ASSISTANTS[assistant].backstory : m?.backstory
   const tasks = isAssistant ? ASSISTANT_TASKS : m?.tasks ?? []
   return (
-    <div className="relative mx-3 mb-3 flex max-h-[40vh] flex-col items-center gap-2 overflow-y-auto rounded-lg border border-panel-hairline bg-base-100 p-4 text-center">
+    <div className="relative mx-3 mb-3 flex max-h-[40vh] shrink-0 flex-col items-center gap-2 overflow-y-auto [&>*]:shrink-0 rounded-lg border border-panel-hairline bg-base-100 p-4 text-center">
       <button type="button" aria-label="Close card" data-tooltip="Close" onClick={onClose}
               className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded text-panel-label hover:bg-white/5 hover:text-white">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-4 w-4" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d={X_MARK} /></svg>
