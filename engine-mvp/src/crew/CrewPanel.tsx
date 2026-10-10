@@ -1,6 +1,6 @@
 // The crew panel: the client talks to the set assistant, who brings in the crew. Every face opens that
 // person's card (portrait, backstory, "Ask ..."), so the client can see the whole team and talk to anyone.
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Panel } from '../panels/Panel'
 import * as L from '../lesson/store'
@@ -10,6 +10,7 @@ import { ASSISTANTS, ASSISTANT_TASKS, MEMBERS, chooseAssistant, interrupt, isFre
 import type { Live } from './stream'
 import type { Sketch } from './stream'
 import { TypedView } from './Typed'
+import { firstSentence, latestTurnStart } from './turns'
 import { finishAllTyping, useTypewriter } from './typewriter'
 
 const X_MARK = 'M6 18 18 6M6 6l12 12'
@@ -216,7 +217,7 @@ function SketchThumb({ sketch, onOpen }: { sketch: Sketch; onOpen: () => void })
       <button type="button" onClick={onOpen} aria-label="Enlarge the blockout" data-tooltip="Enlarge" className="block w-full">
         <img src={sketch.url} alt={sketch.caption || 'Blockout of the scene'} loading="lazy" className={`${SKETCH_BOX} object-cover`} />
       </button>
-      {sketch.caption && <p className="line-clamp-2 text-3xs text-panel-label">{sketch.caption}</p>}
+      {sketch.caption && <p className="line-clamp-1 text-3xs text-panel-label">{sketch.caption}</p>}
     </div>
   )
 }
@@ -253,37 +254,104 @@ function SketchOverlay({ sketch, onClose }: { sketch: Sketch; onClose: () => voi
 }
 
 const jevTone = (s: number) => (s >= 0.8 ? 'badge-success' : s >= 0.5 ? 'badge-warning' : 'badge-error')
+const TOGGLE = 'text-2xs text-panel-label underline-offset-2 hover:text-panel-value hover:underline'
 
-function Line({ index, fresh, active, onSketch, sketching, revised, before, sketch, choices, answered, who, as, text, changes, jev, review, thoughts, draft, stopped, error, status, interrupted }: { index: number; fresh?: boolean; onSketch?: (s: Sketch) => void; sketching?: boolean; revised?: boolean; before?: string; sketch?: Sketch; active?: boolean; choices?: CrewLine['choices']; answered?: string; who: string; as?: string; text: string; changes?: string[]; jev?: CrewLine['jev']; review?: CrewLine['review']; thoughts?: string; draft?: string; stopped?: boolean; error?: string; status?: 'working'; interrupted?: boolean; turn?: string | number }) {
+/** A small text toggle that shows or hides a detail; closed by default. */
+function Toggle({ label, open, onClick }: { label: string; open: boolean; onClick: () => void }) {
+  return <button type="button" onClick={onClick} aria-expanded={open} className={`${TOGGLE} ${open ? 'text-panel-value underline' : ''}`}>{label}</button>
+}
+
+/** The answer, clamped to four lines with More / Less when it runs longer (the typing keeps working). */
+function ClampedText({ typed, text }: { typed: ReturnType<typeof useTypewriter>; text: string }) {
+  const el = useRef<HTMLParagraphElement>(null)
+  const [expanded, setExpanded] = useState(false)
+  const [long, setLong] = useState(false)
+  useLayoutEffect(() => {
+    const p = el.current
+    if (p && !expanded) setLong(p.scrollHeight > p.clientHeight + 1)
+  }, [typed.shown, expanded])
+  return (
+    <>
+      <p ref={el} className={`whitespace-pre-wrap text-xs text-panel-value ${expanded ? '' : 'line-clamp-4'}`} onClick={typed.typing ? typed.finish : undefined}>
+        <TypedView full={text} shown={typed.shown} typing={typed.typing} />
+      </p>
+      {(long || expanded) && <button type="button" onClick={() => setExpanded((v) => !v)} aria-expanded={expanded} className={TOGGLE}>{expanded ? 'Less' : 'More'}</button>}
+    </>
+  )
+}
+
+type LineProps = CrewLine & { index: number; fresh?: boolean; onSketch?: (s: Sketch) => void; sketching?: boolean; active?: boolean; latest?: boolean }
+
+function Line({ index, fresh, active, latest = true, onSketch, sketching, revised, before, sketch, choices, answered, who, as, text, changes, jev, review, thoughts, draft, stopped, error, status, interrupted }: LineProps) {
   useCrew()
   const typed = useTypewriter(text, !!fresh && who !== 'client')
   L.useLesson() // the Undo shows only while this line's scene is open
   const canUndo = !!undoFor(index)
+  const [detail, setDetail] = useState<Record<string, boolean>>({})
+  const [openOld, setOpenOld] = useState(false) // an earlier turn's line, expanded in place
+  const flip = (k: string) => setDetail((d) => ({ ...d, [k]: !d[k] }))
   if (status === 'working') return null // shown live, as a working bubble
+  const collapsed = !latest && !openOld
   if (who === 'client') {
-    return <p className="ml-8 self-end whitespace-pre-wrap rounded-md bg-base-100 px-3 py-2 text-xs text-panel-value">{text}</p>
+    if (index === -1) return null
+    return collapsed
+      ? <button type="button" onClick={() => setOpenOld(true)} aria-expanded={false} aria-label={`Your message: ${firstSentence(text)}`} className="ml-8 min-w-0 max-w-full self-end truncate rounded-md bg-base-100 px-3 py-1 text-left text-xs text-panel-label">{text}</button>
+      : <button type="button" disabled={latest} onClick={() => setOpenOld(false)} aria-expanded={!latest} className="ml-8 max-w-full self-end whitespace-pre-wrap rounded-md bg-base-100 px-3 py-2 text-left text-xs text-panel-value">{text}</button>
   }
   const { name, role } = speaker(who, as)
+  if (index === -1) { // the greeting: one line
+    return (
+      <div className="flex gap-2">
+        <Face id={who} as={as} />
+        <p className="min-w-0 flex-1 self-center truncate text-xs text-panel-value">{text}</p>
+      </div>
+    )
+  }
+  if (collapsed) {
+    const gist = firstSentence(text)
+    return (
+      <button type="button" onClick={() => setOpenOld(true)} aria-expanded={false} aria-label={`${name}: ${gist}. Show the full message`} className="flex w-full items-center gap-2 text-left">
+        <Face id={who} as={as} />
+        <span className="min-w-0 flex-1 truncate text-xs text-panel-label"><span className="font-semibold">{name}</span> {gist}</span>
+      </button>
+    )
+  }
+  const hasThoughts = !!(thoughts || draft)
+  const header = `${name} · ${role}`
   return (
     <div className="flex gap-2">
       <Face id={who} as={as} />
       <div className="min-w-0 flex-1">
-        <p className="text-3xs font-semibold uppercase tracking-wide text-panel-label">{name} · {role}</p>
-        {text && <p className="whitespace-pre-wrap text-xs text-panel-value" onClick={typed.typing ? typed.finish : undefined}><TypedView full={text} shown={typed.shown} typing={typed.typing} /></p>}
-        {revised && (
-          <div className="mt-0.5">
-            <p className={LABEL}>Revised after Marten's note</p>
-            {before && <details><summary className="cursor-pointer text-2xs text-panel-label">Before the correction</summary><p className="mt-1 whitespace-pre-wrap text-xs text-panel-label">{before}</p></details>}
-          </div>
-        )}
+        {latest
+          ? <p className="text-3xs font-semibold uppercase tracking-wide text-panel-label">{header}</p>
+          : <button type="button" onClick={() => setOpenOld(false)} aria-expanded data-tooltip="Collapse" className="text-3xs font-semibold uppercase tracking-wide text-panel-label">{header}</button>}
+        {text && <ClampedText typed={typed} text={text} />}
+        {revised && <p className={LABEL}>Revised after Marten's note</p>}
+        {detail.before && before && <p className="mt-1 whitespace-pre-wrap text-xs text-panel-label">{before}</p>}
         {sketch ? <SketchThumb sketch={sketch} onOpen={() => onSketch?.(sketch)} /> : sketching && <SketchSkeleton />}
         {stopped && <p className="text-xs text-panel-label">Stopped</p>}
         {interrupted && <p className="text-xs text-panel-label">Interrupted (page reloaded)</p>}
         {error && <p role="alert" className="text-xs text-error">{error}</p>}
-        {jev && (
-          <span className={`badge badge-xs mt-1 ${jevTone(jev.score)}`} data-tooltip="JEV: chance every historical claim holds">JEV {jev.score.toFixed(2)}</span>
+        {choices && !typed.typing && (answered
+          ? <p className="mt-1 flex items-center gap-1.5 text-xs text-panel-label"><Icon d={CHECK} />You chose: {answered}</p>
+          : active ? <ChoiceList index={index} choices={choices} />
+            : <p className="mt-1 text-xs text-panel-label">{choices.question} (not answered)</p>)}
+        {(review || (revised && before) || changes || hasThoughts || jev) && (
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+            {review && <Toggle label="Marten's note" open={!!detail.review} onClick={() => flip('review')} />}
+            {revised && before && <Toggle label="Before the correction" open={!!detail.before} onClick={() => flip('before')} />}
+            {changes && <Toggle label={`Changes (${changes.length})`} open={!!detail.changes} onClick={() => flip('changes')} />}
+            {hasThoughts && <Toggle label="Thought process" open={!!detail.thoughts} onClick={() => flip('thoughts')} />}
+            {jev && <span className={`badge badge-xs ${jevTone(jev.score)}`} data-tooltip="JEV: chance every historical claim holds">JEV {jev.score.toFixed(2)}</span>}
+            {changes && canUndo && (
+              <button type="button" className="btn btn-ghost btn-xs" onClick={() => undo(index)}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-3.5 w-3.5" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d={UNDO} /></svg>
+                Undo
+              </button>
+            )}
+          </div>
         )}
-        {review && (
+        {detail.review && review && (
           <div className="mt-1 flex gap-2 border-l border-panel-hairline pl-2">
             <Face id="director" />
             <div className="min-w-0 flex-1">
@@ -292,27 +360,8 @@ function Line({ index, fresh, active, onSketch, sketching, revised, before, sket
             </div>
           </div>
         )}
-        {choices && !typed.typing && (answered
-          ? <p className="mt-1 flex items-center gap-1.5 text-xs text-panel-label"><Icon d={CHECK} />You chose: {answered}</p>
-          : active ? <ChoiceList index={index} choices={choices} />
-            : <p className="mt-1 text-xs text-panel-label">{choices.question} (not answered)</p>)}
-        {changes && (
-          <div className="mt-1 flex items-start gap-2">
-            <ul className="flex-1 text-2xs text-panel-label">{changes.map((c, i) => <li key={i}>{c}</li>)}</ul>
-            {canUndo && (
-              <button type="button" className="btn btn-ghost btn-xs" onClick={() => undo(index)}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-3.5 w-3.5" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d={UNDO} /></svg>
-                Undo
-              </button>
-            )}
-          </div>
-        )}
-        {(thoughts || draft) && (
-          <details className="mt-1">
-            <summary className="cursor-pointer text-2xs text-panel-label">Thought process</summary>
-            <Thoughts thoughts={thoughts} draft={draft} />
-          </details>
-        )}
+        {detail.changes && changes && <ul className="mt-1 text-2xs text-panel-label">{changes.map((c, i) => <li key={i}>{c}</li>)}</ul>}
+        {detail.thoughts && hasThoughts && <Thoughts thoughts={thoughts} draft={draft} />}
       </div>
     </div>
   )
@@ -353,6 +402,7 @@ export function CrewPanel() {
     el.addEventListener('scroll', onScroll)
     return () => { mo.disconnect(); el.removeEventListener('scroll', onScroll) }
   }, [])
+  const turnStart = latestTurnStart(lines)
   const to = crew.to ? speaker(crew.to).name : null
   const submit = () => { const t = draft; setDraft(''); void send(t).then((ok) => { if (!ok) setDraft((d) => d || t) }) }
 
@@ -379,7 +429,7 @@ export function CrewPanel() {
 
       <div ref={log} className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto border-t border-panel-hairline px-4 py-3" aria-live="polite">
         <Line index={-1} who="assistant" text={live.greeting} />
-        {lines.map((l, i) => <Line key={`${i}${l.revised ? 'r' : ''}`} index={i} fresh={i >= base.current.n || isFreshRevised(l)} onSketch={setZoom} active={!lines.slice(i + 1).some((x) => x.who === 'client')} {...l} />)}
+        {lines.map((l, i) => <Line key={`${i}${l.revised ? 'r' : ''}`} index={i} latest={i >= turnStart} fresh={i >= base.current.n || isFreshRevised(l)} onSketch={setZoom} active={!lines.slice(i + 1).some((x) => x.who === 'client')} {...l} />)}
         {working.map(([who, l]) => (
           <WorkingBubble key={who} who={who} live={l} open={!!open[key(who)]} onToggle={() => toggle(who)}
                          onTalk={() => { void interrupt(who); box.current?.focus() }} />
