@@ -4,8 +4,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useSyncExternalStore } from 'react'
 import * as L from '../lesson/store'
+import type { CrewLine } from '../lesson/store'
 import CREW from './crew.json'
 import { applySettings, readSettings, type Change } from './settings'
+import { parseEvent, reduceLive, savedThoughts, splitLines, type CrewEvent, type LiveMap } from './stream'
 
 export type AssistantId = keyof typeof CREW.assistants
 export type Member = (typeof CREW.crew)[number]
@@ -23,8 +25,9 @@ function savedAssistant(): AssistantId {
 
 /** An undo belongs to one lesson and one scene: it only runs there (never over another scene's stage). */
 export type UndoEntry = { lesson: string; scene: string; run: () => Promise<void> }
-type State = { assistant: AssistantId; to: string | null; busy: boolean; error: string | null; undo: Record<number, UndoEntry> }
-let state: State = { assistant: savedAssistant(), to: null, busy: false, error: null, undo: {} }
+/** partial: the draft of a member the client interrupted; the next send hands it back to them. */
+type State = { assistant: AssistantId; to: string | null; busy: boolean; error: string | null; undo: Record<number, UndoEntry>; live: LiveMap; partial: { who: string; text: string } | null }
+let state: State = { assistant: savedAssistant(), to: null, busy: false, error: null, undo: {}, live: {}, partial: null }
 const listeners = new Set<() => void>()
 const set = (patch: Partial<State>) => { state = { ...state, ...patch }; listeners.forEach((l) => l()) }
 const subscribe = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l) } }
@@ -56,7 +59,7 @@ export function chooseAssistant(id: AssistantId) {
   try { localStorage.setItem(ASSISTANT_KEY, id) } catch { /* private window: this visit only */ }
   set({ assistant: id })
 }
-export const talkTo = (to: string | null) => set({ to })
+export const talkTo = (to: string | null) => set({ to, partial: state.partial?.who === to ? state.partial : null })
 
 // the script as plain text, so the writer and the historian can read what is already there
 function scriptText(doc: any): string {
@@ -120,24 +123,86 @@ export async function undo(index: number) {
   L.setCrew(lines.map((l, i) => (i === index ? { ...l, changes: [...(l.changes ?? []), 'Undone'] } : l)))
 }
 
+const withoutLive = (who: string): LiveMap => { const { [who]: _gone, ...rest } = state.live; return rest }
+const appendLine = (line: CrewLine) => { const out = [...(L.getLesson().lesson.crew ?? []), line]; L.setCrew(out); return out.length - 1 }
+
+/** One final answer: apply it (unless the scene moved on), list the changes, keep the transcript. */
+async function commitMessage(msg: any, moved: boolean, extra: Partial<CrewLine>): Promise<boolean> {
+  const wants = !!(msg.settings?.length || msg.commands?.length || msg.title)
+  const r = wants && !moved ? await applyAnswer(msg) : null
+  const changes = r?.changes ?? []
+  if (wants && moved) changes.push('Not applied: the scene changed while the crew was answering')
+  if (r?.failed) changes.push('Stopped halfway: ' + r.failed)
+  if (msg.dropped) changes.push(`${msg.dropped} unknown stage command(s) ignored`)
+  if (!msg.text && !changes.length) return false
+  const jev = cleanJev(msg.jev)
+  const review = cleanReview(msg.review)
+  const i = appendLine({ who: String(msg.who), ...(msg.who === 'assistant' ? { as: state.assistant } : {}), text: String(msg.text ?? ''), ...(changes.length ? { changes } : {}), ...(jev ? { jev } : {}), ...(review ? { review } : {}), ...extra })
+  if (r && (r.changes.length || r.failed)) set({ undo: { ...state.undo, [i]: r.undo } })
+  return true
+}
+
+const stopCall = (body: object) => fetch('/crew/stop', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => null)
+export const stopMember = (who: string) => { const l = state.live[who]; return l?.status === 'working' ? stopCall({ turn: l.turn, who }) : Promise.resolve(null) }
+export function stopAll() {
+  const turns = new Set(Object.values(state.live).filter((l) => l.status === 'working').map((l) => l.turn))
+  return Promise.all([...turns].map((turn) => stopCall({ turn })))
+}
+/** Talk to a working member personally: stop them, address the next message to them, hand back their draft. */
+export async function interrupt(who: string) {
+  const l = state.live[who]
+  if (l?.status !== 'working') return
+  const draft = l.draft
+  await stopMember(who)
+  set({ to: who, partial: { who, text: draft } })
+}
+
+let streams = 0
+
 /** Resolves false when the message could not be sent (the client's line is taken back so the draft can return). */
 export async function send(text: string): Promise<boolean> {
   const message = text.trim()
   if (!message) return true
-  if (state.busy || L.getLesson().busy) return false
+  if ((state.busy && !state.partial) || L.getLesson().busy) return false
   const { lesson, current } = L.getLesson()
   const before = lesson.crew ?? []
   const mine = { who: 'client', text: message }
-  const lines = [...before, mine]
+  const partial = state.partial
   let answered = false
-  L.setCrew(lines)
-  set({ busy: true, error: null })
+  let myTurn: CrewEvent['turn'] | null = null
+  L.setCrew([...before, mine])
+  streams++
+  set({ busy: true, error: null, partial: null })
+  const handle = async (ev: CrewEvent) => {
+    // the client switched scene or lesson while the crew was thinking: show the answers, change nothing
+    const moved = () => L.getLesson().current !== current || L.getLesson().lesson.id !== lesson.id
+    const mineNow = (who: string) => state.live[who]?.turn === ev.turn ? state.live[who] : undefined
+    if (ev.type === 'turn') myTurn = ev.turn
+    else if (ev.type === 'assistant') { if (ev.text.trim()) { answered = true; appendLine({ who: 'assistant', as: ev.as && ev.as in ASSISTANTS ? ev.as : state.assistant, text: ev.text }) } }
+    else if (ev.type === 'message') {
+      const l = mineNow(ev.who)
+      if (await commitMessage(ev.msg, moved(), l ? savedThoughts(l) : {})) answered = true
+      if (l) set({ live: withoutLive(ev.who) })
+    } else if (ev.type === 'stopped' || (ev.type === 'error' && ev.who)) {
+      const who = ev.who as string
+      const l = mineNow(who)
+      if (!l) return
+      answered = true
+      appendLine({ who, text: '', ...(ev.type === 'stopped' ? { stopped: true } : { error: ev.error }), ...savedThoughts(l) })
+      set({ live: withoutLive(who) })
+    } else if (ev.type === 'error') set({ error: 'The crew could not answer: ' + ev.error })
+    else if (ev.type !== 'done') {
+      if (ev.type === 'routed') answered = true
+      set({ live: reduceLive(state.live, ev, message) })
+    }
+  }
   try {
-    const res = await fetch('/crew', {
+    const res = await fetch('/crew/stream', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         message, to: state.to, assistant: state.assistant,
+        ...(partial ? { partial } : {}),
         history: [{ who: 'assistant', text: greeting() }, ...before].slice(-HISTORY)
           .map((l) => ({ who: `${speaker(l.who, l.as).name} (${speaker(l.who, l.as).role})`, text: l.text })),
         scene: animator().snapshot(),
@@ -145,26 +210,20 @@ export async function send(text: string): Promise<boolean> {
         lesson: { title: lesson.title, scenes: Object.keys(lesson.scenes).length, script: scriptText(lesson.script) },
       }),
     })
-    if (!(res.headers.get('content-type') || '').includes('json')) throw new Error('the crew server is not running (start "python3 server.py" in engine-mvp)')
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
-    // the client switched scene or lesson while the crew was thinking: show the answers, change nothing
-    const moved = L.getLesson().current !== current || L.getLesson().lesson.id !== lesson.id
-    for (const msg of Array.isArray(data.messages) ? data.messages : []) {
-      if (!msg || typeof msg !== 'object') continue
-      const wants = !!(msg.settings?.length || msg.commands?.length || msg.title)
-      const r = wants && !moved ? await applyAnswer(msg) : null
-      const changes = r?.changes ?? []
-      if (wants && moved) changes.push('Not applied: the scene changed while the crew was answering')
-      if (r?.failed) changes.push('Stopped halfway: ' + r.failed)
-      if (msg.dropped) changes.push(`${msg.dropped} unknown stage command(s) ignored`)
-      if (!msg.text && !changes.length) continue
-      const jev = cleanJev(msg.jev)
-      const review = cleanReview(msg.review)
-      const out = [...(L.getLesson().lesson.crew ?? lines), { who: String(msg.who), ...(msg.who === 'assistant' ? { as: state.assistant } : {}), text: String(msg.text ?? ''), ...(changes.length ? { changes } : {}), ...(jev ? { jev } : {}), ...(review ? { review } : {}) }]
-      answered = true
-      L.setCrew(out) // line by line: an error further on never loses an answer already applied
-      if (r && (r.changes.length || r.failed)) set({ undo: { ...state.undo, [out.length - 1]: r.undo } })
+    if (!res.ok || !res.body) {
+      const json = (res.headers.get('content-type') || '').includes('json')
+      const data = json ? await res.json().catch(() => null) : null
+      throw new Error(data?.error || (json ? `HTTP ${res.status}` : 'the crew server is not running (start "python3 server.py" in engine-mvp)'))
+    }
+    const reader = res.body.getReader()
+    const dec = new TextDecoder()
+    let carry = ''
+    for (;;) {
+      const { done, value } = await reader.read()
+      const { lines, rest } = splitLines(carry, done ? dec.decode() + '\n' : dec.decode(value, { stream: true }))
+      carry = rest
+      for (const line of lines) { const ev = parseEvent(line); if (ev) await handle(ev) }
+      if (done) break
     }
   } catch (err) {
     set({ error: 'The crew could not answer: ' + (err instanceof Error ? err.message : String(err)) })
@@ -173,7 +232,14 @@ export async function send(text: string): Promise<boolean> {
       return false
     }
   } finally {
-    set({ busy: false })
+    // a member still working when the stream is over lost their connection
+    for (const [who, l] of Object.entries(state.live)) {
+      if (l.status !== 'working' || l.turn !== myTurn) continue
+      appendLine({ who, text: '', error: 'Lost connection', ...savedThoughts(l) })
+      set({ live: withoutLive(who) })
+    }
+    streams--
+    set({ busy: streams > 0 })
   }
   return true
 }

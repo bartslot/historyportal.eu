@@ -65,3 +65,96 @@ assert s.title_open({'lesson': {'title': 'Untitled lesson'}, 'message': 'hoi'}),
 assert not s.title_open({'lesson': {'title': 'De Gouden Eeuw'}, 'message': 'maak het dag'}), 'a named lesson keeps it'
 assert s.title_open({'lesson': {'title': 'De Gouden Eeuw'}, 'message': 'Bedenk een betere titel'})
 print('title rule ok')
+
+# ---- live streaming: extractor, event order, stop (offline, fake claude) ----
+import http.client
+import json
+import threading
+import time
+from http.server import ThreadingHTTPServer
+
+full = '{"reply": "Hal\\"lo\\nw\\u00e8reld \\ud83d\\ude00 ok", "settings": []}'
+want = 'Hal"lo\nwèreld \U0001F600 ok'
+for size in (1, 2, 3, 5, 7, 1000):    # every split point, incl. inside \" \n è and the surrogate pair
+    ex, got = s.ReplyExtractor(), ''
+    for i in range(0, len(full), size):
+        got += ex.feed(full[i:i + size])
+    assert got == want, (size, got)
+assert s.ReplyExtractor().feed('{"other": "x"}') == '', 'no reply key, nothing out'
+print('reply extractor ok')
+
+ack = s.MEMBERS['historian']['acks']
+assert s.direct_ack(s.MEMBERS['historian'], 'Ruth, wanneer schilderde Rembrandt dit?') in ack['nl']
+assert s.direct_ack(s.MEMBERS['historian'], 'When did he paint it?') in ack['en']
+assert s.direct_ack(s.MEMBERS['historian'], 'Wann hat er das gemalt und warum?') in ack['de']
+assert 'Your voice' in s.member_prompt(s.MEMBERS['historian'], next(iter(s.CREW['assistants'].values())))
+print('direct ack ok')
+
+slow = tmp / 'slowclaude'   # stream-json: a thinking delta, split reply deltas, a result; FAKE_SLEEP between lines
+slow.write_text('''#!/usr/bin/env python3
+import sys, json, time, os
+sys.stdin.read()
+a = sys.argv
+pause = float(os.environ.get('FAKE_SLEEP', '0.3'))
+def out(o):
+    print(json.dumps(o), flush=True)
+def d(delta):
+    out({"type": "stream_event", "event": {"type": "content_block_delta", "index": 0, "delta": delta}})
+if "stream-json" not in a:
+    out({"is_error": False, "result": "{}", "structured_output": {"reply": "Zo.", "ask": [
+        {"crew": "historian", "question": "q", "ack": "Ik zoek de data even op."}]}}); sys.exit()
+out({"type": "system", "subtype": "init"})
+d({"type": "thinking_delta", "thinking": "Hmm, 1642."}); time.sleep(pause)
+for p in ['{"reply": "Rem', 'brandt schil', 'derde het in 16', '42."}']:
+    d({"type": "input_json_delta", "partial_json": p}); time.sleep(pause)
+out({"type": "result", "subtype": "success", "is_error": False, "result": "{}",
+     "structured_output": {"reply": "Rembrandt schilderde het in 1642.", "settings": [], "commands": []}})
+''')
+slow.chmod(slow.stat().st_mode | stat.S_IEXEC)
+s.CLAUDE_BIN, s.JEV_ON = str(slow), False
+srv = ThreadingHTTPServer(('127.0.0.1', 0), s.Handler)
+threading.Thread(target=srv.serve_forever, daemon=True).start()
+PORT = srv.server_address[1]
+
+
+def post(path, body):
+    c = http.client.HTTPConnection('127.0.0.1', PORT)
+    c.request('POST', path, json.dumps(body), {'Content-Type': 'application/json'})
+    return c, c.getresponse()
+
+
+def events(resp):
+    for line in resp:
+        yield json.loads(line)
+
+
+body = {'message': 'Ruth, wanneer schilderde Rembrandt dit?', 'to': 'historian', 'settings': []}
+c, r = post('/crew/stream', body)
+assert r.getheader('Content-Type') == 'application/x-ndjson'
+evs = list(events(r))
+types = [e['type'] for e in evs]
+assert types[:3] == ['turn', 'routed', 'start'] and types[-2:] == ['message', 'done'], types
+assert 'thinking' in types and types.count('text') >= 3, types
+assert ''.join(e['text'] for e in evs if e['type'] == 'text') == 'Rembrandt schilderde het in 1642.'
+assert len({e['turn'] for e in evs}) == 1
+print('stream event order ok:', types)
+
+c, r = post('/crew/stream', {**body, 'to': None, 'message': 'Wanneer schilderde Rembrandt dit?'})   # via the router
+evs = list(events(r))
+types = [e['type'] for e in evs]
+assert types[:3] == ['turn', 'assistant', 'routed'] and evs[2]['ack'] == 'Ik zoek de data even op.', types
+assert types.index('routed') < types.index('start') and types[-2:] == ['message', 'done'], types
+print('routed ack order ok')
+
+os.environ['FAKE_SLEEP'] = '1'   # stop: kill the slow member mid-way, no message may follow
+c, r = post('/crew/stream', body)
+turn = json.loads(r.readline())['turn']
+seen = [json.loads(r.readline())['type'] for _ in range(3)]
+c2, r2 = post('/crew/stop', {'turn': turn, 'who': 'historian'})
+assert json.loads(r2.read()) == {'stopped': ['historian']}
+rest = [e['type'] for e in events(r)]
+assert 'stopped' in rest and 'message' not in rest and rest[-1] == 'done', rest
+c3, r3 = post('/crew/stop', {'turn': 'nope'})
+assert r3.status == 404
+srv.shutdown()
+print('stop ok:', seen + rest)
