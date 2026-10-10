@@ -9,6 +9,9 @@ const API = process.env.STUDIO_API ?? 'http://127.0.0.1:8090'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   // the wizard's own pure modules (keyframes, timeline maths, easing): imported, never copied
+  // Babylon loads its shaders with dynamic imports; pre-bundled, those chunks fall out of step with
+  // the bundle (404s, 'Unable to compile effect', the storybook look gone). Served as plain ESM, they can't.
+  optimizeDeps: { exclude: ['@babylonjs/core', '@babylonjs/loaders', '@babylonjs/materials'] },
   resolve: { alias: { '@hp': fileURLToPath(new URL('../resources/js', import.meta.url)) } },
   server: {
     port: 5190,
