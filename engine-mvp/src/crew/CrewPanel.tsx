@@ -59,7 +59,7 @@ function Card({ id, onClose, onAsk }: { id: string; onClose: () => void; onAsk: 
   )
 }
 
-const jevTone = (s: number) => (s >= 0.9 ? 'badge-success' : s >= 0.5 ? 'badge-warning' : 'badge-error')
+const jevTone = (s: number) => (s >= 0.8 ? 'badge-success' : s >= 0.5 ? 'badge-warning' : 'badge-error')
 
 function Line({ index, who, as, text, changes, jev, review }: { index: number; who: string; as?: string; text: string; changes?: string[]; jev?: CrewLine['jev']; review?: CrewLine['review'] }) {
   useCrew()

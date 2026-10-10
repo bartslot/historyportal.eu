@@ -51,7 +51,7 @@ CLAUDE_BIN = os.environ.get('CREW_CLAUDE_BIN', 'claude')
 CLAUDE_TIMEOUT = 180
 JEV_ON = os.environ.get('CREW_JEV', '1') != '0'
 JEV_IDS = {'historian', 'writer', 'learning', 'comedian'}   # the members whose answers carry claims
-JEV_MIN_SCORE = 0.9                                         # below this the director gives a second opinion
+JEV_MIN_SCORE = 0.8                                         # below this the director gives a second opinion
 JEV_DIR = HERE.parents[3] / 'tools' / 'artkit' / 'jev'
 
 # name -> {arg: type}; "?" marks optional. Numbers are clamped below.
