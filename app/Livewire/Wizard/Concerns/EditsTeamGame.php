@@ -16,7 +16,7 @@ use Livewire\Attributes\Validate;
  * the copy the lesson was built with (config.team_default), and every save goes through the Scene
  * model, so Cmd-Z (SceneHistory) undoes it step by step.
  *
- * The draft arrives from the browser: TeamGameSpec::normalize() cleans it on every save, the same
+ * The draft arrives from the browser: TeamGameSpec::clean() cleans it on every save, the same
  * code that cleans a composed spec. The #[Validate] rules only tell the teacher, field by field,
  * when a number is out of range; the clamp is what keeps the data sound.
  */
@@ -80,11 +80,8 @@ trait EditsTeamGame
         if ($scene === null) {
             return;
         }
-        // A mode the browser made up keeps the stored one (normalize() would rightly refuse it).
-        if (! in_array($this->teamDraft['mode'] ?? null, TeamGameSpec::MODES, true)) {
-            $this->teamDraft['mode'] = $this->storedTeamGame($scene)['mode'];
-        }
-        $this->storeTeamGame($scene, TeamGameSpec::normalize($this->teamDraft));
+        // A mode the browser made up keeps the stored one.
+        $this->storeTeamGame($scene, TeamGameSpec::clean($this->teamDraft, $this->storedTeamGame($scene)['mode']));
     }
 
     /** Switch the mode. Nothing is lost: every mode's fields stay in the game. */
@@ -116,6 +113,10 @@ trait EditsTeamGame
         }
         unset($rows[$index]);
         $this->teamDraft[$field] = array_values($rows);
+        if ($field === 'options') {
+            $answer = $this->teamDraft['answer'] ?? null;
+            $this->teamDraft['answer'] = TeamGameSpec::answerAfterRemoving(is_numeric($answer) ? (int) $answer : null, $index);
+        }
         $this->saveTeamDraft();
     }
 
@@ -127,8 +128,8 @@ trait EditsTeamGame
             return;
         }
         $default = ($scene->config ?? [])['team_default'] ?? null;
-        $mode = (string) ($this->teamDraft['mode'] ?? 'budget');
-        $this->storeTeamGame($scene, TeamGameSpec::normalize(is_array($default) ? $default : ['mode' => $mode]));
+        $mode = $this->storedTeamGame($scene)['mode'];
+        $this->storeTeamGame($scene, TeamGameSpec::clean(is_array($default) ? $default : [], $mode));
         $this->resetValidation('teamDraft*');
         $this->dispatch('toast', type: 'info', message: __('Team game reset to the original.'));
     }
@@ -138,7 +139,39 @@ trait EditsTeamGame
         $scene = $this->teamGameScene();
         $default = ($scene?->config ?? [])['team_default'] ?? null;
 
-        return ! is_array($default) || TeamGameSpec::normalize($default) === $this->teamDraft;
+        return ! is_array($default) || TeamGameSpec::clean($default, (string) ($this->teamDraft['mode'] ?? 'budget')) === $this->teamDraft;
+    }
+
+    /**
+     * saveSelected() writes the whole config from the page's snapshot, which the browser can
+     * change. The team game in it goes through the same cleaner as every other team save, and the
+     * reset copy is always the stored one: no request may rewrite what Reset puts back.
+     *
+     * @param  array<string,mixed>  $payload
+     * @return array<string,mixed>
+     */
+    private function withCleanTeamGame(array $payload, Scene $scene): array
+    {
+        if (! is_array($payload['config'] ?? null)) {
+            return $payload;
+        }
+        $stored = (array) ($scene->config ?? []);
+        $config = $payload['config'];
+        unset($config['team_default']);
+        if (array_key_exists('team_default', $stored)) {
+            $config['team_default'] = $stored['team_default'];
+        }
+        if (array_key_exists('team', $config)) {
+            $config['team'] = is_array($config['team'])
+                ? TeamGameSpec::clean($config['team'], (string) (($stored['team'] ?? [])['mode'] ?? 'budget'))
+                : ($stored['team'] ?? null);
+            if ($config['team'] === null) {
+                unset($config['team']);
+            }
+        }
+        $payload['config'] = $config;
+
+        return $payload;
     }
 
     private function teamGameScene(): ?Scene
@@ -156,7 +189,7 @@ trait EditsTeamGame
     {
         $team = ($scene->config ?? [])['team'] ?? [];
 
-        return TeamGameSpec::normalize(is_array($team) ? $team : []);
+        return TeamGameSpec::clean(is_array($team) ? $team : []);
     }
 
     /** @param array<string,mixed> $team already normalized */

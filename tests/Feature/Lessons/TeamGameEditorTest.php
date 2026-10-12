@@ -84,6 +84,61 @@ class TeamGameEditorTest extends TestCase
         $this->assertTrue($editor->instance()->teamGameIsDefault());
     }
 
+    public function test_removing_an_option_keeps_the_real_decision_on_the_same_option(): void
+    {
+        $this->teacher = User::factory()->create();
+        $scene = app(LessonComposer::class)->build([
+            'key' => 'Team game answer',
+            'scenes' => [[
+                'type' => 'team', 'mode' => 'choose', 'answer' => 'B',
+                'options' => [['text' => 'Zuid'], ['text' => 'Noord'], ['text' => 'Terug']],
+            ]],
+        ], $this->teacher, narrate: false)->scenes()->firstOrFail();
+
+        $editor = $this->editor($scene)->call('removeTeamRow', 'options', 2);   // a later one
+        $this->assertSame(1, $scene->fresh()->config['team']['answer']);
+
+        $editor->call('removeTeamRow', 'options', 0);                           // an earlier one
+        $this->assertSame(0, $scene->fresh()->config['team']['answer']);
+        $this->assertSame('Noord', $scene->fresh()->config['team']['options'][0]['text']);
+
+        $editor->call('removeTeamRow', 'options', 0);                           // the real one
+        $this->assertNull($scene->fresh()->config['team']['answer']);
+    }
+
+    public function test_the_whole_scene_save_cleans_the_team_game_and_never_rewrites_its_default(): void
+    {
+        $scene = $this->composeBudget();
+        $default = $scene->config['team_default'];
+
+        $this->editor($scene)
+            ->set('selectedScene.config.team.mode', 'poll')
+            ->set('selectedScene.config.team.title', '<script>x</script>Lading')
+            ->set('selectedScene.config.team.capacity', 100000)
+            ->set('selectedScene.config.team.map', 'javascript:alert(1)')
+            ->set('selectedScene.config.team_default.title', 'Hacked')
+            ->call('saveSelected');
+
+        $config = $scene->fresh()->config;
+        $this->assertSame('budget', $config['team']['mode']);
+        $this->assertSame('xLading', $config['team']['title']);
+        $this->assertSame(999, $config['team']['capacity']);
+        $this->assertSame('', $config['team']['map']);
+        $this->assertSame($default, $config['team_default']);
+    }
+
+    public function test_reset_survives_a_stored_default_with_an_unknown_mode(): void
+    {
+        $scene = $this->composeBudget();
+        $scene->update(['config' => array_merge($scene->config, ['team_default' => ['mode' => 'poll', 'title' => 'Oud']])]);
+
+        $this->editor($scene)->call('resetTeamGame')->assertOk();
+
+        $team = $scene->fresh()->config['team'];
+        $this->assertSame('budget', $team['mode']);
+        $this->assertSame('Oud', $team['title']);
+    }
+
     public function test_a_game_scene_can_become_a_team_game_and_back_without_losing_it(): void
     {
         $scene = $this->composeBudget();

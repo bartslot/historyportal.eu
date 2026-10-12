@@ -112,6 +112,35 @@ final class TeamGameSpec
         ];
     }
 
+    /**
+     * normalize() for data from the browser: a mode it made up becomes $fallbackMode (the stored
+     * one) instead of an exception, so a tampered request saves a sound game rather than a 500.
+     *
+     * @param  array<string,mixed>  $raw
+     * @return array<string,mixed>
+     */
+    public static function clean(array $raw, string $fallbackMode = 'budget'): array
+    {
+        if (! in_array($raw['mode'] ?? null, self::MODES, true)) {
+            $raw['mode'] = in_array($fallbackMode, self::MODES, true) ? $fallbackMode : 'budget';
+        }
+
+        return self::normalize($raw);
+    }
+
+    /**
+     * Where the real decision points after option $removed is taken out: the same option, one
+     * place up when an earlier option went, none when the real decision itself went.
+     */
+    public static function answerAfterRemoving(?int $answer, int $removed): ?int
+    {
+        return match (true) {
+            $answer === null, $answer === $removed => null,
+            $answer > $removed => $answer - 1,
+            default => $answer,
+        };
+    }
+
     /** A blank row for the editor's "Add" buttons, in the shape normalize() keeps. */
     public static function blankRow(string $field): array|string|null
     {
