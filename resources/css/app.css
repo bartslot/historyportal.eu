@@ -192,9 +192,12 @@
     --timeline-label-col: 14.125rem;  /* 226px — labels and value fields, lanes start after it */
 }
 
+/* ─── History — our own display face (OFL, built from Marcellus in
+   branding/historyportalBranding/font-build). ?font=matter swaps back to the previous trial font
+   for comparison: see resources/views/components/font-switch.blade.php. ─────────────────────────── */
 @font-face {
     font-family: 'History';
-    src: url('/fonts/History-Light.woff2') format('woff2');
+    src: url('/fonts/history/History-Light.woff2') format('woff2');
     font-weight: 300;
     font-style: normal;
     font-display: swap;
@@ -202,7 +205,7 @@
 
 @font-face {
     font-family: 'History';
-    src: url('/fonts/History-SemiBold.woff2') format('woff2');
+    src: url('/fonts/history/History-SemiBold.woff2') format('woff2');
     font-weight: 600;
     font-style: normal;
     font-display: swap;
@@ -210,7 +213,7 @@
 
 @font-face {
     font-family: 'History';
-    src: url('/fonts/History-Bold.woff2') format('woff2');
+    src: url('/fonts/history/History-Bold.woff2') format('woff2');
     font-weight: 700;
     font-style: normal;
     font-display: swap;
