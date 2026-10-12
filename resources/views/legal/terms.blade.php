@@ -91,6 +91,9 @@
     <p>
         Dutch law applies. Disputes go to the competent court in the Netherlands, unless the law of your
         country gives you, as a consumer, the right to go to your own court.
-        {{-- TODO(Bart): registered address and KvK number before this page goes live. --}}
+    </p>
+    <p>
+        History Portal is run by The Learning Portal, Korte Jufferstraat 42, 3512 EZ Utrecht, the Netherlands.
+        KvK 57701105, VAT NL002200353B28.
     </p>
 </x-legal-page>

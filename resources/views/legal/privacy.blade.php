@@ -20,8 +20,8 @@
 
     <h2>Who is responsible</h2>
     <p>
-        The Learning Portal is the data controller for historyportal.eu.
-        {{-- TODO(Bart): registered address and KvK number before this page goes live. --}}
+        The Learning Portal, Korte Jufferstraat 42, 3512 EZ Utrecht, the Netherlands
+        (KvK 57701105, VAT NL002200353B28), is the data controller for historyportal.eu.
         Contact: <a href="mailto:info@historyportal.eu">info@historyportal.eu</a>.
     </p>
     <p>
