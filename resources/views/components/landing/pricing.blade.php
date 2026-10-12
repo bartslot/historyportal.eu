@@ -15,13 +15,12 @@
     <div class="section-container relative" x-data="{ term: '{{ $defaultTerm }}' }">
         {{-- ── Heading ──────────────────────────────────────────────────── --}}
         <div class="mx-auto max-w-2xl text-center">
-            <p data-reveal="text" class="text-xs uppercase tracking-[0.45em] text-sky-100/60">Pricing</p>
+            <p data-reveal="text" class="text-xs uppercase tracking-[0.45em] text-sky-100/60">{{ __('Pricing') }}</p>
             <h2 data-reveal="heading" class="mt-3 font-history font-semibold text-3xl tracking-tight text-white md:text-4xl">
-                What a year of this costs
+                {{ __('What a year of this costs') }}
             </h2>
             <p data-reveal="text" class="mt-4 text-base leading-relaxed text-slate-400">
-                Every plan starts with a 14-day trial and no card.
-                Commit longer and lock a lower rate. Most schools choose the 2-year plan.
+                {{ __('Every plan starts with a 14-day trial and no card. Commit longer and lock a lower rate. Most schools choose the 2-year plan.') }}
             </p>
         </div>
 
@@ -37,12 +36,12 @@
                         :class="term === '{{ $key }}' ? 'btn-primary' : 'btn-ghost'"
                         class="btn btn-sm"
                     >
-                        {{ $term['label'] }}
+                        {{ __($term['label']) }}
                         @if ($term['save'])
                             <span
                                 :class="term === '{{ $key }}' ? 'bg-slate-950/15 text-slate-900' : 'bg-primary/15 text-primary'"
                                 class="rounded-full px-2 py-0.5 text-2xs font-medium uppercase tracking-[0.08em]"
-                            >{{ $term['save'] }}</span>
+                            >{{ __($term['save']) }}</span>
                         @endif
                     </button>
                 @endforeach
@@ -59,13 +58,13 @@
                 ])>
                     @if (! empty($tier['badge']))
                         <span class="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full border border-primary/40 bg-primary/15 px-3 py-1 text-2xs font-medium uppercase tracking-widest text-primary">
-                            {{ $tier['badge'] }}
+                            {{ __($tier['badge']) }}
                         </span>
                     @endif
 
                     {{-- name + tagline --}}
-                    <h3 class="font-history text-2xl text-white">{{ $tier['name'] }}</h3>
-                    <p class="mt-2 min-h-[2.5rem] text-sm leading-relaxed text-slate-400">{{ $tier['tagline'] }}</p>
+                    <h3 class="font-history text-2xl text-white">{{ __($tier['name']) }}</h3>
+                    <p class="mt-2 min-h-[2.5rem] text-sm leading-relaxed text-slate-400">{{ __($tier['tagline']) }}</p>
 
                     {{-- price --}}
                     <div class="mt-6 min-h-[5.25rem]">
@@ -79,22 +78,22 @@
                                             'lp-text-shimmer' => $tier['featured'],
                                             'text-white' => ! $tier['featured'],
                                         ])>{{ $tier['prices'][$key]['per_year'] }}</span>
-                                        <span class="text-sm text-slate-400">/ year</span>
+                                        <span class="text-sm text-slate-400">{{ __('/ year') }}</span>
                                     </div>
                                     <p class="mt-1 text-xs text-slate-500">
                                         @if ((string) $key === '1')
-                                            Billed annually
+                                            {{ __('Billed annually') }}
                                         @else
-                                            ${{ $tier['prices'][$key]['total'] }} total over {{ $key }} years · {{ $term['save'] }}
+                                            {{ __(':total total over :years years', ['total' => '$'.$tier['prices'][$key]['total'], 'years' => $key]) }} · {{ __($term['save']) }}
                                         @endif
                                     </p>
                                 </div>
                             @endforeach
                         @else
                             <div class="flex items-baseline gap-2">
-                                <span class="font-history text-4xl tracking-tight text-white">{{ $tier['price_label'] }}</span>
+                                <span class="font-history text-4xl tracking-tight text-white">{{ __($tier['price_label']) }}</span>
                             </div>
-                            <p class="mt-1 text-xs text-slate-500">Custom pricing · any term</p>
+                            <p class="mt-1 text-xs text-slate-500">{{ __('Custom pricing · any term') }}</p>
                         @endif
                     </div>
 
@@ -108,7 +107,7 @@
                                 <svg class="mt-0.5 h-5 w-5 flex-none text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                     <path d="M20 6 9 17l-5-5" />
                                 </svg>
-                                <span>{{ $feature }}</span>
+                                <span>{{ __($feature) }}</span>
                             </li>
                         @endforeach
                     </ul>
@@ -122,7 +121,7 @@
                             'btn-outline btn-primary' => ! $tier['featured'],
                         ])
                     >
-                        {{ $tier['cta'] }}
+                        {{ __($tier['cta']) }}
                     </a>
                 </div>
             @endforeach
@@ -130,7 +129,7 @@
 
         {{-- reassurance + honest renewal disclosure --}}
         <p class="mx-auto mt-10 max-w-2xl text-center text-xs leading-relaxed text-slate-500">
-            {{ $finePrint }}
+            {{ __($finePrint) }}
         </p>
     </div>
 </section>

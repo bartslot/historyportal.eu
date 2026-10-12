@@ -21,53 +21,7 @@ Route::pattern('lesson', '[0-9]+');
 
 // ── Public ───────────────────────────────────────────────────────────────────
 
-Route::get('/', function () {
-    // Publicly playable lessons (Published + Previewable) surfaced on the landing page so
-    // visitors can open one straight into the player (no auth required — see lesson.play).
-    //
-    // Cached (local file store) for 10 min. This whereHas EXISTS subquery + eager loads against
-    // the remote Supabase DB costs ~2s cold, and the landing page is the most-hit route — caching
-    // takes it from ~2.2s to ~40ms. The key is busted on any Lesson save (see Lesson::booted),
-    // so a newly published lesson appears immediately.
-    $playableLessons = \Illuminate\Support\Facades\Cache::remember(
-        'home.playable_lessons',
-        now()->addMinutes(10),
-        fn () => Lesson::whereIn('status', [
-            LessonStatusEnum::Published->value,
-            LessonStatusEnum::Previewable->value,
-        ])
-            ->whereNotNull('lesson_code')
-            // Only lessons that actually play — at least one narrated scene. Excludes empty
-            // stubs that would open the player to a perpetual "audio generating" screen.
-            ->whereHas('scenes', fn ($q) => $q->whereNotNull('audio_path'))
-            ->with(['firstScene', 'source'])
-            ->latest()
-            ->take(12)
-            ->get()
-    );
-
-    // The five curated "Trending history topics" cards, keyed by title so the carousel can link
-    // each poster to its real lesson. Separate from $playableLessons because these are pinned
-    // subjects, not simply the most recent twelve. A missing title just renders an unlinked card.
-    $trendingLessons = \Illuminate\Support\Facades\Cache::remember(
-        'home.trending_lessons',
-        now()->addMinutes(10),
-        fn () => Lesson::whereIn('title', \App\Support\TrendingTopics::lessonTitles())
-            ->whereIn('status', [
-                LessonStatusEnum::Published->value,
-                LessonStatusEnum::Previewable->value,
-            ])
-            ->whereNotNull('lesson_code')
-            ->whereHas('scenes', fn ($q) => $q->whereNotNull('audio_path'))
-            // Ascending on purpose: keyBy keeps the LAST row for a duplicate key, so ordering
-            // oldest-first means a rebuilt lesson (same title, higher id) wins.
-            ->orderBy('id')
-            ->get()
-            ->keyBy('title')
-    );
-
-    return view('historyportal', compact('playableLessons', 'trendingLessons'));
-})->name('home');
+Route::get('/', \App\Http\Controllers\Public\HomeController::class)->name('home');
 
 Route::get('/about', function () {
     return view('about');
@@ -106,9 +60,7 @@ Route::prefix('{locale}')
     ->whereIn('locale', ['nl', 'de', 'fr', 'it'])
     ->middleware(\App\Http\Middleware\SetLocaleFromUrl::class)
     ->group(function () {
-        Route::get('/', fn () => view('historyportal', [
-            'playableLessons' => \App\Support\Seo::publicLessons()->with(['firstScene', 'source'])->latest()->take(12)->get(),
-        ]))->name('public.home.localized');
+        Route::get('/', \App\Http\Controllers\Public\HomeController::class)->name('public.home.localized');
         Route::get('/about', fn () => view('about'))->name('public.about.localized');
         Route::get('/history-lessons', [\App\Http\Controllers\Public\LessonCatalogueController::class, 'index'])
             ->name('public.lessons.localized');
