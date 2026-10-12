@@ -2088,7 +2088,10 @@ Alpine.data('lessonGame', (lesson) => ({
     async _beginTeamFlow (scene) {
       const host = document.getElementById('lesson-game-overlay')
       if (!host) { this._resumeAfterQuiz(); return }
+      const index = this._sceneIndex
       const { TeamGame } = await import('./scene/TeamGame.js')
+      // A chapter jump during the import has moved the class on; the game must not open over it.
+      if (this._sceneIndex !== index) return
       this._teamGame = this._teamGame || new TeamGame(host)
       this._teamGame.show({ config: scene.config.team, onComplete: () => this._resumeAfterQuiz() })
     },
