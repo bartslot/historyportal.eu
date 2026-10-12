@@ -37,15 +37,15 @@
     ];
 @endphp
 
-<section id="popular" class="relative overflow-hidden border-t border-white/10 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 py-16 sm:py-20">
+<section id="popular" data-reveal-section class="relative overflow-hidden border-t border-white/10 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 py-16 sm:py-20">
     <div class="section-container">
         <div class="mb-12 flex items-end justify-between gap-4">
             <div>
-                <h2 class="mt-3 font-history font-semibold text-3xl tracking-tight text-white md:text-4xl">Trending history topics</h2>
+                <h2 data-reveal="heading" class="mt-3 font-history font-semibold text-3xl tracking-tight text-white md:text-4xl">Trending history topics</h2>
             </div>
         </div>
 
-        <div class="relative">
+        <div class="relative" data-reveal="cards">
             <!-- <div class="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-slate-950 via-slate-950/75 to-transparent"></div> -->
             <!-- <div class="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-slate-950 via-slate-950/75 to-transparent"></div> -->
 
@@ -106,10 +106,10 @@
             </x-carousel>
         </div>
 
-        <div id="features" class="mt-20">
-            <h2 class="mt-3 font-history font-semibold text-3xl tracking-tight text-white md:text-4xl">What the hour actually looks like</h2>
+        <div id="features" data-reveal-section class="mt-20">
+            <h2 data-reveal="heading" class="mt-3 font-history font-semibold text-3xl tracking-tight text-white md:text-4xl">What the hour actually looks like</h2>
 
-            <div class="relative mt-8">
+            <div class="relative mt-8" data-reveal="cards">
                 <!-- <div class="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-slate-950 via-slate-950/75 to-transparent"></div> -->
                 <div class="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-slate-950 via-slate-950/75 to-transparent"></div>
 
@@ -158,13 +158,14 @@
             </div>
         </div>
 
-        <div class="mt-20 text-center">
-            <p class="text-xs uppercase tracking-[0.45em] text-sky-100/60">The part they remember</p>
-            <h2 class="mx-auto mt-4 max-w-4xl font-history text-4xl leading-tight text-white md:text-6xl">
+        <div class="mt-20 text-center" data-reveal-section>
+            <p data-reveal="text" class="text-xs uppercase tracking-[0.45em] text-sky-100/60">The part they remember</p>
+            <h2 data-reveal="heading" class="mx-auto mt-4 max-w-4xl font-history text-4xl leading-tight text-white md:text-6xl">
                 They will ask you to play the next one.
             </h2>
 
             <a
+                data-reveal="cta"
                 href="#contact"
                 class="btn btn-info mt-8"
             >

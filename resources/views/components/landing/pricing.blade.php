@@ -6,20 +6,20 @@
     $finePrint   = config('pricing.fine_print');
 @endphp
 
-<section id="pricing" class="relative overflow-hidden border-t border-white/10 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 py-16 sm:py-24">
+<section id="pricing" data-reveal-section class="relative overflow-hidden border-t border-white/10 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 py-16 sm:py-24">
     <style>[x-cloak]{display:none!important}</style>
 
     {{-- soft amber portal glow, top-center --}}
-    <div class="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(ellipse_at_top,_rgba(252,211,77,0.12),_transparent_60%)]"></div>
+    <div data-reveal="glow" class="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(ellipse_at_top,_rgba(252,211,77,0.12),_transparent_60%)]"></div>
 
     <div class="section-container relative" x-data="{ term: '{{ $defaultTerm }}' }">
         {{-- ── Heading ──────────────────────────────────────────────────── --}}
         <div class="mx-auto max-w-2xl text-center">
-            <p class="text-xs uppercase tracking-[0.45em] text-sky-100/60">Pricing</p>
-            <h2 class="mt-3 font-history font-semibold text-3xl tracking-tight text-white md:text-4xl">
+            <p data-reveal="text" class="text-xs uppercase tracking-[0.45em] text-sky-100/60">Pricing</p>
+            <h2 data-reveal="heading" class="mt-3 font-history font-semibold text-3xl tracking-tight text-white md:text-4xl">
                 What a year of this costs
             </h2>
-            <p class="mt-4 text-base leading-relaxed text-slate-400">
+            <p data-reveal="text" class="mt-4 text-base leading-relaxed text-slate-400">
                 Every plan starts with a 14-day trial and no card.
                 Commit longer and lock a lower rate. Most schools choose the 2-year plan.
             </p>
@@ -50,9 +50,9 @@
         </div>
 
         {{-- ── Tier grid ────────────────────────────────────────────────── --}}
-        <div class="mx-auto mt-12 grid max-w-6xl gap-6 lg:grid-cols-3 lg:items-stretch">
+        <div data-reveal="tiers" class="mx-auto mt-12 grid max-w-6xl gap-6 lg:grid-cols-3 lg:items-stretch">
             @foreach ($tiers as $tier)
-                <div @class([
+                <div @if ($tier['featured']) data-featured @endif @class([
                     'group relative flex flex-col rounded-[1.5rem] p-8 transition duration-300 ease-out',
                     'border border-primary/40 bg-gradient-to-b from-slate-800/90 to-slate-900/90 shadow-[0_24px_60px_rgba(252,211,77,0.18)] ring-1 ring-primary/30 lg:-my-3 lg:py-11' => $tier['featured'],
                     'border border-white/10 bg-white/4 shadow-[0_16px_40px_rgba(0,0,0,0.35)] hover:-translate-y-1 hover:border-primary/30 hover:bg-white/6' => ! $tier['featured'],

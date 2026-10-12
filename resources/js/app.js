@@ -9,6 +9,7 @@ import { easingPreview } from './easing-preview.js';
 import { animationTimeline } from './anim/timeline-panel.js';
 import { setupHeroLessonDemo } from './hero/lesson-demo.js';
 import { setupSiteHeader } from './site-header.js';
+import { setupLandingReveal } from './landing-reveal.js';
 import { clampToViewport, restorePosition, savePosition, defaultPosition, isViewportUsable } from './ui/floating-window.js';
 // Dev settings sliders. Imported unconditionally because it is a registry and nothing more until
 // something registers a knob — it builds no DOM and adds no listeners beyond one window event.
@@ -667,6 +668,7 @@ if (document.readyState === 'loading') {
         setupPortalExitAnimation();
         setupHeroLessonDemo();
         setupSiteHeader();
+        setupLandingReveal();
     }, { once: true });
 } else {
     setupLandingCursor();
@@ -675,4 +677,5 @@ if (document.readyState === 'loading') {
     setupPortalExitAnimation();
     setupHeroLessonDemo();
     setupSiteHeader();
+    setupLandingReveal();
 }
