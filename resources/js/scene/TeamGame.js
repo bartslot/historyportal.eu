@@ -230,20 +230,21 @@ export class TeamGame {
   _paintClock () {
     const clock = this.host.querySelector('[data-team-clock]')
     if (!clock) return
-    clock.textContent = this._remaining > 0 ? formatClock(this._remaining) : t('Time is up')
+    clock.textContent = this._clockText()
   }
+
+  _clockText () { return this._remaining > 0 ? formatClock(this._remaining) : t('Time is up') }
 
   _clock () {
     if (!this.cfg.minutes) return null
     const wrap = el('div', 'flex items-center gap-2')
-    const clock = el('span', 'font-mono text-3xl font-bold tabular-nums text-primary')
+    const clock = el('span', 'font-mono text-3xl font-bold tabular-nums text-primary', this._clockText())
     clock.dataset.teamClock = ''
     clock.setAttribute('role', 'timer')
     wrap.appendChild(clock)
     append(wrap,
       button(this._running ? t('Pause') : t('Resume'), 'btn-sm btn-ghost', () => this._pauseClock()),
       button(t('+1 minute'), 'btn-sm btn-ghost', () => this._addMinute()))
-    setTimeout(() => this._paintClock())
     return wrap
   }
 
@@ -253,7 +254,8 @@ export class TeamGame {
     const scrim = el('div', 'absolute inset-0 overflow-y-auto bg-base-100/95 text-base-content')
     scrim.setAttribute('role', 'dialog')
     scrim.setAttribute('aria-label', this.cfg.title || t('Team game'))
-    const page = el('div', 'mx-auto flex min-h-full max-w-6xl flex-col gap-6 px-4 py-8 sm:px-8')
+    // Clear of the player's chrome, which sits above this host: the edit pill on top, the deck below.
+    const page = el('div', 'mx-auto flex min-h-full max-w-6xl flex-col gap-6 px-4 pb-32 pt-16 sm:px-8')
     const head = el('header', 'flex flex-wrap items-center justify-between gap-4 border-b border-base-300 pb-4')
     append(head, el('h2', 'text-3xl font-bold sm:text-4xl', this.cfg.title || t('Team game')), this._timed() ? this._clock() : null)
     const body = el('main', 'flex flex-1 flex-col gap-6')
@@ -265,7 +267,7 @@ export class TeamGame {
 
   _timed () { return this._timedPhase(this._phase) }
 
-  _timedPhase (phase) { return ['load', 'dossier', 'discuss'].includes(phase) }
+  _timedPhase (phase) { return ['load', 'dossier', 'vote', 'discuss'].includes(phase) }
 
   _stopClockIfNotTimed () {
     if (!this._timed() && this._running) { this._running = false; this._stopClock() }
@@ -350,11 +352,10 @@ export class TeamGame {
       bar)
     body.appendChild(meter)
 
-    if (this._warning) {
-      const warn = el('div', 'alert alert-warning text-lg', this._warning)
-      warn.setAttribute('role', 'alert')
-      body.appendChild(warn)
-    }
+    // The slot is always there, so a warning never pushes the cards out from under the next tap.
+    const warn = el('div', `alert alert-warning text-lg ${this._warning ? '' : 'invisible'}`, this._warning || ' ')
+    if (this._warning) warn.setAttribute('role', 'alert')
+    body.appendChild(warn)
 
     if (fixed.length) {
       const onBoard = el('section', 'flex flex-col gap-2')
@@ -519,7 +520,7 @@ export class TeamGame {
       body.appendChild(this._tally())
     } else {
       const waiting = this._votes.filter(v => !Number.isInteger(v)).length
-      body.appendChild(el('p', 'text-lg text-base-content/70', t('Waiting for :count teams', { count: waiting })))
+      body.appendChild(el('p', 'text-lg text-base-content/70', t('Teams still to choose: :count', { count: waiting })))
     }
     const reveal = button(t('Reveal'), 'btn-primary btn-lg', () => this._go('chooseReveal'))
     reveal.disabled = !done
@@ -534,7 +535,7 @@ export class TeamGame {
       const bar = el('progress', 'progress progress-primary flex-1')
       bar.max = this._votes.length
       bar.value = n
-      append(row, el('span', 'badge badge-lg badge-primary font-bold', LETTERS[i]), bar, el('span', 'w-24 text-right text-lg tabular-nums', t(':count teams', { count: n })))
+      append(row, el('span', 'badge badge-lg badge-primary font-bold', LETTERS[i]), bar, el('span', 'w-10 text-right text-xl font-semibold tabular-nums', n))
       box.appendChild(row)
     })
     return box

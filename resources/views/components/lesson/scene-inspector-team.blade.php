@@ -27,10 +27,14 @@
 
 <div class="space-y-3" data-team-inspector>
     <div class="flex items-center justify-between gap-2">
-        <x-ui.segmented panel class="flex-1" name="team-mode" :value="$mode"
-                        :options="[['budget', __('Budget')], ['choose', __('Choose')], ['discuss', __('Discuss')]]"
-                        tab-class="flex-1"
-                        on-change="$wire.call('setTeamMode', $event.target.value)" />
+        {{-- Keyed by mode: the control seeds its state once, so a Reset or an undo that changes the
+             mode must rebuild it, or it keeps showing the old one. --}}
+        <div class="flex-1" wire:key="team-mode-{{ $mode }}">
+            <x-ui.segmented panel class="w-full" name="team-mode" :value="$mode"
+                            :options="[['budget', __('Budget')], ['choose', __('Choose')], ['discuss', __('Discuss')]]"
+                            tab-class="flex-1"
+                            on-change="$wire.call('setTeamMode', $event.target.value)" />
+        </div>
         <button type="button" wire:click="resetTeamGame" @disabled($isDefault)
                 class="btn btn-ghost btn-xs gap-1" data-tooltip="{{ __('Put back the game as the lesson was built. Cmd-Z undoes single edits.') }}">
             <x-icons.arrow-path class="h-3.5 w-3.5" />

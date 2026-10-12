@@ -1607,8 +1607,6 @@
     "Teams choose": "Teams wählen",
     "Map of the options": "Karte mit den Optionen",
     "Real decision": "Echte Entscheidung",
-    "Waiting for :count teams": "Warten auf :count Teams",
-    ":count teams": ":count Teams",
     "Close the discussion": "Gespräch abschließen",
     "Add fixed item": "Festes Paket hinzufügen",
     "Cargo to choose from": "Ladung zur Auswahl",
@@ -1642,5 +1640,6 @@
     "Advanced": "Erweitert",
     "Rules on screen": "Spielregeln auf dem Bildschirm",
     "Spoken intro (optional, narrated before the game)": "Gesprochenes Intro (optional, vor dem Spiel vorgelesen)",
-    "Team game reset to the original.": "Teamspiel auf das Original zurückgesetzt."
+    "Team game reset to the original.": "Teamspiel auf das Original zurückgesetzt.",
+    "Teams still to choose: :count": "Teams, die noch wählen müssen: :count"
 }

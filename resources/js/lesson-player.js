@@ -188,7 +188,9 @@ Alpine.data('lessonGame', (lesson) => ({
     // carries itself — a map, a voyage leg, a gallery, a film — needs no audio to be playable.
     get canStart () {
       return !!(lesson.audio_url || (lesson.scenes || []).some(s =>
-        s.audio_url || ['map', 'voyage', 'gallery', 'video'].includes(s.kind)))
+        s.audio_url || ['map', 'voyage', 'gallery', 'video'].includes(s.kind)
+        // A team game plays on the class screen without a voice of its own.
+        || (s.kind === 'game' && s.game_type === 'team')))
     },
 
     // Location/Year overlay

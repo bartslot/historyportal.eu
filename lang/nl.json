@@ -1650,8 +1650,6 @@
     "Teams choose": "Teams kiezen",
     "Map of the options": "Kaart met de opties",
     "Real decision": "Echte beslissing",
-    "Waiting for :count teams": "Wachten op :count teams",
-    ":count teams": ":count teams",
     "Close the discussion": "Rond het gesprek af",
     "Add fixed item": "Vast pakket toevoegen",
     "Cargo to choose from": "Lading om uit te kiezen",
@@ -1685,5 +1683,6 @@
     "Advanced": "Geavanceerd",
     "Rules on screen": "Spelregels in beeld",
     "Spoken intro (optional, narrated before the game)": "Gesproken intro (optioneel, voorgelezen vóór het spel)",
-    "Team game reset to the original.": "Teamspel teruggezet naar het origineel."
+    "Team game reset to the original.": "Teamspel teruggezet naar het origineel.",
+    "Teams still to choose: :count": "Teams die nog moeten kiezen: :count"
 }

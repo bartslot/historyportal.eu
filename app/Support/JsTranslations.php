@@ -73,8 +73,7 @@ final class JsTranslations
             'Teams choose' => __('Teams choose'),
             'Map of the options' => __('Map of the options'),
             'Real decision' => __('Real decision'),
-            'Waiting for :count teams' => __('Waiting for :count teams'),
-            ':count teams' => __(':count teams'),
+            'Teams still to choose: :count' => __('Teams still to choose: :count'),
             'Close the discussion' => __('Close the discussion'),
         ];
     }
