@@ -16,6 +16,7 @@
 import Alpine from 'alpinejs'
 import QRCode from 'qrcode'
 import { resolveAnchorTime, pickShotIndex } from './scene/shot-sync.js'
+import { buildChapters, canSeek, reachedFurther, chapterTooltip, formatClock, formatMinutes } from './scene/chapter-timeline.js'
 import { createTelemetry } from './lesson-telemetry.js'
 import { renderGallery } from './gallery-scene.js'
 import { isTopAnchored, normalizeFit, PORTRAIT_TOP_CSS } from './scene/background-fit.js'
@@ -165,6 +166,7 @@ let _mapInstance    = null   // MapLibre map block instance (lives outside Alpin
 let _mapTimer       = null   // timed-mode auto-advance timer
 let _voyageInstance = null   // voyage tour instance (kind 'voyage'; outside Alpine's proxy)
 let _galleryInstance = null  // gallery slideshow instance (kind 'gallery'; outside Alpine's proxy)
+const FURTHEST_STEP_SECONDS = 0.5  // how far narration runs before the chapter bar's furthest point moves
 let _autoAdvanceRaf = null    // voyage auto-advance progress loop
 let _music          = null   // BackgroundMusic bed (owns its own Audio elements; outside Alpine's proxy)
 let _initDone       = false  // guard: prevent double-init from Vite HMR / Alpine re-mount
@@ -231,11 +233,17 @@ Alpine.data('lessonGame', (lesson) => ({
     captionText:       '',
     _cues:             [],
 
-    // Chapters (Micrio-style serial-tour bar + list)
-    chapters:          [],   // [{name, dur, index, kind}] — games excluded; `index` = queue index
+    // Chapters (Spotify-style bar + list): one per scene, quizzes and games included. See
+    // scene/chapter-timeline.js. A student jumps back anywhere they have been, never past `furthest`.
+    chapters:          [],   // [{index, name, type, seconds, estimated, start, afterEstimate}]
+    furthest:          { index: 0, time: 0 },
     currentIsGame:     false, // current scene is a quiz/game → hide the chapter bar
     sceneProgress:     0,    // 0-1 through the current chapter's audio
     chaptersOpen:      false,
+    estimatedMinutes:  lesson.estimated_minutes ? formatMinutes(lesson.estimated_minutes * 60) : '',
+    _quizRuns:         new Map(),  // queue index -> a finished quiz run, reopened read-only on return
+    _pendingSeek:      0,          // seconds into the scene goToChapter is about to play (a click mid-segment)
+    _seekOnStart:      0,          // …handed to that scene's narration, and dropped with the scene
 
     // Map block
     showMapContinue: false,  // stage slide waiting on the student (interactive map, gallery, video, landfall)
@@ -1004,6 +1012,11 @@ Alpine.data('lessonGame', (lesson) => ({
       this.sceneProgress = this._audio.duration
         ? Math.min(1, this._audio.currentTime / this._audio.duration)
         : 0
+      // Every segment's lock and fill read `furthest`, so move it in steps, not on every tick.
+      const t = this._audio.currentTime
+      if (this._sceneIndex !== this.furthest.index || t - this.furthest.time >= FURTHEST_STEP_SECONDS) {
+        this.furthest = reachedFurther(this.furthest, { index: this._sceneIndex, time: t })
+      }
 
       // Drive the layered-scene parallax from narration progress (same tick as anchors).
       if (_parallax && this._audio.duration) {
@@ -1057,6 +1070,7 @@ Alpine.data('lessonGame', (lesson) => ({
             image_credit: s.image_credit ?? null,   // shown under the deck — CC BY obliges us to
             chapter_name: s.chapter_name ?? null, year: s.year ?? null, location: s.location ?? null,
             duration_seconds: s.duration_seconds ?? null,
+            timeline: s.timeline ?? null,
             // shots entries carry image_url + anchor_sentence, plus optional bg_url/hero_url
             // (layered parallax shots, E3b) — the whole array passes through untouched.
             shots: s.shots ?? null, alignment: s.alignment ?? null,
@@ -1069,17 +1083,8 @@ Alpine.data('lessonGame', (lesson) => ({
 
       if (!_sceneQueue.length) return
 
-      // Chapter list for the Micrio-style serial-tour bar. Quiz/strategy/debate (kind 'game') are NOT
-      // narrative chapters — exclude them, but keep each chapter's ORIGINAL queue index so the bar's
-      // progress + click still map to _sceneIndex.
-      this.chapters = _sceneQueue
-        .map((s, i) => ({
-          name: s.chapter_name || t('Chapter :number', { number: i + 1 }),
-          dur:  Number(s.duration_seconds) || 0,
-          index: i,
-          kind: s.kind,
-        }))
-        .filter(c => c.kind !== 'game')
+      // Every scene is a chapter on the bar, quizzes and games too: the class sees what is coming.
+      this.chapters = buildChapters(_sceneQueue, i => t('Chapter :number', { number: i + 1 }))
 
       // Warm every narrated scene up front, BEFORE the early return below — a lesson can open with
       // a quiz or map scene that has no audio of its own, and those lessons need warming most.
@@ -1247,15 +1252,65 @@ Alpine.data('lessonGame', (lesson) => ({
       window.location.href = href
     },
 
-    // Jump to a chapter from the bar / list.
-    goToChapter (i) {
+    // ── Chapter bar ─────────────────────────────────────────────────────
+    mayEnter (i, time = 0) {
+      const chapter = this.chapters[i]
+      if (!chapter) return false
+      return canSeek({ index: i, time }, this.furthest, { type: chapter.type, teacher: !!lesson.can_skip_quiz })
+    },
+
+    // How full a segment is drawn: `played` up to the playhead, `reached` up to the furthest point.
+    segmentFill (c) {
+      const played = c.index < this._sceneIndex ? 1 : (c.index === this._sceneIndex ? this.sceneProgress : 0)
+      const f = this.furthest
+      const reached = c.index < f.index ? 1 : (c.index === f.index && c.seconds ? Math.min(1, f.time / c.seconds) : 0)
+      return { played: played * 100, reached: Math.max(played, reached) * 100 }
+    },
+
+    // Seconds into chapter `c` under the pointer. Only a narrated scene has a time to land on.
+    _offsetAt (c, e) {
+      if (c.estimated || !_sceneQueue[c.index]?.audio_url) return 0
+      const r = e.currentTarget.getBoundingClientRect()
+      return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * c.seconds
+    },
+
+    typeLabel (type) {
+      const label = { narration: t('Story'), quiz: t('Quiz'), game: t('Game'), map: t('Map'), gallery: t('Gallery'), video: t('Video'), voyage: t('Voyage') }
+      return label[type] ?? label.narration
+    },
+
+    // The chapter list's right-hand column: "Quiz · ≈ 2 min", "Verhaal · 3:20".
+    chapterMeta (c) {
+      return `${this.typeLabel(c.type)} · ${c.estimated ? formatMinutes(c.seconds) : formatClock(c.seconds)}`
+    },
+
+    segmentTooltip (c, e) {
+      const text = chapterTooltip(c, e ? this._offsetAt(c, e) : 0, type => this.typeLabel(type))
+      return c.type === 'game' && c.index < this._sceneIndex ? `${text} · ${t('Played')}` : text
+    },
+
+    hoverSegment (c, e) {
+      e.currentTarget.dataset.tooltip = this.segmentTooltip(c, e)
+    },
+
+    clickSegment (c, e) {
+      this.goToChapter(c.index, this._offsetAt(c, e))
+    },
+
+    // Jump to a chapter from the bar / list, optionally `at` seconds into its narration.
+    goToChapter (i, at = 0) {
       this.chaptersOpen = false
-      if (i == null || i < 0 || i >= _sceneQueue.length || i === this._sceneIndex) return
+      if (i == null || i < 0 || i >= _sceneQueue.length || !this.mayEnter(i, at)) return
       this._tel.log(i > this._sceneIndex ? 'seek_forward' : 'seek_backward', {
         sceneIndex: this._sceneIndex,
         sceneId: _sceneQueue[this._sceneIndex]?.id,
         position: this._audio?.currentTime,
       })
+      if (i === this._sceneIndex && this._audio && _sceneQueue[i].audio_url) {
+        this._audio.currentTime = at
+        return
+      }
+      this._pendingSeek = at
       this._sceneIndex = i
       this._playScene(i)
     },
@@ -1287,6 +1342,10 @@ Alpine.data('lessonGame', (lesson) => ({
     },
 
     _playScene (index) {
+      // A mid-segment click is for THIS scene's narration only; a scene that never starts narration
+      // must not hand its offset on to whichever scene does next.
+      this._seekOnStart = this._pendingSeek
+      this._pendingSeek = 0
       const scene = _sceneQueue[index]
       if (!scene) { this._onAudioEnded(); return }
 
@@ -1340,6 +1399,7 @@ Alpine.data('lessonGame', (lesson) => ({
       // current one up by its queue index. A game scene (quiz) is not a chapter → hide the bar.
       this.currentIsGame = scene.kind === 'game'
       this.sceneProgress = 0
+      this.furthest = reachedFurther(this.furthest, { index, time: 0 })
 
       // Story game: 'hold' = engine shows its choice overlay and resumes via onAdvanceTo;
       // a number = skip a non-chosen branch option to the reconvergence index.
@@ -1466,8 +1526,11 @@ Alpine.data('lessonGame', (lesson) => ({
       const a = this._audio = new Audio(scene.audio_url)
       this._attachAudioListeners()
       this._lastEventIndex = 0
+      const seekTo = this._seekOnStart
+      this._seekOnStart = 0
       a.addEventListener('loadedmetadata', () => {
         if (this._audio !== a) return
+        if (seekTo > 0) a.currentTime = Math.min(seekTo, a.duration || seekTo)
         this._scriptEvents = parseScriptTags(scene.script, a.duration)
         if (onDuration) onDuration(a.duration)
       })
@@ -1753,8 +1816,11 @@ Alpine.data('lessonGame', (lesson) => ({
       const onQuiz = this.currentIsGame || this.phase === 'GAME_BRIEF'
       return !onQuiz || !!lesson.can_skip_quiz
     },
+    // A stage slide's Next finishes the scene, so it is always allowed; a jump is only allowed into
+    // a scene the student already reached.
     get hasNextSlide () {
-      return this._sceneIndex < _sceneQueue.length - 1
+      if (this._sceneIndex >= _sceneQueue.length - 1) return false
+      return this.showMapContinue || lesson.game_type === 'voyage' || this.mayEnter(this._sceneIndex + 1)
     },
 
     // Next slide (→). A stage slide leaves through its own exits (Build Out, the voyage's persistent
@@ -1767,10 +1833,13 @@ Alpine.data('lessonGame', (lesson) => ({
 
     // Previous slide (←). Replays the previous scene from its start.
     previousSlide () {
-      if (this._sceneIndex <= 0) return
+      // Step over a game the class already played: those are never replayed (mayEnter).
+      let i = this._sceneIndex - 1
+      while (i >= 0 && !this.mayEnter(i)) i--
+      if (i < 0) return
       this._teardownStageScene()
-      this._sceneIndex = this._sceneIndex - 1
-      this._playScene(this._sceneIndex)
+      this._sceneIndex = i
+      this._playScene(i)
     },
 
     _teardownStageScene (full = false) {
@@ -1987,6 +2056,13 @@ Alpine.data('lessonGame', (lesson) => ({
       if (!host) { this._resumeAfterQuiz(); return }
       const { QuizOverlay } = await import('./scene/QuizOverlay.js')
       this._quizOverlay = this._quizOverlay || new QuizOverlay(host)
+      // Back on a quiz they finished: show their answers, never a second go (the teacher may retry).
+      const quizIndex = this._sceneIndex
+      const finished = this._quizRuns.get(quizIndex)
+      if (finished && !lesson.can_skip_quiz) {
+        this._quizOverlay.review(finished, { onComplete: () => this._resumeAfterQuiz() })
+        return
+      }
       this._quizOverlay.show({
         questions: questions || lesson.quiz_questions,
         submitUrl: lesson.quiz_score_url || null,
@@ -1994,7 +2070,10 @@ Alpine.data('lessonGame', (lesson) => ({
         hasClassroom: Boolean(lesson.has_classroom),
         shuffleMode,
         quizSceneId,
-        onComplete: () => this._resumeAfterQuiz(),
+        onComplete: (run) => {
+          if (run) this._quizRuns.set(quizIndex, run)
+          this._resumeAfterQuiz()
+        },
       })
     },
 

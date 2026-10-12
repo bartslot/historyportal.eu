@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Teacher;
 
 use App\Http\Controllers\Controller;
 use App\Models\Lesson;
+use App\Models\Scene;
 use App\Services\CanonThemeCatalog;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -25,7 +26,7 @@ final class LessonIndexController extends Controller
         $ownQuery = Lesson::query()->ownedByCurrentUser();
         $lessonCount = (clone $ownQuery)->count();
         $lessons = (clone $ownQuery)
-            ->with(['source', 'firstScene'])
+            ->with(['source', 'firstScene', 'scenes:'.Scene::TIMELINE_COLUMNS])
             ->latest()
             ->limit(self::LESSON_LIMIT)
             ->get();

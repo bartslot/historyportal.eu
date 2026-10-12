@@ -266,6 +266,14 @@ class Lesson extends Model
         return $this->hasMany(Scene::class)->orderBy('order');
     }
 
+    /** "≈ N min" on the lesson card and the player's title screen. Eager-load `scenes` when listing. */
+    public function estimatedMinutes(): int
+    {
+        $seconds = $this->scenes->sum(fn (Scene $scene): int => $scene->timelineSeconds()['seconds']);
+
+        return (int) ceil($seconds / 60);
+    }
+
     /** Ordered lesson modules (Epic K) — the modular replacement for scenes. */
     public function modules(): HasMany
     {

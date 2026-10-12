@@ -218,7 +218,47 @@ export class QuizOverlay {
     this._render()
   }
 
+  /**
+   * Show a quiz the student already did, read-only: their answers and the right ones, nothing to
+   * answer and nothing sent. The player opens this when the student goes back to a finished quiz.
+   *
+   * @param {{questions:object[], display:number[][], answered:Map<number,number>, score:number}} run from _finish
+   */
+  review(run, { onComplete = null } = {}) {
+    this.hide()
+    this._questions = run.questions
+    this._display = run.display
+    this._answered = new Map(run.answered)
+    this._score = run.score
+    this._streak = 0
+    this._index = 0
+    this._reviewing = true
+    this._submitUrl = null
+    this._onComplete = onComplete
+    this.host.style.pointerEvents = 'auto'
+    this._render()
+  }
+
+  _reviewNavHtml() {
+    const last = this._index === this._questions.length - 1
+    return `
+      <div class="mt-6 flex items-center justify-between gap-3">
+        <button data-review-prev class="btn btn-ghost" ${this._index === 0 ? 'disabled' : ''}>${t('Previous')}</button>
+        <button data-review-next class="btn btn-primary">${last ? t('Continue') : t('Next')}</button>
+      </div>`
+  }
+
+  _bindReviewNav() {
+    this.host.querySelector('[data-review-prev]')?.addEventListener('click', () => { this._index--; this._render() })
+    this.host.querySelector('[data-review-next]')?.addEventListener('click', () => {
+      if (this._index === this._questions.length - 1) { this._finish(); return }
+      this._index++
+      this._render()
+    })
+  }
+
   hide() {
+    this._reviewing = false
     this._questions = []
     this._clearGateMotion()
     this.host.innerHTML = ''
@@ -357,6 +397,7 @@ export class QuizOverlay {
           <div class="qz-question mb-8 text-center text-2xl leading-snug font-medium drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)] sm:text-4xl">${this._escape(q.question)}</div>
           <div data-answers class="relative flex flex-col gap-2.5">${optionsHtml}</div>
           ${explanation}
+          ${this._reviewing ? this._reviewNavHtml() : ''}
           <div class="mt-6 flex items-center justify-center gap-1.5">
             ${this._questions.map((_, i) => {
               const done = this._answered.has(i)
@@ -386,6 +427,7 @@ export class QuizOverlay {
       btn.addEventListener('click', () => this._answer(Number(btn.dataset.opt), btn))
     })
 
+    if (this._reviewing) this._bindReviewNav()
     if (gated) this._startGateCountdown(gateLeft)
 
     if (effects?.kind === 'correct') this._playCorrectEffects(effects)
@@ -747,8 +789,10 @@ export class QuizOverlay {
   /** Close the overlay and hand the lesson back. The one exit every end screen uses. */
   _finish() {
     const done = this._onComplete
+    // Handed back so the player can reopen this run read-only (review) when the student returns.
+    const run = { questions: this._questions, display: this._display, answered: new Map(this._answered), score: this._score }
     this.hide()
-    done?.()
+    done?.(run)
   }
 
   /**

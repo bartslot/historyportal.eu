@@ -110,6 +110,20 @@ final class JsTranslations
             // The chapter list's fallback for a scene with no name of its own. On a Dutch lesson
             // this was the one English phrase on screen.
             'Chapter :number' => __('Chapter :number'),
+
+            // The chapter bar's tooltip and list name each scene's type; a played game says so.
+            'Story' => __('Story'),
+            'Quiz' => __('Quiz'),
+            'Game' => __('Game'),
+            'Map' => __('Map'),
+            'Gallery' => __('Gallery'),
+            'Video' => __('Video'),
+            'Voyage' => __('Voyage'),
+            'Played' => __('Played'),
+
+            // Going back to a finished quiz shows it read-only, paged with these.
+            'Previous' => __('Previous'),
+            'Next' => __('Next'),
         ];
     }
 }

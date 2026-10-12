@@ -1055,6 +1055,10 @@
                     <x-lesson.scene-inspector-narration :scene="$sceneModel" />
                 @endif
 
+                @if ($sceneModel->takesTeacherEstimate())
+                    <x-lesson.scene-estimate :scene="$sceneModel" />
+                @endif
+
                 {{-- Story-game: branch OPTION scenes get the "Game effects" editor. --}}
                 @if ($this->showsGameEffectsPanel($sceneModel))
                     <x-lesson.scene-inspector-story-effects :scene="$sceneModel" :meters="$this->storyMeters()" />

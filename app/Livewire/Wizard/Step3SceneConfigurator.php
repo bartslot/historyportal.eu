@@ -80,6 +80,11 @@ class Step3SceneConfigurator extends Component
     /** Mirrors BuildLessonOutline::MAX_BRANCH_GROUPS — hand-authored branches obey the same ceiling. */
     private const MAX_BRANCH_GROUPS = 3;
 
+    /** A teacher's time estimate for a scene the student paces: ten seconds to an hour. */
+    private const ESTIMATE_MIN_SECONDS = 10;
+
+    private const ESTIMATE_MAX_SECONDS = 3600;
+
     /**
      * Meters seeded on the first hand-authored branch. The generator invents topic-specific meters;
      * authoring by hand has no LLM to invent anything, and meter KEYS are immutable once set, so
@@ -1184,6 +1189,34 @@ class Step3SceneConfigurator extends Component
      * Edit / hide the scene identity overlay (flag + title + year + location) from the canvas.
      * year/location map to the scene columns; a title override and hide flag live in config.
      */
+    /**
+     * How long the teacher expects a scene the student paces to take (a map to explore, a gallery),
+     * in minutes. It sizes the scene's segment on the player's chapter bar and counts towards the
+     * lesson's total. Empty clears it back to the default (Scene::defaultEstimateSeconds).
+     */
+    public function setSceneEstimate(int $sceneId, int|float|string|null $minutes): void
+    {
+        $scene = $this->lesson->scenes()->find($sceneId);
+        if (! $scene || ! $scene->takesTeacherEstimate()) {
+            return;
+        }
+
+        $config = $scene->config ?? [];
+        // Clamp the float BEFORE casting: (int) of a huge float is undefined and came out as 0.
+        $seconds = is_numeric($minutes) ? (float) $minutes * 60 : 0.0;
+        if ($seconds > 0) {
+            $config['estimate_seconds'] = (int) round(max(self::ESTIMATE_MIN_SECONDS, min(self::ESTIMATE_MAX_SECONDS, $seconds)));
+        } else {
+            unset($config['estimate_seconds']);
+        }
+        $scene->config = $config;
+        $scene->save();
+
+        if ($this->selectedSceneId === $scene->id && $this->selectedScene !== null) {
+            $this->selectedScene['config'] = $scene->config;
+        }
+    }
+
     #[On('sceneIdentityChanged')]
     public function updateSceneIdentity(array $patch): void
     {
