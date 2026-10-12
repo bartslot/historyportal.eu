@@ -7,6 +7,7 @@
 // Nothing texture-like is tied to the screen, so camera moves never make the paint slide. GLSL: look-shaders.js.
 /* global BABYLON */
 'use strict';
+import { __ } from '../i18n';
 
 (() => {
   const mvp = window.__mvp;
@@ -44,7 +45,7 @@
   // texture picker: "None" (procedural paint only) plus every texture prepared by tools/make_textures.py
   const texList = $('texList');
   const builtIn = document.createElement('span');
-  builtIn.textContent = 'None';
+  builtIn.textContent = __('None');
   builtIn.dataset.url = '';
   builtIn.className = 'tex-chip on';
   builtIn.onclick = () => useTexture(null);
@@ -204,8 +205,9 @@
     applyTime(val(ui.time));
   };
 
+  const PRESET_LABEL = { 'Night': __('Night'), 'Day': __('Day'), 'Indigo night (Figma)': __('Indigo night (Figma)'), 'Sepia day': __('Sepia day'), 'Natural colour': __('Natural colour') };
   const presetSel = $('lookPreset');
-  Object.keys(PRESETS).forEach((name) => presetSel.add(new Option(name, name)));
+  Object.keys(PRESETS).forEach((name) => presetSel.add(new Option(PRESET_LABEL[name] || name, name)));
   presetSel.onchange = () => {
     const p = PRESETS[presetSel.value];
     Object.entries(p).forEach(([k, v]) => { if (k !== 'time') ui[k].value = v; });

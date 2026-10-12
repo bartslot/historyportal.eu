@@ -13,6 +13,14 @@ import { SelectionMenu } from './SelectionMenu'
 import { TypedView } from './Typed'
 import { firstSentence, latestTurnStart } from './turns'
 import { finishAllTyping, useTypewriter } from './typewriter'
+import { __ } from '../i18n'
+
+/** The roles on screen, by member id (crew.json and the crew keep the English ones). */
+const ROLE: Record<string, string> = {
+  client: __('Client'), assistant: __('Set assistant'), learning: __('Learning designer'), historian: __('Historian'), writer: __('Writer'),
+  comedian: __('Comedian'), actors: __('Actors'), set: __('Set designer'), director: __('Director'),
+}
+const roleOf = (who: string) => ROLE[who] ?? speaker(who).role
 
 const X_MARK = 'M6 18 18 6M6 6l12 12'
 const UNDO = 'M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3'
@@ -30,7 +38,7 @@ export function Face({ id, as, size = 'sm', working }: { id: string; as?: string
       <span className={`grid place-items-center overflow-hidden rounded-full border border-panel-hairline bg-base-100 font-semibold text-panel-label ${SIZE[size]}`}>
         {failed ? name.slice(0, 1) : <img src={`/portraits/${file}.webp`} alt="" className="h-full w-full object-cover" onError={() => setFailed(true)} />}
       </span>
-      {working && <span className="status status-info absolute -right-0.5 -top-0.5" data-tooltip="Working" aria-label="Working" />}
+      {working && <span className="status status-info absolute -right-0.5 -top-0.5" data-tooltip={__('Working')} aria-label={__('Working')} />}
     </span>
   )
 }
@@ -38,7 +46,7 @@ export function Face({ id, as, size = 'sm', working }: { id: string; as?: string
 // Three rounded dots in a row (.crew-dot in studio.css); reduced motion pulses them instead.
 function Dots() {
   return (
-    <span className="mt-1 inline-flex items-center gap-1" role="status" aria-label="Working">
+    <span className="mt-1 inline-flex items-center gap-1" role="status" aria-label={__('Working')}>
       {[0, 1, 2].map((i) => <span key={i} className="crew-dot h-1.5 w-1.5 rounded-full bg-base-content" />)}
     </span>
   )
@@ -61,32 +69,33 @@ function Thoughts({ live, thoughts, draft, open }: { live?: Live; thoughts?: str
   const label = 'text-3xs font-semibold uppercase tracking-wide text-panel-label'
   return (
     <div ref={box} className="mt-1 max-h-40 space-y-1 overflow-auto rounded border border-panel-hairline p-2 text-xs text-panel-label">
-      {live?.asked && <p><span className={label}>Asked </span>{live.asked}</p>}
-      {text && <p className="whitespace-pre-wrap"><span className={label}>Thinking </span>{cutTail(text)}</p>}
-      {reply && <p className="whitespace-pre-wrap"><span className={label}>Reply </span><Typed text={cutTail(reply)} animate={!!live} /></p>}
+      {live?.asked && <p><span className={label}>{__('Asked')} </span>{live.asked}</p>}
+      {text && <p className="whitespace-pre-wrap"><span className={label}>{__('Thinking')} </span>{cutTail(text)}</p>}
+      {reply && <p className="whitespace-pre-wrap"><span className={label}>{__('Reply')} </span><Typed text={cutTail(reply)} animate={!!live} /></p>}
       {live?.jev && <p><span className={label}>JEV </span>{live.jev.score.toFixed(2)}, {live.jev.choice}</p>}
-      {live && !live.jev && live.draft && <p>JEV checking</p>}
-      {live?.review ? <p className="whitespace-pre-wrap"><span className={label}>Marten </span>{live.review}</p> : live?.jev ? <p>Marten reviewing</p> : null}
-      {!text && !reply && !live?.jev && <p>Nothing to show yet.</p>}
+      {live && !live.jev && live.draft && <p>{__('JEV checking')}</p>}
+      {live?.review ? <p className="whitespace-pre-wrap"><span className={label}>Marten </span>{live.review}</p> : live?.jev ? <p>{__('Marten reviewing')}</p> : null}
+      {!text && !reply && !live?.jev && <p>{__('Nothing to show yet.')}</p>}
     </div>
   )
 }
 
 /** A member who is working: their "on it" bubble, dots, Stop / Talk to, and the live thought process. */
 function WorkingBubble({ who, live, open, onToggle, onTalk }: { who: string; live: Live; open: boolean; onToggle: () => void; onTalk: () => void }) {
-  const { name, role } = speaker(who)
+  const { name } = speaker(who)
+  const role = roleOf(who)
   const step = L.stepOf(L.useLesson().lesson)
   return (
     <div className="flex gap-2">
-      <button type="button" onClick={onToggle} aria-expanded={open} aria-label={`Thought process of ${name}`} data-tooltip="Thought process"><Face id={who} working /></button>
+      <button type="button" onClick={onToggle} aria-expanded={open} aria-label={__('Thought process of :name', { name })} data-tooltip={__('Thought process')}><Face id={who} working /></button>
       <div className="min-w-0 flex-1">
         <p className="text-3xs font-semibold uppercase tracking-wide text-panel-label">{name} · {role}</p>
-        <button type="button" onClick={onToggle} className="block text-left text-xs text-panel-value">{live.ack ? <Typed text={live.ack} /> : 'Working'}</button>
+        <button type="button" onClick={onToggle} className="block text-left text-xs text-panel-value">{live.ack ? <Typed text={live.ack} /> : __('Working')}</button>
         <Dots />
         {who === 'set' && step === 'script' && <SketchSkeleton />}
         <div className="mt-1 flex gap-1">
-          <button type="button" className="btn btn-ghost btn-xs" onClick={() => void stopMember(who)}>Stop</button>
-          <button type="button" className="btn btn-ghost btn-xs" onClick={onTalk}>Talk to {name}</button>
+          <button type="button" className="btn btn-ghost btn-xs" onClick={() => void stopMember(who)}>{__('Stop')}</button>
+          <button type="button" className="btn btn-ghost btn-xs" onClick={onTalk}>{__('Talk to :name', { name })}</button>
         </div>
         {open && <Thoughts live={live} open />}
       </div>
@@ -98,12 +107,13 @@ function Card({ id, onClose, onAsk }: { id: string; onClose: () => void; onAsk: 
   const { assistant } = useCrew()
   const isAssistant = id === 'assistant'
   const m = MEMBERS.find((x) => x.id === id)
-  const { name, role } = speaker(id)
+  const { name } = speaker(id)
+  const role = roleOf(id)
   const story = isAssistant ? ASSISTANTS[assistant].backstory : m?.backstory
   const tasks = isAssistant ? ASSISTANT_TASKS : m?.tasks ?? []
   return (
     <div className="relative mx-3 mb-3 flex max-h-[40vh] shrink-0 flex-col items-center gap-2 overflow-y-auto [&>*]:shrink-0 rounded-md border border-panel-hairline bg-base-100 p-4 text-center">
-      <button type="button" aria-label="Close card" data-tooltip="Close" onClick={onClose}
+      <button type="button" aria-label={__('Close card')} data-tooltip={__('Close')} onClick={onClose}
               className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded text-panel-label hover:bg-white/5 hover:text-white">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-4 w-4" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d={X_MARK} /></svg>
       </button>
@@ -115,13 +125,13 @@ function Card({ id, onClose, onAsk }: { id: string; onClose: () => void; onAsk: 
       <p className="text-xs text-panel-value">{story}</p>
       {tasks.length > 0 && (
         <div className="w-full text-left">
-          <p className="text-3xs font-semibold uppercase tracking-wide text-panel-label">Tasks</p>
+          <p className="text-3xs font-semibold uppercase tracking-wide text-panel-label">{__('Tasks')}</p>
           <ul className="mt-1 list-disc pl-4 text-xs text-panel-value">{tasks.map((t, i) => <li key={i}>{t}</li>)}</ul>
         </div>
       )}
       {isAssistant && (
         <div className="flex w-full items-center justify-between gap-3 text-left">
-          <span className="text-3xs font-semibold uppercase tracking-wide text-panel-label">Your set assistant</span>
+          <span className="text-3xs font-semibold uppercase tracking-wide text-panel-label">{__('Your set assistant')}</span>
           <div className="join">
             {(Object.keys(ASSISTANTS) as AssistantId[]).map((k) => (
               <button key={k} type="button" aria-pressed={assistant === k} onClick={() => chooseAssistant(k)}
@@ -132,7 +142,7 @@ function Card({ id, onClose, onAsk }: { id: string; onClose: () => void; onAsk: 
       )}
       {m && (
         <div className="sticky bottom-0 -mb-4 w-full shrink-0 bg-base-100 pb-4 pt-2">
-          <button type="button" className="btn btn-sm" onClick={() => { talkTo(m.id); onClose(); onAsk() }}>Ask {name}</button>
+          <button type="button" className="btn btn-sm" onClick={() => { talkTo(m.id); onClose(); onAsk() }}>{__('Ask :name', { name })}</button>
         </div>
       )}
     </div>
@@ -181,7 +191,7 @@ function ChoiceList({ index, choices }: { index: number; choices: NonNullable<Cr
           <span className="flex min-w-0 flex-col gap-0.5">
             <span className="flex flex-wrap items-center gap-2 text-xs font-medium text-panel-value">
               {o.label}
-              {o.recommended && <span className="rounded border border-primary/40 px-1.5 py-px text-3xs font-semibold uppercase tracking-wide text-primary">Recommended</span>}
+              {o.recommended && <span className="rounded border border-primary/40 px-1.5 py-px text-3xs font-semibold uppercase tracking-wide text-primary">{__('Recommended')}</span>}
             </span>
             {o.why && <span className="whitespace-normal text-xs text-panel-label">{o.why}</span>}
           </span>
@@ -189,12 +199,12 @@ function ChoiceList({ index, choices }: { index: number; choices: NonNullable<Cr
       ))}
       {own === null ? (
         <button type="button" data-option onClick={() => setOwn('')} onFocus={() => setAt(elseAt)} onMouseEnter={() => setAt(elseAt)} className={`${row(elseAt)} items-center text-xs text-panel-label`}>
-          <Icon d={PENCIL} />Something else
+          <Icon d={PENCIL} />{__('Something else')}
         </button>
       ) : (
         <div className={`${ROW} items-center border-l-primary bg-base-200`}>
           <Icon d={PENCIL} />
-          <input autoFocus value={own} placeholder="Type your own answer" aria-label="Type your own answer"
+          <input autoFocus value={own} placeholder={__('Type your own answer')} aria-label={__('Type your own answer')}
                  onChange={(e) => setOwn(e.target.value)}
                  onKeyDown={(e) => {
                    e.stopPropagation() // typing must not trigger editor shortcuts
@@ -215,8 +225,8 @@ const LABEL = 'text-3xs font-semibold uppercase tracking-wide text-panel-label'
 function SketchThumb({ sketch, onOpen }: { sketch: Sketch; onOpen: () => void }) {
   return (
     <div className="mt-1 max-w-[220px]">
-      <button type="button" onClick={onOpen} aria-label="Enlarge the blockout" data-tooltip="Enlarge" className="block w-full">
-        <img src={sketch.url} alt={sketch.caption || 'Blockout of the scene'} loading="lazy" className={`${SKETCH_BOX} object-cover`} />
+      <button type="button" onClick={onOpen} aria-label={__('Enlarge the blockout')} data-tooltip={__('Enlarge')} className="block w-full">
+        <img src={sketch.url} alt={sketch.caption || __('Blockout of the scene')} loading="lazy" className={`${SKETCH_BOX} object-cover`} />
       </button>
       {sketch.caption && <p className="line-clamp-1 text-3xs text-panel-label">{sketch.caption}</p>}
     </div>
@@ -228,7 +238,7 @@ function SketchSkeleton() {
   return (
     <div className="mt-1 max-w-[220px]" role="status">
       <div className={`${SKETCH_BOX} skeleton`} />
-      <p className="text-3xs text-panel-label">Building the blockout…</p>
+      <p className="text-3xs text-panel-label">{__('Building the blockout…')}</p>
     </div>
   )
 }
@@ -242,12 +252,12 @@ function SketchOverlay({ sketch, onClose }: { sketch: Sketch; onClose: () => voi
   }, [onClose])
   return (
     createPortal(<div className="fixed inset-0 z-50 grid place-items-center bg-base-100/80 p-6" onClick={onClose}>
-      <div role="dialog" aria-modal="true" aria-label="Blockout" className="relative max-w-[80vw] rounded-md border border-panel-hairline bg-base-100 p-2" onClick={(e) => e.stopPropagation()}>
-        <button type="button" aria-label="Close" data-tooltip="Close" onClick={onClose}
+      <div role="dialog" aria-modal="true" aria-label={__('Blockout')} className="relative max-w-[80vw] rounded-md border border-panel-hairline bg-base-100 p-2" onClick={(e) => e.stopPropagation()}>
+        <button type="button" aria-label={__('Close')} data-tooltip={__('Close')} onClick={onClose}
                 className="absolute right-1 top-1 grid h-7 w-7 place-items-center rounded bg-base-100 text-panel-label hover:text-white">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-4 w-4" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d={X_MARK} /></svg>
         </button>
-        <img src={sketch.url} alt={sketch.caption || 'Blockout of the scene'} className="max-h-[75vh] w-auto max-w-full rounded" />
+        <img src={sketch.url} alt={sketch.caption || __('Blockout of the scene')} className="max-h-[75vh] w-auto max-w-full rounded" />
         {sketch.caption && <p className="mt-1 max-w-prose text-xs text-panel-value">{sketch.caption}</p>}
       </div>
     </div>, document.body)
@@ -276,7 +286,7 @@ function ClampedText({ typed, text }: { typed: ReturnType<typeof useTypewriter>;
       <p ref={el} className={`whitespace-pre-wrap text-xs text-panel-value ${expanded ? '' : 'line-clamp-4'}`} onClick={typed.typing ? typed.finish : undefined}>
         <TypedView full={text} shown={typed.shown} typing={typed.typing} />
       </p>
-      {(long || expanded) && <button type="button" onClick={() => setExpanded((v) => !v)} aria-expanded={expanded} className={TOGGLE}>{expanded ? 'Less' : 'More'}</button>}
+      {(long || expanded) && <button type="button" onClick={() => setExpanded((v) => !v)} aria-expanded={expanded} className={TOGGLE}>{expanded ? __('Less') : __('More')}</button>}
     </>
   )
 }
@@ -296,10 +306,11 @@ function Line({ index, fresh, active, latest = true, onSketch, sketching, revise
   if (who === 'client') {
     if (index === -1) return null
     return collapsed
-      ? <button type="button" onClick={() => setOpenOld(true)} aria-expanded={false} aria-label={`Your message: ${firstSentence(text)}`} className="ml-8 min-w-0 max-w-full self-end truncate rounded-md bg-base-100 px-3 py-1 text-left text-xs text-panel-label">{text}</button>
+      ? <button type="button" onClick={() => setOpenOld(true)} aria-expanded={false} aria-label={__('Your message: :text', { text: firstSentence(text) })} className="ml-8 min-w-0 max-w-full self-end truncate rounded-md bg-base-100 px-3 py-1 text-left text-xs text-panel-label">{text}</button>
       : <button type="button" disabled={latest} onClick={() => setOpenOld(false)} aria-expanded={!latest} className="ml-8 max-w-full self-end whitespace-pre-wrap rounded-md bg-base-100 px-3 py-2 text-left text-xs text-panel-value">{text}</button>
   }
-  const { name, role } = speaker(who, as)
+  const { name } = speaker(who, as)
+  const role = roleOf(who)
   if (index === -1) { // the greeting: one line
     return (
       <div className="flex gap-2">
@@ -311,7 +322,7 @@ function Line({ index, fresh, active, latest = true, onSketch, sketching, revise
   if (collapsed) {
     const gist = firstSentence(text)
     return (
-      <button type="button" onClick={() => setOpenOld(true)} aria-expanded={false} aria-label={`${name}: ${gist}. Show the full message`} className="flex w-full items-center gap-2 text-left">
+      <button type="button" onClick={() => setOpenOld(true)} aria-expanded={false} aria-label={__(':name: :gist. Show the full message', { name, gist })} className="flex w-full items-center gap-2 text-left">
         <Face id={who} as={as} />
         <span className="min-w-0 flex-1 truncate text-xs text-panel-label"><span className="font-semibold">{name}</span> {gist}</span>
       </button>
@@ -325,29 +336,29 @@ function Line({ index, fresh, active, latest = true, onSketch, sketching, revise
       <div className="min-w-0 flex-1">
         {latest
           ? <p className="text-3xs font-semibold uppercase tracking-wide text-panel-label">{header}</p>
-          : <button type="button" onClick={() => setOpenOld(false)} aria-expanded data-tooltip="Collapse" className="text-3xs font-semibold uppercase tracking-wide text-panel-label">{header}</button>}
+          : <button type="button" onClick={() => setOpenOld(false)} aria-expanded data-tooltip={__('Collapse')} className="text-3xs font-semibold uppercase tracking-wide text-panel-label">{header}</button>}
         {text && <ClampedText typed={typed} text={text} />}
-        {revised && <p className={LABEL}>Revised after Marten's note</p>}
+        {revised && <p className={LABEL}>{__("Revised after Marten's note")}</p>}
         {detail.before && before && <p className="mt-1 whitespace-pre-wrap text-xs text-panel-label">{before}</p>}
         {sketch ? <SketchThumb sketch={sketch} onOpen={() => onSketch?.(sketch)} /> : sketching && <SketchSkeleton />}
-        {stopped && <p className="text-xs text-panel-label">Stopped</p>}
-        {interrupted && <p className="text-xs text-panel-label">Interrupted (page reloaded)</p>}
+        {stopped && <p className="text-xs text-panel-label">{__('Stopped')}</p>}
+        {interrupted && <p className="text-xs text-panel-label">{__('Interrupted (page reloaded)')}</p>}
         {error && <p role="alert" className="text-xs text-error">{error}</p>}
         {choices && !typed.typing && (answered
-          ? <p className="mt-1 flex items-center gap-1.5 text-xs text-panel-label"><Icon d={CHECK} />You chose: {answered}</p>
+          ? <p className="mt-1 flex items-center gap-1.5 text-xs text-panel-label"><Icon d={CHECK} />{__('You chose: :answer', { answer: answered })}</p>
           : active ? <ChoiceList index={index} choices={choices} />
-            : <p className="mt-1 text-xs text-panel-label">{choices.question} (not answered)</p>)}
+            : <p className="mt-1 text-xs text-panel-label">{__(':question (not answered)', { question: choices.question })}</p>)}
         {(review || (revised && before) || changes || hasThoughts || jev) && (
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-            {review && <Toggle label="Marten's note" open={!!detail.review} onClick={() => flip('review')} />}
-            {revised && before && <Toggle label="Before the correction" open={!!detail.before} onClick={() => flip('before')} />}
-            {changes && <Toggle label={`Changes (${changes.length})`} open={!!detail.changes} onClick={() => flip('changes')} />}
-            {hasThoughts && <Toggle label="Thought process" open={!!detail.thoughts} onClick={() => flip('thoughts')} />}
-            {jev && <span className={`badge badge-xs ${jevTone(jev.score)}`} data-tooltip="JEV: chance every historical claim holds">JEV {jev.score.toFixed(2)}</span>}
+            {review && <Toggle label={__("Marten's note")} open={!!detail.review} onClick={() => flip('review')} />}
+            {revised && before && <Toggle label={__('Before the correction')} open={!!detail.before} onClick={() => flip('before')} />}
+            {changes && <Toggle label={__('Changes (:count)', { count: changes.length })} open={!!detail.changes} onClick={() => flip('changes')} />}
+            {hasThoughts && <Toggle label={__('Thought process')} open={!!detail.thoughts} onClick={() => flip('thoughts')} />}
+            {jev && <span className={`badge badge-xs ${jevTone(jev.score)}`} data-tooltip={__('JEV: chance every historical claim holds')}>JEV {jev.score.toFixed(2)}</span>}
             {changes && canUndo && (
               <button type="button" className="btn btn-ghost btn-xs" onClick={() => undo(index)}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-3.5 w-3.5" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d={UNDO} /></svg>
-                Undo
+                {__('Undo')}
               </button>
             )}
           </div>
@@ -356,7 +367,7 @@ function Line({ index, fresh, active, latest = true, onSketch, sketching, revise
           <div className="mt-1 flex gap-2 border-l border-panel-hairline pl-2">
             <Face id="director" />
             <div className="min-w-0 flex-1">
-              <p className="text-3xs font-semibold uppercase tracking-wide text-panel-label">Marten · Director</p>
+              <p className="text-3xs font-semibold uppercase tracking-wide text-panel-label">Marten · {ROLE.director}</p>
               <p className="whitespace-pre-wrap text-xs text-panel-value">{review.text}</p>
             </div>
           </div>
@@ -410,17 +421,17 @@ export function CrewPanel() {
   return (
     <Panel id="crew" className="relative flex h-full flex-col [&_.btn]:rounded-md">
       <div className="flex items-center gap-2 py-2 pl-4 pr-10">
-        <button type="button" onClick={() => setCard('assistant')} aria-label={`About ${speaker('assistant').name}`}><Face id="assistant" /></button>
+        <button type="button" onClick={() => setCard('assistant')} aria-label={__('About :name', { name: speaker('assistant').name })}><Face id="assistant" /></button>
         <p className="min-w-0 truncate text-sm font-semibold text-panel-value">
-          {speaker('assistant').name} <span className="text-xs font-normal text-panel-label">Set assistant</span>
+          {speaker('assistant').name} <span className="text-xs font-normal text-panel-label">{ROLE.assistant}</span>
         </p>
       </div>
-      <ul className="flex flex-wrap gap-1.5 px-4 pb-2" role="list" aria-label="The crew">
+      <ul className="flex flex-wrap gap-1.5 px-4 pb-2" role="list" aria-label={__('The crew')}>
         {MEMBERS.map((m) => (
           <li key={m.id}>
             <button type="button" onClick={() => (crew.live[m.id]?.status === 'working' ? toggle(m.id) : setCard(m.id))}
-                    data-tooltip={crew.live[m.id]?.status === 'working' ? `${m.name}, working: thought process` : `${m.name}, ${m.role}`}
-                    aria-label={`${m.name}, ${m.role}`} aria-pressed={card === m.id}>
+                    data-tooltip={crew.live[m.id]?.status === 'working' ? __(':name, working: thought process', { name: m.name }) : `${m.name}, ${roleOf(m.id)}`}
+                    aria-label={`${m.name}, ${roleOf(m.id)}`} aria-pressed={card === m.id}>
               <Face id={m.id} working={crew.live[m.id]?.status === 'working'} />
             </button>
           </li>
@@ -436,25 +447,25 @@ export function CrewPanel() {
           <WorkingBubble key={who} who={who} live={l} open={!!open[key(who)]} onToggle={() => toggle(who)}
                          onTalk={() => { void interrupt(who); box.current?.focus() }} />
         ))}
-        {crew.busy && !working.length && <p className="text-xs text-panel-label">{to ?? speaker('assistant').name} is on it…</p>}
+        {crew.busy && !working.length && <p className="text-xs text-panel-label">{__(':name is on it…', { name: to ?? speaker('assistant').name })}</p>}
         {crew.error && <p role="alert" className="text-xs text-error">{crew.error}</p>}
       </div>
 
       <div className="flex flex-col gap-1.5 border-t border-panel-hairline px-3 py-2">
         <p className="flex min-w-0 items-baseline gap-2" data-tooltip={live.tip}>
-          <span className="text-3xs font-semibold uppercase tracking-wide text-panel-label">Sees</span>
+          <span className="text-3xs font-semibold uppercase tracking-wide text-panel-label">{__('Sees')}</span>
           <span className="truncate text-xs text-panel-value">{live.sees}</span>
         </p>
         {to && (
           <span className="badge badge-sm gap-1 self-start">
-            To {to}
-            <button type="button" aria-label="Back to the set assistant" onClick={() => talkTo(null)} className="grid place-items-center">
+            {__('To :name', { name: to })}
+            <button type="button" aria-label={__('Back to the set assistant')} onClick={() => talkTo(null)} className="grid place-items-center">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-3 w-3" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d={X_MARK} /></svg>
             </button>
           </span>
         )}
         <div className="flex items-end gap-1 rounded-md border border-panel-hairline bg-base-100 p-1 focus-within:border-panel-label">
-        <textarea ref={box} rows={2} value={draft} placeholder={to ? `Ask ${to}` : 'Tell the crew what you want'} aria-label="Message to the crew"
+        <textarea ref={box} rows={2} value={draft} placeholder={to ? __('Ask :name', { name: to }) : __('Tell the crew what you want')} aria-label={__('Message to the crew')}
                   onChange={(e) => setDraft(e.target.value)}
                   onKeyDown={(e) => {
                     e.stopPropagation() // typing must not trigger editor shortcuts
@@ -463,9 +474,9 @@ export function CrewPanel() {
                   }}
                   className="min-h-0 flex-1 resize-none bg-transparent px-2 py-1 text-xs text-panel-value outline-none placeholder:text-panel-label" />
           {working.length > 0 && (
-            <button type="button" className="btn btn-ghost btn-xs" onClick={() => void stopAll()} data-tooltip="Stop all">Stop all</button>
+            <button type="button" className="btn btn-ghost btn-xs" onClick={() => void stopAll()} data-tooltip={__('Stop all')}>{__('Stop all')}</button>
           )}
-          <button type="button" className="btn btn-primary btn-xs btn-square" aria-label="Send" data-tooltip="Send"
+          <button type="button" className="btn btn-primary btn-xs btn-square" aria-label={__('Send')} data-tooltip={__('Send')}
                   disabled={(crew.busy && !crew.partial) || !draft.trim()} onClick={submit}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-4 w-4" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 10.5 12 3m0 0 7.5 7.5M12 3v18" /></svg>
           </button>

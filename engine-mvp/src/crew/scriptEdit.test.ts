@@ -63,7 +63,7 @@ describe('textOfLines and the selection request', () => {
     expect(s.scene[0]).toEqual({ id: 'l0', speaker: null, text: 'text 0' })
   })
   it('words the chat line for each action', () => {
-    expect(selectionMessage('rewrite', 'abc', 'Shorter')).toBe('Rewrite shorter: "abc"')
+    expect(selectionMessage('rewrite', 'abc', 'Shorter')).toBe('Rewrite (Shorter): "abc"')
     expect(selectionMessage('check', 'abc')).toBe('Check the history of "abc"')
     expect(selectionMessage('ask', 'x'.repeat(200))).toMatch(/\.\.\."$/)
   })

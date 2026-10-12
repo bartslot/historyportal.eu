@@ -6,6 +6,7 @@ import { useSyncExternalStore } from 'react'
 import * as L from '../lesson/store'
 import type { CrewLine } from '../lesson/store'
 import CREW from './crew.json'
+import { __ } from '../i18n'
 import { applySettings, lessonPatch, readSettings, type Change } from './settings'
 import { cleanChoices, scopeOf, type Scope } from './choices'
 import { blockoutCaption, captureBlockout } from './blockout'
@@ -59,7 +60,7 @@ export function cleanReview(v: any): { who: string; text: string } | undefined {
   return v && typeof v.who === 'string' && typeof v.text === 'string' && v.text.trim() ? { who: v.who, text: v.text } : undefined
 }
 
-export const greeting = (): string => currentGreeting(state.assistant)
+export const greeting = (): string => currentGreeting(state.assistant, 'en')
 
 export function chooseAssistant(id: AssistantId) {
   try { localStorage.setItem(ASSISTANT_KEY, id) } catch { /* private window: this visit only */ }
@@ -99,7 +100,7 @@ async function applyAnswer(msg: any, scope: Scope | null): Promise<{ changes: st
       const rest = Object.keys(lesson.scenes).filter((id) => id !== current)
       if (scope === 'lesson' && applied.length && rest.length) {
         others = L.patchSceneSettings(rest, lessonPatch(before, readSettings(), applied))
-        changes.push(`Applied to all ${rest.length + 1} scenes`)
+        changes.push(__('Applied to all :count scenes', { count: rest.length + 1 }))
       }
     }
     if (Array.isArray(msg.commands) && msg.commands.length) changes.push(...await animator().run(msg.commands))
@@ -107,11 +108,11 @@ async function applyAnswer(msg: any, scope: Scope | null): Promise<{ changes: st
     if (sceneLines.length) {
       const name = scenesInOrder(lesson.tree).find((s) => s.id === current)?.title ?? ''
       L.setScript(replaceSceneLines(script ?? { type: 'doc', content: [] }, current, sceneLines, name))
-      changes.push(`Script: scene ${name || 'text'} written (${sceneLines.length} lines)`)
+      changes.push(__('Script: scene :name written (:count lines)', { name: name || __('text'), count: sceneLines.length }))
     }
     if (typeof msg.title === 'string' && msg.title) {
       L.setTitle(msg.title)
-      changes.push(`Lesson title: ${msg.title}`)
+      changes.push(__('Lesson title: :title', { title: msg.title }))
     }
     return { changes, undo, failed: null }
   } catch (err) {
@@ -143,14 +144,14 @@ export async function undo(index: number) {
   if (!u || state.busy || L.getLesson().busy) return
   set({ busy: true, error: null })
   try { await u.run() } catch (err) {
-    set({ busy: false, error: 'Could not undo: ' + (err instanceof Error ? err.message : String(err)) })
+    set({ busy: false, error: __('Could not undo: :error', { error: err instanceof Error ? err.message : String(err) }) })
     return
   }
   set({ busy: false })
   const { [index]: _gone, ...rest } = state.undo
   set({ undo: rest })
   const lines = L.getLesson().lesson.crew ?? []
-  L.setCrew(lines.map((l, i) => (i === index ? { ...l, changes: [...(l.changes ?? []), 'Undone'] } : l)))
+  L.setCrew(lines.map((l, i) => (i === index ? { ...l, changes: [...(l.changes ?? []), __('Undone')] } : l)))
 }
 
 const withoutLive = (who: string): LiveMap => { const { [who]: _gone, ...rest } = state.live; return rest }
@@ -190,9 +191,9 @@ async function commitMessage(msg: any, moved: boolean, turn: Turn, extra: Partia
   const { lesson: startLesson, current: startScene } = L.getLesson()
   const r = wants && !moved ? await asCrew(() => applyAnswer(msg, msg.scope === 'lesson' ? 'lesson' : null)) : null
   const changes = r?.changes ?? []
-  if (wants && moved) changes.push('Not applied: the scene changed while the crew was answering')
-  if (r?.failed) changes.push('Stopped halfway: ' + r.failed)
-  if (msg.dropped) changes.push(`${msg.dropped} unknown stage command(s) ignored`)
+  if (wants && moved) changes.push(__('Not applied: the scene changed while the crew was answering'))
+  if (r?.failed) changes.push(__('Stopped halfway: :error', { error: r.failed }))
+  if (msg.dropped) changes.push(__(':count unknown stage command(s) ignored', { count: msg.dropped }))
   const choices = cleanChoices(msg.choices)
   if (typeof msg.sketch === 'string' && msg.sketch.trim()) sketchOf.set(String(turn), msg.sketch.trim().slice(0, 300))
   if (!msg.text && !changes.length && !choices && !rewrite.length) { // nothing to show: the "on it" line goes too
@@ -261,10 +262,10 @@ export function acceptRewrite(id: string) {
   const { lesson } = L.getLesson()
   const script = lesson.script
   const next = replaceLines(script, rw.lineIds, rw.lines)
-  if (lesson.id !== rw.lesson || next === script) { set({ error: 'Those lines changed or are gone, nothing was replaced' }); return }
+  if (lesson.id !== rw.lesson || next === script) { set({ error: __('Those lines changed or are gone, nothing was replaced') }); return }
   L.setScript(next)
   const lines = lesson.crew ?? []
-  L.setCrew(lines.map((l, i) => (i === rw.index ? { ...l, changes: [...(l.changes ?? []), `Script: ${rw.lineIds.length} line(s) rewritten`] } : l)))
+  L.setCrew(lines.map((l, i) => (i === rw.index ? { ...l, changes: [...(l.changes ?? []), __('Script: :count line(s) rewritten', { count: rw.lineIds.length })] } : l)))
   set({ undo: { ...state.undo, [rw.index]: { lesson: rw.lesson, scene: rw.scene, run: async () => { L.setScript(script) }, seq: ++undoSeq } } })
   void L.saveNow()
 }
@@ -304,7 +305,7 @@ export async function send(text: string, pick = false, selection: Selection | nu
       answered = true
       putLine(ev.turn, { who, text: '', ...(ev.type === 'stopped' ? { stopped: true } : { error: ev.error }), ...savedThoughts(l) })
       set({ live: withoutLive(who) })
-    } else if (ev.type === 'error') set({ error: 'The crew could not answer: ' + ev.error })
+    } else if (ev.type === 'error') set({ error: __('The crew could not answer: :error', { error: ev.error }) })
     else if (ev.type !== 'done') {
       if (ev.type === 'routed') { answered = true; appendLine({ who: ev.who, text: ev.ack, status: 'working', turn: ev.turn }) }
       set({ live: reduceLive(state.live, ev, message) })
@@ -328,7 +329,7 @@ export async function send(text: string, pick = false, selection: Selection | nu
     if (!res.ok || !res.body) {
       const json = (res.headers.get('content-type') || '').includes('json')
       const data = json ? await res.json().catch(() => null) : null
-      throw new Error(data?.error || (json ? `HTTP ${res.status}` : 'the crew server is not running (start "python3 server.py" in engine-mvp)'))
+      throw new Error(data?.error || (json ? `HTTP ${res.status}` : __('the crew server is not running (start "python3 server.py" in engine-mvp)')))
     }
     const reader = res.body.getReader()
     const dec = new TextDecoder()
@@ -341,7 +342,7 @@ export async function send(text: string, pick = false, selection: Selection | nu
       if (done) break
     }
   } catch (err) {
-    set({ error: 'The crew could not answer: ' + (err instanceof Error ? err.message : String(err)) })
+    set({ error: __('The crew could not answer: :error', { error: err instanceof Error ? err.message : String(err) }) })
     if (!answered) { // nothing came back: take the client's line away again, the caller restores the draft
       L.setCrew((L.getLesson().lesson.crew ?? []).filter((l) => l !== mine))
       return false
@@ -350,7 +351,7 @@ export async function send(text: string, pick = false, selection: Selection | nu
     // a member still working when the stream is over lost their connection
     for (const [who, l] of Object.entries(state.live)) {
       if (l.status !== 'working' || l.turn !== myTurn) continue
-      putLine(l.turn, { who, text: '', error: 'Lost connection', ...savedThoughts(l) })
+      putLine(l.turn, { who, text: '', error: __('Lost connection'), ...savedThoughts(l) })
       set({ live: withoutLive(who) })
     }
     streams--

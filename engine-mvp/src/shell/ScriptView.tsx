@@ -13,6 +13,7 @@ import { ActiveLine, activeLineKey, Line, LineIds, SceneHeading, Subtitle } from
 import { inStep, reconcile } from '../script/narration'
 import { fitDurationToNarration, nowSpeaking, placedLines, setVoice } from '../script/player'
 import { loadVoices, pickVoice, rememberVoice, speak, speechAvailable, stopSpeaking } from '../script/speech'
+import { __ } from '../i18n'
 
 const SAVE_DEBOUNCE_MS = 400
 const FOLLOW_SCENE_MS = 400
@@ -58,11 +59,11 @@ export function ScriptView() {
     extensions: [
       StarterKit.configure({ paragraph: false, heading: false, codeBlock: false, code: false, blockquote: false, horizontalRule: false, link: false }),
       Line, LineIds, SceneHeading, Subtitle, ActiveLine,
-      Placeholder.configure({ placeholder: 'What is said in this scene' }),
+      Placeholder.configure({ placeholder: __('What is said in this scene') }),
     ],
     content: reconcile(L.getLesson().lesson.script ?? { type: 'doc', content: [] }, sceneList()),
     editorProps: {
-      attributes: { class: 'script-doc', 'aria-label': 'Script', spellcheck: 'true' },
+      attributes: { class: 'script-doc', 'aria-label': __('Script'), spellcheck: 'true' },
       handleClickOn: (_view, _pos, node) => {
         if (node.type.name !== 'sceneHeading') return false
         void L.switchTo(node.attrs.sceneId)
@@ -170,23 +171,23 @@ export function ScriptView() {
   const speakers = [...new Set<string>((function collect(n: any): string[] { return [n.attrs?.speaker, ...(n.content ?? []).flatMap(collect)].filter(Boolean) })(lesson.script ?? {}))]
 
   return (
-    <section aria-label="Script" hidden={L.stepOf(lesson) !== 'script'} className="absolute inset-0 z-10 flex flex-col bg-base-200">
+    <section aria-label={__('Script')} hidden={L.stepOf(lesson) !== 'script'} className="absolute inset-0 z-10 flex flex-col bg-base-200">
       <div className="mx-auto flex w-full max-w-3xl shrink-0 flex-wrap items-center gap-1 border-b border-panel-hairline px-4 py-1.5">
-        <ToolButton label="Bold" pressed={editor?.isActive('bold')} onClick={() => editor?.chain().focus().toggleBold().run()}><b>B</b></ToolButton>
-        <ToolButton label="Italic" pressed={editor?.isActive('italic')} onClick={() => editor?.chain().focus().toggleItalic().run()}><i>I</i></ToolButton>
-        <ToolButton label="Subtitle: show this text on screen" pressed={editor?.isActive('subtitle')} onClick={() => editor?.chain().focus().toggleMark('subtitle').run()}>Subtitle</ToolButton>
-        <input list="script-speakers" aria-label="Speaker" placeholder="Narrator" value={speaker}
+        <ToolButton label={__('Bold')} pressed={editor?.isActive('bold')} onClick={() => editor?.chain().focus().toggleBold().run()}><b>B</b></ToolButton>
+        <ToolButton label={__('Italic')} pressed={editor?.isActive('italic')} onClick={() => editor?.chain().focus().toggleItalic().run()}><i>I</i></ToolButton>
+        <ToolButton label={__('Subtitle: show this text on screen')} pressed={editor?.isActive('subtitle')} onClick={() => editor?.chain().focus().toggleMark('subtitle').run()}>{__('Subtitle')}</ToolButton>
+        <input list="script-speakers" aria-label={__('Speaker')} placeholder={__('Narrator')} value={speaker}
                onChange={(e) => editor?.chain().updateAttributes('paragraph', { speaker: e.target.value.trim() || null }).run()}
                className="h-7 w-24 rounded bg-panel-hairline px-1.5 text-xs text-panel-value focus:outline-none" />
         <datalist id="script-speakers">{speakers.map((s) => <option key={s} value={s} />)}</datalist>
         <span className="ml-auto" />
-        <select aria-label="Reading voice" value={voiceUri} disabled={!voices.length}
+        <select aria-label={__('Reading voice')} value={voiceUri} disabled={!voices.length}
                 onChange={(e) => { const v = voices.find((x) => x.voiceURI === e.target.value) ?? null; setVoiceUri(e.target.value); setVoice(v); if (v) rememberVoice(v) }}
                 className="h-7 max-w-36 rounded bg-panel-hairline px-1 text-xs text-panel-value">
           {voices.map((v) => <option key={v.voiceURI} value={v.voiceURI}>{v.name} ({v.lang})</option>)}
         </select>
-        <ToolButton label={reading ? 'Stop reading' : 'Read aloud from the cursor'} pressed={reading} disabled={!speechAvailable()} onClick={() => void readAloud()}>
-          {reading ? 'Stop' : 'Read aloud'}
+        <ToolButton label={reading ? __('Stop reading') : __('Read aloud from the cursor')} pressed={reading} disabled={!speechAvailable()} onClick={() => void readAloud()}>
+          {reading ? __('Stop') : __('Read aloud')}
         </ToolButton>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">

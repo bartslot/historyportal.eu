@@ -2,6 +2,7 @@
 // Sims-style (pick, drop, drag over the floor), animated by the History Portal timeline (src/timeline/).
 /* global BABYLON */
 'use strict';
+import { __ } from '../i18n';
 import * as TL from '../timeline/model';
 import { CELL_M, contractOf, cellsFor, turnedFootprint, snapCentre, cellsCovered, overlaps } from '../placement/contract';
 import { isPlayPauseKey, isTypingTarget } from '@hp/ui/keyboard.js';
@@ -298,9 +299,9 @@ function snapToFootprint(a, x = a.position.x, z = a.position.z) {
   a.position.z = snapCentre(z, d);
 }
 function whyNot(a) {
-  if (!fits(a)) return 'No room: something already stands there';
-  if (a.metadata.opening) return 'A door can only be placed on a wall';
-  return 'Cannot be placed here';
+  if (!fits(a)) return __('No room: something already stands there');
+  if (a.metadata.opening) return __('A door can only be placed on a wall');
+  return __('Cannot be placed here');
 }
 function floorPoint() {
   const hit = scene.pick(scene.pointerX, scene.pointerY, (m) => m === ground);

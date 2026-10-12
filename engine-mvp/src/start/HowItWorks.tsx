@@ -4,10 +4,11 @@
 // step's finished picture, and the step buttons still switch.
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Icon, ICON } from '../ui/icons'
+import { __ } from '../i18n'
 
-const STEPS = ['Describe', 'Check the story', 'Direct', 'Play in class'] as const
+const STEPS = [__('Describe'), __('Check the story'), __('Direct'), __('Play in class')] as const
 const STEP_MS = 4200
-const TYPED = 'Abel Tasman sails south in 1642'
+const TYPED = __('Abel Tasman sails south in 1642')
 const TYPE_FROM = 300
 const MS_PER_CHAR = 45
 const MAX_FRAME_MS = 100
@@ -74,7 +75,7 @@ function Describe({ t }: { t: number }) {
       <div className="relative w-[78%] rounded-2xl border border-base-300 bg-base-100 p-4">
         <p className="h-12 text-lg">{typed}<span className="ml-px inline-block h-5 w-px translate-y-1 bg-base-content" /></p>
         <div className="flex items-center gap-2">
-          <span className="flex h-8 items-center gap-1.5 rounded-full border border-base-300 px-3 text-xs"><Icon d={ICON.book} className="h-4 w-4" />Story driven</span>
+          <span className="flex h-8 items-center gap-1.5 rounded-full border border-base-300 px-3 text-xs"><Icon d={ICON.book} className="h-4 w-4" />{__('Story driven')}</span>
           <span className={`ml-auto grid h-9 w-9 place-items-center rounded-full bg-primary text-primary-content transition-[opacity,transform] duration-150 ease-enter ${done ? '' : 'opacity-25'} ${pressed ? 'scale-90' : ''}`}>
             <Icon d={ICON.arrowUp} className="h-4 w-4" />
           </span>
@@ -158,10 +159,10 @@ export function HowItWorks() {
   const { root, step, prev, t, paused, setPaused, go } = useLoop()
   const scene = (i: number, at: number) => [<Describe t={at} />, <Check t={at} />, <Direct t={at} />, <Play t={at} />][i]
   return (
-    <section ref={root} aria-label="How it works" className="mt-20">
+    <section ref={root} aria-label={__('How it works')} className="mt-20">
       <div className="relative aspect-[16/10] overflow-hidden rounded-3xl border border-base-300 bg-base-200">
         {STEPS.map((_, i) => <Reveal key={i} on={i === step} className="absolute inset-0">{i === step ? scene(i, t) : i === prev && scene(i, STEP_MS)}</Reveal>)}
-        <button type="button" onClick={() => setPaused(!paused)} aria-label={paused ? 'Play' : 'Pause'} data-tooltip={paused ? 'Play' : 'Pause'}
+        <button type="button" onClick={() => setPaused(!paused)} aria-label={paused ? __('Play') : __('Pause')} data-tooltip={paused ? __('Play') : __('Pause')}
                 className="btn btn-circle btn-sm absolute bottom-3 right-3 border-base-300 bg-base-100">
           <Icon d={paused ? ICON.play : ICON.pause} className="h-4 w-4" />
         </button>

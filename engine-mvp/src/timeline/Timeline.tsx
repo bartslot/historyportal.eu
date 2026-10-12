@@ -14,6 +14,7 @@ import { usePlacedLines } from '../script/player'
 import * as L from '../lesson/store'
 import { KeyframeDiamond } from '../ui/kit'
 import { ICON, Icon } from '../ui/icons'
+import { __ } from '../i18n'
 
 const GROUP_H = 38
 const WHEEL_ZOOM_RATE = 0.01
@@ -22,9 +23,12 @@ const MAX_ZOOM = 2000
 const ZOOM_STEPS = 1000
 const EASING_PRESETS = ['linear', 'easeInCubic', 'easeOutCubic', 'easeInOutCubic', 'easeInBack', 'easeOutBack', 'easeInOutBack', 'hold']
 const EASING_LABEL: Record<string, string> = {
-  auto: 'Automatic', linear: 'Linear', easeInCubic: 'Ease in', easeOutCubic: 'Ease out', easeInOutCubic: 'Ease in and out',
-  easeInBack: 'Ease in back', easeOutBack: 'Ease out back', easeInOutBack: 'Ease in and out back', hold: 'Hold',
+  auto: __('Automatic'), linear: __('Linear'), easeInCubic: __('Ease in'), easeOutCubic: __('Ease out'), easeInOutCubic: __('Ease in and out'),
+  easeInBack: __('Ease in back'), easeOutBack: __('Ease out back'), easeInOutBack: __('Ease in and out back'), hold: __('Hold'),
 }
+/** The registry's property labels stay English in data; X and Z are axis letters. */
+const PROPERTY_LABEL: Record<string, string> = { Turn: __('Turn') }
+const propLabel = (label: string) => PROPERTY_LABEL[label] ?? label
 const round1 = (v: number) => Math.round(v * 10) / 10
 
 /** A small picture of an easing curve, drawn from the same easing function playback uses. */
@@ -279,23 +283,23 @@ export function Timeline() {
   return (
     <div data-timeline className="flex min-h-0 flex-1 flex-col overflow-hidden" style={{ background: 'var(--color-timeline-ground)' }}>
       <div className="no-scrollbar flex shrink-0 items-center gap-2 overflow-x-auto px-4" style={{ height: 44, background: 'var(--color-timeline-strip)' }}>
-        <ToolButton label={st.playing ? 'Pause' : nothing ? 'Set two keyframes on a property to make something move' : 'Play'}
+        <ToolButton label={st.playing ? __('Pause') : nothing ? __('Set two keyframes on a property to make something move') : __('Play')}
                     disabled={nothing && !st.playing} onClick={TL.togglePlay}>
           <Icon d={st.playing ? PAUSE : PLAY} />
         </ToolButton>
-        <ToolButton label={st.autoKey ? 'Auto-keyframe on' : 'Auto-keyframe off'} pressed={st.autoKey} onClick={() => TL.setAutoKey(!st.autoKey)}>
+        <ToolButton label={st.autoKey ? __('Auto-keyframe on') : __('Auto-keyframe off')} pressed={st.autoKey} onClick={() => TL.setAutoKey(!st.autoKey)}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-4 w-4" aria-hidden="true">
             <circle cx="12" cy="12" r="9" />
             <path d="M12 8.5 15.5 12 12 15.5 8.5 12Z" fill={st.autoKey ? 'currentColor' : 'none'} />
           </svg>
         </ToolButton>
-        <MsField label="Time" value={st.time} min={0} step={10} onChange={(ms) => TL.seek(ms / 1000)} />
-        <MsField label="Length" value={st.duration} min={100} step={100} onChange={(ms) => TL.setDuration(ms / 1000)} />
-        <ToolButton label={st.loop ? 'Looping' : 'Loop'} pressed={st.loop} onClick={() => TL.setLoop(!st.loop)}>
+        <MsField label={__('Current time')} value={st.time} min={0} step={10} onChange={(ms) => TL.seek(ms / 1000)} />
+        <MsField label={__('Length')} value={st.duration} min={100} step={100} onChange={(ms) => TL.setDuration(ms / 1000)} />
+        <ToolButton label={st.loop ? __('Looping') : __('Loop')} pressed={st.loop} onClick={() => TL.setLoop(!st.loop)}>
           <Icon d={LOOP} />
         </ToolButton>
         <span className="h-4 w-px shrink-0 bg-panel-hairline" aria-hidden="true" />
-        <ToolButton label={anyOpen ? 'Collapse all' : 'Expand all'} onClick={() => TL.setGroups(objects.map((o) => o.target), !anyOpen)}>
+        <ToolButton label={anyOpen ? __('Collapse all') : __('Expand all')} onClick={() => TL.setGroups(objects.map((o) => o.target), !anyOpen)}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-4 w-4 text-panel-label" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6h16.5M3.75 10.5h10.5M3.75 15h6" />
             <path strokeLinecap="round" strokeLinejoin="round" d={anyOpen ? 'M15.5 13.5 18.5 16.5 21.5 13.5' : 'M15.5 16.5 18.5 13.5 21.5 16.5'} />
@@ -303,7 +307,7 @@ export function Timeline() {
         </ToolButton>
         <div className="ml-auto flex shrink-0 items-center gap-2">
           <span className="range-panel-knob" style={{ width: 88, '--range-t': sliderFromZoom(zoom, fitted) / ZOOM_STEPS } as React.CSSProperties}>
-            <input type="range" min={0} max={ZOOM_STEPS} step={1} aria-label="Zoom" value={sliderFromZoom(zoom, fitted)}
+            <input type="range" min={0} max={ZOOM_STEPS} step={1} aria-label={__('Zoom')} value={sliderFromZoom(zoom, fitted)}
                    style={{ '--range-t': sliderFromZoom(zoom, fitted) / ZOOM_STEPS } as React.CSSProperties}
                    onChange={(e) => applyZoom(zoomFromSlider(Number(e.target.value), fitted))} className="range-panel range range-xs" />
           </span>
@@ -316,10 +320,10 @@ export function Timeline() {
           <div className="shrink-0" style={{ height: GROUP_H }} />
           {lines.length > 0 && (
             <div className="flex w-full items-center border-t border-panel-hairline pl-4" style={{ height: GROUP_H }}>
-              <span className="truncate text-2xs font-semibold text-panel-value">Narration</span>
+              <span className="truncate text-2xs font-semibold text-panel-value">{__('Narration')}</span>
             </div>
           )}
-          {!objects.length && !lines.length && <p className="px-4 pb-3 text-2xs text-panel-label">Nothing on this scene can be animated yet.</p>}
+          {!objects.length && !lines.length && <p className="px-4 pb-3 text-2xs text-panel-label">{__('Nothing on this scene can be animated yet.')}</p>}
           {objects.map((o) => (
             <div key={o.target}>
               <div className={`flex w-full items-center border-t border-panel-hairline ${st.activeTarget === o.target ? 'bg-white/5' : ''}`} style={{ height: GROUP_H }}>
@@ -328,12 +332,12 @@ export function Timeline() {
                   <span className="truncate text-2xs font-semibold text-panel-value">{o.label}</span>
                 </button>
                 <button type="button" onClick={() => TL.toggleGroup(o.target)} aria-expanded={!!st.openGroups[o.target]}
-                        aria-label={st.openGroups[o.target] ? 'Collapse' : 'Expand'}
+                        aria-label={st.openGroups[o.target] ? __('Collapse') : __('Expand')}
                         className="grid h-6 w-6 shrink-0 cursor-pointer place-items-center rounded text-panel-label hover:bg-white/5 hover:text-white">
                   <Icon d={CHEVRON_R} className={`h-3 w-3 transition-transform ${st.openGroups[o.target] ? 'rotate-90' : ''}`} />
                 </button>
                 <button type="button" onClick={() => TL.toggleHidden(o.target)} aria-pressed={!!st.hidden[o.target]}
-                        data-tooltip={st.hidden[o.target] ? 'Show' : 'Hide'} aria-label={st.hidden[o.target] ? 'Show' : 'Hide'}
+                        data-tooltip={st.hidden[o.target] ? __('Show') : __('Hide')} aria-label={st.hidden[o.target] ? __('Show') : __('Hide')}
                         className={`mr-3 grid h-6 w-6 shrink-0 cursor-pointer place-items-center rounded hover:bg-white/5 hover:text-white ${st.hidden[o.target] ? 'text-panel-label' : 'text-panel-icon'}`}>
                   <Icon className="h-3.5 w-3.5" d={st.hidden[o.target] ? ICON.eyeOff : ICON.eye} />
                 </button>
@@ -341,14 +345,14 @@ export function Timeline() {
               {st.openGroups[o.target] && TL.propertiesOf(o.target).map((p) => (
                 <label key={p.key} className="flex items-center gap-1.5 pl-2 pr-4" style={{ height: 'var(--timeline-row-pitch)' }}>
                   <span className="mb-2 h-2.5 w-2 shrink-0 rounded-bl-[2px] border-b border-l border-panel-hairline" aria-hidden="true" />
-                  <span className="shrink-0 select-none text-3xs uppercase tracking-wide text-panel-label" style={{ width: 'calc(var(--settings-panel-label-w) - 0.75rem)' }}>{p.label}</span>
-                  <input type="number" step="any" aria-label={`${o.label} ${p.label}`} data-timeline-value={`${o.target}:${p.key}`}
+                  <span className="shrink-0 select-none text-3xs uppercase tracking-wide text-panel-label" style={{ width: 'calc(var(--settings-panel-label-w) - 0.75rem)' }}>{propLabel(p.label)}</span>
+                  <input type="number" step="any" aria-label={`${o.label} ${propLabel(p.label)}`} data-timeline-value={`${o.target}:${p.key}`}
                          key={`${st.time}:${st.canvasTick}:${st.tracks.length}`}
                          defaultValue={round1(TL.valueAt(o.target, p.key))}
                          onChange={(e) => TL.setValue(o.target, p.key, Number(e.target.value))}
                          className="h-[21px] min-w-0 flex-1 rounded bg-panel-hairline px-1.5 text-right font-mono text-3xs text-panel-value focus:outline-none" />
                   <button type="button" onClick={(e) => { e.preventDefault(); const t = TL.prevKeyTime(o.target); if (t !== null) TL.seek(t) }}
-                          disabled={TL.prevKeyTime(o.target) === null} data-tooltip="Previous keyframe" aria-label="Previous keyframe"
+                          disabled={TL.prevKeyTime(o.target) === null} data-tooltip={__('Previous keyframe')} aria-label={__('Previous keyframe')}
                           className="shrink-0 rounded p-0.5 text-panel-label hover:bg-white/5 disabled:opacity-25">
                     <Icon d={CHEVRON_L} className="h-3 w-3" width={2} />
                   </button>
@@ -356,7 +360,7 @@ export function Timeline() {
                     <KeyframeDiamond on={TL.hasKeyHere(o.target, p.key)} onClick={() => TL.toggleKey(o.target, p.key)} />
                   </span>
                   <button type="button" onClick={(e) => { e.preventDefault(); const t = TL.nextKeyTime(o.target); if (t !== null) TL.seek(t) }}
-                          disabled={TL.nextKeyTime(o.target) === null} data-tooltip="Next keyframe" aria-label="Next keyframe"
+                          disabled={TL.nextKeyTime(o.target) === null} data-tooltip={__('Next keyframe')} aria-label={__('Next keyframe')}
                           className="shrink-0 rounded p-0.5 text-panel-label hover:bg-white/5 disabled:opacity-25">
                     <Icon d={CHEVRON_R} className="h-3 w-3" width={2} />
                   </button>
@@ -398,7 +402,7 @@ export function Timeline() {
                     <div className="absolute inset-x-0 top-0 rounded-[2px]" style={{ height: 'var(--timeline-lane-h)', background: 'var(--color-panel-hairline)' }} />
                     <div className="pointer-events-none absolute grid place-items-center overflow-hidden rounded-[2px]" data-timeline-bar={`${o.target}:${p.key}`}
                          style={{ ...barStyle(TL.spanOf(o.target, p.key)), top: 0, height: 'var(--timeline-lane-h)', background: 'var(--color-timeline-bar)' }}>
-                      <span className="select-none truncate px-2 text-3xs font-medium text-white/90">{p.label}</span>
+                      <span className="select-none truncate px-2 text-3xs font-medium text-white/90">{propLabel(p.label)}</span>
                     </div>
                     {TL.segmentsOf(o.target, p.key).map((s) => (
                       <div key={s.index} data-timeline-segment={`${o.target}:${p.key}:${s.index}`} data-tooltip={EASING_LABEL[s.easing] ?? s.easing}
@@ -444,7 +448,7 @@ export function Timeline() {
                     <svg viewBox="0 0 40 24" className="h-4 w-7 shrink-0 overflow-visible" aria-hidden="true">
                       <path d={curvePath(curve)} fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
-                    <span className="flex-1 text-left text-xs">{name === 'auto' ? `Automatic · ${EASING_LABEL[curve]}` : EASING_LABEL[name]}</span>
+                    <span className="flex-1 text-left text-xs">{name === 'auto' ? __('Automatic · :curve', { curve: EASING_LABEL[curve] }) : EASING_LABEL[name]}</span>
                   </button>
                 </li>
               )

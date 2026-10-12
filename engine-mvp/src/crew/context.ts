@@ -6,6 +6,7 @@ import * as L from '../lesson/store'
 import * as Tree from '../lesson/tree'
 import * as TL from '../timeline/model'
 import { readSettings } from './settings'
+import { __ } from '../i18n'
 
 const LOG_MAX = 10
 const OBJECTS_MAX = 40
@@ -121,11 +122,24 @@ const TEXT: Record<Lang, Tx> = {
     askSelOnly: { sofie: 'Was machen wir damit?', daan: 'Was willst du damit?' },
   },
 }
+/** The greeting on screen, in the teacher's UI language (the crew is sent the English one). */
+const UI: Tx = {
+  empty: {
+    sofie: __("Hi, I'm Sofie, your set assistant. What lesson or story shall we make? Tell me the topic, your class's age, and story or game."),
+    daan: __("Hi, I'm Daan, your set assistant. What are we making? Topic, class age, story or game."),
+  },
+  working: (t, n, m) => __("You are working on ':title', scene :scene of :total.", { title: t, scene: n, total: m }),
+  loose: (n, m, k) => (k === 1 ? __('Scene :scene of :total, 1 object on stage.', { scene: n, total: m }) : __('Scene :scene of :total, :count objects on stage.', { scene: n, total: m, count: k })),
+  sel: (s) => __(':name is selected:', { name: s }), selOnly: (s) => __(':name is selected.', { name: s }),
+  askSel: { sofie: __('what shall we do with it?'), daan: __('what do you want with it?') },
+  askNone: { sofie: __('What shall we do next?'), daan: __('What do you need?') },
+  askSelOnly: { sofie: __('What shall we do with it?'), daan: __('What do you want with it?') },
+}
 
 export const hasRealTitle = (t: string) => !!t.trim() && !/^(untitled|naamloos|unbenannt)/i.test(t.trim())
 
-export function buildGreeting(f: Facts, lang: Lang, who: Who): string {
-  const t = TEXT[lang]
+export function buildGreeting(f: Facts, lang: Lang | 'ui', who: Who): string {
+  const t = lang === 'ui' ? UI : TEXT[lang]
   const titled = hasRealTitle(f.title)
   const n = Math.max(1, f.scenes.findIndex((s) => s.id === f.current) + 1)
   const m = Math.max(1, f.scenes.length)
@@ -140,14 +154,14 @@ export function buildGreeting(f: Facts, lang: Lang, who: Who): string {
 /** "Scene 2 of 3 · Tree (Ghibli, round) selected" */
 export function seesLine(f: Facts): string {
   const n = Math.max(1, f.scenes.findIndex((s) => s.id === f.current) + 1)
-  const what = f.selected ? `${f.selected.name} selected` : f.objects.length ? `${f.objects.length} ${f.objects.length === 1 ? 'object' : 'objects'}, none selected` : 'empty stage'
-  return `Scene ${n} of ${Math.max(1, f.scenes.length)} · ${what}`
+  const what = f.selected ? __(':name selected', { name: f.selected.name }) : f.objects.length === 1 ? __('1 object, none selected') : f.objects.length ? __(':count objects, none selected', { count: f.objects.length }) : __('empty stage')
+  return __('Scene :scene of :total · :what', { scene: n, total: Math.max(1, f.scenes.length), what })
 }
 
-function ago(s: number) { return s < 10 ? 'just now' : s < 60 ? 'under a minute ago' : `${Math.round(s / 60)} min ago` }
+function ago(s: number) { return s < 10 ? __('just now') : s < 60 ? __('under a minute ago') : __(':minutes min ago', { minutes: Math.round(s / 60) }) }
 export function seesTip(f: Facts, log: Action[], now: number): string {
   const last = log.slice(0, 3).map((a) => `${a.what} (${ago(Math.max(0, Math.round((now - a.at) / 1000)))})`)
-  return [seesLine(f), hasRealTitle(f.title) ? `Lesson: ${f.title}` : null, `${f.scriptWords} script words`, last.length ? `Recently: ${last.join('; ')}` : null].filter(Boolean).join('. ')
+  return [seesLine(f), hasRealTitle(f.title) ? __('Lesson: :title', { title: f.title }) : null, __(':count script words', { count: f.scriptWords }), last.length ? __('Recently: :list', { list: last.join('; ') }) : null].filter(Boolean).join('. ')
 }
 
 // ---------- live facts (reads the studio) ----------
@@ -269,23 +283,20 @@ export function buildContext() {
 }
 
 // ---------- the live greeting ----------
-let cached: { at: number; assistant: string; text: string } | null = null
-function langNow(): Lang {
-  const mine = [...(L.getLesson().lesson.crew ?? [])].reverse().find((l) => l.who === 'client')
-  return (mine && detectLang(mine.text)) || browserLang()
-}
-/** The greeting as it stands now; recomputed at most every 1.5 s so it never jitters. */
-export function currentGreeting(assistant: string): string {
+const cached: Record<string, { at: number; assistant: string; text: string }> = {}
+/** The greeting as it stands now ('en' for the crew, 'ui' for the screen); recomputed at most every 1.5 s so it never jitters. */
+export function currentGreeting(assistant: string, lang: 'en' | 'ui'): string {
   const now = Date.now()
-  if (cached && cached.assistant === assistant && now - cached.at < GREETING_EVERY_MS) return cached.text
+  const c = cached[lang]
+  if (c && c.assistant === assistant && now - c.at < GREETING_EVERY_MS) return c.text
   const who: Who = assistant === 'daan' ? 'daan' : 'sofie'
-  cached = { at: now, assistant, text: buildGreeting(readFacts(), langNow(), who) }
-  return cached.text
+  cached[lang] = { at: now, assistant, text: buildGreeting(readFacts(), lang, who) }
+  return cached[lang].text
 }
 
 /** For the panel: greeting, the Sees line and its tooltip; state changes only when the text does. */
 export function useLiveContext(assistant: string) {
-  const compute = () => { const f = readFacts(); return { greeting: currentGreeting(assistant), sees: seesLine(f), tip: seesTip(f, log, Date.now()) } }
+  const compute = () => { const f = readFacts(); return { greeting: currentGreeting(assistant, 'ui'), sees: seesLine(f), tip: seesTip(f, log, Date.now()) } }
   const [v, setV] = useState(compute)
   useEffect(() => {
     startContextTracking()

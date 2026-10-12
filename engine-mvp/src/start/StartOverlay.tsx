@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react'
 import { BuildView } from './BuildView'
 import { StartScreen } from './StartScreen'
 import { useStart } from './store'
+import { __ } from '../i18n'
 
 export function StartOverlay() {
   const { mode } = useStart()
@@ -13,7 +14,7 @@ export function StartOverlay() {
   }, [mode])
   if (mode === 'studio' || mode === 'loading') return null
   return (
-    <div ref={root} tabIndex={-1} role="dialog" aria-modal="true" aria-label={mode === 'start' ? 'New lesson' : 'The crew is making your lesson'}
+    <div ref={root} tabIndex={-1} role="dialog" aria-modal="true" aria-label={mode === 'start' ? __('New lesson') : __('The crew is making your lesson')}
          data-theme="learningportal-light" className="fixed inset-0 z-[60] overflow-y-auto bg-base-200 text-base-content outline-none">
       {mode === 'start' && <StartScreen />}
       {mode === 'build' && <BuildView />}

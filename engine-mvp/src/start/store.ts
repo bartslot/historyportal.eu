@@ -5,12 +5,14 @@ import { useSyncExternalStore } from 'react'
 import * as L from '../lesson/store'
 import * as Crew from '../crew/store'
 import { panels } from '../panels/store'
+import { __, locale, localeName } from '../i18n'
 import { DEFAULT_BRIEF, briefMessage, isEmptyLesson, type Brief } from './brief'
 
 export type Mode = 'loading' | 'start' | 'build' | 'studio'
 type State = { mode: Mode; prompt: string; brief: Brief; error: string | null }
 
-let state: State = { mode: 'loading', prompt: '', brief: DEFAULT_BRIEF, error: null }
+// the lesson's language starts as the teacher's own UI language
+let state: State = { mode: 'loading', prompt: '', brief: { ...DEFAULT_BRIEF, language: localeName(locale()) }, error: null }
 const listeners = new Set<() => void>()
 const set = (patch: Partial<State>) => { state = { ...state, ...patch }; listeners.forEach((l) => l()) }
 const subscribe = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l) } }
@@ -24,7 +26,7 @@ const modeNow = (): Mode => state.mode // read after an await: the screen may ha
 /** After the saved lesson loaded: an empty one opens on the start screen, anything else in the studio. */
 export const decide = () => set({ mode: isEmptyLesson(L.getLesson().lesson) ? 'start' : 'studio' })
 
-const BUSY = 'The crew is still working on this lesson. Wait for them, or press Stop.'
+const BUSY = __('The crew is still working on this lesson. Wait for them, or press Stop.')
 
 /** A new lesson, only when nothing is running: the old lesson's crew must not write into the new one. */
 export async function newLesson() {

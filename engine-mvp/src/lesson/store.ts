@@ -6,6 +6,7 @@ import { useSyncExternalStore } from 'react'
 import { idbGet, idbPut } from './idb'
 import * as Tree from './tree'
 import { sweepInterrupted } from '../crew/stream'
+import { __ } from '../i18n'
 
 export const LESSON_VERSION = 1
 const KEY = 'current'
@@ -30,7 +31,7 @@ type State = { lesson: Lesson; current: string; busy: boolean; saved: 'saved' | 
 
 function freshLesson(): Lesson {
   const id = Tree.newId('s')
-  return { version: LESSON_VERSION, id: Tree.newId('l'), title: 'Untitled lesson', tree: [{ kind: 'scene', id, title: 'Scene 1' }], scenes: { [id]: { doc: null, thumb: null } }, script: null }
+  return { version: LESSON_VERSION, id: Tree.newId('l'), title: 'Untitled lesson', tree: [{ kind: 'scene', id, title: __('Scene :n', { n: 1 }) }], scenes: { [id]: { doc: null, thumb: null } }, script: null }
 }
 
 let state: State = { lesson: freshLesson(), current: '', busy: false, saved: 'saved', error: null }
@@ -46,9 +47,9 @@ const stageImage = (w: number) => (window as any).__mvp.stageImage(w)
 
 /** Validate a lesson from storage or a file: fail loudly rather than open half a lesson. */
 export function checkLesson(x: any): Lesson {
-  if (!x || x.version !== LESSON_VERSION) throw new Error('This file is not a History Portal studio lesson (or from another version)')
-  if (!Array.isArray(x.tree) || typeof x.scenes !== 'object' || !Tree.scenesInOrder(x.tree).length) throw new Error('This lesson has no scenes')
-  for (const s of Tree.scenesInOrder(x.tree)) if (!x.scenes[s.id]) throw new Error(`Scene "${s.title}" is missing its data`)
+  if (!x || x.version !== LESSON_VERSION) throw new Error(__('This file is not a History Portal studio lesson (or from another version)'))
+  if (!Array.isArray(x.tree) || typeof x.scenes !== 'object' || !Tree.scenesInOrder(x.tree).length) throw new Error(__('This lesson has no scenes'))
+  for (const s of Tree.scenesInOrder(x.tree)) if (!x.scenes[s.id]) throw new Error(__('Scene ":name" is missing its data', { name: s.title }))
   return x as Lesson
 }
 
@@ -66,7 +67,7 @@ async function persist(lesson: Lesson) {
   if (!storageOk) { set({ saved: 'unsaved' }); return }
   set({ saved: 'saving' })
   try { await idbPut(KEY, { lesson, current: state.current }); set({ saved: 'saved', error: null }) }
-  catch (err) { set({ saved: 'unsaved', error: 'Could not save in this browser: ' + (err instanceof Error ? err.message : String(err)) }) }
+  catch (err) { set({ saved: 'unsaved', error: __('Could not save in this browser: :error', { error: err instanceof Error ? err.message : String(err) }) }) }
 }
 
 export async function saveNow(withThumb = false) {
@@ -81,7 +82,7 @@ async function loadScene(id: string) {
   const entry = state.lesson.scenes[id]
   if (entry?.doc) {
     const { missing } = await io().load(entry.doc)
-    if (missing.length) (window as any).__mvp.flash(`Not in the library any more: ${[...new Set(missing)].join(', ')}`)
+    if (missing.length) (window as any).__mvp.flash(__('Not in the library any more: :names', { names: [...new Set(missing)].join(', ') }))
   } else io().clear()
 }
 
@@ -99,14 +100,14 @@ export async function switchTo(id: string) {
 export async function addScene(into: string | null = null) {
   const id = Tree.newId('s')
   const n = Tree.scenesInOrder(state.lesson.tree).length + 1
-  const node: Tree.SceneNode = { kind: 'scene', id, title: `Scene ${n}` }
+  const node: Tree.SceneNode = { kind: 'scene', id, title: __('Scene :n', { n }) }
   set({ lesson: { ...state.lesson, tree: Tree.insert(state.lesson.tree, node, into), scenes: { ...state.lesson.scenes, [id]: { doc: null, thumb: null } } } })
   await switchTo(id)
   return id
 }
 
 export function addGroup() {
-  const g: Tree.GroupNode = { kind: 'group', id: Tree.newId('g'), title: 'New group', open: true, children: [] }
+  const g: Tree.GroupNode = { kind: 'group', id: Tree.newId('g'), title: __('New group'), open: true, children: [] }
   set({ lesson: { ...state.lesson, tree: Tree.insert(state.lesson.tree, g, null) } })
   void persist(state.lesson)
   return g.id
@@ -118,7 +119,7 @@ export async function deleteNode(id: string) {
   if (!node) return
   const gone = new Set(node.kind === 'scene' ? [id] : Tree.scenesInOrder(node.children).map((s) => s.id))
   const left = Tree.scenesInOrder(state.lesson.tree).filter((s) => !gone.has(s.id))
-  if (!left.length) { (window as any).__mvp.flash('A lesson needs at least one scene'); return }
+  if (!left.length) { (window as any).__mvp.flash(__('A lesson needs at least one scene')); return }
   if (gone.has(state.current)) {
     set({ busy: true })
     try { set({ current: left[0].id }); await loadScene(left[0].id) } finally { set({ busy: false }) }
@@ -145,8 +146,8 @@ const rank = (s: Step) => STEPS.indexOf(s)
 
 /** Why a step cannot be opened yet, or null when it can. Going back is always allowed. */
 export function lockedReason(step: Step, l: Lesson = state.lesson): string | null {
-  if (step === 'visual' && !l.approved) return 'Approve the script first'
-  if (step === 'animate' && rank(reachedOf(l)) < rank('animate')) return 'Finish the visual step first'
+  if (step === 'visual' && !l.approved) return __('Approve the script first')
+  if (step === 'animate' && rank(reachedOf(l)) < rank('animate')) return __('Finish the visual step first')
   return null
 }
 
@@ -256,7 +257,7 @@ export async function initLesson() {
     }
   } catch (err) {
     storageOk = false
-    set({ error: 'The saved lesson could not be opened, so nothing is saved over it: ' + (err instanceof Error ? err.message : String(err)) })
+    set({ error: __('The saved lesson could not be opened, so nothing is saved over it: :error', { error: err instanceof Error ? err.message : String(err) }) })
   }
   let ticks = 0
   // the current scene's thumbnail refreshes every few saves (a picture costs more than the data)

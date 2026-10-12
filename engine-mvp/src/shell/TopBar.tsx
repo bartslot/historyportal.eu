@@ -5,6 +5,7 @@ import { Panel } from '../panels/Panel'
 import { PANELS, inStep, panels, usePanels } from '../panels/store'
 import * as L from '../lesson/store'
 import { newLesson } from '../start/store'
+import { __, LOCALES, locale, setLocale } from '../i18n'
 
 const CHECK = 'm4.5 12.75 6 6 9-13.5'
 
@@ -30,12 +31,19 @@ function Item({ children, onClick, checked }: { children: ReactNode; onClick: ()
   )
 }
 
-const STEP_LABEL: Record<L.Step, string> = { script: 'Script', visual: 'Visual', animate: 'Animate' }
+const STEP_LABEL: Record<L.Step, string> = { script: __('Script'), visual: __('Visual'), animate: __('Animate') }
+/** The asset folders keep their English names (the engine's ids); this is what the teacher reads. */
+const FOLDER: Record<string, string> = {
+  Characters: __('Characters'), Nature: __('Nature'), Buildings: __('Buildings'), 'Doors & gates': __('Doors & gates'), Props: __('Props'),
+  'Line art': __('Line art'), 'History line': __('History line'), Shapes: __('Shapes'), Arrows: __('Arrows'),
+}
+/** The lesson's stored default title stays English (compared elsewhere); shown in the teacher's language. */
+const UNTITLED = 'Untitled lesson'
 
 /** 1 Script, 2 Visual, 3 Animate: strictly in order; a locked step says why when pressed. */
 function Stepper({ step }: { step: L.Step }) {
   return (
-    <nav aria-label="Steps" className="flex items-center gap-1">
+    <nav aria-label={__('Steps')} className="flex items-center gap-1">
       {L.STEPS.map((s, i) => {
         const locked = L.lockedReason(s)
         const on = s === step
@@ -70,48 +78,50 @@ export function TopBar() {
   return (
     <header className="flex items-center gap-2 border-b border-panel-hairline px-4" style={{ gridArea: 'top' }}>
       <span className="text-sm font-semibold text-panel-value">History Portal</span>
-      <input aria-label="Lesson title" value={lesson.title} onChange={(e) => L.setTitle(e.target.value)}
+      <input aria-label={__('Lesson title')} value={lesson.title === UNTITLED ? __('Untitled lesson') : lesson.title} onChange={(e) => L.setTitle(e.target.value)}
              className="w-48 rounded bg-transparent px-1 text-xs text-panel-value hover:bg-panel-hairline focus:bg-panel-hairline focus:outline-none" />
-      <span className="mr-2 text-3xs uppercase tracking-wide text-panel-label" aria-live="polite">{saved === 'saving' ? 'Saving' : saved === 'saved' ? 'Saved' : 'Not saved'}</span>
-      <MenuButton id="lesson-menu" label="Lesson" anchor={lessonBtn} />
-      {step === 'visual' && <MenuButton id="add-menu" label="Add" anchor={addBtn} />}
-      <MenuButton id="view-menu" label="View" anchor={viewBtn} />
+      <span className="mr-2 text-3xs uppercase tracking-wide text-panel-label" aria-live="polite">{saved === 'saving' ? __('Saving…') : saved === 'saved' ? __('Saved') : __('Not saved')}</span>
+      <MenuButton id="lesson-menu" label={__('Lesson')} anchor={lessonBtn} />
+      {step === 'visual' && <MenuButton id="add-menu" label={__('Add')} anchor={addBtn} />}
+      <MenuButton id="view-menu" label={__('View')} anchor={viewBtn} />
       <span className="ml-auto" />
       <Stepper step={step} />
       <span className="ml-auto" />
       <button type="button" aria-pressed={!!st.open.help} onClick={() => panels.toggle('help')}
-              className={`btn btn-sm ${st.open.help ? 'btn-active' : 'btn-ghost'} text-panel-value`}>Help</button>
-      {step === 'script' && <button type="button" className="btn btn-primary btn-sm" onClick={L.approveScript}>Approve script</button>}
-      {step === 'visual' && <button type="button" className="btn btn-primary btn-sm" onClick={L.finishVisual}>Next: Animate</button>}
-      <span hidden={step !== 'animate'}><MenuButton id="publish-menu" label="Publish" primary anchor={publishBtn} /></span>
+              className={`btn btn-sm ${st.open.help ? 'btn-active' : 'btn-ghost'} text-panel-value`}>{__('Help')}</button>
+      {step === 'script' && <button type="button" className="btn btn-primary btn-sm" onClick={L.approveScript}>{__('Approve script')}</button>}
+      {step === 'visual' && <button type="button" className="btn btn-primary btn-sm" onClick={L.finishVisual}>{__('Next: Animate')}</button>}
+      <span hidden={step !== 'animate'}><MenuButton id="publish-menu" label={__('Publish')} primary anchor={publishBtn} /></span>
 
       <Panel id="lesson-menu" anchor={lessonBtn}>
         <ul>
-          <Item onClick={() => { panels.close('lesson-menu'); if (confirm('Start a new lesson? This one is kept in this browser.')) void newLesson() }}>New lesson</Item>
-          <Item onClick={() => { panels.close('lesson-menu'); void L.exportLesson() }}>Export lesson file</Item>
-          <Item onClick={() => { panels.close('lesson-menu'); fileIn.current?.click() }}>Open lesson file</Item>
+          <Item onClick={() => { panels.close('lesson-menu'); if (confirm(__('Start a new lesson? This one is kept in this browser.'))) void newLesson() }}>{__('New lesson')}</Item>
+          <Item onClick={() => { panels.close('lesson-menu'); void L.exportLesson() }}>{__('Export lesson file')}</Item>
+          <Item onClick={() => { panels.close('lesson-menu'); fileIn.current?.click() }}>{__('Open lesson file')}</Item>
+          <li role="presentation" className="px-2 pb-1 pt-2 text-3xs font-semibold uppercase tracking-wide text-panel-label">{__('Language')}</li>
+          {LOCALES.map((l) => <Item key={l.code} checked={l.code === locale()} onClick={() => { panels.close('lesson-menu'); if (l.code !== locale()) setLocale(l.code) }}>{l.name}</Item>)}
         </ul>
       </Panel>
-      <input ref={fileIn} type="file" accept=".json,application/json" hidden aria-label="Open lesson file"
+      <input ref={fileIn} type="file" accept=".json,application/json" hidden aria-label={__('Open lesson file')}
              onChange={(e) => {
                const f = e.target.files?.[0]
                e.target.value = ''
                if (f) L.importLesson(f).catch((err) => (window as any).__mvp.flash(err instanceof Error ? err.message : String(err)))
              }} />
       <Panel id="add-menu" anchor={addBtn}>
-        <ul>{folders.map((f) => <Item key={f} onClick={() => addFrom(f)}>{f}</Item>)}</ul>
+        <ul>{folders.map((f) => <Item key={f} onClick={() => addFrom(f)}>{FOLDER[f] ?? f}</Item>)}</ul>
       </Panel>
       <Panel id="view-menu" anchor={viewBtn}>
         <ul>{PANELS.filter((p) => p.inView && inStep(p.id, step)).map((p) => <Item key={p.id} checked={!!st.open[p.id]} onClick={() => { panels.close('view-menu'); panels.toggle(p.id) }}>{p.title}</Item>)}</ul>
       </Panel>
       <Panel id="publish-menu" anchor={publishBtn} className="flex flex-col gap-2 p-3">
         <label className="flex items-center justify-between gap-3">
-          <span className="text-3xs font-semibold uppercase tracking-wide text-panel-label">Video size</span>
+          <span className="text-3xs font-semibold uppercase tracking-wide text-panel-label">{__('Video size')}</span>
           <select id="publishRes" defaultValue="1080" className="rounded-lg border border-panel-hairline bg-base-100 px-2 py-1 text-xs text-panel-value">
             <option value="720">720p</option><option value="1080">1080p</option>
           </select>
         </label>
-        <button id="publish" type="button" className="btn btn-primary btn-sm">Publish video</button>
+        <button id="publish" type="button" className="btn btn-primary btn-sm">{__('Publish video')}</button>
         <span id="publishStatus" className="text-xs text-panel-label" />
       </Panel>
     </header>

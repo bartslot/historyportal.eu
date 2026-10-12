@@ -3,6 +3,7 @@
 // click-placing (floor grid; doors snap to walls and cannot land off one). Let go to place it.
 /* global BABYLON */
 'use strict';
+import { __ } from '../i18n';
 
 (() => {
   const mvp = window.__mvp;
@@ -10,13 +11,13 @@
   const canvas = scene.getEngine().getRenderingCanvas();
 
   const FOLDERS = [
-    { name: 'Characters', test: /girl|mannequin|horse|camel|figure|person/i },
-    { name: 'Nature', test: /tree|rock|bush|flower/i },
-    { name: 'Buildings', test: /house|town|city|church|tower/i },
-    { name: 'Doors & gates', test: /door|gate/i },
-    { name: 'Props', test: /./ },                   // everything else
+    { name: 'Characters', label: __('Characters'), test: /girl|mannequin|horse|camel|figure|person/i },
+    { name: 'Nature', label: __('Nature'), test: /tree|rock|bush|flower/i },
+    { name: 'Buildings', label: __('Buildings'), test: /house|town|city|church|tower/i },
+    { name: 'Doors & gates', label: __('Doors & gates'), test: /door|gate/i },
+    { name: 'Props', label: __('Props'), test: /./ },                   // everything else
     // 2D images that become cards on walls and floors (folder set by cards.js)
-    { name: 'Line art', test: null }, { name: 'History line', test: null }, { name: 'Shapes', test: null }, { name: 'Arrows', test: null },
+    { name: 'Line art', label: __('Line art'), test: null }, { name: 'History line', label: __('History line'), test: null }, { name: 'Shapes', label: __('Shapes'), test: null }, { name: 'Arrows', label: __('Arrows'), test: null },
   ];
   const folderOf = (item) => item.folder || FOLDERS.find((f) => f.test && f.test.test(item.name)).name;
 
@@ -29,7 +30,7 @@
     tabs.innerHTML = '';
     FOLDERS.forEach((f) => {
       const t = document.createElement('button');
-      t.textContent = f.name;
+      t.textContent = f.label;
       t.className = f.name === folder ? 'on' : '';
       t.onclick = () => { folder = f.name; render(); };
       tabs.appendChild(t);
@@ -49,7 +50,7 @@
       tile.appendChild(label);
       const sub = item.sub ? [null, item.sub] : item.name.match(/\((.*)\)$/);
       if (sub) { const s = document.createElement('small'); s.textContent = sub[1]; tile.appendChild(s); }
-      tile.dataset.tooltip = 'Drag into the scene';
+      tile.dataset.tooltip = __('Drag into the scene');
       tile.addEventListener('dragstart', (e) => {
         e.dataTransfer.setData('text/plain', item.name);
         e.dataTransfer.effectAllowed = 'copy';
@@ -111,7 +112,7 @@
       pointerFrom(e);
       const a = await mvp.addFromCatalog(mvp.cardItem(f.name.replace(/\.[^.]+$/, ''), URL.createObjectURL(f), 'Images'), { x: 0, z: 0 });
       mvp.moveUnderPointer(a);
-      if (!mvp.dropAllowed(a)) { mvp.deleteActor(a); mvp.flash('Drop pictures on a wall, the floor or an object'); }
+      if (!mvp.dropAllowed(a)) { mvp.deleteActor(a); mvp.flash(__('Drop pictures on a wall, the floor or an object')); }
     }
   });
   canvas.addEventListener('drop', async (e) => {

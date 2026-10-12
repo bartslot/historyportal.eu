@@ -4,6 +4,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { newLineId } from '../script/extensions'
 import { linesOf } from '../script/narration'
+import { __ } from '../i18n'
 
 export type NewLine = { speaker: string | null; text: string }
 
@@ -60,8 +61,8 @@ export function buildSelection(action: SelectionAction, picked: Picked, doc: any
 const quote = (t: string, n = 120) => `"${t.length > n ? t.slice(0, n).trimEnd() + '...' : t}"`
 /** What the chat shows as the client's line for a selection action. */
 export function selectionMessage(action: SelectionAction, text: string, how?: string): string {
-  if (action === 'rewrite') return `Rewrite ${how ? how.charAt(0).toLowerCase() + how.slice(1) + ': ' : ''}${quote(text)}`
-  if (action === 'check') return `Check the history of ${quote(text)}`
+  if (action === 'rewrite') return how ? __('Rewrite (:how): :text', { how, text: quote(text) }) : __('Rewrite :text', { text: quote(text) })
+  if (action === 'check') return __('Check the history of :text', { text: quote(text) })
   return quote(text)
 }
 

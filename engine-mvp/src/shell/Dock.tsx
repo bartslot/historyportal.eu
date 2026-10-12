@@ -6,8 +6,9 @@ import { panels, usePanels, type DockTab } from '../panels/store'
 import { Timeline } from '../timeline/Timeline'
 import { SceneStrip } from './SceneStrip'
 import { stepOf, useLesson } from '../lesson/store'
+import { __ } from '../i18n'
 
-const TABS: [DockTab, string][] = [['assets', 'Assets'], ['timeline', 'Timeline']]
+const TABS: [DockTab, string][] = [['assets', __('Assets')], ['timeline', __('Timeline')]]
 
 export function Dock() {
   const planning = stepOf(useLesson().lesson) === 'script'

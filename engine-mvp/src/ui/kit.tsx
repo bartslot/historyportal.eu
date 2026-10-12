@@ -1,6 +1,7 @@
 // The History Portal panel kit, ported ONCE from resources/views/components/ui/*.blade.php. Same class
 // strings as the Blade components, so the studio and the wizard draw from one theme (resources/css/app.css).
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { __ } from '../i18n'
 
 export function ChevronDown({ className = '' }: { className?: string }) {
   return (
@@ -39,7 +40,7 @@ const DIAMOND = { width: 12.872, height: 12.872 }
 
 export function KeyframeDiamond({ on, onClick }: { on: boolean; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} aria-pressed={on} data-tooltip={on ? 'Update keyframe' : 'Add keyframe'}
+    <button type="button" onClick={onClick} aria-pressed={on} data-tooltip={on ? __('Update keyframe') : __('Add keyframe')}
             className="flex shrink-0 cursor-pointer items-center justify-center rounded hover:bg-white/5" style={DIAMOND}>
       <span className={`-rotate-45 rounded-[1px] border ${on ? 'border-timeline-mark bg-timeline-mark' : 'border-panel-label'}`} style={{ width: 9.102, height: 9.102 }} />
     </button>

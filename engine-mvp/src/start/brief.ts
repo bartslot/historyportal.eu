@@ -1,6 +1,7 @@
 // What the start screen asks for: the teacher's own prompt, plus four chips. The chips travel to the crew
 // as plain words after the prompt, so every member reads the same brief (the client's raw words, never a summary).
 import { ICON } from '../ui/icons'
+import { __ } from '../i18n'
 
 export const KINDS = [
   { id: 'story', label: 'Story driven', icon: ICON.book },
@@ -13,6 +14,17 @@ export type KindId = (typeof KINDS)[number]['id']
 export const LEVELS = ['Groep 6', 'Groep 7', 'Groep 8', 'Klas 1', 'Klas 2'] as const
 export const LENGTHS = ['15 min', '30 min', '45 min'] as const
 export const LANGUAGES = ['Nederlands', 'English', 'Deutsch', 'Français', 'Italiano'] as const
+
+// What the chips show; the brief itself keeps the English label and length, which go to the crew.
+export const KIND_LABEL: Record<KindId, string> = {
+  story: __('Story driven'), interactive: __('Interactive'), gamified: __('Gamified lesson'), game: __('Game'),
+}
+export const LEVEL_LABEL: Record<string, string> = {
+  'Groep 6': __('Groep 6'), 'Groep 7': __('Groep 7'), 'Groep 8': __('Groep 8'), 'Klas 1': __('Klas 1'), 'Klas 2': __('Klas 2'),
+}
+export const LENGTH_LABEL: Record<string, string> = {
+  '15 min': __(':minutes min', { minutes: 15 }), '30 min': __(':minutes min', { minutes: 30 }), '45 min': __(':minutes min', { minutes: 45 }),
+}
 
 export type Brief = { kind: KindId; level: string; length: string; language: string }
 export const DEFAULT_BRIEF: Brief = { kind: 'story', level: 'Groep 7', length: '30 min', language: 'Nederlands' }

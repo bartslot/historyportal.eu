@@ -4,9 +4,12 @@ import { useEngine, actions, type Picked } from '../bridge'
 import { ADVANCED, type Control } from '../scene-controls'
 import { GroupLabel, KeyframeDiamond, SelectRow, SettingsSection, SliderRow, ToggleRow } from '../ui/kit'
 import { Panel } from '../panels/Panel'
+import { __ } from '../i18n'
 
 const ADV_LABEL_W = '6.5rem'
-const KIND_LABEL: Record<Picked['kind'], string> = { model: '3D model', picture: 'Picture', door: 'Door', cloud: 'Cloud' }
+const KIND_LABEL: Record<Picked['kind'], string> = { model: __('3D model'), picture: __('Picture'), door: __('Door'), cloud: __('Cloud') }
+/** ADVANCED group names stay English (compared below); this is what the teacher reads. */
+const GROUP: Record<string, string> = { Look: __('Look'), Clouds: __('Clouds'), Backdrop: __('Backdrop'), Ground: __('Ground'), Town: __('Town') }
 const deg = (v: number) => `${Math.round(v)}°`
 
 function PanelHead({ title, sub }: { title: string; sub?: string }) {
@@ -24,16 +27,16 @@ function ObjectPanel({ picked }: { picked: Picked }) {
     <>
       <PanelHead title={picked.name} sub={KIND_LABEL[picked.kind]} />
       {floor && (
-        <SettingsSection title="Format" name="object-format">
-          <SliderRow label="Turn" min={0} max={359} step={1} value={picked.yaw} onChange={actions.turnTo} format={deg}
+        <SettingsSection title={__('Format')} name="object-format">
+          <SliderRow label={__('Turn')} min={0} max={359} step={1} value={picked.yaw} onChange={actions.turnTo} format={deg}
                      keyframe={<KeyframeDiamond on={picked.keyed} onClick={actions.keyTurn} />} />
         </SettingsSection>
       )}
       {floor && (
-        <SettingsSection title="Advanced" open={false} name="object-advanced">
-          <SliderRow label="Left / right" labelWidth={ADV_LABEL_W} min={-30} max={30} step={0.5} value={picked.x}
+        <SettingsSection title={__('Advanced')} open={false} name="object-advanced">
+          <SliderRow label={__('Left / right')} labelWidth={ADV_LABEL_W} min={-30} max={30} step={0.5} value={picked.x}
                      onChange={(x) => actions.moveTo(x, picked.z)} unit="m" />
-          <SliderRow label="Front / back" labelWidth={ADV_LABEL_W} min={-30} max={30} step={0.5} value={picked.z}
+          <SliderRow label={__('Front / back')} labelWidth={ADV_LABEL_W} min={-30} max={30} step={0.5} value={picked.z}
                      onChange={(z) => actions.moveTo(picked.x, z)} unit="m" />
         </SettingsSection>
       )}
@@ -50,41 +53,41 @@ function EngineControl({ c }: { c: Control }) {
 function ScenePanel() {
   return (
     <>
-      <PanelHead title="Scene" />
-      <SettingsSection title="Sky" name="scene-sky">
+      <PanelHead title={__('Scene')} />
+      <SettingsSection title={__('Sky')} name="scene-sky">
         <div id="skies" className="sky" />
       </SettingsSection>
-      <SettingsSection title="Look" name="scene-look">
-        <SelectRow label="Style" id="lookPreset" />
-        <SliderRow label="Time" id="lookTime" min={0} max={1} step={0.01} defaultValue={0}
+      <SettingsSection title={__('Look')} name="scene-look">
+        <SelectRow label={__('Style')} id="lookPreset" />
+        <SliderRow label={__('Time')} id="lookTime" min={0} max={1} step={0.01} defaultValue={0}
                    hint="time of day: 0-0.25 night, 0.25-0.5 dusk, 0.5-0.75 dawn, 0.75-1 day"
-                   format={(v) => (v < 0.25 ? 'Night' : v < 0.5 ? 'Dusk' : v < 0.75 ? 'Dawn' : 'Day')} />
-        <SliderRow label="Clouds" id="cloudAmount" min={0} max={1} step={0.02} defaultValue={0.3}
+                   format={(v) => (v < 0.25 ? __('Night') : v < 0.5 ? __('Dusk') : v < 0.75 ? __('Dawn') : __('Day'))} />
+        <SliderRow label={__('Clouds')} id="cloudAmount" min={0} max={1} step={0.02} defaultValue={0.3}
                    format={(v) => `${Math.round(v * 100)}`} unit="%" />
       </SettingsSection>
-      <SettingsSection title="Advanced" open={false} name="scene-advanced">
+      <SettingsSection title={__('Advanced')} open={false} name="scene-advanced">
         {ADVANCED.map((g) => (
           <div key={g.group}>
-            <GroupLabel>{g.group}</GroupLabel>
+            <GroupLabel>{GROUP[g.group] ?? g.group}</GroupLabel>
             {g.controls.map((c) => <EngineControl key={c.id} c={c} />)}
             {g.group === 'Look' && (
               <>
                 <div id="texList" className="sky my-1" />
-                <label className="btn btn-ghost btn-xs">Upload aquarelle texture<input type="file" id="lookTexUpload" accept="image/*" hidden /></label>
+                <label className="btn btn-ghost btn-xs">{__('Upload aquarelle texture')}<input type="file" id="lookTexUpload" accept="image/*" hidden /></label>
               </>
             )}
-            {g.group === 'Clouds' && <button type="button" id="cloudShuffle" className="btn btn-ghost btn-xs">Shuffle clouds</button>}
-            {g.group === 'Backdrop' && <button type="button" id="bdShuffle" className="btn btn-ghost btn-xs">Shuffle silhouettes</button>}
+            {g.group === 'Clouds' && <button type="button" id="cloudShuffle" className="btn btn-ghost btn-xs">{__('Shuffle clouds')}</button>}
+            {g.group === 'Backdrop' && <button type="button" id="bdShuffle" className="btn btn-ghost btn-xs">{__('Shuffle silhouettes')}</button>}
             {g.group === 'Town' && (
               <div className="flex gap-2">
-                <button type="button" id="cityBuild" className="btn btn-ghost btn-xs">Build town</button>
-                <button type="button" id="cityShuffle" className="btn btn-ghost btn-xs">Shuffle</button>
+                <button type="button" id="cityBuild" className="btn btn-ghost btn-xs">{__('Build town')}</button>
+                <button type="button" id="cityShuffle" className="btn btn-ghost btn-xs">{__('Shuffle')}</button>
               </div>
             )}
           </div>
         ))}
-        <GroupLabel>Sky</GroupLabel>
-        <label className="btn btn-ghost btn-xs">Upload panorama (2:1)<input type="file" id="skyUpload" accept="image/*" hidden /></label>
+        <GroupLabel>{__('Sky')}</GroupLabel>
+        <label className="btn btn-ghost btn-xs">{__('Upload panorama (2:1)')}<input type="file" id="skyUpload" accept="image/*" hidden /></label>
       </SettingsSection>
     </>
   )
