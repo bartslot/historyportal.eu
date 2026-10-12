@@ -18,6 +18,7 @@ use App\Livewire\Wizard\Concerns\EditsQuizQuestions;
 use App\Livewire\Wizard\Concerns\EditsSceneArtwork;
 use App\Livewire\Wizard\Concerns\EditsSceneBackground;
 use App\Livewire\Wizard\Concerns\EditsStoryGame;
+use App\Livewire\Wizard\Concerns\EditsTeamGame;
 use App\Livewire\Wizard\Concerns\EditsTitleScreen;
 use App\Livewire\Wizard\Concerns\UndoesSceneEdits;
 use App\Models\AnimationClip;
@@ -27,6 +28,7 @@ use App\Models\Scene;
 use App\Models\StrategyGame;
 use App\Services\Billing\NarrationCreditLedger;
 use App\Services\Diorama\LibraryAssets;
+use App\Services\Lessons\TeamGameSpec;
 use App\Services\Support\LayerAmbient;
 use App\Services\Support\WebpEncoder;
 use App\Services\Support\WhiteCutout;
@@ -59,6 +61,7 @@ class Step3SceneConfigurator extends Component
     use EditsSceneBackground;
     use EditsSceneArtwork;
     use EditsStoryGame;
+    use EditsTeamGame;
     use UndoesSceneEdits;
     use WithFileUploads;
 
@@ -444,6 +447,8 @@ class Step3SceneConfigurator extends Component
         $this->syncQuizDraftFor($scene);
         // Same discipline for the story-game effects draft (branch option scenes).
         $this->syncStoryGameDraftFor($scene);
+        // And for a team game: its texts, items, options and timer.
+        $this->syncTeamDraftFor($scene);
     }
 
     /**
@@ -572,6 +577,7 @@ class Step3SceneConfigurator extends Component
             }
         }
         $payload = $this->withStoredDiorama($payload, $scene);
+        $payload = $this->withCleanTeamGame($payload, $scene);
         $scriptDirty = ($scene->script_segment ?? '') !== ($payload['script_segment'] ?? '');
 
         // Detect changes that should re-paint the 3D stage so the canvas updates.
@@ -5166,13 +5172,19 @@ class Step3SceneConfigurator extends Component
 
     public function setSceneGameType(int $sceneId, string $gameType): void
     {
-        if (! in_array($gameType, ['quiz', 'strategy', 'debate'], true)) {
+        if (! in_array($gameType, ['quiz', 'strategy', 'debate', 'team'], true)) {
             return;
         }
 
         $scene = $this->lesson->scenes()->findOrFail($sceneId);
         if ($scene->kind !== 'game') {
             return;
+        }
+
+        // A team game keeps whatever game it had (switching away and back gives it back); a scene
+        // that never had one starts with a blank budget game.
+        if ($gameType === 'team' && ! is_array(($scene->config ?? [])['team'] ?? null)) {
+            $scene->config = array_merge($scene->config ?? [], ['team' => TeamGameSpec::normalize([])]);
         }
 
         $scene->update([

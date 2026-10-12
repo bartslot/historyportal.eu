@@ -46,7 +46,7 @@ class LessonExporter
         'gallery' => ['title', 'date_label', 'story', 'fit', 'images'],
         'map' => ['qid', 'fit', 'year', 'projection', 'playback_mode', 'annotations'],
         'voyage' => ['voyage', 'leg', 'view', 'intro', 'stop_images', 'gallery'],
-        'game' => ['quiz_scope', 'quiz_shuffle', 'quiz_difficulty'],
+        'game' => ['quiz_scope', 'quiz_shuffle', 'quiz_difficulty', 'team', 'team_default'],
     ];
 
     /** Editor scratch state, not content — undo history should never reach a spec file. */
@@ -120,6 +120,7 @@ class LessonExporter
         $config = (array) ($scene->config ?? []);
 
         $spec = match (true) {
+            $scene->kind === 'game' && $scene->game_type === 'team' => $this->team($scene, $config),
             $scene->kind === 'game' => $this->quiz($scene, $questions),
             $scene->kind === 'gallery' => $this->gallery($scene, $config),
             $scene->kind === 'map' => $this->map($scene, $config),
@@ -276,6 +277,24 @@ class LessonExporter
             'autoplay' => array_key_exists('autoplay', $embed) ? (bool) $embed['autoplay'] : null,
             'start' => ! empty($embed['start']) ? (int) $embed['start'] : null,
             'end' => ! empty($embed['end']) ? (int) $embed['end'] : null,
+        ], $this->keep(...));
+    }
+
+    /**
+     * A team game exports as the game it is NOW (the teacher's edits included), so a rebuild plays
+     * the same game; that copy becomes the rebuilt scene's reset default.
+     *
+     * @return array<string,mixed>
+     */
+    private function team(Scene $scene, array $config): array
+    {
+        return array_filter([
+            'type' => 'team',
+            ...(array) ($config['team'] ?? []),
+            'chapter' => $scene->chapter_name,
+            'location' => $scene->location,
+            'year' => $this->year($scene),
+            'script' => $scene->script_segment,
         ], $this->keep(...));
     }
 

@@ -11,6 +11,7 @@ use App\Models\Scene;
 use App\Models\User;
 use App\Services\Lessons\LibraryLayers;
 use App\Services\Lessons\SceneDialogue;
+use App\Services\Lessons\TeamGameSpec;
 use App\Services\Support\AudioEncoder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -29,6 +30,7 @@ use Throwable;
  *   map     — MapLibre scene with labelled pins (e.g. "Anne Frank House")
  *   3d      — narrated scene over a Sketchfab model background
  *   video   — narrated scene over a YouTube/Vimeo background
+ *   team    — class-screen team game, kind=game/team; `mode: budget|choose|discuss` (TeamGameSpec)
  *
  * Imagery is sourced from the paintings corpus + Wikimedia Commons (SceneImageSourcer), narration
  * from Azure TTS. Re-running rebuilds a lesson's scenes from scratch, so a spec edit is the unit of
@@ -173,6 +175,7 @@ class LessonComposer
 
             $scene = match ($type) {
                 'quiz' => $this->quizScene($lesson, $sceneSpec, $order, ++$gameIndex),
+                'team' => $this->teamScene($lesson, $sceneSpec, $order, ++$gameIndex),
                 'gallery' => $this->galleryScene($lesson, $sceneSpec, $order),
                 'map' => $this->mapScene($lesson, $sceneSpec, $order),
                 'voyage' => $this->voyageScene($lesson, $sceneSpec, $order),
@@ -673,6 +676,70 @@ class LessonComposer
         }
 
         return $scene;
+    }
+
+    /**
+     * A team game for the class screen (TeamGameSpec): teams decide aloud, the teacher taps their
+     * choices in. The spec entry is cleaned at this boundary; its cleaned copy is also kept as
+     * `team_default`, which is what the editor's "Reset" puts back. An optional `script` is the
+     * narrated intro, played before the game opens (as a quiz intro is).
+     *
+     * @param  array<string,mixed>  $s
+     */
+    private function teamScene(Lesson $lesson, array $s, int $order, int $gameIndex): Scene
+    {
+        $team = TeamGameSpec::normalize($this->teamImages($lesson, $s, $order));
+
+        $scene = $lesson->scenes()->create([
+            'order' => $order,
+            'kind' => 'game',
+            'game_type' => 'team',
+            'game_segment_index' => $gameIndex,
+            // The chapter bar's estimate: the discussion timer plus a couple of minutes to reveal.
+            'duration_seconds' => max(60, $team['minutes'] * 60 + 120),
+            'background_color' => '#0f172a',
+            'chapter_name' => $s['chapter'] ?? ($team['title'] !== '' ? $team['title'] : null),
+            'location' => $s['location'] ?? null,
+            'year' => $s['year'] ?? null,
+            'script_segment' => $s['script'] ?? null,
+            'status' => 'pending',
+            'config' => ['team' => $team, 'team_default' => $team],
+        ]);
+
+        if (! empty($s['backdrop'])) {
+            $this->library->attachLibraryBackdrop($scene, (string) $s['backdrop'], $order);
+        }
+
+        return $scene;
+    }
+
+    /**
+     * Library refs ("asset:...") in a team game's images become copied, served URLs; anything else
+     * is left for TeamGameSpec to accept or drop.
+     *
+     * @param  array<string,mixed>  $s
+     * @return array<string,mixed>
+     */
+    private function teamImages(Lesson $lesson, array $s, int $order): array
+    {
+        $resolve = fn (mixed $ref): mixed => is_string($ref) && str_starts_with($ref, 'asset:')
+            ? $this->library->copyLibraryImage($lesson, substr($ref, 6), $order)['url']
+            : $ref;
+
+        if (isset($s['map'])) {
+            $s['map'] = $resolve($s['map']);
+        }
+        foreach (['options', 'evidence'] as $list) {
+            if (! is_array($s[$list] ?? null)) {
+                continue;
+            }
+            $s[$list] = array_map(
+                fn ($row) => is_array($row) && isset($row['image']) ? ['image' => $resolve($row['image'])] + $row : $row,
+                $s[$list],
+            );
+        }
+
+        return $s;
     }
 
     /**
