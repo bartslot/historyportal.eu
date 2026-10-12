@@ -46,6 +46,11 @@
                 © 2026 History Portal, part of The Learning Portal. All rights reserved.
 All lesson content, scripts, prompts, illustrations, images, animations, interface designs, games, downloadable materials, and platform content are owned by The Learning Portal or used under licence, unless stated otherwise. No part of this website or platform may be copied, reproduced, scraped, redistributed, sold, modified, or used to train AI systems without prior written permission.
             </p>
+
+            <nav class="mt-4 flex gap-6 text-sm text-sky-50/70" aria-label="Legal">
+                <a href="{{ route('privacy') }}" class="hover:text-white">Privacy</a>
+                <a href="{{ route('terms') }}" class="hover:text-white">Terms</a>
+            </nav>
         </div>
     </div>
 </footer>

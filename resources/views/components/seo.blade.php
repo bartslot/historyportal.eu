@@ -23,6 +23,9 @@
 
     $canonical = $page ? Seo::url($page, $params) : url()->current();
     $alternates = $page ? Seo::alternates($page, $params) : [];
+    // Facebook only shows an image on the very first scrape when it knows the size, so the
+    // default card declares its own; a page-specific image is left for the crawler to measure.
+    $isDefaultImage = ! $image;
     $image = $image ?: asset('images/og-default.png');
     $siteName = 'History Portal';
     // The title tag carries the brand once; the OG title does not repeat it.
@@ -50,6 +53,11 @@
 <meta property="og:description" content="{{ $description }}">
 <meta property="og:url" content="{{ $canonical }}">
 <meta property="og:image" content="{{ $image }}">
+@if ($isDefaultImage)
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="History Portal">
+@endif
 <meta property="og:locale" content="{{ str_replace('-', '_', \App\Support\Locales::region(app()->getLocale())) }}">
 
 <meta name="twitter:card" content="summary_large_image">

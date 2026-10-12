@@ -73,6 +73,11 @@ Route::get('/about', function () {
     return view('about');
 })->name('about');
 
+// Legal pages. English only, outside the localised group: one reviewed text, one URL, which is
+// also what the Google / Microsoft / Apple sign-in consent screens link to.
+Route::view('/privacy', 'legal.privacy')->name('privacy');
+Route::view('/terms', 'legal.terms')->name('terms');
+
 // ── Public, indexable marketing pages ────────────────────────────────────────
 //
 // Registered twice on purpose: English at the root (/history-lessons) and every other language

@@ -22,7 +22,12 @@ class SitemapController extends Controller
 
     public function __invoke(): Response
     {
-        $xml = Cache::remember('sitemap.xml', now()->addMinutes(self::CACHE_MINUTES), function (): string {
+        // Keyed by root URL: a render from the console (tinker, a cron warm-up) resolves URLs against
+        // http://localhost, and under one shared key that cached copy was served to Google for an hour
+        // (2026-10-12).
+        $key = 'sitemap.xml:'.url('/');
+
+        $xml = Cache::remember($key, now()->addMinutes(self::CACHE_MINUTES), function (): string {
             $entries = [];
 
             foreach (['home' => '1.0', 'lessons' => '0.9', 'about' => '0.6'] as $page => $priority) {
