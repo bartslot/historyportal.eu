@@ -73,6 +73,9 @@
                                 </h4>
                                 <p class="absolute opacity-0 left-3 bottom-3 rounded-full border border-white/20 px-2 py-1 text-xs text-white bg-white/20 backdrop-blur-sm group-hover:opacity-100 transition-opacity">
                                     {{ __('Grade :grade', ['grade' => $lesson->grade ?: $lesson->grade_level ?: '—']) }}
+                                    @if($minutes = $lesson->estimatedMinutes())
+                                        · ≈ {{ $minutes }} min
+                                    @endif
                                 </p>
                             </a>
                         @endforeach

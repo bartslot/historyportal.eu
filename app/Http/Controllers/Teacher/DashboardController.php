@@ -10,6 +10,7 @@ use App\Models\ClassroomMember;
 use App\Models\Lesson;
 use App\Models\Narrator;
 use App\Models\QuizScore;
+use App\Models\Scene;
 use App\Services\CanonThemeCatalog;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
@@ -29,7 +30,7 @@ final class DashboardController extends Controller
         $lessonQuery = Lesson::query()->ownedByCurrentUser();
         $lessonCount = (clone $lessonQuery)->count();
         $lessons = (clone $lessonQuery)
-            ->with(['source', 'firstScene'])
+            ->with(['source', 'firstScene', 'scenes:'.Scene::TIMELINE_COLUMNS])
             ->latest()
             ->limit(self::LESSON_LIMIT)
             ->get();

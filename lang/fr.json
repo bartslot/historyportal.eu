@@ -1579,5 +1579,9 @@
     "To": "À",
     "Video link": "Lien vidéo",
     "Background": "Arrière-plan",
-    "That doesn't look like a YouTube or Vimeo link.": "Cela ne ressemble pas à un lien YouTube ou Vimeo."
+    "That doesn't look like a YouTube or Vimeo link.": "Cela ne ressemble pas à un lien YouTube ou Vimeo.",
+    "Game": "Jeu",
+    "Map": "Carte",
+    "Played": "Joué",
+    "minutes": "minutes"
 }

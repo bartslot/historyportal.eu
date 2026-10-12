@@ -144,6 +144,8 @@
                 ])->filter(fn($shot) => $shot['image_url'] || !empty($shot['layers']))->values()->all() ?: null,
                 'alignment'   => $s->audio_alignment ?: null,
                 'duration_seconds' => $s->duration_seconds,
+                // The chapter bar's segment: length, whether it is an estimate, and the label type.
+                'timeline'    => $s->timelineSeconds(),
                 'background_color' => $s->background_color,
                 'background_gradient' => $s->config['background_gradient'] ?? null,
                 // Same deliberate trade-off as lesson-level quiz_questions above:
@@ -166,6 +168,7 @@
         'leaderboard_url'       => route('lesson.leaderboard', ['lessonCode' => $lesson->lesson_code]),
         'quiz_score_url'        => route('lesson.quiz-score', ['lessonCode' => $lesson->lesson_code]),
         'has_classroom'         => $lesson->classrooms()->exists(),
+        'estimated_minutes'     => $lesson->relationLoaded('scenes') ? $lesson->estimatedMinutes() : null,
         // A student can't skip a quiz question; the teacher testing their own lesson can.
         'can_skip_quiz'         => (bool) auth()->user()?->canManage($lesson),
     ];
@@ -427,11 +430,12 @@
                          @click.outside="chaptersOpen = false"
                          class="mb-3 max-h-[46vh] overflow-y-auto rounded-xl border border-white/10 bg-black/70 p-1.5 backdrop-blur-md">
                         <template x-for="(c, i) in chapters" :key="c.index">
-                            <button type="button" @click="goToChapter(c.index)"
-                                    class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition hover:bg-white/10"
-                                    :class="c.index === _sceneIndex ? 'text-primary' : 'text-white/70'">
+                            <button type="button" @click="goToChapter(c.index)" :disabled="!mayEnter(c.index)"
+                                    class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition enabled:hover:bg-white/10 disabled:cursor-not-allowed"
+                                    :class="c.index === _sceneIndex ? 'text-primary' : (mayEnter(c.index) ? 'text-white/70' : 'text-white/35')">
                                 <span class="w-6 shrink-0 font-mono text-xs tabular-nums opacity-70" x-text="String(i + 1).padStart(2, '0')"></span>
-                                <span class="text-sm" :class="c.index === _sceneIndex ? 'font-bold' : 'font-medium'" x-text="c.name"></span>
+                                <span class="min-w-0 flex-1 truncate text-sm" :class="c.index === _sceneIndex ? 'font-bold' : 'font-medium'" x-text="c.name"></span>
+                                <span class="shrink-0 text-xs tabular-nums opacity-60" x-text="chapterMeta(c)"></span>
                             </button>
                         </template>
                     </div>
@@ -474,21 +478,31 @@
                          or the list: backdrop-filter would become the containing block of the line's
                          corner float, and the list has its own plate. --}}
                     <div :class="!backdropShade && 'rounded-xl border border-white/10 bg-black/70 px-2 backdrop-blur-md'">
-                    {{-- Segmented progress — one bar per chapter, width ∝ duration; click to jump.
-                         The track thickens slightly under the pointer, Netflix-style. --}}
+                    {{-- Segmented progress (Spotify-style) — one segment per scene, width ∝ its time.
+                         Played fills white, reached-but-not-played a lighter grey, the rest is to come:
+                         dimmed and not clickable (a student never jumps past the furthest point).
+                         A block the student paces (quiz, map, film) is an estimate, drawn hatched.
+                         The tooltip follows the pointer and names the time, type and chapter. --}}
                     <div x-show="chapters.length > 1 && !currentIsGame && phase !== 'GAME_BRIEF'"
                          class="flex items-center gap-1">
-                        <template x-for="(c, i) in chapters" :key="c.index">
-                            <button type="button" @click="goToChapter(c.index)" :data-tooltip="c.name"
-                                    class="group relative flex items-center py-2" style="flex-grow: 1; flex-basis: 0"
-                                    :style="`flex-grow:${c.dur || 1}`">
-                                <span class="relative block h-1 w-full overflow-hidden rounded-full bg-white/25 transition-all duration-150 group-hover:h-1.5 group-hover:bg-white/40">
+                        <template x-for="c in chapters" :key="c.index">
+                            <button type="button" @click="clickSegment(c, $event)" @pointermove="hoverSegment(c, $event)"
+                                    :data-tooltip="segmentTooltip(c)" data-tooltip-follow
+                                    :aria-label="segmentTooltip(c)" :aria-disabled="!mayEnter(c.index)"
+                                    class="group relative flex items-center py-2"
+                                    :class="mayEnter(c.index) ? 'cursor-pointer' : 'cursor-not-allowed'"
+                                    :style="`flex: ${c.seconds || 1} 1 0`">
+                                <span class="relative block h-1 w-full overflow-hidden rounded-full transition-all duration-150 group-hover:h-1.5"
+                                      :class="[c.estimated ? 'lp-seg-estimate' : 'bg-white/25', mayEnter(c.index) ? 'group-hover:bg-white/40' : 'opacity-50']">
+                                    <span class="absolute inset-y-0 left-0 rounded-full bg-white/45" :style="`width:${segmentFill(c).reached}%`"></span>
                                     {{-- White fill, not amber (Figma): the progress reads as light on the dark stage. --}}
                                     <span class="absolute inset-y-0 left-0 rounded-full bg-white/90 transition-all duration-150"
-                                          :style="`width:${ c.index < _sceneIndex ? 100 : (c.index === _sceneIndex ? sceneProgress * 100 : 0) }%`"></span>
+                                          :style="`width:${segmentFill(c).played}%`"></span>
                                 </span>
                             </button>
                         </template>
+                        <span x-show="estimatedMinutes" x-text="estimatedMinutes"
+                              class="ml-2 shrink-0 text-xs tabular-nums text-white/70"></span>
                     </div>
 
                     {{-- Transport row — plain white Heroicons (outline, 1.5), no chrome: previous /
@@ -719,6 +733,9 @@
                         <span x-show="lesson.grade_level && lesson.subject" class="text-slate-700 text-xs">·</span>
                         <span x-show="lesson.subject" x-text="lesson.subject"
                               class="text-xs font-light capitalize text-slate-500"></span>
+                        <span x-show="estimatedMinutes && (lesson.grade_level || lesson.subject)" class="text-slate-700 text-xs">·</span>
+                        <span x-show="estimatedMinutes" x-text="estimatedMinutes"
+                              class="text-xs font-light text-slate-500"></span>
 
                         <template x-if="lesson.include_game && lesson.game_type === 'quiz'">
                             <span class="flex items-center gap-1.5 rounded-full border border-sky-500/40 bg-sky-950/50 px-3 py-0.5 text-xs font-semibold text-sky-300 backdrop-blur-sm">
