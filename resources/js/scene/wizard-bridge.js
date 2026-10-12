@@ -1068,7 +1068,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                 _wizardLayeredScene = new _parallaxMod.ParallaxScene(host)
                 _wizardLayeredScene.show({
                     layers: bgLayers.length ? bgLayers : layers, motion, fit, matte,
-                    camera, entry: payload.entry ?? null, loop: true,
+                    camera, entry: payload.entry ?? null, loop: true, entryAlong: [_artworkHost],
                     onCameraFrame: (frameFor) => _artworkOverlay?.setCamera(frameFor),
                 })
                 // A shot camera drives the backdrop and the figures itself; the Ken Burns loop stays off.

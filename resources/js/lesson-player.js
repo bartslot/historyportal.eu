@@ -939,6 +939,7 @@ Alpine.data('lessonGame', (lesson) => ({
           // get the same frame, so they stay on their spot of the plate through the move.
           camera: shot.camera || null,
           entry: shot.entry || null,
+          entryAlong: [document.getElementById('lesson-voyage-art')],
           onCameraFrame: (frameFor) => this._artLayer?.setCamera(frameFor),
           bgUrl: shot.bg_url,
           heroUrl: shot.hero_url || null,

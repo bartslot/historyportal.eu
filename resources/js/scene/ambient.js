@@ -134,25 +134,30 @@ function clearAmbient (el) {
 }
 
 /**
- * Swell: the sea strip scrolls sideways forever, so it needs a second copy right behind it. The
- * twin is a clone of the layer's own picture, offset one picture-width (CSS amb-swell-twin); both
- * move together, so a strip at least as wide as what it covers never shows a seam or an edge.
+ * Swell: the sea strip scrolls sideways forever, so it needs copies right behind it. A painted
+ * strip is rarely drawn to tile, so the first copy is MIRRORED: its edge meets the original's same
+ * edge and the joint is continuous whatever the art. The second copy is the original again, so
+ * after two widths the picture is exactly where it started and the loop never jumps. All three move
+ * together (CSS amb-swell-scroll / -mirror / -again), so a strip at least as wide as what it covers
+ * never shows an edge.
  */
 function addSwellTwin (el) {
   const img = el.querySelector(':scope > img')
   if (!img) return
-  const twin = img.cloneNode(false)
-  twin.classList.add('amb-twin')
-  twin.alt = ''
-  twin.setAttribute('aria-hidden', 'true')
-  // An in-flow picture (the editor overlay) is laid over its original; an absolutely placed one
-  // (ParallaxScene) already sits where the original is.
-  if (img.style.position !== 'absolute') {
-    twin.style.position = 'absolute'
-    twin.style.left = '0'
-    twin.style.top = '0'
+  for (const kind of ['amb-twin-mirror', 'amb-twin-again']) {
+    const twin = img.cloneNode(false)
+    twin.classList.add('amb-twin', kind)
+    twin.alt = ''
+    twin.setAttribute('aria-hidden', 'true')
+    // An in-flow picture (the editor overlay) is laid over its original; an absolutely placed one
+    // (ParallaxScene) already sits where the original is.
+    if (img.style.position !== 'absolute') {
+      twin.style.position = 'absolute'
+      twin.style.left = '0'
+      twin.style.top = '0'
+    }
+    el.appendChild(twin)
   }
-  el.appendChild(twin)
 }
 
 /**
@@ -281,19 +286,22 @@ const buildCss = () => `
   }
   .amb-flutter { animation-name: amb-flutter-x, amb-bob; animation-duration: ${half()}, ${half(5 / 18)}; }
 
-  /* swell: the wrapper rises and falls; the picture and its twin scroll one width, linearly */
+  /* swell: the wrapper rises and falls; the picture, its mirror and itself again scroll two widths,
+     linearly (one width per swellScroll periods) */
   @keyframes amb-swell {
     from { transform: translateY(calc(${SH} * -${AMP.swellRise} * ${A})); }
     to   { transform: translateY(calc(${SH} * ${AMP.swellRise} * ${A})); }
   }
   .amb-swell { animation-name: amb-swell; animation-duration: ${half()}; overflow: hidden; }
-  @keyframes amb-swell-scroll { from { translate: 0 0; } to { translate: calc(-100% * var(--amb-scale, 1)) 0; } }
-  @keyframes amb-swell-twin { from { translate: calc(100% * var(--amb-scale, 1)) 0; } to { translate: 0 0; } }
+  @keyframes amb-swell-scroll { from { translate: 0 0; } to { translate: calc(-200% * var(--amb-scale, 1)) 0; } }
+  @keyframes amb-swell-mirror { from { translate: calc(100% * var(--amb-scale, 1)) 0; } to { translate: calc(-100% * var(--amb-scale, 1)) 0; } }
+  @keyframes amb-swell-again { from { translate: calc(200% * var(--amb-scale, 1)) 0; } to { translate: 0 0; } }
   .amb-swell > img {
-    animation: amb-swell-scroll calc(var(--amb-dur, 8s) * ${AMP.swellScroll}) linear infinite;
+    animation: amb-swell-scroll calc(var(--amb-dur, 8s) * ${AMP.swellScroll * 2}) linear infinite;
     animation-delay: var(--amb-delay, 0s);
   }
-  .amb-swell > img.amb-twin { animation-name: amb-swell-twin; }
+  .amb-swell > img.amb-twin-mirror { animation-name: amb-swell-mirror; scale: -1 1; }
+  .amb-swell > img.amb-twin-again { animation-name: amb-swell-again; }
 
   /* roll: pitch about the waterline; a full plate rolls about its middle, scaled past its edges */
   @keyframes amb-roll {

@@ -115,6 +115,10 @@
                         'kind'   => in_array($l['kind'] ?? 'cover', ['cover', 'figure', 'strip'], true) ? ($l['kind'] ?? 'cover') : 'cover',
                         'scale'  => (float) ($l['scale'] ?? 1),
                         'height' => isset($l['height']) ? (float) $l['height'] : null,
+                        // Optional explicit width (the editor's unlocked aspect). The wizard payload
+                        // already carried it; without it here a stretched sea strip played narrower
+                        // in class than the teacher set it.
+                        'width'  => isset($l['width']) ? (float) $l['width'] : null,
                         'sway'   => (bool) ($l['sway'] ?? false),
                         // Artistic controls (E3c-b): blur px, opacity 0-1, blend mode, wobble 0-2, z override.
                         'blur'    => isset($l['blur']) ? (float) $l['blur'] : null,

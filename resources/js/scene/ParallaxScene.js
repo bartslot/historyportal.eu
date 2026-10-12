@@ -174,7 +174,7 @@ export class ParallaxScene {
    * stage that box is cover-fitted around the figures in `subject` (the scene's full layer list) instead.
    */
   show ({ bgUrl = null, heroUrl = null, layers = null, motion = null, dof = null, fit = 'cover', matte = null, subject = null,
-    camera = null, entry = null, loop = false, onCameraFrame = null } = {}) {
+    camera = null, entry = null, loop = false, onCameraFrame = null, entryAlong = [] } = {}) {
     // Classic form requires a background — a hero floating on nothing is never intended.
     const specs = Array.isArray(layers) && layers.length
       ? layers.filter(l => l && l.url)
@@ -236,7 +236,7 @@ export class ParallaxScene {
     this._onCameraFrame = onCameraFrame
     if (this._camera) this._applyPose(cameraPose(this._camera, 0))
     else this.update(0)
-    this._enter(root, entry)
+    this._enter(root, entry, entryAlong)
     if (this._camera) this._runCamera(loop)
     window.__parallax = this
   }
@@ -246,23 +246,29 @@ export class ParallaxScene {
    * right, decelerating) · reveal (a gutter wipe left to right) · match (a dissolve over the panel
    * before, for a match-cut on shape). Reduced motion keeps only fades and cuts.
    */
-  _enter (root, entry) {
+  _enter (root, entry, along = []) {
     let e = cameraEntry(entry)
     if (prefersReducedMotion() && (e === 'slide' || e === 'reveal')) e = 'fade'
     const ms = ENTRY_MS[e]
     if (e === 'cut' || !ms) { root.style.opacity = '1'; return }
-    if (e === 'fade' || e === 'match') {
-      root.style.transition = `opacity ${ms}ms ${e === 'match' ? EASE.move : 'ease-in-out'}`
+    if (e === 'fade') {
+      root.style.transition = `opacity ${ms}ms ease-in-out`
       // On the next frame, so the transition actually runs.
       requestAnimationFrame(() => { if (this._root === root) root.style.opacity = '1' })
       return
     }
+    // slide / reveal / match: the figures drawn by the clipart overlay (`along`) come in with the
+    // plate, or they would stand still while the panel moves under them.
     root.style.opacity = '1'
-    if (typeof root.animate !== 'function') return
-    const frames = e === 'slide'
-      ? [{ transform: 'translateX(100%)' }, { transform: 'translateX(0)' }]
-      : [{ clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0 0 0)' }]
-    root.animate(frames, { duration: ms, easing: e === 'slide' ? EASE.enter : EASE.move })
+    const frames = {
+      slide: [{ transform: 'translateX(100%)' }, { transform: 'translateX(0)' }],
+      reveal: [{ clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0 0 0)' }],
+      match: [{ opacity: 0 }, { opacity: 1 }],
+    }[e]
+    const timing = { duration: ms, easing: e === 'slide' ? EASE.enter : EASE.move }
+    for (const el of [root, ...along]) {
+      if (el && typeof el.animate === 'function') el.animate(frames, timing)
+    }
   }
 
   /** Play the shot's camera on the wall clock, every frame, until the shot goes. */

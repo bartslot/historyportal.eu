@@ -136,13 +136,16 @@ describe('world motion modes', () => {
     el.appendChild(img)
 
     applyAmbient(el, { ambient: 'swell' })
-    const twin = el.querySelector('img.amb-twin')
-    expect(twin).not.toBeNull()
-    expect(twin.getAttribute('aria-hidden')).toBe('true')
-    expect(twin.style.position).toBe('absolute')   // laid over the in-flow original
+    // A mirrored copy (so any painted strip joins without a seam), then the original again (so the
+    // loop lands exactly where it started).
+    const twins = [...el.querySelectorAll('img.amb-twin')]
+    expect(twins.map(t => t.classList.contains('amb-twin-mirror'))).toEqual([true, false])
+    expect(twins[1].classList.contains('amb-twin-again')).toBe(true)
+    expect(twins[0].getAttribute('aria-hidden')).toBe('true')
+    expect(twins[0].style.position).toBe('absolute')   // laid over the in-flow original
 
     applyAmbient(el, { ambient: 'swell' })        // re-applying never stacks twins
-    expect(el.querySelectorAll('img.amb-twin')).toHaveLength(1)
+    expect(el.querySelectorAll('img.amb-twin')).toHaveLength(2)
 
     applyAmbient(el, { ambient: 'roll' })
     expect(el.querySelector('img.amb-twin')).toBeNull()
