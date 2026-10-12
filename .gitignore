@@ -50,7 +50,7 @@ NUL
 # them 404s without them — which is silent, so nothing would say so.
 !/public/sound/sfx/
 
-/public/flags/
+/public/flags
 
 # Generated flag manifest (rebuilt by timemap:sync-ohm-polities)
 /public/flags/manifest.json
