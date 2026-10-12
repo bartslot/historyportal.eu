@@ -737,7 +737,11 @@
                         <span x-show="estimatedMinutes" x-text="estimatedMinutes"
                               class="text-xs font-light text-slate-500"></span>
 
-                        <template x-if="lesson.include_game && lesson.game_type === 'quiz'">
+                        {{-- Not when every game scene is a team game: a composed lesson keeps game_type
+                             'quiz' at lesson level, but a class with only team games has no quiz. --}}
+                        <template x-if="lesson.include_game && lesson.game_type === 'quiz'
+                                        && !((lesson.scenes || []).some(s => s.kind === 'game')
+                                             && (lesson.scenes || []).filter(s => s.kind === 'game').every(s => s.game_type === 'team'))">
                             <span class="flex items-center gap-1.5 rounded-full border border-sky-500/40 bg-sky-950/50 px-3 py-0.5 text-xs font-semibold text-sky-300 backdrop-blur-sm">
                                 <svg class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                 <span>Quiz</span>
