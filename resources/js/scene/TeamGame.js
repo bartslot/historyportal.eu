@@ -95,13 +95,20 @@ export function formatClock (seconds) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 }
 
-/** The config as the engine reads it: every list a list, every number a number. */
+/** An http(s) URL or a path on this site; anything else (javascript:, data:, //host) is ''. */
+export function safeImage (url) {
+  const s = typeof url === 'string' ? url.trim() : ''
+  return /^https?:\/\/\S+$/i.test(s) || (s.startsWith('/') && !s.startsWith('//')) ? s : ''
+}
+
+/** The config as the engine reads it: every list a list, every number a number, every image safe. */
 export function readConfig (raw = {}) {
   const list = (v) => (Array.isArray(v) ? v : [])
   const mode = ['budget', 'choose', 'discuss'].includes(raw.mode) ? raw.mode : 'budget'
   return {
     ...raw,
     mode,
+    map: safeImage(raw.map),
     roles: list(raw.roles).filter(Boolean),
     teams: clampTeams(raw.teams ?? 4),
     minutes: Math.max(0, Math.min(30, Number(raw.minutes) || 0)),
@@ -109,9 +116,9 @@ export function readConfig (raw = {}) {
     fixed: list(raw.fixed),
     items: list(raw.items),
     cards: list(raw.cards),
-    options: list(raw.options).slice(0, LETTERS.length),
+    options: list(raw.options).slice(0, LETTERS.length).map(o => ({ ...o, image: safeImage(o?.image) })),
     prompts: list(raw.prompts).filter(Boolean),
-    evidence: list(raw.evidence).filter(e => e?.image || e?.caption),
+    evidence: list(raw.evidence).map(e => ({ ...e, image: safeImage(e?.image) })).filter(e => e.image || e.caption),
     answer: Number.isInteger(raw.answer) ? raw.answer : null,
   }
 }
@@ -231,6 +238,10 @@ export class TeamGame {
     const clock = this.host.querySelector('[data-team-clock]')
     if (!clock) return
     clock.textContent = this._clockText()
+    // At zero the clock stops by itself, so its button must say Resume, not Pause. In place, not
+    // a redraw: a redraw would scroll the class back to the top.
+    const pause = this.host.querySelector('[data-team-pause]')
+    if (pause) pause.textContent = this._running ? t('Pause') : t('Resume')
   }
 
   _clockText () { return this._remaining > 0 ? formatClock(this._remaining) : t('Time is up') }
@@ -242,8 +253,10 @@ export class TeamGame {
     clock.dataset.teamClock = ''
     clock.setAttribute('role', 'timer')
     wrap.appendChild(clock)
+    const pause = button(this._running ? t('Pause') : t('Resume'), 'btn-sm btn-ghost', () => this._pauseClock())
+    pause.dataset.teamPause = ''
     append(wrap,
-      button(this._running ? t('Pause') : t('Resume'), 'btn-sm btn-ghost', () => this._pauseClock()),
+      pause,
       button(t('+1 minute'), 'btn-sm btn-ghost', () => this._addMinute()))
     return wrap
   }

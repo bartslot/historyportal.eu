@@ -60,6 +60,17 @@ describe('team game rules', () => {
     expect([formatClock(300), formatClock(61), formatClock(-4)]).toEqual(['5:00', '1:01', '0:00'])
   })
 
+  it('keeps only http(s) and site-path images', () => {
+    const cfg = readConfig({
+      map: 'javascript:alert(1)',
+      options: [{ image: 'https://example.org/a.png' }, { image: '//evil.example/b.png' }, { image: 'data:image/png;base64,x' }],
+      evidence: [{ image: '/storage/c.png', caption: 'C' }, { image: 'javascript:x' }],
+    })
+    expect(cfg.map).toBe('')
+    expect(cfg.options.map(o => o.image)).toEqual(['https://example.org/a.png', '', ''])
+    expect(cfg.evidence).toEqual([{ image: '/storage/c.png', caption: 'C' }])
+  })
+
   it('reads a broken config as a safe one', () => {
     const cfg = readConfig({ mode: 'poll', items: 'nope', options: [{}, {}, {}, {}, {}], answer: '1' })
     expect(cfg.mode).toBe('budget')
@@ -135,5 +146,13 @@ describe('TeamGame on the class screen', () => {
     expect(host.querySelector('[data-team-clock]').textContent).toBe('1:57')
     click(host, 'Close the discussion')
     expect(host.textContent).toContain('Welke woorden?')
+  })
+
+  it('says Resume once the time is up', () => {
+    vi.useFakeTimers()
+    const { host } = mount({ mode: 'discuss', minutes: 1, question: 'Klopt dat?' })
+    vi.advanceTimersByTime(60_000)
+    expect(host.querySelector('[data-team-clock]').textContent).toBe('Time is up')
+    expect(host.querySelector('[data-team-pause]').textContent).toBe('Resume')
   })
 })
