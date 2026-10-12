@@ -155,9 +155,8 @@ final class SceneDialogue
                 ['provider' => $provider, 'voice' => $voice] = GenerateSceneAudio::narratorVoice($scene, $spoken);
                 $speed = (float) ($scene->lesson->narrator?->voice_speed ?? 1.0);
             } else {
-                $voice = (string) ($cast[$line['speaker']]['voice'][$lang]
-                    ?? throw new InvalidArgumentException("Cast '{$line['speaker']}' has no {$lang} voice."));
-                $provider = 'azure';
+                ['provider' => $provider, 'voice' => $voice] = self::castVoice((string) ($cast[$line['speaker']]['voice'][$lang]
+                    ?? throw new InvalidArgumentException("Cast '{$line['speaker']}' has no {$lang} voice.")));
                 $speed = 1.0;
             }
 
@@ -165,6 +164,10 @@ final class SceneDialogue
             if (! $disk->exists($cached)) {
                 $audio = $this->tts->generateAudioRaw($spoken, $voice, $speed, $provider)
                     ?? throw new RuntimeException("No audio for line {$i} ({$line['speaker']}, {$voice}).");
+                // The provider chain falls through silently; a cast line in someone else's voice is wrong.
+                if ($line['speaker'] !== 'narrator' && $this->tts->lastProvider() !== $provider) {
+                    throw new RuntimeException("Line {$i} ({$line['speaker']}) came from ".($this->tts->lastProvider() ?? 'nothing').", not {$provider}.");
+                }
                 $disk->put($cached, $audio);
             }
             $clips[] = $disk->path($cached);
@@ -186,6 +189,18 @@ final class SceneDialogue
         ]);
 
         return $durations;
+    }
+
+    /**
+     * A cast voice: 'elevenlabs:<voice id>' for the flagship cast, anything else is an Azure voice name.
+     *
+     * @return array{provider: string, voice: string}
+     */
+    public static function castVoice(string $voice): array
+    {
+        return str_starts_with($voice, 'elevenlabs:')
+            ? ['provider' => 'elevenlabs', 'voice' => substr($voice, strlen('elevenlabs:'))]
+            : ['provider' => 'azure', 'voice' => $voice];
     }
 
     private static function probe(string $file): float
