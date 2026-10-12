@@ -155,9 +155,46 @@ class DemoLessonLanguageTest extends TestCase
         $request->headers->set('Accept-Language', 'nl-NL,nl;q=0.9');
 
         $this->assertSame(
-            'Abel Tasman, and the two voyages that mapped the south',
+            config('demo.lesson_goal'),
             DemoLesson::goal($request),
             'the hero typed a Dutch goal over an English lesson',
         );
+    }
+
+    public function test_the_page_language_beats_the_browser(): void
+    {
+        // 2026-10-13: Bart, signed in with Dutch as his language on an English browser, got a Dutch
+        // page with an English lesson in the hero. The hero read the browser; the page read his account.
+        $this->seedCanon();
+        app()->setLocale('nl');
+
+        $lesson = $this->visit(['Accept-Language' => 'en-GB,en;q=0.9']);
+
+        $this->assertSame('nl', $lesson?->language);
+    }
+
+    public function test_the_learning_goal_is_a_curriculum_topic_never_the_lesson_title(): void
+    {
+        // Bart: "Het leerdoel is niet de titel van de les." The teacher types what the class has to
+        // learn (De VOC en ontdekkingsreizen); the lesson that answers it is Abel Tasman.
+        $this->seedCanon();
+        $request = \Illuminate\Http\Request::create('/', 'GET');
+        $request->headers->set('Accept-Language', 'nl-NL,nl;q=0.9');
+        DemoLesson::forget();
+
+        $this->assertSame('De VOC en ontdekkingsreizen', DemoLesson::goal($request));
+        $this->assertNotSame(DemoLesson::resolve($request)?->title, DemoLesson::goal($request));
+    }
+
+    public function test_a_fallback_lesson_types_its_own_goal_not_its_title(): void
+    {
+        // The configured English lesson had a failed scene, so the Batavian Republic won, and the hero
+        // typed "The Batavian Republic: A Quest for Liberty" as if that were a learning goal.
+        $this->lesson('The Batavian Republic: A Quest for Liberty', 'en');
+        $request = \Illuminate\Http\Request::create('/', 'GET');
+        $request->headers->set('Accept-Language', 'en-GB,en;q=0.9');
+        DemoLesson::forget();
+
+        $this->assertSame('The first constitution of the Netherlands', DemoLesson::goal($request));
     }
 }
