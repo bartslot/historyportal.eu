@@ -1,6 +1,10 @@
 import { filterMarkup, layerFilterId } from './layer-filters.js'
 import { applyAmbient, trackStage } from './ambient.js'
 import { fitToPlate, plateAspect } from './plate-box.js'
+import { cameraSpec, cameraPose, cameraFrame, cameraEntry, entryLingerMs, ENTRY_MS, previewCycleS, registerCameraTuner } from './camera.js'
+import { EASE } from '../easing.js'
+
+export { entryLingerMs }
 /**
  * ParallaxScene — multiplane webcomic shot: N depth-sorted layers (E3c).
  *
@@ -169,7 +173,8 @@ export class ParallaxScene {
    * letterboxed box (plate-box.js) on a `matte` colour, and the camera holds still. On a portrait
    * stage that box is cover-fitted around the figures in `subject` (the scene's full layer list) instead.
    */
-  show ({ bgUrl = null, heroUrl = null, layers = null, motion = null, dof = null, fit = 'cover', matte = null, subject = null } = {}) {
+  show ({ bgUrl = null, heroUrl = null, layers = null, motion = null, dof = null, fit = 'cover', matte = null, subject = null,
+    camera = null, entry = null, loop = false, onCameraFrame = null } = {}) {
     // Classic form requires a background — a hero floating on nothing is never intended.
     const specs = Array.isArray(layers) && layers.length
       ? layers.filter(l => l && l.url)
@@ -182,15 +187,19 @@ export class ParallaxScene {
     if (!specs.length) return
 
     injectStyles()
-    this.destroy()
+    // A panel that slides, wipes or dissolves in does so OVER the one before it.
+    this.destroy(entryLingerMs(entry))
     const contain = fit === 'contain'
     if (motion) this._motion = { panX: 0, panY: 0, zoom: 1, ...motion }
     if (contain) this._motion = { panX: 0, panY: 0, zoom: 1 }
+    // The shot's own camera wins over the Ken Burns motion (and over "Whole image" holding still):
+    // a teacher set it on purpose. Reduced motion holds the camera still.
+    this._camera = prefersReducedMotion() ? null : cameraSpec(camera)
+    if (this._camera) registerCameraTuner()
 
     const root = document.createElement('div')
     root.className = 'px-scene'
     root.style.cssText = 'position:absolute;inset:0;overflow:hidden;opacity:0;'
-      + `transition:opacity ${FADE_IN_MS}ms ease-in-out;`
     // The planes' box: the whole stage, or (contain) the plate's letterboxed box on the matte.
     const plate = contain ? document.createElement('div') : root
     if (contain) {
@@ -213,7 +222,9 @@ export class ParallaxScene {
       // Free-positioned figures apply their own scale on the img, so the plane's baseScale is 1
       // (parallax pan/zoom only) — otherwise the user scale would be applied twice.
       const positioned = spec.kind === 'figure' && Number.isFinite(spec.x) && Number.isFinite(spec.y)
-      return { el, depth: spec.depth ?? 1, baseScale: positioned ? 1 : (spec.scale ?? 1) }
+      // A cover plane is the stage plus its bleed on each side; the camera speaks % of the STAGE.
+      const sizeRatio = 1 + 2 * (el.__bleed ?? 0) / 100
+      return { el, depth: spec.depth ?? 1, baseScale: positioned ? 1 : (spec.scale ?? 1), sizeRatio }
     })
     // Debug/back-compat aliases: first cover plane + first figure plane.
     this._bgLayer = this._planes.find(p => p.el.classList.contains('px-layer-bg'))?.el ?? null
@@ -222,11 +233,62 @@ export class ParallaxScene {
     this.host.appendChild(root)
     this._root = root
     this._stageObserver = trackStage(root)
-    this.update(0)
-
-    // Fade in on the next frame so the opacity transition actually runs.
-    requestAnimationFrame(() => { if (this._root) this._root.style.opacity = '1' })
+    this._onCameraFrame = onCameraFrame
+    if (this._camera) this._applyPose(cameraPose(this._camera, 0))
+    else this.update(0)
+    this._enter(root, entry)
+    if (this._camera) this._runCamera(loop)
     window.__parallax = this
+  }
+
+  /**
+   * How the panel comes in. fade (the default, today's look) · cut · slide (a page turn from the
+   * right, decelerating) · reveal (a gutter wipe left to right) · match (a dissolve over the panel
+   * before, for a match-cut on shape). Reduced motion keeps only fades and cuts.
+   */
+  _enter (root, entry) {
+    let e = cameraEntry(entry)
+    if (prefersReducedMotion() && (e === 'slide' || e === 'reveal')) e = 'fade'
+    const ms = ENTRY_MS[e]
+    if (e === 'cut' || !ms) { root.style.opacity = '1'; return }
+    if (e === 'fade' || e === 'match') {
+      root.style.transition = `opacity ${ms}ms ${e === 'match' ? EASE.move : 'ease-in-out'}`
+      // On the next frame, so the transition actually runs.
+      requestAnimationFrame(() => { if (this._root === root) root.style.opacity = '1' })
+      return
+    }
+    root.style.opacity = '1'
+    if (typeof root.animate !== 'function') return
+    const frames = e === 'slide'
+      ? [{ transform: 'translateX(100%)' }, { transform: 'translateX(0)' }]
+      : [{ clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0 0 0)' }]
+    root.animate(frames, { duration: ms, easing: e === 'slide' ? EASE.enter : EASE.move })
+  }
+
+  /** Play the shot's camera on the wall clock, every frame, until the shot goes. */
+  _runCamera (loop) {
+    const start = performance.now()
+    const cycle = previewCycleS(this._camera)
+    const tick = (now) => {
+      if (!this._root || !this._camera) return
+      let t = (now - start) / 1000
+      if (loop && cycle > 0) t %= cycle
+      this._applyPose(cameraPose(this._camera, t))
+      this._cameraRaf = requestAnimationFrame(tick)
+    }
+    this._cameraRaf = requestAnimationFrame(tick)
+  }
+
+  _applyPose (pose) {
+    for (const plane of this._planes) {
+      const f = cameraFrame(pose, plane.depth)
+      applyTransform(plane.el, {
+        translateX: f.translateX / plane.sizeRatio,
+        translateY: f.translateY / plane.sizeRatio,
+        scale: f.scale * plane.baseScale,
+      })
+    }
+    this._onCameraFrame?.((depth) => cameraFrame(pose, depth))
   }
 
   /** @param {PlaneSpec} spec */
@@ -243,9 +305,11 @@ export class ParallaxScene {
     if (kind === 'cover') {
       // Bleed grows with depth: a foreground plane pans depth× as far. A still camera needs none,
       // and any bleed there only enlarges the picture past its own framing.
-      const bleed = isStill(this._motion) ? 0 : LAYER_BLEED_PCT * Math.max(1, depth)
+      // A shot camera needs the same headroom (its amplitudes stay inside it, see camera.js).
+      const bleed = isStill(this._motion) && !this._camera ? 0 : LAYER_BLEED_PCT * Math.max(1, depth)
       layer.className = 'px-layer px-layer-bg'
       layer.style.cssText = `position:absolute;inset:-${bleed}%;will-change:transform;`
+      layer.__bleed = bleed
       const img = document.createElement('img')
       img.src = url
       img.alt = ''
@@ -346,17 +410,28 @@ export class ParallaxScene {
   /** Drive all planes from playback progress 0..1 (called on every timeupdate tick). */
   update (progress) {
     if (!this._root) return
+    // A shot with its own camera runs on its own clock (_runCamera); narration progress is ignored.
+    if (this._camera) return
     for (const plane of this._planes) {
       applyTransform(plane.el, computePlaneTransform(progress, plane.depth, this._motion, plane.baseScale))
     }
   }
 
-  /** Remove all layer DOM. Safe to call twice. */
-  destroy () {
+  /**
+   * Remove all layer DOM. Safe to call twice. `lingerMs` keeps the old picture on screen that long
+   * (under the next panel's slide, wipe or dissolve) before it goes.
+   */
+  destroy (lingerMs = 0) {
+    if (this._cameraRaf) cancelAnimationFrame(this._cameraRaf)
+    this._cameraRaf = 0
+    this._camera = null
+    this._onCameraFrame = null
     this._stageObserver?.disconnect()
     this._stageObserver = null
     this._root?.querySelector('.px-plate')?.__plateObserver?.disconnect()
-    if (this._root) this._root.remove()
+    const old = this._root
+    if (old && lingerMs > 0) setTimeout(() => old.remove(), lingerMs)
+    else if (old) old.remove()
     this._root = null
     this._bgLayer = null
     this._heroLayer = null
@@ -377,7 +452,11 @@ function ambientWrap (img, spec, index) {
   if (spec.kind === 'figure' && Number.isFinite(spec.x) && Number.isFinite(spec.y)) {
     const s = Number.isFinite(spec.scale) ? spec.scale : 1
     wrap.style.transformOrigin = `${spec.x}% ${spec.y + ((spec.height ?? 40) * s) / 2}%`
+    // The picture's own scale lives in its transform; a swell twin is offset by the SCALED width.
+    wrap.style.setProperty('--amb-scale', String(s))
   }
+  // A full backdrop rolls about its middle and scales past its edges (ambient.js amb-roll).
+  if ((spec.kind ?? 'cover') === 'cover') wrap.dataset.ambPlate = ''
   wrap.appendChild(img)
   applyAmbient(wrap, spec, index)
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { applyAmbient, ambientSpec } from '../ambient.js'
+import { applyAmbient, ambientSpec, AMBIENT_MODES, PERIOD_S, AMP, flashGapS, flashKeyframes, FLASH_MS } from '../ambient.js'
 import { ParallaxScene } from '../ParallaxScene.js'
 import { ArtworkOverlay } from '../ArtworkOverlay.js'
 
@@ -96,5 +96,110 @@ describe('both renderers use it', () => {
     overlay.setLayerProp(5, 'ambient', 'bob')
     expect(host.querySelector('[data-layer-id="art_5"]')).toBe(node)
     expect(wrap.classList.contains('amb-bob')).toBe(true)
+  })
+})
+
+// The web-comic sea (Tasman, 2026-10-13): nine more modes in the same vocabulary.
+describe('world motion modes', () => {
+  const NEW = ['swell', 'roll', 'billow', 'rain', 'flash', 'spray', 'flicker', 'rise', 'oars']
+
+  it('knows every new mode, after the old ones, in the order the server lists them', () => {
+    expect(AMBIENT_MODES).toEqual(['none', 'drift', 'breeze', 'bob', 'flutter', ...NEW])
+  })
+
+  it('gives every new mode a class, a period at speed 1, and the shared clamps', () => {
+    for (const mode of NEW) {
+      const el = document.createElement('div')
+      expect(applyAmbient(el, { ambient: mode, ambient_speed: 2, ambient_amount: 5 })).toBe(true)
+      expect(el.classList.contains(`amb-${mode}`)).toBe(true)
+      expect(el.style.getPropertyValue('--amb-amount')).toBe('2')                 // amount max 2
+      expect(parseFloat(el.style.getPropertyValue('--amb-dur'))).toBeCloseTo(PERIOD_S[mode] / 2, 3)
+      applyAmbient(el, { ambient: 'none' })   // stop a flash timer
+    }
+  })
+
+  it('has a keyframe rule for every CSS-played mode, and rain draws its own streaks', () => {
+    applyAmbient(document.createElement('div'), { ambient: 'rain' })
+    const css = document.getElementById('amb-styles').textContent
+    for (const kf of ['amb-swell', 'amb-swell-scroll', 'amb-roll', 'amb-billow', 'amb-rain-far', 'amb-rain-near', 'amb-spray', 'amb-flicker', 'amb-rise', 'amb-oars']) {
+      expect(css).toContain(`@keyframes ${kf} `)
+    }
+    expect(css).toMatch(/\.amb-rain::before[^}]*data:image\/svg\+xml/s)
+    // The scroll and the rain are the only linear motion: a constant rate is the physics.
+    expect(css).toMatch(/amb-swell-scroll [^;]* linear infinite/)
+  })
+
+  it('swell adds a twin of the picture for a seamless scroll, and removes it when the mode changes', () => {
+    const el = document.createElement('div')
+    const img = document.createElement('img')
+    img.src = 'sea.png'
+    el.appendChild(img)
+
+    applyAmbient(el, { ambient: 'swell' })
+    const twin = el.querySelector('img.amb-twin')
+    expect(twin).not.toBeNull()
+    expect(twin.getAttribute('aria-hidden')).toBe('true')
+    expect(twin.style.position).toBe('absolute')   // laid over the in-flow original
+
+    applyAmbient(el, { ambient: 'swell' })        // re-applying never stacks twins
+    expect(el.querySelectorAll('img.amb-twin')).toHaveLength(1)
+
+    applyAmbient(el, { ambient: 'roll' })
+    expect(el.querySelector('img.amb-twin')).toBeNull()
+  })
+
+  it('flash waits a random gap of 0.4x to 1.6x the period', () => {
+    expect(flashGapS(10, () => 0)).toBe(4)
+    expect(flashGapS(10, () => 1)).toBe(16)
+    expect(flashGapS(10, () => 0.5)).toBe(10)
+  })
+
+  it('a flash is two pulses that end where they started, scaled by amount', () => {
+    const kf = flashKeyframes(1)
+    expect(kf[0].filter).toBe('brightness(1)')
+    expect(kf.at(-1).filter).toBe('brightness(1)')
+    const peaks = kf.map(k => parseFloat(k.filter.match(/[\d.]+/)[0]))
+    expect(Math.max(...peaks)).toBeCloseTo(1 + AMP.flashPeak, 3)
+    expect(flashKeyframes(0).every(k => k.filter === 'brightness(1)')).toBe(true)
+    // Two strikes inside FLASH_MS: under three flashes a second.
+    expect(FLASH_MS).toBeLessThanOrEqual(1000)
+  })
+
+  it('flash schedules strikes and stops them when the mode changes', () => {
+    vi.useFakeTimers()
+    const el = document.createElement('div')
+    document.body.appendChild(el)
+    el.animate = vi.fn(() => ({ cancel: vi.fn() }))
+
+    vi.spyOn(Math, 'random').mockReturnValue(0.5)              // every gap = the period
+    applyAmbient(el, { ambient: 'flash', ambient_speed: 3 })   // 3s period
+    vi.advanceTimersByTime(3100)
+    expect(el.animate).toHaveBeenCalledTimes(1)
+    vi.advanceTimersByTime(3000)
+    expect(el.animate).toHaveBeenCalledTimes(2)
+
+    applyAmbient(el, { ambient: 'none' })
+    vi.advanceTimersByTime(60000)
+    expect(el.animate).toHaveBeenCalledTimes(2)
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  it('every new mode stays still under prefers-reduced-motion', () => {
+    stubReducedMotion(true)
+    for (const mode of NEW) {
+      const el = document.createElement('div')
+      expect(applyAmbient(el, { ambient: mode })).toBe(false)
+      expect(el.className).toBe('')
+    }
+  })
+
+  it('a rolling backdrop is marked as a plate, so it rolls about its middle and hides its edges', () => {
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    new ParallaxScene(host).show({ layers: [{ url: 'deck.png', kind: 'cover', ambient: 'roll' }] })
+    const wrap = host.querySelector('.px-ambient')
+    expect(wrap.classList.contains('amb-roll')).toBe(true)
+    expect(wrap.hasAttribute('data-amb-plate')).toBe(true)
   })
 })

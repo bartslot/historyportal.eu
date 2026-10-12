@@ -517,6 +517,31 @@ export class ArtworkOverlay {
   }
 
   /**
+   * The shot camera (camera.js), on the figures: `frameFor(depth)` gives a plane's translate (% of
+   * the stage) and its scale about the stage centre — the same frame ParallaxScene puts on the
+   * backdrop, so a figure stays on its spot of the plate through a push, pan or shake. A scale
+   * about the stage centre is the node's own scale plus a move of its centre by (centre - middle)
+   * x (scale - 1). null puts every layer back at rest.
+   */
+  setCamera(frameFor) {
+    const rect = this.host.getBoundingClientRect()
+    for (const item of this._layers) {
+      const el = this.host.querySelector(`[data-layer-id="${artObjId(item.asset_id)}"]`)
+      if (!el || el === this._dragNode) continue   // never fight the layer being dragged
+      if (!frameFor) {
+        el.style.transform = this._transform(item)
+        continue
+      }
+      const f = frameFor(item.depth)
+      const px = (n) => Math.round(n * 100) / 100
+      const dx = px((f.translateX / 100) * rect.width + ((item.x - 50) / 100) * rect.width * (f.scale - 1))
+      const dy = px((f.translateY / 100) * rect.height + ((item.y - 50) / 100) * rect.height * (f.scale - 1))
+      el.style.transform = this._transform(item, dx, dy) + (f.scale !== 1 ? ` scale(${f.scale})` : '')
+      this._syncChrome(item)
+    }
+  }
+
+  /**
    * Run every layer's entrance, as configured in the Animate tab.
    *
    * Called when a scene starts — by the player on playback, and by the editor when the teacher
@@ -822,7 +847,8 @@ export class ArtworkOverlay {
     // rotation, parallax, entrance) instead of replacing it. Origin bottom-centre = the image's base.
     const amb = document.createElement('div')
     amb.className = 'art-ambient'
-    amb.style.cssText = 'height:100%; transform-origin:50% 100%; pointer-events:none;'
+    // Positioned so a swell's twin picture and the rain's streaks lay out over this box.
+    amb.style.cssText = 'position:relative; height:100%; transform-origin:50% 100%; pointer-events:none;'
     amb.appendChild(img)
     applyAmbient(amb, item, this._layers.indexOf(item))
     node.appendChild(amb)
