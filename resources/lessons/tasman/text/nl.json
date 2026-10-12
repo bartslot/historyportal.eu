@@ -1,0 +1,241 @@
+{
+ "lang": "nl",
+ "title": "Abel Tasman: De reis naar het onbekende",
+ "scenes": {
+  "S00": {
+   "title": "Wat betekent dat?",
+   "narrator": "",
+   "date_ui": "Golden Bay, 18 december 1642.",
+   "lines": {
+    "S00-B.1": "Wat betekent dat?"
+   }
+  },
+  "S01": {
+   "title": "Een mast boven je hoofd",
+   "narrator": "Die mast moet hij straks in. Batavia, augustus 1642, nu Jakarta. Twee schepen vertrekken naar kusten die op Europese kaarten ontbreken. Waarom riskeer je je leven voor het onbekende, als daar al mensen wonen?",
+   "date_ui": "",
+   "lines": {
+    "S01-A.1": "Moet ik daarboven klimmen als alles beweegt?",
+    "S01-A.2": "Alleen als de mast niet eerst naar jou toe komt.",
+    "S01-B.1": "Wat sjouwen we voor de VOC?",
+    "S01-B.2": "Peper en kruidnagels.",
+    "S01-B.3": "De Verenigde Oost-Indische Compagnie verdient eraan.",
+    "S01-C.1": "Zo ver varen voor iets op je eten?",
+    "S01-C.2": "Handelsbedrijf, jongen, geen gaarkeuken."
+   }
+  },
+  "S02": {
+   "title": "Het witte vlak",
+   "narrator": "Een vinger stopt waar de kaart wit wordt. Antonio van Diemen, gouverneur-generaal, leidt namens de VOC het bestuur. Met de Raad van Indië bepaalt hij Tasmans opdracht.",
+   "date_ui": "",
+   "lines": {
+    "S02-A.1": "De VOC mag forten bouwen, soldaten inhuren en oorlog voeren.",
+    "S02-A.2": "Welke opdracht brengt ons hier?",
+    "S02-A.3": "Nieuwe handel zoeken.",
+    "S02-A.4": "En misschien een zeeroute naar Chili.",
+    "S02-B.1": "Deze kust kennen we gedeeltelijk.",
+    "S02-B.2": "Papier zegt niet of we welkom zijn.",
+    "S02-C.1": "U krijgt de leiding.",
+    "S02-C.2": "En de mannen die ik terug moet brengen."
+   }
+  },
+  "S03": {
+   "title": "Geen haven op papier",
+   "narrator": "Visschers route houdt op zekerheid te geven. Hij is Tasmans belangrijkste navigator. Buiten wachten twee schepen; binnen moet hij van een opdracht een vaarweg maken.",
+   "date_ui": "",
+   "lines": {
+    "S03-A.1": "Kusten onderzoeken, handel zoeken, waarnemingen vastleggen.",
+    "S03-A.2": "En mijn mannen veilig leiden.",
+    "S03-B.1": "Eerst Mauritius.",
+    "S03-B.2": "Daarna geen bekende haven meer.",
+    "S03-B.3": "Toch naar het zuiden, dan het oosten."
+   }
+  },
+  "S04": {
+   "title": "Wat blijft achter?",
+   "narrator": "De laatste tros gaat los. 14 augustus 1642. De kade schuift weg. De jongen duwt nog één vat omhoog. Daarvoor is hij meegegaan.",
+   "date_ui": "",
+   "lines": {
+    "S04-A.1": "Duwen, dat vat heeft geen benen!",
+    "S04-A.2": "Die van mij kosten straks extra.",
+    "S04-A.3": "Met mijn loon kan ik thuis helpen.",
+    "S04-B.1": "Honderdtien mannen gaan mee.",
+    "S04-B.2": "Voedsel voor twaalf maanden is voorgeschreven.",
+    "S04-B.3": "Rijst voor achttien.",
+    "S04-B.4": "Nu klinkt die mast ineens minder erg.",
+    "S04-C.1": "Kom ik ooit weer thuis?",
+    "S04-C.2": "Houd eerst dat touw vast.",
+    "S04-C.3": "Meer kan ik je niet beloven."
+   }
+  },
+  "S05": {
+   "title": "De laatste veilige haven",
+   "narrator": "Hier kunnen ze nog iets herstellen. Mauritius, vanaf 5 september. Ruim een maand repareren en bevoorraden. Dan wacht de zuidelijke verkenning, voorbij de laatste bekende tussenstop.",
+   "date_ui": "",
+   "lines": {
+    "S05-B.1": "Water en brandhout erbij.",
+    "S05-B.2": "Op zee is geen winkel om de hoek.",
+    "S05-B.3": "Hebben ze hier ook iets tegen heimwee?",
+    "S05-C.1": "Acht oktober, we vertrekken.",
+    "S05-C.2": "Waar is de volgende haven?",
+    "S05-C.3": "Daar hebben we nog geen naam voor."
+   }
+  },
+  "S06": {
+   "title": "Het stipje dat niet twijfelt",
+   "narrator": "Het stipje staat keurig op de kaart. Maar staat het goed? Oktober, na Mauritius. Visscher rekent, zonder kust om zijn antwoord aan te toetsen.",
+   "date_ui": "",
+   "lines": {
+    "S06-B.1": "Hoe weet u waar we zijn?",
+    "S06-B.2": "Meten waar het kan, schatten waar het moet.",
+    "S06-B.3": "De zon helpt onze breedte bepalen.",
+    "S06-C.1": "En hoe ver naar het oosten of westen?",
+    "S06-C.2": "Lengte schatten we met koers en afstand.",
+    "S06-C.3": "Dus dat stipje kan verkeerd staan?",
+    "S06-C.4": "Het potlood twijfelt nooit.",
+    "S06-C.5": "Daarom moet ik dat wel doen."
+   }
+  },
+  "S07": {
+   "title": "Laat niet los",
+   "narrator": "Het andere schip verdwijnt. 24 oktober. Hagel en regen slaan over het dek. Tasman vreest dat ze deze storm niet overleven. De jongen moet blijven vasthouden.",
+   "date_ui": "",
+   "lines": {
+    "S07-A.1": "De Zeehaen is weg!",
+    "S07-A.2": "Uit zicht.",
+    "S07-A.3": "Blijf zoeken!",
+    "S07-B.1": "Allebei je handen!",
+    "S07-B.2": "Ik voel mijn vingers niet!",
+    "S07-B.3": "Kijk naar mij.",
+    "S07-B.4": "Ik laat niet los.",
+    "S07-C.1": "Als het zeil scheurt, hebben we dat nog?",
+    "S07-C.2": "Ja.",
+    "S07-C.3": "Jou hebben we maar één keer.",
+    "S07-D.1": "Daar!",
+    "S07-D.2": "De Zeehaen!"
+   }
+  },
+  "S08": {
+   "title": "Een stip verschuift",
+   "narrator": "Visscher haalt hun plaats van de kaart. 1 november: gemeten breedte wijkt af van de schatting. Daarna sneeuw en hagel. Op 6 november lijden de mannen zwaar onder de kou.",
+   "date_ui": "",
+   "lines": {
+    "S08-A.1": "Na al dat rekenen toch ergens anders?",
+    "S08-A.2": "Gemeten breedte, geschatte breedte.",
+    "S08-A.3": "Die verschillen.",
+    "S08-A.4": "Daarom meet ik opnieuw zodra het kan.",
+    "S08-B.1": "Wat als we nergens water vinden?",
+    "S08-B.2": "Dan telt ieder vat dat we zuinig gebruiken.",
+    "S08-B.3": "Ik wil naar huis.",
+    "S08-B.4": "Denkt niemand aan omkeren?",
+    "S08-B.5": "Morgen beslist de raad.",
+    "S08-B.6": "Vandaag eet jij."
+   }
+  },
+  "S09": {
+   "title": "Welke kant is veilig?",
+   "narrator": "Drie pijlen, geen zekerheid. 7 november: scheepsraad op de Heemskerck. Deze officieren beslissen samen over de koers. Het weer houdt de officieren van de Zeehaen weg.",
+   "date_ui": "",
+   "lines": {
+    "S09-A.1": "Kaart en globe spreken elkaar tegen over eilanden.",
+    "S09-A.2": "Waar moet ik mijn mannen dan heen sturen?",
+    "S09-A.3": "Weeg ook het weer en de mannen.",
+    "S09-B.1": "De Zeehaen moet ons besluit ook beoordelen.",
+    "S09-B.2": "Geen koers geeft zekerheid.",
+    "S09-C.1": "Verder of terug?",
+    "S09-C.2": "Eerst de risico's.",
+    "S09-C.3": "Wat geven we bij elke koers op?"
+   }
+  },
+  "S10": {
+   "title": "Land, maar waar zijn de mensen?",
+   "narrator": "Land! 24 november 1642: het huidige Tasmanië, waar voorouders van de Palawa wonen. Op 2 december onderzoeken mannen de kust. Sporen genoeg. Maar van wie?",
+   "date_ui": "",
+   "lines": {
+    "S10-A.1": "Land vooruit!",
+    "S10-A.2": "Echt land?",
+    "S10-A.3": "Zoek waar we veilig kunnen naderen.",
+    "S10-B.1": "Van Diemensland, naar onze gouverneur-generaal.",
+    "S10-B.2": "Hoe noemen de mensen hier het?",
+    "S10-C.1": "Die inkepingen zitten ver uit elkaar.",
+    "S10-C.2": "Hoe klimmen mensen hier?",
+    "S10-C.3": "We hebben niemand gezien.",
+    "S10-C.4": "Maar daar is rook."
+   }
+  },
+  "S11": {
+   "title": "Wat je kunt tekenen",
+   "narrator": "De kust krijgt een lijn; de mensen nog geen gezicht. 13 december: hoog land bij het huidige Nieuw-Zeeland, voor het eerst door Europeanen vastgelegd. Gilsemans tekent op de Zeehaen.",
+   "date_ui": "",
+   "lines": {
+    "S11-A.1": "Kunt u tekenen waar we kunnen landen?",
+    "S11-A.2": "Eerst wat ik zie.",
+    "S11-A.3": "Niet wat ik hoop.",
+    "S11-B.1": "We moeten deze kust kunnen terugvinden.",
+    "S11-B.2": "Een verkeerde lijn stuurt iemand verkeerd.",
+    "S11-B.3": "Zien de mensen hier ons eerder dan wij hen?"
+   }
+  },
+  "S12": {
+   "title": "Vanaf de andere kust",
+   "narrator": "Vanaf de oever zijn juist die schepen vreemd. Mohua, nu ook Golden Bay, woongebied van Ngāti Tūmatakōkiri. Op 18 december gaan twee waka kijken. Hun roep kan een rituele uitdaging zijn. De Nederlanders begrijpen hem niet.",
+   "date_ui": "",
+   "lines": {}
+  },
+  "S13": {
+   "title": "Het antwoord zonder begrip",
+   "narrator": "Dat geluid weer. Terug bij het begin: avond, 18 december. De waka blijven bij de schepen. Niemand aan dek begrijpt de woorden. Toch komt er antwoord.",
+   "date_ui": "",
+   "lines": {
+    "S13-A.1": "Luister.",
+    "S13-A.2": "Wat betekent dat?",
+    "S13-B.1": "Dat weten we niet.",
+    "S13-B.2": "Waarom antwoorden we dan?",
+    "S13-B.3": "Blijf hier.",
+    "S13-B.4": "Niemand gaat zomaar naar die boten.",
+    "S13-C.1": "Gezichten kan ik tekenen.",
+    "S13-C.2": "Wat zij denken niet."
+   }
+  },
+  "S14": {
+   "title": "De naam blijft",
+   "narrator": "De afstand tussen de boten krimpt. Ochtend, 19 december. Een kleine boot brengt een boodschap tussen de schepen. Waka komen dichterbij. De jongen kijkt toe.",
+   "date_ui": "",
+   "lines": {
+    "S14-A.1": "Die waka gaat recht op onze boot af!",
+    "S14-B.1": "Wat gebeurt daar?",
+    "S14-B.2": "Blijf bij me!",
+    "S14-D.1": "Ik schrijf deze plek op als Moordenaarsbaai.",
+    "S14-D.2": "Wat betekent dat?",
+    "S14-D.3": "Wat zouden de Māori deze dag noemen?"
+   }
+  },
+  "S15": {
+   "title": "De hand gaat open",
+   "narrator": "De jongen wacht tot het voedsel hem wordt aangereikt. Tasman landt deze reis niet in Nieuw-Zeeland. In januari bereiken de schepen Tonga, in februari Fiji.",
+   "date_ui": "",
+   "lines": {
+    "S15-A.1": "Voedsel en water, in ruil voor goederen.",
+    "S15-A.2": "Ik wacht tot ze het aangeven.",
+    "S15-B.1": "Rif vooruit!",
+    "S15-B.2": "Weg uit deze ondiepten.",
+    "S15-B.3": "Land in zicht is nog niet veilig.",
+    "S15-C.1": "Vijftien juni 1643, terug in Batavia.",
+    "S15-C.2": "Nu durf ik los te laten."
+   }
+  },
+  "S16": {
+   "title": "Wat past niet op de kaart?",
+   "narrator": "Het witte vlak krijgt kusten, maar niet alle antwoorden. Terug in Batavia bekijkt de VOC het verslag. De jongen ziet de kaart en kijkt opnieuw.",
+   "date_ui": "",
+   "lines": {
+    "S16-A.1": "U had die landen uitgebreider moeten onderzoeken.",
+    "S16-A.2": "Ook na wat er in de baai gebeurde?",
+    "S16-B.1": "Die kusten staan nu op onze kaart.",
+    "S16-B.2": "Staat erop wat de bewoners van ons vonden?",
+    "S16-C.1": "Welke kennis zie je?",
+    "S16-C.2": "Welke ontbreekt?"
+   }
+  }
+ }
+}

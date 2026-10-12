@@ -1,0 +1,603 @@
+{
+ "S00-A": {
+  "plate": "plates/golden_bay_dusk.png",
+  "figures": null,
+  "ships": [
+   "ships/waka_pair.png",
+   "ships/heemskerck_anchor_dusk.png"
+  ],
+  "camera": {
+   "ease": "inOut",
+   "move": "push",
+   "amount": 0.15,
+   "duration": 9
+  },
+  "entry": "reveal"
+ },
+ "S00-B": {
+  "plate": "plates/deck_dusk.png",
+  "figures": "figures/S00-B.png",
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "push",
+   "amount": 0.2,
+   "duration": 6
+  },
+  "entry": "cut"
+ },
+ "S01-A": {
+  "plate": "pilot/S01-A_batavia_roadstead_v1.png",
+  "figures": "figures/S01-A.png",
+  "ships": [
+   "ships/heemskerck_anchor_dusk.png"
+  ],
+  "camera": {
+   "ease": "inOut",
+   "move": "pull",
+   "amount": 0.2,
+   "duration": 10
+  },
+  "entry": "cut"
+ },
+ "S01-B": {
+  "plate": "plates/batavia_harbour_boat.png",
+  "figures": "figures/S01-B.png",
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "truck-r",
+   "amount": 0.1,
+   "duration": 7
+  },
+  "entry": "cut"
+ },
+ "S01-C": {
+  "plate": "plates/batavia_harbour_boat.png",
+  "figures": "figures/S01-C.png",
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "push",
+   "amount": 0.25,
+   "duration": 6
+  },
+  "entry": "cut"
+ },
+ "S02-A": {
+  "plate": "plates/voc_chamber.png",
+  "figures": "figures/S02-A.png",
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "hold"
+  },
+  "entry": "slide"
+ },
+ "S02-B": {
+  "plate": "plates/voc_chamber.png",
+  "figures": "figures/S02-B.png",
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "push",
+   "amount": 0.3,
+   "duration": 7
+  },
+  "entry": "cut"
+ },
+ "S02-C": {
+  "plate": "plates/voc_chamber.png",
+  "figures": "figures/S02-C.png",
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "tilt-up",
+   "amount": 0.1,
+   "duration": 6
+  },
+  "entry": "cut"
+ },
+ "S03-A": {
+  "plate": "plates/voc_chamber.png",
+  "figures": "figures/S03-A.png",
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "hold"
+  },
+  "entry": "cut"
+ },
+ "S03-B": {
+  "plate": "plates/voc_chamber.png",
+  "figures": "figures/S03-B.png",
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "push",
+   "amount": 0.2,
+   "duration": 7
+  },
+  "entry": "cut"
+ },
+ "S03-C": {
+  "plate": "plates/open_sea_day.png",
+  "figures": null,
+  "ships": [
+   "ships/heemskerck_side_sail.png",
+   "ships/zeehaen_side_sail.png"
+  ],
+  "camera": {
+   "ease": "inOut",
+   "move": "pan-r",
+   "amount": 0.15,
+   "duration": 9
+  },
+  "entry": "reveal"
+ },
+ "S04-A": {
+  "plate": "plates/deck_harbour.png",
+  "figures": "figures/S04-A.png",
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "tilt-down",
+   "amount": 0.1,
+   "duration": 6
+  },
+  "entry": "slide"
+ },
+ "S04-B": {
+  "plate": "plates/deck_harbour.png",
+  "figures": "figures/S04-B.png",
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "truck-l",
+   "amount": 0.1,
+   "duration": 7
+  },
+  "entry": "cut"
+ },
+ "S04-C": {
+  "plate": "plates/deck_harbour.png",
+  "figures": "figures/S04-C.png",
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "push",
+   "amount": 0.25,
+   "duration": 7
+  },
+  "entry": "cut"
+ },
+ "S05-A": {
+  "plate": "plates/mauritius_anchorage.png",
+  "figures": "figures/S05-A.png",
+  "ships": [
+   "ships/heemskerck_anchor_dusk.png"
+  ],
+  "camera": {
+   "ease": "inOut",
+   "move": "pull",
+   "amount": 0.2,
+   "duration": 9
+  },
+  "entry": "reveal"
+ },
+ "S05-B": {
+  "plate": "plates/mauritius_shore.png",
+  "figures": "figures/S05-B.png",
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "truck-r",
+   "amount": 0.1,
+   "duration": 7
+  },
+  "entry": "cut"
+ },
+ "S05-C": {
+  "plate": "plates/mauritius_anchorage.png",
+  "figures": "figures/S05-C.png",
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "push",
+   "amount": 0.2,
+   "duration": 8
+  },
+  "entry": "cut"
+ },
+ "S06-A": {
+  "plate": "plates/ocean_empty_wide.png",
+  "figures": null,
+  "ships": [
+   "ships/ships_pair_far.png"
+  ],
+  "camera": {
+   "ease": "inOut",
+   "move": "pan-r",
+   "amount": 0.1,
+   "duration": 10
+  },
+  "entry": "reveal"
+ },
+ "S06-B": {
+  "plate": "plates/deck_sea_day.png",
+  "figures": "figures/S06-B.png",
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "tilt-up",
+   "amount": 0.15,
+   "duration": 7
+  },
+  "entry": "cut"
+ },
+ "S06-C": {
+  "plate": "plates/cabin_chart.png",
+  "figures": "figures/S06-C.png",
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "push",
+   "amount": 0.3,
+   "duration": 7
+  },
+  "entry": "cut"
+ },
+ "S07-A": {
+  "plate": "plates/storm_deck.png",
+  "figures": "figures/S07-A.png",
+  "ships": [
+   "ships/heemskerck_storm.png"
+  ],
+  "camera": {
+   "ease": "inOut",
+   "move": "shake",
+   "amount": 0.6,
+   "duration": 6
+  },
+  "entry": "cut"
+ },
+ "S07-B": {
+  "plate": "plates/storm_deck.png",
+  "figures": "figures/S07-B.png",
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "shake",
+   "amount": 0.8,
+   "duration": 6
+  },
+  "entry": "cut"
+ },
+ "S07-C": {
+  "plate": "plates/storm_deck.png",
+  "figures": "figures/S07-C.png",
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "shake",
+   "amount": 0.4,
+   "duration": 6
+  },
+  "entry": "cut"
+ },
+ "S07-D": {
+  "plate": "plates/storm_morning_sea.png",
+  "figures": "figures/S07-D.png",
+  "ships": [
+   "ships/zeehaen_side_sail.png"
+  ],
+  "camera": {
+   "ease": "inOut",
+   "move": "pull",
+   "amount": 0.2,
+   "duration": 8
+  },
+  "entry": "reveal"
+ },
+ "S08-A": {
+  "plate": "plates/cabin_chart.png",
+  "figures": "figures/S08-A.png",
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "push",
+   "amount": 0.3,
+   "duration": 7
+  },
+  "entry": "cut"
+ },
+ "S08-B": {
+  "plate": "plates/tweendeck_night.png",
+  "figures": "figures/S08-B.png",
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "hold"
+  },
+  "entry": "cut"
+ },
+ "S09-A": {
+  "plate": "plates/cabin_chart.png",
+  "figures": "figures/S09-A.png",
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "push",
+   "amount": 0.15,
+   "duration": 8
+  },
+  "entry": "slide"
+ },
+ "S09-B": {
+  "plate": "plates/cabin_chart.png",
+  "figures": "figures/S09-B.png",
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "tilt-down",
+   "amount": 0.15,
+   "duration": 6
+  },
+  "entry": "cut"
+ },
+ "S09-C": {
+  "plate": "plates/deck_sea_day.png",
+  "figures": "figures/S09-C.png",
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "push",
+   "amount": 0.3,
+   "duration": 6
+  },
+  "entry": "cut"
+ },
+ "S10-A": {
+  "plate": "plates/deck_rail_coast.png",
+  "figures": "figures/S10-A.png",
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "tilt-up",
+   "amount": 0.2,
+   "duration": 6
+  },
+  "entry": "cut"
+ },
+ "S10-B": {
+  "plate": "plates/deck_rail_coast.png",
+  "figures": "figures/S10-B.png",
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "push",
+   "amount": 0.2,
+   "duration": 8
+  },
+  "entry": "cut"
+ },
+ "S10-C": {
+  "plate": "plates/vdl_forest.png",
+  "figures": "figures/S10-C.png",
+  "ships": [
+   "ships/sloep_rowing.png"
+  ],
+  "camera": {
+   "ease": "inOut",
+   "move": "tilt-up",
+   "amount": 0.3,
+   "duration": 8
+  },
+  "entry": "reveal"
+ },
+ "S11-A": {
+  "plate": "plates/nz_high_land_sea.png",
+  "figures": "figures/S11-A.png",
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "pull",
+   "amount": 0.25,
+   "duration": 10
+  },
+  "entry": "reveal"
+ },
+ "S11-B": {
+  "plate": "plates/nz_high_land_sea.png",
+  "figures": "figures/S11-B.png",
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "truck-l",
+   "amount": 0.1,
+   "duration": 7
+  },
+  "entry": "cut"
+ },
+ "S12-A": {
+  "plate": "plates/golden_bay_shore_view.png",
+  "figures": null,
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "push",
+   "amount": 0.2,
+   "duration": 9
+  },
+  "entry": "reveal"
+ },
+ "S12-B": {
+  "plate": "plates/golden_bay_beach.png",
+  "figures": null,
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "truck-r",
+   "amount": 0.1,
+   "duration": 8
+  },
+  "entry": "cut"
+ },
+ "S13-A": {
+  "plate": "plates/golden_bay_dusk.png",
+  "figures": "figures/S13-A.png",
+  "ships": [
+   "ships/waka_pair.png"
+  ],
+  "camera": {
+   "ease": "inOut",
+   "move": "hold"
+  },
+  "entry": "match"
+ },
+ "S13-B": {
+  "plate": "plates/deck_dusk.png",
+  "figures": "figures/S13-B.png",
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "push",
+   "amount": 0.15,
+   "duration": 7
+  },
+  "entry": "cut"
+ },
+ "S13-C": {
+  "plate": "plates/deck_dusk.png",
+  "figures": "figures/S13-C.png",
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "push",
+   "amount": 0.3,
+   "duration": 6
+  },
+  "entry": "cut"
+ },
+ "S14-A": {
+  "plate": "plates/golden_bay_morning.png",
+  "figures": null,
+  "ships": [
+   "ships/waka_pair.png",
+   "ships/sloep_rowing.png"
+  ],
+  "camera": {
+   "ease": "inOut",
+   "move": "hold"
+  },
+  "entry": "cut"
+ },
+ "S14-B": {
+  "plate": "plates/golden_bay_morning.png",
+  "figures": "figures/S14-B.png",
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "shake",
+   "amount": 0.3,
+   "duration": 2
+  },
+  "entry": "cut"
+ },
+ "S14-C": {
+  "plate": "plates/golden_bay_morning.png",
+  "figures": "figures/S14-C.png",
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "pull",
+   "amount": 0.3,
+   "duration": 10
+  },
+  "entry": "cut"
+ },
+ "S14-D": {
+  "plate": "plates/cabin_chart.png",
+  "figures": "figures/S14-D.png",
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "push",
+   "amount": 0.3,
+   "duration": 7
+  },
+  "entry": "cut"
+ },
+ "S15-A": {
+  "plate": "plates/tonga_lagoon.png",
+  "figures": "figures/S15-A.png",
+  "ships": [
+   "ships/tongan_canoes.png"
+  ],
+  "camera": {
+   "ease": "inOut",
+   "move": "truck-r",
+   "amount": 0.1,
+   "duration": 8
+  },
+  "entry": "reveal"
+ },
+ "S15-B": {
+  "plate": "plates/fiji_reef.png",
+  "figures": "figures/S15-B.png",
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "pan-r",
+   "amount": 0.15,
+   "duration": 8
+  },
+  "entry": "cut"
+ },
+ "S15-C": {
+  "plate": "plates/batavia_quay_return.png",
+  "figures": "figures/S15-C.png",
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "push",
+   "amount": 0.15,
+   "duration": 8
+  },
+  "entry": "match"
+ },
+ "S16-A": {
+  "plate": "plates/voc_chamber.png",
+  "figures": "figures/S16-A.png",
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "hold"
+  },
+  "entry": "slide"
+ },
+ "S16-B": {
+  "plate": "plates/cabin_chart.png",
+  "figures": "figures/S16-B.png",
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "push",
+   "amount": 0.25,
+   "duration": 7
+  },
+  "entry": "cut"
+ },
+ "S16-C": {
+  "plate": "plates/golden_bay_shore_view.png",
+  "figures": null,
+  "ships": [],
+  "camera": {
+   "ease": "inOut",
+   "move": "pull",
+   "amount": 0.2,
+   "duration": 10
+  },
+  "entry": "match"
+ }
+}
