@@ -112,6 +112,8 @@ rsync -az --delete $DRY --stats \
   --exclude='public/storage' \
   `# ^ the symlink to storage/app/public. Excluded, never deleted. See the header.` \
   --exclude='storage/' \
+  --exclude='public/flags' \
+  `# ^ gitignored flag PNGs + manifest, made on the server by timemap:sync-cliopatria-polities.` \
   --exclude='bootstrap/cache/' \
   `# ^ Laravel's compiled package/service manifests. Git tracks only the .gitignore in here, so` \
   `# --delete treats the compiled files as removed and takes them. They do regenerate on the next` \
