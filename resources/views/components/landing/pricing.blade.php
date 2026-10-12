@@ -4,6 +4,12 @@
     $defaultTerm = config('pricing.default_term');
     $tiers       = config('pricing.tiers');
     $finePrint   = config('pricing.fine_print');
+    $currency    = config('pricing.currency');
+    $locale      = app()->getLocale();
+    // The big number is printed without its symbol (the symbol sits in its own smaller span), so
+    // format the amount alone; the totals line carries the full localised currency string.
+    $amount      = fn (int $n) => \Illuminate\Support\Number::format($n, locale: $locale);
+    $money       = fn (int $n) => \Illuminate\Support\Number::currency($n, in: $currency, locale: $locale, precision: 0);
 @endphp
 
 <section id="pricing" data-reveal-section class="relative overflow-hidden border-t border-white/10 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 py-16 sm:py-24">
@@ -72,19 +78,19 @@
                             @foreach ($terms as $key => $term)
                                 <div x-show="term === '{{ $key }}'" x-cloak>
                                     <div class="flex items-baseline gap-2">
-                                        <span class="text-sm font-medium text-slate-400">$</span>
+                                        <span class="text-sm font-medium text-slate-400">€</span>
                                         <span @class([
                                             'font-history text-5xl tracking-tight',
                                             'lp-text-shimmer' => $tier['featured'],
                                             'text-white' => ! $tier['featured'],
-                                        ])>{{ $tier['prices'][$key]['per_year'] }}</span>
+                                        ])>{{ $amount($tier['prices'][$key]['per_year']) }}</span>
                                         <span class="text-sm text-slate-400">{{ __('/ year') }}</span>
                                     </div>
                                     <p class="mt-1 text-xs text-slate-500">
                                         @if ((string) $key === '1')
                                             {{ __('Billed annually') }}
                                         @else
-                                            {{ __(':total total over :years years', ['total' => '$'.$tier['prices'][$key]['total'], 'years' => $key]) }} · {{ __($term['save']) }}
+                                            {{ __(':total total over :years years', ['total' => $money($tier['prices'][$key]['total']), 'years' => $key]) }} · {{ __($term['save']) }}
                                         @endif
                                     </p>
                                 </div>
