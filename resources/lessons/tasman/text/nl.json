@@ -237,5 +237,165 @@
     "S16-C.2": "Welke ontbreekt?"
    }
   }
+ },
+ "games": {
+  "lading": {
+   "mode": "budget",
+   "title": "De lading",
+   "chapter": "De lading",
+   "minutes": 5,
+   "teams": 4,
+   "script": "Vorm teams van drie of vier en kies samen wat jullie meenemen. Water, eten en kompas gaan mee; wat past nog in jullie zestien laadpunten?",
+   "intro": "Water, eten en kompas gaan mee; wat past nog in jullie zestien laadpunten?",
+   "rules": "Kies samen minstens één voedselpakket. Elk pakket hoogstens één keer. Punten zijn spelwaarden, geen historische maten.",
+   "roles": [
+    "Voorlezer",
+    "Puntenteller",
+    "Risicozoeker",
+    "Woordvoerder"
+   ],
+   "capacity": 16,
+   "fixed": [
+    {
+     "name": "Watervaten",
+     "why": "Zonder drinkwater helpt geen kaart je verder.",
+     "cost": 3
+    },
+    {
+     "name": "Kompas",
+     "why": "Je vaarrichting bijhouden, maar het wijst geen veilige haven aan.",
+     "cost": 1
+    }
+   ],
+   "items": [
+    {
+     "name": "Rijst",
+     "why": "Veel eten meenemen of ruimte bewaren voor reparaties?",
+     "cost": 3
+    },
+    {
+     "name": "Hard scheepsbrood",
+     "why": "Een tweede voedselvoorraad of vertrouwen op alleen rijst?",
+     "cost": 2
+    },
+    {
+     "name": "Vleesvoorraad",
+     "why": "Ander eten meenemen of die twee punten aan touw besteden?",
+     "cost": 2
+    },
+    {
+     "name": "Reservezeilen",
+     "why": "Met gescheurd zeildoek verder of nu ruimte opofferen?",
+     "cost": 3
+    },
+    {
+     "name": "Reservetouw",
+     "why": "Een kapotte lijn herstellen of hopen dat alles heel blijft?",
+     "cost": 2
+    },
+    {
+     "name": "Reservehout",
+     "why": "Materiaal voor schadeherstel, maar zonder gereedschap schiet je weinig op.",
+     "cost": 3
+    },
+    {
+     "name": "Timmergereedschap",
+     "why": "Gereedschap kost weinig ruimte, maar welk reparatiemateriaal nemen jullie erbij?",
+     "cost": 1
+    },
+    {
+     "name": "Brandhout",
+     "why": "Hout voor het kookvuur of nog een voorraad voedsel?",
+     "cost": 2
+    },
+    {
+     "name": "Zeekaarten",
+     "why": "Onvolledige kaarten meenemen of die ruimte voor iets anders gebruiken?",
+     "cost": 1
+    },
+    {
+     "name": "Papier en inkt",
+     "why": "Nieuwe kusten vastleggen of alleen zorgen dat jullie zelf thuiskomen?",
+     "cost": 1
+    },
+    {
+     "name": "Stoffen als ruilwaar",
+     "why": "Mogelijk voedsel ruilen aan land, maar wat als niemand wil ruilen?",
+     "cost": 2
+    },
+    {
+     "name": "Metaal als ruilwaar",
+     "why": "Nog een ruilmiddel of vertrouwen op de stoffen die jullie kozen?",
+     "cost": 1
+    }
+   ],
+   "reveal": "Een echt VOC-schip moest voorraden, uitrusting en handelswaar meenemen. Voor deze expeditie waren voedsel voor twaalf maanden en rijst voor achttien maanden voorgeschreven, naast ruilgoederen en metalen. Op Mauritius vulden de mannen water en brandhout aan.",
+   "needs": "Op 26 oktober verving de Zeehaen een gebroken ra door een reserve. In de storm en in de kou helpen reserves, water en voedsel; geen vat neemt heimwee weg.",
+   "followup": "Welk pakket willen jullie alsnog meenemen, en wat moet daarvoor wijken?",
+   "source": "Tasman, journaal en documenten (Heeres-editie, 1898). Appendix D en E; journaal 30 september tot 26 oktober 1642."
+  },
+  "scheepsraad": {
+   "mode": "choose",
+   "title": "De scheepsraad",
+   "chapter": "De scheepsraad",
+   "minutes": 4,
+   "teams": 4,
+   "script": "Het is 7 november 1642 en jullie vormen de scheepsraad op de Heemskerck. Jullie moeten kiezen zonder te weten waar het volgende land ligt.",
+   "situation": "Het is 7 november 1642 en jullie vormen de scheepsraad op de Heemskerck. De opdracht vraagt om onderzoek, de kou maakt het varen moeilijk. De officieren van de Zeehaen kunnen niet komen.",
+   "cards": [
+    {
+     "title": "Kaart",
+     "text": "Kaarten verschillen; we weten niet waar het volgende land ligt. De opdracht stuurt ons naar zuidelijke wateren.",
+     "but": "Afwijken van de zuidelijke route kan betekenen dat jullie gezocht land missen."
+    },
+    {
+     "title": "Weer",
+     "text": "Op 6 november storm, hagel en sneeuw. De zee is hoog.",
+     "but": "Ook voor terugkeer moet je door dit weer varen."
+    },
+    {
+     "title": "Voorraden",
+     "text": "Voedsel voor twaalf maanden en rijst voor achttien maanden waren voorgeschreven. Hoeveel er over is, weten jullie niet.",
+     "but": "Je weet niet waar je weer water kunt halen."
+    },
+    {
+     "title": "Bemanning",
+     "text": "De mannen lijden zwaar onder de kou.",
+     "but": "Terugkeer beëindigt de opdracht; doorvaren houdt de mannen langer in de kou."
+    }
+   ],
+   "options": [
+    {
+     "label": "A",
+     "text": "Verder naar het zuiden"
+    },
+    {
+     "label": "B",
+     "text": "Noordelijker, daarna naar het oosten"
+    },
+    {
+     "label": "C",
+     "text": "Terugkeer plannen"
+    }
+   ],
+   "question": "Welke optie kiezen jullie, waarom, en welk nadeel accepteren jullie daarbij?",
+   "answer": "B",
+   "reveal": "Visscher adviseerde noordelijker te varen en daarna naar het oosten. De echte raad koos op 7 november die koers. Op 9 november stuurden ze het besluit naar de Zeehaen; die stemde met een vlag in.",
+   "followup": "Zouden jullie anders kiezen nu jullie de afloop kennen?",
+   "source": "Tasman, journaal en documenten (Heeres-editie, 1898). Journaal 6, 7 en 9 november 1642."
+  },
+  "slotvraag": {
+   "mode": "discuss",
+   "title": "Slotvraag",
+   "chapter": "Klopt dat?",
+   "minutes": 4,
+   "question": "Abel Tasman ontdekte Tasmanië en Nieuw-Zeeland. Klopt dat?",
+   "prompts": [
+    "Voor wie waren deze landen onbekend?",
+    "Wat ontdekten de bezoekers over de bewoners, en wat bleef onzeker?",
+    "Verander de zin en wijs aan welk beeld jouw woorden ondersteunt."
+   ],
+   "closing": "Nu is het aan jullie: welke woorden kiezen jullie om te vertellen wat Tasman ontdekte?"
+  }
  }
 }

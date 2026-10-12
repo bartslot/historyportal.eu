@@ -45,6 +45,24 @@ class NarratorSeeder extends Seeder
             'portrait_path' => 'avatars/portraits/ron-slot.jpg',
             'intro_video_path' => 'avatar-introductions/ron-slot/introduction.mp4',
         ],
+        [
+            // The older professional Dutch narrator Bart asked for (2026-09-30); JEV chose Robin over Jeroen Hamerland (4ClinlRko5CbUgYm5jsb, 0.57 vs 0.41) for the
+            // Tasman standard lesson (2026-10-13). Voice only: no portrait or introduction film yet.
+            'slug' => 'robin-meesterverteller',
+            'name' => 'Robin',
+            'short_name' => 'Robin',
+            'avatar_title' => 'verteller',
+            'description' => 'Nederlandse verteller voor de webcomics van History Portal.',
+            'subject' => 'history',
+            'voice_provider' => 'elevenlabs',
+            'voice_id' => 'gfhheYUNVEob17HvB2wm',
+            'voice_speed' => 1.0,
+            'voice_pitch' => 1.0,
+            'presentation_mode' => 'framed',
+            'is_active' => true,
+            'portrait_path' => null,
+            'intro_video_path' => null,
+        ],
     ];
 
     public function run(): void

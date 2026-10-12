@@ -69,8 +69,13 @@ def main() -> None:
             panels.append({'id': pid, 'staging': p['staging'], 'lines': line_ids,
                            'cast': sorted({ln['speaker'] for ln in line_ids}),
                            'plate': a.get('plate'), 'figures': a.get('figures'), 'ships': a.get('ships', []),
-                           'camera': a.get('camera', {'move': 'hold'}), 'entry': a.get('entry', 'cut')})
+                           'camera': a.get('camera', {'move': 'hold'}), 'entry': a.get('entry', 'cut'),
+                           **({'mouths': a['mouths']} if a.get('mouths') else {})})
         story['scenes'].append({'id': sid, 'act': s['act'], 'panels': panels})
+    # Hand-kept parts (game texts, play order) survive a re-run of the converter.
+    for path, doc, key in ((HERE / 'story.json', story, 'sequence'), (HERE / 'text' / f'{lang}.json', text, 'games')):
+        if path.exists() and key in (old := json.loads(path.read_text())):
+            doc[key] = old[key]
     (HERE / 'story.json').write_text(json.dumps(story, ensure_ascii=False, indent=1) + '\n')
     (HERE / 'text' / f'{lang}.json').write_text(json.dumps(text, ensure_ascii=False, indent=1) + '\n')
     n_lines = sum(len(t['lines']) for t in text['scenes'].values())
