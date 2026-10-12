@@ -23,9 +23,10 @@ export function CloseButton({ id }: { id: string }) {
   )
 }
 
-type Props = { id: string; children: ReactNode; anchor?: RefObject<HTMLElement | null>; className?: string; style?: React.CSSProperties }
+/** align: a menu lines up with its button's right edge (top bar), or its left edge ('start': a chip in a row) */
+type Props = { id: string; children: ReactNode; anchor?: RefObject<HTMLElement | null>; className?: string; style?: React.CSSProperties; align?: 'start' | 'end' }
 
-export function Panel({ id, children, anchor, className = '', style }: Props) {
+export function Panel({ id, children, anchor, className = '', style, align = 'end' }: Props) {
   const st = usePanels()
   const step = stepOf(useLesson().lesson)
   const d = panels.def(id)
@@ -41,8 +42,8 @@ export function Panel({ id, children, anchor, className = '', style }: Props) {
     if (d.place !== 'menu' || !open || !anchor?.current) return
     const r = anchor.current.getBoundingClientRect()
     const w = body.current?.offsetWidth ?? 220
-    setPos({ top: r.bottom + 6, left: Math.max(8, Math.min(window.innerWidth - w - 8, r.right - w)) })
-  }, [open, d.place, anchor])
+    setPos({ top: r.bottom + 6, left: Math.max(8, Math.min(window.innerWidth - w - 8, align === 'start' ? r.left : r.right - w)) })
+  }, [open, d.place, anchor, align])
 
   // a press outside a menu (and outside its button) closes it
   useEffect(() => {

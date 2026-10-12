@@ -4,6 +4,7 @@ import { useRef, type ReactNode } from 'react'
 import { Panel } from '../panels/Panel'
 import { PANELS, inStep, panels, usePanels } from '../panels/store'
 import * as L from '../lesson/store'
+import { newLesson } from '../start/store'
 
 const CHECK = 'm4.5 12.75 6 6 9-13.5'
 
@@ -86,6 +87,7 @@ export function TopBar() {
 
       <Panel id="lesson-menu" anchor={lessonBtn}>
         <ul>
+          <Item onClick={() => { panels.close('lesson-menu'); if (confirm('Start a new lesson? This one is kept in this browser.')) void newLesson() }}>New lesson</Item>
           <Item onClick={() => { panels.close('lesson-menu'); void L.exportLesson() }}>Export lesson file</Item>
           <Item onClick={() => { panels.close('lesson-menu'); fileIn.current?.click() }}>Open lesson file</Item>
         </ul>

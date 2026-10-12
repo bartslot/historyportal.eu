@@ -229,6 +229,21 @@ export async function importLesson(file: File) {
   } finally { set({ busy: false }) }
 }
 
+/** Start over with an empty lesson. The one being replaced is kept in this browser under its own key first. */
+export async function newLesson(): Promise<boolean> {
+  if (state.busy) return false
+  set({ busy: true })
+  try {
+    const old = captureCurrent(true)
+    await idbPut(`archive:${old.id}`, { lesson: old, current: state.current })
+    const lesson = freshLesson()
+    set({ lesson, current: Tree.scenesInOrder(lesson.tree)[0].id })
+    await loadScene(state.current)
+    await persist(lesson)
+    return true
+  } finally { set({ busy: false }) }
+}
+
 // ---------- start ----------
 export async function initLesson() {
   try {

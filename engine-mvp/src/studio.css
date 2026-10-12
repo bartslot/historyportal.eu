@@ -114,3 +114,40 @@ html.panel-resizing .panel-slot { transition: none; }
 @keyframes crew-in { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: none } }
 .crew-in { animation: crew-in 120ms ease-out }
 @media (prefers-reduced-motion: reduce) { .crew-caret, .crew-in { animation: none } }
+
+/* ---- light theme: the start screen and the build view (Bart 2026-10-12: light is simpler for teachers) ----
+   Same shape, size and easing as `learningportal`; only the colours change. The panel tokens follow, so a
+   Panel or a crew Face inside a light screen reads light too. */
+@plugin "daisyui/theme" {
+  name: "learningportal-light";
+  color-scheme: light;
+  --color-base-100: oklch(100% 0 0);
+  --color-base-200: oklch(98.2% 0.002 90);
+  --color-base-300: oklch(93.5% 0.004 90);
+  --color-base-content: oklch(21% 0.008 264);
+  --color-primary: oklch(21% 0.008 264);
+  --color-primary-content: oklch(100% 0 0);
+  --color-secondary: oklch(87.9% 0.169 91.605);
+  --color-secondary-content: oklch(21% 0.008 264);
+  --color-accent: oklch(62% 0.14 230);
+  --color-accent-content: oklch(100% 0 0);
+  --color-neutral: oklch(44% 0.01 264);
+  --color-neutral-content: oklch(100% 0 0);
+  --color-info: oklch(62% 0.14 230);
+  --color-info-content: oklch(100% 0 0);
+  --color-success: oklch(62% 0.15 150);
+  --color-success-content: oklch(100% 0 0);
+  --color-warning: oklch(75% 0.16 68);
+  --color-warning-content: oklch(21% 0.008 264);
+  --color-error: oklch(58% 0.21 27);
+  --color-error-content: oklch(100% 0 0);
+  --radius-selector: 0.5rem; --radius-field: 0.5rem; --radius-box: 0.75rem;
+  --size-selector: 0.25rem; --size-field: 0.25rem;
+  --border: 1px; --depth: 0; --noise: 0;
+}
+[data-theme="learningportal-light"] { --btn-action: var(--color-primary); --btn-action-label: var(--color-primary-content); --color-panel-hairline: oklch(91% 0.004 90); --color-panel-label: oklch(55% 0.01 264); --color-panel-value: oklch(21% 0.008 264); }
+
+/* one entrance for everything the start screen and the build view reveal: in on --ease-enter, out quicker */
+.reveal { transition: opacity 420ms var(--ease-enter), transform 420ms var(--ease-enter), filter 420ms var(--ease-enter); }
+.reveal[data-on="false"] { opacity: 0; transform: translateY(8px); filter: blur(4px); transition-duration: 200ms; transition-timing-function: var(--ease-exit); }
+@media (prefers-reduced-motion: reduce) { .reveal, .reveal * { transition-duration: 1ms !important; transform: none !important; filter: none !important; } }

@@ -19,7 +19,7 @@ const UNDO = 'M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3'
 const SIZE = { sm: 'h-8 w-8 text-xs', md: 'h-10 w-10 text-sm', lg: 'h-24 w-24 text-2xl' } as const
 
 /** A portrait from public/portraits/<id>.webp; the initial while it is missing. */
-function Face({ id, as, size = 'sm', working }: { id: string; as?: string; size?: keyof typeof SIZE; working?: boolean }) {
+export function Face({ id, as, size = 'sm', working }: { id: string; as?: string; size?: keyof typeof SIZE; working?: boolean }) {
   const { assistant } = useCrew()
   const file = id === 'assistant' ? (as && as in ASSISTANTS ? as : assistant) : id
   const [failed, setFailed] = useState(false)

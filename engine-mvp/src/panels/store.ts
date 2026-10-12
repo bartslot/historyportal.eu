@@ -28,6 +28,8 @@ export const PANELS: PanelDef[] = [
   { id: 'view-menu', title: 'View', place: 'menu', closable: true, open: false, inView: false },
   { id: 'add-menu', title: 'Add', place: 'menu', closable: true, open: false, inView: false },
   { id: 'publish-menu', title: 'Publish', place: 'menu', closable: true, open: false, inView: false },
+  { id: 'kind-menu', title: 'Lesson type', place: 'menu', closable: true, open: false, inView: false },
+  { id: 'class-menu', title: 'Class', place: 'menu', closable: true, open: false, inView: false },
 ]
 const def = (id: string) => PANELS.find((p) => p.id === id)!
 export const inStep = (id: string, step: Step) => !def(id).steps || def(id).steps!.includes(step)

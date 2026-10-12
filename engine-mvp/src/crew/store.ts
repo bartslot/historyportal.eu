@@ -230,6 +230,10 @@ async function commitMessage(msg: any, moved: boolean, turn: Turn, extra: Partia
 
 const stopCall = (body: object) => fetch('/crew/stop', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => null)
 export const stopMember = (who: string) => { const l = state.live[who]; return l?.status === 'working' ? stopCall({ turn: l.turn, who }) : Promise.resolve(null) }
+export const isBusy = () => state.busy
+/** A new lesson starts with a clean crew: no undo, rewrites, scope or pending reply from the old one. */
+export const resetForNewLesson = () => set({ to: null, error: null, undo: {}, live: {}, partial: null, scope: null, rewrites: [] })
+
 export function stopAll() {
   const turns = new Set(Object.values(state.live).filter((l) => l.status === 'working').map((l) => l.turn))
   return Promise.all([...turns].map((turn) => stopCall({ turn })))
