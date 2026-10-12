@@ -72,7 +72,7 @@
       "bootsman",
       "matroos"
      ],
-     "plate": "pilot/S01-A_batavia_roadstead_v1.png",
+     "plate": "plates/batavia_roadstead.png",
      "figures": "figures/S01-A.png",
      "ships": [
       "ships/heemskerck_anchor_dusk.png"
