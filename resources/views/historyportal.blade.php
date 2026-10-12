@@ -1,4 +1,12 @@
 <x-layouts.landing title="History Portal">
+    <x-slot:head>
+        <x-seo
+            page="home"
+            title="History Portal"
+            :description="__('History lessons your class wants to see the end of. Real paintings, a narrated story, and a game they finish themselves. Built in minutes, plays anywhere.')"
+            :graph="\App\Support\Seo::organisationGraph()"
+        />
+    </x-slot:head>
     <x-landing.header />
     <x-landing.hero />
     <x-landing.lessons :lessons="$playableLessons ?? collect()" />
