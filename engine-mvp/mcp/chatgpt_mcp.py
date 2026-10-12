@@ -11,6 +11,9 @@ from pathlib import Path
 from mcp.server.fastmcp import FastMCP
 
 CODEX_DEFAULT = '/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex'
+# codex exec runs with approval policy "never", which blocks every Photon MCP call unless pre-approved.
+PHOTON_APPROVE = ['-c', 'mcp_servers.photon.default_tools_approval_mode="approve"']
+IMAGE_SUFFIXES = {'.png', '.jpg', '.jpeg', '.webp'}
 mcp = FastMCP('chatgpt')
 
 
@@ -40,10 +43,26 @@ def _check_images(images: list[str]) -> list[str]:
     return paths
 
 
-def run_codex(prompt: str, images: list[str], workdir: Path, timeout_s: int) -> dict:
+def image_meta(path: Path) -> dict:
+    """Size facts for a made image, so the caller can check it without opening the pixels."""
+    meta = {'bytes': path.stat().st_size}
+    try:
+        from PIL import Image
+        with Image.open(path) as im:
+            meta.update(width=im.width, height=im.height, mode=im.mode)
+    except Exception:  # no Pillow, or not an image Pillow reads: size in bytes is still useful
+        pass
+    return meta
+
+
+def run_codex(prompt: str, images: list[str], workdir: Path, timeout_s: int,
+              photon: bool = False) -> dict:
     codex = os.environ.get('CODEX_BIN', CODEX_DEFAULT)
     # prompt on stdin: -i takes several values and would swallow a trailing prompt
-    cmd = [codex, 'exec', '--skip-git-repo-check', '-s', 'workspace-write', '-C', str(workdir)]
+    cmd = [codex, 'exec', '--skip-git-repo-check', '-s', 'workspace-write']
+    if photon:
+        cmd += PHOTON_APPROVE
+    cmd += ['-C', str(workdir)]
     for img in _check_images(images):
         cmd += ['-i', img]
     before = _snapshot(workdir)
@@ -64,33 +83,51 @@ def run_codex(prompt: str, images: list[str], workdir: Path, timeout_s: int) -> 
 
 @mcp.tool()
 def ask_chatgpt(prompt: str, images: list[str] = [], workdir: str | None = None,
-                timeout_s: int = 600) -> dict:
+                timeout_s: int = 600, photon: bool = False) -> dict:
     """Ask ChatGPT (via the Codex CLI, ChatGPT subscription). Optional absolute image paths
     are attached. Files ChatGPT creates or changes in workdir (default: a fresh temp dir)
-    are returned in `files`."""
+    are returned in `files`. photon=True lets ChatGPT use its Photon (image editor) MCP tools."""
     wd = Path(workdir).expanduser() if workdir else Path(tempfile.mkdtemp(prefix='chatgpt_mcp_'))
     wd.mkdir(parents=True, exist_ok=True)
-    return run_codex(prompt, images, wd, timeout_s)
+    return run_codex(prompt, images, wd, timeout_s, photon)
 
 
-@mcp.tool()
-def generate_image(prompt: str, out_path: str, reference_images: list[str] = [],
-                   transparent: bool = False) -> dict:
-    """Generate an image with ChatGPT and save it at out_path (~80 s). Spends ChatGPT usage."""
+def make_image(prompt: str, out_path: str, images: list[str], transparent: bool,
+               timeout_s: int) -> dict:
     out = Path(out_path).expanduser()
     name = out.name
     full = f'{prompt}\n\nGenerate the image and save it in the current folder as {name}.'
     if transparent:
         full += ' Transparent background (PNG with alpha).'
     tmp = Path(tempfile.mkdtemp(prefix='chatgpt_img_'))
-    res = run_codex(full, reference_images, tmp, 600)
-    images = [f for f in res['files'] if Path(f).suffix.lower() in {'.png', '.jpg', '.jpeg', '.webp'}]
-    made = next((f for f in images if Path(f).name == name), images[0] if images else None)
+    res = run_codex(full, images, tmp, timeout_s)
+    made_images = [f for f in res['files'] if Path(f).suffix.lower() in IMAGE_SUFFIXES]
+    made = next((f for f in made_images if Path(f).name == name), made_images[0] if made_images else None)
     if not made:
         raise RuntimeError(f'no image produced. ChatGPT said:\n{res["reply"]}')
     out.parent.mkdir(parents=True, exist_ok=True)
     shutil.move(made, out)
-    return {'path': str(out), 'reply': res['reply']}
+    return {'path': str(out), 'reply': res['reply'], **image_meta(out)}
+
+
+@mcp.tool()
+def generate_image(prompt: str, out_path: str, reference_images: list[str] = [],
+                   transparent: bool = False, timeout_s: int = 600) -> dict:
+    """Generate an image with ChatGPT and save it at out_path (~80 s). Spends ChatGPT usage.
+    Returns the path plus width/height/bytes, never the pixels."""
+    return make_image(prompt, out_path, reference_images, transparent, timeout_s)
+
+
+@mcp.tool()
+def edit_image(source: str, prompt: str, out_path: str, reference_images: list[str] = [],
+               transparent: bool = False, timeout_s: int = 600) -> dict:
+    """Edit an existing image with ChatGPT: `source` is image 1, `reference_images` follow as
+    image 2, 3... The result is saved at out_path (the source is never overwritten unless
+    out_path is the same file). Returns the path plus width/height/bytes."""
+    full = ('Edit image 1. Change only what is asked below and keep everything else (composition, '
+            'camera, style, colours, every object and person) exactly as it is. '
+            'Further attached images are references.\n\n' + prompt)
+    return make_image(full, out_path, [source, *reference_images], transparent, timeout_s)
 
 
 if __name__ == '__main__':
