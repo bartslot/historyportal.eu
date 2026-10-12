@@ -16,6 +16,7 @@
     <title>{{ $title ?? config('app.name') }} · History Portal</title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <x-font-switch />
     <x-audio-manifest />
     @stack('head-scripts')
     @livewireStyles

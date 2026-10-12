@@ -8,6 +8,7 @@
     {{-- lesson-map.js (+ the ~1 MB MapLibre/volcanoes chunk) is loaded on demand by
          lesson-player.js only when a lesson actually contains a map scene. --}}
     @vite(['resources/css/app.css', 'resources/js/app.js', 'resources/js/lesson-player.js'])
+    <x-font-switch />
     <x-audio-manifest />
     <x-js-lang />
 </head>
