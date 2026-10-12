@@ -143,6 +143,18 @@ class SeoPagesTest extends TestCase
         }
     }
 
+    public function test_a_sitemap_rendered_on_another_host_is_never_served_to_the_real_one(): void
+    {
+        // 2026-10-12: a console render (tinker) cached URLs on http://localhost under the shared key,
+        // and Google was handed that copy on the live domain for an hour.
+        $this->get('http://localhost/sitemap.xml')->assertOk();
+
+        $live = $this->get('https://historyportal.eu/sitemap.xml')->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('http://localhost', $live);
+        $this->assertStringContainsString('<loc>https://historyportal.eu', $live);
+    }
+
     public function test_robots_points_crawlers_at_the_sitemap_and_away_from_the_app(): void
     {
         $robots = file_get_contents(public_path('robots.txt'));
