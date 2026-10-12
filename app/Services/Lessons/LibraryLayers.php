@@ -223,18 +223,53 @@ class LibraryLayers
         $where = $this->sceneLabel($s, $order);
         $speakers = [];
         foreach ((array) ($s['layers'] ?? []) as $i => $entry) {
-            $speaker = (string) ($entry['speaks'] ?? '');
-            if ($speaker === '') {
+            $voices = self::speaksIn($entry);
+            if ($voices === []) {
                 continue;
             }
             $ref = trim((string) ($entry['asset'] ?? ''), '/ ');
             if (! str_contains($ref, '/figures/')) {
                 throw new \InvalidArgumentException("{$where}, layer {$i}: only a figure can speak, '{$ref}' is not one.");
             }
-            $speakers[$speaker] = ['asset_id' => $this->libraryAsset($ref, $where)->id, 'ref' => $ref];
+            $assetId = $this->libraryAsset($ref, $where)->id;
+            foreach ($voices as $speaker => $mouth) {
+                $speakers[$speaker] = ['asset_id' => $assetId, 'ref' => $ref] + ($mouth ?? []);
+            }
         }
 
         return $speakers;
+    }
+
+    /**
+     * Who speaks from one figure layer. `speaks => 'dante'` is one speaker whose mouth comes from the
+     * figure's metadata; `speaks => ['bootsman' => [x, y, 'left'], 'matroos' => [x, y]]` is a group
+     * picture where each speaker's mouth is given as a fraction of the picture (0..1), with an
+     * optional facing.
+     *
+     * @param  array<string,mixed>  $entry
+     * @return array<string, array{mouth: array{0: float, 1: float}, facing: int}|null>
+     */
+    public static function speaksIn(array $entry): array
+    {
+        $speaks = $entry['speaks'] ?? null;
+        if (is_string($speaks)) {
+            return $speaks === '' ? [] : [$speaks => null];
+        }
+        $out = [];
+        foreach ((array) $speaks as $speaker => $m) {
+            if (! is_string($speaker) || ! is_array($m) || ! is_numeric($m[0] ?? null) || ! is_numeric($m[1] ?? null)) {
+                throw new \InvalidArgumentException("speaks: '{$speaker}' needs a mouth [x, y] in 0..1.");
+            }
+            $clamp = fn ($v): float => max(0.0, min(1.0, (float) $v));
+            $out[$speaker] = [
+                'mouth' => [$clamp($m[0]), $clamp($m[1])],
+                'facing' => match ($m[2] ?? null) {
+                    'right' => 1, 'left' => -1, default => 0
+                },
+            ];
+        }
+
+        return $out;
     }
 
     /**

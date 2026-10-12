@@ -51,7 +51,9 @@ final class SceneDialogue
         $lines = self::normalise((array) $s['lines'], $cast);
         // Each speaking figure, and where its mouth is on its own picture.
         $figures = array_map(
-            fn (array $f): array => ['asset_id' => $f['asset_id'], ...FigureMouth::of($f['ref'])],
+            fn (array $f): array => ['asset_id' => $f['asset_id'], ...(isset($f['mouth'])
+                ? ['mouth' => $f['mouth'], 'facing' => $f['facing']]
+                : FigureMouth::of($f['ref']))],
             $this->library->speakers($s, (int) $scene->order),
         );
 
