@@ -191,8 +191,8 @@
                         {{ __('If something does not work the way this page describes, mail us and tell us what you were doing. That is the fastest way to get it fixed.') }}
                     </p>
                     {{-- Same address as the public site footer. --}}
-                    <a href="mailto:info@thelearningportal.us" class="btn btn-link btn-sm mt-3 px-0">
-                        info@thelearningportal.us
+                    <a href="mailto:info@historyportal.eu" class="btn btn-link btn-sm mt-3 px-0">
+                        info@historyportal.eu
                         <x-icons.chevron-right class="h-4 w-4" />
                     </a>
                 </section>

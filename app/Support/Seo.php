@@ -124,7 +124,7 @@ final class Seo
                     'name' => 'The Learning Portal',
                     'url' => url('/'),
                     'description' => __('History lessons your class wants to see the end of. Real paintings, a narrated story, and a game they finish themselves. Built in minutes, plays anywhere.'),
-                    'email' => 'info@thelearningportal.us',
+                    'email' => 'info@historyportal.eu',
                 ],
                 [
                     '@type' => 'WebSite',

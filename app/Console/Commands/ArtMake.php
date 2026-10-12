@@ -266,7 +266,7 @@ class ArtMake extends Command
         if (config('art.source_filter') !== 'off' && ! self::isPublicDomain((string) $meta['license'])) {
             throw new RuntimeException("source refused: '{$file}' is {$meta['license']}, not public domain / CC0");
         }
-        $bytes = Http::withHeaders(['User-Agent' => 'LearningPortal/1.0 (thelearningportal.us)'])
+        $bytes = Http::withHeaders(['User-Agent' => 'HistoryPortal/1.0 (info@historyportal.eu)'])
             ->timeout(60)->get($meta['image_url'], ['width' => self::SOURCE_WIDTH])->throw()->body();
 
         return ['bytes' => $bytes, 'credit' => [
