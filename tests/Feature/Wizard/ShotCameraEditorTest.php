@@ -141,6 +141,35 @@ class ShotCameraEditorTest extends TestCase
         $this->assertSame('bg.png', $shot['layers'][0]['path']);
     }
 
+    /** A flat scene (Dante, quiz, story game...) must play exactly as before after Hold / fade / reset. */
+    public function test_hold_fade_timing_and_reset_leave_a_flat_scene_untouched(): void
+    {
+        $this->scene->update(['shots' => null]);
+        $before = $this->scene->refresh()->updated_at;
+
+        $this->wizard()
+            ->call('setShotCamera', 0, 'move', 'hold')
+            ->call('setShotCamera', 0, 'entry', 'fade')
+            ->call('setShotCamera', 0, 'amount', '1.5')
+            ->call('setShotCamera', 0, 'duration', '4')
+            ->call('resetShotCamera', 0)
+            ->call('resetShotCamera', 0, 'amount');
+
+        $scene = $this->scene->refresh();
+        $this->assertNull($scene->shots);
+        $this->assertEquals($before, $scene->updated_at);
+    }
+
+    public function test_a_real_entry_on_a_flat_scene_gets_its_panel(): void
+    {
+        $this->scene->update(['shots' => null]);
+
+        $this->wizard()->call('setShotCamera', 0, 'entry', 'slide');
+
+        $this->assertSame('slide', $this->shot()['entry']);
+        $this->assertArrayNotHasKey('camera', $this->shot());
+    }
+
     public function test_the_editor_payload_forwards_the_camera_validated(): void
     {
         $shots = $this->scene->shots;

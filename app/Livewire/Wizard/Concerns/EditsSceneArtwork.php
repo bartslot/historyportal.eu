@@ -281,8 +281,10 @@ trait EditsSceneArtwork
      * One camera setting of one shot (a comic panel): move, amount, duration, ease, delay, or the
      * panel's entry. Validated by ShotCamera; undo comes with the save (SceneHistory).
      *
-     * A scene with a picture but no shot yet gets its one shot here, a cover with nothing on it, so
-     * the camera has a plate to move over.
+     * A flat scene (a picture, no shot yet) gets its one shot here, a cover with nothing on it, so
+     * the camera has a plate to move over: but ONLY for a real move or a real entry. Hold, fade, or
+     * a timing value with no move would turn a flat scene into a layered one for nothing, and it
+     * would no longer play exactly as before (Ken Burns, the flat crossfade).
      */
     public function setShotCamera(int $shot, string $key, mixed $value): void
     {
@@ -290,8 +292,9 @@ trait EditsSceneArtwork
         if ($clean === null || ! $this->selectedSceneId) {
             return;
         }
+        $materialise = ($key === 'move' && $clean !== 'hold') || ($key === 'entry' && $clean !== ShotCamera::DEFAULT_ENTRY);
 
-        $this->writeShot($shot, function (array $s) use ($key, $clean): array {
+        $this->writeShot($shot, $materialise, function (array $s) use ($key, $clean): array {
             if ($key === 'entry') {
                 return array_merge($s, ['entry' => $clean]);
             }
@@ -310,7 +313,8 @@ trait EditsSceneArtwork
             return;
         }
 
-        $this->writeShot($shot, function (array $s) use ($key): array {
+        // A scene with no stored shot has nothing to reset: never create one to reset it.
+        $this->writeShot($shot, false, function (array $s) use ($key): array {
             if ($key === null) {
                 unset($s['camera'], $s['entry']);
             } elseif ($key === 'entry') {
@@ -335,12 +339,16 @@ trait EditsSceneArtwork
         $this->writeLayerField($assetId, 'ambient_amount', null);
     }
 
-    /** @param callable(array<string,mixed>): array<string,mixed> $change */
-    private function writeShot(int $index, callable $change): void
+    /**
+     * @param  bool  $materialise  may a flat scene (picture, no shot) get its first shot for this?
+     * @param  callable(array<string,mixed>): array<string,mixed>  $change
+     */
+    private function writeShot(int $index, bool $materialise, callable $change): void
     {
         $scene = $this->lesson->scenes()->findOrFail($this->selectedSceneId);
-        $shots = $scene->shots ?? [];
-        if ($shots === [] && $index === 0 && $scene->image_path) {
+        $stored = $scene->shots ?? [];
+        $shots = $stored;
+        if ($shots === [] && $materialise && $index === 0 && $scene->image_path) {
             $shots = [SceneLayers::shot($scene->image_path, [])];
         }
         if (! isset($shots[$index]) || ! is_array($shots[$index])) {
@@ -348,6 +356,9 @@ trait EditsSceneArtwork
         }
 
         $shots[$index] = $change($shots[$index]);
+        if ($shots === $stored) {
+            return;   // nothing changed: no save, no undo step
+        }
         $scene->update(['shots' => array_values($shots)]);
         $this->selectSceneInternal($scene->id);
     }
