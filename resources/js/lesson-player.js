@@ -1381,6 +1381,7 @@ Alpine.data('lessonGame', (lesson) => ({
       // Same for a quiz card: it only clears itself on completion, so leaving a quiz scene
       // through a chapter jump left the card painted over every later scene.
       this._quizOverlay?.hide()
+      this._teamGame?.hide()
 
       // And the same again for the strategy challenge, which is a PHASE rather than an overlay
       // object. GAME_BRIEF waits for the teacher to tap "Begin the challenge" and nothing else
@@ -1964,6 +1965,11 @@ Alpine.data('lessonGame', (lesson) => ({
           this._beginQuizFlow(segmentQuestions, scene.quiz_shuffle, scene.id ?? null)
           return
         }
+        // Team game on the class screen: the teacher enters each team's choice, then the lesson goes on.
+        if (scene.game_type === 'team' && scene.config?.team) {
+          this._beginTeamFlow(scene)
+          return
+        }
         this._beginGameFlow(scene)
         return
       }
@@ -2075,6 +2081,14 @@ Alpine.data('lessonGame', (lesson) => ({
           this._resumeAfterQuiz()
         },
       })
+    },
+
+    async _beginTeamFlow (scene) {
+      const host = document.getElementById('lesson-game-overlay')
+      if (!host) { this._resumeAfterQuiz(); return }
+      const { TeamGame } = await import('./scene/TeamGame.js')
+      this._teamGame = this._teamGame || new TeamGame(host)
+      this._teamGame.show({ config: scene.config.team, onComplete: () => this._resumeAfterQuiz() })
     },
 
     _resumeAfterQuiz () {
