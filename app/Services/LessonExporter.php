@@ -281,10 +281,6 @@ class LessonExporter
     }
 
     /**
-     * @param  list<QuizQuestion>  $questions
-     * @return array<string,mixed>
-     */
-    /**
      * A team game exports as the game it is NOW (the teacher's edits included), so a rebuild plays
      * the same game; that copy becomes the rebuilt scene's reset default.
      *
@@ -302,6 +298,10 @@ class LessonExporter
         ], $this->keep(...));
     }
 
+    /**
+     * @param  list<QuizQuestion>  $questions
+     * @return array<string,mixed>
+     */
     private function quiz(Scene $scene, array $questions): array
     {
         return array_filter([
