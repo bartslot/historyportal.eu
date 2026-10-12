@@ -328,6 +328,7 @@ const buildCss = () => `
 
   /* rain: two depths of slanted streaks drawn here, falling at a constant rate (linear is the
      physics). The far streaks show from any amount; the near ones join past amount 0.5. */
+  .amb-rain { overflow: hidden; }   /* the streaks stay inside their layer */
   .amb-rain::before, .amb-rain::after {
     content: ''; position: absolute; pointer-events: none;
     background-image: ${RAIN_TILE};

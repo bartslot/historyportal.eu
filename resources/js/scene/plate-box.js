@@ -88,7 +88,11 @@ export function fitToPlate (el, stageEl, aspect, layers = null) {
   el.__plateObserver?.disconnect()
   el.__plateObserver = null
   if (!aspect) {
-    for (const k of ['left', 'top', 'width', 'height', 'right', 'bottom']) el.style.removeProperty(k)
+    // Back to the whole stage. Explicitly inset 0, not "remove the sides": a host whose inline
+    // style said `inset:0` (the editor's clipart host, the plate) lost it with its four longhands
+    // and collapsed to 0x0, taking every figure on it out of sight.
+    for (const k of ['width', 'height']) el.style.removeProperty(k)
+    Object.assign(el.style, { left: '0px', top: '0px', right: '0px', bottom: '0px' })
     return () => {}
   }
   const apply = () => {
