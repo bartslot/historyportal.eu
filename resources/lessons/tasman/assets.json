@@ -7,9 +7,9 @@
    "ships/heemskerck_anchor_dusk.png"
   ],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "push",
-   "amount": 0.15,
+   "amount": 0.6,
    "duration": 9
   },
   "entry": "reveal"
@@ -19,9 +19,9 @@
   "figures": "figures/S00-B.png",
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "push",
-   "amount": 0.2,
+   "amount": 0.8,
    "duration": 6
   },
   "entry": "cut"
@@ -33,9 +33,9 @@
    "ships/heemskerck_anchor_dusk.png"
   ],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "pull",
-   "amount": 0.2,
+   "amount": 0.8,
    "duration": 10
   },
   "entry": "cut"
@@ -45,9 +45,9 @@
   "figures": "figures/S01-B.png",
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "truck-r",
-   "amount": 0.1,
+   "amount": 0.4,
    "duration": 7
   },
   "entry": "cut"
@@ -57,9 +57,9 @@
   "figures": "figures/S01-C.png",
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "push",
-   "amount": 0.25,
+   "amount": 1.0,
    "duration": 6
   },
   "entry": "cut"
@@ -69,7 +69,7 @@
   "figures": "figures/S02-A.png",
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "hold"
   },
   "entry": "slide"
@@ -79,9 +79,9 @@
   "figures": "figures/S02-B.png",
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "push",
-   "amount": 0.3,
+   "amount": 1.2,
    "duration": 7
   },
   "entry": "cut"
@@ -91,9 +91,9 @@
   "figures": "figures/S02-C.png",
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "tilt-up",
-   "amount": 0.1,
+   "amount": 0.4,
    "duration": 6
   },
   "entry": "cut"
@@ -103,7 +103,7 @@
   "figures": "figures/S03-A.png",
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "hold"
   },
   "entry": "cut"
@@ -113,9 +113,9 @@
   "figures": "figures/S03-B.png",
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "push",
-   "amount": 0.2,
+   "amount": 0.8,
    "duration": 7
   },
   "entry": "cut"
@@ -128,9 +128,9 @@
    "ships/zeehaen_side_sail.png"
   ],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "pan-r",
-   "amount": 0.15,
+   "amount": 0.6,
    "duration": 9
   },
   "entry": "reveal"
@@ -140,9 +140,9 @@
   "figures": "figures/S04-A.png",
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "tilt-down",
-   "amount": 0.1,
+   "amount": 0.4,
    "duration": 6
   },
   "entry": "slide"
@@ -152,9 +152,9 @@
   "figures": "figures/S04-B.png",
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "truck-l",
-   "amount": 0.1,
+   "amount": 0.4,
    "duration": 7
   },
   "entry": "cut"
@@ -164,9 +164,9 @@
   "figures": "figures/S04-C.png",
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "push",
-   "amount": 0.25,
+   "amount": 1.0,
    "duration": 7
   },
   "entry": "cut"
@@ -178,9 +178,9 @@
    "ships/heemskerck_anchor_dusk.png"
   ],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "pull",
-   "amount": 0.2,
+   "amount": 0.8,
    "duration": 9
   },
   "entry": "reveal"
@@ -190,9 +190,9 @@
   "figures": "figures/S05-B.png",
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "truck-r",
-   "amount": 0.1,
+   "amount": 0.4,
    "duration": 7
   },
   "entry": "cut"
@@ -202,9 +202,9 @@
   "figures": "figures/S05-C.png",
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "push",
-   "amount": 0.2,
+   "amount": 0.8,
    "duration": 8
   },
   "entry": "cut"
@@ -216,9 +216,9 @@
    "ships/ships_pair_far.png"
   ],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "pan-r",
-   "amount": 0.1,
+   "amount": 0.4,
    "duration": 10
   },
   "entry": "reveal"
@@ -228,9 +228,9 @@
   "figures": "figures/S06-B.png",
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "tilt-up",
-   "amount": 0.15,
+   "amount": 0.6,
    "duration": 7
   },
   "entry": "cut"
@@ -240,9 +240,9 @@
   "figures": "figures/S06-C.png",
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "push",
-   "amount": 0.3,
+   "amount": 1.2,
    "duration": 7
   },
   "entry": "cut"
@@ -254,9 +254,9 @@
    "ships/heemskerck_storm.png"
   ],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "shake",
-   "amount": 0.6,
+   "amount": 0.96,
    "duration": 6
   },
   "entry": "cut"
@@ -266,9 +266,9 @@
   "figures": "figures/S07-B.png",
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "shake",
-   "amount": 0.8,
+   "amount": 1.28,
    "duration": 6
   },
   "entry": "cut"
@@ -278,9 +278,9 @@
   "figures": "figures/S07-C.png",
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "shake",
-   "amount": 0.4,
+   "amount": 0.64,
    "duration": 6
   },
   "entry": "cut"
@@ -292,9 +292,9 @@
    "ships/zeehaen_side_sail.png"
   ],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "pull",
-   "amount": 0.2,
+   "amount": 0.8,
    "duration": 8
   },
   "entry": "reveal"
@@ -304,9 +304,9 @@
   "figures": "figures/S08-A.png",
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "push",
-   "amount": 0.3,
+   "amount": 1.2,
    "duration": 7
   },
   "entry": "cut"
@@ -316,7 +316,7 @@
   "figures": "figures/S08-B.png",
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "hold"
   },
   "entry": "cut"
@@ -326,9 +326,9 @@
   "figures": "figures/S09-A.png",
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "push",
-   "amount": 0.15,
+   "amount": 0.6,
    "duration": 8
   },
   "entry": "slide"
@@ -338,9 +338,9 @@
   "figures": "figures/S09-B.png",
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "tilt-down",
-   "amount": 0.15,
+   "amount": 0.6,
    "duration": 6
   },
   "entry": "cut"
@@ -350,9 +350,9 @@
   "figures": "figures/S09-C.png",
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "push",
-   "amount": 0.3,
+   "amount": 1.2,
    "duration": 6
   },
   "entry": "cut"
@@ -362,9 +362,9 @@
   "figures": "figures/S10-A.png",
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "tilt-up",
-   "amount": 0.2,
+   "amount": 0.8,
    "duration": 6
   },
   "entry": "cut"
@@ -374,9 +374,9 @@
   "figures": "figures/S10-B.png",
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "push",
-   "amount": 0.2,
+   "amount": 0.8,
    "duration": 8
   },
   "entry": "cut"
@@ -388,9 +388,9 @@
    "ships/sloep_rowing.png"
   ],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "tilt-up",
-   "amount": 0.3,
+   "amount": 1.2,
    "duration": 8
   },
   "entry": "reveal"
@@ -400,9 +400,9 @@
   "figures": "figures/S11-A.png",
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "pull",
-   "amount": 0.25,
+   "amount": 1.0,
    "duration": 10
   },
   "entry": "reveal"
@@ -412,9 +412,9 @@
   "figures": "figures/S11-B.png",
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "truck-l",
-   "amount": 0.1,
+   "amount": 0.4,
    "duration": 7
   },
   "entry": "cut"
@@ -424,9 +424,9 @@
   "figures": null,
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "push",
-   "amount": 0.2,
+   "amount": 0.8,
    "duration": 9
   },
   "entry": "reveal"
@@ -436,9 +436,9 @@
   "figures": null,
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "truck-r",
-   "amount": 0.1,
+   "amount": 0.4,
    "duration": 8
   },
   "entry": "cut"
@@ -450,7 +450,7 @@
    "ships/waka_pair.png"
   ],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "hold"
   },
   "entry": "match"
@@ -460,9 +460,9 @@
   "figures": "figures/S13-B.png",
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "push",
-   "amount": 0.15,
+   "amount": 0.6,
    "duration": 7
   },
   "entry": "cut"
@@ -472,9 +472,9 @@
   "figures": "figures/S13-C.png",
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "push",
-   "amount": 0.3,
+   "amount": 1.2,
    "duration": 6
   },
   "entry": "cut"
@@ -487,7 +487,7 @@
    "ships/sloep_rowing.png"
   ],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "hold"
   },
   "entry": "cut"
@@ -497,9 +497,9 @@
   "figures": "figures/S14-B.png",
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "shake",
-   "amount": 0.3,
+   "amount": 0.48,
    "duration": 2
   },
   "entry": "cut"
@@ -509,9 +509,9 @@
   "figures": "figures/S14-C.png",
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "pull",
-   "amount": 0.3,
+   "amount": 1.2,
    "duration": 10
   },
   "entry": "cut"
@@ -521,9 +521,9 @@
   "figures": "figures/S14-D.png",
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "push",
-   "amount": 0.3,
+   "amount": 1.2,
    "duration": 7
   },
   "entry": "cut"
@@ -535,9 +535,9 @@
    "ships/tongan_canoes.png"
   ],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "truck-r",
-   "amount": 0.1,
+   "amount": 0.4,
    "duration": 8
   },
   "entry": "reveal"
@@ -547,9 +547,9 @@
   "figures": "figures/S15-B.png",
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "pan-r",
-   "amount": 0.15,
+   "amount": 0.6,
    "duration": 8
   },
   "entry": "cut"
@@ -559,9 +559,9 @@
   "figures": "figures/S15-C.png",
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "push",
-   "amount": 0.15,
+   "amount": 0.6,
    "duration": 8
   },
   "entry": "match"
@@ -571,7 +571,7 @@
   "figures": "figures/S16-A.png",
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "hold"
   },
   "entry": "slide"
@@ -581,9 +581,9 @@
   "figures": "figures/S16-B.png",
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "push",
-   "amount": 0.25,
+   "amount": 1.0,
    "duration": 7
   },
   "entry": "cut"
@@ -593,9 +593,9 @@
   "figures": null,
   "ships": [],
   "camera": {
-   "ease": "inOut",
+   "ease": "move",
    "move": "pull",
-   "amount": 0.2,
+   "amount": 0.8,
    "duration": 10
   },
   "entry": "match"
