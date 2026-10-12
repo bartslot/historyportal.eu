@@ -5,7 +5,7 @@ import { Panel } from '../panels/Panel'
 import { panels } from '../panels/store'
 import { useCrew } from '../crew/store'
 import { Icon, ICON } from '../ui/icons'
-import { KINDS, LANGUAGES, LENGTHS, LEVELS, kindOf, type Brief, type KindId } from './brief'
+import { KINDS, LANGUAGES, LENGTHS, LEVELS, kindOf, withStarter, type Brief, type KindId } from './brief'
 import { begin, openStudio, setBrief, setPrompt, useStart } from './store'
 import { HowItWorks } from './HowItWorks'
 
@@ -31,6 +31,9 @@ const TEMPLATES: Record<KindId, { title: string; img: string }[]> = {
     { title: 'Find the south land', img: 'kaart-tasman-reizen' },
   ],
 }
+
+const STARTERS = Object.values(TEMPLATES).flat().map((t) => t.title)
+const PROMPT_ID = 'lesson-prompt'
 
 const CHIP = 'btn btn-sm h-10 rounded-full border-base-300 bg-base-100 px-4 text-sm font-normal hover:bg-base-200'
 
@@ -95,7 +98,7 @@ function PromptBox() {
   const empty = !prompt.trim()
   return (
     <form className="rounded-[28px] border border-base-300 bg-base-100 p-4" onSubmit={(e) => { e.preventDefault(); void begin() }}>
-      <textarea ref={box} value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={3} autoFocus aria-label="Your lesson"
+      <textarea ref={box} id={PROMPT_ID} value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={3} autoFocus aria-label="Your lesson"
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void begin() } }}
                 placeholder="Abel Tasman sails from Batavia in 1642 and finds land nobody in Europe has seen"
                 className="w-full resize-none bg-transparent px-2 pt-1 text-[17px] leading-relaxed placeholder:text-base-content/40 focus:outline-none" />
@@ -113,12 +116,19 @@ function PromptBox() {
 }
 
 function Templates() {
-  const { brief } = useStart()
+  const { brief, prompt } = useStart()
+  const start = (title: string) => {
+    const next = withStarter(prompt, title, STARTERS)
+    setPrompt(next)
+    const box = document.getElementById(PROMPT_ID) as HTMLTextAreaElement | null
+    box?.focus()
+    requestAnimationFrame(() => box?.setSelectionRange(next.length, next.length))
+  }
   return (
     <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-3">
       {TEMPLATES[brief.kind].map((t) => (
-        <button key={t.title} type="button" onClick={() => setPrompt(`${t.title}: `)}
-                className="group relative aspect-[16/10] overflow-hidden rounded-2xl bg-base-300 text-left">
+        <button key={t.title} type="button" onClick={() => start(t.title)}
+                className="group relative aspect-[16/7] overflow-hidden sm:aspect-[16/10] rounded-2xl bg-base-300 text-left">
           <img src={`/start/${t.img}.webp`} alt="" className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-enter group-hover:scale-105" />
           <span className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/70 to-transparent" />
           <span className="absolute bottom-3 left-4 text-base font-semibold text-white">{t.title}</span>
@@ -131,7 +141,7 @@ function Templates() {
 export function StartScreen() {
   return (
     <main className="mx-auto max-w-[880px] px-4 pb-24 pt-20 sm:pt-28">
-      <button type="button" onClick={openStudio} className="btn btn-ghost btn-sm fixed right-4 top-4 rounded-full font-normal">Open the studio</button>
+      <button type="button" onClick={openStudio} className="btn btn-ghost btn-sm absolute right-4 top-4 rounded-full font-normal">Open the studio</button>
       <h1 className="text-center font-history text-4xl text-base-content sm:text-[52px] sm:leading-tight">What lesson should we create?</h1>
       <div className="mt-10 sm:mt-14"><PromptBox /></div>
       <Templates />

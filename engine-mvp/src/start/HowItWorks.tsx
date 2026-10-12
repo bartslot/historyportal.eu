@@ -55,6 +55,16 @@ const Reveal = ({ on, className = '', children }: { on: boolean; className?: str
 
 const Bar = ({ w }: { w: string }) => <span className="block h-2 rounded-full bg-base-300" style={{ width: w }} />
 
+/** The teacher's pointer: rests at `at` (% of the scene), travels in from `from` (px offset) once `on`. */
+function Cursor({ at, from, on, pressed = false }: { at: [string, string]; from: [number, number]; on: boolean; pressed?: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="absolute z-10 h-6 w-6 transition-transform duration-700 ease-move"
+         style={{ left: at[0], top: at[1], transform: `${on ? 'translate(0, 0)' : `translate(${from[0]}px, ${from[1]}px)`} scale(${pressed ? 0.85 : 1})` }}>
+      <path d="M5 3l14 7-6 2-2 6z" fill="currentColor" stroke="white" strokeWidth="1.5" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 function Describe({ t }: { t: number }) {
   const typed = TYPED.slice(0, Math.max(0, Math.floor((t - TYPE_FROM) / MS_PER_CHAR)))
   const done = typed.length === TYPED.length
@@ -69,42 +79,52 @@ function Describe({ t }: { t: number }) {
             <Icon d={ICON.arrowUp} className="h-4 w-4" />
           </span>
         </div>
-        <svg viewBox="0 0 24 24" aria-hidden="true" className="absolute bottom-0 right-2 h-6 w-6 transition-transform duration-700 ease-move"
-             style={{ transform: t > 2300 ? 'translate(0, -2px)' : 'translate(-140px, 60px)' }}>
-          <path d="M5 3l14 7-6 2-2 6z" fill="currentColor" stroke="white" strokeWidth="1.5" strokeLinejoin="round" />
-        </svg>
+        <Cursor at={['calc(100% - 30px)', 'calc(100% - 14px)']} from={[-140, 60]} on={t > 2300} pressed={pressed} />
       </div>
     </div>
   )
 }
 
+/** The teacher reads the crew's script, changes one line, and every line gets its tick. */
 function Check({ t }: { t: number }) {
   const rows = [['sofie', '70%'], ['historian', '55%'], ['writer', '80%'], ['learning', '45%']] as const
+  const editing = t > 1500 && t < 2300
+  const edited = t > 1900
   return (
     <div className="grid h-full place-items-center">
-      <div className="flex w-[70%] flex-col gap-3">
+      <div className="relative flex w-[70%] flex-col gap-3">
         {rows.map(([who, w], i) => (
-          <Reveal key={who} on={t > 300 + i * 220} className="flex items-center gap-3 rounded-xl border border-base-300 bg-base-100 p-3">
+          <Reveal key={who} on={t > 300 + i * 160}
+                  className={`flex items-center gap-3 rounded-xl border bg-base-100 p-3 transition-colors duration-200 ease-enter ${i === 1 && editing ? 'border-primary' : 'border-base-300'}`}>
             <img src={`/portraits/${who}.webp`} alt="" className="h-8 w-8 rounded-full object-cover" />
-            <span className="flex flex-1 flex-col gap-1.5"><Bar w={w} /><Bar w="35%" /></span>
-            <span className={`grid h-6 w-6 place-items-center rounded-full bg-success text-success-content transition-[opacity,transform] duration-200 ease-enter ${t > 2000 + i * 250 ? '' : 'scale-90 opacity-0'}`}>
+            <span className="flex flex-1 flex-col gap-1.5">
+              <span className="block h-2 rounded-full bg-base-300 transition-[width] duration-500 ease-move" style={{ width: i === 1 && edited ? '85%' : w }} />
+              <Bar w="35%" />
+            </span>
+            <span className={`grid h-6 w-6 place-items-center rounded-full bg-success text-success-content transition-[opacity,transform] duration-200 ease-enter ${t > 2500 + i * 200 ? '' : 'scale-90 opacity-0'}`}>
               <Icon d={ICON.check} className="h-3.5 w-3.5" width={2} />
             </span>
           </Reveal>
         ))}
+        <Cursor at={['55%', '34%']} from={[160, 120]} on={t > 900} pressed={t > 1450 && t < 1600} />
       </div>
     </div>
   )
 }
 
+/** The teacher asks for a change, the set assistant answers, the scene changes. */
 function Direct({ t }: { t: number }) {
   return (
     <div className="relative h-full">
       <img src="/start/duyfken-replica.webp" alt="" className="h-full w-full object-cover transition-[filter] duration-1000 ease-move"
-           style={{ filter: t > 1600 ? 'none' : 'grayscale(1) contrast(1.4) brightness(1.1)' }} />
-      <Reveal on={t > 400} className="absolute left-4 top-4 flex items-center gap-2 rounded-2xl bg-base-100 p-2 pr-4">
+           style={{ filter: t > 1900 ? 'none' : 'grayscale(1) contrast(1.4) brightness(1.1)' }} />
+      <Reveal on={t > 300} className="absolute right-4 top-4 flex items-center gap-2 rounded-2xl bg-primary p-3 text-primary-content">
+        <Icon d={ICON.user} className="h-5 w-5" />
+        <span className="flex w-24 flex-col gap-1.5"><span className="block h-2 w-full rounded-full bg-primary-content/40" /><span className="block h-2 w-1/2 rounded-full bg-primary-content/40" /></span>
+      </Reveal>
+      <Reveal on={t > 1100} className="absolute left-4 top-20 flex items-center gap-2 rounded-2xl bg-base-100 p-2 pr-4">
         <img src="/portraits/sofie.webp" alt="" className="h-8 w-8 rounded-full object-cover" />
-        <span className="flex w-24 flex-col gap-1.5"><Bar w="100%" /><Bar w="60%" /></span>
+        <span className="flex w-20 flex-col gap-1.5"><Bar w="100%" /><Bar w="60%" /></span>
       </Reveal>
     </div>
   )
@@ -113,17 +133,19 @@ function Direct({ t }: { t: number }) {
 /** a slow push-in across the step, eased in and out (driven by the loop's clock, so it never restarts mid-fade) */
 const push = (t: number) => { const x = Math.min(1, t / STEP_MS); return 1 + 0.06 * (x < 0.5 ? 2 * x * x : 1 - (-2 * x + 2) ** 2 / 2) }
 
+/** The lesson on the classroom screen; the pupils answer on their phones. */
 function Play({ t }: { t: number }) {
   return (
-    <div className="flex h-full flex-col gap-4 p-5 pb-6">
-      <div className="relative min-h-0 flex-1 overflow-hidden rounded-xl">
+    <div className="flex h-full flex-col items-center gap-4 p-5 pb-6">
+      <div className="relative min-h-0 w-[82%] flex-1 overflow-hidden rounded-lg border-[6px] border-base-content bg-base-content">
         <img src="/start/voc-schepen.webp" alt="" className="h-full w-full object-cover" style={{ transform: `scale(${push(t)})` }} />
       </div>
-      <div className="flex justify-center gap-3">
-        {[0, 1, 2].map((i) => (
-          <Reveal key={i} on={t > 1200 + i * 150} className="flex h-16 w-10 shrink-0 flex-col items-center justify-center gap-1.5 rounded-xl border border-base-300 bg-base-100">
+      <div className="flex justify-center gap-4">
+        {[0, 1, 2, 3].map((i) => (
+          <Reveal key={i} on={t > 1100 + i * 120} className="flex h-20 w-12 shrink-0 flex-col gap-1.5 rounded-xl border-2 border-base-content bg-base-100 p-1.5">
+            <span className="block h-1.5 w-full rounded-full bg-base-content/70" />
             {[0, 1, 2].map((d) => (
-              <span key={d} className={`h-1.5 w-5 rounded-full transition-colors duration-200 ease-enter ${t > 2600 + i * 180 && d === (i + 1) % 3 ? 'bg-success' : 'bg-base-300'}`} />
+              <span key={d} className={`block h-2.5 w-full rounded transition-colors duration-200 ease-enter ${t > 2300 + i * 220 && d === (i + 1) % 3 ? 'bg-success' : 'bg-base-300'}`} />
             ))}
           </Reveal>
         ))}

@@ -1,6 +1,6 @@
 // The crew making the first draft, live: who is working, and the script as it lands. Everything shown is
 // the real crew stream (crew/store) and the real lesson (lesson/store); nothing here is staged.
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Face } from '../crew/CrewPanel'
 import * as Crew from '../crew/store'
 import * as L from '../lesson/store'
@@ -46,6 +46,24 @@ function CrewRow() {
   )
 }
 
+const joinNames = (n: string[]) => (n.length < 2 ? n.join('') : `${n.slice(0, -1).join(', ')} and ${n.at(-1)}`)
+
+/** One line on what is happening now, from the real crew state: who is working, or who is waiting for you. Pure. */
+export function statusLine(busy: boolean, working: string[], asker: string | null, assistant: string): string {
+  if (busy) {
+    const names = working.length ? working : [assistant]
+    return `${joinNames(names)} ${names.length > 1 ? 'are' : 'is'} working`
+  }
+  return asker ? `${asker} has a question for you` : ''
+}
+
+function Status({ asker }: { asker: string | null }) {
+  const { busy, live } = Crew.useCrew()
+  const working = Object.entries(live).filter(([, l]) => l.status === 'working').map(([who]) => Crew.speaker(who).name)
+  const text = statusLine(busy, working, asker, Crew.speaker('assistant').name)
+  return <p aria-live="polite" className="min-h-6 text-center text-base-content/60">{text}</p>
+}
+
 function Script({ lines }: { lines: Line[] }) {
   if (!lines.length) {
     return (
@@ -66,20 +84,27 @@ function Script({ lines }: { lines: Line[] }) {
   )
 }
 
+/** The crew's last line when it came after the client's last message: they stopped to ask. */
+function openQuestion(crew: L.CrewLine[]): number {
+  const at = crew.map((l) => l.who !== 'client' && !!l.text).lastIndexOf(true)
+  return at >= 0 && at > crew.map((l) => l.who).lastIndexOf('client') ? at : -1
+}
+
 function Footer({ hasScript }: { hasScript: boolean }) {
   const { busy, error } = Crew.useCrew()
   const crew = L.useLesson().lesson.crew ?? []
   if (busy) return <button type="button" className="btn btn-ghost btn-sm rounded-full" onClick={Crew.stopAll}>Stop</button>
   if (hasScript) return <button type="button" className="btn btn-primary rounded-full px-6" onClick={openStudio}>Open the script</button>
-  if (error) return <p role="alert" className="max-w-prose text-center text-error">{error}</p>
-  const at = crew.map((l) => l.who !== 'client' && !!l.text).lastIndexOf(true)
-  const asked = at >= 0 && at > crew.map((l) => l.who).lastIndexOf('client')
-  if (asked) return <Question line={crew[at]} index={at} />
-  // stopped, or a member lost the connection: nothing to show but the way on
+  const at = openQuestion(crew)
+  if (at >= 0 && !error) return <Question line={crew[at]} index={at} />
+  // an error, Stop, or a lost connection: say so (if there is something to say) and offer the way on
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-col items-center gap-4">
+      {error && <p role="alert" className="max-w-prose text-center text-error">{error}</p>}
+      <div className="flex gap-2">
       <button type="button" className="btn btn-ghost rounded-full" onClick={() => void retry()}>Try again</button>
       <button type="button" className="btn btn-primary rounded-full px-6" onClick={openStudio}>Open the studio</button>
+      </div>
     </div>
   )
 }
@@ -87,9 +112,11 @@ function Footer({ hasScript }: { hasScript: boolean }) {
 /** The crew stopped to ask: the question, its options, and a box to answer in, right here. */
 function Question({ line, index }: { line: L.CrewLine; index: number }) {
   const [reply, setReply] = useState('')
+  const box = useRef<HTMLDivElement>(null)
+  useEffect(() => { box.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }) }, [index])
   const answer = async (text: string) => { setReply(''); if (!(await Crew.send(text))) setReply(text) }
   return (
-    <div className="flex w-full animate-[crew-in_420ms_var(--ease-enter)_backwards] flex-col gap-4">
+    <div ref={box} className="flex w-full animate-[crew-in_420ms_var(--ease-enter)_backwards] flex-col gap-4">
       <div className="flex items-start gap-3">
         <Face id={line.who} as={line.as} size="md" />
         <p className="pt-2 leading-relaxed">{line.text}</p>
@@ -118,12 +145,14 @@ export function BuildView() {
   const { prompt } = useStart()
   const lines = scriptLines(lesson.script)
   const titled = lesson.title && lesson.title !== UNTITLED
+  const q = openQuestion(lesson.crew ?? [])
+  const asker = q >= 0 && !lines.length ? Crew.speaker(lesson.crew![q].who, lesson.crew![q].as).name : null
   return (
     <main className="mx-auto flex min-h-full max-w-[720px] flex-col gap-12 px-4 pb-16 pt-16">
       <button type="button" onClick={openStudio} aria-label="Open the studio" data-tooltip="Open the studio"
               className="btn btn-ghost btn-circle fixed left-4 top-4"><Icon d={ICON.arrowLeft} className="h-5 w-5" /></button>
       <h1 className={`text-center font-history text-3xl sm:text-4xl ${titled ? 'text-base-content' : 'text-base-content/40'}`}>{titled ? lesson.title : prompt}</h1>
-      <CrewRow />
+      <div className="flex flex-col items-center gap-4"><CrewRow /><Status asker={asker} /></div>
       <section className="rounded-3xl border border-base-300 bg-base-100 p-6 sm:p-8"><Script lines={lines} /></section>
       <div className="flex justify-center"><Footer hasScript={lines.length > 0} /></div>
     </main>

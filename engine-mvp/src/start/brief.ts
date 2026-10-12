@@ -23,6 +23,13 @@ export function briefMessage(prompt: string, b: Brief): string {
   return `${prompt.trim()}\n\nLesson type: ${kindOf(b.kind).label}. Class: ${b.level}. Length: ${b.length}. Language: ${b.language}.`
 }
 
+/** A template starts the prompt without wiping the teacher's words: an earlier starter is swapped, the rest stays. Pure. */
+export function withStarter(draft: string, title: string, starters: readonly string[]): string {
+  const known = starters.find((s) => draft.startsWith(`${s}: `))
+  const rest = (known ? draft.slice(known.length + 2) : draft).trimStart()
+  return `${title}: ${rest}`
+}
+
 type Node = { text?: string; content?: Node[] }
 const hasText = (n: Node | null | undefined): boolean => !!n && (!!n.text?.trim() || (n.content ?? []).some(hasText))
 
