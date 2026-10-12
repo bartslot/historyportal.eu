@@ -36,7 +36,47 @@ final class JsTranslations
     /** @return array<string, string> */
     public static function forBrowser(): array
     {
-        return array_merge(self::quiz(), self::player(), self::editor());
+        return array_merge(self::quiz(), self::player(), self::editor(), self::teamGame());
+    }
+
+    /**
+     * The team game on the class screen (TeamGame.js): setup, loading, votes, reveal.
+     *
+     * @return array<string, string>
+     */
+    private static function teamGame(): array
+    {
+        return [
+            'Team :number' => __('Team :number'),
+            'Time is up' => __('Time is up'),
+            'Pause' => __('Pause'),
+            'Resume' => __('Resume'),
+            '+1 minute' => __('+1 minute'),
+            'Team game' => __('Team game'),
+            'Roles in each team' => __('Roles in each team'),
+            'Teams' => __('Teams'),
+            'Fewer teams' => __('Fewer teams'),
+            'More teams' => __('More teams'),
+            'Start' => __('Start'),
+            ':load of :capacity points loaded' => __(':load of :capacity points loaded'),
+            'Always on board' => __('Always on board'),
+            'Back' => __('Back'),
+            'Reveal' => __('Reveal'),
+            'Too heavy: :team would carry :load of :capacity points. Leave something behind first.' => __('Too heavy: :team would carry :load of :capacity points. Leave something behind first.'),
+            'What later scenes need' => __('What later scenes need'),
+            'Cargo' => __('Cargo'),
+            'On board' => __('On board'),
+            'Loaded' => __('Loaded'),
+            'Points' => __('Points'),
+            'Continue the lesson' => __('Continue the lesson'),
+            'But' => __('But'),
+            'Teams choose' => __('Teams choose'),
+            'Map of the options' => __('Map of the options'),
+            'Real decision' => __('Real decision'),
+            'Waiting for :count teams' => __('Waiting for :count teams'),
+            ':count teams' => __(':count teams'),
+            'Close the discussion' => __('Close the discussion'),
+        ];
     }
 
     /**
