@@ -139,6 +139,9 @@
                         ...\App\Services\Support\LayerAmbient::payload($l),
                     ])->filter(fn($l) => $l['url'] || $l['embed'])->values()->all() ?: null,
                     'anchor_sentence' => $shot['anchor_sentence'] ?? null,
+                    // The panel's own camera move and entry (resources/js/scene/camera.js).
+                    'camera' => \App\Services\Support\ShotCamera::payload($shot['camera'] ?? null),
+                    'entry' => \App\Services\Support\ShotCamera::entry($shot['entry'] ?? null),
                     // Keep a shot with EITHER a background image OR clipart layers — a voyage scene's
                     // shot is layer-only (the map is the backdrop), so it has no image_url.
                 ])->filter(fn($shot) => $shot['image_url'] || !empty($shot['layers']))->values()->all() ?: null,

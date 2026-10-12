@@ -8,6 +8,7 @@ use App\Models\Scene;
 use App\Models\SvgAsset;
 use App\Services\SceneLayers;
 use App\Services\Support\LayerAmbient;
+use App\Services\Support\ShotCamera;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 
@@ -273,6 +274,81 @@ trait EditsSceneArtwork
             ->all();
 
         $scene->update(['shots' => $shots]);
+        $this->selectSceneInternal($scene->id);
+    }
+
+    /**
+     * One camera setting of one shot (a comic panel): move, amount, duration, ease, delay, or the
+     * panel's entry. Validated by ShotCamera; undo comes with the save (SceneHistory).
+     *
+     * A scene with a picture but no shot yet gets its one shot here, a cover with nothing on it, so
+     * the camera has a plate to move over.
+     */
+    public function setShotCamera(int $shot, string $key, mixed $value): void
+    {
+        $clean = ShotCamera::field($key, $value);
+        if ($clean === null || ! $this->selectedSceneId) {
+            return;
+        }
+
+        $this->writeShot($shot, function (array $s) use ($key, $clean): array {
+            if ($key === 'entry') {
+                return array_merge($s, ['entry' => $clean]);
+            }
+
+            return array_merge($s, ['camera' => array_merge((array) ($s['camera'] ?? []), [$key => $clean])]);
+        });
+    }
+
+    /**
+     * Back to the default: one setting (`key`), or the whole camera and entry of the shot (null).
+     * The default is the ABSENCE of the key, so a reset shot reads exactly like one never touched.
+     */
+    public function resetShotCamera(int $shot, ?string $key = null): void
+    {
+        if (! $this->selectedSceneId || ($key !== null && ! in_array($key, ['move', 'amount', 'duration', 'ease', 'delay', 'entry'], true))) {
+            return;
+        }
+
+        $this->writeShot($shot, function (array $s) use ($key): array {
+            if ($key === null) {
+                unset($s['camera'], $s['entry']);
+            } elseif ($key === 'entry') {
+                unset($s['entry']);
+            } else {
+                $camera = (array) ($s['camera'] ?? []);
+                unset($camera[$key]);
+                $s['camera'] = $camera;
+                if ($camera === []) {
+                    unset($s['camera']);
+                }
+            }
+
+            return $s;
+        });
+    }
+
+    /** A layer's ambient motion back to its defaults: speed 1, amount 1, the mode itself kept. */
+    public function resetLayerMotion(int $assetId): void
+    {
+        $this->writeLayerField($assetId, 'ambient_speed', null);
+        $this->writeLayerField($assetId, 'ambient_amount', null);
+    }
+
+    /** @param callable(array<string,mixed>): array<string,mixed> $change */
+    private function writeShot(int $index, callable $change): void
+    {
+        $scene = $this->lesson->scenes()->findOrFail($this->selectedSceneId);
+        $shots = $scene->shots ?? [];
+        if ($shots === [] && $index === 0 && $scene->image_path) {
+            $shots = [SceneLayers::shot($scene->image_path, [])];
+        }
+        if (! isset($shots[$index]) || ! is_array($shots[$index])) {
+            return;
+        }
+
+        $shots[$index] = $change($shots[$index]);
+        $scene->update(['shots' => array_values($shots)]);
         $this->selectSceneInternal($scene->id);
     }
 

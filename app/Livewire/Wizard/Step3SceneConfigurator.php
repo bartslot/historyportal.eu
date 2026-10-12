@@ -28,6 +28,7 @@ use App\Models\StrategyGame;
 use App\Services\Billing\NarrationCreditLedger;
 use App\Services\Diorama\LibraryAssets;
 use App\Services\Support\LayerAmbient;
+use App\Services\Support\ShotCamera;
 use App\Services\Support\WebpEncoder;
 use App\Services\Support\WhiteCutout;
 use App\Support\MediaUrl;
@@ -232,6 +233,9 @@ class Step3SceneConfigurator extends Component
             'bg_url' => MediaUrl::versioned($shot['bg_path'] ?? null, $ts),
             'hero_url' => MediaUrl::versioned($shot['hero_path'] ?? null, $ts),
             'anchor_sentence' => $shot['anchor_sentence'] ?? null,
+            // The panel's own camera move and entry (resources/js/scene/camera.js).
+            'camera' => ShotCamera::payload($shot['camera'] ?? null),
+            'entry' => ShotCamera::entry($shot['entry'] ?? null),
             // Multiplane layers (E3c): [{path|url, depth, kind, scale, height, sway}] back→front.
             'layers' => collect($shot['layers'] ?? [])->map(fn ($l) => [
                 'url' => ! empty($l['path']) ? MediaUrl::versioned($l['path'], $ts) : ($l['url'] ?? null),

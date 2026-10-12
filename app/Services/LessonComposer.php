@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\Lessons\LibraryLayers;
 use App\Services\Lessons\SceneDialogue;
 use App\Services\Support\AudioEncoder;
+use App\Services\Support\ShotCamera;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
@@ -78,6 +79,7 @@ class LessonComposer
         // A bad library ref must fail BEFORE anything is deleted: a rebuild that dies on scene 5
         // would leave a published lesson half-gone and back in Draft.
         $this->library->preflight($spec);
+        $this->preflightCameras($spec);
 
         $existing = Lesson::withTrashed()->where('teacher_id', $teacher->id)->where('topic', $key)->first();
         $stale = $existing ? $this->sceneCopies($existing) : [];
@@ -182,6 +184,7 @@ class LessonComposer
 
             $this->library->applyLayers($scene, $sceneSpec, $order);
             $this->applyPassthrough($scene, $sceneSpec);
+            $this->applyCamera($scene, $sceneSpec, $order);
             $this->nameIdentityAfterChapter($scene);
 
             $this->say("  #{$order} {$type} — ".($scene->location ?: $scene->chapter_name ?: '…'));
@@ -297,6 +300,71 @@ class LessonComposer
         }
 
         $scene->update($update);
+    }
+
+    /**
+     * A bad camera must fail BEFORE anything is deleted, like a bad library ref.
+     *
+     * @param  array<string,mixed>  $spec
+     */
+    private function preflightCameras(array $spec): void
+    {
+        foreach (array_values((array) ($spec['scenes'] ?? [])) as $i => $s) {
+            $where = 'Spec scene #'.($i + 1).(isset($s['id']) ? " '{$s['id']}'" : '');
+            ShotCamera::fromSpec($s['camera'] ?? null, $where);
+            ShotCamera::entryFromSpec($s['entry'] ?? null, $where);
+            foreach ((array) ($s['shots'] ?? []) as $j => $shot) {
+                ShotCamera::fromSpec($shot['camera'] ?? null, "{$where}, shot {$j}");
+                ShotCamera::entryFromSpec($shot['entry'] ?? null, "{$where}, shot {$j}");
+            }
+        }
+    }
+
+    /**
+     * The scene's `camera` and `entry` (resources/js/scene/camera.js) onto its first shot, the same
+     * place the editor's Animate tab writes them. A scene with only a backdrop gets that one shot
+     * (the backdrop as a cover), so the camera has a plate to move over. Shots that travel verbatim
+     * (`shots`) keep their own cameras, cleaned to the vocabulary.
+     *
+     * @param  array<string,mixed>  $s
+     */
+    private function applyCamera(Scene $scene, array $s, int $order): void
+    {
+        $where = "Spec scene #{$order}";
+        $camera = ShotCamera::fromSpec($s['camera'] ?? null, $where);
+        $entry = ShotCamera::entryFromSpec($s['entry'] ?? null, $where);
+        $scene->refresh();
+        $shots = (array) ($scene->shots ?? []);
+
+        if (! empty($s['shots'])) {
+            $shots = array_map(function (array $shot): array {
+                unset($shot['camera'], $shot['entry']);
+
+                return $shot;
+            }, $shots);
+            foreach ((array) $s['shots'] as $j => $raw) {
+                if (isset($shots[$j])) {
+                    $shots[$j] += array_filter([
+                        'camera' => ShotCamera::payload($raw['camera'] ?? null),
+                        'entry' => ShotCamera::entry($raw['entry'] ?? null),
+                    ]);
+                }
+            }
+        }
+
+        if ($camera !== null || $entry !== null) {
+            if ($shots === [] && $scene->image_path) {
+                $shots = [SceneLayers::shot($scene->image_path, [], LibraryLayers::COVER_DEPTH)];
+            }
+            if ($shots === []) {
+                throw new \InvalidArgumentException("{$where}: a camera needs a picture to move over (a backdrop, image or layers).");
+            }
+            $shots[0] = array_merge($shots[0], array_filter(['camera' => $camera, 'entry' => $entry]));
+        }
+
+        if ($shots !== (array) ($scene->shots ?? [])) {
+            $scene->update(['shots' => $shots]);
+        }
     }
 
     /**
