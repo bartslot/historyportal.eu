@@ -169,7 +169,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-ByNM0Xi9.js",
+    "file": "assets/lesson-player-C-H727cG.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -236,7 +236,7 @@
     ]
   },
   "resources/js/scene/PowerMeter.js": {
-    "file": "assets/PowerMeter-CXJkFAmz.js",
+    "file": "assets/PowerMeter-DHykJYsO.js",
     "name": "PowerMeter",
     "src": "resources/js/scene/PowerMeter.js",
     "isDynamicEntry": true,
@@ -272,7 +272,7 @@
     ]
   },
   "resources/js/scene/TeamGame.js": {
-    "file": "assets/TeamGame-DPdLueLJ.js",
+    "file": "assets/TeamGame-DPTNAynb.js",
     "name": "TeamGame",
     "src": "resources/js/scene/TeamGame.js",
     "isDynamicEntry": true,
