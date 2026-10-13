@@ -1,0 +1,167 @@
+{
+  "version": 1,
+  "source": "titles:make from resources/lessons/titles/tasman-standard-cover.json",
+  "layout": "cover",
+  "fit": "cover",
+  "frame": {
+    "w": 1672.0,
+    "h": 941.0
+  },
+  "background": "#C8E5F2",
+  "background_bottom": "#A3876F",
+  "horizon": 52.0,
+  "focus": {
+    "x": 23.0,
+    "y": 3.0,
+    "w": 72.0,
+    "h": 43.0
+  },
+  "groups": {},
+  "layers": [
+    {
+      "id": "plate",
+      "src": "cover-tasman-spyglass-coast.webp",
+      "box": {
+        "x": -2.0,
+        "y": -2.0,
+        "w": 104.0,
+        "h": 104.0
+      },
+      "ambient": "drift",
+      "ambient_speed": 0.5,
+      "ambient_amount": 0.5
+    },
+    {
+      "id": "a",
+      "src": "letter-a.svg",
+      "box": {
+        "x": 50.9402,
+        "y": 8.8937,
+        "w": 4.5884,
+        "h": 7.1699
+      },
+      "enter": "drop"
+    },
+    {
+      "id": "b",
+      "src": "letter-b.svg",
+      "box": {
+        "x": 55.8643,
+        "y": 8.8937,
+        "w": 3.6567,
+        "h": 7.1713
+      },
+      "enter": "drop"
+    },
+    {
+      "id": "e",
+      "src": "letter-e.svg",
+      "box": {
+        "x": 59.7351,
+        "y": 8.8937,
+        "w": 3.609,
+        "h": 7.1699
+      },
+      "enter": "drop"
+    },
+    {
+      "id": "l",
+      "src": "letter-l.svg",
+      "box": {
+        "x": 63.5948,
+        "y": 8.8937,
+        "w": 3.7046,
+        "h": 7.1674
+      },
+      "enter": "drop"
+    },
+    {
+      "id": "t",
+      "src": "letter-t.svg",
+      "box": {
+        "x": 68.9391,
+        "y": 8.8937,
+        "w": 4.2854,
+        "h": 7.1699
+      },
+      "enter": "drop"
+    },
+    {
+      "id": "a1",
+      "src": "letter-a1.svg",
+      "box": {
+        "x": 72.8956,
+        "y": 8.8937,
+        "w": 4.5884,
+        "h": 7.1699
+      },
+      "enter": "drop"
+    },
+    {
+      "id": "s",
+      "src": "letter-s.svg",
+      "box": {
+        "x": 77.4393,
+        "y": 8.8937,
+        "w": 3.088,
+        "h": 7.1699
+      },
+      "enter": "drop"
+    },
+    {
+      "id": "m",
+      "src": "letter-m.svg",
+      "box": {
+        "x": 80.8081,
+        "y": 8.8987,
+        "w": 4.8505,
+        "h": 7.163
+      },
+      "enter": "drop"
+    },
+    {
+      "id": "a2",
+      "src": "letter-a2.svg",
+      "box": {
+        "x": 85.9513,
+        "y": 8.8937,
+        "w": 4.5884,
+        "h": 7.1699
+      },
+      "enter": "drop"
+    },
+    {
+      "id": "n",
+      "src": "letter-n.svg",
+      "box": {
+        "x": 90.7859,
+        "y": 8.8937,
+        "w": 4.2739,
+        "h": 7.1699
+      },
+      "enter": "drop"
+    },
+    {
+      "id": "series",
+      "src": "series.svg",
+      "box": {
+        "x": 64.2732,
+        "y": 3.8937,
+        "w": 17.4535,
+        "h": 2.8125
+      },
+      "enter": "fade"
+    }
+  ],
+  "subtitle": {
+    "box": {
+      "x": 51.0,
+      "y": 18.5588,
+      "w": 44.0,
+      "h": 4.8508
+    },
+    "size": 2.1,
+    "color": "#16202E",
+    "font": "comicroma"
+  }
+}

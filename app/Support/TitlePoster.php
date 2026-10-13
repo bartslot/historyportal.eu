@@ -8,8 +8,9 @@ use App\Services\Support\LayerAmbient;
 
 /**
  * A lesson series' comic title poster: public/lesson-titles/{translation_group}/poster.json plus
- * its pictures. The player draws it (resources/js/title-poster.js); this reads the file, keeps
- * only what that renderer understands, and turns every file name into a URL.
+ * its pictures; a variant lives in a subfolder (the Tintin-style cover: {group}/cover/). The
+ * player draws it (resources/js/title-poster.js); this reads the file, keeps only what that
+ * renderer understands, and turns every file name into a URL.
  *
  * Boxes are shares of the frame in percent: x/w of its width, y/h of its height.
  */
@@ -17,9 +18,16 @@ final class TitlePoster
 {
     private const DIR = 'lesson-titles';
 
-    public static function exists(?string $group): bool
+    /** Subfolders a poster may live in ('' = the series folder itself). */
+    public const VARIANTS = ['', 'cover'];
+
+    private const FITS = ['contain', 'cover'];
+
+    private const SUBTITLE_FONTS = ['comic', 'comicroma'];
+
+    public static function exists(?string $group, string $variant = ''): bool
     {
-        return self::path($group) !== null;
+        return self::path($group, $variant) !== null;
     }
 
     /**
@@ -27,9 +35,9 @@ final class TitlePoster
      *
      * @return array<string, mixed>|null
      */
-    public static function for(?string $group): ?array
+    public static function for(?string $group, string $variant = ''): ?array
     {
-        $path = self::path($group);
+        $path = self::path($group, $variant);
         if ($path === null) {
             return null;
         }
@@ -41,7 +49,8 @@ final class TitlePoster
             return null;
         }
 
-        $url = fn (string $file): string => asset(self::DIR."/{$group}/".ltrim($file, '/'));
+        $folder = $variant === '' ? $group : "{$group}/{$variant}";
+        $url = fn (string $file): string => asset(self::DIR."/{$folder}/".ltrim($file, '/'));
 
         $layers = [];
         foreach ($data['layers'] as $layer) {
@@ -77,7 +86,12 @@ final class TitlePoster
 
         return [
             'frame' => ['w' => (float) $data['frame']['w'], 'h' => (float) $data['frame']['h']],
+            // contain: the whole frame, letterboxed in the background colour (the comic poster);
+            // cover: the frame fills the view (a painted cover) with its focus box kept in sight.
+            'fit' => in_array($data['fit'] ?? null, self::FITS, true) ? $data['fit'] : 'contain',
             'background' => self::colour($data['background'] ?? null) ?? '#000000',
+            // On a tall phone a cover leaves colour above and below it: background above, this below.
+            'background_bottom' => self::colour($data['background_bottom'] ?? null),
             'focus' => self::isBox($data['focus'] ?? null) ? self::box($data['focus']) : null,
             'groups' => $groups,
             'layers' => $layers,
@@ -85,17 +99,18 @@ final class TitlePoster
                 'box' => self::box($data['subtitle']['box']),
                 'size' => (float) ($data['subtitle']['size'] ?? 2.3),
                 'color' => self::colour($data['subtitle']['color'] ?? null) ?? '#FFFFFF',
+                'font' => in_array($data['subtitle']['font'] ?? null, self::SUBTITLE_FONTS, true) ? $data['subtitle']['font'] : 'comic',
             ] : null,
         ];
     }
 
-    private static function path(?string $group): ?string
+    private static function path(?string $group, string $variant = ''): ?string
     {
         // The group names a folder: never let it climb out of lesson-titles/.
-        if ($group === null || ! preg_match('/^[a-z0-9][a-z0-9-]*$/', $group)) {
+        if ($group === null || ! preg_match('/^[a-z0-9][a-z0-9-]*$/', $group) || ! in_array($variant, self::VARIANTS, true)) {
             return null;
         }
-        $path = public_path(self::DIR."/{$group}/poster.json");
+        $path = public_path(self::DIR."/{$group}/".($variant === '' ? '' : "{$variant}/").'poster.json');
 
         return is_file($path) ? $path : null;
     }

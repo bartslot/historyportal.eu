@@ -17,6 +17,9 @@ use Illuminate\Support\Facades\Process;
  * This checks the recipe and names what is wrong; tools/titles/make_title.py (Python + fontTools +
  * Pillow) does the geometry. Run it locally and commit the output: SiteGround cannot run Python.
  *
+ * A recipe with "layout": "cover" makes the Tintin-style cover instead (tools/titles/cover.py):
+ * resources/lessons/titles/{group}-cover.json (--cover) into public/lesson-titles/{group}/cover/.
+ *
  * A folder made by hand (Bart's Figma Tasman poster) is never overwritten: only a folder this
  * command wrote before, or a new one, is replaced. Use --out for a scratch copy.
  */
@@ -24,8 +27,9 @@ class MakeTitlePoster extends Command
 {
     protected $signature = 'titles:make
         {group : the series translation_group, e.g. dante}
+        {--cover : the cover recipe, resources/lessons/titles/{group}-cover.json}
         {--recipe= : recipe path (default resources/lessons/titles/{group}.json)}
-        {--out= : output folder (default public/lesson-titles/{group})}';
+        {--out= : output folder (default public/lesson-titles/{group}, a cover in its cover/ folder)}';
 
     protected $description = 'Generate a comic title poster from its recipe (local, Python)';
 
@@ -40,8 +44,7 @@ class MakeTitlePoster extends Command
             return $this->failWith("Group '{$group}' must be lowercase letters, digits and dashes.");
         }
 
-        $recipePath = $this->option('recipe') ?: resource_path("lessons/titles/{$group}.json");
-        $out = $this->option('out') ?: public_path("lesson-titles/{$group}");
+        $recipePath = $this->option('recipe') ?: resource_path('lessons/titles/'.$group.($this->option('cover') ? '-cover' : '').'.json');
 
         if (! is_file($recipePath)) {
             return $this->failWith("No recipe at {$recipePath}.");
@@ -51,7 +54,10 @@ class MakeTitlePoster extends Command
             return $this->failWith("{$recipePath} is not a JSON object: ".json_last_error_msg().'.');
         }
 
-        $errors = self::problems($recipe);
+        $isCover = ($recipe['layout'] ?? null) === 'cover';
+        $out = $this->option('out') ?: public_path("lesson-titles/{$group}".($isCover ? '/cover' : ''));
+
+        $errors = $isCover ? self::coverProblems($recipe) : self::problems($recipe);
         if ($errors !== []) {
             $this->error("Recipe {$recipePath}:");
             foreach ($errors as $problem) {
@@ -105,6 +111,9 @@ class MakeTitlePoster extends Command
     public static function problems(array $r): array
     {
         $e = [];
+        if (isset($r['layout']) && $r['layout'] !== 'cover') {
+            $e[] = 'layout must be "cover" or left out (the comic poster).';
+        }
         $file = fn (mixed $path): bool => is_string($path) && $path !== '' && ! str_contains($path, '..') && is_file(base_path($path));
         $positive = fn (mixed $n): bool => is_numeric($n) && (float) $n > 0;
 
@@ -190,6 +199,83 @@ class MakeTitlePoster extends Command
             }
             if (isset($p['align']) && ! in_array($p['align'], ['top', 'middle', 'bottom'], true)) {
                 $e[] = "{$name}.align must be top, middle or bottom.";
+            }
+            if (isset($p['ambient']) && ! in_array($p['ambient'], LayerAmbient::MODES, true)) {
+                $e[] = "{$name}.ambient must be one of: ".implode(', ', LayerAmbient::MODES).'.';
+            }
+        }
+
+        return $e;
+    }
+
+    /**
+     * Everything wrong with a cover recipe ("layout": "cover"), in words a person can act on.
+     *
+     * @param  array<mixed>  $r
+     * @return list<string>
+     */
+    public static function coverProblems(array $r): array
+    {
+        $e = [];
+        $file = fn (mixed $path): bool => is_string($path) && $path !== '' && ! str_contains($path, '..') && is_file(base_path($path));
+        $number = fn (mixed $n, float $min = 0, float $max = INF): bool => is_numeric($n) && (float) $n >= $min && (float) $n <= $max;
+        $colour = fn (mixed $c): bool => is_string($c) && preg_match(self::HEX, $c) === 1;
+
+        if (! $file($r['letters']['font'] ?? null)) {
+            $e[] = 'letters.font must be the title font, e.g. "public/fonts/comicroma/ComicRoma.ttf".';
+        }
+        if (! $file($r['plate']['art'] ?? null)) {
+            $e[] = 'plate.art file not found: '.json_encode($r['plate']['art'] ?? null).'. The plate is the painted scene.';
+        }
+        if (isset($r['plate']['bleed']) && ! $number($r['plate']['bleed'], 0, 10)) {
+            $e[] = 'plate.bleed must be a % from 0 to 10.';
+        }
+        if (! is_string($r['title']['text'] ?? null) || trim($r['title']['text']) === '') {
+            $e[] = 'title.text must be the title, e.g. "ABEL TASMAN".';
+        }
+        if (! $number($r['title']['w'] ?? null, 1, 100) && ! $number($r['title']['cap'] ?? null, 1, 100)) {
+            $e[] = 'title needs "w" (its width, % of the frame) or "cap" (its letter height, % of the frame).';
+        }
+        foreach (['x', 'y'] as $key) {
+            if (isset($r['title'][$key]) && ! $number($r['title'][$key], 0, 100)) {
+                $e[] = "title.{$key} must be a % from 0 to 100.";
+            }
+        }
+        if (! $colour($r['background'] ?? null)) {
+            $e[] = 'background must be a colour like "#C8E5F2" (the sky, shown above the cover on a tall phone).';
+        }
+        foreach (['background_bottom', 'ink'] as $key) {
+            if (isset($r[$key]) && ! $colour($r[$key])) {
+                $e[] = "{$key} must be a colour like \"#16202E\".";
+            }
+        }
+        if (isset($r['horizon']) && ! $number($r['horizon'], 0, 100)) {
+            $e[] = 'horizon must be a % down the frame, 0 to 100.';
+        }
+        if (isset($r['subtitle']['font']) && ! in_array($r['subtitle']['font'], ['comic', 'comicroma'], true)) {
+            $e[] = 'subtitle.font must be comic or comicroma.';
+        }
+        if (isset($r['focus']) && array_filter(['x', 'y', 'w', 'h'], fn ($k) => ! $number($r['focus'][$k] ?? null, 0, 100))) {
+            $e[] = 'focus must be {x, y, w, h} in % of the frame: what a phone must keep in sight.';
+        }
+
+        $cutOuts = array_map(fn ($h, $i) => [$h, "heroes[{$i}]"], (array) ($r['heroes'] ?? []), array_keys((array) ($r['heroes'] ?? [])));
+        if (isset($r['subject'])) {
+            $cutOuts[] = [$r['subject'], 'subject'];
+        }
+        foreach (array_merge([[$r['plate'] ?? [], 'plate']], $cutOuts) as [$p, $name]) {
+            if (! is_array($p)) {
+                $e[] = "{$name} must be an object.";
+
+                continue;
+            }
+            if ($name !== 'plate') {
+                if (! $file($p['art'] ?? null)) {
+                    $e[] = "{$name}.art file not found: ".json_encode($p['art'] ?? null).'.';
+                }
+                if (! $number($p['height'] ?? null, 1, 200)) {
+                    $e[] = "{$name}.height must be its height, % of the frame.";
+                }
             }
             if (isset($p['ambient']) && ! in_array($p['ambient'], LayerAmbient::MODES, true)) {
                 $e[] = "{$name}.ambient must be one of: ".implode(', ', LayerAmbient::MODES).'.';

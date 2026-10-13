@@ -41,6 +41,7 @@ const pct = (n) => `${Math.round(n * 10000) / 10000}%`
 export function posterFit (viewW, viewH, poster, gutter = PHONE_GUTTER_PX) {
   const { w: fw, h: fh } = poster.frame
   if (!(viewW > 0 && viewH > 0)) return { left: 0, top: 0, width: 0, height: 0 }
+  if (poster.fit === 'cover') return coverFit(viewW, viewH, poster, gutter)
   const contain = Math.min(viewW / fw, viewH / fh)
   const f = poster.focus
   const portrait = viewW < viewH && f
@@ -53,6 +54,50 @@ export function posterFit (viewW, viewH, poster, gutter = PHONE_GUTTER_PX) {
   const cy = portrait ? (f.y + f.h / 2) / 100 : 0.5
 
   return { left: viewW / 2 - cx * width, top: viewH / 2 - cy * height, width, height }
+}
+
+// Where a tall phone puts the cover's focus: a little above the middle, clear of the Start bar.
+export const COVER_FOCUS_Y = 0.42
+
+/**
+ * Pure: the fit of a painted cover (poster.fit 'cover'). A painting has no flat colour to
+ * letterbox in, so the frame always fills the width (no side bars) and, in a landscape view, the
+ * height too (object-fit: cover), slid so the focus box stays in sight. A view too tall for that
+ * (a phone) shows the focus box across the width less a gutter, at COVER_FOCUS_Y; the poster's
+ * background (above) and background_bottom (below) fill the rest.
+ *
+ * @returns {{left: number, top: number, width: number, height: number}}
+ */
+export function coverFit (viewW, viewH, poster, gutter = PHONE_GUTTER_PX) {
+  const { w: fw, h: fh } = poster.frame
+  const f = poster.focus ?? { x: 0, y: 0, w: 100, h: 100 }
+  const cover = Math.max(viewW / fw, viewH / fh)
+  const focusFit = Math.min((viewW - 2 * gutter) / (f.w / 100 * fw), (viewH - 2 * gutter) / (f.h / 100 * fh))
+  const scale = Math.max(viewW / fw, Math.min(cover, focusFit))
+  const width = fw * scale
+  const height = fh * scale
+  const fcx = (f.x + f.w / 2) / 100
+  const fcy = (f.y + f.h / 2) / 100
+  // Centre the focus, then pull back so no edge of the frame shows inside the view.
+  const clamp = (pos, size, view) => (size >= view ? Math.min(0, Math.max(view - size, pos)) : pos)
+  const left = clamp(viewW / 2 - fcx * width, width, viewW)
+  const top = height >= viewH
+    ? clamp(viewH / 2 - fcy * height, height, viewH)
+    : viewH * COVER_FOCUS_Y - fcy * height
+
+  return { left, top, width, height }
+}
+
+/**
+ * Pure: the backdrop behind a cover on a tall phone: background above the frame's middle,
+ * background_bottom below it (a hard edge, hidden behind the painting). Null when one colour does.
+ */
+export function coverBackdrop (poster, fit) {
+  const below = poster.background_bottom
+  if (!below || below === poster.background) return null
+  const split = Math.round(fit.top + fit.height / 2)
+
+  return `linear-gradient(to bottom, ${poster.background} ${split}px, ${below} ${split}px)`
 }
 
 /** Pure: a frame box re-expressed as a share of the group box it sits in. */
@@ -184,6 +229,7 @@ export function mountTitlePoster (host, stage, poster) {
   const fit = () => {
     const r = posterFit(host.clientWidth, host.clientHeight, poster)
     Object.assign(stage.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` })
+    if (poster.fit === 'cover') host.style.backgroundImage = coverBackdrop(poster, r) ?? ''
   }
   fit()
   const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(fit) : null
