@@ -252,8 +252,11 @@ class MakeTitlePoster extends Command
         if (isset($r['horizon']) && ! $number($r['horizon'], 0, 100)) {
             $e[] = 'horizon must be a % down the frame, 0 to 100.';
         }
-        if (isset($r['subtitle']['font']) && ! in_array($r['subtitle']['font'], ['comic', 'comicroma'], true)) {
-            $e[] = 'subtitle.font must be comic or comicroma.';
+        if (isset($r['subtitle']['font']) && ! in_array($r['subtitle']['font'], ['comic', 'comicroma', 'lettering'], true)) {
+            $e[] = 'subtitle.font must be comic, comicroma or lettering.';
+        }
+        if (isset($r['series']['font']) && ! in_array($r['series']['font'], ['comicroma', 'lettering'], true)) {
+            $e[] = 'series.font must be comicroma or lettering.';
         }
         if (isset($r['focus']) && array_filter(['x', 'y', 'w', 'h'], fn ($k) => ! $number($r['focus'][$k] ?? null, 0, 100))) {
             $e[] = 'focus must be {x, y, w, h} in % of the frame: what a phone must keep in sight.';

@@ -17,8 +17,9 @@
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Coming+Soon&display=swap">
     @elseif ($lesson->titleStyle() === \App\Enums\TitleStyle::Cover)
-        {{-- The comic cover's live subtitle is set in ComicRoma (app.css @font-face). --}}
-        <link rel="preload" href="{{ asset('fonts/comicroma/ComicRoma.woff2') }}" as="font" type="font/woff2" crossorigin>
+        {{-- The comic cover's live subtitle is set in ComicRoma Lettering Bold (app.css @font-face);
+             a cover whose recipe picks ComicRoma loads that face on demand. --}}
+        <link rel="preload" href="{{ asset('fonts/comic-lettering/ComicRomaLettering-Bold.woff2') }}" as="font" type="font/woff2" crossorigin>
     @endif
 </head>
 <body class="h-full overflow-hidden bg-[#020617]">
@@ -671,7 +672,7 @@
                         <template x-if="lesson.title_poster.subtitle">
                             <p lang="{{ $contentLang }}" x-text="lesson.title.replace(/^.*?:\s*/, '')"
                                class="absolute flex items-center justify-center whitespace-nowrap text-center leading-none"
-                               :style="(({ box, size, color, font }) => `left:${box.x}%;top:${box.y}%;width:${box.w}%;height:${box.h}%;font-size:${size}cqw;color:${color};font-family:${font === 'comicroma' ? 'ComicRoma' : `'Coming Soon'`},var(--font-comic)`)(lesson.title_poster.subtitle)"></p>
+                               :style="(({ box, size, color, font }) => `left:${box.x}%;top:${box.y}%;width:${box.w}%;height:${box.h}%;font-size:${size}cqw;color:${color};${font === 'lettering' ? `font-family:'ComicRoma Lettering',var(--font-comic);font-weight:700;text-transform:uppercase` : `font-family:${font === 'comicroma' ? 'ComicRoma' : `'Coming Soon'`},var(--font-comic)`}`)(lesson.title_poster.subtitle)"></p>
                         </template>
                     </div>
                 </div>

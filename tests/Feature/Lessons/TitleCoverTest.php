@@ -78,7 +78,7 @@ class TitleCoverTest extends TestCase
         $this->assertNotNull($poster);
         $this->assertSame('cover', $poster['fit']);
         $this->assertSame(['#C8E5F2', '#A3876F'], [$poster['background'], $poster['background_bottom']]);
-        $this->assertSame(['comicroma', '#16202E'], [$poster['subtitle']['font'], $poster['subtitle']['color']]);
+        $this->assertSame(['lettering', '#16202E'], [$poster['subtitle']['font'], $poster['subtitle']['color']]);
         $this->assertNotNull($poster['focus']);
 
         // The painting first, there from the first frame and slowly drifting; then the letters
@@ -150,6 +150,7 @@ class TitleCoverTest extends TestCase
         unset($recipe['title']['w']);
         $recipe['background'] = 'sky';
         $recipe['subtitle']['font'] = 'papyrus';
+        $recipe['series']['font'] = 'papyrus';
         $recipe['heroes'] = [['art' => 'resources/icons/history-line/figures/tasman/tasman_back.webp']];
         $this->writeRecipe($recipe);
 
@@ -157,10 +158,30 @@ class TitleCoverTest extends TestCase
             ->expectsOutputToContain('plate.art file not found')
             ->expectsOutputToContain('title needs "w"')
             ->expectsOutputToContain('background must be a colour')
-            ->expectsOutputToContain('subtitle.font must be comic or comicroma')
+            ->expectsOutputToContain('subtitle.font must be comic, comicroma or lettering')
+            ->expectsOutputToContain('series.font must be comicroma or lettering')
             ->expectsOutputToContain('heroes[0].height must be')
             ->assertFailed();
         $this->assertDirectoryDoesNotExist(public_path('lesson-titles/'.self::GROUP));
+    }
+
+    public function test_the_small_lines_take_the_lettering_face_or_comicroma(): void
+    {
+        $series = fn (): string => (string) file_get_contents(public_path('lesson-titles/'.self::GROUP.'/cover/series.svg'));
+
+        $this->make()->assertSuccessful();
+        $lettering = $series();
+        $this->assertSame('lettering', TitlePoster::for(self::GROUP, 'cover')['subtitle']['font']);
+
+        $recipe = $this->tasmanCover();
+        $recipe['series']['font'] = 'comicroma';
+        $recipe['subtitle']['font'] = 'comicroma';
+        $this->writeRecipe($recipe);
+        $this->make()->assertSuccessful();
+
+        $this->assertNotSame($lettering, $series(), 'the series line is drawn from the lettering face, not the title font');
+        $this->assertStringContainsString('fill="#16202E"', $series(), 'both stay flat ink');
+        $this->assertSame('comicroma', TitlePoster::for(self::GROUP, 'cover')['subtitle']['font']);
     }
 
     public function test_comicroma_sets_an_ordinary_comic_poster_kerned(): void
@@ -200,7 +221,7 @@ class TitleCoverTest extends TestCase
         $this->assertStringContainsString('"title_style":"cover"', $html);
         $this->assertStringContainsString('"fit":"cover"', $html);
         $this->assertMatchesRegularExpression('#lesson-titles\\\\?/tasman-standard\\\\?/cover\\\\?/letter-a\.svg#', $html);
-        $this->assertStringContainsString('fonts/comicroma/ComicRoma.woff2', $html);
+        $this->assertStringContainsString('fonts/comic-lettering/ComicRomaLettering-Bold.woff2', $html);
         $this->assertStringNotContainsString('family=Coming+Soon', $html);
     }
 
