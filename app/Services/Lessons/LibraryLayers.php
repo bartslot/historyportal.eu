@@ -109,6 +109,22 @@ class LibraryLayers
      */
     public const LINE_ART_CONFIG = ['backdrop_shade' => false, 'background_fit' => 'contain'];
 
+    /**
+     * What a history-line backdrop sets in the scene config. A painted plate is no ink drawing (it
+     * fills the frame), but it is a light watercolour all the same: the player's dark shade would
+     * dim it, so it is off for both.
+     *
+     * @return array<string,mixed>
+     */
+    public static function backdropConfig(string $ref): array
+    {
+        if (! str_starts_with(trim($ref, '/ '), 'history-line/')) {
+            return [];
+        }
+
+        return self::isLineArt($ref) ? self::LINE_ART_CONFIG : ['backdrop_shade' => false];
+    }
+
     /** The paper the line-art plates are drawn on: the letterbox around a whole plate. */
     private const LINE_ART_PAPER = '#ffffff';
 
@@ -156,7 +172,7 @@ class LibraryLayers
                 // Its depth map (art:depth), for occlusion and "fit to this spot". `src` is the
                 // picture it belongs to: a teacher who swaps the picture must not keep its depth.
                 ...($asset->depthUrl() ? ['backdrop_depth' => ['src' => $path, 'url' => $asset->depthUrl()]] : []),
-            ], self::isLineArt($ref) ? self::LINE_ART_CONFIG : []),
+            ], self::backdropConfig($ref)),
         ]);
     }
 
