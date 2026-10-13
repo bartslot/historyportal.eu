@@ -15,8 +15,24 @@
      "plate": "plates/golden_bay_dusk.png",
      "figures": null,
      "ships": [
-      "ships/waka_pair.png",
-      "ships/heemskerck_anchor_dusk.png"
+      {
+       "file": "ships/heemskerck_anchor_dusk.png",
+       "x": 74,
+       "y": 50,
+       "height": 30,
+       "depth": 0.5,
+       "ambient": "roll",
+       "ambient_amount": 0.5
+      },
+      {
+       "file": "ships/waka_pair.png",
+       "x": 38,
+       "y": 72,
+       "height": 16,
+       "depth": 0.9,
+       "ambient": "bob",
+       "ambient_amount": 0.8
+      }
      ],
      "camera": {
       "ease": "move",
@@ -75,7 +91,15 @@
      "plate": "plates/batavia_roadstead.png",
      "figures": "figures/S01-A.png",
      "ships": [
-      "ships/heemskerck_anchor_dusk.png"
+      {
+       "file": "ships/heemskerck_anchor_dusk.png",
+       "x": 62,
+       "y": 54,
+       "height": 30,
+       "depth": 0.6,
+       "ambient": "roll",
+       "ambient_amount": 0.4
+      }
      ],
      "camera": {
       "ease": "move",
@@ -313,8 +337,24 @@
      "plate": "plates/open_sea_day.png",
      "figures": null,
      "ships": [
-      "ships/heemskerck_side_sail.png",
-      "ships/zeehaen_side_sail.png"
+      {
+       "file": "ships/zeehaen_side_sail.png",
+       "x": 30,
+       "y": 50,
+       "height": 26,
+       "depth": 0.5,
+       "ambient": "roll",
+       "ambient_amount": 1.0
+      },
+      {
+       "file": "ships/heemskerck_side_sail.png",
+       "x": 64,
+       "y": 55,
+       "height": 40,
+       "depth": 0.8,
+       "ambient": "roll",
+       "ambient_amount": 1.0
+      }
      ],
      "camera": {
       "ease": "move",
@@ -445,7 +485,15 @@
      "plate": "plates/mauritius_anchorage.png",
      "figures": "figures/S05-A.png",
      "ships": [
-      "ships/heemskerck_anchor_dusk.png"
+      {
+       "file": "ships/heemskerck_anchor_dusk.png",
+       "x": 70,
+       "y": 58,
+       "height": 28,
+       "depth": 0.6,
+       "ambient": "roll",
+       "ambient_amount": 0.4
+      }
      ],
      "camera": {
       "ease": "move",
@@ -533,7 +581,15 @@
      "plate": "plates/ocean_empty_wide.png",
      "figures": null,
      "ships": [
-      "ships/ships_pair_far.png"
+      {
+       "file": "ships/ships_pair_far.png",
+       "x": 58,
+       "y": 44,
+       "height": 8,
+       "depth": 0.3,
+       "ambient": "bob",
+       "ambient_amount": 0.5
+      }
      ],
      "camera": {
       "ease": "move",
@@ -645,12 +701,20 @@
      "plate": "plates/storm_deck.png",
      "figures": "figures/S07-A.png",
      "ships": [
-      "ships/heemskerck_storm.png"
+      {
+       "file": "ships/heemskerck_storm.png",
+       "x": 72,
+       "y": 48,
+       "height": 22,
+       "depth": 0.4,
+       "ambient": "roll",
+       "ambient_amount": 1.8
+      }
      ],
      "camera": {
       "ease": "move",
       "move": "shake",
-      "amount": 0.96,
+      "amount": 0.7,
       "duration": 6
      },
      "entry": "cut"
@@ -686,7 +750,7 @@
      "camera": {
       "ease": "move",
       "move": "shake",
-      "amount": 1.28,
+      "amount": 0.7,
       "duration": 6
      },
      "entry": "cut"
@@ -742,7 +806,15 @@
      "plate": "plates/storm_morning_sea.png",
      "figures": "figures/S07-D.png",
      "ships": [
-      "ships/zeehaen_side_sail.png"
+      {
+       "file": "ships/zeehaen_side_sail.png",
+       "x": 70,
+       "y": 40,
+       "height": 8,
+       "depth": 0.3,
+       "ambient": "roll",
+       "ambient_amount": 0.8
+      }
      ],
      "camera": {
       "ease": "move",
@@ -1029,7 +1101,15 @@
      "plate": "plates/vdl_forest.png",
      "figures": "figures/S10-C.png",
      "ships": [
-      "ships/sloep_rowing.png"
+      {
+       "file": "ships/sloep_rowing.png",
+       "x": 30,
+       "y": 78,
+       "height": 14,
+       "depth": 1.1,
+       "ambient": "bob",
+       "ambient_amount": 0.8
+      }
      ],
      "camera": {
       "ease": "move",
@@ -1174,7 +1254,15 @@
      "plate": "plates/golden_bay_dusk.png",
      "figures": "figures/S13-A.png",
      "ships": [
-      "ships/waka_pair.png"
+      {
+       "file": "ships/waka_pair.png",
+       "x": 45,
+       "y": 66,
+       "height": 18,
+       "depth": 0.8,
+       "ambient": "bob",
+       "ambient_amount": 0.6
+      }
      ],
      "camera": {
       "ease": "move",
@@ -1266,8 +1354,24 @@
      "plate": "plates/golden_bay_morning.png",
      "figures": null,
      "ships": [
-      "ships/waka_pair.png",
-      "ships/sloep_rowing.png"
+      {
+       "file": "ships/waka_pair.png",
+       "x": 30,
+       "y": 62,
+       "height": 16,
+       "depth": 0.7,
+       "ambient": "bob",
+       "ambient_amount": 1.0
+      },
+      {
+       "file": "ships/sloep_rowing.png",
+       "x": 66,
+       "y": 66,
+       "height": 14,
+       "depth": 0.8,
+       "ambient": "bob",
+       "ambient_amount": 1.0
+      }
      ],
      "camera": {
       "ease": "move",
@@ -1377,7 +1481,15 @@
      "plate": "plates/tonga_lagoon.png",
      "figures": "figures/S15-A.png",
      "ships": [
-      "ships/tongan_canoes.png"
+      {
+       "file": "ships/tongan_canoes.png",
+       "x": 42,
+       "y": 74,
+       "height": 22,
+       "depth": 0.9,
+       "ambient": "bob",
+       "ambient_amount": 0.8
+      }
      ],
      "camera": {
       "ease": "move",

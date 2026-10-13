@@ -49,9 +49,9 @@ return function (string $lang, ?array $text = null): array {
 
             $layers = [];
             foreach ($panel['ships'] as $ship) {
-                if ($asset = $ref($ship, 'props')) {
-                    $layers[] = ['asset' => $asset, 'x' => 50, 'y' => 46, 'height' => 40, 'depth' => 0.6,
-                        'ambient' => 'bob', 'ambient_amount' => 0.6, 'anim' => 'fade'];
+                if ($asset = $ref($ship['file'], 'props')) {
+                    $layers[] = ['asset' => $asset, 'anim' => 'fade']
+                        + array_intersect_key($ship, array_flip(['x', 'y', 'height', 'depth', 'ambient', 'ambient_amount']));
                 }
             }
             if ($asset = $ref($panel['figures'], 'figures')) {

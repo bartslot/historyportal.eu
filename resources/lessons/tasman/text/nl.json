@@ -332,7 +332,8 @@
    "reveal": "Een echt VOC-schip moest voorraden, uitrusting en handelswaar meenemen. Voor deze expeditie waren voedsel voor twaalf maanden en rijst voor achttien maanden voorgeschreven, naast ruilgoederen en metalen. Op Mauritius vulden de mannen water en brandhout aan.",
    "needs": "Op 26 oktober verving de Zeehaen een gebroken ra door een reserve. In de storm en in de kou helpen reserves, water en voedsel; geen vat neemt heimwee weg.",
    "followup": "Welk pakket willen jullie alsnog meenemen, en wat moet daarvoor wijken?",
-   "source": "Tasman, journaal en documenten (Heeres-editie, 1898). Appendix D en E; journaal 30 september tot 26 oktober 1642."
+   "source": "Tasman, journaal en documenten (Heeres-editie, 1898). Appendix D en E; journaal 30 september tot 26 oktober 1642.",
+   "backdrop": "history-line/backdrops/tasman/deck_harbour"
   },
   "scheepsraad": {
    "mode": "choose",
@@ -382,7 +383,8 @@
    "answer": "B",
    "reveal": "Visscher adviseerde noordelijker te varen en daarna naar het oosten. De echte raad koos op 7 november die koers. Op 9 november stuurden ze het besluit naar de Zeehaen; die stemde met een vlag in.",
    "followup": "Zouden jullie anders kiezen nu jullie de afloop kennen?",
-   "source": "Tasman, journaal en documenten (Heeres-editie, 1898). Journaal 6, 7 en 9 november 1642."
+   "source": "Tasman, journaal en documenten (Heeres-editie, 1898). Journaal 6, 7 en 9 november 1642.",
+   "backdrop": "history-line/backdrops/tasman/cabin_chart"
   },
   "slotvraag": {
    "mode": "discuss",
@@ -395,7 +397,8 @@
     "Wat ontdekten de bezoekers over de bewoners, en wat bleef onzeker?",
     "Verander de zin en wijs aan welk beeld jouw woorden ondersteunt."
    ],
-   "closing": "Nu is het aan jullie: welke woorden kiezen jullie om te vertellen wat Tasman ontdekte?"
+   "closing": "Nu is het aan jullie: welke woorden kiezen jullie om te vertellen wat Tasman ontdekte?",
+   "backdrop": "history-line/backdrops/tasman/golden_bay_shore_view"
   }
  }
 }

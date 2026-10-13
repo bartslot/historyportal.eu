@@ -14,7 +14,7 @@ from pathlib import Path
 from PIL import Image
 
 LIB = Path(__file__).resolve().parents[2] / 'resources' / 'icons' / 'history-line'
-KINDS = {'plates': 'backdrops', 'figures': 'figures', 'ships': 'props'}
+KINDS = {'plates': 'backdrops', 'figures': 'figures', 'ships': 'props', 'fx': 'props'}
 MAX_W, QUALITY = 2880, 80
 
 
