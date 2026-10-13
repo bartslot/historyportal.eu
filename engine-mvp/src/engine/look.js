@@ -68,9 +68,9 @@
     chain = [];
     if (!ui.on.checked) { scene.disableGeometryBufferRenderer(); return; }
     const gbr = scene.enableGeometryBufferRenderer();
-    // sky cards (clouds) stay out of depth/normals: their rectangles would get ink and world texture
+    // sky cards (clouds) and painted plates (metadata.noGBuffer) stay out of depth/normals: their edges would get ink
     if (!gbrFilter) gbrFilter = scene.onBeforeRenderObservable.add(() => {
-      if (scene.geometryBufferRenderer) scene.geometryBufferRenderer.renderList = scene.meshes.filter((m) => m.name !== 'sky-cloud');
+      if (scene.geometryBufferRenderer) scene.geometryBufferRenderer.renderList = scene.meshes.filter((m) => m.name !== 'sky-cloud' && !(m.metadata && m.metadata.noGBuffer));
     });
     const gb = gbr.getGBuffer().textures;
     const depth = gb[gbr.getTextureIndex(BABYLON.GeometryBufferRenderer.DEPTH_TEXTURE_TYPE)];
