@@ -261,6 +261,23 @@
     font-style: normal;
     font-display: swap;
 }
+/* ─── ComicRoma Lettering: our comic lettering face, a modified Comic Neue (SIL OFL 1.1; built in
+   branding/historyportalBranding/font-build/comic-lettering). The cover's small lines for now;
+   --font-comic (balloons) is NOT switched to it yet. Downloaded only where it is used. */
+@font-face {
+    font-family: 'ComicRoma Lettering';
+    src: url('/fonts/comic-lettering/ComicRomaLettering-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'ComicRoma Lettering';
+    src: url('/fonts/comic-lettering/ComicRomaLettering-Bold.woff2') format('woff2');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
 /* ─── Cinzel — self-hosted (latin subset), replaces external font CDN ─ */
 @font-face {
     font-family: 'Cinzel';

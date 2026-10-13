@@ -8,6 +8,10 @@ Writes the same poster.json the player already reads (resources/js/title-poster.
 cover keys: "fit": "cover" (fill the view instead of letterboxing), "background_bottom" (the
 colour under the frame on a tall phone) and subtitle "font".
 
+Small lines: the series line and the live subtitle each take a "font": "comicroma" (the title
+font), "lettering" (ComicRoma Lettering, our comic lettering face, Bold) or, for the subtitle only,
+"comic" (Coming Soon).
+
 Geometry: FRAME units are the plate's own pixels (after the MAX_PX cap); recipe positions are %
 of the frame (x of its width, y of its height). Letters come from the recipe's font with its
 kerning, one SVG per letter so they drop in one after another, as on the comic poster.
@@ -27,7 +31,9 @@ COVER_DEFAULTS = {
     'hero_bottom': 103.0,      # heroes' feet sit below the frame edge
     'bleed': 0.0,              # % the plate is scaled past each edge, room for its ambient motion
 }
-SUBTITLE_FONTS = ('comic', 'comicroma')
+SUBTITLE_FONTS = ('comic', 'comicroma', 'lettering')
+SERIES_FONTS = ('comicroma', 'lettering')
+LETTERING_FONT = 'public/fonts/comic-lettering/ComicRomaLettering-Bold.ttf'
 
 
 def cap_units(font):
@@ -151,9 +157,12 @@ def build_cover(recipe, base, out_dir):
 
     # The series line, small, over the title, one picture that fades in after the letters.
     sr = {**COVER_DEFAULTS['series'], **recipe.get('series', {})}
+    if sr.get('font', 'comicroma') not in SERIES_FONTS:
+        raise RecipeError(f'series.font must be one of: {", ".join(SERIES_FONTS)}.')
     if sr.get('text'):
         s_cap = H * float(sr['cap']) / 100
-        line, line_w = set_line(font_path, sr['text'], s_cap, capu)
+        s_path = os.path.join(base, LETTERING_FONT) if sr.get('font') == 'lettering' else font_path
+        line, line_w = set_line(s_path, sr['text'], s_cap, cap_units(TTFont(s_path)))
         place_line(line, line_w, cx, top - H * float(sr['gap']) / 100 - s_cap)
         box = union([(L['bounds'][0], L['bounds'][1], L['bounds'][2] - L['bounds'][0], L['bounds'][3] - L['bounds'][1]) for L in line])
         view = (box[0] - 1, box[1] - 1, box[2] + 2, box[3] + 2)

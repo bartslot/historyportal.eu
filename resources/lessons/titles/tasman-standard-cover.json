@@ -11,8 +11,8 @@
   "background": "#C8E5F2",
   "background_bottom": "#A3876F",
   "ink": "#16202E",
-  "series": { "text": "DE REIZEN VAN", "cap": 2.6, "gap": 2.4 },
+  "series": { "text": "DE REIZEN VAN", "cap": 2.9, "gap": 2.4, "font": "lettering" },
   "title": { "text": "ABEL TASMAN", "x": 73, "y": 9, "w": 44 },
-  "subtitle": { "size": 2.1, "gap": 2.6, "font": "comicroma" },
+  "subtitle": { "size": 2.4, "gap": 2.4, "font": "lettering" },
   "focus": { "x": 23, "y": 3, "w": 72, "h": 43 }
 }

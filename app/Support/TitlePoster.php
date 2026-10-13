@@ -23,7 +23,7 @@ final class TitlePoster
 
     private const FITS = ['contain', 'cover'];
 
-    private const SUBTITLE_FONTS = ['comic', 'comicroma'];
+    private const SUBTITLE_FONTS = ['comic', 'comicroma', 'lettering'];
 
     public static function exists(?string $group, string $variant = ''): bool
     {
