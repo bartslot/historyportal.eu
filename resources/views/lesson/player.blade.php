@@ -373,7 +373,7 @@
                 {{-- A line-art scene (backdropShade off) keeps its paper white to the edge: no
                      full-width scrim. Its controls carry their own local plate instead (the Edit
                      button already has one; the logo gets one below). --}}
-                <div x-show="backdropShade" class="pointer-events-none absolute inset-x-0 top-0 h-36 bg-linear-to-b from-black/70 to-transparent"></div>
+                <div x-show="backdropShade && !(phase === 'TITLE_SCREEN' && lesson.title_poster)" class="pointer-events-none absolute inset-x-0 top-0 h-36 bg-linear-to-b from-black/70 to-transparent"></div>
                 <div class="relative flex items-center gap-2.5 px-8 py-3.5 sm:px-12">
                     {{-- title_preview: the editor's title-screen frame shows what students see. --}}
                     @if ($canEdit && ! request()->boolean('title_preview'))
@@ -767,7 +767,7 @@
                               drop-shadow-[0_1px_8px_rgba(0,0,0,0.9)]"></p>
 
                     {{-- Meta row --}}
-                    <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 {{ $titleRows }}">
+                    <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 {{ $titleRows }}" :class="lesson.title_poster && 'title-poster-meta'">
                         <span x-show="lesson.grade_level" x-text="lesson.grade_level"
                               class="text-xs font-light text-slate-500"></span>
                         <span x-show="lesson.grade_level && lesson.subject" class="text-slate-700 text-xs">·</span>
