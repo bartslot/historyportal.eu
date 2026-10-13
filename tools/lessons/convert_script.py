@@ -80,6 +80,7 @@ def main() -> None:
             panels.append({'id': pid, 'staging': p['staging'], 'lines': line_ids,
                            'cast': sorted({ln.get('bubble') or ln['speaker'] for ln in line_ids} - {'narrator'}),
                            'plate': a.get('plate'), 'figures': a.get('figures'), 'ships': a.get('ships', []),
+                           'people': a.get('people', []),
                            'camera': a.get('camera', {'move': 'hold'}), 'entry': a.get('entry', 'cut'),
                            **({'mouths': a['mouths']} if a.get('mouths') else {})})
         story['scenes'].append({'id': sid, 'act': s['act'], 'panels': panels})
