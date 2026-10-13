@@ -263,11 +263,11 @@
                         <h4 class="{{ $label }}">{{ __('Harbour race') }}</h4>
                         <div class="grid grid-cols-3 gap-2">
                             <label class="input input-sm w-full">
-                                <span class="{{ $label }}">{{ __('Start') }}</span>
+                                <span class="{{ $label }}">{{ __('Start line') }}</span>
                                 <input type="number" min="-50" max="150" wire:model.blur="momentDraft.race.start_x" wire:change="saveMomentDraft" class="grow" />
                             </label>
                             <label class="input input-sm w-full">
-                                <span class="{{ $label }}">{{ __('Finish') }}</span>
+                                <span class="{{ $label }}">{{ __('Finish line') }}</span>
                                 <input type="number" min="-50" max="150" wire:model.blur="momentDraft.race.finish_x" wire:change="saveMomentDraft" class="grow" />
                             </label>
                             <label class="input input-sm w-full" data-tooltip="{{ __('Seconds the 1642 fleet takes on a pupil\'s own device') }}">
