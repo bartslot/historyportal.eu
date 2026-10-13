@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /** One team of a harbour race: the name is the teacher's, never a pupil's. */
 class RaceTeam extends Model
 {
-    protected $fillable = ['race_run_id', 'position', 'name', 'progress', 'finished_ms', 'pushed_ms', 'last_seen_at'];
+    protected $fillable = ['race_run_id', 'position', 'name', 'progress', 'finished_ms', 'pushed_ms', 'words', 'last_seen_at'];
 
     protected function casts(): array
     {
@@ -19,6 +19,7 @@ class RaceTeam extends Model
             'progress' => 'float',
             'finished_ms' => 'integer',
             'pushed_ms' => 'integer',
+            'words' => 'array',
             'last_seen_at' => 'datetime',
         ];
     }

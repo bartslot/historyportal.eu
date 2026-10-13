@@ -210,6 +210,33 @@ class HarbourRaceServerTest extends TestCase
         $this->assertSame(1, RaceRun::count());
     }
 
+    public function test_a_right_word_counts_once_per_team_however_many_phones_tap_it(): void
+    {
+        $race = $this->open();
+        [$t1, $t2] = array_column($race['teams'], 'id');
+        $this->patchJson(route('race.update', $race['code']), ['action' => 'start']);
+        $this->app['auth']->forgetGuards();
+        $this->join($race['code'], $t1);
+        $this->join($race['code'], $t2);
+
+        $word = fn (int $team, int $index, string $device) => $this->withHeaders(['X-Race-Token' => $this->tokens[$team], 'X-Race-Device' => $device])
+            ->postJson(route('race.push', $race['code']), ['team_id' => $team, 'word' => $index])->assertOk()->json();
+
+        $this->assertEqualsWithDelta(1.0, $word($t1, 2, 'phone-a-000000000001')['accepted'], 0.001);
+        $again = $word($t1, 2, 'phone-b-000000000002');                                // another phone, same team, same word
+        $this->assertEqualsWithDelta(0.0, $again['accepted'], 0.001);
+        $this->assertEqualsWithDelta(1.0, $again['teams'][0]['progress'], 0.001);
+        $this->assertSame([2], $again['teams'][0]['words']);                           // every phone of the team sees it used
+        $this->assertEqualsWithDelta(1.0, $word($t2, 2, 'phone-c-000000000003')['accepted'], 0.001);   // another team may find it too
+        $this->assertEqualsWithDelta(0.0, $word($t1, 7, 'phone-a-000000000001')['accepted'], 0.001);   // not one of the four words
+        // Different words in the same instant all count: each word is its own limit, no speed cap.
+        foreach ([0, 1, 3] as $i) {
+            $state = $word($t1, $i, 'phone-a-000000000001');
+        }
+        $this->assertEqualsWithDelta(4.0, $state['teams'][0]['progress'], 0.001);
+        $this->assertNotNull($state['teams'][0]['finished_ms']);
+    }
+
     public function test_ending_early_ranks_by_progress_and_crews_no_team_that_never_got_going(): void
     {
         $race = $this->open();
@@ -239,7 +266,7 @@ class HarbourRaceServerTest extends TestCase
 
     public function test_nothing_personal_is_stored_and_nothing_lives_past_a_day(): void
     {
-        $this->assertSame(['id', 'race_run_id', 'position', 'name', 'progress', 'finished_ms', 'last_seen_at', 'created_at', 'updated_at', 'pushed_ms'], Schema::getColumnListing('race_teams'));
+        $this->assertSame(['id', 'race_run_id', 'position', 'name', 'progress', 'finished_ms', 'last_seen_at', 'created_at', 'updated_at', 'pushed_ms', 'words'], Schema::getColumnListing('race_teams'));
 
         $old = $this->open();
         Carbon::setTestNow(Carbon::now()->addHours(25));

@@ -88,6 +88,7 @@ final class JsTranslations
             'Joined' => __('Joined'),
             'No signal' => __('No signal'),
             'Not joined yet' => __('Not joined yet'),
+            'Your team is through! Wait for the others.' => __('Your team is through! Wait for the others.'),
             'Movement' => __('Movement'),
         ];
     }

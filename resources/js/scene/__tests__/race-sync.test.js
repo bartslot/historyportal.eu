@@ -93,3 +93,22 @@ describe('RaceClient', () => {
     expect(onGone).toHaveBeenCalledOnce()
   })
 })
+
+describe('RaceClient and the words', () => {
+  const urls = { state: '/race/ABCD/state', push: '/race/ABCD/push' }
+  const reply = (status, body = {}) => Promise.resolve({ status, ok: status < 400, json: () => Promise.resolve(body) })
+
+  it('sends each word once, before any gain, and never twice', async () => {
+    vi.useFakeTimers()
+    const bodies = []
+    const fetchFn = vi.fn((url, init) => { if (init?.body) bodies.push(JSON.parse(init.body)); return reply(200, { accepted: 0 }) })
+    const client = new RaceClient({ urls, teamId: 4, token: 't', cap: 1, fetchFn, pushMs: 500, pollMs: 2000 })
+    client.gain(0.5)
+    client.word(2); client.word(2); client.word(0)
+    client.start()
+    for (let i = 0; i < 3; i++) await vi.advanceTimersByTimeAsync(500)
+    expect(bodies.slice(0, 2)).toEqual([{ team_id: 4, word: 2 }, { team_id: 4, word: 0 }])
+    expect(bodies[2]).toEqual({ team_id: 4, delta: 0.5 })
+    client.stop()
+  })
+})

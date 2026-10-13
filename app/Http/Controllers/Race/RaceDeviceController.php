@@ -9,6 +9,7 @@ use App\Http\Requests\Race\JoinRaceRequest;
 use App\Http\Requests\Race\PushRaceRequest;
 use App\Models\RaceRun;
 use App\Services\Lessons\HarbourRace;
+use App\Support\MediaUrl;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -45,6 +46,8 @@ class RaceDeviceController extends Controller
                 'race' => $this->race->state($run),
                 // Only what the meter needs: never the lesson's other content.
                 'moment' => array_intersect_key($moment, array_flip(['name', 'meter_label', 'prompt', 'input', 'input_options', 'words', 'goal'])),
+                // The race's own ship, sailing the team's progress on the phone.
+                'ship' => $this->shipUrl($run, $moment),
                 'push_ms' => (int) config('race.push_ms'),
                 'poll_ms' => (int) config('race.device_poll_ms'),
                 'urls' => [
@@ -89,9 +92,25 @@ class RaceDeviceController extends Controller
         $run = $this->live($code);
         $team = $request->integer('team_id');
         abort_unless($this->race->validToken($run, $team, $request->header('X-Race-Token')), 403);
-        [$run, $accepted] = $this->race->push($run, $team, (float) $request->input('delta'));
+        [$run, $accepted] = $request->has('word')
+            ? $this->race->pushWord($run, $team, $request->integer('word'))
+            : $this->race->push($run, $team, (float) $request->input('delta'));
 
         return response()->json($this->race->state($run) + ['accepted' => $accepted]);
+    }
+
+    /** The picture of the ship the race is sailed with (the moment's reacting layer), or null. */
+    private function shipUrl(RaceRun $run, array $moment): ?string
+    {
+        $id = $moment['react']['layer'] ?? $moment['payoff']['layer'] ?? null;
+        $layers = (array) (((array) ($run->scene->shots ?? []))[0]['layers'] ?? []);
+        foreach ($layers as $layer) {
+            if ($id !== null && (int) ($layer['asset_id'] ?? 0) === (int) $id && ! empty($layer['path'])) {
+                return MediaUrl::of($layer['path']);
+            }
+        }
+
+        return null;
     }
 
     /**

@@ -10,6 +10,9 @@ import { raceLanes, laneX } from './race.js'
 /** Team colours from the theme's own tokens (DaisyUI), never raw Tailwind colours. */
 const COLOURS = ['badge-secondary', 'badge-accent', 'badge-info', 'badge-success', 'badge-warning', 'badge-neutral', 'badge-ghost', 'badge-primary']
 
+/** A team's chip colour by its place in the race (the class screen and its phones agree). */
+export const teamColour = (i) => COLOURS[i % COLOURS.length]
+
 /** A ship gaining ground: on-screen motion that settles, so it decelerates into place. */
 const GAIN = 'translate 700ms cubic-bezier(0.22, 1, 0.36, 1)'
 
@@ -47,7 +50,7 @@ export class RaceStage {
       width: `${this.host.offsetWidth}px`, height: `${this.host.offsetHeight}px`, zIndex: '35',
     })
     this._lanes.forEach((lane, i) => {
-      const chip = el('span', `badge badge-sm absolute whitespace-nowrap ${COLOURS[i % COLOURS.length]}`, names[i] ?? '')
+      const chip = el('span', `badge badge-sm absolute whitespace-nowrap ${teamColour(i)}`, names[i] ?? '')
       chip.dataset.raceChip = String(i)
       Object.assign(chip.style, { left: `${startX}%`, top: `${lane.y + lane.height / 2 + 1}%`, transform: 'translateX(-50%)' })
       this._chips.appendChild(chip)

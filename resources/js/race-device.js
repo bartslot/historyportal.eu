@@ -4,7 +4,8 @@
  *   pick     the teams the teacher named; a phone that joined before goes straight back to its team
  *   wait     the lobby: the teacher starts the race on the class screen
  *   race     the moment's meter (words, tap, mic, shake: the PowerMeter itself) as this phone's input;
- *            what it gains is pushed to the team, and the team's bar shows what all its phones did
+ *            a right word is sent as that word (it counts once per team: a word a teammate found
+ *            shows as used here), a sensor's gain as an amount; the team's ship sails its progress
  *   done     which ship the team crews, or that the race is over
  *
  * Every string is set with textContent. Nothing about the pupil is sent: a team id, a gain, and a
@@ -16,6 +17,7 @@ import { el } from './scene/dom.js'
 import { PowerMeter } from './scene/PowerMeter.js'
 import { RaceClient, crewOf, deviceId } from './scene/race-sync.js'
 import { safeStorage } from './scene/progress-store.js'
+import { teamColour } from './scene/race-stage.js'
 
 const cfg = window.RACE_DEVICE
 const root = document.querySelector('[data-race-view]')
@@ -29,6 +31,7 @@ let meter = null
 let lastLevel = 0
 let client = null
 let view = ''
+const wordsMode = !['loudness', 'blow', 'rhythm', 'silence', 'motion'].includes(cfg.moment.input)
 
 const button = (label, cls, onClick) => {
   const b = el('button', `btn shadow-none ${cls}`, label)
@@ -98,16 +101,52 @@ function teamBar () {
   return row
 }
 
+/** The team's own ship on a strip of sea, sailing the team's progress, its chip underneath. Flat. */
+function shipStrip () {
+  const team = myTeam()
+  const sea = el('div', 'relative h-36 w-full overflow-hidden rounded-box bg-info/20')
+  sea.dataset.sea = ''
+  const boat = el('div', 'absolute bottom-3 left-0 flex flex-col items-center gap-1')
+  boat.dataset.boat = ''
+  boat.style.transition = matchMedia('(prefers-reduced-motion: reduce)').matches ? 'none' : 'translate 700ms cubic-bezier(0.22, 1, 0.36, 1)'
+  if (cfg.ship) {
+    const img = el('img', 'h-24 w-auto select-none')
+    img.src = cfg.ship
+    img.alt = ''
+    img.draggable = false
+    img.addEventListener('load', () => sail())
+    boat.appendChild(img)
+  }
+  const index = (race.teams || []).findIndex(tm => tm.id === teamId)
+  boat.appendChild(el('span', `badge badge-sm whitespace-nowrap ${teamColour(Math.max(0, index))}`, team?.name ?? ''))
+  sea.appendChild(boat)
+  return sea
+}
+
+/** Move the ship to the team's progress: from the left edge to the right edge of the strip. */
+function sail () {
+  const sea = root.querySelector('[data-sea]')
+  const boat = root.querySelector('[data-boat]')
+  if (!sea || !boat) return
+  const level = Math.max(0, Math.min(1, (myTeam()?.progress ?? 0) / race.goal))
+  boat.style.translate = `${Math.round(level * Math.max(0, sea.clientWidth - boat.offsetWidth))}px 0px`
+}
+
 function render () {
   if (!myTeam()) return pick()
   if (race.state === 'lobby' && view !== 'wait') {
-    return setView('wait', () => [teamBar(), el('p', 'text-xl', t('Wait for your teacher to start the race.'))])
+    setView('wait', () => [shipStrip(), teamBar(), el('p', 'text-xl', t('Wait for your teacher to start the race.'))])
+    return sail()
   }
   if (race.state === 'running') {
-    if (view !== 'race') startRacing()
+    if (view !== 'race' && view !== 'through') startRacing()
     const bar = root.querySelector('[data-team-bar]')
     if (bar) bar.value = myTeam().progress
-    return
+    // The words this team found on any phone, and its fill, on this phone's meter too.
+    if (wordsMode && view === 'race') meter?.syncTeam(myTeam().words, myTeam().progress)
+    // Over the line (whichever phone found the last word): wait for the others.
+    if (view === 'race' && myTeam().finished_ms != null) through()
+    return sail()
   }
   if (race.state === 'finished' && view !== 'done') {
     meter?.hide()
@@ -116,8 +155,17 @@ function render () {
     const line = ship === 'heemskerck' ? t('Your team crews the Heemskerck!')
       : ship === 'zeehaen' ? t('Your team crews the Zeehaen!')
         : t('The race is over. Look at the class screen.')
-    setView('done', () => [teamBar(), el('p', 'text-2xl font-bold', line)])
+    setView('done', () => [shipStrip(), teamBar(), el('p', 'text-2xl font-bold', line)])
+    sail()
   }
+}
+
+/** The team is over the line: the meter makes way for a word to wait with; the ship stays. */
+function through () {
+  if (view === 'through') return
+  view = 'through'
+  meter?.hide()
+  root.querySelector('[data-race-meter]')?.replaceChildren(el('p', 'text-xl', t('Your team is through! Wait for the others.')))
 }
 
 /** The moment's own meter is this phone's instrument: every gain goes to the team. */
@@ -125,7 +173,7 @@ function startRacing () {
   setView('race', () => {
     const host = el('div', 'relative min-h-[28rem] flex-1')
     host.dataset.raceMeter = ''
-    return [teamBar(), host]
+    return [shipStrip(), teamBar(), host]
   })
   const host = root.querySelector('[data-race-meter]')
   meter = new PowerMeter(host)
@@ -134,12 +182,16 @@ function startRacing () {
     config: { ...cfg.moment, enabled: true, teams: 0, race: { enabled: false } },
     solo: true,
     skippable: false,
-    onProgress: ({ levels }) => {
+    // A right word goes as that word: the server counts it once for the whole team.
+    onWord: wordsMode ? (index) => client?.word(index) : null,
+    // A sensor (or the plain tap) goes as an amount gained.
+    onProgress: wordsMode ? null : ({ levels }) => {
       const gained = ((levels[0] ?? 0) - lastLevel) * race.goal
       lastLevel = levels[0] ?? 0
       client?.gain(gained)
     },
-    onDone: () => { /* this phone filled its whole meter; the team bar and the class screen go on */ },
+    // The team's meter is full: this phone waits for the others, the ship stays in view.
+    onDone: () => through(),
   })
 }
 

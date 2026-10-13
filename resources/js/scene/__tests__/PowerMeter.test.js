@@ -509,3 +509,23 @@ describe('a pupil\'s best time', () => {
     expect(host.textContent).toContain('Your best: 18.0 s')
   })
 })
+
+describe('a team\'s phone in the race', () => {
+  it('tells which word it found, and shows the words other phones of the team found as used', () => {
+    const host = document.createElement('div')
+    const meter = new PowerMeter(host)
+    const onWord = vi.fn()
+    meter.show({ config: raw, solo: true, skippable: false, onWord })
+    meter.tapWord('zeilen')
+    expect(onWord).toHaveBeenCalledWith(1)
+    meter.tapWord('motor')
+    expect(onWord).toHaveBeenCalledTimes(1)
+    meter.syncTeam([0, 1], 2)                                // a teammate found westenwind
+    const used = [...host.querySelectorAll('[data-word][aria-disabled="true"]')].map(b => b.textContent).sort()
+    expect(used).toEqual(['westenwind', 'zeilen'])
+    expect(host.querySelector('[data-meter="0"]').value).toBe(2)
+    meter.tapWord('westenwind')                              // already found by the team: nothing more
+    expect(onWord).toHaveBeenCalledTimes(1)
+    expect([...host.querySelectorAll('button')].map(b => b.textContent)).not.toContain('Skip')
+  })
+})

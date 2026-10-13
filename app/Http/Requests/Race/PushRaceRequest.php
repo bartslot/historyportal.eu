@@ -19,7 +19,9 @@ class PushRaceRequest extends FormRequest
     {
         return [
             'team_id' => ['required', 'integer', 'min:1'],
-            'delta' => ['required', 'numeric', 'min:0', 'max:8'],
+            // A sensor's gain (meter steps) or a right word found (its index in the moment's list).
+            'delta' => ['required_without:word', 'numeric', 'min:0', 'max:8'],
+            'word' => ['sometimes', 'integer', 'min:0', 'max:7'],
         ];
     }
 }

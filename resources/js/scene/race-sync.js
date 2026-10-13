@@ -58,6 +58,7 @@ export class RaceClient {
   constructor ({ urls, teamId = null, token = null, pushMs = 1000, pollMs = 2000, cap = 1, device = 'device-unknown-0000', fetchFn = globalThis.fetch?.bind(globalThis), onState = () => {}, onGone = () => {} }) {
     Object.assign(this, { urls, teamId, token, pushMs, pollMs, cap, device, fetchFn, onState, onGone })
     this._pending = 0
+    this._words = []
     this._delay = pollMs
     this._timer = null
     this._busy = false
@@ -67,6 +68,11 @@ export class RaceClient {
   start () { this._stopped = false; this._schedule(0) }
 
   stop () { this._stopped = true; clearTimeout(this._timer) }
+
+  /** A right word this phone found (its index); sent one per request, before any gain. */
+  word (index) {
+    if (Number.isInteger(index) && !this._words.includes(index)) this._words.push(index)
+  }
 
   /** This device's gain, in meter steps; sent with the next push. */
   gain (steps) {
@@ -79,29 +85,39 @@ export class RaceClient {
     let ok = false
     let base = this.pollMs
     try {
+      const word = this.teamId ? this._words[0] : undefined
       const { send, rest } = takeChunk(this._pending, this.cap)
-      const pushing = this.teamId && send > 0
+      const pushing = this.teamId && (word !== undefined || send > 0)
+      const body = word !== undefined ? { team_id: this.teamId, word } : { team_id: this.teamId, delta: send }
       const res = pushing
-        ? await this._request(this.urls.push, { method: 'POST', body: JSON.stringify({ team_id: this.teamId, delta: send }) })
+        ? await this._request(this.urls.push, { method: 'POST', body: JSON.stringify(body) })
         : await this._request(this.urls.state + (this.teamId ? `?team=${this.teamId}` : ''))
       if (res.status === 404) { this.stop(); this.onGone(); return }
       ok = res.ok
+      const refused = pushing && res.status >= 400 && res.status < 500 && res.status !== 429
       if (ok) {
-        const body = await res.json()
-        // The server says how much of the gain it took (a team may only gain so fast); the rest
-        // stays for the next push. Nothing is lost, and nothing is sent twice on purpose.
-        if (pushing) { this._pending = rest + Math.max(0, send - (Number(body.accepted) || 0)); base = this.pushMs }
-        this.onState(body)
-      } else if (pushing && res.status >= 400 && res.status < 500 && res.status !== 429) {
-        // Refused outright (not this team, not valid): retrying the same chunk forever helps no one.
-        this._pending = rest
+        const answer = await res.json()
+        if (pushing) base = this.pushMs
+        if (word !== undefined) {
+          // A word is sent once: counted, or already found by the team; either way it is done.
+          this._words.shift()
+        } else if (pushing) {
+          // The server says how much of the gain it took (a team may only gain so fast); the rest
+          // stays for the next push. Nothing is lost, and nothing is sent twice on purpose.
+          this._pending = rest + Math.max(0, send - (Number(answer.accepted) || 0))
+        }
+        this.onState(answer)
+      } else if (refused) {
+        // Refused outright (not this team, not valid): retrying it forever helps no one.
+        if (word !== undefined) this._words.shift()
+        else this._pending = rest
       }
     } catch (_) {
       ok = false
     } finally {
       this._busy = false
     }
-    if (ok && this._pending > 0) base = this.pushMs
+    if (ok && (this._pending > 0 || this._words.length)) base = this.pushMs
     this._delay = nextDelay(this._delay, ok, base)
     this._schedule(this._delay)
   }
