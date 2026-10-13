@@ -429,3 +429,68 @@ describe('the iOS motion prompt', () => {
     expect(opened).toHaveBeenCalledOnce()
   })
 })
+
+describe('the harbour race', () => {
+  const race = { ...raw, words: { right: ['gangspil', 'hijsen'], wrong: ['motor'] }, goal: 2, race: { enabled: true, ghost_seconds: 10 } }
+  const mount = (config, opts = {}) => {
+    const host = document.createElement('div')
+    const meter = new PowerMeter(host)
+    const onDone = vi.fn()
+    const onProgress = vi.fn()
+    meter.show({ config, onDone, onProgress, ...opts })
+    return { host, meter, onDone, onProgress }
+  }
+  const pick = (host, team) => [...host.querySelectorAll('button')].find(b => b.textContent === team).click()
+
+  it('a meter per team; the teacher picks the team that shouted; first and second crew the ships', () => {
+    vi.useFakeTimers()
+    const { host, meter, onDone, onProgress } = mount({ ...race, teams: 3 })
+    expect(host.querySelectorAll('progress[data-meter]')).toHaveLength(3)
+    pick(host, 'Team 2'); meter.tapWord('gangspil'); meter.tapWord('hijsen')      // Team 2 is out first
+    expect(host.textContent).toContain('1')
+    pick(host, 'Team 3'); meter.tapWord('gangspil')
+    expect(onProgress).toHaveBeenLastCalledWith({ levels: [0, 1, 0.5], ghost: null })
+    meter.tapWord('motor')                                                        // still Team 3's turn
+    meter.tapWord('hijsen')
+    vi.advanceTimersByTime(1000)
+    expect(onDone).toHaveBeenCalledWith(expect.objectContaining({ order: [1, 2], crew: { heemskerck: 'Team 2', zeehaen: 'Team 3' } }))
+  })
+
+  it('the teacher can end it early: the rest by how far they got', () => {
+    const { host, meter, onDone } = mount({ ...race, teams: 3 })
+    pick(host, 'Team 3'); meter.tapWord('gangspil')
+    ;[...host.querySelectorAll('button')].find(b => b.textContent === 'End the race').click()
+    expect(onDone).toHaveBeenCalledWith(expect.objectContaining({ order: [2, 0, 1], crew: { heemskerck: 'Team 3', zeehaen: 'Team 1' } }))
+  })
+
+  it('a pupil on their own device races the 1642 fleet and always sails the Heemskerck', () => {
+    vi.useFakeTimers()
+    const { host, meter, onDone } = mount(race, { solo: true })
+    expect(host.textContent).toContain('The 1642 fleet')
+    vi.advanceTimersByTime(5000)
+    expect(host.querySelector('[data-ghost]').value).toBeGreaterThan(40)
+    meter.tapWord('gangspil'); meter.tapWord('hijsen')
+    vi.advanceTimersByTime(1000)
+    expect(onDone).toHaveBeenCalledWith(expect.objectContaining({ crew: { heemskerck: 'you' }, beatFleet: true }))
+  })
+
+  it('slower than the fleet still sails, just without beating it', () => {
+    vi.useFakeTimers()
+    const { meter, onDone } = mount(race, { solo: true })
+    vi.advanceTimersByTime(12000)
+    meter.tapWord('gangspil'); meter.tapWord('hijsen')
+    vi.advanceTimersByTime(1000)
+    expect(onDone).toHaveBeenCalledWith(expect.objectContaining({ beatFleet: false }))
+  })
+
+  it('sound in a class race fills the team on turn', async () => {
+    let hooks
+    const { host } = mount({ ...race, teams: 2, input: 'loudness' }, { listen: async (h) => { hooks = h; return { stop () {} } } })
+    await vi.waitFor(() => expect(hooks).toBeDefined())
+    hooks.onCalibrated(-60)
+    pick(host, 'Team 2')
+    hooks.onFrame({ level: 0.9, flatness: 0, dt: 1 })
+    expect(host.querySelector('[data-meter="1"]').value).toBeGreaterThan(0)
+    expect(host.querySelector('[data-meter="0"]').value).toBe(0)
+  })
+})
