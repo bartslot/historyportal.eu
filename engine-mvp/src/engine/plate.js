@@ -4,7 +4,8 @@
 // turns shadow-only. Ported from feat/rider-look's rider-test.js (2026-10-09) so every scene can use it.
 //   window.__mvp.setPlate(url, { horizon, fit })   horizon = how far UP the picture its horizon line sits (0..1);
 //     fit 'cover' (default) fills any view, 'view' = painted for this camera: its height = the view's height;
-//     floorY: height of the painted ground/sea (default 0; below a ship's deck: minus the freeboard)
+//     floorY: height of the painted ground/sea (default 0; below a ship's deck: minus the freeboard);
+//     scale: with fit 'view', a plate painted wider than the shot (overscan 1.3 = 1.3 x the view)
 //   ?plate=<url>&horizon=0.65                 the same from the address bar
 /* global BABYLON */
 'use strict';
@@ -16,9 +17,10 @@
   const COVER_ASPECT = 2.5, COVER_MARGIN = 1.1;   // the card fills the view of a stage up to 2.5:1, with 10 % to spare
 
   /** Card size: at least PLATE_W, and large enough that no edge shows above or beside a level camera. */
-  function cardSize(cam, imgAspect, horizon, fit, dist) {
-    // 'view': a plate painted FOR this camera (a clean plate of the target panel) fills its view height exactly
-    if (fit === 'view') { const h = 2 * dist * Math.tan(cam.fov / 2); return { w: h * imgAspect, h }; }
+  function cardSize(cam, imgAspect, horizon, fit, dist, scale) {
+    // 'view': a plate painted FOR this camera (a clean plate of the target panel) fills its view height exactly,
+    // or `scale` times it for a plate painted wider than the shot (overscan, so camera moves stay covered)
+    if (fit === 'view') { const h = 2 * dist * Math.tan(cam.fov / 2) * scale; return { w: h * imgAspect, h }; }
     const half = dist * Math.tan(cam.fov / 2) * COVER_MARGIN;   // half the view's height at the card
     const h = Math.max(PLATE_W / imgAspect, half / (1 - horizon), (half * COVER_ASPECT) / imgAspect);
     return { w: h * imgAspect, h };
@@ -102,7 +104,7 @@
   }
 
   /** Put a painted plate behind the scene, placed for the camera as it stands now (aim the camera first). */
-  function setPlate(url, { horizon = DEFAULT_HORIZON, fit = 'cover', floorY = 0 } = {}) {
+  function setPlate(url, { horizon = DEFAULT_HORIZON, fit = 'cover', floorY = 0, scale = 1 } = {}) {
     PLATE_NAMES.forEach((n) => { const old = mvp.scene.getMeshByName(n); if (old) old.dispose(false, true); });
     hideRings();
     const cam = mvp.camera;
@@ -113,7 +115,7 @@
         const view = cam.getTarget().subtract(cam.position); view.y = 0;
         const dist = view.length() + PLATE_DIST;   // the card stands PLATE_DIST beyond the camera's aim point
         view.normalize();
-        const { w, h } = cardSize(cam, width / height, horizon, fit, dist);
+        const { w, h } = cardSize(cam, width / height, horizon, fit, dist, scale);
         const plate = BABYLON.MeshBuilder.CreatePlane('backdrop-plate', { width: w, height: h }, mvp.scene);
         const m = new BABYLON.StandardMaterial('backdrop-plate', mvp.scene);
         m.emissiveTexture = tex; m.disableLighting = true; m.backFaceCulling = false;

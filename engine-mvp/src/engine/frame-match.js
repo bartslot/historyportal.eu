@@ -6,7 +6,8 @@
 //   model; look: a Look preset by name, e.g. 'History Lines pencil' or 'Day', or 'off' (none: the look stays as saved);
 //   &hide=tasman renders the set alone (the frame a painter repaints for the ship's projected paint);
 //   &paint=ship lays that repainted frame on the ship, projected from the shot camera (matte painting);
-//   &move=dx,dy,dz[,yawDeg] moves the camera AFTER everything is placed and painted (does the paint hold?)
+//   &move=dx,dy,dz[,yawDeg] moves the camera AFTER everything is placed and painted (does the paint hold?);
+//   &overscan=1 renders the paint frame with PAINT_OVERSCAN wider view (with hide=tasman: the frame to repaint)
 /* global BABYLON */
 'use strict';
 
@@ -15,8 +16,9 @@
   if (params.get('scene') !== 'spyglass') return;
   const mvp = window.__mvp;
   const scene = mvp.scene;
-  // a clean plate of the panel itself (ChatGPT removed ship and people): same sky, sea, coast and horizon (48 % up)
-  const PLATE = { url: 'assets/plates/tasman-spyglass-clean.webp', horizon: 0.48, fit: 'view' };
+  // a clean plate of the panel itself (ChatGPT removed ship and people, then painted it out 15 % on every side):
+  // same sky, sea, coast and horizon, 1.3 x the shot's view so camera moves stay covered
+  const PLATE = { url: 'assets/plates/tasman-spyglass-clean-os130.webp', horizon: 1 - 0.5155, fit: 'view', scale: 1.3 };
   const TASMAN = { name: 'Tasman (test)', url: params.get('actor') || 'assets/models/tasman-spyglass.glb', height: 1.8 };
   // measured on the panel (16:9): horizon at 52 % down, Tasman from 21 % (hat) to the bottom edge, centred at 32 %
   // across. With a 40 degree vertical field of view that is an eye 1.1 m above the deck, Tasman 2.85 m away and
@@ -74,6 +76,7 @@
       const [px, pz] = mid(i / posts);
       set.push(box(`set-post-${i}`, { width: 0.22, height: RAIL.height + 0.18, depth: 0.22 }, [px, (RAIL.height + 0.18) / 2, pz], dark, yaw));
     }
+    if (useShip) return set;   // the ship brings its own deck and rail; a barrel comes back as a painted prop
     const barrel = BABYLON.MeshBuilder.CreateCylinder('set-barrel', { height: 0.6, diameter: 0.45, tessellation: 24 }, scene);
     barrel.position.set(-0.15, 0.3, 2.3);
     barrel.material = wood;
@@ -109,7 +112,9 @@
   // Camera-projected paint: every ship surface takes the colour of the repainted frame where the shot camera
   // sees it (ChatGPT repainted our own render, geometry kept). Unlit: light and lines are in the painting.
   // Valid for this camera (and small moves); the frame was rendered at 16:9.
-  const SHIP_PAINT = { url: 'assets/plates/tasman-spyglass-ship-paint.webp', aspect: 16 / 9, fallback: '#c9a77c' };
+  // overscan: the painted frame covers PAINT_OVERSCAN x the shot's view, so pans and small moves stay painted
+  const PAINT_OVERSCAN = 1.3;
+  const SHIP_PAINT = { url: 'assets/plates/tasman-spyglass-ship-paint-os.webp', aspect: 16 / 9, overscan: PAINT_OVERSCAN, fallback: '#c9a77c' };
   BABYLON.Effect.ShadersStore.projPaintVertexShader = `
     precision highp float;
     attribute vec3 position;
@@ -137,7 +142,7 @@
     });
     m.setTexture('paint', new BABYLON.Texture(SHIP_PAINT.url, scene));
     m.setMatrix('paintView', cam.getViewMatrix().clone());   // frozen: the camera the frame was painted from
-    m.setFloat('tanHalf', Math.tan(cam.fov / 2));
+    m.setFloat('tanHalf', Math.tan(cam.fov / 2) * SHIP_PAINT.overscan);
     m.setFloat('aspect', SHIP_PAINT.aspect);
     m.setColor3('fallback', BABYLON.Color3.FromHexString(SHIP_PAINT.fallback));
     m.backFaceCulling = false;
@@ -170,7 +175,8 @@
     cam.setTarget(new BABYLON.Vector3(...CAMERA.target));
     cam.setPosition(new BABYLON.Vector3(...CAMERA.position));
     cam.fov = CAMERA.fov;
-    cam.getViewMatrix(true);   // position is only recomputed on render; the plate reads it now
+    cam.getViewMatrix(true);
+    return cam;   // position is only recomputed on render; the plate reads it now
   }
 
   /** A Look preset by name, switched on (the line experiments: ink colour, weight, no paint over painted art). */
@@ -189,12 +195,14 @@
     if (params.get('look')) useLook(params.get('look'));
     aimCamera();
     const set = buildSet();
-    mvp.setPlate(PLATE.url, { horizon: PLATE.horizon, fit: PLATE.fit, floorY: useShip ? -SHIP.deckY : 0 });
+    mvp.setPlate(PLATE.url, { horizon: PLATE.horizon, fit: PLATE.fit, scale: PLATE.scale, floorY: useShip ? -SHIP.deckY : 0 });
     mvp.CATALOG.push(TASMAN);
     mvp.addFromCatalog(TASMAN, { x: TASMAN_AT.x, z: TASMAN_AT.z, turn: TASMAN_AT.turn }).then((tasman) => {
       mvp.select(null);
       tasman.position.set(TASMAN_AT.x, 0, TASMAN_AT.z);   // exact, not on the placement grid
       if (params.get('hide') === 'tasman') tasman.setEnabled(false);
+      // the overscanned paint frame: same eye, wider view (after the plate and the paint were placed for the shot)
+      if (params.get('overscan')) shipReady.then(() => { mvp.camera.fov = 2 * Math.atan(Math.tan(CAMERA.fov / 2) * PAINT_OVERSCAN); });
       paintedLight(tasman);
       window.__shot = { tasman, set, ship: shipPivot, camera: mvp.camera, aimCamera, CAMERA, TASMAN_AT, RAIL, SHIP };
       shipReady.then(() => { if (params.get('move')) moveCamera(params.get('move')); });
