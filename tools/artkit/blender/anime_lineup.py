@@ -37,7 +37,7 @@ HEAD_BONE = "mixamorig:Head"
 ARMS_DOWN_DEG = 65
 # Tasman's canon colours (Memory/historyportal/topics/tasman-standard/STYLE.md), sRGB, matched IN ORDER against the
 # material name, then the object name (first hit wins; None = keep the asset's own texture colours)
-DYES = [("feather", "#f2efe6"), ("buckle", "#c9a24a"), ("rapier", "#9aa3ad"), ("belt", "#6b4426"), ("hat", "#1c1c20"),
+DYES = [("feather", "#f2efe6"), ("spyglass", "#b8893a"), ("buckle", "#c9a24a"), ("rapier", "#9aa3ad"), ("belt", "#6b4426"), ("hat", "#1c1c20"),
         ("ruff", "#f4f1ea"), ("boot", "#4a2f1c"), ("robe", "#2f4f8f"), ("pants", "#3b4150"), ("moustache", "#b26c40"),
         ("ponytail", "#b26c40"), ("hull", "#8a6240"), ("sails", "#e6dfcc"), ("rigging", "#4a3a2a")]
 # low poly (Bart: "make sure the 3D models become low poly. and toony"): faces per object at most, by name
@@ -46,6 +46,7 @@ LOW_POLY = [("human.", 1500), ("human", 5000), ("robe", 2500), ("pants", 1200), 
 DYE_GAIN = 2.2
 COAT_HEM_ABOVE_KNEE = -0.04             # the robe is cut here (metres above the knee joint): a knee-length coat
 PIPELINE = Path("/Users/bartslot/BartsAutomation/BartsDev/workflows/3D pipeline")
+LOOK_RIGHT, LOOK_TOWARD_CAMERA = 0.95, -0.3   # Tasman's gaze: to the coast at screen right, a little INTO the scene (the panel)
 PARTS = Path("/Users/bartslot/BartsAutomation/BartsDev/Memory/3d-pipeline/comic-look-refs/tasman-parts")
 CLIP = PIPELINE / "in" / "Breathing Idle.fbx"
 CLIP_FRAME = 0.35                        # fraction of the clip: a relaxed moment of the breath                      # degrees below horizontal: relaxed, hands beside the thighs
@@ -333,6 +334,21 @@ def low_poly(objs):
         bpy.ops.object.modifier_apply(modifier=d.name)
 
 
+def spyglass_scene(root):
+    """Tasman as in the panel: three-quarter to the camera, looking out to the coast (screen right) through the
+    spyglass. The figure turns first, then tasman_parts.spyglass_pose brings the tube and both arms."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import tasman_parts as tp   # noqa: E402
+    f = forward()
+    screen_right = Vector((f.y, -f.x, 0))
+    look = (screen_right * LOOK_RIGHT - f * LOOK_TOWARD_CAMERA).normalized()
+    root.rotation_euler = (0, 0, math.atan2(look.y, look.x) - math.atan2(-1, 0))   # the figure's front (-Y) along look
+    bpy.context.view_layer.update()
+    rig = next(o for o in root.children_recursive if o.type == "ARMATURE")
+    glass, _ = tp.spyglass_pose(PARTS / "telescope_blendswap_18919/telescope.blend", rig, root, look)
+    return glass
+
+
 def dress_tasman(body, rig, mpfb_objects):
     """The found parts (tasman_parts.py) on the body, in the rest pose: ruff, cavalier hat, Batavia boots, rapier,
     moustache, and the robe's rope belt in brown."""
@@ -538,8 +554,11 @@ def main():
     for o in ship_meshes:                                  # the sails would shade the whole deck: anime sets light
         o.visible_shadow = False                           # their actors, they do not shadow them
     backdrop(plate)
-    body, body_meshes = load_mpfb(mpfb, CLIP, CLIP_FRAME, dress=name.startswith("tasman"))
+    dressed = name.startswith("tasman")
+    body, body_meshes = load_mpfb(mpfb, CLIP, CLIP_FRAME, dress=dressed)
     face_camera(body, on_deck(2.9, 1.05))                   # side by side at Tasman's distance, the fair comparison
+    if dressed:
+        body_meshes.append(spyglass_scene(body))
     hull_mat = emission("ink hull", HULL, cull=True)
     animeify(body_meshes, hull_mat)
     if second.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp"):   # a reference sheet beside him, not a figure

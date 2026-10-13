@@ -24,7 +24,10 @@ BOOT_TOP_BELOW_KNEE_M = -0.02  # the boot's turned-down top just over the knee j
 RAPIER_M = 1.05
 CUFF_OUTER_M = 0.15           # the wrist ruffs
 CUFF_BACK_M = 0.035           # from the wrist joint toward the elbow
-RAPIER_AT = (0.27, 0.0, -0.22)   # from the Hips joint: the figure's left (+X), level with the hip, a little low
+RAPIER_AT = (0.20, -0.06, -0.10)  # the hilt, from the Hips joint: the figure's left (+X), a little forward and low
+RAPIER_BLADE_DIR = (0.10, 0.33, -0.94)   # blade mostly down, a little back (+Y) and outward: a worn rapier hangs steep
+FINGER_CURL_DEG = 70
+GRIP_BELOW_TUBE_M = 0.07     # the wrist sits this far under the tube, the curled fingers come round it
 MOUSTACHE_W_M = 0.075
 DECIMATE_TO = 1500             # faces per part at most: low poly (Bart: "low poly and toony")
 BELT_MAX_H_M = 0.6             # rope and its hanging ends
@@ -287,19 +290,22 @@ def hide_under(body, top_z, name):
 
 
 def rapier(path, rig):
+    """The rapier at the left hip: the hilt (the wide end, with the guard) at the hip, the blade pointing back and
+    down past the coat (rest pose: the figure faces -Y, its left is +X)."""
     parts = _import(path, keep=["BezierCurve"])
     o = _join(parts, "Tasman rapier")
     _decimate(o, 6000)
-    lo, hi = _bbox([o])
-    long_axis = max(range(3), key=lambda i: hi[i] - lo[i])
-    s = RAPIER_M / (hi[long_axis] - lo[long_axis])
+    ax, tip_end, hilt_end = _narrow_end_first(o)
+    vs = [v.co for v in o.data.vertices]
+    centre = Vector([sum(v[i] for v in vs) / len(vs) for i in range(3)])
+    hilt = centre.copy()
+    hilt[ax] = hilt_end
+    s = RAPIER_M / abs(hilt_end - tip_end)
+    blade_dir = Vector([0 if i != ax else (1 if tip_end > hilt_end else -1) for i in range(3)])
+    rot = blade_dir.rotation_difference(Vector(RAPIER_BLADE_DIR).normalized()).to_matrix().to_4x4()
     hips = _bone_world(rig, "mixamorig:Hips")
-    # along X after import: lay it from front-low-left to back, hilt forward at the left hip, blade down and back
-    if long_axis != 0:
-        o.matrix_world = Matrix.Rotation(math.radians(90), 4, "Z" if long_axis == 1 else "Y") @ o.matrix_world
-    o.matrix_world = Matrix.Rotation(math.radians(-90), 4, "Z") @ o.matrix_world            # blade along +Y (back)
-    o.matrix_world = Matrix.Rotation(math.radians(-35), 4, "X") @ o.matrix_world            # tip down
-    _fit(o, hips + Vector((RAPIER_AT)), s)   # outside the coat at the left hip, hilt forward
+    o.matrix_world = Matrix.Translation(hips + Vector(RAPIER_AT)) @ rot @ Matrix.Scale(s, 4) @ Matrix.Translation(-hilt)
+    _apply_all([o])
     _parent_to_bone(o, rig, "mixamorig:Hips")
     return o
 
@@ -364,3 +370,85 @@ def belt_brown(robe, material, waist):
     bm.to_mesh(robe.data)
     bm.free()
     return n
+
+
+SPYGLASS_M = 0.48              # an extended 17th-century spyglass
+SPYGLASS_DIAM_M = 0.06         # slim, like the panel's (the BlendSwap model is a stubby ship's telescope)
+EYE_UP_M = 0.085               # eye height above the Head joint
+EYE_SIDE_M = 0.032             # right eye, from the face's midline
+RIGHT_HAND_AT_M = 0.10         # along the tube from the eyepiece
+LEFT_HAND_AT_M = 0.32
+TUBE_RAISE_DEG = 4
+
+
+def _narrow_end_first(o):
+    """Turn the tube so its long axis is +Y in object space with the narrow end (eyepiece) at the low Y end;
+    returns (eyepiece, objective) local positions after the turn."""
+    vs = [v.co.copy() for v in o.data.vertices]
+    size = [max(v[i] for v in vs) - min(v[i] for v in vs) for i in range(3)]
+    ax = max(range(3), key=lambda i: size[i])
+    lo, hi = min(v[ax] for v in vs), max(v[ax] for v in vs)
+    others = [i for i in range(3) if i != ax]
+    centre = [sum(v[i] for v in vs) / len(vs) for i in range(3)]
+
+    def radius(sel):
+        q = [v for v in vs if sel(v[ax])]
+        return max(math.hypot(v[others[0]] - centre[others[0]], v[others[1]] - centre[others[1]]) for v in q)
+    narrow_low = radius(lambda t: t < lo + 0.08 * (hi - lo)) < radius(lambda t: t > hi - 0.08 * (hi - lo))
+    return ax, (lo if narrow_low else hi), (hi if narrow_low else lo)
+
+
+def spyglass_pose(path, rig, root, look_dir):
+    """Tasman looks through the spyglass: the tube at his right eye pointing along `look_dir` (world, horizontal),
+    both arms brought to it with IK (right hand near the eyepiece, left hand further along), elbows down and out.
+    Runs AFTER the clip and after the figure is placed: everything in world space."""
+    o = _join(_import(path), "Tasman spyglass")
+    _decimate(o, DECIMATE_TO // 2)
+    ax, eye_end, far_end = _narrow_end_first(o)
+    bpy.context.view_layer.update()
+    mw = rig.matrix_world
+    head = mw @ rig.pose.bones["mixamorig:Head"].head
+    look = Vector((look_dir.x, look_dir.y, 0)).normalized()
+    up = Vector((0, 0, 1))
+    right = look.cross(up).normalized()                       # the figure's right when it looks along `look`
+    tube = (look * math.cos(math.radians(TUBE_RAISE_DEG)) + up * math.sin(math.radians(TUBE_RAISE_DEG))).normalized()
+    eye = head + up * EYE_UP_M + right * EYE_SIDE_M + look * 0.07
+    # scale to length AND to a slim diameter (separately), eyepiece at the eye, tube along `tube`
+    s = SPYGLASS_M / abs(far_end - eye_end)
+    vs = [v.co for v in o.data.vertices]
+    others = [i for i in range(3) if i != ax]
+    width = max(max(v[i] for v in vs) - min(v[i] for v in vs) for i in others)
+    thin = Matrix.Diagonal(Vector([1.0 if i == ax else (SPYGLASS_DIAM_M / width) / s for i in range(3)] + [1.0]))
+    axis_vec = Vector([1 if i == ax else 0 for i in range(3)]) * (1 if far_end > eye_end else -1)
+    rot = axis_vec.rotation_difference(tube).to_matrix().to_4x4()
+    eyepiece_local = Vector([eye_end if i == ax else sum(v.co[i] for v in o.data.vertices) / len(o.data.vertices)
+                             for i in range(3)])
+    o.matrix_world = Matrix.Translation(eye) @ rot @ Matrix.Scale(s, 4) @ thin @ Matrix.Translation(-eyepiece_local)
+    _apply_all([o])
+    # arms: IK targets on the tube, poles below and outside the elbows
+    targets = []
+    for side, along, out in (("Right", RIGHT_HAND_AT_M, 1), ("Left", LEFT_HAND_AT_M, -1)):
+        t = bpy.data.objects.new(f"IK {side} hand", None)
+        bpy.context.scene.collection.objects.link(t)
+        t.location = eye + tube * along - up * GRIP_BELOW_TUBE_M
+        pole = bpy.data.objects.new(f"IK {side} elbow", None)
+        bpy.context.scene.collection.objects.link(pole)
+        pole.location = mw @ rig.pose.bones[f"mixamorig:{side}Arm"].head - up * 0.45 + right * 0.35 * out
+        pb = rig.pose.bones[f"mixamorig:{side}ForeArm"]
+        c = pb.constraints.new("IK")
+        c.target = t
+        c.pole_target = pole
+        c.pole_angle = math.radians(-90)
+        c.chain_count = 2
+        targets += [t, pole]
+        for e in (t, pole):
+            e.empty_display_size = 0.05
+            e.hide_render = True
+    for pb in rig.pose.bones:                                # a closed grip round the tube
+        n = pb.name.split(":")[-1]
+        if any(f in n for f in ("Index", "Middle", "Ring", "Pinky", "Thumb")) and n[-1] in "123":
+            pb.rotation_mode = "XYZ"
+            pb.rotation_euler = (math.radians(FINGER_CURL_DEG * (0.5 if "Thumb" in n else 1.0)), 0, 0)
+    bpy.context.view_layer.update()
+    _parent_to_bone(o, rig, "mixamorig:RightHand")
+    return o, targets
