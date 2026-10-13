@@ -45,8 +45,8 @@
       "_easing-ChRyoIXo.js"
     ]
   },
-  "_camera-CZ8TIYdH.js": {
-    "file": "assets/camera-CZ8TIYdH.js",
+  "_camera-BlhbLbjq.js": {
+    "file": "assets/camera-BlhbLbjq.js",
     "name": "camera",
     "imports": [
       "_animations-Bw164z87.js"
@@ -95,7 +95,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-gL4-T_RO.css",
+    "file": "assets/app-DUE3S_Y8.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -104,7 +104,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-D2Y4vlM2.js",
+    "file": "assets/app-CiodrXOd.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -169,7 +169,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-DFbqCUYi.js",
+    "file": "assets/lesson-player-CRHbsNAP.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -191,7 +191,8 @@
       "resources/js/scene/BalloonLayer.js",
       "resources/js/scene/ArtworkOverlay.js",
       "resources/js/scene/QuizOverlay.js",
-      "resources/js/scene/TeamGame.js"
+      "resources/js/scene/TeamGame.js",
+      "resources/js/scene/PowerMeter.js"
     ]
   },
   "resources/js/scene/ArtworkOverlay.js": {
@@ -222,15 +223,32 @@
     "isDynamicEntry": true
   },
   "resources/js/scene/ParallaxScene.js": {
-    "file": "assets/ParallaxScene-Cce7TaRu.js",
+    "file": "assets/ParallaxScene-DXFSQNxD.js",
     "name": "ParallaxScene",
     "src": "resources/js/scene/ParallaxScene.js",
     "isDynamicEntry": true,
     "imports": [
       "_big-countdown-B6_8fyyK.js",
       "_ambient-uEDWrar1.js",
-      "_camera-CZ8TIYdH.js",
+      "_camera-BlhbLbjq.js",
       "_easing-ChRyoIXo.js",
+      "_animations-Bw164z87.js"
+    ]
+  },
+  "resources/js/scene/PowerMeter.js": {
+    "file": "assets/PowerMeter-DFsZccEn.js",
+    "name": "PowerMeter",
+    "src": "resources/js/scene/PowerMeter.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "_big-countdown-B6_8fyyK.js",
+      "_dom-DByCrY2T.js",
+      "resources/js/lesson-player.js",
+      "resources/js/scene/TeamGame.js",
+      "_ambient-uEDWrar1.js",
+      "_easing-ChRyoIXo.js",
+      "__commonjsHelpers-DqutJMZx.js",
+      "resources/js/gallery-scene.js",
       "_animations-Bw164z87.js"
     ]
   },
@@ -254,7 +272,7 @@
     ]
   },
   "resources/js/scene/TeamGame.js": {
-    "file": "assets/TeamGame-u38Kc6VI.js",
+    "file": "assets/TeamGame-CPGoe6k0.js",
     "name": "TeamGame",
     "src": "resources/js/scene/TeamGame.js",
     "isDynamicEntry": true,
@@ -284,7 +302,7 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-KnWb-cIn.js",
+    "file": "assets/index-BDr_fcbg.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
@@ -295,7 +313,7 @@
       "resources/js/scene/ArtworkOverlay.js",
       "__commonjsHelpers-DqutJMZx.js",
       "resources/js/avatar-3d.js",
-      "_camera-CZ8TIYdH.js",
+      "_camera-BlhbLbjq.js",
       "../../../node_modules/three/build/three.module.js",
       "_easing-ChRyoIXo.js",
       "_animations-Bw164z87.js",

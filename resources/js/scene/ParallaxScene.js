@@ -1,7 +1,7 @@
 import { filterMarkup, layerFilterId } from './layer-filters.js'
 import { applyAmbient, trackStage } from './ambient.js'
 import { fitToPlate, plateAspect } from './plate-box.js'
-import { cameraSpec, cameraPose, cameraFrame, cameraEntry, entryLingerMs, ENTRY_MS, previewCycleS, registerCameraTuner } from './camera.js'
+import { cameraSpec, cameraPose, chainPose, cameraFrame, cameraEntry, entryLingerMs, ENTRY_MS, previewCycleS, registerCameraTuner } from './camera.js'
 import { EASE } from '../easing.js'
 
 export { entryLingerMs }
@@ -289,7 +289,31 @@ export class ParallaxScene {
     this._cameraRaf = requestAnimationFrame(tick)
   }
 
+  /**
+   * A camera move on demand (a power-meter payoff), from wherever the panel's own move left the
+   * camera. Stops that move if it is still running. Resolves when the move has played.
+   */
+  runCamera (camera) {
+    const spec = prefersReducedMotion() ? null : cameraSpec(camera)
+    if (!spec || !this._root) return Promise.resolve()
+    if (this._cameraRaf) cancelAnimationFrame(this._cameraRaf)
+    const base = this._pose
+    const start = performance.now()
+    const end = spec.delay + spec.duration
+    return new Promise((resolve) => {
+      const tick = (now) => {
+        if (!this._root) return resolve()
+        const t = Math.min(end, (now - start) / 1000)
+        this._applyPose(chainPose(base, spec, t))
+        if (t >= end) { this._cameraRaf = 0; return resolve() }
+        this._cameraRaf = requestAnimationFrame(tick)
+      }
+      this._cameraRaf = requestAnimationFrame(tick)
+    })
+  }
+
   _applyPose (pose) {
+    this._pose = pose
     for (const plane of this._planes) {
       const f = cameraFrame(pose, plane.depth)
       applyTransform(plane.el, {

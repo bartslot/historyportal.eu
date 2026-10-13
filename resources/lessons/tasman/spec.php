@@ -81,6 +81,23 @@ return function (string $lang, ?array $text = null): array {
                     + (isset($panel['mouths']) ? ['speaks' => $panel['mouths']] : []);
             }
 
+            // A power-meter moment (MomentSpec): its shape in story.json, its words in text/{lang}.json.
+            // `ship` points at one of this panel's ships; a ship not painted yet moves nothing.
+            $moment = null;
+            if (isset($panel['moment'])) {
+                $m = $panel['moment'];
+                $said = $text['moments'][$m['id']] ?? throw new UnexpectedValueException("Tasman text/{$lang}.json has no moment {$m['id']}.");
+                $ship = fn (array $part): ?string => isset($part['ship'], $panel['ships'][$part['ship']])
+                    ? $ref($panel['ships'][$part['ship']]['file'], 'props') : null;
+                $moment = [
+                    'name' => $said['name'], 'meter_label' => $said['meter_label'], 'prompt' => $said['prompt'],
+                    'words' => ['right' => $said['right'], 'wrong' => $said['wrong']],
+                    'after' => $said['after'], 'why' => $said['why'] ?? '',
+                    'react' => ['layer' => $ship($m['react'] ?? [])] + array_diff_key($m['react'] ?? [], ['ship' => 1]),
+                    'payoff' => ['layer' => $ship($m['payoff'] ?? [])] + array_diff_key($m['payoff'] ?? [], ['ship' => 1]),
+                ] + array_diff_key($m, array_flip(['id', 'react', 'payoff']));
+            }
+
             $backdrop = $ref($panel['plate'], 'backdrops');
             // A camera needs a picture to move over; a panel still being painted plays without one.
             $pictured = $backdrop !== null || $layers !== [];
@@ -93,6 +110,7 @@ return function (string $lang, ?array $text = null): array {
                 'lines' => $lines ?: [['narrator', $words['title']]],
                 'camera' => $pictured ? ($panel['camera'] ?? null) : null,
                 'entry' => $pictured ? ($panel['entry'] ?? null) : null,
+                'moment' => $moment,
             ], fn ($v): bool => $v !== null);
         }
     }

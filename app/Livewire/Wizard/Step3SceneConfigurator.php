@@ -18,6 +18,7 @@ use App\Livewire\Wizard\Concerns\EditsQuizQuestions;
 use App\Livewire\Wizard\Concerns\EditsSceneArtwork;
 use App\Livewire\Wizard\Concerns\EditsSceneBackground;
 use App\Livewire\Wizard\Concerns\EditsStoryGame;
+use App\Livewire\Wizard\Concerns\EditsMoment;
 use App\Livewire\Wizard\Concerns\EditsTeamGame;
 use App\Livewire\Wizard\Concerns\EditsTitleScreen;
 use App\Livewire\Wizard\Concerns\UndoesSceneEdits;
@@ -64,6 +65,7 @@ class Step3SceneConfigurator extends Component
     use EditsSceneArtwork;
     use EditsStoryGame;
     use EditsTeamGame;
+    use EditsMoment;
     use UndoesSceneEdits;
     use WithFileUploads;
 
@@ -460,6 +462,8 @@ class Step3SceneConfigurator extends Component
         $this->syncStoryGameDraftFor($scene);
         // And for a team game: its texts, items, options and timer.
         $this->syncTeamDraftFor($scene);
+        // And for a story panel's power-meter moment.
+        $this->syncMomentDraftFor($scene);
     }
 
     /**
@@ -589,6 +593,7 @@ class Step3SceneConfigurator extends Component
         }
         $payload = $this->withStoredDiorama($payload, $scene);
         $payload = $this->withCleanTeamGame($payload, $scene);
+        $payload = $this->withCleanMoment($payload, $scene);
         $scriptDirty = ($scene->script_segment ?? '') !== ($payload['script_segment'] ?? '');
 
         // Detect changes that should re-paint the 3D stage so the canvas updates.

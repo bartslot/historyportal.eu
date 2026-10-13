@@ -771,7 +771,7 @@
                     </div>
 
                     {{-- CTA --}}
-                    <div class="mt-6 flex sm:mt-8 {{ $titleRows }}">
+                    <div class="mt-6 flex flex-wrap gap-3 sm:mt-8 {{ $titleRows }}">
                         <template x-if="canStart">
                             <button role="button"
                                 @click="startLesson()"
@@ -787,6 +787,12 @@
 
 
                                 <span>{{ __('Start lesson') }}</span>
+                            </button>
+                        </template>
+                        {{-- Solo (the join QR): carry on where this device stopped; Start lesson starts over. --}}
+                        <template x-if="canStart && resumable">
+                            <button type="button" @click="resumeLesson()" class="btn btn-outline btn-lg rounded-full border-white/70 text-white hover:border-white hover:bg-white/10">
+                                {{ __('Continue where you stopped') }}
                             </button>
                         </template>
                         <template x-if="!canStart">

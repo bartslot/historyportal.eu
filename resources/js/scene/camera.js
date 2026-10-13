@@ -113,6 +113,24 @@ export function cameraPose (spec, t) {
 }
 
 /**
+ * Pure: a second move that starts where the camera already is (a power-meter payoff after the
+ * panel's own move): the new move's change from its first pose, added onto `base`. Nothing jumps.
+ */
+export function chainPose (base, spec, t) {
+  const b = base || STILL
+  const from = cameraPose(spec, spec ? spec.delay : 0)
+  const now = cameraPose(spec, t)
+
+  return {
+    panX: b.panX + now.panX - from.panX,
+    panY: b.panY + now.panY - from.panY,
+    truckX: b.truckX + now.truckX - from.truckX,
+    truckY: b.truckY + now.truckY - from.truckY,
+    zoom: b.zoom * (now.zoom / from.zoom),
+  }
+}
+
+/**
  * A jolt: two incommensurate sines (it never repeats visibly), under an envelope that snaps in
  * over the first 10% and dies away over the last 40%. Zero before the delay and after the end.
  */
