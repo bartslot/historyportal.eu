@@ -279,6 +279,10 @@
                             <span class="{{ $label }}">{{ __('Narrator after the race') }}</span>
                             <textarea rows="2" maxlength="1200" wire:model.blur="momentDraft.race.after" wire:change="saveMomentDraft" class="textarea textarea-sm mt-1 w-full"></textarea>
                         </label>
+                        <label class="block">
+                            <span class="{{ $label }}">{{ __('Narrator after a race on a pupil\'s own device') }}</span>
+                            <textarea rows="2" maxlength="1200" wire:model.blur="momentDraft.race.after_solo" wire:change="saveMomentDraft" class="textarea textarea-sm mt-1 w-full"></textarea>
+                        </label>
                     </div>
                 @endif
 

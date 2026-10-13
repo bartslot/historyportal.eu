@@ -89,6 +89,7 @@ export function readMoment (raw = {}) {
       startX: Number.isFinite(Number(raw.race?.start_x)) && raw.race?.start_x !== null ? Number(raw.race.start_x) : 25,
       finishX: Number.isFinite(Number(raw.race?.finish_x)) && raw.race?.finish_x !== null ? Number(raw.race.finish_x) : 85,
       after: String(raw.race?.after || ''),
+      afterSolo: String(raw.race?.after_solo || ''),
     },
     react: raw.react && typeof raw.react === 'object' ? raw.react : {},
     payoff: raw.payoff && typeof raw.payoff === 'object' ? raw.payoff : { type: 'none' },

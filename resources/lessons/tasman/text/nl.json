@@ -131,11 +131,11 @@
     "S07-D.1": "De volgende ochtend roept de uitkijk: daar is ze weer."
    },
    "bubbles": {
-    "S07-A.1": "De Zeehaen is weg!",
+    "S07-A.1": "We zien de Zeehaen met {crew:zeehaen|de bemanning} niet meer!",
     "S07-B.1": "Allebei je handen!",
     "S07-B.2": "Ik laat niet los.",
     "S07-C.1": "Jou hebben we maar één keer.",
-    "S07-D.1": "De Zeehaen!"
+    "S07-D.1": "De Zeehaen! Daar is {crew:zeehaen|de bemanning} weer!"
    }
   },
   "S08": {
@@ -371,7 +371,7 @@
   },
   "scheepsraad": {
    "mode": "choose",
-   "title": "De scheepsraad",
+   "title": "Scheepsraad op de Heemskerck: {crew:heemskerck|de bemanning}, denk mee!",
    "chapter": "De scheepsraad",
    "minutes": 4,
    "teams": 4,
@@ -453,7 +453,8 @@
    ],
    "after": "Het anker is op. De Heemskerck en de Zeehaen varen de baai uit.",
    "why": "Een anker ging met de hand omhoog: de matrozen duwden samen de spaken van het gangspil rond. Er was geen motor.",
-   "race_after": "{crew:heemskerck} op de Heemskerck, {crew:zeehaen} op de Zeehaen: ze varen de baai uit."
+   "race_after": "{crew:heemskerck} op de Heemskerck, {crew:zeehaen} op de Zeehaen: ze varen de baai uit.",
+   "race_after_solo": "Jij gaat aan boord van de Heemskerck. De twee schepen varen de baai uit."
   },
   "wind-in-de-zeilen": {
    "name": "Wind in de zeilen",

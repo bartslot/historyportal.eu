@@ -155,7 +155,7 @@ class LessonComposerMomentTest extends TestCase
         $this->assertFalse(MomentSpec::blank()['enabled']);
 
         $race = MomentSpec::normalize(['race' => ['enabled' => 1, 'ghost_seconds' => 1, 'finish_x' => 900, 'after' => '<b>{crew:heemskerck}</b> vaart.', 'x' => 1]])['race'];
-        $this->assertEquals(['enabled' => true, 'ghost_seconds' => 5.0, 'start_x' => 25.0, 'finish_x' => 150.0, 'after' => '{crew:heemskerck} vaart.'], $race);
+        $this->assertEquals(['enabled' => true, 'ghost_seconds' => 5.0, 'start_x' => 25.0, 'finish_x' => 150.0, 'after' => '{crew:heemskerck} vaart.', 'after_solo' => ''], $race);
         $this->assertFalse(MomentSpec::blank()['race']['enabled']);
     }
 }

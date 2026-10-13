@@ -2239,7 +2239,9 @@ Alpine.data('lessonGame', (lesson) => ({
             : this._momentPayoff(mod, cfg.payoff || {}, art))
           if (!current()) return
           // After a race the narrator names the crews; their names are only known now, so it is read.
-          await this._momentAfterLine(mod, raced && m.race.after ? { after: this._crewed(m.race.after), afterAudio: '' } : m)
+          // A pupil who raced the fleet alone gets the solo line: there is no Zeehaen crew to name.
+          const raceLine = this.playSolo ? (m.race.afterSolo || m.race.after) : m.race.after
+          await this._momentAfterLine(mod, raced && raceLine ? { after: this._crewed(raceLine), afterAudio: '' } : m)
           if (!current()) return
           this._powerMeter.hide()
           this._closeRace()
