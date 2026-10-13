@@ -35,11 +35,18 @@ FOV_Y = 0.7                             # rad, vertical (Babylon's camera.fov)
 SMOOTH_REPEAT = 60                      # proxy smoothing: large simple shapes, like a drawn body
 HEAD_BONE = "mixamorig:Head"
 ARMS_DOWN_DEG = 65
-# Tasman's canon colours (Memory/historyportal/topics/tasman-standard/STYLE.md), by garment object name
-DYES = {"robe": (0.20, 0.30, 0.55), "hat": (0.07, 0.07, 0.08), "boot": (0.42, 0.27, 0.15), "pants": (0.23, 0.25, 0.31)}
+# Tasman's canon colours (Memory/historyportal/topics/tasman-standard/STYLE.md), sRGB, matched IN ORDER against the
+# material name, then the object name (first hit wins; None = keep the asset's own texture colours)
+DYES = [("feather", "#f2efe6"), ("buckle", "#c9a24a"), ("rapier", "#9aa3ad"), ("belt", "#6b4426"), ("hat", "#1c1c20"),
+        ("ruff", "#f4f1ea"), ("boot", "#4a2f1c"), ("robe", "#2f4f8f"), ("pants", "#3b4150"), ("moustache", "#b26c40"),
+        ("ponytail", "#b26c40"), ("hull", "#8a6240"), ("sails", "#e6dfcc"), ("rigging", "#4a3a2a")]
+# low poly (Bart: "make sure the 3D models become low poly. and toony"): faces per object at most, by name
+LOW_POLY = [("human.", 1500), ("human", 5000), ("robe", 2500), ("pants", 1200), ("ponytail", 1500),
+            ("dutch_ship", 6000), ("tasman boot", 4000), ("tasman", 1500)]   # a scan torn below ~4k faces
 DYE_GAIN = 2.2
 COAT_HEM_ABOVE_KNEE = -0.04             # the robe is cut here (metres above the knee joint): a knee-length coat
 PIPELINE = Path("/Users/bartslot/BartsAutomation/BartsDev/workflows/3D pipeline")
+PARTS = Path("/Users/bartslot/BartsAutomation/BartsDev/Memory/3d-pipeline/comic-look-refs/tasman-parts")
 CLIP = PIPELINE / "in" / "Breathing Idle.fbx"
 CLIP_FRAME = 0.35                        # fraction of the clip: a relaxed moment of the breath                      # degrees below horizontal: relaxed, hands beside the thighs
 
@@ -123,7 +130,7 @@ def cel_material(src, dye=None):
     mul.data_type = "RGBA"
     mul.blend_type = "MULTIPLY"
     mul.inputs["Factor"].default_value = 1.0
-    img = base_image(src)
+    img = None if dye else base_image(src)   # toony: a dyed part is ONE flat colour, no texture detail
     if img:
         tex = nt.nodes.new("ShaderNodeTexImage")
         tex.image = img
@@ -172,6 +179,20 @@ def skin_material():
     return m
 
 
+def srgb_to_linear(hexcol):
+    c = [int(hexcol[i:i + 2], 16) / 255 for i in (1, 3, 5)]
+    return tuple(x / 12.92 if x <= 0.04045 else ((x + 0.055) / 1.055) ** 2.4 for x in c)
+
+
+def dye_for(mat, obj):
+    """The first DYES key found in the material's name, else in the object's name; None keeps the texture."""
+    for name in ((mat.name if mat else ""), obj.name):
+        for key, hexcol in DYES:
+            if key in name.lower():
+                return srgb_to_linear(hexcol) if hexcol else None
+    return None
+
+
 def emission(name, rgba, cull=False):
     m = bpy.data.materials.new(name)
     m.use_nodes = True
@@ -190,9 +211,8 @@ def animeify(meshes, hull_mat):
     for o in meshes:
         if not o.material_slots:                # MPFB's body carries no material of its own: give it skin
             o.data.materials.append(skin_material())
-        dye = next((rgb for key, rgb in DYES.items() if key in o.name.lower()), None)
         for i, slot in enumerate(o.material_slots):
-            slot.material = cel_material(slot.material, dye)
+            slot.material = cel_material(slot.material, dye_for(slot.material, o))
         if hull_mat is None or len(o.data.polygons) < HULL_MIN_FACES:          # eyes, lashes, teeth: no outline of their own
             continue
         add_hull(o, hull_mat)
@@ -296,7 +316,48 @@ def shorten(obj, rig, knee_bone="mixamorig:LeftLeg", above=COAT_HEM_ABOVE_KNEE):
     obj.data.update()
 
 
-def load_mpfb(path, clip, frame_frac):
+def low_poly(objs):
+    """Decimate each mesh to its LOW_POLY budget in the rest pose (before the clip); weights and UVs survive."""
+    for o in objs:
+        if o.type != "MESH":
+            continue
+        budget = next((n for key, n in LOW_POLY if key in o.name.lower()), None)
+        faces = len(o.data.polygons)
+        if not budget or faces <= budget or (o.data.shape_keys and len(o.data.shape_keys.key_blocks) > 1):
+            continue
+        d = o.modifiers.new("low poly", "DECIMATE")
+        d.ratio = budget / faces
+        bpy.context.view_layer.objects.active = o
+        while o.modifiers[0] != d:
+            bpy.ops.object.modifier_move_up(modifier=d.name)
+        bpy.ops.object.modifier_apply(modifier=d.name)
+
+
+def dress_tasman(body, rig, mpfb_objects):
+    """The found parts (tasman_parts.py) on the body, in the rest pose: ruff, cavalier hat, Batavia boots, rapier,
+    moustache, and the robe's rope belt in brown."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import tasman_parts as tp   # noqa: E402
+    mw = rig.matrix_world
+    top = rig.data.bones.get("mixamorig:HeadTop_End")
+    head_top = (mw @ top.head_local).z if top else max((body.matrix_world @ v.co).z for v in body.data.vertices)
+    added = [tp.ruff(PARTS / "ruff_sketchfab_a1dcb303/scene.gltf", body, rig)]
+    added += tp.cuffs(PARTS / "ruff_sketchfab_a1dcb303/scene.gltf", body, rig)
+    added += tp.hat(PARTS / "hat_sketchfab_c0a97984/scene.gltf", rig, head_top)
+    added += tp.boots(PARTS / "boot_sketchfab_db24dfa9/scene.gltf", body, rig)
+    added.append(tp.rapier(PARTS / "rapier_blendswap_18303/rapier.blend", rig))
+    added.append(tp.moustache(PARTS / "moustache_blendswap_14439/GentlemansAccesories.blend", body, rig))
+    robe = next((o for o in mpfb_objects if o.type == "MESH" and "robe" in o.name.lower()), None)
+    if robe:
+        belt = bpy.data.materials.new("belt")
+        belt.diffuse_color = (*srgb_to_linear("#6b4426"), 1)
+        hips = (mw @ rig.data.bones["mixamorig:Hips"].head_local).z
+        print("TASMAN belt pieces", tp.belt_brown(robe, belt, (hips - 0.45, hips + 0.3)))
+    print("TASMAN parts", [o.name for o in added])
+    return added
+
+
+def load_mpfb(path, clip, frame_frac, dress=False):
     """The MPFB body in Mixamo's rest pose (normalize_rest.py output, FBX) posed with a frame of a real Mixamo clip,
     via the 3D pipeline's own job.apply_clip (prefix normalised, hips retargeted): a natural stance and relaxed
     hands, where rotating the upper arms by hand gave a stiff dummy (Bart: "the pose is really bad")."""
@@ -309,6 +370,10 @@ def load_mpfb(path, clip, frame_frac):
     for o in new:                       # garments are fitted in the rest pose, before the clip
         if o.type == "MESH" and "robe" in o.name.lower():
             shorten(o, rig)
+    body = next(o for o in new if o.type == "MESH" and o.name == "Human")
+    if dress:
+        new += dress_tasman(body, rig, new)
+    low_poly(new)
     action = job.apply_clip(rig, Path(clip))
     start, end = action.frame_range
     bpy.context.scene.frame_set(int(round(start + (end - start) * frame_frac)))
@@ -317,7 +382,6 @@ def load_mpfb(path, clip, frame_frac):
     for o in new:
         if o.parent is None:
             o.parent = root
-    body = next(o for o in new if o.type == "MESH" and o.name == "Human")
     meshes = [o for o in new if o.type == "MESH"]
     anime_normals(body, rig)
     return root, meshes
@@ -469,11 +533,12 @@ def main():
     sc.view_settings.view_transform = "Standard"
     cam = camera_and_light()
     _, ship_meshes = load_ship(ship)
+    low_poly(ship_meshes)
     animeify(ship_meshes, None)                            # the set gets the same cel step, no outline
     for o in ship_meshes:                                  # the sails would shade the whole deck: anime sets light
         o.visible_shadow = False                           # their actors, they do not shadow them
     backdrop(plate)
-    body, body_meshes = load_mpfb(mpfb, CLIP, CLIP_FRAME)
+    body, body_meshes = load_mpfb(mpfb, CLIP, CLIP_FRAME, dress=name.startswith("tasman"))
     face_camera(body, on_deck(2.9, 1.05))                   # side by side at Tasman's distance, the fair comparison
     hull_mat = emission("ink hull", HULL, cull=True)
     animeify(body_meshes, hull_mat)
