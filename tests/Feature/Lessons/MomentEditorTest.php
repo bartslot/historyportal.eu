@@ -188,6 +188,26 @@ class MomentEditorTest extends TestCase
         $this->assertNotContains('pitch', \App\Services\Lessons\MomentSpec::INPUTS);
     }
 
+    public function test_the_teacher_turns_a_moment_into_a_harbour_race_and_back(): void
+    {
+        $scene = $this->compose($this->wind());
+
+        $editor = $this->editor($scene)
+            ->call('toggleMomentRace')
+            ->assertSeeHtml('data-moment-race')
+            ->set('momentDraft.race.ghost_seconds', 2)
+            ->set('momentDraft.race.after', '<i>{crew:heemskerck}</i> vaart uit.')
+            ->call('saveMomentDraft');
+        $race = $scene->fresh()->config['moment']['race'];
+        $this->assertTrue($race['enabled']);
+        $this->assertEquals(5.0, $race['ghost_seconds']);
+        $this->assertSame('{crew:heemskerck} vaart uit.', $race['after']);
+
+        $editor->call('toggleMomentRace');
+        $this->assertFalse($scene->fresh()->config['moment']['race']['enabled']);
+        $this->assertSame('{crew:heemskerck} vaart uit.', $scene->fresh()->config['moment']['race']['after']);   // nothing lost
+    }
+
     public function test_the_whole_scene_save_cleans_the_moment_and_never_rewrites_its_default(): void
     {
         $scene = $this->compose($this->wind());

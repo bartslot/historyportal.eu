@@ -1754,5 +1754,10 @@
     "The 1642 fleet": "La flotte de 1642",
     "End the race": "Terminer la course",
     "the crew": "l'équipage",
-    "Your best: :seconds s": "Ton meilleur temps : :seconds s"
+    "Your best: :seconds s": "Ton meilleur temps : :seconds s",
+    "Fleet": "Flotte",
+    "Harbour race": "Course du port",
+    "Harbour race: a ship per team": "Course du port : un navire par équipe",
+    "Narrator after the race": "Narrateur après la course",
+    "Seconds the 1642 fleet takes on a pupil's own device": "Secondes de la flotte de 1642 sur l'appareil de l'élève"
 }
