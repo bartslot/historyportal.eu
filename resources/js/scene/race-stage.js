@@ -43,7 +43,8 @@ export class RaceStage {
     this._chips.dataset.raceChips = ''
     Object.assign(this._chips.style, {
       left: `${this.host.offsetLeft}px`, top: `${this.host.offsetTop}px`,
-      width: `${this.host.offsetWidth}px`, height: `${this.host.offsetHeight}px`, zIndex: '31',
+      // Above every ship (figure layers stack at 30-32): a mast passing behind a chip never hides it.
+      width: `${this.host.offsetWidth}px`, height: `${this.host.offsetHeight}px`, zIndex: '35',
     })
     this._lanes.forEach((lane, i) => {
       const chip = el('span', `badge badge-sm absolute whitespace-nowrap ${COLOURS[i % COLOURS.length]}`, names[i] ?? '')
