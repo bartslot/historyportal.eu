@@ -1,7 +1,7 @@
 """The MPFB standard body next to the anime figure, on the Heemskerck's deck, drawn the way anime 3D is drawn
 (Bart 2026-10-13: "put it next to the anime character ... reproduce the lines and techniques ... in blender").
 
-  Blender -b --python anime_lineup.py -- MPFB_REST.fbx ANIME.vrm SHIP.glb PLATE.png OUT_DIR
+  Blender -b --python anime_lineup.py -- MPFB_REST.fbx ANIME.vrm|REFERENCE.png SHIP.glb PLATE.png OUT_DIR [NAME]
 (MPFB_REST.fbx = mh_build.py's FBX through normalize_rest.py, so Mixamo clips pose it.)
 
 Techniques (what pro anime 3D does; see Memory/3d-pipeline/topics/comic-look/notes.md):
@@ -35,6 +35,10 @@ FOV_Y = 0.7                             # rad, vertical (Babylon's camera.fov)
 SMOOTH_REPEAT = 60                      # proxy smoothing: large simple shapes, like a drawn body
 HEAD_BONE = "mixamorig:Head"
 ARMS_DOWN_DEG = 65
+# Tasman's canon colours (Memory/historyportal/topics/tasman-standard/STYLE.md), by garment object name
+DYES = {"robe": (0.20, 0.30, 0.55), "hat": (0.07, 0.07, 0.08), "boot": (0.42, 0.27, 0.15), "pants": (0.23, 0.25, 0.31)}
+DYE_GAIN = 2.2
+COAT_HEM_ABOVE_KNEE = -0.04             # the robe is cut here (metres above the knee joint): a knee-length coat
 PIPELINE = Path("/Users/bartslot/BartsAutomation/BartsDev/workflows/3D pipeline")
 CLIP = PIPELINE / "in" / "Breathing Idle.fbx"
 CLIP_FRAME = 0.35                        # fraction of the clip: a relaxed moment of the breath                      # degrees below horizontal: relaxed, hands beside the thighs
@@ -42,7 +46,7 @@ CLIP_FRAME = 0.35                        # fraction of the clip: a relaxed momen
 
 def args():
     a = sys.argv[sys.argv.index("--") + 1:]
-    return [Path(x) for x in a[:5]]
+    return [Path(x) for x in a[:5]] + [a[5] if len(a) > 5 else "anime_lineup"]
 
 
 def forward():
@@ -100,8 +104,9 @@ def base_image(mat):
     return None
 
 
-def cel_material(src):
-    """Anime cel: the material's own texture (or colour) x one hard shade step, emission (no PBR)."""
+def cel_material(src, dye=None):
+    """Anime cel: the material's own texture (or colour) x one hard shade step, emission (no PBR).
+    dye: an RGB the texture is recoloured to, keeping its folds and shading (texture brightness x dye)."""
     m = bpy.data.materials.new(f"cel_{src.name if src else 'plain'}")
     m.use_nodes = True
     nt = m.node_tree
@@ -122,10 +127,25 @@ def cel_material(src):
     if img:
         tex = nt.nodes.new("ShaderNodeTexImage")
         tex.image = img
-        nt.links.new(tex.outputs["Color"], mul.inputs["A"])
+        if dye:
+            bw = nt.nodes.new("ShaderNodeRGBToBW")
+            gain = nt.nodes.new("ShaderNodeMath")
+            gain.operation = "MULTIPLY"
+            gain.inputs[1].default_value = DYE_GAIN          # a mid-grey texture keeps the dye's own brightness
+            tint = nt.nodes.new("ShaderNodeMix")
+            tint.data_type = "RGBA"
+            tint.blend_type = "MULTIPLY"
+            tint.inputs["Factor"].default_value = 1.0
+            tint.inputs["A"].default_value = (*dye, 1.0)
+            nt.links.new(tex.outputs["Color"], bw.inputs[0])
+            nt.links.new(bw.outputs[0], gain.inputs[0])
+            nt.links.new(gain.outputs[0], tint.inputs["B"])
+            nt.links.new(tint.outputs["Result"], mul.inputs["A"])
+        else:
+            nt.links.new(tex.outputs["Color"], mul.inputs["A"])
         alpha = tex.outputs["Alpha"]
     else:
-        col = src.diffuse_color if src else (0.9, 0.88, 0.84, 1)
+        col = (*dye, 1.0) if dye else (src.diffuse_color if src else (0.9, 0.88, 0.84, 1))
         mul.inputs["A"].default_value = col
         alpha = None
     em = nt.nodes.new("ShaderNodeEmission")
@@ -170,8 +190,9 @@ def animeify(meshes, hull_mat):
     for o in meshes:
         if not o.material_slots:                # MPFB's body carries no material of its own: give it skin
             o.data.materials.append(skin_material())
+        dye = next((rgb for key, rgb in DYES.items() if key in o.name.lower()), None)
         for i, slot in enumerate(o.material_slots):
-            slot.material = cel_material(slot.material)
+            slot.material = cel_material(slot.material, dye)
         if hull_mat is None or len(o.data.polygons) < HULL_MIN_FACES:          # eyes, lashes, teeth: no outline of their own
             continue
         add_hull(o, hull_mat)
@@ -261,6 +282,20 @@ def anime_normals(body, rig):
     dh.mix_factor = 0.85
 
 
+def shorten(obj, rig, knee_bone="mixamorig:LeftLeg", above=COAT_HEM_ABOVE_KNEE):
+    """Cut a long garment off at knee height (rest pose): the monk's robe becomes a knee-length coat."""
+    import bmesh
+    knee = (rig.matrix_world @ rig.data.bones[knee_bone].head_local).z + above
+    mw = obj.matrix_world
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    gone = [f for f in bm.faces if all((mw @ v.co).z < knee for v in f.verts)]
+    bmesh.ops.delete(bm, geom=gone, context="FACES")
+    bm.to_mesh(obj.data)
+    bm.free()
+    obj.data.update()
+
+
 def load_mpfb(path, clip, frame_frac):
     """The MPFB body in Mixamo's rest pose (normalize_rest.py output, FBX) posed with a frame of a real Mixamo clip,
     via the 3D pipeline's own job.apply_clip (prefix normalised, hips retargeted): a natural stance and relaxed
@@ -271,6 +306,9 @@ def load_mpfb(path, clip, frame_frac):
     bpy.ops.import_scene.fbx(filepath=str(path), automatic_bone_orientation=False)
     new = [o for o in bpy.data.objects if o not in before]
     rig = next(o for o in new if o.type == "ARMATURE")
+    for o in new:                       # garments are fitted in the rest pose, before the clip
+        if o.type == "MESH" and "robe" in o.name.lower():
+            shorten(o, rig)
     action = job.apply_clip(rig, Path(clip))
     start, end = action.frame_range
     bpy.context.scene.frame_set(int(round(start + (end - start) * frame_frac)))
@@ -389,6 +427,24 @@ def lineart(collection):
     return gp
 
 
+def reference_card(image, at, height=2.0):
+    """A reference image standing on the deck like a modeller's reference (Blender image empty), facing the camera."""
+    img = bpy.data.images.load(str(image))
+    ref = bpy.data.objects.new("reference: " + Path(image).stem, None)
+    bpy.context.scene.collection.objects.link(ref)
+    ref.empty_display_type = "IMAGE"
+    ref.data = img
+    ref.empty_display_size = height * img.size[0] / img.size[1]
+    ref.empty_image_offset = (-0.5, 0.0)
+    ref.use_empty_image_alpha = False
+    to = CAM - at
+    to.z = 0
+    ref.rotation_euler = (math.radians(90), 0, math.atan2(to.y, to.x) - math.radians(90))
+    ref.location = at
+    ref.show_in_front = False
+    return ref
+
+
 def show_rendered_through_camera():
     """Open the file the way it renders: every 3D view in Rendered shading, looking through the shot camera."""
     for screen in bpy.data.screens:
@@ -404,7 +460,7 @@ def show_rendered_through_camera():
 
 
 def main():
-    mpfb, vrm, ship, plate, out = args()
+    mpfb, second, ship, plate, out, name = args()
     out.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.read_factory_settings(use_empty=True)
     sc = bpy.context.scene
@@ -419,22 +475,25 @@ def main():
     backdrop(plate)
     body, body_meshes = load_mpfb(mpfb, CLIP, CLIP_FRAME)
     face_camera(body, on_deck(2.9, 1.05))                   # side by side at Tasman's distance, the fair comparison
-    anime, anime_meshes = load_vrm(vrm)
-    face_camera(anime, on_deck(2.9, 0.15), front=Vector((0, -1, 0)))   # just inside the starboard rail
     hull_mat = emission("ink hull", HULL, cull=True)
     animeify(body_meshes, hull_mat)
-    animeify(anime_meshes, hull_mat)
+    if second.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp"):   # a reference sheet beside him, not a figure
+        reference_card(second, on_deck(2.9, 0.15))
+    else:
+        anime, anime_meshes = load_vrm(second)
+        face_camera(anime, on_deck(2.9, 0.15), front=Vector((0, -1, 0)))   # just inside the starboard rail
+        animeify(anime_meshes, hull_mat)
     lines = bpy.data.collections.new("drawn")
     sc.collection.children.link(lines)
     for o in list(sc.objects):
         if o.type == "MESH" and o.name != "backdrop":
             lines.objects.link(o)
     lineart(lines)
-    sc.render.filepath = str(out / "anime_lineup.png")
+    sc.render.filepath = str(out / f"{name}.png")
     bpy.ops.render.render(write_still=True)
     show_rendered_through_camera()
-    bpy.ops.wm.save_as_mainfile(filepath=str(out / "anime_lineup.blend"))
-    print(f"LINEUP ok {out / 'anime_lineup.png'} {out / 'anime_lineup.blend'}")
+    bpy.ops.wm.save_as_mainfile(filepath=str(out / f"{name}.blend"))
+    print(f"LINEUP ok {out / (name + '.png')} {out / (name + '.blend')}")
 
 
 main()
