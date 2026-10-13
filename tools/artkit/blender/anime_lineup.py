@@ -1,7 +1,8 @@
 """The MPFB standard body next to the anime figure, on the Heemskerck's deck, drawn the way anime 3D is drawn
 (Bart 2026-10-13: "put it next to the anime character ... reproduce the lines and techniques ... in blender").
 
-  Blender -b --python anime_lineup.py -- MPFB.blend ANIME.vrm SHIP.glb PLATE.png OUT_DIR
+  Blender -b --python anime_lineup.py -- MPFB_REST.fbx ANIME.vrm SHIP.glb PLATE.png OUT_DIR
+(MPFB_REST.fbx = mh_build.py's FBX through normalize_rest.py, so Mixamo clips pose it.)
 
 Techniques (what pro anime 3D does; see Memory/3d-pipeline/topics/comic-look/notes.md):
   1 cel shade      each material's own texture x ONE hard light/shade step (Shader to RGB -> constant ramp)
@@ -31,7 +32,12 @@ DECK_Y = 4.61                           # Heemskerck midships deck above the kee
 CAM = Vector((-2.5, -1.6, 1.1))         # 2.5 m aft of midships, 1.6 m to starboard, eye 1.1 m above the deck
 YAW = math.radians(-26)                 # looking forward, turned 26 deg toward the starboard rail
 FOV_Y = 0.7                             # rad, vertical (Babylon's camera.fov)
-ARMS_DOWN_DEG = 65                      # degrees below horizontal: relaxed, hands beside the thighs
+SMOOTH_REPEAT = 60                      # proxy smoothing: large simple shapes, like a drawn body
+HEAD_BONE = "mixamorig:Head"
+ARMS_DOWN_DEG = 65
+PIPELINE = Path("/Users/bartslot/BartsAutomation/BartsDev/workflows/3D pipeline")
+CLIP = PIPELINE / "in" / "Breathing Idle.fbx"
+CLIP_FRAME = 0.35                        # fraction of the clip: a relaxed moment of the breath                      # degrees below horizontal: relaxed, hands beside the thighs
 
 
 def args():
@@ -197,18 +203,86 @@ def add_hull(o, hull_mat):
     hull.visible_shadow = False
 
 
-def load_mpfb(path):
-    with bpy.data.libraries.load(str(path)) as (src, dst):
-        dst.objects = list(src.objects)
+def anime_normals(body, rig):
+    """Clean anime shadow shapes without touching the silhouette (what Arc System Works and VRoid do):
+      body: custom normals transferred from a heavily SMOOTHED copy that follows the same rig (hidden in render),
+      head: normals from an ELLIPSOID around the head, so the face takes one clean shadow shape.
+    The geometry, and so the outline and Line Art, stay exactly as they are; only the light reads simpler."""
+    proxy = body.copy()
+    proxy.data = body.data.copy()
+    proxy.name = f"{body.name} normal proxy"
+    for c in body.users_collection:
+        c.objects.link(proxy)
+    for m in [m for m in proxy.modifiers if m.type not in ("ARMATURE",)]:
+        proxy.modifiers.remove(m)
+    sm = proxy.modifiers.new("simplify shapes", "SMOOTH")
+    sm.factor = 1.0
+    sm.iterations = SMOOTH_REPEAT
+    proxy.hide_render = True
+    proxy.display_type = "WIRE"
+    proxy.visible_shadow = False
+    dt = body.modifiers.new("normals from smooth proxy", "DATA_TRANSFER")
+    dt.object = proxy
+    dt.use_loop_data = True
+    dt.data_types_loops = {"CUSTOM_NORMAL"}
+    dt.loop_mapping = "POLYINTERP_NEAREST"
+
+    # head: an ellipsoid on the head bone, its normals on the head's vertices only (vertex group = the bone's weights)
+    bone = rig.pose.bones.get(HEAD_BONE)
+    group = body.vertex_groups.get(HEAD_BONE)
+    if not (bone and group):
+        return
+    mw = rig.matrix_world
+    head_pts = [body.matrix_world @ v.co for v in body.data.vertices
+                if any(g.group == group.index and g.weight > 0.5 for g in v.groups)]
+    lo = Vector([min(p[i] for p in head_pts) for i in range(3)])
+    hi = Vector([max(p[i] for p in head_pts) for i in range(3)])
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=48, ring_count=24, location=(lo + hi) / 2)
+    egg = bpy.context.active_object
+    egg.name = f"{body.name} face sphere"
+    egg.scale = (hi - lo) / 2 * 1.05
+    egg.hide_render = True
+    egg.display_type = "WIRE"
+    egg.visible_shadow = False
+    bpy.ops.object.shade_smooth()
+    # it moves with the head
+    bpy.ops.object.select_all(action="DESELECT")
+    egg.select_set(True)
+    rig.select_set(True)
+    bpy.context.view_layer.objects.active = rig
+    rig.data.bones.active = rig.data.bones[HEAD_BONE]
+    bpy.ops.object.parent_set(type="BONE", keep_transform=True)
+    dh = body.modifiers.new("face normals from sphere", "DATA_TRANSFER")
+    dh.object = egg
+    dh.use_loop_data = True
+    dh.data_types_loops = {"CUSTOM_NORMAL"}
+    dh.loop_mapping = "POLYINTERP_NEAREST"
+    dh.vertex_group = HEAD_BONE
+    dh.mix_factor = 0.85
+
+
+def load_mpfb(path, clip, frame_frac):
+    """The MPFB body in Mixamo's rest pose (normalize_rest.py output, FBX) posed with a frame of a real Mixamo clip,
+    via the 3D pipeline's own job.apply_clip (prefix normalised, hips retargeted): a natural stance and relaxed
+    hands, where rotating the upper arms by hand gave a stiff dummy (Bart: "the pose is really bad")."""
+    sys.path.insert(0, str(PIPELINE))
+    import job   # noqa: E402  (workflows/3D pipeline/job.py)
+    before = set(bpy.data.objects)
+    bpy.ops.import_scene.fbx(filepath=str(path), automatic_bone_orientation=False)
+    new = [o for o in bpy.data.objects if o not in before]
+    rig = next(o for o in new if o.type == "ARMATURE")
+    action = job.apply_clip(rig, Path(clip))
+    start, end = action.frame_range
+    bpy.context.scene.frame_set(int(round(start + (end - start) * frame_frac)))
     root = bpy.data.objects.new("mpfb", None)
     bpy.context.scene.collection.objects.link(root)
-    for o in dst.objects:
-        bpy.context.scene.collection.objects.link(o)
+    for o in new:
         if o.parent is None:
             o.parent = root
-    rig = next(o for o in dst.objects if o.type == "ARMATURE")
-    arms_down(rig, ["mixamorig:LeftArm", "mixamorig:RightArm"], ARMS_DOWN_DEG)
-    return root, [o for o in dst.objects if o.type == "MESH"]
+    body = next(o for o in new if o.type == "MESH" and o.name == "Human")
+    meshes = [o for o in new if o.type == "MESH"]
+    anime_normals(body, rig)
+    return root, meshes
 
 
 def load_vrm(path):
@@ -224,6 +298,10 @@ def load_vrm(path):
     for o in new:
         if o.parent is None:
             o.parent = root
+    for o in new:                       # VRM spring-bone colliders: helper spheres, only clutter in the editor
+        if o.type == "EMPTY":
+            o.hide_set(True)
+            o.hide_render = True
     rig = next((o for o in new if o.type == "ARMATURE"), None)
     if rig:
         arms_down(rig, ["J_Bip_L_UpperArm", "J_Bip_R_UpperArm"], ARMS_DOWN_DEG)
@@ -311,6 +389,20 @@ def lineart(collection):
     return gp
 
 
+def show_rendered_through_camera():
+    """Open the file the way it renders: every 3D view in Rendered shading, looking through the shot camera."""
+    for screen in bpy.data.screens:
+        for area in screen.areas:
+            if area.type != "VIEW_3D":
+                continue
+            space = area.spaces.active
+            space.shading.type = "RENDERED"
+            space.region_3d.view_perspective = "CAMERA"
+    for o in bpy.data.objects:          # the normal proxies and face spheres stay out of sight too
+        if o.name.endswith(("normal proxy", "face sphere")):
+            o.hide_set(True)
+
+
 def main():
     mpfb, vrm, ship, plate, out = args()
     out.mkdir(parents=True, exist_ok=True)
@@ -325,7 +417,7 @@ def main():
     for o in ship_meshes:                                  # the sails would shade the whole deck: anime sets light
         o.visible_shadow = False                           # their actors, they do not shadow them
     backdrop(plate)
-    body, body_meshes = load_mpfb(mpfb)
+    body, body_meshes = load_mpfb(mpfb, CLIP, CLIP_FRAME)
     face_camera(body, on_deck(2.9, 1.05))                   # side by side at Tasman's distance, the fair comparison
     anime, anime_meshes = load_vrm(vrm)
     face_camera(anime, on_deck(2.9, 0.15), front=Vector((0, -1, 0)))   # just inside the starboard rail
@@ -340,6 +432,7 @@ def main():
     lineart(lines)
     sc.render.filepath = str(out / "anime_lineup.png")
     bpy.ops.render.render(write_still=True)
+    show_rendered_through_camera()
     bpy.ops.wm.save_as_mainfile(filepath=str(out / "anime_lineup.blend"))
     print(f"LINEUP ok {out / 'anime_lineup.png'} {out / 'anime_lineup.blend'}")
 
