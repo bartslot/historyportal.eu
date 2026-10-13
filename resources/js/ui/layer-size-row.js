@@ -114,6 +114,11 @@ export function layerSizeRow ({ assetId, height, width = null, locked = true } =
       this.push()
     },
 
+    /** "Fit to this spot" saved a new height elsewhere: show it (already stored, so no commit). */
+    fitted (detail) {
+      if (detail?.assetId === assetId) this.edit('h', detail.height)
+    },
+
     /** Live preview, no round trip. Every overlay rendering this layer, not just the stage's. */
     push () {
       window.__setLayerProp?.(assetId, 'width', this.lock.width)
