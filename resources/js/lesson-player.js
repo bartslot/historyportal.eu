@@ -992,6 +992,8 @@ Alpine.data('lessonGame', (lesson) => ({
     },
 
     _destroyParallax (lingerMs = 0) {
+      // The figures leave the camera pose with the picture, unless they stay under a slide/wipe.
+      if (!lingerMs) this._artLayer?.setCamera(null)
       if (!_parallax) return
       try { _parallax.destroy(lingerMs) } catch (_) { /* already detached */ }
       _parallax = null
