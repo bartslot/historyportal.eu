@@ -20,8 +20,8 @@
     "file": "assets/_commonjsHelpers-DqutJMZx.js",
     "name": "_commonjsHelpers"
   },
-  "_ambient-DRjSpXoE.js": {
-    "file": "assets/ambient-DRjSpXoE.js",
+  "_ambient-uEDWrar1.js": {
+    "file": "assets/ambient-uEDWrar1.js",
     "name": "ambient"
   },
   "_animations-Bw164z87.js": {
@@ -31,8 +31,8 @@
       "_easing-ChRyoIXo.js"
     ]
   },
-  "_big-countdown-CAnXJBSQ.js": {
-    "file": "assets/big-countdown-CAnXJBSQ.js",
+  "_big-countdown-CFJIzieg.js": {
+    "file": "assets/big-countdown-CFJIzieg.js",
     "name": "big-countdown",
     "imports": [
       "_easing-ChRyoIXo.js"
@@ -95,7 +95,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-Csbb4pfT.css",
+    "file": "assets/app-gL4-T_RO.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -104,7 +104,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-Pev2ul_K.js",
+    "file": "assets/app-xhmdTzwd.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -169,14 +169,14 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-BKtjvln8.js",
+    "file": "assets/lesson-player-YErewpGA.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
     "imports": [
       "__commonjsHelpers-DqutJMZx.js",
       "resources/js/gallery-scene.js",
-      "_big-countdown-CAnXJBSQ.js",
+      "_big-countdown-CFJIzieg.js",
       "_animations-Bw164z87.js",
       "_easing-ChRyoIXo.js"
     ],
@@ -195,14 +195,14 @@
     ]
   },
   "resources/js/scene/ArtworkOverlay.js": {
-    "file": "assets/ArtworkOverlay-CH4gdLJ3.js",
+    "file": "assets/ArtworkOverlay-DUFFcZpA.js",
     "name": "ArtworkOverlay",
     "src": "resources/js/scene/ArtworkOverlay.js",
     "isDynamicEntry": true,
     "imports": [
       "_animations-Bw164z87.js",
-      "_big-countdown-CAnXJBSQ.js",
-      "_ambient-DRjSpXoE.js",
+      "_big-countdown-CFJIzieg.js",
+      "_ambient-uEDWrar1.js",
       "_easing-ChRyoIXo.js"
     ]
   },
@@ -222,25 +222,25 @@
     "isDynamicEntry": true
   },
   "resources/js/scene/ParallaxScene.js": {
-    "file": "assets/ParallaxScene-CpT5z0J9.js",
+    "file": "assets/ParallaxScene-BSbYmGi-.js",
     "name": "ParallaxScene",
     "src": "resources/js/scene/ParallaxScene.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-CAnXJBSQ.js",
-      "_ambient-DRjSpXoE.js",
+      "_big-countdown-CFJIzieg.js",
+      "_ambient-uEDWrar1.js",
       "_camera-CZ8TIYdH.js",
       "_easing-ChRyoIXo.js",
       "_animations-Bw164z87.js"
     ]
   },
   "resources/js/scene/QuizOverlay.js": {
-    "file": "assets/QuizOverlay-v70ChY7l.js",
+    "file": "assets/QuizOverlay-CHWJABD3.js",
     "name": "QuizOverlay",
     "src": "resources/js/scene/QuizOverlay.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-CAnXJBSQ.js",
+      "_big-countdown-CFJIzieg.js",
       "_easing-ChRyoIXo.js"
     ]
   },
@@ -254,12 +254,12 @@
     ]
   },
   "resources/js/scene/TeamGame.js": {
-    "file": "assets/TeamGame-Bp8KlsHc.js",
+    "file": "assets/TeamGame-ikPKxn8u.js",
     "name": "TeamGame",
     "src": "resources/js/scene/TeamGame.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-CAnXJBSQ.js",
+      "_big-countdown-CFJIzieg.js",
       "_dom-DByCrY2T.js",
       "resources/js/lesson-player.js",
       "_easing-ChRyoIXo.js",
@@ -284,12 +284,12 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-BlV6L1NG.js",
+    "file": "assets/index-D9b2CwvE.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-CAnXJBSQ.js",
+      "_big-countdown-CFJIzieg.js",
       "resources/js/scene/QuizOverlay.js",
       "resources/js/scene/TextOverlayLayer.js",
       "resources/js/scene/ArtworkOverlay.js",
@@ -299,7 +299,7 @@
       "../../../node_modules/three/build/three.module.js",
       "_easing-ChRyoIXo.js",
       "_animations-Bw164z87.js",
-      "_ambient-DRjSpXoE.js",
+      "_ambient-uEDWrar1.js",
       "_GLTFLoader-Et3HGvr1.js"
     ],
     "dynamicImports": [
