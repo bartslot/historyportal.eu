@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  finishOrder, raceDecided, finalOrder, crewFrom, ghostLevel, crewText, raceLanes, laneX, nextOpen,
+  finishOrder, raceDecided, finalOrder, crewFrom, ghostLevel, crewText, raceLanes, laneX, nextOpen, CHIP_H, HULL,
   readCrew, saveCrew, clearCrew, readBest, saveBest,
 } from '../race.js'
 
@@ -78,6 +78,25 @@ describe('race lanes', () => {
     expect(lanes[0].y).toBeLessThan(lanes[3].y)
     expect(lanes[0].height).toBeLessThan(lanes[3].height)
     expect(lanes[2].foam).toBe(0.5)                     // blend-into-scene and foam come along
+  })
+
+  it('no hull covers another lane\'s chip, up to five teams', () => {
+    for (let n = 2; n <= 5; n++) {
+      const lanes = raceLanes(ship, n)
+      lanes.forEach((a, i) => lanes.forEach((b, j) => {
+        if (i === j) return
+        const shipBottom = a.y + a.height / 2
+        const shipTop = shipBottom - a.height * HULL
+        const chipTop = b.y + b.height / 2 + 1
+        // A lane's own chip sits under its own hull; only other lanes count.
+        const overlaps = shipTop < chipTop + CHIP_H && shipBottom > chipTop
+        expect(overlaps, `${n} lanes: hull ${i} over chip ${j}`).toBe(false)
+      }))
+    }
+  })
+
+  it('ships stay readable with many teams', () => {
+    expect(Math.min(...raceLanes(ship, 8).map(l => l.height))).toBeGreaterThanOrEqual(8 * 0.7)
   })
 
   it('a lane moves from the start to the finish line with its meter', () => {

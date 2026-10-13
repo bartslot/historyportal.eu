@@ -2219,50 +2219,148 @@ Alpine.data('lessonGame', (lesson) => ({
       const m = mod.readMoment(cfg)
       // In a race the pupil's own lane is the near one and the fleet's the far one.
       const lane = (meter) => (race && this.playSolo ? 1 : meter)
+      // Skipped or full, the story still moves: history decides what happens, the game only when.
+      // The race on the teams' phones ends here too, with the server's result.
+      const finish = async (outcome) => {
+        if (!current()) return
+        this._done = [...this._done, scene.id]
+        this._saveProgress()
+        this._tel.log(outcome.skipped ? 'moment_skipped' : 'moment_completed', { sceneIndex: index, sceneId: scene.id })
+        // The stage on the water now: the phones' lobby may have rebuilt it for another team count.
+        const stage = race ? (this._race ?? race) : null
+        const raced = stage && !outcome.skipped && outcome.crew
+        if (raced) this._crownRace(stage, outcome, scene)
+        await (stage
+          ? stage.sailOut(Number(cfg.payoff?.to_x) || m.race.finishX + 10, Number(cfg.payoff?.duration) || 6)
+          : this._momentPayoff(mod, cfg.payoff || {}, art))
+        if (!current()) return
+        // After a race the narrator names the crews; their names are only known now, so it is read.
+        // A pupil who raced the fleet alone gets the solo line: there is no Zeehaen crew to name.
+        const raceLine = this.playSolo ? (m.race.afterSolo || m.race.after) : m.race.after
+        await this._momentAfterLine(mod, raced && raceLine ? { after: this._crewed(raceLine), afterAudio: '' } : m)
+        if (!current()) return
+        this._powerMeter.hide()
+        this._closeRace()
+        this._hideBalloons(false)
+        this._momentActive = false
+        this.playbackPaused = false
+        resume()
+      }
+      const avoid = () => [...figureRects(art, host, [cfg.react?.layer, cfg.payoff?.layer].filter(Boolean)), ...(race ? race.band(host) : [])]
       this._powerMeter.show({
         config: { ...cfg, prompt: this._crewed(cfg.prompt) },
         solo: this.playSolo,
         best: race && this.playSolo ? readBest(safeStorage('localStorage'), `${lesson.lesson_code}:${scene.id}`) : null,
-        avoid: () => [...figureRects(art, host, [cfg.react?.layer, cfg.payoff?.layer].filter(Boolean)), ...(race ? race.band(host) : [])],
+        avoid,
         onReact: (meter) => mod.gust(race ? race.node(lane(meter)) : mod.layerNode(art, cfg.react?.layer), cfg.react || {}),
         onProgress: race ? ({ levels, ghost }) => race.update(this.playSolo ? [ghost ?? 0, levels[0] ?? 0] : levels) : null,
-        // Skipped or full, the story still moves: history decides what happens, the game only when.
-        onDone: async (outcome) => {
-          if (!current()) return
-          this._done = [...this._done, scene.id]
-          this._saveProgress()
-          this._tel.log(outcome.skipped ? 'moment_skipped' : 'moment_completed', { sceneIndex: index, sceneId: scene.id })
-          const raced = race && !outcome.skipped && outcome.crew
-          if (raced) this._crownRace(race, outcome, scene)
-          await (race
-            ? race.sailOut(Number(cfg.payoff?.to_x) || m.race.finishX + 10, Number(cfg.payoff?.duration) || 6)
-            : this._momentPayoff(mod, cfg.payoff || {}, art))
-          if (!current()) return
-          // After a race the narrator names the crews; their names are only known now, so it is read.
-          await this._momentAfterLine(mod, raced && m.race.after ? { after: this._crewed(m.race.after), afterAudio: '' } : m)
-          if (!current()) return
-          this._powerMeter.hide()
-          this._closeRace()
-          this._hideBalloons(false)
-          this._momentActive = false
-          this.playbackPaused = false
-          resume()
-        },
+        // A teacher's class race can move to the teams' phones before anyone has played.
+        onPhones: race && !this.playSolo && lesson.race ? () => this._racePhones(scene, cfg, art, host, avoid, finish, current) : null,
+        onDone: finish,
       })
     },
 
+    /**
+     * The race on the teams' phones: open it on the server, show the lobby (QR, code, team names),
+     * follow it by polling, move the lanes with the server's progress, and finish with its crews.
+     */
+    async _racePhones (scene, cfg, art, host, avoid, finish, current) {
+      if (this._raceRun || this._racePhonesOpening) return
+      this._racePhonesOpening = true
+      try {
+        await this._racePhonesOpen(scene, cfg, art, host, avoid, finish, current)
+      } finally {
+        this._racePhonesOpening = false
+      }
+    },
+
+    async _racePhonesOpen (scene, cfg, art, host, avoid, finish, current) {
+      const send = (url, method, body) => fetch(url, {
+        method,
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '' },
+        body: body ? JSON.stringify(body) : undefined,
+      })
+      const opened = await send(lesson.race.store_url, 'POST', { scene_id: scene.id }).catch(() => null)
+      if (!opened?.ok) {
+        if (!current()) return
+        // The meter card is still up: say so in it, and the class plays the race on this screen.
+        const note = document.createElement('div')
+        note.className = 'alert alert-warning text-sm'
+        note.textContent = t('The race could not be opened. Play it on this screen.')
+        host.querySelector('.card-body')?.prepend(note)
+        return
+      }
+      let state = await opened.json()
+      // Recorded at once: whatever happens next (a chapter jump mid-await), _closeRace deletes it.
+      const runUrl = this._raceRun = `${lesson.race.run_url}/${state.code}`
+      const gone = () => { if (!current()) { this._closeRace(); return true } return false }
+      const [{ RaceLobby }, { RaceClient }] = await Promise.all([import('./scene/race-lobby.js'), import('./scene/race-sync.js')])
+      if (gone()) return
+      this._powerMeter.hide()
+      const lobby = this._raceLobby = new RaceLobby(host)
+      let finished = false
+      // The lanes follow the lobby's teams: renamed in place, rebuilt (the stage only) when the
+      // teacher adds or removes a team.
+      const lanesFor = async (teams) => {
+        if (this._race?.laneCount === teams.length) return teams.forEach((team, i) => this._race.label(i, team.name))
+        this._race = await this._openRace(scene, cfg, art, teams.map(team => team.name))
+      }
+      const apply = async (next) => {
+        if (!current() || finished) return
+        // Decided before any await: a PATCH answer and a poll can both bring the finish.
+        if (next.state === 'finished') finished = true
+        state = next
+        await lanesFor(next.teams)
+        if (gone()) return
+        this._race?.update(next.teams.map(team => team.progress / next.goal))
+        if (!finished) return lobby.update(next)
+        this._raceClient?.stop()
+        lobby.hide()
+        const names = next.teams.map(team => team.name)
+        const roles = next.roles || {}
+        // The crews as the server decided them (an early end ranks teams that never finished too).
+        const order = ['heemskerck', 'zeehaen'].map(ship => next.teams.findIndex(team => team.id === roles[ship])).filter(i => i >= 0)
+        const crew = Object.fromEntries(order.map((i, place) => [place === 0 ? 'heemskerck' : 'zeehaen', names[i]]))
+        finish({ skipped: false, order, names, crew })
+      }
+      const act = async (body) => {
+        const res = await send(runUrl, 'PATCH', body).catch(() => null)
+        if (res?.ok) apply(await res.json())
+      }
+      lobby.show({
+        race: state,
+        joinUrl: `${lesson.race.device_url}/${state.code}`,
+        drawQr: (canvas, url) => QRCode.toCanvas(canvas, url, { width: 224, margin: 1 }).catch(() => {}),
+        avoid,
+        onNames: (names) => act({ names }),
+        onStart: () => act({ action: 'start' }),
+        onEnd: () => act({ action: 'end' }),
+      })
+      await lanesFor(state.teams)
+      if (gone()) return
+      this._raceClient = new RaceClient({
+        urls: { state: `${lesson.race.device_url}/${state.code}/state` },
+        pollMs: lesson.race.screen_poll_ms,
+        onState: apply,
+        onGone: () => { if (!finished) finish({ skipped: true }) },
+      })
+      this._raceClient.start()
+    },
+
     /** The panel's ship once per team (or the pupil and the 1642 fleet), as the race's lanes. */
-    async _openRace (scene, cfg, art) {
+    async _openRace (scene, cfg, art, teamNames = null) {
       const shipId = cfg.react?.layer ?? cfg.payoff?.layer
       const layers = ((scene.shots || [])[0]?.layers || []).filter(l => (l?.url || l?.embed) && isClipartLayer(l))
       const ship = layers.find(l => String(l.asset_id) === String(shipId))
       if (!ship || !this._artLayer || !art) return null
       const { RaceStage } = await import('./scene/race-stage.js')
       const teams = Number(cfg.teams) >= 2 ? Number(cfg.teams) : 4
-      const names = this.playSolo
+      const names = teamNames ?? (this.playSolo
         ? [t('The 1642 fleet'), t('You')]
-        : Array.from({ length: teams }, (_, i) => t('Team :number', { number: i + 1 }))
-      this._closeRace()
+        : Array.from({ length: teams }, (_, i) => t('Team :number', { number: i + 1 })))
+      // Only the stage: a race on the phones keeps its server run and its polling.
+      this._race?.close()
       this._race = new RaceStage({ overlay: this._artLayer, host: art })
       const race = cfg.race || {}
       this._race.open({ layers, ship, lanes: names.length, startX: Number(race.start_x ?? 25), finishX: Number(race.finish_x ?? 85), names })
@@ -2278,14 +2376,25 @@ Alpine.data('lessonGame', (lesson) => ({
         if (outcome.seconds) saveBest(safeStorage('localStorage'), `${lesson.lesson_code}:${scene.id}`, outcome.seconds)
         return
       }
+      // The phones' race names its own teams; the class-screen race uses the meter's.
+      const names = outcome.names ?? this._powerMeter.names
       ;(outcome.order || []).slice(0, 2).forEach((team, place) => {
-        race.label(team, `${this._powerMeter.names[team]} · ${place === 0 ? 'Heemskerck' : 'Zeehaen'}`)
+        race.label(team, `${names[team]} · ${place === 0 ? 'Heemskerck' : 'Zeehaen'}`)
       })
     },
 
     _closeRace () {
       this._race?.close()
       this._race = null
+      this._raceClient?.stop()
+      this._raceClient = null
+      this._raceLobby?.hide()
+      this._raceLobby = null
+      // A race on the phones lives only as long as its moment: the server forgets it now.
+      if (this._raceRun) {
+        fetch(this._raceRun, { method: 'DELETE', credentials: 'same-origin', headers: { Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '' } }).catch(() => {})
+        this._raceRun = null
+      }
     },
 
     /** A balloon left over from the panel's last line must not sit on the meter. */

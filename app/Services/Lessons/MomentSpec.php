@@ -222,7 +222,9 @@ final class MomentSpec
      * race was run (it may name the crews: {crew:heemskerck}); without a race the moment's own
      * `after` plays.
      *
-     * @return array{enabled: bool, ghost_seconds: float, start_x: float, finish_x: float, after: string}
+     * `after_solo` is that line for a pupil who raced the 1642 fleet alone (no Zeehaen crew to name).
+     *
+     * @return array{enabled: bool, ghost_seconds: float, start_x: float, finish_x: float, after: string, after_solo: string}
      */
     private static function race(mixed $raw): array
     {
@@ -235,6 +237,7 @@ final class MomentSpec
             // In frame: the finishers wait at the line with their crew named, then the payoff sails all out.
             'finish_x' => self::float($raw['finish_x'] ?? null, self::POSITION, 85.0),
             'after' => self::text($raw['after'] ?? '', self::TEXT_MAX),
+            'after_solo' => self::text($raw['after_solo'] ?? '', self::TEXT_MAX),
         ];
     }
 

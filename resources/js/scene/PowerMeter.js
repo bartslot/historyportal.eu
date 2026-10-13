@@ -31,7 +31,7 @@ import { teamNames, clampTeams } from './TeamGame.js'
 import { applyAmbient } from './ambient.js'
 import { MIC_INPUTS, soundStep, rhythmStep, rhythmStart, registerSoundTuner } from './meter-inputs/sound.js'
 import { shakeStep, shakeStart, tiltStep, needsMotionPermission, requestMotionPermission } from './meter-inputs/motion.js'
-import { placeCard, chromeMargins } from './card-place.js'
+import { placeOverlay } from './card-place.js'
 import { finishOrder, raceDecided, finalOrder, crewFrom, ghostLevel, nextOpen } from './race.js'
 
 /** How long a full meter stays on screen before the payoff, and a gust of the react layer. */
@@ -89,6 +89,7 @@ export function readMoment (raw = {}) {
       startX: Number.isFinite(Number(raw.race?.start_x)) && raw.race?.start_x !== null ? Number(raw.race.start_x) : 25,
       finishX: Number.isFinite(Number(raw.race?.finish_x)) && raw.race?.finish_x !== null ? Number(raw.race.finish_x) : 85,
       after: String(raw.race?.after || ''),
+      afterSolo: String(raw.race?.after_solo || ''),
     },
     react: raw.react && typeof raw.react === 'object' ? raw.react : {},
     payoff: raw.payoff && typeof raw.payoff === 'object' ? raw.payoff : { type: 'none' },
@@ -297,9 +298,11 @@ export class PowerMeter {
    *           onProgress?: (p: { levels: number[], ghost: ?number }) => void,
    *           onDone?: (outcome: { skipped: boolean, winner: ?number, team: ?string }) => void }} opts
    */
-  show ({ config, solo = false, best = null, avoid = () => [], listen = null, listenMotion = null, requestMotion = null, onReact = null, onProgress = null, onDone = null }) {
+  show ({ config, solo = false, best = null, skippable = true, onPhones = null, avoid = () => [], listen = null, listenMotion = null, requestMotion = null, onReact = null, onProgress = null, onDone = null }) {
     this.cfg = readMoment(config || {})
     this._solo = solo
+    this._skippable = skippable
+    this._onPhones = onPhones
     this._avoid = avoid
     this._spot = null
     this._onReact = onReact
@@ -625,19 +628,7 @@ export class PowerMeter {
    * (measured once, when the moment opens); on a phone it stays along the bottom.
    */
   _place (card) {
-    const w = this.host.clientWidth
-    if (w < 640) return
-    if (!this._spot) {
-      let avoid = []
-      try { avoid = this._avoid() || [] } catch (_) { /* nothing measured: bottom centre */ }
-      // Not laid out yet (or no layout at all): the card's nominal size, max-w-xl by a typical height.
-      const size = card.offsetWidth ? { w: card.offsetWidth, h: card.offsetHeight } : { w: 576, h: 320 }
-      this._spot = placeCard({ w, h: this.host.clientHeight }, size, avoid, chromeMargins(this.host))
-    }
-    card.style.position = 'absolute'
-    card.style.left = `${this._spot.x}px`
-    card.style.top = `${this._spot.y}px`
-    card.dataset.spot = this._spot.name
+    this._spot = placeOverlay(this.host, card, this._avoid, this._spot)
   }
 
   /**
@@ -758,8 +749,12 @@ export class PowerMeter {
 
   _foot () {
     const bar = el('div', 'flex justify-end gap-2')
+    // Before anyone has played, a class race can move to the teams' phones (the race QR).
+    const untouched = this.state.fills.every(f => f === 0)
+    if (this.state.race && this._onPhones && untouched) bar.appendChild(button(t('Play on phones'), 'btn-outline btn-sm', () => this._onPhones()))
     if (this.state.race && !this.state.done) bar.appendChild(button(t('End the race'), 'btn-outline btn-sm', () => this._endRace()))
-    bar.appendChild(button(t('Skip'), 'btn-ghost btn-sm', () => this.skip()))
+    // A team's phone in a race has no Skip: the class screen decides when the race ends.
+    if (this._skippable) bar.appendChild(button(t('Skip'), 'btn-ghost btn-sm', () => this.skip()))
     return bar
   }
 }

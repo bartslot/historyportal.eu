@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 export default defineConfig(({ mode }) => ({
     plugins: [
         laravel({
-            input: ['resources/css/app.css', 'resources/js/app.js', 'resources/js/argument-map.js', 'resources/js/lesson-player.js', 'resources/js/timemap/index.js', 'resources/js/lesson-map.js', 'resources/js/voyage-tour.js', 'resources/js/gallery-scene.js'],
+            input: ['resources/css/app.css', 'resources/js/app.js', 'resources/js/argument-map.js', 'resources/js/lesson-player.js', 'resources/js/timemap/index.js', 'resources/js/lesson-map.js', 'resources/js/voyage-tour.js', 'resources/js/gallery-scene.js', 'resources/js/race-device.js'],
             refresh: true,
         }),
         tailwindcss(),

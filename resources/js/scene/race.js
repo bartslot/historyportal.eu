@@ -11,6 +11,15 @@
 
 export const SHIPS = ['heemskerck', 'zeehaen']
 
+/** A team chip's height in stage %. */
+export const CHIP_H = 3.5
+
+/** The hull: the lower share of a ship picture. Masts and sails above it may pass behind a chip. */
+export const HULL = 0.4
+
+/** No ship smaller than this (stage %), whatever the number of lanes. */
+const MIN_SHIP_H = 8
+
 /** The order teams crossed the line (meter indexes), extended by whoever just filled theirs. */
 export function finishOrder (order, fills, goal) {
   const next = [...order]
@@ -78,13 +87,24 @@ export function crewText (text, crew = {}, whenNone = '') {
 export function raceLanes (ship, lanes, { startX = 25 } = {}) {
   const n = Math.max(1, lanes)
   const y = Number(ship.y) || 60
-  // The band the lanes share grows with their number; a ship is never much taller than two lanes,
-  // so far ships tuck behind near ones as on a real roadstead instead of piling up.
-  const spread = Math.min(34, 9 * n)
-  const h = Math.min(Number(ship.height) || 20, n === 1 ? Infinity : (spread / (n - 1)) * 2.2)
+  // The band the lanes share grows with their number, and the ships shrink with it: the hull of a
+  // nearer (larger) ship must stay below the chip of the lane behind it. Chips are drawn above every
+  // ship, so a mast passing behind one never hides it.
+  const spread = Math.min(40, 9 * n)
+  const step = n === 1 ? Infinity : spread / (n - 1)
+  const scaleOf = (i) => 0.7 + 0.45 * (n === 1 ? 0.5 : i / (n - 1))
+  // For each lane and the one in front of it: step >= h * (far's half - near's hull above its base) + chip.
+  let h = Number(ship.height) || 20
+  for (let i = 0; i < n - 1; i++) {
+    const reach = scaleOf(i) * 0.5 - scaleOf(i + 1) * (0.5 - HULL)
+    if (reach > 0) h = Math.min(h, (step - CHIP_H - 1.5) / reach)
+  }
+  // ponytail: past 5 teams the water band is too narrow to keep every chip clear; ships stay readable
+  // (MIN_SHIP_H) and the chips, drawn above all ships, stay legible. A second row of lanes if it matters.
+  h = Math.max(h, MIN_SHIP_H)
   return Array.from({ length: n }, (_, i) => {
     const t = n === 1 ? 0.5 : i / (n - 1)            // 0 = farthest, 1 = nearest
-    const scale = 0.7 + 0.45 * t
+    const scale = scaleOf(i)
     return {
       ...ship,
       asset_id: `${ship.asset_id}-lane${i}`,

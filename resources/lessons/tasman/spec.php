@@ -99,7 +99,7 @@ return function (string $lang, ?array $text = null): array {
                     'react' => ['layer' => $ship($m['react'] ?? [])] + array_diff_key($m['react'] ?? [], ['ship' => 1]),
                     'payoff' => ['layer' => $ship($m['payoff'] ?? [])] + array_diff_key($m['payoff'] ?? [], ['ship' => 1]),
                     // A harbour race: its lanes and lines in story.json, the narrator's line after it here.
-                    'race' => isset($m['race']) ? $m['race'] + ['after' => $said['race_after'] ?? ''] : null,
+                    'race' => isset($m['race']) ? $m['race'] + ['after' => $said['race_after'] ?? '', 'after_solo' => $said['race_after_solo'] ?? ''] : null,
                 ] + array_diff_key($m, array_flip(['id', 'react', 'payoff', 'race']));
                 $moment = array_filter($moment, fn ($v): bool => $v !== null);
             }

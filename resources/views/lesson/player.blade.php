@@ -193,6 +193,13 @@
         'estimated_minutes'     => $lesson->relationLoaded('scenes') ? $lesson->estimatedMinutes() : null,
         // A student can't skip a quiz question; the teacher testing their own lesson can.
         'can_skip_quiz'         => (bool) auth()->user()?->canManage($lesson),
+        // Harbour race on the teams' phones (HarbourRace): only a lesson manager opens one.
+        'race'                  => auth()->user()?->canManage($lesson) ? [
+            'store_url'      => route('race.store', ['lessonCode' => $lesson->lesson_code]),
+            'run_url'        => url('/races'),
+            'device_url'     => url('/race'),
+            'screen_poll_ms' => (int) config('race.screen_poll_ms'),
+        ] : null,
     ];
 @endphp
 {{-- The lesson payload is the heaviest thing on this page (mostly per-character narration timings:

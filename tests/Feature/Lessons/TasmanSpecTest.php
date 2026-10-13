@@ -41,6 +41,7 @@ class TasmanSpecTest extends TestCase
         // The departure from Mauritius is the harbour race; its after line names the crews.
         $this->assertTrue($moments[0]['race']['enabled']);
         $this->assertStringContainsString('{crew:heemskerck}', $moments[0]['race']['after']);
+        $this->assertStringNotContainsString('{crew:zeehaen', $moments[0]['race']['after_solo']);
         $this->assertArrayNotHasKey('race', $moments[1]);
 
         foreach ($spec['scenes'] as $scene) {

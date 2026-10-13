@@ -144,6 +144,18 @@ Route::get('/lesson/{lessonCode}/leaderboard', [\App\Http\Controllers\QuizLeader
 Route::post('/lesson/{lessonCode}/quiz-score', [\App\Http\Controllers\QuizLeaderboardController::class, 'store'])
     ->middleware('throttle:quiz-score')->name('lesson.quiz-score');
 
+// Harbour race on team devices (HarbourRace): the class screen opens and runs it (lesson managers
+// only); the race QR opens the controller page on a team's phone, which joins, pushes and polls.
+Route::middleware(['auth', 'throttle:30,1'])->group(function () {
+    Route::post('/lesson/{lessonCode}/races', [\App\Http\Controllers\Race\RaceController::class, 'store'])->name('race.store');
+    Route::patch('/races/{code}', [\App\Http\Controllers\Race\RaceController::class, 'update'])->name('race.update');
+    Route::delete('/races/{code}', [\App\Http\Controllers\Race\RaceController::class, 'destroy'])->name('race.destroy');
+});
+Route::get('/race/{code}', [\App\Http\Controllers\Race\RaceDeviceController::class, 'show'])->middleware('throttle:race-read')->name('race.device');
+Route::get('/race/{code}/state', [\App\Http\Controllers\Race\RaceDeviceController::class, 'state'])->middleware('throttle:race-read')->name('race.state');
+Route::post('/race/{code}/join', [\App\Http\Controllers\Race\RaceDeviceController::class, 'join'])->middleware('throttle:race-join')->name('race.join');
+Route::post('/race/{code}/push', [\App\Http\Controllers\Race\RaceDeviceController::class, 'push'])->middleware('throttle:race-push')->name('race.push');
+
 // Curated historical cities as GeoJSON — public reference data for the lesson-atlas overlay
 // (labelled "Constantinople (Istanbul)" markers). No auth: shared by the composer preview and
 // the student player, both of which load the map unauthenticated.
