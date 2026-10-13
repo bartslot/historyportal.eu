@@ -863,8 +863,7 @@ export class ArtworkOverlay {
     // rotation, parallax, entrance) instead of replacing it. Origin bottom-centre = the image's base.
     const amb = document.createElement('div')
     amb.className = 'art-ambient'
-    // Positioned so a swell's twin picture and the rain's streaks lay out over this box.
-    amb.style.cssText = 'position:relative; height:100%; transform-origin:50% 100%; pointer-events:none;'
+    amb.style.cssText = 'height:100%; transform-origin:50% 100%; pointer-events:none;'
     amb.appendChild(img)
     applyAmbient(amb, item, this._layers.indexOf(item))
     node.appendChild(amb)

@@ -29,7 +29,7 @@ export const PERIOD_S = {
   swell: 8,     // one rise-and-fall of the sea strip; the sideways scroll is AMP.swellScroll x this
   roll: 7,      // a ship's pitch/roll about its waterline
   billow: 1.8,  // a flag or sail ripple
-  rain: 0.6,    // one streak tile falling past (near depth; the far depth takes 1.5x)
+  rain: 0.9,    // one streak tile (270px) falling past (near depth; the far depth takes 1.5x)
   flash: 9,     // mean gap between lightning strikes (random, 0.4x to 1.6x)
   spray: 7,     // one burst per period: the same as roll, so a bow sprays once per pitch
   flicker: 2.4, // a lantern's irregular breath
@@ -172,12 +172,13 @@ export function flashGapS (durS, rand = Math.random) {
 }
 
 /**
- * Pure: one strike as Web Animations keyframes on `filter`. Two pulses inside 0.7s: under the
- * three-flashes-a-second limit (WCAG 2.3.1), and none at all under prefers-reduced-motion.
+ * Pure: one strike as Web Animations keyframes on `filter`. Two pulses inside 0.7s, none at all
+ * under prefers-reduced-motion. The brightness never goes past amount 1's peak: a bigger amount
+ * may not mean a harsher flash (photosensitivity), so amount only dims it below 1.
  */
 export const FLASH_MS = 700
 export function flashKeyframes (amount = 1) {
-  const peak = 1 + AMP.flashPeak * Math.max(0, amount)
+  const peak = 1 + AMP.flashPeak * Math.min(1, Math.max(0, amount))
   const b = (v) => `brightness(${round(v)})`
 
   return [
@@ -192,6 +193,26 @@ export function flashKeyframes (amount = 1) {
 // A layer is built before it is attached, so "not in the document" only means gone once it has
 // been in it; a node that never arrives stops trying after a few gaps.
 const FLASH_ORPHAN_TRIES = 5
+
+/**
+ * WCAG 2.3.1 (three flashes a second) across the WHOLE stage, not per layer: two lightning layers
+ * striking together would double it. One strike (two pulses) per FLASH_MIN_GAP_MS for all flash
+ * layers; a layer whose turn comes too soon skips that strike and waits for its next gap.
+ */
+export const FLASH_MIN_GAP_MS = 1000
+let lastStrikeAt = -Infinity
+
+/** Pure gate: may a strike start at `now`? Records it when it may. */
+export function claimFlash (now = Date.now()) {
+  if (now - lastStrikeAt < FLASH_MIN_GAP_MS) return false
+  lastStrikeAt = now
+
+  return true
+}
+
+/** Tests only: forget the last strike. */
+export const resetFlashClock = () => { lastStrikeAt = -Infinity }
+
 function scheduleFlash (el, spec, tries = 0) {
   el.__ambFlash = setTimeout(() => {
     if (!el.isConnected) {
@@ -200,7 +221,7 @@ function scheduleFlash (el, spec, tries = 0) {
       return
     }
     el.__ambSeen = true
-    if (typeof el.animate === 'function') {
+    if (typeof el.animate === 'function' && claimFlash()) {
       // Exit easing: the light snaps on and dies away; it never fades IN.
       el.__ambFlashAnim = el.animate(flashKeyframes(spec.amount), { duration: FLASH_MS, easing: 'cubic-bezier(0.333, 0, 0.667, 0)' })
     }
@@ -328,6 +349,9 @@ const buildCss = () => `
 
   /* rain: two depths of slanted streaks drawn here, falling at a constant rate (linear is the
      physics). The far streaks show from any amount; the near ones join past amount 0.5. */
+  /* Only these two lay something out over their box (the swell's copies, the rain's streaks), so
+     only they are positioned. An inline position (ParallaxScene's absolute wrapper) still wins. */
+  .amb-swell, .amb-rain { position: relative; }
   .amb-rain { overflow: hidden; }   /* the streaks stay inside their layer */
   .amb-rain::before, .amb-rain::after {
     content: ''; position: absolute; pointer-events: none;
@@ -338,13 +362,13 @@ const buildCss = () => `
     inset: -${RAIN.h * RAIN.far}px -${RAIN.w * RAIN.far}px 0 0;
     background-size: ${RAIN.w * RAIN.far}px ${RAIN.h * RAIN.far}px;
     opacity: calc(min(1, ${A}) * ${AMP.rainFar});
-    animation-name: amb-rain-far; animation-duration: calc(var(--amb-dur, 0.6s) * 1.5);
+    animation-name: amb-rain-far; animation-duration: calc(var(--amb-dur, 0.9s) * 1.5);
   }
   .amb-rain::after {
     inset: -${RAIN.h}px -${RAIN.w}px 0 0;
     background-size: ${RAIN.w}px ${RAIN.h}px;
     opacity: calc(max(0, ${A} - 0.5) * ${AMP.rainNear});
-    animation-name: amb-rain-near; animation-duration: var(--amb-dur, 0.6s);
+    animation-name: amb-rain-near; animation-duration: var(--amb-dur, 0.9s);
   }
   @keyframes amb-rain-far { from { transform: translate(0, 0); } to { transform: translate(-${RAIN.w * RAIN.far}px, ${RAIN.h * RAIN.far}px); } }
   @keyframes amb-rain-near { from { transform: translate(0, 0); } to { transform: translate(-${RAIN.w}px, ${RAIN.h}px); } }
@@ -404,14 +428,26 @@ const buildCss = () => `
 
 // The rain streak tile: three short strokes along the fall direction (-w, +h), clear of the edges
 // so the tile repeats without a cut streak. Pale, thin, no glow.
-const RAIN = { w: 40, h: 160, far: 0.6 }
+// Drawn, not vector-clean (it sits in a watercolour/pencil plate): pencil grey, thin, each stroke
+// its own length, weight, opacity and a hair of bow, scattered irregularly. Every stroke stays
+// clear of the tile edges, so the tile repeats without a cut streak.
+const RAIN = { w: 90, h: 270, far: 0.6 }
+const RAIN_STROKES = [
+  // [x, y, length, width, opacity, bow]
+  [22, 14, 24, 0.7, 0.55, 0.8], [61, 38, 15, 0.5, 0.35, -0.5], [80, 77, 28, 0.8, 0.6, 0.6],
+  [41, 96, 12, 0.5, 0.3, 0.3], [17, 131, 21, 0.6, 0.5, -0.7], [70, 150, 18, 0.7, 0.42, 0.4],
+  [50, 189, 26, 0.6, 0.52, -0.4], [30, 214, 14, 0.5, 0.33, 0.6], [77, 229, 20, 0.7, 0.46, -0.3],
+]
 const RAIN_TILE = (() => {
-  const len = 26
-  const dx = round(-RAIN.w / RAIN.h * len)
-  const line = (x, y) => `<line x1='${x}' y1='${y}' x2='${round(x + dx)}' y2='${y + len}'/>`
+  const slope = -RAIN.w / RAIN.h                 // the fall direction (-w, +h)
+  const stroke = ([x, y, len, w, op, bow]) => {
+    const x2 = round(x + slope * len)
+    const cx = round((x + x2) / 2 + bow)
+    return `<path d='M${x} ${y} Q${cx} ${y + len / 2} ${x2} ${y + len}' stroke-width='${w}' stroke-opacity='${op}'/>`
+  }
   const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${RAIN.w}' height='${RAIN.h}'>`
-    + "<g stroke='rgb(226,232,240)' stroke-width='1' stroke-linecap='round'>"
-    + line(30, 12) + line(18, 70) + line(36, 118) + '</g></svg>'
+    + "<g fill='none' stroke='rgb(198,202,206)' stroke-linecap='round'>"
+    + RAIN_STROKES.map(stroke).join('') + '</g></svg>'
 
   return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`
 })()

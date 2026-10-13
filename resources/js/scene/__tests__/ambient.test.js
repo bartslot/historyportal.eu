@@ -1,5 +1,8 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { applyAmbient, ambientSpec, AMBIENT_MODES, PERIOD_S, AMP, flashGapS, flashKeyframes, FLASH_MS } from '../ambient.js'
+import {
+  applyAmbient, ambientSpec, AMBIENT_MODES, PERIOD_S, AMP, flashGapS, flashKeyframes, FLASH_MS,
+  claimFlash, resetFlashClock, FLASH_MIN_GAP_MS,
+} from '../ambient.js'
 import { ParallaxScene } from '../ParallaxScene.js'
 import { ArtworkOverlay } from '../ArtworkOverlay.js'
 
@@ -8,6 +11,7 @@ const stubReducedMotion = (reduce) => {
 }
 
 afterEach(() => {
+  resetFlashClock()
   delete window.matchMedia
   document.head.innerHTML = ''
   document.body.innerHTML = ''
@@ -184,6 +188,35 @@ describe('world motion modes', () => {
     applyAmbient(el, { ambient: 'none' })
     vi.advanceTimersByTime(60000)
     expect(el.animate).toHaveBeenCalledTimes(2)
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  it('a bigger amount never makes a harsher flash: the peak is capped at amount 1', () => {
+    const peak = (a) => Math.max(...flashKeyframes(a).map(k => parseFloat(k.filter.match(/[\d.]+/)[0])))
+    expect(peak(2)).toBe(peak(1))
+    expect(peak(0.5)).toBeLessThan(peak(1))
+  })
+
+  it('allows one strike per second across the whole stage', () => {
+    expect(claimFlash(10000)).toBe(true)
+    expect(claimFlash(10000 + FLASH_MIN_GAP_MS - 1)).toBe(false)
+    expect(claimFlash(10000 + FLASH_MIN_GAP_MS)).toBe(true)
+  })
+
+  it('two lightning layers striking at the same moment flash once, not twice', () => {
+    vi.useFakeTimers()
+    vi.spyOn(Math, 'random').mockReturnValue(0.5)
+    const layers = [0, 1].map(() => {
+      const el = document.createElement('div')
+      document.body.appendChild(el)
+      el.animate = vi.fn(() => ({ cancel: vi.fn() }))
+      applyAmbient(el, { ambient: 'flash', ambient_speed: 3, asset_id: 1 })
+      return el
+    })
+    vi.advanceTimersByTime(3100)   // both gaps end together
+    expect(layers[0].animate.mock.calls.length + layers[1].animate.mock.calls.length).toBe(1)
+    for (const el of layers) applyAmbient(el, { ambient: 'none' })
     vi.useRealTimers()
     vi.restoreAllMocks()
   })
