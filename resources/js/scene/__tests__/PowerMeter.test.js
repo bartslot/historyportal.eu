@@ -330,3 +330,72 @@ describe('the microphone after review', () => {
     expect([...host.querySelectorAll('button')].map(b => b.textContent)).not.toContain('Tap to fill')
   })
 })
+
+describe('rhythm and motion', () => {
+  const base = { ...raw, words: { right: [], wrong: [] }, goal: 4 }
+  const sensor = () => {
+    const s = { hooks: null, stopped: false }
+    s.open = vi.fn(async (hooks) => { s.hooks = hooks; return { stop: () => { s.stopped = true } } })
+    return s
+  }
+  const mount = (config, opts) => {
+    const host = document.createElement('div')
+    const meter = new PowerMeter(host)
+    meter.show({ config, ...opts })
+    return { host, meter }
+  }
+  const clap = (hooks) => { hooks.onFrame({ level: 0.9, dt: 0.025 }); hooks.onFrame({ level: 0.05, dt: 0.025 }) }
+  const quiet = (hooks, seconds) => { for (let t = 0; t < seconds; t += 0.025) hooks.onFrame({ level: 0.05, dt: 0.025 }) }
+
+  it('rhythm: claps on the beat fill it, with a beat to follow', async () => {
+    vi.useFakeTimers()
+    const mic = sensor()
+    const onDone = vi.fn()
+    const { host } = mount({ ...base, input: 'rhythm', input_options: { bpm: 60, beats: 4 } }, { listen: mic.open, onDone })
+    await vi.waitFor(() => expect(mic.hooks).not.toBeNull())
+    mic.hooks.onCalibrated(-60)
+    expect(host.textContent).toContain('Clap in time!')
+    expect(host.querySelectorAll('[data-beat]')).toHaveLength(4)
+    clap(mic.hooks)
+    for (let i = 0; i < 4; i++) { quiet(mic.hooks, 0.95); clap(mic.hooks) }
+    expect(mic.stopped).toBe(true)
+    vi.advanceTimersByTime(1000)
+    expect(onDone).toHaveBeenCalledWith({ skipped: false, winner: 0, team: null })
+  })
+
+  it('motion on a pupil\'s own phone: each shake fills a part', async () => {
+    const motion = sensor()
+    const { host } = mount({ ...base, input: 'motion', input_options: { gesture: 'shake', beats: 8 } }, { solo: true, listenMotion: motion.open })
+    await vi.waitFor(() => expect(host.textContent).toContain('Shake!'))
+    for (let i = 0; i < 3; i++) { motion.hooks.onFrame({ accel: 20, dt: 0.3 }); motion.hooks.onFrame({ accel: 1, dt: 0.3 }) }
+    expect(host.querySelector('[data-meter="0"]').value).toBeCloseTo(1.5)
+  })
+
+  it('tilt and hold fills over its seconds', async () => {
+    const motion = sensor()
+    const { host } = mount({ ...base, input: 'motion', input_options: { gesture: 'tilt', hold_seconds: 4 } }, { solo: true, listenMotion: motion.open })
+    await vi.waitFor(() => expect(host.textContent).toContain('Tilt!'))
+    motion.hooks.onFrame({ tilt: 35, dt: 2 })
+    expect(host.querySelector('[data-meter="0"]').value).toBeCloseTo(2)
+  })
+
+  it('on the class screen a motion moment never opens a sensor and is played by tapping', () => {
+    const motion = sensor()
+    const { host } = mount({ ...base, input: 'motion' }, { listenMotion: motion.open })
+    expect(motion.open).not.toHaveBeenCalled()
+    expect(host.textContent).toContain("Shaking works on a pupil's own phone. Tap instead.")
+    expect([...host.querySelectorAll('button')].map(b => b.textContent)).toContain('Tap to fill')
+  })
+
+  it('iOS: motion is asked for only from a tap, and a refusal falls back to tapping', async () => {
+    const motion = sensor()
+    const requestMotion = vi.fn(async () => false)
+    const { host } = mount({ ...base, input: 'motion' }, { solo: true, listenMotion: motion.open, requestMotion })
+    expect(requestMotion).not.toHaveBeenCalled()
+    expect(motion.open).not.toHaveBeenCalled()
+    ;[...host.querySelectorAll('button')].find(b => b.textContent === 'Use the motion sensor').click()
+    await vi.waitFor(() => expect(host.textContent).toContain('No motion sensor. Tap instead.'))
+    expect(requestMotion).toHaveBeenCalledOnce()
+    expect(motion.open).not.toHaveBeenCalled()
+  })
+})

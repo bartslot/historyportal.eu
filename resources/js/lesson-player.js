@@ -2168,7 +2168,8 @@ Alpine.data('lessonGame', (lesson) => ({
     _momentDue (index, scene, timed = false) {
       const m = scene?.kind !== 'game' ? scene?.config?.moment : null
       if (!m || m.enabled === false || this._momentActive || this._done.includes(scene.id)) return false
-      const sound = ['loudness', 'blow', 'silence'].includes(m.input)
+      // These fill without words (MomentSpec::WORDLESS_INPUTS).
+      const sound = ['loudness', 'blow', 'rhythm', 'silence', 'motion'].includes(m.input)
       if (!sound && !(m.words?.right || []).some(w => String(w || '').trim())) return false
       const at = Number(m.at)
       return timed ? m.at !== 'end' && Number.isFinite(at) : true
