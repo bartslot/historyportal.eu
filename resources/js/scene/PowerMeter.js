@@ -293,7 +293,7 @@ export class PowerMeter {
    *           onProgress?: (p: { levels: number[], ghost: ?number }) => void,
    *           onDone?: (outcome: { skipped: boolean, winner: ?number, team: ?string }) => void }} opts
    */
-  show ({ config, solo = false, avoid = () => [], listen = null, listenMotion = null, requestMotion = null, onReact = null, onProgress = null, onDone = null }) {
+  show ({ config, solo = false, best = null, avoid = () => [], listen = null, listenMotion = null, requestMotion = null, onReact = null, onProgress = null, onDone = null }) {
     this.cfg = readMoment(config || {})
     this._solo = solo
     this._avoid = avoid
@@ -312,6 +312,7 @@ export class PowerMeter {
     this._remaining = this.cfg.seconds
     this._started = performance.now()
     this._ghost = solo && race ? 0 : null
+    this._best = this._ghost !== null && best > 0 ? best : null
     if (this._ghost !== null) this._ghostTimer = setInterval(() => this._sailGhost(), 100)
     this._listeners = { mic: listen, motion: listenMotion, requestMotion }
     this._senseState = this._firstSenseState()
@@ -339,6 +340,9 @@ export class PowerMeter {
     if (!this._solo) return 'off'
     return needsMotionPermission() || this._listeners.requestMotion ? 'permission' : 'asking'
   }
+
+  /** The teams' names, in meter order (a race's lanes and crews use them). */
+  get names () { return [...this._names] }
 
   hide () {
     this._stopClock()
@@ -695,6 +699,7 @@ export class PowerMeter {
       append(row, el('span', 'w-32 shrink-0 truncate text-sm font-semibold uppercase tracking-wider', t('The 1642 fleet')), bar,
         el('span', 'w-12 shrink-0'))
       box.appendChild(row)
+      if (this._best) box.appendChild(el('p', 'text-sm text-base-content/70', t('Your best: :seconds s', { seconds: this._best.toFixed(1) })))
     }
     return box
   }

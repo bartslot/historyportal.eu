@@ -26,6 +26,7 @@ import { mountEmbedBg } from './scene/embed-bg.js'
 import { sameOriginMediaUrl } from './media-url.js'
 import { sceneTransitionFrames, easingBezier, EASINGS } from './scene/animations.js'
 import { readProgress, saveProgress, clearProgress, canResume } from './scene/progress-store.js'
+import { crewText, readCrew, saveCrew, clearCrew, readBest, saveBest } from './scene/race.js'
 
 // Easing key → cubic-bezier, for the scene transition set in the wizard's Animate tab.
 const SCENE_EASINGS = Object.fromEntries(EASINGS.map(e => [e.key, easingBezier(e.key)]))
@@ -245,6 +246,8 @@ Alpine.data('lessonGame', (lesson) => ({
     playSolo:          new URLSearchParams(window.location.search).get('play') === 'solo',
     resumable:         null,  // saved progress worth offering "continue" for, else null
     _done:             [],    // scene ids whose power-meter moment has played (never replayed)
+    // Who crews the Heemskerck and the Zeehaen after a harbour race, for this run only (race.js).
+    _crew:             readCrew(window.sessionStorage, lesson.lesson_code),
     currentIsGame:     false, // current scene is a quiz/game → hide the chapter bar
     sceneProgress:     0,    // 0-1 through the current chapter's audio
     chaptersOpen:      false,
@@ -1431,6 +1434,7 @@ Alpine.data('lessonGame', (lesson) => ({
       this._quizOverlay?.hide()
       this._teamGame?.hide()
       this._powerMeter?.hide()
+      this._closeRace()
       this._stopMomentAudio()
       // A moment still running belongs to the scene we are leaving, even if we come straight back.
       this._playEpoch = (this._playEpoch || 0) + 1
@@ -2076,7 +2080,7 @@ Alpine.data('lessonGame', (lesson) => ({
       const aspect = (scene.config || {}).background_fit === 'contain' && cover ? await plateAspect(cover.url) : null
       if (req !== this._balloonReq) return
       fitToPlate(host, host.parentElement, aspect, layers)
-      this._balloons.setLines(lines)
+      this._balloons.setLines(lines.map(l => ({ ...l, text: this._crewed(l.text) })))
     },
 
     // Read-only clipart layers a teacher placed ON TOP of a voyage map. Same %-coordinate box as
@@ -2156,7 +2160,15 @@ Alpine.data('lessonGame', (lesson) => ({
       // A chapter jump during the import has moved the class on; the game must not open over it.
       if (this._sceneIndex !== index) return
       this._teamGame = this._teamGame || new TeamGame(host)
-      this._teamGame.show({ config: scene.config.team, solo: this.playSolo, onComplete: () => this._resumeAfterQuiz() })
+      const team = scene.config.team
+      const crewed = Object.fromEntries(['title', 'intro', 'rules', 'situation', 'question', 'reveal', 'closing']
+        .filter(k => typeof team[k] === 'string').map(k => [k, this._crewed(team[k])]))
+      this._teamGame.show({ config: { ...team, ...crewed }, solo: this.playSolo, onComplete: () => this._resumeAfterQuiz() })
+    },
+
+    /** A line with the crews' names put in ({crew:heemskerck}); "the crew" when there was no race. */
+    _crewed (text) {
+      return crewText(text, this._crew, t('the crew'))
     },
 
     // ── Power-meter moment (scene config.moment; scene/PowerMeter.js) ───────────────────
@@ -2196,30 +2208,79 @@ Alpine.data('lessonGame', (lesson) => ({
       this._tel.log('moment_started', { sceneIndex: index, sceneId: scene.id })
       this._powerMeter = this._powerMeter || new mod.PowerMeter(host)
       const { figureRects } = await import('./scene/card-place.js')
-      if (!current()) return
+      const race = cfg.race?.enabled ? await this._openRace(scene, cfg, art) : null
+      if (!current()) { race?.close(); return }
       this._hideBalloons(true)
+      const m = mod.readMoment(cfg)
+      // In a race the pupil's own lane is the near one and the fleet's the far one.
+      const lane = (meter) => (race && this.playSolo ? 1 : meter)
       this._powerMeter.show({
-        config: cfg,
+        config: { ...cfg, prompt: this._crewed(cfg.prompt) },
         solo: this.playSolo,
+        best: race && this.playSolo ? readBest(window.localStorage, `${lesson.lesson_code}:${scene.id}`) : null,
         avoid: () => figureRects(art, host, [cfg.react?.layer, cfg.payoff?.layer].filter(Boolean)),
-        onReact: () => mod.gust(mod.layerNode(art, cfg.react?.layer), cfg.react || {}),
+        onReact: (meter) => mod.gust(race ? race.node(lane(meter)) : mod.layerNode(art, cfg.react?.layer), cfg.react || {}),
+        onProgress: race ? ({ levels, ghost }) => race.update(this.playSolo ? [ghost ?? 0, levels[0] ?? 0] : levels) : null,
         // Skipped or full, the story still moves: history decides what happens, the game only when.
-        onDone: async ({ skipped }) => {
+        onDone: async (outcome) => {
           if (!current()) return
           this._done = [...this._done, scene.id]
           this._saveProgress()
-          this._tel.log(skipped ? 'moment_skipped' : 'moment_completed', { sceneIndex: index, sceneId: scene.id })
-          await this._momentPayoff(mod, cfg.payoff || {}, art)
+          this._tel.log(outcome.skipped ? 'moment_skipped' : 'moment_completed', { sceneIndex: index, sceneId: scene.id })
+          const raced = race && !outcome.skipped && outcome.crew
+          if (raced) this._crownRace(race, outcome, scene)
+          await (race
+            ? race.sailOut(Number(cfg.payoff?.to_x) || m.race.finishX + 10, Number(cfg.payoff?.duration) || 6)
+            : this._momentPayoff(mod, cfg.payoff || {}, art))
           if (!current()) return
-          await this._momentAfterLine(mod, mod.readMoment(cfg))
+          // After a race the narrator names the crews; their names are only known now, so it is read.
+          await this._momentAfterLine(mod, raced && m.race.after ? { after: this._crewed(m.race.after), afterAudio: '' } : m)
           if (!current()) return
           this._powerMeter.hide()
+          this._closeRace()
           this._hideBalloons(false)
           this._momentActive = false
           this.playbackPaused = false
           resume()
         },
       })
+    },
+
+    /** The panel's ship once per team (or the pupil and the 1642 fleet), as the race's lanes. */
+    async _openRace (scene, cfg, art) {
+      const shipId = cfg.react?.layer ?? cfg.payoff?.layer
+      const layers = ((scene.shots || [])[0]?.layers || []).filter(l => (l?.url || l?.embed) && isClipartLayer(l))
+      const ship = layers.find(l => String(l.asset_id) === String(shipId))
+      if (!ship || !this._artLayer || !art) return null
+      const { RaceStage } = await import('./scene/race-stage.js')
+      const teams = Number(cfg.teams) >= 2 ? Number(cfg.teams) : 4
+      const names = this.playSolo
+        ? [t('The 1642 fleet'), t('You')]
+        : Array.from({ length: teams }, (_, i) => t('Team :number', { number: i + 1 }))
+      this._closeRace()
+      this._race = new RaceStage({ overlay: this._artLayer, host: art })
+      const race = cfg.race || {}
+      this._race.open({ layers, ship, lanes: names.length, startX: Number(race.start_x ?? 25), finishX: Number(race.finish_x ?? 115), names })
+      return this._race
+    },
+
+    /** The crews for the rest of this run, their ships named on the lanes, a pupil's best time kept. */
+    _crownRace (race, outcome, scene) {
+      this._crew = outcome.crew
+      saveCrew(window.sessionStorage, lesson.lesson_code, outcome.crew)
+      if (this.playSolo) {
+        race.label(1, `${t('You')} · Heemskerck`)
+        if (outcome.seconds) saveBest(window.localStorage, `${lesson.lesson_code}:${scene.id}`, outcome.seconds)
+        return
+      }
+      ;(outcome.order || []).slice(0, 2).forEach((team, place) => {
+        race.label(team, `${this._powerMeter.names[team]} · ${place === 0 ? 'Heemskerck' : 'Zeehaen'}`)
+      })
+    },
+
+    _closeRace () {
+      this._race?.close()
+      this._race = null
     },
 
     /** A balloon left over from the panel's last line must not sit on the meter. */
@@ -2296,6 +2357,9 @@ Alpine.data('lessonGame', (lesson) => ({
       if (this._audio && !this._audio.paused) this._audio.pause()
       // A pupil who reached the end starts at the title next time, not on the last panel.
       if (this.playSolo) clearProgress(window.localStorage, lesson.lesson_code)
+      // The crews belong to this run of the lesson; the next class races again.
+      clearCrew(window.sessionStorage, lesson.lesson_code)
+      this._crew = {}
       if (this._timerInterval) clearInterval(this._timerInterval)
       // The bed fades away over the closing screen rather than cutting on the last word.
       try { _music?.stop() } catch (_) {}

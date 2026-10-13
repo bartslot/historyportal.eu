@@ -494,3 +494,11 @@ describe('the harbour race', () => {
     expect(host.querySelector('[data-meter="0"]').value).toBe(0)
   })
 })
+
+describe('a pupil\'s best time', () => {
+  it('shows beside the fleet when there is one', () => {
+    const host = document.createElement('div')
+    new PowerMeter(host).show({ config: { ...raw, race: { enabled: true } }, solo: true, best: 18.04 })
+    expect(host.textContent).toContain('Your best: 18.0 s')
+  })
+})
