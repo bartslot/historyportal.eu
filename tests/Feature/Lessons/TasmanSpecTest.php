@@ -28,6 +28,14 @@ class TasmanSpecTest extends TestCase
         $this->assertSame(['budget', 'choose', 'discuss'], array_column($games, 'mode'));
         $this->assertSame('team', $spec['scenes'][array_key_last($spec['scenes'])]['type']);
 
+        // Two power-meter moments: the anchor at the Mauritius departure, the wind on the empty ocean.
+        $moments = array_values(array_filter(array_column($spec['scenes'], 'moment')));
+        $this->assertSame(['Anker op', 'Wind in de zeilen'], array_column($moments, 'name'));
+        foreach ($moments as $moment) {
+            \App\Services\Lessons\MomentSpec::normalize(['react' => [], 'payoff' => ['type' => $moment['payoff']['type']]] + $moment);
+            $this->assertCount(4, $moment['words']['right']);
+        }
+
         foreach ($spec['scenes'] as $scene) {
             foreach ($scene['lines'] ?? [] as [$speaker, $words]) {
                 $this->assertNotSame('', $words);

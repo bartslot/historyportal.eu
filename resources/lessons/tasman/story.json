@@ -615,7 +615,17 @@
      ],
      "plate": "plates/mauritius_anchorage.png",
      "figures": "figures/S05-C.png",
-     "ships": [],
+     "ships": [
+      {
+       "file": "ships/heemskerck_anchor_dusk.png",
+       "x": 70,
+       "y": 58,
+       "height": 28,
+       "depth": 0.6,
+       "ambient": "roll",
+       "ambient_amount": 0.4
+      }
+     ],
      "people": [
       {
        "file": "people/tasman_back.png",
@@ -630,7 +640,22 @@
       "amount": 0.8,
       "duration": 8
      },
-     "entry": "cut"
+     "entry": "cut",
+     "moment": {
+      "id": "anker-op",
+      "react": {
+       "ship": 0,
+       "ambient": "roll",
+       "amount": 1.4
+      },
+      "payoff": {
+       "type": "move",
+       "ship": 0,
+       "to_x": 125,
+       "to_y": 56,
+       "duration": 7
+      }
+     }
     }
    ]
   },
@@ -668,7 +693,22 @@
       "amount": 0.4,
       "duration": 10
      },
-     "entry": "reveal"
+     "entry": "reveal",
+     "moment": {
+      "id": "wind-in-de-zeilen",
+      "react": {
+       "ship": 0,
+       "ambient": "bob",
+       "amount": 1.6
+      },
+      "payoff": {
+       "type": "move",
+       "ship": 0,
+       "to_x": 112,
+       "to_y": 44,
+       "duration": 8
+      }
+     }
     },
     {
      "id": "S06-B",

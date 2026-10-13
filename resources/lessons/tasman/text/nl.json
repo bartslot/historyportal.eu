@@ -433,5 +433,43 @@
    "closing": "Nu is het aan jullie: welke woorden kiezen jullie om te vertellen wat Tasman ontdekte?",
    "backdrop": "history-line/backdrops/tasman/golden_bay_shore_view"
   }
+ },
+ "moments": {
+  "anker-op": {
+   "name": "Anker op",
+   "meter_label": "Ankermeter",
+   "prompt": "Het anker zit vast. Roep de woorden waarmee het omhoog komt!",
+   "right": [
+    "gangspil",
+    "ankertouw",
+    "samen duwen",
+    "hijsen"
+   ],
+   "wrong": [
+    "motor",
+    "elektriciteit",
+    "vrachtwagen"
+   ],
+   "after": "Het anker is op. De Heemskerck en de Zeehaen varen de baai uit.",
+   "why": "Een anker ging met de hand omhoog: de matrozen duwden samen de spaken van het gangspil rond. Er was geen motor."
+  },
+  "wind-in-de-zeilen": {
+   "name": "Wind in de zeilen",
+   "meter_label": "Windmeter",
+   "prompt": "Geen zuchtje wind. Roep de woorden die de wind laten waaien!",
+   "right": [
+    "westenwind",
+    "zeilen",
+    "vertrekken",
+    "Mauritius"
+   ],
+   "wrong": [
+    "stoommachine",
+    "motor",
+    "noordpool"
+   ],
+   "after": "En daar komt de westenwind. De Heemskerck vaart weer.",
+   "why": "De VOC-schepen gebruikten de westenwinden op de zuidelijke route. Zonder wind lag een zeilschip stil."
+  }
  }
 }
