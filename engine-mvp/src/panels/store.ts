@@ -15,12 +15,16 @@ export type PanelDef = {
   inView: boolean
   /** the steps it belongs to (none listed: every step) */
   steps?: Step[]
+  /** its own column beside the stage: never shares a side with (or closes) its neighbours, and a step
+   *  layout leaves it as it is (the Reference panel sits next to Settings while you tune) */
+  column?: boolean
 }
 
 export const PANELS: PanelDef[] = [
   { id: 'objects', title: 'Objects', place: 'left', closable: true, open: true, size: 220, min: 56, max: 360, inView: true, steps: ['visual', 'animate'] },
   { id: 'inspector', title: 'Settings', place: 'right', closable: true, open: true, size: 310, min: 280, max: 520, inView: true, steps: ['visual', 'animate'] },
   { id: 'crew', title: 'Crew', place: 'right', closable: true, open: true, size: 340, min: 300, max: 560, inView: true },
+  { id: 'reference', title: 'Reference', place: 'right', column: true, closable: true, open: false, size: 420, min: 240, max: 960, inView: true, steps: ['visual', 'animate'] },
   { id: 'dock', title: 'Assets & timeline', place: 'bottom', closable: false, open: true, size: 352, inView: true },
   { id: 'help', title: 'Help', place: 'floating', closable: true, open: false, inView: false },
   { id: 'notes', title: 'Notes', place: 'floating', closable: true, open: false, inView: true },
@@ -32,6 +36,8 @@ export const PANELS: PanelDef[] = [
 const def = (id: string) => PANELS.find((p) => p.id === id)!
 export const inStep = (id: string, step: Step) => !def(id).steps || def(id).steps!.includes(step)
 const docked = (id: string) => ['left', 'right', 'bottom'].includes(def(id).place)
+/** Panels that share a side (and its tabs): same place, neither one a column of its own. */
+export const sameSide = (a: PanelDef, b: PanelDef) => a.place === b.place && !a.column && !b.column
 
 /** What each step opens: one panel per side at most, the canvas keeps the rest. */
 const STEP_LAYOUT: Record<Step, { open: string[]; dockTab: DockTab }> = {
@@ -74,15 +80,15 @@ export const panels = {
   isOpen: (id: string) => !!state.open[id],
   open(id: string) {
     // one menu at a time, and one docked panel per side: opening one closes its neighbours
-    const place = def(id).place
-    const same = place === 'menu' || place === 'left' || place === 'right'
-      ? Object.fromEntries(PANELS.filter((p) => p.place === place).map((p) => [p.id, false])) : {}
+    const d = def(id)
+    const same = d.place === 'menu' || d.place === 'left' || d.place === 'right'
+      ? Object.fromEntries(PANELS.filter((p) => sameSide(p, d)).map((p) => [p.id, false])) : {}
     set({ open: { ...state.open, ...same, [id]: true }, order: [...state.order.filter((o) => o !== id), id] })
   },
   /** Arrange the panels for a step (on entering it). */
   layoutFor(step: Step) {
     const want = STEP_LAYOUT[step]
-    const open = Object.fromEntries(PANELS.map((p) => [p.id, docked(p.id) ? want.open.includes(p.id) : state.open[p.id] && inStep(p.id, step)]))
+    const open = Object.fromEntries(PANELS.map((p) => [p.id, p.column ? !!state.open[p.id] : docked(p.id) ? want.open.includes(p.id) : state.open[p.id] && inStep(p.id, step)]))
     set({ open, dockTab: want.dockTab })
   },
   close(id: string) { set({ open: { ...state.open, [id]: false }, order: state.order.filter((o) => o !== id) }) },

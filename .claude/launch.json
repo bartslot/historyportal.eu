@@ -161,6 +161,16 @@
                 "cd engine-mvp && STUDIO_API=http://127.0.0.1:8091 npx vite --port 5192 --strictPort"
             ],
             "port": 5192
+        },
+        {
+            "//": "Lesson studio for the reference-panel worktree (feat/reference-panel). 5193: 5190/5192 belong to other worktrees.",
+            "name": "reference-studio",
+            "runtimeExecutable": "bash",
+            "runtimeArgs": [
+                "-c",
+                "cd engine-mvp && npx vite --port 5193 --strictPort"
+            ],
+            "port": 5193
         }
     ]
 }

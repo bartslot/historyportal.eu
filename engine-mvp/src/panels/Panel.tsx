@@ -4,7 +4,7 @@
 // Closing: X on every closable panel; Esc closes the newest overlay (menu, floating); an outside
 // press closes a menu. The body stays mounted when closed: the engine binds to its controls by id.
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
-import { PANELS, inStep, panels, usePanels } from './store'
+import { PANELS, inStep, panels, sameSide, usePanels } from './store'
 import { stepOf, useLesson } from '../lesson/store'
 import { ResizeHandle } from './ResizeHandle'
 
@@ -31,7 +31,7 @@ export function Panel({ id, children, anchor, className = '', style }: Props) {
   const d = panels.def(id)
   const open = !!st.open[id] && inStep(id, step)
   // a side holding more than one panel in this step shows them as tabs (Settings | Crew)
-  const siblings = d.place === 'left' || d.place === 'right' ? PANELS.filter((p) => p.place === d.place && inStep(p.id, step)) : []
+  const siblings = (d.place === 'left' || d.place === 'right') && !d.column ? PANELS.filter((p) => sameSide(p, d) && inStep(p.id, step)) : []
   const size = panels.sizeOf(id)
   const body = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null)

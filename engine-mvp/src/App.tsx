@@ -9,6 +9,7 @@ import { Dock } from './shell/Dock'
 import { Inspector } from './shell/Inspector'
 import { HelpPanel } from './shell/HelpPanel'
 import { Notes } from './shell/Notes'
+import { ReferenceOverlay, ReferencePanel } from './shell/Reference'
 import { ObjectsPanel } from './shell/ObjectsPanel'
 import { ScriptView, StageCaption } from './shell/ScriptView'
 import { TopBar } from './shell/TopBar'
@@ -18,6 +19,7 @@ function Stage() {
     <main id="stage" className="relative min-h-0 min-w-0" style={{ gridArea: 'stage' }}>
       <canvas id="c" className="block h-full w-full outline-none" style={{ touchAction: 'none' }} />
       <div id="sel" className="pointer-events-none absolute left-3 top-3 rounded px-2 py-1 text-xs text-panel-value" />
+      <ReferenceOverlay />
       <StageCaption />
       <ScriptView />
       <Notes />
@@ -48,14 +50,15 @@ export function App() {
   return (
     <div className="studio grid h-dvh bg-base-200 text-panel-value"
          style={{
-           gridTemplateColumns: 'auto minmax(0, 1fr) auto auto',
+           gridTemplateColumns: 'auto minmax(0, 1fr) auto auto auto',
            gridTemplateRows: '3rem minmax(0, 1fr) auto',
-           gridTemplateAreas: '"top top top top" "objects stage inspector crew" "dock dock dock dock"',
+           gridTemplateAreas: '"top top top top top" "objects stage reference inspector crew" "dock dock dock dock dock"',
          }}>
       <StepLayout />
       <TopBar />
       <ObjectsPanel />
       <Stage />
+      <ReferencePanel />
       <Inspector />
       <CrewPanel />
       <Dock />
