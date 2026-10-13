@@ -30,7 +30,7 @@ import { formatClock } from './chapter-timeline.js'
 import { teamNames, clampTeams } from './TeamGame.js'
 import { applyAmbient } from './ambient.js'
 import { MIC_INPUTS, soundStep, rhythmStep, rhythmStart, registerSoundTuner } from './meter-inputs/sound.js'
-import { shakeStep, shakeStart, tiltStep, needsMotionPermission } from './meter-inputs/motion.js'
+import { shakeStep, shakeStart, tiltStep, needsMotionPermission, requestMotionPermission } from './meter-inputs/motion.js'
 import { placeCard } from './card-place.js'
 
 /** How long a full meter stays on screen before the payoff, and a gust of the react layer. */
@@ -367,11 +367,17 @@ export class PowerMeter {
     }
   }
 
-  /** iOS: motion may only be asked for from a tap. */
+  /**
+   * iOS: motion may only be asked for from a tap, so the request starts in the tap itself, before
+   * any await. A second tap while the prompt is open is ignored.
+   */
   async _allowMotion () {
+    if (this._senseState !== 'permission' || this._askingMotion) return
+    this._askingMotion = true
     const id = this._showId
-    const ask = this._listeners.requestMotion ?? (await import('./meter-inputs/motion.js')).requestMotionPermission
-    const granted = await ask()
+    const pending = (this._listeners.requestMotion ?? requestMotionPermission)()
+    const granted = await pending
+    this._askingMotion = false
     if (this._showId !== id || this._senseState === 'closed') return
     this._senseState = granted ? 'asking' : 'off'
     this._render()

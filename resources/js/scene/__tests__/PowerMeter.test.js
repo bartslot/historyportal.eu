@@ -411,3 +411,21 @@ describe('parts that do not add up exactly', () => {
     expect(state.fills[0]).toBe(4)
   })
 })
+
+describe('the iOS motion prompt', () => {
+  it('asks inside the tap and only once, however often it is tapped', async () => {
+    let answer
+    const requestMotion = vi.fn(() => new Promise(r => { answer = r }))
+    const opened = vi.fn(async () => ({ stop () {} }))
+    const host = document.createElement('div')
+    new PowerMeter(host).show({ config: { ...raw, input: 'motion' }, solo: true, requestMotion, listenMotion: opened })
+    const btn = [...host.querySelectorAll('button')].find(b => b.textContent === 'Use the motion sensor')
+    btn.click()
+    expect(requestMotion).toHaveBeenCalledOnce()       // synchronously, within the tap
+    btn.click()
+    answer(true)
+    await vi.waitFor(() => expect(opened).toHaveBeenCalled())
+    expect(requestMotion).toHaveBeenCalledOnce()
+    expect(opened).toHaveBeenCalledOnce()
+  })
+})
