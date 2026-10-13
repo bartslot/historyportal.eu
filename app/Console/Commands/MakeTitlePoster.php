@@ -207,6 +207,7 @@ class MakeTitlePoster extends Command
 
         return $e;
     }
+
     /**
      * Everything wrong with a cover recipe ("layout": "cover"), in words a person can act on.
      *

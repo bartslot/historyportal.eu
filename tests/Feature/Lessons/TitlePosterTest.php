@@ -79,7 +79,7 @@ class TitlePosterTest extends TestCase
     public function test_the_default_style_is_the_richest_the_series_has(): void
     {
         $tasman = $this->lesson('tasman-standard');
-        $this->assertSame([TitleStyle::Comic, TitleStyle::Logo, TitleStyle::Plain], $tasman->availableTitleStyles());
+        $this->assertSame([TitleStyle::Comic, TitleStyle::Cover, TitleStyle::Logo, TitleStyle::Plain], $tasman->availableTitleStyles());
         $this->assertSame(TitleStyle::Comic, $tasman->titleStyle());
 
         $plain = $this->lesson(null);
