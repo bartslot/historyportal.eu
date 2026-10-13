@@ -95,7 +95,10 @@ return function (string $lang, ?array $text = null): array {
                     'after' => $said['after'], 'why' => $said['why'] ?? '',
                     'react' => ['layer' => $ship($m['react'] ?? [])] + array_diff_key($m['react'] ?? [], ['ship' => 1]),
                     'payoff' => ['layer' => $ship($m['payoff'] ?? [])] + array_diff_key($m['payoff'] ?? [], ['ship' => 1]),
-                ] + array_diff_key($m, array_flip(['id', 'react', 'payoff']));
+                    // A harbour race: its lanes and lines in story.json, the narrator's line after it here.
+                    'race' => isset($m['race']) ? $m['race'] + ['after' => $said['race_after'] ?? ''] : null,
+                ] + array_diff_key($m, array_flip(['id', 'react', 'payoff', 'race']));
+                $moment = array_filter($moment, fn ($v): bool => $v !== null);
             }
 
             $backdrop = $ref($panel['plate'], 'backdrops');

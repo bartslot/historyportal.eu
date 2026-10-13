@@ -452,7 +452,8 @@
     "vrachtwagen"
    ],
    "after": "Het anker is op. De Heemskerck en de Zeehaen varen de baai uit.",
-   "why": "Een anker ging met de hand omhoog: de matrozen duwden samen de spaken van het gangspil rond. Er was geen motor."
+   "why": "Een anker ging met de hand omhoog: de matrozen duwden samen de spaken van het gangspil rond. Er was geen motor.",
+   "race_after": "{crew:heemskerck} op de Heemskerck, {crew:zeehaen} op de Zeehaen: ze varen de baai uit."
   },
   "wind-in-de-zeilen": {
    "name": "Wind in de zeilen",
