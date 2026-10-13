@@ -222,7 +222,7 @@
       // the overscanned paint frame: same eye, wider view (after the plate and the paint were placed for the shot)
       if (params.get('overscan')) shipReady.then(() => { mvp.camera.fov = 2 * Math.atan(Math.tan(CAMERA.fov / 2) * PAINT_OVERSCAN); });
       const figures = Object.fromEntries(loaded);
-      window.__shot = { ...figures, tasman: figures.tasman, set, ship: shipPivot, camera: mvp.camera, aimCamera, CAMERA, CAST, RAIL, SHIP };
+      window.__shot = { ...figures, tasman: figures.tasman, set, ship: shipPivot, camera: mvp.camera, aimCamera, moveCamera, CAMERA, CAST, RAIL, SHIP };
       shipReady.then(() => { if (params.get('move')) moveCamera(params.get('move')); });
     });
   });
