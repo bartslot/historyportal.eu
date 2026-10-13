@@ -8,8 +8,14 @@
  * card at the bottom.
  */
 
-/** Room kept free around the stage edge: top for the edit pill, bottom for the deck. */
+/**
+ * Room kept free around the stage edge when nothing was measured: top for the player's top row
+ * (the edit pill, or the brand logo a guest or a pupil sees, which is taller), bottom for the deck.
+ */
 export const CHROME = { top: 64, bottom: 112, side: 32 }
+
+/** Breathing room between the card and the chrome it keeps clear of. */
+const CHROME_GAP = 8
 
 const overlap = (a, b) => Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x))
   * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y))
@@ -20,11 +26,11 @@ const overlap = (a, b) => Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(
  * @param {Array<{rect: {x: number, y: number, w: number, h: number}, weight?: number}>} avoid
  * @returns {{x: number, y: number, name: string}}
  */
-export function placeCard (stage, card, avoid = []) {
+export function placeCard (stage, card, avoid = [], chrome = CHROME) {
   const left = CHROME.side
   const right = Math.max(left, stage.w - CHROME.side - card.w)
-  const top = CHROME.top
-  const bottom = Math.max(top, stage.h - CHROME.bottom - card.h)
+  const top = chrome.top ?? CHROME.top
+  const bottom = Math.max(top, stage.h - (chrome.bottom ?? CHROME.bottom) - card.h)
   const centre = Math.max(left, (stage.w - card.w) / 2)
   const spots = [
     { name: 'bottom-center', x: centre, y: bottom },
@@ -41,6 +47,24 @@ export function placeCard (stage, card, avoid = []) {
     if (cost < bestCost - 1e-6) { best = spot; bestCost = cost }
   }
   return { x: Math.round(best.x), y: Math.round(best.y), name: best.name }
+}
+
+/**
+ * The player's own chrome as no-go margins for `host`: how far down the top row reaches (the logo
+ * or the edit pill, whichever this viewer has) and how far up the deck comes. Measured, so a taller
+ * logo or a wider deck is kept clear of too; the defaults stand in for what is not on the page.
+ *
+ * @returns {{ top: number, bottom: number }} px from the host's top and bottom edges
+ */
+export function chromeMargins (host, root = document) {
+  const box = host?.getBoundingClientRect()
+  const top = root.querySelector('[data-player-chrome="top"]')?.getBoundingClientRect()
+  const deck = root.querySelector('[data-player-chrome="bottom"]')?.getBoundingClientRect()
+  if (!box || !box.height) return { top: CHROME.top, bottom: CHROME.bottom }
+  return {
+    top: top?.height ? Math.max(0, top.bottom - box.top) + CHROME_GAP : CHROME.top,
+    bottom: deck?.height ? Math.max(0, box.bottom - deck.top) + CHROME_GAP : CHROME.bottom,
+  }
 }
 
 // ── Measuring the figures (DOM) ───────────────────────────────────────────────────────────────

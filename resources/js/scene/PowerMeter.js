@@ -31,7 +31,7 @@ import { teamNames, clampTeams } from './TeamGame.js'
 import { applyAmbient } from './ambient.js'
 import { MIC_INPUTS, soundStep, rhythmStep, rhythmStart, registerSoundTuner } from './meter-inputs/sound.js'
 import { shakeStep, shakeStart, tiltStep, needsMotionPermission, requestMotionPermission } from './meter-inputs/motion.js'
-import { placeCard } from './card-place.js'
+import { placeCard, chromeMargins } from './card-place.js'
 import { finishOrder, raceDecided, finalOrder, crewFrom, ghostLevel, nextOpen } from './race.js'
 
 /** How long a full meter stays on screen before the payoff, and a gust of the react layer. */
@@ -632,7 +632,7 @@ export class PowerMeter {
       try { avoid = this._avoid() || [] } catch (_) { /* nothing measured: bottom centre */ }
       // Not laid out yet (or no layout at all): the card's nominal size, max-w-xl by a typical height.
       const size = card.offsetWidth ? { w: card.offsetWidth, h: card.offsetHeight } : { w: 576, h: 320 }
-      this._spot = placeCard({ w, h: this.host.clientHeight }, size, avoid)
+      this._spot = placeCard({ w, h: this.host.clientHeight }, size, avoid, chromeMargins(this.host))
     }
     card.style.position = 'absolute'
     card.style.left = `${this._spot.x}px`

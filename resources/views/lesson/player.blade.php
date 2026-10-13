@@ -374,7 +374,8 @@
                      full-width scrim. Its controls carry their own local plate instead (the Edit
                      button already has one; the logo gets one below). --}}
                 <div x-show="backdropShade && !(phase === 'TITLE_SCREEN' && lesson.title_poster)" class="pointer-events-none absolute inset-x-0 top-0 h-36 bg-linear-to-b from-black/70 to-transparent"></div>
-                <div class="relative flex items-center gap-2.5 px-8 py-3.5 sm:px-12">
+                {{-- data-player-chrome: overlays (the power-meter card) keep clear of this row and the deck. --}}
+                <div class="relative flex items-center gap-2.5 px-8 py-3.5 sm:px-12" data-player-chrome="top">
                     {{-- title_preview: the editor's title-screen frame shows what students see. --}}
                     @if ($canEdit && ! request()->boolean('title_preview'))
                         {{-- No back arrow here on purpose. The wizard already draws one in this exact
@@ -445,7 +446,7 @@
                  class="absolute inset-x-0 bottom-0 transition-all duration-300 ease-out"
                  :class="(readingOverlay || (isPlaying && !zoneHover && !zoneFlash && !chaptersOpen)) ? 'pointer-events-none translate-y-2 opacity-0' : 'opacity-100'"
                  style="z-index:46">
-                <div class="pointer-events-auto mx-auto w-[min(720px,92vw)] pb-3">
+                <div class="pointer-events-auto mx-auto w-[min(720px,92vw)] pb-3" data-player-chrome="bottom">
 
                     {{-- Chapter list (opens above the deck) — numbered names, active highlighted. --}}
                     <div x-show="chaptersOpen" x-transition
