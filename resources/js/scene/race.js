@@ -60,24 +60,28 @@ export function crewText (text, crew = {}, whenNone = '') {
 /**
  * The race lanes: the panel's ship once per team, stacked on the water. The far lanes sit higher and
  * smaller (and behind), the near ones lower and larger; every ship starts at `startX`. Ids are the
- * ship's own id plus `~lane`, so each lane is a layer of its own (its own foam and speed).
+ * ship's own id plus `-lane<n>` (it ends up in CSS ids, so no other punctuation), so each lane is a layer of its own (its own foam and speed).
  *
  * @param {object} ship   the layer as the player has it (asset_id, x, y, height, depth...)
  * @param {number} lanes
  * @returns {object[]} layers, far lane first
  */
-export function raceLanes (ship, lanes, { startX = 25, spread = 18 } = {}) {
+export function raceLanes (ship, lanes, { startX = 25 } = {}) {
   const n = Math.max(1, lanes)
   const y = Number(ship.y) || 60
-  const h = Number(ship.height) || 20
+  // The band the lanes share grows with their number; a ship is never much taller than two lanes,
+  // so far ships tuck behind near ones as on a real roadstead instead of piling up.
+  const spread = Math.min(34, 9 * n)
+  const h = Math.min(Number(ship.height) || 20, n === 1 ? Infinity : (spread / (n - 1)) * 2.2)
   return Array.from({ length: n }, (_, i) => {
     const t = n === 1 ? 0.5 : i / (n - 1)            // 0 = farthest, 1 = nearest
     const scale = 0.7 + 0.45 * t
     return {
       ...ship,
-      asset_id: `${ship.asset_id}~${i}`,
+      asset_id: `${ship.asset_id}-lane${i}`,
       x: startX,
-      y: Math.round((y - spread / 2 + spread * t) * 10) / 10,
+      // Mostly above the ship's own line: the near lane must stay clear of the player's deck.
+      y: Math.round((y - spread * 0.55 + spread * t) * 10) / 10,
       height: Math.round(h * scale * 10) / 10,
       depth: (Number(ship.depth) || 0.6) * scale,
       anim: 'none',

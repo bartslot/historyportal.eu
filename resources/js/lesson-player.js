@@ -2218,7 +2218,7 @@ Alpine.data('lessonGame', (lesson) => ({
         config: { ...cfg, prompt: this._crewed(cfg.prompt) },
         solo: this.playSolo,
         best: race && this.playSolo ? readBest(window.localStorage, `${lesson.lesson_code}:${scene.id}`) : null,
-        avoid: () => figureRects(art, host, [cfg.react?.layer, cfg.payoff?.layer].filter(Boolean)),
+        avoid: () => [...figureRects(art, host, [cfg.react?.layer, cfg.payoff?.layer].filter(Boolean)), ...(race ? race.band(host) : [])],
         onReact: (meter) => mod.gust(race ? race.node(lane(meter)) : mod.layerNode(art, cfg.react?.layer), cfg.react || {}),
         onProgress: race ? ({ levels, ghost }) => race.update(this.playSolo ? [ghost ?? 0, levels[0] ?? 0] : levels) : null,
         // Skipped or full, the story still moves: history decides what happens, the game only when.
@@ -2260,7 +2260,7 @@ Alpine.data('lessonGame', (lesson) => ({
       this._closeRace()
       this._race = new RaceStage({ overlay: this._artLayer, host: art })
       const race = cfg.race || {}
-      this._race.open({ layers, ship, lanes: names.length, startX: Number(race.start_x ?? 25), finishX: Number(race.finish_x ?? 115), names })
+      this._race.open({ layers, ship, lanes: names.length, startX: Number(race.start_x ?? 25), finishX: Number(race.finish_x ?? 85), names })
       return this._race
     },
 

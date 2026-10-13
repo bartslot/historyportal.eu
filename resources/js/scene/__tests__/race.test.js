@@ -67,7 +67,7 @@ describe('race lanes', () => {
 
   it('one ship per team, stacked far to near, all on the start line, each its own layer', () => {
     const lanes = raceLanes(ship, 4, { startX: 20 })
-    expect(lanes.map(l => l.asset_id)).toEqual(['136~0', '136~1', '136~2', '136~3'])
+    expect(lanes.map(l => l.asset_id)).toEqual(['136-lane0', '136-lane1', '136-lane2', '136-lane3'])
     expect(lanes.every(l => l.x === 20)).toBe(true)
     expect(lanes[0].y).toBeLessThan(lanes[3].y)
     expect(lanes[0].height).toBeLessThan(lanes[3].height)

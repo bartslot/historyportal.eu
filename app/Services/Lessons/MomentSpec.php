@@ -232,7 +232,8 @@ final class MomentSpec
             'enabled' => (bool) ($raw['enabled'] ?? false),
             'ghost_seconds' => self::float($raw['ghost_seconds'] ?? null, self::GHOST_SECONDS, 25.0),
             'start_x' => self::float($raw['start_x'] ?? null, self::POSITION, 25.0),
-            'finish_x' => self::float($raw['finish_x'] ?? null, self::POSITION, 115.0),
+            // In frame: the finishers wait at the line with their crew named, then the payoff sails all out.
+            'finish_x' => self::float($raw['finish_x'] ?? null, self::POSITION, 85.0),
             'after' => self::text($raw['after'] ?? '', self::TEXT_MAX),
         ];
     }

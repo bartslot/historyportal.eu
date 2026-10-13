@@ -35,9 +35,9 @@ describe('the race on the panel', () => {
     return { stage, host, overlay, race }
   }
 
-  it('replaces the ship by one lane per team and keeps the other figures', () => {
+  it('puts one lane per team where the ship was, so a figure in front of it stays in front', () => {
     const { overlay, stage } = setup()
-    expect(overlay.layers.map(l => String(l.asset_id))).toEqual(['148', '136~0', '136~1', '136~2'])
+    expect(overlay.layers.map(l => String(l.asset_id))).toEqual(['136-lane0', '136-lane1', '136-lane2', '148'])
     expect([...stage.querySelectorAll('[data-race-chip]')].map(c => c.textContent)).toEqual(['Team 1', 'Team 2', 'Team 3'])
   })
 
@@ -47,9 +47,9 @@ describe('the race on the panel', () => {
     race.update([0, 0.5, 0])
     expect(race.node(1).style.translate).toBe('500px 0px')
     expect(stage.querySelector('[data-race-chip="1"]').style.translate).toBe('500px 0px')
-    expect(overlay.speeds.at(-1)).toEqual(['136~1', 1])
+    expect(overlay.speeds.at(-1)).toEqual(['136-lane1', 1])
     vi.advanceTimersByTime(1000)
-    expect(overlay.speeds.at(-1)).toEqual(['136~1', 0])
+    expect(overlay.speeds.at(-1)).toEqual(['136-lane1', 0])
   })
 
   it('names the crews and sails every lane out, then cleans up', async () => {

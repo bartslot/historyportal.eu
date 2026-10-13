@@ -8,7 +8,7 @@ import { el } from './dom.js'
 import { raceLanes, laneX } from './race.js'
 
 /** Team colours from the theme's own tokens (DaisyUI), never raw Tailwind colours. */
-const COLOURS = ['badge-primary', 'badge-secondary', 'badge-accent', 'badge-info', 'badge-success', 'badge-warning', 'badge-neutral', 'badge-ghost']
+const COLOURS = ['badge-secondary', 'badge-accent', 'badge-info', 'badge-success', 'badge-warning', 'badge-neutral', 'badge-ghost', 'badge-primary']
 
 /** A ship gaining ground: on-screen motion that settles, so it decelerates into place. */
 const GAIN = 'translate 700ms cubic-bezier(0.22, 1, 0.36, 1)'
@@ -35,8 +35,9 @@ export class RaceStage {
     this._startX = startX
     this._finishX = finishX
     this._lanes = raceLanes(ship, lanes, { startX })
-    const others = layers.filter(l => String(l.asset_id) !== String(ship.asset_id))
-    this.overlay.setLayers([...others, ...this._lanes])
+    // The lanes take the ship's place in the stack: a figure painted in front of it stays in front.
+    const at = layers.findIndex(l => String(l.asset_id) === String(ship.asset_id))
+    this.overlay.setLayers([...layers.slice(0, at), ...this._lanes, ...layers.slice(at + 1)])
 
     this._chips = el('div', 'pointer-events-none absolute')
     this._chips.dataset.raceChips = ''
@@ -52,6 +53,25 @@ export class RaceStage {
     })
     this.host.parentElement?.appendChild(this._chips)
     this._levels = this._lanes.map(() => 0)
+  }
+
+  /**
+   * What the card must keep clear of (px, relative to `origin`): the water the race is sailed on,
+   * full width, and most of all the finish, where the class watches who comes in first.
+   */
+  band (origin) {
+    if (!this._lanes?.length) return []
+    const o = origin.getBoundingClientRect()
+    const h = this.host.getBoundingClientRect()
+    const top = Math.min(...this._lanes.map(l => l.y - l.height / 2))
+    const bottom = Math.max(...this._lanes.map(l => l.y + l.height / 2))
+    const y = h.top - o.top + (top / 100) * h.height
+    const height = ((bottom - top) / 100) * h.height
+    const finish = this._finishX
+    return [
+      { rect: { x: h.left - o.left, y, w: h.width, h: height }, weight: 3 },
+      { rect: { x: h.left - o.left + ((finish - 15) / 100) * h.width, y, w: 0.3 * h.width, h: height }, weight: 6 },
+    ]
   }
 
   /** The ship of a lane, for a gust. */

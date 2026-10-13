@@ -87,7 +87,7 @@ export function readMoment (raw = {}) {
       enabled: !!raw.race?.enabled,
       ghostSeconds: Math.max(5, Math.min(120, Number(raw.race?.ghost_seconds) || 25)),
       startX: Number.isFinite(Number(raw.race?.start_x)) && raw.race?.start_x !== null ? Number(raw.race.start_x) : 25,
-      finishX: Number.isFinite(Number(raw.race?.finish_x)) && raw.race?.finish_x !== null ? Number(raw.race.finish_x) : 115,
+      finishX: Number.isFinite(Number(raw.race?.finish_x)) && raw.race?.finish_x !== null ? Number(raw.race.finish_x) : 85,
       after: String(raw.race?.after || ''),
     },
     react: raw.react && typeof raw.react === 'object' ? raw.react : {},
@@ -253,7 +253,8 @@ export function sail (node, stage, payoff) {
 // ── DOM ──────────────────────────────────────────────────────────────────────────────────────
 
 function button (label, className, onClick) {
-  const b = el('button', `btn ${className}`, label)
+  // Flat, as the house style: DaisyUI gives a filled button a little depth.
+  const b = el('button', `btn shadow-none ${className}`, label)
   b.type = 'button'
   b.addEventListener('click', onClick)
   return b

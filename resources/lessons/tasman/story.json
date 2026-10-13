@@ -662,8 +662,8 @@
       },
       "race": {
        "enabled": true,
-       "start_x": 18,
-       "finish_x": 118,
+       "start_x": 42,
+       "finish_x": 90,
        "ghost_seconds": 25
       }
      }
