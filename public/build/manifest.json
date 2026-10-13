@@ -12,8 +12,8 @@
       "../../../node_modules/three/build/three.module.js"
     ]
   },
-  "_PowerMeter-DFp2LVTu.js": {
-    "file": "assets/PowerMeter-DFp2LVTu.js",
+  "_PowerMeter-CprB5a2v.js": {
+    "file": "assets/PowerMeter-CprB5a2v.js",
     "name": "PowerMeter",
     "isDynamicEntry": true,
     "imports": [
@@ -181,7 +181,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-D0wILzH3.js",
+    "file": "assets/lesson-player-BfWrg-xD.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -204,7 +204,7 @@
       "resources/js/scene/ArtworkOverlay.js",
       "resources/js/scene/QuizOverlay.js",
       "resources/js/scene/TeamGame.js",
-      "_PowerMeter-DFp2LVTu.js",
+      "_PowerMeter-CprB5a2v.js",
       "resources/js/scene/card-place.js",
       "resources/js/scene/race-stage.js"
     ]
@@ -267,7 +267,7 @@
     ]
   },
   "resources/js/scene/TeamGame.js": {
-    "file": "assets/TeamGame-CneK_pwq.js",
+    "file": "assets/TeamGame-BQm52qdU.js",
     "name": "TeamGame",
     "src": "resources/js/scene/TeamGame.js",
     "isDynamicEntry": true,
@@ -288,7 +288,7 @@
     "isDynamicEntry": true
   },
   "resources/js/scene/card-place.js": {
-    "file": "assets/card-place-DJYcm9hE.js",
+    "file": "assets/card-place-3FYOoAJc.js",
     "name": "card-place",
     "src": "resources/js/scene/card-place.js",
     "isDynamicEntry": true
@@ -328,12 +328,12 @@
     ]
   },
   "resources/js/scene/meter-inputs/mic.js": {
-    "file": "assets/mic-DZa3alU1.js",
+    "file": "assets/mic-DybMBs2t.js",
     "name": "mic",
     "src": "resources/js/scene/meter-inputs/mic.js",
     "isDynamicEntry": true,
     "imports": [
-      "_PowerMeter-DFp2LVTu.js",
+      "_PowerMeter-CprB5a2v.js",
       "__commonjsHelpers-DqutJMZx.js",
       "_ambient-DSULKVxK.js",
       "_easing-ChRyoIXo.js",
@@ -352,7 +352,7 @@
     "isDynamicEntry": true
   },
   "resources/js/scene/race-stage.js": {
-    "file": "assets/race-stage-BdB06QHO.js",
+    "file": "assets/race-stage-CuSP6eIw.js",
     "name": "race-stage",
     "src": "resources/js/scene/race-stage.js",
     "isDynamicEntry": true,
