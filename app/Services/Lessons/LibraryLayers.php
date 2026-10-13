@@ -9,6 +9,7 @@ use App\Models\Scene;
 use App\Models\SvgAsset;
 use App\Services\SceneLayers;
 use App\Services\Support\LayerAmbient;
+use App\Services\Support\LayerSitIn;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -45,7 +46,8 @@ class LibraryLayers
 
     /**
      * Layer keys a spec may set, beyond `asset`. The editor's per-layer settings
-     * (EditsSceneArtwork::updateArtworkLayer) plus the map pin and the ambient motion keys.
+     * (EditsSceneArtwork::updateArtworkLayer) plus the map pin, the ambient motion keys and the
+     * "blend into the scene" keys (LayerSitIn; mirroring is flip_x/flip_y, a tilt is rotation).
      */
     public const LAYER_KEYS = [
         'kind', 'depth', 'scale', 'height', 'x', 'y', 'opacity', 'blend', 'white_key', 'rotation',
@@ -53,6 +55,7 @@ class LibraryLayers
         'anim', 'anim_delay', 'anim_duration', 'anim_ease',
         'anim_out', 'anim_out_delay', 'anim_out_ease', 'anim_out_duration',
         'ambient', 'ambient_speed', 'ambient_amount',
+        'flip_x', 'flip_y', ...LayerSitIn::KEYS,
         'ink_preset', 'ink_fill', 'draw_time',
         'anchor', 'lng', 'lat',
     ];
@@ -205,6 +208,16 @@ class LibraryLayers
             // A misspelt motion would otherwise be stored and play as no motion at all.
             if (isset($entry['ambient']) && ! in_array($entry['ambient'], LayerAmbient::MODES, true)) {
                 throw new \InvalidArgumentException("{$where}, layer {$i}: ambient must be one of ".implode(', ', LayerAmbient::MODES).'.');
+            }
+            // A share 0..1: a number out of range is clamped, anything else is a typo that would
+            // otherwise play as "off".
+            foreach (LayerSitIn::KEYS as $key) {
+                if (array_key_exists($key, (array) $entry)) {
+                    if (! is_numeric($entry[$key])) {
+                        throw new \InvalidArgumentException("{$where}, layer {$i}: {$key} must be a number from 0 to 1.");
+                    }
+                    $entry[$key] = LayerSitIn::clamp($entry[$key]);
+                }
             }
             $asset = $this->libraryAsset((string) ($entry['asset'] ?? ''), $where);
             if ($upload) {

@@ -1149,6 +1149,8 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                 const clipartOnTop = !!payload.clipartOnTop
                 _artworkOverlay.setOnTop(clipartOnTop)
                 _artworkOverlay.setStackLevels(2, 8)   // on the nodes — a z-index here would break blending
+                // The backdrop blend-into-scene samples its colours from.
+                _artworkOverlay.setBackdrop(bgLayers.find(l => (l.kind ?? 'cover') === 'cover')?.url)
                 // Skip re-seeding on identical poll re-renders (would reset an in-progress edit).
                 const sig = _artworkMod.layersSignature(artLayers)
                 // Re-seed only on a real change, then replay the entrances so the teacher sees

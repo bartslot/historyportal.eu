@@ -21,6 +21,7 @@
 import { playEntrance, playExit } from './animations.js'
 import { applyLayerFilter } from './layer-filters.js'
 import { applyAmbient, trackStage } from './ambient.js'
+import { SIT_KEYS, sitSpec, renderSitIn, backdropPixels, sampleColours, registerSitTuner } from './sit-in-scene.js'
 
 const DRAG_THRESHOLD_PX = 4
 const MIN_SCALE = 0.2
@@ -81,6 +82,7 @@ export const artObjId = (assetId) => `art_${assetId}`
 const SYNCABLE = [
   'x', 'y', 'scale', 'height', 'width', 'rotation', 'opacity', 'blur', 'blend',
   'white_key', 'grayscale', 'tint', 'tint_opacity', 'flip_x', 'flip_y',
+  ...SIT_KEYS,
 ]
 
 /**
@@ -123,6 +125,7 @@ export function layersSignature(layers) {
     l.kind,
     l.ambient, l.ambient_speed, l.ambient_amount,
     l.anchor, l.lng, l.lat, l.flip_x, l.flip_y,
+    l.waterline, l.reflection, l.contact_shadow, l.color_match,
     l.embed ? JSON.stringify(l.embed.opts || null) : null,
   ]))
 }
@@ -186,6 +189,8 @@ export function normalizeLayer(l) {
         ambient: l.ambient || 'none',
         ambient_speed: l.ambient_speed ?? null,
         ambient_amount: l.ambient_amount ?? null,
+        // Blend into the scene (sit-in-scene.js): each 0..1, null = off.
+        ...Object.fromEntries(SIT_KEYS.map(k => [k, Number.isFinite(l[k]) ? l[k] : null])),
         anchor: l.anchor === 'map' ? 'map' : 'screen',
         lng: Number.isFinite(l.lng) ? l.lng : null,
         lat: Number.isFinite(l.lat) ? l.lat : null,
@@ -208,6 +213,8 @@ export class ArtworkOverlay {
     // { project(lng,lat) → {x,y} host-%, unproject(x%,y%) → {lng,lat} } while a map is live
     // beneath this overlay. Null on a slideshow scene, where positions are stage-relative.
     this._projector = null
+    // The scene's backdrop picture: what blend-into-scene samples its colours from.
+    this._backdropUrl = null
     this.host.style.pointerEvents = 'none'   // the host is transparent; only layer nodes catch events
     trackStage(this.host)   // stage size for ambient drift distances (ambient.js)
     // Deselect when something that isn't one of MY layers is selected (mutually-exclusive
@@ -219,6 +226,16 @@ export class ArtworkOverlay {
         this._applySelection()
       }
     })
+  }
+
+  /**
+   * The backdrop the layers stand on (its url), for blend-into-scene's colours. Call before
+   * setLayers; a change redraws the layers that blend.
+   */
+  setBackdrop(url) {
+    if ((url || null) === this._backdropUrl) return
+    this._backdropUrl = url || null
+    for (const item of this._layers) this._sitIn(item)
   }
 
   setLayers(layers) {
@@ -439,7 +456,7 @@ export class ArtworkOverlay {
     const node = item && this._nodeEl(item)
     if (!item || !node) return
 
-    const NUMERIC = ['x', 'y', 'scale', 'height', 'width', 'opacity', 'blur', 'white_key', 'depth', 'rotation', 'tint_opacity']
+    const NUMERIC = ['x', 'y', 'scale', 'height', 'width', 'opacity', 'blur', 'white_key', 'depth', 'rotation', 'tint_opacity', ...SIT_KEYS]
     const BOOLEAN = ['grayscale', 'flip_x', 'flip_y']
     item[key] = NUMERIC.includes(key) ? Number(value) : (BOOLEAN.includes(key) ? !!value : value)
 
@@ -495,6 +512,45 @@ export class ArtworkOverlay {
         this._syncChrome(item)
         break
     }
+    // A new value, or a box that moved over another part of the backdrop: draw it again.
+    if (SIT_KEYS.includes(key) || (sitSpec(item) && ['x', 'y', 'scale', 'height', 'width'].includes(key))) {
+      this._sitIn(item, node)
+    }
+  }
+
+  /**
+   * Blend into the scene: waterline, reflection, contact shadow and colour match (sit-in-scene.js).
+   * Drawn at once with the last (or a neutral) colour, then again once the backdrop is sampled
+   * under this layer's box.
+   */
+  _sitIn(item, node = this._nodeEl(item)) {
+    const body = node?.querySelector(':scope > .art-ambient')
+    const img = body?.querySelector(':scope > img')
+    if (!img) return
+    const spec = renderSitIn(node, body, img, item, item.__colours ?? null)
+    registerSitTuner(() => { for (const i of this._layers) this._sitIn(i) })
+    const wasWashed = !!item.wash
+    item.wash = null
+    if (!spec) {
+      if (wasWashed) img.style.filter = applyLayerFilter(this.host, item)
+      return
+    }
+    const decoded = img.complete && img.naturalWidth
+      ? Promise.resolve()
+      : new Promise(resolve => { img.addEventListener('load', resolve, { once: true }); img.addEventListener('error', resolve, { once: true }) })
+    Promise.all([backdropPixels(this._backdropUrl), decoded]).then(([pixels]) => {
+      if (this._nodeEl(item) !== node || !node.isConnected) return   // rebuilt or gone meanwhile
+      const hostW = this.host.clientWidth || 1
+      const hostH = this.host.clientHeight || 1
+      const h = this._heightPct(item) / 100
+      const w = (this._widthPct(item) ?? (node.offsetWidth / hostW) * 100) / 100
+      const colours = sampleColours(pixels, { x: item.x / 100 - w / 2, y: item.y / 100 - h / 2, w, h }, hostW / hostH, spec.waterline)
+      if (!colours) return
+      item.__colours = colours
+      renderSitIn(node, body, img, item, colours)
+      item.wash = spec.color_match > 0 && colours.around ? { rgb: colours.around, amount: spec.color_match } : null
+      img.style.filter = applyLayerFilter(this.host, item)
+    })
   }
 
   /**
@@ -867,6 +923,7 @@ export class ArtworkOverlay {
     amb.appendChild(img)
     applyAmbient(amb, item, this._layers.indexOf(item))
     node.appendChild(amb)
+    this._sitIn(item, node)
 
     this._wireDrag(item, node)
     return node
