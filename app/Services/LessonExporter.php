@@ -42,7 +42,7 @@ class LessonExporter
      * @var array<string,list<string>>
      */
     private const COMPOSED_CONFIG_KEYS = [
-        'narration' => ['image_credit', 'image_source_url', 'background_focus', 'bg_embed', 'backdrop'],
+        'narration' => ['image_credit', 'image_source_url', 'background_focus', 'bg_embed', 'backdrop', 'backdrop_depth'],
         'video' => ['bg_embed'],
         'gallery' => ['title', 'date_label', 'story', 'fit', 'images'],
         'map' => ['qid', 'fit', 'year', 'projection', 'playback_mode', 'annotations'],

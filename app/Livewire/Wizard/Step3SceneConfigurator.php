@@ -299,6 +299,8 @@ class Step3SceneConfigurator extends Component
                 ...LayerAmbient::payload($l),
                 // Blend into the scene: waterline, reflection, contact shadow, colour match.
                 ...LayerSitIn::payload($l),
+                // Hidden where the backdrop is nearer than the layer (resources/js/scene/occlusion.js).
+                'occlude' => ! empty($l['occlude']),
             ])->filter(fn ($l) => $l['url'] || $l['embed'])->values()->all() ?: null,
             // Keep a shot when it has EITHER a background image OR clipart layers. Map-backed scenes
             // (voyage / map) carry layer-only shots — the MAP is the backdrop, so there's no image_url,

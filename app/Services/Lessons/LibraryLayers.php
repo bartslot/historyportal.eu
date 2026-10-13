@@ -48,6 +48,7 @@ class LibraryLayers
      * Layer keys a spec may set, beyond `asset`. The editor's per-layer settings
      * (EditsSceneArtwork::updateArtworkLayer) plus the map pin, the ambient motion keys and the
      * "blend into the scene" keys (LayerSitIn; mirroring is flip_x/flip_y, a tilt is rotation).
+     * `occlude` 1: the parts of the backdrop that are nearer than the layer hide it (its depth map).
      */
     public const LAYER_KEYS = [
         'kind', 'depth', 'scale', 'height', 'x', 'y', 'opacity', 'blend', 'white_key', 'rotation',
@@ -56,6 +57,7 @@ class LibraryLayers
         'anim_out', 'anim_out_delay', 'anim_out_ease', 'anim_out_duration',
         'ambient', 'ambient_speed', 'ambient_amount',
         'flip_x', 'flip_y', ...LayerSitIn::KEYS,
+        'occlude',
         'ink_preset', 'ink_fill', 'draw_time',
         'anchor', 'lng', 'lat',
     ];
@@ -145,12 +147,15 @@ class LibraryLayers
             // A composed line-art stage keeps its camera still: a Ken Burns push crops the room and
             // drags the floor away from the figures. The life comes from the layers' ambient motion.
             ...(self::isLineArt($ref) ? ['kb_animated' => false, 'background_color' => self::LINE_ART_PAPER] : []),
-            'config' => array_merge((array) ($scene->config ?? []), [
+            'config' => array_merge(array_diff_key((array) ($scene->config ?? []), ['backdrop_depth' => true]), [
                 'image_credit' => $asset->credit(),
                 'background_focus' => 'center',
                 // The ref itself, so lessons:export can write `backdrop` back instead of a copy
                 // under this scene's folder that no other machine has.
                 'backdrop' => trim($ref, '/ '),
+                // Its depth map (art:depth), for occlusion and "fit to this spot". `src` is the
+                // picture it belongs to: a teacher who swaps the picture must not keep its depth.
+                ...($asset->depthUrl() ? ['backdrop_depth' => ['src' => $path, 'url' => $asset->depthUrl()]] : []),
             ], self::isLineArt($ref) ? self::LINE_ART_CONFIG : []),
         ]);
     }
@@ -227,6 +232,9 @@ class LibraryLayers
                     }
                     $entry[$key] = LayerSitIn::clamp($entry[$key]);
                 }
+            }
+            if (array_key_exists('occlude', (array) $entry) && ! in_array($entry['occlude'], [0, 1, true, false], true)) {
+                throw new \InvalidArgumentException("{$where}, layer {$i}: occlude must be 0 or 1.");
             }
             $asset = $this->libraryAsset((string) ($entry['asset'] ?? ''), $where);
             if ($upload) {
