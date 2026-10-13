@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { rms, toDb, flatness, noiseFloor, levelAbove, soundStep, SOUND } from '../meter-inputs/sound.js'
 
 /** A power spectrum in dB like AnalyserNode gives: flat (noise) or one peak plus harmonics (a voice). */
@@ -112,5 +112,27 @@ describe('motion: shake or tilt a phone', async () => {
     expect(accelOf({ acceleration: { x: 3, y: 4, z: 0 } })).toBe(5)
     expect(accelOf({ acceleration: null, accelerationIncludingGravity: { x: 0, y: 0, z: 9.81 } })).toBe(0)
     expect(accelOf({})).toBe(0)
+  })
+})
+
+describe('a motion event without a reading is no sensor', async () => {
+  const { hasReading, listenMotion, MOTION } = await import('../meter-inputs/motion.js')
+
+  it('tells an empty desktop event from a phone held still', () => {
+    expect(hasReading({ acceleration: { x: null }, accelerationIncludingGravity: { x: null } })).toBe(false)
+    expect(hasReading({ acceleration: { x: 0, y: 0, z: 0 } })).toBe(true)
+    expect(hasReading({ gamma: null }, 'tilt')).toBe(false)
+    expect(hasReading({ gamma: 0 }, 'tilt')).toBe(true)
+  })
+
+  it('an empty event never opens the sensor: the taps take over', async () => {
+    vi.useFakeTimers()
+    window.DeviceMotionEvent = window.DeviceMotionEvent || function () {}
+    const opened = listenMotion({ gesture: 'shake', onFrame: () => {} })
+    const empty = new Event('devicemotion')
+    window.dispatchEvent(Object.assign(empty, { acceleration: { x: null } }))
+    vi.advanceTimersByTime(MOTION.silentMs + 10)
+    await expect(opened).rejects.toThrow('no-motion')
+    vi.useRealTimers()
   })
 })

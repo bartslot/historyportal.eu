@@ -399,3 +399,15 @@ describe('rhythm and motion', () => {
     expect(motion.open).not.toHaveBeenCalled()
   })
 })
+
+describe('parts that do not add up exactly', () => {
+  it('six shakes of 4/6 fill a meter of 4', async () => {
+    const { push } = await import('../PowerMeter.js')
+    const cfg = readMoment({ input: 'motion', goal: 4 })
+    let state = startState(cfg)
+    let result
+    for (let i = 0; i < 6; i++) { result = push(state, cfg, 4 / 6); state = result.state }
+    expect(result.full).toBe(true)
+    expect(state.fills[0]).toBe(4)
+  })
+})

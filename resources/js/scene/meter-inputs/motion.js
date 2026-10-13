@@ -46,6 +46,15 @@ export function accelOf (e) {
   return g && Number.isFinite(g.x) ? Math.abs(Math.hypot(g.x, g.y, g.z) - 9.81) : 0
 }
 
+/**
+ * Whether an event carries a reading. A desktop browser without a sensor still fires one event with
+ * every value null; that is no sensor, not a phone held still.
+ */
+export function hasReading (e, gesture = 'shake') {
+  if (gesture === 'tilt') return Number.isFinite(e?.gamma)
+  return Number.isFinite(e?.acceleration?.x) || Number.isFinite(e?.accelerationIncludingGravity?.x)
+}
+
 /** iOS: motion needs a permission that only a tap may ask for. */
 export const needsMotionPermission = () => typeof window !== 'undefined'
   && typeof window.DeviceMotionEvent?.requestPermission === 'function'
@@ -68,6 +77,7 @@ export function listenMotion ({ gesture = 'shake', onFrame }) {
     let last = null
     let started = false
     const handler = (e) => {
+      if (!hasReading(e, gesture)) return
       const now = performance.now()
       const dt = last === null ? 0 : (now - last) / 1000
       last = now

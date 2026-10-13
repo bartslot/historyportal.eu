@@ -145,8 +145,10 @@ export function press (state, cfg, word) {
 export function push (state, cfg, amount) {
   if (state.done || !(amount > 0)) return { state, crossed: 0, full: false }
   const before = state.fills[0]
-  const after = Math.min(cfg.goal, before + amount)
-  const full = after >= cfg.goal
+  // Parts like 4/6 add up to 3.9999999999999996: within a hair of the goal is the goal.
+  const sum = before + amount
+  const full = sum >= cfg.goal - 1e-9
+  const after = full ? cfg.goal : sum
   return {
     state: { ...state, fills: [after, ...state.fills.slice(1)], done: full, winner: full ? 0 : null },
     crossed: Math.floor(after) - Math.floor(before),
@@ -552,15 +554,15 @@ export class PowerMeter {
   _senseRow () {
     if (this._senseState === 'none' || this._senseState === 'closed') return null
     const row = el('div', 'flex flex-col gap-1')
-    const top = el('div', 'flex items-center gap-3')
+    const top = el('div', 'flex flex-wrap items-center gap-x-3 gap-y-2')
     const status = el('span', 'text-base font-semibold', this._senseStatusText())
     status.dataset.micStatus = ''
     status.setAttribute('aria-live', 'polite')
     top.appendChild(status)
     if (this._senseState === 'permission') {
-      top.appendChild(button(t('Use the motion sensor'), 'btn-primary btn-sm', () => this._allowMotion()))
+      top.appendChild(button(t('Use the motion sensor'), 'btn-primary btn-sm shadow-none', () => this._allowMotion()))
     } else if (this._senseState !== 'off') {
-      const live = el('progress', 'progress h-2 flex-1')
+      const live = el('progress', 'progress h-2 min-w-24 flex-1')
       live.max = 100
       live.value = Math.round(this._senseLevel * 100)
       live.dataset.micLevel = ''
@@ -632,7 +634,9 @@ export class PowerMeter {
     const grid = el('div', 'flex flex-wrap justify-center gap-2 sm:gap-3')
     for (const word of this._buttons) {
       const used = isUsed(this.state, word)
-      const b = button(word.text, `sm:btn-lg ${used ? 'btn-success' : 'btn-outline'} min-w-24 text-base sm:min-w-28 sm:text-lg`, () => this._tap(word, b))
+      // While a sensor listens the words are the fallback: small, so the picture stays in view.
+      const size = this._senseState === 'none' || this._senseState === 'off' ? 'sm:btn-lg min-w-24 text-base sm:min-w-28 sm:text-lg' : 'btn-sm'
+      const b = button(word.text, `${size} ${used ? 'btn-success' : 'btn-outline'}`, () => this._tap(word, b))
       b.dataset.word = word.id
       if (used) b.setAttribute('aria-disabled', 'true')
       if (this.state.done) b.disabled = true
