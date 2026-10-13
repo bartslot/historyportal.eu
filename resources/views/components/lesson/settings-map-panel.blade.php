@@ -295,7 +295,7 @@
                     @endif
                 </div>
                 <button type="button" data-fit-spot x-data
-                        x-on:click="const h = await window.__lessonArtworkLayer?.fitHeight?.({{ $aid }}); if (h) $wire.updateArtworkLayer({{ $aid }}, 'height', h)"
+                        x-on:click="const fit = await window.__lessonArtworkLayer?.fitHeight?.({{ $aid }}); if (fit) $wire.fitLayerToSpot({{ $aid }}, fit.height, fit.y)"
                         data-tooltip="{{ __('The height it has standing here, from the horizon of the backdrop') }}"
                         class="btn btn-ghost btn-xs w-full rounded-full">
                     {{ __('Fit to this spot') }}

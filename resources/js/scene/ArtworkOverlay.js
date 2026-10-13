@@ -291,14 +291,18 @@ export class ArtworkOverlay {
   /**
    * "Fit to this spot": the `height` this layer should have where its feet are now, from the
    * backdrop's horizon (occlusion.js fitHeight), in the layer's own stored units (% of the stage
-   * before its scale). Null when the backdrop has no depth map or the feet are above the horizon.
+   * before its scale), and the `y` that keeps its feet where they are (a layer is centre-anchored).
+   * Null when the backdrop has no depth map or the feet are above the horizon.
    */
   async fitHeight(assetId) {
     const item = this._layers.find(l => String(l.asset_id) === String(assetId))
     const depth = item ? await loadDepth(this._depthUrl) : null
     if (!item || !depth) return null
     const share = this._fitShare(item, depth)
-    return share === null ? null : Math.round((share * 100 / (item.scale || 1)) * 100) / 100
+    if (share === null) return null
+    const feet = item.y + this._heightPct(item) / 2
+    const r2 = (n) => Math.round(n * 100) / 100
+    return { height: r2(share * 100 / (item.scale || 1)), y: r2(feet - share * 100 / 2) }
   }
 
   /** The on-screen height (share of the stage) that fits the layer's feet row, or null. */

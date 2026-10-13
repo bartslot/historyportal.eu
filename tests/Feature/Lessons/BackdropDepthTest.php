@@ -191,6 +191,15 @@ class BackdropDepthTest extends TestCase
 
         $wizard->call('undoLastEdit');
         $this->assertSame(1, $layer()['occlude']);
+
+        // Fit to this spot: height and the feet-keeping y in one step, clamped.
+        $this->travel(5)->seconds();
+        $wizard->call('fitLayerToSpot', $sailor->id, 500.0, 41.25);
+        $this->assertEquals(200.0, $layer()['height']);
+        $this->assertEquals(41.25, $layer()['y']);
+        $wizard->call('undoLastEdit');
+        $this->assertEquals(30, $layer()['height']);
+        $this->assertEquals(50.0, $layer()['y']);
     }
 
     public function test_the_panel_offers_the_toggle_and_fit_only_on_a_backdrop_with_a_depth_map(): void
@@ -203,7 +212,8 @@ class BackdropDepthTest extends TestCase
             ->assertSee('data-occlude', false)
             ->assertSee('setLayerOcclude(7, $event.target.checked)', false)
             ->assertSee('setLayerOcclude(7, false)', false)
-            ->assertSee('data-fit-spot', false);
+            ->assertSee('data-fit-spot', false)
+            ->assertSee('fitLayerToSpot(7, fit.height, fit.y)', false);
 
         $render([], [])->assertDontSee('data-occlude', false)->assertDontSee('data-fit-spot', false);
     }

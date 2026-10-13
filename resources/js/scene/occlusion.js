@@ -35,7 +35,7 @@ import { coverToImage } from './sit-in-scene.js'
 
 /** Dev-tunable (window.__tune "Occlusion"). */
 export const OCC = {
-  margin: 0.04,     // how much nearer (0..1 of the map's range) a plate pixel must be to hide the layer
+  margin: 0.025,    // how much nearer (0..1 of the map's range) a plate pixel must be to hide the layer
   fitFrom: 0.6,     // the rows (share of the plate) the floor line is fitted on: the lower part,
   fitTo: 0.97,      //   where a deck or a beach is
   minSlope: 0.15,   // a flatter "floor" is not a floor (a sea up to the frame, a wall)
