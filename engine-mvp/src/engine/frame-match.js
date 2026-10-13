@@ -5,7 +5,8 @@
 //   ?scene=spyglass[&actor=<glb>][&ship=0][&look=<preset>]   ship=0: the box deck and rail in place of the Heemskerck
 //   model; look: a Look preset by name, e.g. 'History Lines pencil' or 'Day', or 'off' (none: the look stays as saved);
 //   &hide=tasman renders the set alone (the frame a painter repaints for the ship's projected paint);
-//   &paint=ship lays that repainted frame on the ship, projected from the shot camera (matte painting)
+//   &paint=ship lays that repainted frame on the ship, projected from the shot camera (matte painting);
+//   &move=dx,dy,dz[,yawDeg] moves the camera AFTER everything is placed and painted (does the paint hold?)
 /* global BABYLON */
 'use strict';
 
@@ -64,7 +65,7 @@
     // the deck lies on the inboard side of the rail (its right edge IS the rail), so the sea shows beyond it
     const DECK_W = 30, DECK_L = 40, inboard = [-Math.cos(yaw), Math.sin(yaw)];
     const set = []
-    if (useShip) loadShip(yaw)
+    if (useShip) shipReady = loadShip(yaw)
     else set.push(box('set-deck', { width: DECK_W, height: 0.2, depth: DECK_L }, [mx + inboard[0] * DECK_W / 2, -0.1, mz + inboard[1] * DECK_W / 2], deck, yaw))
     if (!useShip) set.push(box('set-rail-top', { width: 0.2, height: 0.14, depth: len }, [mx, RAIL.height, mz], wood, yaw));
     if (!useShip) set.push(box('set-rail-low', { width: 0.12, height: 0.1, depth: len }, [mx, RAIL.height * 0.5, mz], dark, yaw));
@@ -103,7 +104,7 @@
       console.error('frame-match: could not load the ship', e);
     }
   }
-  let shipPivot = null;
+  let shipPivot = null, shipReady = Promise.resolve();
 
   // Camera-projected paint: every ship surface takes the colour of the repainted frame where the shot camera
   // sees it (ChatGPT repainted our own render, geometry kept). Unlit: light and lines are in the painting.
@@ -152,6 +153,18 @@
     });
   }
 
+  /** A camera move after placement: offset in metres (x right, y up, z forward) and an optional pan in degrees. */
+  function moveCamera(spec) {
+    const [dx = 0, dy = 0, dz = 0, yaw = 0] = spec.split(',').map(Number);
+    const cam = mvp.camera;
+    const pos = new BABYLON.Vector3(...CAMERA.position).add(new BABYLON.Vector3(dx, dy, dz));
+    const look = new BABYLON.Vector3(...CAMERA.target).subtract(new BABYLON.Vector3(...CAMERA.position));
+    const r = (yaw * Math.PI) / 180;
+    const turned = new BABYLON.Vector3(look.x * Math.cos(r) + look.z * Math.sin(r), look.y, -look.x * Math.sin(r) + look.z * Math.cos(r));
+    cam.setTarget(pos.add(turned));
+    cam.setPosition(pos);
+  }
+
   function aimCamera() {
     const cam = mvp.camera;
     cam.setTarget(new BABYLON.Vector3(...CAMERA.target));
@@ -184,6 +197,7 @@
       if (params.get('hide') === 'tasman') tasman.setEnabled(false);
       paintedLight(tasman);
       window.__shot = { tasman, set, ship: shipPivot, camera: mvp.camera, aimCamera, CAMERA, TASMAN_AT, RAIL, SHIP };
+      shipReady.then(() => { if (params.get('move')) moveCamera(params.get('move')); });
     }, (e) => console.error('frame-match: could not load Tasman', e));
   });
 })();
