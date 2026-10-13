@@ -1,7 +1,7 @@
 {
  "id": "tasman-1642",
  "version": 1,
- "source": "script_tasman_nl_v4.md",
+ "source": "script_tasman_nl_v5.md",
  "scenes": [
   {
    "id": "S00",
@@ -9,8 +9,13 @@
    "panels": [
     {
      "id": "S00-A",
-     "staging": "Golden Bay, schemering, 18 december 1642. Twee waka; mannen roepen, zonder verstaanbare of verzonnen te reo. Een lang blaasgeluid, volgens het journaal als een Moorse trompet. Instrument in silhouet en uitsnede, type onbepaald. Geen kanonnen of geweld.",
-     "lines": [],
+     "staging": "",
+     "lines": [
+      {
+       "id": "S00-A.1",
+       "speaker": "narrator"
+      }
+     ],
      "cast": [],
      "plate": "plates/golden_bay_dusk.png",
      "figures": null,
@@ -44,11 +49,16 @@
     },
     {
      "id": "S00-B",
-     "staging": "Nederlandse matroos antwoordt op trompet op de Heemskerck; op de voorgrond het gezicht van de jongen, groot en leesbaar. Geen aparte historische trompetter creëren.",
+     "staging": "",
      "lines": [
       {
        "id": "S00-B.1",
-       "speaker": "matroos"
+       "speaker": "narrator",
+       "bubble": "matroos"
+      },
+      {
+       "id": "S00-B.2",
+       "speaker": "narrator"
       }
      ],
      "cast": [
@@ -69,19 +79,21 @@
   },
   {
    "id": "S01",
-   "act": 1,
+   "act": 0,
    "panels": [
     {
      "id": "S01-A",
-     "staging": "Vogelvlucht over kade en rede; bootsman wijst vanuit de kleine boot omhoog. Kade en relinghand vastleggen voor match-cut S15-C. Ballonstaarten naar boot; reactie leesbaar in B.",
+     "staging": "",
      "lines": [
       {
        "id": "S01-A.1",
-       "speaker": "matroos"
+       "speaker": "narrator",
+       "bubble": "matroos"
       },
       {
        "id": "S01-A.2",
-       "speaker": "bootsman"
+       "speaker": "narrator",
+       "bubble": "bootsman"
       }
      ],
      "cast": [
@@ -111,19 +123,17 @@
     },
     {
      "id": "S01-B",
-     "staging": "Close-up: jongen vangt specerijenzak tegen borst; blik blijft even aan mast hangen.",
+     "staging": "",
      "lines": [
       {
        "id": "S01-B.1",
-       "speaker": "matroos"
+       "speaker": "narrator",
+       "bubble": "matroos"
       },
       {
        "id": "S01-B.2",
-       "speaker": "bootsman"
-      },
-      {
-       "id": "S01-B.3",
-       "speaker": "bootsman"
+       "speaker": "narrator",
+       "bubble": "bootsman"
       }
      ],
      "cast": [
@@ -143,19 +153,19 @@
     },
     {
      "id": "S01-C",
-     "staging": "Jongen ruikt zak; bootsman wijst ermee naar schip, zonder instemmend uitlegbeeld.",
+     "staging": "",
      "lines": [
       {
        "id": "S01-C.1",
-       "speaker": "matroos"
+       "speaker": "narrator",
+       "bubble": "matroos"
       },
       {
        "id": "S01-C.2",
-       "speaker": "bootsman"
+       "speaker": "narrator"
       }
      ],
      "cast": [
-      "bootsman",
       "matroos"
      ],
      "plate": "plates/batavia_harbour_boat.png",
@@ -173,32 +183,23 @@
   },
   {
    "id": "S02",
-   "act": 1,
+   "act": 0,
    "panels": [
     {
      "id": "S02-A",
-     "staging": "Kaart op tafel, witte ruimte groot in voorgrond; raadsheer houdt bekende kust vast.",
+     "staging": "",
      "lines": [
       {
        "id": "S02-A.1",
-       "speaker": "raadsheer"
+       "speaker": "narrator"
       },
       {
        "id": "S02-A.2",
-       "speaker": "tasman"
-      },
-      {
-       "id": "S02-A.3",
-       "speaker": "vandiemen"
-      },
-      {
-       "id": "S02-A.4",
-       "speaker": "vandiemen"
+       "speaker": "narrator",
+       "bubble": "vandiemen"
       }
      ],
      "cast": [
-      "raadsheer",
-      "tasman",
       "vandiemen"
      ],
      "plate": "plates/voc_chamber.png",
@@ -212,15 +213,17 @@
     },
     {
      "id": "S02-B",
-     "staging": "Vinger raadsheer stopt bij ongetekende Australische kust; Tasman kijkt naar lege ruimte.",
+     "staging": "",
      "lines": [
       {
        "id": "S02-B.1",
-       "speaker": "raadsheer"
+       "speaker": "narrator",
+       "bubble": "raadsheer"
       },
       {
        "id": "S02-B.2",
-       "speaker": "tasman"
+       "speaker": "narrator",
+       "bubble": "tasman"
       }
      ],
      "cast": [
@@ -240,20 +243,16 @@
     },
     {
      "id": "S02-C",
-     "staging": "Van Diemen houdt opdracht tegen tot Tasman papier pakt; geen instemmende reacties.",
+     "staging": "",
      "lines": [
       {
        "id": "S02-C.1",
-       "speaker": "vandiemen"
-      },
-      {
-       "id": "S02-C.2",
-       "speaker": "tasman"
+       "speaker": "narrator",
+       "bubble": "tasman"
       }
      ],
      "cast": [
-      "tasman",
-      "vandiemen"
+      "tasman"
      ],
      "plate": "plates/voc_chamber.png",
      "figures": "figures/S02-C.png",
@@ -270,24 +269,18 @@
   },
   {
    "id": "S03",
-   "act": 1,
+   "act": 0,
    "panels": [
     {
      "id": "S03-A",
-     "staging": "Tasman opent opdracht; Visscher schuift routeblad onder zijn hand.",
+     "staging": "",
      "lines": [
       {
        "id": "S03-A.1",
-       "speaker": "tasman"
-      },
-      {
-       "id": "S03-A.2",
-       "speaker": "tasman"
+       "speaker": "narrator"
       }
      ],
-     "cast": [
-      "tasman"
-     ],
+     "cast": [],
      "plate": "plates/voc_chamber.png",
      "figures": "figures/S03-A.png",
      "ships": [],
@@ -299,23 +292,15 @@
     },
     {
      "id": "S03-B",
-     "staging": "Visschers vinger gaat van Mauritius richting zuiden en oosten; papier eindigt in witte ruimte.",
+     "staging": "",
      "lines": [
       {
        "id": "S03-B.1",
-       "speaker": "visscher"
-      },
-      {
-       "id": "S03-B.2",
-       "speaker": "visscher"
-      },
-      {
-       "id": "S03-B.3",
-       "speaker": "tasman"
+       "speaker": "narrator",
+       "bubble": "visscher"
       }
      ],
      "cast": [
-      "tasman",
       "visscher"
      ],
      "plate": "plates/voc_chamber.png",
@@ -331,8 +316,13 @@
     },
     {
      "id": "S03-C",
-     "staging": "Twee schepen naast elkaar, klein tegenover open zee; geen miniatuurgesprek.",
-     "lines": [],
+     "staging": "",
+     "lines": [
+      {
+       "id": "S03-C.1",
+       "speaker": "narrator"
+      }
+     ],
      "cast": [],
      "plate": "plates/open_sea_day.png",
      "figures": null,
@@ -368,23 +358,21 @@
   },
   {
    "id": "S04",
-   "act": 1,
+   "act": 0,
    "panels": [
     {
      "id": "S04-A",
-     "staging": "Bootsman trekt vat, jongen zet schouder eronder; concrete inspanning.",
+     "staging": "",
      "lines": [
       {
        "id": "S04-A.1",
-       "speaker": "bootsman"
+       "speaker": "narrator",
+       "bubble": "bootsman"
       },
       {
        "id": "S04-A.2",
-       "speaker": "matroos"
-      },
-      {
-       "id": "S04-A.3",
-       "speaker": "matroos"
+       "speaker": "narrator",
+       "bubble": "matroos"
       }
      ],
      "cast": [
@@ -404,28 +392,15 @@
     },
     {
      "id": "S04-B",
-     "staging": "Visscher geeft inventarispapier aan Tasman; jongen kijkt tussen vat en verdwijnende kade.",
+     "staging": "",
      "lines": [
       {
        "id": "S04-B.1",
-       "speaker": "tasman"
-      },
-      {
-       "id": "S04-B.2",
-       "speaker": "visscher"
-      },
-      {
-       "id": "S04-B.3",
-       "speaker": "visscher"
-      },
-      {
-       "id": "S04-B.4",
-       "speaker": "matroos"
+       "speaker": "narrator",
+       "bubble": "visscher"
       }
      ],
      "cast": [
-      "matroos",
-      "tasman",
       "visscher"
      ],
      "plate": "plates/deck_harbour.png",
@@ -441,19 +416,17 @@
     },
     {
      "id": "S04-C",
-     "staging": "Jongen klemt hand om reling; bootsman kijkt naar hem, kade achter beiden.",
+     "staging": "",
      "lines": [
       {
        "id": "S04-C.1",
-       "speaker": "matroos"
+       "speaker": "narrator",
+       "bubble": "matroos"
       },
       {
        "id": "S04-C.2",
-       "speaker": "bootsman"
-      },
-      {
-       "id": "S04-C.3",
-       "speaker": "bootsman"
+       "speaker": "narrator",
+       "bubble": "bootsman"
       }
      ],
      "cast": [
@@ -475,12 +448,17 @@
   },
   {
    "id": "S05",
-   "act": 1,
+   "act": 0,
    "panels": [
     {
      "id": "S05-A",
-     "staging": "Bekende ankerplaats, mannen herstellen onderdeel; Visscher bergt havenkaart op. Geen afzonderlijk uitleggebaar.",
-     "lines": [],
+     "staging": "",
+     "lines": [
+      {
+       "id": "S05-A.1",
+       "speaker": "narrator"
+      }
+     ],
      "cast": [],
      "plate": "plates/mauritius_anchorage.png",
      "figures": "figures/S05-A.png",
@@ -505,19 +483,17 @@
     },
     {
      "id": "S05-B",
-     "staging": "Bootsman klemt watervat vast; jongen laadt brandhout.",
+     "staging": "",
      "lines": [
       {
        "id": "S05-B.1",
-       "speaker": "bootsman"
+       "speaker": "narrator",
+       "bubble": "bootsman"
       },
       {
        "id": "S05-B.2",
-       "speaker": "bootsman"
-      },
-      {
-       "id": "S05-B.3",
-       "speaker": "matroos"
+       "speaker": "narrator",
+       "bubble": "matroos"
       }
      ],
      "cast": [
@@ -537,23 +513,15 @@
     },
     {
      "id": "S05-C",
-     "staging": "Tasman kijkt naar open zee; havenkaart opgerold, wit routevlak zichtbaar eronder.",
+     "staging": "",
      "lines": [
       {
        "id": "S05-C.1",
-       "speaker": "tasman"
-      },
-      {
-       "id": "S05-C.2",
-       "speaker": "matroos"
-      },
-      {
-       "id": "S05-C.3",
-       "speaker": "tasman"
+       "speaker": "narrator",
+       "bubble": "tasman"
       }
      ],
      "cast": [
-      "matroos",
       "tasman"
      ],
      "plate": "plates/mauritius_anchorage.png",
@@ -571,12 +539,17 @@
   },
   {
    "id": "S06",
-   "act": 2,
+   "act": 0,
    "panels": [
     {
      "id": "S06-A",
-     "staging": "Lege zee, schip klein; horizon en schaal dragen beeld.",
-     "lines": [],
+     "staging": "",
+     "lines": [
+      {
+       "id": "S06-A.1",
+       "speaker": "narrator"
+      }
+     ],
      "cast": [],
      "plate": "plates/ocean_empty_wide.png",
      "figures": null,
@@ -601,19 +574,17 @@
     },
     {
      "id": "S06-B",
-     "staging": "Visscher demonstreert jakobsstaf; jongen volgt zon en horizon. Illustratief instrument, geen specifieke historische meting.",
+     "staging": "",
      "lines": [
       {
        "id": "S06-B.1",
-       "speaker": "matroos"
+       "speaker": "narrator",
+       "bubble": "matroos"
       },
       {
        "id": "S06-B.2",
-       "speaker": "visscher"
-      },
-      {
-       "id": "S06-B.3",
-       "speaker": "visscher"
+       "speaker": "narrator",
+       "bubble": "visscher"
       }
      ],
      "cast": [
@@ -633,31 +604,15 @@
     },
     {
      "id": "S06-C",
-     "staging": "Visscher wijst kaartassen; Tasman buigt mee, jongen bekijkt stipje.",
+     "staging": "",
      "lines": [
       {
        "id": "S06-C.1",
-       "speaker": "matroos"
-      },
-      {
-       "id": "S06-C.2",
-       "speaker": "visscher"
-      },
-      {
-       "id": "S06-C.3",
-       "speaker": "matroos"
-      },
-      {
-       "id": "S06-C.4",
-       "speaker": "visscher"
-      },
-      {
-       "id": "S06-C.5",
-       "speaker": "visscher"
+       "speaker": "narrator",
+       "bubble": "visscher"
       }
      ],
      "cast": [
-      "matroos",
       "visscher"
      ],
      "plate": "plates/cabin_chart.png",
@@ -675,27 +630,23 @@
   },
   {
    "id": "S07",
-   "act": 2,
+   "act": 0,
    "panels": [
     {
      "id": "S07-A",
-     "staging": "Uitkijk zoekt Zeehaen, Tasman volgt arm; zicht dicht van regen.",
+     "staging": "",
      "lines": [
       {
        "id": "S07-A.1",
-       "speaker": "uitkijk"
+       "speaker": "narrator",
+       "bubble": "uitkijk"
       },
       {
        "id": "S07-A.2",
-       "speaker": "tasman"
-      },
-      {
-       "id": "S07-A.3",
-       "speaker": "tasman"
+       "speaker": "narrator"
       }
      ],
      "cast": [
-      "tasman",
       "uitkijk"
      ],
      "plate": "plates/storm_deck.png",
@@ -721,23 +672,17 @@
     },
     {
      "id": "S07-B",
-     "staging": "Bootsman duwt jongen naar houvast; jongen grijpt lijn en blijft meetrekken, ondanks angst. Geen heldenredding of historische daad claimen.",
+     "staging": "",
      "lines": [
       {
        "id": "S07-B.1",
-       "speaker": "bootsman"
+       "speaker": "narrator",
+       "bubble": "bootsman"
       },
       {
        "id": "S07-B.2",
-       "speaker": "matroos"
-      },
-      {
-       "id": "S07-B.3",
-       "speaker": "bootsman"
-      },
-      {
-       "id": "S07-B.4",
-       "speaker": "matroos"
+       "speaker": "narrator",
+       "bubble": "matroos"
       }
      ],
      "cast": [
@@ -757,24 +702,16 @@
     },
     {
      "id": "S07-C",
-     "staging": "Beiden onder beschutting, handen om houvast; vastgebonden reservezeildoek naast hen. Alleen deze stormhandeling.",
+     "staging": "",
      "lines": [
       {
        "id": "S07-C.1",
-       "speaker": "matroos"
-      },
-      {
-       "id": "S07-C.2",
-       "speaker": "bootsman"
-      },
-      {
-       "id": "S07-C.3",
-       "speaker": "bootsman"
+       "speaker": "narrator",
+       "bubble": "bootsman"
       }
      ],
      "cast": [
-      "bootsman",
-      "matroos"
+      "bootsman"
      ],
      "plate": "plates/storm_deck.png",
      "figures": "figures/S07-C.png",
@@ -789,15 +726,12 @@
     },
     {
      "id": "S07-D",
-     "staging": "Ochtendlicht 25 oktober, Zeehaen aan horizon; uitkijk wijst.",
+     "staging": "",
      "lines": [
       {
        "id": "S07-D.1",
-       "speaker": "uitkijk"
-      },
-      {
-       "id": "S07-D.2",
-       "speaker": "uitkijk"
+       "speaker": "narrator",
+       "bubble": "uitkijk"
       }
      ],
      "cast": [
@@ -828,31 +762,19 @@
   },
   {
    "id": "S08",
-   "act": 2,
+   "act": 0,
    "panels": [
     {
      "id": "S08-A",
-     "staging": "Visscher gumt oude schatting, plaatst nieuwe markering bij meetgegevens; jongen volgt verschuiving.",
+     "staging": "",
      "lines": [
       {
        "id": "S08-A.1",
-       "speaker": "matroos"
-      },
-      {
-       "id": "S08-A.2",
-       "speaker": "visscher"
-      },
-      {
-       "id": "S08-A.3",
-       "speaker": "visscher"
-      },
-      {
-       "id": "S08-A.4",
-       "speaker": "visscher"
+       "speaker": "narrator",
+       "bubble": "visscher"
       }
      ],
      "cast": [
-      "matroos",
       "visscher"
      ],
      "plate": "plates/cabin_chart.png",
@@ -868,31 +790,17 @@
     },
     {
      "id": "S08-B",
-     "staging": "Datum naar 6 november; jongen trekt kleding dicht, bootsman schuift brood toe.",
+     "staging": "",
      "lines": [
       {
        "id": "S08-B.1",
-       "speaker": "matroos"
+       "speaker": "narrator",
+       "bubble": "matroos"
       },
       {
        "id": "S08-B.2",
-       "speaker": "bootsman"
-      },
-      {
-       "id": "S08-B.3",
-       "speaker": "matroos"
-      },
-      {
-       "id": "S08-B.4",
-       "speaker": "matroos"
-      },
-      {
-       "id": "S08-B.5",
-       "speaker": "bootsman"
-      },
-      {
-       "id": "S08-B.6",
-       "speaker": "bootsman"
+       "speaker": "narrator",
+       "bubble": "bootsman"
       }
      ],
      "cast": [
@@ -912,27 +820,23 @@
   },
   {
    "id": "S09",
-   "act": 2,
+   "act": 0,
    "panels": [
     {
      "id": "S09-A",
-     "staging": "Kaart en globe naast elkaar, verschillende eilandposities; Tasman blijft naar verschil kijken.",
+     "staging": "",
      "lines": [
       {
        "id": "S09-A.1",
-       "speaker": "visscher"
+       "speaker": "narrator"
       },
       {
        "id": "S09-A.2",
-       "speaker": "tasman"
-      },
-      {
-       "id": "S09-A.3",
-       "speaker": "visscher"
+       "speaker": "narrator",
+       "bubble": "visscher"
       }
      ],
      "cast": [
-      "tasman",
       "visscher"
      ],
      "plate": "plates/cabin_chart.png",
@@ -948,19 +852,15 @@
     },
     {
      "id": "S09-B",
-     "staging": "Officier houdt leeg besluitblad; Tasman legt drie pijlen op één kaart, geen ondertekening.",
+     "staging": "",
      "lines": [
       {
        "id": "S09-B.1",
-       "speaker": "tasman"
-      },
-      {
-       "id": "S09-B.2",
-       "speaker": "visscher"
+       "speaker": "narrator",
+       "bubble": "visscher"
       }
      ],
      "cast": [
-      "tasman",
       "visscher"
      ],
      "plate": "plates/cabin_chart.png",
@@ -976,19 +876,17 @@
     },
     {
      "id": "S09-C",
-     "staging": "Tasman op dek, jongen houdt werk stil en kijkt hem rechtstreeks aan.",
+     "staging": "",
      "lines": [
       {
        "id": "S09-C.1",
-       "speaker": "matroos"
+       "speaker": "narrator",
+       "bubble": "matroos"
       },
       {
        "id": "S09-C.2",
-       "speaker": "tasman"
-      },
-      {
-       "id": "S09-C.3",
-       "speaker": "tasman"
+       "speaker": "narrator",
+       "bubble": "tasman"
       }
      ],
      "cast": [
@@ -1010,28 +908,19 @@
   },
   {
    "id": "S10",
-   "act": 2,
+   "act": 0,
    "panels": [
     {
      "id": "S10-A",
-     "staging": "Uitkijk in masttop wijst; jongen naast Tasman aan reling. Zijn moed blijft in S07, geen nieuwe mastbeklimming nodig.",
+     "staging": "",
      "lines": [
       {
        "id": "S10-A.1",
-       "speaker": "uitkijk"
-      },
-      {
-       "id": "S10-A.2",
-       "speaker": "matroos"
-      },
-      {
-       "id": "S10-A.3",
-       "speaker": "tasman"
+       "speaker": "narrator",
+       "bubble": "uitkijk"
       }
      ],
      "cast": [
-      "matroos",
-      "tasman",
       "uitkijk"
      ],
      "plate": "plates/deck_rail_coast.png",
@@ -1047,20 +936,16 @@
     },
     {
      "id": "S10-B",
-     "staging": "Visscher tekent kust; Tasman kijkt naar bergen, jongen naar lijn op papier.",
+     "staging": "",
      "lines": [
       {
        "id": "S10-B.1",
-       "speaker": "tasman"
-      },
-      {
-       "id": "S10-B.2",
-       "speaker": "matroos"
+       "speaker": "narrator",
+       "bubble": "matroos"
       }
      ],
      "cast": [
-      "matroos",
-      "tasman"
+      "matroos"
      ],
      "plate": "plates/deck_rail_coast.png",
      "figures": "figures/S10-B.png",
@@ -1075,27 +960,15 @@
     },
     {
      "id": "S10-C",
-     "staging": "2 december, boominkepingen ver uiteen; jongen kijkt omhoog, bootsman naar rook. Geen reuzen of zekere klimwijze.",
+     "staging": "",
      "lines": [
       {
        "id": "S10-C.1",
-       "speaker": "matroos"
-      },
-      {
-       "id": "S10-C.2",
-       "speaker": "matroos"
-      },
-      {
-       "id": "S10-C.3",
-       "speaker": "bootsman"
-      },
-      {
-       "id": "S10-C.4",
-       "speaker": "matroos"
+       "speaker": "narrator",
+       "bubble": "matroos"
       }
      ],
      "cast": [
-      "bootsman",
       "matroos"
      ],
      "plate": "plates/vdl_forest.png",
@@ -1123,28 +996,20 @@
   },
   {
    "id": "S11",
-   "act": 3,
+   "act": 0,
    "panels": [
     {
      "id": "S11-A",
-     "staging": "Gilsemans vergelijkt bergvormen met tekening, jongen houdt papierhoek tegen wind vast.",
+     "staging": "",
      "lines": [
       {
        "id": "S11-A.1",
-       "speaker": "matroos"
-      },
-      {
-       "id": "S11-A.2",
-       "speaker": "gilsemans"
-      },
-      {
-       "id": "S11-A.3",
-       "speaker": "gilsemans"
+       "speaker": "narrator",
+       "bubble": "gilsemans"
       }
      ],
      "cast": [
-      "gilsemans",
-      "matroos"
+      "gilsemans"
      ],
      "plate": "plates/nz_high_land_sea.png",
      "figures": "figures/S11-A.png",
@@ -1159,25 +1024,16 @@
     },
     {
      "id": "S11-B",
-     "staging": "Tasman houdt papier tegen windvlaag, Gilsemans trekt kustlijn door; bezoek gedramatiseerd.",
+     "staging": "",
      "lines": [
       {
        "id": "S11-B.1",
-       "speaker": "tasman"
-      },
-      {
-       "id": "S11-B.2",
-       "speaker": "gilsemans"
-      },
-      {
-       "id": "S11-B.3",
-       "speaker": "matroos"
+       "speaker": "narrator",
+       "bubble": "matroos"
       }
      ],
      "cast": [
-      "gilsemans",
-      "matroos",
-      "tasman"
+      "matroos"
      ],
      "plate": "plates/nz_high_land_sea.png",
      "figures": "figures/S11-B.png",
@@ -1194,12 +1050,17 @@
   },
   {
    "id": "S12",
-   "act": 3,
+   "act": 0,
    "panels": [
     {
      "id": "S12-A",
-     "staging": "Iemand wijst naar schepen; ander stopt peddelreparatie en kijkt op. Geen gedateerde tuin.",
-     "lines": [],
+     "staging": "",
+     "lines": [
+      {
+       "id": "S12-A.1",
+       "speaker": "narrator"
+      }
+     ],
      "cast": [],
      "plate": "plates/golden_bay_shore_view.png",
      "figures": null,
@@ -1214,8 +1075,13 @@
     },
     {
      "id": "S12-B",
-     "staging": "Mensen duwen waka in water; tweede bij oever, verschillende leeftijden kijken mee vanuit woonplek. Geen verzonnen stemmen, bedoelingen of te reo.",
-     "lines": [],
+     "staging": "",
+     "lines": [
+      {
+       "id": "S12-B.1",
+       "speaker": "narrator"
+      }
+     ],
      "cast": [],
      "plate": "plates/golden_bay_beach.png",
      "figures": null,
@@ -1232,24 +1098,20 @@
   },
   {
    "id": "S13",
-   "act": 3,
+   "act": 0,
    "panels": [
     {
      "id": "S13-A",
-     "staging": "Blaasinstrument in waka onbepaald silhouet; lang geluid uit S00. Gilsemans draait zich om met papier.",
+     "staging": "",
      "lines": [
       {
        "id": "S13-A.1",
-       "speaker": "gilsemans"
-      },
-      {
-       "id": "S13-A.2",
-       "speaker": "matroos"
+       "speaker": "narrator",
+       "bubble": "gilsemans"
       }
      ],
      "cast": [
-      "gilsemans",
-      "matroos"
+      "gilsemans"
      ],
      "plate": "plates/golden_bay_dusk.png",
      "figures": "figures/S13-A.png",
@@ -1272,27 +1134,20 @@
     },
     {
      "id": "S13-B",
-     "staging": "Matroos Heemskerck antwoordt op trompet; tweede stuurman Zeehaen antwoordt op eigen schip achter hem. Tasman houdt jongen bij zich met handgebaar.",
+     "staging": "",
      "lines": [
       {
        "id": "S13-B.1",
-       "speaker": "tasman"
+       "speaker": "narrator",
+       "bubble": "tasman"
       },
       {
        "id": "S13-B.2",
-       "speaker": "matroos"
-      },
-      {
-       "id": "S13-B.3",
-       "speaker": "tasman"
-      },
-      {
-       "id": "S13-B.4",
-       "speaker": "tasman"
+       "speaker": "narrator",
+       "bubble": "tasman"
       }
      ],
      "cast": [
-      "matroos",
       "tasman"
      ],
      "plate": "plates/deck_dusk.png",
@@ -1308,15 +1163,12 @@
     },
     {
      "id": "S13-C",
-     "staging": "Alleen reactie op opnieuw klinkend instrument; jongen kijkt op, Gilsemans naast hem, tekenpapier stil op voorgrond. Geen tweede gebeurtenis.",
+     "staging": "",
      "lines": [
       {
        "id": "S13-C.1",
-       "speaker": "gilsemans"
-      },
-      {
-       "id": "S13-C.2",
-       "speaker": "gilsemans"
+       "speaker": "narrator",
+       "bubble": "gilsemans"
       }
      ],
      "cast": [
@@ -1337,15 +1189,16 @@
   },
   {
    "id": "S14",
-   "act": 3,
+   "act": 0,
    "panels": [
     {
      "id": "S14-A",
-     "staging": "Waka en Zeehaen-boot naderen elkaar; snijd weg vóór botsing of aanval.",
+     "staging": "",
      "lines": [
       {
        "id": "S14-A.1",
-       "speaker": "matroos"
+       "speaker": "narrator",
+       "bubble": "matroos"
       }
      ],
      "cast": [
@@ -1381,19 +1234,15 @@
     },
     {
      "id": "S14-B",
-     "staging": "Alleen Tasman en jongen; klap, geroep, schoten buiten beeld. Geen inslagen, verwondingen, wapengebruik of lichamen in beeld.",
+     "staging": "",
      "lines": [
       {
        "id": "S14-B.1",
-       "speaker": "matroos"
-      },
-      {
-       "id": "S14-B.2",
-       "speaker": "tasman"
+       "speaker": "narrator",
+       "bubble": "tasman"
       }
      ],
      "cast": [
-      "matroos",
       "tasman"
      ],
      "plate": "plates/golden_bay_morning.png",
@@ -1409,8 +1258,13 @@
     },
     {
      "id": "S14-C",
-     "staging": "Stil vertrekbeeld, jongen knijpt reling; Tasman en bootsman kijken naar verdwijnende kust.",
-     "lines": [],
+     "staging": "",
+     "lines": [
+      {
+       "id": "S14-C.1",
+       "speaker": "narrator"
+      }
+     ],
      "cast": [],
      "plate": "plates/golden_bay_morning.png",
      "figures": "figures/S14-C.png",
@@ -1425,24 +1279,16 @@
     },
     {
      "id": "S14-D",
-     "staging": "Tasman schrijft onleesbare penstreken; jongen kijkt van kust naar papier. Naam alleen losse UI-overlay, geen gegenereerd historisch handschrift.",
+     "staging": "",
      "lines": [
       {
        "id": "S14-D.1",
-       "speaker": "tasman"
-      },
-      {
-       "id": "S14-D.2",
-       "speaker": "matroos"
-      },
-      {
-       "id": "S14-D.3",
-       "speaker": "matroos"
+       "speaker": "narrator",
+       "bubble": "matroos"
       }
      ],
      "cast": [
-      "matroos",
-      "tasman"
+      "matroos"
      ],
      "plate": "plates/cabin_chart.png",
      "figures": "figures/S14-D.png",
@@ -1459,24 +1305,20 @@
   },
   {
    "id": "S15",
-   "act": 4,
+   "act": 0,
    "panels": [
     {
      "id": "S15-A",
-     "staging": "Tongaanse bewoner reikt voedsel aan; bootsman biedt ruilwaar, jongen helpt laden.",
+     "staging": "",
      "lines": [
       {
        "id": "S15-A.1",
-       "speaker": "bootsman"
-      },
-      {
-       "id": "S15-A.2",
-       "speaker": "matroos"
+       "speaker": "narrator",
+       "bubble": "bootsman"
       }
      ],
      "cast": [
-      "bootsman",
-      "matroos"
+      "bootsman"
      ],
      "plate": "plates/tonga_lagoon.png",
      "figures": "figures/S15-A.png",
@@ -1501,25 +1343,16 @@
     },
     {
      "id": "S15-B",
-     "staging": "Brekende golven boven rif; uitkijk wijst, Visscher volgt.",
+     "staging": "",
      "lines": [
       {
        "id": "S15-B.1",
-       "speaker": "uitkijk"
-      },
-      {
-       "id": "S15-B.2",
-       "speaker": "visscher"
-      },
-      {
-       "id": "S15-B.3",
-       "speaker": "matroos"
+       "speaker": "narrator",
+       "bubble": "uitkijk"
       }
      ],
      "cast": [
-      "matroos",
-      "uitkijk",
-      "visscher"
+      "uitkijk"
      ],
      "plate": "plates/fiji_reef.png",
      "figures": "figures/S15-B.png",
@@ -1534,20 +1367,16 @@
     },
     {
      "id": "S15-C",
-     "staging": "Jongenshand laat reling los, bekende kade op achtergrond; match-cut in compositie met S01-A. Alleen deze handeling.",
+     "staging": "",
      "lines": [
       {
        "id": "S15-C.1",
-       "speaker": "tasman"
-      },
-      {
-       "id": "S15-C.2",
-       "speaker": "matroos"
+       "speaker": "narrator",
+       "bubble": "matroos"
       }
      ],
      "cast": [
-      "matroos",
-      "tasman"
+      "matroos"
      ],
      "plate": "plates/batavia_quay_return.png",
      "figures": "figures/S15-C.png",
@@ -1564,24 +1393,20 @@
   },
   {
    "id": "S16",
-   "act": 4,
+   "act": 0,
    "panels": [
     {
      "id": "S16-A",
-     "staging": "Raadsheer schuift verslag terug naar Tasman; oordeel heeft gewicht, geen instemmende uitleg.",
+     "staging": "",
      "lines": [
       {
        "id": "S16-A.1",
-       "speaker": "raadsheer"
-      },
-      {
-       "id": "S16-A.2",
-       "speaker": "tasman"
+       "speaker": "narrator",
+       "bubble": "raadsheer"
       }
      ],
      "cast": [
-      "raadsheer",
-      "tasman"
+      "raadsheer"
      ],
      "plate": "plates/voc_chamber.png",
      "figures": "figures/S16-A.png",
@@ -1594,19 +1419,15 @@
     },
     {
      "id": "S16-B",
-     "staging": "Visscher rolt kaart uit met witte ruimte op dezelfde beeldpositie als S02-A, nu kustlijnen van alleen reis 1642-1643. Geen route 1644 of zekere noordkustdetails.",
+     "staging": "",
      "lines": [
       {
        "id": "S16-B.1",
-       "speaker": "matroos"
-      },
-      {
-       "id": "S16-B.2",
-       "speaker": "visscher"
+       "speaker": "narrator",
+       "bubble": "visscher"
       }
      ],
      "cast": [
-      "matroos",
       "visscher"
      ],
      "plate": "plates/cabin_chart.png",
@@ -1622,15 +1443,12 @@
     },
     {
      "id": "S16-C",
-     "staging": "Gilsemans schuift kusttekening naar jongen; gescheiden beeldvelden met Māori aan bewoonde kust en Palawa op Tasmanië. Op afstand onbenoemde Palawa-vrouw verzamelt zeevoedsel met vezelmand; thematisch beeld, geen gedateerde reisgebeurtenis of ontmoeting.",
+     "staging": "",
      "lines": [
       {
        "id": "S16-C.1",
-       "speaker": "gilsemans"
-      },
-      {
-       "id": "S16-C.2",
-       "speaker": "gilsemans"
+       "speaker": "narrator",
+       "bubble": "gilsemans"
       }
      ],
      "cast": [

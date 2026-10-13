@@ -39,9 +39,14 @@ return function (string $lang, ?array $text = null): array {
                 $lines[] = ['narrator', $words['narrator']];
             }
             foreach ($panel['lines'] as $line) {
-                $lines[] = [$line['speaker'], $words['lines'][$line['id']] ?? throw new UnexpectedValueException(
+                $said = $words['lines'][$line['id']] ?? throw new UnexpectedValueException(
                     "Tasman text/{$lang}.json has no line {$line['id']}."
-                )];
+                );
+                $lines[] = isset($line['bubble'])
+                    ? [$line['speaker'], $said, [$line['bubble'], $words['bubbles'][$line['id']] ?? throw new UnexpectedValueException(
+                        "Tasman text/{$lang}.json has no balloon for {$line['id']}."
+                    )]]
+                    : [$line['speaker'], $said];
             }
 
             $layers = [];

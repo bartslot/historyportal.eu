@@ -26,4 +26,19 @@ class SceneDialogueCastVoiceTest extends TestCase
         $this->assertSame(1.8, SceneDialogue::readingTime('Daar!'));
         $this->assertSame(5.0, SceneDialogue::readingTime('een twee drie vier vijf zes zeven acht negen tien elf'));
     }
+
+    public function test_a_balloon_shows_while_the_narrator_tells_it(): void
+    {
+        $lines = SceneDialogue::withBubbles([
+            ['speaker' => 'narrator', 'text' => 'De jongen vraagt het.', 'start' => 2.0, 'end' => 6.5,
+                'bubble' => ['speaker' => 'matroos', 'text' => 'Wat betekent dat?']],
+            ['speaker' => 'narrator', 'text' => 'Kort.', 'start' => 7.0, 'end' => 7.4,
+                'bubble' => ['speaker' => 'tasman', 'text' => 'Dat weten we niet.']],
+        ]);
+
+        $this->assertSame(['narrator', 'matroos', 'narrator', 'tasman'], array_column($lines, 'speaker'));
+        $this->assertSame([2.0, 6.5], [$lines[1]['start'], $lines[1]['end']]);
+        $this->assertSame(8.82, $lines[3]['end']);  // a short sentence still leaves the balloon up long enough to read
+        $this->assertArrayNotHasKey('bubble', $lines[0]);
+    }
 }

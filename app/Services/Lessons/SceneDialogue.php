@@ -66,7 +66,7 @@ final class SceneDialogue
             ? $this->record($scene, $lines, $cast, $lang)
             : array_map(fn (array $l): float => self::estimate($l['text']), $lines);
 
-        $timed = self::cue($lines, $durations);
+        $timed = self::withBubbles(self::cue($lines, $durations));
         $config = (array) ($scene->config ?? []);
         $config['lines'] = array_map(fn (array $l): array => $l + [
             'figure' => $figures[$l['speaker']] ?? null,
@@ -115,6 +115,30 @@ final class SceneDialogue
     }
 
     /**
+     * A narrator line can carry a character's balloon: the narrator tells what the character says, and the
+     * balloon is on screen exactly while that sentence is spoken (at least its reading time). The balloon is
+     * text only (Bart, 2026-10-13: "text bubbles have to be shown on the specific moment").
+     *
+     * @param  list<array<string,mixed>>  $timed
+     * @return list<array<string,mixed>>
+     */
+    public static function withBubbles(array $timed): array
+    {
+        $out = [];
+        foreach ($timed as $line) {
+            $bubble = $line['bubble'] ?? null;
+            unset($line['bubble']);
+            $out[] = $line;
+            if ($bubble !== null) {
+                $out[] = ['speaker' => $bubble['speaker'], 'text' => $bubble['text'], 'start' => $line['start'],
+                    'end' => round(max($line['end'], $line['start'] + self::readingTime($bubble['text'])), 3)];
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * @param  array<int,mixed>  $raw
      * @param  array<string,mixed>  $cast
      * @return list<array{speaker:string,text:string}>
@@ -123,13 +147,21 @@ final class SceneDialogue
     {
         $lines = [];
         foreach (array_values($raw) as $i => $line) {
-            [$speaker, $text] = array_values((array) $line) + [null, null];
+            [$speaker, $text, $bubble] = array_values((array) $line) + [null, null, null];
             $speaker = (string) $speaker;
             $text = trim((string) $text);
             if ($text === '' || ($speaker !== 'narrator' && ! isset($cast[$speaker]))) {
                 throw new InvalidArgumentException("Line {$i}: speaker '{$speaker}' is not in the cast, or the line is empty.");
             }
-            $lines[] = ['speaker' => $speaker, 'text' => $text];
+            $entry = ['speaker' => $speaker, 'text' => $text];
+            if ($bubble !== null) {
+                [$who, $said] = array_values((array) $bubble) + [null, null];
+                if ($speaker !== 'narrator' || ! isset($cast[(string) $who]) || trim((string) $said) === '') {
+                    throw new InvalidArgumentException("Line {$i}: a balloon rides on a narrator line and needs a cast speaker and text.");
+                }
+                $entry['bubble'] = ['speaker' => (string) $who, 'text' => trim((string) $said)];
+            }
+            $lines[] = $entry;
         }
 
         return $lines;

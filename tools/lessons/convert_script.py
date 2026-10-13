@@ -13,6 +13,7 @@ HERE = Path(__file__).resolve().parents[2] / 'resources' / 'lessons' / 'tasman'
 SPEAKERS = {
     'JONGE MATROOS': 'matroos', 'BOOTSMAN': 'bootsman', 'TASMAN': 'tasman', 'VISSCHER': 'visscher',
     'GILSEMANS': 'gilsemans', 'VAN DIEMEN': 'vandiemen', 'RAADSHEER': 'raadsheer', 'UITKIJK': 'uitkijk',
+    'MATROOS': 'matroos', 'VERTELLER': 'narrator', 'NARRATOR': 'narrator',
 }
 
 
@@ -43,7 +44,14 @@ def parse(md: str) -> list[dict]:
             who = SPEAKERS.get(m.group(1).strip())
             if who is None:
                 raise ValueError(f'{scene["id"]}{panel["letter"]}: unknown speaker {m.group(1)!r}')
-            panel['lines'].append({'speaker': who, 'text': m.group(2).strip()})
+            text, _, bubble = m.group(2).partition(' | ')   # v5: narrator sentence | SPEAKER: balloon
+            entry = {'speaker': who, 'text': text.strip()}
+            if bubble:
+                b = re.match(r'^([A-ZËÄ ]+): (.+)$', bubble.strip())
+                if not b or b.group(1).strip() not in SPEAKERS:
+                    raise ValueError(f'{scene["id"]}{panel["letter"]}: bad balloon {bubble!r}')
+                entry['bubble'] = {'speaker': SPEAKERS[b.group(1).strip()], 'text': b.group(2).strip()}
+            panel['lines'].append(entry)
     return scenes
 
 
@@ -63,10 +71,14 @@ def main() -> None:
             for i, ln in enumerate(p['lines'], 1):
                 lid = f'{pid}.{i}'
                 text['scenes'][sid]['lines'][lid] = ln['text']
-                line_ids.append({'id': lid, 'speaker': ln['speaker']})
+                ref = {'id': lid, 'speaker': ln['speaker']}
+                if 'bubble' in ln:
+                    text['scenes'][sid].setdefault('bubbles', {})[lid] = ln['bubble']['text']
+                    ref['bubble'] = ln['bubble']['speaker']
+                line_ids.append(ref)
             a = assets.get(pid, {})
             panels.append({'id': pid, 'staging': p['staging'], 'lines': line_ids,
-                           'cast': sorted({ln['speaker'] for ln in line_ids}),
+                           'cast': sorted({ln.get('bubble') or ln['speaker'] for ln in line_ids} - {'narrator'}),
                            'plate': a.get('plate'), 'figures': a.get('figures'), 'ships': a.get('ships', []),
                            'camera': a.get('camera', {'move': 'hold'}), 'entry': a.get('entry', 'cut'),
                            **({'mouths': a['mouths']} if a.get('mouths') else {})})
