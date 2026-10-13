@@ -42,7 +42,7 @@ class LessonExporter
      * @var array<string,list<string>>
      */
     private const COMPOSED_CONFIG_KEYS = [
-        'narration' => ['image_credit', 'image_source_url', 'background_focus', 'bg_embed', 'backdrop'],
+        'narration' => ['image_credit', 'image_source_url', 'background_focus', 'bg_embed', 'backdrop', 'moment', 'moment_default'],
         'video' => ['bg_embed'],
         'gallery' => ['title', 'date_label', 'story', 'fit', 'images'],
         'map' => ['qid', 'fit', 'year', 'projection', 'playback_mode', 'annotations'],
@@ -165,8 +165,39 @@ class LessonExporter
                 $spec['shots'] = $shots;
             }
         }
+        if (is_array($config['moment'] ?? null) && $scene->kind === 'narration') {
+            $spec['moment'] = $this->moment($config['moment'], $shots, $spec['layers'] ?? []);
+        }
 
         return $spec;
+    }
+
+    /**
+     * A panel's moment with its layer ids written back as the spec's asset refs (same order as the
+     * exported `layers`), so the spec reads like one written by hand. An id with no exported layer
+     * stays an id; the composer accepts both.
+     *
+     * @param  array<string,mixed>  $moment
+     * @param  list<array<string,mixed>>  $layers
+     * @return array<string,mixed>
+     */
+    private function moment(array $moment, array $shots, array $layers): array
+    {
+        $refs = [];
+        $built = array_values(array_filter((array) ($shots[0]['layers'] ?? []), fn ($l): bool => isset($l['asset_id'])));
+        foreach ($built as $i => $layer) {
+            if (isset($layers[$i]['asset'])) {
+                $refs[(int) $layer['asset_id']] ??= $layers[$i]['asset'];
+            }
+        }
+        foreach (['react', 'payoff'] as $part) {
+            $id = $moment[$part]['layer'] ?? null;
+            if (is_int($id) && isset($refs[$id])) {
+                $moment[$part]['layer'] = $refs[$id];
+            }
+        }
+
+        return $moment;
     }
 
     /** @return array<string,mixed> */

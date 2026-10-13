@@ -10,6 +10,7 @@ use App\Models\Lesson;
 use App\Models\Scene;
 use App\Models\User;
 use App\Services\Lessons\LibraryLayers;
+use App\Services\Lessons\MomentSpec;
 use App\Services\Lessons\SceneDialogue;
 use App\Services\Lessons\TeamGameSpec;
 use App\Services\Support\AudioEncoder;
@@ -32,6 +33,8 @@ use Throwable;
  *   3d      — narrated scene over a Sketchfab model background
  *   video   — narrated scene over a YouTube/Vimeo background
  *   team    — class-screen team game, kind=game/team; `mode: budget|choose|discuss` (TeamGameSpec)
+ *
+ * A story scene may carry a `moment` (MomentSpec): a power-meter mini game at its stuck point.
  *
  * Imagery is sourced from the paintings corpus + Wikimedia Commons (SceneImageSourcer), narration
  * from Azure TTS. Re-running rebuilds a lesson's scenes from scratch, so a spec edit is the unit of
@@ -82,6 +85,7 @@ class LessonComposer
         // would leave a published lesson half-gone and back in Draft.
         $this->library->preflight($spec);
         $this->preflightCameras($spec);
+        $this->preflightMoments($spec);
 
         $existing = Lesson::withTrashed()->where('teacher_id', $teacher->id)->where('topic', $key)->first();
         $stale = $existing ? $this->sceneCopies($existing) : [];
@@ -188,6 +192,7 @@ class LessonComposer
             $this->library->applyLayers($scene, $sceneSpec, $order);
             $this->applyPassthrough($scene, $sceneSpec);
             $this->applyCamera($scene, $sceneSpec, $order);
+            $this->applyMoment($scene, $sceneSpec, $order, (string) ($spec['language'] ?? 'en'), $narrate);
             $this->nameIdentityAfterChapter($scene);
 
             $this->say("  #{$order} {$type} — ".($scene->location ?: $scene->chapter_name ?: '…'));
@@ -321,6 +326,63 @@ class LessonComposer
                 ShotCamera::entryFromSpec($shot['entry'] ?? null, "{$where}, shot {$j}");
             }
         }
+    }
+
+    /**
+     * A bad moment must fail BEFORE anything is deleted, like a bad camera: an unknown input or payoff,
+     * a moment on a scene that is not a story panel, a layer ref the panel does not carry.
+     *
+     * @param  array<string,mixed>  $spec
+     */
+    private function preflightMoments(array $spec): void
+    {
+        foreach (array_values((array) ($spec['scenes'] ?? [])) as $i => $s) {
+            if (! isset($s['moment'])) {
+                continue;
+            }
+            $where = 'Spec scene #'.($i + 1);
+            if (($s['type'] ?? 'story') !== 'story' || ! is_array($s['moment'])) {
+                throw new \InvalidArgumentException("{$where}: a `moment` sits only on a story scene, as an array.");
+            }
+            $refs = array_map(fn ($l): string => (string) ($l['asset'] ?? ''), (array) ($s['layers'] ?? []));
+            $moment = MomentSpec::resolveLayers($s['moment'], fn (string $ref): ?int => in_array($ref, $refs, true) ? 1 : null, $where);
+            MomentSpec::normalize($moment);
+        }
+    }
+
+    /**
+     * The scene's `moment` into config.moment, with a copy in config.moment_default: what the editor's
+     * "Reset" puts back. Layer refs become the asset ids the panel's layers were built with (same
+     * order as the spec's `layers`). With narration on, the `after` line is recorded in the narrator's
+     * voice; without, the player shows it as a caption.
+     *
+     * @param  array<string,mixed>  $s
+     */
+    private function applyMoment(Scene $scene, array $s, int $order, string $lang, bool $narrate): void
+    {
+        if (! is_array($s['moment'] ?? null)) {
+            return;
+        }
+        $scene->refresh();
+        // The built figures in spec order; a backdrop's cover layer (no asset) sits under them.
+        $built = array_values(array_filter((array) (((array) ($scene->shots ?? []))[0]['layers'] ?? []), fn ($l): bool => isset($l['asset_id'])));
+        $ids = [];
+        foreach (array_values((array) ($s['layers'] ?? [])) as $i => $layer) {
+            $ids[(string) ($layer['asset'] ?? '')] ??= isset($built[$i]['asset_id']) ? (int) $built[$i]['asset_id'] : null;
+        }
+        $moment = MomentSpec::normalize(MomentSpec::resolveLayers(
+            $s['moment'], fn (string $ref): ?int => $ids[$ref] ?? null, "Spec scene #{$order}",
+        ));
+
+        if ($narrate && $moment['after'] !== '') {
+            try {
+                $moment['after_audio'] = '/storage/'.$this->dialogue->narratorClip($scene, $moment['after'], $lang);
+            } catch (Throwable $e) {
+                $this->say('     ! moment after-line narration failed: '.substr($e->getMessage(), 0, 90));
+            }
+        }
+
+        $scene->update(['config' => array_merge((array) ($scene->config ?? []), ['moment' => $moment, 'moment_default' => $moment])]);
     }
 
     /**

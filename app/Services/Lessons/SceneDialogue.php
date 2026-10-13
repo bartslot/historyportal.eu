@@ -225,17 +225,7 @@ final class SceneDialogue
                 $speed = 1.0;
             }
 
-            $cached = "lessons/{$scene->lesson_id}/narration-cache/lines/".sha1("{$provider}|{$voice}|{$speed}|{$spoken}").'.mp3';
-            if (! $disk->exists($cached)) {
-                $audio = $this->tts->generateAudioRaw($spoken, $voice, $speed, $provider)
-                    ?? throw new RuntimeException("No audio for line {$i} ({$line['speaker']}, {$voice}).");
-                // The provider chain falls through silently; a line in someone else's voice is wrong. That
-                // includes the narrator: a refused ElevenLabs voice once fell back to an English default.
-                if ($this->tts->lastProvider() !== $provider) {
-                    throw new RuntimeException("Line {$i} ({$line['speaker']}) came from ".($this->tts->lastProvider() ?? 'nothing').", not {$provider}.");
-                }
-                $disk->put($cached, $audio);
-            }
+            $cached = $this->clip($scene, $spoken, $provider, $voice, $speed, "line {$i} ({$line['speaker']})");
             $clips[] = $disk->path($cached);
             $durations[] = self::probe($disk->path($cached));
         }
@@ -256,6 +246,37 @@ final class SceneDialogue
         ]);
 
         return $durations;
+    }
+
+    /**
+     * One narrator sentence on its own (a power-meter moment's "after" line): the same voice, speed,
+     * lexicon and cache as the narrator's lines in the scene track. Returns the public-disk path.
+     */
+    public function narratorClip(Scene $scene, string $text, string $lang): string
+    {
+        $spoken = PronunciationLexicon::apply($this->tts->prepareSpeechText($text), $lang);
+        ['provider' => $provider, 'voice' => $voice] = GenerateSceneAudio::narratorVoice($scene, $spoken);
+
+        return $this->clip($scene, $spoken, $provider, $voice, (float) ($scene->lesson->narrator?->voice_speed ?? 1.0), 'narrator clip');
+    }
+
+    /** A clip cached by voice + text; synthesised once. Throws when the provider chain fell through. */
+    private function clip(Scene $scene, string $spoken, string $provider, string $voice, float $speed, string $label): string
+    {
+        $disk = Storage::disk('public');
+        $cached = "lessons/{$scene->lesson_id}/narration-cache/lines/".sha1("{$provider}|{$voice}|{$speed}|{$spoken}").'.mp3';
+        if (! $disk->exists($cached)) {
+            $audio = $this->tts->generateAudioRaw($spoken, $voice, $speed, $provider)
+                ?? throw new RuntimeException("No audio for {$label}, {$voice}.");
+            // The provider chain falls through silently; a line in someone else's voice is wrong. That
+            // includes the narrator: a refused ElevenLabs voice once fell back to an English default.
+            if ($this->tts->lastProvider() !== $provider) {
+                throw new RuntimeException(ucfirst($label).' came from '.($this->tts->lastProvider() ?? 'nothing').", not {$provider}.");
+            }
+            $disk->put($cached, $audio);
+        }
+
+        return $cached;
     }
 
     /**
