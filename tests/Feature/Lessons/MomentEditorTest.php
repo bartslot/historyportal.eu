@@ -140,6 +140,29 @@ class MomentEditorTest extends TestCase
         Storage::disk('public')->assertExists(substr($audio, strlen('/storage/')));
     }
 
+    public function test_the_teacher_switches_a_moment_to_the_microphone_and_its_meter_needs_no_words(): void
+    {
+        $scene = $this->compose($this->wind());
+
+        $this->editor($scene)
+            ->set('momentDraft.input', 'silence')
+            ->call('saveMomentDraft')
+            ->assertSee('Quiet for (seconds)')
+            ->set('momentDraft.words.right', [])
+            ->set('momentDraft.goal', 6)
+            ->set('momentDraft.input_options.threshold', 5)
+            ->set('momentDraft.input_options.hold_seconds', 8)
+            ->call('saveMomentDraft')
+            ->set('momentDraft.input', 'telepathy')
+            ->call('saveMomentDraft');
+
+        $moment = $scene->fresh()->config['moment'];
+        $this->assertSame('silence', $moment['input']);
+        $this->assertSame([], $moment['words']['right']);
+        $this->assertSame(6, $moment['goal']);
+        $this->assertEquals(['threshold' => 1.0, 'hold_seconds' => 8.0], $moment['input_options']);
+    }
+
     public function test_the_whole_scene_save_cleans_the_moment_and_never_rewrites_its_default(): void
     {
         $scene = $this->compose($this->wind());

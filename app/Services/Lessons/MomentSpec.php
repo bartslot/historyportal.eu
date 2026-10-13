@@ -29,8 +29,11 @@ use InvalidArgumentException;
  */
 final class MomentSpec
 {
-    /** How the class fills the meter. Only "words" plays today; the rest fall back to it. */
+    /** How the class fills the meter. Rhythm, pitch and motion are not played yet: they play as words. */
     public const INPUTS = ['words', 'loudness', 'blow', 'rhythm', 'silence', 'pitch', 'motion'];
+
+    /** The inputs the microphone plays (resources/js/scene/meter-inputs/sound.js MIC_INPUTS). */
+    public const MIC_INPUTS = ['loudness', 'blow', 'silence'];
 
     /** With teams: one meter the teams fill in turn, or a meter per team. */
     public const TEAM_METERS = ['shared', 'each'];
@@ -94,6 +97,9 @@ final class MomentSpec
 
         $right = self::words($raw['words']['right'] ?? [], self::RIGHT_MAX);
         $teams = self::int($raw['teams'] ?? 0, 0, self::TEAMS_MAX, 0);
+        // A sound meter needs no words: its size is its own, up to as many steps as a word meter.
+        $goalMax = in_array($input, self::MIC_INPUTS, true) ? self::RIGHT_MAX : max(1, count($right));
+        $goalDefault = in_array($input, self::MIC_INPUTS, true) && $right === [] ? 4 : max(1, count($right));
 
         return [
             'enabled' => (bool) ($raw['enabled'] ?? true),
@@ -106,7 +112,7 @@ final class MomentSpec
                 'right' => $right,
                 'wrong' => self::words($raw['words']['wrong'] ?? [], self::WRONG_MAX),
             ],
-            'goal' => self::int($raw['goal'] ?? count($right), 1, max(1, count($right)), max(1, count($right))),
+            'goal' => self::int($raw['goal'] ?? $goalDefault, 1, $goalMax, min($goalDefault, $goalMax)),
             'after' => self::text($raw['after'] ?? '', self::TEXT_MAX),
             'after_audio' => self::url($raw['after_audio'] ?? ''),
             'why' => self::text($raw['why'] ?? '', self::TEXT_MAX),

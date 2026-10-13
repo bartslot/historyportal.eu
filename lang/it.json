@@ -1726,5 +1726,13 @@
     "Quiet now": "Adesso silenzio",
     "Sound level": "Livello del suono",
     "The microphone only listens to loud and soft. Nothing is recorded.": "Il microfono ascolta solo forte e piano. Non viene registrato nulla.",
-    "Tap to fill": "Tocca per riempire"
+    "Tap to fill": "Tocca per riempire",
+    "Blowing (microphone)": "Soffiare (microfono)",
+    "Cheering (microphone)": "Fare il tifo (microfono)",
+    "Keeping quiet (microphone)": "Stare in silenzio (microfono)",
+    "Loudness needed": "Volume necessario",
+    "Meter size (steps)": "Dimensione del misuratore (passi)",
+    "Quiet for (seconds)": "Silenzio per (secondi)",
+    "Shouting the right words (tap)": "Gridare le parole giuste (toccare)",
+    "The class fills the meter by": "La classe riempie il misuratore"
 }
