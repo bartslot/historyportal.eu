@@ -298,11 +298,12 @@ export class PowerMeter {
    *           onProgress?: (p: { levels: number[], ghost: ?number }) => void,
    *           onDone?: (outcome: { skipped: boolean, winner: ?number, team: ?string }) => void }} opts
    */
-  show ({ config, solo = false, best = null, skippable = true, onPhones = null, avoid = () => [], listen = null, listenMotion = null, requestMotion = null, onReact = null, onProgress = null, onDone = null }) {
+  show ({ config, solo = false, best = null, skippable = true, onPhones = null, onWord = null, avoid = () => [], listen = null, listenMotion = null, requestMotion = null, onReact = null, onProgress = null, onDone = null }) {
     this.cfg = readMoment(config || {})
     this._solo = solo
     this._skippable = skippable
     this._onPhones = onPhones
+    this._onWord = onWord
     this._avoid = avoid
     this._spot = null
     this._onReact = onReact
@@ -348,6 +349,23 @@ export class PowerMeter {
     return needsMotionPermission() || this._listeners.requestMotion ? 'permission' : 'asking'
   }
 
+  /**
+   * A team's phone: the words the team has found on any of its phones (indexes into the right
+   * words) show as used here too, and the meter shows the team's fill from the server.
+   */
+  syncTeam (found, fill) {
+    if (!this.state || this.state.done) return
+    const ids = (found || []).map(i => `r${i}`)
+    const added = ids.filter(id => !this.state.used[0].includes(id))
+    this.state = {
+      ...this.state,
+      used: [[...this.state.used[0], ...added], ...this.state.used.slice(1)],
+      fills: [Math.max(0, Math.min(this.cfg.goal, Number(fill) || 0)), ...this.state.fills.slice(1)],
+    }
+    if (added.length) this._render()
+    else this._paint()
+  }
+
   /** The teams' names, in meter order (a race's lanes and crews use them). */
   get names () { return [...this._names] }
 
@@ -385,7 +403,11 @@ export class PowerMeter {
     const { state, result } = press(this.state, this.cfg, word)
     this.state = state
     if (result === 'wrong' && node) shake(node)
-    if (result === 'right' || result === 'full' || result === 'finished') this._onReact?.(meter)
+    if (result === 'right' || result === 'full' || result === 'finished') {
+      this._onReact?.(meter)
+      // A team's phone tells the server which word it found: each counts once per team.
+      if (word.right) this._onWord?.(Number(word.id.slice(1)))
+    }
     if (result === 'full') this._fullTimer = setTimeout(() => this._finish(false), FULL_HOLD_MS)
     if (result !== 'used' && result !== 'done') this._render()
   }

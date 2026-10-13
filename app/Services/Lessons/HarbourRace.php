@@ -170,6 +170,46 @@ final class HarbourRace
         return is_string($token) && $token !== '' && hash_equals($this->teamToken($run, $teamId), $token);
     }
 
+    /**
+     * A right word a team's phone found: one step, once per team. The words are the learning, so four
+     * phones tapping the same word count it once, and a word another phone of the team already
+     * found counts nothing. Each word counting once is its own limit: no speed cap is needed.
+     *
+     * @return array{0: RaceRun, 1: float}
+     */
+    public function pushWord(RaceRun $run, int $teamId, int $word): array
+    {
+        $accepted = 0.0;
+
+        DB::transaction(function () use ($run, $teamId, $word, &$accepted): void {
+            $locked = RaceRun::whereKey($run->id)->with('scene')->lockForUpdate()->first();
+            if ($locked === null || $locked->state !== 'running') {
+                return;
+            }
+            $right = (array) ((($locked->scene->config ?? [])['moment'] ?? [])['words']['right'] ?? []);
+            $team = RaceTeam::where('race_run_id', $locked->id)->whereKey($teamId)->lockForUpdate()->first();
+            $found = array_map('intval', (array) ($team?->words ?? []));
+            if ($team === null || $word < 0 || $word >= count($right) || in_array($word, $found, true)) {
+                return;
+            }
+            $now = Carbon::now();
+            $progress = min((float) $locked->goal, round($team->progress + 1, 3));
+            $accepted = round($progress - $team->progress, 3);
+            $finished = $team->finished_ms === null && $progress >= $locked->goal - 0.001;
+            $team->update([
+                'progress' => $progress,
+                'words' => [...$found, $word],
+                'last_seen_at' => $now,
+                'finished_ms' => $finished ? (int) $locked->started_at->diffInMilliseconds($now) : $team->finished_ms,
+            ]);
+            if ($finished) {
+                $this->decideIfDone($locked);
+            }
+        });
+
+        return [$run->fresh('teams'), max(0.0, $accepted)];
+    }
+
     /** A device that only reads: its team counts as present (at most one write per team per 3 s). */
     public function seen(RaceRun $run, int $teamId): void
     {
@@ -209,6 +249,8 @@ final class HarbourRace
                 'name' => $t->name,
                 'progress' => $t->progress,
                 'finished_ms' => $t->finished_ms,
+                // The right words this team found, so every phone of the team shows them as used.
+                'words' => array_values(array_map('intval', (array) ($t->words ?? []))),
                 'joined' => $t->last_seen_at !== null,
                 'signal' => $t->last_seen_at !== null && $t->last_seen_at->gt(Carbon::now()->subSeconds($signal)),
             ])->values()->all(),
