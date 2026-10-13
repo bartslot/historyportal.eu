@@ -36,7 +36,20 @@ final class JsTranslations
     /** @return array<string, string> */
     public static function forBrowser(): array
     {
-        return array_merge(self::quiz(), self::player(), self::editor(), self::teamGame());
+        return array_merge(self::quiz(), self::player(), self::editor(), self::teamGame(), self::powerMeter());
+    }
+
+    /**
+     * The power-meter moment on a story panel (resources/js/scene/PowerMeter.js).
+     *
+     * @return array<string, string>
+     */
+    private static function powerMeter(): array
+    {
+        return [
+            'Power meter' => __('Power meter'),
+            'Turn' => __('Turn'),
+        ];
     }
 
     /**
