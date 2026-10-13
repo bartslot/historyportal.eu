@@ -11,6 +11,12 @@
     <x-font-switch />
     <x-audio-manifest />
     <x-js-lang />
+    @if ($lesson->titleStyle() === \App\Enums\TitleStyle::Comic)
+        {{-- The comic title poster's subtitle lettering (Figma: Coming Soon). --}}
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Coming+Soon&display=swap">
+    @endif
 </head>
 <body class="h-full overflow-hidden bg-[#020617]">
 {{-- LessonPlayerController switches the locale to the lesson's language when the interface ships
@@ -66,11 +72,13 @@
         // joins this on the same line, because a CC BY image has to say who made it.
         'source_attribution'    => $lesson->sourceAttribution(),
         'title_bg_url'          => $lesson->titleBgUrl(),
-        // A lesson series with its own wordmark (public/lesson-logos/{translation_group}.svg) shows it
-        // on the title screen instead of the plain title's lead-in.
-        'title_logo_url'        => $lesson->translation_group && is_file(public_path("lesson-logos/{$lesson->translation_group}.svg"))
-                                    ? asset("lesson-logos/{$lesson->translation_group}.svg")
-                                    : null,
+        // How the title screen draws the name (TitleStyle, the teacher's choice or the default).
+        // A series wordmark (public/lesson-logos/{translation_group}.svg) replaces the plain title's
+        // lead-in; a comic poster (public/lesson-titles/{translation_group}/poster.json) replaces
+        // the whole picture. Each is null unless it is the style in use.
+        'title_style'           => $lesson->titleStyle()->value,
+        'title_logo_url'        => $lesson->titleStyle() === \App\Enums\TitleStyle::Logo ? $lesson->titleLogoUrl() : null,
+        'title_poster'          => $lesson->titleStyle() === \App\Enums\TitleStyle::Comic ? \App\Support\TitlePoster::for($lesson->translation_group) : null,
         'intro_text'            => $lesson->outline['scene_briefs'][0]['scenePurpose']
                                     ?? $lesson->details
                                     ?? $lesson->topic,
@@ -365,7 +373,7 @@
                 {{-- A line-art scene (backdropShade off) keeps its paper white to the edge: no
                      full-width scrim. Its controls carry their own local plate instead (the Edit
                      button already has one; the logo gets one below). --}}
-                <div x-show="backdropShade" class="pointer-events-none absolute inset-x-0 top-0 h-36 bg-linear-to-b from-black/70 to-transparent"></div>
+                <div x-show="backdropShade && !(phase === 'TITLE_SCREEN' && lesson.title_poster)" class="pointer-events-none absolute inset-x-0 top-0 h-36 bg-linear-to-b from-black/70 to-transparent"></div>
                 <div class="relative flex items-center gap-2.5 px-8 py-3.5 sm:px-12">
                     {{-- title_preview: the editor's title-screen frame shows what students see. --}}
                     @if ($canEdit && ! request()->boolean('title_preview'))
@@ -639,8 +647,26 @@
             x-show="phase === 'TITLE_SCREEN'"
             class="absolute inset-0 pointer-events-auto"
         >
+            {{-- Comic title poster (TitleStyle::Comic): the series' letters with a scene masked into
+                 them, drawn from poster.json by resources/js/title-poster.js over the poster's own
+                 flat colour, instead of the painted backdrop and the wordmark. The subtitle is live
+                 text from the lesson title, so a teacher's edit changes it. --}}
+            <template x-if="lesson.title_poster">
+                <div class="absolute inset-0 overflow-hidden" :style="`background-color: ${lesson.title_poster.background}`"
+                     x-init="$nextTick(() => mountTitlePoster($el))">
+                    <h1 class="sr-only" lang="{{ $contentLang }}" x-text="lesson.title"></h1>
+                    <div data-poster-stage class="title-poster absolute" aria-hidden="true">
+                        <template x-if="lesson.title_poster.subtitle">
+                            <p lang="{{ $contentLang }}" x-text="lesson.title.replace(/^.*?:\s*/, '')"
+                               class="absolute flex items-center justify-center whitespace-nowrap text-center leading-none"
+                               :style="(({ box, size, color }) => `left:${box.x}%;top:${box.y}%;width:${box.w}%;height:${box.h}%;font-size:${size}cqw;color:${color};font-family:'Coming Soon',var(--font-comic)`)(lesson.title_poster.subtitle)"></p>
+                        </template>
+                    </div>
+                </div>
+            </template>
+
             {{-- Cinematic gradients: heavy vignette bottom + sides --}}
-            <div class="absolute inset-0 pointer-events-none"
+            <div x-show="!lesson.title_poster" class="absolute inset-0 pointer-events-none"
                  style="background:
                      linear-gradient(to top,  rgba(2,6,23,1) 0%, rgba(2,6,23,0.7) 30%, transparent 60%),
                      linear-gradient(to right, rgba(2,6,23,0.7) 0%, transparent 40%),
@@ -648,7 +674,7 @@
             </div>
 
             {{-- Animated film grain — heavier than normal (0.12 opacity) --}}
-            <div class="skybox-grain-overlay" style="opacity: 0.22; z-index: 2;"></div>
+            <div x-show="!lesson.title_poster" class="skybox-grain-overlay" style="opacity: 0.22; z-index: 2;"></div>
 
             {{-- Bottom right, on the same edges as the Start button's bar (px-8/12, pb-10/14):
                  the language switch and the join QR, bottoms aligned. --}}
@@ -719,13 +745,13 @@
                 <div @class(['min-w-0 max-w-6xl', 'flex-1' => $titlePos === \App\Enums\TitlePosition::BottomLeft])>
 
                     {{-- Era / region --}}
-                    <p x-show="lesson.era || lesson.region"
+                    <p x-show="!lesson.title_poster && (lesson.era || lesson.region)"
                        x-text="[lesson.era, lesson.region].filter(Boolean).join(' · ').toUpperCase()"
                        class="mb-4 border-l-2 border-primary pl-3 text-xs font-bold tracking-eyebrow text-primary
                               drop-shadow-[0_1px_8px_rgba(0,0,0,1)]"></p>
 
                     {{-- Title --}}
-                    <h1 x-show="!lesson.title_logo_url" lang="{{ $contentLang }}"
+                    <h1 x-show="!lesson.title_logo_url && !lesson.title_poster" lang="{{ $contentLang }}"
                         style="font-size: clamp(2.2rem, 6vw, 7rem);"
                         x-html="lesson.title.includes(': ')
                             ? lesson.title.replace(/^(.*?):\s*(.+)$/, '<span style=\'font-weight:300\'>$1:</span> <span style=\'font-weight:700\'>$2</span>')
@@ -735,13 +761,13 @@
                     ></h1>
 
                     {{-- Intro text — hidden on very small screens --}}
-                    <p x-show="lesson.intro_text" lang="{{ $contentLang }}"
+                    <p x-show="lesson.intro_text && !lesson.title_poster" lang="{{ $contentLang }}"
                        x-text="lesson.intro_text"
                        class="mt-4 text-sm leading-relaxed text-slate-300/75 font-light hidden sm:block
                               drop-shadow-[0_1px_8px_rgba(0,0,0,0.9)]"></p>
 
                     {{-- Meta row --}}
-                    <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 {{ $titleRows }}">
+                    <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 {{ $titleRows }}" :class="lesson.title_poster && 'title-poster-meta'">
                         <span x-show="lesson.grade_level" x-text="lesson.grade_level"
                               class="text-xs font-light text-slate-500"></span>
                         <span x-show="lesson.grade_level && lesson.subject" class="text-slate-700 text-xs">·</span>

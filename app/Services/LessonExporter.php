@@ -86,6 +86,10 @@ class LessonExporter
             $spec['translation_group'] = (string) $lesson->translation_group;
         }
 
+        if ($lesson->title_style !== null) {
+            $spec['title_style'] = $lesson->title_style->value;
+        }
+
         $gameConfig = $this->withoutKeys((array) ($lesson->game_config ?? []), self::GAME_CONFIG_SCRATCH);
         if ($gameConfig !== []) {
             // The voyage CMS edits a per-lesson copy of the route here. Without it a rebuilt voyage

@@ -158,6 +158,12 @@ class LessonComposer
             $lesson->avatar_id = $narrator->id;
         }
 
+        // The title screen style (comic poster / logo / plain), only when the spec says: a spec
+        // that does not leave the teacher's choice alone, and null there means the default.
+        if (array_key_exists('title_style', $spec)) {
+            $lesson->title_style = $spec['title_style'] === null ? null : \App\Enums\TitleStyle::from((string) $spec['title_style']);
+        }
+
         if (! empty($spec['game_config'])) {
             // A voyage lesson keeps its own edited copy of the route here, so a rebuild that
             // ignored it would quietly snap the ship back to the catalogue's default track.

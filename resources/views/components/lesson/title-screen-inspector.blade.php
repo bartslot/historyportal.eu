@@ -15,6 +15,26 @@
                            :chosen="$lesson->title_image"
                            select="selectTitleImage" reset="resetTitleImage" />
 
+    {{-- How the title is drawn. Comic and Logo show only when the series has that artwork. --}}
+    @php $styles = $lesson->availableTitleStyles(); $style = $lesson->titleStyle(); @endphp
+    @if (count($styles) > 1)
+        <div class="border-t border-slate-700/50 pt-4" data-title-style="{{ $style->value }}">
+            <div class="flex items-center justify-between">
+                <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Title style') }}</span>
+                @if ($lesson->title_style !== null)
+                    <button type="button" wire:click="resetTitleStyle" class="text-2xs text-slate-500 transition-colors hover:text-primary">{{ __('Reset to default') }}</button>
+                @endif
+            </div>
+            <div class="join mt-2" role="radiogroup" aria-label="{{ __('Title style') }}">
+                @foreach ($styles as $case)
+                    <button type="button" role="radio" aria-checked="{{ $case === $style ? 'true' : 'false' }}"
+                            wire:click="setTitleStyle('{{ $case->value }}')"
+                            @class(['btn btn-sm join-item', 'btn-primary' => $case === $style])>{{ $case->label() }}</button>
+                @endforeach
+            </div>
+        </div>
+    @endif
+
     {{-- Where the title sits: a small frame per preset with the block drawn in its place. --}}
     <div class="border-t border-slate-700/50 pt-4">
         <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Title position') }}</span>
