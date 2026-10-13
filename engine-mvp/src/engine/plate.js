@@ -2,7 +2,8 @@
 // in place of the procedural silhouette rings, with its horizon at the camera's height. The same picture is
 // projected on the floor from that camera, so painted ground or sea reaches the actors' feet; the studio floor
 // turns shadow-only. Ported from feat/rider-look's rider-test.js (2026-10-09) so every scene can use it.
-//   window.__mvp.setPlate(url, { horizon })   horizon = how far UP the picture its horizon line sits (0..1)
+//   window.__mvp.setPlate(url, { horizon, fit })   horizon = how far UP the picture its horizon line sits (0..1);
+//     fit 'cover' (default) fills any view, 'view' = painted for this camera: its height = the view's height
 //   ?plate=<url>&horizon=0.65                 the same from the address bar
 /* global BABYLON */
 'use strict';
@@ -11,6 +12,16 @@
   const mvp = window.__mvp;
   const PLATE_DIST = 28, PLATE_W = 42;   // wide enough that the painted ground reaches the bottom of a low camera
   const DEFAULT_HORIZON = 0.55;
+  const COVER_ASPECT = 2.5, COVER_MARGIN = 1.1;   // the card fills the view of a stage up to 2.5:1, with 10 % to spare
+
+  /** Card size: at least PLATE_W, and large enough that no edge shows above or beside a level camera. */
+  function cardSize(cam, imgAspect, horizon, fit, dist) {
+    // 'view': a plate painted FOR this camera (a clean plate of the target panel) fills its view height exactly
+    if (fit === 'view') { const h = 2 * dist * Math.tan(cam.fov / 2); return { w: h * imgAspect, h }; }
+    const half = dist * Math.tan(cam.fov / 2) * COVER_MARGIN;   // half the view's height at the card
+    const h = Math.max(PLATE_W / imgAspect, half / (1 - horizon), (half * COVER_ASPECT) / imgAspect);
+    return { w: h * imgAspect, h };
+  }
   const FLOOR_PROJ_M = 120;
   const GROUND_BAND_V = 0.18, GROUND_BAND_M = 14;   // bottom 18 % of the plate = bare ground; one mirror tile per 14 m
   const PLATE_NAMES = ['backdrop-plate', 'backdrop-floor'];
@@ -90,7 +101,7 @@
   }
 
   /** Put a painted plate behind the scene, placed for the camera as it stands now (aim the camera first). */
-  function setPlate(url, { horizon = DEFAULT_HORIZON } = {}) {
+  function setPlate(url, { horizon = DEFAULT_HORIZON, fit = 'cover' } = {}) {
     PLATE_NAMES.forEach((n) => { const old = mvp.scene.getMeshByName(n); if (old) old.dispose(false, true); });
     hideRings();
     const cam = mvp.camera;
@@ -98,18 +109,20 @@
     const tex = new BABYLON.Texture(url, mvp.scene, false, true, BABYLON.Texture.TRILINEAR_SAMPLINGMODE,
       () => {
         const { width, height } = tex.getSize();
-        const h = PLATE_W * height / width;
-        const plate = BABYLON.MeshBuilder.CreatePlane('backdrop-plate', { width: PLATE_W, height: h }, mvp.scene);
+        const view = cam.getTarget().subtract(cam.position); view.y = 0;
+        const dist = view.length() + PLATE_DIST;   // the card stands PLATE_DIST beyond the camera's aim point
+        view.normalize();
+        const { w, h } = cardSize(cam, width / height, horizon, fit, dist);
+        const plate = BABYLON.MeshBuilder.CreatePlane('backdrop-plate', { width: w, height: h }, mvp.scene);
         const m = new BABYLON.StandardMaterial('backdrop-plate', mvp.scene);
         m.emissiveTexture = tex; m.disableLighting = true; m.backFaceCulling = false;
         plate.material = m;
         plate.isPickable = false;
         plate.metadata = { noGBuffer: true };
-        const view = cam.getTarget().subtract(cam.position); view.y = 0; view.normalize();
-        plate.position = cam.getTarget().add(view.scale(PLATE_DIST));
+        plate.position = cam.position.add(view.scale(dist));
         plate.position.y = cam.position.y - horizon * h + h / 2;   // the painted horizon at the camera's height
         plate.lookAt(plate.position.add(view));
-        projectOnFloor(cam, plate, tex, PLATE_W, h);
+        projectOnFloor(cam, plate, tex, w, h);
         shadowOnlyFloor();
       },
       (msg) => console.error('plate: could not load', url, msg));
