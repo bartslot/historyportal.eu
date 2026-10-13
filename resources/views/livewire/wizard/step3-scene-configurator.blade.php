@@ -1054,6 +1054,7 @@
                     <x-lesson.scene-inspector-video :scene="$sceneModel" />
                 @else
                     <x-lesson.scene-inspector-narration :scene="$sceneModel" />
+                    <x-lesson.scene-inspector-moment :draft="$momentDraft" :is-default="$this->momentIsDefault()" :layers="$this->momentLayers()" />
                 @endif
 
                 @if ($sceneModel->takesTeacherEstimate())
