@@ -20,12 +20,19 @@ use Illuminate\View\View;
  */
 class RaceDeviceController extends Controller
 {
+    /** The interface languages (lang/*.json + English). */
+    private const UI_LANGUAGES = ['en', 'nl', 'de', 'fr', 'it'];
+
     public function __construct(private readonly HarbourRace $race) {}
 
     public function show(string $code): View
     {
-        $run = RaceRun::where('code', strtoupper($code))->with(['teams', 'scene'])->firstOrFail();
+        $run = RaceRun::where('code', strtoupper($code))->with(['teams', 'scene', 'lesson'])->firstOrFail();
         $moment = ($run->scene->config ?? [])['moment'] ?? [];
+        // A pupil's phone speaks the lesson's language, not whatever the visitor's browser last had.
+        if (in_array($run->lesson->language, self::UI_LANGUAGES, true)) {
+            app()->setLocale($run->lesson->language);
+        }
 
         return view('race.controller', [
             'run' => $run,

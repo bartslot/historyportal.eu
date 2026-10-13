@@ -198,5 +198,8 @@ class HarbourRaceServerTest extends TestCase
         $this->assertStringContainsString('data-race-device', $html);
         $this->assertStringContainsString('"name":"Team 1"', $html);
         $this->get(route('race.device', 'ZZZZ'))->assertNotFound();
+
+        $this->lesson->update(['language' => 'nl']);
+        $this->get(route('race.device', $race['code']))->assertSee('lang="nl"', false)->assertSee('In welk team zit jij?');
     }
 }
