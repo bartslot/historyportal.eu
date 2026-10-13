@@ -931,9 +931,18 @@ Alpine.data('lessonGame', (lesson) => ({
           motion = { panX: kb.toX - kb.fromX, panY: kb.toY - kb.fromY, zoom }
         }
 
-        this._destroyParallax()
+        // A panel that slides, wipes or dissolves in keeps the one before it underneath meanwhile.
+        this._destroyParallax(_parallaxMod.entryLingerMs(shot.entry))
+        // No camera on this panel: the figures go back to rest (the last panel's may have moved them).
+        if (!shot.camera) this._artLayer?.setCamera(null)
         _parallax = new _parallaxMod.ParallaxScene(host)
         _parallax.show({
+          // The panel's own camera move and entry (camera.js). The figures in the clipart overlay
+          // get the same frame, so they stay on their spot of the plate through the move.
+          camera: shot.camera || null,
+          entry: shot.entry || null,
+          entryAlong: [document.getElementById('lesson-voyage-art')],
+          onCameraFrame: (frameFor) => this._artLayer?.setCamera(frameFor),
           bgUrl: shot.bg_url,
           heroUrl: shot.hero_url || null,
           // Multiplane shots (E3c): ordered back→front, each {url, depth, kind, …}.
@@ -984,9 +993,11 @@ Alpine.data('lessonGame', (lesson) => ({
       _diorama = null
     },
 
-    _destroyParallax () {
+    _destroyParallax (lingerMs = 0) {
+      // The figures leave the camera pose with the picture, unless they stay under a slide/wipe.
+      if (!lingerMs) this._artLayer?.setCamera(null)
       if (!_parallax) return
-      try { _parallax.destroy() } catch (_) { /* already detached */ }
+      try { _parallax.destroy(lingerMs) } catch (_) { /* already detached */ }
       _parallax = null
     },
 
@@ -1002,6 +1013,8 @@ Alpine.data('lessonGame', (lesson) => ({
         bg_url: shot.bg_url ?? null,
         hero_url: shot.hero_url ?? null,
         layers: shot.layers ?? null,
+        camera: shot.camera ?? null,
+        entry: shot.entry ?? null,
         time: i === 0 ? 0 : resolveAnchorTime(scene.alignment, shot.anchor_sentence)
       }))
     },

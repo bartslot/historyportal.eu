@@ -202,6 +202,15 @@
                             'breeze' => __('Breeze'),
                             'bob' => __('Bob'),
                             'flutter' => __('Flutter'),
+                            'swell' => __('Sea swell'),
+                            'roll' => __('Roll'),
+                            'billow' => __('Billow'),
+                            'rain' => __('Rain'),
+                            'flash' => __('Lightning'),
+                            'spray' => __('Spray'),
+                            'flicker' => __('Flicker'),
+                            'rise' => __('Smoke'),
+                            'oars' => __('Oars'),
                         ] as $mv => $ml)
                             <option value="{{ $mv }}" @selected($val('ambient', 'none') === $mv)>{{ $ml }}</option>
                         @endforeach
@@ -216,6 +225,15 @@
                 <x-ui.slider-row :label="__('Amount')" :min="0" :max="2" :step="0.05"
                                  :value="$val('ambient_amount', 1)" :display="rtrim(rtrim(number_format((float) $val('ambient_amount', 1), 2), '0'), '.')" unit="×" :default="1"
                                  :on-input="$live('ambient_amount')" :on-change="$save('ambient_amount')" />
+                {{-- Back to the motion's defaults (speed 1, amount 1); the mode itself stays. --}}
+                <div class="flex justify-end">
+                    <button type="button" wire:click="resetLayerMotion({{ $aid }})"
+                            data-tooltip="{{ __('Speed and amount back to their defaults') }}"
+                            class="btn btn-ghost btn-xs rounded-full">
+                        <x-icons.arrow-uturn-left class="h-3.5 w-3.5" />
+                        {{ __('Reset') }}
+                    </button>
+                </div>
             </div>
         </div>
     </x-ui.settings-section>

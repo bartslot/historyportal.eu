@@ -517,6 +517,44 @@ export class ArtworkOverlay {
   }
 
   /**
+   * The shot camera (camera.js), on the figures: `frameFor(depth)` gives a plane's translate (% of
+   * the stage) and its scale about the stage centre — the same frame ParallaxScene puts on the
+   * backdrop, so a figure stays on its spot of the plate through a push, pan or shake. A scale
+   * about the stage centre is the node's own scale plus a move of its centre by (centre - middle)
+   * x (scale - 1). null puts every layer back at rest.
+   */
+  setCamera(frameFor) {
+    this._cameraFrame = frameFor || null
+    // Called every frame of a move: the host box and the nodes are looked up once, not per frame.
+    // The box is re-read when the stage resizes, the nodes when _render rebuilds them.
+    if (!this._camRect) {
+      this._camRect = this.host.getBoundingClientRect()
+      if (!this._camResize && typeof ResizeObserver === 'function') {
+        this._camResize = new ResizeObserver(() => { this._camRect = null })
+        this._camResize.observe(this.host)
+      }
+    }
+    if (!this._camNodes) {
+      this._camNodes = new Map([...this.host.querySelectorAll('[data-layer-id]')].map(n => [n.dataset.layerId, n]))
+    }
+    const rect = this._camRect
+    for (const item of this._layers) {
+      const el = this._camNodes.get(artObjId(item.asset_id))
+      if (!el || el === this._dragNode) continue   // never fight the layer being dragged
+      if (!frameFor) {
+        el.style.transform = this._transform(item)
+        continue
+      }
+      const f = frameFor(item.depth)
+      const px = (n) => Math.round(n * 100) / 100
+      const dx = px((f.translateX / 100) * rect.width + ((item.x - 50) / 100) * rect.width * (f.scale - 1))
+      const dy = px((f.translateY / 100) * rect.height + ((item.y - 50) / 100) * rect.height * (f.scale - 1))
+      el.style.transform = this._transform(item, dx, dy) + (f.scale !== 1 ? ` scale(${f.scale})` : '')
+      this._syncChrome(item)
+    }
+  }
+
+  /**
    * Run every layer's entrance, as configured in the Animate tab.
    *
    * Called when a scene starts — by the player on playback, and by the editor when the teacher
@@ -674,12 +712,15 @@ export class ArtworkOverlay {
 
   _render() {
     this.host.innerHTML = ''
+    this._camNodes = null   // the camera's node map points at the nodes just thrown away
     for (const item of this._layers) {
       this.host.appendChild(this._node(item))
       if (!this.readonly) this.host.appendChild(this._chrome(item))
     }
     for (const item of this._layers) this._syncChrome(item)
     this._applySelection()
+    // A finished camera move asks for no more frames; rebuilt nodes still take its last pose.
+    if (this._cameraFrame) this.setCamera(this._cameraFrame)
   }
 
   /**

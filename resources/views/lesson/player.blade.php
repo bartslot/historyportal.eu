@@ -115,6 +115,10 @@
                         'kind'   => in_array($l['kind'] ?? 'cover', ['cover', 'figure', 'strip'], true) ? ($l['kind'] ?? 'cover') : 'cover',
                         'scale'  => (float) ($l['scale'] ?? 1),
                         'height' => isset($l['height']) ? (float) $l['height'] : null,
+                        // Optional explicit width (the editor's unlocked aspect). The wizard payload
+                        // already carried it; without it here a stretched sea strip played narrower
+                        // in class than the teacher set it.
+                        'width'  => isset($l['width']) ? (float) $l['width'] : null,
                         'sway'   => (bool) ($l['sway'] ?? false),
                         // Artistic controls (E3c-b): blur px, opacity 0-1, blend mode, wobble 0-2, z override.
                         'blur'    => isset($l['blur']) ? (float) $l['blur'] : null,
@@ -139,6 +143,9 @@
                         ...\App\Services\Support\LayerAmbient::payload($l),
                     ])->filter(fn($l) => $l['url'] || $l['embed'])->values()->all() ?: null,
                     'anchor_sentence' => $shot['anchor_sentence'] ?? null,
+                    // The panel's own camera move and entry (resources/js/scene/camera.js).
+                    'camera' => \App\Services\Support\ShotCamera::payload($shot['camera'] ?? null),
+                    'entry' => \App\Services\Support\ShotCamera::entry($shot['entry'] ?? null),
                     // Keep a shot with EITHER a background image OR clipart layers — a voyage scene's
                     // shot is layer-only (the map is the backdrop), so it has no image_url.
                 ])->filter(fn($shot) => $shot['image_url'] || !empty($shot['layers']))->values()->all() ?: null,

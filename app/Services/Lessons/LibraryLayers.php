@@ -8,6 +8,7 @@ use App\Models\Lesson;
 use App\Models\Scene;
 use App\Models\SvgAsset;
 use App\Services\SceneLayers;
+use App\Services\Support\LayerAmbient;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -94,7 +95,7 @@ class LibraryLayers
      * (SceneLayers::COVER_DEPTH) the floor slid under their feet and every figure looked afloat.
      * Clouds and birds keep their own lower depth and still parallax.
      */
-    private const COVER_DEPTH = 1.0;
+    public const COVER_DEPTH = 1.0;
 
     /**
      * What a line-art backdrop sets in the scene config. Ink on white paper: the player's backdrop
@@ -201,6 +202,10 @@ class LibraryLayers
             if ($unknown !== []) {
                 throw new \InvalidArgumentException("{$where}, layer {$i}: unknown key(s) ".implode(', ', $unknown).'.');
             }
+            // A misspelt motion would otherwise be stored and play as no motion at all.
+            if (isset($entry['ambient']) && ! in_array($entry['ambient'], LayerAmbient::MODES, true)) {
+                throw new \InvalidArgumentException("{$where}, layer {$i}: ambient must be one of ".implode(', ', LayerAmbient::MODES).'.');
+            }
             $asset = $this->libraryAsset((string) ($entry['asset'] ?? ''), $where);
             if ($upload) {
                 $this->cdn->ensure($asset);   // preflight only resolves; the real build uploads
@@ -285,7 +290,8 @@ class LibraryLayers
         $shot = count($shots) === 1 ? (array) $shots[0] : [];
         $layers = (array) ($shot['layers'] ?? []);
         $frame = $imagePath ? ['order' => 0, 'image_path' => $imagePath] : ['order' => 0];
-        if ($layers === [] || array_diff_key($shot, ['layers' => true]) != $frame) {
+        // The camera and entry are spec keys of their own (LessonExporter writes them back).
+        if ($layers === [] || array_diff_key($shot, ['layers' => true, 'camera' => true, 'entry' => true]) != $frame) {
             return null;
         }
         if ($imagePath) {

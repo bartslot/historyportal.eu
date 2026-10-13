@@ -9,6 +9,7 @@ use App\Models\QuizQuestion;
 use App\Models\Scene;
 use App\Services\Lessons\LibraryLayers;
 use App\Services\Support\PhpSpecPrinter;
+use App\Services\Support\ShotCamera;
 
 /**
  * Turn a lesson in the database back into an authored spec — the inverse of {@see LessonComposer}.
@@ -155,6 +156,11 @@ class LessonExporter
             $layers = $this->library->specLayers($shots, $scene->image_path);
             if ($layers !== null) {
                 $spec['layers'] = $layers;
+                // The panel's camera and entry travel as the spec's own keys (LessonComposer::applyCamera).
+                $spec += array_filter([
+                    'camera' => ShotCamera::payload($shots[0]['camera'] ?? null),
+                    'entry' => ShotCamera::entry($shots[0]['entry'] ?? null),
+                ]);
             } else {
                 $spec['shots'] = $shots;
             }

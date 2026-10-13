@@ -5,14 +5,20 @@ declare(strict_types=1);
 namespace App\Services\Support;
 
 /**
- * Ambient layer motion: drift (clouds), breeze (trees, banners), bob (boats), flutter (birds).
+ * Ambient layer motion: drift (clouds), breeze (trees, banners), bob (boats), flutter (birds), and
+ * the web-comic sea: swell (a scrolling sea strip), roll (a ship pitching about its waterline),
+ * billow (flags, sails), rain, flash (lightning), spray, flicker (lanterns), rise (smoke), oars.
  *
  * The one place the vocabulary and ranges live on the server. resources/js/scene/ambient.js plays
- * them; the editor whitelist and both layer serializers (wizard + player) read them from here.
+ * them (its PERIOD_S keys are this list; LayerAmbientTest holds the two together); the editor
+ * whitelist, both layer serializers (wizard + player) and the lesson composer read them from here.
  */
 final class LayerAmbient
 {
-    public const MODES = ['none', 'drift', 'breeze', 'bob', 'flutter'];
+    public const MODES = [
+        'none', 'drift', 'breeze', 'bob', 'flutter',
+        'swell', 'roll', 'billow', 'rain', 'flash', 'spray', 'flicker', 'rise', 'oars',
+    ];
 
     /** Speed multiplier on each mode's base period. */
     public const SPEED = [0.25, 3];
