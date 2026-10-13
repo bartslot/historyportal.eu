@@ -7,8 +7,10 @@ namespace App\Models;
 use App\Enums\LessonStatus;
 use App\Enums\NarrativeFramework;
 use App\Enums\TitlePosition;
+use App\Enums\TitleStyle;
 use App\Models\Concerns\BelongsToTeacher;
 use App\Support\MediaUrl;
+use App\Support\TitlePoster;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -51,6 +53,7 @@ class Lesson extends Model
         'title_image',
         'title_position',
         'show_qr',
+        'title_style',
         'poster_image',
         'subject',
         'grade_level',
@@ -165,6 +168,7 @@ class Lesson extends Model
             'background_music' => 'boolean',
             'title_position' => TitlePosition::class,
             'show_qr' => 'boolean',
+            'title_style' => TitleStyle::class,
         ];
     }
 
@@ -494,7 +498,39 @@ class Lesson extends Model
         return file_exists(public_path("flags/{$qid}.png")) ? asset("flags/{$qid}.png") : null;
     }
 
-    /** Wikipedia lead image used as the lesson title-screen background (catalog lessons). */
+    /** The series wordmark (public/lesson-logos/{translation_group}.svg), when there is one. */
+    public function titleLogoUrl(): ?string
+    {
+        $group = (string) $this->translation_group;
+
+        return $group !== '' && preg_match('/^[a-z0-9][a-z0-9-]*$/', $group) && is_file(public_path("lesson-logos/{$group}.svg"))
+            ? asset("lesson-logos/{$group}.svg")
+            : null;
+    }
+
+    /**
+     * The title styles this lesson can show: the comic poster and the logo need the series'
+     * artwork, the plain title always works.
+     *
+     * @return list<TitleStyle>
+     */
+    public function availableTitleStyles(): array
+    {
+        return array_values(array_filter([
+            TitlePoster::exists($this->translation_group) ? TitleStyle::Comic : null,
+            $this->titleLogoUrl() !== null ? TitleStyle::Logo : null,
+            TitleStyle::Plain,
+        ]));
+    }
+
+    /** The style the title screen shows: the teacher's choice while it is possible, else the richest one. */
+    public function titleStyle(): TitleStyle
+    {
+        $available = $this->availableTitleStyles();
+
+        return in_array($this->title_style, $available, true) ? $this->title_style : $available[0];
+    }
+
     /** The title screen's picture: the teacher's choice, else the automatic lead image. */
     public function titleBgUrl(): ?string
     {

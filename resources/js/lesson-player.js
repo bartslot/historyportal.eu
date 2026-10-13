@@ -45,6 +45,7 @@ import { captionVisible } from './scene/SceneOverlay.js'
 import { gradientCss } from './scene/background-gradient.js'
 import { t } from './i18n.js'
 import { mountBigCountdown } from './big-countdown.js'
+import { mountTitlePoster as mountPoster } from './title-poster.js'
 
 /**
  * Where the drawing in an image starts and ends across, as fractions of its width ([0, 1] when it
@@ -2608,6 +2609,12 @@ Alpine.data('lessonGame', (lesson) => ({
      * the ink, not the image box (a wordmark file has room around its letters). Again once the
      * lettering font has loaded and whenever the logo's box changes size.
      */
+    /** The comic title poster (TitleStyle::Comic) into its host; see resources/js/title-poster.js. */
+    mountTitlePoster (host) {
+      this._stopTitlePoster?.()
+      this._stopTitlePoster = mountPoster(host, host.querySelector('[data-poster-stage]'), this.lesson.title_poster)
+    },
+
     fitSubtitle (el) {
       const box = el.parentElement
       const logo = box.querySelector('img')

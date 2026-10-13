@@ -53,11 +53,14 @@ return function (string $lang, ?array $text = null): array {
             foreach ($panel['ships'] as $ship) {
                 if ($asset = $ref($ship['file'], 'props')) {
                     // Boats sit IN the water (blend-into-scene boat preset).
-                    $layers[] = ['asset' => $asset, 'anim' => 'fade',
-                        'waterline' => 0.15, 'reflection' => 0.35, 'contact_shadow' => 0.4, 'color_match' => 0.35,
-                        // Foam where the hull meets the water; the wake shows progress (0 = at anchor).
-                        'foam' => 0.5, 'speed' => (float) ($ship['speed'] ?? 0)]
-                        + array_intersect_key($ship, array_flip(['x', 'y', 'height', 'depth', 'ambient', 'ambient_amount']))
+                    // The ship's own values (assets.json) first: `+` keeps the left key, so they win over the preset.
+                    $layers[] = array_intersect_key($ship, array_flip(['x', 'y', 'height', 'depth', 'ambient', 'ambient_amount', 'waterline']))
+                        + ['asset' => $asset, 'anim' => 'fade',
+                            // Waterline = share of the picture under the sea: the painted hulls run to the keel,
+                            // so 0.07 puts the sea at the lower hull curve (0.15 drowned the gun ports).
+                            'waterline' => 0.07, 'reflection' => 0.35, 'contact_shadow' => 0.4, 'color_match' => 0.35,
+                            // Foam where the hull meets the water; the wake shows progress (0 = at anchor).
+                            'foam' => 0.5, 'speed' => (float) ($ship['speed'] ?? 0)]
                         // Art painted facing left is mirrored, so its bow wave sits at the bow.
                         + (! empty($ship['flip']) ? ['flip_x' => true] : []);
                 }

@@ -6,17 +6,16 @@
       "node_modules/three/build/three.module.js"
     ]
   },
-  "_PowerMeter-Dp5qzz2S.js": {
-    "file": "assets/PowerMeter-Dp5qzz2S.js",
+  "_PowerMeter-DFp2LVTu.js": {
+    "file": "assets/PowerMeter-DFp2LVTu.js",
     "name": "PowerMeter",
     "isDynamicEntry": true,
     "imports": [
       "__commonjsHelpers-DqutJMZx.js",
-      "_big-countdown-B6_8fyyK.js",
+      "_ambient-DSULKVxK.js",
       "_dom-DByCrY2T.js",
       "resources/js/lesson-player.js",
       "resources/js/scene/TeamGame.js",
-      "_ambient-uEDWrar1.js",
       "resources/js/scene/card-place.js"
     ],
     "dynamicImports": [
@@ -31,20 +30,16 @@
     "file": "assets/_commonjsHelpers-DqutJMZx.js",
     "name": "_commonjsHelpers"
   },
-  "_ambient-uEDWrar1.js": {
-    "file": "assets/ambient-uEDWrar1.js",
-    "name": "ambient"
-  },
-  "_animations-Bw164z87.js": {
-    "file": "assets/animations-Bw164z87.js",
-    "name": "animations",
+  "_ambient-DSULKVxK.js": {
+    "file": "assets/ambient-DSULKVxK.js",
+    "name": "ambient",
     "imports": [
       "_easing-ChRyoIXo.js"
     ]
   },
-  "_big-countdown-B6_8fyyK.js": {
-    "file": "assets/big-countdown-B6_8fyyK.js",
-    "name": "big-countdown",
+  "_animations-Bw164z87.js": {
+    "file": "assets/animations-Bw164z87.js",
+    "name": "animations",
     "imports": [
       "_easing-ChRyoIXo.js"
     ]
@@ -112,7 +107,7 @@
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-Bril2Nwx.css",
+    "file": "assets/app-BfUzYevE.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -121,7 +116,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-CiodrXOd.js",
+    "file": "assets/app-L7zWFRok.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -186,14 +181,14 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-cowO9xv7.js",
+    "file": "assets/lesson-player-D0wILzH3.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
     "imports": [
       "__commonjsHelpers-DqutJMZx.js",
       "resources/js/gallery-scene.js",
-      "_big-countdown-B6_8fyyK.js",
+      "_ambient-DSULKVxK.js",
       "_animations-Bw164z87.js",
       "_easing-ChRyoIXo.js"
     ],
@@ -209,20 +204,19 @@
       "resources/js/scene/ArtworkOverlay.js",
       "resources/js/scene/QuizOverlay.js",
       "resources/js/scene/TeamGame.js",
-      "_PowerMeter-Dp5qzz2S.js",
+      "_PowerMeter-DFp2LVTu.js",
       "resources/js/scene/card-place.js",
       "resources/js/scene/race-stage.js"
     ]
   },
   "resources/js/scene/ArtworkOverlay.js": {
-    "file": "assets/ArtworkOverlay-DttsWKOV.js",
+    "file": "assets/ArtworkOverlay-Dt9zJdRX.js",
     "name": "ArtworkOverlay",
     "src": "resources/js/scene/ArtworkOverlay.js",
     "isDynamicEntry": true,
     "imports": [
       "_animations-Bw164z87.js",
-      "_big-countdown-B6_8fyyK.js",
-      "_ambient-uEDWrar1.js",
+      "_ambient-DSULKVxK.js",
       "_easing-ChRyoIXo.js"
     ]
   },
@@ -242,25 +236,24 @@
     "isDynamicEntry": true
   },
   "resources/js/scene/ParallaxScene.js": {
-    "file": "assets/ParallaxScene-DXFSQNxD.js",
+    "file": "assets/ParallaxScene-DYU6TQLT.js",
     "name": "ParallaxScene",
     "src": "resources/js/scene/ParallaxScene.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-B6_8fyyK.js",
-      "_ambient-uEDWrar1.js",
+      "_ambient-DSULKVxK.js",
       "_camera-BlhbLbjq.js",
       "_easing-ChRyoIXo.js",
       "_animations-Bw164z87.js"
     ]
   },
   "resources/js/scene/QuizOverlay.js": {
-    "file": "assets/QuizOverlay-D_ufbYyV.js",
+    "file": "assets/QuizOverlay-CptKfPnI.js",
     "name": "QuizOverlay",
     "src": "resources/js/scene/QuizOverlay.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-B6_8fyyK.js",
+      "_ambient-DSULKVxK.js",
       "_easing-ChRyoIXo.js"
     ]
   },
@@ -274,12 +267,12 @@
     ]
   },
   "resources/js/scene/TeamGame.js": {
-    "file": "assets/TeamGame-BkbO0EtP.js",
+    "file": "assets/TeamGame-CneK_pwq.js",
     "name": "TeamGame",
     "src": "resources/js/scene/TeamGame.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-B6_8fyyK.js",
+      "_ambient-DSULKVxK.js",
       "_dom-DByCrY2T.js",
       "resources/js/lesson-player.js",
       "_easing-ChRyoIXo.js",
@@ -310,12 +303,12 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-BDr_fcbg.js",
+    "file": "assets/index-By8D420e.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-B6_8fyyK.js",
+      "_ambient-DSULKVxK.js",
       "resources/js/scene/QuizOverlay.js",
       "resources/js/scene/TextOverlayLayer.js",
       "resources/js/scene/ArtworkOverlay.js",
@@ -325,7 +318,6 @@
       "node_modules/three/build/three.module.js",
       "_easing-ChRyoIXo.js",
       "_animations-Bw164z87.js",
-      "_ambient-uEDWrar1.js",
       "_GLTFLoader-Et3HGvr1.js"
     ],
     "dynamicImports": [
@@ -336,21 +328,20 @@
     ]
   },
   "resources/js/scene/meter-inputs/mic.js": {
-    "file": "assets/mic-DI_yB8SN.js",
+    "file": "assets/mic-DZa3alU1.js",
     "name": "mic",
     "src": "resources/js/scene/meter-inputs/mic.js",
     "isDynamicEntry": true,
     "imports": [
-      "_PowerMeter-Dp5qzz2S.js",
+      "_PowerMeter-DFp2LVTu.js",
       "__commonjsHelpers-DqutJMZx.js",
-      "_big-countdown-B6_8fyyK.js",
+      "_ambient-DSULKVxK.js",
       "_easing-ChRyoIXo.js",
       "_dom-DByCrY2T.js",
       "resources/js/lesson-player.js",
       "resources/js/gallery-scene.js",
       "_animations-Bw164z87.js",
       "resources/js/scene/TeamGame.js",
-      "_ambient-uEDWrar1.js",
       "resources/js/scene/card-place.js"
     ]
   },
@@ -361,7 +352,7 @@
     "isDynamicEntry": true
   },
   "resources/js/scene/race-stage.js": {
-    "file": "assets/race-stage-B8WpEchS.js",
+    "file": "assets/race-stage-BdB06QHO.js",
     "name": "race-stage",
     "src": "resources/js/scene/race-stage.js",
     "isDynamicEntry": true,
@@ -370,7 +361,7 @@
       "resources/js/lesson-player.js",
       "__commonjsHelpers-DqutJMZx.js",
       "resources/js/gallery-scene.js",
-      "_big-countdown-B6_8fyyK.js",
+      "_ambient-DSULKVxK.js",
       "_easing-ChRyoIXo.js",
       "_animations-Bw164z87.js"
     ]
