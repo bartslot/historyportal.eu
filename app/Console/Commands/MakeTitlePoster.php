@@ -53,7 +53,12 @@ class MakeTitlePoster extends Command
 
         $errors = self::problems($recipe);
         if ($errors !== []) {
-            return $this->failWith("Recipe {$recipePath}:\n  - ".implode("\n  - ", $errors));
+            $this->error("Recipe {$recipePath}:");
+            foreach ($errors as $problem) {
+                $this->error("  - {$problem}");
+            }
+
+            return self::FAILURE;
         }
 
         $existing = "{$out}/poster.json";
