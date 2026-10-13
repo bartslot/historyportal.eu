@@ -52,7 +52,9 @@ return function (string $lang, ?array $text = null): array {
             $layers = [];
             foreach ($panel['ships'] as $ship) {
                 if ($asset = $ref($ship['file'], 'props')) {
-                    $layers[] = ['asset' => $asset, 'anim' => 'fade']
+                    // Boats sit IN the water (blend-into-scene boat preset).
+                    $layers[] = ['asset' => $asset, 'anim' => 'fade',
+                        'waterline' => 0.15, 'reflection' => 0.35, 'contact_shadow' => 0.4, 'color_match' => 0.35]
                         + array_intersect_key($ship, array_flip(['x', 'y', 'height', 'depth', 'ambient', 'ambient_amount']));
                 }
             }
@@ -62,7 +64,9 @@ return function (string $lang, ?array $text = null): array {
             foreach ($panel['people'] ?? [] as $person) {
                 if ($asset = $ref($person['file'], 'figures')) {
                     $layers[] = ['asset' => $asset, 'x' => $person['x'], 'y' => $person['ground'] - $person['height'] / 2,
-                        'height' => $person['height'], 'depth' => 1.0, 'anim' => 'fade']
+                        'height' => $person['height'], 'depth' => 1.0, 'anim' => 'fade',
+                        // People stand on the plate (figure preset); a figure cut at the frame edge has no feet to shadow.
+                        'color_match' => 0.3] + ($person['ground'] <= 100 ? ['contact_shadow' => 0.5] : [])
                         + (in_array($person['speaks'] ?? null, $talkers, true) ? ['speaks' => $person['speaks']] : [])
                         + (! empty($person['flip']) ? ['flip' => true] : []);
                 }
