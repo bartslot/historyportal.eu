@@ -48,7 +48,7 @@ class LayerSitInTest extends TestCase
     private function canoes(array $over = []): array
     {
         return array_merge(['asset' => 'history-line/props/tasman/tongan_canoes', 'x' => 42, 'y' => 74, 'ambient' => 'bob',
-            'waterline' => 0.15, 'reflection' => 0.35, 'contact_shadow' => 0.4, 'color_match' => 0.35,
+            'waterline' => 0.15, 'reflection' => 0.35, 'contact_shadow' => 0.4, 'color_match' => 0.35, 'foam' => 0.5, 'speed' => 0.7,
             'flip_x' => true, 'rotation' => -4.0], $over);
     }
 
@@ -86,9 +86,9 @@ class LayerSitInTest extends TestCase
 
         $html = $this->get(route('lesson.play', ['lessonCode' => $lesson->lesson_code]))->assertOk()->getContent();
 
-        $this->assertStringContainsString('"waterline":0.15,"reflection":0.35,"contact_shadow":0.4,"color_match":0.35', $html);
+        $this->assertStringContainsString('"waterline":0.15,"reflection":0.35,"contact_shadow":0.4,"color_match":0.35,"foam":0.5,"speed":0.7', $html);
         $this->assertStringContainsString('"rotation":-4,"flip_x":true', $html);
-        $this->assertStringContainsString('"waterline":null,"reflection":null,"contact_shadow":null,"color_match":null', $html);
+        $this->assertStringContainsString('"waterline":null,"reflection":null,"contact_shadow":null,"color_match":null,"foam":null,"speed":null', $html);
     }
 
     public function test_export_writes_them_back_and_they_rebuild_the_same(): void
@@ -98,7 +98,7 @@ class LayerSitInTest extends TestCase
         $entry = $spec['scenes'][0]['layers'][0];
 
         $this->assertArrayNotHasKey('shots', $spec['scenes'][0]);
-        foreach (['waterline' => 0.15, 'reflection' => 0.35, 'contact_shadow' => 0.4, 'color_match' => 0.35, 'rotation' => -4.0] as $k => $v) {
+        foreach (['waterline' => 0.15, 'reflection' => 0.35, 'contact_shadow' => 0.4, 'color_match' => 0.35, 'foam' => 0.5, 'speed' => 0.7, 'rotation' => -4.0] as $k => $v) {
             $this->assertEquals($v, $entry[$k], $k);
         }
         $this->assertTrue($entry['flip_x']);
@@ -112,8 +112,11 @@ class LayerSitInTest extends TestCase
         $this->assertSame(LayerSitIn::BOAT, LayerSitIn::preset(['ambient' => 'roll'], 'history-line/figures/x.webp'));
         $this->assertSame(LayerSitIn::BOAT, LayerSitIn::preset([], 'history-line/props/tasman/waka_pair.webp'));
         $this->assertSame(LayerSitIn::FIGURE, LayerSitIn::preset([], 'history-line/figures/tasman/sailor_bootsman.webp'));
-        $this->assertSame(['waterline' => null, 'reflection' => 0.5, 'contact_shadow' => null, 'color_match' => 1.0],
-            LayerSitIn::payload(['waterline' => 0, 'reflection' => '0.5', 'contact_shadow' => 'x', 'color_match' => 7]));
+        $this->assertSame(['waterline' => null, 'reflection' => 0.5, 'contact_shadow' => null, 'color_match' => 1.0, 'foam' => 0.25, 'speed' => null],
+            LayerSitIn::payload(['waterline' => 0, 'reflection' => '0.5', 'contact_shadow' => 'x', 'color_match' => 7, 'foam' => 0.25, 'speed' => -2]));
+        $this->assertSame(0.5, LayerSitIn::BOAT['foam']);
+        $this->assertSame(0.5, LayerSitIn::BOAT['speed']);
+        $this->assertNull(LayerSitIn::FIGURE['foam']);
     }
 
     public function test_the_editor_sets_the_preset_in_one_step_resets_it_and_undo_brings_it_back(): void
@@ -138,7 +141,9 @@ class LayerSitInTest extends TestCase
         $wizard->call('blendLayerIntoScene', $canoes->id);
         $this->assertSame(LayerSitIn::BOAT, array_intersect_key($layer(), LayerSitIn::BOAT));
 
-        $wizard->call('updateArtworkLayer', $canoes->id, 'reflection', '4');
+        $wizard->call('updateArtworkLayer', $canoes->id, 'reflection', '4')
+            ->call('updateArtworkLayer', $canoes->id, 'foam', '-1');
+        $this->assertEquals(0.0, $layer()['foam']);
         $this->assertEquals(1.0, $layer()['reflection']);
         $this->assertEquals(1.0, $wizard->instance()->serializeShots($scene->refresh())[0]['layers'][1]['reflection']);
 
@@ -161,6 +166,8 @@ class LayerSitInTest extends TestCase
             ->assertSee('data-sit-advanced', false)
             ->assertSee('blendLayerIntoScene(7)', false)
             ->assertSee('resetLayerSitIn(7)', false)
-            ->assertSee('updateArtworkLayer(7, &#039;contact_shadow&#039;', false);
+            ->assertSee('updateArtworkLayer(7, &#039;contact_shadow&#039;', false)
+            ->assertSee('updateArtworkLayer(7, &#039;foam&#039;', false)
+            ->assertSee('updateArtworkLayer(7, &#039;speed&#039;', false);
     }
 }

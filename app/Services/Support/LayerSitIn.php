@@ -10,6 +10,9 @@ namespace App\Services\Support;
  * every lesson made before them looks exactly as it did.
  *
  *   waterline       share of the layer's height, from the bottom, that is under water (wavy edge)
+ *   foam            white foam where the hull meets the water (any sea plate: it is the layer's)
+ *   speed           how fast a boat is meant to go: 0 at anchor (hull band only), more = bow wave
+ *                   and wake. The player may change it live (ArtworkOverlay::setSpeed).
  *   reflection      opacity of the mirrored, rippled copy under the waterline
  *   contact_shadow  strength of the flat shadow patch under the layer's bottom
  *   color_match     how far the layer's colours are washed toward the backdrop around it
@@ -22,16 +25,16 @@ namespace App\Services\Support;
  */
 final class LayerSitIn
 {
-    public const KEYS = ['waterline', 'reflection', 'contact_shadow', 'color_match'];
+    public const KEYS = ['waterline', 'reflection', 'contact_shadow', 'color_match', 'foam', 'speed'];
 
     /** Every key is a share. */
     public const RANGE = [0, 1];
 
     /** The editor's "Blend into scene" preset for a boat or ship. */
-    public const BOAT = ['waterline' => 0.15, 'reflection' => 0.35, 'contact_shadow' => 0.4, 'color_match' => 0.35];
+    public const BOAT = ['waterline' => 0.15, 'reflection' => 0.35, 'contact_shadow' => 0.4, 'color_match' => 0.35, 'foam' => 0.5, 'speed' => 0.5];
 
     /** ... and for anything else that stands on something (a figure on a deck). */
-    public const FIGURE = ['waterline' => null, 'reflection' => null, 'contact_shadow' => 0.5, 'color_match' => 0.3];
+    public const FIGURE = ['waterline' => null, 'reflection' => null, 'contact_shadow' => 0.5, 'color_match' => 0.3, 'foam' => null, 'speed' => null];
 
     /** Motions only a floating thing has. */
     private const FLOATING_MOTIONS = ['bob', 'roll', 'swell'];

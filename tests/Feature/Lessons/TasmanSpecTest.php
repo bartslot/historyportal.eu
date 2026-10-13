@@ -22,6 +22,9 @@ class TasmanSpecTest extends TestCase
 
         $this->assertSame('nl', $spec['language']);
         $this->assertSame('serge-de-beer', $spec['avatar']);
+        // The title screen reads the central question, never the spec key.
+        $this->assertStringStartsWith('Waarom', $spec['details']);
+        $this->assertFileExists(public_path('lesson-logos/'.$spec['translation_group'].'.svg'));
         $this->assertCount($panels + 3, $spec['scenes']);
 
         $games = array_values(array_filter($spec['scenes'], fn (array $s): bool => $s['type'] === 'team'));
