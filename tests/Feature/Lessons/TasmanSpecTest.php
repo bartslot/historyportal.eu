@@ -38,6 +38,10 @@ class TasmanSpecTest extends TestCase
             \App\Services\Lessons\MomentSpec::normalize(['react' => [], 'payoff' => ['type' => $moment['payoff']['type']]] + $moment);
             $this->assertCount(4, $moment['words']['right']);
         }
+        // The departure from Mauritius is the harbour race; its after line names the crews.
+        $this->assertTrue($moments[0]['race']['enabled']);
+        $this->assertStringContainsString('{crew:heemskerck}', $moments[0]['race']['after']);
+        $this->assertArrayNotHasKey('race', $moments[1]);
 
         foreach ($spec['scenes'] as $scene) {
             foreach ($scene['lines'] ?? [] as [$speaker, $words]) {

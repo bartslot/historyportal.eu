@@ -659,6 +659,12 @@
        "to_x": 125,
        "to_y": 56,
        "duration": 7
+      },
+      "race": {
+       "enabled": true,
+       "start_x": 42,
+       "finish_x": 90,
+       "ghost_seconds": 25
       }
      }
     }

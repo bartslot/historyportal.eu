@@ -64,6 +64,9 @@ final class MomentSpec
 
     public const DURATION = [0.3, 30];
 
+    /** Seconds the 1642 fleet (the solo race's ghost) takes to fill its meter. */
+    public const GHOST_SECONDS = [5, 120];
+
     private const WORD_MAX = 40;
 
     private const NAME_MAX = 80;
@@ -130,6 +133,7 @@ final class MomentSpec
             'team_meter' => in_array($raw['team_meter'] ?? null, self::TEAM_METERS, true) ? $raw['team_meter'] : 'shared',
             'react' => self::react($raw['react'] ?? []),
             'payoff' => self::payoff($raw['payoff'] ?? [], $payoffType),
+            'race' => self::race($raw['race'] ?? []),
         ];
     }
 
@@ -209,6 +213,28 @@ final class MomentSpec
             'to_y' => self::float($raw['to_y'] ?? null, self::POSITION, 50.0),
             'duration' => self::float($raw['duration'] ?? null, self::DURATION, 4.0),
             'camera' => ShotCamera::payload($raw['camera'] ?? null),
+        ];
+    }
+
+    /**
+     * The harbour race: a meter per team (or a pupil against the 1642 fleet), the reacting layer's
+     * ship sailing one lane per team from start_x to finish_x. `after` is the narrator's line when a
+     * race was run (it may name the crews: {crew:heemskerck}); without a race the moment's own
+     * `after` plays.
+     *
+     * @return array{enabled: bool, ghost_seconds: float, start_x: float, finish_x: float, after: string}
+     */
+    private static function race(mixed $raw): array
+    {
+        $raw = is_array($raw) ? $raw : [];
+
+        return [
+            'enabled' => (bool) ($raw['enabled'] ?? false),
+            'ghost_seconds' => self::float($raw['ghost_seconds'] ?? null, self::GHOST_SECONDS, 25.0),
+            'start_x' => self::float($raw['start_x'] ?? null, self::POSITION, 25.0),
+            // In frame: the finishers wait at the line with their crew named, then the payoff sails all out.
+            'finish_x' => self::float($raw['finish_x'] ?? null, self::POSITION, 85.0),
+            'after' => self::text($raw['after'] ?? '', self::TEXT_MAX),
         ];
     }
 

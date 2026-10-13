@@ -65,6 +65,11 @@ final class JsTranslations
             'No motion sensor. Tap instead.' => __('No motion sensor. Tap instead.'),
             "Shaking works on a pupil's own phone. Tap instead." => __("Shaking works on a pupil's own phone. Tap instead."),
             'Use the motion sensor' => __('Use the motion sensor'),
+            'The 1642 fleet' => __('The 1642 fleet'),
+            'End the race' => __('End the race'),
+            'you' => __('you'),
+            'the crew' => __('the crew'),
+            'Your best: :seconds s' => __('Your best: :seconds s'),
             'Movement' => __('Movement'),
         ];
     }

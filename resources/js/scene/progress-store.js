@@ -10,6 +10,14 @@ const VERSION = 1
 
 export const progressKey = (code) => `lp:progress:${code}`
 
+/**
+ * window.localStorage / sessionStorage, or null where even touching them throws (a sandboxed
+ * iframe, blocked site data): every store here then simply remembers nothing.
+ */
+export function safeStorage (kind) {
+  try { return window[kind] } catch (_) { return null }
+}
+
 /** @returns {{ index: number, time: number, done: number[] } | null} */
 export function readProgress (storage, code) {
   try {

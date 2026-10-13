@@ -32,6 +32,7 @@ import { applyAmbient } from './ambient.js'
 import { MIC_INPUTS, soundStep, rhythmStep, rhythmStart, registerSoundTuner } from './meter-inputs/sound.js'
 import { shakeStep, shakeStart, tiltStep, needsMotionPermission, requestMotionPermission } from './meter-inputs/motion.js'
 import { placeCard } from './card-place.js'
+import { finishOrder, raceDecided, finalOrder, crewFrom, ghostLevel, nextOpen } from './race.js'
 
 /** How long a full meter stays on screen before the payoff, and a gust of the react layer. */
 const FULL_HOLD_MS = 700
@@ -82,6 +83,13 @@ export function readMoment (raw = {}) {
     seconds: Math.max(0, Math.min(300, Number(raw.seconds) || 0)),
     teams: teams >= 2 ? clampTeams(teams) : 0,
     teamMeter: raw.team_meter === 'each' ? 'each' : 'shared',
+    race: {
+      enabled: !!raw.race?.enabled,
+      ghostSeconds: Math.max(5, Math.min(120, Number(raw.race?.ghost_seconds) || 25)),
+      startX: Number.isFinite(Number(raw.race?.start_x)) && raw.race?.start_x !== null ? Number(raw.race.start_x) : 25,
+      finishX: Number.isFinite(Number(raw.race?.finish_x)) && raw.race?.finish_x !== null ? Number(raw.race.finish_x) : 85,
+      after: String(raw.race?.after || ''),
+    },
     react: raw.react && typeof raw.react === 'object' ? raw.react : {},
     payoff: raw.payoff && typeof raw.payoff === 'object' ? raw.payoff : { type: 'none' },
   }
@@ -106,15 +114,32 @@ export function wordButtons (cfg, rand = Math.random) {
   return list
 }
 
-/** How many meters fill: one, or one per team when the teacher chose a meter per team. */
+/** How many meters fill: one, or one per team when the teacher chose a meter per team (a race). */
 export function meterCount (cfg, teamCount) {
-  return teamCount >= 2 && cfg.teamMeter === 'each' ? teamCount : 1
+  return teamCount >= 2 && (cfg.teamMeter === 'each' || cfg.race?.enabled) ? teamCount : 1
 }
 
 /** @returns {{ fills: number[], used: string[][], turn: number, teams: number, done: boolean, winner: ?number }} */
 export function startState (cfg, teamCount = 0) {
   const meters = meterCount(cfg, teamCount)
-  return { fills: Array(meters).fill(0), used: Array.from({ length: meters }, () => []), turn: 0, teams: teamCount, done: false, winner: null }
+  return {
+    fills: Array(meters).fill(0), used: Array.from({ length: meters }, () => []), turn: 0, teams: teamCount,
+    done: false, winner: null, race: !!cfg.race?.enabled && meters > 1, order: [],
+  }
+}
+
+/**
+ * A race meter rose: who has crossed the line, and is the race decided (both ships crewed)?
+ * Outside a race a full meter ends the moment, as before.
+ */
+function settle (state, cfg, fills, meter) {
+  if (!state.race) {
+    const full = fills[meter] >= cfg.goal - 1e-9
+    return { done: full, winner: full ? meter : null, order: state.order, finished: full }
+  }
+  const order = finishOrder(state.order, fills, cfg.goal)
+  const done = raceDecided(order, fills.length)
+  return { done, winner: order[0] ?? null, order, finished: order.length > state.order.length }
 }
 
 /**
@@ -125,16 +150,19 @@ export function startState (cfg, teamCount = 0) {
 export function press (state, cfg, word) {
   if (state.done) return { state, result: 'done' }
   const meter = state.fills.length > 1 ? state.turn : 0
-  const nextTurn = state.teams >= 2 ? (state.turn + 1) % state.teams : 0
+  // In a race the teacher picks the team that shouted; otherwise the turn moves on.
+  const nextTurn = state.race ? state.turn : state.teams >= 2 ? (state.turn + 1) % state.teams : 0
   if (!word.right) return { state: { ...state, turn: nextTurn }, result: 'wrong' }
-  if (state.used[meter].includes(word.id)) return { state, result: 'used' }
+  if (state.used[meter].includes(word.id) || state.order.includes(meter)) return { state, result: 'used' }
 
   const fills = state.fills.map((f, i) => (i === meter ? f + 1 : f))
   const used = state.used.map((u, i) => (i === meter ? [...u, word.id] : u))
-  const full = fills[meter] >= cfg.goal
+  const { done, winner, order, finished } = settle(state, cfg, fills, meter)
+  // A team over the line hands the turn to the next team still racing.
+  const turn = done ? state.turn : finished && state.race ? nextOpen(order, fills.length, meter) : state.race ? state.turn : nextTurn
   return {
-    state: { ...state, fills, used, turn: full ? state.turn : nextTurn, done: full, winner: full ? meter : null },
-    result: full ? 'full' : 'right',
+    state: { ...state, fills, used, turn, done, winner, order },
+    result: done ? 'full' : finished ? 'finished' : 'right',
   }
 }
 
@@ -142,17 +170,19 @@ export function press (state, cfg, word) {
  * Sound fills the meter by an amount (fractions of a step). Returns the next state, how many whole
  * steps it crossed (each one a gust on the panel) and whether that filled it.
  */
-export function push (state, cfg, amount) {
-  if (state.done || !(amount > 0)) return { state, crossed: 0, full: false }
-  const before = state.fills[0]
+export function push (state, cfg, amount, meter = 0) {
+  if (state.done || !(amount > 0) || state.order.includes(meter)) return { state, crossed: 0, full: false }
+  const before = state.fills[meter]
   // Parts like 4/6 add up to 3.9999999999999996: within a hair of the goal is the goal.
   const sum = before + amount
-  const full = sum >= cfg.goal - 1e-9
-  const after = full ? cfg.goal : sum
+  const after = sum >= cfg.goal - 1e-9 ? cfg.goal : sum
+  const fills = state.fills.map((f, i) => (i === meter ? after : f))
+  const { done, winner, order, finished } = settle(state, cfg, fills, meter)
+  const turn = !done && finished && state.race ? nextOpen(order, fills.length, meter) : state.turn
   return {
-    state: { ...state, fills: [after, ...state.fills.slice(1)], done: full, winner: full ? 0 : null },
+    state: { ...state, fills, done, winner, order, turn },
     crossed: Math.floor(after) - Math.floor(before),
-    full,
+    full: done,
   }
 }
 
@@ -226,7 +256,8 @@ export function sail (node, stage, payoff) {
 // ── DOM ──────────────────────────────────────────────────────────────────────────────────────
 
 function button (label, className, onClick) {
-  const b = el('button', `btn ${className}`, label)
+  // Flat, as the house style: DaisyUI gives a filled button a little depth.
+  const b = el('button', `btn shadow-none ${className}`, label)
   b.type = 'button'
   b.addEventListener('click', onClick)
   return b
@@ -263,21 +294,30 @@ export class PowerMeter {
    *
    * @param {{ config: object, solo?: boolean, avoid?: () => Array<{rect: object, weight?: number}>,
    *           listen?: Function, listenMotion?: Function, requestMotion?: Function, onReact?: (meter: number) => void,
+   *           onProgress?: (p: { levels: number[], ghost: ?number }) => void,
    *           onDone?: (outcome: { skipped: boolean, winner: ?number, team: ?string }) => void }} opts
    */
-  show ({ config, solo = false, avoid = () => [], listen = null, listenMotion = null, requestMotion = null, onReact = null, onDone = null }) {
+  show ({ config, solo = false, best = null, avoid = () => [], listen = null, listenMotion = null, requestMotion = null, onReact = null, onProgress = null, onDone = null }) {
     this.cfg = readMoment(config || {})
     this._solo = solo
     this._avoid = avoid
     this._spot = null
     this._onReact = onReact
+    this._onProgress = onProgress
     this._onDone = onDone
     this._buttons = wordButtons(this.cfg)
-    // Sound is the whole class at once: one shared meter, no turns.
-    const teams = solo || this.cfg.input !== 'words' ? 0 : this.cfg.teams
+    const race = this.cfg.race.enabled
+    // Sound is the whole class at once: one shared meter, no turns. A race is a meter per team (4
+    // unless the teacher set a number), and sound fills the team whose turn the teacher gave; on a
+    // pupil's own device the race is against the 1642 fleet.
+    const teams = solo ? 0 : race ? (this.cfg.teams || 4) : this.cfg.input !== 'words' ? 0 : this.cfg.teams
     this._names = teams ? teamNames(teams, [], (i) => t('Team :number', { number: i })) : []
     this.state = startState(this.cfg, teams)
     this._remaining = this.cfg.seconds
+    this._started = performance.now()
+    this._ghost = solo && race ? 0 : null
+    this._best = this._ghost !== null && best > 0 ? best : null
+    if (this._ghost !== null) this._ghostTimer = setInterval(() => this._sailGhost(), 100)
     this._listeners = { mic: listen, motion: listenMotion, requestMotion }
     this._senseState = this._firstSenseState()
     this._senseLevel = 0
@@ -305,8 +345,13 @@ export class PowerMeter {
     return needsMotionPermission() || this._listeners.requestMotion ? 'permission' : 'asking'
   }
 
+  /** The teams' names, in meter order (a race's lanes and crews use them). */
+  get names () { return [...this._names] }
+
   hide () {
     this._stopClock()
+    clearInterval(this._ghostTimer)
+    this._ghostTimer = null
     this._stopSense()
     clearTimeout(this._fullTimer)
     if (!this.host) return
@@ -337,7 +382,7 @@ export class PowerMeter {
     const { state, result } = press(this.state, this.cfg, word)
     this.state = state
     if (result === 'wrong' && node) shake(node)
-    if (result === 'right' || result === 'full') this._onReact?.(meter)
+    if (result === 'right' || result === 'full' || result === 'finished') this._onReact?.(meter)
     if (result === 'full') this._fullTimer = setTimeout(() => this._finish(false), FULL_HOLD_MS)
     if (result !== 'used' && result !== 'done') this._render()
   }
@@ -354,13 +399,13 @@ export class PowerMeter {
         : (this._listeners.mic ?? (await import('./meter-inputs/mic.js')).listen)
       const sensor = await open({
         gesture: this.cfg.gesture,
-        onCalibrated: () => { if (current()) { this._senseState = 'on'; this._render() } },
+        onCalibrated: () => { if (current()) { this._senseState = 'on'; this._restartClockForRace(); this._render() } },
         onFrame: (frame) => { if (current()) this._hear(frame) },
       })
       if (!current()) { sensor.stop(); return }
       this._sensor = sensor
       // Motion needs no calibration: its first reading has arrived.
-      if (motion) { this._senseState = 'on'; this._render() }
+      if (motion) { this._senseState = 'on'; this._restartClockForRace(); this._render() }
     } catch (_) {
       // No mic, no sensor, no permission: the taps below carry the moment.
       if (current()) { this._senseState = 'off'; this._render() }
@@ -455,22 +500,53 @@ export class PowerMeter {
 
   /** Sound or a fallback tap: fill the shared meter, a gust per whole step, finish when full. */
   _fill (amount) {
-    const { state, crossed, full } = push(this.state, this.cfg, amount)
+    const meter = this.state.race ? this.state.turn : 0
+    const finishedBefore = this.state.order.length
+    const { state, crossed, full } = push(this.state, this.cfg, amount, meter)
     this.state = state
-    for (let i = 0; i < crossed; i++) this._onReact?.(0)
+    for (let i = 0; i < crossed; i++) this._onReact?.(meter)
     if (full) {
       this._stopSense()
       this._fullTimer = setTimeout(() => this._finish(false), FULL_HOLD_MS)
       this._render()
+    } else if (state.order.length > finishedBefore) {
+      this._render()
     }
+  }
+
+  /** Against the fleet the clock starts when the pupil can play: not while a permission prompt is open. */
+  _restartClockForRace () {
+    if (this._ghost !== null && this.state.fills[0] === 0) { this._started = performance.now(); this._ghost = 0 }
+  }
+
+  /** The 1642 fleet sails its meter in its own time; a pupil who fills theirs first beat it. */
+  _sailGhost () {
+    if (this.state.done) return
+    this._ghost = ghostLevel((performance.now() - this._started) / 1000, this.cfg.race.ghostSeconds)
+    const bar = this.host.querySelector('[data-ghost]')
+    if (bar) bar.value = Math.round(this._ghost * 100)
+    this._progress()
+  }
+
+  _progress () {
+    this._onProgress?.({ levels: this.state.fills.map(f => Math.min(1, f / this.cfg.goal)), ghost: this._ghost })
+  }
+
+  /** The teacher ends the race: finishers first, the rest by how far they got. */
+  _endRace () {
+    this.state = { ...this.state, order: finalOrder(this.state.order, this.state.fills), done: true }
+    this._finish(false)
   }
 
   /** In place, many times a second: the meter and the live level, without rebuilding the card. */
   _paint () {
-    const bar = this.host.querySelector('[data-meter="0"]')
-    if (bar) bar.value = this.state.fills[0]
-    const count = this.host.querySelector('[data-meter-count="0"]')
-    if (count) count.textContent = `${Math.floor(this.state.fills[0])}/${this.cfg.goal}`
+    this.state.fills.forEach((f, m) => {
+      const bar = this.host.querySelector(`[data-meter="${m}"]`)
+      if (bar) bar.value = f
+      const count = this.host.querySelector(`[data-meter-count="${m}"]`)
+      if (count) count.textContent = `${Math.floor(f)}/${this.cfg.goal}`
+    })
+    this._progress()
     const live = this.host.querySelector('[data-mic-level]')
     if (live) live.value = Math.round(this._senseLevel * 100)
     const status = this.host.querySelector('[data-mic-status]')
@@ -493,8 +569,18 @@ export class PowerMeter {
     const done = this._onDone
     const winner = skipped ? null : this.state.winner
     const team = winner !== null && this.state.fills.length > 1 ? this._names[winner] : null
+    const outcome = { skipped, winner, team }
+    if (this.cfg.race.enabled && !skipped) {
+      const seconds = (performance.now() - this._started) / 1000
+      // A class race crews both ships from the finish; a pupil racing the fleet sails the
+      // Heemskerck whatever happens, and beat the fleet when they were faster.
+      Object.assign(outcome, this.state.race
+        // A team that never got going crews nothing, even when the teacher ended the race early.
+        ? { order: this.state.order, crew: crewFrom(this.state.order.filter(i => this.state.fills[i] > 0), this._names) }
+        : { crew: { heemskerck: t('you') }, seconds, beatFleet: seconds < this.cfg.race.ghostSeconds })
+    }
     this.hide()
-    done?.({ skipped, winner, team })
+    done?.(outcome)
   }
 
   // ── Timer (a teacher option; time up only says so) ──
@@ -531,6 +617,7 @@ export class PowerMeter {
     wrap.appendChild(card)
     this.host.replaceChildren(wrap)
     this._place(card)
+    this._progress()
   }
 
   /**
@@ -596,6 +683,12 @@ export class PowerMeter {
     const box = el('div', 'flex flex-col gap-2')
     this.state.fills.forEach((_, m) => {
       const row = el('div', 'flex items-center gap-3')
+      // In a race the team on turn is marked, and a team over the line shows its place.
+      if (this.state.race) {
+        const place = this.state.order.indexOf(m)
+        if (m === this.state.turn && place === -1) row.classList.add('font-bold')
+        row.appendChild(el('span', `badge badge-sm w-6 shrink-0 ${place === -1 ? 'badge-ghost' : 'badge-primary'}`, place === -1 ? '' : String(place + 1)))
+      }
       const label = this.state.fills.length > 1 ? this._names[m] : (this.cfg.meterLabel || t('Power meter'))
       const bar = el('progress', 'progress progress-primary h-5 flex-1')
       bar.max = this.cfg.goal
@@ -606,6 +699,18 @@ export class PowerMeter {
         countEl(m, `${Math.floor(this.state.fills[m])}/${this.cfg.goal}`))
       box.appendChild(row)
     })
+    if (this._ghost !== null) {
+      const row = el('div', 'flex items-center gap-3 text-base-content/70')
+      const bar = el('progress', 'progress h-3 flex-1')
+      bar.max = 100
+      bar.value = Math.round(this._ghost * 100)
+      bar.dataset.ghost = ''
+      bar.setAttribute('aria-label', t('The 1642 fleet'))
+      append(row, el('span', 'w-32 shrink-0 truncate text-sm font-semibold uppercase tracking-wider', t('The 1642 fleet')), bar,
+        el('span', 'w-12 shrink-0'))
+      box.appendChild(row)
+      if (this._best) box.appendChild(el('p', 'text-sm text-base-content/70', t('Your best: :seconds s', { seconds: this._best.toFixed(1) })))
+    }
     return box
   }
 
@@ -652,7 +757,8 @@ export class PowerMeter {
   }
 
   _foot () {
-    const bar = el('div', 'flex justify-end')
+    const bar = el('div', 'flex justify-end gap-2')
+    if (this.state.race && !this.state.done) bar.appendChild(button(t('End the race'), 'btn-outline btn-sm', () => this._endRace()))
     bar.appendChild(button(t('Skip'), 'btn-ghost btn-sm', () => this.skip()))
     return bar
   }
