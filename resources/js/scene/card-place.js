@@ -67,6 +67,28 @@ export function chromeMargins (host, root = document) {
   }
 }
 
+/**
+ * Put an overlay card (the meter, the race lobby) where it hides least, on a wide screen; on a phone
+ * it stays in its own flow along the bottom. Pass the spot from an earlier call to keep the card put
+ * when it is redrawn. Returns the spot, or null on a phone.
+ */
+export function placeOverlay (host, card, avoid = () => [], spot = null) {
+  const w = host.clientWidth
+  if (w < 640) return null
+  if (!spot) {
+    let rects = []
+    try { rects = avoid() || [] } catch (_) { /* nothing measured: bottom centre */ }
+    // Not laid out yet (or no layout at all): the card's nominal size, max-w-xl by a typical height.
+    const size = card.offsetWidth ? { w: card.offsetWidth, h: card.offsetHeight } : { w: 576, h: 320 }
+    spot = placeCard({ w, h: host.clientHeight }, size, rects, chromeMargins(host))
+  }
+  card.style.position = 'absolute'
+  card.style.left = `${spot.x}px`
+  card.style.top = `${spot.y}px`
+  card.dataset.spot = spot.name
+  return spot
+}
+
 // ── Measuring the figures (DOM) ───────────────────────────────────────────────────────────────
 
 const SAMPLE_W = 64

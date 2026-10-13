@@ -75,6 +75,9 @@ export class RaceStage {
     ]
   }
 
+  /** How many lanes are on the water (0 before open). */
+  get laneCount () { return this._lanes?.length ?? 0 }
+
   /** The ship of a lane, for a gust. */
   node (lane) {
     const id = this._lanes?.[lane]?.asset_id

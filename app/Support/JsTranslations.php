@@ -77,6 +77,17 @@ final class JsTranslations
             'Your team crews the Heemskerck!' => __('Your team crews the Heemskerck!'),
             'Your team crews the Zeehaen!' => __('Your team crews the Zeehaen!'),
             'The race is over. Look at the class screen.' => __('The race is over. Look at the class screen.'),
+            'Play on phones' => __('Play on phones'),
+            'The race could not be opened. Play it on this screen.' => __('The race could not be opened. Play it on this screen.'),
+            'Race QR code' => __('Race QR code'),
+            'Teams join on their phones' => __('Teams join on their phones'),
+            'Add team' => __('Add team'),
+            'Remove team' => __('Remove team'),
+            'Start the race' => __('Start the race'),
+            'The teams are racing on their phones' => __('The teams are racing on their phones'),
+            'Joined' => __('Joined'),
+            'No signal' => __('No signal'),
+            'Not joined yet' => __('Not joined yet'),
             'Movement' => __('Movement'),
         ];
     }
