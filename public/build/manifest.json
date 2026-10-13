@@ -6,8 +6,8 @@
       "node_modules/three/build/three.module.js"
     ]
   },
-  "_PowerMeter-y5Vs4TiA.js": {
-    "file": "assets/PowerMeter-y5Vs4TiA.js",
+  "_PowerMeter-Dp5qzz2S.js": {
+    "file": "assets/PowerMeter-Dp5qzz2S.js",
     "name": "PowerMeter",
     "isDynamicEntry": true,
     "imports": [
@@ -186,7 +186,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-VfuOznPF.js",
+    "file": "assets/lesson-player-cowO9xv7.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -209,7 +209,7 @@
       "resources/js/scene/ArtworkOverlay.js",
       "resources/js/scene/QuizOverlay.js",
       "resources/js/scene/TeamGame.js",
-      "_PowerMeter-y5Vs4TiA.js",
+      "_PowerMeter-Dp5qzz2S.js",
       "resources/js/scene/card-place.js",
       "resources/js/scene/race-stage.js"
     ]
@@ -274,7 +274,7 @@
     ]
   },
   "resources/js/scene/TeamGame.js": {
-    "file": "assets/TeamGame-Bvfd4BqB.js",
+    "file": "assets/TeamGame-BkbO0EtP.js",
     "name": "TeamGame",
     "src": "resources/js/scene/TeamGame.js",
     "isDynamicEntry": true,
@@ -336,12 +336,12 @@
     ]
   },
   "resources/js/scene/meter-inputs/mic.js": {
-    "file": "assets/mic-ph90MPB_.js",
+    "file": "assets/mic-DI_yB8SN.js",
     "name": "mic",
     "src": "resources/js/scene/meter-inputs/mic.js",
     "isDynamicEntry": true,
     "imports": [
-      "_PowerMeter-y5Vs4TiA.js",
+      "_PowerMeter-Dp5qzz2S.js",
       "__commonjsHelpers-DqutJMZx.js",
       "_big-countdown-B6_8fyyK.js",
       "_easing-ChRyoIXo.js",
@@ -361,7 +361,7 @@
     "isDynamicEntry": true
   },
   "resources/js/scene/race-stage.js": {
-    "file": "assets/race-stage-DIimCCXd.js",
+    "file": "assets/race-stage-B8WpEchS.js",
     "name": "race-stage",
     "src": "resources/js/scene/race-stage.js",
     "isDynamicEntry": true,
