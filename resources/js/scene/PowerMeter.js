@@ -270,6 +270,10 @@ export class PowerMeter {
     this._remaining = this.cfg.seconds
     this._micState = this.cfg.input === 'words' ? 'none' : 'asking'
     this._micLevel = 0
+    this._knocked = false
+    // Which opening this is: a mic granted for an earlier moment (its prompt answered late) must
+    // neither feed this meter nor stay open.
+    this._showId = (this._showId || 0) + 1
     this.host.style.pointerEvents = 'auto'
     this._render()
     this._startClock()
@@ -316,17 +320,19 @@ export class PowerMeter {
   // ── Microphone (loudness, blow, silence) ──
   async _startMic (listen) {
     registerSoundTuner()
+    const id = this._showId
+    const current = () => this._showId === id && this._micState !== 'closed'
     try {
       const open = listen ?? (await import('./meter-inputs/mic.js')).listen
       const mic = await open({
-        onCalibrated: () => { this._micState = 'on'; this._paint() },
-        onFrame: (frame) => this._hear(frame),
+        onCalibrated: () => { if (current()) { this._micState = 'on'; this._paint() } },
+        onFrame: (frame) => { if (current()) this._hear(frame) },
       })
-      if (this._micState === 'closed') { mic.stop(); return }
+      if (!current()) { mic.stop(); return }
       this._mic = mic
     } catch (_) {
       // No mic, no permission, no Web Audio: the taps below carry the moment.
-      if (this._micState !== 'closed') { this._micState = 'off'; this._render() }
+      if (current()) { this._micState = 'off'; this._render() }
     }
   }
 
@@ -341,10 +347,15 @@ export class PowerMeter {
     this._micLevel = frame.level
     const step = soundStep(this.cfg.input, frame, this.cfg, frame.dt)
     if (step.knock) {
-      const back = knockBack(this.state)
-      if (back.fills[0] !== this.state.fills[0]) shake(this.host.querySelector('[data-meter="0"]') ?? this.host)
-      this.state = back
+      // One noise, one step back: a cough lasts many frames, and a quiet frame ends it.
+      if (!this._knocked) {
+        const back = knockBack(this.state)
+        if (back.fills[0] !== this.state.fills[0]) shake(this.host.querySelector('[data-meter="0"]') ?? this.host)
+        this.state = back
+        this._knocked = true
+      }
     } else {
+      this._knocked = false
       this._fill(step.amount)
     }
     this._paint()
@@ -500,6 +511,8 @@ export class PowerMeter {
   }
 
   _words () {
+    // Keeping quiet is the whole point of a silence moment: taps are only the fallback for no mic.
+    if (this.cfg.input === 'silence' && this._micState !== 'off') return null
     // A sound moment without words still has its tap: one step per tap.
     if (!this._buttons.length) {
       if (this.cfg.input === 'words') return null

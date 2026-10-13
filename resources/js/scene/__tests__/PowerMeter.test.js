@@ -287,3 +287,46 @@ describe('sound fills the meter (microphone injected)', () => {
     expect(host.querySelector('.card').dataset.spot).toBe('top-left')
   })
 })
+
+describe('the microphone after review', () => {
+  const mount = (config, listen) => {
+    const host = document.createElement('div')
+    const meter = new PowerMeter(host)
+    meter.show({ config, listen })
+    return { host, meter }
+  }
+  const silence = { ...raw, input: 'silence', words: { right: [], wrong: [] }, goal: 4, input_options: { hold_seconds: 4 } }
+
+  it('a mic granted late for an earlier moment is closed and never feeds the next one', async () => {
+    let grantFirst
+    const first = { stopped: false, hooks: null }
+    const host = document.createElement('div')
+    const meter = new PowerMeter(host)
+    meter.show({ config: silence, listen: (hooks) => new Promise(r => { first.hooks = hooks; grantFirst = () => r({ stop: () => { first.stopped = true } }) }) })
+    meter.hide()                                        // a chapter jump while the prompt is open
+    const second = { hooks: null }
+    meter.show({ config: silence, listen: async (hooks) => { second.hooks = hooks; return { stop () {} } } })
+    grantFirst()
+    await vi.waitFor(() => expect(first.stopped).toBe(true))
+    second.hooks.onCalibrated(-60)
+    first.hooks.onFrame({ level: 0, flatness: 0, dt: 4 })   // the old mic's frame
+    expect(host.querySelector('[data-meter="0"]').value).toBe(0)
+  })
+
+  it('a long noise in a silence moment knocks back one step, not to nothing', async () => {
+    let hooks
+    const { host } = mount(silence, async (h) => { hooks = h; return { stop () {} } })
+    await vi.waitFor(() => expect(hooks).toBeDefined())
+    hooks.onCalibrated(-60)
+    hooks.onFrame({ level: 0, flatness: 0, dt: 3.3 })
+    for (let i = 0; i < 10; i++) hooks.onFrame({ level: 0.9, flatness: 0, dt: 0.05 })
+    expect(host.querySelector('[data-meter="0"]').value).toBe(3)
+  })
+
+  it('a silence moment offers no taps while the mic works', async () => {
+    let hooks
+    const { host } = mount(silence, async (h) => { hooks = h; return { stop () {} } })
+    await vi.waitFor(() => expect(hooks).toBeDefined())
+    expect([...host.querySelectorAll('button')].map(b => b.textContent)).not.toContain('Tap to fill')
+  })
+})

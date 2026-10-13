@@ -24,13 +24,21 @@ export async function listen ({ onCalibrated = null, onFrame }) {
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
   })
-  const ctx = new AC()
-  const source = ctx.createMediaStreamSource(stream)
-  const analyser = ctx.createAnalyser()
-  analyser.fftSize = 2048
-  analyser.smoothingTimeConstant = 0.3
-  source.connect(analyser)   // and nowhere else: not to ctx.destination
-  await ctx.resume().catch(() => {})
+  let ctx, source, analyser
+  try {
+    ctx = new AC()
+    source = ctx.createMediaStreamSource(stream)
+    analyser = ctx.createAnalyser()
+    analyser.fftSize = 2048
+    analyser.smoothingTimeConstant = 0.3
+    source.connect(analyser)   // and nowhere else: not to ctx.destination
+    await ctx.resume().catch(() => {})
+  } catch (e) {
+    // The mic was granted but cannot be measured: give it back before saying so.
+    stream.getTracks().forEach(t => t.stop())
+    ctx?.close().catch(() => {})
+    throw e
+  }
 
   const wave = new Float32Array(analyser.fftSize)
   const spectrum = new Float32Array(analyser.frequencyBinCount)
