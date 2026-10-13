@@ -1718,5 +1718,13 @@
     "The narration could not be recorded. Try again later.": "Non è stato possibile registrare la narrazione. Riprova più tardi.",
     "Timer (seconds)": "Timer (secondi)",
     "When the meter is full": "Quando il misuratore è pieno",
-    "Wrong words": "Parole sbagliate"
+    "Wrong words": "Parole sbagliate",
+    "Listening to the room": "Ascolto la stanza",
+    "No microphone. Tap instead.": "Nessun microfono. Tocca invece.",
+    "Louder!": "Più forte!",
+    "Blow!": "Soffia!",
+    "Quiet now": "Adesso silenzio",
+    "Sound level": "Livello del suono",
+    "The microphone only listens to loud and soft. Nothing is recorded.": "Il microfono ascolta solo forte e piano. Non viene registrato nulla.",
+    "Tap to fill": "Tocca per riempire"
 }

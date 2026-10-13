@@ -49,6 +49,14 @@ final class JsTranslations
         return [
             'Power meter' => __('Power meter'),
             'Turn' => __('Turn'),
+            'Listening to the room' => __('Listening to the room'),
+            'No microphone. Tap instead.' => __('No microphone. Tap instead.'),
+            'Louder!' => __('Louder!'),
+            'Blow!' => __('Blow!'),
+            'Quiet now' => __('Quiet now'),
+            'Sound level' => __('Sound level'),
+            'The microphone only listens to loud and soft. Nothing is recorded.' => __('The microphone only listens to loud and soft. Nothing is recorded.'),
+            'Tap to fill' => __('Tap to fill'),
         ];
     }
 

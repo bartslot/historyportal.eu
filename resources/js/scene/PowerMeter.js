@@ -13,8 +13,12 @@
  * or a meter per team (the teacher's choice, `team_meter`). The teacher can always tap another team
  * to give it the turn. No timer unless the teacher set one, and time up never moves the class on.
  *
- * Inputs other than "words" (loudness, blow, rhythm...) arrive in later phases; until then every
- * moment plays as words. Tap is always there as the fallback.
+ * Inputs: "words" (tap the word the class shouts), or sound through the microphone: "loudness"
+ * (the class cheers), "blow" (blowing, told from talking by how broadband it is) and "silence" (keep
+ * still for a few seconds). Sound is a group action: it fills one shared meter, never a team's or a
+ * child's. The mic is asked for only when the moment opens, the room is measured first, and it is
+ * all local (meter-inputs/mic.js). Tap and Skip always stay: no mic, no permission or a pupil who
+ * cannot blow never blocks the lesson. Rhythm, pitch and motion come later and play as words.
  *
  * Every string is teacher or spec text = untrusted, so it goes through textContent (el()), never
  * innerHTML. Interface words come from t() (JsTranslations). The rules are pure functions; vitest
@@ -25,6 +29,8 @@ import { el } from './dom.js'
 import { formatClock } from './chapter-timeline.js'
 import { teamNames, clampTeams } from './TeamGame.js'
 import { applyAmbient } from './ambient.js'
+import { MIC_INPUTS, soundStep, registerSoundTuner } from './meter-inputs/sound.js'
+import { placeCard } from './card-place.js'
 
 /** How long a full meter stays on screen before the payoff, and a gust of the react layer. */
 const FULL_HOLD_MS = 700
@@ -41,19 +47,28 @@ export function sitePath (url) {
   return typeof url === 'string' && url.startsWith('/') && !url.startsWith('//') && !url.includes('\\') ? url : ''
 }
 
+/** Steps a sound meter may have when it has no words to count (MomentSpec::RIGHT_MAX). */
+const SOUND_GOAL_MAX = 8
+
 /** The moment as the engine reads it: lists are lists, numbers are clamped, nothing is trusted. */
 export function readMoment (raw = {}) {
   const words = (v) => (Array.isArray(v) ? v : []).map(w => String(w ?? '').trim()).filter(Boolean)
   const right = words(raw.words?.right)
   const teams = Number(raw.teams) || 0
+  const input = MIC_INPUTS.includes(raw.input) ? raw.input : 'words'
+  const options = raw.input_options && typeof raw.input_options === 'object' ? raw.input_options : {}
+  const goalMax = input === 'words' ? (right.length || 1) : SOUND_GOAL_MAX
   return {
-    enabled: raw.enabled !== false && right.length > 0,
+    enabled: raw.enabled !== false && (right.length > 0 || input !== 'words'),
+    input,
+    threshold: Math.max(0.05, Math.min(1, Number(options.threshold) || 0.4)),
+    holdSeconds: Math.max(1, Math.min(30, Number(options.hold_seconds) || 5)),
     name: String(raw.name || ''),
     meterLabel: String(raw.meter_label || ''),
     prompt: String(raw.prompt || ''),
     right,
     wrong: words(raw.words?.wrong),
-    goal: Math.max(1, Math.min(right.length || 1, Math.round(Number(raw.goal) || right.length || 1))),
+    goal: Math.max(1, Math.min(goalMax, Math.round(Number(raw.goal) || right.length || 4))),
     after: String(raw.after || ''),
     afterAudio: sitePath(raw.after_audio),
     at: Number.isFinite(Number(raw.at)) && raw.at !== 'end' && raw.at !== null && raw.at !== '' ? Math.max(0, Number(raw.at)) : 'end',
@@ -116,6 +131,28 @@ export function press (state, cfg, word) {
   }
 }
 
+/**
+ * Sound fills the meter by an amount (fractions of a step). Returns the next state, how many whole
+ * steps it crossed (each one a gust on the panel) and whether that filled it.
+ */
+export function push (state, cfg, amount) {
+  if (state.done || !(amount > 0)) return { state, crossed: 0, full: false }
+  const before = state.fills[0]
+  const after = Math.min(cfg.goal, before + amount)
+  const full = after >= cfg.goal
+  return {
+    state: { ...state, fills: [after, ...state.fills.slice(1)], done: full, winner: full ? 0 : null },
+    crossed: Math.floor(after) - Math.floor(before),
+    full,
+  }
+}
+
+/** A noise during a silence moment: back to the last whole step below, never lower. */
+export function knockBack (state) {
+  if (state.done) return state
+  return { ...state, fills: [Math.max(0, Math.ceil(state.fills[0]) - 1), ...state.fills.slice(1)] }
+}
+
 /** The teacher gives the turn to another team. */
 export function giveTurn (state, team) {
   return state.teams >= 2 && team >= 0 && team < state.teams ? { ...state, turn: team } : state
@@ -135,13 +172,6 @@ export function isUsed (state, word) {
 // ── World (the panel reacts) ─────────────────────────────────────────────────────────────────
 
 const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
-
-/** Which side the card goes on: away from a layer standing at x% (none = the middle). */
-export function cardSide (x) {
-  const n = Number(x)
-  if (!Number.isFinite(n)) return 'center'
-  return n >= 50 ? 'left' : 'right'
-}
 
 /** The ambient wrapper of a figure layer in the player (ArtworkOverlay), by asset id. */
 export function layerNode (root, assetId) {
@@ -195,6 +225,12 @@ function button (label, className, onClick) {
 
 const append = (parent, ...children) => { children.forEach(c => c && parent.appendChild(c)); return parent }
 
+function countEl (meter, text) {
+  const n = el('span', 'w-12 shrink-0 text-right font-mono text-sm tabular-nums', text)
+  n.dataset.meterCount = String(meter)
+  return n
+}
+
 /** A small, kind "no": the button shakes; no sound, no red. */
 function shake (node) {
   if (reducedMotion() || typeof node.animate !== 'function') return
@@ -207,33 +243,42 @@ export class PowerMeter {
     this.host = host
     this._timer = null
     this._fullTimer = null
+    this._mic = null
   }
 
   /**
-   * `side`: where the card sits on a wide screen, away from the layer that reacts ('left', 'right'
-   * or 'center'), so the class sees the ship move while they shout.
+   * `avoid`: what the card should not cover on a wide screen, measured when it opens: rects in px
+   * relative to the host, the reacting layer weighted most (card-place.js).
+   * `listen`: the microphone (meter-inputs/mic.js listen()), injectable for tests.
    *
-   * @param {{ config: object, solo?: boolean, side?: string, onReact?: (meter: number) => void,
+   * @param {{ config: object, solo?: boolean, avoid?: () => Array<{rect: object, weight?: number}>,
+   *           listen?: Function, onReact?: (meter: number) => void,
    *           onDone?: (outcome: { skipped: boolean, winner: ?number, team: ?string }) => void }} opts
    */
-  show ({ config, solo = false, side = 'center', onReact = null, onDone = null }) {
+  show ({ config, solo = false, avoid = () => [], listen = null, onReact = null, onDone = null }) {
     this.cfg = readMoment(config || {})
     this._solo = solo
-    this._side = side
+    this._avoid = avoid
+    this._spot = null
     this._onReact = onReact
     this._onDone = onDone
     this._buttons = wordButtons(this.cfg)
-    const teams = solo ? 0 : this.cfg.teams
+    // Sound is the whole class at once: one shared meter, no turns.
+    const teams = solo || this.cfg.input !== 'words' ? 0 : this.cfg.teams
     this._names = teams ? teamNames(teams, [], (i) => t('Team :number', { number: i })) : []
     this.state = startState(this.cfg, teams)
     this._remaining = this.cfg.seconds
+    this._micState = this.cfg.input === 'words' ? 'none' : 'asking'
+    this._micLevel = 0
     this.host.style.pointerEvents = 'auto'
     this._render()
     this._startClock()
+    if (this._micState === 'asking') this._startMic(listen)
   }
 
   hide () {
     this._stopClock()
+    this._stopMic()
     clearTimeout(this._fullTimer)
     if (!this.host) return
     this.host.replaceChildren()
@@ -268,6 +313,73 @@ export class PowerMeter {
     if (result !== 'used' && result !== 'done') this._render()
   }
 
+  // ── Microphone (loudness, blow, silence) ──
+  async _startMic (listen) {
+    registerSoundTuner()
+    try {
+      const open = listen ?? (await import('./meter-inputs/mic.js')).listen
+      const mic = await open({
+        onCalibrated: () => { this._micState = 'on'; this._paint() },
+        onFrame: (frame) => this._hear(frame),
+      })
+      if (this._micState === 'closed') { mic.stop(); return }
+      this._mic = mic
+    } catch (_) {
+      // No mic, no permission, no Web Audio: the taps below carry the moment.
+      if (this._micState !== 'closed') { this._micState = 'off'; this._render() }
+    }
+  }
+
+  _stopMic () {
+    this._mic?.stop()
+    this._mic = null
+    this._micState = 'closed'
+  }
+
+  _hear (frame) {
+    if (this.state.done || this._micState !== 'on') return
+    this._micLevel = frame.level
+    const step = soundStep(this.cfg.input, frame, this.cfg, frame.dt)
+    if (step.knock) {
+      const back = knockBack(this.state)
+      if (back.fills[0] !== this.state.fills[0]) shake(this.host.querySelector('[data-meter="0"]') ?? this.host)
+      this.state = back
+    } else {
+      this._fill(step.amount)
+    }
+    this._paint()
+  }
+
+  /** Sound or a fallback tap: fill the shared meter, a gust per whole step, finish when full. */
+  _fill (amount) {
+    const { state, crossed, full } = push(this.state, this.cfg, amount)
+    this.state = state
+    for (let i = 0; i < crossed; i++) this._onReact?.(0)
+    if (full) {
+      this._stopMic()
+      this._fullTimer = setTimeout(() => this._finish(false), FULL_HOLD_MS)
+      this._render()
+    }
+  }
+
+  /** In place, many times a second: the meter and the live level, without rebuilding the card. */
+  _paint () {
+    const bar = this.host.querySelector('[data-meter="0"]')
+    if (bar) bar.value = this.state.fills[0]
+    const count = this.host.querySelector('[data-meter-count="0"]')
+    if (count) count.textContent = `${Math.floor(this.state.fills[0])}/${this.cfg.goal}`
+    const live = this.host.querySelector('[data-mic-level]')
+    if (live) live.value = Math.round(this._micLevel * 100)
+    const status = this.host.querySelector('[data-mic-status]')
+    if (status) status.textContent = this._micStatusText()
+  }
+
+  _micStatusText () {
+    if (this._micState === 'asking') return t('Listening to the room')
+    if (this._micState === 'off') return t('No microphone. Tap instead.')
+    return { loudness: t('Louder!'), blow: t('Blow!'), silence: t('Quiet now') }[this.cfg.input] ?? ''
+  }
+
   _finish (skipped) {
     const done = this._onDone
     const winner = skipped ? null : this.state.winner
@@ -292,13 +404,12 @@ export class PowerMeter {
 
   _clockText () { return this._remaining > 0 ? formatClock(this._remaining) : t('Time is up') }
 
-  // ── Frame: a card low over the panel, beside the picture it is about, which stays in view ──
+  // ── Frame: a card over the panel where it hides the least of the picture it is about ──
   _render () {
-    const side = { left: 'sm:justify-start', right: 'sm:justify-end' }[this._side] ?? ''
-    const wrap = el('div', `absolute inset-x-0 bottom-0 flex justify-center px-3 pb-28 sm:px-8 ${side}`)
+    const wrap = el('div', 'pointer-events-none absolute inset-0 flex items-end justify-center px-3 pb-28 sm:px-8')
     wrap.setAttribute('role', 'dialog')
     wrap.setAttribute('aria-label', this.cfg.name || this.cfg.meterLabel || t('Power meter'))
-    const card = el('div', 'card w-full max-w-xl border border-base-300 bg-base-100/95 text-base-content shadow-none')
+    const card = el('div', 'card pointer-events-auto w-full max-w-xl border border-base-300 bg-base-100/95 text-base-content shadow-none')
     const body = el('div', 'card-body gap-3 p-4 sm:gap-4 sm:p-6')
 
     const head = el('div', 'flex flex-wrap items-center justify-between gap-3')
@@ -306,10 +417,53 @@ export class PowerMeter {
     if (clock) { clock.dataset.momentClock = ''; clock.setAttribute('role', 'timer') }
     append(head, el('p', 'text-lg font-bold leading-snug sm:text-2xl', this.cfg.prompt || this.cfg.name), clock)
 
-    append(body, head, this._meters(), this._turns(), this._words(), this._foot())
+    append(body, head, this._meters(), this._micRow(), this._turns(), this._words(), this._foot())
     card.appendChild(body)
     wrap.appendChild(card)
     this.host.replaceChildren(wrap)
+    this._place(card)
+  }
+
+  /**
+   * On a wide screen, put the card where it covers the least of the reacting layer and the figures
+   * (measured once, when the moment opens); on a phone it stays along the bottom.
+   */
+  _place (card) {
+    const w = this.host.clientWidth
+    if (w < 640) return
+    if (!this._spot) {
+      let avoid = []
+      try { avoid = this._avoid() || [] } catch (_) { /* nothing measured: bottom centre */ }
+      // Not laid out yet (or no layout at all): the card's nominal size, max-w-xl by a typical height.
+      const size = card.offsetWidth ? { w: card.offsetWidth, h: card.offsetHeight } : { w: 576, h: 320 }
+      this._spot = placeCard({ w, h: this.host.clientHeight }, size, avoid)
+    }
+    card.style.position = 'absolute'
+    card.style.left = `${this._spot.x}px`
+    card.style.top = `${this._spot.y}px`
+    card.dataset.spot = this._spot.name
+  }
+
+  /** The microphone's state, a live level and the promise that it only listens to loud and soft. */
+  _micRow () {
+    if (this._micState === 'none' || this._micState === 'closed') return null
+    const row = el('div', 'flex flex-col gap-1')
+    const top = el('div', 'flex items-center gap-3')
+    const status = el('span', 'text-base font-semibold', this._micStatusText())
+    status.dataset.micStatus = ''
+    status.setAttribute('aria-live', 'polite')
+    top.appendChild(status)
+    if (this._micState !== 'off') {
+      const live = el('progress', 'progress h-2 flex-1')
+      live.max = 100
+      live.value = Math.round(this._micLevel * 100)
+      live.dataset.micLevel = ''
+      live.setAttribute('aria-label', t('Sound level'))
+      top.appendChild(live)
+    }
+    append(row, top, this._micState === 'off' ? null
+      : el('span', 'text-xs text-base-content/60', t('The microphone only listens to loud and soft. Nothing is recorded.')))
+    return row
   }
 
   _meters () {
@@ -323,7 +477,7 @@ export class PowerMeter {
       bar.setAttribute('aria-label', label)
       bar.dataset.meter = String(m)
       append(row, el('span', 'w-32 shrink-0 truncate text-sm font-semibold uppercase tracking-wider text-base-content/70', label), bar,
-        el('span', 'w-12 shrink-0 text-right font-mono text-sm tabular-nums', `${this.state.fills[m]}/${this.cfg.goal}`))
+        countEl(m, `${Math.floor(this.state.fills[m])}/${this.cfg.goal}`))
       box.appendChild(row)
     })
     return box
@@ -346,6 +500,15 @@ export class PowerMeter {
   }
 
   _words () {
+    // A sound moment without words still has its tap: one step per tap.
+    if (!this._buttons.length) {
+      if (this.cfg.input === 'words') return null
+      const tap = button(t('Tap to fill'), 'btn-outline sm:btn-lg', () => this._fill(1))
+      tap.disabled = this.state.done
+      const row = el('div', 'flex justify-center')
+      row.appendChild(tap)
+      return row
+    }
     const grid = el('div', 'flex flex-wrap justify-center gap-2 sm:gap-3')
     for (const word of this._buttons) {
       const used = isUsed(this.state, word)
