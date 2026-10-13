@@ -2,7 +2,10 @@
 // (Tasman with the spyglass on deck, the coast ahead) in 3D, to put next to it in the Reference panel.
 // Painted plate (sea + coast) behind; a simple deck, railing and barrel; Tasman from one picture via
 // Hunyuan3D-Omni with that picture painted back on (render PC). Tuning from the console: window.__shot.
-//   ?scene=spyglass[&actor=<glb>][&ship=0]   ship=0: the box deck and rail in place of the Heemskerck model
+//   ?scene=spyglass[&actor=<glb>][&ship=0][&look=<preset>]   ship=0: the box deck and rail in place of the Heemskerck
+//   model; look: a Look preset by name, e.g. 'History Lines pencil' or 'Day', or 'off' (none: the look stays as saved);
+//   &hide=tasman renders the set alone (the frame a painter repaints for the ship's projected paint);
+//   &paint=ship lays that repainted frame on the ship, projected from the shot camera (matte painting)
 /* global BABYLON */
 'use strict';
 
@@ -18,7 +21,8 @@
   // across. With a 40 degree vertical field of view that is an eye 1.1 m above the deck, Tasman 2.85 m away and
   // 0.66 m left of centre (a sailor's low view), tilted up a little so the horizon sits just below the middle.
   const CAMERA = { position: [0, 1.1, 0], target: [0, 1.24, 10], fov: 0.7 };
-  const TASMAN_AT = { x: -0.66, z: 2.85 };
+  // turned to face the camera exactly: the picture was painted from the front, the sides only carry smeared paint
+  const TASMAN_AT = { x: -0.66, z: 2.85, turn: (Math.atan2(0.66, -2.85) * 180) / Math.PI };
   // the Heemskerck: Sketchfab "dutch ship large" by TegnoGenial (CC-BY-4.0), 34 m, via tools/artkit/blender/ship_glb.py.
   // Its main deck is 4.61 m above the keel at midships (measured in the Studio: y=0 from 3 m aft to 3 m forward of
   // midships; the stern deck rises from 6 m aft); bow along the model's +X. Stood with its starboard rail
@@ -94,11 +98,50 @@
       pivot.rotation.y = railYaw - Math.PI / 2;   // model +X (bow) along the rail
       window.__shot && (window.__shot.ship = pivot);
       shipPivot = pivot;
+      if (params.get('paint') === 'ship') { aimCamera(); projectPaint(pivot); }
     } catch (e) {
       console.error('frame-match: could not load the ship', e);
     }
   }
   let shipPivot = null;
+
+  // Camera-projected paint: every ship surface takes the colour of the repainted frame where the shot camera
+  // sees it (ChatGPT repainted our own render, geometry kept). Unlit: light and lines are in the painting.
+  // Valid for this camera (and small moves); the frame was rendered at 16:9.
+  const SHIP_PAINT = { url: 'assets/plates/tasman-spyglass-ship-paint.webp', aspect: 16 / 9, fallback: '#c9a77c' };
+  BABYLON.Effect.ShadersStore.projPaintVertexShader = `
+    precision highp float;
+    attribute vec3 position;
+    uniform mat4 world, viewProjection;
+    varying vec3 vW;
+    void main(void) { vec4 w = world * vec4(position, 1.0); vW = w.xyz; gl_Position = viewProjection * w; }`;
+  BABYLON.Effect.ShadersStore.projPaintFragmentShader = `
+    precision highp float;
+    varying vec3 vW;
+    uniform sampler2D paint;
+    uniform mat4 paintView;
+    uniform float tanHalf, aspect;
+    uniform vec3 fallback;
+    void main(void) {
+      vec4 v = paintView * vec4(vW, 1.0);   // Babylon view space: +z forward
+      vec2 uv = vec2(v.x / (v.z * tanHalf * aspect), v.y / (v.z * tanHalf)) * 0.5 + 0.5;
+      float inside = step(0.0, v.z) * step(0.0, uv.x) * step(uv.x, 1.0) * step(0.0, uv.y) * step(uv.y, 1.0);
+      gl_FragColor = vec4(mix(fallback, texture2D(paint, clamp(uv, 0.0, 1.0)).rgb, inside), 1.0);
+    }`;
+  function projectPaint(root) {
+    const cam = mvp.camera;
+    cam.getViewMatrix(true);
+    const m = new BABYLON.ShaderMaterial('ship-paint', scene, 'projPaint', {
+      attributes: ['position'], uniforms: ['world', 'viewProjection', 'paintView', 'tanHalf', 'aspect', 'fallback'], samplers: ['paint'],
+    });
+    m.setTexture('paint', new BABYLON.Texture(SHIP_PAINT.url, scene));
+    m.setMatrix('paintView', cam.getViewMatrix().clone());   // frozen: the camera the frame was painted from
+    m.setFloat('tanHalf', Math.tan(cam.fov / 2));
+    m.setFloat('aspect', SHIP_PAINT.aspect);
+    m.setColor3('fallback', BABYLON.Color3.FromHexString(SHIP_PAINT.fallback));
+    m.backFaceCulling = false;
+    root.getChildMeshes().forEach((mesh) => { if (mesh.material) mesh.material = m; });
+  }
 
   /** The painter's light is in the picture: show the texture as painted (unlit), keep the cast shadow. */
   function paintedLight(root) {
@@ -117,16 +160,28 @@
     cam.getViewMatrix(true);   // position is only recomputed on render; the plate reads it now
   }
 
+  /** A Look preset by name, switched on (the line experiments: ink colour, weight, no paint over painted art). */
+  function useLook(name) {
+    const on = document.getElementById('lookOn'), preset = document.getElementById('lookPreset');
+    if (name === 'off') { if (on && on.checked) { on.checked = false; on.onchange(); } return; }
+    if (!on || !preset || ![...preset.options].some((o) => o.value === name)) return console.error('frame-match: no look preset', name);
+    if (!on.checked) { on.checked = true; on.onchange(); }
+    preset.value = name;
+    preset.onchange();
+  }
+
   scene.executeWhenReady(() => {
     const grid = document.getElementById('grid');
     if (grid && grid.checked) grid.click();
+    if (params.get('look')) useLook(params.get('look'));
     aimCamera();
     const set = buildSet();
-    mvp.setPlate(PLATE.url, { horizon: PLATE.horizon, fit: PLATE.fit });
+    mvp.setPlate(PLATE.url, { horizon: PLATE.horizon, fit: PLATE.fit, floorY: useShip ? -SHIP.deckY : 0 });
     mvp.CATALOG.push(TASMAN);
-    mvp.addFromCatalog(TASMAN, { x: TASMAN_AT.x, z: TASMAN_AT.z, turn: 180 }).then((tasman) => {
+    mvp.addFromCatalog(TASMAN, { x: TASMAN_AT.x, z: TASMAN_AT.z, turn: TASMAN_AT.turn }).then((tasman) => {
       mvp.select(null);
       tasman.position.set(TASMAN_AT.x, 0, TASMAN_AT.z);   // exact, not on the placement grid
+      if (params.get('hide') === 'tasman') tasman.setEnabled(false);
       paintedLight(tasman);
       window.__shot = { tasman, set, ship: shipPivot, camera: mvp.camera, aimCamera, CAMERA, TASMAN_AT, RAIL, SHIP };
     }, (e) => console.error('frame-match: could not load Tasman', e));

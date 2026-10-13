@@ -104,6 +104,30 @@ export const ADVANCED: { group: string; controls: Control[] }[] = [
         "label": "Ink darkness"
       },
       {
+        "type": "select",
+        "id": "lookInkColor",
+        "label": "Ink colour",
+        "options": [
+          [
+            "blue-grey",
+            "Blue-grey"
+          ],
+          [
+            "pencil",
+            "Pencil brown"
+          ],
+          [
+            "sepia",
+            "Sepia"
+          ],
+          [
+            "graphite",
+            "Graphite"
+          ]
+        ],
+        "default": "blue-grey"
+      },
+      {
         "type": "range",
         "id": "lookOutline",
         "min": 1.0,

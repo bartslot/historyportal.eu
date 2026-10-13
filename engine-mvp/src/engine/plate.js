@@ -3,7 +3,8 @@
 // projected on the floor from that camera, so painted ground or sea reaches the actors' feet; the studio floor
 // turns shadow-only. Ported from feat/rider-look's rider-test.js (2026-10-09) so every scene can use it.
 //   window.__mvp.setPlate(url, { horizon, fit })   horizon = how far UP the picture its horizon line sits (0..1);
-//     fit 'cover' (default) fills any view, 'view' = painted for this camera: its height = the view's height
+//     fit 'cover' (default) fills any view, 'view' = painted for this camera: its height = the view's height;
+//     floorY: height of the painted ground/sea (default 0; below a ship's deck: minus the freeboard)
 //   ?plate=<url>&horizon=0.65                 the same from the address bar
 /* global BABYLON */
 'use strict';
@@ -56,10 +57,10 @@
       gl_FragColor = vec4(mix(band, painted, inside), 1.0);
     }`;
 
-  function projectOnFloor(cam, plate, tex, w, h) {
+  function projectOnFloor(cam, plate, tex, w, h, floorY) {
     plate.computeWorldMatrix(true);
     const floor = BABYLON.MeshBuilder.CreateGround('backdrop-floor', { width: FLOOR_PROJ_M, height: FLOOR_PROJ_M }, mvp.scene);
-    floor.position.y = -0.005;   // under the shadow-only floor
+    floor.position.y = floorY - 0.005;   // under the shadow-only floor (or lower: the sea below a ship's deck)
     const M = plate.getWorldMatrix();
     const R = BABYLON.Vector3.TransformNormal(BABYLON.Axis.X, M).normalize();
     const U = BABYLON.Vector3.TransformNormal(BABYLON.Axis.Y, M).normalize();
@@ -101,7 +102,7 @@
   }
 
   /** Put a painted plate behind the scene, placed for the camera as it stands now (aim the camera first). */
-  function setPlate(url, { horizon = DEFAULT_HORIZON, fit = 'cover' } = {}) {
+  function setPlate(url, { horizon = DEFAULT_HORIZON, fit = 'cover', floorY = 0 } = {}) {
     PLATE_NAMES.forEach((n) => { const old = mvp.scene.getMeshByName(n); if (old) old.dispose(false, true); });
     hideRings();
     const cam = mvp.camera;
@@ -122,7 +123,7 @@
         plate.position = cam.position.add(view.scale(dist));
         plate.position.y = cam.position.y - horizon * h + h / 2;   // the painted horizon at the camera's height
         plate.lookAt(plate.position.add(view));
-        projectOnFloor(cam, plate, tex, w, h);
+        projectOnFloor(cam, plate, tex, w, h, floorY);
         shadowOnlyFloor();
       },
       (msg) => console.error('plate: could not load', url, msg));
