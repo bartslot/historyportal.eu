@@ -279,7 +279,8 @@ final class MomentSpec
     {
         $url = is_string($value) ? trim($value) : '';
 
+        // A backslash is a slash to a browser: "/\\evil.example" would leave the site.
         return $url !== '' && mb_strlen($url) <= self::URL_MAX && str_starts_with($url, '/') && ! str_starts_with($url, '//')
-            ? $url : '';
+            && ! str_contains($url, '\\') ? $url : '';
     }
 }

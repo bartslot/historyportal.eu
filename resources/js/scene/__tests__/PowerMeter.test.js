@@ -32,6 +32,8 @@ describe('power meter rules', () => {
     expect(odd.teams).toBe(0)
     expect(odd.seconds).toBe(300)
     expect(odd.afterAudio).toBe('')
+    expect(readMoment({ after_audio: '/\\evil.example/a.mp3' }).afterAudio).toBe('')
+    expect(readMoment({ after_audio: '/storage/a.mp3' }).afterAudio).toBe('/storage/a.mp3')
     expect(odd.at).toBe('end')
     expect(readMoment({ words: { right: [] } }).enabled).toBe(false)
     expect(readMoment({ ...raw, enabled: false }).enabled).toBe(false)

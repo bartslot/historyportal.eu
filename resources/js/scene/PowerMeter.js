@@ -36,6 +36,11 @@ const MIN_READ_S = 1.8
 
 // ── Rules (pure) ─────────────────────────────────────────────────────────────────────────────
 
+/** A path on this site, or ''. A backslash counts as a slash to a browser, so it is refused too. */
+export function sitePath (url) {
+  return typeof url === 'string' && url.startsWith('/') && !url.startsWith('//') && !url.includes('\\') ? url : ''
+}
+
 /** The moment as the engine reads it: lists are lists, numbers are clamped, nothing is trusted. */
 export function readMoment (raw = {}) {
   const words = (v) => (Array.isArray(v) ? v : []).map(w => String(w ?? '').trim()).filter(Boolean)
@@ -50,7 +55,7 @@ export function readMoment (raw = {}) {
     wrong: words(raw.words?.wrong),
     goal: Math.max(1, Math.min(right.length || 1, Math.round(Number(raw.goal) || right.length || 1))),
     after: String(raw.after || ''),
-    afterAudio: typeof raw.after_audio === 'string' && raw.after_audio.startsWith('/') && !raw.after_audio.startsWith('//') ? raw.after_audio : '',
+    afterAudio: sitePath(raw.after_audio),
     at: Number.isFinite(Number(raw.at)) && raw.at !== 'end' && raw.at !== null && raw.at !== '' ? Math.max(0, Number(raw.at)) : 'end',
     seconds: Math.max(0, Math.min(300, Number(raw.seconds) || 0)),
     teams: teams >= 2 ? clampTeams(teams) : 0,

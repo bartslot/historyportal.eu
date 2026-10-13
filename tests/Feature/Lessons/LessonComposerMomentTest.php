@@ -150,6 +150,8 @@ class LessonComposerMomentTest extends TestCase
         $this->assertSame(2, $clean['goal']);
         $this->assertSame([], $clean['words']['wrong']);
         $this->assertSame('', $clean['after_audio']);
+        $this->assertSame('', MomentSpec::normalize(['after_audio' => '/\\evil.example/a.mp3'])['after_audio']);
+        $this->assertSame('/storage/a.mp3', MomentSpec::normalize(['after_audio' => '/storage/a.mp3'])['after_audio']);
         $this->assertFalse(MomentSpec::blank()['enabled']);
     }
 }

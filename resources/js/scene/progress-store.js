@@ -3,7 +3,7 @@
  * they can stop and carry on later. Nothing leaves the device: no account, no server. A signed-in
  * pupil's progress on the server is a later step (the student progress API).
  *
- * Shape: { index, time, done: [scene indexes whose moment or game is played] }. Anything else in
+ * Shape: { index, time, done: [scene ids whose power-meter moment has played] }. Anything else in
  * storage (another version, a hand edit, a full disk) reads as "no progress".
  */
 const VERSION = 1
