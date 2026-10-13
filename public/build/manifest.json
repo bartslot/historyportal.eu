@@ -195,7 +195,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-DDoymPxt.js",
+    "file": "assets/lesson-player-Dg0RNUMh.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -229,7 +229,7 @@
     ]
   },
   "resources/js/race-device.js": {
-    "file": "assets/race-device-x0SSrURP.js",
+    "file": "assets/race-device-sag_VuxK.js",
     "name": "race-device",
     "src": "resources/js/race-device.js",
     "isEntry": true,
@@ -384,7 +384,7 @@
     "isDynamicEntry": true
   },
   "resources/js/scene/race-lobby.js": {
-    "file": "assets/race-lobby-CIjCfElE.js",
+    "file": "assets/race-lobby-CXA_Ul6o.js",
     "name": "race-lobby",
     "src": "resources/js/scene/race-lobby.js",
     "isDynamicEntry": true,
@@ -406,7 +406,7 @@
     ]
   },
   "resources/js/scene/race-sync.js": {
-    "file": "assets/race-sync-sGYEfSq5.js",
+    "file": "assets/race-sync-BtYbxhyn.js",
     "name": "race-sync",
     "src": "resources/js/scene/race-sync.js",
     "isDynamicEntry": true
