@@ -1916,3 +1916,9 @@ html[data-inspector-w] aside[data-resizable-drawer] {
 .maplibregl-ctrl.maplibregl-ctrl-attribution {
     display: none !important;
 }
+
+/* ─── Comic title poster (resources/js/title-poster.js) ───
+   The stage is the frame: its width is the unit for the subtitle and the hard shadow (cqw).
+   Its loops rest while the tab is hidden. */
+.title-poster { container-type: inline-size; }
+.title-poster.is-paused, .title-poster.is-paused * { animation-play-state: paused !important; }
