@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import {
   sitSpec, coverToImage, sampleBoxes, averageRgb, washMatrix, shade, waveMask, rippleMask,
-  sampleColours, renderSitIn, foamColours, foamShape, bowWave, wakePatch, bowScale, foamLines, wakePlan, applyFoamSpeed,
+  sampleColours, renderSitIn, foamColours, foamShape, bowWave, wakePatch, bowScale, foamLines, wakePlan, applyFoamSpeed, hullSpan, bandScale,
 } from '../sit-in-scene.js'
 import { filterMarkup } from '../layer-filters.js'
 import { ArtworkOverlay, layersSignature } from '../ArtworkOverlay.js'
@@ -90,8 +90,9 @@ describe('foam', () => {
   it('is paper-white leaning a touch toward the water, so it never glares on a night sea', () => {
     const day = foamColours([120, 200, 210])
     const night = foamColours([12, 20, 40])
-    expect(day.fill.every(v => v > 225)).toBe(true)
-    expect(night.fill.every(v => v < 215 && v > 180)).toBe(true)   // still white, not a glare
+    expect(day.fill.every(v => v > 205)).toBe(true)
+    expect(night.fill.every(v => v < 180 && v > 110)).toBe(true)   // a soft off-white, not a glare
+    expect(night.fill[2]).toBeGreaterThan(night.fill[0])           // of the sea's own hue
     expect(night.rim[2]).toBeGreaterThan(night.rim[0])           // the rim stays cool
   })
 
@@ -112,6 +113,15 @@ describe('foam', () => {
     expect(bowScale(1, 9)).toBe(1)
   })
 
+  it('the hull band is a thin lapping line at anchor and broken into patches with water between', () => {
+    expect(bandScale(0)).toBe(0.35)
+    expect(bandScale(1)).toBe(1)
+    const xs = [...decodeURIComponent(foamShape()).matchAll(/cx='([\d.]+)'/g)].map(m => Number(m[1]))
+    const gaps = xs.slice(1).map((x, i) => x - xs[i])
+    expect(Math.max(...gaps)).toBeGreaterThan(10)        // at least one real gap
+    expect(gaps.filter(g => g > 10).length).toBeGreaterThan(4)
+  })
+
   it('the wake grows with speed: more patches, drifting further back', () => {
     const shown = (plan) => plan.filter(p => p.op > 0).length
     expect(shown(wakePlan(1, 0))).toBe(0)
@@ -130,15 +140,16 @@ describe('foam', () => {
 
     renderSitIn(node, body, img, { asset_id: 1, foam: 0.5, waterline: 0.2, speed: 1 }, { below: [10, 20, 40] })
     const band = body.querySelector('.sit-foam')
-    expect(parseFloat(band.style.top.replace('calc(', ''))).toBeCloseTo(80 - 3.5)
-    expect(band.style.opacity).toBe('0.5')
+    expect(parseFloat(band.style.top.replace('calc(', ''))).toBeCloseTo(80)   // the band's top is a calc around the line
+    expect(band.style.opacity).toBe('')   // crisp: amount makes it fuller, never translucent
     expect(body.querySelector('.sit-bow')).not.toBeNull()
     expect(body.querySelectorAll('.sit-wake').length).toBeGreaterThan(1)
     expect(body.style.position).toBe('relative')
 
     renderSitIn(node, body, img, { asset_id: 1, foam: 0.5 })
-    expect(parseFloat(body.querySelector('.sit-foam').style.top.replace('calc(', ''))).toBeCloseTo(100 - 3.5)
+    expect(parseFloat(body.querySelector('.sit-foam').style.top.replace('calc(', ''))).toBeCloseTo(100)
     expect(body.style.getPropertyValue('--sit-bow-k')).toBe('0')   // speed 0: at anchor
+    expect(body.style.getPropertyValue('--sit-band-k')).toBe('0.35')
 
     renderSitIn(node, body, img, { asset_id: 1 })
     expect(body.querySelector('.sit-foam, .sit-bow, .sit-wake')).toBeNull()
@@ -155,6 +166,25 @@ describe('foam', () => {
     expect(body.querySelector('.sit-wake')).toBe(first)
     expect(Number(first.style.getPropertyValue('--sit-wake-op'))).toBeGreaterThan(0)
     expect(Number(body.style.getPropertyValue('--sit-bow-k'))).toBe(1)
+  })
+
+  it('finds the hull at the waterline, not the bowsprit or flags past it', () => {
+    // 10 x 10: rows 0-5 a wide rig (cols 0-9), rows 6-9 the hull (cols 2-7).
+    const data = new Uint8ClampedArray(400)
+    for (let y = 0; y < 10; y++) {
+      for (let x = 0; x < 10; x++) if (y < 6 || (x >= 2 && x <= 7)) data[(y * 10 + x) * 4 + 3] = 255
+    }
+    const px = { data, width: 10, height: 10 }
+    expect(hullSpan(px, 0.9)).toEqual([0.2, 0.8])
+    expect(hullSpan(px, 0.5)).toEqual([0, 1])
+    expect(hullSpan({ data: new Uint8ClampedArray(400), width: 10, height: 10 }, 1)).toBeNull()
+    expect(hullSpan(null, 1)).toBeNull()
+
+    const node = document.createElement('div'); const body = document.createElement('div'); const img = document.createElement('img')
+    body.appendChild(img); node.appendChild(body)
+    renderSitIn(node, body, img, { asset_id: 1, foam: 1, speed: 1 }, { below: [9, 9, 9], hull: [0.2, 0.8] })
+    expect(body.querySelector('.sit-foam').style.left).toBe('19%')
+    expect(body.querySelector('.sit-bow').style.left).toContain('80%')
   })
 
   it('stops churning under reduced motion', () => {

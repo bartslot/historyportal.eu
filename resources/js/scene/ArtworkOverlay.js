@@ -21,7 +21,7 @@
 import { playEntrance, playExit } from './animations.js'
 import { applyLayerFilter } from './layer-filters.js'
 import { applyAmbient, trackStage } from './ambient.js'
-import { SIT_KEYS, sitSpec, renderSitIn, backdropPixels, sampleColours, registerSitTuner, applyFoamSpeed } from './sit-in-scene.js'
+import { SIT_KEYS, sitSpec, renderSitIn, backdropPixels, sampleColours, registerSitTuner, applyFoamSpeed, hullSpan } from './sit-in-scene.js'
 
 const DRAG_THRESHOLD_PX = 4
 const MIN_SCALE = 0.2
@@ -553,7 +553,8 @@ export class ArtworkOverlay {
     const decoded = img.complete && img.naturalWidth
       ? Promise.resolve()
       : new Promise(resolve => { img.addEventListener('load', resolve, { once: true }); img.addEventListener('error', resolve, { once: true }) })
-    Promise.all([backdropPixels(this._backdropUrl), decoded]).then(([pixels]) => {
+    // The backdrop for the colours, the layer's own picture for where its hull meets the water.
+    Promise.all([backdropPixels(this._backdropUrl), spec.foam > 0 ? backdropPixels(img.src) : null, decoded]).then(([pixels, own]) => {
       if (this._nodeEl(item) !== node || !node.isConnected) return   // rebuilt or gone meanwhile
       const hostW = this.host.clientWidth || 1
       const hostH = this.host.clientHeight || 1
@@ -561,6 +562,7 @@ export class ArtworkOverlay {
       const w = (this._widthPct(item) ?? (node.offsetWidth / hostW) * 100) / 100
       const colours = sampleColours(pixels, { x: item.x / 100 - w / 2, y: item.y / 100 - h / 2, w, h }, hostW / hostH, spec.waterline)
       if (!colours) return
+      colours.hull = hullSpan(own, 1 - spec.waterline)
       item.__colours = colours
       renderSitIn(node, body, img, item, colours)
       item.wash = spec.color_match > 0 && colours.around ? { rgb: colours.around, amount: spec.color_match } : null
