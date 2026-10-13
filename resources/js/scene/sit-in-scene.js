@@ -9,6 +9,22 @@
  *   contact_shadow  a flat, soft-edged patch under the layer's bottom in a darker shade of what is
  *                   beneath it
  *   color_match     the layer's colours washed toward the backdrop around it (a glaze)
+ *   foam            white foam where the hull meets the water, drawn the ligne-claire way: flat
+ *                   paper-white shapes with broken edges and a few fine cool-grey lines (no blur,
+ *                   no glow, no haze). Three parts: a band hugging the hull at the waterline (or
+ *                   the bottom edge), a bow wave peeling off the bow (bigger with more amount and
+ *                   a faster swing), and a wake of separate patches behind the stern that drift
+ *                   back and fade (opacity only). It churns in step with the layer's bob / roll /
+ *                   swell. It belongs to the LAYER, so it works on any sea plate; it is tinted a
+ *                   touch toward the water under it, so it never glares on a night sea.
+ *   speed           how fast the boat is meant to go, 0..1. 0 = at anchor: the hull band only.
+ *                   More speed = a bigger bow wave and a longer, stronger wake that reads as
+ *                   forward motion. A plain layer value the player may change while it plays:
+ *                   ArtworkOverlay.setSpeed(assetId, 0..1) (the power-meter hook) restyles the
+ *                   live foam in place, no rebuild, no restarted animation.
+ *                   The bow is the picture's right side (how the library's ships are drawn);
+ *                   flip_x mirrors the whole layer, foam included, so a flipped ship's bow foam
+ *                   follows it.
  *
  * All 0..1, all off by default (app/Services/Support/LayerSitIn.php holds the server side).
  * Everything here is drawn and flat, never photographic: no blur, no depth fade.
@@ -17,7 +33,10 @@
  * per url), and each layer averages the pixels in a band around / under its box.
  */
 
-export const SIT_KEYS = ['waterline', 'reflection', 'contact_shadow', 'color_match']
+export const SIT_KEYS = ['waterline', 'reflection', 'contact_shadow', 'color_match', 'foam', 'speed']
+
+/** The keys that draw something; `speed` only shapes the foam. */
+const DRAWN_KEYS = SIT_KEYS.filter(k => k !== 'speed')
 
 /** Shown until (or instead of, on a cross-origin plate) a real sample: a neutral dusk grey. */
 export const FALLBACK_RGB = [70, 72, 80]
@@ -31,6 +50,13 @@ export const SIT = {
   shadowHeight: 0.1,   // share of the layer's height
   shadowDark: 0.45,    // the patch is the colour beneath x this
   shadowOpacity: 0.85, // at contact_shadow 1
+  foamHeight: 0.07,    // share of the layer's height the hull band spans at the bow
+  foamTint: 0.18,      // how far paper-white leans toward the water's colour
+  foamChurnPx: 10,     // how far the band's lines shift per half swing
+  bowWidth: 0.16,      // the bow wave at foam 1 and speed 1, share of the layer's width
+  bowHeight: 0.16,     //   ... and of its height
+  wakePatches: 6,      // patches in the wake at full speed (fewer show at lower speed)
+  wakeRun: 7,          // how far a patch drifts back at full speed, in its own widths
 }
 
 const clamp01 = (n) => (Number.isFinite(Number(n)) && n !== null && n !== '' ? Math.min(1, Math.max(0, Number(n))) : 0)
@@ -42,7 +68,7 @@ const round = (n, dp = 3) => Math.round(n * 10 ** dp) / 10 ** dp
  */
 export function sitSpec (layer) {
   const spec = Object.fromEntries(SIT_KEYS.map(k => [k, clamp01(layer?.[k])]))
-  return SIT_KEYS.some(k => spec[k] > 0) ? spec : null
+  return DRAWN_KEYS.some(k => spec[k] > 0) ? spec : null
 }
 
 /**
@@ -137,6 +163,95 @@ export function rippleMask (bands = SIT.reflectionBands) {
   return svgUrl(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'><g fill='#000'>${rects.join('')}</g></svg>`)
 }
 
+/** Pure: a colour mixed toward another by t (0..1). */
+export const mixRgb = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t))
+
+const PAPER = [250, 249, 244]
+const COOL_RIM = [168, 182, 196]
+
+/** Pure: the foam's paper-white fill and its faint cool rim, leaning toward the water under it. */
+export function foamColours (below, tint = SIT.foamTint) {
+  return { fill: mixRgb(PAPER, below, tint), rim: mixRgb(COOL_RIM, below, tint * 2) }
+}
+
+// A fixed jitter (no Math.random): the same layer draws the same foam on every machine.
+const jitter = (i) => ((Math.sin(i * 12.9898) * 43758.5453) % 1 + 1) % 1
+const rgbCss = (rgb) => `rgb(${rgb.join(',')})`
+
+/**
+ * Pure: the hull band's outline as a mask, in a 200 x 20 box (bow on the right): one flat shape
+ * with a broken, scalloped edge, thin at the stern and fuller toward the bow.
+ */
+export function foamShape () {
+  const blobs = []
+  for (let i = 0; i < 27; i++) {
+    const x = 6 + i * 7 + jitter(i) * 3
+    const t = (x - 6) / 188                          // 0 stern .. 1 bow
+    const ry = round(2.2 + 4.5 * t * t + jitter(i + 40) * 1.2, 2)
+    blobs.push(`<ellipse cx='${round(x, 2)}' cy='${round(10 + (jitter(i + 80) - 0.5) * 1.2, 2)}' rx='${round(4.6 + jitter(i + 120) * 1.6, 2)}' ry='${ry}'/>`)
+  }
+  return svgUrl(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 20' preserveAspectRatio='none'><g fill='#000'>${blobs.join('')}</g></svg>`)
+}
+
+/** Pure: the band's few fine lines, one repeating tile (they shift to churn; the shape stays). */
+export function foamLines (rim) {
+  const strokes = [
+    "M2 7 Q8 5 14 7", "M19 9 Q24 7.5 29 9.5", "M33 6 Q36 5 39 6.5",
+  ]
+  return svgUrl(`<svg xmlns='http://www.w3.org/2000/svg' width='40' height='12' viewBox='0 0 40 12'><g fill='none' stroke='${rgbCss(rim)}' stroke-width='0.6' stroke-linecap='round' stroke-opacity='0.7'>${strokes.map(d => `<path d='${d}'/>`).join('')}</g></svg>`)
+}
+
+/**
+ * Pure: the bow wave, in a 60 x 40 box with the hull on the left and the water line at y 34: a
+ * flat white crest climbing the stem and peeling forward off it, a smaller lobe peeling to the
+ * far side behind it, and three fine lines following the curl.
+ */
+export function bowWave (fill, rim) {
+  const far = "M8 34 C12 24 20 18 30 17 C36 17 40 21 38 26 C42 25 46 28 44 33 Z"
+  const near = "M0 36 C4 26 10 15 20 9 C26 5 34 4 40 8 C44 11 43 15 39 15 C45 15 51 19 50 24 "
+    + "C55 24 60 29 57 34 C52 37 46 33 42 37 C36 33 30 38 24 35 C16 39 8 35 0 36 Z"
+  const lines = ["M14 22 C20 14 28 10 36 10", "M26 25 C32 20 40 19 47 23", "M30 33 C37 30 44 30 51 32"]
+  return svgUrl(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 40' preserveAspectRatio='none'>`
+    + `<path d='${far}' fill='${rgbCss(mixRgb(fill, rim, 0.25))}'/>`
+    + `<path d='${near}' fill='${rgbCss(fill)}'/>`
+    + `<g fill='none' stroke='${rgbCss(rim)}' stroke-width='0.7' stroke-linecap='round' stroke-opacity='0.75'>${lines.map(d => `<path d='${d}'/>`).join('')}</g></svg>`)
+}
+
+/** Pure: one wake patch: an irregular flat white shape with one fine line along part of its edge. */
+export function wakePatch (fill, rim, i = 0) {
+  const pts = Array.from({ length: 7 }, (_, k) => {
+    const a = (k / 7) * Math.PI * 2
+    const r = 0.72 + jitter(i * 11 + k) * 0.28
+    return [round(20 + Math.cos(a) * 19 * r, 2), round(8 + Math.sin(a) * 7 * r, 2)]
+  })
+  const d = `M${pts[0].join(' ')} ` + pts.slice(1).map(([x, y], k) => `Q${round((pts[k][0] + x) / 2 + (jitter(i + k + 60) - 0.5) * 4, 2)} ${round((pts[k][1] + y) / 2, 2)} ${x} ${y}`).join(' ') + ' Z'
+  return svgUrl(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 16' preserveAspectRatio='none'><path d='${d}' fill='${rgbCss(fill)}'/>`
+    + `<path d='M${pts[4].join(' ')} Q20 15 ${pts[1].join(' ')}' fill='none' stroke='${rgbCss(rim)}' stroke-width='0.7' stroke-opacity='0.7'/></svg>`)
+}
+
+/**
+ * Pure: how big the bow wave is: more foam and more speed push a bigger wave. At anchor
+ * (speed 0) there is none.
+ */
+export function bowScale (foam, speed) {
+  const v = clamp01(speed)
+  return v > 0 ? round(clamp01(foam) * (0.45 + 0.55 * v), 3) : 0
+}
+
+/**
+ * Pure: the wake at a speed: for each patch, how strongly it shows (more patches appear as the
+ * boat speeds up, the later ones fainter) and how far it drifts back (in its own widths).
+ * @returns {{op: number, run: number}[]}
+ */
+export function wakePlan (foam, speed, n = SIT.wakePatches) {
+  const v = clamp01(speed)
+  const count = Math.max(0, Math.round(n))
+  return Array.from({ length: count }, (_, i) => ({
+    op: round(clamp01(v * count - i) * clamp01(foam) * (1 - i / (count + 2)), 3),
+    run: round(1.5 + SIT.wakeRun * v, 2),
+  }))
+}
+
 // ── The backdrop's pixels, read once per url ───────────────────────────────────────────────
 const SAMPLE_W = 96
 const pixelCache = new Map()
@@ -192,8 +307,38 @@ function injectStyles () {
   style.textContent = `
     @keyframes sit-wave { from { mask-position: 0% 0%; } to { mask-position: 100% 0%; } }
     .sit-waterline { mask-size: 50% 100%; mask-repeat: repeat-x; animation: sit-wave var(--sit-drift, 18s) linear infinite; }
-    .sit-reflection, .sit-shadow { position: absolute; pointer-events: none; }
-    @media (prefers-reduced-motion: reduce) { .sit-waterline { animation: none; } }
+    .sit-reflection, .sit-shadow, .sit-foam, .sit-bow, .sit-wake { position: absolute; pointer-events: none; }
+    /* The band's lines churn on the layer's own swing (its --amb-dur, inherited from the ambient
+       wrapper), eased like the bob it rides on. */
+    @keyframes sit-churn {
+      from { background-position: 0 0; }
+      to   { background-position: var(--sit-churn, 10px) 0; }
+    }
+    .sit-foam {
+      background-repeat: repeat-x; background-size: auto 100%;
+      mask-size: 100% 100%; mask-repeat: no-repeat;
+      animation: sit-churn calc(var(--amb-dur, 6s) / 2) cubic-bezier(0.37, 0, 0.63, 1) infinite alternate;
+      animation-delay: var(--amb-delay, 0s);
+    }
+    /* The bow wave swells and settles with the swing, about the water line. */
+    @keyframes sit-bow { from { transform: scale(0.88, 0.8); } to { transform: scale(1.04, 1.06); } }
+    .sit-bow {
+      background-size: 100% 100%; transform-origin: 0% 85%;
+      animation: sit-bow calc(var(--amb-dur, 6s) / 2) cubic-bezier(0.37, 0, 0.63, 1) infinite alternate;
+      animation-delay: var(--amb-delay, 0s);
+    }
+    /* Wake patches are born at the stern and drift back and apart (the V), fading: opacity
+       only, never a blur. A drift is a deceleration (ease-out). */
+    @keyframes sit-wake {
+      0%   { transform: translate(0, 0); opacity: 0; }
+      10%  { opacity: var(--sit-wake-op, 0); }
+      100% { transform: translate(calc(var(--sit-wake-run, 0) * -100%), calc(var(--sit-wake-side, 1) * var(--sit-wake-run, 0) * 18%)); opacity: 0; }
+    }
+    .sit-wake {
+      background-size: 100% 100%; opacity: 0;
+      animation: sit-wake calc(var(--amb-dur, 6s) * 1.4) cubic-bezier(0.16, 1, 0.3, 1) infinite;
+    }
+    @media (prefers-reduced-motion: reduce) { .sit-waterline, .sit-foam, .sit-bow, .sit-wake { animation: none; } }
   `
   document.head.appendChild(style)
 }
@@ -209,7 +354,7 @@ function injectStyles () {
  * @returns {object|null} the spec drawn
  */
 export function renderSitIn (node, body, img, item, colours = null) {
-  for (const el of node.querySelectorAll(':scope > .sit-reflection, :scope > .sit-shadow')) el.remove()
+  for (const el of node.querySelectorAll(':scope > .sit-reflection, :scope > .sit-shadow, .sit-foam, .sit-bow, .sit-wake')) el.remove()
   img.classList.remove('sit-waterline')
   img.style.removeProperty('mask-image')
   const spec = sitSpec(item)
@@ -223,6 +368,8 @@ export function renderSitIn (node, body, img, item, colours = null) {
     img.style.maskImage = waveMask(spec.waterline)
     img.style.setProperty('--sit-drift', `${SIT.waveDriftS}s`)
   }
+
+  if (spec.foam > 0) drawFoam(body, item, spec, line, below)
 
   if (spec.contact_shadow > 0) {
     const h = SIT.shadowHeight * 100
@@ -255,6 +402,63 @@ export function renderSitIn (node, body, img, item, colours = null) {
   }
 
   return spec
+}
+
+/**
+ * The foam: the hull band, the bow wave (right side: the bow) and the wake patches behind the
+ * stern. Inside the moving wrapper, so all of it rides the bob / roll / swell with the hull.
+ */
+function drawFoam (body, item, spec, line, below) {
+  const { fill, rim } = foamColours(below)
+  const top = round(line * 100, 2)
+  const add = (cls, css) => {
+    const el = document.createElement('div')
+    el.className = cls
+    el.setAttribute('aria-hidden', 'true')
+    el.style.cssText = css
+    body.appendChild(el)
+    return el
+  }
+  if (!body.style.position) body.style.position = 'relative'
+
+  const h = SIT.foamHeight * 100
+  const band = add('sit-foam', `left:-3%; width:106%; height:${h}%; top:calc(${top}% - ${h / 2}%);
+    background-color:${rgbCss(fill)}; background-image:${foamLines(rim)}; mask-image:${foamShape()}; opacity:${spec.foam};`)
+  band.style.setProperty('--sit-churn', `${SIT.foamChurnPx}px`)
+
+  // Sized by --sit-bow-k (applyFoamSpeed), so a speed change restyles it in place.
+  const bw = SIT.bowWidth * 100
+  const bh = SIT.bowHeight * 100
+  add('sit-bow', `left:calc(100% - var(--sit-bow-k, 0) * ${round(bw * 0.35, 2)}%); width:calc(var(--sit-bow-k, 0) * ${bw}%);
+    height:calc(var(--sit-bow-k, 0) * ${bh}%); top:calc(${top}% - var(--sit-bow-k, 0) * ${round(bh * 0.85, 2)}%);
+    background-image:${bowWave(fill, rim)};`)
+
+  // The wake: patches born at the stern, one after another, each drifting back and out to its
+  // arm of the V and fading. Staggered over one cycle, so the trail is continuous.
+  const n = Math.max(0, Math.round(SIT.wakePatches))
+  for (let i = 0; i < n; i++) {
+    const w = round(7 - (i % 3), 2)
+    const side = i % 2 ? 1 : -1
+    const wake = add('sit-wake', `left:-${round(w * 0.6, 2)}%; width:${w}%; height:${round(w * 0.4, 2)}%;
+      top:calc(${top}% - ${round(w * 0.2, 2)}%); background-image:${wakePatch(fill, rim, i)};
+      animation-delay:calc(var(--amb-dur, 6s) * ${round(-1.4 * i / n, 3)});`)
+    wake.style.setProperty('--sit-wake-side', String(side))
+  }
+  applyFoamSpeed(body, spec.foam, spec.speed)
+}
+
+/**
+ * Set how fast the boat goes on its live foam: the bow wave's size and each wake patch's strength
+ * and drift. Custom properties only, so the running animations keep their phase.
+ */
+export function applyFoamSpeed (body, foam, speed) {
+  if (!body) return
+  body.style.setProperty('--sit-bow-k', String(bowScale(foam, speed)))
+  const plan = wakePlan(foam, speed)
+  body.querySelectorAll(':scope > .sit-wake').forEach((el, i) => {
+    el.style.setProperty('--sit-wake-op', String(plan[i]?.op ?? 0))
+    el.style.setProperty('--sit-wake-run', String(plan[i]?.run ?? 0))
+  })
 }
 
 /** An SVG colour-matrix filter on the node's own carrier, returned as a CSS filter value. */

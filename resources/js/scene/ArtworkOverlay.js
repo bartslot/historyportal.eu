@@ -21,7 +21,7 @@
 import { playEntrance, playExit } from './animations.js'
 import { applyLayerFilter } from './layer-filters.js'
 import { applyAmbient, trackStage } from './ambient.js'
-import { SIT_KEYS, sitSpec, renderSitIn, backdropPixels, sampleColours, registerSitTuner } from './sit-in-scene.js'
+import { SIT_KEYS, sitSpec, renderSitIn, backdropPixels, sampleColours, registerSitTuner, applyFoamSpeed } from './sit-in-scene.js'
 
 const DRAG_THRESHOLD_PX = 4
 const MIN_SCALE = 0.2
@@ -125,7 +125,7 @@ export function layersSignature(layers) {
     l.kind,
     l.ambient, l.ambient_speed, l.ambient_amount,
     l.anchor, l.lng, l.lat, l.flip_x, l.flip_y,
-    l.waterline, l.reflection, l.contact_shadow, l.color_match,
+    l.waterline, l.reflection, l.contact_shadow, l.color_match, l.foam, l.speed,
     l.embed ? JSON.stringify(l.embed.opts || null) : null,
   ]))
 }
@@ -512,10 +512,25 @@ export class ArtworkOverlay {
         this._syncChrome(item)
         break
     }
+    // Speed restyles the live foam in place (the animations keep their phase).
+    const body = node.querySelector(':scope > .art-ambient')
+    if (key === 'speed' && body?.querySelector(':scope > .sit-foam')) {
+      applyFoamSpeed(body, item.foam, item.speed)
+      return
+    }
     // A new value, or a box that moved over another part of the backdrop: draw it again.
     if (SIT_KEYS.includes(key) || (sitSpec(item) && ['x', 'y', 'scale', 'height', 'width'].includes(key))) {
       this._sitIn(item, node)
     }
+  }
+
+  /**
+   * How fast a boat layer is going, 0 (at anchor) to 1, while it plays: its bow wave and wake
+   * follow at once. The hook for anything that drives a ship live (the power meter: wind fills,
+   * the ship speeds up). Nothing is saved.
+   */
+  setSpeed(assetId, speed) {
+    this.setLayerProp(assetId, 'speed', speed)
   }
 
   /**
