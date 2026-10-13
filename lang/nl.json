@@ -1715,5 +1715,10 @@
     "Accelerate": "Versnellen",
     "Overshoot": "Doorschieten",
     "Constant": "Gelijkmatig",
-    "Camera and panel entry back to their defaults": "Camera en paneel terug naar standaard"
+    "Camera and panel entry back to their defaults": "Camera en paneel terug naar standaard",
+    "Blend into scene": "Laat opgaan in de scène",
+    "Waterline": "Waterlijn",
+    "Shadow": "Schaduw",
+    "Waterline, reflection, shadow and colour from the backdrop": "Waterlijn, reflectie, schaduw en kleur uit de achtergrond",
+    "Back to the cut-out as it was": "Terug naar de uitsnede zoals hij was"
 }

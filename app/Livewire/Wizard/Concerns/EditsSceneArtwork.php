@@ -8,6 +8,7 @@ use App\Models\Scene;
 use App\Models\SvgAsset;
 use App\Services\SceneLayers;
 use App\Services\Support\LayerAmbient;
+use App\Services\Support\LayerSitIn;
 use App\Services\Support\ShotCamera;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
@@ -338,6 +339,43 @@ trait EditsSceneArtwork
     }
 
     /**
+     * "Blend into scene": the preset for this layer (a boat gets a waterline and a reflection, a
+     * figure a contact shadow), all in one save so one undo takes it back.
+     */
+    public function blendLayerIntoScene(int $assetId): void
+    {
+        $layer = $this->findLayer($assetId);
+        if ($layer === null) {
+            return;
+        }
+        $ref = SvgAsset::query()->whereKey($assetId)->value('source_ref');
+        $this->writeLayerFields($assetId, LayerSitIn::preset($layer, $ref));
+    }
+
+    /** Back to the default: every blend-into-scene setting off (absent), in one save. */
+    public function resetLayerSitIn(int $assetId): void
+    {
+        $this->writeLayerFields($assetId, array_fill_keys(LayerSitIn::KEYS, null));
+    }
+
+    /** @return array<string,mixed>|null the layer as stored in the selected scene's shots */
+    private function findLayer(int $assetId): ?array
+    {
+        if (! $this->selectedSceneId) {
+            return null;
+        }
+        foreach ($this->lesson->scenes()->findOrFail($this->selectedSceneId)->shots ?? [] as $shot) {
+            foreach ($shot['layers'] ?? [] as $l) {
+                if (($l['asset_id'] ?? null) === $assetId) {
+                    return $l;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * @param  bool  $materialise  may a flat scene (picture, no shot) get its first shot for this?
      * @param  callable(array<string,mixed>): array<string,mixed>  $change
      */
@@ -417,6 +455,8 @@ trait EditsSceneArtwork
             'ambient' => LayerAmbient::MODES,
             'ambient_speed' => LayerAmbient::SPEED,
             'ambient_amount' => LayerAmbient::AMOUNT,
+            // Blend into the scene (LayerSitIn): each a share 0..1, 0 = off.
+            ...array_fill_keys(LayerSitIn::KEYS, LayerSitIn::RANGE),
         ];
 
         if (! array_key_exists($field, $whitelist)) {
@@ -439,7 +479,8 @@ trait EditsSceneArtwork
         // Coerce and clamp the value.
         $coercedValue = match ($field) {
             'depth', 'scale', 'opacity', 'blur', 'x', 'y', 'draw_time', 'anim_delay',
-            'height', 'width', 'rotation', 'white_key', 'tint_opacity', 'ambient_speed', 'ambient_amount' => (float) $value,
+            'height', 'width', 'rotation', 'white_key', 'tint_opacity', 'ambient_speed', 'ambient_amount',
+            'waterline', 'reflection', 'contact_shadow', 'color_match' => (float) $value,
             'wobble' => (int) $value,
             'sway', 'grayscale', 'flip_x', 'flip_y' => (bool) $value,
             'kind', 'blend', 'ink_preset', 'ink_fill', 'anim', 'anim_ease', 'anim_out', 'anim_out_ease', 'ambient' => (string) $value,
@@ -489,6 +530,17 @@ trait EditsSceneArtwork
      */
     private function writeLayerField(int $assetId, string $field, mixed $value): void
     {
+        $this->writeLayerFields($assetId, [$field => $value], unsetNull: false);
+    }
+
+    /**
+     * Several already-validated fields in ONE save (one undo step). With `unsetNull` a null
+     * removes the key, so a reset layer reads exactly like one never touched.
+     *
+     * @param  array<string,mixed>  $fields
+     */
+    private function writeLayerFields(int $assetId, array $fields, bool $unsetNull = true): void
+    {
         if (! $this->selectedSceneId) {
             return;
         }
@@ -499,10 +551,17 @@ trait EditsSceneArtwork
             return;
         }
 
-        $shots = collect($shots)->map(function (array $shot) use ($assetId, $field, $value): array {
-            $layers = collect($shot['layers'] ?? [])->map(function (array $l) use ($assetId, $field, $value): array {
-                if (($l['asset_id'] ?? null) === $assetId) {
-                    $l[$field] = $value;
+        $shots = collect($shots)->map(function (array $shot) use ($assetId, $fields, $unsetNull): array {
+            $layers = collect($shot['layers'] ?? [])->map(function (array $l) use ($assetId, $fields, $unsetNull): array {
+                if (($l['asset_id'] ?? null) !== $assetId) {
+                    return $l;
+                }
+                foreach ($fields as $field => $value) {
+                    if ($value === null && $unsetNull) {
+                        unset($l[$field]);
+                    } else {
+                        $l[$field] = $value;
+                    }
                 }
 
                 return $l;
@@ -511,7 +570,7 @@ trait EditsSceneArtwork
             return array_merge($shot, ['layers' => $layers]);
         })->all();
 
-        $scene->update(['shots' => $shots]);
+        $scene->update(['shots' => $shots]);   // an unchanged layer is a clean model: no save
         $this->selectSceneInternal($scene->id);
     }
 

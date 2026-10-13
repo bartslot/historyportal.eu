@@ -62,7 +62,17 @@ export const AMP = {
 }
 const SPEED_RANGE = [0.25, 3]
 const AMOUNT_RANGE = [0, 2]
-const MODE_CLASSES = Object.keys(PERIOD_S).map(m => `amb-${m}`)
+const MODE_CLASSES = [...Object.keys(PERIOD_S).map(m => `amb-${m}`), 'amb-swell-strip']
+
+/**
+ * A picture at least this many times wider than it is tall is a sea STRIP: swell scrolls it
+ * sideways forever (mirrored copies, clipped to its box). Anything less wide (a ship, a canoe) only
+ * rises and falls: scrolling a ship drags a mirrored twin through it and the clip cuts it in half.
+ */
+export const WIDE_STRIP_RATIO = 2.5
+
+/** Pure: is a w x h picture a wide strip? Unknown sizes (0) are not. */
+export const isWideStrip = (w, h) => w > 0 && h > 0 && w / h >= WIDE_STRIP_RATIO
 const GOLDEN = 0.618033988749895
 const STYLE_ID = 'amb-styles'
 
@@ -118,7 +128,7 @@ export function applyAmbient (el, layer, index = 0) {
   el.style.setProperty('--amb-amount', String(spec.amount))
   el.style.setProperty('--amb-dur', `${spec.durS}s`)
   el.style.setProperty('--amb-delay', `${spec.delayS}s`)
-  if (spec.mode === 'swell') addSwellTwin(el)
+  if (spec.mode === 'swell') whenWideStrip(el, layer, () => addSwellTwin(el))
   if (spec.mode === 'flash') scheduleFlash(el, spec)
 
   return true
@@ -131,6 +141,26 @@ function clearAmbient (el) {
   if (el.__ambFlash) { clearTimeout(el.__ambFlash); el.__ambFlash = null }
   el.__ambFlashAnim?.cancel?.()
   el.__ambFlashAnim = null
+}
+
+/**
+ * Run `then` once the layer's picture is known to be a wide strip (a ParallaxScene 'strip' plane
+ * always is). The size is the rendered box when laid out, else the file's own; a picture still
+ * loading is decided on load.
+ */
+function whenWideStrip (el, layer, then) {
+  const img = el.querySelector(':scope > img')
+  if (!img) return
+  const decide = () => {
+    if (el.__ambLayer !== layer || !el.classList.contains('amb-swell')) return   // changed meanwhile
+    const wide = layer?.kind === 'strip'
+      || isWideStrip(img.offsetWidth || img.naturalWidth, img.offsetHeight || img.naturalHeight)
+    if (!wide) return
+    el.classList.add('amb-swell-strip')
+    then()
+  }
+  if (img.complete && img.naturalWidth) decide()
+  else img.addEventListener('load', decide, { once: true })
 }
 
 /**
@@ -304,16 +334,17 @@ const buildCss = () => `
     from { transform: translateY(calc(${SH} * -${AMP.swellRise} * ${A})); }
     to   { transform: translateY(calc(${SH} * ${AMP.swellRise} * ${A})); }
   }
-  .amb-swell { animation-name: amb-swell; animation-duration: ${half()}; overflow: hidden; }
+  .amb-swell { animation-name: amb-swell; animation-duration: ${half()}; }
+  .amb-swell-strip { overflow: hidden; }
   @keyframes amb-swell-scroll { from { translate: 0 0; } to { translate: calc(-200% * var(--amb-scale, 1)) 0; } }
   @keyframes amb-swell-mirror { from { translate: calc(100% * var(--amb-scale, 1)) 0; } to { translate: calc(-100% * var(--amb-scale, 1)) 0; } }
   @keyframes amb-swell-again { from { translate: calc(200% * var(--amb-scale, 1)) 0; } to { translate: 0 0; } }
-  .amb-swell > img {
+  .amb-swell-strip > img {
     animation: amb-swell-scroll calc(var(--amb-dur, 8s) * ${AMP.swellScroll * 2}) linear infinite;
     animation-delay: var(--amb-delay, 0s);
   }
-  .amb-swell > img.amb-twin-mirror { animation-name: amb-swell-mirror; scale: -1 1; }
-  .amb-swell > img.amb-twin-again { animation-name: amb-swell-again; }
+  .amb-swell-strip > img.amb-twin-mirror { animation-name: amb-swell-mirror; scale: -1 1; }
+  .amb-swell-strip > img.amb-twin-again { animation-name: amb-swell-again; }
 
   /* roll: pitch about the waterline; a full plate rolls about its middle, scaled past its edges */
   @keyframes amb-roll {

@@ -141,6 +141,12 @@
                         'embed'   => isset($l['embed']) && is_array($l['embed']) ? $l['embed'] : null,
                         // Ambient motion (drift / breeze / bob / flutter), validated to the known vocabulary.
                         ...\App\Services\Support\LayerAmbient::payload($l),
+                        // The angle and mirroring the teacher set (a tilt so two copies of one
+                        // sprite never look like twins), and how the layer blends into the scene.
+                        'rotation' => isset($l['rotation']) ? (float) $l['rotation'] : null,
+                        'flip_x'  => ! empty($l['flip_x']),
+                        'flip_y'  => ! empty($l['flip_y']),
+                        ...\App\Services\Support\LayerSitIn::payload($l),
                     ])->filter(fn($l) => $l['url'] || $l['embed'])->values()->all() ?: null,
                     'anchor_sentence' => $shot['anchor_sentence'] ?? null,
                     // The panel's own camera move and entry (resources/js/scene/camera.js).

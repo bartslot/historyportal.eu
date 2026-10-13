@@ -1672,5 +1672,10 @@
     "Accelerate": "Accelerare",
     "Overshoot": "Oltrepassare",
     "Constant": "Costante",
-    "Camera and panel entry back to their defaults": "Camera e ingresso del pannello ai valori predefiniti"
+    "Camera and panel entry back to their defaults": "Camera e ingresso del pannello ai valori predefiniti",
+    "Blend into scene": "Fondi nella scena",
+    "Waterline": "Linea d'acqua",
+    "Shadow": "Ombra",
+    "Waterline, reflection, shadow and colour from the backdrop": "Linea d'acqua, riflesso, ombra e colore dallo sfondo",
+    "Back to the cut-out as it was": "Torna al ritaglio com'era"
 }

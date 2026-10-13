@@ -30,6 +30,7 @@ use App\Services\Billing\NarrationCreditLedger;
 use App\Services\Diorama\LibraryAssets;
 use App\Services\Lessons\TeamGameSpec;
 use App\Services\Support\LayerAmbient;
+use App\Services\Support\LayerSitIn;
 use App\Services\Support\ShotCamera;
 use App\Services\Support\WebpEncoder;
 use App\Services\Support\WhiteCutout;
@@ -296,6 +297,8 @@ class Step3SceneConfigurator extends Component
                 'embed' => isset($l['embed']) && is_array($l['embed']) ? $l['embed'] : null,
                 // Ambient motion (drift / breeze / bob / flutter), validated to the known vocabulary.
                 ...LayerAmbient::payload($l),
+                // Blend into the scene: waterline, reflection, contact shadow, colour match.
+                ...LayerSitIn::payload($l),
             ])->filter(fn ($l) => $l['url'] || $l['embed'])->values()->all() ?: null,
             // Keep a shot when it has EITHER a background image OR clipart layers. Map-backed scenes
             // (voyage / map) carry layer-only shots — the MAP is the backdrop, so there's no image_url,
