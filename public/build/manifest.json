@@ -119,7 +119,7 @@
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-CdQ0snFL.css",
+    "file": "assets/app-BtWTPdu6.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -195,7 +195,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-BfKhVezj.js",
+    "file": "assets/lesson-player-ZvflYuVT.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,

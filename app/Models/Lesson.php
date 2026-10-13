@@ -509,8 +509,8 @@ class Lesson extends Model
     }
 
     /**
-     * The title styles this lesson can show: the comic poster and the logo need the series'
-     * artwork, the plain title always works.
+     * The title styles this lesson can show: the comic poster, the comic cover and the logo need
+     * the series' artwork, the plain title always works. The order is the default's priority.
      *
      * @return list<TitleStyle>
      */
@@ -518,9 +518,22 @@ class Lesson extends Model
     {
         return array_values(array_filter([
             TitlePoster::exists($this->translation_group) ? TitleStyle::Comic : null,
+            TitlePoster::exists($this->translation_group, 'cover') ? TitleStyle::Cover : null,
             $this->titleLogoUrl() !== null ? TitleStyle::Logo : null,
             TitleStyle::Plain,
         ]));
+    }
+
+    /**
+     * The poster the title screen draws (comic poster or cover), or null for the logo and plain styles.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function titlePoster(): ?array
+    {
+        $variant = $this->titleStyle()->posterVariant();
+
+        return $variant === null ? null : TitlePoster::for($this->translation_group, $variant);
     }
 
     /** The style the title screen shows: the teacher's choice while it is possible, else the richest one. */
