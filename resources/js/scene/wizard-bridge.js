@@ -1072,6 +1072,8 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                     onCameraFrame: (frameFor) => _artworkOverlay?.setCamera(frameFor),
                 })
                 // A shot camera drives the backdrop and the figures itself; the Ken Burns loop stays off.
+                // Without one, the figures drop any pose a previous camera left on them.
+                if (!camera) _artworkOverlay?.setCamera(null)
                 if (!camera && animated) {
                     // Ping-pong so the pan/zoom previews in a loop (playback drives it monotonically).
                     const CYCLE_MS = 12000, start = performance.now()

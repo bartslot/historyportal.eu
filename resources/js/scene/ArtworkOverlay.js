@@ -524,9 +524,22 @@ export class ArtworkOverlay {
    * x (scale - 1). null puts every layer back at rest.
    */
   setCamera(frameFor) {
-    const rect = this.host.getBoundingClientRect()
+    this._cameraFrame = frameFor || null
+    // Called every frame of a move: the host box and the nodes are looked up once, not per frame.
+    // The box is re-read when the stage resizes, the nodes when _render rebuilds them.
+    if (!this._camRect) {
+      this._camRect = this.host.getBoundingClientRect()
+      if (!this._camResize && typeof ResizeObserver === 'function') {
+        this._camResize = new ResizeObserver(() => { this._camRect = null })
+        this._camResize.observe(this.host)
+      }
+    }
+    if (!this._camNodes) {
+      this._camNodes = new Map([...this.host.querySelectorAll('[data-layer-id]')].map(n => [n.dataset.layerId, n]))
+    }
+    const rect = this._camRect
     for (const item of this._layers) {
-      const el = this.host.querySelector(`[data-layer-id="${artObjId(item.asset_id)}"]`)
+      const el = this._camNodes.get(artObjId(item.asset_id))
       if (!el || el === this._dragNode) continue   // never fight the layer being dragged
       if (!frameFor) {
         el.style.transform = this._transform(item)
@@ -699,12 +712,15 @@ export class ArtworkOverlay {
 
   _render() {
     this.host.innerHTML = ''
+    this._camNodes = null   // the camera's node map points at the nodes just thrown away
     for (const item of this._layers) {
       this.host.appendChild(this._node(item))
       if (!this.readonly) this.host.appendChild(this._chrome(item))
     }
     for (const item of this._layers) this._syncChrome(item)
     this._applySelection()
+    // A finished camera move asks for no more frames; rebuilt nodes still take its last pose.
+    if (this._cameraFrame) this.setCamera(this._cameraFrame)
   }
 
   /**

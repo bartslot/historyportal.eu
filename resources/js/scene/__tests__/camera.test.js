@@ -154,6 +154,37 @@ describe('ParallaxScene + ArtworkOverlay play one camera', () => {
     vi.unstubAllGlobals()
   })
 
+  it('a finished move applies its last pose once and stops asking for frames; a shake ends at rest', () => {
+    const q = rafQueue()
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const frames = []
+    const scene = new ParallaxScene(host)
+    scene.show({
+      layers: [{ url: 'sea.png', kind: 'cover', depth: 1 }],
+      camera: { move: 'shake', duration: 1 },
+      onCameraFrame: (f) => frames.push(f(1)),
+    })
+    const start = performance.now()
+    q.splice(0).forEach(cb => cb(start + 300))      // mid-shake
+    expect(q).toHaveLength(1)                       // still moving: one more frame asked for
+    q.splice(0).forEach(cb => cb(start + 1500))     // past the end
+    expect(q).toHaveLength(0)                       // done: no more frames
+    expect(frames.at(-1)).toEqual({ translateX: 0, translateY: 0, scale: 1 })
+    expect(host.querySelector('.px-layer').style.transform).toMatch(/translate3d\(0%, 0%, 0(px)?\) scale\(1\)/)
+    vi.unstubAllGlobals()
+  })
+
+  it('a looping editor preview keeps asking for frames', () => {
+    const q = rafQueue()
+    const host = document.createElement('div')
+    new ParallaxScene(host).show({ layers: [{ url: 'sea.png', kind: 'cover' }], camera: { move: 'push', duration: 1 }, loop: true })
+    const start = performance.now()
+    q.splice(0).forEach(cb => cb(start + 5000))
+    expect(q).toHaveLength(1)
+    vi.unstubAllGlobals()
+  })
+
   it('gives a cover plate bleed even with Ken Burns off, so a pan never shows an edge', () => {
     rafQueue()
     const host = document.createElement('div')
@@ -185,5 +216,29 @@ describe('ParallaxScene + ArtworkOverlay play one camera', () => {
 
     overlay.setCamera(null)
     expect(node.style.transform).not.toContain('scale(1.1)')
+  })
+
+  it('looks the nodes and the stage box up once, and gives rebuilt nodes the last pose', () => {
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const rect = vi.fn(() => ({ width: 1000, height: 500, left: 0, top: 0 }))
+    host.getBoundingClientRect = rect
+    const overlay = new ArtworkOverlay(host, { readonly: true })
+    overlay.setLayers([{ asset_id: 9, url: 'ship.png', x: 50, y: 50, depth: 1 }])
+    const lookups = vi.spyOn(host, 'querySelectorAll')
+    const frame = () => ({ translateX: 2, translateY: 0, scale: 1 })
+
+    for (let i = 0; i < 10; i++) overlay.setCamera(frame)
+    expect(lookups).toHaveBeenCalledTimes(1)
+    const reads = rect.mock.calls.length
+
+    overlay.setLayers([{ asset_id: 9, url: 'ship.png', x: 50, y: 50, depth: 1, opacity: 0.5 }])   // a rebuild
+    const node = host.querySelector('[data-layer-id="art_9"]')
+    expect(node.style.transform).toContain('calc(-50% + 20px)')        // the finished move's pose
+    expect(rect.mock.calls.length).toBe(reads)                          // box not re-read
+
+    overlay.setCamera(null)
+    overlay.setLayers([{ asset_id: 9, url: 'ship.png', x: 50, y: 50, depth: 1 }])
+    expect(host.querySelector('[data-layer-id="art_9"]').style.transform).not.toContain('20px')
   })
 })

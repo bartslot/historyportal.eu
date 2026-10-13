@@ -271,16 +271,22 @@ export class ParallaxScene {
     }
   }
 
-  /** Play the shot's camera on the wall clock, every frame, until the shot goes. */
+  /**
+   * Play the shot's camera on the wall clock. A move runs once: at its end the final pose is
+   * applied once (a shake ends at rest) and no more frames are asked for. The editor preview
+   * loops instead.
+   */
   _runCamera (loop) {
     const start = performance.now()
     const cycle = previewCycleS(this._camera)
+    const end = this._camera.delay + this._camera.duration
     const tick = (now) => {
       if (!this._root || !this._camera) return
       let t = (now - start) / 1000
       if (loop && cycle > 0) t %= cycle
-      this._applyPose(cameraPose(this._camera, t))
-      this._cameraRaf = requestAnimationFrame(tick)
+      const done = !loop && t >= end
+      this._applyPose(cameraPose(this._camera, done ? end : t))
+      this._cameraRaf = done ? 0 : requestAnimationFrame(tick)
     }
     this._cameraRaf = requestAnimationFrame(tick)
   }
