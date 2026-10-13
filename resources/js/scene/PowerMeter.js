@@ -131,6 +131,13 @@ export function isUsed (state, word) {
 
 const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
 
+/** Which side the card goes on: away from a layer standing at x% (none = the middle). */
+export function cardSide (x) {
+  const n = Number(x)
+  if (!Number.isFinite(n)) return 'center'
+  return n >= 50 ? 'left' : 'right'
+}
+
 /** The ambient wrapper of a figure layer in the player (ArtworkOverlay), by asset id. */
 export function layerNode (root, assetId) {
   return assetId ? root?.querySelector(`[data-layer-id="art_${Number(assetId)}"]`) ?? null : null
@@ -198,12 +205,16 @@ export class PowerMeter {
   }
 
   /**
-   * @param {{ config: object, solo?: boolean, onReact?: (meter: number) => void,
+   * `side`: where the card sits on a wide screen, away from the layer that reacts ('left', 'right'
+   * or 'center'), so the class sees the ship move while they shout.
+   *
+   * @param {{ config: object, solo?: boolean, side?: string, onReact?: (meter: number) => void,
    *           onDone?: (outcome: { skipped: boolean, winner: ?number, team: ?string }) => void }} opts
    */
-  show ({ config, solo = false, onReact = null, onDone = null }) {
+  show ({ config, solo = false, side = 'center', onReact = null, onDone = null }) {
     this.cfg = readMoment(config || {})
     this._solo = solo
+    this._side = side
     this._onReact = onReact
     this._onDone = onDone
     this._buttons = wordButtons(this.cfg)
@@ -235,7 +246,7 @@ export class PowerMeter {
   /** The narrator's after line, as a caption where the meter was (the panel stays in view). */
   say (text) {
     const wrap = el('div', 'absolute inset-x-0 bottom-0 flex justify-center px-3 pb-28 sm:px-8')
-    const line = el('p', 'max-w-4xl rounded-box bg-base-100/95 px-6 py-4 text-center text-2xl font-semibold leading-snug text-base-content', text)
+    const line = el('p', 'max-w-3xl rounded-box bg-base-100/95 px-6 py-4 text-center text-2xl font-semibold leading-snug text-base-content', text)
     line.setAttribute('role', 'status')
     wrap.appendChild(line)
     this.host.replaceChildren(wrap)
@@ -276,18 +287,19 @@ export class PowerMeter {
 
   _clockText () { return this._remaining > 0 ? formatClock(this._remaining) : t('Time is up') }
 
-  // ── Frame: a card low over the panel, so the picture it is about stays in view ──
+  // ── Frame: a card low over the panel, beside the picture it is about, which stays in view ──
   _render () {
-    const wrap = el('div', 'absolute inset-x-0 bottom-0 flex justify-center px-3 pb-28 sm:px-8')
+    const side = { left: 'sm:justify-start', right: 'sm:justify-end' }[this._side] ?? ''
+    const wrap = el('div', `absolute inset-x-0 bottom-0 flex justify-center px-3 pb-28 sm:px-8 ${side}`)
     wrap.setAttribute('role', 'dialog')
     wrap.setAttribute('aria-label', this.cfg.name || this.cfg.meterLabel || t('Power meter'))
-    const card = el('div', 'card w-full max-w-4xl border border-base-300 bg-base-100/95 text-base-content')
-    const body = el('div', 'card-body gap-4 p-4 sm:p-6')
+    const card = el('div', 'card w-full max-w-xl border border-base-300 bg-base-100/95 text-base-content shadow-none')
+    const body = el('div', 'card-body gap-3 p-4 sm:gap-4 sm:p-6')
 
     const head = el('div', 'flex flex-wrap items-center justify-between gap-3')
     const clock = this.cfg.seconds ? el('span', 'font-mono text-2xl font-bold tabular-nums text-primary', this._clockText()) : null
     if (clock) { clock.dataset.momentClock = ''; clock.setAttribute('role', 'timer') }
-    append(head, el('p', 'text-2xl font-bold leading-snug sm:text-3xl', this.cfg.prompt || this.cfg.name), clock)
+    append(head, el('p', 'text-lg font-bold leading-snug sm:text-2xl', this.cfg.prompt || this.cfg.name), clock)
 
     append(body, head, this._meters(), this._turns(), this._words(), this._foot())
     card.appendChild(body)
@@ -329,10 +341,10 @@ export class PowerMeter {
   }
 
   _words () {
-    const grid = el('div', 'flex flex-wrap justify-center gap-3')
+    const grid = el('div', 'flex flex-wrap justify-center gap-2 sm:gap-3')
     for (const word of this._buttons) {
       const used = isUsed(this.state, word)
-      const b = button(word.text, `btn-lg ${used ? 'btn-success' : 'btn-outline'} min-w-32 text-xl`, () => this._tap(word, b))
+      const b = button(word.text, `sm:btn-lg ${used ? 'btn-success' : 'btn-outline'} min-w-24 text-base sm:min-w-28 sm:text-lg`, () => this._tap(word, b))
       b.dataset.word = word.id
       if (used) b.setAttribute('aria-disabled', 'true')
       if (this.state.done) b.disabled = true

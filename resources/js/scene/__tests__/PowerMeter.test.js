@@ -202,3 +202,13 @@ describe('the after line', () => {
     expect(host.querySelector('[role=status]').textContent).toBe('<b>De Heemskerck vaart weer.</b>')
   })
 })
+
+describe('where the card sits', () => {
+  it('goes to the side away from the layer that reacts', async () => {
+    const { cardSide } = await import('../PowerMeter.js')
+    expect([cardSide(70), cardSide(20), cardSide(NaN), cardSide(50)]).toEqual(['left', 'right', 'center', 'left'])
+    const host = document.createElement('div')
+    new PowerMeter(host).show({ config: raw, side: 'left' })
+    expect(host.firstElementChild.className).toContain('sm:justify-start')
+  })
+})

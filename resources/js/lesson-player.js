@@ -2187,9 +2187,11 @@ Alpine.data('lessonGame', (lesson) => ({
       const art = document.getElementById('lesson-voyage-art')
       this._tel.log('moment_started', { sceneIndex: index, sceneId: scene.id })
       this._powerMeter = this._powerMeter || new mod.PowerMeter(host)
+      const reactor = mod.layerNode(art, cfg.react?.layer) ?? mod.layerNode(art, cfg.payoff?.layer)
       this._powerMeter.show({
         config: cfg,
         solo: this.playSolo,
+        side: mod.cardSide(reactor ? parseFloat(reactor.style.left) : NaN),
         onReact: () => mod.gust(mod.layerNode(art, cfg.react?.layer), cfg.react || {}),
         // Skipped or full, the story still moves: history decides what happens, the game only when.
         onDone: async ({ skipped }) => {
