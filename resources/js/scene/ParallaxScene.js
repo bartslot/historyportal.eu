@@ -266,9 +266,7 @@ export class ParallaxScene {
       match: [{ opacity: 0 }, { opacity: 1 }],
     }[e]
     const timing = { duration: ms, easing: e === 'slide' ? EASE.enter : EASE.move }
-    for (const el of [root, ...along]) {
-      if (el && typeof el.animate === 'function') el.animate(frames, timing)
-    }
+    for (const el of [root, ...along]) el?.animate(frames, timing)
   }
 
   /**

@@ -14,14 +14,13 @@ SPEAKERS = {
     'JONGE MATROOS': 'matroos', 'BOOTSMAN': 'bootsman', 'TASMAN': 'tasman', 'VISSCHER': 'visscher',
     'GILSEMANS': 'gilsemans', 'VAN DIEMEN': 'vandiemen', 'RAADSHEER': 'raadsheer', 'UITKIJK': 'uitkijk',
 }
-ACTS = {'ACT 1': 1, 'ACT 2': 2, 'ACT 3': 3, 'ACT 4': 4}
 
 
 def parse(md: str) -> list[dict]:
     scenes, scene, panel, act = [], None, None, 0
     for line in md.splitlines():
         if m := re.match(r'^\*\*(ACT \d)', line):
-            act = ACTS[m.group(1)]
+            act = int(m.group(1)[-1])
         elif m := re.match(r'^## (S\d\d) (.+)$', line):
             scene = {'id': m.group(1), 'act': act, 'title': m.group(2).strip(), 'narrator': '', 'date_ui': '',
                      'panels': []}

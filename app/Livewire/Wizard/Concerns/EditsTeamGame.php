@@ -25,11 +25,11 @@ trait EditsTeamGame
     /** @var array<string,mixed> */
     #[Validate([
         'teamDraft.mode' => 'nullable|in:budget,choose,discuss',
-        'teamDraft.teams' => 'nullable|integer|min:2|max:8',
-        'teamDraft.minutes' => 'nullable|integer|min:0|max:30',
-        'teamDraft.capacity' => 'nullable|integer|min:1|max:999',
-        'teamDraft.fixed.*.cost' => 'nullable|integer|min:0|max:99',
-        'teamDraft.items.*.cost' => 'nullable|integer|min:0|max:99',
+        'teamDraft.teams' => 'nullable|integer|min:'.TeamGameSpec::TEAMS_MIN.'|max:'.TeamGameSpec::TEAMS_MAX,
+        'teamDraft.minutes' => 'nullable|integer|min:0|max:'.TeamGameSpec::MINUTES_MAX,
+        'teamDraft.capacity' => 'nullable|integer|min:1|max:'.TeamGameSpec::CAPACITY_MAX,
+        'teamDraft.fixed.*.cost' => 'nullable|integer|min:0|max:'.TeamGameSpec::COST_MAX,
+        'teamDraft.items.*.cost' => 'nullable|integer|min:0|max:'.TeamGameSpec::COST_MAX,
         'teamDraft.options.*.image' => 'nullable|string|max:2048',
         'teamDraft.evidence.*.image' => 'nullable|string|max:2048',
         'teamDraft.map' => 'nullable|string|max:2048',

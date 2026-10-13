@@ -309,7 +309,7 @@ trait EditsSceneArtwork
      */
     public function resetShotCamera(int $shot, ?string $key = null): void
     {
-        if (! $this->selectedSceneId || ($key !== null && ! in_array($key, ['move', 'amount', 'duration', 'ease', 'delay', 'entry'], true))) {
+        if (! $this->selectedSceneId || ($key !== null && ! in_array($key, [...ShotCamera::KEYS, 'entry'], true))) {
             return;
         }
 
@@ -320,10 +320,8 @@ trait EditsSceneArtwork
             } elseif ($key === 'entry') {
                 unset($s['entry']);
             } else {
-                $camera = (array) ($s['camera'] ?? []);
-                unset($camera[$key]);
-                $s['camera'] = $camera;
-                if ($camera === []) {
+                $s['camera'] = array_diff_key((array) ($s['camera'] ?? []), [$key => true]);
+                if ($s['camera'] === []) {
                     unset($s['camera']);
                 }
             }

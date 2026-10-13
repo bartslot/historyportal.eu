@@ -44,7 +44,7 @@ export const CAMERA_AMP = {
 
 /** How a panel comes in, in ms. Slide = a page transition (400-600ms, decelerating). */
 export const ENTRY_MS = { fade: 900, cut: 0, slide: 500, reveal: 600, match: 600 }
-export const CAMERA_DEFAULTS = { move: 'hold', amount: 1, ease: 'move', delay: 0, entry: 'fade' }
+export const CAMERA_DEFAULTS = { amount: 1, ease: 'move', delay: 0, entry: 'fade' }
 export const CAMERA_RANGES = { amount: [0, 2], duration: [0.3, 30], delay: [0, 10] }
 
 const clamp = (n, [min, max], fallback) => (n !== null && n !== '' && Number.isFinite(Number(n))

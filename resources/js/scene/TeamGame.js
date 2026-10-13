@@ -15,11 +15,14 @@
  * The rules (capacity, tally, team names) are exported as pure functions; vitest covers them.
  */
 import { t } from '../i18n.js'
+import { el } from './dom.js'
+import { formatClock } from './chapter-timeline.js'
 
 export const TEAMS_MIN = 2
 export const TEAMS_MAX = 8
 const NAME_MAX = 24
 const LETTERS = ['A', 'B', 'C', 'D']
+const TIMED = ['load', 'dossier', 'vote', 'discuss']
 
 // ── Pure rules ───────────────────────────────────────────────────────────────────────────────
 
@@ -58,13 +61,10 @@ export function loadOf (picked, items = [], fixed = []) {
  */
 export function toggleItem (picked, index, items, fixed, capacity) {
   const next = new Set(picked)
-  if (next.has(index)) {
-    next.delete(index)
-    return { ok: true, picked: next, load: loadOf(next, items, fixed), wouldBe: loadOf(next, items, fixed) }
-  }
-  next.add(index)
+  const removing = next.delete(index)
+  if (!removing) next.add(index)
   const wouldBe = loadOf(next, items, fixed)
-  if (wouldBe > Number(capacity)) {
+  if (!removing && wouldBe > Number(capacity)) {
     return { ok: false, picked: new Set(picked), load: loadOf(picked, items, fixed), wouldBe }
   }
   return { ok: true, picked: next, load: wouldBe, wouldBe }
@@ -87,12 +87,6 @@ export function tally (votes, optionCount) {
 /** Every team has voted. */
 export function allVoted (votes) {
   return votes.length > 0 && votes.every(v => Number.isInteger(v))
-}
-
-/** 5:00 for 300 seconds. */
-export function formatClock (seconds) {
-  const s = Math.max(0, Math.floor(seconds))
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 }
 
 /** An http(s) URL or a path on this site; anything else (javascript:, data:, //host) is ''. */
@@ -124,14 +118,6 @@ export function readConfig (raw = {}) {
 }
 
 // ── DOM ──────────────────────────────────────────────────────────────────────────────────────
-
-/** Element with classes and TEXT (never markup). */
-function el (tag, className = '', text = null) {
-  const node = document.createElement(tag)
-  if (className) node.className = className
-  if (text != null) node.textContent = String(text)
-  return node
-}
 
 function button (label, className, onClick) {
   const b = el('button', `btn ${className}`, label)
@@ -190,7 +176,7 @@ export class TeamGame {
   _go (phase) {
     this._phase = phase
     this._warning = ''
-    if (this._timedPhase(phase)) this._startClock()
+    if (TIMED.includes(phase)) this._startClock()
     this._render()
   }
 
@@ -263,27 +249,20 @@ export class TeamGame {
 
   // ── Frame ──
   _render () {
-    this._stopClockIfNotTimed()
+    const timed = TIMED.includes(this._phase)
+    if (!timed && this._running) { this._running = false; this._stopClock() }
     const scrim = el('div', 'absolute inset-0 overflow-y-auto bg-base-100/95 text-base-content')
     scrim.setAttribute('role', 'dialog')
     scrim.setAttribute('aria-label', this.cfg.title || t('Team game'))
     // Clear of the player's chrome, which sits above this host: the edit pill on top, the deck below.
     const page = el('div', 'mx-auto flex min-h-full max-w-6xl flex-col gap-6 px-4 pb-32 pt-16 sm:px-8')
     const head = el('header', 'flex flex-wrap items-center justify-between gap-4 border-b border-base-300 pb-4')
-    append(head, el('h2', 'text-3xl font-bold sm:text-4xl', this.cfg.title || t('Team game')), this._timed() ? this._clock() : null)
+    append(head, el('h2', 'text-3xl font-bold sm:text-4xl', this.cfg.title || t('Team game')), timed ? this._clock() : null)
     const body = el('main', 'flex flex-1 flex-col gap-6')
     this[`_${this._phase}`](body)
     append(page, head, body)
     scrim.appendChild(page)
     this.host.replaceChildren(scrim)
-  }
-
-  _timed () { return this._timedPhase(this._phase) }
-
-  _timedPhase (phase) { return ['load', 'dossier', 'vote', 'discuss'].includes(phase) }
-
-  _stopClockIfNotTimed () {
-    if (!this._timed() && this._running) { this._running = false; this._stopClock() }
   }
 
   _footer (body, ...buttons) {

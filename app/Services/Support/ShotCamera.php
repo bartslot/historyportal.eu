@@ -19,6 +19,9 @@ final class ShotCamera
 {
     public const MOVES = ['hold', 'push', 'pull', 'pan-l', 'pan-r', 'tilt-up', 'tilt-down', 'truck-l', 'truck-r', 'shake'];
 
+    /** The keys a stored `camera` may hold. */
+    public const KEYS = ['move', 'amount', 'duration', 'ease', 'delay'];
+
     public const ENTRIES = ['fade', 'cut', 'slide', 'reveal', 'match'];
 
     /** The easing intents of resources/js/scene/animations.js. */
@@ -106,7 +109,7 @@ final class ShotCamera
         if (! is_array($camera)) {
             throw new \InvalidArgumentException("{$where}: `camera` must be an array like ['move' => 'push'].");
         }
-        $unknown = array_diff(array_keys($camera), ['move', 'amount', 'duration', 'ease', 'delay']);
+        $unknown = array_diff(array_keys($camera), self::KEYS);
         if ($unknown !== []) {
             throw new \InvalidArgumentException("{$where}: unknown camera key(s) ".implode(', ', $unknown).'.');
         }

@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import {
-  TeamGame, clampTeams, teamNames, fixedLoad, loadOf, toggleItem, itemPicks, tally, allVoted, formatClock, readConfig,
+  TeamGame, clampTeams, teamNames, fixedLoad, loadOf, toggleItem, itemPicks, tally, allVoted, readConfig,
 } from '../TeamGame.js'
+import { formatClock } from '../chapter-timeline.js'
 
 const fixed = [{ name: 'Watervaten', cost: 3 }, { name: 'Rijst', cost: 3 }, { name: 'Kompas', cost: 1 }]
 const items = [

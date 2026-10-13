@@ -23,8 +23,7 @@ def convert(src: Path, dst: Path) -> bool:
         return False
     with Image.open(src) as im:
         im = im.convert('RGBA' if im.mode in ('RGBA', 'LA', 'P') else 'RGB')
-        if im.width > MAX_W:
-            im = im.resize((MAX_W, round(im.height * MAX_W / im.width)), Image.LANCZOS)
+        im.thumbnail((MAX_W, im.height), Image.LANCZOS)
         dst.parent.mkdir(parents=True, exist_ok=True)
         im.save(dst, 'WEBP', quality=QUALITY, method=6)
     return True

@@ -190,10 +190,6 @@ export function flashKeyframes (amount = 1) {
   ]
 }
 
-// A layer is built before it is attached, so "not in the document" only means gone once it has
-// been in it; a node that never arrives stops trying after a few gaps.
-const FLASH_ORPHAN_TRIES = 5
-
 /**
  * WCAG 2.3.1 (three flashes a second) across the WHOLE stage, not per layer: two lightning layers
  * striking together would double it. One strike (two pulses) per FLASH_MIN_GAP_MS for all flash
@@ -213,19 +209,14 @@ export function claimFlash (now = Date.now()) {
 /** Tests only: forget the last strike. */
 export const resetFlashClock = () => { lastStrikeAt = -Infinity }
 
-function scheduleFlash (el, spec, tries = 0) {
+function scheduleFlash (el, spec) {
   el.__ambFlash = setTimeout(() => {
-    if (!el.isConnected) {
-      if (el.__ambSeen || tries >= FLASH_ORPHAN_TRIES) { el.__ambFlash = null; return }
-      scheduleFlash(el, spec, tries + 1)
-      return
-    }
-    el.__ambSeen = true
-    if (typeof el.animate === 'function' && claimFlash()) {
+    if (!el.isConnected) { el.__ambFlash = null; return }
+    if (claimFlash()) {
       // Exit easing: the light snaps on and dies away; it never fades IN.
       el.__ambFlashAnim = el.animate(flashKeyframes(spec.amount), { duration: FLASH_MS, easing: 'cubic-bezier(0.333, 0, 0.667, 0)' })
     }
-    scheduleFlash(el, spec, tries)
+    scheduleFlash(el, spec)
   }, flashGapS(spec.durS) * 1000)
 }
 
@@ -426,8 +417,6 @@ const buildCss = () => `
   }
 `
 
-// The rain streak tile: three short strokes along the fall direction (-w, +h), clear of the edges
-// so the tile repeats without a cut streak. Pale, thin, no glow.
 // Drawn, not vector-clean (it sits in a watercolour/pencil plate): pencil grey, thin, each stroke
 // its own length, weight, opacity and a hair of bow, scattered irregularly. Every stroke stays
 // clear of the tile edges, so the tile repeats without a cut streak.

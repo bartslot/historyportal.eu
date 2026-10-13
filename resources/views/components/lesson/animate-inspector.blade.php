@@ -1,4 +1,5 @@
 @props(['mode', 'layer' => null, 'scene' => null])
+@use(App\Services\Support\ShotCamera)
 
 @php
     /**
@@ -69,16 +70,10 @@
             $storedShots = [[]];
         }
         foreach ($storedShots as $i => $shot) {
-            $cam = \App\Services\Support\ShotCamera::payload($shot['camera'] ?? null);
-            $move = $cam['move'] ?? 'hold';
-            $cameraShots[$i] = [
-                'move' => $move,
-                'amount' => $cam['amount'] ?? \App\Services\Support\ShotCamera::DEFAULTS['amount'],
-                'duration' => $cam['duration'] ?? \App\Services\Support\ShotCamera::MOVE_DURATION[$move],
-                'duration_default' => \App\Services\Support\ShotCamera::MOVE_DURATION[$move],
-                'delay' => $cam['delay'] ?? \App\Services\Support\ShotCamera::DEFAULTS['delay'],
-                'ease' => $cam['ease'] ?? \App\Services\Support\ShotCamera::DEFAULTS['ease'],
-                'entry' => \App\Services\Support\ShotCamera::entry($shot['entry'] ?? null) ?? \App\Services\Support\ShotCamera::DEFAULT_ENTRY,
+            $cam = ShotCamera::payload($shot['camera'] ?? null) ?? ShotCamera::DEFAULTS + ['duration' => ShotCamera::MOVE_DURATION['hold']];
+            $cameraShots[$i] = $cam + [
+                'duration_default' => ShotCamera::MOVE_DURATION[$cam['move']],
+                'entry' => ShotCamera::entry($shot['entry'] ?? null) ?? ShotCamera::DEFAULT_ENTRY,
             ];
         }
     }
@@ -108,7 +103,7 @@
         'pop' => __('Overshoot'),
         'linear' => __('Constant'),
     ];
-    $num1 = fn ($v) => rtrim(rtrim(number_format((float) $v, 1, '.', ''), '0'), '.') ?: '0';
+    $num1 = fn ($v) => round((float) $v, 1);
 
     $out = [
         'anim' => $layer['anim_out'] ?? 'none',

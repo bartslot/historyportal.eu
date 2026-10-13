@@ -23,12 +23,9 @@ return function (string $lang, ?array $text = null): array {
 
     // story.json paths are the art folder's (plates/x.png); the library keeps them as webp by kind.
     $ref = function (?string $path, string $kind) use ($library): ?string {
-        if ($path === null) {
-            return null;
-        }
-        $ref = "history-line/{$kind}/tasman/".pathinfo($path, PATHINFO_FILENAME);
+        $name = $path === null ? null : "{$kind}/tasman/".pathinfo($path, PATHINFO_FILENAME);
 
-        return is_file($library.'/'.substr($ref, strlen('history-line/')).'.webp') ? $ref : null;
+        return $name !== null && is_file("{$library}/{$name}.webp") ? "history-line/{$name}" : null;
     };
 
     $panels = [];
