@@ -4,7 +4,7 @@
 // Hunyuan3D-Omni with that picture painted back on (render PC). Tuning from the console: window.__shot.
 //   ?scene=spyglass[&actor=<glb>][&ship=0][&look=<preset>]   ship=0: the box deck and rail in place of the Heemskerck
 //   model; look: a Look preset by name, e.g. 'History Lines pencil' or 'Day', or 'off' (none: the look stays as saved);
-//   &hide=tasman renders the set alone (the frame a painter repaints for the ship's projected paint);
+//   &hide=tasman renders the set alone, no figures (the frame a painter repaints for the ship's projected paint);
 //   &paint=ship lays that repainted frame on the ship, projected from the shot camera (matte painting);
 //   &move=dx,dy,dz[,yawDeg] moves the camera AFTER everything is placed and painted (does the paint hold?);
 //   &overscan=1 renders the paint frame with PAINT_OVERSCAN wider view (with hide=tasman: the frame to repaint)
@@ -19,13 +19,20 @@
   // a clean plate of the panel itself (ChatGPT removed ship and people, then painted it out 15 % on every side):
   // same sky, sea, coast and horizon, 1.3 x the shot's view so camera moves stay covered
   const PLATE = { url: 'assets/plates/tasman-spyglass-clean-os130.webp', horizon: 1 - 0.5155, fit: 'view', scale: 1.3 };
-  const TASMAN = { name: 'Tasman (test)', url: params.get('actor') || 'assets/models/tasman-spyglass.glb', height: 1.8 };
   // measured on the panel (16:9): horizon at 52 % down, Tasman from 21 % (hat) to the bottom edge, centred at 32 %
   // across. With a 40 degree vertical field of view that is an eye 1.1 m above the deck, Tasman 2.85 m away and
   // 0.66 m left of centre (a sailor's low view), tilted up a little so the horizon sits just below the middle.
   const CAMERA = { position: [0, 1.1, 0], target: [0, 1.24, 10], fov: 0.7 };
-  // turned to face the camera exactly: the picture was painted from the front, the sides only carry smeared paint
-  const TASMAN_AT = { x: -0.66, z: 2.85, turn: (Math.atan2(0.66, -2.85) * 180) / Math.PI };
+  // The cast: each figure is ONE painted cutout made 3D (Hunyuan3D-Omni + tools/artkit/blender/paint_front.py),
+  // standing on the deck and turned to face the camera exactly (painted from the front; the sides carry smeared
+  // paint). Tasman: measured on the panel above. Visscher: nearer, to his left (panel: the man in the green coat).
+  // The sailor: at the rail (2.75 m out from the centre line) behind Tasman's right shoulder, pointing at the coast.
+  const CAST = [
+    { key: 'tasman', name: 'Tasman (test)', url: params.get('actor') || 'assets/models/tasman-spyglass.glb', height: 1.8, x: -0.66, z: 2.85 },
+    { key: 'visscher', name: 'Visscher (test)', url: 'assets/models/visscher.glb', height: 1.75, x: -1.25, z: 2.4 },
+    { key: 'sailor', name: 'Sailor pointing (test)', url: 'assets/models/sailor-pointing.glb', height: 1.72, x: -0.33, z: 3.29 },
+  ];
+  const facing = (x, z) => (Math.atan2(-x, -z) * 180) / Math.PI;   // degrees that turn a figure's front to the camera
   // the Heemskerck: Sketchfab "dutch ship large" by TegnoGenial (CC-BY-4.0), 34 m, via tools/artkit/blender/ship_glb.py.
   // Its main deck is 4.61 m above the keel at midships (measured in the Studio: y=0 from 3 m aft to 3 m forward of
   // midships; the stern deck rises from 6 m aft); bow along the model's +X. Stood with its starboard rail
@@ -196,16 +203,27 @@
     aimCamera();
     const set = buildSet();
     mvp.setPlate(PLATE.url, { horizon: PLATE.horizon, fit: PLATE.fit, scale: PLATE.scale, floorY: useShip ? -SHIP.deckY : 0 });
-    mvp.CATALOG.push(TASMAN);
-    mvp.addFromCatalog(TASMAN, { x: TASMAN_AT.x, z: TASMAN_AT.z, turn: TASMAN_AT.turn }).then((tasman) => {
+    const hidden = params.get('hide') === 'tasman';   // the set alone: no figure in the frame to repaint
+    const cast = Promise.all(CAST.map(async (c) => {
+      try {
+        mvp.CATALOG.push(c);
+        const root = await mvp.addFromCatalog(c, { x: c.x, z: c.z, turn: facing(c.x, c.z) });
+        root.position.set(c.x, 0, c.z);   // exact, not on the placement grid
+        paintedLight(root);
+        if (hidden) root.setEnabled(false);
+        return [c.key, root];
+      } catch (e) {
+        console.error('frame-match: could not load', c.name, e);
+        return [c.key, null];
+      }
+    }));
+    cast.then((loaded) => {
       mvp.select(null);
-      tasman.position.set(TASMAN_AT.x, 0, TASMAN_AT.z);   // exact, not on the placement grid
-      if (params.get('hide') === 'tasman') tasman.setEnabled(false);
       // the overscanned paint frame: same eye, wider view (after the plate and the paint were placed for the shot)
       if (params.get('overscan')) shipReady.then(() => { mvp.camera.fov = 2 * Math.atan(Math.tan(CAMERA.fov / 2) * PAINT_OVERSCAN); });
-      paintedLight(tasman);
-      window.__shot = { tasman, set, ship: shipPivot, camera: mvp.camera, aimCamera, CAMERA, TASMAN_AT, RAIL, SHIP };
+      const figures = Object.fromEntries(loaded);
+      window.__shot = { ...figures, tasman: figures.tasman, set, ship: shipPivot, camera: mvp.camera, aimCamera, CAMERA, CAST, RAIL, SHIP };
       shipReady.then(() => { if (params.get('move')) moveCamera(params.get('move')); });
-    }, (e) => console.error('frame-match: could not load Tasman', e));
+    });
   });
 })();
