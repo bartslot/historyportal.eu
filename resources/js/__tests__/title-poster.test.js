@@ -2,10 +2,11 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import {
   posterFit, boxInGroup, groupRuns, frameCqw, layerTransform, entrancePlan,
-  ENTRANCE_BUDGET_MS, PHONE_GUTTER_PX, mountTitlePoster,
+  ENTRANCE_BUDGET_MS, PHONE_GUTTER_PX, mountTitlePoster, coverBackdrop, COVER_FOCUS_Y,
 } from '../title-poster.js'
 
 const tasman = JSON.parse(readFileSync(resolve(__dirname, '../../../public/lesson-titles/tasman-standard/poster.json'), 'utf8'))
+const cover = JSON.parse(readFileSync(resolve(__dirname, '../../../public/lesson-titles/tasman-standard/cover/poster.json'), 'utf8'))
 const close = (a, b, eps = 0.01) => expect(Math.abs(a - b)).toBeLessThan(eps)
 
 describe('posterFit', () => {
@@ -104,5 +105,51 @@ describe('mountTitlePoster', () => {
     expect(groups[2].style.maskImage || groups[2].style.webkitMaskImage).toContain('/x/mask.svg')
     expect(stage.querySelector('[data-poster-layer="wave-break"]').style.transform).toBe('rotate(0.88deg) scaleX(-1)')
     stop()
+  })
+})
+
+describe('the comic cover (fit: cover)', () => {
+  const inView = (r, f, viewW, viewH) => {
+    const left = r.left + f.x / 100 * r.width
+    const top = r.top + f.y / 100 * r.height
+    expect(left).toBeGreaterThanOrEqual(0)
+    expect(top).toBeGreaterThanOrEqual(0)
+    expect(left + f.w / 100 * r.width).toBeLessThanOrEqual(viewW + 0.01)
+    expect(top + f.h / 100 * r.height).toBeLessThanOrEqual(viewH + 0.01)
+  }
+
+  test('a desktop view is filled edge to edge, no colour bars, the focus in sight', () => {
+    const r = posterFit(1440, 900, cover)
+    expect(r.left).toBeLessThanOrEqual(0)
+    expect(r.top).toBeLessThanOrEqual(0)
+    expect(r.left + r.width).toBeGreaterThanOrEqual(1440 - 0.01)
+    expect(r.top + r.height).toBeGreaterThanOrEqual(900 - 0.01)
+    inView(r, cover.focus, 1440, 900)
+  })
+
+  test('a phone keeps Tasman, the spyglass and the title across its width, 16px gutters, no side bars', () => {
+    const r = posterFit(375, 812, cover)
+    const f = cover.focus
+    close(r.left + f.x / 100 * r.width, PHONE_GUTTER_PX, 1)
+    close(r.left + (f.x + f.w) / 100 * r.width, 375 - PHONE_GUTTER_PX, 1)
+    expect(r.left).toBeLessThanOrEqual(0)
+    expect(r.left + r.width).toBeGreaterThanOrEqual(375)
+    close(r.top + (f.y + f.h / 2) / 100 * r.height, 812 * COVER_FOCUS_Y, 1)
+    inView(r, f, 375, 812)
+  })
+
+  test('a tall phone gets sky above and the deck colour below the painting', () => {
+    const r = posterFit(375, 812, cover)
+    const split = Math.round(r.top + r.height / 2)
+    expect(coverBackdrop(cover, r)).toBe(`linear-gradient(to bottom, ${cover.background} ${split}px, ${cover.background_bottom} ${split}px)`)
+    expect(coverBackdrop({ ...cover, background_bottom: null }, r)).toBeNull()
+  })
+
+  test('the painting is on screen from the first frame; the letters drop, the series line fades', () => {
+    const plan = entrancePlan(cover.layers)
+    expect(plan.steps.find(s => s.id === 'plate')).toBeUndefined()
+    expect(plan.steps.filter(s => s.kind === 'drop').map(s => s.id).join('')).toBe('abelta1sma2n')
+    expect(plan.steps.find(s => s.id === 'series').kind).toBe('fade')
+    expect(plan.totalMs).toBeLessThanOrEqual(ENTRANCE_BUDGET_MS)
   })
 })

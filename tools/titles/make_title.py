@@ -99,18 +99,54 @@ def wordmark_rows(svg_path):
     return [sorted(r['letters'], key=lambda l: l['bounds'][0]) for r in rows]
 
 
+def pair_kerning(font):
+    """{(left, right): x advance change} from the font's GPOS pair positioning (glyph pairs and
+    class pairs), so a title set from a font is kerned as it would be in a browser."""
+    kern = {}
+    if 'GPOS' not in font:
+        return kern
+    order = font.getGlyphOrder()
+    for lookup in font['GPOS'].table.LookupList.Lookup:
+        for st in lookup.SubTable:
+            if lookup.LookupType == 9:          # extension: the real subtable sits inside
+                if st.ExtensionLookupType != 2:
+                    continue
+                st = st.ExtSubTable
+            elif lookup.LookupType != 2:
+                continue
+            if st.Format == 1:
+                for first, pset in zip(st.Coverage.glyphs, st.PairSet):
+                    for rec in pset.PairValueRecord:
+                        v = getattr(rec.Value1, 'XAdvance', 0) if rec.Value1 else 0
+                        if v:
+                            kern.setdefault((first, rec.SecondGlyph), v)
+            elif st.Format == 2:
+                c1, c2 = st.ClassDef1.classDefs, st.ClassDef2.classDefs
+                for first in st.Coverage.glyphs:
+                    rec1 = st.Class1Record[c1.get(first, 0)]
+                    for second in order:
+                        rec = rec1.Class2Record[c2.get(second, 0)]
+                        v = getattr(rec.Value1, 'XAdvance', 0) if rec.Value1 else 0
+                        if v:
+                            kern.setdefault((first, second), v)
+    return kern
+
+
 def font_rows(font_path, texts):
     from fontTools.ttLib import TTFont
     font = TTFont(font_path)
     cmap, glyphs = font.getBestCmap(), font.getGlyphSet()
+    kern = pair_kerning(font)
     rows = []
     for text in texts:
-        x, row = 0.0, []
+        x, row, prev = 0.0, [], None
         for ch in text:
             name = cmap.get(ord(ch))
             if name is None:
                 raise RecipeError(f'{font_path} has no glyph for "{ch}".')
             g = glyphs[name]
+            x += kern.get((prev, name), 0)
+            prev = name
             if not ch.isspace():
                 # Font units are y-up; flip into the y-down source space.
                 draw = (lambda gg, dx: lambda pen: gg.draw(TransformPen(pen, (1, 0, 0, -1, dx, 0))))(g, x)
@@ -204,8 +240,8 @@ def letter_svg(L, row, outline):
     return view, svg_doc(view, body)
 
 
-def picture(p, rows, base, out_dir, written):
-    """A scene picture: crop, cap at MAX_PX, WebP q80 with alpha. Returns its frame box."""
+def save_picture(p, base, out_dir, written):
+    """Write a recipe picture as WebP: crop, cap at MAX_PX, q80, alpha kept. Returns (file name, (w, h))."""
     art = os.path.join(base, p['art'])
     im = Image.open(art)
     im.load()
@@ -223,7 +259,12 @@ def picture(p, rows, base, out_dir, written):
         im = im.convert('RGBA') if im.mode in ('RGBA', 'LA', 'P') else im.convert('RGB')
         im.save(os.path.join(out_dir, name), 'WEBP', quality=WEBP_QUALITY, method=6, exact=False)
         written.add(name)
+    return name, im.size
 
+
+def picture(p, rows, base, out_dir, written):
+    """A scene picture placed against a row of letters. Returns its file name and frame box."""
+    name, (iw, ih) = save_picture(p, base, out_dir, written)
     row = rows[int(p.get('row', 0))]
     row_h = row['bottom'] - row['top']
     at = p.get('at', 50)
@@ -238,7 +279,7 @@ def picture(p, rows, base, out_dir, written):
         x0, _, x1, _ = union([l['bounds'] for l in row['letters']])
         cx, top, bottom, ref_h = x0 + (x1 - x0) * float(at) / 100, row['top'], row['bottom'], row_h
     h = ref_h * float(p.get('height', 100)) / 100
-    w = h * im.width / im.height
+    w = h * iw / ih
     align = p.get('align', 'bottom')
     y = bottom - h if align == 'bottom' else top if align == 'top' else (top + bottom - h) / 2
     y += ref_h * float(p.get('dy', 0)) / 100
@@ -335,7 +376,14 @@ def main(argv):
         recipe = json.load(f)
     recipe['_group'] = group
     try:
-        build(recipe, base, out_dir)
+        if recipe.get('layout') == 'cover':
+            # cover.py imports this module by name: make it this very module, so its RecipeError
+            # is the one caught below.
+            sys.modules.setdefault('make_title', sys.modules[__name__])
+            from cover import build_cover
+            build_cover(recipe, base, out_dir)
+        else:
+            build(recipe, base, out_dir)
     except RecipeError as e:
         print(str(e), file=sys.stderr)
         return 1

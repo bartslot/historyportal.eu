@@ -16,6 +16,9 @@
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Coming+Soon&display=swap">
+    @elseif ($lesson->titleStyle() === \App\Enums\TitleStyle::Cover)
+        {{-- The comic cover's live subtitle is set in ComicRoma (app.css @font-face). --}}
+        <link rel="preload" href="{{ asset('fonts/comicroma/ComicRoma.woff2') }}" as="font" type="font/woff2" crossorigin>
     @endif
 </head>
 <body class="h-full overflow-hidden bg-[#020617]">
@@ -78,7 +81,7 @@
         // the whole picture. Each is null unless it is the style in use.
         'title_style'           => $lesson->titleStyle()->value,
         'title_logo_url'        => $lesson->titleStyle() === \App\Enums\TitleStyle::Logo ? $lesson->titleLogoUrl() : null,
-        'title_poster'          => $lesson->titleStyle() === \App\Enums\TitleStyle::Comic ? \App\Support\TitlePoster::for($lesson->translation_group) : null,
+        'title_poster'          => $lesson->titlePoster(),
         'intro_text'            => $lesson->outline['scene_briefs'][0]['scenePurpose']
                                     ?? $lesson->details
                                     ?? $lesson->topic,
@@ -648,10 +651,11 @@
             x-show="phase === 'TITLE_SCREEN'"
             class="absolute inset-0 pointer-events-auto"
         >
-            {{-- Comic title poster (TitleStyle::Comic): the series' letters with a scene masked into
-                 them, drawn from poster.json by resources/js/title-poster.js over the poster's own
-                 flat colour, instead of the painted backdrop and the wordmark. The subtitle is live
-                 text from the lesson title, so a teacher's edit changes it. --}}
+            {{-- Comic title poster (TitleStyle::Comic: letters with a scene masked into them) or comic
+                 cover (TitleStyle::Cover: a painted scene with the title in its sky), drawn from
+                 poster.json by resources/js/title-poster.js over the poster's own flat colour,
+                 instead of the painted backdrop and the wordmark. The subtitle is live text from the
+                 lesson title, so a teacher's edit changes it. --}}
             <template x-if="lesson.title_poster">
                 <div class="absolute inset-0 overflow-hidden" :style="`background-color: ${lesson.title_poster.background}`"
                      x-init="$nextTick(() => mountTitlePoster($el))">
@@ -660,7 +664,7 @@
                         <template x-if="lesson.title_poster.subtitle">
                             <p lang="{{ $contentLang }}" x-text="lesson.title.replace(/^.*?:\s*/, '')"
                                class="absolute flex items-center justify-center whitespace-nowrap text-center leading-none"
-                               :style="(({ box, size, color }) => `left:${box.x}%;top:${box.y}%;width:${box.w}%;height:${box.h}%;font-size:${size}cqw;color:${color};font-family:'Coming Soon',var(--font-comic)`)(lesson.title_poster.subtitle)"></p>
+                               :style="(({ box, size, color, font }) => `left:${box.x}%;top:${box.y}%;width:${box.w}%;height:${box.h}%;font-size:${size}cqw;color:${color};font-family:${font === 'comicroma' ? 'ComicRoma' : `'Coming Soon'`},var(--font-comic)`)(lesson.title_poster.subtitle)"></p>
                         </template>
                     </div>
                 </div>
