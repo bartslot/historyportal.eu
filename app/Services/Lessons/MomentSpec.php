@@ -15,8 +15,8 @@ use InvalidArgumentException;
  *
  * A moment is a stuck point in the story (no wind, the anchor down, the bridge up). The panel's
  * narration reaches it, the player holds, and the class fills a meter: by shouting the right words
- * the teacher taps (input "words"), or later by cheering, blowing, clapping or keeping still (the
- * other inputs; until those exist they play as words). A right word fills the meter one step and the
+ * the teacher taps (input "words"), by cheering, blowing, clapping in rhythm or keeping still (the
+ * microphone), or by shaking a pupil's own phone (motion). A right word fills the meter one step and the
  * world reacts (one layer's ambient motion swells for a moment); a wrong word only shakes. A full
  * meter plays the payoff (a layer sails off, or a camera move), then the narrator's `after` line, and
  * the lesson goes on. Skip is always there; there is no timer unless the teacher sets one.
@@ -29,11 +29,18 @@ use InvalidArgumentException;
  */
 final class MomentSpec
 {
-    /** How the class fills the meter. Rhythm, pitch and motion are not played yet: they play as words. */
-    public const INPUTS = ['words', 'loudness', 'blow', 'rhythm', 'silence', 'pitch', 'motion'];
+    /**
+     * How the class fills the meter: shouting words (the teacher taps), cheering, blowing, clapping in
+     * rhythm or keeping quiet (the microphone), or shaking / tilting a pupil's own phone (motion).
+     * The skill's list: woorden, luider, blazen, ritme, stilte, schudden. No pitch: nobody asked for it.
+     */
+    public const INPUTS = ['words', 'loudness', 'blow', 'rhythm', 'silence', 'motion'];
 
     /** The inputs the microphone plays (resources/js/scene/meter-inputs/sound.js MIC_INPUTS). */
-    public const MIC_INPUTS = ['loudness', 'blow', 'silence'];
+    public const MIC_INPUTS = ['loudness', 'blow', 'rhythm', 'silence'];
+
+    /** Inputs that need no words: the meter has its own size (1..RIGHT_MAX steps). */
+    public const WORDLESS_INPUTS = ['loudness', 'blow', 'rhythm', 'silence', 'motion'];
 
     /** With teams: one meter the teams fill in turn, or a meter per team. */
     public const TEAM_METERS = ['shared', 'each'];
@@ -73,7 +80,6 @@ final class MomentSpec
         'hold_seconds' => [1, 30],
         'bpm' => [30, 200],
         'beats' => [2, 32],
-        'pitch' => ['high', 'low'],
         'gesture' => ['shake', 'tilt'],
     ];
 
@@ -98,8 +104,9 @@ final class MomentSpec
         $right = self::words($raw['words']['right'] ?? [], self::RIGHT_MAX);
         $teams = self::int($raw['teams'] ?? 0, 0, self::TEAMS_MAX, 0);
         // A sound meter needs no words: its size is its own, up to as many steps as a word meter.
-        $goalMax = in_array($input, self::MIC_INPUTS, true) ? self::RIGHT_MAX : max(1, count($right));
-        $goalDefault = in_array($input, self::MIC_INPUTS, true) && $right === [] ? 4 : max(1, count($right));
+        $wordless = in_array($input, self::WORDLESS_INPUTS, true);
+        $goalMax = $wordless ? self::RIGHT_MAX : max(1, count($right));
+        $goalDefault = $wordless && $right === [] ? 4 : max(1, count($right));
 
         return [
             'enabled' => (bool) ($raw['enabled'] ?? true),

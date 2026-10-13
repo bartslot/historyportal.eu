@@ -163,6 +163,31 @@ class MomentEditorTest extends TestCase
         $this->assertEquals(['threshold' => 1.0, 'hold_seconds' => 8.0], $moment['input_options']);
     }
 
+    public function test_rhythm_and_phone_motion_have_their_own_settings_and_pitch_is_gone(): void
+    {
+        $scene = $this->compose($this->wind());
+
+        $editor = $this->editor($scene)
+            ->set('momentDraft.input', 'rhythm')
+            ->call('saveMomentDraft')
+            ->assertSee('Tempo (beats per minute)')
+            ->set('momentDraft.input_options.bpm', 500)
+            ->set('momentDraft.input_options.beats', 6)
+            ->call('saveMomentDraft');
+        $this->assertEquals(['bpm' => 200.0, 'beats' => 6.0], $scene->fresh()->config['moment']['input_options']);
+
+        $editor->set('momentDraft.input', 'motion')
+            ->set('momentDraft.input_options.gesture', 'tilt')
+            ->call('saveMomentDraft')
+            ->assertSee('Hold the tilt (seconds)')
+            ->set('momentDraft.input', 'pitch')
+            ->call('saveMomentDraft');
+        $moment = $scene->fresh()->config['moment'];
+        $this->assertSame('motion', $moment['input']);           // a made-up input keeps the stored one
+        $this->assertSame('tilt', $moment['input_options']['gesture']);
+        $this->assertNotContains('pitch', \App\Services\Lessons\MomentSpec::INPUTS);
+    }
+
     public function test_the_whole_scene_save_cleans_the_moment_and_never_rewrites_its_default(): void
     {
         $scene = $this->compose($this->wind());

@@ -9,12 +9,16 @@
     $label = 'text-3xs font-semibold uppercase tracking-wide text-panel-label';
     $payoff = $draft['payoff']['type'] ?? 'none';
     $input = $draft['input'] ?? 'words';
-    $sound = in_array($input, \App\Services\Lessons\MomentSpec::MIC_INPUTS, true);
+    $sound = in_array($input, \App\Services\Lessons\MomentSpec::WORDLESS_INPUTS, true);
+    $mic = in_array($input, \App\Services\Lessons\MomentSpec::MIC_INPUTS, true);
+    $gesture = $draft['input_options']['gesture'] ?? 'shake';
     $inputs = [
         'words' => __('Shouting the right words (tap)'),
         'loudness' => __('Cheering (microphone)'),
         'blow' => __('Blowing (microphone)'),
+        'rhythm' => __('Clapping in rhythm (microphone)'),
         'silence' => __('Keeping quiet (microphone)'),
+        'motion' => __('Shaking or tilting the phone (own device)'),
     ];
     $words = [
         'right' => [__('Right words'), __('Add right word'), \App\Services\Lessons\MomentSpec::RIGHT_MAX],
@@ -148,13 +152,36 @@
 
                 @if ($sound)
                     <div class="grid grid-cols-2 gap-2 border-t border-panel-hairline pt-3">
-                        <label class="block">
-                            <span class="{{ $label }}">{{ __('Loudness needed') }}</span>
-                            <input type="number" min="0.05" max="1" step="0.05" placeholder="0.4" wire:model.blur="momentDraft.input_options.threshold" wire:change="saveMomentDraft" class="input input-sm mt-1 w-full" />
-                        </label>
-                        @if ($input === 'silence')
+                        @if ($mic)
                             <label class="block">
-                                <span class="{{ $label }}">{{ __('Quiet for (seconds)') }}</span>
+                                <span class="{{ $label }}">{{ __('Loudness needed') }}</span>
+                                <input type="number" min="0.05" max="1" step="0.05" placeholder="0.4" wire:model.blur="momentDraft.input_options.threshold" wire:change="saveMomentDraft" class="input input-sm mt-1 w-full" />
+                            </label>
+                        @endif
+                        @if ($input === 'rhythm')
+                            <label class="block">
+                                <span class="{{ $label }}">{{ __('Tempo (beats per minute)') }}</span>
+                                <input type="number" min="30" max="200" placeholder="60" wire:model.blur="momentDraft.input_options.bpm" wire:change="saveMomentDraft" class="input input-sm mt-1 w-full" />
+                            </label>
+                        @endif
+                        @if ($input === 'motion')
+                            <label class="block">
+                                <span class="{{ $label }}">{{ __('Movement') }}</span>
+                                <select wire:model.change="momentDraft.input_options.gesture" wire:change="saveMomentDraft" class="select select-sm mt-1 w-full">
+                                    <option value="shake">{{ __('Shake') }}</option>
+                                    <option value="tilt">{{ __('Tilt and hold') }}</option>
+                                </select>
+                            </label>
+                        @endif
+                        @if ($input === 'rhythm' || ($input === 'motion' && $gesture === 'shake'))
+                            <label class="block">
+                                <span class="{{ $label }}">{{ $input === 'rhythm' ? __('Claps to fill the meter') : __('Shakes to fill the meter') }}</span>
+                                <input type="number" min="2" max="32" placeholder="8" wire:model.blur="momentDraft.input_options.beats" wire:change="saveMomentDraft" class="input input-sm mt-1 w-full" />
+                            </label>
+                        @endif
+                        @if ($input === 'silence' || ($input === 'motion' && $gesture === 'tilt'))
+                            <label class="block">
+                                <span class="{{ $label }}">{{ $input === 'silence' ? __('Quiet for (seconds)') : __('Hold the tilt (seconds)') }}</span>
                                 <input type="number" min="1" max="30" placeholder="5" wire:model.blur="momentDraft.input_options.hold_seconds" wire:change="saveMomentDraft" class="input input-sm mt-1 w-full" />
                             </label>
                         @endif

@@ -10,7 +10,8 @@
  */
 import { SOUND, rms, toDb, flatness, noiseFloor, levelAbove } from './sound.js'
 
-const FRAME_MS = 50
+// 25 ms: fine enough to hear a clap land on the beat.
+const FRAME_MS = 25
 
 /**
  * @param {{ onCalibrated?: (floorDb: number) => void, onFrame: (f: {level: number, flatness: number, dt: number}) => void }} hooks

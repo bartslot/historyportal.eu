@@ -57,6 +57,15 @@ final class JsTranslations
             'Sound level' => __('Sound level'),
             'The microphone only listens to loud and soft. Nothing is recorded.' => __('The microphone only listens to loud and soft. Nothing is recorded.'),
             'Tap to fill' => __('Tap to fill'),
+            'Clap in time!' => __('Clap in time!'),
+            'Shake!' => __('Shake!'),
+            'Tilt!' => __('Tilt!'),
+            'Move the phone' => __('Move the phone'),
+            'Move the phone to fill the meter' => __('Move the phone to fill the meter'),
+            'No motion sensor. Tap instead.' => __('No motion sensor. Tap instead.'),
+            "Shaking works on a pupil's own phone. Tap instead." => __("Shaking works on a pupil's own phone. Tap instead."),
+            'Use the motion sensor' => __('Use the motion sensor'),
+            'Movement' => __('Movement'),
         ];
     }
 

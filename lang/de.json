@@ -1734,5 +1734,21 @@
     "Meter size (steps)": "Größe der Anzeige (Schritte)",
     "Quiet for (seconds)": "Leise für (Sekunden)",
     "Shouting the right words (tap)": "Die richtigen Wörter rufen (tippen)",
-    "The class fills the meter by": "Die Klasse füllt die Anzeige durch"
+    "The class fills the meter by": "Die Klasse füllt die Anzeige durch",
+    "Clap in time!": "Klatsch im Takt!",
+    "Clapping in rhythm (microphone)": "Im Takt klatschen (Mikrofon)",
+    "Claps to fill the meter": "Klatscher für eine volle Anzeige",
+    "Hold the tilt (seconds)": "Neigung halten (Sekunden)",
+    "Move the phone": "Beweg das Handy",
+    "Move the phone to fill the meter": "Beweg das Handy, um die Anzeige zu füllen",
+    "Movement": "Bewegung",
+    "No motion sensor. Tap instead.": "Kein Bewegungssensor. Tippe stattdessen.",
+    "Shake!": "Schütteln!",
+    "Shakes to fill the meter": "Schüttler für eine volle Anzeige",
+    "Shaking or tilting the phone (own device)": "Handy schütteln oder neigen (eigenes Gerät)",
+    "Shaking works on a pupil's own phone. Tap instead.": "Schütteln geht auf dem eigenen Handy. Tippe stattdessen.",
+    "Tempo (beats per minute)": "Tempo (Schläge pro Minute)",
+    "Tilt and hold": "Neigen und halten",
+    "Tilt!": "Neigen!",
+    "Use the motion sensor": "Bewegungssensor verwenden"
 }

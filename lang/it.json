@@ -1734,5 +1734,21 @@
     "Meter size (steps)": "Dimensione del misuratore (passi)",
     "Quiet for (seconds)": "Silenzio per (secondi)",
     "Shouting the right words (tap)": "Gridare le parole giuste (toccare)",
-    "The class fills the meter by": "La classe riempie il misuratore"
+    "The class fills the meter by": "La classe riempie il misuratore",
+    "Clap in time!": "Batti a tempo!",
+    "Clapping in rhythm (microphone)": "Battere le mani a tempo (microfono)",
+    "Claps to fill the meter": "Battiti per riempire il misuratore",
+    "Hold the tilt (seconds)": "Tenere inclinato (secondi)",
+    "Move the phone": "Muovi il telefono",
+    "Move the phone to fill the meter": "Muovi il telefono per riempire il misuratore",
+    "Movement": "Movimento",
+    "No motion sensor. Tap instead.": "Nessun sensore di movimento. Tocca invece.",
+    "Shake!": "Scuoti!",
+    "Shakes to fill the meter": "Scosse per riempire il misuratore",
+    "Shaking or tilting the phone (own device)": "Scuotere o inclinare il telefono (proprio dispositivo)",
+    "Shaking works on a pupil's own phone. Tap instead.": "Scuotere funziona sul telefono dell'alunno. Tocca invece.",
+    "Tempo (beats per minute)": "Tempo (battiti al minuto)",
+    "Tilt and hold": "Inclina e tieni",
+    "Tilt!": "Inclina!",
+    "Use the motion sensor": "Usa il sensore di movimento"
 }

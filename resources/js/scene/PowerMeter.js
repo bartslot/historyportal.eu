@@ -29,7 +29,8 @@ import { el } from './dom.js'
 import { formatClock } from './chapter-timeline.js'
 import { teamNames, clampTeams } from './TeamGame.js'
 import { applyAmbient } from './ambient.js'
-import { MIC_INPUTS, soundStep, registerSoundTuner } from './meter-inputs/sound.js'
+import { MIC_INPUTS, soundStep, rhythmStep, rhythmStart, registerSoundTuner } from './meter-inputs/sound.js'
+import { shakeStep, shakeStart, tiltStep, needsMotionPermission, requestMotionPermission } from './meter-inputs/motion.js'
 import { placeCard } from './card-place.js'
 
 /** How long a full meter stays on screen before the payoff, and a gust of the react layer. */
@@ -47,15 +48,18 @@ export function sitePath (url) {
   return typeof url === 'string' && url.startsWith('/') && !url.startsWith('//') && !url.includes('\\') ? url : ''
 }
 
-/** Steps a sound meter may have when it has no words to count (MomentSpec::RIGHT_MAX). */
+/** Steps a meter without words may have (MomentSpec::RIGHT_MAX). */
 const SOUND_GOAL_MAX = 8
+
+/** Every input the player plays; MomentSpec::INPUTS. Anything else plays as words. */
+const INPUTS = ['words', ...MIC_INPUTS, 'motion']
 
 /** The moment as the engine reads it: lists are lists, numbers are clamped, nothing is trusted. */
 export function readMoment (raw = {}) {
   const words = (v) => (Array.isArray(v) ? v : []).map(w => String(w ?? '').trim()).filter(Boolean)
   const right = words(raw.words?.right)
   const teams = Number(raw.teams) || 0
-  const input = MIC_INPUTS.includes(raw.input) ? raw.input : 'words'
+  const input = INPUTS.includes(raw.input) ? raw.input : 'words'
   const options = raw.input_options && typeof raw.input_options === 'object' ? raw.input_options : {}
   const goalMax = input === 'words' ? (right.length || 1) : SOUND_GOAL_MAX
   return {
@@ -63,6 +67,9 @@ export function readMoment (raw = {}) {
     input,
     threshold: Math.max(0.05, Math.min(1, Number(options.threshold) || 0.4)),
     holdSeconds: Math.max(1, Math.min(30, Number(options.hold_seconds) || 5)),
+    bpm: Math.max(30, Math.min(200, Number(options.bpm) || 60)),
+    beats: Math.max(2, Math.min(32, Math.round(Number(options.beats) || 8))),
+    gesture: options.gesture === 'tilt' ? 'tilt' : 'shake',
     name: String(raw.name || ''),
     meterLabel: String(raw.meter_label || ''),
     prompt: String(raw.prompt || ''),
@@ -138,8 +145,10 @@ export function press (state, cfg, word) {
 export function push (state, cfg, amount) {
   if (state.done || !(amount > 0)) return { state, crossed: 0, full: false }
   const before = state.fills[0]
-  const after = Math.min(cfg.goal, before + amount)
-  const full = after >= cfg.goal
+  // Parts like 4/6 add up to 3.9999999999999996: within a hair of the goal is the goal.
+  const sum = before + amount
+  const full = sum >= cfg.goal - 1e-9
+  const after = full ? cfg.goal : sum
   return {
     state: { ...state, fills: [after, ...state.fills.slice(1)], done: full, winner: full ? 0 : null },
     crossed: Math.floor(after) - Math.floor(before),
@@ -243,19 +252,20 @@ export class PowerMeter {
     this.host = host
     this._timer = null
     this._fullTimer = null
-    this._mic = null
+    this._sensor = null
   }
 
   /**
    * `avoid`: what the card should not cover on a wide screen, measured when it opens: rects in px
    * relative to the host, the reacting layer weighted most (card-place.js).
-   * `listen`: the microphone (meter-inputs/mic.js listen()), injectable for tests.
+   * `listen`: the microphone (meter-inputs/mic.js listen()), `listenMotion` and `requestMotion`
+   * the phone's motion (meter-inputs/motion.js): injectable for tests.
    *
    * @param {{ config: object, solo?: boolean, avoid?: () => Array<{rect: object, weight?: number}>,
-   *           listen?: Function, onReact?: (meter: number) => void,
+   *           listen?: Function, listenMotion?: Function, requestMotion?: Function, onReact?: (meter: number) => void,
    *           onDone?: (outcome: { skipped: boolean, winner: ?number, team: ?string }) => void }} opts
    */
-  show ({ config, solo = false, avoid = () => [], listen = null, onReact = null, onDone = null }) {
+  show ({ config, solo = false, avoid = () => [], listen = null, listenMotion = null, requestMotion = null, onReact = null, onDone = null }) {
     this.cfg = readMoment(config || {})
     this._solo = solo
     this._avoid = avoid
@@ -268,21 +278,36 @@ export class PowerMeter {
     this._names = teams ? teamNames(teams, [], (i) => t('Team :number', { number: i })) : []
     this.state = startState(this.cfg, teams)
     this._remaining = this.cfg.seconds
-    this._micState = this.cfg.input === 'words' ? 'none' : 'asking'
-    this._micLevel = 0
+    this._listeners = { mic: listen, motion: listenMotion, requestMotion }
+    this._senseState = this._firstSenseState()
+    this._senseLevel = 0
     this._knocked = false
+    this._rhythm = rhythmStart()
+    this._shake = shakeStart()
     // Which opening this is: a mic granted for an earlier moment (its prompt answered late) must
     // neither feed this meter nor stay open.
     this._showId = (this._showId || 0) + 1
     this.host.style.pointerEvents = 'auto'
     this._render()
     this._startClock()
-    if (this._micState === 'asking') this._startMic(listen)
+    if (this._senseState === 'asking') this._startSense()
+  }
+
+  /**
+   * none (words), asking (mic or motion being opened), permission (iOS: a tap must ask for motion),
+   * on, off (no sensor: taps carry it), closed. A phone's motion is only for a pupil on their own
+   * device; on the class screen a motion moment is played by tapping.
+   */
+  _firstSenseState () {
+    if (this.cfg.input === 'words') return 'none'
+    if (this.cfg.input !== 'motion') return 'asking'
+    if (!this._solo) return 'off'
+    return needsMotionPermission() || this._listeners.requestMotion ? 'permission' : 'asking'
   }
 
   hide () {
     this._stopClock()
-    this._stopMic()
+    this._stopSense()
     clearTimeout(this._fullTimer)
     if (!this.host) return
     this.host.replaceChildren()
@@ -317,34 +342,77 @@ export class PowerMeter {
     if (result !== 'used' && result !== 'done') this._render()
   }
 
-  // ── Microphone (loudness, blow, silence) ──
-  async _startMic (listen) {
+  // ── Sensing: the microphone (loudness, blow, rhythm, silence) or the phone's motion ──
+  async _startSense () {
     registerSoundTuner()
     const id = this._showId
-    const current = () => this._showId === id && this._micState !== 'closed'
+    const current = () => this._showId === id && this._senseState !== 'closed'
+    const motion = this.cfg.input === 'motion'
     try {
-      const open = listen ?? (await import('./meter-inputs/mic.js')).listen
-      const mic = await open({
-        onCalibrated: () => { if (current()) { this._micState = 'on'; this._paint() } },
+      const open = motion
+        ? (this._listeners.motion ?? (await import('./meter-inputs/motion.js')).listenMotion)
+        : (this._listeners.mic ?? (await import('./meter-inputs/mic.js')).listen)
+      const sensor = await open({
+        gesture: this.cfg.gesture,
+        onCalibrated: () => { if (current()) { this._senseState = 'on'; this._render() } },
         onFrame: (frame) => { if (current()) this._hear(frame) },
       })
-      if (!current()) { mic.stop(); return }
-      this._mic = mic
+      if (!current()) { sensor.stop(); return }
+      this._sensor = sensor
+      // Motion needs no calibration: its first reading has arrived.
+      if (motion) { this._senseState = 'on'; this._render() }
     } catch (_) {
-      // No mic, no permission, no Web Audio: the taps below carry the moment.
-      if (current()) { this._micState = 'off'; this._render() }
+      // No mic, no sensor, no permission: the taps below carry the moment.
+      if (current()) { this._senseState = 'off'; this._render() }
     }
   }
 
-  _stopMic () {
-    this._mic?.stop()
-    this._mic = null
-    this._micState = 'closed'
+  /**
+   * iOS: motion may only be asked for from a tap, so the request starts in the tap itself, before
+   * any await. A second tap while the prompt is open is ignored.
+   */
+  async _allowMotion () {
+    if (this._senseState !== 'permission' || this._askingMotion) return
+    this._askingMotion = true
+    const id = this._showId
+    const pending = (this._listeners.requestMotion ?? requestMotionPermission)()
+    const granted = await pending
+    this._askingMotion = false
+    if (this._showId !== id || this._senseState === 'closed') return
+    this._senseState = granted ? 'asking' : 'off'
+    this._render()
+    if (granted) this._startSense()
+  }
+
+  _stopSense () {
+    this._sensor?.stop()
+    this._sensor = null
+    this._senseState = 'closed'
+    this._stopBeat()
+  }
+
+  /** The beat to clap along to: a dot steps round at the moment's tempo while the mic listens. */
+  _startBeat () {
+    if (this._beatTimer || this.cfg.input !== 'rhythm') return
+    this._beat = 0
+    this._beatTimer = setInterval(() => {
+      this._beat = (this._beat + 1) % 4
+      this.host.querySelectorAll('[data-beat]').forEach((dot, i) => {
+        dot.className = `h-3 w-3 rounded-full ${i === this._beat ? 'bg-primary' : 'bg-base-300'}`
+      })
+    }, 60000 / this.cfg.bpm)
+  }
+
+  _stopBeat () {
+    clearInterval(this._beatTimer)
+    this._beatTimer = null
   }
 
   _hear (frame) {
-    if (this.state.done || this._micState !== 'on') return
-    this._micLevel = frame.level
+    if (this.state.done || this._senseState !== 'on') return
+    if (this.cfg.input === 'rhythm') return this._hearRhythm(frame)
+    if (this.cfg.input === 'motion') return this._feelMotion(frame)
+    this._senseLevel = frame.level
     const step = soundStep(this.cfg.input, frame, this.cfg, frame.dt)
     if (step.knock) {
       // One noise, one step back: a cough lasts many frames, and a quiet frame ends it.
@@ -361,13 +429,37 @@ export class PowerMeter {
     this._paint()
   }
 
+  _hearRhythm (frame) {
+    this._senseLevel = frame.level
+    const first = this._rhythm.lastClap === null
+    const step = rhythmStep(this._rhythm, frame, this.cfg)
+    this._rhythm = step.state
+    // A clap off the beat gets the same small, kind shake as a wrong word; the first one sets the pace.
+    if (step.clap && !step.inTime && !first) shake(this.host.querySelector('[data-beats]') ?? this.host)
+    this._fill(step.amount)
+    this._paint()
+  }
+
+  _feelMotion (frame) {
+    if (this.cfg.gesture === 'tilt') {
+      this._senseLevel = Math.min(1, Math.abs(frame.tilt) / 45)
+      this._fill(tiltStep(frame, this.cfg))
+    } else {
+      this._senseLevel = Math.min(1, frame.accel / 30)
+      const step = shakeStep(this._shake, frame, this.cfg)
+      this._shake = step.state
+      this._fill(step.amount)
+    }
+    this._paint()
+  }
+
   /** Sound or a fallback tap: fill the shared meter, a gust per whole step, finish when full. */
   _fill (amount) {
     const { state, crossed, full } = push(this.state, this.cfg, amount)
     this.state = state
     for (let i = 0; i < crossed; i++) this._onReact?.(0)
     if (full) {
-      this._stopMic()
+      this._stopSense()
       this._fullTimer = setTimeout(() => this._finish(false), FULL_HOLD_MS)
       this._render()
     }
@@ -380,15 +472,21 @@ export class PowerMeter {
     const count = this.host.querySelector('[data-meter-count="0"]')
     if (count) count.textContent = `${Math.floor(this.state.fills[0])}/${this.cfg.goal}`
     const live = this.host.querySelector('[data-mic-level]')
-    if (live) live.value = Math.round(this._micLevel * 100)
+    if (live) live.value = Math.round(this._senseLevel * 100)
     const status = this.host.querySelector('[data-mic-status]')
-    if (status) status.textContent = this._micStatusText()
+    if (status) status.textContent = this._senseStatusText()
   }
 
-  _micStatusText () {
-    if (this._micState === 'asking') return t('Listening to the room')
-    if (this._micState === 'off') return t('No microphone. Tap instead.')
-    return { loudness: t('Louder!'), blow: t('Blow!'), silence: t('Quiet now') }[this.cfg.input] ?? ''
+  _senseStatusText () {
+    const motion = this.cfg.input === 'motion'
+    if (this._senseState === 'permission') return t('Move the phone to fill the meter')
+    if (this._senseState === 'asking') return motion ? t('Move the phone') : t('Listening to the room')
+    if (this._senseState === 'off') {
+      if (!motion) return t('No microphone. Tap instead.')
+      return this._solo ? t('No motion sensor. Tap instead.') : t('Shaking works on a pupil\'s own phone. Tap instead.')
+    }
+    if (motion) return this.cfg.gesture === 'tilt' ? t('Tilt!') : t('Shake!')
+    return { loudness: t('Louder!'), blow: t('Blow!'), rhythm: t('Clap in time!'), silence: t('Quiet now') }[this.cfg.input] ?? ''
   }
 
   _finish (skipped) {
@@ -428,7 +526,7 @@ export class PowerMeter {
     if (clock) { clock.dataset.momentClock = ''; clock.setAttribute('role', 'timer') }
     append(head, el('p', 'text-lg font-bold leading-snug sm:text-2xl', this.cfg.prompt || this.cfg.name), clock)
 
-    append(body, head, this._meters(), this._micRow(), this._turns(), this._words(), this._foot())
+    append(body, head, this._meters(), this._senseRow(), this._turns(), this._words(), this._foot())
     card.appendChild(body)
     wrap.appendChild(card)
     this.host.replaceChildren(wrap)
@@ -455,25 +553,42 @@ export class PowerMeter {
     card.dataset.spot = this._spot.name
   }
 
-  /** The microphone's state, a live level and the promise that it only listens to loud and soft. */
-  _micRow () {
-    if (this._micState === 'none' || this._micState === 'closed') return null
+  /**
+   * The sensor's state and a live level; for the mic the promise that it only listens to loud and
+   * soft, for rhythm the beat to clap along to, for an iPhone the tap that allows motion.
+   */
+  _senseRow () {
+    if (this._senseState === 'none' || this._senseState === 'closed') return null
     const row = el('div', 'flex flex-col gap-1')
-    const top = el('div', 'flex items-center gap-3')
-    const status = el('span', 'text-base font-semibold', this._micStatusText())
+    const top = el('div', 'flex flex-wrap items-center gap-x-3 gap-y-2')
+    const status = el('span', 'text-base font-semibold', this._senseStatusText())
     status.dataset.micStatus = ''
     status.setAttribute('aria-live', 'polite')
     top.appendChild(status)
-    if (this._micState !== 'off') {
-      const live = el('progress', 'progress h-2 flex-1')
+    if (this._senseState === 'permission') {
+      top.appendChild(button(t('Use the motion sensor'), 'btn-primary btn-sm shadow-none', () => this._allowMotion()))
+    } else if (this._senseState !== 'off') {
+      const live = el('progress', 'progress h-2 min-w-24 flex-1')
       live.max = 100
-      live.value = Math.round(this._micLevel * 100)
+      live.value = Math.round(this._senseLevel * 100)
       live.dataset.micLevel = ''
-      live.setAttribute('aria-label', t('Sound level'))
+      live.setAttribute('aria-label', this.cfg.input === 'motion' ? t('Movement') : t('Sound level'))
       top.appendChild(live)
     }
-    append(row, top, this._micState === 'off' ? null
-      : el('span', 'text-xs text-base-content/60', t('The microphone only listens to loud and soft. Nothing is recorded.')))
+    if (this.cfg.input === 'rhythm' && this._senseState === 'on') {
+      const beats = el('div', 'flex items-center gap-1.5')
+      beats.dataset.beats = ''
+      beats.setAttribute('aria-hidden', 'true')
+      for (let i = 0; i < 4; i++) {
+        const dot = el('span', `h-3 w-3 rounded-full ${i === 0 ? 'bg-primary' : 'bg-base-300'}`)
+        dot.dataset.beat = String(i)
+        beats.appendChild(dot)
+      }
+      top.appendChild(beats)
+      this._startBeat()
+    }
+    const mic = this.cfg.input !== 'motion' && this._senseState !== 'off'
+    append(row, top, mic ? el('span', 'text-xs text-base-content/60', t('The microphone only listens to loud and soft. Nothing is recorded.')) : null)
     return row
   }
 
@@ -512,7 +627,7 @@ export class PowerMeter {
 
   _words () {
     // Keeping quiet is the whole point of a silence moment: taps are only the fallback for no mic.
-    if (this.cfg.input === 'silence' && this._micState !== 'off') return null
+    if (this.cfg.input === 'silence' && this._senseState !== 'off') return null
     // A sound moment without words still has its tap: one step per tap.
     if (!this._buttons.length) {
       if (this.cfg.input === 'words') return null
@@ -525,7 +640,9 @@ export class PowerMeter {
     const grid = el('div', 'flex flex-wrap justify-center gap-2 sm:gap-3')
     for (const word of this._buttons) {
       const used = isUsed(this.state, word)
-      const b = button(word.text, `sm:btn-lg ${used ? 'btn-success' : 'btn-outline'} min-w-24 text-base sm:min-w-28 sm:text-lg`, () => this._tap(word, b))
+      // While a sensor listens the words are the fallback: small, so the picture stays in view.
+      const size = this._senseState === 'none' || this._senseState === 'off' ? 'sm:btn-lg min-w-24 text-base sm:min-w-28 sm:text-lg' : 'btn-sm'
+      const b = button(word.text, `${size} ${used ? 'btn-success' : 'btn-outline'}`, () => this._tap(word, b))
       b.dataset.word = word.id
       if (used) b.setAttribute('aria-disabled', 'true')
       if (this.state.done) b.disabled = true

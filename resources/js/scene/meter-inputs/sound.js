@@ -1,6 +1,6 @@
 /**
- * Sound as a power-meter input: the class cheers (loudness), blows (blow) or keeps still (silence),
- * and the meter fills. Pure functions over numbers the microphone adapter (mic.js) measures; nothing
+ * Sound as a power-meter input: the class cheers (loudness), blows (blow), claps or stamps in time
+ * (rhythm: rowing, hauling) or keeps still (silence), and the meter fills. Pure functions over numbers the microphone adapter (mic.js) measures; nothing
  * here touches audio, and nothing is ever recorded or sent: only a loudness and a "how noisy" figure
  * per frame exist, and they are gone the next frame.
  *
@@ -12,7 +12,7 @@
  * The numbers below are Bart's tuner's (window.__tune "Power meter sound"): rooms differ.
  */
 
-export const MIC_INPUTS = ['loudness', 'blow', 'silence']
+export const MIC_INPUTS = ['loudness', 'blow', 'rhythm', 'silence']
 
 export const SOUND = {
   floorMarginDb: 3,      // added to the measured room noise, so a quiet room's own hum never counts
@@ -20,6 +20,8 @@ export const SOUND = {
   fillPerSecond: 0.9,    // meter steps per second while the class is loud enough
   blowFlatness: 0.28,    // above this the sound is broadband: blowing, not a voice
   calibrateMs: 1500,     // listening to the room before the meter starts
+  clapGapS: 0.15,        // a clap rings for a moment; a second rise sooner than this is the same clap
+  beatTolerance: 0.3,    // how far off the beat a clap may land, as a share of a beat (children, a whole class)
 }
 
 /** Root mean square of one frame of samples (-1..1). */
@@ -83,6 +85,35 @@ export function soundStep (input, { level, flatness: flat }, { threshold = 0.4, 
   return { amount: counts ? SOUND.fillPerSecond * dt : 0, active: counts, knock: false }
 }
 
+/** Where a rhythm meter starts: nothing heard yet. */
+export const rhythmStart = () => ({ t: 0, lastLevel: 0, lastClap: null })
+
+/**
+ * Rhythm: a clap is a rise through the threshold (not a loud room: a steady noise has no rises).
+ * The first clap sets the pace; every next clap that lands one beat after the last (two: one missed
+ * beat is forgiven) within the tolerance fills `goal / beats` of the meter. Off-beat claps cost
+ * nothing; they just restart the count from there.
+ *
+ * @returns {{ state: object, amount: number, clap: boolean, inTime: boolean }}
+ */
+export function rhythmStep (state, { level, dt }, { threshold = 0.4, bpm = 60, beats = 8, goal = 4 }) {
+  const t = state.t + dt
+  const since = state.lastClap === null ? Infinity : t - state.lastClap
+  const clap = level >= threshold && state.lastLevel < threshold && since >= SOUND.clapGapS
+  let inTime = false
+  if (clap && state.lastClap !== null) {
+    const ratio = since / (60 / bpm)
+    const nearest = Math.round(ratio)
+    inTime = nearest >= 1 && nearest <= 2 && Math.abs(ratio - nearest) <= SOUND.beatTolerance
+  }
+  return {
+    state: { t, lastLevel: level, lastClap: clap ? t : state.lastClap },
+    amount: inTime ? goal / Math.max(1, beats) : 0,
+    clap,
+    inTime,
+  }
+}
+
 let tunerOff = null
 export function registerSoundTuner () {
   if (tunerOff || typeof window === 'undefined' || !window.__tune?.register) return
@@ -92,5 +123,7 @@ export function registerSoundTuner () {
     { key: 'fillPerSecond', label: 'fill per second (steps)', min: 0.1, max: 4, step: 0.05 },
     { key: 'blowFlatness', label: 'blow flatness gate', min: 0.05, max: 0.9, step: 0.01 },
     { key: 'calibrateMs', label: 'calibration (ms)', min: 500, max: 5000, step: 100 },
+    { key: 'clapGapS', label: 'one clap lasts (s)', min: 0.05, max: 0.5, step: 0.01 },
+    { key: 'beatTolerance', label: 'beat tolerance (share)', min: 0.05, max: 0.5, step: 0.01 },
   ].map(c => ({ ...c, value: SOUND[c.key], apply: (v) => { SOUND[c.key] = Number(v) } })), { tab: 'Lesson' }) ?? null
 }
