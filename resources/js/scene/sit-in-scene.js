@@ -57,7 +57,7 @@ export const SIT = {
   bowWidth: 0.22,      // the bow wave at foam 1 and speed 1, share of the layer's width
   bowHeight: 0.2,     //   ... and of its height
   wakePatches: 6,      // patches in the wake at full speed (fewer show at lower speed)
-  wakeRun: 7,          // how far a patch drifts back at full speed, in its own widths
+  wakeRun: 4,          // how far a patch drifts back at full speed, in its own widths
 }
 
 const clamp01 = (n) => (Number.isFinite(Number(n)) && n !== null && n !== '' ? Math.min(1, Math.max(0, Number(n))) : 0)
@@ -371,7 +371,7 @@ function injectStyles () {
        only, never a blur. A drift is a deceleration (ease-out). */
     @keyframes sit-wake {
       0%   { transform: translate(0, 0); opacity: 0; }
-      8%, 45% { opacity: var(--sit-wake-op, 0); }
+      8%, 60% { opacity: var(--sit-wake-op, 0); }
       100% { transform: translate(calc(var(--sit-wake-run, 0) * -100%), calc(var(--sit-wake-side, 1) * var(--sit-wake-run, 0) * 18%)); opacity: 0; }
     }
     .sit-wake {
