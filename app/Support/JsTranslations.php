@@ -70,6 +70,13 @@ final class JsTranslations
             'you' => __('you'),
             'the crew' => __('the crew'),
             'Your best: :seconds s' => __('Your best: :seconds s'),
+            'Which team are you in?' => __('Which team are you in?'),
+            'That did not work. Try again.' => __('That did not work. Try again.'),
+            'This race has ended. Look at the class screen.' => __('This race has ended. Look at the class screen.'),
+            'Wait for your teacher to start the race.' => __('Wait for your teacher to start the race.'),
+            'Your team crews the Heemskerck!' => __('Your team crews the Heemskerck!'),
+            'Your team crews the Zeehaen!' => __('Your team crews the Zeehaen!'),
+            'The race is over. Look at the class screen.' => __('The race is over. Look at the class screen.'),
             'Movement' => __('Movement'),
         ];
     }

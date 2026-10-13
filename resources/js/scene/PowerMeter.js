@@ -298,9 +298,10 @@ export class PowerMeter {
    *           onProgress?: (p: { levels: number[], ghost: ?number }) => void,
    *           onDone?: (outcome: { skipped: boolean, winner: ?number, team: ?string }) => void }} opts
    */
-  show ({ config, solo = false, best = null, avoid = () => [], listen = null, listenMotion = null, requestMotion = null, onReact = null, onProgress = null, onDone = null }) {
+  show ({ config, solo = false, best = null, skippable = true, avoid = () => [], listen = null, listenMotion = null, requestMotion = null, onReact = null, onProgress = null, onDone = null }) {
     this.cfg = readMoment(config || {})
     this._solo = solo
+    this._skippable = skippable
     this._avoid = avoid
     this._spot = null
     this._onReact = onReact
@@ -760,7 +761,8 @@ export class PowerMeter {
   _foot () {
     const bar = el('div', 'flex justify-end gap-2')
     if (this.state.race && !this.state.done) bar.appendChild(button(t('End the race'), 'btn-outline btn-sm', () => this._endRace()))
-    bar.appendChild(button(t('Skip'), 'btn-ghost btn-sm', () => this.skip()))
+    // A team's phone in a race has no Skip: the class screen decides when the race ends.
+    if (this._skippable) bar.appendChild(button(t('Skip'), 'btn-ghost btn-sm', () => this.skip()))
     return bar
   }
 }
