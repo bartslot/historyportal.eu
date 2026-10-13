@@ -120,6 +120,8 @@ class LessonComposer
             'teacher_id' => $teacher->id,
             'title' => (string) ($spec['title'] ?? $key),
             'topic' => $key,
+            // Shown under the title on the title screen; without it the player falls back to the topic (the spec key).
+            'details' => $spec['details'] ?? null,
             'subject' => (string) ($spec['subject'] ?? 'history'),
             // The language the scripts are written in. A spec that does not say is English, which
             // is what every spec was before this key existed. Nothing infers it from the text: a

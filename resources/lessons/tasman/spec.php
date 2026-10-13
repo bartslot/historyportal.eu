@@ -110,6 +110,8 @@ return function (string $lang, ?array $text = null): array {
     return [
         'key' => "Abel Tasman, de reis naar het onbekende ({$lang})",
         'title' => $text['title'],
+        // The line under the title on the title screen: the lesson's central question.
+        'details' => $text['intro'] ?? null,
         'subject' => 'history',
         'language' => $lang,
         'translation_group' => 'tasman-standard',
