@@ -54,8 +54,12 @@ return function (string $lang, ?array $text = null): array {
                 if ($asset = $ref($ship['file'], 'props')) {
                     // Boats sit IN the water (blend-into-scene boat preset).
                     $layers[] = ['asset' => $asset, 'anim' => 'fade',
-                        'waterline' => 0.15, 'reflection' => 0.35, 'contact_shadow' => 0.4, 'color_match' => 0.35]
-                        + array_intersect_key($ship, array_flip(['x', 'y', 'height', 'depth', 'ambient', 'ambient_amount']));
+                        'waterline' => 0.15, 'reflection' => 0.35, 'contact_shadow' => 0.4, 'color_match' => 0.35,
+                        // Foam where the hull meets the water; the wake shows progress (0 = at anchor).
+                        'foam' => 0.5, 'speed' => (float) ($ship['speed'] ?? 0)]
+                        + array_intersect_key($ship, array_flip(['x', 'y', 'height', 'depth', 'ambient', 'ambient_amount']))
+                        // Art painted facing left is mirrored, so its bow wave sits at the bow.
+                        + (! empty($ship['flip']) ? ['flip_x' => true] : []);
                 }
             }
             // Bart's Figma cut-outs, standing on the plate: ground = feet line, height in % of the stage.

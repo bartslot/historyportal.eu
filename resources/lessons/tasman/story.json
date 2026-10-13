@@ -27,7 +27,8 @@
        "height": 46,
        "depth": 0.5,
        "ambient": "roll",
-       "ambient_amount": 0.5
+       "ambient_amount": 0.5,
+       "speed": 0.0
       },
       {
        "file": "ships/waka_pair.png",
@@ -36,7 +37,9 @@
        "height": 16,
        "depth": 0.9,
        "ambient": "bob",
-       "ambient_amount": 0.8
+       "ambient_amount": 0.8,
+       "speed": 0.3,
+       "flip": true
       }
      ],
      "people": [],
@@ -112,7 +115,8 @@
        "height": 30,
        "depth": 0.6,
        "ambient": "roll",
-       "ambient_amount": 0.4
+       "ambient_amount": 0.4,
+       "speed": 0.0
       }
      ],
      "people": [],
@@ -549,7 +553,8 @@
        "height": 28,
        "depth": 0.6,
        "ambient": "roll",
-       "ambient_amount": 0.4
+       "ambient_amount": 0.4,
+       "speed": 0.0
       }
      ],
      "people": [],
@@ -658,7 +663,8 @@
        "height": 8,
        "depth": 0.3,
        "ambient": "bob",
-       "ambient_amount": 0.5
+       "ambient_amount": 0.5,
+       "speed": 0.6
       }
      ],
      "people": [],
@@ -774,17 +780,7 @@
      ],
      "plate": "plates/storm_deck.png",
      "figures": "figures/S07-A.png",
-     "ships": [
-      {
-       "file": "ships/heemskerck_storm.png",
-       "x": 72,
-       "y": 48,
-       "height": 22,
-       "depth": 0.4,
-       "ambient": "roll",
-       "ambient_amount": 1.8
-      }
-     ],
+     "ships": [],
      "people": [
       {
        "file": "people/tasman_pointing.png",
@@ -897,7 +893,8 @@
        "height": 8,
        "depth": 0.3,
        "ambient": "roll",
-       "ambient_amount": 0.8
+       "ambient_amount": 0.8,
+       "speed": 0.6
       }
      ],
      "people": [
@@ -1216,7 +1213,8 @@
        "height": 14,
        "depth": 1.1,
        "ambient": "bob",
-       "ambient_amount": 0.8
+       "ambient_amount": 0.8,
+       "speed": 0.3
       }
      ],
      "people": [
@@ -1378,7 +1376,9 @@
        "height": 18,
        "depth": 0.8,
        "ambient": "bob",
-       "ambient_amount": 0.6
+       "ambient_amount": 0.6,
+       "speed": 0.3,
+       "flip": true
       }
      ],
      "people": [],
@@ -1485,7 +1485,9 @@
        "height": 16,
        "depth": 0.7,
        "ambient": "bob",
-       "ambient_amount": 1.0
+       "ambient_amount": 1.0,
+       "speed": 0.3,
+       "flip": true
       },
       {
        "file": "ships/sloep_rowing.png",
@@ -1494,7 +1496,8 @@
        "height": 14,
        "depth": 0.8,
        "ambient": "bob",
-       "ambient_amount": 1.0
+       "ambient_amount": 1.0,
+       "speed": 0.3
       }
      ],
      "people": [],
@@ -1625,7 +1628,9 @@
        "height": 22,
        "depth": 0.9,
        "ambient": "bob",
-       "ambient_amount": 0.8
+       "ambient_amount": 0.8,
+       "speed": 0.3,
+       "flip": true
       }
      ],
      "people": [

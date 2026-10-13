@@ -113,8 +113,17 @@ class LibraryLayers
     /** The history-line library: ink drawings on white paper. */
     public static function isLineArt(string $ref): bool
     {
-        return str_starts_with($ref, 'history-line/');
+        $ref = trim($ref, '/ ');
+
+        return str_starts_with($ref, 'history-line/')
+            && ! array_filter(self::PAINTED_PLATES, fn (string $dir): bool => str_starts_with($ref, $dir));
     }
+
+    /**
+     * Library folders that hold full-colour watercolour plates, not ink on white paper: they fill the
+     * frame and may move with a camera (Bart, 2026-10-13: no black-and-white pictures in a lesson).
+     */
+    private const PAINTED_PLATES = ['history-line/backdrops/tasman/'];
 
     /**
      * Background from the art library: its Cloudinary URL, uploaded on first use. Without Cloudinary
