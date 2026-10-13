@@ -32,7 +32,7 @@ import { applyAmbient } from './ambient.js'
 import { MIC_INPUTS, soundStep, rhythmStep, rhythmStart, registerSoundTuner } from './meter-inputs/sound.js'
 import { shakeStep, shakeStart, tiltStep, needsMotionPermission, requestMotionPermission } from './meter-inputs/motion.js'
 import { placeCard } from './card-place.js'
-import { finishOrder, raceDecided, finalOrder, crewFrom, ghostLevel } from './race.js'
+import { finishOrder, raceDecided, finalOrder, crewFrom, ghostLevel, nextOpen } from './race.js'
 
 /** How long a full meter stays on screen before the payoff, and a gust of the react layer. */
 const FULL_HOLD_MS = 700
@@ -158,8 +158,10 @@ export function press (state, cfg, word) {
   const fills = state.fills.map((f, i) => (i === meter ? f + 1 : f))
   const used = state.used.map((u, i) => (i === meter ? [...u, word.id] : u))
   const { done, winner, order, finished } = settle(state, cfg, fills, meter)
+  // A team over the line hands the turn to the next team still racing.
+  const turn = done ? state.turn : finished && state.race ? nextOpen(order, fills.length, meter) : state.race ? state.turn : nextTurn
   return {
-    state: { ...state, fills, used, turn: done || state.race ? state.turn : nextTurn, done, winner, order },
+    state: { ...state, fills, used, turn, done, winner, order },
     result: done ? 'full' : finished ? 'finished' : 'right',
   }
 }
@@ -175,9 +177,10 @@ export function push (state, cfg, amount, meter = 0) {
   const sum = before + amount
   const after = sum >= cfg.goal - 1e-9 ? cfg.goal : sum
   const fills = state.fills.map((f, i) => (i === meter ? after : f))
-  const { done, winner, order } = settle(state, cfg, fills, meter)
+  const { done, winner, order, finished } = settle(state, cfg, fills, meter)
+  const turn = !done && finished && state.race ? nextOpen(order, fills.length, meter) : state.turn
   return {
-    state: { ...state, fills, done, winner, order },
+    state: { ...state, fills, done, winner, order, turn },
     crossed: Math.floor(after) - Math.floor(before),
     full: done,
   }
@@ -396,13 +399,13 @@ export class PowerMeter {
         : (this._listeners.mic ?? (await import('./meter-inputs/mic.js')).listen)
       const sensor = await open({
         gesture: this.cfg.gesture,
-        onCalibrated: () => { if (current()) { this._senseState = 'on'; this._render() } },
+        onCalibrated: () => { if (current()) { this._senseState = 'on'; this._restartClockForRace(); this._render() } },
         onFrame: (frame) => { if (current()) this._hear(frame) },
       })
       if (!current()) { sensor.stop(); return }
       this._sensor = sensor
       // Motion needs no calibration: its first reading has arrived.
-      if (motion) { this._senseState = 'on'; this._render() }
+      if (motion) { this._senseState = 'on'; this._restartClockForRace(); this._render() }
     } catch (_) {
       // No mic, no sensor, no permission: the taps below carry the moment.
       if (current()) { this._senseState = 'off'; this._render() }
@@ -511,6 +514,11 @@ export class PowerMeter {
     }
   }
 
+  /** Against the fleet the clock starts when the pupil can play: not while a permission prompt is open. */
+  _restartClockForRace () {
+    if (this._ghost !== null && this.state.fills[0] === 0) { this._started = performance.now(); this._ghost = 0 }
+  }
+
   /** The 1642 fleet sails its meter in its own time; a pupil who fills theirs first beat it. */
   _sailGhost () {
     if (this.state.done) return
@@ -567,7 +575,8 @@ export class PowerMeter {
       // A class race crews both ships from the finish; a pupil racing the fleet sails the
       // Heemskerck whatever happens, and beat the fleet when they were faster.
       Object.assign(outcome, this.state.race
-        ? { order: this.state.order, crew: crewFrom(this.state.order, this._names) }
+        // A team that never got going crews nothing, even when the teacher ended the race early.
+        ? { order: this.state.order, crew: crewFrom(this.state.order.filter(i => this.state.fills[i] > 0), this._names) }
         : { crew: { heemskerck: t('you') }, seconds, beatFleet: seconds < this.cfg.race.ghostSeconds })
     }
     this.hide()

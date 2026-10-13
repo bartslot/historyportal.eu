@@ -30,6 +30,15 @@ export function finalOrder (order, fills) {
   return [...order, ...rest]
 }
 
+/** The next team after `from` that has not crossed the line yet (or `from` when none is left). */
+export function nextOpen (order, teamCount, from) {
+  for (let step = 1; step <= teamCount; step++) {
+    const team = (from + step) % teamCount
+    if (!order.includes(team)) return team
+  }
+  return from
+}
+
 /** { heemskerck: name, zeehaen: name } from the final order and the team names. */
 export function crewFrom (order, names) {
   return Object.fromEntries(SHIPS.map((ship, place) => [ship, names[order[place]] ?? null]).filter(([, n]) => n))

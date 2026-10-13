@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  finishOrder, raceDecided, finalOrder, crewFrom, ghostLevel, crewText, raceLanes, laneX,
+  finishOrder, raceDecided, finalOrder, crewFrom, ghostLevel, crewText, raceLanes, laneX, nextOpen,
   readCrew, saveCrew, clearCrew, readBest, saveBest,
 } from '../race.js'
 
@@ -27,6 +27,12 @@ describe('who is out of the harbour first', () => {
   it('ending the race early ranks the rest by how far they got', () => {
     expect(finalOrder([2], [3, 1, 4, 3.5])).toEqual([2, 3, 0, 1])
     expect(finalOrder([], [2, 2])).toEqual([0, 1])
+  })
+
+  it('the turn passes over teams already out', () => {
+    expect(nextOpen([1], 3, 1)).toBe(2)
+    expect(nextOpen([1, 2], 3, 2)).toBe(0)
+    expect(nextOpen([0, 1, 2], 3, 2)).toBe(2)
   })
 
   it('first crews the Heemskerck, second the Zeehaen', () => {

@@ -25,7 +25,7 @@ import { fitToPlate, plateAspect } from './scene/plate-box.js'
 import { mountEmbedBg } from './scene/embed-bg.js'
 import { sameOriginMediaUrl } from './media-url.js'
 import { sceneTransitionFrames, easingBezier, EASINGS } from './scene/animations.js'
-import { readProgress, saveProgress, clearProgress, canResume } from './scene/progress-store.js'
+import { readProgress, saveProgress, clearProgress, canResume, safeStorage } from './scene/progress-store.js'
 import { crewText, readCrew, saveCrew, clearCrew, readBest, saveBest } from './scene/race.js'
 
 // Easing key → cubic-bezier, for the scene transition set in the wizard's Animate tab.
@@ -247,7 +247,7 @@ Alpine.data('lessonGame', (lesson) => ({
     resumable:         null,  // saved progress worth offering "continue" for, else null
     _done:             [],    // scene ids whose power-meter moment has played (never replayed)
     // Who crews the Heemskerck and the Zeehaen after a harbour race, for this run only (race.js).
-    _crew:             readCrew(window.sessionStorage, lesson.lesson_code),
+    _crew:             readCrew(safeStorage('sessionStorage'), lesson.lesson_code),
     currentIsGame:     false, // current scene is a quiz/game → hide the chapter bar
     sceneProgress:     0,    // 0-1 through the current chapter's audio
     chaptersOpen:      false,
@@ -293,7 +293,7 @@ Alpine.data('lessonGame', (lesson) => ({
       // call site below can log unconditionally. See resources/js/lesson-telemetry.js.
       this._tel = createTelemetry(lesson.lesson_code)
       if (this.playSolo) {
-        const saved = readProgress(window.localStorage, lesson.lesson_code)
+        const saved = readProgress(safeStorage('localStorage'), lesson.lesson_code)
         this.resumable = canResume(saved) ? saved : null
       }
 
@@ -473,13 +473,15 @@ Alpine.data('lessonGame', (lesson) => ({
 
     _saveProgress () {
       if (!this.playSolo) return
-      saveProgress(window.localStorage, lesson.lesson_code, { index: this.furthest.index, time: this.furthest.time, done: this._done })
+      saveProgress(safeStorage('localStorage'), lesson.lesson_code, { index: this.furthest.index, time: this.furthest.time, done: this._done })
     },
 
     async startLesson () {
       this._tel.log('lesson_started')
       // Solo "Start lesson" with progress saved = start over: what this device remembered goes.
-      if (this.playSolo && !this._resuming) clearProgress(window.localStorage, lesson.lesson_code)
+      if (this.playSolo && !this._resuming) clearProgress(safeStorage('localStorage'), lesson.lesson_code)
+      // A fresh start is a fresh run: last run's crews do not sail again until this class races.
+      if (!this._resuming) { clearCrew(safeStorage('sessionStorage'), lesson.lesson_code); this._crew = {} }
       this._resuming = false
       this.resumable = null
       // Locked-mode (best effort): go fullscreen on the user's play gesture so tab/app
@@ -2203,13 +2205,15 @@ Alpine.data('lessonGame', (lesson) => ({
       const mod = await import('./scene/PowerMeter.js')
       // A chapter jump during the import has moved the class on.
       if (!current()) return
-      const cfg = scene.config.moment
+      let cfg = scene.config.moment
       const art = document.getElementById('lesson-voyage-art')
       this._tel.log('moment_started', { sceneIndex: index, sceneId: scene.id })
       this._powerMeter = this._powerMeter || new mod.PowerMeter(host)
       const { figureRects } = await import('./scene/card-place.js')
       const race = cfg.race?.enabled ? await this._openRace(scene, cfg, art) : null
       if (!current()) { race?.close(); return }
+      // No ship to race (its layer is gone): the moment plays as a single meter, no crews.
+      if (cfg.race?.enabled && !race) cfg = { ...cfg, race: { ...cfg.race, enabled: false } }
       this._hideBalloons(true)
       const m = mod.readMoment(cfg)
       // In a race the pupil's own lane is the near one and the fleet's the far one.
@@ -2217,7 +2221,7 @@ Alpine.data('lessonGame', (lesson) => ({
       this._powerMeter.show({
         config: { ...cfg, prompt: this._crewed(cfg.prompt) },
         solo: this.playSolo,
-        best: race && this.playSolo ? readBest(window.localStorage, `${lesson.lesson_code}:${scene.id}`) : null,
+        best: race && this.playSolo ? readBest(safeStorage('localStorage'), `${lesson.lesson_code}:${scene.id}`) : null,
         avoid: () => [...figureRects(art, host, [cfg.react?.layer, cfg.payoff?.layer].filter(Boolean)), ...(race ? race.band(host) : [])],
         onReact: (meter) => mod.gust(race ? race.node(lane(meter)) : mod.layerNode(art, cfg.react?.layer), cfg.react || {}),
         onProgress: race ? ({ levels, ghost }) => race.update(this.playSolo ? [ghost ?? 0, levels[0] ?? 0] : levels) : null,
@@ -2267,10 +2271,10 @@ Alpine.data('lessonGame', (lesson) => ({
     /** The crews for the rest of this run, their ships named on the lanes, a pupil's best time kept. */
     _crownRace (race, outcome, scene) {
       this._crew = outcome.crew
-      saveCrew(window.sessionStorage, lesson.lesson_code, outcome.crew)
+      saveCrew(safeStorage('sessionStorage'), lesson.lesson_code, outcome.crew)
       if (this.playSolo) {
         race.label(1, `${t('You')} · Heemskerck`)
-        if (outcome.seconds) saveBest(window.localStorage, `${lesson.lesson_code}:${scene.id}`, outcome.seconds)
+        if (outcome.seconds) saveBest(safeStorage('localStorage'), `${lesson.lesson_code}:${scene.id}`, outcome.seconds)
         return
       }
       ;(outcome.order || []).slice(0, 2).forEach((team, place) => {
@@ -2356,9 +2360,9 @@ Alpine.data('lessonGame', (lesson) => ({
       this._tel.flush()
       if (this._audio && !this._audio.paused) this._audio.pause()
       // A pupil who reached the end starts at the title next time, not on the last panel.
-      if (this.playSolo) clearProgress(window.localStorage, lesson.lesson_code)
+      if (this.playSolo) clearProgress(safeStorage('localStorage'), lesson.lesson_code)
       // The crews belong to this run of the lesson; the next class races again.
-      clearCrew(window.sessionStorage, lesson.lesson_code)
+      clearCrew(safeStorage('sessionStorage'), lesson.lesson_code)
       this._crew = {}
       if (this._timerInterval) clearInterval(this._timerInterval)
       // The bed fades away over the closing screen rather than cutting on the last word.

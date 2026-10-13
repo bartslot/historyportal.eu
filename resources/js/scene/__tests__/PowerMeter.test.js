@@ -460,7 +460,14 @@ describe('the harbour race', () => {
     const { host, meter, onDone } = mount({ ...race, teams: 3 })
     pick(host, 'Team 3'); meter.tapWord('gangspil')
     ;[...host.querySelectorAll('button')].find(b => b.textContent === 'End the race').click()
-    expect(onDone).toHaveBeenCalledWith(expect.objectContaining({ order: [2, 0, 1], crew: { heemskerck: 'Team 3', zeehaen: 'Team 1' } }))
+    // Teams 1 and 2 never got going: they crew nothing, whatever their place.
+    expect(onDone).toHaveBeenCalledWith(expect.objectContaining({ order: [2, 0, 1], crew: { heemskerck: 'Team 3' } }))
+  })
+
+  it('a team over the line hands the turn to the next team still racing', () => {
+    const { host, meter } = mount({ ...race, teams: 3 })
+    pick(host, 'Team 2'); meter.tapWord('gangspil'); meter.tapWord('hijsen')
+    expect([...host.querySelectorAll('button[aria-pressed="true"]')].map(b => b.textContent)).toEqual(['Team 3'])
   })
 
   it('a pupil on their own device races the 1642 fleet and always sails the Heemskerck', () => {
