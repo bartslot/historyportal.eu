@@ -1,0 +1,168 @@
+{
+  "version": 1,
+  "source": "titles:make from resources/lessons/titles/dante.json",
+  "frame": {
+    "w": 5751.1445,
+    "h": 3755.4816
+  },
+  "background": "#2152B5",
+  "focus": {
+    "x": 14.0,
+    "y": 35.3547,
+    "w": 72.0,
+    "h": 29.2905
+  },
+  "groups": {
+    "row0": {
+      "box": {
+        "x": 0,
+        "y": 0,
+        "w": 100,
+        "h": 100
+      },
+      "shadow": {
+        "x": 65.0,
+        "y": 60.0,
+        "color": "#000000"
+      }
+    },
+    "scene": {
+      "box": {
+        "x": 14.3478,
+        "y": 35.8873,
+        "w": 70.1743,
+        "h": 26.6277
+      },
+      "mask": "mask.svg"
+    }
+  },
+  "layers": [
+    {
+      "id": "d",
+      "src": "letter-d.svg",
+      "box": {
+        "x": 13.9826,
+        "y": 35.8534,
+        "w": 15.3225,
+        "h": 27.0888
+      },
+      "enter": "drop",
+      "group": "row0"
+    },
+    {
+      "id": "a",
+      "src": "letter-a.svg",
+      "box": {
+        "x": 26.1183,
+        "y": 38.2346,
+        "w": 16.8744,
+        "h": 24.5515
+      },
+      "enter": "drop",
+      "group": "row0"
+    },
+    {
+      "id": "n",
+      "src": "letter-n.svg",
+      "box": {
+        "x": 42.17,
+        "y": 35.3281,
+        "w": 15.8627,
+        "h": 27.7461
+      },
+      "enter": "drop",
+      "group": "row0"
+    },
+    {
+      "id": "t",
+      "src": "letter-t.svg",
+      "box": {
+        "x": 57.4505,
+        "y": 37.9171,
+        "w": 14.9509,
+        "h": 22.9523
+      },
+      "enter": "drop",
+      "group": "row0"
+    },
+    {
+      "id": "e",
+      "src": "letter-e.svg",
+      "box": {
+        "x": 71.3711,
+        "y": 37.819,
+        "w": 13.5161,
+        "h": 23.1539
+      },
+      "enter": "drop",
+      "group": "row0"
+    },
+    {
+      "id": "firenze",
+      "src": "plate-strada-1283-c5417a.webp",
+      "group": "scene",
+      "box": {
+        "x": 28.8737,
+        "y": 35.3547,
+        "w": 28.4909,
+        "h": 27.6929
+      },
+      "enter": "fade",
+      "ambient": "drift",
+      "ambient_speed": 0.4,
+      "ambient_amount": 0.3
+    },
+    {
+      "id": "selva",
+      "src": "selva-7bb88e.webp",
+      "group": "scene",
+      "box": {
+        "x": 58.1845,
+        "y": 35.3547,
+        "w": 26.0088,
+        "h": 27.6929
+      },
+      "enter": "fade",
+      "ambient": "breeze",
+      "ambient_speed": 0.5,
+      "ambient_amount": 0.4
+    },
+    {
+      "id": "dante",
+      "src": "dante18-sheet-77d600.webp",
+      "group": "scene",
+      "box": {
+        "x": 13.4789,
+        "y": 36.932,
+        "w": 8.1898,
+        "h": 31.1646
+      },
+      "enter": "fade",
+      "ambient": "breeze",
+      "ambient_speed": 0.5,
+      "ambient_amount": 0.3
+    },
+    {
+      "id": "outlines",
+      "src": "outlines.svg",
+      "group": "scene",
+      "box": {
+        "x": 14.3478,
+        "y": 35.8873,
+        "w": 70.1743,
+        "h": 26.6277
+      },
+      "enter": "fade"
+    }
+  ],
+  "subtitle": {
+    "box": {
+      "x": 20.0,
+      "y": 64.6453,
+      "w": 60.0,
+      "h": 10.6511
+    },
+    "size": 2.3,
+    "color": "#FFFFFF"
+  }
+}
