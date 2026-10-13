@@ -51,10 +51,11 @@ export const SIT = {
   shadowDark: 0.45,    // the patch is the colour beneath x this
   shadowOpacity: 0.85, // at contact_shadow 1
   foamHeight: 0.07,    // share of the layer's height the hull band spans at the bow
-  foamTint: 0.18,      // how far paper-white leans toward the water's colour
+  foamTint: 0.14,      // how far paper-white leans toward the water's colour on a bright sea
+  foamDusk: 0.4,       // ... and how much further on a dark one (x (1 - its luminance))
   foamChurnPx: 10,     // how far the band's lines shift per half swing
-  bowWidth: 0.16,      // the bow wave at foam 1 and speed 1, share of the layer's width
-  bowHeight: 0.16,     //   ... and of its height
+  bowWidth: 0.22,      // the bow wave at foam 1 and speed 1, share of the layer's width
+  bowHeight: 0.2,     //   ... and of its height
   wakePatches: 6,      // patches in the wake at full speed (fewer show at lower speed)
   wakeRun: 7,          // how far a patch drifts back at full speed, in its own widths
 }
@@ -171,7 +172,11 @@ const COOL_RIM = [168, 182, 196]
 
 /** Pure: the foam's paper-white fill and its faint cool rim, leaning toward the water under it. */
 export function foamColours (below, tint = SIT.foamTint) {
-  return { fill: mixRgb(PAPER, below, tint), rim: mixRgb(COOL_RIM, below, tint * 2) }
+  // The darker the water, the further the white leans into it: at dusk or night foam is a soft
+  // off-white of the sea's own hue, never paper glaring on a dark plate.
+  const lum = (0.2126 * below[0] + 0.7152 * below[1] + 0.0722 * below[2]) / 255
+  const t = Math.min(0.75, tint + SIT.foamDusk * (1 - lum))
+  return { fill: mixRgb(PAPER, below, t), rim: mixRgb(COOL_RIM, below, Math.min(0.85, t * 1.5)) }
 }
 
 // A fixed jitter (no Math.random): the same layer draws the same foam on every machine.
@@ -183,12 +188,19 @@ const rgbCss = (rgb) => `rgb(${rgb.join(',')})`
  * with a broken, scalloped edge, thin at the stern and fuller toward the bow.
  */
 export function foamShape () {
+  // Broken: runs of two to four scallops with open water between them, fuller toward the bow.
   const blobs = []
-  for (let i = 0; i < 27; i++) {
-    const x = 6 + i * 7 + jitter(i) * 3
-    const t = (x - 6) / 188                          // 0 stern .. 1 bow
-    const ry = round(2.2 + 4.5 * t * t + jitter(i + 40) * 1.2, 2)
-    blobs.push(`<ellipse cx='${round(x, 2)}' cy='${round(10 + (jitter(i + 80) - 0.5) * 1.2, 2)}' rx='${round(4.6 + jitter(i + 120) * 1.6, 2)}' ry='${ry}'/>`)
+  let x = 4
+  let i = 0
+  while (x < 196) {
+    const run = 2 + Math.floor(jitter(i + 500) * 3)
+    for (let k = 0; k < run && x < 196; k++, i++) {
+      const t = x / 196                                   // 0 stern .. 1 bow
+      const ry = round(2 + 4 * t * t + jitter(i + 40) * 1.6, 2)
+      blobs.push(`<ellipse cx='${round(x, 2)}' cy='${round(10 + (jitter(i + 80) - 0.5) * 2.4, 2)}' rx='${round(3 + jitter(i + 120) * 2.2, 2)}' ry='${ry}'/>`)
+      x += 5 + jitter(i) * 3
+    }
+    x += 5 + jitter(i + 600) * 9                          // a gap of water
   }
   return svgUrl(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 20' preserveAspectRatio='none'><g fill='#000'>${blobs.join('')}</g></svg>`)
 }
@@ -235,7 +247,7 @@ export function wakePatch (fill, rim, i = 0) {
  */
 export function bowScale (foam, speed) {
   const v = clamp01(speed)
-  return v > 0 ? round(clamp01(foam) * (0.45 + 0.55 * v), 3) : 0
+  return v > 0 && foam > 0 ? round((0.5 + 0.5 * clamp01(foam)) * (0.45 + 0.55 * v), 3) : 0
 }
 
 /**
@@ -262,6 +274,9 @@ export function hullSpan (pixels, line) {
 
 /** Where the hull is assumed to be until (or if) the picture can be read. */
 const HULL_GUESS = [0.06, 0.94]
+
+/** Pure: the hull band's thickness at a speed: a thin lapping line at anchor, full when under way. */
+export const bandScale = (speed) => round(0.35 + 0.65 * clamp01(speed), 3)
 
 /**
  * Pure: the wake at a speed: for each patch, how strongly it shows (more patches appear as the
@@ -356,7 +371,7 @@ function injectStyles () {
        only, never a blur. A drift is a deceleration (ease-out). */
     @keyframes sit-wake {
       0%   { transform: translate(0, 0); opacity: 0; }
-      10%  { opacity: var(--sit-wake-op, 0); }
+      8%, 45% { opacity: var(--sit-wake-op, 0); }
       100% { transform: translate(calc(var(--sit-wake-run, 0) * -100%), calc(var(--sit-wake-side, 1) * var(--sit-wake-run, 0) * 18%)); opacity: 0; }
     }
     .sit-wake {
@@ -449,8 +464,9 @@ function drawFoam (body, item, spec, line, below, colours) {
 
   // Crisp, never translucent: more foam makes the band fuller, not more opaque.
   const [stern, bow] = (colours?.hull ?? HULL_GUESS).map(v => round(v * 100, 2))
-  const h = round(SIT.foamHeight * 100 * (0.5 + 0.5 * spec.foam), 2)
-  const band = add('sit-foam', `left:${round(stern - 2, 2)}%; width:${round(bow - stern + 4, 2)}%; height:${h}%; top:calc(${top}% - ${h / 2}%);
+  const h = round(SIT.foamHeight * 100 * (0.6 + 0.4 * spec.foam), 2)
+  const band = add('sit-foam', `left:${round(stern - 1, 2)}%; width:${round(bow - stern + 2, 2)}%;
+    height:calc(var(--sit-band-k, 1) * ${h}%); top:calc(${top}% - var(--sit-band-k, 1) * ${h / 2}%);
     background-color:${rgbCss(fill)}; background-image:${foamLines(rim)}; mask-image:${foamShape()};`)
   band.style.setProperty('--sit-churn', `${SIT.foamChurnPx}px`)
 
@@ -465,7 +481,7 @@ function drawFoam (body, item, spec, line, below, colours) {
   // arm of the V and fading. Staggered over one cycle, so the trail is continuous.
   const n = Math.max(0, Math.round(SIT.wakePatches))
   for (let i = 0; i < n; i++) {
-    const w = round(7 - (i % 3), 2)
+    const w = round(10 - (i % 3) * 1.5, 2)
     const side = i % 2 ? 1 : -1
     const wake = add('sit-wake', `left:${round(stern - w * 0.6, 2)}%; width:${w}%; height:${round(w * 0.4, 2)}%;
       top:calc(${top}% - ${round(w * 0.2, 2)}%); background-image:${wakePatch(fill, rim, i)};
@@ -482,6 +498,7 @@ function drawFoam (body, item, spec, line, below, colours) {
 export function applyFoamSpeed (body, foam, speed) {
   if (!body) return
   body.style.setProperty('--sit-bow-k', String(bowScale(foam, speed)))
+  body.style.setProperty('--sit-band-k', String(bandScale(speed)))
   const plan = wakePlan(foam, speed)
   body.querySelectorAll(':scope > .sit-wake').forEach((el, i) => {
     el.style.setProperty('--sit-wake-op', String(plan[i]?.op ?? 0))
