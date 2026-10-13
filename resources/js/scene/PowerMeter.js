@@ -30,6 +30,10 @@ import { applyAmbient } from './ambient.js'
 const FULL_HOLD_MS = 700
 const GUST_MS = 1400
 
+/** A silent line's reading time, as SceneDialogue::readingTime (a twelve-year-old reading it). */
+const READ_WPS = 2.2
+const MIN_READ_S = 1.8
+
 // ── Rules (pure) ─────────────────────────────────────────────────────────────────────────────
 
 /** The moment as the engine reads it: lists are lists, numbers are clamped, nothing is trusted. */
@@ -54,6 +58,12 @@ export function readMoment (raw = {}) {
     react: raw.react && typeof raw.react === 'object' ? raw.react : {},
     payoff: raw.payoff && typeof raw.payoff === 'object' ? raw.payoff : { type: 'none' },
   }
+}
+
+/** How long a written line stays up when there is no recording of it. */
+export function readingMs (text) {
+  const words = String(text || '').trim().split(/\s+/).filter(Boolean).length
+  return Math.round(Math.max(MIN_READ_S, words / READ_WPS) * 1000)
 }
 
 /** Right and wrong words as buttons, shuffled once per play (rand is injectable for tests). */
@@ -221,6 +231,16 @@ export class PowerMeter {
   }
 
   skip () { this._finish(true) }
+
+  /** The narrator's after line, as a caption where the meter was (the panel stays in view). */
+  say (text) {
+    const wrap = el('div', 'absolute inset-x-0 bottom-0 flex justify-center px-3 pb-28 sm:px-8')
+    const line = el('p', 'max-w-4xl rounded-box bg-base-100/95 px-6 py-4 text-center text-2xl font-semibold leading-snug text-base-content', text)
+    line.setAttribute('role', 'status')
+    wrap.appendChild(line)
+    this.host.replaceChildren(wrap)
+    this.host.style.pointerEvents = 'none'
+  }
 
   _tap (word, node) {
     const meter = this.state.fills.length > 1 ? this.state.turn : 0

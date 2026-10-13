@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import {
-  cameraSpec, cameraPose, cameraFrame, cameraEntry, entryLingerMs, previewCycleS,
+  cameraSpec, cameraPose, chainPose, cameraFrame, cameraEntry, entryLingerMs, previewCycleS,
   CAMERA_MOVES, CAMERA_AMP, MOVE_DURATION_S, ENTRY_MS,
 } from '../camera.js'
 import { ParallaxScene } from '../ParallaxScene.js'
@@ -240,5 +240,19 @@ describe('ParallaxScene + ArtworkOverlay play one camera', () => {
     overlay.setCamera(null)
     overlay.setLayers([{ asset_id: 9, url: 'ship.png', x: 50, y: 50, depth: 1 }])
     expect(host.querySelector('[data-layer-id="art_9"]').style.transform).not.toContain('20px')
+  })
+})
+
+describe('chainPose (pure)', () => {
+  it('starts a second move where the camera already is, then moves by that move alone', () => {
+    const base = { panX: -4, panY: 0, truckX: 0, truckY: 0, zoom: 1.1 }
+    const push = cameraSpec({ move: 'push', amount: 1, duration: 4 })
+    expect(chainPose(base, push, 0)).toEqual(base)
+    const end = chainPose(base, push, 4)
+    expect(end.panX).toBe(-4)
+    expect(end.zoom).toBeCloseTo(1.1 * cameraPose(push, 4).zoom)
+    const pan = cameraSpec({ move: 'pan-r', amount: 1, duration: 4 })
+    expect(chainPose(base, pan, 0).panX).toBeCloseTo(-4)
+    expect(chainPose(null, pan, 4).panX).toBeCloseTo(cameraPose(pan, 4).panX - cameraPose(pan, 0).panX)
   })
 })

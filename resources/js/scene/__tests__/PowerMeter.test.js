@@ -187,3 +187,18 @@ describe('the panel reacts', () => {
     expect(node.style.translate).toBe('600px 0px')
   })
 })
+
+describe('the after line', () => {
+  it('stays up as long as it takes to read, never shorter than a breath', async () => {
+    const { readingMs } = await import('../PowerMeter.js')
+    expect(readingMs('')).toBe(1800)
+    expect(readingMs('En daar komt de westenwind. De Heemskerck vaart weer.')).toBe(4091)
+  })
+
+  it('shows as a caption over the panel, as text', () => {
+    const host = document.createElement('div')
+    new PowerMeter(host).say('<b>De Heemskerck vaart weer.</b>')
+    expect(host.querySelector('b')).toBeNull()
+    expect(host.querySelector('[role=status]').textContent).toBe('<b>De Heemskerck vaart weer.</b>')
+  })
+})

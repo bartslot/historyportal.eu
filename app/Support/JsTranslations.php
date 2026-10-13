@@ -61,6 +61,12 @@ final class JsTranslations
     {
         return [
             'Team :number' => __('Team :number'),
+            'You' => __('You'),
+            'Choose' => __('Choose'),
+            'Your choice' => __('Your choice'),
+            'Your answer' => __('Your answer'),
+            'Only you see this answer. It is not sent anywhere.' => __('Only you see this answer. It is not sent anywhere.'),
+            'Too heavy: that would be :load of :capacity points. Leave something behind first.' => __('Too heavy: that would be :load of :capacity points. Leave something behind first.'),
             'Time is up' => __('Time is up'),
             'Pause' => __('Pause'),
             'Resume' => __('Resume'),

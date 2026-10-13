@@ -1679,5 +1679,10 @@
     "Waterline, reflection, shadow and colour from the backdrop": "Linea d'acqua, riflesso, ombra e colore dallo sfondo",
     "Back to the cut-out as it was": "Torna al ritaglio com'era",
     "Power meter": "Misuratore di forza",
-    "Turn": "Turno"
+    "Turn": "Turno",
+    "Your choice": "La tua scelta",
+    "Your answer": "La tua risposta",
+    "Only you see this answer. It is not sent anywhere.": "Solo tu vedi questa risposta. Non viene inviata da nessuna parte.",
+    "Too heavy: that would be :load of :capacity points. Leave something behind first.": "Troppo pesante: sarebbero :load su :capacity punti. Lascia prima qualcosa.",
+    "Continue where you stopped": "Continua da dove eri rimasto"
 }

@@ -9,6 +9,10 @@
  *   choose   setup -> dossier (timer) -> votes (tally once every team is in) -> reveal
  *   discuss  question + prompts + evidence (timer) -> closing line
  *
+ * SOLO (a pupil on their own phone or laptop): the same config, played by one. No team setup;
+ * budget = their own load + the reveal, choose = their own choice + the real decision (no tally),
+ * discuss = their own short answer, which stays in this page and is never stored or sent.
+ *
  * Every string here is teacher, spec or LLM text = untrusted, so it goes through textContent
  * (el()), never innerHTML. Interface words come from t() (JsTranslations).
  *
@@ -147,10 +151,12 @@ export class TeamGame {
     this._timer = null
   }
 
-  /** @param {{ config: object, onComplete?: () => void }} opts */
-  show ({ config, onComplete = null }) {
+  /** @param {{ config: object, onComplete?: () => void, solo?: boolean }} opts */
+  show ({ config, onComplete = null, solo = false }) {
     this.cfg = readConfig(config || {})
     this._onComplete = onComplete
+    this._solo = solo
+    this._answer = ''
     this._teamCount = this.cfg.teams
     this._names = []
     this._selections = []   // budget: Set<number> per team
@@ -162,7 +168,18 @@ export class TeamGame {
     this._phase = this.cfg.mode === 'discuss' ? 'discuss' : 'setup'
     if (this._phase === 'discuss') this._startClock()
     this.host.style.pointerEvents = 'auto'
+    if (solo && this._phase === 'setup') return this._startSolo()
     this._render()
+  }
+
+  /** One player, no setup: straight to their own load or their own choice. */
+  _startSolo () {
+    this._names = [t('You')]
+    this._selections = [new Set()]
+    this._votes = [null]
+    this._active = 0
+    this._remaining = this.cfg.minutes * 60
+    this._go(this.cfg.mode === 'budget' ? 'load' : 'dossier')
   }
 
   hide () {
@@ -322,7 +339,7 @@ export class TeamGame {
     const picked = this._selections[this._active]
     const load = loadOf(picked, items, fixed)
 
-    const tabs = el('div', 'tabs tabs-box flex-wrap')
+    const tabs = el('div', `tabs tabs-box flex-wrap ${this._solo ? 'hidden' : ''}`)
     tabs.setAttribute('role', 'tablist')
     this._names.forEach((name, i) => {
       const tab = el('button', `tab gap-2 ${i === this._active ? 'tab-active' : ''}`)
@@ -375,7 +392,7 @@ export class TeamGame {
     body.appendChild(grid)
 
     this._footer(body,
-      button(t('Back'), 'btn-ghost', () => this._go('setup')),
+      this._solo ? null : button(t('Back'), 'btn-ghost', () => this._go('setup')),
       button(t('Reveal'), 'btn-primary btn-lg', () => this._go('budgetReveal')))
   }
 
@@ -383,9 +400,11 @@ export class TeamGame {
     const { items, fixed, capacity } = this.cfg
     const result = toggleItem(this._selections[this._active], index, items, fixed, capacity)
     this._selections[this._active] = result.picked
-    this._warning = result.ok ? '' : t('Too heavy: :team would carry :load of :capacity points. Leave something behind first.', {
-      team: this._names[this._active], load: result.wouldBe, capacity,
-    })
+    this._warning = result.ok ? '' : this._solo
+      ? t('Too heavy: that would be :load of :capacity points. Leave something behind first.', { load: result.wouldBe, capacity })
+      : t('Too heavy: :team would carry :load of :capacity points. Leave something behind first.', {
+        team: this._names[this._active], load: result.wouldBe, capacity,
+      })
     this._render()
   }
 
@@ -399,12 +418,13 @@ export class TeamGame {
     const table = el('table', 'table table-zebra text-lg')
     const thead = el('thead')
     const hr = el('tr')
-    append(hr, el('th', '', t('Cargo')), ...this._names.map(n => el('th', 'text-center', n)), el('th', 'text-center', t('Teams')))
+    const count = (text, tag = 'td', cls = 'text-center') => (this._solo ? null : el(tag, cls, text))
+    append(hr, el('th', '', t('Cargo')), ...this._names.map(n => el('th', 'text-center', n)), count(t('Teams'), 'th'))
     thead.appendChild(hr)
     const tbody = el('tbody')
     fixed.forEach(item => {
       const tr = el('tr')
-      append(tr, el('td', '', item.name), ...this._names.map(() => el('td', 'text-center', t('On board'))), el('td', 'text-center', this._names.length))
+      append(tr, el('td', '', item.name), ...this._names.map(() => el('td', 'text-center', t('On board'))), count(this._names.length))
       tbody.appendChild(tr)
     })
     const picks = itemPicks(this._selections, items.length)
@@ -415,12 +435,12 @@ export class TeamGame {
         if (sel.has(i)) td.setAttribute('aria-label', t('Loaded'))
         return td
       })
-      append(tr, el('td', '', item.name), ...cells, el('td', 'text-center font-semibold', picks[i]))
+      append(tr, el('td', '', item.name), ...cells, count(picks[i], 'td', 'text-center font-semibold'))
       tbody.appendChild(tr)
     })
     const tfoot = el('tfoot')
     const fr = el('tr')
-    append(fr, el('th', '', t('Points')), ...this._selections.map(sel => el('th', 'text-center', loadOf(sel, items, fixed))), el('th'))
+    append(fr, el('th', '', t('Points')), ...this._selections.map(sel => el('th', 'text-center', loadOf(sel, items, fixed))), count('', 'th'))
     tfoot.appendChild(fr)
     append(table, thead, tbody, tfoot)
     wrap.appendChild(table)
@@ -461,8 +481,8 @@ export class TeamGame {
     body.appendChild(this._optionList(null))
     append(body, para(this.cfg.question, 'text-2xl font-semibold'))
     this._footer(body,
-      button(t('Back'), 'btn-ghost', () => this._go('setup')),
-      button(t('Teams choose'), 'btn-primary btn-lg', () => this._go('vote')))
+      this._solo ? null : button(t('Back'), 'btn-ghost', () => this._go('setup')),
+      button(this._solo ? t('Choose') : t('Teams choose'), 'btn-primary btn-lg', () => this._go('vote')))
   }
 
   /** The options, with the shared map and any per-option picture; `real` marks the real decision. */
@@ -509,8 +529,8 @@ export class TeamGame {
 
     const done = allVoted(this._votes)
     if (done) {
-      body.appendChild(this._tally())
-    } else {
+      if (!this._solo) body.appendChild(this._tally())
+    } else if (!this._solo) {
       const waiting = this._votes.filter(v => !Number.isInteger(v)).length
       body.appendChild(el('p', 'text-lg text-base-content/70', t('Teams still to choose: :count', { count: waiting })))
     }
@@ -534,9 +554,10 @@ export class TeamGame {
   }
 
   _chooseReveal (body) {
+    const mine = this._solo && Number.isInteger(this._votes[0]) ? this._votes[0] : null
     append(body,
       this._optionList(this.cfg.answer),
-      this._tally(),
+      this._solo ? (mine === null ? null : el('p', 'text-xl font-semibold', `${t('Your choice')}: ${LETTERS[mine]}`)) : this._tally(),
       para(this.cfg.reveal, 'text-2xl leading-relaxed'),
       para(this.cfg.followup, 'text-xl font-semibold'),
       para(this.cfg.source, 'text-sm text-base-content/60'))
@@ -562,7 +583,23 @@ export class TeamGame {
       })
       body.appendChild(grid)
     }
+    if (this._solo) body.appendChild(this._ownAnswer())
     this._footer(body, button(t('Close the discussion'), 'btn-primary btn-lg', () => this._go('closing')))
+  }
+
+  /** A pupil's own short answer: kept in this page only, never stored or sent. */
+  _ownAnswer () {
+    const box = el('label', 'form-control flex flex-col gap-2')
+    const area = el('textarea', 'textarea textarea-bordered w-full text-xl')
+    area.rows = 3
+    area.maxLength = 500
+    area.value = this._answer
+    area.addEventListener('input', () => { this._answer = area.value })
+    append(box,
+      el('span', 'text-sm font-semibold uppercase tracking-wider text-base-content/60', t('Your answer')),
+      area,
+      el('span', 'text-sm text-base-content/60', t('Only you see this answer. It is not sent anywhere.')))
+    return box
   }
 
   _closing (body) {

@@ -157,3 +157,53 @@ describe('TeamGame on the class screen', () => {
     expect(host.querySelector('[data-team-pause]').textContent).toBe('Resume')
   })
 })
+
+describe('TeamGame played solo on a pupil\'s own device', () => {
+  const mount = (config) => {
+    const host = document.createElement('div')
+    const onComplete = vi.fn()
+    new TeamGame(host).show({ config, onComplete, solo: true })
+    return { host, onComplete }
+  }
+  const click = (host, label) => {
+    const b = [...host.querySelectorAll('button')].find(x => x.textContent.trim() === label)
+    if (!b) throw new Error(`no button "${label}"`)
+    b.click()
+  }
+
+  it('budget: no team setup, their own load, a reveal without a team count', () => {
+    const { host, onComplete } = mount({ mode: 'budget', teams: 6, capacity: 9, fixed, items })
+    expect(host.textContent).not.toContain('Fewer teams')
+    click(host, 'Reservezeilen3')
+    expect(host.querySelector('[role=alert]').textContent).toContain('that would be 10 of 9')
+    click(host, 'Touw2')
+    click(host, 'Reveal')
+    const heads = [...host.querySelectorAll('th')].map(th => th.textContent)
+    expect(heads).toContain('You')
+    expect(heads).not.toContain('Teams')
+    click(host, 'Continue the lesson')
+    expect(onComplete).toHaveBeenCalledOnce()
+  })
+
+  it('choose: their own choice, then the real decision, no tally', () => {
+    const options = [{ label: 'A', text: 'Zuid' }, { label: 'B', text: 'Noord' }]
+    const { host } = mount({ mode: 'choose', options, answer: 1, situation: 'Storm.' })
+    click(host, 'Choose')
+    click(host, 'B')
+    expect(host.querySelector('progress')).toBeNull()
+    click(host, 'Reveal')
+    expect(host.textContent).toContain('Your choice: B')
+    expect(host.textContent).toContain('Real decision')
+    expect(host.querySelector('progress')).toBeNull()
+  })
+
+  it('discuss: a short answer of their own that survives going back', () => {
+    const { host } = mount({ mode: 'discuss', question: 'Ontdekte Tasman Nieuw-Zeeland?' })
+    const area = host.querySelector('textarea')
+    area.value = 'Voor Europeanen wel.'
+    area.dispatchEvent(new Event('input'))
+    click(host, 'Close the discussion')
+    click(host, 'Back')
+    expect(host.querySelector('textarea').value).toBe('Voor Europeanen wel.')
+  })
+})
