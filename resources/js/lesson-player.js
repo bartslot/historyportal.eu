@@ -1435,6 +1435,7 @@ Alpine.data('lessonGame', (lesson) => ({
       // A moment still running belongs to the scene we are leaving, even if we come straight back.
       this._playEpoch = (this._playEpoch || 0) + 1
       this._momentActive = false
+      this._hideBalloons(false)
 
       // And the same again for the strategy challenge, which is a PHASE rather than an overlay
       // object. GAME_BRIEF waits for the teacher to tap "Begin the challenge" and nothing else
@@ -2167,7 +2168,8 @@ Alpine.data('lessonGame', (lesson) => ({
     _momentDue (index, scene, timed = false) {
       const m = scene?.kind !== 'game' ? scene?.config?.moment : null
       if (!m || m.enabled === false || this._momentActive || this._done.includes(scene.id)) return false
-      if (!(m.words?.right || []).some(w => String(w || '').trim())) return false
+      const sound = ['loudness', 'blow', 'silence'].includes(m.input)
+      if (!sound && !(m.words?.right || []).some(w => String(w || '').trim())) return false
       const at = Number(m.at)
       return timed ? m.at !== 'end' && Number.isFinite(at) : true
     },
@@ -2192,11 +2194,13 @@ Alpine.data('lessonGame', (lesson) => ({
       const art = document.getElementById('lesson-voyage-art')
       this._tel.log('moment_started', { sceneIndex: index, sceneId: scene.id })
       this._powerMeter = this._powerMeter || new mod.PowerMeter(host)
-      const reactor = mod.layerNode(art, cfg.react?.layer) ?? mod.layerNode(art, cfg.payoff?.layer)
+      const { figureRects } = await import('./scene/card-place.js')
+      if (!current()) return
+      this._hideBalloons(true)
       this._powerMeter.show({
         config: cfg,
         solo: this.playSolo,
-        side: mod.cardSide(reactor ? parseFloat(reactor.style.left) : NaN),
+        avoid: () => figureRects(art, host, [cfg.react?.layer, cfg.payoff?.layer].filter(Boolean)),
         onReact: () => mod.gust(mod.layerNode(art, cfg.react?.layer), cfg.react || {}),
         // Skipped or full, the story still moves: history decides what happens, the game only when.
         onDone: async ({ skipped }) => {
@@ -2209,11 +2213,17 @@ Alpine.data('lessonGame', (lesson) => ({
           await this._momentAfterLine(mod, mod.readMoment(cfg))
           if (!current()) return
           this._powerMeter.hide()
+          this._hideBalloons(false)
           this._momentActive = false
           this.playbackPaused = false
           resume()
         },
       })
+    },
+
+    /** A balloon left over from the panel's last line must not sit on the meter. */
+    _hideBalloons (hidden) {
+      document.getElementById('lesson-balloons')?.classList.toggle('invisible', hidden)
     },
 
     _momentPayoff (mod, payoff, art) {

@@ -205,12 +205,128 @@ describe('the after line', () => {
   })
 })
 
-describe('where the card sits', () => {
-  it('goes to the side away from the layer that reacts', async () => {
-    const { cardSide } = await import('../PowerMeter.js')
-    expect([cardSide(70), cardSide(20), cardSide(NaN), cardSide(50)]).toEqual(['left', 'right', 'center', 'left'])
+describe('sound fills the meter (microphone injected)', () => {
+  const flush = () => new Promise(r => setTimeout(r, 0))
+  const fakeMic = () => {
+    const mic = { stopped: false, hooks: null }
+    mic.listen = vi.fn(async (hooks) => { mic.hooks = hooks; return { stop: () => { mic.stopped = true } } })
+    return mic
+  }
+  const mount = (config, opts = {}) => {
     const host = document.createElement('div')
-    new PowerMeter(host).show({ config: raw, side: 'left' })
-    expect(host.firstElementChild.className).toContain('sm:justify-start')
+    document.body.appendChild(host)
+    const meter = new PowerMeter(host)
+    const onDone = vi.fn()
+    const onReact = vi.fn()
+    meter.show({ config, onDone, onReact, ...opts })
+    return { host, meter, onDone, onReact }
+  }
+  const blow = { ...raw, input: 'blow', words: { right: [], wrong: [] }, goal: 2, input_options: { threshold: 0.4 } }
+
+  it('never asks for the mic for a words moment', () => {
+    const mic = fakeMic()
+    mount(raw, { listen: mic.listen })
+    expect(mic.listen).not.toHaveBeenCalled()
+  })
+
+  it('listens to the room first, then broadband sound fills it and a voice does not', async () => {
+    vi.useFakeTimers()
+    const mic = fakeMic()
+    const { host, onReact, onDone } = mount(blow, { listen: mic.listen })
+    await vi.waitFor(() => expect(mic.hooks).not.toBeNull())
+    expect(host.textContent).toContain('Listening to the room')
+    expect(host.textContent).toContain('Nothing is recorded')
+    mic.hooks.onCalibrated(-60)
+    expect(host.textContent).toContain('Blow!')
+    mic.hooks.onFrame({ level: 0.9, flatness: 0.05, dt: 1 })        // shouting: no
+    expect(host.querySelector('[data-meter="0"]').value).toBe(0)
+    for (let i = 0; i < 3; i++) mic.hooks.onFrame({ level: 0.9, flatness: 0.6, dt: 1 })
+    expect(onReact).toHaveBeenCalledTimes(2)
+    expect(mic.stopped).toBe(true)                                   // released as soon as it is full
+    vi.advanceTimersByTime(1000)
+    expect(onDone).toHaveBeenCalledWith({ skipped: false, winner: 0, team: null })
+  })
+
+  it('silence: a noise knocks it back one step, never to nothing', async () => {
+    const mic = fakeMic()
+    const { host } = mount({ ...blow, input: 'silence', goal: 4, input_options: { hold_seconds: 4 } }, { listen: mic.listen })
+    await vi.waitFor(() => expect(mic.hooks).not.toBeNull())
+    mic.hooks.onCalibrated(-60)
+    mic.hooks.onFrame({ level: 0.05, flatness: 0, dt: 2.5 })
+    expect(host.querySelector('[data-meter="0"]').value).toBeCloseTo(2.5)
+    mic.hooks.onFrame({ level: 0.9, flatness: 0, dt: 0.05 })
+    expect(host.querySelector('[data-meter="0"]').value).toBe(2)
+  })
+
+  it('no mic or no permission: says so and the tap carries the moment', async () => {
+    vi.useFakeTimers()
+    const { host, onDone } = mount(blow, { listen: () => Promise.reject(new Error('NotAllowedError')) })
+    await vi.waitFor(() => expect(host.textContent).toContain('No microphone. Tap instead.'))
+    const tap = () => [...host.querySelectorAll('button')].find(b => b.textContent === 'Tap to fill').click()
+    tap(); tap()
+    vi.advanceTimersByTime(1000)
+    expect(onDone).toHaveBeenCalledWith({ skipped: false, winner: 0, team: null })
+  })
+
+  it('sound is the whole class: no team turns, and closing releases the mic', async () => {
+    const mic = fakeMic()
+    const { host, meter } = mount({ ...blow, teams: 4 }, { listen: mic.listen })
+    await vi.waitFor(() => expect(mic.hooks).not.toBeNull())
+    expect(host.textContent).not.toContain('Team 1')
+    meter.hide()
+    expect(mic.stopped).toBe(true)
+  })
+
+  it('sits where it covers the least of the ship and the figures', () => {
+    const host = document.createElement('div')
+    Object.defineProperty(host, 'clientWidth', { value: 1440 })
+    Object.defineProperty(host, 'clientHeight', { value: 900 })
+    const ship = { rect: { x: 900, y: 400, w: 260, h: 240 }, weight: 3 }
+    const tasman = { rect: { x: 270, y: 430, w: 280, h: 470 } }
+    new PowerMeter(host).show({ config: raw, avoid: () => [ship, tasman] })
+    expect(host.querySelector('.card').dataset.spot).toBe('top-left')
+  })
+})
+
+describe('the microphone after review', () => {
+  const mount = (config, listen) => {
+    const host = document.createElement('div')
+    const meter = new PowerMeter(host)
+    meter.show({ config, listen })
+    return { host, meter }
+  }
+  const silence = { ...raw, input: 'silence', words: { right: [], wrong: [] }, goal: 4, input_options: { hold_seconds: 4 } }
+
+  it('a mic granted late for an earlier moment is closed and never feeds the next one', async () => {
+    let grantFirst
+    const first = { stopped: false, hooks: null }
+    const host = document.createElement('div')
+    const meter = new PowerMeter(host)
+    meter.show({ config: silence, listen: (hooks) => new Promise(r => { first.hooks = hooks; grantFirst = () => r({ stop: () => { first.stopped = true } }) }) })
+    meter.hide()                                        // a chapter jump while the prompt is open
+    const second = { hooks: null }
+    meter.show({ config: silence, listen: async (hooks) => { second.hooks = hooks; return { stop () {} } } })
+    grantFirst()
+    await vi.waitFor(() => expect(first.stopped).toBe(true))
+    second.hooks.onCalibrated(-60)
+    first.hooks.onFrame({ level: 0, flatness: 0, dt: 4 })   // the old mic's frame
+    expect(host.querySelector('[data-meter="0"]').value).toBe(0)
+  })
+
+  it('a long noise in a silence moment knocks back one step, not to nothing', async () => {
+    let hooks
+    const { host } = mount(silence, async (h) => { hooks = h; return { stop () {} } })
+    await vi.waitFor(() => expect(hooks).toBeDefined())
+    hooks.onCalibrated(-60)
+    hooks.onFrame({ level: 0, flatness: 0, dt: 3.3 })
+    for (let i = 0; i < 10; i++) hooks.onFrame({ level: 0.9, flatness: 0, dt: 0.05 })
+    expect(host.querySelector('[data-meter="0"]').value).toBe(3)
+  })
+
+  it('a silence moment offers no taps while the mic works', async () => {
+    let hooks
+    const { host } = mount(silence, async (h) => { hooks = h; return { stop () {} } })
+    await vi.waitFor(() => expect(hooks).toBeDefined())
+    expect([...host.querySelectorAll('button')].map(b => b.textContent)).not.toContain('Tap to fill')
   })
 })

@@ -8,6 +8,14 @@
     $on = (bool) ($draft['enabled'] ?? false);
     $label = 'text-3xs font-semibold uppercase tracking-wide text-panel-label';
     $payoff = $draft['payoff']['type'] ?? 'none';
+    $input = $draft['input'] ?? 'words';
+    $sound = in_array($input, \App\Services\Lessons\MomentSpec::MIC_INPUTS, true);
+    $inputs = [
+        'words' => __('Shouting the right words (tap)'),
+        'loudness' => __('Cheering (microphone)'),
+        'blow' => __('Blowing (microphone)'),
+        'silence' => __('Keeping quiet (microphone)'),
+    ];
     $words = [
         'right' => [__('Right words'), __('Add right word'), \App\Services\Lessons\MomentSpec::RIGHT_MAX],
         'wrong' => [__('Wrong words'), __('Add wrong word'), \App\Services\Lessons\MomentSpec::WRONG_MAX],
@@ -43,6 +51,14 @@
                 <span class="{{ $label }}">{{ __('Instruction on screen') }}</span>
                 <input type="text" maxlength="300" wire:model.blur="momentDraft.prompt" wire:change="saveMomentDraft" class="input input-sm mt-1 w-full" />
             </label>
+            <label class="block">
+                <span class="{{ $label }}">{{ __('The class fills the meter by') }}</span>
+                <select wire:model.change="momentDraft.input" wire:change="saveMomentDraft" class="select select-sm mt-1 w-full">
+                    @foreach ($inputs as $value => $name)
+                        <option value="{{ $value }}">{{ $name }}</option>
+                    @endforeach
+                </select>
+            </label>
         </div>
 
         @foreach ($words as $side => [$heading, $addLabel, $max])
@@ -73,8 +89,8 @@
         @endforeach
 
         <label class="block">
-            <span class="{{ $label }}">{{ __('Right words to fill the meter') }}</span>
-            <input type="number" min="1" max="{{ max(1, count($draft['words']['right'] ?? [])) }}" wire:model.blur="momentDraft.goal" wire:change="saveMomentDraft" class="input input-sm mt-1 w-full" />
+            <span class="{{ $label }}">{{ $sound ? __('Meter size (steps)') : __('Right words to fill the meter') }}</span>
+            <input type="number" min="1" max="{{ $sound ? \App\Services\Lessons\MomentSpec::RIGHT_MAX : max(1, count($draft['words']['right'] ?? [])) }}" wire:model.blur="momentDraft.goal" wire:change="saveMomentDraft" class="input input-sm mt-1 w-full" />
             @error('momentDraft.goal') <span class="text-2xs text-error">{{ $message }}</span> @enderror
         </label>
 
@@ -129,6 +145,21 @@
                         </select>
                     </label>
                 </div>
+
+                @if ($sound)
+                    <div class="grid grid-cols-2 gap-2 border-t border-panel-hairline pt-3">
+                        <label class="block">
+                            <span class="{{ $label }}">{{ __('Loudness needed') }}</span>
+                            <input type="number" min="0.05" max="1" step="0.05" placeholder="0.4" wire:model.blur="momentDraft.input_options.threshold" wire:change="saveMomentDraft" class="input input-sm mt-1 w-full" />
+                        </label>
+                        @if ($input === 'silence')
+                            <label class="block">
+                                <span class="{{ $label }}">{{ __('Quiet for (seconds)') }}</span>
+                                <input type="number" min="1" max="30" placeholder="5" wire:model.blur="momentDraft.input_options.hold_seconds" wire:change="saveMomentDraft" class="input input-sm mt-1 w-full" />
+                            </label>
+                        @endif
+                    </div>
+                @endif
 
                 <div class="space-y-2 border-t border-panel-hairline pt-3">
                     <h4 class="{{ $label }}">{{ __('Reaction per right word') }}</h4>
