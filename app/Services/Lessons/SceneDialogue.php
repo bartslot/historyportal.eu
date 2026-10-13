@@ -137,7 +137,7 @@ final class SceneDialogue
 
     /**
      * Synthesise every line (cached by voice + text), join them with a short silence into the
-     * scene's narration.mp3 and return each clip's measured length.
+     * scene's narration.m4a and return each clip's measured length.
      *
      * @param  list<array{speaker:string,text:string}>  $lines
      * @param  array<string,array<string,mixed>>  $cast
@@ -174,7 +174,8 @@ final class SceneDialogue
             $durations[] = self::probe($disk->path($cached));
         }
 
-        $path = "lessons/{$scene->lesson_id}/scenes/{$scene->id}/narration.mp3";
+        // AAC in .m4a: ffmpeg's own encoder, present on every server (prod's ffmpeg has no libmp3lame).
+        $path = "lessons/{$scene->lesson_id}/scenes/{$scene->id}/narration.m4a";
         $disk->makeDirectory(dirname($path));
         self::join($clips, $disk->path($path));
 
@@ -229,7 +230,7 @@ final class SceneDialogue
         }
         $chain .= implode('', array_map(fn (int $i): string => "[a{$i}]", array_keys($clips)))
             .'concat=n='.count($clips).':v=0:a=1[out]';
-        array_push($args, '-filter_complex', $chain, '-map', '[out]', '-c:a', 'libmp3lame', '-b:a', '128k', $out);
+        array_push($args, '-filter_complex', $chain, '-map', '[out]', '-c:a', 'aac', '-b:a', '96k', '-f', 'ipod', $out);
 
         (new Process($args))->setTimeout(120)->mustRun();
     }
