@@ -22,3 +22,4 @@ function run<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest<
 
 export const idbGet = <T>(key: string) => run<T | undefined>('readonly', (s) => s.get(key))
 export const idbPut = (key: string, value: unknown) => run('readwrite', (s) => s.put(value, key))
+export const idbDelete = (key: string) => run('readwrite', (s) => s.delete(key))

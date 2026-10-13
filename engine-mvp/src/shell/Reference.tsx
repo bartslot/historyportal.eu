@@ -7,7 +7,7 @@ import { isTypingTarget } from '@hp/ui/keyboard.js'
 import { Panel } from '../panels/Panel'
 import { inStep, usePanels } from '../panels/store'
 import { stepOf, useLesson } from '../lesson/store'
-import { idbGet, idbPut } from '../lesson/idb'
+import { idbDelete, idbGet, idbPut } from '../lesson/idb'
 import { SliderRow } from '../ui/kit'
 import { ICON, Icon } from '../ui/icons'
 
@@ -19,9 +19,14 @@ const NOT_A_PICTURE = 'That file is not a picture.'
 type View = { overlay: boolean; opacity: number }
 type State = View & { url: string | null; name: string; blink: boolean; actual: boolean; error: string | null }
 
+const MIN_OPACITY = 0.05
+
 function loadView(): View {
-  const fresh = { overlay: false, opacity: 0.5 }
-  try { return { ...fresh, ...JSON.parse(localStorage.getItem(VIEW_KEY) ?? '{}') } } catch { return fresh }
+  try {
+    const v = JSON.parse(localStorage.getItem(VIEW_KEY) ?? '{}')
+    const opacity = Number.isFinite(v?.opacity) ? Math.min(1, Math.max(MIN_OPACITY, v.opacity)) : 0.5
+    return { overlay: v?.overlay === true, opacity }
+  } catch { return { overlay: false, opacity: 0.5 } }
 }
 
 let state: State = { ...loadView(), url: null, name: '', blink: false, actual: false, error: null }
@@ -37,9 +42,25 @@ const useReference = () => useSyncExternalStore(subscribe, () => state)
 type Stored = { blob: Blob; name: string }
 const keyFor = (lessonId: string, sceneId: string) => `ref:${lessonId}:${sceneId}`
 
-function show(stored: Stored | null | undefined) {
+// The scene on screen. A read or write that finishes after the teacher moved to another scene is
+// dropped, so one scene's picture never shows (or is replaced) under another.
+let shownKey = ''
+
+function show(key: string, stored: Stored | null | undefined) {
+  if (key !== shownKey) return
   if (state.url) URL.revokeObjectURL(state.url)
   set({ url: stored ? URL.createObjectURL(stored.blob) : null, name: stored?.name ?? '', actual: false })
+}
+
+/** Switch the panel to a scene: clear the old picture at once, then read the new one. */
+function showScene(key: string) {
+  shownKey = key
+  if (state.url) URL.revokeObjectURL(state.url)
+  set({ url: null, name: '', actual: false, error: null })
+  idbGet<Stored | null>(key).then((s) => show(key, s), (e) => {
+    console.error('reference: could not read the picture', e)
+    if (key === shownKey) set({ error: 'The picture could not be read.' })
+  })
 }
 
 async function save(key: string, file: File) {
@@ -48,8 +69,8 @@ async function save(key: string, file: File) {
   const stored: Stored = { blob: file, name: file.name || 'Pasted picture' }
   try {
     await idbPut(key, stored)
-    set({ error: null })
-    show(stored)
+    if (key === shownKey) set({ error: null })
+    show(key, stored)
   } catch (e) {
     console.error('reference: could not save the picture', e)
     set({ error: 'The picture could not be saved in this browser.' })
@@ -58,8 +79,8 @@ async function save(key: string, file: File) {
 
 async function remove(key: string) {
   try {
-    await idbPut(key, null)
-    show(null)
+    await idbDelete(key)
+    show(key, null)
   } catch (e) {
     console.error('reference: could not remove the picture', e)
     set({ error: 'The picture could not be removed.' })
@@ -73,17 +94,19 @@ function usePanelShown() {
   return !!st.open.reference && inStep('reference', step)
 }
 
-/** Paste a picture and hold B, while the panel is on screen. */
-function useKeys(shown: boolean, key: string) {
+/** Paste a picture and hold B, while the panel is on screen. A paste only REPLACES a picture when it
+ *  lands inside the panel: a stray Cmd+V elsewhere never overwrites the reference. */
+function useKeys(shown: boolean, key: string, panel: React.RefObject<HTMLDivElement | null>) {
   useEffect(() => {
     if (!shown) return
     const onPaste = (e: ClipboardEvent) => {
       if (isTypingTarget(e.target)) return
+      if (state.url && !panel.current?.contains(document.activeElement)) return
       const f = [...(e.clipboardData?.files ?? [])].find((x) => x.type.startsWith('image/'))
       if (f) { e.preventDefault(); save(key, f) }
     }
     const down = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() !== BLINK_KEY || e.repeat || e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target)) return
+      if (e.defaultPrevented || e.key.toLowerCase() !== BLINK_KEY || e.repeat || e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target)) return
       set({ blink: true })
     }
     const up = (e: KeyboardEvent) => { if (e.key.toLowerCase() === BLINK_KEY) set({ blink: false }) }
@@ -99,7 +122,7 @@ function useKeys(shown: boolean, key: string) {
       window.removeEventListener('blur', off)
       off()
     }
-  }, [shown, key])
+  }, [shown, key, panel])
 }
 
 export function ReferencePanel() {
@@ -109,15 +132,12 @@ export function ReferencePanel() {
   const file = useRef<HTMLInputElement>(null)
   const [over, setOver] = useState(false)
   const [natural, setNatural] = useState(0)
+  const panel = useRef<HTMLDivElement>(null)
   const key = keyFor(lesson.id, current)
 
   // each scene has its own picture
-  useEffect(() => {
-    let live = true
-    idbGet<Stored | null>(key).then((s) => { if (live) show(s) }, (e) => console.error('reference: could not read the picture', e))
-    return () => { live = false }
-  }, [key])
-  useKeys(shown, key)
+  useEffect(() => { showScene(key) }, [key])
+  useKeys(shown, key, panel)
 
   const onDrop = (e: DragEvent) => {
     e.preventDefault()
@@ -131,7 +151,8 @@ export function ReferencePanel() {
   return (
     <Panel id="reference" className="flex h-full flex-col">
       <p className="shrink-0 px-3 pb-2 pr-10 pt-3 text-2xs font-semibold tracking-wide text-panel-title">Reference</p>
-      <div onDragOver={(e) => { e.preventDefault(); setOver(true) }} onDragLeave={() => setOver(false)} onDrop={onDrop}
+      <div ref={panel} onDragOver={(e) => { e.preventDefault(); setOver(true) }} onDragLeave={() => setOver(false)} onDrop={onDrop}
+           {...(ref.actual && ref.url ? { tabIndex: 0, role: 'region', 'aria-label': 'Reference picture, actual size' } : { tabIndex: -1 })}
            className={`relative mx-3 min-h-0 flex-1 rounded-box border ${over ? 'border-panel-value' : 'border-panel-hairline'} ${ref.actual ? 'overflow-auto' : 'overflow-hidden'}`}>
         {ref.url ? (
           // actual size = one picture pixel per screen pixel, to judge line weight
@@ -156,7 +177,7 @@ export function ReferencePanel() {
             <span className="text-3xs font-semibold uppercase leading-tight tracking-wide text-panel-label">Over the stage</span>
             <input type="checkbox" checked={ref.overlay} onChange={(e) => set({ overlay: e.target.checked })} className="toggle toggle-sm shrink-0" />
           </label>
-          <SliderRow label="Opacity" min={0.05} max={1} step={0.05} value={ref.opacity} onChange={(v) => set({ opacity: v })}
+          <SliderRow label="Opacity" min={MIN_OPACITY} max={1} step={0.05} value={ref.opacity} onChange={(v) => set({ opacity: v })}
                      format={(v) => String(Math.round(v * 100))} unit="%" />
           <div className="flex items-center gap-1 pt-1">
             <button type="button" className="btn btn-ghost btn-xs" aria-pressed={ref.actual} onClick={toggleActual}>
