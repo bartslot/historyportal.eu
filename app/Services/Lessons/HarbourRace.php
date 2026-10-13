@@ -37,6 +37,9 @@ final class HarbourRace
 
     public const SHIPS = ['heemskerck', 'zeehaen'];
 
+    /** The fastest a team may gain, in meters per second, however many phones push for it. */
+    private const GAIN_PER_SECOND = 0.25;
+
     /**
      * Open a race for a race moment, in the lobby, with the moment's number of teams (4 unless set).
      */
@@ -47,6 +50,8 @@ final class HarbourRace
             throw new InvalidArgumentException('This scene has no harbour race.');
         }
         $this->prune();
+        // One race per scene at a time: a teacher who opens it again starts fresh.
+        RaceRun::where('scene_id', $scene->id)->delete();
 
         $teams = (int) ($moment['teams'] ?? 0);
         $teams = $teams >= self::TEAMS_MIN ? min(self::TEAMS_MAX, $teams) : 4;
@@ -106,14 +111,18 @@ final class HarbourRace
 
     /**
      * A team device's gain. Atomic under a lock on the run: the progress never passes the goal, a
-     * request never adds more than a quarter of the meter (a tampered device cannot teleport), and
-     * the crews are decided exactly once, by server time.
+     * team never gains faster than GAIN_PER_SECOND of its meter (however many phones, or forged
+     * requests, push for it), and the crews are decided exactly once, by server time. Returns the
+     * run and how much of the gain was accepted: the phone keeps the rest for its next push.
+     *
+     * @return array{0: RaceRun, 1: float}
      */
-    public function push(RaceRun $run, int $teamId, float $delta): RaceRun
+    public function push(RaceRun $run, int $teamId, float $delta): array
     {
-        $delta = max(0.0, min($run->goal / 4, $delta));
+        $delta = max(0.0, min($run->goal * self::GAIN_PER_SECOND, $delta));
+        $accepted = 0.0;
 
-        DB::transaction(function () use ($run, $teamId, $delta): void {
+        DB::transaction(function () use ($run, $teamId, $delta, &$accepted): void {
             $locked = RaceRun::whereKey($run->id)->lockForUpdate()->first();
             if ($locked === null || $locked->state !== 'running') {
                 return;
@@ -122,11 +131,21 @@ final class HarbourRace
             if ($team === null) {
                 return;
             }
-            $progress = min((float) $locked->goal, round($team->progress + $delta, 3));
+            // A token bucket of one second: what the team may gain since its last accepted gain.
+            $now = Carbon::now();
+            $nowMs = (int) $now->getPreciseTimestamp(3);
+            $since = $team->pushed_ms !== null ? max(0.0, ($nowMs - $team->pushed_ms) / 1000) : 1.0;
+            $room = min(1.0, $since) * $locked->goal * self::GAIN_PER_SECOND;
+            $accepted = round(min($delta, $room, $locked->goal - $team->progress), 3);
+            if ($accepted <= 0) {
+                return;
+            }
+            $progress = min((float) $locked->goal, round($team->progress + $accepted, 3));
             $finished = $team->finished_ms === null && $progress >= $locked->goal - 0.001;
             $team->update([
                 'progress' => $progress,
-                'last_seen_at' => Carbon::now(),
+                'pushed_ms' => $nowMs,
+                'last_seen_at' => $now,
                 'finished_ms' => $finished ? (int) $locked->started_at->diffInMilliseconds(Carbon::now()) : $team->finished_ms,
             ]);
             if ($finished) {
@@ -134,7 +153,21 @@ final class HarbourRace
             }
         });
 
-        return $run->fresh('teams');
+        return [$run->fresh('teams'), max(0.0, $accepted)];
+    }
+
+    /**
+     * The proof a phone joined a team: a signature of run + team, given at join and required to push
+     * or to count as present. Nothing is stored; a code read off the board is not enough to forge it.
+     */
+    public function teamToken(RaceRun $run, int $teamId): string
+    {
+        return hash_hmac('sha256', "race:{$run->id}:{$run->code}:{$teamId}", (string) config('app.key'));
+    }
+
+    public function validToken(RaceRun $run, int $teamId, ?string $token): bool
+    {
+        return is_string($token) && $token !== '' && hash_equals($this->teamToken($run, $teamId), $token);
     }
 
     /** A device that only reads: its team counts as present (at most one write per team per 3 s). */

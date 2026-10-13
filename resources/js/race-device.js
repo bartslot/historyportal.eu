@@ -24,6 +24,7 @@ const teamKey = `lp:race:${cfg.code}`
 
 let race = cfg.race
 let teamId = null
+let token = null
 let meter = null
 let lastLevel = 0
 let client = null
@@ -64,8 +65,9 @@ async function join (id) {
     if (!res.ok) throw new Error(String(res.status))
     const body = await res.json()
     teamId = body.team.id
+    token = body.token
     race = body.race
-    try { store?.setItem(teamKey, String(teamId)) } catch (_) { /* fine: the phone asks again */ }
+    try { store?.setItem(teamKey, JSON.stringify({ team: teamId, token })) } catch (_) { /* fine: the phone asks again */ }
     follow()
   } catch (_) {
     root.prepend(el('div', 'alert alert-warning', t('That did not work. Try again.')))
@@ -76,7 +78,7 @@ async function join (id) {
 function follow () {
   client?.stop()
   client = new RaceClient({
-    urls: cfg.urls, teamId, pushMs: cfg.push_ms, pollMs: cfg.poll_ms, cap: race.goal / 4, device: deviceId(store),
+    urls: cfg.urls, teamId, token, pushMs: cfg.push_ms, pollMs: cfg.poll_ms, cap: race.goal / 4, device: deviceId(store),
     onState: (next) => { race = next; render() },
     onGone: () => setView('gone', () => [el('p', 'text-xl', t('This race has ended. Look at the class screen.'))]),
   })
@@ -141,5 +143,6 @@ function startRacing () {
   })
 }
 
-const saved = Number((() => { try { return store?.getItem(teamKey) } catch (_) { return null } })())
-if (saved && race.teams.some(tm => tm.id === saved)) { teamId = saved; follow() } else pick()
+// A phone that joined before goes straight back to its team, with its proof of joining.
+const saved = (() => { try { return JSON.parse(store?.getItem(teamKey) || 'null') } catch (_) { return null } })()
+if (saved?.token && race.teams.some(tm => tm.id === saved.team)) { teamId = saved.team; token = saved.token; follow() } else pick()

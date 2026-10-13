@@ -11,6 +11,7 @@ use App\Models\RaceRun;
 use App\Services\Lessons\HarbourRace;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\View\View;
 
 /**
@@ -20,6 +21,9 @@ use Illuminate\View\View;
  */
 class RaceDeviceController extends Controller
 {
+    /** Unknown codes one address may try per minute (a typo or two, not a scan). */
+    private const MISSES_PER_MINUTE = 20;
+
     /** The interface languages (lang/*.json + English). */
     private const UI_LANGUAGES = ['en', 'nl', 'de', 'fr', 'it'];
 
@@ -27,7 +31,7 @@ class RaceDeviceController extends Controller
 
     public function show(string $code): View
     {
-        $run = RaceRun::where('code', strtoupper($code))->with(['teams', 'scene', 'lesson'])->firstOrFail();
+        $run = $this->live($code, ['teams', 'scene', 'lesson']);
         $moment = ($run->scene->config ?? [])['moment'] ?? [];
         // A pupil's phone speaks the lesson's language, not whatever the visitor's browser last had.
         if (in_array($run->lesson->language, self::UI_LANGUAGES, true)) {
@@ -54,9 +58,11 @@ class RaceDeviceController extends Controller
 
     public function state(Request $request, string $code): JsonResponse
     {
-        $run = RaceRun::where('code', strtoupper($code))->with('teams')->firstOrFail();
-        if ($request->integer('team') > 0) {
-            $this->race->seen($run, $request->integer('team'));
+        $run = $this->live($code, ['teams']);
+        // Only a phone that joined the team keeps its signal light on.
+        $team = $request->integer('team');
+        if ($team > 0 && $this->race->validToken($run, $team, $request->header('X-Race-Token'))) {
+            $this->race->seen($run, $team);
             $run->load('teams');
         }
 
@@ -65,19 +71,44 @@ class RaceDeviceController extends Controller
 
     public function join(JoinRaceRequest $request, string $code): JsonResponse
     {
-        $run = RaceRun::where('code', strtoupper($code))->with('teams')->firstOrFail();
+        $run = $this->live($code, ['teams']);
         $team = $run->teams->firstWhere('id', $request->integer('team_id'));
         abort_if($team === null, 422, 'No such team in this race.');
         $this->race->seen($run, $team->id);
 
-        return response()->json(['team' => ['id' => $team->id, 'name' => $team->name], 'race' => $this->race->state($run->load('teams'))]);
+        return response()->json([
+            'team' => ['id' => $team->id, 'name' => $team->name],
+            // The phone sends this with every push: proof it joined this team of this race.
+            'token' => $this->race->teamToken($run, $team->id),
+            'race' => $this->race->state($run->load('teams')),
+        ]);
     }
 
     public function push(PushRaceRequest $request, string $code): JsonResponse
     {
-        $run = RaceRun::where('code', strtoupper($code))->firstOrFail();
-        $run = $this->race->push($run, $request->integer('team_id'), (float) $request->input('delta'));
+        $run = $this->live($code);
+        $team = $request->integer('team_id');
+        abort_unless($this->race->validToken($run, $team, $request->header('X-Race-Token')), 403);
+        [$run, $accepted] = $this->race->push($run, $team, (float) $request->input('delta'));
 
-        return response()->json($this->race->state($run));
+        return response()->json($this->race->state($run) + ['accepted' => $accepted]);
+    }
+
+    /**
+     * A race that exists and has not expired. A code that does not counts against the asking
+     * address, so trying codes off the top of one's head stops after a few dozen.
+     *
+     * @param  list<string>  $with
+     */
+    private function live(string $code, array $with = []): RaceRun
+    {
+        $run = RaceRun::live()->where('code', strtoupper($code))->with($with)->first();
+        if ($run !== null) {
+            return $run;
+        }
+        $key = 'race-miss:'.request()->ip();
+        abort_if(RateLimiter::tooManyAttempts($key, self::MISSES_PER_MINUTE), 429);
+        RateLimiter::hit($key, 60);
+        abort(404);
     }
 }

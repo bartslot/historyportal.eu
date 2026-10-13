@@ -55,8 +55,8 @@ export function deviceId (storage) {
  * onGone() when the race no longer exists (the class screen closed it).
  */
 export class RaceClient {
-  constructor ({ urls, teamId = null, pushMs = 1000, pollMs = 2000, cap = 1, device = 'device-unknown-0000', fetchFn = globalThis.fetch?.bind(globalThis), onState = () => {}, onGone = () => {} }) {
-    Object.assign(this, { urls, teamId, pushMs, pollMs, cap, device, fetchFn, onState, onGone })
+  constructor ({ urls, teamId = null, token = null, pushMs = 1000, pollMs = 2000, cap = 1, device = 'device-unknown-0000', fetchFn = globalThis.fetch?.bind(globalThis), onState = () => {}, onGone = () => {} }) {
+    Object.assign(this, { urls, teamId, token, pushMs, pollMs, cap, device, fetchFn, onState, onGone })
     this._pending = 0
     this._delay = pollMs
     this._timer = null
@@ -87,8 +87,14 @@ export class RaceClient {
       if (res.status === 404) { this.stop(); this.onGone(); return }
       ok = res.ok
       if (ok) {
-        if (pushing) { this._pending = rest; base = this.pushMs }
-        this.onState(await res.json())
+        const body = await res.json()
+        // The server says how much of the gain it took (a team may only gain so fast); the rest
+        // stays for the next push. Nothing is lost, and nothing is sent twice on purpose.
+        if (pushing) { this._pending = rest + Math.max(0, send - (Number(body.accepted) || 0)); base = this.pushMs }
+        this.onState(body)
+      } else if (pushing && res.status >= 400 && res.status < 500 && res.status !== 429) {
+        // Refused outright (not this team, not valid): retrying the same chunk forever helps no one.
+        this._pending = rest
       }
     } catch (_) {
       ok = false
@@ -113,6 +119,7 @@ export class RaceClient {
         Accept: 'application/json',
         'Content-Type': 'application/json',
         'X-Race-Device': this.device,
+        ...(this.token ? { 'X-Race-Token': this.token } : {}),
         ...(token ? { 'X-CSRF-TOKEN': token } : {}),
       },
       credentials: 'same-origin',

@@ -146,7 +146,7 @@ Route::post('/lesson/{lessonCode}/quiz-score', [\App\Http\Controllers\QuizLeader
 
 // Harbour race on team devices (HarbourRace): the class screen opens and runs it (lesson managers
 // only); the race QR opens the controller page on a team's phone, which joins, pushes and polls.
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'throttle:30,1'])->group(function () {
     Route::post('/lesson/{lessonCode}/races', [\App\Http\Controllers\Race\RaceController::class, 'store'])->name('race.store');
     Route::patch('/races/{code}', [\App\Http\Controllers\Race\RaceController::class, 'update'])->name('race.update');
     Route::delete('/races/{code}', [\App\Http\Controllers\Race\RaceController::class, 'destroy'])->name('race.destroy');

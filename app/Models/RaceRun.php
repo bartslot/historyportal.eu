@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -27,6 +28,12 @@ class RaceRun extends Model
             'finished_at' => 'datetime',
             'expires_at' => 'datetime',
         ];
+    }
+
+    /** A run anyone may still reach: not past its time, even when the prune has not run yet. */
+    public function scopeLive(Builder $query): Builder
+    {
+        return $query->where('expires_at', '>', now());
     }
 
     public function lesson(): BelongsTo

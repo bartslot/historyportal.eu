@@ -67,7 +67,7 @@ class RaceController extends Controller
 
     private function managed(Request $request, string $code): RaceRun
     {
-        $run = RaceRun::where('code', strtoupper($code))->with('lesson')->firstOrFail();
+        $run = RaceRun::live()->where('code', strtoupper($code))->with('lesson')->firstOrFail();
         abort_unless($request->user()?->canManage($run->lesson), 403);
 
         return $run;

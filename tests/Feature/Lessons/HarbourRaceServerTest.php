@@ -34,6 +34,8 @@ class HarbourRaceServerTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // The miss counter lives in the cache, which outlives a single test.
+        RateLimiter::clear('race-miss:127.0.0.1');
 
         $this->teacher = User::factory()->create();
         $this->lesson = Lesson::factory()->create(['teacher_id' => $this->teacher->id, 'status' => LessonStatus::Published->value]);
@@ -50,9 +52,31 @@ class HarbourRaceServerTest extends TestCase
             ->assertCreated()->json();
     }
 
+    /** @var array<int, string> team id => the token its phone got at join */
+    private array $tokens = [];
+
+    private function join(string $code, int $team): array
+    {
+        $body = $this->postJson(route('race.join', $code), ['team_id' => $team])->assertOk()->json();
+        $this->tokens[$team] = $body['token'];
+
+        return $body;
+    }
+
+    /** A push one second after the last: a team may gain a quarter of its meter per second. */
     private function push(string $code, int $team, float $delta, string $device = 'device-0000-0000-0001'): array
     {
-        return $this->withHeader('X-Race-Device', $device)->postJson(route('race.push', $code), ['team_id' => $team, 'delta' => $delta])->assertOk()->json();
+        Carbon::setTestNow(Carbon::now()->addSecond());
+        $token = $this->tokens[$team] ?? app(HarbourRace::class)->teamToken(RaceRun::where('code', $code)->firstOrFail(), $team);
+
+        return $this->withHeaders(['X-Race-Device' => $device, 'X-Race-Token' => $token])
+            ->postJson(route('race.push', $code), ['team_id' => $team, 'delta' => $delta])->assertOk()->json();
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
     }
 
     public function test_the_teacher_opens_a_race_with_the_moments_teams_and_names_them_in_the_lobby(): void
@@ -91,7 +115,7 @@ class HarbourRaceServerTest extends TestCase
         [$t1, $t2, $t3] = array_column($race['teams'], 'id');
         $this->app['auth']->forgetGuards();
 
-        $this->postJson(route('race.join', $race['code']), ['team_id' => $t2])->assertOk()->assertJsonPath('team.name', 'Team 2');
+        $this->assertSame('Team 2', $this->join($race['code'], $t2)['team']['name']);
         $this->assertSame('lobby', $this->push($race['code'], $t2, 1)['state']);      // nothing counts before the start
         $this->assertEqualsWithDelta(0, $this->getJson(route('race.state', $race['code']))->json('teams.1.progress'), 0.001);
 
@@ -123,11 +147,67 @@ class HarbourRaceServerTest extends TestCase
 
         $this->assertEqualsWithDelta(1.0, $this->push($race['code'], $team, 8)['teams'][0]['progress'], 0.001);   // a quarter of 4 at most
         $this->withHeader('X-Race-Device', 'device-0000-0000-0001')->postJson(route('race.push', $race['code']), ['team_id' => $team, 'delta' => -3])->assertStatus(422);
-        $this->push($race['code'], 999999, 1);                                         // a team of no race: ignored
         foreach (range(1, 6) as $i) {
             $state = $this->push($race['code'], $team, 1);
         }
         $this->assertEqualsWithDelta(4.0, $state['teams'][0]['progress'], 0.001);
+    }
+
+    public function test_a_push_needs_the_token_of_that_team_and_a_team_gains_no_faster_than_a_quarter_meter_a_second(): void
+    {
+        $race = $this->open();
+        [$t1, $t2] = array_column($race['teams'], 'id');
+        $this->patchJson(route('race.update', $race['code']), ['action' => 'start']);
+        $this->app['auth']->forgetGuards();
+        $this->join($race['code'], $t1);
+        Carbon::setTestNow(Carbon::now());                                              // real time must not leak in
+
+        $push = fn (int $team, ?string $token) => $this->withHeaders(['X-Race-Token' => (string) $token])
+            ->postJson(route('race.push', $race['code']), ['team_id' => $team, 'delta' => 1]);
+        $push($t2, null)->assertForbidden();                                            // no join, no push
+        $push($t2, $this->tokens[$t1])->assertForbidden();                              // one team's token is not another's
+        $this->assertEqualsWithDelta(1.0, $push($t1, $this->tokens[$t1])->assertOk()->json('accepted'), 0.001);
+        // Many phones (or forged requests) in the same instant: the team still gains no faster.
+        $this->assertEqualsWithDelta(0.0, $push($t1, $this->tokens[$t1])->json('accepted'), 0.001);
+        Carbon::setTestNow(Carbon::now()->addMilliseconds(500));
+        $this->assertEqualsWithDelta(0.5, $push($t1, $this->tokens[$t1])->json('accepted'), 0.001);
+    }
+
+    public function test_only_a_phone_that_joined_keeps_its_teams_signal_on(): void
+    {
+        $race = $this->open();
+        $team = $race['teams'][0]['id'];
+        $this->app['auth']->forgetGuards();
+
+        $this->getJson(route('race.state', $race['code']).'?team='.$team)->assertJsonPath('teams.0.joined', false);
+        $this->join($race['code'], $team);
+        Carbon::setTestNow(Carbon::now()->addSeconds(10));
+        $this->withHeader('X-Race-Token', $this->tokens[$team])->getJson(route('race.state', $race['code']).'?team='.$team)
+            ->assertJsonPath('teams.0.signal', true);
+    }
+
+    public function test_an_expired_race_is_gone_and_trying_codes_is_cut_short(): void
+    {
+        $race = $this->open();
+        $this->app['auth']->forgetGuards();
+        Carbon::setTestNow(Carbon::now()->addHours(25));
+        $this->getJson(route('race.state', $race['code']))->assertNotFound();      // before any prune ran
+        Carbon::setTestNow();
+
+        // The expired race was the first miss; nineteen more codes are still answered, the next is cut short.
+        foreach (range(1, 19) as $i) {
+            $this->getJson(route('race.state', 'ZZ'.str_pad((string) $i, 2, '0', STR_PAD_LEFT)))->assertNotFound();
+        }
+        $this->getJson(route('race.state', 'ZZZZ'))->assertStatus(429);
+        RateLimiter::clear('race-miss:127.0.0.1');
+    }
+
+    public function test_opening_a_scenes_race_again_replaces_the_old_one(): void
+    {
+        $first = $this->open();
+        $second = $this->open();
+        $this->assertNotSame($first['code'], $second['code']);
+        $this->assertSame(1, RaceRun::count());
     }
 
     public function test_ending_early_ranks_by_progress_and_crews_no_team_that_never_got_going(): void
@@ -150,7 +230,8 @@ class HarbourRaceServerTest extends TestCase
         $this->app['auth']->forgetGuards();
 
         $this->assertFalse($this->getJson(route('race.state', $race['code']))->json('teams.0.joined'));
-        $this->getJson(route('race.state', $race['code']).'?team='.$team)->assertJsonPath('teams.0.signal', true);
+        $this->join($race['code'], $team);
+        $this->withHeader('X-Race-Token', $this->tokens[$team])->getJson(route('race.state', $race['code']).'?team='.$team)->assertJsonPath('teams.0.signal', true);
         Carbon::setTestNow(Carbon::now()->addSeconds(10));
         $this->getJson(route('race.state', $race['code']))->assertJsonPath('teams.0.joined', true)->assertJsonPath('teams.0.signal', false);
         Carbon::setTestNow();
@@ -158,12 +239,13 @@ class HarbourRaceServerTest extends TestCase
 
     public function test_nothing_personal_is_stored_and_nothing_lives_past_a_day(): void
     {
-        $this->assertSame(['id', 'race_run_id', 'position', 'name', 'progress', 'finished_ms', 'last_seen_at', 'created_at', 'updated_at'], Schema::getColumnListing('race_teams'));
+        $this->assertSame(['id', 'race_run_id', 'position', 'name', 'progress', 'finished_ms', 'last_seen_at', 'created_at', 'updated_at', 'pushed_ms'], Schema::getColumnListing('race_teams'));
 
         $old = $this->open();
         Carbon::setTestNow(Carbon::now()->addHours(25));
-        $this->open();                                                                  // a new race prunes the old one
-        $this->assertNull(RaceRun::where('code', $old['code'])->first());
+        $other = Scene::create(['lesson_id' => $this->lesson->id, 'order' => 3, 'kind' => 'narration', 'status' => 'ready', 'config' => $this->scene->config]);
+        $this->actingAs($this->teacher)->postJson(route('race.store', $this->lesson->lesson_code), ['scene_id' => $other->id])->assertCreated();
+        $this->assertNull(RaceRun::where('code', $old['code'])->first());                // a new race (any scene) prunes the expired one
         Carbon::setTestNow();
 
         $race = $this->open();

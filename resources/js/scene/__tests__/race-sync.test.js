@@ -38,20 +38,41 @@ describe('RaceClient', () => {
   it('pushes a gain in server-sized chunks, then reads', async () => {
     vi.useFakeTimers()
     const calls = []
-    const fetchFn = vi.fn((url, init) => { calls.push([url, init?.body ? JSON.parse(init.body).delta : null]); return reply(200, { state: 'running' }) })
-    const client = new RaceClient({ urls, teamId: 3, cap: 1, fetchFn, pushMs: 1000, pollMs: 2000 })
+    const fetchFn = vi.fn((url, init) => {
+      const delta = init?.body ? JSON.parse(init.body).delta : null
+      calls.push([url, delta])
+      return reply(200, { state: 'running', accepted: delta ?? 0 })
+    })
+    const client = new RaceClient({ urls, teamId: 3, token: 'tok', cap: 1, fetchFn, pushMs: 1000, pollMs: 2000 })
     client.gain(2.5)
     client.start()
     for (let i = 0; i < 4; i++) await vi.advanceTimersByTimeAsync(1000)
     expect(calls.slice(0, 3)).toEqual([[urls.push, 1], [urls.push, 1], [urls.push, 0.5]])
     expect(calls[3][0]).toBe(`${urls.state}?team=3`)
     expect(fetchFn.mock.calls[0][1].headers['X-Race-Device']).toBeTruthy()
+    expect(fetchFn.mock.calls[0][1].headers['X-Race-Token']).toBe('tok')
+    client.stop()
+  })
+
+  it('keeps what the server did not accept, and drops a chunk it refuses outright', async () => {
+    vi.useFakeTimers()
+    const fetchFn = vi.fn()
+      .mockReturnValueOnce(reply(200, { accepted: 0.25 }))     // the team may only gain so fast
+      .mockReturnValueOnce(reply(403))                          // not this team's token
+      .mockImplementation(() => reply(200, {}))
+    const client = new RaceClient({ urls, teamId: 1, token: 'x', cap: 1, fetchFn, pushMs: 1000, pollMs: 1000 })
+    client.gain(1)
+    client.start()
+    await vi.advanceTimersByTimeAsync(10)
+    expect(client._pending).toBeCloseTo(0.75)
+    await vi.advanceTimersByTimeAsync(1100)
+    expect(client._pending).toBe(0)
     client.stop()
   })
 
   it('keeps an unsent gain through an error and backs off', async () => {
     vi.useFakeTimers()
-    const fetchFn = vi.fn().mockReturnValueOnce(reply(429)).mockImplementation(() => reply(200, {}))
+    const fetchFn = vi.fn().mockReturnValueOnce(reply(429)).mockImplementation(() => reply(200, { accepted: 1 }))
     const client = new RaceClient({ urls, teamId: 1, cap: 1, fetchFn, pushMs: 1000, pollMs: 1000 })
     client.gain(1)
     client.start()

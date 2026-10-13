@@ -2263,6 +2263,16 @@ Alpine.data('lessonGame', (lesson) => ({
      * follow it by polling, move the lanes with the server's progress, and finish with its crews.
      */
     async _racePhones (scene, cfg, art, host, avoid, finish, current) {
+      if (this._raceRun || this._racePhonesOpening) return
+      this._racePhonesOpening = true
+      try {
+        await this._racePhonesOpen(scene, cfg, art, host, avoid, finish, current)
+      } finally {
+        this._racePhonesOpening = false
+      }
+    },
+
+    async _racePhonesOpen (scene, cfg, art, host, avoid, finish, current) {
       const send = (url, method, body) => fetch(url, {
         method,
         credentials: 'same-origin',
@@ -2270,8 +2280,8 @@ Alpine.data('lessonGame', (lesson) => ({
         body: body ? JSON.stringify(body) : undefined,
       })
       const opened = await send(lesson.race.store_url, 'POST', { scene_id: scene.id }).catch(() => null)
-      if (!current()) return
       if (!opened?.ok) {
+        if (!current()) return
         // The meter card is still up: say so in it, and the class plays the race on this screen.
         const note = document.createElement('div')
         note.className = 'alert alert-warning text-sm'
@@ -2280,31 +2290,37 @@ Alpine.data('lessonGame', (lesson) => ({
         return
       }
       let state = await opened.json()
-      const [{ RaceLobby }, { RaceClient, serverOrder }] = await Promise.all([import('./scene/race-lobby.js'), import('./scene/race-sync.js')])
-      if (!current()) return
+      // Recorded at once: whatever happens next (a chapter jump mid-await), _closeRace deletes it.
+      const runUrl = this._raceRun = `${lesson.race.run_url}/${state.code}`
+      const gone = () => { if (!current()) { this._closeRace(); return true } return false }
+      const [{ RaceLobby }, { RaceClient }] = await Promise.all([import('./scene/race-lobby.js'), import('./scene/race-sync.js')])
+      if (gone()) return
       this._powerMeter.hide()
-      const runUrl = `${lesson.race.run_url}/${state.code}`
       const lobby = this._raceLobby = new RaceLobby(host)
-      this._raceRun = runUrl
       let finished = false
+      // The lanes follow the lobby's teams: renamed in place, rebuilt (the stage only) when the
+      // teacher adds or removes a team.
       const lanesFor = async (teams) => {
         if (this._race?.laneCount === teams.length) return teams.forEach((team, i) => this._race.label(i, team.name))
         this._race = await this._openRace(scene, cfg, art, teams.map(team => team.name))
       }
       const apply = async (next) => {
         if (!current() || finished) return
+        // Decided before any await: a PATCH answer and a poll can both bring the finish.
+        if (next.state === 'finished') finished = true
         state = next
         await lanesFor(next.teams)
+        if (gone()) return
         this._race?.update(next.teams.map(team => team.progress / next.goal))
-        lobby.update(next)
-        if (next.state !== 'finished') return
-        finished = true
+        if (!finished) return lobby.update(next)
         this._raceClient?.stop()
         lobby.hide()
         const names = next.teams.map(team => team.name)
-        const byId = Object.fromEntries(next.teams.map(team => [team.id, team.name]))
-        const crew = Object.fromEntries(Object.entries(next.roles || {}).map(([ship, id]) => [ship, byId[id]]).filter(([, name]) => name))
-        finish({ skipped: false, order: serverOrder(next), names, crew })
+        const roles = next.roles || {}
+        // The crews as the server decided them (an early end ranks teams that never finished too).
+        const order = ['heemskerck', 'zeehaen'].map(ship => next.teams.findIndex(team => team.id === roles[ship])).filter(i => i >= 0)
+        const crew = Object.fromEntries(order.map((i, place) => [place === 0 ? 'heemskerck' : 'zeehaen', names[i]]))
+        finish({ skipped: false, order, names, crew })
       }
       const act = async (body) => {
         const res = await send(runUrl, 'PATCH', body).catch(() => null)
@@ -2320,6 +2336,7 @@ Alpine.data('lessonGame', (lesson) => ({
         onEnd: () => act({ action: 'end' }),
       })
       await lanesFor(state.teams)
+      if (gone()) return
       this._raceClient = new RaceClient({
         urls: { state: `${lesson.race.device_url}/${state.code}/state` },
         pollMs: lesson.race.screen_poll_ms,
@@ -2340,7 +2357,8 @@ Alpine.data('lessonGame', (lesson) => ({
       const names = teamNames ?? (this.playSolo
         ? [t('The 1642 fleet'), t('You')]
         : Array.from({ length: teams }, (_, i) => t('Team :number', { number: i + 1 })))
-      this._closeRace()
+      // Only the stage: a race on the phones keeps its server run and its polling.
+      this._race?.close()
       this._race = new RaceStage({ overlay: this._artLayer, host: art })
       const race = cfg.race || {}
       this._race.open({ layers, ship, lanes: names.length, startX: Number(race.start_x ?? 25), finishX: Number(race.finish_x ?? 85), names })
