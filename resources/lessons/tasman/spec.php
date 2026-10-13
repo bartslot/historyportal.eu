@@ -56,6 +56,17 @@ return function (string $lang, ?array $text = null): array {
                         + array_intersect_key($ship, array_flip(['x', 'y', 'height', 'depth', 'ambient', 'ambient_amount']));
                 }
             }
+            // Bart's Figma cut-outs, standing on the plate: ground = feet line, height in % of the stage.
+            // A speaker's figure gets the balloon tail only in a panel where that speaker has a balloon.
+            $talkers = array_filter(array_column($panel['lines'], 'bubble'));
+            foreach ($panel['people'] ?? [] as $person) {
+                if ($asset = $ref($person['file'], 'figures')) {
+                    $layers[] = ['asset' => $asset, 'x' => $person['x'], 'y' => $person['ground'] - $person['height'] / 2,
+                        'height' => $person['height'], 'depth' => 1.0, 'anim' => 'fade']
+                        + (in_array($person['speaks'] ?? null, $talkers, true) ? ['speaks' => $person['speaks']] : [])
+                        + (! empty($person['flip']) ? ['flip' => true] : []);
+                }
+            }
             if ($asset = $ref($panel['figures'], 'figures')) {
                 // A group picture painted at the plate's camera: it covers the whole stage.
                 $layers[] = ['asset' => $asset, 'x' => 50, 'y' => 50, 'height' => 100, 'depth' => 1.0, 'anim' => 'fade']

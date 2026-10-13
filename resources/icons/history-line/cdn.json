@@ -39,6 +39,16 @@
         "width": 1672,
         "height": 941
     },
+    "backdrops/tasman/figma_stern_night_windows.webp": {
+        "url": "https://res.cloudinary.com/ezl6t3yg/image/upload/f_auto,q_20,c_limit,w_2880,h_2880/v1791876502/library/history-line/backdrops/tasman/figma_stern_night_windows.webp",
+        "width": 2880,
+        "height": 1620
+    },
+    "backdrops/tasman/figma_two_ships_day.webp": {
+        "url": "https://res.cloudinary.com/ezl6t3yg/image/upload/f_auto,q_20,c_limit,w_2880,h_2880/v1791876490/library/history-line/backdrops/tasman/figma_two_ships_day.webp",
+        "width": 2880,
+        "height": 1620
+    },
     "backdrops/tasman/fiji_reef.webp": {
         "url": "https://res.cloudinary.com/ezl6t3yg/image/upload/f_auto,q_20,c_limit,w_2880,h_2880/v1791866419/library/history-line/backdrops/tasman/fiji_reef.webp",
         "width": 1672,
@@ -119,6 +129,66 @@
         "width": 1672,
         "height": 940
     },
+    "figures/tasman/sailor_front.webp": {
+        "url": "https://res.cloudinary.com/ezl6t3yg/image/upload/f_auto,q_20,c_limit,w_2880,h_2880/v1791876491/library/history-line/figures/tasman/sailor_front.webp",
+        "width": 338,
+        "height": 729
+    },
+    "figures/tasman/sailor_side.webp": {
+        "url": "https://res.cloudinary.com/ezl6t3yg/image/upload/f_auto,q_20,c_limit,w_2880,h_2880/v1791876492/library/history-line/figures/tasman/sailor_side.webp",
+        "width": 275,
+        "height": 711
+    },
+    "figures/tasman/sailor_threequarter.webp": {
+        "url": "https://res.cloudinary.com/ezl6t3yg/image/upload/f_auto,q_20,c_limit,w_2880,h_2880/v1791876493/library/history-line/figures/tasman/sailor_threequarter.webp",
+        "width": 252,
+        "height": 731
+    },
+    "figures/tasman/tasman_back.webp": {
+        "url": "https://res.cloudinary.com/ezl6t3yg/image/upload/f_auto,q_20,c_limit,w_2880,h_2880/v1791876489/library/history-line/figures/tasman/tasman_back.webp",
+        "width": 755,
+        "height": 1820
+    },
+    "figures/tasman/tasman_chart.webp": {
+        "url": "https://res.cloudinary.com/ezl6t3yg/image/upload/f_auto,q_20,c_limit,w_2880,h_2880/v1791876484/library/history-line/figures/tasman/tasman_chart.webp",
+        "width": 582,
+        "height": 1347
+    },
+    "figures/tasman/tasman_holding_chart.webp": {
+        "url": "https://res.cloudinary.com/ezl6t3yg/image/upload/f_auto,q_20,c_limit,w_2880,h_2880/v1791876485/library/history-line/figures/tasman/tasman_holding_chart.webp",
+        "width": 793,
+        "height": 1800
+    },
+    "figures/tasman/tasman_pointing.webp": {
+        "url": "https://res.cloudinary.com/ezl6t3yg/image/upload/f_auto,q_20,c_limit,w_2880,h_2880/v1791876495/library/history-line/figures/tasman/tasman_pointing.webp",
+        "width": 774,
+        "height": 1274
+    },
+    "figures/tasman/tasman_pointing2.webp": {
+        "url": "https://res.cloudinary.com/ezl6t3yg/image/upload/f_auto,q_20,c_limit,w_2880,h_2880/v1791876497/library/history-line/figures/tasman/tasman_pointing2.webp",
+        "width": 846,
+        "height": 1438
+    },
+    "figures/tasman/tasman_side.webp": {
+        "url": "https://res.cloudinary.com/ezl6t3yg/image/upload/f_auto,q_20,c_limit,w_2880,h_2880/v1791876482/library/history-line/figures/tasman/tasman_side.webp",
+        "width": 555,
+        "height": 1830
+    },
+    "figures/tasman/tasman_spyglass.webp": {
+        "url": "https://res.cloudinary.com/ezl6t3yg/image/upload/f_auto,q_20,c_limit,w_2880,h_2880/v1791876499/library/history-line/figures/tasman/tasman_spyglass.webp",
+        "width": 1504,
+        "height": 3001
+    },
+    "figures/tasman/visscher_front.webp": {
+        "url": "https://res.cloudinary.com/ezl6t3yg/image/upload/f_auto,q_20,c_limit,w_2880,h_2880/v1791876487/library/history-line/figures/tasman/visscher_front.webp",
+        "width": 977,
+        "height": 2434
+    },
+    "figures/tasman/visscher_threequarter.webp": {
+        "url": "https://res.cloudinary.com/ezl6t3yg/image/upload/f_auto,q_20,c_limit,w_2880,h_2880/v1791876488/library/history-line/figures/tasman/visscher_threequarter.webp",
+        "width": 367,
+        "height": 965
+    },
     "props/tasman/background-ocean-choppy-2.webp": {
         "url": "https://res.cloudinary.com/ezl6t3yg/image/upload/f_auto,q_20,c_limit,w_2880,h_2880/v1791866399/library/history-line/props/tasman/background-ocean-choppy-2.webp",
         "width": 1920,
@@ -128,6 +198,11 @@
         "url": "https://res.cloudinary.com/ezl6t3yg/image/upload/f_auto,q_20,c_limit,w_2880,h_2880/v1791866385/library/history-line/props/tasman/background-ocean-wavy.webp",
         "width": 1920,
         "height": 542
+    },
+    "props/tasman/figma_ship_moonlit.webp": {
+        "url": "https://res.cloudinary.com/ezl6t3yg/image/upload/f_auto,q_20,c_limit,w_2880,h_2880/v1791876480/library/history-line/props/tasman/figma_ship_moonlit.webp",
+        "width": 1607,
+        "height": 2020
     },
     "props/tasman/heemskerck_anchor_dusk.webp": {
         "url": "https://res.cloudinary.com/ezl6t3yg/image/upload/f_auto,q_20,c_limit,w_2880,h_2880/v1791866377/library/history-line/props/tasman/heemskerck_anchor_dusk.webp",

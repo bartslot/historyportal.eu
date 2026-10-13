@@ -21,10 +21,10 @@
      "figures": null,
      "ships": [
       {
-       "file": "ships/heemskerck_anchor_dusk.png",
+       "file": "ships/figma_ship_moonlit.png",
        "x": 74,
-       "y": 50,
-       "height": 30,
+       "y": 40,
+       "height": 46,
        "depth": 0.5,
        "ambient": "roll",
        "ambient_amount": 0.5
@@ -39,6 +39,7 @@
        "ambient_amount": 0.8
       }
      ],
+     "people": [],
      "camera": {
       "ease": "move",
       "move": "push",
@@ -67,6 +68,7 @@
      "plate": "plates/deck_dusk.png",
      "figures": "figures/S00-B.png",
      "ships": [],
+     "people": [],
      "camera": {
       "ease": "move",
       "move": "push",
@@ -113,6 +115,7 @@
        "ambient_amount": 0.4
       }
      ],
+     "people": [],
      "camera": {
       "ease": "move",
       "move": "pull",
@@ -143,6 +146,7 @@
      "plate": "plates/batavia_harbour_boat.png",
      "figures": "figures/S01-B.png",
      "ships": [],
+     "people": [],
      "camera": {
       "ease": "move",
       "move": "truck-r",
@@ -171,6 +175,7 @@
      "plate": "plates/batavia_harbour_boat.png",
      "figures": "figures/S01-C.png",
      "ships": [],
+     "people": [],
      "camera": {
       "ease": "move",
       "move": "push",
@@ -205,6 +210,15 @@
      "plate": "plates/voc_chamber.png",
      "figures": "figures/S02-A.png",
      "ships": [],
+     "people": [
+      {
+       "file": "people/tasman_side.png",
+       "x": 30,
+       "ground": 96,
+       "height": 58,
+       "speaks": "tasman"
+      }
+     ],
      "camera": {
       "ease": "move",
       "move": "hold"
@@ -233,6 +247,15 @@
      "plate": "plates/voc_chamber.png",
      "figures": "figures/S02-B.png",
      "ships": [],
+     "people": [
+      {
+       "file": "people/tasman_chart.png",
+       "x": 72,
+       "ground": 96,
+       "height": 58,
+       "speaks": "tasman"
+      }
+     ],
      "camera": {
       "ease": "move",
       "move": "push",
@@ -257,6 +280,15 @@
      "plate": "plates/voc_chamber.png",
      "figures": "figures/S02-C.png",
      "ships": [],
+     "people": [
+      {
+       "file": "people/tasman_holding_chart.png",
+       "x": 40,
+       "ground": 96,
+       "height": 58,
+       "speaks": "tasman"
+      }
+     ],
      "camera": {
       "ease": "move",
       "move": "tilt-up",
@@ -284,6 +316,22 @@
      "plate": "plates/voc_chamber.png",
      "figures": "figures/S03-A.png",
      "ships": [],
+     "people": [
+      {
+       "file": "people/tasman_chart.png",
+       "x": 34,
+       "ground": 96,
+       "height": 58,
+       "speaks": "tasman"
+      },
+      {
+       "file": "people/visscher_front.png",
+       "x": 66,
+       "ground": 96,
+       "height": 58,
+       "speaks": "visscher"
+      }
+     ],
      "camera": {
       "ease": "move",
       "move": "hold"
@@ -306,6 +354,21 @@
      "plate": "plates/voc_chamber.png",
      "figures": "figures/S03-B.png",
      "ships": [],
+     "people": [
+      {
+       "file": "people/visscher_threequarter.png",
+       "x": 40,
+       "ground": 96,
+       "height": 58,
+       "speaks": "visscher"
+      },
+      {
+       "file": "people/tasman_back.png",
+       "x": 70,
+       "ground": 96,
+       "height": 58
+      }
+     ],
      "camera": {
       "ease": "move",
       "move": "push",
@@ -324,28 +387,10 @@
       }
      ],
      "cast": [],
-     "plate": "plates/open_sea_day.png",
+     "plate": "plates/figma_two_ships_day.png",
      "figures": null,
-     "ships": [
-      {
-       "file": "ships/zeehaen_side_sail.png",
-       "x": 30,
-       "y": 50,
-       "height": 26,
-       "depth": 0.5,
-       "ambient": "roll",
-       "ambient_amount": 1.0
-      },
-      {
-       "file": "ships/heemskerck_side_sail.png",
-       "x": 64,
-       "y": 55,
-       "height": 40,
-       "depth": 0.8,
-       "ambient": "roll",
-       "ambient_amount": 1.0
-      }
-     ],
+     "ships": [],
+     "people": [],
      "camera": {
       "ease": "move",
       "move": "pan-r",
@@ -382,6 +427,15 @@
      "plate": "plates/deck_harbour.png",
      "figures": "figures/S04-A.png",
      "ships": [],
+     "people": [
+      {
+       "file": "people/sailor_front.png",
+       "x": 38,
+       "ground": 93,
+       "height": 60,
+       "speaks": "bootsman"
+      }
+     ],
      "camera": {
       "ease": "move",
       "move": "tilt-down",
@@ -406,6 +460,22 @@
      "plate": "plates/deck_harbour.png",
      "figures": "figures/S04-B.png",
      "ships": [],
+     "people": [
+      {
+       "file": "people/visscher_front.png",
+       "x": 30,
+       "ground": 93,
+       "height": 60,
+       "speaks": "visscher"
+      },
+      {
+       "file": "people/tasman_side.png",
+       "x": 62,
+       "ground": 93,
+       "height": 60,
+       "speaks": "tasman"
+      }
+     ],
      "camera": {
       "ease": "move",
       "move": "truck-l",
@@ -436,6 +506,15 @@
      "plate": "plates/deck_harbour.png",
      "figures": "figures/S04-C.png",
      "ships": [],
+     "people": [
+      {
+       "file": "people/sailor_side.png",
+       "x": 66,
+       "ground": 93,
+       "height": 60,
+       "speaks": "bootsman"
+      }
+     ],
      "camera": {
       "ease": "move",
       "move": "push",
@@ -473,6 +552,7 @@
        "ambient_amount": 0.4
       }
      ],
+     "people": [],
      "camera": {
       "ease": "move",
       "move": "pull",
@@ -503,6 +583,15 @@
      "plate": "plates/mauritius_shore.png",
      "figures": "figures/S05-B.png",
      "ships": [],
+     "people": [
+      {
+       "file": "people/sailor_threequarter.png",
+       "x": 55,
+       "ground": 90,
+       "height": 46,
+       "speaks": "bootsman"
+      }
+     ],
      "camera": {
       "ease": "move",
       "move": "truck-r",
@@ -527,6 +616,14 @@
      "plate": "plates/mauritius_anchorage.png",
      "figures": "figures/S05-C.png",
      "ships": [],
+     "people": [
+      {
+       "file": "people/tasman_back.png",
+       "x": 30,
+       "ground": 122,
+       "height": 74
+      }
+     ],
      "camera": {
       "ease": "move",
       "move": "push",
@@ -564,6 +661,7 @@
        "ambient_amount": 0.5
       }
      ],
+     "people": [],
      "camera": {
       "ease": "move",
       "move": "pan-r",
@@ -594,6 +692,15 @@
      "plate": "plates/deck_sea_day.png",
      "figures": "figures/S06-B.png",
      "ships": [],
+     "people": [
+      {
+       "file": "people/visscher_threequarter.png",
+       "x": 45,
+       "ground": 93,
+       "height": 60,
+       "speaks": "visscher"
+      }
+     ],
      "camera": {
       "ease": "move",
       "move": "tilt-up",
@@ -618,6 +725,22 @@
      "plate": "plates/cabin_chart.png",
      "figures": "figures/S06-C.png",
      "ships": [],
+     "people": [
+      {
+       "file": "people/tasman_side.png",
+       "x": 30,
+       "ground": 96,
+       "height": 58,
+       "speaks": "tasman"
+      },
+      {
+       "file": "people/visscher_front.png",
+       "x": 66,
+       "ground": 96,
+       "height": 58,
+       "speaks": "visscher"
+      }
+     ],
      "camera": {
       "ease": "move",
       "move": "push",
@@ -662,6 +785,15 @@
        "ambient_amount": 1.8
       }
      ],
+     "people": [
+      {
+       "file": "people/tasman_pointing.png",
+       "x": 34,
+       "ground": 93,
+       "height": 60,
+       "speaks": "tasman"
+      }
+     ],
      "camera": {
       "ease": "move",
       "move": "shake",
@@ -692,6 +824,15 @@
      "plate": "plates/storm_deck.png",
      "figures": "figures/S07-B.png",
      "ships": [],
+     "people": [
+      {
+       "file": "people/sailor_front.png",
+       "x": 50,
+       "ground": 93,
+       "height": 60,
+       "speaks": "bootsman"
+      }
+     ],
      "camera": {
       "ease": "move",
       "move": "shake",
@@ -716,6 +857,15 @@
      "plate": "plates/storm_deck.png",
      "figures": "figures/S07-C.png",
      "ships": [],
+     "people": [
+      {
+       "file": "people/sailor_side.png",
+       "x": 46,
+       "ground": 93,
+       "height": 60,
+       "speaks": "bootsman"
+      }
+     ],
      "camera": {
       "ease": "move",
       "move": "shake",
@@ -750,6 +900,14 @@
        "ambient_amount": 0.8
       }
      ],
+     "people": [
+      {
+       "file": "people/tasman_back.png",
+       "x": 28,
+       "ground": 122,
+       "height": 74
+      }
+     ],
      "camera": {
       "ease": "move",
       "move": "pull",
@@ -780,6 +938,15 @@
      "plate": "plates/cabin_chart.png",
      "figures": "figures/S08-A.png",
      "ships": [],
+     "people": [
+      {
+       "file": "people/visscher_front.png",
+       "x": 60,
+       "ground": 96,
+       "height": 58,
+       "speaks": "visscher"
+      }
+     ],
      "camera": {
       "ease": "move",
       "move": "push",
@@ -810,6 +977,15 @@
      "plate": "plates/tweendeck_night.png",
      "figures": "figures/S08-B.png",
      "ships": [],
+     "people": [
+      {
+       "file": "people/sailor_threequarter.png",
+       "x": 40,
+       "ground": 96,
+       "height": 58,
+       "speaks": "bootsman"
+      }
+     ],
      "camera": {
       "ease": "move",
       "move": "hold"
@@ -842,6 +1018,22 @@
      "plate": "plates/cabin_chart.png",
      "figures": "figures/S09-A.png",
      "ships": [],
+     "people": [
+      {
+       "file": "people/tasman_side.png",
+       "x": 34,
+       "ground": 96,
+       "height": 58,
+       "speaks": "tasman"
+      },
+      {
+       "file": "people/visscher_threequarter.png",
+       "x": 66,
+       "ground": 96,
+       "height": 58,
+       "speaks": "visscher"
+      }
+     ],
      "camera": {
       "ease": "move",
       "move": "push",
@@ -866,6 +1058,15 @@
      "plate": "plates/cabin_chart.png",
      "figures": "figures/S09-B.png",
      "ships": [],
+     "people": [
+      {
+       "file": "people/tasman_holding_chart.png",
+       "x": 50,
+       "ground": 96,
+       "height": 58,
+       "speaks": "tasman"
+      }
+     ],
      "camera": {
       "ease": "move",
       "move": "tilt-down",
@@ -896,6 +1097,15 @@
      "plate": "plates/deck_sea_day.png",
      "figures": "figures/S09-C.png",
      "ships": [],
+     "people": [
+      {
+       "file": "people/tasman_pointing2.png",
+       "x": 44,
+       "ground": 93,
+       "height": 60,
+       "speaks": "tasman"
+      }
+     ],
      "camera": {
       "ease": "move",
       "move": "push",
@@ -926,6 +1136,15 @@
      "plate": "plates/deck_rail_coast.png",
      "figures": "figures/S10-A.png",
      "ships": [],
+     "people": [
+      {
+       "file": "people/tasman_spyglass.png",
+       "x": 40,
+       "ground": 93,
+       "height": 60,
+       "speaks": "tasman"
+      }
+     ],
      "camera": {
       "ease": "move",
       "move": "tilt-up",
@@ -950,6 +1169,22 @@
      "plate": "plates/deck_rail_coast.png",
      "figures": "figures/S10-B.png",
      "ships": [],
+     "people": [
+      {
+       "file": "people/tasman_pointing.png",
+       "x": 30,
+       "ground": 93,
+       "height": 60,
+       "speaks": "tasman"
+      },
+      {
+       "file": "people/visscher_threequarter.png",
+       "x": 66,
+       "ground": 93,
+       "height": 60,
+       "speaks": "visscher"
+      }
+     ],
      "camera": {
       "ease": "move",
       "move": "push",
@@ -984,6 +1219,15 @@
        "ambient_amount": 0.8
       }
      ],
+     "people": [
+      {
+       "file": "people/sailor_side.png",
+       "x": 40,
+       "ground": 92,
+       "height": 42,
+       "speaks": "bootsman"
+      }
+     ],
      "camera": {
       "ease": "move",
       "move": "tilt-up",
@@ -1014,6 +1258,7 @@
      "plate": "plates/nz_high_land_sea.png",
      "figures": "figures/S11-A.png",
      "ships": [],
+     "people": [],
      "camera": {
       "ease": "move",
       "move": "pull",
@@ -1038,6 +1283,14 @@
      "plate": "plates/nz_high_land_sea.png",
      "figures": "figures/S11-B.png",
      "ships": [],
+     "people": [
+      {
+       "file": "people/tasman_holding_chart.png",
+       "x": 34,
+       "ground": 122,
+       "height": 74
+      }
+     ],
      "camera": {
       "ease": "move",
       "move": "truck-l",
@@ -1065,6 +1318,7 @@
      "plate": "plates/golden_bay_shore_view.png",
      "figures": null,
      "ships": [],
+     "people": [],
      "camera": {
       "ease": "move",
       "move": "push",
@@ -1086,6 +1340,7 @@
      "plate": "plates/golden_bay_beach.png",
      "figures": null,
      "ships": [],
+     "people": [],
      "camera": {
       "ease": "move",
       "move": "truck-r",
@@ -1126,6 +1381,7 @@
        "ambient_amount": 0.6
       }
      ],
+     "people": [],
      "camera": {
       "ease": "move",
       "move": "hold"
@@ -1153,6 +1409,20 @@
      "plate": "plates/deck_dusk.png",
      "figures": "figures/S13-B.png",
      "ships": [],
+     "people": [
+      {
+       "file": "people/tasman_back.png",
+       "x": 34,
+       "ground": 93,
+       "height": 60
+      },
+      {
+       "file": "people/sailor_side.png",
+       "x": 72,
+       "ground": 93,
+       "height": 60
+      }
+     ],
      "camera": {
       "ease": "move",
       "move": "push",
@@ -1177,6 +1447,7 @@
      "plate": "plates/deck_dusk.png",
      "figures": "figures/S13-C.png",
      "ships": [],
+     "people": [],
      "camera": {
       "ease": "move",
       "move": "push",
@@ -1226,6 +1497,7 @@
        "ambient_amount": 1.0
       }
      ],
+     "people": [],
      "camera": {
       "ease": "move",
       "move": "hold"
@@ -1248,6 +1520,14 @@
      "plate": "plates/golden_bay_morning.png",
      "figures": "figures/S14-B.png",
      "ships": [],
+     "people": [
+      {
+       "file": "people/tasman_side.png",
+       "x": 40,
+       "ground": 122,
+       "height": 74
+      }
+     ],
      "camera": {
       "ease": "move",
       "move": "shake",
@@ -1269,6 +1549,20 @@
      "plate": "plates/golden_bay_morning.png",
      "figures": "figures/S14-C.png",
      "ships": [],
+     "people": [
+      {
+       "file": "people/tasman_back.png",
+       "x": 30,
+       "ground": 122,
+       "height": 74
+      },
+      {
+       "file": "people/sailor_threequarter.png",
+       "x": 70,
+       "ground": 122,
+       "height": 74
+      }
+     ],
      "camera": {
       "ease": "move",
       "move": "pull",
@@ -1290,9 +1584,10 @@
      "cast": [
       "matroos"
      ],
-     "plate": "plates/cabin_chart.png",
+     "plate": "plates/figma_stern_night_windows.png",
      "figures": "figures/S14-D.png",
      "ships": [],
+     "people": [],
      "camera": {
       "ease": "move",
       "move": "push",
@@ -1333,6 +1628,14 @@
        "ambient_amount": 0.8
       }
      ],
+     "people": [
+      {
+       "file": "people/sailor_front.png",
+       "x": 24,
+       "ground": 122,
+       "height": 74
+      }
+     ],
      "camera": {
       "ease": "move",
       "move": "truck-r",
@@ -1357,6 +1660,14 @@
      "plate": "plates/fiji_reef.png",
      "figures": "figures/S15-B.png",
      "ships": [],
+     "people": [
+      {
+       "file": "people/visscher_threequarter.png",
+       "x": 34,
+       "ground": 122,
+       "height": 74
+      }
+     ],
      "camera": {
       "ease": "move",
       "move": "pan-r",
@@ -1381,6 +1692,7 @@
      "plate": "plates/batavia_quay_return.png",
      "figures": "figures/S15-C.png",
      "ships": [],
+     "people": [],
      "camera": {
       "ease": "move",
       "move": "push",
@@ -1411,6 +1723,15 @@
      "plate": "plates/voc_chamber.png",
      "figures": "figures/S16-A.png",
      "ships": [],
+     "people": [
+      {
+       "file": "people/tasman_side.png",
+       "x": 40,
+       "ground": 96,
+       "height": 58,
+       "speaks": "tasman"
+      }
+     ],
      "camera": {
       "ease": "move",
       "move": "hold"
@@ -1433,6 +1754,15 @@
      "plate": "plates/cabin_chart.png",
      "figures": "figures/S16-B.png",
      "ships": [],
+     "people": [
+      {
+       "file": "people/visscher_front.png",
+       "x": 56,
+       "ground": 96,
+       "height": 58,
+       "speaks": "visscher"
+      }
+     ],
      "camera": {
       "ease": "move",
       "move": "push",
@@ -1457,6 +1787,7 @@
      "plate": "plates/golden_bay_shore_view.png",
      "figures": null,
      "ships": [],
+     "people": [],
      "camera": {
       "ease": "move",
       "move": "pull",

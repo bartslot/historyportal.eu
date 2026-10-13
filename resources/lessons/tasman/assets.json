@@ -4,10 +4,10 @@
   "figures": null,
   "ships": [
    {
-    "file": "ships/heemskerck_anchor_dusk.png",
+    "file": "ships/figma_ship_moonlit.png",
     "x": 74,
-    "y": 50,
-    "height": 30,
+    "y": 40,
+    "height": 46,
     "depth": 0.5,
     "ambient": "roll",
     "ambient_amount": 0.5
@@ -28,7 +28,8 @@
    "amount": 0.6,
    "duration": 9
   },
-  "entry": "reveal"
+  "entry": "reveal",
+  "people": []
  },
  "S00-B": {
   "plate": "plates/deck_dusk.png",
@@ -40,7 +41,8 @@
    "amount": 0.8,
    "duration": 6
   },
-  "entry": "cut"
+  "entry": "cut",
+  "people": []
  },
  "S01-A": {
   "plate": "plates/batavia_roadstead.png",
@@ -62,7 +64,8 @@
    "amount": 0.8,
    "duration": 10
   },
-  "entry": "cut"
+  "entry": "cut",
+  "people": []
  },
  "S01-B": {
   "plate": "plates/batavia_harbour_boat.png",
@@ -74,7 +77,8 @@
    "amount": 0.4,
    "duration": 7
   },
-  "entry": "cut"
+  "entry": "cut",
+  "people": []
  },
  "S01-C": {
   "plate": "plates/batavia_harbour_boat.png",
@@ -86,7 +90,8 @@
    "amount": 1.0,
    "duration": 6
   },
-  "entry": "cut"
+  "entry": "cut",
+  "people": []
  },
  "S02-A": {
   "plate": "plates/voc_chamber.png",
@@ -96,7 +101,16 @@
    "ease": "move",
    "move": "hold"
   },
-  "entry": "slide"
+  "entry": "slide",
+  "people": [
+   {
+    "file": "people/tasman_side.png",
+    "x": 30,
+    "ground": 96,
+    "height": 58,
+    "speaks": "tasman"
+   }
+  ]
  },
  "S02-B": {
   "plate": "plates/voc_chamber.png",
@@ -108,7 +122,16 @@
    "amount": 1.2,
    "duration": 7
   },
-  "entry": "cut"
+  "entry": "cut",
+  "people": [
+   {
+    "file": "people/tasman_chart.png",
+    "x": 72,
+    "ground": 96,
+    "height": 58,
+    "speaks": "tasman"
+   }
+  ]
  },
  "S02-C": {
   "plate": "plates/voc_chamber.png",
@@ -120,7 +143,16 @@
    "amount": 0.4,
    "duration": 6
   },
-  "entry": "cut"
+  "entry": "cut",
+  "people": [
+   {
+    "file": "people/tasman_holding_chart.png",
+    "x": 40,
+    "ground": 96,
+    "height": 58,
+    "speaks": "tasman"
+   }
+  ]
  },
  "S03-A": {
   "plate": "plates/voc_chamber.png",
@@ -130,7 +162,23 @@
    "ease": "move",
    "move": "hold"
   },
-  "entry": "cut"
+  "entry": "cut",
+  "people": [
+   {
+    "file": "people/tasman_chart.png",
+    "x": 34,
+    "ground": 96,
+    "height": 58,
+    "speaks": "tasman"
+   },
+   {
+    "file": "people/visscher_front.png",
+    "x": 66,
+    "ground": 96,
+    "height": 58,
+    "speaks": "visscher"
+   }
+  ]
  },
  "S03-B": {
   "plate": "plates/voc_chamber.png",
@@ -142,38 +190,35 @@
    "amount": 0.8,
    "duration": 7
   },
-  "entry": "cut"
- },
- "S03-C": {
-  "plate": "plates/open_sea_day.png",
-  "figures": null,
-  "ships": [
+  "entry": "cut",
+  "people": [
    {
-    "file": "ships/zeehaen_side_sail.png",
-    "x": 30,
-    "y": 50,
-    "height": 26,
-    "depth": 0.5,
-    "ambient": "roll",
-    "ambient_amount": 1.0
+    "file": "people/visscher_threequarter.png",
+    "x": 40,
+    "ground": 96,
+    "height": 58,
+    "speaks": "visscher"
    },
    {
-    "file": "ships/heemskerck_side_sail.png",
-    "x": 64,
-    "y": 55,
-    "height": 40,
-    "depth": 0.8,
-    "ambient": "roll",
-    "ambient_amount": 1.0
+    "file": "people/tasman_back.png",
+    "x": 70,
+    "ground": 96,
+    "height": 58
    }
-  ],
+  ]
+ },
+ "S03-C": {
+  "plate": "plates/figma_two_ships_day.png",
+  "figures": null,
+  "ships": [],
   "camera": {
    "ease": "move",
    "move": "pan-r",
    "amount": 0.6,
    "duration": 9
   },
-  "entry": "reveal"
+  "entry": "reveal",
+  "people": []
  },
  "S04-A": {
   "plate": "plates/deck_harbour.png",
@@ -185,7 +230,16 @@
    "amount": 0.4,
    "duration": 6
   },
-  "entry": "slide"
+  "entry": "slide",
+  "people": [
+   {
+    "file": "people/sailor_front.png",
+    "x": 38,
+    "ground": 93,
+    "height": 60,
+    "speaks": "bootsman"
+   }
+  ]
  },
  "S04-B": {
   "plate": "plates/deck_harbour.png",
@@ -197,7 +251,23 @@
    "amount": 0.4,
    "duration": 7
   },
-  "entry": "cut"
+  "entry": "cut",
+  "people": [
+   {
+    "file": "people/visscher_front.png",
+    "x": 30,
+    "ground": 93,
+    "height": 60,
+    "speaks": "visscher"
+   },
+   {
+    "file": "people/tasman_side.png",
+    "x": 62,
+    "ground": 93,
+    "height": 60,
+    "speaks": "tasman"
+   }
+  ]
  },
  "S04-C": {
   "plate": "plates/deck_harbour.png",
@@ -209,7 +279,16 @@
    "amount": 1.0,
    "duration": 7
   },
-  "entry": "cut"
+  "entry": "cut",
+  "people": [
+   {
+    "file": "people/sailor_side.png",
+    "x": 66,
+    "ground": 93,
+    "height": 60,
+    "speaks": "bootsman"
+   }
+  ]
  },
  "S05-A": {
   "plate": "plates/mauritius_anchorage.png",
@@ -231,7 +310,8 @@
    "amount": 0.8,
    "duration": 9
   },
-  "entry": "reveal"
+  "entry": "reveal",
+  "people": []
  },
  "S05-B": {
   "plate": "plates/mauritius_shore.png",
@@ -243,7 +323,16 @@
    "amount": 0.4,
    "duration": 7
   },
-  "entry": "cut"
+  "entry": "cut",
+  "people": [
+   {
+    "file": "people/sailor_threequarter.png",
+    "x": 55,
+    "ground": 90,
+    "height": 46,
+    "speaks": "bootsman"
+   }
+  ]
  },
  "S05-C": {
   "plate": "plates/mauritius_anchorage.png",
@@ -255,7 +344,15 @@
    "amount": 0.8,
    "duration": 8
   },
-  "entry": "cut"
+  "entry": "cut",
+  "people": [
+   {
+    "file": "people/tasman_back.png",
+    "x": 30,
+    "ground": 122,
+    "height": 74
+   }
+  ]
  },
  "S06-A": {
   "plate": "plates/ocean_empty_wide.png",
@@ -277,7 +374,8 @@
    "amount": 0.4,
    "duration": 10
   },
-  "entry": "reveal"
+  "entry": "reveal",
+  "people": []
  },
  "S06-B": {
   "plate": "plates/deck_sea_day.png",
@@ -289,7 +387,16 @@
    "amount": 0.6,
    "duration": 7
   },
-  "entry": "cut"
+  "entry": "cut",
+  "people": [
+   {
+    "file": "people/visscher_threequarter.png",
+    "x": 45,
+    "ground": 93,
+    "height": 60,
+    "speaks": "visscher"
+   }
+  ]
  },
  "S06-C": {
   "plate": "plates/cabin_chart.png",
@@ -301,7 +408,23 @@
    "amount": 1.2,
    "duration": 7
   },
-  "entry": "cut"
+  "entry": "cut",
+  "people": [
+   {
+    "file": "people/tasman_side.png",
+    "x": 30,
+    "ground": 96,
+    "height": 58,
+    "speaks": "tasman"
+   },
+   {
+    "file": "people/visscher_front.png",
+    "x": 66,
+    "ground": 96,
+    "height": 58,
+    "speaks": "visscher"
+   }
+  ]
  },
  "S07-A": {
   "plate": "plates/storm_deck.png",
@@ -323,7 +446,16 @@
    "amount": 0.7,
    "duration": 6
   },
-  "entry": "cut"
+  "entry": "cut",
+  "people": [
+   {
+    "file": "people/tasman_pointing.png",
+    "x": 34,
+    "ground": 93,
+    "height": 60,
+    "speaks": "tasman"
+   }
+  ]
  },
  "S07-B": {
   "plate": "plates/storm_deck.png",
@@ -335,7 +467,16 @@
    "amount": 0.7,
    "duration": 6
   },
-  "entry": "cut"
+  "entry": "cut",
+  "people": [
+   {
+    "file": "people/sailor_front.png",
+    "x": 50,
+    "ground": 93,
+    "height": 60,
+    "speaks": "bootsman"
+   }
+  ]
  },
  "S07-C": {
   "plate": "plates/storm_deck.png",
@@ -347,7 +488,16 @@
    "amount": 0.64,
    "duration": 6
   },
-  "entry": "cut"
+  "entry": "cut",
+  "people": [
+   {
+    "file": "people/sailor_side.png",
+    "x": 46,
+    "ground": 93,
+    "height": 60,
+    "speaks": "bootsman"
+   }
+  ]
  },
  "S07-D": {
   "plate": "plates/storm_morning_sea.png",
@@ -369,7 +519,15 @@
    "amount": 0.8,
    "duration": 8
   },
-  "entry": "reveal"
+  "entry": "reveal",
+  "people": [
+   {
+    "file": "people/tasman_back.png",
+    "x": 28,
+    "ground": 122,
+    "height": 74
+   }
+  ]
  },
  "S08-A": {
   "plate": "plates/cabin_chart.png",
@@ -381,7 +539,16 @@
    "amount": 1.2,
    "duration": 7
   },
-  "entry": "cut"
+  "entry": "cut",
+  "people": [
+   {
+    "file": "people/visscher_front.png",
+    "x": 60,
+    "ground": 96,
+    "height": 58,
+    "speaks": "visscher"
+   }
+  ]
  },
  "S08-B": {
   "plate": "plates/tweendeck_night.png",
@@ -391,7 +558,16 @@
    "ease": "move",
    "move": "hold"
   },
-  "entry": "cut"
+  "entry": "cut",
+  "people": [
+   {
+    "file": "people/sailor_threequarter.png",
+    "x": 40,
+    "ground": 96,
+    "height": 58,
+    "speaks": "bootsman"
+   }
+  ]
  },
  "S09-A": {
   "plate": "plates/cabin_chart.png",
@@ -403,7 +579,23 @@
    "amount": 0.6,
    "duration": 8
   },
-  "entry": "slide"
+  "entry": "slide",
+  "people": [
+   {
+    "file": "people/tasman_side.png",
+    "x": 34,
+    "ground": 96,
+    "height": 58,
+    "speaks": "tasman"
+   },
+   {
+    "file": "people/visscher_threequarter.png",
+    "x": 66,
+    "ground": 96,
+    "height": 58,
+    "speaks": "visscher"
+   }
+  ]
  },
  "S09-B": {
   "plate": "plates/cabin_chart.png",
@@ -415,7 +607,16 @@
    "amount": 0.6,
    "duration": 6
   },
-  "entry": "cut"
+  "entry": "cut",
+  "people": [
+   {
+    "file": "people/tasman_holding_chart.png",
+    "x": 50,
+    "ground": 96,
+    "height": 58,
+    "speaks": "tasman"
+   }
+  ]
  },
  "S09-C": {
   "plate": "plates/deck_sea_day.png",
@@ -427,7 +628,16 @@
    "amount": 1.2,
    "duration": 6
   },
-  "entry": "cut"
+  "entry": "cut",
+  "people": [
+   {
+    "file": "people/tasman_pointing2.png",
+    "x": 44,
+    "ground": 93,
+    "height": 60,
+    "speaks": "tasman"
+   }
+  ]
  },
  "S10-A": {
   "plate": "plates/deck_rail_coast.png",
@@ -439,7 +649,16 @@
    "amount": 0.8,
    "duration": 6
   },
-  "entry": "cut"
+  "entry": "cut",
+  "people": [
+   {
+    "file": "people/tasman_spyglass.png",
+    "x": 40,
+    "ground": 93,
+    "height": 60,
+    "speaks": "tasman"
+   }
+  ]
  },
  "S10-B": {
   "plate": "plates/deck_rail_coast.png",
@@ -451,7 +670,23 @@
    "amount": 0.8,
    "duration": 8
   },
-  "entry": "cut"
+  "entry": "cut",
+  "people": [
+   {
+    "file": "people/tasman_pointing.png",
+    "x": 30,
+    "ground": 93,
+    "height": 60,
+    "speaks": "tasman"
+   },
+   {
+    "file": "people/visscher_threequarter.png",
+    "x": 66,
+    "ground": 93,
+    "height": 60,
+    "speaks": "visscher"
+   }
+  ]
  },
  "S10-C": {
   "plate": "plates/vdl_forest.png",
@@ -473,7 +708,16 @@
    "amount": 1.2,
    "duration": 8
   },
-  "entry": "reveal"
+  "entry": "reveal",
+  "people": [
+   {
+    "file": "people/sailor_side.png",
+    "x": 40,
+    "ground": 92,
+    "height": 42,
+    "speaks": "bootsman"
+   }
+  ]
  },
  "S11-A": {
   "plate": "plates/nz_high_land_sea.png",
@@ -485,7 +729,8 @@
    "amount": 1.0,
    "duration": 10
   },
-  "entry": "reveal"
+  "entry": "reveal",
+  "people": []
  },
  "S11-B": {
   "plate": "plates/nz_high_land_sea.png",
@@ -497,7 +742,15 @@
    "amount": 0.4,
    "duration": 7
   },
-  "entry": "cut"
+  "entry": "cut",
+  "people": [
+   {
+    "file": "people/tasman_holding_chart.png",
+    "x": 34,
+    "ground": 122,
+    "height": 74
+   }
+  ]
  },
  "S12-A": {
   "plate": "plates/golden_bay_shore_view.png",
@@ -509,7 +762,8 @@
    "amount": 0.8,
    "duration": 9
   },
-  "entry": "reveal"
+  "entry": "reveal",
+  "people": []
  },
  "S12-B": {
   "plate": "plates/golden_bay_beach.png",
@@ -521,7 +775,8 @@
    "amount": 0.4,
    "duration": 8
   },
-  "entry": "cut"
+  "entry": "cut",
+  "people": []
  },
  "S13-A": {
   "plate": "plates/golden_bay_dusk.png",
@@ -541,7 +796,8 @@
    "ease": "move",
    "move": "hold"
   },
-  "entry": "match"
+  "entry": "match",
+  "people": []
  },
  "S13-B": {
   "plate": "plates/deck_dusk.png",
@@ -553,7 +809,21 @@
    "amount": 0.6,
    "duration": 7
   },
-  "entry": "cut"
+  "entry": "cut",
+  "people": [
+   {
+    "file": "people/tasman_back.png",
+    "x": 34,
+    "ground": 93,
+    "height": 60
+   },
+   {
+    "file": "people/sailor_side.png",
+    "x": 72,
+    "ground": 93,
+    "height": 60
+   }
+  ]
  },
  "S13-C": {
   "plate": "plates/deck_dusk.png",
@@ -565,7 +835,8 @@
    "amount": 1.2,
    "duration": 6
   },
-  "entry": "cut"
+  "entry": "cut",
+  "people": []
  },
  "S14-A": {
   "plate": "plates/golden_bay_morning.png",
@@ -594,7 +865,8 @@
    "ease": "move",
    "move": "hold"
   },
-  "entry": "cut"
+  "entry": "cut",
+  "people": []
  },
  "S14-B": {
   "plate": "plates/golden_bay_morning.png",
@@ -606,7 +878,15 @@
    "amount": 0.48,
    "duration": 2
   },
-  "entry": "cut"
+  "entry": "cut",
+  "people": [
+   {
+    "file": "people/tasman_side.png",
+    "x": 40,
+    "ground": 122,
+    "height": 74
+   }
+  ]
  },
  "S14-C": {
   "plate": "plates/golden_bay_morning.png",
@@ -618,10 +898,24 @@
    "amount": 1.2,
    "duration": 10
   },
-  "entry": "cut"
+  "entry": "cut",
+  "people": [
+   {
+    "file": "people/tasman_back.png",
+    "x": 30,
+    "ground": 122,
+    "height": 74
+   },
+   {
+    "file": "people/sailor_threequarter.png",
+    "x": 70,
+    "ground": 122,
+    "height": 74
+   }
+  ]
  },
  "S14-D": {
-  "plate": "plates/cabin_chart.png",
+  "plate": "plates/figma_stern_night_windows.png",
   "figures": "figures/S14-D.png",
   "ships": [],
   "camera": {
@@ -630,7 +924,8 @@
    "amount": 1.2,
    "duration": 7
   },
-  "entry": "cut"
+  "entry": "cut",
+  "people": []
  },
  "S15-A": {
   "plate": "plates/tonga_lagoon.png",
@@ -652,7 +947,15 @@
    "amount": 0.4,
    "duration": 8
   },
-  "entry": "reveal"
+  "entry": "reveal",
+  "people": [
+   {
+    "file": "people/sailor_front.png",
+    "x": 24,
+    "ground": 122,
+    "height": 74
+   }
+  ]
  },
  "S15-B": {
   "plate": "plates/fiji_reef.png",
@@ -664,7 +967,15 @@
    "amount": 0.6,
    "duration": 8
   },
-  "entry": "cut"
+  "entry": "cut",
+  "people": [
+   {
+    "file": "people/visscher_threequarter.png",
+    "x": 34,
+    "ground": 122,
+    "height": 74
+   }
+  ]
  },
  "S15-C": {
   "plate": "plates/batavia_quay_return.png",
@@ -676,7 +987,8 @@
    "amount": 0.6,
    "duration": 8
   },
-  "entry": "match"
+  "entry": "match",
+  "people": []
  },
  "S16-A": {
   "plate": "plates/voc_chamber.png",
@@ -686,7 +998,16 @@
    "ease": "move",
    "move": "hold"
   },
-  "entry": "slide"
+  "entry": "slide",
+  "people": [
+   {
+    "file": "people/tasman_side.png",
+    "x": 40,
+    "ground": 96,
+    "height": 58,
+    "speaks": "tasman"
+   }
+  ]
  },
  "S16-B": {
   "plate": "plates/cabin_chart.png",
@@ -698,7 +1019,16 @@
    "amount": 1.0,
    "duration": 7
   },
-  "entry": "cut"
+  "entry": "cut",
+  "people": [
+   {
+    "file": "people/visscher_front.png",
+    "x": 56,
+    "ground": 96,
+    "height": 58,
+    "speaks": "visscher"
+   }
+  ]
  },
  "S16-C": {
   "plate": "plates/golden_bay_shore_view.png",
@@ -710,6 +1040,7 @@
    "amount": 0.8,
    "duration": 10
   },
-  "entry": "match"
+  "entry": "match",
+  "people": []
  }
 }
