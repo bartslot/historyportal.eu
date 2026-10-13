@@ -235,6 +235,43 @@
                     </button>
                 </div>
             </div>
+
+            {{-- Blend into the scene (resources/js/scene/sit-in-scene.js): a waterline, a
+                 reflection, a contact shadow and a colour wash from the backdrop, so a cut-out
+                 sits IN the painting. The button sets the preset for a boat or a figure; the
+                 four values are under Advanced. Mirror and tilt are the Angle row above. --}}
+            @php $sitOn = collect(\App\Services\Support\LayerSitIn::KEYS)->contains(fn ($k) => (float) ($layer[$k] ?? 0) > 0); @endphp
+            <div class="divider my-0" role="presentation"></div>
+            <div class="flex items-center gap-2" data-sit-in>
+                <button type="button" wire:click="blendLayerIntoScene({{ $aid }})"
+                        data-tooltip="{{ __('Waterline, reflection, shadow and colour from the backdrop') }}"
+                        @class(['btn btn-xs flex-1 rounded-full', 'btn-primary' => ! $sitOn, 'btn-ghost' => $sitOn])>
+                    {{ __('Blend into scene') }}
+                </button>
+                @if ($sitOn)
+                    <button type="button" wire:click="resetLayerSitIn({{ $aid }})"
+                            data-tooltip="{{ __('Back to the cut-out as it was') }}"
+                            class="btn btn-ghost btn-xs rounded-full">
+                        <x-icons.arrow-uturn-left class="h-3.5 w-3.5" />
+                        {{ __('Reset') }}
+                    </button>
+                @endif
+            </div>
+            <details class="collapse collapse-arrow rounded-lg border border-panel-hairline" data-sit-advanced>
+                <summary class="collapse-title min-h-0 px-3 py-2 text-2xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Advanced') }}</summary>
+                <div class="collapse-content space-y-2 px-3">
+                    @foreach ([
+                        'waterline' => __('Waterline'),
+                        'reflection' => __('Reflection'),
+                        'contact_shadow' => __('Shadow'),
+                        'color_match' => __('Colour'),
+                    ] as $sk => $sl)
+                        <x-ui.slider-row :label="$sl" :min="0" :max="1" :step="0.05"
+                                         :value="$val($sk, 0)" :display="$pct($val($sk, 0))" unit="%" :default="0"
+                                         :on-input="$live($sk)" :on-change="$save($sk)" />
+                    @endforeach
+                </div>
+            </details>
         </div>
     </x-ui.settings-section>
 

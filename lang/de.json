@@ -1672,5 +1672,10 @@
     "Accelerate": "Beschleunigen",
     "Overshoot": "Überschwingen",
     "Constant": "Konstant",
-    "Camera and panel entry back to their defaults": "Kamera und Panel zurück auf Standard"
+    "Camera and panel entry back to their defaults": "Kamera und Panel zurück auf Standard",
+    "Blend into scene": "In die Szene einfügen",
+    "Waterline": "Wasserlinie",
+    "Shadow": "Schatten",
+    "Waterline, reflection, shadow and colour from the backdrop": "Wasserlinie, Spiegelung, Schatten und Farbe aus dem Hintergrund",
+    "Back to the cut-out as it was": "Zurück zum Ausschnitt wie er war"
 }
