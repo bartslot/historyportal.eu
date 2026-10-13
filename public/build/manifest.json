@@ -6,8 +6,8 @@
       "node_modules/three/build/three.module.js"
     ]
   },
-  "_PowerMeter-BusCwpUI.js": {
-    "file": "assets/PowerMeter-BusCwpUI.js",
+  "_PowerMeter-y5Vs4TiA.js": {
+    "file": "assets/PowerMeter-y5Vs4TiA.js",
     "name": "PowerMeter",
     "isDynamicEntry": true,
     "imports": [
@@ -112,7 +112,7 @@
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-DQOWPQU2.css",
+    "file": "assets/app-Bril2Nwx.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -186,7 +186,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-8Jrp6Kmi.js",
+    "file": "assets/lesson-player-VfuOznPF.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -209,8 +209,9 @@
       "resources/js/scene/ArtworkOverlay.js",
       "resources/js/scene/QuizOverlay.js",
       "resources/js/scene/TeamGame.js",
-      "_PowerMeter-BusCwpUI.js",
-      "resources/js/scene/card-place.js"
+      "_PowerMeter-y5Vs4TiA.js",
+      "resources/js/scene/card-place.js",
+      "resources/js/scene/race-stage.js"
     ]
   },
   "resources/js/scene/ArtworkOverlay.js": {
@@ -273,7 +274,7 @@
     ]
   },
   "resources/js/scene/TeamGame.js": {
-    "file": "assets/TeamGame-Fks8cPm0.js",
+    "file": "assets/TeamGame-Bvfd4BqB.js",
     "name": "TeamGame",
     "src": "resources/js/scene/TeamGame.js",
     "isDynamicEntry": true,
@@ -335,12 +336,12 @@
     ]
   },
   "resources/js/scene/meter-inputs/mic.js": {
-    "file": "assets/mic-B_E97m45.js",
+    "file": "assets/mic-ph90MPB_.js",
     "name": "mic",
     "src": "resources/js/scene/meter-inputs/mic.js",
     "isDynamicEntry": true,
     "imports": [
-      "_PowerMeter-BusCwpUI.js",
+      "_PowerMeter-y5Vs4TiA.js",
       "__commonjsHelpers-DqutJMZx.js",
       "_big-countdown-B6_8fyyK.js",
       "_easing-ChRyoIXo.js",
@@ -358,6 +359,21 @@
     "name": "quick-mask",
     "src": "resources/js/scene/quick-mask.js",
     "isDynamicEntry": true
+  },
+  "resources/js/scene/race-stage.js": {
+    "file": "assets/race-stage-DIimCCXd.js",
+    "name": "race-stage",
+    "src": "resources/js/scene/race-stage.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "_dom-DByCrY2T.js",
+      "resources/js/lesson-player.js",
+      "__commonjsHelpers-DqutJMZx.js",
+      "resources/js/gallery-scene.js",
+      "_big-countdown-B6_8fyyK.js",
+      "_easing-ChRyoIXo.js",
+      "_animations-Bw164z87.js"
+    ]
   },
   "resources/js/timemap/index.js": {
     "file": "assets/index-v-QbrPky.js",
