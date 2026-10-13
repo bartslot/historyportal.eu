@@ -5,6 +5,9 @@
 import * as TL from '../timeline/model';
 import { CELL_M, contractOf, cellsFor, turnedFootprint, snapCentre, cellsCovered, overlaps } from '../placement/contract';
 import { isPlayPauseKey, isTypingTarget } from '@hp/ui/keyboard.js';
+import { animeActor } from './anime-actor';
+
+const ANIME_GIRL = 'assets/models/anime-sample.vrm'; // pixiv's VRM sample (VRM licence: corporate use + edits allowed)
 
 const FPS = 30;
 const GRID_STEP = CELL_M;       // metres; one grid line per footprint cell, so what you see is what snaps
@@ -15,6 +18,8 @@ const SKIES = ['assets/sky/sky1.avif', 'assets/sky/sky2.avif', 'assets/sky/sky3.
 // model is scaled to, footprint the cells it stands on (omitted = measured), turn_step its ring step.
 const CATALOG = [
   { name: 'Girl (animated)', url: 'https://assets.babylonjs.com/meshes/HVGirl.glb', height_m: 1.6, footprint: [1, 1], turn_step: 45 },
+  // a .vrm is a glb with VRM extensions; `plugin` tells the loader so
+  { name: 'Anime girl', url: ANIME_GIRL, plugin: '.glb', height_m: 1.6, footprint: [1, 1], turn_step: 45, onCreate: animeActor(ANIME_GIRL) },
   { name: 'Mannequin (animated)', url: 'https://assets.babylonjs.com/meshes/Xbot.glb', height_m: 1.8, footprint: [1, 1], turn_step: 45 },
   { name: 'Tree (low poly)', build: buildTree, footprint: [2, 2], turn_step: 45 },
   { name: 'Rock (low poly)', build: buildRock },
@@ -143,7 +148,7 @@ async function addFromCatalog(item, at = null) {
   if (item.build) {
     root = makeActor(item.name, item.build());
   } else {
-    const result = await BABYLON.SceneLoader.ImportMeshAsync('', item.url, '', scene);
+    const result = await BABYLON.SceneLoader.ImportMeshAsync('', item.url, '', scene, null, item.plugin);
     root = makeActor(item.name, result.meshes);
     // play ONE of the model's own clips (several at once blend into a broken pose); idle first
     result.animationGroups.forEach((g) => g.stop());

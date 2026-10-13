@@ -171,6 +171,16 @@
                 "cd engine-mvp && npx vite --port 5193 --strictPort"
             ],
             "port": 5193
+        },
+        {
+            "//": "Face-lines lab (engine-mvp/face-lab.html) on its own port; 5190 is the studio's.",
+            "name": "face-lab",
+            "runtimeExecutable": "bash",
+            "runtimeArgs": [
+                "-c",
+                "cd engine-mvp && npx vite --port 5191 --strictPort"
+            ],
+            "port": 5191
         }
     ]
 }
