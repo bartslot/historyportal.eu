@@ -480,7 +480,7 @@ trait EditsSceneArtwork
         $coercedValue = match ($field) {
             'depth', 'scale', 'opacity', 'blur', 'x', 'y', 'draw_time', 'anim_delay',
             'height', 'width', 'rotation', 'white_key', 'tint_opacity', 'ambient_speed', 'ambient_amount',
-            'waterline', 'reflection', 'contact_shadow', 'color_match' => (float) $value,
+            'waterline', 'reflection', 'contact_shadow', 'color_match', 'foam', 'speed' => (float) $value,
             'wobble' => (int) $value,
             'sway', 'grayscale', 'flip_x', 'flip_y' => (bool) $value,
             'kind', 'blend', 'ink_preset', 'ink_fill', 'anim', 'anim_ease', 'anim_out', 'anim_out_ease', 'ambient' => (string) $value,

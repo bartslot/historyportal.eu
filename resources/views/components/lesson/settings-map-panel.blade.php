@@ -236,7 +236,7 @@
                 </div>
             </div>
 
-            {{-- Blend into the scene (resources/js/scene/sit-in-scene.js): a waterline, a
+            {{-- Blend into the scene (resources/js/scene/sit-in-scene.js): a waterline, foam, a
                  reflection, a contact shadow and a colour wash from the backdrop, so a cut-out
                  sits IN the painting. The button sets the preset for a boat or a figure; the
                  four values are under Advanced. Mirror and tilt are the Angle row above. --}}
@@ -265,6 +265,8 @@
                         'reflection' => __('Reflection'),
                         'contact_shadow' => __('Shadow'),
                         'color_match' => __('Colour'),
+                        'foam' => __('Foam'),
+                        'speed' => __('Headway'),
                     ] as $sk => $sl)
                         <x-ui.slider-row :label="$sl" :min="0" :max="1" :step="0.05"
                                          :value="$val($sk, 0)" :display="$pct($val($sk, 0))" unit="%" :default="0"

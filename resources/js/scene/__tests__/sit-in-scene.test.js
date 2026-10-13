@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import {
   sitSpec, coverToImage, sampleBoxes, averageRgb, washMatrix, shade, waveMask, rippleMask,
-  sampleColours, renderSitIn,
+  sampleColours, renderSitIn, foamColours, foamShape, bowWave, wakePatch, bowScale, foamLines, wakePlan, applyFoamSpeed,
 } from '../sit-in-scene.js'
 import { filterMarkup } from '../layer-filters.js'
 import { ArtworkOverlay, layersSignature } from '../ArtworkOverlay.js'
@@ -22,7 +22,7 @@ describe('blend into the scene: the numbers', () => {
     expect(sitSpec({})).toBeNull()
     expect(sitSpec({ waterline: 0, reflection: null })).toBeNull()
     expect(sitSpec({ waterline: 4, color_match: -1, reflection: '0.3' }))
-      .toEqual({ waterline: 1, reflection: 0.3, contact_shadow: 0, color_match: 0 })
+      .toEqual({ waterline: 1, reflection: 0.3, contact_shadow: 0, color_match: 0, foam: 0, speed: 0 })
   })
 
   it('maps the stage onto a cover-fitted backdrop, and is the identity for a plate shown whole', () => {
@@ -84,6 +84,89 @@ describe('blend into the scene: the numbers', () => {
   })
 })
 
+describe('foam', () => {
+  const svg = (url) => decodeURIComponent(url)
+
+  it('is paper-white leaning a touch toward the water, so it never glares on a night sea', () => {
+    const day = foamColours([120, 200, 210])
+    const night = foamColours([12, 20, 40])
+    expect(day.fill.every(v => v > 225)).toBe(true)
+    expect(night.fill.every(v => v < 215 && v > 180)).toBe(true)   // still white, not a glare
+    expect(night.rim[2]).toBeGreaterThan(night.rim[0])           // the rim stays cool
+  })
+
+  it('is drawn: flat shapes and fine lines, no blur, glow or gradient', () => {
+    const all = [foamShape(), foamLines([1, 2, 3]), bowWave([250, 250, 250], [160, 170, 190]), wakePatch([250, 250, 250], [160, 170, 190], 2)].map(svg).join('')
+    expect(all).not.toMatch(/blur|Gaussian|Gradient|filter/i)
+    expect(svg(bowWave([250, 250, 250], [160, 170, 190]))).toMatch(/stroke-width='0.7'/)
+    expect(svg(wakePatch([1, 2, 3], [4, 5, 6], 0))).not.toBe(svg(wakePatch([1, 2, 3], [4, 5, 6], 1)))   // patches differ
+    expect(svg(foamShape())).toBe(svg(foamShape()))   // the same foam every time
+  })
+
+  it('at anchor there is no bow wave and no wake; more speed pushes a bigger wave', () => {
+    expect(bowScale(1, 0)).toBe(0)
+    expect(bowScale(0, 1)).toBe(0)
+    expect(bowScale(1, 1)).toBe(1)
+    expect(bowScale(1, 0.5)).toBeLessThan(bowScale(1, 1))
+    expect(bowScale(0.5, 1)).toBeLessThan(bowScale(1, 1))
+    expect(bowScale(1, 9)).toBe(1)
+  })
+
+  it('the wake grows with speed: more patches, drifting further back', () => {
+    const shown = (plan) => plan.filter(p => p.op > 0).length
+    expect(shown(wakePlan(1, 0))).toBe(0)
+    expect(shown(wakePlan(1, 0.5, 6))).toBe(3)
+    expect(shown(wakePlan(1, 1, 6))).toBe(6)
+    expect(wakePlan(1, 1)[0].run).toBeGreaterThan(wakePlan(1, 0.3)[0].run)
+    const ops = wakePlan(1, 1, 6).map(p => p.op)
+    expect([...ops].sort((a, b) => b - a)).toEqual(ops)   // later patches fainter
+  })
+
+  it('rides in the moving wrapper at the waterline, or at the bottom edge without one', () => {
+    const node = document.createElement('div')
+    const body = document.createElement('div')
+    const img = document.createElement('img')
+    body.appendChild(img); node.appendChild(body)
+
+    renderSitIn(node, body, img, { asset_id: 1, foam: 0.5, waterline: 0.2, speed: 1 }, { below: [10, 20, 40] })
+    const band = body.querySelector('.sit-foam')
+    expect(parseFloat(band.style.top.replace('calc(', ''))).toBeCloseTo(80 - 3.5)
+    expect(band.style.opacity).toBe('0.5')
+    expect(body.querySelector('.sit-bow')).not.toBeNull()
+    expect(body.querySelectorAll('.sit-wake').length).toBeGreaterThan(1)
+    expect(body.style.position).toBe('relative')
+
+    renderSitIn(node, body, img, { asset_id: 1, foam: 0.5 })
+    expect(parseFloat(body.querySelector('.sit-foam').style.top.replace('calc(', ''))).toBeCloseTo(100 - 3.5)
+    expect(body.style.getPropertyValue('--sit-bow-k')).toBe('0')   // speed 0: at anchor
+
+    renderSitIn(node, body, img, { asset_id: 1 })
+    expect(body.querySelector('.sit-foam, .sit-bow, .sit-wake')).toBeNull()
+  })
+
+  it('a speed change restyles the live foam in place: the same nodes, new values', () => {
+    const node = document.createElement('div'); const body = document.createElement('div'); const img = document.createElement('img')
+    body.appendChild(img); node.appendChild(body)
+    renderSitIn(node, body, img, { asset_id: 1, foam: 1, speed: 0 })
+    const first = body.querySelector('.sit-wake')
+    expect(first.style.getPropertyValue('--sit-wake-op')).toBe('0')
+
+    applyFoamSpeed(body, 1, 1)
+    expect(body.querySelector('.sit-wake')).toBe(first)
+    expect(Number(first.style.getPropertyValue('--sit-wake-op'))).toBeGreaterThan(0)
+    expect(Number(body.style.getPropertyValue('--sit-bow-k'))).toBe(1)
+  })
+
+  it('stops churning under reduced motion', () => {
+    const node = document.createElement('div'); const body = document.createElement('div'); const img = document.createElement('img')
+    body.appendChild(img); node.appendChild(body)
+    renderSitIn(node, body, img, { asset_id: 1, foam: 1 })
+    const css = document.getElementById('sit-styles').textContent
+    expect(css).toMatch(/prefers-reduced-motion[^}]*\.sit-foam, \.sit-bow, \.sit-wake \{ animation: none; \}/)
+    expect(css).toMatch(/\.sit-foam \{[^}]*var\(--amb-dur/)   // in step with the layer's swing
+  })
+})
+
 describe('blend into the scene: drawn on a layer', () => {
   const layer = (over = {}) => {
     const node = document.createElement('div')
@@ -134,5 +217,12 @@ describe('blend into the scene: drawn on a layer', () => {
     expect(layersSignature([base])).not.toBe(layersSignature([{ ...base, reflection: 0.3 }]))
     expect(overlay.syncProps([{ ...base, reflection: 0.3 }])).toBe(true)
     expect(host.querySelector('.sit-reflection')).not.toBeNull()
+
+    // The power-meter hook: a live speed change keeps the foam nodes and restyles them.
+    overlay.setLayerProp(9, 'foam', 0.6)
+    const bow = host.querySelector('.sit-bow')
+    overlay.setSpeed(9, 0.8)
+    expect(host.querySelector('.sit-bow')).toBe(bow)
+    expect(Number(host.querySelector('.art-ambient').style.getPropertyValue('--sit-bow-k'))).toBeGreaterThan(0)
   })
 })
