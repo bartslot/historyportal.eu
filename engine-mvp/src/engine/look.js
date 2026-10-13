@@ -129,7 +129,8 @@
 
   // ---------- toon (cel) materials on every 3D model, including ones added later ----------
   // backdrop silhouettes and the sky stay flat: they are cut-out planes, not lit objects
-  const skip = (m) => m.name === 'hitbox' || m.name === 'ground' || m.name.startsWith('sky') || m.name.startsWith('backdrop') || m.name === 'decal'
+  // a painted model (metadata.painted) carries its light in its texture: no cel bands over it
+  const skip = (m) => (m.metadata && m.metadata.painted) || m.name === 'hitbox' || m.name === 'ground' || m.name.startsWith('sky') || m.name.startsWith('backdrop') || m.name === 'decal'
     || !m.material || m.material instanceof BABYLON.ShaderMaterial || m.getTotalVertices() === 0; // buildings: own toon shader
   function toCel(mesh) {
     if (mesh.metadata && mesh.metadata.cel) { mesh.material = mesh.metadata.cel; return; }
