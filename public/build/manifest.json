@@ -31,8 +31,8 @@
       "_easing-ChRyoIXo.js"
     ]
   },
-  "_big-countdown-Dn5IKFel.js": {
-    "file": "assets/big-countdown-Dn5IKFel.js",
+  "_big-countdown-B6_8fyyK.js": {
+    "file": "assets/big-countdown-B6_8fyyK.js",
     "name": "big-countdown",
     "imports": [
       "_easing-ChRyoIXo.js"
@@ -95,7 +95,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-gL4-T_RO.css",
+    "file": "assets/app-jwm3EQPj.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -104,7 +104,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-DE6GakD9.js",
+    "file": "assets/app-DwIwmrte.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -169,14 +169,14 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-GYEOuLOu.js",
+    "file": "assets/lesson-player-DFbqCUYi.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
     "imports": [
       "__commonjsHelpers-DqutJMZx.js",
       "resources/js/gallery-scene.js",
-      "_big-countdown-Dn5IKFel.js",
+      "_big-countdown-B6_8fyyK.js",
       "_animations-Bw164z87.js",
       "_easing-ChRyoIXo.js"
     ],
@@ -195,13 +195,13 @@
     ]
   },
   "resources/js/scene/ArtworkOverlay.js": {
-    "file": "assets/ArtworkOverlay-CYDJE4Cu.js",
+    "file": "assets/ArtworkOverlay-DttsWKOV.js",
     "name": "ArtworkOverlay",
     "src": "resources/js/scene/ArtworkOverlay.js",
     "isDynamicEntry": true,
     "imports": [
       "_animations-Bw164z87.js",
-      "_big-countdown-Dn5IKFel.js",
+      "_big-countdown-B6_8fyyK.js",
       "_ambient-uEDWrar1.js",
       "_easing-ChRyoIXo.js"
     ]
@@ -222,12 +222,12 @@
     "isDynamicEntry": true
   },
   "resources/js/scene/ParallaxScene.js": {
-    "file": "assets/ParallaxScene-DCkbNoHg.js",
+    "file": "assets/ParallaxScene-Cce7TaRu.js",
     "name": "ParallaxScene",
     "src": "resources/js/scene/ParallaxScene.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-Dn5IKFel.js",
+      "_big-countdown-B6_8fyyK.js",
       "_ambient-uEDWrar1.js",
       "_camera-CZ8TIYdH.js",
       "_easing-ChRyoIXo.js",
@@ -235,12 +235,12 @@
     ]
   },
   "resources/js/scene/QuizOverlay.js": {
-    "file": "assets/QuizOverlay-DJKx005k.js",
+    "file": "assets/QuizOverlay-D_ufbYyV.js",
     "name": "QuizOverlay",
     "src": "resources/js/scene/QuizOverlay.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-Dn5IKFel.js",
+      "_big-countdown-B6_8fyyK.js",
       "_easing-ChRyoIXo.js"
     ]
   },
@@ -254,12 +254,12 @@
     ]
   },
   "resources/js/scene/TeamGame.js": {
-    "file": "assets/TeamGame-B0DpiBFA.js",
+    "file": "assets/TeamGame-u38Kc6VI.js",
     "name": "TeamGame",
     "src": "resources/js/scene/TeamGame.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-Dn5IKFel.js",
+      "_big-countdown-B6_8fyyK.js",
       "_dom-DByCrY2T.js",
       "resources/js/lesson-player.js",
       "_easing-ChRyoIXo.js",
@@ -284,12 +284,12 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-6cKRJMRM.js",
+    "file": "assets/index-KnWb-cIn.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-Dn5IKFel.js",
+      "_big-countdown-B6_8fyyK.js",
       "resources/js/scene/QuizOverlay.js",
       "resources/js/scene/TextOverlayLayer.js",
       "resources/js/scene/ArtworkOverlay.js",
