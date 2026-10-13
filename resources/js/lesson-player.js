@@ -2226,10 +2226,12 @@ Alpine.data('lessonGame', (lesson) => ({
         this._done = [...this._done, scene.id]
         this._saveProgress()
         this._tel.log(outcome.skipped ? 'moment_skipped' : 'moment_completed', { sceneIndex: index, sceneId: scene.id })
-        const raced = race && !outcome.skipped && outcome.crew
-        if (raced) this._crownRace(race, outcome, scene)
-        await (race
-          ? race.sailOut(Number(cfg.payoff?.to_x) || m.race.finishX + 10, Number(cfg.payoff?.duration) || 6)
+        // The stage on the water now: the phones' lobby may have rebuilt it for another team count.
+        const stage = race ? (this._race ?? race) : null
+        const raced = stage && !outcome.skipped && outcome.crew
+        if (raced) this._crownRace(stage, outcome, scene)
+        await (stage
+          ? stage.sailOut(Number(cfg.payoff?.to_x) || m.race.finishX + 10, Number(cfg.payoff?.duration) || 6)
           : this._momentPayoff(mod, cfg.payoff || {}, art))
         if (!current()) return
         // After a race the narrator names the crews; their names are only known now, so it is read.
