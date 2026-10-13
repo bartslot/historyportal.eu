@@ -358,6 +358,28 @@ trait EditsSceneArtwork
         $this->writeLayerFields($assetId, array_fill_keys(LayerSitIn::KEYS, null));
     }
 
+    /**
+     * Hide the layer where the backdrop is nearer than it (a ship's rail in front of a figure on
+     * deck), from the backdrop's depth map. Off removes the key, so it reads as never touched.
+     */
+    public function setLayerOcclude(int $assetId, bool $on): void
+    {
+        $this->writeLayerFields($assetId, ['occlude' => $on ? 1 : null]);
+    }
+
+    /**
+     * "Fit to this spot": the height the layer has standing where it is (worked out in the browser
+     * from the backdrop's depth map) and the y that keeps its feet on that spot, in one save so one
+     * undo takes it back.
+     */
+    public function fitLayerToSpot(int $assetId, float $height, float $y): void
+    {
+        $this->writeLayerFields($assetId, [
+            'height' => max(1.0, min(200.0, $height)),
+            'y' => max(0.0, min(100.0, $y)),
+        ]);
+    }
+
     /** @return array<string,mixed>|null the layer as stored in the selected scene's shots */
     private function findLayer(int $assetId): ?array
     {

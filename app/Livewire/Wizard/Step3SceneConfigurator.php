@@ -246,7 +246,9 @@ class Step3SceneConfigurator extends Component
                 // asset_id + x/y let the on-canvas editor identify and free-position each layer.
                 'asset_id' => isset($l['asset_id']) ? (int) $l['asset_id'] : null,
                 // A duplicated layer has its own synthetic id; its title lives on the original asset.
-                'title' => isset($l['asset_id']) ? ($titles[$l['src_asset_id'] ?? $l['asset_id']] ?? null) : null,
+                'title' => isset($l['asset_id']) ? ($titles[$l['src_asset_id'] ?? $l['asset_id']]->title ?? null) : null,
+                // How tall the drawn thing really is (meta.json), for "fit to this spot".
+                'height_m' => isset($l['asset_id']) ? ($titles[$l['src_asset_id'] ?? $l['asset_id']]->height_m ?? null) : null,
                 'x' => isset($l['x']) ? (float) $l['x'] : null,
                 'y' => isset($l['y']) ? (float) $l['y'] : null,
                 'depth' => (float) ($l['depth'] ?? 1),
@@ -299,6 +301,8 @@ class Step3SceneConfigurator extends Component
                 ...LayerAmbient::payload($l),
                 // Blend into the scene: waterline, reflection, contact shadow, colour match.
                 ...LayerSitIn::payload($l),
+                // Hidden where the backdrop is nearer than the layer (resources/js/scene/occlusion.js).
+                'occlude' => ! empty($l['occlude']),
             ])->filter(fn ($l) => $l['url'] || $l['embed'])->values()->all() ?: null,
             // Keep a shot when it has EITHER a background image OR clipart layers. Map-backed scenes
             // (voyage / map) carry layer-only shots — the MAP is the backdrop, so there's no image_url,
@@ -307,11 +311,11 @@ class Step3SceneConfigurator extends Component
     }
 
     /**
-     * Batch-load SvgAsset id→title for every layer across the given scenes in ONE query
+     * Batch-load each layer's SvgAsset (id, title, height_m) across the given scenes in ONE query
      * (avoids an N+1 of one SvgAsset lookup per scene when serializing the whole payload).
      *
      * @param  iterable<Scene>  $scenes
-     * @return Collection<int,string>
+     * @return Collection<int,\App\Models\SvgAsset>
      */
     private function assetTitlesFor(iterable $scenes): Collection
     {
@@ -321,7 +325,7 @@ class Step3SceneConfigurator extends Component
             ->filter()->unique()->values();
 
         return $ids->isNotEmpty()
-            ? \App\Models\SvgAsset::whereIn('id', $ids)->pluck('title', 'id')
+            ? \App\Models\SvgAsset::whereIn('id', $ids)->get(['id', 'title', 'height_m'])->keyBy('id')
             : collect();
     }
 

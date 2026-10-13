@@ -147,6 +147,7 @@
                         'flip_x'  => ! empty($l['flip_x']),
                         'flip_y'  => ! empty($l['flip_y']),
                         ...\App\Services\Support\LayerSitIn::payload($l),
+                        'occlude' => ! empty($l['occlude']),
                     ])->filter(fn($l) => $l['url'] || $l['embed'])->values()->all() ?: null,
                     'anchor_sentence' => $shot['anchor_sentence'] ?? null,
                     // The panel's own camera move and entry (resources/js/scene/camera.js).

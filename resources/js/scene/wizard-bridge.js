@@ -140,6 +140,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                         entry: firstShot?.entry ?? null,
                         parallax: !!payload.parallax,
                         clipartOnTop: !!payload.config?.clipart_on_top,
+                        backdropDepth: payload.config?.backdrop_depth ?? null,
                         slideshowMode: payload.slideshowMode || (payload.parallax ? 'parallax' : 'standard'),
                         sceneId: payload.sceneId ?? 0,
                         isCurrent,
@@ -288,6 +289,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                 entry: firstShot?.entry ?? null,
                 parallax: !!e.detail?.parallax,
                 clipartOnTop: !!e.detail?.config?.clipart_on_top,
+                backdropDepth: e.detail?.config?.backdrop_depth ?? null,
                 sceneId: sceneId ?? 0,
                 isCurrent,
             })
@@ -1150,7 +1152,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                 _artworkOverlay.setOnTop(clipartOnTop)
                 _artworkOverlay.setStackLevels(2, 8)   // on the nodes — a z-index here would break blending
                 // The backdrop blend-into-scene samples its colours from.
-                _artworkOverlay.setBackdrop(bgLayers.find(l => (l.kind ?? 'cover') === 'cover')?.url)
+                _artworkOverlay.setBackdrop(bgLayers.find(l => (l.kind ?? 'cover') === 'cover')?.url, payload.backdropDepth)
                 // Skip re-seeding on identical poll re-renders (would reset an in-progress edit).
                 const sig = _artworkMod.layersSignature(artLayers)
                 // Re-seed only on a real change, then replay the entrances so the teacher sees

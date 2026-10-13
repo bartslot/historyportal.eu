@@ -274,6 +274,33 @@
                     @endforeach
                 </div>
             </details>
+
+            {{-- Behind what the backdrop draws in front (resources/js/scene/occlusion.js), and the
+                 height a figure has where it stands: both from the backdrop's depth map, so only
+                 on a backdrop that has one (php artisan art:depth). --}}
+            @if (! empty($scene->config['backdrop_depth']))
+                @php $occludeOn = ! empty($layer['occlude']); @endphp
+                <div class="divider my-0" role="presentation"></div>
+                <div class="flex items-center gap-2" data-occlude>
+                    <x-ui.toggle-row class="flex-1" :label="__('Behind objects')" :checked="$occludeOn"
+                                     :on-toggle="'window.__setLayerProp?.(' . $aid . ', \'occlude\', $event.target.checked ? 1 : 0)'"
+                                     :on-change="'setLayerOcclude(' . $aid . ', $event.target.checked)'" />
+                    @if ($occludeOn)
+                        <button type="button" wire:click="setLayerOcclude({{ $aid }}, false)"
+                                data-tooltip="{{ __('In front of everything again') }}"
+                                class="btn btn-ghost btn-xs rounded-full">
+                            <x-icons.arrow-uturn-left class="h-3.5 w-3.5" />
+                            {{ __('Reset') }}
+                        </button>
+                    @endif
+                </div>
+                <button type="button" data-fit-spot x-data
+                        x-on:click="const fit = await window.__lessonArtworkLayer?.fitHeight?.({{ $aid }}); if (fit) $wire.fitLayerToSpot({{ $aid }}, fit.height, fit.y)"
+                        data-tooltip="{{ __('The height it has standing here, from the horizon of the backdrop') }}"
+                        class="btn btn-ghost btn-xs w-full rounded-full">
+                    {{ __('Fit to this spot') }}
+                </button>
+            @endif
         </div>
     </x-ui.settings-section>
 

@@ -2063,7 +2063,8 @@ Alpine.data('lessonGame', (lesson) => ({
           _mapInstance.map.on('move', () => this._artLayer?.refreshPositions())
         }
       }
-      this._artLayer.setBackdrop(cover?.url)   // blend-into-scene samples its colours here
+      // Blend-into-scene samples its colours here; occlusion reads the plate's depth map.
+      this._artLayer.setBackdrop(cover?.url, (scene.config || {}).backdrop_depth)
       this._artLayer.setLayers(layers)
       // Each layer arrives the way the teacher set it in the Animate tab. Run after setLayers,
       // which rebuilds the nodes the animation targets.
