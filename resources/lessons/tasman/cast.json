@@ -1,5 +1,5 @@
 {
- "_note": "One standard body + wardrobe slots per character, shared by the 2D sheets and a later 3D actor. Sheets live in the vault topic tasman-standard/art/cast; voices are ElevenLabs native NL (see narration memory).",
+ "_note": "One standard body + wardrobe slots per character, shared by the 2D sheets and a later 3D actor. Sheets live in the vault topic tasman-standard/art/cast; voices are ElevenLabs native NL (see narration memory). Only the narrator speaks (Bart 2026-10-13): characters have no voice, so their lines are silent text balloons.",
  "tasman": {
   "name": "Abel Tasman",
   "historical": true,
@@ -14,9 +14,7 @@
    "legs": "black breeches + stockings",
    "feet": "black shoes"
   },
-  "voice": {
-   "nl": "elevenlabs:gdTrLNuwWUaxC0z5n1j7"
-  }
+  "voice": {}
  },
  "visscher": {
   "name": "Frans Jacobszoon Visscher",
@@ -30,9 +28,7 @@
    "legs": "brown breeches, grey stockings",
    "prop": "brass dividers"
   },
-  "voice": {
-   "nl": "elevenlabs:3CNMPTHRakZuouXwBlUW"
-  }
+  "voice": {}
  },
  "gilsemans": {
   "name": "Isaack Gilsemans",
@@ -46,9 +42,7 @@
    "collar": "white linen",
    "prop": "bound sketchbook + chalk"
   },
-  "voice": {
-   "nl": "elevenlabs:PmLHtxMMIsD2g8fMxY7f"
-  }
+  "voice": {}
  },
  "vandiemen": {
   "name": "Antonio van Diemen",
@@ -61,9 +55,7 @@
    "collar": "large white lace-edged collar",
    "prop": "gold chain of office"
   },
-  "voice": {
-   "nl": "elevenlabs:gCJROUe9eMZaWlhNj1z0"
-  }
+  "voice": {}
  },
  "matroos": {
   "name": "jonge matroos",
@@ -76,9 +68,7 @@
    "legs": "grey-brown canvas slops",
    "feet": "simple leather shoes"
   },
-  "voice": {
-   "nl": "elevenlabs:sqTHW0pPDMUu2IXfJT0G"
-  }
+  "voice": {}
  },
  "bootsman": {
   "name": "bootsman",
@@ -91,25 +81,19 @@
    "legs": "canvas slops, grey stockings",
    "prop": "coiled rope, bosun's whistle"
   },
-  "voice": {
-   "nl": "elevenlabs:ppGIZI01uUlIWI734dUU"
-  }
+  "voice": {}
  },
  "uitkijk": {
   "name": "uitkijk",
   "historical": false,
   "type": "lookout",
-  "voice": {
-   "nl": "elevenlabs:RRH9oZEaBFwuWBWtFxC4"
-  }
+  "voice": {}
  },
  "raadsheer": {
   "name": "raadsheer",
   "historical": false,
   "type": "member of the Raad van Indie",
-  "voice": {
-   "nl": "elevenlabs:UdwnkJaZxPCOeR3qITvA"
-  }
+  "voice": {}
  },
  "narrator": {
   "name": "verteller",

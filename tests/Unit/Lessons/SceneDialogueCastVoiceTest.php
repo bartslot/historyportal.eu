@@ -20,4 +20,10 @@ class SceneDialogueCastVoiceTest extends TestCase
         $this->assertSame(['provider' => 'azure', 'voice' => 'nl-NL-Sander:MAI-Voice-2'],
             SceneDialogue::castVoice('nl-NL-Sander:MAI-Voice-2'));
     }
+
+    public function test_a_silent_balloon_holds_for_its_reading_time(): void
+    {
+        $this->assertSame(1.8, SceneDialogue::readingTime('Daar!'));
+        $this->assertSame(5.0, SceneDialogue::readingTime('een twee drie vier vijf zes zeven acht negen tien elf'));
+    }
 }

@@ -32,7 +32,7 @@ class TasmanSpecTest extends TestCase
             foreach ($scene['lines'] ?? [] as [$speaker, $words]) {
                 $this->assertNotSame('', $words);
                 if ($speaker !== 'narrator') {
-                    $this->assertNotEmpty($spec['cast'][$speaker]['voice']['nl'] ?? null, "{$speaker} has no nl voice");
+                    $this->assertArrayHasKey($speaker, $spec['cast'], "{$speaker} is not in the cast");
                 }
             }
         }

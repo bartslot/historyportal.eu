@@ -34,6 +34,11 @@ final class SceneDialogue
     /** Silence between two lines, so a reply does not land on the last syllable. */
     public const GAP_SECONDS = 0.35;
 
+    /** Reading rate and minimum hold for a silent balloon. */
+    private const READ_WORDS_PER_SECOND = 2.2;
+
+    private const MIN_READ_SECONDS = 1.8;
+
     /** Speaking rate for estimated timings when the scene is built without audio. */
     private const WORDS_PER_SECOND = 2.6;
 
@@ -130,6 +135,25 @@ final class SceneDialogue
         return $lines;
     }
 
+    /** How long a silent balloon stays up: a twelve-year-old reading aloud in their head. */
+    public static function readingTime(string $text): float
+    {
+        return round(max(self::MIN_READ_SECONDS, str_word_count($text) / self::READ_WORDS_PER_SECOND), 2);
+    }
+
+    /** A cached silent clip of that length, so a silent balloon sits on the joined track like a spoken line. */
+    private function silence(\Illuminate\Contracts\Filesystem\Filesystem $disk, Scene $scene, float $seconds): string
+    {
+        $cached = "lessons/{$scene->lesson_id}/narration-cache/lines/silence-".(int) round($seconds * 1000).'.m4a';
+        if (! $disk->exists($cached)) {
+            $disk->makeDirectory(dirname($cached));
+            (new Process(['ffmpeg', '-y', '-v', 'error', '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=mono',
+                '-t', (string) $seconds, '-c:a', 'aac', '-b:a', '32k', '-f', 'ipod', $disk->path($cached)]))->setTimeout(60)->mustRun();
+        }
+
+        return $disk->path($cached);
+    }
+
     private static function estimate(string $text): float
     {
         return round(max(1.0, str_word_count($text) / self::WORDS_PER_SECOND), 2);
@@ -150,6 +174,15 @@ final class SceneDialogue
         $durations = [];
 
         foreach ($lines as $i => $line) {
+            // A character without a voice is a silent balloon: it holds for its reading time and only the
+            // narrator is heard (Bart, 2026-10-13: "just the narrator ... textbubbles").
+            if ($line['speaker'] !== 'narrator' && empty($cast[$line['speaker']]['voice'][$lang])) {
+                $seconds = self::readingTime($line['text']);
+                $clips[] = $this->silence($disk, $scene, $seconds);
+                $durations[] = $seconds;
+
+                continue;
+            }
             $spoken = PronunciationLexicon::apply($this->tts->prepareSpeechText($line['text']), $lang);
             if ($line['speaker'] === 'narrator') {
                 ['provider' => $provider, 'voice' => $voice] = GenerateSceneAudio::narratorVoice($scene, $spoken);
