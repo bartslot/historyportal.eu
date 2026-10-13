@@ -317,6 +317,17 @@ def shorten(obj, rig, knee_bone="mixamorig:LeftLeg", above=COAT_HEM_ABOVE_KNEE):
     obj.data.update()
 
 
+def protect_detail(o):
+    """A vertex group over the hands and the head (bones named *Hand*, Head, Neck): the decimation leaves it."""
+    groups = [g for g in o.vertex_groups if any(k in g.name for k in ("Hand", "Head", "Neck"))]
+    if not groups:
+        return None
+    ids = {g.index for g in groups}
+    keep = o.vertex_groups.new(name="keep detail")
+    keep.add([v.index for v in o.data.vertices if any(g.group in ids and g.weight > 0.2 for g in v.groups)], 1.0, "REPLACE")
+    return keep.name
+
+
 def low_poly(objs):
     """Decimate each mesh to its LOW_POLY budget in the rest pose (before the clip); weights and UVs survive."""
     for o in objs:
@@ -328,6 +339,10 @@ def low_poly(objs):
             continue
         d = o.modifiers.new("low poly", "DECIMATE")
         d.ratio = budget / faces
+        keep = protect_detail(o)
+        if keep:                         # hands and face keep their detail: decimated fingers turn to shards
+            d.vertex_group = keep
+            d.invert_vertex_group = True
         bpy.context.view_layer.objects.active = o
         while o.modifiers[0] != d:
             bpy.ops.object.modifier_move_up(modifier=d.name)

@@ -14,7 +14,7 @@ from pathlib import Path
 
 import bmesh
 import bpy
-from mathutils import Matrix, Vector
+from mathutils import Matrix, Quaternion, Vector
 
 RUFF_OUTER_M = 0.34            # outer diameter of the millstone ruff
 RUFF_DROP_M = 0.02             # its centre this far below the Neck joint (it sits on the collar bone line)
@@ -26,7 +26,8 @@ CUFF_OUTER_M = 0.15           # the wrist ruffs
 CUFF_BACK_M = 0.035           # from the wrist joint toward the elbow
 RAPIER_AT = (0.20, -0.06, -0.10)  # the hilt, from the Hips joint: the figure's left (+X), a little forward and low
 RAPIER_BLADE_DIR = (0.10, 0.33, -0.94)   # blade mostly down, a little back (+Y) and outward: a worn rapier hangs steep
-FINGER_CURL_DEG = 70
+FINGER_CURL_DEG = (45, 70, 55)   # per joint: base, middle, tip (a loose grip round a 6 cm tube)
+THUMB_CURL_SCALE = 0.45
 GRIP_BELOW_TUBE_M = 0.07     # the wrist sits this far under the tube, the curled fingers come round it
 MOUSTACHE_W_M = 0.075
 DECIMATE_TO = 1500             # faces per part at most: low poly (Bart: "low poly and toony")
@@ -398,6 +399,72 @@ def _narrow_end_first(o):
     return ax, (lo if narrow_low else hi), (hi if narrow_low else lo)
 
 
+def free_hands(rig):
+    """The idle clip keys the wrists and every finger; at render time it would overwrite the grip. Drop those
+    channels from the clip (the rest of the body keeps breathing)."""
+    act = rig.animation_data.action if rig.animation_data else None
+    if not act:
+        return 0
+    n = 0
+    for layer in getattr(act, "layers", []):
+        for strip in layer.strips:
+            for bag in strip.channelbags:
+                for fc in list(bag.fcurves):
+                    if 'Hand' in fc.data_path:            # mixamorig:LeftHand, ...HandIndex1, ...HandThumb2 ...
+                        bag.fcurves.remove(fc)
+                        n += 1
+    return n
+
+
+def hand_frame(rig, side, along, palm_to):
+    """World rotation for a hand bone so its fingers point `along` and its palm faces `palm_to` (rest frame of the
+    hand measured from the rig itself: bone direction + knuckle line)."""
+    mw3 = rig.matrix_world.to_3x3().normalized()
+    hand = rig.data.bones[f"mixamorig:{side}Hand"]
+    idx = rig.data.bones[f"mixamorig:{side}HandIndex1"]
+    pinky = rig.data.bones[f"mixamorig:{side}HandPinky1"]
+    d0 = (mw3 @ (hand.tail_local - hand.head_local)).normalized()
+    k0 = (mw3 @ (pinky.head_local - idx.head_local)).normalized()
+    p0 = d0.cross(k0).normalized() * (-1 if side == "Left" else 1)
+    r1 = d0.rotation_difference(along)
+    p_mid = r1 @ p0
+    want = (palm_to - palm_to.dot(along) * along).normalized()
+    twist = p_mid.rotation_difference(want) if p_mid.dot(want) > -0.999 else Quaternion(along, math.pi)
+    rest_world = mw3 @ hand.matrix_local.to_3x3()
+    return (twist @ r1).to_matrix() @ rest_world
+
+
+def grip(rig):
+    """Curl every finger toward its palm, about the REAL bending axis of each joint (finger direction x palm
+    normal, in the rest pose), not a guessed local axis: guessing twisted several fingers sideways. The palm normal
+    comes from the hand itself: the hand's direction crossed with the knuckle line (index base -> pinky base)."""
+    rest = {b.name: b.matrix_local.to_3x3() for b in rig.data.bones}
+    for side in ("Left", "Right"):
+        hand = rig.data.bones.get(f"mixamorig:{side}Hand")
+        idx = rig.data.bones.get(f"mixamorig:{side}HandIndex1")
+        pinky = rig.data.bones.get(f"mixamorig:{side}HandPinky1")
+        if not (hand and idx and pinky):
+            continue
+        along = (hand.tail_local - hand.head_local).normalized()
+        knuckles = (pinky.head_local - idx.head_local).normalized()
+        palm = along.cross(knuckles).normalized()
+        # the palm points away from the back of the hand: the side the finger tips bend to
+        if side == "Left":
+            palm = -palm
+        for b in rig.data.bones:
+            name = b.name.split(":")[-1]
+            if not name.startswith(f"{side}Hand") or name == f"{side}Hand" or name[-1] not in "123":
+                continue
+            joint = int(name[-1]) - 1
+            deg = FINGER_CURL_DEG[joint] * (THUMB_CURL_SCALE if "Thumb" in name else 1.0)
+            d = (b.tail_local - b.head_local).normalized()
+            axis_arm = d.cross(palm).normalized()             # armature space: tips swing toward the palm
+            axis_local = rest[b.name].inverted() @ axis_arm    # into the bone's own frame
+            pb = rig.pose.bones[b.name]
+            pb.rotation_mode = "QUATERNION"
+            pb.rotation_quaternion = Quaternion(axis_local, math.radians(deg))
+
+
 def spyglass_pose(path, rig, root, look_dir):
     """Tasman looks through the spyglass: the tube at his right eye pointing along `look_dir` (world, horizontal),
     both arms brought to it with IK (right hand near the eyepiece, left hand further along), elbows down and out.
@@ -425,7 +492,8 @@ def spyglass_pose(path, rig, root, look_dir):
                              for i in range(3)])
     o.matrix_world = Matrix.Translation(eye) @ rot @ Matrix.Scale(s, 4) @ thin @ Matrix.Translation(-eyepiece_local)
     _apply_all([o])
-    # arms: IK targets on the tube, poles below and outside the elbows
+    # arms: IK targets on the tube, poles below and outside the elbows; the clip lets go of the hands
+    print("SPYGLASS hand channels freed", free_hands(rig))
     targets = []
     for side, along, out in (("Right", RIGHT_HAND_AT_M, 1), ("Left", LEFT_HAND_AT_M, -1)):
         t = bpy.data.objects.new(f"IK {side} hand", None)
@@ -434,6 +502,15 @@ def spyglass_pose(path, rig, root, look_dir):
         pole = bpy.data.objects.new(f"IK {side} elbow", None)
         bpy.context.scene.collection.objects.link(pole)
         pole.location = mw @ rig.pose.bones[f"mixamorig:{side}Arm"].head - up * 0.45 + right * 0.35 * out
+        # palm up under the tube, fingers across it (toward the other side of the body), tilted up to wrap over
+        across = -right if side == "Right" else right
+        fingers = (across * math.cos(math.radians(25)) + up * math.sin(math.radians(25))).normalized()
+        t.rotation_mode = "QUATERNION"
+        t.rotation_quaternion = hand_frame(rig, side, fingers, up).to_quaternion()
+        hb = rig.pose.bones[f"mixamorig:{side}Hand"]
+        cr = hb.constraints.new("COPY_ROTATION")
+        cr.target = t
+        cr.target_space = cr.owner_space = "WORLD"
         pb = rig.pose.bones[f"mixamorig:{side}ForeArm"]
         c = pb.constraints.new("IK")
         c.target = t
@@ -444,11 +521,7 @@ def spyglass_pose(path, rig, root, look_dir):
         for e in (t, pole):
             e.empty_display_size = 0.05
             e.hide_render = True
-    for pb in rig.pose.bones:                                # a closed grip round the tube
-        n = pb.name.split(":")[-1]
-        if any(f in n for f in ("Index", "Middle", "Ring", "Pinky", "Thumb")) and n[-1] in "123":
-            pb.rotation_mode = "XYZ"
-            pb.rotation_euler = (math.radians(FINGER_CURL_DEG * (0.5 if "Thumb" in n else 1.0)), 0, 0)
+    grip(rig)
     bpy.context.view_layer.update()
     _parent_to_bone(o, rig, "mixamorig:RightHand")
     return o, targets
