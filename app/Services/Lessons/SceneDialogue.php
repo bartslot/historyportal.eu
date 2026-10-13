@@ -164,8 +164,9 @@ final class SceneDialogue
             if (! $disk->exists($cached)) {
                 $audio = $this->tts->generateAudioRaw($spoken, $voice, $speed, $provider)
                     ?? throw new RuntimeException("No audio for line {$i} ({$line['speaker']}, {$voice}).");
-                // The provider chain falls through silently; a cast line in someone else's voice is wrong.
-                if ($line['speaker'] !== 'narrator' && $this->tts->lastProvider() !== $provider) {
+                // The provider chain falls through silently; a line in someone else's voice is wrong. That
+                // includes the narrator: a refused ElevenLabs voice once fell back to an English default.
+                if ($this->tts->lastProvider() !== $provider) {
                     throw new RuntimeException("Line {$i} ({$line['speaker']}) came from ".($this->tts->lastProvider() ?? 'nothing').", not {$provider}.");
                 }
                 $disk->put($cached, $audio);

@@ -46,16 +46,19 @@ class NarratorSeeder extends Seeder
             'intro_video_path' => 'avatar-introductions/ron-slot/introduction.mp4',
         ],
         [
-            // The older professional Dutch narrator Bart asked for (2026-09-30); JEV chose Robin over Jeroen Hamerland (4ClinlRko5CbUgYm5jsb, 0.57 vs 0.41) for the
-            // Tasman standard lesson (2026-10-13). Voice only: no portrait or introduction film yet.
-            'slug' => 'robin-meesterverteller',
-            'name' => 'Robin',
-            'short_name' => 'Robin',
+            // The Dutch web-comic narrator (Tasman standard lesson). Chosen by MEASURED Dutch clarity, not by
+            // its label: one test sentence per Dutch ElevenLabs voice, scored by Azure nl-NL recognition
+            // (2026-10-13): Serge 0.96, Jeroen Hamerland 0.84, Wiloco 0.81, Ron Slot 0.82. "Robin
+            // Meesterverteller" (gfhheYUNVEob17HvB2wm) is refused by the API ("not fine-tuned") and fell back
+            // to an English default voice in production: never use it.
+            'slug' => 'serge-de-beer',
+            'name' => 'Serge de Beer',
+            'short_name' => 'Serge',
             'avatar_title' => 'verteller',
             'description' => 'Nederlandse verteller voor de webcomics van History Portal.',
             'subject' => 'history',
             'voice_provider' => 'elevenlabs',
-            'voice_id' => 'gfhheYUNVEob17HvB2wm',
+            'voice_id' => 'UNBIyLbtFB9k7FKW8wJv',
             'voice_speed' => 1.0,
             'voice_pitch' => 1.0,
             'presentation_mode' => 'framed',

@@ -91,7 +91,7 @@ return function (string $lang, ?array $text = null): array {
         'translation_group' => 'tasman-standard',
         'grade_level' => '7',
         'tone' => 'adventurous',
-        'avatar' => 'robin-meesterverteller',
+        'avatar' => 'serge-de-beer',
         'scenes' => $scenes,
         'cast' => array_map(
             fn (array $c): array => ['voice' => array_filter((array) ($c['voice'] ?? []), 'is_string')],

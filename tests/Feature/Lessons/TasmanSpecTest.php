@@ -21,7 +21,7 @@ class TasmanSpecTest extends TestCase
         $panels = array_sum(array_map(fn (array $s): int => count($s['panels']), $story['scenes']));
 
         $this->assertSame('nl', $spec['language']);
-        $this->assertSame('robin-meesterverteller', $spec['avatar']);
+        $this->assertSame('serge-de-beer', $spec['avatar']);
         $this->assertCount($panels + 3, $spec['scenes']);
 
         $games = array_values(array_filter($spec['scenes'], fn (array $s): bool => $s['type'] === 'team'));
