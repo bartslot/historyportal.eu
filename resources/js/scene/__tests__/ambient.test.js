@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import {
   applyAmbient, ambientSpec, AMBIENT_MODES, PERIOD_S, AMP, flashGapS, flashKeyframes, FLASH_MS,
-  claimFlash, resetFlashClock, FLASH_MIN_GAP_MS,
+  claimFlash, resetFlashClock, FLASH_MIN_GAP_MS, isWideStrip,
 } from '../ambient.js'
 import { ParallaxScene } from '../ParallaxScene.js'
 import { ArtworkOverlay } from '../ArtworkOverlay.js'
@@ -133,11 +133,51 @@ describe('world motion modes', () => {
     expect(css).toMatch(/amb-swell-scroll [^;]* linear infinite/)
   })
 
-  it('swell adds a twin of the picture for a seamless scroll, and removes it when the mode changes', () => {
+  // jsdom loads no pictures: give one a decoded size.
+  const picture = (w, h) => {
     const el = document.createElement('div')
     const img = document.createElement('img')
-    img.src = 'sea.png'
+    img.src = 'pic.png'
+    Object.defineProperty(img, 'naturalWidth', { value: w })
+    Object.defineProperty(img, 'naturalHeight', { value: h })
+    Object.defineProperty(img, 'complete', { value: true })
     el.appendChild(img)
+    return el
+  }
+
+  it('a wide strip is 2.5 times wider than tall or more', () => {
+    expect(isWideStrip(1000, 400)).toBe(true)
+    expect(isWideStrip(999, 400)).toBe(false)
+    expect(isWideStrip(800, 600)).toBe(false)
+    expect(isWideStrip(0, 0)).toBe(false)
+  })
+
+  it('swell on a ship (not a strip) only rises and falls: no twins, no clip', () => {
+    const el = picture(900, 600)
+    applyAmbient(el, { ambient: 'swell' })
+    expect(el.classList.contains('amb-swell')).toBe(true)
+    expect(el.classList.contains('amb-swell-strip')).toBe(false)
+    expect(el.querySelector('img.amb-twin')).toBeNull()
+    const css = document.getElementById('amb-styles').textContent
+    expect(css).not.toMatch(/\.amb-swell \{[^}]*overflow/)
+    expect(css).toMatch(/\.amb-swell-strip \{ overflow: hidden; \}/)
+  })
+
+  it('swell on a picture still loading decides once it has loaded', () => {
+    const el = document.createElement('div')
+    const img = document.createElement('img')
+    el.appendChild(img)
+    applyAmbient(el, { ambient: 'swell' })
+    expect(el.querySelector('img.amb-twin')).toBeNull()
+    Object.defineProperty(img, 'naturalWidth', { value: 3000 })
+    Object.defineProperty(img, 'naturalHeight', { value: 400 })
+    img.dispatchEvent(new Event('load'))
+    expect(el.classList.contains('amb-swell-strip')).toBe(true)
+    expect(el.querySelectorAll('img.amb-twin')).toHaveLength(2)
+  })
+
+  it('swell adds a twin of the picture for a seamless scroll, and removes it when the mode changes', () => {
+    const el = picture(3000, 400)
 
     applyAmbient(el, { ambient: 'swell' })
     // A mirrored copy (so any painted strip joins without a seam), then the original again (so the
@@ -153,6 +193,7 @@ describe('world motion modes', () => {
 
     applyAmbient(el, { ambient: 'roll' })
     expect(el.querySelector('img.amb-twin')).toBeNull()
+    expect(el.classList.contains('amb-swell-strip')).toBe(false)
   })
 
   it('flash waits a random gap of 0.4x to 1.6x the period', () => {
