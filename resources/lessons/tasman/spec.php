@@ -60,15 +60,18 @@ return function (string $lang, ?array $text = null): array {
                     + (isset($panel['mouths']) ? ['speaks' => $panel['mouths']] : []);
             }
 
+            $backdrop = $ref($panel['plate'], 'backdrops');
+            // A camera needs a picture to move over; a panel still being painted plays without one.
+            $pictured = $backdrop !== null || $layers !== [];
             $panels[$scene['id']][] = array_filter([
                 'type' => 'story',
                 'chapter' => $words['title'],
                 'location' => $words['date_ui'] ?: null,
-                'backdrop' => $ref($panel['plate'], 'backdrops'),
+                'backdrop' => $backdrop,
                 'layers' => $layers ?: null,
                 'lines' => $lines ?: [['narrator', $words['title']]],
-                'camera' => $panel['camera'] ?? null,
-                'entry' => $panel['entry'] ?? null,
+                'camera' => $pictured ? ($panel['camera'] ?? null) : null,
+                'entry' => $pictured ? ($panel['entry'] ?? null) : null,
             ], fn ($v): bool => $v !== null);
         }
     }
