@@ -239,6 +239,31 @@ export function bowScale (foam, speed) {
 }
 
 /**
+ * Pure: where the hull meets the water, across the picture: the first and last opaque column in
+ * the rows just above the waterline (fractions 0..1 of the picture's width). The picture's box
+ * also holds a bowsprit, flags and oars; the foam belongs at the HULL, not at the box's edge.
+ * @returns {number[]|null} [stern, bow], or null when nothing is opaque there
+ */
+export function hullSpan (pixels, line) {
+  if (!pixels) return null
+  const { data, width, height } = pixels
+  const y1 = Math.min(height - 1, Math.round(line * height) - 1)
+  const y0 = Math.max(0, y1 - Math.max(1, Math.round(height * 0.06)))
+  let x0 = width; let x1 = -1
+  for (let y = y0; y <= y1; y++) {
+    for (let x = 0; x < width; x++) {
+      if (data[(y * width + x) * 4 + 3] < 128) continue
+      if (x < x0) x0 = x
+      if (x > x1) x1 = x
+    }
+  }
+  return x1 < 0 ? null : [round(x0 / width), round((x1 + 1) / width)]
+}
+
+/** Where the hull is assumed to be until (or if) the picture can be read. */
+const HULL_GUESS = [0.06, 0.94]
+
+/**
  * Pure: the wake at a speed: for each patch, how strongly it shows (more patches appear as the
  * boat speeds up, the later ones fainter) and how far it drifts back (in its own widths).
  * @returns {{op: number, run: number}[]}
@@ -247,7 +272,7 @@ export function wakePlan (foam, speed, n = SIT.wakePatches) {
   const v = clamp01(speed)
   const count = Math.max(0, Math.round(n))
   return Array.from({ length: count }, (_, i) => ({
-    op: round(clamp01(v * count - i) * clamp01(foam) * (1 - i / (count + 2)), 3),
+    op: round(clamp01(v * count - i) * (clamp01(foam) > 0 ? 1 : 0) * (1 - i / (count + 2)), 3),
     run: round(1.5 + SIT.wakeRun * v, 2),
   }))
 }
@@ -350,7 +375,8 @@ function injectStyles () {
  * @param {HTMLElement} body   the moving wrapper holding the picture (ambient motion)
  * @param {HTMLImageElement} img
  * @param {object} item        the layer: the four keys, url, width
- * @param {{around?: number[], below?: number[]}|null} colours  sampled, or null for the fallback
+ * @param {{around?: number[], below?: number[], hull?: number[]}|null} colours  sampled (hull: the
+ *        picture's [stern, bow] at the waterline, see hullSpan), or null for the fallback
  * @returns {object|null} the spec drawn
  */
 export function renderSitIn (node, body, img, item, colours = null) {
@@ -369,7 +395,7 @@ export function renderSitIn (node, body, img, item, colours = null) {
     img.style.setProperty('--sit-drift', `${SIT.waveDriftS}s`)
   }
 
-  if (spec.foam > 0) drawFoam(body, item, spec, line, below)
+  if (spec.foam > 0) drawFoam(body, item, spec, line, below, colours)
 
   if (spec.contact_shadow > 0) {
     const h = SIT.shadowHeight * 100
@@ -408,7 +434,7 @@ export function renderSitIn (node, body, img, item, colours = null) {
  * The foam: the hull band, the bow wave (right side: the bow) and the wake patches behind the
  * stern. Inside the moving wrapper, so all of it rides the bob / roll / swell with the hull.
  */
-function drawFoam (body, item, spec, line, below) {
+function drawFoam (body, item, spec, line, below, colours) {
   const { fill, rim } = foamColours(below)
   const top = round(line * 100, 2)
   const add = (cls, css) => {
@@ -421,15 +447,17 @@ function drawFoam (body, item, spec, line, below) {
   }
   if (!body.style.position) body.style.position = 'relative'
 
-  const h = SIT.foamHeight * 100
-  const band = add('sit-foam', `left:-3%; width:106%; height:${h}%; top:calc(${top}% - ${h / 2}%);
-    background-color:${rgbCss(fill)}; background-image:${foamLines(rim)}; mask-image:${foamShape()}; opacity:${spec.foam};`)
+  // Crisp, never translucent: more foam makes the band fuller, not more opaque.
+  const [stern, bow] = (colours?.hull ?? HULL_GUESS).map(v => round(v * 100, 2))
+  const h = round(SIT.foamHeight * 100 * (0.5 + 0.5 * spec.foam), 2)
+  const band = add('sit-foam', `left:${round(stern - 2, 2)}%; width:${round(bow - stern + 4, 2)}%; height:${h}%; top:calc(${top}% - ${h / 2}%);
+    background-color:${rgbCss(fill)}; background-image:${foamLines(rim)}; mask-image:${foamShape()};`)
   band.style.setProperty('--sit-churn', `${SIT.foamChurnPx}px`)
 
   // Sized by --sit-bow-k (applyFoamSpeed), so a speed change restyles it in place.
   const bw = SIT.bowWidth * 100
   const bh = SIT.bowHeight * 100
-  add('sit-bow', `left:calc(100% - var(--sit-bow-k, 0) * ${round(bw * 0.35, 2)}%); width:calc(var(--sit-bow-k, 0) * ${bw}%);
+  add('sit-bow', `left:calc(${bow}% - var(--sit-bow-k, 0) * ${round(bw * 0.35, 2)}%); width:calc(var(--sit-bow-k, 0) * ${bw}%);
     height:calc(var(--sit-bow-k, 0) * ${bh}%); top:calc(${top}% - var(--sit-bow-k, 0) * ${round(bh * 0.85, 2)}%);
     background-image:${bowWave(fill, rim)};`)
 
@@ -439,7 +467,7 @@ function drawFoam (body, item, spec, line, below) {
   for (let i = 0; i < n; i++) {
     const w = round(7 - (i % 3), 2)
     const side = i % 2 ? 1 : -1
-    const wake = add('sit-wake', `left:-${round(w * 0.6, 2)}%; width:${w}%; height:${round(w * 0.4, 2)}%;
+    const wake = add('sit-wake', `left:${round(stern - w * 0.6, 2)}%; width:${w}%; height:${round(w * 0.4, 2)}%;
       top:calc(${top}% - ${round(w * 0.2, 2)}%); background-image:${wakePatch(fill, rim, i)};
       animation-delay:calc(var(--amb-dur, 6s) * ${round(-1.4 * i / n, 3)});`)
     wake.style.setProperty('--sit-wake-side', String(side))

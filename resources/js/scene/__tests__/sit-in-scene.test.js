@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import {
   sitSpec, coverToImage, sampleBoxes, averageRgb, washMatrix, shade, waveMask, rippleMask,
-  sampleColours, renderSitIn, foamColours, foamShape, bowWave, wakePatch, bowScale, foamLines, wakePlan, applyFoamSpeed,
+  sampleColours, renderSitIn, foamColours, foamShape, bowWave, wakePatch, bowScale, foamLines, wakePlan, applyFoamSpeed, hullSpan,
 } from '../sit-in-scene.js'
 import { filterMarkup } from '../layer-filters.js'
 import { ArtworkOverlay, layersSignature } from '../ArtworkOverlay.js'
@@ -130,14 +130,14 @@ describe('foam', () => {
 
     renderSitIn(node, body, img, { asset_id: 1, foam: 0.5, waterline: 0.2, speed: 1 }, { below: [10, 20, 40] })
     const band = body.querySelector('.sit-foam')
-    expect(parseFloat(band.style.top.replace('calc(', ''))).toBeCloseTo(80 - 3.5)
-    expect(band.style.opacity).toBe('0.5')
+    expect(parseFloat(band.style.top.replace('calc(', ''))).toBeCloseTo(80 - 2.625)   // the band (7% x 0.75 at foam 0.5) centred on the line
+    expect(band.style.opacity).toBe('')   // crisp: amount makes it fuller, never translucent
     expect(body.querySelector('.sit-bow')).not.toBeNull()
     expect(body.querySelectorAll('.sit-wake').length).toBeGreaterThan(1)
     expect(body.style.position).toBe('relative')
 
     renderSitIn(node, body, img, { asset_id: 1, foam: 0.5 })
-    expect(parseFloat(body.querySelector('.sit-foam').style.top.replace('calc(', ''))).toBeCloseTo(100 - 3.5)
+    expect(parseFloat(body.querySelector('.sit-foam').style.top.replace('calc(', ''))).toBeCloseTo(100 - 2.625)
     expect(body.style.getPropertyValue('--sit-bow-k')).toBe('0')   // speed 0: at anchor
 
     renderSitIn(node, body, img, { asset_id: 1 })
@@ -155,6 +155,25 @@ describe('foam', () => {
     expect(body.querySelector('.sit-wake')).toBe(first)
     expect(Number(first.style.getPropertyValue('--sit-wake-op'))).toBeGreaterThan(0)
     expect(Number(body.style.getPropertyValue('--sit-bow-k'))).toBe(1)
+  })
+
+  it('finds the hull at the waterline, not the bowsprit or flags past it', () => {
+    // 10 x 10: rows 0-5 a wide rig (cols 0-9), rows 6-9 the hull (cols 2-7).
+    const data = new Uint8ClampedArray(400)
+    for (let y = 0; y < 10; y++) {
+      for (let x = 0; x < 10; x++) if (y < 6 || (x >= 2 && x <= 7)) data[(y * 10 + x) * 4 + 3] = 255
+    }
+    const px = { data, width: 10, height: 10 }
+    expect(hullSpan(px, 0.9)).toEqual([0.2, 0.8])
+    expect(hullSpan(px, 0.5)).toEqual([0, 1])
+    expect(hullSpan({ data: new Uint8ClampedArray(400), width: 10, height: 10 }, 1)).toBeNull()
+    expect(hullSpan(null, 1)).toBeNull()
+
+    const node = document.createElement('div'); const body = document.createElement('div'); const img = document.createElement('img')
+    body.appendChild(img); node.appendChild(body)
+    renderSitIn(node, body, img, { asset_id: 1, foam: 1, speed: 1 }, { below: [9, 9, 9], hull: [0.2, 0.8] })
+    expect(body.querySelector('.sit-foam').style.left).toBe('18%')
+    expect(body.querySelector('.sit-bow').style.left).toContain('80%')
   })
 
   it('stops churning under reduced motion', () => {
