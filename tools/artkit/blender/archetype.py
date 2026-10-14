@@ -51,6 +51,13 @@ SKIRT_CLEAR_M = 0.02        # skirt top beyond the coated waist
 CUFF_CLEAR_M = 0.02         # cuffs and boot tops beyond the measured girth
 TORSO_MAX_M = 0.25          # half-width limit for torso sections (beyond it are the T-posed arms)
 FACE_RELAX = 30             # passes spreading the flattened face's folded vertices
+NOSE_LEN_M = 0.05           # the sculpted nose: tip this far below the eye line,
+NOSE_ABOVE_EYES_M = 0.008   # bridge this far above it,
+NOSE_DEPTH_M = 0.024        # tip this far out of the face,
+NOSE_BRIDGE_W_M = 0.007     # half-width at the bridge and
+NOSE_TIP_W_M = 0.015        # at the tip;
+NOSE_SIDE_POWER = 0.6       # < 1: steep sides (the shade step and Line Art need an edge to show)
+NOSE_TUCK = 0.2             # the underside, as a fraction of its length
 FACE_WIDTH = 0.75           # the flattened face spans this fraction of the head's half-width (socket rims too)
 FACE = "neutral_moustache"  # the captain's face decal (face_decal.py output name)
 NECK_MAX_M = 0.09           # half-width limit when measuring the neck (beyond it are the shoulders)
@@ -108,10 +115,39 @@ def coat_above_belt(body, zones, waist):
             w["coat"] = w.get("coat", 0) + w.pop("breeches")
 
 
-def flatten_face(body):
+def sculpt_nose(body, eye_z):
+    """A simple drawn-style nose on the flat face (Bart: "nose is missing, sculpt a nose"): the face area gets two
+    extra cuts so the shape is not blocky, then the surface is raised along a nose profile: narrow at the bridge,
+    widest and furthest out at the tip, tucked in under it. Base step: done once, in the base file."""
+    me = body.data
+    head = body.vertex_groups["mixamorig:Head"].index
+    xs = [v.co.x for v in me.vertices if any(g.group == head and g.weight > 0.6 for g in v.groups)]
+    cx = (min(xs) + max(xs)) / 2
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    near = lambda p: abs(p.x - cx) < 0.045 and eye_z - NOSE_LEN_M - 0.03 < p.z < eye_z + 0.03 and p.y < 0
+    edges = [e for e in bm.edges if all(near(v.co) for v in e.verts)]
+    bmesh.ops.subdivide_edges(bm, edges=edges, cuts=2, use_grid_fill=True)
+    for v in bm.verts:
+        t = (eye_z + NOSE_ABOVE_EYES_M - v.co.z) / (NOSE_LEN_M + NOSE_ABOVE_EYES_M)   # 0 at the bridge, 1 at the tip
+        if t < 0 or t > 1 + NOSE_TUCK or v.co.y > 0:
+            continue
+        depth = NOSE_DEPTH_M * (0.25 + 0.75 * min(t, 1) ** 1.5)
+        if t > 1:                                        # under the tip: back into the face
+            depth *= 1 - (t - 1) / NOSE_TUCK
+        half = NOSE_BRIDGE_W_M + (NOSE_TIP_W_M - NOSE_BRIDGE_W_M) * min(t, 1)
+        across = max(0.0, 1 - ((v.co.x - cx) / half) ** 2)
+        v.co.y -= depth * across ** NOSE_SIDE_POWER
+    bm.to_mesh(me)
+    bm.free()
+    me.update()
+
+
+def flatten_face(body, eye_z):
     """A plain egg for a face: the front of the head goes onto an ellipsoid fitted to the head, so the sculpted
-    sockets, nose and lips are gone and the 2D face sits on a calm surface; faded out towards the cheeks, so the
-    sides and the jaw keep their shape. By position, not normal: the socket rims face sideways."""
+    sockets, nose and lips are gone and the 2D face sits on a calm surface (sculpt_nose then adds a clean nose);
+    faded out towards the cheeks, so the sides and the jaw keep their shape. By position, not normal: the socket
+    rims face sideways."""
     head = body.vertex_groups["mixamorig:Head"].index
     me = body.data
     pts = [v for v in me.vertices if any(g.group == head and g.weight > 0.6 for g in v.groups)]
@@ -493,7 +529,8 @@ def prepare_base(src, out):
     new = _import(src)
     rig = next(o for o in new if o.type == "ARMATURE")
     body = base_body(new, rig)
-    flatten_face(body)
+    flatten_face(body, eye_line(rig))
+    sculpt_nose(body, eye_line(rig))
     face_uv(body, eye_line(rig))
     bpy.ops.object.select_all(action="DESELECT")
     rig.select_set(True)
@@ -556,12 +593,14 @@ def stage():
     sun.rotation_euler = (-to_light).to_track_quat("-Z", "Y").to_euler()
 
 
-def close_up(sc, path):
-    """The head at 1:1 (the 2D face decal must read in a close shot), then the camera goes back."""
+def close_up(sc, path, side=False):
+    """The head at 1:1 (the 2D face decal must read in a close shot), then the camera goes back.
+    side: in profile, from the figure's left (the nose's shape)."""
     cam = sc.camera
     keep = (cam.location.copy(), cam.data.lens)
     head = Vector((0, -0.05, 1.72))
-    cam.location = head + (keep[0] - Vector((0, 0, 1.0))).normalized() * 1.2
+    look_from = Vector((1, -0.15, 0.05)) if side else keep[0] - Vector((0, 0, 1.0))
+    cam.location = head + look_from.normalized() * 1.2
     cam.rotation_euler = (head - cam.location).to_track_quat("-Z", "Y").to_euler()
     cam.data.lens = 85
     sc.render.filepath = str(path)
@@ -594,6 +633,7 @@ def main():
     sc = bpy.context.scene
     shots = []
     close_up(sc, out / f"{name}_face.png")
+    close_up(sc, out / f"{name}_face_side.png", side=True)
     for i, cw in enumerate(COLOURWAYS):
         dress(figure + hat, cw, faces / (f"face_{FACE}.png" if i % 2 == 0 else f"face_{FACE.replace('neutral', 'smile')}.png"))
         for h in hat:
