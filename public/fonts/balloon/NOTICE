@@ -1,0 +1,26 @@
+ComicRoma Balloon SemiBold
+==========================
+
+ComicRoma Balloon is a modified version of Coming Soon 1.002.
+
+  Coming Soon: Copyright (c) 2010 by Open Window. All rights reserved.
+  Designer: Dathan Boardman (Open Window). Licensed under the Apache License, Version 2.0
+  (see LICENSE). Coming Soon is a trademark of Open Window; this modified font does not use that
+  name.
+
+  Source file: ComingSoon-Regular.ttf from https://github.com/google/fonts, apache/comingsoon,
+  commit 0fc4c4f4a270a62fa1b769c7289a994cbf199b03,
+  sha256 cf81388f587ff6122de1a705d1070b8f00abccdba66108509908b5d10715068c.
+
+Changes (2026-10-14, Bart Slot, for History Portal's speech balloons):
+
+  - Every glyph outline offset outward by 7 units a side (UPM 1000) with a round brush, so stems
+    go from about 55 to about 69 units (+25%): a SemiBold (usWeightClass 600).
+  - Outlines rendered and retraced (potrace): overlaps removed, contour direction corrected.
+  - Units per em changed from 1024 to 1000; vertical metrics scaled to match.
+  - Side bearings: the original's, plus 8.5 units a side for the heavier ink.
+  - Kerning: the original 861 GPOS pairs, kept and scaled to UPM 1000. The legacy kern table
+    and the TrueType hinting are not carried over.
+  - Renamed to "ComicRoma Balloon".
+
+Build: branding/historyportalBranding/font-build/balloon (make.sh, balloon.py).

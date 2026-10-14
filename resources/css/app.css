@@ -487,7 +487,7 @@
     font-display: swap;
 }
 
-/* ─── Comic Neue (OFL): speech balloon lettering (BalloonLayer.js) ─── */
+/* ─── Comic Neue (OFL): the speech balloons' fallback while ComicRoma Balloon loads ─── */
 @font-face {
     font-family: 'Comic Neue';
     src: url('/fonts/ComicNeue/ComicNeue-Regular.ttf') format('truetype');
@@ -503,6 +503,17 @@
     font-display: swap;
 }
 
+/* ─── ComicRoma Balloon SemiBold: the speech balloons' lettering. Coming Soon (Apache 2.0) with
+   every outline offset ~25% heavier, built in branding/historyportalBranding/font-build/balloon;
+   LICENSE + NOTICE in public/fonts/balloon. Preloaded by the player only when a lesson has balloons. */
+@font-face {
+    font-family: 'ComicRoma Balloon';
+    src: url('/fonts/balloon/ComicRomaBalloon-SemiBold.woff2') format('woff2');
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+
 /* Speech balloons: white paper, ink outline, no name tag (the tail says who speaks). Sizes are
    set in JS from the stage width, so a balloon keeps its proportion on a phone and a board. */
 .lp-balloon { position: absolute; inset: 0; pointer-events: none; }
@@ -513,8 +524,8 @@
     color: #1b1712;
     border: 2px solid #1b1712;
     border-radius: 1.4em;
-    font-family: 'Comic Neue', 'Comic Relief', 'Comic Sans MS', ui-rounded, sans-serif;
-    font-weight: 700;
+    font-family: 'ComicRoma Balloon', 'Comic Neue', 'Comic Sans MS', ui-rounded, sans-serif;
+    font-weight: 600;
     line-height: 1.22;
     text-align: center;
     text-wrap: balance;

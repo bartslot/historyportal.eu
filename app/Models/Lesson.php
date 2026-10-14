@@ -881,6 +881,15 @@ class Lesson extends Model
         return ! empty($this->slideshow_images);
     }
 
+    /**
+     * Whether any scene speaks in balloons (config.lines, drawn by BalloonLayer.js): the player
+     * preloads the balloon font only then.
+     */
+    public function hasBalloons(): bool
+    {
+        return $this->scenes->contains(fn (Scene $scene) => ! empty($scene->config['lines'] ?? null));
+    }
+
     // ── Status helpers ───────────────────────────────────────────────────────
 
     public function isReady(): bool

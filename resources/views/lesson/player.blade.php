@@ -21,6 +21,10 @@
              a cover whose recipe picks ComicRoma loads that face on demand. --}}
         <link rel="preload" href="{{ asset('fonts/comic-lettering/ComicRomaLettering-Bold.woff2') }}" as="font" type="font/woff2" crossorigin>
     @endif
+    @if ($lesson->hasBalloons())
+        {{-- Speech balloon lettering (app.css @font-face 'ComicRoma Balloon'). --}}
+        <link rel="preload" href="{{ asset('fonts/balloon/ComicRomaBalloon-SemiBold.woff2') }}" as="font" type="font/woff2" crossorigin>
+    @endif
 </head>
 <body class="h-full overflow-hidden bg-[#020617]">
 {{-- LessonPlayerController switches the locale to the lesson's language when the interface ships
