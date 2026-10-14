@@ -5,7 +5,7 @@
 
   1 enable Rigify                        2 add the Human metarig
   3 fit the metarig to the body: every joint MEASURED from the body pieces (limb pieces are boxes along their local
-    Z axis: their two end faces are the joints), face and finger bones deleted (a PS1 hand is one block)
+    Z axis: the mesh's extent along it gives the joints), face and finger bones deleted (a PS1 hand is one block)
   4 Generate Rig                         5 apply the mirrors, parent the pieces to the rig with automatic weights
   6 a test pose through the rig's own controls (IK hand up, foot forward, head turned), rendered to POSE.png
 
@@ -32,9 +32,14 @@ def args():
 
 
 def ends(o):
-    """World positions of a limb box's two end faces (local Z = -1 and +1), upper end first."""
+    """World positions of a limb box's two ends along its local Z axis: the mesh's own extent along that axis
+    (not +-1: the shin block does not span its unit cube), at the centre of its cross-section. Upper end first."""
+    co = [v.co for v in o.data.vertices]
+    cx = sum(c.x for c in co) / len(co)
+    cy = sum(c.y for c in co) / len(co)
     mw = o.matrix_world
-    a, b = mw @ Vector((0, 0, 1)), mw @ Vector((0, 0, -1))
+    a = mw @ Vector((cx, cy, max(c.z for c in co)))
+    b = mw @ Vector((cx, cy, min(c.z for c in co)))
     return (a, b) if a.z > b.z else (b, a)
 
 
