@@ -28,6 +28,11 @@ import { sceneTransitionFrames, easingBezier, EASINGS } from './scene/animations
 import { readProgress, saveProgress, clearProgress, canResume } from './scene/progress-store.js'
 
 // Easing key → cubic-bezier, for the scene transition set in the wizard's Animate tab.
+// Player chrome idle timing (Bart 2026-10-14: "auto hide when the mouse doesn't move after 1
+// second"). Fade in fast, fade out slower: appearing answers the hand, leaving should not snap.
+// The bands are where the top bar and the deck sit. Live knobs: Test tools → Settings → Player.
+const CHROME_IDLE = { idleMs: 1000, fadeInMs: 150, fadeOutMs: 400, topBandPx: 88, bottomBandPx: 176 }
+
 const SCENE_EASINGS = Object.fromEntries(EASINGS.map(e => [e.key, easingBezier(e.key)]))
 
 // How long the challenge clock owns the middle of the stage before it shrinks to the corner HUD.
@@ -214,9 +219,21 @@ Alpine.data('lessonGame', (lesson) => ({
     // The big centre play/pause glyph. It answers a press — it is not a state light. It used to
     // show whenever nothing happened to be playing, which on an interactive scene (a voyage
     // landfall waiting for the class) meant a 96px triangle parked over the map for as long as
-    // anyone looked at it. Now: it flashes when the student presses play or pause, and it stays up
-    // while the lesson is actually paused. Nothing else brings it back.
+    // anyone looked at it. Now: it flashes when the student presses play or pause, it stays up
+    // while the lesson is actually paused, and while playing it rides with the idling chrome.
     playbackGlyph: false,
+    // Player chrome idles the way Netflix and YouTube do: any pointer move, tap or key wakes it,
+    // and while the lesson plays it fades away again after CHROME_IDLE.idleMs of stillness — the
+    // cursor with it. It stays while the pointer rests on the top/bottom edge bands (that is where
+    // the controls are), while keyboard focus is inside them, and while a menu is open. Paused,
+    // waiting on the class, or reading: never hidden by idleness. See `chromeHidden`.
+    chromeAwake: false,
+    zoneHover: false,       // a mouse resting over the top or bottom band, where the controls live
+    chromeFocus: false,     // keyboard focus is inside the player chrome
+    chromeIdleMs: CHROME_IDLE.idleMs,
+    chromeFadeInMs: CHROME_IDLE.fadeInMs,
+    chromeFadeOutMs: CHROME_IDLE.fadeOutMs,
+    _chromeTimer: null,
     readingOverlay: false,  // a gallery/reading surface owns the screen → the player shows no chrome
     // The stage-wide shade that darkens every backdrop (a painting or photo reads as a lit screen
     // without it). Line art is ink on white paper: shaded, it turns a flat grey while the figures
@@ -408,6 +425,7 @@ Alpine.data('lessonGame', (lesson) => ({
       // Attach keyboard listeners for audio controls
       this._attachKeyboardListeners()
       this._attachStagePause()
+      this._registerChromeTuner()
 
       // new Audio() objects play independently of the DOM, so without explicit
       // teardown the narration keeps playing after the user leaves the page —
@@ -2412,10 +2430,52 @@ Alpine.data('lessonGame', (lesson) => ({
      * keeps it on for as long as `playbackPaused` is). On resume it fades out on its own.
      */
     _flashPlaybackGlyph () {
+      // Always on a timer, paused or not: the view keeps the glyph up for as long as
+      // `playbackPaused` is true, so the flag never has to. Leaving it true on a pause is how the
+      // pause bars got stuck over every later scene — a chapter jump clears `playbackPaused`
+      // directly and nothing was left to clear this.
       this.playbackGlyph = true
       clearTimeout(this._glyphTimer)
-      if (this.playbackPaused) return          // a pause is a state worth showing — leave it up
       this._glyphTimer = setTimeout(() => { this.playbackGlyph = false }, 700)
+    },
+
+    /** True when the player chrome (top bar, deck, scrims, centre glyph) is faded out. */
+    get chromeHidden () {
+      if (this.readingOverlay) return true
+      if (this.currentIsGame) return false     // a quiz or game card is on screen: the class is working
+      return this.isPlaying && !this.chromeAwake && !this.zoneHover && !this.chromeFocus && !this.chaptersOpen
+    },
+
+    /** The centre glyph: up while paused, for a moment after a press, and with the chrome while playing. */
+    get centreGlyphShown () {
+      if (this.readingOverlay) return false
+      return this.playbackPaused || this.playbackGlyph || (this.isPlaying && !this.chromeHidden)
+    },
+
+    /** Any pointer move, tap or key: show the chrome and restart the idle countdown. */
+    wakeChrome () {
+      this.chromeAwake = true
+      clearTimeout(this._chromeTimer)
+      this._chromeTimer = setTimeout(() => { this.chromeAwake = false }, this.chromeIdleMs)
+    },
+
+    /** Mouse over the top or bottom band keeps the chrome up. A touch has no hover to end it, so it never counts. */
+    probeZones (e) {
+      this.wakeChrome()
+      const z = e.pointerType !== 'touch'
+        && (e.clientY <= CHROME_IDLE.topBandPx || e.clientY >= window.innerHeight - CHROME_IDLE.bottomBandPx)
+      if (z !== this.zoneHover) this.zoneHover = z
+    },
+
+    _registerChromeTuner () {
+      window.__tune?.register('Player chrome', [
+        { key: 'idleMs', label: 'Hide after idle (ms)', min: 300, max: 5000, step: 100, value: CHROME_IDLE.idleMs,
+          apply: (v) => { this.chromeIdleMs = v } },
+        { key: 'fadeInMs', label: 'Fade in (ms)', min: 0, max: 1000, step: 10, value: CHROME_IDLE.fadeInMs,
+          apply: (v) => { this.chromeFadeInMs = v } },
+        { key: 'fadeOutMs', label: 'Fade out (ms)', min: 0, max: 1500, step: 10, value: CHROME_IDLE.fadeOutMs,
+          apply: (v) => { this.chromeFadeOutMs = v } },
+      ], { tab: 'Player' })
     },
 
     setPlaybackPaused (pause) {
@@ -2652,10 +2712,16 @@ Alpine.data('lessonGame', (lesson) => ({
         return false
       }
 
+      // A tap on a touch screen with the chrome faded out only brings the chrome back, the way a
+      // phone video player does; the next tap (or the centre glyph) pauses. Read before the
+      // window's own pointerdown wakes it — the stage listener runs first on the way up.
+      let wakeOnly = false
+
       stage.addEventListener('pointerdown', (e) => {
         startX = e.clientX
         startY = e.clientY
         startT = performance.now()
+        wakeOnly = e.pointerType === 'touch' && this.chromeHidden
       })
 
       stage.addEventListener('pointerup', (e) => {
@@ -2665,6 +2731,7 @@ Alpine.data('lessonGame', (lesson) => ({
         if (Math.hypot(e.clientX - startX, e.clientY - startY) > DRAG_SLOP_PX) return  // a map pan
         if (performance.now() - startT > HOLD_MS) return                               // a press-and-hold
         if (isControl(e.target)) return
+        if (wakeOnly) return
 
         this.togglePlayback()
       })

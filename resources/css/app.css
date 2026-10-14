@@ -1916,3 +1916,20 @@ html[data-inspector-w] aside[data-resizable-drawer] {
 .maplibregl-ctrl.maplibregl-ctrl-attribution {
     display: none !important;
 }
+
+/* ── Lesson player chrome idle ─────────────────────────────────────────────────
+   The top bar, deck, scrims and centre glyph fade together; --chrome-fade is set on
+   #lesson-stage (fast in, slower out, tunable under Test tools). Enter decelerates, exit
+   accelerates away. Reduced motion: no fade, just there or not. */
+.lp-chrome-fade {
+    transition-property: opacity, translate, transform;
+    transition-duration: var(--chrome-fade, 300ms);
+    transition-timing-function: var(--ease-enter);
+}
+[data-chrome-idle="true"] .lp-chrome-fade { transition-timing-function: var(--ease-exit); }
+@media (prefers-reduced-motion: reduce) {
+    .lp-chrome-fade { transition: none; }
+}
+/* The cursor idles with the chrome. !important beats MapLibre's grab cursor on the canvas. */
+[data-chrome-idle="true"],
+[data-chrome-idle="true"] * { cursor: none !important; }
