@@ -101,6 +101,9 @@ export const DEFAULTS = {
     warpSpread: 1,
     warpFirstGap: 1.4,
     warpCadence: 0.9,
+    // The wheel layer is hidden until its layout is final, then fades in once (see fadeInWheel).
+    wheelFade: 0.9, // seconds
+    wheelDelay: 0.1, // seconds after the layout settles
     variant: DEFAULT_VARIANT,
 };
 
@@ -484,6 +487,35 @@ const buildStoryboard = (root, warp, settings) => {
     return master;
 };
 
+/**
+ * Resolves once nothing about the wheel's position can still change: webfonts are in (the text the
+ * hero centres around reflows when they land) and two frames have been drawn, so the canvas has
+ * measured itself and painted the ring at its final size. Measured on a cold load (2026-10-14):
+ * the flat wheel picture painted at t≈120ms, the drawn ring replaced it at t≈400ms and fonts
+ * landed at t≈650ms. Anything visible before the last of those is visible moving.
+ */
+const layoutSettled = async () => {
+    await document.fonts?.ready;
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+};
+
+/** The wheel arrives once, already in its seat. */
+const fadeInWheel = (root, settings) => {
+    const layer = root.querySelector('[data-hero-wheel]');
+
+    if (!layer) {
+        return;
+    }
+
+    gsap.killTweensOf(layer);
+    gsap.fromTo(layer, { opacity: 0 }, {
+        opacity: 1,
+        duration: settings.wheelFade,
+        delay: settings.wheelDelay,
+        ease: GSAP_EASE.enter,
+    });
+};
+
 /** Jump the whole hero to its finished state — reduced motion, or a visitor who skipped. */
 const showFinalState = (root) => {
     const { conversation, reveal, revealItems } = heroParts(root);
@@ -491,6 +523,8 @@ const showFinalState = (root) => {
     gsap.set(conversation, { autoAlpha: 0 });
     gsap.set(reveal, { autoAlpha: 1 });
     gsap.set(revealItems, { autoAlpha: 1, y: 0, scale: 1 });
+    // The wheel layer waits hidden under .js-hero-demo; with no animation to wait for, show it.
+    gsap.set(root.querySelector('[data-hero-wheel]'), { opacity: 1 });
     markRevealed(root);
 };
 
@@ -551,6 +585,7 @@ export const setupHeroLessonDemo = async () => {
     }
 
     let master = null;
+    let settled = null;
 
     const start = () => {
         master?.heroCaretPulse?.kill();
@@ -563,6 +598,11 @@ export const setupHeroLessonDemo = async () => {
 
         master = buildStoryboard(root, warp, settings);
         master.timeScale(settings.timeScaleStart).play();
+
+        // Waited for once, on the real load; a dev replay fades straight in so the timing can be judged.
+        settled ??= layoutSettled();
+        gsap.set(root.querySelector('[data-hero-wheel]'), { opacity: 0 });
+        settled.then(() => fadeInWheel(root, settings));
 
         return master;
     };
