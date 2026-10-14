@@ -34,6 +34,8 @@ SKIRT_FOLLOW = 0.85         # how much of the hem follows the thigh (the rest st
 HAT_BAND_ABOVE_EYES_M = 0.075   # the hat band sits on the forehead this far above the eye line
 HAT_CROWN_M = (0.13, 0.025)     # crown height, and how much narrower its top is than its band
 HAT_BRIM_M = 0.075              # brim beyond the band
+BELT_TUCK_M = 0.04          # the coat colour reaches this far below the belt line (under the belt, no gap)
+TORSO_MAX_M = 0.2           # half-width limit when measuring the chest (beyond it are the T-posed arms)
 NECK_MAX_M = 0.09           # half-width limit when measuring the neck (beyond it are the shoulders)
 HAIRLINE_M = 0.05           # hair starts this far above the eye line on the forehead
 
@@ -81,6 +83,13 @@ def vertex_zones(body):
                 w[z] = w.get(z, 0) + g.weight
         out.append(w)
     return out
+
+
+def coat_above_belt(body, zones, waist):
+    """The coat covers everything of the torso above the belt (the hip bone reaches up to the stomach)."""
+    for v, w in zip(body.data.vertices, zones):
+        if v.co.z > waist - BELT_TUCK_M and "breeches" in w:
+            w["coat"] = w.get("coat", 0) + w.pop("breeches")
 
 
 def push_zones(body, zones):
@@ -183,6 +192,20 @@ def costume_rings(body, rig):
               squash=(1.0, (wy + 0.05) / top_r), segments=32, skin=follow_thighs)
     sk["zone"] = "coat"
     parts.append(sk)
+    # coat body: one plain tube from the waist to the armpits around Y Bot's separate chest and stomach plates
+    # (pushing or smoothing the plates one by one broke them apart)
+    pit = bone_z(rig, B + "LeftArm") - 0.07
+    cx_, cy_, ccy = half_widths(body, pit, keep=lambda p: abs(p.x) < TORSO_MAX_M)
+
+    def up_the_spine(p):
+        t = max(0.0, min(1.0, (p.z - waist) / (pit - waist)))
+        return {B + "Spine": 1 - t, B + "Spine2": t}
+
+    torso = ring("coat body", rig, B + "Spine", Vector((0, (wcy + ccy) / 2, waist - 0.03)), Vector((0, 0, 1)),
+                 wx + 0.025, cx_ + 0.02, pit - waist + 0.03, squash=(1.0, (cy_ + 0.03) / (cx_ + 0.02)), segments=32,
+                 skin=up_the_spine)
+    torso["zone"] = "coat"
+    parts.append(torso)
     belt = ring("belt", rig, B + "Spine", Vector((0, wcy, waist - 0.025)), Vector((0, 0, 1)), wx + 0.025, wx + 0.025, 0.05,
                 squash=(1.0, (wy + 0.03) / (wx + 0.025)))
     belt["zone"] = "belt"
@@ -322,6 +345,7 @@ def load(path):
     eye_z = eye_line(rig)
     zones = vertex_zones(body)
     paint_hair(body, zones, eye_z)
+    coat_above_belt(body, zones, bone_z(rig, "mixamorig:Spine"))
     push_zones(body, zones)
     zone_materials(body, zones)
     face_uv(body, eye_z)
