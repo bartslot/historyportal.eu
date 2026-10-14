@@ -1,5 +1,15 @@
 import { describe, it, expect } from 'vitest'
-import { stripLayout, STRIP } from '../title-expect.js'
+import { stripLayout, linesRoom, STRIP } from '../title-expect.js'
+
+describe('the lines under the title', () => {
+  const cluster = { left: 1078 }
+  it('keep the same room each side when centred, ending before the badges', () => {
+    expect(linesRoom({ left: 48, width: 1344 }, cluster, true)).toBe(2 * (1078 - STRIP.gutter - 720))
+  })
+  it('run up to the badges when left aligned', () => {
+    expect(linesRoom({ left: 48, width: 900 }, cluster, false)).toBe(1078 - STRIP.gutter - 48)
+  })
+})
 
 const frame = { x: 0, y: -40, w: 1440, h: 940 }
 const box = { x: 0, y: 0, w: 100, h: 5.7 }

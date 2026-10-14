@@ -20,6 +20,37 @@ export function stripLayout (frame, view, box, chrome = null) {
   }
 }
 
+const overlaps = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom
+
+/**
+ * Pure: how wide the lines under the title may be so they end before the bottom-right cluster
+ * (badges, language, QR): centred lines keep the same room on both sides.
+ */
+export function linesRoom (lines, cluster, centred, gap = STRIP.gutter) {
+  if (centred) return 2 * (cluster.left - gap - (lines.left + lines.width / 2))
+  return cluster.left - gap - lines.left
+}
+
+/**
+ * The lines under the title (a candidate without a slot) wrap before they run into the
+ * bottom-right cluster. Only when they would: otherwise they keep one row. Returns true when
+ * the width changed, so the caller measures the screen again.
+ */
+export function fitExpectLines (ul, cluster) {
+  if (!ul || !cluster || !ul.offsetWidth) return false
+  const before = ul.style.maxWidth
+  ul.style.maxWidth = ''
+  const c = cluster.getBoundingClientRect()
+  const hits = [...ul.children].some(li => li.getBoundingClientRect().width && overlaps(li.getBoundingClientRect(), c))
+  if (hits) {
+    const centred = getComputedStyle(ul).justifyContent === 'center'
+    ul.style.maxWidth = `${Math.max(160, Math.floor(linesRoom(ul.getBoundingClientRect(), c, centred)))}px`
+    ul.style.marginInline = centred ? 'auto' : ''
+  }
+
+  return ul.style.maxWidth !== before
+}
+
 /**
  * Lay the strip out in its host; `stage` and `host` are DOMRects. On a phone the stacked strip is
  * tall, so the poster (`posterHost`) starts under it instead of behind it: no face disappears.

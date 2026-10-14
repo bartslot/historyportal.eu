@@ -47,7 +47,7 @@ import { t } from './i18n.js'
 import { mountBigCountdown } from './big-countdown.js'
 import { mountTitlePoster as mountPoster } from './title-poster.js'
 import { QR, layoutTitleQr, drawQrDebug, coverRect, pictureSize } from './title-qr.js'
-import { placeExpectStrip } from './title-expect.js'
+import { placeExpectStrip, fitExpectLines } from './title-expect.js'
 
 /**
  * Where the drawing in an image starts and ends across, as fractions of its width ([0, 1] when it
@@ -2762,7 +2762,10 @@ Alpine.data('lessonGame', (lesson) => ({
         frame = () => size && coverRect(o.width, o.height, size.w, size.h)
         keepClear = this.lesson.title_keep_clear
       }
-      const result = layoutTitleQr(host, { keepClear, frame, override: this.lesson.qr_position })
+      const qrOpts = { keepClear, frame, override: this.lesson.qr_position }
+      let result = layoutTitleQr(host, qrOpts)
+      // With the QR out of its place the badges close up and may meet the expect lines: wrap them, measure again.
+      if (fitExpectLines(host.querySelector('[data-title-expect="lines"]'), host.querySelector('[data-title-cluster]'))) result = layoutTitleQr(host, qrOpts)
       this.titleCodeInMeta = !!result.hidden
       if (new URLSearchParams(window.location.search).get('qr_debug') === '1') {
         drawQrDebug(host, result)

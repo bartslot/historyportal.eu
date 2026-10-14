@@ -726,7 +726,7 @@
                  standing above them (on one row they ran into a centred Start button). A phone has
                  no room beside its title, so there the badges join the title block's own flow. --}}
             @php $lessonTypes = $lessonData['lesson_types']; @endphp
-            <div class="absolute bottom-10 right-8 sm:bottom-14 sm:right-12 flex flex-col items-end gap-4" style="z-index:20">
+            <div class="absolute bottom-10 right-8 sm:bottom-14 sm:right-12 flex flex-col items-end gap-4" style="z-index:20" data-title-cluster>
                 <x-lesson.type-badges :types="$lessonTypes" :dark="($titlePoster['badge_style'] ?? 'colour') === 'dark'"
                                       @class(['max-sm:hidden', 'flex-col' => ($titlePoster['badges'] ?? 'row') === 'column']) />
                 <div class="flex items-end gap-4">
