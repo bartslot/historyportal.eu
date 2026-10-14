@@ -1,6 +1,6 @@
 {
   "note": "Proof recipe: rebuilds Bart's Figma poster (public/lesson-titles/tasman-standard/poster) from his wordmark and the same art. Generate it into a temp folder only (--out); the Figma version stays the real one.",
-  "label": "Comic poster", "order": 10,
+  "label": "Comic poster", "order": 10, "thumb": "thumb.webp",
   "letters": { "wordmark": "public/lesson-logos/tasman-standard.svg" },
   "rows": [
     { "text": "ABEL", "gradient": ["#04B3C4", "#C4F0F4"], "scale": 1.0 },

@@ -162,6 +162,13 @@ class TitleGeneratorTest extends TestCase
         app()->setLocale('nl');
         $this->assertSame([['key' => 'gold', 'label' => 'Gouden letters', 'order' => 5, 'thumb_url' => null]], TitlePoster::candidates(self::GROUP));
 
+        // The thumbnail is a render made afterwards: a rebuild keeps it.
+        $thumb = public_path('lesson-titles/'.self::GROUP.'/gold/thumb.webp');
+        File::copy(public_path('lesson-titles/tasman-standard/poster/thumb.webp'), $thumb);
+        $this->artisan('titles:make', ['group' => self::GROUP, '--recipe' => $this->recipe, '--candidate' => 'gold'])->assertSuccessful();
+        $this->assertFileExists($thumb);
+        $this->assertStringEndsWith('/gold/thumb.webp', TitlePoster::candidates(self::GROUP)[0]['thumb_url']);
+
         $recipe['order'] = 'first';
         $this->writeRecipe($recipe);
         $this->artisan('titles:make', ['group' => self::GROUP, '--recipe' => $this->recipe, '--candidate' => 'gold'])

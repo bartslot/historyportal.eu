@@ -698,38 +698,28 @@
             <div x-show="!lesson.title_poster" class="skybox-grain-overlay" style="opacity: 0.22; z-index: 2;"></div>
 
             {{-- Bottom right, on the same edges as the Start button's bar (px-8/12, pb-10/14):
-                 the lesson-type badges, the language switch and the join QR, bottoms aligned. On a
-                 phone the badges stand above the language chip, clear of the Start button. --}}
-            <div class="absolute bottom-10 right-8 sm:bottom-14 sm:right-12 flex flex-col items-end gap-3 sm:flex-row sm:gap-4" style="z-index:20">
-                @php $lessonTypes = $lessonData['lesson_types']; @endphp
-                @if ($lessonTypes !== [])
-                    <ul class="flex gap-2 sm:gap-3" data-lesson-types aria-label="{{ __('Lesson type') }}">
-                        @foreach ($lessonTypes as $type)
-                            <li @class(['lp-type-badge w-16 sm:w-20 lg:w-24',
-                                        'bg-type-interactive' => $type === 'interactive',
-                                        'bg-type-comic' => $type === 'comic',
-                                        'bg-type-teams' => $type === 'teams'])
-                                data-type="{{ $type }}">
-                                <img src="{{ asset("images/lesson-types/{$type}.svg") }}" alt="">
-                                <span>{{ match ($type) { 'interactive' => __('Interactive'), 'comic' => __('Comic story'), 'teams' => __('Teams') } }}</span>
-                            </li>
-                        @endforeach
-                    </ul>
-                @endif
-                <x-lesson.language-switch :lesson="$lesson" :translations="$translations" />
-                {{-- QR code, clickable to open the modal. The teacher can hide it (title screen Format). --}}
-                @if ($lesson->show_qr ?? true)
-                <button onclick="document.getElementById('qr-modal').showModal()"
-                        class="hidden sm:flex flex-col items-center gap-1.5 cursor-pointer group"
-                        style="background:none; border:none; padding:0">
-                    <canvas id="title-qr-canvas"
-                            class="rounded-xl opacity-90 transition group-hover:opacity-100 group-hover:scale-105"
-                            style="image-rendering: pixelated;"></canvas>
-                    <p class="text-sm font-mono font-bold tracking-[0.25em] text-white/80 uppercase"
-                       x-text="lesson.lesson_code"></p>
-                    <p class="text-2xs text-white/40 tracking-widest uppercase group-hover:text-white/60 transition">Scan to join</p>
-                </button>
-                @endif
+                 the language switch and the join QR, bottoms aligned, with the lesson-type badges
+                 standing above them (on one row they ran into a centred Start button). A phone has
+                 no room beside its title, so there the badges join the title block's own flow. --}}
+            @php $lessonTypes = $lessonData['lesson_types']; @endphp
+            <div class="absolute bottom-10 right-8 sm:bottom-14 sm:right-12 flex flex-col items-end gap-4" style="z-index:20">
+                <x-lesson.type-badges :types="$lessonTypes" class="max-sm:hidden" />
+                <div class="flex items-end gap-4">
+                    <x-lesson.language-switch :lesson="$lesson" :translations="$translations" />
+                    {{-- QR code, clickable to open the modal. The teacher can hide it (title screen Format). --}}
+                    @if ($lesson->show_qr ?? true)
+                    <button onclick="document.getElementById('qr-modal').showModal()"
+                            class="hidden sm:flex flex-col items-center gap-1.5 cursor-pointer group"
+                            style="background:none; border:none; padding:0">
+                        <canvas id="title-qr-canvas"
+                                class="rounded-xl opacity-90 transition group-hover:opacity-100 group-hover:scale-105"
+                                style="image-rendering: pixelated;"></canvas>
+                        <p class="text-sm font-mono font-bold tracking-[0.25em] text-white/80 uppercase"
+                           x-text="lesson.lesson_code"></p>
+                        <p class="text-2xs text-white/40 tracking-widest uppercase group-hover:text-white/60 transition">Scan to join</p>
+                    </button>
+                    @endif
+                </div>
             </div>
 
             {{-- Series wordmark (comic cover style): the logo carries the name, top left under the
@@ -775,7 +765,10 @@
                 };
                 $titleRows = $titlePos->isCentred() ? 'justify-center' : ($titlePos === \App\Enums\TitlePosition::TopRight ? 'justify-end' : '');
             @endphp
-            <div class="absolute flex gap-8 px-8 sm:px-12 {{ $titleBar }}" data-title-position="{{ $titlePos->value }}"
+            {{-- Beside a drawn title the badges stand at bottom right, above the QR: the title keeps clear of them. --}}
+            <div @class(["absolute flex gap-8 px-8 sm:px-12", $titleBar,
+                         "sm:pr-[21rem] lg:pr-[24rem]" => $titlePoster === null && $lessonTypes !== [] && ! in_array($titlePos, [\App\Enums\TitlePosition::TopLeft, \App\Enums\TitlePosition::TopCenter, \App\Enums\TitlePosition::TopRight], true)])
+                 data-title-position="{{ $titlePos->value }}"
                  style="z-index: 10;">
 
                 {{-- ── Title + meta + CTA ── --}}
@@ -802,6 +795,9 @@
                        x-text="lesson.intro_text"
                        class="mt-4 text-sm leading-relaxed text-slate-300/75 font-light hidden sm:block
                               drop-shadow-[0_1px_8px_rgba(0,0,0,0.9)]"></p>
+
+                    {{-- A phone's lesson-type badges, in the title's flow (the larger screens': bottom right). --}}
+                    <x-lesson.type-badges :types="$lessonTypes" @class(['mt-4 sm:hidden', $titleRows]) />
 
                     {{-- Meta row --}}
                     <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 {{ $titleRows }}" :class="lesson.title_poster && 'title-poster-meta'">

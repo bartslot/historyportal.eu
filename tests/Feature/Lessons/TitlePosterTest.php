@@ -111,9 +111,8 @@ class TitlePosterTest extends TestCase
         $this->assertSame(['Stripposter', 'Stripcover', 'Stripbanner'], array_column($candidates, 'label'));
         foreach ($candidates as $c) {
             $this->assertNotNull(TitlePoster::for('tasman-standard', $c['key']), "{$c['key']} must parse");
-            if ($c['thumb_url'] !== null) {
-                $this->assertFileExists(public_path(parse_url($c['thumb_url'], PHP_URL_PATH)));
-            }
+            $this->assertNotNull($c['thumb_url'], "{$c['key']} has a picker thumbnail");
+            $this->assertFileExists(public_path(parse_url($c['thumb_url'], PHP_URL_PATH)));
         }
 
         $tasman = $this->lesson('tasman-standard');

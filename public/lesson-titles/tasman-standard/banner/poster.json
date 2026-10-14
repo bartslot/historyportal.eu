@@ -3,6 +3,7 @@
   "source": "Figma PrVD4qMyoTtBvF7UV7Yhej node 2321:1315 (Comic Title Screen, banner); hand-built, never regenerated",
   "label": "Comic banner",
   "order": 30,
+  "thumb": "thumb.webp",
   "fit": "cover",
   "frame": {
     "w": 8696.178,

@@ -91,6 +91,12 @@ class MakeTitlePoster extends Command
             return $this->failWith("Recipe {$recipePath}: ".trim($run->errorOutput() ?: $run->output()));
         }
 
+        // The picker thumbnail is a render of the finished screen, not made here: keep it.
+        $thumb = is_string($recipe['thumb'] ?? null) ? basename($recipe['thumb']) : null;
+        if ($thumb !== null && is_file("{$out}/{$thumb}") && ! is_file("{$tmp}/{$thumb}")) {
+            File::copy("{$out}/{$thumb}", "{$tmp}/{$thumb}");
+        }
+
         File::deleteDirectory($out);
         File::ensureDirectoryExists(dirname($out));
         File::copyDirectory($tmp, $out);   // copy, not rename: --out may sit on another volume

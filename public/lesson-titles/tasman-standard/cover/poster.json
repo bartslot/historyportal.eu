@@ -3,6 +3,7 @@
   "source": "titles:make from resources/lessons/titles/tasman-standard-cover.json",
   "label": "Comic cover",
   "order": 20,
+  "thumb": "thumb.webp",
   "layout": "cover",
   "fit": "cover",
   "frame": {

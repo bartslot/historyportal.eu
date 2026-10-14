@@ -71,12 +71,13 @@ final class TitlePoster
 
                 continue;
             }
-            $thumb = is_string($data['thumb'] ?? null) && ! str_contains($data['thumb'], '..') ? $data['thumb'] : null;
+            $thumb = is_string($data['thumb'] ?? null) ? ltrim(basename($data['thumb']), '.') : '';
+            $thumb = $thumb !== '' && is_file(dirname($path).'/'.$thumb) ? $thumb : null;
             $out[] = [
                 'key' => $key,
                 'label' => self::label($data['label'] ?? null, $key),
                 'order' => is_numeric($data['order'] ?? null) ? (int) $data['order'] : PHP_INT_MAX,
-                'thumb_url' => $thumb !== null ? asset(self::DIR."/{$group}/{$key}/".ltrim($thumb, '/')) : null,
+                'thumb_url' => $thumb !== null ? asset(self::DIR."/{$group}/{$key}/{$thumb}") : null,
             ];
         }
         usort($out, fn (array $a, array $b): int => [$a['order'], $a['key']] <=> [$b['order'], $b['key']]);
