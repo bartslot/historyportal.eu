@@ -79,6 +79,8 @@ class RateLimitServiceProvider extends ServiceProvider
         // Reading a leaderboard is cheap and a whole class refreshes it at once, so this is per
         // address on purpose — it is here to stop a scraper, not a classroom.
         RateLimiter::for('leaderboard', fn (Request $request) => Limit::perMinute(120)->by('lb:'.$request->ip()));
+        // Subtitle sets: a whole class behind one school IP polls while a language is translating.
+        RateLimiter::for('captions', fn (Request $request) => Limit::perMinute(600)->by('cc:'.$request->ip()));
     }
 
     /**

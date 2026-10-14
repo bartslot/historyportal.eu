@@ -68,6 +68,15 @@
         // Does this lesson start with the narration written along the bottom? The teacher sets the
         // starting state; the student can still toggle it (C) while it plays.
         'subtitles'             => (bool) $lesson->subtitles,
+        // The Audio & Subtitles panel: narration languages (translation_group siblings) and the
+        // subtitle languages, each in its own name. Other-language captions come from captions_url.
+        'source_language'       => \App\Services\Captions\CaptionTranslator::sourceLanguage($lesson),
+        'audio_languages'       => $audioLanguages ?? [],
+        'caption_languages'     => collect(\App\Services\Captions\CaptionTranslator::LANGUAGES)
+            ->map(fn ($name, $code) => ['code' => $code, 'name' => $name])->values(),
+        'captions_url'          => $lesson->lesson_code
+            ? route('lesson.captions', ['lessonCode' => $lesson->lesson_code, 'language' => '__LANG__'])
+            : null,
 
         // Does a music bed play under the narration? Off unless the teacher turned it on — most
         // lessons run on a classroom speaker, where music under a voice is the last thing wanted.
@@ -339,22 +348,6 @@
            class="absolute bottom-1 left-1/2 -translate-x-1/2 max-w-[92vw] truncate text-2xs text-white/35 pointer-events-none"
            style="z-index:40"></p>
 
-        {{-- ── Subtitles — the narration written along the bottom while it is spoken ─────────── --}}
-        {{-- Sits above the chapter bar, never over it. x-text (never x-html): a script is teacher
-             copy and must not be able to inject markup into the student's player. --}}
-        <div
-            {{-- Same reason as the menu: an x-transition here left the (empty) bubble on screen
-                 after the captions were switched off, because the leave never applied. --}}
-            x-show="captionsOn && captionText && (phase === 'INTRO' || phase === 'GAME_ACTIVE')"
-            x-cloak
-            class="pointer-events-none absolute bottom-28 left-1/2 w-[min(56rem,90vw)] -translate-x-1/2 text-center"
-            style="z-index:47"
-            aria-live="polite"
-        >
-            <p x-text="captionText" lang="{{ $contentLang }}"
-               class="inline-block rounded-lg bg-black/70 px-4 py-2 text-balance text-lg leading-snug text-white shadow-lg backdrop-blur-sm sm:text-xl"></p>
-        </div>
-
         {{-- The chapter name + year moved into the overlay wrapper below as one quiet line. --}}
 
         {{-- ── Player overlay (Figma: VideoPlayer playing/paused) — less is more, icons only.
@@ -383,6 +376,23 @@
              @pointerdown.window="flashUi()"
              @keydown.window="flashUi()">
 
+            {{-- ── Subtitles — the narration written along the bottom while it is spoken ───────
+                 Netflix's look (.lp-cc in app.css): white text, a 60% black backdrop hugging each
+                 line, at most two lines. Bottom centre, lifted over the deck while the deck shows.
+                 Inside this wrapper so it can see zoneHover. lang + dir follow the language of the
+                 line on screen (a line not translated yet shows in the original). x-text (never
+                 x-html): a script is teacher copy and must not inject markup into the player. No
+                 x-transition: its leave never applied in a hidden tab and left the bubble up. --}}
+            <div x-show="captionsOn && captionText && (phase === 'INTRO' || phase === 'GAME_ACTIVE')"
+                 x-cloak
+                 class="lp-cc pointer-events-none absolute left-1/2 -translate-x-1/2 text-center"
+                 :class="!(readingOverlay || (isPlaying && !zoneHover && !zoneFlash && !chaptersOpen && !ccOpen)) && 'lp-cc--lifted'"
+                 {{-- Above the deck's scrim, under the deck itself while the panel is open over it. --}}
+                 :style="`z-index:${ccOpen || chaptersOpen ? 45 : 47}`"
+                 aria-live="polite">
+                <p class="lp-cc__text" :lang="captionShownLang" :dir="ccDir(captionShownLang)"><span x-text="captionText"></span></p>
+            </div>
+
             {{-- Top edge: scrim + the only text chrome that exists (teacher escape hatch or logo).
                  No phase gate — on the title screen nothing is playing, so it is simply visible. --}}
             {{-- pointer-events-none on the row itself: it is a full-width scrim, most of which has
@@ -390,7 +400,7 @@
                  switch (z-index:10) during TITLE_SCREEN and eating its clicks. Only the actual
                  controls (the "Edit scene" button below) opt back in with pointer-events-auto. --}}
             <div class="pointer-events-none absolute inset-x-0 top-0 transition-opacity duration-300"
-                 :class="(readingOverlay || (isPlaying && !zoneHover && !zoneFlash && !chaptersOpen)) ? 'opacity-0' : 'opacity-100'"
+                 :class="(readingOverlay || (isPlaying && !zoneHover && !zoneFlash && !chaptersOpen && !ccOpen)) ? 'opacity-0' : 'opacity-100'"
                  style="z-index:48">
                 {{-- Side padding = the title screen bar's gutter (px-8/12), so Edit scene lines up with Start. --}}
                 {{-- A line-art scene (backdropShade off) keeps its paper white to the edge: no
@@ -461,15 +471,62 @@
             <div x-show="backdropShade && (phase === 'INTRO' || phase === 'GAME_ACTIVE' || phase === 'GAME_BRIEF')"
                  x-cloak
                  class="pointer-events-none absolute inset-x-0 bottom-0 h-44 bg-linear-to-t from-black/80 via-black/40 to-transparent transition-opacity duration-300"
-                 :class="(readingOverlay || (isPlaying && !zoneHover && !zoneFlash && !chaptersOpen)) && 'opacity-0'"
+                 :class="(readingOverlay || (isPlaying && !zoneHover && !zoneFlash && !chaptersOpen && !ccOpen)) && 'opacity-0'"
                  style="z-index:44"></div>
 
             <div x-show="phase === 'INTRO' || phase === 'GAME_ACTIVE' || phase === 'GAME_BRIEF'"
                  x-cloak
                  class="absolute inset-x-0 bottom-0 transition-all duration-300 ease-out"
-                 :class="(readingOverlay || (isPlaying && !zoneHover && !zoneFlash && !chaptersOpen)) ? 'pointer-events-none translate-y-2 opacity-0' : 'opacity-100'"
+                 :class="(readingOverlay || (isPlaying && !zoneHover && !zoneFlash && !chaptersOpen && !ccOpen)) ? 'pointer-events-none translate-y-2 opacity-0' : 'opacity-100'"
                  style="z-index:46">
                 <div class="pointer-events-auto mx-auto w-[min(720px,92vw)] pb-3" data-player-chrome="bottom">
+
+                    {{-- Audio & Subtitles (Netflix's panel): narration languages left, subtitles right.
+                         One click selects and the panel stays open; it closes on an outside click,
+                         Esc, C or the CC button. Keys: ↑/↓ in a column, ←/→ between, Enter picks
+                         (ccKeydown). Fixed column widths, so a "Translating…" hint or a long name
+                         never resizes it. On a phone the two columns stack. --}}
+                    <div x-show="ccOpen" x-cloak data-cc-panel
+                         x-transition:enter="transition duration-[160ms] ease-out"
+                         x-transition:enter-start="opacity-0 motion-safe:translate-y-2"
+                         x-transition:enter-end="opacity-100 translate-y-0"
+                         x-transition:leave="transition duration-[120ms] ease-in"
+                         x-transition:leave-start="opacity-100"
+                         x-transition:leave-end="opacity-0"
+                         @click.outside="if (!$event.target.closest('[data-cc-button]')) ccOpen = false"
+                         role="dialog" aria-label="{{ __('Audio and subtitles') }}"
+                         class="mb-3 ml-auto flex max-h-[60vh] w-full flex-col overflow-y-auto rounded-xl border border-white/10 bg-black/70 p-2 backdrop-blur-md sm:w-fit sm:flex-row sm:gap-2">
+                        <div class="sm:w-44" role="group" aria-labelledby="cc-audio-heading">
+                            <p id="cc-audio-heading" class="px-3 pb-1 pt-2 text-2xs font-semibold uppercase tracking-widest text-white/50">{{ __('Audio') }}</p>
+                            <template x-for="(row, i) in ccAudioRows" :key="row.code">
+                                <button type="button" @click="selectAudio(row)" :data-cc-col="0" :data-cc-row="i"
+                                        :aria-pressed="row.current" @focus="ccFocus = { col: 0, row: i }"
+                                        class="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-left text-base transition-colors hover:bg-white/10 focus:outline-none focus-visible:bg-white/15"
+                                        :class="row.current ? 'font-bold text-white' : 'text-white/80'">
+                                    <svg x-show="row.current" class="h-5 w-5 shrink-0 text-primary" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+                                    <span x-show="!row.current" class="w-5 shrink-0"></span>
+                                    <span class="truncate" :lang="row.code" x-text="row.name"></span>
+                                </button>
+                            </template>
+                        </div>
+                        <div class="mt-2 border-t border-white/10 pt-1 sm:mt-0 sm:w-64 sm:border-l sm:border-t-0 sm:pl-2 sm:pt-0" role="group" aria-labelledby="cc-subs-heading">
+                            <p id="cc-subs-heading" class="px-3 pb-1 pt-2 text-2xs font-semibold uppercase tracking-widest text-white/50">{{ __('Subtitles') }}</p>
+                            <template x-for="(row, i) in ccSubtitleRows" :key="row.code || 'off'">
+                                <button type="button" @click="selectSubtitle(row.code)" :data-cc-col="1" :data-cc-row="i"
+                                        :aria-pressed="ccSelectedSubtitle() === row.code" @focus="ccFocus = { col: 1, row: i }"
+                                        class="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-left text-base transition-colors hover:bg-white/10 focus:outline-none focus-visible:bg-white/15"
+                                        :class="ccSelectedSubtitle() === row.code ? 'font-bold text-white' : 'text-white/80'">
+                                    <svg x-show="ccSelectedSubtitle() === row.code" class="h-5 w-5 shrink-0 text-primary" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+                                    <span x-show="ccSelectedSubtitle() !== row.code" class="w-5 shrink-0"></span>
+                                    <span class="shrink-0" :lang="row.code || null" x-text="row.name"></span>
+                                    <span class="lp-cc-hint ml-auto min-w-0 truncate text-right text-sm font-normal text-white/40"
+                                          :lang="ccSets[row.code]?.translating ? null : (row.code || null)"
+                                          :dir="ccSets[row.code]?.translating ? null : ccDir(row.code)"
+                                          x-text="ccRowHint(row.code)"></span>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
 
                     {{-- Chapter list (opens above the deck) — numbered names, active highlighted. --}}
                     <div x-show="chaptersOpen" x-transition
@@ -523,7 +580,7 @@
                          sit on a local plate (the chapter list's surface). Not around the chapter line
                          or the list: backdrop-filter would become the containing block of the line's
                          corner float, and the list has its own plate. --}}
-                    <div :class="!backdropShade && 'rounded-xl border border-white/10 bg-black/70 px-2 backdrop-blur-md'">
+                    <div data-tooltip-clear :class="!backdropShade && 'rounded-xl border border-white/10 bg-black/70 px-2 backdrop-blur-md'">
                     {{-- Segmented progress (Spotify-style) — one segment per scene, width ∝ its time.
                          Played fills white, reached-but-not-played a lighter grey, the rest is to come:
                          dimmed and not clickable (a student never jumps past the furthest point).
@@ -623,14 +680,14 @@
                                        :style="`--lp-vol:${(audioMuted ? 0 : volumeLevel) * 100}%`">
                             </div>
 
-                            {{-- Subtitles — a plain toggle: on/off is a single choice, so no menu.
-                                 The plate + amber underline mark the on state; C toggles from the
-                                 keyboard too. --}}
-                            <button type="button"
-                                    @click="toggleCaptions()"
-                                    data-tooltip="{{ __('Subtitles') }}" data-tooltip-key="C"
-                                    :aria-pressed="captionsOn"
-                                    aria-label="{{ __('Subtitles') }}"
+                            {{-- Subtitles — opens the Audio & Subtitles panel above (C does too). The
+                                 plate + amber underline mark captions on. No tooltip while the panel
+                                 is open: it would sit on the panel. --}}
+                            <button type="button" x-ref="ccButton" data-cc-button
+                                    @click="toggleCaptionPanel()"
+                                    :data-tooltip="ccOpen ? '' : @js(__('Audio and subtitles'))" data-tooltip-key="C"
+                                    :aria-expanded="ccOpen" aria-haspopup="dialog"
+                                    aria-label="{{ __('Audio and subtitles') }}"
                                     class="group relative flex h-10 w-10 items-center justify-center rounded-lg transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
                                     :class="captionsOn ? 'bg-white/10 text-white' : 'text-white/85 hover:text-white'">
                                 <svg class="h-6 w-6 shadow-sm transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
@@ -644,7 +701,7 @@
                             {{-- Chapter-list toggle. Hidden on game scenes like the old chapter bar:
                                  the quiz card paints in a sibling layer above this deck, so the list
                                  would open underneath it. --}}
-                            <button type="button" x-show="chapters.length > 1 && !currentIsGame" @click="chaptersOpen = !chaptersOpen"
+                            <button type="button" x-show="chapters.length > 1 && !currentIsGame" @click="chaptersOpen = !chaptersOpen; ccOpen = false"
                                     data-tooltip="{{ __('Chapters') }}" aria-label="{{ __('Chapters') }}"
                                     :aria-expanded="chaptersOpen"
                                     class="group flex h-10 w-10 items-center justify-center rounded-lg transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
