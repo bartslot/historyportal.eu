@@ -2752,7 +2752,11 @@ Alpine.data('lessonGame', (lesson) => ({
       const stage = host.querySelector('[data-poster-stage]')
       const o = host.getBoundingClientRect()
       const strip = host.querySelector('[data-title-expect="strip"]')
-      if (strip && stage) placeExpectStrip(strip, stage.getBoundingClientRect(), o, poster.expect?.box ?? { x: 0, y: 0, w: 100, h: 0 }, stage.parentElement)
+      if (strip && stage && placeExpectStrip(strip, stage.getBoundingClientRect(), o, poster.expect?.box ?? { x: 0, y: 0, w: 100, h: 0 }, stage.parentElement, !poster.expect).moved) {
+        // The poster now starts under the strip: measure once it has been fitted there.
+        setTimeout(() => this.layoutTitleScreen(), 50)
+        return
+      }
 
       let frame = null
       let keepClear = []
