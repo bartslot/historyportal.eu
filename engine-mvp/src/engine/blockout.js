@@ -11,9 +11,9 @@
 // source mesh per kit id; the figure is the mannequin from an AssetContainer, posed by aiming its arm bones.
 /* global BABYLON */
 'use strict';
-import { kitPiece } from '../blockout/kit';
+import { KIT, POSES, kitPiece } from '../blockout/kit';
 import { solve, forward, rightOf } from '../blockout/solve';
-import { frame as frameCam } from '../blockout/camera';
+import { frame as frameCam, PRESETS } from '../blockout/camera';
 import { readback } from '../blockout/readback';
 import { History, changeOp } from '../blockout/history';
 import { isTypingTarget } from '@hp/ui/keyboard.js';
@@ -463,6 +463,54 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
     if (data.mode) mode(data.mode);
   }
 
+  // ---------- the validated COMMANDS shape (server.py) -> a spec: one conversion, for the crew and the MCP tools ----------
+  function specFromCommand(c) {
+    const spec = { id: c.id };
+    if (c.kit) spec.kit = c.kit;
+    if (c.pose) spec.pose = c.pose;
+    if (c.rel === 'between' && c.of && c.and) spec.place = { between: [c.of, c.and] };
+    else if (c.rel && c.of) spec.place = { [c.rel]: c.of, side: c.side, gap: c.gap };
+    else if (c.x != null && c.z != null) spec.at = [c.x, c.z];
+    if (spec.place && (c.offset_r != null || c.offset_f != null)) spec.place.offset = [c.offset_r || 0, c.offset_f || 0];
+    if (spec.place) Object.keys(spec.place).forEach((k) => spec.place[k] === undefined && delete spec.place[k]);
+    if (c.on) spec.on = c.on;
+    if (c.face != null) spec.face = /^-?\d+(\.\d+)?$/.test(String(c.face)) ? Number(c.face) : c.face;   // a heading or an id
+    if (c.turn != null) spec.turn = c.turn;
+    if (c.height != null) spec.height_m = c.height;
+    return spec;
+  }
+  const shotFromCommand = (c) => ({ shot: c.shot, subjects: c.subjects, lens_mm: c.lens, horizon: c.horizon, az: c.az, align: c.align });
+
+  // ---------- a small picture, only when asked: clay, silhouette, or an id pass (one flat colour per piece) ----------
+  async function snapshot({ size = 512, pass = 'clay' } = {}) {
+    const engine = scene.getEngine();
+    const before = currentMode;
+    const restore = [];
+    if (pass === 'id') {
+      let i = 0;
+      actorOf.forEach((a, id) => {
+        const m = new BABYLON.StandardMaterial('id ' + id, scene);
+        m.disableLighting = true;
+        m.emissiveColor = BABYLON.Color3.FromHSV((i++ * 137.5) % 360, 0.85, 0.95);
+        a.getChildMeshes().forEach((mesh) => {
+          if (mesh instanceof BABYLON.InstancedMesh) return;    // instances share their source's material
+          restore.push([mesh, mesh.material]);
+          mesh.material = m;
+        });
+      });
+    } else if (pass !== before) mode(pass);
+    const w = size, h = Math.round(size / engine.getAspectRatio(mvp.camera));
+    const data = await BABYLON.Tools.CreateScreenshotUsingRenderTargetAsync(engine, mvp.camera, { width: w, height: h });
+    restore.forEach(([mesh, mat]) => { const own = mesh.material; mesh.material = mat; if (own && own.name.startsWith('id ')) own.dispose(); });
+    if (pass !== 'id' && pass !== before) mode(before);
+    return { image: data, width: w, height: h, pass };
+  }
+
+  const kitList = () => ({
+    kit: KIT.map((k) => ({ id: k.id, name: k.name, size_m: k.size, footprint_cells: k.footprint, anchors: Object.keys(k.anchors) })),
+    poses: [...POSES], shots: [...PRESETS], cell_m: 0.5,
+  });
+
   function clear() {
     [...actorOf.keys()].forEach(remove);
     specs.clear();
@@ -473,6 +521,7 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
 
   mvp.blockout = {
     clear, isPiece: (a) => !!a && actorOf.get(a.metadata && a.metadata.id) === a,
+    specFromCommand, shotFromCommand, snapshot, kitList, revision: () => history.list().length,
     apply, place, pose: setPose, frame: (s) => { frame(s); return read(); }, read, mode, history,
     reframe: () => { if (shot) frame(shot); return read(); },   // the same preset at the canvas's current aspect
     undo: () => history.undo(), redo: () => history.redo(), serialize, load,

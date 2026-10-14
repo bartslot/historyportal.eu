@@ -76,7 +76,7 @@ COMMANDS = {
     # clay blockout (Gate 1): intent, solved in the page (src/blockout/solve.ts) on the 0.5 m grid
     'place': {'id': 'str', 'kit?': 'str', 'rel?': 'str', 'of?': 'str', 'and?': 'str', 'side?': 'str', 'gap?': 'num',
               'offset_r?': 'num', 'offset_f?': 'num', 'x?': 'num', 'z?': 'num', 'on?': 'str', 'face?': 'str',
-              'turn?': 'num', 'height?': 'num'},
+              'turn?': 'num', 'height?': 'num', 'pose?': 'str'},
     'pose': {'id': 'str', 'name': 'str'},
     'frame': {'shot': 'str', 'subjects': 'strs', 'lens?': 'num', 'horizon?': 'num', 'az?': 'num', 'align?': 'str'},
     'mode': {'name': 'str'},
@@ -88,6 +88,7 @@ ENUMS = {
     'side': {'front', 'back', 'left', 'right'},
     'kit': {'deck', 'rail', 'mast', 'wall', 'barrel', 'crate', 'chest', 'cannon', 'table', 'cart', 'stool', 'figure', 'marker'},
     ('pose', 'name'): {'stand', 'point', 'spyglass'},
+    ('place', 'pose'): {'stand', 'point', 'spyglass'},
     'shot': {'wide', 'three-quarter', 'front', 'profile', 'medium', 'close-up', 'over-shoulder', 'low', 'high'},
     ('mode', 'name'): {'clay', 'silhouette', 'off'},
     'align': {'center', 'left-third', 'right-third'},
@@ -746,6 +747,17 @@ def crew_stream(data, emit, state):
                 f.result()
 
 
+LINK = None   # the blockout channel (blockout_link.py), made once validate() exists
+
+
+def blockout_link():
+    global LINK
+    if LINK is None:
+        import blockout_link as bl
+        LINK = bl.Link(validate)
+    return LINK
+
+
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *a, **kw):
         super().__init__(*a, directory=str(HERE), **kw)
@@ -778,7 +790,27 @@ class Handler(SimpleHTTPRequestHandler):
             return None
         return data
 
+    def do_GET(self):
+        if self.path.startswith('/blockout/poll'):          # the open studio page waits here for the next job
+            job = blockout_link().poll()
+            if job is None:
+                self.send_response(204)
+                self.end_headers()
+                return None
+            return self._json(200, job)
+        if self.path.startswith('/blockout/status'):
+            return self._json(200, {'page': blockout_link().page_connected()})
+        return super().do_GET()
+
     def do_POST(self):
+        if self.path in ('/blockout/call', '/blockout/result'):
+            data = self._body()
+            if data is None:
+                return None
+            if self.path == '/blockout/call':               # an MCP tool: one op on the open page, its answer back
+                return self._json(200, blockout_link().call(str(data.get('op', '')), data.get('args') or {}))
+            ok = blockout_link().result(data.get('id'), {k: data.get(k) for k in ('ok', 'result', 'error')})
+            return self._json(200 if ok else 410, {'taken': ok})
         if self.path.startswith('/bake'):
             return self._save_bake()
         if self.path == '/crew/stop':
