@@ -1,0 +1,104 @@
+{
+ "_note": "One standard body + wardrobe slots per character, shared by the 2D sheets and a later 3D actor. Sheets live in the vault topic tasman-standard/art/cast; voices are ElevenLabs native NL (see narration memory). Only the narrator speaks (Bart 2026-10-13): characters have no voice, so their lines are silent text balloons.",
+ "tasman": {
+  "name": "Abel Tasman",
+  "historical": true,
+  "age": 39,
+  "sheet": "anchors/tasman_model_sheet_v2.png",
+  "face": "slightly rounded, tired, heavy eye bags, thin moustache, small chin tuft, short straight dark-brown hair",
+  "wardrobe": {
+   "hat": "broad black felt hat (outdoors)",
+   "body": "plain black doublet, smooth closed front",
+   "collar": "wide white pleated collar",
+   "cuffs": "white",
+   "legs": "black breeches + stockings",
+   "feet": "black shoes"
+  },
+  "voice": {}
+ },
+ "visscher": {
+  "name": "Frans Jacobszoon Visscher",
+  "historical": true,
+  "age": 40,
+  "sheet": "art/cast/visscher_sheet.png",
+  "face": "lean, weathered, shoulder-length brown hair, moustache, small pointed goatee",
+  "wardrobe": {
+   "body": "dark brown wool doublet, smooth front",
+   "collar": "white linen falling collar",
+   "legs": "brown breeches, grey stockings",
+   "prop": "brass dividers"
+  },
+  "voice": {}
+ },
+ "gilsemans": {
+  "name": "Isaack Gilsemans",
+  "historical": true,
+  "age": 35,
+  "sheet": "art/cast/gilsemans_sheet.png",
+  "portrait_known": false,
+  "wardrobe": {
+   "hat": "wide-brimmed dark felt hat",
+   "body": "dark grey-green doublet",
+   "collar": "white linen",
+   "prop": "bound sketchbook + chalk"
+  },
+  "voice": {}
+ },
+ "vandiemen": {
+  "name": "Antonio van Diemen",
+  "historical": true,
+  "age": 49,
+  "sheet": "art/cast/van_diemen_sheet.png",
+  "portrait": "Rijksmuseum SK-A-3762 (public domain)",
+  "wardrobe": {
+   "body": "black silk doublet (sheet v1 came out slate grey: fix)",
+   "collar": "large white lace-edged collar",
+   "prop": "gold chain of office"
+  },
+  "voice": {}
+ },
+ "matroos": {
+  "name": "jonge matroos",
+  "historical": false,
+  "type": "fictional ship's boy, 16",
+  "sheet": "art/cast/jonge_matroos_sheet.png",
+  "wardrobe": {
+   "hat": "natural-wool knitted cap",
+   "body": "off-white linen shirt + short brown wool jacket",
+   "legs": "grey-brown canvas slops",
+   "feet": "simple leather shoes"
+  },
+  "voice": {}
+ },
+ "bootsman": {
+  "name": "bootsman",
+  "historical": false,
+  "type": "boatswain, 45",
+  "sheet": "art/cast/bootsman_sheet.png",
+  "wardrobe": {
+   "hat": "red-brown knitted cap",
+   "body": "faded blue wool jacket over linen shirt",
+   "legs": "canvas slops, grey stockings",
+   "prop": "coiled rope, bosun's whistle"
+  },
+  "voice": {}
+ },
+ "uitkijk": {
+  "name": "uitkijk",
+  "historical": false,
+  "type": "lookout",
+  "voice": {}
+ },
+ "raadsheer": {
+  "name": "raadsheer",
+  "historical": false,
+  "type": "member of the Raad van Indie",
+  "voice": {}
+ },
+ "narrator": {
+  "name": "verteller",
+  "voice": {
+   "nl": "narrator profile serge-de-beer (elevenlabs UNBIyLbtFB9k7FKW8wJv)"
+  }
+ }
+}

@@ -45,6 +45,27 @@ class NarratorSeeder extends Seeder
             'portrait_path' => 'avatars/portraits/ron-slot.jpg',
             'intro_video_path' => 'avatar-introductions/ron-slot/introduction.mp4',
         ],
+        [
+            // The Dutch web-comic narrator (Tasman standard lesson). Chosen by MEASURED Dutch clarity, not by
+            // its label: one test sentence per Dutch ElevenLabs voice, scored by Azure nl-NL recognition
+            // (2026-10-13): Serge 0.96, Jeroen Hamerland 0.84, Wiloco 0.81, Ron Slot 0.82. "Robin
+            // Meesterverteller" (gfhheYUNVEob17HvB2wm) is refused by the API ("not fine-tuned") and fell back
+            // to an English default voice in production: never use it.
+            'slug' => 'serge-de-beer',
+            'name' => 'Serge de Beer',
+            'short_name' => 'Serge',
+            'avatar_title' => 'verteller',
+            'description' => 'Nederlandse verteller voor de webcomics van History Portal.',
+            'subject' => 'history',
+            'voice_provider' => 'elevenlabs',
+            'voice_id' => 'UNBIyLbtFB9k7FKW8wJv',
+            'voice_speed' => 1.0,
+            'voice_pitch' => 1.0,
+            'presentation_mode' => 'framed',
+            'is_active' => true,
+            'portrait_path' => null,
+            'intro_video_path' => null,
+        ],
     ];
 
     public function run(): void

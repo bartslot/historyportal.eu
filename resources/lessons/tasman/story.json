@@ -1,0 +1,1869 @@
+{
+ "id": "tasman-1642",
+ "version": 1,
+ "source": "script_tasman_nl_v5.md",
+ "scenes": [
+  {
+   "id": "S00",
+   "act": 0,
+   "panels": [
+    {
+     "id": "S00-A",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S00-A.1",
+       "speaker": "narrator"
+      }
+     ],
+     "cast": [],
+     "plate": "plates/golden_bay_dusk.png",
+     "figures": null,
+     "ships": [
+      {
+       "file": "ships/figma_ship_moonlit.png",
+       "x": 74,
+       "y": 40,
+       "height": 46,
+       "depth": 0.5,
+       "ambient": "roll",
+       "ambient_amount": 0.5,
+       "speed": 0.0
+      },
+      {
+       "file": "ships/waka_pair.png",
+       "x": 38,
+       "y": 72,
+       "height": 16,
+       "depth": 0.9,
+       "ambient": "bob",
+       "ambient_amount": 0.8,
+       "speed": 0.3,
+       "flip": true
+      }
+     ],
+     "people": [],
+     "camera": {
+      "ease": "move",
+      "move": "push",
+      "amount": 0.6,
+      "duration": 9
+     },
+     "entry": "reveal"
+    },
+    {
+     "id": "S00-B",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S00-B.1",
+       "speaker": "narrator",
+       "bubble": "matroos"
+      },
+      {
+       "id": "S00-B.2",
+       "speaker": "narrator"
+      }
+     ],
+     "cast": [
+      "matroos"
+     ],
+     "plate": "plates/deck_dusk.png",
+     "figures": "figures/S00-B.png",
+     "ships": [],
+     "people": [],
+     "camera": {
+      "ease": "move",
+      "move": "push",
+      "amount": 0.8,
+      "duration": 6
+     },
+     "entry": "cut"
+    }
+   ]
+  },
+  {
+   "id": "S01",
+   "act": 0,
+   "panels": [
+    {
+     "id": "S01-A",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S01-A.1",
+       "speaker": "narrator",
+       "bubble": "matroos"
+      },
+      {
+       "id": "S01-A.2",
+       "speaker": "narrator",
+       "bubble": "bootsman"
+      }
+     ],
+     "cast": [
+      "bootsman",
+      "matroos"
+     ],
+     "plate": "plates/batavia_roadstead.png",
+     "figures": "figures/S01-A.png",
+     "ships": [
+      {
+       "file": "ships/heemskerck_anchor_dusk.png",
+       "x": 62,
+       "y": 54,
+       "height": 30,
+       "depth": 0.6,
+       "ambient": "roll",
+       "ambient_amount": 0.4,
+       "speed": 0.0
+      }
+     ],
+     "people": [],
+     "camera": {
+      "ease": "move",
+      "move": "pull",
+      "amount": 0.8,
+      "duration": 10
+     },
+     "entry": "cut"
+    },
+    {
+     "id": "S01-B",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S01-B.1",
+       "speaker": "narrator",
+       "bubble": "matroos"
+      },
+      {
+       "id": "S01-B.2",
+       "speaker": "narrator",
+       "bubble": "bootsman"
+      }
+     ],
+     "cast": [
+      "bootsman",
+      "matroos"
+     ],
+     "plate": "plates/batavia_harbour_boat.png",
+     "figures": "figures/S01-B.png",
+     "ships": [],
+     "people": [],
+     "camera": {
+      "ease": "move",
+      "move": "truck-r",
+      "amount": 0.4,
+      "duration": 7
+     },
+     "entry": "cut"
+    },
+    {
+     "id": "S01-C",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S01-C.1",
+       "speaker": "narrator",
+       "bubble": "matroos"
+      },
+      {
+       "id": "S01-C.2",
+       "speaker": "narrator"
+      }
+     ],
+     "cast": [
+      "matroos"
+     ],
+     "plate": "plates/batavia_harbour_boat.png",
+     "figures": "figures/S01-C.png",
+     "ships": [],
+     "people": [],
+     "camera": {
+      "ease": "move",
+      "move": "push",
+      "amount": 1.0,
+      "duration": 6
+     },
+     "entry": "cut"
+    }
+   ]
+  },
+  {
+   "id": "S02",
+   "act": 0,
+   "panels": [
+    {
+     "id": "S02-A",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S02-A.1",
+       "speaker": "narrator"
+      },
+      {
+       "id": "S02-A.2",
+       "speaker": "narrator",
+       "bubble": "vandiemen"
+      }
+     ],
+     "cast": [
+      "vandiemen"
+     ],
+     "plate": "plates/voc_chamber.png",
+     "figures": "figures/S02-A.png",
+     "ships": [],
+     "people": [
+      {
+       "file": "people/tasman_side.png",
+       "x": 30,
+       "ground": 96,
+       "height": 58,
+       "speaks": "tasman"
+      }
+     ],
+     "camera": {
+      "ease": "move",
+      "move": "hold"
+     },
+     "entry": "slide"
+    },
+    {
+     "id": "S02-B",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S02-B.1",
+       "speaker": "narrator",
+       "bubble": "raadsheer"
+      },
+      {
+       "id": "S02-B.2",
+       "speaker": "narrator",
+       "bubble": "tasman"
+      }
+     ],
+     "cast": [
+      "raadsheer",
+      "tasman"
+     ],
+     "plate": "plates/voc_chamber.png",
+     "figures": "figures/S02-B.png",
+     "ships": [],
+     "people": [
+      {
+       "file": "people/tasman_chart.png",
+       "x": 72,
+       "ground": 96,
+       "height": 58,
+       "speaks": "tasman"
+      }
+     ],
+     "camera": {
+      "ease": "move",
+      "move": "push",
+      "amount": 1.2,
+      "duration": 7
+     },
+     "entry": "cut"
+    },
+    {
+     "id": "S02-C",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S02-C.1",
+       "speaker": "narrator",
+       "bubble": "tasman"
+      }
+     ],
+     "cast": [
+      "tasman"
+     ],
+     "plate": "plates/voc_chamber.png",
+     "figures": "figures/S02-C.png",
+     "ships": [],
+     "people": [
+      {
+       "file": "people/tasman_holding_chart.png",
+       "x": 40,
+       "ground": 96,
+       "height": 58,
+       "speaks": "tasman"
+      }
+     ],
+     "camera": {
+      "ease": "move",
+      "move": "tilt-up",
+      "amount": 0.4,
+      "duration": 6
+     },
+     "entry": "cut"
+    }
+   ]
+  },
+  {
+   "id": "S03",
+   "act": 0,
+   "panels": [
+    {
+     "id": "S03-A",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S03-A.1",
+       "speaker": "narrator"
+      }
+     ],
+     "cast": [],
+     "plate": "plates/voc_chamber.png",
+     "figures": "figures/S03-A.png",
+     "ships": [],
+     "people": [
+      {
+       "file": "people/tasman_chart.png",
+       "x": 34,
+       "ground": 96,
+       "height": 58,
+       "speaks": "tasman"
+      },
+      {
+       "file": "people/visscher_front.png",
+       "x": 66,
+       "ground": 96,
+       "height": 58,
+       "speaks": "visscher"
+      }
+     ],
+     "camera": {
+      "ease": "move",
+      "move": "hold"
+     },
+     "entry": "cut"
+    },
+    {
+     "id": "S03-B",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S03-B.1",
+       "speaker": "narrator",
+       "bubble": "visscher"
+      }
+     ],
+     "cast": [
+      "visscher"
+     ],
+     "plate": "plates/voc_chamber.png",
+     "figures": "figures/S03-B.png",
+     "ships": [],
+     "people": [
+      {
+       "file": "people/visscher_threequarter.png",
+       "x": 40,
+       "ground": 96,
+       "height": 58,
+       "speaks": "visscher"
+      },
+      {
+       "file": "people/tasman_back.png",
+       "x": 70,
+       "ground": 96,
+       "height": 58
+      }
+     ],
+     "camera": {
+      "ease": "move",
+      "move": "push",
+      "amount": 0.8,
+      "duration": 7
+     },
+     "entry": "cut"
+    },
+    {
+     "id": "S03-C",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S03-C.1",
+       "speaker": "narrator"
+      }
+     ],
+     "cast": [],
+     "plate": "plates/figma_two_ships_day.png",
+     "figures": null,
+     "ships": [],
+     "people": [],
+     "camera": {
+      "ease": "move",
+      "move": "pan-r",
+      "amount": 0.6,
+      "duration": 9
+     },
+     "entry": "reveal"
+    }
+   ]
+  },
+  {
+   "id": "S04",
+   "act": 0,
+   "panels": [
+    {
+     "id": "S04-A",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S04-A.1",
+       "speaker": "narrator",
+       "bubble": "bootsman"
+      },
+      {
+       "id": "S04-A.2",
+       "speaker": "narrator",
+       "bubble": "matroos"
+      }
+     ],
+     "cast": [
+      "bootsman",
+      "matroos"
+     ],
+     "plate": "plates/deck_harbour.png",
+     "figures": "figures/S04-A.png",
+     "ships": [],
+     "people": [
+      {
+       "file": "people/sailor_front.png",
+       "x": 38,
+       "ground": 93,
+       "height": 60,
+       "speaks": "bootsman"
+      }
+     ],
+     "camera": {
+      "ease": "move",
+      "move": "tilt-down",
+      "amount": 0.4,
+      "duration": 6
+     },
+     "entry": "slide"
+    },
+    {
+     "id": "S04-B",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S04-B.1",
+       "speaker": "narrator",
+       "bubble": "visscher"
+      }
+     ],
+     "cast": [
+      "visscher"
+     ],
+     "plate": "plates/deck_harbour.png",
+     "figures": "figures/S04-B.png",
+     "ships": [],
+     "people": [
+      {
+       "file": "people/visscher_front.png",
+       "x": 30,
+       "ground": 93,
+       "height": 60,
+       "speaks": "visscher"
+      },
+      {
+       "file": "people/tasman_side.png",
+       "x": 62,
+       "ground": 93,
+       "height": 60,
+       "speaks": "tasman"
+      }
+     ],
+     "camera": {
+      "ease": "move",
+      "move": "truck-l",
+      "amount": 0.4,
+      "duration": 7
+     },
+     "entry": "cut"
+    },
+    {
+     "id": "S04-C",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S04-C.1",
+       "speaker": "narrator",
+       "bubble": "matroos"
+      },
+      {
+       "id": "S04-C.2",
+       "speaker": "narrator",
+       "bubble": "bootsman"
+      }
+     ],
+     "cast": [
+      "bootsman",
+      "matroos"
+     ],
+     "plate": "plates/deck_harbour.png",
+     "figures": "figures/S04-C.png",
+     "ships": [],
+     "people": [
+      {
+       "file": "people/sailor_side.png",
+       "x": 66,
+       "ground": 93,
+       "height": 60,
+       "speaks": "bootsman"
+      }
+     ],
+     "camera": {
+      "ease": "move",
+      "move": "push",
+      "amount": 1.0,
+      "duration": 7
+     },
+     "entry": "cut"
+    }
+   ]
+  },
+  {
+   "id": "S05",
+   "act": 0,
+   "panels": [
+    {
+     "id": "S05-A",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S05-A.1",
+       "speaker": "narrator"
+      }
+     ],
+     "cast": [],
+     "plate": "plates/mauritius_anchorage.png",
+     "figures": "figures/S05-A.png",
+     "ships": [
+      {
+       "file": "ships/heemskerck_anchor_dusk.png",
+       "x": 70,
+       "y": 58,
+       "height": 28,
+       "depth": 0.6,
+       "ambient": "roll",
+       "ambient_amount": 0.4,
+       "speed": 0.0
+      }
+     ],
+     "people": [],
+     "camera": {
+      "ease": "move",
+      "move": "pull",
+      "amount": 0.8,
+      "duration": 9
+     },
+     "entry": "reveal"
+    },
+    {
+     "id": "S05-B",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S05-B.1",
+       "speaker": "narrator",
+       "bubble": "bootsman"
+      },
+      {
+       "id": "S05-B.2",
+       "speaker": "narrator",
+       "bubble": "matroos"
+      }
+     ],
+     "cast": [
+      "bootsman",
+      "matroos"
+     ],
+     "plate": "plates/mauritius_shore.png",
+     "figures": "figures/S05-B.png",
+     "ships": [],
+     "people": [
+      {
+       "file": "people/sailor_threequarter.png",
+       "x": 55,
+       "ground": 90,
+       "height": 46,
+       "speaks": "bootsman"
+      }
+     ],
+     "camera": {
+      "ease": "move",
+      "move": "truck-r",
+      "amount": 0.4,
+      "duration": 7
+     },
+     "entry": "cut"
+    },
+    {
+     "id": "S05-C",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S05-C.1",
+       "speaker": "narrator",
+       "bubble": "tasman"
+      }
+     ],
+     "cast": [
+      "tasman"
+     ],
+     "plate": "plates/mauritius_anchorage.png",
+     "figures": "figures/S05-C.png",
+     "ships": [
+      {
+       "file": "ships/heemskerck_anchor_dusk.png",
+       "x": 70,
+       "y": 58,
+       "height": 28,
+       "depth": 0.6,
+       "ambient": "roll",
+       "ambient_amount": 0.4
+      }
+     ],
+     "people": [
+      {
+       "file": "people/tasman_back.png",
+       "x": 30,
+       "ground": 122,
+       "height": 74
+      }
+     ],
+     "camera": {
+      "ease": "move",
+      "move": "push",
+      "amount": 0.8,
+      "duration": 8
+     },
+     "entry": "cut",
+     "moment": {
+      "id": "anker-op",
+      "react": {
+       "ship": 0,
+       "ambient": "roll",
+       "amount": 1.4
+      },
+      "payoff": {
+       "type": "move",
+       "ship": 0,
+       "to_x": 125,
+       "to_y": 56,
+       "duration": 7
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "S06",
+   "act": 0,
+   "panels": [
+    {
+     "id": "S06-A",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S06-A.1",
+       "speaker": "narrator"
+      }
+     ],
+     "cast": [],
+     "plate": "plates/ocean_empty_wide.png",
+     "figures": null,
+     "ships": [
+      {
+       "file": "ships/ships_pair_far.png",
+       "x": 58,
+       "y": 44,
+       "height": 8,
+       "depth": 0.3,
+       "ambient": "bob",
+       "ambient_amount": 0.5,
+       "speed": 0.6
+      }
+     ],
+     "people": [],
+     "camera": {
+      "ease": "move",
+      "move": "pan-r",
+      "amount": 0.4,
+      "duration": 10
+     },
+     "entry": "reveal",
+     "moment": {
+      "id": "wind-in-de-zeilen",
+      "react": {
+       "ship": 0,
+       "ambient": "bob",
+       "amount": 1.6
+      },
+      "payoff": {
+       "type": "move",
+       "ship": 0,
+       "to_x": 112,
+       "to_y": 44,
+       "duration": 8
+      }
+     }
+    },
+    {
+     "id": "S06-B",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S06-B.1",
+       "speaker": "narrator",
+       "bubble": "matroos"
+      },
+      {
+       "id": "S06-B.2",
+       "speaker": "narrator",
+       "bubble": "visscher"
+      }
+     ],
+     "cast": [
+      "matroos",
+      "visscher"
+     ],
+     "plate": "plates/deck_sea_day.png",
+     "figures": "figures/S06-B.png",
+     "ships": [],
+     "people": [
+      {
+       "file": "people/visscher_threequarter.png",
+       "x": 45,
+       "ground": 93,
+       "height": 60,
+       "speaks": "visscher"
+      }
+     ],
+     "camera": {
+      "ease": "move",
+      "move": "tilt-up",
+      "amount": 0.6,
+      "duration": 7
+     },
+     "entry": "cut"
+    },
+    {
+     "id": "S06-C",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S06-C.1",
+       "speaker": "narrator",
+       "bubble": "visscher"
+      }
+     ],
+     "cast": [
+      "visscher"
+     ],
+     "plate": "plates/cabin_chart.png",
+     "figures": "figures/S06-C.png",
+     "ships": [],
+     "people": [
+      {
+       "file": "people/tasman_side.png",
+       "x": 30,
+       "ground": 96,
+       "height": 58,
+       "speaks": "tasman"
+      },
+      {
+       "file": "people/visscher_front.png",
+       "x": 66,
+       "ground": 96,
+       "height": 58,
+       "speaks": "visscher"
+      }
+     ],
+     "camera": {
+      "ease": "move",
+      "move": "push",
+      "amount": 1.2,
+      "duration": 7
+     },
+     "entry": "cut"
+    }
+   ]
+  },
+  {
+   "id": "S07",
+   "act": 0,
+   "panels": [
+    {
+     "id": "S07-A",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S07-A.1",
+       "speaker": "narrator",
+       "bubble": "uitkijk"
+      },
+      {
+       "id": "S07-A.2",
+       "speaker": "narrator"
+      }
+     ],
+     "cast": [
+      "uitkijk"
+     ],
+     "plate": "plates/storm_deck.png",
+     "figures": "figures/S07-A.png",
+     "ships": [],
+     "people": [
+      {
+       "file": "people/tasman_pointing.png",
+       "x": 34,
+       "ground": 93,
+       "height": 60,
+       "speaks": "tasman"
+      }
+     ],
+     "camera": {
+      "ease": "move",
+      "move": "shake",
+      "amount": 0.7,
+      "duration": 6
+     },
+     "entry": "cut"
+    },
+    {
+     "id": "S07-B",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S07-B.1",
+       "speaker": "narrator",
+       "bubble": "bootsman"
+      },
+      {
+       "id": "S07-B.2",
+       "speaker": "narrator",
+       "bubble": "matroos"
+      }
+     ],
+     "cast": [
+      "bootsman",
+      "matroos"
+     ],
+     "plate": "plates/storm_deck.png",
+     "figures": "figures/S07-B.png",
+     "ships": [],
+     "people": [
+      {
+       "file": "people/sailor_front.png",
+       "x": 50,
+       "ground": 93,
+       "height": 60,
+       "speaks": "bootsman"
+      }
+     ],
+     "camera": {
+      "ease": "move",
+      "move": "shake",
+      "amount": 0.7,
+      "duration": 6
+     },
+     "entry": "cut"
+    },
+    {
+     "id": "S07-C",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S07-C.1",
+       "speaker": "narrator",
+       "bubble": "bootsman"
+      }
+     ],
+     "cast": [
+      "bootsman"
+     ],
+     "plate": "plates/storm_deck.png",
+     "figures": "figures/S07-C.png",
+     "ships": [],
+     "people": [
+      {
+       "file": "people/sailor_side.png",
+       "x": 46,
+       "ground": 93,
+       "height": 60,
+       "speaks": "bootsman"
+      }
+     ],
+     "camera": {
+      "ease": "move",
+      "move": "shake",
+      "amount": 0.64,
+      "duration": 6
+     },
+     "entry": "cut"
+    },
+    {
+     "id": "S07-D",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S07-D.1",
+       "speaker": "narrator",
+       "bubble": "uitkijk"
+      }
+     ],
+     "cast": [
+      "uitkijk"
+     ],
+     "plate": "plates/storm_morning_sea.png",
+     "figures": "figures/S07-D.png",
+     "ships": [
+      {
+       "file": "ships/zeehaen_side_sail.png",
+       "x": 70,
+       "y": 40,
+       "height": 8,
+       "depth": 0.3,
+       "ambient": "roll",
+       "ambient_amount": 0.8,
+       "speed": 0.6
+      }
+     ],
+     "people": [
+      {
+       "file": "people/tasman_back.png",
+       "x": 28,
+       "ground": 122,
+       "height": 74
+      }
+     ],
+     "camera": {
+      "ease": "move",
+      "move": "pull",
+      "amount": 0.8,
+      "duration": 8
+     },
+     "entry": "reveal"
+    }
+   ]
+  },
+  {
+   "id": "S08",
+   "act": 0,
+   "panels": [
+    {
+     "id": "S08-A",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S08-A.1",
+       "speaker": "narrator",
+       "bubble": "visscher"
+      }
+     ],
+     "cast": [
+      "visscher"
+     ],
+     "plate": "plates/cabin_chart.png",
+     "figures": "figures/S08-A.png",
+     "ships": [],
+     "people": [
+      {
+       "file": "people/visscher_front.png",
+       "x": 60,
+       "ground": 96,
+       "height": 58,
+       "speaks": "visscher"
+      }
+     ],
+     "camera": {
+      "ease": "move",
+      "move": "push",
+      "amount": 1.2,
+      "duration": 7
+     },
+     "entry": "cut"
+    },
+    {
+     "id": "S08-B",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S08-B.1",
+       "speaker": "narrator",
+       "bubble": "matroos"
+      },
+      {
+       "id": "S08-B.2",
+       "speaker": "narrator",
+       "bubble": "bootsman"
+      }
+     ],
+     "cast": [
+      "bootsman",
+      "matroos"
+     ],
+     "plate": "plates/tweendeck_night.png",
+     "figures": "figures/S08-B.png",
+     "ships": [],
+     "people": [
+      {
+       "file": "people/sailor_threequarter.png",
+       "x": 40,
+       "ground": 96,
+       "height": 58,
+       "speaks": "bootsman"
+      }
+     ],
+     "camera": {
+      "ease": "move",
+      "move": "hold"
+     },
+     "entry": "cut"
+    }
+   ]
+  },
+  {
+   "id": "S09",
+   "act": 0,
+   "panels": [
+    {
+     "id": "S09-A",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S09-A.1",
+       "speaker": "narrator"
+      },
+      {
+       "id": "S09-A.2",
+       "speaker": "narrator",
+       "bubble": "visscher"
+      }
+     ],
+     "cast": [
+      "visscher"
+     ],
+     "plate": "plates/cabin_chart.png",
+     "figures": "figures/S09-A.png",
+     "ships": [],
+     "people": [
+      {
+       "file": "people/tasman_side.png",
+       "x": 34,
+       "ground": 96,
+       "height": 58,
+       "speaks": "tasman"
+      },
+      {
+       "file": "people/visscher_threequarter.png",
+       "x": 66,
+       "ground": 96,
+       "height": 58,
+       "speaks": "visscher"
+      }
+     ],
+     "camera": {
+      "ease": "move",
+      "move": "push",
+      "amount": 0.6,
+      "duration": 8
+     },
+     "entry": "slide"
+    },
+    {
+     "id": "S09-B",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S09-B.1",
+       "speaker": "narrator",
+       "bubble": "visscher"
+      }
+     ],
+     "cast": [
+      "visscher"
+     ],
+     "plate": "plates/cabin_chart.png",
+     "figures": "figures/S09-B.png",
+     "ships": [],
+     "people": [
+      {
+       "file": "people/tasman_holding_chart.png",
+       "x": 50,
+       "ground": 96,
+       "height": 58,
+       "speaks": "tasman"
+      }
+     ],
+     "camera": {
+      "ease": "move",
+      "move": "tilt-down",
+      "amount": 0.6,
+      "duration": 6
+     },
+     "entry": "cut"
+    },
+    {
+     "id": "S09-C",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S09-C.1",
+       "speaker": "narrator",
+       "bubble": "matroos"
+      },
+      {
+       "id": "S09-C.2",
+       "speaker": "narrator",
+       "bubble": "tasman"
+      }
+     ],
+     "cast": [
+      "matroos",
+      "tasman"
+     ],
+     "plate": "plates/deck_sea_day.png",
+     "figures": "figures/S09-C.png",
+     "ships": [],
+     "people": [
+      {
+       "file": "people/tasman_pointing2.png",
+       "x": 44,
+       "ground": 93,
+       "height": 60,
+       "speaks": "tasman"
+      }
+     ],
+     "camera": {
+      "ease": "move",
+      "move": "push",
+      "amount": 1.2,
+      "duration": 6
+     },
+     "entry": "cut"
+    }
+   ]
+  },
+  {
+   "id": "S10",
+   "act": 0,
+   "panels": [
+    {
+     "id": "S10-A",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S10-A.1",
+       "speaker": "narrator",
+       "bubble": "uitkijk"
+      }
+     ],
+     "cast": [
+      "uitkijk"
+     ],
+     "plate": "plates/deck_rail_coast.png",
+     "figures": "figures/S10-A.png",
+     "ships": [],
+     "people": [
+      {
+       "file": "people/tasman_spyglass.png",
+       "x": 40,
+       "ground": 93,
+       "height": 60,
+       "speaks": "tasman"
+      }
+     ],
+     "camera": {
+      "ease": "move",
+      "move": "tilt-up",
+      "amount": 0.8,
+      "duration": 6
+     },
+     "entry": "cut"
+    },
+    {
+     "id": "S10-B",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S10-B.1",
+       "speaker": "narrator",
+       "bubble": "matroos"
+      }
+     ],
+     "cast": [
+      "matroos"
+     ],
+     "plate": "plates/deck_rail_coast.png",
+     "figures": "figures/S10-B.png",
+     "ships": [],
+     "people": [
+      {
+       "file": "people/tasman_pointing.png",
+       "x": 30,
+       "ground": 93,
+       "height": 60,
+       "speaks": "tasman"
+      },
+      {
+       "file": "people/visscher_threequarter.png",
+       "x": 66,
+       "ground": 93,
+       "height": 60,
+       "speaks": "visscher"
+      }
+     ],
+     "camera": {
+      "ease": "move",
+      "move": "push",
+      "amount": 0.8,
+      "duration": 8
+     },
+     "entry": "cut"
+    },
+    {
+     "id": "S10-C",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S10-C.1",
+       "speaker": "narrator",
+       "bubble": "matroos"
+      }
+     ],
+     "cast": [
+      "matroos"
+     ],
+     "plate": "plates/vdl_forest.png",
+     "figures": "figures/S10-C.png",
+     "ships": [
+      {
+       "file": "ships/sloep_rowing.png",
+       "x": 30,
+       "y": 78,
+       "height": 14,
+       "depth": 1.1,
+       "ambient": "bob",
+       "ambient_amount": 0.8,
+       "speed": 0.3
+      }
+     ],
+     "people": [
+      {
+       "file": "people/sailor_side.png",
+       "x": 40,
+       "ground": 92,
+       "height": 42,
+       "speaks": "bootsman"
+      }
+     ],
+     "camera": {
+      "ease": "move",
+      "move": "tilt-up",
+      "amount": 1.2,
+      "duration": 8
+     },
+     "entry": "reveal"
+    }
+   ]
+  },
+  {
+   "id": "S11",
+   "act": 0,
+   "panels": [
+    {
+     "id": "S11-A",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S11-A.1",
+       "speaker": "narrator",
+       "bubble": "gilsemans"
+      }
+     ],
+     "cast": [
+      "gilsemans"
+     ],
+     "plate": "plates/nz_high_land_sea.png",
+     "figures": "figures/S11-A.png",
+     "ships": [],
+     "people": [],
+     "camera": {
+      "ease": "move",
+      "move": "pull",
+      "amount": 1.0,
+      "duration": 10
+     },
+     "entry": "reveal"
+    },
+    {
+     "id": "S11-B",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S11-B.1",
+       "speaker": "narrator",
+       "bubble": "matroos"
+      }
+     ],
+     "cast": [
+      "matroos"
+     ],
+     "plate": "plates/nz_high_land_sea.png",
+     "figures": "figures/S11-B.png",
+     "ships": [],
+     "people": [
+      {
+       "file": "people/tasman_holding_chart.png",
+       "x": 34,
+       "ground": 122,
+       "height": 74
+      }
+     ],
+     "camera": {
+      "ease": "move",
+      "move": "truck-l",
+      "amount": 0.4,
+      "duration": 7
+     },
+     "entry": "cut"
+    }
+   ]
+  },
+  {
+   "id": "S12",
+   "act": 0,
+   "panels": [
+    {
+     "id": "S12-A",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S12-A.1",
+       "speaker": "narrator"
+      }
+     ],
+     "cast": [],
+     "plate": "plates/golden_bay_shore_view.png",
+     "figures": null,
+     "ships": [],
+     "people": [],
+     "camera": {
+      "ease": "move",
+      "move": "push",
+      "amount": 0.8,
+      "duration": 9
+     },
+     "entry": "reveal"
+    },
+    {
+     "id": "S12-B",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S12-B.1",
+       "speaker": "narrator"
+      }
+     ],
+     "cast": [],
+     "plate": "plates/golden_bay_beach.png",
+     "figures": null,
+     "ships": [],
+     "people": [],
+     "camera": {
+      "ease": "move",
+      "move": "truck-r",
+      "amount": 0.4,
+      "duration": 8
+     },
+     "entry": "cut"
+    }
+   ]
+  },
+  {
+   "id": "S13",
+   "act": 0,
+   "panels": [
+    {
+     "id": "S13-A",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S13-A.1",
+       "speaker": "narrator",
+       "bubble": "gilsemans"
+      }
+     ],
+     "cast": [
+      "gilsemans"
+     ],
+     "plate": "plates/golden_bay_dusk.png",
+     "figures": "figures/S13-A.png",
+     "ships": [
+      {
+       "file": "ships/waka_pair.png",
+       "x": 45,
+       "y": 66,
+       "height": 18,
+       "depth": 0.8,
+       "ambient": "bob",
+       "ambient_amount": 0.6,
+       "speed": 0.3,
+       "flip": true
+      }
+     ],
+     "people": [],
+     "camera": {
+      "ease": "move",
+      "move": "hold"
+     },
+     "entry": "match"
+    },
+    {
+     "id": "S13-B",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S13-B.1",
+       "speaker": "narrator",
+       "bubble": "tasman"
+      },
+      {
+       "id": "S13-B.2",
+       "speaker": "narrator",
+       "bubble": "tasman"
+      }
+     ],
+     "cast": [
+      "tasman"
+     ],
+     "plate": "plates/deck_dusk.png",
+     "figures": "figures/S13-B.png",
+     "ships": [],
+     "people": [
+      {
+       "file": "people/tasman_back.png",
+       "x": 34,
+       "ground": 93,
+       "height": 60
+      },
+      {
+       "file": "people/sailor_side.png",
+       "x": 72,
+       "ground": 93,
+       "height": 60
+      }
+     ],
+     "camera": {
+      "ease": "move",
+      "move": "push",
+      "amount": 0.6,
+      "duration": 7
+     },
+     "entry": "cut"
+    },
+    {
+     "id": "S13-C",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S13-C.1",
+       "speaker": "narrator",
+       "bubble": "gilsemans"
+      }
+     ],
+     "cast": [
+      "gilsemans"
+     ],
+     "plate": "plates/deck_dusk.png",
+     "figures": "figures/S13-C.png",
+     "ships": [],
+     "people": [],
+     "camera": {
+      "ease": "move",
+      "move": "push",
+      "amount": 1.2,
+      "duration": 6
+     },
+     "entry": "cut"
+    }
+   ]
+  },
+  {
+   "id": "S14",
+   "act": 0,
+   "panels": [
+    {
+     "id": "S14-A",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S14-A.1",
+       "speaker": "narrator",
+       "bubble": "matroos"
+      }
+     ],
+     "cast": [
+      "matroos"
+     ],
+     "plate": "plates/golden_bay_morning.png",
+     "figures": null,
+     "ships": [
+      {
+       "file": "ships/waka_pair.png",
+       "x": 30,
+       "y": 62,
+       "height": 16,
+       "depth": 0.7,
+       "ambient": "bob",
+       "ambient_amount": 1.0,
+       "speed": 0.3,
+       "flip": true
+      },
+      {
+       "file": "ships/sloep_rowing.png",
+       "x": 66,
+       "y": 66,
+       "height": 14,
+       "depth": 0.8,
+       "ambient": "bob",
+       "ambient_amount": 1.0,
+       "speed": 0.3
+      }
+     ],
+     "people": [],
+     "camera": {
+      "ease": "move",
+      "move": "hold"
+     },
+     "entry": "cut"
+    },
+    {
+     "id": "S14-B",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S14-B.1",
+       "speaker": "narrator",
+       "bubble": "tasman"
+      }
+     ],
+     "cast": [
+      "tasman"
+     ],
+     "plate": "plates/golden_bay_morning.png",
+     "figures": "figures/S14-B.png",
+     "ships": [],
+     "people": [
+      {
+       "file": "people/tasman_side.png",
+       "x": 40,
+       "ground": 122,
+       "height": 74
+      }
+     ],
+     "camera": {
+      "ease": "move",
+      "move": "shake",
+      "amount": 0.48,
+      "duration": 2
+     },
+     "entry": "cut"
+    },
+    {
+     "id": "S14-C",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S14-C.1",
+       "speaker": "narrator"
+      }
+     ],
+     "cast": [],
+     "plate": "plates/golden_bay_morning.png",
+     "figures": "figures/S14-C.png",
+     "ships": [],
+     "people": [
+      {
+       "file": "people/tasman_back.png",
+       "x": 30,
+       "ground": 122,
+       "height": 74
+      },
+      {
+       "file": "people/sailor_threequarter.png",
+       "x": 70,
+       "ground": 122,
+       "height": 74
+      }
+     ],
+     "camera": {
+      "ease": "move",
+      "move": "pull",
+      "amount": 1.2,
+      "duration": 10
+     },
+     "entry": "cut"
+    },
+    {
+     "id": "S14-D",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S14-D.1",
+       "speaker": "narrator",
+       "bubble": "matroos"
+      }
+     ],
+     "cast": [
+      "matroos"
+     ],
+     "plate": "plates/figma_stern_night_windows.png",
+     "figures": "figures/S14-D.png",
+     "ships": [],
+     "people": [],
+     "camera": {
+      "ease": "move",
+      "move": "push",
+      "amount": 1.2,
+      "duration": 7
+     },
+     "entry": "cut"
+    }
+   ]
+  },
+  {
+   "id": "S15",
+   "act": 0,
+   "panels": [
+    {
+     "id": "S15-A",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S15-A.1",
+       "speaker": "narrator",
+       "bubble": "bootsman"
+      }
+     ],
+     "cast": [
+      "bootsman"
+     ],
+     "plate": "plates/tonga_lagoon.png",
+     "figures": "figures/S15-A.png",
+     "ships": [
+      {
+       "file": "ships/tongan_canoes.png",
+       "x": 42,
+       "y": 74,
+       "height": 22,
+       "depth": 0.9,
+       "ambient": "bob",
+       "ambient_amount": 0.8,
+       "speed": 0.3,
+       "flip": true
+      }
+     ],
+     "people": [
+      {
+       "file": "people/sailor_front.png",
+       "x": 24,
+       "ground": 122,
+       "height": 74
+      }
+     ],
+     "camera": {
+      "ease": "move",
+      "move": "truck-r",
+      "amount": 0.4,
+      "duration": 8
+     },
+     "entry": "reveal"
+    },
+    {
+     "id": "S15-B",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S15-B.1",
+       "speaker": "narrator",
+       "bubble": "uitkijk"
+      }
+     ],
+     "cast": [
+      "uitkijk"
+     ],
+     "plate": "plates/fiji_reef.png",
+     "figures": "figures/S15-B.png",
+     "ships": [],
+     "people": [
+      {
+       "file": "people/visscher_threequarter.png",
+       "x": 34,
+       "ground": 122,
+       "height": 74
+      }
+     ],
+     "camera": {
+      "ease": "move",
+      "move": "pan-r",
+      "amount": 0.6,
+      "duration": 8
+     },
+     "entry": "cut"
+    },
+    {
+     "id": "S15-C",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S15-C.1",
+       "speaker": "narrator",
+       "bubble": "matroos"
+      }
+     ],
+     "cast": [
+      "matroos"
+     ],
+     "plate": "plates/batavia_quay_return.png",
+     "figures": "figures/S15-C.png",
+     "ships": [],
+     "people": [],
+     "camera": {
+      "ease": "move",
+      "move": "push",
+      "amount": 0.6,
+      "duration": 8
+     },
+     "entry": "match"
+    }
+   ]
+  },
+  {
+   "id": "S16",
+   "act": 0,
+   "panels": [
+    {
+     "id": "S16-A",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S16-A.1",
+       "speaker": "narrator",
+       "bubble": "raadsheer"
+      }
+     ],
+     "cast": [
+      "raadsheer"
+     ],
+     "plate": "plates/voc_chamber.png",
+     "figures": "figures/S16-A.png",
+     "ships": [],
+     "people": [
+      {
+       "file": "people/tasman_side.png",
+       "x": 40,
+       "ground": 96,
+       "height": 58,
+       "speaks": "tasman"
+      }
+     ],
+     "camera": {
+      "ease": "move",
+      "move": "hold"
+     },
+     "entry": "slide"
+    },
+    {
+     "id": "S16-B",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S16-B.1",
+       "speaker": "narrator",
+       "bubble": "visscher"
+      }
+     ],
+     "cast": [
+      "visscher"
+     ],
+     "plate": "plates/cabin_chart.png",
+     "figures": "figures/S16-B.png",
+     "ships": [],
+     "people": [
+      {
+       "file": "people/visscher_front.png",
+       "x": 56,
+       "ground": 96,
+       "height": 58,
+       "speaks": "visscher"
+      }
+     ],
+     "camera": {
+      "ease": "move",
+      "move": "push",
+      "amount": 1.0,
+      "duration": 7
+     },
+     "entry": "cut"
+    },
+    {
+     "id": "S16-C",
+     "staging": "",
+     "lines": [
+      {
+       "id": "S16-C.1",
+       "speaker": "narrator",
+       "bubble": "gilsemans"
+      }
+     ],
+     "cast": [
+      "gilsemans"
+     ],
+     "plate": "plates/golden_bay_shore_view.png",
+     "figures": null,
+     "ships": [],
+     "people": [],
+     "camera": {
+      "ease": "move",
+      "move": "pull",
+      "amount": 0.8,
+      "duration": 10
+     },
+     "entry": "match"
+    }
+   ]
+  }
+ ],
+ "sequence": [
+  "S00",
+  "S01",
+  "S02",
+  "S03",
+  "S04",
+  "S05",
+  "game:lading",
+  "S06",
+  "S07",
+  "S08",
+  "S09",
+  "game:scheepsraad",
+  "S10",
+  "S11",
+  "S12",
+  "S13",
+  "S14",
+  "S15",
+  "S16",
+  "game:slotvraag"
+ ]
+}

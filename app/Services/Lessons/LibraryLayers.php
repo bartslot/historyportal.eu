@@ -8,6 +8,8 @@ use App\Models\Lesson;
 use App\Models\Scene;
 use App\Models\SvgAsset;
 use App\Services\SceneLayers;
+use App\Services\Support\LayerAmbient;
+use App\Services\Support\LayerSitIn;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -44,7 +46,9 @@ class LibraryLayers
 
     /**
      * Layer keys a spec may set, beyond `asset`. The editor's per-layer settings
-     * (EditsSceneArtwork::updateArtworkLayer) plus the map pin and the ambient motion keys.
+     * (EditsSceneArtwork::updateArtworkLayer) plus the map pin, the ambient motion keys and the
+     * "blend into the scene" keys (LayerSitIn; mirroring is flip_x/flip_y, a tilt is rotation).
+     * `occlude` 1: the parts of the backdrop that are nearer than the layer hide it (its depth map).
      */
     public const LAYER_KEYS = [
         'kind', 'depth', 'scale', 'height', 'x', 'y', 'opacity', 'blend', 'white_key', 'rotation',
@@ -52,6 +56,8 @@ class LibraryLayers
         'anim', 'anim_delay', 'anim_duration', 'anim_ease',
         'anim_out', 'anim_out_delay', 'anim_out_ease', 'anim_out_duration',
         'ambient', 'ambient_speed', 'ambient_amount',
+        'flip_x', 'flip_y', ...LayerSitIn::KEYS,
+        'occlude',
         'ink_preset', 'ink_fill', 'draw_time',
         'anchor', 'lng', 'lat',
     ];
@@ -94,7 +100,7 @@ class LibraryLayers
      * (SceneLayers::COVER_DEPTH) the floor slid under their feet and every figure looked afloat.
      * Clouds and birds keep their own lower depth and still parallax.
      */
-    private const COVER_DEPTH = 1.0;
+    public const COVER_DEPTH = 1.0;
 
     /**
      * What a line-art backdrop sets in the scene config. Ink on white paper: the player's backdrop
@@ -103,14 +109,39 @@ class LibraryLayers
      */
     public const LINE_ART_CONFIG = ['backdrop_shade' => false, 'background_fit' => 'contain'];
 
+    /**
+     * What a history-line backdrop sets in the scene config. A painted plate is no ink drawing (it
+     * fills the frame), but it is a light watercolour all the same: the player's dark shade would
+     * dim it, so it is off for both.
+     *
+     * @return array<string,mixed>
+     */
+    public static function backdropConfig(string $ref): array
+    {
+        if (! str_starts_with(trim($ref, '/ '), 'history-line/')) {
+            return [];
+        }
+
+        return self::isLineArt($ref) ? self::LINE_ART_CONFIG : ['backdrop_shade' => false];
+    }
+
     /** The paper the line-art plates are drawn on: the letterbox around a whole plate. */
     private const LINE_ART_PAPER = '#ffffff';
 
     /** The history-line library: ink drawings on white paper. */
     public static function isLineArt(string $ref): bool
     {
-        return str_starts_with($ref, 'history-line/');
+        $ref = trim($ref, '/ ');
+
+        return str_starts_with($ref, 'history-line/')
+            && ! array_filter(self::PAINTED_PLATES, fn (string $dir): bool => str_starts_with($ref, $dir));
     }
+
+    /**
+     * Library folders that hold full-colour watercolour plates, not ink on white paper: they fill the
+     * frame and may move with a camera (Bart, 2026-10-13: no black-and-white pictures in a lesson).
+     */
+    private const PAINTED_PLATES = ['history-line/backdrops/tasman/'];
 
     /**
      * Background from the art library: its Cloudinary URL, uploaded on first use. Without Cloudinary
@@ -132,13 +163,16 @@ class LibraryLayers
             // A composed line-art stage keeps its camera still: a Ken Burns push crops the room and
             // drags the floor away from the figures. The life comes from the layers' ambient motion.
             ...(self::isLineArt($ref) ? ['kb_animated' => false, 'background_color' => self::LINE_ART_PAPER] : []),
-            'config' => array_merge((array) ($scene->config ?? []), [
+            'config' => array_merge(array_diff_key((array) ($scene->config ?? []), ['backdrop_depth' => true]), [
                 'image_credit' => $asset->credit(),
                 'background_focus' => 'center',
                 // The ref itself, so lessons:export can write `backdrop` back instead of a copy
                 // under this scene's folder that no other machine has.
                 'backdrop' => trim($ref, '/ '),
-            ], self::isLineArt($ref) ? self::LINE_ART_CONFIG : []),
+                // Its depth map (art:depth), for occlusion and "fit to this spot". `src` is the
+                // picture it belongs to: a teacher who swaps the picture must not keep its depth.
+                ...($asset->depthUrl() ? ['backdrop_depth' => ['src' => $path, 'url' => $asset->depthUrl()]] : []),
+            ], self::backdropConfig($ref)),
         ]);
     }
 
@@ -201,6 +235,23 @@ class LibraryLayers
             if ($unknown !== []) {
                 throw new \InvalidArgumentException("{$where}, layer {$i}: unknown key(s) ".implode(', ', $unknown).'.');
             }
+            // A misspelt motion would otherwise be stored and play as no motion at all.
+            if (isset($entry['ambient']) && ! in_array($entry['ambient'], LayerAmbient::MODES, true)) {
+                throw new \InvalidArgumentException("{$where}, layer {$i}: ambient must be one of ".implode(', ', LayerAmbient::MODES).'.');
+            }
+            // A share 0..1: a number out of range is clamped, anything else is a typo that would
+            // otherwise play as "off".
+            foreach (LayerSitIn::KEYS as $key) {
+                if (array_key_exists($key, (array) $entry)) {
+                    if (! is_numeric($entry[$key])) {
+                        throw new \InvalidArgumentException("{$where}, layer {$i}: {$key} must be a number from 0 to 1.");
+                    }
+                    $entry[$key] = LayerSitIn::clamp($entry[$key]);
+                }
+            }
+            if (array_key_exists('occlude', (array) $entry) && ! in_array($entry['occlude'], [0, 1, true, false], true)) {
+                throw new \InvalidArgumentException("{$where}, layer {$i}: occlude must be 0 or 1.");
+            }
             $asset = $this->libraryAsset((string) ($entry['asset'] ?? ''), $where);
             if ($upload) {
                 $this->cdn->ensure($asset);   // preflight only resolves; the real build uploads
@@ -223,18 +274,53 @@ class LibraryLayers
         $where = $this->sceneLabel($s, $order);
         $speakers = [];
         foreach ((array) ($s['layers'] ?? []) as $i => $entry) {
-            $speaker = (string) ($entry['speaks'] ?? '');
-            if ($speaker === '') {
+            $voices = self::speaksIn($entry);
+            if ($voices === []) {
                 continue;
             }
             $ref = trim((string) ($entry['asset'] ?? ''), '/ ');
             if (! str_contains($ref, '/figures/')) {
                 throw new \InvalidArgumentException("{$where}, layer {$i}: only a figure can speak, '{$ref}' is not one.");
             }
-            $speakers[$speaker] = ['asset_id' => $this->libraryAsset($ref, $where)->id, 'ref' => $ref];
+            $assetId = $this->libraryAsset($ref, $where)->id;
+            foreach ($voices as $speaker => $mouth) {
+                $speakers[$speaker] = ['asset_id' => $assetId, 'ref' => $ref] + ($mouth ?? []);
+            }
         }
 
         return $speakers;
+    }
+
+    /**
+     * Who speaks from one figure layer. `speaks => 'dante'` is one speaker whose mouth comes from the
+     * figure's metadata; `speaks => ['bootsman' => [x, y, 'left'], 'matroos' => [x, y]]` is a group
+     * picture where each speaker's mouth is given as a fraction of the picture (0..1), with an
+     * optional facing.
+     *
+     * @param  array<string,mixed>  $entry
+     * @return array<string, array{mouth: array{0: float, 1: float}, facing: int}|null>
+     */
+    public static function speaksIn(array $entry): array
+    {
+        $speaks = $entry['speaks'] ?? null;
+        if (is_string($speaks)) {
+            return $speaks === '' ? [] : [$speaks => null];
+        }
+        $out = [];
+        foreach ((array) $speaks as $speaker => $m) {
+            if (! is_string($speaker) || ! is_array($m) || ! is_numeric($m[0] ?? null) || ! is_numeric($m[1] ?? null)) {
+                throw new \InvalidArgumentException("speaks: '{$speaker}' needs a mouth [x, y] in 0..1.");
+            }
+            $clamp = fn ($v): float => max(0.0, min(1.0, (float) $v));
+            $out[$speaker] = [
+                'mouth' => [$clamp($m[0]), $clamp($m[1])],
+                'facing' => match ($m[2] ?? null) {
+                    'right' => 1, 'left' => -1, default => 0
+                },
+            ];
+        }
+
+        return $out;
     }
 
     /**
@@ -250,7 +336,8 @@ class LibraryLayers
         $shot = count($shots) === 1 ? (array) $shots[0] : [];
         $layers = (array) ($shot['layers'] ?? []);
         $frame = $imagePath ? ['order' => 0, 'image_path' => $imagePath] : ['order' => 0];
-        if ($layers === [] || array_diff_key($shot, ['layers' => true]) != $frame) {
+        // The camera and entry are spec keys of their own (LessonExporter writes them back).
+        if ($layers === [] || array_diff_key($shot, ['layers' => true, 'camera' => true, 'entry' => true]) != $frame) {
             return null;
         }
         if ($imagePath) {

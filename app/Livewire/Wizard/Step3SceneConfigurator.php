@@ -18,6 +18,8 @@ use App\Livewire\Wizard\Concerns\EditsQuizQuestions;
 use App\Livewire\Wizard\Concerns\EditsSceneArtwork;
 use App\Livewire\Wizard\Concerns\EditsSceneBackground;
 use App\Livewire\Wizard\Concerns\EditsStoryGame;
+use App\Livewire\Wizard\Concerns\EditsMoment;
+use App\Livewire\Wizard\Concerns\EditsTeamGame;
 use App\Livewire\Wizard\Concerns\EditsTitleScreen;
 use App\Livewire\Wizard\Concerns\UndoesSceneEdits;
 use App\Models\AnimationClip;
@@ -27,7 +29,10 @@ use App\Models\Scene;
 use App\Models\StrategyGame;
 use App\Services\Billing\NarrationCreditLedger;
 use App\Services\Diorama\LibraryAssets;
+use App\Services\Lessons\TeamGameSpec;
 use App\Services\Support\LayerAmbient;
+use App\Services\Support\LayerSitIn;
+use App\Services\Support\ShotCamera;
 use App\Services\Support\WebpEncoder;
 use App\Services\Support\WhiteCutout;
 use App\Support\MediaUrl;
@@ -59,6 +64,8 @@ class Step3SceneConfigurator extends Component
     use EditsSceneBackground;
     use EditsSceneArtwork;
     use EditsStoryGame;
+    use EditsTeamGame;
+    use EditsMoment;
     use UndoesSceneEdits;
     use WithFileUploads;
 
@@ -232,13 +239,18 @@ class Step3SceneConfigurator extends Component
             'bg_url' => MediaUrl::versioned($shot['bg_path'] ?? null, $ts),
             'hero_url' => MediaUrl::versioned($shot['hero_path'] ?? null, $ts),
             'anchor_sentence' => $shot['anchor_sentence'] ?? null,
+            // The panel's own camera move and entry (resources/js/scene/camera.js).
+            'camera' => ShotCamera::payload($shot['camera'] ?? null),
+            'entry' => ShotCamera::entry($shot['entry'] ?? null),
             // Multiplane layers (E3c): [{path|url, depth, kind, scale, height, sway}] back→front.
             'layers' => collect($shot['layers'] ?? [])->map(fn ($l) => [
                 'url' => ! empty($l['path']) ? MediaUrl::versioned($l['path'], $ts) : ($l['url'] ?? null),
                 // asset_id + x/y let the on-canvas editor identify and free-position each layer.
                 'asset_id' => isset($l['asset_id']) ? (int) $l['asset_id'] : null,
                 // A duplicated layer has its own synthetic id; its title lives on the original asset.
-                'title' => isset($l['asset_id']) ? ($titles[$l['src_asset_id'] ?? $l['asset_id']] ?? null) : null,
+                'title' => isset($l['asset_id']) ? ($titles[$l['src_asset_id'] ?? $l['asset_id']]->title ?? null) : null,
+                // How tall the drawn thing really is (meta.json), for "fit to this spot".
+                'height_m' => isset($l['asset_id']) ? ($titles[$l['src_asset_id'] ?? $l['asset_id']]->height_m ?? null) : null,
                 'x' => isset($l['x']) ? (float) $l['x'] : null,
                 'y' => isset($l['y']) ? (float) $l['y'] : null,
                 'depth' => (float) ($l['depth'] ?? 1),
@@ -289,6 +301,10 @@ class Step3SceneConfigurator extends Component
                 'embed' => isset($l['embed']) && is_array($l['embed']) ? $l['embed'] : null,
                 // Ambient motion (drift / breeze / bob / flutter), validated to the known vocabulary.
                 ...LayerAmbient::payload($l),
+                // Blend into the scene: waterline, reflection, contact shadow, colour match.
+                ...LayerSitIn::payload($l),
+                // Hidden where the backdrop is nearer than the layer (resources/js/scene/occlusion.js).
+                'occlude' => ! empty($l['occlude']),
             ])->filter(fn ($l) => $l['url'] || $l['embed'])->values()->all() ?: null,
             // Keep a shot when it has EITHER a background image OR clipart layers. Map-backed scenes
             // (voyage / map) carry layer-only shots — the MAP is the backdrop, so there's no image_url,
@@ -297,11 +313,11 @@ class Step3SceneConfigurator extends Component
     }
 
     /**
-     * Batch-load SvgAsset id→title for every layer across the given scenes in ONE query
+     * Batch-load each layer's SvgAsset (id, title, height_m) across the given scenes in ONE query
      * (avoids an N+1 of one SvgAsset lookup per scene when serializing the whole payload).
      *
      * @param  iterable<Scene>  $scenes
-     * @return Collection<int,string>
+     * @return Collection<int,\App\Models\SvgAsset>
      */
     private function assetTitlesFor(iterable $scenes): Collection
     {
@@ -311,7 +327,7 @@ class Step3SceneConfigurator extends Component
             ->filter()->unique()->values();
 
         return $ids->isNotEmpty()
-            ? \App\Models\SvgAsset::whereIn('id', $ids)->pluck('title', 'id')
+            ? \App\Models\SvgAsset::whereIn('id', $ids)->get(['id', 'title', 'height_m'])->keyBy('id')
             : collect();
     }
 
@@ -444,6 +460,10 @@ class Step3SceneConfigurator extends Component
         $this->syncQuizDraftFor($scene);
         // Same discipline for the story-game effects draft (branch option scenes).
         $this->syncStoryGameDraftFor($scene);
+        // And for a team game: its texts, items, options and timer.
+        $this->syncTeamDraftFor($scene);
+        // And for a story panel's power-meter moment.
+        $this->syncMomentDraftFor($scene);
     }
 
     /**
@@ -572,6 +592,8 @@ class Step3SceneConfigurator extends Component
             }
         }
         $payload = $this->withStoredDiorama($payload, $scene);
+        $payload = $this->withCleanTeamGame($payload, $scene);
+        $payload = $this->withCleanMoment($payload, $scene);
         $scriptDirty = ($scene->script_segment ?? '') !== ($payload['script_segment'] ?? '');
 
         // Detect changes that should re-paint the 3D stage so the canvas updates.
@@ -5166,13 +5188,19 @@ class Step3SceneConfigurator extends Component
 
     public function setSceneGameType(int $sceneId, string $gameType): void
     {
-        if (! in_array($gameType, ['quiz', 'strategy', 'debate'], true)) {
+        if (! in_array($gameType, ['quiz', 'strategy', 'debate', 'team'], true)) {
             return;
         }
 
         $scene = $this->lesson->scenes()->findOrFail($sceneId);
         if ($scene->kind !== 'game') {
             return;
+        }
+
+        // A team game keeps whatever game it had (switching away and back gives it back); a scene
+        // that never had one starts with a blank budget game.
+        if ($gameType === 'team' && ! is_array(($scene->config ?? [])['team'] ?? null)) {
+            $scene->config = array_merge($scene->config ?? [], ['team' => TeamGameSpec::normalize([])]);
         }
 
         $scene->update([

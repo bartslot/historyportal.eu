@@ -30,6 +30,7 @@ use Illuminate\Support\Facades\Storage;
  * @property string $license
  * @property string|null $attribution
  * @property string $svg_path
+ * @property string|null $depth_path
  * @property string|null $cdn_url
  * @property int|null $width
  * @property int|null $height
@@ -44,7 +45,7 @@ class SvgAsset extends Model
         'user_id', 'source', 'source_ref', 'source_url',
         'collection', 'category', 'subcategory',
         'title', 'license', 'attribution',
-        'svg_path', 'cdn_url', 'width', 'height', 'view_box',
+        'svg_path', 'depth_path', 'cdn_url', 'width', 'height', 'view_box',
         'description', 'placement', 'height_m', 'opaque_box', 'sheet',
     ];
 
@@ -65,6 +66,15 @@ class SvgAsset extends Model
     public function url(): string
     {
         return $this->cdn_url ?: Storage::disk('public')->url($this->svg_path);
+    }
+
+    /**
+     * The backdrop's depth map (art:depth), root-relative so APP_URL is never baked into a scene,
+     * or null when it has none.
+     */
+    public function depthUrl(): ?string
+    {
+        return $this->depth_path ? '/storage/'.$this->depth_path : null;
     }
 
     /**

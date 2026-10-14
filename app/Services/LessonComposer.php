@@ -10,8 +10,11 @@ use App\Models\Lesson;
 use App\Models\Scene;
 use App\Models\User;
 use App\Services\Lessons\LibraryLayers;
+use App\Services\Lessons\MomentSpec;
 use App\Services\Lessons\SceneDialogue;
+use App\Services\Lessons\TeamGameSpec;
 use App\Services\Support\AudioEncoder;
+use App\Services\Support\ShotCamera;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
@@ -29,6 +32,9 @@ use Throwable;
  *   map     — MapLibre scene with labelled pins (e.g. "Anne Frank House")
  *   3d      — narrated scene over a Sketchfab model background
  *   video   — narrated scene over a YouTube/Vimeo background
+ *   team    — class-screen team game, kind=game/team; `mode: budget|choose|discuss` (TeamGameSpec)
+ *
+ * A story scene may carry a `moment` (MomentSpec): a power-meter mini game at its stuck point.
  *
  * Imagery is sourced from the paintings corpus + Wikimedia Commons (SceneImageSourcer), narration
  * from Azure TTS. Re-running rebuilds a lesson's scenes from scratch, so a spec edit is the unit of
@@ -78,6 +84,8 @@ class LessonComposer
         // A bad library ref must fail BEFORE anything is deleted: a rebuild that dies on scene 5
         // would leave a published lesson half-gone and back in Draft.
         $this->library->preflight($spec);
+        $this->preflightCameras($spec);
+        $this->preflightMoments($spec);
 
         $existing = Lesson::withTrashed()->where('teacher_id', $teacher->id)->where('topic', $key)->first();
         $stale = $existing ? $this->sceneCopies($existing) : [];
@@ -116,6 +124,8 @@ class LessonComposer
             'teacher_id' => $teacher->id,
             'title' => (string) ($spec['title'] ?? $key),
             'topic' => $key,
+            // Shown under the title on the title screen; without it the player falls back to the topic (the spec key).
+            'details' => $spec['details'] ?? null,
             'subject' => (string) ($spec['subject'] ?? 'history'),
             // The language the scripts are written in. A spec that does not say is English, which
             // is what every spec was before this key existed. Nothing infers it from the text: a
@@ -173,6 +183,7 @@ class LessonComposer
 
             $scene = match ($type) {
                 'quiz' => $this->quizScene($lesson, $sceneSpec, $order, ++$gameIndex),
+                'team' => $this->teamScene($lesson, $sceneSpec, $order, ++$gameIndex),
                 'gallery' => $this->galleryScene($lesson, $sceneSpec, $order),
                 'map' => $this->mapScene($lesson, $sceneSpec, $order),
                 'voyage' => $this->voyageScene($lesson, $sceneSpec, $order),
@@ -182,6 +193,8 @@ class LessonComposer
 
             $this->library->applyLayers($scene, $sceneSpec, $order);
             $this->applyPassthrough($scene, $sceneSpec);
+            $this->applyCamera($scene, $sceneSpec, $order);
+            $this->applyMoment($scene, $sceneSpec, $order, (string) ($spec['language'] ?? 'en'), $narrate);
             $this->nameIdentityAfterChapter($scene);
 
             $this->say("  #{$order} {$type} — ".($scene->location ?: $scene->chapter_name ?: '…'));
@@ -297,6 +310,128 @@ class LessonComposer
         }
 
         $scene->update($update);
+    }
+
+    /**
+     * A bad camera must fail BEFORE anything is deleted, like a bad library ref.
+     *
+     * @param  array<string,mixed>  $spec
+     */
+    private function preflightCameras(array $spec): void
+    {
+        foreach (array_values((array) ($spec['scenes'] ?? [])) as $i => $s) {
+            $where = 'Spec scene #'.($i + 1).(isset($s['id']) ? " '{$s['id']}'" : '');
+            ShotCamera::fromSpec($s['camera'] ?? null, $where);
+            ShotCamera::entryFromSpec($s['entry'] ?? null, $where);
+            foreach ((array) ($s['shots'] ?? []) as $j => $shot) {
+                ShotCamera::fromSpec($shot['camera'] ?? null, "{$where}, shot {$j}");
+                ShotCamera::entryFromSpec($shot['entry'] ?? null, "{$where}, shot {$j}");
+            }
+        }
+    }
+
+    /**
+     * A bad moment must fail BEFORE anything is deleted, like a bad camera: an unknown input or payoff,
+     * a moment on a scene that is not a story panel, a layer ref the panel does not carry.
+     *
+     * @param  array<string,mixed>  $spec
+     */
+    private function preflightMoments(array $spec): void
+    {
+        foreach (array_values((array) ($spec['scenes'] ?? [])) as $i => $s) {
+            if (! isset($s['moment'])) {
+                continue;
+            }
+            $where = 'Spec scene #'.($i + 1);
+            if (($s['type'] ?? 'story') !== 'story' || ! is_array($s['moment'])) {
+                throw new \InvalidArgumentException("{$where}: a `moment` sits only on a story scene, as an array.");
+            }
+            $refs = array_map(fn ($l): string => (string) ($l['asset'] ?? ''), (array) ($s['layers'] ?? []));
+            $moment = MomentSpec::resolveLayers($s['moment'], fn (string $ref): ?int => in_array($ref, $refs, true) ? 1 : null, $where);
+            MomentSpec::normalize($moment);
+        }
+    }
+
+    /**
+     * The scene's `moment` into config.moment, with a copy in config.moment_default: what the editor's
+     * "Reset" puts back. Layer refs become the asset ids the panel's layers were built with (same
+     * order as the spec's `layers`). With narration on, the `after` line is recorded in the narrator's
+     * voice; without, the player shows it as a caption.
+     *
+     * @param  array<string,mixed>  $s
+     */
+    private function applyMoment(Scene $scene, array $s, int $order, string $lang, bool $narrate): void
+    {
+        if (! is_array($s['moment'] ?? null)) {
+            return;
+        }
+        $scene->refresh();
+        // The built figures in spec order; a backdrop's cover layer (no asset) sits under them.
+        $built = array_values(array_filter((array) (((array) ($scene->shots ?? []))[0]['layers'] ?? []), fn ($l): bool => isset($l['asset_id'])));
+        $ids = [];
+        foreach (array_values((array) ($s['layers'] ?? [])) as $i => $layer) {
+            $ids[(string) ($layer['asset'] ?? '')] ??= isset($built[$i]['asset_id']) ? (int) $built[$i]['asset_id'] : null;
+        }
+        $moment = MomentSpec::normalize(MomentSpec::resolveLayers(
+            $s['moment'], fn (string $ref): ?int => $ids[$ref] ?? null, "Spec scene #{$order}",
+        ));
+
+        if ($narrate && $moment['after'] !== '') {
+            try {
+                $moment['after_audio'] = '/storage/'.$this->dialogue->narratorClip($scene, $moment['after'], $lang);
+            } catch (Throwable $e) {
+                $this->say('     ! moment after-line narration failed: '.substr($e->getMessage(), 0, 90));
+            }
+        }
+
+        $scene->update(['config' => array_merge((array) ($scene->config ?? []), ['moment' => $moment, 'moment_default' => $moment])]);
+    }
+
+    /**
+     * The scene's `camera` and `entry` (resources/js/scene/camera.js) onto its first shot, the same
+     * place the editor's Animate tab writes them. A scene with only a backdrop gets that one shot
+     * (the backdrop as a cover), so the camera has a plate to move over. Shots that travel verbatim
+     * (`shots`) keep their own cameras, cleaned to the vocabulary.
+     *
+     * @param  array<string,mixed>  $s
+     */
+    private function applyCamera(Scene $scene, array $s, int $order): void
+    {
+        $where = "Spec scene #{$order}";
+        $camera = ShotCamera::fromSpec($s['camera'] ?? null, $where);
+        $entry = ShotCamera::entryFromSpec($s['entry'] ?? null, $where);
+        $scene->refresh();
+        $shots = (array) ($scene->shots ?? []);
+
+        if (! empty($s['shots'])) {
+            $shots = array_map(function (array $shot): array {
+                unset($shot['camera'], $shot['entry']);
+
+                return $shot;
+            }, $shots);
+            foreach ((array) $s['shots'] as $j => $raw) {
+                if (isset($shots[$j])) {
+                    $shots[$j] += array_filter([
+                        'camera' => ShotCamera::payload($raw['camera'] ?? null),
+                        'entry' => ShotCamera::entry($raw['entry'] ?? null),
+                    ]);
+                }
+            }
+        }
+
+        if ($camera !== null || $entry !== null) {
+            if ($shots === [] && $scene->image_path) {
+                $shots = [SceneLayers::shot($scene->image_path, [], LibraryLayers::COVER_DEPTH)];
+            }
+            if ($shots === []) {
+                throw new \InvalidArgumentException("{$where}: a camera needs a picture to move over (a backdrop, image or layers).");
+            }
+            $shots[0] = array_merge($shots[0], array_filter(['camera' => $camera, 'entry' => $entry]));
+        }
+
+        if ($shots !== (array) ($scene->shots ?? [])) {
+            $scene->update(['shots' => $shots]);
+        }
     }
 
     /**
@@ -673,6 +808,70 @@ class LessonComposer
         }
 
         return $scene;
+    }
+
+    /**
+     * A team game for the class screen (TeamGameSpec): teams decide aloud, the teacher taps their
+     * choices in. The spec entry is cleaned at this boundary; its cleaned copy is also kept as
+     * `team_default`, which is what the editor's "Reset" puts back. An optional `script` is the
+     * narrated intro, played before the game opens (as a quiz intro is).
+     *
+     * @param  array<string,mixed>  $s
+     */
+    private function teamScene(Lesson $lesson, array $s, int $order, int $gameIndex): Scene
+    {
+        $team = TeamGameSpec::normalize($this->teamImages($lesson, $s, $order));
+
+        $scene = $lesson->scenes()->create([
+            'order' => $order,
+            'kind' => 'game',
+            'game_type' => 'team',
+            'game_segment_index' => $gameIndex,
+            // The chapter bar's estimate: the discussion timer plus a couple of minutes to reveal.
+            'duration_seconds' => max(60, $team['minutes'] * 60 + 120),
+            'background_color' => '#0f172a',
+            'chapter_name' => $s['chapter'] ?? ($team['title'] !== '' ? $team['title'] : null),
+            'location' => $s['location'] ?? null,
+            'year' => $s['year'] ?? null,
+            'script_segment' => $s['script'] ?? null,
+            'status' => 'pending',
+            'config' => ['team' => $team, 'team_default' => $team],
+        ]);
+
+        if (! empty($s['backdrop'])) {
+            $this->library->attachLibraryBackdrop($scene, (string) $s['backdrop'], $order);
+        }
+
+        return $scene;
+    }
+
+    /**
+     * Library refs ("asset:...") in a team game's images become copied, served URLs; anything else
+     * is left for TeamGameSpec to accept or drop.
+     *
+     * @param  array<string,mixed>  $s
+     * @return array<string,mixed>
+     */
+    private function teamImages(Lesson $lesson, array $s, int $order): array
+    {
+        $resolve = fn (mixed $ref): mixed => is_string($ref) && str_starts_with($ref, 'asset:')
+            ? $this->library->copyLibraryImage($lesson, substr($ref, 6), $order)['url']
+            : $ref;
+
+        if (isset($s['map'])) {
+            $s['map'] = $resolve($s['map']);
+        }
+        foreach (['options', 'evidence'] as $list) {
+            if (! is_array($s[$list] ?? null)) {
+                continue;
+            }
+            $s[$list] = array_map(
+                fn ($row) => is_array($row) && isset($row['image']) ? ['image' => $resolve($row['image'])] + $row : $row,
+                $s[$list],
+            );
+        }
+
+        return $s;
     }
 
     /**

@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { containBox, plateBox, subjectFocusX } from '../plate-box.js'
+import { containBox, plateBox, subjectFocusX, fitToPlate } from '../plate-box.js'
 import { ParallaxScene } from '../ParallaxScene.js'
 
 const PLATE = 2880 / 1607   // the history-line backdrops
@@ -94,5 +94,23 @@ describe('cover bleed', () => {
 
   it("holds still on 'contain' whatever motion it is handed", () => {
     expect(coverInset({ panX: -4, zoom: 1.06 }, 'contain')).toBe('0%')
+  })
+})
+
+describe('fitToPlate back to the whole stage', () => {
+  // The editor's clipart host is `position:absolute; inset:0` INLINE. Removing the four sides one by
+  // one also removed the inset, the host collapsed to 0x0 and every figure on it vanished.
+  it('keeps an inline inset:0 host covering the stage when there is no plate aspect', () => {
+    const host = document.createElement('div')
+    host.style.cssText = 'position:absolute;inset:0;'
+    fitToPlate(host, document.body, null)
+    expect([host.style.left, host.style.top, host.style.right, host.style.bottom]).toEqual(['0px', '0px', '0px', '0px'])
+  })
+
+  it('drops a Whole-image box it was given before', () => {
+    const host = document.createElement('div')
+    Object.assign(host.style, { left: '40px', top: '10px', width: '300px', height: '200px', right: 'auto', bottom: 'auto' })
+    fitToPlate(host, document.body, null)
+    expect([host.style.width, host.style.height, host.style.left, host.style.right]).toEqual(['', '', '0px', '0px'])
   })
 })

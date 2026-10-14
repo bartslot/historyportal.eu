@@ -115,6 +115,10 @@
                         'kind'   => in_array($l['kind'] ?? 'cover', ['cover', 'figure', 'strip'], true) ? ($l['kind'] ?? 'cover') : 'cover',
                         'scale'  => (float) ($l['scale'] ?? 1),
                         'height' => isset($l['height']) ? (float) $l['height'] : null,
+                        // Optional explicit width (the editor's unlocked aspect). The wizard payload
+                        // already carried it; without it here a stretched sea strip played narrower
+                        // in class than the teacher set it.
+                        'width'  => isset($l['width']) ? (float) $l['width'] : null,
                         'sway'   => (bool) ($l['sway'] ?? false),
                         // Artistic controls (E3c-b): blur px, opacity 0-1, blend mode, wobble 0-2, z override.
                         'blur'    => isset($l['blur']) ? (float) $l['blur'] : null,
@@ -137,8 +141,18 @@
                         'embed'   => isset($l['embed']) && is_array($l['embed']) ? $l['embed'] : null,
                         // Ambient motion (drift / breeze / bob / flutter), validated to the known vocabulary.
                         ...\App\Services\Support\LayerAmbient::payload($l),
+                        // The angle and mirroring the teacher set (a tilt so two copies of one
+                        // sprite never look like twins), and how the layer blends into the scene.
+                        'rotation' => isset($l['rotation']) ? (float) $l['rotation'] : null,
+                        'flip_x'  => ! empty($l['flip_x']),
+                        'flip_y'  => ! empty($l['flip_y']),
+                        ...\App\Services\Support\LayerSitIn::payload($l),
+                        'occlude' => ! empty($l['occlude']),
                     ])->filter(fn($l) => $l['url'] || $l['embed'])->values()->all() ?: null,
                     'anchor_sentence' => $shot['anchor_sentence'] ?? null,
+                    // The panel's own camera move and entry (resources/js/scene/camera.js).
+                    'camera' => \App\Services\Support\ShotCamera::payload($shot['camera'] ?? null),
+                    'entry' => \App\Services\Support\ShotCamera::entry($shot['entry'] ?? null),
                     // Keep a shot with EITHER a background image OR clipart layers — a voyage scene's
                     // shot is layer-only (the map is the backdrop), so it has no image_url.
                 ])->filter(fn($shot) => $shot['image_url'] || !empty($shot['layers']))->values()->all() ?: null,
@@ -737,7 +751,11 @@
                         <span x-show="estimatedMinutes" x-text="estimatedMinutes"
                               class="text-xs font-light text-slate-500"></span>
 
-                        <template x-if="lesson.include_game && lesson.game_type === 'quiz'">
+                        {{-- Not when every game scene is a team game: a composed lesson keeps game_type
+                             'quiz' at lesson level, but a class with only team games has no quiz. --}}
+                        <template x-if="lesson.include_game && lesson.game_type === 'quiz'
+                                        && !((lesson.scenes || []).some(s => s.kind === 'game')
+                                             && (lesson.scenes || []).filter(s => s.kind === 'game').every(s => s.game_type === 'team'))">
                             <span class="flex items-center gap-1.5 rounded-full border border-sky-500/40 bg-sky-950/50 px-3 py-0.5 text-xs font-semibold text-sky-300 backdrop-blur-sm">
                                 <svg class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                 <span>Quiz</span>
@@ -753,7 +771,7 @@
                     </div>
 
                     {{-- CTA --}}
-                    <div class="mt-6 flex sm:mt-8 {{ $titleRows }}">
+                    <div class="mt-6 flex flex-wrap gap-3 sm:mt-8 {{ $titleRows }}">
                         <template x-if="canStart">
                             <button role="button"
                                 @click="startLesson()"
@@ -769,6 +787,12 @@
 
 
                                 <span>{{ __('Start lesson') }}</span>
+                            </button>
+                        </template>
+                        {{-- Solo (the join QR): carry on where this device stopped; Start lesson starts over. --}}
+                        <template x-if="canStart && resumable">
+                            <button type="button" @click="resumeLesson()" class="btn btn-outline btn-lg rounded-full border-white/70 text-white hover:border-white hover:bg-white/10">
+                                {{ __('Continue where you stopped') }}
                             </button>
                         </template>
                         <template x-if="!canStart">

@@ -8,6 +8,8 @@ use App\Models\Scene;
 use App\Models\SvgAsset;
 use App\Services\SceneLayers;
 use App\Services\Support\LayerAmbient;
+use App\Services\Support\LayerSitIn;
+use App\Services\Support\ShotCamera;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 
@@ -276,6 +278,149 @@ trait EditsSceneArtwork
         $this->selectSceneInternal($scene->id);
     }
 
+    /**
+     * One camera setting of one shot (a comic panel): move, amount, duration, ease, delay, or the
+     * panel's entry. Validated by ShotCamera; undo comes with the save (SceneHistory).
+     *
+     * A flat scene (a picture, no shot yet) gets its one shot here, a cover with nothing on it, so
+     * the camera has a plate to move over: but ONLY for a real move or a real entry. Hold, fade, or
+     * a timing value with no move would turn a flat scene into a layered one for nothing, and it
+     * would no longer play exactly as before (Ken Burns, the flat crossfade).
+     */
+    public function setShotCamera(int $shot, string $key, mixed $value): void
+    {
+        $clean = ShotCamera::field($key, $value);
+        if ($clean === null || ! $this->selectedSceneId) {
+            return;
+        }
+        $materialise = ($key === 'move' && $clean !== 'hold') || ($key === 'entry' && $clean !== ShotCamera::DEFAULT_ENTRY);
+
+        $this->writeShot($shot, $materialise, function (array $s) use ($key, $clean): array {
+            if ($key === 'entry') {
+                return array_merge($s, ['entry' => $clean]);
+            }
+
+            return array_merge($s, ['camera' => array_merge((array) ($s['camera'] ?? []), [$key => $clean])]);
+        });
+    }
+
+    /**
+     * Back to the default: one setting (`key`), or the whole camera and entry of the shot (null).
+     * The default is the ABSENCE of the key, so a reset shot reads exactly like one never touched.
+     */
+    public function resetShotCamera(int $shot, ?string $key = null): void
+    {
+        if (! $this->selectedSceneId || ($key !== null && ! in_array($key, [...ShotCamera::KEYS, 'entry'], true))) {
+            return;
+        }
+
+        // A scene with no stored shot has nothing to reset: never create one to reset it.
+        $this->writeShot($shot, false, function (array $s) use ($key): array {
+            if ($key === null) {
+                unset($s['camera'], $s['entry']);
+            } elseif ($key === 'entry') {
+                unset($s['entry']);
+            } else {
+                $s['camera'] = array_diff_key((array) ($s['camera'] ?? []), [$key => true]);
+                if ($s['camera'] === []) {
+                    unset($s['camera']);
+                }
+            }
+
+            return $s;
+        });
+    }
+
+    /** A layer's ambient motion back to its defaults: speed 1, amount 1, the mode itself kept. */
+    public function resetLayerMotion(int $assetId): void
+    {
+        $this->writeLayerField($assetId, 'ambient_speed', null);
+        $this->writeLayerField($assetId, 'ambient_amount', null);
+    }
+
+    /**
+     * "Blend into scene": the preset for this layer (a boat gets a waterline and a reflection, a
+     * figure a contact shadow), all in one save so one undo takes it back.
+     */
+    public function blendLayerIntoScene(int $assetId): void
+    {
+        $layer = $this->findLayer($assetId);
+        if ($layer === null) {
+            return;
+        }
+        $ref = SvgAsset::query()->whereKey($assetId)->value('source_ref');
+        $this->writeLayerFields($assetId, LayerSitIn::preset($layer, $ref));
+    }
+
+    /** Back to the default: every blend-into-scene setting off (absent), in one save. */
+    public function resetLayerSitIn(int $assetId): void
+    {
+        $this->writeLayerFields($assetId, array_fill_keys(LayerSitIn::KEYS, null));
+    }
+
+    /**
+     * Hide the layer where the backdrop is nearer than it (a ship's rail in front of a figure on
+     * deck), from the backdrop's depth map. Off removes the key, so it reads as never touched.
+     */
+    public function setLayerOcclude(int $assetId, bool $on): void
+    {
+        $this->writeLayerFields($assetId, ['occlude' => $on ? 1 : null]);
+    }
+
+    /**
+     * "Fit to this spot": the height the layer has standing where it is (worked out in the browser
+     * from the backdrop's depth map) and the y that keeps its feet on that spot, in one save so one
+     * undo takes it back.
+     */
+    public function fitLayerToSpot(int $assetId, float $height, float $y): void
+    {
+        $this->writeLayerFields($assetId, [
+            'height' => max(1.0, min(200.0, $height)),
+            'y' => max(0.0, min(100.0, $y)),
+        ]);
+    }
+
+    /** @return array<string,mixed>|null the layer as stored in the selected scene's shots */
+    private function findLayer(int $assetId): ?array
+    {
+        if (! $this->selectedSceneId) {
+            return null;
+        }
+        foreach ($this->lesson->scenes()->findOrFail($this->selectedSceneId)->shots ?? [] as $shot) {
+            foreach ($shot['layers'] ?? [] as $l) {
+                if (($l['asset_id'] ?? null) === $assetId) {
+                    return $l;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  bool  $materialise  may a flat scene (picture, no shot) get its first shot for this?
+     * @param  callable(array<string,mixed>): array<string,mixed>  $change
+     */
+    private function writeShot(int $index, bool $materialise, callable $change): void
+    {
+        $scene = $this->lesson->scenes()->findOrFail($this->selectedSceneId);
+        $stored = $scene->shots ?? [];
+        $shots = $stored;
+        if ($shots === [] && $materialise && $index === 0 && $scene->image_path) {
+            $shots = [SceneLayers::shot($scene->image_path, [])];
+        }
+        if (! isset($shots[$index]) || ! is_array($shots[$index])) {
+            return;
+        }
+
+        $shots[$index] = $change($shots[$index]);
+        if ($shots === $stored) {
+            return;   // nothing changed: no save, no undo step
+        }
+        $scene->update(['shots' => array_values($shots)]);
+        $this->selectSceneInternal($scene->id);
+    }
+
     public function updateArtworkLayer(int $assetId, string $field, mixed $value): void
     {
         // Whitelist allowed fields with clamps.
@@ -332,6 +477,8 @@ trait EditsSceneArtwork
             'ambient' => LayerAmbient::MODES,
             'ambient_speed' => LayerAmbient::SPEED,
             'ambient_amount' => LayerAmbient::AMOUNT,
+            // Blend into the scene (LayerSitIn): each a share 0..1, 0 = off.
+            ...array_fill_keys(LayerSitIn::KEYS, LayerSitIn::RANGE),
         ];
 
         if (! array_key_exists($field, $whitelist)) {
@@ -354,7 +501,8 @@ trait EditsSceneArtwork
         // Coerce and clamp the value.
         $coercedValue = match ($field) {
             'depth', 'scale', 'opacity', 'blur', 'x', 'y', 'draw_time', 'anim_delay',
-            'height', 'width', 'rotation', 'white_key', 'tint_opacity', 'ambient_speed', 'ambient_amount' => (float) $value,
+            'height', 'width', 'rotation', 'white_key', 'tint_opacity', 'ambient_speed', 'ambient_amount',
+            'waterline', 'reflection', 'contact_shadow', 'color_match', 'foam', 'speed' => (float) $value,
             'wobble' => (int) $value,
             'sway', 'grayscale', 'flip_x', 'flip_y' => (bool) $value,
             'kind', 'blend', 'ink_preset', 'ink_fill', 'anim', 'anim_ease', 'anim_out', 'anim_out_ease', 'ambient' => (string) $value,
@@ -404,6 +552,17 @@ trait EditsSceneArtwork
      */
     private function writeLayerField(int $assetId, string $field, mixed $value): void
     {
+        $this->writeLayerFields($assetId, [$field => $value], unsetNull: false);
+    }
+
+    /**
+     * Several already-validated fields in ONE save (one undo step). With `unsetNull` a null
+     * removes the key, so a reset layer reads exactly like one never touched.
+     *
+     * @param  array<string,mixed>  $fields
+     */
+    private function writeLayerFields(int $assetId, array $fields, bool $unsetNull = true): void
+    {
         if (! $this->selectedSceneId) {
             return;
         }
@@ -414,10 +573,17 @@ trait EditsSceneArtwork
             return;
         }
 
-        $shots = collect($shots)->map(function (array $shot) use ($assetId, $field, $value): array {
-            $layers = collect($shot['layers'] ?? [])->map(function (array $l) use ($assetId, $field, $value): array {
-                if (($l['asset_id'] ?? null) === $assetId) {
-                    $l[$field] = $value;
+        $shots = collect($shots)->map(function (array $shot) use ($assetId, $fields, $unsetNull): array {
+            $layers = collect($shot['layers'] ?? [])->map(function (array $l) use ($assetId, $fields, $unsetNull): array {
+                if (($l['asset_id'] ?? null) !== $assetId) {
+                    return $l;
+                }
+                foreach ($fields as $field => $value) {
+                    if ($value === null && $unsetNull) {
+                        unset($l[$field]);
+                    } else {
+                        $l[$field] = $value;
+                    }
                 }
 
                 return $l;
@@ -426,7 +592,7 @@ trait EditsSceneArtwork
             return array_merge($shot, ['layers' => $layers]);
         })->all();
 
-        $scene->update(['shots' => $shots]);
+        $scene->update(['shots' => $shots]);   // an unchanged layer is a clean model: no save
         $this->selectSceneInternal($scene->id);
     }
 

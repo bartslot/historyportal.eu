@@ -202,6 +202,15 @@
                             'breeze' => __('Breeze'),
                             'bob' => __('Bob'),
                             'flutter' => __('Flutter'),
+                            'swell' => __('Sea swell'),
+                            'roll' => __('Roll'),
+                            'billow' => __('Billow'),
+                            'rain' => __('Rain'),
+                            'flash' => __('Lightning'),
+                            'spray' => __('Spray'),
+                            'flicker' => __('Flicker'),
+                            'rise' => __('Smoke'),
+                            'oars' => __('Oars'),
                         ] as $mv => $ml)
                             <option value="{{ $mv }}" @selected($val('ambient', 'none') === $mv)>{{ $ml }}</option>
                         @endforeach
@@ -216,7 +225,82 @@
                 <x-ui.slider-row :label="__('Amount')" :min="0" :max="2" :step="0.05"
                                  :value="$val('ambient_amount', 1)" :display="rtrim(rtrim(number_format((float) $val('ambient_amount', 1), 2), '0'), '.')" unit="×" :default="1"
                                  :on-input="$live('ambient_amount')" :on-change="$save('ambient_amount')" />
+                {{-- Back to the motion's defaults (speed 1, amount 1); the mode itself stays. --}}
+                <div class="flex justify-end">
+                    <button type="button" wire:click="resetLayerMotion({{ $aid }})"
+                            data-tooltip="{{ __('Speed and amount back to their defaults') }}"
+                            class="btn btn-ghost btn-xs rounded-full">
+                        <x-icons.arrow-uturn-left class="h-3.5 w-3.5" />
+                        {{ __('Reset') }}
+                    </button>
+                </div>
             </div>
+
+            {{-- Blend into the scene (resources/js/scene/sit-in-scene.js): a waterline, foam, a
+                 reflection, a contact shadow and a colour wash from the backdrop, so a cut-out
+                 sits IN the painting. The button sets the preset for a boat or a figure; the
+                 four values are under Advanced. Mirror and tilt are the Angle row above. --}}
+            @php $sitOn = collect(\App\Services\Support\LayerSitIn::KEYS)->contains(fn ($k) => (float) ($layer[$k] ?? 0) > 0); @endphp
+            <div class="divider my-0" role="presentation"></div>
+            <div class="flex items-center gap-2" data-sit-in>
+                <button type="button" wire:click="blendLayerIntoScene({{ $aid }})"
+                        data-tooltip="{{ __('Waterline, reflection, shadow and colour from the backdrop') }}"
+                        @class(['btn btn-xs flex-1 rounded-full', 'btn-primary' => ! $sitOn, 'btn-ghost' => $sitOn])>
+                    {{ __('Blend into scene') }}
+                </button>
+                @if ($sitOn)
+                    <button type="button" wire:click="resetLayerSitIn({{ $aid }})"
+                            data-tooltip="{{ __('Back to the cut-out as it was') }}"
+                            class="btn btn-ghost btn-xs rounded-full">
+                        <x-icons.arrow-uturn-left class="h-3.5 w-3.5" />
+                        {{ __('Reset') }}
+                    </button>
+                @endif
+            </div>
+            <details class="collapse collapse-arrow rounded-lg border border-panel-hairline" data-sit-advanced>
+                <summary class="collapse-title min-h-0 px-3 py-2 text-2xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Advanced') }}</summary>
+                <div class="collapse-content space-y-2 px-3">
+                    @foreach ([
+                        'waterline' => __('Waterline'),
+                        'reflection' => __('Reflection'),
+                        'contact_shadow' => __('Shadow'),
+                        'color_match' => __('Colour'),
+                        'foam' => __('Foam'),
+                        'speed' => __('Headway'),
+                    ] as $sk => $sl)
+                        <x-ui.slider-row :label="$sl" :min="0" :max="1" :step="0.05"
+                                         :value="$val($sk, 0)" :display="$pct($val($sk, 0))" unit="%" :default="0"
+                                         :on-input="$live($sk)" :on-change="$save($sk)" />
+                    @endforeach
+                </div>
+            </details>
+
+            {{-- Behind what the backdrop draws in front (resources/js/scene/occlusion.js), and the
+                 height a figure has where it stands: both from the backdrop's depth map, so only
+                 on a backdrop that has one (php artisan art:depth). --}}
+            @if (! empty($scene->config['backdrop_depth']))
+                @php $occludeOn = ! empty($layer['occlude']); @endphp
+                <div class="divider my-0" role="presentation"></div>
+                <div class="flex items-center gap-2" data-occlude>
+                    <x-ui.toggle-row class="flex-1" :label="__('Behind objects')" :checked="$occludeOn"
+                                     :on-toggle="'window.__setLayerProp?.(' . $aid . ', \'occlude\', $event.target.checked ? 1 : 0)'"
+                                     :on-change="'setLayerOcclude(' . $aid . ', $event.target.checked)'" />
+                    @if ($occludeOn)
+                        <button type="button" wire:click="setLayerOcclude({{ $aid }}, false)"
+                                data-tooltip="{{ __('In front of everything again') }}"
+                                class="btn btn-ghost btn-xs rounded-full">
+                            <x-icons.arrow-uturn-left class="h-3.5 w-3.5" />
+                            {{ __('Reset') }}
+                        </button>
+                    @endif
+                </div>
+                <button type="button" data-fit-spot x-data
+                        x-on:click="const fit = await window.__lessonArtworkLayer?.fitHeight?.({{ $aid }}); if (fit) { $wire.fitLayerToSpot({{ $aid }}, fit.height, fit.y); $dispatch('layer-fitted', { assetId: {{ $aid }}, height: fit.height }) }"
+                        data-tooltip="{{ __('The height it has standing here, from the horizon of the backdrop') }}"
+                        class="btn btn-ghost btn-xs w-full rounded-full">
+                    {{ __('Fit to this spot') }}
+                </button>
+            @endif
         </div>
     </x-ui.settings-section>
 

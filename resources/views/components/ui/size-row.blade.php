@@ -30,7 +30,8 @@
         height: {{ (float) ($height ?? 40) }},
         width: {{ $width === null ? 'null' : (float) $width }},
         locked: {{ $locked ? 'true' : 'false' }},
-     })">
+     })"
+     x-on:layer-fitted.window="fitted($event.detail)">
 
     <span style="width: var(--settings-panel-label-w, 3.0625rem)"
           class="shrink-0 text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ $label ?? __('Size') }}</span>

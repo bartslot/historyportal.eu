@@ -36,7 +36,82 @@ final class JsTranslations
     /** @return array<string, string> */
     public static function forBrowser(): array
     {
-        return array_merge(self::quiz(), self::player(), self::editor());
+        return array_merge(self::quiz(), self::player(), self::editor(), self::teamGame(), self::powerMeter());
+    }
+
+    /**
+     * The power-meter moment on a story panel (resources/js/scene/PowerMeter.js).
+     *
+     * @return array<string, string>
+     */
+    private static function powerMeter(): array
+    {
+        return [
+            'Power meter' => __('Power meter'),
+            'Turn' => __('Turn'),
+            'Listening to the room' => __('Listening to the room'),
+            'No microphone. Tap instead.' => __('No microphone. Tap instead.'),
+            'Louder!' => __('Louder!'),
+            'Blow!' => __('Blow!'),
+            'Quiet now' => __('Quiet now'),
+            'Sound level' => __('Sound level'),
+            'The microphone only listens to loud and soft. Nothing is recorded.' => __('The microphone only listens to loud and soft. Nothing is recorded.'),
+            'Tap to fill' => __('Tap to fill'),
+            'Clap in time!' => __('Clap in time!'),
+            'Shake!' => __('Shake!'),
+            'Tilt!' => __('Tilt!'),
+            'Move the phone' => __('Move the phone'),
+            'Move the phone to fill the meter' => __('Move the phone to fill the meter'),
+            'No motion sensor. Tap instead.' => __('No motion sensor. Tap instead.'),
+            "Shaking works on a pupil's own phone. Tap instead." => __("Shaking works on a pupil's own phone. Tap instead."),
+            'Use the motion sensor' => __('Use the motion sensor'),
+            'Movement' => __('Movement'),
+        ];
+    }
+
+    /**
+     * The team game on the class screen (TeamGame.js): setup, loading, votes, reveal.
+     *
+     * @return array<string, string>
+     */
+    private static function teamGame(): array
+    {
+        return [
+            'Team :number' => __('Team :number'),
+            'You' => __('You'),
+            'Choose' => __('Choose'),
+            'Your choice' => __('Your choice'),
+            'Your answer' => __('Your answer'),
+            'Only you see this answer. It is not sent anywhere.' => __('Only you see this answer. It is not sent anywhere.'),
+            'Too heavy: that would be :load of :capacity points. Leave something behind first.' => __('Too heavy: that would be :load of :capacity points. Leave something behind first.'),
+            'Time is up' => __('Time is up'),
+            'Pause' => __('Pause'),
+            'Resume' => __('Resume'),
+            '+1 minute' => __('+1 minute'),
+            'Team game' => __('Team game'),
+            'Roles in each team' => __('Roles in each team'),
+            'Teams' => __('Teams'),
+            'Fewer teams' => __('Fewer teams'),
+            'More teams' => __('More teams'),
+            'Start' => __('Start'),
+            ':load of :capacity points loaded' => __(':load of :capacity points loaded'),
+            'Always on board' => __('Always on board'),
+            'Back' => __('Back'),
+            'Reveal' => __('Reveal'),
+            'Too heavy: :team would carry :load of :capacity points. Leave something behind first.' => __('Too heavy: :team would carry :load of :capacity points. Leave something behind first.'),
+            'What later scenes need' => __('What later scenes need'),
+            'Cargo' => __('Cargo'),
+            'On board' => __('On board'),
+            'Loaded' => __('Loaded'),
+            'Points' => __('Points'),
+            'Continue the lesson' => __('Continue the lesson'),
+            'But' => __('But'),
+            'Teams choose' => __('Teams choose'),
+            'Map of the options' => __('Map of the options'),
+            'Real decision' => __('Real decision'),
+            'Teams still to choose: :count' => __('Teams still to choose: :count'),
+            'Close the discussion' => __('Close the discussion'),
+        ];
     }
 
     /**

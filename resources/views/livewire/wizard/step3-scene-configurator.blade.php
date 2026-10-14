@@ -1044,7 +1044,8 @@
                     <x-lesson.scene-inspector-game :scene="$sceneModel" :games="$this->games"
                                                   :quiz-draft="$quizDraft" :quiz-errors="$quizErrors" :quiz-saved="$quizSaved"
                                                   :quiz-difficulty="$this->quizDifficulty()" :quiz-scope="$this->quizScope()"
-                                                  :quiz-shuffle="$this->quizShuffle()" />
+                                                  :quiz-shuffle="$this->quizShuffle()"
+                                                  :team-draft="$teamDraft" :team-is-default="$this->teamGameIsDefault()" />
                 @elseif ($sceneModel->kind === 'voyage')
                     <x-lesson.scene-inspector-voyage :scene="$sceneModel" :voyage-def="$this->voyageDef()" :route-line="$this->routeLine()" :voyage-map="$this->voyageMap()" :voyage-fog="$this->voyageFog()" :voyage-view="$this->voyageView()" :transports="$this->transports()" :stops="$this->voyageStops()" />
                 @elseif ($sceneModel->kind === 'gallery')
@@ -1053,6 +1054,7 @@
                     <x-lesson.scene-inspector-video :scene="$sceneModel" />
                 @else
                     <x-lesson.scene-inspector-narration :scene="$sceneModel" />
+                    <x-lesson.scene-inspector-moment :draft="$momentDraft" :is-default="$this->momentIsDefault()" :layers="$this->momentLayers()" />
                 @endif
 
                 @if ($sceneModel->takesTeacherEstimate())

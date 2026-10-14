@@ -6,6 +6,7 @@ import { isClipartLayer } from './layer-filters.js'
 import { fitToPlate, plateAspect } from './plate-box.js'
 import { t } from '../i18n.js'
 import { gradientCanvas } from './background-gradient.js'
+import { cameraSpec } from './camera.js'
 
 /**
  * Push every alignment entry earlier by VISEME_LEAD_SECONDS. The avatar player
@@ -135,8 +136,11 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                         focus: payload.focus ?? payload.config?.background_focus,
                         fit: payload.fit ?? payload.config?.background_fit,
                         layers: firstShot?.layers ?? null,
+                        camera: firstShot?.camera ?? null,
+                        entry: firstShot?.entry ?? null,
                         parallax: !!payload.parallax,
                         clipartOnTop: !!payload.config?.clipart_on_top,
+                        backdropDepth: payload.config?.backdrop_depth ?? null,
                         slideshowMode: payload.slideshowMode || (payload.parallax ? 'parallax' : 'standard'),
                         sceneId: payload.sceneId ?? 0,
                         isCurrent,
@@ -281,8 +285,11 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                 focus: e.detail?.focus ?? e.detail?.config?.background_focus,
                 fit: e.detail?.fit ?? e.detail?.config?.background_fit,
                 layers: firstShot?.layers ?? null,
+                camera: firstShot?.camera ?? null,
+                entry: firstShot?.entry ?? null,
                 parallax: !!e.detail?.parallax,
                 clipartOnTop: !!e.detail?.config?.clipart_on_top,
+                backdropDepth: e.detail?.config?.backdrop_depth ?? null,
                 sceneId: sceneId ?? 0,
                 isCurrent,
             })
@@ -1053,14 +1060,23 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             const stripV = (u) => String(u || '').split('?')[0]
             const fit = normalizeFit(payload.fit)
             const matte = payload.backgroundColor || null
-            const bgSig = JSON.stringify([bgLayers.map(l => stripV(l.url)), motion, animated, fit, matte])
+            // The shot's own camera (camera.js): previewed in a loop, the figures riding along.
+            const camera = cameraSpec(payload.camera)
+            const bgSig = JSON.stringify([bgLayers.map(l => stripV(l.url)), motion, animated, fit, matte, camera, payload.entry ?? null])
             if (bgSig !== _bgSig || !_wizardLayeredScene) {
                 _bgSig = bgSig
                 if (_wizardLayeredRaf) { cancelAnimationFrame(_wizardLayeredRaf); _wizardLayeredRaf = 0 }
                 if (_wizardLayeredScene) { try { _wizardLayeredScene.destroy() } catch (_) {} }
                 _wizardLayeredScene = new _parallaxMod.ParallaxScene(host)
-                _wizardLayeredScene.show({ layers: bgLayers.length ? bgLayers : layers, motion, fit, matte })
-                if (animated) {
+                _wizardLayeredScene.show({
+                    layers: bgLayers.length ? bgLayers : layers, motion, fit, matte,
+                    camera, entry: payload.entry ?? null, loop: true, entryAlong: [_artworkHost],
+                    onCameraFrame: (frameFor) => _artworkOverlay?.setCamera(frameFor),
+                })
+                // A shot camera drives the backdrop and the figures itself; the Ken Burns loop stays off.
+                // Without one, the figures drop any pose a previous camera left on them.
+                if (!camera) _artworkOverlay?.setCamera(null)
+                if (!camera && animated) {
                     // Ping-pong so the pan/zoom previews in a loop (playback drives it monotonically).
                     const CYCLE_MS = 12000, start = performance.now()
                     const loop = (now) => {
@@ -1074,7 +1090,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                         _wizardLayeredRaf = requestAnimationFrame(loop)
                     }
                     _wizardLayeredRaf = requestAnimationFrame(loop)
-                } else {
+                } else if (!camera) {
                     _wizardLayeredScene.update(0.5)   // static, centred pose
                     _artworkOverlay?.setParallax(0, motion)   // no camera motion → clipart at rest
                 }
@@ -1135,6 +1151,8 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                 const clipartOnTop = !!payload.clipartOnTop
                 _artworkOverlay.setOnTop(clipartOnTop)
                 _artworkOverlay.setStackLevels(2, 8)   // on the nodes — a z-index here would break blending
+                // The backdrop blend-into-scene samples its colours from.
+                _artworkOverlay.setBackdrop(bgLayers.find(l => (l.kind ?? 'cover') === 'cover')?.url, payload.backdropDepth)
                 // Skip re-seeding on identical poll re-renders (would reset an in-progress edit).
                 const sig = _artworkMod.layersSignature(artLayers)
                 // Re-seed only on a real change, then replay the entrances so the teacher sees

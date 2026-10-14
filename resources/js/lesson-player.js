@@ -25,6 +25,7 @@ import { fitToPlate, plateAspect } from './scene/plate-box.js'
 import { mountEmbedBg } from './scene/embed-bg.js'
 import { sameOriginMediaUrl } from './media-url.js'
 import { sceneTransitionFrames, easingBezier, EASINGS } from './scene/animations.js'
+import { readProgress, saveProgress, clearProgress, canResume } from './scene/progress-store.js'
 
 // Easing key → cubic-bezier, for the scene transition set in the wizard's Animate tab.
 const SCENE_EASINGS = Object.fromEntries(EASINGS.map(e => [e.key, easingBezier(e.key)]))
@@ -188,7 +189,9 @@ Alpine.data('lessonGame', (lesson) => ({
     // carries itself — a map, a voyage leg, a gallery, a film — needs no audio to be playable.
     get canStart () {
       return !!(lesson.audio_url || (lesson.scenes || []).some(s =>
-        s.audio_url || ['map', 'voyage', 'gallery', 'video'].includes(s.kind)))
+        s.audio_url || ['map', 'voyage', 'gallery', 'video'].includes(s.kind)
+        // A team game plays on the class screen without a voice of its own.
+        || (s.kind === 'game' && s.game_type === 'team')))
     },
 
     // Location/Year overlay
@@ -237,6 +240,11 @@ Alpine.data('lessonGame', (lesson) => ({
     // scene/chapter-timeline.js. A student jumps back anywhere they have been, never past `furthest`.
     chapters:          [],   // [{index, name, type, seconds, estimated, start, afterEstimate}]
     furthest:          { index: 0, time: 0 },
+    // Played on a pupil's own device (the join QR opens ?play=solo): no teams, and where they got
+    // to is kept in this browser so they can stop and carry on (scene/progress-store.js).
+    playSolo:          new URLSearchParams(window.location.search).get('play') === 'solo',
+    resumable:         null,  // saved progress worth offering "continue" for, else null
+    _done:             [],    // scene ids whose power-meter moment has played (never replayed)
     currentIsGame:     false, // current scene is a quiz/game → hide the chapter bar
     sceneProgress:     0,    // 0-1 through the current chapter's audio
     chaptersOpen:      false,
@@ -281,6 +289,10 @@ Alpine.data('lessonGame', (lesson) => ({
       // identity, batched delivery. An inert stub when there is no lesson code, so every
       // call site below can log unconditionally. See resources/js/lesson-telemetry.js.
       this._tel = createTelemetry(lesson.lesson_code)
+      if (this.playSolo) {
+        const saved = readProgress(window.localStorage, lesson.lesson_code)
+        this.resumable = canResume(saved) ? saved : null
+      }
 
       // Normalise OUR media URLs to the page origin so a localhost vs 127.0.0.1 mismatch doesn't
       // block audio. Anything on another host — a CDN-hosted cover, say — is left alone: rewriting
@@ -432,7 +444,8 @@ Alpine.data('lessonGame', (lesson) => ({
     },
 
     _renderQr () {
-      const url = `${window.location.origin}/lesson/${lesson.lesson_code}`
+      // A pupil who scans this plays the lesson themselves, on their own device.
+      const url = `${window.location.origin}/lesson/${lesson.lesson_code}?play=solo`
       const opts = (width) => ({ width, margin: 1, color: { dark: '#ffffff', light: '#00000000' } })
 
       const small = document.getElementById('title-qr-canvas')
@@ -443,8 +456,29 @@ Alpine.data('lessonGame', (lesson) => ({
     },
 
     // ── Title screen "Start lesson" button ─────────────────────────────
+    /** Solo: carry on from where this device stopped. */
+    resumeLesson () {
+      const p = this.resumable
+      if (!p) return this.startLesson()
+      this._startSceneIndex = p.index
+      this._pendingSeek = p.time
+      this.furthest = { index: p.index, time: p.time }
+      this._done = [...p.done]
+      this._resuming = true
+      return this.startLesson()
+    },
+
+    _saveProgress () {
+      if (!this.playSolo) return
+      saveProgress(window.localStorage, lesson.lesson_code, { index: this.furthest.index, time: this.furthest.time, done: this._done })
+    },
+
     async startLesson () {
       this._tel.log('lesson_started')
+      // Solo "Start lesson" with progress saved = start over: what this device remembered goes.
+      if (this.playSolo && !this._resuming) clearProgress(window.localStorage, lesson.lesson_code)
+      this._resuming = false
+      this.resumable = null
       // Locked-mode (best effort): go fullscreen on the user's play gesture so tab/app
       // switching takes deliberate effort. Not supported on iPhone Safari — never block.
       // Skip when embedded (the wizard preview iframe) — no gesture, and fullscreen would be wrong.
@@ -929,9 +963,18 @@ Alpine.data('lessonGame', (lesson) => ({
           motion = { panX: kb.toX - kb.fromX, panY: kb.toY - kb.fromY, zoom }
         }
 
-        this._destroyParallax()
+        // A panel that slides, wipes or dissolves in keeps the one before it underneath meanwhile.
+        this._destroyParallax(_parallaxMod.entryLingerMs(shot.entry))
+        // No camera on this panel: the figures go back to rest (the last panel's may have moved them).
+        if (!shot.camera) this._artLayer?.setCamera(null)
         _parallax = new _parallaxMod.ParallaxScene(host)
         _parallax.show({
+          // The panel's own camera move and entry (camera.js). The figures in the clipart overlay
+          // get the same frame, so they stay on their spot of the plate through the move.
+          camera: shot.camera || null,
+          entry: shot.entry || null,
+          entryAlong: [document.getElementById('lesson-voyage-art')],
+          onCameraFrame: (frameFor) => this._artLayer?.setCamera(frameFor),
           bgUrl: shot.bg_url,
           heroUrl: shot.hero_url || null,
           // Multiplane shots (E3c): ordered back→front, each {url, depth, kind, …}.
@@ -982,9 +1025,11 @@ Alpine.data('lessonGame', (lesson) => ({
       _diorama = null
     },
 
-    _destroyParallax () {
+    _destroyParallax (lingerMs = 0) {
+      // The figures leave the camera pose with the picture, unless they stay under a slide/wipe.
+      if (!lingerMs) this._artLayer?.setCamera(null)
       if (!_parallax) return
-      try { _parallax.destroy() } catch (_) { /* already detached */ }
+      try { _parallax.destroy(lingerMs) } catch (_) { /* already detached */ }
       _parallax = null
     },
 
@@ -1000,6 +1045,8 @@ Alpine.data('lessonGame', (lesson) => ({
         bg_url: shot.bg_url ?? null,
         hero_url: shot.hero_url ?? null,
         layers: shot.layers ?? null,
+        camera: shot.camera ?? null,
+        entry: shot.entry ?? null,
         time: i === 0 ? 0 : resolveAnchorTime(scene.alignment, shot.anchor_sentence)
       }))
     },
@@ -1016,6 +1063,7 @@ Alpine.data('lessonGame', (lesson) => ({
       const t = this._audio.currentTime
       if (this._sceneIndex !== this.furthest.index || t - this.furthest.time >= FURTHEST_STEP_SECONDS) {
         this.furthest = reachedFurther(this.furthest, { index: this._sceneIndex, time: t })
+        this._saveProgress()
       }
 
       // Drive the layered-scene parallax from narration progress (same tick as anchors).
@@ -1381,6 +1429,13 @@ Alpine.data('lessonGame', (lesson) => ({
       // Same for a quiz card: it only clears itself on completion, so leaving a quiz scene
       // through a chapter jump left the card painted over every later scene.
       this._quizOverlay?.hide()
+      this._teamGame?.hide()
+      this._powerMeter?.hide()
+      this._stopMomentAudio()
+      // A moment still running belongs to the scene we are leaving, even if we come straight back.
+      this._playEpoch = (this._playEpoch || 0) + 1
+      this._momentActive = false
+      this._hideBalloons(false)
 
       // And the same again for the strategy challenge, which is a PHASE rather than an overlay
       // object. GAME_BRIEF waits for the teacher to tap "Begin the challenge" and nothing else
@@ -1534,7 +1589,11 @@ Alpine.data('lessonGame', (lesson) => ({
         this._scriptEvents = parseScriptTags(scene.script, a.duration)
         if (onDuration) onDuration(a.duration)
       })
-      a.addEventListener('timeupdate', () => { if (this._audio === a) this._processScriptEvents() })
+      a.addEventListener('timeupdate', () => {
+        if (this._audio !== a) return
+        this._processScriptEvents()
+        this._momentAtTime(scene, a)
+      })
       if (onEnded) a.addEventListener('ended', () => { if (this._audio === a) onEnded() }, { once: true })
       a.play().catch(e => console.warn('lesson-player: autoplay blocked', e))
       return a
@@ -1954,6 +2013,11 @@ Alpine.data('lessonGame', (lesson) => ({
       // Story game: branch scenes hand control to the engine (choice overlay after a
       // question, delta/consequence/game-over flow after a chosen option).
       if (this._storyGame?.handleSceneEnd(index, scene)) return
+      // A power-meter moment the narration reached the end of (or one timed past the narration).
+      if (this._momentDue(index, scene)) {
+        this._beginMoment(index, scene, () => this._afterSceneAudio(index, scene))
+        return
+      }
       if (scene && scene.kind === 'game') {
         this._gameResumeIndex = index + 1
         this.canResumeAfterGame = this._gameResumeIndex < _sceneQueue.length
@@ -1962,6 +2026,11 @@ Alpine.data('lessonGame', (lesson) => ({
         const segmentQuestions = scene.quiz_questions?.length ? scene.quiz_questions : lesson.quiz_questions
         if (scene.game_type === 'quiz' && segmentQuestions?.length) {
           this._beginQuizFlow(segmentQuestions, scene.quiz_shuffle, scene.id ?? null)
+          return
+        }
+        // Team game on the class screen: the teacher enters each team's choice, then the lesson goes on.
+        if (scene.game_type === 'team' && scene.config?.team) {
+          this._beginTeamFlow(scene)
           return
         }
         this._beginGameFlow(scene)
@@ -2042,6 +2111,8 @@ Alpine.data('lessonGame', (lesson) => ({
           _mapInstance.map.on('move', () => this._artLayer?.refreshPositions())
         }
       }
+      // Blend-into-scene samples its colours here; occlusion reads the plate's depth map.
+      this._artLayer.setBackdrop(cover?.url, (scene.config || {}).backdrop_depth)
       this._artLayer.setLayers(layers)
       // Each layer arrives the way the teacher set it in the Animate tab. Run after setLayers,
       // which rebuilds the nodes the animation targets.
@@ -2075,6 +2146,114 @@ Alpine.data('lessonGame', (lesson) => ({
           this._resumeAfterQuiz()
         },
       })
+    },
+
+    async _beginTeamFlow (scene) {
+      const host = document.getElementById('lesson-game-overlay')
+      if (!host) { this._resumeAfterQuiz(); return }
+      const index = this._sceneIndex
+      const { TeamGame } = await import('./scene/TeamGame.js')
+      // A chapter jump during the import has moved the class on; the game must not open over it.
+      if (this._sceneIndex !== index) return
+      this._teamGame = this._teamGame || new TeamGame(host)
+      this._teamGame.show({ config: scene.config.team, solo: this.playSolo, onComplete: () => this._resumeAfterQuiz() })
+    },
+
+    // ── Power-meter moment (scene config.moment; scene/PowerMeter.js) ───────────────────
+    // The panel's narration reaches the stuck point, the player holds, the class (or the pupil)
+    // fills the meter, the payoff and the after line play, and the story goes on. A moment plays
+    // once: jumping back to its panel plays the panel without it.
+
+    /** A moment on this scene that has not played; `timed` asks for one set at a second mark. */
+    _momentDue (index, scene, timed = false) {
+      const m = scene?.kind !== 'game' ? scene?.config?.moment : null
+      if (!m || m.enabled === false || this._momentActive || this._done.includes(scene.id)) return false
+      // These fill without words (MomentSpec::WORDLESS_INPUTS).
+      const sound = ['loudness', 'blow', 'rhythm', 'silence', 'motion'].includes(m.input)
+      if (!sound && !(m.words?.right || []).some(w => String(w || '').trim())) return false
+      const at = Number(m.at)
+      return timed ? m.at !== 'end' && Number.isFinite(at) : true
+    },
+
+    _momentAtTime (scene, a) {
+      const index = this._sceneIndex
+      if (!this._momentDue(index, scene, true) || a.currentTime < Number(scene.config.moment.at)) return
+      a.pause()
+      this._beginMoment(index, scene, () => { if (this._audio === a) a.play().catch(() => {}) })
+    },
+
+    async _beginMoment (index, scene, resume) {
+      const epoch = this._playEpoch
+      const current = () => this._playEpoch === epoch
+      this._momentActive = true
+      const host = document.getElementById('lesson-game-overlay')
+      if (!host) { this._momentActive = false; resume(); return }
+      const mod = await import('./scene/PowerMeter.js')
+      // A chapter jump during the import has moved the class on.
+      if (!current()) return
+      const cfg = scene.config.moment
+      const art = document.getElementById('lesson-voyage-art')
+      this._tel.log('moment_started', { sceneIndex: index, sceneId: scene.id })
+      this._powerMeter = this._powerMeter || new mod.PowerMeter(host)
+      const { figureRects } = await import('./scene/card-place.js')
+      if (!current()) return
+      this._hideBalloons(true)
+      this._powerMeter.show({
+        config: cfg,
+        solo: this.playSolo,
+        avoid: () => figureRects(art, host, [cfg.react?.layer, cfg.payoff?.layer].filter(Boolean)),
+        onReact: () => mod.gust(mod.layerNode(art, cfg.react?.layer), cfg.react || {}),
+        // Skipped or full, the story still moves: history decides what happens, the game only when.
+        onDone: async ({ skipped }) => {
+          if (!current()) return
+          this._done = [...this._done, scene.id]
+          this._saveProgress()
+          this._tel.log(skipped ? 'moment_skipped' : 'moment_completed', { sceneIndex: index, sceneId: scene.id })
+          await this._momentPayoff(mod, cfg.payoff || {}, art)
+          if (!current()) return
+          await this._momentAfterLine(mod, mod.readMoment(cfg))
+          if (!current()) return
+          this._powerMeter.hide()
+          this._hideBalloons(false)
+          this._momentActive = false
+          this.playbackPaused = false
+          resume()
+        },
+      })
+    },
+
+    /** A balloon left over from the panel's last line must not sit on the meter. */
+    _hideBalloons (hidden) {
+      document.getElementById('lesson-balloons')?.classList.toggle('invisible', hidden)
+    },
+
+    _momentPayoff (mod, payoff, art) {
+      if (payoff.type === 'move') return mod.sail(mod.layerNode(art, payoff.layer), art, payoff)
+      if (payoff.type === 'camera' && _parallax) return _parallax.runCamera(payoff.camera)
+      return Promise.resolve()
+    },
+
+    /** The narrator's after line: recorded when the lesson was narrated, else shown to read. */
+    async _momentAfterLine (mod, m) {
+      if (!m.after) return
+      this._powerMeter.say(m.after)
+      if (m.afterAudio) {
+        const a = this._momentAudio = new Audio(m.afterAudio)
+        a.volume = this.audioMuted ? 0 : this.volumeLevel
+        await new Promise((done) => {
+          ['ended', 'error', 'pause'].forEach(e => a.addEventListener(e, done, { once: true }))
+          a.play().catch(done)
+        })
+        this._momentAudio = null
+      } else {
+        await new Promise((done) => setTimeout(done, mod.readingMs(m.after)))
+      }
+    },
+
+    _stopMomentAudio () {
+      const a = this._momentAudio
+      this._momentAudio = null
+      if (a) { try { a.pause(); a.removeAttribute('src') } catch (_) { /* gone */ } }
     },
 
     _resumeAfterQuiz () {
@@ -2115,6 +2294,8 @@ Alpine.data('lessonGame', (lesson) => ({
       this._tel.log('lesson_completed', { sceneIndex: this._sceneIndex })
       this._tel.flush()
       if (this._audio && !this._audio.paused) this._audio.pause()
+      // A pupil who reached the end starts at the title next time, not on the last panel.
+      if (this.playSolo) clearProgress(window.localStorage, lesson.lesson_code)
       if (this._timerInterval) clearInterval(this._timerInterval)
       // The bed fades away over the closing screen rather than cutting on the last word.
       try { _music?.stop() } catch (_) {}
@@ -2247,11 +2428,14 @@ Alpine.data('lessonGame', (lesson) => ({
         position: this._audio?.currentTime,
       })
 
-      if (this._audio) {
+      // During a power-meter moment the narration is held by the moment, not by this button: only
+      // the after line's recording pauses and resumes.
+      const voice = this._momentActive ? this._momentAudio : this._audio
+      if (voice) {
         if (this.playbackPaused) {
-          this._audio.pause()
+          voice.pause()
         } else {
-          this._audio.play().catch(e => console.warn('lesson-player: resume blocked', e))
+          voice.play().catch(e => console.warn('lesson-player: resume blocked', e))
         }
       }
 

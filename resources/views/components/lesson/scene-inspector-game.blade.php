@@ -1,4 +1,4 @@
-@props(['scene' => null, 'games' => collect(), 'quizDraft' => [], 'quizErrors' => [], 'quizSaved' => false, 'quizDifficulty' => 2, 'quizScope' => 'taught', 'quizShuffle' => 'per_player'])
+@props(['scene' => null, 'games' => collect(), 'quizDraft' => [], 'quizErrors' => [], 'quizSaved' => false, 'quizDifficulty' => 2, 'quizScope' => 'taught', 'quizShuffle' => 'per_player', 'teamDraft' => [], 'teamIsDefault' => true])
 
 @php
     $isGenerating = $scene->status === 'generating';
@@ -16,7 +16,7 @@
     <div class="space-y-2">
         <p class="text-xs uppercase tracking-wider text-slate-400">Element type</p>
         <x-ui.segmented panel class="w-full" name="game-type-{{ $scene->id }}" :value="$gameType"
-                        :options="[['quiz', __('Quiz')], ['strategy', __('Strategy')], ['debate', __('Debate')]]"
+                        :options="[['quiz', __('Quiz')], ['strategy', __('Strategy')], ['debate', __('Debate')], ['team', __('Team game')]]"
                         tab-class="flex-1"
                         on-change="$wire.call('setSceneGameType', {{ $scene->id }}, $event.target.value)" />
     </div>
@@ -243,9 +243,17 @@
         </div>
     @endif
 
+    @if ($gameType === 'team')
+        <div class="border-t border-panel-hairline pt-3">
+            <x-lesson.scene-inspector-team :draft="$teamDraft" :is-default="$teamIsDefault" />
+        </div>
+    @endif
+
     <div class="space-y-1">
         <p class="text-xs uppercase tracking-wider text-slate-400">
-            @if ($gameType === 'quiz')
+            @if ($gameType === 'team')
+                {{ __('Spoken intro (optional, narrated before the game)') }}
+            @elseif ($gameType === 'quiz')
                 Spoken intro <span class="normal-case text-slate-500">(optional — narrated before the quiz)</span>
             @elseif ($gameType === 'debate')
                 Debate prompt

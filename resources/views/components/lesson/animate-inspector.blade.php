@@ -1,4 +1,5 @@
 @props(['mode', 'layer' => null, 'scene' => null])
+@use(App\Services\Support\ShotCamera)
 
 @php
     /**
@@ -58,6 +59,52 @@
     $current = $isLayer
         ? ['anim' => $layer['anim'] ?? 'none', 'delay' => (float) ($layer['anim_delay'] ?? 0), 'ease' => $layer['anim_ease'] ?? 'enter', 'duration' => (int) ($layer['anim_duration'] ?? 600)]
         : ['anim' => $transition['type'], 'delay' => (float) $transition['duration'], 'ease' => $transition['ease'], 'duration' => 600];
+    // The camera of each panel (shot): resources/js/scene/camera.js plays it, ShotCamera validates
+    // it. Every control READS the stored shot; a reset removes the key, so the default shows again.
+    // A scene with a picture but no shot yet still gets panel 0: setShotCamera creates it.
+    $cameraShots = [];
+    if (! $isLayer && $scene && ! in_array($scene->kind, ['map', 'voyage', 'video', 'game'], true)) {
+        // Keys kept: they are the shot indices setShotCamera writes to.
+        $storedShots = array_filter((array) ($scene->shots ?? []), 'is_array');
+        if ($storedShots === [] && $scene->image_path) {
+            $storedShots = [[]];
+        }
+        foreach ($storedShots as $i => $shot) {
+            $cam = ShotCamera::payload($shot['camera'] ?? null) ?? ShotCamera::DEFAULTS + ['duration' => ShotCamera::MOVE_DURATION['hold']];
+            $cameraShots[$i] = $cam + [
+                'duration_default' => ShotCamera::MOVE_DURATION[$cam['move']],
+                'entry' => ShotCamera::entry($shot['entry'] ?? null) ?? ShotCamera::DEFAULT_ENTRY,
+            ];
+        }
+    }
+    $cameraMoves = [
+        'hold' => __('Hold'),
+        'push' => __('Push in'),
+        'pull' => __('Pull out'),
+        'pan-l' => __('Pan left'),
+        'pan-r' => __('Pan right'),
+        'tilt-up' => __('Tilt up'),
+        'tilt-down' => __('Tilt down'),
+        'truck-l' => __('Truck left'),
+        'truck-r' => __('Truck right'),
+        'shake' => __('Shake'),
+    ];
+    $panelEntries = [
+        'fade' => __('Fade'),
+        'cut' => __('Cut'),
+        'slide' => __('Slide'),
+        'reveal' => __('Wipe'),
+        'match' => __('Dissolve'),
+    ];
+    $cameraEases = [
+        'move' => __('Smooth'),
+        'enter' => __('Settle'),
+        'exit' => __('Accelerate'),
+        'pop' => __('Overshoot'),
+        'linear' => __('Constant'),
+    ];
+    $num1 = fn ($v) => round((float) $v, 1);
+
     $out = [
         'anim' => $layer['anim_out'] ?? 'none',
         'delay' => (float) ($layer['anim_out_delay'] ?? 0),
@@ -212,4 +259,82 @@
             </template>
         </div>
     </div>
+
+    @if ($cameraShots !== [])
+        {{-- CAMERA: each panel's own move over its picture, and how the panel comes in. The common
+             two are open; timing and easing wait under Advanced. --}}
+        <section x-data="{ panel: 0 }" class="space-y-2 border-t border-panel-hairline pt-3" data-camera-panel>
+            <div class="flex items-center justify-between gap-2">
+                <span class="text-2xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Camera') }}</span>
+                @if (count($cameraShots) > 1)
+                    <select x-model.number="panel" aria-label="{{ __('Panel') }}"
+                            class="select select-xs w-auto text-2xs">
+                        @foreach ($cameraShots as $i => $_)
+                            <option value="{{ $i }}">{{ __('Panel') }} {{ $i + 1 }}</option>
+                        @endforeach
+                    </select>
+                @endif
+            </div>
+
+            @foreach ($cameraShots as $i => $cam)
+                <div x-show="panel === {{ $i }}" @if ($i > 0) x-cloak @endif class="space-y-2" wire:key="camera-{{ $scene->id }}-{{ $i }}">
+                    <label class="block space-y-1">
+                        <span class="block text-2xs uppercase tracking-wide text-panel-label">{{ __('Move') }}</span>
+                        <select class="select select-xs w-full text-2xs" data-camera-move
+                                wire:change="setShotCamera({{ $i }}, 'move', $event.target.value)">
+                            @foreach ($cameraMoves as $value => $label)
+                                <option value="{{ $value }}" @selected($cam['move'] === $value)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+
+                    <label class="block space-y-1">
+                        <span class="block text-2xs uppercase tracking-wide text-panel-label">{{ __('Panel entry') }}</span>
+                        <select class="select select-xs w-full text-2xs" data-camera-entry
+                                wire:change="setShotCamera({{ $i }}, 'entry', $event.target.value)">
+                            @foreach ($panelEntries as $value => $label)
+                                <option value="{{ $value }}" @selected($cam['entry'] === $value)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+
+                    @if ($cam['move'] !== 'hold')
+                        <x-ui.slider-row :label="__('Amount')" :min="0" :max="2" :step="0.05"
+                                         :value="$cam['amount']" :display="$num1($cam['amount'])" unit="×" :default="1"
+                                         :on-change="'setShotCamera(' . $i . ', \'amount\', $event.target.value)'" />
+
+                        <details class="collapse collapse-arrow rounded-lg border border-panel-hairline" data-camera-advanced>
+                            <summary class="collapse-title min-h-0 px-3 py-2 text-2xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Advanced') }}</summary>
+                            <div class="collapse-content space-y-2 px-3">
+                                <x-ui.slider-row :label="__('Duration')" :min="0.3" :max="30" :step="0.1"
+                                                 :value="$cam['duration']" :display="$num1($cam['duration'])" unit="s" :default="$cam['duration_default']"
+                                                 :on-change="'setShotCamera(' . $i . ', \'duration\', $event.target.value)'" />
+                                <x-ui.slider-row :label="__('Delay')" :min="0" :max="10" :step="0.1"
+                                                 :value="$cam['delay']" :display="$num1($cam['delay'])" unit="s" :default="0"
+                                                 :on-change="'setShotCamera(' . $i . ', \'delay\', $event.target.value)'" />
+                                <label class="block space-y-1">
+                                    <span class="block text-2xs uppercase tracking-wide text-panel-label">{{ __('Easing') }}</span>
+                                    <select class="select select-xs w-full text-2xs"
+                                            wire:change="setShotCamera({{ $i }}, 'ease', $event.target.value)">
+                                        @foreach ($cameraEases as $value => $label)
+                                            <option value="{{ $value }}" @selected($cam['ease'] === $value)>{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                </label>
+                            </div>
+                        </details>
+                    @endif
+
+                    <div class="flex justify-end">
+                        <button type="button" wire:click="resetShotCamera({{ $i }})" data-camera-reset
+                                data-tooltip="{{ __('Camera and panel entry back to their defaults') }}"
+                                class="btn btn-ghost btn-xs rounded-full">
+                            <x-icons.arrow-uturn-left class="h-3.5 w-3.5" />
+                            {{ __('Reset') }}
+                        </button>
+                    </div>
+                </div>
+            @endforeach
+        </section>
+    @endif
 </div>
