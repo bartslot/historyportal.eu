@@ -31,10 +31,15 @@ class LessonCaptionsController extends Controller
         $set = $captions->cached($lesson, $language);
         $key = TranslateLessonCaptions::statusKey($lesson->id, $language);
 
-        // One batch per lesson + language at a time, and a failed one is not retried by every poll:
-        // the status stays put for a while after the job ends.
-        if ($set['missing'] > 0 && ! $request->boolean('peek') && Cache::add($key, 'running', now()->addMinutes(30))) {
-            TranslateLessonCaptions::dispatch($lesson->id, $language);
+        // One batch per lesson + language at a time ("running", which expires on its own if a
+        // worker dies mid-job); after a run that left lines missing the job holds the key for a
+        // minute ("retry"), so a class's polls do not each hit a rate-limited provider.
+        if ($set['missing'] > 0 && ! $request->boolean('peek') && Cache::add($key, 'running', now()->addMinutes(10))) {
+            try {
+                TranslateLessonCaptions::dispatch($lesson->id, $language);
+            } catch (\Throwable $e) {
+                report($e);   // only a sync queue runs the job here; the player keeps the original
+            }
             $set = $captions->cached($lesson, $language);   // a sync queue has finished by now
         }
 
@@ -43,7 +48,7 @@ class LessonCaptionsController extends Controller
             'dir' => in_array($language, CaptionTranslator::RTL, true) ? 'rtl' : 'ltr',
             'texts' => (object) $set['texts'],
             'pending' => $set['missing'] > 0,
-            'translating' => $set['missing'] > 0 && Cache::get($key) === 'running',
+            'translating' => $set['missing'] > 0 && in_array(Cache::get($key), ['running', 'retry'], true),
         ]);
     }
 }

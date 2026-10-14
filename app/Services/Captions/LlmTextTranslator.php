@@ -7,38 +7,36 @@ namespace App\Services\Captions;
 use App\Services\Llm\LlmRouter;
 
 /**
- * Subtitle translation on the app's own language model (config/llm.php, role "translate", which
- * falls back to the mechanical role). Chosen because it is already configured and paid for:
- * the Azure key in .env is a Speech key, which Azure Translator refuses.
+ * Subtitle translation on the app's own language model: config/llm.php role "translate"
+ * (LLM_ROLE_TRANSLATE, else LLM_ROLE_MECHANICAL). There is no provider fallback chain: the role
+ * names one provider, and OpenAiLlmService is simply the one OpenAI-wire-format client every
+ * provider goes through (Gemini via its /v1beta/openai endpoint), hence "OpenAI API returned 429"
+ * in a Gemini error. One request per call; CaptionTranslator does the batching and the backoff.
  */
 final class LlmTextTranslator implements TextTranslator
 {
-    /** Lines per request: keeps each answer well under the output-token cap. */
-    private const BATCH = 40;
-
     public function __construct(private readonly LlmRouter $router) {}
 
     public function translate(array $lines, string $from, string $to): array
     {
+        // Short ids ("1", "2", …) instead of the caller's keys: a 64-char hash per line is
+        // tokens paid for nothing.
+        $keys = array_keys($lines);
+        $ids = [];
+        foreach (array_values($lines) as $i => $line) {
+            $ids[(string) ($i + 1)] = $line;
+        }
+        $answer = $this->router->for('translate')->json(
+            $this->system($from, $to),
+            json_encode($ids, JSON_UNESCAPED_UNICODE | JSON_FORCE_OBJECT | JSON_THROW_ON_ERROR),
+            maxTokens: 8192,
+        );
+
         $out = [];
-        foreach (array_chunk($lines, self::BATCH, true) as $batch) {
-            // Short ids ("1", "2", …) instead of the caller's keys: a 64-char hash per line is
-            // tokens paid for nothing.
-            $keys = array_keys($batch);
-            $ids = [];
-            foreach (array_values($batch) as $i => $line) {
-                $ids[(string) ($i + 1)] = $line;
-            }
-            $answer = $this->router->for('translate')->json(
-                $this->system($from, $to),
-                json_encode($ids, JSON_UNESCAPED_UNICODE | JSON_FORCE_OBJECT | JSON_THROW_ON_ERROR),
-                maxTokens: 8192,
-            );
-            foreach ($keys as $i => $key) {
-                $text = $answer[(string) ($i + 1)] ?? null;
-                if (is_string($text) && trim($text) !== '') {
-                    $out[$key] = trim($text);
-                }
+        foreach ($keys as $i => $key) {
+            $text = $answer[(string) ($i + 1)] ?? null;
+            if (is_string($text) && trim($text) !== '') {
+                $out[$key] = trim($text);
             }
         }
 

@@ -49,15 +49,31 @@ class TranslateCaptions extends Command
         $chars = array_sum(array_map('mb_strlen', $sources));
         $this->line(sprintf('%s: %d lines, %d characters per language.', $lesson->title, count($sources), $chars));
 
+        $failed = [];
         foreach ($languages as $language) {
+            $before = $captions->cached($lesson, $language)['missing'];
             if ($this->option('dry-run')) {
-                $this->line(sprintf('  %s: %d lines missing', $language, $captions->cached($lesson, $language)['missing']));
+                $this->line(sprintf('  %s: %d lines missing', $language, $before));
 
                 continue;
             }
-            $made = $captions->translateMissing($lesson, $language);
+            // Rate limits are retried inside translateMissing; one that still fails costs this
+            // language only (its finished lines are saved), and the run goes on to the next.
+            $error = null;
+            try {
+                $captions->translateMissing($lesson, $language);
+            } catch (\RuntimeException $e) {
+                $error = $e->getMessage();
+                $failed[] = $language;
+            }
             $left = $captions->cached($lesson, $language)['missing'];
-            $this->line(sprintf('  %s: %d translated, %d still missing', $language, $made, $left));
+            $this->line(sprintf('  %s: %d translated, %d still missing%s', $language, $before - $left, $left, $error ? " ({$error}; run again to finish)" : ''));
+        }
+
+        if ($failed !== []) {
+            $this->warn('Not finished: '.implode(' ', $failed));
+
+            return self::FAILURE;
         }
 
         return self::SUCCESS;
