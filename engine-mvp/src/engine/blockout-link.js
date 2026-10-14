@@ -9,7 +9,15 @@ const RETRY_MS = [1000, 2000, 5000, 15000, 30000];   // back-off while server.py
   const mvp = window.__mvp;
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+  // one AI request = one step in the undo history (a group of ops), undone as one, or op by op
   async function run(job) {
+    const bo = mvp.blockout;
+    if (!['apply', 'command', 'frame'].includes(job.op)) return runOne(job);
+    bo.begin('AI ' + job.op, 'ai');
+    try { return await runOne(job); } finally { bo.end(); }
+  }
+
+  async function runOne(job) {
     const bo = mvp.blockout;
     const a = job.args || {};
     switch (job.op) {

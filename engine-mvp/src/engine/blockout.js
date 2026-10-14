@@ -15,7 +15,7 @@ import { KIT, POSES, kitPiece } from '../blockout/kit';
 import { solve, forward, rightOf } from '../blockout/solve';
 import { frame as frameCam, PRESETS } from '../blockout/camera';
 import { readback } from '../blockout/readback';
-import { History, changeOp } from '../blockout/history';
+import { History, changeOp, valueOp } from '../blockout/history';
 import { isTypingTarget } from '@hp/ui/keyboard.js';
 
 const FIGURE_URL = 'https://assets.babylonjs.com/meshes/Xbot.glb';   // the studio's mannequin (Mixamo rig)
@@ -38,6 +38,7 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
   let figureContainer = null;
   let shot = null;
   let lastProblems = [];
+  let lastNotes = [];            // the AI asked to change what the teacher had set: kept, and said so
   let currentMode = 'off';
   let rim = 0;
 
@@ -260,18 +261,29 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
   }
 
   // ---------- apply / place / frame ----------
+  // what the teacher's hand set on a piece (moved / turned / posed): an AI command keeps it (Gate 3)
+  const pinsOf = (id) => (specs.get(id) || {}).pinned || null;
+  const pinWords = (p) => Object.keys(p).filter((k) => p[k]).join(', ');
+  const keptNote = (id, what) => `kept: ${id} was ${pinWords(pinsOf(id))} by the teacher; the AI's ${what} was not applied`;
+
   async function apply(doc, by = 'ai') {
     const objects = doc.objects || [];
     await preload(objects.map((o) => o.kit));
+    lastNotes = [];
+    // pieces the teacher has edited stay exactly as they are; the rest of the shot is solved around them
+    const pinned = by === 'ai' ? [...specs.keys()].filter((id) => pinsOf(id)) : [];
+    const fresh = objects.filter((o) => !pinned.includes(o.id));
+    objects.filter((o) => pinned.includes(o.id)).forEach((o) => lastNotes.push(keptNote(o.id, 'apply')));
     const ids = [...new Set([...specs.keys(), ...objects.map((o) => o.id)])];
     record('apply blockout', by, ids, () => {
-      [...specs.keys()].forEach((id) => setState(id, undefined));
-      const solved = solve(objects);
+      [...specs.keys()].filter((id) => !pinned.includes(id)).forEach((id) => setState(id, undefined));
+      const fixed = {};
+      pinned.forEach((id) => { if (placedOf.has(id)) fixed[id] = placedOf.get(id); });
+      const solved = solve(fresh, fixed);
       lastProblems = solved.problems;
-      objects.forEach((o) => specs.set(o.id, structuredClone(o)));
-      for (const o of objects) setState(o.id, { spec: o, placed: solved.placed[o.id] || null });
+      for (const o of fresh) setState(o.id, { spec: o, placed: solved.placed[o.id] || null });
     });
-    if (doc.camera) frame(doc.camera);
+    if (doc.camera) frame(doc.camera, by);
     return read();
   }
 
@@ -283,6 +295,13 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
 
   /** One piece added or re-placed; every other piece stays exactly where it is (a teacher's edits included). */
   async function place(spec, by = 'ai') {
+    lastNotes = [];
+    const pins = pinsOf(spec.id);
+    if (by === 'ai' && pins && (pins.moved || pins.turned)) {   // the teacher put it there: it stays
+      lastNotes.push(keptNote(spec.id, 'place'));
+      if (spec.pose && spec.pose !== (specs.get(spec.id) || {}).pose) setPose(spec.id, spec.pose, by);
+      return read();
+    }
     await preload([spec.kit || (specs.get(spec.id) || {}).kit]);
     const merged = { ...(specs.get(spec.id) || {}), ...spec };
     if (spec.place) delete merged.at;
@@ -298,8 +317,11 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
 
   function setPose(id, name, by = 'ai') {
     if (!specs.has(id)) return false;
+    const pins = pinsOf(id);
+    if (by === 'ai' && pins && pins.posed) { lastNotes.push(keptNote(id, `pose ${name}`)); return true; }
     record(`pose ${id} ${name}`, by, [id], () => {
       const s = { ...specs.get(id), pose: name };
+      if (by === 'teacher') s.pinned = { ...(s.pinned || {}), posed: true };
       specs.set(id, s);
       setState(id, { spec: s, placed: placedOf.get(id) || null });
     });
@@ -313,7 +335,20 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
     });
   }
 
-  function frame(s) {
+  // the camera as a value: the preset asked for and where the camera actually is
+  function camState() {
+    const cam = mvp.camera;
+    return { shot: shot ? { ...shot } : null, alpha: cam.alpha, beta: cam.beta, radius: cam.radius, target: cam.target.asArray(), fov: cam.fov };
+  }
+  function setCam(v) {
+    const cam = mvp.camera;
+    cam.lockedTarget = null;
+    cam.setTarget(BABYLON.Vector3.FromArray(v.target));
+    Object.assign(cam, { alpha: v.alpha, beta: v.beta, radius: v.radius, fov: v.fov });
+    shot = v.shot ? { ...v.shot } : null;
+  }
+
+  function placeCamera(s) {
     const cam = mvp.camera;
     const aspect = scene.getEngine().getAspectRatio(cam);
     const c = frameCam(s, subjectsOf(s.subjects), aspect);
@@ -325,6 +360,14 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
     cam.setPosition(BABYLON.Vector3.FromArray(c.position));
     cam.fov = c.fovY;
     shot = { ...s };
+    return c;
+  }
+
+  /** A camera preset as one undo op (the AI's or the teacher's choice of shot). */
+  function frame(s, by = 'ai') {
+    const before = camState();
+    const c = placeCamera(s);
+    history.push(valueOp(`frame ${s.shot}`, by, before, camState(), setCam, s.subjects || []));
     return c;
   }
 
@@ -363,6 +406,10 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
       return { id, kit, box, yaw: p ? p.yaw : 0, floorY: p ? p.y : 0, subject: subjects.has(id), figure: kit === 'figure', parts };
     });
     const r = readback(currentCam(), items, lastProblems, shot ? shot.shot : undefined);
+    const kept = [...specs.keys()].filter((id) => pinsOf(id)).map((id) => `  ${id}: ${pinWords(pinsOf(id))} by teacher, kept`);
+    if (kept.length) r.text += '\nteacher edits (an AI command does not change these):\n' + kept.join('\n');
+    if (lastNotes.length) r.text += '\nnotes:\n' + lastNotes.map((n) => '  ' + n).join('\n');
+    r.notes = [...lastNotes];
     window.__blockoutReadback = r.text;
     return r;
   }
@@ -430,19 +477,26 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
     return m;
   }
 
-  // ---------- the teacher's hand: a drag is one op; a blockout piece moved by hand is pinned there ----------
-  mvp.onDrop = (a, from) => {
-    const id = a.metadata.id;
-    if (!specs.has(id) || !from) return;
-    const before = snapshot([id]);
-    const p = { ...placedOf.get(id), x: a.position.x, z: a.position.z, yaw: Math.round(((a.rotationQuaternion.toEulerAngles().y * 180) / Math.PI) * 1000) / 1000 };
-    const spec = { ...specs.get(id), at: [p.x, p.z] };
+  // ---------- the teacher's hand: a drag, a turn, a delete is one op each; what it changed is pinned ----------
+  const yawDeg = (a) => Math.round(((a.rotationQuaternion.toEulerAngles().y * 180) / Math.PI) * 1000) / 1000;
+  mvp.onHandEdit = (a, from, kind) => {
+    const id = a.metadata && a.metadata.id;
+    if (!specs.has(id) || !placedOf.has(id) || !from) return;
+    const before = stateOf(id);
+    const p = { ...placedOf.get(id), x: a.position.x, z: a.position.z, yaw: yawDeg(a) };
+    const spec = { ...specs.get(id), at: [p.x, p.z], turn: p.yaw };
     delete spec.place;
     delete spec.face;
-    spec.turn = p.yaw;
+    spec.pinned = { ...(spec.pinned || {}), [kind === 'turn' ? 'turned' : 'moved']: true };
     specs.set(id, spec);
     placedOf.set(id, p);
-    history.push(changeOp(`move ${id}`, 'teacher', before, snapshot([id]), setState));
+    history.push(changeOp(`${kind === 'turn' ? 'turn' : 'move'} ${id}`, 'teacher', { [id]: before }, { [id]: stateOf(id) }, setState));
+  };
+  mvp.onDelete = (a) => {
+    const id = a.metadata && a.metadata.id;
+    if (!specs.has(id) || actorOf.get(id) !== a) return false;
+    record(`delete ${id}`, 'teacher', [id], () => setState(id, undefined));
+    return true;
   };
 
   window.addEventListener('keydown', (e) => {
@@ -459,7 +513,7 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
     if (!data) return;
     await preload(data.objects.map((o) => o.spec.kit));
     data.objects.forEach((o) => setState(o.spec.id, o));
-    if (data.shot) frame(data.shot);
+    if (data.shot) placeCamera(data.shot);
     if (data.mode) mode(data.mode);
   }
 
@@ -482,7 +536,7 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
   const shotFromCommand = (c) => ({ shot: c.shot, subjects: c.subjects, lens_mm: c.lens, horizon: c.horizon, az: c.az, align: c.align });
 
   // ---------- a small picture, only when asked: clay, silhouette, or an id pass (one flat colour per piece) ----------
-  async function snapshot({ size = 512, pass = 'clay' } = {}) {
+  async function picture({ size = 512, pass = 'clay' } = {}) {
     const engine = scene.getEngine();
     const before = currentMode;
     const restore = [];
@@ -531,10 +585,12 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
 
   mvp.blockout = {
     clear, isPiece: (a) => !!a && actorOf.get(a.metadata && a.metadata.id) === a,
-    specFromCommand, shotFromCommand, snapshot, kitList, revision: () => history.list().length,
+    specFromCommand, shotFromCommand, snapshot: picture, kitList, revision: () => history.list().length,
     apply, place, pose: setPose, frame: (s) => { frame(s); return read(); }, read, mode, history,
-    reframe: () => { if (shot) frame(shot); return read(); },   // the same preset at the canvas's current aspect
-    undo: () => history.undo(), redo: () => history.redo(), serialize, load,
+    reframe: () => { if (shot) placeCamera(shot); return read(); },   // the same preset at the canvas's current aspect (no op)
+    undo: () => history.undo(), undoOne: () => history.undoOne(), redo: () => history.redo(), serialize, load,
+    begin: (label, by = 'ai') => history.begin(label, by), end: () => history.end(),
+    setPose, frameAs: (s, by) => { frame(s, by); return read(); },
     specs: () => [...specs.values()].map((s) => structuredClone(s)),
     placed: () => Object.fromEntries(placedOf),
   };

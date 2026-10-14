@@ -371,7 +371,7 @@ scene.onPointerObservable.add((info) => {
     camera.attachControl(canvas, true);
     if (ok) autoKey();
     // a hand edit, for the undo history (blockout.js): where it stood before the drag
-    if (ok && window.__mvp.onDrop) window.__mvp.onDrop(a, from);
+    if (ok && window.__mvp.onHandEdit) window.__mvp.onHandEdit(a, from, 'move');
   }
 });
 
@@ -395,11 +395,14 @@ function rotateSelected(dir) {
   if (a.metadata.footprint) snapToFootprint(a);
   if (!fits(a)) { flash(whyNot(a)); a.rotationQuaternion = before.rotation; a.position.copyFrom(before.position); return; }
   autoKey();
+  if (window.__mvp.onHandEdit) window.__mvp.onHandEdit(a, before, 'turn');
 }
 
 function deleteSelected() {
   if (!selected) return;
   const a = selected;
+  // a blockout piece is removed by the blockout (one undo op; its shared materials must survive)
+  if (window.__mvp.onDelete && window.__mvp.onDelete(a)) { select(null); return; }
   const target = TL.targetOf(a);              // before dispose: Babylon nulls metadata
   select(null);
   actors.splice(actors.indexOf(a), 1);

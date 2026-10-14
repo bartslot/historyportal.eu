@@ -68,11 +68,13 @@ export const SCENE_VERSION = 2;   // 2: a clay blockout (kit pieces as specs, th
     };
   }
 
-  function clear() {
+  // keepBlockout: the studio's own scene only (a crew answer's studio commands undone); the blockout stays as it is
+  function clear({ keepBlockout = false } = {}) {
     mvp.select(null);
-    if (mvp.blockout) mvp.blockout.clear();   // first: its pieces share materials deleteActor would dispose
-    [...mvp.actors].filter((a) => !a.isDisposed() && !a.metadata.cloud && !a.parent).forEach((a) => mvp.deleteActor(a));
-    [...mvp.actors].filter((a) => !a.isDisposed() && !a.metadata.cloud).forEach((a) => mvp.deleteActor(a));
+    if (mvp.blockout && !keepBlockout) mvp.blockout.clear();   // first: its pieces share materials deleteActor would dispose
+    const piece = (a) => mvp.blockout && mvp.blockout.isPiece(a);
+    [...mvp.actors].filter((a) => !a.isDisposed() && !a.metadata.cloud && !a.parent && !piece(a)).forEach((a) => mvp.deleteActor(a));
+    [...mvp.actors].filter((a) => !a.isDisposed() && !a.metadata.cloud && !piece(a)).forEach((a) => mvp.deleteActor(a));
     TL.setTracks([], { time: 0, selected: [], hidden: {} });
     mvp.shots.set([]);
   }
@@ -80,9 +82,9 @@ export const SCENE_VERSION = 2;   // 2: a clay blockout (kit pieces as specs, th
   const findItem = (s) => mvp.CATALOG.find((c) => (s.image ? c.image === s.image : c.name === s.item && !c.image));
 
   /** Replace the scene with `doc`. Items no longer in the catalog are skipped and reported. */
-  async function load(doc) {
+  async function load(doc, { keepBlockout = false } = {}) {
     if (!doc || !(doc.version === 1 || doc.version === SCENE_VERSION)) throw new Error('This scene was saved by another version of the studio');
-    clear();
+    clear({ keepBlockout });
     if (doc.settings) writeSettings(doc.settings);
     if (doc.sky) mvp.setSky(doc.sky);
     if (doc.town && window.__city) window.__city.setSeed(doc.town.seed);
@@ -124,7 +126,7 @@ export const SCENE_VERSION = 2;   // 2: a clay blockout (kit pieces as specs, th
       Object.assign(camera, { alpha: doc.camera.alpha, beta: doc.camera.beta, radius: doc.camera.radius });
     }
     mvp.shots.set(doc.shots ?? []);
-    if (doc.blockout && mvp.blockout) await mvp.blockout.load(doc.blockout);
+    if (doc.blockout && mvp.blockout && !keepBlockout) await mvp.blockout.load(doc.blockout);
     mvp.select(null);
     return { missing };
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { changeOp, History } from './history'
+import { changeOp, History, valueOp } from './history'
 
 type P = { x: number }
 
@@ -44,5 +44,51 @@ describe('History', () => {
     const noop = (label: string) => ({ label, by: 'ai' as const, ids: [], undo() {}, redo() {} })
     ;['a', 'b', 'c', 'd'].forEach((l) => h.push(noop(l)))
     expect(h.list().map((o) => o.label)).toEqual(['b', 'c', 'd'])
+  })
+  it('an AI answer is one step: undo takes the whole group back, the teacher\'s earlier edit stays', () => {
+    const { state, set } = world()
+    const h = new History()
+    const t = changeOp('move rail', 'teacher', { rail: { x: 0 } }, { rail: { x: 2 } }, set); t.redo(); h.push(t)
+    h.begin('AI answer', 'ai')
+    const a1 = changeOp('place tasman', 'ai', { tasman: { x: 0 } }, { tasman: { x: 1 } }, set); a1.redo(); h.push(a1)
+    const a2 = changeOp('place visscher', 'ai', {}, { visscher: { x: 3 } }, set); a2.redo(); h.push(a2)
+    h.end()
+    expect(h.list().map((o) => o.label)).toEqual(['move rail', 'AI answer'])
+    expect(h.list()[1].children!.map((c) => c.label)).toEqual(['place tasman', 'place visscher'])
+    h.undo()
+    expect(state.tasman!.x).toBe(0)
+    expect(state.visscher).toBeUndefined()
+    expect(state.rail!.x).toBe(2)
+    h.redo()
+    expect(state.visscher!.x).toBe(3)
+  })
+
+  it('undoOne takes an AI answer back op by op', () => {
+    const { state, set } = world()
+    const h = new History()
+    h.begin('AI answer', 'ai')
+    const a1 = changeOp('place tasman', 'ai', { tasman: { x: 0 } }, { tasman: { x: 1 } }, set); a1.redo(); h.push(a1)
+    const a2 = changeOp('place visscher', 'ai', {}, { visscher: { x: 3 } }, set); a2.redo(); h.push(a2)
+    h.end()
+    expect(h.undoOne()!.label).toBe('place visscher')
+    expect(state.visscher).toBeUndefined()
+    expect(state.tasman!.x).toBe(1)
+    expect(h.list().map((o) => o.label)).toEqual(['place tasman'])
+    expect(h.undoOne()!.label).toBe('place tasman')
+    expect(state.tasman!.x).toBe(0)
+  })
+
+  it('nested and empty groups: one step for the outer answer, none when nothing changed', () => {
+    const h = new History()
+    let v = 0
+    h.begin('outer', 'ai'); h.begin('inner', 'ai')
+    const op = valueOp('frame', 'ai', 0, 1, (x: number) => { v = x }); op.redo(); h.push(op)
+    h.end(); h.end()
+    expect(h.list().map((o) => o.label)).toEqual(['frame'])     // a group of one is that op
+    h.begin('nothing', 'ai')
+    expect(h.end()).toBeNull()
+    expect(h.list()).toHaveLength(1)
+    h.undo()
+    expect(v).toBe(0)
   })
 })

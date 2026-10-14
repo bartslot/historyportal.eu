@@ -123,6 +123,8 @@
       mvp.flash(mvp.whyNot(target));
       target.rotationQuaternion = turnStart.q;
       target.position.copyFrom(turnStart.pos);
+    } else if (target && mvp.onHandEdit) {
+      mvp.onHandEdit(target, { position: turnStart.pos, rotation: turnStart.q }, 'turn');   // for the undo history
     }
     end();
     turnStart = null;
