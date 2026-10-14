@@ -11,8 +11,10 @@ use App\Models\Scene;
  * What kind of lesson this is, for the badges on the title screen (Figma 2321:1423/1427/1431).
  * The ONE place the rules live; each badge shows only when it is true of the lesson's scenes.
  *
- *   interactive  the class does something: a quiz or team game, a voyage, a power-meter moment,
- *                or an older lesson's closing quiz
+ *   interactive  the class does something: a quiz or team game, a story game, a power-meter
+ *                moment or race, or an older lesson's closing quiz. A voyage, gallery, story or
+ *                video is watched, not played: those play themselves out, so they never count.
+ *                (Bart 2026-10-14, on the Tasman lesson: "interactief, but it's just a slideshow".)
  *   comic        it is told in comic panels: a scene with a speech balloon (a non-narrator line)
  *   teams        the class plays in teams: a team game, or a moment with teams or a race
  */
@@ -35,6 +37,7 @@ final class LessonTypes
         $found = [
             // An older lesson's quiz is no scene: it plays at the end from the lesson's own questions.
             self::INTERACTIVE => $scenes->contains(fn (Scene $s): bool => self::isInteractive($s))
+                || $lesson->game_type === 'story_game'
                 || ($lesson->include_game && $lesson->game_type === 'quiz' && $lesson->quizQuestions->whereNull('scene_id')->isNotEmpty()),
             self::COMIC => $scenes->contains(fn (Scene $s): bool => self::isComic($s)),
             self::TEAMS => $scenes->contains(fn (Scene $s): bool => self::isTeams($s)),
@@ -45,7 +48,7 @@ final class LessonTypes
 
     private static function isInteractive(Scene $s): bool
     {
-        return in_array($s->kind, ['game', 'voyage'], true) || self::moment($s) !== null;
+        return $s->kind === 'game' || self::moment($s) !== null;
     }
 
     private static function isComic(Scene $s): bool

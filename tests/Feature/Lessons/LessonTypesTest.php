@@ -55,12 +55,24 @@ class LessonTypesTest extends TestCase
         $this->assertSame([], LessonTypes::of($this->lesson([['script_segment' => 'Eens.'], ['config' => ['lines' => [['speaker' => 'narrator', 'text' => 'Eens.']]]]])));
     }
 
-    public function test_interactive_is_any_game_voyage_or_switched_on_moment(): void
+    public function test_interactive_is_any_game_story_game_or_switched_on_moment(): void
     {
         $this->assertSame(['interactive'], LessonTypes::of($this->lesson([['kind' => 'game', 'game_type' => 'quiz']])));
-        $this->assertSame(['interactive'], LessonTypes::of($this->lesson([['kind' => 'voyage']])));
         $this->assertSame(['interactive'], LessonTypes::of($this->lesson([$this->moment()])));
         $this->assertSame([], LessonTypes::of($this->lesson([$this->moment(['enabled' => false])])));
+        $this->assertSame(['interactive'], LessonTypes::of($this->lesson([['script_segment' => 'Eens.']], ['game_type' => 'story_game'])));
+    }
+
+    public function test_a_slideshow_of_voyage_legs_galleries_and_stories_is_not_interactive(): void
+    {
+        $lesson = $this->lesson([
+            ['kind' => 'voyage', 'config' => ['voyage' => 'tasman-1642', 'leg' => 1]],
+            ['kind' => 'gallery', 'config' => ['images' => [['url' => '/a.webp'], ['url' => '/b.webp']]]],
+            ['script_segment' => 'Eens.'],
+            ['kind' => 'video', 'config' => ['bg_embed' => ['src' => 'https://www.youtube.com/embed/x']]],
+        ], ['game_type' => 'voyage']);
+
+        $this->assertSame([], LessonTypes::of($lesson));
     }
 
     public function test_an_older_lessons_closing_quiz_is_interactive(): void

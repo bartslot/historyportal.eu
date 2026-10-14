@@ -119,7 +119,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-xHWedSJH.css",
+    "file": "assets/app-DuDPO6ok.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -171,7 +171,7 @@
     ]
   },
   "resources/js/gallery-scene.js": {
-    "file": "assets/gallery-scene-BXp-3P6O.js",
+    "file": "assets/gallery-scene-DAY-Pj3B.js",
     "name": "gallery-scene",
     "src": "resources/js/gallery-scene.js",
     "isEntry": true
@@ -195,7 +195,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-ZvflYuVT.js",
+    "file": "assets/lesson-player-uGtS6mtV.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -479,7 +479,7 @@
     ]
   },
   "resources/js/voyage-tour.js": {
-    "file": "assets/voyage-tour-okPp7J6p.js",
+    "file": "assets/voyage-tour-BGrONSKG.js",
     "name": "voyage-tour",
     "src": "resources/js/voyage-tour.js",
     "isEntry": true,
