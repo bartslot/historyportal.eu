@@ -178,4 +178,35 @@ class TitleGeneratorTest extends TestCase
             ->expectsOutputToContain('not logo or plain')
             ->assertFailed();
     }
+
+    public function test_it_writes_what_the_join_qr_keeps_clear_of_and_the_badge_style(): void
+    {
+        $recipe = json_decode((string) file_get_contents($this->recipe), true);
+        $recipe['keep_clear'] = [['box' => [60, 10, 5, 8], 'kind' => 'face', 'note' => 'Beatrice']];
+        $recipe['expect'] = ['box' => [0, 0, 100, 6], 'style' => 'strip'];
+        $this->writeRecipe($recipe);
+        $this->make()->assertSuccessful();
+
+        $poster = TitlePoster::for(self::GROUP, 'poster');
+        $this->assertSame('dark', $poster['badge_style']);
+        $this->assertSame('strip', $poster['expect']['style']);
+        // The row of letters, the hero as a figure with its face at the top, then the recipe's own.
+        $this->assertSame(['letters', 'figure', 'face', 'face'], array_column($poster['keep_clear'], 'kind'));
+        [$letters, $figure, $face, $own] = array_column($poster['keep_clear'], 'box');
+        $hero = array_column($poster['layers'], null, 'id')['dante']['box'];
+        $this->assertEquals($hero, $figure);
+        $this->assertSame($figure['y'], $face['y']);
+        $this->assertLessThan($figure['h'], $face['h']);
+        $this->assertGreaterThan($figure['x'], $face['x']);
+        $this->assertEqualsWithDelta(35.35, $letters['y'], 1.0);
+        $this->assertSame(['x' => 60.0, 'y' => 10.0, 'w' => 5.0, 'h' => 8.0], $own);
+
+        $recipe['badge_style'] = 'black';
+        $recipe['keep_clear'] = [['box' => [1, 2], 'kind' => 'face']];
+        $this->writeRecipe($recipe);
+        $this->make()
+            ->expectsOutputToContain('badge_style must be')
+            ->expectsOutputToContain('keep_clear must be')
+            ->assertFailed();
+    }
 }

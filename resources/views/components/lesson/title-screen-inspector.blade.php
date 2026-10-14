@@ -92,12 +92,38 @@
         </div>
     </div>
 
-    <div class="border-t border-slate-700/50 pt-4">
-        <label class="flex items-center justify-between gap-3">
-            <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('QR code') }}</span>
-            <input type="checkbox" @checked($lesson->show_qr ?? true)
-                   wire:change="setShowQr($event.target.checked)"
-                   class="toggle toggle-sm shrink-0" />
-        </label>
+    {{-- The join QR: Auto keeps it clear of faces, the letters and the screen's own elements. --}}
+    @php $qr = $lesson->qrPosition(); @endphp
+    <div class="border-t border-slate-700/50 pt-4" data-qr-position="{{ $qr }}">
+        <div class="flex items-center justify-between gap-3">
+            <label for="title-qr-position" class="text-2xs uppercase tracking-widest text-slate-500">{{ __('QR position') }}</label>
+            @if ($qr !== 'auto')
+                <button type="button" wire:click="resetQrPosition" data-qr-reset class="text-2xs text-slate-500 transition-colors hover:text-primary">{{ __('Reset to default') }}</button>
+            @endif
+        </div>
+        <select id="title-qr-position" wire:change="setQrPosition($event.target.value)" class="select select-sm mt-2 w-full">
+            @foreach (['auto' => __('Auto'), 'bottom-right' => __('Bottom right'), 'top-right' => __('Top right'), 'bottom-left' => __('Bottom left'), 'top-left' => __('Top left'), 'hidden' => __('Hidden')] as $value => $label)
+                <option value="{{ $value }}" @selected($qr === $value)>{{ $label }}</option>
+            @endforeach
+        </select>
+    </div>
+
+    {{-- "What you can expect": up to three short lines (the banner's white strip, else under the title). --}}
+    @php $expect = array_values((array) ($lesson->expect ?? [])); @endphp
+    <div class="border-t border-slate-700/50 pt-4" data-title-expect-editor>
+        <div class="flex items-center justify-between gap-3">
+            <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('What to expect') }}</span>
+            @if ($expect !== [])
+                <button type="button" wire:click="resetExpect" data-expect-reset class="text-2xs text-slate-500 transition-colors hover:text-primary">{{ __('Reset to default') }}</button>
+            @endif
+        </div>
+        <div class="mt-2 space-y-2">
+            @for ($i = 0; $i < \App\Models\Lesson::EXPECT_MAX_LINES; $i++)
+                <input type="text" value="{{ $expect[$i] ?? '' }}" maxlength="{{ \App\Models\Lesson::EXPECT_MAX_CHARS }}"
+                       wire:key="expect-{{ $i }}-{{ md5($expect[$i] ?? '') }}"
+                       wire:change="setExpectLine({{ $i }}, $event.target.value)" aria-label="{{ __('What to expect') }} {{ $i + 1 }}"
+                       class="input input-sm w-full" />
+            @endfor
+        </div>
     </div>
 </div>

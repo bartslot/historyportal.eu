@@ -171,6 +171,23 @@ class LessonComposer
         if (array_key_exists('show_lesson_types', $spec)) {
             $lesson->show_lesson_types = (bool) $spec['show_lesson_types'];
         }
+        // The join QR's place: auto (null), a corner, or hidden (show_qr off). Same rule: only when said.
+        if (array_key_exists('qr_position', $spec)) {
+            $qr = $spec['qr_position'] ?? 'auto';
+            if (! in_array($qr, ['auto', 'hidden', ...TitlePoster::QR_CORNERS], true)) {
+                throw new \InvalidArgumentException("Spec qr_position '{$qr}' must be auto, hidden or one of: ".implode(', ', TitlePoster::QR_CORNERS).'.');
+            }
+            $lesson->show_qr = $qr !== 'hidden';
+            $lesson->qr_position = in_array($qr, TitlePoster::QR_CORNERS, true) ? $qr : null;
+        }
+        // "What you can expect": 1-3 short lines on the title screen.
+        if (array_key_exists('expect', $spec)) {
+            $lesson->expect = Lesson::cleanExpect($spec['expect']);
+        }
+        // Boxes over a logo/plain title picture the join QR keeps clear of (% of the picture).
+        if (array_key_exists('title_keep_clear', $spec)) {
+            $lesson->title_keep_clear = TitlePoster::keepClear($spec['title_keep_clear']) ?: null;
+        }
 
         if (! empty($spec['game_config'])) {
             // A voyage lesson keeps its own edited copy of the route here, so a rebuild that

@@ -20,33 +20,46 @@ const CHROME_GAP = 8
 const overlap = (a, b) => Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x))
   * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y))
 
-/**
- * @param {{w: number, h: number}} stage
- * @param {{w: number, h: number}} card
- * @param {Array<{rect: {x: number, y: number, w: number, h: number}, weight?: number}>} avoid
- * @returns {{x: number, y: number, name: string}}
- */
-export function placeCard (stage, card, avoid = [], chrome = CHROME) {
+/** The five spots an overlay card tries, kept clear of the player's chrome. */
+function overlaySpots (stage, card, chrome) {
   const left = CHROME.side
   const right = Math.max(left, stage.w - CHROME.side - card.w)
   const top = chrome.top ?? CHROME.top
   const bottom = Math.max(top, stage.h - (chrome.bottom ?? CHROME.bottom) - card.h)
   const centre = Math.max(left, (stage.w - card.w) / 2)
-  const spots = [
+  return [
     { name: 'bottom-center', x: centre, y: bottom },
     { name: 'bottom-left', x: left, y: bottom },
     { name: 'bottom-right', x: right, y: bottom },
     { name: 'top-left', x: left, y: top },
     { name: 'top-right', x: right, y: top },
   ]
-  let best = spots[0]
+}
+
+/**
+ * The spot that covers the least weighted `avoid` area. `opts.spots` replaces the five overlay
+ * spots (in order of preference: on a tie the earlier wins); a spot whose card would touch any of
+ * `opts.block` (rects that must never be covered: a face, the Start button) is not a choice at all.
+ * Null only when every spot is blocked.
+ *
+ * @param {{w: number, h: number}} stage
+ * @param {{w: number, h: number}} card
+ * @param {Array<{rect: {x: number, y: number, w: number, h: number}, weight?: number}>} avoid
+ * @param {{spots?: Array<{name: string, x: number, y: number}>, block?: Array<{x: number, y: number, w: number, h: number}>}} [opts]
+ * @returns {{x: number, y: number, name: string} | null}
+ */
+export function placeCard (stage, card, avoid = [], chrome = CHROME, opts = {}) {
+  const spots = opts.spots ?? overlaySpots(stage, card, chrome)
+  const block = opts.block ?? []
+  let best = null
   let bestCost = Infinity
   for (const spot of spots) {
     const rect = { x: spot.x, y: spot.y, w: card.w, h: card.h }
+    if (block.some(b => overlap(rect, b) > 0)) continue
     const cost = avoid.reduce((sum, a) => sum + overlap(rect, a.rect) * (a.weight ?? 1), 0)
     if (cost < bestCost - 1e-6) { best = spot; bestCost = cost }
   }
-  return { x: Math.round(best.x), y: Math.round(best.y), name: best.name }
+  return best && { x: Math.round(best.x), y: Math.round(best.y), name: best.name }
 }
 
 /**

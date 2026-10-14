@@ -135,6 +135,16 @@ class MakeTitlePoster extends Command
         if (isset($r['badges']) && ! in_array($r['badges'], TitlePoster::BADGE_LAYOUTS, true)) {
             $e[] = 'badges must be "row" or "column" (the lesson-type badges at bottom right).';
         }
+        if (isset($r['badge_style']) && ! in_array($r['badge_style'], TitlePoster::BADGE_STYLES, true)) {
+            $e[] = 'badge_style must be "colour" or "dark" (dark: ink badges, for a flat poster colour the coloured ones vanish into).';
+        }
+        if (isset($r['keep_clear']) && (! is_array($r['keep_clear']) || count(TitlePoster::keepClear($r['keep_clear'])) !== count($r['keep_clear']))) {
+            $e[] = 'keep_clear must be a list of {"box": [x, y, w, h] in % of the frame, "kind": '.implode('|', TitlePoster::KEEP_CLEAR_KINDS).', "weight"?: n}.';
+        }
+        if (isset($r['expect']) && (! is_array($r['expect']) || ! in_array($r['expect']['style'] ?? null, TitlePoster::EXPECT_STYLES, true)
+            || ! is_array($r['expect']['box'] ?? null) || count(array_filter($r['expect']['box'], 'is_numeric')) !== 4)) {
+            $e[] = 'expect must be {"box": [x, y, w, h] in % of the frame, "style": "strip"}: the slot for the lesson\'s "what you can expect" lines.';
+        }
         if (isset($r['thumb']) && (! is_string($r['thumb']) || str_contains($r['thumb'], '..'))) {
             $e[] = 'thumb must be a picture file name in the candidate folder.';
         }

@@ -40,6 +40,21 @@ final class TitlePoster
 
     public const BADGE_LAYOUTS = ['row', 'column'];
 
+    /** colour: each badge in its own brand colour; dark: all three in ink (Figma 2321:5150), for a flat poster colour they would vanish into. */
+    public const BADGE_STYLES = ['colour', 'dark'];
+
+    /**
+     * What a title screen keeps clear of the join QR (resources/js/title-qr.js): a face is never
+     * covered, nor the letters; a figure or the subject costs its weight.
+     */
+    public const KEEP_CLEAR_KINDS = ['face', 'figure', 'letters', 'subject'];
+
+    /** The teacher's QR places besides auto and hidden (Lesson::qrPosition). */
+    public const QR_CORNERS = ['bottom-right', 'top-right', 'bottom-left', 'top-left'];
+
+    /** How a candidate draws the lesson's "what you can expect" lines in its own slot. */
+    public const EXPECT_STYLES = ['strip'];
+
     /** A title_style value as stored: a legacy value mapped, anything not shaped like a key refused. */
     public static function key(?string $value): ?string
     {
@@ -159,6 +174,13 @@ final class TitlePoster
             // The lesson-type badges at bottom right: a row (Figma 2321:1315), or a column for a
             // poster whose letters reach into the bottom right and leave only a strip at the side.
             'badges' => in_array($data['badges'] ?? null, self::BADGE_LAYOUTS, true) ? $data['badges'] : 'row',
+            'badge_style' => in_array($data['badge_style'] ?? null, self::BADGE_STYLES, true) ? $data['badge_style'] : 'colour',
+            'keep_clear' => self::keepClear($data['keep_clear'] ?? null),
+            // The candidate's own place for the "what you can expect" lines (the banner's white strip).
+            'expect' => self::isBox(self::boxOf($data['expect']['box'] ?? null)) && in_array($data['expect']['style'] ?? null, self::EXPECT_STYLES, true) ? [
+                'box' => self::box(self::boxOf($data['expect']['box'])),
+                'style' => $data['expect']['style'],
+            ] : null,
             'subtitle' => self::isBox($data['subtitle']['box'] ?? null) ? [
                 'box' => self::box($data['subtitle']['box']),
                 'size' => (float) ($data['subtitle']['size'] ?? 2.3),
@@ -189,6 +211,37 @@ final class TitlePoster
         $path = public_path(self::DIR."/{$group}/{$candidate}/poster.json");
 
         return is_file($path) ? $path : null;
+    }
+
+    /**
+     * keep_clear entries as the player reads them, the unusable ones dropped: {box: [x, y, w, h]
+     * (or {x, y, w, h}) in % of the frame, kind, weight?}. Also the shape of a lesson's
+     * title_keep_clear (then % of the title picture).
+     *
+     * @return list<array{box: array{x: float, y: float, w: float, h: float}, kind: string, weight: ?float}>
+     */
+    public static function keepClear(mixed $entries): array
+    {
+        $out = [];
+        foreach (is_array($entries) ? $entries : [] as $entry) {
+            $box = self::boxOf($entry['box'] ?? null);
+            if (! is_array($entry) || ! self::isBox($box) || ! in_array($entry['kind'] ?? null, self::KEEP_CLEAR_KINDS, true)) {
+                continue;
+            }
+            $out[] = [
+                'box' => self::box($box),
+                'kind' => $entry['kind'],
+                'weight' => is_numeric($entry['weight'] ?? null) ? max(0.0, (float) $entry['weight']) : null,
+            ];
+        }
+
+        return $out;
+    }
+
+    /** A box written as [x, y, w, h] read as {x, y, w, h}; anything else passed through. */
+    private static function boxOf(mixed $box): mixed
+    {
+        return is_array($box) && array_is_list($box) && count($box) === 4 ? array_combine(['x', 'y', 'w', 'h'], $box) : $box;
     }
 
     /** @param list<string> $keys */
