@@ -1,6 +1,8 @@
 // The right panel: the selected object, or the Scene when nothing is selected. A teacher sees a few
 // rows; everything else waits in a closed Advanced band. Elements with an id belong to the engine.
 import { useEngine, actions, type Picked } from '../bridge'
+import { POSES } from '../blockout/kit'
+import { PRESETS } from '../blockout/camera'
 import { ADVANCED, type Control } from '../scene-controls'
 import { GroupLabel, KeyframeDiamond, SelectRow, SettingsSection, SliderRow, ToggleRow } from '../ui/kit'
 import { Panel } from '../panels/Panel'
@@ -8,6 +10,9 @@ import { Panel } from '../panels/Panel'
 const ADV_LABEL_W = '6.5rem'
 const KIND_LABEL: Record<Picked['kind'], string> = { model: '3D model', picture: 'Picture', door: 'Door', cloud: 'Cloud' }
 const deg = (v: number) => `${Math.round(v)}°`
+const label = (v: string) => v.charAt(0).toUpperCase() + v.slice(1).replace('-', ' ')
+const POSE_OPTIONS: [string, string][] = POSES.map((p) => [p, label(p)])
+const SHOT_OPTIONS: [string, string][] = PRESETS.map((p) => [p, label(p)])
 
 function PanelHead({ title, sub }: { title: string; sub?: string }) {
   return (
@@ -27,6 +32,11 @@ function ObjectPanel({ picked }: { picked: Picked }) {
         <SettingsSection title="Format" name="object-format">
           <SliderRow label="Turn" min={0} max={359} step={1} value={picked.yaw} onChange={actions.turnTo} format={deg}
                      keyframe={<KeyframeDiamond on={picked.keyed} onClick={actions.keyTurn} />} />
+        </SettingsSection>
+      )}
+      {picked.blockout?.figure && (
+        <SettingsSection title="Pose" name="object-pose">
+          <SelectRow label="Pose" options={POSE_OPTIONS} value={picked.blockout.pose ?? 'stand'} onChange={actions.setPose} />
         </SettingsSection>
       )}
       {floor && (
@@ -90,11 +100,21 @@ function ScenePanel() {
   )
 }
 
+// the clay blockout's camera preset: the teacher picks another shot on the same subjects (one undo op)
+function BlockoutShot({ shot }: { shot: string }) {
+  return (
+    <SettingsSection title="Blockout" name="scene-blockout">
+      <SelectRow label="Shot" options={SHOT_OPTIONS} value={shot} onChange={actions.setShot} />
+    </SettingsSection>
+  )
+}
+
 export function Inspector() {
-  const { selected } = useEngine()
+  const { selected, shot } = useEngine()
   return (
     <Panel id="inspector">
       {selected && <ObjectPanel picked={selected} />}
+      {!selected && shot && <BlockoutShot shot={shot} />}
       {/* data-settings: every control in here is open to the crew too (src/crew/settings.ts) */}
       <div hidden={!!selected} data-settings><ScenePanel /></div>
     </Panel>

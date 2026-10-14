@@ -18,7 +18,9 @@ import { readback } from '../blockout/readback';
 import { History, changeOp, valueOp } from '../blockout/history';
 import { isTypingTarget } from '@hp/ui/keyboard.js';
 
-const FIGURE_URL = 'https://assets.babylonjs.com/meshes/Xbot.glb';   // the studio's mannequin (Mixamo rig)
+// the studio's mannequin (Mixamo rig), served by the studio itself (public/assets/models, git-ignored: 2.9 MB);
+// a fresh checkout without it falls back to Babylon's CDN (Gate 3: no CDN round trip on every page open)
+const FIGURE_URLS = ['assets/models/xbot.glb', 'https://assets.babylonjs.com/meshes/Xbot.glb'];
 const CLAY = [0.78, 0.76, 0.72];
 const SLATE = [0.36, 0.40, 0.45];          // the storyboard frame: a mid slate, black silhouettes (memory 10-11)
 const RIMS = ['#e0a050', '#5fb3d9', '#9bd16b', '#e07a8a', '#c49be0', '#e8d26a'];   // one rim per character
@@ -114,7 +116,11 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
   }
   async function preload(kitIds) {
     if (kitIds.includes('figure') && !figureContainer) {
-      figureContainer = await BABYLON.SceneLoader.LoadAssetContainerAsync('', FIGURE_URL, scene);
+      for (const url of FIGURE_URLS) {
+        try { figureContainer = await BABYLON.SceneLoader.LoadAssetContainerAsync('', url, scene); break; } catch (e) {
+          if (url === FIGURE_URLS[FIGURE_URLS.length - 1]) throw e;
+        }
+      }
     }
   }
 
@@ -590,7 +596,7 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
     reframe: () => { if (shot) placeCamera(shot); return read(); },   // the same preset at the canvas's current aspect (no op)
     undo: () => history.undo(), undoOne: () => history.undoOne(), redo: () => history.redo(), serialize, load,
     begin: (label, by = 'ai') => history.begin(label, by), end: () => history.end(),
-    setPose, frameAs: (s, by) => { frame(s, by); return read(); },
+    setPose, frameAs: (s, by) => { frame(s, by); return read(); }, currentShot: () => (shot ? { ...shot } : null),
     specs: () => [...specs.values()].map((s) => structuredClone(s)),
     placed: () => Object.fromEntries(placedOf),
   };

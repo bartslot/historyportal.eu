@@ -1,6 +1,6 @@
 // The History Portal panel kit, ported ONCE from resources/views/components/ui/*.blade.php. Same class
 // strings as the Blade components, so the studio and the wizard draw from one theme (resources/css/app.css).
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
 
 export function ChevronDown({ className = '' }: { className?: string }) {
   return (
@@ -113,10 +113,15 @@ export function ToggleRow({ label, id, defaultChecked }: { label: string; id: st
   )
 }
 
-export function SelectRow({ label, id, defaultValue, options, labelWidth }: { label: string; id: string; defaultValue?: string; options?: [string, string][]; labelWidth?: string }) {
+// uncontrolled (the engine binds it by id) unless value + onChange are given (React owns it)
+export function SelectRow({ label, id, defaultValue, options, labelWidth, value, onChange }: {
+  label: string; id?: string; defaultValue?: string; options?: [string, string][]; labelWidth?: string
+  value?: string; onChange?: (v: string) => void
+}) {
+  const controlled = value !== undefined && onChange ? { value, onChange: (e: ChangeEvent<HTMLSelectElement>) => onChange(e.target.value) } : { defaultValue }
   return (
     <PanelRow label={label} labelWidth={labelWidth}>
-      <select id={id} defaultValue={defaultValue} aria-label={label}
+      <select id={id} {...controlled} aria-label={label}
               className="w-full appearance-none rounded-lg border border-panel-hairline bg-base-100 py-1 pl-3 pr-7 text-xs text-panel-value">
         {options?.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
       </select>
