@@ -2770,14 +2770,15 @@ Alpine.data('lessonGame', (lesson) => ({
       // With the QR out of its place the badges close up and may meet the expect lines: wrap them, measure again.
       const lines = host.querySelector('[data-title-expect="lines"]')
       if (fitExpectLines(lines, host.querySelector('[data-title-cluster]'))) result = layoutTitleQr(host, qrOpts)
-      // Under a drawn title the lines may reach its letters (a short screen): then they go to the
+      // Under a drawn title the lines may reach its letters (a short screen) or be squeezed into a
+      // column beside the badges (a narrow one): then they go to the
       // strip along the top, as on a phone, and the screen is measured again with them there.
       if (poster && !this.expectInStrip && lines?.offsetWidth) {
         const title = [...(result.keepClear ?? []).filter(k => k.kind === 'letters').map(k => k.rect),
           ...[...host.querySelectorAll('[data-poster-stage] [data-title-avoid]')].map(el => relRect(el.getBoundingClientRect(), o))]
         const hit = [...lines.children].map(li => relRect(li.getBoundingClientRect(), o)).filter(r => r.w > 0)
           .some(r => title.some(t => r.x < t.x + t.w && t.x < r.x + r.w && r.y < t.y + t.h && t.y < r.y + r.h))
-        if (hit) {
+        if (hit || lines.dataset.cramped) {
           this.expectInStrip = true
           this.$nextTick(() => this.layoutTitleScreen())
           return

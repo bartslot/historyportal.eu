@@ -4,7 +4,8 @@
  * along it, starting after the top row's own control (the edit pill or the logo). On a phone the
  * lines stack, under the top row.
  */
-export const STRIP = { phone: 640, gap: 24, gutter: 16 }
+// minLines: lines under the title narrower than this read as a column of words; a poster then uses the strip.
+export const STRIP = { phone: 640, gap: 24, gutter: 16, minLines: 280 }
 
 /** Pure: the strip's place in the title screen (px), from the frame rect and the slot's box (%). */
 export function stripLayout (frame, view, box, chrome = null) {
@@ -40,14 +41,22 @@ export function fitExpectLines (ul, cluster) {
   if (!ul || !cluster || !ul.offsetWidth) return false
   const before = ul.style.maxWidth
   ul.style.maxWidth = ''
+  ul.dataset.cramped = ''
   // The cluster's own pieces, not its box: a column of badges leaves room beside the language switch.
-  const parts = [...cluster.querySelectorAll('[data-title-avoid], [data-title-qr]')].map(el => el.getBoundingClientRect()).filter(r => r.width)
-  const items = [...ul.children].map(li => li.getBoundingClientRect()).filter(r => r.width)
-  const hit = parts.filter(p => items.some(li => overlaps(li, p)))
-  if (hit.length) {
-    const centred = getComputedStyle(ul).justifyContent === 'center'
-    const c = { left: Math.min(...hit.map(p => p.left)) }
-    ul.style.maxWidth = `${Math.max(160, Math.floor(linesRoom(ul.getBoundingClientRect(), c, centred)))}px`
+  const centred = getComputedStyle(ul).justifyContent === 'center'
+  const full = ul.getBoundingClientRect()
+  let left = Infinity
+  // Narrower lines take more rows and climb: check again, up to a few times, against everything hit so far.
+  for (let pass = 0; pass < 3; pass++) {
+    const parts = [...cluster.querySelectorAll('[data-title-avoid], [data-title-qr]')].map(el => el.getBoundingClientRect()).filter(r => r.width)
+    const items = [...ul.children].map(li => li.getBoundingClientRect()).filter(r => r.width)
+    const hit = parts.filter(p => items.some(li => overlaps(li, p)))
+    if (!hit.length) break
+    left = Math.min(left, ...hit.map(p => p.left))
+    const room = Math.floor(linesRoom(full, { left }, centred))
+    // Too narrow to read as lines: the caller can send them to the strip (data-cramped).
+    ul.dataset.cramped = room < STRIP.minLines ? '1' : ''
+    ul.style.maxWidth = `${Math.max(STRIP.minLines, room)}px`
     ul.style.marginInline = centred ? 'auto' : ''
   }
 
