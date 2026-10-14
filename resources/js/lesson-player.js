@@ -45,7 +45,7 @@ import { captionVisible } from './scene/SceneOverlay.js'
 import { gradientCss } from './scene/background-gradient.js'
 import { t } from './i18n.js'
 import { mountBigCountdown } from './big-countdown.js'
-import { mountTitlePoster as mountPoster } from './title-poster.js'
+import { mountTitlePoster as mountPoster, posterFit } from './title-poster.js'
 import { QR, layoutTitleQr, drawQrDebug, coverRect, pictureSize, relRect } from './title-qr.js'
 import { placeExpectStrip, fitExpectLines } from './title-expect.js'
 
@@ -2752,7 +2752,8 @@ Alpine.data('lessonGame', (lesson) => ({
       const stage = host.querySelector('[data-poster-stage]')
       const o = host.getBoundingClientRect()
       const strip = host.querySelector('[data-title-expect="strip"]')
-      if (strip && stage && placeExpectStrip(strip, stage.getBoundingClientRect(), o, poster.expect?.box ?? { x: 0, y: 0, w: 100, h: 0 }, stage.parentElement, !poster.expect).moved) {
+      if (strip && stage && placeExpectStrip(strip, stage.getBoundingClientRect(), o, poster.expect?.box ?? { x: 0, y: 0, w: 100, h: 0 },
+        stage.parentElement, !poster.expect, posterFit(o.width, o.height, poster).top).moved) {
         // The poster now starts under the strip: measure once it has been fitted there.
         setTimeout(() => this.layoutTitleScreen(), 50)
         return

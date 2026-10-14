@@ -67,9 +67,11 @@ export function fitExpectLines (ul, cluster) {
  * Lay the strip out in its host; `stage` and `host` are DOMRects. On a phone the stacked strip is
  * tall, so the poster (`posterHost`) starts under it instead of behind it: no face disappears.
  * `below`: the poster starts under the strip on every screen (a candidate without a slot of its
- * own, whose letters may reach the top). Returns the layout; `moved` when the poster moved.
+ * own, whose letters may reach the top). `freeTop`: where the frame starts when the poster is NOT
+ * moved (title-poster.js posterFit); a strip that ends above it moves nothing (a cover's empty sky
+ * on a phone). Returns the layout; `moved` when the poster moved.
  */
-export function placeExpectStrip (strip, stage, host, box, posterHost = null, below = false) {
+export function placeExpectStrip (strip, stage, host, box, posterHost = null, below = false, freeTop = 0) {
   const pill = [...document.querySelectorAll('[data-player-chrome="top"] [data-title-avoid]')]
     .map(el => el.getBoundingClientRect()).find(r => r.width > 0)
   const chrome = pill ? { x: pill.left - host.left, y: pill.top - host.top, w: pill.width, h: pill.height } : null
@@ -85,7 +87,8 @@ export function placeExpectStrip (strip, stage, host, box, posterHost = null, be
   strip.dataset.stacked = l.stacked ? '1' : '0'
   l.moved = false
   if (posterHost) {
-    const top = (l.stacked || below) && strip.offsetHeight ? `${Math.round(strip.offsetHeight)}px` : ''
+    const h = strip.offsetHeight
+    const top = (l.stacked || below) && h && freeTop < h ? `${Math.round(h)}px` : ''
     l.moved = posterHost.style.top !== top
     if (l.moved) posterHost.style.top = top
   }
