@@ -136,6 +136,9 @@ class LessonComposer
             // Links this lesson to its siblings in other languages (Lesson::translations()). A
             // spec that does not say has none, same as before this key existed.
             'translation_group' => $spec['translation_group'] ?? null,
+            // What the class should learn and how it fits the curriculum, shown on the lesson's
+            // public page. Authored here so a rebuild keeps it.
+            'teacher_guide' => $spec['teacher_guide'] ?? null,
             'grade_level' => (string) ($spec['grade_level'] ?? '6'),
             'tone' => (string) ($spec['tone'] ?? 'storytelling'),
             'source_mode' => 'internet',

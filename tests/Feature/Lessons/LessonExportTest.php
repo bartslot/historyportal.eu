@@ -149,6 +149,18 @@ class LessonExportTest extends TestCase
         $this->assertEquals($spec, $exported);
     }
 
+    public function test_a_teacher_guide_survives_compose_and_export(): void
+    {
+        // The guide is authored in the spec; a rebuild from it must not drop what teachers read.
+        $guide = ['goal' => 'Leerlingen begrijpen waarom...', 'faq' => [['q' => 'Hoe lang?', 'a' => 'Een lesuur.']]];
+        $spec = $this->spec() + ['teacher_guide' => $guide];
+
+        $lesson = app(LessonComposer::class)->build($spec, $this->teacher, narrate: false);
+
+        $this->assertSame($guide, $lesson->fresh()->teacher_guide);
+        $this->assertSame($guide, app(LessonExporter::class)->toSpec($lesson->fresh())['teacher_guide']);
+    }
+
     public function test_a_lesson_built_from_the_art_library_exports_as_library_refs(): void
     {
         foreach (['history-line/backdrops/florence/firenze-strada.webp', 'history-line/figures/dante/dante-giovane.webp'] as $file) {

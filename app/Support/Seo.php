@@ -115,6 +115,12 @@ final class Seo
      */
     public static function lessonDescription(Lesson $lesson): string
     {
+        // A lesson with a teacher guide is described by what the class learns (Bart, 2026-10-13).
+        $goal = trim((string) ($lesson->teacher_guide['goal'] ?? ''));
+        if ($goal !== '') {
+            return $goal;
+        }
+
         $subject = $lesson->title ?: $lesson->topic ?: __('a history topic');
         $minutes = $lesson->duration_seconds ? (int) ceil($lesson->duration_seconds / 60) : null;
 
@@ -203,7 +209,35 @@ final class Seo
             $graph['timeRequired'] = 'PT'.max(1, (int) ceil($lesson->duration_seconds / 60)).'M';
         }
 
-        return array_filter($graph, fn ($value) => $value !== null);
+        $guide = (array) ($lesson->teacher_guide ?? []);
+        if (! empty($guide['goal'])) {
+            $graph['teaches'] = (string) $guide['goal'];
+        }
+
+        $resource = array_filter($graph, fn ($value) => $value !== null);
+        if (empty($guide['faq'])) {
+            return $resource;
+        }
+
+        // The FAQ as FAQPage: Google no longer shows FAQ rich results for most sites (Aug 2023), but
+        // the markup keeps the answers machine-readable for search and AI answers. It must match the
+        // visible accordion word for word, so both read the same array.
+        unset($resource['@context']);
+
+        return [
+            '@context' => 'https://schema.org',
+            '@graph' => [
+                $resource,
+                [
+                    '@type' => 'FAQPage',
+                    'mainEntity' => array_map(fn (array $item) => [
+                        '@type' => 'Question',
+                        'name' => (string) $item['q'],
+                        'acceptedAnswer' => ['@type' => 'Answer', 'text' => (string) $item['a']],
+                    ], $guide['faq']),
+                ],
+            ],
+        ];
     }
 
     /**

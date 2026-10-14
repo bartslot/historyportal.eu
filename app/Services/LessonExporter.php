@@ -102,6 +102,9 @@ class LessonExporter
         if ($lesson->title_keep_clear) {
             $spec['title_keep_clear'] = $lesson->title_keep_clear;
         }
+        if (! empty($lesson->teacher_guide)) {
+            $spec['teacher_guide'] = $lesson->teacher_guide;
+        }
 
         $gameConfig = $this->withoutKeys((array) ($lesson->game_config ?? []), self::GAME_CONFIG_SCRATCH);
         if ($gameConfig !== []) {
