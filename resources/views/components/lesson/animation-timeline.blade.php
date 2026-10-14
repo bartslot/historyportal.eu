@@ -204,7 +204,7 @@
     </div>
 
     {{-- ── Tracks ─────────────────────────────────────────────────────────────────────────── --}}
-    <div class="flex min-h-0 flex-1 overflow-y-auto">
+    <div class="flex min-h-0 flex-1 overflow-y-auto overflow-x-hidden" data-timeline-tracks>
 
         {{-- Left: the object list, which is the same list the Object list panel shows. --}}
         <div class="shrink-0 border-r border-panel-hairline" style="width: var(--timeline-label-col)">
@@ -356,7 +356,13 @@
         {{-- Figma's split: the RULER scrubs (col-resize says so), the TRACKS select — press a key,
              Shift+press to add, drag across empty track for a marquee, press empty track to
              clear. Cmd/Ctrl+wheel and pinch zoom about the pointer. --}}
-        <div x-ref="lanes" data-timeline-lanes class="relative min-w-0 flex-1 overflow-x-auto"
+        {{-- self-start + overflow-y-hidden: the lanes scroll SIDEWAYS only. overflow-x on its own
+             makes the browser compute overflow-y as auto, and a stretched flex item is only as
+             tall as the dock — so the lanes became a second vertical scroller, the wheel over them
+             scrolled the bars away from their rows, and the row on screen named a different
+             property than the bar beside it (Bart, 2026-10-14). The tracks box above is the one
+             vertical scroller, so names and bars move together under a fixed transport. --}}
+        <div x-ref="lanes" data-timeline-lanes class="relative min-w-0 flex-1 self-start overflow-x-auto overflow-y-hidden"
              x-on:wheel="onWheel($event)">
             <div x-ref="content" class="relative select-none" :style="`width: ${Math.max(contentWidth, 100)}px`"
                  x-on:pointerdown="startMarquee($event)">
