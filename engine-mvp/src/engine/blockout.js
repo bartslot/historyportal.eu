@@ -452,6 +452,7 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
   mvp.blockout = {
     clear, isPiece: (a) => !!a && actorOf.get(a.metadata && a.metadata.id) === a,
     apply, place, pose: setPose, frame: (s) => { frame(s); return read(); }, read, mode, history,
+    reframe: () => { if (shot) frame(shot); return read(); },   // the same preset at the canvas's current aspect
     undo: () => history.undo(), redo: () => history.redo(), serialize, load,
     specs: () => [...specs.values()].map((s) => structuredClone(s)),
     placed: () => Object.fromEntries(placedOf),

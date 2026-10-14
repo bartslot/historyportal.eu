@@ -45,6 +45,7 @@ try {
     if (spec !== null) window.__shot.moveCamera(spec)
     engine.setHardwareScalingLevel(1)
     engine.resize()
+    if (mvp.blockout) mvp.blockout.reframe()   // a camera preset is computed for an aspect: frame it at this one
     await new Promise((r) => setTimeout(r, spec === null ? 1500 : 120))   // a few frames at the new size / pose
     return BABYLON.Tools.CreateScreenshotAsync(engine, mvp.camera, { precision: 1 })
   }, spec)
