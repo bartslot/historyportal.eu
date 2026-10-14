@@ -595,4 +595,5 @@ def main():
     print(f"LINEUP ok {out / (name + '.png')} {out / (name + '.blend')}")
 
 
-main()
+if __name__ == "__main__":   # run as the script; archetype.py imports the helpers
+    main()
