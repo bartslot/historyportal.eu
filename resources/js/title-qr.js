@@ -11,10 +11,20 @@ import { placeCard } from './scene/card-place.js'
 
 export const QR = {
   gutter: 16,
-  // Full size first, then smaller until the code is still scannable from a class's front row.
-  sizes: [112, 96, 84, 72],
+  // The plate's width (the code with its quiet zone): full size first, then smaller until the
+  // code is still scannable from a class's front row. The code itself is as big as it was before
+  // the plate (112 → 96 px of modules at full size).
+  sizes: [128, 112, 96, 84],
   minWidth: 640,              // below this (a phone) the QR stays hidden, as it always was
+  quietZone: 4,               // modules of white round the code: the QR spec's minimum
 }
+
+/**
+ * Pure: the qrcode options for a code `width` px wide, quiet zone included: dark modules in
+ * `ink` on opaque white. Phone cameras miss an inverted code on a busy picture, so it is never
+ * white on transparent.
+ */
+export const qrOptions = (width, ink = '#0a0a0a') => ({ width, margin: QR.quietZone, color: { dark: ink, light: '#ffffffff' } })
 
 export const CORNERS = ['bottom-right', 'top-right', 'bottom-left', 'top-left']
 export const OVERRIDES = ['auto', ...CORNERS, 'hidden']
