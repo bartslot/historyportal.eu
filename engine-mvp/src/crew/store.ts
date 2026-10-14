@@ -82,7 +82,7 @@ const BLOCKOUT_CMDS = new Set(['place', 'pose', 'frame', 'mode', 'undo'])
 const history = () => (window as any).__mvp.blockout.history
 const settingValues = (): Change[] => readSettings().map((s) => ({ id: s.id, value: s.value }))
 
-async function applyAnswer(msg: any): Promise<{ changes: string[]; undo: UndoEntry; failed: string | null }> {
+export async function applyAnswer(msg: any): Promise<{ changes: string[]; undo: UndoEntry; failed: string | null }> {
   const labels = new Map(readSettings().map((s) => [s.id, s.label]))
   const { lesson, current } = L.getLesson()
   const h = history()

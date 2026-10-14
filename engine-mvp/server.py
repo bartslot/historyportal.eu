@@ -803,10 +803,12 @@ class Handler(SimpleHTTPRequestHandler):
         return super().do_GET()
 
     def do_POST(self):
-        if self.path in ('/blockout/call', '/blockout/result'):
+        if self.path in ('/blockout/call', '/blockout/result', '/blockout/ack'):
             data = self._body()
             if data is None:
                 return None
+            if self.path == '/blockout/ack':                # the page has the job (else it is re-sent)
+                return self._json(200, {'acked': blockout_link().ack(data.get('id'))})
             if self.path == '/blockout/call':               # an MCP tool: one op on the open page, its answer back
                 return self._json(200, blockout_link().call(str(data.get('op', '')), data.get('args') or {}))
             ok = blockout_link().result(data.get('id'), {k: data.get(k) for k in ('ok', 'result', 'error')})

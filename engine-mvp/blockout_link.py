@@ -1,6 +1,7 @@
 """The live channel between the MCP blockout tools and the studio page the teacher has open (clay-blockout Gate 2).
 
     MCP tool --POST /blockout/call--> server.py --(job)--> the open page, which waits on GET /blockout/poll
+                                      server.py <--POST /blockout/ack---- the page, the moment it has the job
                                       server.py <--POST /blockout/result-- the page (readback text, a snapshot)
 
 A long poll, not a WebSocket: server.py is the standard library's ThreadingHTTPServer, and a waiting GET hands a job
@@ -18,6 +19,7 @@ PAGE_GONE_S = POLL_WAIT_S + 10   # no poll for this long: no page is listening
 OPS = {'apply', 'command', 'frame', 'read', 'snapshot', 'kit_list'}
 SNAPSHOT_SIZES = (128, 1024)
 PASSES = {'clay', 'silhouette', 'id'}
+ACK_WAIT_S = 2              # a job handed to a poll but not acknowledged by now goes back in the queue (its page is gone)
 
 
 class Link:
@@ -28,6 +30,7 @@ class Link:
         self.ids = itertools.count(1)
         self.last_poll = 0.0
         self.lock = threading.Lock()
+        self.handed = {}                  # job id -> (job, when): given to a poll, not yet acknowledged by its page
 
     def page_connected(self):
         return time.monotonic() - self.last_poll < PAGE_GONE_S
@@ -101,6 +104,7 @@ class Link:
         """The next job for the page, or None after POLL_WAIT_S. A job whose tool gave up is dropped, never run late."""
         self.last_poll = time.monotonic()
         deadline = self.last_poll + POLL_WAIT_S
+        self.requeue_unacked()
         try:
             while True:
                 left = deadline - time.monotonic()
@@ -112,9 +116,24 @@ class Link:
                     return None
                 with self.lock:
                     if job['id'] in self.waiting:
+                        self.handed[job['id']] = (job, time.monotonic())
                         return job
         finally:
             self.last_poll = time.monotonic()
+
+    def ack(self, job_id):
+        """The page has the job: a long poll whose browser had closed never acknowledges, and its job is re-sent."""
+        with self.lock:
+            return self.handed.pop(job_id, None) is not None
+
+    def requeue_unacked(self):
+        now = time.monotonic()
+        with self.lock:
+            stale = [jid for jid, (_, t) in self.handed.items() if now - t > ACK_WAIT_S]
+            for jid in stale:
+                job, _ = self.handed.pop(jid)
+                if jid in self.waiting:
+                    self.jobs.put(job)
 
     def result(self, job_id, answer):
         with self.lock:

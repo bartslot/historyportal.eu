@@ -50,11 +50,18 @@ const RETRY_MS = [1000, 2000, 5000, 15000, 30000];   // back-off while server.py
     let fails = 0;
     for (;;) {
       try {
+        if (!window.__blockoutLinked) {        // reached server.py at least once (tests wait for this, not a stale status)
+          const st = await fetch('/blockout/status', { cache: 'no-store' });
+          if (!st.ok) throw new Error('status ' + st.status);
+          window.__blockoutLinked = true;
+        }
         const res = await fetch('/blockout/poll', { cache: 'no-store' });
         if (res.status === 204) { fails = 0; continue; }
         if (!res.ok) throw new Error('poll ' + res.status);
         fails = 0;
         const job = await res.json();
+        // at once: a job handed to a poll whose page had closed is re-sent when no ack comes
+        fetch('/blockout/ack', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: job.id }) }).catch(() => {});
         let answer;
         try { answer = { ok: true, result: await run(job) }; } catch (e) { answer = { ok: false, error: e.message }; }
         await fetch('/blockout/result', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: job.id, ...answer }) });

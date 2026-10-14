@@ -143,7 +143,8 @@
           if (!spec.kit && !known) { done.push('skipped place: ' + c.id + ' is new, give its kit'); break; }
           const r = await mvp.blockout.place(spec);
           const refused = r.problems.filter((p) => /^(overlap|no-spot|unknown-ref|cycle): /.test(p) && p.includes(c.id + ' '));
-          done.push(refused.length ? refused.join('; ') : 'placed ' + c.id);
+          const kept = (r.notes || []).find((n) => n.startsWith('kept: ' + c.id + ' '));
+          done.push(kept || (refused.length ? refused.join('; ') : 'placed ' + c.id));
           break;
         }
         case 'pose':

@@ -41,6 +41,7 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
   let shot = null;
   let lastProblems = [];
   let lastNotes = [];            // the AI asked to change what the teacher had set: kept, and said so
+  let removing = false;           // set while the blockout itself removes a piece
   let currentMode = 'off';
   let rim = 0;
 
@@ -175,7 +176,8 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
         saved.mats.delete(m);
         if (m instanceof BABYLON.InstancedMesh) m.dispose(false, false); else m.material = null;
       });
-      mvp.deleteActor(a);
+      removing = true;                         // our own removal: not a teacher's delete (onDelete lets it through)
+      try { mvp.deleteActor(a); } finally { removing = false; }
     }
     actorOf.delete(id);
   }
@@ -436,6 +438,20 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
       if (m.renderOutline) { m.outlineColor = BABYLON.Color3.FromHexString(a.metadata.rim || '#ffffff'); m.outlineWidth = 0.012; }
     });
   }
+  const rootOf = (m) => { for (let n = m; n; n = n.parent) { if (mvp.actors.includes(n)) return n; if (n.metadata && n.metadata.actor) return n.metadata.actor; } return null; };
+  const inActor = (m) => { const r = rootOf(m); return !!r && !(r.metadata && r.metadata.cloud); };
+  function hideUnlessPiece(m) {
+    if (m.isDisposed() || m === ground() || [...sources.values()].includes(m) || !m.isEnabled() || inActor(m)) return;
+    m.setEnabled(false);
+    saved.hidden.push(m);
+  }
+  // clouds and backdrops built AFTER the mode was set (a lesson's settings loading) go dark too; checked one frame
+  // later, when the new mesh has found its parent
+  scene.onNewMeshAddedObservable.add((m) => {
+    if (currentMode === 'off') return;
+    scene.onBeforeRenderObservable.addOnce(() => { if (currentMode !== 'off') hideUnlessPiece(m); });
+  });
+
   function mode(m) {
     const look = document.getElementById('lookOn');
     if (m !== 'off' && currentMode === 'off') {
@@ -460,13 +476,7 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
     }
     if (look && look.checked) { look.checked = false; look.dispatchEvent(new Event('change', { bubbles: true })); }
     // only the pieces, the floor and the horizon: backdrop rings, plates, clouds and sky go dark
-    const rootOf = (m) => { for (let n = m; n; n = n.parent) { if (mvp.actors.includes(n)) return n; if (n.metadata && n.metadata.actor) return n.metadata.actor; } return null; };
-    const inActor = (m) => { const r = rootOf(m); return !!r && !(r.metadata && r.metadata.cloud); };
-    scene.meshes.forEach((m) => {
-      if (m === ground() || [...sources.values()].includes(m) || !m.isEnabled() || inActor(m)) return;
-      m.setEnabled(false);
-      saved.hidden.push(m);
-    });
+    scene.meshes.forEach(hideUnlessPiece);
     if (sun()) sun().shadowEnabled = false;
     if (mvp.getDome()) mvp.getDome().mesh.setEnabled(false);
     const bg = m === 'silhouette' ? SLATE : [0.93, 0.92, 0.89];
@@ -490,6 +500,7 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
     if (!specs.has(id) || !placedOf.has(id) || !from) return;
     const before = stateOf(id);
     const p = { ...placedOf.get(id), x: a.position.x, z: a.position.z, yaw: yawDeg(a) };
+    a.position.y = p.y;                        // the studio's drag puts things on the ground; a deck piece stays on the deck
     const spec = { ...specs.get(id), at: [p.x, p.z], turn: p.yaw };
     delete spec.place;
     delete spec.face;
@@ -499,6 +510,7 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
     history.push(changeOp(`${kind === 'turn' ? 'turn' : 'move'} ${id}`, 'teacher', { [id]: before }, { [id]: stateOf(id) }, setState));
   };
   mvp.onDelete = (a) => {
+    if (removing) return false;
     const id = a.metadata && a.metadata.id;
     if (!specs.has(id) || actorOf.get(id) !== a) return false;
     record(`delete ${id}`, 'teacher', [id], () => setState(id, undefined));
@@ -519,7 +531,7 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
     if (!data) return;
     await preload(data.objects.map((o) => o.spec.kit));
     data.objects.forEach((o) => setState(o.spec.id, o));
-    if (data.shot) placeCamera(data.shot);
+    shot = data.shot ? { ...data.shot } : null;   // the camera pose itself comes back with the scene (scene-io)
     if (data.mode) mode(data.mode);
   }
 
