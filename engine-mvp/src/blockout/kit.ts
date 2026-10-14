@@ -16,6 +16,7 @@ export type Shape =
   | { kind: 'rail' }
   | { kind: 'table' }
   | { kind: 'cannon' }
+  | { kind: 'cart' }
   | { kind: 'figure' }
   | { kind: 'none' }
 
@@ -51,6 +52,7 @@ export const KIT: KitPiece[] = [
   piece('chest', 'Sea chest', [1.0, 0.55, 0.5], { kind: 'box' }, { real: 'sea-chest' }),
   piece('cannon', 'Cannon on carriage', [0.8, 0.8, 2.0], { kind: 'cannon' }, { real: 'cannon-voc' }),
   piece('table', 'Table', [1.6, 0.78, 0.9], { kind: 'table' }, { real: 'cabin-table' }),
+  piece('cart', 'Hand cart', [1.4, 1.1, 2.6], { kind: 'cart' }, { real: 'cart-dutch' }),
   piece('stool', 'Stool', [0.4, 0.45, 0.4], { kind: 'cylinder' }, { real: 'stool' }),
   piece('figure', 'Figure (mannequin)', [0.5, 1.8, 0.3], { kind: 'figure' }, {
     footprint: [1, 1],

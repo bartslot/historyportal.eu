@@ -4,11 +4,17 @@
 // Per piece: frame box (u0 v0 u1 v1, 0..1, v down), visible %, which frame edges cut it, facing, on its floor.
 // Problems: refused overlaps (from the solver), floating, a subject out of frame, a figure too small, a subject
 // hidden behind a nearer piece. Composition: horizon line, subjects left to right, each subject's eyes against the
-// thirds grid.
-import { corners, horizonV, project, type Box, type Cam } from './camera'
+// thirds grid. Gate 2: a figure's cut edges are per body part (head, hands, feet from its bones), and a subject's size
+// in frame is reported, with "small" under the shot preset's own threshold.
+import { corners, horizonV, project, type Box, type Cam, type Preset, type V3 } from './camera'
 import type { Problem } from './solve'
 
-export type Item = { id: string; kit: string; box: Box; yaw: number; floorY: number; subject: boolean; figure: boolean }
+export const PARTS = ['head', 'left hand', 'right hand', 'left foot', 'right foot'] as const
+export type Part = (typeof PARTS)[number]
+export type Item = {
+  id: string; kit: string; box: Box; yaw: number; floorY: number; subject: boolean; figure: boolean
+  parts?: Partial<Record<Part, V3>>            // a figure's body parts in the world (its bones), for per-part cuts
+}
 export type Framed = {
   id: string; kit: string
   frame: [number, number, number, number] | null
@@ -17,6 +23,7 @@ export type Framed = {
   facing: number
   onFloor: boolean
   depth: number
+  size: number                                 // height in frame (unclipped), share of the frame height
 }
 export type Readback = {
   pieces: Framed[]
@@ -29,6 +36,12 @@ export type Readback = {
 
 const FLOAT_M = 0.05                // a piece more than this above its floor is floating
 const MIN_FIGURE = 0.15             // a figure smaller than this share of the frame height reads as a speck
+// per preset: a subject smaller than this (its whole height, cut parts included) is too far for the shot
+export const MIN_SUBJECT: Record<Preset, number> = {
+  'wide': 0.12, 'three-quarter': 0.45, 'front': 0.5, 'profile': 0.45, 'medium': 0.75, 'close-up': 1.2,
+  'over-shoulder': 0.3, 'low': 0.45, 'high': 0.3,
+}
+const ALLOWED_CUT: Part[] = ['left foot', 'right foot']   // feet may leave the frame (medium, close-up)
 const OUT_OF_FRAME = 0.2            // a subject less visible than this is out of frame
 const HIDDEN = 0.4                  // a nearer piece covering this share of a subject hides it
 const MAX_LISTED = 40               // pieces listed by name: subjects first, then the largest in frame
@@ -46,25 +59,33 @@ function frameOf(cam: Cam, box: Box): { full: [number, number, number, number]; 
   return { full: [Math.min(...us), Math.min(...vs), Math.max(...us), Math.max(...vs)], depth: Math.min(...front.map((q) => q.depth)) }
 }
 
-export function readback(cam: Cam, items: Item[], solverProblems: Problem[] = []): Readback {
+export function readback(cam: Cam, items: Item[], solverProblems: Problem[] = [], preset?: Preset): Readback {
   const problems = solverProblems.map((p) => `${p.kind}: ${p.detail}`)
   const pieces: Framed[] = items.map((it) => {
     const fr = frameOf(cam, it.box)
     const onFloor = it.box.min[1] - it.floorY <= FLOAT_M
-    if (!fr) return { id: it.id, kit: it.kit, frame: null, visible: 0, cut: ['behind camera'], facing: it.yaw, onFloor, depth: -1 }
+    if (!fr) return { id: it.id, kit: it.kit, frame: null, visible: 0, cut: ['behind camera'], facing: it.yaw, onFloor, depth: -1, size: 0 }
     const [u0, v0, u1, v1] = fr.full
     const clip: [number, number, number, number] = [Math.max(0, u0), Math.max(0, v0), Math.min(1, u1), Math.min(1, v1)]
     const full = area(fr.full)
     const visible = full > 0 ? area(clip) / full : 0
-    const cut = [u0 < 0 && 'left', u1 > 1 && 'right', v0 < 0 && 'top', v1 > 1 && 'bottom'].filter(Boolean) as string[]
-    return { id: it.id, kit: it.kit, frame: clip.map(f2) as Framed['frame'], visible: f2(visible), cut, facing: Math.round(it.yaw), onFloor, depth: f2(fr.depth) }
+    // a figure: which body parts are out of frame (its box corners overstate: feet below a medium frame are framing)
+    const cut = it.parts
+      ? (Object.entries(it.parts) as [Part, V3][]).filter(([, p]) => { const q = project(cam, p); return q.depth <= 0.05 || q.u < 0 || q.u > 1 || q.v < 0 || q.v > 1 }).map(([n]) => n)
+      : [u0 < 0 && 'left', u1 > 1 && 'right', v0 < 0 && 'top', v1 > 1 && 'bottom'].filter(Boolean) as string[]
+    return { id: it.id, kit: it.kit, frame: clip.map(f2) as Framed['frame'], visible: f2(visible), cut, facing: Math.round(it.yaw), onFloor, depth: f2(fr.depth), size: f2(v1 - v0) }
   })
   const byId = new Map(pieces.map((p) => [p.id, p]))
   for (const it of items) {
     const p = byId.get(it.id)!
     if (it.kit !== 'marker' && !p.onFloor) problems.push(`floating: ${it.id} is ${f2(it.box.min[1] - it.floorY)} m above its floor`)
     if (it.subject && p.visible < OUT_OF_FRAME) problems.push(`out of frame: subject ${it.id} is ${pct(p.visible)} % visible`)
-    if (it.figure && p.frame && p.frame[3] - p.frame[1] < MIN_FIGURE && p.visible > 0) problems.push(`small: figure ${it.id} is ${pct(p.frame[3] - p.frame[1])} % of the frame height`)
+    const min = it.subject && preset ? MIN_SUBJECT[preset] : MIN_FIGURE
+    if (it.figure && p.frame && p.visible > 0 && p.size < min) problems.push(`small: ${it.subject ? 'subject' : 'figure'} ${it.id} is ${pct(p.size)} % of the frame height${it.subject && preset ? ` (a ${preset} shot wants ${pct(min)} % or more: bring the camera closer)` : ''}`)
+    if (it.subject && it.parts) {
+      const lost = p.cut.filter((c) => !ALLOWED_CUT.includes(c as Part))
+      if (lost.length) problems.push(`cut: ${lost.join(', ')} of subject ${it.id} out of frame`)
+    }
   }
   // a subject hidden by a nearer piece: for a figure only its upper half counts (a rail across the legs is a framing)
   for (const s of items.filter((i) => i.subject)) {
@@ -106,7 +127,7 @@ export function readback(cam: Cam, items: Item[], solverProblems: Problem[] = []
     `camera at [${cam.position.map(f2).join(', ')}] looking at [${cam.target.map(f2).join(', ')}], fov ${Math.round((cam.fovY * 180) / Math.PI)} deg`,
     `horizon: ${horizon === null ? 'not in frame' : `${pct(horizon)} % down`}`,
     `subjects left to right: ${order.join(', ') || 'none in frame'}`,
-    ...thirds.map((t) => `  ${t.id}: eyes at (${t.eyes.join(', ')}), nearest third (${t.nearest.map((v) => Math.round(v * 3) + '/3').join(', ')}) ${t.off} away`),
+    ...thirds.map((t) => `  ${t.id}: size ${pct(byId.get(t.id)!.size)} % of the frame height, eyes at (${t.eyes.join(', ')}), nearest third (${t.nearest.map((v) => Math.round(v * 3) + '/3').join(', ')}) ${t.off} away`),
     'pieces (frame u0 v0 u1 v1 | visible | cut | facing | floor):',
     ...listed.map((p) => `  ${p.id} [${p.kit}] ${p.frame ? p.frame.join(' ') : '-'} | ${pct(p.visible)} % | ${p.cut.join('+') || '-'} | ${p.facing} deg | ${p.onFloor ? 'on floor' : 'FLOATING'}`),
     ...(pieces.length > listed.length ? [`  +${pieces.length - listed.length} more pieces (${pieces.length - listed.length - unseen} in frame, ${unseen} out of it)`] : []),

@@ -85,6 +85,15 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
         barrel.rotation.x = Math.PI / 2;
         return [boxAt(n + ' carriage', w, 0.45, d * 0.6, 0, 0.225, -0.2), barrel];
       }
+      case 'cart': {
+        const parts = [boxAt(n + ' bed', w * 0.8, 0.35, d * 0.62, 0, 0.75, -0.2)];
+        for (const sx of [-1, 1]) {
+          const wheel = cyl(n + ' wheel', 1.0, 0.08, sx * w / 2, 0.5, -0.2);
+          wheel.rotation.z = Math.PI / 2;
+          parts.push(wheel, boxAt(n + ' shaft', 0.06, 0.06, d * 0.45, sx * w * 0.3, 0.7, d * 0.3));
+        }
+        return parts;
+      }
       default: return [];
     }
   }
@@ -330,6 +339,18 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
     };
   }
 
+  const PART_BONES = { head: 'Head', 'left hand': 'LeftHand', 'right hand': 'RightHand', 'left foot': 'LeftFoot', 'right foot': 'RightFoot' };
+  function partsOf(a) {
+    const out = {};
+    for (const [part, name] of Object.entries(PART_BONES)) {
+      const b = bone(a, name);
+      if (!b) continue;
+      b.computeWorldMatrix(true);
+      out[part] = b.getAbsolutePosition().asArray();
+    }
+    return out;
+  }
+
   function read() {
     const subjects = new Set(shot ? shot.subjects : []);
     const items = [...actorOf.entries()].filter(([, a]) => !a.isDisposed()).map(([id, a]) => {
@@ -338,9 +359,10 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
       let box;
       if (kit === 'marker') box = { min: [p.x, p.y, p.z], max: [p.x, p.y, p.z] };
       else { const b = mvp.actorBounds(a); box = { min: b.min.asArray(), max: b.max.asArray() }; }
-      return { id, kit, box, yaw: p ? p.yaw : 0, floorY: p ? p.y : 0, subject: subjects.has(id), figure: kit === 'figure' };
+      const parts = kit === 'figure' ? partsOf(a) : undefined;
+      return { id, kit, box, yaw: p ? p.yaw : 0, floorY: p ? p.y : 0, subject: subjects.has(id), figure: kit === 'figure', parts };
     });
-    const r = readback(currentCam(), items, lastProblems);
+    const r = readback(currentCam(), items, lastProblems, shot ? shot.shot : undefined);
     window.__blockoutReadback = r.text;
     return r;
   }

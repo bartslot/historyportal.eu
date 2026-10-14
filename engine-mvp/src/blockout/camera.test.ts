@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { corners, frame, horizonV, LOWER_THIRD, project, type Box, type Subject } from './camera'
+import { corners, frame, horizonV, LOWER_THIRD, project, type Box, type Cam, type Subject } from './camera'
 import { readback, type Item } from './readback'
 
 const fig = (id: string, x: number, z: number, yaw = 0, y = 0): Subject => ({
@@ -92,6 +92,26 @@ describe('readback', () => {
     expect(r.text).toMatch(/\+461 more pieces/)
     expect(r.text).toContain('  a [figure]')
     expect(r.text.length).toBeLessThan(5000)
+  })
+
+  it('cuts per body part: feet below a medium frame are allowed, a head out of frame is a problem', () => {
+    const a = fig('a', 0, 0)
+    const parts = { head: [0, 1.7, 0], 'left hand': [0.3, 0.9, 0], 'right hand': [-0.3, 0.9, 0], 'left foot': [0.1, 0.05, 0], 'right foot': [-0.1, 0.05, 0] } as Item['parts']
+    const medium = frame({ shot: 'medium', subjects: ['a'] }, [a])
+    const r = readback(medium, [item(a, { parts })], [], 'medium')
+    expect(r.pieces[0].cut.sort()).toEqual(['left foot', 'right foot'])
+    expect(r.problems.filter((p) => p.startsWith('cut'))).toEqual([])
+    const low: Cam = { ...medium, target: [medium.target[0], medium.target[1] - 6, medium.target[2]] }   // tilted far down
+    expect(readback(low, [item(a, { parts })], [], 'medium').problems.some((p) => p.startsWith('cut: head'))).toBe(true)
+  })
+
+  it('reports subject size and flags a subject too small for the preset', () => {
+    const a = fig('a', 0, 0)
+    const wide = frame({ shot: 'wide', subjects: ['a'] }, [a])
+    const r = readback(wide, [item(a)], [], 'three-quarter')                         // a wide camera, judged as a 3/4
+    expect(r.text).toMatch(/a: size \d+ % of the frame height/)
+    expect(r.problems.some((p) => p.startsWith('small: subject a') && p.includes('bring the camera closer'))).toBe(true)
+    expect(readback(wide, [item(a)], [], 'wide').problems.filter((p) => p.startsWith('small'))).toEqual([])
   })
 
   it('passes the solver\'s refusals through', () => {

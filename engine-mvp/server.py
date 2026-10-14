@@ -86,7 +86,7 @@ COMMANDS = {
 ENUMS = {
     'rel': {'near', 'behind', 'in_front', 'left_of', 'right_of', 'between'},
     'side': {'front', 'back', 'left', 'right'},
-    'kit': {'deck', 'rail', 'mast', 'wall', 'barrel', 'crate', 'chest', 'cannon', 'table', 'stool', 'figure', 'marker'},
+    'kit': {'deck', 'rail', 'mast', 'wall', 'barrel', 'crate', 'chest', 'cannon', 'table', 'cart', 'stool', 'figure', 'marker'},
     ('pose', 'name'): {'stand', 'point', 'spyglass'},
     'shot': {'wide', 'three-quarter', 'front', 'profile', 'medium', 'close-up', 'over-shoulder', 'low', 'high'},
     ('mode', 'name'): {'clay', 'silhouette', 'off'},
@@ -123,7 +123,7 @@ Clay blockout (a still shot from kit pieces; positions are solved on a 0.5 m gri
 reported with a free spot, never pushed):
 - {"cmd":"place","id":s,"kit":k?,"rel":r?,"of":id?,"and":id?,"side":front|back|left|right?,"gap":m?,
    "offset_r":m?,"offset_f":m?,"x":n?,"z":n?,"on":id?,"face":id?,"turn":deg?,"height":m?}
-   add or re-place one piece; kit: deck rail mast wall barrel crate chest cannon table stool figure marker;
+   add or re-place one piece; kit: deck rail mast wall barrel crate chest cannon table cart stool figure marker;
    rel near|behind|in_front|left_of|right_of (in the OTHER piece's own frame) of an id, or between "of" and "and";
    x,z instead of rel = an exact spot; on = stand on that piece; face = turn to look at a piece or marker.
    Every other piece stays where it is (a teacher's hand edits are kept).
