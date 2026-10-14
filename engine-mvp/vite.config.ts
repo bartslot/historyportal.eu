@@ -9,9 +9,12 @@ const API = process.env.STUDIO_API ?? 'http://127.0.0.1:8090'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   // the wizard's own pure modules (keyframes, timeline maths, easing): imported, never copied
-  // Babylon loads its shaders with dynamic imports; pre-bundled, those chunks fall out of step with
-  // the bundle (404s, 'Unable to compile effect', the storybook look gone). Served as plain ESM, they can't.
-  optimizeDeps: { exclude: ['@babylonjs/core', '@babylonjs/loaders', '@babylonjs/materials'] },
+  // Babylon pre-bundled, ALL of it named up front (Gate 3, 2026-10-14): unbundled it cost 3,268 module requests per
+  // page open (engine up 5.2-5.8 s headless; now 1.4-1.8 s, blockout ready 4.6 s instead of 9-12 s). The old trouble
+  // (shader chunks out of step: 404s, 'Unable to compile effect') came from Vite RE-optimizing mid-session when it met
+  // an import it had not pre-bundled; with every entry the studio imports listed here it never has to. The look renders
+  // the same (compared on ?scene=spyglass&look=Day; no effect errors). A NEW Babylon entry point goes in this list.
+  optimizeDeps: { include: ['@babylonjs/core', '@babylonjs/materials', '@babylonjs/loaders/glTF'] },
   resolve: { alias: { '@hp': fileURLToPath(new URL('../resources/js', import.meta.url)) } },
   server: {
     port: 5190,

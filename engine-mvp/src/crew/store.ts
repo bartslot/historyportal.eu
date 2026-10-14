@@ -125,8 +125,8 @@ export function latestUndoable(entries: Record<number, UndoEntry>, lesson: strin
 export function undoFor(index: number): UndoEntry | null {
   const { lesson, current } = L.getLesson()
   if (latestUndoable(state.undo, lesson.id, current) !== index) return null
-  const u = state.undo[index]
-  return u.op && history().last() === u.op ? u : null      // still the latest step: nothing done after it
+  const u = state.undo[index]                              // undefined for the live line (index -1)
+  return u?.op && history().last() === u.op ? u : null     // still the latest step: nothing done after it
 }
 
 export async function undo(index: number) {

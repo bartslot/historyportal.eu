@@ -11,4 +11,7 @@ describe('latestUndoable', () => {
     expect(latestUndoable({ 2: e('l', 'other') }, 'l', 's')).toBe(-1)
     expect(latestUndoable({}, 'l', 's')).toBe(-1)
   })
+  it('is -1 for the live (streaming) line, which has no undo entry', () => {
+    expect(latestUndoable({}, 'l', 's')).toBe(-1)          // undoFor(-1) must then find no entry, not crash
+  })
 })
