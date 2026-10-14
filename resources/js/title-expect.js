@@ -40,10 +40,13 @@ export function fitExpectLines (ul, cluster) {
   if (!ul || !cluster || !ul.offsetWidth) return false
   const before = ul.style.maxWidth
   ul.style.maxWidth = ''
-  const c = cluster.getBoundingClientRect()
-  const hits = [...ul.children].some(li => li.getBoundingClientRect().width && overlaps(li.getBoundingClientRect(), c))
-  if (hits) {
+  // The cluster's own pieces, not its box: a column of badges leaves room beside the language switch.
+  const parts = [...cluster.querySelectorAll('[data-title-avoid], [data-title-qr]')].map(el => el.getBoundingClientRect()).filter(r => r.width)
+  const items = [...ul.children].map(li => li.getBoundingClientRect()).filter(r => r.width)
+  const hit = parts.filter(p => items.some(li => overlaps(li, p)))
+  if (hit.length) {
     const centred = getComputedStyle(ul).justifyContent === 'center'
+    const c = { left: Math.min(...hit.map(p => p.left)) }
     ul.style.maxWidth = `${Math.max(160, Math.floor(linesRoom(ul.getBoundingClientRect(), c, centred)))}px`
     ul.style.marginInline = centred ? 'auto' : ''
   }
