@@ -14,7 +14,7 @@ export const QR = {
   // The plate's width (the code with its quiet zone): full size first, then smaller until the
   // code is still scannable from a class's front row. The code itself is as big as it was before
   // the plate (112 → 96 px of modules at full size).
-  sizes: [128, 112, 96, 84],
+  sizes: [128, 112, 96, 84, 72],
   minWidth: 640,              // below this (a phone) the QR stays hidden, as it always was
   quietZone: 4,               // modules of white round the code: the QR spec's minimum
 }
@@ -75,13 +75,18 @@ export const qrCard = (size, text) => ({ w: Math.max(size, text.w), h: size + te
  * @param {Array<{rect: object, kind: string, weight?: number}>} [o.keepClear]  in stage px
  * @param {Array<{x: number, y: number, w: number, h: number}>} [o.elements]    the screen's own elements
  * @param {string} [o.override]                     the teacher's choice: auto, a corner, hidden
+ * @param {number} [o.maxSize]                    the largest plate the screen allows now
  * @param {{x: number, y: number}} [o.natural]      where the QR sits in its own place (bottom right, beside the language)
  * @param {number} [o.topInset]                     how far down a forced top corner starts (under the top row)
  * @returns {{hidden: true} | {hidden: false, x: number, y: number, size: number, name: string}}
  */
-export function placeQr ({ stage, text, keepClear = [], elements = [], override = 'auto', natural = null, topInset = QR.gutter }) {
+export function placeQr ({ stage, text, keepClear = [], elements = [], override = 'auto', natural = null, topInset = QR.gutter, maxSize = QR.sizes[0] }) {
   if (override === 'hidden') return { hidden: true }
-  const full = QR.sizes[0]
+  // maxSize: the title screen ran out of room and stepped the QR down (title-fit.js).
+  const sizes = QR.sizes.filter(s => s <= maxSize)
+  const full = sizes[0] ?? QR.sizes.at(-1)
+  // Its own place was measured at the largest size only.
+  if (full !== QR.sizes[0]) natural = null
 
   if (CORNERS.includes(override)) {
     // The teacher's corner wins over everything measured; only the top row is kept clear.
@@ -95,7 +100,7 @@ export function placeQr ({ stage, text, keepClear = [], elements = [], override 
 
   const block = [...elements, ...keepClear.filter(k => NEVER_COVER.includes(k.kind)).map(k => k.rect)]
   const avoid = keepClear.map(k => ({ rect: k.rect, weight: k.weight ?? KEEP_CLEAR_WEIGHT[k.kind] ?? 1 }))
-  for (const size of QR.sizes) {
+  for (const size of sizes) {
     const card = qrCard(size, text)
     const spots = qrSpots(stage, card)
     // Its own place first: beside the language switch, as the screen was designed.
@@ -197,7 +202,7 @@ export function layoutTitleQr (host, opts = {}) {
     : []
   const top = root.querySelector('[data-player-chrome="top"]')?.getBoundingClientRect()
   const topInset = top?.height ? Math.max(QR.gutter, top.bottom - o.top + 8) : QR.gutter
-  const measure = () => ({ stage, text, keepClear, elements: elementRects(root, host, qr), override: opts.override ?? 'auto', topInset })
+  const measure = () => ({ stage, text, keepClear, elements: elementRects(root, host, qr), override: opts.qrHidden ? 'hidden' : (opts.override ?? 'auto'), topInset, maxSize: opts.maxSize })
 
   let spot = placeQr({ ...measure(), natural })
   if (!spot.hidden && !spot.natural) {

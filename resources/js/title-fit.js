@@ -6,8 +6,17 @@
  *   1. the expect lines under the title move to the strip along the top;
  *   2. the lesson-type badges go icon-only;
  *   3. the meta row (grade, subject, minutes) moves into the strip;
- *   4. the picture shrinks: a poster's frame moves up out of a band kept for the title bar (and a
- *      little more each step), a series logo gets narrower.
+ *   4. the picture shrinks: a flat poster's frame moves up out of a band kept for the title bar
+ *      (a little more each step; its own colour fills the band), a series logo gets narrower.
+ *
+ * A painted candidate (poster.fit 'cover') never shrinks or letterboxes its painting: chrome may
+ * stand over the painting, never over chrome, a face or the letters. After step 3 it gives way
+ * with its own chrome first, then its lettering:
+ *
+ *   4. the QR steps down (96, 84, 72);
+ *   5. the badges turn from a row into a column (or back) where that leaves room;
+ *   6. the QR hides, and the lesson code joins the meta row (or the strip);
+ *   7. the title lettering scales down, a layer over the painting (FIT.letterScale per step).
  *
  * On a comic candidate the title bar (expect lines, meta, Start) also slides sideways to the
  * nearest place along the bottom where it covers nothing (barShift); that is placement, not a step.
@@ -19,10 +28,12 @@ export const FIT = {
   band: 0.06,           // of the screen's height, added to the bar's band per shrink step
   maxShrink: 6,
   logoScale: 0.85,      // a series logo's width per shrink step
+  letterScale: 0.9,     // a painted candidate's lettering per shrink step
+  qrSteps: [128, 96, 84, 72],   // the QR's largest plate at each step down (painted candidates)
   shiftStep: 16,        // px between the places the title bar tries along the bottom
 }
 
-export const FIT_START = Object.freeze({ linesInStrip: false, badgesCompact: false, metaInStrip: false, shrink: 0 })
+export const FIT_START = Object.freeze({ linesInStrip: false, badgesCompact: false, metaInStrip: false, qrStep: 0, badgesFlip: false, qrHidden: false, shrink: 0 })
 
 /** Pure: two rects overlap (by more than a hairline). */
 export const overlaps = (a, b) => a.x < b.x + b.w - 1 && b.x < a.x + a.w - 1 && a.y < b.y + b.h - 1 && b.y < a.y + a.h - 1
@@ -50,7 +61,8 @@ export function collisions (pieces, keep = []) {
 
 /**
  * Pure: the next way the screen gives way for these overlaps, or null when it has none left.
- * ctx.strip: the candidate has a strip to move lines and the meta row into (a comic candidate).
+ * ctx.strip: the candidate has a strip to move lines and the meta row into (a comic candidate);
+ * ctx.painted: a painted candidate (the chrome gives way before its lettering does).
  */
 export function nextFit (fit, hits, ctx = {}) {
   if (!hits.length) return null
@@ -58,8 +70,23 @@ export function nextFit (fit, hits, ctx = {}) {
   if (ctx.strip && !fit.linesInStrip && involved('lines')) return { ...fit, linesInStrip: true }
   if (!fit.badgesCompact && involved('badges')) return { ...fit, badgesCompact: true }
   if (ctx.strip && !fit.metaInStrip && involved('meta')) return { ...fit, metaInStrip: true }
+  if (ctx.painted) {
+    // Chrome crowding chrome (or the title bar finding no free place): the QR and badges make room.
+    const crowded = ['qr', 'language', 'badges', 'cta', 'meta', 'lines'].some(involved)
+    if (crowded && !fit.qrHidden && fit.qrStep < FIT.qrSteps.length - 1) return { ...fit, qrStep: fit.qrStep + 1 }
+    if (crowded && !fit.badgesFlip && ctx.badges) return { ...fit, badgesFlip: true }
+    if (crowded && !fit.qrHidden) return { ...fit, qrHidden: true }
+  }
   if (fit.shrink < FIT.maxShrink) return { ...fit, shrink: fit.shrink + 1 }
   return null
+}
+
+/**
+ * Pure: a box (% of the frame) scaled by `s` about the point `c` (% of the frame): the lettering
+ * of a painted candidate, scaled as one layer.
+ */
+export function scaleBoxAbout (box, c, s) {
+  return { x: c.x + (box.x - c.x) * s, y: c.y + (box.y - c.y) * s, w: box.w * s, h: box.h * s }
 }
 
 /**

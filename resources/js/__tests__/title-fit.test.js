@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { FIT, FIT_START, collisions, nextFit, bandHeight, barShift, overlaps } from '../title-fit.js'
+import { FIT, FIT_START, collisions, nextFit, bandHeight, barShift, overlaps, scaleBoxAbout } from '../title-fit.js'
 
 const r = (x, y, w, h) => ({ x, y, w, h })
 
@@ -44,6 +44,33 @@ describe('how the title screen gives way', () => {
   it('stops when nothing overlaps, and when it has no step left', () => {
     expect(nextFit(FIT_START, [], ctx)).toBeNull()
     expect(nextFit({ ...FIT_START, linesInStrip: true, badgesCompact: true, metaInStrip: true, shrink: FIT.maxShrink }, [{ a: 'cta', b: 'face' }], ctx)).toBeNull()
+  })
+})
+
+describe('a painted candidate', () => {
+  const ctx = { strip: true, painted: true, badges: true }
+  const walk = (hits) => {
+    const steps = []
+    for (let fit = FIT_START; (fit = nextFit(fit, hits, ctx));) steps.push(fit)
+    return steps
+  }
+
+  it('gives way with its chrome first: QR down to 72, badges turned, QR hidden, then the lettering', () => {
+    const steps = walk([{ a: 'cta', b: 'language' }])
+    expect(steps.map(f => [f.qrStep, f.badgesFlip, f.qrHidden, f.shrink])).toEqual([
+      [1, false, false, 0], [2, false, false, 0], [3, false, false, 0],
+      [3, true, false, 0], [3, true, true, 0],
+      ...Array.from({ length: FIT.maxShrink }, (_, i) => [3, true, true, i + 1]),
+    ])
+    expect(FIT.qrSteps.slice(1)).toEqual([96, 84, 72])
+  })
+
+  it('leaves the chrome alone when only the lettering is in the way', () => {
+    expect(nextFit(FIT_START, [{ a: 'subtitle', b: 'face' }], ctx)).toEqual({ ...FIT_START, shrink: 1 })
+  })
+
+  it('scales a letters box about the lettering centre', () => {
+    expect(scaleBoxAbout({ x: 10, y: 50, w: 40, h: 20 }, { x: 30, y: 60 }, 0.5)).toEqual({ x: 20, y: 55, w: 20, h: 10 })
   })
 })
 

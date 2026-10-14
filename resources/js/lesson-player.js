@@ -51,7 +51,7 @@ import { mountBigCountdown } from './big-countdown.js'
 import { mountTitlePoster as mountPoster, posterFit } from './title-poster.js'
 import { QR, qrOptions, layoutTitleQr, drawQrDebug, coverRect, frameRect, pictureSize } from './title-qr.js'
 import { placeExpectStrip, fitExpectLines } from './title-expect.js'
-import { FIT, FIT_START, collisions, nextFit, bandHeight, barShift, titlePieces } from './title-fit.js'
+import { FIT, FIT_START, collisions, nextFit, bandHeight, barShift, scaleBoxAbout, titlePieces } from './title-fit.js'
 
 /**
  * Where the drawing in an image starts and ends across, as fractions of its width ([0, 1] when it
@@ -2831,13 +2831,19 @@ Alpine.data('lessonGame', (lesson) => ({
         const r = stage.getBoundingClientRect()
         frame = () => ({ x: r.left - o.left, y: r.top - o.top, w: r.width, h: r.height })
         keepClear = poster.keep_clear ?? []
+        // A painted candidate's lettering may be scaled down (title-fit.js): its letters boxes with it.
+        const ls = Number(stage.dataset.letterScale ?? 1)
+        if (poster.fit === 'cover' && ls !== 1) {
+          const c = this._letteringCentre()
+          keepClear = keepClear.map(k => (k.kind === 'letters' ? { ...k, box: scaleBoxAbout(k.box, c, ls) } : k))
+        }
       } else if (this.lesson.title_bg_url && this.lesson.title_keep_clear?.length) {
         const size = pictureSize(this.lesson.title_bg_url, () => this.relayoutTitle())
         frame = () => size && coverRect(o.width, o.height, size.w, size.h)
         keepClear = this.lesson.title_keep_clear
       }
       if (poster) this._shiftTitleBar(host, keepClear, frame)
-      const qrOpts = { keepClear, frame, override: this.lesson.qr_position }
+      const qrOpts = { keepClear, frame, override: this.lesson.qr_position, maxSize: FIT.qrSteps[this.titleFit.qrStep], qrHidden: this.titleFit.qrHidden }
       let result = layoutTitleQr(host, qrOpts)
       // With the QR out of its place the badges close up and may meet the expect lines: wrap them, measure again.
       const lines = host.querySelector('[data-title-expect="lines"]')
@@ -2848,7 +2854,7 @@ Alpine.data('lessonGame', (lesson) => ({
       const pieces = titlePieces(host)
       const hits = collisions(pieces, result.keepClear ?? [])
       if (poster && lines?.offsetWidth && lines.dataset.cramped) hits.push({ a: 'lines', b: 'cramped' })
-      const next = nextFit({ ...this.titleFit, linesInStrip: this.expectInStrip }, hits, { strip: !!poster })
+      const next = nextFit({ ...this.titleFit, linesInStrip: this.expectInStrip }, hits, { strip: !!poster, painted: poster?.fit === 'cover', badges: (this.lesson.lesson_types ?? []).length > 0 })
       const debug = new URLSearchParams(window.location.search).get('qr_debug') === '1'
       if (debug) (window.__titleFitLog ??= []).push({ run, fit: { ...this.titleFit }, hits, pieces: pieces.map(p => p.group).join(), t: Math.round(performance.now()) })
       if (next && (this._fitPasses = (this._fitPasses ?? 0) + 1) <= 3 * FIT.maxShrink) {
@@ -2890,26 +2896,27 @@ Alpine.data('lessonGame', (lesson) => ({
     },
 
     /**
-     * Shrink step n (title-fit.js): a poster's frame keeps a band at the bottom for the title bar
-     * (the poster's own colour shows there), a series logo gets narrower. A series logo always
-     * starts under the top row. True when the picture's size changed.
+     * Shrink step n (title-fit.js): a painted candidate's lettering scales down over its painting;
+     * a flat poster's frame keeps a band at the bottom for the title bar (its own colour fills it);
+     * a series logo gets narrower and always starts under the top row. True when a size changed.
      */
     _shrinkTitlePicture (host, stage) {
       const n = this.titleFit.shrink
       const poster = this.lesson.title_poster
       const o = host.getBoundingClientRect()
       let moved = false
-      if (poster && stage) {
+      if (poster && stage && poster.fit === 'cover') {
+        // A painting stays full-bleed: only its lettering scales, as one layer.
+        moved = this._scaleTitleLettering(stage, n ? FIT.letterScale ** n : 1)
+      } else if (poster && stage) {
         const bar = titlePieces(host).filter(p => ['lines', 'meta', 'cta'].includes(p.group))
         const barTop = bar.length ? Math.min(...bar.map(p => p.rect.y)) : o.height
         const band = Math.round(bandHeight(n, barTop, o.height))
-        // Set before the size changes: the poster refits on its resize (title-poster.js).
-        if (band) stage.parentElement.dataset.posterFit = 'contain'
-        else delete stage.parentElement.dataset.posterFit
         const bottom = band ? `${band}px` : ''
         moved = stage.parentElement.style.bottom !== bottom
         stage.parentElement.style.bottom = bottom
-        host.style.backgroundColor = band ? (poster.background_bottom ?? poster.background ?? '') : ''
+        // The flat poster's own colour under the band too: one colour, no letterbox.
+        host.style.backgroundColor = band ? (poster.background ?? '') : ''
       }
       const logo = host.querySelector('[data-title-piece="logo"]')
       if (logo) {
@@ -2922,6 +2929,42 @@ Alpine.data('lessonGame', (lesson) => ({
         logo.style.width = width
       }
       return moved
+    },
+
+    /** The point (% of the frame) a painted candidate's lettering scales about: the middle of its letters boxes. */
+    _letteringCentre () {
+      const boxes = (this.lesson.title_poster?.keep_clear ?? []).filter(k => k.kind === 'letters').map(k => k.box)
+      if (!boxes.length) return { x: 50, y: 50 }
+      const x0 = Math.min(...boxes.map(b => b.x))
+      const y0 = Math.min(...boxes.map(b => b.y))
+      return { x: (x0 + Math.max(...boxes.map(b => b.x + b.w))) / 2, y: (y0 + Math.max(...boxes.map(b => b.y + b.h))) / 2 }
+    },
+
+    /**
+     * Scale every lettering layer of a painted candidate (all but the full-frame painting, and the
+     * live subtitle) by `s` about the lettering's centre, with the `scale`/`translate` properties
+     * so each layer's own rotation and motion stay as they are. True when the scale changed.
+     */
+    _scaleTitleLettering (stage, s) {
+      if (String(s) === (stage.dataset.letterScale ?? '1')) return false
+      stage.dataset.letterScale = String(s)
+      const full = new Set((this.lesson.title_poster.layers ?? []).filter(l => (l.box?.w ?? 0) >= 100).map(l => l.id))
+      const c = this._letteringCentre()
+      const cx = c.x / 100 * stage.offsetWidth
+      const cy = c.y / 100 * stage.offsetHeight
+      const offset = (el) => {
+        let x = 0
+        let y = 0
+        for (let e = el; e && e !== stage; e = e.offsetParent) { x += e.offsetLeft; y += e.offsetTop }
+        return { x: x + el.offsetWidth / 2, y: y + el.offsetHeight / 2 }
+      }
+      const layers = [...stage.querySelectorAll('[data-poster-layer]')].filter(el => !full.has(el.dataset.posterLayer))
+      for (const el of [...layers, ...stage.querySelectorAll(':scope > [data-title-avoid]')]) {
+        const e = offset(el)
+        el.style.scale = s === 1 ? '' : String(s)
+        el.style.translate = s === 1 ? '' : `${(1 - s) * (cx - e.x)}px ${(1 - s) * (cy - e.y)}px`
+      }
+      return true
     },
 
     /** A comic candidate's title bar slides along the bottom to where it covers no face, letters or control. */
@@ -2937,7 +2980,7 @@ Alpine.data('lessonGame', (lesson) => ({
       const box = { x, y, w: Math.max(...own.map(r => r.x + r.w)) - x, h: Math.max(...own.map(r => r.y + r.h)) - y }
       const f = frame?.()
       const keep = f ? keepClear.filter(k => ['face', 'letters'].includes(k.kind)).map(k => frameRect(k.box, f)) : []
-      const blocks = [...keep, ...pieces.filter(p => ['subtitle', 'badges', 'language', 'top', 'strip'].includes(p.group)).map(p => p.rect)]
+      const blocks = [...keep, ...pieces.filter(p => ['subtitle', 'badges', 'language', 'qr', 'top', 'strip'].includes(p.group)).map(p => p.rect)]
         .map(r => ({ x: r.x - FIT.gap / 2, y: r.y - FIT.gap / 2, w: r.w + FIT.gap, h: r.h + FIT.gap }))
       const dx = barShift(box, blocks, host.clientWidth, 32)
       if (dx) bar.style.transform = `translateX(${Math.round(dx)}px)`

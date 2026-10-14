@@ -16,7 +16,8 @@ const CODE = process.env.TITLE_LESSON_CODE;
 const PROOF = process.env.TITLE_PROOF_DIR;
 const CANDIDATES = (process.env.TITLE_CANDIDATES ?? 'poster,cover,banner,logo,plain').split(',');
 const VIEWS = (process.env.TITLE_VIEWS ?? 'teacher,student').split(',');
-const SIZES: Array<[number, number]> = [[1440, 900], [1280, 800], [1024, 600], [960, 600], [800, 560], [375, 812]];
+// The class screens: laptops, the two common projectors (1024x768, 1280x720), small windows, a phone.
+const SIZES: Array<[number, number]> = [[1440, 900], [1280, 800], [1280, 720], [1024, 768], [1024, 600], [960, 600], [800, 560], [375, 812]];
 const EXPECT = ['Hoe was het aan boord van een ontdekkingsreis?', 'Wie woonden er al, waar Tasman aankwam?', 'De gevaren en de gevolgen'];
 
 // The tests make no sound: AudioContext stays suspended and every media element plays muted.
@@ -88,7 +89,7 @@ test.describe('title screen layout', () => {
 
   for (const candidate of CANDIDATES) {
     test(`${candidate}: no piece overlaps another, a face or the letters`, async ({ browser }) => {
-      test.setTimeout(400_000);
+      test.setTimeout(900_000);
       setLesson({ title_style: candidate, expect: EXPECT, qr_position: null, show_qr: true });
       const failures: string[] = [];
       for (const view of VIEWS) {

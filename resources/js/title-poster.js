@@ -227,9 +227,7 @@ export function mountTitlePoster (host, stage, poster) {
   }
 
   const fit = () => {
-    // data-poster-fit="contain": the title screen ran out of room and shrinks even a painting to
-    // fit above the title bar (resources/js/title-fit.js); its own colours fill round it.
-    const r = posterFit(host.clientWidth, host.clientHeight, host.dataset.posterFit ? { ...poster, fit: host.dataset.posterFit } : poster)
+    const r = posterFit(host.clientWidth, host.clientHeight, poster)
     Object.assign(stage.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` })
     if (poster.fit === 'cover') host.style.backgroundImage = coverBackdrop(poster, r) ?? ''
   }

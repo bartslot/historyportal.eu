@@ -793,7 +793,7 @@
             @php $lessonTypes = $lessonData['lesson_types']; @endphp
             <div class="absolute bottom-10 right-8 sm:bottom-14 sm:right-12 flex flex-col items-end gap-4" style="z-index:20" data-title-cluster>
                 <x-lesson.type-badges :types="$lessonTypes" :dark="($titlePoster['badge_style'] ?? 'colour') === 'dark'"
-                                      x-bind:class="titleFit.badgesCompact && 'lp-type-badges--compact'"
+                                      x-bind:class="[titleFit.badgesCompact && 'lp-type-badges--compact', titleFit.badgesFlip && 'lp-type-badges--flip'].filter(Boolean).join(' ')"
                                       @class(['max-sm:hidden', 'flex-col' => ($titlePoster['badges'] ?? 'row') === 'column']) />
                 <div class="flex items-end gap-4">
                     <x-lesson.language-switch :lesson="$lesson" :translations="$translations" data-title-avoid data-title-piece="language" />
