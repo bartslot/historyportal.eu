@@ -1130,6 +1130,49 @@ html[data-inspector-w] aside[data-resizable-drawer] {
     }
 }
 
+/* ─── Player subtitles ──────────────────────────────────────────────────
+   Netflix's defaults: white text at ~3.2% of the stage height (never under 16px), a 60% black
+   backdrop that hugs each line (box-decoration-break repeats it per line), at most two lines of
+   ~42 characters (captions.js cuts the cues; 23em is that width at this weight). Bottom centre,
+   lifted over the deck while it shows. The backdrop is for legibility on a bright sky, so it is
+   content, not chrome. Scripts get their own system fonts: no webfont download for CJK/Arabic. */
+.lp-cc {
+    bottom: max(1.5rem, 5vh);
+    width: min(90vw, 60rem);
+    transition: bottom 200ms var(--ease-enter);
+}
+.lp-cc--lifted { bottom: 7.5rem; }
+.lp-cc__text {
+    margin: 0 auto;
+    max-width: 23em;
+    font-size: max(16px, 3.2vh);
+    font-weight: 500;
+    line-height: 1.45;
+    color: #fff;
+    text-wrap: balance;
+}
+.lp-cc__text > span {
+    background: rgb(0 0 0 / 0.6);
+    padding: 0.06em 0.35em;
+    border-radius: 0.18em;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+}
+.lp-cc__text:lang(zh), .lp-cc-hint:lang(zh), #lesson-balloons:lang(zh) {
+    font-family: system-ui, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", sans-serif;
+    line-break: strict;
+}
+.lp-cc__text:lang(ja), .lp-cc-hint:lang(ja), #lesson-balloons:lang(ja) {
+    font-family: system-ui, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", "Noto Sans CJK JP", "Noto Sans JP", sans-serif;
+    line-break: strict;
+}
+.lp-cc__text:lang(ar), .lp-cc-hint:lang(ar), #lesson-balloons:lang(ar) {
+    font-family: "Geeza Pro", "SF Arabic", "Segoe UI", "Noto Naskh Arabic", "Noto Sans Arabic", Tahoma, sans-serif;
+}
+@media (prefers-reduced-motion: reduce) {
+    .lp-cc { transition: none; }
+}
+
 /* ─── Player volume slider ──────────────────────────────────────────────
    A hairline track with a small round handle (the player deck's volume).
    --lp-vol (0%..100%) paints the filled part of the track white. */

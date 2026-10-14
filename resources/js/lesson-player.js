@@ -38,7 +38,9 @@ const BIG_TIMER_MS = 5000
 const BIG_TIMER_RED_FROM_SECS = 120
 const BIG_TIMER_DIGIT = (secs) =>
   `font-history text-[20vw] ${secs <= BIG_TIMER_RED_FROM_SECS ? 'text-error' : 'text-warning'}`
-import { buildCues, cueAt, lineCues } from './scene/captions.js'
+import { cueAt } from './scene/captions.js'
+import { translatedCues } from './scene/caption-menu.js'
+import { captionPanel } from './scene/caption-panel.js'
 import { createBackgroundMusic } from './scene/background-music.js'
 import { Sfx } from './scene/sfx.js'
 import { captionVisible } from './scene/SceneOverlay.js'
@@ -237,6 +239,8 @@ Alpine.data('lessonGame', (lesson) => ({
     captionsOn:        false,
     captionText:       '',
     _cues:             [],
+    // The Audio & Subtitles panel and the subtitle language (scene/caption-panel.js).
+    ...captionPanel(lesson),
 
     // Chapters (Spotify-style bar + list): one per scene, quizzes and games included. See
     // scene/chapter-timeline.js. A student jumps back anywhere they have been, never past `furthest`.
@@ -314,6 +318,7 @@ Alpine.data('lessonGame', (lesson) => ({
       // switch them back on in every lesson.
       const remembered = (() => { try { return localStorage.getItem('lp:captions') } catch (_) { return null } })()
       this.captionsOn = remembered === null ? !!lesson.subtitles : remembered === '1'
+      this._initCaptionLanguage()
 
       // The quiz's right-answer chime obeys the deck from the first question, and is fetched now
       // so the first correct answer isn't waiting on a download.
@@ -2083,7 +2088,19 @@ Alpine.data('lessonGame', (lesson) => ({
       const aspect = (scene.config || {}).background_fit === 'contain' && cover ? await plateAspect(cover.url) : null
       if (req !== this._balloonReq) return
       fitToPlate(host, host.parentElement, aspect, layers)
-      this._balloons.setLines(lines.map(l => ({ ...l, text: this._crewed(l.text) })))
+      this._balloonSource = lines
+      this._refreshBalloonText()
+    },
+
+    /** The balloons' words in the subtitle language when that is on and cached, else the original. */
+    _refreshBalloonText () {
+      const host = document.getElementById('lesson-balloons')
+      if (!this._balloons || !host) return
+      const lang = this.captionsOn && this.ccSets[this.captionLang]?.texts ? this.captionLang : lesson.source_language
+      host.lang = lang
+      host.dir = this.ccDir(lang)
+      this._balloons.setLines((this._balloonSource || []).map(l => ({ ...l, text: this._crewed(this._ccLine(l.text)) })))
+      if (this._audio) this._balloons.update(this._audio.currentTime)
     },
 
     // Read-only clipart layers a teacher placed ON TOP of a voyage map. Same %-coordinate box as
@@ -2702,14 +2719,16 @@ Alpine.data('lessonGame', (lesson) => ({
       if (!Number.isFinite(duration) || duration <= 0) return
 
       if (!this._cues.length || this._cueDuration !== duration) {
-        // A scene in lines has exact times per line: only the narrator's become captions.
-        this._cues = this._captionSource?.lines?.length
-          ? lineCues(this._captionSource.lines)
-          : buildCues(this._captionSource?.script, duration, this._captionSource?.alignment)
+        // A scene in lines has exact times per line: only the narrator's become captions. In
+        // another subtitle language each line is translated whole and cut over its own span.
+        this._cues = translatedCues(this._captionSource, duration, this.ccSets[this.captionLang], this.captionLang, lesson.source_language)
         this._cueDuration = duration
       }
 
-      this.captionText = cueAt(this._cues, this._audio.currentTime)?.text || ''
+      const cue = cueAt(this._cues, this._audio.currentTime)
+      this.captionText = cue?.text || ''
+      if (cue && cue.lang !== this.captionShownLang) this.captionShownLang = cue.lang
+      if (cue && cue.source !== this.ccLineSource) this.ccLineSource = cue.source
     },
 
     /** Pick a state outright (the subtitles menu); toggleCaptions is the keyboard's way in. */
@@ -2745,7 +2764,7 @@ Alpine.data('lessonGame', (lesson) => ({
       this.captionsOn = !!on
       // Someone who needs captions needs them in every lesson, so the choice outlives this one.
       try { localStorage.setItem('lp:captions', this.captionsOn ? '1' : '0') } catch (_) { /* private mode */ }
-      this._updateCaptions()
+      this._captionLanguageChanged()
     },
 
     toggleCaptions () {
@@ -2762,6 +2781,9 @@ Alpine.data('lessonGame', (lesson) => ({
         // deck (voyages keep A/B too). A modifier means the key belongs to the browser (⌘F is
         // Find), so leave those alone.
         if (e.metaKey || e.ctrlKey || e.altKey) return
+
+        // The Audio & Subtitles panel owns the arrows, Enter and Esc while it is open (ccKeydown).
+        if (this.ccOpen) { this.ccKeydown(e); return }
 
         const isVoyage = lesson.game_type === 'voyage'
         if (e.code === 'ArrowRight' || (isVoyage && e.code === 'KeyB')) {
@@ -2786,7 +2808,7 @@ Alpine.data('lessonGame', (lesson) => ({
           this.toggleMute()
         } else if (e.code === 'KeyC') {
           e.preventDefault()
-          this.toggleCaptions()
+          this.toggleCaptionPanel(true)
         } else if (e.code === 'KeyF') {
           e.preventDefault()
           this.toggleFullscreen()

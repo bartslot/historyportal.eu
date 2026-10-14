@@ -1108,6 +1108,12 @@
                            wire:change="setSubtitles($event.target.checked)"
                            class="toggle toggle-sm shrink-0" />
                 </label>
+                {{-- Subtitles in other languages: made ahead of class, every line correctable. --}}
+                @unless (auth()->user()?->isGuestDemo())
+                    <div class="mt-4">
+                        <livewire:wizard.caption-translations :lesson="$lesson" :key="'captions-'.$lesson->id" />
+                    </div>
+                @endunless
             </div>
 
             {{-- POSTER — the lesson's cover image (Bart, 2026-09-29): Auto (the first picture the lesson

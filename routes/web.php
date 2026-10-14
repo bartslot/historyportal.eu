@@ -122,6 +122,9 @@ Route::prefix('{locale}')
 
 // Student lesson player — public, no auth required
 Route::get('/lesson/{lessonCode}', LessonPlayerController::class)->name('lesson.play');
+// The player's subtitles in another language (translated once, cached for every class).
+Route::get('/lesson/{lessonCode}/captions/{language}', \App\Http\Controllers\LessonCaptionsController::class)
+    ->middleware('throttle:captions')->name('lesson.captions');
 
 // The launch announcement: the hero's other script, saying the product has shipped rather than
 // demonstrating it. Its own page so the landing page keeps doing its job.

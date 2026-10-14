@@ -9,8 +9,14 @@
 // The second is an estimate, and it is a good one: TTS speaks at an even pace, so a line's share
 // of the characters is very close to its share of the time. Both paths land in the same shape.
 
-/** Roughly one comfortable line of subtitle; two of these fit the bar without wrapping oddly. */
+/** Two subtitle lines of ~42 characters (Netflix's limit for Latin, Cyrillic and Arabic script). */
 const MAX_CUE_CHARS = 84;
+/** Chinese and Japanese read denser: two lines of 16 characters. */
+const MAX_CUE_CHARS_CJK = 32;
+const CJK = /[぀-ヿ㐀-鿿豈-﫿]/;
+
+/** The longest cue for a language: shorter for Chinese and Japanese. */
+export const cueChars = (lang) => (/^(zh|ja)/.test(String(lang ?? '')) ? MAX_CUE_CHARS_CJK : MAX_CUE_CHARS);
 /** Never flash a line — a cue below this is merged into its neighbour. */
 const MIN_CUE_SECONDS = 0.9;
 
@@ -21,23 +27,28 @@ export const spokenText = (script) => String(script ?? '').replace(/\[[^\]]*\]/g
  * Cut text into caption-sized pieces: sentence by sentence, and long sentences split further at a
  * word boundary. Returns pieces in order; joined, they are the spoken text.
  */
-export const splitIntoCues = (text) => {
+export const splitIntoCues = (text, maxChars = MAX_CUE_CHARS) => {
   const clean = spokenText(text);
   if (clean === '') return [];
 
-  const sentences = clean.match(/[^.!?…]+(?:[.!?…]+["'”’)]*|$)/g) ?? [clean];
+  // Sentence ends in Latin, CJK (。！？) and Arabic (؟) script.
+  const sentences = clean.match(/[^.!?…。！？؟]+(?:[.!?…。！？؟]+["'”’」』)]*|$)/g) ?? [clean];
   const cues = [];
 
   for (const sentence of sentences) {
     const trimmed = sentence.trim();
     if (trimmed === '') continue;
-    if (trimmed.length <= MAX_CUE_CHARS) { cues.push(trimmed); continue; }
+    if (trimmed.length <= maxChars) { cues.push(trimmed); continue; }
+
+    // Chinese and Japanese have no spaces: cut after a comma (、，) where one falls in reach,
+    // else at the length itself; CSS line-break: strict then wraps the cue correctly.
+    if (CJK.test(trimmed) && !trimmed.includes(' ')) { cues.push(...cutCjk(trimmed, maxChars)); continue; }
 
     let line = '';
     for (const word of trimmed.split(' ')) {
       // Keep the break at a word boundary; an over-long single word gets its own line rather
       // than being cut in half.
-      if (line !== '' && (line.length + 1 + word.length) > MAX_CUE_CHARS) {
+      if (line !== '' && (line.length + 1 + word.length) > maxChars) {
         cues.push(line);
         line = word;
       } else {
@@ -50,16 +61,30 @@ export const splitIntoCues = (text) => {
   return cues;
 };
 
+const cutCjk = (sentence, maxChars) => {
+  const out = [];
+  let rest = sentence;
+  while (rest.length > maxChars) {
+    const comma = Math.max(rest.lastIndexOf('，', maxChars - 1), rest.lastIndexOf('、', maxChars - 1));
+    const at = comma >= maxChars / 2 ? comma + 1 : maxChars;
+    out.push(rest.slice(0, at));
+    rest = rest.slice(at);
+  }
+  if (rest) out.push(rest);
+  return out;
+};
+
 /**
  * Timed cues for a scene's narration.
  *
  * @param {string} script          the scene's narration, tags and all
  * @param {number} duration        the audio's real length in seconds
  * @param {Array<{character?: string, start_time?: number}>} [alignment] TTS character timings
+ * @param {number} [maxChars]      longest cue, cueChars(lang)
  * @returns {Array<{start: number, end: number, text: string}>}
  */
-export const buildCues = (script, duration, alignment = null) => {
-  const pieces = splitIntoCues(script);
+export const buildCues = (script, duration, alignment = null, maxChars = MAX_CUE_CHARS) => {
+  const pieces = splitIntoCues(script, maxChars);
   const total = Number(duration);
   if (!pieces.length || !Number.isFinite(total) || total <= 0) return [];
 
@@ -138,6 +163,6 @@ export const cueAt = (cues, t) => {
  * @param {Array<{speaker: string, text: string, start: number, end: number}>} lines
  * @returns {Array<{start: number, end: number, text: string}>}
  */
-export const lineCues = (lines) => (Array.isArray(lines) ? lines : [])
+export const lineCues = (lines, maxChars = MAX_CUE_CHARS) => (Array.isArray(lines) ? lines : [])
   .filter(l => l?.speaker === 'narrator' && l.end > l.start)
-  .flatMap(l => buildCues(l.text, l.end - l.start).map(c => ({ ...c, start: c.start + l.start, end: c.end + l.start })))
+  .flatMap(l => buildCues(l.text, l.end - l.start, null, maxChars).map(c => ({ ...c, start: c.start + l.start, end: c.end + l.start })))

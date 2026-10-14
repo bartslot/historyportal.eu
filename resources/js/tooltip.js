@@ -7,7 +7,8 @@
  *
  *     <button data-tooltip="Subtitles" data-tooltip-key="C">…</button>
  *
- * Set `data-tooltip-placement="bottom"` to force it under the element (the default is above, and it
+ * Mark a block `data-tooltip-clear` and the tooltips of controls inside it sit above the whole
+ * block rather than on its text. Set `data-tooltip-placement="bottom"` to force it under the element (the default is above, and it
  * flips on its own when there is no room). `data-tooltip-follow` keeps it over the pointer and
  * re-reads its text as the pointer moves — for a track whose label depends on where you point. Never set `title` as well — that is what produces two
  * tooltips at once.
@@ -47,12 +48,16 @@ function build () {
 function place (el, pointerX = null) {
   const r = el.getBoundingClientRect()
   const t = tip.getBoundingClientRect()
+  // Inside a [data-tooltip-clear] block (the player's deck) a tooltip above clears the whole
+  // block, so it never lands on the block's own text (the "≈ 16 min" beside the progress bar).
+  const clear = el.closest('[data-tooltip-clear]')
+  const above = clear ? Math.min(r.top, clear.getBoundingClientRect().top) : r.top
 
   const wantsBottom = el.dataset.tooltipPlacement === 'bottom'
-  const fitsAbove = r.top - t.height - GAP_PX >= EDGE_PAD_PX
+  const fitsAbove = above - t.height - GAP_PX >= EDGE_PAD_PX
   const below = wantsBottom || !fitsAbove
 
-  const top = below ? r.bottom + GAP_PX : r.top - t.height - GAP_PX
+  const top = below ? r.bottom + GAP_PX : above - t.height - GAP_PX
   const rawLeft = (pointerX ?? r.left + r.width / 2) - t.width / 2
   const maxLeft = window.innerWidth - t.width - EDGE_PAD_PX
   const left = Math.min(Math.max(EDGE_PAD_PX, rawLeft), Math.max(EDGE_PAD_PX, maxLeft))

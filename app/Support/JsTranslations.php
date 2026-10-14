@@ -90,6 +90,9 @@ final class JsTranslations
             'Not joined yet' => __('Not joined yet'),
             'Your team is through! Wait for the others.' => __('Your team is through! Wait for the others.'),
             'Movement' => __('Movement'),
+            // Audio & Subtitles panel (scene/caption-panel.js)
+            'Off' => __('Off'),
+            'Translating…' => __('Translating…'),
         ];
     }
 
