@@ -9,7 +9,8 @@
 //   place: { near | behind | in_front | left_of | right_of: id, side?, gap?, offset? } | { between: [a, b] }
 //          near + side front|back|left|right (default front) = against that side of the other piece, `gap` metres
 //          apart (default 0.3); behind/in_front/left_of/right_of = near with that side, in the OTHER's own frame
-//   on: id                                stand on top of that piece (its top anchor height); takes no floor cells
+//   on: id                                stand on top of that piece (its top anchor height); on a floor piece (a deck)
+//                                         it still takes cells, stacked on anything else it takes none
 //   face: id | degrees                    turn to look at a piece or marker, or to a heading
 //   turn: degrees                         extra turn after `face`
 // Overlap: floor footprints are cells of CELL_M; a piece whose cells are taken is REFUSED (not placed, not pushed)
@@ -181,7 +182,8 @@ export function solve(specs: Spec[], fixed: Record<string, Placed> = {}): Solved
     yaw = yawOf(s, first[0], first[1])
     const raw = spot(s, k, height, yaw, placed) ?? first
     const y = s.at && s.at.length === 3 ? s.at[1] : s.on && placed[s.on] ? r1(placed[s.on].y + placed[s.on].height) : 0
-    const onFloor = !!k.footprint && !s.on
+    // standing on a floor piece (the deck: no footprint) still takes cells; stacked on a crate does not
+    const onFloor = !!k.footprint && (!s.on || !placed[s.on] || !kitPiece(placed[s.on].kit).footprint)
     const [x, z] = onFloor ? snapXZ(k, raw[0], raw[1], yaw) : [r1(raw[0]), r1(raw[1])]
     if (onFloor) {
       const c = cells(k, x, z, yaw)!

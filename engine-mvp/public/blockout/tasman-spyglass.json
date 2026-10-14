@@ -1,0 +1,102 @@
+{
+  "note": "Bart's Figma panel 2321:5151 as a clay blockout: Tasman at the starboard rail with the spyglass on the coast, Visscher behind him, a sailor further along the rail pointing. Panel: horizon 51.55 % down, 40 deg vertical view (33 mm).",
+  "objects": [
+    {
+      "id": "deck",
+      "kit": "deck",
+      "at": [
+        0,
+        3
+      ]
+    },
+    {
+      "id": "rail",
+      "kit": "rail",
+      "at": [
+        0,
+        5
+      ],
+      "on": "deck",
+      "face": 180
+    },
+    {
+      "id": "coast",
+      "kit": "marker",
+      "at": [
+        25,
+        80
+      ]
+    },
+    {
+      "id": "tasman",
+      "kit": "figure",
+      "pose": "spyglass",
+      "on": "deck",
+      "place": {
+        "near": "rail",
+        "side": "front",
+        "gap": 0.3,
+        "offset": [
+          0.5,
+          0
+        ]
+      },
+      "face": "coast"
+    },
+    {
+      "id": "visscher",
+      "kit": "figure",
+      "pose": "stand",
+      "on": "deck",
+      "place": {
+        "behind": "tasman",
+        "gap": 0.6,
+        "offset": [
+          -0.9,
+          0
+        ]
+      },
+      "face": "tasman"
+    },
+    {
+      "id": "sailor",
+      "kit": "figure",
+      "pose": "point",
+      "on": "deck",
+      "place": {
+        "near": "rail",
+        "side": "front",
+        "gap": 0.3,
+        "offset": [
+          -1.5,
+          0
+        ]
+      },
+      "face": "coast"
+    },
+    {
+      "id": "barrel",
+      "kit": "barrel",
+      "on": "deck",
+      "place": {
+        "near": "rail",
+        "side": "front",
+        "gap": 0.3,
+        "offset": [
+          2.2,
+          0
+        ]
+      }
+    }
+  ],
+  "camera": {
+    "shot": "three-quarter",
+    "subjects": [
+      "tasman",
+      "visscher"
+    ],
+    "lens_mm": 33,
+    "horizon": 0.5155,
+    "az": 150
+  }
+}

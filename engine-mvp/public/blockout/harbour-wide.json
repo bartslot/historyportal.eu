@@ -1,0 +1,118 @@
+{
+  "note": "Batavia quay, wide: a warehouse wall, cargo, a cannon, the captain between two sailors. crate3 is asked onto crate1's spot on purpose: it must be refused and reported, not pushed.",
+  "objects": [
+    {
+      "id": "warehouse",
+      "kit": "wall",
+      "at": [
+        -2,
+        -3
+      ]
+    },
+    {
+      "id": "warehouse2",
+      "kit": "wall",
+      "place": {
+        "right_of": "warehouse",
+        "gap": 0
+      }
+    },
+    {
+      "id": "mast",
+      "kit": "mast",
+      "at": [
+        -7,
+        -1
+      ]
+    },
+    {
+      "id": "crate1",
+      "kit": "crate",
+      "place": {
+        "near": "warehouse",
+        "side": "front",
+        "gap": 0.2,
+        "offset": [
+          -1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "crate2",
+      "kit": "crate",
+      "on": "crate1"
+    },
+    {
+      "id": "crate3",
+      "kit": "crate",
+      "place": {
+        "near": "warehouse",
+        "side": "front",
+        "gap": 0.2,
+        "offset": [
+          -1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "barrel1",
+      "kit": "barrel",
+      "place": {
+        "right_of": "crate1",
+        "gap": 0.3
+      }
+    },
+    {
+      "id": "cannon",
+      "kit": "cannon",
+      "at": [
+        4,
+        0
+      ],
+      "face": 200
+    },
+    {
+      "id": "sailor1",
+      "kit": "figure",
+      "pose": "point",
+      "at": [
+        -2,
+        1
+      ],
+      "face": "mast"
+    },
+    {
+      "id": "sailor2",
+      "kit": "figure",
+      "pose": "stand",
+      "at": [
+        2,
+        1
+      ],
+      "face": -30
+    },
+    {
+      "id": "captain",
+      "kit": "figure",
+      "pose": "spyglass",
+      "place": {
+        "between": [
+          "sailor1",
+          "sailor2"
+        ]
+      },
+      "face": 10
+    }
+  ],
+  "camera": {
+    "shot": "wide",
+    "subjects": [
+      "sailor1",
+      "captain",
+      "sailor2"
+    ],
+    "lens_mm": 28
+  }
+}

@@ -42,6 +42,14 @@ describe('solve', () => {
     expect(placed.b.onFloor).toBe(false)
   })
 
+  it('still refuses overlaps between pieces standing on a deck', () => {
+    const deck: Spec = { id: 'deck', kit: 'deck', at: [0, 0] }
+    const { placed, problems } = solve([deck, { id: 'a', kit: 'figure', on: 'deck', at: [0, 0] }, { id: 'b', kit: 'figure', on: 'deck', at: [0.1, 0] }])
+    expect(placed.a.y).toBeCloseTo(0.2)
+    expect(placed.b).toBeUndefined()
+    expect(problems[0]).toMatchObject({ id: 'b', kind: 'overlap', with: 'a' })
+  })
+
   it('refuses an overlap, never pushes, and reports the nearest free spot', () => {
     const { placed, problems } = solve([{ id: 'c1', kit: 'crate', at: [0, 0] }, { id: 'c2', kit: 'crate', at: [0.2, 0.1] }])
     expect(placed.c2).toBeUndefined()

@@ -364,11 +364,14 @@ scene.onPointerObservable.add((info) => {
         a.rotationQuaternion = dragStart.rotation.clone();
       }
     }
+    const from = dragStart;
     dragging = null;
     dragStart = null;
     dragOffset = BABYLON.Vector3.Zero();
     camera.attachControl(canvas, true);
     if (ok) autoKey();
+    // a hand edit, for the undo history (blockout.js): where it stood before the drag
+    if (ok && window.__mvp.onDrop) window.__mvp.onDrop(a, from);
   }
 });
 

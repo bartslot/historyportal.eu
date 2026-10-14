@@ -4,12 +4,13 @@
 //   node frame-shot.mjs '<studio url>' out.png [1920x1080] [waitSeconds]
 //   node frame-shot.mjs '<studio url with scene=spyglass>' outDir/ [WxH] [wait] --move dx,dy,dz,yaw --frames N
 //     a camera move as N frames outDir/f0000.png..., eased in and out, from the shot camera to that offset
+//   --readback file.txt   (with ?blockout=<shot>) also writes the blockout's composition readback, read after the resize
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { chromium } from '../node_modules/playwright/index.mjs'
 
 const argv = process.argv.slice(2)
 const flag = (k) => { const i = argv.indexOf(k); return i < 0 ? null : argv.splice(i, 2)[1] }
-const move = flag('--move'), frames = Number(flag('--frames') || 0)
+const move = flag('--move'), frames = Number(flag('--frames') || 0), readbackFile = flag('--readback')
 const [url, out, size = '1920x1080', wait = '10'] = argv
 if (!url || !out) {
   console.error('usage: node frame-shot.mjs <url> <out.png> [WxH] [waitSeconds]')
@@ -54,6 +55,10 @@ try {
     console.log(`frame-shot ok ${frames} frames in ${out}${errors.length ? ' page errors: ' + errors.join(' | ') : ''}`)
   } else {
     save(out, await shoot(null))
+    if (readbackFile) {   // a blockout shot (?blockout=...): its composition readback next to the picture
+      const text = await page.evaluate(() => window.__mvp.blockout ? window.__mvp.blockout.read().text : null)
+      writeFileSync(readbackFile, (text ?? 'no blockout in this page') + '\n')
+    }
     console.log(`frame-shot ok ${out} ${width}x${height}${errors.length ? ' page errors: ' + errors.join(' | ') : ''}`)
   }
 } finally {

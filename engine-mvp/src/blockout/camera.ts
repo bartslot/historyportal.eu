@@ -11,7 +11,7 @@ export type Box = { min: V3; max: V3 }
 export type Subject = { id: string; box: Box; yaw: number }
 export const PRESETS = ['wide', 'three-quarter', 'front', 'profile', 'medium', 'close-up', 'over-shoulder', 'low', 'high'] as const
 export type Preset = (typeof PRESETS)[number]
-export type Shot = { shot: Preset; subjects: string[]; lens_mm?: number; horizon?: number }
+export type Shot = { shot: Preset; subjects: string[]; lens_mm?: number; horizon?: number; az?: number }   // az: overrides the preset's angle around the subjects
 export type Cam = { position: V3; target: V3; fovY: number; aspect: number }
 
 export const LOWER_THIRD = 2 / 3
@@ -79,12 +79,21 @@ function union(bs: Box[]): Box {
   }
 }
 
+const FACING_CANCELS = 0.3          // below this the subjects face each other (a conversation): no common front
+
 function meanFacing(ss: Subject[]): [number, number] {
   let x = 0
   let z = 0
   for (const s of ss) { const [fx, fz] = forward(s.yaw); x += fx; z += fz }
   const l = Math.hypot(x, z)
-  return l > 1e-6 ? [x / l, z / l] : forward(ss[0].yaw)
+  if (l / ss.length >= FACING_CANCELS) return [x / l, z / l]
+  // facing each other: look across the line between them, from the studio's default side (-z)
+  const c = (s: Subject, i: 0 | 2) => (s.box.min[i] + s.box.max[i]) / 2
+  const a = ss[0], b = ss[ss.length - 1]
+  let px = -(c(b, 2) - c(a, 2)), pz = c(b, 0) - c(a, 0)
+  const pl = Math.hypot(px, pz) || 1
+  px /= pl; pz /= pl
+  return pz > 0 ? [-px, -pz] : [px, pz]       // the camera stands on the -z side: subjects' "front" points to -z
 }
 
 function fits(cam: Cam, pts: V3[], fill: number): boolean {
@@ -114,7 +123,7 @@ export function frame(shot: Shot, subjects: Subject[], aspect = 16 / 9): Cam {
   const cz = (all.min[2] + all.max[2]) / 2
   // from the subjects' front, turned `az` degrees towards their right
   const [fx, fz] = meanFacing(ss)
-  const a = (spec.az * Math.PI) / 180
+  const a = ((shot.az ?? spec.az) * Math.PI) / 180
   const [rx, rz] = rightOf((Math.atan2(fx, fz) * 180) / Math.PI)
   const dx = fx * Math.cos(a) + rx * Math.sin(a)
   const dz = fz * Math.cos(a) + rz * Math.sin(a)

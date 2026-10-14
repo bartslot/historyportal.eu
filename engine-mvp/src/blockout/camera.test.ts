@@ -29,6 +29,13 @@ describe('frame (camera presets)', () => {
     expect(cam.position[0]).toBeGreaterThan(0)                                         // a's right = +x
   })
 
+  it('looks across two people facing each other, from the -z side, seeing both', () => {
+    const a = fig('a', -1, 0, 90), b = fig('b', 1, 0, -90)                            // a looks at b, b at a
+    const cam = frame({ shot: 'medium', subjects: ['a', 'b'] }, [a, b])
+    expect(cam.position[2]).toBeLessThan(-1)
+    expect(Math.abs(cam.position[0])).toBeLessThan(Math.abs(cam.position[2]))
+  })
+
   it('cuts the legs in a medium shot but keeps the head in', () => {
     const s = fig('a', 0, 0)
     const cam = frame({ shot: 'medium', subjects: ['a'] }, [s])

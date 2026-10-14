@@ -1,0 +1,12 @@
+{
+  "note": "Great cabin: Tasman and Visscher at the chart table, a sea chest behind, the stern wall. A medium two-shot.",
+  "objects": [
+    { "id": "wall", "kit": "wall", "at": [0, 3] },
+    { "id": "table", "kit": "table", "at": [0, 0.5] },
+    { "id": "tasman", "kit": "figure", "pose": "point", "place": { "left_of": "table", "gap": 0.3 }, "face": "table" },
+    { "id": "visscher", "kit": "figure", "pose": "stand", "place": { "right_of": "table", "gap": 0.3 }, "face": "table" },
+    { "id": "chest", "kit": "chest", "place": { "near": "wall", "side": "front", "gap": 0.2, "offset": [1.2, 0] } },
+    { "id": "stool", "kit": "stool", "place": { "in_front": "table", "gap": 0.2 } }
+  ],
+  "camera": { "shot": "medium", "subjects": ["tasman", "visscher"], "lens_mm": 35 }
+}
