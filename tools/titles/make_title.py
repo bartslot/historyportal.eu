@@ -327,10 +327,16 @@ def build(recipe, base, out_dir):
     write(out_dir, 'outlines.svg', svg_doc(scene, strokes))
     groups['scene'] = {'box': pct(scene), 'mask': 'mask.svg'}
 
+    # What the join QR keeps clear of (resources/js/title-qr.js): each row of letters, the hero
+    # (its face at the top of it) and whatever the recipe names itself.
+    keep = [{'box': box_list(pct(row_box(r))), 'kind': 'letters'} for r in rows]
+
     written, ids = set(), set()
     pics = list(recipe.get('pictures', [])) + ([recipe['hero']] if recipe.get('hero') else [])
     for p in pics:
         name, box = picture(p, rows, base, out_dir, written)
+        if p is recipe.get('hero'):
+            keep += hero_keep_clear(pct(box))
         pid = p.get('id') or name[:-5]
         n, k = pid, 1
         while n in ids:
@@ -359,13 +365,44 @@ def build(recipe, base, out_dir):
         'groups': groups,
         'layers': layers,
         'subtitle': {'box': pct(sub_box), 'size': num(sub['size']), 'color': sub['color']},
+        'keep_clear': keep + recipe_keep_clear(recipe),
     }
     write(out_dir, 'poster.json', json.dumps(poster, indent=2) + '\n')
 
 
 def candidate_meta(recipe):
-    """How the candidate presents itself: the picker's label, place and thumbnail, and its badge layout."""
-    return {key: recipe[key] for key in ('label', 'order', 'thumb', 'badges') if key in recipe}
+    """How the candidate presents itself: the picker's label, place and thumbnail, its badge layout
+    and style, and its slot for the "what you can expect" lines."""
+    return {key: recipe[key] for key in ('label', 'order', 'thumb', 'badges', 'badge_style', 'expect') if key in recipe}
+
+
+# A face sits in the top of a standing figure: this share of its height, this share of its width.
+FACE_TOP, FACE_WIDTH = 0.22, 0.6
+
+
+def box_list(b):
+    """A frame box {x, y, w, h} as keep_clear writes it: [x, y, w, h]."""
+    return [b['x'], b['y'], b['w'], b['h']]
+
+
+def row_box(row):
+    """A row of letters' own box (x, y, w, h), frame units."""
+    x0, y0, x1, y1 = union([l['bounds'] for l in row['letters']])
+    return (x0, y0, x1 - x0, y1 - y0)
+
+
+def hero_keep_clear(b):
+    """A hero picture (a frame box in %) as a figure, with a face box at the top of it."""
+    fw = b['w'] * FACE_WIDTH
+    return [
+        {'box': box_list(b), 'kind': 'figure'},
+        {'box': [num(b['x'] + (b['w'] - fw) / 2), b['y'], num(fw), num(b['h'] * FACE_TOP)], 'kind': 'face'},
+    ]
+
+
+def recipe_keep_clear(recipe):
+    """The recipe's own keep_clear boxes (faces in a painting), % of the frame, as given."""
+    return [dict(k) for k in recipe.get('keep_clear', [])]
 
 
 def write(out_dir, name, text):

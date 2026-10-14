@@ -2,6 +2,7 @@
  "lang": "nl",
  "title": "Abel Tasman: De reis naar het onbekende",
  "intro": "Waarom riskeer je je leven voor het onbekende, als daar al mensen wonen?",
+ "expect": ["Hoe was het aan boord van een ontdekkingsreis?", "Wie woonden er al, waar Tasman aankwam?", "De gevaren en de gevolgen"],
  "scenes": {
   "S00": {
    "title": "Wat betekent dat?",

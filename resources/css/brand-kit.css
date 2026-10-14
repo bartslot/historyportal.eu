@@ -227,6 +227,8 @@
   --color-type-interactive: #f03e4a;
   --color-type-comic: #04b3c4;
   --color-type-teams: #ed7c5c;
+  /* Brand ink: the dark badges on a flat poster colour (Figma 2321:5150) and the expect strip's lines. */
+  --color-brand-ink: #0a0a0a;
 }
 
 /**

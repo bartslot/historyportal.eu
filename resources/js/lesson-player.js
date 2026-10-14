@@ -46,6 +46,8 @@ import { gradientCss } from './scene/background-gradient.js'
 import { t } from './i18n.js'
 import { mountBigCountdown } from './big-countdown.js'
 import { mountTitlePoster as mountPoster } from './title-poster.js'
+import { QR, layoutTitleQr, drawQrDebug, coverRect, pictureSize } from './title-qr.js'
+import { placeExpectStrip } from './title-expect.js'
 
 /**
  * Where the drawing in an image starts and ends across, as fractions of its width ([0, 1] when it
@@ -235,6 +237,9 @@ Alpine.data('lessonGame', (lesson) => ({
     // the starting state per lesson; a student toggling it (C) is remembered for this browser,
     // because someone who needs captions needs them in every lesson, not just this one.
     captionsOn:        false,
+    // The title screen's join QR found no free spot (or is hidden, or this is a phone): the lesson
+    // code then stands in the meta row instead, so the code is always on screen.
+    titleCodeInMeta:   false,
     captionText:       '',
     _cues:             [],
 
@@ -453,7 +458,8 @@ Alpine.data('lessonGame', (lesson) => ({
       const opts = (width) => ({ width, margin: 1, color: { dark: '#ffffff', light: '#00000000' } })
 
       const small = document.getElementById('title-qr-canvas')
-      if (small) QRCode.toCanvas(small, url, opts(112)).catch(() => {})
+      if (small) QRCode.toCanvas(small, url, opts(QR.sizes[0])).catch(() => {}).finally(() => this.layoutTitleScreen())
+      else this.layoutTitleScreen()
 
       const large = document.getElementById('qr-modal-canvas')
       if (large) QRCode.toCanvas(large, url, opts(320)).catch(() => {})
@@ -2722,6 +2728,46 @@ Alpine.data('lessonGame', (lesson) => ({
     mountTitlePoster (host) {
       this._stopTitlePoster?.()
       this._stopTitlePoster = mountPoster(host, host.querySelector('[data-poster-stage]'), this.lesson.title_poster)
+      setTimeout(() => this.layoutTitleScreen(), 0)
+    },
+
+    /**
+     * The title screen's measured layout: the "what you can expect" strip in a candidate's slot,
+     * then the join QR clear of faces, letters and every element (resources/js/title-qr.js). Again
+     * on every resize and once the lettering fonts and the title picture are in.
+     */
+    layoutTitleScreen () {
+      const host = document.querySelector('[data-title-screen]')
+      if (!host) return
+      if (!this._titleRo && typeof ResizeObserver === 'function') {
+        this._titleRo = new ResizeObserver(() => this.layoutTitleScreen())
+        this._titleRo.observe(host)
+        document.fonts?.ready.then(() => this.layoutTitleScreen())
+      }
+      if (this.phase !== 'TITLE_SCREEN' || !host.clientWidth) return
+      const poster = this.lesson.title_poster
+      const stage = host.querySelector('[data-poster-stage]')
+      const o = host.getBoundingClientRect()
+      const strip = host.querySelector('[data-title-expect="strip"]')
+      if (strip && stage && poster?.expect) placeExpectStrip(strip, stage.getBoundingClientRect(), o, poster.expect.box)
+
+      let frame = null
+      let keepClear = []
+      if (poster && stage) {
+        const r = stage.getBoundingClientRect()
+        frame = () => ({ x: r.left - o.left, y: r.top - o.top, w: r.width, h: r.height })
+        keepClear = poster.keep_clear ?? []
+      } else if (this.lesson.title_bg_url && this.lesson.title_keep_clear?.length) {
+        const size = pictureSize(this.lesson.title_bg_url, () => this.layoutTitleScreen())
+        frame = () => size && coverRect(o.width, o.height, size.w, size.h)
+        keepClear = this.lesson.title_keep_clear
+      }
+      const result = layoutTitleQr(host, { keepClear, frame, override: this.lesson.qr_position })
+      this.titleCodeInMeta = !!result.hidden
+      if (new URLSearchParams(window.location.search).get('qr_debug') === '1') {
+        drawQrDebug(host, result)
+        window.__titleQr = result
+      }
     },
 
     fitSubtitle (el) {

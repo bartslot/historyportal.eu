@@ -8,7 +8,7 @@
     {{-- min-h-11/min-w-11 (44px) keeps the tap target legal at 375px width, where the
          name is dropped for the bare code (flag + "IT") so it never runs into the
          Start button on the left. --}}
-    <div class="dropdown dropdown-top dropdown-end">
+    <div {{ $attributes->merge(["class" => "dropdown dropdown-top dropdown-end"]) }}>
         <div tabindex="0" role="button"
              class="btn btn-ghost min-h-11 h-11 min-w-11 gap-2 border-none bg-black/40 px-3 text-white/80 backdrop-blur hover:bg-black/60 hover:text-white"
              data-tooltip="{{ __('Lesson language') }}">

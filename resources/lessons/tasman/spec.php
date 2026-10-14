@@ -136,6 +136,9 @@ return function (string $lang, ?array $text = null): array {
         'title' => $text['title'],
         // The line under the title on the title screen: the lesson's central question.
         'details' => $text['intro'] ?? null,
+        // "What you can expect" on the title screen: 1-3 short lines (the banner's white strip).
+        // A language without them leaves the teacher's own lines alone.
+        ...(isset($text['expect']) ? ['expect' => $text['expect']] : []),
         'subject' => 'history',
         'language' => $lang,
         'translation_group' => 'tasman-standard',

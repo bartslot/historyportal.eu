@@ -21,7 +21,8 @@ import os
 
 from fontTools.ttLib import TTFont
 
-from make_title import RecipeError, candidate_meta, font_rows, letter_ids, num, path_to, save_picture, svg_doc, write
+from make_title import (RecipeError, box_list, candidate_meta, font_rows, hero_keep_clear, letter_ids, num, path_to,
+                        recipe_keep_clear, save_picture, svg_doc, write)
 
 COVER_DEFAULTS = {
     'horizon': 72.0,           # % down the frame (Tintin's red line)
@@ -116,6 +117,7 @@ def build_cover(recipe, base, out_dir):
     ink = recipe.get('ink', COVER_DEFAULTS['ink'])
     horizon = float(recipe.get('horizon', COVER_DEFAULTS['horizon']))
     written, layers, focus_boxes = set(), [], []
+    keep = []                     # what the join QR keeps clear of (resources/js/title-qr.js)
 
     # The plate sets the frame: its own pixels.
     plate = recipe['plate']
@@ -134,10 +136,12 @@ def build_cover(recipe, base, out_dir):
         lay, box = cut_out(s, base, out_dir, written, W, H, horizon + float(s.get('sink', 0)), 'subject')
         layers.append(lay)
         focus_boxes.append(box)
+        keep.append({'box': box_list(box_pct(box, W, H)), 'kind': 'subject'})
     for i, h in enumerate(recipe.get('heroes', [])):
         lay, box = cut_out(h, base, out_dir, written, W, H, float(h.get('bottom', COVER_DEFAULTS['hero_bottom'])), f'hero-{i + 1}')
         layers.append(lay)
         focus_boxes.append(box)
+        keep += hero_keep_clear(box_pct(box, W, H))
 
     # The title: one line, its ink `w` % of the frame wide (or `cap` % high), centred on x.
     t = recipe['title']
@@ -154,6 +158,7 @@ def build_cover(recipe, base, out_dir):
         layers.append({'id': lid, 'src': f'letter-{lid}.svg', 'box': box_pct(view, W, H), 'enter': 'drop'})
     title_box = union([(L['bounds'][0], L['bounds'][1], L['bounds'][2] - L['bounds'][0], L['bounds'][3] - L['bounds'][1]) for L in title])
     focus_boxes.append(title_box)
+    keep.append({'box': box_list(box_pct(title_box, W, H)), 'kind': 'letters'})
 
     # The series line, small, over the title, one picture that fades in after the letters.
     sr = {**COVER_DEFAULTS['series'], **recipe.get('series', {})}
@@ -170,6 +175,7 @@ def build_cover(recipe, base, out_dir):
         write(out_dir, 'series.svg', svg_doc(view, body))
         layers.append({'id': 'series', 'src': 'series.svg', 'box': box_pct(view, W, H), 'enter': 'fade'})
         focus_boxes.append(box)
+        keep.append({'box': box_list(box_pct(box, W, H)), 'kind': 'letters'})
 
     # The live subtitle: under the title, as wide as it.
     sub = {**COVER_DEFAULTS['subtitle'], **recipe.get('subtitle', {})}
@@ -196,5 +202,6 @@ def build_cover(recipe, base, out_dir):
         'groups': {},
         'layers': layers,
         'subtitle': {'box': box_pct(sub_box, W, H), 'size': num(sub['size']), 'color': sub.get('color', ink), 'font': sub['font']},
+        'keep_clear': keep + recipe_keep_clear(recipe),
     }
     write(out_dir, 'poster.json', json.dumps(poster, indent=2) + '\n')

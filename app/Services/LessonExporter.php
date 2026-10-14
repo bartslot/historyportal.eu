@@ -92,6 +92,15 @@ class LessonExporter
         if ($lesson->show_lesson_types === false) {
             $spec['show_lesson_types'] = false;
         }
+        if ($lesson->qrPosition() !== 'auto') {
+            $spec['qr_position'] = $lesson->qrPosition();
+        }
+        if ($lesson->expect) {
+            $spec['expect'] = array_values($lesson->expect);
+        }
+        if ($lesson->title_keep_clear) {
+            $spec['title_keep_clear'] = $lesson->title_keep_clear;
+        }
 
         $gameConfig = $this->withoutKeys((array) ($lesson->game_config ?? []), self::GAME_CONFIG_SCRATCH);
         if ($gameConfig !== []) {

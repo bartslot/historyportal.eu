@@ -25,6 +25,11 @@ class Lesson extends Model
 {
     use BelongsToTeacher, HasFactory, SoftDeletes;
 
+    /** "What you can expect" on the title screen: at most this many lines, each at most this long. */
+    public const EXPECT_MAX_LINES = 3;
+
+    public const EXPECT_MAX_CHARS = 60;
+
     protected $fillable = [
         'teacher_id',
         'avatar_id',
@@ -53,6 +58,9 @@ class Lesson extends Model
         'title_image',
         'title_position',
         'show_qr',
+        'qr_position',
+        'expect',
+        'title_keep_clear',
         'title_style',
         'show_lesson_types',
         'poster_image',
@@ -169,6 +177,8 @@ class Lesson extends Model
             'background_music' => 'boolean',
             'title_position' => TitlePosition::class,
             'show_qr' => 'boolean',
+            'expect' => 'array',
+            'title_keep_clear' => 'array',
             'show_lesson_types' => 'boolean',
         ];
     }
@@ -560,6 +570,36 @@ class Lesson extends Model
     public function titleBadges(): array
     {
         return ($this->show_lesson_types ?? true) ? LessonTypes::of($this) : [];
+    }
+
+    /** Where the title screen's join QR stands: auto (placed clear of faces and elements), a corner, or hidden. */
+    public function qrPosition(): string
+    {
+        if (! ($this->show_qr ?? true)) {
+            return 'hidden';
+        }
+
+        return in_array($this->qr_position, TitlePoster::QR_CORNERS, true) ? $this->qr_position : 'auto';
+    }
+
+    /**
+     * "What you can expect" lines for the title screen: 1-3 short lines, trimmed, empties dropped.
+     * Null when there are none (then nothing is drawn).
+     *
+     * @return list<string>|null
+     */
+    public static function cleanExpect(mixed $lines): ?array
+    {
+        $out = [];
+        foreach (is_array($lines) ? $lines : [] as $line) {
+            $line = is_string($line) ? trim((string) preg_replace('/\s+/u', ' ', $line)) : '';
+            if ($line !== '') {
+                $out[] = mb_substr($line, 0, self::EXPECT_MAX_CHARS);
+            }
+        }
+        $out = array_slice($out, 0, self::EXPECT_MAX_LINES);
+
+        return $out === [] ? null : $out;
     }
 
     /** The title screen's picture: the teacher's choice, else the automatic lead image. */

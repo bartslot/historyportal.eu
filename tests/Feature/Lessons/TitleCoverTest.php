@@ -235,4 +235,17 @@ class TitleCoverTest extends TestCase
             $this->assertSame($label, collect(TitlePoster::candidates('tasman-standard'))->firstWhere('key', 'cover')['label']);
         }
     }
+
+    public function test_a_cover_keeps_its_letters_and_the_painted_faces_clear_of_the_join_qr(): void
+    {
+        $this->make()->assertSuccessful();
+
+        $keep = TitlePoster::for(self::GROUP, 'cover')['keep_clear'];
+        $kinds = array_column($keep, 'kind');
+        // The title and the series line as letters, then the recipe's faces, figures and coast.
+        $this->assertSame(['letters', 'letters'], array_slice($kinds, 0, 2));
+        $this->assertSame(count(array_filter($this->tasmanCover()['keep_clear'], fn ($k) => $k['kind'] === 'face')), count(array_keys($kinds, 'face')));
+        $this->assertContains('subject', $kinds);
+        $this->assertEqualsWithDelta(9.0, $keep[0]['box']['y'], 0.5, 'the title row starts where the recipe put it');
+    }
 }

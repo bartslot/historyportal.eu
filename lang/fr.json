@@ -1791,5 +1791,9 @@
     "Joined": "Connectée",
     "No signal": "Pas de signal",
     "Not joined yet": "Pas encore connectée",
-    "Your team is through! Wait for the others.": "Ton équipe a passé la ligne ! Attends les autres."
+    "Your team is through! Wait for the others.": "Ton équipe a passé la ligne ! Attends les autres.",
+    "QR position": "Position du QR code",
+    "Bottom right": "En bas à droite",
+    "Hidden": "Masqué",
+    "What to expect": "Au programme"
 }

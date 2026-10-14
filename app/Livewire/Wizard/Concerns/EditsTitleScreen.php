@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Livewire\Wizard\Concerns;
 
 use App\Enums\TitlePosition;
+use App\Models\Lesson;
+use App\Support\TitlePoster;
 
 /**
  * The title screen as the pinned first item of the editor's scene rail.
@@ -29,7 +31,8 @@ trait EditsTitleScreen
         $version = substr(md5(implode('|', [
             $this->lesson->title_image, $this->lesson->title_position?->value, (int) $this->lesson->show_qr,
             $this->lesson->title_style, (int) ($this->lesson->show_lesson_types ?? true),
-            $this->lesson->title, $this->lesson->updated_at?->getTimestampMs(),
+            $this->lesson->title, $this->lesson->qrPosition(), json_encode($this->lesson->expect),
+            $this->lesson->updated_at?->getTimestampMs(),
         ])), 0, 10);
 
         $this->titleFrameSrc = route('lesson.play', $this->lesson->lesson_code).'?embed=1&title_preview=1&v='.$version;
@@ -113,9 +116,42 @@ trait EditsTitleScreen
         $this->refreshTitleFrame();
     }
 
-    public function setShowQr(bool $show): void
+    /** The join QR: auto (placed clear of faces and the screen's elements), a corner, or hidden. */
+    public function setQrPosition(string $position): void
     {
-        $this->lesson->update(['show_qr' => $show]);
+        if (! in_array($position, ['auto', 'hidden', ...TitlePoster::QR_CORNERS], true)) {
+            return;
+        }
+        $this->lesson->update([
+            'show_qr' => $position !== 'hidden',
+            'qr_position' => in_array($position, TitlePoster::QR_CORNERS, true) ? $position : null,
+        ]);
+        $this->lesson->refresh();
+        $this->refreshTitleFrame();
+    }
+
+    public function resetQrPosition(): void
+    {
+        $this->setQrPosition('auto');
+    }
+
+    /** One of the "what you can expect" lines; an empty line drops out, the rest close up. */
+    public function setExpectLine(int $index, string $text): void
+    {
+        if ($index < 0 || $index >= Lesson::EXPECT_MAX_LINES) {
+            return;
+        }
+        $lines = array_pad(array_values((array) ($this->lesson->expect ?? [])), Lesson::EXPECT_MAX_LINES, '');
+        $lines[$index] = $text;
+        $this->lesson->update(['expect' => Lesson::cleanExpect($lines)]);
+        $this->lesson->refresh();
+        $this->refreshTitleFrame();
+    }
+
+    /** No lines: the title screen shows none, and the banner no strip. */
+    public function resetExpect(): void
+    {
+        $this->lesson->update(['expect' => null]);
         $this->lesson->refresh();
         $this->refreshTitleFrame();
     }
