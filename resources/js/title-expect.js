@@ -75,6 +75,7 @@ export function placeExpectStrip (strip, stage, host, box, posterHost = null, be
   const chrome = pill ? { x: pill.left - host.left, y: pill.top - host.top, w: pill.width, h: pill.height } : null
   const frame = { x: stage.left - host.left, y: stage.top - host.top, w: stage.width, h: stage.height }
   const l = stripLayout(frame, { w: host.width, h: host.height }, box, chrome)
+  if (below) l.top = 0                // the poster moves under it, so it does not follow the frame
   Object.assign(strip.style, {
     top: `${l.top}px`,
     minHeight: `${l.minHeight}px`,
