@@ -1,0 +1,116 @@
+{
+  "note": "Gate 2 street: Amsterdam, 1640s; house fronts on both sides, a hand cart in the street pulled by a carter, a merchant beside it, a sailor watching from a doorstep; barrels by the left wall.",
+  "objects": [
+    {
+      "id": "houseL1",
+      "kit": "wall",
+      "at": [
+        -4,
+        2
+      ],
+      "face": 90
+    },
+    {
+      "id": "houseL2",
+      "kit": "wall",
+      "place": {
+        "left_of": "houseL1",
+        "gap": 0
+      }
+    },
+    {
+      "id": "houseR1",
+      "kit": "wall",
+      "at": [
+        4,
+        2
+      ],
+      "face": -90
+    },
+    {
+      "id": "houseR2",
+      "kit": "wall",
+      "place": {
+        "right_of": "houseR1",
+        "gap": 0
+      }
+    },
+    {
+      "id": "cart",
+      "kit": "cart",
+      "at": [
+        0,
+        3
+      ],
+      "face": 180
+    },
+    {
+      "id": "carter",
+      "kit": "figure",
+      "pose": "stand",
+      "place": {
+        "in_front": "cart",
+        "gap": 0.2
+      },
+      "face": 180
+    },
+    {
+      "id": "merchant",
+      "kit": "figure",
+      "pose": "point",
+      "place": {
+        "left_of": "cart",
+        "gap": 0.4
+      },
+      "face": "carter"
+    },
+    {
+      "id": "sailor",
+      "kit": "figure",
+      "pose": "stand",
+      "place": {
+        "near": "houseR1",
+        "side": "front",
+        "gap": 0.3
+      },
+      "face": "cart"
+    },
+    {
+      "id": "barrel1",
+      "kit": "barrel",
+      "place": {
+        "near": "houseL1",
+        "side": "front",
+        "gap": 0.2,
+        "offset": [
+          -1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "barrel2",
+      "kit": "barrel",
+      "place": {
+        "right_of": "barrel1",
+        "gap": 0.1
+      }
+    }
+  ],
+  "camera": {
+    "shot": "three-quarter",
+    "subjects": [
+      "carter",
+      "merchant"
+    ],
+    "lens_mm": 32
+  },
+  "fix": [
+    {
+      "cmd": "place",
+      "id": "barrel2",
+      "x": -2,
+      "z": 2.5
+    }
+  ]
+}

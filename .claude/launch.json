@@ -181,6 +181,26 @@
                 "cd engine-mvp && npx vite --port 5191 --strictPort"
             ],
             "port": 5191
+        },
+        {
+            "//": "server.py of the clay-blockout worktree (feat/clay-blockout-mcp): the /blockout long poll the MCP tools use. 8093: 8090/8091 belong to other worktrees.",
+            "name": "blockout-api",
+            "runtimeExecutable": "bash",
+            "runtimeArgs": [
+                "-c",
+                "cd engine-mvp && PORT=8093 python3 server.py"
+            ],
+            "port": 8093
+        },
+        {
+            "//": "Lesson studio for the clay-blockout worktree, proxying /crew, /bake and /blockout to blockout-api (8093).",
+            "name": "blockout-studio",
+            "runtimeExecutable": "bash",
+            "runtimeArgs": [
+                "-c",
+                "cd engine-mvp && STUDIO_API=http://127.0.0.1:8093 npx vite --port 5194 --strictPort"
+            ],
+            "port": 5194
         }
     ]
 }

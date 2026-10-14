@@ -98,15 +98,23 @@ class Link:
 
     # ---------- the page side ----------
     def poll(self):
-        """The next job for the page, or None after POLL_WAIT_S."""
+        """The next job for the page, or None after POLL_WAIT_S. A job whose tool gave up is dropped, never run late."""
         self.last_poll = time.monotonic()
+        deadline = self.last_poll + POLL_WAIT_S
         try:
-            job = self.jobs.get(timeout=POLL_WAIT_S)
-        except queue.Empty:
-            return None
+            while True:
+                left = deadline - time.monotonic()
+                if left <= 0:
+                    return None
+                try:
+                    job = self.jobs.get(timeout=left)
+                except queue.Empty:
+                    return None
+                with self.lock:
+                    if job['id'] in self.waiting:
+                        return job
         finally:
             self.last_poll = time.monotonic()
-        return job
 
     def result(self, job_id, answer):
         with self.lock:

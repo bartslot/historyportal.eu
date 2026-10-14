@@ -48,6 +48,32 @@ const MAX_LISTED = 40               // pieces listed by name: subjects first, th
 const pct = (v: number) => Math.round(v * 100)
 const f2 = (v: number) => Math.round(v * 100) / 100
 
+const SIGHT_FRACTIONS = [0.2, 0.5, 0.8]   // 3 x 3 sight lines to a subject's upper half
+const SIGHT_SHRINK_M = 0.02               // a box touching the line at its very edge does not block it
+
+function shrink(b: Box, m: number): Box {
+  return { min: [b.min[0] + m, b.min[1] + m, b.min[2] + m], max: [b.max[0] - m, b.max[1] - m, b.max[2] - m] }
+}
+
+/** Does the segment from a to b pass through the box (slab test)? */
+export function segmentHitsBox(a: V3, b: V3, box: Box): boolean {
+  let t0 = 0, t1 = 1
+  for (let i = 0; i < 3; i++) {
+    const d = b[i] - a[i]
+    if (Math.abs(d) < 1e-9) {
+      if (a[i] < box.min[i] || a[i] > box.max[i]) return false
+      continue
+    }
+    let ta = (box.min[i] - a[i]) / d
+    let tb = (box.max[i] - a[i]) / d
+    if (ta > tb) [ta, tb] = [tb, ta]
+    t0 = Math.max(t0, ta)
+    t1 = Math.min(t1, tb)
+    if (t0 > t1) return false
+  }
+  return t1 > 0 && t0 < 1
+}
+
 function area(b: [number, number, number, number]) { return Math.max(0, b[2] - b[0]) * Math.max(0, b[3] - b[1]) }
 
 function frameOf(cam: Cam, box: Box): { full: [number, number, number, number]; depth: number } | null {
@@ -87,17 +113,22 @@ export function readback(cam: Cam, items: Item[], solverProblems: Problem[] = []
       if (lost.length) problems.push(`cut: ${lost.join(', ')} of subject ${it.id} out of frame`)
     }
   }
-  // a subject hidden by a nearer piece: for a figure only its upper half counts (a rail across the legs is a framing)
+  // a subject hidden by a piece between it and the camera: sight lines from the camera to points on its upper half
+  // (a rail across a figure's legs is framing), each tested against the other pieces' boxes. Box corners alone
+  // were wrong: a wide wall BEHIND a man, seen at an angle, has corners nearer the camera than he is (Gate 2).
   for (const s of items.filter((i) => i.subject)) {
-    const p0 = byId.get(s.id)!
-    if (!p0.frame || area(p0.frame) <= 0) continue
-    const upper = s.figure ? frameOf(cam, { min: [s.box.min[0], (s.box.min[1] + s.box.max[1]) / 2, s.box.min[2]], max: s.box.max }) : null
-    const ps = upper ? { ...p0, frame: upper.full as Framed['frame'] } : p0
-    if (!ps.frame || area(ps.frame) <= 0) continue
-    for (const o of pieces) {
-      if (o.id === s.id || !o.frame || o.depth < 0 || o.depth >= ps.depth || o.kit === 'marker') continue
-      const inter: [number, number, number, number] = [Math.max(ps.frame[0], o.frame[0]), Math.max(ps.frame[1], o.frame[1]), Math.min(ps.frame[2], o.frame[2]), Math.min(ps.frame[3], o.frame[3])]
-      const share = area(inter) / area(ps.frame)
+    if (!byId.get(s.id)!.frame) continue
+    const b = s.box
+    const zc = (b.min[2] + b.max[2]) / 2
+    const lo = s.figure ? (b.min[1] + b.max[1]) / 2 : b.min[1]
+    const pts: V3[] = []
+    for (const fx of SIGHT_FRACTIONS) for (const fy of SIGHT_FRACTIONS) {
+      pts.push([b.min[0] + (b.max[0] - b.min[0]) * fx, lo + (b.max[1] - lo) * fy, zc])
+    }
+    for (const o of items) {
+      if (o.id === s.id || o.kit === 'marker') continue
+      const blocked = pts.filter((p) => segmentHitsBox(cam.position, p, shrink(o.box, SIGHT_SHRINK_M))).length
+      const share = blocked / pts.length
       if (share > HIDDEN) problems.push(`hidden: ${o.id} covers ${pct(share)} % of subject ${s.id}`)
     }
   }

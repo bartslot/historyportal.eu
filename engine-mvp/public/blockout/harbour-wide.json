@@ -114,5 +114,13 @@
       "sailor2"
     ],
     "lens_mm": 28
-  }
+  },
+  "fix": [
+    {
+      "cmd": "place",
+      "id": "crate3",
+      "x": -2,
+      "z": -1
+    }
+  ]
 }

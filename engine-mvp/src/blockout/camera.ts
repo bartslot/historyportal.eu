@@ -129,8 +129,15 @@ export function frame(shot: Shot, subjects: Subject[], aspect = 16 / 9): Cam {
   const [rx, rz] = rightOf((Math.atan2(fx, fz) * 180) / Math.PI)
   const dx = fx * Math.cos(a) + rx * Math.sin(a)
   const dz = fz * Math.cos(a) + rz * Math.sin(a)
-  const eye = floor + (spec.eye === 'eyes' ? tall * 0.93 : spec.eye)
   const h = shot.horizon ?? LOWER_THIRD
+  // With the horizon pinned, the eye height decides how big the framed part can be: everything between it and the
+  // eye must fit between the horizon and the frame edge. The preset's eye is a preference, clamped to where the part
+  // can fill its share (a full figure on the lower-third horizon needs a low camera: 37 % tall from 1.4 m, Gate 2).
+  const yb = part.min[1], yt = part.max[1]
+  const want = floor + (spec.eye === 'eyes' ? tall * 0.93 : spec.eye)
+  const eyeMax = yb + ((1 - MARGIN - h) * (yt - yb)) / spec.fill
+  const eyeMin = yt - ((h - MARGIN) * (yt - yb)) / spec.fill
+  const eye = spec.horizonRule ? Math.max(eyeMin, Math.min(eyeMax, want)) : want
   // subjects on a third: turn the view sideways (left-handed: a positive turn about +Y looks to the right)
   const uWant = shot.align === 'left-third' ? 1 / 3 : shot.align === 'right-third' ? 2 / 3 : 0.5
   const side = Math.atan((1 - 2 * uWant) * Math.tan(fovY / 2) * aspect)

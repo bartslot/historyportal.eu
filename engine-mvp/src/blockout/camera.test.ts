@@ -23,6 +23,14 @@ describe('frame (camera presets)', () => {
     expect(Math.max(...vs) - Math.min(...vs)).toBeLessThanOrEqual(0.7 + 1e-6)
   })
 
+  it('lowers the camera so a full figure fills its share on the lower-third horizon', () => {
+    const s = fig('a', 0, 0)
+    const cam = frame({ shot: 'three-quarter', subjects: ['a'] }, [s])
+    const vs = corners(s.box).map((p) => project(cam, p).v)
+    expect(Math.max(...vs) - Math.min(...vs)).toBeGreaterThan(0.6)                    // was 0.37 from a 1.4 m eye
+    expect(horizonV(cam)!).toBeCloseTo(LOWER_THIRD, 3)
+  })
+
   it('stands in front of the subjects, turned to their right for a three-quarter view', () => {
     const cam = frame({ shot: 'three-quarter', subjects: ['a'] }, [fig('a', 0, 0, 0)])   // a faces +z
     expect(cam.position[2]).toBeGreaterThan(1)
@@ -112,6 +120,16 @@ describe('readback', () => {
     expect(r.text).toMatch(/a: size \d+ % of the frame height/)
     expect(r.problems.some((p) => p.startsWith('small: subject a') && p.includes('bring the camera closer'))).toBe(true)
     expect(readback(wide, [item(a)], [], 'wide').problems.filter((p) => p.startsWith('small'))).toEqual([])
+  })
+
+  it('a wide wall BEHIND a subject, seen at an angle, does not hide it; the same wall in front does', () => {
+    const a = fig('a', 0, 0)
+    const cam = frame({ shot: 'three-quarter', subjects: ['a'] }, [a])                // camera in front, off to the side
+    const behind: Item = { id: 'wall', kit: 'wall', box: { min: [-3, 0, -1.4], max: [3, 2.6, -1.15] }, yaw: 0, floorY: 0, subject: false, figure: false }
+    expect(readback(cam, [item(a), behind]).problems.filter((p) => p.startsWith('hidden'))).toEqual([])
+    const [cx, , cz] = cam.position
+    const mid: Item = { id: 'screen', kit: 'wall', box: { min: [cx / 2 - 1.5, 0, cz / 2 - 0.3], max: [cx / 2 + 1.5, 2.6, cz / 2 + 0.3] }, yaw: 0, floorY: 0, subject: false, figure: false }
+    expect(readback(cam, [item(a), mid]).problems.some((p) => p.startsWith('hidden: screen'))).toBe(true)
   })
 
   it('passes the solver\'s refusals through', () => {

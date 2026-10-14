@@ -499,8 +499,16 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
         });
       });
     } else if (pass !== before) mode(pass);
-    const w = size, h = Math.round(size / engine.getAspectRatio(mvp.camera));
-    const data = await BABYLON.Tools.CreateScreenshotUsingRenderTargetAsync(engine, mvp.camera, { width: w, height: h });
+    // render one frame here and scale the canvas down: the render-target screenshot waits for the render loop,
+    // which a hidden tab (a teacher's page in the background) does not run
+    scene.render();
+    const src = engine.getRenderingCanvas();
+    const w = size, h = Math.round((size * src.height) / src.width);
+    const out = document.createElement('canvas');
+    out.width = w;
+    out.height = h;
+    out.getContext('2d').drawImage(src, 0, 0, w, h);
+    const data = out.toDataURL('image/png');
     restore.forEach(([mesh, mat]) => { const own = mesh.material; mesh.material = mat; if (own && own.name.startsWith('id ')) own.dispose(); });
     if (pass !== 'id' && pass !== before) mode(before);
     return { image: data, width: w, height: h, pass };
