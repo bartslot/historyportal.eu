@@ -6,7 +6,9 @@ namespace App\Services\Captions;
 
 use App\Models\CaptionTranslation;
 use App\Models\Lesson;
+use App\Services\Llm\LlmHttpException;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Sleep;
 
 /**
  * Subtitles in another language than the narration.
@@ -33,6 +35,18 @@ final class CaptionTranslator
     ];
 
     public const RTL = ['ar'];
+
+    /** Lines per request: keeps each answer well under the output-token cap. */
+    private const BATCH = 40;
+
+    /** A 429 halves the batch, never below this. */
+    private const MIN_BATCH = 10;
+
+    /** Seconds before each retry of a refused batch (the provider's Retry-After wins when longer). */
+    private const BACKOFF = [5, 15, 45];
+
+    /** Total waiting per run; stays well inside TranslateLessonCaptions' 300 s timeout. */
+    private const MAX_WAIT_SECONDS = 180;
 
     public function __construct(private readonly TextTranslator $translator) {}
 
@@ -98,9 +112,17 @@ final class CaptionTranslator
 
     /**
      * Translate whatever this lesson is missing in one language. A line another lesson already
-     * has (a copy, a re-composed lesson) is reused; the rest go to the translator in one batch.
+     * has (a copy, a re-composed lesson) is reused; the rest go to the translator in batches,
+     * each batch saved as soon as it is back, so a rate limit halfway loses nothing done.
+     *
+     * A 429 or 5xx is retried after 5, 15 and 45 s (or the provider's Retry-After when longer),
+     * plus jitter, and a 429 halves the batch. When it still fails, or the waiting would pass
+     * MAX_WAIT_SECONDS, the LlmHttpException is rethrown; the lines saved so far stay saved and
+     * are never sent again.
      *
      * @return int lines newly cached
+     *
+     * @throws LlmHttpException when the provider keeps refusing
      */
     public function translateMissing(Lesson $lesson, string $language): int
     {
@@ -115,29 +137,60 @@ final class CaptionTranslator
             return 0;
         }
 
-        $made = CaptionTranslation::query()
+        $reused = CaptionTranslation::query()
             ->where('language', $language)
             ->whereIn('source_hash', array_keys($missing))
             ->pluck('machine_text', 'source_hash')
             ->all();
+        $saved = $this->store($lesson, $language, $missing, $reused);
 
-        $todo = array_diff_key($missing, $made);
-        if ($todo !== []) {
-            $made += $this->translateProtected($todo, $from, $language);
+        $todo = array_diff_key($missing, $reused);
+        $size = self::BATCH;
+        $waited = 0.0;
+        while ($todo !== []) {
+            $batch = array_slice($todo, 0, $size, true);
+            for ($attempt = 0; ; $attempt++) {
+                try {
+                    $done = $this->translateProtected($batch, $from, $language);
+                    break;
+                } catch (LlmHttpException $e) {
+                    $wait = max(self::BACKOFF[$attempt] ?? INF, (float) ($e->retryAfter ?? 0)) + random_int(0, 1000) / 1000;
+                    if (! $e->retryable() || $waited + $wait > self::MAX_WAIT_SECONDS) {
+                        throw $e;
+                    }
+                    if ($e->status === 429) {
+                        $size = max(self::MIN_BATCH, intdiv($size, 2));
+                        $batch = array_slice($todo, 0, $size, true);
+                    }
+                    Log::notice('[CaptionTranslator] provider refused, waiting', ['status' => $e->status, 'seconds' => round($wait, 1), 'to' => $language]);
+                    Sleep::for((int) round($wait * 1000))->milliseconds();
+                    $waited += $wait;
+                }
+            }
+            $saved += $this->store($lesson, $language, $missing, $done);
+            $todo = array_diff_key($todo, $batch);
         }
 
+        return $saved;
+    }
+
+    /**
+     * @param  array<string, string>  $sources  hash => source text
+     * @param  array<string, string>  $texts  hash => translation
+     */
+    private function store(Lesson $lesson, string $language, array $sources, array $texts): int
+    {
         $now = now();
         $rows = [];
-        foreach (array_intersect_key($made, $missing) as $hash => $text) {
+        foreach (array_intersect_key($texts, $sources) as $hash => $text) {
             $rows[] = [
                 'lesson_id' => $lesson->id, 'source_hash' => $hash, 'language' => $language,
-                'source_text' => $missing[$hash], 'machine_text' => $text,
+                'source_text' => $sources[$hash], 'machine_text' => $text,
                 'created_at' => $now, 'updated_at' => $now,
             ];
         }
-        CaptionTranslation::query()->insertOrIgnore($rows);
 
-        return count($rows);
+        return $rows === [] ? 0 : CaptionTranslation::query()->insertOrIgnore($rows);
     }
 
     /** The teacher's own wording for one line; an empty text resets it to the machine version. */

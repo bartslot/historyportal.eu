@@ -13,8 +13,8 @@ use Illuminate\Support\Facades\Cache;
 /**
  * Translate a lesson's missing subtitle lines into one language. LessonCaptionsController queues
  * it once per lesson + language (statusKey): a class of thirty phones asking at once makes one
- * batch, not thirty. The status reads "done" afterwards, so the player stops waiting even if a
- * line failed, and a later request may try that line again once the status expires.
+ * batch, not thirty. A rate limit is retried inside the run (CaptionTranslator::translateMissing)
+ * and whatever was translated is saved; see handle() for how the key is released.
  */
 class TranslateLessonCaptions implements ShouldQueue
 {
@@ -31,15 +31,26 @@ class TranslateLessonCaptions implements ShouldQueue
         return "captions:{$lessonId}:{$language}";
     }
 
+    /** After a run that left lines missing (rate limit, a mangled name), the next try may start this soon. */
+    public const RETRY_AFTER_SECONDS = 60;
+
     public function handle(CaptionTranslator $captions): void
     {
+        $lesson = Lesson::find($this->lessonId);
         try {
-            $lesson = Lesson::find($this->lessonId);
             if ($lesson) {
                 $captions->translateMissing($lesson, $this->language);
             }
         } finally {
-            Cache::put(self::statusKey($this->lessonId, $this->language), 'done', now()->addMinutes(30));
+            // Done: release the key. Lines still missing: hold it a minute ("retry", which the
+            // player still shows as translating and keeps polling), so the next request after
+            // that tries again, without every poll of a whole class hitting the provider.
+            $key = self::statusKey($this->lessonId, $this->language);
+            if ($lesson && $captions->cached($lesson, $this->language)['missing'] > 0) {
+                Cache::put($key, 'retry', now()->addSeconds(self::RETRY_AFTER_SECONDS));
+            } else {
+                Cache::forget($key);
+            }
         }
     }
 }
