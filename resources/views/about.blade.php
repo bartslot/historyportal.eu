@@ -1,127 +1,186 @@
-<x-layouts.landing title="About">
+<x-layouts.landing :title="__('About')">
 
     <x-landing.header />
 
-    {{-- ═══════════════════════════════════════════════════════════════════════
-         ABOUT HERO
-    ════════════════════════════════════════════════════════════════════════════ --}}
-    <section
-        id="about"
-        class="relative isolate flex min-h-[100dvh] items-center overflow-hidden"
-    >
-        {{-- Background layers --}}
-        <div class="pointer-events-none absolute inset-0 z-0"
-             style="background: radial-gradient(ellipse 80% 60% at 50% 100%, #0d2a4a 0%, #020b24 55%, #010510 100%); opacity: 0.65;"></div>
-        <div class="pointer-events-none absolute inset-0 z-0"
-             style="background: radial-gradient(ellipse 50% 40% at 50% 60%, rgba(30,80,140,0.4) 0%, transparent 70%);"></div>
-        <div class="pointer-events-none absolute left-1/2 top-[18%] z-0 h-[28rem] w-[28rem] -translate-x-1/2 rounded-full blur-3xl"
-             style="background: radial-gradient(circle, rgba(56,189,248,0.12) 0%, transparent 70%);"></div>
+    @php
+        // The six stages of the teacher's journey (Figma "From idea to classroom", node 1978:1773).
+        $stages = [
+            ['phase' => 'Frame',  'title' => 'Describe the lesson',   'text' => 'Learning goal, focus, age group and duration',   'time' => '1–3 min',   'icon' => 'pencil',       'output' => 'Lesson brief',            'detail' => 'Audience, purpose and boundaries',     'key' => false],
+            ['phase' => 'Source', 'title' => 'Review the story plan', 'text' => 'Story beats, sources and class activities',      'time' => '10–15 min', 'icon' => 'squares-2x2',  'output' => 'Evidence-led story map',  'detail' => 'Sequence, sources and participation',  'key' => false],
+            ['phase' => 'Watch',  'title' => 'Watch the first draft', 'text' => 'Characters act, speak and show emotion',         'time' => '3–5 min',   'icon' => 'eye',          'output' => 'Playable first cut',      'detail' => 'Pacing, voice and historical setting', 'key' => false],
+            ['phase' => 'Shape',  'title' => 'Direct and edit',       'text' => 'Change the story through chat or the timeline',  'time' => '5–10 min',  'icon' => 'sparkles',     'output' => 'Directed timeline',       'detail' => 'Prompts, scene edits and timing',      'key' => true],
+            ['phase' => 'Verify', 'title' => 'Preview and review',    'text' => 'Check history, clarity, movement and timing',    'time' => '3–5 min',   'icon' => 'check-circle', 'output' => 'Review checklist',        'detail' => 'Accuracy, clarity and classroom pace', 'key' => false],
+            ['phase' => 'Teach',  'title' => 'Start class',           'text' => 'The teacher controls the story on the board',    'time' => '10 min',    'icon' => 'academic-cap', 'output' => 'Live classroom session',  'detail' => 'Shared screen, teacher-led control',   'key' => true],
+        ];
+        $label = 'text-xs font-semibold uppercase tracking-wider';
+    @endphp
 
-        <div class="section-container relative z-10 pb-24 pt-36 lg:pb-0 lg:pt-0">
-            <div class="grid items-center gap-12 lg:grid-cols-[3fr_2fr] xl:gap-20">
+    <main class="bg-base-100 text-base-content">
+        <div class="mx-auto w-full max-w-xl px-5 pb-16 pt-32 lg:pt-40">
 
-                {{-- ── Left: copy ──────────────────────────────────────────── --}}
-                <div class="max-w-2xl">
-                    <span class="lp-label mb-6 block">About The Learning Portal</span>
-
-                    <h1 class="font-history text-5xl font-semibold text-slate-100 md:text-6xl xl:text-7xl">
-                        Your class already<br>likes stories
-                    </h1>
-
-                    <p class="mt-7 max-w-lg text-base leading-relaxed text-slate-300/80">
-                        History is full of them, and we hand them back to the people they
-                        happened to. Julius Caesar narrates the fall of Rome. Cleopatra walks
-                        you through her own dynasty. Abraham Lincoln explains the Civil War from
-                        the front lines.
-                    </p>
-
-                    <p class="mt-4 max-w-lg text-sm leading-relaxed text-slate-400/70">
-                        You type in one topic. The script, the paintings and the voice are drafted
-                        in a few minutes, and then you edit them until the lesson is yours. K-12,
-                        in five languages. Currently in beta and invite only.
-                    </p>
-
-                    <div class="mt-10 flex flex-wrap items-center gap-4">
-                        <a
-                            href="{{ route('login') }}"
-                            class="btn btn-primary inline-flex items-center gap-2 rounded-full px-7"
-                        >
-                            Request invite
-                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                <path d="M5 12h14M12 5l7 7-7 7"/>
-                            </svg>
-                        </a>
-                        <a
-                            href="#js-argument-map"
-                            class="flex items-center gap-1.5 text-sm text-slate-400 transition hover:text-white"
-                        >
-                            Explore our thesis
-                            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                <path d="M6 9l6 6 6-6"/>
-                            </svg>
-                        </a>
-                    </div>
+            {{-- ── Introduction ─────────────────────────────────────────────── --}}
+            <section aria-labelledby="about-title">
+                <div class="flex items-center gap-3">
+                    <span class="h-0.5 w-8 bg-accent"></span>
+                    <span class="{{ $label }} text-accent">{{ __("Teacher's lesson creation journey") }}</span>
                 </div>
 
-                {{-- ── Right: feature cards (desktop only) ─────────────────── --}}
-                <div class="hidden grid-cols-1 gap-3 lg:grid">
+                <h1 id="about-title" class="font-history mt-4 text-5xl font-semibold leading-tight md:text-6xl">
+                    {{ __('From idea to classroom') }}
+                </h1>
 
-                    <div class="card lp-grain border border-primary/15"
-                         style="background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);">
-                        <div class="card-body p-5">
-                            <span class="lp-label mb-2 text-primary">AI Narration</span>
-                            <p class="text-sm leading-relaxed text-slate-300/80">
-                                Historical figures narrate their own lessons. Every voice is generated from
-                                primary sources, never invented.
-                            </p>
-                        </div>
-                    </div>
+                <p class="mt-4 text-lg leading-relaxed text-base-content/70">
+                    {{ __('Build an evidence-led history lesson, shape its story, test it, then guide students through a shared classroom experience.') }}
+                </p>
 
-                    <div class="card lp-grain border border-white/6"
-                         style="background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);">
-                        <div class="card-body p-5">
-                            <span class="lp-label mb-2 text-sky-400">You Edit Everything</span>
-                            <p class="text-sm leading-relaxed text-slate-400/80">
-                                A first draft arrives in minutes. Then you change the script, swap a
-                                painting or retake a line, until it is the lesson you would have taught.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div class="card lp-grain border border-white/6"
-                         style="background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);">
-                        <div class="card-body p-5">
-                            <span class="lp-label mb-2 text-slate-400">K-12 Aligned</span>
-                            <p class="text-sm leading-relaxed text-slate-400/80">
-                                Quiz questions auto-generated. Student progress tracked.
-                                Content mapped to curriculum standards.
-                            </p>
-                        </div>
-                    </div>
-
+                <div class="mt-7 flex flex-wrap gap-2">
+                    @foreach (['Create', 'Check', 'Teach', 'Reflect'] as $phase)
+                        <span class="badge badge-outline border-base-300 bg-base-200 {{ $label }} text-base-content/70">{{ __($phase) }}</span>
+                    @endforeach
                 </div>
 
+                <hr class="mt-10 border-base-300">
+            </section>
+
+            {{-- ── Six stage journey ────────────────────────────────────────── --}}
+            <section class="mt-10" aria-labelledby="about-workflow">
+                <span class="{{ $label }} text-accent">{{ __('The workflow') }}</span>
+                <h2 id="about-workflow" class="font-history mt-2 text-4xl">{{ __('In less than 1 hour') }}</h2>
+                <div class="mt-3 flex items-center justify-between {{ $label }} text-base-content/50">
+                    <span class="font-mono">01–06</span>
+                    <span>{{ __('For a 10-minute lesson') }}</span>
+                </div>
+
+                <ol class="mt-6">
+                    @foreach ($stages as $i => $stage)
+                        @php $n = str_pad((string) ($i + 1), 2, '0', STR_PAD_LEFT); @endphp
+                        <li>
+                            <article @class([
+                                'card relative overflow-hidden bg-base-200',
+                                'border-2 border-accent' => $stage['key'],
+                                'border border-base-300' => ! $stage['key'],
+                            ])>
+                                <img src="{{ asset('images/about/stage-'.($i + 1).'.webp') }}" alt=""
+                                     class="h-44 w-full object-cover" loading="lazy" decoding="async">
+
+                                <span class="absolute left-4 top-[8.5rem] grid size-14 place-items-center rounded-full border border-base-300 bg-base-100 text-xl font-bold">{{ $n }}</span>
+
+                                <div class="card-body gap-0 p-5 pt-8">
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-mono text-xs tracking-wider text-accent">{{ __('Stage') }} {{ $n }}</span>
+                                        <span class="h-px w-4 bg-base-content/30"></span>
+                                        <span class="{{ $label }} text-base-content/50">{{ __($stage['phase']) }}</span>
+                                    </div>
+                                    <h3 class="font-history mt-2 text-3xl">{{ __($stage['title']) }}</h3>
+                                    <p class="mt-2 text-base text-base-content/70">{{ __($stage['text']) }}</p>
+                                    <span class="badge badge-outline mt-3 border-base-300 {{ $label }} text-accent">{{ __($stage['time']) }}</span>
+
+                                    <div class="mt-4 flex items-center gap-3 rounded-box border border-base-300 bg-base-100 p-3.5">
+                                        <span class="grid size-11 shrink-0 place-items-center rounded-box border border-base-300 bg-base-200 text-accent">
+                                            <x-dynamic-component :component="'icons.'.$stage['icon']" class="h-6 w-6" />
+                                        </span>
+                                        <div class="min-w-0">
+                                            <span class="{{ $label }} text-base-content/50">{{ __('Output') }}</span>
+                                            <p class="text-base">{{ __($stage['output']) }}</p>
+                                            <p class="text-xs text-base-content/50">{{ __($stage['detail']) }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </article>
+
+                            @if ($stage['phase'] === 'Shape')
+                                <div class="mt-3 flex items-center gap-3 rounded-full border border-accent/60 bg-base-100 px-4 py-3">
+                                    <x-icons.arrow-path class="h-5 w-5 shrink-0 text-accent" />
+                                    <div>
+                                        <span class="{{ $label }} text-accent">{{ __('Revise') }}</span>
+                                        <p class="text-sm text-base-content/70">{{ __('Direct, preview and repeat until the lesson is ready.') }}</p>
+                                    </div>
+                                </div>
+                            @endif
+
+                            @unless ($loop->last)
+                                <div class="flex flex-col items-center py-2" aria-hidden="true">
+                                    <span class="h-5 w-0.5 bg-accent/70"></span>
+                                    <x-icons.chevron-down class="h-4 w-4 text-accent" />
+                                </div>
+                            @endunless
+                        </li>
+                    @endforeach
+                </ol>
+            </section>
+
+            {{-- ── Class participation ─────────────────────────────────────── --}}
+            <section class="mt-2 flex flex-col items-center text-center" aria-labelledby="about-participation">
+                <span class="h-8 w-0.5 bg-accent/70" aria-hidden="true"></span>
+
+                <div class="mt-4 flex gap-3" aria-hidden="true">
+                    @foreach ([['icons.book-open', 'Branching story'], ['icons.chat-bubble-left-right', 'Debate']] as [$icon, $name])
+                        <div class="flex w-32 flex-col items-center gap-2 rounded-box border border-base-300 bg-base-200 px-3 py-4">
+                            <x-dynamic-component :component="$icon" class="h-7 w-7 text-accent" />
+                            <span class="text-xs font-semibold text-base-content/80">{{ __($name) }}</span>
+                        </div>
+                    @endforeach
+                </div>
+
+                <span class="{{ $label }} mt-4 text-accent">{{ __('Classroom participation') }}</span>
+                <h2 id="about-participation" class="font-history mt-3 text-3xl">{{ __('Choose the route that fits the room') }}</h2>
+            </section>
+
+            <div class="mt-7 flex flex-col gap-4">
+                @foreach ([
+                    ['label' => 'Option · connected', 'title' => 'Phones allowed', 'icon' => 'icons.device-phone-mobile', 'steps' => ['Scan the class QR code and join the session', 'Watch the board, respond, watch the board'], 'key' => true],
+                    ['label' => 'Option · print',     'title' => 'No phones',      'icon' => 'icons.printer',             'steps' => ['Print the ready-made PDF handouts', 'Watch the board, discuss, answer on paper'], 'key' => false],
+                ] as $route)
+                    @unless ($loop->first)
+                        <div class="divider my-0 {{ $label }} text-base-content/50">{{ __('or') }}</div>
+                    @endunless
+                    <div @class([
+                        'card bg-base-200 p-5',
+                        'border-2 border-accent' => $route['key'],
+                        'border border-base-300' => ! $route['key'],
+                    ])>
+                        <div class="flex items-center justify-between gap-4">
+                            <div>
+                                <span class="{{ $label }} text-accent">{{ __($route['label']) }}</span>
+                                <h3 class="font-history mt-1 text-3xl">{{ __($route['title']) }}</h3>
+                            </div>
+                            <span class="grid size-14 shrink-0 place-items-center rounded-box border border-base-300 bg-base-100 text-accent">
+                                <x-dynamic-component :component="$route['icon']" class="h-6 w-6" />
+                            </span>
+                        </div>
+                        <ol class="mt-5 flex flex-col gap-3">
+                            @foreach ($route['steps'] as $step)
+                                <li class="flex gap-3">
+                                    <span class="font-mono text-xs leading-6 text-accent">{{ str_pad((string) $loop->iteration, 2, '0', STR_PAD_LEFT) }}</span>
+                                    <span class="text-base text-base-content/70">{{ __($step) }}</span>
+                                </li>
+                            @endforeach
+                        </ol>
+                    </div>
+                @endforeach
             </div>
-        </div>
 
-        {{-- Scroll hint --}}
-        <div class="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-40">
-            <span class="text-2xs uppercase tracking-widest text-slate-400">Scroll</span>
-            <svg class="h-4 w-4 animate-bounce text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path d="M6 9l6 6 6-6"/>
-            </svg>
-        </div>
-    </section>
+            <div class="flex justify-center" aria-hidden="true"><span class="h-10 w-0.5 bg-accent/70"></span></div>
 
-    {{-- ═══════════════════════════════════════════════════════════════════════
-         ARGUMENT MAP
-    ════════════════════════════════════════════════════════════════════════════ --}}
-    <x-landing.argument-map />
+            {{-- ── Learning outcome ─────────────────────────────────────────── --}}
+            <section class="rounded-box bg-base-content p-6 text-base-100">
+                <div class="flex items-center gap-4">
+                    <span class="grid size-14 shrink-0 place-items-center rounded-full bg-base-100 text-base-content">
+                        <x-icons.arrow-path class="h-7 w-7" />
+                    </span>
+                    <span class="{{ $label }}">{{ __('Continuous practice') }}</span>
+                </div>
+                <h2 class="font-history mt-5 text-3xl font-semibold">{{ __('Review learning, improve, reuse') }}</h2>
+                <p class="mt-2 text-base text-base-100/75">{{ __('Carry evidence from this class into the next lesson.') }}</p>
+                <div class="mt-5 flex flex-wrap gap-2">
+                    @foreach (['Review', 'Refine', 'Return'] as $step)
+                        <span class="badge border-base-100 bg-base-100 {{ $label }} text-base-content">{{ __($step) }}</span>
+                    @endforeach
+                </div>
+            </section>
+        </div>
+    </main>
 
     <x-landing.footer />
-
-    @push('scripts')
-        @vite('resources/js/argument-map.js')
-    @endpush
 
 </x-layouts.landing>
