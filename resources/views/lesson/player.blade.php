@@ -415,7 +415,8 @@
                      button already has one; the logo gets one below). --}}
                 <div x-show="backdropShade && !(phase === 'TITLE_SCREEN' && lesson.title_poster)" class="pointer-events-none absolute inset-x-0 top-0 h-36 bg-linear-to-b from-black/70 to-transparent"></div>
                 {{-- data-player-chrome: overlays (the power-meter card) keep clear of this row and the deck. --}}
-                <div class="relative flex items-center gap-2.5 px-8 py-3.5 sm:px-12" data-player-chrome="top">
+                <div class="relative flex items-center gap-2.5 px-8 py-3.5 sm:px-12" data-player-chrome="top"
+                     :style="phase === 'TITLE_SCREEN' && titleLogoH ? 'padding-block: 6px' : ''">
                     {{-- title_preview: the editor's title-screen frame shows what students see. --}}
                     @if ($canEdit && ! request()->boolean('title_preview'))
                         {{-- No back arrow here on purpose. The wizard already draws one in this exact
@@ -428,8 +429,11 @@
                             {{ __('Edit scene') }}
                         </button>
                     @else
-                        <img src="{{ asset('assets/logo.svg') }}" alt="History Portal" class="h-24 w-auto shadow-sm" data-title-avoid
-                             :class="!backdropShade && 'rounded-xl border border-white/10 bg-black/70 p-2 backdrop-blur-md'">
+                        {{-- On the title screen's white expect strip: the logo's dark variant, fitted to a slim strip. --}}
+                        <img src="{{ asset('assets/logo.svg') }}" alt="History Portal" class="h-24 w-auto" data-title-avoid
+                             :src="phase === 'TITLE_SCREEN' && titleChromeOnStrip ? @js(asset('assets/logo-dark.svg')) : @js(asset('assets/logo.svg'))"
+                             :style="phase === 'TITLE_SCREEN' && titleLogoH ? `height:${titleLogoH}px` : ''"
+                             :class="!backdropShade && !(phase === 'TITLE_SCREEN' && titleChromeOnStrip) && 'rounded-xl border border-white/10 bg-black/70 p-2 backdrop-blur-md'">
                     @endif
                 </div>
             </div>
@@ -759,12 +763,15 @@
                  candidate stacks its lines in this strip, above the picture: under the title they
                  pushed the badges into the letters and the painting. A wider screen uses it too when
                  the lines under the title would reach the letters (expectInStrip, measured). --}}
-            <template x-if="lesson.title_poster && lesson.expect.length">
+            <template x-if="lesson.title_poster && (lesson.expect.length || titleFit.metaInStrip)">
                 <ul data-title-expect="strip" data-title-avoid lang="{{ $contentLang }}" aria-label="{{ __('What to expect') }}"
-                    :class="!lesson.title_poster.expect && !expectInStrip && 'sm:hidden'"
+                    :class="!lesson.title_poster.expect && !expectInStrip && !titleFit.metaInStrip && 'sm:hidden'"
                     class="title-expect-strip absolute inset-x-0 flex flex-col gap-1 bg-white pb-3 pr-4 text-sm text-brand-ink sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-12 sm:gap-y-1 sm:py-2 lg:text-base"
                     style="z-index: 15; font-family: 'Coming Soon', var(--font-comic)">
-                    <template x-for="line in lesson.expect"><li x-text="line"></li></template>
+                    <template x-for="line in lesson.expect"><li x-text="line" :class="!lesson.title_poster.expect && !expectInStrip && 'sm:hidden'"></li></template>
+                    {{-- The meta row, when the screen ran out of room for it under the title (title-fit.js). --}}
+                    <li x-show="titleFit.metaInStrip" data-title-strip-meta
+                        x-text="[titleCodeInMeta && @js(__('Lesson code')) + ' ' + lesson.lesson_code, lesson.grade_level, lesson.subject && lesson.subject.charAt(0).toUpperCase() + lesson.subject.slice(1), estimatedMinutes].filter(Boolean).join(' · ')"></li>
                 </ul>
             </template>
 
@@ -785,23 +792,23 @@
                  no room beside its title, so there the badges join the title block's own flow. --}}
             @php $lessonTypes = $lessonData['lesson_types']; @endphp
             <div class="absolute bottom-10 right-8 sm:bottom-14 sm:right-12 flex flex-col items-end gap-4" style="z-index:20" data-title-cluster>
-                <x-lesson.type-badges :types="$lessonTypes" :dark="($titlePoster['badge_style'] ?? 'colour') === 'dark'"
+                <x-lesson.type-badges :types="$lessonTypes" :dark="($titlePoster['badge_style'] ?? 'colour') === 'dark'" data-title-piece="badges"
+                                      x-bind:class="titleFit.badgesCompact && 'lp-type-badges--compact'"
                                       @class(['max-sm:hidden', 'flex-col' => ($titlePoster['badges'] ?? 'row') === 'column']) />
                 <div class="flex items-end gap-4">
-                    <x-lesson.language-switch :lesson="$lesson" :translations="$translations" data-title-avoid />
+                    <x-lesson.language-switch :lesson="$lesson" :translations="$translations" data-title-avoid data-title-piece="language" />
                     {{-- QR code, clickable to open the modal. Its own place is here, beside the language;
                          resources/js/title-qr.js moves it when that would cover a face or an element,
                          or to the teacher's corner (title screen Format), or hides it. --}}
                     @if ($lesson->show_qr ?? true)
+                    {{-- The code dark on a white plate with its quiet zone (lp-qr-plate), the lesson code and
+                         "scan to join" on the plate under it: a camera reads it on any picture. --}}
                     <button onclick="document.getElementById('qr-modal').showModal()" data-title-qr
-                            class="hidden sm:flex flex-col items-center gap-1.5 cursor-pointer group"
-                            style="background:none; border:none; padding:0">
-                        <canvas id="title-qr-canvas"
-                                class="rounded-xl opacity-90 transition group-hover:opacity-100 group-hover:scale-105"
-                                style="image-rendering: pixelated;"></canvas>
-                        <p class="text-sm font-mono font-bold tracking-[0.25em] text-white/80 uppercase"
+                            class="lp-qr-plate hidden sm:flex flex-col items-center pb-2 cursor-pointer">
+                        <canvas id="title-qr-canvas" class="block" style="image-rendering: pixelated;"></canvas>
+                        <p class="-mt-1 px-2 text-sm font-mono font-bold tracking-[0.25em] uppercase"
                            x-text="lesson.lesson_code"></p>
-                        <p class="text-2xs text-white/40 tracking-widest uppercase group-hover:text-white/60 transition">Scan to join</p>
+                        <p class="px-2 text-2xs tracking-widest uppercase opacity-60">{{ __('Scan to join') }}</p>
                     </button>
                     @endif
                 </div>
@@ -811,9 +818,9 @@
                  "Edit scene" row, with only the title's subtitle lettered beneath it. --}}
             <template x-if="lesson.title_logo_url">
                 {{-- The width is the logo's; the subtitle is fitted to exactly that width (fitSubtitle). --}}
-                <h1 lang="{{ $contentLang }}" class="absolute left-8 sm:left-12 top-24 pointer-events-none" data-title-avoid
+                <h1 lang="{{ $contentLang }}" class="absolute left-8 sm:left-12 top-24 pointer-events-none" data-title-avoid data-title-piece="logo"
                     style="z-index:10; width: clamp(18rem, 58vw, 68rem)">
-                    <img x-bind:src="lesson.title_logo_url" x-bind:alt="lesson.title"
+                    <img x-bind:src="lesson.title_logo_url" x-bind:alt="lesson.title" x-on:load="relayoutTitle()"
                          class="block h-auto w-full -rotate-2 origin-bottom-left"
                          style="filter: drop-shadow(0.6rem 0.8rem 0 rgba(0,0,0,0.85)) drop-shadow(0 0 3rem rgba(0,0,0,0.6));">
                     <span aria-hidden="true" x-text="lesson.title.replace(/^.*?:\s*/, '')" x-init="$nextTick(() => fitSubtitle($el))"
@@ -826,7 +833,7 @@
             <dialog id="qr-modal" class="modal">
                 <div class="modal-box hp-modals border border-white/10 flex flex-col items-center gap-6 py-10 px-12 max-w-sm">
                     <canvas id="qr-modal-canvas"
-                            class="rounded-2xl"
+                            class="rounded-2xl bg-white"
                             style="image-rendering: pixelated;"></canvas>
                     <p class="font-mono font-black tracking-[0.35em] text-white uppercase"
                        style="font-size: 2.5rem;"
@@ -857,7 +864,7 @@
                  style="z-index: 10;">
 
                 {{-- ── Title + meta + CTA ── --}}
-                <div @class(['min-w-0 max-w-6xl', 'flex-1' => $titlePos === \App\Enums\TitlePosition::BottomLeft])>
+                <div @class(['min-w-0 max-w-6xl', 'flex-1' => $titlePos === \App\Enums\TitlePosition::BottomLeft]) data-title-bar>
 
                     {{-- Era / region --}}
                     <p x-show="!lesson.title_poster && (lesson.era || lesson.region)" data-title-avoid
@@ -882,18 +889,21 @@
                               drop-shadow-[0_1px_8px_rgba(0,0,0,0.9)]"></p>
 
                     {{-- A phone's lesson-type badges, in the title's flow (the larger screens': bottom right). --}}
-                    <x-lesson.type-badges :types="$lessonTypes" :dark="($titlePoster['badge_style'] ?? 'colour') === 'dark'" @class(['mt-4 sm:hidden', $titleRows]) />
+                    <x-lesson.type-badges :types="$lessonTypes" :dark="($titlePoster['badge_style'] ?? 'colour') === 'dark'" data-title-piece="badges" @class(['mt-4 sm:hidden', $titleRows]) />
 
                     {{-- "What you can expect", under the title when the candidate has no slot of its own. --}}
                     <ul x-show="lesson.expect.length && !lesson.title_poster?.expect && !expectInStrip" data-title-expect="lines" data-title-avoid="children"
                         lang="{{ $contentLang }}" aria-label="{{ __('What to expect') }}"
-                        class="mt-4 flex flex-col gap-1 text-sm text-white/85 drop-shadow-[0_1px_8px_rgba(0,0,0,0.9)] sm:flex-row sm:flex-wrap sm:gap-x-6 {{ $titleRows }}"
+                        class="mt-4 flex flex-col items-start gap-1 text-sm text-white/85 sm:flex-row sm:flex-wrap sm:gap-x-6 {{ $titleRows }}"
                         :class="lesson.title_poster && 'title-poster-meta max-sm:hidden'">
-                        <template x-for="line in lesson.expect"><li x-text="line"></li></template>
+                        {{-- Over a picture each line stands on the subtitles' quiet plate; on a flat poster colour it needs none. --}}
+                        <template x-for="line in lesson.expect"><li x-text="line" :class="(!lesson.title_poster || lesson.title_poster.fit === 'cover') && 'lp-quiet-plate'"></li></template>
                     </ul>
 
                     {{-- Meta row --}}
-                    <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 {{ $titleRows }}" :class="lesson.title_poster && 'title-poster-meta'" data-title-avoid="children">
+                    <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 {{ $titleRows }}" data-title-avoid="children" data-title-piece="meta"
+                         x-show="!titleFit.metaInStrip"
+                         :class="lesson.title_poster && ('title-poster-meta' + (lesson.title_poster.fit === 'cover' ? ' lp-quiet-plate w-fit px-2 py-0.5 {{ $titlePos->isCentred() ? 'mx-auto' : '' }}' : ''))">
                         {{-- The lesson code, when the join QR is not on screen (a phone, no room, or hidden). --}}
                         <span x-show="titleCodeInMeta" data-title-code
                               class="font-mono text-xs font-bold uppercase tracking-[0.2em] text-white/80">{{ __('Lesson code') }} <span x-text="lesson.lesson_code"></span></span>
@@ -927,7 +937,7 @@
                     </div>
 
                     {{-- CTA --}}
-                    <div class="mt-6 flex flex-wrap gap-3 sm:mt-8 {{ $titleRows }}" data-title-avoid="children">
+                    <div class="mt-6 flex flex-wrap gap-3 sm:mt-8 {{ $titleRows }}" data-title-avoid="children" data-title-piece="cta">
                         <template x-if="canStart">
                             <button role="button"
                                 @click="startLesson()"

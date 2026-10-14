@@ -49,8 +49,9 @@ import { gradientCss } from './scene/background-gradient.js'
 import { t } from './i18n.js'
 import { mountBigCountdown } from './big-countdown.js'
 import { mountTitlePoster as mountPoster, posterFit } from './title-poster.js'
-import { QR, layoutTitleQr, drawQrDebug, coverRect, pictureSize, relRect } from './title-qr.js'
+import { QR, qrOptions, layoutTitleQr, drawQrDebug, coverRect, frameRect, pictureSize } from './title-qr.js'
 import { placeExpectStrip, fitExpectLines } from './title-expect.js'
+import { FIT, FIT_START, collisions, nextFit, bandHeight, barShift, titlePieces } from './title-fit.js'
 
 /**
  * Where the drawing in an image starts and ends across, as fractions of its width ([0, 1] when it
@@ -245,6 +246,11 @@ Alpine.data('lessonGame', (lesson) => ({
     titleCodeInMeta:   false,
     // The expect lines would reach a drawn title's letters: they stand in the strip along the top instead.
     expectInStrip:     false,
+    // How the title screen gave way so nothing overlaps (resources/js/title-fit.js); reset on a resize.
+    titleFit:          { ...FIT_START },
+    // The top row stands on the white expect strip: the logo turns dark and, on a slim strip, fits it.
+    titleChromeOnStrip: false,
+    titleLogoH:        0,
     captionText:       '',
     _cues:             [],
     // The Audio & Subtitles panel and the subtitle language (scene/caption-panel.js).
@@ -463,11 +469,13 @@ Alpine.data('lessonGame', (lesson) => ({
     _renderQr () {
       // A pupil who scans this plays the lesson themselves, on their own device.
       const url = `${window.location.origin}/lesson/${lesson.lesson_code}?play=solo`
-      const opts = (width) => ({ width, margin: 1, color: { dark: '#ffffff', light: '#00000000' } })
+      // Dark on the white plate (brand ink), drawn at twice the full size so every smaller size stays crisp.
+      const ink = getComputedStyle(document.documentElement).getPropertyValue('--color-brand-ink').trim() || undefined
+      const opts = (width) => qrOptions(width, ink)
 
       const small = document.getElementById('title-qr-canvas')
-      if (small) QRCode.toCanvas(small, url, opts(QR.sizes[0])).catch(() => {}).finally(() => this.layoutTitleScreen())
-      else this.layoutTitleScreen()
+      if (small) QRCode.toCanvas(small, url, opts(QR.sizes[0] * 2)).catch(() => {}).finally(() => this.relayoutTitle())
+      else this.relayoutTitle()
 
       const large = document.getElementById('qr-modal-canvas')
       if (large) QRCode.toCanvas(large, url, opts(320)).catch(() => {})
@@ -2743,7 +2751,7 @@ Alpine.data('lessonGame', (lesson) => ({
     mountTitlePoster (host) {
       this._stopTitlePoster?.()
       this._stopTitlePoster = mountPoster(host, host.querySelector('[data-poster-stage]'), this.lesson.title_poster)
-      setTimeout(() => this.layoutTitleScreen(), 0)
+      setTimeout(() => this.relayoutTitle(), 0)
     },
 
     /**
@@ -2751,14 +2759,32 @@ Alpine.data('lessonGame', (lesson) => ({
      * then the join QR clear of faces, letters and every element (resources/js/title-qr.js). Again
      * on every resize and once the lettering fonts and the title picture are in.
      */
-    layoutTitleScreen () {
+    /**
+     * Lay the title screen out from scratch: everything tries its own place again before giving
+     * way (title-fit.js). On every change of what is measured (a new size, the fonts, the QR, the
+     * picture), so a step taken while something was still loading never sticks. Passes of an
+     * older run stop.
+     */
+    relayoutTitle () {
+      if (this.phase !== 'TITLE_SCREEN') return
+      this._fitRun = (this._fitRun ?? 0) + 1
+      this._fitPasses = 0
+      this.expectInStrip = false
+      this.titleFit = { ...FIT_START }
+      const run = this._fitRun
+      this.$nextTick(() => this.layoutTitleScreen(run))
+    },
+
+    layoutTitleScreen (run = this._fitRun) {
+      if (run !== this._fitRun) return
       const host = document.querySelector('[data-title-screen]')
       if (!host) return
       if (!this._titleRo && typeof ResizeObserver === 'function') {
-        // A new size: the expect lines try under the title again before falling back to the strip.
-        this._titleRo = new ResizeObserver(() => { this.expectInStrip = false; this.$nextTick(() => this.layoutTitleScreen()) })
+        this._titleRo = new ResizeObserver(() => this.relayoutTitle())
         this._titleRo.observe(host)
-        document.fonts?.ready.then(() => this.layoutTitleScreen())
+        document.fonts?.ready.then(() => this.relayoutTitle())
+        // A face first used later (the strip's comic lettering) loads after ready: lay out again then too.
+        document.fonts?.addEventListener?.('loadingdone', () => this.relayoutTitle())
       }
       if (this.phase !== 'TITLE_SCREEN' || !host.clientWidth) return
       const poster = this.lesson.title_poster
@@ -2768,7 +2794,16 @@ Alpine.data('lessonGame', (lesson) => ({
       if (strip && stage && placeExpectStrip(strip, stage.getBoundingClientRect(), o, poster.expect?.box ?? { x: 0, y: 0, w: 100, h: 0 },
         stage.parentElement, !poster.expect, posterFit(o.width, o.height, poster).top).moved) {
         // The poster now starts under the strip: measure once it has been fitted there.
-        setTimeout(() => this.layoutTitleScreen(), 50)
+        setTimeout(() => this.layoutTitleScreen(run), 50)
+        return
+      }
+      if (this._fitChromeToStrip(host, strip)) {
+        this.$nextTick(() => this.layoutTitleScreen(run))
+        return
+      }
+      if (this._shrinkTitlePicture(host, stage)) {
+        // The picture refits on its own resize: measure once it has.
+        setTimeout(() => this.layoutTitleScreen(run), 60)
         return
       }
 
@@ -2779,34 +2814,104 @@ Alpine.data('lessonGame', (lesson) => ({
         frame = () => ({ x: r.left - o.left, y: r.top - o.top, w: r.width, h: r.height })
         keepClear = poster.keep_clear ?? []
       } else if (this.lesson.title_bg_url && this.lesson.title_keep_clear?.length) {
-        const size = pictureSize(this.lesson.title_bg_url, () => this.layoutTitleScreen())
+        const size = pictureSize(this.lesson.title_bg_url, () => this.relayoutTitle())
         frame = () => size && coverRect(o.width, o.height, size.w, size.h)
         keepClear = this.lesson.title_keep_clear
       }
+      if (poster) this._shiftTitleBar(host, keepClear, frame)
       const qrOpts = { keepClear, frame, override: this.lesson.qr_position }
       let result = layoutTitleQr(host, qrOpts)
       // With the QR out of its place the badges close up and may meet the expect lines: wrap them, measure again.
       const lines = host.querySelector('[data-title-expect="lines"]')
       if (fitExpectLines(lines, host.querySelector('[data-title-cluster]'))) result = layoutTitleQr(host, qrOpts)
-      // Under a drawn title the lines may reach its letters (a short screen) or be squeezed into a
-      // column beside the badges (a narrow one): then they go to the
-      // strip along the top, as on a phone, and the screen is measured again with them there.
-      if (poster && !this.expectInStrip && lines?.offsetWidth) {
-        const title = [...(result.keepClear ?? []).filter(k => k.kind === 'letters').map(k => k.rect),
-          ...[...host.querySelectorAll('[data-poster-stage] [data-title-avoid]')].map(el => relRect(el.getBoundingClientRect(), o))]
-        const hit = [...lines.children].map(li => relRect(li.getBoundingClientRect(), o)).filter(r => r.w > 0)
-          .some(r => title.some(t => r.x < t.x + t.w && t.x < r.x + r.w && r.y < t.y + t.h && t.y < r.y + r.h))
-        if (hit || lines.dataset.cramped) {
-          this.expectInStrip = true
-          this.$nextTick(() => this.layoutTitleScreen())
-          return
-        }
+
+      // Anything still overlapping (or lines squeezed into a column): the screen gives way one
+      // step (title-fit.js nextFit) and is measured again.
+      const hits = collisions(titlePieces(host), result.keepClear ?? [])
+      if (poster && lines?.offsetWidth && lines.dataset.cramped) hits.push({ a: 'lines', b: 'cramped' })
+      const next = nextFit({ ...this.titleFit, linesInStrip: this.expectInStrip }, hits, { strip: !!poster })
+      const debug = new URLSearchParams(window.location.search).get('qr_debug') === '1'
+      if (debug) (window.__titleFitLog ??= []).push({ run, fit: { ...this.titleFit }, hits })
+      if (next && (this._fitPasses = (this._fitPasses ?? 0) + 1) <= 3 * FIT.maxShrink) {
+        const { linesInStrip, ...fit } = next
+        this.expectInStrip = linesInStrip
+        this.titleFit = fit
+        setTimeout(() => this.layoutTitleScreen(run), 60)
+        return
       }
       this.titleCodeInMeta = !!result.hidden
-      if (new URLSearchParams(window.location.search).get('qr_debug') === '1') {
+      if (debug) {
         drawQrDebug(host, result)
-        window.__titleQr = result
+        // run/latest: a proof waits until the newest run has settled.
+        window.__titleQr = { ...result, fit: { ...this.titleFit, linesInStrip: this.expectInStrip }, hits, run, latest: () => this._fitRun }
       }
+    },
+
+    /**
+     * The top row on the white strip: the logo's dark variant, and on a slim strip (not the phone's
+     * stacked one) a logo that fits inside it. True when that changed, so the screen is measured again.
+     */
+    _fitChromeToStrip (host, strip) {
+      const r = strip?.offsetHeight ? strip.getBoundingClientRect() : null
+      const onStrip = !!r && r.top - host.getBoundingClientRect().top <= 4
+      const slim = onStrip && strip.dataset.stacked !== '1' ? parseFloat(strip.style.minHeight) || r.height : 0
+      const logoH = slim ? Math.round(Math.min(96, Math.max(32, slim - 12))) : 0
+      if (onStrip === this.titleChromeOnStrip && logoH === this.titleLogoH) return false
+      this.titleChromeOnStrip = onStrip
+      this.titleLogoH = logoH
+      return true
+    },
+
+    /**
+     * Shrink step n (title-fit.js): a poster's frame keeps a band at the bottom for the title bar
+     * (the poster's own colour shows there), a series logo gets narrower. A series logo always
+     * starts under the top row. True when the picture's size changed.
+     */
+    _shrinkTitlePicture (host, stage) {
+      const n = this.titleFit.shrink
+      const poster = this.lesson.title_poster
+      const o = host.getBoundingClientRect()
+      let moved = false
+      if (poster && stage) {
+        const bar = titlePieces(host).filter(p => ['lines', 'meta', 'cta'].includes(p.group))
+        const barTop = bar.length ? Math.min(...bar.map(p => p.rect.y)) : o.height
+        const band = Math.round(bandHeight(n, barTop, o.height))
+        // Set before the size changes: the poster refits on its resize (title-poster.js).
+        if (band) stage.parentElement.dataset.posterFit = 'contain'
+        else delete stage.parentElement.dataset.posterFit
+        const bottom = band ? `${band}px` : ''
+        moved = stage.parentElement.style.bottom !== bottom
+        stage.parentElement.style.bottom = bottom
+        host.style.backgroundColor = band ? (poster.background_bottom ?? poster.background ?? '') : ''
+      }
+      const logo = host.querySelector('[data-title-piece="logo"]')
+      if (logo) {
+        const top = document.querySelector('[data-player-chrome="top"]')?.getBoundingClientRect()
+        logo.style.top = top?.height ? `${Math.max(96, Math.round(top.bottom - o.top + 8))}px` : ''
+        const width = n ? `calc(clamp(18rem, 58vw, 68rem) * ${FIT.logoScale ** n})` : ''
+        moved ||= logo.style.width !== width
+        logo.style.width = width
+      }
+      return moved
+    },
+
+    /** A comic candidate's title bar slides along the bottom to where it covers no face, letters or control. */
+    _shiftTitleBar (host, keepClear, frame) {
+      const bar = host.querySelector('[data-title-bar]')
+      if (!bar) return
+      bar.style.transform = ''
+      const pieces = titlePieces(host)
+      const own = pieces.filter(p => ['lines', 'meta', 'cta'].includes(p.group)).map(p => p.rect)
+      if (!own.length) return
+      const x = Math.min(...own.map(r => r.x))
+      const y = Math.min(...own.map(r => r.y))
+      const box = { x, y, w: Math.max(...own.map(r => r.x + r.w)) - x, h: Math.max(...own.map(r => r.y + r.h)) - y }
+      const f = frame?.()
+      const keep = f ? keepClear.filter(k => ['face', 'letters'].includes(k.kind)).map(k => frameRect(k.box, f)) : []
+      const blocks = [...keep, ...pieces.filter(p => ['subtitle', 'badges', 'language', 'top', 'strip'].includes(p.group)).map(p => p.rect)]
+        .map(r => ({ x: r.x - FIT.gap / 2, y: r.y - FIT.gap / 2, w: r.w + FIT.gap, h: r.h + FIT.gap }))
+      const dx = barShift(box, blocks, host.clientWidth, 32)
+      if (dx) bar.style.transform = `translateX(${Math.round(dx)}px)`
     },
 
     fitSubtitle (el) {
