@@ -46,7 +46,7 @@ import { gradientCss } from './scene/background-gradient.js'
 import { t } from './i18n.js'
 import { mountBigCountdown } from './big-countdown.js'
 import { mountTitlePoster as mountPoster } from './title-poster.js'
-import { QR, layoutTitleQr, drawQrDebug, coverRect, pictureSize } from './title-qr.js'
+import { QR, layoutTitleQr, drawQrDebug, coverRect, pictureSize, relRect } from './title-qr.js'
 import { placeExpectStrip, fitExpectLines } from './title-expect.js'
 
 /**
@@ -240,6 +240,8 @@ Alpine.data('lessonGame', (lesson) => ({
     // The title screen's join QR found no free spot (or is hidden, or this is a phone): the lesson
     // code then stands in the meta row instead, so the code is always on screen.
     titleCodeInMeta:   false,
+    // The expect lines would reach a drawn title's letters: they stand in the strip along the top instead.
+    expectInStrip:     false,
     captionText:       '',
     _cues:             [],
 
@@ -2740,7 +2742,8 @@ Alpine.data('lessonGame', (lesson) => ({
       const host = document.querySelector('[data-title-screen]')
       if (!host) return
       if (!this._titleRo && typeof ResizeObserver === 'function') {
-        this._titleRo = new ResizeObserver(() => this.layoutTitleScreen())
+        // A new size: the expect lines try under the title again before falling back to the strip.
+        this._titleRo = new ResizeObserver(() => { this.expectInStrip = false; this.$nextTick(() => this.layoutTitleScreen()) })
         this._titleRo.observe(host)
         document.fonts?.ready.then(() => this.layoutTitleScreen())
       }
@@ -2765,7 +2768,21 @@ Alpine.data('lessonGame', (lesson) => ({
       const qrOpts = { keepClear, frame, override: this.lesson.qr_position }
       let result = layoutTitleQr(host, qrOpts)
       // With the QR out of its place the badges close up and may meet the expect lines: wrap them, measure again.
-      if (fitExpectLines(host.querySelector('[data-title-expect="lines"]'), host.querySelector('[data-title-cluster]'))) result = layoutTitleQr(host, qrOpts)
+      const lines = host.querySelector('[data-title-expect="lines"]')
+      if (fitExpectLines(lines, host.querySelector('[data-title-cluster]'))) result = layoutTitleQr(host, qrOpts)
+      // Under a drawn title the lines may reach its letters (a short screen): then they go to the
+      // strip along the top, as on a phone, and the screen is measured again with them there.
+      if (poster && !this.expectInStrip && lines?.offsetWidth) {
+        const title = [...(result.keepClear ?? []).filter(k => k.kind === 'letters').map(k => k.rect),
+          ...[...host.querySelectorAll('[data-poster-stage] [data-title-avoid]')].map(el => relRect(el.getBoundingClientRect(), o))]
+        const hit = [...lines.children].map(li => relRect(li.getBoundingClientRect(), o)).filter(r => r.w > 0)
+          .some(r => title.some(t => r.x < t.x + t.w && t.x < r.x + r.w && r.y < t.y + t.h && t.y < r.y + r.h))
+        if (hit) {
+          this.expectInStrip = true
+          this.$nextTick(() => this.layoutTitleScreen())
+          return
+        }
+      }
       this.titleCodeInMeta = !!result.hidden
       if (new URLSearchParams(window.location.search).get('qr_debug') === '1') {
         drawQrDebug(host, result)

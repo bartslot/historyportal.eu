@@ -113,7 +113,9 @@ export function coverRect (viewW, viewH, imgW, imgH) {
 
 // ── Measuring the screen (DOM) ────────────────────────────────────────────────────────────────
 
-const rel = (r, o) => ({ x: r.left - o.left, y: r.top - o.top, w: r.width, h: r.height })
+/** A DOMRect relative to another, as {x, y, w, h}. */
+export const relRect = (r, o) => ({ x: r.left - o.left, y: r.top - o.top, w: r.width, h: r.height })
+const rel = relRect
 const shown = (el) => {
   const r = el.getBoundingClientRect()
   return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden' ? r : null
