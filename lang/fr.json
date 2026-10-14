@@ -1804,5 +1804,9 @@
     "QR position": "Position du QR code",
     "Bottom right": "En bas à droite",
     "Hidden": "Masqué",
-    "What to expect": "Au programme"
+    "What to expect": "Au programme",
+    "Upload your own image": "Importer votre propre image",
+    "Drop a picture here or click to choose one": "Déposez une image ici ou cliquez pour en choisir une",
+    "JPG, PNG or WebP, up to 8 MB": "JPG, PNG ou WebP, jusqu'à 8 Mo",
+    "Choose or upload an image": "Choisir ou importer une image"
 }

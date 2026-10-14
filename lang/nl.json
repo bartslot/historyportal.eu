@@ -1846,5 +1846,9 @@
     "QR position": "Plek QR-code",
     "Bottom right": "Rechtsonder",
     "Hidden": "Verborgen",
-    "What to expect": "Wat je kunt verwachten"
+    "What to expect": "Wat je kunt verwachten",
+    "Upload your own image": "Upload je eigen afbeelding",
+    "Drop a picture here or click to choose one": "Sleep een afbeelding hierheen of klik om er een te kiezen",
+    "JPG, PNG or WebP, up to 8 MB": "JPG, PNG of WebP, tot 8 MB",
+    "Choose or upload an image": "Kies of upload een afbeelding"
 }
