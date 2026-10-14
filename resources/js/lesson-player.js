@@ -2769,6 +2769,7 @@ Alpine.data('lessonGame', (lesson) => ({
       if (this.phase !== 'TITLE_SCREEN') return
       this._fitRun = (this._fitRun ?? 0) + 1
       this._fitPasses = 0
+      this._fitConfirmed = false
       this.expectInStrip = false
       this.titleFit = { ...FIT_START }
       const run = this._fitRun
@@ -2791,6 +2792,20 @@ Alpine.data('lessonGame', (lesson) => ({
       const stage = host.querySelector('[data-poster-stage]')
       const o = host.getBoundingClientRect()
       const strip = host.querySelector('[data-title-expect="strip"]')
+      if (strip && strip !== this._titleStrip && typeof ResizeObserver === 'function') {
+        // The strip's lines re-wrap when their font arrives: the poster under it moves, so
+        // measure again (the same run: a reset here would hide and show its lines in a loop).
+        this._titleStripRo?.disconnect()
+        let height = 0
+        this._titleStripRo = new ResizeObserver(([e]) => {
+          if (Math.abs(e.contentRect.height - height) < 1) return
+          height = e.contentRect.height
+          this._fitConfirmed = false
+          setTimeout(() => this.layoutTitleScreen(), 30)
+        })
+        this._titleStripRo.observe(strip)
+        this._titleStrip = strip
+      }
       if (strip && stage && placeExpectStrip(strip, stage.getBoundingClientRect(), o, poster.expect?.box ?? { x: 0, y: 0, w: 100, h: 0 },
         stage.parentElement, !poster.expect, posterFit(o.width, o.height, poster).top).moved) {
         // The poster now starts under the strip: measure once it has been fitted there.
@@ -2827,15 +2842,24 @@ Alpine.data('lessonGame', (lesson) => ({
 
       // Anything still overlapping (or lines squeezed into a column): the screen gives way one
       // step (title-fit.js nextFit) and is measured again.
-      const hits = collisions(titlePieces(host), result.keepClear ?? [])
+      const pieces = titlePieces(host)
+      const hits = collisions(pieces, result.keepClear ?? [])
       if (poster && lines?.offsetWidth && lines.dataset.cramped) hits.push({ a: 'lines', b: 'cramped' })
       const next = nextFit({ ...this.titleFit, linesInStrip: this.expectInStrip }, hits, { strip: !!poster })
       const debug = new URLSearchParams(window.location.search).get('qr_debug') === '1'
-      if (debug) (window.__titleFitLog ??= []).push({ run, fit: { ...this.titleFit }, hits })
+      if (debug) (window.__titleFitLog ??= []).push({ run, fit: { ...this.titleFit }, hits, pieces: pieces.map(p => p.group).join(), t: Math.round(performance.now()) })
       if (next && (this._fitPasses = (this._fitPasses ?? 0) + 1) <= 3 * FIT.maxShrink) {
         const { linesInStrip, ...fit } = next
         this.expectInStrip = linesInStrip
         this.titleFit = fit
+        this._fitConfirmed = false
+        setTimeout(() => this.layoutTitleScreen(run), 60)
+        return
+      }
+      // Clear once is not settled: a piece just shown again (a reset run) may not be laid out
+      // yet. Measure once more a moment later before calling it done.
+      if (!hits.length && !this._fitConfirmed) {
+        this._fitConfirmed = true
         setTimeout(() => this.layoutTitleScreen(run), 60)
         return
       }
@@ -2889,7 +2913,9 @@ Alpine.data('lessonGame', (lesson) => ({
         const top = document.querySelector('[data-player-chrome="top"]')?.getBoundingClientRect()
         logo.style.top = top?.height ? `${Math.max(96, Math.round(top.bottom - o.top + 8))}px` : ''
         const width = n ? `calc(clamp(18rem, 58vw, 68rem) * ${FIT.logoScale ** n})` : ''
-        moved ||= logo.style.width !== width
+        // Compared by step: the browser rewrites a calc() it is given, so the style never reads back the same.
+        moved ||= (logo.dataset.shrink ?? '0') !== String(n)
+        logo.dataset.shrink = String(n)
         logo.style.width = width
       }
       return moved

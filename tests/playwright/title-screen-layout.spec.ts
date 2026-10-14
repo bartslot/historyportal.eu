@@ -103,9 +103,14 @@ test.describe('title screen layout', () => {
             const r = (window as any).__titleQr;
             return r && r.run === r.latest();
           }, null, { timeout: 30_000 });
-          await settled();
-          await page.waitForTimeout(2000);
-          await settled();
+          const runNow = () => page.evaluate(() => (window as any).__titleQr.run);
+          for (let i = 0, before = -1; i < 6; i++) {
+            await settled();
+            const run = await runNow();
+            if (run === before) break;
+            before = run;
+            await page.waitForTimeout(2000);
+          }
           if (PROOF) fs.mkdirSync(PROOF, { recursive: true });
           const log = await page.evaluate(() => (window as any).__titleFitLog ?? []);
           const m = await measure(page);
