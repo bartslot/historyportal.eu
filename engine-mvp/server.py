@@ -73,10 +73,33 @@ COMMANDS = {
     'camera': {'target': 'str', 'distance?': 'num', 'angle?': 'num', 'height?': 'num'},
     'door': {'id': 'str', 'open': 'num', 'at?': 'num'},
     'play': {},
+    # clay blockout (Gate 1): intent, solved in the page (src/blockout/solve.ts) on the 0.5 m grid
+    'place': {'id': 'str', 'kit?': 'str', 'rel?': 'str', 'of?': 'str', 'and?': 'str', 'side?': 'str', 'gap?': 'num',
+              'offset_r?': 'num', 'offset_f?': 'num', 'x?': 'num', 'z?': 'num', 'on?': 'str', 'face?': 'str',
+              'turn?': 'num', 'height?': 'num'},
+    'pose': {'id': 'str', 'name': 'str'},
+    'frame': {'shot': 'str', 'subjects': 'strs', 'lens?': 'num', 'horizon?': 'num', 'az?': 'num', 'align?': 'str'},
+    'mode': {'name': 'str'},
+    'undo': {},
 }
+# named choices: a command with any other value is dropped whole
+ENUMS = {
+    'rel': {'near', 'behind', 'in_front', 'left_of', 'right_of', 'between'},
+    'side': {'front', 'back', 'left', 'right'},
+    'kit': {'deck', 'rail', 'mast', 'wall', 'barrel', 'crate', 'chest', 'cannon', 'table', 'stool', 'figure', 'marker'},
+    ('pose', 'name'): {'stand', 'point', 'spyglass'},
+    'shot': {'wide', 'three-quarter', 'front', 'profile', 'medium', 'close-up', 'over-shoulder', 'low', 'high'},
+    ('mode', 'name'): {'clay', 'silhouette', 'off'},
+    'align': {'center', 'left-third', 'right-third'},
+}
+MAX_LIST = 8
 RANGES = {'x': (-29, 29), 'z': (-29, 29), 'at': (0, 120), 'start': (0, 120), 'end': (0, 120),
           'degrees': (-720, 720), 'turn': (-360, 360), 'factor': (0.2, 5), 'seconds': (1, 120),
-          'index': (0, 20), 'distance': (2, 60), 'angle': (-360, 360), 'height': (5, 85)}
+          'index': (0, 20), 'distance': (2, 60), 'angle': (-360, 360), 'height': (5, 85),
+          'gap': (0, 5), 'offset_r': (-10, 10), 'offset_f': (-10, 10), 'lens': (12, 200), 'horizon': (0.05, 0.95),
+          'az': (-360, 360)}
+# the same name, another meaning per command: height of a placed piece is metres, of the camera degrees
+RANGES_BY_CMD = {('place', 'height'): (0.3, 4)}
 
 SCENE_RULES = """World: flat ground from -29 to 29 on x and z, metres, y is up. Camera looks from -z towards +z by default.
 Time is in seconds on one timeline. Objects keep their position between keyframes; movement between two
@@ -96,6 +119,21 @@ Commands (JSON objects, "cmd" plus arguments):
 - {"cmd":"camera","target":id,"distance":n?,"angle":deg?,"height":deg?}  frame an object; height 5-85 degrees above the ground
 - {"cmd":"door","id":s,"open":1|0,"at":t?}            open (1) or close (0) a placed door or gate at time t
 - {"cmd":"play"}                                     start playback at the end
+Clay blockout (a still shot from kit pieces; positions are solved on a 0.5 m grid, overlaps are refused and
+reported with a free spot, never pushed):
+- {"cmd":"place","id":s,"kit":k?,"rel":r?,"of":id?,"and":id?,"side":front|back|left|right?,"gap":m?,
+   "offset_r":m?,"offset_f":m?,"x":n?,"z":n?,"on":id?,"face":id?,"turn":deg?,"height":m?}
+   add or re-place one piece; kit: deck rail mast wall barrel crate chest cannon table stool figure marker;
+   rel near|behind|in_front|left_of|right_of (in the OTHER piece's own frame) of an id, or between "of" and "and";
+   x,z instead of rel = an exact spot; on = stand on that piece; face = turn to look at a piece or marker.
+   Every other piece stays where it is (a teacher's hand edits are kept).
+- {"cmd":"pose","id":s,"name":stand|point|spyglass}
+- {"cmd":"frame","shot":wide|three-quarter|front|profile|medium|close-up|over-shoulder|low|high,
+   "subjects":[id...],"lens":mm?,"horizon":0..1?,"az":deg?,"align":center|left-third|right-third?}
+   camera from the subjects; horizon = fraction down the frame (default 2/3, the lower third); az = degrees around
+   the subjects from their front towards their right; align = where across the frame they sit
+- {"cmd":"mode","name":clay|silhouette|off}        grey clay, black storyboard silhouettes, or the normal look
+- {"cmd":"undo"}                                    undo the last change (yours or the teacher's)
 
 Doors and gates only exist on a wall: add them next to a house/town (they snap to the nearest wall) and
 only after that building exists. They start closed.
@@ -127,10 +165,19 @@ def validate(commands):
                 except (TypeError, ValueError):
                     ok = False
                     continue
-                lo, hi = RANGES.get(name, (-1e4, 1e4))
+                lo, hi = RANGES_BY_CMD.get((c['cmd'], name), RANGES.get(name, (-1e4, 1e4)))
                 v = max(lo, min(hi, v))
+            elif typ == 'strs':
+                if not isinstance(v, list) or not v:
+                    ok = False
+                    continue
+                v = [str(x)[:80] for x in v[:MAX_LIST]]
             else:
                 v = str(v)[:80]
+            allowed = ENUMS.get((c['cmd'], name), ENUMS.get(name) if name != 'name' else None)
+            if allowed is not None and v not in allowed:
+                ok = False
+                continue
             out[name] = v
         (clean if ok else dropped).append(out if ok else c)
     return clean, dropped

@@ -11,7 +11,9 @@ export type Box = { min: V3; max: V3 }
 export type Subject = { id: string; box: Box; yaw: number }
 export const PRESETS = ['wide', 'three-quarter', 'front', 'profile', 'medium', 'close-up', 'over-shoulder', 'low', 'high'] as const
 export type Preset = (typeof PRESETS)[number]
-export type Shot = { shot: Preset; subjects: string[]; lens_mm?: number; horizon?: number; az?: number }   // az: overrides the preset's angle around the subjects
+// az: overrides the preset's angle around the subjects; align: where across the frame the subjects sit
+export type Align = 'center' | 'left-third' | 'right-third'
+export type Shot = { shot: Preset; subjects: string[]; lens_mm?: number; horizon?: number; az?: number; align?: Align }
 export type Cam = { position: V3; target: V3; fovY: number; aspect: number }
 
 export const LOWER_THIRD = 2 / 3
@@ -129,9 +131,14 @@ export function frame(shot: Shot, subjects: Subject[], aspect = 16 / 9): Cam {
   const dz = fz * Math.cos(a) + rz * Math.sin(a)
   const eye = floor + (spec.eye === 'eyes' ? tall * 0.93 : spec.eye)
   const h = shot.horizon ?? LOWER_THIRD
+  // subjects on a third: turn the view sideways (left-handed: a positive turn about +Y looks to the right)
+  const uWant = shot.align === 'left-third' ? 1 / 3 : shot.align === 'right-third' ? 2 / 3 : 0.5
+  const side = Math.atan((1 - 2 * uWant) * Math.tan(fovY / 2) * aspect)
   const at = (dist: number): Cam => {
     const pos: V3 = [cx + dx * dist, eye, cz + dz * dist]
-    const look = norm([-dx, 0, -dz])
+    const lx = -dx * Math.cos(side) + -dz * Math.sin(side)
+    const lz = -dz * Math.cos(side) - -dx * Math.sin(side)
+    const look = norm([lx, 0, lz])
     let tilt: number
     if (spec.horizonRule) tilt = Math.atan((2 * h - 1) * Math.tan(fovY / 2))
     else tilt = Math.atan2(floor + tall / 2 - eye, dist)                      // high angle: aim at the subjects

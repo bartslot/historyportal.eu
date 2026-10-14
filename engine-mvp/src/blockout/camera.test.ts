@@ -43,6 +43,15 @@ describe('frame (camera presets)', () => {
     expect(project(cam, [0, 1.8, 0]).v).toBeGreaterThan(0)
   })
 
+  it('puts the subjects on the left or right third when asked, without cutting them', () => {
+    const s = fig('a', 0, 0)
+    for (const [align, u] of [['left-third', 1 / 3], ['right-third', 2 / 3]] as const) {
+      const cam = frame({ shot: 'three-quarter', subjects: ['a'], align }, [s])
+      expect(project(cam, [0, 0.9, 0]).u).toBeCloseTo(u, 1)
+      expect(inside(cam, s.box)).toBe(true)
+    }
+  })
+
   it('a wide shot keeps the figure small', () => {
     const s = fig('a', 0, 0)
     const cam = frame({ shot: 'wide', subjects: ['a'] }, [s])
@@ -68,7 +77,21 @@ describe('readback', () => {
     const r = readback(cam, [item(a), wall, crate])
     expect(r.problems.some((p) => p.startsWith('hidden: wall covers'))).toBe(true)
     expect(r.problems.some((p) => p.startsWith('floating: crate'))).toBe(true)
+    // a low rail across the legs is a framing, not hiding
+    const rail: Item = { id: 'rail', kit: 'rail', box: { min: [-2, 0, 1], max: [2, 0.8, 1.2] }, yaw: 0, floorY: 0, subject: false, figure: false }
+    expect(readback(cam, [item(a), rail]).problems.filter((p) => p.startsWith('hidden'))).toEqual([])
     expect(r.text).toContain('horizon: 67 % down')
+  })
+
+  it('stays a short text on a crowded set: subjects first, then the largest pieces, the rest counted', () => {
+    const a = fig('a', 0, 0)
+    const cam = frame({ shot: 'wide', subjects: ['a'] }, [a])
+    const crates: Item[] = Array.from({ length: 500 }, (_, i) => ({ id: 'c' + i, kit: 'crate', box: { min: [-10 + (i % 25), 0, -20 - Math.floor(i / 25)], max: [-9.2 + (i % 25), 0.7, -19.2 - Math.floor(i / 25)] }, yaw: 0, floorY: 0, subject: false, figure: false }))
+    const r = readback(cam, [item(a), ...crates])
+    expect(r.text.split('\n').filter((l) => /^  \S+ \[/.test(l))).toHaveLength(40)
+    expect(r.text).toMatch(/\+461 more pieces/)
+    expect(r.text).toContain('  a [figure]')
+    expect(r.text.length).toBeLessThan(5000)
   })
 
   it('passes the solver\'s refusals through', () => {

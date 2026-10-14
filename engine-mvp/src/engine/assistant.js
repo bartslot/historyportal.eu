@@ -18,6 +18,8 @@
       length: mvp.getLength(),
       sky: mvp.getSkyIndex(),
       catalog: mvp.CATALOG.filter((c) => !c.image).map((c) => c.name), // 3D items only: 240 images would flood the prompt
+      // a clay blockout: its pieces' specs and the composition readback (text, not a picture)
+      blockout: mvp.blockout && mvp.blockout.specs().length ? { specs: mvp.blockout.specs(), readback: mvp.blockout.read().text } : null,
       objects: mvp.actors.filter((a) => !a.metadata.scenery).map((a) => {
         const st = mvp.stateAt(a, mvp.getFrame());
         const yaw = st.rotation.toEulerAngles().y;
@@ -132,6 +134,41 @@
           cam.beta = Math.PI / 2 - (c.height != null ? c.height : 22) * Math.PI / 180;
           if (c.angle != null) cam.alpha = -Math.PI / 2 + c.angle * Math.PI / 180;
           done.push('camera on ' + t.name);
+          break;
+        }
+        // ---- clay blockout (Gate 1): intent, solved in the page; each one op in the undo history ----
+        case 'place': {
+          const spec = { id: c.id };
+          if (c.kit) spec.kit = c.kit;
+          if (c.rel === 'between' && c.of && c.and) spec.place = { between: [c.of, c.and] };
+          else if (c.rel && c.of) spec.place = { [c.rel]: c.of, side: c.side, gap: c.gap };
+          else if (c.x != null && c.z != null) spec.at = [c.x, c.z];
+          if (spec.place && (c.offset_r != null || c.offset_f != null)) spec.place.offset = [c.offset_r || 0, c.offset_f || 0];
+          if (spec.place) Object.keys(spec.place).forEach((k) => spec.place[k] === undefined && delete spec.place[k]);
+          if (c.on) spec.on = c.on;
+          if (c.face) spec.face = c.face;
+          if (c.turn != null) spec.turn = c.turn;
+          if (c.height != null) spec.height_m = c.height;
+          const known = mvp.blockout.specs().find((x) => x.id === c.id);
+          if (!spec.kit && !known) { done.push('skipped place: ' + c.id + ' is new, give its kit'); break; }
+          const r = await mvp.blockout.place(spec);
+          const refused = r.problems.filter((p) => p.includes(c.id + ' '));
+          done.push(refused.length ? refused.join('; ') : 'placed ' + c.id);
+          break;
+        }
+        case 'pose':
+          done.push(mvp.blockout.pose(c.id, c.name) ? c.id + ' ' + c.name : 'skipped pose: no blockout figure ' + c.id);
+          break;
+        case 'frame':
+          mvp.blockout.frame({ shot: c.shot, subjects: c.subjects, lens_mm: c.lens, horizon: c.horizon, az: c.az, align: c.align });
+          done.push('framed ' + c.shot + ' on ' + c.subjects.join(', '));
+          break;
+        case 'mode':
+          done.push('mode ' + mvp.blockout.mode(c.name));
+          break;
+        case 'undo': {
+          const op = mvp.blockout.undo();
+          done.push(op ? 'undid ' + op.label : 'nothing to undo');
           break;
         }
         case 'play':

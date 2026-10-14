@@ -31,6 +31,7 @@ const FLOAT_M = 0.05                // a piece more than this above its floor is
 const MIN_FIGURE = 0.15             // a figure smaller than this share of the frame height reads as a speck
 const OUT_OF_FRAME = 0.2            // a subject less visible than this is out of frame
 const HIDDEN = 0.4                  // a nearer piece covering this share of a subject hides it
+const MAX_LISTED = 40               // pieces listed by name: subjects first, then the largest in frame
 const pct = (v: number) => Math.round(v * 100)
 const f2 = (v: number) => Math.round(v * 100) / 100
 
@@ -65,9 +66,12 @@ export function readback(cam: Cam, items: Item[], solverProblems: Problem[] = []
     if (it.subject && p.visible < OUT_OF_FRAME) problems.push(`out of frame: subject ${it.id} is ${pct(p.visible)} % visible`)
     if (it.figure && p.frame && p.frame[3] - p.frame[1] < MIN_FIGURE && p.visible > 0) problems.push(`small: figure ${it.id} is ${pct(p.frame[3] - p.frame[1])} % of the frame height`)
   }
-  // a subject hidden by a nearer piece
+  // a subject hidden by a nearer piece: for a figure only its upper half counts (a rail across the legs is a framing)
   for (const s of items.filter((i) => i.subject)) {
-    const ps = byId.get(s.id)!
+    const p0 = byId.get(s.id)!
+    if (!p0.frame || area(p0.frame) <= 0) continue
+    const upper = s.figure ? frameOf(cam, { min: [s.box.min[0], (s.box.min[1] + s.box.max[1]) / 2, s.box.min[2]], max: s.box.max }) : null
+    const ps = upper ? { ...p0, frame: upper.full as Framed['frame'] } : p0
     if (!ps.frame || area(ps.frame) <= 0) continue
     for (const o of pieces) {
       if (o.id === s.id || !o.frame || o.depth < 0 || o.depth >= ps.depth || o.kit === 'marker') continue
@@ -92,13 +96,20 @@ export function readback(cam: Cam, items: Item[], solverProblems: Problem[] = []
     return { id: s.id, eyes: [f2(q.u), f2(q.v)] as [number, number], nearest: [f2(near[0]), f2(near[1])] as [number, number], off: f2(Math.hypot(near[0] - q.u, near[1] - q.v)) }
   })
   const horizon = horizonV(cam)
+  // a crowded set stays a short text: subjects, then the largest pieces in frame
+  const subjectIds = new Set(items.filter((i) => i.subject).map((i) => i.id))
+  const size = (p: Framed) => (p.frame ? area(p.frame) : 0)
+  const listed = [...pieces].sort((a, b) => Number(subjectIds.has(b.id)) - Number(subjectIds.has(a.id)) || size(b) - size(a)).slice(0, MAX_LISTED)
+  const listedIds = new Set(listed.map((p) => p.id))
+  const unseen = pieces.filter((p) => !listedIds.has(p.id) && p.visible === 0).length
   const text = [
     `camera at [${cam.position.map(f2).join(', ')}] looking at [${cam.target.map(f2).join(', ')}], fov ${Math.round((cam.fovY * 180) / Math.PI)} deg`,
     `horizon: ${horizon === null ? 'not in frame' : `${pct(horizon)} % down`}`,
     `subjects left to right: ${order.join(', ') || 'none in frame'}`,
     ...thirds.map((t) => `  ${t.id}: eyes at (${t.eyes.join(', ')}), nearest third (${t.nearest.map((v) => Math.round(v * 3) + '/3').join(', ')}) ${t.off} away`),
     'pieces (frame u0 v0 u1 v1 | visible | cut | facing | floor):',
-    ...pieces.map((p) => `  ${p.id} [${p.kit}] ${p.frame ? p.frame.join(' ') : '-'} | ${pct(p.visible)} % | ${p.cut.join('+') || '-'} | ${p.facing} deg | ${p.onFloor ? 'on floor' : 'FLOATING'}`),
+    ...listed.map((p) => `  ${p.id} [${p.kit}] ${p.frame ? p.frame.join(' ') : '-'} | ${pct(p.visible)} % | ${p.cut.join('+') || '-'} | ${p.facing} deg | ${p.onFloor ? 'on floor' : 'FLOATING'}`),
+    ...(pieces.length > listed.length ? [`  +${pieces.length - listed.length} more pieces (${pieces.length - listed.length - unseen} in frame, ${unseen} out of it)`] : []),
     problems.length ? 'problems:' : 'problems: none',
     ...problems.map((p) => '  ' + p),
   ].join('\n')

@@ -10,6 +10,22 @@ assert s.may_change(s.MEMBERS['set'], False), 'the set designer owns the stage'
 assert not s.may_change(s.MEMBERS['writer'], False), 'the writer changes nothing unless asked directly'
 assert s.may_change(s.MEMBERS['writer'], True)
 assert not s.may_change(s.MEMBERS['director'], True), 'the director only reviews'
+# clay blockout commands: enums, lists and per-command ranges
+clean, dropped = s.validate([
+    {'cmd': 'place', 'id': 'tasman', 'kit': 'figure', 'rel': 'near', 'of': 'rail', 'gap': 99, 'height': 9},
+    {'cmd': 'place', 'id': 'x', 'kit': 'dragon'},
+    {'cmd': 'place', 'id': 'y', 'rel': 'inside', 'of': 'rail'},
+    {'cmd': 'pose', 'id': 'tasman', 'name': 'spyglass'},
+    {'cmd': 'pose', 'id': 'tasman', 'name': 'backflip'},
+    {'cmd': 'frame', 'shot': 'three-quarter', 'subjects': ['tasman', 'visscher'], 'horizon': 2},
+    {'cmd': 'frame', 'shot': 'wide', 'subjects': 'tasman'},
+    {'cmd': 'mode', 'name': 'silhouette'},
+    {'cmd': 'undo'},
+])
+assert [c['cmd'] for c in clean] == ['place', 'pose', 'frame', 'mode', 'undo'], clean
+assert clean[0]['gap'] == 5 and clean[0]['height'] == 4, 'gap clamped to 5 m, a piece height to 4 m (not camera degrees)'
+assert clean[2]['horizon'] == 0.95 and clean[2]['subjects'] == ['tasman', 'visscher']
+assert len(dropped) == 4, dropped
 print('server guards ok')
 
 # ---- claude CLI, schemas, skills, JEV: all offline ----

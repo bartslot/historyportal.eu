@@ -17,6 +17,7 @@ if (!url || !out) {
   process.exit(2)
 }
 const [width, height] = size.split('x').map(Number)
+const BLOCKOUT_WAIT_MS = 120000
 
 const browser = await chromium.launch({ args: ['--mute-audio', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] })
 try {
@@ -31,6 +32,11 @@ try {
   page.on('pageerror', (e) => errors.push(e.message))
   await page.goto(url)
   await page.waitForTimeout(Number(wait) * 1000)
+  if (/[?&]blockout=/.test(url)) {   // a blockout shot: wait until it is built, however slow the boot (25-40 s seen)
+    await page.waitForFunction(() => window.__blockoutReady || window.__blockoutError, null, { timeout: BLOCKOUT_WAIT_MS, polling: 500 })
+    const err = await page.evaluate(() => window.__blockoutError)
+    if (err) throw new Error('blockout: ' + err)
+  }
   // the canvas alone, at the frame's size: the camera renders at that aspect, no stage or panels around it
   await page.addStyleTag({ content: `#c { position: fixed !important; left: 0; top: 0; width: ${width}px !important; height: ${height}px !important; z-index: 9999 }` })
   const shoot = (spec) => page.evaluate(async (spec) => {

@@ -1,5 +1,5 @@
 {
-  "note": "Bart's Figma panel 2321:5151 as a clay blockout: Tasman at the starboard rail with the spyglass on the coast, Visscher behind him, a sailor further along the rail pointing. Panel: horizon 51.55 % down, 40 deg vertical view (33 mm).",
+  "note": "Bart's Figma panel 2321:5151 as a clay blockout: on deck by the starboard rail (running along the view), the coast off to the right; Visscher behind Tasman's right shoulder, nearer the camera; a sailor further forward at the rail, pointing; a barrel by the rail. Panel: horizon 51.55 % down, 40 deg vertical view (33 mm), the people on the left third. Camera found by readback text alone (no screenshots).",
   "objects": [
     {
       "id": "deck",
@@ -13,18 +13,18 @@
       "id": "rail",
       "kit": "rail",
       "at": [
-        0,
-        5
+        2.8,
+        3.5
       ],
       "on": "deck",
-      "face": 180
+      "face": -90
     },
     {
       "id": "coast",
       "kit": "marker",
       "at": [
-        25,
-        80
+        60,
+        40
       ]
     },
     {
@@ -50,13 +50,13 @@
       "on": "deck",
       "place": {
         "behind": "tasman",
-        "gap": 0.6,
+        "gap": 0.5,
         "offset": [
-          -0.9,
+          0.6,
           0
         ]
       },
-      "face": "tasman"
+      "face": "coast"
     },
     {
       "id": "sailor",
@@ -68,7 +68,7 @@
         "side": "front",
         "gap": 0.3,
         "offset": [
-          -1.5,
+          2.2,
           0
         ]
       },
@@ -83,20 +83,21 @@
         "side": "front",
         "gap": 0.3,
         "offset": [
-          2.2,
+          -1.5,
           0
         ]
       }
     }
   ],
   "camera": {
-    "shot": "three-quarter",
+    "shot": "medium",
     "subjects": [
       "tasman",
       "visscher"
     ],
     "lens_mm": 33,
     "horizon": 0.5155,
-    "az": 150
+    "az": 100,
+    "align": "left-third"
   }
 }

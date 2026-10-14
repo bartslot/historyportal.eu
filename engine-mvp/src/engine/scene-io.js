@@ -8,13 +8,14 @@
 import * as TL from '../timeline/model';
 import { ADVANCED } from '../scene-controls';
 
-export const SCENE_VERSION = 1;
+export const SCENE_VERSION = 2;   // 2: a clay blockout (kit pieces as specs, the shot, the mode); 1 still loads
 
 (() => {
   const mvp = window.__mvp;
   const camera = mvp.camera;
   const SETTINGS = ['lookPreset', 'lookTime', 'cloudAmount', ...ADVANCED.flatMap((g) => g.controls.map((c) => c.id))];
-  const stored = (a) => !a.isDisposed() && !a.metadata.cloud;
+  // blockout pieces are saved as their specs (blockout.serialize), not as catalog actors
+  const stored = (a) => !a.isDisposed() && !a.metadata.cloud && !(mvp.blockout && mvp.blockout.isPiece(a));
 
   function readSettings() {
     const out = {};
@@ -63,11 +64,13 @@ export const SCENE_VERSION = 1;
       settings: readSettings(),
       camera: { alpha: camera.alpha, beta: camera.beta, radius: camera.radius, target: camera.target.asArray() },
       shots: mvp.shots.list().map((s) => ({ alpha: s.alpha, beta: s.beta, radius: s.radius, target: s.target.asArray(), image: s.image })),
+      blockout: mvp.blockout ? mvp.blockout.serialize() : null,
     };
   }
 
   function clear() {
     mvp.select(null);
+    if (mvp.blockout) mvp.blockout.clear();   // first: its pieces share materials deleteActor would dispose
     [...mvp.actors].filter((a) => !a.isDisposed() && !a.metadata.cloud && !a.parent).forEach((a) => mvp.deleteActor(a));
     [...mvp.actors].filter((a) => !a.isDisposed() && !a.metadata.cloud).forEach((a) => mvp.deleteActor(a));
     TL.setTracks([], { time: 0, selected: [], hidden: {} });
@@ -78,7 +81,7 @@ export const SCENE_VERSION = 1;
 
   /** Replace the scene with `doc`. Items no longer in the catalog are skipped and reported. */
   async function load(doc) {
-    if (!doc || doc.version !== SCENE_VERSION) throw new Error('This scene was saved by another version of the studio');
+    if (!doc || !(doc.version === 1 || doc.version === SCENE_VERSION)) throw new Error('This scene was saved by another version of the studio');
     clear();
     if (doc.settings) writeSettings(doc.settings);
     if (doc.sky) mvp.setSky(doc.sky);
@@ -121,6 +124,7 @@ export const SCENE_VERSION = 1;
       Object.assign(camera, { alpha: doc.camera.alpha, beta: doc.camera.beta, radius: doc.camera.radius });
     }
     mvp.shots.set(doc.shots ?? []);
+    if (doc.blockout && mvp.blockout) await mvp.blockout.load(doc.blockout);
     mvp.select(null);
     return { missing };
   }

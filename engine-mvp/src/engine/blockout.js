@@ -24,6 +24,7 @@ const SLATE = [0.36, 0.40, 0.45];          // the storyboard frame: a mid slate,
 const RIMS = ['#e0a050', '#5fb3d9', '#9bd16b', '#e07a8a', '#c49be0', '#e8d26a'];   // one rim per character
 const CLAY_BASE = 0.55;                    // clay = an unlit base + a little light for the form (a matcap's job)
 const CLAY_LIT = 0.45;
+const SET_INK = 0.45;                      // silhouette set pieces: this share of the slate
 const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out of sight
 
 (() => {
@@ -48,6 +49,9 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
   inkMat.disableLighting = true;
   inkMat.emissiveColor = BABYLON.Color3.Black();
   inkMat.diffuseColor = BABYLON.Color3.Black();
+  const setInkMat = new BABYLON.StandardMaterial('blockout silhouette set', scene);   // the set: darker than the
+  setInkMat.disableLighting = true;                                                    // frame, lighter than people
+  setInkMat.emissiveColor = BABYLON.Color3.FromArray(SLATE.map((v) => v * SET_INK));
 
   // ---------- the kit ----------
   function boxAt(name, w, h, d, x = 0, y = h / 2, z = 0) {
@@ -90,7 +94,7 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
     const m = parts.length > 1 ? BABYLON.Mesh.MergeMeshes(parts, true, true) : parts[0];
     if (m) {
       m.name = 'kit ' + k.id;
-      m.material = clayMat;
+      m.material = currentMode === 'silhouette' ? setInkMat : clayMat;
       m.bakeCurrentTransformIntoVertices();   // geometry with its bottom centre at the origin
       m.isPickable = false;
       m.position.y = SOURCE_PARK_Y;            // the source itself waits out of sight; its instances are the pieces
@@ -131,7 +135,7 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
       fitFigure(root, k.size[1]);
       root.metadata.rim = RIMS[rim++ % RIMS.length];
     }
-    if (meshes.length) mvp.addHitbox(root);
+    if (groups.length) mvp.addHitbox(root);   // thin figures get a grab box; clay pieces are picked as themselves
     root.metadata.footprint = k.footprint;
     root.metadata.asset = { snaps_to: 'floor', footprint: k.footprint, turn_step: 45, forward: 0 };
     actorOf.set(id, root);
@@ -150,7 +154,11 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
     if (a && !a.isDisposed()) {
       // deleteActor disposes materials too: the clay, the silhouette ink and the mannequin's own materials are
       // shared by every piece, so let go of them first (losing the clay turned the whole scene black)
-      a.getChildMeshes().forEach((m) => { saved.mats.delete(m); m.material = null; });
+      // an InstancedMesh answers with its SOURCE's material, so dispose instances ourselves, materials kept
+      a.getChildMeshes().forEach((m) => {
+        saved.mats.delete(m);
+        if (m instanceof BABYLON.InstancedMesh) m.dispose(false, false); else m.material = null;
+      });
       mvp.deleteActor(a);
     }
     actorOf.delete(id);
@@ -342,6 +350,8 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
   const sun = () => scene.lights.find((l) => l instanceof BABYLON.DirectionalLight);
   const ground = () => scene.getMeshByName('ground');
   function paint(a) {
+    // clouds are hidden in these modes and rebuilt (disposed with their materials) when the settings load
+    if (a.metadata && a.metadata.cloud) return;
     a.getChildMeshes().forEach((m) => {
       if (m.name === 'hitbox' || m instanceof BABYLON.InstancedMesh) return;
       if (!saved.mats.has(m)) saved.mats.set(m, m.material);
@@ -394,7 +404,7 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
       g.material = gm;
     }
     mvp.actors.filter((a) => !a.isDisposed()).forEach(paint);
-    sources.forEach((s) => { if (s) s.material = m === 'silhouette' ? inkMat : clayMat; });
+    sources.forEach((s) => { if (s) s.material = m === 'silhouette' ? setInkMat : clayMat; });
     return m;
   }
 
@@ -431,7 +441,16 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
     if (data.mode) mode(data.mode);
   }
 
+  function clear() {
+    [...actorOf.keys()].forEach(remove);
+    specs.clear();
+    placedOf.clear();
+    shot = null;
+    lastProblems = [];
+  }
+
   mvp.blockout = {
+    clear, isPiece: (a) => !!a && actorOf.get(a.metadata && a.metadata.id) === a,
     apply, place, pose: setPose, frame: (s) => { frame(s); return read(); }, read, mode, history,
     undo: () => history.undo(), redo: () => history.redo(), serialize, load,
     specs: () => [...specs.values()].map((s) => structuredClone(s)),
