@@ -1,17 +1,22 @@
 """An archetype figure from a basic mannequin, no modelling and no generator (Bart 2026-10-14: "these are so
 basic that any basic mesh will do"): the body itself carries the costume.
 
-    Blender -b --python archetype.py -- base_lowpoly.fbx FACES_DIR OUT_DIR [captain]
+    Blender -b --python archetype.py -- --make-base base_lowpoly.fbx base_v1.fbx     (once per base version)
+    Blender -b --python archetype.py -- base_v1.fbx FACES_DIR OUT_DIR [captain]
+
+The base is FROZEN: prepared once (standard flat face + face-decal UV map), then every figure loads it unchanged.
+Clothes are separate garment meshes (copies of the surface they cover, pushed out, same rig weights); the skin under
+them is only masked at render time.
 
 Base = the pipeline's low-poly body (baserig_mixamo.py ... 0: Blend Swap "Rigged Man" by brightonpiers, CC-BY 3.0,
 ~1.4k quads on the Mixamo skeleton). Tried before it: the MPFB body (sculpted face, nipples and toes drew lines
 through every costume) and Mixamo's Y Bot (separate muscular armour plates broke apart under the coat).
 
-  colour zones   every body face takes the zone of its strongest bone (head = skin, upper legs = breeches...),
+  colour zones   every base face belongs to the zone of its strongest bone (head = skin, upper legs = breeches...),
                  one flat dye per zone: a colourway is only a list of colours
-  shape          the body is pushed out along its normals per zone (bone-weighted, so seams stay smooth), plus a
-                 few plain rings for the silhouette: coat skirt, collar, cuffs, belt, boot tops
-  face           flattened to a smooth egg, then the 2D face decal (face_decal.py) projected on it;
+  garments       per zone a copy of the base surface pushed out (coat, breeches, boots, hair), plus a few plain
+                 rings for the silhouette: coat skirt, collar, cuffs, belt, boot tops
+  face           (in the base) flattened to a smooth egg; the 2D face decal (face_decal.py) projected on it;
                  hair = a painted zone on the head plus a ponytail
   hat            two plain shapes on the head bone, sized from the head (on/off)
 
@@ -43,7 +48,7 @@ COLLAR_CLEAR_M = 0.012         # collar edge this far outside the shoulders
 SHOULDER_MAX_M = 0.17          # half-width limit for the collar's shoulder measure (beyond: the T-posed arm)
 PONYTAIL_M = 0.2
 SKIRT_CLEAR_M = 0.02        # skirt top beyond the coated waist
-CUFF_CLEAR_M = 0.012        # cuffs and boot tops beyond the measured girth
+CUFF_CLEAR_M = 0.02         # cuffs and boot tops beyond the measured girth
 TORSO_MAX_M = 0.25          # half-width limit for torso sections (beyond it are the T-posed arms)
 FACE_RELAX = 30             # passes spreading the flattened face's folded vertices
 FACE_WIDTH = 0.75           # the flattened face spans this fraction of the head's half-width (socket rims too)
@@ -55,7 +60,6 @@ HAIRLINE_M = 0.05           # hair starts this far above the eye line on the for
 CAPTAIN_ZONES = [("Head", "skin"), ("Neck", "skin"), ("Hand", "skin"), ("Arm", "coat"), ("Shoulder", "coat"),
                  ("Spine", "coat"), ("Hips", "breeches"), ("UpLeg", "breeches"), ("Leg", "boots"),
                  ("Foot", "boots"), ("Toe", "boots")]
-ZONE_ORDER = ["skin", "coat", "breeches", "boots", "hair"]   # the body's material slots
 PUSH_M = {"skin": 0.0, "coat": 0.012, "breeches": 0.028, "boots": 0.012, "hair": 0.006}
 COLOURWAYS = [   # sRGB: coat, breeches, boots, collar (collar + cuffs), belt, skin, hair, hat, feather
     {"coat": "#2f5596", "breeches": "#45484f", "boots": "#7a4a2a", "collar": "#f2efe6", "belt": "#6b4426",
@@ -142,29 +146,51 @@ def flatten_face(body):
     me.update()
 
 
-def push_zones(body, zones):
-    """Clothes as thickness: every vertex moves out along its normal by its zones' weighted push."""
-    me = body.data
-    me.update()
-    for v, w in zip(me.vertices, zones):
-        total = sum(w.values()) or 1.0
-        d = sum(PUSH_M.get(z, 0) * x for z, x in w.items()) / total
-        v.co += v.normal * d
-
-
-def zone_materials(body, zones):
-    """One material slot per zone; each face takes the zone most of its vertices lean to."""
-    order = ZONE_ORDER
-    me = body.data
-    me.materials.clear()
-    for z in order:
-        me.materials.append(bpy.data.materials.new(z))
-    for f in me.polygons:
+def face_zones(body, zones):
+    """Per face: the zone most of its vertices lean to."""
+    out = []
+    for f in body.data.polygons:
         score = {}
         for i in f.vertices:
             for z, x in zones[i].items():
                 score[z] = score.get(z, 0) + x
-        me.polygons[f.index].material_index = order.index(max(score, key=score.get)) if score else 1
+        out.append(max(score, key=score.get) if score else "skin")
+    return out
+
+
+def garments(body, zones):
+    """The clothes as their OWN meshes: per zone a copy of the base surface it covers, pushed out along its normals;
+    same vertices, so the same rig weights. The base body is never edited: the skin under the clothes is only
+    hidden at render time (a MASK modifier on the vertices that have no bare skin face left)."""
+    per_face = face_zones(body, zones)
+    made = []
+    for zone in sorted(set(per_face) - {"skin"}):
+        g = body.copy()
+        g.data = body.data.copy()
+        g.name = f"garment {zone}"
+        for c in body.users_collection:
+            c.objects.link(g)
+        for m in [m for m in g.modifiers if m.type != "ARMATURE"]:
+            g.modifiers.remove(m)
+        bm = bmesh.new()
+        bm.from_mesh(g.data)
+        bm.faces.ensure_lookup_table()
+        bmesh.ops.delete(bm, geom=[f for f in bm.faces if per_face[f.index] != zone], context="FACES")
+        bm.normal_update()
+        for v in bm.verts:
+            v.co += v.normal * PUSH_M[zone]
+        bm.to_mesh(g.data)
+        bm.free()
+        g.data.materials.clear()
+        g["zone"] = zone
+        made.append(g)
+    bare = {i for f, z in zip(body.data.polygons, per_face) if z == "skin" for i in f.vertices}
+    covered = body.vertex_groups.new(name="covered by clothes")
+    covered.add([v.index for v in body.data.vertices if v.index not in bare], 1.0, "REPLACE")
+    mask = body.modifiers.new("hide skin under clothes", "MASK")
+    mask.vertex_group = covered.name
+    mask.invert_vertex_group = True
+    return made
 
 
 def face_uv(body, eye_z):
@@ -369,9 +395,9 @@ def dress(objs, colours, face_png):
     for o in objs:
         if o.type != "MESH" or o.name.endswith(("ink hull", "normal proxy", "face sphere")):
             continue
-        if o.name == "Human":                                  # slots in ZONE_ORDER; slot 0 (skin) carries the face
-            for i, slot in enumerate(o.material_slots):
-                slot.material = face_material(lin["skin"], face_png) if i == 0 else al.cel_material(None, lin[ZONE_ORDER[i]])
+        if o.name == "Human":                                  # the bare base: skin with the 2D face
+            o.data.materials.clear()
+            o.data.materials.append(face_material(lin["skin"], face_png))
         elif "zone" in o:
             o.data.materials.clear()
             o.data.materials.append(al.cel_material(None, lin[o["zone"]]))
@@ -418,13 +444,10 @@ def base_body(new, rig):
     for o in meshes:
         o.select_set(True)
     bpy.context.view_layer.objects.active = meshes[0]
-    bpy.ops.object.join()
+    if len(meshes) > 1:
+        bpy.ops.object.join()
     body = bpy.context.active_object
     body.name = "Human"
-    bpy.ops.object.mode_set(mode="EDIT")
-    bpy.ops.mesh.select_all(action="SELECT")
-    bpy.ops.mesh.remove_doubles(threshold=0.0005)       # the joint pieces meet the surface: one skin to push out
-    bpy.ops.object.mode_set(mode="OBJECT")
     return body
 
 
@@ -463,22 +486,37 @@ def upright(rig):
     print(f"UPRIGHT spine turned {math.degrees(now - want):.1f} deg; neck {neck.y - hips.y:+.3f} m from above the hips")
 
 
+def prepare_base(src, out):
+    """ONCE per base version: the standard face (flattened to an egg) and the face-decal UV map, then exported.
+    Every figure loads this file and never edits it (Bart 2026-10-14: the base must not be misformed per figure)."""
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    new = _import(src)
+    rig = next(o for o in new if o.type == "ARMATURE")
+    body = base_body(new, rig)
+    flatten_face(body)
+    face_uv(body, eye_line(rig))
+    bpy.ops.object.select_all(action="DESELECT")
+    rig.select_set(True)
+    body.select_set(True)
+    bpy.ops.export_scene.fbx(filepath=str(out), use_selection=True, add_leaf_bones=False, bake_anim=False)
+    print("BASE ok", out, len(body.data.polygons), "faces")
+
+
 def load(path):
+    """The frozen base (prepare_base output) + this figure's garments, rings and hat, posed."""
     sys.path.insert(0, str(al.PIPELINE))
     import job   # noqa: E402
     new = _import(path)
     rig = next(o for o in new if o.type == "ARMATURE")
     body = base_body(new, rig)
+    if "face" not in body.data.uv_layers:
+        raise ValueError(f"{path.name} is not a prepared base (no 'face' UV map): run --make-base first")
     eye_z = eye_line(rig)
-    flatten_face(body)
     zones = vertex_zones(body)
     paint_hair(body, zones, eye_z)
     coat_above_belt(body, zones, bone_z(rig, "mixamorig:Spine"))
-    push_zones(body, zones)
-    zone_materials(body, zones)
-    face_uv(body, eye_z)
+    clothes = garments(body, zones)
     rings = costume_rings(body, rig) + [ponytail(body, rig, eye_z)]
-    head_top = bone_z(rig, "mixamorig:HeadTop_End")
     hat = plain_hat(body, rig, eye_z)
     action = job.apply_clip(rig, Path(al.CLIP))
     start, end = action.frame_range
@@ -486,7 +524,12 @@ def load(path):
     rig.animation_data.action = None            # keep this frame as the pose, so it can be corrected
     upright(rig)
     al.anime_normals(body, rig)
-    return rig, body, [body] + rings, hat
+    mask = body.modifiers["hide skin under clothes"]
+    while body.modifiers[-1] != mask:           # hide last, after the normals are transferred
+        bpy.ops.object.select_all(action="DESELECT")
+        bpy.context.view_layer.objects.active = body
+        bpy.ops.object.modifier_move_down(modifier=mask.name)
+    return rig, body, [body] + clothes + rings, hat
 
 
 def stage():
@@ -528,6 +571,10 @@ def close_up(sc, path):
 
 
 def main():
+    argv = sys.argv[sys.argv.index("--") + 1:]
+    if argv[0] == "--make-base":
+        prepare_base(Path(argv[1]), Path(argv[2]))
+        return
     fbx, faces, out, name = args()
     out.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.read_factory_settings(use_empty=True)
