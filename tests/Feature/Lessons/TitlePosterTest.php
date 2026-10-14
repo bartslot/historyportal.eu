@@ -176,6 +176,7 @@ class TitlePosterTest extends TestCase
     public function test_the_player_draws_the_poster_by_default_and_the_logo_or_plain_title_on_request(): void
     {
         $lesson = $this->lesson('tasman-standard');
+        Scene::create(['lesson_id' => $lesson->id, 'order' => 2, 'kind' => 'game', 'game_type' => 'team', 'status' => 'ready']);
         $play = fn () => $this->get(route('lesson.play', ['lessonCode' => $lesson->lesson_code]))->assertOk()->getContent();
 
         $html = $play();
@@ -183,12 +184,15 @@ class TitlePosterTest extends TestCase
         $this->assertStringContainsString('family=Coming+Soon', $html);
         $this->assertMatchesRegularExpression('#lesson-titles\\\\?/tasman-standard\\\\?/poster\\\\?/mask\.svg#', $html);
         $this->assertStringContainsString('"title_logo_url":null', $html);
+        // The flat poster's letters fill the bottom right: its badges stand in a column at the side.
+        $this->assertMatchesRegularExpression('#<ul class="[^"]*\bflex-col\b[^"]*" data-lesson-types#', $html);
 
         $lesson->update(['title_style' => 'banner']);
         $html = $play();
         $this->assertStringContainsString('"title_style":"banner"', $html);
         $this->assertMatchesRegularExpression('#lesson-titles\\\\?/tasman-standard\\\\?/banner\\\\?/painting-gulls\.webp#', $html);
         $this->assertStringContainsString('family=Coming+Soon', $html);
+        $this->assertDoesNotMatchRegularExpression('#<ul class="[^"]*\bflex-col\b[^"]*" data-lesson-types#', $html, 'the banner keeps Figma\'s row');
 
         $lesson->update(['title_style' => 'logo']);
         $html = $play();

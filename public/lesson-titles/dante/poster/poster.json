@@ -4,6 +4,7 @@
   "label": "Comic poster",
   "order": 10,
   "thumb": "thumb.webp",
+  "badges": "column",
   "frame": {
     "w": 5751.1445,
     "h": 3755.4816

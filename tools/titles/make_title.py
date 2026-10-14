@@ -364,8 +364,8 @@ def build(recipe, base, out_dir):
 
 
 def candidate_meta(recipe):
-    """What the teacher's title picker shows for this candidate: its label, place and thumbnail."""
-    return {key: recipe[key] for key in ('label', 'order', 'thumb') if key in recipe}
+    """How the candidate presents itself: the picker's label, place and thumbnail, and its badge layout."""
+    return {key: recipe[key] for key in ('label', 'order', 'thumb', 'badges') if key in recipe}
 
 
 def write(out_dir, name, text):

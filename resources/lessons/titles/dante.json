@@ -1,6 +1,6 @@
 {
   "note": "Dante's life left to right. D: young Dante himself (blue, Bart's art direction; walk-sheet frame from the comic) over the gold letter, looking into the title. A+N: the Florence street of 1283 where he meets Beatrice. T+E: the dark wood of the Commedia (the empty history-line selva: the comic's wood panels show the older Dante in red). Background blue, letters gold, so the blue Dante reads against his letter. Art from the dante-comic-online comic.",
-  "label": "Comic poster", "order": 10, "thumb": "thumb.webp",
+  "label": "Comic poster", "order": 10, "thumb": "thumb.webp", "badges": "column",
   "letters": { "wordmark": "public/lesson-logos/dante.svg" },
   "rows": [
     { "text": "DANTE", "gradient": ["#FFD54F", "#FF9E3D"] }

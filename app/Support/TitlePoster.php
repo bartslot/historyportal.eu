@@ -38,6 +38,8 @@ final class TitlePoster
 
     private const SUBTITLE_FONTS = ['comic', 'comicroma', 'lettering'];
 
+    public const BADGE_LAYOUTS = ['row', 'column'];
+
     /** A title_style value as stored: a legacy value mapped, anything not shaped like a key refused. */
     public static function key(?string $value): ?string
     {
@@ -154,6 +156,9 @@ final class TitlePoster
             'focus' => self::isBox($data['focus'] ?? null) ? self::box($data['focus']) : null,
             'groups' => $groups,
             'layers' => $layers,
+            // The lesson-type badges at bottom right: a row (Figma 2321:1315), or a column for a
+            // poster whose letters reach into the bottom right and leave only a strip at the side.
+            'badges' => in_array($data['badges'] ?? null, self::BADGE_LAYOUTS, true) ? $data['badges'] : 'row',
             'subtitle' => self::isBox($data['subtitle']['box'] ?? null) ? [
                 'box' => self::box($data['subtitle']['box']),
                 'size' => (float) ($data['subtitle']['size'] ?? 2.3),

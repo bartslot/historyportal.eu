@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Services\Support\LayerAmbient;
+use App\Support\TitlePoster;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Process;
@@ -130,6 +131,9 @@ class MakeTitlePoster extends Command
         }
         if (isset($r['order']) && ! is_int($r['order'])) {
             $e[] = 'order must be a whole number (low first; the first candidate is the default).';
+        }
+        if (isset($r['badges']) && ! in_array($r['badges'], TitlePoster::BADGE_LAYOUTS, true)) {
+            $e[] = 'badges must be "row" or "column" (the lesson-type badges at bottom right).';
         }
         if (isset($r['thumb']) && (! is_string($r['thumb']) || str_contains($r['thumb'], '..'))) {
             $e[] = 'thumb must be a picture file name in the candidate folder.';
