@@ -500,7 +500,9 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
       });
     } else if (pass !== before) mode(pass);
     // render one frame here and scale the canvas down: the render-target screenshot waits for the render loop,
-    // which a hidden tab (a teacher's page in the background) does not run
+    // which a hidden tab (a teacher's page in the background) does not run. First wait for the shaders a mode switch
+    // needs: a mesh whose material is not compiled yet is skipped (the first silhouette had no people in it)
+    await scene.whenReadyAsync();
     scene.render();
     const src = engine.getRenderingCanvas();
     const w = size, h = Math.round((size * src.height) / src.width);

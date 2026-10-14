@@ -17,7 +17,8 @@ export default defineConfig({
     port: 5190,
     strictPort: true,
     // /blockout: the MCP blockout tools reach the open page through server.py (long poll, blockout_link.py)
-    proxy: { '/crew': API, '/bake': API, '/blockout': { target: API, timeout: 60000, proxyTimeout: 60000 } },
+    // (only the four channel endpoints: public/blockout/*.json are the test shots, served here)
+    proxy: { '/crew': API, '/bake': API, '^/blockout/(poll|result|call|status)': { target: API, timeout: 60000, proxyTimeout: 60000 } },
     fs: { allow: ['..', '../../../../resources/css'] },
   },
 })
