@@ -11,7 +11,7 @@ nipples and toes drew lines through every costume, and smoothing them away shran
   shape          the body is pushed out along its normals per zone (bone-weighted, so seams stay smooth), plus a
                  few plain rings for the silhouette: coat skirt, collar, cuffs, belt, boot tops
   face           the 2D face decal (face_decal.py) projected on the plain head; hair = a painted zone on the head
-  hat            a separate prop on the head bone (on/off)
+  hat            two plain shapes on the head bone, sized from the head (on/off)
 
 Renders OUT_DIR/<name>_colourways.png (the same figure in four colourways, hat on, then off) and saves <name>.blend.
 """
@@ -29,9 +29,13 @@ import anime_lineup as al   # noqa: E402  (cel material, ink hull, Line Art, ani
 PAPER = (0.96, 0.94, 0.89, 1.0)
 FRAME_M, FRAME_TOP_M = 0.18, 0.06   # the face frame (face_decal.py): 18 cm square, top edge 6 cm above the eyes
 EYE_AT = 0.42               # eye line as a fraction of the head bone span (neck joint -> head top), from the bottom
+SKIRT_FLARE_M = 0.035       # coat hem beyond the hips
+SKIRT_FOLLOW = 0.85         # how much of the hem follows the thigh (the rest stays with the hips)
+HAT_BAND_ABOVE_EYES_M = 0.075   # the hat band sits on the forehead this far above the eye line
+HAT_CROWN_M = (0.13, 0.025)     # crown height, and how much narrower its top is than its band
+HAT_BRIM_M = 0.075              # brim beyond the band
 NECK_MAX_M = 0.09           # half-width limit when measuring the neck (beyond it are the shoulders)
 HAIRLINE_M = 0.05           # hair starts this far above the eye line on the forehead
-HAT = al.PARTS / "hat_sketchfab_c0a97984/scene.gltf"
 
 # bone name fragment -> zone (first match wins; "Hand" before "Arm" so hands stay skin)
 CAPTAIN_ZONES = [("Head", "skin"), ("Neck", "skin"), ("Hand", "skin"), ("Arm", "coat"), ("Shoulder", "coat"),
@@ -121,10 +125,10 @@ def face_uv(body, eye_z):
             uv.data[li].uv = ((p.x + FRAME_M / 2) / FRAME_M, 1 - (eye_z + FRAME_TOP_M - p.z) / FRAME_M)
 
 
-def ring(name, rig, bone, centre, axis, r0, r1, length, squash=(1.0, 1.0), segments=24):
+def ring(name, rig, bone, centre, axis, r0, r1, length, squash=(1.0, 1.0), segments=24, skin=None, cap=False):
     """An open tube (a cone when r0 != r1) along `axis` from `centre`, rigid on `bone`: a cuff, collar or coat skirt."""
     bm = bmesh.new()
-    bmesh.ops.create_cone(bm, cap_ends=False, cap_tris=False, segments=segments, radius1=r0, radius2=r1, depth=length)
+    bmesh.ops.create_cone(bm, cap_ends=cap, cap_tris=False, segments=segments, radius1=r0, radius2=r1, depth=length)
     for v in bm.verts:
         v.co.x *= squash[0]
         v.co.y *= squash[1]
@@ -138,8 +142,12 @@ def ring(name, rig, bone, centre, axis, r0, r1, length, squash=(1.0, 1.0), segme
     bpy.context.view_layer.update()
     o.data.transform(o.matrix_world)
     o.matrix_world = Matrix.Identity(4)
-    g = o.vertex_groups.new(name=bone)
-    g.add(list(range(len(me.vertices))), 1.0, "REPLACE")
+    if skin is None:                                   # rigid on one bone
+        skin = lambda p: {bone: 1.0}
+    for v in me.vertices:
+        for b, w in skin(v.co).items():
+            g = o.vertex_groups.get(b) or o.vertex_groups.new(name=b)
+            g.add([v.index], w, "REPLACE")
     o.modifiers.new("rig", "ARMATURE").object = rig
     o.parent = rig
     o.matrix_parent_inverse = rig.matrix_world.inverted()   # stays where it was built (the FBX rig is rotated + scaled)
@@ -162,10 +170,17 @@ def costume_rings(body, rig):
     wx, wy, wcy = half_widths(body, waist)
     hx, hy, _ = half_widths(body, bone_z(rig, B + "Hips") - 0.12)
     parts = []
-    # coat skirt: waist to just above the knee, flaring out over the breeches
-    top_r, bot_r = wx + 0.02, max(hx + 0.07, wx + 0.09)
-    sk = ring("coat skirt", rig, B + "Hips", Vector((0, wcy, knee + 0.06)), Vector((0, 0, 1)), bot_r, top_r,
-              waist - knee - 0.06, squash=(1.0, (wy + 0.05) / top_r))
+    # coat skirt: waist to just above the knee, a little flare; it swings with the thighs and is open at the front
+    top_r, bot_r = wx + 0.02, max(hx + SKIRT_FLARE_M, wx + 0.05)
+    hem = knee + 0.06
+
+    def follow_thighs(p):
+        t = max(0.0, min(1.0, (waist - p.z) / (waist - hem)))    # 0 at the waist, 1 at the hem
+        thigh = B + ("LeftUpLeg" if p.x > 0 else "RightUpLeg")
+        return {B + "Hips": 1 - SKIRT_FOLLOW * t, thigh: SKIRT_FOLLOW * t}
+
+    sk = ring("coat skirt", rig, B + "Hips", Vector((0, wcy, hem)), Vector((0, 0, 1)), bot_r, top_r, waist - hem,
+              squash=(1.0, (wy + 0.05) / top_r), segments=32, skin=follow_thighs)
     sk["zone"] = "coat"
     parts.append(sk)
     belt = ring("belt", rig, B + "Spine", Vector((0, wcy, waist - 0.025)), Vector((0, 0, 1)), wx + 0.025, wx + 0.025, 0.05,
@@ -232,6 +247,26 @@ def dress(objs, colours, face_png):
             o.data.materials.append(al.cel_material(None, lin["feather" if "feather" in o.name.lower() else "hat"]))
 
 
+def plain_hat(body, rig, eye_z):
+    """A broad-brimmed hat from two plain shapes on the head bone: a crown (capped cone) and a flat brim.
+    Sized from THIS head, so it never floats or sinks in; a feather-less toy hat that takes any dye."""
+    head = body.vertex_groups["mixamorig:Head"].index
+    band = eye_z + HAT_BAND_ABOVE_EYES_M
+    ring_pts = [v.co for v in body.data.vertices
+                if abs(v.co.z - band) < 0.015 and any(g.group == head and g.weight > 0.5 for g in v.groups)]
+    cx, cy = sum(p.x for p in ring_pts) / len(ring_pts), sum(p.y for p in ring_pts) / len(ring_pts)
+    rx = max(abs(p.x - cx) for p in ring_pts) + 0.008
+    ry = max(abs(p.y - cy) for p in ring_pts) + 0.008
+    h, taper = HAT_CROWN_M
+    crown = ring("hat crown", rig, "mixamorig:Head", Vector((cx, cy, band)), Vector((0, 0, 1)), rx, rx - taper, h,
+                 squash=(1.0, ry / rx), segments=32, cap=True)
+    brim = ring("hat brim", rig, "mixamorig:Head", Vector((cx, cy, band - 0.004)), Vector((0, 0, 1)),
+                rx + HAT_BRIM_M, rx + 0.002, 0.012, squash=(1.0, (ry + HAT_BRIM_M) / (rx + HAT_BRIM_M)), segments=32, cap=True)
+    for o in (crown, brim):
+        o["zone"] = "hat"
+    return [crown, brim]
+
+
 def _import(path):
     before = set(bpy.data.objects)
     bpy.ops.import_scene.fbx(filepath=str(path), automatic_bone_orientation=False)
@@ -292,8 +327,7 @@ def load(path):
     face_uv(body, eye_z)
     rings = costume_rings(body, rig)
     head_top = bone_z(rig, "mixamorig:HeadTop_End")
-    import tasman_parts as tp   # noqa: E402
-    hat = tp.hat(HAT, rig, head_top)
+    hat = plain_hat(body, rig, eye_z)
     action = job.apply_clip(rig, Path(al.CLIP))
     start, end = action.frame_range
     bpy.context.scene.frame_set(int(round(start + (end - start) * al.CLIP_FRAME)))
