@@ -21,6 +21,8 @@ Changes (2026-10-14, Bart Slot, for History Portal's speech balloons):
   - Side bearings: the original's, plus 8.5 units a side for the heavier ink.
   - Kerning: the original 861 GPOS pairs, kept and scaled to UPM 1000. The legacy kern table
     and the TrueType hinting are not carried over.
+  - "!" and "?" redrawn (version 1.001): the dot is the period's, with ~100 units of white
+    above it; the "!" stem tapers to a point, and the "?" tail ends higher, rounded.
   - Renamed to "ComicRoma Balloon".
 
 Build: branding/historyportalBranding/font-build/balloon (make.sh, balloon.py).
