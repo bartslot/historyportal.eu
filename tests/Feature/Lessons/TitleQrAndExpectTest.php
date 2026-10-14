@@ -182,6 +182,30 @@ class TitleQrAndExpectTest extends TestCase
         $this->assertNull($lesson->fresh()->expect);
     }
 
+    public function test_reset_puts_back_the_spec_lines_of_a_composed_lesson(): void
+    {
+        $spec = [
+            'key' => 'Expect reset', 'title' => 'Abel Tasman: Test', 'translation_group' => 'tasman-standard',
+            'expect' => ['Hoe was het aan boord?', 'De gevaren'],
+            'scenes' => [['type' => 'story', 'chapter' => 'Begin', 'script' => 'Eens.']],
+        ];
+        $lesson = app(LessonComposer::class)->build($spec, $this->teacher, false)->fresh();
+        $this->assertSame(['Hoe was het aan boord?', 'De gevaren'], $lesson->expect_default);
+
+        $component = Livewire::actingAs($this->teacher)->test(Step3SceneConfigurator::class, ['lesson' => $lesson]);
+        // The spec's own lines are the default: nothing to reset yet.
+        $component->assertDontSee('data-expect-reset', false);
+
+        $component->call('setExpectLine', 1, 'Mijn eigen regel')->assertSee('data-expect-reset', false);
+        $component->call('resetExpect');
+        $this->assertSame(['Hoe was het aan boord?', 'De gevaren'], $lesson->fresh()->expect);
+        $component->assertDontSee('data-expect-reset', false);
+
+        // Emptied by the teacher, the lines still come back.
+        $component->call('setExpectLine', 0, '')->call('setExpectLine', 0, '')->call('resetExpect');
+        $this->assertSame(['Hoe was het aan boord?', 'De gevaren'], $lesson->fresh()->expect);
+    }
+
     public function test_compose_and_export_round_trip_the_qr_place_the_lines_and_the_picture_boxes(): void
     {
         Storage::fake('public');

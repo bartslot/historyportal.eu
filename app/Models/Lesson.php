@@ -60,6 +60,7 @@ class Lesson extends Model
         'show_qr',
         'qr_position',
         'expect',
+        'expect_default',
         'title_keep_clear',
         'title_style',
         'show_lesson_types',
@@ -178,6 +179,7 @@ class Lesson extends Model
             'title_position' => TitlePosition::class,
             'show_qr' => 'boolean',
             'expect' => 'array',
+            'expect_default' => 'array',
             'title_keep_clear' => 'array',
             'show_lesson_types' => 'boolean',
         ];
