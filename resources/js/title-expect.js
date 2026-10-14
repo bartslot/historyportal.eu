@@ -20,8 +20,11 @@ export function stripLayout (frame, view, box, chrome = null) {
   }
 }
 
-/** Lay the strip out in its host; `stage` and `host` are DOMRects. */
-export function placeExpectStrip (strip, stage, host, box) {
+/**
+ * Lay the strip out in its host; `stage` and `host` are DOMRects. On a phone the stacked strip is
+ * tall, so the poster (`posterHost`) starts under it instead of behind it: no face disappears.
+ */
+export function placeExpectStrip (strip, stage, host, box, posterHost = null) {
   const pill = [...document.querySelectorAll('[data-player-chrome="top"] [data-title-avoid]')]
     .map(el => el.getBoundingClientRect()).find(r => r.width > 0)
   const chrome = pill ? { x: pill.left - host.left, y: pill.top - host.top, w: pill.width, h: pill.height } : null
@@ -34,6 +37,10 @@ export function placeExpectStrip (strip, stage, host, box) {
     paddingTop: l.stacked ? `${l.padTop}px` : '',
   })
   strip.dataset.stacked = l.stacked ? '1' : '0'
+  if (posterHost) {
+    const top = l.stacked ? `${Math.round(strip.offsetHeight)}px` : ''
+    if (posterHost.style.top !== top) posterHost.style.top = top
+  }
 
   return l
 }

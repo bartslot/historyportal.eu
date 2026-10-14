@@ -17,7 +17,7 @@
         $titlePoster = $lesson->titlePoster();
         $titleFont = $titlePoster['subtitle']['font'] ?? null;
     @endphp
-    @if ($titleFont === 'comic' || (($titlePoster['expect'] ?? null) && $lesson->expect))
+    @if ($titleFont === 'comic' || ($titlePoster && $lesson->expect))
         {{-- The comic poster's subtitle lettering and the expect strip (Figma: Coming Soon). --}}
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -698,9 +698,12 @@
             </template>
 
             {{-- "What you can expect" in the candidate's own slot (the banner's white strip, Figma
-                 2321:1315): live text, laid out by resources/js/title-expect.js. --}}
-            <template x-if="lesson.title_poster?.expect && lesson.expect.length">
+                 2321:1315): live text, laid out by resources/js/title-expect.js. On a phone every
+                 candidate stacks its lines in this strip, above the picture: under the title they
+                 pushed the badges into the letters and the painting. --}}
+            <template x-if="lesson.title_poster && lesson.expect.length">
                 <ul data-title-expect="strip" data-title-avoid lang="{{ $contentLang }}" aria-label="{{ __('What to expect') }}"
+                    :class="!lesson.title_poster.expect && 'sm:hidden'"
                     class="title-expect-strip absolute inset-x-0 flex flex-col gap-1 bg-white pb-3 pr-4 text-sm text-brand-ink sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-12 sm:gap-y-1 sm:py-2 lg:text-base"
                     style="z-index: 15; font-family: 'Coming Soon', var(--font-comic)">
                     <template x-for="line in lesson.expect"><li x-text="line"></li></template>
@@ -827,7 +830,7 @@
                     <ul x-show="lesson.expect.length && !lesson.title_poster?.expect" data-title-expect="lines" data-title-avoid="children"
                         lang="{{ $contentLang }}" aria-label="{{ __('What to expect') }}"
                         class="mt-4 flex flex-col gap-1 text-sm text-white/85 drop-shadow-[0_1px_8px_rgba(0,0,0,0.9)] sm:flex-row sm:flex-wrap sm:gap-x-6 {{ $titleRows }}"
-                        :class="lesson.title_poster && 'title-poster-meta'">
+                        :class="lesson.title_poster && 'title-poster-meta max-sm:hidden'">
                         <template x-for="line in lesson.expect"><li x-text="line"></li></template>
                     </ul>
 
