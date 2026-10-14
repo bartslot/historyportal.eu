@@ -792,7 +792,7 @@
                  no room beside its title, so there the badges join the title block's own flow. --}}
             @php $lessonTypes = $lessonData['lesson_types']; @endphp
             <div class="absolute bottom-10 right-8 sm:bottom-14 sm:right-12 flex flex-col items-end gap-4" style="z-index:20" data-title-cluster>
-                <x-lesson.type-badges :types="$lessonTypes" :dark="($titlePoster['badge_style'] ?? 'colour') === 'dark'" data-title-piece="badges"
+                <x-lesson.type-badges :types="$lessonTypes" :dark="($titlePoster['badge_style'] ?? 'colour') === 'dark'"
                                       x-bind:class="titleFit.badgesCompact && 'lp-type-badges--compact'"
                                       @class(['max-sm:hidden', 'flex-col' => ($titlePoster['badges'] ?? 'row') === 'column']) />
                 <div class="flex items-end gap-4">
@@ -889,7 +889,7 @@
                               drop-shadow-[0_1px_8px_rgba(0,0,0,0.9)]"></p>
 
                     {{-- A phone's lesson-type badges, in the title's flow (the larger screens': bottom right). --}}
-                    <x-lesson.type-badges :types="$lessonTypes" :dark="($titlePoster['badge_style'] ?? 'colour') === 'dark'" data-title-piece="badges" @class(['mt-4 sm:hidden', $titleRows]) />
+                    <x-lesson.type-badges :types="$lessonTypes" :dark="($titlePoster['badge_style'] ?? 'colour') === 'dark'" @class(['mt-4 sm:hidden', $titleRows]) />
 
                     {{-- "What you can expect", under the title when the candidate has no slot of its own. --}}
                     <ul x-show="lesson.expect.length && !lesson.title_poster?.expect && !expectInStrip" data-title-expect="lines" data-title-avoid="children"
