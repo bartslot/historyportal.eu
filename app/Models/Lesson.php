@@ -7,8 +7,8 @@ namespace App\Models;
 use App\Enums\LessonStatus;
 use App\Enums\NarrativeFramework;
 use App\Enums\TitlePosition;
-use App\Enums\TitleStyle;
 use App\Models\Concerns\BelongsToTeacher;
+use App\Support\LessonTypes;
 use App\Support\MediaUrl;
 use App\Support\TitlePoster;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -54,6 +54,7 @@ class Lesson extends Model
         'title_position',
         'show_qr',
         'title_style',
+        'show_lesson_types',
         'poster_image',
         'subject',
         'grade_level',
@@ -168,7 +169,7 @@ class Lesson extends Model
             'background_music' => 'boolean',
             'title_position' => TitlePosition::class,
             'show_qr' => 'boolean',
-            'title_style' => TitleStyle::class,
+            'show_lesson_types' => 'boolean',
         ];
     }
 
@@ -509,39 +510,56 @@ class Lesson extends Model
     }
 
     /**
-     * The title styles this lesson can show: the comic poster, the comic cover and the logo need
-     * the series' artwork, the plain title always works. The order is the default's priority.
+     * The title styles this lesson can show, in the picker's order: the series' comic candidates
+     * (public/lesson-titles/{group}/{candidate}/, by their `order`), then the logo when the series
+     * has one, then the plain title, which always works. The first is the default.
      *
-     * @return list<TitleStyle>
+     * @return list<array{key: string, label: string, thumb_url: ?string}>
      */
-    public function availableTitleStyles(): array
+    public function titleChoices(): array
     {
-        return array_values(array_filter([
-            TitlePoster::exists($this->translation_group) ? TitleStyle::Comic : null,
-            TitlePoster::exists($this->translation_group, 'cover') ? TitleStyle::Cover : null,
-            $this->titleLogoUrl() !== null ? TitleStyle::Logo : null,
-            TitleStyle::Plain,
-        ]));
+        $choices = array_map(
+            fn (array $c): array => ['key' => $c['key'], 'label' => $c['label'], 'thumb_url' => $c['thumb_url']],
+            TitlePoster::candidates($this->translation_group),
+        );
+        $logo = $this->titleLogoUrl();
+        if ($logo !== null) {
+            $choices[] = ['key' => TitlePoster::LOGO, 'label' => __('Logo'), 'thumb_url' => $logo];
+        }
+        $choices[] = ['key' => TitlePoster::PLAIN, 'label' => __('Plain title'), 'thumb_url' => $this->titleBgUrl()];
+
+        return $choices;
     }
 
     /**
-     * The poster the title screen draws (comic poster or cover), or null for the logo and plain styles.
+     * The poster the title screen draws (a comic candidate), or null for the logo and plain styles.
      *
      * @return array<string, mixed>|null
      */
     public function titlePoster(): ?array
     {
-        $variant = $this->titleStyle()->posterVariant();
+        $style = $this->titleStyle();
 
-        return $variant === null ? null : TitlePoster::for($this->translation_group, $variant);
+        return in_array($style, [TitlePoster::LOGO, TitlePoster::PLAIN], true) ? null : TitlePoster::for($this->translation_group, $style);
     }
 
-    /** The style the title screen shows: the teacher's choice while it is possible, else the richest one. */
-    public function titleStyle(): TitleStyle
+    /** The style the title screen shows: the teacher's choice while the series has it, else the first. */
+    public function titleStyle(): string
     {
-        $available = $this->availableTitleStyles();
+        $keys = array_column($this->titleChoices(), 'key');
+        $chosen = TitlePoster::key($this->title_style);
 
-        return in_array($this->title_style, $available, true) ? $this->title_style : $available[0];
+        return in_array($chosen, $keys, true) ? $chosen : $keys[0];
+    }
+
+    /**
+     * The lesson-type badges the title screen shows (LessonTypes), none when the teacher hid them.
+     *
+     * @return list<string>
+     */
+    public function titleBadges(): array
+    {
+        return ($this->show_lesson_types ?? true) ? LessonTypes::of($this) : [];
     }
 
     /** The title screen's picture: the teacher's choice, else the automatic lead image. */

@@ -1,6 +1,6 @@
 /**
  * The comic title poster: a lesson series' title screen drawn as data
- * (public/lesson-titles/{translation_group}/poster.json, parsed and URL-resolved by
+ * (public/lesson-titles/{translation_group}/{candidate}/poster.json, parsed and URL-resolved by
  * App\Support\TitlePoster). Letters with their outline and hard shadow, a little scene masked
  * into the letter shapes, and the lesson's subtitle as live text.
  *

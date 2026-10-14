@@ -87,7 +87,10 @@ class LessonExporter
         }
 
         if ($lesson->title_style !== null) {
-            $spec['title_style'] = $lesson->title_style->value;
+            $spec['title_style'] = (string) $lesson->title_style;
+        }
+        if ($lesson->show_lesson_types === false) {
+            $spec['show_lesson_types'] = false;
         }
 
         $gameConfig = $this->withoutKeys((array) ($lesson->game_config ?? []), self::GAME_CONFIG_SCRATCH);

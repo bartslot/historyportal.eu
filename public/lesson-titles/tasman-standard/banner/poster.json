@@ -1,0 +1,179 @@
+{
+  "version": 1,
+  "source": "Figma PrVD4qMyoTtBvF7UV7Yhej node 2321:1315 (Comic Title Screen, banner); hand-built, never regenerated",
+  "label": "Comic banner",
+  "order": 30,
+  "thumb": "thumb.webp",
+  "fit": "cover",
+  "frame": {
+    "w": 8696.178,
+    "h": 5678.746
+  },
+  "background": "#98ADB2",
+  "background_bottom": "#88613E",
+  "focus": {
+    "x": 3.3787,
+    "y": 49.9999,
+    "w": 42.4143,
+    "h": 34.1903
+  },
+  "groups": {},
+  "layers": [
+    {
+      "id": "painting",
+      "src": "painting-gulls.webp",
+      "box": {
+        "x": -2.0,
+        "y": -2.0,
+        "w": 104.0,
+        "h": 104.0
+      },
+      "ambient": "drift",
+      "ambient_speed": 0.4,
+      "ambient_amount": 0.4
+    },
+    {
+      "id": "ribbon-subtitle",
+      "src": "ribbon-subtitle.svg",
+      "box": {
+        "x": 3.5754,
+        "y": 70.6321,
+        "w": 42.2176,
+        "h": 13.5581
+      },
+      "enter": "fade"
+    },
+    {
+      "id": "ribbon-title",
+      "src": "ribbon-title.svg",
+      "box": {
+        "x": 7.6375,
+        "y": 58.9005,
+        "w": 35.8588,
+        "h": 17.3928
+      },
+      "enter": "fade"
+    },
+    {
+      "id": "a",
+      "src": "letter-a.svg",
+      "box": {
+        "x": 7.4969,
+        "y": 50.1884,
+        "w": 10.9616,
+        "h": 14.8242
+      },
+      "enter": "drop"
+    },
+    {
+      "id": "b",
+      "src": "letter-b.svg",
+      "box": {
+        "x": 17.6076,
+        "y": 50.1459,
+        "w": 8.9063,
+        "h": 14.8321
+      },
+      "enter": "drop"
+    },
+    {
+      "id": "e",
+      "src": "letter-e.svg",
+      "box": {
+        "x": 25.5577,
+        "y": 50.1943,
+        "w": 8.4398,
+        "h": 14.1115
+      },
+      "enter": "drop"
+    },
+    {
+      "id": "l",
+      "src": "letter-l.svg",
+      "box": {
+        "x": 33.354,
+        "y": 49.9114,
+        "w": 8.9331,
+        "h": 14.6748
+      },
+      "enter": "drop"
+    },
+    {
+      "id": "t",
+      "src": "letter-t.svg",
+      "box": {
+        "x": 3.3211,
+        "y": 66.6832,
+        "w": 7.3219,
+        "h": 10.5414
+      },
+      "enter": "drop"
+    },
+    {
+      "id": "a1",
+      "src": "letter-a1.svg",
+      "box": {
+        "x": 9.3096,
+        "y": 66.7933,
+        "w": 7.7552,
+        "h": 10.4314
+      },
+      "enter": "drop"
+    },
+    {
+      "id": "s",
+      "src": "letter-s.svg",
+      "box": {
+        "x": 16.4385,
+        "y": 65.8935,
+        "w": 6.0834,
+        "h": 12.231
+      },
+      "enter": "drop"
+    },
+    {
+      "id": "m",
+      "src": "letter-m.svg",
+      "box": {
+        "x": 22.698,
+        "y": 65.7111,
+        "w": 8.3955,
+        "h": 10.6705
+      },
+      "enter": "drop"
+    },
+    {
+      "id": "a2",
+      "src": "letter-a2.svg",
+      "box": {
+        "x": 31.2596,
+        "y": 65.8934,
+        "w": 6.6862,
+        "h": 10.6568
+      },
+      "enter": "drop"
+    },
+    {
+      "id": "n",
+      "src": "letter-n.svg",
+      "box": {
+        "x": 38.1113,
+        "y": 65.8064,
+        "w": 7.3166,
+        "h": 10.5811
+      },
+      "enter": "drop"
+    }
+  ],
+  "subtitle": {
+    "box": {
+      "x": 5.4731,
+      "y": 78.659,
+      "w": 39.8973,
+      "h": 5.5909
+    },
+    "size": 1.1499,
+    "color": "#FFFFFF",
+    "font": "comic"
+  }
+}

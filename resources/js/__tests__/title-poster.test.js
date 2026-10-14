@@ -5,7 +5,7 @@ import {
   ENTRANCE_BUDGET_MS, PHONE_GUTTER_PX, mountTitlePoster, coverBackdrop, COVER_FOCUS_Y,
 } from '../title-poster.js'
 
-const tasman = JSON.parse(readFileSync(resolve(__dirname, '../../../public/lesson-titles/tasman-standard/poster.json'), 'utf8'))
+const tasman = JSON.parse(readFileSync(resolve(__dirname, '../../../public/lesson-titles/tasman-standard/poster/poster.json'), 'utf8'))
 const cover = JSON.parse(readFileSync(resolve(__dirname, '../../../public/lesson-titles/tasman-standard/cover/poster.json'), 'utf8'))
 const close = (a, b, eps = 0.01) => expect(Math.abs(a - b)).toBeLessThan(eps)
 
@@ -151,5 +151,45 @@ describe('the comic cover (fit: cover)', () => {
     expect(plan.steps.filter(s => s.kind === 'drop').map(s => s.id).join('')).toBe('abelta1sma2n')
     expect(plan.steps.find(s => s.id === 'series').kind).toBe('fade')
     expect(plan.totalMs).toBeLessThanOrEqual(ENTRANCE_BUDGET_MS)
+  })
+})
+
+const banner = JSON.parse(readFileSync(resolve(__dirname, '../../../public/lesson-titles/tasman-standard/banner/poster.json'), 'utf8'))
+
+describe('the banner (Figma 2321:1315, fit: cover)', () => {
+  test('a desktop view fills edge to edge with the lettering and both ribbons in sight', () => {
+    const r = posterFit(1440, 900, banner)
+    expect(r.left).toBeLessThanOrEqual(0)
+    expect(r.top).toBeLessThanOrEqual(0)
+    expect(r.left + r.width).toBeGreaterThanOrEqual(1440 - 0.01)
+    expect(r.top + r.height).toBeGreaterThanOrEqual(900 - 0.01)
+    const f = banner.focus
+    expect(r.left + f.x / 100 * r.width).toBeGreaterThanOrEqual(0)
+    expect(r.top + (f.y + f.h) / 100 * r.height).toBeLessThanOrEqual(900)
+  })
+
+  test('a 375px phone shows the lettering across its width less 16px gutters, nothing past the edge', () => {
+    const r = posterFit(375, 812, banner)
+    const f = banner.focus
+    close(r.left + f.x / 100 * r.width, PHONE_GUTTER_PX, 1)
+    close(r.left + (f.x + f.w) / 100 * r.width, 375 - PHONE_GUTTER_PX, 1)
+    expect(r.left).toBeLessThanOrEqual(0)
+    expect(r.left + r.width).toBeGreaterThanOrEqual(375)
+  })
+
+  test('the ribbons fade in, the ten letters drop, the painting is there from the first frame', () => {
+    const plan = entrancePlan(banner.layers)
+    expect(plan.steps.find(s => s.id === 'painting')).toBeUndefined()
+    expect(plan.steps.filter(s => s.kind === 'drop').map(s => s.id).join('')).toBe('abelta1sma2n')
+    expect(plan.steps.filter(s => s.kind === 'fade').map(s => s.id)).toEqual(['ribbon-subtitle', 'ribbon-title'])
+    expect(plan.totalMs).toBeLessThanOrEqual(ENTRANCE_BUDGET_MS)
+  })
+
+  test('the subtitle sits on the subtitle ribbon', () => {
+    const ribbon = banner.layers.find(l => l.id === 'ribbon-subtitle').box
+    const s = banner.subtitle.box
+    const middle = s.y + s.h / 2
+    expect(middle).toBeGreaterThan(ribbon.y + ribbon.h / 2)
+    expect(middle).toBeLessThan(ribbon.y + ribbon.h)
   })
 })

@@ -1,9 +1,10 @@
 {
   "note": "Tintin-style cover for the Tasman series (titles:make tasman-standard --cover). Bart's painting is the whole scene: Tasman with the spyglass, Visscher and the crew at the rail on the left (the hero box), the coast in sight on the right (the subject). The title sits in the free sky. Swap the painting by changing plate.art only.",
+  "label": "Comic cover", "order": 20, "thumb": "thumb.webp",
   "layout": "cover",
   "letters": { "font": "public/fonts/comicroma/ComicRoma.ttf" },
   "plate": {
-    "art": "resources/icons/history-line/backdrops/tasman/cover_tasman_spyglass_coast.webp",
+    "art": "resources/icons/history-line/backdrops/tasman/cover_tasman_spyglass_coast_hd.webp",
     "bleed": 2,
     "ambient": "drift", "ambient_speed": 0.5, "ambient_amount": 0.5
   },

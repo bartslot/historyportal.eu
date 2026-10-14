@@ -48,7 +48,7 @@ class TitleGeneratorTest extends TestCase
     private function hashes(): array
     {
         $out = [];
-        foreach (File::files(public_path('lesson-titles/'.self::GROUP)) as $f) {
+        foreach (File::files(public_path('lesson-titles/'.self::GROUP.'/poster')) as $f) {
             $out[$f->getFilename()] = sha1_file($f->getPathname());
         }
         ksort($out);
@@ -60,7 +60,7 @@ class TitleGeneratorTest extends TestCase
     {
         $this->make()->assertSuccessful();
 
-        $poster = TitlePoster::for(self::GROUP);
+        $poster = TitlePoster::for(self::GROUP, 'poster');
         $this->assertNotNull($poster);
         $this->assertSame('#2152B5', $poster['background']);
 
@@ -70,7 +70,7 @@ class TitleGeneratorTest extends TestCase
         foreach ($poster['layers'] as $layer) {
             $this->assertFileExists(public_path(parse_url($layer['url'], PHP_URL_PATH)));
         }
-        $this->assertStringEndsWith('/lesson-titles/'.self::GROUP.'/mask.svg', $poster['groups']['scene']['mask_url']);
+        $this->assertStringEndsWith('/lesson-titles/'.self::GROUP.'/poster/mask.svg', $poster['groups']['scene']['mask_url']);
         $this->assertNotNull($poster['groups']['row0']['shadow']);
         $this->assertNotNull($poster['subtitle']);
         $this->assertNotNull($poster['focus']);
@@ -81,7 +81,7 @@ class TitleGeneratorTest extends TestCase
         $this->assertSame(['scene', 'fade', 'breeze'], [$byId['dante']['group'], $byId['dante']['enter'], $byId['dante']['ambient']]);
 
         // Pictures are WebP, at most 2880 px, alpha kept for the cut-out hero.
-        $hero = public_path('lesson-titles/'.self::GROUP.'/'.basename(parse_url($byId['dante']['url'], PHP_URL_PATH)));
+        $hero = public_path('lesson-titles/'.self::GROUP.'/poster/'.basename(parse_url($byId['dante']['url'], PHP_URL_PATH)));
         [$w, $h] = getimagesize($hero);
         $this->assertLessThanOrEqual(2880, max($w, $h));
         $this->assertSame('RIFF', substr((string) file_get_contents($hero), 0, 4));
@@ -131,18 +131,51 @@ class TitleGeneratorTest extends TestCase
 
         $this->make()->assertSuccessful();
 
-        $ids = array_column(TitlePoster::for(self::GROUP)['layers'], 'id');
+        $ids = array_column(TitlePoster::for(self::GROUP, 'poster')['layers'], 'id');
         $this->assertSame(['l', 'a', 'd', 'i', 'v', 'i1', 'n', 'a1', 'outlines'], $ids);
     }
 
     public function test_a_hand_made_poster_is_never_overwritten(): void
     {
-        $before = sha1_file(public_path('lesson-titles/tasman-standard/poster.json'));
+        foreach (['poster', 'banner'] as $candidate) {
+            $file = public_path("lesson-titles/tasman-standard/{$candidate}/poster.json");
+            $before = sha1_file($file);
 
-        $this->artisan('titles:make', ['group' => 'tasman-standard'])
-            ->expectsOutputToContain('hand-made poster')
+            $this->artisan('titles:make', ['group' => 'tasman-standard', '--candidate' => $candidate])
+                ->expectsOutputToContain('hand-made poster')
+                ->assertFailed();
+
+            $this->assertSame($before, sha1_file($file), "{$candidate} must stay Bart's Figma build");
+        }
+    }
+
+    public function test_the_recipe_names_its_candidate_for_the_picker_and_a_candidate_flag_picks_the_folder(): void
+    {
+        $recipe = json_decode((string) file_get_contents($this->recipe), true);
+        $recipe['label'] = ['nl' => 'Gouden letters', 'en' => 'Gold letters'];
+        $recipe['order'] = 5;
+        $this->writeRecipe($recipe);
+
+        $this->artisan('titles:make', ['group' => self::GROUP, '--recipe' => $this->recipe, '--candidate' => 'gold'])->assertSuccessful();
+
+        $this->assertDirectoryDoesNotExist(public_path('lesson-titles/'.self::GROUP.'/poster'));
+        app()->setLocale('nl');
+        $this->assertSame([['key' => 'gold', 'label' => 'Gouden letters', 'order' => 5, 'thumb_url' => null]], TitlePoster::candidates(self::GROUP));
+
+        // The thumbnail is a render made afterwards: a rebuild keeps it.
+        $thumb = public_path('lesson-titles/'.self::GROUP.'/gold/thumb.webp');
+        File::copy(public_path('lesson-titles/tasman-standard/poster/thumb.webp'), $thumb);
+        $this->artisan('titles:make', ['group' => self::GROUP, '--recipe' => $this->recipe, '--candidate' => 'gold'])->assertSuccessful();
+        $this->assertFileExists($thumb);
+        $this->assertStringEndsWith('/gold/thumb.webp', TitlePoster::candidates(self::GROUP)[0]['thumb_url']);
+
+        $recipe['order'] = 'first';
+        $this->writeRecipe($recipe);
+        $this->artisan('titles:make', ['group' => self::GROUP, '--recipe' => $this->recipe, '--candidate' => 'gold'])
+            ->expectsOutputToContain('order must be a whole number')
             ->assertFailed();
-
-        $this->assertSame($before, sha1_file(public_path('lesson-titles/tasman-standard/poster.json')));
+        $this->artisan('titles:make', ['group' => self::GROUP, '--recipe' => $this->recipe, '--candidate' => 'plain'])
+            ->expectsOutputToContain('not logo or plain')
+            ->assertFailed();
     }
 }

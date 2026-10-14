@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace App\Livewire\Wizard\Concerns;
 
 use App\Enums\TitlePosition;
-use App\Enums\TitleStyle;
 
 /**
  * The title screen as the pinned first item of the editor's scene rail.
  *
  * It is not a scene: it cannot be deleted or moved, and the stage shows the real player's title
  * screen (embedded) rather than a copy. Its Format panel sets the lesson's title picture, where
- * the title sits, how the title is drawn (comic poster, logo, plain) and whether the join QR shows. The editor opens on it.
+ * the title sits, how the title is drawn (a comic candidate, logo, plain), whether the lesson-type badges and the
+ * join QR show. The editor opens on it.
  */
 trait EditsTitleScreen
 {
@@ -28,7 +28,7 @@ trait EditsTitleScreen
     {
         $version = substr(md5(implode('|', [
             $this->lesson->title_image, $this->lesson->title_position?->value, (int) $this->lesson->show_qr,
-            $this->lesson->title_style?->value,
+            $this->lesson->title_style, (int) ($this->lesson->show_lesson_types ?? true),
             $this->lesson->title, $this->lesson->updated_at?->getTimestampMs(),
         ])), 0, 10);
 
@@ -86,22 +86,29 @@ trait EditsTitleScreen
         $this->refreshTitleFrame();
     }
 
-    /** Only a style this lesson can show (the comic poster and the logo need series artwork). */
+    /** Only a style this lesson can show: one of the series' candidates, its logo, or plain. */
     public function setTitleStyle(string $style): void
     {
-        $value = TitleStyle::tryFrom($style);
-        if ($value === null || ! in_array($value, $this->lesson->availableTitleStyles(), true)) {
+        if (! in_array($style, array_column($this->lesson->titleChoices(), 'key'), true)) {
             return;
         }
-        $this->lesson->update(['title_style' => $value]);
+        $this->lesson->update(['title_style' => $style]);
         $this->lesson->refresh();
         $this->refreshTitleFrame();
     }
 
-    /** Back to the default: the richest style the series has. */
+    /** Back to the default: the series' first candidate. */
     public function resetTitleStyle(): void
     {
         $this->lesson->update(['title_style' => null]);
+        $this->lesson->refresh();
+        $this->refreshTitleFrame();
+    }
+
+    /** The lesson-type badges (Interactief, Stripverhaal, Teams) on or off; on is the default. */
+    public function setShowLessonTypes(bool $show): void
+    {
+        $this->lesson->update(['show_lesson_types' => $show]);
         $this->lesson->refresh();
         $this->refreshTitleFrame();
     }
