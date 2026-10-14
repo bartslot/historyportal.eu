@@ -12,7 +12,7 @@
 // Returns a handle whose destroy() stops the interval and clears the host, and whose pace(totalMs)
 // stretches the slideshow over the scene's narration.
 
-const CYCLE_MS = 5000;
+export const CYCLE_MS = 5000;
 // Floor for a narration-paced cycle: many images over a short voice must still be seen, not flicker.
 const MIN_PACED_CYCLE_MS = 2500;
 

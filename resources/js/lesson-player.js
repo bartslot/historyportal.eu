@@ -19,6 +19,7 @@ import { resolveAnchorTime, pickShotIndex } from './scene/shot-sync.js'
 import { buildChapters, canSeek, reachedFurther, chapterTooltip, formatClock, formatMinutes } from './scene/chapter-timeline.js'
 import { createTelemetry } from './lesson-telemetry.js'
 import { renderGallery } from './gallery-scene.js'
+import { stageAdvance, stageFloorMs } from './scene/stage-auto.js'
 import { isTopAnchored, normalizeFit, PORTRAIT_TOP_CSS } from './scene/background-fit.js'
 import { isClipartLayer } from './scene/layer-filters.js'
 import { fitToPlate, plateAspect } from './scene/plate-box.js'
@@ -1521,7 +1522,7 @@ Alpine.data('lessonGame', (lesson) => ({
       // Map block — render the historical atlas as a slide (no audio).
       if (scene.kind === 'map') { this._playMapScene(index, scene); return }
 
-      // Voyage tour leg / image gallery — audio-less slides driven by Next/Previous only.
+      // Voyage tour leg / image gallery — stage slides that move on by themselves (_startStageAuto).
       if (scene.kind === 'voyage') { this._playVoyageScene(index, scene); return }
       if (scene.kind === 'gallery') { this._playGalleryScene(index, scene); return }
       // Video scene — the film IS the scene, so nothing times it out from under the class.
@@ -1582,7 +1583,7 @@ Alpine.data('lessonGame', (lesson) => ({
      * @param {{ onDuration?: (sec:number)=>void, onEnded?: ()=>void }} [hooks]
      *   onDuration: the track's real length is known (pace a map tour / slideshow against it).
      *   onEnded: the narration finished — only for scenes the VOICE paces (story, game intro).
-     *   A voice-over (map, voyage, gallery) leaves it off: the class moves on with Continue.
+     *   A voice-over (map, voyage, gallery) leaves it off: the stage itself decides when to move on.
      */
     _startNarration (scene, { onDuration = null, onEnded = null } = {}) {
       const a = this._audio = new Audio(scene.audio_url)
@@ -1711,7 +1712,7 @@ Alpine.data('lessonGame', (lesson) => ({
 
       // Narrate the leg as a VOICE-OVER while the ship sails. Deliberately not wired to
       // _afterSceneAudio: a voyage leg is paced by the map (onArrived → showMapContinue →
-      // _startVoyageAuto), not by the length of the audio, so the track must never advance
+      // _startStageAuto), not by the length of the audio, so the track must never advance
       // the queue. Without this the narration authored for each leg was generated and stored
       // but never heard.
       if (scene.audio_url) this._startNarration(scene)
@@ -1760,7 +1761,7 @@ Alpine.data('lessonGame', (lesson) => ({
           paintedFog: lesson.game_config?.voyage_fog || null, // teacher-painted undiscovered regions
           overviewAnim: cfg.overview_anim || null,            // itinerary: draw the route on
           // On each arrival: show the carousel controls + start the 10s auto-advance.
-          onArrived: () => { this.showMapContinue = true; this._startVoyageAuto() },
+          onArrived: () => { this.showMapContinue = true; this._startStageAuto(_sceneQueue[this._sceneIndex]) },
         })
       }
       // The itinerary scene: the whole voyage on one screen, no leg sailed. Same branch the editor
@@ -1773,7 +1774,7 @@ Alpine.data('lessonGame', (lesson) => ({
         // Nothing sails, so no arrival will ever fire: hand the class the same controls a landfall
         // gets — side arrows and the 10s auto-advance — or the lesson would stop here for good.
         this.showMapContinue = true
-        this._startVoyageAuto()
+        this._startStageAuto(scene)
         return
       }
       _voyageInstance.playLeg(Number(cfg.leg) || 0, {
@@ -1784,23 +1785,19 @@ Alpine.data('lessonGame', (lesson) => ({
       })
     },
 
-    // ── Voyage carousel: side arrows + auto-advance once the leg has been told ─────────────
+    // ── Stage slide auto-advance (voyage landfall, gallery) ─────────────
     //
-    // A stop must outlast its own narration. This used to advance on a flat ten seconds from the
-    // moment the ship arrived, with the narration playing as a fire-and-forget track whose duration
-    // nothing ever read — so a leg with thirty seconds to say got ten, and the voice was cut
-    // mid-sentence. On the Tasman lesson the class heard "hij is om Australië heen gevaren zonder
-    // het te zien," and never heard what he had actually proved.
+    // A stage slide that asks nothing of the class moves on by itself once its narration and a
+    // short look are done, like a story scene (rules + timing in scene/stage-auto.js). This used
+    // to run on voyage lessons only, and a gallery never started it at all, so every gallery sat
+    // on its last image until somebody pressed Next.
     //
-    // So the clock does not decide any more; the voice does. Ten seconds is the FLOOR, for a leg
-    // with no narration at all.
-    _startVoyageAuto () {
-      if (lesson.game_type !== 'voyage') return
+    // It must outlast the narration: this used to advance on a flat ten seconds from the ship's
+    // arrival, and a leg with thirty seconds to say was cut mid-sentence ("hij is om Australië
+    // heen gevaren zonder het te zien,"). So the voice decides; the floor is for a silent slide.
+    _startStageAuto (scene) {
       this._cancelVoyageAuto()
-
-      const FLOOR = 10000        // a silent leg still gets a beat to be looked at
-      const TAIL = 1200          // a breath after the last word, before the map moves on
-      const CEILING = 180000     // audio that never ends must not strand the class on one stop
+      const floorMs = stageFloorMs(scene)
 
       let elapsed = 0
       let last = performance.now()
@@ -1819,15 +1816,9 @@ Alpine.data('lessonGame', (lesson) => ({
         const speaking = audio && !audio.ended && !audio.error
         if (!speaking && silentAt === null) silentAt = elapsed
 
-        const readyAt = silentAt === null ? null : Math.max(FLOOR, silentAt + TAIL)
-
-        // While the voice is still going the bar creeps but never fills, because a full bar that
-        // then does not advance reads as a stuck lesson.
-        this.autoAdvanceProgress = readyAt === null
-          ? Math.min(0.92, elapsed / FLOOR)
-          : Math.min(1, elapsed / readyAt)
-
-        if (elapsed >= (readyAt ?? CEILING)) { this.advanceMap(); return }
+        const { progress, done } = stageAdvance({ elapsed, silentAt, floorMs })
+        this.autoAdvanceProgress = progress
+        if (done) { this.advanceMap(); return }
         _autoAdvanceRaf = requestAnimationFrame(tick)
       }
       _autoAdvanceRaf = requestAnimationFrame(tick)
@@ -1837,10 +1828,10 @@ Alpine.data('lessonGame', (lesson) => ({
       this.autoAdvanceProgress = 0
     },
 
-    // ── Image gallery (kind 'gallery') — auto-cycling slideshow, Next/Previous to leave ──
+    // ── Image gallery (kind 'gallery') — auto-cycling slideshow that moves on by itself ──
     //
-    // Narrated like a map block: a VOICE-OVER (subtitles and all) with Continue to leave, not wired
-    // to _afterSceneAudio. And paced like the map's itinerary: once the narration's length is known
+    // Narrated like a map block: a VOICE-OVER (subtitles and all), not wired to _afterSceneAudio;
+    // the stage countdown (_startStageAuto) moves on once the voice and the images are done. And paced like the map's itinerary: once the narration's length is known
     // the images spread across it, instead of a fixed 5 s cycle that ran out long before the voice.
     // It used to stop the audio and never start its own, so the narration was generated but unheard.
     _playGalleryScene (index, scene) {
@@ -1853,7 +1844,9 @@ Alpine.data('lessonGame', (lesson) => ({
       if (scene.audio_url) {
         this._startNarration(scene, { onDuration: (sec) => { if (_galleryInstance === gallery) gallery.pace(sec * 1000) } })
       }
+      // Next still leaves early; otherwise it moves on once the voice and the images are done.
       this.showMapContinue = true
+      this._startStageAuto(scene)
     },
 
     // A whole scene that is one film. The embed is already full-bleed on the stage (see the
@@ -2562,8 +2555,8 @@ Alpine.data('lessonGame', (lesson) => ({
      * "Playing" for the overlay is broader than narration: on a voyage the ship sailing
      * between stops IS playback (showMapContinue only turns true at a landfall). The
      * player chrome hides while this is true and the pointer is away from the edges.
-     * A stage slide waiting on the student (interactive map, gallery, video, landfall) never
-     * counts: Next is the only way on, so the deck stays up even while its narration plays.
+     * A stage slide (interactive map, video, a landfall or gallery counting down) never counts:
+     * its Next stays in reach, so the deck stays up even while its narration plays.
      */
     get isPlaying () {
       if (this.playbackPaused || this.showMapContinue) return false
@@ -2618,7 +2611,7 @@ Alpine.data('lessonGame', (lesson) => ({
       }
 
       // The sailing ship freezes mid-ocean and picks up from the same spot; the landfall's
-      // auto-advance countdown stops accumulating (see _startVoyageAuto).
+      // auto-advance countdown stops accumulating (see _startStageAuto).
       try { _voyageInstance?.setPaused?.(this.playbackPaused) } catch (_) { /* map gone */ }
 
       // Same for a map block touring its focus cities: a student who pauses on Constantinople must

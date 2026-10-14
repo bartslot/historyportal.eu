@@ -274,9 +274,9 @@
 
     {{-- ── Map block slide — full-bleed historical atlas, shown while a map scene plays. --}}
     <div id="lesson-map-stage" lang="{{ $contentLang }}" class="absolute inset-0 z-20" style="display:none" aria-hidden="true"></div>
-    {{-- Voyage landfall: a minimal auto-advance progress line (the countdown moves on after 10s).
-         Previous / next live in the deck, like every other scene. --}}
-    <div x-show="showMapContinue && lesson.game_type === 'voyage'" class="fixed inset-x-0 bottom-0 z-40 h-1 bg-white/10 pointer-events-none">
+    {{-- Stage slide (voyage landfall, gallery): a minimal auto-advance progress line; the slide
+         moves on once its narration is done. Previous / next live in the deck, like every other scene. --}}
+    <div x-show="showMapContinue && autoAdvanceProgress > 0" class="fixed inset-x-0 bottom-0 z-40 h-1 bg-white/10 pointer-events-none">
         <div class="h-full bg-primary/90" :style="`width: ${autoAdvanceProgress * 100}%`"></div>
     </div>
 
