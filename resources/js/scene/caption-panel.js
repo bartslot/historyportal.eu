@@ -36,7 +36,8 @@ export const captionPanel = (lesson) => ({
     this.ccFocus = { col, row }
     // Peek at every language once, so the rows can preview the line already cached.
     this.ccSubtitleRows.forEach(r => r.code && !this.ccSets[r.code] && this._loadCaptionSet(r.code, true))
-    this.$nextTick(() => this._focusCcRow())
+    // A phone's panel scrolls: open it at the top (Audio first), not where it was left.
+    this.$nextTick(() => { document.querySelector('[data-cc-panel]')?.scrollTo(0, 0); this._focusCcRow() })
   },
 
   ccSelectedSubtitle () {
@@ -98,6 +99,7 @@ export const captionPanel = (lesson) => ({
     if (!next) return
     e.preventDefault()
     this.ccFocus = next
+    this._ccKeyed = true
     this._focusCcRow()
   },
 
@@ -109,7 +111,10 @@ export const captionPanel = (lesson) => ({
 
   _focusCcRow () {
     const { col, row } = this.ccFocus
-    document.querySelector(`[data-cc-col="${col}"][data-cc-row="${row}"]`)?.focus()
+    // preventScroll on opening: on a phone the panel is one scrolling sheet, and jumping to a
+    // subtitle row near the bottom hid the Audio section above it.
+    document.querySelector(`[data-cc-col="${col}"][data-cc-row="${row}"]`)?.focus({ preventScroll: !this._ccKeyed })
+    this._ccKeyed = false
   },
 
   /** A line in the chosen subtitle language when it is cached, else the original. */
@@ -122,6 +127,8 @@ export const captionPanel = (lesson) => ({
     if (!code || code === lesson.source_language || !lesson.captions_url) return
     const known = this.ccSets[code]
     if (known?.complete || (known?.translating && !peek)) return
+    // Chosen, not peeked: say so at once; the first request may itself do the translating.
+    if (!peek) this.ccSets = { ...this.ccSets, [code]: { texts: {}, ...known, translating: true } }
     try {
       const res = await fetch(lesson.captions_url.replace('__LANG__', code) + (peek ? '?peek=1' : ''), {
         headers: { Accept: 'application/json' },

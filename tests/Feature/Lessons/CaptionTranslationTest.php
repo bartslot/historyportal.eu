@@ -128,6 +128,20 @@ class CaptionTranslationTest extends TestCase
         $this->assertSame('[en] Tasman vaart met de Heemskerck naar het oosten.', $this->captions()->cached($lesson, 'en')['texts']['Tasman vaart met de Heemskerck naar het oosten.']);
     }
 
+    public function test_the_editor_switches_language_and_never_offers_the_lesson_language(): void
+    {
+        $teacher = User::factory()->create();
+        $lesson = $this->lesson($teacher);
+        $this->captions()->translateMissing($lesson, 'ja');
+
+        Livewire::actingAs($teacher)->test(CaptionTranslations::class, ['lesson' => $lesson])
+            ->assertSet('language', 'en')
+            ->assertDontSee('<option value="nl"', false)
+            ->set('language', 'ja')
+            ->assertSet('language', 'ja')
+            ->assertSee('[ja] Tasman vaart');
+    }
+
     public function test_another_teacher_cannot_open_the_editor(): void
     {
         $lesson = $this->lesson(User::factory()->create());

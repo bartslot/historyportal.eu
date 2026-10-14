@@ -8,11 +8,12 @@ declare(strict_types=1);
 
 return [
 
-    // Names a translation must leave exactly as written: people, ships, places whose own name the
-    // lesson teaches. Matched as whole words, case-sensitive.
+    // Names a translation must leave exactly as written, in Latin script in every language: the
+    // ships and places whose own name the lesson teaches. Matched as whole words, case-sensitive.
+    // Other names (Batavia, Visscher) are left to the translator, which writes them in the
+    // target script (باتافيا, 巴达维亚) as a reader of that language expects.
     'no_translate' => [
         'Abel Tasman', 'Tasman', 'Heemskerck', 'Zeehaen', 'Mohua', 'Moordenaarsbaai',
-        'Visscher', 'Gilsemans', 'Staten Landt', 'Batavia', 'Van Diemen',
     ],
 
 ];

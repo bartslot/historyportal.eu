@@ -1108,9 +1108,11 @@
                            wire:change="setSubtitles($event.target.checked)"
                            class="toggle toggle-sm shrink-0" />
                 </label>
-                {{-- Subtitles in other languages: made ahead of class, every line correctable. --}}
+                {{-- Subtitles in other languages: made ahead of class, every line correctable.
+                     wire:ignore: this component's 3s poll re-rendered the child and threw away the
+                     chosen language (and a line being typed); the child updates itself. --}}
                 @unless (auth()->user()?->isGuestDemo())
-                    <div class="mt-4">
+                    <div class="mt-4" wire:ignore>
                         <livewire:wizard.caption-translations :lesson="$lesson" :key="'captions-'.$lesson->id" />
                     </div>
                 @endunless

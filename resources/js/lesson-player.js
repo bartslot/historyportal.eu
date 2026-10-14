@@ -2096,7 +2096,8 @@ Alpine.data('lessonGame', (lesson) => ({
     _refreshBalloonText () {
       const host = document.getElementById('lesson-balloons')
       if (!this._balloons || !host) return
-      const lang = this.captionsOn && this.ccSets[this.captionLang]?.texts ? this.captionLang : lesson.source_language
+      const cached = Object.keys(this.ccSets[this.captionLang]?.texts || {}).length > 0
+      const lang = this.captionsOn && cached ? this.captionLang : lesson.source_language
       host.lang = lang
       host.dir = this.ccDir(lang)
       this._balloons.setLines((this._balloonSource || []).map(l => ({ ...l, text: this._crewed(this._ccLine(l.text)) })))

@@ -387,7 +387,8 @@
                  x-cloak
                  class="lp-cc pointer-events-none absolute left-1/2 -translate-x-1/2 text-center"
                  :class="!(readingOverlay || (isPlaying && !zoneHover && !zoneFlash && !chaptersOpen && !ccOpen)) && 'lp-cc--lifted'"
-                 style="z-index:47"
+                 {{-- Above the deck's scrim, under the deck itself while the panel is open over it. --}}
+                 :style="`z-index:${ccOpen || chaptersOpen ? 45 : 47}`"
                  aria-live="polite">
                 <p class="lp-cc__text" :lang="captionShownLang" :dir="ccDir(captionShownLang)"><span x-text="captionText"></span></p>
             </div>
@@ -519,7 +520,8 @@
                                     <span x-show="ccSelectedSubtitle() !== row.code" class="w-5 shrink-0"></span>
                                     <span class="shrink-0" :lang="row.code || null" x-text="row.name"></span>
                                     <span class="lp-cc-hint ml-auto min-w-0 truncate text-right text-sm font-normal text-white/40"
-                                          :lang="ccSets[row.code]?.translating ? null : (row.code || null)" :dir="ccDir(row.code)"
+                                          :lang="ccSets[row.code]?.translating ? null : (row.code || null)"
+                                          :dir="ccSets[row.code]?.translating ? null : ccDir(row.code)"
                                           x-text="ccRowHint(row.code)"></span>
                                 </button>
                             </template>
