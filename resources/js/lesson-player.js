@@ -2792,6 +2792,7 @@ Alpine.data('lessonGame', (lesson) => ({
       const stage = host.querySelector('[data-poster-stage]')
       const o = host.getBoundingClientRect()
       const strip = host.querySelector('[data-title-expect="strip"]')
+      this._stopTitlePoster?.refit?.()
       if (strip && strip !== this._titleStrip && typeof ResizeObserver === 'function') {
         // The strip's lines re-wrap when their font arrives: the poster under it moves, so
         // measure again (the same run: a reset here would hide and show its lines in a loop).
@@ -2821,6 +2822,8 @@ Alpine.data('lessonGame', (lesson) => ({
         setTimeout(() => this.layoutTitleScreen(run), 60)
         return
       }
+      // The poster fitted to where it stands now, so the frame measured below is never a stale one.
+      this._stopTitlePoster?.refit?.()
 
       let frame = null
       let keepClear = []
