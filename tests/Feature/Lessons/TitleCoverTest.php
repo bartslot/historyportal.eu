@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Feature\Lessons;
 
 use App\Enums\LessonStatus;
-use App\Enums\TitleStyle;
 use App\Models\Lesson;
 use App\Models\Scene;
 use App\Models\User;
@@ -16,7 +15,7 @@ use Illuminate\Testing\PendingCommand;
 use Tests\TestCase;
 
 /**
- * The comic cover (TitleStyle::Cover): titles:make --cover writes a poster the player accepts
+ * The comic cover (candidate `cover`): titles:make --cover writes a poster the player accepts
  * (Bart's painting as the plate, ComicRoma letters in flat ink, cut-outs on the horizon and below
  * the frame edge), byte-stable; a bad cover recipe names its problems; the series offers the
  * cover next to the comic poster without taking the default; and ComicRoma works as the font of
@@ -73,7 +72,7 @@ class TitleCoverTest extends TestCase
     {
         $this->make()->assertSuccessful();
 
-        $this->assertFalse(TitlePoster::exists(self::GROUP), 'a cover never lands in the comic poster folder');
+        $this->assertFalse(TitlePoster::exists(self::GROUP, 'poster'), 'a cover never lands in the comic poster folder');
         $poster = TitlePoster::for(self::GROUP, 'cover');
         $this->assertNotNull($poster);
         $this->assertSame('cover', $poster['fit']);
@@ -194,7 +193,7 @@ class TitleCoverTest extends TestCase
 
         $this->make()->assertSuccessful();
 
-        $poster = TitlePoster::for(self::GROUP);
+        $poster = TitlePoster::for(self::GROUP, 'poster');
         $byId = array_column($poster['layers'], null, 'id');
         $this->assertSame(['a', 'v', 'a1', 't', 'a2', 'r', 't1', 'a3', 's', 'm', 'a4', 'n', 'outlines'], array_keys($byId));
         // Kerned: the A's and the V's boxes overlap (their diagonals nest); unkerned they would not.
@@ -212,11 +211,11 @@ class TitleCoverTest extends TestCase
         ]);
         Scene::create(['lesson_id' => $lesson->id, 'order' => 1, 'kind' => 'narration', 'script_segment' => 'Eens.', 'status' => 'ready']);
 
-        $this->assertContains(TitleStyle::Cover, $lesson->availableTitleStyles());
-        $this->assertSame(TitleStyle::Comic, $lesson->titleStyle());
-        $this->assertStringEndsWith('/lesson-titles/tasman-standard/mask.svg', $lesson->titlePoster()['groups']['scene']['mask_url']);
+        $this->assertContains('cover', array_column($lesson->titleChoices(), 'key'));
+        $this->assertSame('poster', $lesson->titleStyle());
+        $this->assertStringEndsWith('/lesson-titles/tasman-standard/poster/mask.svg', $lesson->titlePoster()['groups']['scene']['mask_url']);
 
-        $lesson->update(['title_style' => TitleStyle::Cover]);
+        $lesson->update(['title_style' => 'cover']);
         $html = $this->get(route('lesson.play', ['lessonCode' => $lesson->lesson_code]))->assertOk()->getContent();
         $this->assertStringContainsString('"title_style":"cover"', $html);
         $this->assertStringContainsString('"fit":"cover"', $html);
@@ -230,12 +229,10 @@ class TitleCoverTest extends TestCase
         $this->assertTrue(TitlePoster::exists('tasman-standard', 'cover'));
         $this->assertNull(TitlePoster::for('tasman-standard', '../dante'));
         $this->assertNull(TitlePoster::for('dante', 'cover'));
-        $this->assertSame('cover', TitleStyle::Cover->posterVariant());
-        $this->assertNull(TitleStyle::Logo->posterVariant());
 
         foreach (['en' => 'Comic cover', 'nl' => 'Stripcover', 'de' => 'Comic-Cover', 'fr' => 'Couverture BD', 'it' => 'Copertina fumetto'] as $locale => $label) {
             app()->setLocale($locale);
-            $this->assertSame($label, TitleStyle::Cover->label());
+            $this->assertSame($label, collect(TitlePoster::candidates('tasman-standard'))->firstWhere('key', 'cover')['label']);
         }
     }
 }

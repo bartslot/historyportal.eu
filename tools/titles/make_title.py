@@ -352,6 +352,7 @@ def build(recipe, base, out_dir):
     poster = {
         'version': 1,
         'source': f'titles:make from resources/lessons/titles/{recipe["_group"]}.json',
+        **candidate_meta(recipe),
         'frame': {'w': num(fw), 'h': num(fh)},
         'background': recipe['background'],
         'focus': pct((ink[0], ink[1], ink_w, ink_h)),
@@ -360,6 +361,11 @@ def build(recipe, base, out_dir):
         'subtitle': {'box': pct(sub_box), 'size': num(sub['size']), 'color': sub['color']},
     }
     write(out_dir, 'poster.json', json.dumps(poster, indent=2) + '\n')
+
+
+def candidate_meta(recipe):
+    """What the teacher's title picker shows for this candidate: its label, place and thumbnail."""
+    return {key: recipe[key] for key in ('label', 'order', 'thumb') if key in recipe}
 
 
 def write(out_dir, name, text):

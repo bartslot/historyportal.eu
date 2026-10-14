@@ -21,7 +21,7 @@ import os
 
 from fontTools.ttLib import TTFont
 
-from make_title import RecipeError, font_rows, letter_ids, num, path_to, save_picture, svg_doc, write
+from make_title import RecipeError, candidate_meta, font_rows, letter_ids, num, path_to, save_picture, svg_doc, write
 
 COVER_DEFAULTS = {
     'horizon': 72.0,           # % down the frame (Tintin's red line)
@@ -185,6 +185,7 @@ def build_cover(recipe, base, out_dir):
     poster = {
         'version': 1,
         'source': f'titles:make from resources/lessons/titles/{recipe["_group"]}-cover.json',
+        **candidate_meta(recipe),
         'layout': 'cover',
         'fit': 'cover',
         'frame': {'w': num(W), 'h': num(H)},

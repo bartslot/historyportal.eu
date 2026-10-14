@@ -2718,7 +2718,7 @@ Alpine.data('lessonGame', (lesson) => ({
      * the ink, not the image box (a wordmark file has room around its letters). Again once the
      * lettering font has loaded and whenever the logo's box changes size.
      */
-    /** The comic title poster (TitleStyle::Comic) into its host; see resources/js/title-poster.js. */
+    /** A comic title candidate (TitlePoster) into its host; see resources/js/title-poster.js. */
     mountTitlePoster (host) {
       this._stopTitlePoster?.()
       this._stopTitlePoster = mountPoster(host, host.querySelector('[data-poster-stage]'), this.lesson.title_poster)

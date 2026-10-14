@@ -11,12 +11,18 @@
     <x-font-switch />
     <x-audio-manifest />
     <x-js-lang />
-    @if ($lesson->titleStyle() === \App\Enums\TitleStyle::Comic)
-        {{-- The comic title poster's subtitle lettering (Figma: Coming Soon). --}}
+    @php
+        // The title screen: a comic candidate's poster (TitlePoster), or null for the logo / plain title.
+        $titleStyle = $lesson->titleStyle();
+        $titlePoster = $lesson->titlePoster();
+        $titleFont = $titlePoster['subtitle']['font'] ?? null;
+    @endphp
+    @if ($titleFont === 'comic')
+        {{-- The comic poster's subtitle lettering (Figma: Coming Soon). --}}
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Coming+Soon&display=swap">
-    @elseif ($lesson->titleStyle() === \App\Enums\TitleStyle::Cover)
+    @elseif ($titleFont === 'lettering')
         {{-- The comic cover's live subtitle is set in ComicRoma Lettering Bold (app.css @font-face);
              a cover whose recipe picks ComicRoma loads that face on demand. --}}
         <link rel="preload" href="{{ asset('fonts/comic-lettering/ComicRomaLettering-Bold.woff2') }}" as="font" type="font/woff2" crossorigin>
@@ -76,13 +82,15 @@
         // joins this on the same line, because a CC BY image has to say who made it.
         'source_attribution'    => $lesson->sourceAttribution(),
         'title_bg_url'          => $lesson->titleBgUrl(),
-        // How the title screen draws the name (TitleStyle, the teacher's choice or the default).
+        // How the title screen draws the name (the teacher's choice or the series' default).
         // A series wordmark (public/lesson-logos/{translation_group}.svg) replaces the plain title's
-        // lead-in; a comic poster (public/lesson-titles/{translation_group}/poster.json) replaces
-        // the whole picture. Each is null unless it is the style in use.
-        'title_style'           => $lesson->titleStyle()->value,
-        'title_logo_url'        => $lesson->titleStyle() === \App\Enums\TitleStyle::Logo ? $lesson->titleLogoUrl() : null,
-        'title_poster'          => $lesson->titlePoster(),
+        // lead-in; a comic candidate (public/lesson-titles/{translation_group}/{candidate}/poster.json)
+        // replaces the whole picture. Each is null unless it is the style in use.
+        'title_style'           => $titleStyle,
+        'title_logo_url'        => $titleStyle === \App\Support\TitlePoster::LOGO ? $lesson->titleLogoUrl() : null,
+        'title_poster'          => $titlePoster,
+        // The lesson-type badges (LessonTypes), drawn on the title screen; [] when hidden.
+        'lesson_types'          => $lesson->titleBadges(),
         'intro_text'            => $lesson->outline['scene_briefs'][0]['scenePurpose']
                                     ?? $lesson->details
                                     ?? $lesson->topic,
@@ -659,8 +667,8 @@
             x-show="phase === 'TITLE_SCREEN'"
             class="absolute inset-0 pointer-events-auto"
         >
-            {{-- Comic title poster (TitleStyle::Comic: letters with a scene masked into them) or comic
-                 cover (TitleStyle::Cover: a painted scene with the title in its sky), drawn from
+            {{-- A comic title candidate (TitlePoster: the poster with a scene masked into its letters, the
+                 painted cover, the banner), drawn from
                  poster.json by resources/js/title-poster.js over the poster's own flat colour,
                  instead of the painted backdrop and the wordmark. The subtitle is live text from the
                  lesson title, so a teacher's edit changes it. --}}
@@ -690,8 +698,24 @@
             <div x-show="!lesson.title_poster" class="skybox-grain-overlay" style="opacity: 0.22; z-index: 2;"></div>
 
             {{-- Bottom right, on the same edges as the Start button's bar (px-8/12, pb-10/14):
-                 the language switch and the join QR, bottoms aligned. --}}
-            <div class="absolute bottom-10 right-8 sm:bottom-14 sm:right-12 flex items-end gap-4" style="z-index:20">
+                 the lesson-type badges, the language switch and the join QR, bottoms aligned. On a
+                 phone the badges stand above the language chip, clear of the Start button. --}}
+            <div class="absolute bottom-10 right-8 sm:bottom-14 sm:right-12 flex flex-col items-end gap-3 sm:flex-row sm:gap-4" style="z-index:20">
+                @php $lessonTypes = $lessonData['lesson_types']; @endphp
+                @if ($lessonTypes !== [])
+                    <ul class="flex gap-2 sm:gap-3" data-lesson-types aria-label="{{ __('Lesson type') }}">
+                        @foreach ($lessonTypes as $type)
+                            <li @class(['lp-type-badge w-16 sm:w-20 lg:w-24',
+                                        'bg-type-interactive' => $type === 'interactive',
+                                        'bg-type-comic' => $type === 'comic',
+                                        'bg-type-teams' => $type === 'teams'])
+                                data-type="{{ $type }}">
+                                <img src="{{ asset("images/lesson-types/{$type}.svg") }}" alt="">
+                                <span>{{ match ($type) { 'interactive' => __('Interactive'), 'comic' => __('Comic story'), 'teams' => __('Teams') } }}</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
                 <x-lesson.language-switch :lesson="$lesson" :translations="$translations" />
                 {{-- QR code, clickable to open the modal. The teacher can hide it (title screen Format). --}}
                 @if ($lesson->show_qr ?? true)

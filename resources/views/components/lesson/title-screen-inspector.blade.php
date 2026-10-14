@@ -15,25 +15,52 @@
                            :chosen="$lesson->title_image"
                            select="selectTitleImage" reset="resetTitleImage" />
 
-    {{-- How the title is drawn. Comic and Logo show only when the series has that artwork. --}}
-    @php $styles = $lesson->availableTitleStyles(); $style = $lesson->titleStyle(); @endphp
-    @if (count($styles) > 1)
-        <div class="border-t border-slate-700/50 pt-4" data-title-style="{{ $style->value }}">
+    {{-- How the title is drawn: the series' comic candidates (each a folder of artwork, so a new
+         one appears here without code), then its logo, then the plain title. A small frame each. --}}
+    @php $choices = $lesson->titleChoices(); $style = $lesson->titleStyle(); @endphp
+    @if (count($choices) > 1)
+        <div class="border-t border-slate-700/50 pt-4" data-title-style="{{ $style }}">
             <div class="flex items-center justify-between">
                 <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Title style') }}</span>
                 @if ($lesson->title_style !== null)
                     <button type="button" wire:click="resetTitleStyle" class="text-2xs text-slate-500 transition-colors hover:text-primary">{{ __('Reset to default') }}</button>
                 @endif
             </div>
-            <div class="join mt-2" role="radiogroup" aria-label="{{ __('Title style') }}">
-                @foreach ($styles as $case)
-                    <button type="button" role="radio" aria-checked="{{ $case === $style ? 'true' : 'false' }}"
-                            wire:click="setTitleStyle('{{ $case->value }}')"
-                            @class(['btn btn-sm join-item', 'btn-primary' => $case === $style])>{{ $case->label() }}</button>
+            <div class="mt-2 grid grid-cols-2 gap-2" role="radiogroup" aria-label="{{ __('Title style') }}">
+                @foreach ($choices as $choice)
+                    @php $isOn = $choice['key'] === $style; @endphp
+                    <button type="button" role="radio" aria-checked="{{ $isOn ? 'true' : 'false' }}"
+                            wire:click="setTitleStyle(@js($choice['key']))" data-title-choice="{{ $choice['key'] }}"
+                            class="group text-left">
+                        <span @class([
+                            'relative block aspect-video overflow-hidden rounded-md bg-base-300 ring-1 transition',
+                            'ring-2 ring-primary' => $isOn,
+                            'ring-slate-700 group-hover:ring-slate-500' => ! $isOn,
+                        ])>
+                            @if ($choice['thumb_url'])
+                                <img src="{{ $choice['thumb_url'] }}" alt="" loading="lazy"
+                                     @class(['h-full w-full', 'object-contain p-2' => $choice['key'] === \App\Support\TitlePoster::LOGO, 'object-cover' => $choice['key'] !== \App\Support\TitlePoster::LOGO])>
+                            @endif
+                        </span>
+                        <span @class(['mt-1 block truncate text-2xs', 'text-primary' => $isOn, 'text-slate-400' => ! $isOn])>{{ $choice['label'] }}</span>
+                    </button>
                 @endforeach
             </div>
         </div>
     @endif
+
+    {{-- The lesson-type badges (LessonTypes): shown when true of the lesson, unless hidden here. --}}
+    <div class="flex items-center gap-3 border-t border-slate-700/50 pt-4">
+        <label class="flex flex-1 items-center justify-between gap-3">
+            <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Lesson type') }}</span>
+            <input type="checkbox" @checked($lesson->show_lesson_types ?? true)
+                   wire:change="setShowLessonTypes($event.target.checked)" data-lesson-types-toggle
+                   class="toggle toggle-sm shrink-0" />
+        </label>
+        @if ($lesson->show_lesson_types === false)
+            <button type="button" wire:click="setShowLessonTypes(true)" data-lesson-types-reset class="text-2xs text-slate-500 transition-colors hover:text-primary">{{ __('Reset to default') }}</button>
+        @endif
+    </div>
 
     {{-- Where the title sits: a small frame per preset with the block drawn in its place. --}}
     <div class="border-t border-slate-700/50 pt-4">

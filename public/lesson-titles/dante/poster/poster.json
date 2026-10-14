@@ -1,6 +1,8 @@
 {
   "version": 1,
   "source": "titles:make from resources/lessons/titles/dante.json",
+  "label": "Comic poster",
+  "order": 10,
   "frame": {
     "w": 5751.1445,
     "h": 3755.4816

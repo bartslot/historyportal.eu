@@ -10,8 +10,8 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Process;
 
 /**
- * A series' comic title poster from its recipe: resources/lessons/titles/{group}.json in,
- * public/lesson-titles/{group}/ out (poster.json + letter SVGs + mask.svg + outlines.svg + the
+ * A series' comic title candidate from its recipe: resources/lessons/titles/{group}.json in,
+ * public/lesson-titles/{group}/poster/ out (poster.json + letter SVGs + mask.svg + outlines.svg + the
  * pictures as WebP), the shape App\Support\TitlePoster and the player already read.
  *
  * This checks the recipe and names what is wrong; tools/titles/make_title.py (Python + fontTools +
@@ -19,6 +19,8 @@ use Illuminate\Support\Facades\Process;
  *
  * A recipe with "layout": "cover" makes the Tintin-style cover instead (tools/titles/cover.py):
  * resources/lessons/titles/{group}-cover.json (--cover) into public/lesson-titles/{group}/cover/.
+ * --candidate names any other folder. A recipe's label/order/thumb land in poster.json for the
+ * teacher's title picker (App\Support\TitlePoster::candidates).
  *
  * A folder made by hand (Bart's Figma Tasman poster) is never overwritten: only a folder this
  * command wrote before, or a new one, is replaced. Use --out for a scratch copy.
@@ -29,7 +31,8 @@ class MakeTitlePoster extends Command
         {group : the series translation_group, e.g. dante}
         {--cover : the cover recipe, resources/lessons/titles/{group}-cover.json}
         {--recipe= : recipe path (default resources/lessons/titles/{group}.json)}
-        {--out= : output folder (default public/lesson-titles/{group}, a cover in its cover/ folder)}';
+        {--candidate= : the candidate folder (default poster, or cover for a cover recipe)}
+        {--out= : output folder (default public/lesson-titles/GROUP/CANDIDATE)}';
 
     protected $description = 'Generate a comic title poster from its recipe (local, Python)';
 
@@ -55,7 +58,11 @@ class MakeTitlePoster extends Command
         }
 
         $isCover = ($recipe['layout'] ?? null) === 'cover';
-        $out = $this->option('out') ?: public_path("lesson-titles/{$group}".($isCover ? '/cover' : ''));
+        $candidate = (string) ($this->option('candidate') ?: ($isCover ? 'cover' : 'poster'));
+        if (! preg_match('/^[a-z0-9][a-z0-9-]*$/', $candidate) || in_array($candidate, ['logo', 'plain'], true)) {
+            return $this->failWith("Candidate '{$candidate}' must be lowercase letters, digits and dashes, and not logo or plain.");
+        }
+        $out = $this->option('out') ?: public_path("lesson-titles/{$group}/{$candidate}");
 
         $errors = $isCover ? self::coverProblems($recipe) : self::problems($recipe);
         if ($errors !== []) {
@@ -103,6 +110,29 @@ class MakeTitlePoster extends Command
     }
 
     /**
+     * What the teacher's title picker reads: label (a lang key or {nl: .., en: ..}), order, thumb.
+     *
+     * @param  array<mixed>  $r
+     * @return list<string>
+     */
+    private static function candidateProblems(array $r): array
+    {
+        $e = [];
+        $label = $r['label'] ?? '';
+        if (! is_string($label) && ! (is_array($label) && $label !== [] && array_filter($label, 'is_string') === $label)) {
+            $e[] = 'label must be a lang key like "Comic poster" or {"nl": "...", "en": "..."}.';
+        }
+        if (isset($r['order']) && ! is_int($r['order'])) {
+            $e[] = 'order must be a whole number (low first; the first candidate is the default).';
+        }
+        if (isset($r['thumb']) && (! is_string($r['thumb']) || str_contains($r['thumb'], '..'))) {
+            $e[] = 'thumb must be a picture file name in the candidate folder.';
+        }
+
+        return $e;
+    }
+
+    /**
      * Everything wrong with a recipe, in words a person can act on. Empty when it is fine.
      *
      * @param  array<mixed>  $r
@@ -110,7 +140,7 @@ class MakeTitlePoster extends Command
      */
     public static function problems(array $r): array
     {
-        $e = [];
+        $e = self::candidateProblems($r);
         if (isset($r['layout']) && $r['layout'] !== 'cover') {
             $e[] = 'layout must be "cover" or left out (the comic poster).';
         }
@@ -216,7 +246,7 @@ class MakeTitlePoster extends Command
      */
     public static function coverProblems(array $r): array
     {
-        $e = [];
+        $e = self::candidateProblems($r);
         $file = fn (mixed $path): bool => is_string($path) && $path !== '' && ! str_contains($path, '..') && is_file(base_path($path));
         $number = fn (mixed $n, float $min = 0, float $max = INF): bool => is_numeric($n) && (float) $n >= $min && (float) $n <= $max;
         $colour = fn (mixed $c): bool => is_string($c) && preg_match(self::HEX, $c) === 1;

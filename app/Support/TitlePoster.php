@@ -7,10 +7,16 @@ namespace App\Support;
 use App\Services\Support\LayerAmbient;
 
 /**
- * A lesson series' comic title poster: public/lesson-titles/{translation_group}/poster.json plus
- * its pictures; a variant lives in a subfolder (the Tintin-style cover: {group}/cover/). The
- * player draws it (resources/js/title-poster.js); this reads the file, keeps only what that
- * renderer understands, and turns every file name into a URL.
+ * A lesson series' comic title screens. Each CANDIDATE is a folder
+ * public/lesson-titles/{translation_group}/{candidate}/ holding a poster.json plus its pictures
+ * (the Good Talk poster is `poster`, the Tintin cover `cover`, Bart's banner `banner`). Adding a
+ * candidate is data only: a new folder with a poster.json, and the teacher's picker offers it.
+ *
+ * poster.json names itself for that picker: `label` (a lang key, or {nl: .., en: ..}), `order`
+ * (low first; the first is the series' default) and an optional `thumb` picture in its folder.
+ *
+ * The player draws a poster (resources/js/title-poster.js); this reads the file, keeps only what
+ * that renderer understands, and turns every file name into a URL.
  *
  * Boxes are shares of the frame in percent: x/w of its width, y/h of its height.
  */
@@ -18,16 +24,69 @@ final class TitlePoster
 {
     private const DIR = 'lesson-titles';
 
-    /** Subfolders a poster may live in ('' = the series folder itself). */
-    public const VARIANTS = ['', 'cover'];
+    /** The two title styles that are not a candidate folder: the series wordmark and the plain title. */
+    public const LOGO = 'logo';
+
+    public const PLAIN = 'plain';
+
+    /** title_style values from before candidates (the TitleStyle enum) and the candidate each became. */
+    public const LEGACY = ['comic' => 'poster'];
+
+    private const KEY = '/^[a-z0-9][a-z0-9-]*$/';
 
     private const FITS = ['contain', 'cover'];
 
     private const SUBTITLE_FONTS = ['comic', 'comicroma', 'lettering'];
 
-    public static function exists(?string $group, string $variant = ''): bool
+    /** A title_style value as stored: a legacy value mapped, anything not shaped like a key refused. */
+    public static function key(?string $value): ?string
     {
-        return self::path($group, $variant) !== null;
+        if ($value === null) {
+            return null;
+        }
+        $value = self::LEGACY[$value] ?? $value;
+
+        return preg_match(self::KEY, $value) === 1 ? $value : null;
+    }
+
+    /**
+     * The series' candidates for the picker, by `order` then key.
+     *
+     * @return list<array{key: string, label: string, order: int, thumb_url: ?string}>
+     */
+    public static function candidates(?string $group): array
+    {
+        if ($group === null || preg_match(self::KEY, $group) !== 1) {
+            return [];
+        }
+        $out = [];
+        foreach (glob(public_path(self::DIR."/{$group}/*/poster.json")) ?: [] as $path) {
+            $key = basename(dirname($path));
+            if (preg_match(self::KEY, $key) !== 1 || in_array($key, [self::LOGO, self::PLAIN], true)) {
+                continue;
+            }
+            $data = json_decode((string) file_get_contents($path), true);
+            if (! is_array($data)) {
+                report(new \UnexpectedValueException("Unreadable title poster: {$path}"));
+
+                continue;
+            }
+            $thumb = is_string($data['thumb'] ?? null) && ! str_contains($data['thumb'], '..') ? $data['thumb'] : null;
+            $out[] = [
+                'key' => $key,
+                'label' => self::label($data['label'] ?? null, $key),
+                'order' => is_numeric($data['order'] ?? null) ? (int) $data['order'] : PHP_INT_MAX,
+                'thumb_url' => $thumb !== null ? asset(self::DIR."/{$group}/{$key}/".ltrim($thumb, '/')) : null,
+            ];
+        }
+        usort($out, fn (array $a, array $b): int => [$a['order'], $a['key']] <=> [$b['order'], $b['key']]);
+
+        return $out;
+    }
+
+    public static function exists(?string $group, string $candidate): bool
+    {
+        return self::path($group, $candidate) !== null;
     }
 
     /**
@@ -35,9 +94,9 @@ final class TitlePoster
      *
      * @return array<string, mixed>|null
      */
-    public static function for(?string $group, string $variant = ''): ?array
+    public static function for(?string $group, string $candidate): ?array
     {
-        $path = self::path($group, $variant);
+        $path = self::path($group, $candidate);
         if ($path === null) {
             return null;
         }
@@ -49,8 +108,7 @@ final class TitlePoster
             return null;
         }
 
-        $folder = $variant === '' ? $group : "{$group}/{$variant}";
-        $url = fn (string $file): string => asset(self::DIR."/{$folder}/".ltrim($file, '/'));
+        $url = fn (string $file): string => asset(self::DIR."/{$group}/{$candidate}/".ltrim($file, '/'));
 
         $layers = [];
         foreach ($data['layers'] as $layer) {
@@ -104,13 +162,25 @@ final class TitlePoster
         ];
     }
 
-    private static function path(?string $group, string $variant = ''): ?string
+    /** A label in the interface language: a per-language map, else a lang key, else the folder name. */
+    private static function label(mixed $label, string $key): string
     {
-        // The group names a folder: never let it climb out of lesson-titles/.
-        if ($group === null || ! preg_match('/^[a-z0-9][a-z0-9-]*$/', $group) || ! in_array($variant, self::VARIANTS, true)) {
+        if (is_array($label)) {
+            $text = $label[app()->getLocale()] ?? $label['en'] ?? reset($label);
+
+            return is_string($text) && $text !== '' ? $text : ucfirst($key);
+        }
+
+        return is_string($label) && $label !== '' ? __($label) : ucfirst($key);
+    }
+
+    private static function path(?string $group, string $candidate): ?string
+    {
+        // Group and candidate name folders: never let either climb out of lesson-titles/.
+        if ($group === null || preg_match(self::KEY, $group) !== 1 || preg_match(self::KEY, $candidate) !== 1) {
             return null;
         }
-        $path = public_path(self::DIR."/{$group}/".($variant === '' ? '' : "{$variant}/").'poster.json');
+        $path = public_path(self::DIR."/{$group}/{$candidate}/poster.json");
 
         return is_file($path) ? $path : null;
     }

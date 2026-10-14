@@ -1,5 +1,6 @@
 {
-  "note": "Proof recipe: rebuilds Bart's Figma poster (public/lesson-titles/tasman-standard) from his wordmark and the same art. Generate it into a temp folder only (--out); the Figma version stays the real one.",
+  "note": "Proof recipe: rebuilds Bart's Figma poster (public/lesson-titles/tasman-standard/poster) from his wordmark and the same art. Generate it into a temp folder only (--out); the Figma version stays the real one.",
+  "label": "Comic poster", "order": 10,
   "letters": { "wordmark": "public/lesson-logos/tasman-standard.svg" },
   "rows": [
     { "text": "ABEL", "gradient": ["#04B3C4", "#C4F0F4"], "scale": 1.0 },
@@ -12,11 +13,11 @@
   "focus_width": 80,
   "subtitle": { "size": 2.3, "color": "#FFFFFF" },
   "pictures": [
-    { "id": "swell-near-1", "art": "public/lesson-titles/tasman-standard/swell-near.webp", "row": 0, "at": 35.9, "height": 23, "dy": -1.9, "ambient": "swell", "ambient_speed": 1, "ambient_amount": 0.6 },
-    { "id": "swell-near-2", "art": "public/lesson-titles/tasman-standard/swell-near.webp", "row": 0, "at": 68.9, "height": 23, "dy": -1.9, "ambient": "swell", "ambient_speed": 0.9, "ambient_amount": 0.6 },
-    { "art": "public/lesson-titles/tasman-standard/wave-break.webp", "row": 0, "at": 82.8, "height": 36.3, "dy": -13, "flip": "x", "rotate": 0.88, "ambient": "breeze", "ambient_speed": 0.8, "ambient_amount": 1.2 },
-    { "art": "public/lesson-titles/tasman-standard/swell-far.webp", "row": 0, "at": 8.4, "height": 30, "dy": 5.4, "ambient": "swell", "ambient_speed": 0.8, "ambient_amount": 0.6 },
-    { "art": "public/lesson-titles/tasman-standard/voc-ships.webp", "row": 0, "at": 17, "height": 74, "dy": -15, "ambient": "roll", "ambient_speed": 1, "ambient_amount": 0.6 }
+    { "id": "swell-near-1", "art": "public/lesson-titles/tasman-standard/poster/swell-near.webp", "row": 0, "at": 35.9, "height": 23, "dy": -1.9, "ambient": "swell", "ambient_speed": 1, "ambient_amount": 0.6 },
+    { "id": "swell-near-2", "art": "public/lesson-titles/tasman-standard/poster/swell-near.webp", "row": 0, "at": 68.9, "height": 23, "dy": -1.9, "ambient": "swell", "ambient_speed": 0.9, "ambient_amount": 0.6 },
+    { "art": "public/lesson-titles/tasman-standard/poster/wave-break.webp", "row": 0, "at": 82.8, "height": 36.3, "dy": -13, "flip": "x", "rotate": 0.88, "ambient": "breeze", "ambient_speed": 0.8, "ambient_amount": 1.2 },
+    { "art": "public/lesson-titles/tasman-standard/poster/swell-far.webp", "row": 0, "at": 8.4, "height": 30, "dy": 5.4, "ambient": "swell", "ambient_speed": 0.8, "ambient_amount": 0.6 },
+    { "art": "public/lesson-titles/tasman-standard/poster/voc-ships.webp", "row": 0, "at": 17, "height": 74, "dy": -15, "ambient": "roll", "ambient_speed": 1, "ambient_amount": 0.6 }
   ],
-  "hero": { "art": "public/lesson-titles/tasman-standard/tasman.webp", "row": 1, "at": "t", "height": 139, "dx": -17, "dy": 40, "ambient": "breeze", "ambient_speed": 0.5, "ambient_amount": 0.3 }
+  "hero": { "art": "public/lesson-titles/tasman-standard/poster/tasman.webp", "row": 1, "at": "t", "height": 139, "dx": -17, "dy": 40, "ambient": "breeze", "ambient_speed": 0.5, "ambient_amount": 0.3 }
 }
