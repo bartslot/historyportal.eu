@@ -57,6 +57,15 @@ const MIN_STAGE_SPAN = 960;
 export const stageSpan = (width, height) => Math.max(MIN_STAGE_SPAN, Math.min(width, height));
 const CARD_COUNT = 22;
 
+/** Where the ring's inner edge sits, in canvas pixels from its centre. The portal (hero/portal.js)
+ *  reads it so the hole it opens starts inside the ring and the ring can ride the hole's edge. */
+export const ringInnerRadius = (width, height) => {
+    const span = stageSpan(width, height);
+    const radius = RING_RATIO * span;
+
+    return radius - cardSideFor(radius, CARD_COUNT, GUTTER_RATIO * span) / 2;
+};
+
 // Cards in flight get a small random tilt — they are tumbling, so it reads as motion.
 //
 // Cards ON THE RING do not. A square rotated off-tangent has a tangential extent of
@@ -467,6 +476,15 @@ export const createCardwheel = (canvas, image, options = {}) => {
         recede() {},
         advance(seconds) {
             render((lastTime || 0) + seconds * 1000);
+        },
+        /** Stop drawing while the visitor is inside a lesson (hero/portal.js); the frame-delta
+         *  clamp absorbs the gap on resume, so nothing jumps. */
+        pause() {
+            gsap.ticker.remove(tick);
+        },
+        resume() {
+            gsap.ticker.remove(tick);
+            gsap.ticker.add(tick);
         },
         destroy() {
             gsap.ticker.remove(tick);
