@@ -189,8 +189,9 @@ export function exchangeScreen (screens, body) {
     }))
   } else {
     // The absent items, to swap in; then the preview, then one confirm.
+    // auto-fill: a few cards left stay card-sized, so the preview and "Ruilen" stay in view.
     const strip = el('div', 'grid gap-2')
-    strip.style.gridTemplateColumns = 'repeat(auto-fit, minmax(4.5rem, 1fr))'
+    strip.style.gridTemplateColumns = 'repeat(auto-fill, minmax(5.25rem, 1fr))'
     cat.optional.filter(it => !state.selected.includes(it.id)).forEach(it => {
       const card = cargoCard(it, view.into === it.id ? 'border-primary' : 'border-transparent')
       card.dataset.swapIn = it.id

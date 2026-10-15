@@ -61,7 +61,8 @@ export function cargoCard (item, className = '') {
     img.draggable = false
     pic.appendChild(img)
   }
-  const name = el('span', 'pointer-events-none line-clamp-2 min-h-[2.5em] text-center text-sm font-semibold leading-tight', item.name)
+  // Long Dutch compounds ("Timmergereedschap") break with a hyphen rather than spill out.
+  const name = el('span', 'pointer-events-none line-clamp-3 min-h-[2.5em] w-full hyphens-auto text-center text-xs font-semibold leading-tight [overflow-wrap:anywhere] sm:text-sm', item.name)
   name.setAttribute('aria-hidden', 'true')
   const cost = el('span', 'pointer-events-none flex items-center gap-1.5')
   cost.setAttribute('aria-hidden', 'true')
