@@ -47,7 +47,12 @@
         'title'                 => $lesson->title,
         'topic'                 => $lesson->topic,
         'subject'               => $lesson->subject,
-        'grade_level'           => $lesson->grade_level,
+        // The subject as the class reads it ("About this lesson"): the stored value is an English key.
+        'subject_label'         => match (strtolower((string) $lesson->subject)) {
+            'history' => __('History'), 'science' => __('Science'), 'literature' => __('Literature'), 'civics' => __('Civics'),
+            '' => null, default => ucfirst((string) $lesson->subject),
+        },
+        'grade_level'         => $lesson->grade_level,
         'historical_figure'     => $lesson->historical_figure,
         'script'                => $lesson->script,
         'duration_seconds'      => $lesson->duration_seconds,
@@ -813,9 +818,9 @@
             </div>
 
             {{-- The bottom rail: one row on the bottom gutter, every piece's bottom on one baseline.
-                 Start and the language left, the way down to "About this lesson" in the middle, the
+                 Start, the language and the way down to "About this lesson" left, the
                  join QR right (static: title-qr.js only sizes or hides it). --}}
-            <div class="title-rail flex items-end gap-2 sm:gap-4" style="z-index:20" data-title-rail>
+            <div class="title-rail flex items-end gap-2" style="z-index:20" data-title-rail>
                 <div class="flex items-end gap-3" data-title-avoid="children" data-title-piece="cta">
                     <template x-if="canStart">
                         <button type="button" @click="startLesson()" data-title-rail-item
@@ -845,7 +850,7 @@
 
                 <button type="button" @click="scrollToAbout()" aria-label="{{ __('About this lesson') }}" data-tooltip="{{ __('About this lesson') }}"
                         data-title-avoid data-title-piece="chevron" data-title-rail-item
-                        class="title-pill title-chevron flex w-12 shrink-0 items-center justify-center rounded-full text-white/80 transition-colors hover:text-white focus:outline-none focus-visible:outline-2 focus-visible:outline-white">
+                        class="title-pill flex w-10 shrink-0 items-center justify-center rounded-full text-white/80 transition-colors hover:text-white focus:outline-none focus-visible:outline-2 focus-visible:outline-white">
                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>
                 </button>
 
@@ -910,7 +915,7 @@
                             <dl class="space-y-3 text-sm">
                                 <div x-show="estimatedMinutes" class="grid grid-cols-[8rem_1fr] gap-4"><dt class="text-base-content/50">{{ __('Duration') }}</dt><dd x-text="estimatedMinutes"></dd></div>
                                 <div x-show="lesson.grade_level" class="grid grid-cols-[8rem_1fr] gap-4"><dt class="text-base-content/50">{{ __('Grade') }}</dt><dd x-text="lesson.grade_level"></dd></div>
-                                <div x-show="lesson.subject" class="grid grid-cols-[8rem_1fr] gap-4"><dt class="text-base-content/50">{{ __('Subject') }}</dt><dd class="capitalize" x-text="lesson.subject"></dd></div>
+                                <div x-show="lesson.subject_label" class="grid grid-cols-[8rem_1fr] gap-4"><dt class="text-base-content/50">{{ __('Subject') }}</dt><dd x-text="lesson.subject_label"></dd></div>
                                 <div class="grid grid-cols-[8rem_1fr] gap-4"><dt class="text-base-content/50">{{ __('Lesson code') }}</dt><dd class="font-mono font-bold uppercase tracking-[0.2em]" x-text="lesson.lesson_code"></dd></div>
                             </dl>
                             <x-lesson.type-badges :types="$lessonTypes" :dark="($titlePoster['badge_style'] ?? 'colour') === 'dark'" />

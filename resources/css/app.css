@@ -2036,15 +2036,9 @@ html[data-inspector-w] aside[data-resizable-drawer] {
 }
 @keyframes title-rail-in { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .title-rail { animation: none; } }
-/* The way down to "About this lesson": the rail's middle on a wide screen, its end on a narrow one. */
-.title-chevron { margin-left: auto; }
-@media (min-width: 1024px) {
-  .title-chevron { position: absolute; left: 50%; bottom: 0; margin-left: -1.5rem; }
-  .title-rail [data-title-qr], .title-rail [data-title-code] { margin-left: auto; }
-}
-@media (max-width: 1023.98px) {
-  .title-rail [data-title-qr], .title-rail [data-title-code] { margin-left: 0; }
-}
+/* The way down to "About this lesson" sits after the language, in the left group, clear of the
+   artwork's middle; the join code takes the right end. */
+.title-rail [data-title-qr], .title-rail [data-title-code] { margin-left: auto; }
 /* One flat scrim behind the rail over a painting: content contrast, no blur. */
 .title-rail-scrim {
   height: calc(var(--title-pill-h) + 2 * var(--title-gutter) + 4rem);

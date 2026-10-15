@@ -26,7 +26,7 @@ export const FIT = {
 }
 
 // Chrome with a static place: a face under it is left to the art.
-export const STATIC = ['qr', 'chevron']
+export const STATIC = ['qr']
 
 export const FIT_START = Object.freeze({ qrStep: 0, qrHidden: false, shrink: 0 })
 

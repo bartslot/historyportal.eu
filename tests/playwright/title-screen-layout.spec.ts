@@ -8,7 +8,8 @@ import fs from 'node:fs';
  * letters and faces (poster.json keep_clear). The bottom rail sits inside the one gutter with every
  * piece's bottom on one baseline, the QR always bottom right; the hero is one viewport and "About
  * this lesson" follows it. Measured from the render, every candidate × every size, teacher and
- * student view. A face under the static QR or chevron is an art problem: reported, not failed.
+ * student view. The chevron stands in the left group, right after the language, never on a face.
+ * A face under the static QR is an art problem: reported, not failed.
  *
  * It switches the lesson's title_style, so it runs only against a THROWAWAY copy:
  *   TITLE_LESSON_CODE=POLSH1 PW_BASE_URL=http://127.0.0.1:8080 npx playwright test title-screen-layout --project=chromium --workers=1
@@ -83,7 +84,7 @@ async function measure (page: Page) {
       keep.forEach((k: Box) => {
         if (!hit(a, k) || (a.name === 'poster subtitle' && k.name === 'letters')) return;
         // Static chrome over a face: the art moves, never the chrome.
-        if (k.name === 'face' && ['qr', 'chevron'].includes(a.name)) art.push(`${a.name} × face`);
+        if (k.name === 'face' && a.name === 'qr') art.push(`${a.name} × face`);
         else overlaps.push(`${a.name} × ${k.name}`);
       });
     });
@@ -102,6 +103,12 @@ async function measure (page: Page) {
     }
     const qrBox = rail.find(p => p.name === 'qr');
     if (qrBox && Math.abs(qrBox.x + qrBox.w - (W - g)) > 2) railIssues.push(`qr not bottom right (right ${Math.round(qrBox.x + qrBox.w)}, gutter ${Math.round(W - g)})`);
+    // The way down: in the left group, after the language (or Start), well clear of the QR.
+    const chevron = rail.find(p => p.name === 'chevron');
+    const before = rail.filter(p => p.name !== 'chevron' && p.name !== 'qr' && p.x < (chevron?.x ?? 0));
+    if (!chevron) railIssues.push('no chevron in the rail');
+    else if (before.some(p => p.x + p.w > chevron.x + 1) || (qrBox && chevron.x + chevron.w > qrBox.x - 16)) railIssues.push('chevron not in the left group');
+    else if (Math.max(...before.map(p => p.x + p.w), g) < chevron.x - 24) railIssues.push('chevron not right after the language');
     const about = host.querySelector('[data-title-about]')?.getBoundingClientRect();
     if (!about || about.top - o.top < H - 1) railIssues.push('About this lesson is not below the hero');
 

@@ -10,7 +10,8 @@ describe('what overlaps on the title screen', () => {
     expect(collisions(pieces, keep)).toEqual([{ a: 'language', b: 'cta' }, { a: 'title', b: 'face' }])
   })
 
-  it('leaves the QR over a face to the art, and reports it', () => {
+  it('leaves the QR over a face to the art, and reports it; never the chevron', () => {
+    expect(collisions([{ group: 'chevron', rect: r(500, 500, 48, 48) }], [{ kind: 'face', rect: r(505, 505, 20, 20) }])).toEqual([{ a: 'chevron', b: 'face' }])
     const qr = r(500, 500, 96, 96)
     const keep = [{ kind: 'face', rect: r(505, 505, 20, 20) }]
     expect(collisions([{ group: 'qr', rect: qr }], keep)).toEqual([])
