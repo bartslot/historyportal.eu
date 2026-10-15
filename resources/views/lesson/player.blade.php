@@ -255,6 +255,8 @@
     x-data="lessonGame(window.LESSON)"
     x-init="init()"
     class="relative w-screen h-screen overflow-hidden"
+    :data-chrome-idle="!readingOverlay && chromeHidden"
+    :style="{ '--chrome-fade': (chromeHidden ? chromeFadeOutMs : chromeFadeInMs) + 'ms' }"
 >
 
     {{-- ── LAYER 0: Background images (Ken Burns) ───────────────────────── --}}
@@ -363,42 +365,30 @@
         {{-- The chapter name + year moved into the overlay wrapper below as one quiet line. --}}
 
         {{-- ── Player overlay (Figma: VideoPlayer playing/paused) — less is more, icons only.
-             Every piece of chrome lives in this wrapper and is shown ONLY while paused, while a
-             menu is open, or while the pointer sits over the top/bottom edge of the screen
-             (plus a short flash after any tap or keypress so touch users can summon it).
-             While narration plays and the pointer is elsewhere, the stage is completely clean.
-             The visibility expression is repeated on each block because an x-data getter cannot
-             reach the parent player's state through `this` — inline expressions can. --}}
+             Every piece of chrome lives in this wrapper and idles the way a video player does:
+             any pointer move, tap or key brings it in, and while the lesson plays it fades out
+             again after a second of stillness (cursor too). Paused, a menu open, keyboard focus
+             inside, or the mouse resting on the top/bottom band: it stays. One rule for every
+             block, `chromeHidden` in lesson-player.js; the timings are live under Test tools. --}}
         <div class="contents"
-             x-data="{
-                 zoneHover: false,
-                 zoneFlash: false,
-                 _zoneFlashT: null,
-                 probeZones(e) {
-                     const z = e.clientY <= 88 || e.clientY >= window.innerHeight - 176
-                     if (z !== this.zoneHover) this.zoneHover = z
-                 },
-                 flashUi() {
-                     this.zoneFlash = true
-                     clearTimeout(this._zoneFlashT)
-                     this._zoneFlashT = setTimeout(() => { this.zoneFlash = false }, 2600)
-                 },
-             }"
              @pointermove.window="probeZones($event)"
-             @pointerdown.window="flashUi()"
-             @keydown.window="flashUi()">
+             @pointerdown.window="probeZones($event)"
+             @pointerout.window="$event.relatedTarget || (zoneHover = false)"
+             @keydown.window="wakeChrome()"
+             @focusin="chromeFocus = $event.target.matches(':focus-visible')"
+             @focusout="chromeFocus = false">
 
             {{-- ── Subtitles — the narration written along the bottom while it is spoken ───────
                  Netflix's look (.lp-cc in app.css): white text, a 60% black backdrop hugging each
                  line, at most two lines. Bottom centre, lifted over the deck while the deck shows.
-                 Inside this wrapper so it can see zoneHover. lang + dir follow the language of the
+                 Lifts with the chrome (chromeHidden). lang + dir follow the language of the
                  line on screen (a line not translated yet shows in the original). x-text (never
                  x-html): a script is teacher copy and must not inject markup into the player. No
                  x-transition: its leave never applied in a hidden tab and left the bubble up. --}}
             <div x-show="captionsOn && captionText && (phase === 'INTRO' || phase === 'GAME_ACTIVE')"
                  x-cloak
                  class="lp-cc pointer-events-none absolute left-1/2 -translate-x-1/2 text-center"
-                 :class="!(readingOverlay || (isPlaying && !zoneHover && !zoneFlash && !chaptersOpen && !ccOpen)) && 'lp-cc--lifted'"
+                 :class="!chromeHidden && 'lp-cc--lifted'"
                  {{-- Above the deck's scrim, under the deck itself while the panel is open over it. --}}
                  :style="`z-index:${ccOpen || chaptersOpen ? 45 : 47}`"
                  aria-live="polite">
@@ -411,8 +401,8 @@
                  nothing to click, and at z-index:48 it was sitting over the top-left language
                  switch (z-index:10) during TITLE_SCREEN and eating its clicks. Only the actual
                  controls (the "Edit scene" button below) opt back in with pointer-events-auto. --}}
-            <div class="pointer-events-none absolute inset-x-0 top-0 transition-opacity duration-300"
-                 :class="(readingOverlay || (isPlaying && !zoneHover && !zoneFlash && !chaptersOpen && !ccOpen)) ? 'opacity-0' : 'opacity-100'"
+            <div class="pointer-events-none absolute inset-x-0 top-0 lp-chrome-fade"
+                 :class="chromeHidden ? 'opacity-0' : 'opacity-100'"
                  style="z-index:48">
                 {{-- Side padding = the title screen bar's gutter (px-8/12), so Edit scene lines up with Start. --}}
                 {{-- A line-art scene (backdropShade off) keeps its paper white to the edge: no
@@ -441,15 +431,16 @@
                  no chrome). The button box is bigger than the glyph for a comfortable hit target.
                  Hidden on quiz scenes, where the centre belongs to the quiz card.
 
-                 It answers a PRESS. It used to show whenever nothing happened to be playing, which
-                 on an interactive scene — a voyage landfall waiting for the class to move on — left
-                 a 96px triangle parked over the map the whole time. Now it flashes when the student
-                 presses play or pause (deck button, K, Space, a click on the stage) and stays up
-                 while the lesson is genuinely paused. See _flashPlaybackGlyph. --}}
+                 It answers a PRESS or a hand. It used to show whenever nothing happened to be
+                 playing, which on an interactive scene — a voyage landfall waiting for the class to
+                 move on — left a 96px triangle parked over the map the whole time. Now it flashes
+                 when the student presses play or pause (deck button, K, Space, a click on the stage),
+                 stays up while the lesson is genuinely paused, and comes and goes with the rest of
+                 the chrome while it plays. See centreGlyphShown. --}}
             <div x-show="(phase === 'INTRO' || phase === 'GAME_ACTIVE' || phase === 'GAME_BRIEF') && !currentIsGame"
                  x-cloak
-                 class="pointer-events-none absolute inset-0 flex items-center justify-center transition-opacity duration-300"
-                 :class="(!readingOverlay && (playbackPaused || playbackGlyph)) ? 'opacity-100' : 'opacity-0'"
+                 class="pointer-events-none absolute inset-0 flex items-center justify-center lp-chrome-fade"
+                 :class="centreGlyphShown ? 'opacity-100' : 'opacity-0'"
                  style="z-index:45">
                 {{-- No data-tooltip here on purpose: a 96px glyph in the middle of the stage says
                      what it is, and a hover hint floating over the scene is noise. The deck's small
@@ -458,7 +449,7 @@
                 <button type="button" @click="togglePlayback()"
                         :aria-label="playbackPaused ? @js(__('Play')) : @js(__('Pause'))"
                         class="group flex h-24 w-24 items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
-                        :class="[(!readingOverlay && (playbackPaused || playbackGlyph)) ? 'pointer-events-auto' : 'pointer-events-none',
+                        :class="[centreGlyphShown ? 'pointer-events-auto' : 'pointer-events-none',
                                  !backdropShade && 'border border-white/10 bg-black/70 backdrop-blur-md']">
 
                     <svg x-show="playbackPaused" class="h-14 w-14 text-white drop-shadow-[0_4px_14px_rgba(0,0,0,0.8)] transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95" viewBox="0 0 21 23" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -480,14 +471,14 @@
                  chapter line carry a local plate instead, below. --}}
             <div x-show="backdropShade && (phase === 'INTRO' || phase === 'GAME_ACTIVE' || phase === 'GAME_BRIEF')"
                  x-cloak
-                 class="pointer-events-none absolute inset-x-0 bottom-0 h-44 bg-linear-to-t from-black/80 via-black/40 to-transparent transition-opacity duration-300"
-                 :class="(readingOverlay || (isPlaying && !zoneHover && !zoneFlash && !chaptersOpen && !ccOpen)) && 'opacity-0'"
+                 class="pointer-events-none absolute inset-x-0 bottom-0 h-44 bg-linear-to-t from-black/80 via-black/40 to-transparent lp-chrome-fade"
+                 :class="chromeHidden && 'opacity-0'"
                  style="z-index:44"></div>
 
             <div x-show="phase === 'INTRO' || phase === 'GAME_ACTIVE' || phase === 'GAME_BRIEF'"
                  x-cloak
-                 class="absolute inset-x-0 bottom-0 transition-all duration-300 ease-out"
-                 :class="(readingOverlay || (isPlaying && !zoneHover && !zoneFlash && !chaptersOpen && !ccOpen)) ? 'pointer-events-none translate-y-2 opacity-0' : 'opacity-100'"
+                 class="absolute inset-x-0 bottom-0 lp-chrome-fade"
+                 :class="chromeHidden ? 'pointer-events-none translate-y-2 opacity-0' : 'opacity-100'"
                  style="z-index:46">
                 <div class="pointer-events-auto mx-auto w-[min(720px,92vw)] pb-3" data-player-chrome="bottom">
 
