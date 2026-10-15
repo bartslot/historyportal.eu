@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { t } from '../i18n.js'
+import { t, tn } from '../i18n.js'
 
 /**
  * Player-side translation.
@@ -34,5 +34,22 @@ describe('t()', () => {
   it('ignores a dictionary that is not an object, rather than throwing mid-quiz', () => {
     window.__lpLang = 'not a dictionary'
     expect(t('Nice!')).toBe('Nice!')
+  })
+})
+
+describe('tn(): one|many', () => {
+  afterEach(() => { delete window.__lpLang })
+
+  it('says "kost 1 punt", never "1 punten"', () => {
+    window.__lpLang = { ':item, costs :count point|:item, costs :count points': ':item, kost :count punt|:item, kost :count punten' }
+    expect(tn(':item, costs :count point|:item, costs :count points', 1, { item: 'Kompas' })).toBe('Kompas, kost 1 punt')
+    expect(tn(':item, costs :count point|:item, costs :count points', 3, { item: 'Rijst' })).toBe('Rijst, kost 3 punten')
+    expect(tn(':item, costs :count point|:item, costs :count points', 0, { item: 'X' })).toBe('X, kost 0 punten')
+  })
+
+  it('falls back to the English forms, and copes with a line that has one form', () => {
+    expect(tn(':count place free|:count places free', 1)).toBe('1 place free')
+    expect(tn(':count place free|:count places free', 4)).toBe('4 places free')
+    expect(tn(':count things', 1)).toBe('1 things')
   })
 })

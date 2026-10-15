@@ -149,12 +149,15 @@ describe('TeamGame on the class screen', () => {
     expect(host.textContent).toContain('Welke woorden?')
   })
 
-  it('says Resume once the time is up', () => {
+  it('offers only "+1 minute" once the time is up (a "Resume" at zero did nothing)', () => {
     vi.useFakeTimers()
     const { host } = mount({ mode: 'discuss', minutes: 1, question: 'Klopt dat?' })
     vi.advanceTimersByTime(60_000)
     expect(host.querySelector('[data-team-clock]').textContent).toBe('Time is up')
-    expect(host.querySelector('[data-team-pause]').textContent).toBe('Resume')
+    expect(host.querySelector('[data-team-pause]')).toBeNull()
+    ;[...host.querySelectorAll('button')].find(b => b.textContent === '+1 minute').click()
+    expect(host.querySelector('[data-team-pause]').textContent).toBe('Pause')
+    vi.useRealTimers()
   })
 })
 

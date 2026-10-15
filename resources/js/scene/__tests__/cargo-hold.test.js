@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { readHold, unitsPerZone, gridFor, cellRects, slotPlan, draughtFor, nearlyFull, zoomedPlace, wholePlace, DRAUGHT_AMOUNT } from '../cargo-hold.js'
+import fs from 'node:fs'
+import { readHold, baysOf, unitsPerZone, gridFor, cellRects, slotPlan, draughtFor, nearlyFull, zoomedPlace, wholePlace, DRAUGHT_AMOUNT } from '../cargo-hold.js'
 import { deckReserve } from '../deck-reserve.js'
-import { rolesFor, numberWith, roleLine } from '../team-roles.js'
+import { rolesFor, numberWith, roleLine, pickPrompt, exchangePrompt } from '../team-roles.js'
 
 // The painted hold of hold_ship_cutaway (its .hold.json): two decks.
 const zones = [{ x: 20.5, y: 61.5, w: 62, h: 9.5 }, { x: 23.5, y: 74, w: 55.5, h: 9.8 }]
@@ -55,6 +56,66 @@ describe('the hold: every item its own slot (plan §5)', () => {
 
   it('gives free items no space', () => {
     expect(slotPlan([{ key: 'x', cost: 0 }], zones, 16 / 9, 16).get('x')).toEqual([])
+  })
+})
+
+describe('the hold: cargo only in the bays between the posts (Bart, twice: never in front of a pillar)', () => {
+  // The real art's measured hold: hold_ship_cutaway.hold.json.
+  const art = JSON.parse(fs.readFileSync('resources/icons/history-line/props/tasman/hold_ship_cutaway.hold.json', 'utf8'))
+  const hold = readHold(art)
+  const bays = baysOf(hold.zones, hold.posts)
+  const teamFull = ['water', 'compass', 'rice', 'meat', 'spare_sails', 'tools', 'firewood', 'paper_ink']   // 16/16
+  const aboard = (keys) => catalogue.filter(c => keys.includes(c.key))
+
+  it('reads the posts from the art and cuts each deck into bays', () => {
+    expect(hold.posts.length).toBeGreaterThanOrEqual(8)
+    expect(bays.length).toBe(8)                                   // four bays on each deck
+    bays.forEach(b => hold.posts.forEach(p => expect(overlaps(b, p)).toBe(false)))
+  })
+
+  it('lays out 16 cells, none over a post, each inside a bay, at a readable size', () => {
+    const cells = cellRects(bays, 16, hold.aspect)
+    expect(cells).toHaveLength(16)
+    cells.forEach(c => hold.posts.forEach(p => expect(overlaps(c, p)).toBe(false)))
+    cells.forEach(c => expect(bays.some(b => c.x >= b.x - 0.01 && c.x + c.w <= b.x + b.w + 0.01)).toBe(true))
+    cells.forEach(c => expect(c.w * hold.aspect).toBeGreaterThan(c.h * 0.6))   // never a sliver
+  })
+
+  it('packs a full hold and a 4/16 hold with no piece over a post or another piece', () => {
+    for (const keys of [teamFull, ['water', 'compass'], catalogue.map(c => c.key)]) {
+      const pieces = [...slotPlan(aboard(keys), bays, hold.aspect, 16).values()].flat()
+      pieces.forEach((a, i) => {
+        hold.posts.forEach(p => expect(overlaps(a, p)).toBe(false))
+        pieces.slice(i + 1).forEach(b => expect(overlaps(a, b)).toBe(false))
+      })
+    }
+    const full = [...slotPlan(aboard(teamFull), bays, hold.aspect, 16).values()].flat()
+    expect(full.reduce((n, p) => n + p.cells, 0)).toBe(16)
+  })
+
+  it('keeps the zones when a ship has no posts, and drops slivers between two posts', () => {
+    expect(baysOf(zones, [])).toEqual(zones)
+    expect(baysOf([{ x: 0, y: 0, w: 20, h: 5 }], [{ x: 5, y: 0, w: 2, h: 5 }, { x: 7.5, y: 0, w: 2, h: 5 }]))
+      .toEqual([{ x: 0, y: 0, w: 5, h: 5 }, { x: 9.5, y: 0, w: 10.5, h: 5 }])
+    expect(baysOf([{ x: 0, y: 0, w: 20, h: 5 }], [{ x: 5, y: 10, w: 2, h: 5 }])).toEqual([{ x: 0, y: 0, w: 20, h: 5 }])  // another deck's post
+  })
+})
+
+describe('one role prompt at a time (PM 10-15)', () => {
+  const base = { loaded: 0, load: 4, budget: 16, cheapest: 1 }
+  it('the Bootsman while loading, the Kapitein only near "Klaar", nobody once ready', () => {
+    expect(pickPrompt(base)).toBe('fit')
+    expect(pickPrompt({ ...base, loaded: 1, load: 7 })).toBe('fit')
+    expect(pickPrompt({ ...base, loaded: 5, load: 15 })).toBe('ready')               // nearly full
+    expect(pickPrompt({ ...base, loaded: 3, load: 12, cheapest: 5 })).toBe('ready')   // nothing else fits
+    expect(pickPrompt({ ...base, loaded: 0, load: 4, cheapest: Infinity })).toBe('fit')   // nothing aboard yet
+    expect(pickPrompt({ ...base, confirming: true })).toBe('ready')                     // "Toch klaar?"
+    expect(pickPrompt({ ...base, loaded: 5, load: 16, confirmed: true })).toBeNull()
+  })
+  it('the Verkenner first at Laatste kans, then the Kapitein, then nobody', () => {
+    expect(exchangePrompt({ open: true, picked: false })).toBe('risk')
+    expect(exchangePrompt({ open: true, picked: true })).toBe('swap')
+    expect(exchangePrompt({ open: false, picked: false })).toBeNull()
   })
 })
 

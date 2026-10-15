@@ -29,3 +29,14 @@ export function t (source, replace = {}) {
     line,
   )
 }
+
+/**
+ * A counted line, Laravel's "one|many" form: the first for a count of 1, the last otherwise, with
+ * `:count` filled in. "kost 1 punt", "kost 2 punten".
+ *   tn(':count place free|:count places free', 3)
+ * @param {string} source  @param {number} count  @param {Record<string, string|number>} [replace]
+ */
+export function tn (source, count, replace = {}) {
+  const forms = t(source, { count, ...replace }).split('|')
+  return forms[Math.abs(Number(count)) === 1 ? 0 : forms.length - 1]
+}

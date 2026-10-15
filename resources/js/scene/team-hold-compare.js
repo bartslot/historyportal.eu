@@ -3,14 +3,15 @@
  * exchange or keep) and Klaar voor vertrek? (lock and sail). Screens of HoldScreens (team-hold.js);
  * the rules are cargo-run.js. One primary action per screen; the teacher moves the class on.
  */
-import { t } from '../i18n.js'
+import { t, tn } from '../i18n.js'
 import { el } from './dom.js'
 import { createHoldStage, flyCargo, fadeIn } from './cargo-hold.js'
-import { cargoList, costDots, statusText, SHIP_ICON } from './team-card.js'
+import { cargoList, statusText, SHIP_ICON } from './team-card.js'
 import {
-  totalOf, missingPrompt, differing, pagesOfFour, previewExchange, exchangeCargo, keepCargo, resetExchange, lockDeparture,
+  totalOf, missingPrompt, differing, pagesOfFour, previewExchange, swapGuard, exchangeCargo, keepCargo, resetExchange, lockDeparture,
 } from './cargo-run.js'
-import { shipCargo, button, opId } from './team-hold.js'
+import { shipCargo, button, opId, cargoCard } from './team-hold.js'
+import { exchangePrompt } from './team-roles.js'
 
 const append = (parent, ...children) => { children.forEach(c => c && parent.appendChild(c)); return parent }
 
@@ -30,7 +31,9 @@ export function teamShip (screens, { name, tone, state, onTap = null, big = fals
     // The comparison reads the cargo, so it zooms on the hull (the whole ship left the cargo at
     // ~15 px, unreadable from the back); the departure shows the whole ship sailing out.
     hold: screens.game.cfg.hold, zoomed: !whole, whole, stageAspect: whole ? 2 : big ? 2 : 2.5, quiet: !whole,
-    className: `w-full rounded-box ${whole ? 'aspect-[2/1]' : big ? 'aspect-[2/1]' : 'aspect-[5/2]'}`,
+    // The departure's whole ships stay short enough that four of them and "Verder met de les" fit
+    // a 1024x768 screen without scrolling (the stage widens; the ship fits its height).
+    className: `w-full rounded-box ${whole ? 'aspect-[2/1] max-h-[22vh]' : big ? 'aspect-[2/1]' : 'aspect-[5/2]'}`,
   })
   stage.update({ key: name, cargo: shipCargo(state, cat), capacity: cat.budget, load })
   const label = el('span', `flex items-center gap-2 self-start rounded-full px-3 py-1 ${tone.head}`)
@@ -75,7 +78,7 @@ export function compareScreen (screens, body) {
         const ship = teamShip(screens, { ...team, big: true, onTap: () => { view.pair = []; draw() } })
         ship.stage.highlight(only)
         const mine = cat.items.filter(it => only.has(it.id) && team.state.selected.includes(it.id)).map(it => it.name)
-        if (mine.length) ship.el.appendChild(el('p', 'text-base', `${t('Only here')}: ${mine.join(', ')}`))
+        if (mine.length) ship.el.appendChild(el('p', 'text-base', `${t('Only this ship')}: ${mine.join(', ')}`))
         row.appendChild(ship.el)
       })
       append(area, row, button(t('All ships'), 'btn-ghost self-start', () => { view.pair = []; draw() }))
@@ -139,7 +142,12 @@ export function exchangeScreen (screens, body) {
   const store = screens.store
   const view = screens.view
   body.appendChild(heading(t('Last chance'), t('What would you still change?')))
-  ;['risk', 'swap'].forEach(kind => { const p = screens.rolePrompt(kind); if (p) body.appendChild(p) })
+  const i = Math.min(view.team, store.count() - 1)
+  const state = store.cargo(i)
+  const open = state.confirmed && state.exchange.state === 'open'
+  // One prompt, for the team at work: the Verkenner first, the Kapitein once something is picked.
+  const prompt = screens.rolePrompt(exchangePrompt({ open, picked: !!(view.out || view.into) }), game._solo ? null : i)
+  body.appendChild(prompt ?? el('div', 'min-h-7'))
 
   // The teams as chips in their colour, with where each stands; tap = work on that team.
   if (!game._solo) {
@@ -158,8 +166,6 @@ export function exchangeScreen (screens, body) {
     body.appendChild(chips)
   }
 
-  const i = Math.min(view.team, store.count() - 1)
-  const state = store.cargo(i)
   const stage = createHoldStage({
     hold: game.cfg.hold, zoomed: true, stageAspect: 3.2, className: 'h-[clamp(220px,38vh,560px)] w-full rounded-box',
     onPiece: state.exchange.state === 'open' && state.confirmed ? (id) => { view.out = view.out === id ? null : id; game._render() } : null,
@@ -170,7 +176,6 @@ export function exchangeScreen (screens, body) {
   if (view.out) stage.highlight(new Set([view.out]))
   append(body, stage.el, cargoList(state, cat))
 
-  const open = state.confirmed && state.exchange.state === 'open'
   const panel = el('div', 'flex flex-col gap-3')
   body.appendChild(panel)
   if (!state.confirmed) {
@@ -184,27 +189,33 @@ export function exchangeScreen (screens, body) {
     }))
   } else {
     // The absent items, to swap in; then the preview, then one confirm.
+    // auto-fill: a few cards left stay card-sized, so the preview and "Ruilen" stay in view.
     const strip = el('div', 'grid gap-2')
-    strip.style.gridTemplateColumns = 'repeat(auto-fit, minmax(4.5rem, 1fr))'
+    strip.style.gridTemplateColumns = 'repeat(auto-fill, minmax(5.25rem, 1fr))'
     cat.optional.filter(it => !state.selected.includes(it.id)).forEach(it => {
-      const card = el('button', `flex flex-col items-center gap-1 rounded-box border-2 p-1.5 lp-sheet ${view.into === it.id ? 'border-primary' : 'border-transparent'}`)
-      card.type = 'button'
+      const card = cargoCard(it, view.into === it.id ? 'border-primary' : 'border-transparent')
       card.dataset.swapIn = it.id
-      card.dataset.tooltip = it.name
       card.setAttribute('aria-pressed', String(view.into === it.id))
-      card.setAttribute('aria-label', t(':item, costs :points points', { item: it.name, points: it.cost }))
-      if (it.image) { const img = el('img', 'pointer-events-none aspect-square w-full object-contain'); img.src = it.image; img.alt = ''; card.appendChild(img) } else card.appendChild(el('span', 'text-sm font-semibold', it.name))
-      card.appendChild(costDots(it.cost))
       card.addEventListener('click', () => { view.into = view.into === it.id ? null : it.id; game._render() })
       strip.appendChild(card)
     })
     panel.appendChild(strip)
     const row = el('div', 'flex flex-wrap items-center gap-3')
     const p = view.out && view.into ? previewExchange(state, view.out, view.into, cat) : null
+    const guard = p ? swapGuard(p, cat.budget) : null
     if (p) {
+      // The preview with the space left at once ("na ruil: 1 plek vrij"), or why it does not fit.
       const line = `− ${cat.byId.get(view.out).name} (${cat.byId.get(view.out).cost})  + ${cat.byId.get(view.into).name} (${cat.byId.get(view.into).cost})  → ${p.after}/${cat.budget}`
       row.appendChild(el('span', `text-xl font-semibold tabular-nums ${p.ok ? '' : 'text-error'}`, line))
-      if (!p.ok) row.appendChild(el('span', 'text-lg', t('Not enough points. Take something out first.')))
+      const why = guard.canSwap
+        ? tn('after the swap: :count place free|after the swap: :count places free', guard.free)
+        : guard.over ? tn('This swap does not fit: first free up :count place|This swap does not fit: first free up :count places', guard.over) : ''
+      if (why) {
+        const note = el('span', `text-lg ${guard.canSwap ? '' : 'font-semibold'}`, why)
+        note.dataset.swapNote = guard.canSwap ? 'fits' : 'over'
+        if (!guard.canSwap) note.setAttribute('role', 'alert')
+        row.appendChild(note)
+      }
     }
     row.appendChild(button(t('Keep as it is'), 'btn-outline', () => {
       const r = keepCargo(state, opId('keep'))
@@ -212,8 +223,11 @@ export function exchangeScreen (screens, body) {
       view.out = null; view.into = null
       game._render()
     }))
-    if (p?.ok) {
-      row.appendChild(button(t('Swap'), 'btn-primary btn-lg', () => swap(screens, i, stage)))
+    if (p) {
+      // Over the budget the confirm stays, disabled: the team sees why it cannot press it.
+      const confirm = button(t('Swap'), 'btn-primary btn-lg', () => { if (guard.canSwap) swap(screens, i, stage) })
+      confirm.disabled = !guard.canSwap
+      row.appendChild(confirm)
     }
     panel.appendChild(row)
   }
@@ -260,7 +274,8 @@ export function departScreen (screens, body) {
   const ships = []
   for (let i = 0; i < store.count(); i++) {
     const ship = teamShip(screens, { name: store.name(i), tone: store.tone(i), state: store.cargo(i), whole: true })
-    if (locked) ship.stage.lock()
+    // A redraw after departure (a reload, the clock): the ships have already gone, never back at the quay.
+    if (locked) { ship.stage.lock(); ship.stage.sailed() }
     ships.push(ship)
     grid.appendChild(ship.el)
   }

@@ -30,8 +30,14 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1024, height: 768
     await page.waitForTimeout(1500);
 
     const hits = await page.evaluate(() => {
-      const deck = document.querySelector('[data-player-chrome="bottom"]')?.getBoundingClientRect();
+      const deckEl = document.querySelector('[data-player-chrome="bottom"]');
+      const deck = deckEl?.getBoundingClientRect();
       if (!deck) return ['no deck'];
+      // A game card that owns the stage hides the deck (faded out, taps pass through: b054df50):
+      // a hidden deck covers nothing.
+      for (let n: Element | null = deckEl; n; n = n.parentElement) {
+        if (getComputedStyle(n).opacity === '0') return [];
+      }
       const scrim = document.querySelector('[data-team-scrim]') as HTMLElement;
       const out: string[] = [];
       // Scroll the game through its whole height: no control may ever end up under the deck.

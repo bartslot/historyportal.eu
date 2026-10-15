@@ -11,13 +11,13 @@
  * (pictures + cost dots; tap = load into the active team; a pointer may drag a card onto the ship).
  * The ship updates IN PLACE, never by a redraw, so it keeps rolling and its draught can ease.
  */
-import { t } from '../i18n.js'
+import { t, tn } from '../i18n.js'
 import { el } from './dom.js'
 import { createHoldStage, flyCargo, fadeIn, shake, nearlyFull } from './cargo-hold.js'
 import { teamCard, costDots, cargoList } from './team-card.js'
-import { catalogueOf, totalOf, toggleCargo, confirmCargo, reopenCargo, REFUSED } from './cargo-run.js'
+import { catalogueOf, totalOf, toggleCargo, confirmCargo, reopenCargo, optionalOf, REFUSED } from './cargo-run.js'
 import { compareScreen, exchangeScreen, departScreen } from './team-hold-compare.js'
-import { rolesFor, numberWith, roleLine, PROMPT_ROLE } from './team-roles.js'
+import { rolesFor, numberWith, roleLine, pickPrompt, PROMPT_ROLE } from './team-roles.js'
 
 const append = (parent, ...children) => { children.forEach(c => c && parent.appendChild(c)); return parent }
 
@@ -32,9 +32,45 @@ export function bandColumns (teams) {
   return 'sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
 }
 
-/** "12/16 geladen · 4 punten over": the counter, in words. */
+/**
+ * "12 van 16 plekken vol · 4 plekken vrij": the counter speaks of space, never of a score
+ * (PM 10-15: "16/16" read as a top score).
+ */
 export const loadLine = (load, budget) =>
-  `${t(':load of :capacity points loaded', { load, capacity: budget })} · ${t(':points points left', { points: Math.max(0, budget - load) })}`
+  `${t(':load of :capacity places full', { load, capacity: budget })} · ${tn(':count place free|:count places free', Math.max(0, budget - load))}`
+
+/** "Rijst, kost 3 punten": a cargo card's accessible name. */
+export const costLabel = (item) => tn(':item, costs :count point|:item, costs :count points', item.cost, { item: item.name })
+
+/**
+ * A cargo card on a strip (pick and swap): the picture, then the name in small type and the cost
+ * as dots plus its number ("●●○ 2"), readable from the back of a class (the hover name helps
+ * nobody on a projector).
+ */
+export function cargoCard (item, className = '') {
+  const card = el('button', `flex flex-col items-center gap-1 rounded-box border-2 p-1.5 lp-sheet ${className}`)
+  card.type = 'button'
+  card.dataset.tooltip = item.why ? `${item.name}: ${item.why}` : item.name
+  card.setAttribute('aria-label', costLabel(item))
+  const pic = el('div', 'pointer-events-none flex aspect-square w-full items-center justify-center transition-opacity')
+  pic.dataset.cargoPic = ''
+  if (item.image) {
+    const img = el('img', 'h-full w-full object-contain')
+    img.src = item.image
+    img.alt = ''
+    img.draggable = false
+    pic.appendChild(img)
+  }
+  // Long Dutch compounds ("Timmergereedschap") break with a hyphen rather than spill out.
+  const name = el('span', 'pointer-events-none line-clamp-3 min-h-[2.5em] w-full hyphens-auto text-center text-xs font-semibold leading-tight [overflow-wrap:anywhere] sm:text-sm', item.name)
+  name.setAttribute('aria-hidden', 'true')
+  const cost = el('span', 'pointer-events-none flex items-center gap-1.5')
+  cost.setAttribute('aria-hidden', 'true')
+  // costDots already writes a big cost as a number.
+  append(cost, costDots(item.cost), item.cost <= 5 ? el('span', 'text-base font-bold leading-none tabular-nums', item.cost) : null)
+  append(card, pic, name, cost)
+  return card
+}
 
 export function button (label, className, onClick) {
   const b = el('button', `btn shadow-none ${className}`, label)
@@ -68,14 +104,15 @@ export class HoldScreens {
   roleLine (i) { const a = this.roles(i); return a ? roleLine(a) : '' }
 
   /**
-   * A quiet prompt naming the number and role that acts now ("Nummer 2, Bootsman: past het
-   * nog?"), per team only where teams of three differ, with "Volgende beurt" for the teacher.
-   * Solo: the question alone, no numbers.
-   * @param {'fit'|'ready'|'why'|'swap'|'risk'} kind
+   * ONE quiet line naming the number and role that acts now ("Nummer 2, Bootsman: past het
+   * nog?"): for `team` alone when given, else for every team (prefixed per team only where teams
+   * of three differ). Solo: the question alone, no numbers. Null when roles are off or no kind.
+   * @param {'fit'|'ready'|'why'|'swap'|'risk'|null} kind
+   * @param {number|null} [team]
    */
-  rolePrompt (kind) {
+  rolePrompt (kind, team = null) {
     const store = this.store
-    const role = this.game.cfg.roles[PROMPT_ROLE[kind]]
+    const role = kind ? this.game.cfg.roles[PROMPT_ROLE[kind]] : null
     if (!store.rolesOn() || !role) return null
     const ask = {
       fit: [t('Does it still fit?'), (n, r) => t('Number :n, :role: does it still fit?', { n, role: r })],
@@ -84,21 +121,19 @@ export class HoldScreens {
       swap: [t('Swap or keep as it is?'), (n, r) => t('Number :n, :role: swap or keep as it is?', { n, role: r })],
       risk: [t('What could go wrong?'), (n, r) => t('Number :n, :role: what could go wrong?', { n, role: r })],
     }[kind]
-    const box = el('div', 'flex flex-wrap items-center gap-x-3 gap-y-1 text-lg text-base-content/80')
-    box.dataset.rolePrompt = kind
-    if (this.game._solo) {
-      box.appendChild(el('p', '', ask[0]))
-      return box
-    }
+    const line = el('p', 'text-lg text-base-content/80')
+    line.dataset.rolePrompt = kind
+    if (this.game._solo) { line.textContent = ask[0]; return line }
     const lines = new Map()
-    for (let i = 0; i < store.count(); i++) {
+    const teams = team === null ? Array.from({ length: store.count() }, (_, i) => i) : [team]
+    for (const i of teams) {
       const n = numberWith(this.roles(i), role)
       if (!lines.has(n)) lines.set(n, [])
       lines.get(n).push(store.name(i))
     }
     const many = lines.size > 1
-    for (const [n, teams] of lines) box.appendChild(el('p', '', `${many ? `${teams.join(', ')}: ` : ''}${ask[1](n, role)}`))
-    return box
+    line.textContent = [...lines].map(([n, names]) => `${many ? `${names.join(', ')}: ` : ''}${ask[1](n, role)}`).join(' · ')
+    return line
   }
 
   /** The teacher's "Volgende beurt": every role moves on by one. */
@@ -129,7 +164,16 @@ export class HoldScreens {
     return createHoldStage({ hold: this.game.cfg.hold, ...opts })
   }
 
-  // ── ① Mission ──
+  // ── ⓪ Setup: the teams, untimed (the teacher types names while nobody waits on a clock) ──
+  setup (body) {
+    const { cfg } = this.game
+    append(body,
+      el('p', 'text-2xl font-semibold leading-snug sm:text-3xl', cfg.mission || cfg.intro || ''),
+      this.game._teamControls())
+    this.game._footer(body, button(t('Start'), 'btn-primary btn-lg', () => this.game._startTeams()))
+  }
+
+  // ── ① Mission: its timer starts with the teacher's Start ──
   mission (body) {
     const { cfg, _solo: solo } = this.game
     const stage = this._stage({ whole: true, stageAspect: 2.4, className: 'h-[clamp(200px,44vh,600px)] w-full rounded-box' })
@@ -141,9 +185,8 @@ export class HoldScreens {
       el('p', 'text-2xl font-semibold leading-snug sm:text-3xl', cfg.mission || cfg.intro || ''),
       stage.el, w.wrap,
       cfg.rules ? el('p', 'text-sm text-base-content/70', cfg.rules) : null,
-      !solo && this.store.rolesOn() ? el('p', 'text-lg', t('Choose within your team who is 1, 2, 3 and 4.')) : null,
-      solo ? null : this.game._teamControls())
-    this.game._footer(body, button(t('Start'), 'btn-primary btn-lg', () => (solo ? this.game._go('load') : this.game._startTeams())))
+      !solo && this.store.rolesOn() ? el('p', 'text-lg', t('Choose within your team who is 1, 2, 3 and 4.')) : null)
+    this.game._footer(body, button(solo ? t('Start') : t('Load the ship'), 'btn-primary btn-lg', () => this.game._go('load')))
   }
 
   // ── ②③ Choose and load ──
@@ -158,8 +201,10 @@ export class HoldScreens {
     const lines = Array.from({ length: store.count() }, (_, i) => this.roleLine(i))
     this.view.sharedRoles = lines.every(l => l === lines[0]) ? lines[0] : ''
     // One line over the band: who holds which role (when every team has the same), and the prompt.
+    // The prompt slot: one line, replaced in place as the turn moves (refresh()).
+    ui.prompt = el('div', 'min-h-7')
     ui.roleRow = el('div', 'flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1')
-    append(ui.roleRow, this.view.sharedRoles ? el('p', 'text-sm text-base-content/80', this.view.sharedRoles) : el('span'), this.rolePrompt('fit'))
+    append(ui.roleRow, this.view.sharedRoles ? el('p', 'text-sm text-base-content/80', this.view.sharedRoles) : el('span'), ui.prompt)
     append(body, ui.roleRow, ui.band)
 
     ui.weight = this._weight()
@@ -187,28 +232,12 @@ export class HoldScreens {
     append(wrap, ui.stage.el, ui.warn, ui.list)
     body.appendChild(wrap)
 
-    // The strip: pictures and cost dots only, so it reads from the back; the name (and the card's
-    // question) on hover, focus or a long press, and in its accessible name.
+    // The strip: picture, name and cost (dots + number) on each card; the card's question on hover.
     const strip = el('div', 'grid gap-2')
     strip.style.gridTemplateColumns = 'repeat(auto-fit, minmax(4.5rem, 1fr))'
     this.cat.optional.forEach(item => {
-      const card = el('button', 'flex flex-col items-center gap-1 rounded-box border-2 p-1.5 lp-sheet transition-colors')
-      card.type = 'button'
+      const card = cargoCard(item, 'transition-colors')
       card.dataset.cargoCard = item.id
-      card.dataset.tooltip = item.why ? `${item.name}: ${item.why}` : item.name
-      card.setAttribute('aria-label', t(':item, costs :points points', { item: item.name, points: item.cost }))
-      const pic = el('div', 'pointer-events-none flex aspect-square w-full items-center justify-center transition-opacity')
-      pic.dataset.cargoPic = ''
-      if (item.image) {
-        const img = el('img', 'h-full w-full object-contain')
-        img.src = item.image
-        img.alt = ''
-        img.draggable = false
-        pic.appendChild(img)
-      } else {
-        pic.appendChild(el('span', 'line-clamp-3 text-center text-sm font-semibold leading-tight', item.name))
-      }
-      append(card, pic, costDots(item.cost))
       card.draggable = true
       card.addEventListener('dragstart', (e) => { e.dataTransfer?.setData('text/x-cargo', item.id) })
       card.addEventListener('click', () => this.toggle(item.id))
@@ -223,7 +252,6 @@ export class HoldScreens {
     this.game._footer(body,
       this._nextTurn(),
       button(t('To the results'), 'btn-ghost', () => this.openCompare()),
-      this.rolePrompt('ready'),
       ui.confirm)
   }
 
@@ -256,6 +284,15 @@ export class HoldScreens {
       card.querySelector('[data-cargo-pic]')?.classList.toggle('opacity-25', on)
     })
     ui.list.replaceChildren(cargoList(state, this.cat))
+    const left = this.cat.optional.filter(it => !state.selected.includes(it.id)).map(it => it.cost)
+    const kind = pickPrompt({
+      loaded: optionalOf(state, this.cat).length, load, budget: this.cat.budget,
+      cheapest: left.length ? Math.min(...left) : Infinity, confirming: this.view.confirming, confirmed: state.confirmed,
+    })
+    if (ui.prompt.firstChild?.dataset?.rolePrompt !== kind || ui.promptTeam !== active) {
+      ui.prompt.replaceChildren(...[this.rolePrompt(kind, active)].filter(Boolean))
+      ui.promptTeam = active
+    }
     ui.confirm.replaceChildren(...this._confirmControls(active, state, load))
     return ui.stage.update({ key: active, cargo: shipCargo(state, this.cat), capacity: this.cat.budget, load })
   }

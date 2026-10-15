@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   catalogueOf, newTeamCargo, totalOf, pointsLeft, addItem, removeItem, toggleCargo, confirmCargo, reopenCargo,
-  previewExchange, exchangeCargo, keepCargo, resetExchange, lockDeparture, missingPrompt, differing, pagesOfFour,
+  previewExchange, swapGuard, exchangeCargo, keepCargo, resetExchange, lockDeparture, missingPrompt, differing, pagesOfFour,
   readTimers, flowSeconds, REFUSED,
 } from '../cargo-run.js'
 
@@ -107,6 +107,15 @@ describe('the last exchange (§7)', () => {
     expect(r.ok).toBe(false)
     expect(r.state).toBe(s)
     expect(r.state.exchange.state).toBe('open')     // an invalid preview uses no exchange
+  })
+
+  it('guards the swap: over 16 the confirm is off and says how many places must come free', () => {
+    const s = load(teamA)
+    expect(swapGuard(previewExchange(s, 'paper_ink', 'spare_timber', cat), 16)).toEqual({ canSwap: false, over: 2, free: 0 })
+    expect(swapGuard(previewExchange(s, 'spare_sails', 'spare_timber', cat), 16)).toEqual({ canSwap: true, over: 0, free: 0 })
+    const room = load(['water', 'compass', 'rice', 'tools'])                       // 8/16
+    expect(swapGuard(previewExchange(room, 'tools', 'charts', cat), 16)).toEqual({ canSwap: true, over: 0, free: 8 })
+    expect(swapGuard(previewExchange(s, 'tools', 'tools', cat), 16)).toEqual({ canSwap: false, over: 0, free: 0 })   // refused, not over
   })
 
   it('lets unused points pay for a dearer replacement, but never a free extra item', () => {
