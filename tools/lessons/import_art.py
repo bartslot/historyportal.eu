@@ -5,6 +5,7 @@
 plates/*  -> resources/icons/history-line/backdrops/<key>/   (opaque)
 figures/* -> resources/icons/history-line/figures/<key>/     (alpha kept)
 ships/*   -> resources/icons/history-line/props/<key>/       (alpha kept)
+cargo/*   -> resources/icons/history-line/props/<key>/       (alpha kept; the cargo game's items)
 WebP quality 80, at most 2880 px wide (house rule). Existing, newer files are left alone.
 Then run: php artisan icons:import --collection=history-line
 """
@@ -14,7 +15,7 @@ from pathlib import Path
 from PIL import Image
 
 LIB = Path(__file__).resolve().parents[2] / 'resources' / 'icons' / 'history-line'
-KINDS = {'plates': 'backdrops', 'figures': 'figures', 'people': 'figures', 'ships': 'props', 'fx': 'props'}
+KINDS = {'plates': 'backdrops', 'figures': 'figures', 'people': 'figures', 'ships': 'props', 'fx': 'props', 'cargo': 'props'}
 MAX_W, QUALITY = 2880, 80
 
 

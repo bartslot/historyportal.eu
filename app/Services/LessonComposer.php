@@ -907,7 +907,7 @@ class LessonComposer
         if (is_array($s['hold'] ?? null)) {
             $ship = $s['hold']['ship'] ?? null;
             if (is_string($ship) && str_starts_with($ship, 'asset:')) {
-                $s['hold'] += $this->holdArt(substr($ship, 6));
+                $s['hold'] = array_filter($s['hold'], fn ($v): bool => $v !== null) + $this->holdArt(substr($ship, 6));
             }
             foreach (['ship', 'backdrop'] as $key) {
                 if (isset($s['hold'][$key])) {
