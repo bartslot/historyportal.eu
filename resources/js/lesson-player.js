@@ -58,6 +58,10 @@ import { mountTitlePoster as mountPoster, posterFit, episodeSize } from './title
 import { QR, qrOptions, layoutTitleQr, drawQrDebug, coverRect, pictureSize } from './title-qr.js'
 import { placeExpectStrip } from './title-expect.js'
 import { FIT, FIT_START, collisions, nextFit, artHits, calmScale, lettersBox, scaleBoxAbout, titlePieces } from './title-fit.js'
+import { splitTitle, canLetter, fitLines } from './title-letters.js'
+
+// The smallest a lettered series gets before it may take a third line (px).
+const LETTERS_MIN_PX = 24
 
 // The 3D avatar CHARACTER is retired — the narrator is a flat 2D portrait badge (player.blade.php).
 // The 3D SKYBOX background stays an OPT-IN: a lesson with any scene_view:'skybox' scene lazy-loads
@@ -168,6 +172,12 @@ Alpine.data('lessonGame', (lesson) => ({
     canResumeAfterGame: false,  // shows the "Continue the lesson" button on the TIME_UP screen
     lesson: lesson,             // exposed to templates (title screen meta, etc.)
     prevPhase: null,            // phase before INTEL_DROP, to return to
+
+    /** The title's series (before ": ") and episode (after it). */
+    get titleSplit () { return splitTitle(this.lesson.title) },
+
+    /** The lettered title (ComicRoma) is drawn: chosen, and every series character is in the font. */
+    get titleLettered () { return this.lesson.title_style === 'letters' && canLetter(this.lesson.title) },
 
     // Can the lesson start yet? Narration is still being made for a fresh lesson, but a scene that
     // carries itself — a map, a voyage leg, a gallery, a film — needs no audio to be playable.
@@ -2857,6 +2867,7 @@ Alpine.data('lessonGame', (lesson) => ({
         this.$nextTick(() => this.layoutTitleScreen(run))
         return
       }
+      this._fitLetters(host)
       if (this._shrinkTitlePicture(host, stage)) {
         // The picture refits on its own resize: measure once it has.
         setTimeout(() => this.layoutTitleScreen(run), 60)
@@ -2961,6 +2972,22 @@ Alpine.data('lessonGame', (lesson) => ({
         logo.style.width = width
       }
       return moved
+    },
+
+    /**
+     * A lettered series takes at most two lines and never runs past its box (a long word on a
+     * phone): its size steps down from the CSS clamp until it does (title-letters.js fitLines).
+     */
+    _fitLetters (host) {
+      const el = host.querySelector('[data-title-series].title-letters')
+      if (!el?.offsetWidth) return
+      el.style.fontSize = ''
+      const base = parseFloat(getComputedStyle(el).fontSize)
+      const size = fitLines((px) => {
+        el.style.fontSize = `${px}px`
+        return { lines: Math.round(el.offsetHeight / parseFloat(getComputedStyle(el).lineHeight)), overflow: el.scrollWidth > el.clientWidth + 1 }
+      }, base, LETTERS_MIN_PX)
+      el.style.fontSize = size === base ? '' : `${Math.floor(size)}px`
     },
 
     /** The point (% of the frame) a painted candidate's lettering scales about: the middle of its letters boxes. */

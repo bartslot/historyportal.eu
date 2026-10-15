@@ -24,10 +24,15 @@ final class TitlePoster
 {
     private const DIR = 'lesson-titles';
 
-    /** The two title styles that are not a candidate folder: the series wordmark and the plain title. */
+    /** The title styles that are not a candidate folder: the series wordmark, the lettered title
+     *  (ComicRoma, resources/js/title-letters.js) and the plain title (the History font). */
     public const LOGO = 'logo';
 
+    public const LETTERS = 'letters';
+
     public const PLAIN = 'plain';
+
+    public const BUILT_IN = [self::LOGO, self::LETTERS, self::PLAIN];
 
     /** title_style values from before candidates (the TitleStyle enum) and the candidate each became. */
     public const LEGACY = ['comic' => 'poster'];
@@ -79,7 +84,7 @@ final class TitlePoster
         $out = [];
         foreach (glob(public_path(self::DIR."/{$group}/*/poster.json")) ?: [] as $path) {
             $key = basename(dirname($path));
-            if (preg_match(self::KEY, $key) !== 1 || in_array($key, [self::LOGO, self::PLAIN], true)) {
+            if (preg_match(self::KEY, $key) !== 1 || in_array($key, self::BUILT_IN, true)) {
                 continue;
             }
             $data = json_decode((string) file_get_contents($path), true);

@@ -524,7 +524,8 @@ class Lesson extends Model
     /**
      * The title styles this lesson can show, in the picker's order: the series' comic candidates
      * (public/lesson-titles/{group}/{candidate}/, by their `order`), then the logo when the series
-     * has one, then the plain title, which always works. The first is the default.
+     * has one, then the lettered title (ComicRoma) and the plain title, which always work. The
+     * first is the default.
      *
      * @return list<array{key: string, label: string, thumb_url: ?string}>
      */
@@ -538,13 +539,14 @@ class Lesson extends Model
         if ($logo !== null) {
             $choices[] = ['key' => TitlePoster::LOGO, 'label' => __('Logo'), 'thumb_url' => $logo];
         }
+        $choices[] = ['key' => TitlePoster::LETTERS, 'label' => __('Letters'), 'thumb_url' => $this->titleBgUrl()];
         $choices[] = ['key' => TitlePoster::PLAIN, 'label' => __('Plain title'), 'thumb_url' => $this->titleBgUrl()];
 
         return $choices;
     }
 
     /**
-     * The poster the title screen draws (a comic candidate), or null for the logo and plain styles.
+     * The poster the title screen draws (a comic candidate), or null for the logo, letters and plain styles.
      *
      * @return array<string, mixed>|null
      */
@@ -552,7 +554,7 @@ class Lesson extends Model
     {
         $style = $this->titleStyle();
 
-        return in_array($style, [TitlePoster::LOGO, TitlePoster::PLAIN], true) ? null : TitlePoster::for($this->translation_group, $style);
+        return in_array($style, TitlePoster::BUILT_IN, true) ? null : TitlePoster::for($this->translation_group, $style);
     }
 
     /** The style the title screen shows: the teacher's choice while the series has it, else the first. */

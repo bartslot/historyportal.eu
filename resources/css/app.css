@@ -2086,6 +2086,19 @@ html[data-inspector-w] aside[data-resizable-drawer] {
 .title-pill { height: var(--title-pill-h); }
 .title-lang { width: var(--title-lang-w); }
 .title-episode { font-size: clamp(1rem, 1.7vw, 1.75rem); line-height: 1.25; }
+.title-plain { font-size: clamp(2.2rem, 6vw, 6.5rem); }
+/* The lettered title (TitlePoster::LETTERS): ComicRoma's wide capitals, well under half the width
+   on a desktop or projector; lesson-player.js _fitLetters steps the size down past two lines. */
+.title-letters {
+  font-family: 'ComicRoma', var(--font-history);
+  font-size: clamp(2.25rem, 5vw, 5.75rem);
+  line-height: 1.04;
+  text-transform: uppercase;
+  text-wrap: balance;
+  max-width: 44vw;
+}
+@media (max-width: 639.98px) { .title-letters { max-width: none; } }
+.title-letters-episode { font-family: 'ComicRoma Lettering', var(--font-comic); font-weight: 700; }
 .title-logo { left: var(--title-gutter); top: calc(var(--title-gutter) + 4rem); width: clamp(16rem, 40vw, 40rem); }
 
 /* The bottom rail: every piece's bottom on the bottom gutter. It fades in once the lettering has

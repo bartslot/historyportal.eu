@@ -60,8 +60,8 @@ class MakeTitlePoster extends Command
 
         $isCover = ($recipe['layout'] ?? null) === 'cover';
         $candidate = (string) ($this->option('candidate') ?: ($isCover ? 'cover' : 'poster'));
-        if (! preg_match('/^[a-z0-9][a-z0-9-]*$/', $candidate) || in_array($candidate, ['logo', 'plain'], true)) {
-            return $this->failWith("Candidate '{$candidate}' must be lowercase letters, digits and dashes, and not logo or plain.");
+        if (! preg_match('/^[a-z0-9][a-z0-9-]*$/', $candidate) || in_array($candidate, TitlePoster::BUILT_IN, true)) {
+            return $this->failWith("Candidate '{$candidate}' must be lowercase letters, digits and dashes, and not logo, letters or plain.");
         }
         $out = $this->option('out') ?: public_path("lesson-titles/{$group}/{$candidate}");
 

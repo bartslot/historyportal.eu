@@ -116,15 +116,19 @@ class TitlePosterTest extends TestCase
         }
 
         $tasman = $this->lesson('tasman-standard');
-        $this->assertSame(['poster', 'cover', 'banner', 'logo', 'plain'], array_column($tasman->titleChoices(), 'key'));
+        $this->assertSame(['poster', 'cover', 'banner', 'logo', 'letters', 'plain'], array_column($tasman->titleChoices(), 'key'));
         $this->assertSame('poster', $tasman->titleStyle());
 
+        // No candidate, no logo: the lettered title (ComicRoma) by default, the plain one on offer.
         $plain = $this->lesson(null);
-        $this->assertSame(['plain'], array_column($plain->titleChoices(), 'key'));
-        $this->assertSame('plain', $plain->titleStyle());
+        $this->assertSame(['letters', 'plain'], array_column($plain->titleChoices(), 'key'));
+        $this->assertSame('letters', $plain->titleStyle());
+        $this->assertNull($plain->titlePoster());
 
         // A stored choice the series cannot show falls back to the default.
         $plain->update(['title_style' => 'banner']);
+        $this->assertSame('letters', $plain->fresh()->titleStyle());
+        $plain->update(['title_style' => 'plain']);
         $this->assertSame('plain', $plain->fresh()->titleStyle());
     }
 
@@ -136,6 +140,7 @@ class TitlePosterTest extends TestCase
         // A folder that is not a candidate: no poster.json, or a reserved name.
         File::ensureDirectoryExists(public_path('lesson-titles/'.self::SCRATCH.'/scraps'));
         $this->candidate(self::SCRATCH, 'plain', ['order' => 1]);
+        $this->candidate(self::SCRATCH, 'letters', ['order' => 2]);
 
         app()->setLocale('en');
         $this->assertSame([
@@ -200,10 +205,19 @@ class TitlePosterTest extends TestCase
         $this->assertMatchesRegularExpression('#lesson-logos\\\\?/tasman-standard\.svg#', $html);
         $this->assertStringNotContainsString('family=Coming+Soon', $html);
 
+        $this->assertStringNotContainsString('ComicRoma.woff2', $html, 'ComicRoma is preloaded only for the lettered title');
+
         $lesson->update(['title_style' => 'plain']);
         $html = $play();
         $this->assertStringContainsString('"title_poster":null', $html);
         $this->assertStringContainsString('"title_logo_url":null', $html);
+        $this->assertStringNotContainsString('ComicRoma.woff2', $html);
+
+        $lesson->update(['title_style' => 'letters']);
+        $html = $play();
+        $this->assertStringContainsString('"title_style":"letters"', $html);
+        $this->assertStringContainsString('"title_poster":null', $html);
+        $this->assertMatchesRegularExpression('#<link rel="preload" href="[^"]*fonts/comicroma/ComicRoma\.woff2"#', $html);
     }
 
     public function test_the_teacher_picks_and_resets_the_style_in_the_title_screen_format(): void
@@ -236,7 +250,8 @@ class TitlePosterTest extends TestCase
 
         Livewire::actingAs($this->teacher)
             ->test(Step3SceneConfigurator::class, ['lesson' => $lesson])
-            ->assertDontSeeText('Title style')
+            ->assertSeeText('Title style')
+            ->assertSeeText('Letters')
             ->call('setTitleStyle', 'poster');
 
         $this->assertNull($lesson->fresh()->title_style);

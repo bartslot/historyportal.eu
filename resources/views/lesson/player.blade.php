@@ -12,7 +12,7 @@
     <x-audio-manifest />
     <x-js-lang />
     @php
-        // The title screen: a comic candidate's poster (TitlePoster), or null for the logo / plain title.
+        // The title screen: a comic candidate's poster (TitlePoster), or null for the logo / letters / plain title.
         $titleStyle = $lesson->titleStyle();
         $titlePoster = $lesson->titlePoster();
         $titleFont = $titlePoster['subtitle']['font'] ?? null;
@@ -26,6 +26,11 @@
     @if ($titleFont === 'lettering')
         {{-- The comic cover's live subtitle is set in ComicRoma Lettering Bold (app.css @font-face);
              a cover whose recipe picks ComicRoma loads that face on demand. --}}
+        <link rel="preload" href="{{ asset('fonts/comic-lettering/ComicRomaLettering-Bold.woff2') }}" as="font" type="font/woff2" crossorigin>
+    @endif
+    @if ($titleStyle === \App\Support\TitlePoster::LETTERS)
+        {{-- The lettered title: the series in ComicRoma, the episode in ComicRoma Lettering (app.css). --}}
+        <link rel="preload" href="{{ asset('fonts/comicroma/ComicRoma.woff2') }}" as="font" type="font/woff2" crossorigin>
         <link rel="preload" href="{{ asset('fonts/comic-lettering/ComicRomaLettering-Bold.woff2') }}" as="font" type="font/woff2" crossorigin>
     @endif
     @if ($lesson->hasBalloons())
@@ -780,13 +785,15 @@
                     <img x-bind:src="lesson.title_logo_url" x-bind:alt="lesson.title" x-on:load="relayoutTitle()"
                          class="block h-auto w-full -rotate-2 origin-bottom-left"
                          style="filter: drop-shadow(0.6rem 0.8rem 0 rgba(0,0,0,0.85));">
-                    <span aria-hidden="true" x-show="lesson.title.includes(': ')" x-text="lesson.title.split(': ').slice(1).join(': ')"
+                    <span aria-hidden="true" x-show="titleSplit.episode" x-text="titleSplit.episode"
                           class="title-episode mt-4 block font-comic text-white/85"></span>
                 </h1>
             </template>
 
-            {{-- A plain title, where the teacher put it (TitlePosition presets; bottom left by default):
-                 the series big on the first line, the episode small on the second. --}}
+            {{-- A plain or lettered title, where the teacher put it (TitlePosition presets; bottom left by
+                 default): the series big on the first line, the episode small on the second. Lettered
+                 (TitlePoster::LETTERS): the series in ComicRoma, at most two balanced lines, the episode in
+                 ComicRoma Lettering; a series with a character ComicRoma lacks stays plain (title-letters.js). --}}
             @php
                 $titlePos = $lesson->title_position ?? \App\Enums\TitlePosition::BottomLeft;
                 $titleBar = match ($titlePos) {
@@ -801,10 +808,10 @@
             <div x-show="!lesson.title_logo_url && !lesson.title_poster" @class(['title-gutter-x pointer-events-none absolute flex', $titleBar])
                  data-title-position="{{ $titlePos->value }}" style="z-index: 10;">
                 <h1 lang="{{ $contentLang }}" class="min-w-0 max-w-5xl" data-title-avoid data-title-bar>
-                    <span class="block font-history font-bold leading-history tracking-tight text-white" style="font-size: clamp(2.2rem, 6vw, 6.5rem);"
-                          x-text="lesson.title.split(': ')[0]"></span>
-                    <span x-show="lesson.title.includes(': ')" x-text="lesson.title.split(': ').slice(1).join(': ')"
-                          class="title-episode mt-3 block font-light text-white/80"></span>
+                    <span class="block text-white" x-text="titleSplit.series" data-title-series
+                          :class="titleLettered ? 'title-letters' : 'title-plain font-history font-bold leading-history tracking-tight'"></span>
+                    <span x-show="titleSplit.episode" x-text="titleSplit.episode"
+                          :class="titleLettered ? 'title-letters-episode' : 'font-light'" class="title-episode mt-3 block text-white/80"></span>
                 </h1>
             </div>
 
