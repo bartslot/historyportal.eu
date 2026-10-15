@@ -104,7 +104,7 @@ export class SceneOverlay {
     this.yearEl.spellcheck = false
     this.yearEl.style.cssText += ' cursor:text; outline:none; border-radius:6px; text-transform:none;'
     this.yearEl.addEventListener('focus', () => {
-      this.yearEl.style.boxShadow = '0 0 0 1.5px rgba(252,211,77,0.7)'
+      this.yearEl.style.boxShadow = '0 0 0 1.5px color-mix(in oklab, var(--color-primary) 70%, transparent)'
       this.yearEl.textContent = this._raw.year
     })
     this.yearEl.addEventListener('input', () => { this._raw.year = this.yearEl.innerText.trim(); save('year', this._raw.year) })
@@ -118,7 +118,7 @@ export class SceneOverlay {
     this.locationEl.spellcheck = false
     this.locationEl.style.cssText += ' cursor:text; outline:none; border-radius:6px; text-transform:none;'
     this.locationEl.addEventListener('focus', () => {
-      this.locationEl.style.boxShadow = '0 0 0 1.5px rgba(252,211,77,0.7)'
+      this.locationEl.style.boxShadow = '0 0 0 1.5px color-mix(in oklab, var(--color-primary) 70%, transparent)'
       this.locationEl.textContent = this._raw.location
     })
     this.locationEl.addEventListener('input', () => { this._raw.location = this.locationEl.innerText.trim(); save('location', this._raw.location) })
@@ -131,7 +131,7 @@ export class SceneOverlay {
     this.titleEl.contentEditable = 'true'
     this.titleEl.spellcheck = false
     this.titleEl.style.cssText += ' cursor:text; outline:none; border-radius:6px;'
-    this.titleEl.addEventListener('focus', () => { this.titleEl.style.boxShadow = '0 0 0 1.5px rgba(252,211,77,0.7)' })
+    this.titleEl.addEventListener('focus', () => { this.titleEl.style.boxShadow = '0 0 0 1.5px color-mix(in oklab, var(--color-primary) 70%, transparent)' })
     this.titleEl.addEventListener('input', () => { this._raw.title = this.titleEl.innerText.trim(); save('title', this._raw.title) })
     this.titleEl.addEventListener('blur', () => { this.titleEl.style.boxShadow = 'none' })
 

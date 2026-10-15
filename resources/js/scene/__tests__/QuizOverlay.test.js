@@ -219,6 +219,13 @@ describe('the end screen', () => {
     expect(completed).toBe(0)
   })
 
+  it('draws the stars and the score in the brand amber, not the warning yellow', () => {
+    playThrough()
+    const stars = [...host.querySelectorAll('.qz-star')].map((s) => s.getAttribute('class')).join(' ')
+    expect(stars).toMatch(/fill-primary/)
+    expect(host.innerHTML).not.toMatch(/(text|fill|bg)-warning/)
+  })
+
   it('counts down on the leaderboard too', () => {
     openQuiz()
     overlay._renderLeaderboard({ top: [{ nickname: 'Fatima', score: 60 }], players: 4, rank: 1 }, 'Fatima')

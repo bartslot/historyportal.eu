@@ -16,7 +16,7 @@
     <style>[x-cloak]{display:none!important}</style>
 
     {{-- soft amber portal glow, top-center --}}
-    <div data-reveal="glow" class="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(ellipse_at_top,_rgba(252,211,77,0.12),_transparent_60%)]"></div>
+    <div data-reveal="glow" class="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(ellipse_at_top,_color-mix(in_oklab,var(--color-primary)_12%,transparent),_transparent_60%)]"></div>
 
     <div class="section-container relative" x-data="{ term: '{{ $defaultTerm }}' }">
         {{-- ── Heading ──────────────────────────────────────────────────── --}}
@@ -59,7 +59,7 @@
             @foreach ($tiers as $tier)
                 <div @if ($tier['featured']) data-featured @endif @class([
                     'group relative flex flex-col rounded-[1.5rem] p-8 transition duration-300 ease-out',
-                    'border border-primary/40 bg-gradient-to-b from-slate-800/90 to-slate-900/90 shadow-[0_24px_60px_rgba(252,211,77,0.18)] ring-1 ring-primary/30 lg:-my-3 lg:py-11' => $tier['featured'],
+                    'border border-primary/40 bg-gradient-to-b from-slate-800/90 to-slate-900/90 shadow-[0_24px_60px_color-mix(in_oklab,var(--color-primary)_18%,transparent)] ring-1 ring-primary/30 lg:-my-3 lg:py-11' => $tier['featured'],
                     'border border-white/10 bg-white/4 shadow-[0_16px_40px_rgba(0,0,0,0.35)] hover:-translate-y-1 hover:border-primary/30 hover:bg-white/6' => ! $tier['featured'],
                 ])>
                     @if (! empty($tier['badge']))

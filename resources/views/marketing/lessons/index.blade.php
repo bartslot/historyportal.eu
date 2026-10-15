@@ -56,7 +56,7 @@
                                 <img src="{{ $poster }}" alt="{{ $lesson->title }}" loading="lazy" decoding="async"
                                      class="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03] motion-reduce:transition-none">
                             @else
-                                <div class="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_30%_20%,rgba(252,211,77,0.16),transparent_60%),radial-gradient(circle_at_75%_85%,rgba(56,189,248,0.14),transparent_55%)] px-5">
+                                <div class="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_30%_20%,color-mix(in_oklab,var(--color-primary)_16%,transparent),transparent_60%),radial-gradient(circle_at_75%_85%,rgba(56,189,248,0.14),transparent_55%)] px-5">
                                     <span class="line-clamp-3 text-center font-history text-lg font-light leading-snug text-white/80">
                                         {{ $lesson->title ?: $lesson->topic }}
                                     </span>

@@ -40,11 +40,11 @@ const SCENE_EASINGS = Object.fromEntries(EASINGS.map(e => [e.key, easingBezier(e
 
 // How long the challenge clock owns the middle of the stage before it shrinks to the corner HUD.
 const BIG_TIMER_MS = 5000
-// Two minutes left turns the clock red. `text-warning` IS amber-400, the shade the corner HUD
-// uses — the same number in the same colour, whichever of the two places it is being read in.
+// Two minutes left turns the clock red. Otherwise the brand amber, as on the corner HUD: the same
+// number in the same colour, whichever of the two places it is being read in.
 const BIG_TIMER_RED_FROM_SECS = 120
 const BIG_TIMER_DIGIT = (secs) =>
-  `font-history text-[20vw] ${secs <= BIG_TIMER_RED_FROM_SECS ? 'text-error' : 'text-warning'}`
+  `font-history text-[20vw] ${secs <= BIG_TIMER_RED_FROM_SECS ? 'text-error' : 'text-primary'}`
 import { cueAt } from './scene/captions.js'
 import { translatedCues } from './scene/caption-menu.js'
 import { captionPanel } from './scene/caption-panel.js'
@@ -2635,16 +2635,25 @@ Alpine.data('lessonGame', (lesson) => ({
       this._glyphTimer = setTimeout(() => { this.playbackGlyph = false }, 700)
     },
 
+    /**
+     * A full-screen surface owns the stage: a gallery or reading overlay, or a quiz / team game
+     * card with its own scrim. The player draws no chrome over it; the deck used to sit under the
+     * quiz's score card as a separate strip with a band of stage between them (Bart 2026-10-15:
+     * "that part should hide"). Not idleness: the cursor stays, the class is working.
+     */
+    get overlayOwnsStage () {
+      return this.readingOverlay || this.currentIsGame
+    },
+
     /** True when the player chrome (top bar, deck, scrims, centre glyph) is faded out. */
     get chromeHidden () {
-      if (this.readingOverlay) return true
-      if (this.currentIsGame) return false     // a quiz or game card is on screen: the class is working
+      if (this.overlayOwnsStage) return true
       return this.isPlaying && !this.chromeAwake && !this.zoneHover && !this.chromeFocus && !this.chaptersOpen && !this.ccOpen
     },
 
     /** The centre glyph: up while paused, for a moment after a press, and with the chrome while playing. */
     get centreGlyphShown () {
-      if (this.readingOverlay) return false
+      if (this.overlayOwnsStage) return false
       return this.playbackPaused || this.playbackGlyph || (this.isPlaying && !this.chromeHidden)
     },
 

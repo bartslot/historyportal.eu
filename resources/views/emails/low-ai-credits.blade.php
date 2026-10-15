@@ -5,7 +5,7 @@
 
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 16px 0;">
         <tr>
-            <td bgcolor="#f8fafc" style="background-color: #f8fafc; padding: 16px 20px; border-left: 4px solid #fbbf24; font-family: Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.7; color: #0f172a;">
+            <td bgcolor="#f8fafc" style="background-color: #f8fafc; padding: 16px 20px; border-left: 4px solid #f59e0b; font-family: Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.7; color: #0f172a;">
                 <strong>Remaining:</strong> {{ number_format($remaining) }} of {{ number_format($limit) }} characters<br>
                 <strong>Resets:</strong> {{ $resetsAt?->toDayDateTimeString() ?? 'unknown' }}
             </td>

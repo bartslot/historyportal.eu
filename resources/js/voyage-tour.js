@@ -678,7 +678,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
       hotspot = document.createElement('button');
       hotspot.type = 'button';
       hotspot.className = 'absolute rounded-full bg-base-100/95 px-4 py-2 text-sm font-semibold shadow-xl';
-      hotspot.style.cssText += 'pointer-events:auto;cursor:pointer;border:2px solid rgba(251,191,36,.9);touch-action:none;';
+      hotspot.style.cssText += 'pointer-events:auto;cursor:pointer;border:2px solid color-mix(in oklab, var(--color-primary) 90%, transparent);touch-action:none;';
       // The button is labelled with the GALLERY title the teacher typed — it is that gallery this
       // opens. With no title it used to fall back to the landfall NAME, which put the place on the
       // map a second time right next to the line that already says it. A neutral word instead:
@@ -901,7 +901,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
           + '<path d="M5 5 19 19M19 5 5 19" fill="none" stroke="#fff" stroke-width="5.5" stroke-linecap="round"/>'
           + '<path d="M5 5 19 19M19 5 5 19" fill="none" stroke="#f59e0b" stroke-width="3" stroke-linecap="round"/></svg>'
           + '<span style="position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:3px;background:rgba(15,23,42,.92);'
-          + 'color:#fbbf24;font-size:var(--text-2xs);font-weight:600;letter-spacing:.02em;padding:1px 7px;border-radius:9999px;white-space:nowrap;'
+          + 'color:var(--color-primary);font-size:var(--text-2xs);font-weight:600;letter-spacing:.02em;padding:1px 7px;border-radius:9999px;white-space:nowrap;'
           + 'box-shadow:0 1px 4px rgba(0,0,0,.5);line-height:1.5;">Destination</span>';
         h._geo = { lng: destWp[0], lat: destWp[1] };
         makeDraggable(h, {

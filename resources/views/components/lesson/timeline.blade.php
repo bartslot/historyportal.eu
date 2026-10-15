@@ -29,8 +29,8 @@
         }
         [data-rail-col] [data-thumb-full] { display: none !important; }
         [data-rail-col] [data-thumb-compact] { display: flex !important; }
-        [data-rail-col] [data-thumb-selected] { background: rgba(252,211,77, 0.14) !important; }
-        [data-rail-col] [data-thumb-selected] [data-thumb-compact] { color: #fcd34d !important; }
+        [data-rail-col] [data-thumb-selected] { background: color-mix(in oklab, var(--color-primary) 14%, transparent) !important; }
+        [data-rail-col] [data-thumb-selected] [data-thumb-compact] { color: var(--color-primary) !important; }
         [data-rail-col] [data-rail-label] { display: none !important; }
         [data-rail-col] [data-rail-add] { aspect-ratio: auto !important; height: 2.1rem !important; border-radius: 0.5rem !important; }
     }
