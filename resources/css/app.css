@@ -1504,6 +1504,13 @@ html[data-inspector-w] aside[data-resizable-drawer] {
         visibility: hidden;
     }
 
+    /* The wheel layer waits, invisible, until its layout is final; lesson-demo.js then fades it in
+       (duration and delay are `wheelFade` / `wheelDelay` in DEFAULTS). Only while the demo runs:
+       without .js-hero-demo the finished hero shows its wheel straight away. */
+    .js-hero-demo .hero-wheel {
+        opacity: 0;
+    }
+
     .hero-skip {
         display: none;
     }

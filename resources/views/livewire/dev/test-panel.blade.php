@@ -117,6 +117,8 @@
                 ['warpTrail', 'Streak length', 0.05, 1, 0.01, ''],
                 ['warpDensity', 'Card density', 0.1, 1, 0.05, ''],
                 ['warpGlow', 'Mouth glow', 0, 1, 0.05, ''],
+                ['wheelFade', 'Wheel fade-in', 0, 3, 0.05, 's'],
+                ['wheelDelay', 'Wheel fade delay', 0, 2, 0.05, 's'],
             ];
         @endphp
 
