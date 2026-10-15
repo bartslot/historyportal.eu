@@ -1025,5 +1025,6 @@
 
 </div>{{-- /lesson-stage --}}
 
+    <x-playtest-recorder />
 </body>
 </html>

@@ -35,7 +35,7 @@
     // the demo types THAT lesson's title instead of promising the wrong thing.
     //
     // NOT wrapped in __(). The goal is already written in the lesson's own language (each entry in
-    // config('demo.by_language') carries its own), and running it through the translator would let
+    // config('demo.goals') is keyed by lesson title), and running it through the translator would let
     // a French line get "translated" into the visitor's UI language — which is the exact mixing
     // this whole path exists to prevent.
     $demoGoal = \App\Support\DemoLesson::goal();

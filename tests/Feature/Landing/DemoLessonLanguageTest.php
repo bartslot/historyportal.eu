@@ -45,7 +45,7 @@ class DemoLessonLanguageTest extends TestCase
     /** The three editions config/demo.php names, so the configured path is the one under test. */
     private function seedCanon(): void
     {
-        $this->lesson('De reis van Abel Tasman', 'nl');
+        $this->lesson('Abel Tasman: De reis naar het onbekende', 'nl');
         $this->lesson('Abel Tasman: two voyages to the unknown south', 'en');
         $this->lesson("La Révolution française et l'ascension de Napoléon", 'fr');
     }
@@ -67,7 +67,7 @@ class DemoLessonLanguageTest extends TestCase
 
         $lesson = $this->visit(['Accept-Language' => 'nl-NL,nl;q=0.9,en;q=0.8']);
 
-        $this->assertSame('De reis van Abel Tasman', $lesson?->title);
+        $this->assertSame('Abel Tasman: De reis naar het onbekende', $lesson?->title);
         $this->assertSame('nl', $lesson?->language);
     }
 
@@ -155,7 +155,7 @@ class DemoLessonLanguageTest extends TestCase
         $request->headers->set('Accept-Language', 'nl-NL,nl;q=0.9');
 
         $this->assertSame(
-            config('demo.lesson_goal'),
+            config('demo.goals')['Abel Tasman: two voyages to the unknown south'],
             DemoLesson::goal($request),
             'the hero typed a Dutch goal over an English lesson',
         );
@@ -196,5 +196,31 @@ class DemoLessonLanguageTest extends TestCase
         DemoLesson::forget();
 
         $this->assertSame('The first constitution of the Netherlands', DemoLesson::goal($request));
+    }
+
+    public function test_a_dutch_lesson_types_its_canon_leerdoel_not_its_title(): void
+    {
+        $this->lesson('De reis van Abel Tasman', 'nl');
+
+        DemoLesson::forget();
+        $request = \Illuminate\Http\Request::create('/', 'GET');
+        $request->headers->set('Accept-Language', 'nl-NL,nl;q=0.9');
+
+        $goal = DemoLesson::goal($request);
+
+        $this->assertNotSame('De reis van Abel Tasman', $goal);
+        $this->assertSame('De VOC en ontdekkingsreizen', $goal);
+    }
+
+    public function test_the_url_language_beats_an_english_browser(): void
+    {
+        $this->lesson('Abel Tasman: two voyages to the unknown south', 'en');
+        $this->lesson('De reis van Abel Tasman', 'nl');
+
+        $request = \Illuminate\Http\Request::create('/nl', 'GET');
+        $request->headers->set('Accept-Language', 'en-US,en;q=0.9');
+        $request->setRouteResolver(fn () => (new \Illuminate\Routing\Route('GET', '{locale}', []))->bind($request));
+
+        $this->assertSame('nl', DemoLesson::language($request));
     }
 }

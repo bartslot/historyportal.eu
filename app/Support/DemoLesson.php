@@ -66,10 +66,16 @@ final class DemoLesson
     {
         $request ??= request();
 
-        // The page's own language first: the hero sits inside that page, so a Dutch page with an
+        // A page whose URL names its language (/nl, /de) is that language, whatever the browser says.
+        $fromUrl = $request->route()?->parameter('locale');
+        if (is_string($fromUrl) && Locales::isSupported($fromUrl)) {
+            return $fromUrl;
+        }
+
+        // Then the page's own language: the hero sits inside that page, so a Dutch page with an
         // English lesson in it is the one result that is always wrong. SetLocale has already decided
-        // it, from the signed-in teacher's setting or the URL before the browser. (2026-10-13: Bart,
-        // Dutch account on an English browser, got a Dutch page around an English lesson.)
+        // it, from the signed-in teacher's setting before the browser. (2026-10-13: Bart, Dutch
+        // account on an English browser, got a Dutch page around an English lesson.)
         $page = app()->getLocale();
         if ($page !== self::FALLBACK_LANGUAGE && Locales::isSupported($page)) {
             return $page;
@@ -112,13 +118,15 @@ final class DemoLesson
             return (string) config('demo.lesson_goal');
         }
 
-        $entry = self::entryFor($lesson->language ?: self::FALLBACK_LANGUAGE);
-
-        if (($entry['title'] ?? null) === $lesson->title && ! empty($entry['goal'])) {
-            return (string) $entry['goal'];
+        $goal = ((array) config('demo.goals', []))[$lesson->title] ?? null;
+        if ($goal) {
+            return (string) $goal;
         }
 
-        return (string) (((array) config('demo.goals', []))[$lesson->title] ?? $lesson->title);
+        // English keeps its env override (DEMO_LESSON_GOAL) for the pinned default lesson.
+        return $lesson->title === config('demo.lesson_title') && $lesson->language === self::FALLBACK_LANGUAGE
+            ? (string) config('demo.lesson_goal')
+            : $lesson->title;
     }
 
     /** Hand-picked hero footage for the lesson that won, if its language entry names any. */
@@ -156,7 +164,6 @@ final class DemoLesson
         if ($language === self::FALLBACK_LANGUAGE) {
             return [
                 'title' => config('demo.lesson_title'),
-                'goal' => config('demo.lesson_goal'),
                 'footage' => config('demo.lesson_footage'),
             ];
         }

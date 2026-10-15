@@ -25,5 +25,6 @@
     </div>
 
     @livewireScripts
+    <x-playtest-recorder />
 </body>
 </html>

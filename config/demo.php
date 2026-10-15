@@ -34,15 +34,6 @@ return [
 
     'lesson_goal' => env('DEMO_LESSON_GOAL', 'The VOC and the voyages of discovery'),
 
-    /*
-    | Goals for lessons that can win as a FALLBACK (the configured one is not
-    | playable), keyed by exact lesson title. Without an entry the title is typed,
-    | which reads as a title, not a goal: add one for every lesson that can win.
-    */
-    'goals' => [
-        'The Batavian Republic: A Quest for Liberty' => 'The first constitution of the Netherlands',
-    ],
-
     // Hand-picked square footage for the default lesson's ring, if there is any. Beats scraping
     // the lesson's own artwork: chosen to sit next to each other, already cropped.
     'lesson_footage' => 'public/lessons/tasman/animation',
@@ -77,11 +68,60 @@ return [
     */
 
     'by_language' => [
-        'nl' => ['title' => 'De reis van Abel Tasman', 'goal' => 'De VOC en ontdekkingsreizen', 'footage' => 'public/lessons/tasman/animation'],
-        'fr' => ['title' => 'La Révolution française et l\'ascension de Napoléon', 'goal' => 'La Révolution française, et comment Bonaparte a pris le pouvoir'],
+        'nl' => ['title' => 'Abel Tasman: De reis naar het onbekende', 'footage' => 'public/lessons/tasman/animation'],
+        'fr' => ['title' => 'La Révolution française et l\'ascension de Napoléon'],
         // Both from resources/lessons/dante: the titles must match text/{de,it}.php exactly.
-        'de' => ['title' => 'Dante Alighieri: das Leben eines Dichters im Exil', 'goal' => 'Dante Alighieri und wie er im Exil die Commedia schrieb'],
-        'it' => ['title' => 'Dante Alighieri: la vita di un poeta in esilio', 'goal' => 'Dante Alighieri e come scrisse la Commedia in esilio'],
+        'de' => ['title' => 'Dante Alighieri: das Leben eines Dichters im Exil'],
+        'it' => ['title' => 'Dante Alighieri: la vita di un poeta in esilio'],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | The leerdoel behind each lesson
+    |--------------------------------------------------------------------------
+    |
+    | What the hero types is a learning goal in Bart's style: the curriculum TOPIC,
+    | short ("De VOC en ontdekkingsreizen", Bart 2026-10-15), never the lesson's title. Dutch lessons hang off a window of the Canon van
+    | Nederland (canonvannederland.nl); the rest off the matching curriculum
+    | topic. Keyed by exact lesson title, written in the lesson's own language,
+    | so the hero never promises the lesson in a language it is not in.
+    |
+    | A lesson missing here types its title (DemoLesson::goal).
+    |
+    */
+
+    'goals' => [
+        // Dutch lessons (Canon van Nederland)
+        'Abel Tasman: De reis naar het onbekende' => 'De VOC en ontdekkingsreizen',
+        'De reis van Abel Tasman' => 'De VOC en ontdekkingsreizen',
+        'Dante Alighieri: het leven van een dichter in ballingschap' => 'Literatuur in de late middeleeuwen',
+        'Dante Alighieri: het avontuur van het leven' => 'Literatuur in de late middeleeuwen',
+
+        // English lessons (Canon windows written in English keep an English goal: the goal is in
+        // the lesson's own language, or the hero promises a language the lesson is not in)
+        'Abel Tasman: two voyages to the unknown south' => 'The VOC and the voyages of discovery',
+        'The VOC: the world\'s first multinational' => 'The VOC and world trade',
+        'The Hunebedden: the oldest monuments in the Netherlands' => 'The first farmers and their monuments',
+        'William of Orange and the Dutch Revolt' => 'The Dutch Revolt',
+        'Michiel de Ruyter and the Wars at Sea' => 'The Dutch Republic at war at sea',
+        'Dutch Slavery: the trade, the resistance, the reckoning' => 'Slavery and the Dutch colonies',
+        'The Flood of 1953 and the Delta Works' => 'Living with water',
+        'The Batavian Republic: A Quest for Liberty' => 'The first constitution of the Netherlands',
+        'Dante Alighieri: the life of a poet in exile' => 'Literature in the late Middle Ages',
+        'Rembrandt and the Dutch Golden Age' => 'The Dutch Golden Age',
+        'Vincent van Gogh: a life in ten years' => 'Art at the end of the 19th century',
+        'Anne Frank and the Secret Annex' => 'The Holocaust in the Netherlands',
+        'Columbus and the Crossing of 1492' => 'Voyages of discovery and first contact',
+        'Abraham Lincoln' => 'The American Civil War and the end of slavery',
+        'The Colosseum' => 'Power and entertainment in Ancient Rome',
+        'Gladiators' => 'Daily life in Ancient Rome',
+        'The Punic Wars' => 'Rome against Carthage',
+        'The Silk Road' => 'Trade between East and West',
+
+        // Other languages
+        'La Révolution française et l\'ascension de Napoléon' => 'La Révolution française et l\'Empire',
+        'Dante Alighieri: das Leben eines Dichters im Exil' => 'Literatur im Spätmittelalter',
+        'Dante Alighieri: la vita di un poeta in esilio' => 'La letteratura del tardo Medioevo',
     ],
 
     /*

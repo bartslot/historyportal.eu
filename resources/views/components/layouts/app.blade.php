@@ -471,5 +471,6 @@
     </script>
 
     @stack('scripts')
+    <x-playtest-recorder />
 </body>
 </html>
