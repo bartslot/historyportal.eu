@@ -10,12 +10,10 @@ import { cargoList, costDots, statusText, SHIP_ICON } from './team-card.js'
 import {
   totalOf, missingPrompt, differing, pagesOfFour, previewExchange, exchangeCargo, keepCargo, resetExchange, lockDeparture,
 } from './cargo-run.js'
-import { shipCargo, slotItems, button, opId } from './team-hold.js'
+import { shipCargo, button, opId } from './team-hold.js'
 
 const append = (parent, ...children) => { children.forEach(c => c && parent.appendChild(c)); return parent }
 
-/** The real expedition's colours: ink on paper, apart from every team colour. */
-const REAL_TONE = { head: 'bg-base-content text-base-100' }
 
 /**
  * One team's ship, small: a quiet stage zoomed on the hull, the label in the team's colour (name +
@@ -29,8 +27,8 @@ export function teamShip (screens, { name, tone, state, onTap = null, big = fals
   if (onTap) { fig.type = 'button'; fig.addEventListener('click', onTap) }
   fig.dataset.teamShip = name
   const stage = createHoldStage({
-    hold: screens.game.cfg.hold, catalogue: slotItems(cat), zoomed: true, stageAspect: big ? 2 : 2.5, quiet: true,
-    className: `w-full rounded-box ${big ? 'aspect-[2/1]' : 'aspect-[5/2]'}`,
+    hold: screens.game.cfg.hold, whole: true, stageAspect: big ? 1.8 : 2.2,
+    className: `w-full rounded-box ${big ? 'aspect-[9/5]' : 'aspect-[11/5]'}`,
   })
   stage.update({ key: name, cargo: shipCargo(state, cat), capacity: cat.budget, load })
   const label = el('span', `flex items-center gap-2 self-start rounded-full px-3 py-1 ${tone.head}`)
@@ -95,10 +93,6 @@ export function compareScreen (screens, body) {
       if (view.pair.includes(i)) ship.el.classList.replace('border-transparent', 'border-primary')
       grid.appendChild(ship.el)
     })
-    if (view.real) {
-      const real = { selected: [...cat.fixedIds, ...cat.optional.filter(it => it.real).map(it => it.id)], confirmed: true }
-      grid.appendChild(teamShip(screens, { name: t('The real cargo'), tone: REAL_TONE, state: real, status: false }).el)
-    }
     area.appendChild(grid)
     if (pages.length > 1) {
       const nav = el('div', 'join self-start')
@@ -131,9 +125,9 @@ export function compareScreen (screens, body) {
   if (game.cfg.followup) prompt.appendChild(el('p', 'text-base opacity-70', game.cfg.followup))
   body.appendChild(prompt)
 
-  const hasReal = cat.optional.some(it => it.real)
+  // "De echte lading" stays off until its claims are checked against the sources (PM 10-15): the
+  // `real` marks are an inference from our own reveal text, not a verified answer for pupils.
   game._footer(body,
-    hasReal && !view.real ? button(t('The real cargo'), 'btn-ghost', () => { view.real = true; view.pair = []; draw() }) : null,
     button(t('Last chance'), 'btn-primary btn-lg', () => { view.team = 0; view.out = null; view.into = null; game._go('exchange') }))
 }
 
@@ -165,7 +159,7 @@ export function exchangeScreen (screens, body) {
   const i = Math.min(view.team, store.count() - 1)
   const state = store.cargo(i)
   const stage = createHoldStage({
-    hold: game.cfg.hold, catalogue: slotItems(cat), zoomed: true, stageAspect: 3.2, className: 'h-[clamp(220px,38vh,560px)] w-full rounded-box',
+    hold: game.cfg.hold, zoomed: true, stageAspect: 3.2, className: 'h-[clamp(220px,38vh,560px)] w-full rounded-box',
     onPiece: state.exchange.state === 'open' && state.confirmed ? (id) => { view.out = view.out === id ? null : id; game._render() } : null,
     pieceLabel: (c) => (c.fixed ? `${c.name}, ${t('Always on board')}` : t('Swap out: :item', { item: c.name })),
   })

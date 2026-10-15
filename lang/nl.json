@@ -1856,7 +1856,6 @@
     "Take out: :item": "Uitladen: :item",
     "Not loaded": "Niet geladen",
     ":item, costs :points points": ":item, kost :points punten",
-    "On the real expedition": "Mee op de echte expeditie",
     "Look": "Weergave",
     "Ship hold": "Scheepsruim",
     "Cards": "Kaarten",
@@ -1876,7 +1875,6 @@
     "To the results": "Naar de resultaten",
     "Only here": "Alleen hier",
     "All ships": "Alle schepen",
-    "The real cargo": "De echte lading",
     "Ships :from to :to": "Schepen :from tot :to",
     "What would you still take?": "Wat zou jij nog meenemen?",
     "Which choice stands out to you?": "Welke keuze valt je op?",
@@ -1910,5 +1908,6 @@
     "Results (seconds)": "Resultaten (seconden)",
     "Last chance (seconds)": "Laatste kans (seconden)",
     "Departure (seconds)": "Vertrek (seconden)",
-    "Roles": "Rollen"
+    "Roles": "Rollen",
+    "On the real expedition (not checked yet, not shown to pupils)": "Mee op de echte expeditie (nog niet gecontroleerd, niet zichtbaar voor leerlingen)"
 }

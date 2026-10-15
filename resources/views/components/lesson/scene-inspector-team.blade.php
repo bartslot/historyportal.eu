@@ -15,7 +15,7 @@
     // field => [heading, add label, columns]; a list of plain strings has no columns.
     $lists = [
         'fixed' => [__('Always on board'), __('Add fixed item'), [$text('name', __('Name')), $num('cost', __('Cost'), 0, 99), $text('why', __('Why')), $url('image', __('Image URL'))]],
-        'items' => [__('Cargo to choose from'), __('Add item'), [$text('name', __('Name')), $num('cost', __('Cost'), 0, 99), $text('why', __('Why')), $url('image', __('Image URL')), $check('real', __('On the real expedition'))]],
+        'items' => [__('Cargo to choose from'), __('Add item'), [$text('name', __('Name')), $num('cost', __('Cost'), 0, 99), $text('why', __('Why')), $url('image', __('Image URL')), $check('real', __('On the real expedition (not checked yet, not shown to pupils)'))]],
         'cards' => [__('Dossier cards'), __('Add card'), [$text('title', __('Title')), $long('text', __('Text')), $text('but', __('But'))]],
         'options' => [__('Options'), __('Add option'), [$text('label', __('Label')), $text('text', __('Text')), $url('image', __('Image URL'))]],
         'prompts' => [__('Discussion prompts'), __('Add prompt'), []],

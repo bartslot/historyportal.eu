@@ -3,11 +3,13 @@
  * (TeamGame, `presentation: 'hold'`). One renderer, any size: the pick screen's big ship, the
  * compare screen's small ships, the departure, and (later) the end-of-lesson board.
  *
- * Every item has its own slot (plan §5): the painted hold (zones in % of the ship picture, from
- * the art's `.hold.json`) is cut into one unit per point of the whole catalogue, near-square cells
- * per zone, and slotPlan() gives each item its run of cells, in catalogue order. So every legal
- * load fits with no overlap, the same item sits in the same place on every ship, and nothing here
- * knows a Tasman item. Only cargo aboard is drawn; missing cargo is absent.
+ * Points are space: the painted hold (zones in % of the ship picture, from the art's `.hold.json`)
+ * is cut into one cell per point of the BUDGET, and the cargo aboard fills its cells, packed in
+ * catalogue order (fixed items first). An item of cost 3 takes three cells and shows three of its
+ * pictures side by side on the deck floor, so 16/16 looks packed and 4/16 clearly empty. Load order
+ * never moves anything, every legal load fits with no overlap, the same items line up in the same
+ * order on every ship, and nothing here knows a Tasman item. Missing cargo is absent.
+ * (PM 10-15: one cell per point of the whole catalogue kept a full hold half empty.)
  *
  * With `hold.draught` on, the ship sits a little lower as it fills: its box moves down and the
  * blend-into-scene waterline (sit-in-scene.js) rises with it, so reflection, shadow and foam follow.
@@ -111,17 +113,16 @@ export function cellRects (zones, capacity, aspect) {
 }
 
 /**
- * Every item's own place in the hold (plan §5: a predefined slot; load order never moves it).
- * The hold is cut into one unit per point of the WHOLE catalogue, so every legal load fits with
- * no overlap; items go, in catalogue order, into the first row with room for all of them, and only
- * an item that fits no row whole is split over the free cells left (drawn as two pieces).
+ * Where the cargo aboard goes: one cell per point of `capacity` (more when the cargo is over it),
+ * items in catalogue order into the first row with room for all of them; only an item that fits
+ * no row whole is split over the free cells left (drawn as two pieces).
  *
- * @param {{key:string, cost:number}[]} items  the catalogue, fixed items first
- * @returns {Map<string, {x:number,y:number,w:number,h:number}[]>}  key -> its piece rectangles
+ * @param {{key:string, cost:number}[]} items  the cargo aboard, in catalogue order, fixed first
+ * @returns {Map<string, {x:number,y:number,w:number,h:number,cells:number}[]>}  key -> its pieces
  */
-export function slotPlan (items, zones, aspect) {
+export function slotPlan (items, zones, aspect, capacity = 0) {
   const total = items.reduce((s, it) => s + costOf(it), 0)
-  const cells = cellRects(zones, total, aspect)
+  const cells = cellRects(zones, Math.max(Math.round(capacity) || 0, total), aspect)
   const rows = new Map()
   cells.forEach((c, i) => { if (!rows.has(c.row)) rows.set(c.row, []); rows.get(c.row).push(i) })
   const used = Array(cells.length).fill(false)
@@ -146,8 +147,7 @@ function mergeRow (cells) {
   const pieces = []
   for (const c of cells) {
     const last = pieces[pieces.length - 1]
-    if (last && last.row === c.row && Math.abs(last.x + last.w - c.x) < 0.02) last.w = r2(c.x + c.w - last.x)
-    else pieces.push({ ...c })
+    if (last && last.row === c.row && Math.abs(last.x + last.w - c.x) < 0.02) { last.w = r2(c.x + c.w - last.x); last.cells++ } else pieces.push({ ...c, cells: 1 })
   }
   return pieces.map(({ row, ...rect }) => rect)
 }
@@ -161,6 +161,16 @@ export function draughtFor (load, capacity, max = DRAUGHT_AMOUNT) {
 
 /** True when the bar should take its warning tint: within a tenth of the capacity, or over. */
 export const nearlyFull = (load, capacity) => capacity > 0 && load >= capacity * 0.9
+
+/**
+ * The ship's box with the whole ship in view (masts, flag), as large as the stage allows, its keel
+ * near the bottom so the water shows under it.
+ * @returns {{x:number, y:number, h:number}}
+ */
+export function wholePlace (hold, stageAspect = 1.6) {
+  const h = Math.min(92, (0.94 * stageAspect / hold.aspect) * 100)
+  return { x: 50, y: 97, h: r2(h) }
+}
 
 /**
  * The ship's box on a small stage zoomed in on its hull (the compare screen's ships): the hold
@@ -197,7 +207,6 @@ let stageSeq = 0
  *
  * @param {object} opts
  * @param {object} opts.hold          readHold() output
- * @param {{key:string, cost:number}[]} opts.catalogue  every item, fixed first (the slot plan)
  * @param {boolean} [opts.zoomed]     zoom in on the hull (the compare screen's ships)
  * @param {number} [opts.stageAspect] the stage's width / height, for the zoom
  * @param {boolean} [opts.quiet]      the plate washed out on paper (a row of small ships)
@@ -205,12 +214,12 @@ let stageSeq = 0
  * @param {(c:object) => string} [opts.pieceLabel]  the accessible name of a piece
  */
 export function createHoldStage ({
-  hold, catalogue = [], zoomed = false, stageAspect = 1.6, quiet = false,
+  hold, zoomed = false, whole = false, stageAspect = 1.6, quiet = false,
   onPiece = null, pieceLabel = (c) => c.name, className = '',
 }) {
   const id = `hold-${++stageSeq}`
-  const plan = slotPlan(catalogue, hold.zones, hold.aspect)
-  const place = zoomed ? zoomedPlace(hold, stageAspect) : { x: hold.x, y: hold.y, h: hold.h }
+  // whole: the full ship, masts and flag, fitted to the stage (the mission, the small ships).
+  const place = zoomed ? zoomedPlace(hold, stageAspect) : whole ? wholePlace(hold, stageAspect) : { x: hold.x, y: hold.y, h: hold.h }
   const stage = el('div', `relative overflow-hidden ${quiet ? 'lp-sheet' : 'bg-base-300'} ${className}`)
   stage.dataset.holdStage = ''
   if (hold.backdrop) {
@@ -227,10 +236,10 @@ export function createHoldStage ({
   const put = (p) => Object.assign(node.style, { height: `${p.h}%`, left: `${p.x}%`, top: `${r2(p.y - p.h)}%` })
   put(place)
   // A zoomed stage follows its real shape (a phone is tall, a projector wide), so the hold fits.
-  if (zoomed && typeof ResizeObserver === 'function') {
+  if ((zoomed || whole) && typeof ResizeObserver === 'function') {
     new ResizeObserver(([entry]) => {
       const { width, height } = entry.contentRect
-      if (width && height) put(zoomedPlace(hold, width / height))
+      if (width && height) put(zoomed ? zoomedPlace(hold, width / height) : wholePlace(hold, width / height))
     }).observe(stage)
   }
   const body = el('div', 'relative h-full w-full')
@@ -275,17 +284,28 @@ export function createHoldStage ({
 
   const makePiece = (c, rect, main) => {
     const tappable = main && onPiece && !c.fixed
-    const piece = el(tappable ? 'button' : 'div', 'absolute flex items-center justify-center overflow-hidden rounded-sm p-0.5 text-base-content outline-offset-1')
-    piece.style.cssText = `left:${rect.x + 0.2}%; top:${rect.y + 0.4}%; width:${Math.max(0, rect.w - 0.4)}%; height:${Math.max(0, rect.h - 0.8)}%;`
+    const piece = el(tappable ? 'button' : 'div', 'absolute flex items-end justify-center rounded-sm text-base-content outline-offset-1')
+    piece.style.cssText = `left:${rect.x}%; top:${rect.y}%; width:${rect.w}%; height:${rect.h}%;`
     piece.dataset.cargo = c.key
-    if (main) {
-      if (c.image) {
-        const pic = el('img', 'pointer-events-none h-full w-full object-contain')
+    if (c.image) {
+      // One picture per cell, a little overlapping, standing on the floor: a 3-point item is three
+      // barrels (a stack, a pile), so a full hold looks packed. A flat shadow under them.
+      const shadow = el('span', 'pointer-events-none absolute inset-x-[4%] bottom-0 h-[10%] rounded-[50%] bg-black/25')
+      shadow.setAttribute('aria-hidden', 'true')
+      piece.appendChild(shadow)
+      const n = Math.max(1, rect.cells || 1)
+      for (let k = 0; k < n; k++) {
+        const pic = el('img', 'pointer-events-none relative h-[96%] min-w-0 object-contain object-bottom')
+        pic.style.width = `${(100 / n) * 1.12}%`
+        if (k) pic.style.marginLeft = `-${(100 / n) * 0.12}%`
         pic.src = c.image
         pic.alt = ''
         pic.draggable = false
         piece.appendChild(pic)
-      } else {
+      }
+    }
+    if (main) {
+      if (!c.image) {
         piece.classList.add('bg-base-100/90')
         piece.appendChild(el('span', 'line-clamp-2 text-center text-[0.6em] font-semibold leading-tight', c.name))
       }
@@ -297,6 +317,7 @@ export function createHoldStage ({
     } else {
       piece.setAttribute('aria-hidden', 'true')
     }
+    piece.dataset.cells = String(rect.cells || 1)
     if (tappable) piece.type = 'button'
     // A piece's continuation on the next row acts the same (it is not a second button).
     if (onPiece && !c.fixed) piece.addEventListener('click', () => onPiece(c.key))
@@ -317,19 +338,20 @@ export function createHoldStage ({
       state.key = key
       const added = []
       const keep = new Set()
+      const plan = slotPlan(cargo.map(c => ({ key: c.key, cost: c.cost })), hold.zones, hold.aspect, capacity)
       cargo.forEach(c => {
         const rects = plan.get(c.key) ?? []
         if (!rects.length) return
         keep.add(c.key)
         const had = state.pieces.get(c.key)
-        const sig = c.image || c.name
+        const sig = `${c.image || c.name}|${JSON.stringify(rects)}`
         if (had?.sig === sig) return
         had?.els.forEach(e => e.remove())
         const mainAt = rects.reduce((best, p, i) => (p.w * p.h > rects[best].w * rects[best].h ? i : best), 0)
         const els = rects.map((p, i) => makePiece(c, p, i === mainAt))
         els.forEach(e => cargoLayer.appendChild(e))
         state.pieces.set(c.key, { sig, els, main: els[mainAt] })
-        if (!had && !teamChanged) added.push(c.key)
+        if (!had?.els.length && !teamChanged) added.push(c.key)
       })
       for (const [k, p] of state.pieces) {
         if (!keep.has(k)) { p.els.forEach(e => e.remove()); state.pieces.delete(k) }

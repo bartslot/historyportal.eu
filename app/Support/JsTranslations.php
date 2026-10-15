@@ -158,7 +158,6 @@ final class JsTranslations
             'To the results' => __('To the results'),
             'Only here' => __('Only here'),
             'All ships' => __('All ships'),
-            'The real cargo' => __('The real cargo'),
             'Ships :from to :to' => __('Ships :from to :to'),
             'What would you still take?' => __('What would you still take?'),
             'Which choice stands out to you?' => __('Which choice stands out to you?'),

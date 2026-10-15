@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { readHold, unitsPerZone, gridFor, cellRects, slotPlan, draughtFor, nearlyFull, zoomedPlace, DRAUGHT_AMOUNT } from '../cargo-hold.js'
+import { readHold, unitsPerZone, gridFor, cellRects, slotPlan, draughtFor, nearlyFull, zoomedPlace, wholePlace, DRAUGHT_AMOUNT } from '../cargo-hold.js'
+import { deckReserve } from '../deck-reserve.js'
 import { rolesFor, numberWith, roleLine } from '../team-roles.js'
 
 // The painted hold of hold_ship_cutaway (its .hold.json): two decks.
@@ -27,21 +28,33 @@ describe('the hold: every item its own slot (plan §5)', () => {
     cells.forEach(c => expect(zones.some(z => c.x >= z.x - 0.01 && c.x + c.w <= z.x + z.w + 0.01 && c.y >= z.y - 0.01 && c.y + c.h <= z.y + z.h + 0.01)).toBe(true))
   })
 
-  it('places the whole catalogue with no overlap, so every legal load fits', () => {
-    const plan = slotPlan(catalogue, zones, 16 / 9)
-    const rects = [...plan.values()].flat()
-    expect(plan.size).toBe(14)
-    rects.forEach((a, i) => rects.slice(i + 1).forEach(b => expect(overlaps(a, b)).toBe(false)))
-    // Nothing is split over two rows in the Tasman hold.
-    expect([...plan.values()].every(r => r.length === 1)).toBe(true)
+  const teamA = ['water', 'compass', 'rice', 'meat', 'spare_sails', 'tools', 'firewood', 'paper_ink']   // 16/16
+  const aboard = (keys) => catalogue.filter(c => keys.includes(c.key))
+
+  it('fills every cell of a full hold: cost = cells, no overlap', () => {
+    const plan = slotPlan(aboard(teamA), zones, 16 / 9, 16)
+    const pieces = [...plan.values()].flat()
+    expect(pieces.reduce((n, p) => n + p.cells, 0)).toBe(16)
+    pieces.forEach((a, i) => pieces.slice(i + 1).forEach(b => expect(overlaps(a, b)).toBe(false)))
+    expect(plan.get('rice').reduce((n, p) => n + p.cells, 0)).toBe(3)
   })
 
-  it('gives an item the same slot every time', () => {
-    expect(slotPlan(catalogue, zones, 16 / 9).get('spare_sails')).toEqual(slotPlan(catalogue, zones, 16 / 9).get('spare_sails'))
+  it('leaves a 4/16 hold clearly empty: the fixed cargo in 4 of 16 cells', () => {
+    const plan = slotPlan(aboard(['water', 'compass']), zones, 16 / 9, 16)
+    expect([...plan.values()].flat().reduce((n, p) => n + p.cells, 0)).toBe(4)
+    expect(cellRects(zones, 16, 16 / 9)).toHaveLength(16)
+  })
+
+  it('never depends on the load order: the cargo goes in catalogue order', () => {
+    const a = slotPlan(aboard(teamA), zones, 16 / 9, 16)
+    const b = slotPlan(aboard([...teamA].reverse()), zones, 16 / 9, 16)
+    expect(a).toEqual(b)
+    expect(slotPlan(aboard(['water', 'compass', 'rice']), zones, 16 / 9, 16).get('water'))
+      .toEqual(slotPlan(aboard(teamA), zones, 16 / 9, 16).get('water'))   // the fixed cargo never moves
   })
 
   it('gives free items no space', () => {
-    expect(slotPlan([{ key: 'x', cost: 0 }], zones, 16 / 9).get('x')).toEqual([])
+    expect(slotPlan([{ key: 'x', cost: 0 }], zones, 16 / 9, 16).get('x')).toEqual([])
   })
 })
 
@@ -76,11 +89,25 @@ describe('the hold config', () => {
     expect(h.zones).toEqual([{ x: 10, y: 5, w: 20, h: 10 }])
   })
 
+  it('fits the whole ship, masts and all, inside a stage', () => {
+    const p = wholePlace(readHold({ zones, aspect: 16 / 9 }), 2.2)
+    expect(p.h).toBeLessThanOrEqual(92)
+    expect((p.h / 100) * (16 / 9) / 2.2 * 100).toBeLessThanOrEqual(94.01)
+  })
+
   it('zooms a small ship onto its hull, the hold inside the stage', () => {
     const p = zoomedPlace(readHold({ zones, aspect: 16 / 9 }), 1.9)
     const shipW = (p.h / 100) * (16 / 9) / 1.9 * 100   // % of the stage's width
     expect(p.x - shipW / 2 + 0.205 * shipW).toBeGreaterThan(0)
     expect(p.x - shipW / 2 + 0.825 * shipW).toBeLessThan(100)
+  })
+})
+
+describe('a game overlay ends above the player deck', () => {
+  it('reserves what the deck covers, nothing when it is clear', () => {
+    expect(deckReserve({ bottom: 900 }, { top: 820 })).toBe(80)
+    expect(deckReserve({ bottom: 900 }, { top: 905 })).toBe(0)
+    expect(deckReserve(null, { top: 1 })).toBe(0)
   })
 })
 

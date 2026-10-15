@@ -21,12 +21,9 @@ import { rolesFor, numberWith, roleLine, PROMPT_ROLE } from './team-roles.js'
 
 const append = (parent, ...children) => { children.forEach(c => c && parent.appendChild(c)); return parent }
 
-/** A team's cargo for the hold: what is aboard, in catalogue order. */
+/** A team's cargo for the hold: what is aboard, in catalogue order (fixed first). */
 export const shipCargo = (state, cat) =>
-  cat.items.filter(it => state.selected.includes(it.id)).map(it => ({ key: it.id, name: it.name, image: it.image, fixed: it.fixed }))
-
-/** The slot plan's input: every item with its cost. */
-export const slotItems = (cat) => cat.items.map(it => ({ key: it.id, cost: it.cost }))
+  cat.items.filter(it => state.selected.includes(it.id)).map(it => ({ key: it.id, name: it.name, image: it.image, fixed: it.fixed, cost: it.cost }))
 
 /** Team cards across: all side by side up to four, two rows beyond; one on a solo phone. */
 export function bandColumns (teams) {
@@ -55,7 +52,7 @@ export class HoldScreens {
     this.game = game
     this.cat = catalogueOf(game.cfg)
     this.ui = null
-    this.view = { page: 0, pair: [], real: false, team: 0, out: null, into: null, confirming: false }
+    this.view = { page: 0, pair: [], team: 0, out: null, into: null, confirming: false }
   }
 
   get store () { return this.game.teamStore() }
@@ -129,13 +126,13 @@ export class HoldScreens {
   }
 
   _stage (opts = {}) {
-    return createHoldStage({ hold: this.game.cfg.hold, catalogue: slotItems(this.cat), ...opts })
+    return createHoldStage({ hold: this.game.cfg.hold, ...opts })
   }
 
   // ── ① Mission ──
   mission (body) {
     const { cfg, _solo: solo } = this.game
-    const stage = this._stage({ className: 'h-[clamp(200px,42vh,560px)] w-full rounded-box' })
+    const stage = this._stage({ whole: true, stageAspect: 2.4, className: 'h-[clamp(200px,44vh,600px)] w-full rounded-box' })
     const fixedOnly = { selected: [...this.cat.fixedIds] }
     stage.update({ key: 'mission', cargo: shipCargo(fixedOnly, this.cat), capacity: this.cat.budget, load: totalOf(fixedOnly.selected, this.cat) })
     const w = this._weight()
@@ -315,7 +312,7 @@ export class HoldScreens {
   openCompare () {
     const store = this.store
     this.game._compareSnapshot = Array.from({ length: store.count() }, (_, i) => store.cargo(i))
-    this.view = { ...this.view, page: 0, pair: [], real: false }
+    this.view = { ...this.view, page: 0, pair: [] }
     store.save()
     this.game._go('compare')
   }

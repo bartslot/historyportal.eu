@@ -383,8 +383,9 @@ export class TeamGame {
     scrim.dataset.teamScrim = ''
     scrim.setAttribute('role', 'dialog')
     scrim.setAttribute('aria-label', this.cfg.title || t('Team game'))
-    // Clear of the player's chrome, which sits above this host: the edit pill on top, the deck below.
-    const page = el('div', 'mx-auto flex min-h-full max-w-6xl flex-col gap-6 px-4 pb-32 pt-16 sm:px-8')
+    // Clear of the player's chrome: the edit pill on top. The deck below is kept clear by the player
+    // itself (the overlay ends above it: scene/deck-reserve.js).
+    const page = el('div', 'mx-auto flex min-h-full max-w-6xl flex-col gap-6 px-4 pb-6 pt-16 sm:px-8')
     const head = el('header', 'flex flex-wrap items-center justify-between gap-4 border-b border-base-300 pb-4')
     append(head, el('h2', 'text-3xl font-bold sm:text-4xl', this.cfg.title || t('Team game')), timed ? this._clock() : null)
     // The cargo game is one projected screen per step: tighter, so the ship and the strip fit.

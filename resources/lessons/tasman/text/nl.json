@@ -455,7 +455,7 @@
    "presentation": "hold",
    "hold": {
     "ship": "asset:history-line/props/tasman/hold_ship_cutaway",
-    "backdrop": "asset:history-line/backdrops/tasman/batavia_roadstead"
+    "backdrop": "asset:history-line/backdrops/tasman/mauritius_anchorage"
    },
    "timers": {
     "mission": 20,

@@ -13,6 +13,7 @@
  *   [intel_drop]             — trigger INTEL_DROP mid-game
  */
 
+import { watchDeckReserve } from './scene/deck-reserve.js'
 import Alpine from 'alpinejs'
 import QRCode from 'qrcode'
 import { resolveAnchorTime, pickShotIndex } from './scene/shot-sync.js'
@@ -426,6 +427,11 @@ Alpine.data('lessonGame', (lesson) => ({
       // clear its chrome out of the reader's way. See setReadingOverlayOpen in voyage-tour.js.
       this._readingOverlayHandler = (e) => { this.readingOverlay = !!e.detail?.open }
       window.addEventListener('lesson:reading-overlay', this._readingOverlayHandler)
+
+      // A game overlay (quiz, team game, power meter) ends above the deck, so the deck never covers
+      // a game's own buttons. One rule for every game: the gap is --lp-deck-reserve, measured here,
+      // and app.css applies it while #lesson-game-overlay has content.
+      this._deckReserve = watchDeckReserve(document.getElementById('lesson-game-overlay'), document.querySelector('[data-player-chrome="bottom"]'))
 
       // A voyage leg owns the place and date on the chapter line while it sails. See publishInfo
       // in voyage-tour.js — the tour reports, the player is the only one that draws.
@@ -3093,6 +3099,8 @@ Alpine.data('lessonGame', (lesson) => ({
         window.removeEventListener('lesson:reading-overlay', this._readingOverlayHandler)
         this._readingOverlayHandler = null
       }
+      this._deckReserve?.()
+      this._deckReserve = null
       if (this._chapterInfoHandler) {
         window.removeEventListener('lesson:chapter-info', this._chapterInfoHandler)
         this._chapterInfoHandler = null

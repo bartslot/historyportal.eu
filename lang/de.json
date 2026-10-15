@@ -1814,7 +1814,6 @@
     "Take out: :item": "Ausladen: :item",
     "Not loaded": "Nicht geladen",
     ":item, costs :points points": ":item, kostet :points Punkte",
-    "On the real expedition": "Auf der echten Expedition",
     "Look": "Darstellung",
     "Ship hold": "Laderaum",
     "Cards": "Karten",
@@ -1834,7 +1833,6 @@
     "To the results": "Zu den Ergebnissen",
     "Only here": "Nur hier",
     "All ships": "Alle Schiffe",
-    "The real cargo": "Die echte Ladung",
     "Ships :from to :to": "Schiffe :from bis :to",
     "What would you still take?": "Was würdest du noch mitnehmen?",
     "Which choice stands out to you?": "Welche Wahl fällt dir auf?",
@@ -1868,5 +1866,6 @@
     "Results (seconds)": "Ergebnisse (Sekunden)",
     "Last chance (seconds)": "Letzte Chance (Sekunden)",
     "Departure (seconds)": "Abfahrt (Sekunden)",
-    "Roles": "Rollen"
+    "Roles": "Rollen",
+    "On the real expedition (not checked yet, not shown to pupils)": "Auf der echten Expedition (noch nicht geprüft, für Schüler nicht sichtbar)"
 }
