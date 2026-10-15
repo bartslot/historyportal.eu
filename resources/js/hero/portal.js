@@ -29,11 +29,12 @@ export const PORTAL_DEFAULTS = {
     // The hole waits for the foreground to be GONE: on a phone its first size is already screen-wide,
     // and opening it under the fading title stacked two titles on top of each other.
     portalOpenDelay: 0.05, // after the foreground has left (later if the lesson is not ready), s
-    portalOpen: 0.55, // the hole opens to its first size, s
-    portalOpenSize: 0.55, // first size, as a share of the ring's inner radius
-    portalHold: 0.15, // a held breath at that size, s
-    portalGrow: 1.3, // the hole swallows the page, s
-    portalSoftness: 40, // px feather on the hole's edge
+    // ONE motion from nothing to the whole page, accelerating all the way: no stop at a first
+    // size, no held breath (Bart, 2026-10-15: "fluid, so it doesn't stop, but it accelerates").
+    portalGrow: 1.6, // the hole swallows the page, s
+    // One hard line, not a feather (Bart, 2026-10-15). 1px rather than 0 so the circle is
+    // anti-aliased instead of stair-stepped.
+    portalSoftness: 1, // px feather on the hole's edge
     portalRimPull: 1, // 0 = the ring stays and is swallowed, 1 = the ring rides the hole's edge outward
     portalRimGap: 16, // px between the hole's edge and the ring's inner edge
     portalReadyTimeout: 6, // s to wait for the title screen before falling back to plain navigation
@@ -292,20 +293,14 @@ export const setupPortal = (root, { warp, settings }) => {
         const centre = ringCentre();
         const draw = () => paint(hole.radius, inner);
 
-        opening = gsap.timeline({ onComplete: () => arrive(frame, viaKeyboard) })
-            .to(hole, {
-                radius: settings.portalOpenSize * inner,
-                duration: settings.portalOpen,
-                ease: GSAP_EASE.enter,
-                onUpdate: draw,
-            })
-            // Accelerating away: the page falls open into the lesson.
-            .to(hole, {
-                radius: coverRadius(centre.x, centre.y) + settings.portalSoftness,
-                duration: settings.portalGrow,
-                ease: GSAP_EASE.exit,
-                onUpdate: draw,
-            }, `>+${settings.portalHold}`);
+        // Accelerating away: the page falls open into the lesson.
+        opening = gsap.to(hole, {
+            radius: coverRadius(centre.x, centre.y) + settings.portalSoftness,
+            duration: settings.portalGrow,
+            ease: GSAP_EASE.exit,
+            onUpdate: draw,
+            onComplete: () => arrive(frame, viaKeyboard),
+        });
     };
 
     const onPress = (event) => {
