@@ -119,7 +119,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-C6YW-Qzx.css",
+    "file": "assets/app-CIHEQbW5.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -195,7 +195,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-FzN7Xv_v.js",
+    "file": "assets/lesson-player--vFrnlKk.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
