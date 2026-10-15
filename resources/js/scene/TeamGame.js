@@ -21,6 +21,9 @@
 import { t } from '../i18n.js'
 import { el } from './dom.js'
 import { formatClock } from './chapter-timeline.js'
+import { readHold } from './cargo-hold.js'
+import { HoldScreens } from './team-hold.js'
+import { teamTone } from './team-colours.js'
 
 export const TEAMS_MIN = 2
 export const TEAMS_MAX = 8
@@ -103,16 +106,22 @@ export function safeImage (url) {
 export function readConfig (raw = {}) {
   const list = (v) => (Array.isArray(v) ? v : [])
   const mode = ['budget', 'choose', 'discuss'].includes(raw.mode) ? raw.mode : 'budget'
+  const cargo = (rows) => list(rows).map(i => ({ ...i, image: safeImage(i?.image) }))
+  const holdRaw = raw.hold && typeof raw.hold === 'object' ? raw.hold : {}
+  const hold = readHold({ ...holdRaw, ship: safeImage(holdRaw.ship), backdrop: safeImage(holdRaw.backdrop) })
   return {
     ...raw,
     mode,
+    hold,
+    // The ship's hold when there is a ship to draw and the teacher has not asked for the cards.
+    presentation: mode === 'budget' && hold.ship && hold.zones.length && raw.presentation !== 'grid' ? 'hold' : 'grid',
     map: safeImage(raw.map),
     roles: list(raw.roles).filter(Boolean),
     teams: clampTeams(raw.teams ?? 4),
     minutes: Math.max(0, Math.min(30, Number(raw.minutes) || 0)),
     capacity: Math.max(1, Number(raw.capacity) || 1),
-    fixed: list(raw.fixed),
-    items: list(raw.items),
+    fixed: cargo(raw.fixed),
+    items: cargo(raw.items),
     cards: list(raw.cards),
     options: list(raw.options).slice(0, LETTERS.length).map(o => ({ ...o, image: safeImage(o?.image) })),
     prompts: list(raw.prompts).filter(Boolean),
@@ -165,6 +174,7 @@ export class TeamGame {
     this._warning = ''
     this._remaining = this.cfg.minutes * 60
     this._running = false
+    this._hold = new HoldScreens(this)
     this._phase = this.cfg.mode === 'discuss' ? 'discuss' : 'setup'
     if (this._phase === 'discuss') this._startClock()
     this.host.style.pointerEvents = 'auto'
@@ -180,6 +190,22 @@ export class TeamGame {
     this._active = 0
     this._remaining = this.cfg.minutes * 60
     this._go(this.cfg.mode === 'budget' ? 'load' : 'dossier')
+  }
+
+  /**
+   * The ONE accessor for team data (names, the team being entered, each team's picks). The hold
+   * reads and writes teams only through this, so a shared class-teams store can replace it.
+   */
+  teamStore () {
+    return {
+      count: () => this._names.length,
+      name: (i) => this._names[i] ?? '',
+      tone: (i) => teamTone(i),
+      active: () => this._active,
+      setActive: (i) => { this._active = Math.max(0, Math.min(this._names.length - 1, i)) },
+      picked: (i) => this._selections[i] ?? new Set(),
+      setPicked: (i, picked) => { this._selections[i] = new Set(picked) },
+    }
   }
 
   hide () {
@@ -268,7 +294,12 @@ export class TeamGame {
   _render () {
     const timed = TIMED.includes(this._phase)
     if (!timed && this._running) { this._running = false; this._stopClock() }
+    // A redraw in the same phase keeps the scroll (a pupil's phone mid-list); a new phase starts on top.
+    const old = this.host.querySelector('[data-team-scrim]')
+    const keepScroll = old && this._drawnPhase === this._phase ? old.scrollTop : 0
+    this._drawnPhase = this._phase
     const scrim = el('div', 'absolute inset-0 overflow-y-auto bg-base-100/95 text-base-content')
+    scrim.dataset.teamScrim = ''
     scrim.setAttribute('role', 'dialog')
     scrim.setAttribute('aria-label', this.cfg.title || t('Team game'))
     // Clear of the player's chrome, which sits above this host: the edit pill on top, the deck below.
@@ -280,6 +311,7 @@ export class TeamGame {
     append(page, head, body)
     scrim.appendChild(page)
     this.host.replaceChildren(scrim)
+    if (keepScroll) scrim.scrollTop = keepScroll
   }
 
   _footer (body, ...buttons) {
@@ -335,6 +367,7 @@ export class TeamGame {
 
   // ── Budget: teacher enters each team's load ──
   _load (body) {
+    if (this.cfg.presentation === 'hold') return this._hold.pick(body)
     const { items, fixed, capacity } = this.cfg
     const picked = this._selections[this._active]
     const load = loadOf(picked, items, fixed)
@@ -397,6 +430,7 @@ export class TeamGame {
   }
 
   _toggle (index) {
+    if (this.cfg.presentation === 'hold') return this._hold.toggle(index)
     const { items, fixed, capacity } = this.cfg
     const result = toggleItem(this._selections[this._active], index, items, fixed, capacity)
     this._selections[this._active] = result.picked
@@ -409,6 +443,7 @@ export class TeamGame {
   }
 
   _budgetReveal (body) {
+    if (this.cfg.presentation === 'hold') return this._hold.reveal(body)
     const { items, fixed } = this.cfg
     append(body,
       para(this.cfg.reveal, 'text-2xl leading-relaxed'),

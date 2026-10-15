@@ -1810,5 +1810,12 @@
     "Subject": "Fach",
     "Science": "Naturwissenschaften",
     "Literature": "Literatur",
-    "Civics": "Politische Bildung"
+    "Civics": "Politische Bildung",
+    ":points points": ":points Punkte",
+    "Take out: :item": "Ausladen: :item",
+    "The real expedition": "Die echte Expedition",
+    "Who packed the best cargo?": "Wer hat die beste Ladung zusammengestellt?",
+    "Available cargo": "Verfügbare Ladung",
+    "Not loaded": "Nicht geladen",
+    ":item, costs :points points": ":item, kostet :points Punkte"
 }

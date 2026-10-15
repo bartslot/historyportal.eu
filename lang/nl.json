@@ -1852,5 +1852,12 @@
     "Subject": "Vak",
     "Science": "Natuurwetenschappen",
     "Literature": "Literatuur",
-    "Civics": "Burgerschap"
+    "Civics": "Burgerschap",
+    ":points points": ":points punten",
+    "Take out: :item": "Uitladen: :item",
+    "The real expedition": "De echte expeditie",
+    "Who packed the best cargo?": "Wie heeft de beste lading samengesteld?",
+    "Available cargo": "Beschikbare lading",
+    "Not loaded": "Niet geladen",
+    ":item, costs :points points": ":item, kost :points punten"
 }

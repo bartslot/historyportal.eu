@@ -1810,5 +1810,12 @@
     "Subject": "Materia",
     "Science": "Scienze",
     "Literature": "Letteratura",
-    "Civics": "Educazione civica"
+    "Civics": "Educazione civica",
+    ":points points": ":points punti",
+    "Take out: :item": "Scarica: :item",
+    "The real expedition": "La vera spedizione",
+    "Who packed the best cargo?": "Chi ha composto il carico migliore?",
+    "Available cargo": "Carico disponibile",
+    "Not loaded": "Non caricato",
+    ":item, costs :points points": ":item, costa :points punti"
 }

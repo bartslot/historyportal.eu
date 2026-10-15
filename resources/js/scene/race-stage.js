@@ -6,12 +6,10 @@
  */
 import { el } from './dom.js'
 import { raceLanes, laneX } from './race.js'
+import { teamTone } from './team-colours.js'
 
-/** Team colours from the theme's own tokens (DaisyUI), never raw Tailwind colours. */
-const COLOURS = ['badge-secondary', 'badge-accent', 'badge-info', 'badge-success', 'badge-warning', 'badge-neutral', 'badge-ghost', 'badge-primary']
-
-/** A team's chip colour by its place in the race (the class screen and its phones agree). */
-export const teamColour = (i) => COLOURS[i % COLOURS.length]
+/** A team's chip colour by its place in the race (the class screen, its phones and the cargo results agree). */
+export const teamColour = (i) => teamTone(i).badge
 
 /** A ship gaining ground: on-screen motion that settles, so it decelerates into place. */
 const GAIN = 'translate 700ms cubic-bezier(0.22, 1, 0.36, 1)'
