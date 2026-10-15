@@ -2019,7 +2019,7 @@ html[data-inspector-w] aside[data-resizable-drawer] {
 .title-screen::-webkit-scrollbar { display: none; }
 .title-gutter-x { padding-inline: var(--title-gutter); }
 .title-pad-top { padding-top: calc(var(--title-gutter) + 4rem); }
-.title-pad-bottom { padding-bottom: calc(var(--title-gutter) + var(--title-pill-h) + 2rem); }
+.title-pad-bottom { padding-bottom: calc(var(--title-gutter) + var(--title-pill-h) + 5rem); }
 .title-pill { height: var(--title-pill-h); }
 .title-lang { width: var(--title-lang-w); }
 .title-episode { font-size: clamp(1rem, 1.7vw, 1.75rem); line-height: 1.25; }

@@ -15,7 +15,7 @@
     <div {{ $attributes->merge(['class' => 'title-lang relative shrink-0']) }}>
         <label for="title-lang-select" class="sr-only">{{ __('Language') }}</label>
         <select id="title-lang-select" onchange="window.location.href = this.value"
-                class="title-pill block w-full cursor-pointer appearance-none truncate rounded-full border border-white/40 bg-black/25 pl-4 pr-9 text-sm sm:pl-5 sm:pr-10 font-semibold text-white transition-colors hover:border-white/80 focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+                class="title-pill block w-full cursor-pointer appearance-none truncate rounded-full border border-white/25 bg-black/20 pl-4 pr-9 text-sm sm:pl-5 sm:pr-10 font-semibold text-white transition-colors hover:border-white/80 focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
             @foreach ($options as $option)
                 <option value="{{ $option['url'] }}" lang="{{ $option['code'] }}" class="text-brand-ink" @selected($option['current'])>{{ \App\Support\Locales::name($option['code']) }}</option>
             @endforeach
