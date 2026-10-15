@@ -20,7 +20,7 @@ import { buildChapters, canSeek, reachedFurther, chapterTooltip, formatClock, fo
 import { createTelemetry } from './lesson-telemetry.js'
 import { renderGallery } from './gallery-scene.js'
 import { isTopAnchored, normalizeFit, PORTRAIT_TOP_CSS } from './scene/background-fit.js'
-import { isClipartLayer } from './scene/layer-filters.js'
+import { isClipartLayer, backdropLayers } from './scene/layer-filters.js'
 import { fitToPlate, plateAspect } from './scene/plate-box.js'
 import { mountEmbedBg } from './scene/embed-bg.js'
 import { sameOriginMediaUrl } from './media-url.js'
@@ -979,7 +979,7 @@ Alpine.data('lessonGame', (lesson) => ({
           heroUrl: shot.hero_url || null,
           // Multiplane shots (E3c): ordered back→front, each {url, depth, kind, …}.
           // Library clipart is ArtworkOverlay's (see _renderSceneArtwork), so it is left out here.
-          layers: Array.isArray(shot.layers) && shot.layers.length ? shot.layers.filter(l => !isClipartLayer(l)) : null,
+          layers: Array.isArray(shot.layers) && shot.layers.length ? backdropLayers(shot.layers) : null,
           motion,
           // Whole image: the plate shows whole, letterboxed on the scene's own colour.
           fit,

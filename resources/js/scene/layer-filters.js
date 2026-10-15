@@ -24,6 +24,13 @@ import { washMatrix } from './sit-in-scene.js'
  */
 export const isClipartLayer = (l) => !!l && l.asset_id != null && l.kind !== 'cover'
 
+/**
+ * The layers ParallaxScene may draw: the backdrop planes, never the library layers. An empty list
+ * means "no backdrop", never "then draw everything", which is how the editor once put every library
+ * picture on screen twice and panned one copy out of its selection box.
+ */
+export const backdropLayers = (layers) => (Array.isArray(layers) ? layers.filter((l) => !isClipartLayer(l)) : [])
+
 /** '#rrggbb' → [r, g, b] in 0..1, the range feColorMatrix works in. */
 export function hexToUnit(hex) {
   const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ''))
