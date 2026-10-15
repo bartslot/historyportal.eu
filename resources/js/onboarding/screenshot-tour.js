@@ -10,11 +10,83 @@
 // so the card drops underneath the picture and only the ring stays on it.
 
 import { COMPACT_BREAKPOINT, positionCard, spotlightRect } from './tour-position.js'
+import { EASE } from '../easing.js'
 
 /** Defaults for the knobs the dev tuner exposes. The CSS reads them as custom properties. */
 export const TOUR_LOOK = {
     dim: 0.55,
     cardWidth: 21,
+}
+
+/**
+ * Motion, by purpose. Every value here answers "where do I look now":
+ *   move    the ring, card and camera travel together to the next spot on the SAME screen, so the
+ *           eye follows one thing instead of searching
+ *   arrive  on a NEW screen nothing travels across the picture: it fades in, then the dimming
+ *           closes in around the spot, then the card appears beside it (frame → spot → words)
+ * Durations mirror the classes in product-tour.blade.php.
+ */
+export const MOTION = {
+    move: 450,
+    ringDelay: 140,
+    ring: 320,
+    cardDelay: 240,
+    card: 260,
+    open: 320,
+}
+
+/** A highlight smaller than this share of the frame (its larger side) is zoomed in on. */
+export const ZOOM_TARGET = 0.3
+export const MAX_ZOOM = 1.6
+/** On a phone the whole frame is a few hundred pixels wide; small targets need more help. */
+export const MAX_ZOOM_COMPACT = 2.2
+
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
+
+/**
+ * The camera for a step: zoom in on a small highlight (the Publish button, the QR plate) so it is
+ * readable, centred on it, without ever showing past the picture's edge. Big highlights get no zoom.
+ * Returns { scale, x, y } for `transform: translate(x, y) scale(scale)` from the top-left corner.
+ */
+export const cameraFor = (rect, frame, maxZoom = MAX_ZOOM) => {
+    const none = { scale: 1, x: 0, y: 0 }
+
+    if (!rect || !(frame?.width > 0) || !(frame?.height > 0)) {
+        return none
+    }
+
+    const share = Math.max(rect.w, rect.h) / 100
+    const scale = share > 0 ? clamp(ZOOM_TARGET / share, 1, maxZoom) : 1
+
+    if (scale === 1) {
+        return none
+    }
+
+    const centreX = ((rect.x + rect.w / 2) / 100) * frame.width
+    const centreY = ((rect.y + rect.h / 2) / 100) * frame.height
+
+    return {
+        scale,
+        x: clamp(frame.width / 2 - centreX * scale, frame.width - frame.width * scale, 0),
+        y: clamp(frame.height / 2 - centreY * scale, frame.height - frame.height * scale, 0),
+    }
+}
+
+/** A rectangle (percent of the picture) as it lands on the frame once the camera has moved. */
+export const throughCamera = (rect, camera, frame) => {
+    if (!rect || camera.scale === 1) {
+        return rect
+    }
+
+    const toPercentX = (px) => (px / frame.width) * 100
+    const toPercentY = (px) => (px / frame.height) * 100
+
+    return {
+        x: toPercentX((rect.x / 100) * frame.width * camera.scale + camera.x),
+        y: toPercentY((rect.y / 100) * frame.height * camera.scale + camera.y),
+        w: rect.w * camera.scale,
+        h: rect.h * camera.scale,
+    }
 }
 
 /** A step's rectangle (percent of the picture) in pixels of a frame of the given size. */
@@ -51,10 +123,20 @@ export const layoutStep = ({ rect, frame, card, preferred = 'center' }) => {
     return { compact, spotlight, ...position }
 }
 
+const prefersReducedMotion = () =>
+    window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+
 export const createScreenshotTour = ({ steps = [] } = {}) => ({
     steps,
     total: steps.length,
     index: 0,
+
+    /** image → its camera transform. Kept per picture, so the one fading out holds its framing. */
+    cameras: {},
+    /** Set on first open; the screenshots are only put in the page then. */
+    opened: false,
+    /** True for the frame in which a new screen is laid out: nothing may glide into place. */
+    jumping: false,
 
     // Layout state read by the template.
     placement: 'center',
@@ -80,7 +162,15 @@ export const createScreenshotTour = ({ steps = [] } = {}) => ({
     },
 
     get progress() {
-        return this.total === 0 ? 0 : ((this.index + 1) / this.total) * 100
+        return this.total === 0 ? 0 : (this.index + 1) / this.total
+    },
+
+    cameraStyle(image) {
+        const camera = this.cameras[image]
+
+        return camera
+            ? `transform: translate(${camera.x.toFixed(1)}px, ${camera.y.toFixed(1)}px) scale(${camera.scale.toFixed(3)});`
+            : ''
     },
 
     open() {
@@ -89,6 +179,7 @@ export const createScreenshotTour = ({ steps = [] } = {}) => ({
         }
 
         this.index = 0
+        this.opened = true
         this.$refs.dialog.showModal()
 
         if (typeof ResizeObserver !== 'undefined') {
@@ -100,7 +191,11 @@ export const createScreenshotTour = ({ steps = [] } = {}) => ({
         }
 
         this._tunerOff = this.registerTuner()
-        this.$nextTick(() => this.reposition())
+        this.jumping = true
+        this.$nextTick(() => {
+            this.reposition()
+            this.arrive({ opening: true })
+        })
     },
 
     close() {
@@ -121,8 +216,54 @@ export const createScreenshotTour = ({ steps = [] } = {}) => ({
     },
 
     goTo(index) {
-        this.index = Math.min(Math.max(Number(index) || 0, 0), this.total - 1)
-        this.$nextTick(() => this.reposition())
+        const next = Math.min(Math.max(Number(index) || 0, 0), this.total - 1)
+
+        if (next === this.index) {
+            return
+        }
+
+        const newScreen = this.steps[next]?.image !== this.step?.image
+
+        this.index = next
+        this.jumping = newScreen
+        this.$nextTick(() => {
+            this.reposition()
+
+            if (newScreen) {
+                this.arrive()
+            }
+        })
+    },
+
+    /**
+     * A new screen: the ring and card are already in their final place (laid out with transitions
+     * off), so animate them IN rather than across. The dimming closes in on the spot, then the card
+     * follows. Transitions come back on two frames later, once that layout has been painted.
+     */
+    arrive({ opening = false } = {}) {
+        requestAnimationFrame(() => requestAnimationFrame(() => { this.jumping = false }))
+
+        if (prefersReducedMotion()) {
+            return
+        }
+
+        const lead = opening ? 120 : 0
+
+        if (opening) {
+            this.$refs.panel?.animate(
+                [{ opacity: 0, transform: 'translateY(8px) scale(0.985)' }, { opacity: 1, transform: 'none' }],
+                { duration: MOTION.open, easing: EASE.enter },
+            )
+        }
+
+        this.$refs.ring?.animate(
+            [{ opacity: 0, transform: 'scale(1.04)' }, { opacity: 1, transform: 'none' }],
+            { duration: MOTION.ring, delay: lead + MOTION.ringDelay, easing: EASE.enter, fill: 'backwards' },
+        )
+        this.$refs.card?.animate(
+            [{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }],
+            { duration: MOTION.card, delay: lead + MOTION.cardDelay, easing: EASE.enter, fill: 'backwards' },
+        )
     },
 
     next() {
@@ -157,9 +298,15 @@ export const createScreenshotTour = ({ steps = [] } = {}) => ({
             return
         }
 
+        const frame = { width: stage.width, height: stage.height }
+        const compact = frame.width < COMPACT_BREAKPOINT
+        const camera = cameraFor(this.step.rect, frame, compact ? MAX_ZOOM_COMPACT : MAX_ZOOM)
+
+        this.cameras = { ...this.cameras, [this.step.image]: camera }
+
         const layout = layoutStep({
-            rect: this.step.rect,
-            frame: { width: stage.width, height: stage.height },
+            rect: throughCamera(this.step.rect, camera, frame),
+            frame,
             card: { width: card.width, height: card.height },
             preferred: this.step.placement,
         })

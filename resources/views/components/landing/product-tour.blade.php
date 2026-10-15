@@ -29,7 +29,7 @@
             @keydown.arrow-right.prevent="next()"
             @keydown.arrow-left.prevent="previous()"
             style="--tour-dim: 0.55; --tour-card-width: 21rem;">
-        <div class="relative w-[min(94vw,calc((100dvh-7.5rem)*1.6))] overflow-hidden rounded-2xl border border-white/10 bg-base-200">
+        <div x-ref="panel" class="relative w-[min(94vw,calc((100dvh-7.5rem)*1.6))] overflow-hidden rounded-2xl border border-white/10 bg-base-200">
 
             {{-- The X gets its own strip: over the picture it would sit on the screenshot's own
                  top-right controls, which is exactly where the Publish step points. --}}
@@ -42,29 +42,42 @@
                 </button>
             </div>
 
-            {{-- The picture. Every screenshot of the tour is in the DOM from the start, so moving to
-                 the next step is a crossfade, never a blank frame while one loads. --}}
+            {{-- The picture. Every screenshot is in the DOM once the tour opens, so moving to
+                 the next step is a crossfade, never a blank frame while one loads. Each carries its
+                 own camera: a small highlight is zoomed in on as its picture fades in. --}}
             <div x-ref="stage" class="relative aspect-[16/10] w-full overflow-hidden bg-base-300">
-                @foreach ($images as $image)
-                    <img src="{{ $image }}" alt="" draggable="false"
-                         class="absolute inset-0 h-full w-full select-none object-cover transition-opacity duration-300 ease-enter motion-reduce:transition-none"
-                         :class="step?.image === @js($image) ? 'opacity-100' : 'opacity-0'">
-                @endforeach
+                {{-- Not in the page until the tour first opens: 1.5 MB of screenshots is no reason to
+                     slow the About page for every visitor who never clicks. --}}
+                <template x-if="opened">
+                    <div>
+                    @foreach ($images as $image)
+                        <img src="{{ $image }}" alt="" draggable="false"
+                             class="absolute inset-0 h-full w-full origin-top-left select-none object-cover [transition:opacity_280ms_var(--ease-enter),transform_450ms_var(--ease-move)] motion-reduce:transition-none"
+                             :class="step?.image === @js($image) ? 'opacity-100' : 'opacity-0'"
+                             :style="cameraStyle(@js($image))">
+                    @endforeach
+                    </div>
+                </template>
 
                 {{-- Dims everything outside the ring. A step without a rectangle dims nothing: the
                      whole picture is the point. The dimming is a class, not an inline style: Alpine's
                      :style replaces the whole attribute on every move (same note as the welcome tour). --}}
-                <div class="pointer-events-none absolute rounded-xl ring-1 ring-white/80 shadow-[0_0_0_9999px_rgb(2_6_23/var(--tour-dim))] transition-all duration-300 ease-move motion-reduce:transition-none"
+                {{-- On the same screen it glides to the next spot (one thing for the eye to follow);
+                     on a new screen it is placed, then closes in (screenshot-tour.js arrive()). --}}
+                <div x-ref="ring"
+                     class="pointer-events-none absolute rounded-xl ring-1 ring-white/80 shadow-[0_0_0_9999px_rgb(2_6_23/var(--tour-dim))] transition-[top,left,width,height] duration-[450ms] ease-move motion-reduce:transition-none"
+                     :class="jumping && '!transition-none'"
                      :style="spotlightStyle"
                      aria-hidden="true"></div>
             </div>
 
             {{-- Beside the ring on a wide frame; below the picture on a narrow one. --}}
             <div x-ref="card"
-                 class="z-10 border-white/10 bg-base-200 transition-[top,left] duration-200 ease-enter motion-reduce:transition-none"
-                 :class="compact
-                     ? 'relative w-full border-t p-5'
-                     : 'absolute w-[min(var(--tour-card-width),45%)] rounded-2xl border p-5'"
+                 class="z-10 border-white/10 bg-base-200 transition-[top,left] duration-[450ms] ease-move motion-reduce:transition-none"
+                 :class="[
+                     compact ? 'relative w-full border-t p-5' : 'absolute w-[min(var(--tour-card-width),45%)] rounded-2xl border p-5',
+                     jumping && '!transition-none',
+                 ]"
                  :style="compact ? '' : cardStyle">
 
                 <div x-show="!compact && arrow !== null" x-cloak aria-hidden="true"
@@ -78,12 +91,16 @@
                      :style="arrowStyle"></div>
 
                 <div class="h-0.5 overflow-hidden rounded-full bg-white/10" aria-hidden="true">
-                    <div class="h-full bg-white/80 transition-[width] duration-300 ease-move motion-reduce:transition-none"
-                         :style="`width: ${progress}%`"></div>
+                    <div class="h-full origin-left bg-white/80 transition-transform duration-[450ms] ease-move motion-reduce:transition-none"
+                         :style="`transform: scaleX(${progress})`"></div>
                 </div>
 
                 @foreach ($steps as $index => $step)
-                    <div x-show="index === {{ $index }}" x-cloak class="mt-4">
+                    {{-- New words rise in a few pixels; the old ones simply go (an exit should be quieter). --}}
+                    <div x-show="index === {{ $index }}" x-cloak class="mt-4"
+                         x-transition:enter="transition duration-200 ease-enter motion-reduce:transition-none"
+                         x-transition:enter-start="translate-y-1 opacity-0"
+                         x-transition:enter-end="translate-y-0 opacity-100">
                         <h2 class="font-history text-xl font-light leading-tight text-slate-100">{{ $step['title'] }}</h2>
                         <p class="mt-2 text-sm leading-relaxed text-slate-300">{{ $step['body'] }}</p>
                     </div>

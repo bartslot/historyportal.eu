@@ -33,6 +33,8 @@ type Shot = {
     start?: boolean
     /** Chrome that hides until the pointer comes near (the player's control bar): hover it first. */
     reveal?: string
+    /** 2 for the product tour, which zooms in on small highlights and is viewed on retina screens. */
+    deviceScaleFactor?: number
 }
 
 /** Console noise produced by the software GL used in headless runs, not by the app. */
@@ -52,7 +54,13 @@ test.describe(`help screenshots (${locale})`, () => {
     test.use({ viewport: { width: 1440, height: 900 } })
 
     for (const shot of shots) {
-        test(`capture ${shot.key}`, async ({ page }) => {
+        test(`capture ${shot.key}`, async ({ page: defaultPage, browser }) => {
+            // Retina-sharp shots get their own context: the pixel ratio is fixed per context.
+            const context = shot.deviceScaleFactor
+                ? await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: shot.deviceScaleFactor })
+                : null
+            const page = context ? await context.newPage() : defaultPage
+
             const failures: string[] = []
             page.on('pageerror', (error) => failures.push(error.message))
 
@@ -95,7 +103,7 @@ test.describe(`help screenshots (${locale})`, () => {
             const type = shot.type ?? 'png'
             const path = `${outputDir}/${shot.key}.${type === 'jpeg' ? 'jpg' : 'png'}`
             mkdirSync(dirname(path), { recursive: true })
-            await page.screenshot({ path, type, fullPage: shot.fullPage ?? false, ...(type === 'jpeg' ? { quality: 82 } : {}) })
+            await page.screenshot({ path, type, fullPage: shot.fullPage ?? false, ...(type === 'jpeg' ? { quality: 76 } : {}) })
 
             if (shot.highlights) {
                 const rects = await page.evaluate((highlights) => {
@@ -130,6 +138,8 @@ test.describe(`help screenshots (${locale})`, () => {
                     console.warn(`[${shot.key}] nothing to highlight for: ${missing.join(', ')}`)
                 }
             }
+
+            await context?.close()
 
             const real = failures.filter((message) => !HEADLESS_GL_NOISE.some((pattern) => pattern.test(message)))
 

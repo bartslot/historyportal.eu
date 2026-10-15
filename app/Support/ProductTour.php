@@ -60,7 +60,7 @@ final class ProductTour
         return [
             self::step('tour-create', 'topic', 'bottom',
                 __('Start with what your class is studying'),
-                __('Pick a topic from the catalog. Every topic comes with checked source text, so each fact in the lesson can be traced back.')),
+                __('Pick a topic from the catalog. Every fact comes from checked source text.')),
             self::step('tour-create', 'voyage', 'bottom',
                 __('Or follow a real voyage'),
                 __('Sail an actual expedition across the map, ready to edit in seconds.')),

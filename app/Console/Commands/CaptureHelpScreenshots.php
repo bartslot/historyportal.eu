@@ -236,6 +236,8 @@ class CaptureHelpScreenshots extends Command
                 'key' => $key,
                 ...$page,
                 'type' => 'jpeg',
+                // Sharp on retina screens, and when the tour zooms in on a small highlight.
+                'deviceScaleFactor' => 2,
                 'highlights' => (object) $shot['highlights'],
                 // Teacher-only chrome a visitor would never see on the board.
                 'hide' => ['[data-player-chrome="top"]'],

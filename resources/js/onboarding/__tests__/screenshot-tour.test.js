@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { COMPACT_BREAKPOINT, SPOTLIGHT_PADDING } from '../tour-position.js'
-import { anchorInFrame, layoutStep } from '../screenshot-tour.js'
+import { MAX_ZOOM, anchorInFrame, cameraFor, layoutStep, throughCamera } from '../screenshot-tour.js'
 
 const frame = { width: 1200, height: 750 }
 const card = { width: 336, height: 220 }
@@ -59,5 +59,30 @@ describe('layoutStep', () => {
 
         expect(['left', 'right']).toContain(layout.placement)
         expect(layout.left < 0.233 * 1200 || layout.left > 0.5 * 1200).toBe(true)
+    })
+})
+
+describe('cameraFor', () => {
+    it('leaves a large highlight alone', () => {
+        expect(cameraFor({ x: 15, y: 20, w: 69, h: 29 }, frame)).toEqual({ scale: 1, x: 0, y: 0 })
+    })
+
+    it('zooms in on a small highlight, capped, without showing past the picture edge', () => {
+        // The Publish button: top-right corner, a few percent of the frame.
+        const camera = cameraFor({ x: 95.3, y: 0.6, w: 3.9, h: 5.8 }, frame)
+
+        expect(camera.scale).toBe(MAX_ZOOM)
+        expect(camera.x).toBeCloseTo(frame.width - frame.width * MAX_ZOOM)
+        expect(camera.y).toBe(0)
+    })
+
+    it('keeps the highlight on the same pixels of the zoomed picture', () => {
+        const rect = { x: 87.8, y: 75.6, w: 8.9, h: 18.2 }
+        const camera = cameraFor(rect, frame)
+        const moved = throughCamera(rect, camera, frame)
+
+        expect(moved.w).toBeCloseTo(rect.w * camera.scale)
+        expect(moved.x + moved.w).toBeLessThanOrEqual(100.01)
+        expect(moved.y + moved.h).toBeLessThanOrEqual(100.01)
     })
 })
