@@ -2,11 +2,7 @@
  "lang": "nl",
  "title": "Abel Tasman: De reis naar het onbekende",
  "intro": "Waarom riskeer je je leven voor het onbekende, als daar al mensen wonen?",
- "expect": [
-  "Hoe was het aan boord van een ontdekkingsreis?",
-  "Wie woonden er al, waar Tasman aankwam?",
-  "De gevaren en de gevolgen"
- ],
+ "expect": ["Hoe was het aan boord van een ontdekkingsreis?", "Wie woonden er al, waar Tasman aankwam?", "De gevaren en de gevolgen"],
  "scenes": {
   "S00": {
    "title": "Wat betekent dat?",
@@ -281,21 +277,23 @@
   "lading": {
    "mode": "budget",
    "title": "De lading",
+   "mission": "Jullie vertrekken op een lange reis. Niemand weet precies wat jullie onderweg tegenkomen. Wat nemen jullie mee?",
    "chapter": "De lading",
-   "minutes": 5,
+   "minutes": 3,
    "teams": 4,
    "script": "Vorm teams van drie of vier en kies samen wat jullie meenemen. Water, eten en kompas gaan mee; wat past nog in jullie zestien laadpunten?",
    "intro": "Water, eten en kompas gaan mee; wat past nog in jullie zestien laadpunten?",
    "rules": "Kies samen minstens één voedselpakket. Elk pakket hoogstens één keer. Punten zijn spelwaarden, geen historische maten.",
    "roles": [
-    "Voorlezer",
-    "Puntenteller",
-    "Risicozoeker",
-    "Woordvoerder"
+    "Kapitein",
+    "Bootsman",
+    "Verkenner",
+    "Stuurman"
    ],
    "capacity": 16,
    "fixed": [
     {
+     "id": "water",
      "name": "Watervaten",
      "why": "Zonder drinkwater helpt geen kaart je verder.",
      "cost": 3,
@@ -305,6 +303,7 @@
      ]
     },
     {
+     "id": "compass",
      "name": "Kompas",
      "why": "Je vaarrichting bijhouden, maar het wijst geen veilige haven aan.",
      "cost": 1,
@@ -316,6 +315,7 @@
    ],
    "items": [
     {
+     "id": "rice",
      "name": "Rijst",
      "why": "Veel eten meenemen of ruimte bewaren voor reparaties?",
      "cost": 3,
@@ -326,6 +326,7 @@
      "real": true
     },
     {
+     "id": "ships_bread",
      "name": "Hard scheepsbrood",
      "why": "Een tweede voedselvoorraad of vertrouwen op alleen rijst?",
      "cost": 2,
@@ -336,6 +337,7 @@
      "real": true
     },
     {
+     "id": "meat",
      "name": "Vleesvoorraad",
      "why": "Ander eten meenemen of die twee punten aan touw besteden?",
      "cost": 2,
@@ -346,6 +348,7 @@
      "real": true
     },
     {
+     "id": "spare_sails",
      "name": "Reservezeilen",
      "why": "Met gescheurd zeildoek verder of nu ruimte opofferen?",
      "cost": 3,
@@ -356,6 +359,7 @@
      "real": false
     },
     {
+     "id": "spare_rope",
      "name": "Reservetouw",
      "why": "Een kapotte lijn herstellen of hopen dat alles heel blijft?",
      "cost": 2,
@@ -366,6 +370,7 @@
      "real": false
     },
     {
+     "id": "spare_timber",
      "name": "Reservehout",
      "why": "Materiaal voor schadeherstel, maar zonder gereedschap schiet je weinig op.",
      "cost": 3,
@@ -376,6 +381,7 @@
      "real": true
     },
     {
+     "id": "tools",
      "name": "Timmergereedschap",
      "why": "Gereedschap kost weinig ruimte, maar welk reparatiemateriaal nemen jullie erbij?",
      "cost": 1,
@@ -386,6 +392,7 @@
      "real": false
     },
     {
+     "id": "firewood",
      "name": "Brandhout",
      "why": "Hout voor het kookvuur of nog een voorraad voedsel?",
      "cost": 2,
@@ -396,6 +403,7 @@
      "real": true
     },
     {
+     "id": "charts",
      "name": "Zeekaarten",
      "why": "Onvolledige kaarten meenemen of die ruimte voor iets anders gebruiken?",
      "cost": 1,
@@ -406,6 +414,7 @@
      "real": true
     },
     {
+     "id": "paper_ink",
      "name": "Papier en inkt",
      "why": "Nieuwe kusten vastleggen of alleen zorgen dat jullie zelf thuiskomen?",
      "cost": 1,
@@ -416,6 +425,7 @@
      "real": true
     },
     {
+     "id": "trade_textiles",
      "name": "Stoffen als ruilwaar",
      "why": "Mogelijk voedsel ruilen aan land, maar wat als niemand wil ruilen?",
      "cost": 2,
@@ -426,6 +436,7 @@
      "real": true
     },
     {
+     "id": "trade_metal",
      "name": "Metaal als ruilwaar",
      "why": "Nog een ruilmiddel of vertrouwen op de stoffen die jullie kozen?",
      "cost": 1,
@@ -445,6 +456,12 @@
    "hold": {
     "ship": "asset:history-line/props/tasman/hold_ship_cutaway",
     "backdrop": "asset:history-line/backdrops/tasman/batavia_roadstead"
+   },
+   "timers": {
+    "mission": 20,
+    "compare": 60,
+    "exchange": 60,
+    "sail": 20
    }
   },
   "scheepsraad": {

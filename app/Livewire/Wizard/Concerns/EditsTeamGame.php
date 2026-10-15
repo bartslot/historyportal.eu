@@ -42,7 +42,10 @@ trait EditsTeamGame
         'teamDraft.hold.y' => 'nullable|numeric|min:0|max:200',
         'teamDraft.hold.h' => 'nullable|numeric|min:5|max:400',
         'teamDraft.hold.waterline' => 'nullable|numeric|min:0|max:1',
-        'teamDraft.hold.draught' => 'nullable|numeric|min:0|max:0.2',
+        'teamDraft.hold.draught' => 'nullable|boolean',
+        'teamDraft.roles_on' => 'nullable|boolean',
+        'teamDraft.mission' => 'nullable|string|max:300',
+        'teamDraft.timers.*' => 'nullable|integer|min:0|max:'.TeamGameSpec::STEP_MAX,
     ])]
     public array $teamDraft = [];
 

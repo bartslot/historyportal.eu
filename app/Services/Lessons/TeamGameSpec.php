@@ -43,11 +43,16 @@ final class TeamGameSpec
     /** The hold's look, all optional: [key => [min, max]] (cargo-hold.js HOLD_DEFAULTS fills gaps). */
     private const HOLD_NUMBERS = [
         'aspect' => [0.2, 10], 'x' => [0, 100], 'y' => [0, 200], 'h' => [5, 400],
-        'waterline' => [0, 1], 'draught' => [0, 0.2],
+        'waterline' => [0, 1],
         'reflection' => [0, 1], 'contact_shadow' => [0, 1], 'foam' => [0, 1], 'roll' => [0, 1],
     ];
 
     private const ZONES_MAX = 12;
+
+    /** The cargo game's step timers in seconds (plan §2); `minutes` is the choosing step. */
+    public const STEP_SECONDS = ['mission' => 20, 'compare' => 60, 'exchange' => 60, 'sail' => 20];
+
+    public const STEP_MAX = 600;
 
     private const TAGS_MAX = 8;
 
@@ -89,6 +94,9 @@ final class TeamGameSpec
         ]);
 
         $hold = self::hold($raw['hold'] ?? []);
+        $seen = [];
+        $fixed = self::ids(self::rows($raw['fixed'] ?? [], 'fixed', self::item(...)), 'fixed', $seen);
+        $items = self::ids(self::rows($raw['items'] ?? [], 'items', self::item(...)), 'item', $seen);
         $presentation = (string) ($raw['presentation'] ?? '');
 
         return [
@@ -97,15 +105,20 @@ final class TeamGameSpec
             'presentation' => in_array($presentation, self::PRESENTATIONS, true) ? $presentation : ($hold['ship'] !== '' ? 'hold' : 'grid'),
             'hold' => $hold,
             'title' => self::text($raw['title'] ?? '', self::NAME_MAX),
+            // The cargo game's opening line (plan §3), and how long each of its steps runs.
+            'mission' => self::text($raw['mission'] ?? '', self::LINE_MAX),
+            'timers' => self::timers($raw['timers'] ?? []),
             'intro' => self::text($raw['intro'] ?? '', self::TEXT_MAX),
             'rules' => self::text($raw['rules'] ?? '', self::TEXT_MAX),
             'roles' => self::rows($raw['roles'] ?? [], 'roles', fn ($r): string => self::text($r, self::ROLE_MAX)),
+            // The roles rotate over numbered places in each team (team-roles.js); on unless turned off.
+            'roles_on' => filter_var($raw['roles_on'] ?? true, FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE) ?? true,
             'teams' => self::int($raw['teams'] ?? 4, self::TEAMS_MIN, self::TEAMS_MAX, 4),
             'minutes' => self::int($raw['minutes'] ?? 0, 0, self::MINUTES_MAX, 0),
 
             'capacity' => self::int($raw['capacity'] ?? 10, 1, self::CAPACITY_MAX, 10),
-            'fixed' => self::rows($raw['fixed'] ?? [], 'fixed', self::item(...)),
-            'items' => self::rows($raw['items'] ?? [], 'items', self::item(...)),
+            'fixed' => $fixed,
+            'items' => $items,
 
             'situation' => self::text($raw['situation'] ?? '', self::TEXT_MAX),
             'cards' => self::rows($raw['cards'] ?? [], 'cards', fn (array $c): array => [
@@ -165,8 +178,8 @@ final class TeamGameSpec
     public static function blankRow(string $field): array|string|null
     {
         return match ($field) {
-            'fixed' => ['name' => '', 'why' => '', 'cost' => 1, 'image' => '', 'tags' => []],
-            'items' => ['name' => '', 'why' => '', 'cost' => 1, 'image' => '', 'tags' => [], 'real' => false],
+            'fixed' => ['id' => '', 'name' => '', 'why' => '', 'cost' => 1, 'image' => '', 'tags' => []],
+            'items' => ['id' => '', 'name' => '', 'why' => '', 'cost' => 1, 'image' => '', 'tags' => [], 'real' => false],
             'cards' => ['title' => '', 'text' => '', 'but' => ''],
             'options' => ['label' => '', 'text' => '', 'image' => ''],
             'evidence' => ['image' => '', 'caption' => ''],
@@ -186,11 +199,17 @@ final class TeamGameSpec
      * water, repair-wood, tools, sails, rope, charts, writing, trade...) for later story
      * consequences; nothing reads them yet.
      *
-     * @return array{name:string, why:string, cost:int, image:string, tags:list<string>, real:bool}
+     * `id` is the item's stable id (plan §4: rice, spare_sails...): the cargo a team locks is
+     * stored by id, so a renamed item is still the same item.
+     *
+     * @return array{id:string, name:string, why:string, cost:int, image:string, tags:list<string>, real:bool}
      */
     private static function item(array $i): array
     {
+        $id = is_string($i['id'] ?? null) ? strtolower(trim($i['id'])) : '';
+
         return [
+            'id' => preg_match('/^[a-z][a-z0-9_]{0,31}$/', $id) ? $id : '',
             'name' => self::text($i['name'] ?? '', self::NAME_MAX),
             'why' => self::text($i['why'] ?? '', self::LINE_MAX),
             'cost' => self::int($i['cost'] ?? 0, 0, self::COST_MAX, 0),
@@ -198,6 +217,48 @@ final class TeamGameSpec
             'tags' => self::tags($i['tags'] ?? []),
             'real' => filter_var($i['real'] ?? false, FILTER_VALIDATE_BOOL),
         ];
+    }
+
+    /**
+     * Every item gets an id, unique over the whole game (fixed and optional together): a blank one
+     * becomes `<prefix>_<n>`, a repeated one gets a trailing underscore.
+     *
+     * @param  list<array<string,mixed>>  $rows
+     * @param  list<string>  $seen  the ids already given
+     * @return list<array<string,mixed>>
+     */
+    private static function ids(array $rows, string $prefix, array &$seen): array
+    {
+        foreach ($rows as $n => $row) {
+            $id = $row['id'] !== '' ? $row['id'] : "{$prefix}_".($n + 1);
+            while (in_array($id, $seen, true)) {
+                $id .= '_';
+            }
+            $seen[] = $id;
+            $rows[$n]['id'] = $id;
+        }
+
+        return $rows;
+    }
+
+    /** @return array<string,int> every step's seconds, clamped; the defaults for anything missing */
+    private static function timers(mixed $raw): array
+    {
+        $raw = is_array($raw) ? $raw : [];
+        $out = [];
+        foreach (self::STEP_SECONDS as $key => $default) {
+            $out[$key] = self::int($raw[$key] ?? $default, 0, self::STEP_MAX, $default);
+        }
+
+        return $out;
+    }
+
+    /** The whole cargo game in seconds: mission + choosing + compare + exchange + sail (plan §2). */
+    public static function holdSeconds(array $team): int
+    {
+        $t = $team['timers'] ?? self::STEP_SECONDS;
+
+        return (int) ($t['mission'] + $team['minutes'] * 60 + $t['compare'] + $t['exchange'] + $t['sail']);
     }
 
     /** @return list<string> lower-case slugs, unique, at most TAGS_MAX */
@@ -227,7 +288,12 @@ final class TeamGameSpec
     private static function hold(mixed $raw): array
     {
         $raw = is_array($raw) ? $raw : [];
-        $out = ['ship' => self::image($raw['ship'] ?? ''), 'backdrop' => self::image($raw['backdrop'] ?? '')];
+        $out = [
+            'ship' => self::image($raw['ship'] ?? ''),
+            'backdrop' => self::image($raw['backdrop'] ?? ''),
+            // The ship sits a little lower as it fills: a weight joke, on unless the teacher turns it off.
+            'draught' => filter_var($raw['draught'] ?? true, FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE) ?? true,
+        ];
         foreach (self::HOLD_NUMBERS as $key => [$min, $max]) {
             if (isset($raw[$key]) && is_numeric($raw[$key])) {
                 $out[$key] = round(max($min, min($max, (float) $raw[$key])), 4);

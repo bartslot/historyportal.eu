@@ -154,12 +154,14 @@ class LessonComposerTeamGameTest extends TestCase
             'hold' => [
                 'ship' => 'asset:history-line/props/tasman/hold_ship_cutaway',
                 'backdrop' => 'asset:history-line/backdrops/tasman/batavia_roadstead',
-                'draught' => 0.9, 'zones' => null, 'junk' => 'dropped',
+                'draught' => 'maybe', 'zones' => null, 'junk' => 'dropped',
             ],
-            'fixed' => [['name' => 'Watervaten', 'cost' => 3, 'image' => 'asset:history-line/props/tasman/cargo_watervaten', 'tags' => ['Water', 'water', 'no spaces!']]],
+            'mission' => 'Wat nemen jullie mee?', 'minutes' => 3, 'timers' => ['compare' => 'x', 'sail' => 9999],
+            'fixed' => [['id' => 'water', 'name' => 'Watervaten', 'cost' => 3, 'image' => 'asset:history-line/props/tasman/cargo_watervaten', 'tags' => ['Water', 'water', 'no spaces!']]],
             'items' => [
-                ['name' => 'Rijst', 'cost' => 3, 'image' => 'asset:history-line/props/tasman/cargo_rijst', 'tags' => ['food'], 'real' => true],
-                ['name' => 'Touw', 'cost' => 2, 'image' => 'javascript:alert(1)'],
+                ['id' => 'Rice', 'name' => 'Rijst', 'cost' => 3, 'image' => 'asset:history-line/props/tasman/cargo_rijst', 'tags' => ['food'], 'real' => true],
+                ['id' => 'water', 'name' => 'Touw', 'cost' => 2, 'image' => 'javascript:alert(1)'],
+                ['id' => 'not an id!', 'name' => 'Hout', 'cost' => 3],
             ],
         ];
     }
@@ -181,7 +183,7 @@ class LessonComposerTeamGameTest extends TestCase
         $this->assertStringContainsString('batavia_roadstead', $team['hold']['backdrop']);
         $this->assertCount(count($painted['zones']), $team['hold']['zones']);               // from the .hold.json
         $this->assertEqualsWithDelta($painted['aspect'], $team['hold']['aspect'], 0.001);
-        $this->assertSame(0.2, $team['hold']['draught']);                                  // clamped
+        $this->assertTrue($team['hold']['draught']);                                       // the sinking ship: on unless off
         $this->assertArrayNotHasKey('junk', $team['hold']);
         $this->assertStringContainsString('cargo_rijst', $team['items'][0]['image']);
         $this->assertTrue($team['items'][0]['real']);
@@ -189,6 +191,29 @@ class LessonComposerTeamGameTest extends TestCase
         $this->assertSame('', $team['items'][1]['image']);                                 // javascript: dropped
         $this->assertSame(['water'], $team['fixed'][0]['tags']);                            // slugged, unique, bad ones out
         $this->assertSame(['food'], $team['items'][0]['tags']);
+        // Stable ids (plan §4): kept lower-case, a repeat made unique, a bad one replaced.
+        $this->assertSame(['water', 'rice', 'water_', 'item_3'], [$team['fixed'][0]['id'], ...array_column($team['items'], 'id')]);
+        // Each step's timer, clamped; the chapter estimate is the whole flow, in whole minutes.
+        $this->assertSame(['mission' => 20, 'compare' => 60, 'exchange' => 60, 'sail' => 600], $team['timers']);
+        $this->assertSame('Wat nemen jullie mee?', $team['mission']);
+        $this->assertTrue($team['roles_on']);
+        $this->assertSame((int) ceil((20 + 180 + 60 + 60 + 600) / 60) * 60, $scene->duration_seconds);
+    }
+
+    public function test_the_tasman_lading_runs_six_minutes_with_the_plan_ids_and_the_rotating_roles(): void
+    {
+        $game = json_decode((string) file_get_contents(resource_path('lessons/tasman/text/nl.json')), true)['games']['lading'];
+        $team = \App\Services\Lessons\TeamGameSpec::normalize($game);
+
+        $this->assertSame(['Kapitein', 'Bootsman', 'Verkenner', 'Stuurman'], $team['roles']);
+        $this->assertSame(['water', 'compass'], array_column($team['fixed'], 'id'));
+        $this->assertSame(['rice', 'ships_bread', 'meat', 'spare_sails', 'spare_rope', 'spare_timber', 'tools', 'firewood', 'charts', 'paper_ink', 'trade_textiles', 'trade_metal'], array_column($team['items'], 'id'));
+        $this->assertSame(['water'], $team['fixed'][0]['tags']);
+        $this->assertSame(['navigation'], $team['fixed'][1]['tags']);
+        $this->assertSame(['fuel'], $team['items'][7]['tags']);
+        $this->assertSame(16, $team['capacity']);
+        $this->assertSame(4, $team['fixed'][0]['cost'] + $team['fixed'][1]['cost']);
+        $this->assertSame(6 * 60, (int) ceil(\App\Services\Lessons\TeamGameSpec::holdSeconds($team) / 60) * 60);
     }
 
     public function test_a_hold_game_exports_its_library_refs_and_composes_back_the_same(): void

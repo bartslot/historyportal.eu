@@ -102,6 +102,22 @@
                     <span class="{{ $label }}">{{ __('Ship picture (image URL)') }}</span>
                     <input type="url" maxlength="2048" wire:model.blur="teamDraft.hold.ship" wire:change="saveTeamDraft" class="input input-sm mt-1 w-full" />
                 </label>
+                <label class="col-span-2 block">
+                    <span class="{{ $label }}">{{ __('Mission') }}</span>
+                    <input type="text" maxlength="300" wire:model.blur="teamDraft.mission" wire:change="saveTeamDraft" class="input input-sm mt-1 w-full" />
+                </label>
+                <label class="col-span-2 flex items-center gap-2">
+                    <input type="checkbox" wire:model.change="teamDraft.hold.draught" wire:change="saveTeamDraft" class="checkbox checkbox-xs" />
+                    <span class="{{ $label }}">{{ __('Sinks when full') }}</span>
+                </label>
+                {{-- Each step's timer, seconds (the choosing step is the timer above). --}}
+                @foreach ([['mission', __('Mission (seconds)')], ['compare', __('Results (seconds)')], ['exchange', __('Last chance (seconds)')], ['sail', __('Departure (seconds)')]] as [$key, $text])
+                    <label class="block">
+                        <span class="{{ $label }}">{{ $text }}</span>
+                        <input type="number" min="0" max="600" wire:model.blur="teamDraft.timers.{{ $key }}" wire:change="saveTeamDraft" class="input input-sm mt-1 w-full" />
+                        @error("teamDraft.timers.{$key}") <span class="text-2xs text-error">{{ $message }}</span> @enderror
+                    </label>
+                @endforeach
             @endif
         @endif
         @if ($mode === 'choose')
@@ -157,6 +173,10 @@
                 <span class="{{ $label }}">{{ __('Rules on screen') }}</span>
                 <textarea rows="3" maxlength="1200" wire:model.blur="teamDraft.rules" wire:change="saveTeamDraft" class="textarea textarea-sm mt-1 w-full"></textarea>
             </label>
+            <label class="flex items-center gap-2">
+                <input type="checkbox" wire:model.change="teamDraft.roles_on" wire:change="saveTeamDraft" class="checkbox checkbox-xs" />
+                <span class="{{ $label }}">{{ __('Roles') }}</span>
+            </label>
             <x-lesson.team-rows :field="'roles'" :list="$lists['roles']" :rows="$draft['roles'] ?? []" />
             @if ($mode === 'budget' && ($draft['presentation'] ?? '') === 'hold')
                 {{-- Where the ship sits on the plate, and how deep it goes as it fills. --}}
@@ -166,7 +186,6 @@
                         ['y', __('Ship bottom (%)'), 0, 200, 1],
                         ['h', __('Ship height (%)'), 5, 400, 1],
                         ['waterline', __('Waterline'), 0, 1, 0.01],
-                        ['draught', __('Sinks when full'), 0, 0.2, 0.01],
                     ] as [$key, $text, $min, $max, $step])
                         <label class="block">
                             <span class="{{ $label }}">{{ $text }}</span>

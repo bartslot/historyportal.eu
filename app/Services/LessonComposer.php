@@ -859,8 +859,11 @@ class LessonComposer
             'kind' => 'game',
             'game_type' => 'team',
             'game_segment_index' => $gameIndex,
-            // The chapter bar's estimate: the discussion timer plus a couple of minutes to reveal.
-            'duration_seconds' => max(60, $team['minutes'] * 60 + 120),
+            // The chapter bar's estimate: the discussion timer plus a couple of minutes to reveal; the
+            // cargo game as a hold has a step timer each (plan §2), rounded up to whole minutes.
+            'duration_seconds' => $team['mode'] === 'budget' && $team['presentation'] === 'hold'
+                ? max(60, (int) ceil(TeamGameSpec::holdSeconds($team) / 60) * 60)
+                : max(60, $team['minutes'] * 60 + 120),
             'background_color' => '#0f172a',
             'chapter_name' => $s['chapter'] ?? ($team['title'] !== '' ? $team['title'] : null),
             'location' => $s['location'] ?? null,
@@ -942,7 +945,7 @@ class LessonComposer
         }
         $json = json_decode((string) file_get_contents($path), true);
 
-        return is_array($json) ? array_intersect_key($json, array_flip(['zones', 'aspect', 'waterline', 'draught', 'x', 'y', 'h'])) : [];
+        return is_array($json) ? array_intersect_key($json, array_flip(['zones', 'aspect', 'waterline', 'x', 'y', 'h'])) : [];
     }
 
     /**

@@ -2164,7 +2164,11 @@ Alpine.data('lessonGame', (lesson) => ({
       const team = scene.config.team
       const crewed = Object.fromEntries(['title', 'intro', 'rules', 'situation', 'question', 'reveal', 'closing']
         .filter(k => typeof team[k] === 'string').map(k => [k, this._crewed(team[k])]))
-      this._teamGame.show({ config: { ...team, ...crewed }, solo: this.playSolo, onComplete: () => this._resumeAfterQuiz() })
+      // This game's place among the run's team moments (a race, a team game), for rotating roles.
+      // ponytail: counted from the scene order; the shared class-teams store makes it lesson-wide.
+      const interaction = _sceneQueue.slice(0, index).filter(s => s.config?.moment?.race?.enabled
+        || (s.kind === 'game' && s.game_type === 'team')).length
+      this._teamGame.show({ config: { ...team, ...crewed, interaction }, solo: this.playSolo, onComplete: () => this._resumeAfterQuiz() })
     },
 
     /** A line with the crews' names put in ({crew:heemskerck}); "the crew" when there was no race. */

@@ -24,12 +24,16 @@ import { formatClock } from './chapter-timeline.js'
 import { readHold } from './cargo-hold.js'
 import { HoldScreens } from './team-hold.js'
 import { teamTone } from './team-colours.js'
+import { readTimers, newTeamCargo } from './cargo-run.js'
+import { loadRun, saveRun } from './class-teams.js'
 
 export const TEAMS_MIN = 2
 export const TEAMS_MAX = 8
 const NAME_MAX = 24
 const LETTERS = ['A', 'B', 'C', 'D']
 const TIMED = ['load', 'dossier', 'vote', 'discuss']
+// The cargo game as a hold: every step has its own timer (plan §2); expiry only nudges.
+const HOLD_STEPS = ['setup', 'load', 'compare', 'exchange', 'depart']
 
 // ── Pure rules ───────────────────────────────────────────────────────────────────────────────
 
@@ -115,6 +119,9 @@ export function readConfig (raw = {}) {
     hold,
     // The ship's hold when there is a ship to draw and the teacher has not asked for the cards.
     presentation: mode === 'budget' && hold.ship && hold.zones.length && raw.presentation !== 'grid' ? 'hold' : 'grid',
+    timers: readTimers(raw.timers),
+    roles_on: raw.roles_on !== false,
+    interaction: Math.max(0, Math.round(Number(raw.interaction) || 0)),
     map: safeImage(raw.map),
     roles: list(raw.roles).filter(Boolean),
     teams: clampTeams(raw.teams ?? 4),
@@ -174,12 +181,62 @@ export class TeamGame {
     this._warning = ''
     this._remaining = this.cfg.minutes * 60
     this._running = false
-    this._hold = new HoldScreens(this)
     this._phase = this.cfg.mode === 'discuss' ? 'discuss' : 'setup'
     if (this._phase === 'discuss') this._startClock()
     this.host.style.pointerEvents = 'auto'
+    if (this._isHold()) return this._showHold()
     if (solo && this._phase === 'setup') return this._startSolo()
     this._render()
+  }
+
+  _isHold () { return this.cfg.presentation === 'hold' }
+
+  /** The cargo game as a hold: resume this tab's run of it, or start at the mission. */
+  _showHold () {
+    this._hold = new HoldScreens(this)
+    this._cargo = []
+    this._snapshots = null
+    this._compareSnapshot = null
+    this._runKey = `${typeof location !== 'undefined' ? location.pathname : ''}#${this.cfg.title || 'cargo'}`
+    const run = loadRun(this._runKey)
+    if (run && run.solo === this._solo && Array.isArray(run.names) && run.names.length) {
+      this._names = run.names
+      this._teamCount = run.names.length
+      this._cargo = run.cargo
+      this._compareSnapshot = run.compare ?? null
+      this._snapshots = run.snapshots ?? null
+      this._sizes = Array.isArray(run.sizes) ? run.sizes : []
+      this._turn = Number(run.turn) || 0
+      this._runId = run.runId
+      this._phase = HOLD_STEPS.includes(run.phase) ? run.phase : 'setup'
+    } else {
+      this._runId = `run-${Date.now().toString(36)}`
+      if (this._solo) { this._names = [t('You')]; this._cargo = [newTeamCargo('team-1', this._hold.cat)] }
+    }
+    this._escKey = (e) => { if (e.key === 'Escape') this._hold?._escape?.() }
+    document.addEventListener('keydown', this._escKey)
+    this._remaining = this._phaseSeconds(this._phase)
+    if (this._timed(this._phase)) this._startClock()
+    this._render()
+  }
+
+  /** Save the hold's run (this tab): a reload resumes the same teams, phase and cargo. */
+  _saveHold () {
+    saveRun(this._runKey, {
+      version: 1, runId: this._runId, solo: this._solo, phase: this._phase, names: this._names,
+      cargo: this._cargo, compare: this._compareSnapshot, snapshots: this._snapshots,
+      sizes: this._sizes ?? [], turn: this._turn ?? 0,
+    })
+  }
+
+  _phaseSeconds (phase) {
+    if (!this._isHold()) return this.cfg.minutes * 60
+    const s = this.cfg.timers
+    return { setup: s.mission, load: this.cfg.minutes * 60, compare: s.compare, exchange: s.exchange, depart: s.sail }[phase] ?? 0
+  }
+
+  _timed (phase) {
+    return this._isHold() ? HOLD_STEPS.includes(phase) && this._phaseSeconds(phase) > 0 : TIMED.includes(phase) && this.cfg.minutes > 0
   }
 
   /** One player, no setup: straight to their own load or their own choice. */
@@ -205,11 +262,26 @@ export class TeamGame {
       setActive: (i) => { this._active = Math.max(0, Math.min(this._names.length - 1, i)) },
       picked: (i) => this._selections[i] ?? new Set(),
       setPicked: (i, picked) => { this._selections[i] = new Set(picked) },
+      // The cargo game (cargo-run.js): stable team ids, each team's cargo, the run, the lock.
+      id: (i) => `team-${i + 1}`,
+      runId: () => this._runId,
+      cargo: (i) => this._cargo[i],
+      setCargo: (i, state) => { this._cargo = this._cargo.map((c, j) => (j === i ? state : c)) },
+      save: () => this._saveHold(),
+      lock: (snapshots) => { this._snapshots = snapshots; this._phase = 'depart'; this._saveHold() },
+      locked: () => this._snapshots,
+      // Rotating roles (team-roles.js): the team's size, this interaction's place in the run.
+      rolesOn: () => this.cfg.roles_on && this.cfg.roles.length > 0,
+      size: (i) => this._sizes?.[i] ?? 4,
+      interaction: () => this.cfg.interaction + (this._turn ?? 0),
+      nextTurn: () => { this._turn = (this._turn ?? 0) + 1; if (this._isHold()) this._saveHold() },
     }
   }
 
   hide () {
     this._stopClock()
+    if (this._escKey) document.removeEventListener('keydown', this._escKey)
+    this._escKey = null
     if (!this.host) return
     this.host.replaceChildren()
     this.host.style.pointerEvents = 'none'
@@ -217,9 +289,15 @@ export class TeamGame {
 
   // ── Flow ──
   _go (phase) {
+    if (this._isHold() && phase !== this._phase) {
+      this._running = false
+      this._stopClock()
+      this._remaining = this._phaseSeconds(phase)
+    }
     this._phase = phase
     this._warning = ''
-    if (TIMED.includes(phase)) this._startClock()
+    if (this._isHold()) this._saveHold()
+    if (this._timed(phase)) this._startClock()
     this._render()
   }
 
@@ -234,13 +312,16 @@ export class TeamGame {
     this._selections = this._names.map((_, i) => this._selections[i] || new Set())
     this._votes = this._names.map((_, i) => this._votes[i] ?? null)
     this._active = Math.min(this._active, this._names.length - 1)
+    if (this._isHold()) {
+      this._cargo = this._names.map((_, i) => this._cargo[i] ?? newTeamCargo(`team-${i + 1}`, this._hold.cat))
+    }
     this._remaining = this.cfg.minutes * 60
     this._go(this.cfg.mode === 'budget' ? 'load' : 'dossier')
   }
 
   // ── Timer (teacher-run: pause, add a minute; time up never moves the class on by itself) ──
   _startClock () {
-    if (!this.cfg.minutes || this._running) return
+    if (this._running || this._remaining <= 0 || !this._timed(this._phase)) return
     this._running = true
     this._stopClock()
     this._timer = setInterval(() => {
@@ -276,7 +357,7 @@ export class TeamGame {
   _clockText () { return this._remaining > 0 ? formatClock(this._remaining) : t('Time is up') }
 
   _clock () {
-    if (!this.cfg.minutes) return null
+    if (!this._timed(this._phase)) return null
     const wrap = el('div', 'flex items-center gap-2')
     const clock = el('span', 'font-mono text-3xl font-bold tabular-nums text-primary', this._clockText())
     clock.dataset.teamClock = ''
@@ -292,7 +373,7 @@ export class TeamGame {
 
   // ── Frame ──
   _render () {
-    const timed = TIMED.includes(this._phase)
+    const timed = this._timed(this._phase)
     if (!timed && this._running) { this._running = false; this._stopClock() }
     // A redraw in the same phase keeps the scroll (a pupil's phone mid-list); a new phase starts on top.
     const old = this.host.querySelector('[data-team-scrim]')
@@ -322,6 +403,7 @@ export class TeamGame {
 
   // ── Setup: intro, roles, how many teams and their names ──
   _setup (body) {
+    if (this._isHold()) return this._hold.mission(body)
     append(body,
       para(this.cfg.intro, 'text-2xl leading-relaxed'),
       para(this.cfg.rules, 'text-lg leading-relaxed text-base-content/80'))
@@ -335,6 +417,12 @@ export class TeamGame {
       body.appendChild(roles)
     }
 
+    body.appendChild(this._teamControls())
+    this._footer(body, button(t('Start'), 'btn-primary btn-lg', () => this._startTeams()))
+  }
+
+  /** How many teams and their names (the class setup; the mission screen shows it too). */
+  _teamControls () {
     const teams = el('section', 'flex flex-col gap-3')
     const countRow = el('div', 'flex items-center gap-3')
     const count = el('span', 'w-10 text-center text-3xl font-bold tabular-nums', this._teamCount)
@@ -357,17 +445,31 @@ export class TeamGame {
       input.placeholder = name
       input.setAttribute('aria-label', t('Team :number', { number: i + 1 }))
       input.addEventListener('input', () => { this._names[i] = input.value })
-      names.appendChild(input)
+      if (!(this.cfg.presentation === 'hold' && this.teamStore().rolesOn())) { names.appendChild(input); return }
+      // With rotating roles: how many children in this team (3 or 4).
+      const cell = el('div', 'flex flex-col gap-1')
+      const size = el('div', 'join')
+      size.setAttribute('role', 'group')
+      size.setAttribute('aria-label', `${t('Team size')}, ${t('Team :number', { number: i + 1 })}`)
+      ;[3, 4].forEach(n => {
+        const on = (this._sizes?.[i] ?? 4) === n
+        const b = button(String(n), `join-item btn-xs ${on ? 'btn-active' : 'btn-ghost'}`, () => {
+          this._sizes = Array.from({ length: Math.max(this._teamCount, this._sizes?.length ?? 0) }, (_, j) => (j === i ? n : this._sizes?.[j] ?? 4))
+          this._render()
+        })
+        b.setAttribute('aria-pressed', String(on))
+        size.appendChild(b)
+      })
+      cell.append(input, size)
+      names.appendChild(cell)
     })
     teams.appendChild(names)
-    body.appendChild(teams)
-
-    this._footer(body, button(t('Start'), 'btn-primary btn-lg', () => this._startTeams()))
+    return teams
   }
 
   // ── Budget: teacher enters each team's load ──
   _load (body) {
-    if (this.cfg.presentation === 'hold') return this._hold.pick(body)
+    if (this._isHold()) return this._hold.pick(body)
     const { items, fixed, capacity } = this.cfg
     const picked = this._selections[this._active]
     const load = loadOf(picked, items, fixed)
@@ -430,7 +532,6 @@ export class TeamGame {
   }
 
   _toggle (index) {
-    if (this.cfg.presentation === 'hold') return this._hold.toggle(index)
     const { items, fixed, capacity } = this.cfg
     const result = toggleItem(this._selections[this._active], index, items, fixed, capacity)
     this._selections[this._active] = result.picked
@@ -443,7 +544,6 @@ export class TeamGame {
   }
 
   _budgetReveal (body) {
-    if (this.cfg.presentation === 'hold') return this._hold.reveal(body)
     const { items, fixed } = this.cfg
     append(body,
       para(this.cfg.reveal, 'text-2xl leading-relaxed'),
@@ -636,6 +736,11 @@ export class TeamGame {
       el('span', 'text-sm text-base-content/60', t('Only you see this answer. It is not sent anywhere.')))
     return box
   }
+
+  // ── The cargo game's later steps (team-hold-compare.js) ──
+  _compare (body) { this._hold.compare(body) }
+  _exchange (body) { this._hold.exchange(body) }
+  _depart (body) { this._hold.depart(body) }
 
   _closing (body) {
     append(body, para(this.cfg.closing, 'text-3xl font-semibold leading-snug'))

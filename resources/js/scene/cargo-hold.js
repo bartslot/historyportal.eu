@@ -1,27 +1,23 @@
 /**
- * The cargo hold: a painted cut-away ship whose hold fills with cargo, for the team game's budget
- * mode (TeamGame, `presentation: 'hold'`). One component, three users: the class's pick screen,
- * the reveal's small ships, and (later) the end-of-lesson board.
+ * The cargo hold: a painted cut-away ship whose hold shows a team's cargo, for the cargo game
+ * (TeamGame, `presentation: 'hold'`). One renderer, any size: the pick screen's big ship, the
+ * compare screen's small ships, the departure, and (later) the end-of-lesson board.
  *
- * How points become space: the hold's capacity in points is the number of compartment UNITS. The
- * painted hold is described by a few zones (rectangles in % of the ship picture, from the art's
- * `.hold.json`); the units are shared over the zones by area and laid out as a near-square grid in
- * each. All units, read zone by zone and row by row, form one strip: an item of cost n takes n
- * units in a row of that strip, and a run that crosses a row edge is drawn as two pieces. So any
- * load within capacity always fits, whatever the item costs, and nothing here knows a Tasman item.
+ * Every item has its own slot (plan §5): the painted hold (zones in % of the ship picture, from
+ * the art's `.hold.json`) is cut into one unit per point of the whole catalogue, near-square cells
+ * per zone, and slotPlan() gives each item its run of cells, in catalogue order. So every legal
+ * load fits with no overlap, the same item sits in the same place on every ship, and nothing here
+ * knows a Tasman item. Only cargo aboard is drawn; missing cargo is absent.
  *
- * Cargo keeps its place: loading takes the first free run, unloading leaves a gap; only when no
- * run is long enough is everything packed tight again (in load order).
- *
- * The ship sits lower as it fills (the draught): its picture moves down by up to `draught` of its
- * height and the blend-into-scene waterline (sit-in-scene.js) rises with it, so the reflection,
- * contact shadow and foam follow.
+ * With `hold.draught` on, the ship sits a little lower as it fills: its box moves down and the
+ * blend-into-scene waterline (sit-in-scene.js) rises with it, so reflection, shadow and foam follow.
  *
  * Every string is teacher text: textContent only.
  */
 import { el } from './dom.js'
 import { renderSitIn, backdropPixels, sampleColours } from './sit-in-scene.js'
 import { applyAmbient, trackStage } from './ambient.js'
+import { sail } from './sail.js'
 
 /** Motion (design-motion-principles + motion-design: ease-out in, ease-in out, no overshoot). */
 export const HOLD_MOTION = {
@@ -37,9 +33,16 @@ export const HOLD_MOTION = {
 
 /** Defaults for a hold the spec leaves partly empty: the ship sits in the lower stage. */
 export const HOLD_DEFAULTS = {
-  aspect: 16 / 9, x: 50, y: 96, h: 86, waterline: 0.06, draught: 0.05,
+  aspect: 16 / 9, x: 50, y: 96, h: 86, waterline: 0.06,
   reflection: 0.3, contact_shadow: 0.4, foam: 0.5, roll: 0.5,
 }
+
+/**
+ * How deep a full ship sinks when the game's `hold.draught` is on (the default; the teacher can
+ * switch it off), as a share of its height: a weight joke, never a score (Bart, 10-15). Subtle,
+ * and well above the gun ports. No text says a heavier ship is better or worse (plan §5).
+ */
+export const DRAUGHT_AMOUNT = 0.045
 
 const clamp01 = (n) => Math.min(1, Math.max(0, Number(n) || 0))
 const num = (v, fallback) => (Number.isFinite(Number(v)) && v !== '' && v !== null ? Number(v) : fallback)
@@ -55,6 +58,9 @@ export function readHold (raw = {}) {
   const out = { ship: raw.ship || '', backdrop: raw.backdrop || '', zones }
   for (const [k, v] of Object.entries(HOLD_DEFAULTS)) out[k] = num(raw[k], v)
   out.aspect = Math.max(0.2, out.aspect)
+  // On unless switched off; a number is the depth itself (capped at 0.2 of the ship's height).
+  out.draught = raw.draught === false || raw.draught === 0 ? 0
+    : typeof raw.draught === 'number' ? Math.min(0.2, Math.max(0, raw.draught)) : DRAUGHT_AMOUNT
   return out
 }
 
@@ -104,64 +110,52 @@ export function cellRects (zones, capacity, aspect) {
   return cells
 }
 
-/** The pieces a run of cells [start, start + cost) draws as: one rectangle per row it touches. */
-export function piecesOf (start, cost, cells) {
+/**
+ * Every item's own place in the hold (plan §5: a predefined slot; load order never moves it).
+ * The hold is cut into one unit per point of the WHOLE catalogue, so every legal load fits with
+ * no overlap; items go, in catalogue order, into the first row with room for all of them, and only
+ * an item that fits no row whole is split over the free cells left (drawn as two pieces).
+ *
+ * @param {{key:string, cost:number}[]} items  the catalogue, fixed items first
+ * @returns {Map<string, {x:number,y:number,w:number,h:number}[]>}  key -> its piece rectangles
+ */
+export function slotPlan (items, zones, aspect) {
+  const total = items.reduce((s, it) => s + costOf(it), 0)
+  const cells = cellRects(zones, total, aspect)
+  const rows = new Map()
+  cells.forEach((c, i) => { if (!rows.has(c.row)) rows.set(c.row, []); rows.get(c.row).push(i) })
+  const used = Array(cells.length).fill(false)
+  const plan = new Map()
+  for (const it of items) {
+    const n = costOf(it)
+    if (!n) { plan.set(it.key, []); continue }
+    let run = null
+    for (const idx of rows.values()) {
+      const free = idx.filter(i => !used[i])
+      if (free.length >= n && free[n - 1] - free[0] === n - 1) { run = free.slice(0, n); break }
+    }
+    run = run ?? cells.map((_, i) => i).filter(i => !used[i]).slice(0, n)
+    run.forEach(i => { used[i] = true })
+    plan.set(it.key, mergeRow(run.map(i => cells[i])))
+  }
+  return plan
+}
+
+/** Neighbouring cells of one row as one rectangle. */
+function mergeRow (cells) {
   const pieces = []
-  for (let i = start; i < start + cost && i < cells.length; i++) {
-    const c = cells[i]
+  for (const c of cells) {
     const last = pieces[pieces.length - 1]
-    if (last && last.row === c.row) last.w = r2(c.x + c.w - last.x)
+    if (last && last.row === c.row && Math.abs(last.x + last.w - c.x) < 0.02) last.w = r2(c.x + c.w - last.x)
     else pieces.push({ ...c })
   }
-  return pieces
+  return pieces.map(({ row, ...rect }) => rect)
 }
 
 const costOf = (c) => Math.max(0, Math.round(Number(c?.cost) || 0))
 
-/** Units the strip needs: the capacity, or more when the cargo is over it (the real ship). */
-export const stripLength = (cargo, capacity) =>
-  Math.max(Math.round(capacity) || 0, cargo.reduce((s, c) => s + costOf(c), 0))
-
-/**
- * Where each piece of cargo starts on the strip. Cargo already placed (`prev`, key -> start) stays
- * put; new cargo takes the first free run; when none is long enough, all of it is packed tight in
- * cargo order. Free cargo (cost 0) takes no units: its start is null.
- *
- * @param {{key:string, cost:number}[]} cargo   in load order (fixed items first)
- * @returns {Map<string, number|null>}  a NEW map; `prev` is never changed
- */
-export function placeCargo (cargo, capacity, prev = new Map()) {
-  const length = stripLength(cargo, capacity)
-  const used = Array(length).fill(false)
-  const out = new Map()
-  const free = (s, n) => s >= 0 && s + n <= length && used.slice(s, s + n).every(u => !u)
-  const take = (key, s, n) => { for (let i = s; i < s + n; i++) used[i] = true; out.set(key, s) }
-
-  cargo.forEach(c => {
-    const s = prev.get(c.key)
-    if (costOf(c) > 0 && Number.isInteger(s) && free(s, costOf(c))) take(c.key, s, costOf(c))
-  })
-  for (const c of cargo) {
-    const n = costOf(c)
-    if (n === 0) { out.set(c.key, null); continue }
-    if (out.has(c.key)) continue
-    let s = 0
-    while (s + n <= length && !free(s, n)) s++
-    if (s + n > length) return packTight(cargo)
-    take(c.key, s, n)
-  }
-  return out
-}
-
-function packTight (cargo) {
-  const out = new Map()
-  let at = 0
-  cargo.forEach(c => { const n = costOf(c); out.set(c.key, n ? at : null); at += n })
-  return out
-}
-
 /** How far the ship sinks, as a share of its height: 0 empty, `max` full (never past full). */
-export function draughtFor (load, capacity, max = HOLD_DEFAULTS.draught) {
+export function draughtFor (load, capacity, max = DRAUGHT_AMOUNT) {
   return capacity > 0 ? r2(clamp01(load / capacity) * clamp01(max) * 100) / 100 : 0
 }
 
@@ -169,17 +163,25 @@ export function draughtFor (load, capacity, max = HOLD_DEFAULTS.draught) {
 export const nearlyFull = (load, capacity) => capacity > 0 && load >= capacity * 0.9
 
 /**
- * The ship's box on a stage zoomed in on its hold (the reveal's small ships): the zones' band
- * fills about 70% of the stage height, centred a little above the middle.
+ * The ship's box on a small stage zoomed in on its hull (the compare screen's ships): the hold
+ * fills about 86% of the stage's width (or 46% of its height, whichever is less), centred, with
+ * the hull and the water under it in view.
+ * @param {number} stageAspect  the stage's width / height
  * @returns {{x:number, y:number, h:number}}
  */
-export function zoomedPlace (hold) {
+export function zoomedPlace (hold, stageAspect = 1.6) {
   if (!hold.zones.length) return { x: hold.x, y: hold.y, h: hold.h }
+  const left = Math.min(...hold.zones.map(z => z.x)) / 100
+  const right = Math.max(...hold.zones.map(z => z.x + z.w)) / 100
   const top = Math.min(...hold.zones.map(z => z.y)) / 100
   const bottom = Math.max(...hold.zones.map(z => z.y + z.h)) / 100
-  const h = Math.min(400, (0.7 / Math.max(0.05, bottom - top)) * 100)
-  const centre = ((top + bottom) / 2) * h
-  return { x: 50, y: r2(45 - centre + h), h: r2(h) }
+  // h is the ship's height in % of the stage height; its width is h * aspect / stageAspect.
+  const byWidth = (0.86 * stageAspect) / (Math.max(0.05, right - left) * hold.aspect)
+  const byHeight = 0.46 / Math.max(0.05, bottom - top)
+  const h = Math.min(4, byWidth, byHeight) * 100
+  const shipW = (h / 100) * hold.aspect / stageAspect
+  const x = 50 - (((left + right) / 2) - 0.5) * shipW * 100
+  return { x: r2(x), y: r2(42 - ((top + bottom) / 2) * h + h), h: r2(h) }
 }
 
 const reducedMotion = () => typeof window !== 'undefined' && typeof window.matchMedia === 'function'
@@ -190,29 +192,36 @@ const reducedMotion = () => typeof window !== 'undefined' && typeof window.match
 let stageSeq = 0
 
 /**
- * A stage with a backdrop and the ship on it. `update()` puts cargo in its hold.
+ * A stage with a backdrop and the ship on it. `update()` puts a team's cargo in its hold: only
+ * what is aboard, each item in its own slot (missing cargo is absent, never a faded icon).
  *
  * @param {object} opts
  * @param {object} opts.hold          readHold() output
- * @param {boolean} [opts.zoomed]     zoom in on the hold (the reveal's small ships)
- * @param {(key:string) => void} [opts.onPiece]  a loaded, non-fixed piece was tapped
- * @param {Map} [opts.memory]         key -> placement map, kept across rebuilds (per team key)
- * @param {(key:string) => string} [opts.pieceLabel]  the accessible name of a piece
+ * @param {{key:string, cost:number}[]} opts.catalogue  every item, fixed first (the slot plan)
+ * @param {boolean} [opts.zoomed]     zoom in on the hull (the compare screen's ships)
+ * @param {number} [opts.stageAspect] the stage's width / height, for the zoom
+ * @param {boolean} [opts.quiet]      the plate washed out on paper (a row of small ships)
+ * @param {(key:string) => void} [opts.onPiece]  a non-fixed piece was tapped
+ * @param {(c:object) => string} [opts.pieceLabel]  the accessible name of a piece
  */
-export function createHoldStage ({ hold, zoomed = false, onPiece = null, memory = new Map(), pieceLabel = (k) => k, className = '' }) {
+export function createHoldStage ({
+  hold, catalogue = [], zoomed = false, stageAspect = 1.6, quiet = false,
+  onPiece = null, pieceLabel = (c) => c.name, className = '',
+}) {
   const id = `hold-${++stageSeq}`
-  const place = zoomed ? zoomedPlace(hold) : { x: hold.x, y: hold.y, h: hold.h }
-  const stage = el('div', `relative overflow-hidden bg-base-300 ${className}`)
+  const plan = slotPlan(catalogue, hold.zones, hold.aspect)
+  const place = zoomed ? zoomedPlace(hold, stageAspect) : { x: hold.x, y: hold.y, h: hold.h }
+  const stage = el('div', `relative overflow-hidden ${quiet ? 'lp-sheet' : 'bg-base-300'} ${className}`)
   stage.dataset.holdStage = ''
   if (hold.backdrop) {
-    const bg = el('img', 'absolute inset-0 h-full w-full object-cover')
+    const bg = el('img', `absolute inset-0 h-full w-full object-cover ${quiet ? 'opacity-35' : ''}`)
     bg.src = hold.backdrop
     bg.alt = ''
     bg.draggable = false
     stage.appendChild(bg)
   }
 
-  // node: the ship's box (position + draught); body: the roll; img + the hold's cells inside it.
+  // node: the ship's box (position + draught); body: the roll; img + the hold's cargo inside it.
   const node = el('div', 'absolute')
   node.style.cssText = `height:${place.h}%; aspect-ratio:${hold.aspect}; left:${place.x}%; top:${r2(place.y - place.h)}%;
     transform:translate(-50%, 0); transition:transform ${HOLD_MOTION.draughtMs}ms ${HOLD_MOTION.easeOut};`
@@ -221,9 +230,8 @@ export function createHoldStage ({ hold, zoomed = false, onPiece = null, memory 
   img.src = hold.ship
   img.alt = ''
   img.draggable = false
-  const slots = el('div', 'pointer-events-none absolute inset-0')
   const cargoLayer = el('div', 'absolute inset-0')
-  body.append(img, slots, cargoLayer)
+  body.append(img, cargoLayer)
   node.appendChild(body)
   stage.appendChild(node)
   if (!reducedMotion() && hold.roll > 0) {
@@ -231,10 +239,10 @@ export function createHoldStage ({ hold, zoomed = false, onPiece = null, memory 
     applyAmbient(body, { ambient: 'roll', ambient_amount: hold.roll, asset_id: stageSeq })
   }
 
-  const state = { key: null, length: -1, draught: 0, colours: null, pieces: new Map() }
+  const state = { key: null, draught: 0, colours: null, pieces: new Map(), speed: 0 }
 
   const sitItem = () => ({
-    asset_id: id, width: 100, speed: 0,
+    asset_id: id, width: 100, speed: state.speed,
     waterline: Math.min(1, hold.waterline + state.draught),
     reflection: hold.reflection, contact_shadow: hold.contact_shadow, foam: hold.foam,
   })
@@ -257,18 +265,10 @@ export function createHoldStage ({ hold, zoomed = false, onPiece = null, memory 
   if (img.complete && img.naturalWidth) requestAnimationFrame(sample)
   else img.addEventListener('load', () => requestAnimationFrame(sample), { once: true })
 
-  const drawSlots = (cells) => {
-    slots.replaceChildren(...cells.map(c => {
-      const slot = el('div', 'absolute rounded-sm border border-dashed border-base-100/70')
-      slot.style.cssText = `left:${c.x + 0.3}%; top:${c.y + 0.6}%; width:${Math.max(0, c.w - 0.6)}%; height:${Math.max(0, c.h - 1.2)}%;`
-      return slot
-    }))
-  }
-
   const makePiece = (c, rect, main) => {
     const tappable = main && onPiece && !c.fixed
-    const piece = el(tappable ? 'button' : 'div', 'absolute flex items-center justify-center overflow-hidden rounded-sm border border-base-content/20 bg-base-100/90 p-[2%] text-base-content')
-    piece.style.cssText = `left:${rect.x + 0.3}%; top:${rect.y + 0.6}%; width:${Math.max(0, rect.w - 0.6)}%; height:${Math.max(0, rect.h - 1.2)}%;`
+    const piece = el(tappable ? 'button' : 'div', 'absolute flex items-center justify-center overflow-hidden rounded-sm p-[1%] text-base-content outline-offset-1')
+    piece.style.cssText = `left:${rect.x + 0.2}%; top:${rect.y + 0.4}%; width:${Math.max(0, rect.w - 0.4)}%; height:${Math.max(0, rect.h - 0.8)}%;`
     piece.dataset.cargo = c.key
     if (main) {
       if (c.image) {
@@ -278,6 +278,7 @@ export function createHoldStage ({ hold, zoomed = false, onPiece = null, memory 
         pic.draggable = false
         piece.appendChild(pic)
       } else {
+        piece.classList.add('bg-base-100/90')
         piece.appendChild(el('span', 'line-clamp-2 text-center text-[0.6em] font-semibold leading-tight', c.name))
       }
       piece.setAttribute('aria-label', pieceLabel(c))
@@ -287,10 +288,9 @@ export function createHoldStage ({ hold, zoomed = false, onPiece = null, memory 
       }
     } else {
       piece.setAttribute('aria-hidden', 'true')
-      piece.classList.add('opacity-60')
     }
     if (tappable) piece.type = 'button'
-    // A piece's continuation on the next row takes it out too (it is not a second button).
+    // A piece's continuation on the next row acts the same (it is not a second button).
     if (onPiece && !c.fixed) piece.addEventListener('click', () => onPiece(c.key))
     return piece
   }
@@ -299,33 +299,26 @@ export function createHoldStage ({ hold, zoomed = false, onPiece = null, memory 
     el: stage,
 
     /**
-     * Show one hold: the cargo (load order, fixed first) of team `key`.
-     * @param {{key:string, cargo:{key:string,name:string,cost:number,image?:string,fixed?:boolean}[], capacity:number, load:number}} p
-     * @returns {string[]} the keys that came in new
+     * Show one team's hold. Only `cargo` is drawn, each item in its own slot.
+     * @param {{key:string, cargo:{key:string,name:string,image?:string,fixed?:boolean}[], capacity:number, load:number}} p
+     * @returns {string[]} the keys that came in new (for the flight)
      */
     update ({ key, cargo, capacity, load }) {
-      const length = stripLength(cargo, capacity)
-      const cells = cellRects(hold.zones, length, hold.aspect)
-      if (length !== state.length) { drawSlots(cells); state.length = length }
       const teamChanged = state.key !== key
-      if (teamChanged) { cargoLayer.replaceChildren(); state.pieces = new Map() }
+      if (teamChanged) { cargoLayer.querySelectorAll('[data-cargo]').forEach(e => e.remove()); state.pieces = new Map() }
       state.key = key
-
-      const starts = placeCargo(cargo, capacity, memory.get(key) ?? new Map())
-      memory.set(key, starts)
       const added = []
       const keep = new Set()
       cargo.forEach(c => {
-        const start = starts.get(c.key)
-        if (start === null || start === undefined) return
+        const rects = plan.get(c.key) ?? []
+        if (!rects.length) return
         keep.add(c.key)
-        const sig = `${start}:${costOf(c)}:${c.image || c.name}`
         const had = state.pieces.get(c.key)
+        const sig = c.image || c.name
         if (had?.sig === sig) return
         had?.els.forEach(e => e.remove())
-        const pieces = piecesOf(start, costOf(c), cells)
-        const mainAt = pieces.reduce((best, p, i) => (p.w * p.h > pieces[best].w * pieces[best].h ? i : best), 0)
-        const els = pieces.map((p, i) => makePiece(c, p, i === mainAt))
+        const mainAt = rects.reduce((best, p, i) => (p.w * p.h > rects[best].w * rects[best].h ? i : best), 0)
+        const els = rects.map((p, i) => makePiece(c, p, i === mainAt))
         els.forEach(e => cargoLayer.appendChild(e))
         state.pieces.set(c.key, { sig, els, main: els[mainAt] })
         if (!had && !teamChanged) added.push(c.key)
@@ -334,7 +327,7 @@ export function createHoldStage ({ hold, zoomed = false, onPiece = null, memory 
         if (!keep.has(k)) { p.els.forEach(e => e.remove()); state.pieces.delete(k) }
       }
 
-      const draught = draughtFor(load, capacity, hold.draught)
+      const draught = hold.draught > 0 ? draughtFor(load, capacity, hold.draught) : 0
       if (draught !== state.draught || !node.dataset.drawn) {
         state.draught = draught
         node.dataset.drawn = '1'
@@ -348,6 +341,39 @@ export function createHoldStage ({ hold, zoomed = false, onPiece = null, memory 
 
     /** The main piece of a loaded item, or null. */
     piece (key) { return state.pieces.get(key)?.main ?? null },
+
+    /** Mark pieces with a flat brand-amber outline (no glow): `keys` on, every other piece off. */
+    highlight (keys = new Set()) {
+      for (const [k, p] of state.pieces) {
+        const on = keys.has(k)
+        p.els.forEach(e => { e.classList.toggle('outline', on); e.classList.toggle('outline-[3px]', on); e.classList.toggle('outline-primary', on) })
+        if (on) p.main.dataset.differs = ''; else delete p.main.dataset.differs
+      }
+    },
+
+    /** Departure: the hatches shut over the hold (flat covers, top down), choices locked. */
+    lock () {
+      if (cargoLayer.querySelector('[data-hatch]')) return
+      hold.zones.forEach((z, i) => {
+        const hatch = el('div', 'absolute rounded-sm bg-neutral')
+        hatch.dataset.hatch = ''
+        hatch.setAttribute('aria-hidden', 'true')
+        hatch.style.cssText = `left:${z.x}%; top:${z.y}%; width:${z.w}%; height:${z.h}%; transform-origin:50% 0%;`
+        cargoLayer.appendChild(hatch)
+        if (!reducedMotion()) {
+          hatch.animate?.([{ transform: 'scaleY(0)' }, { transform: 'scaleY(1)' }],
+            { duration: 300, delay: i * 80, easing: HOLD_MOTION.easeIn, fill: 'backwards' })
+        }
+      })
+      stage.dataset.locked = ''
+    },
+
+    /** Sail out of frame to the right (the bow), under way: foam up. Resolves when gone. */
+    sailOut (seconds = 4) {
+      state.speed = 1
+      drawSit()
+      return sail(node, stage, { to_x: 170, duration: seconds })
+    },
 
     /** The current draught, as a share of the ship's height. */
     get draught () { return state.draught },
