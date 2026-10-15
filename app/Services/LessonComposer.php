@@ -159,12 +159,12 @@ class LessonComposer
             $lesson->avatar_id = $narrator->id;
         }
 
-        // The title screen style (a comic candidate's folder, 'logo' or 'plain'), only when the spec
+        // The title screen style (a comic candidate's folder, 'logo', 'letters' or 'plain'), only when the spec
         // says: a spec that does not leave the teacher's choice alone, and null there means the default.
         if (array_key_exists('title_style', $spec)) {
             $style = TitlePoster::key($spec['title_style'] === null ? null : (string) $spec['title_style']);
             if ($spec['title_style'] !== null && $style === null) {
-                throw new \InvalidArgumentException("Spec title_style '{$spec['title_style']}' is not a candidate name (lowercase letters, digits, dashes), 'logo' or 'plain'.");
+                throw new \InvalidArgumentException("Spec title_style '{$spec['title_style']}' is not a candidate name (lowercase letters, digits, dashes), 'logo', 'letters' or 'plain'.");
             }
             $lesson->title_style = $style;
         }

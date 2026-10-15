@@ -175,7 +175,7 @@ class TitleGeneratorTest extends TestCase
             ->expectsOutputToContain('order must be a whole number')
             ->assertFailed();
         $this->artisan('titles:make', ['group' => self::GROUP, '--recipe' => $this->recipe, '--candidate' => 'plain'])
-            ->expectsOutputToContain('not logo or plain')
+            ->expectsOutputToContain('not logo, letters or plain')
             ->assertFailed();
     }
 
