@@ -351,7 +351,7 @@
         {{-- Source attribution (A4) — centred under the deck, unobtrusive, always visible.
              Reactive rather than server-rendered because it now also names the artist of the scene
              on screen, and that changes as the lesson plays. --}}
-        <p x-show="attributionLine" x-text="attributionLine" x-cloak
+        <p x-show="attributionLine && phase !== 'TITLE_SCREEN'" x-text="attributionLine" x-cloak
            class="absolute bottom-1 left-1/2 -translate-x-1/2 max-w-[92vw] truncate text-2xs text-white/35 pointer-events-none"
            style="z-index:40"></p>
 
@@ -416,7 +416,7 @@
                 <div x-show="backdropShade && !(phase === 'TITLE_SCREEN' && lesson.title_poster)" class="pointer-events-none absolute inset-x-0 top-0 h-36 bg-linear-to-b from-black/70 to-transparent"></div>
                 {{-- data-player-chrome: overlays (the power-meter card) keep clear of this row and the deck. --}}
                 <div class="relative flex items-center gap-2.5 px-8 py-3.5 sm:px-12" data-player-chrome="top"
-                     :style="phase === 'TITLE_SCREEN' && titleLogoH ? 'padding-block: 6px' : ''">
+                     :style="phase === 'TITLE_SCREEN' ? (titleLogoH ? 'padding: 6px var(--title-gutter)' : 'padding: var(--title-gutter)') : ''">
                     {{-- title_preview: the editor's title-screen frame shows what students see. --}}
                     @if ($canEdit && ! request()->boolean('title_preview'))
                         {{-- No back arrow here on purpose. The wizard already draws one in this exact
@@ -428,12 +428,6 @@
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z"/></svg>
                             {{ __('Edit scene') }}
                         </button>
-                    @else
-                        {{-- On the title screen's white expect strip: the logo's dark variant, fitted to a slim strip. --}}
-                        <img src="{{ asset('assets/logo.svg') }}" alt="History Portal" class="h-24 w-auto" data-title-avoid
-                             :src="phase === 'TITLE_SCREEN' && titleChromeOnStrip ? @js(asset('assets/logo-dark.svg')) : @js(asset('assets/logo.svg'))"
-                             :style="phase === 'TITLE_SCREEN' && titleLogoH ? `height:${titleLogoH}px` : ''"
-                             :class="!backdropShade && !(phase === 'TITLE_SCREEN' && titleChromeOnStrip) && 'rounded-xl border border-white/10 bg-black/70 p-2 backdrop-blur-md'">
                     @endif
                 </div>
             </div>
@@ -729,21 +723,24 @@
             </div>
         </div>
 
-        {{-- ── TITLE SCREEN — Netflix style ────────────────────────────── --}}
-        {{-- Background Ken Burns runs on z-0 layer behind this. --}}
-        {{-- Deliberately NO leave transition: Alpine transitions advance on animation frames,
+        {{-- ── TITLE SCREEN ─────────────────────────────────────────────── --}}
+        {{-- One full-viewport hero (the artwork with the series and the episode, and one bottom rail:
+             Start, the language, the join QR) and, below the fold, "About this lesson" with
+             everything else. One gutter on every side (--title-gutter, app.css). The screen scrolls;
+             its absolute layers belong to the first viewport and scroll away with it.
+             Background Ken Burns runs on the z-0 layer behind this.
+             Deliberately NO leave transition: Alpine transitions advance on animation frames,
              and a hidden document (embedded preview in a background tab) never produces one —
              the title screen then never reached display:none and sat painted over the whole
              lesson. A plain x-show hides it synchronously on the phase flip, visible tab or not. --}}
         <div
             x-show="phase === 'TITLE_SCREEN'"
-            class="absolute inset-0 pointer-events-auto" data-title-screen
+            class="title-screen absolute inset-0 pointer-events-auto overflow-y-auto overscroll-contain" data-title-screen
         >
             {{-- A comic title candidate (TitlePoster: the poster with a scene masked into its letters, the
-                 painted cover, the banner), drawn from
-                 poster.json by resources/js/title-poster.js over the poster's own flat colour,
-                 instead of the painted backdrop and the wordmark. The subtitle is live text from the
-                 lesson title, so a teacher's edit changes it. --}}
+                 painted cover, the banner), drawn from poster.json by resources/js/title-poster.js over
+                 the poster's own flat colour. The episode line is live text from the lesson title, so a
+                 teacher's edit changes it, and stays small under the series (episodeSize). --}}
             <template x-if="lesson.title_poster">
                 <div class="absolute inset-0 overflow-hidden" :style="`background-color: ${lesson.title_poster.background}`"
                      x-init="$nextTick(() => mountTitlePoster($el))">
@@ -752,82 +749,120 @@
                         <template x-if="lesson.title_poster.subtitle">
                             <p lang="{{ $contentLang }}" x-text="lesson.title.replace(/^.*?:\s*/, '')" data-title-avoid
                                class="absolute flex items-center justify-center whitespace-nowrap text-center leading-none"
-                               :style="(({ box, size, color, font }) => `left:${box.x}%;top:${box.y}%;width:${box.w}%;height:${box.h}%;font-size:${size}cqw;color:${color};${font === 'lettering' ? `font-family:'ComicRoma Lettering',var(--font-comic);font-weight:700;text-transform:uppercase` : `font-family:${font === 'comicroma' ? 'ComicRoma' : `'Coming Soon'`},var(--font-comic)`}`)(lesson.title_poster.subtitle)"></p>
+                               :style="(({ box, color, font }) => `left:${box.x}%;top:${box.y}%;width:${box.w}%;height:${box.h}%;font-size:${episodeSize(lesson.title_poster)}cqw;color:${color};${font === 'lettering' ? `font-family:'ComicRoma Lettering',var(--font-comic);font-weight:700;text-transform:uppercase` : `font-family:${font === 'comicroma' ? 'ComicRoma' : `'Coming Soon'`},var(--font-comic)`}`)(lesson.title_poster.subtitle)"></p>
                         </template>
                     </div>
                 </div>
             </template>
 
-            {{-- "What you can expect" in the candidate's own slot (the banner's white strip, Figma
-                 2321:1315): live text, laid out by resources/js/title-expect.js. On a phone every
-                 candidate stacks its lines in this strip, above the picture: under the title they
-                 pushed the badges into the letters and the painting. A wider screen uses it too when
-                 the lines under the title would reach the letters (expectInStrip, measured). --}}
-            <template x-if="lesson.title_poster && (lesson.expect.length || titleFit.metaInStrip)">
+            {{-- The banner's white "what you can expect" strip (Figma 2321:1315), laid out by
+                 resources/js/title-expect.js. Off (titleStrip): its lines are in "About this lesson".
+                 Kept so the one flag brings it back. --}}
+            <template x-if="titleStrip && lesson.title_poster?.expect && lesson.expect.length">
                 <ul data-title-expect="strip" data-title-avoid lang="{{ $contentLang }}" aria-label="{{ __('What to expect') }}"
-                    :class="!lesson.title_poster.expect && !expectInStrip && !titleFit.metaInStrip && 'sm:hidden'"
-                    class="title-expect-strip absolute inset-x-0 flex flex-col gap-1 bg-white pb-3 pr-4 text-sm text-brand-ink sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-12 sm:gap-y-1 sm:py-2 lg:text-base"
+                    class="title-expect-strip absolute inset-x-0 flex flex-col gap-1 bg-white pb-3 pr-4 text-sm text-brand-ink sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-16 sm:gap-y-1 sm:py-2"
                     style="z-index: 15; font-family: 'Coming Soon', var(--font-comic)">
-                    <template x-for="line in lesson.expect"><li x-text="line" :class="!lesson.title_poster.expect && !expectInStrip && 'sm:hidden'"></li></template>
-                    {{-- The meta row, when the screen ran out of room for it under the title (title-fit.js). --}}
-                    <li x-show="titleFit.metaInStrip" data-title-strip-meta
-                        x-text="[titleCodeInMeta && @js(__('Lesson code')) + ' ' + lesson.lesson_code, lesson.grade_level, lesson.subject && lesson.subject.charAt(0).toUpperCase() + lesson.subject.slice(1), estimatedMinutes].filter(Boolean).join(' · ')"></li>
+                    <template x-for="line in lesson.expect"><li x-text="line"></li></template>
                 </ul>
             </template>
 
-            {{-- Cinematic gradients: heavy vignette bottom + sides --}}
+            {{-- Cinematic gradients for a plain or logo title over its picture --}}
             <div x-show="!lesson.title_poster" class="absolute inset-0 pointer-events-none"
                  style="background:
                      linear-gradient(to top,  rgba(2,6,23,1) 0%, rgba(2,6,23,0.7) 30%, transparent 60%),
                      linear-gradient(to right, rgba(2,6,23,0.7) 0%, transparent 40%),
                      linear-gradient(to bottom, rgba(2,6,23,0.4) 0%, transparent 25%)">
             </div>
-
-            {{-- Animated film grain — heavier than normal (0.12 opacity) --}}
             <div x-show="!lesson.title_poster" class="skybox-grain-overlay" style="opacity: 0.22; z-index: 2;"></div>
 
-            {{-- Bottom right, on the same edges as the Start button's bar (px-8/12, pb-10/14):
-                 the language switch and the join QR, bottoms aligned, with the lesson-type badges
-                 standing above them (on one row they ran into a centred Start button). A phone has
-                 no room beside its title, so there the badges join the title block's own flow. --}}
-            @php $lessonTypes = $lessonData['lesson_types']; @endphp
-            <div class="absolute bottom-10 right-8 sm:bottom-14 sm:right-12 flex flex-col items-end gap-4" style="z-index:20" data-title-cluster>
-                <x-lesson.type-badges :types="$lessonTypes" :dark="($titlePoster['badge_style'] ?? 'colour') === 'dark'"
-                                      x-bind:class="[titleFit.badgesCompact && 'lp-type-badges--compact', titleFit.badgesFlip && 'lp-type-badges--flip'].filter(Boolean).join(' ')"
-                                      @class(['max-sm:hidden', 'flex-col' => ($titlePoster['badges'] ?? 'row') === 'column']) />
-                <div class="flex items-end gap-4">
-                    <x-lesson.language-switch :lesson="$lesson" :translations="$translations" data-title-avoid data-title-piece="language" />
-                    {{-- QR code, clickable to open the modal. Its own place is here, beside the language;
-                         resources/js/title-qr.js moves it when that would cover a face or an element,
-                         or to the teacher's corner (title screen Format), or hides it. --}}
-                    @if ($lesson->show_qr ?? true)
-                    {{-- The code dark on a white plate with its quiet zone (lp-qr-plate), the lesson code and
-                         "scan to join" on the plate under it: a camera reads it on any picture. --}}
-                    <button onclick="document.getElementById('qr-modal').showModal()" data-title-qr
-                            class="lp-qr-plate hidden sm:flex flex-col items-center pb-2 cursor-pointer">
-                        <canvas id="title-qr-canvas" class="block" style="image-rendering: pixelated;"></canvas>
-                        <p class="-mt-1 px-2 text-sm font-mono font-bold tracking-[0.25em] uppercase"
-                           x-text="lesson.lesson_code"></p>
-                        <p class="px-2 text-2xs tracking-widest uppercase opacity-60">{{ __('Scan to join') }}</p>
-                    </button>
-                    @endif
-                </div>
-            </div>
+            {{-- Over a painting: ONE flat scrim behind the rail only, so its white chrome reads. --}}
+            <div x-show="lesson.title_poster?.fit === 'cover'" class="title-rail-scrim pointer-events-none absolute inset-x-0 bottom-0" style="z-index: 5"></div>
 
-            {{-- Series wordmark (comic cover style): the logo carries the name, top left under the
-                 "Edit scene" row, with only the title's subtitle lettered beneath it. --}}
+            {{-- Series wordmark (logo style): the logo carries the series, the episode small under it. --}}
             <template x-if="lesson.title_logo_url">
-                {{-- The width is the logo's; the subtitle is fitted to exactly that width (fitSubtitle). --}}
-                <h1 lang="{{ $contentLang }}" class="absolute left-8 sm:left-12 top-24 pointer-events-none" data-title-avoid data-title-piece="logo"
-                    style="z-index:10; width: clamp(18rem, 58vw, 68rem)">
+                <h1 lang="{{ $contentLang }}" class="title-logo absolute pointer-events-none" data-title-avoid data-title-piece="logo" style="z-index:10">
                     <img x-bind:src="lesson.title_logo_url" x-bind:alt="lesson.title" x-on:load="relayoutTitle()"
                          class="block h-auto w-full -rotate-2 origin-bottom-left"
-                         style="filter: drop-shadow(0.6rem 0.8rem 0 rgba(0,0,0,0.85)) drop-shadow(0 0 3rem rgba(0,0,0,0.6));">
-                    <span aria-hidden="true" x-text="lesson.title.replace(/^.*?:\s*/, '')" x-init="$nextTick(() => fitSubtitle($el))"
-                          class="mt-4 inline-block whitespace-nowrap font-comic font-bold leading-tight text-white drop-shadow-[0_2px_20px_rgba(0,0,0,1)]"
-                          style="font-size: clamp(1.4rem, 3.4vw, 3.6rem);"></span>
+                         style="filter: drop-shadow(0.6rem 0.8rem 0 rgba(0,0,0,0.85));">
+                    <span aria-hidden="true" x-show="lesson.title.includes(': ')" x-text="lesson.title.split(': ').slice(1).join(': ')"
+                          class="title-episode mt-4 block font-comic text-white/85"></span>
                 </h1>
             </template>
+
+            {{-- A plain title, where the teacher put it (TitlePosition presets; bottom left by default):
+                 the series big on the first line, the episode small on the second. --}}
+            @php
+                $titlePos = $lesson->title_position ?? \App\Enums\TitlePosition::BottomLeft;
+                $titleBar = match ($titlePos) {
+                    \App\Enums\TitlePosition::TopLeft => 'inset-x-0 top-0 items-start justify-start title-pad-top',
+                    \App\Enums\TitlePosition::TopCenter => 'inset-x-0 top-0 items-start justify-center title-pad-top text-center',
+                    \App\Enums\TitlePosition::TopRight => 'inset-x-0 top-0 items-start justify-end title-pad-top text-right',
+                    \App\Enums\TitlePosition::Center => 'inset-0 items-center justify-center text-center',
+                    \App\Enums\TitlePosition::BottomLeft => 'inset-x-0 bottom-0 items-end justify-start title-pad-bottom',
+                    \App\Enums\TitlePosition::BottomCenter => 'inset-x-0 bottom-0 items-end justify-center title-pad-bottom text-center',
+                };
+            @endphp
+            <div x-show="!lesson.title_logo_url && !lesson.title_poster" @class(['title-gutter-x pointer-events-none absolute flex', $titleBar])
+                 data-title-position="{{ $titlePos->value }}" style="z-index: 10;">
+                <h1 lang="{{ $contentLang }}" class="min-w-0 max-w-5xl" data-title-avoid data-title-bar>
+                    <span class="block font-history font-bold leading-history tracking-tight text-white" style="font-size: clamp(2.2rem, 6vw, 6.5rem);"
+                          x-text="lesson.title.split(': ')[0]"></span>
+                    <span x-show="lesson.title.includes(': ')" x-text="lesson.title.split(': ').slice(1).join(': ')"
+                          class="title-episode mt-3 block font-light text-white/80"></span>
+                </h1>
+            </div>
+
+            {{-- The bottom rail: one row on the bottom gutter, every piece's bottom on one baseline.
+                 Start and the language left, the way down to "About this lesson" in the middle, the
+                 join QR right (static: title-qr.js only sizes or hides it). --}}
+            <div class="title-rail flex items-end gap-2 sm:gap-4" style="z-index:20" data-title-rail>
+                <div class="flex items-end gap-3" data-title-avoid="children" data-title-piece="cta">
+                    <template x-if="canStart">
+                        <button type="button" @click="startLesson()" data-title-rail-item
+                                class="title-pill flex items-center gap-2.5 rounded-full bg-white px-5 text-sm font-bold text-brand-ink transition-[filter] duration-150 ease-out hover:brightness-95 focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:gap-3 sm:px-8 sm:text-base">
+                            <svg class="h-4 w-4 fill-none stroke-current" viewBox="0 0 16 17" aria-hidden="true">
+                                <path d="M0.75 1.87758C0.75 1.0219 1.6674 0.479469 2.41716 0.891836L13.9577 7.23916C14.7349 7.66657 14.7349 8.78322 13.9577 9.21064L2.41716 15.558C1.6674 15.9703 0.75 15.4279 0.75 14.5722V1.87758Z" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span>{{ __('Start lesson') }}</span>
+                        </button>
+                    </template>
+                    {{-- Solo (the join QR): carry on where this device stopped; Start lesson starts over. --}}
+                    <template x-if="canStart && resumable">
+                        <button type="button" @click="resumeLesson()" data-title-rail-item
+                                class="title-pill rounded-full border border-white/60 px-5 text-sm font-semibold text-white transition-colors hover:border-white focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+                            {{ __('Continue where you stopped') }}
+                        </button>
+                    </template>
+                    <template x-if="!canStart">
+                        <div class="title-pill flex items-center gap-2 rounded-full border border-white/30 px-5 text-sm text-white/70" data-title-rail-item>
+                            <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                            <span>{{ __('Audio generating…') }}</span>
+                        </div>
+                    </template>
+                </div>
+
+                <x-lesson.language-switch :lesson="$lesson" :translations="$translations" data-title-avoid data-title-piece="language" data-title-rail-item />
+
+                <button type="button" @click="scrollToAbout()" aria-label="{{ __('About this lesson') }}" data-tooltip="{{ __('About this lesson') }}"
+                        data-title-avoid data-title-piece="chevron" data-title-rail-item
+                        class="title-pill title-chevron flex w-12 shrink-0 items-center justify-center rounded-full text-white/80 transition-colors hover:text-white focus:outline-none focus-visible:outline-2 focus-visible:outline-white">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>
+                </button>
+
+                {{-- The join code: the QR on its white plate with the lesson code under it (a camera reads
+                     it on any picture), or the code alone when the QR made way. --}}
+                @if ($lesson->show_qr ?? true)
+                    <button type="button" onclick="document.getElementById('qr-modal').showModal()" data-title-qr data-title-rail-item
+                            aria-label="{{ __('Scan to join') }}"
+                            class="lp-qr-plate hidden shrink-0 cursor-pointer flex-col items-center pb-1 sm:flex">
+                        <canvas id="title-qr-canvas" class="block" style="image-rendering: pixelated; width: 96px; height: 96px;"></canvas>
+                        <span class="-mt-0.5 font-mono text-2xs font-bold uppercase tracking-[0.25em]" x-text="lesson.lesson_code"></span>
+                    </button>
+                @endif
+                <p x-show="titleCodeInMeta" x-cloak data-title-code data-title-avoid data-title-piece="code" data-title-rail-item
+                   class="title-pill hidden items-center font-mono text-sm font-bold uppercase tracking-[0.2em] text-white/80 sm:flex"
+                   x-text="lesson.lesson_code"></p>
+            </div>
 
             {{-- QR modal --}}
             <dialog id="qr-modal" class="modal">
@@ -843,134 +878,55 @@
                 <form method="dialog" class="modal-backdrop"><button>close</button></form>
             </dialog>
 
-            {{-- The title block, where the teacher put it (TitlePosition presets; bottom left by
-                 default). Bottom right is never offered: the QR code lives there. --}}
-            @php
-                $titlePos = $lesson->title_position ?? \App\Enums\TitlePosition::BottomLeft;
-                $titleBar = match ($titlePos) {
-                    \App\Enums\TitlePosition::TopLeft => 'inset-x-0 top-0 items-start justify-start pt-24 sm:pt-28',
-                    \App\Enums\TitlePosition::TopCenter => 'inset-x-0 top-0 items-start justify-center pt-24 sm:pt-28 text-center',
-                    \App\Enums\TitlePosition::TopRight => 'inset-x-0 top-0 items-start justify-end pt-24 sm:pt-28 text-right',
-                    \App\Enums\TitlePosition::Center => 'inset-0 items-center justify-center text-center',
-                    \App\Enums\TitlePosition::BottomLeft => 'inset-x-0 bottom-0 items-end justify-between pb-10 sm:pb-14',
-                    \App\Enums\TitlePosition::BottomCenter => 'inset-x-0 bottom-0 items-end justify-center pb-10 sm:pb-14 text-center',
-                };
-                $titleRows = $titlePos->isCentred() ? 'justify-center' : ($titlePos === \App\Enums\TitlePosition::TopRight ? 'justify-end' : '');
-            @endphp
-            {{-- Beside a drawn title the badges stand at bottom right, above the QR: the title keeps clear of them. --}}
-            <div @class(["absolute flex gap-8 px-8 sm:px-12", $titleBar,
-                         "sm:pr-[21rem] lg:pr-[24rem]" => $titlePoster === null && $lessonTypes !== [] && ! in_array($titlePos, [\App\Enums\TitlePosition::TopLeft, \App\Enums\TitlePosition::TopCenter, \App\Enums\TitlePosition::TopRight], true)])
-                 data-title-position="{{ $titlePos->value }}"
-                 style="z-index: 10;">
+            {{-- Below the fold: the hero is exactly one viewport tall, this follows it. --}}
+            <div class="pointer-events-none h-full" aria-hidden="true"></div>
+            @php $lessonTypes = $lessonData['lesson_types']; @endphp
+            <section data-title-about aria-labelledby="title-about-heading" class="relative bg-base-100 text-base-content" style="z-index: 21">
+                <div class="title-gutter-x mx-auto max-w-5xl py-16 sm:py-24">
+                    <p x-show="lesson.era || lesson.region" x-text="[lesson.era, lesson.region].filter(Boolean).join(' · ')"
+                       class="mb-3 text-xs font-semibold uppercase tracking-eyebrow text-base-content/50"></p>
+                    <h2 id="title-about-heading" class="text-2xl font-semibold sm:text-3xl">{{ __('About this lesson') }}</h2>
+                    <p x-show="lesson.intro_text" lang="{{ $contentLang }}" x-text="lesson.intro_text" class="mt-4 max-w-2xl text-lg leading-relaxed text-base-content/80"></p>
 
-                {{-- ── Title + meta + CTA ── --}}
-                <div @class(['min-w-0 max-w-6xl', 'flex-1' => $titlePos === \App\Enums\TitlePosition::BottomLeft]) data-title-bar>
-
-                    {{-- Era / region --}}
-                    <p x-show="!lesson.title_poster && (lesson.era || lesson.region)" data-title-avoid
-                       x-text="[lesson.era, lesson.region].filter(Boolean).join(' · ').toUpperCase()"
-                       class="mb-4 border-l-2 border-primary pl-3 text-xs font-bold tracking-eyebrow text-primary
-                              drop-shadow-[0_1px_8px_rgba(0,0,0,1)]"></p>
-
-                    {{-- Title --}}
-                    <h1 x-show="!lesson.title_logo_url && !lesson.title_poster" lang="{{ $contentLang }}" data-title-avoid
-                        style="font-size: clamp(2.2rem, 6vw, 7rem);"
-                        x-html="lesson.title.includes(': ')
-                            ? lesson.title.replace(/^(.*?):\s*(.+)$/, '<span style=\'font-weight:300\'>$1:</span> <span style=\'font-weight:700\'>$2</span>')
-                            : lesson.title"
-                        class="font-history text-white leading-history tracking-tight
-                               drop-shadow-[0_2px_40px_rgba(0,0,0,1)]"
-                    ></h1>
-
-                    {{-- Intro text — hidden on very small screens --}}
-                    <p x-show="lesson.intro_text && !lesson.title_poster" lang="{{ $contentLang }}" data-title-avoid
-                       x-text="lesson.intro_text"
-                       class="mt-4 text-sm leading-relaxed text-slate-300/75 font-light hidden sm:block
-                              drop-shadow-[0_1px_8px_rgba(0,0,0,0.9)]"></p>
-
-                    {{-- A phone's lesson-type badges, in the title's flow (the larger screens': bottom right). --}}
-                    <x-lesson.type-badges :types="$lessonTypes" :dark="($titlePoster['badge_style'] ?? 'colour') === 'dark'" @class(['mt-4 sm:hidden', $titleRows]) />
-
-                    {{-- "What you can expect", under the title when the candidate has no slot of its own. --}}
-                    <ul x-show="lesson.expect.length && !lesson.title_poster?.expect && !expectInStrip" data-title-expect="lines" data-title-avoid="children"
-                        lang="{{ $contentLang }}" aria-label="{{ __('What to expect') }}"
-                        class="mt-4 flex flex-col items-start gap-1 text-sm text-white/85 sm:flex-row sm:flex-wrap sm:gap-x-6 {{ $titleRows }}"
-                        :class="lesson.title_poster && 'title-poster-meta max-sm:hidden'">
-                        {{-- Over a picture each line stands on the subtitles' quiet plate; on a flat poster colour it needs none. --}}
-                        <template x-for="line in lesson.expect"><li x-text="line" :class="(!lesson.title_poster || lesson.title_poster.fit === 'cover') && 'lp-quiet-plate'"></li></template>
-                    </ul>
-
-                    {{-- Meta row --}}
-                    <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 {{ $titleRows }}" data-title-avoid="children" data-title-piece="meta"
-                         x-show="!titleFit.metaInStrip"
-                         :class="lesson.title_poster && ('title-poster-meta' + (lesson.title_poster.fit === 'cover' ? ' lp-quiet-plate w-fit px-2 py-0.5 {{ $titlePos->isCentred() ? 'mx-auto' : '' }}' : ''))">
-                        {{-- The lesson code, when the join QR is not on screen (a phone, no room, or hidden). --}}
-                        <span x-show="titleCodeInMeta" data-title-code
-                              class="font-mono text-xs font-bold uppercase tracking-[0.2em] text-white/80">{{ __('Lesson code') }} <span x-text="lesson.lesson_code"></span></span>
-                        <span x-show="titleCodeInMeta && (lesson.grade_level || lesson.subject || estimatedMinutes)" class="text-slate-700 text-xs">·</span>
-                        <span x-show="lesson.grade_level" x-text="lesson.grade_level"
-                              class="text-xs font-light text-slate-500"></span>
-                        <span x-show="lesson.grade_level && lesson.subject" class="text-slate-700 text-xs">·</span>
-                        <span x-show="lesson.subject" x-text="lesson.subject"
-                              class="text-xs font-light capitalize text-slate-500"></span>
-                        <span x-show="estimatedMinutes && (lesson.grade_level || lesson.subject)" class="text-slate-700 text-xs">·</span>
-                        <span x-show="estimatedMinutes" x-text="estimatedMinutes"
-                              class="text-xs font-light text-slate-500"></span>
-
-                        {{-- Not when every game scene is a team game: a composed lesson keeps game_type
-                             'quiz' at lesson level, but a class with only team games has no quiz. --}}
-                        <template x-if="lesson.include_game && lesson.game_type === 'quiz'
-                                        && !((lesson.scenes || []).some(s => s.kind === 'game')
-                                             && (lesson.scenes || []).filter(s => s.kind === 'game').every(s => s.game_type === 'team'))">
-                            <span class="flex items-center gap-1.5 rounded-full border border-sky-500/40 bg-sky-950/50 px-3 py-0.5 text-xs font-semibold text-sky-300 backdrop-blur-sm">
-                                <svg class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                <span>Quiz</span>
-                                <span x-show="lesson.quiz_timing" x-text="'· ' + lesson.quiz_timing" class="text-sky-400/60"></span>
-                            </span>
-                        </template>
-                        <template x-if="lesson.include_game && lesson.game_type === 'debate'">
-                            <span class="flex items-center gap-1.5 rounded-full border border-violet-500/40 bg-violet-950/50 px-3 py-0.5 text-xs font-semibold text-violet-300 backdrop-blur-sm">
-                                <svg class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-                                Debate
-                            </span>
-                        </template>
-                    </div>
-
-                    {{-- CTA --}}
-                    <div class="mt-6 flex flex-wrap gap-3 sm:mt-8 {{ $titleRows }}" data-title-avoid="children" data-title-piece="cta">
-                        <template x-if="canStart">
-                            <button role="button"
-                                @click="startLesson()"
-                                class="group flex items-center gap-3 rounded-full bg-white px-6 py-3 sm:px-8 sm:py-3.5
-                                       text-sm sm:text-base font-bold text-slate-950
-                                       transition duration-150 hover:brightness-110 hover:shadow-[0_0_64px_rgba(252,211,77,0.5)]
-                                       active:scale-95"
-                            > 
-                                <svg width="16" height="17" class="w-4 h-4 fill-none stroke-current text-slate-950" viewBox="0 0 16 17" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M0.75 1.87758C0.75 1.0219 1.6674 0.479469 2.41716 0.891836L13.9577 7.23916C14.7349 7.66657 14.7349 8.78322 13.9577 9.21064L2.41716 15.558C1.6674 15.9703 0.75 15.4279 0.75 14.5722V1.87758Z" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                                </svg>
-
-
-
-                                <span>{{ __('Start lesson') }}</span>
-                            </button>
-                        </template>
-                        {{-- Solo (the join QR): carry on where this device stopped; Start lesson starts over. --}}
-                        <template x-if="canStart && resumable">
-                            <button type="button" @click="resumeLesson()" class="btn btn-outline btn-lg rounded-full border-white/70 text-white hover:border-white hover:bg-white/10">
-                                {{ __('Continue where you stopped') }}
-                            </button>
-                        </template>
-                        <template x-if="!canStart">
-                            <div class="flex items-center gap-2 rounded-full border border-slate-600 px-6 py-3 text-sm text-slate-400">
-                                <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-                                <span>{{ __('Audio generating…') }}</span>
+                    <div class="mt-12 grid gap-12 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] md:gap-16">
+                        <div class="space-y-12">
+                            <div x-show="lesson.expect.length">
+                                <h3 class="text-xs font-semibold uppercase tracking-widest text-base-content/50">{{ __('What to expect') }}</h3>
+                                <ul class="mt-4 space-y-3 text-base" lang="{{ $contentLang }}">
+                                    <template x-for="line in lesson.expect"><li x-text="line"></li></template>
+                                </ul>
                             </div>
-                        </template>
+                            <div x-show="chapters.length > 1">
+                                <h3 class="text-xs font-semibold uppercase tracking-widest text-base-content/50">{{ __('Chapters') }}</h3>
+                                <ol class="mt-4 space-y-2 text-sm text-base-content/70" lang="{{ $contentLang }}">
+                                    <template x-for="(c, i) in chapters" :key="c.index">
+                                        <li class="flex gap-4"><span class="w-6 shrink-0 font-mono text-xs tabular-nums text-base-content/40" x-text="String(i + 1).padStart(2, '0')"></span><span x-text="c.name"></span></li>
+                                    </template>
+                                </ol>
+                            </div>
+                        </div>
+                        <div class="space-y-12">
+                            <dl class="space-y-3 text-sm">
+                                <div x-show="estimatedMinutes" class="grid grid-cols-[8rem_1fr] gap-4"><dt class="text-base-content/50">{{ __('Duration') }}</dt><dd x-text="estimatedMinutes"></dd></div>
+                                <div x-show="lesson.grade_level" class="grid grid-cols-[8rem_1fr] gap-4"><dt class="text-base-content/50">{{ __('Grade') }}</dt><dd x-text="lesson.grade_level"></dd></div>
+                                <div x-show="lesson.subject" class="grid grid-cols-[8rem_1fr] gap-4"><dt class="text-base-content/50">{{ __('Subject') }}</dt><dd class="capitalize" x-text="lesson.subject"></dd></div>
+                                <div class="grid grid-cols-[8rem_1fr] gap-4"><dt class="text-base-content/50">{{ __('Lesson code') }}</dt><dd class="font-mono font-bold uppercase tracking-[0.2em]" x-text="lesson.lesson_code"></dd></div>
+                            </dl>
+                            <x-lesson.type-badges :types="$lessonTypes" :dark="($titlePoster['badge_style'] ?? 'colour') === 'dark'" />
+                        </div>
                     </div>
-                </div>
 
-            </div>
+                    <template x-if="canStart">
+                        <button type="button" @click="startLesson()"
+                                class="title-pill mt-16 flex items-center gap-3 rounded-full bg-primary px-8 text-base font-bold text-primary-content transition-[filter] duration-150 ease-out hover:brightness-95 focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+                            <svg class="h-4 w-4 fill-none stroke-current" viewBox="0 0 16 17" aria-hidden="true"><path d="M0.75 1.87758C0.75 1.0219 1.6674 0.479469 2.41716 0.891836L13.9577 7.23916C14.7349 7.66657 14.7349 8.78322 13.9577 9.21064L2.41716 15.558C1.6674 15.9703 0.75 15.4279 0.75 14.5722V1.87758Z" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            <span>{{ __('Start lesson') }}</span>
+                        </button>
+                    </template>
+
+                    <p x-show="attributionLine" x-text="attributionLine" class="mt-16 text-2xs text-base-content/40"></p>
+                </div>
+            </section>
         </div>
 
         {{-- ── GAME BRIEF: the story-aligned challenge ─────────────────── --}}

@@ -4,9 +4,11 @@ import fs from 'node:fs';
 
 /**
  * The title screen never lets two of its pieces overlap, at any of the sizes a class meets:
- * the top row, the expect lines, the meta row, Start, the language switch, the badges, the QR
- * plate, and the poster's drawn letters and faces (poster.json keep_clear). Measured from the
- * render, every candidate × every size, teacher and student view.
+ * the top row, the title, Start, the language, the chevron, the QR plate, and the poster's drawn
+ * letters and faces (poster.json keep_clear). The bottom rail sits inside the one gutter with every
+ * piece's bottom on one baseline, the QR always bottom right; the hero is one viewport and "About
+ * this lesson" follows it. Measured from the render, every candidate × every size, teacher and
+ * student view. A face under the static QR or chevron is an art problem: reported, not failed.
  *
  * It switches the lesson's title_style, so it runs only against a THROWAWAY copy:
  *   TITLE_LESSON_CODE=POLSH1 PW_BASE_URL=http://127.0.0.1:8080 npx playwright test title-screen-layout --project=chromium --workers=1
@@ -17,7 +19,11 @@ const PROOF = process.env.TITLE_PROOF_DIR;
 const CANDIDATES = (process.env.TITLE_CANDIDATES ?? 'poster,cover,banner,logo,plain').split(',');
 const VIEWS = (process.env.TITLE_VIEWS ?? 'teacher,student').split(',');
 // The class screens: laptops, the two common projectors (1024x768, 1280x720), small windows, a phone.
-const SIZES: Array<[number, number]> = [[1440, 900], [1280, 800], [1280, 720], [1024, 768], [1024, 600], [960, 600], [800, 560], [375, 812]];
+const ALL_SIZES: Array<[number, number]> = [[1440, 900], [1280, 800], [1280, 720], [1024, 768], [1024, 600], [960, 600], [800, 560], [375, 812]];
+// TITLE_SIZES=1440x900,375x812 runs only those (proof shots).
+const SIZES = process.env.TITLE_SIZES
+  ? process.env.TITLE_SIZES.split(',').map(s => s.split('x').map(Number) as [number, number])
+  : ALL_SIZES;
 const EXPECT = ['Hoe was het aan boord van een ontdekkingsreis?', 'Wie woonden er al, waar Tasman aankwam?', 'De gevaren en de gevolgen'];
 
 // The tests make no sound: AudioContext stays suspended and every media element plays muted.
@@ -46,7 +52,7 @@ async function measure (page: Page) {
     const host = document.querySelector('[data-title-screen]') as HTMLElement;
     const o = host.getBoundingClientRect();
     const rel = (r: DOMRect, name: string) => ({ name, x: r.left - o.left, y: r.top - o.top, w: r.width, h: r.height });
-    const label = (el: Element) => ((el as HTMLElement).dataset.titleExpect ?? (el as HTMLElement).dataset.type ?? el.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 28) || el.tagName;
+    const label = (el: Element) => ((el as HTMLElement).dataset.titlePiece ?? (el as HTMLElement).dataset.titleExpect ?? (el as HTMLElement).dataset.type ?? el.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 28) || el.tagName;
     const visible = (el: Element) => {
       const r = el.getBoundingClientRect();
       return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden' && r.right > 0 && r.bottom > 0;
@@ -70,14 +76,36 @@ async function measure (page: Page) {
       .map((k: any) => ({ name: k.kind, ...k.rect }));
     const hit = (a: Box, b: Box) => a.x < b.x + b.w - 1 && b.x < a.x + a.w - 1 && a.y < b.y + b.h - 1 && b.y < a.y + a.h - 1;
     const overlaps: string[] = [];
+    const art: string[] = [];
     pieces.forEach((a, i) => {
       pieces.slice(i + 1).forEach(b => { if (hit(a, b)) overlaps.push(`${a.name} × ${b.name}`); });
       // The subtitle is lettered on the poster's own ribbon: it may sit on the letters, never on a face.
-      keep.forEach((k: Box) => { if (hit(a, k) && !(a.name === 'poster subtitle' && k.name === 'letters')) overlaps.push(`${a.name} × ${k.name}`); });
+      keep.forEach((k: Box) => {
+        if (!hit(a, k) || (a.name === 'poster subtitle' && k.name === 'letters')) return;
+        // Static chrome over a face: the art moves, never the chrome.
+        if (k.name === 'face' && ['qr', 'chevron'].includes(a.name)) art.push(`${a.name} × face`);
+        else overlaps.push(`${a.name} × ${k.name}`);
+      });
     });
     const offscreen = pieces.filter(p => p.x < -1 || p.y < -1 || p.x + p.w > o.width + 1 || p.y + p.h > o.height + 1).map(p => p.name);
 
-    return { pieces, keep, overlaps, offscreen, scrollW: document.documentElement.scrollWidth, viewW: innerWidth, qrSpot: (qr as HTMLElement | null)?.dataset.spot ?? null, qrSize: r.size ?? null, fit: r.fit ?? null };
+    // The frame: one gutter (app.css --title-gutter), the rail's pieces on one baseline inside it.
+    const W = o.width;
+    const H = o.height;
+    const g = W < 640 ? 16 : Math.min(64, Math.max(24, 0.04 * W));
+    const rail = [...host.querySelectorAll('[data-title-rail-item]')].filter(visible)
+      .map(el => rel(el.getBoundingClientRect(), (el as HTMLElement).dataset.titleQr !== undefined ? 'qr' : label(el)));
+    const railIssues: string[] = [];
+    for (const p of rail) {
+      if (Math.abs(p.y + p.h - (H - g)) > 2) railIssues.push(`${p.name} off the baseline (bottom ${Math.round(p.y + p.h)}, rail ${Math.round(H - g)})`);
+      if (p.x < g - 1 || p.x + p.w > W - g + 1) railIssues.push(`${p.name} outside the gutter`);
+    }
+    const qrBox = rail.find(p => p.name === 'qr');
+    if (qrBox && Math.abs(qrBox.x + qrBox.w - (W - g)) > 2) railIssues.push(`qr not bottom right (right ${Math.round(qrBox.x + qrBox.w)}, gutter ${Math.round(W - g)})`);
+    const about = host.querySelector('[data-title-about]')?.getBoundingClientRect();
+    if (!about || about.top - o.top < H - 1) railIssues.push('About this lesson is not below the hero');
+
+    return { pieces, keep, overlaps, art, rail, railIssues, gutter: g, offscreen, scrollW: document.documentElement.scrollWidth, viewW: innerWidth, qrSpot: (qr as HTMLElement | null)?.dataset.spot ?? null, qrSize: r.size ?? null, fit: r.fit ?? null };
   });
 }
 
@@ -129,6 +157,8 @@ test.describe('title screen layout', () => {
           await ctx.close();
           if (m.overlaps.length) failures.push(`${name}: ${m.overlaps.join(', ')}`);
           if (m.offscreen.length) failures.push(`${name}: off screen ${m.offscreen.join(', ')}`);
+          if (m.railIssues.length) failures.push(`${name}: ${m.railIssues.join(', ')}`);
+          if (m.art.length) test.info().annotations.push({ type: 'art', description: `${name}: ${m.art.join(', ')}` });
           if (m.scrollW > m.viewW) failures.push(`${name}: horizontal scroll`);
         }
       }
