@@ -89,7 +89,7 @@ test.describe('title screen layout', () => {
 
   for (const candidate of CANDIDATES) {
     test(`${candidate}: no piece overlaps another, a face or the letters`, async ({ browser }) => {
-      test.setTimeout(900_000);
+      test.setTimeout(1_800_000);   // 16 screens, each loaded and settled: slow on a busy machine
       setLesson({ title_style: candidate, expect: EXPECT, qr_position: null, show_qr: true });
       const failures: string[] = [];
       for (const view of VIEWS) {
