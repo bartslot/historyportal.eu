@@ -2583,6 +2583,28 @@
                         aria-label="{{ __('Close') }}" wire:click="$set('paintingPickerOpen', false)">✕</button>
             </div>
 
+            {{-- Half the window is upload: most teachers bring their own pictures (Bart, 2026-10-15).
+                 Click or drop; routed to the current mode like the old small button was. --}}
+            <div @class(['lg:grid lg:grid-cols-2 lg:gap-5' => $paintingPickerMode !== 'model3d'])>
+            @unless ($paintingPickerMode === 'model3d')
+                <label x-data="{ depth: 0 }"
+                       x-on:dragenter.prevent="depth++"
+                       x-on:dragover.prevent="$event.dataTransfer.dropEffect = 'copy'"
+                       x-on:dragleave="depth = Math.max(0, depth - 1)"
+                       x-on:drop.prevent="depth = 0; const f = $event.dataTransfer.files[0]; if (f) $wire.upload('uploadImage', f)"
+                       :class="depth > 0 ? 'border-primary bg-primary/10' : 'border-slate-600 bg-slate-900/40 hover:border-primary/60'"
+                       class="mb-4 flex h-44 cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-6 text-center transition-colors lg:mb-0 lg:h-full lg:min-h-[62vh]">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-12 w-12 text-primary" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/></svg>
+                    <span wire:loading.remove wire:target="uploadImage" class="text-lg font-semibold text-slate-100">{{ __('Upload your own image') }}</span>
+                    <span wire:loading wire:target="uploadImage" class="inline-flex items-center gap-2 text-lg font-semibold text-slate-100">
+                        <x-icons.spinner class="h-4 w-4 animate-spin" /> {{ __('Uploading…') }}
+                    </span>
+                    <span class="text-sm text-slate-400">{{ __('Drop a picture here or click to choose one') }}</span>
+                    <span class="text-2xs text-slate-500">{{ __('JPG, PNG or WebP, up to 8 MB') }}</span>
+                    <input type="file" wire:model="uploadImage" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden" />
+                </label>
+            @endunless
+            <div class="min-w-0">
             {{-- Filters on one line; search collapses to an icon on the right that opens an overlay. --}}
             <div class="relative mb-5" x-data="{ searching: @entangle('searchOpen').live }">
                 <div class="flex items-center gap-2">
@@ -2597,10 +2619,10 @@
                     @endforeach
 
                     <span class="mx-1 hidden h-4 w-px flex-none bg-slate-700 sm:block"></span>
-                    <span class="hidden flex-none text-2xs font-semibold uppercase tracking-wider text-slate-500 lg:block">{{ __('Region') }}</span>
+                    <span class="hidden flex-none text-2xs font-semibold uppercase tracking-wider text-slate-500 {{ $paintingPickerMode === 'model3d' ? 'lg:block' : '' }}">{{ __('Region') }}</span>
                     {{-- Region chips need ~26rem — on smaller screens they overflowed the modal,
                          so below lg they collapse into a compact dropdown. --}}
-                    <div class="hidden flex-none items-center gap-2 lg:flex">
+                    <div class="hidden flex-none items-center gap-2 {{ $paintingPickerMode === 'model3d' ? 'lg:flex' : '' }}">
                         @foreach (['' => __('Auto'), 'european' => __('Europe'), 'americas' => __('Americas'), 'asia' => __('Asia'), 'africa' => __('Africa'), 'all' => __('All')] as $regVal => $regLabel)
                             <button type="button" wire:click="$set('paintingRegion', '{{ $regVal }}')"
                                     class="btn btn-xs flex-none {{ $paintingRegion === $regVal ? 'bg-sky-600 text-white border-0 hover:bg-sky-500' : 'btn-outline border-slate-600 text-slate-400 hover:border-sky-400 hover:text-sky-300' }}">
@@ -2608,7 +2630,7 @@
                             </button>
                         @endforeach
                     </div>
-                    <select class="select select-xs flex-none border-slate-600 bg-base-200 text-slate-300 lg:hidden"
+                    <select class="select select-xs flex-none border-slate-600 bg-base-200 text-slate-300 {{ $paintingPickerMode === 'model3d' ? 'lg:hidden' : '' }}"
                             aria-label="{{ __('Region') }}"
                             wire:change="$set('paintingRegion', $event.target.value)">
                         @foreach (['' => __('Region: Auto'), 'european' => __('Europe'), 'americas' => __('Americas'), 'asia' => __('Asia'), 'africa' => __('Africa'), 'all' => __('All')] as $regVal => $regLabel)
@@ -2646,7 +2668,7 @@
                 @if (! $paintingReady)
                     {{-- Skeleton fills the SAME fixed height as the loaded grid → no size jump. --}}
                     <div class="h-[62vh] overflow-hidden p-1.5">
-                        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 {{ $paintingPickerMode !== 'model3d' ? 'lg:grid-cols-2' : '' }}">
                             @for ($i = 0; $i < 15; $i++)
                                 <div class="animate-pulse rounded-lg bg-slate-700/40" style="aspect-ratio:16/10"></div>
                             @endfor
@@ -2658,7 +2680,7 @@
                 <div class="h-[62vh] overflow-y-auto p-1.5"
                      wire:loading.class="opacity-40"
                      wire:target="paintingQuery, paintingKind, paintingRegion, applyPaintingChoice">
-                <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 {{ $paintingPickerMode !== 'model3d' ? 'lg:grid-cols-2' : '' }}">
                     @forelse ($this->paintingResults as $art)
                         {{-- @js() escapes the source/key as safe JS literals (titles carry apostrophes,
                              e.g. "Anon - 'Les Noyades…'", which broke the old inline addslashes
@@ -2730,17 +2752,6 @@
                         </button>
                     @endunless
 
-                    {{-- Upload your own image — routed to the current mode (landfall / gallery / background). --}}
-                    <label class="btn btn-sm border-0 bg-primary text-slate-950 hover:brightness-110 inline-flex cursor-pointer items-center gap-1.5">
-                        <span wire:loading.remove wire:target="uploadImage" class="inline-flex items-center gap-1.5">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/></svg>
-                            {{ __('Upload image') }}
-                        </span>
-                        <span wire:loading wire:target="uploadImage" class="inline-flex items-center gap-1.5">
-                            <x-icons.spinner class="h-3 w-3 animate-spin" /> {{ __('Uploading…') }}
-                        </span>
-                        <input type="file" wire:model="uploadImage" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden" />
-                    </label>
                 </div>
                 @error('uploadImage')
                     <p class="mt-1 text-2xs text-error">{{ $message }}</p>
@@ -2755,6 +2766,8 @@
                 @endif
                 </div>
             @endif
+            </div>
+            </div>
         </div>
         <button type="button" class="modal-backdrop" aria-label="Close"
                 wire:click="$set('paintingPickerOpen', false)"></button>

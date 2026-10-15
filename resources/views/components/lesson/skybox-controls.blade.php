@@ -188,8 +188,11 @@
                  x-on:dragover.prevent="if (files($event)) $event.dataTransfer.dropEffect = 'copy'"
                  x-on:dragleave="depth = Math.max(0, depth - 1)"
                  x-on:drop.prevent="depth = 0; const f = $event.dataTransfer.files[0]; if (f) $wire.upload('droppedBackground', f)"
-                 :class="depth > 0 ? 'border-base-content/40 bg-base-content/5' : 'border-slate-700/70 bg-slate-900/40'"
-                 class="flex items-center gap-2.5 rounded-lg border p-1.5 transition-colors">
+                 wire:click="openPaintingPicker" role="button" tabindex="0"
+                 x-on:keydown.enter.prevent="$wire.openPaintingPicker()"
+                 title="{{ __('Choose or upload an image') }}"
+                 :class="depth > 0 ? 'border-base-content/40 bg-base-content/5' : 'border-slate-700/70 bg-slate-900/40 hover:border-base-content/30'"
+                 class="flex cursor-pointer items-center gap-2.5 rounded-lg border p-1.5 transition-colors">
                 @if ($backgroundImageUrl)
                     <img src="{{ $backgroundImageUrl }}"
                          class="h-14 w-24 shrink-0 rounded object-cover ring-1 ring-slate-700"
