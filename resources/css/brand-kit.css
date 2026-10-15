@@ -43,6 +43,13 @@
   --color-panel-value: #e2e8f0;    /* the numbers, and the active tab */
   --color-panel-title: #c7d5e3;    /* the section headings */
 
+  /* ── Selected surface ─────────────────────────────────────────────────────────────────────── */
+  /* Figma's `selected` variable: the one light card on a dark page, the "Continuous practice" outcome
+     on About (node 1977:218). Opaque on purpose: base-content at an opacity picks up whatever shades
+     the page behind it and goes muddy grey. Not aliased to --color-panel-title, which shares the value
+     but is a different job. */
+  --color-selected: #c7d5e3;
+
   /* ── Text ─────────────────────────────────────────────────────────────────────────────────── */
   /* TWO text colours on a card, not three. White says something, muted names something.
    *

@@ -3,7 +3,7 @@
      One answer open at a time (details with a shared name), hairlines between, nothing boxed. --}}
 @php($items = \App\Support\Faq::items())
 
-<section id="faq" data-reveal-section aria-labelledby="faq-title" class="border-t border-base-300 bg-base-100 py-16 text-base-content sm:py-24">
+<section id="faq" data-reveal-section aria-labelledby="faq-title" class="relative border-t border-base-300 bg-base-100 py-16 text-base-content sm:py-24">
     <div class="mx-auto w-full max-w-3xl px-5 md:px-10">
         <h2 id="faq-title" data-reveal="heading" class="font-history text-3xl md:text-4xl">{{ __('Questions') }}</h2>
 
