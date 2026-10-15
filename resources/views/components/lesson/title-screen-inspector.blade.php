@@ -113,7 +113,7 @@
     <div class="border-t border-slate-700/50 pt-4" data-title-expect-editor>
         <div class="flex items-center justify-between gap-3">
             <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('What to expect') }}</span>
-            @if ($expect !== [])
+            @if ($expect !== array_values((array) ($lesson->expect_default ?? [])))
                 <button type="button" wire:click="resetExpect" data-expect-reset class="text-2xs text-slate-500 transition-colors hover:text-primary">{{ __('Reset to default') }}</button>
             @endif
         </div>

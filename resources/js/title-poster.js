@@ -207,7 +207,7 @@ function layerEl (layer, groupBox, index) {
  * Build the poster into `stage` (an element the page sizes; anything already in it, the live
  * subtitle, stays on top) and keep it fitted to `host`.
  *
- * @returns {() => void} stop: disconnects the observers and listeners
+ * @returns {(() => void) & {refit: () => void}} stop: disconnects the observers and listeners; stop.refit fits it now
  */
 export function mountTitlePoster (host, stage, poster) {
   if (!host || !stage || !poster?.layers?.length) return () => {}
@@ -257,10 +257,13 @@ export function mountTitlePoster (host, stage, poster) {
   const onVisibility = () => stage.classList.toggle('is-paused', document.hidden)
   document.addEventListener('visibilitychange', onVisibility)
 
-  return () => {
+  const stop = () => {
     clearTimeout(timer)
     ro?.disconnect()
     stageRo?.disconnect()
     document.removeEventListener('visibilitychange', onVisibility)
   }
+  // Fit now, not on the next resize callback: the title screen measures the frame right after it moves the poster.
+  stop.refit = fit
+  return stop
 }

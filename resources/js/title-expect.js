@@ -88,7 +88,10 @@ export function placeExpectStrip (strip, stage, host, box, posterHost = null, be
   l.moved = false
   if (posterHost) {
     const h = strip.offsetHeight
-    const top = (l.stacked || below) && h && freeTop < h ? `${Math.round(h)}px` : ''
+    // Lines wrapped past the slot's own height: the strip would cover the picture, so it moves up to the top and the poster under it.
+    const wrapped = !l.stacked && h > l.minHeight + 2
+    if (wrapped) strip.style.top = '0px'
+    const top = (l.stacked || below || wrapped) && h && freeTop < h ? `${Math.round(h)}px` : ''
     l.moved = posterHost.style.top !== top
     if (l.moved) posterHost.style.top = top
   }

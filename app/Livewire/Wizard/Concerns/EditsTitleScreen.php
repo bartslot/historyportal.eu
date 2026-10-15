@@ -148,10 +148,10 @@ trait EditsTitleScreen
         $this->refreshTitleFrame();
     }
 
-    /** No lines: the title screen shows none, and the banner no strip. */
+    /** Back to the lines the lesson was composed with (its spec); none for a lesson without one. */
     public function resetExpect(): void
     {
-        $this->lesson->update(['expect' => null]);
+        $this->lesson->update(['expect' => $this->lesson->expect_default ?: null]);
         $this->lesson->refresh();
         $this->refreshTitleFrame();
     }

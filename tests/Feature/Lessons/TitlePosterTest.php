@@ -185,14 +185,14 @@ class TitlePosterTest extends TestCase
         $this->assertMatchesRegularExpression('#lesson-titles\\\\?/tasman-standard\\\\?/poster\\\\?/mask\.svg#', $html);
         $this->assertStringContainsString('"title_logo_url":null', $html);
         // The flat poster's letters fill the bottom right: its badges stand in a column at the side.
-        $this->assertMatchesRegularExpression('#<ul class="[^"]*\bflex-col\b[^"]*" data-lesson-types#', $html);
+        $this->assertMatchesRegularExpression('#<ul class="[^"]*\bflex-col\b[^"]*"[^>]*data-lesson-types#', $html);
 
         $lesson->update(['title_style' => 'banner']);
         $html = $play();
         $this->assertStringContainsString('"title_style":"banner"', $html);
         $this->assertMatchesRegularExpression('#lesson-titles\\\\?/tasman-standard\\\\?/banner\\\\?/painting-gulls\.webp#', $html);
         $this->assertStringContainsString('family=Coming+Soon', $html);
-        $this->assertDoesNotMatchRegularExpression('#<ul class="[^"]*\bflex-col\b[^"]*" data-lesson-types#', $html, 'the banner keeps Figma\'s row');
+        $this->assertDoesNotMatchRegularExpression('#<ul class="[^"]*\bflex-col\b[^"]*"[^>]*data-lesson-types#', $html, 'the banner keeps Figma\'s row');
 
         $lesson->update(['title_style' => 'logo']);
         $html = $play();

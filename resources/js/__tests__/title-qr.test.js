@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { placeQr, qrSpots, qrCard, frameRect, coverRect, QR } from '../title-qr.js'
+import { placeQr, qrSpots, qrCard, frameRect, coverRect, qrOptions, QR } from '../title-qr.js'
+
+const FULL = QR.sizes[0]
 
 const stage = { w: 1440, h: 900 }
 const text = { w: 100, h: 44 }
@@ -9,8 +11,8 @@ const rectOf = (spot) => ({ x: spot.x, y: spot.y, ...qrCard(spot.size, text) })
 describe('where the join QR goes', () => {
   it('stays bottom right when that corner is free', () => {
     const spot = placeQr({ stage, text })
-    expect(spot).toMatchObject({ hidden: false, name: 'bottom-right', size: 112 })
-    expect(spot.x + 112).toBe(stage.w - QR.gutter)
+    expect(spot).toMatchObject({ hidden: false, name: 'bottom-right', size: FULL })
+    expect(spot.x + FULL).toBe(stage.w - QR.gutter)
   })
 
   it('keeps its own place beside the language switch when that is free', () => {
@@ -26,7 +28,7 @@ describe('where the join QR goes', () => {
   })
 
   it('goes round faces in every corner, edge and the middle of the screen', () => {
-    const faces = qrSpots(stage, qrCard(112, text)).slice(0, 7).map(s => ({ rect: { x: s.x, y: s.y, w: 40, h: 40 }, kind: 'face' }))
+    const faces = qrSpots(stage, qrCard(FULL, text)).slice(0, 7).map(s => ({ rect: { x: s.x, y: s.y, w: 40, h: 40 }, kind: 'face' }))
     const spot = placeQr({ stage, text, keepClear: faces })
     expect(spot.hidden).toBe(false)
     for (const f of faces) expect(hits(rectOf(spot), f.rect)).toBe(false)
@@ -53,8 +55,8 @@ describe('where the join QR goes', () => {
     const elements = [{ x: 0, y: 0, w: 700, h: 100 }]
     const shrunk = placeQr({ stage: small, text, elements })
     expect(shrunk.hidden).toBe(false)
-    expect(shrunk.size).toBeLessThan(112)
-    expect(shrunk.size).toBeGreaterThanOrEqual(72)
+    expect(shrunk.size).toBeLessThan(FULL)
+    expect(shrunk.size).toBeGreaterThanOrEqual(QR.sizes.at(-1))
 
     const hidden = placeQr({ stage: small, text, elements: [{ x: 0, y: 0, w: 700, h: 130 }] })
     expect(hidden).toEqual({ hidden: true })
@@ -62,7 +64,7 @@ describe('where the join QR goes', () => {
 
   it('does what the teacher chose: a corner even over a figure, or hidden', () => {
     const face = { rect: { x: 1250, y: 650, w: 190, h: 250 }, kind: 'face' }
-    expect(placeQr({ stage, text, keepClear: [face], override: 'bottom-left' })).toMatchObject({ name: 'bottom-left', x: 16, size: 112 })
+    expect(placeQr({ stage, text, keepClear: [face], override: 'bottom-left' })).toMatchObject({ name: 'bottom-left', x: 16, size: FULL })
     expect(placeQr({ stage, text, override: 'top-left', topInset: 72 })).toMatchObject({ name: 'top-left', y: 72 })
     expect(placeQr({ stage, text, override: 'hidden' })).toEqual({ hidden: true })
   })
@@ -75,5 +77,14 @@ describe('keep-clear boxes to pixels', () => {
 
   it('finds a covered picture\'s box in the view', () => {
     expect(coverRect(1440, 900, 2000, 1000)).toEqual({ x: -180, y: 0, w: 1800, h: 900 })
+  })
+})
+
+describe('the join code itself', () => {
+  it('is dark on an opaque white plate with a quiet zone of at least 4 modules', () => {
+    const o = qrOptions(256, '#0a0a0a')
+    expect(o.margin).toBeGreaterThanOrEqual(4)
+    expect(o.color).toEqual({ dark: '#0a0a0a', light: '#ffffffff' })
+    expect(o.width).toBe(256)
   })
 })

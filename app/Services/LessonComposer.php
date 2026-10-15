@@ -180,9 +180,9 @@ class LessonComposer
             $lesson->show_qr = $qr !== 'hidden';
             $lesson->qr_position = in_array($qr, TitlePoster::QR_CORNERS, true) ? $qr : null;
         }
-        // "What you can expect": 1-3 short lines on the title screen.
+        // "What you can expect": 1-3 short lines on the title screen, kept as the default too (the editor's Reset).
         if (array_key_exists('expect', $spec)) {
-            $lesson->expect = Lesson::cleanExpect($spec['expect']);
+            $lesson->expect = $lesson->expect_default = Lesson::cleanExpect($spec['expect']);
         }
         // Boxes over a logo/plain title picture the join QR keeps clear of (% of the picture).
         if (array_key_exists('title_keep_clear', $spec)) {

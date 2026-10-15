@@ -1151,7 +1151,9 @@ html[data-inspector-w] aside[data-resizable-drawer] {
     color: #fff;
     text-wrap: balance;
 }
-.lp-cc__text > span {
+/* The quiet plate: a soft dark backdrop hugging the words. The subtitles stand on it, and so do
+   the title screen's lines over a picture (lp-quiet-plate). Flat: no shadow. */
+.lp-cc__text > span, .lp-quiet-plate {
     background: rgb(0 0 0 / 0.6);
     padding: 0.06em 0.35em;
     border-radius: 0.18em;
