@@ -16,6 +16,7 @@ import { gsap } from 'gsap';
 import { GSAP_EASE, CONSTANT_RATE } from '../easing.js';
 import { createTimewarp } from './timewarp.js';
 import { createCardwheel } from './cardwheel.js';
+import { PORTAL_DEFAULTS, setupPortal } from './portal.js';
 
 const STORAGE_KEY = 'hero-demo-settings';
 
@@ -104,6 +105,8 @@ export const DEFAULTS = {
     // The wheel layer is hidden until its layout is final, then fades in once (see fadeInWheel).
     wheelFade: 0.9, // seconds
     wheelDelay: 0.1, // seconds after the layout settles
+    // "Play lesson" opens a portal in the page into the lesson's title screen (hero/portal.js).
+    ...PORTAL_DEFAULTS,
     variant: DEFAULT_VARIANT,
 };
 
@@ -544,6 +547,10 @@ export const setupHeroLessonDemo = async () => {
         return;
     }
 
+    // Coming BACK to the homepage (from a lesson, or anywhere) shows the finished hero. The demo is
+    // for arriving; replaying fifteen seconds of it on every back press is in the visitor's way.
+    const cameBack = performance.getEntriesByType?.('navigation')?.[0]?.type === 'back_forward';
+
     // Settings first: which field to build is a setting (the cardwheel is a different animal
     // from the tunnel, see hero/cardwheel.js).
     const settings = loadSettings();
@@ -586,6 +593,7 @@ export const setupHeroLessonDemo = async () => {
 
     let master = null;
     let settled = null;
+    const portal = setupPortal(root, { warp, settings });
 
     const start = () => {
         master?.heroCaretPulse?.kill();
@@ -608,6 +616,10 @@ export const setupHeroLessonDemo = async () => {
     };
 
     start();
+
+    if (cameBack) {
+        master.progress(1);
+    }
 
     const skip = () => {
         if (root.classList.contains('is-revealed')) {
@@ -656,6 +668,8 @@ export const setupHeroLessonDemo = async () => {
             progress: () => master?.progress() ?? 0,
             duration: () => master?.duration() ?? 0,
             save: () => localStorage.setItem(STORAGE_KEY, JSON.stringify(settings)),
+            // Run the portal from the panel, exactly as the Play lesson button does. Back returns.
+            portal: () => portal?.enter(),
             reset: () => {
                 Object.assign(settings, DEFAULTS);
                 localStorage.removeItem(STORAGE_KEY);

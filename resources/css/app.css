@@ -1556,6 +1556,33 @@ html[data-inspector-w] aside[data-resizable-drawer] {
         transition: opacity 600ms var(--ease-enter);
     }
 
+    /* The portal into a lesson (resources/js/hero/portal.js). The preloaded player sits behind the
+       page as a child of <html>; once a frame exists <html> paints its own background, so <body>
+       paints its slate box over the frame instead of handing it to the canvas, and only the hole
+       portal.js masks into <body> shows the lesson. */
+    .lesson-portal-frame {
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        width: 100%;
+        height: 100%;
+        border: 0;
+        background-color: var(--color-slate-950);
+    }
+
+    html.has-portal-frame {
+        background-color: var(--color-slate-950);
+    }
+
+    /* Inside the lesson: the frame is the page. */
+    html.portal-entered {
+        overflow: hidden;
+    }
+
+    html.portal-entered body {
+        visibility: hidden;
+    }
+
     .hero-caret {
         display: inline-block;
         width: 0;
