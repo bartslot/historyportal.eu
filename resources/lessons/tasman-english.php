@@ -81,8 +81,13 @@ return [
             'chapter' => 'The land nobody had seen',
             'location' => 'The Southern Ocean',
             'year' => 1642,
-            'image' => 'Terra Australis Incognita oude wereldkaart 17e eeuw',
-            'prefer' => 'painting',
+            // Pinned: the search 'Terra Australis Incognita oude wereldkaart 17e eeuw' picked a
+            // MODERN Bulgarian book cover off Commons (Terra_Australis_Incognita_KORICA_...jpg).
+            // This is a real 17th-century map, chosen by Bart 2026-10-15.
+            'image' => [
+                'url' => 'https://upload.wikimedia.org/wikipedia/commons/7/74/Terraaustralis.jpg',
+                'credit' => 'Terra Australis, 17th-century map (Wikimedia Commons, public domain)',
+            ],
             'script' => 'For centuries European mapmakers had drawn an enormous continent across the bottom of the world. They called it Terra Australis Incognita, the unknown southern land. There was no evidence for it whatsoever. The reasoning was that the world needed balancing: so much land in the north, therefore so much land in the south, or the globe would somehow topple. It is worth remembering that this is what Tasman was sent to find. He was looking for something that had been imagined first and searched for afterwards.',
         ],
 
