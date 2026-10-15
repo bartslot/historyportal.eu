@@ -172,25 +172,19 @@
                         </div>
 
                         <ul tabindex="0"
-                            class="dropdown-content menu menu-sm mt-3 w-64 rounded-lg border border-slate-800 bg-slate-900 p-2 shadow-lg z-60">
-                            <li class="menu-title">
-                                <div class="flex items-start justify-between gap-2 px-1 py-1">
-                                    <div class="min-w-0">
-                                        <div class="truncate text-sm font-medium text-slate-100">{{ $user->name }}</div>
-                                        <div class="truncate text-xs text-slate-400">{{ $user->email }}</div>
-                                    </div>
-                                    @if ($roleLabel)
-                                        <span class="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-wide text-primary">
-                                            {{ __($roleLabel) }}
-                                        </span>
-                                    @endif
-                                </div>
+                            class="dropdown-content menu menu-sm mt-2 w-52 rounded-lg border border-white/10 bg-slate-900 p-1 z-60">
+                            {{-- Compact (Bart, 2026-10-15: "dropdown too big"). The role badge went: it stuck
+                                 out past the menu edge and repeated the section label below it, in an accent
+                                 colour chrome does not carry. --}}
+                            <li class="menu-title px-3 pb-1.5 pt-2">
+                                <span class="block truncate text-sm font-medium text-white">{{ $user->name }}</span>
+                                <span class="block truncate text-xs font-normal text-slate-400">{{ $user->email }}</span>
                             </li>
-                            <li><div class="my-1 border-t border-slate-800"></div></li>
+                            <li class="border-t border-white/10"></li>
 
                             @if ($adminItems)
-                                <li class="menu-title px-3 py-1 text-2xs font-semibold uppercase tracking-wide text-slate-500">
-                                    {{ __('Admin') }}
+                                <li class="menu-title px-3 pb-0.5 pt-2 text-2xs font-semibold uppercase tracking-wide text-slate-500">
+                                    {{ __($roleLabel ?: 'Admin') }}
                                 </li>
                                 @foreach ($adminItems as $item)
                                     @php $active = request()->routeIs(...(array) $item['pattern']); @endphp
@@ -201,7 +195,7 @@
                                         </a>
                                     </li>
                                 @endforeach
-                                <li><div class="my-1 border-t border-slate-800"></div></li>
+                                <li class="mt-1 border-t border-white/10"></li>
                             @endif
 
                             @if (Route::has('profile.edit'))
@@ -224,7 +218,7 @@
                                 </a>
                             </li>
                             @if (Route::has('profile.edit') || Route::has('settings.index'))
-                                <li class="my-1 border-t border-slate-800"></li>
+                                <li class="my-1 border-t border-white/10"></li>
                             @endif
 
                             {{-- The button is the menu item itself; the form lives outside the <li>. With the
