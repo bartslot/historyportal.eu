@@ -2078,3 +2078,10 @@ html[data-inspector-w] aside[data-resizable-drawer] {
   height: calc(var(--title-pill-h) + 2 * var(--title-gutter) + 4rem);
   background: linear-gradient(to top, rgb(0 0 0 / 0.5), transparent);
 }
+
+/* The local dev panel's beaker sits in Skip's corner of the hero and covered its centre: a click there
+   hit the beaker, and Playwright scrolled the page 373px looking for a clear spot. The panel yields.
+   Unlayered, or the panel's own bottom-4 utility wins. */
+.js-hero-demo [data-dev-panel] {
+    bottom: 4rem;
+}
