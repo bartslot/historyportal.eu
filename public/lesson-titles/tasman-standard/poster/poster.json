@@ -1,0 +1,323 @@
+{
+  "version": 1,
+  "source": "Figma PrVD4qMyoTtBvF7UV7Yhej node 2321:923 (Comic Title Screen)",
+  "label": "Comic poster",
+  "order": 10,
+  "thumb": "thumb.webp",
+  "badges": "column",
+  "frame": {
+    "w": 8696.178,
+    "h": 5678.746
+  },
+  "background": "#F03E4A",
+  "focus": {
+    "x": 10.5033,
+    "y": 17.4009,
+    "w": 80.0281,
+    "h": 59.1152
+  },
+  "groups": {
+    "tasman": {
+      "box": {
+        "x": 0,
+        "y": 0,
+        "w": 100,
+        "h": 100
+      },
+      "shadow": {
+        "x": 90,
+        "y": 84,
+        "color": "#000000"
+      }
+    },
+    "scene": {
+      "box": {
+        "x": 10.7042,
+        "y": 17.7088,
+        "w": 78.5914,
+        "h": 57.0207
+      },
+      "mask": "mask.svg"
+    }
+  },
+  "layers": [
+    {
+      "id": "a",
+      "src": "letter-a.svg",
+      "box": {
+        "x": 21.1745,
+        "y": 17.8705,
+        "w": 18.1348,
+        "h": 24.508
+      },
+      "enter": "drop"
+    },
+    {
+      "id": "b",
+      "src": "letter-b.svg",
+      "box": {
+        "x": 38.3811,
+        "y": 17.8003,
+        "w": 14.6364,
+        "h": 24.5188
+      },
+      "enter": "drop"
+    },
+    {
+      "id": "e",
+      "src": "letter-e.svg",
+      "box": {
+        "x": 51.908,
+        "y": 17.8804,
+        "w": 13.9022,
+        "h": 23.2937
+      },
+      "enter": "drop"
+    },
+    {
+      "id": "l",
+      "src": "letter-l.svg",
+      "box": {
+        "x": 65.1775,
+        "y": 17.4009,
+        "w": 14.6816,
+        "h": 24.2509
+      },
+      "enter": "drop"
+    },
+    {
+      "id": "s",
+      "src": "letter-s.svg",
+      "box": {
+        "x": 35.0825,
+        "y": 51.9794,
+        "w": 11.5142,
+        "h": 23.0575
+      },
+      "enter": "drop",
+      "group": "tasman"
+    },
+    {
+      "id": "t",
+      "src": "letter-t.svg",
+      "box": {
+        "x": 10.5033,
+        "y": 53.3969,
+        "w": 13.8897,
+        "h": 20.0163
+      },
+      "enter": "drop",
+      "group": "tasman"
+    },
+    {
+      "id": "m",
+      "src": "letter-m.svg",
+      "box": {
+        "x": 46.7677,
+        "y": 51.5776,
+        "w": 15.9021,
+        "h": 20.2577
+      },
+      "enter": "drop",
+      "group": "tasman"
+    },
+    {
+      "id": "n",
+      "src": "letter-n.svg",
+      "box": {
+        "x": 75.6167,
+        "y": 51.7575,
+        "w": 13.8798,
+        "h": 20.0878
+      },
+      "enter": "drop",
+      "group": "tasman"
+    },
+    {
+      "id": "a1",
+      "src": "letter-a1.svg",
+      "box": {
+        "x": 62.7914,
+        "y": 51.9191,
+        "w": 12.7033,
+        "h": 20.2316
+      },
+      "enter": "drop",
+      "group": "tasman"
+    },
+    {
+      "id": "a2",
+      "src": "letter-a2.svg",
+      "box": {
+        "x": 21.7099,
+        "y": 53.6027,
+        "w": 14.7034,
+        "h": 19.8112
+      },
+      "enter": "drop",
+      "group": "tasman"
+    },
+    {
+      "id": "swell-near-1",
+      "src": "swell-near.webp",
+      "group": "scene",
+      "box": {
+        "x": 32.3955,
+        "y": 36.1548,
+        "w": 19.712,
+        "h": 5.7431
+      },
+      "enter": "fade",
+      "ambient": "swell",
+      "ambient_speed": 1,
+      "ambient_amount": 0.6
+    },
+    {
+      "id": "swell-near-2",
+      "src": "swell-near.webp",
+      "group": "scene",
+      "box": {
+        "x": 51.7821,
+        "y": 36.1548,
+        "w": 19.712,
+        "h": 5.7431
+      },
+      "enter": "fade",
+      "ambient": "swell",
+      "ambient_speed": 0.9,
+      "ambient_amount": 0.6
+    },
+    {
+      "id": "wave-break",
+      "src": "wave-break.webp",
+      "group": "scene",
+      "box": {
+        "x": 59.2457,
+        "y": 30.0683,
+        "w": 21.0188,
+        "h": 9.0708
+      },
+      "flip": "x",
+      "rotate": 0.88,
+      "enter": "fade",
+      "ambient": "breeze",
+      "ambient_speed": 0.8,
+      "ambient_amount": 1.2
+    },
+    {
+      "id": "swell-far",
+      "src": "swell-far.webp",
+      "group": "scene",
+      "box": {
+        "x": 13.2801,
+        "y": 36.2837,
+        "w": 25.5927,
+        "h": 7.4564
+      },
+      "enter": "fade",
+      "ambient": "swell",
+      "ambient_speed": 0.8,
+      "ambient_amount": 0.6
+    },
+    {
+      "id": "voc-ships",
+      "src": "voc-ships.webp",
+      "group": "scene",
+      "box": {
+        "x": 24.6606,
+        "y": 20.1043,
+        "w": 12.9937,
+        "h": 18.4305
+      },
+      "enter": "fade",
+      "ambient": "roll",
+      "ambient_speed": 1,
+      "ambient_amount": 0.6
+    },
+    {
+      "id": "tasman",
+      "src": "tasman.webp",
+      "group": "scene",
+      "box": {
+        "x": 10.0965,
+        "y": 53.7053,
+        "w": 10.2239,
+        "h": 27.7663
+      },
+      "enter": "fade",
+      "ambient": "breeze",
+      "ambient_speed": 0.5,
+      "ambient_amount": 0.3
+    },
+    {
+      "id": "outlines",
+      "src": "outlines.svg",
+      "group": "scene",
+      "box": {
+        "x": 10.7042,
+        "y": 17.7088,
+        "w": 78.5914,
+        "h": 57.0207
+      },
+      "enter": "fade"
+    }
+  ],
+  "subtitle": {
+    "box": {
+      "x": 24.3745,
+      "y": 44.3285,
+      "w": 51.251,
+      "h": 5.5909
+    },
+    "size": 2.2999,
+    "color": "#FFFFFF"
+  },
+  "badge_style": "dark",
+  "keep_clear": [
+    {
+      "box": [
+        21.17,
+        17.4,
+        58.69,
+        25.0
+      ],
+      "kind": "letters"
+    },
+    {
+      "box": [
+        10.5,
+        51.58,
+        79.0,
+        23.46
+      ],
+      "kind": "letters"
+    },
+    {
+      "box": [
+        13.8,
+        54.0,
+        3.5,
+        5.5
+      ],
+      "kind": "face"
+    },
+    {
+      "box": [
+        10.1,
+        53.7,
+        10.2,
+        27.8
+      ],
+      "kind": "figure"
+    },
+    {
+      "box": [
+        24.66,
+        20.1,
+        13.0,
+        18.43
+      ],
+      "kind": "subject"
+    }
+  ]
+}

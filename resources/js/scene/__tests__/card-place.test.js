@@ -27,3 +27,26 @@ describe('where the moment card goes', () => {
     expect(spot.x).toBeLessThan(720)
   })
 })
+
+describe('the player\'s own chrome', async () => {
+  const { chromeMargins } = await import('../card-place.js')
+  const rect = (top, height) => ({ top, bottom: top + height, height, left: 0, width: 1440, right: 1440 })
+
+  it('keeps the card under a tall brand logo, not just under the edit pill', () => {
+    const spot = placeCard(stage, card, [ship, tasman], { top: 130, bottom: 112 })
+    expect(spot.name).toBe('top-left')
+    expect(spot.y).toBe(130)
+  })
+
+  it('measures the top row and the deck the viewer actually has', () => {
+    const host = { getBoundingClientRect: () => rect(0, 900) }
+    const root = {
+      querySelector: (sel) => ({
+        '[data-player-chrome="top"]': { getBoundingClientRect: () => rect(0, 124) },
+        '[data-player-chrome="bottom"]': { getBoundingClientRect: () => rect(780, 120) },
+      })[sel] ?? null,
+    }
+    expect(chromeMargins(host, root)).toEqual({ top: 132, bottom: 128 })
+    expect(chromeMargins(host, { querySelector: () => null })).toEqual({ top: CHROME.top, bottom: CHROME.bottom })
+  })
+})

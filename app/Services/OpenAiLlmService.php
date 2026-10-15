@@ -184,7 +184,10 @@ class OpenAiLlmService
         try {
             $response = Http::withToken($key)
                 ->timeout($timeout)
-                ->retry(times: 3, sleepMilliseconds: 1000, when: fn ($e, $req) => true, throw: false)
+                // Never on a 429: three more requests a second apart only burn the quota that ran
+                // out (Gemini's free tier is 15 a minute). The caller sees LlmHttpException with
+                // the provider's Retry-After and decides how long to wait.
+                ->retry(times: 3, sleepMilliseconds: 1000, when: fn ($e, $req) => ! ($e instanceof \Illuminate\Http\Client\RequestException && $e->response->status() === 429), throw: false)
                 ->post(rtrim($base, '/') . '/chat/completions', $payload);
         } catch (\Throwable $e) {
             throw new RuntimeException('OpenAI API request failed: ' . $e->getMessage(), previous: $e);
@@ -195,7 +198,7 @@ class OpenAiLlmService
                 'status' => $response->status(),
                 'body'   => $response->body(),
             ]);
-            throw new RuntimeException("OpenAI API returned {$response->status()}");
+            throw \App\Services\Llm\LlmHttpException::fromResponse($response);
         }
 
         // Phase 0 experiment instrumentation — best-effort, never throws. A vision call is one

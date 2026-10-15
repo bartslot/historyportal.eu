@@ -15,6 +15,53 @@
                            :chosen="$lesson->title_image"
                            select="selectTitleImage" reset="resetTitleImage" />
 
+    {{-- How the title is drawn: the series' comic candidates (each a folder of artwork, so a new
+         one appears here without code), then its logo, then the plain title. A small frame each. --}}
+    @php $choices = $lesson->titleChoices(); $style = $lesson->titleStyle(); @endphp
+    @if (count($choices) > 1)
+        <div class="border-t border-slate-700/50 pt-4" data-title-style="{{ $style }}">
+            <div class="flex items-center justify-between">
+                <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Title style') }}</span>
+                @if ($lesson->title_style !== null)
+                    <button type="button" wire:click="resetTitleStyle" class="text-2xs text-slate-500 transition-colors hover:text-primary">{{ __('Reset to default') }}</button>
+                @endif
+            </div>
+            <div class="mt-2 grid grid-cols-2 gap-2" role="radiogroup" aria-label="{{ __('Title style') }}">
+                @foreach ($choices as $choice)
+                    @php $isOn = $choice['key'] === $style; @endphp
+                    <button type="button" role="radio" aria-checked="{{ $isOn ? 'true' : 'false' }}"
+                            wire:click="setTitleStyle(@js($choice['key']))" data-title-choice="{{ $choice['key'] }}"
+                            class="group text-left">
+                        <span @class([
+                            'relative block aspect-video overflow-hidden rounded-md bg-base-300 ring-1 transition',
+                            'ring-2 ring-primary' => $isOn,
+                            'ring-slate-700 group-hover:ring-slate-500' => ! $isOn,
+                        ])>
+                            @if ($choice['thumb_url'])
+                                <img src="{{ $choice['thumb_url'] }}" alt="" loading="lazy"
+                                     @class(['h-full w-full', 'object-contain p-2' => $choice['key'] === \App\Support\TitlePoster::LOGO, 'object-cover' => $choice['key'] !== \App\Support\TitlePoster::LOGO])>
+                            @endif
+                        </span>
+                        <span @class(['mt-1 block truncate text-2xs', 'text-primary' => $isOn, 'text-slate-400' => ! $isOn])>{{ $choice['label'] }}</span>
+                    </button>
+                @endforeach
+            </div>
+        </div>
+    @endif
+
+    {{-- The lesson-type badges (LessonTypes): shown when true of the lesson, unless hidden here. --}}
+    <div class="flex items-center gap-3 border-t border-slate-700/50 pt-4">
+        <label class="flex flex-1 items-center justify-between gap-3">
+            <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Lesson type') }}</span>
+            <input type="checkbox" @checked($lesson->show_lesson_types ?? true)
+                   wire:change="setShowLessonTypes($event.target.checked)" data-lesson-types-toggle
+                   class="toggle toggle-sm shrink-0" />
+        </label>
+        @if ($lesson->show_lesson_types === false)
+            <button type="button" wire:click="setShowLessonTypes(true)" data-lesson-types-reset class="text-2xs text-slate-500 transition-colors hover:text-primary">{{ __('Reset to default') }}</button>
+        @endif
+    </div>
+
     {{-- Where the title sits: a small frame per preset with the block drawn in its place. --}}
     <div class="border-t border-slate-700/50 pt-4">
         <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Title position') }}</span>
@@ -45,12 +92,38 @@
         </div>
     </div>
 
-    <div class="border-t border-slate-700/50 pt-4">
-        <label class="flex items-center justify-between gap-3">
-            <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('QR code') }}</span>
-            <input type="checkbox" @checked($lesson->show_qr ?? true)
-                   wire:change="setShowQr($event.target.checked)"
-                   class="toggle toggle-sm shrink-0" />
-        </label>
+    {{-- The join QR: always bottom right on the title screen (static), or hidden. --}}
+    @php $qr = $lesson->qrPosition(); @endphp
+    <div class="border-t border-slate-700/50 pt-4" data-qr-position="{{ $qr }}">
+        <div class="flex items-center justify-between gap-3">
+            <label for="title-qr-position" class="text-2xs uppercase tracking-widest text-slate-500">{{ __('QR position') }}</label>
+            @if ($qr !== 'auto')
+                <button type="button" wire:click="resetQrPosition" data-qr-reset class="text-2xs text-slate-500 transition-colors hover:text-primary">{{ __('Reset to default') }}</button>
+            @endif
+        </div>
+        <select id="title-qr-position" wire:change="setQrPosition($event.target.value)" class="select select-sm mt-2 w-full">
+            @foreach (['auto' => __('Bottom right'), 'hidden' => __('Hidden')] as $value => $label)
+                <option value="{{ $value }}" @selected($value === 'hidden' ? $qr === 'hidden' : $qr !== 'hidden')>{{ $label }}</option>
+            @endforeach
+        </select>
+    </div>
+
+    {{-- "What you can expect": up to three short lines (the banner's white strip, else under the title). --}}
+    @php $expect = array_values((array) ($lesson->expect ?? [])); @endphp
+    <div class="border-t border-slate-700/50 pt-4" data-title-expect-editor>
+        <div class="flex items-center justify-between gap-3">
+            <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('What to expect') }}</span>
+            @if ($expect !== array_values((array) ($lesson->expect_default ?? [])))
+                <button type="button" wire:click="resetExpect" data-expect-reset class="text-2xs text-slate-500 transition-colors hover:text-primary">{{ __('Reset to default') }}</button>
+            @endif
+        </div>
+        <div class="mt-2 space-y-2">
+            @for ($i = 0; $i < \App\Models\Lesson::EXPECT_MAX_LINES; $i++)
+                <input type="text" value="{{ $expect[$i] ?? '' }}" maxlength="{{ \App\Models\Lesson::EXPECT_MAX_CHARS }}"
+                       wire:key="expect-{{ $i }}-{{ md5($expect[$i] ?? '') }}"
+                       wire:change="setExpectLine({{ $i }}, $event.target.value)" aria-label="{{ __('What to expect') }} {{ $i + 1 }}"
+                       class="input input-sm w-full" />
+            @endfor
+        </div>
     </div>
 </div>

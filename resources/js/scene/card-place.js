@@ -8,39 +8,98 @@
  * card at the bottom.
  */
 
-/** Room kept free around the stage edge: top for the edit pill, bottom for the deck. */
+/**
+ * Room kept free around the stage edge when nothing was measured: top for the player's top row
+ * (the edit pill, or the brand logo a guest or a pupil sees, which is taller), bottom for the deck.
+ */
 export const CHROME = { top: 64, bottom: 112, side: 32 }
+
+/** Breathing room between the card and the chrome it keeps clear of. */
+const CHROME_GAP = 8
 
 const overlap = (a, b) => Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x))
   * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y))
 
-/**
- * @param {{w: number, h: number}} stage
- * @param {{w: number, h: number}} card
- * @param {Array<{rect: {x: number, y: number, w: number, h: number}, weight?: number}>} avoid
- * @returns {{x: number, y: number, name: string}}
- */
-export function placeCard (stage, card, avoid = []) {
+/** The five spots an overlay card tries, kept clear of the player's chrome. */
+function overlaySpots (stage, card, chrome) {
   const left = CHROME.side
   const right = Math.max(left, stage.w - CHROME.side - card.w)
-  const top = CHROME.top
-  const bottom = Math.max(top, stage.h - CHROME.bottom - card.h)
+  const top = chrome.top ?? CHROME.top
+  const bottom = Math.max(top, stage.h - (chrome.bottom ?? CHROME.bottom) - card.h)
   const centre = Math.max(left, (stage.w - card.w) / 2)
-  const spots = [
+  return [
     { name: 'bottom-center', x: centre, y: bottom },
     { name: 'bottom-left', x: left, y: bottom },
     { name: 'bottom-right', x: right, y: bottom },
     { name: 'top-left', x: left, y: top },
     { name: 'top-right', x: right, y: top },
   ]
-  let best = spots[0]
+}
+
+/**
+ * The spot that covers the least weighted `avoid` area. `opts.spots` replaces the five overlay
+ * spots (in order of preference: on a tie the earlier wins); a spot whose card would touch any of
+ * `opts.block` (rects that must never be covered: a face, the Start button) is not a choice at all.
+ * Null only when every spot is blocked.
+ *
+ * @param {{w: number, h: number}} stage
+ * @param {{w: number, h: number}} card
+ * @param {Array<{rect: {x: number, y: number, w: number, h: number}, weight?: number}>} avoid
+ * @param {{spots?: Array<{name: string, x: number, y: number}>, block?: Array<{x: number, y: number, w: number, h: number}>}} [opts]
+ * @returns {{x: number, y: number, name: string} | null}
+ */
+export function placeCard (stage, card, avoid = [], chrome = CHROME, opts = {}) {
+  const spots = opts.spots ?? overlaySpots(stage, card, chrome)
+  const block = opts.block ?? []
+  let best = null
   let bestCost = Infinity
   for (const spot of spots) {
     const rect = { x: spot.x, y: spot.y, w: card.w, h: card.h }
+    if (block.some(b => overlap(rect, b) > 0)) continue
     const cost = avoid.reduce((sum, a) => sum + overlap(rect, a.rect) * (a.weight ?? 1), 0)
     if (cost < bestCost - 1e-6) { best = spot; bestCost = cost }
   }
-  return { x: Math.round(best.x), y: Math.round(best.y), name: best.name }
+  return best && { x: Math.round(best.x), y: Math.round(best.y), name: best.name }
+}
+
+/**
+ * The player's own chrome as no-go margins for `host`: how far down the top row reaches (the logo
+ * or the edit pill, whichever this viewer has) and how far up the deck comes. Measured, so a taller
+ * logo or a wider deck is kept clear of too; the defaults stand in for what is not on the page.
+ *
+ * @returns {{ top: number, bottom: number }} px from the host's top and bottom edges
+ */
+export function chromeMargins (host, root = document) {
+  const box = host?.getBoundingClientRect()
+  const top = root.querySelector('[data-player-chrome="top"]')?.getBoundingClientRect()
+  const deck = root.querySelector('[data-player-chrome="bottom"]')?.getBoundingClientRect()
+  if (!box || !box.height) return { top: CHROME.top, bottom: CHROME.bottom }
+  return {
+    top: top?.height ? Math.max(0, top.bottom - box.top) + CHROME_GAP : CHROME.top,
+    bottom: deck?.height ? Math.max(0, box.bottom - deck.top) + CHROME_GAP : CHROME.bottom,
+  }
+}
+
+/**
+ * Put an overlay card (the meter, the race lobby) where it hides least, on a wide screen; on a phone
+ * it stays in its own flow along the bottom. Pass the spot from an earlier call to keep the card put
+ * when it is redrawn. Returns the spot, or null on a phone.
+ */
+export function placeOverlay (host, card, avoid = () => [], spot = null) {
+  const w = host.clientWidth
+  if (w < 640) return null
+  if (!spot) {
+    let rects = []
+    try { rects = avoid() || [] } catch (_) { /* nothing measured: bottom centre */ }
+    // Not laid out yet (or no layout at all): the card's nominal size, max-w-xl by a typical height.
+    const size = card.offsetWidth ? { w: card.offsetWidth, h: card.offsetHeight } : { w: 576, h: 320 }
+    spot = placeCard({ w, h: host.clientHeight }, size, rects, chromeMargins(host))
+  }
+  card.style.position = 'absolute'
+  card.style.left = `${spot.x}px`
+  card.style.top = `${spot.y}px`
+  card.dataset.spot = spot.name
+  return spot
 }
 
 // ── Measuring the figures (DOM) ───────────────────────────────────────────────────────────────

@@ -24,6 +24,13 @@ class TasmanSpecTest extends TestCase
         $this->assertSame('serge-de-beer', $spec['avatar']);
         // The title screen reads the central question, never the spec key.
         $this->assertStringStartsWith('Waarom', $spec['details']);
+        // What the class can expect (the banner's white strip); lines 1 and 3 are Bart's from Figma.
+        $this->assertSame([
+            'Hoe was het aan boord van een ontdekkingsreis?',
+            'Wie woonden er al, waar Tasman aankwam?',
+            'De gevaren en de gevolgen',
+        ], $spec['expect']);
+        $this->assertSame($spec['expect'], \App\Models\Lesson::cleanExpect($spec['expect']), 'each line fits the title screen as written');
         $this->assertFileExists(public_path('lesson-logos/'.$spec['translation_group'].'.svg'));
         $this->assertCount($panels + 3, $spec['scenes']);
 
@@ -38,6 +45,11 @@ class TasmanSpecTest extends TestCase
             \App\Services\Lessons\MomentSpec::normalize(['react' => [], 'payoff' => ['type' => $moment['payoff']['type']]] + $moment);
             $this->assertCount(4, $moment['words']['right']);
         }
+        // The departure from Mauritius is the harbour race; its after line names the crews.
+        $this->assertTrue($moments[0]['race']['enabled']);
+        $this->assertStringContainsString('{crew:heemskerck}', $moments[0]['race']['after']);
+        $this->assertStringNotContainsString('{crew:zeehaen', $moments[0]['race']['after_solo']);
+        $this->assertArrayNotHasKey('race', $moments[1]);
 
         foreach ($spec['scenes'] as $scene) {
             foreach ($scene['lines'] ?? [] as [$speaker, $words]) {

@@ -121,6 +121,9 @@ class OptimiseSceneBackgrounds extends Command
 
             $disk->put($newPath, $result['bytes']);
             $scene->update(['image_path' => $newPath]);
+            // A lesson poster picked from this scene stores the same path. Left alone it names the
+            // file just moved away, and the library card 404s (lessons 18–21, 64 on 2026-10-13).
+            Lesson::where('poster_image', $path)->update(['poster_image' => $newPath]);
 
             if ($this->option('prune-originals')) {
                 $keep = preg_replace('/\.([^.\/]+)$/', '.original.$1', $path);

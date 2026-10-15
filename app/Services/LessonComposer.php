@@ -15,6 +15,7 @@ use App\Services\Lessons\SceneDialogue;
 use App\Services\Lessons\TeamGameSpec;
 use App\Services\Support\AudioEncoder;
 use App\Services\Support\ShotCamera;
+use App\Support\TitlePoster;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
@@ -156,6 +157,36 @@ class LessonComposer
                 throw new \InvalidArgumentException("Spec names narrator '{$spec['avatar']}', which does not exist.");
             }
             $lesson->avatar_id = $narrator->id;
+        }
+
+        // The title screen style (a comic candidate's folder, 'logo' or 'plain'), only when the spec
+        // says: a spec that does not leave the teacher's choice alone, and null there means the default.
+        if (array_key_exists('title_style', $spec)) {
+            $style = TitlePoster::key($spec['title_style'] === null ? null : (string) $spec['title_style']);
+            if ($spec['title_style'] !== null && $style === null) {
+                throw new \InvalidArgumentException("Spec title_style '{$spec['title_style']}' is not a candidate name (lowercase letters, digits, dashes), 'logo' or 'plain'.");
+            }
+            $lesson->title_style = $style;
+        }
+        if (array_key_exists('show_lesson_types', $spec)) {
+            $lesson->show_lesson_types = (bool) $spec['show_lesson_types'];
+        }
+        // The join QR's place: auto (null), a corner, or hidden (show_qr off). Same rule: only when said.
+        if (array_key_exists('qr_position', $spec)) {
+            $qr = $spec['qr_position'] ?? 'auto';
+            if (! in_array($qr, ['auto', 'hidden', ...TitlePoster::QR_CORNERS], true)) {
+                throw new \InvalidArgumentException("Spec qr_position '{$qr}' must be auto, hidden or one of: ".implode(', ', TitlePoster::QR_CORNERS).'.');
+            }
+            $lesson->show_qr = $qr !== 'hidden';
+            $lesson->qr_position = in_array($qr, TitlePoster::QR_CORNERS, true) ? $qr : null;
+        }
+        // "What you can expect": 1-3 short lines on the title screen, kept as the default too (the editor's Reset).
+        if (array_key_exists('expect', $spec)) {
+            $lesson->expect = $lesson->expect_default = Lesson::cleanExpect($spec['expect']);
+        }
+        // Boxes over a logo/plain title picture the join QR keeps clear of (% of the picture).
+        if (array_key_exists('title_keep_clear', $spec)) {
+            $lesson->title_keep_clear = TitlePoster::keepClear($spec['title_keep_clear']) ?: null;
         }
 
         if (! empty($spec['game_config'])) {
@@ -820,22 +851,27 @@ class LessonComposer
      */
     private function teamScene(Lesson $lesson, array $s, int $order, int $gameIndex): Scene
     {
-        $team = TeamGameSpec::normalize($this->teamImages($lesson, $s, $order));
+        $assets = [];
+        $team = TeamGameSpec::normalize($this->teamImages($lesson, $s, $order, $assets));
 
         $scene = $lesson->scenes()->create([
             'order' => $order,
             'kind' => 'game',
             'game_type' => 'team',
             'game_segment_index' => $gameIndex,
-            // The chapter bar's estimate: the discussion timer plus a couple of minutes to reveal.
-            'duration_seconds' => max(60, $team['minutes'] * 60 + 120),
+            // The chapter bar's estimate: the discussion timer plus a couple of minutes to reveal; the
+            // cargo game as a hold has a step timer each (plan §2), rounded up to whole minutes.
+            'duration_seconds' => $team['mode'] === 'budget' && $team['presentation'] === 'hold'
+                ? max(60, (int) ceil(TeamGameSpec::holdSeconds($team) / 60) * 60)
+                : max(60, $team['minutes'] * 60 + 120),
             'background_color' => '#0f172a',
             'chapter_name' => $s['chapter'] ?? ($team['title'] !== '' ? $team['title'] : null),
             'location' => $s['location'] ?? null,
             'year' => $s['year'] ?? null,
             'script_segment' => $s['script'] ?? null,
             'status' => 'pending',
-            'config' => ['team' => $team, 'team_default' => $team],
+            // Which served URL came from which library ref, so lessons:export writes the ref back.
+            'config' => ['team' => $team, 'team_default' => $team] + ($assets !== [] ? ['team_assets' => $assets] : []),
         ]);
 
         if (! empty($s['backdrop'])) {
@@ -847,21 +883,42 @@ class LessonComposer
 
     /**
      * Library refs ("asset:...") in a team game's images become copied, served URLs; anything else
-     * is left for TeamGameSpec to accept or drop.
+     * is left for TeamGameSpec to accept or drop. `$assets` collects url => "asset:ref".
+     *
+     * A hold's ship from the library brings its painted hold along: the `.hold.json` next to the
+     * picture (zones, aspect, waterline) fills whatever the spec leaves out.
      *
      * @param  array<string,mixed>  $s
+     * @param  array<string,string>  $assets
      * @return array<string,mixed>
      */
-    private function teamImages(Lesson $lesson, array $s, int $order): array
+    private function teamImages(Lesson $lesson, array $s, int $order, array &$assets = []): array
     {
-        $resolve = fn (mixed $ref): mixed => is_string($ref) && str_starts_with($ref, 'asset:')
-            ? $this->library->copyLibraryImage($lesson, substr($ref, 6), $order)['url']
-            : $ref;
+        $resolve = function (mixed $ref) use ($lesson, $order, &$assets): mixed {
+            if (! is_string($ref) || ! str_starts_with($ref, 'asset:')) {
+                return $ref;
+            }
+            $url = $this->library->copyLibraryImage($lesson, substr($ref, 6), $order)['url'];
+            $assets[$url] = $ref;
+
+            return $url;
+        };
 
         if (isset($s['map'])) {
             $s['map'] = $resolve($s['map']);
         }
-        foreach (['options', 'evidence'] as $list) {
+        if (is_array($s['hold'] ?? null)) {
+            $ship = $s['hold']['ship'] ?? null;
+            if (is_string($ship) && str_starts_with($ship, 'asset:')) {
+                $s['hold'] = array_filter($s['hold'], fn ($v): bool => $v !== null) + $this->holdArt(substr($ship, 6));
+            }
+            foreach (['ship', 'backdrop'] as $key) {
+                if (isset($s['hold'][$key])) {
+                    $s['hold'][$key] = $resolve($s['hold'][$key]);
+                }
+            }
+        }
+        foreach (['options', 'evidence', 'fixed', 'items'] as $list) {
             if (! is_array($s[$list] ?? null)) {
                 continue;
             }
@@ -872,6 +929,23 @@ class LessonComposer
         }
 
         return $s;
+    }
+
+    /**
+     * The painted hold of a library ship: `<picture>.hold.json` beside it in resources/icons, or
+     * nothing.
+     *
+     * @return array<string,mixed>
+     */
+    private function holdArt(string $ref): array
+    {
+        $path = resource_path('icons/'.trim($ref, '/ ').'.hold.json');
+        if (str_contains($ref, '..') || ! is_file($path)) {
+            return [];
+        }
+        $json = json_decode((string) file_get_contents($path), true);
+
+        return is_array($json) ? array_intersect_key($json, array_flip(['zones', 'aspect', 'waterline', 'x', 'y', 'h'])) : [];
     }
 
     /**

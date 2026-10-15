@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Enums\LessonStatus;
 use App\Models\Lesson;
 use App\Models\StrategyGame;
+use App\Services\Captions\CaptionTranslator;
 use App\Support\Locales;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -73,7 +74,28 @@ class LessonPlayerController extends Controller
         }
 
         $translations = $lesson->translations();
+        $audioLanguages = $this->audioLanguages($lesson, $translations);
 
-        return view('lesson.player', compact('lesson', 'translations'));
+        return view('lesson.player', compact('lesson', 'translations', 'audioLanguages'));
+    }
+
+    /**
+     * The Audio column of the subtitle panel: this lesson and its translation_group siblings, each
+     * a lesson of its own. `same_scenes` says the sibling has the same scene kinds in the same
+     * order, so switching can land on the scene the class is watching; otherwise it starts over.
+     *
+     * @return list<array{code: string, name: string, url: string, current: bool, same_scenes: bool}>
+     */
+    private function audioLanguages(Lesson $lesson, \Illuminate\Database\Eloquent\Collection $translations): array
+    {
+        $kinds = $lesson->scenes->sortBy('order')->pluck('kind')->values()->all();
+
+        return collect([$lesson])->merge($translations)->map(fn (Lesson $l) => [
+            'code' => (string) $l->language,
+            'name' => CaptionTranslator::LANGUAGES[$l->language] ?? Locales::name((string) $l->language),
+            'url' => route('lesson.play', ['lessonCode' => $l->lesson_code]),
+            'current' => $l->is($lesson),
+            'same_scenes' => $l->is($lesson) || $l->scenes()->ordered()->pluck('kind')->all() === $kinds,
+        ])->values()->all();
     }
 }

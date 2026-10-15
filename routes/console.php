@@ -27,3 +27,7 @@ Schedule::command('tokens:check')->dailyAt('08:00');
 
 // Sweep the throwaway accounts behind the landing-page "Configure" demo (config/demo.php).
 Schedule::command('demo:prune-guests')->hourly()->withoutOverlapping();
+
+// Harbour races older than config race.ttl_hours (24 h). Each new race prunes too, so this is the
+// backstop, not the only guard.
+Schedule::call(fn () => app(\App\Services\Lessons\HarbourRace::class)->prune())->hourly()->name('races:prune')->withoutOverlapping();

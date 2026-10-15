@@ -2,6 +2,7 @@
  "lang": "nl",
  "title": "Abel Tasman: De reis naar het onbekende",
  "intro": "Waarom riskeer je je leven voor het onbekende, als daar al mensen wonen?",
+ "expect": ["Hoe was het aan boord van een ontdekkingsreis?", "Wie woonden er al, waar Tasman aankwam?", "De gevaren en de gevolgen"],
  "scenes": {
   "S00": {
    "title": "Wat betekent dat?",
@@ -131,11 +132,11 @@
     "S07-D.1": "De volgende ochtend roept de uitkijk: daar is ze weer."
    },
    "bubbles": {
-    "S07-A.1": "De Zeehaen is weg!",
+    "S07-A.1": "We zien de Zeehaen met {crew:zeehaen|de bemanning} niet meer!",
     "S07-B.1": "Allebei je handen!",
     "S07-B.2": "Ik laat niet los.",
     "S07-C.1": "Jou hebben we maar één keer.",
-    "S07-D.1": "De Zeehaen!"
+    "S07-D.1": "De Zeehaen! Daar is {crew:zeehaen|de bemanning} weer!"
    }
   },
   "S08": {
@@ -276,102 +277,196 @@
   "lading": {
    "mode": "budget",
    "title": "De lading",
+   "mission": "Jullie vertrekken op een lange reis. Niemand weet precies wat jullie onderweg tegenkomen. Wat nemen jullie mee?",
    "chapter": "De lading",
-   "minutes": 5,
+   "minutes": 3,
    "teams": 4,
    "script": "Vorm teams van drie of vier en kies samen wat jullie meenemen. Water, eten en kompas gaan mee; wat past nog in jullie zestien laadpunten?",
    "intro": "Water, eten en kompas gaan mee; wat past nog in jullie zestien laadpunten?",
    "rules": "Kies samen minstens één voedselpakket. Elk pakket hoogstens één keer. Punten zijn spelwaarden, geen historische maten.",
    "roles": [
-    "Voorlezer",
-    "Puntenteller",
-    "Risicozoeker",
-    "Woordvoerder"
+    "Kapitein",
+    "Bootsman",
+    "Verkenner",
+    "Stuurman"
    ],
    "capacity": 16,
    "fixed": [
     {
+     "id": "water",
      "name": "Watervaten",
      "why": "Zonder drinkwater helpt geen kaart je verder.",
-     "cost": 3
+     "cost": 3,
+     "image": "asset:history-line/props/tasman/cargo_watervaten",
+     "tags": [
+      "water"
+     ]
     },
     {
+     "id": "compass",
      "name": "Kompas",
      "why": "Je vaarrichting bijhouden, maar het wijst geen veilige haven aan.",
-     "cost": 1
+     "cost": 1,
+     "image": "asset:history-line/props/tasman/cargo_kompas",
+     "tags": [
+      "navigation"
+     ]
     }
    ],
    "items": [
     {
+     "id": "rice",
      "name": "Rijst",
      "why": "Veel eten meenemen of ruimte bewaren voor reparaties?",
-     "cost": 3
+     "cost": 3,
+     "image": "asset:history-line/props/tasman/cargo_rijst",
+     "tags": [
+      "food"
+     ],
+     "real": true
     },
     {
+     "id": "ships_bread",
      "name": "Hard scheepsbrood",
      "why": "Een tweede voedselvoorraad of vertrouwen op alleen rijst?",
-     "cost": 2
+     "cost": 2,
+     "image": "asset:history-line/props/tasman/cargo_scheepsbrood",
+     "tags": [
+      "food"
+     ],
+     "real": true
     },
     {
+     "id": "meat",
      "name": "Vleesvoorraad",
      "why": "Ander eten meenemen of die twee punten aan touw besteden?",
-     "cost": 2
+     "cost": 2,
+     "image": "asset:history-line/props/tasman/cargo_vlees",
+     "tags": [
+      "food"
+     ],
+     "real": true
     },
     {
+     "id": "spare_sails",
      "name": "Reservezeilen",
      "why": "Met gescheurd zeildoek verder of nu ruimte opofferen?",
-     "cost": 3
+     "cost": 3,
+     "image": "asset:history-line/props/tasman/cargo_reservezeilen",
+     "tags": [
+      "sails"
+     ],
+     "real": false
     },
     {
+     "id": "spare_rope",
      "name": "Reservetouw",
      "why": "Een kapotte lijn herstellen of hopen dat alles heel blijft?",
-     "cost": 2
+     "cost": 2,
+     "image": "asset:history-line/props/tasman/cargo_reservetouw",
+     "tags": [
+      "rope"
+     ],
+     "real": false
     },
     {
+     "id": "spare_timber",
      "name": "Reservehout",
      "why": "Materiaal voor schadeherstel, maar zonder gereedschap schiet je weinig op.",
-     "cost": 3
+     "cost": 3,
+     "image": "asset:history-line/props/tasman/cargo_reservehout",
+     "tags": [
+      "repair-wood"
+     ],
+     "real": true
     },
     {
+     "id": "tools",
      "name": "Timmergereedschap",
      "why": "Gereedschap kost weinig ruimte, maar welk reparatiemateriaal nemen jullie erbij?",
-     "cost": 1
+     "cost": 1,
+     "image": "asset:history-line/props/tasman/cargo_timmergereedschap",
+     "tags": [
+      "tools"
+     ],
+     "real": false
     },
     {
+     "id": "firewood",
      "name": "Brandhout",
      "why": "Hout voor het kookvuur of nog een voorraad voedsel?",
-     "cost": 2
+     "cost": 2,
+     "image": "asset:history-line/props/tasman/cargo_brandhout",
+     "tags": [
+      "fuel"
+     ],
+     "real": true
     },
     {
+     "id": "charts",
      "name": "Zeekaarten",
      "why": "Onvolledige kaarten meenemen of die ruimte voor iets anders gebruiken?",
-     "cost": 1
+     "cost": 1,
+     "image": "asset:history-line/props/tasman/cargo_zeekaarten",
+     "tags": [
+      "charts"
+     ],
+     "real": true
     },
     {
+     "id": "paper_ink",
      "name": "Papier en inkt",
      "why": "Nieuwe kusten vastleggen of alleen zorgen dat jullie zelf thuiskomen?",
-     "cost": 1
+     "cost": 1,
+     "image": "asset:history-line/props/tasman/cargo_papier_inkt",
+     "tags": [
+      "writing"
+     ],
+     "real": true
     },
     {
+     "id": "trade_textiles",
      "name": "Stoffen als ruilwaar",
      "why": "Mogelijk voedsel ruilen aan land, maar wat als niemand wil ruilen?",
-     "cost": 2
+     "cost": 2,
+     "image": "asset:history-line/props/tasman/cargo_stoffen",
+     "tags": [
+      "trade"
+     ],
+     "real": true
     },
     {
+     "id": "trade_metal",
      "name": "Metaal als ruilwaar",
      "why": "Nog een ruilmiddel of vertrouwen op de stoffen die jullie kozen?",
-     "cost": 1
+     "cost": 1,
+     "image": "asset:history-line/props/tasman/cargo_metaal",
+     "tags": [
+      "trade"
+     ],
+     "real": true
     }
    ],
    "reveal": "Een echt VOC-schip moest voorraden, uitrusting en handelswaar meenemen. Voor deze expeditie waren voedsel voor twaalf maanden en rijst voor achttien maanden voorgeschreven, naast ruilgoederen en metalen. Op Mauritius vulden de mannen water en brandhout aan.",
    "needs": "Op 26 oktober verving de Zeehaen een gebroken ra door een reserve. In de storm en in de kou helpen reserves, water en voedsel; geen vat neemt heimwee weg.",
    "followup": "Welk pakket willen jullie alsnog meenemen, en wat moet daarvoor wijken?",
    "source": "Tasman, journaal en documenten (Heeres-editie, 1898). Appendix D en E; journaal 30 september tot 26 oktober 1642.",
-   "backdrop": "history-line/backdrops/tasman/deck_harbour"
+   "backdrop": "history-line/backdrops/tasman/deck_harbour",
+   "presentation": "hold",
+   "hold": {
+    "ship": "asset:history-line/props/tasman/hold_ship_cutaway",
+    "backdrop": "asset:history-line/backdrops/tasman/mauritius_anchorage"
+   },
+   "timers": {
+    "mission": 20,
+    "compare": 60,
+    "exchange": 60,
+    "sail": 20
+   }
   },
   "scheepsraad": {
    "mode": "choose",
-   "title": "De scheepsraad",
+   "title": "Scheepsraad op de Heemskerck: {crew:heemskerck|de bemanning}, denk mee!",
    "chapter": "De scheepsraad",
    "minutes": 4,
    "teams": 4,
@@ -452,7 +547,9 @@
     "vrachtwagen"
    ],
    "after": "Het anker is op. De Heemskerck en de Zeehaen varen de baai uit.",
-   "why": "Een anker ging met de hand omhoog: de matrozen duwden samen de spaken van het gangspil rond. Er was geen motor."
+   "why": "Een anker ging met de hand omhoog: de matrozen duwden samen de spaken van het gangspil rond. Er was geen motor.",
+   "race_after": "{crew:heemskerck} op de Heemskerck, {crew:zeehaen} op de Zeehaen: ze varen de baai uit.",
+   "race_after_solo": "Jij gaat aan boord van de Heemskerck. De twee schepen varen de baai uit."
   },
   "wind-in-de-zeilen": {
    "name": "Wind in de zeilen",

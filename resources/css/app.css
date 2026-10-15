@@ -252,6 +252,32 @@
     font-display: swap;
 }
 
+/* ─── ComicRoma: Bart's carved-sign title face (branding/historyportalBranding/font-build/comicroma).
+   Caps only; the comic cover's live subtitle uses it. Downloaded only where it is used. */
+@font-face {
+    font-family: 'ComicRoma';
+    src: url('/fonts/comicroma/ComicRoma.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+/* ─── ComicRoma Lettering: our comic lettering face, a modified Comic Neue (SIL OFL 1.1; built in
+   branding/historyportalBranding/font-build/comic-lettering). The cover's small lines for now;
+   --font-comic (balloons) is NOT switched to it yet. Downloaded only where it is used. */
+@font-face {
+    font-family: 'ComicRoma Lettering';
+    src: url('/fonts/comic-lettering/ComicRomaLettering-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'ComicRoma Lettering';
+    src: url('/fonts/comic-lettering/ComicRomaLettering-Bold.woff2') format('woff2');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
 /* ─── Cinzel — self-hosted (latin subset), replaces external font CDN ─ */
 @font-face {
     font-family: 'Cinzel';
@@ -461,7 +487,7 @@
     font-display: swap;
 }
 
-/* ─── Comic Neue (OFL): speech balloon lettering (BalloonLayer.js) ─── */
+/* ─── Comic Neue (OFL): the speech balloons' fallback while ComicRoma Balloon loads ─── */
 @font-face {
     font-family: 'Comic Neue';
     src: url('/fonts/ComicNeue/ComicNeue-Regular.ttf') format('truetype');
@@ -477,6 +503,17 @@
     font-display: swap;
 }
 
+/* ─── ComicRoma Balloon SemiBold: the speech balloons' lettering. Coming Soon (Apache 2.0) with
+   every outline offset ~25% heavier, built in branding/historyportalBranding/font-build/balloon;
+   LICENSE + NOTICE in public/fonts/balloon. Preloaded by the player only when a lesson has balloons. */
+@font-face {
+    font-family: 'ComicRoma Balloon';
+    src: url('/fonts/balloon/ComicRomaBalloon-SemiBold.woff2') format('woff2');
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+
 /* Speech balloons: white paper, ink outline, no name tag (the tail says who speaks). Sizes are
    set in JS from the stage width, so a balloon keeps its proportion on a phone and a board. */
 .lp-balloon { position: absolute; inset: 0; pointer-events: none; }
@@ -487,8 +524,8 @@
     color: #1b1712;
     border: 2px solid #1b1712;
     border-radius: 1.4em;
-    font-family: 'Comic Neue', 'Comic Relief', 'Comic Sans MS', ui-rounded, sans-serif;
-    font-weight: 700;
+    font-family: 'ComicRoma Balloon', 'Comic Neue', 'Comic Sans MS', ui-rounded, sans-serif;
+    font-weight: 600;
     line-height: 1.22;
     text-align: center;
     text-wrap: balance;
@@ -812,6 +849,18 @@
     background-size: 14px 14px;
     color: oklch(20% 0.02 264);
 }
+/* A game overlay ends above the player's deck while it shows a game (scene/deck-reserve.js), so
+   the deck never covers a game's own buttons. Unlayered: it must beat the overlay's inset-0. */
+#lesson-game-overlay:has(> *) {
+    bottom: var(--lp-deck-reserve, 0px);
+}
+
+/* The same paper as a flat sheet that carries CONTENT on the class screen (the cargo results):
+   no check, ink-dark text. */
+.lp-sheet {
+    background-color: var(--lp-paper);
+    color: oklch(20% 0.02 264);
+}
 
 /* ─── Film grain overlay (add class to any section / card) ───────────── */
 .lp-grain {
@@ -1091,6 +1140,51 @@ html[data-inspector-w] aside[data-resizable-drawer] {
         bottom: 0.75rem;
         max-width: calc((100vw - min(720px, 92vw)) / 2 - 2.5rem);
     }
+}
+
+/* ─── Player subtitles ──────────────────────────────────────────────────
+   Netflix's defaults: white text at ~3.2% of the stage height (never under 16px), a 60% black
+   backdrop that hugs each line (box-decoration-break repeats it per line), at most two lines of
+   ~42 characters (captions.js cuts the cues; 23em is that width at this weight). Bottom centre,
+   lifted over the deck while it shows. The backdrop is for legibility on a bright sky, so it is
+   content, not chrome. Scripts get their own system fonts: no webfont download for CJK/Arabic. */
+.lp-cc {
+    bottom: max(1.5rem, 5vh);
+    width: min(90vw, 60rem);
+    transition: bottom 200ms var(--ease-enter);
+}
+.lp-cc--lifted { bottom: 7.5rem; }
+.lp-cc__text {
+    margin: 0 auto;
+    max-width: 23em;
+    font-size: max(16px, 3.2vh);
+    font-weight: 500;
+    line-height: 1.45;
+    color: #fff;
+    text-wrap: balance;
+}
+/* The quiet plate: a soft dark backdrop hugging the words. The subtitles stand on it, and so do
+   the title screen's lines over a picture (lp-quiet-plate). Flat: no shadow. */
+.lp-cc__text > span, .lp-quiet-plate {
+    background: rgb(0 0 0 / 0.6);
+    padding: 0.06em 0.35em;
+    border-radius: 0.18em;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+}
+.lp-cc__text:lang(zh), .lp-cc-hint:lang(zh), #lesson-balloons:lang(zh) {
+    font-family: system-ui, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", sans-serif;
+    line-break: strict;
+}
+.lp-cc__text:lang(ja), .lp-cc-hint:lang(ja), #lesson-balloons:lang(ja) {
+    font-family: system-ui, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", "Noto Sans CJK JP", "Noto Sans JP", sans-serif;
+    line-break: strict;
+}
+.lp-cc__text:lang(ar), .lp-cc-hint:lang(ar), #lesson-balloons:lang(ar) {
+    font-family: "Geeza Pro", "SF Arabic", "Segoe UI", "Noto Naskh Arabic", "Noto Sans Arabic", Tahoma, sans-serif;
+}
+@media (prefers-reduced-motion: reduce) {
+    .lp-cc { transition: none; }
 }
 
 /* ─── Player volume slider ──────────────────────────────────────────────
@@ -1915,4 +2009,50 @@ html[data-inspector-w] aside[data-resizable-drawer] {
 
 .maplibregl-ctrl.maplibregl-ctrl-attribution {
     display: none !important;
+}
+
+/* ─── Comic title poster (resources/js/title-poster.js) ───
+   The stage is the frame: its width is the unit for the subtitle and the hard shadow (cqw).
+   Its loops rest while the tab is hidden. */
+.title-poster { container-type: inline-size; }
+.title-poster.is-paused, .title-poster.is-paused * { animation-play-state: paused !important; }
+
+/* ─── The title screen's frame (player.blade.php): one gutter on every side, one pill height,
+   one language width. Every piece of chrome aligns to these; nothing has its own margin. */
+:root {
+  --title-gutter: clamp(24px, 4vw, 64px);
+  --title-pill-h: 3rem;
+  --title-lang-w: 10rem;      /* the longest endonym on offer ("Nederlands") + the caret */
+}
+@media (max-width: 639.98px) {
+  :root { --title-gutter: 16px; --title-lang-w: 8.25rem; }
+}
+.title-screen { scrollbar-width: none; }
+.title-screen::-webkit-scrollbar { display: none; }
+.title-gutter-x { padding-inline: var(--title-gutter); }
+.title-pad-top { padding-top: calc(var(--title-gutter) + 4rem); }
+.title-pad-bottom { padding-bottom: calc(var(--title-gutter) + var(--title-pill-h) + 5rem); }
+.title-pill { height: var(--title-pill-h); }
+.title-lang { width: var(--title-lang-w); }
+.title-episode { font-size: clamp(1rem, 1.7vw, 1.75rem); line-height: 1.25; }
+.title-logo { left: var(--title-gutter); top: calc(var(--title-gutter) + 4rem); width: clamp(16rem, 40vw, 40rem); }
+
+/* The bottom rail: every piece's bottom on the bottom gutter. It fades in once the lettering has
+   landed (title-poster.js ENTRANCE), opacity only. */
+.title-rail {
+  position: absolute;
+  left: var(--title-gutter);
+  right: var(--title-gutter);
+  bottom: var(--title-gutter);
+  animation: title-rail-in 200ms var(--ease-enter) 800ms both;
+}
+@keyframes title-rail-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .title-rail { animation: none; } }
+/* The way down to "About this lesson" sits after the language, in the left group, clear of the
+   artwork's middle; the join code takes the right end. */
+.title-rail [data-title-qr], .title-rail [data-title-code] { margin-left: auto; }
+/* One flat scrim behind the rail over a painting: content contrast, no blur. */
+.title-rail-scrim {
+  height: calc(var(--title-pill-h) + 2 * var(--title-gutter) + 4rem);
+  background: linear-gradient(to top, rgb(0 0 0 / 0.5), transparent);
 }

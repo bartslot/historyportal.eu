@@ -1,0 +1,212 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Feature\Lessons;
+
+use App\Support\TitlePoster;
+use Illuminate\Support\Facades\File;
+use Tests\TestCase;
+
+/**
+ * titles:make: a recipe in, a poster folder out that the player's TitlePoster accepts, byte for
+ * byte the same every run; a bad recipe fails naming what is wrong; a hand-made poster is safe.
+ * Runs the real Python helper (tools/titles/make_title.py) on the Dante recipe.
+ */
+class TitleGeneratorTest extends TestCase
+{
+    private const GROUP = 'titlegen-test';
+
+    private string $recipe;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->recipe = storage_path('framework/testing/titlegen-recipe.json');
+        File::ensureDirectoryExists(dirname($this->recipe));
+        $this->writeRecipe(json_decode((string) file_get_contents(resource_path('lessons/titles/dante.json')), true));
+    }
+
+    protected function tearDown(): void
+    {
+        File::deleteDirectory(public_path('lesson-titles/'.self::GROUP));
+        File::delete($this->recipe);
+        parent::tearDown();
+    }
+
+    private function writeRecipe(array $recipe): void
+    {
+        file_put_contents($this->recipe, json_encode($recipe));
+    }
+
+    private function make(): \Illuminate\Testing\PendingCommand
+    {
+        return $this->artisan('titles:make', ['group' => self::GROUP, '--recipe' => $this->recipe]);
+    }
+
+    /** @return array<string, string> file => sha1 */
+    private function hashes(): array
+    {
+        $out = [];
+        foreach (File::files(public_path('lesson-titles/'.self::GROUP.'/poster')) as $f) {
+            $out[$f->getFilename()] = sha1_file($f->getPathname());
+        }
+        ksort($out);
+
+        return $out;
+    }
+
+    public function test_it_writes_a_poster_the_player_accepts_with_every_file_present(): void
+    {
+        $this->make()->assertSuccessful();
+
+        $poster = TitlePoster::for(self::GROUP, 'poster');
+        $this->assertNotNull($poster);
+        $this->assertSame('#2152B5', $poster['background']);
+
+        // 5 letters, 2 pictures, the hero, the outlines on top.
+        $ids = array_column($poster['layers'], 'id');
+        $this->assertSame(['d', 'a', 'n', 't', 'e', 'firenze', 'selva', 'dante', 'outlines'], $ids);
+        foreach ($poster['layers'] as $layer) {
+            $this->assertFileExists(public_path(parse_url($layer['url'], PHP_URL_PATH)));
+        }
+        $this->assertStringEndsWith('/lesson-titles/'.self::GROUP.'/poster/mask.svg', $poster['groups']['scene']['mask_url']);
+        $this->assertNotNull($poster['groups']['row0']['shadow']);
+        $this->assertNotNull($poster['subtitle']);
+        $this->assertNotNull($poster['focus']);
+
+        // Letters drop in their own shadow group; pictures fade inside the masked scene.
+        $byId = array_column($poster['layers'], null, 'id');
+        $this->assertSame(['row0', 'drop'], [$byId['d']['group'], $byId['d']['enter']]);
+        $this->assertSame(['scene', 'fade', 'breeze'], [$byId['dante']['group'], $byId['dante']['enter'], $byId['dante']['ambient']]);
+
+        // Pictures are WebP, at most 2880 px, alpha kept for the cut-out hero.
+        $hero = public_path('lesson-titles/'.self::GROUP.'/poster/'.basename(parse_url($byId['dante']['url'], PHP_URL_PATH)));
+        [$w, $h] = getimagesize($hero);
+        $this->assertLessThanOrEqual(2880, max($w, $h));
+        $this->assertSame('RIFF', substr((string) file_get_contents($hero), 0, 4));
+    }
+
+    public function test_the_same_recipe_gives_the_same_files(): void
+    {
+        $this->make()->assertSuccessful();
+        $first = $this->hashes();
+        $this->make()->assertSuccessful();
+
+        $this->assertSame($first, $this->hashes());
+    }
+
+    public function test_a_bad_recipe_fails_naming_each_problem(): void
+    {
+        $recipe = json_decode((string) file_get_contents($this->recipe), true);
+        $recipe['background'] = 'blue';
+        $recipe['rows'][0]['gradient'] = ['#FFD54F'];
+        $recipe['pictures'][0]['art'] = 'resources/icons/nope.webp';
+        $this->writeRecipe($recipe);
+
+        $this->make()
+            ->expectsOutputToContain('background must be a colour')
+            ->expectsOutputToContain('rows[0].gradient must be two colours')
+            ->expectsOutputToContain('pictures[0].art file not found')
+            ->assertFailed();
+        $this->assertDirectoryDoesNotExist(public_path('lesson-titles/'.self::GROUP));
+    }
+
+    public function test_a_row_that_does_not_match_its_letters_fails_clearly(): void
+    {
+        $recipe = json_decode((string) file_get_contents($this->recipe), true);
+        $recipe['rows'][0]['text'] = 'DANT';
+        $this->writeRecipe($recipe);
+
+        $this->make()->expectsOutputToContain('has 4 letters but its source has 5 shapes')->assertFailed();
+    }
+
+    public function test_letters_can_come_from_a_font_one_shape_per_letter_across_rows(): void
+    {
+        $this->writeRecipe([
+            'letters' => ['font' => 'public/fonts/ComicNeue/ComicNeue-Bold.ttf'],
+            'rows' => [['text' => 'LA', 'gradient' => ['#000000', '#FFFFFF']], ['text' => 'DIVINA', 'gradient' => ['#111111', '#EEEEEE']]],
+            'background' => '#2152B5',
+        ]);
+
+        $this->make()->assertSuccessful();
+
+        $ids = array_column(TitlePoster::for(self::GROUP, 'poster')['layers'], 'id');
+        $this->assertSame(['l', 'a', 'd', 'i', 'v', 'i1', 'n', 'a1', 'outlines'], $ids);
+    }
+
+    public function test_a_hand_made_poster_is_never_overwritten(): void
+    {
+        foreach (['poster', 'banner'] as $candidate) {
+            $file = public_path("lesson-titles/tasman-standard/{$candidate}/poster.json");
+            $before = sha1_file($file);
+
+            $this->artisan('titles:make', ['group' => 'tasman-standard', '--candidate' => $candidate])
+                ->expectsOutputToContain('hand-made poster')
+                ->assertFailed();
+
+            $this->assertSame($before, sha1_file($file), "{$candidate} must stay Bart's Figma build");
+        }
+    }
+
+    public function test_the_recipe_names_its_candidate_for_the_picker_and_a_candidate_flag_picks_the_folder(): void
+    {
+        $recipe = json_decode((string) file_get_contents($this->recipe), true);
+        $recipe['label'] = ['nl' => 'Gouden letters', 'en' => 'Gold letters'];
+        $recipe['order'] = 5;
+        $this->writeRecipe($recipe);
+
+        $this->artisan('titles:make', ['group' => self::GROUP, '--recipe' => $this->recipe, '--candidate' => 'gold'])->assertSuccessful();
+
+        $this->assertDirectoryDoesNotExist(public_path('lesson-titles/'.self::GROUP.'/poster'));
+        app()->setLocale('nl');
+        $this->assertSame([['key' => 'gold', 'label' => 'Gouden letters', 'order' => 5, 'thumb_url' => null]], TitlePoster::candidates(self::GROUP));
+
+        // The thumbnail is a render made afterwards: a rebuild keeps it.
+        $thumb = public_path('lesson-titles/'.self::GROUP.'/gold/thumb.webp');
+        File::copy(public_path('lesson-titles/tasman-standard/poster/thumb.webp'), $thumb);
+        $this->artisan('titles:make', ['group' => self::GROUP, '--recipe' => $this->recipe, '--candidate' => 'gold'])->assertSuccessful();
+        $this->assertFileExists($thumb);
+        $this->assertStringEndsWith('/gold/thumb.webp', TitlePoster::candidates(self::GROUP)[0]['thumb_url']);
+
+        $recipe['order'] = 'first';
+        $this->writeRecipe($recipe);
+        $this->artisan('titles:make', ['group' => self::GROUP, '--recipe' => $this->recipe, '--candidate' => 'gold'])
+            ->expectsOutputToContain('order must be a whole number')
+            ->assertFailed();
+        $this->artisan('titles:make', ['group' => self::GROUP, '--recipe' => $this->recipe, '--candidate' => 'plain'])
+            ->expectsOutputToContain('not logo or plain')
+            ->assertFailed();
+    }
+
+    public function test_it_writes_what_the_join_qr_keeps_clear_of_and_the_badge_style(): void
+    {
+        $recipe = json_decode((string) file_get_contents($this->recipe), true);
+        $recipe['keep_clear'] = [['box' => [60, 10, 5, 8], 'kind' => 'face', 'note' => 'Beatrice']];
+        $recipe['expect'] = ['box' => [0, 0, 100, 6], 'style' => 'strip'];
+        $this->writeRecipe($recipe);
+        $this->make()->assertSuccessful();
+
+        $poster = TitlePoster::for(self::GROUP, 'poster');
+        $this->assertSame('dark', $poster['badge_style']);
+        $this->assertSame('strip', $poster['expect']['style']);
+        // The row of letters, the hero as a figure with its face at the top, then the recipe's own.
+        $this->assertSame(['letters', 'figure', 'face', 'face'], array_column($poster['keep_clear'], 'kind'));
+        [$letters, $figure, $face, $own] = array_column($poster['keep_clear'], 'box');
+        $hero = array_column($poster['layers'], null, 'id')['dante']['box'];
+        $this->assertEquals($hero, $figure);
+        $this->assertSame($figure['y'], $face['y']);
+        $this->assertLessThan($figure['h'], $face['h']);
+        $this->assertGreaterThan($figure['x'], $face['x']);
+        $this->assertEqualsWithDelta(35.35, $letters['y'], 1.0);
+        $this->assertSame(['x' => 60.0, 'y' => 10.0, 'w' => 5.0, 'h' => 8.0], $own);
+
+        $recipe['badge_style'] = 'black';
+        $recipe['keep_clear'] = [['box' => [1, 2], 'kind' => 'face']];
+        $this->writeRecipe($recipe);
+        $this->make()
+            ->expectsOutputToContain('badge_style must be')
+            ->expectsOutputToContain('keep_clear must be')
+            ->assertFailed();
+    }
+}
