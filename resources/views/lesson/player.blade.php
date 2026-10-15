@@ -255,7 +255,8 @@
     x-data="lessonGame(window.LESSON)"
     x-init="init()"
     class="relative w-screen h-screen overflow-hidden"
-    :data-chrome-idle="!readingOverlay && chromeHidden"
+    :data-chrome-idle="!overlayOwnsStage && chromeHidden"
+    :data-overlay-owns="overlayOwnsStage"
     :style="{ '--chrome-fade': (chromeHidden ? chromeFadeOutMs : chromeFadeInMs) + 'ms' }"
 >
 
@@ -480,7 +481,9 @@
                  class="absolute inset-x-0 bottom-0 lp-chrome-fade"
                  :class="chromeHidden ? 'pointer-events-none translate-y-2 opacity-0' : 'opacity-100'"
                  style="z-index:46">
-                <div class="pointer-events-auto mx-auto w-[min(720px,92vw)] pb-3" data-player-chrome="bottom">
+                {{-- Under a game that owns the stage the deck is gone, so it must not catch the card's taps. --}}
+                <div class="mx-auto w-[min(720px,92vw)] pb-3" data-player-chrome="bottom"
+                     :class="overlayOwnsStage ? 'pointer-events-none' : 'pointer-events-auto'">
 
                     {{-- Audio & Subtitles (Netflix's panel): narration languages left, subtitles right.
                          One click selects and the panel stays open; it closes on an outside click,
@@ -951,7 +954,7 @@
                     </span>
                 </div>
                 <button @click="beginGame()"
-                    class="mt-7 flex w-full items-center justify-center gap-3 rounded-full bg-primary px-8 py-3.5 text-base font-bold text-slate-950 shadow-[0_0_48px_rgba(252,211,77,0.35)] transition hover:brightness-110 active:scale-95 sm:w-auto">
+                    class="mt-7 flex w-full items-center justify-center gap-3 rounded-full bg-primary px-8 py-3.5 text-base font-bold text-slate-950 shadow-[0_0_48px_color-mix(in_oklab,var(--color-primary)_35%,transparent)] transition hover:brightness-110 active:scale-95 sm:w-auto">
                     <svg class="h-5 w-5 fill-slate-950" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                     <span>{{ __('Begin the challenge') }}</span>
                 </button>

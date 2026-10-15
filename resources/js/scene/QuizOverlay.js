@@ -31,13 +31,13 @@ import { t } from '../i18n.js'
 import { mountBigCountdown, BIG_COUNTDOWN_LEAVE_MS } from '../big-countdown.js'
 
 export const LETTERS = ['A', 'B', 'C', 'D']
-// The four answer letters keep their Kahoot-style colour coding, drawn from the theme's
-// semantic palette rather than raw hexes.
+// The four answer letters keep their Kahoot-style colour coding, drawn from the theme rather
+// than raw hexes. C is the brand amber, not the warning yellow (Bart 2026-10-15).
 export const LETTER_CHIP = 'inline-flex h-[30px] w-9 shrink-0 items-center justify-center rounded-lg text-[15px] font-extrabold'
 export const LETTER_CLASSES = [
   'bg-error text-error-content',
   'bg-info text-info-content',
-  'bg-warning text-warning-content',
+  'bg-primary text-primary-content',
   'bg-success text-success-content',
 ]
 const POINTS_CORRECT = 10
@@ -413,7 +413,7 @@ export class QuizOverlay {
           <div class="flex items-center justify-between">
             <span class="flex items-center text-[13px] text-base-content/60">
               ${streakBadge}
-              <span data-score class="mr-3.5 inline-flex items-center gap-1.5 text-[15px] font-extrabold text-warning">
+              <span data-score class="mr-3.5 inline-flex items-center gap-1.5 text-[15px] font-extrabold text-primary">
                 <svg viewBox="0 0 24 24" fill="currentColor" class="h-[15px] w-[15px]"><path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.2 5.9 20.6l1.4-6.8L2.2 9.1l6.9-.8z"/></svg>
                 <span data-score-value>${this._score}</span>
               </span>
@@ -606,13 +606,13 @@ export class QuizOverlay {
     // placed at the pixel the answer was clicked — so position stays inline, everything else is a class.
     const float = document.createElement('div')
     float.textContent = `+${gained}`
-    float.className = 'pointer-events-none fixed z-90 -translate-x-1/2 text-[26px] font-black text-warning drop-shadow-lg'
+    float.className = 'pointer-events-none fixed z-90 -translate-x-1/2 text-[26px] font-black text-primary drop-shadow-lg'
     float.style.cssText = `left:${at.x}px; top:${at.y}px; animation: qz-float-up 0.9s ease-out forwards;`
     document.body.appendChild(float)
     setTimeout(() => float.remove(), 950)
 
     // Particle burst (10 dots, transform-only) in the theme's celebration colours.
-    const sparkTones = ['bg-warning', 'bg-success', 'bg-info', 'bg-primary']
+    const sparkTones = ['bg-primary', 'bg-success', 'bg-info', 'bg-base-content']
     for (let i = 0; i < 10; i++) {
       const p = document.createElement('div')
       const angle = (Math.PI * 2 * i) / 10 + Math.random() * 0.5
@@ -637,7 +637,7 @@ export class QuizOverlay {
     // ends the star simply rests at its natural, fully-visible state — no dependence on the
     // keyframe's end opacity. The delay is data-driven, so it stays inline.
     const starsHtml = [0, 1, 2].map(i => `
-      <svg viewBox="0 0 24 24" class="qz-star h-14 w-14 ${i < stars ? 'fill-warning' : 'fill-base-content/10'}"
+      <svg viewBox="0 0 24 24" class="qz-star h-14 w-14 ${i < stars ? 'fill-primary' : 'fill-base-content/10'}"
            style="animation-delay:${0.15 + i * 0.22}s;">
         <path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.2 5.9 20.6l1.4-6.8L2.2 9.1l6.9-.8z"/>
       </svg>`).join('')
@@ -667,7 +667,7 @@ export class QuizOverlay {
           <div class="mb-1.5 text-[15px] uppercase tracking-[0.15em] text-base-content/60">
             ${t(':correct of :total correct', { correct, total })}
           </div>
-          <div data-final-score class="mb-6 text-6xl font-black text-warning">0</div>
+          <div data-final-score class="mb-6 text-6xl font-black text-primary">0</div>
           ${joinHtml}
           ${this._submitUrl
             ? `<button data-done class="btn btn-ghost btn-lg">${t('Skip')} ›</button>`
@@ -742,7 +742,7 @@ export class QuizOverlay {
   // Podium for the top 3, list for the rest, own entry highlighted with rank.
   _renderLeaderboard({ top = [], players = 0, rank = null }, ownNickname = '') {
     // Gold, silver, bronze — from the theme, not a hex list.
-    const medals = ['bg-warning text-warning-content', 'bg-base-content text-base-100', 'bg-secondary text-secondary-content']
+    const medals = ['bg-primary text-primary-content', 'bg-base-content text-base-100', 'bg-secondary text-secondary-content']
     const rows = top.map((entry, i) => {
       const isOwn = rank !== null && i === rank - 1 && entry.nickname === ownNickname
       const medal = i < 3
@@ -758,12 +758,12 @@ export class QuizOverlay {
           <span class="flex-1 truncate text-left text-[15px] ${i < 3 || isOwn ? 'font-bold' : 'font-medium'}">
             ${this._escape(entry.nickname)}${isOwn ? ` · ${t('you')}` : ''}
           </span>
-          <span class="text-[15px] font-extrabold text-warning">${entry.score}</span>
+          <span class="text-[15px] font-extrabold text-primary">${entry.score}</span>
         </div>`
     }).join('')
 
     const ownOutsideTop = rank !== null && rank > top.length
-      ? `<div class="mt-2.5 text-sm font-bold text-warning">${t('You are #:rank of :players. Keep climbing!', { rank, players })}</div>`
+      ? `<div class="mt-2.5 text-sm font-bold text-primary">${t('You are #:rank of :players. Keep climbing!', { rank, players })}</div>`
       : ''
 
     // Two keys rather than one with a plural marker: t() is a lookup, not Laravel's trans_choice,

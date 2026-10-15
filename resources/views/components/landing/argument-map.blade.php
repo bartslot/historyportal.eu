@@ -59,7 +59,7 @@
         <div
             id="map-root-card"
             class="card mx-auto mb-12 max-w-2xl border border-primary/25 lp-grain"
-            style="background: linear-gradient(135deg, rgba(252,211,77,0.10) 0%, rgba(252,211,77,0.04) 100%);"
+            style="background: linear-gradient(135deg, color-mix(in oklab, var(--color-primary) 10%, transparent) 0%, color-mix(in oklab, var(--color-primary) 4%, transparent) 100%);"
         >
             <div class="card-body py-7 text-center">
                 <span class="lp-label mx-auto mb-3 w-fit text-primary">Core Question</span>

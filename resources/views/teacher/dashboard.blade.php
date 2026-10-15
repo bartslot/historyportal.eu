@@ -187,8 +187,8 @@
                     >
                         <defs>
                             <linearGradient id="dashboard-chart-fill" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stop-color="#fcd34d" stop-opacity=".22" />
-                                <stop offset="100%" stop-color="#fcd34d" stop-opacity="0" />
+                                <stop offset="0%" stop-color="#f59e0b" stop-opacity=".22" />
+                                <stop offset="100%" stop-color="#f59e0b" stop-opacity="0" />
                             </linearGradient>
                         </defs>
                         <path d="M4 6H96 M4 22H96 M4 38H96" fill="none" stroke="rgba(148,163,184,.14)" stroke-width=".35" />
@@ -197,7 +197,7 @@
                             <polyline
                                 points="{{ $results['chart_points'] }}"
                                 fill="none"
-                                stroke="#fcd34d"
+                                stroke="#f59e0b"
                                 stroke-width="1.15"
                                 stroke-linecap="round"
                                 stroke-linejoin="round"

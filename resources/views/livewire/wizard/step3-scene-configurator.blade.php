@@ -213,7 +213,7 @@
             cursor.setAttribute('stroke', isErase() ? 'rgba(248,113,113,0.95)' : 'rgba(226,232,240,0.9)');
             cursor.setAttribute('fill', isErase() ? 'rgba(248,113,113,0.15)' : 'rgba(148,163,184,0.18)');
             cursor.style.display = 'block';
-            path.setAttribute('stroke', isErase() ? 'rgba(248,113,113,0.55)' : 'rgba(252,211,77,0.5)');
+            path.setAttribute('stroke', isErase() ? 'rgba(248,113,113,0.55)' : 'rgba(245,158,11,0.5)');
             path.setAttribute('stroke-width', Math.max(4, lastR * 2));   // the drawn band == the painted band
         };
         overlay.addEventListener('pointerdown', (e) => {
@@ -1882,7 +1882,7 @@
     @push('scripts')
     <script>
     (() => {
-        const AMBER = '#fcd34d';
+        const AMBER = '#f59e0b';  // amber-500, the theme primary (a canvas cannot read the token)
         const boot = () => {
             const canvas = document.getElementById('lesson-canvas-root');
             const rTop = document.getElementById('ruler-top');

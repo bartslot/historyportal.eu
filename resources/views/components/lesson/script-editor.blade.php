@@ -363,8 +363,8 @@
                         this.ws = WS.create({
                             container: this.$refs.waveform,
                             waveColor: '#475569',      // slate-600
-                            progressColor: '#fcd34d',  // amber-500
-                            cursorColor: '#fcd34d',    // amber-400 playhead
+                            progressColor: '#f59e0b',  // amber-500, the theme primary
+                            cursorColor: '#f59e0b',    // amber-500 playhead
                             barWidth: 2, barGap: 1, barRadius: 2, height: 32, normalize: true,
                         });
                         this._load(src);

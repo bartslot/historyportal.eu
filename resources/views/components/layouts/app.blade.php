@@ -159,7 +159,7 @@
                             container:      this.$refs.waveform,
                             media:          this.$refs.nativeAudio || undefined,
                             waveColor:      '#475569',   // slate-600
-                            progressColor:  '#fcd34d',   // amber-400
+                            progressColor:  '#f59e0b',   // amber-500, the theme primary
                             cursorColor:    'transparent', // we draw our own cursor overlay
                             barWidth:       2,
                             barGap:         1,

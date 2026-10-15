@@ -20,7 +20,7 @@ const P=/^https?:\/\/\S+$/i;const E={sans:{label:"Clean",stack:"'Inter', ui-sans
         list-style-position:${l?"inside":"outside"}; list-style-type:${n==="number"?"decimal":"disc"};`;for(const d of o.split(`
 `)){if(d.trim()==="")continue;const c=document.createElement("li");c.textContent=d,i.appendChild(c)}e.appendChild(i)}else if(P.test(o)){const i=o,l=document.createElement("button");let d;try{d=new URL(i).hostname.replace(/^www\./,"")}catch{d=i}l.textContent=`🔗 ${d}`,l.style.cssText=`display:inline-flex; align-items:center; gap:8px; padding:8px 16px;
         border-radius:999px; border:1px solid rgba(245,158,11,0.5); background:rgba(2,6,23,0.7);
-        color:#fbbf24; font-size:var(--text-base); font-weight:600; cursor:pointer;`,l.addEventListener("click",()=>this._openLinkModal(i)),e.appendChild(l)}else e.style.whiteSpace="pre-wrap",e.textContent=t.text;return e}_openLinkModal(t){const e=document.createElement("div");e.style.cssText=`position:fixed; inset:0; z-index:80; display:flex; align-items:center;
+        color:var(--color-primary); font-size:var(--text-base); font-weight:600; cursor:pointer;`,l.addEventListener("click",()=>this._openLinkModal(i)),e.appendChild(l)}else e.style.whiteSpace="pre-wrap",e.textContent=t.text;return e}_openLinkModal(t){const e=document.createElement("div");e.style.cssText=`position:fixed; inset:0; z-index:80; display:flex; align-items:center;
       justify-content:center; background:rgba(2,6,23,0.8); backdrop-filter:blur(4px);`,e.innerHTML=`
       <div style="width:min(1000px, calc(100vw - 40px)); height:min(700px, calc(100vh - 80px));
                   background:#0f172a; border:1px solid rgba(245,158,11,0.35); border-radius:20px;
@@ -30,7 +30,7 @@ const P=/^https?:\/\/\S+$/i;const E={sans:{label:"Clean",stack:"'Inter', ui-sans
           <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${t.replace(/</g,"&lt;")}</span>
           <span style="display:flex; gap:14px; flex-shrink:0; margin-left:16px;">
             <a href="${t.replace(/"/g,"&quot;")}" target="_blank" rel="noopener noreferrer"
-               style="color:#fbbf24; text-decoration:none;">Open in new tab ↗</a>
+               style="color:var(--color-primary); text-decoration:none;">Open in new tab ↗</a>
             <button data-close style="background:none; border:none; color:#e2e8f0; font-size:var(--text-lg); cursor:pointer;">✕</button>
           </span>
         </div>

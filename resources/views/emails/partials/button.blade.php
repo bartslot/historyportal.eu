@@ -20,7 +20,7 @@
         <td align="center">
             <!--[if mso]>
             <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word"
-                         href="{{ $url }}" arcsize="50%" stroke="f" fillcolor="#fbbf24"
+                         href="{{ $url }}" arcsize="50%" stroke="f" fillcolor="#f59e0b"
                          style="height: 44px; width: {{ $msoWidth }}px; v-text-anchor: middle;">
                 <w:anchorlock/>
                 <center style="color: #0f172a; font-family: Helvetica, Arial, sans-serif; font-size: 15px; font-weight: bold;">{{ $label }}</center>
@@ -29,7 +29,7 @@
             <!--[if !mso]><!-- -->
             <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                 <tr>
-                    <td align="center" bgcolor="#fbbf24" style="background-color: #fbbf24; border-radius: 999px;">
+                    <td align="center" bgcolor="#f59e0b" style="background-color: #f59e0b; border-radius: 999px;">
                         <a href="{{ $url }}" target="_blank" rel="noopener" style="display: inline-block; padding: 13px 30px; font-family: Helvetica, Arial, sans-serif; font-size: 15px; font-weight: bold; line-height: 1.2; color: #0f172a; text-decoration: none; border-radius: 999px;">{{ $label }}</a>
                     </td>
                 </tr>

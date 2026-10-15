@@ -735,7 +735,7 @@ export class TextOverlayLayer {
       chip.textContent = `🔗 ${label}`
       chip.style.cssText = `display:inline-flex; align-items:center; gap:8px; padding:8px 16px;
         border-radius:999px; border:1px solid rgba(245,158,11,0.5); background:rgba(2,6,23,0.7);
-        color:#fbbf24; font-size:var(--text-base); font-weight:600; cursor:pointer;`
+        color:var(--color-primary); font-size:var(--text-base); font-weight:600; cursor:pointer;`
       chip.addEventListener('click', () => this._openLinkModal(url))
       node.appendChild(chip)
     } else {
@@ -759,7 +759,7 @@ export class TextOverlayLayer {
           <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${url.replace(/</g, '&lt;')}</span>
           <span style="display:flex; gap:14px; flex-shrink:0; margin-left:16px;">
             <a href="${url.replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer"
-               style="color:#fbbf24; text-decoration:none;">Open in new tab ↗</a>
+               style="color:var(--color-primary); text-decoration:none;">Open in new tab ↗</a>
             <button data-close style="background:none; border:none; color:#e2e8f0; font-size:var(--text-lg); cursor:pointer;">✕</button>
           </span>
         </div>

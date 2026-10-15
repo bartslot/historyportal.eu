@@ -41,23 +41,25 @@
     --color-base-content:     oklch(98% 0.004 264);  /* #f8fafc slate-50  — primary text */
 
     /* ── THE AMBER ────────────────────────────────────────────────────────────────────────────
-       ONE amber, and it is amber-300. The app had four in circulation — 300, 400, 500 and 600 —
+       ONE amber, and it is amber-500. The app had four in circulation — 300, 400, 500 and 600 —
        and nineteen buttons reached for a different one of them for the same primary action, so
        "the amber" was whatever the last person had open. Bart settled it: "make it the standard
        for all Ambers. Amber is used too much."
 
-       The value is Tailwind's own `--color-amber-300`, character for character, on purpose: a
-       button converted to `btn-primary` and a not-yet-converted `bg-amber-300` next to it must
-       not differ by a hair, or the sweep looks like a bug while it is half done.
+       It was amber-300 until 2026-10-15, when Bart saw it on the quiz card's Submit button:
+       "Amber is our color not that ugly yellow". amber-300 is a pale lemon; amber-500 is the
+       brand guide's primary accent (#f59e0b). The value is Tailwind's own `--color-amber-500`,
+       character for character. Nothing else in the codebase types an amber in by hand
+       (resources/js/__tests__/brand-amber.test.js holds that), so this line is the whole switch.
 
        --color-warning is the one amber deliberately left alone; see the note there. */
-    --color-primary:          oklch(87.9% 0.169 91.605);  /* amber-300 */
+    --color-primary:          oklch(76.9% 0.188 70.08);  /* amber-500 #f59e0b */
     --color-primary-content:  oklch(9% 0.022 264);        /* slate-950 — text on amber */
 
     /* Secondary is the SAME amber. It was amber-600, which made it a second brand amber for the
        seven places that use it; there is no role here that primary does not already fill. Kept as
        a name rather than deleted so its call sites can move to `primary` on their own schedule. */
-    --color-secondary:        oklch(87.9% 0.169 91.605);  /* amber-300 */
+    --color-secondary:        oklch(76.9% 0.188 70.08);  /* amber-500 */
     --color-secondary-content: oklch(9% 0.022 264);
 
     /* Accent — sky blue (portal / AI magic) */
@@ -73,7 +75,7 @@
     --color-info-content:     oklch(9% 0.022 264);
     --color-success:          oklch(73% 0.165 148);  /* emerald-400 */
     --color-success-content:  oklch(9% 0.022 264);
-    --color-link:             oklch(87.9% 0.169 91.605);  /* amber-300 — the brand amber */
+    --color-link:             oklch(76.9% 0.188 70.08);  /* amber-500, the brand amber */
 
     /* WARNING STAYS AMBER-400, and that is not an oversight. It is the only amber in the theme
        doing semantic work rather than brand work: the lesson report grades every question on an
@@ -97,9 +99,10 @@
     /* Border */
     --border: 1px;
 
-    /* Depth + noise (film-grain effect built into daisyUI v5) */
+    /* Depth + noise. Noise is daisyUI's SVG film grain painted on every button; on a ghost
+       button's hover it read as "weird artifacts" across the pill (Bart 2026-10-15). Flat. */
     --depth: 1;
-    --noise: 0.04;
+    --noise: 0;
 }
 
 /* ─── Easing, by intent ──────────────────────────────────────────────────
@@ -543,8 +546,8 @@
         box-shadow: 0 4px 24px rgba(0,0,0,0.55), 0 1px 4px rgba(0,0,0,0.35);
     }
     .card:hover {
-        border-color: rgba(252,211,77,0.28);
-        box-shadow: 0 4px 24px rgba(0,0,0,0.55), 0 0 32px rgba(252,211,77,0.18);
+        border-color: color-mix(in oklab, var(--color-primary) 28%, transparent);
+        box-shadow: 0 4px 24px rgba(0,0,0,0.55), 0 0 32px color-mix(in oklab, var(--color-primary) 18%, transparent);
     }
 
     /* The .btn-primary and .btn-ghost overrides that used to sit here — an amber gradient, an
@@ -559,8 +562,8 @@
 
     /* Badge / label — Netflix-style category chip */
     .badge-primary {
-        background: rgba(252,211,77,0.12);
-        border: 1px solid rgba(252,211,77,0.28);
+        background: color-mix(in oklab, var(--color-primary) 12%, transparent);
+        border: 1px solid color-mix(in oklab, var(--color-primary) 28%, transparent);
         color: var(--color-link);
         font-size: 0.68rem;
         font-weight: 500;
@@ -613,8 +616,8 @@
     }
 
     .input:focus, .select:focus, .textarea:focus {
-        border-color: rgba(252,211,77,0.55);
-        box-shadow: 0 0 0 2px rgba(252,211,77,0.18);
+        border-color: color-mix(in oklab, var(--color-primary) 55%, transparent);
+        box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-primary) 18%, transparent);
         outline: none;
     }
 
@@ -635,11 +638,11 @@
 
     /* Progress: amber fill with glow */
     .progress::-webkit-progress-value {
-        background: linear-gradient(90deg, #fcd34d, var(--color-link));
-        box-shadow: 0 0 8px rgba(252,211,77,0.5);
+        background: linear-gradient(90deg, var(--color-primary), var(--color-link));
+        box-shadow: 0 0 8px color-mix(in oklab, var(--color-primary) 50%, transparent);
     }
     .progress::-moz-progress-bar {
-        background: linear-gradient(90deg, #fcd34d, var(--color-link));
+        background: linear-gradient(90deg, var(--color-primary), var(--color-link));
     }
     .tabs {
         @apply border-b border-slate-700 px-2;
@@ -657,7 +660,7 @@
     /* Alert overrides */
     .alert-info    { background: rgba(56,189,248,0.10); border-color: rgba(56,189,248,0.25); }
     .alert-success { background: rgba(52,211,153,0.10); border-color: rgba(52,211,153,0.25); }
-    .alert-warning { background: rgba(252,211,77,0.10); border-color: rgba(252,211,77,0.30); }
+    .alert-warning { background: color-mix(in oklab, var(--color-primary) 10%, transparent); border-color: color-mix(in oklab, var(--color-primary) 30%, transparent); }
     .alert-error   { background: rgba(239,68,68,0.10);  border-color: rgba(239,68,68,0.25); }
 
     /* Chat bubble size adjustment for tighter bubbles */
@@ -827,7 +830,7 @@
 }
 
 .lp-text-shimmer {
-    background: linear-gradient(90deg, #fde68a 0%, #fcd34d 40%, #fde68a 80%);
+    background: linear-gradient(90deg, #fde68a 0%, var(--color-primary) 40%, #fde68a 80%);
     background-size: 200% auto;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -853,6 +856,12 @@
    the deck never covers a game's own buttons. Unlayered: it must beat the overlay's inset-0. */
 #lesson-game-overlay:has(> *) {
     bottom: var(--lp-deck-reserve, 0px);
+}
+/* ...unless the game owns the stage (a quiz or team game card): then the deck is hidden, and the
+   reserve was only a band of bare stage between the card's scrim and the screen edge (Bart
+   2026-10-15: "Play bar leaves a gap between the overlay, that part should hide"). */
+#lesson-stage[data-overlay-owns="true"] #lesson-game-overlay:has(> *) {
+    bottom: 0;
 }
 
 /* The same paper as a flat sheet that carries CONTENT on the class screen (the cargo results):
