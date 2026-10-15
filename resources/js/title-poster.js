@@ -125,6 +125,21 @@ export function groupRuns (layers) {
   return runs
 }
 
+// The episode line's font-size at most this share of the letters' height: its cap height about 1/4.5 of theirs.
+export const EPISODE_SHARE = 0.31
+
+/**
+ * Pure: the episode line's (the live subtitle's) font-size in cqw: the poster's own size, but
+ * never more than EPISODE_SHARE of the dropped letters' median height, so the series reads first.
+ */
+export function episodeSize (poster) {
+  const own = poster?.subtitle?.size ?? 0
+  const hs = (poster?.layers ?? []).filter(l => l.enter === 'drop').map(l => l.box.h).sort((a, b) => a - b)
+  if (!hs.length || !poster.frame?.w) return own
+  const capCqw = hs[Math.floor(hs.length / 2)] / 100 * poster.frame.h / poster.frame.w * 100
+  return Math.round(Math.min(own, EPISODE_SHARE * capCqw) * 1000) / 1000
+}
+
 /** Pure: frame px (the Figma frame) to container-width units of the poster stage. */
 export const frameCqw = (px, poster) => `${Math.round(px / poster.frame.w * 100 * 10000) / 10000}cqw`
 

@@ -1,33 +1,25 @@
 @props(['lesson', 'translations'])
 
-{{-- Language switch — sits in the title screen's bottom-right cluster beside the join QR
-     (the player positions it), opening upward. Only shown when this lesson has playable
-     siblings in another language (Lesson::translations()). Switches the LESSON's language by
-     opening the sibling's own player page; it never touches the interface locale. --}}
+{{-- The lesson's language on the title screen's bottom rail, next to Start: a native select (the
+     phone's own picker, a screen reader's own control), each language in its own name. Text only
+     and one fixed width (--title-lang-w, app.css), so the rail never shifts when it changes.
+     Choosing one opens that sibling's own player page (Lesson::translations()); it never touches
+     the interface locale. Hidden when the lesson has only one language: a dead control is noise. --}}
 @if($translations->isNotEmpty())
-    {{-- min-h-11/min-w-11 (44px) keeps the tap target legal at 375px width, where the
-         name is dropped for the bare code (flag + "IT") so it never runs into the
-         Start button on the left. --}}
-    <div {{ $attributes->merge(["class" => "dropdown dropdown-top dropdown-end"]) }}>
-        <div tabindex="0" role="button"
-             class="btn btn-ghost min-h-11 h-11 min-w-11 gap-2 border-none bg-black/40 px-3 text-white/80 backdrop-blur hover:bg-black/60 hover:text-white"
-             data-tooltip="{{ __('Lesson language') }}">
-            <x-dynamic-component :component="'flags.'.\App\Support\Locales::flag($lesson->language)" class="block h-4 w-6 rounded-[2px]" />
-            <span lang="{{ $lesson->language }}" class="text-xs font-semibold uppercase tracking-wide sm:hidden">{{ $lesson->language }}</span>
-            <span lang="{{ $lesson->language }}" class="hidden text-xs font-semibold uppercase tracking-wide sm:inline">{{ \App\Support\Locales::name($lesson->language) }}</span>
-        </div>
-        <ul tabindex="0" class="menu dropdown-content z-20 mb-2 w-48 rounded-box bg-base-200/95 p-2 shadow-lg backdrop-blur">
-            <li class="menu-title">{{ __('Lesson language') }}</li>
-            @foreach($translations as $sibling)
-                <li>
-                    <a href="{{ route('lesson.play', ['lessonCode' => $sibling->lesson_code]) }}"
-                       class="min-h-11"
-                       data-tooltip="{{ \App\Support\Locales::name($sibling->language) }}">
-                        <x-dynamic-component :component="'flags.'.\App\Support\Locales::flag($sibling->language)" class="block h-4 w-6 rounded-[2px]" />
-                        <span lang="{{ $sibling->language }}">{{ \App\Support\Locales::name($sibling->language) }}</span>
-                    </a>
-                </li>
+    @php
+        $options = collect([$lesson])->concat($translations)
+            ->map(fn ($l) => ['code' => $l->language, 'url' => route('lesson.play', ['lessonCode' => $l->lesson_code]), 'current' => $l->is($lesson)])
+            ->sortBy(fn ($o) => \App\Support\Locales::name($o['code']))
+            ->values();
+    @endphp
+    <div {{ $attributes->merge(['class' => 'title-lang relative shrink-0']) }}>
+        <label for="title-lang-select" class="sr-only">{{ __('Language') }}</label>
+        <select id="title-lang-select" onchange="window.location.href = this.value"
+                class="title-pill block w-full cursor-pointer appearance-none truncate rounded-full border border-white/25 bg-black/20 pl-4 pr-9 text-sm sm:pl-5 sm:pr-10 font-semibold text-white transition-colors hover:border-white/80 focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+            @foreach ($options as $option)
+                <option value="{{ $option['url'] }}" lang="{{ $option['code'] }}" class="text-brand-ink" @selected($option['current'])>{{ \App\Support\Locales::name($option['code']) }}</option>
             @endforeach
-        </ul>
+        </select>
+        <svg class="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/80" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>
     </div>
 @endif

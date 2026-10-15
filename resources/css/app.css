@@ -2004,5 +2004,43 @@ html[data-inspector-w] aside[data-resizable-drawer] {
    Its loops rest while the tab is hidden. */
 .title-poster { container-type: inline-size; }
 .title-poster.is-paused, .title-poster.is-paused * { animation-play-state: paused !important; }
-/* The meta row over the poster's flat colour: the poster's own white, not the dark scrim's grey. */
-.title-poster-meta, .title-poster-meta * { color: rgb(255 255 255 / 0.85) !important; }
+
+/* ─── The title screen's frame (player.blade.php): one gutter on every side, one pill height,
+   one language width. Every piece of chrome aligns to these; nothing has its own margin. */
+:root {
+  --title-gutter: clamp(24px, 4vw, 64px);
+  --title-pill-h: 3rem;
+  --title-lang-w: 10rem;      /* the longest endonym on offer ("Nederlands") + the caret */
+}
+@media (max-width: 639.98px) {
+  :root { --title-gutter: 16px; --title-lang-w: 8.25rem; }
+}
+.title-screen { scrollbar-width: none; }
+.title-screen::-webkit-scrollbar { display: none; }
+.title-gutter-x { padding-inline: var(--title-gutter); }
+.title-pad-top { padding-top: calc(var(--title-gutter) + 4rem); }
+.title-pad-bottom { padding-bottom: calc(var(--title-gutter) + var(--title-pill-h) + 5rem); }
+.title-pill { height: var(--title-pill-h); }
+.title-lang { width: var(--title-lang-w); }
+.title-episode { font-size: clamp(1rem, 1.7vw, 1.75rem); line-height: 1.25; }
+.title-logo { left: var(--title-gutter); top: calc(var(--title-gutter) + 4rem); width: clamp(16rem, 40vw, 40rem); }
+
+/* The bottom rail: every piece's bottom on the bottom gutter. It fades in once the lettering has
+   landed (title-poster.js ENTRANCE), opacity only. */
+.title-rail {
+  position: absolute;
+  left: var(--title-gutter);
+  right: var(--title-gutter);
+  bottom: var(--title-gutter);
+  animation: title-rail-in 200ms var(--ease-enter) 800ms both;
+}
+@keyframes title-rail-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .title-rail { animation: none; } }
+/* The way down to "About this lesson" sits after the language, in the left group, clear of the
+   artwork's middle; the join code takes the right end. */
+.title-rail [data-title-qr], .title-rail [data-title-code] { margin-left: auto; }
+/* One flat scrim behind the rail over a painting: content contrast, no blur. */
+.title-rail-scrim {
+  height: calc(var(--title-pill-h) + 2 * var(--title-gutter) + 4rem);
+  background: linear-gradient(to top, rgb(0 0 0 / 0.5), transparent);
+}

@@ -303,20 +303,6 @@
     overflow: hidden;
   }
 
-  /* Icon-only badges: the title screen ran out of room (resources/js/title-fit.js). The label
-     stays for screen readers; the icon sits in the middle of a smaller square. */
-  .lp-type-badges--compact .lp-type-badge { width: 2.75rem !important; }   /* over the w-16/20/24 utilities */
-  .lp-type-badges--compact .lp-type-badge > img { top: 50%; transform: translate(-50%, -50%); }
-  /* The badges turn the other way (a row into a column, a column into a row) where that leaves room. */
-  .lp-type-badges--flip { flex-direction: column !important; }
-  .lp-type-badges--flip.flex-col { flex-direction: row !important; }
-  .lp-type-badges--compact .lp-type-badge > span {
-    clip-path: inset(50%);
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-  }
-
   .lp-type-badge > span {
     position: absolute;
     inset-inline: 0;

@@ -92,7 +92,7 @@
         </div>
     </div>
 
-    {{-- The join QR: Auto keeps it clear of faces, the letters and the screen's own elements. --}}
+    {{-- The join QR: always bottom right on the title screen (static), or hidden. --}}
     @php $qr = $lesson->qrPosition(); @endphp
     <div class="border-t border-slate-700/50 pt-4" data-qr-position="{{ $qr }}">
         <div class="flex items-center justify-between gap-3">
@@ -102,8 +102,8 @@
             @endif
         </div>
         <select id="title-qr-position" wire:change="setQrPosition($event.target.value)" class="select select-sm mt-2 w-full">
-            @foreach (['auto' => __('Auto'), 'bottom-right' => __('Bottom right'), 'top-right' => __('Top right'), 'bottom-left' => __('Bottom left'), 'top-left' => __('Top left'), 'hidden' => __('Hidden')] as $value => $label)
-                <option value="{{ $value }}" @selected($qr === $value)>{{ $label }}</option>
+            @foreach (['auto' => __('Bottom right'), 'hidden' => __('Hidden')] as $value => $label)
+                <option value="{{ $value }}" @selected($value === 'hidden' ? $qr === 'hidden' : $qr !== 'hidden')>{{ $label }}</option>
             @endforeach
         </select>
     </div>
