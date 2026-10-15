@@ -29,7 +29,8 @@
         $label = 'text-xs font-semibold uppercase tracking-wider';
     @endphp
 
-    <main class="bg-base-100 text-base-content">
+    {{-- relative: the layout's fixed atmosphere layers would otherwise paint over (and dim) the page --}}
+    <main class="relative bg-base-100 text-base-content">
         <div class="mx-auto w-full max-w-xl px-5 pb-16 pt-32 md:max-w-5xl md:px-10 lg:pt-40">
 
             {{-- ── Introduction ─────────────────────────────────────────────── --}}
@@ -196,7 +197,7 @@
             <div class="flex justify-center" aria-hidden="true"><span class="h-10 w-0.5 bg-accent/70"></span></div>
 
             {{-- ── Learning outcome ─────────────────────────────────────────── --}}
-            <section data-reveal-section class="rounded-box bg-base-content p-6 text-base-100 md:flex md:items-center md:gap-7 md:px-10 md:py-8">
+            <section data-reveal-section class="rounded-box bg-selected p-6 text-base-100 md:flex md:items-center md:gap-7 md:px-10 md:py-8">
                 <span data-reveal="cta" class="grid size-14 shrink-0 place-items-center rounded-full bg-base-100 text-base-content md:size-16">
                     <x-icons.arrow-path class="h-7 w-7" />
                 </span>
