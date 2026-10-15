@@ -164,7 +164,7 @@ export const nearlyFull = (load, capacity) => capacity > 0 && load >= capacity *
 
 /**
  * The ship's box on a small stage zoomed in on its hull (the compare screen's ships): the hold
- * fills about 86% of the stage's width (or 46% of its height, whichever is less), centred, with
+ * fills about 94% of the stage's width (or 46% of its height, whichever is less), centred, with
  * the hull and the water under it in view.
  * @param {number} stageAspect  the stage's width / height
  * @returns {{x:number, y:number, h:number}}
@@ -176,12 +176,12 @@ export function zoomedPlace (hold, stageAspect = 1.6) {
   const top = Math.min(...hold.zones.map(z => z.y)) / 100
   const bottom = Math.max(...hold.zones.map(z => z.y + z.h)) / 100
   // h is the ship's height in % of the stage height; its width is h * aspect / stageAspect.
-  const byWidth = (0.86 * stageAspect) / (Math.max(0.05, right - left) * hold.aspect)
+  const byWidth = (0.94 * stageAspect) / (Math.max(0.05, right - left) * hold.aspect)
   const byHeight = 0.46 / Math.max(0.05, bottom - top)
   const h = Math.min(4, byWidth, byHeight) * 100
   const shipW = (h / 100) * hold.aspect / stageAspect
   const x = 50 - (((left + right) / 2) - 0.5) * shipW * 100
-  return { x: r2(x), y: r2(42 - ((top + bottom) / 2) * h + h), h: r2(h) }
+  return { x: r2(x), y: r2(46 - ((top + bottom) / 2) * h + h), h: r2(h) }
 }
 
 const reducedMotion = () => typeof window !== 'undefined' && typeof window.matchMedia === 'function'
@@ -223,8 +223,16 @@ export function createHoldStage ({
 
   // node: the ship's box (position + draught); body: the roll; img + the hold's cargo inside it.
   const node = el('div', 'absolute')
-  node.style.cssText = `height:${place.h}%; aspect-ratio:${hold.aspect}; left:${place.x}%; top:${r2(place.y - place.h)}%;
-    transform:translate(-50%, 0); transition:transform ${HOLD_MOTION.draughtMs}ms ${HOLD_MOTION.easeOut};`
+  node.style.cssText = `aspect-ratio:${hold.aspect}; transform:translate(-50%, 0); transition:transform ${HOLD_MOTION.draughtMs}ms ${HOLD_MOTION.easeOut};`
+  const put = (p) => Object.assign(node.style, { height: `${p.h}%`, left: `${p.x}%`, top: `${r2(p.y - p.h)}%` })
+  put(place)
+  // A zoomed stage follows its real shape (a phone is tall, a projector wide), so the hold fits.
+  if (zoomed && typeof ResizeObserver === 'function') {
+    new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect
+      if (width && height) put(zoomedPlace(hold, width / height))
+    }).observe(stage)
+  }
   const body = el('div', 'relative h-full w-full')
   const img = el('img', 'block h-full w-full select-none')
   img.src = hold.ship
@@ -267,7 +275,7 @@ export function createHoldStage ({
 
   const makePiece = (c, rect, main) => {
     const tappable = main && onPiece && !c.fixed
-    const piece = el(tappable ? 'button' : 'div', 'absolute flex items-center justify-center overflow-hidden rounded-sm p-[1%] text-base-content outline-offset-1')
+    const piece = el(tappable ? 'button' : 'div', 'absolute flex items-center justify-center overflow-hidden rounded-sm p-0.5 text-base-content outline-offset-1')
     piece.style.cssText = `left:${rect.x + 0.2}%; top:${rect.y + 0.4}%; width:${Math.max(0, rect.w - 0.4)}%; height:${Math.max(0, rect.h - 0.8)}%;`
     piece.dataset.cargo = c.key
     if (main) {

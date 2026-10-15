@@ -157,7 +157,10 @@ export class HoldScreens {
     this.ui = ui
 
     ui.band = el('div', `grid grid-cols-1 gap-2 ${bandColumns(store.count())}`)
-    body.appendChild(ui.band)
+    // The roles line once for the class when every team has the same; on a card only where it differs.
+    const lines = Array.from({ length: store.count() }, (_, i) => this.roleLine(i))
+    this.view.sharedRoles = lines.every(l => l === lines[0]) ? lines[0] : ''
+    append(body, this.view.sharedRoles ? el('p', 'text-sm text-base-content/80', this.view.sharedRoles) : null, ui.band)
 
     ui.weight = this._weight()
     ui.ready = el('span', 'badge badge-lg badge-outline tabular-nums')
@@ -166,7 +169,8 @@ export class HoldScreens {
 
     const wrap = el('div', 'relative')
     ui.stage = this._stage({
-      className: 'h-[clamp(200px,34vh,560px)] w-full rounded-box',
+      zoomed: true, stageAspect: 3.2,
+      className: 'h-[clamp(200px,31vh,560px)] w-full rounded-box',
       onPiece: (id) => this.toggle(id),
       pieceLabel: (c) => (c.fixed ? `${c.name}, ${t('Always on board')}` : t('Take out: :item', { item: c.name })),
     })
@@ -188,7 +192,7 @@ export class HoldScreens {
     const strip = el('div', 'grid gap-2')
     strip.style.gridTemplateColumns = 'repeat(auto-fit, minmax(4.5rem, 1fr))'
     this.cat.optional.forEach(item => {
-      const card = el('button', 'card flex flex-col items-center gap-1 rounded-box border-2 p-1.5 lp-sheet transition-colors')
+      const card = el('button', 'flex flex-col items-center gap-1 rounded-box border-2 p-1.5 lp-sheet transition-colors')
       card.type = 'button'
       card.dataset.cargoCard = item.id
       card.dataset.tooltip = item.why ? `${item.name}: ${item.why}` : item.name
@@ -233,7 +237,7 @@ export class HoldScreens {
     const load = totalOf(state.selected, this.cat)
 
     ui.band.replaceChildren(...Array.from({ length: store.count() }, (_, i) => teamCard({
-      name: store.name(i), tone: store.tone(i), state: store.cargo(i), cat: this.cat, active: i === active, roles: this.roleLine(i),
+      name: store.name(i), tone: store.tone(i), state: store.cargo(i), cat: this.cat, active: i === active, roles: this.view.sharedRoles ? '' : this.roleLine(i),
       onSelect: this.game._solo ? null : () => { if (i !== store.active()) { store.setActive(i); this.game._warning = ''; this.view.confirming = false; this.refresh() } },
       onItem: (id) => { store.setActive(i); this.toggle(id) },
     })))

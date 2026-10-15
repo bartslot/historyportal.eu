@@ -387,7 +387,8 @@ export class TeamGame {
     const page = el('div', 'mx-auto flex min-h-full max-w-6xl flex-col gap-6 px-4 pb-32 pt-16 sm:px-8')
     const head = el('header', 'flex flex-wrap items-center justify-between gap-4 border-b border-base-300 pb-4')
     append(head, el('h2', 'text-3xl font-bold sm:text-4xl', this.cfg.title || t('Team game')), timed ? this._clock() : null)
-    const body = el('main', 'flex flex-1 flex-col gap-6')
+    // The cargo game is one projected screen per step: tighter, so the ship and the strip fit.
+    const body = el('main', `flex flex-1 flex-col ${this._isHold?.() ? 'gap-3' : 'gap-6'}`)
     this[`_${this._phase}`](body)
     append(page, head, body)
     scrim.appendChild(page)

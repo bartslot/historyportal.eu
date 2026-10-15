@@ -96,7 +96,7 @@ describe('De lading on the class screen', () => {
     btn(host, 'Start').click()
     expect(host.querySelector('[data-role-prompt="fit"]').textContent).toContain('Number 1, Bootsman: does it still fit?')
     expect(host.querySelector('[data-role-prompt="ready"]').textContent).toContain('Number 4, Kapitein: are you ready?')
-    expect(host.querySelector('[data-team-card]').textContent).toContain('1 Bootsman · 2 Verkenner · 3 Stuurman · 4 Kapitein')
+    expect(host.textContent).toContain('1 Bootsman · 2 Verkenner · 3 Stuurman · 4 Kapitein')   // the same for every team: shown once
     btn(host, 'Next turn').click()
     expect(host.querySelector('[data-role-prompt="fit"]').textContent).toContain('Number 4, Bootsman')
   })

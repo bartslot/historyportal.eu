@@ -47,7 +47,7 @@ export function costDots (cost) {
   row.setAttribute('aria-hidden', 'true')
   if (cost > 5) { row.appendChild(el('span', 'badge badge-primary font-bold tabular-nums', cost)); return row }
   for (let i = 0; i < Math.max(3, cost); i++) {
-    row.appendChild(el('span', `h-2.5 w-2.5 rounded-full ${i < cost ? 'bg-success' : 'bg-base-content/20'}`))
+    row.appendChild(el('span', `h-2.5 w-2.5 rounded-full ${i < cost ? 'bg-success' : 'bg-neutral/25'}`))
   }
   return row
 }

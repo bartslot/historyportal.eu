@@ -22,15 +22,15 @@ const REAL_TONE = { head: 'bg-base-content text-base-100' }
  * "12/16"), its status in words and the cargo as a list for screen readers. Reused by the end-of-
  * lesson board later.
  */
-export function teamShip (screens, { name, tone, state, onTap = null, big = false }) {
+export function teamShip (screens, { name, tone, state, onTap = null, big = false, status = true }) {
   const { cat } = screens
   const load = totalOf(state.selected, cat)
   const fig = el(onTap ? 'button' : 'figure', 'flex min-w-0 flex-col gap-1 rounded-box border-2 border-transparent text-left')
   if (onTap) { fig.type = 'button'; fig.addEventListener('click', onTap) }
   fig.dataset.teamShip = name
   const stage = createHoldStage({
-    hold: screens.game.cfg.hold, catalogue: slotItems(cat), zoomed: true, stageAspect: big ? 1.5 : 1.9, quiet: true,
-    className: `w-full rounded-box ${big ? 'aspect-[3/2]' : 'aspect-[19/10]'}`,
+    hold: screens.game.cfg.hold, catalogue: slotItems(cat), zoomed: true, stageAspect: big ? 2 : 2.5, quiet: true,
+    className: `w-full rounded-box ${big ? 'aspect-[2/1]' : 'aspect-[5/2]'}`,
   })
   stage.update({ key: name, cargo: shipCargo(state, cat), capacity: cat.budget, load })
   const label = el('span', `flex items-center gap-2 self-start rounded-full px-3 py-1 ${tone.head}`)
@@ -38,9 +38,9 @@ export function teamShip (screens, { name, tone, state, onTap = null, big = fals
   ship.innerHTML = SHIP_ICON
   append(label, ship, el('span', 'break-words font-semibold', name), el('span', 'font-bold tabular-nums', `${load}/${cat.budget}`))
   const cap = el('span', 'flex flex-wrap items-center gap-2')
-  append(cap, label, el('span', 'text-sm text-base-content/70', statusText(state)))
+  append(cap, label, status ? el('span', 'text-sm text-base-content/70', statusText(state)) : null)
   append(fig, stage.el, cap, cargoList(state, cat))
-  fig.setAttribute('aria-label', `${name}, ${load}/${cat.budget}, ${statusText(state)}`)
+  fig.setAttribute('aria-label', status ? `${name}, ${load}/${cat.budget}, ${statusText(state)}` : `${name}, ${load}/${cat.budget}`)
   return { el: fig, stage }
 }
 
@@ -95,11 +95,11 @@ export function compareScreen (screens, body) {
       if (view.pair.includes(i)) ship.el.classList.replace('border-transparent', 'border-primary')
       grid.appendChild(ship.el)
     })
-    area.appendChild(grid)
     if (view.real) {
       const real = { selected: [...cat.fixedIds, ...cat.optional.filter(it => it.real).map(it => it.id)], confirmed: true }
-      area.appendChild(teamShip(screens, { name: t('The real cargo'), tone: REAL_TONE, state: real }).el)
+      grid.appendChild(teamShip(screens, { name: t('The real cargo'), tone: REAL_TONE, state: real, status: false }).el)
     }
+    area.appendChild(grid)
     if (pages.length > 1) {
       const nav = el('div', 'join self-start')
       pages.forEach((_, p) => {
@@ -128,7 +128,7 @@ export function compareScreen (screens, body) {
     })
     prompt.appendChild(row)
   }
-  if (game.cfg.followup) prompt.appendChild(el('p', 'text-base text-base-content/70', game.cfg.followup))
+  if (game.cfg.followup) prompt.appendChild(el('p', 'text-base opacity-70', game.cfg.followup))
   body.appendChild(prompt)
 
   const hasReal = cat.optional.some(it => it.real)
@@ -165,7 +165,7 @@ export function exchangeScreen (screens, body) {
   const i = Math.min(view.team, store.count() - 1)
   const state = store.cargo(i)
   const stage = createHoldStage({
-    hold: game.cfg.hold, catalogue: slotItems(cat), className: 'h-[clamp(200px,36vh,520px)] w-full rounded-box',
+    hold: game.cfg.hold, catalogue: slotItems(cat), zoomed: true, stageAspect: 3.2, className: 'h-[clamp(220px,38vh,560px)] w-full rounded-box',
     onPiece: state.exchange.state === 'open' && state.confirmed ? (id) => { view.out = view.out === id ? null : id; game._render() } : null,
     pieceLabel: (c) => (c.fixed ? `${c.name}, ${t('Always on board')}` : t('Swap out: :item', { item: c.name })),
   })
@@ -191,7 +191,7 @@ export function exchangeScreen (screens, body) {
     const strip = el('div', 'grid gap-2')
     strip.style.gridTemplateColumns = 'repeat(auto-fit, minmax(4.5rem, 1fr))'
     cat.optional.filter(it => !state.selected.includes(it.id)).forEach(it => {
-      const card = el('button', `card flex flex-col items-center gap-1 rounded-box border-2 p-1.5 lp-sheet ${view.into === it.id ? 'border-primary' : 'border-transparent'}`)
+      const card = el('button', `flex flex-col items-center gap-1 rounded-box border-2 p-1.5 lp-sheet ${view.into === it.id ? 'border-primary' : 'border-transparent'}`)
       card.type = 'button'
       card.dataset.swapIn = it.id
       card.dataset.tooltip = it.name
