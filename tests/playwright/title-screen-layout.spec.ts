@@ -17,7 +17,7 @@ import fs from 'node:fs';
  */
 const CODE = process.env.TITLE_LESSON_CODE;
 const PROOF = process.env.TITLE_PROOF_DIR;
-const CANDIDATES = (process.env.TITLE_CANDIDATES ?? 'poster,cover,banner,logo,plain').split(',');
+const CANDIDATES = (process.env.TITLE_CANDIDATES ?? 'poster,cover,banner,logo,letters,plain').split(',');
 const VIEWS = (process.env.TITLE_VIEWS ?? 'teacher,student').split(',');
 // The class screens: laptops, the two common projectors (1024x768, 1280x720), small windows, a phone.
 const ALL_SIZES: Array<[number, number]> = [[1440, 900], [1280, 800], [1280, 720], [1024, 768], [1024, 600], [960, 600], [800, 560], [375, 812]];
