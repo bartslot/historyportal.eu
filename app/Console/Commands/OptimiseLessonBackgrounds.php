@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Models\Lesson;
 use App\Models\Scene;
 use App\Services\BackgroundImageOptimizer;
 use Illuminate\Console\Command;
@@ -124,6 +125,9 @@ class OptimiseLessonBackgrounds extends Command
 
             $disk->put($newPath, $result['bytes']);
             $scene->update(['image_path' => $newPath]);
+            // A lesson poster picked from this scene stores the same path. Left alone it names the
+            // file just moved away, and the library card 404s (lessons 18–21, 64 on 2026-10-13).
+            Lesson::where('poster_image', $path)->update(['poster_image' => $newPath]);
         }
 
         $this->newLine();

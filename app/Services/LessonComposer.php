@@ -15,6 +15,7 @@ use App\Services\Lessons\SceneDialogue;
 use App\Services\Lessons\TeamGameSpec;
 use App\Services\Support\AudioEncoder;
 use App\Services\Support\ShotCamera;
+use App\Support\TitlePoster;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
@@ -156,6 +157,36 @@ class LessonComposer
                 throw new \InvalidArgumentException("Spec names narrator '{$spec['avatar']}', which does not exist.");
             }
             $lesson->avatar_id = $narrator->id;
+        }
+
+        // The title screen style (a comic candidate's folder, 'logo' or 'plain'), only when the spec
+        // says: a spec that does not leave the teacher's choice alone, and null there means the default.
+        if (array_key_exists('title_style', $spec)) {
+            $style = TitlePoster::key($spec['title_style'] === null ? null : (string) $spec['title_style']);
+            if ($spec['title_style'] !== null && $style === null) {
+                throw new \InvalidArgumentException("Spec title_style '{$spec['title_style']}' is not a candidate name (lowercase letters, digits, dashes), 'logo' or 'plain'.");
+            }
+            $lesson->title_style = $style;
+        }
+        if (array_key_exists('show_lesson_types', $spec)) {
+            $lesson->show_lesson_types = (bool) $spec['show_lesson_types'];
+        }
+        // The join QR's place: auto (null), a corner, or hidden (show_qr off). Same rule: only when said.
+        if (array_key_exists('qr_position', $spec)) {
+            $qr = $spec['qr_position'] ?? 'auto';
+            if (! in_array($qr, ['auto', 'hidden', ...TitlePoster::QR_CORNERS], true)) {
+                throw new \InvalidArgumentException("Spec qr_position '{$qr}' must be auto, hidden or one of: ".implode(', ', TitlePoster::QR_CORNERS).'.');
+            }
+            $lesson->show_qr = $qr !== 'hidden';
+            $lesson->qr_position = in_array($qr, TitlePoster::QR_CORNERS, true) ? $qr : null;
+        }
+        // "What you can expect": 1-3 short lines on the title screen, kept as the default too (the editor's Reset).
+        if (array_key_exists('expect', $spec)) {
+            $lesson->expect = $lesson->expect_default = Lesson::cleanExpect($spec['expect']);
+        }
+        // Boxes over a logo/plain title picture the join QR keeps clear of (% of the picture).
+        if (array_key_exists('title_keep_clear', $spec)) {
+            $lesson->title_keep_clear = TitlePoster::keepClear($spec['title_keep_clear']) ?: null;
         }
 
         if (! empty($spec['game_config'])) {

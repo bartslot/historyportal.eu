@@ -8,7 +8,9 @@ use App\Enums\LessonStatus;
 use App\Enums\NarrativeFramework;
 use App\Enums\TitlePosition;
 use App\Models\Concerns\BelongsToTeacher;
+use App\Support\LessonTypes;
 use App\Support\MediaUrl;
+use App\Support\TitlePoster;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -22,6 +24,11 @@ use Illuminate\Support\Str;
 class Lesson extends Model
 {
     use BelongsToTeacher, HasFactory, SoftDeletes;
+
+    /** "What you can expect" on the title screen: at most this many lines, each at most this long. */
+    public const EXPECT_MAX_LINES = 3;
+
+    public const EXPECT_MAX_CHARS = 60;
 
     protected $fillable = [
         'teacher_id',
@@ -51,6 +58,12 @@ class Lesson extends Model
         'title_image',
         'title_position',
         'show_qr',
+        'qr_position',
+        'expect',
+        'expect_default',
+        'title_keep_clear',
+        'title_style',
+        'show_lesson_types',
         'poster_image',
         'subject',
         'grade_level',
@@ -165,6 +178,10 @@ class Lesson extends Model
             'background_music' => 'boolean',
             'title_position' => TitlePosition::class,
             'show_qr' => 'boolean',
+            'expect' => 'array',
+            'expect_default' => 'array',
+            'title_keep_clear' => 'array',
+            'show_lesson_types' => 'boolean',
         ];
     }
 
@@ -494,7 +511,99 @@ class Lesson extends Model
         return file_exists(public_path("flags/{$qid}.png")) ? asset("flags/{$qid}.png") : null;
     }
 
-    /** Wikipedia lead image used as the lesson title-screen background (catalog lessons). */
+    /** The series wordmark (public/lesson-logos/{translation_group}.svg), when there is one. */
+    public function titleLogoUrl(): ?string
+    {
+        $group = (string) $this->translation_group;
+
+        return $group !== '' && preg_match('/^[a-z0-9][a-z0-9-]*$/', $group) && is_file(public_path("lesson-logos/{$group}.svg"))
+            ? asset("lesson-logos/{$group}.svg")
+            : null;
+    }
+
+    /**
+     * The title styles this lesson can show, in the picker's order: the series' comic candidates
+     * (public/lesson-titles/{group}/{candidate}/, by their `order`), then the logo when the series
+     * has one, then the plain title, which always works. The first is the default.
+     *
+     * @return list<array{key: string, label: string, thumb_url: ?string}>
+     */
+    public function titleChoices(): array
+    {
+        $choices = array_map(
+            fn (array $c): array => ['key' => $c['key'], 'label' => $c['label'], 'thumb_url' => $c['thumb_url']],
+            TitlePoster::candidates($this->translation_group),
+        );
+        $logo = $this->titleLogoUrl();
+        if ($logo !== null) {
+            $choices[] = ['key' => TitlePoster::LOGO, 'label' => __('Logo'), 'thumb_url' => $logo];
+        }
+        $choices[] = ['key' => TitlePoster::PLAIN, 'label' => __('Plain title'), 'thumb_url' => $this->titleBgUrl()];
+
+        return $choices;
+    }
+
+    /**
+     * The poster the title screen draws (a comic candidate), or null for the logo and plain styles.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function titlePoster(): ?array
+    {
+        $style = $this->titleStyle();
+
+        return in_array($style, [TitlePoster::LOGO, TitlePoster::PLAIN], true) ? null : TitlePoster::for($this->translation_group, $style);
+    }
+
+    /** The style the title screen shows: the teacher's choice while the series has it, else the first. */
+    public function titleStyle(): string
+    {
+        $keys = array_column($this->titleChoices(), 'key');
+        $chosen = TitlePoster::key($this->title_style);
+
+        return in_array($chosen, $keys, true) ? $chosen : $keys[0];
+    }
+
+    /**
+     * The lesson-type badges the title screen shows (LessonTypes), none when the teacher hid them.
+     *
+     * @return list<string>
+     */
+    public function titleBadges(): array
+    {
+        return ($this->show_lesson_types ?? true) ? LessonTypes::of($this) : [];
+    }
+
+    /** Where the title screen's join QR stands: auto (placed clear of faces and elements), a corner, or hidden. */
+    public function qrPosition(): string
+    {
+        if (! ($this->show_qr ?? true)) {
+            return 'hidden';
+        }
+
+        return in_array($this->qr_position, TitlePoster::QR_CORNERS, true) ? $this->qr_position : 'auto';
+    }
+
+    /**
+     * "What you can expect" lines for the title screen: 1-3 short lines, trimmed, empties dropped.
+     * Null when there are none (then nothing is drawn).
+     *
+     * @return list<string>|null
+     */
+    public static function cleanExpect(mixed $lines): ?array
+    {
+        $out = [];
+        foreach (is_array($lines) ? $lines : [] as $line) {
+            $line = is_string($line) ? trim((string) preg_replace('/\s+/u', ' ', $line)) : '';
+            if ($line !== '') {
+                $out[] = mb_substr($line, 0, self::EXPECT_MAX_CHARS);
+            }
+        }
+        $out = array_slice($out, 0, self::EXPECT_MAX_LINES);
+
+        return $out === [] ? null : $out;
+    }
+
     /** The title screen's picture: the teacher's choice, else the automatic lead image. */
     public function titleBgUrl(): ?string
     {
@@ -830,6 +939,15 @@ class Lesson extends Model
     public function hasSlideshowImages(): bool
     {
         return ! empty($this->slideshow_images);
+    }
+
+    /**
+     * Whether any scene speaks in balloons (config.lines, drawn by BalloonLayer.js): the player
+     * preloads the balloon font only then.
+     */
+    public function hasBalloons(): bool
+    {
+        return $this->scenes->contains(fn (Scene $scene) => ! empty($scene->config['lines'] ?? null));
     }
 
     // ── Status helpers ───────────────────────────────────────────────────────

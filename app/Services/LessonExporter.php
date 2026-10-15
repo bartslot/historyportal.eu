@@ -86,6 +86,22 @@ class LessonExporter
             $spec['translation_group'] = (string) $lesson->translation_group;
         }
 
+        if ($lesson->title_style !== null) {
+            $spec['title_style'] = (string) $lesson->title_style;
+        }
+        if ($lesson->show_lesson_types === false) {
+            $spec['show_lesson_types'] = false;
+        }
+        if ($lesson->qrPosition() !== 'auto') {
+            $spec['qr_position'] = $lesson->qrPosition();
+        }
+        if ($lesson->expect) {
+            $spec['expect'] = array_values($lesson->expect);
+        }
+        if ($lesson->title_keep_clear) {
+            $spec['title_keep_clear'] = $lesson->title_keep_clear;
+        }
+
         $gameConfig = $this->withoutKeys((array) ($lesson->game_config ?? []), self::GAME_CONFIG_SCRATCH);
         if ($gameConfig !== []) {
             // The voyage CMS edits a per-lesson copy of the route here. Without it a rebuilt voyage

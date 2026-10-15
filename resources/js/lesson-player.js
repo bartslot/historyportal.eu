@@ -19,13 +19,15 @@ import { resolveAnchorTime, pickShotIndex } from './scene/shot-sync.js'
 import { buildChapters, canSeek, reachedFurther, chapterTooltip, formatClock, formatMinutes } from './scene/chapter-timeline.js'
 import { createTelemetry } from './lesson-telemetry.js'
 import { renderGallery } from './gallery-scene.js'
+import { stageAdvance, stageFloorMs } from './scene/stage-auto.js'
 import { isTopAnchored, normalizeFit, PORTRAIT_TOP_CSS } from './scene/background-fit.js'
 import { isClipartLayer } from './scene/layer-filters.js'
 import { fitToPlate, plateAspect } from './scene/plate-box.js'
 import { mountEmbedBg } from './scene/embed-bg.js'
 import { sameOriginMediaUrl } from './media-url.js'
 import { sceneTransitionFrames, easingBezier, EASINGS } from './scene/animations.js'
-import { readProgress, saveProgress, clearProgress, canResume } from './scene/progress-store.js'
+import { readProgress, saveProgress, clearProgress, canResume, safeStorage } from './scene/progress-store.js'
+import { crewText, readCrew, saveCrew, clearCrew, readBest, saveBest } from './scene/race.js'
 
 // Easing key → cubic-bezier, for the scene transition set in the wizard's Animate tab.
 // Player chrome idle timing (Bart 2026-10-14: "auto hide when the mouse doesn't move after 1
@@ -42,13 +44,19 @@ const BIG_TIMER_MS = 5000
 const BIG_TIMER_RED_FROM_SECS = 120
 const BIG_TIMER_DIGIT = (secs) =>
   `font-history text-[20vw] ${secs <= BIG_TIMER_RED_FROM_SECS ? 'text-error' : 'text-warning'}`
-import { buildCues, cueAt, lineCues } from './scene/captions.js'
+import { cueAt } from './scene/captions.js'
+import { translatedCues } from './scene/caption-menu.js'
+import { captionPanel } from './scene/caption-panel.js'
 import { createBackgroundMusic } from './scene/background-music.js'
 import { Sfx } from './scene/sfx.js'
 import { captionVisible } from './scene/SceneOverlay.js'
 import { gradientCss } from './scene/background-gradient.js'
 import { t } from './i18n.js'
 import { mountBigCountdown } from './big-countdown.js'
+import { mountTitlePoster as mountPoster, posterFit } from './title-poster.js'
+import { QR, qrOptions, layoutTitleQr, drawQrDebug, coverRect, frameRect, pictureSize } from './title-qr.js'
+import { placeExpectStrip, fitExpectLines } from './title-expect.js'
+import { FIT, FIT_START, collisions, nextFit, bandHeight, barShift, scaleBoxAbout, titlePieces } from './title-fit.js'
 
 /**
  * Where the drawing in an image starts and ends across, as fractions of its width ([0, 1] when it
@@ -250,8 +258,20 @@ Alpine.data('lessonGame', (lesson) => ({
     // the starting state per lesson; a student toggling it (C) is remembered for this browser,
     // because someone who needs captions needs them in every lesson, not just this one.
     captionsOn:        false,
+    // The title screen's join QR found no free spot (or is hidden, or this is a phone): the lesson
+    // code then stands in the meta row instead, so the code is always on screen.
+    titleCodeInMeta:   false,
+    // The expect lines would reach a drawn title's letters: they stand in the strip along the top instead.
+    expectInStrip:     false,
+    // How the title screen gave way so nothing overlaps (resources/js/title-fit.js); reset on a resize.
+    titleFit:          { ...FIT_START },
+    // The top row stands on the white expect strip: the logo turns dark and, on a slim strip, fits it.
+    titleChromeOnStrip: false,
+    titleLogoH:        0,
     captionText:       '',
     _cues:             [],
+    // The Audio & Subtitles panel and the subtitle language (scene/caption-panel.js).
+    ...captionPanel(lesson),
 
     // Chapters (Spotify-style bar + list): one per scene, quizzes and games included. See
     // scene/chapter-timeline.js. A student jumps back anywhere they have been, never past `furthest`.
@@ -262,6 +282,8 @@ Alpine.data('lessonGame', (lesson) => ({
     playSolo:          new URLSearchParams(window.location.search).get('play') === 'solo',
     resumable:         null,  // saved progress worth offering "continue" for, else null
     _done:             [],    // scene ids whose power-meter moment has played (never replayed)
+    // Who crews the Heemskerck and the Zeehaen after a harbour race, for this run only (race.js).
+    _crew:             readCrew(safeStorage('sessionStorage'), lesson.lesson_code),
     currentIsGame:     false, // current scene is a quiz/game → hide the chapter bar
     sceneProgress:     0,    // 0-1 through the current chapter's audio
     chaptersOpen:      false,
@@ -307,7 +329,7 @@ Alpine.data('lessonGame', (lesson) => ({
       // call site below can log unconditionally. See resources/js/lesson-telemetry.js.
       this._tel = createTelemetry(lesson.lesson_code)
       if (this.playSolo) {
-        const saved = readProgress(window.localStorage, lesson.lesson_code)
+        const saved = readProgress(safeStorage('localStorage'), lesson.lesson_code)
         this.resumable = canResume(saved) ? saved : null
       }
 
@@ -327,6 +349,7 @@ Alpine.data('lessonGame', (lesson) => ({
       // switch them back on in every lesson.
       const remembered = (() => { try { return localStorage.getItem('lp:captions') } catch (_) { return null } })()
       this.captionsOn = remembered === null ? !!lesson.subtitles : remembered === '1'
+      this._initCaptionLanguage()
 
       // The quiz's right-answer chime obeys the deck from the first question, and is fetched now
       // so the first correct answer isn't waiting on a download.
@@ -464,10 +487,13 @@ Alpine.data('lessonGame', (lesson) => ({
     _renderQr () {
       // A pupil who scans this plays the lesson themselves, on their own device.
       const url = `${window.location.origin}/lesson/${lesson.lesson_code}?play=solo`
-      const opts = (width) => ({ width, margin: 1, color: { dark: '#ffffff', light: '#00000000' } })
+      // Dark on the white plate (brand ink), drawn at twice the full size so every smaller size stays crisp.
+      const ink = getComputedStyle(document.documentElement).getPropertyValue('--color-brand-ink').trim() || undefined
+      const opts = (width) => qrOptions(width, ink)
 
       const small = document.getElementById('title-qr-canvas')
-      if (small) QRCode.toCanvas(small, url, opts(112)).catch(() => {})
+      if (small) QRCode.toCanvas(small, url, opts(QR.sizes[0] * 2)).catch(() => {}).finally(() => this.relayoutTitle())
+      else this.relayoutTitle()
 
       const large = document.getElementById('qr-modal-canvas')
       if (large) QRCode.toCanvas(large, url, opts(320)).catch(() => {})
@@ -488,13 +514,15 @@ Alpine.data('lessonGame', (lesson) => ({
 
     _saveProgress () {
       if (!this.playSolo) return
-      saveProgress(window.localStorage, lesson.lesson_code, { index: this.furthest.index, time: this.furthest.time, done: this._done })
+      saveProgress(safeStorage('localStorage'), lesson.lesson_code, { index: this.furthest.index, time: this.furthest.time, done: this._done })
     },
 
     async startLesson () {
       this._tel.log('lesson_started')
       // Solo "Start lesson" with progress saved = start over: what this device remembered goes.
-      if (this.playSolo && !this._resuming) clearProgress(window.localStorage, lesson.lesson_code)
+      if (this.playSolo && !this._resuming) clearProgress(safeStorage('localStorage'), lesson.lesson_code)
+      // A fresh start is a fresh run: last run's crews do not sail again until this class races.
+      if (!this._resuming) { clearCrew(safeStorage('sessionStorage'), lesson.lesson_code); this._crew = {} }
       this._resuming = false
       this.resumable = null
       // Locked-mode (best effort): go fullscreen on the user's play gesture so tab/app
@@ -1449,6 +1477,7 @@ Alpine.data('lessonGame', (lesson) => ({
       this._quizOverlay?.hide()
       this._teamGame?.hide()
       this._powerMeter?.hide()
+      this._closeRace()
       this._stopMomentAudio()
       // A moment still running belongs to the scene we are leaving, even if we come straight back.
       this._playEpoch = (this._playEpoch || 0) + 1
@@ -1532,7 +1561,7 @@ Alpine.data('lessonGame', (lesson) => ({
       // Map block — render the historical atlas as a slide (no audio).
       if (scene.kind === 'map') { this._playMapScene(index, scene); return }
 
-      // Voyage tour leg / image gallery — audio-less slides driven by Next/Previous only.
+      // Voyage tour leg / image gallery — stage slides that move on by themselves (_startStageAuto).
       if (scene.kind === 'voyage') { this._playVoyageScene(index, scene); return }
       if (scene.kind === 'gallery') { this._playGalleryScene(index, scene); return }
       // Video scene — the film IS the scene, so nothing times it out from under the class.
@@ -1593,7 +1622,7 @@ Alpine.data('lessonGame', (lesson) => ({
      * @param {{ onDuration?: (sec:number)=>void, onEnded?: ()=>void }} [hooks]
      *   onDuration: the track's real length is known (pace a map tour / slideshow against it).
      *   onEnded: the narration finished — only for scenes the VOICE paces (story, game intro).
-     *   A voice-over (map, voyage, gallery) leaves it off: the class moves on with Continue.
+     *   A voice-over (map, voyage, gallery) leaves it off: the stage itself decides when to move on.
      */
     _startNarration (scene, { onDuration = null, onEnded = null } = {}) {
       const a = this._audio = new Audio(scene.audio_url)
@@ -1722,7 +1751,7 @@ Alpine.data('lessonGame', (lesson) => ({
 
       // Narrate the leg as a VOICE-OVER while the ship sails. Deliberately not wired to
       // _afterSceneAudio: a voyage leg is paced by the map (onArrived → showMapContinue →
-      // _startVoyageAuto), not by the length of the audio, so the track must never advance
+      // _startStageAuto), not by the length of the audio, so the track must never advance
       // the queue. Without this the narration authored for each leg was generated and stored
       // but never heard.
       if (scene.audio_url) this._startNarration(scene)
@@ -1771,7 +1800,7 @@ Alpine.data('lessonGame', (lesson) => ({
           paintedFog: lesson.game_config?.voyage_fog || null, // teacher-painted undiscovered regions
           overviewAnim: cfg.overview_anim || null,            // itinerary: draw the route on
           // On each arrival: show the carousel controls + start the 10s auto-advance.
-          onArrived: () => { this.showMapContinue = true; this._startVoyageAuto() },
+          onArrived: () => { this.showMapContinue = true; this._startStageAuto(_sceneQueue[this._sceneIndex]) },
         })
       }
       // The itinerary scene: the whole voyage on one screen, no leg sailed. Same branch the editor
@@ -1784,7 +1813,7 @@ Alpine.data('lessonGame', (lesson) => ({
         // Nothing sails, so no arrival will ever fire: hand the class the same controls a landfall
         // gets — side arrows and the 10s auto-advance — or the lesson would stop here for good.
         this.showMapContinue = true
-        this._startVoyageAuto()
+        this._startStageAuto(scene)
         return
       }
       _voyageInstance.playLeg(Number(cfg.leg) || 0, {
@@ -1795,23 +1824,19 @@ Alpine.data('lessonGame', (lesson) => ({
       })
     },
 
-    // ── Voyage carousel: side arrows + auto-advance once the leg has been told ─────────────
+    // ── Stage slide auto-advance (voyage landfall, gallery) ─────────────
     //
-    // A stop must outlast its own narration. This used to advance on a flat ten seconds from the
-    // moment the ship arrived, with the narration playing as a fire-and-forget track whose duration
-    // nothing ever read — so a leg with thirty seconds to say got ten, and the voice was cut
-    // mid-sentence. On the Tasman lesson the class heard "hij is om Australië heen gevaren zonder
-    // het te zien," and never heard what he had actually proved.
+    // A stage slide that asks nothing of the class moves on by itself once its narration and a
+    // short look are done, like a story scene (rules + timing in scene/stage-auto.js). This used
+    // to run on voyage lessons only, and a gallery never started it at all, so every gallery sat
+    // on its last image until somebody pressed Next.
     //
-    // So the clock does not decide any more; the voice does. Ten seconds is the FLOOR, for a leg
-    // with no narration at all.
-    _startVoyageAuto () {
-      if (lesson.game_type !== 'voyage') return
+    // It must outlast the narration: this used to advance on a flat ten seconds from the ship's
+    // arrival, and a leg with thirty seconds to say was cut mid-sentence ("hij is om Australië
+    // heen gevaren zonder het te zien,"). So the voice decides; the floor is for a silent slide.
+    _startStageAuto (scene) {
       this._cancelVoyageAuto()
-
-      const FLOOR = 10000        // a silent leg still gets a beat to be looked at
-      const TAIL = 1200          // a breath after the last word, before the map moves on
-      const CEILING = 180000     // audio that never ends must not strand the class on one stop
+      const floorMs = stageFloorMs(scene)
 
       let elapsed = 0
       let last = performance.now()
@@ -1830,15 +1855,9 @@ Alpine.data('lessonGame', (lesson) => ({
         const speaking = audio && !audio.ended && !audio.error
         if (!speaking && silentAt === null) silentAt = elapsed
 
-        const readyAt = silentAt === null ? null : Math.max(FLOOR, silentAt + TAIL)
-
-        // While the voice is still going the bar creeps but never fills, because a full bar that
-        // then does not advance reads as a stuck lesson.
-        this.autoAdvanceProgress = readyAt === null
-          ? Math.min(0.92, elapsed / FLOOR)
-          : Math.min(1, elapsed / readyAt)
-
-        if (elapsed >= (readyAt ?? CEILING)) { this.advanceMap(); return }
+        const { progress, done } = stageAdvance({ elapsed, silentAt, floorMs })
+        this.autoAdvanceProgress = progress
+        if (done) { this.advanceMap(); return }
         _autoAdvanceRaf = requestAnimationFrame(tick)
       }
       _autoAdvanceRaf = requestAnimationFrame(tick)
@@ -1848,10 +1867,10 @@ Alpine.data('lessonGame', (lesson) => ({
       this.autoAdvanceProgress = 0
     },
 
-    // ── Image gallery (kind 'gallery') — auto-cycling slideshow, Next/Previous to leave ──
+    // ── Image gallery (kind 'gallery') — auto-cycling slideshow that moves on by itself ──
     //
-    // Narrated like a map block: a VOICE-OVER (subtitles and all) with Continue to leave, not wired
-    // to _afterSceneAudio. And paced like the map's itinerary: once the narration's length is known
+    // Narrated like a map block: a VOICE-OVER (subtitles and all), not wired to _afterSceneAudio;
+    // the stage countdown (_startStageAuto) moves on once the voice and the images are done. And paced like the map's itinerary: once the narration's length is known
     // the images spread across it, instead of a fixed 5 s cycle that ran out long before the voice.
     // It used to stop the audio and never start its own, so the narration was generated but unheard.
     _playGalleryScene (index, scene) {
@@ -1864,7 +1883,9 @@ Alpine.data('lessonGame', (lesson) => ({
       if (scene.audio_url) {
         this._startNarration(scene, { onDuration: (sec) => { if (_galleryInstance === gallery) gallery.pace(sec * 1000) } })
       }
+      // Next still leaves early; otherwise it moves on once the voice and the images are done.
       this.showMapContinue = true
+      this._startStageAuto(scene)
     },
 
     // A whole scene that is one film. The embed is already full-bleed on the stage (see the
@@ -2094,7 +2115,20 @@ Alpine.data('lessonGame', (lesson) => ({
       const aspect = (scene.config || {}).background_fit === 'contain' && cover ? await plateAspect(cover.url) : null
       if (req !== this._balloonReq) return
       fitToPlate(host, host.parentElement, aspect, layers)
-      this._balloons.setLines(lines)
+      this._balloonSource = lines
+      this._refreshBalloonText()
+    },
+
+    /** The balloons' words in the subtitle language when that is on and cached, else the original. */
+    _refreshBalloonText () {
+      const host = document.getElementById('lesson-balloons')
+      if (!this._balloons || !host) return
+      const cached = Object.keys(this.ccSets[this.captionLang]?.texts || {}).length > 0
+      const lang = this.captionsOn && cached ? this.captionLang : lesson.source_language
+      host.lang = lang
+      host.dir = this.ccDir(lang)
+      this._balloons.setLines((this._balloonSource || []).map(l => ({ ...l, text: this._crewed(this._ccLine(l.text)) })))
+      if (this._audio) this._balloons.update(this._audio.currentTime)
     },
 
     // Read-only clipart layers a teacher placed ON TOP of a voyage map. Same %-coordinate box as
@@ -2174,7 +2208,15 @@ Alpine.data('lessonGame', (lesson) => ({
       // A chapter jump during the import has moved the class on; the game must not open over it.
       if (this._sceneIndex !== index) return
       this._teamGame = this._teamGame || new TeamGame(host)
-      this._teamGame.show({ config: scene.config.team, solo: this.playSolo, onComplete: () => this._resumeAfterQuiz() })
+      const team = scene.config.team
+      const crewed = Object.fromEntries(['title', 'intro', 'rules', 'situation', 'question', 'reveal', 'closing']
+        .filter(k => typeof team[k] === 'string').map(k => [k, this._crewed(team[k])]))
+      this._teamGame.show({ config: { ...team, ...crewed }, solo: this.playSolo, onComplete: () => this._resumeAfterQuiz() })
+    },
+
+    /** A line with the crews' names put in ({crew:heemskerck}); "the crew" when there was no race. */
+    _crewed (text) {
+      return crewText(text, this._crew, t('the crew'))
     },
 
     // ── Power-meter moment (scene config.moment; scene/PowerMeter.js) ───────────────────
@@ -2209,35 +2251,195 @@ Alpine.data('lessonGame', (lesson) => ({
       const mod = await import('./scene/PowerMeter.js')
       // A chapter jump during the import has moved the class on.
       if (!current()) return
-      const cfg = scene.config.moment
+      let cfg = scene.config.moment
       const art = document.getElementById('lesson-voyage-art')
       this._tel.log('moment_started', { sceneIndex: index, sceneId: scene.id })
       this._powerMeter = this._powerMeter || new mod.PowerMeter(host)
       const { figureRects } = await import('./scene/card-place.js')
-      if (!current()) return
+      const race = cfg.race?.enabled ? await this._openRace(scene, cfg, art) : null
+      if (!current()) { race?.close(); return }
+      // No ship to race (its layer is gone): the moment plays as a single meter, no crews.
+      if (cfg.race?.enabled && !race) cfg = { ...cfg, race: { ...cfg.race, enabled: false } }
       this._hideBalloons(true)
+      const m = mod.readMoment(cfg)
+      // In a race the pupil's own lane is the near one and the fleet's the far one.
+      const lane = (meter) => (race && this.playSolo ? 1 : meter)
+      // Skipped or full, the story still moves: history decides what happens, the game only when.
+      // The race on the teams' phones ends here too, with the server's result.
+      const finish = async (outcome) => {
+        if (!current()) return
+        this._done = [...this._done, scene.id]
+        this._saveProgress()
+        this._tel.log(outcome.skipped ? 'moment_skipped' : 'moment_completed', { sceneIndex: index, sceneId: scene.id })
+        // The stage on the water now: the phones' lobby may have rebuilt it for another team count.
+        const stage = race ? (this._race ?? race) : null
+        const raced = stage && !outcome.skipped && outcome.crew
+        if (raced) this._crownRace(stage, outcome, scene)
+        await (stage
+          ? stage.sailOut(Number(cfg.payoff?.to_x) || m.race.finishX + 10, Number(cfg.payoff?.duration) || 6)
+          : this._momentPayoff(mod, cfg.payoff || {}, art))
+        if (!current()) return
+        // After a race the narrator names the crews; their names are only known now, so it is read.
+        // A pupil who raced the fleet alone gets the solo line: there is no Zeehaen crew to name.
+        const raceLine = this.playSolo ? (m.race.afterSolo || m.race.after) : m.race.after
+        await this._momentAfterLine(mod, raced && raceLine ? { after: this._crewed(raceLine), afterAudio: '' } : m)
+        if (!current()) return
+        this._powerMeter.hide()
+        this._closeRace()
+        this._hideBalloons(false)
+        this._momentActive = false
+        this.playbackPaused = false
+        resume()
+      }
+      const avoid = () => [...figureRects(art, host, [cfg.react?.layer, cfg.payoff?.layer].filter(Boolean)), ...(race ? race.band(host) : [])]
       this._powerMeter.show({
-        config: cfg,
+        config: { ...cfg, prompt: this._crewed(cfg.prompt) },
         solo: this.playSolo,
-        avoid: () => figureRects(art, host, [cfg.react?.layer, cfg.payoff?.layer].filter(Boolean)),
-        onReact: () => mod.gust(mod.layerNode(art, cfg.react?.layer), cfg.react || {}),
-        // Skipped or full, the story still moves: history decides what happens, the game only when.
-        onDone: async ({ skipped }) => {
-          if (!current()) return
-          this._done = [...this._done, scene.id]
-          this._saveProgress()
-          this._tel.log(skipped ? 'moment_skipped' : 'moment_completed', { sceneIndex: index, sceneId: scene.id })
-          await this._momentPayoff(mod, cfg.payoff || {}, art)
-          if (!current()) return
-          await this._momentAfterLine(mod, mod.readMoment(cfg))
-          if (!current()) return
-          this._powerMeter.hide()
-          this._hideBalloons(false)
-          this._momentActive = false
-          this.playbackPaused = false
-          resume()
-        },
+        best: race && this.playSolo ? readBest(safeStorage('localStorage'), `${lesson.lesson_code}:${scene.id}`) : null,
+        avoid,
+        onReact: (meter) => mod.gust(race ? race.node(lane(meter)) : mod.layerNode(art, cfg.react?.layer), cfg.react || {}),
+        onProgress: race ? ({ levels, ghost }) => race.update(this.playSolo ? [ghost ?? 0, levels[0] ?? 0] : levels) : null,
+        // A teacher's class race can move to the teams' phones before anyone has played.
+        onPhones: race && !this.playSolo && lesson.race ? () => this._racePhones(scene, cfg, art, host, avoid, finish, current) : null,
+        onDone: finish,
       })
+    },
+
+    /**
+     * The race on the teams' phones: open it on the server, show the lobby (QR, code, team names),
+     * follow it by polling, move the lanes with the server's progress, and finish with its crews.
+     */
+    async _racePhones (scene, cfg, art, host, avoid, finish, current) {
+      if (this._raceRun || this._racePhonesOpening) return
+      this._racePhonesOpening = true
+      try {
+        await this._racePhonesOpen(scene, cfg, art, host, avoid, finish, current)
+      } finally {
+        this._racePhonesOpening = false
+      }
+    },
+
+    async _racePhonesOpen (scene, cfg, art, host, avoid, finish, current) {
+      const send = (url, method, body) => fetch(url, {
+        method,
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '' },
+        body: body ? JSON.stringify(body) : undefined,
+      })
+      const opened = await send(lesson.race.store_url, 'POST', { scene_id: scene.id }).catch(() => null)
+      if (!opened?.ok) {
+        if (!current()) return
+        // The meter card is still up: say so in it, and the class plays the race on this screen.
+        const note = document.createElement('div')
+        note.className = 'alert alert-warning text-sm'
+        note.textContent = t('The race could not be opened. Play it on this screen.')
+        host.querySelector('.card-body')?.prepend(note)
+        return
+      }
+      let state = await opened.json()
+      // Recorded at once: whatever happens next (a chapter jump mid-await), _closeRace deletes it.
+      const runUrl = this._raceRun = `${lesson.race.run_url}/${state.code}`
+      const gone = () => { if (!current()) { this._closeRace(); return true } return false }
+      const [{ RaceLobby }, { RaceClient }] = await Promise.all([import('./scene/race-lobby.js'), import('./scene/race-sync.js')])
+      if (gone()) return
+      this._powerMeter.hide()
+      const lobby = this._raceLobby = new RaceLobby(host)
+      let finished = false
+      // The lanes follow the lobby's teams: renamed in place, rebuilt (the stage only) when the
+      // teacher adds or removes a team.
+      const lanesFor = async (teams) => {
+        if (this._race?.laneCount === teams.length) return teams.forEach((team, i) => this._race.label(i, team.name))
+        this._race = await this._openRace(scene, cfg, art, teams.map(team => team.name))
+      }
+      const apply = async (next) => {
+        if (!current() || finished) return
+        // Decided before any await: a PATCH answer and a poll can both bring the finish.
+        if (next.state === 'finished') finished = true
+        state = next
+        await lanesFor(next.teams)
+        if (gone()) return
+        this._race?.update(next.teams.map(team => team.progress / next.goal))
+        if (!finished) return lobby.update(next)
+        this._raceClient?.stop()
+        lobby.hide()
+        const names = next.teams.map(team => team.name)
+        const roles = next.roles || {}
+        // The crews as the server decided them (an early end ranks teams that never finished too).
+        const order = ['heemskerck', 'zeehaen'].map(ship => next.teams.findIndex(team => team.id === roles[ship])).filter(i => i >= 0)
+        const crew = Object.fromEntries(order.map((i, place) => [place === 0 ? 'heemskerck' : 'zeehaen', names[i]]))
+        finish({ skipped: false, order, names, crew })
+      }
+      const act = async (body) => {
+        const res = await send(runUrl, 'PATCH', body).catch(() => null)
+        if (res?.ok) apply(await res.json())
+      }
+      lobby.show({
+        race: state,
+        joinUrl: `${lesson.race.device_url}/${state.code}`,
+        drawQr: (canvas, url) => QRCode.toCanvas(canvas, url, { width: 224, margin: 1 }).catch(() => {}),
+        avoid,
+        onNames: (names) => act({ names }),
+        onStart: () => act({ action: 'start' }),
+        onEnd: () => act({ action: 'end' }),
+      })
+      await lanesFor(state.teams)
+      if (gone()) return
+      this._raceClient = new RaceClient({
+        urls: { state: `${lesson.race.device_url}/${state.code}/state` },
+        pollMs: lesson.race.screen_poll_ms,
+        onState: apply,
+        onGone: () => { if (!finished) finish({ skipped: true }) },
+      })
+      this._raceClient.start()
+    },
+
+    /** The panel's ship once per team (or the pupil and the 1642 fleet), as the race's lanes. */
+    async _openRace (scene, cfg, art, teamNames = null) {
+      const shipId = cfg.react?.layer ?? cfg.payoff?.layer
+      const layers = ((scene.shots || [])[0]?.layers || []).filter(l => (l?.url || l?.embed) && isClipartLayer(l))
+      const ship = layers.find(l => String(l.asset_id) === String(shipId))
+      if (!ship || !this._artLayer || !art) return null
+      const { RaceStage } = await import('./scene/race-stage.js')
+      const teams = Number(cfg.teams) >= 2 ? Number(cfg.teams) : 4
+      const names = teamNames ?? (this.playSolo
+        ? [t('The 1642 fleet'), t('You')]
+        : Array.from({ length: teams }, (_, i) => t('Team :number', { number: i + 1 })))
+      // Only the stage: a race on the phones keeps its server run and its polling.
+      this._race?.close()
+      this._race = new RaceStage({ overlay: this._artLayer, host: art })
+      const race = cfg.race || {}
+      this._race.open({ layers, ship, lanes: names.length, startX: Number(race.start_x ?? 25), finishX: Number(race.finish_x ?? 85), names })
+      return this._race
+    },
+
+    /** The crews for the rest of this run, their ships named on the lanes, a pupil's best time kept. */
+    _crownRace (race, outcome, scene) {
+      this._crew = outcome.crew
+      saveCrew(safeStorage('sessionStorage'), lesson.lesson_code, outcome.crew)
+      if (this.playSolo) {
+        race.label(1, `${t('You')} · Heemskerck`)
+        if (outcome.seconds) saveBest(safeStorage('localStorage'), `${lesson.lesson_code}:${scene.id}`, outcome.seconds)
+        return
+      }
+      // The phones' race names its own teams; the class-screen race uses the meter's.
+      const names = outcome.names ?? this._powerMeter.names
+      ;(outcome.order || []).slice(0, 2).forEach((team, place) => {
+        race.label(team, `${names[team]} · ${place === 0 ? 'Heemskerck' : 'Zeehaen'}`)
+      })
+    },
+
+    _closeRace () {
+      this._race?.close()
+      this._race = null
+      this._raceClient?.stop()
+      this._raceClient = null
+      this._raceLobby?.hide()
+      this._raceLobby = null
+      // A race on the phones lives only as long as its moment: the server forgets it now.
+      if (this._raceRun) {
+        fetch(this._raceRun, { method: 'DELETE', credentials: 'same-origin', headers: { Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '' } }).catch(() => {})
+        this._raceRun = null
+      }
     },
 
     /** A balloon left over from the panel's last line must not sit on the meter. */
@@ -2313,7 +2515,10 @@ Alpine.data('lessonGame', (lesson) => ({
       this._tel.flush()
       if (this._audio && !this._audio.paused) this._audio.pause()
       // A pupil who reached the end starts at the title next time, not on the last panel.
-      if (this.playSolo) clearProgress(window.localStorage, lesson.lesson_code)
+      if (this.playSolo) clearProgress(safeStorage('localStorage'), lesson.lesson_code)
+      // The crews belong to this run of the lesson; the next class races again.
+      clearCrew(safeStorage('sessionStorage'), lesson.lesson_code)
+      this._crew = {}
       if (this._timerInterval) clearInterval(this._timerInterval)
       // The bed fades away over the closing screen rather than cutting on the last word.
       try { _music?.stop() } catch (_) {}
@@ -2402,8 +2607,8 @@ Alpine.data('lessonGame', (lesson) => ({
      * "Playing" for the overlay is broader than narration: on a voyage the ship sailing
      * between stops IS playback (showMapContinue only turns true at a landfall). The
      * player chrome hides while this is true and the pointer is away from the edges.
-     * A stage slide waiting on the student (interactive map, gallery, video, landfall) never
-     * counts: Next is the only way on, so the deck stays up even while its narration plays.
+     * A stage slide (interactive map, video, a landfall or gallery counting down) never counts:
+     * its Next stays in reach, so the deck stays up even while its narration plays.
      */
     get isPlaying () {
       if (this.playbackPaused || this.showMapContinue) return false
@@ -2443,7 +2648,7 @@ Alpine.data('lessonGame', (lesson) => ({
     get chromeHidden () {
       if (this.readingOverlay) return true
       if (this.currentIsGame) return false     // a quiz or game card is on screen: the class is working
-      return this.isPlaying && !this.chromeAwake && !this.zoneHover && !this.chromeFocus && !this.chaptersOpen
+      return this.isPlaying && !this.chromeAwake && !this.zoneHover && !this.chromeFocus && !this.chaptersOpen && !this.ccOpen
     },
 
     /** The centre glyph: up while paused, for a moment after a press, and with the chrome while playing. */
@@ -2500,7 +2705,7 @@ Alpine.data('lessonGame', (lesson) => ({
       }
 
       // The sailing ship freezes mid-ocean and picks up from the same spot; the landfall's
-      // auto-advance countdown stops accumulating (see _startVoyageAuto).
+      // auto-advance countdown stops accumulating (see _startStageAuto).
       try { _voyageInstance?.setPaused?.(this.playbackPaused) } catch (_) { /* map gone */ }
 
       // Same for a map block touring its focus cities: a student who pauses on Constantinople must
@@ -2584,14 +2789,16 @@ Alpine.data('lessonGame', (lesson) => ({
       if (!Number.isFinite(duration) || duration <= 0) return
 
       if (!this._cues.length || this._cueDuration !== duration) {
-        // A scene in lines has exact times per line: only the narrator's become captions.
-        this._cues = this._captionSource?.lines?.length
-          ? lineCues(this._captionSource.lines)
-          : buildCues(this._captionSource?.script, duration, this._captionSource?.alignment)
+        // A scene in lines has exact times per line: only the narrator's become captions. In
+        // another subtitle language each line is translated whole and cut over its own span.
+        this._cues = translatedCues(this._captionSource, duration, this.ccSets[this.captionLang], this.captionLang, lesson.source_language)
         this._cueDuration = duration
       }
 
-      this.captionText = cueAt(this._cues, this._audio.currentTime)?.text || ''
+      const cue = cueAt(this._cues, this._audio.currentTime)
+      this.captionText = cue?.text || ''
+      if (cue && cue.lang !== this.captionShownLang) this.captionShownLang = cue.lang
+      if (cue && cue.source !== this.ccLineSource) this.ccLineSource = cue.source
     },
 
     /** Pick a state outright (the subtitles menu); toggleCaptions is the keyboard's way in. */
@@ -2600,6 +2807,245 @@ Alpine.data('lessonGame', (lesson) => ({
      * the ink, not the image box (a wordmark file has room around its letters). Again once the
      * lettering font has loaded and whenever the logo's box changes size.
      */
+    /** A comic title candidate (TitlePoster) into its host; see resources/js/title-poster.js. */
+    mountTitlePoster (host) {
+      this._stopTitlePoster?.()
+      this._stopTitlePoster = mountPoster(host, host.querySelector('[data-poster-stage]'), this.lesson.title_poster)
+      setTimeout(() => this.relayoutTitle(), 0)
+    },
+
+    /**
+     * The title screen's measured layout: the "what you can expect" strip in a candidate's slot,
+     * then the join QR clear of faces, letters and every element (resources/js/title-qr.js). Again
+     * on every resize and once the lettering fonts and the title picture are in.
+     */
+    /**
+     * Lay the title screen out from scratch: everything tries its own place again before giving
+     * way (title-fit.js). On every change of what is measured (a new size, the fonts, the QR, the
+     * picture), so a step taken while something was still loading never sticks. Passes of an
+     * older run stop.
+     */
+    relayoutTitle () {
+      if (this.phase !== 'TITLE_SCREEN') return
+      this._fitRun = (this._fitRun ?? 0) + 1
+      this._fitPasses = 0
+      this._fitConfirmed = false
+      this.expectInStrip = false
+      this.titleFit = { ...FIT_START }
+      const run = this._fitRun
+      this.$nextTick(() => this.layoutTitleScreen(run))
+    },
+
+    layoutTitleScreen (run = this._fitRun) {
+      if (run !== this._fitRun) return
+      const host = document.querySelector('[data-title-screen]')
+      if (!host) return
+      if (!this._titleRo && typeof ResizeObserver === 'function') {
+        this._titleRo = new ResizeObserver(() => this.relayoutTitle())
+        this._titleRo.observe(host)
+        document.fonts?.ready.then(() => this.relayoutTitle())
+        // A face first used later (the strip's comic lettering) loads after ready: lay out again then too.
+        document.fonts?.addEventListener?.('loadingdone', () => this.relayoutTitle())
+      }
+      if (this.phase !== 'TITLE_SCREEN' || !host.clientWidth) return
+      const poster = this.lesson.title_poster
+      const stage = host.querySelector('[data-poster-stage]')
+      const o = host.getBoundingClientRect()
+      const strip = host.querySelector('[data-title-expect="strip"]')
+      this._stopTitlePoster?.refit?.()
+      if (strip && strip !== this._titleStrip && typeof ResizeObserver === 'function') {
+        // The strip's lines re-wrap when their font arrives: the poster under it moves, so
+        // measure again (the same run: a reset here would hide and show its lines in a loop).
+        this._titleStripRo?.disconnect()
+        let height = 0
+        this._titleStripRo = new ResizeObserver(([e]) => {
+          if (Math.abs(e.contentRect.height - height) < 1) return
+          height = e.contentRect.height
+          this._fitConfirmed = false
+          setTimeout(() => this.layoutTitleScreen(), 30)
+        })
+        this._titleStripRo.observe(strip)
+        this._titleStrip = strip
+      }
+      if (strip && stage && placeExpectStrip(strip, stage.getBoundingClientRect(), o, poster.expect?.box ?? { x: 0, y: 0, w: 100, h: 0 },
+        stage.parentElement, !poster.expect, posterFit(o.width, o.height, poster).top).moved) {
+        // The poster now starts under the strip: measure once it has been fitted there.
+        setTimeout(() => this.layoutTitleScreen(run), 50)
+        return
+      }
+      if (this._fitChromeToStrip(host, strip)) {
+        this.$nextTick(() => this.layoutTitleScreen(run))
+        return
+      }
+      if (this._shrinkTitlePicture(host, stage)) {
+        // The picture refits on its own resize: measure once it has.
+        setTimeout(() => this.layoutTitleScreen(run), 60)
+        return
+      }
+      // The poster fitted to where it stands now, so the frame measured below is never a stale one.
+      this._stopTitlePoster?.refit?.()
+
+      let frame = null
+      let keepClear = []
+      if (poster && stage) {
+        const r = stage.getBoundingClientRect()
+        frame = () => ({ x: r.left - o.left, y: r.top - o.top, w: r.width, h: r.height })
+        keepClear = poster.keep_clear ?? []
+        // A painted candidate's lettering may be scaled down (title-fit.js): its letters boxes with it.
+        const ls = Number(stage.dataset.letterScale ?? 1)
+        if (poster.fit === 'cover' && ls !== 1) {
+          const c = this._letteringCentre()
+          keepClear = keepClear.map(k => (k.kind === 'letters' ? { ...k, box: scaleBoxAbout(k.box, c, ls) } : k))
+        }
+      } else if (this.lesson.title_bg_url && this.lesson.title_keep_clear?.length) {
+        const size = pictureSize(this.lesson.title_bg_url, () => this.relayoutTitle())
+        frame = () => size && coverRect(o.width, o.height, size.w, size.h)
+        keepClear = this.lesson.title_keep_clear
+      }
+      if (poster) this._shiftTitleBar(host, keepClear, frame)
+      const qrOpts = { keepClear, frame, override: this.lesson.qr_position, maxSize: FIT.qrSteps[this.titleFit.qrStep], qrHidden: this.titleFit.qrHidden }
+      let result = layoutTitleQr(host, qrOpts)
+      // With the QR out of its place the badges close up and may meet the expect lines: wrap them, measure again.
+      const lines = host.querySelector('[data-title-expect="lines"]')
+      if (fitExpectLines(lines, host.querySelector('[data-title-cluster]'))) result = layoutTitleQr(host, qrOpts)
+
+      // Anything still overlapping (or lines squeezed into a column): the screen gives way one
+      // step (title-fit.js nextFit) and is measured again.
+      const pieces = titlePieces(host)
+      const hits = collisions(pieces, result.keepClear ?? [])
+      if (poster && lines?.offsetWidth && lines.dataset.cramped) hits.push({ a: 'lines', b: 'cramped' })
+      const next = nextFit({ ...this.titleFit, linesInStrip: this.expectInStrip }, hits, { strip: !!poster, painted: poster?.fit === 'cover', badges: (this.lesson.lesson_types ?? []).length > 0 })
+      const debug = new URLSearchParams(window.location.search).get('qr_debug') === '1'
+      if (debug) (window.__titleFitLog ??= []).push({ run, fit: { ...this.titleFit }, hits, pieces: pieces.map(p => p.group).join(), t: Math.round(performance.now()) })
+      if (next && (this._fitPasses = (this._fitPasses ?? 0) + 1) <= 3 * FIT.maxShrink) {
+        const { linesInStrip, ...fit } = next
+        this.expectInStrip = linesInStrip
+        this.titleFit = fit
+        this._fitConfirmed = false
+        setTimeout(() => this.layoutTitleScreen(run), 60)
+        return
+      }
+      // Clear once is not settled: a piece just shown again (a reset run) may not be laid out
+      // yet. Measure once more a moment later before calling it done.
+      if (!hits.length && !this._fitConfirmed) {
+        this._fitConfirmed = true
+        setTimeout(() => this.layoutTitleScreen(run), 60)
+        return
+      }
+      this.titleCodeInMeta = !!result.hidden
+      if (debug) {
+        drawQrDebug(host, result)
+        // run/latest: a proof waits until the newest run has settled.
+        window.__titleQr = { ...result, fit: { ...this.titleFit, linesInStrip: this.expectInStrip }, hits, run, latest: () => this._fitRun }
+      }
+    },
+
+    /**
+     * The top row on the white strip: the logo's dark variant, and on a slim strip (not the phone's
+     * stacked one) a logo that fits inside it. True when that changed, so the screen is measured again.
+     */
+    _fitChromeToStrip (host, strip) {
+      const r = strip?.offsetHeight ? strip.getBoundingClientRect() : null
+      const onStrip = !!r && r.top - host.getBoundingClientRect().top <= 4
+      const slim = onStrip && strip.dataset.stacked !== '1' ? parseFloat(strip.style.minHeight) || r.height : 0
+      const logoH = slim ? Math.round(Math.min(96, Math.max(32, slim - 12))) : 0
+      if (onStrip === this.titleChromeOnStrip && logoH === this.titleLogoH) return false
+      this.titleChromeOnStrip = onStrip
+      this.titleLogoH = logoH
+      return true
+    },
+
+    /**
+     * Shrink step n (title-fit.js): a painted candidate's lettering scales down over its painting;
+     * a flat poster's frame keeps a band at the bottom for the title bar (its own colour fills it);
+     * a series logo gets narrower and always starts under the top row. True when a size changed.
+     */
+    _shrinkTitlePicture (host, stage) {
+      const n = this.titleFit.shrink
+      const poster = this.lesson.title_poster
+      const o = host.getBoundingClientRect()
+      let moved = false
+      if (poster && stage && poster.fit === 'cover') {
+        // A painting stays full-bleed: only its lettering scales, as one layer.
+        moved = this._scaleTitleLettering(stage, n ? FIT.letterScale ** n : 1)
+      } else if (poster && stage) {
+        const bar = titlePieces(host).filter(p => ['lines', 'meta', 'cta'].includes(p.group))
+        const barTop = bar.length ? Math.min(...bar.map(p => p.rect.y)) : o.height
+        const band = Math.round(bandHeight(n, barTop, o.height))
+        const bottom = band ? `${band}px` : ''
+        moved = stage.parentElement.style.bottom !== bottom
+        stage.parentElement.style.bottom = bottom
+        // The flat poster's own colour under the band too: one colour, no letterbox.
+        host.style.backgroundColor = band ? (poster.background ?? '') : ''
+      }
+      const logo = host.querySelector('[data-title-piece="logo"]')
+      if (logo) {
+        const top = document.querySelector('[data-player-chrome="top"]')?.getBoundingClientRect()
+        logo.style.top = top?.height ? `${Math.max(96, Math.round(top.bottom - o.top + 8))}px` : ''
+        const width = n ? `calc(clamp(18rem, 58vw, 68rem) * ${FIT.logoScale ** n})` : ''
+        // Compared by step: the browser rewrites a calc() it is given, so the style never reads back the same.
+        moved ||= (logo.dataset.shrink ?? '0') !== String(n)
+        logo.dataset.shrink = String(n)
+        logo.style.width = width
+      }
+      return moved
+    },
+
+    /** The point (% of the frame) a painted candidate's lettering scales about: the middle of its letters boxes. */
+    _letteringCentre () {
+      const boxes = (this.lesson.title_poster?.keep_clear ?? []).filter(k => k.kind === 'letters').map(k => k.box)
+      if (!boxes.length) return { x: 50, y: 50 }
+      const x0 = Math.min(...boxes.map(b => b.x))
+      const y0 = Math.min(...boxes.map(b => b.y))
+      return { x: (x0 + Math.max(...boxes.map(b => b.x + b.w))) / 2, y: (y0 + Math.max(...boxes.map(b => b.y + b.h))) / 2 }
+    },
+
+    /**
+     * Scale every lettering layer of a painted candidate (all but the full-frame painting, and the
+     * live subtitle) by `s` about the lettering's centre, with the `scale`/`translate` properties
+     * so each layer's own rotation and motion stay as they are. True when the scale changed.
+     */
+    _scaleTitleLettering (stage, s) {
+      if (String(s) === (stage.dataset.letterScale ?? '1')) return false
+      stage.dataset.letterScale = String(s)
+      const full = new Set((this.lesson.title_poster.layers ?? []).filter(l => (l.box?.w ?? 0) >= 100).map(l => l.id))
+      const c = this._letteringCentre()
+      const cx = c.x / 100 * stage.offsetWidth
+      const cy = c.y / 100 * stage.offsetHeight
+      const offset = (el) => {
+        let x = 0
+        let y = 0
+        for (let e = el; e && e !== stage; e = e.offsetParent) { x += e.offsetLeft; y += e.offsetTop }
+        return { x: x + el.offsetWidth / 2, y: y + el.offsetHeight / 2 }
+      }
+      const layers = [...stage.querySelectorAll('[data-poster-layer]')].filter(el => !full.has(el.dataset.posterLayer))
+      for (const el of [...layers, ...stage.querySelectorAll(':scope > [data-title-avoid]')]) {
+        const e = offset(el)
+        el.style.scale = s === 1 ? '' : String(s)
+        el.style.translate = s === 1 ? '' : `${(1 - s) * (cx - e.x)}px ${(1 - s) * (cy - e.y)}px`
+      }
+      return true
+    },
+
+    /** A comic candidate's title bar slides along the bottom to where it covers no face, letters or control. */
+    _shiftTitleBar (host, keepClear, frame) {
+      const bar = host.querySelector('[data-title-bar]')
+      if (!bar) return
+      bar.style.transform = ''
+      const pieces = titlePieces(host)
+      const own = pieces.filter(p => ['lines', 'meta', 'cta'].includes(p.group)).map(p => p.rect)
+      if (!own.length) return
+      const x = Math.min(...own.map(r => r.x))
+      const y = Math.min(...own.map(r => r.y))
+      const box = { x, y, w: Math.max(...own.map(r => r.x + r.w)) - x, h: Math.max(...own.map(r => r.y + r.h)) - y }
+      const f = frame?.()
+      const keep = f ? keepClear.filter(k => ['face', 'letters'].includes(k.kind)).map(k => frameRect(k.box, f)) : []
+      const blocks = [...keep, ...pieces.filter(p => ['subtitle', 'badges', 'language', 'qr', 'top', 'strip'].includes(p.group)).map(p => p.rect)]
+        .map(r => ({ x: r.x - FIT.gap / 2, y: r.y - FIT.gap / 2, w: r.w + FIT.gap, h: r.h + FIT.gap }))
+      const dx = barShift(box, blocks, host.clientWidth, 32)
+      if (dx) bar.style.transform = `translateX(${Math.round(dx)}px)`
+    },
+
     fitSubtitle (el) {
       const box = el.parentElement
       const logo = box.querySelector('img')
@@ -2621,7 +3067,7 @@ Alpine.data('lessonGame', (lesson) => ({
       this.captionsOn = !!on
       // Someone who needs captions needs them in every lesson, so the choice outlives this one.
       try { localStorage.setItem('lp:captions', this.captionsOn ? '1' : '0') } catch (_) { /* private mode */ }
-      this._updateCaptions()
+      this._captionLanguageChanged()
     },
 
     toggleCaptions () {
@@ -2638,6 +3084,9 @@ Alpine.data('lessonGame', (lesson) => ({
         // deck (voyages keep A/B too). A modifier means the key belongs to the browser (⌘F is
         // Find), so leave those alone.
         if (e.metaKey || e.ctrlKey || e.altKey) return
+
+        // The Audio & Subtitles panel owns the arrows, Enter and Esc while it is open (ccKeydown).
+        if (this.ccOpen) { this.ccKeydown(e); return }
 
         const isVoyage = lesson.game_type === 'voyage'
         if (e.code === 'ArrowRight' || (isVoyage && e.code === 'KeyB')) {
@@ -2662,7 +3111,7 @@ Alpine.data('lessonGame', (lesson) => ({
           this.toggleMute()
         } else if (e.code === 'KeyC') {
           e.preventDefault()
-          this.toggleCaptions()
+          this.toggleCaptionPanel(true)
         } else if (e.code === 'KeyF') {
           e.preventDefault()
           this.toggleFullscreen()

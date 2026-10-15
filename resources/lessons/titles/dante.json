@@ -1,0 +1,19 @@
+{
+  "note": "Dante's life left to right. D: young Dante himself (blue, Bart's art direction; walk-sheet frame from the comic) over the gold letter, looking into the title. A+N: the Florence street of 1283 where he meets Beatrice. T+E: the dark wood of the Commedia (the empty history-line selva: the comic's wood panels show the older Dante in red). Background blue, letters gold, so the blue Dante reads against his letter. Art from the dante-comic-online comic.",
+  "label": "Comic poster", "order": 10, "thumb": "thumb.webp", "badges": "column", "badge_style": "dark",
+  "letters": { "wordmark": "public/lesson-logos/dante.svg" },
+  "rows": [
+    { "text": "DANTE", "gradient": ["#FFD54F", "#FF9E3D"] }
+  ],
+  "background": "#2152B5",
+  "outline": 0.04,
+  "shadow": [0.065, 0.06],
+  "row_gap": 0.4,
+  "focus_width": 72,
+  "subtitle": { "size": 2.3, "color": "#FFFFFF", "width": 60 },
+  "pictures": [
+    { "id": "firenze", "art": "resources/icons/history-line/backdrops/dante-comic/plate-strada-1283.webp", "crop": [60, 0, 1700, 1079], "row": 0, "at": 41, "height": 104, "align": "middle", "ambient": "drift", "ambient_speed": 0.4, "ambient_amount": 0.3 },
+    { "id": "selva", "art": "resources/icons/history-line/backdrops/dante/selva.webp", "crop": [500, 0, 2330, 1620], "row": 0, "at": 81, "height": 104, "align": "middle", "ambient": "breeze", "ambient_speed": 0.5, "ambient_amount": 0.4 }
+  ],
+  "hero": { "id": "dante", "art": "public/diorama/dante-strada-1283/dante18_sheet.webp", "crop": [1430, 85, 330, 820], "row": 0, "at": "d", "height": 120, "dx": -24, "dy": 22, "ambient": "breeze", "ambient_speed": 0.5, "ambient_amount": 0.3 }
+}

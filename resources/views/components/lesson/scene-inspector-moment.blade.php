@@ -12,6 +12,7 @@
     $sound = in_array($input, \App\Services\Lessons\MomentSpec::WORDLESS_INPUTS, true);
     $mic = in_array($input, \App\Services\Lessons\MomentSpec::MIC_INPUTS, true);
     $gesture = $draft['input_options']['gesture'] ?? 'shake';
+    $race = (bool) ($draft['race']['enabled'] ?? false);
     $inputs = [
         'words' => __('Shouting the right words (tap)'),
         'loudness' => __('Cheering (microphone)'),
@@ -64,6 +65,8 @@
                 </select>
             </label>
         </div>
+
+        <x-ui.toggle-row :label="__('Harbour race: a ship per team')" :checked="$race" on-change="toggleMomentRace" />
 
         @foreach ($words as $side => [$heading, $addLabel, $max])
             @php $rows = $draft['words'][$side] ?? []; @endphp
@@ -254,6 +257,34 @@
                         </div>
                     @endif
                 </div>
+
+                @if ($race)
+                    <div class="space-y-2 border-t border-panel-hairline pt-3" data-moment-race>
+                        <h4 class="{{ $label }}">{{ __('Harbour race') }}</h4>
+                        <div class="grid grid-cols-3 gap-2">
+                            <label class="input input-sm w-full">
+                                <span class="{{ $label }}">{{ __('Start line') }}</span>
+                                <input type="number" min="-50" max="150" wire:model.blur="momentDraft.race.start_x" wire:change="saveMomentDraft" class="grow" />
+                            </label>
+                            <label class="input input-sm w-full">
+                                <span class="{{ $label }}">{{ __('Finish line') }}</span>
+                                <input type="number" min="-50" max="150" wire:model.blur="momentDraft.race.finish_x" wire:change="saveMomentDraft" class="grow" />
+                            </label>
+                            <label class="input input-sm w-full" data-tooltip="{{ __('Seconds the 1642 fleet takes on a pupil\'s own device') }}">
+                                <span class="{{ $label }}">{{ __('Fleet') }}</span>
+                                <input type="number" min="5" max="120" wire:model.blur="momentDraft.race.ghost_seconds" wire:change="saveMomentDraft" class="grow" />
+                            </label>
+                        </div>
+                        <label class="block">
+                            <span class="{{ $label }}">{{ __('Narrator after the race') }}</span>
+                            <textarea rows="2" maxlength="1200" wire:model.blur="momentDraft.race.after" wire:change="saveMomentDraft" class="textarea textarea-sm mt-1 w-full"></textarea>
+                        </label>
+                        <label class="block">
+                            <span class="{{ $label }}">{{ __('Narrator after a race on a pupil\'s own device') }}</span>
+                            <textarea rows="2" maxlength="1200" wire:model.blur="momentDraft.race.after_solo" wire:change="saveMomentDraft" class="textarea textarea-sm mt-1 w-full"></textarea>
+                        </label>
+                    </div>
+                @endif
 
                 <label class="block border-t border-panel-hairline pt-3">
                     <span class="{{ $label }}">{{ __('Note for the teacher') }}</span>

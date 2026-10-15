@@ -90,6 +90,14 @@ trait EditsMoment
         $this->saveMomentDraft();
     }
 
+    /** A harbour race: a meter per team (or the 1642 fleet on a pupil's own device), on or off. */
+    public function toggleMomentRace(): void
+    {
+        $race = (array) ($this->momentDraft['race'] ?? []);
+        $this->momentDraft['race'] = array_merge($race, ['enabled' => ! (bool) ($race['enabled'] ?? false)]);
+        $this->saveMomentDraft();
+    }
+
     /** Switch the payoff. Nothing is lost: every payoff's fields stay in the moment. */
     public function setMomentPayoff(string $type): void
     {

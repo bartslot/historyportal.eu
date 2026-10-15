@@ -79,6 +79,8 @@ class RateLimitServiceProvider extends ServiceProvider
         // Reading a leaderboard is cheap and a whole class refreshes it at once, so this is per
         // address on purpose — it is here to stop a scraper, not a classroom.
         RateLimiter::for('leaderboard', fn (Request $request) => Limit::perMinute(120)->by('lb:'.$request->ip()));
+        // Subtitle sets: a whole class behind one school IP polls while a language is translating.
+        RateLimiter::for('captions', fn (Request $request) => Limit::perMinute(600)->by('cc:'.$request->ip()));
     }
 
     /**
@@ -115,5 +117,40 @@ class RateLimitServiceProvider extends ServiceProvider
 
         // Joining a class writes children into a teacher's roster.
         RateLimiter::for('class-join', fn (Request $request) => Limit::perMinute(20)->by('join:'.$request->ip()));
+        $this->harbourRace();
+    }
+
+    /**
+     * The harbour race on team devices. A school is one IP address, so the race is limited per run
+     * (its code) and per device, with only a loose per-address cap against a scraper: thirty phones
+     * behind one school router join in the same minute and poll every two seconds.
+     */
+    private function harbourRace(): void
+    {
+        $code = fn (Request $request): string => strtoupper((string) $request->route('code'));
+        // A device sends a random id it keeps in localStorage; anything else falls back to the address.
+        $device = function (Request $request): string {
+            $id = (string) $request->header('X-Race-Device', '');
+
+            return preg_match('/^[A-Za-z0-9-]{16,40}$/', $id) ? $id : $request->ip();
+        };
+
+        RateLimiter::for('race-join', fn (Request $request) => [
+            Limit::perMinute(60)->by('race-join:'.$code($request)),
+            Limit::perMinute(120)->by('race-join-ip:'.$request->ip()),
+        ]);
+        // Per team (the device id is only a client's word, so it is not the key that counts): a team's
+        // three or four phones push about once a second each. The server also caps how fast a team
+        // may gain, whatever the request count (HarbourRace::GAIN_PER_SECOND).
+        RateLimiter::for('race-push', fn (Request $request) => [
+            Limit::perMinute(300)->by('race-push:'.$code($request).':'.(int) $request->input('team_id')),
+            Limit::perMinute(90)->by('race-push-device:'.$code($request).':'.$device($request)),
+            Limit::perMinute(2400)->by('race-push-run:'.$code($request)),
+        ]);
+        // Reads: per address and race, so one address hammering a race does not lock out the others.
+        RateLimiter::for('race-read', fn (Request $request) => [
+            Limit::perMinute(1200)->by('race-read:'.$code($request).':'.$request->ip()),
+            Limit::perMinute(6000)->by('race-read-run:'.$code($request)),
+        ]);
     }
 }

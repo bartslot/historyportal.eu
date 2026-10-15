@@ -11,6 +11,27 @@
     <x-font-switch />
     <x-audio-manifest />
     <x-js-lang />
+    @php
+        // The title screen: a comic candidate's poster (TitlePoster), or null for the logo / plain title.
+        $titleStyle = $lesson->titleStyle();
+        $titlePoster = $lesson->titlePoster();
+        $titleFont = $titlePoster['subtitle']['font'] ?? null;
+    @endphp
+    @if ($titleFont === 'comic' || ($titlePoster && $lesson->expect))
+        {{-- The comic poster's subtitle lettering and the expect strip (Figma: Coming Soon). --}}
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Coming+Soon&display=swap">
+    @endif
+    @if ($titleFont === 'lettering')
+        {{-- The comic cover's live subtitle is set in ComicRoma Lettering Bold (app.css @font-face);
+             a cover whose recipe picks ComicRoma loads that face on demand. --}}
+        <link rel="preload" href="{{ asset('fonts/comic-lettering/ComicRomaLettering-Bold.woff2') }}" as="font" type="font/woff2" crossorigin>
+    @endif
+    @if ($lesson->hasBalloons())
+        {{-- Speech balloon lettering (app.css @font-face 'ComicRoma Balloon'). --}}
+        <link rel="preload" href="{{ asset('fonts/balloon/ComicRomaBalloon-SemiBold.woff2') }}" as="font" type="font/woff2" crossorigin>
+    @endif
 </head>
 <body class="h-full overflow-hidden bg-[#020617]">
 {{-- LessonPlayerController switches the locale to the lesson's language when the interface ships
@@ -48,6 +69,15 @@
         // Does this lesson start with the narration written along the bottom? The teacher sets the
         // starting state; the student can still toggle it (C) while it plays.
         'subtitles'             => (bool) $lesson->subtitles,
+        // The Audio & Subtitles panel: narration languages (translation_group siblings) and the
+        // subtitle languages, each in its own name. Other-language captions come from captions_url.
+        'source_language'       => \App\Services\Captions\CaptionTranslator::sourceLanguage($lesson),
+        'audio_languages'       => $audioLanguages ?? [],
+        'caption_languages'     => collect(\App\Services\Captions\CaptionTranslator::LANGUAGES)
+            ->map(fn ($name, $code) => ['code' => $code, 'name' => $name])->values(),
+        'captions_url'          => $lesson->lesson_code
+            ? route('lesson.captions', ['lessonCode' => $lesson->lesson_code, 'language' => '__LANG__'])
+            : null,
 
         // Does a music bed play under the narration? Off unless the teacher turned it on — most
         // lessons run on a classroom speaker, where music under a voice is the last thing wanted.
@@ -66,11 +96,21 @@
         // joins this on the same line, because a CC BY image has to say who made it.
         'source_attribution'    => $lesson->sourceAttribution(),
         'title_bg_url'          => $lesson->titleBgUrl(),
-        // A lesson series with its own wordmark (public/lesson-logos/{translation_group}.svg) shows it
-        // on the title screen instead of the plain title's lead-in.
-        'title_logo_url'        => $lesson->translation_group && is_file(public_path("lesson-logos/{$lesson->translation_group}.svg"))
-                                    ? asset("lesson-logos/{$lesson->translation_group}.svg")
-                                    : null,
+        // How the title screen draws the name (the teacher's choice or the series' default).
+        // A series wordmark (public/lesson-logos/{translation_group}.svg) replaces the plain title's
+        // lead-in; a comic candidate (public/lesson-titles/{translation_group}/{candidate}/poster.json)
+        // replaces the whole picture. Each is null unless it is the style in use.
+        'title_style'           => $titleStyle,
+        'title_logo_url'        => $titleStyle === \App\Support\TitlePoster::LOGO ? $lesson->titleLogoUrl() : null,
+        'title_poster'          => $titlePoster,
+        // The lesson-type badges (LessonTypes), drawn on the title screen; [] when hidden.
+        'lesson_types'          => $lesson->titleBadges(),
+        // The join QR's place (auto, a corner, hidden; resources/js/title-qr.js) and the boxes a
+        // logo/plain title picture keeps clear of it (% of the picture; a candidate has its own).
+        'qr_position'           => $lesson->qrPosition(),
+        'title_keep_clear'      => \App\Support\TitlePoster::keepClear($lesson->title_keep_clear),
+        // "What you can expect": 1-3 short lines on the title screen.
+        'expect'                => array_values((array) ($lesson->expect ?? [])),
         'intro_text'            => $lesson->outline['scene_briefs'][0]['scenePurpose']
                                     ?? $lesson->details
                                     ?? $lesson->topic,
@@ -185,6 +225,13 @@
         'estimated_minutes'     => $lesson->relationLoaded('scenes') ? $lesson->estimatedMinutes() : null,
         // A student can't skip a quiz question; the teacher testing their own lesson can.
         'can_skip_quiz'         => (bool) auth()->user()?->canManage($lesson),
+        // Harbour race on the teams' phones (HarbourRace): only a lesson manager opens one.
+        'race'                  => auth()->user()?->canManage($lesson) ? [
+            'store_url'      => route('race.store', ['lessonCode' => $lesson->lesson_code]),
+            'run_url'        => url('/races'),
+            'device_url'     => url('/race'),
+            'screen_poll_ms' => (int) config('race.screen_poll_ms'),
+        ] : null,
     ];
 @endphp
 {{-- The lesson payload is the heaviest thing on this page (mostly per-character narration timings:
@@ -245,9 +292,9 @@
 
     {{-- ── Map block slide — full-bleed historical atlas, shown while a map scene plays. --}}
     <div id="lesson-map-stage" lang="{{ $contentLang }}" class="absolute inset-0 z-20" style="display:none" aria-hidden="true"></div>
-    {{-- Voyage landfall: a minimal auto-advance progress line (the countdown moves on after 10s).
-         Previous / next live in the deck, like every other scene. --}}
-    <div x-show="showMapContinue && lesson.game_type === 'voyage'" class="fixed inset-x-0 bottom-0 z-40 h-1 bg-white/10 pointer-events-none">
+    {{-- Stage slide (voyage landfall, gallery): a minimal auto-advance progress line; the slide
+         moves on once its narration is done. Previous / next live in the deck, like every other scene. --}}
+    <div x-show="showMapContinue && autoAdvanceProgress > 0" class="fixed inset-x-0 bottom-0 z-40 h-1 bg-white/10 pointer-events-none">
         <div class="h-full bg-primary/90" :style="`width: ${autoAdvanceProgress * 100}%`"></div>
     </div>
 
@@ -310,22 +357,6 @@
            class="absolute bottom-1 left-1/2 -translate-x-1/2 max-w-[92vw] truncate text-2xs text-white/35 pointer-events-none"
            style="z-index:40"></p>
 
-        {{-- ── Subtitles — the narration written along the bottom while it is spoken ─────────── --}}
-        {{-- Sits above the chapter bar, never over it. x-text (never x-html): a script is teacher
-             copy and must not be able to inject markup into the student's player. --}}
-        <div
-            {{-- Same reason as the menu: an x-transition here left the (empty) bubble on screen
-                 after the captions were switched off, because the leave never applied. --}}
-            x-show="captionsOn && captionText && (phase === 'INTRO' || phase === 'GAME_ACTIVE')"
-            x-cloak
-            class="pointer-events-none absolute bottom-28 left-1/2 w-[min(56rem,90vw)] -translate-x-1/2 text-center"
-            style="z-index:47"
-            aria-live="polite"
-        >
-            <p x-text="captionText" lang="{{ $contentLang }}"
-               class="inline-block rounded-lg bg-black/70 px-4 py-2 text-balance text-lg leading-snug text-white shadow-lg backdrop-blur-sm sm:text-xl"></p>
-        </div>
-
         {{-- The chapter name + year moved into the overlay wrapper below as one quiet line. --}}
 
         {{-- ── Player overlay (Figma: VideoPlayer playing/paused) — less is more, icons only.
@@ -342,35 +373,57 @@
              @focusin="chromeFocus = $event.target.matches(':focus-visible')"
              @focusout="chromeFocus = false">
 
+            {{-- ── Subtitles — the narration written along the bottom while it is spoken ───────
+                 Netflix's look (.lp-cc in app.css): white text, a 60% black backdrop hugging each
+                 line, at most two lines. Bottom centre, lifted over the deck while the deck shows.
+                 Lifts with the chrome (chromeHidden). lang + dir follow the language of the
+                 line on screen (a line not translated yet shows in the original). x-text (never
+                 x-html): a script is teacher copy and must not inject markup into the player. No
+                 x-transition: its leave never applied in a hidden tab and left the bubble up. --}}
+            <div x-show="captionsOn && captionText && (phase === 'INTRO' || phase === 'GAME_ACTIVE')"
+                 x-cloak
+                 class="lp-cc pointer-events-none absolute left-1/2 -translate-x-1/2 text-center"
+                 :class="!chromeHidden && 'lp-cc--lifted'"
+                 {{-- Above the deck's scrim, under the deck itself while the panel is open over it. --}}
+                 :style="`z-index:${ccOpen || chaptersOpen ? 45 : 47}`"
+                 aria-live="polite">
+                <p class="lp-cc__text" :lang="captionShownLang" :dir="ccDir(captionShownLang)"><span x-text="captionText"></span></p>
+            </div>
+
             {{-- Top edge: scrim + the only text chrome that exists (teacher escape hatch or logo).
                  No phase gate — on the title screen nothing is playing, so it is simply visible. --}}
             {{-- pointer-events-none on the row itself: it is a full-width scrim, most of which has
                  nothing to click, and at z-index:48 it was sitting over the top-left language
                  switch (z-index:10) during TITLE_SCREEN and eating its clicks. Only the actual
                  controls (the "Edit scene" button below) opt back in with pointer-events-auto. --}}
-            <div class="pointer-events-none absolute inset-x-0 top-0 transition-opacity lp-chrome-fade"
+            <div class="pointer-events-none absolute inset-x-0 top-0 lp-chrome-fade"
                  :class="chromeHidden ? 'opacity-0' : 'opacity-100'"
                  style="z-index:48">
                 {{-- Side padding = the title screen bar's gutter (px-8/12), so Edit scene lines up with Start. --}}
                 {{-- A line-art scene (backdropShade off) keeps its paper white to the edge: no
                      full-width scrim. Its controls carry their own local plate instead (the Edit
                      button already has one; the logo gets one below). --}}
-                <div x-show="backdropShade" class="pointer-events-none absolute inset-x-0 top-0 h-36 bg-linear-to-b from-black/70 to-transparent"></div>
-                <div class="relative flex items-center gap-2.5 px-8 py-3.5 sm:px-12">
+                <div x-show="backdropShade && !(phase === 'TITLE_SCREEN' && lesson.title_poster)" class="pointer-events-none absolute inset-x-0 top-0 h-36 bg-linear-to-b from-black/70 to-transparent"></div>
+                {{-- data-player-chrome: overlays (the power-meter card) keep clear of this row and the deck. --}}
+                <div class="relative flex items-center gap-2.5 px-8 py-3.5 sm:px-12" data-player-chrome="top"
+                     :style="phase === 'TITLE_SCREEN' && titleLogoH ? 'padding-block: 6px' : ''">
                     {{-- title_preview: the editor's title-screen frame shows what students see. --}}
                     @if ($canEdit && ! request()->boolean('title_preview'))
                         {{-- No back arrow here on purpose. The wizard already draws one in this exact
                              corner, so the two stacked into a confusing double control. "Edit scene"
                              below is the way into the editing view. --}}
-                        <button type="button"
+                        <button type="button" data-title-avoid
                                 @click="openEditor('{{ route('teacher.lessons.wizard', $lesson) }}')"
                                 class="pointer-events-auto flex items-center gap-2 rounded-full border border-white/15 bg-slate-900/70 py-1.5 pl-3 pr-4 text-sm font-medium text-slate-300 backdrop-blur transition hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70">
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z"/></svg>
                             {{ __('Edit scene') }}
                         </button>
                     @else
-                        <img src="{{ asset('assets/logo.svg') }}" alt="History Portal" class="h-24 w-auto shadow-sm"
-                             :class="!backdropShade && 'rounded-xl border border-white/10 bg-black/70 p-2 backdrop-blur-md'">
+                        {{-- On the title screen's white expect strip: the logo's dark variant, fitted to a slim strip. --}}
+                        <img src="{{ asset('assets/logo.svg') }}" alt="History Portal" class="h-24 w-auto" data-title-avoid
+                             :src="phase === 'TITLE_SCREEN' && titleChromeOnStrip ? @js(asset('assets/logo-dark.svg')) : @js(asset('assets/logo.svg'))"
+                             :style="phase === 'TITLE_SCREEN' && titleLogoH ? `height:${titleLogoH}px` : ''"
+                             :class="!backdropShade && !(phase === 'TITLE_SCREEN' && titleChromeOnStrip) && 'rounded-xl border border-white/10 bg-black/70 p-2 backdrop-blur-md'">
                     @endif
                 </div>
             </div>
@@ -387,7 +440,7 @@
                  the chrome while it plays. See centreGlyphShown. --}}
             <div x-show="(phase === 'INTRO' || phase === 'GAME_ACTIVE' || phase === 'GAME_BRIEF') && !currentIsGame"
                  x-cloak
-                 class="pointer-events-none absolute inset-0 flex items-center justify-center transition-opacity lp-chrome-fade"
+                 class="pointer-events-none absolute inset-0 flex items-center justify-center lp-chrome-fade"
                  :class="centreGlyphShown ? 'opacity-100' : 'opacity-0'"
                  style="z-index:45">
                 {{-- No data-tooltip here on purpose: a 96px glyph in the middle of the stage says
@@ -419,16 +472,63 @@
                  chapter line carry a local plate instead, below. --}}
             <div x-show="backdropShade && (phase === 'INTRO' || phase === 'GAME_ACTIVE' || phase === 'GAME_BRIEF')"
                  x-cloak
-                 class="pointer-events-none absolute inset-x-0 bottom-0 h-44 bg-linear-to-t from-black/80 via-black/40 to-transparent transition-opacity lp-chrome-fade"
+                 class="pointer-events-none absolute inset-x-0 bottom-0 h-44 bg-linear-to-t from-black/80 via-black/40 to-transparent lp-chrome-fade"
                  :class="chromeHidden && 'opacity-0'"
                  style="z-index:44"></div>
 
             <div x-show="phase === 'INTRO' || phase === 'GAME_ACTIVE' || phase === 'GAME_BRIEF'"
                  x-cloak
-                 class="absolute inset-x-0 bottom-0 transition-all lp-chrome-fade"
+                 class="absolute inset-x-0 bottom-0 lp-chrome-fade"
                  :class="chromeHidden ? 'pointer-events-none translate-y-2 opacity-0' : 'opacity-100'"
                  style="z-index:46">
-                <div class="pointer-events-auto mx-auto w-[min(720px,92vw)] pb-3">
+                <div class="pointer-events-auto mx-auto w-[min(720px,92vw)] pb-3" data-player-chrome="bottom">
+
+                    {{-- Audio & Subtitles (Netflix's panel): narration languages left, subtitles right.
+                         One click selects and the panel stays open; it closes on an outside click,
+                         Esc, C or the CC button. Keys: ↑/↓ in a column, ←/→ between, Enter picks
+                         (ccKeydown). Fixed column widths, so a "Translating…" hint or a long name
+                         never resizes it. On a phone the two columns stack. --}}
+                    <div x-show="ccOpen" x-cloak data-cc-panel
+                         x-transition:enter="transition duration-[160ms] ease-out"
+                         x-transition:enter-start="opacity-0 motion-safe:translate-y-2"
+                         x-transition:enter-end="opacity-100 translate-y-0"
+                         x-transition:leave="transition duration-[120ms] ease-in"
+                         x-transition:leave-start="opacity-100"
+                         x-transition:leave-end="opacity-0"
+                         @click.outside="if (!$event.target.closest('[data-cc-button]')) ccOpen = false"
+                         role="dialog" aria-label="{{ __('Audio and subtitles') }}"
+                         class="mb-3 ml-auto flex max-h-[60vh] w-full flex-col overflow-y-auto rounded-xl border border-white/10 bg-black/70 p-2 backdrop-blur-md sm:w-fit sm:flex-row sm:gap-2">
+                        <div class="sm:w-44" role="group" aria-labelledby="cc-audio-heading">
+                            <p id="cc-audio-heading" class="px-3 pb-1 pt-2 text-2xs font-semibold uppercase tracking-widest text-white/50">{{ __('Audio') }}</p>
+                            <template x-for="(row, i) in ccAudioRows" :key="row.code">
+                                <button type="button" @click="selectAudio(row)" :data-cc-col="0" :data-cc-row="i"
+                                        :aria-pressed="row.current" @focus="ccFocus = { col: 0, row: i }"
+                                        class="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-left text-base transition-colors hover:bg-white/10 focus:outline-none focus-visible:bg-white/15"
+                                        :class="row.current ? 'font-bold text-white' : 'text-white/80'">
+                                    <svg x-show="row.current" class="h-5 w-5 shrink-0 text-primary" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+                                    <span x-show="!row.current" class="w-5 shrink-0"></span>
+                                    <span class="truncate" :lang="row.code" x-text="row.name"></span>
+                                </button>
+                            </template>
+                        </div>
+                        <div class="mt-2 border-t border-white/10 pt-1 sm:mt-0 sm:w-64 sm:border-l sm:border-t-0 sm:pl-2 sm:pt-0" role="group" aria-labelledby="cc-subs-heading">
+                            <p id="cc-subs-heading" class="px-3 pb-1 pt-2 text-2xs font-semibold uppercase tracking-widest text-white/50">{{ __('Subtitles') }}</p>
+                            <template x-for="(row, i) in ccSubtitleRows" :key="row.code || 'off'">
+                                <button type="button" @click="selectSubtitle(row.code)" :data-cc-col="1" :data-cc-row="i"
+                                        :aria-pressed="ccSelectedSubtitle() === row.code" @focus="ccFocus = { col: 1, row: i }"
+                                        class="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-left text-base transition-colors hover:bg-white/10 focus:outline-none focus-visible:bg-white/15"
+                                        :class="ccSelectedSubtitle() === row.code ? 'font-bold text-white' : 'text-white/80'">
+                                    <svg x-show="ccSelectedSubtitle() === row.code" class="h-5 w-5 shrink-0 text-primary" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+                                    <span x-show="ccSelectedSubtitle() !== row.code" class="w-5 shrink-0"></span>
+                                    <span class="shrink-0" :lang="row.code || null" x-text="row.name"></span>
+                                    <span class="lp-cc-hint ml-auto min-w-0 truncate text-right text-sm font-normal text-white/40"
+                                          :lang="ccSets[row.code]?.translating ? null : (row.code || null)"
+                                          :dir="ccSets[row.code]?.translating ? null : ccDir(row.code)"
+                                          x-text="ccRowHint(row.code)"></span>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
 
                     {{-- Chapter list (opens above the deck) — numbered names, active highlighted. --}}
                     <div x-show="chaptersOpen" x-transition
@@ -482,7 +582,7 @@
                          sit on a local plate (the chapter list's surface). Not around the chapter line
                          or the list: backdrop-filter would become the containing block of the line's
                          corner float, and the list has its own plate. --}}
-                    <div :class="!backdropShade && 'rounded-xl border border-white/10 bg-black/70 px-2 backdrop-blur-md'">
+                    <div data-tooltip-clear :class="!backdropShade && 'rounded-xl border border-white/10 bg-black/70 px-2 backdrop-blur-md'">
                     {{-- Segmented progress (Spotify-style) — one segment per scene, width ∝ its time.
                          Played fills white, reached-but-not-played a lighter grey, the rest is to come:
                          dimmed and not clickable (a student never jumps past the furthest point).
@@ -582,14 +682,14 @@
                                        :style="`--lp-vol:${(audioMuted ? 0 : volumeLevel) * 100}%`">
                             </div>
 
-                            {{-- Subtitles — a plain toggle: on/off is a single choice, so no menu.
-                                 The plate + amber underline mark the on state; C toggles from the
-                                 keyboard too. --}}
-                            <button type="button"
-                                    @click="toggleCaptions()"
-                                    data-tooltip="{{ __('Subtitles') }}" data-tooltip-key="C"
-                                    :aria-pressed="captionsOn"
-                                    aria-label="{{ __('Subtitles') }}"
+                            {{-- Subtitles — opens the Audio & Subtitles panel above (C does too). The
+                                 plate + amber underline mark captions on. No tooltip while the panel
+                                 is open: it would sit on the panel. --}}
+                            <button type="button" x-ref="ccButton" data-cc-button
+                                    @click="toggleCaptionPanel()"
+                                    :data-tooltip="ccOpen ? '' : @js(__('Audio and subtitles'))" data-tooltip-key="C"
+                                    :aria-expanded="ccOpen" aria-haspopup="dialog"
+                                    aria-label="{{ __('Audio and subtitles') }}"
                                     class="group relative flex h-10 w-10 items-center justify-center rounded-lg transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
                                     :class="captionsOn ? 'bg-white/10 text-white' : 'text-white/85 hover:text-white'">
                                 <svg class="h-6 w-6 shadow-sm transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
@@ -603,7 +703,7 @@
                             {{-- Chapter-list toggle. Hidden on game scenes like the old chapter bar:
                                  the quiz card paints in a sibling layer above this deck, so the list
                                  would open underneath it. --}}
-                            <button type="button" x-show="chapters.length > 1 && !currentIsGame" @click="chaptersOpen = !chaptersOpen"
+                            <button type="button" x-show="chapters.length > 1 && !currentIsGame" @click="chaptersOpen = !chaptersOpen; ccOpen = false"
                                     data-tooltip="{{ __('Chapters') }}" aria-label="{{ __('Chapters') }}"
                                     :aria-expanded="chaptersOpen"
                                     class="group flex h-10 w-10 items-center justify-center rounded-lg transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
@@ -628,10 +728,46 @@
              lesson. A plain x-show hides it synchronously on the phase flip, visible tab or not. --}}
         <div
             x-show="phase === 'TITLE_SCREEN'"
-            class="absolute inset-0 pointer-events-auto"
+            class="absolute inset-0 pointer-events-auto" data-title-screen
         >
+            {{-- A comic title candidate (TitlePoster: the poster with a scene masked into its letters, the
+                 painted cover, the banner), drawn from
+                 poster.json by resources/js/title-poster.js over the poster's own flat colour,
+                 instead of the painted backdrop and the wordmark. The subtitle is live text from the
+                 lesson title, so a teacher's edit changes it. --}}
+            <template x-if="lesson.title_poster">
+                <div class="absolute inset-0 overflow-hidden" :style="`background-color: ${lesson.title_poster.background}`"
+                     x-init="$nextTick(() => mountTitlePoster($el))">
+                    <h1 class="sr-only" lang="{{ $contentLang }}" x-text="lesson.title"></h1>
+                    <div data-poster-stage class="title-poster absolute" aria-hidden="true">
+                        <template x-if="lesson.title_poster.subtitle">
+                            <p lang="{{ $contentLang }}" x-text="lesson.title.replace(/^.*?:\s*/, '')" data-title-avoid
+                               class="absolute flex items-center justify-center whitespace-nowrap text-center leading-none"
+                               :style="(({ box, size, color, font }) => `left:${box.x}%;top:${box.y}%;width:${box.w}%;height:${box.h}%;font-size:${size}cqw;color:${color};${font === 'lettering' ? `font-family:'ComicRoma Lettering',var(--font-comic);font-weight:700;text-transform:uppercase` : `font-family:${font === 'comicroma' ? 'ComicRoma' : `'Coming Soon'`},var(--font-comic)`}`)(lesson.title_poster.subtitle)"></p>
+                        </template>
+                    </div>
+                </div>
+            </template>
+
+            {{-- "What you can expect" in the candidate's own slot (the banner's white strip, Figma
+                 2321:1315): live text, laid out by resources/js/title-expect.js. On a phone every
+                 candidate stacks its lines in this strip, above the picture: under the title they
+                 pushed the badges into the letters and the painting. A wider screen uses it too when
+                 the lines under the title would reach the letters (expectInStrip, measured). --}}
+            <template x-if="lesson.title_poster && (lesson.expect.length || titleFit.metaInStrip)">
+                <ul data-title-expect="strip" data-title-avoid lang="{{ $contentLang }}" aria-label="{{ __('What to expect') }}"
+                    :class="!lesson.title_poster.expect && !expectInStrip && !titleFit.metaInStrip && 'sm:hidden'"
+                    class="title-expect-strip absolute inset-x-0 flex flex-col gap-1 bg-white pb-3 pr-4 text-sm text-brand-ink sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-12 sm:gap-y-1 sm:py-2 lg:text-base"
+                    style="z-index: 15; font-family: 'Coming Soon', var(--font-comic)">
+                    <template x-for="line in lesson.expect"><li x-text="line" :class="!lesson.title_poster.expect && !expectInStrip && 'sm:hidden'"></li></template>
+                    {{-- The meta row, when the screen ran out of room for it under the title (title-fit.js). --}}
+                    <li x-show="titleFit.metaInStrip" data-title-strip-meta
+                        x-text="[titleCodeInMeta && @js(__('Lesson code')) + ' ' + lesson.lesson_code, lesson.grade_level, lesson.subject && lesson.subject.charAt(0).toUpperCase() + lesson.subject.slice(1), estimatedMinutes].filter(Boolean).join(' · ')"></li>
+                </ul>
+            </template>
+
             {{-- Cinematic gradients: heavy vignette bottom + sides --}}
-            <div class="absolute inset-0 pointer-events-none"
+            <div x-show="!lesson.title_poster" class="absolute inset-0 pointer-events-none"
                  style="background:
                      linear-gradient(to top,  rgba(2,6,23,1) 0%, rgba(2,6,23,0.7) 30%, transparent 60%),
                      linear-gradient(to right, rgba(2,6,23,0.7) 0%, transparent 40%),
@@ -639,34 +775,43 @@
             </div>
 
             {{-- Animated film grain — heavier than normal (0.12 opacity) --}}
-            <div class="skybox-grain-overlay" style="opacity: 0.22; z-index: 2;"></div>
+            <div x-show="!lesson.title_poster" class="skybox-grain-overlay" style="opacity: 0.22; z-index: 2;"></div>
 
             {{-- Bottom right, on the same edges as the Start button's bar (px-8/12, pb-10/14):
-                 the language switch and the join QR, bottoms aligned. --}}
-            <div class="absolute bottom-10 right-8 sm:bottom-14 sm:right-12 flex items-end gap-4" style="z-index:20">
-                <x-lesson.language-switch :lesson="$lesson" :translations="$translations" />
-                {{-- QR code, clickable to open the modal. The teacher can hide it (title screen Format). --}}
-                @if ($lesson->show_qr ?? true)
-                <button onclick="document.getElementById('qr-modal').showModal()"
-                        class="hidden sm:flex flex-col items-center gap-1.5 cursor-pointer group"
-                        style="background:none; border:none; padding:0">
-                    <canvas id="title-qr-canvas"
-                            class="rounded-xl opacity-90 transition group-hover:opacity-100 group-hover:scale-105"
-                            style="image-rendering: pixelated;"></canvas>
-                    <p class="text-sm font-mono font-bold tracking-[0.25em] text-white/80 uppercase"
-                       x-text="lesson.lesson_code"></p>
-                    <p class="text-2xs text-white/40 tracking-widest uppercase group-hover:text-white/60 transition">Scan to join</p>
-                </button>
-                @endif
+                 the language switch and the join QR, bottoms aligned, with the lesson-type badges
+                 standing above them (on one row they ran into a centred Start button). A phone has
+                 no room beside its title, so there the badges join the title block's own flow. --}}
+            @php $lessonTypes = $lessonData['lesson_types']; @endphp
+            <div class="absolute bottom-10 right-8 sm:bottom-14 sm:right-12 flex flex-col items-end gap-4" style="z-index:20" data-title-cluster>
+                <x-lesson.type-badges :types="$lessonTypes" :dark="($titlePoster['badge_style'] ?? 'colour') === 'dark'"
+                                      x-bind:class="[titleFit.badgesCompact && 'lp-type-badges--compact', titleFit.badgesFlip && 'lp-type-badges--flip'].filter(Boolean).join(' ')"
+                                      @class(['max-sm:hidden', 'flex-col' => ($titlePoster['badges'] ?? 'row') === 'column']) />
+                <div class="flex items-end gap-4">
+                    <x-lesson.language-switch :lesson="$lesson" :translations="$translations" data-title-avoid data-title-piece="language" />
+                    {{-- QR code, clickable to open the modal. Its own place is here, beside the language;
+                         resources/js/title-qr.js moves it when that would cover a face or an element,
+                         or to the teacher's corner (title screen Format), or hides it. --}}
+                    @if ($lesson->show_qr ?? true)
+                    {{-- The code dark on a white plate with its quiet zone (lp-qr-plate), the lesson code and
+                         "scan to join" on the plate under it: a camera reads it on any picture. --}}
+                    <button onclick="document.getElementById('qr-modal').showModal()" data-title-qr
+                            class="lp-qr-plate hidden sm:flex flex-col items-center pb-2 cursor-pointer">
+                        <canvas id="title-qr-canvas" class="block" style="image-rendering: pixelated;"></canvas>
+                        <p class="-mt-1 px-2 text-sm font-mono font-bold tracking-[0.25em] uppercase"
+                           x-text="lesson.lesson_code"></p>
+                        <p class="px-2 text-2xs tracking-widest uppercase opacity-60">{{ __('Scan to join') }}</p>
+                    </button>
+                    @endif
+                </div>
             </div>
 
             {{-- Series wordmark (comic cover style): the logo carries the name, top left under the
                  "Edit scene" row, with only the title's subtitle lettered beneath it. --}}
             <template x-if="lesson.title_logo_url">
                 {{-- The width is the logo's; the subtitle is fitted to exactly that width (fitSubtitle). --}}
-                <h1 lang="{{ $contentLang }}" class="absolute left-8 sm:left-12 top-24 pointer-events-none"
+                <h1 lang="{{ $contentLang }}" class="absolute left-8 sm:left-12 top-24 pointer-events-none" data-title-avoid data-title-piece="logo"
                     style="z-index:10; width: clamp(18rem, 58vw, 68rem)">
-                    <img x-bind:src="lesson.title_logo_url" x-bind:alt="lesson.title"
+                    <img x-bind:src="lesson.title_logo_url" x-bind:alt="lesson.title" x-on:load="relayoutTitle()"
                          class="block h-auto w-full -rotate-2 origin-bottom-left"
                          style="filter: drop-shadow(0.6rem 0.8rem 0 rgba(0,0,0,0.85)) drop-shadow(0 0 3rem rgba(0,0,0,0.6));">
                     <span aria-hidden="true" x-text="lesson.title.replace(/^.*?:\s*/, '')" x-init="$nextTick(() => fitSubtitle($el))"
@@ -679,7 +824,7 @@
             <dialog id="qr-modal" class="modal">
                 <div class="modal-box hp-modals border border-white/10 flex flex-col items-center gap-6 py-10 px-12 max-w-sm">
                     <canvas id="qr-modal-canvas"
-                            class="rounded-2xl"
+                            class="rounded-2xl bg-white"
                             style="image-rendering: pixelated;"></canvas>
                     <p class="font-mono font-black tracking-[0.35em] text-white uppercase"
                        style="font-size: 2.5rem;"
@@ -703,20 +848,23 @@
                 };
                 $titleRows = $titlePos->isCentred() ? 'justify-center' : ($titlePos === \App\Enums\TitlePosition::TopRight ? 'justify-end' : '');
             @endphp
-            <div class="absolute flex gap-8 px-8 sm:px-12 {{ $titleBar }}" data-title-position="{{ $titlePos->value }}"
+            {{-- Beside a drawn title the badges stand at bottom right, above the QR: the title keeps clear of them. --}}
+            <div @class(["absolute flex gap-8 px-8 sm:px-12", $titleBar,
+                         "sm:pr-[21rem] lg:pr-[24rem]" => $titlePoster === null && $lessonTypes !== [] && ! in_array($titlePos, [\App\Enums\TitlePosition::TopLeft, \App\Enums\TitlePosition::TopCenter, \App\Enums\TitlePosition::TopRight], true)])
+                 data-title-position="{{ $titlePos->value }}"
                  style="z-index: 10;">
 
                 {{-- ── Title + meta + CTA ── --}}
-                <div @class(['min-w-0 max-w-6xl', 'flex-1' => $titlePos === \App\Enums\TitlePosition::BottomLeft])>
+                <div @class(['min-w-0 max-w-6xl', 'flex-1' => $titlePos === \App\Enums\TitlePosition::BottomLeft]) data-title-bar>
 
                     {{-- Era / region --}}
-                    <p x-show="lesson.era || lesson.region"
+                    <p x-show="!lesson.title_poster && (lesson.era || lesson.region)" data-title-avoid
                        x-text="[lesson.era, lesson.region].filter(Boolean).join(' · ').toUpperCase()"
                        class="mb-4 border-l-2 border-primary pl-3 text-xs font-bold tracking-eyebrow text-primary
                               drop-shadow-[0_1px_8px_rgba(0,0,0,1)]"></p>
 
                     {{-- Title --}}
-                    <h1 x-show="!lesson.title_logo_url" lang="{{ $contentLang }}"
+                    <h1 x-show="!lesson.title_logo_url && !lesson.title_poster" lang="{{ $contentLang }}" data-title-avoid
                         style="font-size: clamp(2.2rem, 6vw, 7rem);"
                         x-html="lesson.title.includes(': ')
                             ? lesson.title.replace(/^(.*?):\s*(.+)$/, '<span style=\'font-weight:300\'>$1:</span> <span style=\'font-weight:700\'>$2</span>')
@@ -726,13 +874,31 @@
                     ></h1>
 
                     {{-- Intro text — hidden on very small screens --}}
-                    <p x-show="lesson.intro_text" lang="{{ $contentLang }}"
+                    <p x-show="lesson.intro_text && !lesson.title_poster" lang="{{ $contentLang }}" data-title-avoid
                        x-text="lesson.intro_text"
                        class="mt-4 text-sm leading-relaxed text-slate-300/75 font-light hidden sm:block
                               drop-shadow-[0_1px_8px_rgba(0,0,0,0.9)]"></p>
 
+                    {{-- A phone's lesson-type badges, in the title's flow (the larger screens': bottom right). --}}
+                    <x-lesson.type-badges :types="$lessonTypes" :dark="($titlePoster['badge_style'] ?? 'colour') === 'dark'" @class(['mt-4 sm:hidden', $titleRows]) />
+
+                    {{-- "What you can expect", under the title when the candidate has no slot of its own. --}}
+                    <ul x-show="lesson.expect.length && !lesson.title_poster?.expect && !expectInStrip" data-title-expect="lines" data-title-avoid="children"
+                        lang="{{ $contentLang }}" aria-label="{{ __('What to expect') }}"
+                        class="mt-4 flex flex-col items-start gap-1 text-sm text-white/85 sm:flex-row sm:flex-wrap sm:gap-x-6 {{ $titleRows }}"
+                        :class="lesson.title_poster && 'title-poster-meta max-sm:hidden'">
+                        {{-- Over a picture each line stands on the subtitles' quiet plate; on a flat poster colour it needs none. --}}
+                        <template x-for="line in lesson.expect"><li x-text="line" :class="(!lesson.title_poster || lesson.title_poster.fit === 'cover') && 'lp-quiet-plate'"></li></template>
+                    </ul>
+
                     {{-- Meta row --}}
-                    <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 {{ $titleRows }}">
+                    <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 {{ $titleRows }}" data-title-avoid="children" data-title-piece="meta"
+                         x-show="!titleFit.metaInStrip"
+                         :class="lesson.title_poster && ('title-poster-meta' + (lesson.title_poster.fit === 'cover' ? ' lp-quiet-plate w-fit px-2 py-0.5 {{ $titlePos->isCentred() ? 'mx-auto' : '' }}' : ''))">
+                        {{-- The lesson code, when the join QR is not on screen (a phone, no room, or hidden). --}}
+                        <span x-show="titleCodeInMeta" data-title-code
+                              class="font-mono text-xs font-bold uppercase tracking-[0.2em] text-white/80">{{ __('Lesson code') }} <span x-text="lesson.lesson_code"></span></span>
+                        <span x-show="titleCodeInMeta && (lesson.grade_level || lesson.subject || estimatedMinutes)" class="text-slate-700 text-xs">·</span>
                         <span x-show="lesson.grade_level" x-text="lesson.grade_level"
                               class="text-xs font-light text-slate-500"></span>
                         <span x-show="lesson.grade_level && lesson.subject" class="text-slate-700 text-xs">·</span>
@@ -762,7 +928,7 @@
                     </div>
 
                     {{-- CTA --}}
-                    <div class="mt-6 flex flex-wrap gap-3 sm:mt-8 {{ $titleRows }}">
+                    <div class="mt-6 flex flex-wrap gap-3 sm:mt-8 {{ $titleRows }}" data-title-avoid="children" data-title-piece="cta">
                         <template x-if="canStart">
                             <button role="button"
                                 @click="startLesson()"
