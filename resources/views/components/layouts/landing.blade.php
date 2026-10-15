@@ -47,5 +47,6 @@
 
     @stack('scripts')
     @livewireScripts
+    <x-playtest-recorder />
 </body>
 </html>

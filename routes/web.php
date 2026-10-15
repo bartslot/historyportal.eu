@@ -461,6 +461,10 @@ Route::middleware(['auth', \App\Http\Middleware\RestrictGuestDemo::class])
 
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
 
+    // Spoken playtest notes pinned to the cursor — see components/playtest-recorder.blade.php.
+    Route::post('/playtest-notes', [\App\Http\Controllers\Admin\PlaytestNoteController::class, 'store'])
+        ->name('playtest-notes.store');
+
     Route::get('/dashboard', function () {
         return view('admin.dashboard', [
             'narratorCount' => Narrator::count(),
