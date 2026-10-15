@@ -66,6 +66,12 @@ final class DemoLesson
     {
         $request ??= request();
 
+        // A page whose URL names its language (/nl, /de) is that language, whatever the browser says.
+        $fromUrl = $request->route()?->parameter('locale');
+        if (is_string($fromUrl) && Locales::isSupported($fromUrl)) {
+            return $fromUrl;
+        }
+
         $browser = self::fromBrowser($request);
 
         // A browser asking for a language that is NOT English is someone who went and set it, so it
@@ -100,10 +106,14 @@ final class DemoLesson
             return (string) config('demo.lesson_goal');
         }
 
-        $entry = self::entryFor($lesson->language ?: self::FALLBACK_LANGUAGE);
+        $goal = ((array) config('demo.goals', []))[$lesson->title] ?? null;
+        if ($goal) {
+            return (string) $goal;
+        }
 
-        return ($entry['title'] ?? null) === $lesson->title && ! empty($entry['goal'])
-            ? (string) $entry['goal']
+        // English keeps its env override (DEMO_LESSON_GOAL) for the pinned default lesson.
+        return $lesson->title === config('demo.lesson_title') && $lesson->language === self::FALLBACK_LANGUAGE
+            ? (string) config('demo.lesson_goal')
             : $lesson->title;
     }
 
@@ -142,7 +152,6 @@ final class DemoLesson
         if ($language === self::FALLBACK_LANGUAGE) {
             return [
                 'title' => config('demo.lesson_title'),
-                'goal' => config('demo.lesson_goal'),
                 'footage' => config('demo.lesson_footage'),
             ];
         }
