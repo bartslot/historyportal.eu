@@ -2871,7 +2871,7 @@ Alpine.data('lessonGame', (lesson) => ({
       if (poster && stage) {
         // The calm size first (the letters span a share of the screen), then a step down per give-way.
         const letters = lettersBox(poster.keep_clear ?? [])
-        const s = calmScale(letters ? letters.w / 100 * stage.offsetWidth : 0, o.width) * FIT.letterScale ** n
+        const s = calmScale(letters ? letters.w / 100 * stage.offsetWidth : 0, o.width, letters ? letters.h / 100 * stage.offsetHeight : 0, o.height) * FIT.letterScale ** n
         if (poster.fit === 'cover') {
           // A painting stays full-bleed: only its lettering scales, as one layer.
           moved = this._scaleTitleLettering(stage, s)

@@ -17,8 +17,10 @@ export const FIT = {
   logoScale: 0.85,      // a series logo's width per step
   maxShrink: 6,
   qrSteps: [96, 84, 72],
-  // The calm size: the lettering's letters span this share of the screen's width at most.
+  // The calm size: the lettering's letters span this share of the screen's width at most, and
+  // (a stacked title, two lines of letters) this share of its height.
   letterShare: 0.38,
+  letterShareH: 0.3,
   letterSharePhone: 0.86,
   phone: 640,
 }
@@ -69,12 +71,14 @@ export function nextFit (fit, hits) {
 
 /**
  * Pure: the calm scale of a title whose letters are `lettersW` px wide on a screen `viewW` px
- * wide: they span FIT.letterShare of it (FIT.letterSharePhone on a phone), never more than drawn.
+ * wide: they span FIT.letterShare of it (FIT.letterSharePhone on a phone) and FIT.letterShareH of
+ * the height, never more than drawn.
  */
-export function calmScale (lettersW, viewW) {
+export function calmScale (lettersW, viewW, lettersH = 0, viewH = 0) {
   if (!(lettersW > 0 && viewW > 0)) return 1
-  const share = viewW < FIT.phone ? FIT.letterSharePhone : FIT.letterShare
-  return Math.min(1, share * viewW / lettersW)
+  if (viewW < FIT.phone) return Math.min(1, FIT.letterSharePhone * viewW / lettersW)
+  const byHeight = lettersH > 0 && viewH > 0 ? FIT.letterShareH * viewH / lettersH : 1
+  return Math.min(1, FIT.letterShare * viewW / lettersW, byHeight)
 }
 
 /** Pure: the union of the 'letters' keep-clear boxes (% of the frame), or null. */

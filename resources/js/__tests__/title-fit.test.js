@@ -57,6 +57,10 @@ describe('the calm size of the title', () => {
     expect(calmScale(300, 1440)).toBe(1)
   })
 
+  it('keeps a stacked title to a share of the height', () => {
+    expect(calmScale(400, 1440, 600, 900)).toBeCloseTo(FIT.letterShareH * 900 / 600)
+  })
+
   it('lets a phone use most of its width', () => {
     expect(calmScale(1000, 375)).toBeCloseTo(FIT.letterSharePhone * 375 / 1000)
   })

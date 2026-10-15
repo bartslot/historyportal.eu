@@ -896,10 +896,11 @@
                                     <template x-for="line in lesson.expect"><li x-text="line"></li></template>
                                 </ul>
                             </div>
+                            {{-- One line per chapter: a chapter spans several scenes in a row. --}}
                             <div x-show="chapters.length > 1">
                                 <h3 class="text-xs font-semibold uppercase tracking-widest text-base-content/50">{{ __('Chapters') }}</h3>
                                 <ol class="mt-4 space-y-2 text-sm text-base-content/70" lang="{{ $contentLang }}">
-                                    <template x-for="(c, i) in chapters" :key="c.index">
+                                    <template x-for="(c, i) in chapters.filter((c, j, all) => j === 0 || all[j - 1].name !== c.name)" :key="c.index">
                                         <li class="flex gap-4"><span class="w-6 shrink-0 font-mono text-xs tabular-nums text-base-content/40" x-text="String(i + 1).padStart(2, '0')"></span><span x-text="c.name"></span></li>
                                     </template>
                                 </ol>
