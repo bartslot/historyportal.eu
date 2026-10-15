@@ -139,6 +139,20 @@ final class Seo
     }
 
     /**
+     * A page's structured data with the FAQ added (homepage and /about show <x-landing.faq>).
+     *
+     * @param  array<string,mixed>  $graph  a graph with '@graph', or none
+     * @return array<string,mixed>
+     */
+    public static function withFaq(array $graph = []): array
+    {
+        return [
+            '@context' => 'https://schema.org',
+            '@graph' => [...($graph['@graph'] ?? []), Faq::graphNode()],
+        ];
+    }
+
+    /**
      * Schema.org LearningResource for one lesson.
      *
      * @return array<string,mixed>

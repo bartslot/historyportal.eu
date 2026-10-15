@@ -93,7 +93,7 @@ class ProductTourTest extends TestCase
         }
     }
 
-    public function test_the_about_page_offers_the_tour_once_it_has_been_captured(): void
+    public function test_the_about_page_plays_the_tour_inline_once_it_has_been_captured(): void
     {
         // The public path is a temp dir, so there is no build manifest to resolve assets against.
         $this->withoutVite();
@@ -105,7 +105,9 @@ class ProductTourTest extends TestCase
         $this->get('/about')
             ->assertOk()
             ->assertSee('screenshotTour(', false)
-            ->assertSee(__('See how it works'))
+            // /about plays it in the page (How it works), so no button opens it there
+            ->assertSee('x-init="watch()"', false)
+            ->assertSee(__('How it works'))
             ->assertSee(__('Start with what your class is studying'));
     }
 }

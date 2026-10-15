@@ -8,6 +8,11 @@
 //
 // Below COMPACT_BREAKPOINT (measured on the frame, not the window) there is no room beside anything,
 // so the card drops underneath the picture and only the ring stays on it.
+//
+// Two ways to show it, one engine: in a dialog behind a button (the default), or `inline` in the page
+// (About's "How it works"), where it starts once it scrolls into view and moves on by itself every
+// AUTOPLAY_MS while it is on screen. A hand on Back or Next takes over from the timer; reduced motion
+// starts it paused. The timer is a setTimeout, never rAF: rAF stops in a background tab.
 
 import { COMPACT_BREAKPOINT, positionCard, spotlightRect } from './tour-position.js'
 import { EASE } from '../easing.js'
@@ -34,6 +39,12 @@ export const MOTION = {
     card: 260,
     open: 320,
 }
+
+/** How long an inline tour stays on one step before it moves on by itself. */
+export const AUTOPLAY_MS = 6000
+
+/** The step after this one; an inline tour starts over after the last. */
+export const nextIndex = (index, total) => (total > 0 ? (index + 1) % total : 0)
 
 /** A highlight smaller than this share of the frame (its larger side) is zoomed in on. */
 export const ZOOM_TARGET = 0.3
@@ -126,10 +137,13 @@ export const layoutStep = ({ rect, frame, card, preferred = 'center' }) => {
 const prefersReducedMotion = () =>
     window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
 
-export const createScreenshotTour = ({ steps = [] } = {}) => ({
+export const createScreenshotTour = ({ steps = [], inline = false } = {}) => ({
     steps,
     total: steps.length,
     index: 0,
+    inline,
+    /** Inline only: whether the tour moves on by itself. */
+    playing: false,
 
     /** image → its camera transform. Kept per picture, so the one fading out holds its framing. */
     cameras: {},
@@ -148,6 +162,10 @@ export const createScreenshotTour = ({ steps = [] } = {}) => ({
     _frame: null,
     _resizeObserver: null,
     _tunerOff: null,
+    _timer: null,
+    _visibility: null,
+    _onScreen: false,
+    _onVisibility: null,
 
     get step() {
         return this.steps[this.index] ?? null
@@ -179,8 +197,13 @@ export const createScreenshotTour = ({ steps = [] } = {}) => ({
         }
 
         this.index = 0
-        this.opened = true
         this.$refs.dialog.showModal()
+        this.start()
+    },
+
+    /** Lay the tour out and watch its size: on open (dialog) or the first time it is seen (inline). */
+    start() {
+        this.opened = true
 
         if (typeof ResizeObserver !== 'undefined') {
             // The frame resizes with the window; the card changes height between steps. Either one
@@ -199,7 +222,65 @@ export const createScreenshotTour = ({ steps = [] } = {}) => ({
     },
 
     close() {
-        this.$refs.dialog.close()
+        this.$refs.dialog?.close()
+    },
+
+    /**
+     * Inline only (x-init): start the first time the tour scrolls into view, play while it is on screen
+     * and the tab is visible, wait otherwise.
+     */
+    watch() {
+        if (!this.inline || this.total === 0) {
+            return
+        }
+
+        this.playing = !prefersReducedMotion()
+        this._onVisibility = () => this.schedule()
+        document.addEventListener('visibilitychange', this._onVisibility)
+
+        if (typeof IntersectionObserver === 'undefined') {
+            this._onScreen = true
+            this.start()
+            this.schedule()
+            return
+        }
+
+        this._visibility = new IntersectionObserver(([entry]) => {
+            this._onScreen = entry.isIntersecting
+            if (this._onScreen && !this.opened) {
+                this.start()
+            }
+            this.schedule()
+        }, { threshold: 0.35 })
+        this._visibility.observe(this.$root)
+    },
+
+    /** The next automatic step, if the tour is playing and someone can see it. */
+    schedule() {
+        clearTimeout(this._timer)
+        this._timer = null
+
+        if (!this.inline || !this.playing || !this._onScreen || document.hidden) {
+            return
+        }
+
+        this._timer = setTimeout(() => this.goTo(nextIndex(this.index, this.total)), AUTOPLAY_MS)
+    },
+
+    /** The pause / play button. */
+    toggle() {
+        this.playing = !this.playing
+        this.schedule()
+    },
+
+    /** Alpine calls this when the component leaves the page. */
+    destroy() {
+        clearTimeout(this._timer)
+        this._visibility?.disconnect()
+        if (this._onVisibility) {
+            document.removeEventListener('visibilitychange', this._onVisibility)
+        }
+        this.closed()
     },
 
     /** The dialog closed: by X, Esc, the backdrop or the last step. Undo everything open() did. */
@@ -219,6 +300,7 @@ export const createScreenshotTour = ({ steps = [] } = {}) => ({
         const next = Math.min(Math.max(Number(index) || 0, 0), this.total - 1)
 
         if (next === this.index) {
+            this.schedule()
             return
         }
 
@@ -233,6 +315,7 @@ export const createScreenshotTour = ({ steps = [] } = {}) => ({
                 this.arrive()
             }
         })
+        this.schedule()
     },
 
     /**
@@ -266,9 +349,12 @@ export const createScreenshotTour = ({ steps = [] } = {}) => ({
         )
     },
 
+    /** Back and Next are a hand on the tour: an inline tour stops moving on by itself. */
     next() {
+        this.playing = false
+
         if (this.isLast) {
-            this.close()
+            this.inline ? this.goTo(0) : this.close()
             return
         }
 
@@ -276,6 +362,7 @@ export const createScreenshotTour = ({ steps = [] } = {}) => ({
     },
 
     previous() {
+        this.playing = false
         this.goTo(this.index - 1)
     },
 
@@ -344,7 +431,7 @@ export const createScreenshotTour = ({ steps = [] } = {}) => ({
     },
 
     registerTuner() {
-        const root = this.$refs.dialog
+        const root = this.$refs.dialog ?? this.$root
         const set = (name, value) => root.style.setProperty(name, value)
 
         return window.__tune?.register('Product tour', [

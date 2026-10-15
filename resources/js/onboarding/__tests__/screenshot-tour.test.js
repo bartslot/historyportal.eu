@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { COMPACT_BREAKPOINT, SPOTLIGHT_PADDING } from '../tour-position.js'
-import { MAX_ZOOM, anchorInFrame, cameraFor, layoutStep, throughCamera } from '../screenshot-tour.js'
+import { AUTOPLAY_MS, MAX_ZOOM, anchorInFrame, cameraFor, createScreenshotTour, layoutStep, nextIndex, throughCamera } from '../screenshot-tour.js'
 
 const frame = { width: 1200, height: 750 }
 const card = { width: 336, height: 220 }
@@ -84,5 +84,69 @@ describe('cameraFor', () => {
         expect(moved.w).toBeCloseTo(rect.w * camera.scale)
         expect(moved.x + moved.w).toBeLessThanOrEqual(100.01)
         expect(moved.y + moved.h).toBeLessThanOrEqual(100.01)
+    })
+})
+
+describe('inline tour', () => {
+    const steps = [{ image: 'a.jpg' }, { image: 'a.jpg' }, { image: 'b.jpg' }]
+    // Alpine supplies these; the layout work needs a real page, the step logic does not.
+    const make = (inline = true) => Object.assign(createScreenshotTour({ steps, inline }), {
+        $nextTick: (fn) => fn(), $refs: {}, $root: null,
+    })
+
+    it('moves on to the next step and starts over after the last', () => {
+        expect(nextIndex(0, 3)).toBe(1)
+        expect(nextIndex(2, 3)).toBe(0)
+        expect(nextIndex(0, 0)).toBe(0)
+    })
+
+    it('wraps to the first step on Next from the last, instead of closing', () => {
+        const tour = make()
+        tour.index = 2
+        tour.next()
+        expect(tour.index).toBe(0)
+    })
+
+    it('stops playing by itself once someone presses Back or Next', () => {
+        const tour = make()
+        tour.playing = true
+        tour.next()
+        expect(tour.playing).toBe(false)
+        tour.playing = true
+        tour.previous()
+        expect(tour.playing).toBe(false)
+    })
+
+    it('only schedules a step while playing and on screen', () => {
+        vi.useFakeTimers()
+        const tour = make()
+        tour.playing = true
+        tour._onScreen = false
+        tour.schedule()
+        vi.advanceTimersByTime(AUTOPLAY_MS)
+        expect(tour.index).toBe(0)
+
+        tour._onScreen = true
+        tour.schedule()
+        vi.advanceTimersByTime(AUTOPLAY_MS)
+        expect(tour.index).toBe(1)
+        vi.advanceTimersByTime(AUTOPLAY_MS)
+        expect(tour.index).toBe(2)
+
+        tour.toggle() // pause
+        vi.advanceTimersByTime(AUTOPLAY_MS * 3)
+        expect(tour.index).toBe(2)
+        vi.useRealTimers()
+    })
+
+    it('never moves on by itself in the dialog', () => {
+        vi.useFakeTimers()
+        const tour = make(false)
+        tour.playing = true
+        tour._onScreen = true
+        tour.schedule()
+        vi.advanceTimersByTime(AUTOPLAY_MS * 2)
+        expect(tour.index).toBe(0)
+        vi.useRealTimers()
     })
 })

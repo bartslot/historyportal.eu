@@ -1,4 +1,12 @@
 <x-layouts.landing :title="__('About')">
+    <x-slot:head>
+        <x-seo
+            page="about"
+            :title="__('From idea to classroom')"
+            :description="__('Plan a history lesson, check it, then teach it with your class.')"
+            :graph="\App\Support\Seo::withFaq()"
+        />
+    </x-slot:head>
 
     <x-landing.header />
 
@@ -38,9 +46,13 @@
                 <p data-reveal="text" class="mt-4 text-lg leading-relaxed text-base-content/70 md:text-xl">
                     {{ __('Plan a history lesson, check it, then teach it with your class.') }}
                 </p>
+            </section>
 
-                <div class="mt-7" data-reveal="cta">
-                    <x-landing.product-tour />
+            {{-- ── How it works: the product tour, playing in the page ───────── --}}
+            <section id="how-it-works" class="mt-10 scroll-mt-28 md:mt-14" aria-labelledby="about-how" data-reveal-section>
+                <h2 id="about-how" data-reveal="heading" class="font-history text-3xl md:text-4xl">{{ __('How it works') }}</h2>
+                <div data-reveal="text" class="mt-6">
+                    <x-landing.product-tour inline />
                 </div>
             </section>
 
@@ -196,6 +208,8 @@
             </section>
         </div>
     </main>
+
+    <x-landing.faq />
 
     <x-landing.footer />
 
