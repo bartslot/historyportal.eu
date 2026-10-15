@@ -338,6 +338,24 @@
             </div>
         </section>
 
+        {{-- MAP GROUND — the photographed earth, or a plain drawn chart for lessons illustrated in
+             history-line ink, so the map is drawn in the same hand as the pictures. Whole lesson. --}}
+        @php $mapStyle = $voyageMap['style'] ?? 'earth'; @endphp
+        <section class="border-t border-slate-700/50 pt-3">
+            <span class="text-2xs text-slate-300">{{ __('Map') }}</span>
+            <div class="mt-1 grid grid-cols-2 gap-1">
+                @foreach ([['earth', __('Earth')], ['history-line', __('Drawn')]] as [$style, $label])
+                    <button type="button" wire:click="setVoyageMap('style', '{{ $style }}')"
+                            @class([
+                                'rounded-md border px-2 py-1 text-2xs transition',
+                                'border-primary bg-primary/10 text-primary' => $mapStyle === $style,
+                                'border-slate-700 text-slate-400 hover:border-slate-500' => $mapStyle !== $style,
+                            ])>{{ $label }}</button>
+                @endforeach
+            </div>
+            <p class="mt-1 text-2xs text-slate-500">{{ __('Drawn: a plain old chart in ink, for lessons with history-line pictures.') }}</p>
+        </section>
+
         {{-- MAP DETAIL — hide anachronistic modern cities/borders (they didn't exist yet) and pin the
              landfall names as period place labels. Lesson-wide, applies to every leg. --}}
         <section class="border-t border-slate-700/50 pt-3">

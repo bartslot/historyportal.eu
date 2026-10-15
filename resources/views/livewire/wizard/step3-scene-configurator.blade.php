@@ -387,6 +387,7 @@
         window.__voyageCenter = () => { try { return (inst && inst.map) ? inst.map.getCenter() : null } catch (_) { return null } }
         let lastKey = null
         let lastVoyageId = null       // the mounted voyage's id — the ONLY thing that forces a REBUILD
+        let lastMapStyle = null       // …and its ground: earth vs drawn chart is chosen when the map is built
         let lastVoyageDefStr = null   // last applied route geometry (waypoints/legs) — reshaped in place
         let lastLeg = null            // last-played leg index (for the no-rebuild leg switch)
         let lastOverview = false      // was the last voyage scene the itinerary? (same switch, other mode)
@@ -401,7 +402,7 @@
             host.innerHTML = ''
             host.style.display = 'none'
             hideMapArt()
-            lastKey = null; lastVoyageId = null; lastVoyageDefStr = null; lastLeg = null; lastGalleryId = null; lastOverview = false
+            lastKey = null; lastVoyageId = null; lastMapStyle = null; lastVoyageDefStr = null; lastLeg = null; lastGalleryId = null; lastOverview = false
         }
 
         // A re-mount key for voyage/gallery scenes: only scene-DEFINING bits belong in it, so the
@@ -593,7 +594,7 @@
                 //  • route GEOMETRY edited (drag / insert / move a waypoint) → setVoyageDef() reshapes
                 //    the ship + trail + fog + handles in place at the current camera (no jump, no flash)
                 //  • leg changed → playLeg()   • same leg, content changed → refreshArrivalContent()
-                if (inst && p.kind === 'voyage' && cfg.voyage === lastVoyageId) {
+                if (inst && p.kind === 'voyage' && cfg.voyage === lastVoyageId && (p.voyage_map?.style || 'earth') === lastMapStyle) {
                     applyLiveMap()
                     const legNow = Number(cfg.leg) || 0
                     const defStr = JSON.stringify(p.voyage_def || null)
@@ -653,6 +654,7 @@
                 destroy(); wireMapProjectors()
                 lastKey = key
                 lastVoyageId = cfg.voyage
+                lastMapStyle = p.voyage_map?.style || 'earth'
                 lastVoyageDefStr = JSON.stringify(p.voyage_def || null)
                 lastLeg = Number(cfg.leg) || 0
                 // `cfg`, not `vcfg`: the same scene config, but vcfg is declared further down and
