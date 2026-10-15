@@ -39,6 +39,11 @@
                     @endforeach
                 </div>
 
+                {{-- The click-through product tour (feat/about-tour), built on the old About hero. --}}
+                <div class="mt-7">
+                    <x-landing.product-tour />
+                </div>
+
                 <hr class="mt-10 border-base-300">
             </section>
 

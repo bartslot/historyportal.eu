@@ -11,6 +11,7 @@
              flow treatment pushed the Topic field — the first thing anyone actually needs — below
              the fold behind ~490px of empty space, dimmed to 38%. The flow starts at Topic. --}}
         <div class="rounded-box border border-slate-700/70 bg-base-200/60 p-4"
+             data-tour="voyage-start"
              x-data="{ open: false, pick: '' }">
             <button type="button" class="flex w-full items-center gap-3 text-left" x-on:click="open = !open">
                 <x-lesson.icon-voyage class="h-7 w-7 text-indigo-300" />

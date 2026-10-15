@@ -41,20 +41,32 @@ final class HelpMedia
     ];
 
     /** Public URL of a screenshot in the given language, or null when nothing has been captured. */
-    public static function url(?string $key, ?string $locale = null): ?string
+    public static function url(?string $key, ?string $locale = null, string $extension = self::EXTENSION): ?string
+    {
+        $relative = self::find($key, $locale, $extension)['relative'] ?? null;
+
+        // Cache-bust on recapture: the filename never changes, only its contents.
+        return $relative === null
+            ? null
+            : asset($relative).'?v='.File::lastModified(public_path($relative));
+    }
+
+    /**
+     * Which language's copy of a screenshot is on disk, falling back to English.
+     *
+     * @return array{locale: string, relative: string}|null
+     */
+    public static function find(?string $key, ?string $locale = null, string $extension = self::EXTENSION): ?array
     {
         if ($key === null || $key === '') {
             return null;
         }
 
-        $locale ??= app()->getLocale();
-
-        foreach ([$locale, 'en'] as $candidate) {
-            $relative = self::DIRECTORY."/{$candidate}/{$key}".self::EXTENSION;
+        foreach ([$locale ?? app()->getLocale(), 'en'] as $candidate) {
+            $relative = self::DIRECTORY."/{$candidate}/{$key}{$extension}";
 
             if (File::exists(public_path($relative))) {
-                // Cache-bust on recapture: the filename never changes, only its contents.
-                return asset($relative).'?v='.File::lastModified(public_path($relative));
+                return ['locale' => $candidate, 'relative' => $relative];
             }
         }
 
