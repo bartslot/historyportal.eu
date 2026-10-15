@@ -849,6 +849,18 @@
     background-size: 14px 14px;
     color: oklch(20% 0.02 264);
 }
+/* A game overlay ends above the player's deck while it shows a game (scene/deck-reserve.js), so
+   the deck never covers a game's own buttons. Unlayered: it must beat the overlay's inset-0. */
+#lesson-game-overlay:has(> *) {
+    bottom: var(--lp-deck-reserve, 0px);
+}
+
+/* The same paper as a flat sheet that carries CONTENT on the class screen (the cargo results):
+   no check, ink-dark text. */
+.lp-sheet {
+    background-color: var(--lp-paper);
+    color: oklch(20% 0.02 264);
+}
 
 /* ─── Film grain overlay (add class to any section / card) ───────────── */
 .lp-grain {

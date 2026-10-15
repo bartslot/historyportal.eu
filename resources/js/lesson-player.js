@@ -13,6 +13,7 @@
  *   [intel_drop]             — trigger INTEL_DROP mid-game
  */
 
+import { watchDeckReserve } from './scene/deck-reserve.js'
 import Alpine from 'alpinejs'
 import QRCode from 'qrcode'
 import { resolveAnchorTime, pickShotIndex } from './scene/shot-sync.js'
@@ -426,6 +427,11 @@ Alpine.data('lessonGame', (lesson) => ({
       // clear its chrome out of the reader's way. See setReadingOverlayOpen in voyage-tour.js.
       this._readingOverlayHandler = (e) => { this.readingOverlay = !!e.detail?.open }
       window.addEventListener('lesson:reading-overlay', this._readingOverlayHandler)
+
+      // A game overlay (quiz, team game, power meter) ends above the deck, so the deck never covers
+      // a game's own buttons. One rule for every game: the gap is --lp-deck-reserve, measured here,
+      // and app.css applies it while #lesson-game-overlay has content.
+      this._deckReserve = watchDeckReserve(document.getElementById('lesson-game-overlay'), document.querySelector('[data-player-chrome="bottom"]'))
 
       // A voyage leg owns the place and date on the chapter line while it sails. See publishInfo
       // in voyage-tour.js — the tour reports, the player is the only one that draws.
@@ -2164,7 +2170,11 @@ Alpine.data('lessonGame', (lesson) => ({
       const team = scene.config.team
       const crewed = Object.fromEntries(['title', 'intro', 'rules', 'situation', 'question', 'reveal', 'closing']
         .filter(k => typeof team[k] === 'string').map(k => [k, this._crewed(team[k])]))
-      this._teamGame.show({ config: { ...team, ...crewed }, solo: this.playSolo, onComplete: () => this._resumeAfterQuiz() })
+      // This game's place among the run's team moments (a race, a team game), for rotating roles.
+      // ponytail: counted from the scene order; the shared class-teams store makes it lesson-wide.
+      const interaction = _sceneQueue.slice(0, index).filter(s => s.config?.moment?.race?.enabled
+        || (s.kind === 'game' && s.game_type === 'team')).length
+      this._teamGame.show({ config: { ...team, ...crewed, interaction }, solo: this.playSolo, onComplete: () => this._resumeAfterQuiz() })
     },
 
     /** A line with the crews' names put in ({crew:heemskerck}); "the crew" when there was no race. */
@@ -3089,6 +3099,8 @@ Alpine.data('lessonGame', (lesson) => ({
         window.removeEventListener('lesson:reading-overlay', this._readingOverlayHandler)
         this._readingOverlayHandler = null
       }
+      this._deckReserve?.()
+      this._deckReserve = null
       if (this._chapterInfoHandler) {
         window.removeEventListener('lesson:chapter-info', this._chapterInfoHandler)
         this._chapterInfoHandler = null
