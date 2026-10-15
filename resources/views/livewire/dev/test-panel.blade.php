@@ -132,7 +132,7 @@
                 ['portalOpenSize', 'First hole size', 0.1, 1.2, 0.05, '× ring'],
                 ['portalHold', 'Hold at that size', 0, 1, 0.05, 's'],
                 ['portalGrow', 'Hole swallows page', 0.3, 4, 0.05, 's'],
-                ['portalSoftness', 'Hole edge softness', 0, 200, 2, 'px'],
+                ['portalSoftness', 'Hole edge softness', 0, 200, 1, 'px'],
                 ['portalRimPull', 'Rim pulled outward', 0, 1, 0.05, ''],
                 ['portalRimGap', 'Rim gap to hole', -80, 120, 2, 'px'],
                 ['portalReadyTimeout', 'Wait for lesson, max', 1, 15, 0.5, 's'],
