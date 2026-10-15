@@ -1516,6 +1516,13 @@ html[data-inspector-w] aside[data-resizable-drawer] {
         visibility: hidden;
     }
 
+    /* The wheel layer waits, invisible, until its layout is final; lesson-demo.js then fades it in
+       (duration and delay are `wheelFade` / `wheelDelay` in DEFAULTS). Only while the demo runs:
+       without .js-hero-demo the finished hero shows its wheel straight away. */
+    .js-hero-demo .hero-wheel {
+        opacity: 0;
+    }
+
     .hero-skip {
         display: none;
     }
@@ -1559,6 +1566,33 @@ html[data-inspector-w] aside[data-resizable-drawer] {
     .hero-revealed .wheel {
         opacity: 0 !important;
         transition: opacity 600ms var(--ease-enter);
+    }
+
+    /* The portal into a lesson (resources/js/hero/portal.js). The preloaded player sits behind the
+       page as a child of <html>; once a frame exists <html> paints its own background, so <body>
+       paints its slate box over the frame instead of handing it to the canvas, and only the hole
+       portal.js masks into <body> shows the lesson. */
+    .lesson-portal-frame {
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        width: 100%;
+        height: 100%;
+        border: 0;
+        background-color: var(--color-slate-950);
+    }
+
+    html.has-portal-frame {
+        background-color: var(--color-slate-950);
+    }
+
+    /* Inside the lesson: the frame is the page. */
+    html.portal-entered {
+        overflow: hidden;
+    }
+
+    html.portal-entered body {
+        visibility: hidden;
     }
 
     .hero-caret {
@@ -2055,4 +2089,11 @@ html[data-inspector-w] aside[data-resizable-drawer] {
 .title-rail-scrim {
   height: calc(var(--title-pill-h) + 2 * var(--title-gutter) + 4rem);
   background: linear-gradient(to top, rgb(0 0 0 / 0.5), transparent);
+}
+
+/* The local dev panel's beaker sits in Skip's corner of the hero and covered its centre: a click there
+   hit the beaker, and Playwright scrolled the page 373px looking for a clear spot. The panel yields.
+   Unlayered, or the panel's own bottom-4 utility wins. */
+.js-hero-demo [data-dev-panel] {
+    bottom: 4rem;
 }

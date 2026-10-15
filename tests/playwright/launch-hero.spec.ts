@@ -53,8 +53,16 @@ test('the landing page still runs the lesson demo', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await settle(page);
 
-  await expect(page.locator('body')).toContainText('Your lesson is ready');
+  // The lesson demo ends on the lesson it built: its title is the h1, not the launch line.
+  const title = page.locator('[data-demo-reveal] h1');
+  await expect(title).toBeVisible();
+  await expect(title).not.toHaveText(/^\s*$/);
+  await expect(title).not.toContainText(/History Portal is now live/i);
   await expect(page.locator('.hero-launch-mark')).toHaveCount(0);
+
+  // Skip finishes the hero where the visitor is. It used to scroll the page 373px: the local dev
+  // panel covered the button, so the click had to go looking for a clear spot.
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
 });
 
 test('both scripts survive reduced motion with their words intact', async ({ browser }) => {
@@ -67,7 +75,9 @@ test('both scripts survive reduced motion with their words intact', async ({ bro
   await expect(page.locator('[data-demo-reveal] h1')).toContainText(/History Portal is now live/i);
 
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await expect(page.locator('[data-demo-reveal] h1')).toContainText(/Your lesson is ready/i);
+  const title = page.locator('[data-demo-reveal] h1');
+  await expect(title).toBeVisible();
+  await expect(title).not.toHaveText(/^\s*$/);
 
   await context.close();
 });

@@ -460,6 +460,15 @@ export const createTimewarp = (canvas, image, options = {}) => {
         advance(seconds) {
             render((lastTime || 0) + seconds * 1000);
         },
+        /** Stop drawing while the visitor is inside a lesson (hero/portal.js); the frame-delta
+         *  clamp absorbs the gap on resume, so nothing jumps. */
+        pause() {
+            gsap.ticker.remove(tick);
+        },
+        resume() {
+            gsap.ticker.remove(tick);
+            gsap.ticker.add(tick);
+        },
         destroy() {
             gsap.ticker.remove(tick);
             observer?.disconnect();

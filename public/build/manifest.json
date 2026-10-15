@@ -1,15 +1,9 @@
 {
-  "../../../node_modules/three/build/three.module.js": {
-    "file": "assets/three.module-CpB-wl7P.js",
-    "name": "three.module",
-    "src": "../../../node_modules/three/build/three.module.js",
-    "isDynamicEntry": true
-  },
   "_GLTFLoader-Et3HGvr1.js": {
     "file": "assets/GLTFLoader-Et3HGvr1.js",
     "name": "GLTFLoader",
     "imports": [
-      "../../../node_modules/three/build/three.module.js"
+      "node_modules/three/build/three.module.js"
     ]
   },
   "_PowerMeter-BIeGjGmw.js": {
@@ -134,8 +128,14 @@
       "_easing-ChRyoIXo.js"
     ]
   },
+  "node_modules/three/build/three.module.js": {
+    "file": "assets/three.module-CpB-wl7P.js",
+    "name": "three.module",
+    "src": "node_modules/three/build/three.module.js",
+    "isDynamicEntry": true
+  },
   "resources/css/app.css": {
-    "file": "assets/app-CKdRSKQE.css",
+    "file": "assets/app-CUaQJa2L.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -144,7 +144,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-BS610T1L.js",
+    "file": "assets/app-_cALjhP3.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -160,7 +160,7 @@
     "dynamicImports": [
       "resources/js/scene/quick-mask.js",
       "resources/js/scene/index.js",
-      "../../../node_modules/three/build/three.module.js"
+      "node_modules/three/build/three.module.js"
     ],
     "css": [
       "assets/app-AEfMPvIN.css"
@@ -182,7 +182,7 @@
     "src": "resources/js/avatar-3d.js",
     "isDynamicEntry": true,
     "imports": [
-      "../../../node_modules/three/build/three.module.js",
+      "node_modules/three/build/three.module.js",
       "_GLTFLoader-Et3HGvr1.js"
     ]
   },
@@ -357,7 +357,7 @@
       "_preload-helper-DIdkKO6w.js",
       "resources/js/avatar-3d.js",
       "_camera-BlhbLbjq.js",
-      "../../../node_modules/three/build/three.module.js",
+      "node_modules/three/build/three.module.js",
       "_easing-ChRyoIXo.js",
       "_animations-Bw164z87.js",
       "_GLTFLoader-Et3HGvr1.js"
@@ -480,7 +480,7 @@
     "src": "resources/js/timemap/voyage-ships.js",
     "isDynamicEntry": true,
     "imports": [
-      "../../../node_modules/three/build/three.module.js",
+      "node_modules/three/build/three.module.js",
       "_GLTFLoader-Et3HGvr1.js",
       "_border-sweep-Bw3s_TAK.js",
       "_easing-ChRyoIXo.js"
@@ -501,7 +501,7 @@
       "__commonjsHelpers-CqkleIqs.js",
       "_map-imagery-a9lZ058G.js",
       "_preload-helper-DIdkKO6w.js",
-      "../../../node_modules/three/build/three.module.js",
+      "node_modules/three/build/three.module.js",
       "_GLTFLoader-Et3HGvr1.js"
     ]
   }
