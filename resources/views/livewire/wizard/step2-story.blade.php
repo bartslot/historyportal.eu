@@ -2,7 +2,7 @@
 <div class="space-y-4 pt-6">
 
     {{-- ═══════════════════════════════════ STORY ARC ═══════════════════════════════════ --}}
-    <div class="bg-base-300 rounded-2xl p-6 space-y-4">
+    <div class="bg-base-300 rounded-2xl p-6 space-y-4" data-tour="story-arc">
         <span class="label-text text-xs uppercase tracking-wider text-slate-400">
             Choose your story arc
         </span>

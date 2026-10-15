@@ -3,6 +3,7 @@ import { gsap } from 'gsap';
 import { GSAP_EASE } from './easing.js';
 import Sortable                from 'sortablejs';
 import { createTour } from './onboarding/tour.js';
+import { createScreenshotTour } from './onboarding/screenshot-tour.js';
 import { initTooltips } from './tooltip.js';
 import { watchCarousels } from './carousel.js';
 import { easingPreview } from './easing-preview.js';
@@ -50,6 +51,9 @@ initDragScroll();
 // Registered as a global (like wavePlayer in the app layout) so the Blade view can call it without
 // waiting on alpine:init ordering.
 window.onboardingTour = createTour;
+
+// The About page's product tour, the same spotlight over screenshots: x-data="screenshotTour(@js($config))".
+window.screenshotTour = createScreenshotTour;
 
 // Animated easing swatches for the wizard's Animate tab: x-data="easingPreview('enter')".
 // Same global-factory pattern, for the same reason.

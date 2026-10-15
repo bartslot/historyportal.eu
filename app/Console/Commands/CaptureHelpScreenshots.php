@@ -10,6 +10,7 @@ use App\Models\Lesson;
 use App\Models\User;
 use App\Support\HelpMedia;
 use App\Support\Locales;
+use App\Support\ProductTour;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 use Symfony\Component\Process\Process;
@@ -20,6 +21,7 @@ use Symfony\Component\Process\Process;
  *   php artisan help:screenshots                  every language
  *   php artisan help:screenshots --locale=de      just German
  *   php artisan help:screenshots --url=http://…   against another host
+ *   php artisan help:screenshots --only=tour      just the About page product tour
  *
  * How it works: for each language it switches the demo teacher's UI language, resolves every named
  * route to a URL, and hands the list to tests/playwright/help-screenshots.spec.ts, which drives a
@@ -32,7 +34,8 @@ class CaptureHelpScreenshots extends Command
     protected $signature = 'help:screenshots
         {--locale=* : Languages to capture (default: all shipped languages)}
         {--url= : Base URL of the running app (default: APP_URL)}
-        {--lesson= : Lesson id to use for the editor screenshots}';
+        {--lesson= : Lesson id to use for the editor screenshots}
+        {--only= : Capture just one set: "help" (help centre) or "tour" (About page product tour)}';
 
     protected $description = 'Capture the help-centre screenshots per language with Playwright';
 
@@ -90,7 +93,7 @@ class CaptureHelpScreenshots extends Command
                     function () use ($teacher, $locale, $baseUrl, $lesson, &$captured): bool {
                         $teacher->forceFill(['locale' => $locale])->save();
 
-                        return $captured = $this->capture($locale, $baseUrl, $lesson);
+                        return $captured = $this->capture($locale, $baseUrl, $lesson, $teacher);
                     },
                 );
 
@@ -115,7 +118,7 @@ class CaptureHelpScreenshots extends Command
         return self::SUCCESS;
     }
 
-    private function capture(string $locale, string $baseUrl, ?Lesson $lesson): bool
+    private function capture(string $locale, string $baseUrl, ?Lesson $lesson, User $teacher): bool
     {
         $directory = HelpMedia::directoryFor($locale);
         File::ensureDirectoryExists($directory);
@@ -126,7 +129,10 @@ class CaptureHelpScreenshots extends Command
             [
                 'HELP_LOCALE' => $locale,
                 'HELP_OUTPUT_DIR' => $directory,
-                'HELP_SHOTS' => json_encode($this->shots($baseUrl, $lesson), JSON_THROW_ON_ERROR),
+                'HELP_SHOTS' => json_encode([
+                    ...($this->option('only') === 'tour' ? [] : $this->shots($baseUrl, $lesson)),
+                    ...($this->option('only') === 'help' ? [] : $this->tourShots($baseUrl, $this->tourLesson($teacher, $locale) ?? $this->tourLesson($teacher, 'en') ?? $lesson)),
+                ], JSON_THROW_ON_ERROR),
                 'PW_BASE_URL' => $baseUrl,
                 'PATH' => getenv('PATH'),
             ],
@@ -182,6 +188,76 @@ class CaptureHelpScreenshots extends Command
         }
 
         return $shots;
+    }
+
+    /**
+     * The About page's product tour (App\Support\ProductTour): the same app, shot as JPEGs, each with
+     * the rectangles of the elements its steps spotlight. Lesson screens use a lesson in the language
+     * being captured, so a Dutch visitor sees a Dutch lesson; a language without one uses English.
+     *
+     * @return list<array<string,mixed>>
+     */
+    private function tourShots(string $baseUrl, ?Lesson $lesson): array
+    {
+        if (! $lesson) {
+            $this->warn('No finished lesson found, so the product tour will be skipped.');
+
+            return [];
+        }
+
+        $wizard = $baseUrl.parse_url(route('teacher.lessons.wizard', ['lesson' => $lesson->id]), PHP_URL_PATH);
+        $player = $baseUrl.parse_url(route('lesson.play', ['lessonCode' => $lesson->lesson_code]), PHP_URL_PATH);
+        $scenes = $lesson->scenes()->get(['id', 'kind', 'config'])->values();
+        // A quiz, not a team game: the tour's last step promises a quiz. A language whose lesson
+        // has none gets no quiz picture, and the tour shows the English one.
+        $quizIndex = $scenes->search(fn ($scene) => $scene->kind === 'game' && ($scene->config['spec_id'] ?? null) === 'quiz');
+
+        $pages = [
+            'create' => ['url' => $baseUrl.parse_url(route('teacher.lessons.create'), PHP_URL_PATH), 'settleMs' => 800],
+            'wizard-story' => ['url' => $wizard.'?step=2', 'settleMs' => 1500],
+            'wizard-generate' => ['url' => $wizard.'?step=3', 'settleMs' => 2500],
+            'wizard-editor' => ['url' => $wizard.'?step=4', 'settleMs' => 3500],
+            'player-title' => ['url' => $player, 'settleMs' => 4000],
+            // A few scenes in, past the opening title card, so the picture is a painted scene.
+            'player-scene' => ['url' => $player.'?scene='.min(3, max(0, $scenes->count() - 1)), 'settleMs' => 9000, 'start' => true, 'reveal' => '[data-player-chrome="bottom"]'],
+            'player-quiz' => $quizIndex === false ? null : ['url' => $player.'?scene='.$quizIndex, 'settleMs' => 9000, 'start' => true],
+        ];
+
+        $shots = [];
+
+        foreach (ProductTour::SHOTS as $key => $shot) {
+            $page = $pages[$shot['page']] ?? null;
+
+            if ($page === null) {
+                continue;
+            }
+
+            $shots[] = [
+                'key' => $key,
+                ...$page,
+                'type' => 'jpeg',
+                'highlights' => (object) $shot['highlights'],
+                // Teacher-only chrome a visitor would never see on the board.
+                'hide' => ['[data-player-chrome="top"]'],
+            ];
+        }
+
+        return $shots;
+    }
+
+    /**
+     * A finished lesson in the language being captured, or null to use the editor lesson. The one
+     * with the most scenes: on a dev database that is the full story lesson, not a test stub.
+     */
+    private function tourLesson(User $teacher, string $locale): ?Lesson
+    {
+        return Lesson::where('teacher_id', $teacher->id)
+            ->where('status', LessonStatus::Published->value)
+            ->where('language', $locale)
+            ->whereNotNull('lesson_code')
+            ->withCount('scenes')
+            ->orderByDesc('scenes_count')
+            ->first();
     }
 
     /**

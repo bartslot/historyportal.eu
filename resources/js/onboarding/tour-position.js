@@ -60,9 +60,9 @@ export const availableSpace = (anchor, viewport) => ({
 /**
  * Pick the side the card sits on: the preferred one when it fits, otherwise its opposite, otherwise
  * whichever side has the most room. Returns 'center' when nothing fits — the card then floats over
- * the middle and the ring alone shows what is being talked about.
+ * the middle and the ring alone shows what is being talked about — unless `fallback` is 'roomiest'.
  */
-export const choosePlacement = (preferred, anchor, card, viewport) => {
+export const choosePlacement = (preferred, anchor, card, viewport, fallback = 'center') => {
     const space = availableSpace(anchor, viewport)
     const needed = { top: card.height, bottom: card.height, left: card.width, right: card.width }
     const fits = (side) => space[side] >= needed[side]
@@ -79,7 +79,13 @@ export const choosePlacement = (preferred, anchor, card, viewport) => {
         .filter((side) => fits(side))
         .sort((a, b) => space[b] - space[a])[0]
 
-    return roomiest ?? 'center'
+    if (roomiest) return roomiest
+
+    // Nothing fits. Over a live page the card floats in the middle; over a screenshot the caller
+    // may prefer the side with the most room, overlapping the anchor's edge rather than its middle.
+    return fallback === 'roomiest'
+        ? ['bottom', 'top', 'right', 'left'].sort((a, b) => space[b] - space[a])[0]
+        : 'center'
 }
 
 /**
@@ -89,7 +95,7 @@ export const choosePlacement = (preferred, anchor, card, viewport) => {
  * edge (null when the card is centred, or when the anchor is no longer beside the card after
  * clamping — an arrow pointing at empty space is worse than no arrow).
  */
-export const positionCard = ({ anchor, card, viewport, preferred = 'bottom', compact = false }) => {
+export const positionCard = ({ anchor, card, viewport, preferred = 'bottom', compact = false, fallback = 'center' }) => {
     const cardRect = rectOf(card)
     const view = { width: Number(viewport?.width ?? 0), height: Number(viewport?.height ?? 0) }
 
@@ -105,7 +111,7 @@ export const positionCard = ({ anchor, card, viewport, preferred = 'bottom', com
     }
 
     const anchorRect = rectOf(anchor)
-    const placement = choosePlacement(preferred, anchorRect, cardRect, view)
+    const placement = choosePlacement(preferred, anchorRect, cardRect, view, fallback)
 
     if (placement === 'center') {
         return centred()

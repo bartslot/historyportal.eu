@@ -10,6 +10,12 @@
     "timemap",
     "settings",
     "wizard-configure",
-    "wizard-play"
+    "wizard-play",
+    "tour-create",
+    "tour-story",
+    "tour-generate",
+    "tour-editor",
+    "tour-title",
+    "tour-scene"
   ]
 }

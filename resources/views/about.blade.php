@@ -51,6 +51,7 @@
                                 <path d="M5 12h14M12 5l7 7-7 7"/>
                             </svg>
                         </a>
+                        <x-landing.product-tour />
                         <a
                             href="#js-argument-map"
                             class="flex items-center gap-1.5 text-sm text-slate-400 transition hover:text-white"
