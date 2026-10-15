@@ -39,8 +39,11 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1024, height: 768
         scrim.scrollTop = y;
         for (const el of scrim.querySelectorAll('button, h2, h3, h4, [role=alert]')) {
           const r = el.getBoundingClientRect();
-          if (r.width && r.height && r.bottom > deck.top + 1 && r.top < deck.bottom && r.right > deck.left && r.left < deck.right
-            && r.top < scrim.getBoundingClientRect().bottom) out.push(`${el.tagName} "${(el.textContent || '').trim().slice(0, 30)}"`);
+          // Only the part the game shows counts: the game clips what scrolls past its own bottom.
+          const box = scrim.getBoundingClientRect();
+          const top = Math.max(r.top, box.top);
+          const bottom = Math.min(r.bottom, box.bottom);
+          if (r.width && bottom > top && bottom > deck.top + 1 && top < deck.bottom && r.right > deck.left && r.left < deck.right) out.push(`${el.tagName} "${(el.textContent || '').trim().slice(0, 30)}"`);
         }
       }
       return [...new Set(out)];

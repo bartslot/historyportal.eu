@@ -1,10 +1,9 @@
 {
-    "_note": "The painted hold of hold_ship_cutaway.webp, measured from the picture (2048x1152) on 2026-10-15: one zone per deck, in % of the picture (x, y = top-left). waterline = share of the picture's height, from the bottom, under water when empty (the keel is at ~90%); draught = how much more sinks when full. LessonComposer reads this when a team game's hold.ship is this asset.",
-    "aspect": 1.7778,
+    "_note": "The painted hold of hold_ship_cutaway.webp (1442x1002: the whole ship, masts and flag in frame; from art/ships/hold_ship_cutaway_full.png, cropped and its alpha edge eroded by 1 px), measured on 2026-10-15: one zone per deck, in % of the picture (x, y = top-left). waterline = share of the picture's height, from the bottom, under water (the keel sits at ~97%). LessonComposer reads this when a team game's hold.ship is this asset.",
+    "aspect": 1.4391,
     "zones": [
-        { "x": 20.5, "y": 61.5, "w": 62, "h": 9.5 },
-        { "x": 23.5, "y": 74, "w": 55.5, "h": 9.8 }
+        { "x": 21, "y": 73.6, "w": 60.8, "h": 6 },
+        { "x": 24.3, "y": 81.8, "w": 52, "h": 7.5 }
     ],
-    "waterline": 0.1,
-    "draught": 0.045
+    "waterline": 0.05
 }

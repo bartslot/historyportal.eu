@@ -20,15 +20,17 @@ const append = (parent, ...children) => { children.forEach(c => c && parent.appe
  * "12/16"), its status in words and the cargo as a list for screen readers. Reused by the end-of-
  * lesson board later.
  */
-export function teamShip (screens, { name, tone, state, onTap = null, big = false, status = true }) {
+export function teamShip (screens, { name, tone, state, onTap = null, big = false, status = true, whole = false }) {
   const { cat } = screens
   const load = totalOf(state.selected, cat)
   const fig = el(onTap ? 'button' : 'figure', 'flex min-w-0 flex-col gap-1 rounded-box border-2 border-transparent text-left')
   if (onTap) { fig.type = 'button'; fig.addEventListener('click', onTap) }
   fig.dataset.teamShip = name
   const stage = createHoldStage({
-    hold: screens.game.cfg.hold, whole: true, stageAspect: big ? 1.8 : 2.2,
-    className: `w-full rounded-box ${big ? 'aspect-[9/5]' : 'aspect-[11/5]'}`,
+    // The comparison reads the cargo, so it zooms on the hull (the whole ship left the cargo at
+    // ~15 px, unreadable from the back); the departure shows the whole ship sailing out.
+    hold: screens.game.cfg.hold, zoomed: !whole, whole, stageAspect: whole ? 2 : big ? 2 : 2.5, quiet: !whole,
+    className: `w-full rounded-box ${whole ? 'aspect-[2/1]' : big ? 'aspect-[2/1]' : 'aspect-[5/2]'}`,
   })
   stage.update({ key: name, cargo: shipCargo(state, cat), capacity: cat.budget, load })
   const label = el('span', `flex items-center gap-2 self-start rounded-full px-3 py-1 ${tone.head}`)
@@ -257,7 +259,7 @@ export function departScreen (screens, body) {
   const grid = el('div', `grid grid-cols-1 gap-4 ${store.count() > 1 ? 'md:grid-cols-2' : ''}`)
   const ships = []
   for (let i = 0; i < store.count(); i++) {
-    const ship = teamShip(screens, { name: store.name(i), tone: store.tone(i), state: store.cargo(i) })
+    const ship = teamShip(screens, { name: store.name(i), tone: store.tone(i), state: store.cargo(i), whole: true })
     if (locked) ship.stage.lock()
     ships.push(ship)
     grid.appendChild(ship.el)

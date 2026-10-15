@@ -157,17 +157,20 @@ export class HoldScreens {
     // The roles line once for the class when every team has the same; on a card only where it differs.
     const lines = Array.from({ length: store.count() }, (_, i) => this.roleLine(i))
     this.view.sharedRoles = lines.every(l => l === lines[0]) ? lines[0] : ''
-    append(body, this.view.sharedRoles ? el('p', 'text-sm text-base-content/80', this.view.sharedRoles) : null, ui.band)
+    // One line over the band: who holds which role (when every team has the same), and the prompt.
+    ui.roleRow = el('div', 'flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1')
+    append(ui.roleRow, this.view.sharedRoles ? el('p', 'text-sm text-base-content/80', this.view.sharedRoles) : el('span'), this.rolePrompt('fit'))
+    append(body, ui.roleRow, ui.band)
 
     ui.weight = this._weight()
     ui.ready = el('span', 'badge badge-lg badge-outline tabular-nums')
     if (!solo) ui.weight.wrap.appendChild(ui.ready)
-    append(body, ui.weight.wrap, this.rolePrompt('fit'))
+    body.appendChild(ui.weight.wrap)
 
     const wrap = el('div', 'relative')
     ui.stage = this._stage({
       zoomed: true, stageAspect: 3.2,
-      className: 'h-[clamp(200px,31vh,560px)] w-full rounded-box',
+      className: 'h-[clamp(190px,27vh,560px)] w-full rounded-box',
       onPiece: (id) => this.toggle(id),
       pieceLabel: (c) => (c.fixed ? `${c.name}, ${t('Always on board')}` : t('Take out: :item', { item: c.name })),
     })
