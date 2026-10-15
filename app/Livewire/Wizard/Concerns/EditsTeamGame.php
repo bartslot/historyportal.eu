@@ -33,6 +33,16 @@ trait EditsTeamGame
         'teamDraft.options.*.image' => 'nullable|string|max:2048',
         'teamDraft.evidence.*.image' => 'nullable|string|max:2048',
         'teamDraft.map' => 'nullable|string|max:2048',
+        'teamDraft.fixed.*.image' => 'nullable|string|max:2048',
+        'teamDraft.items.*.image' => 'nullable|string|max:2048',
+        'teamDraft.presentation' => 'nullable|in:hold,grid',
+        'teamDraft.hold.ship' => 'nullable|string|max:2048',
+        'teamDraft.hold.backdrop' => 'nullable|string|max:2048',
+        'teamDraft.hold.x' => 'nullable|numeric|min:0|max:100',
+        'teamDraft.hold.y' => 'nullable|numeric|min:0|max:200',
+        'teamDraft.hold.h' => 'nullable|numeric|min:5|max:400',
+        'teamDraft.hold.waterline' => 'nullable|numeric|min:0|max:1',
+        'teamDraft.hold.draught' => 'nullable|numeric|min:0|max:0.2',
     ])]
     public array $teamDraft = [];
 

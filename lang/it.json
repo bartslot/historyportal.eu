@@ -1817,5 +1817,15 @@
     "Who packed the best cargo?": "Chi ha composto il carico migliore?",
     "Available cargo": "Carico disponibile",
     "Not loaded": "Non caricato",
-    ":item, costs :points points": ":item, costa :points punti"
+    ":item, costs :points points": ":item, costa :points punti",
+    "On the real expedition": "Sulla vera spedizione",
+    "Look": "Aspetto",
+    "Ship hold": "Stiva",
+    "Cards": "Carte",
+    "Background (image URL)": "Sfondo (URL immagine)",
+    "Ship picture (image URL)": "Nave (URL immagine)",
+    "Ship across (%)": "Nave in orizzontale (%)",
+    "Ship bottom (%)": "Fondo della nave (%)",
+    "Ship height (%)": "Altezza della nave (%)",
+    "Sinks when full": "Affonda quando è piena"
 }

@@ -851,7 +851,8 @@ class LessonComposer
      */
     private function teamScene(Lesson $lesson, array $s, int $order, int $gameIndex): Scene
     {
-        $team = TeamGameSpec::normalize($this->teamImages($lesson, $s, $order));
+        $assets = [];
+        $team = TeamGameSpec::normalize($this->teamImages($lesson, $s, $order, $assets));
 
         $scene = $lesson->scenes()->create([
             'order' => $order,
@@ -866,7 +867,8 @@ class LessonComposer
             'year' => $s['year'] ?? null,
             'script_segment' => $s['script'] ?? null,
             'status' => 'pending',
-            'config' => ['team' => $team, 'team_default' => $team],
+            // Which served URL came from which library ref, so lessons:export writes the ref back.
+            'config' => ['team' => $team, 'team_default' => $team] + ($assets !== [] ? ['team_assets' => $assets] : []),
         ]);
 
         if (! empty($s['backdrop'])) {
@@ -878,21 +880,42 @@ class LessonComposer
 
     /**
      * Library refs ("asset:...") in a team game's images become copied, served URLs; anything else
-     * is left for TeamGameSpec to accept or drop.
+     * is left for TeamGameSpec to accept or drop. `$assets` collects url => "asset:ref".
+     *
+     * A hold's ship from the library brings its painted hold along: the `.hold.json` next to the
+     * picture (zones, aspect, waterline) fills whatever the spec leaves out.
      *
      * @param  array<string,mixed>  $s
+     * @param  array<string,string>  $assets
      * @return array<string,mixed>
      */
-    private function teamImages(Lesson $lesson, array $s, int $order): array
+    private function teamImages(Lesson $lesson, array $s, int $order, array &$assets = []): array
     {
-        $resolve = fn (mixed $ref): mixed => is_string($ref) && str_starts_with($ref, 'asset:')
-            ? $this->library->copyLibraryImage($lesson, substr($ref, 6), $order)['url']
-            : $ref;
+        $resolve = function (mixed $ref) use ($lesson, $order, &$assets): mixed {
+            if (! is_string($ref) || ! str_starts_with($ref, 'asset:')) {
+                return $ref;
+            }
+            $url = $this->library->copyLibraryImage($lesson, substr($ref, 6), $order)['url'];
+            $assets[$url] = $ref;
+
+            return $url;
+        };
 
         if (isset($s['map'])) {
             $s['map'] = $resolve($s['map']);
         }
-        foreach (['options', 'evidence'] as $list) {
+        if (is_array($s['hold'] ?? null)) {
+            $ship = $s['hold']['ship'] ?? null;
+            if (is_string($ship) && str_starts_with($ship, 'asset:')) {
+                $s['hold'] += $this->holdArt(substr($ship, 6));
+            }
+            foreach (['ship', 'backdrop'] as $key) {
+                if (isset($s['hold'][$key])) {
+                    $s['hold'][$key] = $resolve($s['hold'][$key]);
+                }
+            }
+        }
+        foreach (['options', 'evidence', 'fixed', 'items'] as $list) {
             if (! is_array($s[$list] ?? null)) {
                 continue;
             }
@@ -903,6 +926,23 @@ class LessonComposer
         }
 
         return $s;
+    }
+
+    /**
+     * The painted hold of a library ship: `<picture>.hold.json` beside it in resources/icons, or
+     * nothing.
+     *
+     * @return array<string,mixed>
+     */
+    private function holdArt(string $ref): array
+    {
+        $path = resource_path('icons/'.trim($ref, '/ ').'.hold.json');
+        if (str_contains($ref, '..') || ! is_file($path)) {
+            return [];
+        }
+        $json = json_decode((string) file_get_contents($path), true);
+
+        return is_array($json) ? array_intersect_key($json, array_flip(['zones', 'aspect', 'waterline', 'draught', 'x', 'y', 'h'])) : [];
     }
 
     /**

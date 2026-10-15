@@ -37,6 +37,20 @@ final class TeamGameSpec
 
     public const COST_MAX = 99;
 
+    /** How a budget game looks: the ship's hold, or the cards grid (the fallback). */
+    public const PRESENTATIONS = ['hold', 'grid'];
+
+    /** The hold's look, all optional: [key => [min, max]] (cargo-hold.js HOLD_DEFAULTS fills gaps). */
+    private const HOLD_NUMBERS = [
+        'aspect' => [0.2, 10], 'x' => [0, 100], 'y' => [0, 200], 'h' => [5, 400],
+        'waterline' => [0, 1], 'draught' => [0, 0.2],
+        'reflection' => [0, 1], 'contact_shadow' => [0, 1], 'foam' => [0, 1], 'roll' => [0, 1],
+    ];
+
+    private const ZONES_MAX = 12;
+
+    private const TAGS_MAX = 8;
+
     public const CAPACITY_MAX = 999;
 
     private const NAME_MAX = 80;
@@ -74,8 +88,14 @@ final class TeamGameSpec
             'image' => self::image($o['image'] ?? ''),
         ]);
 
+        $hold = self::hold($raw['hold'] ?? []);
+        $presentation = (string) ($raw['presentation'] ?? '');
+
         return [
             'mode' => $mode,
+            // Unset: the hold when there is a ship to draw it on, else the cards.
+            'presentation' => in_array($presentation, self::PRESENTATIONS, true) ? $presentation : ($hold['ship'] !== '' ? 'hold' : 'grid'),
+            'hold' => $hold,
             'title' => self::text($raw['title'] ?? '', self::NAME_MAX),
             'intro' => self::text($raw['intro'] ?? '', self::TEXT_MAX),
             'rules' => self::text($raw['rules'] ?? '', self::TEXT_MAX),
@@ -145,7 +165,8 @@ final class TeamGameSpec
     public static function blankRow(string $field): array|string|null
     {
         return match ($field) {
-            'fixed', 'items' => ['name' => '', 'why' => '', 'cost' => 1],
+            'fixed' => ['name' => '', 'why' => '', 'cost' => 1, 'image' => '', 'tags' => []],
+            'items' => ['name' => '', 'why' => '', 'cost' => 1, 'image' => '', 'tags' => [], 'real' => false],
             'cards' => ['title' => '', 'text' => '', 'but' => ''],
             'options' => ['label' => '', 'text' => '', 'image' => ''],
             'evidence' => ['image' => '', 'caption' => ''],
@@ -159,14 +180,78 @@ final class TeamGameSpec
         return self::ROWS[$field] ?? 0;
     }
 
-    /** @return array{name:string, why:string, cost:int} */
+    /**
+     * A cargo item. `image` is its picture (the hold and the cards), `real` marks what the real
+     * expedition carried (the results' last column), `tags` say what kind of cargo it is (food,
+     * water, repair-wood, tools, sails, rope, charts, writing, trade...) for later story
+     * consequences; nothing reads them yet.
+     *
+     * @return array{name:string, why:string, cost:int, image:string, tags:list<string>, real:bool}
+     */
     private static function item(array $i): array
     {
         return [
             'name' => self::text($i['name'] ?? '', self::NAME_MAX),
             'why' => self::text($i['why'] ?? '', self::LINE_MAX),
             'cost' => self::int($i['cost'] ?? 0, 0, self::COST_MAX, 0),
+            'image' => self::image($i['image'] ?? ''),
+            'tags' => self::tags($i['tags'] ?? []),
+            'real' => filter_var($i['real'] ?? false, FILTER_VALIDATE_BOOL),
         ];
+    }
+
+    /** @return list<string> lower-case slugs, unique, at most TAGS_MAX */
+    private static function tags(mixed $tags): array
+    {
+        if (! is_array($tags)) {
+            return [];
+        }
+        $out = [];
+        foreach ($tags as $tag) {
+            $slug = is_string($tag) ? strtolower(trim($tag)) : '';
+            if (preg_match('/^[a-z][a-z0-9-]{0,23}$/', $slug) && ! in_array($slug, $out, true)) {
+                $out[] = $slug;
+            }
+        }
+
+        return array_slice($out, 0, self::TAGS_MAX);
+    }
+
+    /**
+     * The hold: the ship picture with its painted hold, the plate behind it (a lesson's own
+     * setting, so another lesson can sail the same ship elsewhere), the hold's zones in % of the
+     * ship picture, and the look. A number left out is left out: the player's defaults fill it.
+     *
+     * @return array<string,mixed>
+     */
+    private static function hold(mixed $raw): array
+    {
+        $raw = is_array($raw) ? $raw : [];
+        $out = ['ship' => self::image($raw['ship'] ?? ''), 'backdrop' => self::image($raw['backdrop'] ?? '')];
+        foreach (self::HOLD_NUMBERS as $key => [$min, $max]) {
+            if (isset($raw[$key]) && is_numeric($raw[$key])) {
+                $out[$key] = round(max($min, min($max, (float) $raw[$key])), 4);
+            }
+        }
+        $zones = [];
+        foreach (is_array($raw['zones'] ?? null) ? $raw['zones'] : [] as $z) {
+            if (! is_array($z) || ! is_numeric($z['w'] ?? null) || ! is_numeric($z['h'] ?? null)) {
+                continue;
+            }
+            $zone = [];
+            foreach (['x', 'y', 'w', 'h'] as $k) {
+                $zone[$k] = round(max(0, min(100, (float) ($z[$k] ?? 0))), 2);
+            }
+            if ($zone['w'] > 0 && $zone['h'] > 0) {
+                $zones[] = $zone;
+            }
+            if (count($zones) >= self::ZONES_MAX) {
+                break;
+            }
+        }
+        $out['zones'] = $zones;
+
+        return $out;
     }
 
     /**

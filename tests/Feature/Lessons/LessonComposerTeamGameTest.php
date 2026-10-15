@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Tests\Feature\Lessons;
 
 use App\Models\Lesson;
+use App\Models\SvgAsset;
 use App\Models\User;
 use App\Services\LessonComposer;
 use App\Services\LessonExporter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
 use Tests\TestCase;
 
@@ -133,5 +135,93 @@ class LessonComposerTeamGameTest extends TestCase
             $lesson->scenes()->where('order', 2)->first()->config['team'],
             $rebuilt->scenes()->where('order', 2)->first()->config['team'],
         );
+    }
+
+    private function libraryAsset(string $ref): void
+    {
+        $path = "svg-assets/bundled/{$ref}.webp";
+        Storage::disk('public')->put($path, "bytes-of-{$ref}");
+        SvgAsset::factory()->create([
+            'user_id' => null, 'source' => 'bundled', 'source_ref' => "{$ref}.webp", 'svg_path' => $path, 'title' => basename($ref),
+        ]);
+    }
+
+    /** A budget game drawn as a ship's hold: the art from the library, the hold from the ship's .hold.json. */
+    private function holdGame(): array
+    {
+        return [
+            'type' => 'team', 'mode' => 'budget', 'capacity' => 16,
+            'hold' => [
+                'ship' => 'asset:history-line/props/tasman/hold_ship_cutaway',
+                'backdrop' => 'asset:history-line/backdrops/tasman/batavia_roadstead',
+                'draught' => 0.9, 'zones' => null, 'junk' => 'dropped',
+            ],
+            'fixed' => [['name' => 'Watervaten', 'cost' => 3, 'image' => 'asset:history-line/props/tasman/cargo_watervaten', 'tags' => ['Water', 'water', 'no spaces!']]],
+            'items' => [
+                ['name' => 'Rijst', 'cost' => 3, 'image' => 'asset:history-line/props/tasman/cargo_rijst', 'tags' => ['food'], 'real' => true],
+                ['name' => 'Touw', 'cost' => 2, 'image' => 'javascript:alert(1)'],
+            ],
+        ];
+    }
+
+    public function test_a_hold_game_resolves_its_art_reads_the_painted_hold_and_cleans_the_rest(): void
+    {
+        Storage::fake('public');
+        foreach (['props/tasman/hold_ship_cutaway', 'backdrops/tasman/batavia_roadstead', 'props/tasman/cargo_watervaten', 'props/tasman/cargo_rijst'] as $ref) {
+            $this->libraryAsset("history-line/{$ref}");
+        }
+        $painted = json_decode((string) file_get_contents(resource_path('icons/history-line/props/tasman/hold_ship_cutaway.hold.json')), true);
+
+        $scene = $this->compose([$this->holdGame()])->scenes()->firstOrFail();
+        $team = $scene->config['team'];
+
+        $this->assertSame('hold', $team['presentation']);                                // a ship: the hold by default
+        $this->assertStringContainsString('hold_ship_cutaway', $team['hold']['ship']);
+        $this->assertStringNotContainsString('asset:', $team['hold']['ship']);
+        $this->assertStringContainsString('batavia_roadstead', $team['hold']['backdrop']);
+        $this->assertCount(count($painted['zones']), $team['hold']['zones']);               // from the .hold.json
+        $this->assertEqualsWithDelta($painted['aspect'], $team['hold']['aspect'], 0.001);
+        $this->assertSame(0.2, $team['hold']['draught']);                                  // clamped
+        $this->assertArrayNotHasKey('junk', $team['hold']);
+        $this->assertStringContainsString('cargo_rijst', $team['items'][0]['image']);
+        $this->assertTrue($team['items'][0]['real']);
+        $this->assertFalse($team['items'][1]['real']);
+        $this->assertSame('', $team['items'][1]['image']);                                 // javascript: dropped
+        $this->assertSame(['water'], $team['fixed'][0]['tags']);                            // slugged, unique, bad ones out
+        $this->assertSame(['food'], $team['items'][0]['tags']);
+    }
+
+    public function test_a_hold_game_exports_its_library_refs_and_composes_back_the_same(): void
+    {
+        Storage::fake('public');
+        foreach (['props/tasman/hold_ship_cutaway', 'backdrops/tasman/batavia_roadstead', 'props/tasman/cargo_watervaten', 'props/tasman/cargo_rijst'] as $ref) {
+            $this->libraryAsset("history-line/{$ref}");
+        }
+        $lesson = $this->compose([$this->holdGame()]);
+
+        $entry = app(LessonExporter::class)->toSpec($lesson)['scenes'][0];
+
+        $this->assertSame('asset:history-line/props/tasman/hold_ship_cutaway', $entry['hold']['ship']);
+        $this->assertSame('asset:history-line/backdrops/tasman/batavia_roadstead', $entry['hold']['backdrop']);
+        $this->assertSame('asset:history-line/props/tasman/cargo_rijst', $entry['items'][0]['image']);
+        $this->assertSame('hold', $entry['presentation']);
+        $this->assertSame(['food'], $entry['items'][0]['tags']);
+        $this->assertArrayNotHasKey('extra_config', $entry);
+
+        $rebuilt = app(LessonComposer::class)->build(['key' => 'again', 'scenes' => [$entry]] + ['language' => 'nl'], $lesson->teacher, narrate: false);
+        $again = $rebuilt->scenes()->firstOrFail()->config['team'];
+        $this->assertSame($lesson->scenes()->firstOrFail()->config['team']['hold']['zones'], $again['hold']['zones']);
+        $this->assertSame($lesson->scenes()->firstOrFail()->config['team']['items'][0]['tags'], $again['items'][0]['tags']);
+    }
+
+    public function test_a_budget_game_without_a_ship_falls_back_to_the_cards_and_the_teacher_may_choose(): void
+    {
+        $games = $this->compose([
+            ['type' => 'team', 'mode' => 'budget'],
+            ['type' => 'team', 'mode' => 'budget', 'presentation' => 'grid', 'hold' => ['ship' => '/storage/s.webp']],
+            ['type' => 'team', 'mode' => 'budget', 'presentation' => 'carousel'],
+        ])->scenes()->orderBy('order')->get()->map(fn ($s) => $s->config['team']['presentation'])->all();
+
+        $this->assertSame(['grid', 'grid', 'grid'], $games);
     }
 }
