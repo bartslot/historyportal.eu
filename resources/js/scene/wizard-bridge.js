@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import { Avatar3DPlayer } from '../avatar-3d.js'
 import { isTopAnchored, normalizeFit, PORTRAIT_TOP_BIAS } from './background-fit.js'
 import { mountEmbedBg, embedBgSignature } from './embed-bg.js'
-import { isClipartLayer } from './layer-filters.js'
+import { isClipartLayer, backdropLayers } from './layer-filters.js'
 import { fitToPlate, plateAspect } from './plate-box.js'
 import { t } from '../i18n.js'
 import { gradientCanvas } from './background-gradient.js'
@@ -1035,7 +1035,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
 
             // Split: the background plane(s) render as parallax; free clipart (asset_id) is
             // rendered by the editable overlay so teachers can move + scale it directly.
-            const bgLayers = layers.filter(l => !isClipartLayer(l))
+            const bgLayers = backdropLayers(layers)
             const artLayers = layers.filter(isClipartLayer)
 
             if (!_parallaxMod) _parallaxMod = await import('./ParallaxScene.js')
@@ -1051,7 +1051,8 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             //    scene:load (a caption toggle, a script edit, a 3s poll) re-runs the 900ms fade =
             //    the flicker Bart saw. The motion follows the ANIMATED + Ken Burns direction. ──
             const motion = kbMotion(payload)
-            const animated = payload.kbAnimated !== false && (Math.abs(motion.panX) > 0.01 || Math.abs(motion.zoom - 1) > 0.001)
+            // No backdrop, nothing to pan: the library layers hold still (Bart, 2026-10-14).
+            const animated = bgLayers.length > 0 && payload.kbAnimated !== false && (Math.abs(motion.panX) > 0.01 || Math.abs(motion.zoom - 1) > 0.001)
             // Module flag so the persistent bg loop drives clipart parallax with the CURRENT mode
             // (a Standard↔Parallax switch keeps the same motion, so the bg loop isn't rebuilt).
             _layeredParallax = parallax
@@ -1069,7 +1070,9 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                 if (_wizardLayeredScene) { try { _wizardLayeredScene.destroy() } catch (_) {} }
                 _wizardLayeredScene = new _parallaxMod.ParallaxScene(host)
                 _wizardLayeredScene.show({
-                    layers: bgLayers.length ? bgLayers : layers, motion, fit, matte,
+                    // Backdrop planes only. Falling back to the whole list drew every library
+                    // picture a second time, under the Ken Burns pan, out of its selection box.
+                    layers: bgLayers, motion, fit, matte,
                     camera, entry: payload.entry ?? null, loop: true, entryAlong: [_artworkHost],
                     onCameraFrame: (frameFor) => _artworkOverlay?.setCamera(frameFor),
                 })

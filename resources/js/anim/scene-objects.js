@@ -50,7 +50,12 @@ export const readObjectProperty = (target, property) => {
     const overlay = window.__artOverlay?.() ?? window.__lessonArtworkLayer
     const layer = (overlay?._layers ?? []).find((l) => String(l.asset_id) === id)
     const value = layer?.[property]
-    return Number.isFinite(value) ? value : null
+    if (Number.isFinite(value)) return value
+    // No explicit width: the layer takes it from the picture's aspect. Read the width it is drawn
+    // at, in the same units as its height (the Dimensions row does the same), or the row shows 0
+    // and its diamond keys a zero-width layer.
+    const ratio = property === 'width' ? overlay?.measure?.(id)?.ratio : null
+    return Number.isFinite(ratio) && Number.isFinite(layer?.height) ? Math.round(ratio * layer.height * 10) / 10 : null
   }
 
   if (kind !== 'text' && kind !== 'rect') return null
