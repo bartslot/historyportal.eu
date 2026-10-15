@@ -182,6 +182,8 @@ class LessonComposerTeamGameTest extends TestCase
         $this->assertStringNotContainsString('asset:', $team['hold']['ship']);
         $this->assertStringContainsString('batavia_roadstead', $team['hold']['backdrop']);
         $this->assertCount(count($painted['zones']), $team['hold']['zones']);               // from the .hold.json
+        $this->assertSame(count($painted['posts']), count($team['hold']['posts']));        // the posts too: cargo stands between them
+        $this->assertEqualsWithDelta($painted['posts'][1]['x'], $team['hold']['posts'][1]['x'], 0.001);
         $this->assertEqualsWithDelta($painted['aspect'], $team['hold']['aspect'], 0.001);
         $this->assertTrue($team['hold']['draught']);                                       // the sinking ship: on unless off
         $this->assertArrayNotHasKey('junk', $team['hold']);

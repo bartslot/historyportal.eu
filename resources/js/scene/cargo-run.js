@@ -152,6 +152,17 @@ export function previewExchange (state, removeId, addId, cat) {
   return { ok: true, reason: '', before, after }
 }
 
+/**
+ * What the swap preview may offer: the confirm only when it fits; otherwise how many places
+ * must come free first (an over-budget preview never enables "Ruilen").
+ * @param {{ok:boolean, reason:string, after:number}} preview  previewExchange() output
+ * @returns {{canSwap:boolean, over:number, free:number}}
+ */
+export function swapGuard (preview, budget) {
+  const over = preview.reason === REFUSED.budget ? Math.max(0, preview.after - budget) : 0
+  return { canSwap: !!preview.ok, over, free: preview.ok ? Math.max(0, budget - preview.after) : 0 }
+}
+
 /** Apply the exchange atomically: out and in together, the allowance used, both loads kept. */
 export function exchangeCargo (state, removeId, addId, cat, opId = null) {
   if (seenOp(state, opId)) return { ok: true, reason: '', state }

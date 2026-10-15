@@ -39,3 +39,28 @@ export const roleLine = (assignment) => assignment.map((rs, k) => `${k + 1} ${rs
  * says "Klaar", "Ruilen" or "Houden zo".
  */
 export const PROMPT_ROLE = { ready: 0, fit: 1, risk: 2, why: 3, swap: 0 }
+
+/**
+ * Whose turn it is on the pick screen (one prompt at a time, PM 10-15): the Bootsman ("past het
+ * nog?") while the team loads; the Kapitein ("zijn jullie klaar?") once something is aboard and
+ * the team is near "Klaar": nearly full, nothing else fits, or "Toch klaar?" is asked. Nothing
+ * once the team is ready.
+ * @param {{loaded:number, load:number, budget:number, cheapest:number, confirming?:boolean, confirmed?:boolean}} s
+ *   loaded = optional items aboard; cheapest = the cheapest item still to choose (Infinity: none)
+ * @returns {'fit'|'ready'|null}
+ */
+export function pickPrompt ({ loaded, load, budget, cheapest, confirming = false, confirmed = false }) {
+  if (confirmed) return null
+  if (confirming) return 'ready'
+  const nearDone = load >= budget * 0.9 || budget - load < cheapest
+  return loaded > 0 && nearDone ? 'ready' : 'fit'
+}
+
+/**
+ * Whose turn it is at Laatste kans: the Verkenner ("wat kan er misgaan?") first, the Kapitein
+ * ("ruilen of houden zo?") once the team has picked something to swap; nothing once it swapped
+ * or kept.
+ * @param {{open:boolean, picked:boolean}} s  open = the team may still swap; picked = an item chosen
+ * @returns {'risk'|'swap'|null}
+ */
+export const exchangePrompt = ({ open, picked }) => (!open ? null : picked ? 'swap' : 'risk')

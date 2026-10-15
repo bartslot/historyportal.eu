@@ -33,7 +33,7 @@ const NAME_MAX = 24
 const LETTERS = ['A', 'B', 'C', 'D']
 const TIMED = ['load', 'dossier', 'vote', 'discuss']
 // The cargo game as a hold: every step has its own timer (plan §2); expiry only nudges.
-const HOLD_STEPS = ['setup', 'load', 'compare', 'exchange', 'depart']
+const HOLD_STEPS = ['setup', 'mission', 'load', 'compare', 'exchange', 'depart']
 
 // ── Pure rules ───────────────────────────────────────────────────────────────────────────────
 
@@ -211,7 +211,7 @@ export class TeamGame {
       this._phase = HOLD_STEPS.includes(run.phase) ? run.phase : 'setup'
     } else {
       this._runId = `run-${Date.now().toString(36)}`
-      if (this._solo) { this._names = [t('You')]; this._cargo = [newTeamCargo('team-1', this._hold.cat)] }
+      if (this._solo) { this._names = [t('You')]; this._cargo = [newTeamCargo('team-1', this._hold.cat)]; this._phase = 'mission' }
     }
     this._escKey = (e) => { if (e.key === 'Escape') this._hold?._escape?.() }
     document.addEventListener('keydown', this._escKey)
@@ -232,7 +232,10 @@ export class TeamGame {
   _phaseSeconds (phase) {
     if (!this._isHold()) return this.cfg.minutes * 60
     const s = this.cfg.timers
-    return { setup: s.mission, load: this.cfg.minutes * 60, compare: s.compare, exchange: s.exchange, depart: s.sail }[phase] ?? 0
+    // Setup is untimed: the mission's clock starts with the teacher's Start. After departure the
+    // clock is gone (its "Verder" would compete with "Verder met de les").
+    if (phase === 'depart' && this._snapshots) return 0
+    return { mission: s.mission, load: this.cfg.minutes * 60, compare: s.compare, exchange: s.exchange, depart: s.sail }[phase] ?? 0
   }
 
   _timed (phase) {
@@ -268,7 +271,15 @@ export class TeamGame {
       cargo: (i) => this._cargo[i],
       setCargo: (i, state) => { this._cargo = this._cargo.map((c, j) => (j === i ? state : c)) },
       save: () => this._saveHold(),
-      lock: (snapshots) => { this._snapshots = snapshots; this._phase = 'depart'; this._saveHold() },
+      // Departure: locked, and the step's clock goes with it (in place: the ships are sailing).
+      lock: (snapshots) => {
+        this._snapshots = snapshots
+        this._phase = 'depart'
+        this._saveHold()
+        this._running = false
+        this._stopClock()
+        this.host.querySelector('[data-team-clock]')?.parentElement?.remove()
+      },
       locked: () => this._snapshots,
       // Rotating roles (team-roles.js): the team's size, this interaction's place in the run.
       rolesOn: () => this.cfg.roles_on && this.cfg.roles.length > 0,
@@ -314,6 +325,7 @@ export class TeamGame {
     this._active = Math.min(this._active, this._names.length - 1)
     if (this._isHold()) {
       this._cargo = this._names.map((_, i) => this._cargo[i] ?? newTeamCargo(`team-${i + 1}`, this._hold.cat))
+      return this._go('mission')
     }
     this._remaining = this.cfg.minutes * 60
     this._go(this.cfg.mode === 'budget' ? 'load' : 'dossier')
@@ -348,10 +360,11 @@ export class TeamGame {
     const clock = this.host.querySelector('[data-team-clock]')
     if (!clock) return
     clock.textContent = this._clockText()
-    // At zero the clock stops by itself, so its button must say Resume, not Pause. In place, not
-    // a redraw: a redraw would scroll the class back to the top.
+    // At zero the clock stops by itself and its button goes (only "+1 minuut" is left). In place,
+    // not a redraw: a redraw would scroll the class back to the top.
     const pause = this.host.querySelector('[data-team-pause]')
-    if (pause) pause.textContent = this._running ? t('Pause') : t('Resume')
+    if (pause && this._remaining > 0) pause.textContent = this._running ? t('Pause') : t('Resume')
+    else pause?.remove()
   }
 
   _clockText () { return this._remaining > 0 ? formatClock(this._remaining) : t('Time is up') }
@@ -363,8 +376,9 @@ export class TeamGame {
     clock.dataset.teamClock = ''
     clock.setAttribute('role', 'timer')
     wrap.appendChild(clock)
-    const pause = button(this._running ? t('Pause') : t('Resume'), 'btn-sm btn-ghost', () => this._pauseClock())
-    pause.dataset.teamPause = ''
+    // At zero there is nothing to resume: only "+1 minuut" (a "Verder" there did nothing).
+    const pause = this._remaining > 0 ? button(this._running ? t('Pause') : t('Resume'), 'btn-sm btn-ghost', () => this._pauseClock()) : null
+    if (pause) pause.dataset.teamPause = ''
     append(wrap,
       pause,
       button(t('+1 minute'), 'btn-sm btn-ghost', () => this._addMinute()))
@@ -405,7 +419,7 @@ export class TeamGame {
 
   // ── Setup: intro, roles, how many teams and their names ──
   _setup (body) {
-    if (this._isHold()) return this._hold.mission(body)
+    if (this._isHold()) return this._solo ? this._hold.mission(body) : this._hold.setup(body)
     append(body,
       para(this.cfg.intro, 'text-2xl leading-relaxed'),
       para(this.cfg.rules, 'text-lg leading-relaxed text-base-content/80'))
@@ -450,6 +464,7 @@ export class TeamGame {
       if (!(this.cfg.presentation === 'hold' && this.teamStore().rolesOn())) { names.appendChild(input); return }
       // With rotating roles: how many children in this team (3 or 4).
       const cell = el('div', 'flex flex-col gap-1')
+      const sizeRow = el('div', 'flex items-center gap-2')
       const size = el('div', 'join')
       size.setAttribute('role', 'group')
       size.setAttribute('aria-label', `${t('Team size')}, ${t('Team :number', { number: i + 1 })}`)
@@ -462,7 +477,8 @@ export class TeamGame {
         b.setAttribute('aria-pressed', String(on))
         size.appendChild(b)
       })
-      cell.append(input, size)
+      append(sizeRow, el('span', 'text-sm text-base-content/70', t('Children per team')), size)
+      cell.append(input, sizeRow)
       names.appendChild(cell)
     })
     teams.appendChild(names)
@@ -739,7 +755,8 @@ export class TeamGame {
     return box
   }
 
-  // ── The cargo game's later steps (team-hold-compare.js) ──
+  // ── The cargo game's later steps (team-hold.js, team-hold-compare.js) ──
+  _mission (body) { this._hold.mission(body) }
   _compare (body) { this._hold.compare(body) }
   _exchange (body) { this._hold.exchange(body) }
   _depart (body) { this._hold.depart(body) }

@@ -46,24 +46,53 @@ export const HOLD_DEFAULTS = {
  */
 export const DRAUGHT_AMOUNT = 0.045
 
+/** How much each cargo picture overlaps the one before it, as a share of its width (a pile). */
+const OVERLAP = 0.12
+
 const clamp01 = (n) => Math.min(1, Math.max(0, Number(n) || 0))
 const num = (v, fallback) => (Number.isFinite(Number(v)) && v !== '' && v !== null ? Number(v) : fallback)
 const r2 = (n) => Math.round(n * 100) / 100
 
 // ── Pure rules ───────────────────────────────────────────────────────────────────────────────
 
-/** The hold config as the component reads it: every number a number, zones inside the picture. */
+const rects = (list) => (Array.isArray(list) ? list : [])
+  .map(z => ({ x: num(z?.x, 0), y: num(z?.y, 0), w: num(z?.w, 0), h: num(z?.h, 0) }))
+  .filter(z => z.w > 0 && z.h > 0)
+
+/** The hold config as the component reads it: every number a number, zones and posts in the picture. */
 export function readHold (raw = {}) {
-  const zones = (Array.isArray(raw.zones) ? raw.zones : [])
-    .map(z => ({ x: num(z?.x, 0), y: num(z?.y, 0), w: num(z?.w, 0), h: num(z?.h, 0) }))
-    .filter(z => z.w > 0 && z.h > 0)
-  const out = { ship: raw.ship || '', backdrop: raw.backdrop || '', zones }
+  const out = { ship: raw.ship || '', backdrop: raw.backdrop || '', zones: rects(raw.zones), posts: rects(raw.posts) }
   for (const [k, v] of Object.entries(HOLD_DEFAULTS)) out[k] = num(raw[k], v)
   out.aspect = Math.max(0.2, out.aspect)
   // On unless switched off; a number is the depth itself (capped at 0.2 of the ship's height).
   out.draught = raw.draught === false || raw.draught === 0 ? 0
     : typeof raw.draught === 'number' ? Math.min(0.2, Math.max(0, raw.draught)) : DRAUGHT_AMOUNT
   return out
+}
+
+/** A bay narrower than this (% of the picture) is a sliver between two posts: no cargo there. */
+const MIN_BAY = 1
+
+/**
+ * The bays of the hold: each zone with the posts standing in it cut out (a post counts for a zone
+ * when it overlaps the zone's height). Cargo only ever stands in a bay, so nothing covers a post.
+ * No posts: the zones themselves.
+ * @returns {{x:number,y:number,w:number,h:number}[]}
+ */
+export function baysOf (zones, posts = []) {
+  return zones.flatMap(z => {
+    const cuts = posts
+      .filter(p => p.y < z.y + z.h && p.y + p.h > z.y && p.x < z.x + z.w && p.x + p.w > z.x)
+      .map(p => [Math.max(z.x, p.x), Math.min(z.x + z.w, p.x + p.w)])
+      .sort((a, b) => a[0] - b[0])
+    const bays = []
+    let from = z.x
+    for (const [a, b] of [...cuts, [z.x + z.w, z.x + z.w]]) {
+      if (a - from >= MIN_BAY) bays.push({ x: r2(from), y: z.y, w: r2(a - from), h: z.h })
+      from = Math.max(from, b)
+    }
+    return bays
+  })
 }
 
 /** Units per zone: shared by area, largest remainder, so they always add up to `capacity`. */
@@ -104,9 +133,15 @@ export function cellRects (zones, capacity, aspect) {
     const { rows, cols } = gridFor(n, (z.w * aspect) / z.h)
     const cw = z.w / cols
     const ch = z.h / rows
+    // Edges rounded once, so a cell's right edge IS the next one's left (and the last ends exactly
+    // on its bay's edge, never a hair over a post).
+    const at = (from, size, k) => r2(from + k * size)
     for (let i = 0; i < n; i++) {
       const row = Math.floor(i / cols)
-      cells.push({ x: r2(z.x + (i % cols) * cw), y: r2(z.y + row * ch), w: r2(cw), h: r2(ch), row: `${zi}:${row}` })
+      const col = i % cols
+      const x = at(z.x, cw, col)
+      const y = at(z.y, ch, row)
+      cells.push({ x, y, w: r2(at(z.x, cw, col + 1) - x), h: r2(at(z.y, ch, row + 1) - y), row: `${zi}:${row}` })
     }
   })
   return cells
@@ -257,6 +292,7 @@ export function createHoldStage ({
   }
 
   const state = { key: null, draught: 0, colours: null, pieces: new Map(), speed: 0 }
+  const bays = baysOf(hold.zones, hold.posts)
 
   const sitItem = () => ({
     asset_id: id, width: 100, speed: state.speed,
@@ -293,11 +329,14 @@ export function createHoldStage ({
       const shadow = el('span', 'pointer-events-none absolute inset-x-[4%] bottom-0 h-[10%] rounded-[50%] bg-black/25')
       shadow.setAttribute('aria-hidden', 'true')
       piece.appendChild(shadow)
+      // n pictures, each overlapping the one before by OVERLAP of its width, exactly filling the
+      // piece: never wider, so no picture reaches past its bay onto a post.
       const n = Math.max(1, rect.cells || 1)
+      const w = 100 / (n - OVERLAP * (n - 1))
       for (let k = 0; k < n; k++) {
-        const pic = el('img', 'pointer-events-none relative h-[96%] min-w-0 object-contain object-bottom')
-        pic.style.width = `${(100 / n) * 1.12}%`
-        if (k) pic.style.marginLeft = `-${(100 / n) * 0.12}%`
+        const pic = el('img', 'pointer-events-none relative h-[96%] min-w-0 shrink-0 object-contain object-bottom')
+        pic.style.width = `${r2(w)}%`
+        if (k) pic.style.marginLeft = `-${r2(w * OVERLAP)}%`
         pic.src = c.image
         pic.alt = ''
         pic.draggable = false
@@ -338,7 +377,7 @@ export function createHoldStage ({
       state.key = key
       const added = []
       const keep = new Set()
-      const plan = slotPlan(cargo.map(c => ({ key: c.key, cost: c.cost })), hold.zones, hold.aspect, capacity)
+      const plan = slotPlan(cargo.map(c => ({ key: c.key, cost: c.cost })), bays, hold.aspect, capacity)
       cargo.forEach(c => {
         const rects = plan.get(c.key) ?? []
         if (!rects.length) return
@@ -372,11 +411,14 @@ export function createHoldStage ({
     /** The main piece of a loaded item, or null. */
     piece (key) { return state.pieces.get(key)?.main ?? null },
 
-    /** Mark pieces with a flat brand-amber outline (no glow): `keys` on, every other piece off. */
+    /** Mark pieces with a flat brand-amber outline (no glow), drawn INSIDE the piece so it stays in its bay. */
     highlight (keys = new Set()) {
       for (const [k, p] of state.pieces) {
         const on = keys.has(k)
-        p.els.forEach(e => { e.classList.toggle('outline', on); e.classList.toggle('outline-[3px]', on); e.classList.toggle('outline-primary', on) })
+        p.els.forEach(e => {
+          e.classList.toggle('outline', on); e.classList.toggle('outline-[3px]', on); e.classList.toggle('outline-primary', on)
+          e.style.outlineOffset = on ? '-3px' : ''
+        })
         if (on) p.main.dataset.differs = ''; else delete p.main.dataset.differs
       }
     },
@@ -402,8 +444,11 @@ export function createHoldStage ({
     sailOut (seconds = 4) {
       state.speed = 1
       drawSit()
-      return sail(node, stage, { to_x: 170, duration: seconds })
+      return sail(node, stage, { to_x: 170, duration: seconds }).then(() => { stage.dataset.sailed = '' })
     },
+
+    /** Already gone (a redraw after departure): out of frame at once, no second voyage. */
+    sailed () { node.style.visibility = 'hidden'; stage.dataset.sailed = '' },
 
     /** The current draught, as a share of the ship's height. */
     get draught () { return state.draught },

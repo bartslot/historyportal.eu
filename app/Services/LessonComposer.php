@@ -886,7 +886,7 @@ class LessonComposer
      * is left for TeamGameSpec to accept or drop. `$assets` collects url => "asset:ref".
      *
      * A hold's ship from the library brings its painted hold along: the `.hold.json` next to the
-     * picture (zones, aspect, waterline) fills whatever the spec leaves out.
+     * picture (zones, posts, aspect, waterline) fills whatever the spec leaves out.
      *
      * @param  array<string,mixed>  $s
      * @param  array<string,string>  $assets
@@ -945,7 +945,7 @@ class LessonComposer
         }
         $json = json_decode((string) file_get_contents($path), true);
 
-        return is_array($json) ? array_intersect_key($json, array_flip(['zones', 'aspect', 'waterline', 'x', 'y', 'h'])) : [];
+        return is_array($json) ? array_intersect_key($json, array_flip(['zones', 'posts', 'aspect', 'waterline', 'x', 'y', 'h'])) : [];
     }
 
     /**

@@ -49,6 +49,8 @@ final class TeamGameSpec
 
     private const ZONES_MAX = 12;
 
+    private const POSTS_MAX = 32;
+
     /** The cargo game's step timers in seconds (plan §2); `minutes` is the choosing step. */
     public const STEP_SECONDS = ['mission' => 20, 'compare' => 60, 'exchange' => 60, 'sail' => 20];
 
@@ -299,23 +301,37 @@ final class TeamGameSpec
                 $out[$key] = round(max($min, min($max, (float) $raw[$key])), 4);
             }
         }
-        $zones = [];
-        foreach (is_array($raw['zones'] ?? null) ? $raw['zones'] : [] as $z) {
+        // The decks, and the posts standing in them (cargo only stands in the bays between posts).
+        $out['zones'] = self::rects($raw['zones'] ?? null, self::ZONES_MAX);
+        $out['posts'] = self::rects($raw['posts'] ?? null, self::POSTS_MAX);
+
+        return $out;
+    }
+
+    /**
+     * Rectangles in % of the ship picture (x, y = top-left), each number within 0..100; an empty
+     * or broken one is skipped.
+     *
+     * @return list<array{x: float, y: float, w: float, h: float}>
+     */
+    private static function rects(mixed $raw, int $max): array
+    {
+        $out = [];
+        foreach (is_array($raw) ? $raw : [] as $z) {
             if (! is_array($z) || ! is_numeric($z['w'] ?? null) || ! is_numeric($z['h'] ?? null)) {
                 continue;
             }
-            $zone = [];
+            $rect = [];
             foreach (['x', 'y', 'w', 'h'] as $k) {
-                $zone[$k] = round(max(0, min(100, (float) ($z[$k] ?? 0))), 2);
+                $rect[$k] = round(max(0, min(100, (float) ($z[$k] ?? 0))), 2);
             }
-            if ($zone['w'] > 0 && $zone['h'] > 0) {
-                $zones[] = $zone;
+            if ($rect['w'] > 0 && $rect['h'] > 0) {
+                $out[] = $rect;
             }
-            if (count($zones) >= self::ZONES_MAX) {
+            if (count($out) >= $max) {
                 break;
             }
         }
-        $out['zones'] = $zones;
 
         return $out;
     }
