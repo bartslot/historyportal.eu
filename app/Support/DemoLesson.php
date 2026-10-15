@@ -66,6 +66,15 @@ final class DemoLesson
     {
         $request ??= request();
 
+        // The page's own language first: the hero sits inside that page, so a Dutch page with an
+        // English lesson in it is the one result that is always wrong. SetLocale has already decided
+        // it, from the signed-in teacher's setting or the URL before the browser. (2026-10-13: Bart,
+        // Dutch account on an English browser, got a Dutch page around an English lesson.)
+        $page = app()->getLocale();
+        if ($page !== self::FALLBACK_LANGUAGE && Locales::isSupported($page)) {
+            return $page;
+        }
+
         $browser = self::fromBrowser($request);
 
         // A browser asking for a language that is NOT English is someone who went and set it, so it
@@ -89,7 +98,10 @@ final class DemoLesson
      * The learning goal the hero types out.
      *
      * It has to describe the lesson the buttons open, so it only uses the configured line when that
-     * line belongs to the lesson that actually won; otherwise the lesson's own title stands in.
+     * line belongs to the lesson that actually won; otherwise `demo.goals` is looked up by the
+     * winner's title. A goal is the curriculum topic the teacher has to teach ("De VOC en
+     * ontdekkingsreizen"), never the lesson's title (Bart, 2026-10-13); the title is only the last
+     * resort for a lesson nobody wrote a goal for.
      * Nothing on screen may promise a lesson the visitor is not about to get — including promising
      * it in a language the lesson is not written in.
      */
@@ -102,9 +114,11 @@ final class DemoLesson
 
         $entry = self::entryFor($lesson->language ?: self::FALLBACK_LANGUAGE);
 
-        return ($entry['title'] ?? null) === $lesson->title && ! empty($entry['goal'])
-            ? (string) $entry['goal']
-            : $lesson->title;
+        if (($entry['title'] ?? null) === $lesson->title && ! empty($entry['goal'])) {
+            return (string) $entry['goal'];
+        }
+
+        return (string) (((array) config('demo.goals', []))[$lesson->title] ?? $lesson->title);
     }
 
     /** Hand-picked hero footage for the lesson that won, if its language entry names any. */

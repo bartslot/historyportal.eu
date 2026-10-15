@@ -22,14 +22,26 @@ return [
     | What the hero types
     |--------------------------------------------------------------------------
     |
-    | The learning goal the demo types out. It has to describe the lesson above,
-    | because the buttons underneath open exactly that lesson. When the configured
-    | lesson is not available and DemoLesson falls back to another one, the hero
-    | types THAT lesson's title instead, so the words never promise the wrong thing.
+    | The learning goal the demo types out: the CURRICULUM TOPIC a teacher has to
+    | teach, never the lesson's title (Bart, 2026-10-13: "Het leerdoel is niet de
+    | titel van de les"). The teacher types "De VOC en ontdekkingsreizen"; the
+    | lesson that answers it is Abel Tasman. It has to fit the lesson above,
+    | because the buttons underneath open exactly that lesson. When DemoLesson
+    | falls back to another lesson, `goals` below is looked up by that lesson's
+    | title, so the words never promise the wrong thing.
     |
     */
 
-    'lesson_goal' => env('DEMO_LESSON_GOAL', 'Abel Tasman, and the two voyages that mapped the south'),
+    'lesson_goal' => env('DEMO_LESSON_GOAL', 'The VOC and the voyages of discovery'),
+
+    /*
+    | Goals for lessons that can win as a FALLBACK (the configured one is not
+    | playable), keyed by exact lesson title. Without an entry the title is typed,
+    | which reads as a title, not a goal: add one for every lesson that can win.
+    */
+    'goals' => [
+        'The Batavian Republic: A Quest for Liberty' => 'The first constitution of the Netherlands',
+    ],
 
     // Hand-picked square footage for the default lesson's ring, if there is any. Beats scraping
     // the lesson's own artwork: chosen to sit next to each other, already cropped.
@@ -65,7 +77,7 @@ return [
     */
 
     'by_language' => [
-        'nl' => ['title' => 'De reis van Abel Tasman', 'goal' => 'Abel Tasman en de reis van 1642', 'footage' => 'public/lessons/tasman/animation'],
+        'nl' => ['title' => 'De reis van Abel Tasman', 'goal' => 'De VOC en ontdekkingsreizen', 'footage' => 'public/lessons/tasman/animation'],
         'fr' => ['title' => 'La Révolution française et l\'ascension de Napoléon', 'goal' => 'La Révolution française, et comment Bonaparte a pris le pouvoir'],
         // Both from resources/lessons/dante: the titles must match text/{de,it}.php exactly.
         'de' => ['title' => 'Dante Alighieri: das Leben eines Dichters im Exil', 'goal' => 'Dante Alighieri und wie er im Exil die Commedia schrieb'],

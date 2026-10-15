@@ -131,7 +131,7 @@ class Lesson extends Model
         // lesson's player payload (LessonPlayerController), so changes show on the next request
         // instead of up to 10–30 min later.
         $forgetCaches = static function (Lesson $lesson): void {
-            Cache::forget('home.playable_lessons');
+            \App\Http\Controllers\Public\HomeController::forget();
             \App\Support\DemoLesson::forget();
             if (! empty($lesson->lesson_code)) {
                 Cache::forget('lesson.player.'.strtoupper($lesson->lesson_code));

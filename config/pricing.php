@@ -8,12 +8,16 @@ declare(strict_types=1);
 |--------------------------------------------------------------------------
 | Edit these to change what shows on the public pricing section
 | (resources/views/components/landing/pricing.blade.php). No Blade changes
-| needed. Prices are the effective $/year for each commitment term, plus the
-| total billed over the term. Keep `term` keys as quoted strings ('1','2','3')
+| needed. Prices are the effective EUR/year for each commitment term, plus the
+| total billed over the term, as plain numbers: the view formats them per
+| language (EUR 1.680 in Dutch, EUR1,680 in English). Euros because History
+| Portal is a European product (Bart, 2026-10-13). Keep `term` keys as quoted strings ('1','2','3')
 | — they double as the Alpine selector values.
 */
 
 return [
+
+    'currency' => 'EUR',
 
     // Default selected term on page load.
     'default_term' => '2',
@@ -38,9 +42,9 @@ return [
             'cta'      => 'Start free trial',
             'href'     => '/login',
             'prices'   => [
-                '1' => ['per_year' => '990', 'total' => '990'],
-                '2' => ['per_year' => '840', 'total' => '1,680'],
-                '3' => ['per_year' => '740', 'total' => '2,220'],
+                '1' => ['per_year' => 990, 'total' => 990],
+                '2' => ['per_year' => 840, 'total' => 1680],
+                '3' => ['per_year' => 740, 'total' => 2220],
             ],
             'features' => [
                 'Up to 1 classroom · 30 students',
@@ -60,9 +64,9 @@ return [
             'cta'      => 'Start free trial',
             'href'     => '/login',
             'prices'   => [
-                '1' => ['per_year' => '4,490', 'total' => '4,490'],
-                '2' => ['per_year' => '3,815', 'total' => '7,630'],
-                '3' => ['per_year' => '3,370', 'total' => '10,110'],
+                '1' => ['per_year' => 4490, 'total' => 4490],
+                '2' => ['per_year' => 3815, 'total' => 7630],
+                '3' => ['per_year' => 3370, 'total' => 10110],
             ],
             'features' => [
                 'Up to 6 classrooms · 150 students',
@@ -79,7 +83,7 @@ return [
             'tagline'     => 'For districts and large schools that need scale and control.',
             'featured'    => false,
             'cta'         => 'Contact sales',
-            'href'        => 'mailto:hello@thelearningportal.us?subject=District%20pricing',
+            'href'        => 'mailto:info@historyportal.eu?subject=District%20pricing',
             'price_label' => "Let's talk",   // custom — same across every term
             'features'    => [
                 'Unlimited classrooms & students',

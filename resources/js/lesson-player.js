@@ -13,6 +13,7 @@
  *   [intel_drop]             — trigger INTEL_DROP mid-game
  */
 
+import { watchDeckReserve } from './scene/deck-reserve.js'
 import Alpine from 'alpinejs'
 import QRCode from 'qrcode'
 import { resolveAnchorTime, pickShotIndex } from './scene/shot-sync.js'
@@ -21,7 +22,7 @@ import { createTelemetry } from './lesson-telemetry.js'
 import { renderGallery } from './gallery-scene.js'
 import { stageAdvance, stageFloorMs } from './scene/stage-auto.js'
 import { isTopAnchored, normalizeFit, PORTRAIT_TOP_CSS } from './scene/background-fit.js'
-import { isClipartLayer } from './scene/layer-filters.js'
+import { isClipartLayer, backdropLayers } from './scene/layer-filters.js'
 import { fitToPlate, plateAspect } from './scene/plate-box.js'
 import { mountEmbedBg } from './scene/embed-bg.js'
 import { sameOriginMediaUrl } from './media-url.js'
@@ -53,40 +54,10 @@ import { captionVisible } from './scene/SceneOverlay.js'
 import { gradientCss } from './scene/background-gradient.js'
 import { t } from './i18n.js'
 import { mountBigCountdown } from './big-countdown.js'
-import { mountTitlePoster as mountPoster, posterFit } from './title-poster.js'
-import { QR, qrOptions, layoutTitleQr, drawQrDebug, coverRect, frameRect, pictureSize } from './title-qr.js'
-import { placeExpectStrip, fitExpectLines } from './title-expect.js'
-import { FIT, FIT_START, collisions, nextFit, bandHeight, barShift, scaleBoxAbout, titlePieces } from './title-fit.js'
-
-/**
- * Where the drawing in an image starts and ends across, as fractions of its width ([0, 1] when it
- * cannot be read). For fitting text to a wordmark's letters rather than to its file's box.
- */
-function inkSpan (img) {
-  return new Promise((resolve) => {
-    const read = () => {
-      try {
-        const w = 400
-        const h = Math.max(1, Math.round(w * img.naturalHeight / img.naturalWidth))
-        const c = Object.assign(document.createElement('canvas'), { width: w, height: h })
-        const g = c.getContext('2d')
-        g.drawImage(img, 0, 0, w, h)
-        const px = g.getImageData(0, 0, w, h).data
-        let lo = w
-        let hi = -1
-        for (let x = 0; x < w; x++) {
-          for (let y = 0; y < h; y++) {
-            if (px[(y * w + x) * 4 + 3] > 32) { lo = Math.min(lo, x); hi = Math.max(hi, x); break }
-          }
-        }
-        resolve(hi > lo ? [lo / w, (hi + 1) / w] : [0, 1])
-      } catch (_) { resolve([0, 1]) }
-    }
-    if (img?.complete && img.naturalWidth) read()
-    else if (img) img.addEventListener('load', read, { once: true })
-    else resolve([0, 1])
-  })
-}
+import { mountTitlePoster as mountPoster, posterFit, episodeSize } from './title-poster.js'
+import { QR, qrOptions, layoutTitleQr, drawQrDebug, coverRect, pictureSize } from './title-qr.js'
+import { placeExpectStrip } from './title-expect.js'
+import { FIT, FIT_START, collisions, nextFit, artHits, calmScale, lettersBox, scaleBoxAbout, titlePieces } from './title-fit.js'
 
 // The 3D avatar CHARACTER is retired — the narrator is a flat 2D portrait badge (player.blade.php).
 // The 3D SKYBOX background stays an OPT-IN: a lesson with any scene_view:'skybox' scene lazy-loads
@@ -261,8 +232,9 @@ Alpine.data('lessonGame', (lesson) => ({
     // The title screen's join QR found no free spot (or is hidden, or this is a phone): the lesson
     // code then stands in the meta row instead, so the code is always on screen.
     titleCodeInMeta:   false,
-    // The expect lines would reach a drawn title's letters: they stand in the strip along the top instead.
-    expectInStrip:     false,
+    // The banner's white "what you can expect" strip (poster.json expect slot). Off: its lines live in
+    // "About this lesson" below the fold. The strip code stays, so this one flag brings it back.
+    titleStrip:        false,
     // How the title screen gave way so nothing overlaps (resources/js/title-fit.js); reset on a resize.
     titleFit:          { ...FIT_START },
     // The top row stands on the white expect strip: the logo turns dark and, on a slim strip, fits it.
@@ -473,6 +445,11 @@ Alpine.data('lessonGame', (lesson) => ({
       // clear its chrome out of the reader's way. See setReadingOverlayOpen in voyage-tour.js.
       this._readingOverlayHandler = (e) => { this.readingOverlay = !!e.detail?.open }
       window.addEventListener('lesson:reading-overlay', this._readingOverlayHandler)
+
+      // A game overlay (quiz, team game, power meter) ends above the deck, so the deck never covers
+      // a game's own buttons. One rule for every game: the gap is --lp-deck-reserve, measured here,
+      // and app.css applies it while #lesson-game-overlay has content.
+      this._deckReserve = watchDeckReserve(document.getElementById('lesson-game-overlay'), document.querySelector('[data-player-chrome="bottom"]'))
 
       // A voyage leg owns the place and date on the chapter line while it sails. See publishInfo
       // in voyage-tour.js — the tour reports, the player is the only one that draws.
@@ -1025,7 +1002,7 @@ Alpine.data('lessonGame', (lesson) => ({
           heroUrl: shot.hero_url || null,
           // Multiplane shots (E3c): ordered back→front, each {url, depth, kind, …}.
           // Library clipart is ArtworkOverlay's (see _renderSceneArtwork), so it is left out here.
-          layers: Array.isArray(shot.layers) && shot.layers.length ? shot.layers.filter(l => !isClipartLayer(l)) : null,
+          layers: Array.isArray(shot.layers) && shot.layers.length ? backdropLayers(shot.layers) : null,
           motion,
           // Whole image: the plate shows whole, letterboxed on the scene's own colour.
           fit,
@@ -2211,7 +2188,11 @@ Alpine.data('lessonGame', (lesson) => ({
       const team = scene.config.team
       const crewed = Object.fromEntries(['title', 'intro', 'rules', 'situation', 'question', 'reveal', 'closing']
         .filter(k => typeof team[k] === 'string').map(k => [k, this._crewed(team[k])]))
-      this._teamGame.show({ config: { ...team, ...crewed }, solo: this.playSolo, onComplete: () => this._resumeAfterQuiz() })
+      // This game's place among the run's team moments (a race, a team game), for rotating roles.
+      // ponytail: counted from the scene order; the shared class-teams store makes it lesson-wide.
+      const interaction = _sceneQueue.slice(0, index).filter(s => s.config?.moment?.race?.enabled
+        || (s.kind === 'game' && s.game_type === 'team')).length
+      this._teamGame.show({ config: { ...team, ...crewed, interaction }, solo: this.playSolo, onComplete: () => this._resumeAfterQuiz() })
     },
 
     /** A line with the crews' names put in ({crew:heemskerck}); "the crew" when there was no race. */
@@ -2830,7 +2811,6 @@ Alpine.data('lessonGame', (lesson) => ({
       this._fitRun = (this._fitRun ?? 0) + 1
       this._fitPasses = 0
       this._fitConfirmed = false
-      this.expectInStrip = false
       this.titleFit = { ...FIT_START }
       const run = this._fitRun
       this.$nextTick(() => this.layoutTitleScreen(run))
@@ -2902,25 +2882,17 @@ Alpine.data('lessonGame', (lesson) => ({
         frame = () => size && coverRect(o.width, o.height, size.w, size.h)
         keepClear = this.lesson.title_keep_clear
       }
-      if (poster) this._shiftTitleBar(host, keepClear, frame)
-      const qrOpts = { keepClear, frame, override: this.lesson.qr_position, maxSize: FIT.qrSteps[this.titleFit.qrStep], qrHidden: this.titleFit.qrHidden }
-      let result = layoutTitleQr(host, qrOpts)
-      // With the QR out of its place the badges close up and may meet the expect lines: wrap them, measure again.
-      const lines = host.querySelector('[data-title-expect="lines"]')
-      if (fitExpectLines(lines, host.querySelector('[data-title-cluster]'))) result = layoutTitleQr(host, qrOpts)
+      const result = layoutTitleQr(host, { keepClear, frame, override: this.lesson.qr_position, maxSize: FIT.qrSteps[this.titleFit.qrStep], qrHidden: this.titleFit.qrHidden })
 
       // Anything still overlapping (or lines squeezed into a column): the screen gives way one
       // step (title-fit.js nextFit) and is measured again.
       const pieces = titlePieces(host)
       const hits = collisions(pieces, result.keepClear ?? [])
-      if (poster && lines?.offsetWidth && lines.dataset.cramped) hits.push({ a: 'lines', b: 'cramped' })
-      const next = nextFit({ ...this.titleFit, linesInStrip: this.expectInStrip }, hits, { strip: !!poster, painted: poster?.fit === 'cover', badges: (this.lesson.lesson_types ?? []).length > 0 })
+      const next = nextFit(this.titleFit, hits)
       const debug = new URLSearchParams(window.location.search).get('qr_debug') === '1'
       if (debug) (window.__titleFitLog ??= []).push({ run, fit: { ...this.titleFit }, hits, pieces: pieces.map(p => p.group).join(), t: Math.round(performance.now()) })
       if (next && (this._fitPasses = (this._fitPasses ?? 0) + 1) <= 3 * FIT.maxShrink) {
-        const { linesInStrip, ...fit } = next
-        this.expectInStrip = linesInStrip
-        this.titleFit = fit
+        this.titleFit = next
         this._fitConfirmed = false
         setTimeout(() => this.layoutTitleScreen(run), 60)
         return
@@ -2936,7 +2908,8 @@ Alpine.data('lessonGame', (lesson) => ({
       if (debug) {
         drawQrDebug(host, result)
         // run/latest: a proof waits until the newest run has settled.
-        window.__titleQr = { ...result, fit: { ...this.titleFit, linesInStrip: this.expectInStrip }, hits, run, latest: () => this._fitRun }
+        // art: the faces the static QR covers (an art problem, reported, never moved round).
+        window.__titleQr = { ...result, fit: { ...this.titleFit }, hits, art: artHits(result.qr, result.keepClear).map(k => k.rect), run, latest: () => this._fitRun }
       }
     },
 
@@ -2965,24 +2938,23 @@ Alpine.data('lessonGame', (lesson) => ({
       const poster = this.lesson.title_poster
       const o = host.getBoundingClientRect()
       let moved = false
-      if (poster && stage && poster.fit === 'cover') {
-        // A painting stays full-bleed: only its lettering scales, as one layer.
-        moved = this._scaleTitleLettering(stage, n ? FIT.letterScale ** n : 1)
-      } else if (poster && stage) {
-        const bar = titlePieces(host).filter(p => ['lines', 'meta', 'cta'].includes(p.group))
-        const barTop = bar.length ? Math.min(...bar.map(p => p.rect.y)) : o.height
-        const band = Math.round(bandHeight(n, barTop, o.height))
-        const bottom = band ? `${band}px` : ''
-        moved = stage.parentElement.style.bottom !== bottom
-        stage.parentElement.style.bottom = bottom
-        // The flat poster's own colour under the band too: one colour, no letterbox.
-        host.style.backgroundColor = band ? (poster.background ?? '') : ''
+      if (poster && stage) {
+        // The calm size first (the letters span a share of the screen), then a step down per give-way.
+        const letters = lettersBox(poster.keep_clear ?? [])
+        const s = calmScale(letters ? letters.w / 100 * stage.offsetWidth : 0, o.width, letters ? letters.h / 100 * stage.offsetHeight : 0, o.height) * FIT.letterScale ** n
+        if (poster.fit === 'cover') {
+          // A painting stays full-bleed: only its lettering scales, as one layer.
+          moved = this._scaleTitleLettering(stage, s)
+        } else {
+          // A flat poster scales its whole frame about the middle, inside its own colour.
+          const scale = s === 1 ? '' : String(Math.round(s * 1000) / 1000)
+          moved = stage.style.scale !== scale
+          stage.style.scale = scale
+        }
       }
       const logo = host.querySelector('[data-title-piece="logo"]')
       if (logo) {
-        const top = document.querySelector('[data-player-chrome="top"]')?.getBoundingClientRect()
-        logo.style.top = top?.height ? `${Math.max(96, Math.round(top.bottom - o.top + 8))}px` : ''
-        const width = n ? `calc(clamp(18rem, 58vw, 68rem) * ${FIT.logoScale ** n})` : ''
+        const width = n ? `calc(clamp(16rem, 40vw, 40rem) * ${FIT.logoScale ** n})` : ''
         // Compared by step: the browser rewrites a calc() it is given, so the style never reads back the same.
         moved ||= (logo.dataset.shrink ?? '0') !== String(n)
         logo.dataset.shrink = String(n)
@@ -3027,40 +2999,14 @@ Alpine.data('lessonGame', (lesson) => ({
       return true
     },
 
-    /** A comic candidate's title bar slides along the bottom to where it covers no face, letters or control. */
-    _shiftTitleBar (host, keepClear, frame) {
-      const bar = host.querySelector('[data-title-bar]')
-      if (!bar) return
-      bar.style.transform = ''
-      const pieces = titlePieces(host)
-      const own = pieces.filter(p => ['lines', 'meta', 'cta'].includes(p.group)).map(p => p.rect)
-      if (!own.length) return
-      const x = Math.min(...own.map(r => r.x))
-      const y = Math.min(...own.map(r => r.y))
-      const box = { x, y, w: Math.max(...own.map(r => r.x + r.w)) - x, h: Math.max(...own.map(r => r.y + r.h)) - y }
-      const f = frame?.()
-      const keep = f ? keepClear.filter(k => ['face', 'letters'].includes(k.kind)).map(k => frameRect(k.box, f)) : []
-      const blocks = [...keep, ...pieces.filter(p => ['subtitle', 'badges', 'language', 'qr', 'top', 'strip'].includes(p.group)).map(p => p.rect)]
-        .map(r => ({ x: r.x - FIT.gap / 2, y: r.y - FIT.gap / 2, w: r.w + FIT.gap, h: r.h + FIT.gap }))
-      const dx = barShift(box, blocks, host.clientWidth, 32)
-      if (dx) bar.style.transform = `translateX(${Math.round(dx)}px)`
-    },
+    /** The episode line's font-size on a comic candidate (cqw of the poster stage). */
+    episodeSize (poster) { return episodeSize(poster) },
 
-    fitSubtitle (el) {
-      const box = el.parentElement
-      const logo = box.querySelector('img')
-      let ink = [0, 1]
-      const fit = () => {
-        const w = box.clientWidth
-        if (!w) return
-        el.style.marginLeft = `${ink[0] * w}px`
-        el.style.fontSize = '100px'
-        el.style.fontSize = `${(100 * (ink[1] - ink[0]) * w) / el.offsetWidth}px`
-      }
-      fit()
-      document.fonts?.ready.then(fit)
-      inkSpan(logo).then(span => { ink = span; fit() })
-      if (typeof ResizeObserver === 'function') new ResizeObserver(fit).observe(box)
+    /** Down to "About this lesson", under the title screen. */
+    scrollToAbout () {
+      const host = document.querySelector('[data-title-screen]')
+      const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+      host?.scrollTo({ top: host.clientHeight, behavior: reduce ? 'auto' : 'smooth' })
     },
 
     setCaptions (on) {
@@ -3220,6 +3166,8 @@ Alpine.data('lessonGame', (lesson) => ({
         window.removeEventListener('lesson:reading-overlay', this._readingOverlayHandler)
         this._readingOverlayHandler = null
       }
+      this._deckReserve?.()
+      this._deckReserve = null
       if (this._chapterInfoHandler) {
         window.removeEventListener('lesson:chapter-info', this._chapterInfoHandler)
         this._chapterInfoHandler = null

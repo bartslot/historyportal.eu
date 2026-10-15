@@ -29,6 +29,11 @@
                         <textarea rows="2" aria-label="{{ $col['label'] }}" placeholder="{{ $col['label'] }}"
                                   wire:model.blur="{{ $model }}" wire:change="saveTeamDraft"
                                   class="textarea textarea-sm w-full"></textarea>
+                    @elseif ($col['type'] === 'checkbox')
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" wire:model.change="{{ $model }}" wire:change="saveTeamDraft" class="checkbox checkbox-xs" />
+                            <span class="text-2xs text-panel-label">{{ $col['label'] }}</span>
+                        </label>
                     @elseif ($col['type'] === 'number')
                         <label class="input input-sm w-full">
                             <span class="{{ $label }}">{{ $col['label'] }}</span>

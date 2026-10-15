@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import {
-  posterFit, boxInGroup, groupRuns, frameCqw, layerTransform, entrancePlan,
+  posterFit, boxInGroup, groupRuns, frameCqw, layerTransform, entrancePlan, episodeSize, EPISODE_SHARE,
   ENTRANCE_BUDGET_MS, PHONE_GUTTER_PX, mountTitlePoster, coverBackdrop, COVER_FOCUS_Y,
 } from '../title-poster.js'
 
@@ -191,5 +191,19 @@ describe('the banner (Figma 2321:1315, fit: cover)', () => {
     const middle = s.y + s.h / 2
     expect(middle).toBeGreaterThan(ribbon.y + ribbon.h / 2)
     expect(middle).toBeLessThan(ribbon.y + ribbon.h)
+  })
+})
+
+describe('the episode line', () => {
+  const poster = (size) => ({ frame: { w: 2880, h: 1621 }, subtitle: { size }, layers: [
+    { enter: 'drop', box: { h: 7.08 } }, { enter: 'drop', box: { h: 7.08 } }, { enter: 'fade', box: { h: 90 } },
+  ] })
+
+  it('stays well under the letters: about a third of their height in font-size', () => {
+    expect(episodeSize(poster(2.4))).toBeCloseTo(EPISODE_SHARE * 7.08 * 1621 / 2880, 2)
+  })
+
+  it('keeps a size already small enough', () => {
+    expect(episodeSize(poster(0.8))).toBe(0.8)
   })
 })

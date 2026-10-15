@@ -47,7 +47,7 @@ class LessonExporter
         'gallery' => ['title', 'date_label', 'story', 'fit', 'images'],
         'map' => ['qid', 'fit', 'year', 'projection', 'playback_mode', 'annotations'],
         'voyage' => ['voyage', 'leg', 'view', 'intro', 'stop_images', 'gallery'],
-        'game' => ['quiz_scope', 'quiz_shuffle', 'quiz_difficulty', 'team', 'team_default'],
+        'game' => ['quiz_scope', 'quiz_shuffle', 'quiz_difficulty', 'team', 'team_default', 'team_assets'],
     ];
 
     /** Editor scratch state, not content — undo history should never reach a spec file. */
@@ -126,6 +126,20 @@ class LessonExporter
         return "<?php\n\ndeclare(strict_types=1);\n\n"
             ."/** {$summary} */\n"
             .'return '.$this->printer->print($spec).";\n";
+    }
+
+    /**
+     * Every string in $value that is a key of $assets (a served URL) becomes its library ref.
+     *
+     * @param  array<string,string>  $assets
+     */
+    private function refsBack(mixed $value, array $assets): mixed
+    {
+        if (is_string($value)) {
+            return $assets[$value] ?? $value;
+        }
+
+        return is_array($value) ? array_map(fn ($v) => $this->refsBack($v, $assets), $value) : $value;
     }
 
     /**
@@ -341,9 +355,13 @@ class LessonExporter
      */
     private function team(Scene $scene, array $config): array
     {
+        // A picture the composer copied out of the library goes back as its "asset:" ref.
+        $assets = (array) ($config['team_assets'] ?? []);
+        $team = $this->refsBack((array) ($config['team'] ?? []), $assets);
+
         return array_filter([
             'type' => 'team',
-            ...(array) ($config['team'] ?? []),
+            ...$team,
             'chapter' => $scene->chapter_name,
             'location' => $scene->location,
             'year' => $this->year($scene),

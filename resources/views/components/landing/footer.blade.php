@@ -14,9 +14,9 @@
          to size. public/footer-bg.svg is still there; what belongs here is a design decision. --}}
     <div class="relative -mt-px">
         <div class="section-container flex flex-col items-center justify-end py-12 text-center">
-            <p class="text-sm uppercase tracking-[0.8em] text-sky-50/70">Contact</p>
+            <p class="text-sm uppercase tracking-[0.8em] text-sky-50/70">{{ __('Contact') }}</p>
             <h2 class="mt-3 font-history text-3xl text-white md:text-4xl">
-                Tell me what you think of it.
+                {{ __('Tell me what you think of it.') }}
             </h2>
 
             <div class="mt-8 flex flex-wrap justify-center gap-3">
@@ -35,21 +35,21 @@
             <div class="mt-8 flex flex-wrap justify-center gap-4">
                 
                 <a
-                    href="mailto:info@thelearningportal.us"
+                    href="mailto:info@historyportal.eu"
                     class="btn"
                 >
-                    Let&apos;s talk
+                    {{ __("Let's talk") }}
                 </a>
             </div>
 
             <p class="mt-8 max-w-2xl text-sm leading-7 text-sky-50/80">
-                © 2026 History Portal, part of The Learning Portal. All rights reserved.
-All lesson content, scripts, prompts, illustrations, images, animations, interface designs, games, downloadable materials, and platform content are owned by The Learning Portal or used under licence, unless stated otherwise. No part of this website or platform may be copied, reproduced, scraped, redistributed, sold, modified, or used to train AI systems without prior written permission.
+                {{ __('© :year History Portal, part of The Learning Portal. All rights reserved.', ['year' => 2026]) }}
+{{ __('All lesson content, scripts, prompts, illustrations, images, animations, interface designs, games, downloadable materials, and platform content are owned by The Learning Portal or used under licence, unless stated otherwise. No part of this website or platform may be copied, reproduced, scraped, redistributed, sold, modified, or used to train AI systems without prior written permission.') }}
             </p>
 
-            <nav class="mt-4 flex gap-6 text-sm text-sky-50/70" aria-label="Legal">
-                <a href="{{ route('privacy') }}" class="hover:text-white">Privacy</a>
-                <a href="{{ route('terms') }}" class="hover:text-white">Terms</a>
+            <nav class="mt-4 flex gap-6 text-sm text-sky-50/70" aria-label="{{ __('Legal') }}">
+                <a href="{{ route('privacy') }}" class="hover:text-white">{{ __('Privacy') }}</a>
+                <a href="{{ route('terms') }}" class="hover:text-white">{{ __('Terms') }}</a>
             </nav>
         </div>
     </div>

@@ -849,6 +849,18 @@
     background-size: 14px 14px;
     color: oklch(20% 0.02 264);
 }
+/* A game overlay ends above the player's deck while it shows a game (scene/deck-reserve.js), so
+   the deck never covers a game's own buttons. Unlayered: it must beat the overlay's inset-0. */
+#lesson-game-overlay:has(> *) {
+    bottom: var(--lp-deck-reserve, 0px);
+}
+
+/* The same paper as a flat sheet that carries CONTENT on the class screen (the cargo results):
+   no check, ink-dark text. */
+.lp-sheet {
+    background-color: var(--lp-paper);
+    color: oklch(20% 0.02 264);
+}
 
 /* ─── Film grain overlay (add class to any section / card) ───────────── */
 .lp-grain {
@@ -1504,6 +1516,13 @@ html[data-inspector-w] aside[data-resizable-drawer] {
         visibility: hidden;
     }
 
+    /* The wheel layer waits, invisible, until its layout is final; lesson-demo.js then fades it in
+       (duration and delay are `wheelFade` / `wheelDelay` in DEFAULTS). Only while the demo runs:
+       without .js-hero-demo the finished hero shows its wheel straight away. */
+    .js-hero-demo .hero-wheel {
+        opacity: 0;
+    }
+
     .hero-skip {
         display: none;
     }
@@ -1547,6 +1566,33 @@ html[data-inspector-w] aside[data-resizable-drawer] {
     .hero-revealed .wheel {
         opacity: 0 !important;
         transition: opacity 600ms var(--ease-enter);
+    }
+
+    /* The portal into a lesson (resources/js/hero/portal.js). The preloaded player sits behind the
+       page as a child of <html>; once a frame exists <html> paints its own background, so <body>
+       paints its slate box over the frame instead of handing it to the canvas, and only the hole
+       portal.js masks into <body> shows the lesson. */
+    .lesson-portal-frame {
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        width: 100%;
+        height: 100%;
+        border: 0;
+        background-color: var(--color-slate-950);
+    }
+
+    html.has-portal-frame {
+        background-color: var(--color-slate-950);
+    }
+
+    /* Inside the lesson: the frame is the page. */
+    html.portal-entered {
+        overflow: hidden;
+    }
+
+    html.portal-entered body {
+        visibility: hidden;
     }
 
     .hero-caret {
@@ -2021,5 +2067,50 @@ html[data-inspector-w] aside[data-resizable-drawer] {
    Its loops rest while the tab is hidden. */
 .title-poster { container-type: inline-size; }
 .title-poster.is-paused, .title-poster.is-paused * { animation-play-state: paused !important; }
-/* The meta row over the poster's flat colour: the poster's own white, not the dark scrim's grey. */
-.title-poster-meta, .title-poster-meta * { color: rgb(255 255 255 / 0.85) !important; }
+
+/* ─── The title screen's frame (player.blade.php): one gutter on every side, one pill height,
+   one language width. Every piece of chrome aligns to these; nothing has its own margin. */
+:root {
+  --title-gutter: clamp(24px, 4vw, 64px);
+  --title-pill-h: 3rem;
+  --title-lang-w: 10rem;      /* the longest endonym on offer ("Nederlands") + the caret */
+}
+@media (max-width: 639.98px) {
+  :root { --title-gutter: 16px; --title-lang-w: 8.25rem; }
+}
+.title-screen { scrollbar-width: none; }
+.title-screen::-webkit-scrollbar { display: none; }
+.title-gutter-x { padding-inline: var(--title-gutter); }
+.title-pad-top { padding-top: calc(var(--title-gutter) + 4rem); }
+.title-pad-bottom { padding-bottom: calc(var(--title-gutter) + var(--title-pill-h) + 5rem); }
+.title-pill { height: var(--title-pill-h); }
+.title-lang { width: var(--title-lang-w); }
+.title-episode { font-size: clamp(1rem, 1.7vw, 1.75rem); line-height: 1.25; }
+.title-logo { left: var(--title-gutter); top: calc(var(--title-gutter) + 4rem); width: clamp(16rem, 40vw, 40rem); }
+
+/* The bottom rail: every piece's bottom on the bottom gutter. It fades in once the lettering has
+   landed (title-poster.js ENTRANCE), opacity only. */
+.title-rail {
+  position: absolute;
+  left: var(--title-gutter);
+  right: var(--title-gutter);
+  bottom: var(--title-gutter);
+  animation: title-rail-in 200ms var(--ease-enter) 800ms both;
+}
+@keyframes title-rail-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .title-rail { animation: none; } }
+/* The way down to "About this lesson" sits after the language, in the left group, clear of the
+   artwork's middle; the join code takes the right end. */
+.title-rail [data-title-qr], .title-rail [data-title-code] { margin-left: auto; }
+/* One flat scrim behind the rail over a painting: content contrast, no blur. */
+.title-rail-scrim {
+  height: calc(var(--title-pill-h) + 2 * var(--title-gutter) + 4rem);
+  background: linear-gradient(to top, rgb(0 0 0 / 0.5), transparent);
+}
+
+/* The local dev panel's beaker sits in Skip's corner of the hero and covered its centre: a click there
+   hit the beaker, and Playwright scrolled the page 373px looking for a clear spot. The panel yields.
+   Unlayered, or the panel's own bottom-4 utility wins. */
+.js-hero-demo [data-dev-panel] {
+    bottom: 4rem;
+}

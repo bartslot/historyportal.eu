@@ -2,7 +2,8 @@
     <x-slot:head>
         <x-seo
             page="home"
-            title="History Portal"
+            {{-- What a teacher searches for first, the brand second (x-seo appends it). Bart, 2026-10-15. --}}
+            :title="__('History lessons your class wants to finish')"
             :description="__('History lessons your class wants to see the end of. Real paintings, a narrated story, and a game they finish themselves. Built in minutes, plays anywhere.')"
             :graph="\App\Support\Seo::organisationGraph()"
         />

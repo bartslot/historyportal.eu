@@ -10,11 +10,12 @@
     $long = fn (string $key, string $label) => ['key' => $key, 'label' => $label, 'type' => 'textarea'];
     $num = fn (string $key, string $label, int $min, int $max) => ['key' => $key, 'label' => $label, 'type' => 'number', 'min' => $min, 'max' => $max];
     $url = fn (string $key, string $label) => ['key' => $key, 'label' => $label, 'type' => 'url'];
+    $check = fn (string $key, string $label) => ['key' => $key, 'label' => $label, 'type' => 'checkbox'];
 
     // field => [heading, add label, columns]; a list of plain strings has no columns.
     $lists = [
-        'fixed' => [__('Always on board'), __('Add fixed item'), [$text('name', __('Name')), $num('cost', __('Cost'), 0, 99), $text('why', __('Why'))]],
-        'items' => [__('Cargo to choose from'), __('Add item'), [$text('name', __('Name')), $num('cost', __('Cost'), 0, 99), $text('why', __('Why'))]],
+        'fixed' => [__('Always on board'), __('Add fixed item'), [$text('name', __('Name')), $num('cost', __('Cost'), 0, 99), $text('why', __('Why')), $url('image', __('Image URL'))]],
+        'items' => [__('Cargo to choose from'), __('Add item'), [$text('name', __('Name')), $num('cost', __('Cost'), 0, 99), $text('why', __('Why')), $url('image', __('Image URL')), $check('real', __('On the real expedition (not checked yet, not shown to pupils)'))]],
         'cards' => [__('Dossier cards'), __('Add card'), [$text('title', __('Title')), $long('text', __('Text')), $text('but', __('But'))]],
         'options' => [__('Options'), __('Add option'), [$text('label', __('Label')), $text('text', __('Text')), $url('image', __('Image URL'))]],
         'prompts' => [__('Discussion prompts'), __('Add prompt'), []],
@@ -83,6 +84,41 @@
                 <input type="number" min="1" max="999" wire:model.blur="teamDraft.capacity" wire:change="saveTeamDraft" class="input input-sm mt-1 w-full" />
                 @error('teamDraft.capacity') <span class="text-2xs text-error">{{ $message }}</span> @enderror
             </label>
+            {{-- The look: the ship's hold (a ship picture with its painted hold, on a plate of the
+                 lesson's own setting) or the cards. --}}
+            <label class="col-span-2 block">
+                <span class="{{ $label }}">{{ __('Look') }}</span>
+                <select wire:model.change="teamDraft.presentation" wire:change="saveTeamDraft" class="select select-sm mt-1 w-full">
+                    <option value="hold">{{ __('Ship hold') }}</option>
+                    <option value="grid">{{ __('Cards') }}</option>
+                </select>
+            </label>
+            @if (($draft['presentation'] ?? '') === 'hold')
+                <label class="col-span-2 block">
+                    <span class="{{ $label }}">{{ __('Background (image URL)') }}</span>
+                    <input type="url" maxlength="2048" wire:model.blur="teamDraft.hold.backdrop" wire:change="saveTeamDraft" class="input input-sm mt-1 w-full" />
+                </label>
+                <label class="col-span-2 block">
+                    <span class="{{ $label }}">{{ __('Ship picture (image URL)') }}</span>
+                    <input type="url" maxlength="2048" wire:model.blur="teamDraft.hold.ship" wire:change="saveTeamDraft" class="input input-sm mt-1 w-full" />
+                </label>
+                <label class="col-span-2 block">
+                    <span class="{{ $label }}">{{ __('Mission') }}</span>
+                    <input type="text" maxlength="300" wire:model.blur="teamDraft.mission" wire:change="saveTeamDraft" class="input input-sm mt-1 w-full" />
+                </label>
+                <label class="col-span-2 flex items-center gap-2">
+                    <input type="checkbox" wire:model.change="teamDraft.hold.draught" wire:change="saveTeamDraft" class="checkbox checkbox-xs" />
+                    <span class="{{ $label }}">{{ __('Sinks when full') }}</span>
+                </label>
+                {{-- Each step's timer, seconds (the choosing step is the timer above). --}}
+                @foreach ([['mission', __('Mission (seconds)')], ['compare', __('Results (seconds)')], ['exchange', __('Last chance (seconds)')], ['sail', __('Departure (seconds)')]] as [$key, $text])
+                    <label class="block">
+                        <span class="{{ $label }}">{{ $text }}</span>
+                        <input type="number" min="0" max="600" wire:model.blur="teamDraft.timers.{{ $key }}" wire:change="saveTeamDraft" class="input input-sm mt-1 w-full" />
+                        @error("teamDraft.timers.{$key}") <span class="text-2xs text-error">{{ $message }}</span> @enderror
+                    </label>
+                @endforeach
+            @endif
         @endif
         @if ($mode === 'choose')
             <label class="col-span-2 block">
@@ -137,7 +173,29 @@
                 <span class="{{ $label }}">{{ __('Rules on screen') }}</span>
                 <textarea rows="3" maxlength="1200" wire:model.blur="teamDraft.rules" wire:change="saveTeamDraft" class="textarea textarea-sm mt-1 w-full"></textarea>
             </label>
+            <label class="flex items-center gap-2">
+                <input type="checkbox" wire:model.change="teamDraft.roles_on" wire:change="saveTeamDraft" class="checkbox checkbox-xs" />
+                <span class="{{ $label }}">{{ __('Roles') }}</span>
+            </label>
             <x-lesson.team-rows :field="'roles'" :list="$lists['roles']" :rows="$draft['roles'] ?? []" />
+            @if ($mode === 'budget' && ($draft['presentation'] ?? '') === 'hold')
+                {{-- Where the ship sits on the plate, and how deep it goes as it fills. --}}
+                <div class="grid grid-cols-2 gap-2">
+                    @foreach ([
+                        ['x', __('Ship across (%)'), 0, 100, 1],
+                        ['y', __('Ship bottom (%)'), 0, 200, 1],
+                        ['h', __('Ship height (%)'), 5, 400, 1],
+                        ['waterline', __('Waterline'), 0, 1, 0.01],
+                    ] as [$key, $text, $min, $max, $step])
+                        <label class="block">
+                            <span class="{{ $label }}">{{ $text }}</span>
+                            <input type="number" min="{{ $min }}" max="{{ $max }}" step="{{ $step }}"
+                                   wire:model.blur="teamDraft.hold.{{ $key }}" wire:change="saveTeamDraft" class="input input-sm mt-1 w-full" />
+                            @error("teamDraft.hold.{$key}") <span class="text-2xs text-error">{{ $message }}</span> @enderror
+                        </label>
+                    @endforeach
+                </div>
+            @endif
         </div>
     </x-ui.settings-section>
 </div>
