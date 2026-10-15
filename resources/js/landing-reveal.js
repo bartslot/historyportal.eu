@@ -18,6 +18,8 @@ gsap.registerPlugin(ScrollTrigger);
  *   tiers    the pricing cards: they rise, the featured plan arrives last, a beat later
  *   glow     a background light that fades up slowly behind its section
  *   cta      a button that follows its heading
+ *   stage    a journey card (About): it rises, its picture settles from a slight zoom, the number follows
+ *   line     a connector between stages: it draws downwards, so the journey seems to lead on
  *
  * Starting states are set here, never in CSS, so a page whose script fails shows everything.
  * People who ask for reduced motion get the page as it is, nothing moves.
@@ -33,6 +35,7 @@ const MOTION = {
     cardStagger: 0.07,   // s between cards (a row of 8 is dealt in under 0.5 s)
     settle: 1.06,        // painting's starting zoom inside its card
     featuredDelay: 0.15, // s: the featured plan's extra beat
+    lineDelay: 0.35,     // s: a stage's connector starts drawing once the card has mostly landed
     start: 'top 82%',    // a section plays when its top crosses this line of the viewport
 };
 
@@ -78,6 +81,17 @@ function enter(targets, from, opts) {
 }
 
 const builders = {
+    stage: (el, tl) => {
+        tl.add(enter(el, { y: MOTION.rise, opacity: 0 }, { duration: MOTION.card }), 0);
+        const picture = el.querySelector('img');
+        if (picture) tl.add(enter(picture, { scale: MOTION.settle }, { duration: MOTION.slow }), 0);
+        const number = el.querySelector('[data-reveal-number]');
+        if (number) tl.add(enter(number, { y: MOTION.rise * 0.4, opacity: 0 }, { duration: MOTION.small }), MOTION.cardStagger * 2);
+    },
+    line: (el, tl) => {
+        gsap.set(el, { transformOrigin: 'top center' });
+        tl.add(enter(el, { scaleY: 0, opacity: 0 }, { duration: MOTION.small }), MOTION.lineDelay);
+    },
     heading: (el, tl) => tl.add(enter(splitWords(el), { yPercent: 105 }, { duration: MOTION.slow, stagger: MOTION.wordStagger }), 0),
     text: (el, tl) => tl.add(enter(el, { y: MOTION.rise * 0.6, opacity: 0 }, { duration: MOTION.small }), 0.15),
     cta: (el, tl) => tl.add(enter(el, { y: MOTION.rise * 0.6, opacity: 0 }, { duration: MOTION.small }), 0.3),
@@ -122,7 +136,7 @@ function build() {
 function registerTuner() {
     const ranges = {
         small: [0.1, 1.5, 0.05], card: [0.2, 2, 0.05], slow: [0.3, 3, 0.05], rise: [0, 120, 1],
-        wordStagger: [0, 0.3, 0.01], cardStagger: [0, 0.3, 0.01], settle: [1, 1.3, 0.01], featuredDelay: [0, 1, 0.05],
+        wordStagger: [0, 0.3, 0.01], cardStagger: [0, 0.3, 0.01], settle: [1, 1.3, 0.01], featuredDelay: [0, 1, 0.05], lineDelay: [0, 1, 0.05],
     };
     window.__tune?.register('Landing motion', [
         ...Object.entries(ranges).map(([key, [min, max, step]]) => ({
