@@ -21,7 +21,7 @@ class TestSessionReport
     /** No click or page change for this long is flagged. */
     public const IDLE_MS = 60_000;
 
-    /** A → B → A within this long is flagged as back-and-forth. */
+    /** A → B → back to A, with this long or less spent on B, is flagged as back-and-forth. */
     public const BOUNCE_MS = 30_000;
 
     /** The same error again within this long is the same problem. */
@@ -212,11 +212,11 @@ class TestSessionReport
         for ($i = 2; $i < count($routes); $i++) {
             [$a, $b, $c] = [$routes[$i - 2], $routes[$i - 1], $routes[$i]];
             $path = fn (array $e): string => (string) ($e['payload']['path'] ?? '');
-            if ($path($a) === $path($c) && $path($a) !== $path($b) && $c['t_ms'] - $a['t_ms'] <= self::BOUNCE_MS) {
+            if ($path($a) === $path($c) && $path($a) !== $path($b) && $c['t_ms'] - $b['t_ms'] <= self::BOUNCE_MS) {
                 $flags[] = [
                     't_ms' => $c['t_ms'],
                     'kind' => 'heen en terug',
-                    'text' => $path($a).' → '.$path($b).' → terug binnen '.intdiv($c['t_ms'] - $a['t_ms'], 1000).' s',
+                    'text' => $path($a).' → '.$path($b).' → na '.intdiv($c['t_ms'] - $b['t_ms'], 1000).' s terug',
                 ];
             }
         }
