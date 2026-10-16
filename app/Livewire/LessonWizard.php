@@ -26,8 +26,10 @@ class LessonWizard extends Component
             abort_unless(auth()->user()?->canManage($lesson), 403);
             $this->lesson = $lesson;
 
+            // Resuming never lands on Preview (5): Play stores 5, but "edit the lesson" means the
+            // editor (4). Only an explicit ?step=5 opens Preview.
             $this->step = $resolvedStep
-                ?? max(1, min(5, (int) ($lesson->wizard_step ?? 1)));
+                ?? max(1, min(4, (int) ($lesson->wizard_step ?? 1)));
 
             // The Generate screen (3) is meaningless for lessons with nothing to generate —
             // e.g. command-built voyage lessons whose scenes are all ready and none narrated.

@@ -92,4 +92,15 @@ class LessonCardEntryStepTest extends TestCase
             ->assertSee(route('teacher.lessons.show', $lesson), escape: false)
             ->assertDontSee(route('teacher.lessons.wizard', ['lesson' => $lesson->id, 'step' => 5]), escape: false);
     }
+
+    // Bart 2026-10-16: "edit the lesson" landed on the discontinued Preview step because Play
+    // stores wizard_step 5. Resuming opens the editor (4); only an explicit ?step=5 is Preview.
+    public function test_resuming_a_played_lesson_opens_the_editor_not_preview(): void
+    {
+        $lesson = $this->lesson(LessonStatus::Previewable, wizardStep: 5);
+
+        \Livewire\Livewire::actingAs($this->teacher)
+            ->test(\App\Livewire\LessonWizard::class, ['lesson' => $lesson])
+            ->assertSet('step', 4);
+    }
 }
