@@ -251,22 +251,32 @@
                  URLs downloaded once). Mirrors the Poster picker's "pick from the lesson" idea. --}}
             @php $reuseImages = array_reverse($scene->lesson?->posterCandidates() ?? []); @endphp
             @if (count($reuseImages))
+                {{-- imageGrid (resources/js/ui/image-grid.js): the size slider and the zoom; the inner
+                     x-data only scrolls. --}}
+                <div x-data="imageGrid({ id: 'reuse', kind: 'image', initial: 112 })">
                 <div x-data="{ scroll(d) { const el = $refs.strip; el.scrollBy({ left: d * el.clientWidth * 0.8, behavior: 'smooth' }); } }">
-                    <span class="mb-1 block text-2xs font-semibold uppercase tracking-wider text-slate-400">{{ __('Reuse from this lesson') }}</span>
+                    <div class="mb-1 flex items-center justify-between gap-2">
+                        <span class="text-2xs font-semibold uppercase tracking-wider text-slate-400">{{ __('Reuse from this lesson') }}</span>
+                        <x-ui.thumb-size />
+                    </div>
                     <div class="flex items-center gap-1">
                         <button type="button" @click="scroll(-1)" aria-label="{{ __('Previous') }}"
                                 class="flex h-8 w-5 shrink-0 items-center justify-center rounded text-slate-400 transition hover:bg-slate-800 hover:text-slate-100">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="h-4 w-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15 6l-6 6 6 6"/></svg>
                         </button>
-                        <div x-ref="strip" data-drag-scroll class="flex flex-1 gap-1.5 overflow-x-auto scroll-smooth [&::-webkit-scrollbar]:hidden" style="scrollbar-width:none">
+                        <div x-ref="strip" data-drag-scroll :style="gridStyle"
+                             class="lp-thumb-strip flex min-w-0 flex-1 gap-1.5 overflow-x-auto scroll-smooth [&::-webkit-scrollbar]:hidden" style="scrollbar-width:none">
                             @foreach ($reuseImages as $img)
-                                <button type="button" wire:click="useLessonImageBackground(@js($img['url']))" title="{{ $img['label'] ?? '' }}"
+                                <button type="button" wire:click="useLessonImageBackground(@js($img['url']))"
+                                        data-kind="image" data-zoom
+                                        data-tooltip="{{ $img['label'] ?? '' }}" aria-label="{{ $img['label'] ?? '' }}"
                                         @class([
-                                            'h-12 w-16 shrink-0 overflow-hidden rounded ring-1 transition',
+                                            'overflow-hidden rounded ring-1 transition',
                                             'ring-base-content' => $backgroundImageUrl === $img['url'],
                                             'ring-slate-700 hover:ring-base-content/40' => $backgroundImageUrl !== $img['url'],
                                         ])>
-                                    <img src="{{ $img['url'] }}" alt="{{ $img['label'] ?? '' }}" class="h-full w-full object-cover" loading="lazy"
+                                    <img src="{{ $img['url'] }}" alt="{{ $img['label'] ?? '' }}" class="h-full w-full object-cover" loading="lazy" decoding="async"
+                                         x-bind="thumbAttrs(@js($img['url']))"
                                          onerror="this.closest('button').style.display='none'" />
                                 </button>
                             @endforeach
@@ -276,6 +286,7 @@
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="h-4 w-4"><path stroke-linecap="round" stroke-linejoin="round" d="M9 6l6 6-6 6"/></svg>
                         </button>
                     </div>
+                </div>
                 </div>
             @endif
 

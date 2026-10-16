@@ -33,6 +33,7 @@
     {{-- Every notification in the app renders here. Do not add a per-page banner; add a type to
          the component instead, so a teacher recognises a message wherever it fires. --}}
     <x-toast-host />
+    <x-ui.image-lightbox />
 
     {{-- Strings the JavaScript renders (the editor's quiz slides among them), translated. Without
          it every t() in the app shell fell back to English. --}}

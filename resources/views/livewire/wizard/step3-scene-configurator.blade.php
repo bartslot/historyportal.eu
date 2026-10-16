@@ -2659,7 +2659,8 @@
                     <input type="file" wire:model="uploadImage" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden" />
                 </label>
             @endunless
-            <div class="min-w-0">
+            {{-- imageGrid: the preview-size slider and the tile sizes (resources/js/ui/image-grid.js). --}}
+            <div class="min-w-0" x-data="imageGrid({ id: 'picker', kind: 'image' })">
             {{-- Filters on one line; search collapses to an icon on the right that opens an overlay. --}}
             <div class="relative mb-5" x-data="{ searching: @entangle('searchOpen').live }">
                 <div class="flex items-center gap-2">
@@ -2693,9 +2694,10 @@
                         @endforeach
                     </select>
 
+                    <x-ui.thumb-size class="ml-auto" />
                     <button type="button" x-show="!searching"
                             @click="searching = true; $nextTick(() => $refs.psearch.focus())"
-                            class="btn btn-xs btn-circle btn-ghost ml-auto flex-none text-slate-400 hover:text-primary"
+                            class="btn btn-xs btn-circle btn-ghost flex-none text-slate-400 hover:text-primary"
                             aria-label="{{ __('Search paintings') }}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-4 w-4">
                             <circle cx="11" cy="11" r="7"/><path stroke-linecap="round" d="m20 20-3.5-3.5"/>
@@ -2723,9 +2725,9 @@
                 @if (! $paintingReady)
                     {{-- Skeleton fills the SAME fixed height as the loaded grid → no size jump. --}}
                     <div class="h-[62vh] overflow-hidden p-1.5">
-                        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 {{ $paintingPickerMode !== 'model3d' ? 'lg:grid-cols-2' : '' }}">
+                        <div class="lp-thumb-grid gap-3" :style="gridStyle">
                             @for ($i = 0; $i < 15; $i++)
-                                <div class="animate-pulse rounded-lg bg-slate-700/40" style="aspect-ratio:16/10"></div>
+                                <div data-kind="image" class="animate-pulse rounded-lg bg-slate-700/40"></div>
                             @endfor
                         </div>
                     </div>
@@ -2735,7 +2737,7 @@
                 <div class="h-[62vh] overflow-y-auto p-1.5"
                      wire:loading.class="opacity-40"
                      wire:target="paintingQuery, paintingKind, paintingRegion, applyPaintingChoice">
-                <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 {{ $paintingPickerMode !== 'model3d' ? 'lg:grid-cols-2' : '' }}">
+                <div class="lp-thumb-grid gap-3" :style="gridStyle">
                     @forelse ($this->paintingResults as $art)
                         {{-- @js() escapes the source/key as safe JS literals (titles carry apostrophes,
                              e.g. "Anon - 'Les Noyades…'", which broke the old inline addslashes
@@ -2744,11 +2746,12 @@
                                 wire:key="art-{{ md5($art['source'].$art['key']) }}"
                                 @click="dismissing = true; $wire.applyPaintingChoice(@js($art['source']), @js($art['key']))"
                                 wire:loading.attr="disabled" wire:target="applyPaintingChoice"
-                                class="group relative block overflow-hidden rounded-lg ring-1 ring-slate-700 transition hover:ring-2 hover:ring-primary disabled:cursor-wait"
-                                style="aspect-ratio:16/10"
-                                title="{{ trim($art['title'].' — '.$art['caption'], ' —') }}">
-                            <img src="{{ $art['thumb'] }}" loading="lazy" alt=""
-                                 class="h-full w-full object-cover transition group-hover:scale-105" />
+                                data-kind="image" data-zoom
+                                aria-label="{{ $art['title'] }}"
+                                class="group block rounded-lg ring-1 ring-slate-700 transition hover:ring-2 hover:ring-primary disabled:cursor-wait"
+                                data-tooltip="{{ trim($art['title'].' · '.$art['caption'], ' ·') }}">
+                            <img src="{{ $art['thumb'] }}" loading="lazy" decoding="async" alt=""
+                                 x-bind="thumbAttrs(@js($art['thumb']))" />
                             @if (($art['kind'] ?? 'painting') === 'city_map')
                                 <span class="absolute right-1 top-1 rounded bg-sky-600/90 px-1 text-3xs font-semibold uppercase tracking-wider text-white">
                                     {{ __('plan') }}

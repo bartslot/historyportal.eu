@@ -10,7 +10,7 @@
 {{-- Icons tab of the bottom dock: pick an icon, drop it on the scene. Two rows of pills narrow
      the set down; the grid below scrolls. Clicking an icon places it mid-stage, dragging places
      it where it lands — and over a map, on the place it lands on. --}}
-<div class="flex min-h-0 flex-1 flex-col gap-2 px-3 pb-2 pt-1">
+<div class="flex min-h-0 flex-1 flex-col gap-2 px-3 pb-2 pt-1" x-data="imageGrid({ id: 'assets', kind: 'icon' })">
 
     {{-- Row 1 — which set of icons. --}}
     <div class="flex flex-wrap items-center gap-1.5">
@@ -75,6 +75,8 @@
                 </dialog>
             </span>
         @endif
+
+        <x-ui.thumb-size />
     </div>
 
     {{-- Era row (history line only): which tijdvak. It narrows the type row below (AND); it opens
@@ -130,9 +132,14 @@
                 {{ __('No assets in this set yet.') }}
             </p>
         @else
-            <div class="grid grid-cols-[repeat(auto-fill,minmax(56px,1fr))] gap-1">
+            {{-- One shared grid (image-grid.js): line art, arrows and shapes are ICONS, square and
+                 contained. The history line also holds backdrops, which are pictures: they take
+                 two columns at 2:1 and zoom at the cursor, so this grid is mixed. --}}
+            <div class="lp-thumb-grid gap-1" :style="gridStyle" @if ($collection === 'history-line') data-mixed @endif>
                 @foreach ($this->icons() as $icon)
+                    @php $isPicture = $icon->category === 'backdrops'; @endphp
                     <button type="button" draggable="true"
+                            data-kind="{{ $isPicture ? 'image' : 'icon' }}" @if ($isPicture) data-zoom @endif
                             wire:key="icon-{{ $icon->id }}"
                             x-on:dragstart="$event.dataTransfer.setData('application/x-lp-icon', '{{ $icon->id }}');
                                             $event.dataTransfer.effectAllowed = 'copy'"
@@ -144,12 +151,13 @@
                                 ? window.__placeIcon({{ $icon->id }})
                                 : $wire.place({{ $icon->id }})"
                             data-tooltip="{{ $icon->title }}"
-                            class="flex aspect-square cursor-grab items-center justify-center rounded-lg
+                            class="flex cursor-grab items-center justify-center rounded-lg
                                    transition-colors active:cursor-grabbing
-                                   {{ $icon->isRaster() ? 'lp-paper p-1 hover:ring-2 hover:ring-primary' : 'p-2 hover:bg-slate-700/60' }}"
+                                   {{ $isPicture ? 'lp-paper hover:ring-2 hover:ring-primary' : ($icon->isRaster() ? 'lp-paper p-1 hover:ring-2 hover:ring-primary' : 'p-2 hover:bg-slate-700/60') }}"
                             aria-label="{{ $icon->title }}">
-                        <img src="{{ $icon->url() }}" alt="" draggable="false" loading="lazy"
-                             class="pointer-events-none h-full w-full object-contain {{ $icon->isRaster() ? '' : 'invert' }}" />
+                        <img src="{{ $icon->url() }}" alt="" draggable="false" loading="lazy" decoding="async"
+                             x-bind="thumbAttrs(@js($icon->url()), {{ $isPicture ? 2 : 1 }})"
+                             class="pointer-events-none {{ $icon->isRaster() ? '' : 'invert' }}" />
                     </button>
                 @endforeach
             </div>
