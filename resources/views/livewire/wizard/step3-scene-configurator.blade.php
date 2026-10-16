@@ -1593,7 +1593,7 @@
     </script>
     @endpush
 
-    {{-- Top toolbar — Keynote-style: Play + insert tools as stacked icon-over-label buttons.
+    {{-- Top toolbar: icon buttons, each described on hover (data-tooltip) and to screen readers. No text labels (Bart, 2026-10-16).
          Solid background (no opacity/blur) so the composition never shows through. wire:ignore
          keeps the 3s status poll from morphing the strip and snapping the Panel popover shut. --}}
     {{-- z-50: must out-stack the z-40 resize handles (rail + object list) — they are later
@@ -1612,13 +1612,12 @@
         {{-- View menu — show/hide workspace surfaces (Keynote's View) --}}
         <div class="relative">
             <button type="button" @click="viewOpen = !viewOpen"
-                    class="flex min-w-14 flex-col items-center gap-1 whitespace-nowrap rounded-xl px-1.5 py-1.5 text-slate-300 transition hover:bg-slate-800 hover:text-primary"
+                    class="grid h-10 w-10 place-items-center rounded-xl text-slate-300 transition hover:bg-slate-800 hover:text-primary"
                     :class="viewOpen && 'bg-sky-500/15 text-sky-300'"
-                    title="{{ __('Show or hide workspace panels') }}" aria-label="{{ __('View') }}">
+                    data-tour="view" data-tooltip="{{ __('Show or hide workspace panels') }}" aria-label="{{ __('View') }}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25a2.25 2.25 0 0 1-2.25-2.25v-2.25Z" />
                 </svg>
-                <span class="text-2xs font-medium">{{ __('View') }}</span>
             </button>
             <div x-show="viewOpen" x-cloak @click.outside="viewOpen = false" x-transition.opacity.duration.150ms
                  class="absolute left-0 top-full z-50 mt-1.5 w-56 rounded-xl border border-slate-700 bg-slate-900 p-1.5 shadow-2xl">
@@ -1650,22 +1649,20 @@
         {{-- Play → open the player (step 5) --}}
         <button type="button"
                 onclick="Livewire.dispatch('lesson:play')"
-                class="flex min-w-14 flex-col items-center gap-1 whitespace-nowrap rounded-xl px-1.5 py-1.5 text-slate-300 transition hover:bg-base-200 hover:text-primary"
-                title="{{ __('Play the lesson') }}" aria-label="{{ __('Play the lesson') }}">
+                class="grid h-10 w-10 place-items-center rounded-xl text-slate-300 transition hover:bg-base-200 hover:text-primary"
+                data-tour="play" data-tooltip="{{ __('Play the lesson') }}" aria-label="{{ __('Play the lesson') }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 0 1 0 1.971l-11.54 6.347a1.125 1.125 0 0 1-1.667-.985V5.653Z" />
             </svg>
-            <span class="text-2xs font-medium">{{ __('Play') }}</span>
         </button>
 
         <div class="relative">
             <button type="button" @click="addOpen = !addOpen"
-                    class="flex min-w-14 flex-col items-center gap-1 whitespace-nowrap rounded-xl px-1.5 py-1.5 text-slate-300 transition hover:bg-base-200 hover:text-primary"
+                    class="grid h-10 w-10 place-items-center rounded-xl text-slate-300 transition hover:bg-base-200 hover:text-primary"
                     :class="addOpen && 'bg-sky-500/15 text-sky-300'"
                     aria-haspopup="menu" :aria-expanded="addOpen.toString()"
-                    title="{{ __('Add a scene, text, image, or icon') }}" aria-label="{{ __('Add') }}">
+                    data-tour="add" data-tooltip="{{ __('Add a scene, text, image, or icon') }}" aria-label="{{ __('Add') }}">
                 <x-icons.plus class="h-6 w-6" />
-                <span class="text-2xs font-medium">{{ __('Add') }}</span>
             </button>
             <div x-show="addOpen" x-cloak @click.outside="addOpen = false" x-transition.opacity.duration.150ms
                  class="absolute left-0 top-full z-50 mt-1.5 w-56 rounded-xl border border-slate-700 bg-base-300 p-1.5 shadow-2xl" role="menu">
