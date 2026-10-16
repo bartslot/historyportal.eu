@@ -1732,28 +1732,27 @@
         {{-- Help leaves the lesson (a new tab, the help centre), so a divider keeps it apart from
              the two things you do TO the lesson. Bart tried it centred first: it read as weird. --}}
         <a href="{{ route('help.index') }}#edit" target="_blank" rel="noopener"
-           class="flex min-w-14 flex-col items-center gap-1 whitespace-nowrap rounded-xl px-1.5 py-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-primary"
+           class="grid h-10 w-10 place-items-center self-center rounded-xl text-slate-400 transition hover:bg-slate-800 hover:text-primary"
            data-tooltip="{{ __('How the editor works') }}" aria-label="{{ __('Help') }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
             </svg>
-            <span class="text-2xs font-medium">{{ __('Help') }}</span>
-        </a>
+                    </a>
         <div class="mx-1 my-1.5 w-px bg-slate-700"></div>
         {{-- Settings — the one panel. What it shows is picked by the tabs at its top: the
              selection (scene, layer, text, background, quiz, title screen) or the lesson. This
              used to be two buttons, Format and Settings, for one panel. --}}
         <button type="button"
                 @click="window.dispatchEvent(new CustomEvent('inspector-toggle'))"
-                class="flex min-w-14 flex-col items-center gap-1 whitespace-nowrap rounded-xl px-1.5 py-1.5 text-slate-300 transition hover:bg-slate-800 hover:text-primary"
+                class="grid h-10 w-10 place-items-center self-center rounded-xl text-slate-300 transition hover:bg-slate-800 hover:text-primary"
+                data-tour="settings"
                 :class="fmtOpen && 'bg-sky-500/15 text-sky-300'"
                 data-tooltip="{{ __('Settings') }}" aria-label="{{ __('Settings') }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.24-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
             </svg>
-            <span class="text-2xs font-medium">{{ __('Settings') }}</span>
-        </button>
+                    </button>
 
         {{-- Publishing belongs to account holders. A landing-page demo guest is editing a
              throwaway copy (App\Services\GuestDemoSession), so the Publish menu is replaced by
@@ -1773,10 +1772,10 @@
              Publish decides whether a CLASS can play it, Share whether other TEACHERS can find
              and copy it. `shared` is local because the toolbar is wire:ignore and never
              re-renders; it takes the server's answer, since sharing can be refused. --}}
-        <div x-data="{ open: false, when: '', shared: @js((bool) $lesson->is_public) }" class="relative" @click.outside="open = false" @keydown.escape.window="open = false">
+        <div x-data="{ open: false, when: '', shared: @js((bool) $lesson->is_public) }" class="relative self-center" @click.outside="open = false" @keydown.escape.window="open = false">
             <button type="button" @click="open = !open"
-                    class="flex min-w-14 flex-col items-center gap-1 whitespace-nowrap rounded-xl px-1.5 py-1.5 text-slate-300 transition hover:bg-slate-800 hover:text-primary"
-                    :class="open && 'bg-primary/15 text-primary'"
+                    class="grid h-10 place-items-center rounded-full bg-primary px-4 text-primary-content transition hover:bg-primary/85"
+                    :class="open && 'bg-primary/85'"
                     data-tour="publish"
                     data-tooltip="{{ __('Publish') }}" aria-label="{{ __('Publish') }}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
@@ -1793,8 +1792,7 @@
                             class="{{ $statusColor }} stroke-slate-900"
                             stroke-width="1.5" />
                 </svg>
-                <span class="text-2xs font-medium">{{ __('Publish') }}</span>
-            </button>
+                            </button>
             <div x-show="open" x-transition x-cloak
                  class="absolute right-0 top-full z-70 mt-1 w-64 rounded-xl border border-slate-700 bg-base-300 p-2 text-left shadow-2xl">
                 <label class="mb-2 flex cursor-pointer items-center justify-between gap-3 border-b border-slate-700/50 px-1 pb-2">
