@@ -2107,5 +2107,7 @@
     "Longitude": "Lengtegraad",
     "Latitude": "Breedtegraad",
     "Tilt": "Kanteling",
-    "Direction": "Richting"
+    "Direction": "Richting",
+    "Split": "Splitsen",
+    "Crop": "Uitsnede"
 }

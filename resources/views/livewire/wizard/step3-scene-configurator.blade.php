@@ -1032,7 +1032,7 @@
                                  :tabs="[['format', __('Format')], ['animate', __('Animate')]]" />
 
                 <div x-show="tab === 'animate'" x-cloak>
-                    <x-lesson.animate-inspector mode="scene" :scene="$sceneModel" />
+                    <x-lesson.animate-inspector mode="scene" :scene="$sceneModel" :active-panel="$this->activePanel" />
                 </div>
 
                 <div x-show="tab === 'format'">
@@ -1055,7 +1055,7 @@
                 @elseif ($sceneModel->kind === 'video')
                     <x-lesson.scene-inspector-video :scene="$sceneModel" />
                 @else
-                    <x-lesson.scene-inspector-narration :scene="$sceneModel" />
+                    <x-lesson.scene-inspector-narration :scene="$sceneModel" :active-panel="$this->activePanel" />
                     <x-lesson.scene-inspector-moment :draft="$momentDraft" :is-default="$this->momentIsDefault()" :layers="$this->momentLayers()" />
                 @endif
 

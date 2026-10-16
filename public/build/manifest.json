@@ -51,8 +51,8 @@
     "file": "assets/ambient-uQ2cquAc.js",
     "name": "ambient"
   },
-  "_big-countdown-B7KdG0dg.js": {
-    "file": "assets/big-countdown-B7KdG0dg.js",
+  "_big-countdown-CPvthkFW.js": {
+    "file": "assets/big-countdown-CPvthkFW.js",
     "name": "big-countdown",
     "imports": [
       "_ambient-uQ2cquAc.js",
@@ -135,7 +135,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-CMpobhC5.css",
+    "file": "assets/app-CF_TX1Bq.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -144,7 +144,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-0P1v0-II.js",
+    "file": "assets/app-Cymi3b9t.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -211,7 +211,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-DfAKayFc.js",
+    "file": "assets/lesson-player-CFpbWa_h.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -221,7 +221,7 @@
       "_race-ZgUms1GP.js",
       "_properties-85J1fRaq.js",
       "resources/js/gallery-scene.js",
-      "_big-countdown-B7KdG0dg.js",
+      "_big-countdown-CPvthkFW.js",
       "_ambient-uQ2cquAc.js",
       "_easing-HS2C6-zA.js"
     ],
@@ -229,6 +229,7 @@
       "resources/js/scene/StoryGameEngine.js",
       "resources/js/avatar-3d.js",
       "resources/js/scene/ParallaxScene.js",
+      "resources/js/scene/SplitStage.js",
       "resources/js/scene/diorama/DioramaStage.js",
       "resources/js/lesson-map.js",
       "resources/js/voyage-tour.js",
@@ -263,13 +264,13 @@
     ]
   },
   "resources/js/scene/ArtworkOverlay.js": {
-    "file": "assets/ArtworkOverlay-B5yOpsML.js",
+    "file": "assets/ArtworkOverlay-CMkl9ebM.js",
     "name": "ArtworkOverlay",
     "src": "resources/js/scene/ArtworkOverlay.js",
     "isDynamicEntry": true,
     "imports": [
       "_properties-85J1fRaq.js",
-      "_big-countdown-B7KdG0dg.js",
+      "_big-countdown-CPvthkFW.js",
       "_ambient-uQ2cquAc.js",
       "_easing-HS2C6-zA.js"
     ]
@@ -283,19 +284,13 @@
       "_easing-HS2C6-zA.js"
     ]
   },
-  "resources/js/scene/InkDrawEngine.js": {
-    "file": "assets/InkDrawEngine-DDl-qHFm.js",
-    "name": "InkDrawEngine",
-    "src": "resources/js/scene/InkDrawEngine.js",
-    "isDynamicEntry": true
-  },
   "resources/js/scene/ParallaxScene.js": {
-    "file": "assets/ParallaxScene-Dr4t_XCG.js",
+    "file": "assets/ParallaxScene-C_d-oPrZ.js",
     "name": "ParallaxScene",
     "src": "resources/js/scene/ParallaxScene.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-B7KdG0dg.js",
+      "_big-countdown-CPvthkFW.js",
       "_ambient-uQ2cquAc.js",
       "_camera-Dzm8obuU.js",
       "_easing-HS2C6-zA.js",
@@ -303,13 +298,29 @@
     ]
   },
   "resources/js/scene/QuizOverlay.js": {
-    "file": "assets/QuizOverlay-BNol-cyY.js",
+    "file": "assets/QuizOverlay-DJXUk-5E.js",
     "name": "QuizOverlay",
     "src": "resources/js/scene/QuizOverlay.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-B7KdG0dg.js",
+      "_big-countdown-CPvthkFW.js",
       "_ambient-uQ2cquAc.js",
+      "_easing-HS2C6-zA.js"
+    ]
+  },
+  "resources/js/scene/SplitStage.js": {
+    "file": "assets/SplitStage-BrfrrWsd.js",
+    "name": "SplitStage",
+    "src": "resources/js/scene/SplitStage.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/scene/ParallaxScene.js",
+      "resources/js/scene/ArtworkOverlay.js",
+      "resources/js/scene/BalloonLayer.js",
+      "_big-countdown-CPvthkFW.js",
+      "_ambient-uQ2cquAc.js",
+      "_camera-Dzm8obuU.js",
+      "_properties-85J1fRaq.js",
       "_easing-HS2C6-zA.js"
     ]
   },
@@ -344,12 +355,12 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-BWVPrUTP.js",
+    "file": "assets/index-D3A3uzo6.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-B7KdG0dg.js",
+      "_big-countdown-CPvthkFW.js",
       "resources/js/scene/QuizOverlay.js",
       "_ambient-uQ2cquAc.js",
       "resources/js/scene/TextOverlayLayer.js",
@@ -363,9 +374,9 @@
       "_GLTFLoader-Et3HGvr1.js"
     ],
     "dynamicImports": [
+      "resources/js/scene/SplitStage.js",
       "resources/js/scene/diorama/DioramaStage.js",
       "resources/js/scene/ParallaxScene.js",
-      "resources/js/scene/InkDrawEngine.js",
       "resources/js/scene/ArtworkOverlay.js"
     ]
   },

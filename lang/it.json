@@ -2065,5 +2065,7 @@
     "Longitude": "Longitudine",
     "Latitude": "Latitudine",
     "Tilt": "Inclinazione",
-    "Direction": "Direzione"
+    "Direction": "Direzione",
+    "Split": "Dividi",
+    "Crop": "Inquadratura"
 }

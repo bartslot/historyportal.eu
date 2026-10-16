@@ -2065,5 +2065,7 @@
     "Longitude": "Längengrad",
     "Latitude": "Breitengrad",
     "Tilt": "Neigung",
-    "Direction": "Richtung"
+    "Direction": "Richtung",
+    "Split": "Teilen",
+    "Crop": "Ausschnitt"
 }

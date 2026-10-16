@@ -2,7 +2,6 @@
 
 @php
     $aid = $layer['asset_id'];
-    $slideshowMode = (string) ($scene->config['slideshow_mode'] ?? (($scene->config['parallax'] ?? false) ? 'parallax' : 'standard'));
     $isMapScene = in_array($scene->kind, ['map', 'voyage'], true);
     $isPinned = ($layer['anchor'] ?? 'screen') === 'map';
 
@@ -116,7 +115,7 @@
             <x-ui.size-row :asset-id="$aid" :label="__('Size')"
                            :height="$val('height', 40)" :width="$layer['width'] ?? null" />
 
-            @if ($slideshowMode === 'parallax')
+            @if (! $isMapScene)
                 <x-ui.slider-row :label="__('Depth')" :min="0.4" :max="2.5" :step="0.05"
                                  :value="$val('depth', 1.3)" :display="$num($val('depth', 1.3))" :default="1.3"
                                  :on-input="$live('depth')" :on-change="$save('depth')" />
@@ -345,38 +344,6 @@
                         @endforeach
                     </div>
                 </div>
-            </div>
-        </x-ui.settings-section>
-    @endif
-
-    {{-- ── Ink draw-on — only in Drawing mode ─────────────────────────────────────────────── --}}
-    @if ($slideshowMode === 'drawing')
-        <x-ui.settings-section :title="__('Ink draw-on')" name="ink">
-            <div class="space-y-2">
-                <x-ui.slider-row :label="__('Speed')" :min="2" :max="20" :step="0.5"
-                                 :value="$val('draw_time', 7)" :display="$num($val('draw_time', 7), 1)" unit="s" :default="7"
-                                 data-tooltip="{{ __('Seconds for the full draw-on') }}"
-                                 :on-change="$save('draw_time')" />
-
-                @foreach ([
-                    ['ink_preset', __('Pen'), ['production' => __('Production'), 'brush' => __('Brush'), 'sketch' => __('Sketch'), 'liner' => __('Liner'), 'etch' => __('Etch')], 'production'],
-                    ['ink_fill', __('Fill'), ['auto' => __('Auto'), 'none' => __('None'), 'wash' => __('Wash'), 'hatch' => __('Hatch'), 'cross' => __('Crosshatch')], 'auto'],
-                ] as [$field, $label, $opts, $default])
-                    <label class="flex items-center justify-between gap-2">
-                        <span style="width: var(--settings-panel-label-w, 3.0625rem)"
-                      class="shrink-0 text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ $label }}</span>
-                        <div class="relative min-w-0 flex-1">
-                            <select wire:change="{{ $save($field) }}" aria-label="{{ $label }}"
-                                    style="height: var(--settings-panel-row-h, 2rem)"
-                            class="w-full appearance-none rounded-lg border border-panel-hairline bg-base-100 py-0 pl-3 pr-7
-                                           text-2xs text-panel-value outline-none focus:border-panel-label">
-                                @foreach ($opts as $ov => $ol)
-                                    <option value="{{ $ov }}" @selected(($layer[$field] ?? $default) === $ov)>{{ $ol }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </label>
-                @endforeach
             </div>
         </x-ui.settings-section>
     @endif
