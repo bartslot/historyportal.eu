@@ -63,6 +63,32 @@ class TimelineSaveKeepsTheStageTest extends TestCase
             ->assertDispatched('scene:load');
     }
 
+    public function test_undo_and_redo_of_a_removed_keyframe_reach_the_timeline_panel(): void
+    {
+        $key = ['time' => 1.5, 'value' => 40, 'easing' => 'hold'];
+        $with = ['duration' => 8, 'targets' => [], 'tracks' => [
+            ['target' => 'art:5', 'property' => 'x', 'keyframes' => [['time' => 0, 'value' => 25], $key, ['time' => 3, 'value' => 80]]],
+            ['target' => 'art:5', 'property' => 'y', 'keyframes' => [['time' => 0, 'value' => 50], ['time' => 3, 'value' => 10]]],
+        ]];
+        $without = $with;
+        array_splice($without['tracks'][0]['keyframes'], 1, 1);
+
+        $editor = $this->editor()->call('setTimeline', $with);
+        $this->travel(5)->seconds();   // its own undo step, not merged with the next save
+        $editor->call('setTimeline', $without);
+        $this->assertCount(2, $this->scene->fresh()->config['timeline']['tracks'][0]['keyframes']);
+
+        $editor->call('undoLastEdit')
+            ->assertDispatched('timeline-restored', fn (string $name, array $params) => ($params['timeline']['tracks'][0]['keyframes'][1] ?? null) == $key);
+        $tracks = $this->scene->fresh()->config['timeline']['tracks'];
+        $this->assertEquals($key, $tracks[0]['keyframes'][1]);
+        $this->assertCount(2, $tracks[1]['keyframes'], 'the other property is untouched');
+
+        $editor->call('redoLastEdit')
+            ->assertDispatched('timeline-restored', fn (string $name, array $params) => count($params['timeline']['tracks'][0]['keyframes']) === 2);
+        $this->assertCount(2, $this->scene->fresh()->config['timeline']['tracks'][0]['keyframes']);
+    }
+
     private function editor()
     {
         return Livewire::actingAs($this->teacher)

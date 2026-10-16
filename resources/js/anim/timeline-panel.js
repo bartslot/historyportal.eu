@@ -149,9 +149,16 @@ export const animationTimeline = (config = {}) => ({
       key: (target, property) => { this.toggleKey(target, property); this.announce() },
       has: (target, property) => this.hasKeyHere(target, property),
       time: () => this.time,
+      // Selected keyframes own Backspace/Delete: the editor's object-delete key asks this first,
+      // so deleting a keyframe never takes the whole layer with it (Bart, 2026-10-16).
+      hasKeySelection: () => this.selected.length > 0 && this.transportHasTheKeyboard,
       // A diorama drag records a key at the playhead while this is on (never during playback).
       autoKey: () => this.autoKey && !this.playing,
     }
+
+    // Cmd-Z / Cmd-Shift-Z restored the scene on the server: its timeline is the one to show now,
+    // not the copy this panel remembered (which is exactly what the undo took back).
+    window.addEventListener('timeline-restored', (event) => this.restore(event.detail?.timeline))
 
     for (const event of ['scene-objects-changed', 'objscene-changed']) {
       window.addEventListener(event, () => { this.refreshObjects(); this.canvasTick++ })   // a diorama path changed: its rows re-read
@@ -565,6 +572,7 @@ export const animationTimeline = (config = {}) => ({
 
   /** Esc cancels a drag in flight, and otherwise clears the selection. */
   onEscape () {
+    if (this.keyMenu) { this.keyMenu = null; return }
     if (this.easingMenu && !this.drag) { this.closeEasing(); return }
     if (!this.drag) { if (this.transportHasTheKeyboard) this.selected = []; return }
     const memory = dragMemory.get(this.drag.el)
@@ -773,6 +781,18 @@ export const animationTimeline = (config = {}) => ({
     this.save()
   },
 
+  /** The scene's timeline as the server now has it — after an undo or redo. */
+  restore (timeline) {
+    if (!timeline || typeof timeline !== 'object' || this.$el?.isConnected === false) return   // a panel from a scene since left
+    this.tracks = Array.isArray(timeline.tracks) ? timeline.tracks : []
+    this.targets = Array.isArray(timeline.targets) ? timeline.targets : this.targets
+    this.selected = []
+    this.remember()
+    this.refreshObjects()
+    this.applyFrame()
+    this.announce()
+  },
+
   /** Is there a key exactly under the playhead? Drives the diamond's pressed state. */
   hasKeyHere (target, property) {
     return this.keysOf(target, property).some((k) => sameTime(k.time, this.time))
@@ -879,11 +899,28 @@ export const animationTimeline = (config = {}) => ({
       .filter((ref) => this.selected.includes(keyId(ref))))
   },
 
-  /** Delete/Backspace on the timeline, never while the caret is in a field. */
+  /** Delete/Backspace on the timeline, never while the caret is in a field. NOT gated on
+   *  defaultPrevented: the editor's object-delete key yields to a key selection (hasKeySelection),
+   *  and whichever listener runs first, the keys are what goes. */
   isDeleteKey (event) {
     if (event.key !== 'Delete' && event.key !== 'Backspace') return false
-    if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return false
+    if (event.metaKey || event.ctrlKey || event.altKey) return false
     return this.transportHasTheKeyboard && !isTypingTarget(event.target) && this.selected.length > 0
+  },
+
+  /** The right-click menu on a keyframe: one action, remove THIS key. Null when closed. */
+  keyMenu: null,
+
+  openKeyMenu (event, target, property, time) {
+    if (kindOfTarget(target) === 'dio') return
+    this.pause()
+    this.selected = [keyId({ target, property, time })]
+    this.keyMenu = { top: Math.min(event.clientY, window.innerHeight - 48), left: Math.min(event.clientX, window.innerWidth - 200) }
+  },
+
+  removeMenuKey () {
+    this.keyMenu = null
+    this.deleteSelected()
   },
 
   deleteSelected () {
@@ -968,6 +1005,9 @@ export const animationTimeline = (config = {}) => ({
    * animation with it. Selecting keys stays a timeline gesture.
    */
   onObjectSelected (id) {
+    // A layer (or the stage) is the selection now, so Delete is about IT, not about keyframes.
+    this.selected = []
+    this.keyMenu = null
     const target = this.targetFromObjectId(id)
     this.activeTarget = target
     if (!target) return
@@ -984,7 +1024,9 @@ export const animationTimeline = (config = {}) => ({
    */
   selectObject (target) {
     this.activeTarget = target
-    this.selected = this.refsOf(target).map(keyId)
+    // The row selects the LAYER, and only the layer: Delete then removes the layer, as the row
+    // says. Its keys stay one press away on the lanes (a marquee takes them all).
+    this.selected = []
     const [kind, ...rest] = String(target).split(':')
     const id = rest.join(':')
     if (kind === 'art') (window.__artOverlay?.() ?? window.__lessonArtworkLayer)?.select?.(`art_${id}`)

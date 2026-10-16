@@ -443,7 +443,8 @@
                                           :data-key-id="object.target + '|' + property.key + '|' + key.time"
                                           :aria-selected="isSelected(object.target, property.key, key.time) ? 'true' : 'false'"
                                           x-on:pointerdown.stop="startKeyDrag($event, object.target, property.key, key.time)"
-                                          x-on:dblclick.stop="jumpToKey(object.target, property.key, key.time)">
+                                          x-on:dblclick.stop="jumpToKey(object.target, property.key, key.time)"
+                                          x-on:contextmenu.prevent.stop="openKeyMenu($event, object.target, property.key, key.time)">
                                         <x-ui.keyframe-diamond solid on="isSelected(object.target, property.key, key.time)" />
                                     </span>
                                 </template>
@@ -465,6 +466,18 @@
             </div>
         </div>
     </div>
+
+    {{-- Right-click on a keyframe: remove that keyframe, and only that one. --}}
+    <template x-if="keyMenu">
+        <div class="fixed z-50 rounded-box border border-panel-hairline bg-base-200 p-1"
+             data-timeline-key-menu
+             :style="`top: ${keyMenu.top}px; left: ${keyMenu.left}px`"
+             x-on:pointerdown.outside="keyMenu = null" x-on:pointerdown.stop>
+            <ul class="menu menu-sm p-0">
+                <li><button type="button" class="text-xs" data-timeline-key-remove x-on:click="removeMenuKey()">{{ __('Remove keyframe') }}</button></li>
+            </ul>
+        </div>
+    </template>
 
     {{-- The Easing menu for the stretch that was clicked — Figma's presets, each with its curve.
          Fixed to the viewport so the short dock never clips it; Esc and a click outside close it. --}}
