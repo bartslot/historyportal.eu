@@ -1,0 +1,1 @@
+function s(n,e={}){const t=window.__lpLang,i=t&&typeof t=="object"&&typeof t[n]=="string"?t[n]:n;return Object.keys(e).reduce((r,o)=>r.replaceAll(`:${o}`,String(e[o])),i)}function c(n,e,t={}){const i=s(n,{count:e,...t}).split("|");return i[Math.abs(Number(e))===1?0:i.length-1]}export{c as a,s as t};
