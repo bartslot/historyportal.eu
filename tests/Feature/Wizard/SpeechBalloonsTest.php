@@ -134,7 +134,7 @@ class SpeechBalloonsTest extends TestCase
     public function test_on_a_split_scene_the_balloon_goes_in_the_active_panel(): void
     {
         $this->wizard()
-            ->call('setSceneLayout', 'split')
+            ->call('setSplitLayout', 'rows2')
             ->dispatch('split:panel', panel: 1)
             ->call('addBalloon');
 

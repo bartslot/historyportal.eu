@@ -2104,5 +2104,18 @@
     "Tail": "Pointe",
     "Tail root": "Base de la pointe",
     "Bend": "Courbure",
-    "Delete :name": "Supprimer :name"
+    "Delete :name": "Supprimer :name",
+    "One picture": "Une image",
+    "Two rows": "Deux rangées",
+    "Two columns": "Deux colonnes",
+    "Diagonal": "Diagonale",
+    "One left, two right": "Une à gauche, deux à droite",
+    "Three rows": "Trois rangées",
+    "Three columns": "Trois colonnes",
+    "Two left, one right": "Deux à gauche, une à droite",
+    "One top, two below": "Une en haut, deux en bas",
+    "Four squares": "Quatre cases",
+    "Layout": "Disposition",
+    "Top": "Haut",
+    "Bottom": "Bas"
 }

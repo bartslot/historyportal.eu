@@ -110,28 +110,53 @@
 
     {{-- ── Slideshow tab ────────────────────────────────────────────────────── --}}
     <div x-show="view === 'slideshow'" x-cloak class="space-y-2">
-        {{-- Layout — Standard (one picture) | Split (two comic panels with a white gutter between).
-             Split: the direction and where the gutter sits; the panel clicked on the stage is the
-             one the controls below work on. --}}
-        @php
-            // Heroicons' view-columns frame, with no divider, one upright and one level divider.
-            $iconOne = 'M4.125 19.5h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125Z';
-            $iconSideBySide = 'M12 4.5v15m-7.875 0h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125Z';
-            $iconStacked = 'M3 12h18m-16.875 7.5h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125Z';
-        @endphp
-        {{-- Only where the player can draw two panels (SceneSplit::allowedFor): never a quiz, a map or a film. --}}
+        {{-- Layout (Figma 2346:503): one strip of tiles, each a picture of its arrangement, that
+             scrolls sideways to more of them. Single is one picture; every other tile splits the
+             scene into comic panels. The panel clicked on the stage is the one the controls below
+             work on; the dividers drag on the stage, the sliders are the exact fallback. --}}
         @if (\App\Services\Support\SceneSplit::allowedFor($scene->kind))
-        <div x-data="{ mode: @js($split ? 'split' : 'standard'), dir: @js($split['dir'] ?? 'h') }" class="space-y-2" data-split-controls>
-            <x-ui.segmented panel name="scene-layout" model="mode"
-                            :options="[['standard', __('Standard'), $iconOne], ['split', __('Split'), $iconSideBySide]]"
-                            on-change="$wire.call('setSceneLayout', $event.target.value)" />
+        @php
+            $currentLayout = $split['layout'] ?? 'single';
+            $layoutNames = [
+                'single' => __('One picture'),
+                'rows2' => __('Two rows'),
+                'cols2' => __('Two columns'),
+                'diag' => __('Diagonal'),
+                'l1r2' => __('One left, two right'),
+                'rows3' => __('Three rows'),
+                'cols3' => __('Three columns'),
+                'l2r1' => __('Two left, one right'),
+                't1b2' => __('One top, two below'),
+                'grid4' => __('Four squares'),
+            ];
+        @endphp
+        <div class="space-y-2" data-split-controls>
+            <div class="no-scrollbar flex gap-1 overflow-x-auto rounded-lg" data-drag-scroll role="radiogroup" aria-label="{{ __('Layout') }}">
+                @foreach ($layoutNames as $layoutId => $layoutName)
+                    @php $isOn = $currentLayout === $layoutId; @endphp
+                    <button type="button" wire:click="setSplitLayout('{{ $layoutId }}')"
+                            role="radio" aria-checked="{{ $isOn ? 'true' : 'false' }}" aria-label="{{ $layoutName }}"
+                            data-tooltip="{{ $layoutName }}" data-split-layout="{{ $layoutId }}"
+                            class="grid h-8 w-[54px] shrink-0 cursor-pointer place-items-center first:rounded-l-lg last:rounded-r-lg"
+                            style="background: var({{ $isOn ? '--color-panel-tile-active' : '--color-panel-tile' }}); color: var({{ $isOn ? '--color-panel-tile-glyph-active' : '--color-panel-tile-glyph' }})">
+                        <svg viewBox="0 0 42 24" width="42" height="24" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true">
+                            <rect x="0.5" y="0.5" width="41" height="23" rx="3.5"/>
+                            @if ($layoutId !== 'single')
+                                <path d="{{ \App\Services\Support\SceneSplit::glyph($layoutId) }}"/>
+                            @endif
+                        </svg>
+                    </button>
+                @endforeach
+            </div>
             @if ($split)
-                <x-ui.segmented panel name="split-dir" model="dir"
-                                :options="[['h', __('Horizontal'), $iconStacked], ['v', __('Vertical'), $iconSideBySide]]"
-                                on-change="$wire.call('setSplit', $event.target.value, null)" />
-                <x-ui.slider-row :label="__('Position')" :min="25" :max="75" :step="1"
-                                 :value="$split['at'] * 100" :display="(string) round($split['at'] * 100)" unit="%" :default="50"
-                                 on-change="setSplit(null, $event.target.value / 100)" />
+                {{-- One slider per divider; a diagonal's two are where its line meets the top and the bottom. --}}
+                @foreach ($split['at'] as $k => $at)
+                    <x-ui.slider-row :label="$split['layout'] === 'diag' ? ($k === 0 ? __('Top') : __('Bottom')) : (count($split['at']) > 1 ? __('Position').' '.($k + 1) : __('Position'))"
+                                     :min="20" :max="80" :step="1"
+                                     :value="$at * 100" :display="(string) round($at * 100)" unit="%"
+                                     :default="round(\App\Services\Support\SceneSplit::LAYOUTS[$split['layout']]['at'][$k] * 100)"
+                                     :on-change="'setSplitAt(' . $k . ', $event.target.value / 100)'" />
+                @endforeach
                 <span class="block text-2xs font-semibold uppercase tracking-wider text-slate-400" data-split-panel-label>{{ __('Panel') }} {{ $activePanel + 1 }}</span>
             @endif
         </div>

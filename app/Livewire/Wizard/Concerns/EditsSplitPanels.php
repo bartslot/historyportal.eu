@@ -10,73 +10,95 @@ use App\Services\Support\SceneSplit;
 use Livewire\Attributes\On;
 
 /**
- * Standard | Split: a scene shown as one picture, or as two comic panels (SceneSplit).
+ * The scene's layout: one picture (single), or two to four comic panels (SceneSplit::LAYOUTS),
+ * picked from one strip of layout tiles (Figma 2346:503).
  *
- * The two panels are shots[0] and shots[1]. A click on a panel on the stage makes it the ACTIVE
- * panel: the Image picker, the layer list and the Animate tab then work on that panel only. Every
- * change is one scene save, so the scene history undoes it.
+ * The panels are shots[0..n-1]. A click on a panel on the stage makes it the ACTIVE panel: the
+ * Image picker, the layer list and the Animate tab then work on that panel only. Every change is
+ * one scene save, so the scene history undoes it.
  */
 trait EditsSplitPanels
 {
-    /** The panel of a split scene the inspector edits (0 or 1). Ignored on a standard scene. */
+    /** The panel of a split scene the inspector edits (0..n-1). Ignored on a standard scene. */
     public int $activePanel = 0;
 
-    public function setSceneLayout(string $mode): void
+    /**
+     * A layout from the picker: 'single' for one picture, or a SceneSplit::LAYOUTS key. A layout
+     * with more panels adds them, each on the scene's picture with no figures yet; one with fewer
+     * keeps the others' contents in the scene (pick it again and they come back).
+     */
+    public function setSplitLayout(string $layout): void
     {
-        if (! in_array($mode, ['standard', 'split'], true) || ! $this->selectedSceneId) {
+        if (($layout !== 'single' && ! isset(SceneSplit::LAYOUTS[$layout])) || ! $this->selectedSceneId) {
             return;
         }
         $scene = $this->lesson->scenes()->findOrFail($this->selectedSceneId);
         $config = $scene->config ?? [];
         $shots = array_values((array) ($scene->shots ?? []));
 
-        if ($mode === 'standard') {
+        if ($layout === 'single') {
             unset($config['split']);
-            // A second panel the teacher never filled would play as an empty second shot.
-            if (isset($shots[1]) && empty($shots[1]['layers']) && empty($shots[1]['image_path'])) {
-                unset($shots[1]);
+            // Panels the teacher never filled would play as empty extra shots.
+            while (count($shots) > 1 && empty(end($shots)['layers']) && empty(end($shots)['image_path'])) {
+                array_pop($shots);
             }
-            $this->activePanel = 0;
         } else {
             if (! SceneSplit::allowedFor($scene->kind)) {
                 return;   // a quiz card, a map or a film owns the stage: the player never draws a split there
             }
-            $config['split'] = SceneSplit::of($config) ?? ['dir' => 'h', 'at' => SceneSplit::AT_DEFAULT];
-            $shots = self::twoPanels($scene, $shots);
+            // The dividers start from the layout's defaults.
+            $config['split'] = SceneSplit::normalize(['layout' => $layout]);
+            $shots = self::panels($scene, $shots, SceneSplit::LAYOUTS[$layout]['panes']);
         }
+        $this->activePanel = 0;   // a new arrangement starts on its first panel
 
         $scene->update(['config' => $config, 'shots' => array_values($shots) ?: null]);
         $this->selectSceneInternal($scene->id);
     }
 
-    /** The split's direction ('h' stacked, 'v' side by side) and/or position (0.25..0.75). */
-    public function setSplit(?string $dir = null, ?float $at = null): void
+    /** One divider's position from its slider: 0.2..0.8 of the stage. */
+    public function setSplitAt(int $divider, float $at): void
     {
-        if (! $this->selectedSceneId) {
+        $split = $this->editedSplit();
+        if ($split === null || ! array_key_exists($divider, $split['at'])) {
             return;
         }
-        $scene = $this->lesson->scenes()->findOrFail($this->selectedSceneId);
-        $config = $scene->config ?? [];
-        $split = SceneSplit::of($config);
-        if ($split === null) {
-            return;
-        }
-        $config['split'] = SceneSplit::normalize([
-            'dir' => $dir ?? $split['dir'],
-            'at' => $at ?? $split['at'],
-        ]);
-        if ($config['split'] === $split) {
-            return;
-        }
-        $scene->update(['config' => $config]);
-        $this->selectSceneInternal($scene->id);
+        $split['at'][$divider] = $at;
+        $this->storeSplit($split);
     }
 
-    /** The divider dragged on the stage: the same Position the slider sets. */
+    /** The dividers dragged on the stage: every position, as the stage now has them. */
     #[On('split:at')]
-    public function moveSplit(float $at): void
+    public function moveSplit(array $at): void
     {
-        $this->setSplit(null, $at);
+        $split = $this->editedSplit();
+        if ($split !== null) {
+            $this->storeSplit(['layout' => $split['layout'], 'at' => $at]);
+        }
+    }
+
+    /** @return array{layout: string, at: list<float>}|null */
+    private function editedSplit(): ?array
+    {
+        if (! $this->selectedSceneId) {
+            return null;
+        }
+
+        return SceneSplit::of($this->lesson->scenes()->findOrFail($this->selectedSceneId)->config);
+    }
+
+    /** @param  array<string, mixed>  $split */
+    private function storeSplit(array $split): void
+    {
+        $scene = $this->lesson->scenes()->findOrFail($this->selectedSceneId);
+        $config = $scene->config ?? [];
+        $next = SceneSplit::normalize($split);
+        if ($next === null || $next === ($config['split'] ?? null)) {
+            return;
+        }
+        $config['split'] = $next;
+        $scene->update(['config' => $config]);
+        $this->selectSceneInternal($scene->id);
     }
 
     /**
@@ -101,7 +123,8 @@ trait EditsSplitPanels
     #[On('split:panel')]
     public function selectPanel(int $panel): void
     {
-        $panel = max(0, min(1, $panel));
+        $panes = SceneSplit::panes($this->selectedSceneId ? $this->lesson->scenes()->find($this->selectedSceneId)?->config['split'] ?? null : null);
+        $panel = max(0, min(max(0, $panes - 1), $panel));
         if ($panel === $this->activePanel || ! $this->selectedSceneId) {
             return;
         }
@@ -172,18 +195,18 @@ trait EditsSplitPanels
     }
 
     /**
-     * Shots for a split: panel one as it is (the scene picture as its cover when it has no shot
-     * yet), panel two a fresh panel on the same picture with no figures, ready for its own.
+     * Shots for a split of $n panels: panel one as it is (the scene picture as its cover when it has
+     * no shot yet), every panel it lacks a fresh one on the same picture, with no figures yet.
      *
      * @param  list<array<string,mixed>>  $shots
      * @return list<array<string,mixed>>
      */
-    private static function twoPanels(Scene $scene, array $shots): array
+    private static function panels(Scene $scene, array $shots, int $n): array
     {
         $shots[0] ??= SceneLayers::shot($scene->image_path, []);
-        if (! isset($shots[1])) {
-            $cover = $shots[0]['image_path'] ?? $scene->image_path;
-            $shots[1] = array_merge(SceneLayers::shot($cover, []), ['order' => 1]);
+        $cover = $shots[0]['image_path'] ?? $scene->image_path;
+        for ($i = 1; $i < $n; $i++) {
+            $shots[$i] ??= array_merge(SceneLayers::shot($cover, []), ['order' => $i]);
         }
 
         return $shots;
