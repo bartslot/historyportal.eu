@@ -146,9 +146,14 @@ export const clampToView = (p, view) => [clamp(p[0], view.x0, view.x1), clamp(p[
  * @returns {null | {root: [number, number], a: [number, number], b: [number, number], ctrl: [number, number],
  *                   tip: [number, number], half: number, fill: string, ink: string}}
  */
-export function tailShape (rect, tip, { bend = DEFAULT_BEND, radius = 0, root: pinned = null } = {}) {
+export function tailShape (rect, tip, { bend = DEFAULT_BEND, radius = 0, root: pinned = null, ink = 0 } = {}) {
   const half = (rect.h * ROOT_SHARE) / 2
-  const root = rootOf(rect, tip, pinned, { radius, half })
+  // The tail starts ON the pencil line, so the outline runs on into the tail as one line (Bart,
+  // 2026-10-16: "it should always be on the edge/stroke of the balloon"). The bubble's border is
+  // drawn inside its box, so that line's centre lies half the pencil in from the box's edge.
+  const inset = ink / 2
+  const line = inset ? { left: rect.left + inset, top: rect.top + inset, w: rect.w - ink, h: rect.h - ink } : rect
+  const root = rootOf(line, tip, pinned, { radius: Math.max(0, radius - inset), half })
   if (!root) return null
   const [rx, ry] = root.point
   const [tx, ty] = tip
@@ -184,31 +189,43 @@ export function tailShape (rect, tip, { bend = DEFAULT_BEND, radius = 0, root: p
 }
 
 /**
- * A thought balloon's trail: three circles from the balloon toward `tip`, each smaller than the
- * one before; the last sits on the tip (the editor drags it). Empty when the tip is inside.
+ * Where a thought's trail leaves the cloud: on the cloud's own outline (cloudArcs), in the
+ * direction of the root an outline position or the tip gives on the box. Null when the tip is
+ * inside the balloon.
+ *
+ * @returns {[number, number] | null}
+ */
+export function thoughtRoot (rect, tip, pinned = null) {
+  const base = rootOf(rect, tip, pinned, {})
+  if (!base) return null
+
+  return cloudPointToward(rect, base.point)
+}
+
+/**
+ * A thought balloon's trail: three circles from the cloud toward `tip`, each smaller than the one
+ * before; the first touches the cloud's outline, the last sits on the tip (the editor drags it).
+ * Empty when the tip is inside.
  *
  * @returns {Array<{x: number, y: number, r: number}>}
  */
 export function thoughtTrail (rect, tip, pinned = null) {
-  const root = rootOf(rect, tip, pinned, {})
+  const root = thoughtRoot(rect, tip, pinned)
   if (!root) return []
   const radii = TRAIL_SHARES.map((s, i) => Math.max(TRAIL_MIN_R[i], s * rect.h))
-  const [rx, ry] = root.point
+  const [rx, ry] = root
   const len = Math.hypot(tip[0] - rx, tip[1] - ry) || 1
   const ux = (tip[0] - rx) / len
   const uy = (tip[1] - ry) / len
-  // The first circle stands just off the balloon; the middle one halfway to the last.
-  const first = Math.min(len, radii[0] * 1.6)
+  // The first circle touches the cloud; the middle one halfway to the last.
+  const first = Math.min(len, radii[0])
   const at = [first, (first + len) / 2, len]
 
   return at.map((d, i) => ({ x: rx + ux * d, y: ry + uy * d, r: radii[i] }))
 }
 
-/**
- * The cloud outline of a thought balloon w x h: scallops around an ellipse, each a small arc that
- * bulges outward. Closed, starting at the top.
- */
-export function cloudPath (w, h) {
+/** The cloud's scallop points (box-local) for a w x h balloon, and the arc radius of each. */
+function cloudScallops (w, h) {
   const bump = Math.max(8, Math.min(w, h) * 0.18)
   const rx = Math.max(1, w / 2 - bump * 0.45)
   const ry = Math.max(1, h / 2 - bump * 0.45)
@@ -218,14 +235,69 @@ export function cloudPath (w, h) {
     const t = -Math.PI / 2 + (i / n) * Math.PI * 2
     return [w / 2 + rx * Math.cos(t), h / 2 + ry * Math.sin(t)]
   })
-  const f = (v) => v.toFixed(2)
-  let d = `M ${f(pts[0][0])} ${f(pts[0][1])}`
-  pts.forEach((_, i) => {
+
+  return pts.map((q, i) => {
     const p = pts[(i + 1) % n]
-    const q = pts[i]
-    const r = Math.hypot(p[0] - q[0], p[1] - q[1]) * 0.62
-    d += ` A ${f(r)} ${f(r)} 0 0 1 ${f(p[0])} ${f(p[1])}`
+    return { q, p, r: Math.hypot(p[0] - q[0], p[1] - q[1]) * 0.62 }
   })
+}
+
+/**
+ * The cloud's outline as the circles its scallops are drawn on (stage coordinates): each arc runs
+ * from (x0, y0) to (x1, y1) around (cx, cy), bulging outward. The same arcs cloudPath draws.
+ *
+ * @returns {Array<{cx: number, cy: number, r: number, x0: number, y0: number, x1: number, y1: number}>}
+ */
+export function cloudArcs (rect) {
+  return cloudScallops(rect.w, rect.h).map(({ q, p, r }) => {
+    const c = Math.hypot(p[0] - q[0], p[1] - q[1]) || 1
+    const ux = (p[0] - q[0]) / c
+    const uy = (p[1] - q[1]) / c
+    // A small arc, swept clockwise: its centre lies on the inner side of the chord.
+    const d = Math.sqrt(Math.max(0, r * r - (c / 2) ** 2))
+    const mx = (q[0] + p[0]) / 2 - uy * d
+    const my = (q[1] + p[1]) / 2 + ux * d
+    return { cx: rect.left + mx, cy: rect.top + my, r, x0: rect.left + q[0], y0: rect.top + q[1], x1: rect.left + p[0], y1: rect.top + p[1] }
+  })
+}
+
+/** The point on the cloud's outline straight out from its centre toward `p`. */
+export function cloudPointToward (rect, p) {
+  const ox = rect.left + rect.w / 2
+  const oy = rect.top + rect.h / 2
+  const len = Math.hypot(p[0] - ox, p[1] - oy) || 1
+  const ux = (p[0] - ox) / len
+  const uy = (p[1] - oy) / len
+  const angle = (x, y) => Math.atan2(y - oy, x - ox)
+  const theta = Math.atan2(uy, ux)
+  // The scallop whose two ends straddle that direction (angles run clockwise round the centre).
+  const spans = (a) => {
+    const a0 = angle(a.x0, a.y0)
+    const sweep = ((angle(a.x1, a.y1) - a0) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI)
+    const off = ((theta - a0) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI)
+    return off <= sweep + 1e-9
+  }
+  const arcs = cloudArcs(rect)
+  const arc = arcs.find(spans) ?? arcs[0]
+  // The far crossing of the ray o + s·u with the arc's circle.
+  const fx = ox - arc.cx
+  const fy = oy - arc.cy
+  const bq = fx * ux + fy * uy
+  const cq = fx * fx + fy * fy - arc.r * arc.r
+  const s = -bq + Math.sqrt(Math.max(0, bq * bq - cq))
+
+  return [ox + ux * s, oy + uy * s]
+}
+
+/**
+ * The cloud outline of a thought balloon w x h: scallops around an ellipse, each a small arc that
+ * bulges outward. Closed, starting at the top.
+ */
+export function cloudPath (w, h) {
+  const scallops = cloudScallops(w, h)
+  const f = (v) => v.toFixed(2)
+  let d = `M ${f(scallops[0].q[0])} ${f(scallops[0].q[1])}`
+  for (const { p, r } of scallops) d += ` A ${f(r)} ${f(r)} 0 0 1 ${f(p[0])} ${f(p[1])}`
 
   return `${d} Z`
 }
