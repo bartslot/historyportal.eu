@@ -2122,5 +2122,13 @@
     "Citizens and steam engines": "Tijd van burgers en stoommachines",
     "World wars": "Tijd van wereldoorlogen",
     "Television and computer": "Tijd van televisie en computer",
-    "No city plans match this scene.": "Geen stadsplattegronden die bij deze scène passen."
+    "No city plans match this scene.": "Geen stadsplattegronden die bij deze scène passen.",
+    "Test session": "Testsessie",
+    "This test is recorded: clicks and screen, no typing. Stop at any time.": "Deze test wordt opgenomen: klikken en scherm, geen invoer. Stop op elk moment.",
+    "Start recording": "Opname starten",
+    "Not now": "Niet nu",
+    "Recording": "Opname",
+    "Stop recording": "Opname stoppen",
+    "This test session has ended or does not exist.": "Deze testsessie is afgelopen of bestaat niet.",
+    "Start test session": "Start testsessie"
 }

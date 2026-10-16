@@ -117,6 +117,11 @@ class RateLimitServiceProvider extends ServiceProvider
 
         // Joining a class writes children into a teacher's roster.
         RateLimiter::for('class-join', fn (Request $request) => Limit::perMinute(20)->by('join:'.$request->ip()));
+
+        // The test-session recorder posts every 5 s (12/min) plus a beacon per page change. Per code
+        // and address, so a second tab is fine and a runaway loop is not.
+        RateLimiter::for('test-session', fn (Request $request) => Limit::perMinute(40)
+            ->by('test-session:'.strtoupper((string) $request->route('code')).':'.$request->ip()));
         $this->harbourRace();
     }
 

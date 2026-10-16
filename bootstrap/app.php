@@ -39,6 +39,13 @@ return Application::configure(basePath: dirname(__DIR__))
             // every request against STRIPE_WEBHOOK_SECRET and refuses anything it cannot verify.
             // Without this exemption every webhook 419s and no teacher ever receives their credits.
             'stripe/webhook',
+
+            // The test-session recorder: its exit batch is a sendBeacon, which cannot carry a CSRF
+            // header, and the tester's page may outlive the session. The open session code is the key;
+            // a closed or unknown code is refused (TestSessionController).
+            'test-sessions/*/start',
+            'test-sessions/*/batch',
+            'test-sessions/*/end',
         ]);
 
         $middleware->prependToPriorityList(

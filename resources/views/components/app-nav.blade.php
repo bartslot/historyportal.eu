@@ -176,7 +176,7 @@
                             {{-- Compact (Bart, 2026-10-15: "dropdown too big"). The role badge went: it stuck
                                  out past the menu edge and repeated the section label below it, in an accent
                                  colour chrome does not carry. --}}
-                            <li class="menu-title px-3 pb-1.5 pt-2">
+                            <li class="menu-title hp-mask px-3 pb-1.5 pt-2">
                                 <span class="block truncate text-sm font-medium text-white">{{ $user->name }}</span>
                                 <span class="block truncate text-xs font-normal text-slate-400">{{ $user->email }}</span>
                             </li>
@@ -217,6 +217,15 @@
                                     {{ __('Help') }}
                                 </a>
                             </li>
+                            {{-- Live test session: opens one and reloads this page with ?test=CODE, where the
+                                 recorder asks consent first (resources/js/test-session/recorder.js). --}}
+                            @if ($isTeacher && ! $user->isGuestDemo())
+                                <li>
+                                    <button type="submit" form="nav-test-session-form" class="w-full text-left text-sm text-slate-300 hover:bg-slate-800 hover:text-white">
+                                        {{ __('Start test session') }}
+                                    </button>
+                                </li>
+                            @endif
                             @if (Route::has('profile.edit') || Route::has('settings.index'))
                                 <li class="my-1 border-t border-white/10"></li>
                             @endif
@@ -231,6 +240,12 @@
                             </li>
                         </ul>
                         <form id="nav-logout-form" method="POST" action="{{ route('logout') }}" class="hidden">@csrf</form>
+                        @if ($isTeacher && ! $user->isGuestDemo())
+                            <form id="nav-test-session-form" method="POST" action="{{ route('test-sessions.store') }}" class="hidden">
+                                @csrf
+                                <input type="hidden" name="return" value="{{ request()->getRequestUri() }}">
+                            </form>
+                        @endif
                     </div>
 
                     {{-- Below lg the nav links collapse in here, and it sits last: the menu
