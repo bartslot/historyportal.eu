@@ -247,6 +247,22 @@ class LessonExportTest extends TestCase
         $this->assertSame($spec['scenes'][1]['shots'], $exported['scenes'][1]['shots']);
     }
 
+    public function test_keyframes_survive_an_export_and_a_rebuild(): void
+    {
+        $timeline = ['duration' => 8.0, 'targets' => [], 'tracks' => [[
+            'target' => 'art:1', 'property' => 'x', 'base' => 25.0,
+            'keyframes' => [['time' => 0.0, 'value' => 25.0], ['time' => 3.0, 'value' => 80.0, 'easing' => 'hold']],
+        ]]];
+        $spec = $this->spec();
+        $spec['scenes'][1]['extra_config'] = ['timeline' => $timeline];
+
+        $lesson = app(LessonComposer::class)->build($spec, $this->teacher, narrate: false);
+        $this->assertEquals($timeline, $lesson->scenes()->where('order', 2)->first()->config['timeline']);
+
+        $exported = app(LessonExporter::class)->toSpec($lesson->fresh());
+        $this->assertEquals($timeline, $exported['scenes'][1]['extra_config']['timeline']);
+    }
+
     public function test_a_voyage_keeps_its_edited_route_across_a_rebuild(): void
     {
         // The voyage CMS edits a per-lesson copy of the route in game_config. A rebuild that

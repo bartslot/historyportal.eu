@@ -89,6 +89,27 @@ class TimelineSaveKeepsTheStageTest extends TestCase
         $this->assertCount(2, $this->scene->fresh()->config['timeline']['tracks'][0]['keyframes']);
     }
 
+    public function test_a_keyframed_track_keeps_its_base_its_colours_and_only_chosen_easings(): void
+    {
+        $this->editor()->call('setTimeline', ['duration' => 8, 'targets' => [], 'tracks' => [
+            ['target' => 'art:5', 'property' => 'x', 'base' => 25, 'keyframes' => [
+                ['time' => 0, 'value' => 25], ['time' => 3, 'value' => 80, 'easing' => 'hold'],
+            ]],
+            ['target' => 'art:5', 'property' => 'tint', 'base' => '', 'keyframes' => [
+                ['time' => 0, 'value' => '#AABBCC'], ['time' => 2, 'value' => 'red'],
+            ]],
+            ['target' => 'art:5', 'property' => 'blend', 'keyframes' => [['time' => 0, 'value' => 1]]],
+            ['target' => 'art:5', 'property' => 'y', 'keyframes' => []],
+        ]]);
+
+        $tracks = $this->scene->fresh()->config['timeline']['tracks'];
+
+        $this->assertCount(2, $tracks, 'an unknown property and an empty track are dropped');
+        $this->assertEquals(25, $tracks[0]['base']);
+        $this->assertEquals([['time' => 0, 'value' => 25], ['time' => 3, 'value' => 80, 'easing' => 'hold']], $tracks[0]['keyframes']);
+        $this->assertSame(['#aabbcc', ''], array_column($tracks[1]['keyframes'], 'value'));
+    }
+
     private function editor()
     {
         return Livewire::actingAs($this->teacher)
