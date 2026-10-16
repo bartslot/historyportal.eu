@@ -156,9 +156,11 @@ class Step3SceneConfigurator extends Component
         // Editing is not unpublishing. This used to set Configuring unconditionally, so a teacher
         // who opened a PUBLISHED lesson merely to look at it took it off the air — silently, on a
         // GET — and every student link for it stopped resolving. A live lesson comes down when the
-        // teacher says so, not when they open the editor.
+        // teacher says so, not when they open the editor. Previewable is playable too (the player
+        // serves it), so it stays: demoting it 404'd the Dutch Tasman hero (2026-10-16).
+        $isPlayable = in_array($this->lesson->status, [LessonStatus::Published, LessonStatus::Previewable], true);
         $this->lesson->update([
-            ...($this->lesson->status === LessonStatus::Published ? [] : ['status' => LessonStatus::Configuring]),
+            ...($isPlayable ? [] : ['status' => LessonStatus::Configuring]),
             'wizard_step' => 4,
         ]);
 
