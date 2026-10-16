@@ -151,21 +151,30 @@ export function imageGrid ({ id, kind = 'image', initial } = {}) {
         writeThumb(id, value)
         this.measure()
       })
-      this.measure()
       if (typeof ResizeObserver !== 'undefined') {
         this._resize = new ResizeObserver(() => this.measure())
         this._resize.observe(this.$el)
       }
+      // A Livewire render can swap the grid out (a picker's results arrive after it opens).
+      if (typeof MutationObserver !== 'undefined') {
+        this._morph = new MutationObserver(() => this.measure())
+        this._morph.observe(this.$el, { childList: true, subtree: true })
+      }
+      this.measure()
     },
 
     destroy () {
       this._resize?.disconnect()
+      this._morph?.disconnect()
     },
 
     measure () {
       const grid = this.$el.querySelector('.lp-thumb-grid')
       // A strip has no columns to share out: every tile is exactly the slider's width.
       if (!grid) { this.colWidth = this.thumb; return }
+      // Watch the grid itself as well: it can arrive later (a picker that loads after it opens)
+      // or change width without the root doing so (a scrollbar appearing).
+      if (this._resize && this._watched !== grid) { this._resize.observe(grid); this._watched = grid }
       const gap = parseFloat(getComputedStyle(grid).columnGap) || 0
       this.colWidth = Math.round(columnWidth(grid.clientWidth, this.thumb, gap))
     },
@@ -176,13 +185,18 @@ export function imageGrid ({ id, kind = 'image', initial } = {}) {
     },
 
     /**
-     * On each <img>: x-bind="thumbAttrs(url)". The browser picks the srcset step that fits the
-     * column at this device's pixel ratio, so a bigger slider fetches a sharper file and a smaller
-     * one never downloads more than it shows. A mixed grid's image tile spans two columns.
+     * On each <img>: :srcset="srcset(url)" :sizes="sizes(url)". The browser picks the srcset step
+     * that fits the column at this device's pixel ratio, so a bigger slider fetches a sharper file
+     * and a smaller one never downloads more than it shows. A mixed grid's image tile spans two
+     * columns. Two plain bindings, NOT one x-bind object: Alpine evaluates an x-bind object once,
+     * so `sizes` would never follow the slider.
      */
-    thumbAttrs (url, span = 1) {
-      const srcset = srcsetFor(url)
-      return srcset ? { srcset, sizes: `${this.colWidth * span}px` } : {}
+    srcset (url) {
+      return srcsetFor(url)
+    },
+
+    sizes (url, span = 1) {
+      return srcsetFor(url) ? `${this.colWidth * span}px` : ''
     },
   }
 }
@@ -232,12 +246,14 @@ export function initImageZoom (doc = document) {
   })
 
   // Touch: no hover, so a long press opens the picture in the lightbox, and the tap that ends
-  // the press is not a pick.
+  // the press is not a pick. That click is swallowed WHATEVER it lands on: by then the lightbox
+  // is open under the finger, and an unswallowed click on its backdrop closed it at once.
   let press = null
   let swallowClick = false
   const cancel = () => { if (press) clearTimeout(press.timer); press = null }
 
   doc.addEventListener('pointerdown', (e) => {
+    swallowClick = false                       // a new gesture: only the long press's own click is eaten
     if (e.pointerType === 'mouse') return
     const tile = tileOf(e.target)
     if (!tile) return
@@ -255,9 +271,10 @@ export function initImageZoom (doc = document) {
   doc.addEventListener('click', (e) => {
     if (!swallowClick) return
     swallowClick = false
-    if (tileOf(e.target)) { e.preventDefault(); e.stopImmediatePropagation() }
+    e.preventDefault()
+    e.stopImmediatePropagation()
   }, true)
   doc.addEventListener('contextmenu', (e) => {
-    if ((press || swallowClick) && tileOf(e.target)) e.preventDefault()
+    if (press || swallowClick) e.preventDefault()
   })
 }

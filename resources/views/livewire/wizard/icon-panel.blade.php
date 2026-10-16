@@ -156,7 +156,7 @@
                                    {{ $isPicture ? 'lp-paper hover:ring-2 hover:ring-primary' : ($icon->isRaster() ? 'lp-paper p-1 hover:ring-2 hover:ring-primary' : 'p-2 hover:bg-slate-700/60') }}"
                             aria-label="{{ $icon->title }}">
                         <img src="{{ $icon->url() }}" alt="" draggable="false" loading="lazy" decoding="async"
-                             x-bind="thumbAttrs(@js($icon->url()), {{ $isPicture ? 2 : 1 }})"
+                             :srcset="srcset(@js($icon->url()))" :sizes="sizes(@js($icon->url()), {{ $isPicture ? 2 : 1 }})"
                              class="pointer-events-none {{ $icon->isRaster() ? '' : 'invert' }}" />
                     </button>
                 @endforeach

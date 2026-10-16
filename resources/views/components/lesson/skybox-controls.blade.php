@@ -276,7 +276,7 @@
                                             'ring-slate-700 hover:ring-base-content/40' => $backgroundImageUrl !== $img['url'],
                                         ])>
                                     <img src="{{ $img['url'] }}" alt="{{ $img['label'] ?? '' }}" class="h-full w-full object-cover" loading="lazy" decoding="async"
-                                         x-bind="thumbAttrs(@js($img['url']))"
+                                         :srcset="srcset(@js($img['url']))" :sizes="sizes(@js($img['url']))"
                                          onerror="this.closest('button').style.display='none'" />
                                 </button>
                             @endforeach

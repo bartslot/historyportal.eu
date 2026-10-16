@@ -41,7 +41,7 @@
                                 'ring-slate-700 hover:ring-slate-400' => ! $isChosen,
                             ])>
                         <img src="{{ $cand['url'] }}" alt="" loading="lazy" decoding="async"
-                             x-bind="thumbAttrs(@js($cand['url']))" onerror="this.closest('button').style.display='none'" />
+                             :srcset="srcset(@js($cand['url']))" :sizes="sizes(@js($cand['url']))" onerror="this.closest('button').style.display='none'" />
                     </button>
                 @endforeach
             </div>

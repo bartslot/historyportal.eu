@@ -141,6 +141,17 @@ describe('delegated zoom + long press', () => {
     expect(opened).toHaveBeenCalledOnce()
     expect(opened.mock.calls[0][0].detail.caption).toBe('Nachtwacht')
     expect(picked).toBe(false)
+    // The click of a long press often lands on the lightbox that just opened under the finger:
+    // it must not reach that backdrop either, or the lightbox closes at once.
+    const backdrop = document.createElement('div')
+    let closed = false
+    backdrop.addEventListener('click', () => { closed = true })
+    document.body.append(backdrop)
+    fire(el, 'pointerdown', { pointerType: 'touch' })
+    vi.advanceTimersByTime(LONG_PRESS_MS + 10)
+    fire(el, 'pointerup', { pointerType: 'touch' })
+    backdrop.click()
+    expect(closed).toBe(false)
     // A short tap still picks.
     fire(el, 'pointerdown', { pointerType: 'touch' })
     fire(el, 'pointerup', { pointerType: 'touch' })

@@ -2663,7 +2663,9 @@
             <div class="min-w-0" x-data="imageGrid({ id: 'picker', kind: 'image' })">
             {{-- Filters on one line; search collapses to an icon on the right that opens an overlay. --}}
             <div class="relative mb-5" x-data="{ searching: @entangle('searchOpen').live }">
-                <div class="flex items-center gap-2">
+                {{-- Wraps: in the half-width column the source pills, the region and the size
+                     slider do not fit one line, and a clipped row hid the slider. --}}
+                <div class="flex flex-wrap items-center gap-2">
                     {{-- "Library" is our own imagery: this lesson's pictures plus our Cloudinary
                          collection. It is also what the grid falls back to when the corpus and
                          Commons find nothing, so the teacher is never left with an empty modal. --}}
@@ -2674,7 +2676,6 @@
                         </button>
                     @endforeach
 
-                    <span class="mx-1 hidden h-4 w-px flex-none bg-slate-700 sm:block"></span>
                     <span class="hidden flex-none text-2xs font-semibold uppercase tracking-wider text-slate-500 {{ $paintingPickerMode === 'model3d' ? 'lg:block' : '' }}">{{ __('Region') }}</span>
                     {{-- Region chips need ~26rem — on smaller screens they overflowed the modal,
                          so below lg they collapse into a compact dropdown. --}}
@@ -2751,7 +2752,7 @@
                                 class="group block rounded-lg ring-1 ring-slate-700 transition hover:ring-2 hover:ring-primary disabled:cursor-wait"
                                 data-tooltip="{{ trim($art['title'].' · '.$art['caption'], ' ·') }}">
                             <img src="{{ $art['thumb'] }}" loading="lazy" decoding="async" alt=""
-                                 x-bind="thumbAttrs(@js($art['thumb']))" />
+                                 :srcset="srcset(@js($art['thumb']))" :sizes="sizes(@js($art['thumb']))" />
                             @if (($art['kind'] ?? 'painting') === 'city_map')
                                 <span class="absolute right-1 top-1 rounded bg-sky-600/90 px-1 text-3xs font-semibold uppercase tracking-wider text-white">
                                     {{ __('plan') }}
