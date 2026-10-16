@@ -22,7 +22,7 @@
  * adds and removes balloons whose state changed, so calling it often costs nothing.
  */
 import { EASE } from '../easing.js'
-import { DEFAULT_BEND, clampToView, cloudPath, outlinePoint, outlineT, tailRoot, tailShape, thoughtTrail, tipShortOf } from './balloon-shape.js'
+import { DEFAULT_BEND, clampToView, cloudPath, outlinePoint, outlineT, tailRoot, tailShape, thoughtRoot, thoughtTrail, tipShortOf } from './balloon-shape.js'
 import { playEntrance } from './animations.js'
 
 /** Reference width the house rules are measured at. */
@@ -541,12 +541,12 @@ export class BalloonLayer {
         trail.appendChild(c)
       }
       if (!dots.length) return null
-      // The trail's handles: its root on the outline and the last circle, which is the tip.
-      const root = (pinned === null ? tailRoot(rect, tip) : outlinePoint(rect, pinned))?.point ?? [dots[0].x, dots[0].y]
+      // The trail's handles: its root on the cloud's outline and the last circle, which is the tip.
+      const root = thoughtRoot(rect, tip, pinned) ?? [dots[0].x, dots[0].y]
       return { root, tip, mid: null, dots }
     }
     const bend = Number.isFinite(line?.tail?.bend) ? line.tail.bend : DEFAULT_BEND
-    const shape = tailShape(rect, tip, { bend, radius: this._radius(rect, font), root: pinned })
+    const shape = tailShape(rect, tip, { bend, radius: this._radius(rect, font), root: pinned, ink: INK_PX })
     if (!shape) return null
     fill.setAttribute('d', shape.fill)
     ink.setAttribute('d', shape.ink)
