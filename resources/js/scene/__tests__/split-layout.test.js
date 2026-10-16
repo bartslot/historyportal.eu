@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { normalizeSplit, sceneMode, splitLayout, splitStrokes, focusPosition, NARROW_PX } from '../split-layout.js'
+import { normalizeSplit, sceneMode, splitLayout, splitStrokes, focusPosition, NARROW_PX, atFromPointer, panFocus, wheelZoom, normalizeFocus } from '../split-layout.js'
 import { panelForLine, inkPath } from '../SplitStage.js'
 
 describe('normalizeSplit', () => {
@@ -120,5 +120,49 @@ describe('inkPath', () => {
 
   it('is the same line every time for the same seed', () => {
     expect(inkPath(0, 0, 500, 0, 2, 3)).toBe(inkPath(0, 0, 500, 0, 2, 3))
+  })
+})
+
+// Bart 2026-10-16: the divider on the stage is the Position setting; the panes pan and zoom by hand.
+describe('atFromPointer', () => {
+  it('turns the pointer into the split position along the split', () => {
+    expect(atFromPointer(610, 1000)).toBeCloseTo(0.61)
+  })
+  it('stays inside the allowed range', () => {
+    expect(atFromPointer(10, 1000)).toBe(0.25)
+    expect(atFromPointer(990, 1000)).toBe(0.75)
+  })
+  it('snaps to the middle when it is close', () => {
+    expect(atFromPointer(508, 1000)).toBe(0.5)
+  })
+})
+
+describe('panFocus', () => {
+  it('a drag to the right shows more of the left of the picture', () => {
+    expect(panFocus({ x: 50, y: 50 }, 100, 0, 1000, 500)).toEqual({ x: 40, y: 50 })
+  })
+  it('a drag down shows more of the top', () => {
+    expect(panFocus({ x: 50, y: 50 }, 0, 50, 1000, 500)).toEqual({ x: 50, y: 40 })
+  })
+  it('keeps the zoom and never leaves 0..100', () => {
+    expect(panFocus({ x: 5, y: 95, zoom: 2 }, 500, -500, 1000, 500)).toEqual({ x: 0, y: 100, zoom: 2 })
+  })
+})
+
+describe('wheelZoom', () => {
+  it('wheel up zooms in, wheel down zooms out', () => {
+    expect(wheelZoom(1, -100)).toBeGreaterThan(1)
+    expect(wheelZoom(2, 100)).toBeLessThan(2)
+  })
+  it('never below the plain crop or past 4x', () => {
+    expect(wheelZoom(1, 1000)).toBe(1)
+    expect(wheelZoom(3.9, -5000)).toBe(4)
+  })
+})
+
+describe('normalizeFocus', () => {
+  it('defaults to the middle and no zoom', () => {
+    expect(normalizeFocus(null)).toEqual({ x: 50, y: 50, zoom: 1 })
+    expect(normalizeFocus({ x: 30, zoom: 9 })).toEqual({ x: 30, y: 50, zoom: 4 })
   })
 })

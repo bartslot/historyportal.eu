@@ -38,7 +38,7 @@
      :style="`left:var(--rail-w,11rem);right:var(--work-right,16rem);height:${panelH}px`">
 
     {{-- The grip: the top edge, drag up for more room. Keyboard: arrows, Home resets. --}}
-    <div class="group flex h-2 shrink-0 cursor-ns-resize touch-none select-none items-center justify-center"
+    <div class="lp-grip h-2 shrink-0" :data-dragging="dragging ? '' : null"
          x-on:pointerdown="dragStart($event)"
          x-on:pointermove="dragMove($event)"
          x-on:pointerup="dragEnd($event)"
@@ -47,8 +47,7 @@
          tabindex="0" data-dock-resize
          role="separator" aria-orientation="horizontal" :aria-valuenow="panelH"
          aria-label="{{ __('Resize the panel') }}">
-        <span class="h-1 w-10 rounded-full bg-slate-600 transition-colors group-hover:bg-sky-400 group-focus-visible:bg-sky-400"
-              :class="dragging && 'bg-sky-400'" aria-hidden="true"></span>
+        <span class="lp-grip-pill" aria-hidden="true"></span>
     </div>
 
     {{-- Which tab the dock is showing. Lives in $store.view alongside the panel toggles, so it

@@ -76,3 +76,48 @@ export function focusPosition (focus) {
 
   return `${pct(focus?.x)}% ${pct(focus?.y)}%`
 }
+
+/** How far a panel's picture zooms in (1 = the plain cover crop). Same range as SceneSplit::ZOOM. */
+export const ZOOM_MIN = 1
+export const ZOOM_MAX = 4
+/** Within this of the middle, a dragged divider settles on it. */
+const AT_SNAP = 0.015
+/** Wheel delta → zoom factor: one notch (~100) is about 16%. */
+const WHEEL_RATE = 0.0015
+
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v))
+
+/** A panel's focus as stored → { x, y, zoom }: x/y 0..100 (50 when unset), zoom 1..4. */
+export function normalizeFocus (focus) {
+  const pct = (v) => (Number.isFinite(Number(v)) && v !== null ? clamp(Number(v), 0, 100) : 50)
+  const z = Number(focus?.zoom)
+
+  return { x: pct(focus?.x), y: pct(focus?.y), zoom: Number.isFinite(z) ? clamp(z, ZOOM_MIN, ZOOM_MAX) : 1 }
+}
+
+/** The pointer `px` along a split `total` px long → the split position, clamped, snapped to the middle. */
+export function atFromPointer (px, total) {
+  const at = clamp(total > 0 ? px / total : AT_DEFAULT, AT_MIN, AT_MAX)
+
+  return Math.abs(at - AT_DEFAULT) < AT_SNAP ? AT_DEFAULT : Math.round(at * 1000) / 1000
+}
+
+/**
+ * A pane dragged by (dx, dy) px in a w×h box → its new focus. The picture follows the pointer: a
+ * drag to the right shows more of its left, so x goes DOWN. A drag across the whole box moves the
+ * focus from one edge to the other.
+ */
+export function panFocus (focus, dx, dy, w, h) {
+  const f = { x: 50, y: 50, ...(focus || {}) }
+  const round = (v) => Math.round(v * 10) / 10
+  const next = { ...f, x: round(clamp(f.x - (w > 0 ? dx / w * 100 : 0), 0, 100)), y: round(clamp(f.y - (h > 0 ? dy / h * 100 : 0), 0, 100)) }
+
+  return next
+}
+
+/** The zoom after one wheel event: wheel up (negative delta) zooms in. */
+export function wheelZoom (zoom, deltaY) {
+  const z = (Number(zoom) || 1) * Math.exp(-(Number(deltaY) || 0) * WHEEL_RATE)
+
+  return Math.round(clamp(z, ZOOM_MIN, ZOOM_MAX) * 1000) / 1000
+}
