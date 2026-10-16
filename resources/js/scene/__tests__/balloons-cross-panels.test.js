@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import { SplitStage } from '../SplitStage.js'
 import { BalloonLayer } from '../BalloonLayer.js'
 import { toFraction } from '../balloon-edit.js'
@@ -66,5 +66,41 @@ describe('a roaming balloon layer is bounded by the stage, not its panel', () =>
     sized(host, { left: 0, top: 0, width: W, height: H })
     stage.appendChild(host)
     expect(toFraction(new BalloonLayer(host, () => null), 1200, 250)[0]).toBe(1)
+  })
+})
+
+// Bart 2026-10-16: "give changing the tail the priority when close to the drawer, not interaction
+// with the drawer". A balloon handle on or beside a divider takes the press; the divider never does.
+describe('a balloon handle beats the divider it sits on', () => {
+  it('has a hit area wider than the visible dot, on a layer above the grips', async () => {
+    const { editableBalloons, selectBalloon } = await import('../balloon-edit.js')
+    const host = document.createElement('div')
+    sized(host, { left: 0, top: 0, width: W, height: H })
+    document.body.appendChild(host)
+    const onChange = vi.fn()
+    const onSplitChange = vi.fn()
+    const s = new SplitStage(host, { editable: true, onSplitChange, balloons: editableBalloons(onChange) })
+    // A balloon in the left panel whose tail tip sits right on the divider at x = 500.
+    s.show({
+      split: { layout: 'cols2', at: [0.5] },
+      shots: [{}, {}],
+      lines: [{ speaker: 'balloon', text: 'Hoi', kind: 'speech', start: 0, end: null, figure: null, at: [0.4, 0.3], panel: 0, tail: { tip: [1.0, 0.6] } }],
+    })
+    s.setTime(0.1)
+    selectBalloon('bal_0')
+    s.setTime(0.2)
+    const handle = host.querySelector('[data-balloon-handle="tail"]')
+    expect(handle).not.toBeNull()
+    const pad = handle.querySelector('[data-hit-pad]')
+    expect(pad).not.toBeNull()
+    expect(parseFloat(getComputedStyle(pad).inset || pad.style.inset)).toBeLessThanOrEqual(-8)
+
+    // Pressing the handle drags the tail; the divider under it never moves.
+    const fire = (el, type, x, y) => el.dispatchEvent(new PointerEvent(type, { bubbles: true, button: 0, pointerId: 1, clientX: x, clientY: y }))
+    fire(pad, 'pointerdown', 248, 300)
+    fire(handle, 'pointermove', 300, 320)
+    fire(handle, 'pointerup', 300, 320)
+    expect(onSplitChange).not.toHaveBeenCalled()
+    expect(onChange).toHaveBeenCalledWith('bal_0', expect.objectContaining({ tail: expect.objectContaining({ tip: expect.any(Array) }) }))
   })
 })

@@ -16,6 +16,8 @@ import { handleCss } from './ArtworkOverlay.js'
 export const EDGE_GRAB_PX = 10
 /** Under this many px a press is a click, not a drag. */
 const DRAG_THRESHOLD_PX = 3
+/** How far past its 10 px dot a handle still catches a press (a 26 px target). */
+const HIT_PAD_PX = 8
 
 const layers = new Set()
 let selected = null
@@ -280,6 +282,14 @@ function makeHandle (el, h) {
   const node = document.createElement('div')
   node.dataset.balloonHandle = h.mode
   node.style.cssText = handleCss('', h.cursor)
+  // A hit area wider than the dot it shows. A tail tip often sits on a panel divider, and the
+  // divider's own grab area is wider than the 10 px dot: near the dot the TAIL wins (Bart,
+  // 2026-10-16: "give changing the tail the priority when close to the drawer"). The balloons
+  // already draw on a layer above the grips; this makes "near" count, not only "exactly on".
+  const pad = document.createElement('span')
+  pad.dataset.hitPad = ''
+  pad.style.cssText = `position:absolute;inset:-${HIT_PAD_PX}px;border-radius:50%;pointer-events:auto;`
+  node.appendChild(pad)
   el.appendChild(node)
   const layerOf = () => live().find(l => l.host.contains(el))
   node.addEventListener('pointerdown', (e) => {
