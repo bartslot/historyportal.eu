@@ -2033,18 +2033,11 @@
                     <span data-obj-label class="flex-1 truncate" x-text="obj.label"></span>
                     {{-- Row actions (hover-revealed, Keynote-style). HIDDEN until hover, not transparent:
                          an invisible button still took the label's room, so a wide list read "Be...".
-                         No delete button: Backspace deletes, and so does the Format panel.
+                         Duplicate and delete (Bart 2026-10-16: the adjust button was redundant; selecting a
+                         row already opens its Format panel, so delete takes its place next to duplicate).
                          data-nodrag stops a press here
                          from starting a Sortable drag; @click.stop keeps the row's select from firing.
                          data-obj-adjust hides both in the compact (icons-only) rail. --}}
-                    {{-- Adjust — select the object and open its Format inspector. --}}
-                    <button type="button" data-nodrag data-obj-adjust @click.stop="edit(obj)"
-                            class="btn btn-ghost btn-xs btn-square hidden shrink-0 text-base-content/50 hover:text-primary group-hover:inline-flex group-focus-within:inline-flex"
-                            aria-label="{{ __('Adjust settings') }}" :title="@js(__('Adjust settings'))">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />
-                        </svg>
-                    </button>
                     {{-- Duplicate THIS object (Cmd-D does the same). --}}
                     <button type="button" data-nodrag data-obj-adjust x-show="!obj.bg"
                             @click.stop="duplicateObject(obj)"
@@ -2052,6 +2045,15 @@
                             aria-label="{{ __('Duplicate object') }}" :data-tooltip="@js(__('Duplicate') . ' (⌘D)')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25" />
+                        </svg>
+                    </button>
+                    {{-- Delete THIS object (Backspace does the same; Cmd-Z brings it back). --}}
+                    <button type="button" data-nodrag data-obj-adjust x-show="!obj.bg"
+                            @click.stop="deleteObject(obj)"
+                            class="btn btn-ghost btn-xs btn-square hidden shrink-0 text-base-content/50 hover:text-error group-hover:inline-flex group-focus-within:inline-flex"
+                            aria-label="{{ __('Delete object') }}" :data-tooltip="@js(__('Delete') . ' (⌫)')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
                         </svg>
                     </button>
                 </div>
