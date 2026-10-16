@@ -2096,5 +2096,6 @@
     "Speech": "Sprechen",
     "Thought": "Gedanke",
     "Speaker": "Sprecher",
-    "Remove tail": "Zeiger entfernen"
+    "Remove tail": "Zeiger entfernen",
+    "Delete :name": ":name löschen"
 }

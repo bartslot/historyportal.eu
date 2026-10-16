@@ -2096,5 +2096,6 @@
     "Speech": "Parlato",
     "Thought": "Pensiero",
     "Speaker": "Chi parla",
-    "Remove tail": "Togli la punta"
+    "Remove tail": "Togli la punta",
+    "Delete :name": "Elimina :name"
 }
