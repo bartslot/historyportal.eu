@@ -244,6 +244,51 @@ class TitlePosterTest extends TestCase
         $this->assertSame('poster', $lesson->fresh()->titleStyle());
     }
 
+    /**
+     * Bart, 2026-10-16, on W24VRI: "trying to select a new image for the title screen, but it was
+     * not possible". The pick was saved, but the Comic cover's full-bleed plate (the spyglass
+     * coast) painted over it. A picture the teacher chose takes the poster's full-frame picture;
+     * a poster with none gets it underneath its letters.
+     */
+    public function test_the_teachers_picture_replaces_the_posters_full_frame_picture(): void
+    {
+        $picture = '/storage/lessons/1/scenes/4/storm.webp';
+        $cover = $this->lesson('tasman-standard', ['title_style' => 'cover', 'title_image' => $picture]);
+        $plain = TitlePoster::for('tasman-standard', 'cover');
+
+        $poster = $cover->titlePoster();
+        $this->assertSame($cover->titleBgUrl(), $poster['layers'][0]['url']);
+        $this->assertSame('plate', $poster['layers'][0]['id']);
+        $this->assertCount(count($plain['layers']), $poster['layers']);
+        $this->assertSame(['letters'], array_values(array_unique(array_column($poster['keep_clear'], 'kind'))),
+            'faces and figures of the plate are not in the teacher\'s picture');
+
+        $this->assertStringEndsWith('cover-tasman-spyglass-coast-hd.webp', $cover->fresh()->forceFill(['title_image' => null])->titlePoster()['layers'][0]['url'],
+            'without a pick the cover keeps its own plate');
+
+        $poster = $this->lesson('tasman-standard', ['title_style' => 'poster', 'title_image' => $picture])->titlePoster();
+        $this->assertSame(['id' => 'picture', 'box' => ['x' => 0.0, 'y' => 0.0, 'w' => 100.0, 'h' => 100.0]],
+            ['id' => $poster['layers'][0]['id'], 'box' => $poster['layers'][0]['box']]);
+        $this->assertStringEndsWith($picture, $poster['layers'][0]['url']);
+    }
+
+    public function test_the_picked_tile_is_marked_as_chosen(): void
+    {
+        $lesson = $this->lesson('tasman-standard', ['title_style' => 'cover']);
+        // Cloudinary pictures, as every Tasman scene has on production.
+        $lesson->scenes()->first()->update(['image_path' => 'https://res.cloudinary.com/demo/image/upload/coast.webp']);
+        $url = 'https://res.cloudinary.com/demo/image/upload/storm.webp';
+        Scene::create(['lesson_id' => $lesson->id, 'order' => 2, 'kind' => 'narration', 'script_segment' => 'Toen.', 'status' => 'ready', 'image_path' => $url]);
+
+        $component = Livewire::actingAs($this->teacher)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $lesson])
+            ->assertDontSee('data-chosen', false);
+        $component->call('selectTitleImage', $url);
+
+        $this->assertSame(1, substr_count($component->html(), 'data-chosen'));
+        $this->assertMatchesRegularExpression('#aria-label="Scene 2" aria-pressed="true"\s+data-kind="image" data-zoom\s+data-chosen\s+class="[^"]*ring-2 ring-primary#', $component->html());
+    }
+
     public function test_a_style_the_series_cannot_show_is_refused(): void
     {
         $lesson = $this->lesson(null);
