@@ -141,7 +141,7 @@
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-C9TCACM_.css",
+    "file": "assets/app-DrK1ShZO.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -150,7 +150,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-B8ijnWN2.js",
+    "file": "assets/app-X9HXdaaw.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -218,7 +218,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-DxCYkIX_.js",
+    "file": "assets/lesson-player-BZ1XpYTU.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -319,7 +319,7 @@
     ]
   },
   "resources/js/scene/SplitStage.js": {
-    "file": "assets/SplitStage-BFFeCugY.js",
+    "file": "assets/SplitStage-BNDEeBjU.js",
     "name": "SplitStage",
     "src": "resources/js/scene/SplitStage.js",
     "isDynamicEntry": true,
@@ -365,7 +365,7 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-Bp6SZlGv.js",
+    "file": "assets/index-DEs18yh1.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
@@ -444,7 +444,7 @@
     "isDynamicEntry": true
   },
   "resources/js/test-session/recorder.js": {
-    "file": "assets/recorder-BIfivq_d.js",
+    "file": "assets/recorder-k4i9v77M.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,
