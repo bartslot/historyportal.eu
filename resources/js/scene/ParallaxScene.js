@@ -349,6 +349,8 @@ export class ParallaxScene {
       img.alt = ''
       img.draggable = false
       img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;'
+      // A split panel's own focus point: which part of the picture its crop keeps.
+      if (spec.objectPosition) img.style.objectPosition = spec.objectPosition
       layer.appendChild(ambientWrap(img, spec, index))
       return this._applyArtisticProps(layer, spec)
     }
