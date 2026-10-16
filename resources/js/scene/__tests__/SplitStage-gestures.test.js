@@ -115,3 +115,16 @@ describe('a panel colour', () => {
     expect(s.panels[1].el.style.background).toBe('rgb(0, 0, 0)')
   })
 })
+
+// Bart 2026-10-16: deleting a panel's last figure collapsed its layer list, and the panel went to
+// the bare colour although it still had its picture.
+describe('a panel whose layer list was collapsed', () => {
+  it('still draws its picture from image_url', () => {
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const s = new SplitStage(host)
+    s.show({ split: { dir: 'v', at: 0.5 }, shots: [{ image_url: '/deck.webp' }, { layers: [], background_color: '#000000' }] })
+    expect(s.panels[0].plate.querySelector('img')?.getAttribute('src')).toContain('/deck.webp')
+    expect(s.panels[1].plate.querySelector('img')).toBeNull()
+  })
+})

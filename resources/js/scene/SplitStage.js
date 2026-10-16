@@ -124,7 +124,11 @@ export class SplitStage {
 
     const layers = Array.isArray(shot.layers) ? shot.layers : []
     const pos = focusPosition(shot.focus)
-    const planes = backdropLayers(layers).map(l => ((l.kind ?? 'cover') === 'cover' ? { ...l, objectPosition: pos } : l))
+    // A shot whose layer list was collapsed (its last figure deleted) still has its picture as
+    // image_url: draw that as the cover, or the panel falls back to the bare matte.
+    const backdrop = backdropLayers(layers)
+    if (!backdrop.length && shot.image_url) backdrop.push({ url: shot.image_url, kind: 'cover', depth: 0.4 })
+    const planes = backdrop.map(l => ((l.kind ?? 'cover') === 'cover' ? { ...l, objectPosition: pos } : l))
     const figures = layers.filter(l => (l?.url || l?.embed) && isClipartLayer(l))
 
     const overlay = new ArtworkOverlay(art, this.editable
