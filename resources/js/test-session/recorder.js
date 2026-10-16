@@ -108,11 +108,12 @@ function run (code, t0) {
   const now = () => Date.now() - t0
 
   const post = async (body) => {
+    const { payload, gzipped } = await packBody(JSON.stringify(body))
     const res = await fetch(endpoint(code, 'batch'), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...(gzipped ? { 'Content-Encoding': 'gzip' } : {}) },
       credentials: 'same-origin',
-      body: JSON.stringify(body),
+      body: payload,
     })
     if (res.status === 410 || res.status === 404) { stop(false); return true } // ended elsewhere: drop
     return res.ok
@@ -126,7 +127,7 @@ function run (code, t0) {
       return saved.seq
     },
   })
-  const log = (type, data) => { if (!stopped) batcher.event({ t: now(), type, data }) }
+  const log = (type, data, t = now()) => { if (!stopped) batcher.event({ t, type, data }) }
 
   const stopRrweb = record({
     emit: (e) => { if (!stopped) batcher.rrweb(e) },
@@ -139,7 +140,7 @@ function run (code, t0) {
   })
 
   const rage = createRageDetector()
-  const dead = createDeadClickWatcher({ now: () => performance.now(), setTimeout: (fn, ms) => setTimeout(fn, ms), onDead: (info) => log('dead_click', info) })
+  const dead = createDeadClickWatcher({ now: () => performance.now(), setTimeout: (fn, ms) => setTimeout(fn, ms), onDead: ({ t, info }) => log('dead_click', info, t) }) // at the click, not when found
 
   const teardown = [
     stopRrweb,
@@ -160,7 +161,7 @@ function run (code, t0) {
     log('click', info)
     const burst = rage({ t: performance.now(), x: e.clientX, y: e.clientY })
     if (burst) log('rage_click', { ...info, count: burst })
-    if (!e.target.closest?.('input, textarea, select, label, [contenteditable]')) dead.click(info)
+    if (!e.target.closest?.('input, textarea, select, label, [contenteditable]')) dead.click({ t: now(), info })
   }, true))
 
   const hide = () => batcher.flushOnHide()
@@ -189,6 +190,22 @@ function run (code, t0) {
   batcher.start()
 }
 
+/**
+ * The player animates its DOM many times a second, so a minute of rrweb is ~3 MB of JSON that
+ * gzips about 8x. Big batches go compressed (TestSessionBatchRequest unpacks them); small ones and
+ * browsers without CompressionStream send plain JSON.
+ */
+const GZIP_OVER_BYTES = 16_384
+async function packBody (json) {
+  if (json.length < GZIP_OVER_BYTES || typeof CompressionStream === 'undefined') return { payload: json, gzipped: false }
+  try {
+    const stream = new Blob([json]).stream().pipeThrough(new CompressionStream('gzip'))
+    return { payload: await new Response(stream).arrayBuffer(), gzipped: true }
+  } catch (_) {
+    return { payload: json, gzipped: false }
+  }
+}
+
 // ── Watchers (each returns its own teardown) ─────────────────────────────────
 
 const on = (target, type, fn, capture = false) => {
@@ -198,13 +215,19 @@ const on = (target, type, fn, capture = false) => {
 
 const pick = (obj, keys) => Object.fromEntries(keys.filter((k) => obj?.[k] != null).map((k) => [k, obj[k]]))
 
+const CLICKABLE = 'button, a, input, select, textarea, label, summary, [role="button"], [role="link"], [role="tab"], [role="menuitem"], [role="option"], [role="checkbox"], [role="radio"], [role="switch"], [role="slider"], [wire\\:click], [x-on\\:click], [\\@click]'
+
+/** What was clicked, as a person would name it. A whole-panel handler is not "the thing". */
 function describeClick (e) {
-  const el = e.target.closest?.('button, a, [role], input, select, textarea, label, summary, [wire\\:click], [x-on\\:click], [\\@click]') ?? e.target
+  const isBig = (node) => { const r = node.getBoundingClientRect?.(); return !r || r.width * r.height > innerWidth * innerHeight / 2 }
+  const hit = e.target.closest?.(CLICKABLE)
+  const el = hit && !isBig(hit) ? hit : e.target
   const masked = el.closest?.('.hp-mask')
   const isField = /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)
   const text = masked ? '***'
     : isField ? `[${el.type || el.tagName.toLowerCase()}]` // never a value
-      : (el.getAttribute?.('aria-label') || el.innerText || el.getAttribute?.('alt') || el.getAttribute?.('data-tooltip') || '').trim().replace(/\s+/g, ' ').slice(0, TEXT_MAX)
+      : isBig(el) ? '' // a click on the backdrop has no name; x/y say where
+        : (el.getAttribute?.('aria-label') || el.innerText || el.getAttribute?.('alt') || el.getAttribute?.('data-tooltip') || '').trim().replace(/\s+/g, ' ').slice(0, TEXT_MAX)
   return {
     text,
     role: el.getAttribute?.('role') || el.tagName?.toLowerCase(),

@@ -19,6 +19,21 @@ class TestSessionBatchRequest extends FormRequest
     /** A whole request, rrweb full snapshot included. */
     public const MAX_BYTES = 4_000_000;
 
+    /** Unpacked, a gzipped batch may be at most this big (a zip bomb stops here). */
+    public const MAX_UNPACKED_BYTES = 40_000_000;
+
+    /** The recorder gzips big batches (Content-Encoding: gzip); unpack before validating. */
+    protected function prepareForValidation(): void
+    {
+        if (strtolower((string) $this->header('Content-Encoding')) !== 'gzip') {
+            return;
+        }
+
+        $json = @gzdecode((string) $this->getContent(), self::MAX_UNPACKED_BYTES);
+        $data = is_string($json) ? json_decode($json, true) : null;
+        $this->replace(is_array($data) ? $data : []);
+    }
+
     public function authorize(): bool
     {
         return ! ($this->user()?->isStudent() ?? false);

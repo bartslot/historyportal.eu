@@ -145,6 +145,8 @@ class TestSessionReport
             'lesson_exited' => 'les verlaten',
             'scene_started' => "scène{$index}",
             'scene_completed' => "scène{$index} klaar",
+            'seek_forward' => 'vooruit',
+            'seek_backward' => 'terug',
             'quiz_started' => "quiz{$index}",
             'moment_started' => "moment{$index}",
             default => 'speler '.($p['event'] ?? '?'),

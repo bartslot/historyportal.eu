@@ -53,6 +53,7 @@ class TestSessionReportCommand extends Command
         $dir = (string) ($this->option('dir') ?: (is_dir(dirname(self::VAULT_DIR)) ? self::VAULT_DIR : storage_path('app/private/test-reports')));
         $name = ($session->started_at ?? $session->created_at)->toDateString().'-'.$session->code;
         File::ensureDirectoryExists($dir);
+        File::deleteDirectory("{$dir}/{$name}"); // a rerun must not leave the last run's pictures
 
         $images = $this->option('no-snapshots') ? [] : $this->snapshots($snapshots, $session, $flags, "{$dir}/{$name}");
 

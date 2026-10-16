@@ -84,6 +84,19 @@ class TestSessionRoutesTest extends TestCase
         $this->assertSame($big, $chunk->decoded());
     }
 
+    public function test_a_gzipped_batch_is_unpacked_and_validated(): void
+    {
+        $this->open();
+        $gzip = fn (array $body): string => (string) gzencode((string) json_encode($body));
+        $headers = ['CONTENT_TYPE' => 'application/json', 'HTTP_CONTENT_ENCODING' => 'gzip', 'HTTP_ACCEPT' => 'application/json'];
+
+        $this->call('POST', '/test-sessions/DEMO1/batch', server: $headers, content: $gzip($this->batch()))->assertNoContent();
+        $this->call('POST', '/test-sessions/DEMO1/batch', server: $headers, content: $gzip(['events' => [['t' => 1, 'type' => 'keystroke']]]))->assertUnprocessable();
+        $this->call('POST', '/test-sessions/DEMO1/batch', server: $headers, content: 'not gzip')->assertUnprocessable();
+
+        $this->assertSame(['click'], TestEvent::pluck('type')->all());
+    }
+
     public function test_unknown_unstarted_and_ended_codes_are_refused(): void
     {
         $this->postJson('/test-sessions/NOPE1/batch', $this->batch())->assertNotFound();
