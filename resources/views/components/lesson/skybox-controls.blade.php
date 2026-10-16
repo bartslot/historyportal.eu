@@ -119,6 +119,8 @@
             $iconSideBySide = 'M12 4.5v15m-7.875 0h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125Z';
             $iconStacked = 'M3 12h18m-16.875 7.5h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125Z';
         @endphp
+        {{-- Only where the player can draw two panels (SceneSplit::allowedFor): never a quiz, a map or a film. --}}
+        @if (\App\Services\Support\SceneSplit::allowedFor($scene->kind))
         <div x-data="{ mode: @js($split ? 'split' : 'standard'), dir: @js($split['dir'] ?? 'h') }" class="space-y-2" data-split-controls>
             <x-ui.segmented panel name="scene-layout" model="mode"
                             :options="[['standard', __('Standard'), $iconOne], ['split', __('Split'), $iconSideBySide]]"
@@ -133,6 +135,7 @@
                 <span class="block text-2xs font-semibold uppercase tracking-wider text-slate-400" data-split-panel-label>{{ __('Panel') }} {{ $activePanel + 1 }}</span>
             @endif
         </div>
+        @endif
 
         {{-- Background — how this scene is filled, ONE thing at a time (Keynote model):
              a colour, an image, a gradient, a video or a 3D model. Objects go ON TOP via the Add

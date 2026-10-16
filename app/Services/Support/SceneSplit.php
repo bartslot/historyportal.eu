@@ -30,6 +30,17 @@ final class SceneSplit
     /** Config keys of the retired Parallax / Drawing modes: never read, and dropped on export. */
     public const RETIRED_KEYS = ['slideshow_mode', 'parallax'];
 
+    /**
+     * Kinds the player draws its own way, returning before it ever reaches SplitStage
+     * (lesson-player.js: map, voyage, gallery, video, game = quiz/strategy/debate/team game).
+     */
+    public const NO_SPLIT_KINDS = ['game', 'map', 'voyage', 'gallery', 'video'];
+
+    public static function allowedFor(?string $kind): bool
+    {
+        return ! in_array($kind, self::NO_SPLIT_KINDS, true);
+    }
+
     /** @return array{dir: string, at: float}|null */
     public static function normalize(mixed $raw): ?array
     {

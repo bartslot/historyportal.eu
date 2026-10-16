@@ -211,6 +211,22 @@ class SplitPanelsTest extends TestCase
         $this->assertSame('bay.png', $this->scene->refresh()->shots[1]['image_path']);
     }
 
+    public function test_a_quiz_scene_cannot_be_split(): void
+    {
+        // Bart: "the split is not possible in a quiz screen". The player plays a game scene its own way.
+        $quiz = Scene::create([
+            'lesson_id' => $this->lesson->id, 'order' => 2, 'kind' => 'game', 'game_type' => 'quiz',
+            'status' => 'ready', 'image_path' => 'bay.png', 'config' => [],
+        ]);
+        $wizard = $this->wizard()->call('selectScene', $quiz->id)
+            ->assertDontSeeHtml('data-split-controls');
+
+        $wizard->call('setSceneLayout', 'split');
+
+        $this->assertArrayNotHasKey('split', $quiz->refresh()->config ?? []);
+        $this->assertTrue(SceneSplit::allowedFor('narration'));
+    }
+
     public function test_back_to_standard_drops_an_empty_second_panel(): void
     {
         $this->scene->update(['image_path' => null, 'shots' => null]);
