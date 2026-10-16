@@ -16,20 +16,29 @@
     'type' => 'website',
     'graph' => null,
     'noindex' => false,
+    // A page that exists in ONE language (a lesson): every prefix names that URL as canonical,
+    // and there are no alternates to claim.
+    'locale' => null,
 ])
 
 @php
     use App\Support\Seo;
 
-    $canonical = $page ? Seo::url($page, $params) : url()->current();
-    $alternates = $page ? Seo::alternates($page, $params) : [];
+    $canonical = $page ? Seo::url($page, $params, $locale) : url()->current();
+    $alternates = $page && ! $locale ? Seo::alternates($page, $params) : [];
+    // Google cuts descriptions past ~160 characters; cut at a word instead.
+    $description = Seo::clip($description, 160);
     // Facebook only shows an image on the very first scrape when it knows the size, so the
     // default card declares its own; a page-specific image is left for the crawler to measure.
     $isDefaultImage = ! $image;
     $image = $image ?: asset('images/og-default.png');
     $siteName = 'History Portal';
-    // The title tag carries the brand once; the OG title does not repeat it.
+    // The title tag carries the brand once; the OG title does not repeat it. Past ~60 characters
+    // Google cuts the title, so a long one drops the brand rather than lose its own words.
     $fullTitle = $title === $siteName ? $siteName : $title.' · '.$siteName;
+    if (mb_strlen($fullTitle) > 60) {
+        $fullTitle = $title;
+    }
 @endphp
 
 <title>{{ $fullTitle }}</title>

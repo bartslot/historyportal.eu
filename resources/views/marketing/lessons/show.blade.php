@@ -16,6 +16,7 @@
         <x-seo
             page="lesson"
             :params="['slug' => $slug]"
+            :locale="Seo::lessonLocale($lesson)"
             :title="$heading"
             :description="$description"
             :image="$poster"

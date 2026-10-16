@@ -68,6 +68,31 @@ final class Seo
         return $alternates;
     }
 
+    /**
+     * The one language a lesson's public page belongs to: its content language, or English when
+     * the interface does not ship that language. Every other prefix is the same content, so it
+     * names this one as canonical (SEO audit 2026-10-14: 13 lessons were 65 near-duplicates).
+     */
+    public static function lessonLocale(Lesson $lesson): string
+    {
+        $language = (string) $lesson->language;
+
+        return in_array($language, Locales::codes(), true) ? $language : 'en';
+    }
+
+    /** Shorten to at most $max characters, cut at a word, with an ellipsis. */
+    public static function clip(string $text, int $max): string
+    {
+        if (mb_strlen($text) <= $max) {
+            return $text;
+        }
+
+        $cut = mb_substr($text, 0, $max - 1);
+        $space = mb_strrpos($cut, ' ');
+
+        return rtrim($space !== false ? mb_substr($cut, 0, $space) : $cut, ' ,.;:').'…';
+    }
+
     /** A lesson's public slug: readable words plus the lesson code, which keeps it unique. */
     public static function lessonSlug(Lesson $lesson): string
     {
