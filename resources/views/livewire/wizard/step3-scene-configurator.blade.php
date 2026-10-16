@@ -2780,6 +2780,10 @@
                                      an archive that may well hold the painting. --}}
                                 <p>{{ __('Wikimedia is busy right now and asked us to slow down.') }}</p>
                                 <p class="mt-1 text-xs text-slate-500">{{ __('Give it a few seconds, then search again.') }}</p>
+                            @elseif ($paintingKind === 'city_map')
+                                {{-- City plans are the curated Braun & Hogenberg set only: Commons is
+                                     never searched for them, so offering it here would do nothing. --}}
+                                <p>{{ __('No city plans match this scene.') }}</p>
                             @elseif ($paintingCommonsLoaded)
                                 {{ __('No paintings found. Try a name, place or event, in Dutch or English.') }}
                             @else
