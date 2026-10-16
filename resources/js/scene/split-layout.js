@@ -7,13 +7,15 @@
  * Standard (the layered ParallaxScene). The retired view modes (config.slideshow_mode 'parallax' /
  * 'drawing', config.parallax) read as Standard: nothing reads them any more.
  *
- * Pure maths only; SplitStage.js is the DOM. Mirrors App\Support\SceneSplit on the server.
+ * Pure maths only; SplitStage.js is the DOM. Mirrors App\Services\Support\SceneSplit on the server.
  */
 
 /** Everything is measured at this stage width and scaled with the stage. */
 export const REF_WIDTH = 1920
 /** White gutter between the panels, px at REF_WIDTH. */
 export const GUTTER_REF = 10
+/** Never a thinner gutter than this: on a phone the white must still read as a gap. */
+export const GUTTER_MIN_PX = 4
 /** Ink line on each panel edge, px at REF_WIDTH. */
 export const INK_REF = 2
 /** Below this stage width a side-by-side split stacks, so neither panel is too thin to read. */
@@ -37,11 +39,11 @@ export function sceneMode (config) {
   return normalizeSplit(config?.split) ? 'split' : 'standard'
 }
 
-/** Gutter and ink line in real px for a stage this wide (never under 1 px). */
+/** Gutter and ink line in real px for a stage this wide. */
 export function splitStrokes (stageW) {
   const k = (Number(stageW) || REF_WIDTH) / REF_WIDTH
 
-  return { gutter: Math.max(2, GUTTER_REF * k), ink: Math.max(1, INK_REF * k) }
+  return { gutter: Math.max(GUTTER_MIN_PX, GUTTER_REF * k), ink: Math.max(1, INK_REF * k) }
 }
 
 /**

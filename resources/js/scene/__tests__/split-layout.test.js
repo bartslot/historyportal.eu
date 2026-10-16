@@ -47,7 +47,7 @@ describe('splitStrokes: gutter and ink scale with the stage', () => {
 
   it('never goes under a visible minimum on a phone', () => {
     const s = splitStrokes(375)
-    expect(s.gutter).toBe(2)
+    expect(s.gutter).toBe(4)
     expect(s.ink).toBe(1)
   })
 })

@@ -230,20 +230,20 @@ class LessonExportTest extends TestCase
     public function test_wizard_config_the_composer_does_not_author_survives_a_rebuild(): void
     {
         $spec = $this->spec();
-        $spec['scenes'][1]['extra_config'] = ['transition' => 'fade', 'parallax' => true];
+        $spec['scenes'][1]['extra_config'] = ['transition' => 'fade', 'clipart_on_top' => true];
         $spec['scenes'][1]['shots'] = [['art_1' => ['x' => 0.5, 'y' => 0.25]]];
 
         $lesson = app(LessonComposer::class)->build($spec, $this->teacher, narrate: false);
         $scene = $lesson->scenes()->where('order', 2)->first();
 
         $this->assertSame('fade', $scene->config['transition']);
-        $this->assertTrue($scene->config['parallax']);
+        $this->assertTrue($scene->config['clipart_on_top']);
         $this->assertSame([['art_1' => ['x' => 0.5, 'y' => 0.25]]], $scene->shots);
 
         // …and comes back out again, so the next export does not drop it either.
         $exported = app(LessonExporter::class)->toSpec($lesson->fresh());
 
-        $this->assertSame(['transition' => 'fade', 'parallax' => true], $exported['scenes'][1]['extra_config']);
+        $this->assertSame(['transition' => 'fade', 'clipart_on_top' => true], $exported['scenes'][1]['extra_config']);
         $this->assertSame($spec['scenes'][1]['shots'], $exported['scenes'][1]['shots']);
     }
 

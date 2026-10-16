@@ -89,7 +89,8 @@ class SceneArtworkTest extends TestCase
             ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
             ->call('selectScene', $this->scene->id)
             ->call('attachArtwork', $this->asset1->id)
-            ->assertSee('Layers')
+            // ('Layers' used to be asserted too: it only ever matched the retired Parallax hint,
+            // "Layers and text gain depth…", never a panel heading.)
             ->assertSee('Test SVG 1');
     }
 
