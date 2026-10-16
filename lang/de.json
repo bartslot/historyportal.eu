@@ -2120,5 +2120,7 @@
     "Bottom": "Unten",
     "Double-click to reset": "Doppelklick zum Zurücksetzen",
     "Double-click to reset all": "Doppelklick, um alles zurückzusetzen",
-    "Resize the column": "Spaltenbreite ändern"
+    "Resize the column": "Spaltenbreite ändern",
+    "Continue editing": "Weiter bearbeiten",
+    "Edited :when": "Bearbeitet :when"
 }

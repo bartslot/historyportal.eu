@@ -2120,5 +2120,7 @@
     "Bottom": "Basso",
     "Double-click to reset": "Doppio clic per ripristinare",
     "Double-click to reset all": "Doppio clic per ripristinare tutto",
-    "Resize the column": "Ridimensiona la colonna"
+    "Resize the column": "Ridimensiona la colonna",
+    "Continue editing": "Continua a modificare",
+    "Edited :when": "Modificato :when"
 }

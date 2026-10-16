@@ -300,10 +300,9 @@ class Lesson extends Model
     /**
      * Which wizard step a lesson card on the dashboard should open.
      *
-     * Teachers open an existing lesson to WATCH it far more often than to re-edit its settings, so a
-     * lesson that has scenes goes straight to Preview (step 5) instead of resuming wherever the
-     * wizard was last left. Two cases still resume instead, because a preview would be useless:
-     * a lesson mid-generation (its progress bar is the point) and one with no scenes yet.
+     * A lesson that has scenes opens in the editor (step 4) instead of resuming wherever the wizard
+     * was last left: opening a lesson from the dashboard means working on it. Two cases still resume
+     * instead: a lesson mid-generation (its progress bar is the point) and one with no scenes yet.
      *
      * Returns null for "resume at wizard_step", which is what LessonWizard::mount() does with no
      * ?step= in the URL.
@@ -317,7 +316,9 @@ class Lesson extends Model
             return null;
         }
 
-        return $this->firstScene !== null ? 5 : null;
+        // The editor (4), not Preview (5): "edit a lesson, will still go to step 5, and not 4"
+        // (Bart, 2026-10-16). Preview is one click away inside the editor (Play).
+        return $this->firstScene !== null ? 4 : null;
     }
 
     public function firstScene(): \Illuminate\Database\Eloquent\Relations\HasOne

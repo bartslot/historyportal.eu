@@ -70,6 +70,10 @@
         </div>
     </header>
 
+    @if ($continueLesson)
+        @include('teacher.partials.continue-lesson')
+    @endif
+
     <section aria-labelledby="classes-heading">
         <div class="mb-5 flex items-end justify-between gap-4">
             <div class="flex items-start gap-3">

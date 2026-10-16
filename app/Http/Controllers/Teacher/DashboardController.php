@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Teacher;
 
+use App\Enums\LessonStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Classroom;
 use App\Models\ClassroomMember;
@@ -62,7 +63,17 @@ final class DashboardController extends Controller
                 'created_at',
             ]);
 
+        // The lesson still being worked on: the most recently edited one that is not published yet.
+        // It sits big at the top, because carrying on with it is what a teacher here mostly wants
+        // (Bart, 2026-10-16).
+        $continueLesson = (clone $lessonQuery)
+            ->where('status', '!=', LessonStatus::Published->value)
+            ->with('firstScene')
+            ->latest('updated_at')
+            ->first();
+
         return view('teacher.dashboard', [
+            'continueLesson' => $continueLesson,
             'classCount' => $classCount,
             'classResults' => $this->classResults($classrooms, $scores),
             'classrooms' => $classrooms,
