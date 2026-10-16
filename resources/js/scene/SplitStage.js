@@ -103,7 +103,8 @@ export class SplitStage {
     const el = document.createElement('div')
     el.className = 'lp-split__panel'
     el.dataset.panel = String(i)
-    el.style.cssText = `position:absolute;overflow:hidden;background:${matte || 'var(--split-matte,#0f172a)'};`
+    // The panel's own colour (Background ▸ Colour on that panel) wins over the scene's.
+    el.style.cssText = `position:absolute;overflow:hidden;background:${shot.background_color || matte || 'var(--split-matte,#0f172a)'};`
     const box = () => {
       const d = document.createElement('div')
       d.style.cssText = 'position:absolute;inset:0;'

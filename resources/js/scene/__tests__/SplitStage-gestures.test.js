@@ -104,3 +104,14 @@ describe('a pane picture', () => {
     expect(img.style.transform).toBe(`scale(${focus.zoom})`)
   })
 })
+
+describe('a panel colour', () => {
+  it('fills that panel only; the other keeps the scene matte', () => {
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const s = new SplitStage(host)
+    s.show({ split: { dir: 'v', at: 0.5 }, matte: '#123456', shots: [{ layers: [] }, { layers: [], background_color: '#000000' }] })
+    expect(s.panels[0].el.style.background).toBe('rgb(18, 52, 86)')
+    expect(s.panels[1].el.style.background).toBe('rgb(0, 0, 0)')
+  })
+})

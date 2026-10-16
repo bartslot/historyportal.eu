@@ -247,6 +247,8 @@ class Step3SceneConfigurator extends Component
             'entry' => ShotCamera::entry($shot['entry'] ?? null),
             // A split panel's focus point: which part of its picture the crop keeps.
             'focus' => SceneSplit::focus($shot['focus'] ?? null),
+            // A split panel's own colour, drawn behind (or instead of) its picture.
+            'background_color' => $shot['background_color'] ?? null,
             // Multiplane layers (E3c): [{path|url, depth, kind, scale, height, sway}] back→front.
             'layers' => collect($shot['layers'] ?? [])->map(fn ($l) => [
                 'url' => ! empty($l['path']) ? MediaUrl::versioned($l['path'], $ts) : ($l['url'] ?? null),
@@ -313,8 +315,9 @@ class Step3SceneConfigurator extends Component
             ])->filter(fn ($l) => $l['url'] || $l['embed'])->values()->all() ?: null,
             // Keep a shot when it has EITHER a background image OR clipart layers. Map-backed scenes
             // (voyage / map) carry layer-only shots — the MAP is the backdrop, so there's no image_url,
-            // but the clipart layers must still reach the editor/player overlay.
-        ])->filter(fn ($shot) => $shot['image_url'] || ! empty($shot['layers']))->values()->all();
+            // but the clipart layers must still reach the editor/player overlay. A split scene keeps
+            // both panels, an empty one too (a flat colour), so each stays in its own place, as the player does.
+        ])->filter(fn ($shot) => $shot['image_url'] || ! empty($shot['layers']) || SceneSplit::of($scene->config))->values()->all();
     }
 
     /**

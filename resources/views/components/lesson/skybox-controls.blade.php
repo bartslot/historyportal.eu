@@ -29,10 +29,12 @@
     $bgType         = match (true) {
         ($bgEmbed['kind'] ?? '') === 'sketchfab' => '3d',
         ! empty($bgEmbed['src'])                 => 'video',
-        ! empty($scene->image_path)              => 'image',
+        ! empty($backgroundImageUrl)             => 'image',
         is_array($gradient)                      => 'gradient',
         default                                  => 'color',
     };
+    // A split panel has its own colour; the scene's is the fallback, and the only one on Standard.
+    $fillColor      = (string) ($panelShot['background_color'] ?? $bgColor);
     $gradientDraft  = is_array($gradient) ? $gradient : ['from' => $bgColor, 'to' => '#0f172a', 'angle' => 180];
 @endphp
 
@@ -150,10 +152,16 @@
 
             {{-- Colour --}}
             <div x-show="bgType === 'color'" x-cloak class="flex items-center gap-2">
-                <input type="color" value="{{ $bgColor }}" aria-label="{{ __('Colour') }}"
+                <input type="color" value="{{ $fillColor }}" aria-label="{{ __('Colour') }}" x-ref="fillColor"
                        @change="$wire.setBackgroundColor($event.target.value)"
                        class="h-8 w-12 cursor-pointer rounded border border-slate-600 bg-transparent" />
-                <span class="font-mono text-xs text-slate-400">{{ $bgColor }}</span>
+                <span class="font-mono text-xs text-slate-400">{{ $fillColor }}</span>
+                {{-- Picking the colour already shown fires no change, so while something else fills
+                     the backdrop a button applies it. Never the dropdown itself: a mis-click keeps the picture. --}}
+                @if ($bgType !== 'color')
+                    <button type="button" class="btn btn-xs ml-auto" data-bg-apply-color
+                            @click="$wire.setBackgroundColor($refs.fillColor.value)">{{ __('Use colour') }}</button>
+                @endif
             </div>
 
             {{-- Gradient: two colours and a direction; the swatch previews it before it is saved. --}}
