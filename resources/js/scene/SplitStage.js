@@ -11,12 +11,20 @@ import { ParallaxScene } from './ParallaxScene.js'
 import { ArtworkOverlay } from './ArtworkOverlay.js'
 import { BalloonLayer } from './BalloonLayer.js'
 import { backdropLayers, isClipartLayer } from './layer-filters.js'
-import { splitLayout, focusPosition, normalizeSplit } from './split-layout.js'
+import { splitLayout, focusPosition, normalizeSplit, normalizeFocus, atFromPointer, panFocus, wheelZoom } from './split-layout.js'
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
 /** One wobble point per this many px of edge; the line drifts at most this share of its width. */
 const WOBBLE_STEP_PX = 28
 const WOBBLE_SHARE = 0.22
+/** The divider's grab area reaches this far past the gutter on each side, px. */
+const DIVIDER_PAD_PX = 6
+/** A wheel zoom is saved this long after the last notch, so a spin is one save, not twenty. */
+const WHEEL_SAVE_MS = 350
+/** Under this many px a press on a pane is a click (select it), not a pan. */
+const PAN_THRESHOLD_PX = 3
+/** Pointer targets that are not the pane's picture: figures move, balloons and the divider are their own. */
+const NOT_THE_PICTURE = '[data-layer-id],[data-layer-chrome],[data-split-divider]'
 
 /** Which panel says a line: the one holding its figure; off-frame lines go to the first panel. */
 export function panelForLine (line, panelLayers) {
@@ -48,14 +56,18 @@ export function inkPath (x0, y0, x1, y1, width, seed = 1) {
 export class SplitStage {
   /**
    * @param {HTMLElement} host  the stage box the two panels fill
-   * @param {{editable?: boolean, onSelect?: (i:number)=>void, onLayerChange?: (i:number, assetId:number, t:object)=>void}} opts
+   * @param {{editable?: boolean, onSelect?: (i:number)=>void, onLayerChange?: (i:number, assetId:number, t:object)=>void,
+   *          onSplitChange?: (at:number)=>void, onViewChange?: (i:number, focus:{x:number,y:number,zoom:number})=>void}} opts
    */
-  constructor (host, { editable = false, onSelect = null, onLayerChange = null } = {}) {
+  constructor (host, { editable = false, onSelect = null, onLayerChange = null, onSplitChange = null, onViewChange = null } = {}) {
     if (!host) throw new TypeError('SplitStage: host element is required')
     this.host = host
     this.editable = editable
     this.onSelect = onSelect
     this.onLayerChange = onLayerChange
+    this.onSplitChange = onSplitChange
+    this.onViewChange = onViewChange
+    this._dragging = false   // a divider drag or a pan: the server's echo must not snap it back
     this.panels = []
     this._root = null
     this._split = null
@@ -77,6 +89,7 @@ export class SplitStage {
     this._root = root
 
     this.panels = [0, 1].map(i => this._panel(root, shots[i] || {}, i, matte, loop))
+    if (this.editable) this._divider = this._makeDivider(root)
     this.setLines(lines)
     this._layout()
     if (typeof ResizeObserver === 'function') {
@@ -120,6 +133,7 @@ export class SplitStage {
     overlay.setBackdrop(planes.find(l => (l.kind ?? 'cover') === 'cover')?.url)
 
     let parallax = null
+    const p = { el, ink, plate, overlay, balloons: null, layers, focus: normalizeFocus(shot.focus), parallax: null }
     if (planes.length) {
       parallax = new ParallaxScene(plate)
       parallax.show({
@@ -133,6 +147,8 @@ export class SplitStage {
       })
       if (!shot.camera) parallax.update(0.5)
     }
+    p.parallax = parallax
+    this._applyFocus(p)
     overlay.setLayers(figures)
     overlay.playEntrances()
 
@@ -146,9 +162,145 @@ export class SplitStage {
       // A click anywhere in a panel (a figure in it too) makes it the one the inspector edits.
       el.style.pointerEvents = 'auto'
       el.addEventListener('pointerdown', () => { if (this._selected !== i) this.onSelect?.(i) }, true)
+      this._panZoom(p, i)
     }
+    p.balloons = balloons
 
-    return { el, ink, parallax, overlay, balloons, layers }
+    return p
+  }
+
+  /**
+   * The panel's crop: which point of its picture stays in view (object-position) and how far it is
+   * zoomed in, about that same point, so a pan of a zoomed picture moves what you see.
+   */
+  _applyFocus (p) {
+    const { x, y, zoom } = p.focus
+    const pos = `${x}% ${y}%`
+    for (const img of p.plate.querySelectorAll('.px-layer-bg img')) {
+      img.style.objectPosition = pos
+      img.style.transformOrigin = pos
+      img.style.transform = zoom > 1 ? `scale(${zoom})` : ''
+    }
+  }
+
+  /** Editor: drag a pane's picture to move it, wheel over it to zoom. Figures keep their own drag. */
+  _panZoom (p, i) {
+    p.el.style.cursor = 'grab'
+    let pan = null
+    p.el.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0 || e.target.closest?.(NOT_THE_PICTURE)) return
+      pan = { x: e.clientX, y: e.clientY, focus: p.focus, moved: false, id: e.pointerId }
+    })
+    p.el.addEventListener('pointermove', (e) => {
+      if (!pan || e.pointerId !== pan.id) return
+      const dx = e.clientX - pan.x
+      const dy = e.clientY - pan.y
+      if (!pan.moved && Math.hypot(dx, dy) < PAN_THRESHOLD_PX) return
+      if (!pan.moved) {
+        pan.moved = true
+        this._dragging = true
+        p.el.style.cursor = 'grabbing'
+        try { p.el.setPointerCapture(e.pointerId) } catch (_) { /* synthetic pointer */ }
+      }
+      p.focus = panFocus(pan.focus, dx, dy, p.el.clientWidth, p.el.clientHeight)
+      this._applyFocus(p)
+    })
+    const end = () => {
+      if (!pan) return
+      const moved = pan.moved
+      pan = null
+      p.el.style.cursor = 'grab'
+      this._dragging = false
+      if (moved) this.onViewChange?.(i, { ...p.focus })
+    }
+    p.el.addEventListener('pointerup', end)
+    p.el.addEventListener('pointercancel', end)
+    // Not passive: over a pane the wheel zooms the picture, it does not scroll the page.
+    p.el.addEventListener('wheel', (e) => {
+      if (e.target.closest?.('[data-split-divider]')) return
+      e.preventDefault()
+      p.focus = { ...p.focus, zoom: wheelZoom(p.focus.zoom, e.deltaY) }
+      this._applyFocus(p)
+      clearTimeout(p.wheelSave)
+      p.wheelSave = setTimeout(() => { p.wheelSave = null; this.onViewChange?.(i, { ...p.focus }) }, WHEEL_SAVE_MS)
+    }, { passive: false })
+  }
+
+  /** Editor: the gutter is a handle. Drag it, or use the arrow keys, to move the split. */
+  _makeDivider (root) {
+    const d = document.createElement('div')
+    d.dataset.splitDivider = ''
+    d.tabIndex = 0
+    d.setAttribute('role', 'separator')
+    d.setAttribute('aria-label', 'Split position')
+    d.style.cssText = 'position:absolute;z-index:45;pointer-events:auto;touch-action:none;display:grid;place-items:center;'
+    const line = document.createElement('span')
+    line.style.cssText = 'display:block;background:var(--color-primary,#f59e0b);opacity:0;transition:opacity 120ms ease-out;'
+    d.appendChild(line)
+    const show = (on) => { line.style.opacity = on || this._dragging ? '1' : '0' }
+    d.addEventListener('pointerenter', () => show(true))
+    d.addEventListener('pointerleave', () => show(false))
+    d.addEventListener('focus', () => show(true))
+    d.addEventListener('blur', () => show(false))
+    const along = (e) => {
+      const r = this.host.getBoundingClientRect()
+      return this._dir === 'h' ? [e.clientY - r.top, r.height] : [e.clientX - r.left, r.width]
+    }
+    let start = null
+    d.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return
+      e.preventDefault()
+      e.stopPropagation()
+      start = this._split.at
+      this._dragging = true
+      show(true)
+      try { d.setPointerCapture(e.pointerId) } catch (_) { /* synthetic pointer */ }
+    })
+    d.addEventListener('pointermove', (e) => {
+      if (start === null) return
+      this._split = { ...this._split, at: atFromPointer(...along(e)) }
+      this._layout()
+    })
+    const end = () => {
+      if (start === null) return
+      const moved = this._split.at !== start
+      start = null
+      this._dragging = false
+      show(d.matches(':hover'))
+      if (moved) this.onSplitChange?.(this._split.at)
+    }
+    d.addEventListener('pointerup', end)
+    d.addEventListener('pointercancel', end)
+    d.addEventListener('keydown', (e) => {
+      const step = e.shiftKey ? 0.05 : 0.01
+      const back = this._dir === 'h' ? 'ArrowUp' : 'ArrowLeft'
+      const fwd = this._dir === 'h' ? 'ArrowDown' : 'ArrowRight'
+      if (e.key !== back && e.key !== fwd) return
+      e.preventDefault()
+      const at = normalizeSplit({ ...this._split, at: this._split.at + (e.key === fwd ? step : -step) }).at
+      if (at === this._split.at) return
+      this._split = { ...this._split, at }
+      this._layout()
+      this.onSplitChange?.(at)
+    })
+    root.appendChild(d)
+    return { el: d, line }
+  }
+
+  /** The split from the server (the slider, an undo): applied in place, never mid-drag. */
+  setSplit (split) {
+    const s = normalizeSplit(split)
+    if (!s || this._dragging || !this._root) return
+    this._split = s
+    this._layout()
+  }
+
+  /** A panel's crop from the server (the sliders, an undo): applied in place, never mid-pan. */
+  setFocus (i, focus) {
+    const p = this.panels[i]
+    if (!p || this._dragging) return
+    p.focus = normalizeFocus(focus)
+    this._applyFocus(p)
   }
 
   _layout () {
@@ -156,12 +308,32 @@ export class SplitStage {
     const lay = splitLayout(this._split, this.host.clientWidth, this.host.clientHeight)
     if (!lay) return
     this._root.dataset.dir = lay.dir
+    this._dir = lay.dir
     lay.panels.forEach((b, i) => {
       const p = this.panels[i]
       if (!p) return
       Object.assign(p.el.style, { left: `${b.x}px`, top: `${b.y}px`, width: `${b.w}px`, height: `${b.h}px` })
       this._drawInk(p, b, lay, i)
     })
+    this._placeDivider(lay)
+  }
+
+  /** The divider handle over the gutter, a little wider than it so it is easy to grab. */
+  _placeDivider (lay) {
+    if (!this._divider) return
+    const { el, line } = this._divider
+    const [a, b] = lay.panels
+    const pad = DIVIDER_PAD_PX
+    const w = lay.gutter + 2 * pad
+    if (lay.dir === 'h') {
+      Object.assign(el.style, { left: '0px', width: `${b.w}px`, top: `${a.h - pad}px`, height: `${w}px`, cursor: 'row-resize' })
+      Object.assign(line.style, { width: '100%', height: `${Math.max(2, lay.gutter / 2)}px` })
+    } else {
+      Object.assign(el.style, { top: '0px', height: `${a.h}px`, left: `${a.w - pad}px`, width: `${w}px`, cursor: 'col-resize' })
+      Object.assign(line.style, { height: '100%', width: `${Math.max(2, lay.gutter / 2)}px` })
+    }
+    el.setAttribute('aria-orientation', lay.dir === 'h' ? 'horizontal' : 'vertical')
+    el.setAttribute('aria-valuenow', String(Math.round(this._split.at * 100)))
   }
 
   /** The ink line on the panel's gutter edge, drawn inside the panel (the outer edges bleed). */
@@ -224,7 +396,14 @@ export class SplitStage {
       try { p.overlay.clear() } catch (_) { /* already gone */ }
       try { p.balloons.destroy() } catch (_) { /* already gone */ }
     }
+    // A wheel zoom still waiting to be saved is saved now, not lost with the stage.
+    this.panels.forEach((p, i) => {
+      if (!p.wheelSave) return
+      clearTimeout(p.wheelSave)
+      this.onViewChange?.(i, { ...p.focus })
+    })
     this.panels = []
+    this._divider = null
     this._root?.remove()
     this._root = null
   }

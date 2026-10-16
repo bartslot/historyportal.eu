@@ -203,4 +203,43 @@ class SplitPanelsTest extends TestCase
                 && $params['payload']['activePanel'] === 1
                 && count($params['payload']['shots']) === 2);
     }
+
+    // Bart 2026-10-16: the divider on the stage IS the Position setting; drag it there.
+    public function test_the_divider_dragged_on_the_stage_moves_the_split(): void
+    {
+        $this->split()->dispatch('split:at', at: 0.613)->dispatch('split:at', at: 0.1);
+
+        $this->assertSame(['dir' => 'h', 'at' => 0.25], $this->scene->refresh()->config['split']);
+    }
+
+    // Bart 2026-10-16: wheel over a pane zooms its picture, a drag moves it. The stage reports the
+    // panel it happened in, which need not be the active one.
+    public function test_a_pane_pan_and_zoom_from_the_stage_is_stored_on_that_panel(): void
+    {
+        $wizard = $this->split()->dispatch('split:view', panel: 1, x: 30.0, y: 140.0, zoom: 2.25);
+
+        $this->assertEquals(['x' => 30, 'y' => 100, 'zoom' => 2.25], $this->scene->refresh()->shots[1]['focus']);
+        $this->assertArrayNotHasKey('focus', $this->scene->shots[0]);
+
+        // Zoom clamps, and the default view is the absence of the key.
+        $wizard->dispatch('split:view', panel: 1, x: 50.0, y: 50.0, zoom: 0.2);
+        $this->assertArrayNotHasKey('focus', $this->scene->refresh()->shots[1]);
+    }
+
+    public function test_the_zoom_slider_and_undo(): void
+    {
+        $wizard = $this->split()->call('selectPanel', 1);
+        $this->travel(2)->seconds();
+        $wizard->call('setPanelFocus', 'zoom', 1.5);
+        $this->assertEquals(['x' => 50, 'y' => 50, 'zoom' => 1.5], $this->scene->refresh()->shots[1]['focus']);
+
+        $wizard->call('undoLastEdit');
+        $this->assertArrayNotHasKey('focus', $this->scene->refresh()->shots[1]);
+    }
+
+    public function test_the_stage_payload_carries_the_zoom(): void
+    {
+        $this->assertSame(['x' => 40.0, 'y' => 50.0, 'zoom' => 4.0], SceneSplit::focus(['x' => 40, 'zoom' => 9]));
+        $this->assertSame(['x' => 40.0, 'y' => 50.0], SceneSplit::focus(['x' => 40, 'zoom' => 1]));
+    }
 }

@@ -111,13 +111,19 @@
         {{-- Layout — Standard (one picture) | Split (two comic panels with a white gutter between).
              Split: the direction and where the gutter sits; the panel clicked on the stage is the
              one the controls below work on. --}}
+        @php
+            // Heroicons' view-columns frame, with no divider, one upright and one level divider.
+            $iconOne = 'M4.125 19.5h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125Z';
+            $iconSideBySide = 'M12 4.5v15m-7.875 0h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125Z';
+            $iconStacked = 'M3 12h18m-16.875 7.5h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125Z';
+        @endphp
         <div x-data="{ mode: @js($split ? 'split' : 'standard'), dir: @js($split['dir'] ?? 'h') }" class="space-y-2" data-split-controls>
             <x-ui.segmented panel name="scene-layout" model="mode"
-                            :options="[['standard', __('Standard')], ['split', __('Split')]]"
+                            :options="[['standard', __('Standard'), $iconOne], ['split', __('Split'), $iconSideBySide]]"
                             on-change="$wire.call('setSceneLayout', $event.target.value)" />
             @if ($split)
                 <x-ui.segmented panel name="split-dir" model="dir"
-                                :options="[['h', __('Horizontal')], ['v', __('Vertical')]]"
+                                :options="[['h', __('Horizontal'), $iconStacked], ['v', __('Vertical'), $iconSideBySide]]"
                                 on-change="$wire.call('setSplit', $event.target.value, null)" />
                 <x-ui.slider-row :label="__('Position')" :min="25" :max="75" :step="1"
                                  :value="$split['at'] * 100" :display="(string) round($split['at'] * 100)" unit="%" :default="50"
@@ -243,6 +249,10 @@
                     <x-ui.slider-row :label="__('Vertical')" :min="0" :max="100" :step="1"
                                      :value="$panelFocus['y']" :display="(string) round($panelFocus['y'])" unit="%" :default="50"
                                      on-change="setPanelFocus('y', $event.target.value)" />
+                    {{-- The wheel over the pane on the stage sets the same zoom. --}}
+                    <x-ui.slider-row :label="__('Zoom')" :min="100" :max="400" :step="5"
+                                     :value="($panelFocus['zoom'] ?? 1) * 100" :display="(string) round(($panelFocus['zoom'] ?? 1) * 100)" unit="%" :default="100"
+                                     on-change="setPanelFocus('zoom', $event.target.value / 100)" />
                 </div>
             @endif
 
