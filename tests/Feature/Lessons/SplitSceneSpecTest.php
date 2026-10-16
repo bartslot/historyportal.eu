@@ -13,7 +13,8 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * A split scene (two comic panels) travels through a spec: `split` => ['dir', 'at'] plus its two
+ * A split scene (comic panels) travels through a spec: `split` => ['layout', 'at'] (the first
+ * version's ['dir', 'at'] still reads) plus one shot per panel. Before: `split` => ['dir', 'at'] plus its two
  * `shots`, one per panel. And the retired Parallax / Drawing mode keys never come back out.
  */
 class SplitSceneSpecTest extends TestCase
@@ -68,19 +69,19 @@ class SplitSceneSpecTest extends TestCase
         $lesson = app(LessonComposer::class)->build($spec, $this->teacher, narrate: false);
         $scene = $lesson->scenes()->first();
 
-        $this->assertSame(['dir' => 'v', 'at' => 0.4], $scene->config['split']);
+        $this->assertSame(['layout' => 'cols2', 'at' => [0.4]], $scene->config['split']);
         $this->assertCount(2, $scene->shots);
         $this->assertSame('pan-r', $scene->shots[0]['camera']['move']);
         $this->assertEquals(['x' => 40, 'y' => 20], $scene->shots[1]['focus']);
 
         $exported = app(LessonExporter::class)->toSpec($lesson->fresh())['scenes'][0];
-        $this->assertSame(['dir' => 'v', 'at' => 0.4], $exported['split']);
+        $this->assertSame(['layout' => 'cols2', 'at' => [0.4]], $exported['split']);
         $this->assertArrayNotHasKey('split', $exported['extra_config'] ?? []);
         $this->assertSame('lessons/x/deck.webp', $exported['shots'][1]['image_path']);
 
         // …and the exported spec rebuilds into the same split.
         $again = app(LessonComposer::class)->build(array_merge($spec, ['scenes' => [array_merge($spec['scenes'][0], $exported)]]), $this->teacher, narrate: false);
-        $this->assertSame(['dir' => 'v', 'at' => 0.4], $again->scenes()->first()->config['split']);
+        $this->assertSame(['layout' => 'cols2', 'at' => [0.4]], $again->scenes()->first()->config['split']);
     }
 
     public function test_a_split_is_clamped_to_the_editor_range(): void
@@ -88,13 +89,13 @@ class SplitSceneSpecTest extends TestCase
         $lesson = app(LessonComposer::class)->build(
             $this->spec(['split' => ['dir' => 'x', 'at' => 0.95], 'shots' => $this->panels()]), $this->teacher, narrate: false);
 
-        $this->assertSame(['dir' => 'h', 'at' => 0.75], $lesson->scenes()->first()->config['split']);
+        $this->assertSame(['layout' => 'rows2', 'at' => [0.8]], $lesson->scenes()->first()->config['split']);
     }
 
     public function test_a_split_without_two_panels_fails_before_anything_is_built(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('two `shots`');
+        $this->expectExceptionMessage('one `shots` entry per panel');
 
         app(LessonComposer::class)->build(
             $this->spec(['split' => ['dir' => 'h', 'at' => 0.5], 'shots' => [$this->panels()[0]]]), $this->teacher, narrate: false);

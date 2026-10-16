@@ -42,12 +42,12 @@ describe('the split divider on the stage', () => {
     fire(d, 'pointermove', { clientX: 580 })
     fire(d, 'pointermove', { clientX: 610 })
     // The server's echo of the old position arrives mid-drag: it must not snap the divider back.
-    s.setSplit({ dir: 'v', at: 0.5 })
+    s.setSplit({ layout: 'cols2', at: [0.5] })
     fire(d, 'pointerup', { clientX: 610 })
 
     expect(d.hasAttribute('data-dragging')).toBe(false)
     expect(onSplitChange).toHaveBeenCalledOnce()
-    expect(onSplitChange).toHaveBeenCalledWith(0.61)
+    expect(onSplitChange).toHaveBeenCalledWith({ layout: 'cols2', at: [0.61] })
     expect(parseFloat(s.panels[0].el.style.width)).toBeCloseTo(610 - 2.6, 0)   // minus half the gutter
   })
 
@@ -58,7 +58,7 @@ describe('the split divider on the stage', () => {
     fire(d, 'pointerdown', { clientY: 250 })
     fire(d, 'pointermove', { clientY: 175 })
     fire(d, 'pointerup', { clientY: 175 })
-    expect(onSplitChange).toHaveBeenCalledWith(0.35)
+    expect(onSplitChange).toHaveBeenCalledWith({ layout: 'rows2', at: [0.35] })
   })
 })
 
@@ -128,3 +128,53 @@ describe('a panel whose layer list was collapsed', () => {
     expect(s.panels[1].plate.querySelector('img')).toBeNull()
   })
 })
+
+// Bart 2026-10-16: more ways to split a scene ("3 rows, 3 columns"), every divider draggable.
+describe('layouts with more panels', () => {
+  const shots = (n) => Array.from({ length: n }, () => ({ layers: [{ url: '/bay.png', kind: 'cover', depth: 1 }] }))
+  const show = (split, n) => {
+    const host = document.createElement('div')
+    Object.defineProperty(host, 'clientWidth', { value: W })
+    Object.defineProperty(host, 'clientHeight', { value: H })
+    host.getBoundingClientRect = () => ({ left: 0, top: 0, width: W, height: H, right: W, bottom: H })
+    document.body.appendChild(host)
+    const onSplitChange = vi.fn()
+    const s = new SplitStage(host, { editable: true, onSplitChange })
+    s.show({ split, shots: shots(n) })
+    return { s, host, onSplitChange }
+  }
+
+  it('draws one panel per pane and one grip per divider', () => {
+    const { s, host } = show({ layout: 'grid4' }, 4)
+    expect(s.panels).toHaveLength(4)
+    expect(host.querySelectorAll('[data-split-divider]')).toHaveLength(2)
+    expect(parseFloat(s.panels[3].el.style.left)).toBeCloseTo(W / 2 + 2.6, 1)   // past the gutter
+  })
+
+  it('the second divider of one left, two right moves the right column only', () => {
+    const { host, onSplitChange } = show({ layout: 'l1r2' }, 3)
+    const d = host.querySelector('[data-split-divider="1"]')
+    expect(d.getAttribute('aria-orientation')).toBe('horizontal')
+    fire(d, 'pointerdown', { clientX: 750, clientY: 250 })
+    fire(d, 'pointermove', { clientX: 750, clientY: 150 })
+    fire(d, 'pointerup', { clientX: 750, clientY: 150 })
+    expect(onSplitChange).toHaveBeenCalledWith({ layout: 'l1r2', at: [0.5, 0.3] })
+  })
+
+  it('a diagonal clips its two panels and drags its line as a whole', () => {
+    const { s, host, onSplitChange } = show({ layout: 'diag', at: [0.6, 0.4] }, 2)
+    expect(s.panels[0].el.style.clipPath).toContain('polygon(')
+    const d = host.querySelector('[data-split-divider="0"]')
+    fire(d, 'pointerdown', { clientX: 500, clientY: 250 })
+    fire(d, 'pointermove', { clientX: 600, clientY: 250 })
+    fire(d, 'pointerup', { clientX: 600, clientY: 250 })
+    expect(onSplitChange).toHaveBeenCalledWith({ layout: 'diag', at: [0.7, 0.5] })
+  })
+
+  it('an old two-panel split still draws two panels with one grip', () => {
+    const { s, host } = show({ dir: 'h', at: 0.5 }, 2)
+    expect(s.panels).toHaveLength(2)
+    expect(host.querySelectorAll('[data-split-divider]')).toHaveLength(1)
+  })
+})
+

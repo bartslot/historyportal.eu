@@ -328,8 +328,8 @@ class LessonComposer
     {
         $extra = (array) ($s['extra_config'] ?? []);
         $shots = (array) ($s['shots'] ?? []);
-        // Two comic panels: `split` => ['dir' => 'h'|'v', 'at' => 0.25..0.75], the panels are its
-        // first two `shots` (SceneSplit). Checked before anything is deleted, in preflightCameras.
+        // Comic panels: `split` => ['layout' => SceneSplit::LAYOUTS key, 'at' => [...]] (the first
+        // version's ['dir' => 'h'|'v', 'at' => 0.5] still reads), one `shots` entry per panel. Checked before anything is deleted, in preflightCameras.
         if (array_key_exists('split', $s)) {
             $extra['split'] = SceneSplit::normalize($s['split']);
         }
@@ -360,8 +360,8 @@ class LessonComposer
             $where = 'Spec scene #'.($i + 1).(isset($s['id']) ? " '{$s['id']}'" : '');
             ShotCamera::fromSpec($s['camera'] ?? null, $where);
             ShotCamera::entryFromSpec($s['entry'] ?? null, $where);
-            if (array_key_exists('split', $s) && (SceneSplit::normalize($s['split']) === null || count((array) ($s['shots'] ?? [])) < 2)) {
-                throw new \InvalidArgumentException("{$where}: `split` is ['dir' => 'h'|'v', 'at' => 0.25..0.75] with two `shots`, one per panel.");
+            if (array_key_exists('split', $s) && (SceneSplit::normalize($s['split']) === null || count((array) ($s['shots'] ?? [])) < SceneSplit::panes($s['split']))) {
+                throw new \InvalidArgumentException("{$where}: `split` is ['layout' => one of ".implode(', ', array_keys(SceneSplit::LAYOUTS)).", 'at' => [...]] with one `shots` entry per panel.");
             }
             foreach ((array) ($s['shots'] ?? []) as $j => $shot) {
                 ShotCamera::fromSpec($shot['camera'] ?? null, "{$where}, shot {$j}");

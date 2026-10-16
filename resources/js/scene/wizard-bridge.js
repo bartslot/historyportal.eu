@@ -7,7 +7,7 @@ import { fitToPlate, plateAspect } from './plate-box.js'
 import { t } from '../i18n.js'
 import { gradientCanvas } from './background-gradient.js'
 import { cameraSpec } from './camera.js'
-import { normalizeSplit } from './split-layout.js'
+import { normalizeSplit, paneCount } from './split-layout.js'
 import { balloonOptions, hideStageBalloons, setBalloonScene, showStageBalloons, typingIn } from './editor-balloons.js'
 
 /** Scene kinds the player draws its own way, without balloons (SceneSplit::NO_SPLIT_KINDS). */
@@ -782,7 +782,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     let _artworkHost = null
     let _artworkSig = null   // skip re-seeding the overlay on identical poll re-renders
     let _artworkIdent = null // WHICH layers are on the scene; a change here is the only rebuild
-    // Split scene (config.split): the two comic panels, SplitStage, the player's own renderer.
+    // Split scene (config.split): its comic panels, SplitStage, the player's own renderer.
     let _splitMod = null
     let _splitStage = null
     let _splitHost = null
@@ -818,14 +818,14 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         if (!isCurrent()) return
         const panel = Number.isInteger(payload.activePanel) ? payload.activePanel : 0
         const stripV = (u) => String(u || '').split('?')[0]
-        const shots = (payload.shots || []).slice(0, 2)
+        const split = payload.split ?? payload.config?.split
+        const shots = (payload.shots || []).slice(0, paneCount(split))
         // scene:load re-fires on every poll and unrelated edit: rebuild only on a real change, or
         // a figure mid-drag and every entrance would restart. A panel click only moves the ring.
-        const split = payload.split ?? payload.config?.split
         // The split's position and each panel's crop are left OUT of the signature: the divider
         // and the panes are dragged on the stage itself, and the save's echo must update them in
         // place. A rebuild would flash the stage and throw away what the hand is holding.
-        const sig = JSON.stringify([payload.sceneId, split?.dir, payload.backgroundColor,
+        const sig = JSON.stringify([payload.sceneId, normalizeSplit(split)?.layout, payload.backgroundColor,
             shots.map(({ focus, ...s }) => ({ ...s, image_url: stripV(s.image_url), layers: (s.layers || []).map(l => ({ ...l, url: stripV(l.url) })) }))])
         // The balloons are left out too: a typed word or a dragged tail is redrawn in place.
         const linesSig = JSON.stringify(payload.config?.lines ?? [])
@@ -859,7 +859,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                 assetId, x: t.x, y: t.y, scale: t.scale, rotation: t.rotation, panel: i,
             }),
             // The divider and the panes, moved on the stage: the same values the sliders set.
-            onSplitChange: (at) => window.Livewire?.dispatch('split:at', { at }),
+            onSplitChange: (s) => window.Livewire?.dispatch('split:at', { at: s.at }),
             onViewChange: (i, f) => window.Livewire?.dispatch('split:view', { panel: i, x: f.x, y: f.y, zoom: f.zoom }),
             balloons: balloonOptions(),
         })

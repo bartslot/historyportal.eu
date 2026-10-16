@@ -2100,5 +2100,18 @@
     "Tail": "Zeiger",
     "Tail root": "Zeigeransatz",
     "Bend": "Biegung",
-    "Delete :name": ":name löschen"
+    "Delete :name": ":name löschen",
+    "One picture": "Ein Bild",
+    "Two rows": "Zwei Reihen",
+    "Two columns": "Zwei Spalten",
+    "Diagonal": "Diagonal",
+    "One left, two right": "Eins links, zwei rechts",
+    "Three rows": "Drei Reihen",
+    "Three columns": "Drei Spalten",
+    "Two left, one right": "Zwei links, eins rechts",
+    "One top, two below": "Eins oben, zwei unten",
+    "Four squares": "Vier Felder",
+    "Layout": "Aufteilung",
+    "Top": "Oben",
+    "Bottom": "Unten"
 }

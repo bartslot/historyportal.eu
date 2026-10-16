@@ -2100,5 +2100,18 @@
     "Tail": "Punta",
     "Tail root": "Base della punta",
     "Bend": "Curvatura",
-    "Delete :name": "Elimina :name"
+    "Delete :name": "Elimina :name",
+    "One picture": "Un'immagine",
+    "Two rows": "Due righe",
+    "Two columns": "Due colonne",
+    "Diagonal": "Diagonale",
+    "One left, two right": "Uno a sinistra, due a destra",
+    "Three rows": "Tre righe",
+    "Three columns": "Tre colonne",
+    "Two left, one right": "Due a sinistra, uno a destra",
+    "One top, two below": "Uno sopra, due sotto",
+    "Four squares": "Quattro riquadri",
+    "Layout": "Disposizione",
+    "Top": "Alto",
+    "Bottom": "Basso"
 }

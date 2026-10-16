@@ -2142,5 +2142,18 @@
     "Tail": "Staart",
     "Tail root": "Staartvoet",
     "Bend": "Buiging",
-    "Delete :name": ":name verwijderen"
+    "Delete :name": ":name verwijderen",
+    "One picture": "Eén beeld",
+    "Two rows": "Twee rijen",
+    "Two columns": "Twee kolommen",
+    "Diagonal": "Diagonaal",
+    "One left, two right": "Eén links, twee rechts",
+    "Three rows": "Drie rijen",
+    "Three columns": "Drie kolommen",
+    "Two left, one right": "Twee links, één rechts",
+    "One top, two below": "Eén boven, twee onder",
+    "Four squares": "Vier vlakken",
+    "Layout": "Indeling",
+    "Top": "Boven",
+    "Bottom": "Onder"
 }
