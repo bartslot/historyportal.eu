@@ -104,7 +104,13 @@ trait EditsSceneArtwork
         } else {
             // Shots exist. Append layers to each, preserving order with foreach.
             $updatedShots = [];
-            foreach ($shots as $shot) {
+            foreach ($shots as $i => $shot) {
+                // A split scene: the figure goes on the panel being edited, not on both.
+                if (! $this->editsShot($scene, (int) $i)) {
+                    $updatedShots[] = $shot;
+
+                    continue;
+                }
                 // Check if this asset is already attached to avoid duplicates.
                 $existing = collect($shot['layers'] ?? [])->firstWhere('asset_id', $newLayer['asset_id']);
                 if ($existing) {
@@ -203,12 +209,13 @@ trait EditsSceneArtwork
             // Map-backed (voyage) scenes get a layer-only shot: the map is the backdrop.
             $shots = [SceneLayers::shot($scene->image_path, [$newLayer])];
         } else {
-            $layers = $shots[0]['layers'] ?? [];
-            if (empty($layers) && ! empty($shots[0]['image_path'])) {
-                $layers[] = SceneLayers::cover($shots[0]['image_path']);
+            $p = $this->editedPanel($scene) ?? 0;
+            $layers = $shots[$p]['layers'] ?? [];
+            if (empty($layers) && ! empty($shots[$p]['image_path'])) {
+                $layers[] = SceneLayers::cover($shots[$p]['image_path']);
             }
             $layers[] = $newLayer;
-            $shots[0] = array_merge($shots[0], ['layers' => $layers]);
+            $shots[$p] = array_merge($shots[$p] ?? [], ['layers' => $layers]);
         }
 
         $scene->update(['shots' => $shots]);
@@ -223,6 +230,19 @@ trait EditsSceneArtwork
      */
     private function shotsPreservingArtwork(Scene $scene, ?string $newImagePath): ?array
     {
+        // A split scene: the new picture goes on the panel being edited; the other panel, and
+        // this panel's figures, camera and focus, stay as they are.
+        $panel = $this->editedPanel($scene);
+        if ($panel !== null) {
+            $shots = array_values((array) ($scene->shots ?? []));
+            $shot = (array) ($shots[$panel] ?? []);
+            $figures = array_values(array_filter((array) ($shot['layers'] ?? []), fn ($l) => ($l['asset_id'] ?? null) !== null));
+            unset($shot['image_path'], $shot['bg_path'], $shot['hero_path']);
+            $shots[$panel] = array_merge($shot, SceneLayers::shot($newImagePath, $figures), ['order' => $panel]);
+
+            return $shots;
+        }
+
         $assetLayers = collect($scene->shots[0]['layers'] ?? [])
             ->filter(fn ($l) => ($l['asset_id'] ?? null) !== null)
             ->values()
@@ -249,7 +269,11 @@ trait EditsSceneArtwork
         }
 
         // Immutable: remove layers with this asset_id and drop layers key if only cover remains.
-        $shots = collect($shots)->map(function (array $shot) use ($assetId): array {
+        $split = $this->editedPanel($scene) !== null;
+        $shots = collect($shots)->map(function (array $shot, int $i) use ($assetId, $scene): array {
+            if (! $this->editsShot($scene, $i)) {
+                return $shot;
+            }
             $layers = collect($shot['layers'] ?? [])->reject(fn ($l) => ($l['asset_id'] ?? null) === $assetId)->values()->all();
 
             // If only a cover layer remains (no asset_id), drop the layers key entirely.
@@ -270,7 +294,7 @@ trait EditsSceneArtwork
         })
             // A map-backed scene's shot is layer-only (no image_path). Once its last clipart is
             // removed it carries nothing — drop the empty shot so shots collapses back to [].
-            ->reject(fn (array $shot) => empty($shot['image_path']) && empty($shot['layers'] ?? []))
+            ->reject(fn (array $shot) => ! $split && empty($shot['image_path']) && empty($shot['layers'] ?? []))
             ->values()
             ->all();
 
@@ -386,7 +410,11 @@ trait EditsSceneArtwork
         if (! $this->selectedSceneId) {
             return null;
         }
-        foreach ($this->lesson->scenes()->findOrFail($this->selectedSceneId)->shots ?? [] as $shot) {
+        $scene = $this->lesson->scenes()->findOrFail($this->selectedSceneId);
+        foreach ($scene->shots ?? [] as $i => $shot) {
+            if (! $this->editsShot($scene, (int) $i)) {
+                continue;
+            }
             foreach ($shot['layers'] ?? [] as $l) {
                 if (($l['asset_id'] ?? null) === $assetId) {
                     return $l;
@@ -573,7 +601,10 @@ trait EditsSceneArtwork
             return;
         }
 
-        $shots = collect($shots)->map(function (array $shot) use ($assetId, $fields, $unsetNull): array {
+        $shots = collect($shots)->map(function (array $shot, int $i) use ($assetId, $fields, $unsetNull, $scene): array {
+            if (! $this->editsShot($scene, $i)) {
+                return $shot;   // the same figure on the other panel keeps its own settings
+            }
             $layers = collect($shot['layers'] ?? [])->map(function (array $l) use ($assetId, $fields, $unsetNull): array {
                 if (($l['asset_id'] ?? null) !== $assetId) {
                     return $l;
@@ -620,7 +651,10 @@ trait EditsSceneArtwork
         $scene = $this->lesson->scenes()->findOrFail($this->selectedSceneId);
         $parser = app(\App\Services\EmbedParser::class);
 
-        $shots = collect($scene->shots ?? [])->map(function (array $shot) use ($assetId, $option, $coerced, $parser): array {
+        $shots = collect($scene->shots ?? [])->map(function (array $shot, int $i) use ($assetId, $option, $coerced, $parser, $scene): array {
+            if (! $this->editsShot($scene, $i)) {
+                return $shot;
+            }
             $layers = collect($shot['layers'] ?? [])->map(function (array $l) use ($assetId, $option, $coerced, $parser): array {
                 if (($l['asset_id'] ?? null) !== $assetId || ($l['embed']['type'] ?? null) !== 'sketchfab') {
                     return $l;
@@ -655,10 +689,15 @@ trait EditsSceneArtwork
      * text overlay uses). The Livewire re-render still refreshes the Layers panel thumbnails.
      */
     #[On('artwork:move')]
-    public function moveArtworkLayer(int $assetId, float $x, float $y, float $scale, ?string $anchor = null, ?float $lng = null, ?float $lat = null, ?float $rotation = null): void
+    public function moveArtworkLayer(int $assetId, float $x, float $y, float $scale, ?string $anchor = null, ?float $lng = null, ?float $lat = null, ?float $rotation = null, ?int $panel = null): void
     {
         if (! $this->selectedSceneId) {
             return;
+        }
+        // A split stage says which panel the drag happened in; it may be quicker than the click
+        // that made that panel the active one.
+        if ($panel !== null) {
+            $this->activePanel = max(0, min(1, $panel));
         }
 
         $scene = $this->lesson->scenes()->findOrFail($this->selectedSceneId);
@@ -684,7 +723,10 @@ trait EditsSceneArtwork
         // caller that sends none leaves the stored angle alone.
         $rotation = $rotation === null ? null : max(-180.0, min(180.0, $rotation));
 
-        $shots = collect($shots)->map(function (array $shot) use ($assetId, $x, $y, $scale, $anchor, $pinned, $lng, $lat, $rotation): array {
+        $shots = collect($shots)->map(function (array $shot, int $i) use ($assetId, $x, $y, $scale, $anchor, $pinned, $lng, $lat, $rotation, $scene): array {
+            if (! $this->editsShot($scene, $i)) {
+                return $shot;
+            }
             $layers = collect($shot['layers'] ?? [])->map(function (array $l) use ($assetId, $x, $y, $scale, $anchor, $pinned, $lng, $lat, $rotation): array {
                 if (($l['asset_id'] ?? null) === $assetId) {
                     $l['x'] = $x;
@@ -740,7 +782,10 @@ trait EditsSceneArtwork
         // asset_id => desired position (lower = painted earlier = visually lower).
         $rank = array_flip(array_values(array_map('intval', $assetIds)));
 
-        $shots = collect($shots)->map(function (array $shot) use ($rank): array {
+        $shots = collect($shots)->map(function (array $shot, int $i) use ($rank, $scene): array {
+            if (! $this->editsShot($scene, $i)) {
+                return $shot;
+            }
             $layers = $shot['layers'] ?? [];
             // Non-asset layers (the base cover image) stay pinned at the bottom of the stack.
             $covers = array_values(array_filter($layers, fn ($l) => ($l['asset_id'] ?? null) === null));
@@ -765,13 +810,6 @@ trait EditsSceneArtwork
         unset($this->sceneArtworkLayers);   // refresh the Layers panel; no scene:load re-dispatch
     }
 
-    /**
-     * Slideshow render mode (stored in config['slideshow_mode']):
-     *   'standard' — flat image, no depth.
-     *   'parallax' — layers (and text) follow the camera by depth; per-layer Depth control shows.
-     *   'drawing'  — ink line-art draw-on animation (pen engine).
-     * Read back in the scene:load payload for the canvas.
-     */
     /**
      * How the background image fills the stage: 'cover' (fill the frame, crop the overflow) or
      * 'contain' (show the whole work, letterboxed).
@@ -800,27 +838,6 @@ trait EditsSceneArtwork
         $this->selectSceneInternal($scene->id);
     }
 
-    public function setSlideshowMode(string $mode): void
-    {
-        if (! in_array($mode, ['standard', 'parallax', 'drawing'], true)) {
-            return;
-        }
-        if (! $this->selectedSceneId) {
-            return;
-        }
-
-        $scene = $this->lesson->scenes()->findOrFail($this->selectedSceneId);
-        $config = $scene->config ?? [];
-        $config['slideshow_mode'] = $mode;
-        $config['parallax'] = $mode === 'parallax';   // back-compat for readers still checking the bool
-        $scene->update(['config' => $config]);
-
-        if ($this->selectedScene !== null) {
-            $this->selectedScene['config'] = $config;
-        }
-        $this->selectSceneInternal($scene->id);
-    }
-
     /** @return array<int, array{asset_id: int, path: string, title: string, url: string, depth: float, scale: float, height: float, sway: bool, x?: float, y?: float, wobble?: int, opacity?: float, blur?: float, z?: int, blend?: string, kind?: string}> */
     #[Computed]
     public function sceneArtworkLayers(): array
@@ -837,8 +854,8 @@ trait EditsSceneArtwork
             return [];
         }
 
-        $firstShot = $shots[0];
-        $layers = $firstShot['layers'] ?? [];
+        // The layer list of the panel being edited (the first shot on a standard scene).
+        $layers = $shots[$this->editedPanel($scene) ?? 0]['layers'] ?? [];
 
         if (empty($layers)) {
             return [];

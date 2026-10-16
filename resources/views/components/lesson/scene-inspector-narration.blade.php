@@ -1,4 +1,4 @@
-@props(['scene' => null])
+@props(['scene' => null, 'activePanel' => 0])
 
 @php
     $isGenerating = $scene->status === 'generating';
@@ -12,7 +12,7 @@
 
 <div class="space-y-3 text-sm">
     {{-- Format panel (Figma): the minimal scene-view + background controls take the top. --}}
-    <x-lesson.skybox-controls :scene="$scene" />
+    <x-lesson.skybox-controls :scene="$scene" :active-panel="$activePanel" />
 
     {{-- Scene details — collapsed by default so the Format panel stays minimal (Figma).
          Year, location, caption, the editable script + re-narrate, and delete live here. --}}

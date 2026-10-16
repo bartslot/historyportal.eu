@@ -1,4 +1,4 @@
-@props(['scene' => null])
+@props(['scene' => null, 'activePanel' => 0])
 
 @php
     $blur           = (float)  ($scene->skybox_blur      ?? 0.5);
@@ -13,14 +13,17 @@
     $isUpscaling    = ($scene->upscale_status ?? null) === 'upscaling';
     $isBusy         = $isGenerating;
     $hasSkyboxImage = ! empty($scene->skybox_image_path);
-    $slideshowMode  = (string) ($scene->config['slideshow_mode'] ?? (($scene->config['parallax'] ?? false) ? 'parallax' : 'standard'));
-    $parallax       = $slideshowMode === 'parallax';
+    // Standard or Split (two comic panels). The retired Parallax / Drawing modes read as Standard.
+    $split          = \App\Services\Support\SceneSplit::of($scene->config);
+    $panelShot      = $split ? (array) (array_values((array) ($scene->shots ?? []))[$activePanel] ?? []) : [];
+    $panelFocus     = \App\Services\Support\SceneSplit::focus($panelShot['focus'] ?? []) ?? ['x' => 50.0, 'y' => 50.0];
     $candidates     = $scene->skybox_candidates ?? [];
     // Default image-source tab reflects how the current background was set.
     $bgKind         = $scene->config['background_credit']['kind'] ?? null;
-    $srcDefault     = $bgKind === 'painting' ? 'paintings' : ($bgKind === 'url' ? 'url' : 'ai');
+    $srcDefault     = $bgKind === 'painting' ? 'paintings' : 'ai';
     $backgroundFit  = ($scene->config['background_fit'] ?? 'cover') === 'contain' ? 'contain' : 'cover';
-    $backgroundImageUrl = \App\Support\MediaUrl::versioned($scene->image_path, $scene->updated_at?->timestamp);
+    // On a split scene the Image controls show and set the active panel's own picture.
+    $backgroundImageUrl = \App\Support\MediaUrl::versioned($split ? ($panelShot['image_path'] ?? null) : $scene->image_path, $scene->updated_at?->timestamp);
     $bgEmbed        = ($scene->config ?? [])['bg_embed'] ?? null;
     $gradient       = ($scene->config ?? [])['background_gradient'] ?? null;
     $bgType         = match (true) {
@@ -105,17 +108,22 @@
 
     {{-- ── Slideshow tab ────────────────────────────────────────────────────── --}}
     <div x-show="view === 'slideshow'" x-cloak class="space-y-2">
-        {{-- Slideshow render mode — Standard (flat) | Parallax (depth) | Drawing (line art). --}}
-        <div x-data="{ mode: @js($slideshowMode) }">
-            <x-ui.segmented panel name="slideshow-mode" model="mode"
-                            :options="[['standard', __('Standard')], ['parallax', __('Parallax')], ['drawing', __('Drawing')]]"
-                            on-change="$wire.call('setSlideshowMode', $event.target.value)" />
-            <p class="mt-1 text-2xs leading-tight text-slate-500" x-show="mode === 'parallax'" x-cloak>
-                {{ __('Layers and text gain depth and follow the camera.') }}
-            </p>
-            <p class="mt-1 text-2xs leading-tight text-slate-500" x-show="mode === 'drawing'" x-cloak>
-                {{ __('The scene draws itself as an ink line-art animation.') }}
-            </p>
+        {{-- Layout — Standard (one picture) | Split (two comic panels with a white gutter between).
+             Split: the direction and where the gutter sits; the panel clicked on the stage is the
+             one the controls below work on. --}}
+        <div x-data="{ mode: @js($split ? 'split' : 'standard'), dir: @js($split['dir'] ?? 'h') }" class="space-y-2" data-split-controls>
+            <x-ui.segmented panel name="scene-layout" model="mode"
+                            :options="[['standard', __('Standard')], ['split', __('Split')]]"
+                            on-change="$wire.call('setSceneLayout', $event.target.value)" />
+            @if ($split)
+                <x-ui.segmented panel name="split-dir" model="dir"
+                                :options="[['h', __('Horizontal')], ['v', __('Vertical')]]"
+                                on-change="$wire.call('setSplit', $event.target.value, null)" />
+                <x-ui.slider-row :label="__('Position')" :min="25" :max="75" :step="1"
+                                 :value="$split['at'] * 100" :display="(string) round($split['at'] * 100)" unit="%" :default="50"
+                                 on-change="setSplit(null, $event.target.value / 100)" />
+                <span class="block text-2xs font-semibold uppercase tracking-wider text-slate-400" data-split-panel-label>{{ __('Panel') }} {{ $activePanel + 1 }}</span>
+            @endif
         </div>
 
         {{-- Background — how this scene is filled, ONE thing at a time (Keynote model):
@@ -124,7 +132,7 @@
              replaced until a value is set, so a mis-click never wipes a picture.
              A video background is an iframe (YouTube/Vimeo), never hosted by us, muted and
              looping. A film the class WATCHES is still a Video scene (Add ▸ Video). --}}
-        <div data-bg-section x-data="{ bgType: @js($bgType), imgSrc: @js(in_array($srcDefault, ['ai', 'paintings', 'url'], true) ? $srcDefault : 'ai'), promptOpen: false }" class="space-y-2">
+        <div data-bg-section x-data="{ bgType: @js($bgType), imgSrc: @js($srcDefault), promptOpen: false }" class="space-y-2">
             <select x-model="bgType" aria-label="{{ __('Background') }}"
                     class="select select-sm select-bordered w-full bg-base-100 font-medium text-slate-200">
                 <option value="color">{{ __('Colour') }}</option>
@@ -210,7 +218,7 @@
 
             {{-- Fit — how the image fills the 16:9 stage. Cover crops the overflow (and anchors a
                  portrait to the top so the face survives); Contain shows the whole work. --}}
-            @if ($backgroundImageUrl)
+            @if ($backgroundImageUrl && ! $split)
                 <div x-data="{ fit: @js($backgroundFit) }">
                     <span class="mb-1 block text-2xs font-semibold uppercase tracking-wider text-slate-400">{{ __('Fit') }}</span>
                     <x-ui.segmented panel name="background-fit" model="fit"
@@ -222,6 +230,19 @@
                     <p class="mt-1 text-2xs leading-tight text-slate-500" x-show="fit === 'contain'" x-cloak>
                         {{ __('Shows the whole picture, with bars where it does not reach the edges.') }}
                     </p>
+                </div>
+            @endif
+
+            {{-- Split panel: which part of its picture the crop keeps. --}}
+            @if ($split && $backgroundImageUrl)
+                <div class="space-y-1" data-panel-focus>
+                    <span class="block text-2xs font-semibold uppercase tracking-wider text-slate-400">{{ __('Crop') }}</span>
+                    <x-ui.slider-row :label="__('Horizontal')" :min="0" :max="100" :step="1"
+                                     :value="$panelFocus['x']" :display="(string) round($panelFocus['x'])" unit="%" :default="50"
+                                     on-change="setPanelFocus('x', $event.target.value)" />
+                    <x-ui.slider-row :label="__('Vertical')" :min="0" :max="100" :step="1"
+                                     :value="$panelFocus['y']" :display="(string) round($panelFocus['y'])" unit="%" :default="50"
+                                     on-change="setPanelFocus('y', $event.target.value)" />
                 </div>
             @endif
 
@@ -259,7 +280,7 @@
             @endif
 
             <x-ui.segmented panel name="image-source" model="imgSrc"
-                            :options="[['ai', __('AI Gen')], ['paintings', __('Paintings')], ['url', __('Drawing')]]" />
+                            :options="[['ai', __('AI Gen')], ['paintings', __('Paintings')]]" />
 
             {{-- AI generated — Regenerate / Edit prompt (Figma item 5) --}}
             <div x-show="imgSrc === 'ai'" x-cloak class="space-y-2">
@@ -308,18 +329,6 @@
                 <p class="text-2xs text-slate-500">{{ __('Public-domain paintings & museum works, matched to the scene’s era and place.') }}</p>
             </div>
 
-            {{-- Drawing — render the background as a hand-drawn ink line-art animation.
-                 (The 'url' imgSrc key labels the Drawing tab; the paste-a-URL flow via
-                 applyImageUrl still exists on the component, just not surfaced in Format.) --}}
-            <div x-show="imgSrc === 'url'" x-cloak class="space-y-1.5">
-                <button type="button"
-                        @click="$wire.call('setSlideshowMode', 'drawing')"
-                        class="inline-flex items-center gap-1.5 text-xs text-slate-300 transition hover:text-base-content">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-3.5 w-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" /></svg>
-                    <span>{{ __('Draw this background') }}</span>
-                </button>
-                <p class="text-2xs text-slate-500">{{ __('The scene draws itself as an ink line-art animation (sets the render mode to Drawing).') }}</p>
-            </div>
           </div>{{-- /image sub-sources --}}
 
             {{-- 3D — Sketchfab model as the scene background --}}

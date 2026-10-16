@@ -144,6 +144,7 @@ export class SplitStage {
 
     if (this.editable) {
       // A click anywhere in a panel (a figure in it too) makes it the one the inspector edits.
+      el.style.pointerEvents = 'auto'
       el.addEventListener('pointerdown', () => { if (this._selected !== i) this.onSelect?.(i) }, true)
     }
 

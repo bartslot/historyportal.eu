@@ -9,6 +9,7 @@ use App\Models\QuizQuestion;
 use App\Models\Scene;
 use App\Services\Lessons\LibraryLayers;
 use App\Services\Support\PhpSpecPrinter;
+use App\Services\Support\SceneSplit;
 use App\Services\Support\ShotCamera;
 
 /**
@@ -176,6 +177,13 @@ class LessonExporter
         if (isset($config['identity_title']) && $config['identity_title'] === mb_substr(trim((string) $scene->chapter_name), 0, 80)) {
             $composed[] = 'identity_title';
         }
+        // A split scene travels as its own `split` key; the retired Parallax / Drawing mode keys
+        // read as Standard and are left behind, so the next rebuild drops them.
+        $split = SceneSplit::of($config);
+        if ($split !== null) {
+            $spec['split'] = $split;
+        }
+        $composed = [...$composed, 'split', ...SceneSplit::RETIRED_KEYS];
         $extra = $this->withoutKeys($config, $composed);
         if ($extra !== []) {
             $spec['extra_config'] = $extra;

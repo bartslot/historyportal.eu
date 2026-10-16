@@ -24,6 +24,7 @@ import { stageAdvance, stageFloorMs } from './scene/stage-auto.js'
 import { isTopAnchored, normalizeFit, PORTRAIT_TOP_CSS } from './scene/background-fit.js'
 import { isClipartLayer, backdropLayers } from './scene/layer-filters.js'
 import { fitToPlate, plateAspect } from './scene/plate-box.js'
+import { sceneMode } from './scene/split-layout.js'
 import { mountEmbedBg } from './scene/embed-bg.js'
 import { sameOriginMediaUrl } from './media-url.js'
 import { sceneTransitionFrames, easingBezier, EASINGS } from './scene/animations.js'
@@ -153,6 +154,8 @@ let _autoAdvanceRaf = null    // voyage auto-advance progress loop
 let _music          = null   // BackgroundMusic bed (owns its own Audio elements; outside Alpine's proxy)
 let _initDone       = false  // guard: prevent double-init from Vite HMR / Alpine re-mount
 let _parallax       = null   // live ParallaxScene instance (layered bg+hero shot, E3b)
+let _split          = null   // live SplitStage: a split scene's two comic panels
+let _splitMod       = null
 let _parallaxMod    = null   // cached ./scene/ParallaxScene.js module (lazy-loaded once)
 let _diorama        = null   // live DioramaStage (a scene with config.diorama)
 let _dioramaMod     = null   // cached ./scene/diorama/DioramaStage.js module
@@ -1010,6 +1013,39 @@ Alpine.data('lessonGame', (lesson) => ({
       }
     },
 
+    // A split scene: two comic panels at once, each with its own picture, figures, camera and
+    // balloons (SplitStage, the same renderer as the editor preview). Drawn into the layer host.
+    async _showSplit (scene) {
+      const req = ++this._parallaxReq
+      try {
+        if (!_splitMod) _splitMod = await import('./scene/SplitStage.js')
+        if (req !== this._parallaxReq) return
+        const host = document.getElementById('background-layer')
+        if (!host) return
+        if (_bgCanvas) _bgCanvas.style.opacity = '0'
+        host.style.transition = 'opacity 1s ease-in-out'
+        host.style.opacity = '1'
+        if (this._kbInterval) { clearInterval(this._kbInterval); this._kbInterval = null }
+        this._destroyParallax()
+        this._destroyDiorama()
+        _split = new _splitMod.SplitStage(host)
+        _split.show({
+          split: scene.config.split,
+          shots: scene.shots || [],
+          lines: this._splitLines(scene.config?.lines),
+          matte: scene.background_color || null,
+        })
+      } catch (e) {
+        console.warn('lesson-player: split scene failed, falling back to the first panel', e)
+        this._showShot(scene.shots?.[0], scene.image_url)
+      }
+    },
+
+    /** A split scene's balloon lines in the subtitle language, like the full-stage balloons. */
+    _splitLines (lines) {
+      return (lines || []).map(l => ({ ...l, text: this._crewed(this._ccLine(l.text)) }))
+    },
+
     // A diorama scene (plate, occluders, items placed on floor grids) — the same DioramaStage the
     // editor uses, read-only. Drawn into the layer host like a layered shot.
     async _showDiorama (scene) {
@@ -1042,6 +1078,7 @@ Alpine.data('lessonGame', (lesson) => ({
     },
 
     _destroyParallax (lingerMs = 0) {
+      if (_split) { try { _split.destroy() } catch (_) { /* already detached */ } _split = null }
       // The figures leave the camera pose with the picture, unless they stay under a slide/wipe.
       if (!lingerMs) this._artLayer?.setCamera(null)
       if (!_parallax) return
@@ -1086,9 +1123,13 @@ Alpine.data('lessonGame', (lesson) => ({
       if (_parallax && this._audio.duration) {
         _parallax.update(this._audio.currentTime / this._audio.duration)
       }
+      if (_split && this._audio.duration) {
+        _split.update(this._audio.currentTime / this._audio.duration)
+      }
 
       this._updateCaptions()
       this._balloons?.update(this._audio.currentTime)
+      _split?.setTime(this._audio.currentTime)
 
       if (!this._shotPlan || this._shotPlan.length < 2) return
 
@@ -1556,6 +1597,8 @@ Alpine.data('lessonGame', (lesson) => ({
         if (scene.scene_view === 'skybox' && _bgInstance) {
           this._showBgScene()                                   // reveal the 3D canvas, fade out the flat layer
           _bgInstance.setSkyboxFromUrl(scene.image_url, 0.3).catch(() => {})
+        } else if (sceneMode(scene.config) === 'split') {
+          this._showSplit(scene)                                // two comic panels at once
         } else if (scene.shots?.length > 1) {
           this._startShotPlayback(scene)                        // storyboard: images follow the narration
         } else {
@@ -2072,7 +2115,8 @@ Alpine.data('lessonGame', (lesson) => ({
       const req = this._balloonReq = (this._balloonReq || 0) + 1
       const host = document.getElementById('lesson-balloons')
       if (!host) return
-      const lines = scene?.config?.lines || []
+      // A split scene's balloons live in its panels (SplitStage).
+      const lines = sceneMode(scene?.config) === 'split' ? [] : (scene?.config?.lines || [])
       if (!lines.length && !this._balloons) return
       const { BalloonLayer } = await import('./scene/BalloonLayer.js')
       this._balloons = this._balloons || new BalloonLayer(host)
@@ -2087,13 +2131,17 @@ Alpine.data('lessonGame', (lesson) => ({
 
     /** The balloons' words in the subtitle language when that is on and cached, else the original. */
     _refreshBalloonText () {
+      if (_split) {   // a split scene: the same words, in its panels
+        _split.setLines(this._splitLines(_sceneQueue[this._sceneIndex]?.config?.lines))
+        if (this._audio) _split.setTime(this._audio.currentTime)
+      }
       const host = document.getElementById('lesson-balloons')
       if (!this._balloons || !host) return
       const cached = Object.keys(this.ccSets[this.captionLang]?.texts || {}).length > 0
       const lang = this.captionsOn && cached ? this.captionLang : lesson.source_language
       host.lang = lang
       host.dir = this.ccDir(lang)
-      this._balloons.setLines((this._balloonSource || []).map(l => ({ ...l, text: this._crewed(this._ccLine(l.text)) })))
+      this._balloons.setLines(this._splitLines(this._balloonSource))
       if (this._audio) this._balloons.update(this._audio.currentTime)
     },
 
@@ -2105,7 +2153,10 @@ Alpine.data('lessonGame', (lesson) => ({
       const req = this._artReq = (this._artReq || 0) + 1
       const host = document.getElementById('lesson-voyage-art')
       if (!host) return
-      const layers = ((scene.shots || [])[0]?.layers || []).filter(l => (l?.url || l?.embed) && isClipartLayer(l))
+      // A split scene's figures live in its panels (SplitStage).
+      const layers = sceneMode(scene.config) === 'split'
+        ? []
+        : ((scene.shots || [])[0]?.layers || []).filter(l => (l?.url || l?.embed) && isClipartLayer(l))
       if (!layers.length && !this._artLayer) { host.style.display = 'none'; return }
       const { ArtworkOverlay } = await import('./scene/ArtworkOverlay.js')
       this._artLayer = this._artLayer || new ArtworkOverlay(host, { readonly: true })

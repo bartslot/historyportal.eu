@@ -14,6 +14,7 @@ use App\Services\Lessons\MomentSpec;
 use App\Services\Lessons\SceneDialogue;
 use App\Services\Lessons\TeamGameSpec;
 use App\Services\Support\AudioEncoder;
+use App\Services\Support\SceneSplit;
 use App\Services\Support\ShotCamera;
 use App\Support\TitlePoster;
 use Illuminate\Support\Facades\DB;
@@ -327,6 +328,11 @@ class LessonComposer
     {
         $extra = (array) ($s['extra_config'] ?? []);
         $shots = (array) ($s['shots'] ?? []);
+        // Two comic panels: `split` => ['dir' => 'h'|'v', 'at' => 0.25..0.75], the panels are its
+        // first two `shots` (SceneSplit). Checked before anything is deleted, in preflightCameras.
+        if (array_key_exists('split', $s)) {
+            $extra['split'] = SceneSplit::normalize($s['split']);
+        }
 
         if ($extra === [] && $shots === []) {
             return;
@@ -354,6 +360,9 @@ class LessonComposer
             $where = 'Spec scene #'.($i + 1).(isset($s['id']) ? " '{$s['id']}'" : '');
             ShotCamera::fromSpec($s['camera'] ?? null, $where);
             ShotCamera::entryFromSpec($s['entry'] ?? null, $where);
+            if (array_key_exists('split', $s) && (SceneSplit::normalize($s['split']) === null || count((array) ($s['shots'] ?? [])) < 2)) {
+                throw new \InvalidArgumentException("{$where}: `split` is ['dir' => 'h'|'v', 'at' => 0.25..0.75] with two `shots`, one per panel.");
+            }
             foreach ((array) ($s['shots'] ?? []) as $j => $shot) {
                 ShotCamera::fromSpec($shot['camera'] ?? null, "{$where}, shot {$j}");
                 ShotCamera::entryFromSpec($shot['entry'] ?? null, "{$where}, shot {$j}");

@@ -17,6 +17,7 @@ use App\Livewire\Wizard\Concerns\EditsDiorama;
 use App\Livewire\Wizard\Concerns\EditsQuizQuestions;
 use App\Livewire\Wizard\Concerns\EditsSceneArtwork;
 use App\Livewire\Wizard\Concerns\EditsSceneBackground;
+use App\Livewire\Wizard\Concerns\EditsSplitPanels;
 use App\Livewire\Wizard\Concerns\EditsStoryGame;
 use App\Livewire\Wizard\Concerns\EditsMoment;
 use App\Livewire\Wizard\Concerns\EditsTeamGame;
@@ -32,6 +33,7 @@ use App\Services\Diorama\LibraryAssets;
 use App\Services\Lessons\TeamGameSpec;
 use App\Services\Support\LayerAmbient;
 use App\Services\Support\LayerSitIn;
+use App\Services\Support\SceneSplit;
 use App\Services\Support\ShotCamera;
 use App\Services\Support\WebpEncoder;
 use App\Services\Support\WhiteCutout;
@@ -63,6 +65,7 @@ class Step3SceneConfigurator extends Component
     use EditsTitleScreen;
     use EditsSceneBackground;
     use EditsSceneArtwork;
+    use EditsSplitPanels;
     use EditsStoryGame;
     use EditsTeamGame;
     use EditsMoment;
@@ -242,6 +245,8 @@ class Step3SceneConfigurator extends Component
             // The panel's own camera move and entry (resources/js/scene/camera.js).
             'camera' => ShotCamera::payload($shot['camera'] ?? null),
             'entry' => ShotCamera::entry($shot['entry'] ?? null),
+            // A split panel's focus point: which part of its picture the crop keeps.
+            'focus' => SceneSplit::focus($shot['focus'] ?? null),
             // Multiplane layers (E3c): [{path|url, depth, kind, scale, height, sway}] back→front.
             'layers' => collect($shot['layers'] ?? [])->map(fn ($l) => [
                 'url' => ! empty($l['path']) ? MediaUrl::versioned($l['path'], $ts) : ($l['url'] ?? null),
@@ -361,6 +366,7 @@ class Step3SceneConfigurator extends Component
             $this->activeLayerId = null;
             $this->activeTextId = null;
             $this->activeDioramaId = null;
+            $this->activePanel = 0;
         }
 
         $scene = $this->lesson->scenes()->findOrFail($id);
@@ -433,10 +439,9 @@ class Step3SceneConfigurator extends Component
             'backgroundColor' => (string) ($scene->background_color ?? '#000000'),
             'backgroundGradient' => $scene->config['background_gradient'] ?? null,
             'focus' => $scene->config['background_focus'] ?? null,   // 'top' for portraits
-            'slideshowMode' => (string) (($scene->config ?? [])['slideshow_mode']
-                ?? ((($scene->config ?? [])['parallax'] ?? false) ? 'parallax' : 'standard')),
-            'parallax' => (($scene->config ?? [])['slideshow_mode'] ?? null) === 'parallax'
-                || (bool) (($scene->config ?? [])['parallax'] ?? false),
+            // Standard or split (two comic panels, SceneSplit); the panel the inspector edits.
+            'split' => SceneSplit::of($scene->config),
+            'activePanel' => $this->activePanel,
             'texts' => (array) (($scene->config ?? [])['texts'] ?? []),
             'sceneView' => (string) ($scene->scene_view ?? 'skybox'),
             'worldPanoUrl' => $scene->world_pano_path ? asset('storage/'.$scene->world_pano_path) : null,
@@ -3599,7 +3604,7 @@ class Step3SceneConfigurator extends Component
         $cfg = $scene->config ?? [];
         unset($cfg['bg_embed']);   // an image background replaces any 3D / video embed
         $scene->update([
-            'image_path' => $path,
+            'image_path' => $this->sceneImagePath($scene, $path),
             'shots' => $this->shotsPreservingArtwork($scene, $path),
             'skybox_image_path' => null,
             'scene_view' => 'slideshow',
@@ -4459,7 +4464,7 @@ class Step3SceneConfigurator extends Component
         }
 
         $scene->update([
-            'image_path' => $path,
+            'image_path' => $this->sceneImagePath($scene, $path),
             // A painting replaces the storyboard, but keep any clipart the teacher attached.
             'shots' => $this->shotsPreservingArtwork($scene, $path),
             // A generated equirectangular skybox belongs to the old background and can otherwise
@@ -4646,7 +4651,7 @@ class Step3SceneConfigurator extends Component
         \Illuminate\Support\Facades\Storage::disk('public')->put($path, $response->body());
 
         $scene->update([
-            'image_path' => $path,
+            'image_path' => $this->sceneImagePath($scene, $path),
             // Keep any clipart the teacher attached when swapping to a pasted-URL background.
             'shots' => $this->shotsPreservingArtwork($scene, $path),
             'skybox_image_path' => null,

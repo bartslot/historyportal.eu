@@ -1,4 +1,4 @@
-@props(['mode', 'layer' => null, 'scene' => null])
+@props(['mode', 'layer' => null, 'scene' => null, 'activePanel' => 0])
 @use(App\Services\Support\ShotCamera)
 
 @php
@@ -263,7 +263,7 @@
     @if ($cameraShots !== [])
         {{-- CAMERA: each panel's own move over its picture, and how the panel comes in. The common
              two are open; timing and easing wait under Advanced. --}}
-        <section x-data="{ panel: 0 }" class="space-y-2 border-t border-panel-hairline pt-3" data-camera-panel>
+        <section x-data="{ panel: @js(isset($cameraShots[$activePanel]) ? $activePanel : 0) }" class="space-y-2 border-t border-panel-hairline pt-3" data-camera-panel>
             <div class="flex items-center justify-between gap-2">
                 <span class="text-2xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Camera') }}</span>
                 @if (count($cameraShots) > 1)
@@ -277,7 +277,7 @@
             </div>
 
             @foreach ($cameraShots as $i => $cam)
-                <div x-show="panel === {{ $i }}" @if ($i > 0) x-cloak @endif class="space-y-2" wire:key="camera-{{ $scene->id }}-{{ $i }}">
+                <div x-show="panel === {{ $i }}" @if ($i !== (isset($cameraShots[$activePanel]) ? $activePanel : 0)) x-cloak @endif class="space-y-2" wire:key="camera-{{ $scene->id }}-{{ $i }}">
                     <label class="block space-y-1">
                         <span class="block text-2xs uppercase tracking-wide text-panel-label">{{ __('Move') }}</span>
                         <select class="select select-xs w-full text-2xs" data-camera-move

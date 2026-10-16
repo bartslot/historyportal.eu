@@ -77,7 +77,7 @@ trait EditsSceneBackground
     {
         $scene->update([
             ...$fields,
-            'image_path' => null,
+            'image_path' => $this->sceneImagePath($scene, null),
             'shots' => $this->shotsPreservingArtwork($scene, null),
             'skybox_image_path' => null,
             'scene_view' => 'slideshow',

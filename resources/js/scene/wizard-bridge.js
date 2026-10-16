@@ -7,6 +7,7 @@ import { fitToPlate, plateAspect } from './plate-box.js'
 import { t } from '../i18n.js'
 import { gradientCanvas } from './background-gradient.js'
 import { cameraSpec } from './camera.js'
+import { normalizeSplit } from './split-layout.js'
 
 /**
  * Push every alignment entry earlier by VISEME_LEAD_SECONDS. The avatar player
@@ -125,8 +126,13 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                         backgroundColor: payload.backgroundColor || '#000000',
                         isCurrent,
                     })
+                } else if (view === 'slideshow' && normalizeSplit(payload.split ?? payload.config?.split)) {
+                    // Two comic panels: the same SplitStage the player draws, editable here.
+                    applySlideshowCameraMode(activePlayer)
+                    await showSplitStage(payload, isCurrent)
                 } else if (view === 'slideshow') {
                     applySlideshowCameraMode(activePlayer)
+                    destroySplitStage()
                     const firstShot = (payload.shots && payload.shots.length) ? payload.shots[0] : null
                     await applySlideshowBackground(payload.imageUrl, payload.sceneId ?? 0, payload.duration ?? 10, {
                         backgroundColor: payload.backgroundColor,
@@ -136,10 +142,8 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                         layers: firstShot?.layers ?? null,
                         camera: firstShot?.camera ?? null,
                         entry: firstShot?.entry ?? null,
-                        parallax: !!payload.parallax,
                         clipartOnTop: !!payload.config?.clipart_on_top,
                         backdropDepth: payload.config?.backdrop_depth ?? null,
-                        slideshowMode: payload.slideshowMode || (payload.parallax ? 'parallax' : 'standard'),
                         sceneId: payload.sceneId ?? 0,
                         isCurrent,
                     })
@@ -283,7 +287,6 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                 layers: firstShot?.layers ?? null,
                 camera: firstShot?.camera ?? null,
                 entry: firstShot?.entry ?? null,
-                parallax: !!e.detail?.parallax,
                 clipartOnTop: !!e.detail?.config?.clipart_on_top,
                 backdropDepth: e.detail?.config?.backdrop_depth ?? null,
                 sceneId: sceneId ?? 0,
@@ -774,10 +777,67 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     let _artworkHost = null
     let _artworkSig = null   // skip re-seeding the overlay on identical poll re-renders
     let _artworkIdent = null // WHICH layers are on the scene; a change here is the only rebuild
-    // Drawing mode: ink pen engine that draws each clipart stroke-by-stroke.
-    let _inkMod = null
-    let _inkEngines = []
-    let _inkSig = null
+    // Split scene (config.split): the two comic panels, SplitStage, the player's own renderer.
+    let _splitMod = null
+    let _splitStage = null
+    let _splitHost = null
+    let _splitSig = null
+
+    function destroySplitStage() {
+        if (_splitStage) { try { _splitStage.destroy() } catch (_) {} }
+        _splitStage = null
+        _splitHost?.remove()
+        _splitHost = null
+        _splitSig = null
+    }
+
+    async function showSplitStage(payload, isCurrent) {
+        if (!_splitMod) _splitMod = await import('./SplitStage.js')
+        if (!isCurrent()) return
+        const panel = Number.isInteger(payload.activePanel) ? payload.activePanel : 0
+        const stripV = (u) => String(u || '').split('?')[0]
+        const shots = (payload.shots || []).slice(0, 2)
+        // scene:load re-fires on every poll and unrelated edit: rebuild only on a real change, or
+        // a figure mid-drag and every entrance would restart. A panel click only moves the ring.
+        const sig = JSON.stringify([payload.sceneId, payload.split ?? payload.config?.split, payload.backgroundColor,
+            shots.map(s => ({ ...s, image_url: stripV(s.image_url), layers: (s.layers || []).map(l => ({ ...l, url: stripV(l.url) })) })),
+            payload.config?.lines ?? null])
+        if (_splitStage && sig === _splitSig && _splitHost?.isConnected) {
+            _splitStage.select(panel)
+            window.__lessonArtworkLayer = _splitStage.overlay(panel)
+            return
+        }
+        destroyWizardLayers()
+        const parent = canvasEl.parentElement
+        if (!parent) return
+        if (getComputedStyle(parent).position === 'static') parent.style.position = 'relative'
+        if (activePlayer?._skyboxSphere) activePlayer._skyboxSphere.visible = false
+        activePlayer._scene.background = new THREE.Color(payload.backgroundColor || '#0f172a')
+        const host = document.createElement('div')
+        host.className = 'wizard-split-host'
+        // Above the canvas, below the text overlay (z-7). The panels themselves catch the clicks.
+        host.style.cssText = 'position:absolute;inset:0;overflow:hidden;z-index:1;pointer-events:none;'
+        parent.appendChild(host)
+        _splitHost = host
+        _splitStage = new _splitMod.SplitStage(host, {
+            editable: true,
+            onSelect: (i) => window.Livewire?.dispatch('split:panel', { panel: i }),
+            onLayerChange: (i, assetId, t) => window.Livewire?.dispatch('artwork:move', {
+                assetId, x: t.x, y: t.y, scale: t.scale, rotation: t.rotation, panel: i,
+            }),
+        })
+        _splitStage.show({
+            split: payload.split ?? payload.config?.split,
+            shots,
+            lines: payload.config?.lines || [],
+            matte: payload.backgroundColor || null,
+            loop: true,
+            selected: panel,
+        })
+        _splitSig = sig
+        // The layer list, the inspector and the timeline talk to the active panel's figures.
+        window.__lessonArtworkLayer = _splitStage.overlay(panel)
+    }
 
     function wizardLayerHost() {
         if (_wizardLayerHost?.isConnected) return _wizardLayerHost
@@ -916,14 +976,12 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         if (_artworkHost) _artworkHost.style.display = 'none'
         _artworkSig = null
         _artworkIdent = null
-        for (const e of _inkEngines) { try { e.destroy() } catch (_) {} }
-        _inkEngines = []
-        _inkSig = null
+        destroySplitStage()
     }
 
     async function showLayeredSlideshowShot(payload) {
         try {
-            const { layers, parallax = false } = payload
+            const { layers } = payload
             const isCurrent = payload.isCurrent ?? (() => true)
             if (!Array.isArray(layers) || !layers.length) return false
             if (!isCurrent()) return false
@@ -974,7 +1032,6 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                 }
             }
 
-            const mode = payload.slideshowMode || (parallax ? 'parallax' : 'standard')
             const artHost = wizardArtworkHost()
             // Whole image: the figures share the plate's box, so their x/y stay on the drawn floor.
             if (artHost) {
@@ -983,33 +1040,8 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                 fitToPlate(artHost, canvasEl.parentElement, aspect)
             }
 
-            if (mode === 'drawing' && artHost && artLayers.length) {
-                // Drawing mode: each clipart draws itself stroke-by-stroke (looped preview). Not
-                // editable here — teachers position it in Standard/Parallax, Drawing is the effect.
-                artHost.style.display = ''
-                if (_artworkOverlay) { try { _artworkOverlay.clear() } catch (_) {} }
-                if (!_inkMod) _inkMod = await import('./InkDrawEngine.js')
-                if (!isCurrent()) return false
-                const sig = JSON.stringify(artLayers.map(l => [l.asset_id, l.x, l.y, l.scale, l.height, String(l.url || '').split('?')[0], l.ink_preset, l.ink_fill, l.draw_time]))
-                if (sig !== _inkSig) {
-                    _inkSig = sig
-                    for (const e of _inkEngines) { try { e.destroy() } catch (_) {} }
-                    _inkEngines = artLayers.map((l) => {
-                        const eng = new _inkMod.InkDrawEngine(artHost)
-                        eng.draw(l.url, { xPct: l.x ?? 50, yPct: l.y ?? 58, scale: l.scale ?? 1, heightPct: l.height ?? 40 }, {
-                            loop: true,
-                            preset: l.ink_preset || undefined,
-                            fillMode: (l.ink_fill && l.ink_fill !== 'auto') ? l.ink_fill : undefined,
-                            durationSec: l.draw_time || undefined,
-                        })
-                        return eng
-                    })
-                    window.__inkEngines = _inkEngines
-                }
-            } else if (artHost) {
-                // Editable clipart overlay (Standard / Parallax).
-                for (const e of _inkEngines) { try { e.destroy() } catch (_) {} }
-                _inkEngines = []; _inkSig = null
+            if (artHost) {
+                // Editable clipart overlay.
                 artHost.style.display = ''
                 if (!_artworkMod) _artworkMod = await import('./ArtworkOverlay.js')
                 if (!isCurrent()) return false
@@ -1238,6 +1270,8 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                 // The whole config rides along so a video/3D background plays in Step-4 playback
                 // too — without it every scene change here tore the embed back down.
                 config: scene?.config ?? null,
+                // A split scene needs its two panels to draw them.
+                shots: scene?.config?.split ? (scene?.shots ?? []) : undefined,
                 textsReadonly: scene?.config?.texts || [],
                 dioramaAssets: scene?.dioramaAssets ?? {},
             }),
