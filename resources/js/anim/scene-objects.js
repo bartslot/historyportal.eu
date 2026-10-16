@@ -51,6 +51,7 @@ export const readObjectProperty = (target, property) => {
     const layer = (overlay?._layers ?? []).find((l) => String(l.asset_id) === id)
     const value = layer?.[property]
     if (Number.isFinite(value)) return value
+    if (property === 'tint') return typeof value === 'string' ? value : ''
     // No explicit width: the layer takes it from the picture's aspect. Read the width it is drawn
     // at, in the same units as its height (the Dimensions row does the same), or the row shows 0
     // and its diamond keys a zero-width layer.

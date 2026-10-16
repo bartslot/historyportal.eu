@@ -166,3 +166,36 @@ export const setDuration = (track, seconds) => {
   const scale = seconds / current
   return { ...track, keyframes: (track.keyframes ?? []).map((k) => ({ ...k, time: k.time * scale })) }
 }
+
+// ── One property's keyframing, as the diamond after it and the Reset beside it see it ──
+
+/**
+ * What the diamond after a property shows at `time`: 'none' (not animated), 'here' (a key under
+ * the playhead) or 'elsewhere' (animated, keys at other moments). After Effects' keyframe
+ * navigator and Figma's inspector diamond both have exactly these three states.
+ */
+export const keyStateAt = (track, time) => {
+  const keys = sortedKeys(track)
+  if (!keys.length) return 'none'
+  return keys.some((k) => sameTime(k.time, time)) ? 'here' : 'elsewhere'
+}
+
+/**
+ * The value the property had before anyone keyed it, which is what Reset returns to. Recorded on
+ * the track by the first key (toggleKeyframe); a track saved before that existed falls back to its
+ * first key, the closest thing it has.
+ */
+export const baseOf = (track) => track?.base ?? sortedKeys(track)[0]?.value ?? null
+
+/**
+ * The diamond: a key under the playhead is removed, otherwise one is added there with `value`.
+ * The first key of a track records `base`, the value the property had un-animated.
+ */
+export const toggleKeyframe = (track, time, value) => {
+  const keys = track?.keyframes ?? []
+  if (keys.some((k) => sameTime(k.time, time))) {
+    return { ...track, keyframes: keys.filter((k) => !sameTime(k.time, time)) }
+  }
+  const base = track?.base ?? (sortedKeys(track).length ? baseOf(track) : value)
+  return addKeyframe({ ...track, base }, { time, value })
+}

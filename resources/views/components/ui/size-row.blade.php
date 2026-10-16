@@ -31,14 +31,15 @@
         width: {{ $width === null ? 'null' : (float) $width }},
         locked: {{ $locked ? 'true' : 'false' }},
      })"
-     x-on:layer-fitted.window="fitted($event.detail)">
+     x-on:layer-fitted.window="fitted($event.detail)"
+     x-on:timeline-changed.window="syncKeyed()">
 
     <span style="width: var(--settings-panel-label-w, 3.0625rem)"
           class="shrink-0 text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ $label ?? __('Size') }}</span>
 
     {{-- DaisyUI `join` glues the pair into one control, which is what the design draws. --}}
     <div class="join min-w-0 flex-1">
-        @foreach ([['w', 'W', __('Width')], ['h', 'H', __('Height')]] as [$side, $glyph, $name])
+        @foreach ([['w', 'W', __('Width'), 'width'], ['h', 'H', __('Height'), 'height']] as [$side, $glyph, $name, $prop])
             <label class="input input-xs join-item flex min-w-0 flex-1 items-center gap-1.5 px-2"
                    style="height: var(--settings-panel-row-h, 2rem)">
                 {{-- data-scrub: dragging W while the aspect is held drives H, because the drag
@@ -63,7 +64,7 @@
                        x-on:change="commit($wire)"
                        class="w-full min-w-0 border-0 bg-transparent p-0 text-xs outline-none
                               [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
-                <x-ui.keyframe-diamond class="border-l border-panel-hairline pl-1" />
+                <span class="flex shrink-0 border-l border-panel-hairline pl-1"><x-ui.keyframe-diamond :target="'art:'.(int) $assetId" :property="$prop" /></span>
             </label>
         @endforeach
     </div>

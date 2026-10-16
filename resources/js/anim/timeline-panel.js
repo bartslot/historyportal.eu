@@ -9,9 +9,9 @@
  * properties.js. There is no fixed list anywhere.
  */
 
-import { addKeyframe, sortedKeys, sameTime, segmentEasing, easingFn } from './keyframes.js'
+import { addKeyframe, sortedKeys, sameTime, segmentEasing, easingFn, keyStateAt, toggleKeyframe, baseOf } from './keyframes.js'
 import { keyId, moveKeys, deleteKeys, snapToNearest } from './timeline-edit.js'
-import { propertiesFor, sampleFrame, kindOfTarget } from './properties.js'
+import { propertiesFor, propertyFor, sampleFrame, kindOfTarget } from './properties.js'
 import { wordSpans, snapTime, wordAt } from './narration-clock.js'
 import { textObjects, artObjects, dioramaObjects, readObjectProperty, writeObjectProperty, setObjectHidden } from './scene-objects.js'
 import { clipOf, shiftClip, stretchClip } from '../scene/diorama/clip.js'
@@ -148,6 +148,13 @@ export const animationTimeline = (config = {}) => ({
     window.__timelineKeying = {
       key: (target, property) => { this.toggleKey(target, property); this.announce() },
       has: (target, property) => this.hasKeyHere(target, property),
+      state: (target, property) => this.keyState(target, property),
+      animated: (target, property) => this.isAnimated(target, property),
+      value: (target, property) => this.valueAt(target, property),
+      edit: (target, property, value) => this.editKeyed(target, property, value),
+      reset: (target, property) => this.resetProperty(target, property),
+      canResetObject: (target) => this.canResetObject(target),
+      resetObject: (target) => this.resetObject(target),
       time: () => this.time,
       // Selected keyframes own Backspace/Delete: the editor's object-delete key asks this first,
       // so deleting a keyframe never takes the whole layer with it (Bart, 2026-10-16).
@@ -757,12 +764,10 @@ export const animationTimeline = (config = {}) => ({
   // ── Keyframes ───────────────────────────────────────────────────────────────────────────
 
   /**
-   * The diamond on a property row: "put what I am looking at, HERE".
-   *
-   * Sets or UPDATES the key at the playhead. It deliberately does not remove one: re-framing a
-   * shot you had already keyed is the common act, and making that two clicks (off, then on) is
-   * how you end up with a key you did not mean to delete. Removing is the double-click on the
-   * diamond in the lane, where the thing being removed is the thing under the pointer.
+   * The diamond on a property row, and after a property in the Format panel: a TOGGLE, as in
+   * After Effects' keyframe navigator. No key under the playhead adds one with the value on screen;
+   * a key there is removed (Bart, 2026-10-16). Re-framing a keyed shot needs no diamond at all:
+   * editing the value while the playhead sits on the key updates it (editKeyed / setValue).
    */
   toggleKey (target, property) {
     if (kindOfTarget(target) === 'dio') { window.__diorama?.keyHere(target.slice(4)); return }
@@ -775,10 +780,81 @@ export const animationTimeline = (config = {}) => ({
     // the property reads null. Bailing on that made the diamond do nothing at all on a fresh
     // layer, silently, which is the worst way for a control to refuse. Key what the row is
     // SHOWING instead: the field says 0, so the keyframe says 0, and the two agree.
-    const value = Number.isFinite(live) ? live : 0
+    const isColor = propertyFor(kindOfTarget(target), property)?.type === 'color'
+    const value = isColor ? (typeof live === 'string' ? live : '') : (Number.isFinite(live) ? live : 0)
 
-    this.writeTrack(target, property, (track) => addKeyframe(track, { time: this.time, value }))
+    const before = this.trackFor(target, property)
+    const next = toggleKeyframe(before ?? { target, property, keyframes: [] }, this.time, value)
+    // The last key gone: the property is not animated any more, and it goes back to what it was.
+    if (!next.keyframes.length) return this.resetProperty(target, property)
+    this.writeTrack(target, property, () => next)
+    this.applyFrame()
     this.save()
+  },
+
+  /** 'none' | 'here' | 'elsewhere' — the three states of a property's diamond. */
+  keyState (target, property) {
+    void this.time
+    if (kindOfTarget(target) === 'dio') return keyStateAt({ keyframes: this.keysOf(target, property) }, this.time)
+    return keyStateAt(this.trackFor(target, property), this.time)
+  },
+
+  /**
+   * A value typed or dragged in the Format panel. On an animated property it is a keyframe at the
+   * playhead — updating the key there, or adding one between keys (After Effects). Returns false on
+   * a property that is not animated, so the panel saves the plain value as it always did.
+   */
+  editKeyed (target, property, value) {
+    if (kindOfTarget(target) === 'dio' || !this.isAnimated(target, property)) return false
+    const isColor = propertyFor(kindOfTarget(target), property)?.type === 'color'
+    const v = isColor ? String(value ?? '') : Number(value)
+    if (!isColor && !Number.isFinite(v)) return true
+    if (this.playing) this.pause()
+    writeObjectProperty(target, property, v)
+    this.writeTrack(target, property, (track) => addKeyframe(track, { time: this.time, value: v }))
+    this.save()
+    this.announce()
+    return true
+  },
+
+  /** Has this property anything Reset would take back? Only keys, so only an animated one. */
+  canReset (target, property) {
+    return kindOfTarget(target) !== 'dio' && this.isAnimated(target, property)
+  },
+
+  canResetObject (target) {
+    return this.propertiesOf(target).some((p) => this.canReset(target, p.key))
+  },
+
+  /**
+   * Reset: the property's keys go, and it returns to the value it had before it was keyed. The
+   * layer's stored value is written back too, so a canvas drag made while it was animated cannot
+   * leave the layer somewhere the teacher never chose.
+   */
+  resetProperty (target, property, { persist = true } = {}) {
+    const track = this.trackFor(target, property)
+    if (!track) return
+    const base = baseOf(track)
+    this.tracks = this.tracks.filter((t) => t !== track)
+    this.selected = this.selected.filter((id) => !id.startsWith(`${target}|${property}|`))
+    if (base !== null && base !== undefined) {
+      if (kindOfTarget(target) === 'camera') { if (window.__lessonMap) applyCamera(window.__lessonMap, { [property]: base }) }
+      else writeObjectProperty(target, property, base)
+      const [kind, id] = String(target).split(':')
+      if (kind === 'art') this.$wire?.updateArtworkLayer?.(Number(id), property, base)
+    }
+    if (!persist) return
+    this.applyFrame()
+    this.save()
+    this.announce()
+  },
+
+  /** "Reset all": every property of the object, one save (and so one undo step). */
+  resetObject (target) {
+    for (const p of this.propertiesOf(target)) if (this.canReset(target, p.key)) this.resetProperty(target, p.key, { persist: false })
+    this.applyFrame()
+    this.save()
+    this.announce()
   },
 
   /** The scene's timeline as the server now has it — after an undo or redo. */
@@ -792,6 +868,9 @@ export const animationTimeline = (config = {}) => ({
     this.applyFrame()
     this.announce()
   },
+
+  /** A registry label in the teacher's language. */
+  propertyLabel (property) { return config.propertyLabels?.[property.key] ?? property.label },
 
   /** Is there a key exactly under the playhead? Drives the diamond's pressed state. */
   hasKeyHere (target, property) {
@@ -808,11 +887,14 @@ export const animationTimeline = (config = {}) => ({
       return cell ? Math.round(cell[DIO_AXIS[property]] * 100) / 100 : 0
     }
     const keys = this.keysOf(target, property)
+    const isColor = propertyFor(kindOfTarget(target), property)?.type === 'color'
     if (keys.length) {
       const frame = sampleFrame(this.tracks, this.time)
       const value = frame[target]?.[property]
+      if (isColor && typeof value === 'string') return value
       if (Number.isFinite(value)) return round1(value)
     }
+    if (isColor) { const live = readObjectProperty(target, property); return typeof live === 'string' ? live : '' }
     const map = window.__lessonMap
     const live = kindOfTarget(target) === 'camera'
       ? (map ? cameraFromMap(map)[property] : null)
@@ -843,7 +925,8 @@ export const animationTimeline = (config = {}) => ({
    * clicking the lane is a float. That is the whole of *"not same as previous keyframe"*.
    */
   setValue (target, property, value) {
-    if (!Number.isFinite(value)) return
+    const isColor = propertyFor(kindOfTarget(target), property)?.type === 'color'
+    if (!isColor && !Number.isFinite(value)) return
     if (kindOfTarget(target) === 'dio') {
       // The stage applies the canvas rules: snapped, on its floor, recorded while auto-key is on.
       const id = target.slice(4)

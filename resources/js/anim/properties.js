@@ -21,9 +21,21 @@ export const INTERPOLATE = {
   angle: (a, b, t) => lerp(a, unwrapAngle(b, a), t),
   /** Metres above sea level. Halfway between 100 and 10,000 should look halfway, which is 1,000. */
   log: lerpAltitude,
+  /** '#rrggbb' per channel. A missing colour ('' is "no tint") cannot be mixed, so it cuts at the
+   *  end of the segment rather than inventing a colour between nothing and something. */
+  color: (a, b, t) => {
+    const A = rgb(a)
+    const B = rgb(b)
+    if (!A || !B) return t < 1 ? a : b
+    return `#${A.map((c, i) => Math.round(lerp(c, B[i], t)).toString(16).padStart(2, '0')).join('')}`
+  },
 }
 
-const P = (key, label, interpolate, unit = '') => ({ key, label, interpolate, unit })
+const rgb = (hex) => (/^#[0-9a-f]{6}$/i.test(String(hex ?? ''))
+  ? [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
+  : null)
+
+const P = (key, label, interpolate, unit = '') => ({ key, label, interpolate, unit, type: interpolate === 'color' ? 'color' : 'number' })
 
 /**
  * The animatable properties of each object kind. Adding a kind here is what makes it appear in the
@@ -62,9 +74,13 @@ const REGISTRY = {
     P('x', 'X', 'linear', '%'),
     P('y', 'Y', 'linear', '%'),
     P('width', 'W', 'linear', '%'),
+    P('height', 'H', 'linear', '%'),
     P('scale', 'Scale', 'linear', '%'),
     P('rotation', 'Angle', 'angle', '°'),
+    P('blur', 'Blur', 'linear', ''),
     P('opacity', 'Opacity', 'linear', ''),
+    P('tint', 'Colour', 'color', ''),
+    P('tint_opacity', 'Colour %', 'linear', ''),
   ],
   /** A diorama item: its place on its floor, in cells. X runs left-right, Z away from the camera.
    *  No Y: nothing leaves the floor. The keys live in the diorama JSON, not in timeline tracks. */

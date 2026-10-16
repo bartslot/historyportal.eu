@@ -24,7 +24,8 @@
         rotation: {{ (float) $rotation }},
         flipX: {{ $flipX ? 'true' : 'false' }},
         flipY: {{ $flipY ? 'true' : 'false' }},
-     })">
+     })"
+     x-on:timeline-changed.window="syncKeyed()">
 
     <div class="flex items-center gap-2">
         <span style="width: var(--settings-panel-label-w, 3.0625rem)"
@@ -72,6 +73,7 @@
                 @endforeach
             </div>
         </div>
+        <x-ui.keyframe-diamond :target="'art:'.(int) $assetId" property="rotation" />
     </div>
 
     {{-- Rotate and flip: glyphs, no words, in one row — Figma's own alignment controls.

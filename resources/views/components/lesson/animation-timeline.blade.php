@@ -54,6 +54,13 @@
             'hold'           => __('Hold'),
             'custom'         => __('Custom bezier'),
         ],
+        'propertyLabels' => [
+            'x' => 'X', 'y' => 'Y', 'z' => 'Z', 'width' => 'W', 'height' => 'H',
+            'scale' => __('Scale'), 'rotation' => __('Angle'), 'blur' => __('Blur'),
+            'opacity' => __('Opacity'), 'tint' => __('Colour'), 'tint_opacity' => __('Colour') . ' %',
+            'lng' => __('Longitude'), 'lat' => __('Latitude'), 'zoom' => __('Zoom'),
+            'heading' => __('Direction'), 'tilt' => __('Tilt'),
+        ],
      ]) }}"
      x-data="animationTimeline(JSON.parse($el.dataset.timelineConfig))"
      x-on:pointermove.window="onPointerMove($event)"
@@ -259,6 +266,11 @@
                         </svg>
                         <span class="truncate text-2xs font-semibold text-panel-value" x-text="object.label"></span>
                     </button>
+                    {{-- Every property of this object back to what it was before it was keyed. --}}
+                    <button type="button" x-show="canResetObject(object.target)" x-cloak
+                            x-on:click="resetObject(object.target)"
+                            :data-timeline-reset-all="object.target"
+                            class="shrink-0 cursor-pointer rounded px-1 text-3xs uppercase tracking-wide text-panel-label hover:bg-white/5 hover:text-white">{{ __('Reset all') }}</button>
                     <button type="button" x-on:click="toggleGroup(object.target)"
                             :data-timeline-toggle="object.target"
                             :aria-expanded="openGroups[object.target] ? 'true' : 'false'"
@@ -306,11 +318,27 @@
                             <span class="mb-2 h-2.5 w-2 shrink-0 rounded-bl-[2px] border-b border-l border-panel-hairline"
                                   aria-hidden="true"></span>
                             <span data-scrub class="shrink-0 cursor-col-resize select-none text-3xs uppercase tracking-wide text-panel-label"
-                                  style="width: calc(var(--settings-panel-label-w) - 0.75rem)" x-text="property.label"></span>
-                            <input type="number" step="any" data-timeline-value
-                                   :value="valueAt(object.target, property.key)"
-                                   x-on:change="setValue(object.target, property.key, Number($event.target.value))"
-                                   class="h-[21px] min-w-0 flex-1 rounded bg-panel-hairline px-1.5 text-right font-mono text-3xs text-panel-value focus:outline-none" />
+                                  style="width: calc(var(--settings-panel-label-w) - 0.75rem)" x-text="propertyLabel(property)"></span>
+                            {{-- Reset: the keys go and the property returns to what it was before it
+                                 was keyed. Only while it is animated; invisible rather than removed
+                                 otherwise, so the value fields stay in one column. --}}
+                            <button type="button" x-on:click.prevent="resetProperty(object.target, property.key)"
+                                    :class="!canReset(object.target, property.key) && 'invisible'"
+                                    :disabled="!canReset(object.target, property.key)"
+                                    :data-timeline-reset="object.target + ':' + property.key"
+                                    class="shrink-0 cursor-pointer rounded px-0.5 text-3xs uppercase tracking-wide text-panel-label hover:bg-white/5 hover:text-white">{{ __('Reset') }}</button>
+                            <template x-if="property.type === 'color'">
+                                <input type="color" data-timeline-value
+                                       :value="valueAt(object.target, property.key) || '#ffffff'"
+                                       x-on:change="setValue(object.target, property.key, $event.target.value)"
+                                       class="h-[21px] min-w-0 flex-1 cursor-pointer rounded bg-panel-hairline px-0.5" />
+                            </template>
+                            <template x-if="property.type !== 'color'">
+                                <input type="number" step="any" data-timeline-value
+                                       :value="valueAt(object.target, property.key)"
+                                       x-on:change="setValue(object.target, property.key, Number($event.target.value))"
+                                       class="h-[21px] min-w-0 flex-1 rounded bg-panel-hairline px-1.5 text-right font-mono text-3xs text-panel-value focus:outline-none" />
+                            </template>
                             {{-- < diamond > — the diamond keys THIS property at the playhead, the
                                  arrows step the playhead to this object's previous and next
                                  keyframe. Disabled when there is none in that direction, rather
@@ -325,12 +353,14 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/>
                                 </svg>
                             </button>
-                            <button type="button" x-on:click.prevent="toggleKey(object.target, property.key)"
+                            <button type="button" x-on:click.prevent="toggleKey(object.target, property.key); announce()"
                                     :data-timeline-key="object.target + ':' + property.key"
+                                    :data-keyframe-state="keyState(object.target, property.key)"
                                     :aria-pressed="hasKeyHere(object.target, property.key) ? 'true' : 'false'"
-                                    :data-tooltip="hasKeyHere(object.target, property.key) ? @js(__('Update keyframe')) : @js(__('Add keyframe'))"
-                                    class="shrink-0 rounded p-0.5 hover:bg-white/5">
-                                <x-ui.keyframe-diamond on="hasKeyHere(object.target, property.key)" />
+                                    :aria-label="hasKeyHere(object.target, property.key) ? @js(__('Remove keyframe')) : @js(__('Add keyframe'))"
+                                    :data-tooltip="hasKeyHere(object.target, property.key) ? @js(__('Remove keyframe')) : @js(__('Add keyframe'))"
+                                    class="shrink-0 rounded p-0.5 text-panel-label hover:bg-white/5 hover:text-white">
+                                <x-ui.keyframe-diamond state="keyState(object.target, property.key)" />
                             </button>
                             <button type="button" x-on:click.prevent="jumpKey(object.target, 1)"
                                     :disabled="nextKeyTime(object.target) === null"
@@ -438,7 +468,7 @@
                                      gestures. Delete/Backspace removes what is selected. --}}
                                 <template x-for="key in keysOf(object.target, property.key)" :key="key.time">
                                     <span class="absolute grid cursor-grab place-items-center"
-                                          :style="`left: ${xOf(key.time) - 6}px; top: 4px`"
+                                          :style="`left: ${Math.round(xOf(key.time) - 6.5)}px; top: calc((var(--timeline-lane-h) - 13px) / 2)`"
                                           :data-timeline-diamond="object.target + ':' + property.key"
                                           :data-key-id="object.target + '|' + property.key + '|' + key.time"
                                           :aria-selected="isSelected(object.target, property.key, key.time) ? 'true' : 'false'"
