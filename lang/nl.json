@@ -2141,5 +2141,6 @@
     "Remove tail": "Staart weghalen",
     "Tail": "Staart",
     "Tail root": "Staartvoet",
-    "Bend": "Buiging"
+    "Bend": "Buiging",
+    "Delete :name": ":name verwijderen"
 }

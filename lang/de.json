@@ -2099,5 +2099,6 @@
     "Remove tail": "Zeiger entfernen",
     "Tail": "Zeiger",
     "Tail root": "Zeigeransatz",
-    "Bend": "Biegung"
+    "Bend": "Biegung",
+    "Delete :name": ":name löschen"
 }

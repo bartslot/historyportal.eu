@@ -2099,5 +2099,6 @@
     "Remove tail": "Togli la punta",
     "Tail": "Punta",
     "Tail root": "Base della punta",
-    "Bend": "Curvatura"
+    "Bend": "Curvatura",
+    "Delete :name": "Elimina :name"
 }

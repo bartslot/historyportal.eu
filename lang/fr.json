@@ -2099,5 +2099,6 @@
     "Remove tail": "Retirer la pointe",
     "Tail": "Pointe",
     "Tail root": "Base de la pointe",
-    "Bend": "Courbure"
+    "Bend": "Courbure",
+    "Delete :name": "Supprimer :name"
 }
