@@ -7,6 +7,7 @@ namespace App\Console\Commands;
 use App\Models\SvgAsset;
 use App\Services\Lessons\LibraryCdn;
 use App\Services\Svg\SvgSanitizer;
+use App\Support\LibraryEra;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -184,7 +185,7 @@ class ImportIconLibrary extends Command
             'width' => $clean['width'],
             'height' => $clean['height'],
             'view_box' => $clean['view_box'],
-            ...$this->metaFor($ref, $collection, $this->isRaster($file)),
+            ...$this->metaFor($ref, $collection, $this->isRaster($file), $subcategory),
         ])->save();
     }
 
@@ -214,7 +215,7 @@ class ImportIconLibrary extends Command
             'width' => isset($entry['width']) ? (int) $entry['width'] : null,
             'height' => isset($entry['height']) ? (int) $entry['height'] : null,
             'view_box' => null,
-            ...$this->metaFor($ref, $collection, true),
+            ...$this->metaFor($ref, $collection, true, $subcategory),
         ])->save();
     }
 
@@ -260,16 +261,23 @@ class ImportIconLibrary extends Command
      * The real-world fields for one picture. A raster picture without them is imported but named:
      * every picture we add must say what it is and how tall it is (Bart, 2026-09-29).
      *
-     * @return array{description: ?string, placement: ?string, height_m: ?float, opaque_box: ?array<int, float>}
+     * The era (tijdvak) comes from the entry's `era`, else from the folder (LibraryEra).
+     *
+     * @return array{description: ?string, placement: ?string, height_m: ?float, opaque_box: ?array<int, float>, era: ?string}
      */
-    private function metaFor(string $ref, string $collection, bool $isRaster): array
+    private function metaFor(string $ref, string $collection, bool $isRaster, ?string $folder): array
     {
         $entry = $this->meta[substr($ref, strlen($collection) + 1)] ?? null;
-        if ($entry === null && $isRaster) {
+        // An entry holding only an era (import_art.py writes one) still says nothing about WHAT it is.
+        if (! isset($entry['description']) && $isRaster) {
             $this->warn("  {$ref}: no entry in meta.json (what it is, placement, height)");
+        }
+        if (isset($entry['era']) && ! LibraryEra::isKnown((string) $entry['era'])) {
+            $this->warn("  {$ref}: era '{$entry['era']}' in meta.json is not a period in config/lesson-taxonomy.php");
         }
 
         return [
+            'era' => LibraryEra::resolve(isset($entry['era']) ? (string) $entry['era'] : null, $folder),
             'description' => $entry['description'] ?? null,
             'placement' => $entry['placement'] ?? null,
             'height_m' => isset($entry['height_m']) ? (float) $entry['height_m'] : null,

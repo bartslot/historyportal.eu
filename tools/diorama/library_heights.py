@@ -106,7 +106,9 @@ def main():
             }
     answers = ask(STATE, questions).get("answers", {})
 
-    out = {}
+    # Keys this script does not own (the era written by import_art.py or by hand) survive a rerun.
+    old = json.load(open(OUT)) if os.path.exists(OUT) else {}
+    out = {ref: entry for ref, entry in old.items() if ref not in ASSETS}
     for ref, (desc, placement, options) in ASSETS.items():
         key = ref.split("/")[-1].removesuffix(".webp")
         entry = {"description": desc, "placement": placement, "opaque_box": opaque_box(ref)}
@@ -117,6 +119,8 @@ def main():
             person = next((p for p in SAME_PERSON if key.startswith(p + "-")), None)
             if person and placement == "stands" and "seated" not in desc and "riding" not in desc:
                 entry["height_m"] = SAME_PERSON[person]
+        if "era" in old.get(ref, {}):
+            entry["era"] = old[ref]["era"]
         out[ref] = entry
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     json.dump(out, open(OUT, "w"), indent=2, ensure_ascii=False)
