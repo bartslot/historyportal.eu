@@ -799,10 +799,16 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         const shots = (payload.shots || []).slice(0, 2)
         // scene:load re-fires on every poll and unrelated edit: rebuild only on a real change, or
         // a figure mid-drag and every entrance would restart. A panel click only moves the ring.
-        const sig = JSON.stringify([payload.sceneId, payload.split ?? payload.config?.split, payload.backgroundColor,
-            shots.map(s => ({ ...s, image_url: stripV(s.image_url), layers: (s.layers || []).map(l => ({ ...l, url: stripV(l.url) })) })),
+        const split = payload.split ?? payload.config?.split
+        // The split's position and each panel's crop are left OUT of the signature: the divider
+        // and the panes are dragged on the stage itself, and the save's echo must update them in
+        // place. A rebuild would flash the stage and throw away what the hand is holding.
+        const sig = JSON.stringify([payload.sceneId, split?.dir, payload.backgroundColor,
+            shots.map(({ focus, ...s }) => ({ ...s, image_url: stripV(s.image_url), layers: (s.layers || []).map(l => ({ ...l, url: stripV(l.url) })) })),
             payload.config?.lines ?? null])
         if (_splitStage && sig === _splitSig && _splitHost?.isConnected) {
+            _splitStage.setSplit(split)
+            shots.forEach((s, i) => _splitStage.setFocus(i, s.focus))
             _splitStage.select(panel)
             window.__lessonArtworkLayer = _splitStage.overlay(panel)
             return
@@ -825,9 +831,12 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             onLayerChange: (i, assetId, t) => window.Livewire?.dispatch('artwork:move', {
                 assetId, x: t.x, y: t.y, scale: t.scale, rotation: t.rotation, panel: i,
             }),
+            // The divider and the panes, moved on the stage: the same values the sliders set.
+            onSplitChange: (at) => window.Livewire?.dispatch('split:at', { at }),
+            onViewChange: (i, f) => window.Livewire?.dispatch('split:view', { panel: i, x: f.x, y: f.y, zoom: f.zoom }),
         })
         _splitStage.show({
-            split: payload.split ?? payload.config?.split,
+            split,
             shots,
             lines: payload.config?.lines || [],
             matte: payload.backgroundColor || null,

@@ -69,6 +69,31 @@ trait EditsSplitPanels
         $this->selectSceneInternal($scene->id);
     }
 
+    /** The divider dragged on the stage: the same Position the slider sets. */
+    #[On('split:at')]
+    public function moveSplit(float $at): void
+    {
+        $this->setSplit(null, $at);
+    }
+
+    /**
+     * A pane panned (drag) or zoomed (wheel) on the stage. The stage names the panel it happened
+     * in, which need not be the active one.
+     */
+    #[On('split:view')]
+    public function setPanelView(int $panel, float $x, float $y, float $zoom = 1.0): void
+    {
+        if (! $this->selectedSceneId) {
+            return;
+        }
+        $scene = $this->lesson->scenes()->findOrFail($this->selectedSceneId);
+        $shots = array_values((array) ($scene->shots ?? []));
+        if (! SceneSplit::of($scene->config) || ! isset($shots[$panel])) {
+            return;
+        }
+        $this->storePanelFocus($scene, $shots, $panel, SceneSplit::focus(['x' => $x, 'y' => $y, 'zoom' => $zoom]));
+    }
+
     /** A panel was clicked on the stage: the inspector now edits that one. */
     #[On('split:panel')]
     public function selectPanel(int $panel): void
@@ -82,10 +107,13 @@ trait EditsSplitPanels
         $this->selectSceneInternal($this->selectedSceneId);
     }
 
-    /** Which part of the active panel's picture its crop keeps: x or y, 0..100. Null = the middle again. */
+    /**
+     * The active panel's crop: x or y (0..100, which part of its picture stays in view) or zoom
+     * (1..4). Null puts that one back to its default: the middle, no zoom.
+     */
     public function setPanelFocus(string $axis, ?float $value = null): void
     {
-        if (! in_array($axis, ['x', 'y'], true) || ! $this->selectedSceneId) {
+        if (! in_array($axis, ['x', 'y', 'zoom'], true) || ! $this->selectedSceneId) {
             return;
         }
         $scene = $this->lesson->scenes()->findOrFail($this->selectedSceneId);
@@ -95,8 +123,16 @@ trait EditsSplitPanels
             return;
         }
         $focus = SceneSplit::focus($shots[$panel]['focus'] ?? []) ?? ['x' => 50.0, 'y' => 50.0];
-        $focus[$axis] = $value ?? 50.0;
-        $focus = SceneSplit::focus($focus);
+        $focus[$axis] = $value ?? ($axis === 'zoom' ? 1.0 : 50.0);
+        $this->storePanelFocus($scene, $shots, $panel, SceneSplit::focus($focus));
+    }
+
+    /**
+     * @param  list<array<string,mixed>>  $shots
+     * @param  array{x: float, y: float, zoom?: float}  $focus
+     */
+    private function storePanelFocus(Scene $scene, array $shots, int $panel, array $focus): void
+    {
         if ($focus === ['x' => 50.0, 'y' => 50.0]) {
             unset($shots[$panel]['focus']);   // the default is the absence of the key
         } else {

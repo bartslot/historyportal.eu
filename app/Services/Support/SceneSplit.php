@@ -9,7 +9,8 @@ namespace App\Services\Support;
  *
  *     config.split = ['dir' => 'h'|'v', 'at' => 0.25..0.75]
  *     shots[0], shots[1] = the two panels, each with its own backdrop, figures, camera and focus
- *     shots[i].focus = ['x' => 0..100, 'y' => 0..100]   which part of the picture the crop keeps
+ *     shots[i].focus = ['x' => 0..100, 'y' => 0..100, 'zoom'? => 1..4]   which part of the picture
+ *                      the crop keeps, and how far it is zoomed in (absent = 1, the whole crop)
  *
  * Without config.split a scene is Standard. The retired view modes (config.slideshow_mode
  * 'parallax'/'drawing' and the old config.parallax flag) read as Standard: nothing reads them.
@@ -22,6 +23,9 @@ final class SceneSplit
     public const AT = [0.25, 0.75];
 
     public const AT_DEFAULT = 0.5;
+
+    /** How far a panel's picture zooms in: 1 is the plain cover crop. */
+    public const ZOOM = [1.0, 4.0];
 
     /** Config keys of the retired Parallax / Drawing modes: never read, and dropped on export. */
     public const RETIRED_KEYS = ['slideshow_mode', 'parallax'];
@@ -54,14 +58,16 @@ final class SceneSplit
         return self::of($config) ? 'split' : 'standard';
     }
 
-    /** @return array{x: float, y: float}|null */
+    /** @return array{x: float, y: float, zoom?: float}|null */
     public static function focus(mixed $raw): ?array
     {
         if (! is_array($raw)) {
             return null;
         }
         $pct = fn (mixed $v): float => is_numeric($v) ? max(0.0, min(100.0, (float) $v)) : 50.0;
+        $focus = ['x' => $pct($raw['x'] ?? null), 'y' => $pct($raw['y'] ?? null)];
+        $zoom = is_numeric($raw['zoom'] ?? null) ? round(max(self::ZOOM[0], min(self::ZOOM[1], (float) $raw['zoom'])), 3) : 1.0;
 
-        return ['x' => $pct($raw['x'] ?? null), 'y' => $pct($raw['y'] ?? null)];
+        return $zoom > 1.0 ? [...$focus, 'zoom' => $zoom] : $focus;
     }
 }
