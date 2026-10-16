@@ -153,7 +153,11 @@ export const withBalloonIds = (lines) => (Array.isArray(lines) ? lines : [])
 
 /** The corner radius of a bubble (1.4em in app.css) for a given font size. */
 const CORNER_EM = 1.4
-/** The ink line of a balloon at scale 1, px. */
+/**
+ * The ink line of EVERY balloon, px: one pencil, whatever the balloon's size. A bigger balloon
+ * gets bigger words, never a fatter line (Bart, 2026-10-16: "lines should be drawn by the same
+ * pencil so lines don't increase width or stroke size").
+ */
 const INK_PX = 2
 /** A balloon's size, as a factor of the house size: the smallest and largest the editor keeps. */
 export const MIN_SCALE = 0.3
@@ -416,10 +420,10 @@ export class BalloonLayer {
     const k = w / REF_WIDTH
     const view = this._view()
     const thought = line.kind === 'thought'
-    // Scale grows everything the balloon draws: words, box, outline, tail root and circles.
+    // Scale grows the words, the box, the tail root and the circles; the ink line stays one pencil.
     const scale = Number.isFinite(line.scale) ? Math.min(MAX_SCALE, Math.max(MIN_SCALE, line.scale)) : 1
     const font = Math.max(13, FONT_REF * k) * scale
-    const ink = `${INK_PX * scale}px`
+    const ink = `${INK_PX}px`
     el.style.opacity = Number.isFinite(line.opacity) ? String(line.opacity) : ''
     for (const node of el.querySelectorAll('.lp-balloon__cloud path, .lp-balloon__tail .ink, .lp-balloon__tail .trail')) node.setAttribute('stroke-width', ink)
     const bubble = el.querySelector('.lp-balloon__bubble')
@@ -431,6 +435,10 @@ export class BalloonLayer {
       padding: thought ? `${0.95 * font}px ${1.3 * font}px` : `${0.55 * font}px ${0.9 * font}px`,
       left: '0px',
       top: '0px',
+      // Its own width: an absolutely placed box otherwise shrinks to the room left before its
+      // host's edge, and a balloon dragged across a split panel's border wrapped into a column
+      // that ended at the border (Bart, 2026-10-16: "the bubble doesn't pass yet").
+      width: 'max-content',
     })
     const at = fractionPoint(line.at)
     const mouth = this._mouth(line)
