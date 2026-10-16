@@ -25,6 +25,7 @@ import {
   fitZoom, timeAtX, toleranceSeconds, tickStep, ticksFor, formatTime,
   DRAG_THRESHOLD_PX, LANE_PAD_PX, zoomFromSlider, sliderFromZoom,
 } from './timeline-view.js'
+import { labelColumn } from './timeline-label-column.js'
 
 /** Figma's Bézier easing presets, by our easing.js names. 'hold' is Figma's Hold: a cut. */
 const EASING_PRESETS = [
@@ -81,7 +82,8 @@ const DEFAULT_DURATION = 8
 
 /** One decimal on a row that is 115px wide. `30.815` rendered as "30,815" and read as thirty
  *  thousand; the model keeps its precision, the field does not need it. */
-const round1 = (v) => Math.round(v * 10) / 10
+// Two decimals: a factor (scale, opacity) moves in steps of 0.05, and tenths showed 0.25 as 0.3.
+const round2 = (v) => Math.round(v * 100) / 100
 
 /** The map's camera as the five numbers the timeline animates — map-native, so it round-trips. */
 export const cameraFromMap = (map) => {
@@ -112,6 +114,7 @@ export const applyCamera = (map, values) => {
 
 
 export const animationTimeline = (config = {}) => ({
+  ...labelColumn(),
   time: 0,
   duration: Number(config.duration) || DEFAULT_DURATION,
   zoom: 100,
@@ -947,14 +950,14 @@ export const animationTimeline = (config = {}) => ({
       const frame = sampleFrame(this.tracks, this.time)
       const value = frame[target]?.[property]
       if (isColor && typeof value === 'string') return value
-      if (Number.isFinite(value)) return round1(value)
+      if (Number.isFinite(value)) return round2(value)
     }
     if (isColor) { const live = readObjectProperty(target, property); return typeof live === 'string' ? live : '' }
     const map = window.__lessonMap
     const live = kindOfTarget(target) === 'camera'
       ? (map ? cameraFromMap(map)[property] : null)
       : readObjectProperty(target, property)
-    return Number.isFinite(live) ? round1(live) : 0
+    return Number.isFinite(live) ? round2(live) : 0
   },
 
   /**

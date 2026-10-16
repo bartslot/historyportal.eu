@@ -12,6 +12,8 @@
  * the time and a binding per element stops working on whichever row was re-rendered last.
  */
 
+import { paintFill } from './range-fill.js'
+
 const keyOf = (el) => {
   const { keyTarget: target, keyProperty: property, keyScale } = el?.dataset ?? {}
   return target && property ? { target, property, scale: Number(keyScale) || 1 } : null
@@ -39,24 +41,34 @@ export const saveLayerValue = ($wire, assetId, property, value) => {
   $wire?.call?.('updateArtworkLayer', assetId, property, value)
 }
 
-/** Show the value at the playhead in every keyed field the teacher is not typing in. */
+/**
+ * Show the value at the playhead in every keyed field the teacher is not typing in or dragging.
+ *
+ * A slider the teacher has just let go of still has focus, and is synced all the same: its knob
+ * and number are what Livewire overwrites with the base value when the keyframe save re-renders
+ * the panel (Bart, 2026-10-16: "changing the slider doesn't result in anything on the slider").
+ */
 const syncFields = () => {
   const keying = window.__timelineKeying
   if (!keying) return
   for (const el of document.querySelectorAll('input[data-key-target]')) {
     const key = keyOf(el)
-    if (!key || el === document.activeElement || !keying.animated?.(key.target, key.property)) continue
+    if (!key || !keying.animated?.(key.target, key.property)) continue
+    const isRange = el.type === 'range'
+    if (isRange ? el.matches(':active') : el === document.activeElement) continue
     const text = valueToField(keying.value(key.target, key.property), key.scale)
-    if (text === '' || el.value === text) continue
-    el.value = text
-    if (el.type === 'range') {
-      const span = Number(el.max) - Number(el.min)
-      const pct = span > 0 ? Math.max(0, Math.min(100, ((Number(text) - Number(el.min)) / span) * 100)) : 0
-      for (const node of [el, el.parentElement]) node?.style.setProperty('--range-pct', `${pct}%`)
-      const display = el.closest('.range-panel-knob')?.parentElement?.querySelector('[data-key-display]')
-      if (display) display.textContent = String(Math.round(Number(text) * (Number(display.dataset.keyDisplayScale) || 1) * 100) / 100)
-    }
+    if (text === '') continue
+    if (el.value !== text) el.value = text
+    if (!isRange) continue
+    paintFill(el)
+    showNumber(el)
   }
+}
+
+/** The number beside a keyed slider, from the slider's own value. */
+const showNumber = (el) => {
+  const display = el.closest('.range-panel-knob')?.parentElement?.querySelector('[data-key-display]')
+  if (display) display.textContent = String(Math.round(Number(el.value) * (Number(display.dataset.keyDisplayScale) || 1) * 100) / 100)
 }
 
 export function initKeyedFields () {
@@ -71,5 +83,13 @@ export function initKeyedFields () {
     if (window.__timelineKeying?.edit?.(key.target, key.property, value)) event.stopImmediatePropagation()
   }, true)
 
+  document.addEventListener('input', (event) => {
+    if (event.target.type === 'range' && keyOf(event.target)) showNumber(event.target)
+  })
   window.addEventListener('timeline-changed', syncFields)
+
+  // A morph puts the server's base value back into every field it touches.
+  const hook = () => window.Livewire?.hook?.('morphed', syncFields)
+  if (window.Livewire) hook()
+  else document.addEventListener('livewire:init', hook, { once: true })
 }
