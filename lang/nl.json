@@ -2138,5 +2138,6 @@
     "Speech": "Spreken",
     "Thought": "Gedachte",
     "Speaker": "Spreker",
-    "Remove tail": "Staart weghalen"
+    "Remove tail": "Staart weghalen",
+    "Delete :name": ":name verwijderen"
 }
