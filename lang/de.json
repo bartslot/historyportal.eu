@@ -2096,5 +2096,8 @@
     "Speech": "Sprechen",
     "Thought": "Gedanke",
     "Speaker": "Sprecher",
-    "Remove tail": "Zeiger entfernen"
+    "Remove tail": "Zeiger entfernen",
+    "Tail": "Zeiger",
+    "Tail root": "Zeigeransatz",
+    "Bend": "Biegung"
 }

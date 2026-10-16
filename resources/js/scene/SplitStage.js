@@ -378,6 +378,11 @@ export class SplitStage {
     this.panels.forEach((p, i) => p.balloons.setLines(named.filter(l => panelForLine(l, all) === i)))
   }
 
+  /** A balloon's keyframed values, in whichever panel holds it. */
+  applyBalloonValues (id, values) {
+    for (const p of this.panels) p.balloons.applyValues(id, values)
+  }
+
   /** The narration clock: balloons come and go. */
   setTime (t) {
     for (const p of this.panels) p.balloons.update(t)

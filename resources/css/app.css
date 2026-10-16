@@ -565,18 +565,13 @@
 /* A thought: the words sit on a cloud (balloon-shape.js cloudPath) instead of the rounded box. */
 .lp-balloon__cloud { position: absolute; overflow: visible; }
 .lp-balloon[data-kind="thought"] .lp-balloon__bubble { background: transparent; border-color: transparent; box-shadow: none; }
-/* The editor's stage (balloon-edit.js): a balloon is grabbed, ringed when selected, and its tail
-   tip has a handle. Flat, the theme's own colours. */
+/* The editor's stage (balloon-edit.js): a balloon is grabbed and ringed when selected; its handles
+   are the layer handles (ArtworkOverlay handleCss). Flat, the theme's own colours. */
 .lp-balloon[data-editable] .lp-balloon__bubble { pointer-events: auto; cursor: move; user-select: none; }
 .lp-balloon[data-editable] .lp-balloon__bubble[contenteditable="true"],
 .lp-balloon[data-editable] .lp-balloon__bubble[contenteditable="plaintext-only"] { cursor: text; user-select: text; outline: none; }
 .lp-balloon[data-selected] .lp-balloon__bubble { outline: 2px solid var(--color-primary); outline-offset: 4px; }
 .lp-balloon[data-kind="thought"][data-selected] .lp-balloon__bubble { outline-offset: 0; }
-.lp-balloon__handle {
-    position: absolute; width: 0.75rem; height: 0.75rem; margin: -0.375rem 0 0 -0.375rem;
-    border-radius: 9999px; background: var(--color-base-100); border: 2px solid var(--color-primary);
-    pointer-events: auto; cursor: grab; touch-action: none;
-}
 
 /* ─── DaisyUI component overrides — Learning Portal brand ───────────── */
 @layer components {

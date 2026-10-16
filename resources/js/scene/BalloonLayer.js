@@ -22,7 +22,8 @@
  * adds and removes balloons whose state changed, so calling it often costs nothing.
  */
 import { EASE } from '../easing.js'
-import { DEFAULT_BEND, clampToView, cloudPath, tailRoot, tailShape, thoughtTrail, tipShortOf } from './balloon-shape.js'
+import { DEFAULT_BEND, clampToView, cloudPath, outlinePoint, outlineT, tailRoot, tailShape, thoughtTrail, tipShortOf } from './balloon-shape.js'
+import { playEntrance } from './animations.js'
 
 /** Reference width the house rules are measured at. */
 const REF_WIDTH = 1920
@@ -152,6 +153,83 @@ export const withBalloonIds = (lines) => (Array.isArray(lines) ? lines : [])
 
 /** The corner radius of a bubble (1.4em in app.css) for a given font size. */
 const CORNER_EM = 1.4
+/** The ink line of a balloon at scale 1, px. */
+const INK_PX = 2
+/** A balloon's size, as a factor of the house size: the smallest and largest the editor keeps. */
+export const MIN_SCALE = 0.3
+export const MAX_SCALE = 4
+/** How a balloon arrives when its line names none: the pop it always had. */
+export const DEFAULT_BALLOON_ENTRANCE = 'pop'
+
+const pct = (v) => Math.round(v * 10000) / 100
+
+/**
+ * One animatable property of a balloon (the timeline's `bal` rows), from its line, else from where
+ * it is drawn now (`drawn`: fractions of the host, see _place). x, y, tip_x, tip_y are % of the
+ * host; root is the outline position 0..1; scale and opacity are factors.
+ */
+export function balloonValue (line, property, drawn = null) {
+  const at = fractionPoint(line?.at) ?? drawn?.center ?? null
+  const tip = fractionPoint(line?.tail?.tip) ?? drawn?.tip ?? null
+  switch (property) {
+    case 'x': return at ? pct(at[0]) : null
+    case 'y': return at ? pct(at[1]) : null
+    case 'scale': return Number.isFinite(line?.scale) ? line.scale : 1
+    case 'opacity': return Number.isFinite(line?.opacity) ? line.opacity : 1
+    case 'tip_x': return tip ? pct(tip[0]) : null
+    case 'tip_y': return tip ? pct(tip[1]) : null
+    case 'root': return Number.isFinite(line?.tail?.root) ? line.tail.root : (drawn?.root ?? null)
+    case 'bend': return Number.isFinite(line?.tail?.bend) ? line.tail.bend : DEFAULT_BEND
+    default: return null
+  }
+}
+
+/**
+ * The save for animated values (balloonValue units): what the server stores on the line. One axis
+ * of a pair takes the other from `read` (the balloon as it is now).
+ */
+export function balloonPatch (values, read = () => null) {
+  const v = (k) => (Number.isFinite(values[k]) ? values[k] : read(k))
+  const both = (a, b) => (Number.isFinite(v(a)) && Number.isFinite(v(b)) ? [v(a) / 100, v(b) / 100] : null)
+  const patch = {}
+  if ('x' in values || 'y' in values) { const at = both('x', 'y'); if (at) patch.at = at }
+  if (Number.isFinite(values.scale)) patch.scale = values.scale
+  if (Number.isFinite(values.opacity)) patch.opacity = values.opacity
+  const tail = {}
+  if ('tip_x' in values || 'tip_y' in values) { const tip = both('tip_x', 'tip_y'); if (tip) tail.tip = tip }
+  if (Number.isFinite(values.root)) tail.root = values.root
+  if (Number.isFinite(values.bend)) tail.bend = values.bend
+  if (Object.keys(tail).length) patch.tail = tail
+
+  return patch
+}
+
+/**
+ * The line with animated values put on it (a keyframe frame, or a field dragged in the inspector).
+ * A value for one axis keeps the other where it is now. Pure: a new line, the old one untouched.
+ */
+export function withBalloonValues (line, values, drawn = null) {
+  const next = { ...line }
+  const has = (k) => Number.isFinite(values?.[k])
+  if (has('x') || has('y')) {
+    const at = fractionPoint(line.at) ?? drawn?.center ?? [0.5, 0.5]
+    next.at = [has('x') ? values.x / 100 : at[0], has('y') ? values.y / 100 : at[1]]
+  }
+  if (has('scale')) next.scale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, values.scale))
+  if (has('opacity')) next.opacity = Math.min(1, Math.max(0, values.opacity))
+  if (['tip_x', 'tip_y', 'root', 'bend'].some(has)) {
+    const tail = { ...(line.tail ?? {}) }
+    if (has('tip_x') || has('tip_y')) {
+      const tip = fractionPoint(tail.tip) ?? drawn?.tip ?? [0.5, 0.9]
+      tail.tip = [has('tip_x') ? values.tip_x / 100 : tip[0], has('tip_y') ? values.tip_y / 100 : tip[1]]
+    }
+    if (has('root')) tail.root = values.root
+    if (has('bend')) tail.bend = values.bend
+    next.tail = tail
+  }
+
+  return next
+}
 
 export class BalloonLayer {
   /**
@@ -214,6 +292,21 @@ export class BalloonLayer {
     if (el) this._place(el, this.lines[i])
   }
 
+  /** Keyframe values (balloonValue's units) onto one balloon, drawn now. */
+  applyValues (id, values) {
+    const i = this.indexOf(id)
+    if (i < 0) return
+    this.patchLine(id, withBalloonValues(this.lines[i], values, this.shown.get(i)?._drawn))
+  }
+
+  /** One animatable property of a balloon as it is now, or undefined when this layer lacks it. */
+  readValue (id, property) {
+    const i = this.indexOf(id)
+    if (i < 0) return undefined
+
+    return balloonValue(this.lines[i], property, this.shown.get(i)?._drawn)
+  }
+
   /** The editor's selection: ring the balloon (and show its tail handle); null clears it. */
   markSelected (id) {
     this._selectedId = id ?? null
@@ -247,11 +340,10 @@ export class BalloonLayer {
     const origin = this._place(el, line)
     if (this.editable) return
 
-    el.animate?.(
-      [{ opacity: 0, transform: 'scale(0.6)' }, { opacity: 1, transform: 'scale(1)' }],
-      { duration: ENTER_MS, easing: EASE.pop, fill: 'both' },
-    )
+    // The layers' own entrances (animations.js), so a balloon arrives the way a figure can.
     el.style.transformOrigin = `${origin[0]}px ${origin[1]}px`
+    const anim = line.anim ?? DEFAULT_BALLOON_ENTRANCE
+    playEntrance(el, { anim, ease: anim === 'pop' ? 'pop' : 'enter', duration: anim === 'pop' ? ENTER_MS : undefined })
   }
 
   _hide (i) {
@@ -308,11 +400,17 @@ export class BalloonLayer {
     const k = w / REF_WIDTH
     const view = this._view()
     const thought = line.kind === 'thought'
-    const font = Math.max(13, FONT_REF * k)
+    // Scale grows everything the balloon draws: words, box, outline, tail root and circles.
+    const scale = Number.isFinite(line.scale) ? Math.min(MAX_SCALE, Math.max(MIN_SCALE, line.scale)) : 1
+    const font = Math.max(13, FONT_REF * k) * scale
+    const ink = `${INK_PX * scale}px`
+    el.style.opacity = Number.isFinite(line.opacity) ? String(line.opacity) : ''
+    for (const node of el.querySelectorAll('.lp-balloon__cloud path, .lp-balloon__tail .ink, .lp-balloon__tail .trail')) node.setAttribute('stroke-width', ink)
     const bubble = el.querySelector('.lp-balloon__bubble')
     Object.assign(bubble.style, {
       fontSize: `${font}px`,
-      maxWidth: `${Math.min(0.8 * (view.x1 - view.x0), Math.max(180, MAX_WIDTH_REF * k))}px`,
+      borderWidth: ink,
+      maxWidth: `${Math.min(0.8 * (view.x1 - view.x0), Math.max(180, MAX_WIDTH_REF * k) * scale)}px`,
       // A cloud's scallops eat into its box: the words get more room from the edge.
       padding: thought ? `${0.95 * font}px ${1.3 * font}px` : `${0.55 * font}px ${0.9 * font}px`,
       left: '0px',
@@ -330,11 +428,17 @@ export class BalloonLayer {
     const rect = { left, top, w: box.w, h: box.h }
     this._drawCloud(el, rect, thought)
 
-    const tip = this._tip(line, rect, mouth, view, w, h)
+    const tip = this._tip(line, rect, mouth, view, w, h, font)
     const shape = tip ? this._drawTail(el, rect, tip, line, thought, font) : this._drawTail(el, rect, null)
-    this.opts.onPlace?.(el, line, tip)
+    // What is drawn, as fractions of the host: the timeline reads a balloon nobody keyed from this.
+    el._drawn = {
+      center: [(left + box.w / 2) / (w || 1), (top + box.h / 2) / (h || 1)],
+      tip: tip ? [tip[0] / (w || 1), tip[1] / (h || 1)] : null,
+      root: shape ? outlineT(rect, shape.root) : null,
+    }
+    this.opts.onPlace?.(el, line, tip, { rect, shape, radius: this._radius(rect, font) })
 
-    return shape ?? [left + box.w / 2, top + box.h / 2]
+    return shape?.root ?? [left + box.w / 2, top + box.h / 2]
   }
 
   /** A balloon the teacher put somewhere: its middle on that spot, kept inside the frame. */
@@ -363,15 +467,21 @@ export class BalloonLayer {
    * Where the tail points, host px: the tip the teacher dragged (kept on the panel), else the
    * speaker's mouth less the house gap. A speaker beyond the panel's edge: the tail runs to it.
    */
-  _tip (line, rect, mouth, view, w, h) {
+  _tip (line, rect, mouth, view, w, h, font) {
     const stored = fractionPoint(line.tail?.tip)
     if (stored) return clampToView([stored[0] * w, stored[1] * h], view)
     if (!mouth) return null
     const target = clampToView(mouth, view)
     if (target[0] !== mouth[0] || target[1] !== mouth[1]) return target
-    const root = tailRoot(rect, mouth)
+    const pinned = line.tail?.root
+    const root = Number.isFinite(pinned) ? outlinePoint(rect, pinned, { radius: this._radius(rect, font) }) : tailRoot(rect, mouth)
 
     return root ? tipShortOf(root.point, mouth, mouthGap(w)) : null
+  }
+
+  /** The rounded corner a tail root keeps clear of. */
+  _radius (rect, font) {
+    return Math.min(rect.h / 2, CORNER_EM * font)
   }
 
   _drawCloud (el, rect, thought) {
@@ -382,7 +492,7 @@ export class BalloonLayer {
     path.setAttribute('d', cloudPath(rect.w, rect.h))
   }
 
-  /** The tail (speech) or the trail of circles (thought) toward `tip`; returns its root. */
+  /** The tail (speech) or the trail of circles (thought) toward `tip`: its shape, or null. */
   _drawTail (el, rect, tip, line = null, thought = false, font = 0) {
     const fill = el.querySelector('.lp-balloon__tail .fill')
     const ink = el.querySelector('.lp-balloon__tail .ink')
@@ -391,8 +501,9 @@ export class BalloonLayer {
     ink.setAttribute('d', '')
     trail.replaceChildren()
     if (!tip) return null
+    const pinned = Number.isFinite(line?.tail?.root) ? line.tail.root : null
     if (thought) {
-      const dots = thoughtTrail(rect, tip)
+      const dots = thoughtTrail(rect, tip, pinned)
       for (const d of dots) {
         const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
         c.setAttribute('cx', d.x.toFixed(2))
@@ -400,14 +511,17 @@ export class BalloonLayer {
         c.setAttribute('r', d.r.toFixed(2))
         trail.appendChild(c)
       }
-      return dots.length ? [dots[0].x, dots[0].y] : null
+      if (!dots.length) return null
+      // The trail's handles: its root on the outline and the last circle, which is the tip.
+      const root = (pinned === null ? tailRoot(rect, tip) : outlinePoint(rect, pinned))?.point ?? [dots[0].x, dots[0].y]
+      return { root, tip, mid: null, dots }
     }
     const bend = Number.isFinite(line?.tail?.bend) ? line.tail.bend : DEFAULT_BEND
-    const shape = tailShape(rect, tip, { bend, radius: Math.min(rect.h / 2, CORNER_EM * font) })
+    const shape = tailShape(rect, tip, { bend, radius: this._radius(rect, font), root: pinned })
     if (!shape) return null
     fill.setAttribute('d', shape.fill)
     ink.setAttribute('d', shape.ink)
 
-    return shape.root
+    return shape
   }
 }

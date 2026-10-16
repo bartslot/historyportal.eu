@@ -2203,10 +2203,12 @@ Alpine.data('lessonGame', (lesson) => ({
       if (!hasAnimation(timeline)) return
       const epoch = this._playEpoch
       const started = performance.now()
+      // Balloons keyframed like layers: the full-stage ones, or a split scene's in their panels.
+      const balloonSink = { patch: (id, values) => { this._balloons?.applyValues(id, values); _split?.applyBalloonValues(id, values) } }
       const clock = () => (scene.audio_url && this._audio ? this._audio.currentTime : (performance.now() - started) / 1000)
       const step = () => {
         if (epoch !== this._playEpoch) return
-        applyFrameTo(frameAt(timeline, clock()), { art: this._artLayer, text: this._textLayer, map: _mapInstance?.map })
+        applyFrameTo(frameAt(timeline, clock()), { art: this._artLayer, text: this._textLayer, bal: balloonSink, map: _mapInstance?.map })
         this._timelineRaf = requestAnimationFrame(step)
       }
       this._timelineRaf = requestAnimationFrame(step)

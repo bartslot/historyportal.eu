@@ -12,16 +12,7 @@
      */
     $isLayer = $mode === 'layer';
 
-    $entrances = [
-        'none' => __('None'),
-        'fade' => __('Fade in'),
-        'slide-left' => __('In from left'),
-        'slide-right' => __('In from right'),
-        'slide-up' => __('In from below'),
-        'slide-down' => __('In from above'),
-        'zoom' => __('Zoom in'),
-        'pop' => __('Pop'),
-    ];
+    $entrances = \App\Support\LayerEntrances::labels();
 
     $transitions = [
         'crossfade' => __('Crossfade'),

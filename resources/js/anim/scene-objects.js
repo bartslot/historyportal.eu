@@ -32,6 +32,15 @@ export const artObjects = () => {
   }))
 }
 
+/** Speech and thought balloons (config.lines), as the Object list shows them: `bal_3` → `bal:3`. */
+export const balloonObjects = () => (window.__balloons?.list() ?? []).map((b) => ({
+  target: `bal:${String(b.id).slice(4)}`,
+  kind: 'bal',
+  label: String(b.text || '').trim().slice(0, 28) || 'Balloon',
+  start: b.start,
+  end: b.end,
+}))
+
 /**
  * Diorama items (config.diorama), front-most last like the stage lists them. They have no property
  * rows: an item's movement is ONE clip, its path, moved and stretched as a whole (clip.js).
@@ -59,6 +68,7 @@ export const readObjectProperty = (target, property) => {
     return Number.isFinite(ratio) && Number.isFinite(layer?.height) ? Math.round(ratio * layer.height * 10) / 10 : null
   }
 
+  if (kind === 'bal') return window.__balloons?.value?.(`bal_${id}`, property) ?? null
   if (kind !== 'text' && kind !== 'rect') return null
   const item = (window.__lessonTextLayer?._texts ?? []).find((t) => String(t.id) === id)
   const value = item?.[property]
@@ -79,7 +89,7 @@ export const setObjectHidden = (target, hidden) => {
   const [kind, id] = String(target).split(':')
   const selector = kind === 'art'
     ? `[data-layer-id="art_${id}"], [data-layer-chrome="art_${id}"]`
-    : `[data-text-id="${id}"]`
+    : kind === 'bal' ? `[data-balloon-id="bal_${id}"]` : `[data-text-id="${id}"]`
 
   for (const node of document.querySelectorAll(selector)) {
     node.style.visibility = hidden ? 'hidden' : ''
@@ -93,6 +103,7 @@ export const writeObjectProperty = (target, property, value) => {
   // A map or voyage scene keeps TWO artwork overlays alive over the same layers, so this has to go
   // through the helper that reaches both — see resources/js/scene/layer-overlays.js.
   if (kind === 'art') return void window.__setLayerProp?.(id, property, value)
+  if (kind === 'bal') return void window.__balloons?.patch?.(`bal_${id}`, { [property]: value })
 
   if (kind !== 'text' && kind !== 'rect') return
   window.__lessonTextLayer?.patch?.(id, { [property]: value })

@@ -82,6 +82,20 @@ const REGISTRY = {
     P('tint', 'Colour', 'color', ''),
     P('tint_opacity', 'Colour %', 'linear', ''),
   ],
+  /**
+   * A speech or thought balloon (config.lines, BalloonLayer.balloonValue): where its middle is, its
+   * size and opacity, and its tail: the tip, the root on the outline (0..1) and the bend.
+   */
+  bal: [
+    P('x', 'X', 'linear', '%'),
+    P('y', 'Y', 'linear', '%'),
+    P('scale', 'Scale', 'linear', '%'),
+    P('opacity', 'Opacity', 'linear', ''),
+    P('tip_x', 'Tail X', 'linear', '%'),
+    P('tip_y', 'Tail Y', 'linear', '%'),
+    P('root', 'Tail root', 'linear', ''),
+    P('bend', 'Bend', 'linear', ''),
+  ],
   /** A diorama item: its place on its floor, in cells. X runs left-right, Z away from the camera.
    *  No Y: nothing leaves the floor. The keys live in the diorama JSON, not in timeline tracks. */
   dio: [

@@ -2137,6 +2137,7 @@ class Step3SceneConfigurator extends Component
                 'text' => ['x', 'y'],
                 'rect' => ['opacity'],
                 'art' => ['x', 'y', 'width', 'height', 'scale', 'rotation', 'blur', 'opacity', 'tint', 'tint_opacity'],
+                'bal' => SpeechBalloons::TIMELINE_PROPERTIES,
                 default => [],
             };
 

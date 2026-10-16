@@ -7,7 +7,7 @@
  * selection bridge read the selection there too.
  */
 import { BalloonLayer, withBalloonIds } from './BalloonLayer.js'
-import { editableBalloons, editBalloon, selectBalloon, selectedBalloon } from './balloon-edit.js'
+import { editableBalloons, editBalloon, patchBalloon, readBalloon, selectBalloon, selectedBalloon } from './balloon-edit.js'
 import { panelForLine } from './split-layout.js'
 
 /** One finished gesture on a balloon → one save (one undo step). */
@@ -28,7 +28,13 @@ export function balloonRows () {
   return current.lines
     .filter(l => l && l.speaker !== 'narrator' && l.text)
     .filter(l => !current.split || panelForLine(l, current.panelLayers) === current.panel)
-    .map(l => ({ id: l.id, text: l.text, kind: l.kind === 'thought' ? 'thought' : 'speech' }))
+    .map(l => ({
+      id: l.id,
+      text: l.text,
+      kind: l.kind === 'thought' ? 'thought' : 'speech',
+      start: Number(l.start) || 0,
+      end: Number.isFinite(l.end) ? l.end : null,
+    }))
 }
 
 /** A layer's words must not be swapped out under the teacher's cursor; the echo waits a poll. */
@@ -66,5 +72,8 @@ export function hideStageBalloons () {
 }
 
 if (typeof window !== 'undefined') {
-  window.__balloons = { list: balloonRows, select: selectBalloon, selected: selectedBalloon, edit: editBalloon }
+  window.__balloons = {
+    list: balloonRows, select: selectBalloon, selected: selectedBalloon, edit: editBalloon,
+    patch: patchBalloon, value: readBalloon,
+  }
 }

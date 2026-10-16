@@ -5,6 +5,14 @@
     $kind = ($balloon['kind'] ?? 'speech') === 'thought' ? 'thought' : 'speech';
     $speaker = $balloon['figure']['asset_id'] ?? null;
     $hasTail = ! empty($balloon['tail']['tip']);
+    $rootPinned = is_numeric($balloon['tail']['root'] ?? null);
+    // The timeline's name for this balloon: bal_3 → bal:3 (resources/js/anim/properties.js `bal`).
+    $target = 'bal:'.substr($id, 4);
+    $scale = (float) ($balloon['scale'] ?? 1.0);
+    $opacity = (float) ($balloon['opacity'] ?? 1.0);
+    $jsId = \Illuminate\Support\Js::from($id);
+    $live = fn (string $field) => "window.__balloons?.patch({$jsId}, { {$field}: parseFloat(\$event.target.value) })";
+    $save = fn (string $field) => "updateBalloon({$jsId}, '{$field}', \$event.target.value)";
 @endphp
 
 {{-- A speech or thought balloon (EditsSceneBalloons). Its words are typed on the stage too; the
@@ -28,6 +36,26 @@
                   wire:change="updateBalloon(@js($id), 'text', $event.target.value)">{{ $balloon['text'] ?? '' }}</textarea>
     </label>
 
+    <x-ui.slider-row :label="__('Scale')" :min="\App\Services\Support\SpeechBalloons::MIN_SCALE" :max="\App\Services\Support\SpeechBalloons::MAX_SCALE" :step="0.05"
+                     :value="$scale" :display="(string) round($scale * 100)" unit="%" :default="1.0"
+                     keyframe :keyframe-target="$target" keyframe-property="scale"
+                     :on-input="$live('scale')" :on-change="$save('scale')" />
+
+    <x-ui.slider-row :label="__('Opacity')" :min="0" :max="1" :step="0.05"
+                     :value="$opacity" :display="(string) round($opacity * 100)" unit="%" :default="1.0"
+                     keyframe :keyframe-target="$target" keyframe-property="opacity"
+                     :on-input="$live('opacity')" :on-change="$save('opacity')" />
+
+    <label class="form-control">
+        <span class="text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Appear') }}</span>
+        <select class="select select-sm select-bordered mt-1 w-full"
+                wire:change="updateBalloon(@js($id), 'anim', $event.target.value)">
+            @foreach (\App\Support\LayerEntrances::labels() as $value => $label)
+                <option value="{{ $value }}" @selected(($balloon['anim'] ?? 'pop') === $value)>{{ $label }}</option>
+            @endforeach
+        </select>
+    </label>
+
     @if ($speakers !== [])
         <label class="form-control">
             <span class="text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Speaker') }}</span>
@@ -42,9 +70,19 @@
     @endif
 
     <div class="flex items-center justify-between gap-2">
-        @if ($hasTail)
-            <button type="button" class="btn btn-ghost btn-sm"
-                    wire:click="updateBalloon(@js($id), 'tail', null)">{{ __('Remove tail') }}</button>
+        @if ($hasTail || $rootPinned)
+            <div class="flex items-center gap-1">
+                @if ($hasTail)
+                    <button type="button" class="btn btn-ghost btn-sm"
+                            wire:click="updateBalloon(@js($id), 'tail', null)">{{ __('Remove tail') }}</button>
+                @endif
+                {{-- The tail's root back to snapping to the edge nearest the tip (as a double click
+                     on its handle does). --}}
+                @if ($rootPinned)
+                    <button type="button" class="btn btn-ghost btn-sm"
+                            x-on:click="$wire.changeBalloon(@js($id), { tail: { root: null } })">{{ __('Tail root') }}: {{ __('Auto') }}</button>
+                @endif
+            </div>
         @else
             <span></span>
         @endif

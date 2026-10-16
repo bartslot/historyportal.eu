@@ -51,6 +51,11 @@ const HANDLES = [
   { name: 'e', axis: 'x', pos: 'right:-5px; top:calc(50% - 5px);', cursor: 'ew-resize' },
 ]
 
+/** The look of a layer handle on the stage (the corner dots); speech balloons use it too. */
+export const handleCss = (pos, cursor) => `position:absolute; ${pos} width:10px; height:10px; pointer-events:auto;
+  border-radius:50%; background:#fff; border:1px solid rgba(15,23,42,0.55); cursor:${cursor};
+  box-shadow:0 1px 3px rgba(0,0,0,0.4); touch-action:none;`
+
 // Object-list / selection id namespace so artwork ids never collide with text-box ids.
 export const artObjId = (assetId) => `art_${assetId}`
 
@@ -934,9 +939,7 @@ export class ArtworkOverlay {
       const handle = document.createElement('div')
       handle.dataset.scaleHandle = '1'
       handle.setAttribute('data-tooltip', 'Drag to resize')
-      handle.style.cssText = `position:absolute; ${c.pos} width:10px; height:10px; pointer-events:auto;
-        border-radius:50%; background:#fff; border:1px solid rgba(15,23,42,0.55); cursor:${c.cursor};
-        box-shadow:0 1px 3px rgba(0,0,0,0.4); touch-action:none;`
+      handle.style.cssText = handleCss(c.pos, c.cursor)
       chrome.appendChild(handle)
       if (node) this._wireScale(item, node, handle, c)
     }

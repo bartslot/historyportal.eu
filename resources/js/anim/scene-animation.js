@@ -21,9 +21,10 @@ export const frameAt = (timeline, time) => sampleFrame(liveTracks(timeline), tim
  * Put a frame on screen. Each sink is optional: a scene without a map has no camera to move.
  *
  * @param {object} frame from frameAt()
- * @param {{ art?: {setLayerProp: Function}, text?: {patch: Function}, map?: object }} sinks
+ * @param {{ art?: {setLayerProp: Function}, text?: {patch: Function}, bal?: {patch: Function}, map?: object }} sinks
+ *        bal.patch(id, values): a balloon by its editor id ('bal_3') and its values at this time
  */
-export const applyFrameTo = (frame, { art = null, text = null, map = null } = {}) => {
+export const applyFrameTo = (frame, { art = null, text = null, bal = null, map = null } = {}) => {
   for (const [target, values] of Object.entries(frame)) {
     const kind = kindOfTarget(target)
     const id = String(target).slice(kind.length + 1)
@@ -31,6 +32,8 @@ export const applyFrameTo = (frame, { art = null, text = null, map = null } = {}
       for (const [property, value] of Object.entries(values)) art?.setLayerProp?.(id, property, value)
     } else if (kind === 'text' || kind === 'rect') {
       text?.patch?.(id, values)
+    } else if (kind === 'bal') {
+      bal?.patch?.(`bal_${id}`, values)
     } else if (kind === 'camera' && map) {
       const c = map.getCenter()
       map.jumpTo({

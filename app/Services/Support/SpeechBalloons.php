@@ -15,6 +15,9 @@ namespace App\Services\Support;
  *   at     [x, y] 0..1 of the stage (a split scene: of its panel), the balloon's middle
  *   tail   {tip: [x, y] 0..1, bend} where the tail points, dragged out on the stage
  *   panel  0|1 on a split scene, the panel it sits in
+ *   scale  size factor (corner handle); opacity 0..1 (keyframed); anim  its entrance
+ *   tail.root  where the tail leaves the outline (0..1, clockwise from the top-left), pinned by
+ *          the teacher; without it the root snaps to the edge nearest the tip
  * end null = up to the scene's end.
  */
 final class SpeechBalloons
@@ -31,6 +34,20 @@ final class SpeechBalloons
 
     /** A tail bends at most this share of its length (balloon-shape.js MAX_BEND). */
     public const MAX_BEND = 0.35;
+
+    /** A balloon's size as a factor of the house size (BalloonLayer.js MIN_SCALE / MAX_SCALE). */
+    public const MIN_SCALE = 0.3;
+
+    public const MAX_SCALE = 4.0;
+
+    /** How a balloon may arrive: the layers' entrances (resources/js/scene/animations.js). */
+    public const ENTRANCES = ['none', 'fade', 'slide-left', 'slide-right', 'slide-up', 'slide-down', 'zoom', 'pop'];
+
+    /** What the timeline may key on a balloon (resources/js/anim/properties.js `bal`). */
+    public const TIMELINE_PROPERTIES = ['x', 'y', 'scale', 'opacity', 'tip_x', 'tip_y', 'root', 'bend'];
+
+    /** The longest a scene runs, s: a balloon's start and end stay inside it. */
+    private const MAX_TIME = 3600.0;
 
     /** A tip may sit a little past the panel edge: the renderer runs it to the edge. */
     private const TIP_MIN = -0.5;
@@ -103,8 +120,47 @@ final class SpeechBalloons
         if (array_key_exists('tail', $patch)) {
             $line = self::withTail($line, $patch['tail']);
         }
+        if (is_numeric($patch['scale'] ?? null)) {
+            $line['scale'] = round(max(self::MIN_SCALE, min(self::MAX_SCALE, (float) $patch['scale'])), 3);
+        }
+        if (is_numeric($patch['opacity'] ?? null)) {
+            $line['opacity'] = round(max(0.0, min(1.0, (float) $patch['opacity'])), 3);
+        }
+        if (array_key_exists('anim', $patch) && in_array($patch['anim'], self::ENTRANCES, true)) {
+            $line['anim'] = $patch['anim'];
+        }
 
-        return $line;
+        return self::withSpan($line, $patch);
+    }
+
+    /**
+     * The scene's timeline after line $removed is gone: that balloon's tracks go with it, and the
+     * tracks of every balloon after it follow its new place (`bal:<index>` names a place in the list).
+     *
+     * @param  array<string, mixed>|null  $timeline
+     * @return array<string, mixed>|null
+     */
+    public static function timelineWithout(?array $timeline, int $removed): ?array
+    {
+        if (! is_array($timeline['tracks'] ?? null)) {
+            return $timeline;
+        }
+        $tracks = [];
+        foreach ($timeline['tracks'] as $track) {
+            if (is_array($track) && preg_match('/^bal:(\d+)$/', (string) ($track['target'] ?? ''), $m)) {
+                $n = (int) $m[1];
+                if ($n === $removed) {
+                    continue;
+                }
+                if ($n > $removed) {
+                    $track['target'] = 'bal:'.($n - 1);
+                }
+            }
+            $tracks[] = $track;
+        }
+        $timeline['tracks'] = $tracks;
+
+        return $timeline;
     }
 
     /**
@@ -127,7 +183,34 @@ final class SpeechBalloons
         return $line;
     }
 
-    /** @param  array<string, mixed>  $line */
+    /**
+     * When the balloon is on screen: start (s) and end (s, or null = to the scene's end). An end
+     * at or before the start is dropped.
+     *
+     * @param  array<string, mixed>  $line
+     * @param  array<string, mixed>  $patch
+     * @return array<string, mixed>
+     */
+    private static function withSpan(array $line, array $patch): array
+    {
+        if (is_numeric($patch['start'] ?? null)) {
+            $line['start'] = round(max(0.0, min(self::MAX_TIME, (float) $patch['start'])), 3);
+        }
+        if (array_key_exists('end', $patch)) {
+            $end = is_numeric($patch['end']) ? round(min(self::MAX_TIME, (float) $patch['end']), 3) : null;
+            $line['end'] = $end !== null && $end > (float) ($line['start'] ?? 0) ? $end : null;
+        }
+
+        return $line;
+    }
+
+    /**
+     * The tail with the editor's change merged in: its tip, its bend, and its root (null = snap
+     * to the edge nearest the tip again). `null` for the whole tail removes it.
+     *
+     * @param  array<string, mixed>  $line
+     * @return array<string, mixed>
+     */
     private static function withTail(array $line, mixed $tail): array
     {
         if ($tail === null) {
@@ -135,12 +218,29 @@ final class SpeechBalloons
 
             return $line;
         }
-        $tip = is_array($tail) ? self::point($tail['tip'] ?? null, self::TIP_MIN, self::TIP_MAX) : null;
-        if ($tip === null) {
+        if (! is_array($tail)) {
             return $line;
         }
-        $bend = is_numeric($tail['bend'] ?? null) ? (float) $tail['bend'] : 0.12;
-        $line['tail'] = ['tip' => $tip, 'bend' => round(max(-self::MAX_BEND, min(self::MAX_BEND, $bend)), 3)];
+        $next = (array) ($line['tail'] ?? []);
+        $tip = self::point($tail['tip'] ?? null, self::TIP_MIN, self::TIP_MAX);
+        if ($tip !== null) {
+            $next['tip'] = $tip;
+        }
+        if (is_numeric($tail['bend'] ?? null)) {
+            $next['bend'] = round(max(-self::MAX_BEND, min(self::MAX_BEND, (float) $tail['bend'])), 3);
+        }
+        if (array_key_exists('root', $tail)) {
+            if (is_numeric($tail['root'])) {
+                $next['root'] = round(fmod(fmod((float) $tail['root'], 1.0) + 1.0, 1.0), 4);
+            } else {
+                unset($next['root']);
+            }
+        }
+        if ($next === []) {
+            unset($line['tail']);
+        } else {
+            $line['tail'] = $next;
+        }
 
         return $line;
     }
