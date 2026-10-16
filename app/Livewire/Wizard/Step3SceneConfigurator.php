@@ -3269,6 +3269,9 @@ class Step3SceneConfigurator extends Component
     /** A picture dropped on the background slot in the inspector, which means the background, always. */
     public $droppedBackground;
 
+    /** A picture pasted onto the stage with Cmd/Ctrl-V: always a layer (updatedPastedImage). */
+    public $pastedImage;
+
     /** The picture (WebP, or PNG) the quick mask produced for the active layer (uploaded by the mask dialog, then saveMaskedLayer). */
     public $maskedImage;
 
@@ -3350,6 +3353,29 @@ class Step3SceneConfigurator extends Component
         }
 
         $this->applyUploadedBackground($path);
+    }
+
+    /**
+     * Pasted onto the stage with Cmd/Ctrl-V (resources/js/ui/paste-router.js). Unlike a drop this is
+     * always a LAYER, centred and selected: a paste lands where the teacher is working, it never
+     * swaps the backdrop. Same validation and storage as a drop.
+     */
+    public function updatedPastedImage(): void
+    {
+        $path = $this->storeDroppedImage('pastedImage');
+        if ($path === null) {
+            return;
+        }
+
+        $this->cutOutWhite($path);
+        $assetId = $this->addLibraryImageLayer('/storage/'.$path, __('Image'), x: 50.0, y: 50.0);
+        if ($assetId === null) {
+            return;
+        }
+
+        // The page selects the last id once scene:load has redrawn the stage (the duplicate path's).
+        $this->dispatch('scene:objects-duplicated', sceneId: $this->selectedSceneId, objectIds: ['art_'.$assetId]);
+        $this->dispatch('toast', message: __('Image pasted.'), type: 'success');
     }
 
     /**
@@ -3584,8 +3610,19 @@ class Step3SceneConfigurator extends Component
             return;
         }
 
+        $name = pathinfo((string) $this->uploadImage->getClientOriginalName(), PATHINFO_FILENAME) ?: null;
         $path = WebpEncoder::storeUpload($this->uploadImage, "lessons/{$this->lesson->id}/uploads");
         $this->reset('uploadImage');
+
+        // "Add an image on the slide" means a layer. This branch used to fall through to the
+        // background, so a teacher's own picture replaced the backdrop it was meant to sit on.
+        if ($mode === 'layer' && $this->selectedSceneId) {
+            $this->cutOutWhite($path);
+            $this->addLibraryImageLayer('/storage/'.$path, $name);
+
+            return;
+        }
+
         $this->applyUploadedBackground($path);
     }
 
@@ -4230,7 +4267,8 @@ class Step3SceneConfigurator extends Component
      * Drop one of our own pictures on the slide as an editable image layer. Mirrors
      * applyPaintingAsLayer(), minus the download and the attribution — this picture is ours.
      */
-    private function addLibraryImageLayer(string $url, ?string $title = null): void
+    /** @return int|null the new layer's asset id, or null when the picture could not be used */
+    private function addLibraryImageLayer(string $url, ?string $title = null, ?float $x = null, ?float $y = null): ?int
     {
         $scene = $this->lesson->scenes()->findOrFail($this->selectedSceneId);
 
@@ -4248,7 +4286,7 @@ class Step3SceneConfigurator extends Component
         if (! $path) {
             $this->dispatch('toast', message: __('We could not use that image. Try another one.'), type: 'error');
 
-            return;
+            return null;
         }
 
         // The layer machinery (move / scale / reorder / delete) is keyed on an SvgAsset, so wrap
@@ -4264,7 +4302,9 @@ class Step3SceneConfigurator extends Component
             'svg_path' => $path,
         ]);
 
-        $this->attachArtwork($asset->id);
+        $this->attachArtwork($asset->id, $x, $y);
+
+        return $asset->id;
     }
 
     /**

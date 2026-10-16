@@ -23,6 +23,7 @@ import { initRangeFill } from './ui/range-fill.js';
 import { initNumericFields } from './ui/numeric-field.js';
 import { layerOverlay, setLayerPropEverywhere, selectLayerEverywhere } from './scene/layer-overlays.js';
 import { isTypingTarget } from './ui/keyboard.js';
+import { routePaste, OBJECTS_MARK } from './ui/paste-router.js';
 import { initDragScroll } from './ui/drag-scroll.js';
 
 window.Sortable = Sortable;
@@ -103,6 +104,9 @@ window.animationTimeline = animationTimeline;
 // <script> that cannot import a module, and they used to carry their own copy of the same test.
 // See resources/js/ui/keyboard.js.
 window.__isTypingTarget = isTypingTarget;
+// Cmd/Ctrl-V in the scene editor: image, object copy or plain text. See resources/js/ui/paste-router.js.
+window.__routePaste = routePaste;
+window.__pasteObjectsMark = OBJECTS_MARK;
 
 // The 3D scene system (three.js, ~1.7 MB) is used ONLY by the lesson-creation wizard. Load it on
 // demand via window.loadLessonScene() so the landing page and other app pages never download three.
