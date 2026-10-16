@@ -554,7 +554,10 @@ class Lesson extends Model
     {
         $style = $this->titleStyle();
 
-        return in_array($style, TitlePoster::BUILT_IN, true) ? null : TitlePoster::for($this->translation_group, $style);
+        $poster = in_array($style, TitlePoster::BUILT_IN, true) ? null : TitlePoster::for($this->translation_group, $style);
+
+        // A picture the teacher picked is the title screen's picture, whichever poster draws it.
+        return $poster && trim((string) $this->title_image) !== '' ? TitlePoster::withPicture($poster, (string) $this->titleBgUrl()) : $poster;
     }
 
     /** The style the title screen shows: the teacher's choice while the series has it, else the first. */
