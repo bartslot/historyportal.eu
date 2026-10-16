@@ -51,13 +51,6 @@
     "file": "assets/ambient-uQ2cquAc.js",
     "name": "ambient"
   },
-  "_animations-DCywSw91.js": {
-    "file": "assets/animations-DCywSw91.js",
-    "name": "animations",
-    "imports": [
-      "_easing-HS2C6-zA.js"
-    ]
-  },
   "_big-countdown-B7KdG0dg.js": {
     "file": "assets/big-countdown-B7KdG0dg.js",
     "name": "big-countdown",
@@ -73,11 +66,11 @@
       "_easing-HS2C6-zA.js"
     ]
   },
-  "_camera-BnH033nm.js": {
-    "file": "assets/camera-BnH033nm.js",
+  "_camera-Dzm8obuU.js": {
+    "file": "assets/camera-Dzm8obuU.js",
     "name": "camera",
     "imports": [
-      "_animations-DCywSw91.js"
+      "_properties-85J1fRaq.js"
     ]
   },
   "_clip-W780-tgz.js": {
@@ -119,6 +112,13 @@
     "file": "assets/preload-helper-DIdkKO6w.js",
     "name": "preload-helper"
   },
+  "_properties-85J1fRaq.js": {
+    "file": "assets/properties-85J1fRaq.js",
+    "name": "properties",
+    "imports": [
+      "_easing-HS2C6-zA.js"
+    ]
+  },
   "_race-ZgUms1GP.js": {
     "file": "assets/race-ZgUms1GP.js",
     "name": "race"
@@ -135,7 +135,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-BqUpduOX.css",
+    "file": "assets/app-Cd4qTJZp.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -144,7 +144,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-DW1Bm_li.js",
+    "file": "assets/app-0P1v0-II.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -153,7 +153,7 @@
       "_ScrollTrigger-B2uKOqL4.js",
       "_easing-HS2C6-zA.js",
       "__commonjsHelpers-CqkleIqs.js",
-      "_animations-DCywSw91.js",
+      "_properties-85J1fRaq.js",
       "_clip-W780-tgz.js",
       "_tuner-BxTGfeBB.js"
     ],
@@ -211,7 +211,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-yj_Wj6bK.js",
+    "file": "assets/lesson-player-DfAKayFc.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -219,9 +219,9 @@
       "_preload-helper-DIdkKO6w.js",
       "__commonjsHelpers-CqkleIqs.js",
       "_race-ZgUms1GP.js",
+      "_properties-85J1fRaq.js",
       "resources/js/gallery-scene.js",
       "_big-countdown-B7KdG0dg.js",
-      "_animations-DCywSw91.js",
       "_ambient-uQ2cquAc.js",
       "_easing-HS2C6-zA.js"
     ],
@@ -263,12 +263,12 @@
     ]
   },
   "resources/js/scene/ArtworkOverlay.js": {
-    "file": "assets/ArtworkOverlay-D6zbaB9p.js",
+    "file": "assets/ArtworkOverlay-B5yOpsML.js",
     "name": "ArtworkOverlay",
     "src": "resources/js/scene/ArtworkOverlay.js",
     "isDynamicEntry": true,
     "imports": [
-      "_animations-DCywSw91.js",
+      "_properties-85J1fRaq.js",
       "_big-countdown-B7KdG0dg.js",
       "_ambient-uQ2cquAc.js",
       "_easing-HS2C6-zA.js"
@@ -290,16 +290,16 @@
     "isDynamicEntry": true
   },
   "resources/js/scene/ParallaxScene.js": {
-    "file": "assets/ParallaxScene-DCq33vVD.js",
+    "file": "assets/ParallaxScene-Dr4t_XCG.js",
     "name": "ParallaxScene",
     "src": "resources/js/scene/ParallaxScene.js",
     "isDynamicEntry": true,
     "imports": [
       "_big-countdown-B7KdG0dg.js",
       "_ambient-uQ2cquAc.js",
-      "_camera-BnH033nm.js",
+      "_camera-Dzm8obuU.js",
       "_easing-HS2C6-zA.js",
-      "_animations-DCywSw91.js"
+      "_properties-85J1fRaq.js"
     ]
   },
   "resources/js/scene/QuizOverlay.js": {
@@ -344,7 +344,7 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-DzaHFokb.js",
+    "file": "assets/index-BWVPrUTP.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
@@ -356,10 +356,10 @@
       "resources/js/scene/ArtworkOverlay.js",
       "_preload-helper-DIdkKO6w.js",
       "resources/js/avatar-3d.js",
-      "_camera-BnH033nm.js",
+      "_camera-Dzm8obuU.js",
       "../../../node_modules/three/build/three.module.js",
       "_easing-HS2C6-zA.js",
-      "_animations-DCywSw91.js",
+      "_properties-85J1fRaq.js",
       "_GLTFLoader-Et3HGvr1.js"
     ],
     "dynamicImports": [
