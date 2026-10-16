@@ -129,8 +129,6 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                     applySlideshowCameraMode(activePlayer)
                     const firstShot = (payload.shots && payload.shots.length) ? payload.shots[0] : null
                     await applySlideshowBackground(payload.imageUrl, payload.sceneId ?? 0, payload.duration ?? 10, {
-                        kbAnimated: payload.kbAnimated,
-                        kbDirection: payload.kbDirection,
                         backgroundColor: payload.backgroundColor,
                         gradient: payload.backgroundGradient ?? payload.config?.background_gradient,
                         focus: payload.focus ?? payload.config?.background_focus,
@@ -279,8 +277,6 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             applySlideshowCameraMode(activePlayer)
             const firstShot = (e.detail?.shots && e.detail.shots.length) ? e.detail.shots[0] : null
             await applySlideshowBackground(imageUrl, sceneId ?? 0, duration ?? 10, {
-                kbAnimated: e.detail?.kbAnimated,
-                kbDirection: e.detail?.kbDirection,
                 backgroundColor: e.detail?.backgroundColor,
                 focus: e.detail?.focus ?? e.detail?.config?.background_focus,
                 fit: e.detail?.fit ?? e.detail?.config?.background_fit,
@@ -296,7 +292,6 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         } else if (view === 'skybox') {
             // Skybox sphere is already loaded — just restore camera + make it visible.
             destroyWizardLayers()
-            kenBurnsState = null
             if (activePlayer._skyboxSphere) activePlayer._skyboxSphere.visible = true
             activePlayer?.dismountWorldLabs?.()
             hideWorldWaitingState(activePlayer?._scene)
@@ -328,8 +323,6 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         activePlayer?.dismountWorldLabs?.()
         _lastMountedWorldStatus = null
         if (activePlayer._skyboxSphere) activePlayer._skyboxSphere.visible = true
-        // Pause Ken Burns animation when leaving slideshow.
-        kenBurnsState = null
         // Restore orbit + rotate when coming back from slideshow or world
         restoreDefaultCameraMode(activePlayer)
         await activePlayer.setSkyboxFromUrl(url, blur)
@@ -446,7 +439,6 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         // whatever texture happened to be on the canvas before. Also avoids handing the loader
         // a null url — THREE would fetch the literal string "null" and log a stray 404.
         if (!url) {
-            kenBurnsState = null
             if (activePlayer._skyboxSphere) activePlayer._skyboxSphere.visible = false
             // A gradient, drawn the way the player's CSS draws it (background-gradient.js); else the colour.
             const canvas = gradientCanvas(motion.gradient)
@@ -484,53 +476,17 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             if (activePlayer._skyboxSphere) activePlayer._skyboxSphere.visible = false
             activePlayer._scene.background = tex
 
-            // 'contain' is always static — a Ken Burns zoom would crop back into the work the
-            // teacher just asked to see whole. Matches the player.
-            if (motion.kbAnimated === false || currentBgFit === 'contain') {
-                // Motion off: freeze at a clean fit.
-                kenBurnsState = null
-                const cv = coverScale(tex)
-                tex.repeat.set(cv.rX, cv.rY)
-                tex.offset.set(cv.oX, cv.oY)
-            } else {
-                startKenBurns(tex, sceneId, Math.max(4, durationSec || 10), motion.kbDirection || null)
-            }
+            // A still picture at a clean fit, as in the player: a scene moves by its shot camera
+            // (a camera move makes it a layered shot), never by a Ken Burns drift of its own.
+            const cv = coverScale(tex)
+            tex.repeat.set(cv.rX, cv.rY)
+            tex.offset.set(cv.oX, cv.oY)
         } catch (err) {
             if (!isCurrent()) return
             console.warn('[wizard-bridge] slideshow texture load failed', err)
         }
     }
 
-    // ── Ken Burns ──────────────────────────────────────────────────────────────
-    // Each variant: start/end UV offset + start/end "repeat" (visible portion).
-    // repeat < 1 = zoomed in; repeat = 1.0 fills the texture. Image always covers.
-    const KEN_BURNS_VARIANTS = [
-        { from: { ox: 0.00, oy: 0.00, r: 0.91 }, to: { ox: 0.09, oy: 0.09, r: 1.00 } }, // TL → BR, zoom out
-        { from: { ox: 0.09, oy: 0.00, r: 0.91 }, to: { ox: 0.00, oy: 0.09, r: 1.00 } }, // TR → BL
-        { from: { ox: 0.09, oy: 0.09, r: 0.91 }, to: { ox: 0.00, oy: 0.00, r: 1.00 } }, // BR → TL
-        { from: { ox: 0.00, oy: 0.09, r: 0.91 }, to: { ox: 0.09, oy: 0.00, r: 1.00 } }, // BL → TR
-        { from: { ox: 0.045, oy: 0.045, r: 0.91 }, to: { ox: 0.045, oy: 0.045, r: 1.00 } }, // centered zoom
-        { from: { ox: 0.00, oy: 0.045, r: 0.91 }, to: { ox: 0.09, oy: 0.045, r: 0.91 } },  // pan L→R, no zoom
-    ]
-    const KEN_BURNS_PAUSE_MS = 2000
-    let kenBurnsState = null
-    // Teacher-selectable moves (scenes.kb_direction) — mirrors the player's KB_NAMED set.
-    const KEN_BURNS_NAMED = {
-        left_right: { from: { ox: 0.00, oy: 0.045, r: 0.91 }, to: { ox: 0.09, oy: 0.045, r: 0.91 } },
-        right_left: { from: { ox: 0.09, oy: 0.045, r: 0.91 }, to: { ox: 0.00, oy: 0.045, r: 0.91 } },
-        zoom_in:    { from: { ox: 0.045, oy: 0.045, r: 1.00 }, to: { ox: 0.045, oy: 0.045, r: 0.88 } },
-        zoom_out:   { from: { ox: 0.045, oy: 0.045, r: 0.88 }, to: { ox: 0.045, oy: 0.045, r: 1.00 } },
-    }
-
-    function startKenBurns(tex, sceneId, durationSec, direction = null) {
-        const idx = ((Number(sceneId) || 0) % KEN_BURNS_VARIANTS.length + KEN_BURNS_VARIANTS.length) % KEN_BURNS_VARIANTS.length
-        kenBurnsState = {
-            tex,
-            variant:    KEN_BURNS_NAMED[direction] ?? KEN_BURNS_VARIANTS[idx],
-            startedAt:  performance.now(),
-            durationMs: durationSec * 1000,
-        }
-    }
     // Compute "cover" UV scale so the background image fills the viewport without
     // stretching regardless of how the window is resized.
     function coverScale(tex) {
@@ -607,41 +563,6 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         tex.generateMipmaps  = false
         tex.minFilter        = THREE.LinearFilter
         return tex
-    }
-
-    function tickKenBurns(now) {
-        if (!kenBurnsState) return
-        const { tex, variant, startedAt, durationMs } = kenBurnsState
-        // Ping-pong cycle: from → to (pan), pause, to → from (pan back), pause.
-        const cycleDuration = 2 * durationMs + 2 * KEN_BURNS_PAUSE_MS
-        const elapsed = (now - startedAt) % cycleDuration
-
-        // Direction value d: 0 = `from` position, 1 = `to` position.
-        let d
-        if (elapsed < durationMs) {
-            d = elapsed / durationMs                                   // forward
-        } else if (elapsed < durationMs + KEN_BURNS_PAUSE_MS) {
-            d = 1                                                      // hold at `to`
-        } else if (elapsed < 2 * durationMs + KEN_BURNS_PAUSE_MS) {
-            d = 1 - (elapsed - durationMs - KEN_BURNS_PAUSE_MS) / durationMs  // reverse
-        } else {
-            d = 0                                                      // hold at `from`
-        }
-
-        const eased = d < 0.5 ? 2 * d * d : 1 - Math.pow(-2 * d + 2, 2) / 2
-        const ox = variant.from.ox + (variant.to.ox - variant.from.ox) * eased
-        const oy = variant.from.oy + (variant.to.oy - variant.from.oy) * eased
-        const r  = variant.from.r  + (variant.to.r  - variant.from.r)  * eased
-        // Apply cover scaling so the image always fills the viewport at any size.
-        const cv = coverScale(tex)
-        tex.repeat.set(cv.rX * r, cv.rY * r)
-        // Top-anchored portraits pan the vertical drift DOWNWARD only, so it never rises past
-        // the top edge (which would wrap the texture and bleed the image's bottom in at the top).
-        const kbImg = tex.image
-        const oySign = isTopAnchored(currentBgFit, currentBgFocus,
-            kbImg?.naturalWidth  || kbImg?.width  || 0,
-            kbImg?.naturalHeight || kbImg?.height || 0) ? -1 : 1
-        tex.offset.set(cv.oX + ox * cv.rX, cv.oY + oySign * oy * cv.rY)
     }
 
     // ── Auto-orbit + handheld vibration ───────────────────────────────────────
@@ -839,39 +760,14 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         }
     }
 
-    // Frame tick for Ken Burns (texture UV animation). Runs alongside the
-    // player's own RAF; cheap (just mutates texture matrix).
-    function startKenBurnsTick() {
-        const loop = () => {
-            requestAnimationFrame(loop)
-            tickKenBurns(performance.now())
-        }
-        requestAnimationFrame(loop)
-    }
-
     // Layered scene (wizard E3c preview): renders a multiplane shot via ParallaxScene
     // in a DOM host laid over the Three.js canvas. The wizard has no #background-layer
     // (that element belongs to the student player), so we own our host here.
     let _parallaxMod = null
     let _wizardLayeredScene = null
     let _wizardLayerHost = null
-    let _wizardLayeredRaf = 0
     let _bgSig = null   // skip re-fading the background when only unrelated inspector fields change
-    let _layeredParallax = false   // is the current scene in Parallax mode (drives clipart drift)
 
-    // Ken Burns direction → ParallaxScene motion, so the ANIMATED + direction settings drive
-    // the background pan/zoom on layered scenes too (not just flat ones). Static when off.
-    const kbMotion = (payload) => {
-        // 'contain' is always static, as on a flat scene: a pan would crop the whole-image view.
-        if (payload.kbAnimated === false || normalizeFit(payload.fit) === 'contain') return { panX: 0, panY: 0, zoom: 1 }
-        switch (payload.kbDirection) {
-            case 'left_right': return { panX: 6, panY: 0, zoom: 1.03 }
-            case 'right_left': return { panX: -6, panY: 0, zoom: 1.03 }
-            case 'zoom_in':    return { panX: 0, panY: 0, zoom: 1.09 }
-            case 'zoom_out':   return { panX: 0, panY: 0, zoom: 0.92 }
-            default:           return { panX: -4, panY: 0, zoom: 1.06 }   // Auto (varied pans)
-        }
-    }
     // Editable clipart overlay (separate from the parallax bg): its own host, own module.
     let _artworkMod = null
     let _artworkOverlay = null
@@ -1010,7 +906,6 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     }
 
     function destroyWizardLayers() {
-        if (_wizardLayeredRaf) { cancelAnimationFrame(_wizardLayeredRaf); _wizardLayeredRaf = 0 }
         if (_wizardLayeredScene) {
             try { _wizardLayeredScene.destroy() } catch (_) {}
             _wizardLayeredScene = null
@@ -1044,18 +939,13 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             if (!host) return false
 
             host.style.display = ''
-            kenBurnsState = null
             if (activePlayer?._skyboxSphere) activePlayer._skyboxSphere.visible = false
 
             // ── Background — only rebuild when the bg actually changes. Re-showing on every
             //    scene:load (a caption toggle, a script edit, a 3s poll) re-runs the 900ms fade =
-            //    the flicker Bart saw. The motion follows the ANIMATED + Ken Burns direction. ──
-            const motion = kbMotion(payload)
-            // No backdrop, nothing to pan: the library layers hold still (Bart, 2026-10-14).
-            const animated = bgLayers.length > 0 && payload.kbAnimated !== false && (Math.abs(motion.panX) > 0.01 || Math.abs(motion.zoom - 1) > 0.001)
-            // Module flag so the persistent bg loop drives clipart parallax with the CURRENT mode
-            // (a Standard↔Parallax switch keeps the same motion, so the bg loop isn't rebuilt).
-            _layeredParallax = parallax
+            //    the flicker Bart saw. The shot camera is the ONE background motion: without one
+            //    (Hold) nothing moves, backdrop or figures (Bart, 2026-10-16). ──
+            const motion = { panX: 0, panY: 0, zoom: 1 }
             // Strip the ?v=<updated_at> cache-buster: it changes on EVERY scene save (a caption
             // toggle, a script edit), which would otherwise force a bg re-fade = flicker.
             const stripV = (u) => String(u || '').split('?')[0]
@@ -1063,37 +953,22 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             const matte = payload.backgroundColor || null
             // The shot's own camera (camera.js): previewed in a loop, the figures riding along.
             const camera = cameraSpec(payload.camera)
-            const bgSig = JSON.stringify([bgLayers.map(l => stripV(l.url)), motion, animated, fit, matte, camera, payload.entry ?? null])
+            const bgSig = JSON.stringify([bgLayers.map(l => stripV(l.url)), fit, matte, camera, payload.entry ?? null])
             if (bgSig !== _bgSig || !_wizardLayeredScene) {
                 _bgSig = bgSig
-                if (_wizardLayeredRaf) { cancelAnimationFrame(_wizardLayeredRaf); _wizardLayeredRaf = 0 }
                 if (_wizardLayeredScene) { try { _wizardLayeredScene.destroy() } catch (_) {} }
                 _wizardLayeredScene = new _parallaxMod.ParallaxScene(host)
                 _wizardLayeredScene.show({
                     // Backdrop planes only. Falling back to the whole list drew every library
-                    // picture a second time, under the Ken Burns pan, out of its selection box.
+                    // picture a second time, out of its selection box.
                     layers: bgLayers, motion, fit, matte,
                     camera, entry: payload.entry ?? null, loop: true, entryAlong: [_artworkHost],
                     onCameraFrame: (frameFor) => _artworkOverlay?.setCamera(frameFor),
                 })
-                // A shot camera drives the backdrop and the figures itself; the Ken Burns loop stays off.
-                // Without one, the figures drop any pose a previous camera left on them.
-                if (!camera) _artworkOverlay?.setCamera(null)
-                if (!camera && animated) {
-                    // Ping-pong so the pan/zoom previews in a loop (playback drives it monotonically).
-                    const CYCLE_MS = 12000, start = performance.now()
-                    const loop = (now) => {
-                        if (!_wizardLayeredScene) return
-                        const t = ((now - start) % CYCLE_MS) / CYCLE_MS
-                        const prog = t < 0.5 ? t * 2 : (1 - t) * 2
-                        _wizardLayeredScene.update(prog)
-                        // In Parallax mode the clipart follows the camera by its depth (rest at prog 0);
-                        // otherwise it stays flat (prog 0 → no offset).
-                        _artworkOverlay?.setParallax(_layeredParallax ? prog : 0, motion)
-                        _wizardLayeredRaf = requestAnimationFrame(loop)
-                    }
-                    _wizardLayeredRaf = requestAnimationFrame(loop)
-                } else if (!camera) {
+                // A shot camera drives the backdrop and the figures itself. Without one (Hold) both
+                // stand still, and the figures drop any pose a previous camera left on them.
+                if (!camera) {
+                    _artworkOverlay?.setCamera(null)
                     _wizardLayeredScene.update(0.5)   // static, centred pose
                     _artworkOverlay?.setParallax(0, motion)   // no camera motion → clipart at rest
                 }
@@ -1272,7 +1147,6 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     playerReady  = true
 
     startHandheldVibration(player)
-    startKenBurnsTick()
     // Configure = editable identity: inline-edit + an × to hide it, persisted per scene.
     overlay      = new Scene.SceneOverlay(overlayEl, {
       editable: true,
@@ -1334,8 +1208,6 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             kind:      first.kind,
             duration:  first.duration_seconds,
             backgroundColor: first.background_color,
-            kbAnimated:  first.kb_animated,
-            kbDirection: first.kb_direction,
             focus: first.config?.background_focus,
             fit: first.config?.background_fit,
             // The scene config rides along so first paint honours per-scene flags
@@ -1361,8 +1233,6 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                 location:   scene?.location,
                 kind:       scene?.kind,
                 backgroundColor: scene?.background_color,
-                kbAnimated:  scene?.kb_animated,
-                kbDirection: scene?.kb_direction,
                 focus: scene?.config?.background_focus,
                 fit: scene?.config?.background_fit,
                 // The whole config rides along so a video/3D background plays in Step-4 playback
