@@ -51,6 +51,81 @@ export function tailRoot (rect, tip, { radius = 0, half = 0 } = {}) {
   return { point: [edgeX, py], normal: [x < left ? -1 : 1, 0], along: [0, 1] }
 }
 
+/**
+ * The balloon's outline as one loop, for a root the teacher pinned: `t` 0..1 runs clockwise from the
+ * top-left corner (top edge, right, bottom, left). The point is kept clear of the rounded corners
+ * like an automatic root.
+ *
+ * @returns {{point: [number, number], normal: [number, number], along: [number, number]}}
+ */
+export function outlinePoint (rect, t, { radius = 0, half = 0 } = {}) {
+  const { left, top, w, h } = rect
+  const right = left + w
+  const bottom = top + h
+  const keep = radius + half
+  const along = (lo, hi, v) => (lo + keep <= hi - keep ? clamp(v, lo + keep, hi - keep) : (lo + hi) / 2)
+  let d = (((Number(t) || 0) % 1) + 1) % 1 * 2 * (w + h)
+  if (d < w) return { point: [along(left, right, left + d), top], normal: [0, -1], along: [1, 0] }
+  d -= w
+  if (d < h) return { point: [right, along(top, bottom, top + d)], normal: [1, 0], along: [0, 1] }
+  d -= h
+  if (d < w) return { point: [along(left, right, right - d), bottom], normal: [0, 1], along: [1, 0] }
+  d -= w
+  return { point: [left, along(top, bottom, bottom - d)], normal: [-1, 0], along: [0, 1] }
+}
+
+/** Where on the outline (0..1, as outlinePoint) a point lands: the nearest spot of the nearest edge. */
+export function outlineT (rect, p) {
+  const { left, top, w, h } = rect
+  const right = left + w
+  const bottom = top + h
+  const per = 2 * (w + h) || 1
+  const x = clamp(p[0], left, right)
+  const y = clamp(p[1], top, bottom)
+  const edges = [
+    [Math.hypot(p[0] - x, p[1] - top), (x - left) / per],
+    [Math.hypot(p[0] - right, p[1] - y), (w + y - top) / per],
+    [Math.hypot(p[0] - x, p[1] - bottom), (w + h + right - x) / per],
+    [Math.hypot(p[0] - left, p[1] - y), (2 * w + h + bottom - y) / per],
+  ]
+  const best = edges.reduce((a, b) => (b[0] < a[0] ? b : a))
+
+  return Math.round((best[1] % 1) * 10000) / 10000
+}
+
+/** The tail's root: pinned at an outline position, or (null) snapped to the edge nearest the tip. */
+const rootOf = (rect, tip, root, opts) => {
+  if (root === null || root === undefined || !Number.isFinite(Number(root))) return tailRoot(rect, tip, opts)
+  const x = tip[0]
+  const y = tip[1]
+  const inside = x >= rect.left && x <= rect.left + rect.w && y >= rect.top && y <= rect.top + rect.h
+
+  return inside ? null : outlinePoint(rect, Number(root), opts)
+}
+
+/** The middle of a tail's curve (the quadratic at its half-way point): where its bend handle sits. */
+export const curveMid = (root, ctrl, tip) => [
+  0.25 * root[0] + 0.5 * ctrl[0] + 0.25 * tip[0],
+  0.25 * root[1] + 0.5 * ctrl[1] + 0.25 * tip[1],
+]
+
+/**
+ * The bend that puts the curve's middle nearest `p`: its sideways distance from the straight
+ * root → tip line, as a share of the tail's length (the middle of a quadratic sits half way to its
+ * control point). Kept within MAX_BEND either side.
+ */
+export function bendFromPoint (root, tip, p) {
+  const len = Math.hypot(tip[0] - root[0], tip[1] - root[1])
+  if (!(len > 0)) return 0
+  const px = -(tip[1] - root[1]) / len
+  const py = (tip[0] - root[0]) / len
+  const mx = (root[0] + tip[0]) / 2
+  const my = (root[1] + tip[1]) / 2
+  const off = (p[0] - mx) * px + (p[1] - my) * py
+
+  return Math.round(clamp((2 * off) / len, -MAX_BEND, MAX_BEND) * 1000) / 1000
+}
+
 /** A point `gap` short of `target` on the line from `from`: where a tail toward a mouth stops. */
 export function tipShortOf (from, target, gap) {
   const dx = target[0] - from[0]
@@ -65,14 +140,15 @@ export function tipShortOf (from, target, gap) {
 export const clampToView = (p, view) => [clamp(p[0], view.x0, view.x1), clamp(p[1], view.y0, view.y1)]
 
 /**
- * The speech tail: a curved wedge from a narrow root on the nearest edge to `tip`.
+ * The speech tail: a curved wedge from a narrow root on the nearest edge to `tip`, or from the
+ * outline position `root` (0..1) when the teacher pinned it.
  *
  * @returns {null | {root: [number, number], a: [number, number], b: [number, number], ctrl: [number, number],
  *                   tip: [number, number], half: number, fill: string, ink: string}}
  */
-export function tailShape (rect, tip, { bend = DEFAULT_BEND, radius = 0 } = {}) {
+export function tailShape (rect, tip, { bend = DEFAULT_BEND, radius = 0, root: pinned = null } = {}) {
   const half = (rect.h * ROOT_SHARE) / 2
-  const root = tailRoot(rect, tip, { radius, half })
+  const root = rootOf(rect, tip, pinned, { radius, half })
   if (!root) return null
   const [rx, ry] = root.point
   const [tx, ty] = tip
@@ -99,6 +175,7 @@ export function tailShape (rect, tip, { bend = DEFAULT_BEND, radius = 0 } = {}) 
     ctrl,
     tip: [tx, ty],
     half,
+    mid: curveMid(root.point, ctrl, [tx, ty]),
     // The fill reaches into the balloon and covers its outline at the root; the ink is only the
     // two sides, so no line runs across the join.
     fill: `M ${f(tuck(a))} L ${sides} L ${f(tuck(b))} Z`,
@@ -112,8 +189,8 @@ export function tailShape (rect, tip, { bend = DEFAULT_BEND, radius = 0 } = {}) 
  *
  * @returns {Array<{x: number, y: number, r: number}>}
  */
-export function thoughtTrail (rect, tip) {
-  const root = tailRoot(rect, tip)
+export function thoughtTrail (rect, tip, pinned = null) {
+  const root = rootOf(rect, tip, pinned, {})
   if (!root) return []
   const radii = TRAIL_SHARES.map((s, i) => Math.max(TRAIL_MIN_R[i], s * rect.h))
   const [rx, ry] = root.point

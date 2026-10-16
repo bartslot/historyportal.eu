@@ -1,8 +1,76 @@
 import { describe, it, expect } from 'vitest'
-import { tailRoot, tailShape, thoughtTrail, tipShortOf, clampToView, cloudPath, ROOT_SHARE, TRAIL_SHARES } from '../balloon-shape.js'
+import {
+  tailRoot, tailShape, thoughtTrail, tipShortOf, clampToView, cloudPath, ROOT_SHARE, TRAIL_SHARES,
+  outlinePoint, outlineT, bendFromPoint, curveMid, MAX_BEND,
+} from '../balloon-shape.js'
 import { onEdge } from '../balloon-edit.js'
 
 const rect = { left: 100, top: 100, w: 400, h: 140 }
+const onOutline = (p, r = rect) => {
+  const onX = p[0] === r.left || p[0] === r.left + r.w
+  const onY = p[1] === r.top || p[1] === r.top + r.h
+  const inX = p[0] >= r.left && p[0] <= r.left + r.w
+  const inY = p[1] >= r.top && p[1] <= r.top + r.h
+  return (onX && inY) || (onY && inX)
+}
+
+describe('a pinned tail root (outline position)', () => {
+  it('always lands on the outline, wherever along it', () => {
+    for (let t = 0; t < 1; t += 0.037) expect(onOutline(outlinePoint(rect, t).point)).toBe(true)
+  })
+
+  it('runs clockwise from the top-left corner', () => {
+    expect(outlinePoint(rect, 0.1).point[1]).toBe(100)            // top edge
+    expect(outlinePoint(rect, 0.4).point[0]).toBe(500)            // right edge
+    expect(outlinePoint(rect, 0.6).point[1]).toBe(240)            // bottom edge
+    expect(outlinePoint(rect, 0.95).point[0]).toBe(100)           // left edge
+  })
+
+  it('projects a dragged point onto the nearest edge and back to the same spot', () => {
+    const [x, y] = outlinePoint(rect, outlineT(rect, [260, 300])).point   // well below the bottom edge
+    expect(x).toBeCloseTo(260, 1)
+    expect(y).toBe(240)
+    const near = outlinePoint(rect, outlineT(rect, [300, 110])).point   // inside, near the top
+    expect(near[0]).toBeCloseTo(300, 1)
+    expect(near[1]).toBe(100)
+  })
+
+  it('keeps clear of the rounded corners', () => {
+    expect(outlinePoint(rect, 0, { radius: 30, half: 10 }).point).toEqual([140, 100])
+  })
+
+  it('stays where it was pinned while the tip moves; auto snaps to the nearest edge', () => {
+    const pinned = outlineT(rect, [500, 170])     // right edge
+    const a = tailShape(rect, [300, 500], { root: pinned })
+    const b = tailShape(rect, [150, 450], { root: pinned })
+    expect(a.root).toEqual(b.root)
+    expect(a.root[0]).toBe(500)
+    expect(tailShape(rect, [300, 500]).root[1]).toBe(240)   // auto: the bottom edge, below the tip's way
+  })
+
+  it('a thought trail leaves from the pinned spot too', () => {
+    const pin = outlineT(rect, [100, 170])        // the left edge
+    const trail = thoughtTrail(rect, [300, 500], pin)
+    const from = outlinePoint(rect, pin).point
+    expect(Math.hypot(trail[0].x - from[0], trail[0].y - from[1])).toBeCloseTo(TRAIL_SHARES[0] * rect.h * 1.6, 3)
+  })
+})
+
+describe('the bend handle', () => {
+  it('sits on the curve\'s middle, and dragging it there gives the same bend back', () => {
+    const t = tailShape(rect, [200, 460], { bend: 0.2 })
+    expect(t.mid).toEqual(curveMid(t.root, t.ctrl, t.tip))
+    expect(bendFromPoint(t.root, t.tip, t.mid)).toBeCloseTo(0.2, 3)
+  })
+
+  it('bends either way and never past the limit', () => {
+    const root = [300, 240]
+    const tip = [300, 440]
+    expect(bendFromPoint(root, tip, [260, 340])).toBeGreaterThan(0)
+    expect(bendFromPoint(root, tip, [340, 340])).toBeLessThan(0)
+    expect(Math.abs(bendFromPoint(root, tip, [0, 340]))).toBe(MAX_BEND)
+  })
+})
 const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1])
 
 describe('tailRoot', () => {

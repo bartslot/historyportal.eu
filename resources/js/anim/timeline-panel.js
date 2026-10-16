@@ -13,7 +13,8 @@ import { addKeyframe, sortedKeys, sameTime, segmentEasing, easingFn, keyStateAt,
 import { keyId, moveKeys, deleteKeys, snapToNearest } from './timeline-edit.js'
 import { propertiesFor, propertyFor, sampleFrame, kindOfTarget, INTERPOLATE } from './properties.js'
 import { wordSpans, snapTime, wordAt } from './narration-clock.js'
-import { textObjects, artObjects, dioramaObjects, readObjectProperty, writeObjectProperty, setObjectHidden } from './scene-objects.js'
+import { textObjects, artObjects, balloonObjects, dioramaObjects, readObjectProperty, writeObjectProperty, setObjectHidden } from './scene-objects.js'
+import { balloonPatch } from '../scene/BalloonLayer.js'
 import { clipOf, shiftClip, stretchClip } from '../scene/diorama/clip.js'
 
 /** Which part of a diorama cell a row edits: X across, Z away from the camera. */
@@ -289,7 +290,7 @@ export const animationTimeline = (config = {}) => ({
   refreshObjects () {
     const cameras = this.targets.filter((t) => kindOfTarget(t) === 'camera')
       .map((target) => ({ target, kind: 'camera', label: 'Camera' }))
-    this.objects = [...cameras, ...artObjects(), ...textObjects(), ...dioramaObjects()]
+    this.objects = [...cameras, ...balloonObjects(), ...artObjects(), ...textObjects(), ...dioramaObjects()]
     for (const o of this.objects) if (!(o.target in this.openGroups)) this.openGroups[o.target] = true
   },
 
@@ -682,6 +683,53 @@ export const animationTimeline = (config = {}) => ({
     window.addEventListener('pointerup', onUp, { once: true })
   },
 
+  // ── Balloon spans. A balloon is on screen from its start to its end (no end: the scene's end).
+  //    Its row's clip moves it in time and its ends stretch it, like a diorama clip.
+
+  /** The live draft while a span is dragged, else the balloon's own start and end. */
+  balloonSpan (target) {
+    if (this.spanDraft?.target === target) return this.spanDraft
+    const o = this.objects.find((x) => x.target === target)
+    if (!o) return null
+    return { from: o.start ?? 0, to: Number.isFinite(o.end) ? o.end : this.duration }
+  },
+
+  spanDraft: null,
+
+  startBalloonSpan (event, target) {
+    if (event.button !== 0) return
+    event.stopPropagation()
+    this.pause()
+    const span0 = this.balloonSpan(target)
+    if (!span0) return
+    const keys0 = [{ t: span0.from }, { t: span0.to }]
+    const bar = event.currentTarget.getBoundingClientRect()
+    const EDGE_PX = 8
+    const mode = event.clientX - bar.left < EDGE_PX ? 'start' : bar.right - event.clientX < EDGE_PX ? 'end' : 'move'
+    const t0 = this.rawTimeFromEvent(event)
+    let moved = false
+    const onMove = (e) => {
+      if (!moved && Math.abs(e.clientX - event.clientX) < DRAG_THRESHOLD_PX) return
+      moved = true
+      const dt = this.rawTimeFromEvent(e) - t0
+      const keys = mode === 'move' ? shiftClip(keys0, dt)
+        : stretchClip(keys0, mode, (mode === 'end' ? keys0[1].t : keys0[0].t) + dt)
+      this.spanDraft = { target, from: keys[0].t, to: Math.min(this.duration, keys[1].t) }
+    }
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove)
+      const draft = this.spanDraft
+      if (!moved || !draft) { this.spanDraft = null; return }
+      // Up to the timeline's end means up to the scene's end, however long the narration runs.
+      const end = draft.to >= this.duration - 0.01 ? null : draft.to
+      window.Livewire?.dispatch('balloon:change', { id: `bal_${target.slice(4)}`, patch: { start: draft.from, end } })
+      // The row keeps the draft until the save comes back as the scene's new lines.
+      setTimeout(() => { if (this.spanDraft === draft) this.spanDraft = null }, 1500)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp, { once: true })
+  },
+
   // ── Transport ───────────────────────────────────────────────────────────────────────────
 
   playing: false,
@@ -847,6 +895,8 @@ export const animationTimeline = (config = {}) => ({
       else writeObjectProperty(target, property, base)
       const [kind, id] = String(target).split(':')
       if (kind === 'art') this.$wire?.updateArtworkLayer?.(Number(id), property, base)
+      // A balloon keeps its own values on its line: the one Reset returns to is saved there too.
+      if (kind === 'bal') this.$wire?.changeBalloon?.(`bal_${id}`, balloonPatch({ [property]: base }, (p) => readObjectProperty(target, p)))
     }
     if (!persist) return
     this.applyFrame()
@@ -1084,6 +1134,7 @@ export const animationTimeline = (config = {}) => ({
     if (!id) return null
     if (String(id).startsWith('art_')) return `art:${String(id).slice(4)}`
     if (String(id).startsWith('dio_')) return `dio:${String(id).slice(4)}`
+    if (String(id).startsWith('bal_')) return `bal:${String(id).slice(4)}`
     const text = this.objects.find((o) => (o.kind === 'text' || o.kind === 'rect') && o.target.slice(o.target.indexOf(':') + 1) === String(id))
     return text?.target ?? null
   },
@@ -1121,6 +1172,7 @@ export const animationTimeline = (config = {}) => ({
     if (kind === 'art') (window.__artOverlay?.() ?? window.__lessonArtworkLayer)?.select?.(`art_${id}`)
     else if (kind === 'text' || kind === 'rect') window.__lessonTextLayer?.select?.(id)
     else if (kind === 'dio') window.__diorama?.select?.(id)
+    else if (kind === 'bal') window.__balloons?.select?.(`bal_${id}`)
   },
 
   // ── Bars. Drag one to move the whole animation; click between two keys to choose easing ────

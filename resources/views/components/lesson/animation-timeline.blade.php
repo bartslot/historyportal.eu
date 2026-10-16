@@ -60,6 +60,7 @@
             'opacity' => __('Opacity'), 'tint' => __('Colour'), 'tint_opacity' => __('Colour') . ' %',
             'lng' => __('Longitude'), 'lat' => __('Latitude'), 'zoom' => __('Zoom'),
             'heading' => __('Direction'), 'tilt' => __('Tilt'),
+            'tip_x' => __('Tail').' X', 'tip_y' => __('Tail').' Y', 'root' => __('Tail root'), 'bend' => __('Bend'),
         ],
      ]) }}"
      x-data="animationTimeline(JSON.parse($el.dataset.timelineConfig))"
@@ -259,7 +260,7 @@
      picture for artwork and diorama items. A camera gets Bart's glyph from the file (13x8). --}}
                         <span x-show="object.kind !== 'camera'" aria-hidden="true"
                               class="grid h-3.5 w-3.5 shrink-0 place-items-center text-panel-icon [&>svg]:h-3.5 [&>svg]:w-3.5"
-                              x-html="window.__objIcons?.[{ text: 'text', rect: 'panelL' }[object.kind] ?? 'photo'] ?? ''"></span>
+                              x-html="window.__objIcons?.[{ text: 'text', rect: 'panelL', bal: 'balloon' }[object.kind] ?? 'photo'] ?? ''"></span>
                         <svg x-show="object.kind === 'camera'" width="13" height="8" viewBox="0 0 13 8" fill="none" stroke="currentColor"
                              class="shrink-0 text-panel-icon" aria-hidden="true">
                             <path d="M7.9834 0.666992L8.0918 0.671875C8.59069 0.723453 8.98766 1.12018 9.04004 1.61914L9.0459 1.72754V3.5791L10.0664 2.94043L12.1113 1.65918C12.2007 1.60333 12.2661 1.58345 12.3037 1.5752C12.3089 1.58957 12.3164 1.60809 12.3213 1.63281L12.335 1.7832V6.14551C12.3349 6.24973 12.3175 6.31464 12.3047 6.35059C12.2674 6.34246 12.2025 6.3233 12.1133 6.26758L10.0654 4.98828L9.0459 4.35059V6.20312C9.04312 6.78886 8.56842 7.26242 7.9834 7.26367H1.72852C1.17907 7.26189 0.728515 6.84471 0.672852 6.30957L0.666992 6.20117V1.72852C0.668771 1.17918 1.08513 0.728656 1.62012 0.672852L1.72852 0.666992H7.9834Z" stroke-width="1.33333"/>
@@ -434,6 +435,17 @@
                                     </div>
                                 </template>
                             </div>
+                            {{-- A balloon is on screen for a span of the scene: its clip, under its
+                                 keyframe bar. The body moves it in time, the ends stretch it. --}}
+                            <template x-if="object.kind === 'bal'">
+                                <div class="absolute flex cursor-grab items-center justify-between overflow-hidden rounded-[3px] bg-base-content/25"
+                                     :data-timeline-span="object.target"
+                                     x-on:pointerdown="startBalloonSpan($event, object.target)"
+                                     :style="barStyle(balloonSpan(object.target)) + '; bottom: 3px; height: 6px'">
+                                    <span class="pointer-events-none h-full w-1.5 bg-base-content/50"></span>
+                                    <span class="pointer-events-none h-full w-1.5 bg-base-content/50"></span>
+                                </div>
+                            </template>
                         </div>
                         <template x-for="property in propertiesOf(object.target)" :key="property.key">
                             <div class="relative" x-show="openGroups[object.target]"

@@ -75,6 +75,9 @@ trait EditsSceneBalloons
         }
         array_splice($lines, $i, 1);
         $config = $scene->config;
+        if (isset($config['timeline'])) {
+            $config['timeline'] = SpeechBalloons::timelineWithout($config['timeline'], $i);
+        }
         if ($lines === []) {
             unset($config['lines']);
         } else {
@@ -83,6 +86,8 @@ trait EditsSceneBalloons
         $scene->update(['config' => $config]);
         $this->activeBalloonId = null;
         $this->selectSceneInternal($scene->id);
+        // The Timeline tab keeps its own copy of the tracks: hand it the re-keyed ones.
+        $this->dispatch('timeline-restored', timeline: $config['timeline'] ?? []);
     }
 
     public function clearActiveBalloon(): void

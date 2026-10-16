@@ -158,6 +158,70 @@ class SpeechBalloonsTest extends TestCase
         $this->assertCount(1, $this->lines());
     }
 
+    public function test_scale_opacity_entrance_and_span_are_stored_and_clamped(): void
+    {
+        $this->wizard()->call('addBalloon')
+            ->call('updateBalloon', 'bal_1', 'scale', '9')
+            ->call('updateBalloon', 'bal_1', 'opacity', '0.4')
+            ->call('updateBalloon', 'bal_1', 'anim', 'fade')
+            ->dispatch('balloon:change', id: 'bal_1', patch: ['start' => 2.5, 'end' => 6])
+            ->call('updateBalloon', 'bal_1', 'anim', 'explode');   // not an entrance: ignored
+
+        $line = $this->lines()[1];
+        $this->assertEquals(SpeechBalloons::MAX_SCALE, $line['scale']);
+        $this->assertEquals(0.4, $line['opacity']);
+        $this->assertSame('fade', $line['anim']);
+        $this->assertEquals(2.5, $line['start']);
+        $this->assertEquals(6, $line['end']);
+
+        // An end before the start, or none at all, is up to the scene's end.
+        $wizard = $this->wizard()->dispatch('balloon:change', id: 'bal_1', patch: ['end' => 1]);
+        $this->assertNull($this->lines()[1]['end']);
+        $wizard->dispatch('balloon:change', id: 'bal_1', patch: ['end' => 5])
+            ->dispatch('balloon:change', id: 'bal_1', patch: ['end' => null]);
+        $this->assertNull($this->lines()[1]['end']);
+    }
+
+    public function test_the_tail_root_is_pinned_merged_with_the_tip_and_set_back_to_auto(): void
+    {
+        $wizard = $this->wizard()->call('addBalloon')
+            ->dispatch('balloon:change', id: 'bal_1', patch: ['tail' => ['tip' => [0.4, 0.8], 'bend' => 0.2]])
+            ->dispatch('balloon:change', id: 'bal_1', patch: ['tail' => ['root' => 1.25]]);
+
+        // The root joins the tail without taking its tip or bend, wrapped onto the outline (0..1).
+        $this->assertEquals(['tip' => [0.4, 0.8], 'bend' => 0.2, 'root' => 0.25], $this->lines()[1]['tail']);
+
+        $wizard->dispatch('balloon:change', id: 'bal_1', patch: ['tail' => ['root' => null]]);
+        $this->assertEquals(['tip' => [0.4, 0.8], 'bend' => 0.2], $this->lines()[1]['tail']);
+    }
+
+    public function test_the_timeline_keys_a_balloon_and_its_tracks_follow_a_delete(): void
+    {
+        // Two balloons: bal_1 and bal_2. Each gets a scale track; bal_2 a tail root track too.
+        $wizard = $this->wizard()->call('addBalloon')->call('addBalloon');
+        $keys = [['time' => 0, 'value' => 1], ['time' => 2, 'value' => 1.5]];
+        $wizard->call('setTimeline', ['duration' => 10, 'tracks' => [
+            ['target' => 'bal:1', 'property' => 'scale', 'keyframes' => $keys],
+            ['target' => 'bal:2', 'property' => 'scale', 'keyframes' => $keys],
+            ['target' => 'bal:2', 'property' => 'root', 'keyframes' => $keys],
+            ['target' => 'bal:2', 'property' => 'text', 'keyframes' => $keys],   // not a balloon property
+        ]]);
+        $tracks = $this->scene->fresh()->config['timeline']['tracks'];
+        $this->assertSame(['bal:1|scale', 'bal:2|scale', 'bal:2|root'], array_map(fn ($t) => $t['target'].'|'.$t['property'], $tracks));
+
+        $this->travel(2)->seconds();
+        $wizard->dispatch('scene:delete-object', objectId: 'bal_1')
+            ->assertDispatched('timeline-restored');
+
+        // bal_1's tracks went with it; bal_2 is bal_1 now, and so are its tracks.
+        $tracks = $this->scene->fresh()->config['timeline']['tracks'];
+        $this->assertSame(['bal:1|scale', 'bal:1|root'], array_map(fn ($t) => $t['target'].'|'.$t['property'], $tracks));
+
+        $wizard->call('undoLastEdit');
+        $this->assertCount(3, $this->scene->fresh()->config['timeline']['tracks']);
+        $this->assertCount(3, $this->lines());
+    }
+
     public function test_a_quiz_scene_takes_no_balloon(): void
     {
         $this->scene->update(['kind' => 'game', 'game_type' => 'quiz']);

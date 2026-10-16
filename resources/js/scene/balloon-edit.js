@@ -8,8 +8,9 @@
  *   • a double click types in it; a balloon just added opens that way with its words selected
  * Every finished gesture is one onChange(id, patch): one save on the server, one undo step.
  */
-import { DEFAULT_BEND } from './balloon-shape.js'
-import { fractionPoint } from './BalloonLayer.js'
+import { DEFAULT_BEND, bendFromPoint, outlineT } from './balloon-shape.js'
+import { MAX_SCALE, MIN_SCALE, fractionPoint } from './BalloonLayer.js'
+import { handleCss } from './ArtworkOverlay.js'
 
 /** A press this close to the bubble's edge (px, inside) pulls out a tail instead of moving it. */
 export const EDGE_GRAB_PX = 10
@@ -42,6 +43,21 @@ export function selectBalloon (id, { silent = false } = {}) {
 
 export const selectedBalloon = () => selected
 
+/** Animated values onto a balloon on the stage: the timeline's scrub and play, a field's drag. */
+export function patchBalloon (id, values) {
+  for (const l of live()) l.applyValues(id, values)
+}
+
+/** One animatable property of a balloon on the stage (balloonValue units), or null. */
+export function readBalloon (id, property) {
+  for (const l of live()) {
+    const v = l.readValue(id, property)
+    if (v !== undefined) return v
+  }
+
+  return null
+}
+
 /** Open a balloon for typing, now or as soon as a layer shows it (a balloon just added). */
 export function editBalloon (id) {
   pendingEdit = id
@@ -54,7 +70,7 @@ export function editableBalloons (onChange) {
     editable: true,
     onChange,
     onShow: (layer, el, id) => wire(layer, el, id, onChange),
-    onPlace: placeHandle,
+    onPlace: placeHandles,
     onLines: (layer) => {
       layers.add(layer)
       layer.markSelected(selected)
@@ -138,9 +154,38 @@ function wire (layer, el, id, onChange) {
   })
 }
 
+/** The timeline's target for a balloon id: 'bal_3' → 'bal:3'. */
+export const balloonTarget = (id) => `bal:${String(id).slice(4)}`
+
 /**
- * One gesture on a balloon: 'move' carries its middle (at), 'tail' its tail tip. Drawn live via
- * patchLine; saved once, on release, and only when the hand actually moved.
+ * What a finished gesture changes, as the timeline's property values (balloonValue units), so an
+ * animated property records a key at the playhead like a dragged figure does.
+ */
+export function editedValues (patch) {
+  const out = {}
+  if (patch.at) Object.assign(out, { x: patch.at[0] * 100, y: patch.at[1] * 100 })
+  if (Number.isFinite(patch.scale)) out.scale = patch.scale
+  const t = patch.tail ?? {}
+  if (t.tip) Object.assign(out, { tip_x: t.tip[0] * 100, tip_y: t.tip[1] * 100 })
+  if (Number.isFinite(t.root)) out.root = t.root
+  if (Number.isFinite(t.bend)) out.bend = t.bend
+
+  return out
+}
+
+/** The scale a corner drag gives: the start scale times how much farther from the middle it is. */
+export function scaleFromDrag (startScale, centre, from, to) {
+  const d0 = Math.hypot(from[0] - centre[0], from[1] - centre[1])
+  const d1 = Math.hypot(to[0] - centre[0], to[1] - centre[1])
+  if (!(d0 > 0)) return startScale
+
+  return Math.round(Math.min(MAX_SCALE, Math.max(MIN_SCALE, startScale * (d1 / d0))) * 1000) / 1000
+}
+
+/**
+ * One gesture on a balloon: 'move' carries its middle (at), 'tail' its tip, 'root' where the tail
+ * leaves the outline, 'bend' how far it bows, 'scale' its size. Drawn live via patchLine; saved
+ * once, on release, and only when the hand actually moved.
  */
 function drag (layer, id, e, target, mode, onChange) {
   e.preventDefault()
@@ -152,55 +197,104 @@ function drag (layer, id, e, target, mode, onChange) {
   const i = layer.indexOf(id)
   if (i < 0) return
   const line = layer.lines[i]
-  const bubble = layer.shown.get(i)?.querySelector('.lp-balloon__bubble')
+  const el = layer.shown.get(i)
+  const geom = el?._geom ?? null
   const hr = layer.host.getBoundingClientRect()
-  const br = bubble?.getBoundingClientRect()
+  const br = el?.querySelector('.lp-balloon__bubble')?.getBoundingClientRect()
   // The balloon's middle in host fractions when the drag began (it may not have had an `at` yet).
   const startAt = fractionPoint(line.at)
     ?? (br ? toFraction(layer, br.left + br.width / 2, br.top + br.height / 2) : [0.5, 0.5])
   const start = { x: e.clientX, y: e.clientY }
+  const local = (ev) => [ev.clientX - hr.left, ev.clientY - hr.top]
   let patch = null
   try { target.setPointerCapture(e.pointerId) } catch (_) { /* synthetic pointer */ }
 
+  const tailWith = (part) => ({ tail: { ...(line.tail ?? {}), ...part } })
+  const gesture = (ev) => {
+    if (mode === 'move') {
+      const at = [startAt[0] + (ev.clientX - start.x) / (hr.width || 1), startAt[1] + (ev.clientY - start.y) / (hr.height || 1)]
+      return { at: at.map(v => round(Math.min(1, Math.max(0, v)))) }
+    }
+    if (mode === 'scale' && br) {
+      const centre = [br.left + br.width / 2, br.top + br.height / 2]
+      return { scale: scaleFromDrag(Number.isFinite(line.scale) ? line.scale : 1, centre, [start.x, start.y], [ev.clientX, ev.clientY]) }
+    }
+    if (mode === 'root' && geom) return tailWith({ root: outlineT(geom.rect, local(ev)) })
+    if (mode === 'bend' && geom?.shape) return tailWith({ bend: bendFromPoint(geom.shape.root, geom.shape.tip, local(ev)) })
+    if (mode === 'tail') return tailWith({ tip: toFraction(layer, ev.clientX, ev.clientY), bend: line.tail?.bend ?? DEFAULT_BEND })
+
+    return null
+  }
   const move = (ev) => {
     if (!patch && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < DRAG_THRESHOLD_PX) return
-    if (mode === 'move') {
-      const at = [round(startAt[0] + (ev.clientX - start.x) / (hr.width || 1)), round(startAt[1] + (ev.clientY - start.y) / (hr.height || 1))]
-      patch = { at: at.map(v => Math.min(1, Math.max(0, v))) }
-    } else {
-      patch = { tail: { tip: toFraction(layer, ev.clientX, ev.clientY), bend: line.tail?.bend ?? DEFAULT_BEND } }
-    }
-    layer.patchLine(id, patch)
+    patch = gesture(ev) ?? patch
+    if (patch) layer.patchLine(id, patch)
   }
   const up = () => {
     target.removeEventListener('pointermove', move)
     target.removeEventListener('pointerup', up)
     target.removeEventListener('pointercancel', up)
-    if (patch) onChange?.(id, patch)
+    if (!patch) return
+    onChange?.(id, patch)
+    window.dispatchEvent(new CustomEvent('scene-object-edited', { detail: { target: balloonTarget(id), values: editedValues(patch) } }))
   }
   target.addEventListener('pointermove', move)
   target.addEventListener('pointerup', up)
   target.addEventListener('pointercancel', up)
 }
 
-/** The selected balloon's tail handle, on the tip (a thought's last circle). */
-function placeHandle (el, line, tip) {
-  let handle = el.querySelector(':scope > .lp-balloon__handle')
-  if (!el.hasAttribute('data-selected') || !tip || !fractionPoint(line.tail?.tip)) {
-    handle?.remove()
-    return
+/** The selected balloon's handles: scale (bottom-right corner), and on a tail its tip, root and bend. */
+const HANDLES = [
+  { mode: 'scale', cursor: 'nwse-resize' },
+  { mode: 'tail', cursor: 'grab' },
+  { mode: 'root', cursor: 'grab' },
+  { mode: 'bend', cursor: 'grab' },
+]
+
+function placeHandles (el, line, tip, geom) {
+  el._geom = geom
+  const selected = el.hasAttribute('data-selected')
+  const shape = geom?.shape ?? null
+  const at = {
+    scale: geom ? [geom.rect.left + geom.rect.w, geom.rect.top + geom.rect.h] : null,
+    tail: tip,
+    root: shape?.root ?? null,
+    bend: shape?.mid ?? null,
   }
-  if (!handle) {
-    handle = document.createElement('div')
-    handle.className = 'lp-balloon__handle'
-    handle.dataset.balloonHandle = ''
-    el.appendChild(handle)
-    handle.addEventListener('pointerdown', (e) => {
-      if (e.button !== 0) return
-      const layer = live().find(l => l.host.contains(el))
-      if (layer) drag(layer, el.dataset.balloonId, e, handle, 'tail', layer.opts.onChange)
+  for (const h of HANDLES) {
+    let node = el.querySelector(`:scope > [data-balloon-handle="${h.mode}"]`)
+    const p = selected ? at[h.mode] : null
+    if (!p) { node?.remove(); continue }
+    if (!node) node = makeHandle(el, h)
+    node.style.left = `${p[0] - 5}px`
+    node.style.top = `${p[1] - 5}px`
+  }
+}
+
+function makeHandle (el, h) {
+  const node = document.createElement('div')
+  node.dataset.balloonHandle = h.mode
+  node.style.cssText = handleCss('', h.cursor)
+  el.appendChild(node)
+  const layerOf = () => live().find(l => l.host.contains(el))
+  node.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return
+    const layer = layerOf()
+    if (layer) drag(layer, el.dataset.balloonId, e, node, h.mode, layer.opts.onChange)
+  })
+  // Double click: the root snaps to the edge nearest the tip again.
+  if (h.mode === 'root') {
+    node.addEventListener('dblclick', (e) => {
+      e.stopPropagation()
+      const layer = layerOf()
+      const id = el.dataset.balloonId
+      const line = layer?.lines[layer.indexOf(id)]
+      if (!line?.tail) return
+      const { root, ...tail } = line.tail
+      layer.patchLine(id, { tail })
+      layer.opts.onChange?.(id, { tail: { root: null } })
     })
   }
-  handle.style.left = `${tip[0]}px`
-  handle.style.top = `${tip[1]}px`
+
+  return node
 }
