@@ -987,6 +987,9 @@
             @elseif ($activeTextId && ($activeText = $this->activeText))
             {{-- Text and backing-panel controls live in Format, never over the canvas object. --}}
             <x-lesson.scene-text-inspector :text="$activeText" :scene="$this->selectedSceneModel" />
+            @elseif ($activeBalloonId && ($activeBalloon = $this->activeBalloon))
+            {{-- A speech or thought balloon: its words, its type, who it points at. --}}
+            <x-lesson.balloon-inspector :balloon="$activeBalloon" :speakers="$this->balloonSpeakers()" />
             @elseif ($activeLayerId && ($al = $this->activeLayer))
             {{-- A clipart layer is selected → its settings take over the inspector.
                  Format is what the layer LOOKS like; Animate is how it arrives. Alpine-local so
@@ -1240,6 +1243,7 @@
         photo:  '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M2.25 15.75L7.409 10.591C7.61793 10.3821 7.86597 10.2163 8.13896 10.1033C8.41194 9.99018 8.70452 9.93198 9 9.93198C9.29548 9.93198 9.58806 9.99018 9.86104 10.1033C10.134 10.2163 10.3821 10.3821 10.591 10.591L15.75 15.75M14.25 14.25L15.659 12.841C15.8679 12.6321 16.116 12.4663 16.389 12.3533C16.6619 12.2402 16.9545 12.182 17.25 12.182C17.5455 12.182 17.8381 12.2402 18.111 12.3533C18.384 12.4663 18.6321 12.6321 18.841 12.841L21.75 15.75M3.75 19.5H20.25C20.6478 19.5 21.0294 19.342 21.3107 19.0607C21.592 18.7794 21.75 18.3978 21.75 18V6C21.75 5.60218 21.592 5.22064 21.3107 4.93934C21.0294 4.65804 20.6478 4.5 20.25 4.5H3.75C3.35218 4.5 2.97064 4.65804 2.68934 4.93934C2.40804 5.22064 2.25 5.60218 2.25 6V18C2.25 18.3978 2.40804 18.7794 2.68934 19.0607C2.97064 19.342 3.35218 19.5 3.75 19.5ZM14.625 8.25C14.625 8.66421 14.2892 9 13.875 9C13.4608 9 13.125 8.66421 13.125 8.25C13.125 7.83579 13.4608 7.5 13.875 7.5C14.2892 7.5 14.625 7.83579 14.625 8.25Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
         solid:  '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M20.0049 19.6379H9.00488C8.73967 19.6379 8.48531 19.5325 8.29778 19.345C8.11024 19.1574 8.00488 18.9031 8.00488 18.6379V10.6379C8.00488 10.3727 8.11024 10.1183 8.29778 9.93077C8.48531 9.74324 8.73967 9.63788 9.00488 9.63788H20.0049C20.2701 9.63788 20.5245 9.74324 20.712 9.93077C20.8995 10.1183 21.0049 10.3727 21.0049 10.6379V18.6379C21.0049 18.9031 20.8995 19.1574 20.712 19.345C20.5245 19.5325 20.2701 19.6379 20.0049 19.6379Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M14.1345 9.6989C14.1345 6.75148 11.7451 4.36212 8.79772 4.36212C5.8503 4.36212 3.46095 6.75148 3.46095 9.6989C3.44224 11.3303 4.45651 14.5767 8.41688 14.5767" stroke="currentColor" stroke-width="1.5"/></svg>',
         map:    '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M9 6.75 3.75 4.5v12.75L9 19.5m0-12.75 6 2.25m-6-2.25v12.75m6-10.5 5.25-2.25V15L15 17.25m0-10.5v10.5m0 0-6-2.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        balloon: '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 0 1-.923 1.785A5.969 5.969 0 0 0 6 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
         quiz:   '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M9 12l2 2 4-4m-9 8h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     };
     // A diorama item's Format panel (components/lesson/diorama-item-inspector): read off the live stage at
@@ -1336,7 +1340,10 @@
                 // The clipart group sits above the text objects only when the teacher dragged it there
                 // (config.clipart_on_top → the overlay host's z-index is raised above the text layer).
                 const onTop = !!(artLayer && artLayer.onTop);
-                const items = [...(onTop ? [...artItems, ...textItems] : [...textItems, ...artItems]), ...dioItems];
+                // Speech balloons are drawn over everything: listed first, never restacked by hand.
+                const balloonItems = (window.__balloons?.list() ?? []).map((b) =>
+                    ({ id: b.id, icon: 'balloon', label: b.text, bg: false, bal: true }));
+                const items = [...balloonItems, ...(onTop ? [...artItems, ...textItems] : [...textItems, ...artItems]), ...dioItems];
                 // Bottom layer(s), pinned (not drag-reorderable). A Route waypoint scene lists its own
                 // stack — the Gallery overlay ON TOP of the Waypoint map — instead of a bare Background;
                 // every other scene lists a single Background (or Slideshow for a standalone gallery).
@@ -1374,7 +1381,7 @@
                     // adjust button ([data-nodrag]) opts out so tapping it doesn't start a drag.
                     draggable: '[data-obj-id]',
                     // Diorama rows stack by depth on the floor, never by hand: pinned like the background.
-                    filter: '[data-bg], [data-nodrag], [data-dio]',
+                    filter: '[data-bg], [data-nodrag], [data-dio], [data-bal]',
                     preventOnFilter: false,         // keep the adjust button's own click working
                     // Pointer-based dragging (not native HTML5 DnD): more reliable inside this
                     // fixed-position panel and works consistently across browsers.
@@ -1391,7 +1398,7 @@
                         // …then restack each layer system and rebuild. Text and clipart are two
                         // separate overlays, so split the dropped order by type and reorder each.
                         const isArt = (id) => id.startsWith('art_');
-                        const textIds = ids.filter((id) => !isArt(id) && !id.startsWith('dio_'));
+                        const textIds = ids.filter((id) => !isArt(id) && !id.startsWith('dio_') && !id.startsWith('bal_'));
                         const artIds = ids.filter(isArt);
                         if (textIds.length) window.__lessonTextLayer?.reorder(textIds);
                         if (artIds.length) this.reorderClipart(ids, textIds, artIds);
@@ -1435,6 +1442,10 @@
                 }
                 if (obj.dio) {
                     window.__diorama?.select(obj.id.slice(4));
+                    return;
+                }
+                if (obj.bal) {
+                    window.__balloons?.select(obj.id);
                     return;
                 }
                 if (obj.art) {
@@ -1504,7 +1515,8 @@
             const isArtwork = id.indexOf('art_') === 0;
             const isDiorama = id.indexOf('dio_') === 0;
             const isText = !!window.__lessonTextLayer?._texts?.some((text) => text.id === id);
-            const objectId = (isArtwork || isDiorama || isText) ? id : '';
+            const isBalloon = id.indexOf('bal_') === 0;
+            const objectId = (isArtwork || isDiorama || isText || isBalloon) ? id : '';
             if (objectId) window.dispatchEvent(new CustomEvent('inspector-open'));
             if (objectId === lastSelection) return;
             lastSelection = objectId;
@@ -1513,7 +1525,7 @@
         // Empty canvas / background selection is scene-level formatting, not object formatting.
         document.addEventListener('pointerdown', (e) => {
             const target = e.target instanceof Element ? e.target : null;
-            if (!target?.closest('#lesson-canvas-root') || target.closest('[data-text-id], [data-layer-id]')) return;
+            if (!target?.closest('#lesson-canvas-root') || target.closest('[data-text-id], [data-layer-id], [data-balloon-id]')) return;
             window.__lessonTextLayer?.select?.('__bg__');
         });
         // Called from an inspector's Back button so selecting the same object later reopens it.
@@ -1670,6 +1682,11 @@
                         class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
                     <x-icons.pencil class="h-4 w-4 shrink-0 text-slate-400" />
                     <span>{{ __('Text') }}</span>
+                </button>
+                <button type="button" @click="$wire.addBalloon(); addOpen = false"
+                        class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 0 1-.923 1.785A5.969 5.969 0 0 0 6 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337Z"/></svg>
+                    <span>{{ __('Speech balloon') }}</span>
                 </button>
                 <button type="button" @click="Livewire.dispatch('open-image-library'); addOpen = false"
                         class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
@@ -2026,7 +2043,7 @@
             <template x-for="obj in items" :key="obj.id">
                 {{-- The whole row is the drag handle (grab cursor); only the adjust button opts out.
                      Text and clipart rows reorder; the background is pinned to the bottom ([data-bg]). --}}
-                <div :data-obj-id="obj.bg ? null : obj.id" :data-bg="obj.bg ? '1' : null" :data-dio="obj.dio ? '1' : null"
+                <div :data-obj-id="obj.bg ? null : obj.id" :data-bg="obj.bg ? '1' : null" :data-dio="obj.dio ? '1' : null" :data-bal="obj.bal ? '1' : null"
                      data-obj-row
                      @click="select(obj)"
                      :class="[
@@ -2044,7 +2061,7 @@
                          from starting a Sortable drag; @click.stop keeps the row's select from firing.
                          data-obj-adjust hides both in the compact (icons-only) rail. --}}
                     {{-- Duplicate THIS object (Cmd-D does the same). --}}
-                    <button type="button" data-nodrag data-obj-adjust x-show="!obj.bg"
+                    <button type="button" data-nodrag data-obj-adjust x-show="!obj.bg && !obj.bal"
                             @click.stop="duplicateObject(obj)"
                             class="btn btn-ghost btn-xs btn-square hidden shrink-0 text-base-content/50 hover:text-primary group-hover:inline-flex group-focus-within:inline-flex"
                             aria-label="{{ __('Duplicate object') }}" :data-tooltip="@js(__('Duplicate') . ' (⌘D)')">
@@ -2209,6 +2226,11 @@
                 if (!w.paintingPickerOpen) window.dispatchEvent(new CustomEvent('toast', { detail: { message: @js(__('Image pasted.')), type: 'success' } }));
             });
         });
+        // Add > Speech balloon: the new balloon opens for typing as soon as the stage draws it.
+        window.Livewire.on('balloon:added', (e) => {
+            const p = Array.isArray(e) ? e[0] : e;
+            if (p?.id) window.__balloons?.edit(p.id);
+        });
         window.Livewire.on('scene:objects-duplicated', (e) => {
             const p = Array.isArray(e) ? e[0] : e;
             const id = p?.objectIds?.[p.objectIds.length - 1];
@@ -2265,7 +2287,7 @@
             if (window.__timelineKeying?.hasKeySelection?.()) return;
             const sel = window.getSelection?.();
             if (sel && !sel.isCollapsed && sel.anchorNode?.parentElement?.closest?.('[contenteditable], input, textarea')) return;
-            const id = window.__artOverlay()?._selectedId || window.__lessonTextLayer?._selectedId;
+            const id = window.__balloons?.selected() || window.__artOverlay()?._selectedId || window.__lessonTextLayer?._selectedId;
             if (!id || id === '__bg__') return;
             e.preventDefault();
             window.Livewire.dispatch('scene:delete-object', { objectId: id });

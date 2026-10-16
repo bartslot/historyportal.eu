@@ -2132,5 +2132,11 @@
     "Recording": "Opname",
     "Stop recording": "Opname stoppen",
     "This test session has ended or does not exist.": "Deze testsessie is afgelopen of bestaat niet.",
-    "Start test session": "Start testsessie"
+    "Start test session": "Start testsessie",
+    "Speech balloon": "Tekstballon",
+    "Thought balloon": "Gedachteballon",
+    "Speech": "Spreken",
+    "Thought": "Gedachte",
+    "Speaker": "Spreker",
+    "Remove tail": "Staart weghalen"
 }

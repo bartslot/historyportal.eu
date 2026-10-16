@@ -8,6 +8,10 @@ import { t } from '../i18n.js'
 import { gradientCanvas } from './background-gradient.js'
 import { cameraSpec } from './camera.js'
 import { normalizeSplit } from './split-layout.js'
+import { balloonOptions, hideStageBalloons, setBalloonScene, showStageBalloons, typingIn } from './editor-balloons.js'
+
+/** Scene kinds the player draws its own way, without balloons (SceneSplit::NO_SPLIT_KINDS). */
+const NO_BALLOON_KINDS = ['game', 'map', 'voyage', 'gallery', 'video']
 
 /**
  * Push every alignment entry earlier by VISEME_LEAD_SECONDS. The avatar player
@@ -183,6 +187,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             } catch (err) {
                 console.warn('[wizard-bridge] background load failed', err)
             }
+            if (isCurrent()) syncBalloons(payload, view)
         }
         if (!isCurrent()) return
         if (playerReady && dbView === 'skybox' && typeof payload.skyboxOpacity === 'number' && typeof activePlayer.setSkyboxOpacity === 'function') {
@@ -782,6 +787,23 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     let _splitStage = null
     let _splitHost = null
     let _splitSig = null
+    let _splitLinesSig = null
+
+    /** The editor's balloons: in the split panels (SplitStage), or over a standard slide. */
+    function syncBalloons(payload, view) {
+        const split = !!normalizeSplit(payload.split ?? payload.config?.split)
+        const lines = payload.config?.lines || []
+        const shown = view === 'slideshow' && !payload.config?.diorama && !NO_BALLOON_KINDS.includes(payload.kind)
+        setBalloonScene({
+            lines: shown ? lines : [],
+            split,
+            panel: Number.isInteger(payload.activePanel) ? payload.activePanel : 0,
+            panelLayers: (payload.shots || []).slice(0, 2).map(s => s.layers || []),
+        })
+        // Only the scene editor (step 3) has a text overlay; a preview never edits balloons.
+        if (shown && !split && document.getElementById('lesson-text-overlay')) showStageBalloons(canvasEl.parentElement, lines)
+        else hideStageBalloons()
+    }
 
     function destroySplitStage() {
         if (_splitStage) { try { _splitStage.destroy() } catch (_) {} }
@@ -804,9 +826,14 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         // and the panes are dragged on the stage itself, and the save's echo must update them in
         // place. A rebuild would flash the stage and throw away what the hand is holding.
         const sig = JSON.stringify([payload.sceneId, split?.dir, payload.backgroundColor,
-            shots.map(({ focus, ...s }) => ({ ...s, image_url: stripV(s.image_url), layers: (s.layers || []).map(l => ({ ...l, url: stripV(l.url) })) })),
-            payload.config?.lines ?? null])
+            shots.map(({ focus, ...s }) => ({ ...s, image_url: stripV(s.image_url), layers: (s.layers || []).map(l => ({ ...l, url: stripV(l.url) })) }))])
+        // The balloons are left out too: a typed word or a dragged tail is redrawn in place.
+        const linesSig = JSON.stringify(payload.config?.lines ?? [])
         if (_splitStage && sig === _splitSig && _splitHost?.isConnected) {
+            if (linesSig !== _splitLinesSig && !typingIn(_splitHost)) {
+                _splitLinesSig = linesSig
+                _splitStage.setLines(payload.config?.lines || [])
+            }
             _splitStage.setSplit(split)
             shots.forEach((s, i) => _splitStage.setFocus(i, s.focus))
             _splitStage.select(panel)
@@ -834,6 +861,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             // The divider and the panes, moved on the stage: the same values the sliders set.
             onSplitChange: (at) => window.Livewire?.dispatch('split:at', { at }),
             onViewChange: (i, f) => window.Livewire?.dispatch('split:view', { panel: i, x: f.x, y: f.y, zoom: f.zoom }),
+            balloons: balloonOptions(),
         })
         _splitStage.show({
             split,
@@ -844,6 +872,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             selected: panel,
         })
         _splitSig = sig
+        _splitLinesSig = linesSig
         // The layer list, the inspector and the timeline talk to the active panel's figures.
         window.__lessonArtworkLayer = _splitStage.overlay(panel)
     }

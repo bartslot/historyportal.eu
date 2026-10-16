@@ -2090,5 +2090,11 @@
     "Recording": "Enregistrement",
     "Stop recording": "Arrêter",
     "This test session has ended or does not exist.": "Cette session de test est terminée ou n'existe pas.",
-    "Start test session": "Lancer une session de test"
+    "Start test session": "Lancer une session de test",
+    "Speech balloon": "Bulle",
+    "Thought balloon": "Bulle de pensée",
+    "Speech": "Parole",
+    "Thought": "Pensée",
+    "Speaker": "Personnage",
+    "Remove tail": "Retirer la pointe"
 }

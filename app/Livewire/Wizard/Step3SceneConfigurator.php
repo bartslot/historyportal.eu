@@ -17,6 +17,7 @@ use App\Livewire\Wizard\Concerns\EditsDiorama;
 use App\Livewire\Wizard\Concerns\EditsQuizQuestions;
 use App\Livewire\Wizard\Concerns\EditsSceneArtwork;
 use App\Livewire\Wizard\Concerns\EditsSceneBackground;
+use App\Livewire\Wizard\Concerns\EditsSceneBalloons;
 use App\Livewire\Wizard\Concerns\EditsSplitPanels;
 use App\Livewire\Wizard\Concerns\EditsStoryGame;
 use App\Livewire\Wizard\Concerns\EditsMoment;
@@ -34,6 +35,7 @@ use App\Services\Lessons\TeamGameSpec;
 use App\Services\Support\LayerAmbient;
 use App\Services\Support\LayerSitIn;
 use App\Services\Support\SceneSplit;
+use App\Services\Support\SpeechBalloons;
 use App\Services\Support\ShotCamera;
 use App\Services\Support\WebpEncoder;
 use App\Services\Support\WhiteCutout;
@@ -64,6 +66,7 @@ class Step3SceneConfigurator extends Component
     use EditsQuizQuestions;
     use EditsTitleScreen;
     use EditsSceneBackground;
+    use EditsSceneBalloons;
     use EditsSceneArtwork;
     use EditsSplitPanels;
     use EditsStoryGame;
@@ -369,6 +372,7 @@ class Step3SceneConfigurator extends Component
             $this->activeLayerId = null;
             $this->activeTextId = null;
             $this->activeDioramaId = null;
+            $this->activeBalloonId = null;
             $this->activePanel = 0;
         }
 
@@ -964,9 +968,19 @@ class Step3SceneConfigurator extends Component
         $this->activeLayerId = null;
         $this->activeTextId = null;
         $this->activeDioramaId = null;
+        $this->activeBalloonId = null;
         $this->panelView = 'scene';
 
         if (! $objectId) {
+            return;
+        }
+
+        if (str_starts_with($objectId, 'bal_')) {
+            $lines = array_values((array) ($this->selectedScene['config']['lines'] ?? []));
+            if (SpeechBalloons::index($objectId, $lines) !== null) {
+                $this->activeBalloonId = $objectId;
+            }
+
             return;
         }
 
@@ -1111,6 +1125,11 @@ class Step3SceneConfigurator extends Component
         }
         if (str_starts_with($objectId, 'dio_')) {
             $this->removeDioramaItem(substr($objectId, 4));
+
+            return;
+        }
+        if (str_starts_with($objectId, 'bal_')) {
+            $this->deleteBalloon($objectId);
 
             return;
         }
