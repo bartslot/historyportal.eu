@@ -449,20 +449,24 @@ export class BalloonLayer {
     const { left, top } = at ? this._atPosition(at, box, view, k) : this._autoPosition(el, mouth, box, { w, h }, view, side)
     bubble.style.left = `${left}px`
     bubble.style.top = `${top}px`
-    const rect = { left, top, w: box.w, h: box.h }
+    // The box the bubble HAS where it now stands, not the one measured before it moved there. A
+    // bubble that reflows once placed (squeezed against an edge) otherwise left the tail's root on
+    // an outline that was not drawn: the tail came loose (Bart, 2026-10-16: "we are able to
+    // dismantle the tail").
+    const rect = { left, top, w: bubble.offsetWidth || box.w, h: bubble.offsetHeight || box.h }
     this._drawCloud(el, rect, thought)
 
     const tip = this._tip(line, rect, mouth, view, w, h, font)
     const shape = tip ? this._drawTail(el, rect, tip, line, thought, font) : this._drawTail(el, rect, null)
     // What is drawn, as fractions of the host: the timeline reads a balloon nobody keyed from this.
     el._drawn = {
-      center: [(left + box.w / 2) / (w || 1), (top + box.h / 2) / (h || 1)],
+      center: [(left + rect.w / 2) / (w || 1), (top + rect.h / 2) / (h || 1)],
       tip: tip ? [tip[0] / (w || 1), tip[1] / (h || 1)] : null,
       root: shape ? outlineT(rect, shape.root) : null,
     }
     this.opts.onPlace?.(el, line, tip, { rect, shape, radius: this._radius(rect, font) })
 
-    return shape?.root ?? [left + box.w / 2, top + box.h / 2]
+    return shape?.root ?? [left + rect.w / 2, top + rect.h / 2]
   }
 
   /** A balloon the teacher put somewhere: its middle on that spot, kept inside the frame. */

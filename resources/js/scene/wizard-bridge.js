@@ -798,7 +798,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             lines: shown ? lines : [],
             split,
             panel: Number.isInteger(payload.activePanel) ? payload.activePanel : 0,
-            panelLayers: (payload.shots || []).slice(0, 2).map(s => s.layers || []),
+            panelLayers: (payload.shots || []).slice(0, Math.max(1, paneCount(payload.split ?? payload.config?.split))).map(s => s.layers || []),
         })
         // Only the scene editor (step 3) has a text overlay; a preview never edits balloons.
         if (shown && !split && document.getElementById('lesson-text-overlay')) showStageBalloons(canvasEl.parentElement, lines)
