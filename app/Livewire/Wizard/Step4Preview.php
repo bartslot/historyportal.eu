@@ -122,8 +122,6 @@ class Step4Preview extends Component
             'skyboxOpacity' => (float) ($scene->skybox_opacity ?? 1.0),
             'backgroundColor' => (string) ($scene->background_color ?? '#000000'),
             'sceneView' => (string) ($scene->scene_view ?? 'skybox'),
-            'kbAnimated' => (bool) ($scene->kb_animated ?? true),
-            'kbDirection' => $scene->kb_direction,
             // Per-scene flags the stage reads straight off the config (background focus/fit, and
             // the video / 3D embed background).
             'config' => $scene->config,

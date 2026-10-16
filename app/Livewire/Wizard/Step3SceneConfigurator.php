@@ -432,8 +432,6 @@ class Step3SceneConfigurator extends Component
             'skyboxOpacity' => (float) ($scene->skybox_opacity ?? 1.0),
             'backgroundColor' => (string) ($scene->background_color ?? '#000000'),
             'backgroundGradient' => $scene->config['background_gradient'] ?? null,
-            'kbAnimated' => (bool) ($scene->kb_animated ?? true),
-            'kbDirection' => $scene->kb_direction,
             'focus' => $scene->config['background_focus'] ?? null,   // 'top' for portraits
             'slideshowMode' => (string) (($scene->config ?? [])['slideshow_mode']
                 ?? ((($scene->config ?? [])['parallax'] ?? false) ? 'parallax' : 'standard')),
@@ -602,8 +600,6 @@ class Step3SceneConfigurator extends Component
             || ($payload['location'] ?? null) !== ($scene->location ?? null)
             || ($payload['scene_view'] ?? null) !== ($scene->scene_view ?? null)
             // Motion + backdrop settings re-paint the canvas so the teacher SEES the change.
-            || (bool) ($payload['kb_animated'] ?? true) !== (bool) ($scene->kb_animated ?? true)
-            || ($payload['kb_direction'] ?? null) !== ($scene->kb_direction ?? null)
             || ($payload['background_color'] ?? null) !== ($scene->background_color ?? null)
             // Config carries the map block's year/projection (and other per-kind settings) —
             // without this, editing the map YEAR saved fine but never re-fired scene:load,

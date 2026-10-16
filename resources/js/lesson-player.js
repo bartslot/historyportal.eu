@@ -96,16 +96,9 @@ const KB_DIRECTIONS = [
   { fromScale: 1.10, fromX:  0, fromY:  2, toScale: 1.05, toX:  0, toY: -2 }, // top-centre  → bottom-centre
 ]
 
-// Teacher-selectable Ken Burns moves (scenes.kb_direction). null/'auto' rotates the classic set.
-const KB_NAMED = {
-  left_right: { fromScale: 1.08, fromX: -2.5, fromY: 0, toScale: 1.08, toX:  2.5, toY: 0 },
-  right_left: { fromScale: 1.08, fromX:  2.5, fromY: 0, toScale: 1.08, toX: -2.5, toY: 0 },
-  zoom_in:    { fromScale: 1.02, fromX:  0,   fromY: 0, toScale: 1.12, toX:  0,   toY: 0 },
-  zoom_out:   { fromScale: 1.12, fromX:  0,   fromY: 0, toScale: 1.02, toX:  0,   toY: 0 },
-}
-
-function pickKbDirection (index, named = null) {
-  if (named && KB_NAMED[named]) return KB_NAMED[named]
+// Title screen only. A scene's background moves by its shot camera (scene/camera.js) or not at
+// all: the old per-scene Ken Burns moved the picture but never the figures on it.
+function pickKbDirection (index) {
   return KB_DIRECTIONS[index % KB_DIRECTIONS.length]
 }
 
@@ -674,9 +667,6 @@ Alpine.data('lessonGame', (lesson) => ({
     // Longest a scene will wait for its layers to animate out before moving on.
     _exitTimer: null,
 
-    // Per-scene motion settings, set by _playScene before each _showFlatScene call.
-    _kbAnimated: true,
-    _kbNamedDirection: null,
     _embedBg: null,   // mounted Sketchfab-3D / video background (see scene/embed-bg.js)
 
     _hideEmbedBg () {
@@ -691,7 +681,8 @@ Alpine.data('lessonGame', (lesson) => ({
       this._embedBg = mountEmbedBg(bg, embed)
     },
 
-    _showBgImage (img, layer) {
+    // `still`: a lesson scene. Only the title screen drifts; a scene moves by its shot camera.
+    _showBgImage (img, layer, { still = false } = {}) {
       const el = layer === 'A' ? this._bgLayerA : this._bgLayerB
       if (!el || !img?.url) return
 
@@ -716,15 +707,15 @@ Alpine.data('lessonGame', (lesson) => ({
       // load per scene to do it.
       anchor(0, 0)
 
-      // Motion off for this scene → a calm, static image. 'contain' is always static: the teacher
-      // asked to see the whole work, and a Ken Burns zoom would crop straight back into it.
-      if (this._kbAnimated === false || fit === 'contain') {
+      // A scene is a calm, static image. 'contain' is always static: the teacher asked to see the
+      // whole work, and a Ken Burns zoom would crop straight back into it.
+      if (still || fit === 'contain') {
         el.style.transition = `opacity ${this._bgFadeDuration}ms ease-in-out`
         el.style.transform = 'none'
         return
       }
 
-      const kbDir = pickKbDirection(this._kbPass ?? this._kbIndex, this._kbNamedDirection)
+      const kbDir = pickKbDirection(this._kbPass ?? this._kbIndex)
       el.style.transform = `scale(${kbDir.fromScale}) translate(${kbDir.fromX}%, ${kbDir.fromY}%)`
 
       // Animate Ken Burns — scale + pan simultaneously
@@ -937,10 +928,9 @@ Alpine.data('lessonGame', (lesson) => ({
       }
       // Stop the title auto-slideshow so it doesn't fight the per-scene image.
       if (this._kbInterval) { clearInterval(this._kbInterval); this._kbInterval = null }
-      // Crossfade to this scene's image with a fresh Ken Burns move.
-      this._kbIndex = (this._kbIndex || 0) + 1
+      // Crossfade to this scene's image, held still (a camera move makes it a layered shot).
       const layer = this._bgActive === 'A' ? 'B' : 'A'
-      this._showBgImage({ url }, layer)
+      this._showBgImage({ url }, layer, { still: true })
       if (layer === 'B') {
         this._bgLayerB.style.opacity = '1'
         this._bgLayerA.style.opacity = '0'
@@ -959,7 +949,7 @@ Alpine.data('lessonGame', (lesson) => ({
     _parallaxReq: 0,   // async guard: only the latest layered-shot request may render
 
     // Route one shot to the right renderer: LAYERED (2-layer parallax) when it carries
-    // a bg_url, otherwise today's flat Ken Burns path — every existing lesson stays flat.
+    // a bg_url, otherwise a still flat picture — every existing lesson stays flat.
     _showShot (shot, fallbackUrl = null) {
       if (shot?.bg_url || (Array.isArray(shot?.layers) && shot.layers.length)) { this._showLayeredShot(shot); return }
       this._showFlatScene(shot?.image_url || shot?.url || fallbackUrl)
@@ -983,18 +973,11 @@ Alpine.data('lessonGame', (lesson) => ({
         host.style.opacity = '1'
         if (this._kbInterval) { clearInterval(this._kbInterval); this._kbInterval = null }
 
-        // Derive pan/zoom from the same Ken Burns move a flat scene would have used.
-        this._kbIndex = (this._kbIndex || 0) + 1
-        let motion = { panX: 0, panY: 0, zoom: 1 }   // Motion off → calm static layers
+        // The shot's camera is the ONE background motion, and it moves the figures with the plate.
+        // No camera (Hold) = nothing moves. The old Ken Burns drift here panned the backdrop
+        // planes under figures that stood still (Bart, 2026-10-16).
+        const motion = { panX: 0, panY: 0, zoom: 1 }
         const fit = this._bgFit === 'contain' ? 'contain' : 'cover'
-        if (this._kbAnimated !== false && fit !== 'contain') {   // 'contain' is always static
-          const kb = pickKbDirection(this._kbIndex, this._kbNamedDirection)
-          // Classic Ken Burns moves SHRINK (1.10 → 1.05); as a layer end-scale that would
-          // dip below 1 and expose edges past the 6% bleed. Layers start at scale 1, so
-          // express the move's zoom as magnitude-only, clamped to a gentle 1.0–1.12.
-          const zoom = Math.min(1.12, 1 + Math.abs(kb.toScale - kb.fromScale))
-          motion = { panX: kb.toX - kb.fromX, panY: kb.toY - kb.fromY, zoom }
-        }
 
         // A panel that slides, wipes or dissolves in keeps the one before it underneath meanwhile.
         this._destroyParallax(_parallaxMod.entryLingerMs(shot.entry))
@@ -1156,7 +1139,6 @@ Alpine.data('lessonGame', (lesson) => ({
             // (layered parallax shots, E3b) — the whole array passes through untouched.
             shots: s.shots ?? null, alignment: s.alignment ?? null,
             background_color: s.background_color ?? null, background_gradient: s.background_gradient ?? null,
-            kb_animated: s.kb_animated, kb_direction: s.kb_direction ?? null,
             quiz_questions: s.quiz_questions ?? null,
             quiz_shuffle: s.quiz_shuffle ?? 'per_player',
           }))
@@ -1270,7 +1252,7 @@ Alpine.data('lessonGame', (lesson) => ({
 
     // ── Phase transitions ──────────────────────────────────────────────
     _playIntro () {
-      // Background is set per scene by _playScene (flat Ken Burns by default, skybox opt-in).
+      // Background is set per scene by _playScene (a still flat picture by default, skybox opt-in).
       this._moveAvatarTo('bottom-right')
       if (!_sceneQueue.length) return
       // Honour an embedded start-scene (wizard "Play" from the selected leg), once.
@@ -1556,9 +1538,6 @@ Alpine.data('lessonGame', (lesson) => ({
       // Game scene (quiz / strategy / debate) — may or may not have a narrated intro.
       if (scene.kind === 'game') { this._playGameScene(index, scene); return }
 
-      // Per-scene background motion settings (Animated toggle + Ken Burns direction).
-      this._kbAnimated = scene.kb_animated !== false
-      this._kbNamedDirection = scene.kb_direction || null
       // Crop anchor for this scene's background ('top' for portraits — see _showBgImage).
       this._bgFocus = scene.config?.background_focus || scene.focus || 'center'
       // How the background fills the stage: 'cover' (fill, crop) or 'contain' (whole image, bars).
@@ -1569,7 +1548,7 @@ Alpine.data('lessonGame', (lesson) => ({
       // _showBgImage / _showFlatColor apply it to whichever layer is coming in.
       this._applySceneTransition(scene)
 
-      // Swap background. Default scenes are a flat Ken Burns slide (2D); skybox is opt-in per
+      // Swap background. Default scenes are a still flat picture (2D); skybox is opt-in per
       // scene; no image at all = the scene's solid backdrop (brand navy by default).
       if (scene.config?.diorama) {
         this._showDiorama(scene)                              // plate + occluders + items on floor grids
@@ -1580,7 +1559,7 @@ Alpine.data('lessonGame', (lesson) => ({
         } else if (scene.shots?.length > 1) {
           this._startShotPlayback(scene)                        // storyboard: images follow the narration
         } else {
-          this._showShot(scene.shots?.[0], scene.image_url)     // flat 2D Ken Burns, or layered when the shot has bg_url
+          this._showShot(scene.shots?.[0], scene.image_url)     // still flat 2D, or layered when the shot has bg_url
         }
       } else if (scene.kind !== 'map') {
         this._showFlatColor(scene.background_color, scene.background_gradient)
