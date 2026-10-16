@@ -510,22 +510,33 @@
     </template>
 
     {{-- The Easing menu for the stretch that was clicked — Figma's presets, each with its curve.
-         Fixed to the viewport so the short dock never clips it; Esc and a click outside close it. --}}
+         Fixed to the viewport so the short dock never clips it. Esc and a click outside CANCEL it
+         (the stretch keeps its curve); choosing an option closes it. The outside listener is a
+         CAPTURE one: the lanes, ruler and stage stop their own pointerdowns from bubbling, and a
+         bubbling listener on document never heard a click there (Bart, 2026-10-16).
+         Hovering or focusing an option plays the stretch once on the stage with that curve, and
+         its icon's dot travels the curve in step. --}}
     <template x-if="easingMenu">
-        <div class="fixed z-50 w-52 rounded-box border border-panel-hairline bg-base-200 p-1 shadow-xl"
+        <div class="fixed z-50 w-52 rounded-box border border-panel-hairline bg-base-200 p-1"
              data-timeline-easing-menu
              :style="`top: ${easingMenu.top}px; left: ${easingMenu.left}px`"
-             x-on:pointerdown.outside="closeEasing()" x-on:pointerdown.stop>
+             x-on:pointerdown.outside.capture="closeEasing()" x-on:pointerdown.stop>
             <ul class="menu menu-sm w-full p-0" x-show="!easingMenu.editing">
                 <template x-for="option in easingOptions" :key="option.name">
                     <li>
                         <button type="button" class="flex items-center gap-2"
                                 :class="currentEasingName === option.name && 'menu-active'"
                                 :data-easing="option.name"
+                                x-on:mouseenter="previewEasing(option.name, option.curve)"
+                                x-on:focus="previewEasing(option.name, option.curve)"
                                 x-on:click="chooseEasing(option.name)">
                             <svg viewBox="0 0 40 24" class="h-4 w-7 shrink-0 overflow-visible" aria-hidden="true">
                                 <path :d="curvePath(option.curve)" fill="none" stroke="currentColor" stroke-width="1.5"
                                       stroke-linecap="round" stroke-linejoin="round"/>
+                                <template x-if="previewName === option.name && !reducedMotion">
+                                    <circle r="2.5" fill="currentColor" data-easing-dot
+                                            :cx="previewDot(option.curve).x" :cy="previewDot(option.curve).y"/>
+                                </template>
                             </svg>
                             <span class="flex-1 text-left text-xs" x-text="option.label"></span>
                         </button>

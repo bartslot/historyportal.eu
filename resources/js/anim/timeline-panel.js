@@ -11,7 +11,7 @@
 
 import { addKeyframe, sortedKeys, sameTime, segmentEasing, easingFn, keyStateAt, toggleKeyframe, baseOf } from './keyframes.js'
 import { keyId, moveKeys, deleteKeys, snapToNearest } from './timeline-edit.js'
-import { propertiesFor, propertyFor, sampleFrame, kindOfTarget } from './properties.js'
+import { propertiesFor, propertyFor, sampleFrame, kindOfTarget, INTERPOLATE } from './properties.js'
 import { wordSpans, snapTime, wordAt } from './narration-clock.js'
 import { textObjects, artObjects, dioramaObjects, readObjectProperty, writeObjectProperty, setObjectHidden } from './scene-objects.js'
 import { clipOf, shiftClip, stretchClip } from '../scene/diorama/clip.js'
@@ -1172,10 +1172,87 @@ export const animationTimeline = (config = {}) => ({
     const menuH = 400   // the taller of the two views, the bezier editor
     const top = below + menuH > window.innerHeight ? Math.max(8, rect.top - menuH - 6) : below
     const left = Math.min(window.innerWidth - 216, Math.max(8, rect.left + rect.width / 2 - 104))
-    this.easingMenu = { target, property, index, top, left }
+    // What the stretch had when the menu opened: leaving without choosing puts this back.
+    const before = sortedKeys(this.trackFor(target, property))[index]?.easing ?? 'auto'
+    this.easingMenu = { target, property, index, top, left, before, chosen: false }
   },
 
-  closeEasing () { this.easingMenu = null },
+  /**
+   * Close the menu. Click outside and Esc CANCEL: no preview is left playing and the stretch keeps
+   * the curve it had. Choosing an option closes it as well (chooseEasing).
+   */
+  closeEasing () {
+    const m = this.easingMenu
+    this.stopEasingPreview()
+    const now = m ? (sortedKeys(this.trackFor(m.target, m.property))[m.index]?.easing ?? 'auto') : null
+    if (m && !m.chosen && now !== m.before) {
+      this.setSegmentEasing(m.before)
+      this.save()
+    }
+    this.easingMenu = null
+    this.applyFrame()
+  },
+
+  // ── Easing preview: hover or focus an option and the stretch plays once with that curve ────
+
+  /** The option being previewed, and how far through (0..1) — the icon's dot reads both. */
+  previewName: null,
+  previewU: 0,
+  _previewRaf: null,
+
+  get reducedMotion () {
+    return !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  },
+
+  /**
+   * Play the open stretch once on the stage with `curve`: from its first key's value to its
+   * second's over its own duration, then back to whatever the playhead shows. Reduced motion: the
+   * icon is highlighted and nothing moves.
+   */
+  previewEasing (name, curve = name) {
+    this.stopEasingPreview()
+    const m = this.easingMenu
+    const seg = this.easingSegment
+    if (!m || !seg) return
+    this.previewName = name
+    this.previewU = 0
+    if (this.reducedMotion || this.playing) return
+    const keys = this.keysOf(m.target, m.property)
+    const a = keys[m.index]
+    const b = keys[m.index + 1]
+    if (!a || !b) return
+    const mix = INTERPOLATE[propertyFor(kindOfTarget(m.target), m.property)?.interpolate] ?? INTERPOLATE.linear
+    const ease = easingFn(curve)
+    const ms = Math.max(200, (b.time - a.time) * 1000)
+    const started = performance.now()
+    const step = () => {
+      const u = Math.min(1, (performance.now() - started) / ms)
+      this.previewU = u
+      this.showValue(m.target, m.property, mix(a.value, b.value, ease(u)))
+      if (u < 1) { this._previewRaf = requestAnimationFrame(step); return }
+      this._previewRaf = null
+      this.applyFrame()   // back to what the playhead says
+    }
+    this._previewRaf = requestAnimationFrame(step)
+  },
+
+  stopEasingPreview () {
+    if (this._previewRaf) { cancelAnimationFrame(this._previewRaf); this._previewRaf = null; this.applyFrame() }
+    this.previewName = null
+    this.previewU = 0
+  },
+
+  /** One value on the stage, without recording anything. */
+  showValue (target, property, value) {
+    if (kindOfTarget(target) === 'camera') { if (window.__lessonMap) applyCamera(window.__lessonMap, { [property]: value }) }
+    else writeObjectProperty(target, property, value)
+  },
+
+  /** The previewed option's travelling dot, in the icon's 40x24 box. */
+  previewDot (curve) {
+    const u = this.previewU
+    return { x: (u * 36 + 2).toFixed(1), y: (20 - easingFn(curve)(u) * 16).toFixed(1) }
+  },
 
   /** Figma's Bézier presets, in Figma's order. Labels come translated from the server. */
   get easingOptions () {
@@ -1215,8 +1292,13 @@ export const animationTimeline = (config = {}) => ({
    */
   chooseEasing (name) {
     if (name === 'custom') return this.openBezier()
+    const curve = this.easingOptions.find((o) => o.name === name)?.curve ?? name
     this.setSegmentEasing(name)
     this.save()
+    // Choosing closes the menu and plays the stretch once more with what was chosen.
+    this.easingMenu = { ...this.easingMenu, chosen: true }
+    this.previewEasing(name, curve)
+    this.easingMenu = null
   },
 
   /** Write an easing onto the open segment and show it, without saving (the bezier drag calls
@@ -1249,7 +1331,8 @@ export const animationTimeline = (config = {}) => ({
   openBezier () {
     const current = this.easingSegment?.easing
     this.bezierDraft = parseBezier(current) ?? PRESET_BEZIER[current] ?? [0.42, 0, 0.58, 1]
-    this.easingMenu = { ...this.easingMenu, editing: true }
+    this.stopEasingPreview()
+    this.easingMenu = { ...this.easingMenu, editing: true, chosen: true }
     this.setSegmentEasing(formatBezier(this.bezierDraft))
     this.save()
   },
