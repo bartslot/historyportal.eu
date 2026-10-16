@@ -38,6 +38,9 @@ trait EditsSplitPanels
             }
             $this->activePanel = 0;
         } else {
+            if (! SceneSplit::allowedFor($scene->kind)) {
+                return;   // a quiz card, a map or a film owns the stage: the player never draws a split there
+            }
             $config['split'] = SceneSplit::of($config) ?? ['dir' => 'h', 'at' => SceneSplit::AT_DEFAULT];
             $shots = self::twoPanels($scene, $shots);
         }

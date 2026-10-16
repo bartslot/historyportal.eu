@@ -205,6 +205,8 @@
                     'entry' => \App\Services\Support\ShotCamera::entry($shot['entry'] ?? null),
                     // A split panel's focus point: which part of its picture the crop keeps.
                     'focus' => \App\Services\Support\SceneSplit::focus($shot['focus'] ?? null),
+                    // A split panel's own colour, drawn behind (or instead of) its picture.
+                    'background_color' => $shot['background_color'] ?? null,
                     // Keep a shot with EITHER a background image OR clipart layers — a voyage scene's
                     // shot is layer-only (the map is the backdrop), so it has no image_url. A split
                     // scene keeps both panels, an empty one too, so each stays in its own place.

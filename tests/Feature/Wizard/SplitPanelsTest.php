@@ -185,6 +185,48 @@ class SplitPanelsTest extends TestCase
         $this->assertSame(['dir' => 'h', 'at' => 0.5], $this->scene->refresh()->config['split']);
     }
 
+    public function test_a_colour_fills_the_second_panel_only_even_the_colour_already_shown(): void
+    {
+        // Bart, prod scene 1591: the scene was already black, so picking black on panel 2 changed nothing.
+        $this->scene->update(['background_color' => '#000000']);
+        $wizard = $this->split()->call('selectPanel', 1);
+        $before = $this->scene->refresh()->shots[0];
+        $this->travel(2)->seconds();
+        // Panel 2 still shows its picture: Image is what reads, and an explicit button applies a colour.
+        $wizard->assertSeeHtml('data-bg-apply-color');
+
+        $wizard->call('setBackgroundColor', '#000000');
+
+        $scene = $this->scene->refresh();
+        $this->assertSame($before, $scene->shots[0], 'panel one keeps its picture and figure');
+        $this->assertSame('bay.png', $scene->image_path, 'the scene card is panel one');
+        $this->assertArrayNotHasKey('image_path', $scene->shots[1]);
+        $this->assertSame([], $scene->shots[1]['layers']);
+        $this->assertSame('#000000', $scene->shots[1]['background_color']);
+        // The stage gets panel two even with no picture or figures left: its colour IS the panel.
+        $wizard->assertDontSeeHtml('data-bg-apply-color')
+            ->assertDispatched('scene:load', fn ($name, $params) => ($params['payload']['shots'][1]['background_color'] ?? null) === '#000000');
+
+        $wizard->call('undoLastEdit');
+        $this->assertSame('bay.png', $this->scene->refresh()->shots[1]['image_path']);
+    }
+
+    public function test_a_quiz_scene_cannot_be_split(): void
+    {
+        // Bart: "the split is not possible in a quiz screen". The player plays a game scene its own way.
+        $quiz = Scene::create([
+            'lesson_id' => $this->lesson->id, 'order' => 2, 'kind' => 'game', 'game_type' => 'quiz',
+            'status' => 'ready', 'image_path' => 'bay.png', 'config' => [],
+        ]);
+        $wizard = $this->wizard()->call('selectScene', $quiz->id)
+            ->assertDontSeeHtml('data-split-controls');
+
+        $wizard->call('setSceneLayout', 'split');
+
+        $this->assertArrayNotHasKey('split', $quiz->refresh()->config ?? []);
+        $this->assertTrue(SceneSplit::allowedFor('narration'));
+    }
+
     public function test_back_to_standard_drops_an_empty_second_panel(): void
     {
         $this->scene->update(['image_path' => null, 'shots' => null]);

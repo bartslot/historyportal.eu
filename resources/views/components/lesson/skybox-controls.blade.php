@@ -29,10 +29,12 @@
     $bgType         = match (true) {
         ($bgEmbed['kind'] ?? '') === 'sketchfab' => '3d',
         ! empty($bgEmbed['src'])                 => 'video',
-        ! empty($scene->image_path)              => 'image',
+        ! empty($backgroundImageUrl)             => 'image',
         is_array($gradient)                      => 'gradient',
         default                                  => 'color',
     };
+    // A split panel has its own colour; the scene's is the fallback, and the only one on Standard.
+    $fillColor      = (string) ($panelShot['background_color'] ?? $bgColor);
     $gradientDraft  = is_array($gradient) ? $gradient : ['from' => $bgColor, 'to' => '#0f172a', 'angle' => 180];
 @endphp
 
@@ -117,6 +119,8 @@
             $iconSideBySide = 'M12 4.5v15m-7.875 0h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125Z';
             $iconStacked = 'M3 12h18m-16.875 7.5h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125Z';
         @endphp
+        {{-- Only where the player can draw two panels (SceneSplit::allowedFor): never a quiz, a map or a film. --}}
+        @if (\App\Services\Support\SceneSplit::allowedFor($scene->kind))
         <div x-data="{ mode: @js($split ? 'split' : 'standard'), dir: @js($split['dir'] ?? 'h') }" class="space-y-2" data-split-controls>
             <x-ui.segmented panel name="scene-layout" model="mode"
                             :options="[['standard', __('Standard'), $iconOne], ['split', __('Split'), $iconSideBySide]]"
@@ -131,6 +135,7 @@
                 <span class="block text-2xs font-semibold uppercase tracking-wider text-slate-400" data-split-panel-label>{{ __('Panel') }} {{ $activePanel + 1 }}</span>
             @endif
         </div>
+        @endif
 
         {{-- Background — how this scene is filled, ONE thing at a time (Keynote model):
              a colour, an image, a gradient, a video or a 3D model. Objects go ON TOP via the Add
@@ -150,10 +155,16 @@
 
             {{-- Colour --}}
             <div x-show="bgType === 'color'" x-cloak class="flex items-center gap-2">
-                <input type="color" value="{{ $bgColor }}" aria-label="{{ __('Colour') }}"
+                <input type="color" value="{{ $fillColor }}" aria-label="{{ __('Colour') }}" x-ref="fillColor"
                        @change="$wire.setBackgroundColor($event.target.value)"
                        class="h-8 w-12 cursor-pointer rounded border border-slate-600 bg-transparent" />
-                <span class="font-mono text-xs text-slate-400">{{ $bgColor }}</span>
+                <span class="font-mono text-xs text-slate-400">{{ $fillColor }}</span>
+                {{-- Picking the colour already shown fires no change, so while something else fills
+                     the backdrop a button applies it. Never the dropdown itself: a mis-click keeps the picture. --}}
+                @if ($bgType !== 'color')
+                    <button type="button" class="btn btn-xs ml-auto" data-bg-apply-color
+                            @click="$wire.setBackgroundColor($refs.fillColor.value)">{{ __('Use colour') }}</button>
+                @endif
             </div>
 
             {{-- Gradient: two colours and a direction; the swatch previews it before it is saved. --}}
