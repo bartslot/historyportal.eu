@@ -24,8 +24,8 @@ class TestSessionReport
     /** A → B → back to A, with this long or less spent on B, is flagged as back-and-forth. */
     public const BOUNCE_MS = 30_000;
 
-    /** The same error again within this long is the same problem. */
-    private const ERROR_DEDUPE_MS = 2_000;
+    /** A dead click this close to a rage click on the same thing belongs to the burst. */
+    private const BURST_MS = 2_500;
 
     /** What counts as the tester doing something, for idle. */
     private const ACTIVITY = ['click', 'rage_click', 'dead_click', 'route', 'stop'];
@@ -154,31 +154,37 @@ class TestSessionReport
     /** @return list<array{t_ms: int, kind: string, text: string}> */
     private function errorFlags(array $events): array
     {
-        $flags = [];
-        $seen = [];
+        // One flag per kind of error, at its first moment: "fout 403 GET /storage/…/2049/a.m4a
+        // (14×)". Ids in a URL do not make a different problem.
+        $groups = [];
         foreach ($events as $event) {
             if (! in_array($event['type'], ['http_error', 'console_error'], true)) {
                 continue;
             }
-            $line = $this->describe($event);
-            if (isset($seen[$line]) && $event['t_ms'] - $seen[$line] <= self::ERROR_DEDUPE_MS) {
-                continue;
-            }
-            $seen[$line] = $event['t_ms'];
-            $flags[] = ['t_ms' => $event['t_ms'], 'kind' => 'fout', 'text' => $line];
+            $key = (string) preg_replace('/\d+/', '#', $this->describe($event));
+            $groups[$key] ??= ['t_ms' => $event['t_ms'], 'text' => $this->describe($event), 'count' => 0];
+            $groups[$key]['count']++;
         }
 
-        return $flags;
+        return array_values(array_map(fn (array $g): array => [
+            't_ms' => $g['t_ms'],
+            'kind' => 'fout',
+            'text' => $g['text'].($g['count'] > 1 ? " ({$g['count']}×)" : ''),
+        ], $groups));
     }
 
     /** @return list<array{t_ms: int, kind: string, text: string}> */
     private function clickFlags(array $events): array
     {
         $kinds = ['rage_click' => 'woedeklik', 'dead_click' => 'dode klik'];
+        $rages = array_filter($events, fn (array $e): bool => $e['type'] === 'rage_click');
+        // The clicks of a rage burst are usually dead too; the burst is the one finding.
+        $inBurst = fn (array $dead): bool => (bool) array_filter($rages, fn (array $rage): bool => abs($rage['t_ms'] - $dead['t_ms']) <= self::BURST_MS
+            && ($rage['payload']['text'] ?? null) === ($dead['payload']['text'] ?? null));
 
         return array_values(array_map(
             fn (array $e): array => ['t_ms' => $e['t_ms'], 'kind' => $kinds[$e['type']], 'text' => $this->describe($e)],
-            array_filter($events, fn (array $e): bool => isset($kinds[$e['type']])),
+            array_filter($events, fn (array $e): bool => isset($kinds[$e['type']]) && ! ($e['type'] === 'dead_click' && $inBurst($e))),
         ));
     }
 

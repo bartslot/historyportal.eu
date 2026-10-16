@@ -29,14 +29,21 @@ export function createRageDetector ({ clicks = RAGE_CLICKS, windowMs = RAGE_WIND
 /**
  * Does this DOM mutation count as the page reacting to a click?
  *
- * Inline `style` changes do not: the player animates progress bars, Ken Burns and captions through
- * style every frame, which would make every click on it look alive. Nor does anything inside the
- * recorder's own UI (.hp-no-record).
+ * Only structural changes count: an element added or removed, or an attribute other than `style`
+ * changing (class, hidden, aria-*, open …). Things that tick on their own do not: inline `style`
+ * (progress bars, Ken Burns) and text-only updates (a game's countdown, Alpine's x-text), else
+ * every click during a running timer would look alive. Nor does the recorder's own UI
+ * (.hp-no-record).
  *
  * @param {MutationRecord} record
  */
 export function isReaction (record) {
+  if (record.type === 'characterData') return false
   if (record.type === 'attributes' && record.attributeName === 'style') return false
+  if (record.type === 'childList') {
+    const isElement = (n) => n.nodeType === 1
+    if (![...record.addedNodes].some(isElement) && ![...record.removedNodes].some(isElement)) return false
+  }
   const el = record.target?.nodeType === 1 ? record.target : record.target?.parentElement
   return !el?.closest?.('.hp-no-record')
 }

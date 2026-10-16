@@ -72,25 +72,31 @@ describe('dead click watcher', () => {
 })
 
 describe('isReaction', () => {
-  it('ignores inline style changes and the recorder’s own UI, counts everything else', () => {
+  const span = () => document.createElement('span')
+  const text = () => document.createTextNode('4:56')
+
+  it('counts structural changes, not style, ticking text or the recorder’s own UI', () => {
     document.body.innerHTML = '<div id="a"></div><div class="hp-no-record"><span id="b"></span></div>'
     const a = document.getElementById('a')
     const b = document.getElementById('b')
     expect(isReaction({ type: 'attributes', attributeName: 'style', target: a })).toBe(false)
     expect(isReaction({ type: 'attributes', attributeName: 'class', target: a })).toBe(true)
-    expect(isReaction({ type: 'childList', target: a })).toBe(true)
-    expect(isReaction({ type: 'childList', target: b })).toBe(false)
-    expect(isReaction({ type: 'characterData', target: b.appendChild(document.createTextNode('x')) })).toBe(false)
+    expect(isReaction({ type: 'childList', target: a, addedNodes: [span()], removedNodes: [] })).toBe(true)
+    expect(isReaction({ type: 'childList', target: a, addedNodes: [], removedNodes: [span()] })).toBe(true)
+    expect(isReaction({ type: 'childList', target: a, addedNodes: [text()], removedNodes: [text()] })).toBe(false)
+    expect(isReaction({ type: 'characterData', target: a.appendChild(text()) })).toBe(false)
+    expect(isReaction({ type: 'childList', target: b, addedNodes: [span()], removedNodes: [] })).toBe(false)
   })
 
-  it('sees a real MutationObserver record the same way', async () => {
-    document.body.innerHTML = '<p id="p"></p>'
+  it('sees real MutationObserver records the same way: a countdown is not a reaction, a panel is', async () => {
+    document.body.innerHTML = '<p id="timer">4:57</p><div id="stage"></div>'
     const seen = []
     const observer = new MutationObserver((records) => seen.push(...records.map(isReaction)))
-    observer.observe(document.body, { subtree: true, attributes: true, childList: true })
-    document.getElementById('p').style.width = '10px'
-    document.getElementById('p').textContent = 'hallo'
-    await vi.waitFor(() => expect(seen).toEqual([false, true]))
+    observer.observe(document.body, { subtree: true, attributes: true, childList: true, characterData: true })
+    document.getElementById('timer').style.width = '10px'
+    document.getElementById('timer').textContent = '4:56'
+    document.getElementById('stage').appendChild(span())
+    await vi.waitFor(() => expect(seen).toEqual([false, false, true]))
     observer.disconnect()
   })
 })

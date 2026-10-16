@@ -64,7 +64,7 @@ function askConsent () {
     const dialog = document.createElement('dialog')
     dialog.className = 'modal hp-no-record'
     dialog.innerHTML = `
-      <div class="modal-box max-w-sm border border-base-300 bg-base-200">
+      <div class="modal-box max-w-sm border border-base-300 bg-base-200 outline-none" tabindex="-1" autofocus>
         <button type="button" data-close class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"></button>
         <h3 class="text-lg font-semibold"></h3>
         <p class="py-3 text-sm"></p>
@@ -316,10 +316,13 @@ function showPill (onStop) {
   pill.className = 'hp-no-record flex items-center gap-2 rounded-full border border-base-300 bg-base-200 py-1 pl-3 pr-1 text-xs text-base-content'
   pill.setAttribute('role', 'status')
   Object.assign(pill.style, { position: 'fixed', zIndex: '2147483646' })
-  pill.innerHTML = '<span class="status status-error" aria-hidden="true"></span><span></span><button type="button" class="btn btn-ghost btn-xs rounded-full"></button>'
+  // Heroicons outline "stop".
+  pill.innerHTML = '<span class="status status-error" aria-hidden="true"></span><span></span>'
+    + '<button type="button" class="btn btn-ghost btn-xs btn-circle"><svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 7.5A2.25 2.25 0 0 1 7.5 5.25h9a2.25 2.25 0 0 1 2.25 2.25v9a2.25 2.25 0 0 1-2.25 2.25h-9a2.25 2.25 0 0 1-2.25-2.25v-9Z" /></svg></button>'
   pill.children[1].textContent = t('Recording')
   const stop = pill.querySelector('button')
-  stop.textContent = t('Stop recording')
+  stop.setAttribute('aria-label', t('Stop recording'))
+  stop.setAttribute('data-tooltip', t('Stop recording'))
   stop.addEventListener('click', onStop)
   document.body.appendChild(pill)
 

@@ -28,9 +28,12 @@ class TestSessionReportTest extends TestCase
             $e(12_400, 'scene', ['event' => 'scene_started', 'sceneIndex' => 0]),
             $e(40_000, 'http_error', ['status' => 500, 'method' => 'POST', 'url' => '/livewire/update']),
             $e(40_500, 'http_error', ['status' => 500, 'method' => 'POST', 'url' => '/livewire/update']), // same problem
+            $e(45_000, 'http_error', ['status' => 403, 'method' => 'GET', 'url' => '/storage/lessons/17/scenes/2049/a.m4a']),
+            $e(46_000, 'http_error', ['status' => 403, 'method' => 'GET', 'url' => '/storage/lessons/17/scenes/2050/a.m4a']), // same kind
             $e(41_000, 'click', ['text' => 'Klaar', 'role' => 'button']),
             $e(41_000, 'dead_click', ['text' => 'Klaar', 'role' => 'button']),
             $e(50_000, 'rage_click', ['text' => 'Laad', 'role' => 'button', 'count' => 3]),
+            $e(50_900, 'dead_click', ['text' => 'Laad', 'role' => 'button']), // part of the burst
             $e(51_000, 'route', ['path' => '/teacher']),
             $e(60_000, 'route', ['path' => '/lesson/E3R2OK']),
             $e(140_000, 'click', ['text' => 'Volgende', 'role' => 'button']),
@@ -44,8 +47,9 @@ class TestSessionReportTest extends TestCase
         $flags = (new TestSessionReport)->flags($this->fixture());
 
         $this->assertSame([
-            [40_000, 'fout', 'fout 500 POST /livewire/update'],
+            [40_000, 'fout', 'fout 500 POST /livewire/update (2×)'],
             [41_000, 'dode klik', "dode klik 'Klaar' [button]"],
+            [45_000, 'fout', 'fout 403 GET /storage/lessons/17/scenes/2049/a.m4a (2×)'],
             [50_000, 'woedeklik', "woedeklik 'Laad' [button] (3×)"],
             [60_000, 'stil', '80 s niets gedaan (01:00 tot 02:20)'],
             [60_000, 'heen en terug', '/lesson/E3R2OK → /teacher → na 9 s terug'],
@@ -84,7 +88,7 @@ class TestSessionReportTest extends TestCase
 
         $report = File::get($dir.'/'.now()->toDateString().'-DEMO1.md');
         $this->assertStringContainsString('# Testsessie DEMO1 · Tasman', $report);
-        $this->assertStringContainsString('## Bevindingen (6)', $report);
+        $this->assertStringContainsString('## Bevindingen (7)', $report);
         $this->assertStringContainsString("- 00:41 **dode klik** dode klik 'Klaar' [button]", $report);
         $this->assertStringContainsString("00:12 klik 'Start de les' [button]", $report);
         File::deleteDirectory($dir);
