@@ -77,6 +77,23 @@
         @endif
     </div>
 
+    {{-- Era row (history line only): which tijdvak. It narrows the type row below (AND); it opens
+         on the lesson's own period, and a timeless picture shows under every era. --}}
+    @if ($this->eras())
+        <div data-drag-scroll class="no-scrollbar flex items-center gap-1.5 overflow-x-auto pb-0.5" data-era-chips>
+            @foreach ([['era' => '', 'label' => __('All times')], ...$this->eras()] as $chip)
+                <button type="button" wire:click="selectEra(@js($chip['era']))"
+                        aria-pressed="{{ $this->activeEra() === $chip['era'] ? 'true' : 'false' }}"
+                        class="shrink-0 rounded-full px-3 py-1 text-2xs font-medium transition-colors
+                               {{ $this->activeEra() === $chip['era']
+                                   ? 'bg-base-content text-base-100'
+                                   : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200' }}">
+                    {{ $chip['label'] }}
+                </button>
+            @endforeach
+        </div>
+    @endif
+
     {{-- Row 2 — a whole period, or one people inside it. Hidden for the flat sets (arrows, shapes),
          which have nothing to narrow down. Scrolls sideways rather than wrapping into the grid. --}}
     @if ($this->groups())

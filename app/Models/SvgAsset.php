@@ -25,6 +25,7 @@ use Illuminate\Support\Facades\Storage;
  * @property string|null $collection
  * @property string|null $category
  * @property string|null $subcategory
+ * @property string|null $era a key of config(lesson-taxonomy.periods); null = timeless
  * @property string $source_url
  * @property string $title
  * @property string $license
@@ -43,7 +44,7 @@ class SvgAsset extends Model
 
     protected $fillable = [
         'user_id', 'source', 'source_ref', 'source_url',
-        'collection', 'category', 'subcategory',
+        'collection', 'category', 'subcategory', 'era',
         'title', 'license', 'attribution',
         'svg_path', 'depth_path', 'cdn_url', 'width', 'height', 'view_box',
         'description', 'placement', 'height_m', 'opaque_box', 'sheet',

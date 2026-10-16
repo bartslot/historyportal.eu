@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Livewire\Wizard;
 
+use App\Models\Lesson;
 use App\Models\SvgAsset;
 use App\Services\Assets\SequenceImporter;
+use App\Support\LibraryEra;
 use Illuminate\Contracts\View\View;
 use InvalidArgumentException;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Session;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -62,7 +65,7 @@ class IconPanel extends Component
         $this->collection = 'history-line';
         $this->category = $asset->category;
         $this->subcategory = '';
-        unset($this->icons, $this->groups);
+        unset($this->icons, $this->groups, $this->eras);
         $this->dispatch('sequence-imported');
         $this->dispatch('toast', message: __(':name is in the library, :m m tall.', ['name' => $asset->title, 'm' => $asset->height_m]), type: 'success');
     }
@@ -80,6 +83,61 @@ class IconPanel extends Component
 
     #[Session(key: 'icons.subcategory')]
     public string $subcategory = '';
+
+    /** The lesson being edited: its period is the era the history-line library opens on. */
+    #[Locked]
+    public ?int $lessonId = null;
+
+    /** History-line era chip: a period key, or '' for every era. Remembered per lesson. */
+    public string $era = '';
+
+    /** The collection whose pictures carry an era (svg_assets.era). */
+    private const ERA_COLLECTION = 'history-line';
+
+    public function mount(?int $lessonId = null): void
+    {
+        $this->lessonId = $lessonId;
+        $lesson = $lessonId ? Lesson::find($lessonId) : null;
+        $this->era = (string) session($this->eraKey(), $lesson ? (LibraryEra::forLesson($lesson) ?? '') : '');
+    }
+
+    /** "Alle tijden" is '' — the teacher's pick sticks for this lesson across scene changes. */
+    public function selectEra(string $era): void
+    {
+        $this->era = $era === '' || LibraryEra::isKnown($era) ? $era : '';
+        session([$this->eraKey() => $this->era]);
+    }
+
+    private function eraKey(): string
+    {
+        return 'icons.era.'.($this->lessonId ?? 0);
+    }
+
+    /**
+     * The era chips: every era the library has pictures for, in historical order. Only the
+     * history-line collection has eras; other sets show no chip row.
+     *
+     * @return list<array{era: string, label: string}>
+     */
+    #[Computed]
+    public function eras(): array
+    {
+        if ($this->collection !== self::ERA_COLLECTION) {
+            return [];
+        }
+
+        return SvgAsset::query()->bundled()->where('collection', $this->collection)->whereNotNull('era')
+            ->distinct()->pluck('era')
+            ->sortBy(fn (string $era) => LibraryEra::order($era))
+            ->map(fn (string $era) => ['era' => $era, 'label' => LibraryEra::label($era)])
+            ->values()->all();
+    }
+
+    /** The era the grid filters on: the chip, when the library has pictures for it. */
+    public function activeEra(): string
+    {
+        return in_array($this->era, array_column($this->eras(), 'era'), true) ? $this->era : '';
+    }
 
     /** Icons shown at once. The grid scrolls; the dock is only a few rows tall. */
     private const PAGE = 120;
@@ -206,6 +264,8 @@ class IconPanel extends Component
             ->where('collection', $this->collection)
             ->when($this->category !== '', fn ($q) => $q->where('category', $this->category))
             ->when($this->subcategory !== '', fn ($q) => $q->where('subcategory', $this->subcategory))
+            // An era AND the category; a timeless picture (no era) fits every era.
+            ->when($this->activeEra() !== '', fn ($q) => $q->where(fn ($q) => $q->where('era', $this->activeEra())->orWhereNull('era')))
             ->orderBy('title')
             ->limit(self::PAGE)
             ->get();
@@ -219,7 +279,7 @@ class IconPanel extends Component
         if ($available !== [] && ! in_array($this->collection, $available, true)) {
             $this->collection = $available[0];
             $this->category = $this->subcategory = '';
-            unset($this->icons, $this->groups);
+            unset($this->icons, $this->groups, $this->eras);
         }
 
         return view('livewire.wizard.icon-panel');

@@ -60,6 +60,25 @@ return [
     ],
 
     /*
+    | The period of each history-line library folder (the folder under the category:
+    | figures/tasman, backdrops/dante …), for the era chips in the editor's Assets tab.
+    | A picture's own `era` in meta.json wins over its folder; a folder that is not
+    | listed here and a picture without an era are timeless (shown under every era).
+    | Values are keys of `periods` above. See App\Support\LibraryEra.
+    */
+    'library_eras' => [
+        'tasman' => 'regents-rulers',
+        'dante' => 'cities-states',
+        'dante-comic' => 'cities-states',
+        'commedia' => 'cities-states',
+        'florence' => 'cities-states',
+        'tuscany' => 'cities-states',
+        'ravenna' => 'cities-states',
+        'italy' => 'cities-states',
+        'medieval' => 'cities-states',
+    ],
+
+    /*
     |--------------------------------------------------------------------------
     | Region
     |--------------------------------------------------------------------------

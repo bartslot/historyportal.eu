@@ -77,7 +77,7 @@
     {{-- ── Icons tab ─────────────────────────────────────────────────────────────
          Its own Livewire component: the dock owns the geometry, the panel owns the library. --}}
     <div x-show="$store.view.bottomTab === 'icons'" x-cloak class="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <livewire:wizard.icon-panel />
+        <livewire:wizard.icon-panel :lesson-id="$scene?->lesson_id" />
     </div>
 
     {{-- ── Script tab ────────────────────────────────────────────────────────── --}}

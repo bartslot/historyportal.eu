@@ -31,12 +31,17 @@
     {{-- --work-right lives on <html> (set by the sync below) so the sibling script/notes panels
          inherit it too — the canvas-root is not their ancestor. --work-left/--work-bottom stay
          local to the canvas-root (only it needs them). --}}
+    {{-- The stage is ALWAYS 16:9, as the player shows it: when the dock is pulled up the height
+         runs out first, and the width follows it (--stw) instead of staying full width, which
+         stretched the stage wider than 16:9 and cropped the picture differently at every drawer
+         height (Bart, 2026-10-16). The leftover width is letterbox, centred. --}}
     <div class="fixed z-0 bg-slate-950" id="lesson-canvas-root"
          style="--work-left: calc(var(--rail-w, 11rem) + var(--objlist-w, 0px) + var(--ruler-w, 0px)); --work-bottom: 0px;
                 --top-inset: calc(4rem + var(--ruler-w, 0px));
                 --lbw: calc(100vw - var(--work-left) - var(--work-right, 16rem));
                 --lbh: min(calc(var(--lbw) * 0.5625), calc(100vh - var(--top-inset) - var(--work-bottom)));
-                left: var(--work-left); right: var(--work-right, 16rem);
+                --stw: calc(var(--lbh) * 16 / 9);
+                left: calc(var(--work-left) + (var(--lbw) - var(--stw)) / 2); width: var(--stw);
                 height: var(--lbh); top: calc(var(--top-inset) + (100vh - var(--top-inset) - var(--work-bottom) - var(--lbh)) / 2);"
          data-character-url=""
          data-territory="{{ $lesson->topic }}"
@@ -2775,6 +2780,10 @@
                                      an archive that may well hold the painting. --}}
                                 <p>{{ __('Wikimedia is busy right now and asked us to slow down.') }}</p>
                                 <p class="mt-1 text-xs text-slate-500">{{ __('Give it a few seconds, then search again.') }}</p>
+                            @elseif ($paintingKind === 'city_map')
+                                {{-- City plans are the curated Braun & Hogenberg set only: Commons is
+                                     never searched for them, so offering it here would do nothing. --}}
+                                <p>{{ __('No city plans match this scene.') }}</p>
                             @elseif ($paintingCommonsLoaded)
                                 {{ __('No paintings found. Try a name, place or event, in Dutch or English.') }}
                             @else
