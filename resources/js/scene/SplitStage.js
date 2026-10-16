@@ -109,9 +109,13 @@ export class SplitStage {
     }
     const plate = box()
     const art = box()
-    const talk = box()
-    talk.style.pointerEvents = 'none'
-    talk.style.zIndex = '35'   // above the figures (30/32), like the player's own balloon host
+    // The panel's balloons live ABOVE every panel, its frame and the grips, in a box the size of
+    // the panel (placed in _layout): a balloon or its tail may cross the panel border into the
+    // next panel, the way comic lettering breaks the frame (Bart, 2026-10-16).
+    const talk = document.createElement('div')
+    talk.dataset.splitTalk = String(i)
+    talk.style.cssText = 'position:absolute;pointer-events:none;z-index:50;overflow:visible;'
+    root.appendChild(talk)
     const ink = document.createElementNS(SVG_NS, 'svg')
     ink.setAttribute('aria-hidden', 'true')
     ink.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;z-index:40;'
@@ -141,7 +145,7 @@ export class SplitStage {
     overlay.setBackdrop(planes.find(l => (l.kind ?? 'cover') === 'cover')?.url)
 
     let parallax = null
-    const p = { el, ink, ring, plate, overlay, balloons: null, layers, focus: normalizeFocus(shot.focus), parallax: null }
+    const p = { el, ink, ring, plate, talk, overlay, balloons: null, layers, focus: normalizeFocus(shot.focus), parallax: null }
     if (planes.length) {
       parallax = new ParallaxScene(plate)
       parallax.show({
@@ -164,12 +168,14 @@ export class SplitStage {
     const balloons = new BalloonLayer(talk, (assetId) => {
       const img = el.querySelector(`[data-layer-id="art_${assetId}"] img`)
       return img ? img.getBoundingClientRect() : null
-    }, this.balloonOptions || {})
+    }, { ...(this.balloonOptions || {}), roam: true })
 
     if (this.editable) {
       // A click anywhere in a panel (a figure in it too) makes it the one the inspector edits.
       el.style.pointerEvents = 'auto'
       el.addEventListener('pointerdown', () => { if (this._selected !== i) this.onSelect?.(i) }, true)
+      // A balloon is outside its panel's element now: clicking it still makes its panel the edited one.
+      talk.addEventListener('pointerdown', () => { if (this._selected !== i) this.onSelect?.(i) }, true)
       this._panZoom(p, i)
     }
     p.balloons = balloons
@@ -319,6 +325,7 @@ export class SplitStage {
       const p = this.panels[i]
       if (!p) return
       Object.assign(p.el.style, { left: `${b.x}px`, top: `${b.y}px`, width: `${b.w}px`, height: `${b.h}px` })
+      Object.assign(p.talk.style, { left: `${b.x}px`, top: `${b.y}px`, width: `${b.w}px`, height: `${b.h}px` })
       p.el.style.clipPath = b.clip ? `polygon(${b.clip.map(([x, y]) => `${x}px ${y}px`).join(', ')})` : ''
       p.shape = b
       this._drawInk(p, b, lay, i)

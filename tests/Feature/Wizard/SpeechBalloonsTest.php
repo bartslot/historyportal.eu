@@ -96,13 +96,13 @@ class SpeechBalloonsTest extends TestCase
     {
         $wizard = $this->wizard()->call('addBalloon');
 
-        $wizard->dispatch('balloon:change', id: 'bal_1', patch: ['text' => '  Moet ik  daarboven klimmen? ', 'at' => [0.3, 2]])
+        $wizard->dispatch('balloon:change', id: 'bal_1', patch: ['text' => '  Moet ik  daarboven klimmen? ', 'at' => [0.3, 9]])
             ->dispatch('balloon:change', id: 'bal_1', patch: ['tail' => ['tip' => [0.4, 0.8], 'bend' => 9]])
             ->call('updateBalloon', 'bal_1', 'kind', 'thought');
 
         $line = $this->lines()[1];
         $this->assertSame('Moet ik daarboven klimmen?', $line['text']);
-        $this->assertEquals([0.3, 1.0], $line['at']);   // JSON stores 1.0 as 1
+        $this->assertEquals([0.3, 5.0], $line['at']);   // past its panel is allowed, within reason
         $this->assertSame(['tip' => [0.4, 0.8], 'bend' => SpeechBalloons::MAX_BEND], $line['tail']);
         $this->assertSame('thought', $line['kind']);
 
@@ -229,5 +229,24 @@ class SpeechBalloonsTest extends TestCase
         $this->wizard()->call('addBalloon');
 
         $this->assertCount(1, $this->lines());
+    }
+
+    // Bart 2026-10-16: "the text tail is stuck to the side. can we move over the frame?" On a split
+    // scene a balloon and its tail may cross the panel border into the next panel. Positions stay
+    // in the panel's own fractions, which then run past 0..1; the renderer bounds them by the stage.
+    public function test_a_balloon_and_its_tail_may_cross_the_panel_border(): void
+    {
+        $wizard = $this->wizard()->call('addBalloon');
+        $wizard->dispatch('balloon:change', id: 'bal_1', patch: ['at' => [1.3, 0.4]])
+            ->dispatch('balloon:change', id: 'bal_1', patch: ['tail' => ['tip' => [1.8, -0.6]]]);
+
+        $line = $this->lines()[1];
+        $this->assertEquals([1.3, 0.4], $line['at']);
+        $this->assertEquals([1.8, -0.6], $line['tail']['tip']);
+
+        $wizard->dispatch('balloon:change', id: 'bal_1', patch: ['at' => [-9, 12], 'tail' => ['tip' => [99, -99]]]);
+        $line = $this->lines()[1];
+        $this->assertEquals([-4.0, 5.0], $line['at']);
+        $this->assertEquals([5.0, -4.0], $line['tail']['tip']);
     }
 }

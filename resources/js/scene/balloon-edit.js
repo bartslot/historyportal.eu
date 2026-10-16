@@ -129,12 +129,16 @@ function startTyping (layer, id) {
   return true
 }
 
-/** The host point (client px) as fractions of the host, kept on it. */
-function toFraction (layer, x, y) {
+/**
+ * The host point (client px) as fractions of the host, kept inside where the layer's balloons may
+ * go: the host itself, or the whole stage for a split panel's (they cross the panel border).
+ */
+export function toFraction (layer, x, y) {
   const r = layer.host.getBoundingClientRect()
-  const f = (v, lo, size) => Math.min(1, Math.max(0, (v - lo) / (size || 1)))
+  const b = layer.fractionBounds?.() ?? { x: [0, 1], y: [0, 1] }
+  const f = (v, lo, size, [min, max]) => Math.min(max, Math.max(min, (v - lo) / (size || 1)))
 
-  return [round(f(x, r.left, r.width)), round(f(y, r.top, r.height))]
+  return [round(f(x, r.left, r.width, b.x)), round(f(y, r.top, r.height, b.y))]
 }
 
 const round = (v) => Math.round(v * 10000) / 10000
@@ -213,7 +217,8 @@ function drag (layer, id, e, target, mode, onChange) {
   const gesture = (ev) => {
     if (mode === 'move') {
       const at = [startAt[0] + (ev.clientX - start.x) / (hr.width || 1), startAt[1] + (ev.clientY - start.y) / (hr.height || 1)]
-      return { at: at.map(v => round(Math.min(1, Math.max(0, v)))) }
+      const b = layer.fractionBounds?.() ?? { x: [0, 1], y: [0, 1] }
+      return { at: at.map((v, i) => round(Math.min(b[i ? 'y' : 'x'][1], Math.max(b[i ? 'y' : 'x'][0], v)))) }
     }
     if (mode === 'scale' && br) {
       const centre = [br.left + br.width / 2, br.top + br.height / 2]

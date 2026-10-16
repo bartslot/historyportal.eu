@@ -380,17 +380,33 @@ export class BalloonLayer {
     return [box.left + fx * box.width - hr.left, box.top + fy * box.height - hr.top]
   }
 
-  /** The on-screen part of the host, in host coordinates (a portrait screen crops the plate). */
+  /**
+   * Where a balloon may go, in host coordinates: the on-screen part of the host (a portrait
+   * screen crops the plate). A split panel's balloons ROAM (opts.roam): they may cross the panel
+   * border into the next panel, so their bounds are the whole stage around the host.
+   */
   _view () {
     const w = this.host.clientWidth
     const h = this.host.clientHeight
     const hr = this.host.getBoundingClientRect()
     const sr = (this.host.parentElement || this.host).getBoundingClientRect()
+    if (this.opts.roam) {
+      return { x0: sr.left - hr.left, y0: sr.top - hr.top, x1: sr.right - hr.left, y1: sr.bottom - hr.top }
+    }
 
     return {
       x0: Math.max(0, sr.left - hr.left), y0: Math.max(0, sr.top - hr.top),
       x1: Math.min(w, sr.right - hr.left), y1: Math.min(h, sr.bottom - hr.top),
     }
+  }
+
+  /** The same bounds as fractions of the host: what a dragged balloon or tail tip may be. */
+  fractionBounds () {
+    const v = this._view()
+    const w = this.host.clientWidth || 1
+    const h = this.host.clientHeight || 1
+
+    return { x: [v.x0 / w, v.x1 / w], y: [v.y0 / h, v.y1 / h] }
   }
 
   /** Size and place one balloon; returns the point it grows from (the tail's root). */
@@ -464,7 +480,8 @@ export class BalloonLayer {
   }
 
   /**
-   * Where the tail points, host px: the tip the teacher dragged (kept on the panel), else the
+   * Where the tail points, host px: the tip the teacher dragged (kept in the view: the panel, or
+   * the whole stage for a roaming split balloon), else the
    * speaker's mouth less the house gap. A speaker beyond the panel's edge: the tail runs to it.
    */
   _tip (line, rect, mouth, view, w, h, font) {
