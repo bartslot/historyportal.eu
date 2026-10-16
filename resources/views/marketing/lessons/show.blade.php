@@ -60,14 +60,19 @@
             <span class="text-sm text-slate-500">{{ __('Opens straight away. No account, nothing to install.') }}</span>
         </div>
 
-        <section class="mt-12 space-y-4 text-base leading-relaxed text-slate-300">
-            <h2 class="font-history text-2xl font-light text-white">{{ __('What this lesson covers') }}</h2>
-            <p>{{ $description }}</p>
-            @if ($lesson->topic && $lesson->topic !== $heading)
-                <p>{{ __('The subject is :topic, told as a story rather than a list of dates.', ['topic' => $lesson->topic]) }}</p>
-            @endif
-            <p>{{ __('The narrator reads each scene aloud while historical imagery fills the screen, and a short quiz at the end checks what stuck. A teacher can play it on the big screen or send the code to the class.') }}</p>
-        </section>
+        {{-- A lesson with a teacher guide says what the class learns instead of the generic blurb. --}}
+        @if (! empty($lesson->teacher_guide['goal']))
+            <x-lesson.teacher-guide :guide="$lesson->teacher_guide" />
+        @else
+            <section class="mt-12 space-y-4 text-base leading-relaxed text-slate-300">
+                <h2 class="font-history text-2xl font-light text-white">{{ __('What this lesson covers') }}</h2>
+                <p>{{ $description }}</p>
+                @if ($lesson->topic && $lesson->topic !== $heading)
+                    <p>{{ __('The subject is :topic, told as a story rather than a list of dates.', ['topic' => $lesson->topic]) }}</p>
+                @endif
+                <p>{{ __('The narrator reads each scene aloud while historical imagery fills the screen, and a short quiz at the end checks what stuck. A teacher can play it on the big screen or send the code to the class.') }}</p>
+            </section>
+        @endif
 
         @if ($chapters->isNotEmpty())
             <section class="mt-12">

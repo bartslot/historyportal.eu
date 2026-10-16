@@ -92,6 +92,25 @@ class TeacherGuideTest extends TestCase
         $this->assertSame(self::GOAL, $resource['teaches']);
     }
 
+    public function test_the_guide_command_writes_the_tasman_guide_onto_its_lesson(): void
+    {
+        $lesson = $this->lesson(null);
+        $lesson->update(['lesson_code' => 'W24VRI']);
+
+        $this->artisan('lessons:guide', ['code' => 'w24vri'])->assertSuccessful();
+
+        $this->page($lesson->refresh())
+            ->assertSee('Het belangrijkste leerdoel')
+            ->assertSee('Kun je een land ontdekken als daar al mensen wonen?')
+            ->assertSee('Kerndoel 40');
+    }
+
+    public function test_the_guide_command_refuses_an_unknown_code(): void
+    {
+        $this->artisan('lessons:guide', ['code' => '../env'])->assertFailed();
+        $this->artisan('lessons:guide', ['code' => 'ZZZZZZ'])->assertFailed();
+    }
+
     public function test_a_lesson_without_a_guide_shows_no_guide(): void
     {
         $this->page($this->lesson(null))
