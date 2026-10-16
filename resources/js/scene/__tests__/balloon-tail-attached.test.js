@@ -38,12 +38,12 @@ describe('the tail stays on the bubble', () => {
 
     expect(geom.rect.w).toBe(120)
     expect(geom.rect.h).toBe(100)
-    // The root lies on that box's outline.
+    // The root lies on that box's pencil line: the 2px border's centre, 1px in from the edge.
     const [x, y] = geom.shape.root
     const { left, top, w, h } = geom.rect
     const onEdge = Math.min(Math.abs(x - left), Math.abs(x - (left + w)), Math.abs(y - top), Math.abs(y - (top + h)))
     expect(x).toBeGreaterThanOrEqual(left - 0.5)
     expect(x).toBeLessThanOrEqual(left + w + 0.5)
-    expect(onEdge).toBeLessThan(1)
+    expect(onEdge).toBeCloseTo(1, 6)
   })
 })
