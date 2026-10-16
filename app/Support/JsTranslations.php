@@ -36,7 +36,26 @@ final class JsTranslations
     /** @return array<string, string> */
     public static function forBrowser(): array
     {
-        return array_merge(self::quiz(), self::player(), self::editor(), self::teamGame(), self::powerMeter());
+        return array_merge(self::quiz(), self::player(), self::editor(), self::teamGame(), self::powerMeter(), self::testSession());
+    }
+
+    /**
+     * The opt-in test-session recorder (resources/js/test-session/recorder.js).
+     *
+     * @return array<string, string>
+     */
+    private static function testSession(): array
+    {
+        return [
+            'Test session' => __('Test session'),
+            'This test is recorded: clicks and screen, no typing. Stop at any time.' => __('This test is recorded: clicks and screen, no typing. Stop at any time.'),
+            'Start recording' => __('Start recording'),
+            'Not now' => __('Not now'),
+            'Close' => __('Close'),
+            'Recording' => __('Recording'),
+            'Stop recording' => __('Stop recording'),
+            'This test session has ended or does not exist.' => __('This test session has ended or does not exist.'),
+        ];
     }
 
     /**

@@ -27,6 +27,7 @@ import { isTypingTarget } from './ui/keyboard.js';
 import { routePaste, OBJECTS_MARK } from './ui/paste-router.js';
 import { initDragScroll } from './ui/drag-scroll.js';
 import { imageGrid, initImageZoom } from './ui/image-grid.js';
+import { pendingCode as pendingTestSession } from './test-session/pending.js';
 
 window.Sortable = Sortable;
 
@@ -49,6 +50,10 @@ watchCarousels();
 
 // Pill lists and strips wider than their space, app-wide: data-drag-scroll → mouse drag scrolls.
 initDragScroll();
+
+// Live test sessions: ?test=CODE (or an ongoing one) loads the recorder and rrweb. Every other
+// visit pays for the check above and nothing else. See resources/js/test-session/recorder.js.
+if (pendingTestSession()) import('./test-session/recorder.js').then((m) => m.boot()).catch(() => {});
 
 // Alpine factory for the onboarding spotlight: x-data="onboardingTour(@js($config))".
 // Registered as a global (like wavePlayer in the app layout) so the Blade view can call it without

@@ -111,6 +111,20 @@ Route::get('/race/{code}/state', [\App\Http\Controllers\Race\RaceDeviceControlle
 Route::post('/race/{code}/join', [\App\Http\Controllers\Race\RaceDeviceController::class, 'join'])->middleware('throttle:race-join')->name('race.join');
 Route::post('/race/{code}/push', [\App\Http\Controllers\Race\RaceDeviceController::class, 'push'])->middleware('throttle:race-push')->name('race.push');
 
+// Live test sessions (P1): an adult tester opts in with ?test=CODE and the page records clicks and
+// screen (resources/js/test-session/). Opening one is for teachers and admins; the recorder's
+// calls are public because the tester may not be signed in, so the open code is the key, and they
+// are CSRF-exempt (bootstrap/app.php) because the exit batch goes out as a sendBeacon. Reading is
+// admin or owner only. See TestSessionController.
+Route::post('/test-sessions', [\App\Http\Controllers\TestSessionController::class, 'store'])
+    ->middleware(['auth', 'throttle:10,1'])->name('test-sessions.store');
+Route::prefix('/test-sessions/{code}')->where(['code' => '[A-Za-z0-9]{3,32}'])->name('test-sessions.')->group(function () {
+    Route::post('/start', [\App\Http\Controllers\TestSessionController::class, 'start'])->middleware('throttle:test-session')->name('start');
+    Route::post('/batch', [\App\Http\Controllers\TestSessionController::class, 'batch'])->middleware('throttle:test-session')->name('batch');
+    Route::post('/end', [\App\Http\Controllers\TestSessionController::class, 'end'])->middleware('throttle:test-session')->name('end');
+    Route::get('/', [\App\Http\Controllers\TestSessionController::class, 'show'])->middleware('auth')->name('show');
+});
+
 // Curated historical cities as GeoJSON — public reference data for the lesson-atlas overlay
 // (labelled "Constantinople (Istanbul)" markers). No auth: shared by the composer preview and
 // the student player, both of which load the map unauthenticated.

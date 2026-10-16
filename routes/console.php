@@ -30,4 +30,7 @@ Schedule::command('demo:prune-guests')->hourly()->withoutOverlapping();
 
 // Harbour races older than config race.ttl_hours (24 h). Each new race prunes too, so this is the
 // backstop, not the only guard.
+// Test sessions (and everything they recorded, by cascade) after TestSession::RETENTION_DAYS (30).
+Schedule::command('model:prune', ['--model' => [\App\Models\TestSession::class]])->dailyAt('03:30')->withoutOverlapping();
+
 Schedule::call(fn () => app(\App\Services\Lessons\HarbourRace::class)->prune())->hourly()->name('races:prune')->withoutOverlapping();

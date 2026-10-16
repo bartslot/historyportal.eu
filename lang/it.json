@@ -2081,5 +2081,13 @@
     "World wars": "Guerre mondiali",
     "Television and computer": "Televisione e computer",
     "No city plans match this scene.": "Nessuna pianta di città corrisponde a questa scena.",
-    "Preview size": "Dimensione anteprima"
+    "Preview size": "Dimensione anteprima",
+    "Test session": "Sessione di test",
+    "This test is recorded: clicks and screen, no typing. Stop at any time.": "Questo test viene registrato: clic e schermo, nessun testo digitato. Interrompi quando vuoi.",
+    "Start recording": "Avvia registrazione",
+    "Not now": "Non ora",
+    "Recording": "Registrazione",
+    "Stop recording": "Interrompi",
+    "This test session has ended or does not exist.": "Questa sessione di test è terminata o non esiste.",
+    "Start test session": "Avvia sessione di test"
 }
