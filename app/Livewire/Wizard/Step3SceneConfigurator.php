@@ -2114,7 +2114,7 @@ class Step3SceneConfigurator extends Component
                 'camera' => ['lng', 'lat', 'zoom', 'heading', 'tilt'],
                 'text' => ['x', 'y'],
                 'rect' => ['opacity'],
-                'art' => ['x', 'y', 'width', 'scale', 'rotation', 'opacity'],
+                'art' => ['x', 'y', 'width', 'height', 'scale', 'rotation', 'blur', 'opacity', 'tint', 'tint_opacity'],
                 default => [],
             };
 
@@ -2122,20 +2122,40 @@ class Step3SceneConfigurator extends Component
                 continue;
             }
 
+            // A colour is '#rrggbb' or '' (no tint); every other property is a number.
+            $value = $property === 'tint'
+                ? fn ($v): string => is_string($v) && preg_match('/^#[0-9a-f]{6}$/i', $v) ? strtolower($v) : ''
+                : fn ($v): float => is_numeric($v) ? (float) $v : 0.0;
+
             $keyframes = [];
             foreach ((array) ($track['keyframes'] ?? []) as $key) {
                 if (! is_array($key) || ! isset($key['time']) || ! is_numeric($key['time'])) {
                     continue;
                 }
-                $keyframes[] = [
+                $keyframe = [
                     'time' => max(0.0, min($duration ?: 3600.0, (float) $key['time'])),
-                    'value' => (float) ($key['value'] ?? 0),
-                    'easing' => is_string($key['easing'] ?? null) ? $key['easing'] : 'easeInOutCubic',
+                    'value' => $value($key['value'] ?? null),
                 ];
+                // Only an easing someone CHOSE is stored. Writing a default onto every key made
+                // every segment "chosen", which switched off the positional ease-in / linear /
+                // ease-out that keyframes.js gives a key with none.
+                if (is_string($key['easing'] ?? null) && $key['easing'] !== '') {
+                    $keyframe['easing'] = $key['easing'];
+                }
+                $keyframes[] = $keyframe;
+            }
+
+            if ($keyframes === []) {
+                continue;
             }
 
             usort($keyframes, fn (array $a, array $b): int => $a['time'] <=> $b['time']);
-            $tracks[] = ['target' => $target, 'property' => $property, 'keyframes' => $keyframes];
+            $stored = ['target' => $target, 'property' => $property, 'keyframes' => $keyframes];
+            // The value before the property was keyed: what Reset returns to.
+            if (array_key_exists('base', $track) && $track['base'] !== null) {
+                $stored['base'] = $value($track['base']);
+            }
+            $tracks[] = $stored;
         }
 
         $this->selectedScene['config']['timeline'] = [

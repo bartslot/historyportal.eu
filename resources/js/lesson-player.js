@@ -19,6 +19,7 @@ import QRCode from 'qrcode'
 import { resolveAnchorTime, pickShotIndex } from './scene/shot-sync.js'
 import { buildChapters, canSeek, reachedFurther, chapterTooltip, formatClock, formatMinutes } from './scene/chapter-timeline.js'
 import { createTelemetry } from './lesson-telemetry.js'
+import { hasAnimation, frameAt, applyFrameTo } from './anim/scene-animation.js'
 import { renderGallery } from './gallery-scene.js'
 import { stageAdvance, stageFloorMs } from './scene/stage-auto.js'
 import { isTopAnchored, normalizeFit, PORTRAIT_TOP_CSS } from './scene/background-fit.js'
@@ -1556,6 +1557,8 @@ Alpine.data('lessonGame', (lesson) => ({
       // Teacher clipart layers a voyage scene carries ON TOP of the map (read-only in playback).
       // Also before the early-returns, so leaving a decorated scene clears its clipart.
       this._renderSceneArtwork(scene)
+      // The keyframes a teacher set in the editor's Timeline tab, on the same clock as the voice.
+      this._playSceneTimeline(scene)
       // Speech balloons of a scene told in lines; any other scene clears the last one's.
       this._renderSceneBalloons(scene)
 
@@ -2186,6 +2189,27 @@ Alpine.data('lessonGame', (lesson) => ({
       // Each layer arrives the way the teacher set it in the Animate tab. Run after setLayers,
       // which rebuilds the nodes the animation targets.
       this._artLayer.playEntrances()
+    },
+
+    /**
+     * The scene's keyframes (config.timeline), sampled every frame. Narration time when the scene
+     * speaks, so a key the teacher dropped on a word lands on that word; wall time when it does not.
+     * The loop ends with the scene: a new _playScene bumps _playEpoch.
+     */
+    _playSceneTimeline (scene) {
+      if (this._timelineRaf) cancelAnimationFrame(this._timelineRaf)
+      this._timelineRaf = null
+      const timeline = scene?.config?.timeline
+      if (!hasAnimation(timeline)) return
+      const epoch = this._playEpoch
+      const started = performance.now()
+      const clock = () => (scene.audio_url && this._audio ? this._audio.currentTime : (performance.now() - started) / 1000)
+      const step = () => {
+        if (epoch !== this._playEpoch) return
+        applyFrameTo(frameAt(timeline, clock()), { art: this._artLayer, text: this._textLayer, map: _mapInstance?.map })
+        this._timelineRaf = requestAnimationFrame(step)
+      }
+      this._timelineRaf = requestAnimationFrame(step)
     },
 
     // Quiz segment: step through the lesson's questions in the card overlay, then

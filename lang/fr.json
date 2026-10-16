@@ -2060,6 +2060,12 @@
     "Terms": "Conditions",
     "History lessons your class wants to finish": "Des cours d'histoire que ta classe veut finir",
     "Resize the panel": "Redimensionner le panneau",
+    "Remove keyframe": "Supprimer l’image clé",
+    "Reset all": "Tout réinitialiser",
+    "Longitude": "Longitude",
+    "Latitude": "Latitude",
+    "Tilt": "Inclinaison",
+    "Direction": "Direction",
     "Split": "Diviser",
     "Crop": "Cadrage"
 }

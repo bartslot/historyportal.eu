@@ -38,6 +38,11 @@ trait UndoesSceneEdits
     {
         $this->activeDioramaId = null;          // what it pointed at may be gone now
         $this->selectSceneInternal($sceneId);   // re-fires scene:load: the stage and panels redraw
+        // The Timeline tab keeps its own copy of the tracks (it outlives a morph on purpose, see
+        // SESSIONS in timeline-panel.js), so it is handed the restored ones. Without this, Cmd-Z
+        // restored a removed keyframe on the server while the panel kept showing it gone.
+        $timeline = $this->lesson->scenes()->find($sceneId)?->config['timeline'] ?? [];
+        $this->dispatch('timeline-restored', timeline: $timeline);
         $this->dispatch('toast', type: 'info', message: $message);
     }
 }

@@ -2215,6 +2215,9 @@
             if (e.key !== 'Backspace' && e.key !== 'Delete') return;
             if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
             if (window.__isTypingTarget?.(document.activeElement)) return;
+            // Selected keyframes are the selection: the Timeline removes those keys and nothing
+            // else. Without this the layer they sit on was deleted with all its keyframes.
+            if (window.__timelineKeying?.hasKeySelection?.()) return;
             const sel = window.getSelection?.();
             if (sel && !sel.isCollapsed && sel.anchorNode?.parentElement?.closest?.('[contenteditable], input, textarea')) return;
             const id = window.__artOverlay()?._selectedId || window.__lessonTextLayer?._selectedId;

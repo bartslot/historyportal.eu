@@ -13,6 +13,9 @@
     'onInput' => null,
     /** The property's default; double-clicking the glyph returns to it. */
     'default' => null,
+    /** What the diamond keys, e.g. 'art:231' and 'x'. Without both it is a marker only. */
+    'keyframeTarget' => null,
+    'keyframeProperty' => null,
 ])
 
 {{-- A numeric field with its axis letter in front — Figma's `input` in the position and size rows.
@@ -21,8 +24,9 @@
      teacher nudging a layer one percent left needs somewhere to type it and an arrow key that
      steps it; a readout would leave the slider as the only way to hit a round number.
 
-     The right-hand cell is the file's per-property keyframe marker. It is drawn and inert; see
-     <x-ui.keyframe-diamond> for why. --}}
+     The right-hand cell is the file's per-property keyframe diamond; given a target and property
+     it toggles a keyframe, and the field then shows and records the value at the playhead
+     (resources/js/ui/keyed-fields.js). --}}
 {{-- Stock DaisyUI `input` in its label form, which is how DaisyUI 5 wants a prefixed field. The
      theme supplies the border, background and focus ring, so nothing here restates them. --}}
 <label {{ $attributes->class(['input input-xs flex items-center gap-1.5 px-2']) }}
@@ -33,9 +37,10 @@
     <input type="number" min="{{ $min }}" max="{{ $max }}" step="{{ $step }}" value="{{ $value }}"
            aria-label="{{ $label }}"
            @if ($default !== null) data-default="{{ $default }}" @endif
+           @if ($keyframeTarget && $keyframeProperty) data-key-target="{{ $keyframeTarget }}" data-key-property="{{ $keyframeProperty }}" @endif
            @if ($onInput) x-on:input="{{ $onInput }}" @endif
            @if ($onChange) wire:change="{{ $onChange }}" @endif
            class="w-full min-w-0 border-0 bg-transparent p-0 text-xs outline-none
                   [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
-    <x-ui.keyframe-diamond class="border-l border-panel-hairline pl-1" />
+    <span class="flex shrink-0 border-l border-panel-hairline pl-1"><x-ui.keyframe-diamond :target="$keyframeTarget" :property="$keyframeProperty" /></span>
 </label>

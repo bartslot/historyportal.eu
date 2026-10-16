@@ -43,7 +43,7 @@
 
     <div class="flex min-w-0 flex-1 items-center gap-1.5">{{ $slot }}</div>
 
-    <span class="flex shrink-0 items-center justify-center" style="width: 12.872px">
+    <span class="flex shrink-0 items-center justify-center" style="width: 13px">
         @if ($keyframe)
             <x-ui.keyframe-diamond :target="$keyframeTarget" :property="$keyframeProperty" />
         @endif

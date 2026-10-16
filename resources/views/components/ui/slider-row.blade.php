@@ -79,6 +79,7 @@
         <input type="range" min="{{ $min }}" max="{{ $max }}" step="{{ $step }}" value="{{ $value }}"
                aria-label="{{ $label }}"
                @if ($default !== null) data-default="{{ $default }}" @endif
+               @if ($keyframeTarget && $keyframeProperty) data-key-target="{{ $keyframeTarget }}" data-key-property="{{ $keyframeProperty }}" @endif
                @if ($onInput) x-on:input="{{ $onInput }}" @endif
                @if ($onChange) wire:change="{{ $onChange }}" @endif
                style="--range-pct: {{ round($fillPct, 2) }}%; --range-t: {{ round($fillPct / 100, 4) }}"
@@ -86,7 +87,8 @@
     </span>
 
     <span class="flex w-11 shrink-0 items-baseline justify-end gap-0.5">
-        <span class="text-xs font-medium text-panel-value">{{ $display ?? $value }}</span>
+        <span class="text-xs font-medium text-panel-value" data-key-display
+              @if ($unit === '%') data-key-display-scale="100" @endif>{{ $display ?? $value }}</span>
         @if ($unit)
             <span class="text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ $unit }}</span>
         @endif

@@ -1,4 +1,5 @@
 import { createAspectLock } from './aspect-lock.js'
+import { saveLayerValue } from './keyed-fields.js'
 
 /** How many decimals the Dimensions fields show. The design's 11.05 / 11.06 is two. */
 const DP = 2
@@ -128,8 +129,25 @@ export function layerSizeRow ({ assetId, height, width = null, locked = true } =
     /** Persist on change (blur / Enter), which is the value the teacher settled on. */
     commit ($wire) {
       if (!this.ready) return
-      $wire?.call?.('updateArtworkLayer', assetId, 'width', this.lock.width)
-      $wire?.call?.('updateArtworkLayer', assetId, 'height', this.lock.height)
+      saveLayerValue($wire, assetId, 'width', this.lock.width)
+      saveLayerValue($wire, assetId, 'height', this.lock.height)
+    },
+
+    /** A keyframed W or H follows the playhead (timeline-changed). */
+    syncKeyed () {
+      const k = window.__timelineKeying
+      const target = `art:${assetId}`
+      if (!this.ready || !k) return
+      const w = k.animated?.(target, 'width') ? Number(k.value(target, 'width')) : null
+      const h = k.animated?.(target, 'height') ? Number(k.value(target, 'height')) : null
+      if (w === null && h === null) return
+      const held = this.locked
+      this.lock.setLocked(false)
+      if (Number.isFinite(w)) this.lock.setWidth(w)
+      if (Number.isFinite(h)) this.lock.setHeight(h)
+      this.lock.setLocked(held)
+      this.w = show(this.lock.width)
+      this.h = show(this.lock.height)
     },
   }
 }

@@ -341,7 +341,7 @@ describe('the canvas and the timeline agree on which layer is active', () => {
     expect(p.targetFromObjectId('')).toBeNull()        // background: nothing active
   })
 
-  it('a row name selects the layer on the canvas AND its keys; a canvas click selects no keys', () => {
+  it('a row name selects the layer on the canvas and NO keys, so Delete removes what the row names; a canvas click selects no keys', () => {
     const select = vi.fn()
     window.__lessonTextLayer.select = select
     const p = panel([{ target: TEXT, property: 'x', keyframes: [{ time: 0, value: 1 }, { time: 2, value: 3 }] }])
@@ -355,7 +355,7 @@ describe('the canvas and the timeline agree on which layer is active', () => {
 
     p.selectObject(TEXT)
     expect(select).toHaveBeenCalledWith('1')
-    expect(p.selected).toEqual(['text:1|x|0', 'text:1|x|2'])
+    expect(p.selected).toEqual([])
   })
 })
 
