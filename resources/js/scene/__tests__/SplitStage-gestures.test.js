@@ -32,15 +32,20 @@ describe('the split divider on the stage', () => {
   it('drags the split and reports where it was let go', () => {
     const { s, host, onSplitChange } = stage()
     const d = host.querySelector('[data-split-divider]')
-    expect(d.style.cursor).toBe('col-resize')
+    // The dock's own grip (.lp-grip): same pill, cursor and hover. Upright for side by side.
+    expect(d.classList.contains('lp-grip')).toBe(true)
+    expect(d.querySelector('.lp-grip-pill')).not.toBeNull()
+    expect(d.getAttribute('aria-orientation')).toBe('vertical')
 
     fire(d, 'pointerdown', { clientX: 500 })
+    expect(d.hasAttribute('data-dragging')).toBe(true)   // held: the pill stays lit
     fire(d, 'pointermove', { clientX: 580 })
     fire(d, 'pointermove', { clientX: 610 })
     // The server's echo of the old position arrives mid-drag: it must not snap the divider back.
     s.setSplit({ dir: 'v', at: 0.5 })
     fire(d, 'pointerup', { clientX: 610 })
 
+    expect(d.hasAttribute('data-dragging')).toBe(false)
     expect(onSplitChange).toHaveBeenCalledOnce()
     expect(onSplitChange).toHaveBeenCalledWith(0.61)
     expect(parseFloat(s.panels[0].el.style.width)).toBeCloseTo(610 - 2.6, 0)   // minus half the gutter
@@ -49,7 +54,7 @@ describe('the split divider on the stage', () => {
   it('a stacked split drags up and down', () => {
     const { host, onSplitChange } = stage({ dir: 'h', at: 0.5 })
     const d = host.querySelector('[data-split-divider]')
-    expect(d.style.cursor).toBe('row-resize')
+    expect(d.getAttribute('aria-orientation')).toBe('horizontal')
     fire(d, 'pointerdown', { clientY: 250 })
     fire(d, 'pointermove', { clientY: 175 })
     fire(d, 'pointerup', { clientY: 175 })

@@ -226,22 +226,22 @@ export class SplitStage {
     }, { passive: false })
   }
 
-  /** Editor: the gutter is a handle. Drag it, or use the arrow keys, to move the split. */
+  /**
+   * Editor: the gutter is a handle, the same grip as the dock's top edge (.lp-grip in app.css):
+   * same pill, cursor, hover and held state. Drag it, or use the arrow keys, to move the split.
+   */
   _makeDivider (root) {
     const d = document.createElement('div')
+    d.className = 'lp-grip'
     d.dataset.splitDivider = ''
     d.tabIndex = 0
     d.setAttribute('role', 'separator')
     d.setAttribute('aria-label', 'Split position')
-    d.style.cssText = 'position:absolute;z-index:45;pointer-events:auto;touch-action:none;display:grid;place-items:center;'
-    const line = document.createElement('span')
-    line.style.cssText = 'display:block;background:var(--color-primary,#f59e0b);opacity:0;transition:opacity 120ms ease-out;'
-    d.appendChild(line)
-    const show = (on) => { line.style.opacity = on || this._dragging ? '1' : '0' }
-    d.addEventListener('pointerenter', () => show(true))
-    d.addEventListener('pointerleave', () => show(false))
-    d.addEventListener('focus', () => show(true))
-    d.addEventListener('blur', () => show(false))
+    d.style.cssText = 'position:absolute;z-index:45;pointer-events:auto;'
+    const pill = document.createElement('span')
+    pill.className = 'lp-grip-pill'
+    pill.setAttribute('aria-hidden', 'true')
+    d.appendChild(pill)
     const along = (e) => {
       const r = this.host.getBoundingClientRect()
       return this._dir === 'h' ? [e.clientY - r.top, r.height] : [e.clientX - r.left, r.width]
@@ -253,7 +253,7 @@ export class SplitStage {
       e.stopPropagation()
       start = this._split.at
       this._dragging = true
-      show(true)
+      d.dataset.dragging = ''
       try { d.setPointerCapture(e.pointerId) } catch (_) { /* synthetic pointer */ }
     })
     d.addEventListener('pointermove', (e) => {
@@ -266,7 +266,7 @@ export class SplitStage {
       const moved = this._split.at !== start
       start = null
       this._dragging = false
-      show(d.matches(':hover'))
+      delete d.dataset.dragging
       if (moved) this.onSplitChange?.(this._split.at)
     }
     d.addEventListener('pointerup', end)
@@ -284,7 +284,7 @@ export class SplitStage {
       this.onSplitChange?.(at)
     })
     root.appendChild(d)
-    return { el: d, line }
+    return { el: d }
   }
 
   /** The split from the server (the slider, an undo): applied in place, never mid-drag. */
@@ -321,17 +321,16 @@ export class SplitStage {
   /** The divider handle over the gutter, a little wider than it so it is easy to grab. */
   _placeDivider (lay) {
     if (!this._divider) return
-    const { el, line } = this._divider
+    const { el } = this._divider
     const [a, b] = lay.panels
     const pad = DIVIDER_PAD_PX
     const w = lay.gutter + 2 * pad
     if (lay.dir === 'h') {
-      Object.assign(el.style, { left: '0px', width: `${b.w}px`, top: `${a.h - pad}px`, height: `${w}px`, cursor: 'row-resize' })
-      Object.assign(line.style, { width: '100%', height: `${Math.max(2, lay.gutter / 2)}px` })
+      Object.assign(el.style, { left: '0px', width: `${b.w}px`, top: `${a.h - pad}px`, height: `${w}px` })
     } else {
-      Object.assign(el.style, { top: '0px', height: `${a.h}px`, left: `${a.w - pad}px`, width: `${w}px`, cursor: 'col-resize' })
-      Object.assign(line.style, { height: '100%', width: `${Math.max(2, lay.gutter / 2)}px` })
+      Object.assign(el.style, { top: '0px', height: `${a.h}px`, left: `${a.w - pad}px`, width: `${w}px` })
     }
+    // A stacked split's gutter is a horizontal bar, like the dock's top edge; side by side, upright.
     el.setAttribute('aria-orientation', lay.dir === 'h' ? 'horizontal' : 'vertical')
     el.setAttribute('aria-valuenow', String(Math.round(this._split.at * 100)))
   }
