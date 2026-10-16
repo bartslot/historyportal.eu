@@ -495,6 +495,7 @@ export const animationTimeline = (config = {}) => ({
 
   /** Pressing the RULER scrubs the playhead, and the scene follows live. Playback yields to it. */
   startScrub (event) {
+    this.stopEasingPreview()   // an edit or the clock takes the stage back from a preview
     if (event.button !== 0) return
     event.stopPropagation()
     this.pause()
@@ -689,6 +690,7 @@ export const animationTimeline = (config = {}) => ({
   _startedFrom: 0,
 
   play () {
+    this.stopEasingPreview()   // an edit or the clock takes the stage back from a preview
     if (this.playing || !(this.duration > 0) || this.nothingToPlay) return
     this.playing = true
     this._startedFrom = this.time >= this.duration ? 0 : this.time
@@ -771,6 +773,7 @@ export const animationTimeline = (config = {}) => ({
    */
   toggleKey (target, property) {
     if (kindOfTarget(target) === 'dio') { window.__diorama?.keyHere(target.slice(4)); return }
+    this.stopEasingPreview()
     const map = window.__lessonMap
     const live = kindOfTarget(target) === 'camera'
       ? (map ? cameraFromMap(map)[property] : undefined)
@@ -805,6 +808,7 @@ export const animationTimeline = (config = {}) => ({
    * a property that is not animated, so the panel saves the plain value as it always did.
    */
   editKeyed (target, property, value) {
+    this.stopEasingPreview()   // an edit or the clock takes the stage back from a preview
     if (kindOfTarget(target) === 'dio' || !this.isAnimated(target, property)) return false
     const isColor = propertyFor(kindOfTarget(target), property)?.type === 'color'
     const v = isColor ? String(value ?? '') : Number(value)
@@ -832,6 +836,7 @@ export const animationTimeline = (config = {}) => ({
    * leave the layer somewhere the teacher never chose.
    */
   resetProperty (target, property, { persist = true } = {}) {
+    this.stopEasingPreview()   // an edit or the clock takes the stage back from a preview
     const track = this.trackFor(target, property)
     if (!track) return
     const base = baseOf(track)
@@ -1007,6 +1012,7 @@ export const animationTimeline = (config = {}) => ({
   },
 
   deleteSelected () {
+    this.stopEasingPreview()   // an edit or the clock takes the stage back from a preview
     // Diorama keys live in the diorama JSON: one removal per item, at the selected times.
     const dioTimes = {}
     for (const id of this.selected) {

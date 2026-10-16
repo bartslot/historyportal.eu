@@ -533,10 +533,11 @@
                             <svg viewBox="0 0 40 24" class="h-4 w-7 shrink-0 overflow-visible" aria-hidden="true">
                                 <path :d="curvePath(option.curve)" fill="none" stroke="currentColor" stroke-width="1.5"
                                       stroke-linecap="round" stroke-linejoin="round"/>
-                                <template x-if="previewName === option.name && !reducedMotion">
-                                    <circle r="2.5" fill="currentColor" data-easing-dot
-                                            :cx="previewDot(option.curve).x" :cy="previewDot(option.curve).y"/>
-                                </template>
+                                {{-- x-show, not a <template>: inside an <svg> a template has no
+                                     content for Alpine to clone. --}}
+                                <circle r="2.5" fill="currentColor" data-easing-dot
+                                        x-show="previewName === option.name && !reducedMotion"
+                                        :cx="previewDot(option.curve).x" :cy="previewDot(option.curve).y"/>
                             </svg>
                             <span class="flex-1 text-left text-xs" x-text="option.label"></span>
                         </button>
