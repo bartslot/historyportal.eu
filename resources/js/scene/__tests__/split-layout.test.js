@@ -107,6 +107,11 @@ describe('panelForLine: a balloon goes to the panel holding its speaker', () => 
     expect(panelForLine({ figure: null }, panels)).toBe(0)
     expect(panelForLine({ figure: { asset_id: 99 } }, panels)).toBe(0)
   })
+
+  it('keeps a balloon added in the editor in the panel it was put in', () => {
+    expect(panelForLine({ figure: null, panel: 1 }, panels)).toBe(1)
+    expect(panelForLine({ figure: { asset_id: 3 }, panel: 0 }, panels)).toBe(0)
+  })
 })
 
 describe('inkPath', () => {
