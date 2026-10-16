@@ -2096,5 +2096,9 @@
     "Speech": "Parole",
     "Thought": "Pensée",
     "Speaker": "Personnage",
-    "Remove tail": "Retirer la pointe"
+    "Remove tail": "Retirer la pointe",
+    "Text layer": "Calque de texte",
+    "Typography": "Typographie",
+    "Font type": "Police",
+    "Show in timeline": "Afficher dans la chronologie"
 }

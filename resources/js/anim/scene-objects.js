@@ -62,7 +62,26 @@ export const readObjectProperty = (target, property) => {
   if (kind !== 'text' && kind !== 'rect') return null
   const item = (window.__lessonTextLayer?._texts ?? []).find((t) => String(t.id) === id)
   const value = item?.[property]
-  return Number.isFinite(value) ? value : null
+  if (property === 'color' && kind === 'text') return typeof value === 'string' && value ? value : TEXT_LOOK.color
+  if (Number.isFinite(value)) return value
+  // An unset look reads what it is drawn at: a diamond keys what the row shows, and 0 would key a
+  // text to nothing at scale or opacity.
+  if (kind === 'text' && item && property in TEXT_LOOK) return TEXT_LOOK[property]
+  // No stored width: the box wraps to its content. Read the width it is drawn at.
+  if (kind === 'text' && property === 'w') return measuredWidth(id)
+  return null
+}
+
+/** What TextOverlayLayer draws a text with when the field is not set. */
+const TEXT_LOOK = { color: '#f8fafc', colorOpacity: 1, scale: 1, rotation: 0, blur: 0, opacity: 1 }
+
+/** A text box's drawn width, as a % of the stage, or null while it is not on screen. */
+const measuredWidth = (id) => {
+  const host = window.__lessonTextLayer?.host
+  const node = host?.querySelector?.(`[data-text-id="${CSS.escape(id)}"]`)
+  const w = node?.offsetWidth
+  const hostW = host?.clientWidth
+  return w && hostW ? Math.round((w / hostW) * 1000) / 10 : null
 }
 
 /**

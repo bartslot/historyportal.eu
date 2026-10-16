@@ -2138,5 +2138,9 @@
     "Speech": "Spreken",
     "Thought": "Gedachte",
     "Speaker": "Spreker",
-    "Remove tail": "Staart weghalen"
+    "Remove tail": "Staart weghalen",
+    "Text layer": "Tekstlaag",
+    "Typography": "Typografie",
+    "Font type": "Lettertype",
+    "Show in timeline": "Toon in tijdlijn"
 }

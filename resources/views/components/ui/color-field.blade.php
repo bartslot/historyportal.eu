@@ -15,6 +15,9 @@
     'onOpacityInput' => null,
     /** The layer the diamond keys, e.g. 'art:231' (colour and strength together). */
     'keyframeTarget' => null,
+    /** The two properties it keys: a picture's tint, a text's own colour ('color', 'colorOpacity'). */
+    'colorProperty' => 'tint',
+    'opacityProperty' => 'tint_opacity',
 ])
 
 @php
@@ -57,7 +60,7 @@
                    aria-label="{{ $colorLabel }}"
                    @if ($onColorInput) x-on:input="{{ $onColorInput }}" @endif
                    @if ($onColorChange) wire:change="{{ $onColorChange }}" @endif
-                   @if ($keyframeTarget) data-key-target="{{ $keyframeTarget }}" data-key-property="tint" @endif
+                   @if ($keyframeTarget) data-key-target="{{ $keyframeTarget }}" data-key-property="{{ $colorProperty }}" @endif
                    class="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
         </span>
         <span class="flex min-w-0 items-baseline gap-0.5">
@@ -75,11 +78,11 @@
                aria-label="{{ $opacityLabel }}"
                @if ($onOpacityInput) x-on:input="{{ $onOpacityInput }}" @endif
                @if ($onOpacityChange) wire:change="{{ $onOpacityChange }}" @endif
-               @if ($keyframeTarget) data-key-target="{{ $keyframeTarget }}" data-key-property="tint_opacity" data-key-scale="100" @endif
+               @if ($keyframeTarget) data-key-target="{{ $keyframeTarget }}" data-key-property="{{ $opacityProperty }}" data-key-scale="100" @endif
                class="w-7 border-0 bg-transparent p-0 text-right text-xs outline-none
                       [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
         <span class="text-3xs font-semibold text-panel-label">%</span>
     </label>
 
-    <span class="flex shrink-0 border-l border-panel-hairline pl-1"><x-ui.keyframe-diamond :target="$keyframeTarget" :property="$keyframeTarget ? 'tint tint_opacity' : null" /></span>
+    <span class="flex shrink-0 border-l border-panel-hairline pl-1"><x-ui.keyframe-diamond :target="$keyframeTarget" :property="$keyframeTarget ? $colorProperty.' '.$opacityProperty : null" /></span>
 </div>

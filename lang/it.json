@@ -2096,5 +2096,9 @@
     "Speech": "Parlato",
     "Thought": "Pensiero",
     "Speaker": "Chi parla",
-    "Remove tail": "Togli la punta"
+    "Remove tail": "Togli la punta",
+    "Text layer": "Livello di testo",
+    "Typography": "Tipografia",
+    "Font type": "Carattere",
+    "Show in timeline": "Mostra nella timeline"
 }

@@ -2096,5 +2096,9 @@
     "Speech": "Sprechen",
     "Thought": "Gedanke",
     "Speaker": "Sprecher",
-    "Remove tail": "Zeiger entfernen"
+    "Remove tail": "Zeiger entfernen",
+    "Text layer": "Textebene",
+    "Typography": "Typografie",
+    "Font type": "Schriftart",
+    "Show in timeline": "In der Zeitleiste zeigen"
 }
