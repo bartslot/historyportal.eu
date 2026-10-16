@@ -2059,5 +2059,11 @@
     "Privacy": "Datenschutz",
     "Terms": "Nutzungsbedingungen",
     "History lessons your class wants to finish": "Geschichtsstunden, die deine Klasse zu Ende spielt",
-    "Resize the panel": "Panelgröße ändern"
+    "Resize the panel": "Panelgröße ändern",
+    "Remove keyframe": "Keyframe entfernen",
+    "Reset all": "Alles zurücksetzen",
+    "Longitude": "Längengrad",
+    "Latitude": "Breitengrad",
+    "Tilt": "Neigung",
+    "Direction": "Richtung"
 }

@@ -53,10 +53,10 @@
        width and the `height` in the whitelist is not read by the renderer. Two number fields
        writing one value, plus a lock over an aspect that cannot change, is three dead controls.
        `SCALE` is that value, and it is a real slider.
-     * The small outlined diamond after Color, X, Y, W, H and Scale is the per-property keyframe
-       marker that feeds the Animate tab. It is DRAWN AND INERT — what pressing one should do is
-       not specified yet, and an inert marker is better than a button that does nothing. See
-       <x-ui.keyframe-diamond>.
+     * The diamond after Colour, X, Y, W, H, Scale, Angle, Blur and Opacity keys that property at
+       the Timeline's playhead (Bart, 2026-10-16): press to add a keyframe, press on one to remove
+       it. Once a property has keys its field shows the value at the playhead and an edit becomes a
+       keyframe there (resources/js/ui/keyed-fields.js). See <x-ui.keyframe-diamond>.
      * `Map style` renders only where a style engine exists. The lesson map deliberately has one
        ground — see the note in resources/js/lesson-map.js, "the five drawn atlases were removed" —
        so on a wizard scene there is nothing for the cards to switch and they stay out.
@@ -91,7 +91,8 @@
                 :on-color-input="$live('tint')"
                 :on-color-change="$save('tint')"
                 :on-opacity-input="'window.__setLayerProp?.(' . $aid . ', \'tint_opacity\', $event.target.value / 100)'"
-                :on-opacity-change="'updateArtworkLayer(' . $aid . ', \'tint_opacity\', $event.target.value / 100)'" />
+                :on-opacity-change="'updateArtworkLayer(' . $aid . ', \'tint_opacity\', $event.target.value / 100)'"
+                :keyframe-target="'art:'.$aid" />
 
             <button type="button" wire:click="updateArtworkLayer({{ $aid }}, 'tint', '')"
                     class="btn btn-ghost btn-xs w-full text-2xs text-panel-label hover:text-base-content">
@@ -105,10 +106,10 @@
                 <span style="width: var(--settings-panel-label-w, 3.0625rem)"
                       class="shrink-0 text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Position') }}</span>
                 <x-ui.stepper-field glyph="X" :label="__('Horizontal position')" :min="0" :max="100" :step="1"
-                                    :value="$num($val('x', 50), 0)" :default="50"
+                                    :value="$num($val('x', 50), 0)" :default="50" :keyframe-target="'art:'.$aid" keyframe-property="x"
                                     :on-input="$live('x')" :on-change="$save('x')" class="min-w-0 flex-1" />
                 <x-ui.stepper-field glyph="Y" :label="__('Vertical position')" :min="0" :max="100" :step="1"
-                                    :value="$num($val('y', 58), 0)" :default="58"
+                                    :value="$num($val('y', 58), 0)" :default="58" :keyframe-target="'art:'.$aid" keyframe-property="y"
                                     :on-input="$live('y')" :on-change="$save('y')" class="min-w-0 flex-1" />
             </div>
 
@@ -121,7 +122,6 @@
                                  :on-input="$live('depth')" :on-change="$save('depth')" />
             @endif
 
-            {{-- Scale carries the keyframe marker in the file; Rotate and Blur do not. --}}
             <x-ui.slider-row :label="__('Scale')" :min="0.2" :max="6" :step="0.05"
                              :keyframe-target="'art:'.$aid" keyframe-property="scale"
                              :value="$val('scale', 1.0)" :display="$pct($val('scale', 1.0))" unit="%" :default="1.0"
@@ -133,8 +133,21 @@
                             :flip-x="(bool) $val('flip_x', false)" :flip-y="(bool) $val('flip_y', false)" />
 
             <x-ui.slider-row :label="__('Blur')" :min="0" :max="2.5" :step="0.1"
+                             keyframe :keyframe-target="'art:'.$aid" keyframe-property="blur"
                              :value="$val('blur', 0)" :display="$num($val('blur', 0), 1)" :default="0"
                              :on-input="$live('blur')" :on-change="$save('blur')" />
+
+            {{-- Every keyframe on this layer gone, every property back to what it was. Only while
+                 something is animated: a Reset with nothing to reset is noise. --}}
+            <div class="flex justify-end" x-data="{ any: false, sync () { this.any = !!window.__timelineKeying?.canResetObject?.('art:{{ $aid }}') } }"
+                 x-init="sync()" x-on:timeline-changed.window="sync()" x-show="any" x-cloak>
+                <button type="button" data-keyframe-reset-all
+                        x-on:click="window.__timelineKeying?.resetObject?.('art:{{ $aid }}'); sync()"
+                        class="btn btn-ghost btn-xs rounded-full">
+                    <x-icons.arrow-uturn-left class="h-3.5 w-3.5" />
+                    {{ __('Reset all') }}
+                </button>
+            </div>
         </div>
     </x-ui.settings-section>
 

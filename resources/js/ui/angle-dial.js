@@ -1,3 +1,5 @@
+import { saveLayerValue } from './keyed-fields.js'
+
 /**
  * angle-dial.js — the layer's rotation, as a dial rather than a slider.
  *
@@ -166,7 +168,14 @@ export function layerAngleRow ({ assetId, rotation = 0, flipX = false, flipY = f
 
     /** The value the teacher settled on. */
     commit ($wire) {
-      $wire?.call?.('updateArtworkLayer', assetId, 'rotation', toStored(this.deg))
+      saveLayerValue($wire, assetId, 'rotation', toStored(this.deg))
+    },
+
+    /** A keyframed rotation follows the playhead (timeline-changed). */
+    syncKeyed () {
+      const k = window.__timelineKeying
+      if (this.dragging || !k?.animated?.(`art:${assetId}`, 'rotation')) return
+      this.deg = Math.round(toDial(k.value(`art:${assetId}`, 'rotation')))
     },
 
     /**
