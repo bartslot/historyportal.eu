@@ -41,7 +41,7 @@ class CloudinaryService
      */
     public function lessonTransform(): string
     {
-        return 'f_auto,q_'.(int) config('lessons.image_quality', 20).',c_limit,w_2880,h_2880';
+        return 'f_auto,q_'.(int) config('lessons.image_quality', 50).',c_limit,w_2880,h_2880';
     }
 
     /**
