@@ -165,6 +165,83 @@ class Step3ImageDropTest extends TestCase
         $this->assertNotNull($scene->refresh()->image_path);
     }
 
+    /** @return list<array<string, mixed>> */
+    private function figureLayers(Scene $scene): array
+    {
+        return collect($scene->refresh()->shots ?? [])->flatMap(fn ($s) => $s['layers'] ?? [])
+            ->where('kind', 'figure')->values()->all();
+    }
+
+    public function test_a_paste_on_the_stage_is_always_a_centred_layer_and_selected(): void
+    {
+        // Unlike a drop, a paste on an empty scene still makes a layer: it never swaps the backdrop.
+        $scene = $this->scene();
+
+        $wizard = $this->wizardOn($scene)->set('pastedImage', UploadedFile::fake()->image('image.png', 600, 400));
+
+        $this->assertNull($scene->refresh()->image_path);
+        $layers = $this->figureLayers($scene);
+        $this->assertCount(1, $layers);
+        $this->assertSame([50.0, 50.0], [(float) $layers[0]['x'], (float) $layers[0]['y']]);
+        $wizard->assertDispatched('scene:objects-duplicated', objectIds: ['art_'.$layers[0]['asset_id']])
+            ->assertDispatched('toast', message: __('Image pasted.'));
+    }
+
+    public function test_a_pasted_layer_is_one_undo_step(): void
+    {
+        $scene = $this->scene(['image_path' => 'lessons/1/scenes/1/bg.jpg']);
+        $wizard = $this->wizardOn($scene);
+        $this->travel(3)->seconds();   // selecting normalises the scene; the paste is its own step
+
+        $wizard->set('pastedImage', UploadedFile::fake()->image('image.png'));
+        $this->assertCount(1, $this->figureLayers($scene));
+
+        $wizard->call('undoLastEdit');
+        $this->assertCount(0, $this->figureLayers($scene));
+        $this->assertSame('lessons/1/scenes/1/bg.jpg', $scene->image_path);
+    }
+
+    public function test_a_pasted_file_that_is_too_big_or_the_wrong_type_is_refused_with_the_upload_message(): void
+    {
+        $scene = $this->scene();
+
+        $this->wizardOn($scene)
+            ->set('pastedImage', UploadedFile::fake()->create('scan.tiff', 40, 'image/tiff'))
+            ->assertDispatched('toast', type: 'error');
+        $this->wizardOn($scene)
+            ->set('pastedImage', UploadedFile::fake()->image('huge.png')->size(9 * 1024))
+            ->assertDispatched('toast', type: 'error');
+
+        $this->assertCount(0, $this->figureLayers($scene));
+    }
+
+    public function test_an_own_upload_in_the_add_image_picker_is_a_layer_not_the_background(): void
+    {
+        // "Add an image on the slide" used to fall through to the background: the picture replaced
+        // the very backdrop it was meant to sit on.
+        $scene = $this->scene(['image_path' => 'lessons/1/scenes/1/bg.jpg']);
+
+        $this->wizardOn($scene)
+            ->set('paintingPickerMode', 'layer')
+            ->set('uploadImage', UploadedFile::fake()->image('Hannibal.png'));
+
+        $this->assertSame('lessons/1/scenes/1/bg.jpg', $scene->refresh()->image_path);
+        $this->assertCount(1, $this->figureLayers($scene));
+    }
+
+    public function test_an_uploaded_background_comes_off_again_with_one_undo(): void
+    {
+        $scene = $this->scene(['image_path' => 'lessons/1/scenes/1/bg.jpg']);
+        $wizard = $this->wizardOn($scene);
+        $this->travel(3)->seconds();
+
+        $wizard->set('paintingPickerMode', 'background')->set('uploadImage', UploadedFile::fake()->image('new.png'));
+        $this->assertNotSame('lessons/1/scenes/1/bg.jpg', $scene->refresh()->image_path);
+
+        $wizard->call('undoLastEdit');
+        $this->assertSame('lessons/1/scenes/1/bg.jpg', $scene->refresh()->image_path);
+    }
+
     public function test_a_drop_with_no_scene_selected_says_so_instead_of_doing_nothing(): void
     {
         $this->scene();

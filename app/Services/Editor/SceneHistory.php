@@ -23,8 +23,12 @@ final class SceneHistory
     /** Saves this close together are one step: a drag or a burst of typing undoes in one go. */
     public const MERGE_SECONDS = 1.5;
 
-    /** The columns an edit changes. */
-    private const FIELDS = ['config', 'shots'];
+    /**
+     * The columns an edit changes. The background columns too: an uploaded, dropped or pasted
+     * background rewrites image_path and scene_view alongside shots, and an undo that restored
+     * only the shots left the new picture on screen.
+     */
+    private const FIELDS = ['config', 'shots', 'image_path', 'skybox_image_path', 'scene_view'];
 
     private static bool $applying = false;
 

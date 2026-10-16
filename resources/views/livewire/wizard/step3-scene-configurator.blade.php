@@ -2170,7 +2170,40 @@
             window.Livewire.dispatch('scene:duplicate-objects', { objectIds: ids, sourceSceneId });
         };
         let objClipboard = null;
-        document.addEventListener('copy', () => { objClipboard = null; });
+        let ownCopy = false;          // this Cmd-C is copying objects, not page text
+        let pendingObjPaste = null;   // object paste waiting on the paste event (see Cmd-V below)
+        document.addEventListener('copy', (e) => {
+            if (!ownCopy) { objClipboard = null; return; }
+            // Mark the system clipboard as ours, which also drops whatever image was on it: an
+            // image pasted after this copy would otherwise beat the objects the teacher just copied.
+            ownCopy = false;
+            e.clipboardData?.setData(window.__pasteObjectsMark, '1');
+            e.preventDefault();
+        });
+        const pasteObjects = () => window.__duplicateObjects(objClipboard.ids, objClipboard.sceneId);
+
+        // Cmd/Ctrl-V. The paste EVENT decides (window.__routePaste, resources/js/ui/paste-router.js):
+        // only it can see what is on the system clipboard, without a permission prompt. An image goes
+        // to the open picker as an upload, or onto the scene as a layer; otherwise our object copy.
+        document.addEventListener('paste', (e) => {
+            clearTimeout(pendingObjPaste);
+            const w = window.__step3Wire();
+            if (!w) return;
+            const { action, file } = window.__routePaste(e.clipboardData, {
+                typing: typingIn() || !!window.__isTypingTarget?.(e.target),
+                dialogOpen: !!w.paintingPickerOpen && w.paintingPickerMode !== 'model3d',
+                hasObjects: !!objClipboard,
+            });
+            if (action === 'ignore' || action === 'none') return;
+            e.preventDefault();
+            if (action === 'objects') return pasteObjects();
+            if (action === 'layer') return w.upload('pastedImage', file);
+            // Into the picker: the same property a dropped or chosen file goes through. It closes
+            // on success and keeps its error line on failure, so a closed picker means it landed.
+            w.upload('uploadImage', file, () => {
+                if (!w.paintingPickerOpen) window.dispatchEvent(new CustomEvent('toast', { detail: { message: @js(__('Image pasted.')), type: 'success' } }));
+            });
+        });
         window.Livewire.on('scene:objects-duplicated', (e) => {
             const p = Array.isArray(e) ? e[0] : e;
             const id = p?.objectIds?.[p.objectIds.length - 1];
@@ -2198,17 +2231,24 @@
             const key = e.key.toLowerCase();
             if (!['d', 'c', 'v'].includes(key) || typingIn()) return;
             if (key === 'v') {
-                if (!objClipboard) return;   // nothing of ours → the browser pastes as usual
-                e.preventDefault();
-                window.__duplicateObjects(objClipboard.ids, objClipboard.sceneId);
+                // Not preventDefault: that would cancel the paste event, the only place that sees an
+                // image on the clipboard. The paste listener takes it; this runs only in a browser
+                // that sends no paste event outside a text field.
+                if (objClipboard) pendingObjPaste = setTimeout(pasteObjects, 0);
                 return;
             }
             if (key === 'c' && !window.getSelection?.()?.isCollapsed) return;   // copying page text
             const id = selectedObjectId();
             if (!id) return;
-            e.preventDefault();              // Cmd-D would bookmark the page
-            if (key === 'd') window.__duplicateObjects([id]);
-            else objClipboard = { ids: [id], sceneId: (window.__objScene || {}).sceneId ?? null };
+            if (key === 'd') {
+                e.preventDefault();          // Cmd-D would bookmark the page
+                window.__duplicateObjects([id]);
+                return;
+            }
+            // Cmd-C runs on, so the copy event can mark the system clipboard as ours.
+            objClipboard = { ids: [id], sceneId: (window.__objScene || {}).sceneId ?? null };
+            ownCopy = true;
+            setTimeout(() => { ownCopy = false; }, 0);   // a browser that fires no copy event here
         });
 
         window.addEventListener('keydown', (e) => {
@@ -2606,7 +2646,10 @@
                     <span wire:loading wire:target="uploadImage" class="inline-flex items-center gap-2 text-lg font-semibold text-slate-100">
                         <x-icons.spinner class="h-4 w-4 animate-spin" /> {{ __('Uploading…') }}
                     </span>
-                    <span class="text-sm text-slate-400">{{ __('Drop a picture here or click to choose one') }}</span>
+                    {{-- ⌘V on a Mac, Ctrl+V elsewhere; the paste itself is handled editor-wide (see Cmd-V). --}}
+                    <span class="text-sm text-slate-400"
+                          x-data="{ key: /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘V' : 'Ctrl+V' }"
+                          x-text="@js(__('Drop a picture here, click to choose one or paste with :key')).replace(':key', key)">{{ __('Drop a picture here, click to choose one or paste with :key', ['key' => '⌘V']) }}</span>
                     <span class="text-2xs text-slate-500">{{ __('JPG, PNG or WebP, up to 8 MB') }}</span>
                     <input type="file" wire:model="uploadImage" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden" />
                 </label>
