@@ -207,4 +207,58 @@ class PictureLibraryTest extends TestCase
         $this->assertNotEmpty($tiles, 'an owned collection must never render as an empty grid');
         $this->assertSame('library', $tiles[0]['source']);
     }
+
+    /** @return \Illuminate\Support\Collection<int,array<string,mixed>> */
+    private function tilesFor(string $kind, string $term = ''): \Illuminate\Support\Collection
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('lessons/1/own.jpg', 'jpeg-bytes');
+        $this->fakeCloudinaryLibrary();
+
+        return Livewire::actingAs($this->teacher)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
+            ->call('openImageLibrary')
+            ->call('preparePaintings')
+            ->set('paintingQuery', $term)
+            ->set('paintingCommonsLoaded', true)
+            ->set('paintingKind', $kind)
+            ->instance()
+            ->paintingResults;
+    }
+
+    /**
+     * Bart 2026-10-16, "the tabs don't work anymore": with the corpus unreachable, Paintings and
+     * City plans both showed "Scene 1 · In this lesson". The empty-grid fallback to our own
+     * pictures crossed every tab, so each tab looked the same. A source tab shows its own source
+     * or its empty state (which offers the Commons search), never another shelf.
+     */
+    public function test_the_paintings_and_city_plan_tabs_never_show_this_lessons_pictures(): void
+    {
+        foreach (['painting', 'city_map'] as $kind) {
+            $tiles = $this->tilesFor($kind);
+
+            $this->assertSame([], $tiles->where('source', 'library')->values()->all(), "{$kind} tab shows library tiles");
+        }
+    }
+
+    public function test_everything_shows_the_search_results_and_this_lessons_pictures(): void
+    {
+        \Illuminate\Support\Facades\Cache::put('commons.text.v3.'.md5('Tasman painting').'.12', [[
+            'file_title' => 'File:Abel Tasman.jpg', 'title' => 'Abel Tasman', 'artist' => 'Jacob Cuyp',
+            'license' => 'Public domain', 'thumb_url' => 'https://upload.wikimedia.org/tasman.jpg',
+        ]], 60);
+
+        // A typed term filters our own pictures too ("Scene 1" is not a Tasman match), so the
+        // lesson's picture is checked on the unfiltered grid.
+        $this->assertSame(['commons', 'library'], $this->tilesFor('', 'Tasman')->pluck('source')->all(), 'the search result leads, our collection follows');
+        $this->assertContains('/storage/lessons/1/own.jpg', $this->tilesFor('')->pluck('key')->map(fn ($k) => parse_url($k, PHP_URL_PATH))->all());
+    }
+
+    public function test_the_library_tab_shows_only_our_own_pictures(): void
+    {
+        $tiles = $this->tilesFor('library');
+
+        $this->assertNotEmpty($tiles);
+        $this->assertSame(['library'], $tiles->pluck('source')->unique()->values()->all());
+    }
 }

@@ -4172,17 +4172,19 @@ class Step3SceneConfigurator extends Component
                 ->take(self::PAINTING_GRID_LIMIT)
                 ->values();
 
-            // Neither shelf had anything. Show what we already own rather than an empty grid —
-            // the teacher can always use one of our own pictures.
-            return $grid->isEmpty() ? $this->libraryResults() : $grid;
+            // Only "Everything" holds our own pictures too (after the search results). A source tab
+            // shows its source or its empty state, which offers the Commons search: falling back to
+            // the library there made Paintings and City plans show "In this lesson" whenever the
+            // corpus was unreachable, so every tab looked the same (Bart, 2026-10-16).
+            return $this->paintingKind === '' ? $grid->concat($this->libraryResults())->values() : $grid;
         } catch (\Throwable $e) {
             // Corpus / Commons unavailable (e.g. a dropped Supabase pooler connection that didn't
-            // recover on the single retry) — fall back to our own library so the picker still
-            // OPENS with something in it instead of rendering a 500 that reads as "can't open
-            // Browse paintings".
+            // recover on the single retry): the picker still OPENS instead of rendering a 500 that
+            // reads as "can't open Browse paintings". Same rule as above: only "Everything" falls
+            // back to our own pictures.
             report($e);
 
-            return $this->libraryResults();
+            return $this->paintingKind === '' ? $this->libraryResults() : collect();
         }
     }
 
