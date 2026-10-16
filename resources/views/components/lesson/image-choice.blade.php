@@ -11,9 +11,12 @@
 {{-- One of the lesson's own pictures, chosen by clicking it; "auto" hands the choice back to the
      lesson. Shared by the poster (Settings) and the title screen (its Format). --}}
 @php $isOverride = trim((string) $chosen) !== ''; @endphp
-<div {{ $attributes }}>
-    <div class="mb-2 flex items-center justify-between">
-        <span class="text-2xs uppercase tracking-widest text-slate-500">{{ $label }}</span>
+<div {{ $attributes }} x-data="imageGrid({ id: 'image-choice', kind: 'image', initial: 96 })">
+    <div class="mb-2 flex items-center gap-2">
+        <span class="mr-auto text-2xs uppercase tracking-widest text-slate-500">{{ $label }}</span>
+        @if (count($candidates))
+            <x-ui.thumb-size />
+        @endif
         @if ($isOverride)
             <button type="button" wire:click="{{ $reset }}" class="text-2xs text-slate-500 transition-colors hover:text-primary">↺ {{ __('auto') }}</button>
         @else
@@ -26,17 +29,19 @@
                  @class(['shrink-0 rounded-lg object-cover ring-1 ring-slate-600', 'h-24 w-16' => $portrait, 'aspect-video w-full' => ! $portrait]) />
         @endif
         @if (count($candidates))
-            <div @class(['grid content-start gap-1.5', 'grid-cols-4' => $portrait, 'grid-cols-6' => ! $portrait])>
+            {{-- The shared picture grid (resources/js/ui/image-grid.js): 16:9 tiles, zoom at the cursor. --}}
+            <div class="lp-thumb-grid min-w-0 flex-1 content-start gap-1.5" :style="gridStyle">
                 @foreach ($candidates as $cand)
                     @php $isChosen = $isOverride && $chosen === $cand['url']; @endphp
                     <button type="button" wire:click="{{ $select }}(@js($cand['url']))" data-tooltip="{{ $cand['label'] }}"
-                            aria-label="{{ $cand['label'] }}"
+                            aria-label="{{ $cand['label'] }}" data-kind="image" data-zoom
                             @class([
-                                'aspect-square overflow-hidden rounded ring-1 transition',
+                                'rounded ring-1 transition',
                                 'ring-primary' => $isChosen,
                                 'ring-slate-700 hover:ring-slate-400' => ! $isChosen,
                             ])>
-                        <img src="{{ $cand['url'] }}" alt="" class="h-full w-full object-cover" onerror="this.closest('button').style.display='none'" />
+                        <img src="{{ $cand['url'] }}" alt="" loading="lazy" decoding="async"
+                             :srcset="srcset(@js($cand['url']))" :sizes="sizes(@js($cand['url']))" onerror="this.closest('button').style.display='none'" />
                     </button>
                 @endforeach
             </div>

@@ -852,6 +852,47 @@
     background-size: 14px 14px;
     color: oklch(20% 0.02 264);
 }
+/* ─── Picture grids: one size slider, two kinds of tile, zoom at the cursor ────────────
+   resources/js/ui/image-grid.js writes --thumb (the smallest column) from the grid's slider.
+   IMAGE tiles are 16:9 and cover; ICON tiles are square and contain. In a mixed grid
+   (data-mixed: the history line holds backdrops AND figures) an image spans two icon columns at
+   2:1, so its height lands within half a gap of the squares beside it and the rows stay level.
+   Unlayered, so the tile shape wins over any aspect utility left on a tile. */
+.lp-thumb-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(var(--thumb, 200px), 100%), 1fr));
+    grid-auto-flow: dense;
+}
+/* Card tiles (a picture with a title and a button under it) need room for their text. */
+.lp-thumb-grid[data-cards] { grid-template-columns: repeat(auto-fill, minmax(min(max(var(--thumb, 128px), 6rem), 100%), 1fr)); }
+.lp-thumb-grid > [data-kind] { position: relative; overflow: hidden; }
+.lp-thumb-grid > [data-kind="image"] { aspect-ratio: 16 / 9; }
+.lp-thumb-grid > [data-kind="icon"] { aspect-ratio: 1; }
+.lp-thumb-grid[data-mixed] > [data-kind="image"] { grid-column: span 2; aspect-ratio: 2 / 1; }
+.lp-thumb-grid > [data-kind="image"] img { width: 100%; height: 100%; object-fit: cover; }
+.lp-thumb-grid > [data-kind="icon"] img { width: 100%; height: 100%; object-fit: contain; }
+
+/* A strip (one row that scrolls sideways) sizes its tiles by the same slider. */
+.lp-thumb-strip > [data-kind="image"] { width: min(var(--thumb, 96px), 100%); aspect-ratio: 16 / 9; flex-shrink: 0; }
+
+/* Hover zoom: the picture scales inside its tile about the pointer (image-grid.js keeps
+   --zoom-x/y on the pointer). Only transform eases in; the origin follows the pointer at once, which
+   is what pans the magnified picture. No overshoot, no shadow, no ring. */
+[data-zoom] img {
+    transform-origin: var(--zoom-x, 50%) var(--zoom-y, 50%);
+    transition: transform 150ms var(--ease-enter);
+    -webkit-touch-callout: none;
+    user-select: none;
+}
+[data-zoom][data-zoomed] img { transform: scale(2); }
+/* Icons do not pan: a subtle lift of the glyph, no more. */
+.lp-thumb-grid > [data-kind="icon"]:not([data-zoom]):hover img { transform: scale(1.08); }
+.lp-thumb-grid > [data-kind="icon"] img { transition: transform 150ms var(--ease-enter); }
+@media (prefers-reduced-motion: reduce) {
+    [data-zoom] img,
+    .lp-thumb-grid > [data-kind="icon"] img { transition: none; }
+}
+
 /* A game overlay ends above the player's deck while it shows a game (scene/deck-reserve.js), so
    the deck never covers a game's own buttons. Unlayered: it must beat the overlay's inset-0. */
 #lesson-game-overlay:has(> *) {

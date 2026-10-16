@@ -26,6 +26,7 @@ import { layerOverlay, setLayerPropEverywhere, selectLayerEverywhere } from './s
 import { isTypingTarget } from './ui/keyboard.js';
 import { routePaste, OBJECTS_MARK } from './ui/paste-router.js';
 import { initDragScroll } from './ui/drag-scroll.js';
+import { imageGrid, initImageZoom } from './ui/image-grid.js';
 
 window.Sortable = Sortable;
 
@@ -71,6 +72,12 @@ window.settingsPanelTuner = settingsPanelTuner;
 // holds it — a lock that recomputes its ratio from the rounded fields drifts a square out of
 // square with every individual step still looking right, so it is not left in a template.
 window.layerSizeRow = layerSizeRow;
+
+// Every picture grid a teacher browses: x-data="imageGrid({ id, kind })" owns the size slider,
+// and ONE delegated listener zooms any [data-zoom] tile at the cursor (long press on touch opens
+// <x-ui.image-lightbox>). See resources/js/ui/image-grid.js.
+window.imageGrid = imageGrid;
+initImageZoom();
 
 // A map or voyage scene keeps TWO artwork overlays alive over the same layers, so "set this
 // property live" has to reach both and "measure this layer" has to read the one on screen. See

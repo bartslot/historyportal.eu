@@ -7,15 +7,7 @@
     $searching = trim($this->search) !== '';
 @endphp
 
-<div
-    class="space-y-10"
-    x-data="{
-        lightbox: { open: false, src: null, caption: '' },
-        show(src, caption) { this.lightbox = { open: true, src, caption }; document.body.style.overflow = 'hidden' },
-        hide() { this.lightbox.open = false; document.body.style.overflow = '' },
-    }"
-    x-on:keydown.escape.window="hide()"
->
+<div class="space-y-10">
     <header class="flex flex-col gap-6 border-b border-slate-800 pb-8 sm:flex-row sm:items-end sm:justify-between">
         <div>
             <p class="text-xs font-medium uppercase tracking-eyebrow text-primary">{{ __('Help') }}</p>
@@ -157,7 +149,7 @@
                                          carries the keyboard and screen-reader affordance. --}}
                                     <figure class="mt-4" data-help-figure>
                                         <button type="button"
-                                                @click="show(@js($section['image_url']), @js($section['heading']))"
+                                                @click="$dispatch('image-lightbox', { src: @js($section['image_url']), caption: @js($section['heading']) })"
                                                 class="group relative block w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-950 transition hover:border-primary/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                                                 aria-label="{{ __('Enlarge the picture of :subject', ['subject' => $section['heading']]) }}">
                                             <img src="{{ $section['image_url'] }}" alt="{{ $section['heading'] }}"
@@ -197,33 +189,6 @@
                     </a>
                 </section>
             @endunless
-        </div>
-    </div>
-
-    {{-- Lightbox. Closes on the corner X, Esc and a backdrop click, like every modal here. --}}
-    <div x-show="lightbox.open" x-cloak
-         class="fixed inset-0 z-[70] flex items-center justify-center p-4 sm:p-8"
-         role="dialog" aria-modal="true" :aria-label="lightbox.caption"
-         x-transition:enter="transition duration-200 ease-enter"
-         x-transition:enter-start="opacity-0"
-         x-transition:leave="transition duration-150 ease-exit"
-         x-transition:leave-end="opacity-0">
-        <div class="absolute inset-0 bg-slate-950/90 backdrop-blur-sm" @click="hide()"></div>
-
-        {{-- The picture is bigger than most screens, so it is bounded by the viewport rather than
-             by its own size: it scales down to fit and never pushes the caption off-screen. --}}
-        <div class="relative flex max-h-full w-full max-w-6xl flex-col overflow-hidden">
-            <div class="flex shrink-0 items-start justify-between gap-4 pb-3">
-                <p class="text-sm text-slate-300" x-text="lightbox.caption"></p>
-                <button type="button" @click="hide()" aria-label="{{ __('Close') }}"
-                        class="btn btn-ghost btn-circle btn-sm shrink-0 text-slate-400 hover:text-slate-200">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5" aria-hidden="true">
-                        <path stroke-linecap="round" d="M6 6l12 12M18 6 6 18" />
-                    </svg>
-                </button>
-            </div>
-            <img :src="lightbox.src" :alt="lightbox.caption"
-                 class="mx-auto max-h-[calc(100vh-9rem)] w-auto max-w-full rounded-xl border border-slate-700 object-contain shadow-2xl">
         </div>
     </div>
 </div>
