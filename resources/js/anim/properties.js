@@ -61,9 +61,18 @@ const REGISTRY = {
   // and a text item has no `opacity` at all (it has `bgOpacity`, and only the rect has `opacity`).
   // Both would have drawn a row that silently animated nothing, which is the exact failure this
   // registry exists to prevent — and writing the warning in the comment did not stop me guessing.
+  // Since 2026-10-16 a text also has a look (App\Services\Support\TextLayerStyle), drawn by
+  // TextOverlayLayer: every key below is a field it reads. `size` stays the string "xl": no row.
   text: [
     P('x', 'X', 'linear', '%'),
     P('y', 'Y', 'linear', '%'),
+    P('w', 'W', 'linear', '%'),
+    P('scale', 'Scale', 'linear', '%'),
+    P('rotation', 'Angle', 'angle', '°'),
+    P('blur', 'Blur', 'linear', ''),
+    P('opacity', 'Opacity', 'linear', ''),
+    P('color', 'Colour', 'color', ''),
+    P('colorOpacity', 'Colour %', 'linear', ''),
   ],
   /** The half-panel behind a caption. `opacity` is a number on these and only on these. */
   rect: [

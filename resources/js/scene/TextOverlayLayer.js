@@ -18,6 +18,8 @@
  *   align  — 'left' (default) | 'center' | 'right' text alignment inside the box.
  *   bg     — 'glass' adds a frosted-glass card behind the text (blurs the scene image).
  *   bgColor/bgOpacity — colour + opacity of that glass card (defaults #0f172a / 0.3).
+ *   color/colorOpacity, scale, rotation, blur, blend, opacity, grayscale — the text's look
+ *            (App\Services\Support\TextLayerStyle). Absent = white, 1x, upright, sharp, normal.
  *   anchor — 'screen' (default) or 'map': pinned to a lng/lat, repositioned on
  *            every map move via the host-provided projector.
  *
@@ -45,6 +47,28 @@ const SIZES = {
 }
 const fontOf = (item) => FONTS[item.font] || FONTS.sans
 const sizeOf = (item) => SIZES[item.size] || SIZES.md
+
+const TEXT_WHITE = '#f8fafc'
+const BLENDS = ['multiply', 'screen', 'overlay', 'darken', 'lighten']
+const num = (v) => (Number.isFinite(Number(v)) && v !== null && v !== '' ? Number(v) : null)
+
+/**
+ * The text's colour, size, turn and finish (Figma 1674:4695). Each one is set only when the item
+ * asks for it, so a plain text keeps the stylesheet's look and the editor's own styles.
+ */
+function applyLook (item, node) {
+  const strength = num(item.colorOpacity)
+  if (item.color || strength !== null) node.style.color = hexToRgba(item.color || TEXT_WHITE, strength ?? 1)
+  const turn = num(item.rotation)
+  const scale = num(item.scale)
+  node.style.transform = [turn ? `rotate(${turn}deg)` : '', scale !== null && scale !== 1 ? `scale(${scale})` : ''].filter(Boolean).join(' ')
+  node.style.transformOrigin = node.style.transform ? 'center' : ''
+  const blur = num(item.blur)
+  node.style.filter = [blur ? `blur(${blur}px)` : '', item.grayscale === true ? 'grayscale(1)' : ''].filter(Boolean).join(' ')
+  node.style.mixBlendMode = BLENDS.includes(item.blend) ? item.blend : ''
+  const opacity = num(item.opacity)
+  node.style.opacity = opacity !== null && opacity < 1 ? String(opacity) : ''
+}
 
 const alignOf = (item) => (item.align === 'center' || item.align === 'right') ? item.align : 'left'
 
@@ -394,6 +418,7 @@ export class TextOverlayLayer {
       node.style.maxWidth = 'none'
     }
     node.style.textAlign = alignOf(item)
+    applyLook(item, node)
     return node
   }
 

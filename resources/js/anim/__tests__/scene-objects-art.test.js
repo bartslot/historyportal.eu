@@ -27,3 +27,24 @@ describe('the timeline reads an artwork layer', () => {
     expect(readObjectProperty('art:108', 'width')).toBeNull()
   })
 })
+
+describe('the timeline reads a text layer', () => {
+  afterEach(() => { delete window.__lessonTextLayer })
+
+  // A diamond keys what the row SHOWS. An unset scale or opacity reading 0 would key a text out
+  // of existence, the same trap the W row fell into for pictures.
+  it('an unset look reads its default, never 0', () => {
+    window.__lessonTextLayer = { _texts: [{ id: 'a', text: 'Batavia', x: 10, y: 10 }] }
+    expect(readObjectProperty('text:a', 'scale')).toBe(1)
+    expect(readObjectProperty('text:a', 'opacity')).toBe(1)
+    expect(readObjectProperty('text:a', 'colorOpacity')).toBe(1)
+    expect(readObjectProperty('text:a', 'rotation')).toBe(0)
+    expect(readObjectProperty('text:a', 'color')).toBe('#f8fafc')
+  })
+
+  it('a set value reads as stored', () => {
+    window.__lessonTextLayer = { _texts: [{ id: 'a', text: 'B', x: 10, y: 10, scale: 2, color: '#ffaa00' }] }
+    expect(readObjectProperty('text:a', 'scale')).toBe(2)
+    expect(readObjectProperty('text:a', 'color')).toBe('#ffaa00')
+  })
+})

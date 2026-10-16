@@ -35,6 +35,7 @@ use App\Services\Lessons\TeamGameSpec;
 use App\Services\Support\LayerAmbient;
 use App\Services\Support\LayerSitIn;
 use App\Services\Support\SceneSplit;
+use App\Services\Support\TextLayerStyle;
 use App\Services\Support\SpeechBalloons;
 use App\Services\Support\ShotCamera;
 use App\Services\Support\WebpEncoder;
@@ -1046,25 +1047,32 @@ class Step3SceneConfigurator extends Component
         $isPanel = ($text['kind'] ?? null) === 'rect';
         $valid = $isPanel
             ? ['side', 'color', 'opacity']
-            : ['font', 'size', 'align', 'list', 'bg', 'bgColor', 'bgOpacity', 'x', 'y', 'w'];
+            : ['font', 'size', 'align', 'list', 'bg', 'bgColor', 'bgOpacity', 'x', 'y', 'w', ...TextLayerStyle::FIELDS];
 
         if (! in_array($field, $valid, true)) {
             return;
         }
 
-        $next = match ($field) {
-            'font' => in_array($value, ['sans', 'history', 'cinzel'], true) ? $value : $text['font'] ?? 'sans',
-            'size' => in_array($value, ['sm', 'md', 'lg', 'xl'], true) ? $value : $text['size'] ?? 'md',
-            'align' => in_array($value, ['left', 'center', 'right'], true) ? $value : $text['align'] ?? 'left',
-            'list' => in_array($value, ['none', 'bullet', 'number'], true) ? $value : $text['list'] ?? 'none',
-            'bg' => $value === true || $value === '1' || $value === 1 ? 'glass' : 'none',
-            'bgColor', 'color' => preg_match('/^#[0-9a-fA-F]{6}$/', (string) $value)
+        // A text's colour, scale, rotation, blur, blend, opacity and grayscale (TextLayerStyle).
+        // Anything that is not a value for the field leaves the text as it was.
+        $next = ! $isPanel && in_array($field, TextLayerStyle::FIELDS, true)
+            ? TextLayerStyle::value($field, $value)
+            : match ($field) {
+                'font' => in_array($value, ['sans', 'history', 'cinzel'], true) ? $value : $text['font'] ?? 'sans',
+                'size' => in_array($value, ['sm', 'md', 'lg', 'xl'], true) ? $value : $text['size'] ?? 'md',
+                'align' => in_array($value, ['left', 'center', 'right'], true) ? $value : $text['align'] ?? 'left',
+                'list' => in_array($value, ['none', 'bullet', 'number'], true) ? $value : $text['list'] ?? 'none',
+                'bg' => $value === true || $value === '1' || $value === 1 ? 'glass' : 'none',
+                'bgColor', 'color' => preg_match('/^#[0-9a-fA-F]{6}$/', (string) $value)
                 ? (string) $value : ($text[$field] ?? '#0f172a'),
-            'bgOpacity', 'opacity' => max(0.05, min(0.95, (float) $value)),
-            'side' => $value === 'right' ? 'right' : 'left',
-            'x', 'y' => max(0.0, min(100.0, (float) $value)),
-            'w' => max(5.0, min(95.0, (float) $value)),
-        };
+                'bgOpacity', 'opacity' => max(0.05, min(0.95, (float) $value)),
+                'side' => $value === 'right' ? 'right' : 'left',
+                'x', 'y' => max(0.0, min(100.0, (float) $value)),
+                'w' => max(5.0, min(95.0, (float) $value)),
+            };
+        if ($next === null) {
+            return;
+        }
 
         $text[$field] = $next;
         $texts[$index] = $text;
@@ -1208,6 +1216,9 @@ class Step3SceneConfigurator extends Component
                     'lat' => $anchor === 'map' ? $lat : null,
                     // Stacking order set by drag-reorder in the object list (higher = in front).
                     'z' => (isset($t['z']) && is_numeric($t['z'])) ? (int) $t['z'] : null,
+                    // Colour, scale, rotation, blur, blend, opacity, grayscale: kept through every
+                    // canvas save, or moving a text would throw its look away.
+                    ...TextLayerStyle::of($t),
                 ];
             })
             ->take(12)

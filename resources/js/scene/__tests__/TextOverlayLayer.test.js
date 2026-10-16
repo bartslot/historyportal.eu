@@ -141,3 +141,39 @@ describe('TextOverlayLayer editor selection', () => {
     expect(onChange).not.toHaveBeenCalled()
   })
 })
+
+// Bart 2026-10-16 (Figma 1674:4695): a text's colour, scale, rotation, blur, blend, opacity and
+// grayscale, drawn the same way in the editor and the player.
+describe('a text layer\'s look', () => {
+  const nodeFor = (item, editable = false) => {
+    const el = host()
+    const layer = new TextOverlayLayer(el, editable ? { editable: true } : {})
+    layer.setTexts([{ id: 'a', text: 'Batavia', x: 10, y: 10, ...item }])
+    return el.querySelector('[data-text-id="a"]')
+  }
+
+  it('is white, upright and plain when nothing is set', () => {
+    const node = nodeFor({})
+    expect(node.style.color).toBe('rgb(248, 250, 252)')
+    expect(node.style.transform).toBe('')
+    expect(node.style.filter).toBe('')
+    expect(node.style.opacity).toBe('')
+  })
+
+  it('draws colour with its strength, scale, rotation, blur, blend, opacity and grayscale', () => {
+    const node = nodeFor({ color: '#ffaa00', colorOpacity: 0.5, scale: 2, rotation: 15, blur: 1.5, blend: 'multiply', opacity: 0.6, grayscale: true })
+    expect(node.style.color).toBe('rgba(255, 170, 0, 0.5)')
+    expect(node.style.transform).toBe('rotate(15deg) scale(2)')
+    expect(node.style.filter).toBe('blur(1.5px) grayscale(1)')
+    expect(node.style.mixBlendMode).toBe('multiply')
+    expect(node.style.opacity).toBe('0.6')
+  })
+
+  it('the Format panel\'s live preview repaints it', () => {
+    const el = host()
+    const layer = new TextOverlayLayer(el)
+    layer.setTexts([{ id: 'a', text: 'Batavia', x: 10, y: 10 }])
+    layer.patch('a', { rotation: -30 })
+    expect(el.querySelector('[data-text-id="a"]').style.transform).toBe('rotate(-30deg)')
+  })
+})

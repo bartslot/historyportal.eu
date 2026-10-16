@@ -16,6 +16,8 @@
     /** What the diamond keys, e.g. 'art:231' and 'x'. Without both it is a marker only. */
     'keyframeTarget' => null,
     'keyframeProperty' => null,
+    /** Shown while the field is empty: a value the stored data does not have (e.g. 'Auto'). */
+    'placeholder' => null,
 ])
 
 {{-- A numeric field with its axis letter in front — Figma's `input` in the position and size rows.
@@ -36,6 +38,7 @@
           class="shrink-0 cursor-col-resize select-none text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ $glyph }}</span>
     <input type="number" min="{{ $min }}" max="{{ $max }}" step="{{ $step }}" value="{{ $value }}"
            aria-label="{{ $label }}"
+           @if ($placeholder !== null) placeholder="{{ $placeholder }}" @endif
            @if ($default !== null) data-default="{{ $default }}" @endif
            @if ($keyframeTarget && $keyframeProperty) data-key-target="{{ $keyframeTarget }}" data-key-property="{{ $keyframeProperty }}" @endif
            @if ($onInput) x-on:input="{{ $onInput }}" @endif

@@ -143,7 +143,7 @@ class SceneTextLabelsTest extends TestCase
             ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
             ->dispatch('scene:selection-changed', objectId: 'txt_rome')
             ->assertSet('activeTextId', 'txt_rome')
-            ->assertSee('Edit content directly on the canvas.')
+            ->assertSeeHtml('data-text-inspector')
             // (No inspector-open markup check: the code that opens the panel on a selection is a
             // pushed script this component render never contains. The check only ever matched the
             // toolbar's old Format/Settings buttons, removed when they merged.)
@@ -182,6 +182,6 @@ class SceneTextLabelsTest extends TestCase
                 ['id' => 'txt_rome', 'text' => 'Rome', 'x' => 40, 'y' => 40],
             ])
             ->assertSet('activeTextId', 'txt_rome')
-            ->assertSee('Edit content directly on the canvas.');
+            ->assertSeeHtml('data-text-inspector');
     }
 }
