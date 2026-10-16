@@ -35,7 +35,8 @@ export const translateLine = (text, set, lang, sourceLang) => {
  * original may use the TTS character alignment (it indexes the ORIGINAL characters).
  */
 export const translatedCues = (source, duration, set, lang, sourceLang) => {
-  if (source?.lines?.length) {
+  // A scene in lines has narrator lines; balloons alone (added in the editor) leave the script's captions.
+  if (source?.lines?.some?.(l => l?.speaker === 'narrator')) {
     return source.lines
       .filter(l => l?.speaker === 'narrator' && l.end > l.start)
       .flatMap(l => {

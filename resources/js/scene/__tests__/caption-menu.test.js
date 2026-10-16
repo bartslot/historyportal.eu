@@ -69,6 +69,12 @@ describe('translated captions', () => {
     ])
   })
 
+  it('keeps the script\'s captions on a scene whose only lines are balloons added in the editor', () => {
+    const lines = [{ speaker: 'balloon', text: 'Hold!', start: 0, end: null }]
+    const cues = translatedCues({ script: 'Tasman sails east.', lines }, 4, set, 'es', 'en')
+    expect(cues.map(c => c.text)).toEqual(['Tasman navega hacia el este.'])
+  })
+
   it('spreads a translated script over the audio without the original alignment', () => {
     const alignment = [{ start_time: 0 }, { start_time: 9 }]
     const cues = translatedCues({ script: 'Tasman sails east.', alignment }, 4, set, 'es', 'en')

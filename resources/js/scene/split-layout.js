@@ -121,3 +121,16 @@ export function wheelZoom (zoom, deltaY) {
 
   return Math.round(clamp(z, ZOOM_MIN, ZOOM_MAX) * 1000) / 1000
 }
+
+/**
+ * Which panel says a line: the one it was put in (line.panel, the editor's), else the one holding
+ * its figure; off-frame lines go to the first panel.
+ */
+export function panelForLine (line, panelLayers) {
+  if (line?.panel === 0 || line?.panel === 1) return line.panel
+  const id = line?.figure?.asset_id
+  if (id == null) return 0
+  const i = panelLayers.findIndex(layers => (layers || []).some(l => l?.asset_id === id))
+
+  return i < 0 ? 0 : i
+}

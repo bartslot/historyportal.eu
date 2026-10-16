@@ -9,9 +9,9 @@
  */
 import { ParallaxScene } from './ParallaxScene.js'
 import { ArtworkOverlay } from './ArtworkOverlay.js'
-import { BalloonLayer } from './BalloonLayer.js'
+import { BalloonLayer, withBalloonIds } from './BalloonLayer.js'
 import { backdropLayers, isClipartLayer } from './layer-filters.js'
-import { splitLayout, focusPosition, normalizeSplit, normalizeFocus, atFromPointer, panFocus, wheelZoom } from './split-layout.js'
+import { splitLayout, focusPosition, normalizeSplit, normalizeFocus, atFromPointer, panFocus, wheelZoom, panelForLine } from './split-layout.js'
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
 /** One wobble point per this many px of edge; the line drifts at most this share of its width. */
@@ -24,16 +24,9 @@ const WHEEL_SAVE_MS = 350
 /** Under this many px a press on a pane is a click (select it), not a pan. */
 const PAN_THRESHOLD_PX = 3
 /** Pointer targets that are not the pane's picture: figures move, balloons and the divider are their own. */
-const NOT_THE_PICTURE = '[data-layer-id],[data-layer-chrome],[data-split-divider]'
+const NOT_THE_PICTURE = '[data-layer-id],[data-layer-chrome],[data-split-divider],[data-balloon-id]'
 
-/** Which panel says a line: the one holding its figure; off-frame lines go to the first panel. */
-export function panelForLine (line, panelLayers) {
-  const id = line?.figure?.asset_id
-  if (id == null) return 0
-  const i = panelLayers.findIndex(layers => (layers || []).some(l => l?.asset_id === id))
-
-  return i < 0 ? 0 : i
-}
+export { panelForLine }
 
 /** A hand-drawn straight line from (x0,y0) to (x1,y1): small seeded wobble, never random per frame. */
 export function inkPath (x0, y0, x1, y1, width, seed = 1) {
@@ -57,9 +50,10 @@ export class SplitStage {
   /**
    * @param {HTMLElement} host  the stage box the two panels fill
    * @param {{editable?: boolean, onSelect?: (i:number)=>void, onLayerChange?: (i:number, assetId:number, t:object)=>void,
-   *          onSplitChange?: (at:number)=>void, onViewChange?: (i:number, focus:{x:number,y:number,zoom:number})=>void}} opts
+   *          onSplitChange?: (at:number)=>void, onViewChange?: (i:number, focus:{x:number,y:number,zoom:number})=>void,
+   *          balloons?: object|null}} opts  balloons: an editable BalloonLayer's options (balloon-edit.js)
    */
-  constructor (host, { editable = false, onSelect = null, onLayerChange = null, onSplitChange = null, onViewChange = null } = {}) {
+  constructor (host, { editable = false, onSelect = null, onLayerChange = null, onSplitChange = null, onViewChange = null, balloons = null } = {}) {
     if (!host) throw new TypeError('SplitStage: host element is required')
     this.host = host
     this.editable = editable
@@ -67,6 +61,7 @@ export class SplitStage {
     this.onLayerChange = onLayerChange
     this.onSplitChange = onSplitChange
     this.onViewChange = onViewChange
+    this.balloonOptions = balloons
     this._dragging = false   // a divider drag or a pan: the server's echo must not snap it back
     this.panels = []
     this._root = null
@@ -161,7 +156,7 @@ export class SplitStage {
     const balloons = new BalloonLayer(talk, (assetId) => {
       const img = el.querySelector(`[data-layer-id="art_${assetId}"] img`)
       return img ? img.getBoundingClientRect() : null
-    })
+    }, this.balloonOptions || {})
 
     if (this.editable) {
       // A click anywhere in a panel (a figure in it too) makes it the one the inspector edits.
@@ -379,7 +374,8 @@ export class SplitStage {
   /** Speech balloons, each in the panel that holds its speaker. */
   setLines (lines) {
     const all = this.panels.map(p => p.layers)
-    this.panels.forEach((p, i) => p.balloons.setLines((lines || []).filter(l => panelForLine(l, all) === i)))
+    const named = withBalloonIds(lines)
+    this.panels.forEach((p, i) => p.balloons.setLines(named.filter(l => panelForLine(l, all) === i)))
   }
 
   /** The narration clock: balloons come and go. */
