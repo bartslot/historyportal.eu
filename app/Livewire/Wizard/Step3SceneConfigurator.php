@@ -33,6 +33,7 @@ use App\Services\Billing\NarrationCreditLedger;
 use App\Services\Diorama\LibraryAssets;
 use App\Services\Lessons\TeamGameSpec;
 use App\Services\Support\LayerAmbient;
+use App\Support\LayerEntrances;
 use App\Services\Support\LayerSitIn;
 use App\Services\Support\SceneSplit;
 use App\Services\Support\TextLayerStyle;
@@ -284,9 +285,6 @@ class Step3SceneConfigurator extends Component
                 'lng' => isset($l['lng']) ? (float) $l['lng'] : null,
                 'lat' => isset($l['lat']) ? (float) $l['lat'] : null,
                 // Animate tab: entrance movement, its delay in seconds, and the easing key.
-                'anim' => $l['anim'] ?? null,
-                'anim_delay' => isset($l['anim_delay']) ? (float) $l['anim_delay'] : null,
-                'anim_ease' => $l['anim_ease'] ?? null,
                 'wobble' => isset($l['wobble']) ? (int) $l['wobble'] : null,
                 // Colour treatment — knock out the paper, drain the colour, recolour the ink.
                 // Tint reaches a line-art icon too: it floods INTO the source's alpha, which for
@@ -298,11 +296,8 @@ class Step3SceneConfigurator extends Component
                 // on a symmetrical shape and opposite headings on a ship.
                 'flip_x' => ! empty($l['flip_x']),
                 'flip_y' => ! empty($l['flip_y']),
-                'anim_duration' => isset($l['anim_duration']) ? (int) $l['anim_duration'] : null,
-                'anim_out' => $l['anim_out'] ?? null,
-                'anim_out_delay' => isset($l['anim_out_delay']) ? (float) $l['anim_out_delay'] : null,
-                'anim_out_ease' => $l['anim_out_ease'] ?? null,
-                'anim_out_duration' => isset($l['anim_out_duration']) ? (int) $l['anim_out_duration'] : null,
+                // Appear and its exit: the same list the player gets (LayerEntrances::payload).
+                ...LayerEntrances::payload($l),
                 'grayscale' => ! empty($l['grayscale']),
                 'tint' => preg_match('/^#[0-9a-fA-F]{6}$/', (string) ($l['tint'] ?? '')) ? $l['tint'] : null,
                 'z' => isset($l['z']) ? (int) $l['z'] : null,

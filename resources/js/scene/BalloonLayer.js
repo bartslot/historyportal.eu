@@ -165,6 +165,21 @@ export const MAX_SCALE = 4
 /** How a balloon arrives when its line names none: the pop it always had. */
 export const DEFAULT_BALLOON_ENTRANCE = 'pop'
 
+/**
+ * How a balloon arrives: its entrance, at its own speed (Appear's Fast / Slow, stored as
+ * anim_duration in ms). Without one it plays as it always did: a pop of ENTER_MS, any other
+ * entrance at the layers' own length.
+ */
+export const balloonEntrance = (line) => {
+  const anim = line?.anim ?? DEFAULT_BALLOON_ENTRANCE
+  const own = Number(line?.anim_duration)
+  return {
+    anim,
+    ease: anim === 'pop' ? 'pop' : 'enter',
+    duration: own > 0 ? own : (anim === 'pop' ? ENTER_MS : undefined),
+  }
+}
+
 const pct = (v) => Math.round(v * 10000) / 100
 
 /**
@@ -346,8 +361,7 @@ export class BalloonLayer {
 
     // The layers' own entrances (animations.js), so a balloon arrives the way a figure can.
     el.style.transformOrigin = `${origin[0]}px ${origin[1]}px`
-    const anim = line.anim ?? DEFAULT_BALLOON_ENTRANCE
-    playEntrance(el, { anim, ease: anim === 'pop' ? 'pop' : 'enter', duration: anim === 'pop' ? ENTER_MS : undefined })
+    playEntrance(el, balloonEntrance(line))
   }
 
   _hide (i) {

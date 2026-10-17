@@ -191,6 +191,8 @@
                         'embed'   => isset($l['embed']) && is_array($l['embed']) ? $l['embed'] : null,
                         // Ambient motion (drift / breeze / bob / flutter), validated to the known vocabulary.
                         ...\App\Services\Support\LayerAmbient::payload($l),
+                        // How it arrives and leaves (Appear, its speed and delay), as the editor plays it.
+                        ...\App\Support\LayerEntrances::payload($l),
                         // The angle and mirroring the teacher set (a tilt so two copies of one
                         // sprite never look like twins), and how the layer blends into the scene.
                         'rotation' => isset($l['rotation']) ? (float) $l['rotation'] : null,

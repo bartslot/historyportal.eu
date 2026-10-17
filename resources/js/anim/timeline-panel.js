@@ -686,24 +686,26 @@ export const animationTimeline = (config = {}) => ({
     window.addEventListener('pointerup', onUp, { once: true })
   },
 
-  // ── Balloon spans. A balloon is on screen from its start to its end (no end: the scene's end).
-  //    Its row's clip moves it in time and its ends stretch it, like a diorama clip.
+  // ── Bars. A balloon is on screen from its start to its end (no end: the scene's end); a figure's
+  //    entrance plays from its delay for as long as Appear's speed makes it. Its row's bar moves
+  //    it in time and its ends stretch it, like a diorama clip.
 
-  /** The live draft while a span is dragged, else the balloon's own start and end. */
-  balloonSpan (target) {
+  /** The live draft while a bar is dragged, else the object's own. */
+  barOf (target) {
     if (this.spanDraft?.target === target) return this.spanDraft
     const o = this.objects.find((x) => x.target === target)
     if (!o) return null
+    if (o.kind === 'art') return o.entrance ?? null
     return { from: o.start ?? 0, to: Number.isFinite(o.end) ? o.end : this.duration }
   },
 
   spanDraft: null,
 
-  startBalloonSpan (event, target) {
+  startBar (event, target) {
     if (event.button !== 0) return
     event.stopPropagation()
     this.pause()
-    const span0 = this.balloonSpan(target)
+    const span0 = this.barOf(target)
     if (!span0) return
     const keys0 = [{ t: span0.from }, { t: span0.to }]
     const bar = event.currentTarget.getBoundingClientRect()
@@ -723,14 +725,28 @@ export const animationTimeline = (config = {}) => ({
       window.removeEventListener('pointermove', onMove)
       const draft = this.spanDraft
       if (!moved || !draft) { this.spanDraft = null; return }
-      // Up to the timeline's end means up to the scene's end, however long the narration runs.
-      const end = draft.to >= this.duration - 0.01 ? null : draft.to
-      window.Livewire?.dispatch('balloon:change', { id: `bal_${target.slice(4)}`, patch: { start: draft.from, end } })
-      // The row keeps the draft until the save comes back as the scene's new lines.
-      setTimeout(() => { if (this.spanDraft === draft) this.spanDraft = null }, 1500)
+      this.commitBar(target, draft)
     }
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp, { once: true })
+  },
+
+  /** Save a dragged bar: a figure's entrance delay and length, or a balloon's start and end. */
+  commitBar (target, draft) {
+    const o = this.objects.find((x) => x.target === target)
+    if (o?.kind === 'art') {
+      const ms = Math.max(100, Math.round((draft.to - draft.from) * 1000))
+      this.$wire?.setLayerEntrance?.(Number(target.slice(4)), Math.round(draft.from * 10) / 10, ms)
+      // The row shows the new bar now; the layer's own values arrive with the save.
+      o.entrance = { from: draft.from, to: draft.to }
+      this.spanDraft = null
+      return
+    }
+    // Up to the timeline's end means up to the scene's end, however long the narration runs.
+    const end = draft.to >= this.duration - 0.01 ? null : draft.to
+    window.Livewire?.dispatch('balloon:change', { id: `bal_${target.slice(4)}`, patch: { start: draft.from, end } })
+    // The row keeps the draft until the save comes back as the scene's new lines.
+    setTimeout(() => { if (this.spanDraft === draft) this.spanDraft = null }, 1500)
   },
 
   // ── Transport ───────────────────────────────────────────────────────────────────────────

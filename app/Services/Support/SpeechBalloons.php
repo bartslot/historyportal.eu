@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Support;
 
+use App\Support\LayerEntrances;
+
 /**
  * Balloons a teacher adds in the editor: entries in the scene's config.lines, the same list
  * SceneDialogue writes and BalloonLayer.js draws. A balloon is silent text, never spoken (only the
@@ -133,6 +135,14 @@ final class SpeechBalloons
         }
         if (array_key_exists('anim', $patch) && in_array($patch['anim'], self::ENTRANCES, true)) {
             $line['anim'] = $patch['anim'];
+        }
+        // Appear's speed as the entrance's length, ms. Absent: the entrance as it always played.
+        if (array_key_exists('anim_duration', $patch)) {
+            if (is_numeric($patch['anim_duration'])) {
+                $line['anim_duration'] = (int) max(LayerEntrances::MIN_MS, min(LayerEntrances::MAX_MS, (int) round((float) $patch['anim_duration'])));
+            } else {
+                unset($line['anim_duration']);
+            }
         }
 
         return self::withSpan($line, $patch);

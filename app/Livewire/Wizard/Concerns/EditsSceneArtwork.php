@@ -10,6 +10,7 @@ use App\Services\SceneLayers;
 use App\Services\Support\LayerAmbient;
 use App\Services\Support\LayerSitIn;
 use App\Services\Support\ShotCamera;
+use App\Support\LayerEntrances;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 
@@ -447,6 +448,22 @@ trait EditsSceneArtwork
         }
         $scene->update(['shots' => array_values($shots)]);
         $this->selectSceneInternal($scene->id);
+    }
+
+    /** Appear's speed (LayerEntrances::SPEEDS) as the layer's entrance duration; Normal is 600 ms. */
+    public function setLayerSpeed(int $assetId, string $speed): void
+    {
+        if (isset(LayerEntrances::SPEEDS[$speed])) {
+            $natural = LayerEntrances::naturalMs(null, 'art');
+            $this->updateArtworkLayer($assetId, 'anim_duration', LayerEntrances::durationFor($speed, $natural) ?? $natural);
+        }
+    }
+
+    /** The timeline's entrance bar for this layer, moved or stretched: its delay (s) and length (ms). */
+    public function setLayerEntrance(int $assetId, float $delay, int $duration): void
+    {
+        $this->updateArtworkLayer($assetId, 'anim_delay', round($delay, 1));
+        $this->updateArtworkLayer($assetId, 'anim_duration', $duration);
     }
 
     public function updateArtworkLayer(int $assetId, string $field, mixed $value): void

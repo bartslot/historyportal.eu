@@ -10,6 +10,8 @@
  * icons, drag-reordering — and should come through here too rather than keep its own copy.
  */
 
+import { DEFAULT_DURATION_MS } from '../scene/animations.js'
+
 /** Text layers, front-most first, in the order the Object list shows them. */
 export const textObjects = () => {
   const texts = window.__lessonTextLayer?._texts ?? []
@@ -29,7 +31,19 @@ export const artObjects = () => {
     target: `art:${l.asset_id}`,
     kind: 'art',
     label: l.title || (l.embed ? (l.embed.type === 'video' ? 'Video' : '3D model') : 'Icon'),
+    entrance: entranceSpan(l),
   }))
+}
+
+/**
+ * When a layer's entrance plays, in scene seconds: from its delay for as long as it takes
+ * (Appear's speed). Null when it has no entrance: it is simply there from the start.
+ */
+export const entranceSpan = (layer) => {
+  if (!layer?.anim || layer.anim === 'none') return null
+  const from = Number(layer.anim_delay) || 0
+  const ms = Number(layer.anim_duration) || DEFAULT_DURATION_MS
+  return { from, to: Math.round((from + ms / 1000) * 1000) / 1000 }
 }
 
 /** Speech and thought balloons (config.lines), as the Object list shows them: `bal_3` → `bal:3`. */

@@ -160,18 +160,22 @@
 
     {{-- Movement. The label sits ABOVE its control rather than in the 3rem gutter the sliders use:
          "Transition" does not fit there and was rendering clipped. --}}
-    <label class="block space-y-1">
+    @if ($isLayer)
+        {{-- In: Appear, its speed and its delay, the control a speech balloon uses too. --}}
+        <div x-show="build === 'in'">
+            <x-lesson.appear-control :name="'appear-speed-art-'.$aid" :anim="$current['anim']"
+                                     :natural="\App\Support\LayerEntrances::naturalMs($current['anim'], 'art')"
+                                     :duration="$current['duration']" :delay="$current['delay']"
+                                     :on-anim="'updateArtworkLayer('.$aid.', \'anim\', $event.target.value)'"
+                                     :on-speed="'setLayerSpeed('.$aid.', $event.target.value)'"
+                                     :on-delay="'updateArtworkLayer('.$aid.', \'anim_delay\', $event.target.value)'" />
+        </div>
+    @endif
+    <label class="block space-y-1" @if ($isLayer) x-show="build === 'out'" x-cloak @endif>
         <span class="block text-2xs uppercase tracking-wide text-slate-500">
-            {{ $isLayer ? __('Appear') : __('Transition') }}
+            {{ $isLayer ? __('Disappear') : __('Transition') }}
         </span>
         @if ($isLayer)
-            <select x-show="build === 'in'"
-                    class="select select-xs select-bordered w-full border-slate-700 bg-slate-900 text-slate-300"
-                    wire:change="updateArtworkLayer({{ $aid }}, 'anim', $event.target.value)">
-                @foreach ($entrances as $value => $label)
-                    <option value="{{ $value }}" @selected($current['anim'] === $value)>{{ $label }}</option>
-                @endforeach
-            </select>
             <select x-show="build === 'out'" x-cloak
                     class="select select-xs select-bordered w-full border-slate-700 bg-slate-900 text-slate-300"
                     wire:change="updateArtworkLayer({{ $aid }}, 'anim_out', $event.target.value)">
@@ -198,7 +202,7 @@
              where a flood of "__ is not defined", "$vals is not defined" and "rtrim is not
              defined" came from. x-cloak is unconditional now; cloaking both halves costs one frame
              before Alpine boots, and the panel is Alpine-gated anyway. --}}
-        @foreach ([['in', $current, 'anim_delay'], ['out', $out, 'anim_out_delay']] as [$half, $vals, $field])
+        @foreach ([['out', $out, 'anim_out_delay']] as [$half, $vals, $field])
             <x-ui.slider-row :label="__('Delay')" :min="0" :max="10" :step="0.1"
                              :value="$vals['delay']"
                              :display="rtrim(rtrim(number_format($vals['delay'], 1), '0'), '.') ?: '0'" unit="s"
