@@ -58,7 +58,7 @@ class TitleScreenInspectorTest extends TestCase
         $html = $this->panel($this->lesson(['title_style' => 'banner']))->html();
 
         $at = fn (string $needle): int|false => strpos($html, $needle);
-        $order = ['data-title-field="title"', 'data-title-field="subtitle"', 'data-title-style=', 'data-title-picture', 'role="radiogroup" aria-label="Title position"', 'data-qr-position=', 'data-title-advanced'];
+        $order = ['data-title-style=', 'data-title-field="title"', 'data-title-field="subtitle"', 'data-title-picture', 'role="radiogroup" aria-label="Title position"', 'data-qr-position=', 'data-title-advanced'];
         $positions = array_map($at, $order);
         $this->assertNotContains(false, $positions, 'every section is there: '.json_encode(array_combine($order, $positions)));
         $sorted = $positions;

@@ -1,35 +1,17 @@
 @props(['lesson'])
 
 {{-- Format for the pinned title screen (EditsTitleScreen), in the order a teacher changes it: the
-     words, the style, the picture, where the title and the QR sit; the rarely used under Advanced.
+     style, the words, the picture, where the title and the QR sit; the rarely used under Advanced.
      The stage shows the real player's title screen, reloaded after each change. --}}
 @php $position = $lesson->title_position ?? \App\Enums\TitlePosition::BottomLeft; @endphp
 <div class="space-y-6" data-title-inspector>
     <p class="font-semibold text-primary">{{ __('Title screen') }}</p>
 
-    {{-- The words first: the series and the subtitle after ": " (Lesson::titleParts), saved as the
-         lesson's title together. A click on the title on the stage lands here (title-stage-pick.js). --}}
-    @php $parts = $lesson->titleParts(); @endphp
-    <div class="space-y-3" wire:key="title-text-{{ md5((string) $lesson->title) }}"
-         x-data="{ series: @js($parts['series']), subtitle: @js($parts['subtitle']), save() { $wire.setTitleText(this.series, this.subtitle) } }"
-         x-on:title-edit-field.window="const el = $refs[$event.detail]; el?.focus(); el?.select()">
-        <label class="block">
-            <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Title') }}</span>
-            <input type="text" value="{{ $parts['series'] }}" x-model="series" x-on:change="save()" required
-                   maxlength="{{ \App\Models\Lesson::TITLE_MAX_CHARS }}" x-ref="title" data-title-field="title" class="input input-sm mt-1 w-full" />
-        </label>
-        <label class="block">
-            <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Subtitle') }}</span>
-            <input type="text" value="{{ $parts['subtitle'] }}" x-model="subtitle" x-on:change="save()"
-                   maxlength="{{ \App\Models\Lesson::TITLE_MAX_CHARS }}" x-ref="subtitle" data-title-field="subtitle" class="input input-sm mt-1 w-full" />
-        </label>
-    </div>
-
-    {{-- How the title is drawn: the series' comic candidates (each a folder of artwork, so a new
+    {{-- How the title is drawn, first (Bart, 2026-10-17: "Titelstijl should be on top"): the series' comic candidates (each a folder of artwork, so a new
          one appears here without code), then its logo, then the plain title. A small frame each. --}}
     @php $choices = $lesson->titleChoices(); $style = $lesson->titleStyle(); @endphp
     @if (count($choices) > 1)
-        <div class="border-t border-slate-700/50 pt-4" data-title-style="{{ $style }}">
+        <div data-title-style="{{ $style }}">
             <div class="flex items-center justify-between">
                 <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Title style') }}</span>
                 @if ($lesson->title_style !== null)
@@ -58,6 +40,24 @@
             </div>
         </div>
     @endif
+
+    {{-- Then the words: the series and the subtitle after ": " (Lesson::titleParts), saved as the
+         lesson's title together. A click on the title on the stage lands here (title-stage-pick.js). --}}
+    @php $parts = $lesson->titleParts(); @endphp
+    <div class="space-y-3 border-t border-slate-700/50 pt-4" wire:key="title-text-{{ md5((string) $lesson->title) }}"
+         x-data="{ series: @js($parts['series']), subtitle: @js($parts['subtitle']), save() { $wire.setTitleText(this.series, this.subtitle) } }"
+         x-on:title-edit-field.window="const el = $refs[$event.detail]; el?.focus(); el?.select()">
+        <label class="block">
+            <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Title') }}</span>
+            <input type="text" value="{{ $parts['series'] }}" x-model="series" x-on:change="save()" required
+                   maxlength="{{ \App\Models\Lesson::TITLE_MAX_CHARS }}" x-ref="title" data-title-field="title" class="input input-sm mt-1 w-full" />
+        </label>
+        <label class="block">
+            <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Subtitle') }}</span>
+            <input type="text" value="{{ $parts['subtitle'] }}" x-model="subtitle" x-on:change="save()"
+                   maxlength="{{ \App\Models\Lesson::TITLE_MAX_CHARS }}" x-ref="subtitle" data-title-field="subtitle" class="input input-sm mt-1 w-full" />
+        </label>
+    </div>
 
     {{-- The picture in use, Change opens the lesson's own pictures (the shared strip), or an upload. --}}
     @php $ownPicture = trim((string) $lesson->title_image) !== ''; $titleBg = $lesson->titleBgUrl(); @endphp
