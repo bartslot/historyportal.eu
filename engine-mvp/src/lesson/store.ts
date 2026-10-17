@@ -7,6 +7,7 @@ import { idbGet, idbPut } from './idb'
 import * as Tree from './tree'
 import { sweepInterrupted } from '../crew/stream'
 import { __ } from '../i18n'
+import type { ShotData } from '../storyboard/shots'
 
 export const LESSON_VERSION = 1
 const KEY = 'current'
@@ -26,6 +27,8 @@ export type Lesson = {
   version: number; id: string; title: string; tree: Tree.TreeNode[]; scenes: Record<string, SceneEntry>; script: any | null; crew?: CrewLine[]
   /** the step being worked on, the furthest one opened, and whether the teacher approved the script */
   step?: Step; reached?: Step; approved?: boolean
+  /** directed shots by the id of the line each starts at (src/storyboard); undirected shots are derived */
+  shots?: Record<string, ShotData>
 }
 type State = { lesson: Lesson; current: string; busy: boolean; saved: 'saved' | 'saving' | 'unsaved'; error: string | null }
 
@@ -199,6 +202,12 @@ export function restoreSceneDocs(prev: Record<string, any | null>) {
   const scenes = { ...state.lesson.scenes }
   for (const [id, doc] of Object.entries(prev)) if (scenes[id]) scenes[id] = { ...scenes[id], doc }
   set({ lesson: { ...state.lesson, scenes }, saved: 'unsaved' })
+  void persist(state.lesson)
+}
+
+/** The teacher directed a shot (moved the camera or a figure): kept with the lesson, saved at once. */
+export function setShot(id: string, data: ShotData) {
+  set({ lesson: { ...state.lesson, shots: { ...state.lesson.shots, [id]: { ...data, directed: true } } }, saved: 'unsaved' })
   void persist(state.lesson)
 }
 

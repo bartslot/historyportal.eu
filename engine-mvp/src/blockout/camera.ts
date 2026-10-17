@@ -35,6 +35,9 @@ const SPECS: Record<Exclude<Preset, 'over-shoulder'>, Spec> = {
   'high': { az: 25, eye: 4.5, fill: 0.6, from: 0, horizonRule: false },
 }
 
+/** The angle round the subjects a preset starts from (degrees; the over-shoulder shot has none). */
+export const presetAz = (p: Preset) => (p === 'over-shoulder' ? 0 : SPECS[p].az)
+
 export const fovFromLens = (mm: number) => 2 * Math.atan(24 / (2 * mm))      // full-frame, vertical
 
 const sub = (a: V3, b: V3): V3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]]

@@ -22,12 +22,14 @@ export type PanelDef = {
 }
 
 export const PANELS: PanelDef[] = [
+  { id: 'scenegraph', title: __('Scene graph'), place: 'left', closable: true, open: true, size: 368, min: 240, max: 640, inView: true, steps: ['script'] },
   { id: 'objects', title: __('Objects'), place: 'left', closable: true, open: true, size: 220, min: 56, max: 360, inView: true, steps: ['visual', 'animate'] },
   { id: 'inspector', title: __('Settings'), place: 'right', closable: true, open: true, size: 310, min: 280, max: 520, inView: true, steps: ['visual', 'animate'] },
   { id: 'crew', title: __('Crew'), place: 'right', closable: true, open: true, size: 340, min: 300, max: 560, inView: true },
   { id: 'reference', title: __('Reference'), place: 'right', column: true, closable: true, open: false, size: 420, min: 240, max: 960, inView: true, steps: ['visual', 'animate'] },
   { id: 'dock', title: __('Assets & timeline'), place: 'bottom', closable: false, open: true, size: 352, inView: true },
   { id: 'help', title: __('Help'), place: 'floating', closable: true, open: false, inView: false },
+  { id: 'director', title: __('Direct'), place: 'floating', closable: true, open: false, inView: false, steps: ['script'] },
   { id: 'notes', title: __('Notes'), place: 'floating', closable: true, open: false, inView: true },
   { id: 'lesson-menu', title: __('Lesson'), place: 'menu', closable: true, open: false, inView: false },
   { id: 'view-menu', title: __('View'), place: 'menu', closable: true, open: false, inView: false },
@@ -44,7 +46,7 @@ export const sameSide = (a: PanelDef, b: PanelDef) => a.place === b.place && !a.
 
 /** What each step opens: one panel per side at most, the canvas keeps the rest. */
 const STEP_LAYOUT: Record<Step, { open: string[]; dockTab: DockTab }> = {
-  script: { open: ['crew', 'dock'], dockTab: 'timeline' },
+  script: { open: ['scenegraph', 'crew', 'dock'], dockTab: 'timeline' },
   visual: { open: ['objects', 'inspector', 'dock'], dockTab: 'assets' },
   animate: { open: ['inspector', 'dock'], dockTab: 'timeline' },
 }

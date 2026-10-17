@@ -12,18 +12,15 @@
 /* global BABYLON */
 'use strict';
 import { KIT, POSES, kitPiece } from '../blockout/kit';
-import { solve, forward, rightOf } from '../blockout/solve';
+import { solve } from '../blockout/solve';
+import { FIGURE_URLS, RIMS, bone, buildShape, poseFigure } from './clay-kit';
 import { frame as frameCam, PRESETS } from '../blockout/camera';
 import { readback } from '../blockout/readback';
 import { History, changeOp, valueOp } from '../blockout/history';
 import { isTypingTarget } from '@hp/ui/keyboard.js';
 
-// the studio's mannequin (Mixamo rig), served by the studio itself (public/assets/models, git-ignored: 2.9 MB);
-// a fresh checkout without it falls back to Babylon's CDN (Gate 3: no CDN round trip on every page open)
-const FIGURE_URLS = ['assets/models/xbot.glb', 'https://assets.babylonjs.com/meshes/Xbot.glb'];
 const CLAY = [0.78, 0.76, 0.72];
 const SLATE = [0.36, 0.40, 0.45];          // the storyboard frame: a mid slate, black silhouettes (memory 10-11)
-const RIMS = ['#e0a050', '#5fb3d9', '#9bd16b', '#e07a8a', '#c49be0', '#e8d26a'];   // one rim per character
 const CLAY_BASE = 0.55;                    // clay = an unlit base + a little light for the form (a matcap's job)
 const CLAY_LIT = 0.45;
 const SET_INK = 0.45;                      // silhouette set pieces: this share of the slate
@@ -57,53 +54,10 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
   setInkMat.disableLighting = true;                                                    // frame, lighter than people
   setInkMat.emissiveColor = BABYLON.Color3.FromArray(SLATE.map((v) => v * SET_INK));
 
-  // ---------- the kit ----------
-  function boxAt(name, w, h, d, x = 0, y = h / 2, z = 0) {
-    const m = BABYLON.MeshBuilder.CreateBox(name, { width: w, height: h, depth: d }, scene);
-    m.position.set(x, y, z);
-    return m;
-  }
-  function cyl(name, dia, h, x = 0, y = h / 2, z = 0) {
-    const m = BABYLON.MeshBuilder.CreateCylinder(name, { diameter: dia, height: h, tessellation: 12 }, scene);
-    m.position.set(x, y, z);
-    return m;
-  }
-  function buildShape(k) {
-    const [w, h, d] = k.size;
-    const n = 'kit ' + k.id;
-    switch (k.shape.kind) {
-      case 'box': return [boxAt(n, w, h, d)];
-      case 'cylinder': return [cyl(n, w, h)];
-      case 'rail': {
-        const parts = [boxAt(n + ' top', w, 0.12, d, 0, h - 0.06), boxAt(n + ' low', w, 0.08, d * 0.8, 0, 0.35)];
-        for (let x = -w / 2 + 0.1; x <= w / 2; x += 1) parts.push(boxAt(n + ' post', 0.12, h, d * 0.8, x));
-        return parts;
-      }
-      case 'table': {
-        const parts = [boxAt(n + ' top', w, 0.06, d, 0, h - 0.03)];
-        for (const sx of [-1, 1]) for (const sz of [-1, 1]) parts.push(boxAt(n + ' leg', 0.08, h - 0.06, 0.08, sx * (w / 2 - 0.1), (h - 0.06) / 2, sz * (d / 2 - 0.1)));
-        return parts;
-      }
-      case 'cannon': {
-        const barrel = cyl(n + ' barrel', 0.3, d, 0, 0.62, 0.1);
-        barrel.rotation.x = Math.PI / 2;
-        return [boxAt(n + ' carriage', w, 0.45, d * 0.6, 0, 0.225, -0.2), barrel];
-      }
-      case 'cart': {
-        const parts = [boxAt(n + ' bed', w * 0.8, 0.35, d * 0.62, 0, 0.75, -0.2)];
-        for (const sx of [-1, 1]) {
-          const wheel = cyl(n + ' wheel', 1.0, 0.08, sx * w / 2, 0.5, -0.2);
-          wheel.rotation.z = Math.PI / 2;
-          parts.push(wheel, boxAt(n + ' shaft', 0.06, 0.06, d * 0.45, sx * w * 0.3, 0.7, d * 0.3));
-        }
-        return parts;
-      }
-      default: return [];
-    }
-  }
+  // ---------- the kit (the shapes: clay-kit.js, shared with the storyboard's clay frames) ----------
   function source(k) {
     if (sources.has(k.id)) return sources.get(k.id);
-    const parts = buildShape(k);
+    const parts = buildShape(scene, k);
     const m = parts.length > 1 ? BABYLON.Mesh.MergeMeshes(parts, true, true) : parts[0];
     if (m) {
       m.name = 'kit ' + k.id;
@@ -188,28 +142,7 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
     if (p.kit === 'figure') fitFigure(a, p.height);
   }
 
-  // ---------- poses: aim the arm bones in the figure's own frame (never trust local offsets; posing rules) ----------
-  const bone = (a, name) => a.getChildTransformNodes(false).find((n) => n.name.endsWith(':' + name) || n.name.endsWith(name));
-  function aim(a, upperName, lowerName, endName, dir, target) {
-    const up = bone(a, upperName), low = bone(a, lowerName), end = bone(a, endName);
-    if (!up || !low || !end) return;
-    // in the parent bone's own space: the mannequin's glTF root is mirrored (negative scale), which breaks
-    // world-space quaternion maths; directions through the inverse parent matrix do not care (measured 2026-10-14)
-    const turn = (node, child, to) => {
-      node.computeWorldMatrix(true);
-      child.computeWorldMatrix(true);
-      const inv = node.parent.getWorldMatrix().clone().invert();
-      const cur = BABYLON.Vector3.TransformNormal(child.getAbsolutePosition().subtract(node.getAbsolutePosition()), inv).normalize();
-      const want = BABYLON.Vector3.TransformNormal(to, inv).normalize();
-      const d = new BABYLON.Quaternion();
-      BABYLON.Quaternion.FromUnitVectorsToRef(cur, want, d);
-      node.rotationQuaternion = d.multiply(node.rotationQuaternion);
-      node.computeWorldMatrix(true);
-    };
-    turn(up, low, dir);
-    low.computeWorldMatrix(true);
-    turn(low, end, target.subtract(low.getAbsolutePosition()));
-  }
+  // ---------- poses (clay-kit.js: aim the arm bones in the figure's own frame) ----------
   function pose(id, name) {
     const a = actorOf.get(id);
     if (!a || a.metadata.kit !== 'figure') return false;
@@ -219,28 +152,7 @@ const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out o
     a.computeWorldMatrix(true);
     const p = placedOf.get(id);
     const yaw = p ? p.yaw : 0;
-    const [fx, fz] = forward(yaw);
-    const [rx, rz] = rightOf(yaw);
-    const F = new BABYLON.Vector3(fx, 0, fz), R = new BABYLON.Vector3(rx, 0, rz), U = BABYLON.Axis.Y;
-    const head = bone(a, 'Head');
-    head && head.computeWorldMatrix(true);
-    const eye = head ? head.getAbsolutePosition().add(F.scale(0.1)).add(U.scale(0.05)) : a.position.add(U.scale(1.66));
-    if (name === 'point') {
-      const d = F.scale(0.9).add(U.scale(0.25)).add(R.scale(0.25));
-      aim(a, 'RightArm', 'RightForeArm', 'RightHand', d, eye.add(d.normalize().scale(1.2)));
-    } else if (name === 'spyglass') {
-      // the tube at the right eye; the far hand holds it out front, the near hand under the eyepiece
-      const tubeEnd = eye.add(R.scale(0.03)).add(F.scale(0.45));
-      aim(a, 'LeftArm', 'LeftForeArm', 'LeftHand', F.scale(0.7).add(R.scale(-0.35)).add(U.scale(-0.1)), tubeEnd);
-      aim(a, 'RightArm', 'RightForeArm', 'RightHand', F.scale(0.5).add(R.scale(0.6)).add(U.scale(-0.25)), eye.add(F.scale(0.15)).add(U.scale(-0.04)));
-      const tube = BABYLON.MeshBuilder.CreateCylinder(id + ' spyglass', { diameter: 0.05, height: 0.45, tessellation: 10 }, scene);
-      tube.position = eye.add(R.scale(0.03)).add(F.scale(0.225));
-      tube.rotationQuaternion = BABYLON.Quaternion.FromUnitVectorsToRef(BABYLON.Axis.Y, F, new BABYLON.Quaternion());
-      tube.material = clayMat;
-      tube.setParent(a);
-      tube.metadata = { actor: a };
-      if (currentMode !== 'off') paint(a);
-    }
+    if (poseFigure(scene, a, yaw, name, clayMat, id) && currentMode !== 'off') paint(a);
     a.metadata.pose = name;
     return true;
   }

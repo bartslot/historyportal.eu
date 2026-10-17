@@ -9,7 +9,8 @@ import Placeholder from '@tiptap/extension-placeholder'
 import * as L from '../lesson/store'
 import * as TL from '../timeline/model'
 import { scenesInOrder } from '../lesson/tree'
-import { ActiveLine, activeLineKey, Line, LineIds, SceneHeading, Subtitle } from '../script/extensions'
+import { ActiveLine, activeLineKey, Line, LineIds, SceneHeading, ShotLetters, Subtitle } from '../script/extensions'
+import { storyboard } from '../storyboard/store'
 import { inStep, reconcile } from '../script/narration'
 import { fitDurationToNarration, nowSpeaking, placedLines, setVoice } from '../script/player'
 import { loadVoices, pickVoice, rememberVoice, speak, speechAvailable, stopSpeaking } from '../script/speech'
@@ -58,7 +59,7 @@ export function ScriptView() {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ paragraph: false, heading: false, codeBlock: false, code: false, blockquote: false, horizontalRule: false, link: false }),
-      Line, LineIds, SceneHeading, Subtitle, ActiveLine,
+      Line, LineIds, SceneHeading, Subtitle, ActiveLine, ShotLetters,
       Placeholder.configure({ placeholder: __('What is said in this scene') }),
     ],
     content: reconcile(L.getLesson().lesson.script ?? { type: 'doc', content: [] }, sceneList()),
@@ -81,6 +82,8 @@ export function ScriptView() {
     },
     onSelectionUpdate: ({ editor: ed }) => {
       rerender((n) => n + 1)
+      const at = ed.state.selection.$from.parent
+      storyboard.setLine(at.type.name === 'paragraph' ? at.attrs.id ?? null : null)   // its frame is the selected frame
       // the cursor in another scene's section opens that scene (after a pause, not on every arrow key)
       window.clearTimeout(followTimer.current)
       followTimer.current = window.setTimeout(() => {
@@ -172,18 +175,21 @@ export function ScriptView() {
 
   return (
     <section aria-label={__('Script')} hidden={L.stepOf(lesson) !== 'script'} className="absolute inset-0 z-10 flex flex-col bg-base-200">
-      <div className="mx-auto flex w-full max-w-3xl shrink-0 flex-wrap items-center gap-1 border-b border-panel-hairline px-4 py-1.5">
+      <div className="mx-auto flex w-full max-w-3xl shrink-0 flex-wrap items-center gap-1 border-b border-panel-hairline px-4 py-2">
         <ToolButton label={__('Bold')} pressed={editor?.isActive('bold')} onClick={() => editor?.chain().focus().toggleBold().run()}><b>B</b></ToolButton>
         <ToolButton label={__('Italic')} pressed={editor?.isActive('italic')} onClick={() => editor?.chain().focus().toggleItalic().run()}><i>I</i></ToolButton>
         <ToolButton label={__('Subtitle: show this text on screen')} pressed={editor?.isActive('subtitle')} onClick={() => editor?.chain().focus().toggleMark('subtitle').run()}>{__('Subtitle')}</ToolButton>
         <input list="script-speakers" aria-label={__('Speaker')} placeholder={__('Narrator')} value={speaker}
                onChange={(e) => editor?.chain().updateAttributes('paragraph', { speaker: e.target.value.trim() || null }).run()}
-               className="h-7 w-24 rounded bg-panel-hairline px-1.5 text-xs text-panel-value focus:outline-none" />
+               className="h-7 w-24 rounded bg-panel-tile-active px-1.5 text-xs text-panel-value placeholder:text-panel-label focus:outline-none" />
+        <ToolButton label={__('New shot: this line gets its own frame')} pressed={line?.type.name === 'paragraph' && line.attrs.cut !== false}
+                    disabled={line?.type.name !== 'paragraph'}
+                    onClick={() => editor?.chain().updateAttributes('paragraph', { cut: line?.attrs.cut === false }).run()}>{__('New shot')}</ToolButton>
         <datalist id="script-speakers">{speakers.map((s) => <option key={s} value={s} />)}</datalist>
         <span className="ml-auto" />
         <select aria-label={__('Reading voice')} value={voiceUri} disabled={!voices.length}
                 onChange={(e) => { const v = voices.find((x) => x.voiceURI === e.target.value) ?? null; setVoiceUri(e.target.value); setVoice(v); if (v) rememberVoice(v) }}
-                className="h-7 max-w-36 rounded bg-panel-hairline px-1 text-xs text-panel-value">
+                className="h-7 max-w-36 rounded bg-panel-tile-active px-1 text-xs text-panel-value">
           {voices.map((v) => <option key={v.voiceURI} value={v.voiceURI}>{v.name} ({v.lang})</option>)}
         </select>
         <ToolButton label={reading ? __('Stop reading') : __('Read aloud from the cursor')} pressed={reading} disabled={!speechAvailable()} onClick={() => void readAloud()}>
@@ -191,7 +197,7 @@ export function ScriptView() {
         </ToolButton>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto w-full max-w-3xl px-6 py-4"><EditorContent editor={editor} /></div>
+        <div className="mx-auto w-full max-w-3xl py-4 pl-10 pr-6"><EditorContent editor={editor} /></div>
       </div>
     </section>
   )

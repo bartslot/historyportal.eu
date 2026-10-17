@@ -5,6 +5,7 @@ import Paragraph from '@tiptap/extension-paragraph'
 import { Plugin, PluginKey, type Transaction } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import { __ } from '../i18n'
+import { shotsOf, type ScriptNode } from '../storyboard/shots'
 
 export const newLineId = () => `l-${Math.random().toString(36).slice(2, 10)}`
 
@@ -34,6 +35,8 @@ export const Line = Paragraph.extend({
       id: { default: null, parseHTML: (el) => el.getAttribute('data-line-id'), renderHTML: (a) => (a.id ? { 'data-line-id': a.id } : {}) },
       speaker: { default: null, parseHTML: (el) => el.getAttribute('data-speaker'), renderHTML: (a) => (a.speaker ? { 'data-speaker': a.speaker } : {}) },
       dur: { default: null, parseHTML: (el) => Number(el.getAttribute('data-dur')) || null, renderHTML: (a) => (a.dur ? { 'data-dur': a.dur } : {}) },
+      /** false: this line stays on the shot of the line before it (one frame for both, src/storyboard) */
+      cut: { default: true, parseHTML: (el) => el.getAttribute('data-cut') !== 'false', renderHTML: (a) => (a.cut === false ? { 'data-cut': 'false' } : {}) },
     }
   },
 })
@@ -55,7 +58,7 @@ export const LineIds = Extension.create({
           if (id && !seen.has(id)) { seen.add(id); return }
           const fresh = newLineId()
           seen.add(fresh)
-          tr = (tr ?? state.tr).setNodeMarkup(pos, undefined, { ...node.attrs, id: fresh, dur: null })
+          tr = (tr ?? state.tr).setNodeMarkup(pos, undefined, { ...node.attrs, id: fresh, dur: null, cut: true }) // a new line is a new shot
         })
         return tr
       },
@@ -92,6 +95,33 @@ export const ActiveLine = Extension.create({
           state.doc.descendants((node, pos) => {
             if (node.type.name === 'paragraph' && node.attrs.id === id) decos.push(Decoration.node(pos, pos + node.nodeSize, { class: 'is-speaking' }))
           })
+          return DecorationSet.create(state.doc, decos)
+        },
+      },
+    })]
+  },
+})
+
+/** The storyboard in the margin: the shot letter on the line a shot starts at (A, B... per scene, the same letter as
+ *  its frame), and the line the cursor is in marked as the current one (its frame is the selected frame). */
+export const shotKey = new PluginKey('shots')
+export const ShotLetters = Extension.create({
+  name: 'shotLetters',
+  addProseMirrorPlugins() {
+    return [new Plugin({
+      key: shotKey,
+      props: {
+        decorations(state) {
+          const nodes: (ScriptNode & { pos: number; size: number })[] = []
+          state.doc.forEach((node, pos) => nodes.push({ type: node.type.name, attrs: node.attrs, text: node.textContent, pos, size: node.nodeSize }))
+          const at = new Map(nodes.filter((n) => n.attrs?.id).map((n) => [n.attrs!.id as string, n]))
+          const decos: Decoration[] = []
+          for (const shot of shotsOf(nodes)) {
+            const n = at.get(shot.id)!
+            decos.push(Decoration.node(n.pos, n.pos + n.size, { 'data-shot': shot.letter }))
+          }
+          const $from = state.selection.$from
+          if ($from.depth >= 1 && $from.node(1).type.name === 'paragraph') decos.push(Decoration.node($from.before(1), $from.after(1), { class: 'is-current' }))
           return DecorationSet.create(state.doc, decos)
         },
       },

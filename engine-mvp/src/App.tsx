@@ -13,6 +13,8 @@ import { ReferenceOverlay, ReferencePanel } from './shell/Reference'
 import { ObjectsPanel } from './shell/ObjectsPanel'
 import { ScriptView, StageCaption } from './shell/ScriptView'
 import { TopBar } from './shell/TopBar'
+import { SceneGraph } from './storyboard/SceneGraph'
+import { DirectorPanel } from './storyboard/DirectorPanel'
 import { StartOverlay } from './start/StartOverlay'
 import { useStart } from './start/store'
 
@@ -26,6 +28,7 @@ function Stage() {
       <ScriptView />
       <Notes />
       <HelpPanel />
+      <DirectorPanel />
     </main>
   )
 }
@@ -54,12 +57,13 @@ export function App() {
     <>
     <div inert={covered} className="studio grid h-dvh bg-base-200 text-panel-value"
          style={{
-           gridTemplateColumns: 'auto minmax(0, 1fr) auto auto auto',
+           gridTemplateColumns: 'auto auto minmax(0, 1fr) auto auto auto',
            gridTemplateRows: '3rem minmax(0, 1fr) auto',
-           gridTemplateAreas: '"top top top top top" "objects stage reference inspector crew" "dock dock dock dock dock"',
+           gridTemplateAreas: '"top top top top top top" "scenegraph objects stage reference inspector crew" "dock dock dock dock dock dock"',
          }}>
       <StepLayout />
       <TopBar />
+      <SceneGraph />
       <ObjectsPanel />
       <Stage />
       <ReferencePanel />

@@ -89,18 +89,31 @@ html.panel-resizing .panel-slot { transition: none; }
 .panel-resize[data-place="left"] { right: 0; }
 .panel-resize:hover, .panel-resize:focus-visible { background: var(--color-panel-hairline); outline: none; }
 
-/* ---- the script document (src/shell/ScriptPanel) ---- */
+/* ---- the script document (src/shell/ScriptView, Figma 2087:1059) ---- */
 .script-doc { outline: none; color: var(--color-panel-value); font-size: 15px; line-height: 1.6; padding-bottom: 40vh; }
-.script-doc p { margin: 0 0 0.6em; padding: 2px 6px 2px 8px; border-left: 2px solid transparent; border-radius: 2px; }
-.script-doc p[data-speaker]::before { content: attr(data-speaker); display: block; font-size: 8px; font-weight: 600; letter-spacing: 0.05em;
-  text-transform: uppercase; color: var(--color-panel-label); }
-.script-doc p.is-speaking { border-left-color: var(--color-panel-value); background: var(--color-panel-hairline); }
-.script-doc .script-scene { margin: 1.4em 0 0.5em; font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
-  color: var(--color-panel-title); cursor: pointer; border-top: 1px solid var(--color-panel-hairline); padding-top: 0.8em; user-select: none; }
+.script-doc p { position: relative; margin: 0 0 0.6em; padding: 2px 6px 2px 8px; border-left: 1px solid transparent; }
+.script-doc p[data-speaker]::before { content: attr(data-speaker); display: block; font-size: 8px; font-weight: 600; letter-spacing: 0.5px;
+  line-height: 1.8; text-transform: uppercase; color: var(--color-panel-label); }
+/* the shot letter in the margin: the same letter as the line's frame in the scene graph */
+.script-doc p[data-shot]::after { content: attr(data-shot); position: absolute; left: -22px; top: 8px; font-size: 8px; font-weight: 600;
+  letter-spacing: 0.5px; color: var(--color-panel-tile-glyph); }
+.script-doc p[data-shot][data-speaker]::after { top: calc(8px + 14px); }
+/* the line under the playhead: a quiet bar; the line the cursor is in (its frame is selected): Figma's lit line */
+.script-doc p.is-speaking { border-left-color: var(--color-panel-label); }
+.script-doc p.is-current { border-left-color: var(--color-panel-value); background: var(--color-panel-tile-active); }
+.script-doc .script-scene { margin: 1.4em 0 0.6em; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase;
+  color: var(--color-panel-value); cursor: pointer; border-top: 1px solid var(--color-panel-hairline); padding: 0.9em 0 0 8px; user-select: none; }
 .script-doc .script-scene:first-child { margin-top: 0; border-top: 0; padding-top: 0; }
 /* subtitle text: underlined, not coloured (form carries the meaning, legible for everyone) */
 .script-doc .script-subtitle { text-decoration: underline; text-decoration-style: dashed; text-underline-offset: 4px; }
 .script-doc .is-empty::before { content: attr(data-placeholder); float: left; height: 0; pointer-events: none; color: var(--color-panel-label); }
+
+/* ---- the scene graph (src/storyboard/SceneGraph): one 16:10 clay frame per shot ---- */
+.shot-frame { position: relative; aspect-ratio: 16 / 10; overflow: hidden; border-radius: 3px; border: 1px solid var(--color-panel-tile);
+  background: var(--color-panel-tile-active); cursor: pointer; }
+.shot-frame:hover { border-color: var(--color-panel-label); }
+.shot-frame[aria-current="true"] { border-color: var(--color-panel-tile-glyph-active); }
+.shot-frame img { display: block; width: 100%; height: 100%; object-fit: cover; }
 
 /* crew working dots (src/crew/CrewPanel.tsx): a soft wave; reduced motion only pulses */
 @keyframes crew-dot { 0%, 80%, 100% { transform: translateY(0); opacity: .4 } 40% { transform: translateY(-3px); opacity: 1 } }
