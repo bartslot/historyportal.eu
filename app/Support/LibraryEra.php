@@ -82,6 +82,21 @@ final class LibraryEra
         ];
     }
 
+    /**
+     * The era of the tijdvak a lesson is linked to: tijdvak n is the n-th period of the config (the
+     * same ten), a kenmerkend aspect "n.m" belongs to tijdvak n. The earliest when it has several.
+     */
+    private static function fromTijdvak(Lesson $lesson): ?string
+    {
+        $keys = array_keys((array) config('lesson-taxonomy.periods'));
+        $n = $lesson->curriculumGoals()->whereIn('type', ['tijdvak', 'kenmerkend_aspect'])->pluck('code')
+            ->map(fn ($code) => (int) strtok((string) $code, '.'))
+            ->filter(fn (int $n) => $n >= 1 && $n <= count($keys))
+            ->min();
+
+        return $n ? $keys[$n - 1] : null;
+    }
+
     /** Period keys in historical order, the order of the config. */
     public static function order(string $era): int
     {
@@ -91,13 +106,16 @@ final class LibraryEra
     }
 
     /**
-     * The era a lesson's library opens on: its period (LessonTaxonomy), else the era its own
-     * backdrops come from. A composed lesson such as Tasman names no year anywhere, but every one
-     * of its scenes stands on a history-line backdrop whose folder says which era it is.
+     * The era a lesson's library opens on, ONE derivation: a year it names (era, title, topic),
+     * then the tijdvak it is linked to (curriculum_goal_lesson), then its earliest dated scene
+     * (LessonTaxonomy), then the era its own backdrops come from. A composed lesson such as Tasman
+     * names no year anywhere, but its tijdvak and its history-line backdrops say which era it is.
+     * Null: unknown, every era shown.
      */
     public static function forLesson(Lesson $lesson): ?string
     {
-        $period = app(LessonTaxonomy::class)->period($lesson);
+        $taxonomy = app(LessonTaxonomy::class);
+        $period = $taxonomy->period($lesson, withScenes: false) ?? self::fromTijdvak($lesson) ?? $taxonomy->period($lesson);
         if ($period !== null) {
             return $period;
         }

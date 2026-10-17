@@ -133,4 +133,26 @@ class AssetEraFilterTest extends TestCase
         $this->panel($lesson)->assertSet('collection', 'arrows');
         $this->panel($this->lesson())->assertSet('collection', 'history-line')->assertSet('category', 'figures');
     }
+
+    /** One derivation: an explicit year, then the linked tijdvakken, then dated scenes, then the backdrops. */
+    public function test_the_lessons_era_comes_from_its_linked_tijdvak_after_an_explicit_year_and_before_dated_scenes(): void
+    {
+        $tijdvak = \App\Models\CurriculumGoal::create(['type' => 'tijdvak', 'code' => '6', 'slug' => 'tijdvak-6', 'title' => 'Tijd van regenten en vorsten', 'sort' => 6]);
+        $aspect = \App\Models\CurriculumGoal::create(['type' => 'kenmerkend_aspect', 'code' => '6.2', 'slug' => 'ka-6-2', 'title' => 'handelskapitalisme', 'parent_id' => $tijdvak->id, 'sort' => 62]);
+
+        $linked = $this->lesson(null);
+        $linked->curriculumGoals()->attach($aspect->id, ['fit' => 'core']);
+        $this->assertSame('regents-rulers', LibraryEra::forLesson($linked), 'a kenmerkend aspect counts as its tijdvak');
+
+        $dated = $this->lesson(null);
+        $dated->scenes()->first()->update(['year' => '1302']);
+        $dated->curriculumGoals()->attach($tijdvak->id, ['fit' => 'core']);
+        $this->assertSame('regents-rulers', LibraryEra::forLesson($dated), 'the tijdvak before a dated scene');
+
+        $explicit = $this->lesson(null, ['era' => '1302']);
+        $explicit->curriculumGoals()->attach($tijdvak->id, ['fit' => 'core']);
+        $this->assertSame('cities-states', LibraryEra::forLesson($explicit), 'an explicit year first');
+
+        $this->assertNull(LibraryEra::forLesson($this->lesson(null)), 'nothing known: unknown, every era shown');
+    }
 }
