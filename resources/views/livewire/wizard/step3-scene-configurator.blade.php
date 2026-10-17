@@ -1089,6 +1089,7 @@
 
             @else
             {{-- ══ SETTINGS view — lesson-global Story + class meters + Background Music ══════ --}}
+            <x-lesson.lesson-type-labels-setting :lesson="$lesson" />
             {{-- Class meters (story_game, lesson-level) — a lesson-wide setting, so it lives in
                  Settings, not the per-scene Format panel. --}}
             @if ($this->showsMetersPanel())

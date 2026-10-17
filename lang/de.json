@@ -2465,5 +2465,7 @@
     "{1} Re-narrate 1 scene (about :chars characters).|[2,*] Re-narrate :count scenes (about :chars characters).": "{1} 1 Szene neu vertonen (etwa :chars Zeichen).|[2,*] :count Szenen neu vertonen (etwa :chars Zeichen).",
     "{1} Make 1 picture again.|[2,*] Make :count pictures again.": "{1} 1 Bild neu erstellen.|[2,*] :count Bilder neu erstellen.",
     "{1} Write 1 script again.|[2,*] Write :count scripts again.": "{1} 1 Text neu schreiben.|[2,*] :count Texte neu schreiben.",
-    "{1} 1 problem needs you.|[2,*] :count problems need you.": "{1} 1 Problem musst du selbst lösen.|[2,*] :count Probleme musst du selbst lösen."
+    "{1} 1 problem needs you.|[2,*] :count problems need you.": "{1} 1 Problem musst du selbst lösen.|[2,*] :count Probleme musst du selbst lösen.",
+    "Lesson type labels": "Stundentyp-Labels",
+    "Show QR code": "QR-Code zeigen"
 }

@@ -117,6 +117,7 @@ class LessonTypesTest extends TestCase
 
         $component = Livewire::actingAs($this->teacher)
             ->test(Step3SceneConfigurator::class, ['lesson' => $lesson])
+            ->call('openSettings')   // with "About this lesson", where the labels are (LessonTypeLabelsTest)
             ->assertSee('data-lesson-types-toggle', false)
             ->assertDontSee('data-lesson-types-reset', false);
         $before = $component->get('titleFrameSrc');

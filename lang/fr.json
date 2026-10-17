@@ -2465,5 +2465,7 @@
     "{1} Re-narrate 1 scene (about :chars characters).|[2,*] Re-narrate :count scenes (about :chars characters).": "{1} Renarrer 1 scène (environ :chars caractères).|[2,*] Renarrer :count scènes (environ :chars caractères).",
     "{1} Make 1 picture again.|[2,*] Make :count pictures again.": "{1} Recréer 1 image.|[2,*] Recréer :count images.",
     "{1} Write 1 script again.|[2,*] Write :count scripts again.": "{1} Réécrire 1 texte.|[2,*] Réécrire :count textes.",
-    "{1} 1 problem needs you.|[2,*] :count problems need you.": "{1} 1 problème est à régler par toi.|[2,*] :count problèmes sont à régler par toi."
+    "{1} 1 problem needs you.|[2,*] :count problems need you.": "{1} 1 problème est à régler par toi.|[2,*] :count problèmes sont à régler par toi.",
+    "Lesson type labels": "Étiquettes du type de leçon",
+    "Show QR code": "Afficher le code QR"
 }
