@@ -130,6 +130,21 @@
                 "--force"
             ],
             "port": 5231
+        },
+        {
+            "//": "Watercolour chart lab (public/dev/chart-lab.html): a static server over public/, no Laravel. Own port, clear of every other session.",
+            "name": "chart-lab",
+            "runtimeExecutable": "python3",
+            "runtimeArgs": [
+                "-m",
+                "http.server",
+                "8261",
+                "--bind",
+                "127.0.0.1",
+                "--directory",
+                "public"
+            ],
+            "port": 8261
         }
     ]
 }
