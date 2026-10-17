@@ -932,7 +932,7 @@
            x-on:inspector-state-request.window="window.dispatchEvent(new CustomEvent('inspector-state', { detail: { open: inspectorOpen, view: '{{ $panelView }}' } }))"
            style="right:0; left:auto; top:64px; bottom:0;"
            data-resizable-drawer
-           class="card card-compact fixed z-50 overflow-hidden rounded-none border border-r-0 border-t-0 border-slate-700 bg-base-300 shadow-2xl
+           class="card card-compact fixed z-50 overflow-hidden rounded-none border border-r-0 border-t-0 border-slate-700 bg-base-300
                   {{-- 19.375rem is the Figma panel's 310px. The old 16rem was narrow enough that a
                        row label and its control competed for the same space, which is where the
                        three different label widths came from. --}}
@@ -2774,7 +2774,7 @@
                                 wire:loading.attr="disabled" wire:target="applyPaintingChoice"
                                 data-kind="image" data-zoom
                                 aria-label="{{ $art['title'] }}"
-                                class="group block rounded-lg ring-1 ring-slate-700 transition hover:ring-2 hover:ring-primary disabled:cursor-wait"
+                                class="group block rounded-lg ring-1 ring-slate-700 transition hover:ring-slate-400 disabled:cursor-wait"
                                 data-tooltip="{{ trim($art['title'].' · '.$art['caption'], ' ·') }}">
                             <img src="{{ $art['thumb'] }}" loading="lazy" decoding="async" alt=""
                                  :srcset="srcset(@js($art['thumb']))" :sizes="sizes(@js($art['thumb']))" />

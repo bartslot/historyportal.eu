@@ -430,7 +430,7 @@
                         <button type="button"
                                 wire:click="selectSkyboxCandidate({{ $scene->id }}, {{ $i }})"
                                 wire:loading.attr="disabled" wire:target="selectSkyboxCandidate,generateSkyboxCandidates"
-                                class="group relative block w-full overflow-hidden rounded ring-1 ring-slate-700 hover:ring-2 hover:ring-base-content/40 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                class="group relative block w-full overflow-hidden rounded ring-1 ring-slate-700 hover:ring-base-content/40 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                 style="aspect-ratio:2/1">
                             <img src="{{ asset('storage/' . $path) }}"
                                  class="w-full h-full object-cover" />

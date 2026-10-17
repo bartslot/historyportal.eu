@@ -47,7 +47,7 @@
             aria-modal="true"
             :aria-labelledby="`welcome-tour-title-${index}`"
             x-on:keydown="trapFocus($event)"
-            class="lp-bg-card fixed z-[62] border border-primary/30 bg-base-200 shadow-2xl outline-none transition-[top,left,opacity] duration-200 ease-enter motion-reduce:transition-none"
+            class="lp-bg-card fixed z-[62] border border-primary/30 bg-base-200 outline-none transition-[top,left,opacity] duration-200 ease-enter motion-reduce:transition-none"
             :class="[
                 compact
                     ? 'inset-x-0 bottom-0 max-h-[85vh] w-full overflow-y-auto rounded-t-3xl border-b-0 p-6 pb-8'

@@ -104,7 +104,7 @@
                     @php $classResult = $classResults[$classroom->id] ?? null; @endphp
                     <a
                         href="{{ route('teacher.classes.manage', $classroom) }}"
-                        class="group rounded-xl border border-slate-800 bg-slate-900/30 p-5 transition hover:-translate-y-0.5 hover:border-primary/30 hover:bg-slate-900/60"
+                        class="group rounded-xl border border-slate-800 bg-slate-900/30 p-5 transition hover:border-primary/30 hover:bg-slate-900/60"
                     >
                         <div class="flex items-start justify-between gap-3">
                             <div class="min-w-0">

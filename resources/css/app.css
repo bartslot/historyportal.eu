@@ -576,15 +576,15 @@
 /* ─── DaisyUI component overrides — Learning Portal brand ───────────── */
 @layer components {
 
-    /* Card: deep gradient surface + subtle amber hover border */
+    /* Card: deep gradient surface and a hairline. FLAT (Bart, 2026-10-02 and 2026-10-17): no
+       drop shadow, no glow, no lift; a hover only brightens the hairline, and not in amber,
+       which belongs to the public site. tests/Unit/FlatSurfacesTest.php keeps it that way. */
     .card {
         background: linear-gradient(145deg, oklch(22% 0.033 264) 0%, oklch(15% 0.032 264) 100%);
         border: 1px solid rgba(255,255,255,0.07);
-        box-shadow: 0 4px 24px rgba(0,0,0,0.55), 0 1px 4px rgba(0,0,0,0.35);
     }
     .card:hover {
-        border-color: color-mix(in oklab, var(--color-primary) 28%, transparent);
-        box-shadow: 0 4px 24px rgba(0,0,0,0.55), 0 0 32px color-mix(in oklab, var(--color-primary) 18%, transparent);
+        border-color: rgba(255,255,255,0.16);
     }
 
     /* The .btn-primary and .btn-ghost overrides that used to sit here — an amber gradient, an

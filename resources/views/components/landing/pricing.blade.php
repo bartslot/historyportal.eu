@@ -59,8 +59,8 @@
             @foreach ($tiers as $tier)
                 <div @if ($tier['featured']) data-featured @endif @class([
                     'group relative flex flex-col rounded-[1.5rem] p-8 transition duration-300 ease-out',
-                    'border border-primary/40 bg-gradient-to-b from-slate-800/90 to-slate-900/90 shadow-[0_24px_60px_color-mix(in_oklab,var(--color-primary)_18%,transparent)] ring-1 ring-primary/30 lg:-my-3 lg:py-11' => $tier['featured'],
-                    'border border-white/10 bg-white/4 shadow-[0_16px_40px_rgba(0,0,0,0.35)] hover:-translate-y-1 hover:border-primary/30 hover:bg-white/6' => ! $tier['featured'],
+                    'border border-primary/40 bg-gradient-to-b from-slate-800/90 to-slate-900/90 ring-1 ring-primary/30 lg:-my-3 lg:py-11' => $tier['featured'],
+                    'border border-white/10 bg-white/4 hover:border-primary/30 hover:bg-white/6' => ! $tier['featured'],
                 ])>
                     @if (! empty($tier['badge']))
                         <span class="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full border border-primary/40 bg-primary/15 px-3 py-1 text-2xs font-medium uppercase tracking-widest text-primary">

@@ -45,7 +45,7 @@
                             <a href="{{ $entryStep
                                     ? route('teacher.lessons.wizard', ['lesson' => $lesson->id, 'step' => $entryStep])
                                     : route('teacher.lessons.show', $lesson) }}"
-                               class="carousel-cell group relative mx-2 block aspect-2/3 w-52 overflow-hidden rounded-xl border border-slate-800 bg-slate-900 transition duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_18px_40px_rgba(0,0,0,0.5)] sm:w-[15rem]">
+                               class="carousel-cell group relative mx-2 block aspect-2/3 w-52 overflow-hidden rounded-xl border border-slate-800 bg-slate-900 transition duration-300 hover:border-primary/40 sm:w-[15rem]">
                                 @if($cardImage)
                                     <img
                                         src="{{ $cardImage }}"
