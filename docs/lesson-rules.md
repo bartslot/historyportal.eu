@@ -38,7 +38,9 @@ A new **shot** doesn't need a new painting. Each of these counts as a new image:
 
 Bart: "never the same asset twice.. because it will feel repeated and fake." / "backgrounds can be reused."
 - **Backgrounds MAY be reused**, within a scene and across scenes (the same street, the same arena),
-  ideally with a new framing, time of day or weather.
+  **but never with the same framing:** every reuse is zoomed in or shows a different part of it (Bart: "they
+  have to be zoomed in, or different position"). The same background at the same camera position twice is
+  a FAIL. A new time of day or weather on top is welcome.
 - **MUST:** everything placed ON a background is used once: no figure, prop, crowd, animal or object
   cut-out appears in two shots of different scenes.
 - **MUST:** no copies inside a shot: no cloned crowd figures, no stamped-in duplicate trees, carts or boats.
@@ -82,7 +84,8 @@ Deliver these two tables, made from playing the WHOLE lesson muted in the real b
 
 1. **Shot log:** every sentence → its shot (background, camera, foreground change) and its seconds.
    FAIL if any sentence has no shot of its own, any shot is over 10 s, or any foreground asset (figure, prop,
-   crowd, object) appears in two scenes (rule 3a; backgrounds may repeat).
+   crowd, object) appears in two scenes (rule 3a; backgrounds may repeat,
+   but never at the same zoom and position).
 2. **Per minute:** what changes on screen, and what the class does.
    FAIL if any minute is "a picture and a voice", or 3 minutes pass without the class doing something.
 
