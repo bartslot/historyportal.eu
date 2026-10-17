@@ -47,7 +47,7 @@
  * the shaded face darkens.
  */
 
-import maplibregl from 'maplibre-gl'
+import maplibregl from '../maplibre.js'
 import {
   buildSphereMesh, buildProgram, cameraInPlanetSpace, EARTH_RADIUS_M,
   EQUIRECT_GLSL, SHELL_PROJECT_GLSL, FACING_CAMERA_GLSL, TERMINATOR_GLSL,

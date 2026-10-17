@@ -8,7 +8,7 @@
  *   const map = renderLessonMap(el, { qid: 'Q12544', year: 900, interactive: true })
  *   map.setYear(1200); map.destroy()
  */
-import maplibregl from 'maplibre-gl'
+import maplibregl from './maplibre.js'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { renderAnnotations, focusLabelLayout } from './map-annotations.js'
 import { placeLabelLayout, placeLabelPaint } from './map-place-label.js'
@@ -182,6 +182,9 @@ export function renderLessonMap (el, opts = {}) {
   const map = new maplibregl.Map({
     container: el,
     interactive,
+    // MapLibre 6 slices vector tiles past their maxzoom instead of overscaling them, which moves labels.
+    // Kept at the v5 behaviour so the upgrade changes nothing on screen.
+    zoomLevelsToOverscale: undefined,
     attributionControl: false,
     // Lean the camera over from the start. Set here rather than eased in after load, because the
     // opening view is fitted to the block's own cities and a pitch applied afterwards re-frames

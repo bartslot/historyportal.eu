@@ -94,28 +94,30 @@
     "file": "assets/i18n-DoByrmTl.js",
     "name": "i18n"
   },
-  "_map-globe-layers-CppiX945.js": {
-    "file": "assets/map-globe-layers-CppiX945.js",
+  "_map-globe-layers-BqAjEvvo.js": {
+    "file": "assets/map-globe-layers-BqAjEvvo.js",
     "name": "map-globe-layers",
     "isDynamicEntry": true,
     "imports": [
-      "_map-imagery-a9lZ058G.js",
+      "_map-imagery-U4z06sz1.js",
+      "_maplibre-compat-BhO3OEJx.js",
       "_tuner-BxTGfeBB.js"
     ]
   },
-  "_map-imagery-DNVN2dqC.css": {
-    "file": "assets/map-imagery-DNVN2dqC.css",
-    "src": "_map-imagery-DNVN2dqC.css"
+  "_map-imagery-CEya5O3P.css": {
+    "file": "assets/map-imagery-CEya5O3P.css",
+    "src": "_map-imagery-CEya5O3P.css"
   },
-  "_map-imagery-a9lZ058G.js": {
-    "file": "assets/map-imagery-a9lZ058G.js",
+  "_map-imagery-U4z06sz1.js": {
+    "file": "assets/map-imagery-U4z06sz1.js",
     "name": "map-imagery",
-    "imports": [
-      "__commonjsHelpers-CqkleIqs.js"
-    ],
     "css": [
-      "assets/map-imagery-DNVN2dqC.css"
+      "assets/map-imagery-CEya5O3P.css"
     ]
+  },
+  "_maplibre-compat-BhO3OEJx.js": {
+    "file": "assets/maplibre-compat-BhO3OEJx.js",
+    "name": "maplibre-compat"
   },
   "_preload-helper-DIdkKO6w.js": {
     "file": "assets/preload-helper-DIdkKO6w.js",
@@ -150,7 +152,7 @@
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-CYCrZ4xX.css",
+    "file": "assets/app-Cdw3sARM.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -210,25 +212,24 @@
     "isEntry": true
   },
   "resources/js/lesson-map.js": {
-    "file": "assets/lesson-map-BAkQr5oW.js",
+    "file": "assets/lesson-map-B7U-a-u3.js",
     "name": "lesson-map",
     "src": "resources/js/lesson-map.js",
     "isEntry": true,
     "isDynamicEntry": true,
     "imports": [
       "_preload-helper-DIdkKO6w.js",
-      "_map-imagery-a9lZ058G.js",
-      "_easing-HS2C6-zA.js",
-      "__commonjsHelpers-CqkleIqs.js"
+      "_map-imagery-U4z06sz1.js",
+      "_easing-HS2C6-zA.js"
     ],
     "dynamicImports": [
-      "_map-globe-layers-CppiX945.js",
+      "_map-globe-layers-BqAjEvvo.js",
       "resources/js/timemap/quality/index.js",
       "resources/js/timemap/quality/availability.js"
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-DRb2QEdr.js",
+    "file": "assets/lesson-player-rpkEUAfv.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -464,17 +465,17 @@
     ]
   },
   "resources/js/timemap/index.js": {
-    "file": "assets/index-Bv6GIJJl.js",
+    "file": "assets/index-CxwqBxBi.js",
     "name": "index",
     "src": "resources/js/timemap/index.js",
     "isEntry": true,
     "imports": [
       "_preload-helper-DIdkKO6w.js",
-      "_map-imagery-a9lZ058G.js",
+      "_map-imagery-U4z06sz1.js",
       "_easing-HS2C6-zA.js",
       "_border-sweep-BHZq13G8.js",
-      "_map-globe-layers-CppiX945.js",
-      "__commonjsHelpers-CqkleIqs.js",
+      "_map-globe-layers-BqAjEvvo.js",
+      "_maplibre-compat-BhO3OEJx.js",
       "_tuner-BxTGfeBB.js"
     ],
     "dynamicImports": [
@@ -518,7 +519,7 @@
     "isDynamicEntry": true
   },
   "resources/js/timemap/voyage-ships.js": {
-    "file": "assets/voyage-ships-lsaoGZjh.js",
+    "file": "assets/voyage-ships-GFzvCOtc.js",
     "name": "voyage-ships",
     "src": "resources/js/timemap/voyage-ships.js",
     "isDynamicEntry": true,
@@ -526,11 +527,12 @@
       "node_modules/three/build/three.module.js",
       "_GLTFLoader-Et3HGvr1.js",
       "_border-sweep-BHZq13G8.js",
+      "_maplibre-compat-BhO3OEJx.js",
       "_easing-HS2C6-zA.js"
     ]
   },
   "resources/js/voyage-tour.js": {
-    "file": "assets/voyage-tour-D4YxQBWF.js",
+    "file": "assets/voyage-tour-CVCAnSeN.js",
     "name": "voyage-tour",
     "src": "resources/js/voyage-tour.js",
     "isEntry": true,
@@ -542,10 +544,11 @@
       "_border-sweep-BHZq13G8.js",
       "resources/js/timemap/voyage-ships.js",
       "__commonjsHelpers-CqkleIqs.js",
-      "_map-imagery-a9lZ058G.js",
+      "_map-imagery-U4z06sz1.js",
       "_preload-helper-DIdkKO6w.js",
       "node_modules/three/build/three.module.js",
-      "_GLTFLoader-Et3HGvr1.js"
+      "_GLTFLoader-Et3HGvr1.js",
+      "_maplibre-compat-BhO3OEJx.js"
     ]
   }
 }
