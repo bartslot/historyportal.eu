@@ -45,7 +45,7 @@
  * measure as exactly zero lit pixels for a while.
  */
 
-import maplibregl from 'maplibre-gl'
+import maplibregl from '../maplibre.js'
 import { buildProgram } from './planet-mesh.js'
 import { skyFrameMatrix, PANORAMA_UV_GLSL } from './celestial.js'
 import { viewRayBasis } from './sky-camera.js'

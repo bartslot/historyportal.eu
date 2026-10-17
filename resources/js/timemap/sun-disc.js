@@ -36,7 +36,7 @@
  * and gives a partially-risen sun the correct bitten-off shape for free.
  */
 
-import maplibregl from 'maplibre-gl'
+import maplibregl from '../maplibre.js'
 import { buildProgram, cameraInPlanetSpace, planetSpacePosition, SPHERE_SPAN_GLSL } from './planet-mesh.js'
 import { sunAngularRadius, sunDirection, sunDistance } from './sun.js'
 
@@ -267,7 +267,8 @@ export const createSunLayer = ({
   const programFor = (shaderData) => {
     const key = shaderData.variantName
     if (programs.has(key)) return programs.get(key)
-    const program = buildProgram(gl, vertexSource(shaderData), fragmentSource(), 'tm-sun')
+    // ES 3.00: MapLibre 6's globe prelude declares an `out`, which ES 1.00 cannot compile.
+    const program = buildProgram(gl, vertexSource(shaderData), fragmentSource(), 'tm-sun', { es300: true })
     const entry = {
       program,
       attribs: { corner: gl.getAttribLocation(program, 'a_corner') },

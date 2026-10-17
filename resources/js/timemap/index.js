@@ -1,4 +1,4 @@
-import maplibregl from 'maplibre-gl';
+import maplibregl from '../maplibre.js';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { formatReadout } from './era.js';
 import { mountTimeSlider } from './slider.js';
@@ -53,6 +53,9 @@ window.initTimeMap = function initTimeMap(el, wire, initialYear) {
   // Borders: local Cliopatria vector tiles (Seshat, CC-BY). Land base: OHM osm_land (CC0). z0-4.
   const map = new maplibregl.Map({
     container: el,
+    // MapLibre 6 slices vector tiles past their maxzoom instead of overscaling them, which moves labels.
+    // Kept at the v5 behaviour so the upgrade changes nothing on screen.
+    zoomLevelsToOverscale: undefined,
     style: {
       version: 8,
       // Globe projection → a gentle earth curvature, so the parchment reads as a map laid on a 3D

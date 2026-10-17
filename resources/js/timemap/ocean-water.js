@@ -53,7 +53,7 @@
  * the projection, so one program is compiled per `shaderData.variantName` and cached under it.
  */
 
-import maplibregl from 'maplibre-gl'
+import maplibregl from '../maplibre.js'
 import {
   buildSphereMesh, buildProgram, cameraInPlanetSpace, cameraAltitudeMetres,
   EQUIRECT_GLSL, NOISE_GLSL, SHELL_PROJECT_GLSL, FACING_CAMERA_GLSL, TERMINATOR_GLSL, isWebGL2,
