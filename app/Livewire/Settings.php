@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire;
 
+use App\Models\User;
 use App\Support\Locales;
 use Illuminate\Support\Facades\App;
 use Livewire\Attributes\Title;
@@ -20,28 +21,19 @@ use Livewire\Component;
 #[Title('Account Settings')]
 class Settings extends Component
 {
-    /** The sizes offered. Steps a person can tell apart, not a slider of near-identical values. */
-    public const UI_SCALES = [90, 100, 110, 125];
-
     public string $locale = 'en';
 
     /** The language this teacher's lessons are written and narrated in. */
     public string $teaching_locale = 'en';
 
-    /**
-     * How large the interface is drawn, as a percentage the teacher recognises.
-     *
-     * 100 is the new normal and renders at 0.8 — the editor was designed at what a browser calls
-     * 80%, and asking teachers to zoom their browser to see it as intended is not a design. The
-     * base factor lives in app.css so this number stays the one a person would say out loud.
-     */
+    /** The editor's zoom level, a step of User::UI_SCALES (100 = the editor as it always was). */
     public int $ui_scale = 100;
 
     public function mount(): void
     {
         $this->locale = auth()->user()->locale ?? 'en';
         $this->teaching_locale = auth()->user()->teachingLocale();
-        $this->ui_scale = auth()->user()->ui_scale ?? 100;
+        $this->ui_scale = auth()->user()->uiScale();
     }
 
     public function save(): void
@@ -51,7 +43,7 @@ class Settings extends Component
         $this->validate([
             'locale' => ['required', Locales::validationRule()],
             'teaching_locale' => ['required', Locales::validationRule()],
-            'ui_scale' => ['required', 'integer', 'in:'.implode(',', self::UI_SCALES)],
+            'ui_scale' => ['required', 'integer', 'in:'.implode(',', User::UI_SCALES)],
         ]);
 
         auth()->user()->update([
@@ -66,6 +58,21 @@ class Settings extends Component
         // Full redirect (not wire:navigate) so SetLocale re-runs and every component — including the
         // nav outside this component — re-renders in the chosen language.
         $this->redirectRoute('settings.index');
+    }
+
+    /** A zoom level picked: saved at once, like Spotify's, since nothing else on the page waits on it. */
+    public function setUiScale(int $scale): void
+    {
+        if (! in_array($scale, User::UI_SCALES, true)) {
+            return;
+        }
+        $this->ui_scale = $scale;
+        auth()->user()->update(['ui_scale' => $scale]);
+    }
+
+    public function resetUiScale(): void
+    {
+        $this->setUiScale(100);
     }
 
     public function render()
