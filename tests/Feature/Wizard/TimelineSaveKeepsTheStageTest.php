@@ -63,6 +63,35 @@ class TimelineSaveKeepsTheStageTest extends TestCase
             ->assertDispatched('scene:load');
     }
 
+    /**
+     * The save keeps every property the timeline offers (resources/js/anim/properties.js): the
+     * background's crop and opacity (Bart, 2026-10-17: "i would like to animate it just like any
+     * other layer"), and a text's look, which this list used to drop as X and Y only.
+     */
+    public function test_the_save_keeps_background_and_text_look_tracks(): void
+    {
+        $keys = [['time' => 0, 'value' => 1], ['time' => 2, 'value' => 2]];
+        $tracks = [];
+        foreach (['x', 'y', 'zoom', 'opacity'] as $property) {
+            $tracks[] = ['target' => 'bg:1', 'property' => $property, 'keyframes' => $keys];
+        }
+        foreach (['w', 'scale', 'rotation', 'blur', 'opacity', 'colorOpacity'] as $property) {
+            $tracks[] = ['target' => 'text:t1', 'property' => $property, 'keyframes' => $keys];
+        }
+        $tracks[] = ['target' => 'text:t1', 'property' => 'color', 'keyframes' => [['time' => 0, 'value' => '#AABBCC'], ['time' => 1, 'value' => '#112233']]];
+        $tracks[] = ['target' => 'bg:1', 'property' => 'rotation', 'keyframes' => $keys];   // not a background row
+
+        $this->editor()->call('setTimeline', ['duration' => 8, 'targets' => [], 'tracks' => $tracks]);
+
+        $saved = collect($this->scene->fresh()->config['timeline']['tracks'])->map(fn ($t) => $t['target'].'.'.$t['property'])->all();
+        $this->assertSame([
+            'bg:1.x', 'bg:1.y', 'bg:1.zoom', 'bg:1.opacity',
+            'text:t1.w', 'text:t1.scale', 'text:t1.rotation', 'text:t1.blur', 'text:t1.opacity', 'text:t1.colorOpacity',
+            'text:t1.color',
+        ], $saved);
+        $this->assertSame('#aabbcc', $this->scene->fresh()->config['timeline']['tracks'][10]['keyframes'][0]['value']);
+    }
+
     public function test_undo_and_redo_of_a_removed_keyframe_reach_the_timeline_panel(): void
     {
         $key = ['time' => 1.5, 'value' => 40, 'easing' => 'hold'];

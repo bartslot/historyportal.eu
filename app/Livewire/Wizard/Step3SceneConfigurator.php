@@ -2147,7 +2147,10 @@ class Step3SceneConfigurator extends Component
             // The vocabulary is shared with resources/js/anim/properties.js, which plays it back.
             $allowed = match (strtok($target, ':')) {
                 'camera' => ['lng', 'lat', 'zoom', 'heading', 'tilt'],
-                'text' => ['x', 'y'],
+                // Every row the timeline offers a text (properties.js): X and Y alone dropped its look.
+                'text' => ['x', 'y', 'w', 'scale', 'rotation', 'blur', 'opacity', 'color', 'colorOpacity'],
+                // A background picture, or a split panel's: its crop and opacity (background-crop.js).
+                'bg' => ['x', 'y', 'zoom', 'opacity'],
                 'rect' => ['opacity'],
                 'art' => ['x', 'y', 'width', 'height', 'scale', 'rotation', 'blur', 'opacity', 'tint', 'tint_opacity'],
                 'bal' => SpeechBalloons::TIMELINE_PROPERTIES,
@@ -2158,8 +2161,8 @@ class Step3SceneConfigurator extends Component
                 continue;
             }
 
-            // A colour is '#rrggbb' or '' (no tint); every other property is a number.
-            $value = $property === 'tint'
+            // A colour (a tint, a text colour) is '#rrggbb' or ''; every other property is a number.
+            $value = in_array($property, ['tint', 'color'], true)
                 ? fn ($v): string => is_string($v) && preg_match('/^#[0-9a-f]{6}$/i', $v) ? strtolower($v) : ''
                 : fn ($v): float => is_numeric($v) ? (float) $v : 0.0;
 

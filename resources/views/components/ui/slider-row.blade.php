@@ -15,6 +15,11 @@
     /** Small trailing unit shown next to the number, e.g. '%' or 's'. */
     'unit' => null,
     /**
+     * value × this = the number shown, for a keyed row that follows the playhead. Default: 100 for
+     * a '%' row (a 0..1 fraction), 1 otherwise. Pass 1 for a row whose value is already a percent.
+     */
+    'displayScale' => null,
+    /**
      * Left column width. Kept for callers that still pass it; the shell owns the column now.
      * Defaults to the panel's own variable so the dev tuner moves every row at
      * once; pass a literal only where a row is outside the settings panel.
@@ -41,6 +46,7 @@
     // off the thumb, so it needs a number — rendered here so the row is right on its first frame,
     // then kept in step by resources/js/ui/range-fill.js.
     $span = (float) $max - (float) $min;
+    $displayScale ??= $unit === '%' ? 100 : 1;
     $fillPct = $span > 0
         ? max(0, min(100, (((float) $value - (float) $min) / $span) * 100))
         : 0;
@@ -88,7 +94,7 @@
 
     <span class="flex w-11 shrink-0 items-baseline justify-end gap-0.5">
         <span class="text-xs font-medium text-panel-value" data-key-display
-              @if ($unit === '%') data-key-display-scale="100" @endif>{{ $display ?? $value }}</span>
+              @if ((float) $displayScale !== 1.0) data-key-display-scale="{{ $displayScale }}" @endif>{{ $display ?? $value }}</span>
         @if ($unit)
             <span class="text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ $unit }}</span>
         @endif

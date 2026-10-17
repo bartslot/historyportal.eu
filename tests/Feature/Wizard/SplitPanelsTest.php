@@ -279,6 +279,24 @@ class SplitPanelsTest extends TestCase
         $this->assertArrayNotHasKey('focus', $this->scene->refresh()->shots[1]);
     }
 
+    /**
+     * The crop sliders key the panel's background like any layer's slider (Bart, 2026-10-17:
+     * "i would like to animate it just like any other layer"): a diamond per row on bg:<panel>,
+     * the zoom in the same factor the timeline row and the stage use.
+     */
+    public function test_the_crop_sliders_key_the_active_panels_background(): void
+    {
+        $html = $this->split()->call('selectPanel', 1)->call('setPanelFocus', 'zoom', 1.5)->html();
+        $crop = substr($html, strpos($html, 'data-panel-focus'), 9000);
+
+        foreach (['x', 'y', 'zoom'] as $property) {
+            $this->assertMatchesRegularExpression('#data-key-target="bg:1" data-key-property="'.$property.'"#', $crop);
+        }
+        $this->assertMatchesRegularExpression('#type="range" min="1" max="4" step="0.05" value="1.5"#', $crop);
+        // X and Y are already percentages: their number is not scaled again.
+        $this->assertSame(1, substr_count($crop, 'data-key-display-scale="100"'));
+    }
+
     public function test_the_stage_payload_carries_the_zoom(): void
     {
         $this->assertSame(['x' => 40.0, 'y' => 50.0, 'zoom' => 4.0], SceneSplit::focus(['x' => 40, 'zoom' => 9]));

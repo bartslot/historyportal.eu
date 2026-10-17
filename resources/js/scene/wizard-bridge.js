@@ -8,6 +8,7 @@ import { t } from '../i18n.js'
 import { gradientCanvas } from './background-gradient.js'
 import { cameraSpec } from './camera.js'
 import { normalizeSplit, paneCount } from './split-layout.js'
+import { singleSource, cropPlates, textureCrop, fade, publishBackgrounds } from './background-crop.js'
 import { balloonOptions, hideStageBalloons, setBalloonScene, showStageBalloons, typingIn } from './editor-balloons.js'
 
 /** Scene kinds the player draws its own way, without balloons (SceneSplit::NO_SPLIT_KINDS). */
@@ -34,6 +35,7 @@ function shiftAlignment(alignment) {
  * shader pipeline (player.setSkyboxFromUrl) instead of stacking a second sphere.
  */
 export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, characterUrl, initialSceneId = null }) {
+    let _stageBackgrounds = null   // what publishBackgrounds() hands the timeline after a scene load
     const Scene = window.LessonScene
     if (!Scene) {
         console.warn('[wizard-bridge] window.LessonScene not loaded')
@@ -115,6 +117,10 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         // wrong branch to execute with the wrong image URL, creating extra texture loads.
         if (playerReady && !_pendingView) {
             const view = dbView
+            // The background(s) this scene shows, for the timeline (background-crop.js). Each stage
+            // path below sets it; anything else (a map, a world, a film) has none to animate.
+            _stageBackgrounds = null
+            fade(canvasEl, 1)
             try {
                 if (!payload.config?.diorama) hideDiorama()
                 if (payload.config?.diorama) {
@@ -187,7 +193,10 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             } catch (err) {
                 console.warn('[wizard-bridge] background load failed', err)
             }
-            if (isCurrent()) syncBalloons(payload, view)
+            if (isCurrent()) {
+                syncBalloons(payload, view)
+                publishBackgrounds(_stageBackgrounds)
+            }
         }
         if (!isCurrent()) return
         if (playerReady && dbView === 'skybox' && typeof payload.skyboxOpacity === 'number' && typeof activePlayer.setSkyboxOpacity === 'function') {
@@ -489,6 +498,19 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             const cv = coverScale(tex)
             tex.repeat.set(cv.rX, cv.rY)
             tex.offset.set(cv.oX, cv.oY)
+            // As a background the timeline animates: the same crop the player's picture takes,
+            // starting where the stage anchors it (a portrait's face).
+            const top = isTopAnchored('cover', currentBgFocus, tex.image?.naturalWidth || tex.image?.width, tex.image?.naturalHeight || tex.image?.height)
+            _stageBackgrounds = singleSource({
+                base: { y: top ? (1 - PORTRAIT_TOP_BIAS) * 100 : 50 },
+                draw: (c) => {
+                    const r = textureCrop(coverScale(tex), c)
+                    tex.repeat.set(r.rX, r.rY)
+                    tex.offset.set(r.oX, r.oY)
+                    fade(canvasEl, c.opacity)
+                },
+                el: () => canvasEl,
+            })
         } catch (err) {
             if (!isCurrent()) return
             console.warn('[wizard-bridge] slideshow texture load failed', err)
@@ -838,6 +860,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             shots.forEach((s, i) => _splitStage.setFocus(i, s.focus))
             _splitStage.select(panel)
             window.__lessonArtworkLayer = _splitStage.overlay(panel)
+            _stageBackgrounds = _splitStage.backgrounds()
             return
         }
         destroyWizardLayers()
@@ -860,7 +883,12 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             }),
             // The divider and the panes, moved on the stage: the same values the sliders set.
             onSplitChange: (s) => window.Livewire?.dispatch('split:at', { at: s.at }),
-            onViewChange: (i, f) => window.Livewire?.dispatch('split:view', { panel: i, x: f.x, y: f.y, zoom: f.zoom }),
+            // A pane panned or zoomed on the stage: its crop, and a key at the playhead when the
+            // timeline animates it (recordCanvasEdit), as a dragged layer gets one.
+            onViewChange: (i, f) => {
+                window.Livewire?.dispatch('split:view', { panel: i, x: f.x, y: f.y, zoom: f.zoom })
+                window.dispatchEvent(new CustomEvent('scene-object-edited', { detail: { target: `bg:${i}`, values: { x: f.x, y: f.y, zoom: f.zoom } } }))
+            },
             balloons: balloonOptions(),
         })
         _splitStage.show({
@@ -875,6 +903,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         _splitLinesSig = linesSig
         // The layer list, the inspector and the timeline talk to the active panel's figures.
         window.__lessonArtworkLayer = _splitStage.overlay(panel)
+        _stageBackgrounds = _splitStage.backgrounds()
     }
 
     function wizardLayerHost() {
@@ -1121,6 +1150,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                     _artworkIdent = ident
                 }
             }
+            _stageBackgrounds = singleSource({ draw: (c) => cropPlates(host, c), el: () => host })
             return true
         } catch (e) {
             console.warn('[wizard-bridge] layered slideshow failed', e)

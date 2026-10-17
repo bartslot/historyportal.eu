@@ -54,6 +54,7 @@
             'hold'           => __('Hold'),
             'custom'         => __('Custom bezier'),
         ],
+        'objectLabels' => ['background' => __('Background')],
         'propertyLabels' => [
             'x' => 'X', 'y' => 'Y', 'z' => 'Z', 'width' => 'W', 'height' => 'H',
             'scale' => __('Scale'), 'rotation' => __('Angle'), 'blur' => __('Blur'),

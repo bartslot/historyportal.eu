@@ -12,6 +12,7 @@ import { ParallaxScene } from './ParallaxScene.js'
 import { ArtworkOverlay } from './ArtworkOverlay.js'
 import { BalloonLayer, withBalloonIds } from './BalloonLayer.js'
 import { backdropLayers, isClipartLayer } from './layer-filters.js'
+import { cropImage, fade, backgroundSource } from './background-crop.js'
 import { splitLayout, focusPosition, normalizeSplit, normalizeFocus, paneCount, moveDivider, stepDivider, panFocus, wheelZoom, panelForLine } from './split-layout.js'
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
@@ -188,13 +189,22 @@ export class SplitStage {
    * zoomed in, about that same point, so a pan of a zoomed picture moves what you see.
    */
   _applyFocus (p) {
-    const { x, y, zoom } = p.focus
-    const pos = `${x}% ${y}%`
-    for (const img of p.plate.querySelectorAll('.px-layer-bg img')) {
-      img.style.objectPosition = pos
-      img.style.transformOrigin = pos
-      img.style.transform = zoom > 1 ? `scale(${zoom})` : ''
-    }
+    for (const img of p.plate.querySelectorAll('.px-layer-bg img')) cropImage(img, { ...p.focus, opacity: 1 })
+    fade(p.plate, p.opacity ?? 1)
+  }
+
+  /**
+   * Each panel's picture as a background the timeline animates (scene/background-crop.js): its
+   * saved crop is the base, a sampled frame pans, zooms and fades it. A drag or the sliders still
+   * set the base through setFocus.
+   */
+  backgrounds () {
+    return backgroundSource(this.panels.map((p, i) => ({
+      id: String(i),
+      get: () => ({ ...p.focus, opacity: p.opacity ?? 1 }),
+      set: ({ opacity, ...focus }) => { p.focus = focus; p.opacity = opacity; this._applyFocus(p) },
+      el: () => p.plate,
+    })))
   }
 
   /** Editor: drag a pane's picture to move it, wheel over it to zoom. Figures keep their own drag. */

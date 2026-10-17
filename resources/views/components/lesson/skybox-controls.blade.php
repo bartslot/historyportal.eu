@@ -279,16 +279,22 @@
             @if ($split && $backgroundImageUrl)
                 <div class="space-y-1" data-panel-focus>
                     <span class="block text-2xs font-semibold uppercase tracking-wider text-slate-400">{{ __('Crop') }}</span>
+                    {{-- Each row keys the panel's background on the timeline (bg:<panel>), as a
+                         layer's sliders key the layer. --}}
                     <x-ui.slider-row :label="__('Horizontal')" :min="0" :max="100" :step="1"
-                                     :value="$panelFocus['x']" :display="(string) round($panelFocus['x'])" unit="%" :default="50"
+                                     :value="$panelFocus['x']" :display="(string) round($panelFocus['x'])" unit="%" :display-scale="1" :default="50"
+                                     keyframe :keyframe-target="'bg:'.$activePanel" keyframe-property="x"
                                      on-change="setPanelFocus('x', $event.target.value)" />
                     <x-ui.slider-row :label="__('Vertical')" :min="0" :max="100" :step="1"
-                                     :value="$panelFocus['y']" :display="(string) round($panelFocus['y'])" unit="%" :default="50"
+                                     :value="$panelFocus['y']" :display="(string) round($panelFocus['y'])" unit="%" :display-scale="1" :default="50"
+                                     keyframe :keyframe-target="'bg:'.$activePanel" keyframe-property="y"
                                      on-change="setPanelFocus('y', $event.target.value)" />
-                    {{-- The wheel over the pane on the stage sets the same zoom. --}}
-                    <x-ui.slider-row :label="__('Zoom')" :min="100" :max="400" :step="5"
-                                     :value="($panelFocus['zoom'] ?? 1) * 100" :display="(string) round(($panelFocus['zoom'] ?? 1) * 100)" unit="%" :default="100"
-                                     on-change="setPanelFocus('zoom', $event.target.value / 100)" />
+                    {{-- The wheel over the pane on the stage sets the same zoom: a factor, as the
+                         timeline row has it, shown as a percentage. --}}
+                    <x-ui.slider-row :label="__('Zoom')" :min="1" :max="4" :step="0.05"
+                                     :value="$panelFocus['zoom'] ?? 1" :display="(string) round(($panelFocus['zoom'] ?? 1) * 100)" unit="%" :default="1"
+                                     keyframe :keyframe-target="'bg:'.$activePanel" keyframe-property="zoom"
+                                     on-change="setPanelFocus('zoom', $event.target.value)" />
                 </div>
             @endif
 

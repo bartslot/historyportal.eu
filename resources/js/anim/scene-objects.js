@@ -42,6 +42,19 @@ export const balloonObjects = () => (window.__balloons?.list() ?? []).map((b) =>
 }))
 
 /**
+ * The scene's background pictures, from whichever renderer is showing them (`window.__backgrounds`,
+ * scene/background-crop.js): one on a single scene, one per panel on a split, numbered there.
+ */
+export const backgroundObjects = (label = 'Background') => {
+  const list = window.__backgrounds?.list() ?? []
+  return list.map((b, i) => ({
+    target: `bg:${b.id}`,
+    kind: 'bg',
+    label: list.length > 1 ? `${label} ${i + 1}` : label,
+  }))
+}
+
+/**
  * Diorama items (config.diorama), front-most last like the stage lists them. They have no property
  * rows: an item's movement is ONE clip, its path, moved and stretched as a whole (clip.js).
  */
@@ -69,6 +82,7 @@ export const readObjectProperty = (target, property) => {
   }
 
   if (kind === 'bal') return window.__balloons?.value?.(`bal_${id}`, property) ?? null
+  if (kind === 'bg') return window.__backgrounds?.value?.(id, property) ?? null
   if (kind !== 'text' && kind !== 'rect') return null
   const item = (window.__lessonTextLayer?._texts ?? []).find((t) => String(t.id) === id)
   const value = item?.[property]
@@ -106,6 +120,8 @@ const measuredWidth = (id) => {
  */
 export const setObjectHidden = (target, hidden) => {
   const [kind, id] = String(target).split(':')
+  // The background: fade it right out rather than leave the stage blank behind a hidden node.
+  if (kind === 'bg') return void window.__backgrounds?.hide?.(id, hidden)
   const selector = kind === 'art'
     ? `[data-layer-id="art_${id}"], [data-layer-chrome="art_${id}"]`
     : kind === 'bal' ? `[data-balloon-id="bal_${id}"]` : `[data-text-id="${id}"]`
@@ -123,6 +139,7 @@ export const writeObjectProperty = (target, property, value) => {
   // through the helper that reaches both — see resources/js/scene/layer-overlays.js.
   if (kind === 'art') return void window.__setLayerProp?.(id, property, value)
   if (kind === 'bal') return void window.__balloons?.patch?.(`bal_${id}`, { [property]: value })
+  if (kind === 'bg') return void window.__backgrounds?.patch?.(id, { [property]: value })
 
   if (kind !== 'text' && kind !== 'rect') return
   window.__lessonTextLayer?.patch?.(id, { [property]: value })
