@@ -64,4 +64,33 @@ class LineClipEdgeFallbackTest extends TestCase
         $this->expectException(RuntimeException::class);
         app(SceneDialogue::class)->narratorClip($scene, 'Land in zicht.', 'nl');
     }
+
+    /**
+     * PM, 2026-10-18: a re-recorded line scene kept the audio_voice of its old recording, so it
+     * read as a stand-in voice (W24VRI scene 6). The track records the narrator voice that spoke.
+     */
+    public function test_a_recorded_line_track_stores_the_narrator_voice_that_spoke(): void
+    {
+        if (! (new \Symfony\Component\Process\ExecutableFinder)->find('ffmpeg')) {
+            $this->markTestSkipped('ffmpeg is needed to join the clips.');
+        }
+        $scene = $this->scene();
+        $scene->update(['audio_voice' => 'an-OLD-VoiceNeural']);
+        $tmp = tempnam(sys_get_temp_dir(), 'clip').'.m4a';
+        (new \Symfony\Component\Process\Process(['ffmpeg', '-y', '-v', 'error', '-f', 'lavfi', '-i', 'anullsrc=r=24000:cl=mono', '-t', '0.4', '-c:a', 'aac', '-f', 'ipod', $tmp]))->mustRun();
+        $bytes = (string) file_get_contents($tmp);
+        @unlink($tmp);
+        $this->mock(TtsService::class, function ($mock) use ($bytes): void {
+            $mock->shouldReceive('prepareSpeechText')->andReturnUsing(fn ($t) => $t);
+            $mock->shouldReceive('generateAudioRaw')->andReturn($bytes);
+            $mock->shouldReceive('lastProvider')->andReturn('azure');
+            $mock->shouldReceive('lastVoice')->andReturn('nl-NL-MaartenNeural');
+        });
+
+        $record = new \ReflectionMethod(SceneDialogue::class, 'record');
+        $record->invoke(app(SceneDialogue::class), $scene->fresh('lesson.narrator'), [['speaker' => 'narrator', 'text' => 'Land in zicht.']], [], 'nl');
+
+        $this->assertSame('nl-NL-MaartenNeural', $scene->fresh()->audio_voice);
+        $this->assertFalse($scene->fresh()->narrationWasDowngraded());
+    }
 }
