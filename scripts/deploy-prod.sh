@@ -142,6 +142,10 @@ ssh -p "$PORT" -i "$KEY" "$HOST" "cd $DEST && \
   `# because routes-v7.php still held the pre-deploy table. A new route would silently never` \
   `# exist. Clearing is cheap; the cache is rebuilt below.` \
   php artisan migrate --force && \
+  php artisan config:cache -q && \
+  `# ^ prod runs thread-safe mod_php, where reading .env per request is not thread-safe: requests` \
+  `# booted on Laravel's defaults (sqlite missing, cache password empty) and 500'd (audit 10-17).` \
+  `# A cached config never reads .env at request time. Shell env overrides no longer apply.` \
   php artisan route:cache -q && \
   php artisan view:cache -q && echo 'caches warmed'"
 

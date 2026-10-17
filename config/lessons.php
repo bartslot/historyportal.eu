@@ -41,6 +41,10 @@ return [
     // "phase0-candidate-2x3". Lets the scoring sheets join runs to conditions.
     'experiment_label' => env('LESSON_EXPERIMENT_LABEL'),
 
+    // The deployed commit, recorded on generation runs (SiteGround has no git). Read through config
+    // so it survives config:cache.
+    'git_commit' => env('GIT_COMMIT'),
+
     /*
     |--------------------------------------------------------------------------
     | Sensitive-topic visual policy (zero-tolerance gate with fallback)

@@ -162,7 +162,7 @@ final class GenerationRunRecorder
     /** Deployed commit: GIT_COMMIT env first (SiteGround has no git), `git rev-parse` locally. */
     private static function gitCommit(): ?string
     {
-        $env = (string) env('GIT_COMMIT', '');
+        $env = (string) config('lessons.git_commit', '');
         if ($env !== '') {
             return $env;
         }
