@@ -25,6 +25,9 @@ Schedule::command('lessons:publish-due')->everyMinute()->withoutOverlapping();
 // Email the admin when AI provider credits run low (ElevenLabs narration quota).
 Schedule::command('tokens:check')->dailyAt('08:00');
 
+// Pull kerndoelen and the Canon from the official sources; mail what changed (Bart, 2026-10-17).
+Schedule::command('curriculum:sync')->weeklyOn(1, '06:00')->withoutOverlapping(30);
+
 // Sweep the throwaway accounts behind the landing-page "Configure" demo (config/demo.php).
 Schedule::command('demo:prune-guests')->hourly()->withoutOverlapping();
 

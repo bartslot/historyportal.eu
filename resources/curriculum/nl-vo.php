@@ -14,7 +14,7 @@ declare(strict_types=1);
 // - Tijdvakken: kerndoel 37. Kenmerkende aspecten: syllabus geschiedenis vwo CE 2025, bijlage 3.
 // - Canon: canonvannederland.nl, the 50 vensters (2020 edition).
 
-$kerndoelen_source = 'https://zoek.officielebekendmakingen.nl/stb-2021-521.html';
+$kerndoelen_source = 'https://wetten.overheid.nl/BWBR0045787';
 $syllabus_source = 'https://examenblad.nl/2025/vwo/documenten/syllabus-geschiedenis-vwo';
 $canon_source = 'https://www.canonvannederland.nl/nl/';
 

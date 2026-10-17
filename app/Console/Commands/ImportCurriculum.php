@@ -9,12 +9,13 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Write resources/curriculum/nl-vo.php into curriculum_goals. Safe to run again: goals are matched
- * on (type, code) and updated in place, so lesson links survive a corrected text.
+ * Seed curriculum_goals from resources/curriculum/nl-vo.php. Safe to run again: goals are matched on
+ * (type, code) and existing rows keep their text, because curriculum:sync may have updated it from
+ * the official source since. --force rewrites the text from the file (lesson links survive either way).
  */
 class ImportCurriculum extends Command
 {
-    protected $signature = 'curriculum:import';
+    protected $signature = 'curriculum:import {--force : Overwrite existing texts with the file}';
 
     protected $description = 'Import the Dutch curriculum (kerndoelen, tijdvakken, kenmerkende aspecten, Canon)';
 
@@ -29,18 +30,18 @@ class ImportCurriculum extends Command
                 $key = $goal['type'].':'.$goal['code'];
                 $parentId = $goal['parent'] !== null ? ($ids[$goal['parent']] ?? null) : null;
 
-                $model = CurriculumGoal::query()->updateOrCreate(
-                    ['type' => $goal['type'], 'code' => $goal['code']],
-                    [
-                        'slug' => CurriculumGoal::slugFor($goal['type'], $goal['code']),
-                        'title' => $goal['title'],
-                        'body' => $goal['body'],
-                        'period' => $goal['period'],
-                        'parent_id' => $parentId,
-                        'source_url' => $goal['source_url'],
-                        'sort' => $sort,
-                    ],
-                );
+                $text = [
+                    'title' => $goal['title'],
+                    'body' => $goal['body'],
+                    'period' => $goal['period'],
+                    'source_url' => $goal['source_url'],
+                ];
+                $model = CurriculumGoal::query()->firstOrNew(['type' => $goal['type'], 'code' => $goal['code']]);
+                $model->fill([
+                    'slug' => CurriculumGoal::slugFor($goal['type'], $goal['code']),
+                    'parent_id' => $parentId,
+                    'sort' => $sort,
+                ] + ($model->exists && ! $this->option('force') ? [] : $text))->save();
 
                 $ids[$key] = $model->id;
             }
