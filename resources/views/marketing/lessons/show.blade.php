@@ -5,9 +5,11 @@
 
     $heading = $lesson->title ?: $lesson->topic;
     $description = Seo::lessonDescription($lesson);
+    // MediaUrl, like the library card: poster_image can be a CDN URL, which Storage::url turned
+    // into "/storage/https://…" (no image, 2026-10-17).
     $poster = $lesson->poster_image
-        ? \Illuminate\Support\Facades\Storage::disk('public')->url($lesson->poster_image)
-        : null;
+        ? \App\Support\MediaUrl::of($lesson->poster_image)
+        : \App\Support\MediaUrl::of($lesson->firstScene?->image_path);
     $minutes = $lesson->duration_seconds ? (int) ceil($lesson->duration_seconds / 60) : null;
 @endphp
 

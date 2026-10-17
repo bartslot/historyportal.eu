@@ -111,6 +111,19 @@ class TeacherGuideTest extends TestCase
         $this->artisan('lessons:guide', ['code' => 'ZZZZZZ'])->assertFailed();
     }
 
+    /** Prod 2026-10-17: a CDN poster was wrapped as a storage path, "/storage/https://…", so no image. */
+    public function test_a_cdn_poster_shows_as_itself(): void
+    {
+        $url = 'https://res.cloudinary.com/demo/image/upload/v1/golden_bay_dusk.webp';
+        $lesson = $this->lesson(null);
+        $lesson->update(['poster_image' => $url]);
+
+        $this->page($lesson->refresh())
+            ->assertSee('src="'.$url.'"', false)
+            ->assertSee('og:image" content="'.$url.'"', false)
+            ->assertDontSee('storage/https', false);
+    }
+
     public function test_a_lesson_without_a_guide_shows_no_guide(): void
     {
         $this->page($this->lesson(null))
