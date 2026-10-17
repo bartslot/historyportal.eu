@@ -63,32 +63,6 @@
         </div>
     @endif
 
-    @if (! empty($guide['curriculum']))
-        <div>
-            <h2 class="{{ $h2 }}">{{ __('Curriculum') }}</h2>
-            <div class="mt-4 overflow-x-auto">
-                <table class="table table-sm">
-                    <tbody>
-                        @foreach ($guide['curriculum'] as $row)
-                            <tr class="border-white/10">
-                                <td class="font-semibold text-slate-300">{{ $row['part'] }}</td>
-                                <td>{{ $row['link'] }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-            @if (! empty($guide['curriculum_note']))
-                <p class="mt-4 text-sm text-slate-300">
-                    {{ $guide['curriculum_note'] }}
-                    @if (! empty($guide['curriculum_source']))
-                        <a href="{{ $guide['curriculum_source']['url'] }}" class="underline hover:text-white" rel="noreferrer" target="_blank">{{ $guide['curriculum_source']['label'] }}</a>
-                    @endif
-                </p>
-            @endif
-        </div>
-    @endif
-
     @if (! empty($guide['guiding_questions']))
         <div>
             <h2 class="{{ $h2 }}">{{ __('The thread through the lesson') }}</h2>

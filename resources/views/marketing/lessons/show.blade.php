@@ -76,6 +76,18 @@
             </section>
         @endif
 
+        {{-- The curriculum this lesson covers, each row linking to that goal's own page. --}}
+        @php $curriculum = $lesson->curriculumGoals; @endphp
+        @if ($curriculum->isNotEmpty())
+            <section class="mt-12 text-slate-300">
+                <h2 class="font-history text-2xl font-light text-white">{{ __('Curriculum') }}</h2>
+                <x-curriculum.goal-table class="mt-4" :goals="$curriculum" fit />
+                @if (! empty($lesson->teacher_guide['curriculum_note']))
+                    <p class="mt-4 text-sm">{{ $lesson->teacher_guide['curriculum_note'] }}</p>
+                @endif
+            </section>
+        @endif
+
         @if ($chapters->isNotEmpty())
             <section class="mt-12">
                 <h2 class="font-history text-2xl font-light text-white">{{ __('In this lesson') }}</h2>

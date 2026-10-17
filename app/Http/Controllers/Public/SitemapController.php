@@ -46,6 +46,12 @@ class SitemapController extends Controller
                 );
             }
 
+            // The Dutch curriculum pages: Dutch only, so one URL each and no alternates.
+            $entries[] = $this->url(route('public.curriculum'), '0.6', 'monthly', null, '');
+            foreach (\App\Models\CurriculumGoal::query()->orderBy('sort')->pluck('slug') as $slug) {
+                $entries[] = $this->url(route('public.curriculum.goal', $slug), '0.5', 'monthly', null, '');
+            }
+
             // Articles come from WordPress. The index only earns a place once something is published
             // there, so an empty feed keeps it out of the sitemap entirely.
             $articles = app(\App\Services\WordPressContent::class)->posts(50);

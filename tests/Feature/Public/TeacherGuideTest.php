@@ -71,7 +71,6 @@ class TeacherGuideTest extends TestCase
         $this->page($this->lesson($this->guide()))
             ->assertSee(self::GOAL)
             ->assertSee('Wat was de VOC?')
-            ->assertSee('Canonvenster: VOC en WIC')
             ->assertSee('Kun je een land ontdekken als daar al mensen wonen?')
             ->assertSee('Moeten leerlingen alle plaatsnamen onthouden?');
     }
@@ -97,6 +96,7 @@ class TeacherGuideTest extends TestCase
         $lesson = $this->lesson(null);
         $lesson->update(['lesson_code' => 'W24VRI']);
 
+        $this->artisan('curriculum:import')->assertSuccessful();
         $this->artisan('lessons:guide', ['code' => 'w24vri'])->assertSuccessful();
 
         $this->page($lesson->refresh())

@@ -333,6 +333,16 @@ class Lesson extends Model
         return $this->hasOne(LessonSource::class)->latestOfMany();
     }
 
+    /** The kerndoelen, tijdvakken, kenmerkende aspecten and Canon windows this lesson covers. */
+    public function curriculumGoals(): BelongsToMany
+    {
+        return $this->belongsToMany(CurriculumGoal::class)
+            ->withPivot('fit')
+            ->withTimestamps()
+            ->orderByRaw("CASE type WHEN 'canonvenster' THEN 1 WHEN 'tijdvak' THEN 2 WHEN 'kenmerkend_aspect' THEN 3 ELSE 4 END")
+            ->orderBy('sort');
+    }
+
     /**
      * The other lessons in this lesson's translation group, ordered by language.
      *

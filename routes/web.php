@@ -55,6 +55,14 @@ Route::get('/articles', [\App\Http\Controllers\Public\ArticleController::class, 
 Route::get('/articles/{slug}', [\App\Http\Controllers\Public\ArticleController::class, 'show'])
     ->name('public.article');
 
+// The Dutch curriculum: kerndoelen, tijdvakken, kenmerkende aspecten and Canon windows, a page
+// each with the lessons that cover it. A Dutch system, so Dutch only (Bart, 2026-10-17).
+Route::get('/nl/curriculum', [\App\Http\Controllers\Public\CurriculumController::class, 'index'])
+    ->name('public.curriculum');
+Route::get('/nl/curriculum/{slug}', [\App\Http\Controllers\Public\CurriculumController::class, 'show'])
+    ->where('slug', '[a-z0-9-]+')
+    ->name('public.curriculum.goal');
+
 // The other languages, prefixed and locale-aware.
 Route::prefix('{locale}')
     ->whereIn('locale', ['nl', 'de', 'fr', 'it'])

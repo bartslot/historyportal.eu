@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Models\CurriculumGoal;
 use App\Models\Lesson;
 use Illuminate\Console\Command;
 
@@ -42,8 +43,25 @@ class ApplyTeacherGuide extends Command
             return self::FAILURE;
         }
 
+        // The curriculum is linked data (curriculum_goal_lesson), not guide text: resolve every key
+        // first, so a typo fails the whole run instead of saving half.
+        $links = [];
+        foreach ((array) ($guide['curriculum'] ?? []) as $key => $fit) {
+            $goal = CurriculumGoal::findByKey((string) $key);
+            if ($goal === null || ! in_array($fit, CurriculumGoal::FITS, true)) {
+                $this->error("Unknown curriculum goal or fit: {$key} => {$fit}. Run curriculum:import first?");
+
+                return self::FAILURE;
+            }
+            $links[$goal->id] = ['fit' => $fit];
+        }
+        unset($guide['curriculum']);
+
         $lesson->update(['teacher_guide' => $guide]);
-        $this->info("Guide written to lesson {$lesson->id} ({$lesson->title}).");
+        if ($links !== []) {
+            $lesson->curriculumGoals()->sync($links);
+        }
+        $this->info("Guide written to lesson {$lesson->id} ({$lesson->title}), ".count($links).' curriculum links.');
 
         return self::SUCCESS;
     }

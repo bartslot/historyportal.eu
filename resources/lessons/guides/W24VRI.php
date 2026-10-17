@@ -36,13 +36,14 @@ return [
             'Ervaren dat historische personen de afloop van gebeurtenissen niet konden voorspellen.',
         ]],
     ],
+    // Linked into curriculum_goal_lesson by lessons:guide (keys: see resources/curriculum/nl-vo.php).
     'curriculum' => [
-        ['part' => 'Canonvenster: VOC en WIC', 'link' => 'Directe aansluiting'],
-        ['part' => 'Tijdvak 6: Regenten en vorsten (1600–1700)', 'link' => 'Directe aansluiting'],
-        ['part' => 'Kenmerkend aspect: Ontstaan van handelskapitalisme en een wereldeconomie', 'link' => 'Directe aansluiting'],
-        ['part' => 'Kerndoel 37', 'link' => 'Gebeurtenissen en personen in hun historische tijd plaatsen'],
-        ['part' => 'Kerndoel 40', 'link' => 'Historische bronnen gebruiken'],
-        ['part' => 'Kerndoel 36', 'link' => 'Vragen stellen en een standpunt onderbouwen'],
+        'canon:14' => 'direct',
+        'tijdvak:6' => 'direct',
+        'ka:6.3' => 'direct',
+        'kerndoel:37' => 'direct',
+        'kerndoel:40' => 'direct',
+        'kerndoel:36' => 'direct',
     ],
     'curriculum_note' => 'De SLO-leerdoelenkaart koppelt de VOC expliciet aan overzeese expansie en het ontstaan van een wereldeconomie.',
     'guiding_questions' => [

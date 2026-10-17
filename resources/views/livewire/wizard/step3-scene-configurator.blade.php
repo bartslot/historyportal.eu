@@ -1128,6 +1128,14 @@
                 @endunless
             </div>
 
+            {{-- CURRICULUM: kerndoelen, tijdvakken, kenmerkende aspecten and Canon windows this lesson
+                 covers (Bart, 2026-10-17). wire:ignore for the same reason as the captions above. --}}
+            @unless (auth()->user()?->isGuestDemo())
+                <div class="mt-6 border-t border-slate-700/50 pt-4" wire:ignore>
+                    <livewire:wizard.curriculum-picker :lesson="$lesson" :key="'curriculum-'.$lesson->id" />
+                </div>
+            @endunless
+
             {{-- POSTER — the lesson's cover image (Bart, 2026-09-29): Auto (the first picture the lesson
                  has) | Scene (one scene's picture) | Image (an upload). Never a stand-in portrait:
                  no picture yet shows as an empty tile. --}}
