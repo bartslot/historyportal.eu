@@ -35,6 +35,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'lesson/*/quiz-score',
 
+            // The player's anonymous telemetry, for the same reasons: public, throttled, untrusted
+            // input, and its exit batch is a sendBeacon, which cannot carry a CSRF header. The
+            // stateful API checks CSRF on same-site requests, so every batch 419'd (PM, 2026-10-18).
+            'api/lesson/*/telemetry',
+
             // Stripe posts from its own servers, so there is no session and no token to send. What
             // replaces CSRF here is the signature check in StripeWebhookController, which verifies
             // every request against STRIPE_WEBHOOK_SECRET and refuses anything it cannot verify.

@@ -270,7 +270,11 @@ final class SceneDialogue
                 ?? throw new RuntimeException("No audio for {$label}, {$voice}.");
             // The provider chain falls through silently; a line in someone else's voice is wrong. That
             // includes the narrator: a refused ElevenLabs voice once fell back to an English default.
-            if ($this->tts->lastProvider() !== $provider) {
+            // Except an edge-tts voice read by Azure in that same voice: edge is refused from the
+            // server and its voice ids are Azure Neural names (TtsService), the rule a plain scene
+            // follows too (Scene::narrationWasDowngraded). That is the narrator, not a stand-in.
+            $sameVoice = $provider === 'edge_tts' && $this->tts->lastProvider() === 'azure' && $this->tts->lastVoice() === $voice;
+            if ($this->tts->lastProvider() !== $provider && ! $sameVoice) {
                 throw new RuntimeException(ucfirst($label).' came from '.($this->tts->lastProvider() ?? 'nothing').", not {$provider}.");
             }
             $disk->put($cached, $audio);
