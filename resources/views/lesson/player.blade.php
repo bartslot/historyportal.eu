@@ -631,7 +631,7 @@
                             <button type="button" x-show="_hasSlides" @click="previousSlide()" :disabled="!canSkip || _sceneIndex <= 0"
                                     data-tooltip="{{ __('Previous') }}" data-tooltip-key="←" aria-label="{{ __('Previous') }}"
                                     class="group flex h-10 w-10 items-center justify-center rounded-lg text-white/85 transition hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 disabled:pointer-events-none disabled:opacity-35">
-                                <svg class="h-6 w-6 shadow-sm transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
+                                <svg class="h-6 w-6 transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
                                      viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                                     <g transform="matrix(-1 0 0 1 24 0)">
                                         <path stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" d="M4.5 6.6c0-.87.95-1.4 1.7-.96l8.9 5.4a1.12 1.12 0 0 1 0 1.92l-8.9 5.4c-.75.45-1.7-.09-1.7-.96V6.6Z"/>
@@ -644,11 +644,11 @@
                                     :data-tooltip="playbackPaused ? @js(__('Play')) : @js(__('Pause'))" data-tooltip-key="K"
                                     :aria-label="playbackPaused ? @js(__('Play')) : @js(__('Pause'))"
                                     class="group flex h-11 w-11 items-center justify-center rounded-lg text-white transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70">
-                                <svg x-show="playbackPaused" class="h-8 w-8 shadow-sm transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
+                                <svg x-show="playbackPaused" class="h-8 w-8 transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
                                      viewBox="0 0 24 24" fill="currentColor" stroke-width="1.5" aria-hidden="true">
                                     <path d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z"/>
                                 </svg>
-                                <svg x-show="!playbackPaused" x-cloak class="h-8 w-8 shadow-sm transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
+                                <svg x-show="!playbackPaused" x-cloak class="h-8 w-8 transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
                                      viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5"/>
                                 </svg>
@@ -657,7 +657,7 @@
                                     :data-stage-waiting="showMapContinue"
                                     data-tooltip="{{ __('Next') }}" data-tooltip-key="→" aria-label="{{ __('Next') }}"
                                     class="group flex h-10 w-10 items-center justify-center rounded-lg text-white/85 transition hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 disabled:pointer-events-none disabled:opacity-35">
-                                <svg class="h-6 w-6 shadow-sm transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
+                                <svg class="h-6 w-6 transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
                                      viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                                     <g>
                                         <path stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" d="M4.5 6.6c0-.87.95-1.4 1.7-.96l8.9 5.4a1.12 1.12 0 0 1 0 1.92l-8.9 5.4c-.75.45-1.7-.09-1.7-.96V6.6Z"/>
@@ -677,11 +677,11 @@
                                         :aria-label="audioMuted ? @js(__('Unmute')) : @js(__('Mute'))"
                                         class="group flex h-10 w-10 items-center justify-center rounded-lg transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
                                         :class="audioMuted ? 'text-white/60 hover:text-white' : 'text-white/85 hover:text-white'">
-                                    <svg x-show="!audioMuted" class="h-6 w-6 shadow-sm transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
+                                    <svg x-show="!audioMuted" class="h-6 w-6 transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
                                          viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M19.114 5.636a9 9 0 0 1 0 12.728M16.463 8.288a5.25 5.25 0 0 1 0 7.424M6.75 8.25l4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z"/>
                                     </svg>
-                                    <svg x-show="audioMuted" x-cloak class="h-6 w-6 shadow-sm transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
+                                    <svg x-show="audioMuted" x-cloak class="h-6 w-6 transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
                                          viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 9.75 19.5 12m0 0 2.25 2.25M19.5 12l2.25-2.25M19.5 12l-2.25 2.25m-10.5-6 4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z"/>
                                     </svg>
@@ -704,7 +704,7 @@
                                     aria-label="{{ __('Audio and subtitles') }}"
                                     class="group relative flex h-10 w-10 items-center justify-center rounded-lg transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
                                     :class="captionsOn ? 'bg-white/10 text-white' : 'text-white/85 hover:text-white'">
-                                <svg class="h-6 w-6 shadow-sm transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
+                                <svg class="h-6 w-6 transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
                                      viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                                     <rect x="2.75" y="5.25" width="18.5" height="13.5" rx="2.25"/>
                                     <path stroke-linecap="round" d="M10 10.4a2.4 2.4 0 1 0 0 3.2M18 10.4a2.4 2.4 0 1 0 0 3.2"/>
@@ -720,7 +720,7 @@
                                     :aria-expanded="chaptersOpen"
                                     class="group flex h-10 w-10 items-center justify-center rounded-lg transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
                                     :class="chaptersOpen ? 'text-white' : 'text-white/85 hover:text-white'">
-                                <svg class="h-6 w-6 shadow-sm transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
+                                <svg class="h-6 w-6 transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
                                      viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"/>
                                 </svg>
@@ -949,10 +949,10 @@
             x-transition:enter-end="opacity-100 scale-100"
             class="absolute inset-0 flex items-center justify-center bg-slate-950/92 backdrop-blur-md pointer-events-auto px-5 py-8 overflow-y-auto"
         >
-            <div class="w-full max-w-2xl rounded-3xl border border-primary/40 bg-slate-950/95 p-7 sm:p-9 shadow-2xl">
+            <div class="w-full max-w-2xl rounded-3xl border border-primary/40 bg-slate-950/95 p-7 sm:p-9">
                 <p class="text-primary text-2xs font-semibold uppercase tracking-[0.3em] mb-3">{{ __('Your Challenge') }}</p>
                 <h2 x-text="lesson.game_title || 'Strategy Challenge'"
-                    class="font-history text-2xl sm:text-4xl font-bold text-[#E1EEF4] leading-tight mb-5 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]"></h2>
+                    class="font-history text-2xl sm:text-4xl font-bold text-[#E1EEF4] leading-tight mb-5"></h2>
                 <div x-text="lesson.game_instructions || 'Work in your teams to decide your strategy, then present it to the class.'"
                      class="whitespace-pre-line text-slate-300 text-sm sm:text-base leading-relaxed max-h-[42vh] overflow-y-auto pr-1"></div>
                 <div class="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-400">
@@ -966,7 +966,7 @@
                     </span>
                 </div>
                 <button @click="beginGame()"
-                    class="mt-7 flex w-full items-center justify-center gap-3 rounded-full bg-primary px-8 py-3.5 text-base font-bold text-slate-950 shadow-[0_0_48px_color-mix(in_oklab,var(--color-primary)_35%,transparent)] transition hover:brightness-110 active:scale-95 sm:w-auto">
+                    class="mt-7 flex w-full items-center justify-center gap-3 rounded-full bg-primary px-8 py-3.5 text-base font-bold text-slate-950 transition hover:brightness-110 active:scale-95 sm:w-auto">
                     <svg class="h-5 w-5 fill-slate-950" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                     <span>{{ __('Begin the challenge') }}</span>
                 </button>
@@ -1021,7 +1021,7 @@
             x-transition:enter-end="opacity-100 translate-y-0"
             class="absolute bottom-16 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 pointer-events-none"
         >
-            <div class="rounded-2xl border border-primary/40 bg-slate-900/90 backdrop-blur-sm px-6 py-4 shadow-2xl">
+            <div class="rounded-2xl border border-primary/40 bg-slate-900/90 backdrop-blur-sm px-6 py-4">
                 <p class="text-primary text-sm font-semibold uppercase tracking-widest mb-1">{{ __('New Intelligence') }}</p>
                 <p x-text="intelDropMessage" class="text-[#E1EEF4] text-base leading-relaxed"></p>
             </div>

@@ -1,7 +1,7 @@
 <div class="min-h-screen bg-base-200 text-base-content pb-32" wire:key="composer-{{ $lesson->id }}">
 
     {{-- Header --}}
-    <div class="sticky top-0 z-10 bg-base-100 border-b border-base-300 shadow">
+    <div class="sticky top-0 z-10 bg-base-100 border-b border-base-300">
         <div class="max-w-3xl mx-auto px-4 py-4">
             <h1 class="text-2xl font-bold">{{ __('Build Your Lesson') }}</h1>
             <p class="text-sm text-base-content/70 mt-1">
@@ -14,7 +14,7 @@
     <div class="max-w-3xl mx-auto px-4 py-6">
 
         @if ($modules->isEmpty())
-            <div class="card bg-base-100 shadow">
+            <div class="card bg-base-100">
                 <div class="card-body items-center text-center">
                     <p class="text-base-content/60">
                         {{ __('No modules yet. Add one to get started.') }}
@@ -38,7 +38,7 @@
     </div>
 
     {{-- Sticky bottom action bar (mobile-first) --}}
-    <div class="fixed bottom-0 left-0 right-0 bg-base-100 border-t border-base-300 shadow-lg">
+    <div class="fixed bottom-0 left-0 right-0 bg-base-100 border-t border-base-300">
         <div class="max-w-3xl mx-auto px-4 py-4 flex gap-2">
             <button
                 type="button"

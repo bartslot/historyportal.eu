@@ -30,7 +30,7 @@
             x-transition:leave="transition ease-in duration-150"
             x-transition:leave-start="opacity-100 translate-y-0"
             x-transition:leave-end="opacity-0 -translate-y-1"
-            class="pointer-events-auto flex w-full max-w-md items-start gap-3 overflow-hidden rounded-lg border border-slate-700/80 bg-slate-900/95 py-3 pl-4 pr-3 shadow-xl backdrop-blur-sm"
+            class="pointer-events-auto flex w-full max-w-md items-start gap-3 overflow-hidden rounded-lg border border-slate-700/80 bg-slate-900/95 py-3 pl-4 pr-3 backdrop-blur-sm"
             {{-- The status colour lives here: a 3px line, not a fill. --}}
             :style="`border-left-width:3px;border-left-color:${accent(t.type)}`"
             :role="t.type === 'error' ? 'alert' : 'status'"

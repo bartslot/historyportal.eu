@@ -658,11 +658,12 @@
         outline: none;
     }
 
-    /* Modal / drawer backdrop */
+    /* Modal: its own surface and a hairline, never a shadow (flat, 2026-10-17). DaisyUI casts a
+       25px shadow off .modal-box from a later layer, hence !important, as .dropdown-content above. */
     .modal-box {
         background: linear-gradient(145deg, oklch(22% 0.033 264) 0%, oklch(15% 0.032 264) 100%);
-        border: 1px solid rgba(255,255,255,0.08);
-        box-shadow: 0 24px 80px rgba(0,0,0,0.7);
+        box-shadow: none !important;
+        border: 1px solid var(--color-panel-hairline) !important;
     }
 
     /* Navbar: frosted glass bar */

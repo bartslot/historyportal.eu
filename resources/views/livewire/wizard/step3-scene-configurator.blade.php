@@ -1217,7 +1217,7 @@
              wire:key="publish-notice"
              x-data x-init="setTimeout(() => $wire.set('publishNotice', null), 5000)">
             <div @class([
-                'flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm shadow-2xl',
+                'flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm',
                 'border-success/40 bg-success/10 text-success' => $publishOk,
                 'border-primary bg-amber-950 text-amber-200' => ! $publishOk,
             ])>
@@ -1492,7 +1492,7 @@
                     const find = () => panel()?.querySelector(obj.section === 'quiz' ? '[data-quiz-section]' : '[data-bg-section]');
                     const flash = (target) => {
                         target.scrollIntoView({ block: 'center', behavior: 'smooth' });
-                        target.style.transition = 'box-shadow .2s';
+                        target.style.transition = 'box- .2s';
                         target.style.boxShadow = '0 0 0 2px #38bdf8';
                         setTimeout(() => { target.style.boxShadow = ''; }, 900);
                     };
@@ -1607,7 +1607,7 @@
     {{-- z-50: must out-stack the z-40 resize handles (rail + object list) — they are later
          fixed siblings, so at equal z they'd sit above this toolbar's DROPDOWNS and swallow
          clicks on menu items (View ▸ Object list was dead at the default rail width). --}}
-    <div class="fixed right-0 top-0 z-50 flex h-16 items-center justify-between border-b border-slate-800 bg-slate-900 px-3 shadow-lg left-0 pl-16"
+    <div class="fixed right-0 top-0 z-50 flex h-16 items-center justify-between border-b border-slate-800 bg-slate-900 px-3 left-0 pl-16"
          wire:ignore
          {{-- fmtOpen/fmtView mirror the Format panel's state (broadcast by the aside via
               inspector-state) so toolbar buttons can show a proper OPEN state — the toolbar is
@@ -1628,7 +1628,7 @@
                 </svg>
             </button>
             <div x-show="viewOpen" x-cloak @click.outside="viewOpen = false" x-transition.opacity.duration.150ms
-                 class="absolute left-0 top-full z-50 mt-1.5 w-56 rounded-xl border border-slate-700 bg-slate-900 p-1.5 shadow-2xl">
+                 class="absolute left-0 top-full z-50 mt-1.5 w-56 rounded-xl border border-slate-700 bg-slate-900 p-1.5">
                 <p class="px-2 py-1 text-2xs uppercase tracking-widest text-slate-500">{{ __('Show') }}</p>
                 <template x-for="item in [
                     { k: 'scenes',  label: @js(__('Scenes')) },
@@ -1673,7 +1673,7 @@
                 <x-icons.plus class="h-6 w-6" />
             </button>
             <div x-show="addOpen" x-cloak @click.outside="addOpen = false" x-transition.opacity.duration.150ms
-                 class="absolute left-0 top-full z-50 mt-1.5 w-56 rounded-xl border border-slate-700 bg-base-300 p-1.5 shadow-2xl" role="menu">
+                 class="absolute left-0 top-full z-50 mt-1.5 w-56 rounded-xl border border-slate-700 bg-base-300 p-1.5" role="menu">
                 <p class="px-2 py-1 text-2xs uppercase tracking-widest text-slate-500">{{ __('Add Scene') }}</p>
                 <button type="button" @click="Livewire.dispatch('scene:add'); addOpen = false"
                         class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
@@ -1799,7 +1799,7 @@
                 </svg>
                             </button>
             <div x-show="open" x-transition x-cloak
-                 class="absolute right-0 top-full z-70 mt-1 w-64 rounded-xl border border-slate-700 bg-base-300 p-2 text-left shadow-2xl">
+                 class="absolute right-0 top-full z-70 mt-1 w-64 rounded-xl border border-slate-700 bg-base-300 p-2 text-left">
                 <label class="mb-2 flex cursor-pointer items-center justify-between gap-3 border-b border-slate-700/50 px-1 pb-2">
                     <span class="text-sm text-slate-200">{{ __('Share with every teacher') }}</span>
                     <input type="checkbox" class="toggle toggle-sm shrink-0" :checked="shared"
@@ -2733,7 +2733,7 @@
 
                 {{-- Overlay search bar, revealed by the icon --}}
                 <div x-show="searching" x-cloak x-transition.opacity.duration.150ms
-                     class="absolute inset-x-0 -top-2.5 z-20 flex items-center gap-3 rounded-xl border border-primary/50 bg-base-200 px-4 py-3 shadow-2xl">
+                     class="absolute inset-x-0 -top-2.5 z-20 flex items-center gap-3 rounded-xl border border-primary/50 bg-base-200 px-4 py-3">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5 flex-none text-slate-400">
                         <circle cx="11" cy="11" r="7"/><path stroke-linecap="round" d="m20 20-3.5-3.5"/>
                     </svg>

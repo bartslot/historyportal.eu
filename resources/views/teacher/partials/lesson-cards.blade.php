@@ -68,7 +68,7 @@
                                     <span class="text-2xs text-slate-300">{{ $lesson->status->label() }}</span>
                                 </div>
 
-                                <h4 class="absolute inset-x-0 bottom-0 group-hover:translate-y-[-2em] p-4 text-base font-semibold leading-snug text-slate-100 drop-shadow group-hover:opacity-100 transition-transform">
+                                <h4 class="absolute inset-x-0 bottom-0 group-hover:translate-y-[-2em] p-4 text-base font-semibold leading-snug text-slate-100 group-hover:opacity-100 transition-transform">
                                     {{ $lesson->title ?: $lesson->topic }}
                                 </h4>
                                 <p class="absolute opacity-0 left-3 bottom-3 rounded-full border border-white/20 px-2 py-1 text-xs text-white bg-white/20 backdrop-blur-sm group-hover:opacity-100 transition-opacity">

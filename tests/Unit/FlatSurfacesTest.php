@@ -51,4 +51,50 @@ class FlatSurfacesTest extends TestCase
 
         $this->assertSame([], $found);
     }
+
+    /**
+     * No shadow utility in any view (PM, 2026-10-17): dropdowns, popovers and modals separate from
+     * the page by a 1px hairline and their own background, never a shadow. Comments and translated
+     * text are left out of the scan; `shadow-none` removes one and is fine.
+     *
+     * The allowlist is exact (file => tokens), each with its reason:
+     */
+    private const SHADOW_ALLOWLIST = [
+        // The spotlight: a huge spread shadow is the dimmed page around a cut-out. A scrim, not depth.
+        'livewire/onboarding/welcome-tour.blade.php' => ['shadow-[0_0_0_9999px_rgba(2,6,23,0.85)]'],
+        'components/landing/product-tour-panel.blade.php' => ['shadow-[0_0_0_9999px_rgb(2_6_23/var(--tour-dim))]'],
+        // White text and icons over a picture nobody chose for contrast (the stage, a scene thumb):
+        // the drop-shadow keeps them readable on a light painting. Legibility, not depth.
+        'components/lesson/timeline.blade.php' => ['drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]'],
+        'components/lesson/scene-thumb.blade.php' => ['drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]'],
+        'components/wizard/style-picker.blade.php' => ['drop-shadow'],
+        'components/lesson-player.blade.php' => ['drop-shadow-lg'],
+        'lesson/player.blade.php' => [
+            'drop-shadow-[0_4px_14px_rgba(0,0,0,0.8)]', 'drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]',
+            'drop-shadow-[0_4px_8px_rgba(0,0,0,0.9)]', 'drop-shadow-[0_8px_16px_rgba(0,0,0,0.9)]',
+        ],
+    ];
+
+    public function test_no_view_uses_a_shadow_utility(): void
+    {
+        $found = [];
+        foreach ((new Finder)->files()->in(dirname(__DIR__, 2).'/resources/views')->name('*.blade.php') as $file) {
+            $code = preg_replace(['/\{\{--.*?--\}\}/s', '/<!--.*?-->/s', "/__\\('(?:[^'\\\\]|\\\\.)*'/s"], '', $file->getContents());
+            preg_match_all('/(?<![\w-])(?:[a-z-]+:)*((?:drop-)?shadow(?:-[^\s"\'}]+)?)(?=[\s"\'}]|$)/', (string) $code, $m);
+            $allowed = self::SHADOW_ALLOWLIST[$file->getRelativePathname()] ?? [];
+            $bad = array_values(array_diff(array_unique($m[1]), ['shadow-none'], $allowed));
+            if ($bad !== []) {
+                $found[] = $file->getRelativePathname().': '.implode(' ', $bad);
+            }
+        }
+
+        $this->assertSame([], $found);
+    }
+
+    /** DaisyUI gives .modal-box a 25px shadow; ours is a hairline instead. */
+    public function test_a_modal_box_has_a_hairline_and_no_shadow(): void
+    {
+        $css = (string) file_get_contents(dirname(__DIR__, 2).'/resources/css/app.css');
+        $this->assertMatchesRegularExpression('/\.modal-box\s*\{[^}]*box-shadow:\s*none[^}]*border:\s*1px solid var\(--color-panel-hairline\)/', $css);
+    }
 }

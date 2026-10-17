@@ -43,7 +43,7 @@
                         x-show="open"
                         x-transition.origin.top.right
                         @click.outside="open = false"
-                        class="absolute right-0 top-12 z-30 w-72 rounded-xl border border-slate-700 bg-slate-900 p-4 shadow-2xl"
+                        class="absolute right-0 top-12 z-30 w-72 rounded-xl border border-slate-700 bg-slate-900 p-4"
                         role="dialog"
                         aria-label="{{ __('Your narrator') }}"
                     >

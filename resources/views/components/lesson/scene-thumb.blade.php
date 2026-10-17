@@ -142,7 +142,7 @@
             title="{{ __('Delete scene') }}"
             aria-label="{{ __('Delete scene') }}"
             class="absolute -right-1.5 -top-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-full
-                   border border-slate-600 bg-slate-900 text-slate-300 opacity-0 shadow-lg transition
+                   border border-slate-600 bg-slate-900 text-slate-300 opacity-0 transition
                    hover:border-error hover:bg-error hover:text-white
                    focus-visible:opacity-100 group-hover/thumb:opacity-100">
         <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">

@@ -45,7 +45,7 @@
                     </a>
                     <div class="dropdown dropdown-end">
                         <div tabindex="0" role="button" class="btn btn-ghost btn-xs">⋯</div>
-                        <ul tabindex="0" class="dropdown-content menu menu-sm z-10 w-40 rounded-box bg-base-100 p-2 shadow">
+                        <ul tabindex="0" class="dropdown-content menu menu-sm z-10 w-40 rounded-box bg-base-100 p-2">
                             <li><a href="{{ route('teacher.classes.manage', $class) }}">{{ __('Manage') }}</a></li>
                             <li>
                                 <button type="button" class="btn btn-ghost btn-xs text-error"

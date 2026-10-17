@@ -70,7 +70,7 @@
 
                         <!-- <div class="absolute left-0 right-0 top-0 border border-white/10 bg-black/10 p-2 backdrop-blur">
                             <div class="flex items-center gap-3">
-                                <span class="flex h-10 w-10 flex-none items-center justify-center rounded-full text-4xl text-white shadow-sm font-history">
+                                <span class="flex h-10 w-10 flex-none items-center justify-center rounded-full text-4xl text-white font-history">
                                     {{ $loop->iteration }}
                                 </span>
                                 
@@ -126,7 +126,7 @@
 
                             <div class="absolute left-3 right-3 top-3 rounded-[1rem] border border-white/10 bg-slate-950/70 px-3 py-2 backdrop-blur">
                                 <div class="flex items-center gap-3">
-                                    <span class="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-white text-base font-semibold text-slate-950 shadow-sm">
+                                    <span class="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-white text-base font-semibold text-slate-950">
                                         {{ $loop->iteration }}
                                     </span>
                                     <div class="min-w-0">

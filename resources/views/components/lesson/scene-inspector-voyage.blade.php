@@ -60,28 +60,28 @@
     <div role="group" aria-label="{{ __('Route view') }}" class="mt-3 grid grid-cols-2 gap-1 rounded-xl bg-slate-800/60 p-1">
         <button type="button" wire:click="setVoyageOverview(false)"
                 x-on:click="if (wide) { wide = false; window.__voyageTour?.hideOverview?.() }"
-                :class="!wide ? 'bg-primary text-slate-950 shadow-sm' : 'text-slate-300 hover:text-slate-100'"
+                :class="!wide ? 'bg-primary text-slate-950' : 'text-slate-300 hover:text-slate-100'"
                 class="rounded-lg py-1.5 text-xs font-medium transition-colors">{{ __('Single') }}</button>
         <button type="button" wire:click="setVoyageOverview(true)"
                 x-on:click="if (!wide) { wide = true; if (tab === 'leg') tab = 'map'; window.__voyageTour?.showOverview?.() }"
-                :class="wide ? 'bg-primary text-slate-950 shadow-sm' : 'text-slate-300 hover:text-slate-100'"
+                :class="wide ? 'bg-primary text-slate-950' : 'text-slate-300 hover:text-slate-100'"
                 class="rounded-lg py-1.5 text-xs font-medium transition-colors">{{ __('Overview') }}</button>
     </div>
 
     {{-- TABS --}}
     <div role="tablist" class="mt-3 grid gap-1 rounded-xl bg-slate-800/60 p-1" :class="wide ? 'grid-cols-2' : 'grid-cols-3'">
         <button type="button" role="tab" x-on:click="tab = 'leg'" x-show="!wide"
-                :class="tab === 'leg' ? 'bg-primary text-slate-950 shadow-sm' : 'text-slate-300 hover:text-slate-100'"
+                :class="tab === 'leg' ? 'bg-primary text-slate-950' : 'text-slate-300 hover:text-slate-100'"
                 class="rounded-lg py-1.5 text-xs font-medium transition-colors">
             Waypoint
         </button>
         <button type="button" role="tab" x-on:click="tab = 'map'"
-                :class="tab === 'map' ? 'bg-primary text-slate-950 shadow-sm' : 'text-slate-300 hover:text-slate-100'"
+                :class="tab === 'map' ? 'bg-primary text-slate-950' : 'text-slate-300 hover:text-slate-100'"
                 class="rounded-lg py-1.5 text-xs font-medium transition-colors">
             Map
         </button>
         <button type="button" role="tab" x-on:click="tab = 'route'"
-                :class="tab === 'route' ? 'bg-primary text-slate-950 shadow-sm' : 'text-slate-300 hover:text-slate-100'"
+                :class="tab === 'route' ? 'bg-primary text-slate-950' : 'text-slate-300 hover:text-slate-100'"
                 class="rounded-lg py-1.5 text-xs font-medium transition-colors">
             Route
         </button>

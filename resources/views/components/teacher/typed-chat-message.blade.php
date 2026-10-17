@@ -7,7 +7,7 @@
     <div class="chat-header mb-1 text-xs text-base-content/55">
         {{ __('Lesson assistant') }}
     </div>
-    <div class="chat-bubble p-3 max-w-[92%] bg-base-300 text-sm leading-5 text-base-content shadow-sm sm:max-w-[82%] sm:text-base">
+    <div class="chat-bubble p-3 max-w-[92%] bg-base-300 text-sm leading-5 text-base-content sm:max-w-[82%] sm:text-base">
         @if ($animate)
             <span
                 x-data="{
