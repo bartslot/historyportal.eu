@@ -5707,8 +5707,11 @@ class Step3SceneConfigurator extends Component
                 $kind = $s->kind === 'game'
                     ? ucfirst((string) ($s->game_type ?: 'game'))
                     : ucfirst((string) $s->kind);
-                // In the checker's words (LessonProblems), as the dot and the Problems view say it.
-                $why = (\App\Support\LessonProblems::forScene($s)[0]['message'] ?? null) ?? $this->missingAssetReason($s) ?? match ((string) $s->status) {
+                // Everything a blank scene lacks in one phrase first ("needs a script, a background
+                // image and narration audio"); else the checker's words (LessonProblems) as the dot and
+                // the Problems view say it, without their full stop since the notice adds its own.
+                $checker = \App\Support\LessonProblems::forScene($s)[0]['message'] ?? null;
+                $why = $this->missingAssetReason($s) ?? ($checker !== null ? rtrim($checker, '.') : null) ?? match ((string) $s->status) {
                     'generating' => __('still generating'),
                     'failed' => __('failed, regenerate it'),
                     'pending' => __('not generated yet'),
