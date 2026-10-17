@@ -47,7 +47,7 @@
                         ? \App\Support\MediaUrl::of($lesson->poster_image)
                         : \App\Support\MediaUrl::of($lesson->firstScene?->image_path);
                 @endphp
-                <article class="group overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/40 transition hover:-translate-y-0.5 hover:border-primary/40">
+                <article class="group overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/40 transition hover:border-primary/40">
                     <a href="{{ Seo::url('lesson', ['slug' => $slug]) }}" class="block">
                         {{-- Not every lesson has a poster yet. An empty 16:10 box reads as a broken
                              image, so the fallback is a deliberate title card instead. --}}

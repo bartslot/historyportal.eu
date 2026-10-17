@@ -1,4 +1,4 @@
-<div class="card bg-base-200/80 backdrop-blur border border-base-300 shadow-lg w-64">
+<div class="card bg-base-200/80 backdrop-blur border border-base-300 w-64">
     <div class="card-body p-4 gap-2">
         <span class="text-xs font-semibold opacity-70">{{ __('Rate this lesson') }}</span>
 

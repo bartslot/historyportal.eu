@@ -66,7 +66,7 @@
                 {{-- Buildable now --}}
                 @foreach ($availableTypes as $type)
                     <button type="button" wire:click="addModule('{{ $type->value }}')"
-                        class="group flex flex-col gap-2 rounded-box border border-base-300 bg-base-200 p-2 text-left transition hover:border-primary hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+                        class="group flex flex-col gap-2 rounded-box border border-base-300 bg-base-200 p-2 text-left transition hover:border-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
                         <div class="h-16 w-full overflow-hidden rounded-md ring-1 ring-base-300 transition group-hover:ring-primary sm:h-20">
                             @include('lessons.modules.picker-thumb', ['type' => $type])
                         </div>

@@ -6,7 +6,7 @@
     $showAnswers = $audience->isTeacher();
 @endphp
 
-<section class="card bg-base-200 lp-bg-card shadow-xl">
+<section class="card bg-base-200 lp-bg-card">
     <div class="card-body gap-4">
         <h2 class="card-title">{{ $cfg['question'] ?? __('Question') }}</h2>
 

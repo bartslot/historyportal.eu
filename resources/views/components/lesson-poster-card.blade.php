@@ -10,8 +10,8 @@
     {{ $attributes->class('group relative block rounded-[1.35rem] focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60') }}
 >
     <div class="lp-grain-poster relative aspect-[5/8] overflow-hidden rounded-[1.35rem] border border-white/10
-                bg-black/40 shadow-[0_16px_34px_rgba(0,0,0,0.35)] transition duration-300 ease-out
-                group-hover:-translate-y-1 group-hover:border-sky-400/25 group-hover:shadow-[0_24px_52px_rgba(0,0,0,0.5)]">
+                bg-black/40 transition duration-300 ease-out
+                group-hover:border-sky-400/25">
 
         @if ($cover)
             <img src="{{ $cover }}" alt="{{ $lesson->title }}"

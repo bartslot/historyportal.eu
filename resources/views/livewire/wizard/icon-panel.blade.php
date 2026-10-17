@@ -153,7 +153,7 @@
                             data-tooltip="{{ $icon->title }}"
                             class="flex cursor-grab items-center justify-center rounded-lg
                                    transition-colors active:cursor-grabbing
-                                   {{ $isPicture ? 'lp-paper hover:ring-2 hover:ring-primary' : ($icon->isRaster() ? 'lp-paper p-1 hover:ring-2 hover:ring-primary' : 'p-2 hover:bg-slate-700/60') }}"
+                                   {{ $isPicture ? 'lp-paper ring-1 ring-transparent hover:ring-slate-400' : ($icon->isRaster() ? 'lp-paper p-1 ring-1 ring-transparent hover:ring-slate-400' : 'p-2 hover:bg-slate-700/60') }}"
                             aria-label="{{ $icon->title }}">
                         <img src="{{ $icon->url() }}" alt="" draggable="false" loading="lazy" decoding="async"
                              :srcset="srcset(@js($icon->url()))" :sizes="sizes(@js($icon->url()), {{ $isPicture ? 2 : 1 }})"

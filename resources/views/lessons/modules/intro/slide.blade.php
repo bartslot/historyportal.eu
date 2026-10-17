@@ -3,7 +3,7 @@
     $cfg = $module->config ?? [];
 @endphp
 
-<section class="card bg-base-200 lp-bg-card shadow-xl">
+<section class="card bg-base-200 lp-bg-card">
     <div class="card-body items-center gap-4 text-center">
         <h1 class="card-title text-3xl">
             {{ $cfg['heading'] ?? $module->title ?? __('Lesson') }}
