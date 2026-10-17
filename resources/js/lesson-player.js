@@ -57,6 +57,7 @@ import { captionVisible } from './scene/SceneOverlay.js'
 import { gradientCss } from './scene/background-gradient.js'
 import { t } from './i18n.js'
 import { mountBigCountdown } from './big-countdown.js'
+import { startSceneIndex, mayAutoplay } from './player-start.js'
 import { mountTitlePoster as mountPoster, posterFit, episodeSize, posterVariants, variantFor, hasUpright } from './title-poster.js'
 import { QR, qrOptions, layoutTitleQr, drawQrDebug, coverRect, pictureSize } from './title-qr.js'
 import { placeExpectStrip } from './title-expect.js'
@@ -425,8 +426,8 @@ Alpine.data('lessonGame', (lesson) => ({
       try {
         const params = new URLSearchParams(window.location.search)
         this._embed = params.get('embed') === '1'
-        const sc = parseInt(params.get('scene'), 10)
-        this._startSceneIndex = Number.isFinite(sc) ? Math.max(0, sc) : 0
+        // ?scene_id= (the editor's Play: a scene id) or ?scene= (an index); see player-start.js.
+        this._startSceneIndex = startSceneIndex(lesson.scenes, params)
         // Autoplay only when a human actually asked for it in THIS visit.
         //
         // The wizard's Preview step embeds this player with autoplay=1, which is right when the
@@ -437,9 +438,9 @@ Alpine.data('lessonGame', (lesson) => ({
         // hasBeenActive is false on a cold load and true once the page has been clicked or typed
         // in, which is exactly the distinction. Browsers without it (Safari) keep the old
         // behaviour; their own autoplay policy is stricter anyway.
+        // The editor's Play is a click in the page AROUND this frame: that counts too (mayAutoplay).
         if (params.get('autoplay') === '1') {
-          const asked = window.navigator.userActivation?.hasBeenActive ?? true
-          if (asked) {
+          if (mayAutoplay(window)) {
             setTimeout(() => { if (this.phase === 'TITLE_SCREEN') this.startLesson() }, 300)
           }
         }
