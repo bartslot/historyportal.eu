@@ -25,7 +25,7 @@
                     <x-carousel aria-label="{{ __($shelf['label']) }}">
                         @foreach($shelf['lessons'] as $lesson)
                             @php
-                                $cardImage = $lesson->cardImageUrl();
+                                $cardImage = $lesson->tallCardImageUrl();   // a 2:3 card: the upright poster when there is one
                                 $isGenerating = $lesson->status->isGenerating();
                                 // Open an existing lesson on Preview; see Lesson::cardEntryStep().
                                 $entryStep = $lesson->cardEntryStep();
@@ -108,8 +108,8 @@
                         <a href="{{ route('lesson.play', ['lessonCode' => $lesson->lesson_code]) }}"
                            class="absolute inset-0"
                            aria-label="{{ $lesson->title ?: $lesson->topic }}">
-                            @if($lesson->cardImageUrl())
-                                <img src="{{ $lesson->cardImageUrl() }}" alt=""
+                            @if($lesson->tallCardImageUrl())
+                                <img src="{{ $lesson->tallCardImageUrl() }}" alt=""
                                      class="h-full w-full object-cover transition duration-300 group-hover:scale-105">
                             @endif
                             <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950 via-slate-950/70 to-transparent p-3 pt-10">

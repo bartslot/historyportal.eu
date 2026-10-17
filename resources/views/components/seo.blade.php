@@ -13,6 +13,9 @@
     'page' => null,
     'params' => [],
     'image' => null,
+    // A tall picture (2:3) for platforms that show one well (Pinterest). It is the SECOND
+    // og:image: link previews (Facebook, LinkedIn, WhatsApp, X) use the first, landscape one.
+    'tallImage' => null,
     'type' => 'website',
     'graph' => null,
     'noindex' => false,
@@ -66,6 +69,11 @@
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta property="og:image:alt" content="History Portal">
+@endif
+@if ($tallImage)
+    <meta property="og:image" content="{{ $tallImage }}">
+    <meta property="og:image:width" content="1000">
+    <meta property="og:image:height" content="1500">
 @endif
 <meta property="og:locale" content="{{ str_replace('-', '_', \App\Support\Locales::region(app()->getLocale())) }}">
 

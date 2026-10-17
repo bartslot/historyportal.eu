@@ -56,6 +56,23 @@ export function posterFit (viewW, viewH, poster, gutter = PHONE_GUTTER_PX) {
   return { left: viewW / 2 - cx * width, top: viewH / 2 - cy * height, width, height }
 }
 
+/**
+ * Pure: a candidate's two variants, split once so each keeps its identity: the landscape poster
+ * (its own data, without the portrait) and the upright one (portrait.json beside poster.json in
+ * the candidate's folder, App\Support\TitlePoster), or null when it has none.
+ */
+export function posterVariants (poster) {
+  if (!poster) return null
+  const { portrait = null, ...landscape } = poster
+  return { landscape, portrait: portrait ? { ...portrait } : null }
+}
+
+/** Pure: the variant for a view: the portrait in an upright view when there is one, else the landscape. */
+export function variantFor (variants, viewW, viewH) {
+  if (!variants) return null
+  return viewH > viewW && variants.portrait ? variants.portrait : variants.landscape
+}
+
 // Where a tall phone puts the cover's focus: a little above the middle, clear of the Start bar.
 export const COVER_FOCUS_Y = 0.42
 
@@ -227,6 +244,7 @@ function layerEl (layer, groupBox, index) {
 export function mountTitlePoster (host, stage, poster) {
   if (!host || !stage || !poster?.layers?.length) return () => {}
   const before = stage.firstChild
+  const built = []
   const starters = []
   const byId = {}
   let index = 0
@@ -239,6 +257,7 @@ export function mountTitlePoster (host, stage, poster) {
       el.appendChild(made.box)
     }
     stage.insertBefore(el, before)
+    built.push(el)
   }
 
   const fit = () => {
@@ -272,11 +291,14 @@ export function mountTitlePoster (host, stage, poster) {
   const onVisibility = () => stage.classList.toggle('is-paused', document.hidden)
   document.addEventListener('visibilitychange', onVisibility)
 
+  // Stopping also takes the layers out, so a poster mounted again (the view turned upright, a
+  // portrait variant replacing the landscape one) never stacks on the one before it.
   const stop = () => {
     clearTimeout(timer)
     ro?.disconnect()
     stageRo?.disconnect()
     document.removeEventListener('visibilitychange', onVisibility)
+    built.forEach(el => el.remove())
   }
   // Fit now, not on the next resize callback: the title screen measures the frame right after it moves the poster.
   stop.refit = fit

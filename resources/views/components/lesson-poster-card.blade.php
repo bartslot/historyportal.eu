@@ -3,7 +3,7 @@
 {{-- The one lesson poster card, app-wide: the landing carousel and the hero's finished lesson
      draw the same thing. Width and row-positioning classes come from the caller, because a
      carousel cell and a hero card sit differently but ARE the same card. --}}
-@php $cover = $lesson->cardImageUrl(); @endphp
+@php $cover = $lesson->tallCardImageUrl(); @endphp
 
 <a
     href="{{ route('lesson.play', $lesson->lesson_code) }}"

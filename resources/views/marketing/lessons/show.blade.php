@@ -22,6 +22,7 @@
             :title="$heading"
             :description="$description"
             :image="$poster"
+            :tall-image="$lesson->titlePosterStillUrl()"
             type="article"
             :graph="Seo::lessonGraph($lesson)"
         />

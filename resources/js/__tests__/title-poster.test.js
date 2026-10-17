@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import {
+  posterVariants, variantFor,
   posterFit, boxInGroup, groupRuns, frameCqw, layerTransform, entrancePlan, episodeSize, EPISODE_SHARE,
   ENTRANCE_BUDGET_MS, PHONE_GUTTER_PX, mountTitlePoster, coverBackdrop, COVER_FOCUS_Y,
 } from '../title-poster.js'
@@ -205,5 +206,48 @@ describe('the episode line', () => {
 
   it('keeps a size already small enough', () => {
     expect(episodeSize(poster(0.8))).toBe(0.8)
+  })
+})
+
+/**
+ * The upright Tasman poster (Bart, 2026-10-17, Figma 2348:1089): a phone held upright shows the
+ * candidate's portrait.json, the same data as the landscape one; a landscape view keeps its own.
+ */
+describe('the poster for the view\'s orientation', () => {
+  const landscape = { frame: { w: 8696, h: 5679 }, layers: [{ id: 'a' }], portrait: { frame: { w: 5679, h: 8696 }, layers: [{ id: 'tasman' }] } }
+
+  it('splits a candidate into its two variants once, each without the other', () => {
+    const v = posterVariants(landscape)
+    expect(v.landscape.frame.w).toBe(8696)
+    expect(v.landscape.portrait).toBeUndefined()
+    expect(v.portrait.frame.h).toBe(8696)
+    expect(posterVariants({ frame: { w: 1, h: 1 }, layers: [] }).portrait).toBeNull()
+    expect(posterVariants(null)).toBeNull()
+  })
+
+  it('an upright view gets the portrait, any other the landscape, and the same object each time', () => {
+    const v = posterVariants(landscape)
+    expect(variantFor(v, 375, 812)).toBe(v.portrait)
+    expect(variantFor(v, 812, 375)).toBe(v.landscape)
+    expect(variantFor(v, 600, 600)).toBe(v.landscape)
+    const plain = posterVariants({ frame: { w: 1, h: 1 }, layers: [] })
+    expect(variantFor(plain, 375, 812)).toBe(plain.landscape)   // no portrait: the one it has
+    expect(variantFor(null, 375, 812)).toBeNull()
+  })
+})
+
+describe('a poster mounted again', () => {
+  it('stopping takes its layers out, so the next variant never stacks on the last one', () => {
+    const host = document.createElement('div')
+    const stage = document.createElement('div')
+    host.appendChild(stage)
+    const p = { frame: { w: 100, h: 150 }, background: '#F03E4A', layers: [{ id: 'a', url: '/a.svg', box: { x: 0, y: 0, w: 10, h: 10 }, enter: 'drop' }] }
+    const stop = mountTitlePoster(host, stage, p)
+    const count = () => stage.querySelectorAll('img').length
+    expect(count()).toBe(1)
+    stop()
+    expect(count()).toBe(0)
+    mountTitlePoster(host, stage, p)
+    expect(count()).toBe(1)
   })
 })

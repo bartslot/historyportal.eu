@@ -123,7 +123,24 @@ final class TitlePoster
         if ($path === null) {
             return null;
         }
+        $poster = self::parse($path, (string) $group, $candidate);
+        if ($poster === null) {
+            return null;
+        }
+        // The upright variant (a phone held upright, resources/js/title-poster.js variantFor):
+        // portrait.json beside poster.json, the same data, read by the same parser.
+        $portrait = dirname($path).'/portrait.json';
 
+        return $poster + ['portrait' => is_file($portrait) ? self::parse($portrait, (string) $group, $candidate) : null];
+    }
+
+    /**
+     * One poster file with resolved URLs, or null when it is unreadable.
+     *
+     * @return array<string, mixed>|null
+     */
+    private static function parse(string $path, string $group, string $candidate): ?array
+    {
         $data = json_decode((string) file_get_contents($path), true);
         if (! is_array($data) || ! is_array($data['layers'] ?? null) || ! self::isBox($data['frame'] ?? null, ['w', 'h'])) {
             report(new \UnexpectedValueException("Unreadable title poster: {$path}"));
@@ -178,6 +195,8 @@ final class TitlePoster
             'layers' => $layers,
             // The lesson-type badges at bottom right: a row (Figma 2321:1315), or a column for a
             // poster whose letters reach into the bottom right and leave only a strip at the side.
+            // The poster as one picture, for a tall card or a tall share image (portrait.json).
+            'still_url' => is_string($data['still'] ?? null) && is_file(dirname($path).'/'.ltrim(basename($data['still']), '.')) ? $url(ltrim(basename($data['still']), '.')) : null,
             'badges' => in_array($data['badges'] ?? null, self::BADGE_LAYOUTS, true) ? $data['badges'] : 'row',
             'badge_style' => in_array($data['badge_style'] ?? null, self::BADGE_STYLES, true) ? $data['badge_style'] : 'colour',
             'keep_clear' => self::keepClear($data['keep_clear'] ?? null),

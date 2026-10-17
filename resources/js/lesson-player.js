@@ -57,7 +57,7 @@ import { captionVisible } from './scene/SceneOverlay.js'
 import { gradientCss } from './scene/background-gradient.js'
 import { t } from './i18n.js'
 import { mountBigCountdown } from './big-countdown.js'
-import { mountTitlePoster as mountPoster, posterFit, episodeSize } from './title-poster.js'
+import { mountTitlePoster as mountPoster, posterFit, episodeSize, posterVariants, variantFor } from './title-poster.js'
 import { QR, qrOptions, layoutTitleQr, drawQrDebug, coverRect, pictureSize } from './title-qr.js'
 import { placeExpectStrip } from './title-expect.js'
 import { FIT, FIT_START, collisions, nextFit, artHits, calmScale, lettersBox, scaleBoxAbout, titlePieces } from './title-fit.js'
@@ -323,6 +323,24 @@ Alpine.data('lessonGame', (lesson) => ({
       lesson.scenes?.forEach(s => { s.audio_url = fixUrl(s.audio_url); s.image_url = fixUrl(s.image_url) })
       lesson.scene_images?.forEach(s => { s.url = fixUrl(s.url) })
       lesson.slideshow_images?.forEach(s => { s.url = fixUrl(s.url) })
+
+      // The comic title poster in the view's orientation: a phone held upright gets the candidate's
+      // portrait.json (Bart's upright Tasman poster), anything else the landscape one. Re-chosen
+      // when the view turns; the title screen remounts it then.
+      this._posters = posterVariants(lesson.title_poster)
+      this._posterUpright = innerHeight > innerWidth && !!this._posters?.portrait
+      lesson.title_poster = variantFor(this._posters, innerWidth, innerHeight)
+      addEventListener('resize', () => {
+        const upright = innerHeight > innerWidth && !!this._posters?.portrait
+        if (upright === this._posterUpright) return
+        this._posterUpright = upright
+        this.lesson.title_poster = variantFor(this._posters, innerWidth, innerHeight)
+        // The title screen mounted the other variant; build this one in its place.
+        this.$nextTick(() => {
+          const host = document.querySelector('[data-poster-stage]')?.parentElement
+          if (host) this.mountTitlePoster(host)
+        })
+      })
 
       // Subtitles start where the teacher set them for this lesson — unless this browser has
       // already made its own choice, which wins: a pupil who needs captions should not have to

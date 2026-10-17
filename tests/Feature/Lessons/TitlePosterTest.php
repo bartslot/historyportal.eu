@@ -91,6 +91,58 @@ class TitlePosterTest extends TestCase
         $this->assertNull($layers['a']['ambient']);
     }
 
+    /**
+     * The upright Tasman poster (Bart, 2026-10-17, Figma 2348:1089): portrait.json beside the
+     * candidate's poster.json, the same data model, read by the same parser. A phone held upright
+     * shows it (resources/js/title-poster.js variantFor); the landscape poster is unchanged.
+     */
+    public function test_the_tasman_poster_has_an_upright_variant_with_every_file_present(): void
+    {
+        $poster = TitlePoster::for('tasman-standard', 'poster');
+        $portrait = $poster['portrait'];
+
+        $this->assertNotNull($portrait);
+        $this->assertSame(['w' => 5678.7, 'h' => 8696.2], $portrait['frame']);
+        $this->assertSame('#F03E4A', $portrait['background']);
+        $this->assertSame(['tasman', 'a', 'b', 'e', 'l', 't', 'a2', 's', 'm', 'a1', 'n'], array_column($portrait['layers'], 'id'));
+        foreach ($portrait['layers'] as $layer) {
+            $this->assertFileExists(public_path(parse_url($layer['url'], PHP_URL_PATH)));
+        }
+        $this->assertSame(10, count(array_filter($portrait['layers'], fn (array $l) => $l['enter'] === 'drop')));
+        // The subtitle stays live text, so it translates; the same font size as the landscape one.
+        $this->assertEqualsWithDelta(3.522, $portrait['subtitle']['size'], 0.01);
+        $this->assertArrayNotHasKey('portrait', $portrait);
+
+        // The landscape poster is as it was, and a candidate without a portrait has none.
+        $this->assertSame(8696.178, $poster['frame']['w']);
+        $this->assertCount(17, $poster['layers']);
+        $this->assertNull(TitlePoster::for('tasman-standard', 'banner')['portrait']);
+    }
+
+    /**
+     * A tall card (2:3, 5:8) shows the upright poster as a still while the comic poster is the
+     * lesson's title style; a teacher's own poster still wins, and Logo or Plain keep the card as
+     * it was. A link preview stays landscape: the still is a SECOND og:image only (Pinterest-style).
+     */
+    public function test_a_tall_card_and_a_tall_share_image_use_the_upright_still(): void
+    {
+        $lesson = $this->lesson('tasman-standard');
+        $still = $lesson->titlePosterStillUrl();
+        $this->assertStringEndsWith('/lesson-titles/tasman-standard/poster/portrait-still.webp', (string) $still);
+        $this->assertFileExists(public_path(parse_url((string) $still, PHP_URL_PATH)));
+        $this->assertSame($still, $lesson->tallCardImageUrl());
+
+        $this->assertNull($lesson->forceFill(['title_style' => TitlePoster::PLAIN])->titlePosterStillUrl());
+        $this->assertSame($lesson->cardImageUrl(), $lesson->tallCardImageUrl());
+
+        $lesson->forceFill(['title_style' => null, 'poster_image' => 'https://res.cloudinary.com/demo/image/upload/own.webp']);
+        $this->assertSame($lesson->cardImageUrl(), $lesson->tallCardImageUrl(), "a teacher's own poster wins");
+
+        $html = (string) $this->blade('<x-seo title="T" description="D" image="https://x.test/wide.png" tall-image="https://x.test/tall.webp" />');
+        $this->assertMatchesRegularExpression('#og:image" content="https://x.test/wide.png".*og:image" content="https://x.test/tall.webp">\s*<meta property="og:image:width" content="1000">\s*<meta property="og:image:height" content="1500">#s', $html);
+        $this->assertStringContainsString('twitter:image" content="https://x.test/wide.png"', $html);
+    }
+
     public function test_no_folder_or_a_climbing_group_or_candidate_has_no_poster(): void
     {
         $this->assertNull(TitlePoster::for(null, 'poster'));

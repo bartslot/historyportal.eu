@@ -569,8 +569,39 @@ class Lesson extends Model
 
         $poster = in_array($style, TitlePoster::BUILT_IN, true) ? null : TitlePoster::for($this->translation_group, $style);
 
-        // A picture the teacher picked is the title screen's picture, whichever poster draws it.
-        return $poster && trim((string) $this->title_image) !== '' ? TitlePoster::withPicture($poster, (string) $this->titleBgUrl()) : $poster;
+        // A picture the teacher picked is the title screen's picture, whichever poster draws it,
+        // upright on a phone as well.
+        if ($poster && trim((string) $this->title_image) !== '') {
+            $picture = (string) $this->titleBgUrl();
+            $poster = TitlePoster::withPicture($poster, $picture);
+            if ($poster['portrait'] ?? null) {
+                $poster['portrait'] = TitlePoster::withPicture($poster['portrait'], $picture);
+            }
+        }
+
+        return $poster;
+    }
+
+    /**
+     * The upright comic poster as one still picture (a tall card, a tall share image), while the
+     * comic poster is this lesson's title style; null for the logo, letters and plain styles.
+     */
+    public function titlePosterStillUrl(): ?string
+    {
+        $still = $this->titlePoster()['portrait']['still_url'] ?? null;
+
+        return is_string($still) ? $still : null;
+    }
+
+    /**
+     * The picture for a tall card (2:3, 5:8): the upright poster's still when the lesson has one,
+     * unless the teacher chose a poster of their own; otherwise the card picture as everywhere.
+     */
+    public function tallCardImageUrl(): ?string
+    {
+        $still = $this->posterOverrideUrl() === null ? $this->titlePosterStillUrl() : null;
+
+        return $still ?? $this->cardImageUrl();
     }
 
     /** The style the title screen shows: the teacher's choice while the series has it, else the first. */
