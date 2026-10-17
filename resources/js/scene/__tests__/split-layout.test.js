@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { normalizeSplit, sceneMode, splitLayout, splitStrokes, focusPosition, NARROW_PX, panFocus, wheelZoom, normalizeFocus, LAYOUTS, paneCount, moveDivider, stepDivider, MIN_SHARE } from '../split-layout.js'
+import { normalizeSplit, sceneMode, splitLayout, splitStrokes, focusPosition, panFocus, wheelZoom, normalizeFocus, LAYOUTS, paneCount, moveDivider, stepDivider, MIN_SHARE } from '../split-layout.js'
 import { panelForLine, inkPath } from '../SplitStage.js'
 
 describe('normalizeSplit', () => {
@@ -118,10 +118,22 @@ describe('splitLayout', () => {
     expect(l.dividers).toEqual([{ k: 0, orient: 'd', x0: 1152, y0: 0, x1: 768, y1: H }])
   })
 
-  it('stacks columns on a narrow stage, so no panel is a sliver', () => {
-    expect(splitLayout({ layout: 'cols3' }, NARROW_PX - 1, 900).layout).toBe('rows3')
-    expect(splitLayout({ layout: 'cols2' }, NARROW_PX - 1, 900).layout).toBe('rows2')
-    expect(splitLayout({ layout: 'grid4' }, NARROW_PX - 1, 900).layout).toBe('grid4')
+  it('stacks columns only on an upright stage (a phone held upright), so no panel is a sliver', () => {
+    expect(splitLayout({ layout: 'cols3' }, 375, 667).layout).toBe('rows3')
+    expect(splitLayout({ layout: 'cols2' }, 375, 667).layout).toBe('rows2')
+    expect(splitLayout({ layout: 'grid4' }, 375, 667).layout).toBe('grid4')
+  })
+
+  // Bart, 2026-10-17: "the column layout is broken". The editor's 16:9 stage in a narrow window
+  // (about 400x225) stacked his Two columns into rows while the inspector still said columns.
+  it('keeps the chosen layout on a landscape stage of any width, as the inspector shows it', () => {
+    for (const [w, h] of [[400, 225], [320, 180], [639, 360], [1920, 1080]]) {
+      expect(splitLayout({ layout: 'cols2' }, w, h).layout).toBe('cols2')
+      expect(splitLayout({ layout: 'cols3' }, w, h).layout).toBe('cols3')
+      const p = splitLayout({ layout: 'cols2' }, w, h).panels
+      expect(p[1].x).toBeGreaterThan(p[0].x)
+      expect(p[1].y).toBe(p[0].y)
+    }
   })
 
   it('has no layout without a split or a stage', () => {

@@ -23,8 +23,6 @@ export const GUTTER_REF = 10
 export const GUTTER_MIN_PX = 4
 /** Ink line on each panel edge, px at REF_WIDTH. */
 export const INK_REF = 2
-/** Below this stage width side-by-side columns stack, so no panel is too thin to read. */
-export const NARROW_PX = 640
 /** No panel narrower or shorter than this share of the stage. */
 export const MIN_SHARE = 0.2
 /** Within this of a divider's default, a dragged divider settles on it. */
@@ -100,7 +98,7 @@ const box = ([x, w], [y, h]) => ({ x, y, w, h })
 
 /**
  * The panels and dividers of a split on a W×H stage. Full bleed on the outer edges (as the
- * reference page), a gutter between panels. Columns stack on a narrow stage.
+ * reference page), a gutter between panels. Columns stack on an upright stage.
  *
  * A rectangle panel is {x, y, w, h}. A diagonal panel covers the whole stage and carries `clip`, its
  * polygon. A divider is { k, orient: 'h'|'v'|'d', x, y, w, h } for a straight one (its gutter), or
@@ -112,7 +110,10 @@ export function splitLayout (split, W, H) {
   const s = normalizeSplit(split)
   if (!s || !(W > 0) || !(H > 0)) return null
   let layout = s.layout
-  if (W < NARROW_PX && (layout === 'cols2' || layout === 'cols3')) layout = layout === 'cols2' ? 'rows2' : 'rows3'
+  // An upright stage (the player on a phone held upright) stacks columns, so no panel is a sliver.
+  // Keyed on the stage's own shape, never its width: the editor's 16:9 stage in a narrow window
+  // stacked the teacher's columns while the inspector still said columns (Bart, 2026-10-17).
+  if (H > W && (layout === 'cols2' || layout === 'cols3')) layout = layout === 'cols2' ? 'rows2' : 'rows3'
   const { gutter: g, ink } = splitStrokes(W)
   const [a, b] = s.at
   const X = [0, W]
