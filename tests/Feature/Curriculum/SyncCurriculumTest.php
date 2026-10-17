@@ -51,8 +51,8 @@ class SyncCurriculumTest extends TestCase
 
         Http::fake([
             'zoekservice.overheid.nl/*' => Http::response($this->sru()),
-            self::LAW_XML_URL => Http::response($lawXml ?? file_get_contents(base_path('tests/fixtures/curriculum/bwb-onderdeel-e.xml'))),
-            'www.canonvannederland.nl/*' => Http::response($canonHtml ?? file_get_contents(base_path('tests/fixtures/curriculum/canon.html'))),
+            self::LAW_XML_URL => Http::response($lawXml ?? file_get_contents(base_path('tests/Fixtures/curriculum/bwb-onderdeel-e.xml'))),
+            'www.canonvannederland.nl/*' => Http::response($canonHtml ?? file_get_contents(base_path('tests/Fixtures/curriculum/canon.html'))),
             'examenblad.nl/*/vwo/vakken/*' => is_int($syllabus)
                 ? Http::response('', $syllabus)
                 : Http::response('<a href="/2027/vwo/documenten/syllabus-geschiedenis-vwo-2027">Syllabus</a>'),
@@ -88,7 +88,7 @@ class SyncCurriculumTest extends TestCase
 
     public function test_a_renumbered_set_of_kerndoelen_is_not_applied(): void
     {
-        $xml = file_get_contents(base_path('tests/fixtures/curriculum/bwb-onderdeel-e.xml'));
+        $xml = file_get_contents(base_path('tests/Fixtures/curriculum/bwb-onderdeel-e.xml'));
         $this->fakeSources(lawXml: str_replace('<li.nr>47.</li.nr>', '<li.nr>48.</li.nr>', $xml));
         $before = CurriculumGoal::findByKey('kerndoel:36')->body;
 
@@ -113,7 +113,7 @@ class SyncCurriculumTest extends TestCase
     {
         $lesson = Lesson::factory()->for(User::factory()->teacher(), 'teacher')->create();
         CurriculumGoal::findByKey('canon:14')->lessons()->attach($lesson, ['fit' => 'direct']);
-        $html = str_replace('</span>VOC en WIC</h3>', '</span>De VOC</h3>', file_get_contents(base_path('tests/fixtures/curriculum/canon.html')));
+        $html = str_replace('</span>VOC en WIC</h3>', '</span>De VOC</h3>', file_get_contents(base_path('tests/Fixtures/curriculum/canon.html')));
         $this->fakeSources(canonHtml: $html);
 
         $this->artisan('curriculum:sync')->assertFailed();
