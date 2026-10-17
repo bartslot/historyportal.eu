@@ -40,7 +40,9 @@ return [
             'connection' => env('DB_QUEUE_CONNECTION'),
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => env('DB_QUEUE', 'default'),
-            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 660),
+            // Above the longest job's $timeout (the WorldLabs skybox, 720 s). At 660 a job still running
+            // was handed to a second worker, which paid for it twice (infra audit 2026-10-17).
+            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 900),
             'after_commit' => false,
         ],
 

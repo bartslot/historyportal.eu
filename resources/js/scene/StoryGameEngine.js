@@ -23,6 +23,7 @@
  * Persistence is v2 — the run summary is display-only; nothing here talks to
  * the network. (Progress POST with answers.game comes in a later segment.)
  */
+import { el } from './dom.js'
 
 const CONSEQUENCE_MS = 4000        // game-master caption auto-dismiss
 const CHIP_MS = 1400               // floating ±N chip lifetime
@@ -42,17 +43,6 @@ function injectStyles () {
     .sg-fade { animation: sg-fade-in 0.3s ease-out; }
   `
   document.head.appendChild(style)
-}
-
-/**
- * DOM helper: element with class + optional TEXT content (never markup).
- * All untrusted strings flow through the `text` argument → textContent.
- */
-function el (tag, className = '', text = null) {
-  const node = document.createElement(tag)
-  if (className) node.className = className
-  if (text != null) node.textContent = String(text)
-  return node
 }
 
 export class StoryGameEngine {

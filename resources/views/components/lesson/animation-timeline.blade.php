@@ -54,6 +54,15 @@
             'hold'           => __('Hold'),
             'custom'         => __('Custom bezier'),
         ],
+        'objectLabels' => ['background' => __('Background')],
+        'propertyLabels' => [
+            'x' => 'X', 'y' => 'Y', 'z' => 'Z', 'width' => 'W', 'height' => 'H',
+            'scale' => __('Scale'), 'rotation' => __('Angle'), 'blur' => __('Blur'),
+            'opacity' => __('Opacity'), 'tint' => __('Colour'), 'tint_opacity' => __('Colour') . ' %',
+            'lng' => __('Longitude'), 'lat' => __('Latitude'), 'zoom' => __('Zoom'),
+            'heading' => __('Direction'), 'tilt' => __('Tilt'),
+            'tip_x' => __('Tail').' X', 'tip_y' => __('Tail').' Y', 'root' => __('Tail root'), 'bend' => __('Bend'),
+        ],
      ]) }}"
      x-data="animationTimeline(JSON.parse($el.dataset.timelineConfig))"
      x-on:pointermove.window="onPointerMove($event)"
@@ -161,9 +170,8 @@
                 class="grid h-7 w-7 shrink-0 cursor-pointer place-items-center rounded hover:text-white"
                 :data-tooltip="loop ? @js(__('Looping')) : @js(__('Loop'))"
                 :aria-label="loop ? @js(__('Looping')) : @js(__('Loop'))">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992V4.356M20.015 9.348a8.25 8.25 0 0 0-14.03-3.028L3 8.25m0 6.402h4.992v4.992M3 14.652a8.25 8.25 0 0 0 14.03 3.028L21 15.75"/>
-            </svg>
+            {{-- Repeat, not refresh (Bart, 2026-10-17: "isn't there a hero icon for repeating?"). --}}
+            <x-icons.arrow-path-rounded-square class="h-4 w-4" />
         </button>
 
         <span class="h-4 w-px shrink-0 bg-panel-hairline" aria-hidden="true"></span>
@@ -204,10 +212,21 @@
     </div>
 
     {{-- ── Tracks ─────────────────────────────────────────────────────────────────────────── --}}
-    <div class="flex min-h-0 flex-1 overflow-y-auto">
+    <div class="flex min-h-0 flex-1 overflow-y-auto overflow-x-hidden" data-timeline-tracks>
 
         {{-- Left: the object list, which is the same list the Object list panel shows. --}}
-        <div class="shrink-0 border-r border-panel-hairline" style="width: var(--timeline-label-col)">
+        <div class="relative shrink-0 border-r border-panel-hairline" style="width: var(--timeline-label-col)"
+             :style="labelColW ? { width: labelColW + 'px' } : {}" x-ref="labels" data-timeline-labels>
+
+            {{-- The column's right edge: drag for room for long names and value fields. Arrow
+                 keys step it, Home puts it back. Remembered per teacher. --}}
+            <div class="lp-grip absolute inset-y-0 -right-1 z-10 w-2" :data-dragging="colDrag ? '' : null"
+                 x-on:pointerdown="colStart($event)" x-on:pointermove="colMove($event)"
+                 x-on:pointerup="colEnd()" x-on:pointercancel="colEnd()" x-on:keydown="colKey($event)"
+                 tabindex="0" role="separator" aria-orientation="vertical" data-timeline-col-grip
+                 aria-label="{{ __('Resize the column') }}">
+                <span class="lp-grip-pill" aria-hidden="true"></span>
+            </div>
 
             {{-- Matches the ruler's height on the other side. Without it every lane sits one row
                  below the property it belongs to, and a keyframe on Altitude is drawn beside
@@ -245,14 +264,19 @@
                          :class="activeTarget === object.target && 'bg-white/5'"
                          :data-timeline-active="activeTarget === object.target ? 'true' : 'false'"
                          style="height: 38px">
+                    {{-- Double-click: every property of this object back to what it was before it
+                         was keyed. A gesture rather than a "Reset all" button, which took the room
+                         the name needs (Bart, 2026-10-16). --}}
                     <button type="button" x-on:click="selectObject(object.target)"
+                            x-on:dblclick="canResetObject(object.target) && resetObject(object.target)"
+                            :data-tooltip="canResetObject(object.target) ? @js(__('Double-click to reset all')) : null"
                             class="flex min-w-0 flex-1 cursor-pointer items-center gap-2 pl-4 text-left"
                             style="height: 38px" :data-timeline-group="object.target">
 {{-- The same glyph as the object list (window.__objIcons): T for text, a half for a panel, a
      picture for artwork and diorama items. A camera gets Bart's glyph from the file (13x8). --}}
                         <span x-show="object.kind !== 'camera'" aria-hidden="true"
                               class="grid h-3.5 w-3.5 shrink-0 place-items-center text-panel-icon [&>svg]:h-3.5 [&>svg]:w-3.5"
-                              x-html="window.__objIcons?.[{ text: 'text', rect: 'panelL' }[object.kind] ?? 'photo'] ?? ''"></span>
+                              x-html="window.__objIcons?.[{ text: 'text', rect: 'panelL', bal: 'balloon' }[object.kind] ?? 'photo'] ?? ''"></span>
                         <svg x-show="object.kind === 'camera'" width="13" height="8" viewBox="0 0 13 8" fill="none" stroke="currentColor"
                              class="shrink-0 text-panel-icon" aria-hidden="true">
                             <path d="M7.9834 0.666992L8.0918 0.671875C8.59069 0.723453 8.98766 1.12018 9.04004 1.61914L9.0459 1.72754V3.5791L10.0664 2.94043L12.1113 1.65918C12.2007 1.60333 12.2661 1.58345 12.3037 1.5752C12.3089 1.58957 12.3164 1.60809 12.3213 1.63281L12.335 1.7832V6.14551C12.3349 6.24973 12.3175 6.31464 12.3047 6.35059C12.2674 6.34246 12.2025 6.3233 12.1133 6.26758L10.0654 4.98828L9.0459 4.35059V6.20312C9.04312 6.78886 8.56842 7.26242 7.9834 7.26367H1.72852C1.17907 7.26189 0.728515 6.84471 0.672852 6.30957L0.666992 6.20117V1.72852C0.668771 1.17918 1.08513 0.728656 1.62012 0.672852L1.72852 0.666992H7.9834Z" stroke-width="1.33333"/>
@@ -305,12 +329,26 @@
                                  hierarchy the moment two objects are open at once. --}}
                             <span class="mb-2 h-2.5 w-2 shrink-0 rounded-bl-[2px] border-b border-l border-panel-hairline"
                                   aria-hidden="true"></span>
+                            {{-- Double-click resets: the keys go and the property returns to what it was
+                                 before it was keyed. A gesture, not a Reset button: the button took
+                                 the width the value field needs (Bart, 2026-10-16). --}}
                             <span data-scrub class="shrink-0 cursor-col-resize select-none text-3xs uppercase tracking-wide text-panel-label"
-                                  style="width: calc(var(--settings-panel-label-w) - 0.75rem)" x-text="property.label"></span>
-                            <input type="number" step="any" data-timeline-value
-                                   :value="valueAt(object.target, property.key)"
-                                   x-on:change="setValue(object.target, property.key, Number($event.target.value))"
-                                   class="h-[21px] min-w-0 flex-1 rounded bg-panel-hairline px-1.5 text-right font-mono text-3xs text-panel-value focus:outline-none" />
+                                  style="width: calc(var(--settings-panel-label-w) - 0.75rem)" x-text="propertyLabel(property)"
+                                  x-on:dblclick.prevent="canReset(object.target, property.key) && resetProperty(object.target, property.key)"
+                                  :data-tooltip="canReset(object.target, property.key) ? @js(__('Double-click to reset')) : null"
+                                  :data-timeline-label="object.target + ':' + property.key"></span>
+                            <template x-if="property.type === 'color'">
+                                <input type="color" data-timeline-value
+                                       :value="valueAt(object.target, property.key) || '#ffffff'"
+                                       x-on:change="setValue(object.target, property.key, $event.target.value)"
+                                       class="h-[21px] min-w-0 flex-1 cursor-pointer rounded bg-panel-hairline px-0.5" />
+                            </template>
+                            <template x-if="property.type !== 'color'">
+                                <input type="number" step="any" data-timeline-value
+                                       :value="valueAt(object.target, property.key)"
+                                       x-on:change="setValue(object.target, property.key, Number($event.target.value))"
+                                       class="h-[21px] min-w-0 flex-1 rounded bg-panel-hairline px-1.5 text-right font-mono text-3xs text-panel-value focus:outline-none" />
+                            </template>
                             {{-- < diamond > — the diamond keys THIS property at the playhead, the
                                  arrows step the playhead to this object's previous and next
                                  keyframe. Disabled when there is none in that direction, rather
@@ -325,12 +363,14 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/>
                                 </svg>
                             </button>
-                            <button type="button" x-on:click.prevent="toggleKey(object.target, property.key)"
+                            <button type="button" x-on:click.prevent="toggleKey(object.target, property.key); announce()"
                                     :data-timeline-key="object.target + ':' + property.key"
+                                    :data-keyframe-state="keyState(object.target, property.key)"
                                     :aria-pressed="hasKeyHere(object.target, property.key) ? 'true' : 'false'"
-                                    :data-tooltip="hasKeyHere(object.target, property.key) ? @js(__('Update keyframe')) : @js(__('Add keyframe'))"
-                                    class="shrink-0 rounded p-0.5 hover:bg-white/5">
-                                <x-ui.keyframe-diamond on="hasKeyHere(object.target, property.key)" />
+                                    :aria-label="hasKeyHere(object.target, property.key) ? @js(__('Remove keyframe')) : @js(__('Add keyframe'))"
+                                    :data-tooltip="hasKeyHere(object.target, property.key) ? @js(__('Remove keyframe')) : @js(__('Add keyframe'))"
+                                    class="shrink-0 rounded p-0.5 text-panel-label hover:bg-white/5 hover:text-white">
+                                <x-ui.keyframe-diamond state="keyState(object.target, property.key)" />
                             </button>
                             <button type="button" x-on:click.prevent="jumpKey(object.target, 1)"
                                     :disabled="nextKeyTime(object.target) === null"
@@ -356,7 +396,13 @@
         {{-- Figma's split: the RULER scrubs (col-resize says so), the TRACKS select — press a key,
              Shift+press to add, drag across empty track for a marquee, press empty track to
              clear. Cmd/Ctrl+wheel and pinch zoom about the pointer. --}}
-        <div x-ref="lanes" data-timeline-lanes class="relative min-w-0 flex-1 overflow-x-auto"
+        {{-- self-start + overflow-y-hidden: the lanes scroll SIDEWAYS only. overflow-x on its own
+             makes the browser compute overflow-y as auto, and a stretched flex item is only as
+             tall as the dock — so the lanes became a second vertical scroller, the wheel over them
+             scrolled the bars away from their rows, and the row on screen named a different
+             property than the bar beside it (Bart, 2026-10-14). The tracks box above is the one
+             vertical scroller, so names and bars move together under a fixed transport. --}}
+        <div x-ref="lanes" data-timeline-lanes class="relative min-w-0 flex-1 self-start overflow-x-auto overflow-y-hidden"
              x-on:wheel="onWheel($event)">
             <div x-ref="content" class="relative select-none" :style="`width: ${Math.max(contentWidth, 100)}px`"
                  x-on:pointerdown="startMarquee($event)">
@@ -398,6 +444,20 @@
                                     </div>
                                 </template>
                             </div>
+                            {{-- A balloon is on screen for a span of the scene: its clip, under its
+                                 keyframe bar. The body moves it in time, the ends stretch it. --}}
+                            {{-- The bar: a balloon's time on screen, or a figure's entrance (Appear:
+                                 from its delay, as long as its speed). Drag it to move it, an end to
+                                 stretch it. --}}
+                            <template x-if="object.kind === 'bal' || (object.kind === 'art' && object.entrance)">
+                                <div class="absolute flex cursor-grab items-center justify-between overflow-hidden rounded-[3px] bg-base-content/25"
+                                     :data-timeline-span="object.target"
+                                     x-on:pointerdown="startBar($event, object.target)"
+                                     :style="barStyle(barOf(object.target)) + '; bottom: 3px; height: 6px'">
+                                    <span class="pointer-events-none h-full w-1.5 bg-base-content/50"></span>
+                                    <span class="pointer-events-none h-full w-1.5 bg-base-content/50"></span>
+                                </div>
+                            </template>
                         </div>
                         <template x-for="property in propertiesOf(object.target)" :key="property.key">
                             <div class="relative" x-show="openGroups[object.target]"
@@ -432,12 +492,13 @@
                                      gestures. Delete/Backspace removes what is selected. --}}
                                 <template x-for="key in keysOf(object.target, property.key)" :key="key.time">
                                     <span class="absolute grid cursor-grab place-items-center"
-                                          :style="`left: ${xOf(key.time) - 6}px; top: 4px`"
+                                          :style="`left: ${Math.round(xOf(key.time) - 6.5)}px; top: calc((var(--timeline-lane-h) - 13px) / 2)`"
                                           :data-timeline-diamond="object.target + ':' + property.key"
                                           :data-key-id="object.target + '|' + property.key + '|' + key.time"
                                           :aria-selected="isSelected(object.target, property.key, key.time) ? 'true' : 'false'"
                                           x-on:pointerdown.stop="startKeyDrag($event, object.target, property.key, key.time)"
-                                          x-on:dblclick.stop="jumpToKey(object.target, property.key, key.time)">
+                                          x-on:dblclick.stop="jumpToKey(object.target, property.key, key.time)"
+                                          x-on:contextmenu.prevent.stop="openKeyMenu($event, object.target, property.key, key.time)">
                                         <x-ui.keyframe-diamond solid on="isSelected(object.target, property.key, key.time)" />
                                     </span>
                                 </template>
@@ -460,23 +521,47 @@
         </div>
     </div>
 
+    {{-- Right-click on a keyframe: remove that keyframe, and only that one. --}}
+    <template x-if="keyMenu">
+        <div class="fixed z-50 rounded-box border border-panel-hairline bg-base-200 p-1"
+             data-timeline-key-menu
+             :style="`top: ${keyMenu.top}px; left: ${keyMenu.left}px`"
+             x-on:pointerdown.outside="keyMenu = null" x-on:pointerdown.stop>
+            <ul class="menu menu-sm p-0">
+                <li><button type="button" class="text-xs" data-timeline-key-remove x-on:click="removeMenuKey()">{{ __('Remove keyframe') }}</button></li>
+            </ul>
+        </div>
+    </template>
+
     {{-- The Easing menu for the stretch that was clicked — Figma's presets, each with its curve.
-         Fixed to the viewport so the short dock never clips it; Esc and a click outside close it. --}}
+         Fixed to the viewport so the short dock never clips it. Esc and a click outside CANCEL it
+         (the stretch keeps its curve); choosing an option closes it. The outside listener is a
+         CAPTURE one: the lanes, ruler and stage stop their own pointerdowns from bubbling, and a
+         bubbling listener on document never heard a click there (Bart, 2026-10-16).
+         Hovering or focusing an option plays the stretch once on the stage with that curve, and
+         its icon's dot travels the curve in step. --}}
     <template x-if="easingMenu">
-        <div class="fixed z-50 w-52 rounded-box border border-panel-hairline bg-base-200 p-1 shadow-xl"
+        <div class="fixed z-50 w-52 rounded-box border border-panel-hairline bg-base-200 p-1"
              data-timeline-easing-menu
              :style="`top: ${easingMenu.top}px; left: ${easingMenu.left}px`"
-             x-on:pointerdown.outside="closeEasing()" x-on:pointerdown.stop>
+             x-on:pointerdown.outside.capture="closeEasing()" x-on:pointerdown.stop>
             <ul class="menu menu-sm w-full p-0" x-show="!easingMenu.editing">
                 <template x-for="option in easingOptions" :key="option.name">
                     <li>
                         <button type="button" class="flex items-center gap-2"
                                 :class="currentEasingName === option.name && 'menu-active'"
                                 :data-easing="option.name"
+                                x-on:mouseenter="previewEasing(option.name, option.curve)"
+                                x-on:focus="previewEasing(option.name, option.curve)"
                                 x-on:click="chooseEasing(option.name)">
                             <svg viewBox="0 0 40 24" class="h-4 w-7 shrink-0 overflow-visible" aria-hidden="true">
                                 <path :d="curvePath(option.curve)" fill="none" stroke="currentColor" stroke-width="1.5"
                                       stroke-linecap="round" stroke-linejoin="round"/>
+                                {{-- x-show, not a <template>: inside an <svg> a template has no
+                                     content for Alpine to clone. --}}
+                                <circle r="2.5" fill="currentColor" data-easing-dot
+                                        x-show="previewName === option.name && !reducedMotion"
+                                        :cx="previewDot(option.curve).x" :cy="previewDot(option.curve).y"/>
                             </svg>
                             <span class="flex-1 text-left text-xs" x-text="option.label"></span>
                         </button>

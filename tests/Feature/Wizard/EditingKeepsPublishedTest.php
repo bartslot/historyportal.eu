@@ -73,6 +73,20 @@ class EditingKeepsPublishedTest extends TestCase
         $this->get(route('lesson.play', ['lessonCode' => $lesson->lesson_code]))->assertOk();
     }
 
+    /**
+     * 2026-10-16: the Dutch Tasman hero (W24VRI) was Previewable, which the player serves, and
+     * opening it in the editor demoted it to Configuring: /lesson/W24VRI went 404.
+     */
+    public function test_opening_the_editor_leaves_a_previewable_lesson_playable(): void
+    {
+        [$teacher, $lesson] = $this->lesson(LessonStatus::Previewable);
+
+        Livewire::actingAs($teacher)->test(Step3SceneConfigurator::class, ['lesson' => $lesson]);
+
+        $this->assertSame(LessonStatus::Previewable, $lesson->refresh()->status);
+        $this->get(route('lesson.play', ['lessonCode' => $lesson->lesson_code]))->assertOk();
+    }
+
     public function test_opening_the_editor_still_records_which_step_the_teacher_is_on(): void
     {
         [$teacher, $lesson] = $this->lesson(LessonStatus::Published);

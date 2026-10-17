@@ -149,6 +149,18 @@ class LessonExportTest extends TestCase
         $this->assertEquals($spec, $exported);
     }
 
+    public function test_a_teacher_guide_survives_compose_and_export(): void
+    {
+        // The guide is authored in the spec; a rebuild from it must not drop what teachers read.
+        $guide = ['goal' => 'Leerlingen begrijpen waarom...', 'faq' => [['q' => 'Hoe lang?', 'a' => 'Een lesuur.']]];
+        $spec = $this->spec() + ['teacher_guide' => $guide];
+
+        $lesson = app(LessonComposer::class)->build($spec, $this->teacher, narrate: false);
+
+        $this->assertSame($guide, $lesson->fresh()->teacher_guide);
+        $this->assertSame($guide, app(LessonExporter::class)->toSpec($lesson->fresh())['teacher_guide']);
+    }
+
     public function test_a_lesson_built_from_the_art_library_exports_as_library_refs(): void
     {
         foreach (['history-line/backdrops/florence/firenze-strada.webp', 'history-line/figures/dante/dante-giovane.webp'] as $file) {
@@ -230,21 +242,37 @@ class LessonExportTest extends TestCase
     public function test_wizard_config_the_composer_does_not_author_survives_a_rebuild(): void
     {
         $spec = $this->spec();
-        $spec['scenes'][1]['extra_config'] = ['transition' => 'fade', 'parallax' => true];
+        $spec['scenes'][1]['extra_config'] = ['transition' => 'fade', 'clipart_on_top' => true];
         $spec['scenes'][1]['shots'] = [['art_1' => ['x' => 0.5, 'y' => 0.25]]];
 
         $lesson = app(LessonComposer::class)->build($spec, $this->teacher, narrate: false);
         $scene = $lesson->scenes()->where('order', 2)->first();
 
         $this->assertSame('fade', $scene->config['transition']);
-        $this->assertTrue($scene->config['parallax']);
+        $this->assertTrue($scene->config['clipart_on_top']);
         $this->assertSame([['art_1' => ['x' => 0.5, 'y' => 0.25]]], $scene->shots);
 
         // …and comes back out again, so the next export does not drop it either.
         $exported = app(LessonExporter::class)->toSpec($lesson->fresh());
 
-        $this->assertSame(['transition' => 'fade', 'parallax' => true], $exported['scenes'][1]['extra_config']);
+        $this->assertSame(['transition' => 'fade', 'clipart_on_top' => true], $exported['scenes'][1]['extra_config']);
         $this->assertSame($spec['scenes'][1]['shots'], $exported['scenes'][1]['shots']);
+    }
+
+    public function test_keyframes_survive_an_export_and_a_rebuild(): void
+    {
+        $timeline = ['duration' => 8.0, 'targets' => [], 'tracks' => [[
+            'target' => 'art:1', 'property' => 'x', 'base' => 25.0,
+            'keyframes' => [['time' => 0.0, 'value' => 25.0], ['time' => 3.0, 'value' => 80.0, 'easing' => 'hold']],
+        ]]];
+        $spec = $this->spec();
+        $spec['scenes'][1]['extra_config'] = ['timeline' => $timeline];
+
+        $lesson = app(LessonComposer::class)->build($spec, $this->teacher, narrate: false);
+        $this->assertEquals($timeline, $lesson->scenes()->where('order', 2)->first()->config['timeline']);
+
+        $exported = app(LessonExporter::class)->toSpec($lesson->fresh());
+        $this->assertEquals($timeline, $exported['scenes'][1]['extra_config']['timeline']);
     }
 
     public function test_a_voyage_keeps_its_edited_route_across_a_rebuild(): void

@@ -1,4 +1,4 @@
-@props(['scene' => null, 'games' => collect(), 'quizDraft' => [], 'quizErrors' => [], 'quizSaved' => false, 'quizDifficulty' => 2, 'quizScope' => 'taught', 'quizShuffle' => 'per_player'])
+@props(['scene' => null, 'games' => collect(), 'quizDraft' => [], 'quizErrors' => [], 'quizSaved' => false, 'quizDifficulty' => 2, 'quizScope' => 'taught', 'quizShuffle' => 'per_player', 'teamDraft' => [], 'teamIsDefault' => true])
 
 @php
     $isGenerating = $scene->status === 'generating';
@@ -16,7 +16,7 @@
     <div class="space-y-2">
         <p class="text-xs uppercase tracking-wider text-slate-400">Element type</p>
         <x-ui.segmented panel class="w-full" name="game-type-{{ $scene->id }}" :value="$gameType"
-                        :options="[['quiz', __('Quiz')], ['strategy', __('Strategy')], ['debate', __('Debate')]]"
+                        :options="[['quiz', __('Quiz')], ['strategy', __('Strategy')], ['debate', __('Debate')], ['team', __('Team game')]]"
                         tab-class="flex-1"
                         on-change="$wire.call('setSceneGameType', {{ $scene->id }}, $event.target.value)" />
     </div>
@@ -46,7 +46,7 @@
         {{-- Multiple-choice question editor. Questions are lesson-level (shared across quiz segments);
              each has up to four colour-coded options (A/B/C/D) with exactly one marked correct. This
              is the actual quiz content — the field below is only the spoken intro, not the questions. --}}
-        @php $letters = ['A', 'B', 'C', 'D']; $palette = ['#e11d48', '#0284c7', '#fcd34d', '#059669']; @endphp
+        @php $letters = ['A', 'B', 'C', 'D']; $palette = ['#e11d48', '#0284c7', '#f59e0b', '#059669']; @endphp
         <div data-quiz-section class="space-y-3 border-t border-white/10 pt-3">
             <div class="flex items-center justify-between">
                 <p class="text-xs uppercase tracking-wider text-slate-400">Quiz questions</p>
@@ -243,9 +243,17 @@
         </div>
     @endif
 
+    @if ($gameType === 'team')
+        <div class="border-t border-panel-hairline pt-3">
+            <x-lesson.scene-inspector-team :draft="$teamDraft" :is-default="$teamIsDefault" />
+        </div>
+    @endif
+
     <div class="space-y-1">
         <p class="text-xs uppercase tracking-wider text-slate-400">
-            @if ($gameType === 'quiz')
+            @if ($gameType === 'team')
+                {{ __('Spoken intro (optional, narrated before the game)') }}
+            @elseif ($gameType === 'quiz')
                 Spoken intro <span class="normal-case text-slate-500">(optional — narrated before the quiz)</span>
             @elseif ($gameType === 'debate')
                 Debate prompt

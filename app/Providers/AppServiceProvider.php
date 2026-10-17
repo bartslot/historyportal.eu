@@ -16,6 +16,9 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->singleton(\App\Services\ElevenLabsService::class);
 
+        // Subtitle translation runs on the app's language model; tests swap in the fake.
+        $this->app->bind(\App\Services\Captions\TextTranslator::class, \App\Services\Captions\LlmTextTranslator::class);
+
         // Built from config rather than autowired — its constructor takes the byte cap, stage size
         // and grain preset as plain scalars, which the container cannot guess. A singleton also
         // means the "does this avifenc have AOM?" probe runs once per process, not once per image.

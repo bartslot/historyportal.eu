@@ -102,15 +102,15 @@ class LessonPicturesOnCdnTest extends TestCase
         ];
     }
 
-    public function test_backdrop_and_figures_point_at_cloudinary_as_avif_at_quality_twenty(): void
+    public function test_backdrop_and_figures_point_at_cloudinary_as_avif_at_the_configured_quality(): void
     {
         $this->libraryAsset('history-line/backdrops/dante/selva');
         $this->libraryAsset('history-line/figures/dante/virgilio');
 
         $scene = $this->compose($this->danteScene());
 
-        $backdrop = 'https://res.cloudinary.com/democloud/image/upload/f_auto,q_20,c_limit,w_2880,h_2880/v1/library/history-line/backdrops/dante/selva.webp';
-        $figure = 'https://res.cloudinary.com/democloud/image/upload/f_auto,q_20,c_limit,w_2880,h_2880/v1/library/history-line/figures/dante/virgilio.webp';
+        $backdrop = 'https://res.cloudinary.com/democloud/image/upload/f_auto,q_50,c_limit,w_2880,h_2880/v1/library/history-line/backdrops/dante/selva.webp';
+        $figure = 'https://res.cloudinary.com/democloud/image/upload/f_auto,q_50,c_limit,w_2880,h_2880/v1/library/history-line/figures/dante/virgilio.webp';
         $this->assertSame($backdrop, $scene->image_path);
 
         $layers = $scene->shots[0]['layers'];

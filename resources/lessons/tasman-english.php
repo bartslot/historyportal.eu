@@ -81,8 +81,13 @@ return [
             'chapter' => 'The land nobody had seen',
             'location' => 'The Southern Ocean',
             'year' => 1642,
-            'image' => 'Terra Australis Incognita oude wereldkaart 17e eeuw',
-            'prefer' => 'painting',
+            // Pinned: the search 'Terra Australis Incognita oude wereldkaart 17e eeuw' picked a
+            // MODERN Bulgarian book cover off Commons (Terra_Australis_Incognita_KORICA_...jpg).
+            // This is a real 17th-century map, chosen by Bart 2026-10-15.
+            'image' => [
+                'url' => 'https://upload.wikimedia.org/wikipedia/commons/7/74/Terraaustralis.jpg',
+                'credit' => 'Terra Australis, 17th-century map (Wikimedia Commons, public domain)',
+            ],
             'script' => 'For centuries European mapmakers had drawn an enormous continent across the bottom of the world. They called it Terra Australis Incognita, the unknown southern land. There was no evidence for it whatsoever. The reasoning was that the world needed balancing: so much land in the north, therefore so much land in the south, or the globe would somehow topple. It is worth remembering that this is what Tasman was sent to find. He was looking for something that had been imagined first and searched for afterwards.',
         ],
 
@@ -151,7 +156,9 @@ return [
             'date_label' => '19 December 1642',
             'story' => 'A boat rowing between the two Dutch ships was rammed. Four sailors were killed. The Dutch fired on the canoes as they pulled away, and hit an unknown number of people. Tasman never landed. He wrote the place down as Moordenaarsbaai — Murderers\' Bay — and sailed on, and the name stuck for three hundred years. Read it from the other side: unknown ships had anchored off a coast that belonged to somebody, without asking, and were approached exactly as intruders would be. Today the bay is called Golden Bay, or Mohua.',
             'images' => [
-                'Moordenaarsbaai 1642 Gilsemans tekening',
+                // Drawn for the lesson (ChatGPT, two passes: ink, then Bart's colour prompt), after
+                // Gilsemans' 1642 drawing; the Commons search for the drawing itself found nothing.
+                'asset:history-line/backdrops/tasman/golden_bay_1642',
                 'Abel Tasman Nieuw-Zeeland ontmoeting 1642',
                 'Maori waka oorlogskano tekening',
             ],
@@ -275,8 +282,9 @@ return [
             'chapter' => 'What his voyages left behind',
             'location' => 'Australia and New Zealand',
             'year' => 2025,
-            'image' => 'Tasmanië Nieuw-Zeeland moderne kaart',
-            'prefer' => 'photo',
+            // A drawn map in the History Portal map style (Figma 1407-15160 / 1878-4332); the search for
+            // a modern map found nothing, and a photo would break the lesson's look.
+            'backdrop' => 'history-line/backdrops/tasman/tasman_sea_map',
             'script' => 'Tasmania carries his name. So does the Tasman Sea, between Australia and New Zealand, and so do a glacier, a bridge and a great many streets. New Zealand keeps the name a Dutch mapmaker gave it after Zeeland, the Dutch province. But the people Tasman met were not discovered by anybody — Māori had been in Aotearoa for around four hundred years before he arrived, and Aboriginal Australians for more than sixty thousand. What Tasman actually did was join two halves of the world\'s knowledge of itself, at a cost, and then hand his charts to a company that locked them in a drawer.',
         ],
 

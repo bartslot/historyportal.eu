@@ -38,7 +38,7 @@
         {{-- 2D narrator: small portrait badge in the bottom-right corner. --}}
         @if ($lesson->narrator && ($narratorImg = $lesson->narrator->thumbnailUrl() ?? $lesson->narrator->portraitUrl()))
             <img src="{{ $narratorImg }}" alt="{{ $lesson->narrator->name }}"
-                 class="pointer-events-none absolute bottom-28 right-4 z-10 h-[150px] w-[150px] rounded-xl object-cover shadow-2xl ring-1 ring-white/15">
+                 class="pointer-events-none absolute bottom-28 right-4 z-10 h-[150px] w-[150px] rounded-xl object-cover ring-1 ring-white/15">
         @endif
         {{-- No vertical padding: SceneOverlay sets container-type:size here and padding forces a
              256px min-height that pushes the caption off a short stage; its cqh coefficients are
@@ -90,7 +90,7 @@
                         <x-icons.users class="h-5 w-5" /> {{ __('Assign to class') }}
                     </button>
                     <div x-show="open" x-transition x-cloak
-                         class="absolute inset-x-0 z-10 mt-2 max-h-56 overflow-y-auto rounded-xl border border-white/10 bg-base-300 p-1.5 text-left shadow-2xl">
+                         class="absolute inset-x-0 z-10 mt-2 max-h-56 overflow-y-auto rounded-xl border border-white/10 bg-base-300 p-1.5 text-left">
                         @forelse ($this->classrooms as $class)
                             <button type="button" wire:click="assignToClass({{ $class->id }})"
                                     class="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm text-slate-200 hover:bg-white/10">

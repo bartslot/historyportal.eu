@@ -1,4 +1,4 @@
-@props(['scene' => null])
+@props(['scene' => null, 'activePanel' => 0])
 
 @php
     $blur           = (float)  ($scene->skybox_blur      ?? 0.5);
@@ -13,23 +13,28 @@
     $isUpscaling    = ($scene->upscale_status ?? null) === 'upscaling';
     $isBusy         = $isGenerating;
     $hasSkyboxImage = ! empty($scene->skybox_image_path);
-    $slideshowMode  = (string) ($scene->config['slideshow_mode'] ?? (($scene->config['parallax'] ?? false) ? 'parallax' : 'standard'));
-    $parallax       = $slideshowMode === 'parallax';
+    // Standard or Split (two comic panels). The retired Parallax / Drawing modes read as Standard.
+    $split          = \App\Services\Support\SceneSplit::of($scene->config);
+    $panelShot      = $split ? (array) (array_values((array) ($scene->shots ?? []))[$activePanel] ?? []) : [];
+    $panelFocus     = \App\Services\Support\SceneSplit::focus($panelShot['focus'] ?? []) ?? ['x' => 50.0, 'y' => 50.0];
     $candidates     = $scene->skybox_candidates ?? [];
     // Default image-source tab reflects how the current background was set.
     $bgKind         = $scene->config['background_credit']['kind'] ?? null;
-    $srcDefault     = $bgKind === 'painting' ? 'paintings' : ($bgKind === 'url' ? 'url' : 'ai');
+    $srcDefault     = $bgKind === 'painting' ? 'paintings' : 'ai';
     $backgroundFit  = ($scene->config['background_fit'] ?? 'cover') === 'contain' ? 'contain' : 'cover';
-    $backgroundImageUrl = \App\Support\MediaUrl::versioned($scene->image_path, $scene->updated_at?->timestamp);
+    // On a split scene the Image controls show and set the active panel's own picture.
+    $backgroundImageUrl = \App\Support\MediaUrl::versioned($split ? ($panelShot['image_path'] ?? null) : $scene->image_path, $scene->updated_at?->timestamp);
     $bgEmbed        = ($scene->config ?? [])['bg_embed'] ?? null;
     $gradient       = ($scene->config ?? [])['background_gradient'] ?? null;
     $bgType         = match (true) {
         ($bgEmbed['kind'] ?? '') === 'sketchfab' => '3d',
         ! empty($bgEmbed['src'])                 => 'video',
-        ! empty($scene->image_path)              => 'image',
+        ! empty($backgroundImageUrl)             => 'image',
         is_array($gradient)                      => 'gradient',
         default                                  => 'color',
     };
+    // A split panel has its own colour; the scene's is the fallback, and the only one on Standard.
+    $fillColor      = (string) ($panelShot['background_color'] ?? $bgColor);
     $gradientDraft  = is_array($gradient) ? $gradient : ['from' => $bgColor, 'to' => '#0f172a', 'angle' => 180];
 @endphp
 
@@ -105,18 +110,57 @@
 
     {{-- ── Slideshow tab ────────────────────────────────────────────────────── --}}
     <div x-show="view === 'slideshow'" x-cloak class="space-y-2">
-        {{-- Slideshow render mode — Standard (flat) | Parallax (depth) | Drawing (line art). --}}
-        <div x-data="{ mode: @js($slideshowMode) }">
-            <x-ui.segmented panel name="slideshow-mode" model="mode"
-                            :options="[['standard', __('Standard')], ['parallax', __('Parallax')], ['drawing', __('Drawing')]]"
-                            on-change="$wire.call('setSlideshowMode', $event.target.value)" />
-            <p class="mt-1 text-2xs leading-tight text-slate-500" x-show="mode === 'parallax'" x-cloak>
-                {{ __('Layers and text gain depth and follow the camera.') }}
-            </p>
-            <p class="mt-1 text-2xs leading-tight text-slate-500" x-show="mode === 'drawing'" x-cloak>
-                {{ __('The scene draws itself as an ink line-art animation.') }}
-            </p>
+        {{-- Layout (Figma 2346:503): one strip of tiles, each a picture of its arrangement, that
+             scrolls sideways to more of them. Single is one picture; every other tile splits the
+             scene into comic panels. The panel clicked on the stage is the one the controls below
+             work on; the dividers drag on the stage, the sliders are the exact fallback. --}}
+        @if (\App\Services\Support\SceneSplit::allowedFor($scene->kind))
+        @php
+            $currentLayout = $split['layout'] ?? 'single';
+            $layoutNames = [
+                'single' => __('One picture'),
+                'rows2' => __('Two rows'),
+                'cols2' => __('Two columns'),
+                'diag' => __('Diagonal'),
+                'l1r2' => __('One left, two right'),
+                'rows3' => __('Three rows'),
+                'cols3' => __('Three columns'),
+                'l2r1' => __('Two left, one right'),
+                't1b2' => __('One top, two below'),
+                'grid4' => __('Four squares'),
+            ];
+        @endphp
+        <div class="space-y-2" data-split-controls>
+            <div class="no-scrollbar flex gap-1 overflow-x-auto rounded-lg" data-drag-scroll role="radiogroup" aria-label="{{ __('Layout') }}">
+                @foreach ($layoutNames as $layoutId => $layoutName)
+                    @php $isOn = $currentLayout === $layoutId; @endphp
+                    <button type="button" wire:click="setSplitLayout('{{ $layoutId }}')"
+                            role="radio" aria-checked="{{ $isOn ? 'true' : 'false' }}" aria-label="{{ $layoutName }}"
+                            data-tooltip="{{ $layoutName }}" data-split-layout="{{ $layoutId }}"
+                            class="grid h-8 w-[54px] shrink-0 cursor-pointer place-items-center first:rounded-l-lg last:rounded-r-lg"
+                            style="background: var({{ $isOn ? '--color-panel-tile-active' : '--color-panel-tile' }}); color: var({{ $isOn ? '--color-panel-tile-glyph-active' : '--color-panel-tile-glyph' }})">
+                        <svg viewBox="0 0 42 24" width="42" height="24" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true">
+                            <rect x="0.5" y="0.5" width="41" height="23" rx="3.5"/>
+                            @if ($layoutId !== 'single')
+                                <path d="{{ \App\Services\Support\SceneSplit::glyph($layoutId) }}"/>
+                            @endif
+                        </svg>
+                    </button>
+                @endforeach
+            </div>
+            @if ($split)
+                {{-- One slider per divider; a diagonal's two are where its line meets the top and the bottom. --}}
+                @foreach ($split['at'] as $k => $at)
+                    <x-ui.slider-row :label="$split['layout'] === 'diag' ? ($k === 0 ? __('Top') : __('Bottom')) : (count($split['at']) > 1 ? __('Position').' '.($k + 1) : __('Position'))"
+                                     :min="20" :max="80" :step="1"
+                                     :value="$at * 100" :display="(string) round($at * 100)" unit="%"
+                                     :default="round(\App\Services\Support\SceneSplit::LAYOUTS[$split['layout']]['at'][$k] * 100)"
+                                     :on-change="'setSplitAt(' . $k . ', $event.target.value / 100)'" />
+                @endforeach
+                <span class="block text-2xs font-semibold uppercase tracking-wider text-slate-400" data-split-panel-label>{{ __('Panel') }} {{ $activePanel + 1 }}</span>
+            @endif
         </div>
+        @endif
 
         {{-- Background — how this scene is filled, ONE thing at a time (Keynote model):
              a colour, an image, a gradient, a video or a 3D model. Objects go ON TOP via the Add
@@ -124,7 +168,7 @@
              replaced until a value is set, so a mis-click never wipes a picture.
              A video background is an iframe (YouTube/Vimeo), never hosted by us, muted and
              looping. A film the class WATCHES is still a Video scene (Add ▸ Video). --}}
-        <div data-bg-section x-data="{ bgType: @js($bgType), imgSrc: @js(in_array($srcDefault, ['ai', 'paintings', 'url'], true) ? $srcDefault : 'ai'), promptOpen: false }" class="space-y-2">
+        <div data-bg-section x-data="{ bgType: @js($bgType), imgSrc: @js($srcDefault), promptOpen: false }" class="space-y-2">
             <select x-model="bgType" aria-label="{{ __('Background') }}"
                     class="select select-sm select-bordered w-full bg-base-100 font-medium text-slate-200">
                 <option value="color">{{ __('Colour') }}</option>
@@ -136,10 +180,16 @@
 
             {{-- Colour --}}
             <div x-show="bgType === 'color'" x-cloak class="flex items-center gap-2">
-                <input type="color" value="{{ $bgColor }}" aria-label="{{ __('Colour') }}"
+                <input type="color" value="{{ $fillColor }}" aria-label="{{ __('Colour') }}" x-ref="fillColor"
                        @change="$wire.setBackgroundColor($event.target.value)"
                        class="h-8 w-12 cursor-pointer rounded border border-slate-600 bg-transparent" />
-                <span class="font-mono text-xs text-slate-400">{{ $bgColor }}</span>
+                <span class="font-mono text-xs text-slate-400">{{ $fillColor }}</span>
+                {{-- Picking the colour already shown fires no change, so while something else fills
+                     the backdrop a button applies it. Never the dropdown itself: a mis-click keeps the picture. --}}
+                @if ($bgType !== 'color')
+                    <button type="button" class="btn btn-xs ml-auto" data-bg-apply-color
+                            @click="$wire.setBackgroundColor($refs.fillColor.value)">{{ __('Use colour') }}</button>
+                @endif
             </div>
 
             {{-- Gradient: two colours and a direction; the swatch previews it before it is saved. --}}
@@ -188,8 +238,11 @@
                  x-on:dragover.prevent="if (files($event)) $event.dataTransfer.dropEffect = 'copy'"
                  x-on:dragleave="depth = Math.max(0, depth - 1)"
                  x-on:drop.prevent="depth = 0; const f = $event.dataTransfer.files[0]; if (f) $wire.upload('droppedBackground', f)"
-                 :class="depth > 0 ? 'border-base-content/40 bg-base-content/5' : 'border-slate-700/70 bg-slate-900/40'"
-                 class="flex items-center gap-2.5 rounded-lg border p-1.5 transition-colors">
+                 wire:click="openPaintingPicker" role="button" tabindex="0"
+                 x-on:keydown.enter.prevent="$wire.openPaintingPicker()"
+                 title="{{ __('Choose or upload an image') }}"
+                 :class="depth > 0 ? 'border-base-content/40 bg-base-content/5' : 'border-slate-700/70 bg-slate-900/40 hover:border-base-content/30'"
+                 class="flex cursor-pointer items-center gap-2.5 rounded-lg border p-1.5 transition-colors">
                 @if ($backgroundImageUrl)
                     <img src="{{ $backgroundImageUrl }}"
                          class="h-14 w-24 shrink-0 rounded object-cover ring-1 ring-slate-700"
@@ -207,7 +260,7 @@
 
             {{-- Fit — how the image fills the 16:9 stage. Cover crops the overflow (and anchors a
                  portrait to the top so the face survives); Contain shows the whole work. --}}
-            @if ($backgroundImageUrl)
+            @if ($backgroundImageUrl && ! $split)
                 <div x-data="{ fit: @js($backgroundFit) }">
                     <span class="mb-1 block text-2xs font-semibold uppercase tracking-wider text-slate-400">{{ __('Fit') }}</span>
                     <x-ui.segmented panel name="background-fit" model="fit"
@@ -222,41 +275,39 @@
                 </div>
             @endif
 
+            {{-- Split panel: which part of its picture the crop keeps. --}}
+            @if ($split && $backgroundImageUrl)
+                <div class="space-y-1" data-panel-focus>
+                    <span class="block text-2xs font-semibold uppercase tracking-wider text-slate-400">{{ __('Crop') }}</span>
+                    {{-- Each row keys the panel's background on the timeline (bg:<panel>), as a
+                         layer's sliders key the layer. --}}
+                    <x-ui.slider-row :label="__('Horizontal')" :min="0" :max="100" :step="1"
+                                     :value="$panelFocus['x']" :display="(string) round($panelFocus['x'])" unit="%" :display-scale="1" :default="50"
+                                     keyframe :keyframe-target="'bg:'.$activePanel" keyframe-property="x"
+                                     on-change="setPanelFocus('x', $event.target.value)" />
+                    <x-ui.slider-row :label="__('Vertical')" :min="0" :max="100" :step="1"
+                                     :value="$panelFocus['y']" :display="(string) round($panelFocus['y'])" unit="%" :display-scale="1" :default="50"
+                                     keyframe :keyframe-target="'bg:'.$activePanel" keyframe-property="y"
+                                     on-change="setPanelFocus('y', $event.target.value)" />
+                    {{-- The wheel over the pane on the stage sets the same zoom: a factor, as the
+                         timeline row has it, shown as a percentage. --}}
+                    <x-ui.slider-row :label="__('Zoom')" :min="1" :max="4" :step="0.05"
+                                     :value="$panelFocus['zoom'] ?? 1" :display="(string) round(($panelFocus['zoom'] ?? 1) * 100)" unit="%" :default="1"
+                                     keyframe :keyframe-target="'bg:'.$activePanel" keyframe-property="zoom"
+                                     on-change="setPanelFocus('zoom', $event.target.value)" />
+                </div>
+            @endif
+
             {{-- Reuse an image already in THIS lesson — a single-row carousel (latest first), arrows to
                  scroll. Clicking sets it as this scene's background (local paths reused; external
                  URLs downloaded once). Mirrors the Poster picker's "pick from the lesson" idea. --}}
             @php $reuseImages = array_reverse($scene->lesson?->posterCandidates() ?? []); @endphp
             @if (count($reuseImages))
-                <div x-data="{ scroll(d) { const el = $refs.strip; el.scrollBy({ left: d * el.clientWidth * 0.8, behavior: 'smooth' }); } }">
-                    <span class="mb-1 block text-2xs font-semibold uppercase tracking-wider text-slate-400">{{ __('Reuse from this lesson') }}</span>
-                    <div class="flex items-center gap-1">
-                        <button type="button" @click="scroll(-1)" aria-label="{{ __('Previous') }}"
-                                class="flex h-8 w-5 shrink-0 items-center justify-center rounded text-slate-400 transition hover:bg-slate-800 hover:text-slate-100">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="h-4 w-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15 6l-6 6 6 6"/></svg>
-                        </button>
-                        <div x-ref="strip" data-drag-scroll class="flex flex-1 gap-1.5 overflow-x-auto scroll-smooth [&::-webkit-scrollbar]:hidden" style="scrollbar-width:none">
-                            @foreach ($reuseImages as $img)
-                                <button type="button" wire:click="useLessonImageBackground(@js($img['url']))" title="{{ $img['label'] ?? '' }}"
-                                        @class([
-                                            'h-12 w-16 shrink-0 overflow-hidden rounded ring-1 transition',
-                                            'ring-base-content' => $backgroundImageUrl === $img['url'],
-                                            'ring-slate-700 hover:ring-base-content/40' => $backgroundImageUrl !== $img['url'],
-                                        ])>
-                                    <img src="{{ $img['url'] }}" alt="{{ $img['label'] ?? '' }}" class="h-full w-full object-cover" loading="lazy"
-                                         onerror="this.closest('button').style.display='none'" />
-                                </button>
-                            @endforeach
-                        </div>
-                        <button type="button" @click="scroll(1)" aria-label="{{ __('Next') }}"
-                                class="flex h-8 w-5 shrink-0 items-center justify-center rounded text-slate-400 transition hover:bg-slate-800 hover:text-slate-100">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="h-4 w-4"><path stroke-linecap="round" stroke-linejoin="round" d="M9 6l6 6-6 6"/></svg>
-                        </button>
-                    </div>
-                </div>
+                <x-lesson.picture-strip :images="$reuseImages" select="useLessonImageBackground" :current="$backgroundImageUrl" :label="__('Reuse from this lesson')" />
             @endif
 
             <x-ui.segmented panel name="image-source" model="imgSrc"
-                            :options="[['ai', __('AI Gen')], ['paintings', __('Paintings')], ['url', __('Drawing')]]" />
+                            :options="[['ai', __('AI Gen')], ['paintings', __('Paintings')]]" />
 
             {{-- AI generated — Regenerate / Edit prompt (Figma item 5) --}}
             <div x-show="imgSrc === 'ai'" x-cloak class="space-y-2">
@@ -305,18 +356,6 @@
                 <p class="text-2xs text-slate-500">{{ __('Public-domain paintings & museum works, matched to the scene’s era and place.') }}</p>
             </div>
 
-            {{-- Drawing — render the background as a hand-drawn ink line-art animation.
-                 (The 'url' imgSrc key labels the Drawing tab; the paste-a-URL flow via
-                 applyImageUrl still exists on the component, just not surfaced in Format.) --}}
-            <div x-show="imgSrc === 'url'" x-cloak class="space-y-1.5">
-                <button type="button"
-                        @click="$wire.call('setSlideshowMode', 'drawing')"
-                        class="inline-flex items-center gap-1.5 text-xs text-slate-300 transition hover:text-base-content">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-3.5 w-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" /></svg>
-                    <span>{{ __('Draw this background') }}</span>
-                </button>
-                <p class="text-2xs text-slate-500">{{ __('The scene draws itself as an ink line-art animation (sets the render mode to Drawing).') }}</p>
-            </div>
           </div>{{-- /image sub-sources --}}
 
             {{-- 3D — Sketchfab model as the scene background --}}
@@ -355,7 +394,7 @@
                         <button type="button"
                                 wire:click="selectSkyboxCandidate({{ $scene->id }}, {{ $i }})"
                                 wire:loading.attr="disabled" wire:target="selectSkyboxCandidate,generateSkyboxCandidates"
-                                class="group relative block w-full overflow-hidden rounded ring-1 ring-slate-700 hover:ring-2 hover:ring-base-content/40 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                class="group relative block w-full overflow-hidden rounded ring-1 ring-slate-700 hover:ring-base-content/40 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                 style="aspect-ratio:2/1">
                             <img src="{{ asset('storage/' . $path) }}"
                                  class="w-full h-full object-cover" />

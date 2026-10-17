@@ -5,9 +5,11 @@
 
     $heading = $lesson->title ?: $lesson->topic;
     $description = Seo::lessonDescription($lesson);
+    // MediaUrl, like the library card: poster_image can be a CDN URL, which Storage::url turned
+    // into "/storage/https://…" (no image, 2026-10-17).
     $poster = $lesson->poster_image
-        ? \Illuminate\Support\Facades\Storage::disk('public')->url($lesson->poster_image)
-        : null;
+        ? \App\Support\MediaUrl::of($lesson->poster_image)
+        : \App\Support\MediaUrl::of($lesson->firstScene?->image_path);
     $minutes = $lesson->duration_seconds ? (int) ceil($lesson->duration_seconds / 60) : null;
 @endphp
 
@@ -16,9 +18,11 @@
         <x-seo
             page="lesson"
             :params="['slug' => $slug]"
+            :locale="Seo::lessonLocale($lesson)"
             :title="$heading"
             :description="$description"
             :image="$poster"
+            :tall-image="$lesson->titlePosterStillUrl()"
             type="article"
             :graph="Seo::lessonGraph($lesson)"
         />
@@ -27,22 +31,22 @@
     <x-landing.header />
 
     <main class="mx-auto max-w-4xl px-4 pb-16 pt-32 sm:px-6">
-        <nav class="text-xs text-slate-500" aria-label="{{ __('Breadcrumb') }}">
+        <nav class="text-xs text-slate-300" aria-label="{{ __('Breadcrumb') }}">
             <a href="{{ Seo::url('lessons') }}" class="hover:text-primary">{{ __('Lesson library') }}</a>
             <span class="mx-2">/</span>
-            <span class="text-slate-400">{{ $heading }}</span>
+            <span class="text-slate-300">{{ $heading }}</span>
         </nav>
 
         <header class="mt-6">
             <h1 class="font-history text-4xl font-light tracking-tight text-white sm:text-5xl">{{ $heading }}</h1>
-            <p class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-400">
+            <p class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-300">
                 @if ($lesson->grade_level)
-                    <span>{{ __('Age group') }}: <span class="text-slate-200">{{ $lesson->grade_level }}</span></span>
+                    <span>{{ __('Age group') }}: <span class="text-slate-300">{{ $lesson->grade_level }}</span></span>
                 @endif
                 @if ($minutes)
-                    <span>{{ __('Length') }}: <span class="text-slate-200">{{ __(':minutes min', ['minutes' => $minutes]) }}</span></span>
+                    <span>{{ __('Length') }}: <span class="text-slate-300">{{ __(':minutes min', ['minutes' => $minutes]) }}</span></span>
                 @endif
-                <span>{{ __('Lesson code') }}: <span class="font-mono uppercase text-slate-200">{{ $lesson->lesson_code }}</span></span>
+                <span>{{ __('Lesson code') }}: <span class="font-mono uppercase text-slate-300">{{ $lesson->lesson_code }}</span></span>
             </p>
         </header>
 
@@ -56,17 +60,34 @@
                class="btn btn-primary">
                 {{ __('Play this lesson') }}
             </a>
-            <span class="text-sm text-slate-500">{{ __('Opens straight away. No account, nothing to install.') }}</span>
+            <span class="text-sm text-slate-300">{{ __('Opens straight away. No account, nothing to install.') }}</span>
         </div>
 
-        <section class="mt-12 space-y-4 text-base leading-relaxed text-slate-300">
-            <h2 class="font-history text-2xl font-light text-white">{{ __('What this lesson covers') }}</h2>
-            <p>{{ $description }}</p>
-            @if ($lesson->topic && $lesson->topic !== $heading)
-                <p>{{ __('The subject is :topic, told as a story rather than a list of dates.', ['topic' => $lesson->topic]) }}</p>
-            @endif
-            <p>{{ __('The narrator reads each scene aloud while historical imagery fills the screen, and a short quiz at the end checks what stuck. A teacher can play it on the big screen or send the code to the class.') }}</p>
-        </section>
+        {{-- A lesson with a teacher guide says what the class learns instead of the generic blurb. --}}
+        @if (! empty($lesson->teacher_guide['goal']))
+            <x-lesson.teacher-guide :guide="$lesson->teacher_guide" />
+        @else
+            <section class="mt-12 space-y-4 text-base leading-relaxed text-slate-300">
+                <h2 class="font-history text-2xl font-light text-white">{{ __('What this lesson covers') }}</h2>
+                <p>{{ $description }}</p>
+                @if ($lesson->topic && $lesson->topic !== $heading)
+                    <p>{{ __('The subject is :topic, told as a story rather than a list of dates.', ['topic' => $lesson->topic]) }}</p>
+                @endif
+                <p>{{ __('The narrator reads each scene aloud while historical imagery fills the screen, and a short quiz at the end checks what stuck. A teacher can play it on the big screen or send the code to the class.') }}</p>
+            </section>
+        @endif
+
+        {{-- The curriculum this lesson covers, each row linking to that goal's own page. --}}
+        @php $curriculum = $lesson->curriculumGoals; @endphp
+        @if ($curriculum->isNotEmpty())
+            <section class="mt-12 text-slate-300">
+                <h2 class="font-history text-2xl font-light text-white">{{ __('Curriculum') }}</h2>
+                <x-curriculum.goal-table class="mt-4" :goals="$curriculum" fit />
+                @if (! empty($lesson->teacher_guide['curriculum_note']))
+                    <p class="mt-4 text-sm">{{ $lesson->teacher_guide['curriculum_note'] }}</p>
+                @endif
+            </section>
+        @endif
 
         @if ($chapters->isNotEmpty())
             <section class="mt-12">
@@ -74,7 +95,7 @@
                 <ol class="mt-4 space-y-2">
                     @foreach ($chapters as $index => $chapter)
                         <li class="flex items-start gap-3 text-slate-300">
-                            <span class="mt-1 font-mono text-xs text-slate-600">{{ str_pad((string) ($index + 1), 2, '0', STR_PAD_LEFT) }}</span>
+                            <span class="mt-1 font-mono text-xs text-slate-300">{{ str_pad((string) ($index + 1), 2, '0', STR_PAD_LEFT) }}</span>
                             <span>{{ $chapter }}</span>
                         </li>
                     @endforeach
@@ -99,7 +120,7 @@
                     @foreach ($related as $other)
                         <li>
                             <a href="{{ Seo::url('lesson', ['slug' => Seo::lessonSlug($other)]) }}"
-                               class="block rounded-xl border border-slate-800 bg-slate-900/40 p-4 text-sm text-slate-200 transition hover:border-primary/40 hover:text-primary">
+                               class="block rounded-xl border border-slate-800 bg-slate-900/40 p-4 text-sm text-slate-300 transition hover:border-primary/40 hover:text-primary">
                                 {{ $other->title ?: $other->topic }}
                             </a>
                         </li>

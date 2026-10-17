@@ -1,57 +1,82 @@
 @props([
-    /** The object this keys, e.g. "art:231", "text:txt_ab12", "camera". Null leaves it inert. */
+    /** The object this keys, e.g. "art:231", "text:txt_ab12", "camera". Null draws a marker only. */
     'target' => null,
-    /** Which of that object's properties, e.g. "opacity". Null leaves it inert. */
+    /** Which of its properties, e.g. "opacity". Space-separated for a row that is two values at
+     *  once: Colour keys "tint tint_opacity" together. Null draws a marker only. */
     'property' => null,
-    /** Inert marker only: an Alpine expression that fills the diamond when true — a key under the
-     *  playhead, or a selected key on a lane. Filled vs outlined, so the state is not colour alone. */
-    'on' => null,
-    /** Inert marker only: a solid white diamond, for keys on a timeline lane. Selected ones get a
-     *  ring, because a filled diamond cannot fill any further. */
+    /** Marker only: an Alpine expression giving 'none' | 'here' | 'elsewhere'. */
+    'state' => null,
+    /** Marker only: a key on a timeline lane — always filled; `on` (an Alpine expression) rings it
+     *  when selected, because a filled diamond cannot fill any further. */
     'solid' => false,
+    'on' => null,
 ])
 
-{{-- The per-property keyframe marker — the small outlined rhombus the file puts after Colour, X,
-     Y, W, H and Scale.
+{{-- The keyframe diamond, ONE component for every place a keyframe is shown: after a property in
+     the Format panel, on a property row in the Timeline, and on the timeline's lanes.
 
-     It was drawn and deliberately inert, with a note saying there was no spec yet for what pressing
-     one adds or where that keyframe is stored. There is now: the Timeline tab owns the scene's
-     tracks, so a diamond given a `target` and a `property` sets or updates that property's key at
-     the playhead, and fills in when one is there. Without them it stays a marker, and stays
-     unpressable rather than looking pressable and doing nothing.
+     A true square turned 45 degrees: 9px each way inside a 13px box (the file's 9.1 / 12.9,
+     rounded to whole pixels so it stays crisp at 1x and 2x), flat, no radius.
 
-     Geometry is the file's — a 9.1px square turned 45 degrees inside a 12.9px box. --}}
+     Three states, never colour alone (After Effects' keyframe navigator, Figma's inspector):
+       none       outline           the property is not animated
+       here       filled            a keyframe sits under the playhead
+       elsewhere  outline + dot     animated, with its keys at other moments
+
+     Given a target and a property it is a button: press (or Space/Enter) toggles a keyframe at
+     the playhead, through the Timeline tab, which owns the scene's tracks. --}}
+
+@php
+    $shape = 'block h-[9px] w-[9px] shrink-0 rotate-45 border';
+@endphp
 
 @if ($target && $property)
     <button type="button"
             x-data="{
                 target: @js($target),
-                property: @js($property),
-                on: false,
-                sync () { this.on = !!window.__timelineKeying?.has(this.target, this.property) },
+                properties: @js(preg_split('/\s+/', trim($property))),
+                state: 'none',
+                sync () {
+                    const k = window.__timelineKeying
+                    const states = this.properties.map((p) => k?.state?.(this.target, p) ?? 'none')
+                    this.state = states.includes('here') ? 'here' : (states.includes('elsewhere') ? 'elsewhere' : 'none')
+                },
+                toggle () {
+                    const k = window.__timelineKeying
+                    if (!k) return
+                    const removing = this.state === 'here'
+                    for (const p of this.properties) {
+                        if ((k.state(this.target, p) === 'here') === removing) k.key(this.target, p)
+                    }
+                    this.sync()
+                },
             }"
             x-init="sync()"
             x-on:timeline-changed.window="sync()"
-            x-on:click.prevent.stop="window.__timelineKeying?.key(this.target, this.property); sync()"
-            :aria-pressed="on ? 'true' : 'false'"
-            :data-tooltip="on ? @js(__('Update keyframe')) : @js(__('Add keyframe'))"
-            {{ $attributes->class(['flex shrink-0 cursor-pointer items-center justify-center rounded hover:bg-white/5']) }}
-            style="width: 12.872px; height: 12.872px">
-        <span class="-rotate-45 rounded-[1px] border"
-              :class="on ? 'border-timeline-mark bg-timeline-mark' : 'border-panel-label'"
-              style="width: 9.102px; height: 9.102px"></span>
+            x-on:click.prevent.stop="toggle()"
+            data-keyframe-diamond
+            :data-keyframe-state="state"
+            :aria-pressed="state === 'here' ? 'true' : 'false'"
+            :aria-label="state === 'here' ? @js(__('Remove keyframe')) : @js(__('Add keyframe'))"
+            :data-tooltip="state === 'here' ? @js(__('Remove keyframe')) : @js(__('Add keyframe'))"
+            {{ $attributes->class(['grid h-[13px] w-[13px] shrink-0 cursor-pointer place-items-center rounded-sm text-panel-label hover:text-base-content focus-visible:outline focus-visible:outline-1 focus-visible:outline-base-content']) }}>
+        <span class="{{ $shape }} grid place-items-center border-current"
+              :class="state === 'here' && 'border-timeline-mark bg-timeline-mark'">
+            <span x-show="state === 'elsewhere'" class="block h-[3px] w-[3px] bg-current"></span>
+        </span>
     </button>
 @else
-    <span {{ $attributes->class(['flex shrink-0 items-center justify-center']) }}
-          style="width: 12.872px; height: 12.872px" aria-hidden="true">
+    <span {{ $attributes->class(['grid h-[13px] w-[13px] shrink-0 place-items-center text-panel-label']) }} aria-hidden="true">
         @if ($solid)
-            <span class="-rotate-45 rounded-[1px] border border-white bg-white"
-                  @if ($on) x-bind:class="({{ $on }}) && 'outline-2 outline-offset-2 outline-white'" @endif
-                  style="width: 9.102px; height: 9.102px"></span>
+            <span class="{{ $shape }} border-white bg-white"
+                  @if ($on) x-bind:class="({{ $on }}) && 'outline outline-2 outline-offset-2 outline-white'" @endif></span>
+        @elseif ($state)
+            <span class="{{ $shape }} grid place-items-center border-current"
+                  x-bind:class="({{ $state }}) === 'here' && 'border-timeline-mark bg-timeline-mark'">
+                <span x-show="({{ $state }}) === 'elsewhere'" class="block h-[3px] w-[3px] bg-current"></span>
+            </span>
         @else
-            <span class="-rotate-45 rounded-[1px] border border-panel-label"
-                  @if ($on) x-bind:class="({{ $on }}) && 'bg-panel-label'" @endif
-                  style="width: 9.102px; height: 9.102px"></span>
+            <span class="{{ $shape }} border-current"></span>
         @endif
     </span>
 @endif

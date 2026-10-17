@@ -9,11 +9,12 @@
  * properties.js. There is no fixed list anywhere.
  */
 
-import { addKeyframe, sortedKeys, sameTime, segmentEasing, easingFn } from './keyframes.js'
+import { addKeyframe, sortedKeys, sameTime, segmentEasing, easingFn, keyStateAt, toggleKeyframe, baseOf } from './keyframes.js'
 import { keyId, moveKeys, deleteKeys, snapToNearest } from './timeline-edit.js'
-import { propertiesFor, sampleFrame, kindOfTarget } from './properties.js'
+import { propertiesFor, propertyFor, sampleFrame, kindOfTarget, INTERPOLATE } from './properties.js'
 import { wordSpans, snapTime, wordAt } from './narration-clock.js'
-import { textObjects, artObjects, dioramaObjects, readObjectProperty, writeObjectProperty, setObjectHidden } from './scene-objects.js'
+import { textObjects, artObjects, balloonObjects, dioramaObjects, backgroundObjects, readObjectProperty, writeObjectProperty, setObjectHidden } from './scene-objects.js'
+import { balloonPatch } from '../scene/BalloonLayer.js'
 import { clipOf, shiftClip, stretchClip } from '../scene/diorama/clip.js'
 
 /** Which part of a diorama cell a row edits: X across, Z away from the camera. */
@@ -24,6 +25,7 @@ import {
   fitZoom, timeAtX, toleranceSeconds, tickStep, ticksFor, formatTime,
   DRAG_THRESHOLD_PX, LANE_PAD_PX, zoomFromSlider, sliderFromZoom,
 } from './timeline-view.js'
+import { labelColumn } from './timeline-label-column.js'
 
 /** Figma's Bézier easing presets, by our easing.js names. 'hold' is Figma's Hold: a cut. */
 const EASING_PRESETS = [
@@ -80,7 +82,8 @@ const DEFAULT_DURATION = 8
 
 /** One decimal on a row that is 115px wide. `30.815` rendered as "30,815" and read as thirty
  *  thousand; the model keeps its precision, the field does not need it. */
-const round1 = (v) => Math.round(v * 10) / 10
+// Two decimals: a factor (scale, opacity) moves in steps of 0.05, and tenths showed 0.25 as 0.3.
+const round2 = (v) => Math.round(v * 100) / 100
 
 /** The map's camera as the five numbers the timeline animates — map-native, so it round-trips. */
 export const cameraFromMap = (map) => {
@@ -111,6 +114,7 @@ export const applyCamera = (map, values) => {
 
 
 export const animationTimeline = (config = {}) => ({
+  ...labelColumn(),
   time: 0,
   duration: Number(config.duration) || DEFAULT_DURATION,
   zoom: 100,
@@ -148,10 +152,24 @@ export const animationTimeline = (config = {}) => ({
     window.__timelineKeying = {
       key: (target, property) => { this.toggleKey(target, property); this.announce() },
       has: (target, property) => this.hasKeyHere(target, property),
+      state: (target, property) => this.keyState(target, property),
+      animated: (target, property) => this.isAnimated(target, property),
+      value: (target, property) => this.valueAt(target, property),
+      edit: (target, property, value) => this.editKeyed(target, property, value),
+      reset: (target, property) => this.resetProperty(target, property),
+      canResetObject: (target) => this.canResetObject(target),
+      resetObject: (target) => this.resetObject(target),
       time: () => this.time,
+      // Selected keyframes own Backspace/Delete: the editor's object-delete key asks this first,
+      // so deleting a keyframe never takes the whole layer with it (Bart, 2026-10-16).
+      hasKeySelection: () => this.selected.length > 0 && this.transportHasTheKeyboard,
       // A diorama drag records a key at the playhead while this is on (never during playback).
       autoKey: () => this.autoKey && !this.playing,
     }
+
+    // Cmd-Z / Cmd-Shift-Z restored the scene on the server: its timeline is the one to show now,
+    // not the copy this panel remembered (which is exactly what the undo took back).
+    window.addEventListener('timeline-restored', (event) => this.restore(event.detail?.timeline))
 
     for (const event of ['scene-objects-changed', 'objscene-changed']) {
       window.addEventListener(event, () => { this.refreshObjects(); this.canvasTick++ })   // a diorama path changed: its rows re-read
@@ -275,7 +293,8 @@ export const animationTimeline = (config = {}) => ({
   refreshObjects () {
     const cameras = this.targets.filter((t) => kindOfTarget(t) === 'camera')
       .map((target) => ({ target, kind: 'camera', label: 'Camera' }))
-    this.objects = [...cameras, ...artObjects(), ...textObjects(), ...dioramaObjects()]
+    this.objects = [...cameras, ...balloonObjects(), ...artObjects(), ...textObjects(), ...dioramaObjects(),
+      ...backgroundObjects(config.objectLabels?.background)]   // the back-most, so the last row
     for (const o of this.objects) if (!(o.target in this.openGroups)) this.openGroups[o.target] = true
   },
 
@@ -481,6 +500,7 @@ export const animationTimeline = (config = {}) => ({
 
   /** Pressing the RULER scrubs the playhead, and the scene follows live. Playback yields to it. */
   startScrub (event) {
+    this.stopEasingPreview()   // an edit or the clock takes the stage back from a preview
     if (event.button !== 0) return
     event.stopPropagation()
     this.pause()
@@ -565,6 +585,7 @@ export const animationTimeline = (config = {}) => ({
 
   /** Esc cancels a drag in flight, and otherwise clears the selection. */
   onEscape () {
+    if (this.keyMenu) { this.keyMenu = null; return }
     if (this.easingMenu && !this.drag) { this.closeEasing(); return }
     if (!this.drag) { if (this.transportHasTheKeyboard) this.selected = []; return }
     const memory = dragMemory.get(this.drag.el)
@@ -666,6 +687,69 @@ export const animationTimeline = (config = {}) => ({
     window.addEventListener('pointerup', onUp, { once: true })
   },
 
+  // ── Bars. A balloon is on screen from its start to its end (no end: the scene's end); a figure's
+  //    entrance plays from its delay for as long as Appear's speed makes it. Its row's bar moves
+  //    it in time and its ends stretch it, like a diorama clip.
+
+  /** The live draft while a bar is dragged, else the object's own. */
+  barOf (target) {
+    if (this.spanDraft?.target === target) return this.spanDraft
+    const o = this.objects.find((x) => x.target === target)
+    if (!o) return null
+    if (o.kind === 'art') return o.entrance ?? null
+    return { from: o.start ?? 0, to: Number.isFinite(o.end) ? o.end : this.duration }
+  },
+
+  spanDraft: null,
+
+  startBar (event, target) {
+    if (event.button !== 0) return
+    event.stopPropagation()
+    this.pause()
+    const span0 = this.barOf(target)
+    if (!span0) return
+    const keys0 = [{ t: span0.from }, { t: span0.to }]
+    const bar = event.currentTarget.getBoundingClientRect()
+    const EDGE_PX = 8
+    const mode = event.clientX - bar.left < EDGE_PX ? 'start' : bar.right - event.clientX < EDGE_PX ? 'end' : 'move'
+    const t0 = this.rawTimeFromEvent(event)
+    let moved = false
+    const onMove = (e) => {
+      if (!moved && Math.abs(e.clientX - event.clientX) < DRAG_THRESHOLD_PX) return
+      moved = true
+      const dt = this.rawTimeFromEvent(e) - t0
+      const keys = mode === 'move' ? shiftClip(keys0, dt)
+        : stretchClip(keys0, mode, (mode === 'end' ? keys0[1].t : keys0[0].t) + dt)
+      this.spanDraft = { target, from: keys[0].t, to: Math.min(this.duration, keys[1].t) }
+    }
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove)
+      const draft = this.spanDraft
+      if (!moved || !draft) { this.spanDraft = null; return }
+      this.commitBar(target, draft)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp, { once: true })
+  },
+
+  /** Save a dragged bar: a figure's entrance delay and length, or a balloon's start and end. */
+  commitBar (target, draft) {
+    const o = this.objects.find((x) => x.target === target)
+    if (o?.kind === 'art') {
+      const ms = Math.max(100, Math.round((draft.to - draft.from) * 1000))
+      this.$wire?.setLayerEntrance?.(Number(target.slice(4)), Math.round(draft.from * 10) / 10, ms)
+      // The row shows the new bar now; the layer's own values arrive with the save.
+      o.entrance = { from: draft.from, to: draft.to }
+      this.spanDraft = null
+      return
+    }
+    // Up to the timeline's end means up to the scene's end, however long the narration runs.
+    const end = draft.to >= this.duration - 0.01 ? null : draft.to
+    window.Livewire?.dispatch('balloon:change', { id: `bal_${target.slice(4)}`, patch: { start: draft.from, end } })
+    // The row keeps the draft until the save comes back as the scene's new lines.
+    setTimeout(() => { if (this.spanDraft === draft) this.spanDraft = null }, 1500)
+  },
+
   // ── Transport ───────────────────────────────────────────────────────────────────────────
 
   playing: false,
@@ -674,6 +758,7 @@ export const animationTimeline = (config = {}) => ({
   _startedFrom: 0,
 
   play () {
+    this.stopEasingPreview()   // an edit or the clock takes the stage back from a preview
     if (this.playing || !(this.duration > 0) || this.nothingToPlay) return
     this.playing = true
     this._startedFrom = this.time >= this.duration ? 0 : this.time
@@ -749,15 +834,14 @@ export const animationTimeline = (config = {}) => ({
   // ── Keyframes ───────────────────────────────────────────────────────────────────────────
 
   /**
-   * The diamond on a property row: "put what I am looking at, HERE".
-   *
-   * Sets or UPDATES the key at the playhead. It deliberately does not remove one: re-framing a
-   * shot you had already keyed is the common act, and making that two clicks (off, then on) is
-   * how you end up with a key you did not mean to delete. Removing is the double-click on the
-   * diamond in the lane, where the thing being removed is the thing under the pointer.
+   * The diamond on a property row, and after a property in the Format panel: a TOGGLE, as in
+   * After Effects' keyframe navigator. No key under the playhead adds one with the value on screen;
+   * a key there is removed (Bart, 2026-10-16). Re-framing a keyed shot needs no diamond at all:
+   * editing the value while the playhead sits on the key updates it (editKeyed / setValue).
    */
   toggleKey (target, property) {
     if (kindOfTarget(target) === 'dio') { window.__diorama?.keyHere(target.slice(4)); return }
+    this.stopEasingPreview()
     const map = window.__lessonMap
     const live = kindOfTarget(target) === 'camera'
       ? (map ? cameraFromMap(map)[property] : undefined)
@@ -767,11 +851,101 @@ export const animationTimeline = (config = {}) => ({
     // the property reads null. Bailing on that made the diamond do nothing at all on a fresh
     // layer, silently, which is the worst way for a control to refuse. Key what the row is
     // SHOWING instead: the field says 0, so the keyframe says 0, and the two agree.
-    const value = Number.isFinite(live) ? live : 0
+    const isColor = propertyFor(kindOfTarget(target), property)?.type === 'color'
+    const value = isColor ? (typeof live === 'string' ? live : '') : (Number.isFinite(live) ? live : 0)
 
-    this.writeTrack(target, property, (track) => addKeyframe(track, { time: this.time, value }))
+    const before = this.trackFor(target, property)
+    const next = toggleKeyframe(before ?? { target, property, keyframes: [] }, this.time, value)
+    // The last key gone: the property is not animated any more, and it goes back to what it was.
+    if (!next.keyframes.length) return this.resetProperty(target, property)
+    this.writeTrack(target, property, () => next)
+    this.applyFrame()
     this.save()
   },
+
+  /** 'none' | 'here' | 'elsewhere' — the three states of a property's diamond. */
+  keyState (target, property) {
+    void this.time
+    if (kindOfTarget(target) === 'dio') return keyStateAt({ keyframes: this.keysOf(target, property) }, this.time)
+    return keyStateAt(this.trackFor(target, property), this.time)
+  },
+
+  /**
+   * A value typed or dragged in the Format panel. On an animated property it is a keyframe at the
+   * playhead — updating the key there, or adding one between keys (After Effects). Returns false on
+   * a property that is not animated, so the panel saves the plain value as it always did.
+   */
+  editKeyed (target, property, value) {
+    this.stopEasingPreview()   // an edit or the clock takes the stage back from a preview
+    if (kindOfTarget(target) === 'dio' || !this.isAnimated(target, property)) return false
+    const isColor = propertyFor(kindOfTarget(target), property)?.type === 'color'
+    const v = isColor ? String(value ?? '') : Number(value)
+    if (!isColor && !Number.isFinite(v)) return true
+    if (this.playing) this.pause()
+    writeObjectProperty(target, property, v)
+    this.writeTrack(target, property, (track) => addKeyframe(track, { time: this.time, value: v }))
+    this.save()
+    this.announce()
+    return true
+  },
+
+  /** Has this property anything Reset would take back? Only keys, so only an animated one. */
+  canReset (target, property) {
+    return kindOfTarget(target) !== 'dio' && this.isAnimated(target, property)
+  },
+
+  canResetObject (target) {
+    return this.propertiesOf(target).some((p) => this.canReset(target, p.key))
+  },
+
+  /**
+   * Reset: the property's keys go, and it returns to the value it had before it was keyed. The
+   * layer's stored value is written back too, so a canvas drag made while it was animated cannot
+   * leave the layer somewhere the teacher never chose.
+   */
+  resetProperty (target, property, { persist = true } = {}) {
+    this.stopEasingPreview()   // an edit or the clock takes the stage back from a preview
+    const track = this.trackFor(target, property)
+    if (!track) return
+    const base = baseOf(track)
+    this.tracks = this.tracks.filter((t) => t !== track)
+    this.selected = this.selected.filter((id) => !id.startsWith(`${target}|${property}|`))
+    if (base !== null && base !== undefined) {
+      if (kindOfTarget(target) === 'camera') { if (window.__lessonMap) applyCamera(window.__lessonMap, { [property]: base }) }
+      else writeObjectProperty(target, property, base)
+      const [kind, id] = String(target).split(':')
+      if (kind === 'art') this.$wire?.updateArtworkLayer?.(Number(id), property, base)
+      // A balloon keeps its own values on its line: the one Reset returns to is saved there too.
+      if (kind === 'bal') this.$wire?.changeBalloon?.(`bal_${id}`, balloonPatch({ [property]: base }, (p) => readObjectProperty(target, p)))
+    }
+    if (!persist) return
+    this.applyFrame()
+    this.save()
+    this.announce()
+  },
+
+  /** "Reset all": every property of the object, one save (and so one undo step). */
+  resetObject (target) {
+    for (const p of this.propertiesOf(target)) if (this.canReset(target, p.key)) this.resetProperty(target, p.key, { persist: false })
+    this.applyFrame()
+    this.save()
+    this.announce()
+  },
+
+  /** The scene's timeline as the server now has it — after an undo or redo. */
+  restore (timeline) {
+    if (!timeline || typeof timeline !== 'object' || this.$el?.isConnected === false) return   // a panel from a scene since left
+    this.tracks = Array.isArray(timeline.tracks) ? timeline.tracks : []
+    this.targets = Array.isArray(timeline.targets) ? timeline.targets : this.targets
+    this.selected = []
+    this.remember()
+    this.refreshObjects()
+    this.applyFrame()
+    this.announce()
+  },
+
+  /** A registry label in the teacher's language. */
+  propertyLabel (property) { return config.propertyLabels?.[property.key] ?? property.label },
 
   /** Is there a key exactly under the playhead? Drives the diamond's pressed state. */
   hasKeyHere (target, property) {
@@ -788,16 +962,19 @@ export const animationTimeline = (config = {}) => ({
       return cell ? Math.round(cell[DIO_AXIS[property]] * 100) / 100 : 0
     }
     const keys = this.keysOf(target, property)
+    const isColor = propertyFor(kindOfTarget(target), property)?.type === 'color'
     if (keys.length) {
       const frame = sampleFrame(this.tracks, this.time)
       const value = frame[target]?.[property]
-      if (Number.isFinite(value)) return round1(value)
+      if (isColor && typeof value === 'string') return value
+      if (Number.isFinite(value)) return round2(value)
     }
+    if (isColor) { const live = readObjectProperty(target, property); return typeof live === 'string' ? live : '' }
     const map = window.__lessonMap
     const live = kindOfTarget(target) === 'camera'
       ? (map ? cameraFromMap(map)[property] : null)
       : readObjectProperty(target, property)
-    return Number.isFinite(live) ? round1(live) : 0
+    return Number.isFinite(live) ? round2(live) : 0
   },
 
   /**
@@ -823,7 +1000,8 @@ export const animationTimeline = (config = {}) => ({
    * clicking the lane is a float. That is the whole of *"not same as previous keyframe"*.
    */
   setValue (target, property, value) {
-    if (!Number.isFinite(value)) return
+    const isColor = propertyFor(kindOfTarget(target), property)?.type === 'color'
+    if (!isColor && !Number.isFinite(value)) return
     if (kindOfTarget(target) === 'dio') {
       // The stage applies the canvas rules: snapped, on its floor, recorded while auto-key is on.
       const id = target.slice(4)
@@ -879,14 +1057,32 @@ export const animationTimeline = (config = {}) => ({
       .filter((ref) => this.selected.includes(keyId(ref))))
   },
 
-  /** Delete/Backspace on the timeline, never while the caret is in a field. */
+  /** Delete/Backspace on the timeline, never while the caret is in a field. NOT gated on
+   *  defaultPrevented: the editor's object-delete key yields to a key selection (hasKeySelection),
+   *  and whichever listener runs first, the keys are what goes. */
   isDeleteKey (event) {
     if (event.key !== 'Delete' && event.key !== 'Backspace') return false
-    if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return false
+    if (event.metaKey || event.ctrlKey || event.altKey) return false
     return this.transportHasTheKeyboard && !isTypingTarget(event.target) && this.selected.length > 0
   },
 
+  /** The right-click menu on a keyframe: one action, remove THIS key. Null when closed. */
+  keyMenu: null,
+
+  openKeyMenu (event, target, property, time) {
+    if (kindOfTarget(target) === 'dio') return
+    this.pause()
+    this.selected = [keyId({ target, property, time })]
+    this.keyMenu = { top: Math.min(event.clientY, window.innerHeight - 48), left: Math.min(event.clientX, window.innerWidth - 200) }
+  },
+
+  removeMenuKey () {
+    this.keyMenu = null
+    this.deleteSelected()
+  },
+
   deleteSelected () {
+    this.stopEasingPreview()   // an edit or the clock takes the stage back from a preview
     // Diorama keys live in the diorama JSON: one removal per item, at the selected times.
     const dioTimes = {}
     for (const id of this.selected) {
@@ -958,6 +1154,7 @@ export const animationTimeline = (config = {}) => ({
     if (!id) return null
     if (String(id).startsWith('art_')) return `art:${String(id).slice(4)}`
     if (String(id).startsWith('dio_')) return `dio:${String(id).slice(4)}`
+    if (String(id).startsWith('bal_')) return `bal:${String(id).slice(4)}`
     const text = this.objects.find((o) => (o.kind === 'text' || o.kind === 'rect') && o.target.slice(o.target.indexOf(':') + 1) === String(id))
     return text?.target ?? null
   },
@@ -968,6 +1165,9 @@ export const animationTimeline = (config = {}) => ({
    * animation with it. Selecting keys stays a timeline gesture.
    */
   onObjectSelected (id) {
+    // A layer (or the stage) is the selection now, so Delete is about IT, not about keyframes.
+    this.selected = []
+    this.keyMenu = null
     const target = this.targetFromObjectId(id)
     this.activeTarget = target
     if (!target) return
@@ -984,12 +1184,15 @@ export const animationTimeline = (config = {}) => ({
    */
   selectObject (target) {
     this.activeTarget = target
-    this.selected = this.refsOf(target).map(keyId)
+    // The row selects the LAYER, and only the layer: Delete then removes the layer, as the row
+    // says. Its keys stay one press away on the lanes (a marquee takes them all).
+    this.selected = []
     const [kind, ...rest] = String(target).split(':')
     const id = rest.join(':')
     if (kind === 'art') (window.__artOverlay?.() ?? window.__lessonArtworkLayer)?.select?.(`art_${id}`)
     else if (kind === 'text' || kind === 'rect') window.__lessonTextLayer?.select?.(id)
     else if (kind === 'dio') window.__diorama?.select?.(id)
+    else if (kind === 'bal') window.__balloons?.select?.(`bal_${id}`)
   },
 
   // ── Bars. Drag one to move the whole animation; click between two keys to choose easing ────
@@ -1047,10 +1250,87 @@ export const animationTimeline = (config = {}) => ({
     const menuH = 400   // the taller of the two views, the bezier editor
     const top = below + menuH > window.innerHeight ? Math.max(8, rect.top - menuH - 6) : below
     const left = Math.min(window.innerWidth - 216, Math.max(8, rect.left + rect.width / 2 - 104))
-    this.easingMenu = { target, property, index, top, left }
+    // What the stretch had when the menu opened: leaving without choosing puts this back.
+    const before = sortedKeys(this.trackFor(target, property))[index]?.easing ?? 'auto'
+    this.easingMenu = { target, property, index, top, left, before, chosen: false }
   },
 
-  closeEasing () { this.easingMenu = null },
+  /**
+   * Close the menu. Click outside and Esc CANCEL: no preview is left playing and the stretch keeps
+   * the curve it had. Choosing an option closes it as well (chooseEasing).
+   */
+  closeEasing () {
+    const m = this.easingMenu
+    this.stopEasingPreview()
+    const now = m ? (sortedKeys(this.trackFor(m.target, m.property))[m.index]?.easing ?? 'auto') : null
+    if (m && !m.chosen && now !== m.before) {
+      this.setSegmentEasing(m.before)
+      this.save()
+    }
+    this.easingMenu = null
+    this.applyFrame()
+  },
+
+  // ── Easing preview: hover or focus an option and the stretch plays once with that curve ────
+
+  /** The option being previewed, and how far through (0..1) — the icon's dot reads both. */
+  previewName: null,
+  previewU: 0,
+  _previewRaf: null,
+
+  get reducedMotion () {
+    return !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  },
+
+  /**
+   * Play the open stretch once on the stage with `curve`: from its first key's value to its
+   * second's over its own duration, then back to whatever the playhead shows. Reduced motion: the
+   * icon is highlighted and nothing moves.
+   */
+  previewEasing (name, curve = name) {
+    this.stopEasingPreview()
+    const m = this.easingMenu
+    const seg = this.easingSegment
+    if (!m || !seg) return
+    this.previewName = name
+    this.previewU = 0
+    if (this.reducedMotion || this.playing) return
+    const keys = this.keysOf(m.target, m.property)
+    const a = keys[m.index]
+    const b = keys[m.index + 1]
+    if (!a || !b) return
+    const mix = INTERPOLATE[propertyFor(kindOfTarget(m.target), m.property)?.interpolate] ?? INTERPOLATE.linear
+    const ease = easingFn(curve)
+    const ms = Math.max(200, (b.time - a.time) * 1000)
+    const started = performance.now()
+    const step = () => {
+      const u = Math.min(1, (performance.now() - started) / ms)
+      this.previewU = u
+      this.showValue(m.target, m.property, mix(a.value, b.value, ease(u)))
+      if (u < 1) { this._previewRaf = requestAnimationFrame(step); return }
+      this._previewRaf = null
+      this.applyFrame()   // back to what the playhead says
+    }
+    this._previewRaf = requestAnimationFrame(step)
+  },
+
+  stopEasingPreview () {
+    if (this._previewRaf) { cancelAnimationFrame(this._previewRaf); this._previewRaf = null; this.applyFrame() }
+    this.previewName = null
+    this.previewU = 0
+  },
+
+  /** One value on the stage, without recording anything. */
+  showValue (target, property, value) {
+    if (kindOfTarget(target) === 'camera') { if (window.__lessonMap) applyCamera(window.__lessonMap, { [property]: value }) }
+    else writeObjectProperty(target, property, value)
+  },
+
+  /** The previewed option's travelling dot, in the icon's 40x24 box. */
+  previewDot (curve) {
+    const u = this.previewU
+    return { x: (u * 36 + 2).toFixed(1), y: (20 - easingFn(curve)(u) * 16).toFixed(1) }
+  },
 
   /** Figma's Bézier presets, in Figma's order. Labels come translated from the server. */
   get easingOptions () {
@@ -1090,8 +1370,13 @@ export const animationTimeline = (config = {}) => ({
    */
   chooseEasing (name) {
     if (name === 'custom') return this.openBezier()
+    const curve = this.easingOptions.find((o) => o.name === name)?.curve ?? name
     this.setSegmentEasing(name)
     this.save()
+    // Choosing closes the menu and plays the stretch once more with what was chosen.
+    this.easingMenu = { ...this.easingMenu, chosen: true }
+    this.previewEasing(name, curve)
+    this.easingMenu = null
   },
 
   /** Write an easing onto the open segment and show it, without saving (the bezier drag calls
@@ -1124,7 +1409,8 @@ export const animationTimeline = (config = {}) => ({
   openBezier () {
     const current = this.easingSegment?.easing
     this.bezierDraft = parseBezier(current) ?? PRESET_BEZIER[current] ?? [0.42, 0, 0.58, 1]
-    this.easingMenu = { ...this.easingMenu, editing: true }
+    this.stopEasingPreview()
+    this.easingMenu = { ...this.easingMenu, editing: true, chosen: true }
     this.setSegmentEasing(formatBezier(this.bezierDraft))
     this.save()
   },

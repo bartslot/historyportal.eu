@@ -22,7 +22,7 @@
  * The albedo texture IS theirs — LRO's colour map, public domain.
  */
 
-import maplibregl from 'maplibre-gl'
+import maplibregl from '../maplibre.js'
 import { buildProgram, cameraInPlanetSpace, EQUIRECT_GLSL, planetSpacePosition } from './planet-mesh.js'
 
 const LAYER_ID = 'tm-moon'
@@ -257,7 +257,8 @@ export const createMoonLayer = ({
   const programFor = (shaderData) => {
     const key = shaderData.variantName
     if (programs.has(key)) return programs.get(key)
-    const program = buildProgram(gl, vertexSource(shaderData), fragmentSource(), 'tm-moon')
+    // ES 3.00: MapLibre 6's globe prelude declares an `out`, which ES 1.00 cannot compile.
+    const program = buildProgram(gl, vertexSource(shaderData), fragmentSource(), 'tm-moon', { es300: true })
     const entry = {
       program,
       attribs: { corner: gl.getAttribLocation(program, 'a_corner') },

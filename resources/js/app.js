@@ -3,12 +3,14 @@ import { gsap } from 'gsap';
 import { GSAP_EASE } from './easing.js';
 import Sortable                from 'sortablejs';
 import { createTour } from './onboarding/tour.js';
+import { createScreenshotTour } from './onboarding/screenshot-tour.js';
 import { initTooltips } from './tooltip.js';
 import { watchCarousels } from './carousel.js';
 import { easingPreview } from './easing-preview.js';
 import { animationTimeline } from './anim/timeline-panel.js';
 import { setupHeroLessonDemo } from './hero/lesson-demo.js';
 import { setupSiteHeader } from './site-header.js';
+import { setupLandingReveal } from './landing-reveal.js';
 import { clampToViewport, restorePosition, savePosition, defaultPosition, isViewportUsable } from './ui/floating-window.js';
 // Dev settings sliders. Imported unconditionally because it is a registry and nothing more until
 // something registers a knob — it builds no DOM and adds no listeners beyond one window event.
@@ -17,13 +19,20 @@ import { settingsPanelTuner } from './dev/settings-panel-tuner.js';
 import { layerSizeRow } from './ui/layer-size-row.js';
 import { layerAngleRow } from './ui/angle-dial.js';
 import { initScrub } from './ui/scrub.js';
+import { initKeyedFields } from './ui/keyed-fields.js';
 import { initRangeFill } from './ui/range-fill.js';
 import { initNumericFields } from './ui/numeric-field.js';
 import { layerOverlay, setLayerPropEverywhere, selectLayerEverywhere } from './scene/layer-overlays.js';
 import { isTypingTarget } from './ui/keyboard.js';
+import { routePaste, OBJECTS_MARK } from './ui/paste-router.js';
 import { initDragScroll } from './ui/drag-scroll.js';
+import { imageGrid, initImageZoom } from './ui/image-grid.js';
+import { installTitleStagePick } from './editor/title-stage-pick.js';
+import { pendingCode as pendingTestSession } from './test-session/pending.js';
 
 window.Sortable = Sortable;
+// The editor's stage: a click on the title screen's title opens its field (step3 @script).
+window.installTitleStagePick = installTitleStagePick;
 
 // Geometry for <x-ui.floating-window>, exposed as globals for the same reason as the factories
 // below: the component's x-data has to call them without depending on alpine:init ordering. The
@@ -45,10 +54,17 @@ watchCarousels();
 // Pill lists and strips wider than their space, app-wide: data-drag-scroll → mouse drag scrolls.
 initDragScroll();
 
+// Live test sessions: ?test=CODE (or an ongoing one) loads the recorder and rrweb. Every other
+// visit pays for the check above and nothing else. See resources/js/test-session/recorder.js.
+if (pendingTestSession()) import('./test-session/recorder.js').then((m) => m.boot()).catch(() => {});
+
 // Alpine factory for the onboarding spotlight: x-data="onboardingTour(@js($config))".
 // Registered as a global (like wavePlayer in the app layout) so the Blade view can call it without
 // waiting on alpine:init ordering.
 window.onboardingTour = createTour;
+
+// The About page's product tour, the same spotlight over screenshots: x-data="screenshotTour(@js($config))".
+window.screenshotTour = createScreenshotTour;
 
 // Animated easing swatches for the wizard's Animate tab: x-data="easingPreview('enter')".
 // Same global-factory pattern, for the same reason.
@@ -65,6 +81,12 @@ window.settingsPanelTuner = settingsPanelTuner;
 // square with every individual step still looking right, so it is not left in a template.
 window.layerSizeRow = layerSizeRow;
 
+// Every picture grid a teacher browses: x-data="imageGrid({ id, kind })" owns the size slider,
+// and ONE delegated listener zooms any [data-zoom] tile at the cursor (long press on touch opens
+// <x-ui.image-lightbox>). See resources/js/ui/image-grid.js.
+window.imageGrid = imageGrid;
+initImageZoom();
+
 // A map or voyage scene keeps TWO artwork overlays alive over the same layers, so "set this
 // property live" has to reach both and "measure this layer" has to read the one on screen. See
 // resources/js/scene/layer-overlays.js — the panel's live previews all go through these.
@@ -79,6 +101,9 @@ window.layerAngleRow = layerAngleRow;
 // panels are morphed constantly by Livewire and a per-element binding would quietly stop working
 // on whichever row was re-rendered last. Opt in with `data-scrub` on the label.
 initScrub();
+
+// Format-panel fields of a keyframed property show and record the value at the playhead.
+initKeyedFields();
 
 // The panel sliders paint their fill INTO the track (see .range-panel in app.css), so the stop
 // position has to follow the value. Server-rendered for the first frame; this handles the drag.
@@ -98,6 +123,9 @@ window.animationTimeline = animationTimeline;
 // <script> that cannot import a module, and they used to carry their own copy of the same test.
 // See resources/js/ui/keyboard.js.
 window.__isTypingTarget = isTypingTarget;
+// Cmd/Ctrl-V in the scene editor: image, object copy or plain text. See resources/js/ui/paste-router.js.
+window.__routePaste = routePaste;
+window.__pasteObjectsMark = OBJECTS_MARK;
 
 // The 3D scene system (three.js, ~1.7 MB) is used ONLY by the lesson-creation wizard. Load it on
 // demand via window.loadLessonScene() so the landing page and other app pages never download three.
@@ -667,6 +695,7 @@ if (document.readyState === 'loading') {
         setupPortalExitAnimation();
         setupHeroLessonDemo();
         setupSiteHeader();
+        setupLandingReveal();
     }, { once: true });
 } else {
     setupLandingCursor();
@@ -675,4 +704,5 @@ if (document.readyState === 'loading') {
     setupPortalExitAnimation();
     setupHeroLessonDemo();
     setupSiteHeader();
+    setupLandingReveal();
 }

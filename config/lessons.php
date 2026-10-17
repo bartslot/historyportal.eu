@@ -41,6 +41,10 @@ return [
     // "phase0-candidate-2x3". Lets the scoring sheets join runs to conditions.
     'experiment_label' => env('LESSON_EXPERIMENT_LABEL'),
 
+    // The deployed commit, recorded on generation runs (SiteGround has no git). Read through config
+    // so it survives config:cache.
+    'git_commit' => env('GIT_COMMIT'),
+
     /*
     |--------------------------------------------------------------------------
     | Sensitive-topic visual policy (zero-tolerance gate with fallback)
@@ -92,11 +96,10 @@ return [
     | Lesson picture compression
     |--------------------------------------------------------------------------
     | AVIF quality Cloudinary delivers lesson pictures at (f_auto: AVIF, WebP for
-    | browsers without it; transparency kept). 20 is Bart's pick after comparing
-    | 60/40/30/20/10/5 on the history-line art: the artefacts read as watercolour,
-    | 10 starts breaking thin lines. Cheaper bandwidth matters more than the
-    | faintest hatching. Changing it only affects pictures uploaded afterwards.
+    | browsers without it; transparency kept). 50 since 2026-10-16: Bart found
+    | the earlier 20 "too low quality" in the painted lessons. Stored URLs carry
+    | the number; after changing it run `php artisan images:requality`.
     */
-    'image_quality' => (int) env('LESSON_IMAGE_QUALITY', 20),
+    'image_quality' => (int) env('LESSON_IMAGE_QUALITY', 50),
 
 ];

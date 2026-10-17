@@ -27,7 +27,10 @@ class GenerateSceneAudio implements ShouldQueue
 
     public int $tries = 3;
 
-    public int $timeout = 120;
+    // Above Azure's own 180 s (TtsService::tryAzure) plus an edge-tts attempt and the AAC encode. At
+    // 120 a long scene was killed mid-download and retried up to 3 times, paying Azure each time
+    // (infra audit 2026-10-17). Stays below the database queue's retry_after (660).
+    public int $timeout = 240;
 
     public function __construct(public readonly int $sceneId) {}
 

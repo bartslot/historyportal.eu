@@ -9,6 +9,8 @@ use App\Models\QuizQuestion;
 use App\Models\Scene;
 use App\Services\Lessons\LibraryLayers;
 use App\Services\Support\PhpSpecPrinter;
+use App\Services\Support\SceneSplit;
+use App\Services\Support\ShotCamera;
 
 /**
  * Turn a lesson in the database back into an authored spec — the inverse of {@see LessonComposer}.
@@ -41,12 +43,12 @@ class LessonExporter
      * @var array<string,list<string>>
      */
     private const COMPOSED_CONFIG_KEYS = [
-        'narration' => ['image_credit', 'image_source_url', 'background_focus', 'bg_embed', 'backdrop'],
+        'narration' => ['image_credit', 'image_source_url', 'background_focus', 'bg_embed', 'backdrop', 'backdrop_depth', 'moment', 'moment_default'],
         'video' => ['bg_embed'],
         'gallery' => ['title', 'date_label', 'story', 'fit', 'images'],
         'map' => ['qid', 'fit', 'year', 'projection', 'playback_mode', 'annotations'],
         'voyage' => ['voyage', 'leg', 'view', 'intro', 'stop_images', 'gallery'],
-        'game' => ['quiz_scope', 'quiz_shuffle', 'quiz_difficulty'],
+        'game' => ['quiz_scope', 'quiz_shuffle', 'quiz_difficulty', 'team', 'team_default', 'team_assets'],
     ];
 
     /** Editor scratch state, not content — undo history should never reach a spec file. */
@@ -85,6 +87,25 @@ class LessonExporter
             $spec['translation_group'] = (string) $lesson->translation_group;
         }
 
+        if ($lesson->title_style !== null) {
+            $spec['title_style'] = (string) $lesson->title_style;
+        }
+        if ($lesson->show_lesson_types === false) {
+            $spec['show_lesson_types'] = false;
+        }
+        if ($lesson->qrPosition() !== 'auto') {
+            $spec['qr_position'] = $lesson->qrPosition();
+        }
+        if ($lesson->expect) {
+            $spec['expect'] = array_values($lesson->expect);
+        }
+        if ($lesson->title_keep_clear) {
+            $spec['title_keep_clear'] = $lesson->title_keep_clear;
+        }
+        if (! empty($lesson->teacher_guide)) {
+            $spec['teacher_guide'] = $lesson->teacher_guide;
+        }
+
         $gameConfig = $this->withoutKeys((array) ($lesson->game_config ?? []), self::GAME_CONFIG_SCRATCH);
         if ($gameConfig !== []) {
             // The voyage CMS edits a per-lesson copy of the route here. Without it a rebuilt voyage
@@ -112,6 +133,20 @@ class LessonExporter
     }
 
     /**
+     * Every string in $value that is a key of $assets (a served URL) becomes its library ref.
+     *
+     * @param  array<string,string>  $assets
+     */
+    private function refsBack(mixed $value, array $assets): mixed
+    {
+        if (is_string($value)) {
+            return $assets[$value] ?? $value;
+        }
+
+        return is_array($value) ? array_map(fn ($v) => $this->refsBack($v, $assets), $value) : $value;
+    }
+
+    /**
      * @param  list<QuizQuestion>  $questions
      * @return array<string,mixed>
      */
@@ -120,6 +155,7 @@ class LessonExporter
         $config = (array) ($scene->config ?? []);
 
         $spec = match (true) {
+            $scene->kind === 'game' && $scene->game_type === 'team' => $this->team($scene, $config),
             $scene->kind === 'game' => $this->quiz($scene, $questions),
             $scene->kind === 'gallery' => $this->gallery($scene, $config),
             $scene->kind === 'map' => $this->map($scene, $config),
@@ -131,9 +167,9 @@ class LessonExporter
         };
 
         $composed = self::COMPOSED_CONFIG_KEYS[$scene->kind] ?? [];
-        if (isset($spec['backdrop']) && LibraryLayers::isLineArt($spec['backdrop'])) {
-            // The composer writes these for line art itself; only a teacher's change travels.
-            foreach (LibraryLayers::LINE_ART_CONFIG as $key => $value) {
+        if (isset($spec['backdrop'])) {
+            // The composer writes these for library art itself; only a teacher's change travels.
+            foreach (LibraryLayers::backdropConfig($spec['backdrop']) as $key => $value) {
                 if (($config[$key] ?? null) === $value) {
                     $composed[] = $key;
                 }
@@ -144,6 +180,13 @@ class LessonExporter
         if (isset($config['identity_title']) && $config['identity_title'] === mb_substr(trim((string) $scene->chapter_name), 0, 80)) {
             $composed[] = 'identity_title';
         }
+        // A split scene travels as its own `split` key; the retired Parallax / Drawing mode keys
+        // read as Standard and are left behind, so the next rebuild drops them.
+        $split = SceneSplit::of($config);
+        if ($split !== null) {
+            $spec['split'] = $split;
+        }
+        $composed = [...$composed, 'split', ...SceneSplit::RETIRED_KEYS];
         $extra = $this->withoutKeys($config, $composed);
         if ($extra !== []) {
             $spec['extra_config'] = $extra;
@@ -154,12 +197,48 @@ class LessonExporter
             $layers = $this->library->specLayers($shots, $scene->image_path);
             if ($layers !== null) {
                 $spec['layers'] = $layers;
+                // The panel's camera and entry travel as the spec's own keys (LessonComposer::applyCamera).
+                $spec += array_filter([
+                    'camera' => ShotCamera::payload($shots[0]['camera'] ?? null),
+                    'entry' => ShotCamera::entry($shots[0]['entry'] ?? null),
+                ]);
             } else {
                 $spec['shots'] = $shots;
             }
         }
+        if (is_array($config['moment'] ?? null) && $scene->kind === 'narration') {
+            $spec['moment'] = $this->moment($config['moment'], $shots, $spec['layers'] ?? []);
+        }
 
         return $spec;
+    }
+
+    /**
+     * A panel's moment with its layer ids written back as the spec's asset refs (same order as the
+     * exported `layers`), so the spec reads like one written by hand. An id with no exported layer
+     * stays an id; the composer accepts both.
+     *
+     * @param  array<string,mixed>  $moment
+     * @param  list<array<string,mixed>>  $layers
+     * @return array<string,mixed>
+     */
+    private function moment(array $moment, array $shots, array $layers): array
+    {
+        $refs = [];
+        $built = array_values(array_filter((array) ($shots[0]['layers'] ?? []), fn ($l): bool => isset($l['asset_id'])));
+        foreach ($built as $i => $layer) {
+            if (isset($layers[$i]['asset'])) {
+                $refs[(int) $layer['asset_id']] ??= $layers[$i]['asset'];
+            }
+        }
+        foreach (['react', 'payoff'] as $part) {
+            $id = $moment[$part]['layer'] ?? null;
+            if (is_int($id) && isset($refs[$id])) {
+                $moment[$part]['layer'] = $refs[$id];
+            }
+        }
+
+        return $moment;
     }
 
     /** @return array<string,mixed> */
@@ -276,6 +355,28 @@ class LessonExporter
             'autoplay' => array_key_exists('autoplay', $embed) ? (bool) $embed['autoplay'] : null,
             'start' => ! empty($embed['start']) ? (int) $embed['start'] : null,
             'end' => ! empty($embed['end']) ? (int) $embed['end'] : null,
+        ], $this->keep(...));
+    }
+
+    /**
+     * A team game exports as the game it is NOW (the teacher's edits included), so a rebuild plays
+     * the same game; that copy becomes the rebuilt scene's reset default.
+     *
+     * @return array<string,mixed>
+     */
+    private function team(Scene $scene, array $config): array
+    {
+        // A picture the composer copied out of the library goes back as its "asset:" ref.
+        $assets = (array) ($config['team_assets'] ?? []);
+        $team = $this->refsBack((array) ($config['team'] ?? []), $assets);
+
+        return array_filter([
+            'type' => 'team',
+            ...$team,
+            'chapter' => $scene->chapter_name,
+            'location' => $scene->location,
+            'year' => $this->year($scene),
+            'script' => $scene->script_segment,
         ], $this->keep(...));
     }
 

@@ -8,7 +8,7 @@
     $seedTerms = $cfg['seed_terms'] ?? [];
 @endphp
 
-<section class="card bg-base-200 lp-bg-card shadow-xl" x-data="{ revealed: false }">
+<section class="card bg-base-200 lp-bg-card" x-data="{ revealed: false }">
     <div class="card-body items-center gap-6 py-12 text-center">
         <span class="badge badge-primary badge-outline">{{ $module->type->label() }}</span>
 

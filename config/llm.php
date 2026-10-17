@@ -120,6 +120,8 @@ return [
         'script' => env('LLM_ROLE_SCRIPT', 'openai'),
         'mechanical' => env('LLM_ROLE_MECHANICAL', 'openai'),
         'vision' => env('LLM_ROLE_VISION', 'openai'),
+        // subtitle translation (App\Services\Captions): cheap and fast is right, it runs once per line
+        'translate' => env('LLM_ROLE_TRANSLATE', env('LLM_ROLE_MECHANICAL', 'openai')),
     ],
 
     /** Role used when a call site asks for one that isn't configured. */

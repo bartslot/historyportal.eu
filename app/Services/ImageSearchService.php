@@ -163,7 +163,7 @@ class ImageSearchService
     {
         $slug = str_replace(' ', '_', $topic);
         $response = Http::timeout(10)
-            ->withHeaders(['Api-User-Agent' => 'historyportal.eu/1.0 (contact@thelearningportal.us)'])
+            ->withHeaders(['Api-User-Agent' => 'historyportal.eu/1.0 (info@historyportal.eu)'])
             ->get(self::WIKIMEDIA_MEDIA . rawurlencode($slug));
 
         if (! $response->ok()) {

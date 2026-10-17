@@ -150,6 +150,23 @@ describe.each(LAYERS)('$name layer', ({ id, make, off, buffers, programs }) => {
     expect(calls.drawElements).toBe(0)
   })
 
+  it("compiles MapLibre 6's globe prelude, which only exists in GLSL ES 3.00", () => {
+    // MapLibre 6's globe prelude declares `out highp float v_projection_tile_x`. Spliced into an
+    // ES 1.00 shader that is a compile error on every frame, and the layer silently never draws.
+    const { gl } = glStub()
+    gl.texStorage2D = () => {}   // a WebGL2 context, the only kind MapLibre 6 makes
+    gl.createShader = (type) => ({ type })
+    const vertex = []
+    gl.shaderSource = (shader, source) => { if (shader.type === gl.VERTEX_SHADER) vertex.push(source) }
+    const args = v5Args('globe')
+    const prelude = `out highp float v_projection_tile_x;\n${args.shaderData.vertexShaderPrelude}`
+    const layer = make()
+    layer.onAdd(mapStub(), gl)
+    layer.render(gl, { ...args, shaderData: { ...args.shaderData, vertexShaderPrelude: prelude } })
+    vertex.filter((source) => source.includes(prelude))
+      .forEach((source) => expect(source.startsWith('#version 300 es\n')).toBe(true))
+  })
+
   it('keeps a stable id — styles anchor other layers to it', () => {
     expect(make().id).toBe(id)
     expect(id.startsWith('tm-')).toBe(true)

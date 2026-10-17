@@ -6,7 +6,7 @@
 
     {{-- Toggle button --}}
     <button type="button" @click="open = !open"
-            class="btn btn-circle btn-sm border-none bg-fuchsia-600 text-white shadow-lg hover:bg-fuchsia-500"
+            class="btn btn-circle btn-sm border-none bg-fuchsia-600 text-white hover:bg-fuchsia-500"
             title="Dev test tools (local only)">
         <span x-show="!open"><x-icons.beaker class="w-5 h-5" /></span>
         <span x-show="open" x-cloak>✕</span>
@@ -14,7 +14,7 @@
 
     {{-- Panel --}}
     <div x-show="open" x-cloak x-transition
-         class="absolute bottom-12 right-0 max-h-[80vh] w-72 overflow-y-auto overscroll-contain rounded-xl border border-fuchsia-700/60 bg-slate-900 p-4 shadow-2xl">
+         class="absolute bottom-12 right-0 max-h-[80vh] w-72 overflow-y-auto overscroll-contain rounded-xl border border-fuchsia-700/60 bg-slate-900 p-4">
 
         <div class="mb-3 flex items-center gap-2">
             <x-icons.beaker class="w-5 h-5 text-fuchsia-400" />
@@ -117,6 +117,22 @@
                 ['warpTrail', 'Streak length', 0.05, 1, 0.01, ''],
                 ['warpDensity', 'Card density', 0.1, 1, 0.05, ''],
                 ['warpGlow', 'Mouth glow', 0, 1, 0.05, ''],
+                ['wheelFade', 'Wheel fade-in', 0, 3, 0.05, 's'],
+                ['wheelDelay', 'Wheel fade delay', 0, 2, 0.05, 's'],
+            ];
+
+            // The portal behind "Play lesson" (hero/portal.js). Read at the moment of the press, so
+            // these save without replaying the demo.
+            $portalDials = [
+                ['portalExit', 'Foreground exit', 0.1, 1.5, 0.05, 's'],
+                ['portalExitStagger', 'Exit stagger', 0, 0.2, 0.01, 's'],
+                ['portalExitLift', 'Exit lift', 0, 60, 1, 'px'],
+                ['portalOpenDelay', 'Hole waits after foreground', 0, 1.5, 0.05, 's'],
+                ['portalGrow', 'Hole swallows page (accelerating)', 0.3, 4, 0.05, 's'],
+                ['portalSoftness', 'Hole edge softness', 0, 200, 1, 'px'],
+                ['portalRimPull', 'Rim pulled outward', 0, 1, 0.05, ''],
+                ['portalRimGap', 'Rim gap to hole', -80, 120, 2, 'px'],
+                ['portalReadyTimeout', 'Wait for lesson, max', 1, 15, 0.5, 's'],
             ];
         @endphp
 
@@ -174,6 +190,27 @@
                     </label>
                 @endforeach
             </div>
+
+            <div class="mt-3 mb-1.5 text-2xs font-semibold uppercase tracking-wide text-slate-500">Portal into the lesson</div>
+            <div class="space-y-2">
+                @foreach ($portalDials as [$key, $label, $min, $max, $step, $unit])
+                    <label class="block">
+                        <span class="flex items-baseline justify-between text-2xs text-slate-400">
+                            {{ $label }}
+                            <span class="font-mono text-slate-200"
+                                  x-text="Number(s.{{ $key }}).toFixed({{ $step < 1 ? 2 : 0 }}) + '{{ $unit }}'"></span>
+                        </span>
+                        <span class="range-panel-knob min-w-0 mt-0.5 w-full">
+                            <input type="range" min="{{ $min }}" max="{{ $max }}" step="{{ $step }}"
+                                   x-model.number="s.{{ $key }}" @change="window.heroDemo.save()"
+                                   class="range range-panel">
+                        </span>
+                    </label>
+                @endforeach
+            </div>
+            <button type="button" @click="window.heroDemo.portal()" class="btn btn-xs btn-outline mt-2 w-full">
+                Open portal (Back returns)
+            </button>
 
             <label class="mt-3 block">
                 <span class="text-2xs text-slate-400">Scrub</span>

@@ -42,6 +42,18 @@
   --color-panel-icon: #c7d5e3;     /* object icons in the timeline — the file's own stroke */
   --color-panel-value: #e2e8f0;    /* the numbers, and the active tab */
   --color-panel-title: #c7d5e3;    /* the section headings */
+  /* The layout picker's tiles (Figma 2346:503): a dark tile, a lighter one for the chosen layout. */
+  --color-panel-tile: #0b1528;
+  --color-panel-tile-active: #182537;
+  --color-panel-tile-glyph: #8aa0b9;
+  --color-panel-tile-glyph-active: #d9d9d9;
+
+  /* ── Selected surface ─────────────────────────────────────────────────────────────────────── */
+  /* Figma's `selected` variable: the one light card on a dark page, the "Continuous practice" outcome
+     on About (node 1977:218). Opaque on purpose: base-content at an opacity picks up whatever shades
+     the page behind it and goes muddy grey. Not aliased to --color-panel-title, which shares the value
+     but is a different job. */
+  --color-selected: #c7d5e3;
 
   /* ── Text ─────────────────────────────────────────────────────────────────────────────────── */
   /* TWO text colours on a card, not three. White says something, muted names something.
@@ -221,6 +233,14 @@
      a hover at all. */
   --scrubber-magnify-height: 2.75rem;  /* 44px, against the 30px they rest at */
   --scrubber-magnify-radius: 7rem;     /* 112px — a little under three decades either side */
+
+  /* ── Lesson-type badges on the title screen (Figma 2321:1423 / 1427 / 1431) ──────────────── */
+  /* Bart's brand colours, one per kind of lesson (App\Support\LessonTypes). Flat: no shadow. */
+  --color-type-interactive: #f03e4a;
+  --color-type-comic: #04b3c4;
+  --color-type-teams: #ed7c5c;
+  /* Brand ink: the dark badges on a flat poster colour (Figma 2321:5150) and the expect strip's lines. */
+  --color-brand-ink: #0a0a0a;
 }
 
 /**
@@ -258,6 +278,54 @@
 
   .lp-card-label-sm {
     font-size: var(--text-card-label-sm);
+  }
+
+  /**
+   * A lesson-type badge (Figma 2321:1423): a 553x537 rounded square, radius 60, a white line icon
+   * in its upper middle and an Inter SemiBold uppercase label (48px, 0.5px tracking) near the
+   * bottom. Every measure is a share of the badge, so one width class sizes all of it; the label
+   * never drops under 7px, where Figma's share would turn a phone badge's words to dust.
+   */
+  .lp-type-badge {
+    position: relative;
+    container-type: inline-size;
+    aspect-ratio: 553 / 537;
+    border-radius: 10.85% / 11.17%;
+    color: #fff;
+  }
+
+  /* The icon's own box in the badge, per icon, as Figma placed it (all three centred across). */
+  .lp-type-badge > img {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    object-fit: contain;
+  }
+
+  .lp-type-badge[data-type='interactive'] > img { top: 27%; width: 52.7%; height: 37.3%; }
+  .lp-type-badge[data-type='comic'] > img { top: 23.2%; width: 45.2%; height: 45.3%; }
+  .lp-type-badge[data-type='teams'] > img { top: 18.1%; width: 61.7%; height: 48.2%; }
+
+  /* The title screen's join QR plate: white paper, the code in brand ink, the badges' corner
+     (10.85% of the 6rem badge). Flat: no shadow, no ring. */
+  .lp-qr-plate {
+    background: #fff;
+    color: var(--color-brand-ink);
+    border-radius: 0.65rem;
+    overflow: hidden;
+  }
+
+  .lp-type-badge > span {
+    position: absolute;
+    inset-inline: 0;
+    top: 78%;
+    text-align: center;
+    white-space: nowrap;
+    font-size: max(8.7cqw, 7px);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    line-height: 1.2;
+    text-transform: uppercase;
   }
 }
 

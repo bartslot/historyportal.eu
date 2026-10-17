@@ -88,7 +88,7 @@
         x-transition:leave="transition ease-in duration-75"
         x-transition:leave-start="opacity-100 scale-100"
         x-transition:leave-end="opacity-0 scale-95"
-        class="menu menu-sm bg-base-200 border border-white/10 rounded-box shadow-xl
+        class="menu menu-sm bg-base-200 border border-white/10 rounded-box
                absolute z-50 w-full mt-1 max-h-56 overflow-y-auto"
         style="display: none"
     >

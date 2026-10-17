@@ -146,6 +146,8 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
   // class should be reading. A teacher who wants the modern atlas back still has the toggle; this
   // only changes what a voyage opens as.
   let MO = Object.assign({ cities: false, borders: true, labels: true }, mapOptions || {});
+  // The drawn chart is read flat, like the paper it imitates; the tilt is for the 3D photo ground.
+  const voyagePitch = () => (MO.style === 'history-line' ? 0 : VOYAGE_PITCH);
   let LL = Array.isArray(legLabels) ? legLabels : [];
   let PAINTED = Array.isArray(paintedFog) ? paintedFog : [];   // teacher-painted "undiscovered" rings
   const resolveLabels = () => {
@@ -200,6 +202,8 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
     tileBounds: routeTileBounds(),
     projection: view === 'flat' ? 'mercator' : 'globe',
     showCities: MO.cities, showBorders: MO.borders, labels: resolveLabels(),
+    // A history-line lesson sails on a drawn chart instead of the photographed globe (lesson-map.js).
+    mapStyle: MO.style,
   });
   const map = inst.map;
   // Project a lng into the SAME world copy the camera is showing (like the ship in voyage-ships.js),
@@ -674,7 +678,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
       hotspot = document.createElement('button');
       hotspot.type = 'button';
       hotspot.className = 'absolute rounded-full bg-base-100/95 px-4 py-2 text-sm font-semibold shadow-xl';
-      hotspot.style.cssText += 'pointer-events:auto;cursor:pointer;border:2px solid rgba(251,191,36,.9);touch-action:none;';
+      hotspot.style.cssText += 'pointer-events:auto;cursor:pointer;border:2px solid color-mix(in oklab, var(--color-primary) 90%, transparent);touch-action:none;';
       // The button is labelled with the GALLERY title the teacher typed — it is that gallery this
       // opens. With no title it used to fall back to the landfall NAME, which put the place on the
       // map a second time right next to the line that already says it. A neutral word instead:
@@ -897,7 +901,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
           + '<path d="M5 5 19 19M19 5 5 19" fill="none" stroke="#fff" stroke-width="5.5" stroke-linecap="round"/>'
           + '<path d="M5 5 19 19M19 5 5 19" fill="none" stroke="#f59e0b" stroke-width="3" stroke-linecap="round"/></svg>'
           + '<span style="position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:3px;background:rgba(15,23,42,.92);'
-          + 'color:#fbbf24;font-size:var(--text-2xs);font-weight:600;letter-spacing:.02em;padding:1px 7px;border-radius:9999px;white-space:nowrap;'
+          + 'color:var(--color-primary);font-size:var(--text-2xs);font-weight:600;letter-spacing:.02em;padding:1px 7px;border-radius:9999px;white-space:nowrap;'
           + 'box-shadow:0 1px 4px rgba(0,0,0,.5);line-height:1.5;">Destination</span>';
         h._geo = { lng: destWp[0], lat: destWp[1] };
         makeDraggable(h, {
@@ -1203,7 +1207,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
       // Follow the ship at the slider-controlled zoom (L.followZoom). "Dolly in on arrival" adds a
       // little extra zoom over the last 40% of the crossing as the ship makes landfall.
       const arrivalIn = MO.cam_dolly_arrival ? ARRIVAL_ZOOM_DELTA * smoothstep(Math.max(0, (eased - 0.6) / 0.4)) : 0;
-      map.jumpTo({ center: [pos.lng, pos.lat], zoom: L.followZoom + arrivalIn, pitch: VOYAGE_PITCH });
+      map.jumpTo({ center: [pos.lng, pos.lat], zoom: L.followZoom + arrivalIn, pitch: voyagePitch() });
       setChip(L.departMs + eased * (L.arriveMs - L.departMs), null);
       if (p < 1) { raf = requestAnimationFrame(step); } else { sailing = false; sailStep = null; showArrival(token); }
     };
@@ -1225,7 +1229,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
       // leg's start stays buried under intact fog (the editor preview jumps to arrival without
       // sailing, so nothing else advances the reveal). Matches what the animated sail() does.
       if (fog) fog.revealTo(L.f1, { force: true });
-      map.jumpTo({ center: [L.end.lng, L.end.lat], zoom: L.followZoom, pitch: VOYAGE_PITCH });
+      map.jumpTo({ center: [L.end.lng, L.end.lat], zoom: L.followZoom, pitch: voyagePitch() });
       showArrival(token);
       return;
     }
@@ -1272,14 +1276,14 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
       setChip(L.departMs, pack.title || '');
       setTimeout(() => {
         if (token !== legToken) return;
-        map.easeTo({ center: [start.lng, start.lat], zoom: L.followZoom, pitch: VOYAGE_PITCH, duration: 3200, essential: true });
+        map.easeTo({ center: [start.lng, start.lat], zoom: L.followZoom, pitch: voyagePitch(), duration: 3200, essential: true });
         map.once('moveend', () => { if (token === legToken) begin(token); });
       }, 900);
     } else if (skipAnim) {
       begin(token);
     } else {
       // Smooth glide to the new leg's departure, THEN sail — no jump/re-fit between scenes.
-      map.easeTo({ center: [start.lng, start.lat], zoom: L.followZoom, pitch: VOYAGE_PITCH, duration: LEG_EASE_MS, essential: true });
+      map.easeTo({ center: [start.lng, start.lat], zoom: L.followZoom, pitch: voyagePitch(), duration: LEG_EASE_MS, essential: true });
       map.once('moveend', () => { if (token === legToken) begin(token); });
     }
   };

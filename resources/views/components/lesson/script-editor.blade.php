@@ -6,9 +6,12 @@
        Script — the scene's narration as timecoded lines synced to a REAL WaveSurfer play bar.
 
      One dock, so there is one height, one --work-bottom reservation and one resize grip however
-     many tabs it grows: the canvas shrinks above it and it never overlays the scene. Its height is
-     fixed: the drag-to-resize edge was grabbed by accident too often (Bart, 2026-09-29). View ▸
-     Script hides and shows it. No close button, no cogwheel.
+     many tabs it grows: the canvas shrinks above it and it never overlays the scene. Drag the grip
+     on its top edge to make it taller (several layers in the timeline at once) or shorter; the
+     height is remembered. Bart took the edge away on 2026-09-29 because it was grabbed by accident
+     and dragging it small HID the dock; on 2026-10-14 he needed the room back. So it returns
+     without the hide: the dock never goes below a usable height, and View ▸ Script is the one
+     way to hide it. No close button, no cogwheel.
 
      It still lives in this file because the dock's geometry — height, resize, reserved space — is
      owned by the script editor's Alpine component. --}}
@@ -34,7 +37,18 @@
      class="fixed bottom-0 z-30 flex flex-col overflow-hidden border-t border-slate-700/70 bg-base-300"
      :style="`left:var(--rail-w,11rem);right:var(--work-right,16rem);height:${panelH}px`">
 
-    <div class="shrink-0 pb-1"></div>
+    {{-- The grip: the top edge, drag up for more room. Keyboard: arrows, Home resets. --}}
+    <div class="lp-grip h-2 shrink-0" :data-dragging="dragging ? '' : null"
+         x-on:pointerdown="dragStart($event)"
+         x-on:pointermove="dragMove($event)"
+         x-on:pointerup="dragEnd($event)"
+         x-on:pointercancel="dragEnd($event)"
+         x-on:keydown="dragKey($event)"
+         tabindex="0" data-dock-resize
+         role="separator" aria-orientation="horizontal" :aria-valuenow="panelH"
+         aria-label="{{ __('Resize the panel') }}">
+        <span class="lp-grip-pill" aria-hidden="true"></span>
+    </div>
 
     {{-- Which tab the dock is showing. Lives in $store.view alongside the panel toggles, so it
          survives a scene change (this component is rebuilt per scene) and a reload. --}}
@@ -62,7 +76,7 @@
     {{-- ── Icons tab ─────────────────────────────────────────────────────────────
          Its own Livewire component: the dock owns the geometry, the panel owns the library. --}}
     <div x-show="$store.view.bottomTab === 'icons'" x-cloak class="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <livewire:wizard.icon-panel />
+        <livewire:wizard.icon-panel :lesson-id="$scene?->lesson_id" />
     </div>
 
     {{-- ── Script tab ────────────────────────────────────────────────────────── --}}
@@ -209,7 +223,19 @@
 @once
     @push('scripts')
     <script>
-        const SCRIPT_DEF_H = 240;   // px — the dock's fixed height
+        const SCRIPT_DEF_H = 240;   // px — the dock's default height
+        const SCRIPT_MIN_H = 160;   // px — tabs, the timeline's transport and a row stay usable
+        const STAGE_MIN_H = 200;    // px — the stage above never gets less than this
+        const TOP_BAR_H = 64;       // px — the wizard's top bar
+        const SCRIPT_H_KEY = 'wizard.dock.h';   // the teacher's chosen height, across scenes and reloads
+        // The tallest the dock may be on this window: whatever leaves the stage its minimum.
+        const dockMaxH = () => Math.max(SCRIPT_MIN_H, (window.innerHeight || 800) - TOP_BAR_H - STAGE_MIN_H);
+        const clampDockH = (h) => Math.round(Math.min(dockMaxH(), Math.max(SCRIPT_MIN_H, h)));
+        const savedDockH = () => {
+            let h = NaN;
+            try { h = parseFloat(localStorage.getItem(SCRIPT_H_KEY)); } catch (_) {}
+            return clampDockH(Number.isFinite(h) ? h : SCRIPT_DEF_H);
+        };
         // Narration is a queued job. If the worker never runs, or dies without writing a status,
         // nothing comes back to switch the waiting state off — so give up out loud after this.
         const NARRATE_GIVE_UP_MS = 180_000;
@@ -234,8 +260,13 @@
                 promptText: '',
                 regenPara: false,
                 summarizing: false,
-                // Fixed height, capped on a short window so the stage keeps its room.
-                panelH: Math.min(SCRIPT_DEF_H, Math.max(120, Math.round((window.innerHeight || 800) * 0.6))),
+                // The teacher's last height, re-clamped to THIS window so a height chosen on a tall
+                // screen cannot squeeze the stage on a short one. A scene change rebuilds this
+                // component, which is why it lives in localStorage and not here.
+                panelH: savedDockH(),
+                dragging: false,
+                _startY: 0,
+                _startH: 0,
                 // Does this scene have a recording at all? Drives Narrate vs Play — a scene that has
                 // never been narrated used to show a disabled play button and nothing else.
                 hasAudio: !!url,
@@ -331,8 +362,8 @@
                         this.ws = WS.create({
                             container: this.$refs.waveform,
                             waveColor: '#475569',      // slate-600
-                            progressColor: '#fcd34d',  // amber-500
-                            cursorColor: '#fcd34d',    // amber-400 playhead
+                            progressColor: '#f59e0b',  // amber-500, the theme primary
+                            cursorColor: '#f59e0b',    // amber-500 playhead
                             barWidth: 2, barGap: 1, barRadius: 2, height: 32, normalize: true,
                         });
                         this._load(src);
@@ -782,6 +813,36 @@
                     this.active = a;
                 },
 
+                // The grip. Pointer capture keeps the drag on the grip wherever the pointer goes.
+                dragStart(e) {
+                    if (e.button !== 0) return;
+                    this.dragging = true;
+                    this._startY = e.clientY;
+                    this._startH = this.panelH;
+                    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {}
+                    e.preventDefault();
+                },
+                dragMove(e) {
+                    if (!this.dragging) return;
+                    this.panelH = clampDockH(this._startH + (this._startY - e.clientY));   // up = taller
+                },
+                dragEnd() {
+                    if (!this.dragging) return;
+                    this.dragging = false;
+                    this.keepHeight();
+                },
+                dragKey(e) {
+                    const step = e.shiftKey ? 64 : 16;
+                    const next = { ArrowUp: this.panelH + step, ArrowDown: this.panelH - step, Home: SCRIPT_DEF_H }[e.key];
+                    if (next === undefined) return;
+                    e.preventDefault();
+                    this.panelH = clampDockH(next);
+                    this.keepHeight();
+                },
+                keepHeight() {
+                    try { localStorage.setItem(SCRIPT_H_KEY, String(this.panelH)); } catch (_) {}
+                    this.$nextTick(() => this.refreshWave());
+                },
                 fmt(s) {
                     s = Math.max(0, Math.round(s || 0));
                     return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');

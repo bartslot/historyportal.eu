@@ -66,6 +66,21 @@ final class DemoLesson
     {
         $request ??= request();
 
+        // A page whose URL names its language (/nl, /de) is that language, whatever the browser says.
+        $fromUrl = $request->route()?->parameter('locale');
+        if (is_string($fromUrl) && Locales::isSupported($fromUrl)) {
+            return $fromUrl;
+        }
+
+        // Then the page's own language: the hero sits inside that page, so a Dutch page with an
+        // English lesson in it is the one result that is always wrong. SetLocale has already decided
+        // it, from the signed-in teacher's setting before the browser. (2026-10-13: Bart, Dutch
+        // account on an English browser, got a Dutch page around an English lesson.)
+        $page = app()->getLocale();
+        if ($page !== self::FALLBACK_LANGUAGE && Locales::isSupported($page)) {
+            return $page;
+        }
+
         $browser = self::fromBrowser($request);
 
         // A browser asking for a language that is NOT English is someone who went and set it, so it
@@ -89,7 +104,10 @@ final class DemoLesson
      * The learning goal the hero types out.
      *
      * It has to describe the lesson the buttons open, so it only uses the configured line when that
-     * line belongs to the lesson that actually won; otherwise the lesson's own title stands in.
+     * line belongs to the lesson that actually won; otherwise `demo.goals` is looked up by the
+     * winner's title. A goal is the curriculum topic the teacher has to teach ("De VOC en
+     * ontdekkingsreizen"), never the lesson's title (Bart, 2026-10-13); the title is only the last
+     * resort for a lesson nobody wrote a goal for.
      * Nothing on screen may promise a lesson the visitor is not about to get — including promising
      * it in a language the lesson is not written in.
      */
@@ -100,10 +118,14 @@ final class DemoLesson
             return (string) config('demo.lesson_goal');
         }
 
-        $entry = self::entryFor($lesson->language ?: self::FALLBACK_LANGUAGE);
+        $goal = ((array) config('demo.goals', []))[$lesson->title] ?? null;
+        if ($goal) {
+            return (string) $goal;
+        }
 
-        return ($entry['title'] ?? null) === $lesson->title && ! empty($entry['goal'])
-            ? (string) $entry['goal']
+        // English keeps its env override (DEMO_LESSON_GOAL) for the pinned default lesson.
+        return $lesson->title === config('demo.lesson_title') && $lesson->language === self::FALLBACK_LANGUAGE
+            ? (string) config('demo.lesson_goal')
             : $lesson->title;
     }
 
@@ -142,7 +164,6 @@ final class DemoLesson
         if ($language === self::FALLBACK_LANGUAGE) {
             return [
                 'title' => config('demo.lesson_title'),
-                'goal' => config('demo.lesson_goal'),
                 'footage' => config('demo.lesson_footage'),
             ];
         }

@@ -2,7 +2,6 @@
 
 @php
     $aid = $layer['asset_id'];
-    $slideshowMode = (string) ($scene->config['slideshow_mode'] ?? (($scene->config['parallax'] ?? false) ? 'parallax' : 'standard'));
     $isMapScene = in_array($scene->kind, ['map', 'voyage'], true);
     $isPinned = ($layer['anchor'] ?? 'screen') === 'map';
 
@@ -53,10 +52,10 @@
        width and the `height` in the whitelist is not read by the renderer. Two number fields
        writing one value, plus a lock over an aspect that cannot change, is three dead controls.
        `SCALE` is that value, and it is a real slider.
-     * The small outlined diamond after Color, X, Y, W, H and Scale is the per-property keyframe
-       marker that feeds the Animate tab. It is DRAWN AND INERT — what pressing one should do is
-       not specified yet, and an inert marker is better than a button that does nothing. See
-       <x-ui.keyframe-diamond>.
+     * The diamond after Colour, X, Y, W, H, Scale, Angle, Blur and Opacity keys that property at
+       the Timeline's playhead (Bart, 2026-10-16): press to add a keyframe, press on one to remove
+       it. Once a property has keys its field shows the value at the playhead and an edit becomes a
+       keyframe there (resources/js/ui/keyed-fields.js). See <x-ui.keyframe-diamond>.
      * `Map style` renders only where a style engine exists. The lesson map deliberately has one
        ground — see the note in resources/js/lesson-map.js, "the five drawn atlases were removed" —
        so on a wizard scene there is nothing for the cards to switch and they stay out.
@@ -91,7 +90,8 @@
                 :on-color-input="$live('tint')"
                 :on-color-change="$save('tint')"
                 :on-opacity-input="'window.__setLayerProp?.(' . $aid . ', \'tint_opacity\', $event.target.value / 100)'"
-                :on-opacity-change="'updateArtworkLayer(' . $aid . ', \'tint_opacity\', $event.target.value / 100)'" />
+                :on-opacity-change="'updateArtworkLayer(' . $aid . ', \'tint_opacity\', $event.target.value / 100)'"
+                :keyframe-target="'art:'.$aid" />
 
             <button type="button" wire:click="updateArtworkLayer({{ $aid }}, 'tint', '')"
                     class="btn btn-ghost btn-xs w-full text-2xs text-panel-label hover:text-base-content">
@@ -105,23 +105,22 @@
                 <span style="width: var(--settings-panel-label-w, 3.0625rem)"
                       class="shrink-0 text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Position') }}</span>
                 <x-ui.stepper-field glyph="X" :label="__('Horizontal position')" :min="0" :max="100" :step="1"
-                                    :value="$num($val('x', 50), 0)" :default="50"
+                                    :value="$num($val('x', 50), 0)" :default="50" :keyframe-target="'art:'.$aid" keyframe-property="x"
                                     :on-input="$live('x')" :on-change="$save('x')" class="min-w-0 flex-1" />
                 <x-ui.stepper-field glyph="Y" :label="__('Vertical position')" :min="0" :max="100" :step="1"
-                                    :value="$num($val('y', 58), 0)" :default="58"
+                                    :value="$num($val('y', 58), 0)" :default="58" :keyframe-target="'art:'.$aid" keyframe-property="y"
                                     :on-input="$live('y')" :on-change="$save('y')" class="min-w-0 flex-1" />
             </div>
 
             <x-ui.size-row :asset-id="$aid" :label="__('Size')"
                            :height="$val('height', 40)" :width="$layer['width'] ?? null" />
 
-            @if ($slideshowMode === 'parallax')
+            @if (! $isMapScene)
                 <x-ui.slider-row :label="__('Depth')" :min="0.4" :max="2.5" :step="0.05"
                                  :value="$val('depth', 1.3)" :display="$num($val('depth', 1.3))" :default="1.3"
                                  :on-input="$live('depth')" :on-change="$save('depth')" />
             @endif
 
-            {{-- Scale carries the keyframe marker in the file; Rotate and Blur do not. --}}
             <x-ui.slider-row :label="__('Scale')" :min="0.2" :max="6" :step="0.05"
                              :keyframe-target="'art:'.$aid" keyframe-property="scale"
                              :value="$val('scale', 1.0)" :display="$pct($val('scale', 1.0))" unit="%" :default="1.0"
@@ -133,8 +132,21 @@
                             :flip-x="(bool) $val('flip_x', false)" :flip-y="(bool) $val('flip_y', false)" />
 
             <x-ui.slider-row :label="__('Blur')" :min="0" :max="2.5" :step="0.1"
+                             keyframe :keyframe-target="'art:'.$aid" keyframe-property="blur"
                              :value="$val('blur', 0)" :display="$num($val('blur', 0), 1)" :default="0"
                              :on-input="$live('blur')" :on-change="$save('blur')" />
+
+            {{-- Every keyframe on this layer gone, every property back to what it was. Only while
+                 something is animated: a Reset with nothing to reset is noise. --}}
+            <div class="flex justify-end" x-data="{ any: false, sync () { this.any = !!window.__timelineKeying?.canResetObject?.('art:{{ $aid }}') } }"
+                 x-init="sync()" x-on:timeline-changed.window="sync()" x-show="any" x-cloak>
+                <button type="button" data-keyframe-reset-all
+                        x-on:click="window.__timelineKeying?.resetObject?.('art:{{ $aid }}'); sync()"
+                        class="btn btn-ghost btn-xs rounded-full">
+                    <x-icons.arrow-uturn-left class="h-3.5 w-3.5" />
+                    {{ __('Reset all') }}
+                </button>
+            </div>
         </div>
     </x-ui.settings-section>
 
@@ -202,6 +214,15 @@
                             'breeze' => __('Breeze'),
                             'bob' => __('Bob'),
                             'flutter' => __('Flutter'),
+                            'swell' => __('Sea swell'),
+                            'roll' => __('Roll'),
+                            'billow' => __('Billow'),
+                            'rain' => __('Rain'),
+                            'flash' => __('Lightning'),
+                            'spray' => __('Spray'),
+                            'flicker' => __('Flicker'),
+                            'rise' => __('Smoke'),
+                            'oars' => __('Oars'),
                         ] as $mv => $ml)
                             <option value="{{ $mv }}" @selected($val('ambient', 'none') === $mv)>{{ $ml }}</option>
                         @endforeach
@@ -216,7 +237,82 @@
                 <x-ui.slider-row :label="__('Amount')" :min="0" :max="2" :step="0.05"
                                  :value="$val('ambient_amount', 1)" :display="rtrim(rtrim(number_format((float) $val('ambient_amount', 1), 2), '0'), '.')" unit="×" :default="1"
                                  :on-input="$live('ambient_amount')" :on-change="$save('ambient_amount')" />
+                {{-- Back to the motion's defaults (speed 1, amount 1); the mode itself stays. --}}
+                <div class="flex justify-end">
+                    <button type="button" wire:click="resetLayerMotion({{ $aid }})"
+                            data-tooltip="{{ __('Speed and amount back to their defaults') }}"
+                            class="btn btn-ghost btn-xs rounded-full">
+                        <x-icons.arrow-uturn-left class="h-3.5 w-3.5" />
+                        {{ __('Reset') }}
+                    </button>
+                </div>
             </div>
+
+            {{-- Blend into the scene (resources/js/scene/sit-in-scene.js): a waterline, foam, a
+                 reflection, a contact shadow and a colour wash from the backdrop, so a cut-out
+                 sits IN the painting. The button sets the preset for a boat or a figure; the
+                 four values are under Advanced. Mirror and tilt are the Angle row above. --}}
+            @php $sitOn = collect(\App\Services\Support\LayerSitIn::KEYS)->contains(fn ($k) => (float) ($layer[$k] ?? 0) > 0); @endphp
+            <div class="divider my-0" role="presentation"></div>
+            <div class="flex items-center gap-2" data-sit-in>
+                <button type="button" wire:click="blendLayerIntoScene({{ $aid }})"
+                        data-tooltip="{{ __('Waterline, reflection, shadow and colour from the backdrop') }}"
+                        @class(['btn btn-xs flex-1 rounded-full', 'btn-primary' => ! $sitOn, 'btn-ghost' => $sitOn])>
+                    {{ __('Blend into scene') }}
+                </button>
+                @if ($sitOn)
+                    <button type="button" wire:click="resetLayerSitIn({{ $aid }})"
+                            data-tooltip="{{ __('Back to the cut-out as it was') }}"
+                            class="btn btn-ghost btn-xs rounded-full">
+                        <x-icons.arrow-uturn-left class="h-3.5 w-3.5" />
+                        {{ __('Reset') }}
+                    </button>
+                @endif
+            </div>
+            <details class="collapse collapse-arrow rounded-lg border border-panel-hairline" data-sit-advanced>
+                <summary class="collapse-title min-h-0 px-3 py-2 text-2xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Advanced') }}</summary>
+                <div class="collapse-content space-y-2 px-3">
+                    @foreach ([
+                        'waterline' => __('Waterline'),
+                        'reflection' => __('Reflection'),
+                        'contact_shadow' => __('Shadow'),
+                        'color_match' => __('Colour'),
+                        'foam' => __('Foam'),
+                        'speed' => __('Headway'),
+                    ] as $sk => $sl)
+                        <x-ui.slider-row :label="$sl" :min="0" :max="1" :step="0.05"
+                                         :value="$val($sk, 0)" :display="$pct($val($sk, 0))" unit="%" :default="0"
+                                         :on-input="$live($sk)" :on-change="$save($sk)" />
+                    @endforeach
+                </div>
+            </details>
+
+            {{-- Behind what the backdrop draws in front (resources/js/scene/occlusion.js), and the
+                 height a figure has where it stands: both from the backdrop's depth map, so only
+                 on a backdrop that has one (php artisan art:depth). --}}
+            @if (! empty($scene->config['backdrop_depth']))
+                @php $occludeOn = ! empty($layer['occlude']); @endphp
+                <div class="divider my-0" role="presentation"></div>
+                <div class="flex items-center gap-2" data-occlude>
+                    <x-ui.toggle-row class="flex-1" :label="__('Behind objects')" :checked="$occludeOn"
+                                     :on-toggle="'window.__setLayerProp?.(' . $aid . ', \'occlude\', $event.target.checked ? 1 : 0)'"
+                                     :on-change="'setLayerOcclude(' . $aid . ', $event.target.checked)'" />
+                    @if ($occludeOn)
+                        <button type="button" wire:click="setLayerOcclude({{ $aid }}, false)"
+                                data-tooltip="{{ __('In front of everything again') }}"
+                                class="btn btn-ghost btn-xs rounded-full">
+                            <x-icons.arrow-uturn-left class="h-3.5 w-3.5" />
+                            {{ __('Reset') }}
+                        </button>
+                    @endif
+                </div>
+                <button type="button" data-fit-spot x-data
+                        x-on:click="const fit = await window.__lessonArtworkLayer?.fitHeight?.({{ $aid }}); if (fit) { $wire.fitLayerToSpot({{ $aid }}, fit.height, fit.y); $dispatch('layer-fitted', { assetId: {{ $aid }}, height: fit.height }) }"
+                        data-tooltip="{{ __('The height it has standing here, from the horizon of the backdrop') }}"
+                        class="btn btn-ghost btn-xs w-full rounded-full">
+                    {{ __('Fit to this spot') }}
+                </button>
+            @endif
         </div>
     </x-ui.settings-section>
 
@@ -248,38 +344,6 @@
                         @endforeach
                     </div>
                 </div>
-            </div>
-        </x-ui.settings-section>
-    @endif
-
-    {{-- ── Ink draw-on — only in Drawing mode ─────────────────────────────────────────────── --}}
-    @if ($slideshowMode === 'drawing')
-        <x-ui.settings-section :title="__('Ink draw-on')" name="ink">
-            <div class="space-y-2">
-                <x-ui.slider-row :label="__('Speed')" :min="2" :max="20" :step="0.5"
-                                 :value="$val('draw_time', 7)" :display="$num($val('draw_time', 7), 1)" unit="s" :default="7"
-                                 data-tooltip="{{ __('Seconds for the full draw-on') }}"
-                                 :on-change="$save('draw_time')" />
-
-                @foreach ([
-                    ['ink_preset', __('Pen'), ['production' => __('Production'), 'brush' => __('Brush'), 'sketch' => __('Sketch'), 'liner' => __('Liner'), 'etch' => __('Etch')], 'production'],
-                    ['ink_fill', __('Fill'), ['auto' => __('Auto'), 'none' => __('None'), 'wash' => __('Wash'), 'hatch' => __('Hatch'), 'cross' => __('Crosshatch')], 'auto'],
-                ] as [$field, $label, $opts, $default])
-                    <label class="flex items-center justify-between gap-2">
-                        <span style="width: var(--settings-panel-label-w, 3.0625rem)"
-                      class="shrink-0 text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ $label }}</span>
-                        <div class="relative min-w-0 flex-1">
-                            <select wire:change="{{ $save($field) }}" aria-label="{{ $label }}"
-                                    style="height: var(--settings-panel-row-h, 2rem)"
-                            class="w-full appearance-none rounded-lg border border-panel-hairline bg-base-100 py-0 pl-3 pr-7
-                                           text-2xs text-panel-value outline-none focus:border-panel-label">
-                                @foreach ($opts as $ov => $ol)
-                                    <option value="{{ $ov }}" @selected(($layer[$field] ?? $default) === $ov)>{{ $ol }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </label>
-                @endforeach
             </div>
         </x-ui.settings-section>
     @endif

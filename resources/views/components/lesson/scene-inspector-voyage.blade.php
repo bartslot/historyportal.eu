@@ -60,28 +60,28 @@
     <div role="group" aria-label="{{ __('Route view') }}" class="mt-3 grid grid-cols-2 gap-1 rounded-xl bg-slate-800/60 p-1">
         <button type="button" wire:click="setVoyageOverview(false)"
                 x-on:click="if (wide) { wide = false; window.__voyageTour?.hideOverview?.() }"
-                :class="!wide ? 'bg-primary text-slate-950 shadow-sm' : 'text-slate-300 hover:text-slate-100'"
+                :class="!wide ? 'bg-primary text-slate-950' : 'text-slate-300 hover:text-slate-100'"
                 class="rounded-lg py-1.5 text-xs font-medium transition-colors">{{ __('Single') }}</button>
         <button type="button" wire:click="setVoyageOverview(true)"
                 x-on:click="if (!wide) { wide = true; if (tab === 'leg') tab = 'map'; window.__voyageTour?.showOverview?.() }"
-                :class="wide ? 'bg-primary text-slate-950 shadow-sm' : 'text-slate-300 hover:text-slate-100'"
+                :class="wide ? 'bg-primary text-slate-950' : 'text-slate-300 hover:text-slate-100'"
                 class="rounded-lg py-1.5 text-xs font-medium transition-colors">{{ __('Overview') }}</button>
     </div>
 
     {{-- TABS --}}
     <div role="tablist" class="mt-3 grid gap-1 rounded-xl bg-slate-800/60 p-1" :class="wide ? 'grid-cols-2' : 'grid-cols-3'">
         <button type="button" role="tab" x-on:click="tab = 'leg'" x-show="!wide"
-                :class="tab === 'leg' ? 'bg-primary text-slate-950 shadow-sm' : 'text-slate-300 hover:text-slate-100'"
+                :class="tab === 'leg' ? 'bg-primary text-slate-950' : 'text-slate-300 hover:text-slate-100'"
                 class="rounded-lg py-1.5 text-xs font-medium transition-colors">
             Waypoint
         </button>
         <button type="button" role="tab" x-on:click="tab = 'map'"
-                :class="tab === 'map' ? 'bg-primary text-slate-950 shadow-sm' : 'text-slate-300 hover:text-slate-100'"
+                :class="tab === 'map' ? 'bg-primary text-slate-950' : 'text-slate-300 hover:text-slate-100'"
                 class="rounded-lg py-1.5 text-xs font-medium transition-colors">
             Map
         </button>
         <button type="button" role="tab" x-on:click="tab = 'route'"
-                :class="tab === 'route' ? 'bg-primary text-slate-950 shadow-sm' : 'text-slate-300 hover:text-slate-100'"
+                :class="tab === 'route' ? 'bg-primary text-slate-950' : 'text-slate-300 hover:text-slate-100'"
                 class="rounded-lg py-1.5 text-xs font-medium transition-colors">
             Route
         </button>
@@ -336,6 +336,24 @@
                            class="toggle toggle-sm toggle-warning" />
                 </label>
             </div>
+        </section>
+
+        {{-- MAP GROUND — the photographed earth, or a plain drawn chart for lessons illustrated in
+             history-line ink, so the map is drawn in the same hand as the pictures. Whole lesson. --}}
+        @php $mapStyle = $voyageMap['style'] ?? 'earth'; @endphp
+        <section class="border-t border-slate-700/50 pt-3">
+            <span class="text-2xs text-slate-300">{{ __('Map') }}</span>
+            <div class="mt-1 grid grid-cols-2 gap-1">
+                @foreach ([['earth', __('Earth')], ['history-line', __('Drawn')]] as [$style, $label])
+                    <button type="button" wire:click="setVoyageMap('style', '{{ $style }}')"
+                            @class([
+                                'rounded-md border px-2 py-1 text-2xs transition',
+                                'border-primary bg-primary/10 text-primary' => $mapStyle === $style,
+                                'border-slate-700 text-slate-400 hover:border-slate-500' => $mapStyle !== $style,
+                            ])>{{ $label }}</button>
+                @endforeach
+            </div>
+            <p class="mt-1 text-2xs text-slate-500">{{ __('Drawn: a plain old chart in ink, for lessons with history-line pictures.') }}</p>
         </section>
 
         {{-- MAP DETAIL — hide anachronistic modern cities/borders (they didn't exist yet) and pin the

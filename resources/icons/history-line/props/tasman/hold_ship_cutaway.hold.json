@@ -1,0 +1,20 @@
+{
+    "_note": "The painted hold of hold_ship_cutaway.webp (1442x1002: the whole ship, masts and flag in frame; from art/ships/hold_ship_cutaway_full.png, cropped and its alpha edge eroded by 1 px), measured on 2026-10-15: one zone per deck, in % of the picture (x, y = top-left). posts = what stands up in the hold (the posts with their brackets, the mast, the walls), same units, measured on 2026-10-15 at 3-5x zoom; the upper deck's last one takes in the companionway stairs, the lower deck's last one the curve of the hull. Cargo only stands in the bays between them. waterline = share of the picture's height, from the bottom, under water (the keel sits at ~97%). LessonComposer reads this when a team game's hold.ship is this asset.",
+    "aspect": 1.4391,
+    "zones": [
+        { "x": 21, "y": 73.6, "w": 60.8, "h": 6 },
+        { "x": 24.3, "y": 81.8, "w": 52, "h": 7.5 }
+    ],
+    "posts": [
+        { "x": 20, "y": 73.6, "w": 1.3, "h": 6 },
+        { "x": 30.5, "y": 73.6, "w": 2.2, "h": 6 },
+        { "x": 44.9, "y": 73.6, "w": 4.4, "h": 6 },
+        { "x": 62.4, "y": 73.6, "w": 2.2, "h": 6 },
+        { "x": 76.8, "y": 73.6, "w": 5, "h": 6 },
+        { "x": 30.5, "y": 81.8, "w": 2.2, "h": 7.5 },
+        { "x": 44.9, "y": 81.8, "w": 4.4, "h": 7.5 },
+        { "x": 62.4, "y": 81.8, "w": 2.2, "h": 7.5 },
+        { "x": 73.4, "y": 81.8, "w": 3.9, "h": 7.5 }
+    ],
+    "waterline": 0.05
+}

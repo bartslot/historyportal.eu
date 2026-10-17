@@ -1,6 +1,6 @@
 <x-layouts.guest :title="__('Reset your password')">
 
-    <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-8 shadow-2xl backdrop-blur-sm">
+    <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-8 backdrop-blur-sm">
         <h1 class="text-xl font-semibold text-slate-100 mb-2 text-center">{{ __('Reset your password') }}</h1>
         <p class="mb-6 text-center text-sm text-slate-400">
             {{ __('Enter your email address and we will send you a link to choose a new one.') }}

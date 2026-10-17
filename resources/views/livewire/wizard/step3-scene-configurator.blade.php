@@ -31,12 +31,17 @@
     {{-- --work-right lives on <html> (set by the sync below) so the sibling script/notes panels
          inherit it too — the canvas-root is not their ancestor. --work-left/--work-bottom stay
          local to the canvas-root (only it needs them). --}}
+    {{-- The stage is ALWAYS 16:9, as the player shows it: when the dock is pulled up the height
+         runs out first, and the width follows it (--stw) instead of staying full width, which
+         stretched the stage wider than 16:9 and cropped the picture differently at every drawer
+         height (Bart, 2026-10-16). The leftover width is letterbox, centred. --}}
     <div class="fixed z-0 bg-slate-950" id="lesson-canvas-root"
          style="--work-left: calc(var(--rail-w, 11rem) + var(--objlist-w, 0px) + var(--ruler-w, 0px)); --work-bottom: 0px;
                 --top-inset: calc(4rem + var(--ruler-w, 0px));
                 --lbw: calc(100vw - var(--work-left) - var(--work-right, 16rem));
                 --lbh: min(calc(var(--lbw) * 0.5625), calc(100vh - var(--top-inset) - var(--work-bottom)));
-                left: var(--work-left); right: var(--work-right, 16rem);
+                --stw: calc(var(--lbh) * 16 / 9);
+                left: calc(var(--work-left) + (var(--lbw) - var(--stw)) / 2); width: var(--stw);
                 height: var(--lbh); top: calc(var(--top-inset) + (100vh - var(--top-inset) - var(--work-bottom) - var(--lbh)) / 2);"
          data-character-url=""
          data-territory="{{ $lesson->topic }}"
@@ -213,7 +218,7 @@
             cursor.setAttribute('stroke', isErase() ? 'rgba(248,113,113,0.95)' : 'rgba(226,232,240,0.9)');
             cursor.setAttribute('fill', isErase() ? 'rgba(248,113,113,0.15)' : 'rgba(148,163,184,0.18)');
             cursor.style.display = 'block';
-            path.setAttribute('stroke', isErase() ? 'rgba(248,113,113,0.55)' : 'rgba(252,211,77,0.5)');
+            path.setAttribute('stroke', isErase() ? 'rgba(248,113,113,0.55)' : 'rgba(245,158,11,0.5)');
             path.setAttribute('stroke-width', Math.max(4, lastR * 2));   // the drawn band == the painted band
         };
         overlay.addEventListener('pointerdown', (e) => {
@@ -387,6 +392,7 @@
         window.__voyageCenter = () => { try { return (inst && inst.map) ? inst.map.getCenter() : null } catch (_) { return null } }
         let lastKey = null
         let lastVoyageId = null       // the mounted voyage's id — the ONLY thing that forces a REBUILD
+        let lastMapStyle = null       // …and its ground: earth vs drawn chart is chosen when the map is built
         let lastVoyageDefStr = null   // last applied route geometry (waypoints/legs) — reshaped in place
         let lastLeg = null            // last-played leg index (for the no-rebuild leg switch)
         let lastOverview = false      // was the last voyage scene the itinerary? (same switch, other mode)
@@ -401,7 +407,7 @@
             host.innerHTML = ''
             host.style.display = 'none'
             hideMapArt()
-            lastKey = null; lastVoyageId = null; lastVoyageDefStr = null; lastLeg = null; lastGalleryId = null; lastOverview = false
+            lastKey = null; lastVoyageId = null; lastMapStyle = null; lastVoyageDefStr = null; lastLeg = null; lastGalleryId = null; lastOverview = false
         }
 
         // A re-mount key for voyage/gallery scenes: only scene-DEFINING bits belong in it, so the
@@ -593,7 +599,7 @@
                 //  • route GEOMETRY edited (drag / insert / move a waypoint) → setVoyageDef() reshapes
                 //    the ship + trail + fog + handles in place at the current camera (no jump, no flash)
                 //  • leg changed → playLeg()   • same leg, content changed → refreshArrivalContent()
-                if (inst && p.kind === 'voyage' && cfg.voyage === lastVoyageId) {
+                if (inst && p.kind === 'voyage' && cfg.voyage === lastVoyageId && (p.voyage_map?.style || 'earth') === lastMapStyle) {
                     applyLiveMap()
                     const legNow = Number(cfg.leg) || 0
                     const defStr = JSON.stringify(p.voyage_def || null)
@@ -653,6 +659,7 @@
                 destroy(); wireMapProjectors()
                 lastKey = key
                 lastVoyageId = cfg.voyage
+                lastMapStyle = p.voyage_map?.style || 'earth'
                 lastVoyageDefStr = JSON.stringify(p.voyage_def || null)
                 lastLeg = Number(cfg.leg) || 0
                 // `cfg`, not `vcfg`: the same scene config, but vcfg is declared further down and
@@ -925,7 +932,7 @@
            x-on:inspector-state-request.window="window.dispatchEvent(new CustomEvent('inspector-state', { detail: { open: inspectorOpen, view: '{{ $panelView }}' } }))"
            style="right:0; left:auto; top:64px; bottom:0;"
            data-resizable-drawer
-           class="card card-compact fixed z-50 overflow-hidden rounded-none border border-r-0 border-t-0 border-slate-700 bg-base-300 shadow-2xl
+           class="card card-compact fixed z-50 overflow-hidden rounded-none border border-r-0 border-t-0 border-slate-700 bg-base-300
                   {{-- 19.375rem is the Figma panel's 310px. The old 16rem was narrow enough that a
                        row label and its control competed for the same space, which is where the
                        three different label widths came from. --}}
@@ -974,12 +981,18 @@
                   "Transition" read as "RANSITION". Nothing in an inspector wants sideways scroll. --}}
              class="card-body overflow-y-auto overflow-x-hidden p-4"
              :style="inspectorBodyStyle()">
-            @if ($this->titleSelected && $panelView === 'scene')
+            @if ($panelView === 'problems')
+            {{-- The lesson's problems (LessonProblems), opened from the header's warning count. --}}
+            <x-lesson.problems-panel :problems="$this->problems" :plan="$this->fixPlan()" :scenes="$this->scenes" />
+            @elseif ($this->titleSelected && $panelView === 'scene')
             {{-- The pinned title screen's Format: its picture, where the title sits, the QR code. --}}
             <x-lesson.title-screen-inspector :lesson="$lesson" />
             @elseif ($activeTextId && ($activeText = $this->activeText))
             {{-- Text and backing-panel controls live in Format, never over the canvas object. --}}
             <x-lesson.scene-text-inspector :text="$activeText" :scene="$this->selectedSceneModel" />
+            @elseif ($activeBalloonId && ($activeBalloon = $this->activeBalloon))
+            {{-- A speech or thought balloon: its words, its type, who it points at. --}}
+            <x-lesson.balloon-inspector :balloon="$activeBalloon" :speakers="$this->balloonSpeakers()" />
             @elseif ($activeLayerId && ($al = $this->activeLayer))
             {{-- A clipart layer is selected → its settings take over the inspector.
                  Format is what the layer LOOKS like; Animate is how it arrives. Alpine-local so
@@ -1021,6 +1034,9 @@
                      state on switch, so sliders/tabs show — and can persist — the wrong scene's
                      values. A changing key forces Alpine to reinitialise from the new scene. --}}
                 <div wire:key="scene-inspector-{{ $sceneModel->id }}" x-data="{ tab: 'format' }" class="space-y-3">
+                @foreach ($this->problemsByScene[$sceneModel->id] ?? [] as $problem)
+                    <x-lesson.scene-problem-row :problem="$problem" :scene="$sceneModel" />
+                @endforeach
                 {{-- Same two tabs as a layer, for the same reason: what the scene looks like, and
                      how it arrives. Every scene kind gets Animate — a map or a gallery replaces the
                      scene before it just as a narration scene does. --}}
@@ -1030,7 +1046,7 @@
                                  :tabs="[['format', __('Format')], ['animate', __('Animate')]]" />
 
                 <div x-show="tab === 'animate'" x-cloak>
-                    <x-lesson.animate-inspector mode="scene" :scene="$sceneModel" />
+                    <x-lesson.animate-inspector mode="scene" :scene="$sceneModel" :active-panel="$this->activePanel" />
                 </div>
 
                 <div x-show="tab === 'format'">
@@ -1044,7 +1060,8 @@
                     <x-lesson.scene-inspector-game :scene="$sceneModel" :games="$this->games"
                                                   :quiz-draft="$quizDraft" :quiz-errors="$quizErrors" :quiz-saved="$quizSaved"
                                                   :quiz-difficulty="$this->quizDifficulty()" :quiz-scope="$this->quizScope()"
-                                                  :quiz-shuffle="$this->quizShuffle()" />
+                                                  :quiz-shuffle="$this->quizShuffle()"
+                                                  :team-draft="$teamDraft" :team-is-default="$this->teamGameIsDefault()" />
                 @elseif ($sceneModel->kind === 'voyage')
                     <x-lesson.scene-inspector-voyage :scene="$sceneModel" :voyage-def="$this->voyageDef()" :route-line="$this->routeLine()" :voyage-map="$this->voyageMap()" :voyage-fog="$this->voyageFog()" :voyage-view="$this->voyageView()" :transports="$this->transports()" :stops="$this->voyageStops()" />
                 @elseif ($sceneModel->kind === 'gallery')
@@ -1052,7 +1069,12 @@
                 @elseif ($sceneModel->kind === 'video')
                     <x-lesson.scene-inspector-video :scene="$sceneModel" />
                 @else
-                    <x-lesson.scene-inspector-narration :scene="$sceneModel" />
+                    <x-lesson.scene-inspector-narration :scene="$sceneModel" :active-panel="$this->activePanel" />
+                    <x-lesson.scene-inspector-moment :draft="$momentDraft" :is-default="$this->momentIsDefault()" :layers="$this->momentLayers()" />
+                @endif
+
+                @if ($sceneModel->takesTeacherEstimate())
+                    <x-lesson.scene-estimate :scene="$sceneModel" />
                 @endif
 
                 {{-- Story-game: branch OPTION scenes get the "Game effects" editor. --}}
@@ -1102,7 +1124,23 @@
                            wire:change="setSubtitles($event.target.checked)"
                            class="toggle toggle-sm shrink-0" />
                 </label>
+                {{-- Subtitles in other languages: made ahead of class, every line correctable.
+                     wire:ignore: this component's 3s poll re-rendered the child and threw away the
+                     chosen language (and a line being typed); the child updates itself. --}}
+                @unless (auth()->user()?->isGuestDemo())
+                    <div class="mt-4" wire:ignore>
+                        <livewire:wizard.caption-translations :lesson="$lesson" :key="'captions-'.$lesson->id" />
+                    </div>
+                @endunless
             </div>
+
+            {{-- CURRICULUM: kerndoelen, tijdvakken, kenmerkende aspecten and Canon windows this lesson
+                 covers (Bart, 2026-10-17). wire:ignore for the same reason as the captions above. --}}
+            @unless (auth()->user()?->isGuestDemo())
+                <div class="mt-6 border-t border-slate-700/50 pt-4" wire:ignore>
+                    <livewire:wizard.curriculum-picker :lesson="$lesson" :key="'curriculum-'.$lesson->id" />
+                </div>
+            @endunless
 
             {{-- POSTER — the lesson's cover image (Bart, 2026-09-29): Auto (the first picture the lesson
                  has) | Scene (one scene's picture) | Image (an upload). Never a stand-in portrait:
@@ -1185,7 +1223,7 @@
              wire:key="publish-notice"
              x-data x-init="setTimeout(() => $wire.set('publishNotice', null), 5000)">
             <div @class([
-                'flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm shadow-2xl',
+                'flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm',
                 'border-success/40 bg-success/10 text-success' => $publishOk,
                 'border-primary bg-amber-950 text-amber-200' => ! $publishOk,
             ])>
@@ -1219,6 +1257,7 @@
         photo:  '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M2.25 15.75L7.409 10.591C7.61793 10.3821 7.86597 10.2163 8.13896 10.1033C8.41194 9.99018 8.70452 9.93198 9 9.93198C9.29548 9.93198 9.58806 9.99018 9.86104 10.1033C10.134 10.2163 10.3821 10.3821 10.591 10.591L15.75 15.75M14.25 14.25L15.659 12.841C15.8679 12.6321 16.116 12.4663 16.389 12.3533C16.6619 12.2402 16.9545 12.182 17.25 12.182C17.5455 12.182 17.8381 12.2402 18.111 12.3533C18.384 12.4663 18.6321 12.6321 18.841 12.841L21.75 15.75M3.75 19.5H20.25C20.6478 19.5 21.0294 19.342 21.3107 19.0607C21.592 18.7794 21.75 18.3978 21.75 18V6C21.75 5.60218 21.592 5.22064 21.3107 4.93934C21.0294 4.65804 20.6478 4.5 20.25 4.5H3.75C3.35218 4.5 2.97064 4.65804 2.68934 4.93934C2.40804 5.22064 2.25 5.60218 2.25 6V18C2.25 18.3978 2.40804 18.7794 2.68934 19.0607C2.97064 19.342 3.35218 19.5 3.75 19.5ZM14.625 8.25C14.625 8.66421 14.2892 9 13.875 9C13.4608 9 13.125 8.66421 13.125 8.25C13.125 7.83579 13.4608 7.5 13.875 7.5C14.2892 7.5 14.625 7.83579 14.625 8.25Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
         solid:  '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M20.0049 19.6379H9.00488C8.73967 19.6379 8.48531 19.5325 8.29778 19.345C8.11024 19.1574 8.00488 18.9031 8.00488 18.6379V10.6379C8.00488 10.3727 8.11024 10.1183 8.29778 9.93077C8.48531 9.74324 8.73967 9.63788 9.00488 9.63788H20.0049C20.2701 9.63788 20.5245 9.74324 20.712 9.93077C20.8995 10.1183 21.0049 10.3727 21.0049 10.6379V18.6379C21.0049 18.9031 20.8995 19.1574 20.712 19.345C20.5245 19.5325 20.2701 19.6379 20.0049 19.6379Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M14.1345 9.6989C14.1345 6.75148 11.7451 4.36212 8.79772 4.36212C5.8503 4.36212 3.46095 6.75148 3.46095 9.6989C3.44224 11.3303 4.45651 14.5767 8.41688 14.5767" stroke="currentColor" stroke-width="1.5"/></svg>',
         map:    '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M9 6.75 3.75 4.5v12.75L9 19.5m0-12.75 6 2.25m-6-2.25v12.75m6-10.5 5.25-2.25V15L15 17.25m0-10.5v10.5m0 0-6-2.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        balloon: '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 0 1-.923 1.785A5.969 5.969 0 0 0 6 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
         quiz:   '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M9 12l2 2 4-4m-9 8h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     };
     // A diorama item's Format panel (components/lesson/diorama-item-inspector): read off the live stage at
@@ -1315,7 +1354,10 @@
                 // The clipart group sits above the text objects only when the teacher dragged it there
                 // (config.clipart_on_top → the overlay host's z-index is raised above the text layer).
                 const onTop = !!(artLayer && artLayer.onTop);
-                const items = [...(onTop ? [...artItems, ...textItems] : [...textItems, ...artItems]), ...dioItems];
+                // Speech balloons are drawn over everything: listed first, never restacked by hand.
+                const balloonItems = (window.__balloons?.list() ?? []).map((b) =>
+                    ({ id: b.id, icon: 'balloon', label: b.text, bg: false, bal: true }));
+                const items = [...balloonItems, ...(onTop ? [...artItems, ...textItems] : [...textItems, ...artItems]), ...dioItems];
                 // Bottom layer(s), pinned (not drag-reorderable). A Route waypoint scene lists its own
                 // stack — the Gallery overlay ON TOP of the Waypoint map — instead of a bare Background;
                 // every other scene lists a single Background (or Slideshow for a standalone gallery).
@@ -1353,7 +1395,7 @@
                     // adjust button ([data-nodrag]) opts out so tapping it doesn't start a drag.
                     draggable: '[data-obj-id]',
                     // Diorama rows stack by depth on the floor, never by hand: pinned like the background.
-                    filter: '[data-bg], [data-nodrag], [data-dio]',
+                    filter: '[data-bg], [data-nodrag], [data-dio], [data-bal]',
                     preventOnFilter: false,         // keep the adjust button's own click working
                     // Pointer-based dragging (not native HTML5 DnD): more reliable inside this
                     // fixed-position panel and works consistently across browsers.
@@ -1370,7 +1412,7 @@
                         // …then restack each layer system and rebuild. Text and clipart are two
                         // separate overlays, so split the dropped order by type and reorder each.
                         const isArt = (id) => id.startsWith('art_');
-                        const textIds = ids.filter((id) => !isArt(id) && !id.startsWith('dio_'));
+                        const textIds = ids.filter((id) => !isArt(id) && !id.startsWith('dio_') && !id.startsWith('bal_'));
                         const artIds = ids.filter(isArt);
                         if (textIds.length) window.__lessonTextLayer?.reorder(textIds);
                         if (artIds.length) this.reorderClipart(ids, textIds, artIds);
@@ -1416,6 +1458,10 @@
                     window.__diorama?.select(obj.id.slice(4));
                     return;
                 }
+                if (obj.bal) {
+                    window.__balloons?.select(obj.id);
+                    return;
+                }
                 if (obj.art) {
                     this.artOverlay()?.select?.(obj.id);   // ring the clipart (clears text ring)
                     document.querySelector(`[data-layer-id="${obj.id}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
@@ -1452,7 +1498,7 @@
                     const find = () => panel()?.querySelector(obj.section === 'quiz' ? '[data-quiz-section]' : '[data-bg-section]');
                     const flash = (target) => {
                         target.scrollIntoView({ block: 'center', behavior: 'smooth' });
-                        target.style.transition = 'box-shadow .2s';
+                        target.style.transition = 'box- .2s';
                         target.style.boxShadow = '0 0 0 2px #38bdf8';
                         setTimeout(() => { target.style.boxShadow = ''; }, 900);
                     };
@@ -1483,7 +1529,8 @@
             const isArtwork = id.indexOf('art_') === 0;
             const isDiorama = id.indexOf('dio_') === 0;
             const isText = !!window.__lessonTextLayer?._texts?.some((text) => text.id === id);
-            const objectId = (isArtwork || isDiorama || isText) ? id : '';
+            const isBalloon = id.indexOf('bal_') === 0;
+            const objectId = (isArtwork || isDiorama || isText || isBalloon) ? id : '';
             if (objectId) window.dispatchEvent(new CustomEvent('inspector-open'));
             if (objectId === lastSelection) return;
             lastSelection = objectId;
@@ -1492,7 +1539,7 @@
         // Empty canvas / background selection is scene-level formatting, not object formatting.
         document.addEventListener('pointerdown', (e) => {
             const target = e.target instanceof Element ? e.target : null;
-            if (!target?.closest('#lesson-canvas-root') || target.closest('[data-text-id], [data-layer-id]')) return;
+            if (!target?.closest('#lesson-canvas-root') || target.closest('[data-text-id], [data-layer-id], [data-balloon-id]')) return;
             window.__lessonTextLayer?.select?.('__bg__');
         });
         // Called from an inspector's Back button so selecting the same object later reopens it.
@@ -1560,13 +1607,13 @@
     </script>
     @endpush
 
-    {{-- Top toolbar — Keynote-style: Play + insert tools as stacked icon-over-label buttons.
+    {{-- Top toolbar: icon buttons, each described on hover (data-tooltip) and to screen readers. No text labels (Bart, 2026-10-16).
          Solid background (no opacity/blur) so the composition never shows through. wire:ignore
          keeps the 3s status poll from morphing the strip and snapping the Panel popover shut. --}}
     {{-- z-50: must out-stack the z-40 resize handles (rail + object list) — they are later
          fixed siblings, so at equal z they'd sit above this toolbar's DROPDOWNS and swallow
          clicks on menu items (View ▸ Object list was dead at the default rail width). --}}
-    <div class="fixed right-0 top-0 z-50 flex h-16 items-center justify-between border-b border-slate-800 bg-slate-900 px-3 shadow-lg left-0 pl-16"
+    <div class="fixed right-0 top-0 z-50 flex h-16 items-center justify-between border-b border-slate-800 bg-slate-900 px-3 left-0 pl-16"
          wire:ignore
          {{-- fmtOpen/fmtView mirror the Format panel's state (broadcast by the aside via
               inspector-state) so toolbar buttons can show a proper OPEN state — the toolbar is
@@ -1579,16 +1626,15 @@
         {{-- View menu — show/hide workspace surfaces (Keynote's View) --}}
         <div class="relative">
             <button type="button" @click="viewOpen = !viewOpen"
-                    class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-slate-300 transition hover:bg-slate-800 hover:text-primary"
+                    class="grid h-10 w-10 place-items-center rounded-xl text-slate-300 transition hover:bg-slate-800 hover:text-primary"
                     :class="viewOpen && 'bg-sky-500/15 text-sky-300'"
-                    title="{{ __('Show or hide workspace panels') }}" aria-label="{{ __('View') }}">
+                    data-tour="view" data-tooltip="{{ __('Show or hide workspace panels') }}" aria-label="{{ __('View') }}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25a2.25 2.25 0 0 1-2.25-2.25v-2.25Z" />
                 </svg>
-                <span class="text-2xs font-medium">{{ __('View') }}</span>
             </button>
             <div x-show="viewOpen" x-cloak @click.outside="viewOpen = false" x-transition.opacity.duration.150ms
-                 class="absolute left-0 top-full z-50 mt-1.5 w-56 rounded-xl border border-slate-700 bg-slate-900 p-1.5 shadow-2xl">
+                 class="absolute left-0 top-full z-50 mt-1.5 w-56 rounded-xl border border-slate-700 bg-slate-900 p-1.5">
                 <p class="px-2 py-1 text-2xs uppercase tracking-widest text-slate-500">{{ __('Show') }}</p>
                 <template x-for="item in [
                     { k: 'scenes',  label: @js(__('Scenes')) },
@@ -1614,28 +1660,26 @@
 
         <div class="mx-1 my-1.5 w-px bg-slate-700"></div>
 
-        {{-- Play → open the player (step 5) --}}
-        <button type="button"
+        {{-- Play → the real player over the editor, from the selected scene (the play overlay below) --}}
+        <button type="button" data-play-lesson
                 onclick="Livewire.dispatch('lesson:play')"
-                class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-slate-300 transition hover:bg-base-200 hover:text-primary"
-                title="{{ __('Play the lesson') }}" aria-label="{{ __('Play the lesson') }}">
+                class="grid h-10 w-10 place-items-center rounded-xl text-slate-300 transition hover:bg-base-200 hover:text-primary"
+                data-tour="play" data-tooltip="{{ __('Play the lesson') }}" aria-label="{{ __('Play the lesson') }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 0 1 0 1.971l-11.54 6.347a1.125 1.125 0 0 1-1.667-.985V5.653Z" />
             </svg>
-            <span class="text-2xs font-medium">{{ __('Play') }}</span>
         </button>
 
         <div class="relative">
             <button type="button" @click="addOpen = !addOpen"
-                    class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-slate-300 transition hover:bg-base-200 hover:text-primary"
+                    class="grid h-10 w-10 place-items-center rounded-xl text-slate-300 transition hover:bg-base-200 hover:text-primary"
                     :class="addOpen && 'bg-sky-500/15 text-sky-300'"
                     aria-haspopup="menu" :aria-expanded="addOpen.toString()"
-                    title="{{ __('Add a scene, text, image, or icon') }}" aria-label="{{ __('Add') }}">
+                    data-tour="add" data-tooltip="{{ __('Add a scene, text, image, or icon') }}" aria-label="{{ __('Add') }}">
                 <x-icons.plus class="h-6 w-6" />
-                <span class="text-2xs font-medium">{{ __('Add') }}</span>
             </button>
             <div x-show="addOpen" x-cloak @click.outside="addOpen = false" x-transition.opacity.duration.150ms
-                 class="absolute left-0 top-full z-50 mt-1.5 w-56 rounded-xl border border-slate-700 bg-base-300 p-1.5 shadow-2xl" role="menu">
+                 class="absolute left-0 top-full z-50 mt-1.5 w-56 rounded-xl border border-slate-700 bg-base-300 p-1.5" role="menu">
                 <p class="px-2 py-1 text-2xs uppercase tracking-widest text-slate-500">{{ __('Add Scene') }}</p>
                 <button type="button" @click="Livewire.dispatch('scene:add'); addOpen = false"
                         class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
@@ -1649,6 +1693,11 @@
                         class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
                     <x-icons.pencil class="h-4 w-4 shrink-0 text-slate-400" />
                     <span>{{ __('Text') }}</span>
+                </button>
+                <button type="button" @click="$wire.addBalloon(); addOpen = false"
+                        class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 0 1-.923 1.785A5.969 5.969 0 0 0 6 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337Z"/></svg>
+                    <span>{{ __('Speech balloon') }}</span>
                 </button>
                 <button type="button" @click="Livewire.dispatch('open-image-library'); addOpen = false"
                         class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
@@ -1693,36 +1742,49 @@
         <div class="flex items-stretch gap-0.5">
         {{-- Help leaves the lesson (a new tab, the help centre), so a divider keeps it apart from
              the two things you do TO the lesson. Bart tried it centred first: it read as weird. --}}
+        {{-- What is wrong with the lesson (LessonProblems): hidden when nothing is; red when the class
+             will notice, amber when a scene only plays an older voice. Opens the Problems view. --}}
+        @if ($problemCount = count($this->problems))
+            @php $problemSeverity = \App\Support\LessonProblems::worst($this->problems); @endphp
+            <button type="button" wire:click="openProblems"
+                    data-problems-count="{{ $problemCount }}" data-severity="{{ $problemSeverity }}"
+                    data-tooltip="{{ trans_choice('{1} 1 problem in this lesson|[2,*] :count problems in this lesson', $problemCount, ['count' => $problemCount]) }}"
+                    aria-label="{{ trans_choice('{1} 1 problem in this lesson|[2,*] :count problems in this lesson', $problemCount, ['count' => $problemCount]) }}"
+                    @class(['flex h-10 items-center gap-1 self-center rounded-xl px-2 text-sm font-semibold transition hover:bg-slate-800',
+                            'text-error' => $problemSeverity === \App\Support\LessonProblems::BLOCKS,
+                            'text-warning' => $problemSeverity !== \App\Support\LessonProblems::BLOCKS])>
+                <x-icons.exclamation-triangle class="h-6 w-6" /><span>{{ $problemCount }}</span>
+            </button>
+        @endif
         <a href="{{ route('help.index') }}#edit" target="_blank" rel="noopener"
-           class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-primary"
+           class="grid h-10 w-10 place-items-center self-center rounded-xl text-slate-400 transition hover:bg-slate-800 hover:text-primary"
            data-tooltip="{{ __('How the editor works') }}" aria-label="{{ __('Help') }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
             </svg>
-            <span class="text-2xs font-medium">{{ __('Help') }}</span>
-        </a>
+                    </a>
         <div class="mx-1 my-1.5 w-px bg-slate-700"></div>
         {{-- Settings — the one panel. What it shows is picked by the tabs at its top: the
              selection (scene, layer, text, background, quiz, title screen) or the lesson. This
              used to be two buttons, Format and Settings, for one panel. --}}
         <button type="button"
                 @click="window.dispatchEvent(new CustomEvent('inspector-toggle'))"
-                class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-slate-300 transition hover:bg-slate-800 hover:text-primary"
+                class="grid h-10 w-10 place-items-center self-center rounded-xl text-slate-300 transition hover:bg-slate-800 hover:text-primary"
+                data-tour="settings"
                 :class="fmtOpen && 'bg-sky-500/15 text-sky-300'"
                 data-tooltip="{{ __('Settings') }}" aria-label="{{ __('Settings') }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.24-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
             </svg>
-            <span class="text-2xs font-medium">{{ __('Settings') }}</span>
-        </button>
+                    </button>
 
         {{-- Publishing belongs to account holders. A landing-page demo guest is editing a
              throwaway copy (App\Services\GuestDemoSession), so the Publish menu is replaced by
              the one thing that would make their edits keepable. --}}
         @if (auth()->user()?->isGuestDemo())
         <a href="{{ route('login') }}"
-           class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-primary transition hover:bg-slate-800"
+           class="flex min-w-14 flex-col items-center gap-1 whitespace-nowrap rounded-xl px-1.5 py-1.5 text-primary transition hover:bg-slate-800"
            data-tooltip="{{ __('Create an account to keep this lesson') }}" aria-label="{{ __('Create an account') }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM4 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 10.374 21c-2.331 0-4.512-.645-6.374-1.766Z" />
@@ -1735,10 +1797,11 @@
              Publish decides whether a CLASS can play it, Share whether other TEACHERS can find
              and copy it. `shared` is local because the toolbar is wire:ignore and never
              re-renders; it takes the server's answer, since sharing can be refused. --}}
-        <div x-data="{ open: false, when: '', shared: @js((bool) $lesson->is_public) }" class="relative" @click.outside="open = false" @keydown.escape.window="open = false">
+        <div x-data="{ open: false, when: '', shared: @js((bool) $lesson->is_public) }" class="relative self-center" @click.outside="open = false" @keydown.escape.window="open = false">
             <button type="button" @click="open = !open"
-                    class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-slate-300 transition hover:bg-slate-800 hover:text-primary"
-                    :class="open && 'bg-primary/15 text-primary'"
+                    class="grid h-10 w-10 place-items-center rounded-xl text-primary transition hover:bg-slate-800"
+                    :class="open && 'bg-primary/15'"
+                    data-tour="publish"
                     data-tooltip="{{ __('Publish') }}" aria-label="{{ __('Publish') }}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z" />
@@ -1754,10 +1817,9 @@
                             class="{{ $statusColor }} stroke-slate-900"
                             stroke-width="1.5" />
                 </svg>
-                <span class="text-2xs font-medium">{{ __('Publish') }}</span>
-            </button>
+                            </button>
             <div x-show="open" x-transition x-cloak
-                 class="absolute right-0 top-full z-70 mt-1 w-64 rounded-xl border border-slate-700 bg-base-300 p-2 text-left shadow-2xl">
+                 class="absolute right-0 top-full z-70 mt-1 w-64 rounded-xl border border-slate-700 bg-base-300 p-2 text-left">
                 <label class="mb-2 flex cursor-pointer items-center justify-between gap-3 border-b border-slate-700/50 px-1 pb-2">
                     <span class="text-sm text-slate-200">{{ __('Share with every teacher') }}</span>
                     <input type="checkbox" class="toggle toggle-sm shrink-0" :checked="shared"
@@ -1868,7 +1930,7 @@
     @push('scripts')
     <script>
     (() => {
-        const AMBER = '#fcd34d';
+        const AMBER = '#f59e0b';  // amber-500, the theme primary (a canvas cannot read the token)
         const boot = () => {
             const canvas = document.getElementById('lesson-canvas-root');
             const rTop = document.getElementById('ruler-top');
@@ -2004,7 +2066,7 @@
             <template x-for="obj in items" :key="obj.id">
                 {{-- The whole row is the drag handle (grab cursor); only the adjust button opts out.
                      Text and clipart rows reorder; the background is pinned to the bottom ([data-bg]). --}}
-                <div :data-obj-id="obj.bg ? null : obj.id" :data-bg="obj.bg ? '1' : null" :data-dio="obj.dio ? '1' : null"
+                <div :data-obj-id="obj.bg ? null : obj.id" :data-bg="obj.bg ? '1' : null" :data-dio="obj.dio ? '1' : null" :data-bal="obj.bal ? '1' : null"
                      data-obj-row
                      @click="select(obj)"
                      :class="[
@@ -2016,25 +2078,27 @@
                     <span data-obj-label class="flex-1 truncate" x-text="obj.label"></span>
                     {{-- Row actions (hover-revealed, Keynote-style). HIDDEN until hover, not transparent:
                          an invisible button still took the label's room, so a wide list read "Be...".
-                         No delete button: Backspace deletes, and so does the Format panel.
+                         Duplicate and delete (Bart 2026-10-16: the adjust button was redundant; selecting a
+                         row already opens its Format panel, so delete takes its place next to duplicate).
                          data-nodrag stops a press here
                          from starting a Sortable drag; @click.stop keeps the row's select from firing.
                          data-obj-adjust hides both in the compact (icons-only) rail. --}}
-                    {{-- Adjust — select the object and open its Format inspector. --}}
-                    <button type="button" data-nodrag data-obj-adjust @click.stop="edit(obj)"
-                            class="btn btn-ghost btn-xs btn-square hidden shrink-0 text-base-content/50 hover:text-primary group-hover:inline-flex group-focus-within:inline-flex"
-                            aria-label="{{ __('Adjust settings') }}" :title="@js(__('Adjust settings'))">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />
-                        </svg>
-                    </button>
                     {{-- Duplicate THIS object (Cmd-D does the same). --}}
-                    <button type="button" data-nodrag data-obj-adjust x-show="!obj.bg"
+                    <button type="button" data-nodrag data-obj-adjust x-show="!obj.bg && !obj.bal"
                             @click.stop="duplicateObject(obj)"
                             class="btn btn-ghost btn-xs btn-square hidden shrink-0 text-base-content/50 hover:text-primary group-hover:inline-flex group-focus-within:inline-flex"
                             aria-label="{{ __('Duplicate object') }}" :data-tooltip="@js(__('Duplicate') . ' (⌘D)')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25" />
+                        </svg>
+                    </button>
+                    {{-- Delete THIS object (Backspace does the same; Cmd-Z brings it back). --}}
+                    <button type="button" data-nodrag data-obj-adjust x-show="!obj.bg"
+                            @click.stop="deleteObject(obj)"
+                            class="btn btn-ghost btn-xs btn-square hidden shrink-0 text-base-content/50 hover:text-error group-hover:inline-flex group-focus-within:inline-flex"
+                            aria-label="{{ __('Delete object') }}" :data-tooltip="@js(__('Delete') . ' (⌫)')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
                         </svg>
                     </button>
                 </div>
@@ -2151,7 +2215,45 @@
             window.Livewire.dispatch('scene:duplicate-objects', { objectIds: ids, sourceSceneId });
         };
         let objClipboard = null;
-        document.addEventListener('copy', () => { objClipboard = null; });
+        let ownCopy = false;          // this Cmd-C is copying objects, not page text
+        let pendingObjPaste = null;   // object paste waiting on the paste event (see Cmd-V below)
+        document.addEventListener('copy', (e) => {
+            if (!ownCopy) { objClipboard = null; return; }
+            // Mark the system clipboard as ours, which also drops whatever image was on it: an
+            // image pasted after this copy would otherwise beat the objects the teacher just copied.
+            ownCopy = false;
+            e.clipboardData?.setData(window.__pasteObjectsMark, '1');
+            e.preventDefault();
+        });
+        const pasteObjects = () => window.__duplicateObjects(objClipboard.ids, objClipboard.sceneId);
+
+        // Cmd/Ctrl-V. The paste EVENT decides (window.__routePaste, resources/js/ui/paste-router.js):
+        // only it can see what is on the system clipboard, without a permission prompt. An image goes
+        // to the open picker as an upload, or onto the scene as a layer; otherwise our object copy.
+        document.addEventListener('paste', (e) => {
+            clearTimeout(pendingObjPaste);
+            const w = window.__step3Wire();
+            if (!w) return;
+            const { action, file } = window.__routePaste(e.clipboardData, {
+                typing: typingIn() || !!window.__isTypingTarget?.(e.target),
+                dialogOpen: !!w.paintingPickerOpen && w.paintingPickerMode !== 'model3d',
+                hasObjects: !!objClipboard,
+            });
+            if (action === 'ignore' || action === 'none') return;
+            e.preventDefault();
+            if (action === 'objects') return pasteObjects();
+            if (action === 'layer') return w.upload('pastedImage', file);
+            // Into the picker: the same property a dropped or chosen file goes through. It closes
+            // on success and keeps its error line on failure, so a closed picker means it landed.
+            w.upload('uploadImage', file, () => {
+                if (!w.paintingPickerOpen) window.dispatchEvent(new CustomEvent('toast', { detail: { message: @js(__('Image pasted.')), type: 'success' } }));
+            });
+        });
+        // Add > Speech balloon: the new balloon opens for typing as soon as the stage draws it.
+        window.Livewire.on('balloon:added', (e) => {
+            const p = Array.isArray(e) ? e[0] : e;
+            if (p?.id) window.__balloons?.edit(p.id);
+        });
         window.Livewire.on('scene:objects-duplicated', (e) => {
             const p = Array.isArray(e) ? e[0] : e;
             const id = p?.objectIds?.[p.objectIds.length - 1];
@@ -2179,26 +2281,36 @@
             const key = e.key.toLowerCase();
             if (!['d', 'c', 'v'].includes(key) || typingIn()) return;
             if (key === 'v') {
-                if (!objClipboard) return;   // nothing of ours → the browser pastes as usual
-                e.preventDefault();
-                window.__duplicateObjects(objClipboard.ids, objClipboard.sceneId);
+                // Not preventDefault: that would cancel the paste event, the only place that sees an
+                // image on the clipboard. The paste listener takes it; this runs only in a browser
+                // that sends no paste event outside a text field.
+                if (objClipboard) pendingObjPaste = setTimeout(pasteObjects, 0);
                 return;
             }
             if (key === 'c' && !window.getSelection?.()?.isCollapsed) return;   // copying page text
             const id = selectedObjectId();
             if (!id) return;
-            e.preventDefault();              // Cmd-D would bookmark the page
-            if (key === 'd') window.__duplicateObjects([id]);
-            else objClipboard = { ids: [id], sceneId: (window.__objScene || {}).sceneId ?? null };
+            if (key === 'd') {
+                e.preventDefault();          // Cmd-D would bookmark the page
+                window.__duplicateObjects([id]);
+                return;
+            }
+            // Cmd-C runs on, so the copy event can mark the system clipboard as ours.
+            objClipboard = { ids: [id], sceneId: (window.__objScene || {}).sceneId ?? null };
+            ownCopy = true;
+            setTimeout(() => { ownCopy = false; }, 0);   // a browser that fires no copy event here
         });
 
         window.addEventListener('keydown', (e) => {
             if (e.key !== 'Backspace' && e.key !== 'Delete') return;
             if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
             if (window.__isTypingTarget?.(document.activeElement)) return;
+            // Selected keyframes are the selection: the Timeline removes those keys and nothing
+            // else. Without this the layer they sit on was deleted with all its keyframes.
+            if (window.__timelineKeying?.hasKeySelection?.()) return;
             const sel = window.getSelection?.();
             if (sel && !sel.isCollapsed && sel.anchorNode?.parentElement?.closest?.('[contenteditable], input, textarea')) return;
-            const id = window.__artOverlay()?._selectedId || window.__lessonTextLayer?._selectedId;
+            const id = window.__balloons?.selected() || window.__artOverlay()?._selectedId || window.__lessonTextLayer?._selectedId;
             if (!id || id === '__bg__') return;
             e.preventDefault();
             window.Livewire.dispatch('scene:delete-object', { objectId: id });
@@ -2390,6 +2502,7 @@
 
     {{-- Scene rail (vertical, left edge) --}}
     <x-lesson.timeline :scenes="$this->scenes" :selected-scene-id="$this->titleSelected ? null : $selectedSceneId" editable
+                       :problems="$this->problemsByScene"
                        :title-screen="['title' => $lesson->title, 'image' => $lesson->titleBgUrl(), 'selected' => $this->titleSelected]" />
 
     {{-- Rail resize handle — drag the rail's right edge to resize it; drag it under 24px (near
@@ -2568,9 +2681,37 @@
                         aria-label="{{ __('Close') }}" wire:click="$set('paintingPickerOpen', false)">✕</button>
             </div>
 
+            {{-- Half the window is upload: most teachers bring their own pictures (Bart, 2026-10-15).
+                 Click or drop; routed to the current mode like the old small button was. --}}
+            <div @class(['lg:grid lg:grid-cols-2 lg:gap-5' => $paintingPickerMode !== 'model3d'])>
+            @unless ($paintingPickerMode === 'model3d')
+                <label x-data="{ depth: 0 }"
+                       x-on:dragenter.prevent="depth++"
+                       x-on:dragover.prevent="$event.dataTransfer.dropEffect = 'copy'"
+                       x-on:dragleave="depth = Math.max(0, depth - 1)"
+                       x-on:drop.prevent="depth = 0; const f = $event.dataTransfer.files[0]; if (f) $wire.upload('uploadImage', f)"
+                       :class="depth > 0 ? 'border-primary bg-primary/10' : 'border-slate-600 bg-slate-900/40 hover:border-primary/60'"
+                       class="mb-4 flex h-44 cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-6 text-center transition-colors lg:mb-0 lg:h-full lg:min-h-[62vh]">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-12 w-12 text-primary" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/></svg>
+                    <span wire:loading.remove wire:target="uploadImage" class="text-lg font-semibold text-slate-100">{{ __('Upload your own image') }}</span>
+                    <span wire:loading wire:target="uploadImage" class="inline-flex items-center gap-2 text-lg font-semibold text-slate-100">
+                        <x-icons.spinner class="h-4 w-4 animate-spin" /> {{ __('Uploading…') }}
+                    </span>
+                    {{-- ⌘V on a Mac, Ctrl+V elsewhere; the paste itself is handled editor-wide (see Cmd-V). --}}
+                    <span class="text-sm text-slate-400"
+                          x-data="{ key: /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘V' : 'Ctrl+V' }"
+                          x-text="@js(__('Drop a picture here, click to choose one or paste with :key')).replace(':key', key)">{{ __('Drop a picture here, click to choose one or paste with :key', ['key' => '⌘V']) }}</span>
+                    <span class="text-2xs text-slate-500">{{ __('JPG, PNG or WebP, up to 8 MB') }}</span>
+                    <input type="file" wire:model="uploadImage" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden" />
+                </label>
+            @endunless
+            {{-- imageGrid: the preview-size slider and the tile sizes (resources/js/ui/image-grid.js). --}}
+            <div class="min-w-0" x-data="imageGrid({ id: 'picker', kind: 'image' })">
             {{-- Filters on one line; search collapses to an icon on the right that opens an overlay. --}}
             <div class="relative mb-5" x-data="{ searching: @entangle('searchOpen').live }">
-                <div class="flex items-center gap-2">
+                {{-- Wraps: in the half-width column the source pills, the region and the size
+                     slider do not fit one line, and a clipped row hid the slider. --}}
+                <div class="flex flex-wrap items-center gap-2">
                     {{-- "Library" is our own imagery: this lesson's pictures plus our Cloudinary
                          collection. It is also what the grid falls back to when the corpus and
                          Commons find nothing, so the teacher is never left with an empty modal. --}}
@@ -2581,11 +2722,10 @@
                         </button>
                     @endforeach
 
-                    <span class="mx-1 hidden h-4 w-px flex-none bg-slate-700 sm:block"></span>
-                    <span class="hidden flex-none text-2xs font-semibold uppercase tracking-wider text-slate-500 lg:block">{{ __('Region') }}</span>
+                    <span class="hidden flex-none text-2xs font-semibold uppercase tracking-wider text-slate-500 {{ $paintingPickerMode === 'model3d' ? 'lg:block' : '' }}">{{ __('Region') }}</span>
                     {{-- Region chips need ~26rem — on smaller screens they overflowed the modal,
                          so below lg they collapse into a compact dropdown. --}}
-                    <div class="hidden flex-none items-center gap-2 lg:flex">
+                    <div class="hidden flex-none items-center gap-2 {{ $paintingPickerMode === 'model3d' ? 'lg:flex' : '' }}">
                         @foreach (['' => __('Auto'), 'european' => __('Europe'), 'americas' => __('Americas'), 'asia' => __('Asia'), 'africa' => __('Africa'), 'all' => __('All')] as $regVal => $regLabel)
                             <button type="button" wire:click="$set('paintingRegion', '{{ $regVal }}')"
                                     class="btn btn-xs flex-none {{ $paintingRegion === $regVal ? 'bg-sky-600 text-white border-0 hover:bg-sky-500' : 'btn-outline border-slate-600 text-slate-400 hover:border-sky-400 hover:text-sky-300' }}">
@@ -2593,7 +2733,7 @@
                             </button>
                         @endforeach
                     </div>
-                    <select class="select select-xs flex-none border-slate-600 bg-base-200 text-slate-300 lg:hidden"
+                    <select class="select select-xs flex-none border-slate-600 bg-base-200 text-slate-300 {{ $paintingPickerMode === 'model3d' ? 'lg:hidden' : '' }}"
                             aria-label="{{ __('Region') }}"
                             wire:change="$set('paintingRegion', $event.target.value)">
                         @foreach (['' => __('Region: Auto'), 'european' => __('Europe'), 'americas' => __('Americas'), 'asia' => __('Asia'), 'africa' => __('Africa'), 'all' => __('All')] as $regVal => $regLabel)
@@ -2601,9 +2741,10 @@
                         @endforeach
                     </select>
 
+                    <x-ui.thumb-size class="ml-auto" />
                     <button type="button" x-show="!searching"
                             @click="searching = true; $nextTick(() => $refs.psearch.focus())"
-                            class="btn btn-xs btn-circle btn-ghost ml-auto flex-none text-slate-400 hover:text-primary"
+                            class="btn btn-xs btn-circle btn-ghost flex-none text-slate-400 hover:text-primary"
                             aria-label="{{ __('Search paintings') }}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-4 w-4">
                             <circle cx="11" cy="11" r="7"/><path stroke-linecap="round" d="m20 20-3.5-3.5"/>
@@ -2613,7 +2754,7 @@
 
                 {{-- Overlay search bar, revealed by the icon --}}
                 <div x-show="searching" x-cloak x-transition.opacity.duration.150ms
-                     class="absolute inset-x-0 -top-2.5 z-20 flex items-center gap-3 rounded-xl border border-primary/50 bg-base-200 px-4 py-3 shadow-2xl">
+                     class="absolute inset-x-0 -top-2.5 z-20 flex items-center gap-3 rounded-xl border border-primary/50 bg-base-200 px-4 py-3">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5 flex-none text-slate-400">
                         <circle cx="11" cy="11" r="7"/><path stroke-linecap="round" d="m20 20-3.5-3.5"/>
                     </svg>
@@ -2631,9 +2772,9 @@
                 @if (! $paintingReady)
                     {{-- Skeleton fills the SAME fixed height as the loaded grid → no size jump. --}}
                     <div class="h-[62vh] overflow-hidden p-1.5">
-                        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                        <div class="lp-thumb-grid gap-3" :style="gridStyle">
                             @for ($i = 0; $i < 15; $i++)
-                                <div class="animate-pulse rounded-lg bg-slate-700/40" style="aspect-ratio:16/10"></div>
+                                <div data-kind="image" class="animate-pulse rounded-lg bg-slate-700/40"></div>
                             @endfor
                         </div>
                     </div>
@@ -2643,7 +2784,7 @@
                 <div class="h-[62vh] overflow-y-auto p-1.5"
                      wire:loading.class="opacity-40"
                      wire:target="paintingQuery, paintingKind, paintingRegion, applyPaintingChoice">
-                <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                <div class="lp-thumb-grid gap-3" :style="gridStyle">
                     @forelse ($this->paintingResults as $art)
                         {{-- @js() escapes the source/key as safe JS literals (titles carry apostrophes,
                              e.g. "Anon - 'Les Noyades…'", which broke the old inline addslashes
@@ -2652,11 +2793,12 @@
                                 wire:key="art-{{ md5($art['source'].$art['key']) }}"
                                 @click="dismissing = true; $wire.applyPaintingChoice(@js($art['source']), @js($art['key']))"
                                 wire:loading.attr="disabled" wire:target="applyPaintingChoice"
-                                class="group relative block overflow-hidden rounded-lg ring-1 ring-slate-700 transition hover:ring-2 hover:ring-primary disabled:cursor-wait"
-                                style="aspect-ratio:16/10"
-                                title="{{ trim($art['title'].' — '.$art['caption'], ' —') }}">
-                            <img src="{{ $art['thumb'] }}" loading="lazy" alt=""
-                                 class="h-full w-full object-cover transition group-hover:scale-105" />
+                                data-kind="image" data-zoom
+                                aria-label="{{ $art['title'] }}"
+                                class="group block rounded-lg ring-1 ring-slate-700 transition hover:ring-slate-400 disabled:cursor-wait"
+                                data-tooltip="{{ trim($art['title'].' · '.$art['caption'], ' ·') }}">
+                            <img src="{{ $art['thumb'] }}" loading="lazy" decoding="async" alt=""
+                                 :srcset="srcset(@js($art['thumb']))" :sizes="sizes(@js($art['thumb']))" />
                             @if (($art['kind'] ?? 'painting') === 'city_map')
                                 <span class="absolute right-1 top-1 rounded bg-sky-600/90 px-1 text-3xs font-semibold uppercase tracking-wider text-white">
                                     {{ __('plan') }}
@@ -2688,6 +2830,10 @@
                                      an archive that may well hold the painting. --}}
                                 <p>{{ __('Wikimedia is busy right now and asked us to slow down.') }}</p>
                                 <p class="mt-1 text-xs text-slate-500">{{ __('Give it a few seconds, then search again.') }}</p>
+                            @elseif ($paintingKind === 'city_map')
+                                {{-- City plans are the curated Braun & Hogenberg set only: Commons is
+                                     never searched for them, so offering it here would do nothing. --}}
+                                <p>{{ __('No city plans match this scene.') }}</p>
                             @elseif ($paintingCommonsLoaded)
                                 {{ __('No paintings found. Try a name, place or event, in Dutch or English.') }}
                             @else
@@ -2715,17 +2861,6 @@
                         </button>
                     @endunless
 
-                    {{-- Upload your own image — routed to the current mode (landfall / gallery / background). --}}
-                    <label class="btn btn-sm border-0 bg-primary text-slate-950 hover:brightness-110 inline-flex cursor-pointer items-center gap-1.5">
-                        <span wire:loading.remove wire:target="uploadImage" class="inline-flex items-center gap-1.5">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/></svg>
-                            {{ __('Upload image') }}
-                        </span>
-                        <span wire:loading wire:target="uploadImage" class="inline-flex items-center gap-1.5">
-                            <x-icons.spinner class="h-3 w-3 animate-spin" /> {{ __('Uploading…') }}
-                        </span>
-                        <input type="file" wire:model="uploadImage" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden" />
-                    </label>
                 </div>
                 @error('uploadImage')
                     <p class="mt-1 text-2xs text-error">{{ $message }}</p>
@@ -2740,6 +2875,8 @@
                 @endif
                 </div>
             @endif
+            </div>
+            </div>
         </div>
         <button type="button" class="modal-backdrop" aria-label="Close"
                 wire:click="$set('paintingPickerOpen', false)"></button>
@@ -2761,6 +2898,39 @@
         </div>
         <button type="button" class="modal-backdrop" aria-label="Close"
                 wire:click="$set('svgLibraryOpen', false)"></button>
+    </div>
+
+    {{-- Play: the real player (lesson.play, what the class sees) over the whole editor, starting at
+         the selected scene (?scene_id=, mapped to the player's index in player-start.js) and playing
+         at once: the click on Play in this page lets the frame start with sound (mayAutoplay). X and
+         Esc (here or inside the frame) close it; the editor is still on the same scene. Closing
+         removes the frame, so nothing keeps talking. --}}
+    <div x-data="{
+            open: @js($playOnOpen),
+            src: '',
+            base: @js(route('lesson.play', ['lessonCode' => $lesson->lesson_code]).'?embed=1&autoplay=1&scene_id='),
+            init() { if (this.open) this.openAt($wire.selectedSceneId) },
+            openAt(id) { this.src = this.base + encodeURIComponent(id ?? ''); this.open = true },
+            close() { this.open = false; this.src = '' },
+            watchEsc(frame) {
+                try { frame.contentWindow.addEventListener('keydown', (e) => { if (e.key === 'Escape') this.close() }) } catch (_) {}
+                frame.focus()
+            },
+         }"
+         x-on:play-lesson-open.window="openAt($wire.selectedSceneId)"
+         x-on:keydown.escape.window="open && close()"
+         x-show="open" x-cloak wire:ignore
+         data-play-overlay data-play-open="{{ $playOnOpen ? '1' : '0' }}"
+         class="fixed inset-0 z-[300] bg-black" role="dialog" aria-modal="true" aria-label="{{ __('Play the lesson') }}">
+        <template x-if="open && src">
+            <iframe :src="src" x-on:load="watchEsc($el)" allow="autoplay; fullscreen"
+                    class="h-full w-full border-0" title="{{ __('Play the lesson') }}"></iframe>
+        </template>
+        <button type="button" x-on:click="close()" data-play-close
+                class="absolute right-4 top-4 z-10 grid h-10 w-10 place-items-center rounded-full bg-black/60 text-white transition hover:bg-black/80"
+                data-tooltip="{{ __('Close') }}" aria-label="{{ __('Close') }}">
+            <x-icons.x-mark class="h-5 w-5" />
+        </button>
     </div>
 
     {{-- Scenes payload as inert JSON so we don't string-interpolate it into JS. Built in PHP
@@ -2842,7 +3012,8 @@
     })();
 
     // The title screen on the stage: the REAL player, embedded at its title screen, over the
-    // canvas. Inert (pointer-events-none): it is a picture of the title, edited in Format.
+    // canvas. Inert (pointer-events-none): it is a picture of the title, edited in Format; a click on
+    // its title focuses that field there.
     // Lives inside #lesson-canvas-root so it takes the stage's exact box; that root is
     // wire:ignore, so the frame is managed here rather than rendered by Blade.
     // The frame renders at a full-screen size and is scaled down to the stage, so the title screen
@@ -2868,6 +3039,11 @@
                 stage.appendChild(frame);
                 resize = new ResizeObserver(() => { frame.style.transform = `scale(${stage.clientWidth / FRAME_W})`; });
                 resize.observe(stage);
+            }
+            // A click on the title in the frame opens its field in Format (editor/title-stage-pick.js).
+            if (!stage.dataset.titlePick) {
+                stage.dataset.titlePick = '1';
+                window.installTitleStagePick?.(stage, FRAME_W, () => $wire.titleSelected);
             }
             if (frame.getAttribute('src') !== $wire.titleFrameSrc) frame.setAttribute('src', $wire.titleFrameSrc);
         };

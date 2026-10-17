@@ -16,13 +16,22 @@ const FLUSH_INTERVAL_MS = 5000
 const FLUSH_AT = 20
 const MAX_QUEUE = 200 // hard cap — a wedged endpoint must not grow memory forever
 
+/**
+ * Every player event is also announced on window as `hp:player` ({ event, sceneIndex, sceneId }),
+ * whatever the telemetry does with it. The opt-in test-session recorder listens there
+ * (resources/js/test-session/recorder.js); nothing else should depend on it.
+ */
+const announce = (event, data) => {
+  try { window.dispatchEvent(new CustomEvent('hp:player', { detail: { event, ...data } })) } catch (_) { /* never */ }
+}
+
 export function createTelemetry (lessonCode) {
   const disabled = !lessonCode || typeof fetch === 'undefined'
   const sessionUuid = (() => {
     try { return crypto.randomUUID() } catch (_) { return null }
   })()
   if (disabled || !sessionUuid) {
-    return { log: () => {}, flush: () => {} } // inert stub — callers never need to check
+    return { log: (event, data = {}) => announce(event, data), flush: () => {} } // inert stub — callers never need to check
   }
 
   const endpoint = `/api/lesson/${encodeURIComponent(lessonCode)}/telemetry`
@@ -49,6 +58,7 @@ export function createTelemetry (lessonCode) {
   }
 
   const log = (event, data = {}) => {
+    announce(event, data)
     try {
       if (queue.length >= MAX_QUEUE) queue = queue.slice(-FLUSH_AT)
       queue.push({

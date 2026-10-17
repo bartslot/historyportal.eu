@@ -8,6 +8,9 @@ use App\Models\Scene;
 use App\Models\SvgAsset;
 use App\Services\SceneLayers;
 use App\Services\Support\LayerAmbient;
+use App\Services\Support\LayerSitIn;
+use App\Services\Support\ShotCamera;
+use App\Support\LayerEntrances;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 
@@ -102,7 +105,13 @@ trait EditsSceneArtwork
         } else {
             // Shots exist. Append layers to each, preserving order with foreach.
             $updatedShots = [];
-            foreach ($shots as $shot) {
+            foreach ($shots as $i => $shot) {
+                // A split scene: the figure goes on the panel being edited, not on both.
+                if (! $this->editsShot($scene, (int) $i)) {
+                    $updatedShots[] = $shot;
+
+                    continue;
+                }
                 // Check if this asset is already attached to avoid duplicates.
                 $existing = collect($shot['layers'] ?? [])->firstWhere('asset_id', $newLayer['asset_id']);
                 if ($existing) {
@@ -201,12 +210,13 @@ trait EditsSceneArtwork
             // Map-backed (voyage) scenes get a layer-only shot: the map is the backdrop.
             $shots = [SceneLayers::shot($scene->image_path, [$newLayer])];
         } else {
-            $layers = $shots[0]['layers'] ?? [];
-            if (empty($layers) && ! empty($shots[0]['image_path'])) {
-                $layers[] = SceneLayers::cover($shots[0]['image_path']);
+            $p = $this->editedPanel($scene) ?? 0;
+            $layers = $shots[$p]['layers'] ?? [];
+            if (empty($layers) && ! empty($shots[$p]['image_path'])) {
+                $layers[] = SceneLayers::cover($shots[$p]['image_path']);
             }
             $layers[] = $newLayer;
-            $shots[0] = array_merge($shots[0], ['layers' => $layers]);
+            $shots[$p] = array_merge($shots[$p] ?? [], ['layers' => $layers]);
         }
 
         $scene->update(['shots' => $shots]);
@@ -221,6 +231,19 @@ trait EditsSceneArtwork
      */
     private function shotsPreservingArtwork(Scene $scene, ?string $newImagePath): ?array
     {
+        // A split scene: the new picture goes on the panel being edited; the other panel, and
+        // this panel's figures, camera and focus, stay as they are.
+        $panel = $this->editedPanel($scene);
+        if ($panel !== null) {
+            $shots = array_values((array) ($scene->shots ?? []));
+            $shot = (array) ($shots[$panel] ?? []);
+            $figures = array_values(array_filter((array) ($shot['layers'] ?? []), fn ($l) => ($l['asset_id'] ?? null) !== null));
+            unset($shot['image_path'], $shot['bg_path'], $shot['hero_path']);
+            $shots[$panel] = array_merge($shot, SceneLayers::shot($newImagePath, $figures), ['order' => $panel]);
+
+            return $shots;
+        }
+
         $assetLayers = collect($scene->shots[0]['layers'] ?? [])
             ->filter(fn ($l) => ($l['asset_id'] ?? null) !== null)
             ->values()
@@ -247,7 +270,11 @@ trait EditsSceneArtwork
         }
 
         // Immutable: remove layers with this asset_id and drop layers key if only cover remains.
-        $shots = collect($shots)->map(function (array $shot) use ($assetId): array {
+        $split = $this->editedPanel($scene) !== null;
+        $shots = collect($shots)->map(function (array $shot, int $i) use ($assetId, $scene): array {
+            if (! $this->editsShot($scene, $i)) {
+                return $shot;
+            }
             $layers = collect($shot['layers'] ?? [])->reject(fn ($l) => ($l['asset_id'] ?? null) === $assetId)->values()->all();
 
             // If only a cover layer remains (no asset_id), drop the layers key entirely.
@@ -268,12 +295,175 @@ trait EditsSceneArtwork
         })
             // A map-backed scene's shot is layer-only (no image_path). Once its last clipart is
             // removed it carries nothing — drop the empty shot so shots collapses back to [].
-            ->reject(fn (array $shot) => empty($shot['image_path']) && empty($shot['layers'] ?? []))
+            ->reject(fn (array $shot) => ! $split && empty($shot['image_path']) && empty($shot['layers'] ?? []))
             ->values()
             ->all();
 
         $scene->update(['shots' => $shots]);
         $this->selectSceneInternal($scene->id);
+    }
+
+    /**
+     * One camera setting of one shot (a comic panel): move, amount, duration, ease, delay, or the
+     * panel's entry. Validated by ShotCamera; undo comes with the save (SceneHistory).
+     *
+     * A flat scene (a picture, no shot yet) gets its one shot here, a cover with nothing on it, so
+     * the camera has a plate to move over: but ONLY for a real move or a real entry. Hold, fade, or
+     * a timing value with no move would turn a flat scene into a layered one for nothing, and it
+     * would no longer play exactly as before (Ken Burns, the flat crossfade).
+     */
+    public function setShotCamera(int $shot, string $key, mixed $value): void
+    {
+        $clean = ShotCamera::field($key, $value);
+        if ($clean === null || ! $this->selectedSceneId) {
+            return;
+        }
+        $materialise = ($key === 'move' && $clean !== 'hold') || ($key === 'entry' && $clean !== ShotCamera::DEFAULT_ENTRY);
+
+        $this->writeShot($shot, $materialise, function (array $s) use ($key, $clean): array {
+            if ($key === 'entry') {
+                return array_merge($s, ['entry' => $clean]);
+            }
+
+            return array_merge($s, ['camera' => array_merge((array) ($s['camera'] ?? []), [$key => $clean])]);
+        });
+    }
+
+    /**
+     * Back to the default: one setting (`key`), or the whole camera and entry of the shot (null).
+     * The default is the ABSENCE of the key, so a reset shot reads exactly like one never touched.
+     */
+    public function resetShotCamera(int $shot, ?string $key = null): void
+    {
+        if (! $this->selectedSceneId || ($key !== null && ! in_array($key, [...ShotCamera::KEYS, 'entry'], true))) {
+            return;
+        }
+
+        // A scene with no stored shot has nothing to reset: never create one to reset it.
+        $this->writeShot($shot, false, function (array $s) use ($key): array {
+            if ($key === null) {
+                unset($s['camera'], $s['entry']);
+            } elseif ($key === 'entry') {
+                unset($s['entry']);
+            } else {
+                $s['camera'] = array_diff_key((array) ($s['camera'] ?? []), [$key => true]);
+                if ($s['camera'] === []) {
+                    unset($s['camera']);
+                }
+            }
+
+            return $s;
+        });
+    }
+
+    /** A layer's ambient motion back to its defaults: speed 1, amount 1, the mode itself kept. */
+    public function resetLayerMotion(int $assetId): void
+    {
+        $this->writeLayerField($assetId, 'ambient_speed', null);
+        $this->writeLayerField($assetId, 'ambient_amount', null);
+    }
+
+    /**
+     * "Blend into scene": the preset for this layer (a boat gets a waterline and a reflection, a
+     * figure a contact shadow), all in one save so one undo takes it back.
+     */
+    public function blendLayerIntoScene(int $assetId): void
+    {
+        $layer = $this->findLayer($assetId);
+        if ($layer === null) {
+            return;
+        }
+        $ref = SvgAsset::query()->whereKey($assetId)->value('source_ref');
+        $this->writeLayerFields($assetId, LayerSitIn::preset($layer, $ref));
+    }
+
+    /** Back to the default: every blend-into-scene setting off (absent), in one save. */
+    public function resetLayerSitIn(int $assetId): void
+    {
+        $this->writeLayerFields($assetId, array_fill_keys(LayerSitIn::KEYS, null));
+    }
+
+    /**
+     * Hide the layer where the backdrop is nearer than it (a ship's rail in front of a figure on
+     * deck), from the backdrop's depth map. Off removes the key, so it reads as never touched.
+     */
+    public function setLayerOcclude(int $assetId, bool $on): void
+    {
+        $this->writeLayerFields($assetId, ['occlude' => $on ? 1 : null]);
+    }
+
+    /**
+     * "Fit to this spot": the height the layer has standing where it is (worked out in the browser
+     * from the backdrop's depth map) and the y that keeps its feet on that spot, in one save so one
+     * undo takes it back.
+     */
+    public function fitLayerToSpot(int $assetId, float $height, float $y): void
+    {
+        $this->writeLayerFields($assetId, [
+            'height' => max(1.0, min(200.0, $height)),
+            'y' => max(0.0, min(100.0, $y)),
+        ]);
+    }
+
+    /** @return array<string,mixed>|null the layer as stored in the selected scene's shots */
+    private function findLayer(int $assetId): ?array
+    {
+        if (! $this->selectedSceneId) {
+            return null;
+        }
+        $scene = $this->lesson->scenes()->findOrFail($this->selectedSceneId);
+        foreach ($scene->shots ?? [] as $i => $shot) {
+            if (! $this->editsShot($scene, (int) $i)) {
+                continue;
+            }
+            foreach ($shot['layers'] ?? [] as $l) {
+                if (($l['asset_id'] ?? null) === $assetId) {
+                    return $l;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  bool  $materialise  may a flat scene (picture, no shot) get its first shot for this?
+     * @param  callable(array<string,mixed>): array<string,mixed>  $change
+     */
+    private function writeShot(int $index, bool $materialise, callable $change): void
+    {
+        $scene = $this->lesson->scenes()->findOrFail($this->selectedSceneId);
+        $stored = $scene->shots ?? [];
+        $shots = $stored;
+        if ($shots === [] && $materialise && $index === 0 && $scene->image_path) {
+            $shots = [SceneLayers::shot($scene->image_path, [])];
+        }
+        if (! isset($shots[$index]) || ! is_array($shots[$index])) {
+            return;
+        }
+
+        $shots[$index] = $change($shots[$index]);
+        if ($shots === $stored) {
+            return;   // nothing changed: no save, no undo step
+        }
+        $scene->update(['shots' => array_values($shots)]);
+        $this->selectSceneInternal($scene->id);
+    }
+
+    /** Appear's speed (LayerEntrances::SPEEDS) as the layer's entrance duration; Normal is 600 ms. */
+    public function setLayerSpeed(int $assetId, string $speed): void
+    {
+        if (isset(LayerEntrances::SPEEDS[$speed])) {
+            $natural = LayerEntrances::naturalMs(null, 'art');
+            $this->updateArtworkLayer($assetId, 'anim_duration', LayerEntrances::durationFor($speed, $natural) ?? $natural);
+        }
+    }
+
+    /** The timeline's entrance bar for this layer, moved or stretched: its delay (s) and length (ms). */
+    public function setLayerEntrance(int $assetId, float $delay, int $duration): void
+    {
+        $this->updateArtworkLayer($assetId, 'anim_delay', round($delay, 1));
+        $this->updateArtworkLayer($assetId, 'anim_duration', $duration);
     }
 
     public function updateArtworkLayer(int $assetId, string $field, mixed $value): void
@@ -332,6 +522,8 @@ trait EditsSceneArtwork
             'ambient' => LayerAmbient::MODES,
             'ambient_speed' => LayerAmbient::SPEED,
             'ambient_amount' => LayerAmbient::AMOUNT,
+            // Blend into the scene (LayerSitIn): each a share 0..1, 0 = off.
+            ...array_fill_keys(LayerSitIn::KEYS, LayerSitIn::RANGE),
         ];
 
         if (! array_key_exists($field, $whitelist)) {
@@ -354,7 +546,8 @@ trait EditsSceneArtwork
         // Coerce and clamp the value.
         $coercedValue = match ($field) {
             'depth', 'scale', 'opacity', 'blur', 'x', 'y', 'draw_time', 'anim_delay',
-            'height', 'width', 'rotation', 'white_key', 'tint_opacity', 'ambient_speed', 'ambient_amount' => (float) $value,
+            'height', 'width', 'rotation', 'white_key', 'tint_opacity', 'ambient_speed', 'ambient_amount',
+            'waterline', 'reflection', 'contact_shadow', 'color_match', 'foam', 'speed' => (float) $value,
             'wobble' => (int) $value,
             'sway', 'grayscale', 'flip_x', 'flip_y' => (bool) $value,
             'kind', 'blend', 'ink_preset', 'ink_fill', 'anim', 'anim_ease', 'anim_out', 'anim_out_ease', 'ambient' => (string) $value,
@@ -404,6 +597,17 @@ trait EditsSceneArtwork
      */
     private function writeLayerField(int $assetId, string $field, mixed $value): void
     {
+        $this->writeLayerFields($assetId, [$field => $value], unsetNull: false);
+    }
+
+    /**
+     * Several already-validated fields in ONE save (one undo step). With `unsetNull` a null
+     * removes the key, so a reset layer reads exactly like one never touched.
+     *
+     * @param  array<string,mixed>  $fields
+     */
+    private function writeLayerFields(int $assetId, array $fields, bool $unsetNull = true): void
+    {
         if (! $this->selectedSceneId) {
             return;
         }
@@ -414,10 +618,20 @@ trait EditsSceneArtwork
             return;
         }
 
-        $shots = collect($shots)->map(function (array $shot) use ($assetId, $field, $value): array {
-            $layers = collect($shot['layers'] ?? [])->map(function (array $l) use ($assetId, $field, $value): array {
-                if (($l['asset_id'] ?? null) === $assetId) {
-                    $l[$field] = $value;
+        $shots = collect($shots)->map(function (array $shot, int $i) use ($assetId, $fields, $unsetNull, $scene): array {
+            if (! $this->editsShot($scene, $i)) {
+                return $shot;   // the same figure on the other panel keeps its own settings
+            }
+            $layers = collect($shot['layers'] ?? [])->map(function (array $l) use ($assetId, $fields, $unsetNull): array {
+                if (($l['asset_id'] ?? null) !== $assetId) {
+                    return $l;
+                }
+                foreach ($fields as $field => $value) {
+                    if ($value === null && $unsetNull) {
+                        unset($l[$field]);
+                    } else {
+                        $l[$field] = $value;
+                    }
                 }
 
                 return $l;
@@ -426,7 +640,7 @@ trait EditsSceneArtwork
             return array_merge($shot, ['layers' => $layers]);
         })->all();
 
-        $scene->update(['shots' => $shots]);
+        $scene->update(['shots' => $shots]);   // an unchanged layer is a clean model: no save
         $this->selectSceneInternal($scene->id);
     }
 
@@ -454,7 +668,10 @@ trait EditsSceneArtwork
         $scene = $this->lesson->scenes()->findOrFail($this->selectedSceneId);
         $parser = app(\App\Services\EmbedParser::class);
 
-        $shots = collect($scene->shots ?? [])->map(function (array $shot) use ($assetId, $option, $coerced, $parser): array {
+        $shots = collect($scene->shots ?? [])->map(function (array $shot, int $i) use ($assetId, $option, $coerced, $parser, $scene): array {
+            if (! $this->editsShot($scene, $i)) {
+                return $shot;
+            }
             $layers = collect($shot['layers'] ?? [])->map(function (array $l) use ($assetId, $option, $coerced, $parser): array {
                 if (($l['asset_id'] ?? null) !== $assetId || ($l['embed']['type'] ?? null) !== 'sketchfab') {
                     return $l;
@@ -489,10 +706,15 @@ trait EditsSceneArtwork
      * text overlay uses). The Livewire re-render still refreshes the Layers panel thumbnails.
      */
     #[On('artwork:move')]
-    public function moveArtworkLayer(int $assetId, float $x, float $y, float $scale, ?string $anchor = null, ?float $lng = null, ?float $lat = null, ?float $rotation = null): void
+    public function moveArtworkLayer(int $assetId, float $x, float $y, float $scale, ?string $anchor = null, ?float $lng = null, ?float $lat = null, ?float $rotation = null, ?int $panel = null): void
     {
         if (! $this->selectedSceneId) {
             return;
+        }
+        // A split stage says which panel the drag happened in; it may be quicker than the click
+        // that made that panel the active one.
+        if ($panel !== null) {
+            $this->activePanel = max(0, min(1, $panel));
         }
 
         $scene = $this->lesson->scenes()->findOrFail($this->selectedSceneId);
@@ -518,7 +740,10 @@ trait EditsSceneArtwork
         // caller that sends none leaves the stored angle alone.
         $rotation = $rotation === null ? null : max(-180.0, min(180.0, $rotation));
 
-        $shots = collect($shots)->map(function (array $shot) use ($assetId, $x, $y, $scale, $anchor, $pinned, $lng, $lat, $rotation): array {
+        $shots = collect($shots)->map(function (array $shot, int $i) use ($assetId, $x, $y, $scale, $anchor, $pinned, $lng, $lat, $rotation, $scene): array {
+            if (! $this->editsShot($scene, $i)) {
+                return $shot;
+            }
             $layers = collect($shot['layers'] ?? [])->map(function (array $l) use ($assetId, $x, $y, $scale, $anchor, $pinned, $lng, $lat, $rotation): array {
                 if (($l['asset_id'] ?? null) === $assetId) {
                     $l['x'] = $x;
@@ -574,7 +799,10 @@ trait EditsSceneArtwork
         // asset_id => desired position (lower = painted earlier = visually lower).
         $rank = array_flip(array_values(array_map('intval', $assetIds)));
 
-        $shots = collect($shots)->map(function (array $shot) use ($rank): array {
+        $shots = collect($shots)->map(function (array $shot, int $i) use ($rank, $scene): array {
+            if (! $this->editsShot($scene, $i)) {
+                return $shot;
+            }
             $layers = $shot['layers'] ?? [];
             // Non-asset layers (the base cover image) stay pinned at the bottom of the stack.
             $covers = array_values(array_filter($layers, fn ($l) => ($l['asset_id'] ?? null) === null));
@@ -599,13 +827,6 @@ trait EditsSceneArtwork
         unset($this->sceneArtworkLayers);   // refresh the Layers panel; no scene:load re-dispatch
     }
 
-    /**
-     * Slideshow render mode (stored in config['slideshow_mode']):
-     *   'standard' — flat image, no depth.
-     *   'parallax' — layers (and text) follow the camera by depth; per-layer Depth control shows.
-     *   'drawing'  — ink line-art draw-on animation (pen engine).
-     * Read back in the scene:load payload for the canvas.
-     */
     /**
      * How the background image fills the stage: 'cover' (fill the frame, crop the overflow) or
      * 'contain' (show the whole work, letterboxed).
@@ -634,27 +855,6 @@ trait EditsSceneArtwork
         $this->selectSceneInternal($scene->id);
     }
 
-    public function setSlideshowMode(string $mode): void
-    {
-        if (! in_array($mode, ['standard', 'parallax', 'drawing'], true)) {
-            return;
-        }
-        if (! $this->selectedSceneId) {
-            return;
-        }
-
-        $scene = $this->lesson->scenes()->findOrFail($this->selectedSceneId);
-        $config = $scene->config ?? [];
-        $config['slideshow_mode'] = $mode;
-        $config['parallax'] = $mode === 'parallax';   // back-compat for readers still checking the bool
-        $scene->update(['config' => $config]);
-
-        if ($this->selectedScene !== null) {
-            $this->selectedScene['config'] = $config;
-        }
-        $this->selectSceneInternal($scene->id);
-    }
-
     /** @return array<int, array{asset_id: int, path: string, title: string, url: string, depth: float, scale: float, height: float, sway: bool, x?: float, y?: float, wobble?: int, opacity?: float, blur?: float, z?: int, blend?: string, kind?: string}> */
     #[Computed]
     public function sceneArtworkLayers(): array
@@ -671,8 +871,8 @@ trait EditsSceneArtwork
             return [];
         }
 
-        $firstShot = $shots[0];
-        $layers = $firstShot['layers'] ?? [];
+        // The layer list of the panel being edited (the first shot on a standard scene).
+        $layers = $shots[$this->editedPanel($scene) ?? 0]['layers'] ?? [];
 
         if (empty($layers)) {
             return [];

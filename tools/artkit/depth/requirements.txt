@@ -1,0 +1,6 @@
+# tools/artkit/depth/depth_map.py (php artisan art:depth). Local only, never on the server.
+# pip install -r tools/artkit/depth/requirements.txt ; the model downloads on the first run.
+torch>=2.1
+transformers>=4.45
+Pillow>=10
+numpy>=1.24

@@ -64,7 +64,7 @@
             ></div>
             <div
                 x-show="ready"
-                class="pointer-events-none absolute inset-y-1 w-[2px] rounded-full bg-primary/90 shadow-[0_0_8px_rgba(252,211,77,0.65)] transition-[left] duration-75 ease-linear"
+                class="pointer-events-none absolute inset-y-1 w-[2px] rounded-full bg-primary/90 transition-[left] duration-75 ease-linear"
                 :style="`left: calc(${progressPct}% - 1px)`"
             ></div>
         </div>

@@ -1,0 +1,573 @@
+{
+ "lang": "nl",
+ "title": "Abel Tasman: De reis naar het onbekende",
+ "intro": "Waarom riskeer je je leven voor het onbekende, als daar al mensen wonen?",
+ "expect": ["Hoe was het aan boord van een ontdekkingsreis?", "Wie woonden er al, waar Tasman aankwam?", "De gevaren en de gevolgen"],
+ "scenes": {
+  "S00": {
+   "title": "Wat betekent dat?",
+   "narrator": "",
+   "date_ui": "",
+   "lines": {
+    "S00-A.1": "Golden Bay, 18 december 1642. Een lange klank rolt over het donkere water.",
+    "S00-B.1": "Aan dek fluistert een jongen de vraag die iedereen aan boord heeft.",
+    "S00-B.2": "Om dat antwoord te zoeken, gaan we vier maanden terug. Naar Batavia."
+   },
+   "bubbles": {
+    "S00-B.1": "Wat betekent dat?"
+   }
+  },
+  "S01": {
+   "title": "Een mast boven je hoofd",
+   "narrator": "",
+   "date_ui": "",
+   "lines": {
+    "S01-A.1": "Batavia, augustus 1642, waar nu Jakarta ligt. Een jongen van zestien kijkt omhoog langs de mast en vraagt of hij daar straks in moet.",
+    "S01-A.2": "De bootsman grijnst.",
+    "S01-B.1": "Hij wil weten wat ze eigenlijk sjouwen.",
+    "S01-B.2": "Peper en kruidnagels, zegt de bootsman: daar verdient de Verenigde Oost-Indische Compagnie aan.",
+    "S01-C.1": "Zo ver varen voor iets op je eten?",
+    "S01-C.2": "Twee schepen gaan straks naar kusten die op Europese kaarten ontbreken. Waarom riskeer je je leven voor het onbekende, als daar al mensen wonen?"
+   },
+   "bubbles": {
+    "S01-A.1": "Moet ik daarboven klimmen als alles beweegt?",
+    "S01-A.2": "Alleen als de mast niet eerst naar jou toe komt.",
+    "S01-B.1": "Wat sjouwen we voor de VOC?",
+    "S01-B.2": "Peper en kruidnagels.",
+    "S01-C.1": "Zo ver varen voor iets op je eten?"
+   }
+  },
+  "S02": {
+   "title": "Het witte vlak",
+   "narrator": "",
+   "date_ui": "",
+   "lines": {
+    "S02-A.1": "In het kasteel vergadert gouverneur-generaal Antonio van Diemen met de Raad van Indië. De VOC mag forten bouwen, soldaten inhuren en oorlog voeren.",
+    "S02-A.2": "Tasman vraagt waarvoor hij moet gaan. Nieuwe handel, zegt Van Diemen, en misschien een zeeroute naar Chili.",
+    "S02-B.1": "Een vinger stopt waar de kaart wit wordt. Deze kust kennen ze maar half.",
+    "S02-B.2": "Tasman denkt aan iets anders.",
+    "S02-C.1": "Van Diemen schuift hem de opdracht toe. Tasman krijgt de leiding, en de verantwoordelijkheid voor alle mannen."
+   },
+   "bubbles": {
+    "S02-A.2": "Nieuwe handel zoeken.",
+    "S02-B.1": "Deze kust kennen we gedeeltelijk.",
+    "S02-B.2": "Papier zegt niet of we welkom zijn.",
+    "S02-C.1": "En de mannen die ik terug moet brengen."
+   }
+  },
+  "S03": {
+   "title": "Geen haven op papier",
+   "narrator": "",
+   "date_ui": "",
+   "lines": {
+    "S03-A.1": "Tasman leest zijn opdracht: kusten onderzoeken, handel zoeken, alles opschrijven wat hij ziet.",
+    "S03-B.1": "Frans Visscher, zijn navigator, wijst de route aan. Eerst Mauritius, daarna geen bekende haven meer.",
+    "S03-C.1": "Twee schepen gaan: de Heemskerck en de kleinere Zeehaen."
+   },
+   "bubbles": {
+    "S03-B.1": "Daarna geen bekende haven meer."
+   }
+  },
+  "S04": {
+   "title": "Wat blijft achter?",
+   "narrator": "",
+   "date_ui": "",
+   "lines": {
+    "S04-A.1": "14 augustus 1642. De laatste vaten gaan aan boord en de bootsman jaagt de jongen op.",
+    "S04-A.2": "De jongen gaat mee voor zijn loon, om thuis te kunnen helpen.",
+    "S04-B.1": "Honderdtien mannen varen mee. Visscher rekent: voedsel voor twaalf maanden, rijst voor achttien.",
+    "S04-C.1": "De kade schuift weg. De jongen vraagt of hij ooit weer thuiskomt.",
+    "S04-C.2": "Meer dan dit kan de bootsman niet beloven."
+   },
+   "bubbles": {
+    "S04-A.1": "Duwen, dat vat heeft geen benen!",
+    "S04-A.2": "Met mijn loon kan ik thuis helpen.",
+    "S04-B.1": "Rijst voor achttien.",
+    "S04-C.1": "Kom ik ooit weer thuis?",
+    "S04-C.2": "Houd eerst dat touw vast."
+   }
+  },
+  "S05": {
+   "title": "De laatste veilige haven",
+   "narrator": "",
+   "date_ui": "",
+   "lines": {
+    "S05-A.1": "Mauritius, vanaf 5 september. Ruim een maand repareren de mannen de schepen.",
+    "S05-B.1": "Ze laden water en brandhout, want op zee is geen winkel om de hoek.",
+    "S05-B.2": "De jongen vraagt of ze hier ook iets tegen heimwee hebben.",
+    "S05-C.1": "Op 8 oktober vertrekken ze. Naar een volgende haven die nog geen naam heeft."
+   },
+   "bubbles": {
+    "S05-B.1": "Op zee is geen winkel om de hoek.",
+    "S05-B.2": "Hebben ze hier ook iets tegen heimwee?",
+    "S05-C.1": "Daar hebben we nog geen naam voor."
+   }
+  },
+  "S06": {
+   "title": "Het stipje dat niet twijfelt",
+   "narrator": "",
+   "date_ui": "",
+   "lines": {
+    "S06-A.1": "Oktober. Rondom alleen nog water, dag na dag.",
+    "S06-B.1": "De jongen vraagt Visscher hoe hij weet waar ze zijn.",
+    "S06-B.2": "Met de zon meet Visscher hoe ver ze naar het zuiden zitten.",
+    "S06-C.1": "Hoe ver ze naar het oosten zijn, kan hij alleen schatten, met koers en afstand. Dus kan het stipje op de kaart verkeerd staan."
+   },
+   "bubbles": {
+    "S06-B.1": "Hoe weet u waar we zijn?",
+    "S06-B.2": "Meten waar het kan, schatten waar het moet.",
+    "S06-C.1": "Het potlood twijfelt nooit."
+   }
+  },
+  "S07": {
+   "title": "Laat niet los",
+   "narrator": "",
+   "date_ui": "",
+   "lines": {
+    "S07-A.1": "24 oktober. Hagel en regen slaan over het dek, en de uitkijk ziet de Zeehaen niet meer.",
+    "S07-A.2": "Tasman vreest dat ze deze storm niet overleven.",
+    "S07-B.1": "De bootsman schreeuwt dat de jongen met beide handen moet vasthouden.",
+    "S07-B.2": "Hij voelt zijn vingers niet meer, maar hij laat niet los.",
+    "S07-C.1": "Een reservezeil hebben ze nog. Een tweede jongen niet, zegt de bootsman.",
+    "S07-D.1": "De volgende ochtend roept de uitkijk: daar is ze weer."
+   },
+   "bubbles": {
+    "S07-A.1": "We zien de Zeehaen met {crew:zeehaen|de bemanning} niet meer!",
+    "S07-B.1": "Allebei je handen!",
+    "S07-B.2": "Ik laat niet los.",
+    "S07-C.1": "Jou hebben we maar één keer.",
+    "S07-D.1": "De Zeehaen! Daar is {crew:zeehaen|de bemanning} weer!"
+   }
+  },
+  "S08": {
+   "title": "Een stip verschuift",
+   "narrator": "",
+   "date_ui": "",
+   "lines": {
+    "S08-A.1": "1 november. Visscher meet opnieuw: ze zitten ergens anders dan hij had geschat.",
+    "S08-B.1": "Daarna sneeuw en hagel. Op 6 november lijden de mannen zwaar onder de kou. De jongen wil naar huis.",
+    "S08-B.2": "Morgen beslist de raad, zegt de bootsman. Vandaag moet hij eten."
+   },
+   "bubbles": {
+    "S08-A.1": "Daarom meet ik opnieuw zodra het kan.",
+    "S08-B.1": "Denkt niemand aan omkeren?",
+    "S08-B.2": "Vandaag eet jij."
+   }
+  },
+  "S09": {
+   "title": "Welke kant is veilig?",
+   "narrator": "",
+   "date_ui": "",
+   "lines": {
+    "S09-A.1": "7 november. De scheepsraad, de officieren die samen over de koers beslissen, komt bijeen op de Heemskerck.",
+    "S09-A.2": "Visscher laat zien dat kaart en globe elkaar tegenspreken.",
+    "S09-B.1": "Drie mogelijke koersen. Geen enkele geeft zekerheid.",
+    "S09-C.1": "De jongen vraagt wat iedereen denkt: verder of terug?",
+    "S09-C.2": "Eerst de risico's, zegt Tasman. Wat zouden jullie kiezen?"
+   },
+   "bubbles": {
+    "S09-A.2": "Kaart en globe spreken elkaar tegen.",
+    "S09-B.1": "Geen koers geeft zekerheid.",
+    "S09-C.1": "Verder of terug?",
+    "S09-C.2": "Wat geven we bij elke koers op?"
+   }
+  },
+  "S10": {
+   "title": "Land, maar waar zijn de mensen?",
+   "narrator": "",
+   "date_ui": "",
+   "lines": {
+    "S10-A.1": "24 november 1642. Vanuit de mast klinkt het: land!",
+    "S10-B.1": "Tasman noemt het Van Diemensland, naar zijn gouverneur-generaal. Wij noemen het nu Tasmanië. Hier wonen al lang voorouders van de Palawa.",
+    "S10-C.1": "Op 2 december gaan mannen aan land. Ze zien bomen met inkepingen, ver uit elkaar, en rook in de verte. Mensen zien ze niet."
+   },
+   "bubbles": {
+    "S10-A.1": "Land vooruit!",
+    "S10-B.1": "Hoe noemen de mensen hier het?",
+    "S10-C.1": "Maar daar is rook."
+   }
+  },
+  "S11": {
+   "title": "Wat je kunt tekenen",
+   "narrator": "",
+   "date_ui": "",
+   "lines": {
+    "S11-A.1": "13 december. Hoog land, voor het eerst door Europeanen vastgelegd: het huidige Nieuw-Zeeland. Isaack Gilsemans tekent wat hij ziet.",
+    "S11-B.1": "De jongen vraagt zich af of de mensen hier hen al eerder zien."
+   },
+   "bubbles": {
+    "S11-A.1": "Eerst wat ik zie.",
+    "S11-B.1": "Zien de mensen hier ons eerder dan wij hen?"
+   }
+  },
+  "S12": {
+   "title": "Vanaf de andere kust",
+   "narrator": "",
+   "date_ui": "",
+   "lines": {
+    "S12-A.1": "Vanaf de oever zijn juist die schepen vreemd. Mohua, nu Golden Bay, is het land van Ngāti Tūmatakōkiri.",
+    "S12-B.1": "Op 18 december gaan twee waka kijken. Hun roep kan een rituele uitdaging zijn. De Nederlanders begrijpen hem niet."
+   }
+  },
+  "S13": {
+   "title": "Het antwoord zonder begrip",
+   "narrator": "",
+   "date_ui": "",
+   "lines": {
+    "S13-A.1": "Terug bij het begin. Avond, 18 december. Over het water klinkt weer die lange klank.",
+    "S13-B.1": "De jongen vraagt wat het betekent. Dat weet niemand, zegt Tasman. Toch blazen de Nederlanders op een trompet terug.",
+    "S13-B.2": "Niemand gaat zomaar naar die boten.",
+    "S13-C.1": "Gezichten kan Gilsemans tekenen. Wat de mensen in de waka denken, niet."
+   },
+   "bubbles": {
+    "S13-A.1": "Luister.",
+    "S13-B.1": "Dat weten we niet.",
+    "S13-B.2": "Blijf hier.",
+    "S13-C.1": "Wat zij denken niet."
+   }
+  },
+  "S14": {
+   "title": "De naam blijft",
+   "narrator": "",
+   "date_ui": "",
+   "lines": {
+    "S14-A.1": "De ochtend van 19 december. Een kleine boot vaart tussen de schepen, en waka komen dichterbij.",
+    "S14-B.1": "Dan gaat het mis. Vier mannen van de Zeehaen komen om. De Nederlanders schieten op de waka.",
+    "S14-C.1": "De schepen vertrekken. Niemand aan boord zegt iets.",
+    "S14-D.1": "Tasman schrijft deze plek op als Moordenaarsbaai. De jongen vraagt zich af hoe de Māori deze dag zouden noemen."
+   },
+   "bubbles": {
+    "S14-A.1": "Die waka gaat recht op onze boot af!",
+    "S14-B.1": "Blijf bij me!",
+    "S14-D.1": "Wat zouden de Māori deze dag noemen?"
+   }
+  },
+  "S15": {
+   "title": "De hand gaat open",
+   "narrator": "",
+   "date_ui": "",
+   "lines": {
+    "S15-A.1": "Tasman zet geen voet aan land in Nieuw-Zeeland. In januari komen de schepen bij Tonga. Daar ruilen ze goederen voor voedsel en water.",
+    "S15-B.1": "In februari varen ze langs de riffen van Fiji. Land in zicht is nog niet veilig.",
+    "S15-C.1": "Op 15 juni 1643, na tien maanden, zijn ze terug in Batavia. Nu durft de jongen de reling los te laten."
+   },
+   "bubbles": {
+    "S15-A.1": "Voedsel en water, in ruil voor goederen.",
+    "S15-B.1": "Rif vooruit!",
+    "S15-C.1": "Nu durf ik los te laten."
+   }
+  },
+  "S16": {
+   "title": "Wat past niet op de kaart?",
+   "narrator": "",
+   "date_ui": "",
+   "lines": {
+    "S16-A.1": "De VOC bekijkt het verslag en vindt dat Tasman die landen beter had moeten onderzoeken.",
+    "S16-B.1": "Het witte vlak op de kaart heeft nu kusten. Maar staat erop wat de bewoners van hén vonden?",
+    "S16-C.1": "Welke kennis staat op deze kaart, en welke ontbreekt? Dat mogen jullie nu zelf zeggen."
+   },
+   "bubbles": {
+    "S16-A.1": "U had die landen uitgebreider moeten onderzoeken.",
+    "S16-B.1": "Staat erop wat de bewoners van ons vonden?",
+    "S16-C.1": "Welke ontbreekt?"
+   }
+  }
+ },
+ "games": {
+  "lading": {
+   "mode": "budget",
+   "title": "De lading",
+   "mission": "Jullie vertrekken op een lange reis. Niemand weet precies wat jullie onderweg tegenkomen. Wat nemen jullie mee?",
+   "chapter": "De lading",
+   "minutes": 3,
+   "teams": 4,
+   "script": "Vorm teams van drie of vier en kies samen wat jullie meenemen. Water, eten en kompas gaan mee; wat past nog in jullie zestien laadpunten?",
+   "intro": "Water, eten en kompas gaan mee; wat past nog in jullie zestien laadpunten?",
+   "rules": "Kies samen minstens één voedselpakket. Elk pakket hoogstens één keer. Punten zijn spelwaarden, geen historische maten.",
+   "roles": [
+    "Kapitein",
+    "Bootsman",
+    "Verkenner",
+    "Stuurman"
+   ],
+   "capacity": 16,
+   "fixed": [
+    {
+     "id": "water",
+     "name": "Watervaten",
+     "why": "Zonder drinkwater helpt geen kaart je verder.",
+     "cost": 3,
+     "image": "asset:history-line/props/tasman/cargo_watervaten",
+     "tags": [
+      "water"
+     ]
+    },
+    {
+     "id": "compass",
+     "name": "Kompas",
+     "why": "Je vaarrichting bijhouden, maar het wijst geen veilige haven aan.",
+     "cost": 1,
+     "image": "asset:history-line/props/tasman/cargo_kompas",
+     "tags": [
+      "navigation"
+     ]
+    }
+   ],
+   "items": [
+    {
+     "id": "rice",
+     "name": "Rijst",
+     "why": "Veel eten meenemen of ruimte bewaren voor reparaties?",
+     "cost": 3,
+     "image": "asset:history-line/props/tasman/cargo_rijst",
+     "tags": [
+      "food"
+     ],
+     "real": true
+    },
+    {
+     "id": "ships_bread",
+     "name": "Hard scheepsbrood",
+     "why": "Een tweede voedselvoorraad of vertrouwen op alleen rijst?",
+     "cost": 2,
+     "image": "asset:history-line/props/tasman/cargo_scheepsbrood",
+     "tags": [
+      "food"
+     ],
+     "real": true
+    },
+    {
+     "id": "meat",
+     "name": "Vleesvoorraad",
+     "why": "Ander eten meenemen of die twee punten aan touw besteden?",
+     "cost": 2,
+     "image": "asset:history-line/props/tasman/cargo_vlees",
+     "tags": [
+      "food"
+     ],
+     "real": true
+    },
+    {
+     "id": "spare_sails",
+     "name": "Reservezeilen",
+     "why": "Met gescheurd zeildoek verder of nu ruimte opofferen?",
+     "cost": 3,
+     "image": "asset:history-line/props/tasman/cargo_reservezeilen",
+     "tags": [
+      "sails"
+     ],
+     "real": false
+    },
+    {
+     "id": "spare_rope",
+     "name": "Reservetouw",
+     "why": "Een kapotte lijn herstellen of hopen dat alles heel blijft?",
+     "cost": 2,
+     "image": "asset:history-line/props/tasman/cargo_reservetouw",
+     "tags": [
+      "rope"
+     ],
+     "real": false
+    },
+    {
+     "id": "spare_timber",
+     "name": "Reservehout",
+     "why": "Materiaal voor schadeherstel, maar zonder gereedschap schiet je weinig op.",
+     "cost": 3,
+     "image": "asset:history-line/props/tasman/cargo_reservehout",
+     "tags": [
+      "repair-wood"
+     ],
+     "real": true
+    },
+    {
+     "id": "tools",
+     "name": "Timmergereedschap",
+     "why": "Gereedschap kost weinig ruimte, maar welk reparatiemateriaal nemen jullie erbij?",
+     "cost": 1,
+     "image": "asset:history-line/props/tasman/cargo_timmergereedschap",
+     "tags": [
+      "tools"
+     ],
+     "real": false
+    },
+    {
+     "id": "firewood",
+     "name": "Brandhout",
+     "why": "Hout voor het kookvuur of nog een voorraad voedsel?",
+     "cost": 2,
+     "image": "asset:history-line/props/tasman/cargo_brandhout",
+     "tags": [
+      "fuel"
+     ],
+     "real": true
+    },
+    {
+     "id": "charts",
+     "name": "Zeekaarten",
+     "why": "Onvolledige kaarten meenemen of die ruimte voor iets anders gebruiken?",
+     "cost": 1,
+     "image": "asset:history-line/props/tasman/cargo_zeekaarten",
+     "tags": [
+      "charts"
+     ],
+     "real": true
+    },
+    {
+     "id": "paper_ink",
+     "name": "Papier en inkt",
+     "why": "Nieuwe kusten vastleggen of alleen zorgen dat jullie zelf thuiskomen?",
+     "cost": 1,
+     "image": "asset:history-line/props/tasman/cargo_papier_inkt",
+     "tags": [
+      "writing"
+     ],
+     "real": true
+    },
+    {
+     "id": "trade_textiles",
+     "name": "Stoffen als ruilwaar",
+     "why": "Mogelijk voedsel ruilen aan land, maar wat als niemand wil ruilen?",
+     "cost": 2,
+     "image": "asset:history-line/props/tasman/cargo_stoffen",
+     "tags": [
+      "trade"
+     ],
+     "real": true
+    },
+    {
+     "id": "trade_metal",
+     "name": "Metaal als ruilwaar",
+     "why": "Nog een ruilmiddel of vertrouwen op de stoffen die jullie kozen?",
+     "cost": 1,
+     "image": "asset:history-line/props/tasman/cargo_metaal",
+     "tags": [
+      "trade"
+     ],
+     "real": true
+    }
+   ],
+   "reveal": "Een echt VOC-schip moest voorraden, uitrusting en handelswaar meenemen. Voor deze expeditie waren voedsel voor twaalf maanden en rijst voor achttien maanden voorgeschreven, naast ruilgoederen en metalen. Op Mauritius vulden de mannen water en brandhout aan.",
+   "needs": "Op 26 oktober verving de Zeehaen een gebroken ra door een reserve. In de storm en in de kou helpen reserves, water en voedsel; geen vat neemt heimwee weg.",
+   "followup": "Welk pakket willen jullie alsnog meenemen, en wat moet daarvoor wijken?",
+   "source": "Tasman, journaal en documenten (Heeres-editie, 1898). Appendix D en E; journaal 30 september tot 26 oktober 1642.",
+   "backdrop": "history-line/backdrops/tasman/deck_harbour",
+   "presentation": "hold",
+   "hold": {
+    "ship": "asset:history-line/props/tasman/hold_ship_cutaway",
+    "backdrop": "asset:history-line/backdrops/tasman/mauritius_anchorage"
+   },
+   "timers": {
+    "mission": 20,
+    "compare": 60,
+    "exchange": 60,
+    "sail": 20
+   }
+  },
+  "scheepsraad": {
+   "mode": "choose",
+   "title": "Scheepsraad op de Heemskerck: {crew:heemskerck|de bemanning}, denk mee!",
+   "chapter": "De scheepsraad",
+   "minutes": 4,
+   "teams": 4,
+   "script": "Het is 7 november 1642 en jullie vormen de scheepsraad op de Heemskerck. Jullie moeten kiezen zonder te weten waar het volgende land ligt.",
+   "situation": "Het is 7 november 1642 en jullie vormen de scheepsraad op de Heemskerck. De opdracht vraagt om onderzoek, de kou maakt het varen moeilijk. De officieren van de Zeehaen kunnen niet komen.",
+   "cards": [
+    {
+     "title": "Kaart",
+     "text": "Kaarten verschillen; we weten niet waar het volgende land ligt. De opdracht stuurt ons naar zuidelijke wateren.",
+     "but": "Afwijken van de zuidelijke route kan betekenen dat jullie gezocht land missen."
+    },
+    {
+     "title": "Weer",
+     "text": "Op 6 november storm, hagel en sneeuw. De zee is hoog.",
+     "but": "Ook voor terugkeer moet je door dit weer varen."
+    },
+    {
+     "title": "Voorraden",
+     "text": "Voedsel voor twaalf maanden en rijst voor achttien maanden waren voorgeschreven. Hoeveel er over is, weten jullie niet.",
+     "but": "Je weet niet waar je weer water kunt halen."
+    },
+    {
+     "title": "Bemanning",
+     "text": "De mannen lijden zwaar onder de kou.",
+     "but": "Terugkeer beëindigt de opdracht; doorvaren houdt de mannen langer in de kou."
+    }
+   ],
+   "options": [
+    {
+     "label": "A",
+     "text": "Verder naar het zuiden"
+    },
+    {
+     "label": "B",
+     "text": "Noordelijker, daarna naar het oosten"
+    },
+    {
+     "label": "C",
+     "text": "Terugkeer plannen"
+    }
+   ],
+   "question": "Welke optie kiezen jullie, waarom, en welk nadeel accepteren jullie daarbij?",
+   "answer": "B",
+   "reveal": "Visscher adviseerde noordelijker te varen en daarna naar het oosten. De echte raad koos op 7 november die koers. Op 9 november stuurden ze het besluit naar de Zeehaen; die stemde met een vlag in.",
+   "followup": "Zouden jullie anders kiezen nu jullie de afloop kennen?",
+   "source": "Tasman, journaal en documenten (Heeres-editie, 1898). Journaal 6, 7 en 9 november 1642.",
+   "backdrop": "history-line/backdrops/tasman/cabin_chart"
+  },
+  "slotvraag": {
+   "mode": "discuss",
+   "title": "Slotvraag",
+   "chapter": "Klopt dat?",
+   "minutes": 4,
+   "question": "Abel Tasman ontdekte Tasmanië en Nieuw-Zeeland. Klopt dat?",
+   "prompts": [
+    "Voor wie waren deze landen onbekend?",
+    "Wat ontdekten de bezoekers over de bewoners, en wat bleef onzeker?",
+    "Verander de zin en wijs aan welk beeld jouw woorden ondersteunt."
+   ],
+   "closing": "Nu is het aan jullie: welke woorden kiezen jullie om te vertellen wat Tasman ontdekte?",
+   "backdrop": "history-line/backdrops/tasman/golden_bay_shore_view"
+  }
+ },
+ "moments": {
+  "anker-op": {
+   "name": "Anker op",
+   "meter_label": "Ankermeter",
+   "prompt": "Het anker zit vast. Roep de woorden waarmee het omhoog komt!",
+   "right": [
+    "gangspil",
+    "ankertouw",
+    "samen duwen",
+    "hijsen"
+   ],
+   "wrong": [
+    "motor",
+    "elektriciteit",
+    "vrachtwagen"
+   ],
+   "after": "Het anker is op. De Heemskerck en de Zeehaen varen de baai uit.",
+   "why": "Een anker ging met de hand omhoog: de matrozen duwden samen de spaken van het gangspil rond. Er was geen motor.",
+   "race_after": "{crew:heemskerck} op de Heemskerck, {crew:zeehaen} op de Zeehaen: ze varen de baai uit.",
+   "race_after_solo": "Jij gaat aan boord van de Heemskerck. De twee schepen varen de baai uit."
+  },
+  "wind-in-de-zeilen": {
+   "name": "Wind in de zeilen",
+   "meter_label": "Windmeter",
+   "prompt": "Geen zuchtje wind. Roep de woorden die de wind laten waaien!",
+   "right": [
+    "westenwind",
+    "zeilen",
+    "vertrekken",
+    "Mauritius"
+   ],
+   "wrong": [
+    "stoommachine",
+    "motor",
+    "noordpool"
+   ],
+   "after": "En daar komt de westenwind. De Heemskerck vaart weer.",
+   "why": "De VOC-schepen gebruikten de westenwinden op de zuidelijke route. Zonder wind lag een zeilschip stil."
+  }
+ }
+}

@@ -25,6 +25,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <x-font-switch />
     @livewireStyles
 </head>
 <body class="landing-shell relative min-h-full bg-slate-950 text-white antialiased">
@@ -46,5 +47,6 @@
 
     @stack('scripts')
     @livewireScripts
+    <x-playtest-recorder />
 </body>
 </html>

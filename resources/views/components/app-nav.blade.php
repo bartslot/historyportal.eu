@@ -124,7 +124,7 @@
                                         <span>{{ __($item['label']) }}</span>
                                         <x-icons.chevron-down class="h-3.5 w-3.5 opacity-60" />
                                     </div>
-                                    <ul tabindex="0" class="dropdown-content menu z-50 mt-3 w-52 rounded-box bg-slate-900/95 p-2 shadow-lg ring-1 ring-white/10 backdrop-blur-sm">
+                                    <ul tabindex="0" class="dropdown-content menu z-50 mt-3 w-52 rounded-box bg-slate-900/95 p-2 backdrop-blur-sm">
                                         @foreach ($item['children'] as $child)
                                             <li>
                                                 <a href="{{ route($child['route']) }}"
@@ -172,25 +172,19 @@
                         </div>
 
                         <ul tabindex="0"
-                            class="dropdown-content menu menu-sm mt-3 w-64 rounded-lg border border-slate-800 bg-slate-900 p-2 shadow-lg z-60">
-                            <li class="menu-title">
-                                <div class="flex items-start justify-between gap-2 px-1 py-1">
-                                    <div class="min-w-0">
-                                        <div class="truncate text-sm font-medium text-slate-100">{{ $user->name }}</div>
-                                        <div class="truncate text-xs text-slate-400">{{ $user->email }}</div>
-                                    </div>
-                                    @if ($roleLabel)
-                                        <span class="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-wide text-primary">
-                                            {{ __($roleLabel) }}
-                                        </span>
-                                    @endif
-                                </div>
+                            class="dropdown-content menu menu-sm mt-2 w-52 rounded-lg border border-white/10 bg-slate-900 p-1 z-60">
+                            {{-- Compact (Bart, 2026-10-15: "dropdown too big"). The role badge went: it stuck
+                                 out past the menu edge and repeated the section label below it, in an accent
+                                 colour chrome does not carry. --}}
+                            <li class="menu-title hp-mask px-3 pb-1.5 pt-2">
+                                <span class="block truncate text-sm font-medium text-white">{{ $user->name }}</span>
+                                <span class="block truncate text-xs font-normal text-slate-400">{{ $user->email }}</span>
                             </li>
-                            <li><div class="my-1 border-t border-slate-800"></div></li>
+                            <li class="border-t border-white/10"></li>
 
                             @if ($adminItems)
-                                <li class="menu-title px-3 py-1 text-2xs font-semibold uppercase tracking-wide text-slate-500">
-                                    {{ __('Admin') }}
+                                <li class="menu-title px-3 pb-0.5 pt-2 text-2xs font-semibold uppercase tracking-wide text-slate-500">
+                                    {{ __($roleLabel ?: 'Admin') }}
                                 </li>
                                 @foreach ($adminItems as $item)
                                     @php $active = request()->routeIs(...(array) $item['pattern']); @endphp
@@ -201,7 +195,7 @@
                                         </a>
                                     </li>
                                 @endforeach
-                                <li><div class="my-1 border-t border-slate-800"></div></li>
+                                <li class="mt-1 border-t border-white/10"></li>
                             @endif
 
                             @if (Route::has('profile.edit'))
@@ -223,8 +217,17 @@
                                     {{ __('Help') }}
                                 </a>
                             </li>
+                            {{-- Live test session: opens one and reloads this page with ?test=CODE, where the
+                                 recorder asks consent first (resources/js/test-session/recorder.js). --}}
+                            @if ($isTeacher && ! $user->isGuestDemo())
+                                <li>
+                                    <button type="submit" form="nav-test-session-form" class="w-full text-left text-sm text-slate-300 hover:bg-slate-800 hover:text-white">
+                                        {{ __('Start test session') }}
+                                    </button>
+                                </li>
+                            @endif
                             @if (Route::has('profile.edit') || Route::has('settings.index'))
-                                <li class="my-1 border-t border-slate-800"></li>
+                                <li class="my-1 border-t border-white/10"></li>
                             @endif
 
                             {{-- The button is the menu item itself; the form lives outside the <li>. With the
@@ -237,6 +240,12 @@
                             </li>
                         </ul>
                         <form id="nav-logout-form" method="POST" action="{{ route('logout') }}" class="hidden">@csrf</form>
+                        @if ($isTeacher && ! $user->isGuestDemo())
+                            <form id="nav-test-session-form" method="POST" action="{{ route('test-sessions.store') }}" class="hidden">
+                                @csrf
+                                <input type="hidden" name="return" value="{{ request()->getRequestUri() }}">
+                            </form>
+                        @endif
                     </div>
 
                     {{-- Below lg the nav links collapse in here, and it sits last: the menu
@@ -249,7 +258,7 @@
                             </svg>
                         </div>
                         <ul tabindex="0"
-                            class="dropdown-content menu menu-sm mt-3 w-56 rounded-lg border border-slate-800 bg-slate-900 p-2 shadow-lg z-60">
+                            class="dropdown-content menu menu-sm mt-3 w-56 rounded-lg border border-slate-800 bg-slate-900 p-2 z-60">
                             @foreach ($items as $item)
                                 @php $active = request()->routeIs(...(array) $item['pattern']); @endphp
                                 <li>

@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 /**
- * The lesson map has ONE ground, and that ground is the Earth.
+ * The lesson map's ground is the Earth, with one named exception: the drawn history-line chart
+ * (Bart, 2026-10-16), for lessons whose pictures are ink line work. Nothing else may switch it off.
  *
  * This replaces MapStyleEarthTest, which asked whether the style picker offered Earth. That
  * question no longer has a subject: the picker and the five drawn atlases were removed, and what
@@ -48,5 +49,13 @@ describe('lesson-map: one ground, and it is the Earth', () => {
         // Marble's ~500 m/px and a lesson that leans into a coastline shows a blur.
         expect(SOURCE).toContain("'satellite-detail'");
         expect(SOURCE).toMatch(/DETAIL_FADE_START[\s\S]{0,40}DETAIL_FADE_END/);
+    });
+
+    it('draws the chart only for an explicit history-line style', () => {
+        // The single way off the Earth. Any truthy option, or a second named style, is the picker
+        // creeping back; a lesson must have asked for the drawn chart by name.
+        expect(SOURCE).toMatch(/const drawn = opts\.mapStyle === 'history-line'/);
+        expect(SOURCE).toMatch(/if \(drawn \|\| globe \|\| globeLoading\) return/);
+        expect(SOURCE).toMatch(/pitch: drawn \? 0 : PITCH/);
     });
 });

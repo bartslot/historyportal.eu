@@ -68,6 +68,31 @@ final class Seo
         return $alternates;
     }
 
+    /**
+     * The one language a lesson's public page belongs to: its content language, or English when
+     * the interface does not ship that language. Every other prefix is the same content, so it
+     * names this one as canonical (SEO audit 2026-10-14: 13 lessons were 65 near-duplicates).
+     */
+    public static function lessonLocale(Lesson $lesson): string
+    {
+        $language = (string) $lesson->language;
+
+        return in_array($language, Locales::codes(), true) ? $language : 'en';
+    }
+
+    /** Shorten to at most $max characters, cut at a word, with an ellipsis. */
+    public static function clip(string $text, int $max): string
+    {
+        if (mb_strlen($text) <= $max) {
+            return $text;
+        }
+
+        $cut = mb_substr($text, 0, $max - 1);
+        $space = mb_strrpos($cut, ' ');
+
+        return rtrim($space !== false ? mb_substr($cut, 0, $space) : $cut, ' ,.;:').'…';
+    }
+
     /** A lesson's public slug: readable words plus the lesson code, which keeps it unique. */
     public static function lessonSlug(Lesson $lesson): string
     {
@@ -90,6 +115,12 @@ final class Seo
      */
     public static function lessonDescription(Lesson $lesson): string
     {
+        // A lesson with a teacher guide is described by what the class learns (Bart, 2026-10-13).
+        $goal = trim((string) ($lesson->teacher_guide['goal'] ?? ''));
+        if ($goal !== '') {
+            return $goal;
+        }
+
         $subject = $lesson->title ?: $lesson->topic ?: __('a history topic');
         $minutes = $lesson->duration_seconds ? (int) ceil($lesson->duration_seconds / 60) : null;
 
@@ -124,7 +155,7 @@ final class Seo
                     'name' => 'The Learning Portal',
                     'url' => url('/'),
                     'description' => __('History lessons your class wants to see the end of. Real paintings, a narrated story, and a game they finish themselves. Built in minutes, plays anywhere.'),
-                    'email' => 'info@thelearningportal.us',
+                    'email' => 'info@historyportal.eu',
                 ],
                 [
                     '@type' => 'WebSite',
@@ -135,6 +166,20 @@ final class Seo
                     'inLanguage' => array_map(fn (string $c) => Locales::region($c), Locales::codes()),
                 ],
             ],
+        ];
+    }
+
+    /**
+     * A page's structured data with the FAQ added (homepage and /about show <x-landing.faq>).
+     *
+     * @param  array<string,mixed>  $graph  a graph with '@graph', or none
+     * @return array<string,mixed>
+     */
+    public static function withFaq(array $graph = []): array
+    {
+        return [
+            '@context' => 'https://schema.org',
+            '@graph' => [...($graph['@graph'] ?? []), Faq::graphNode()],
         ];
     }
 
@@ -164,7 +209,35 @@ final class Seo
             $graph['timeRequired'] = 'PT'.max(1, (int) ceil($lesson->duration_seconds / 60)).'M';
         }
 
-        return array_filter($graph, fn ($value) => $value !== null);
+        $guide = (array) ($lesson->teacher_guide ?? []);
+        if (! empty($guide['goal'])) {
+            $graph['teaches'] = (string) $guide['goal'];
+        }
+
+        $resource = array_filter($graph, fn ($value) => $value !== null);
+        if (empty($guide['faq'])) {
+            return $resource;
+        }
+
+        // The FAQ as FAQPage: Google no longer shows FAQ rich results for most sites (Aug 2023), but
+        // the markup keeps the answers machine-readable for search and AI answers. It must match the
+        // visible accordion word for word, so both read the same array.
+        unset($resource['@context']);
+
+        return [
+            '@context' => 'https://schema.org',
+            '@graph' => [
+                $resource,
+                [
+                    '@type' => 'FAQPage',
+                    'mainEntity' => array_map(fn (array $item) => [
+                        '@type' => 'Question',
+                        'name' => (string) $item['q'],
+                        'acceptedAnswer' => ['@type' => 'Answer', 'text' => (string) $item['a']],
+                    ], $guide['faq']),
+                ],
+            ],
+        ];
     }
 
     /**

@@ -125,7 +125,7 @@
      x-effect="{{ $show }} && onShow()"
      @keydown.escape.window="{{ $show }} && ({{ $onClose }})"
      :style="`left:${pos.left}px; top:${pos.top}px; width: {{ $width }};`"
-     class="fixed z-50 overflow-hidden rounded-box border border-slate-700 bg-base-300 shadow-2xl"
+     class="fixed z-50 overflow-hidden rounded-box border border-slate-700 bg-base-300"
      role="dialog" aria-label="{{ $title }}">
 
     {{-- Title bar: the drag handle. `touch-none` stops a touch drag scrolling the page instead. --}}

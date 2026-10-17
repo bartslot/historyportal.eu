@@ -7,6 +7,7 @@ namespace App\Console\Commands;
 use App\Models\SvgAsset;
 use App\Services\Lessons\LibraryCdn;
 use App\Services\Svg\SvgSanitizer;
+use App\Support\LibraryEra;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -24,6 +25,8 @@ use Symfony\Component\Finder\Finder;
  *   resources/icons/<collection>/<category>/<subcategory>/*.svg   →  line-art
  *   resources/icons/<collection>/*.svg                            →  arrows, shapes
  *   resources/icons/<collection>/<category>/<subcategory>/*.webp|png  →  art:make packs (stored as-is)
+ *   resources/icons/<collection>/.../<name>.depth.webp  →  the depth map of <name> (art:depth): not an icon
+ *       of its own, stored beside its picture and recorded on its row (depth_path)
  *   resources/icons/<collection>/cdn.json  →  pictures already on Cloudinary (LibraryCdn). Their
  *       files are not in git, so a picture listed here is imported from its URL alone.
  *
@@ -52,6 +55,9 @@ class ImportIconLibrary extends Command
     private array $meta = [];
 
     private bool $hasCdnManifest = false;
+
+    /** The current collection's folder in the icon set. */
+    private string $collectionDir = '';
 
     public function handle(SvgSanitizer $sanitizer): int
     {
@@ -85,6 +91,7 @@ class ImportIconLibrary extends Command
             // rows have. Only a manifest that exists and leaves a picture out clears its URL.
             $this->hasCdnManifest = is_file(LibraryCdn::manifestPath($collection, $root));
             $this->meta = $this->metaManifest($root.'/'.$collection);
+            $this->collectionDir = $root.'/'.$collection;
             foreach ($this->libraryFiles($root.'/'.$collection) as $file) {
                 $rest = str_replace('\\', '/', $file->getRelativePathname());
                 $ref = $collection.'/'.$rest;
@@ -122,7 +129,7 @@ class ImportIconLibrary extends Command
     /** @return iterable<SplFileInfo> */
     private function libraryFiles(string $dir): iterable
     {
-        return Finder::create()->files()->in($dir)->name(['*.svg', '*.webp', '*.png'])->sortByName();
+        return Finder::create()->files()->in($dir)->name(['*.svg', '*.webp', '*.png'])->notName('*.depth.*')->sortByName();
     }
 
     private function isRaster(SplFileInfo $file): bool
@@ -171,13 +178,14 @@ class ImportIconLibrary extends Command
             'license' => (string) $this->option('license'),
             'attribution' => (string) $this->option('attribution') ?: null,
             'svg_path' => $path,
+            'depth_path' => $this->storeDepth($ref, $collection),
             // A picture re-exported with the same name keeps its CDN copy only while the manifest
             // still lists it; drop the line from cdn.json to have the next lesson re-upload it.
             ...($this->hasCdnManifest ? ['cdn_url' => $cdnUrl] : []),
             'width' => $clean['width'],
             'height' => $clean['height'],
             'view_box' => $clean['view_box'],
-            ...$this->metaFor($ref, $collection, $this->isRaster($file)),
+            ...$this->metaFor($ref, $collection, $this->isRaster($file), $subcategory),
         ])->save();
     }
 
@@ -202,12 +210,31 @@ class ImportIconLibrary extends Command
             'license' => (string) $this->option('license'),
             'attribution' => (string) $this->option('attribution') ?: null,
             'svg_path' => self::DISK_ROOT.'/'.$this->diskPath($ref),
+            'depth_path' => $this->storeDepth($ref, $collection),
             'cdn_url' => (string) ($entry['url'] ?? ''),
             'width' => isset($entry['width']) ? (int) $entry['width'] : null,
             'height' => isset($entry['height']) ? (int) $entry['height'] : null,
             'view_box' => null,
-            ...$this->metaFor($ref, $collection, true),
+            ...$this->metaFor($ref, $collection, true, $subcategory),
         ])->save();
+    }
+
+    /**
+     * The picture's depth map (<name>.depth.webp beside it, written by art:depth), copied to the
+     * public disk beside the stored picture. It is committed even when the picture itself lives on
+     * Cloudinary only, so the player can always read it from our own disk. Null when there is none.
+     */
+    private function storeDepth(string $ref, string $collection): ?string
+    {
+        $rest = substr($ref, strlen($collection) + 1);
+        $source = $this->collectionDir.'/'.preg_replace('/\.[^.\/]+$/', '', $rest).'.depth.webp';
+        if (! is_file($source)) {
+            return null;
+        }
+        $path = self::DISK_ROOT.'/'.preg_replace('/\.[^.\/]+$/', '', $this->diskPath($ref)).'.depth.webp';
+        Storage::disk('public')->put($path, (string) file_get_contents($source));
+
+        return $path;
     }
 
     /**
@@ -234,16 +261,23 @@ class ImportIconLibrary extends Command
      * The real-world fields for one picture. A raster picture without them is imported but named:
      * every picture we add must say what it is and how tall it is (Bart, 2026-09-29).
      *
-     * @return array{description: ?string, placement: ?string, height_m: ?float, opaque_box: ?array<int, float>}
+     * The era (tijdvak) comes from the entry's `era`, else from the folder (LibraryEra).
+     *
+     * @return array{description: ?string, placement: ?string, height_m: ?float, opaque_box: ?array<int, float>, era: ?string}
      */
-    private function metaFor(string $ref, string $collection, bool $isRaster): array
+    private function metaFor(string $ref, string $collection, bool $isRaster, ?string $folder): array
     {
         $entry = $this->meta[substr($ref, strlen($collection) + 1)] ?? null;
-        if ($entry === null && $isRaster) {
+        // An entry holding only an era (import_art.py writes one) still says nothing about WHAT it is.
+        if (! isset($entry['description']) && $isRaster) {
             $this->warn("  {$ref}: no entry in meta.json (what it is, placement, height)");
+        }
+        if (isset($entry['era']) && ! LibraryEra::isKnown((string) $entry['era'])) {
+            $this->warn("  {$ref}: era '{$entry['era']}' in meta.json is not a period in config/lesson-taxonomy.php");
         }
 
         return [
+            'era' => LibraryEra::resolve(isset($entry['era']) ? (string) $entry['era'] : null, $folder),
             'description' => $entry['description'] ?? null,
             'placement' => $entry['placement'] ?? null,
             'height_m' => isset($entry['height_m']) ? (float) $entry['height_m'] : null,

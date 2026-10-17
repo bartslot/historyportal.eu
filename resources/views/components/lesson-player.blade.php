@@ -103,7 +103,7 @@
                         x-ref="canvas"
                         width="256"
                         height="256"
-                        class="rounded-xl shadow-2xl border border-slate-700/50"
+                        class="rounded-xl border border-slate-700/50"
                     ></canvas>
 
                     {{-- Play/pause button overlay --}}
@@ -160,7 +160,7 @@
                 <img
                     src="{{ $portraitUrl }}"
                     alt="{{ $figure }}"
-                    class="h-28 w-28 rounded-xl object-cover border border-slate-700 shadow-2xl"
+                    class="h-28 w-28 rounded-xl object-cover border border-slate-700"
                 >
                 <p class="text-xs text-slate-400">{{ $figure }}</p>
             </div>

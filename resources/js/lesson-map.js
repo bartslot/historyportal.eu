@@ -8,7 +8,7 @@
  *   const map = renderLessonMap(el, { qid: 'Q12544', year: 900, interactive: true })
  *   map.setYear(1200); map.destroy()
  */
-import maplibregl from 'maplibre-gl'
+import maplibregl from './maplibre.js'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { renderAnnotations, focusLabelLayout } from './map-annotations.js'
 import { placeLabelLayout, placeLabelPaint } from './map-place-label.js'
@@ -49,7 +49,7 @@ const LABEL_LAYERS = ['city-labels', 'hcity-label', 'lesson-labels', 'focus-labe
  * the pairing which stays readable everywhere, and it survives a lesson's own dark label colour,
  * which would vanish into a dark halo.
  */
-const GROUND = {
+const EARTH = {
   // Focus cities (the teacher's own pins). They stay primary through size and their dot rather than
   // by shouting: contrast is the halo's job alone. The offset dark copy that used to sit behind each
   // word is gone — a word cannot collide-avoid against a second copy of itself (see map-annotations).
@@ -61,6 +61,28 @@ const GROUND = {
   river: '#8fc3e8',
   text: '#241a10',
   halo: '#f2e9d4',
+}
+
+/**
+ * The drawn chart, for lessons told in history-line art (fine ink on warm paper).
+ *
+ * The photographed earth stays the default. But a lesson whose every picture is ink line work
+ * cuts from a drawing to a satellite globe with a sun setting over it, and the class sees two
+ * different worlds (Bart, 2026-10-16). So these lessons get a chart in their own hand: paper sea,
+ * a barely tinted land, one ink coastline, a faint graticule. No hatching, no relief, no tilt, no
+ * day and night — the plainness is the point.
+ */
+const PAPER = {
+  focus: { color: '#1d1712', halo: 'rgba(246,241,228,0.9)', haloWidth: 1.4 },
+  fog: '#f6f1e4',
+  water: '#f6f1e4',
+  land: '#ebe1c8',
+  coast: '#1d1712',
+  grid: '#8c8270',
+  line: '#5b4a36',
+  river: '#6f7f86',
+  text: '#1d1712',
+  halo: '#f6f1e4',
 }
 
 // Cities valid at `year` (gazetteer entries carry valid_from/valid_to; missing = always valid).
@@ -93,6 +115,9 @@ const polityFilter = (year) => ['all',
  */
 export function renderLessonMap (el, opts = {}) {
   const { qid = null, interactive = true, annotations = [], editable = false, onAnnotationsChange = null, onPolityClick = null, projection = 'mercator' } = opts
+  // 'history-line' draws the chart (see PAPER); anything else is the photographed earth.
+  const drawn = opts.mapStyle === 'history-line'
+  const GROUND = drawn ? PAPER : EARTH
   // Voyage maps can hide anachronistic detail (modern city dots/labels + political borders that
   // didn't exist yet) and pin their own period place labels. Defaults keep the normal atlas.
   //
@@ -157,6 +182,9 @@ export function renderLessonMap (el, opts = {}) {
   const map = new maplibregl.Map({
     container: el,
     interactive,
+    // MapLibre 6 slices vector tiles past their maxzoom instead of overscaling them, which moves labels.
+    // Kept at the v5 behaviour so the upgrade changes nothing on screen.
+    zoomLevelsToOverscale: undefined,
     attributionControl: false,
     // Lean the camera over from the start. Set here rather than eased in after load, because the
     // opening view is fitted to the block's own cities and a pitch applied afterwards re-frames
@@ -164,7 +192,7 @@ export function renderLessonMap (el, opts = {}) {
     //
     // Every projection, globe included: MapLibre's globe leans perfectly well, and a voyage seen
     // over the curve of the earth is the best shot the app has.
-    pitch: PITCH,
+    pitch: drawn ? 0 : PITCH,
     style: {
       version: 8,
       // 2D flat (mercator) vs 3D globe (MapLibre v5) — set on the style at init so the map starts
@@ -185,6 +213,10 @@ export function renderLessonMap (el, opts = {}) {
         },
         // True coastline, for the faint shore guide over the imagery.
         coastline: { type: 'geojson', data: `${location.origin}/timemap/coastline.geojson` },
+        ...(drawn ? {
+          land: { type: 'vector', tiles: [`${location.origin}/land-tiles/{z}/{x}/{y}.pbf`], maxzoom: 4 },
+          graticule: { type: 'geojson', data: `${location.origin}/timemap/graticule.geojson` },
+        } : {}),
         satellite: bounded(SATELLITE_SOURCE),
         // Close-range ground: Sentinel-2 at ~10 m/px against Blue Marble's ~500. Its layer's
         // opacity is a zoom expression, so MapLibre requests nothing from EOX while a lesson stays
@@ -202,19 +234,24 @@ export function renderLessonMap (el, opts = {}) {
         // The ground. Sits directly on the background; everything else draws over it.
         // `raster-fade-duration` is the only easing MapLibre gives a raster, and it is what stops a
         // tile popping in. 700ms reads as the photograph developing rather than snapping on.
-        { id: 'satellite', type: 'raster', source: 'satellite', paint: { 'raster-fade-duration': 700 } },
-        // Sentinel-2 crossfades in OVER Blue Marble across one zoom level, rather than replacing it
-        // at a threshold: the two disagree (no bathymetry, no relief shading in Sentinel), and a
-        // hard swap reads as the earth changing colour instead of as detail arriving.
-        {
-          id: 'satellite-detail',
-          type: 'raster',
-          source: 'satellite-detail',
-          paint: {
-            'raster-fade-duration': 700,
-            'raster-opacity': ['interpolate', ['linear'], ['zoom'], DETAIL_FADE_START, 0, DETAIL_FADE_END, 1],
+        ...(drawn ? [
+          { id: 'land', type: 'fill', source: 'land', 'source-layer': 'land', paint: { 'fill-color': GROUND.land } },
+          { id: 'graticule', type: 'line', source: 'graticule', paint: { 'line-color': GROUND.grid, 'line-width': 0.5, 'line-opacity': 0.35 } },
+        ] : [
+          { id: 'satellite', type: 'raster', source: 'satellite', paint: { 'raster-fade-duration': 700 } },
+          // Sentinel-2 crossfades in OVER Blue Marble across one zoom level, rather than replacing it
+          // at a threshold: the two disagree (no bathymetry, no relief shading in Sentinel), and a
+          // hard swap reads as the earth changing colour instead of as detail arriving.
+          {
+            id: 'satellite-detail',
+            type: 'raster',
+            source: 'satellite-detail',
+            paint: {
+              'raster-fade-duration': 700,
+              'raster-opacity': ['interpolate', ['linear'], ['zoom'], DETAIL_FADE_START, 0, DETAIL_FADE_END, 1],
+            },
           },
-        },
+        ]),
         {
           id: 'rivers', type: 'line', source: 'rivers', 'source-layer': 'rivers',
           paint: {
@@ -226,7 +263,7 @@ export function renderLessonMap (el, opts = {}) {
         },
         // Coast guide line. Faint on purpose: a bold ink shore over a real coastline fences the
         // photograph off from itself, so this only firms up where the land ends.
-        { id: 'coast-bold', type: 'line', source: 'coastline', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': GROUND.coast, 'line-opacity': 0.4, 'line-width': ['interpolate', ['linear'], ['zoom'], 1, 0.6, 4, 1.0, 7, 1.6] } },
+        { id: 'coast-bold', type: 'line', source: 'coastline', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': GROUND.coast, 'line-opacity': drawn ? 0.9 : 0.4, 'line-width': ['interpolate', ['linear'], ['zoom'], 1, drawn ? 0.8 : 0.6, 4, drawn ? 1.2 : 1.0, 7, drawn ? 1.8 : 1.6] } },
         {
           // No fill overlay: the selected polity is shown as an amber RING; other territories
           // are just faint 30%-opacity borders so the terrain reads through.
@@ -739,7 +776,8 @@ export function renderLessonMap (el, opts = {}) {
   }
 
   function applyGlobe () {
-    if (globe || globeLoading) return
+    // A drawn chart has no sun, sea glint or cloud deck — that is the day and night it must not have.
+    if (drawn || globe || globeLoading) return
     // addLayer throws "Style is not done loading" outright rather than queueing, and this is called
     // from the styledata pass that also runs before the async terrain and city layers arrive.
     //
@@ -814,7 +852,7 @@ export function renderLessonMap (el, opts = {}) {
    * cannot do is the voyage's 3D traveller, which is a custom layer and has to be told the ground
    * height itself (voyage-ships.js reads it back via queryTerrainElevation).
    */
-  let activeRelief = RELIEF
+  let activeRelief = drawn ? 0 : RELIEF
   // setTerrain throws while the style is still parsing. Unlike the paint properties there is no
   // later pass that would set it anyway, so a failed attempt re-arms itself on the next style event
   // — otherwise a slow style load left the ground permanently flat.
@@ -825,7 +863,7 @@ export function renderLessonMap (el, opts = {}) {
     } catch (_) { return false }
   }
   function applyRelief (v) {
-    activeRelief = Math.max(0, Number(v) || 0)
+    activeRelief = drawn ? 0 : Math.max(0, Number(v) || 0)
     if (!setTerrainNow()) map.once('styledata', setTerrainNow)
   }
 

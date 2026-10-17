@@ -745,11 +745,17 @@ export class Avatar3DPlayer {
 
   resize (w, h) {
     if (!this._renderer || w === 0 || h === 0) return
+    const now = this._renderer.getSize(new THREE.Vector2())
+    if (now.x === w && now.y === h) return   // same box: setSize would only clear the canvas
     this._renderer.setSize(w, h, false)
     if (this._camera) {
       this._camera.aspect = w / h
       this._camera.updateProjectionMatrix()
     }
+    // setSize clears the drawing buffer, and a resize arrives from a ResizeObserver: after this
+    // frame's render loop, before its paint. Without a render here every step of a dock drag
+    // painted an empty, black canvas (Bart, 2026-10-16).
+    this._renderer.render(this._scene, this._camera)
   }
 
   setSceneBackground (hex) {

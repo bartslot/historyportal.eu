@@ -112,3 +112,37 @@ describe('lineCues', () => {
     expect(cues).toEqual([{ text: 'Nella Vita nuova, Dante racconta il saluto.', start: 2.5, end: 6 }])
   })
 })
+
+describe('BalloonLayer: balloons added in the editor', () => {
+  const balloon = { speaker: 'balloon', text: 'Moet ik daarboven klimmen?', start: 0, end: null, figure: null, at: [0.5, 0.2] }
+
+  it('stays up to the scene\'s end when it has no end', () => {
+    const layer = new BalloonLayer(document.createElement('div'), () => null)
+    layer.setLines([balloon])
+    layer.update(9999)
+    expect(layer.shown.size).toBe(1)
+  })
+
+  it('names each balloon by its place in the scene\'s lines, narrator lines counted', () => {
+    const layer = new BalloonLayer(document.createElement('div'), () => null)
+    layer.setLines([{ speaker: 'narrator', text: 'Tasman waits.', start: 0, end: 3 }, balloon])
+    expect(layer.lines.map(l => l.id)).toEqual(['bal_1'])
+  })
+
+  it('draws a thought as a cloud, with no speech tail', () => {
+    const host = document.createElement('div')
+    const layer = new BalloonLayer(host, () => null)
+    layer.setLines([{ ...balloon, kind: 'thought', tail: { tip: [0.5, 0.9] } }])
+    const el = host.querySelector('.lp-balloon')
+    expect(el.dataset.kind).toBe('thought')
+    expect(el.querySelector('.lp-balloon__cloud path').getAttribute('d')).toMatch(/^M /)
+    expect(el.querySelector('.lp-balloon__tail .ink').getAttribute('d')).toBe('')
+  })
+
+  it('shows every balloon in the editor, whatever the clock says', () => {
+    const layer = new BalloonLayer(document.createElement('div'), () => null, { editable: true })
+    layer.setLines([{ ...balloon, start: 5, end: 6 }])
+    layer.update(0)
+    expect(layer.shown.size).toBe(1)
+  })
+})

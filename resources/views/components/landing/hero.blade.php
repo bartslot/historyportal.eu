@@ -35,7 +35,7 @@
     // the demo types THAT lesson's title instead of promising the wrong thing.
     //
     // NOT wrapped in __(). The goal is already written in the lesson's own language (each entry in
-    // config('demo.by_language') carries its own), and running it through the translator would let
+    // config('demo.goals') is keyed by lesson title), and running it through the translator would let
     // a French line get "translated" into the visitor's UI language — which is the exact mixing
     // this whole path exists to prevent.
     $demoGoal = \App\Support\DemoLesson::goal();
@@ -66,28 +66,36 @@
     class="relative isolate flex min-h-screen flex-col items-center justify-center overflow-hidden"
     data-portal-images='@json(array_map(fn ($image) => asset("assets/{$image}"), $portalCards))'
 >
-    {{-- The flat card wheel. Sized and centred by `.wheel` in app.css — a square stage floored at
-         960px, which the hero clips.
-
-         The width/height attributes are load-bearing, not decoration. This used to carry `h-7xl`,
-         which was never a real utility (Tailwind v4 builds `w-7xl` from --container-7xl and has no
-         matching height scale), so it had a width and NO reserved height: until the bytes arrived
-         it laid out 1281x0 at the flex centre and snapped to 1303x1303 at y=-201 the moment they
-         did. A 651px jump of a full-width element in a 900px viewport is a 0.72 layout shift, and
-         `fetchpriority=high` guarantees the picture wins the race against the JS that would
-         otherwise have hidden it first. Keep both attributes even though CSS now sets the box:
-         they are what the browser has to go on before the stylesheet's own value can matter. --}}
-    <img src="{{ asset('assets/videocards.webp') }}" alt="" fetchpriority="high"
-         width="1280" height="1280"
-         class="pointer-events-none absolute wheel z-10" />
     <div class="hero-glow pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_100%,#0d2a4a_0%,#020b24_55%,#010510_100%)] opacity-60"></div>
     {{-- Subtle center glow --}}
     <div class="hero-spotlight pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_50%_40%_at_50%_60%,rgba(30,80,140,0.45)_0%,transparent_70%)] bg-blend-overlay"></div>
     <div class="hero-orb pointer-events-none absolute left-1/2 top-[16%] z-0 h-[34rem] w-[34rem] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(56,189,248,0.14)_0%,rgba(56,189,248,0.05)_35%,transparent_72%)] blur-3xl"></div>
 
-    {{-- The timewarp field. One sprite sheet, 24 cells, drawn as depth-sorted cards by
-         resources/js/hero/timewarp.js. --}}
-    <canvas data-timewarp-canvas class="hero-timewarp pointer-events-none absolute inset-0 z-20 h-full w-full" aria-hidden="true"></canvas>
+    {{-- The wheel layer: the flat picture and the drawn field share one parent so they can be
+         hidden and faded in as ONE thing. With the demo running (.js-hero-demo) it starts at
+         opacity 0 and lesson-demo.js fades it in once the layout is final — fonts in, canvas sized,
+         first ring frame drawn. Before this, the flat picture painted at full strength for ~300ms
+         and was then swapped for the drawn ring (other cards, other size): that swap was the
+         "drift" visible on every cold load. No JS / reduced motion never get the class, so the
+         layer stays visible for them. --}}
+    <div data-hero-wheel class="hero-wheel pointer-events-none absolute inset-0 z-10">
+        {{-- The flat card wheel. Sized and centred by `.wheel` in app.css — a square stage floored at
+             960px, which the hero clips.
+
+             The width/height attributes are load-bearing, not decoration. This used to carry `h-7xl`,
+             which was never a real utility (Tailwind v4 builds `w-7xl` from --container-7xl and has no
+             matching height scale), so it had a width and NO reserved height: until the bytes arrived
+             it laid out 1281x0 at the flex centre and snapped to 1303x1303 at y=-201 the moment they
+             did. A 651px jump of a full-width element in a 900px viewport is a 0.72 layout shift, and
+             `fetchpriority=high` guarantees the picture wins the race against the JS that would
+             otherwise have hidden it first. Keep both attributes even though CSS now sets the box:
+             they are what the browser has to go on before the stylesheet's own value can matter. --}}
+        <img src="{{ asset('assets/videocards.webp') }}" alt="" fetchpriority="high"
+             width="1280" height="1280"
+             class="pointer-events-none absolute wheel z-10" />
+        {{-- The drawn field: hero/cardwheel.js (default) or hero/timewarp.js, from one sprite sheet. --}}
+        <canvas data-timewarp-canvas class="hero-timewarp pointer-events-none absolute inset-0 z-20 h-full w-full" aria-hidden="true"></canvas>
+    </div>
     @if ($warpAtlas)
         <img
             data-timewarp-lesson-atlas
@@ -242,7 +250,9 @@
                         </svg>
                         {{ __('Configure') }}
                     </a>
-                    <a href="{{ route('lesson.play', $demoLesson->lesson_code) }}" class="hero-action hero-action--primary">
+                    {{-- data-portal-play: hero/portal.js opens the page onto this lesson's title screen. Without
+                         JS, or with reduced motion, it is an ordinary link. --}}
+                    <a data-portal-play href="{{ route('lesson.play', $demoLesson->lesson_code) }}" class="hero-action hero-action--primary">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="hero-action__play h-4 w-4" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 0 1 0 1.971l-11.54 6.347a1.125 1.125 0 0 1-1.667-.985V5.653Z" />
                         </svg>

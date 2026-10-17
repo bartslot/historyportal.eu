@@ -7,6 +7,7 @@
     <title>{{ $title ?? 'Sign In' }} · History Portal</title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <x-font-switch />
     @livewireStyles
 </head>
 <body class="flex min-h-screen h-full items-center justify-center bg-slate-950 text-slate-100 antialiased">
@@ -24,5 +25,6 @@
     </div>
 
     @livewireScripts
+    <x-playtest-recorder />
 </body>
 </html>

@@ -18,6 +18,16 @@
             "port": 8000
         },
         {
+            "//": "The founding-teachers worktree (/teachers funnel, legal pages, sign-up). Own port and APP_URL so asset URLs and the session cookie belong to this tree, not the shared :8000 checkout.",
+            "name": "serve-founding-teachers",
+            "runtimeExecutable": "bash",
+            "runtimeArgs": [
+                "-c",
+                "APP_URL=http://localhost:8041 SESSION_COOKIE=hp_founding php artisan serve --host=127.0.0.1 --port=8041"
+            ],
+            "port": 8041
+        },
+        {
             "//": "The release candidate: polishing-1 + map-integration merged, for review before anything reaches main. Its own port because :8000 is the shared checkout and :8021 is the map-integration worktree \u2014 three trees, three ports, and a curl against the wrong one returns a confident 200 from somebody else's code.",
             "name": "serve-release-candidate",
             "runtimeExecutable": "php",

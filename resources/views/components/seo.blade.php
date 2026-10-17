@@ -13,20 +13,35 @@
     'page' => null,
     'params' => [],
     'image' => null,
+    // A tall picture (2:3) for platforms that show one well (Pinterest). It is the SECOND
+    // og:image: link previews (Facebook, LinkedIn, WhatsApp, X) use the first, landscape one.
+    'tallImage' => null,
     'type' => 'website',
     'graph' => null,
     'noindex' => false,
+    // A page that exists in ONE language (a lesson): every prefix names that URL as canonical,
+    // and there are no alternates to claim.
+    'locale' => null,
 ])
 
 @php
     use App\Support\Seo;
 
-    $canonical = $page ? Seo::url($page, $params) : url()->current();
-    $alternates = $page ? Seo::alternates($page, $params) : [];
+    $canonical = $page ? Seo::url($page, $params, $locale) : url()->current();
+    $alternates = $page && ! $locale ? Seo::alternates($page, $params) : [];
+    // Google cuts descriptions past ~160 characters; cut at a word instead.
+    $description = Seo::clip($description, 160);
+    // Facebook only shows an image on the very first scrape when it knows the size, so the
+    // default card declares its own; a page-specific image is left for the crawler to measure.
+    $isDefaultImage = ! $image;
     $image = $image ?: asset('images/og-default.png');
     $siteName = 'History Portal';
-    // The title tag carries the brand once; the OG title does not repeat it.
+    // The title tag carries the brand once; the OG title does not repeat it. Past ~60 characters
+    // Google cuts the title, so a long one drops the brand rather than lose its own words.
     $fullTitle = $title === $siteName ? $siteName : $title.' · '.$siteName;
+    if (mb_strlen($fullTitle) > 60) {
+        $fullTitle = $title;
+    }
 @endphp
 
 <title>{{ $fullTitle }}</title>
@@ -50,6 +65,16 @@
 <meta property="og:description" content="{{ $description }}">
 <meta property="og:url" content="{{ $canonical }}">
 <meta property="og:image" content="{{ $image }}">
+@if ($isDefaultImage)
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="History Portal">
+@endif
+@if ($tallImage)
+    <meta property="og:image" content="{{ $tallImage }}">
+    <meta property="og:image:width" content="1000">
+    <meta property="og:image:height" content="1500">
+@endif
 <meta property="og:locale" content="{{ str_replace('-', '_', \App\Support\Locales::region(app()->getLocale())) }}">
 
 <meta name="twitter:card" content="summary_large_image">

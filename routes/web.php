@@ -21,57 +21,16 @@ Route::pattern('lesson', '[0-9]+');
 
 // ── Public ───────────────────────────────────────────────────────────────────
 
-Route::get('/', function () {
-    // Publicly playable lessons (Published + Previewable) surfaced on the landing page so
-    // visitors can open one straight into the player (no auth required — see lesson.play).
-    //
-    // Cached (local file store) for 10 min. This whereHas EXISTS subquery + eager loads against
-    // the remote Supabase DB costs ~2s cold, and the landing page is the most-hit route — caching
-    // takes it from ~2.2s to ~40ms. The key is busted on any Lesson save (see Lesson::booted),
-    // so a newly published lesson appears immediately.
-    $playableLessons = \Illuminate\Support\Facades\Cache::remember(
-        'home.playable_lessons',
-        now()->addMinutes(10),
-        fn () => Lesson::whereIn('status', [
-            LessonStatusEnum::Published->value,
-            LessonStatusEnum::Previewable->value,
-        ])
-            ->whereNotNull('lesson_code')
-            // Only lessons that actually play — at least one narrated scene. Excludes empty
-            // stubs that would open the player to a perpetual "audio generating" screen.
-            ->whereHas('scenes', fn ($q) => $q->whereNotNull('audio_path'))
-            ->with(['firstScene', 'source'])
-            ->latest()
-            ->take(12)
-            ->get()
-    );
-
-    // The five curated "Trending history topics" cards, keyed by title so the carousel can link
-    // each poster to its real lesson. Separate from $playableLessons because these are pinned
-    // subjects, not simply the most recent twelve. A missing title just renders an unlinked card.
-    $trendingLessons = \Illuminate\Support\Facades\Cache::remember(
-        'home.trending_lessons',
-        now()->addMinutes(10),
-        fn () => Lesson::whereIn('title', \App\Support\TrendingTopics::lessonTitles())
-            ->whereIn('status', [
-                LessonStatusEnum::Published->value,
-                LessonStatusEnum::Previewable->value,
-            ])
-            ->whereNotNull('lesson_code')
-            ->whereHas('scenes', fn ($q) => $q->whereNotNull('audio_path'))
-            // Ascending on purpose: keyBy keeps the LAST row for a duplicate key, so ordering
-            // oldest-first means a rebuilt lesson (same title, higher id) wins.
-            ->orderBy('id')
-            ->get()
-            ->keyBy('title')
-    );
-
-    return view('historyportal', compact('playableLessons', 'trendingLessons'));
-})->name('home');
+Route::get('/', \App\Http\Controllers\Public\HomeController::class)->name('home');
 
 Route::get('/about', function () {
     return view('about');
 })->name('about');
+
+// Legal pages. English only, outside the localised group: one reviewed text, one URL, which is
+// also what the Google / Microsoft / Apple sign-in consent screens link to.
+Route::view('/privacy', 'legal.privacy')->name('privacy');
+Route::view('/terms', 'legal.terms')->name('terms');
 
 // ── Public, indexable marketing pages ────────────────────────────────────────
 //
@@ -96,14 +55,20 @@ Route::get('/articles', [\App\Http\Controllers\Public\ArticleController::class, 
 Route::get('/articles/{slug}', [\App\Http\Controllers\Public\ArticleController::class, 'show'])
     ->name('public.article');
 
+// The Dutch curriculum: kerndoelen, tijdvakken, kenmerkende aspecten and Canon windows, a page
+// each with the lessons that cover it. A Dutch system, so Dutch only (Bart, 2026-10-17).
+Route::get('/nl/curriculum', [\App\Http\Controllers\Public\CurriculumController::class, 'index'])
+    ->name('public.curriculum');
+Route::get('/nl/curriculum/{slug}', [\App\Http\Controllers\Public\CurriculumController::class, 'show'])
+    ->where('slug', '[a-z0-9-]+')
+    ->name('public.curriculum.goal');
+
 // The other languages, prefixed and locale-aware.
 Route::prefix('{locale}')
     ->whereIn('locale', ['nl', 'de', 'fr', 'it'])
     ->middleware(\App\Http\Middleware\SetLocaleFromUrl::class)
     ->group(function () {
-        Route::get('/', fn () => view('historyportal', [
-            'playableLessons' => \App\Support\Seo::publicLessons()->with(['firstScene', 'source'])->latest()->take(12)->get(),
-        ]))->name('public.home.localized');
+        Route::get('/', \App\Http\Controllers\Public\HomeController::class)->name('public.home.localized');
         Route::get('/about', fn () => view('about'))->name('public.about.localized');
         Route::get('/history-lessons', [\App\Http\Controllers\Public\LessonCatalogueController::class, 'index'])
             ->name('public.lessons.localized');
@@ -117,6 +82,9 @@ Route::prefix('{locale}')
 
 // Student lesson player — public, no auth required
 Route::get('/lesson/{lessonCode}', LessonPlayerController::class)->name('lesson.play');
+// The player's subtitles in another language (translated once, cached for every class).
+Route::get('/lesson/{lessonCode}/captions/{language}', \App\Http\Controllers\LessonCaptionsController::class)
+    ->middleware('throttle:captions')->name('lesson.captions');
 
 // The launch announcement: the hero's other script, saying the product has shipped rather than
 // demonstrating it. Its own page so the landing page keeps doing its job.
@@ -138,6 +106,32 @@ Route::get('/lesson/{lessonCode}/leaderboard', [\App\Http\Controllers\QuizLeader
     ->middleware('throttle:leaderboard')->name('lesson.leaderboard');
 Route::post('/lesson/{lessonCode}/quiz-score', [\App\Http\Controllers\QuizLeaderboardController::class, 'store'])
     ->middleware('throttle:quiz-score')->name('lesson.quiz-score');
+
+// Harbour race on team devices (HarbourRace): the class screen opens and runs it (lesson managers
+// only); the race QR opens the controller page on a team's phone, which joins, pushes and polls.
+Route::middleware(['auth', 'throttle:30,1'])->group(function () {
+    Route::post('/lesson/{lessonCode}/races', [\App\Http\Controllers\Race\RaceController::class, 'store'])->name('race.store');
+    Route::patch('/races/{code}', [\App\Http\Controllers\Race\RaceController::class, 'update'])->name('race.update');
+    Route::delete('/races/{code}', [\App\Http\Controllers\Race\RaceController::class, 'destroy'])->name('race.destroy');
+});
+Route::get('/race/{code}', [\App\Http\Controllers\Race\RaceDeviceController::class, 'show'])->middleware('throttle:race-read')->name('race.device');
+Route::get('/race/{code}/state', [\App\Http\Controllers\Race\RaceDeviceController::class, 'state'])->middleware('throttle:race-read')->name('race.state');
+Route::post('/race/{code}/join', [\App\Http\Controllers\Race\RaceDeviceController::class, 'join'])->middleware('throttle:race-join')->name('race.join');
+Route::post('/race/{code}/push', [\App\Http\Controllers\Race\RaceDeviceController::class, 'push'])->middleware('throttle:race-push')->name('race.push');
+
+// Live test sessions (P1): an adult tester opts in with ?test=CODE and the page records clicks and
+// screen (resources/js/test-session/). Opening one is for teachers and admins; the recorder's
+// calls are public because the tester may not be signed in, so the open code is the key, and they
+// are CSRF-exempt (bootstrap/app.php) because the exit batch goes out as a sendBeacon. Reading is
+// admin or owner only. See TestSessionController.
+Route::post('/test-sessions', [\App\Http\Controllers\TestSessionController::class, 'store'])
+    ->middleware(['auth', 'throttle:10,1'])->name('test-sessions.store');
+Route::prefix('/test-sessions/{code}')->where(['code' => '[A-Za-z0-9]{3,32}'])->name('test-sessions.')->group(function () {
+    Route::post('/start', [\App\Http\Controllers\TestSessionController::class, 'start'])->middleware('throttle:test-session')->name('start');
+    Route::post('/batch', [\App\Http\Controllers\TestSessionController::class, 'batch'])->middleware('throttle:test-session')->name('batch');
+    Route::post('/end', [\App\Http\Controllers\TestSessionController::class, 'end'])->middleware('throttle:test-session')->name('end');
+    Route::get('/', [\App\Http\Controllers\TestSessionController::class, 'show'])->middleware('auth')->name('show');
+});
 
 // Curated historical cities as GeoJSON — public reference data for the lesson-atlas overlay
 // (labelled "Constantinople (Istanbul)" markers). No auth: shared by the composer preview and
@@ -440,6 +434,10 @@ Route::middleware(['auth', \App\Http\Middleware\RestrictGuestDemo::class])
 // ── Admin panel (role:admin only) ─────────────────────────────────────────────
 
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
+
+    // Spoken playtest notes pinned to the cursor — see components/playtest-recorder.blade.php.
+    Route::post('/playtest-notes', [\App\Http\Controllers\Admin\PlaytestNoteController::class, 'store'])
+        ->name('playtest-notes.store');
 
     Route::get('/dashboard', function () {
         return view('admin.dashboard', [

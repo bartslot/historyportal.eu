@@ -21,6 +21,8 @@
 import { playEntrance, playExit } from './animations.js'
 import { applyLayerFilter } from './layer-filters.js'
 import { applyAmbient, trackStage } from './ambient.js'
+import { loadDepth, applyOcclusion, clearOcclusion, fitHeight, OCC } from './occlusion.js'
+import { SIT_KEYS, sitSpec, renderSitIn, backdropPixels, sampleColours, registerSitTuner, applyFoamSpeed, hullSpan } from './sit-in-scene.js'
 
 const DRAG_THRESHOLD_PX = 4
 const MIN_SCALE = 0.2
@@ -48,6 +50,11 @@ const HANDLES = [
   { name: 'w', axis: 'x', pos: 'left:-5px; top:calc(50% - 5px);', cursor: 'ew-resize' },
   { name: 'e', axis: 'x', pos: 'right:-5px; top:calc(50% - 5px);', cursor: 'ew-resize' },
 ]
+
+/** The look of a layer handle on the stage (the corner dots); speech balloons use it too. */
+export const handleCss = (pos, cursor) => `position:absolute; ${pos} width:10px; height:10px; pointer-events:auto;
+  border-radius:50%; background:#fff; border:1px solid rgba(15,23,42,0.55); cursor:${cursor};
+  box-shadow:0 1px 3px rgba(0,0,0,0.4); touch-action:none;`
 
 // Object-list / selection id namespace so artwork ids never collide with text-box ids.
 export const artObjId = (assetId) => `art_${assetId}`
@@ -81,6 +88,7 @@ export const artObjId = (assetId) => `art_${assetId}`
 const SYNCABLE = [
   'x', 'y', 'scale', 'height', 'width', 'rotation', 'opacity', 'blur', 'blend',
   'white_key', 'grayscale', 'tint', 'tint_opacity', 'flip_x', 'flip_y',
+  ...SIT_KEYS, 'occlude',
 ]
 
 /**
@@ -123,6 +131,7 @@ export function layersSignature(layers) {
     l.kind,
     l.ambient, l.ambient_speed, l.ambient_amount,
     l.anchor, l.lng, l.lat, l.flip_x, l.flip_y,
+    l.waterline, l.reflection, l.contact_shadow, l.color_match, l.foam, l.speed, l.occlude,
     l.embed ? JSON.stringify(l.embed.opts || null) : null,
   ]))
 }
@@ -186,6 +195,12 @@ export function normalizeLayer(l) {
         ambient: l.ambient || 'none',
         ambient_speed: l.ambient_speed ?? null,
         ambient_amount: l.ambient_amount ?? null,
+        // Blend into the scene (sit-in-scene.js): each 0..1, null = off.
+        ...Object.fromEntries(SIT_KEYS.map(k => [k, Number.isFinite(l[k]) ? l[k] : null])),
+        // Hidden where the backdrop is nearer (occlusion.js): 1 on, 0 off.
+        occlude: l.occlude ? 1 : 0,
+        // How tall the drawn thing really is, for "fit to this spot" (null: a standing person).
+        height_m: Number.isFinite(l.height_m) && l.height_m > 0 ? l.height_m : null,
         anchor: l.anchor === 'map' ? 'map' : 'screen',
         lng: Number.isFinite(l.lng) ? l.lng : null,
         lat: Number.isFinite(l.lat) ? l.lat : null,
@@ -208,6 +223,19 @@ export class ArtworkOverlay {
     // { project(lng,lat) → {x,y} host-%, unproject(x%,y%) → {lng,lat} } while a map is live
     // beneath this overlay. Null on a slideshow scene, where positions are stage-relative.
     this._projector = null
+    // The scene's backdrop picture: what blend-into-scene samples its colours from.
+    this._backdropUrl = null
+    // Its depth map (occlusion.js), only while it belongs to that picture.
+    this._depthUrl = null
+    // A new stage shape moves the plate under the layers (cover fit): their masks are rebuilt,
+    // once per resize, never per frame.
+    if (typeof ResizeObserver === 'function') {
+      this._occResize = new ResizeObserver(() => {
+        cancelAnimationFrame(this._occRaf)
+        this._occRaf = requestAnimationFrame(() => { for (const i of this._layers) if (i.occlude) this._occlude(i) })
+      })
+      this._occResize.observe(this.host)
+    }
     this.host.style.pointerEvents = 'none'   // the host is transparent; only layer nodes catch events
     trackStage(this.host)   // stage size for ambient drift distances (ambient.js)
     // Deselect when something that isn't one of MY layers is selected (mutually-exclusive
@@ -218,6 +246,102 @@ export class ArtworkOverlay {
         this._selectedId = null
         this._applySelection()
       }
+    })
+  }
+
+  /**
+   * The backdrop the layers stand on (its url), for blend-into-scene's colours. Call before
+   * setLayers; a change redraws the layers that blend.
+   */
+  setBackdrop(url, depth = null) {
+    // A depth map belongs to one picture (config.backdrop_depth {src, url}): a teacher who swapped
+    // the picture must not have the old one's depth hide their figures.
+    const depthUrl = depth?.url && depth?.src && url && String(url).includes(depth.src) ? depth.url : null
+    if (depthUrl !== this._depthUrl) {
+      this._depthUrl = depthUrl
+      for (const item of this._layers) if (item.occlude) this._occlude(item)
+    }
+    if ((url || null) === this._backdropUrl) return
+    this._backdropUrl = url || null
+    for (const item of this._layers) this._sitIn(item)
+  }
+
+  /**
+   * The layer's box on the stage as fractions, centre x/y and size w/h, or null before its
+   * picture has a size.
+   */
+  _stageRect(item, node = this._nodeEl(item)) {
+    const hostW = this.host.clientWidth || 0
+    if (!node || !hostW) return null
+    const h = this._heightPct(item) / 100
+    const w = (this._widthPct(item) ?? (node.offsetWidth / hostW) * 100) / 100
+    return w > 0 && h > 0 ? { x: item.x / 100, y: item.y / 100, w, h } : null
+  }
+
+  /** Occlusion (occlusion.js): mask the layer where the backdrop is drawn in front of it. */
+  _occlude(item, node = this._nodeEl(item)) {
+    if (!node) return
+    if (!item.occlude || !this._depthUrl) { clearOcclusion(node); return }
+    const img = node.querySelector('img')
+    const decoded = !img || (img.complete && img.naturalWidth)
+      ? Promise.resolve()
+      : new Promise(resolve => { img.addEventListener('load', resolve, { once: true }); img.addEventListener('error', resolve, { once: true }) })
+    Promise.all([loadDepth(this._depthUrl), decoded]).then(([depth]) => {
+      if (this._nodeEl(item) !== node || !node.isConnected || node === this._dragNode) return
+      const rect = this._stageRect(item, node)
+      if (rect) applyOcclusion(node, item, rect, (this.host.clientWidth || 1) / (this.host.clientHeight || 1), depth)
+    })
+  }
+
+  /**
+   * "Fit to this spot": the `height` this layer should have where its feet are now, from the
+   * backdrop's horizon (occlusion.js fitHeight), in the layer's own stored units (% of the stage
+   * before its scale), and the `y` that keeps its feet where they are (a layer is centre-anchored).
+   * Null when the backdrop has no depth map or the feet are above the horizon.
+   */
+  async fitHeight(assetId) {
+    const item = this._layers.find(l => String(l.asset_id) === String(assetId))
+    const depth = item ? await loadDepth(this._depthUrl) : null
+    if (!item || !depth) return null
+    const share = this._fitShare(item, depth)
+    if (share === null) return null
+    const feet = item.y + this._heightPct(item) / 2
+    const r2 = (n) => Math.round(n * 100) / 100
+    return { height: r2(share * 100 / (item.scale || 1)), y: r2(feet - share * 100 / 2) }
+  }
+
+  /** The on-screen height (share of the stage) that fits the layer's feet row, or null. */
+  _fitShare(item, depth) {
+    const foot = (item.y + this._heightPct(item) / 2 - this._heightPct(item) * (Number(item.waterline) || 0)) / 100
+    const aspect = (this.host.clientWidth || 1) / (this.host.clientHeight || 1)
+    return fitHeight(depth?.ground, foot, aspect, depth?.aspect, item.height_m ?? OCC.personM)
+  }
+
+  /**
+   * While a layer is dragged in the editor: a dashed outline, feet on the layer's feet, as tall as
+   * the layer should be there (the "Fit to this spot" height). Removed on release.
+   */
+  _fitGhost(item, node) {
+    if (this.readonly || !this._depthUrl) return
+    loadDepth(this._depthUrl).then((depth) => {
+      if (this._dragNode !== node) return
+      const share = this._fitShare(item, depth)
+      let ghost = this.host.querySelector(':scope > [data-fit-ghost]')
+      if (share === null) { ghost?.remove(); return }
+      if (!ghost) {
+        ghost = document.createElement('div')
+        ghost.dataset.fitGhost = ''
+        ghost.setAttribute('aria-hidden', 'true')
+        ghost.style.cssText = `position:absolute; pointer-events:none; z-index:${this._zTop + 1};
+          outline:1px dashed var(--color-primary, #f59e0b); outline-offset:0; transform:translateX(-50%);`
+        this.host.appendChild(ghost)
+      }
+      const h = this._heightPct(item)
+      const foot = item.y + h / 2
+      ghost.style.left = `${item.x}%`
+      ghost.style.top = `${foot - share * 100}%`
+      ghost.style.height = `${share * 100}%`
+      ghost.style.width = `${node.offsetWidth * (share * 100 / h)}px`   // the layer's own shape
     })
   }
 
@@ -439,7 +563,7 @@ export class ArtworkOverlay {
     const node = item && this._nodeEl(item)
     if (!item || !node) return
 
-    const NUMERIC = ['x', 'y', 'scale', 'height', 'width', 'opacity', 'blur', 'white_key', 'depth', 'rotation', 'tint_opacity']
+    const NUMERIC = ['x', 'y', 'scale', 'height', 'width', 'opacity', 'blur', 'white_key', 'depth', 'rotation', 'tint_opacity', 'occlude', ...SIT_KEYS]
     const BOOLEAN = ['grayscale', 'flip_x', 'flip_y']
     item[key] = NUMERIC.includes(key) ? Number(value) : (BOOLEAN.includes(key) ? !!value : value)
 
@@ -495,6 +619,66 @@ export class ArtworkOverlay {
         this._syncChrome(item)
         break
     }
+    // A new box, mirror or waterline is a new mask (occlusion.js); built once per change.
+    if (key === 'occlude' || (item.occlude && ['x', 'y', 'scale', 'height', 'width', 'flip_x', 'flip_y', 'waterline'].includes(key))) {
+      this._occlude(item, node)
+    }
+    // Speed restyles the live foam in place (the animations keep their phase).
+    const body = node.querySelector(':scope > .art-ambient')
+    if (key === 'speed' && body?.querySelector(':scope > .sit-foam')) {
+      applyFoamSpeed(body, item.foam, item.speed)
+      return
+    }
+    // A new value, or a box that moved over another part of the backdrop: draw it again.
+    if (SIT_KEYS.includes(key) || (sitSpec(item) && ['x', 'y', 'scale', 'height', 'width'].includes(key))) {
+      this._sitIn(item, node)
+    }
+  }
+
+  /**
+   * How fast a boat layer is going, 0 (at anchor) to 1, while it plays: its bow wave and wake
+   * follow at once. The hook for anything that drives a ship live (the power meter: wind fills,
+   * the ship speeds up). Nothing is saved.
+   */
+  setSpeed(assetId, speed) {
+    this.setLayerProp(assetId, 'speed', speed)
+  }
+
+  /**
+   * Blend into the scene: waterline, reflection, contact shadow and colour match (sit-in-scene.js).
+   * Drawn at once with the last (or a neutral) colour, then again once the backdrop is sampled
+   * under this layer's box.
+   */
+  _sitIn(item, node = this._nodeEl(item)) {
+    const body = node?.querySelector(':scope > .art-ambient')
+    const img = body?.querySelector(':scope > img')
+    if (!img) return
+    const spec = renderSitIn(node, body, img, item, item.__colours ?? null)
+    registerSitTuner(() => { for (const i of this._layers) this._sitIn(i) })
+    const wasWashed = !!item.wash
+    item.wash = null
+    if (!spec) {
+      if (wasWashed) img.style.filter = applyLayerFilter(this.host, item)
+      return
+    }
+    const decoded = img.complete && img.naturalWidth
+      ? Promise.resolve()
+      : new Promise(resolve => { img.addEventListener('load', resolve, { once: true }); img.addEventListener('error', resolve, { once: true }) })
+    // The backdrop for the colours, the layer's own picture for where its hull meets the water.
+    Promise.all([backdropPixels(this._backdropUrl), spec.foam > 0 ? backdropPixels(img.src) : null, decoded]).then(([pixels, own]) => {
+      if (this._nodeEl(item) !== node || !node.isConnected) return   // rebuilt or gone meanwhile
+      const hostW = this.host.clientWidth || 1
+      const hostH = this.host.clientHeight || 1
+      const h = this._heightPct(item) / 100
+      const w = (this._widthPct(item) ?? (node.offsetWidth / hostW) * 100) / 100
+      const colours = sampleColours(pixels, { x: item.x / 100 - w / 2, y: item.y / 100 - h / 2, w, h }, hostW / hostH, spec.waterline)
+      if (!colours) return
+      colours.hull = hullSpan(own, 1 - spec.waterline)
+      item.__colours = colours
+      renderSitIn(node, body, img, item, colours)
+      item.wash = spec.color_match > 0 && colours.around ? { rgb: colours.around, amount: spec.color_match } : null
+      img.style.filter = applyLayerFilter(this.host, item)
+    })
   }
 
   /**
@@ -512,6 +696,44 @@ export class ArtworkOverlay {
       const dx = (m.panX || 0) / 100 * rect.width * p * item.depth
       const dy = (m.panY || 0) / 100 * rect.height * p * item.depth
       el.style.transform = this._transform(item, dx, dy)
+      this._syncChrome(item)
+    }
+  }
+
+  /**
+   * The shot camera (camera.js), on the figures: `frameFor(depth)` gives a plane's translate (% of
+   * the stage) and its scale about the stage centre — the same frame ParallaxScene puts on the
+   * backdrop, so a figure stays on its spot of the plate through a push, pan or shake. A scale
+   * about the stage centre is the node's own scale plus a move of its centre by (centre - middle)
+   * x (scale - 1). null puts every layer back at rest.
+   */
+  setCamera(frameFor) {
+    this._cameraFrame = frameFor || null
+    // Called every frame of a move: the host box and the nodes are looked up once, not per frame.
+    // The box is re-read when the stage resizes, the nodes when _render rebuilds them.
+    if (!this._camRect) {
+      this._camRect = this.host.getBoundingClientRect()
+      if (!this._camResize && typeof ResizeObserver === 'function') {
+        this._camResize = new ResizeObserver(() => { this._camRect = null })
+        this._camResize.observe(this.host)
+      }
+    }
+    if (!this._camNodes) {
+      this._camNodes = new Map([...this.host.querySelectorAll('[data-layer-id]')].map(n => [n.dataset.layerId, n]))
+    }
+    const rect = this._camRect
+    for (const item of this._layers) {
+      const el = this._camNodes.get(artObjId(item.asset_id))
+      if (!el || el === this._dragNode) continue   // never fight the layer being dragged
+      if (!frameFor) {
+        el.style.transform = this._transform(item)
+        continue
+      }
+      const f = frameFor(item.depth)
+      const px = (n) => Math.round(n * 100) / 100
+      const dx = px((f.translateX / 100) * rect.width + ((item.x - 50) / 100) * rect.width * (f.scale - 1))
+      const dy = px((f.translateY / 100) * rect.height + ((item.y - 50) / 100) * rect.height * (f.scale - 1))
+      el.style.transform = this._transform(item, dx, dy) + (f.scale !== 1 ? ` scale(${f.scale})` : '')
       this._syncChrome(item)
     }
   }
@@ -674,12 +896,15 @@ export class ArtworkOverlay {
 
   _render() {
     this.host.innerHTML = ''
+    this._camNodes = null   // the camera's node map points at the nodes just thrown away
     for (const item of this._layers) {
       this.host.appendChild(this._node(item))
       if (!this.readonly) this.host.appendChild(this._chrome(item))
     }
     for (const item of this._layers) this._syncChrome(item)
     this._applySelection()
+    // A finished camera move asks for no more frames; rebuilt nodes still take its last pose.
+    if (this._cameraFrame) this.setCamera(this._cameraFrame)
   }
 
   /**
@@ -714,9 +939,7 @@ export class ArtworkOverlay {
       const handle = document.createElement('div')
       handle.dataset.scaleHandle = '1'
       handle.setAttribute('data-tooltip', 'Drag to resize')
-      handle.style.cssText = `position:absolute; ${c.pos} width:10px; height:10px; pointer-events:auto;
-        border-radius:50%; background:#fff; border:1px solid rgba(15,23,42,0.55); cursor:${c.cursor};
-        box-shadow:0 1px 3px rgba(0,0,0,0.4); touch-action:none;`
+      handle.style.cssText = handleCss(c.pos, c.cursor)
       chrome.appendChild(handle)
       if (node) this._wireScale(item, node, handle, c)
     }
@@ -826,6 +1049,8 @@ export class ArtworkOverlay {
     amb.appendChild(img)
     applyAmbient(amb, item, this._layers.indexOf(item))
     node.appendChild(amb)
+    this._sitIn(item, node)
+    this._occlude(item, node)
 
     this._wireDrag(item, node)
     return node
@@ -861,12 +1086,14 @@ export class ArtworkOverlay {
         if (!dragging) {
           dragging = true; node.style.cursor = 'grabbing'
           this._dragNode = node   // pause parallax drift on this layer while editing
+          clearOcclusion(node)    // the whole figure while it moves; its mask comes back on release
           node.style.transform = this._transform(item)   // drop any parallax offset so drag is 1:1
           try { node.setPointerCapture?.(ev.pointerId) } catch (_) { /* synthetic/edge pointers throw */ }
         }
         item.x = origin.x + (dx / rect.width) * 100
         item.y = origin.y + (dy / rect.height) * 100
         clamp(); paint()
+        this._fitGhost(item, node)
         // Magnetic snap to ruler guides (edges/centre of the layer).
         const guides = window.__guides
         if (guides && typeof guides.snap === 'function') {
@@ -1003,6 +1230,9 @@ export class ArtworkOverlay {
   }
 
   _emit(item) {
+    // The end of every drag, resize and turn: the fit ghost goes, the mask is built for the new spot.
+    this.host.querySelector(':scope > [data-fit-ghost]')?.remove()
+    this._occlude(item)
     if (item.anchor === 'map' && this._projector) {
       const ll = this._projector.unproject(item.x, item.y)
       if (ll) { item.lng = ll.lng; item.lat = ll.lat }

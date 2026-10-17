@@ -8,7 +8,9 @@ use App\Enums\LessonStatus;
 use App\Enums\NarrativeFramework;
 use App\Enums\TitlePosition;
 use App\Models\Concerns\BelongsToTeacher;
+use App\Support\LessonTypes;
 use App\Support\MediaUrl;
+use App\Support\TitlePoster;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -22,6 +24,14 @@ use Illuminate\Support\Str;
 class Lesson extends Model
 {
     use BelongsToTeacher, HasFactory, SoftDeletes;
+
+    /** "What you can expect" on the title screen: at most this many lines, each at most this long. */
+    public const EXPECT_MAX_LINES = 3;
+
+    public const EXPECT_MAX_CHARS = 60;
+
+    /** The title column is a string(255). */
+    public const TITLE_MAX_CHARS = 255;
 
     protected $fillable = [
         'teacher_id',
@@ -39,6 +49,7 @@ class Lesson extends Model
         'title',
         'language',
         'translation_group',
+        'teacher_guide',
         'narration_edit_characters',
         'topic',
         'topic_id',
@@ -51,6 +62,12 @@ class Lesson extends Model
         'title_image',
         'title_position',
         'show_qr',
+        'qr_position',
+        'expect',
+        'expect_default',
+        'title_keep_clear',
+        'title_style',
+        'show_lesson_types',
         'poster_image',
         'subject',
         'grade_level',
@@ -118,7 +135,7 @@ class Lesson extends Model
         // lesson's player payload (LessonPlayerController), so changes show on the next request
         // instead of up to 10–30 min later.
         $forgetCaches = static function (Lesson $lesson): void {
-            Cache::forget('home.playable_lessons');
+            \App\Http\Controllers\Public\HomeController::forget();
             \App\Support\DemoLesson::forget();
             if (! empty($lesson->lesson_code)) {
                 Cache::forget('lesson.player.'.strtoupper($lesson->lesson_code));
@@ -155,6 +172,7 @@ class Lesson extends Model
             'intel_drop_at_minutes' => 'integer',
             'outline' => 'array',
             'game_config' => 'array',
+            'teacher_guide' => 'array',
             'include_game' => 'boolean',
             'quiz_question_count' => 'integer',
             'team_count' => 'integer',
@@ -165,6 +183,10 @@ class Lesson extends Model
             'background_music' => 'boolean',
             'title_position' => TitlePosition::class,
             'show_qr' => 'boolean',
+            'expect' => 'array',
+            'expect_default' => 'array',
+            'title_keep_clear' => 'array',
+            'show_lesson_types' => 'boolean',
         ];
     }
 
@@ -266,6 +288,14 @@ class Lesson extends Model
         return $this->hasMany(Scene::class)->orderBy('order');
     }
 
+    /** "≈ N min" on the lesson card and the player's title screen. Eager-load `scenes` when listing. */
+    public function estimatedMinutes(): int
+    {
+        $seconds = $this->scenes->sum(fn (Scene $scene): int => $scene->timelineSeconds()['seconds']);
+
+        return (int) ceil($seconds / 60);
+    }
+
     /** Ordered lesson modules (Epic K) — the modular replacement for scenes. */
     public function modules(): HasMany
     {
@@ -275,10 +305,9 @@ class Lesson extends Model
     /**
      * Which wizard step a lesson card on the dashboard should open.
      *
-     * Teachers open an existing lesson to WATCH it far more often than to re-edit its settings, so a
-     * lesson that has scenes goes straight to Preview (step 5) instead of resuming wherever the
-     * wizard was last left. Two cases still resume instead, because a preview would be useless:
-     * a lesson mid-generation (its progress bar is the point) and one with no scenes yet.
+     * A lesson that has scenes opens in the editor (step 4) instead of resuming wherever the wizard
+     * was last left: opening a lesson from the dashboard means working on it. Two cases still resume
+     * instead: a lesson mid-generation (its progress bar is the point) and one with no scenes yet.
      *
      * Returns null for "resume at wizard_step", which is what LessonWizard::mount() does with no
      * ?step= in the URL.
@@ -292,7 +321,9 @@ class Lesson extends Model
             return null;
         }
 
-        return $this->firstScene !== null ? 5 : null;
+        // The editor (4), not Preview (5): "edit a lesson, will still go to step 5, and not 4"
+        // (Bart, 2026-10-16). Preview is one click away inside the editor (Play).
+        return $this->firstScene !== null ? 4 : null;
     }
 
     public function firstScene(): \Illuminate\Database\Eloquent\Relations\HasOne
@@ -303,6 +334,16 @@ class Lesson extends Model
     public function source(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
         return $this->hasOne(LessonSource::class)->latestOfMany();
+    }
+
+    /** The kerndoelen, tijdvakken, kenmerkende aspecten and Canon windows this lesson covers. */
+    public function curriculumGoals(): BelongsToMany
+    {
+        return $this->belongsToMany(CurriculumGoal::class)
+            ->withPivot('fit')
+            ->withTimestamps()
+            ->orderByRaw("CASE type WHEN 'canonvenster' THEN 1 WHEN 'tijdvak' THEN 2 WHEN 'kenmerkend_aspect' THEN 3 ELSE 4 END")
+            ->orderBy('sort');
     }
 
     /**
@@ -486,7 +527,150 @@ class Lesson extends Model
         return file_exists(public_path("flags/{$qid}.png")) ? asset("flags/{$qid}.png") : null;
     }
 
-    /** Wikipedia lead image used as the lesson title-screen background (catalog lessons). */
+    /** The series wordmark (public/lesson-logos/{translation_group}.svg), when there is one. */
+    public function titleLogoUrl(): ?string
+    {
+        $group = (string) $this->translation_group;
+
+        return $group !== '' && preg_match('/^[a-z0-9][a-z0-9-]*$/', $group) && is_file(public_path("lesson-logos/{$group}.svg"))
+            ? asset("lesson-logos/{$group}.svg")
+            : null;
+    }
+
+    /**
+     * The title styles this lesson can show, in the picker's order: the series' comic candidates
+     * (public/lesson-titles/{group}/{candidate}/, by their `order`), then the logo when the series
+     * has one, then the lettered title (ComicRoma) and the plain title, which always work. The
+     * first is the default.
+     *
+     * @return list<array{key: string, label: string, thumb_url: ?string}>
+     */
+    public function titleChoices(): array
+    {
+        $choices = array_map(
+            fn (array $c): array => ['key' => $c['key'], 'label' => $c['label'], 'thumb_url' => $c['thumb_url']],
+            TitlePoster::candidates($this->translation_group),
+        );
+        $logo = $this->titleLogoUrl();
+        if ($logo !== null) {
+            $choices[] = ['key' => TitlePoster::LOGO, 'label' => __('Logo'), 'thumb_url' => $logo];
+        }
+        $choices[] = ['key' => TitlePoster::LETTERS, 'label' => __('Letters'), 'thumb_url' => $this->titleBgUrl()];
+        $choices[] = ['key' => TitlePoster::PLAIN, 'label' => __('Plain title'), 'thumb_url' => $this->titleBgUrl()];
+
+        return $choices;
+    }
+
+    /**
+     * The title's two parts as the title screen shows them: the series, and the subtitle after the
+     * first ": " (resources/js/title-letters.js splitTitle).
+     *
+     * @return array{series: string, subtitle: string}
+     */
+    public function titleParts(): array
+    {
+        $title = (string) $this->title;
+        $at = strpos($title, ': ');
+
+        return $at === false
+            ? ['series' => $title, 'subtitle' => '']
+            : ['series' => substr($title, 0, $at), 'subtitle' => substr($title, $at + 2)];
+    }
+
+    /**
+     * The poster the title screen draws (a comic candidate), or null for the logo, letters and plain styles.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function titlePoster(): ?array
+    {
+        $style = $this->titleStyle();
+
+        $poster = in_array($style, TitlePoster::BUILT_IN, true) ? null : TitlePoster::for($this->translation_group, $style);
+
+        // A picture the teacher picked is the title screen's picture, whichever poster draws it,
+        // upright on a phone as well.
+        if ($poster && trim((string) $this->title_image) !== '') {
+            $picture = (string) $this->titleBgUrl();
+            $poster = TitlePoster::withPicture($poster, $picture);
+            if ($poster['portrait'] ?? null) {
+                $poster['portrait'] = TitlePoster::withPicture($poster['portrait'], $picture);
+            }
+        }
+
+        return $poster;
+    }
+
+    /**
+     * The upright comic poster as one still picture (a tall card, a tall share image), while the
+     * comic poster is this lesson's title style; null for the logo, letters and plain styles.
+     */
+    public function titlePosterStillUrl(): ?string
+    {
+        $still = $this->titlePoster()['portrait']['still_url'] ?? null;
+
+        return is_string($still) ? $still : null;
+    }
+
+    /**
+     * The picture for a tall card (2:3, 5:8): the upright poster's still while the comic poster is
+     * the title style, even over poster_image (the composer fills that with a landscape photo);
+     * otherwise the card picture as everywhere.
+     */
+    public function tallCardImageUrl(): ?string
+    {
+        return $this->titlePosterStillUrl() ?? $this->cardImageUrl();
+    }
+
+    /** The style the title screen shows: the teacher's choice while the series has it, else the first. */
+    public function titleStyle(): string
+    {
+        $keys = array_column($this->titleChoices(), 'key');
+        $chosen = TitlePoster::key($this->title_style);
+
+        return in_array($chosen, $keys, true) ? $chosen : $keys[0];
+    }
+
+    /**
+     * The lesson-type badges the title screen shows (LessonTypes), none when the teacher hid them.
+     *
+     * @return list<string>
+     */
+    public function titleBadges(): array
+    {
+        return ($this->show_lesson_types ?? true) ? LessonTypes::of($this) : [];
+    }
+
+    /** Where the title screen's join QR stands: auto (placed clear of faces and elements), a corner, or hidden. */
+    public function qrPosition(): string
+    {
+        if (! ($this->show_qr ?? true)) {
+            return 'hidden';
+        }
+
+        return in_array($this->qr_position, TitlePoster::QR_CORNERS, true) ? $this->qr_position : 'auto';
+    }
+
+    /**
+     * "What you can expect" lines for the title screen: 1-3 short lines, trimmed, empties dropped.
+     * Null when there are none (then nothing is drawn).
+     *
+     * @return list<string>|null
+     */
+    public static function cleanExpect(mixed $lines): ?array
+    {
+        $out = [];
+        foreach (is_array($lines) ? $lines : [] as $line) {
+            $line = is_string($line) ? trim((string) preg_replace('/\s+/u', ' ', $line)) : '';
+            if ($line !== '') {
+                $out[] = mb_substr($line, 0, self::EXPECT_MAX_CHARS);
+            }
+        }
+        $out = array_slice($out, 0, self::EXPECT_MAX_LINES);
+
+        return $out === [] ? null : $out;
+    }
+
     /** The title screen's picture: the teacher's choice, else the automatic lead image. */
     public function titleBgUrl(): ?string
     {
@@ -822,6 +1006,15 @@ class Lesson extends Model
     public function hasSlideshowImages(): bool
     {
         return ! empty($this->slideshow_images);
+    }
+
+    /**
+     * Whether any scene speaks in balloons (config.lines, drawn by BalloonLayer.js): the player
+     * preloads the balloon font only then.
+     */
+    public function hasBalloons(): bool
+    {
+        return $this->scenes->contains(fn (Scene $scene) => ! empty($scene->config['lines'] ?? null));
     }
 
     // ── Status helpers ───────────────────────────────────────────────────────

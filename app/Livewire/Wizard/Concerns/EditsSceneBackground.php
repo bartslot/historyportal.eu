@@ -26,7 +26,25 @@ trait EditsSceneBackground
         if (! $scene || ! self::isHex($hex)) {
             return;
         }
+        $panel = $this->editedPanel($scene);
+        if ($panel !== null) {
+            $this->setPanelColor($scene, $panel, strtolower($hex));
+
+            return;
+        }
         $this->replaceBackdrop($scene, ['background_color' => strtolower($hex)], fn (array $cfg) => $this->withoutBackdropExtras($cfg));
+    }
+
+    /**
+     * A split panel's colour is its own (shot background_color, SplitStage's matte for that panel):
+     * the panel's picture goes, its figures stay, and the other panel is not touched.
+     */
+    private function setPanelColor(Scene $scene, int $panel, string $hex): void
+    {
+        $shots = $this->shotsPreservingArtwork($scene, null);
+        $shots[$panel]['background_color'] = $hex;
+        $scene->update(['image_path' => $this->sceneImagePath($scene, null), 'shots' => $shots]);
+        $this->selectSceneInternal($scene->id);
     }
 
     public function setBackgroundGradient(string $from, string $to, int $angle = 180): void
@@ -77,7 +95,7 @@ trait EditsSceneBackground
     {
         $scene->update([
             ...$fields,
-            'image_path' => null,
+            'image_path' => $this->sceneImagePath($scene, null),
             'shots' => $this->shotsPreservingArtwork($scene, null),
             'skybox_image_path' => null,
             'scene_view' => 'slideshow',

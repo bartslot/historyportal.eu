@@ -12,7 +12,7 @@
 // Returns a handle whose destroy() stops the interval and clears the host, and whose pace(totalMs)
 // stretches the slideshow over the scene's narration.
 
-const CYCLE_MS = 5000;
+export const CYCLE_MS = 5000;
 // Floor for a narration-paced cycle: many images over a short voice must still be seen, not flicker.
 const MIN_PACED_CYCLE_MS = 2500;
 
@@ -37,7 +37,7 @@ export function renderGallery(el, cfg = {}, { startIndex = 0, editable = false, 
     ${editable ? `<style>
       [data-edit]{outline:1px dashed transparent;outline-offset:3px;border-radius:4px;transition:outline-color .15s,background .15s;cursor:text;}
       [data-edit]:hover{outline-color:rgba(148,163,184,.5);}
-      [data-edit]:focus{outline:1px solid rgba(251,191,36,.9);background:rgba(251,191,36,.06);}
+      [data-edit]:focus{outline:1px solid color-mix(in oklab, var(--color-primary) 90%, transparent);background:color-mix(in oklab, var(--color-primary) 6%, transparent);}
       [data-edit]:empty:before{content:attr(data-ph);color:#64748b;font-style:italic;}
     </style>` : ''}
     <div style="position:relative;flex:1;overflow:hidden;background:#0b1526;">

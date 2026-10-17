@@ -231,6 +231,83 @@ class Scene extends Model
         return asset('storage/'.$this->audio_path).($version !== '' ? '?v='.$version : '');
     }
 
+    /**
+     * What timelineSeconds() needs when listing lessons with their totals. Leaves out script_segment
+     * (the heavy column): a scene with no length yet then counts as 0 on the card, not by its words.
+     */
+    public const TIMELINE_COLUMNS = 'id,lesson_id,order,kind,game_type,quiz_question_count,duration_seconds,config';
+
+    /** Player chapter bar: how long a quiz question takes when the teacher set no estimate. */
+    public const ESTIMATE_SECONDS_PER_QUESTION = 30;
+
+    public const ESTIMATE_QUIZ_QUESTIONS = 5;
+
+    /** A scene that waits on the student (a map to explore, a gallery, a film) runs at least this long. */
+    public const ESTIMATE_INTERACTIVE_SECONDS = 60;
+
+    public const ESTIMATE_GAME_SECONDS = 600;
+
+    /** Narration reads at about this many words a second; only used when the length is unknown. */
+    private const WORDS_PER_SECOND = 2.5;
+
+    /**
+     * Does this scene wait on the student instead of playing itself out, AND have no duration field
+     * of its own in the editor? Those get the editor's estimate field (config.estimate_seconds).
+     * A quiz or game is excluded: its "Challenge duration" (duration_seconds) already is that number.
+     */
+    public function takesTeacherEstimate(): bool
+    {
+        return $this->kind === 'video'
+            || (in_array($this->kind, ['map', 'gallery'], true) && ($this->config['playback_mode'] ?? null) !== 'timed');
+    }
+
+    /** The estimate a map, gallery or film gets when the teacher set none: its voice-over, or a minute. */
+    public function defaultEstimateSeconds(): int
+    {
+        return max((int) $this->duration_seconds, self::ESTIMATE_INTERACTIVE_SECONDS);
+    }
+
+    /**
+     * This scene's segment on the player's chapter bar, and its share of the lesson's total.
+     *
+     * The ONE place a scene's time is decided: the player, the lesson card and the editor all
+     * read it from here. `estimated` marks a time the student sets themselves (a quiz, a map to
+     * explore), which the bar draws hatched and labels with "≈".
+     *
+     * @return array{seconds:int, estimated:bool, type:string}
+     */
+    public function timelineSeconds(): array
+    {
+        $type = match (true) {
+            $this->kind === 'game' && $this->game_type === 'quiz' => 'quiz',
+            in_array($this->kind, ['game', 'map', 'gallery', 'video', 'voyage'], true) => (string) $this->kind,
+            default => 'narration',
+        };
+        $length = (int) $this->duration_seconds;
+
+        if ($this->kind === 'game') {
+            $default = $type === 'quiz'
+                ? ($this->quiz_question_count ?: self::ESTIMATE_QUIZ_QUESTIONS) * self::ESTIMATE_SECONDS_PER_QUESTION
+                : self::ESTIMATE_GAME_SECONDS;
+
+            return ['seconds' => $length ?: $default, 'estimated' => true, 'type' => $type];
+        }
+
+        if ($this->takesTeacherEstimate()) {
+            $override = (int) ($this->config['estimate_seconds'] ?? 0);
+
+            return ['seconds' => $override ?: $this->defaultEstimateSeconds(), 'estimated' => true, 'type' => $type];
+        }
+
+        if ($length > 0) {
+            return ['seconds' => $length, 'estimated' => false, 'type' => $type];
+        }
+
+        $words = str_word_count(strip_tags((string) $this->script_segment));
+
+        return ['seconds' => (int) round($words / self::WORDS_PER_SECOND), 'estimated' => true, 'type' => $type];
+    }
+
     public function hasBackdrop(): bool
     {
         return filled($this->image_path)
@@ -423,8 +500,20 @@ class Scene extends Model
             return false;
         }
 
+        $narrator = $this->lesson->narrator;
         $wanted = (string) config('services.tts.provider_override', '')
-            ?: (string) $this->lesson->narrator->voice_provider;
+            ?: (string) $narrator->voice_provider;
+
+        // edge-tts voices ARE Azure Neural voices, and edge is refused from the server, so an edge
+        // narrator is read through Azure in the same voice (TtsService). That is the narrator, not a
+        // stand-in: calling it one flagged every scene of lesson 63 (2026-10-18).
+        // Older runs stored no voice name: unknown is not evidence of a stand-in, so say nothing.
+        if ($wanted === 'edge_tts' && $provider === 'azure') {
+            $own = array_filter([(string) $narrator->voice_id, ...array_values((array) ($narrator->voice_map ?? []))]);
+            $voice = (string) $this->audio_voice;
+
+            return $voice !== '' && ! in_array($voice, $own, true);
+        }
 
         return $wanted !== '' && $provider !== $wanted;
     }

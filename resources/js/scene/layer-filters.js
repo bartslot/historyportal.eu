@@ -13,6 +13,9 @@
 //   2. white key   alpha = (1 - luminance) / tolerance, clamped — so anything within `tolerance`
 //                  of white lands on alpha 0 and everything darker stays fully opaque
 //   3. tint        flood the chosen colour and keep it only where the alpha survived
+//   4. wash        colour match: a glaze toward the backdrop around the layer (sit-in-scene.js)
+
+import { washMatrix } from './sit-in-scene.js'
 
 /**
  * A layer from the asset library (a figure, a cloud, a prop) rather than the scene's own backdrop.
@@ -20,6 +23,13 @@
  * same layer put a second copy on screen that the parallax pan slides away from the first.
  */
 export const isClipartLayer = (l) => !!l && l.asset_id != null && l.kind !== 'cover'
+
+/**
+ * The layers ParallaxScene may draw: the backdrop planes, never the library layers. An empty list
+ * means "no backdrop", never "then draw everything", which is how the editor once put every library
+ * picture on screen twice and panned one copy out of its selection box.
+ */
+export const backdropLayers = (layers) => (Array.isArray(layers) ? layers.filter((l) => !isClipartLayer(l)) : [])
 
 /** '#rrggbb' → [r, g, b] in 0..1, the range feColorMatrix works in. */
 export function hexToUnit(hex) {
@@ -38,8 +48,8 @@ export const WHITE_KEY_MAX = 0.5     // 50%: past this a mid-grey starts disappe
 /** Stable per-layer filter id — the markup is regenerated whenever the layer re-renders. */
 export const layerFilterId = (assetId) => `lyrfx-${assetId}`
 
-export function hasTreatment({ white_key = 0, grayscale = false, tint = null } = {}) {
-  return white_key > 0 || !!grayscale || !!tint
+export function hasTreatment({ white_key = 0, grayscale = false, tint = null, wash = null } = {}) {
+  return white_key > 0 || !!grayscale || !!tint || (wash?.amount > 0 && Array.isArray(wash.rgb))
 }
 
 /**
@@ -47,8 +57,8 @@ export function hasTreatment({ white_key = 0, grayscale = false, tint = null } =
  *
  * @returns {?string} SVG markup for a <filter> element's children
  */
-export function filterMarkup({ white_key = 0, grayscale = false, tint = null, tint_opacity = 1 } = {}) {
-  if (!hasTreatment({ white_key, grayscale, tint })) return null
+export function filterMarkup({ white_key = 0, grayscale = false, tint = null, tint_opacity = 1, wash = null } = {}) {
+  if (!hasTreatment({ white_key, grayscale, tint, wash })) return null
 
   const steps = []
 
@@ -98,6 +108,11 @@ export function filterMarkup({ white_key = 0, grayscale = false, tint = null, ti
         `<feComposite in2="SourceGraphic" operator="arithmetic" k1="0" k2="${mix}" k3="${(1 - mix).toFixed(3)}" k4="0"/>`
       )
     }
+  }
+
+  // Last, so it glazes whatever the steps above made of the picture.
+  if (hasTreatment({ wash })) {
+    steps.push(`<feColorMatrix type="matrix" values="${washMatrix(wash.rgb, wash.amount)}"/>`)
   }
 
   return steps.join('')

@@ -176,8 +176,11 @@ class TtsService
                 ?? $this->tryMacosTts($text);
         }
 
+        // edge-tts is free but unofficial: Microsoft 403s it from SiteGround (2026-10-16). Its
+        // voice ids are Azure Neural names, so the paid Azure endpoint reads the same voice.
         if ($provider === 'edge_tts') {
             return $this->tryEdgeTts($text, $voiceId, $speed)
+                ?? $this->tryAzure($text, $voiceId, $speed)
                 ?? $this->tryPocketTts($text, $voiceId)
                 ?? $this->tryMacosTts($text);
         }
@@ -673,10 +676,8 @@ PY;
 
     private function pythonStringLiteral(string $value): string
     {
-        return "'".str_replace(
-            ['\\', "'"],
-            ['\\\\', "\\'"],
-            $value
-        )."'";
+        // A JSON string is a valid Python string literal, newlines and all. The old quote-only
+        // escaping left a raw line break in the script, so any script with one went silent.
+        return json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
     }
 }

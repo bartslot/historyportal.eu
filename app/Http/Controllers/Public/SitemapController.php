@@ -14,7 +14,8 @@ use Illuminate\Support\Facades\Cache;
  * sitemap.xml, generated from the routes and the published lessons.
  *
  * Each entry lists every language as an xhtml:link alternate, which is how Google is told that the
- * five URLs are one page in five languages rather than five thin duplicates.
+ * five URLs are one page in five languages rather than five thin duplicates. A lesson is the
+ * exception: its content has one language, so it is listed once, at that language's URL.
  */
 class SitemapController extends Controller
 {
@@ -22,7 +23,12 @@ class SitemapController extends Controller
 
     public function __invoke(): Response
     {
-        $xml = Cache::remember('sitemap.xml', now()->addMinutes(self::CACHE_MINUTES), function (): string {
+        // Keyed by root URL: a render from the console (tinker, a cron warm-up) resolves URLs against
+        // http://localhost, and under one shared key that cached copy was served to Google for an hour
+        // (2026-10-12).
+        $key = 'sitemap.xml:'.url('/');
+
+        $xml = Cache::remember($key, now()->addMinutes(self::CACHE_MINUTES), function (): string {
             $entries = [];
 
             foreach (['home' => '1.0', 'lessons' => '0.9', 'about' => '0.6'] as $page => $priority) {
@@ -36,7 +42,14 @@ class SitemapController extends Controller
                     '0.8',
                     'monthly',
                     $lesson->updated_at?->toAtomString(),
+                    Seo::lessonLocale($lesson),
                 );
+            }
+
+            // The Dutch curriculum pages: Dutch only, so one URL each and no alternates.
+            $entries[] = $this->url(route('public.curriculum'), '0.6', 'monthly', null, '');
+            foreach (\App\Models\CurriculumGoal::query()->orderBy('sort')->pluck('slug') as $slug) {
+                $entries[] = $this->url(route('public.curriculum.goal', $slug), '0.5', 'monthly', null, '');
             }
 
             // Articles come from WordPress. The index only earns a place once something is published
@@ -67,9 +80,16 @@ class SitemapController extends Controller
         return response($xml, 200, ['Content-Type' => 'application/xml; charset=UTF-8']);
     }
 
-    /** @param array<string,mixed> $params */
-    private function entry(string $page, array $params, string $priority, string $changefreq, ?string $lastmod = null): string
+    /**
+     * @param  array<string,mixed>  $params
+     * @param  string|null  $only  a page that exists in one language (a lesson): one <url>, no alternates
+     */
+    private function entry(string $page, array $params, string $priority, string $changefreq, ?string $lastmod = null, ?string $only = null): string
     {
+        if ($only !== null) {
+            return $this->url(Seo::url($page, $params, $only), $priority, $changefreq, $lastmod, '');
+        }
+
         $alternates = '';
 
         foreach (Locales::codes() as $code) {
@@ -84,15 +104,20 @@ class SitemapController extends Controller
         $xml = '';
 
         foreach (Locales::codes() as $code) {
-            $xml .= '  <url>'."\n"
-                .'    <loc>'.e(Seo::url($page, $params, $code)).'</loc>'."\n"
-                .($lastmod ? '    <lastmod>'.e($lastmod).'</lastmod>'."\n" : '')
-                .'    <changefreq>'.$changefreq.'</changefreq>'."\n"
-                .'    <priority>'.$priority.'</priority>'."\n"
-                .$alternates
-                .'  </url>'."\n";
+            $xml .= $this->url(Seo::url($page, $params, $code), $priority, $changefreq, $lastmod, $alternates);
         }
 
         return $xml;
+    }
+
+    private function url(string $loc, string $priority, string $changefreq, ?string $lastmod, string $alternates): string
+    {
+        return '  <url>'."\n"
+            .'    <loc>'.e($loc).'</loc>'."\n"
+            .($lastmod ? '    <lastmod>'.e($lastmod).'</lastmod>'."\n" : '')
+            .'    <changefreq>'.$changefreq.'</changefreq>'."\n"
+            .'    <priority>'.$priority.'</priority>'."\n"
+            .$alternates
+            .'  </url>'."\n";
     }
 }

@@ -10,7 +10,7 @@ use Tests\TestCase;
 
 class BrandedMailTest extends TestCase
 {
-    private const BRAND_AMBER_HEX = '#fbbf24';
+    private const BRAND_AMBER_HEX = '#f59e0b';
 
     private const BRAND_NAVY_HEX = '#0f172a';
 

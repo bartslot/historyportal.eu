@@ -29,14 +29,14 @@
             font-weight: bold;
             letter-spacing: 3px;
             text-transform: uppercase;
-            color: #fbbf24;
+            color: #f59e0b;
             margin-bottom: 14px;
         }
         .cover-title { font-size: 24px; font-weight: bold; line-height: 1.25; }
         .cover-subtitle { font-size: 11px; color: #cbd5e1; margin-top: 6px; }
         .accent-rule {
             height: 4px;
-            background-color: #fbbf24;
+            background-color: #f59e0b;
             border-radius: 2px;
             margin: 14px 0 24px 0;
         }
@@ -57,7 +57,7 @@
             font-size: 14px;
             font-weight: bold;
             color: #0f172a;
-            border-bottom: 2px solid #fbbf24;
+            border-bottom: 2px solid #f59e0b;
             padding-bottom: 5px;
             margin: 0 0 16px 0;
         }
@@ -72,7 +72,7 @@
             letter-spacing: 1.5px;
             text-transform: uppercase;
             color: #0f172a;
-            border-left: 4px solid #fbbf24;
+            border-left: 4px solid #f59e0b;
             padding-left: 8px;
             margin-bottom: 6px;
         }
@@ -83,7 +83,7 @@
             font-size: 9px;
             color: #92400e;
             background-color: #fef3c7;
-            border: 1px solid #fbbf24;
+            border: 1px solid #f59e0b;
             border-radius: 4px;
             padding: 6px 10px;
             margin-bottom: 16px;

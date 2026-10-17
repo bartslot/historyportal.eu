@@ -21,9 +21,21 @@ export const INTERPOLATE = {
   angle: (a, b, t) => lerp(a, unwrapAngle(b, a), t),
   /** Metres above sea level. Halfway between 100 and 10,000 should look halfway, which is 1,000. */
   log: lerpAltitude,
+  /** '#rrggbb' per channel. A missing colour ('' is "no tint") cannot be mixed, so it cuts at the
+   *  end of the segment rather than inventing a colour between nothing and something. */
+  color: (a, b, t) => {
+    const A = rgb(a)
+    const B = rgb(b)
+    if (!A || !B) return t < 1 ? a : b
+    return `#${A.map((c, i) => Math.round(lerp(c, B[i], t)).toString(16).padStart(2, '0')).join('')}`
+  },
 }
 
-const P = (key, label, interpolate, unit = '') => ({ key, label, interpolate, unit })
+const rgb = (hex) => (/^#[0-9a-f]{6}$/i.test(String(hex ?? ''))
+  ? [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
+  : null)
+
+const P = (key, label, interpolate, unit = '') => ({ key, label, interpolate, unit, type: interpolate === 'color' ? 'color' : 'number' })
 
 /**
  * The animatable properties of each object kind. Adding a kind here is what makes it appear in the
@@ -49,9 +61,18 @@ const REGISTRY = {
   // and a text item has no `opacity` at all (it has `bgOpacity`, and only the rect has `opacity`).
   // Both would have drawn a row that silently animated nothing, which is the exact failure this
   // registry exists to prevent — and writing the warning in the comment did not stop me guessing.
+  // Since 2026-10-16 a text also has a look (App\Services\Support\TextLayerStyle), drawn by
+  // TextOverlayLayer: every key below is a field it reads. `size` stays the string "xl": no row.
   text: [
     P('x', 'X', 'linear', '%'),
     P('y', 'Y', 'linear', '%'),
+    P('w', 'W', 'linear', '%'),
+    P('scale', 'Scale', 'linear', '%'),
+    P('rotation', 'Angle', 'angle', '°'),
+    P('blur', 'Blur', 'linear', ''),
+    P('opacity', 'Opacity', 'linear', ''),
+    P('color', 'Colour', 'color', ''),
+    P('colorOpacity', 'Colour %', 'linear', ''),
   ],
   /** The half-panel behind a caption. `opacity` is a number on these and only on these. */
   rect: [
@@ -62,8 +83,36 @@ const REGISTRY = {
     P('x', 'X', 'linear', '%'),
     P('y', 'Y', 'linear', '%'),
     P('width', 'W', 'linear', '%'),
+    P('height', 'H', 'linear', '%'),
     P('scale', 'Scale', 'linear', '%'),
     P('rotation', 'Angle', 'angle', '°'),
+    P('blur', 'Blur', 'linear', ''),
+    P('opacity', 'Opacity', 'linear', ''),
+    P('tint', 'Colour', 'color', ''),
+    P('tint_opacity', 'Colour %', 'linear', ''),
+  ],
+  /**
+   * A speech or thought balloon (config.lines, BalloonLayer.balloonValue): where its middle is, its
+   * size and opacity, and its tail: the tip, the root on the outline (0..1) and the bend.
+   */
+  bal: [
+    P('x', 'X', 'linear', '%'),
+    P('y', 'Y', 'linear', '%'),
+    P('scale', 'Scale', 'linear', '%'),
+    P('opacity', 'Opacity', 'linear', ''),
+    P('tip_x', 'Tail X', 'linear', '%'),
+    P('tip_y', 'Tail Y', 'linear', '%'),
+    P('root', 'Tail root', 'linear', ''),
+    P('bend', 'Bend', 'linear', ''),
+  ],
+  /**
+   * A scene's background picture, or one split panel's (scene/background-crop.js): which point of
+   * it stays in view, as the panel's Uitsnede stores it, its zoom about that point and its opacity.
+   */
+  bg: [
+    P('x', 'X', 'linear', '%'),
+    P('y', 'Y', 'linear', '%'),
+    P('zoom', 'Zoom', 'linear', ''),
     P('opacity', 'Opacity', 'linear', ''),
   ],
   /** A diorama item: its place on its floor, in cells. X runs left-right, Z away from the camera.

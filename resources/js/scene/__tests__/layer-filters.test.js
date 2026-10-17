@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { filterMarkup, hasTreatment, applyLayerFilter, layerFilterId, isClipartLayer } from '../layer-filters.js'
+import { filterMarkup, hasTreatment, applyLayerFilter, layerFilterId, isClipartLayer, backdropLayers } from '../layer-filters.js'
 
 describe('layer colour treatment', () => {
   it('asks for nothing when the layer is untreated', () => {
@@ -110,5 +110,27 @@ describe('which renderer owns a layer', () => {
 
     expect(clipart.map(l => l.url)).toEqual(['dante.webp'])
     expect(parallax.map(l => l.url)).toEqual(['bg.webp', 'library-bg.webp'])
+  })
+})
+
+// Bart 2026-10-14, prod scene 1311: a narration scene built only from library backdrops (no cover).
+// The editor fell back to handing ParallaxScene the WHOLE list when it found no backdrop, so every
+// library picture was drawn twice: once still and selectable (ArtworkOverlay), once under the Ken
+// Burns pan. The picture drifted out of its own selection box, and it looked like the layer
+// "started animating" the moment it was added.
+describe('backdropLayers', () => {
+  const library = (id) => ({ asset_id: id, url: `/a/${id}.webp`, kind: 'figure', depth: 1.3 })
+
+  it('a shot made only of library layers has no backdrop for ParallaxScene', () => {
+    expect(backdropLayers([library(25), library(28), library(23), library(99)])).toEqual([])
+  })
+
+  it('keeps the cover and drops the library layers', () => {
+    const cover = { url: '/bg.avif', kind: 'cover', depth: 0.4 }
+    expect(backdropLayers([cover, library(25)])).toEqual([cover])
+  })
+
+  it('no layers, no backdrop', () => {
+    expect(backdropLayers(null)).toEqual([])
   })
 })

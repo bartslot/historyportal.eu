@@ -194,6 +194,10 @@ class ImportIconLibraryTest extends TestCase
     {
         $meta = json_decode((string) file_get_contents(resource_path('icons/history-line/meta.json')), true);
         foreach ($meta as $ref => $entry) {
+            $this->assertFileExists(resource_path('icons/history-line/'.$ref));
+            if (array_keys($entry) === ['era']) {
+                continue;   // import_art.py filed it under an era; describing it is the next step (icons:import warns)
+            }
             $this->assertNotEmpty($entry['description'], $ref);
             $this->assertContains($entry['placement'], ['stands', 'sky', 'held', 'closeup', 'cropped'], $ref);
             $this->assertSame($entry['placement'] === 'stands', isset($entry['height_m']), "{$ref}: a thing that stands needs a height, nothing else has one");

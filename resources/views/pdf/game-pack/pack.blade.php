@@ -1,5 +1,5 @@
 {{-- Printed game pack (spelpakket) — dompdf. Tables & simple divs only, no flexbox,
-     no webfonts. Raw hex is intentional (brand: navy #0f172a + amber #fbbf24). --}}
+     no webfonts. Raw hex is intentional (brand: navy #0f172a + amber #f59e0b). --}}
 <!DOCTYPE html>
 <html lang="nl">
 <head>
@@ -29,7 +29,7 @@
             font-weight: bold;
             letter-spacing: 3px;
             text-transform: uppercase;
-            color: #fbbf24;
+            color: #f59e0b;
             margin-bottom: 8px;
         }
         .sheet-title { font-size: 18px; font-weight: bold; }
@@ -39,7 +39,7 @@
             font-size: 8.5px;
             color: #92400e;
             background-color: #fef3c7;
-            border: 1px solid #fbbf24;
+            border: 1px solid #f59e0b;
             border-radius: 4px;
             padding: 5px 9px;
             margin-bottom: 14px;
@@ -66,7 +66,7 @@
         }
         .role-power {
             font-size: 13px; color: #0f172a;
-            border-left: 4px solid #fbbf24; padding-left: 10px;
+            border-left: 4px solid #f59e0b; padding-left: 10px;
         }
 
         /* ── Tokens ────────────────────────────────────────────── */
@@ -115,7 +115,7 @@
             font-size: 10px;
             color: #64748b;
         }
-        .meter-start { background-color: #fbbf24; color: #0f172a; font-weight: bold; }
+        .meter-start { background-color: #f59e0b; color: #0f172a; font-weight: bold; }
 
         /* ── Team badges ───────────────────────────────────────── */
         .badge-table { border-collapse: separate; border-spacing: 10px; width: 100%; }

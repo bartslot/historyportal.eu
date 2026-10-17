@@ -2,10 +2,17 @@ import * as THREE from 'three'
 import { Avatar3DPlayer } from '../avatar-3d.js'
 import { isTopAnchored, normalizeFit, PORTRAIT_TOP_BIAS } from './background-fit.js'
 import { mountEmbedBg, embedBgSignature } from './embed-bg.js'
-import { isClipartLayer } from './layer-filters.js'
+import { isClipartLayer, backdropLayers } from './layer-filters.js'
 import { fitToPlate, plateAspect } from './plate-box.js'
 import { t } from '../i18n.js'
 import { gradientCanvas } from './background-gradient.js'
+import { cameraSpec } from './camera.js'
+import { normalizeSplit, paneCount } from './split-layout.js'
+import { singleSource, cropPlates, textureCrop, fade, publishBackgrounds } from './background-crop.js'
+import { balloonOptions, hideStageBalloons, setBalloonScene, showStageBalloons, typingIn } from './editor-balloons.js'
+
+/** Scene kinds the player draws its own way, without balloons (SceneSplit::NO_SPLIT_KINDS). */
+const NO_BALLOON_KINDS = ['game', 'map', 'voyage', 'gallery', 'video']
 
 /**
  * Push every alignment entry earlier by VISEME_LEAD_SECONDS. The avatar player
@@ -28,6 +35,7 @@ function shiftAlignment(alignment) {
  * shader pipeline (player.setSkyboxFromUrl) instead of stacking a second sphere.
  */
 export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, characterUrl, initialSceneId = null }) {
+    let _stageBackgrounds = null   // what publishBackgrounds() hands the timeline after a scene load
     const Scene = window.LessonScene
     if (!Scene) {
         console.warn('[wizard-bridge] window.LessonScene not loaded')
@@ -109,6 +117,10 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         // wrong branch to execute with the wrong image URL, creating extra texture loads.
         if (playerReady && !_pendingView) {
             const view = dbView
+            // The background(s) this scene shows, for the timeline (background-crop.js). Each stage
+            // path below sets it; anything else (a map, a world, a film) has none to animate.
+            _stageBackgrounds = null
+            fade(canvasEl, 1)
             try {
                 if (!payload.config?.diorama) hideDiorama()
                 if (payload.config?.diorama) {
@@ -124,20 +136,24 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                         backgroundColor: payload.backgroundColor || '#000000',
                         isCurrent,
                     })
+                } else if (view === 'slideshow' && normalizeSplit(payload.split ?? payload.config?.split)) {
+                    // Two comic panels: the same SplitStage the player draws, editable here.
+                    applySlideshowCameraMode(activePlayer)
+                    await showSplitStage(payload, isCurrent)
                 } else if (view === 'slideshow') {
                     applySlideshowCameraMode(activePlayer)
+                    destroySplitStage()
                     const firstShot = (payload.shots && payload.shots.length) ? payload.shots[0] : null
                     await applySlideshowBackground(payload.imageUrl, payload.sceneId ?? 0, payload.duration ?? 10, {
-                        kbAnimated: payload.kbAnimated,
-                        kbDirection: payload.kbDirection,
                         backgroundColor: payload.backgroundColor,
                         gradient: payload.backgroundGradient ?? payload.config?.background_gradient,
                         focus: payload.focus ?? payload.config?.background_focus,
                         fit: payload.fit ?? payload.config?.background_fit,
                         layers: firstShot?.layers ?? null,
-                        parallax: !!payload.parallax,
+                        camera: firstShot?.camera ?? null,
+                        entry: firstShot?.entry ?? null,
                         clipartOnTop: !!payload.config?.clipart_on_top,
-                        slideshowMode: payload.slideshowMode || (payload.parallax ? 'parallax' : 'standard'),
+                        backdropDepth: payload.config?.backdrop_depth ?? null,
                         sceneId: payload.sceneId ?? 0,
                         isCurrent,
                     })
@@ -176,6 +192,10 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                 }
             } catch (err) {
                 console.warn('[wizard-bridge] background load failed', err)
+            }
+            if (isCurrent()) {
+                syncBalloons(payload, view)
+                publishBackgrounds(_stageBackgrounds)
             }
         }
         if (!isCurrent()) return
@@ -275,21 +295,20 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             applySlideshowCameraMode(activePlayer)
             const firstShot = (e.detail?.shots && e.detail.shots.length) ? e.detail.shots[0] : null
             await applySlideshowBackground(imageUrl, sceneId ?? 0, duration ?? 10, {
-                kbAnimated: e.detail?.kbAnimated,
-                kbDirection: e.detail?.kbDirection,
                 backgroundColor: e.detail?.backgroundColor,
                 focus: e.detail?.focus ?? e.detail?.config?.background_focus,
                 fit: e.detail?.fit ?? e.detail?.config?.background_fit,
                 layers: firstShot?.layers ?? null,
-                parallax: !!e.detail?.parallax,
+                camera: firstShot?.camera ?? null,
+                entry: firstShot?.entry ?? null,
                 clipartOnTop: !!e.detail?.config?.clipart_on_top,
+                backdropDepth: e.detail?.config?.backdrop_depth ?? null,
                 sceneId: sceneId ?? 0,
                 isCurrent,
             })
         } else if (view === 'skybox') {
             // Skybox sphere is already loaded — just restore camera + make it visible.
             destroyWizardLayers()
-            kenBurnsState = null
             if (activePlayer._skyboxSphere) activePlayer._skyboxSphere.visible = true
             activePlayer?.dismountWorldLabs?.()
             hideWorldWaitingState(activePlayer?._scene)
@@ -321,8 +340,6 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         activePlayer?.dismountWorldLabs?.()
         _lastMountedWorldStatus = null
         if (activePlayer._skyboxSphere) activePlayer._skyboxSphere.visible = true
-        // Pause Ken Burns animation when leaving slideshow.
-        kenBurnsState = null
         // Restore orbit + rotate when coming back from slideshow or world
         restoreDefaultCameraMode(activePlayer)
         await activePlayer.setSkyboxFromUrl(url, blur)
@@ -439,7 +456,6 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         // whatever texture happened to be on the canvas before. Also avoids handing the loader
         // a null url — THREE would fetch the literal string "null" and log a stray 404.
         if (!url) {
-            kenBurnsState = null
             if (activePlayer._skyboxSphere) activePlayer._skyboxSphere.visible = false
             // A gradient, drawn the way the player's CSS draws it (background-gradient.js); else the colour.
             const canvas = gradientCanvas(motion.gradient)
@@ -477,53 +493,30 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             if (activePlayer._skyboxSphere) activePlayer._skyboxSphere.visible = false
             activePlayer._scene.background = tex
 
-            // 'contain' is always static — a Ken Burns zoom would crop back into the work the
-            // teacher just asked to see whole. Matches the player.
-            if (motion.kbAnimated === false || currentBgFit === 'contain') {
-                // Motion off: freeze at a clean fit.
-                kenBurnsState = null
-                const cv = coverScale(tex)
-                tex.repeat.set(cv.rX, cv.rY)
-                tex.offset.set(cv.oX, cv.oY)
-            } else {
-                startKenBurns(tex, sceneId, Math.max(4, durationSec || 10), motion.kbDirection || null)
-            }
+            // A still picture at a clean fit, as in the player: a scene moves by its shot camera
+            // (a camera move makes it a layered shot), never by a Ken Burns drift of its own.
+            const cv = coverScale(tex)
+            tex.repeat.set(cv.rX, cv.rY)
+            tex.offset.set(cv.oX, cv.oY)
+            // As a background the timeline animates: the same crop the player's picture takes,
+            // starting where the stage anchors it (a portrait's face).
+            const top = isTopAnchored('cover', currentBgFocus, tex.image?.naturalWidth || tex.image?.width, tex.image?.naturalHeight || tex.image?.height)
+            _stageBackgrounds = singleSource({
+                base: { y: top ? (1 - PORTRAIT_TOP_BIAS) * 100 : 50 },
+                draw: (c) => {
+                    const r = textureCrop(coverScale(tex), c)
+                    tex.repeat.set(r.rX, r.rY)
+                    tex.offset.set(r.oX, r.oY)
+                    fade(canvasEl, c.opacity)
+                },
+                el: () => canvasEl,
+            })
         } catch (err) {
             if (!isCurrent()) return
             console.warn('[wizard-bridge] slideshow texture load failed', err)
         }
     }
 
-    // ── Ken Burns ──────────────────────────────────────────────────────────────
-    // Each variant: start/end UV offset + start/end "repeat" (visible portion).
-    // repeat < 1 = zoomed in; repeat = 1.0 fills the texture. Image always covers.
-    const KEN_BURNS_VARIANTS = [
-        { from: { ox: 0.00, oy: 0.00, r: 0.91 }, to: { ox: 0.09, oy: 0.09, r: 1.00 } }, // TL → BR, zoom out
-        { from: { ox: 0.09, oy: 0.00, r: 0.91 }, to: { ox: 0.00, oy: 0.09, r: 1.00 } }, // TR → BL
-        { from: { ox: 0.09, oy: 0.09, r: 0.91 }, to: { ox: 0.00, oy: 0.00, r: 1.00 } }, // BR → TL
-        { from: { ox: 0.00, oy: 0.09, r: 0.91 }, to: { ox: 0.09, oy: 0.00, r: 1.00 } }, // BL → TR
-        { from: { ox: 0.045, oy: 0.045, r: 0.91 }, to: { ox: 0.045, oy: 0.045, r: 1.00 } }, // centered zoom
-        { from: { ox: 0.00, oy: 0.045, r: 0.91 }, to: { ox: 0.09, oy: 0.045, r: 0.91 } },  // pan L→R, no zoom
-    ]
-    const KEN_BURNS_PAUSE_MS = 2000
-    let kenBurnsState = null
-    // Teacher-selectable moves (scenes.kb_direction) — mirrors the player's KB_NAMED set.
-    const KEN_BURNS_NAMED = {
-        left_right: { from: { ox: 0.00, oy: 0.045, r: 0.91 }, to: { ox: 0.09, oy: 0.045, r: 0.91 } },
-        right_left: { from: { ox: 0.09, oy: 0.045, r: 0.91 }, to: { ox: 0.00, oy: 0.045, r: 0.91 } },
-        zoom_in:    { from: { ox: 0.045, oy: 0.045, r: 1.00 }, to: { ox: 0.045, oy: 0.045, r: 0.88 } },
-        zoom_out:   { from: { ox: 0.045, oy: 0.045, r: 0.88 }, to: { ox: 0.045, oy: 0.045, r: 1.00 } },
-    }
-
-    function startKenBurns(tex, sceneId, durationSec, direction = null) {
-        const idx = ((Number(sceneId) || 0) % KEN_BURNS_VARIANTS.length + KEN_BURNS_VARIANTS.length) % KEN_BURNS_VARIANTS.length
-        kenBurnsState = {
-            tex,
-            variant:    KEN_BURNS_NAMED[direction] ?? KEN_BURNS_VARIANTS[idx],
-            startedAt:  performance.now(),
-            durationMs: durationSec * 1000,
-        }
-    }
     // Compute "cover" UV scale so the background image fills the viewport without
     // stretching regardless of how the window is resized.
     function coverScale(tex) {
@@ -600,41 +593,6 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         tex.generateMipmaps  = false
         tex.minFilter        = THREE.LinearFilter
         return tex
-    }
-
-    function tickKenBurns(now) {
-        if (!kenBurnsState) return
-        const { tex, variant, startedAt, durationMs } = kenBurnsState
-        // Ping-pong cycle: from → to (pan), pause, to → from (pan back), pause.
-        const cycleDuration = 2 * durationMs + 2 * KEN_BURNS_PAUSE_MS
-        const elapsed = (now - startedAt) % cycleDuration
-
-        // Direction value d: 0 = `from` position, 1 = `to` position.
-        let d
-        if (elapsed < durationMs) {
-            d = elapsed / durationMs                                   // forward
-        } else if (elapsed < durationMs + KEN_BURNS_PAUSE_MS) {
-            d = 1                                                      // hold at `to`
-        } else if (elapsed < 2 * durationMs + KEN_BURNS_PAUSE_MS) {
-            d = 1 - (elapsed - durationMs - KEN_BURNS_PAUSE_MS) / durationMs  // reverse
-        } else {
-            d = 0                                                      // hold at `from`
-        }
-
-        const eased = d < 0.5 ? 2 * d * d : 1 - Math.pow(-2 * d + 2, 2) / 2
-        const ox = variant.from.ox + (variant.to.ox - variant.from.ox) * eased
-        const oy = variant.from.oy + (variant.to.oy - variant.from.oy) * eased
-        const r  = variant.from.r  + (variant.to.r  - variant.from.r)  * eased
-        // Apply cover scaling so the image always fills the viewport at any size.
-        const cv = coverScale(tex)
-        tex.repeat.set(cv.rX * r, cv.rY * r)
-        // Top-anchored portraits pan the vertical drift DOWNWARD only, so it never rises past
-        // the top edge (which would wrap the texture and bleed the image's bottom in at the top).
-        const kbImg = tex.image
-        const oySign = isTopAnchored(currentBgFit, currentBgFocus,
-            kbImg?.naturalWidth  || kbImg?.width  || 0,
-            kbImg?.naturalHeight || kbImg?.height || 0) ? -1 : 1
-        tex.offset.set(cv.oX + ox * cv.rX, cv.oY + oySign * oy * cv.rY)
     }
 
     // ── Auto-orbit + handheld vibration ───────────────────────────────────────
@@ -832,49 +790,121 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         }
     }
 
-    // Frame tick for Ken Burns (texture UV animation). Runs alongside the
-    // player's own RAF; cheap (just mutates texture matrix).
-    function startKenBurnsTick() {
-        const loop = () => {
-            requestAnimationFrame(loop)
-            tickKenBurns(performance.now())
-        }
-        requestAnimationFrame(loop)
-    }
-
     // Layered scene (wizard E3c preview): renders a multiplane shot via ParallaxScene
     // in a DOM host laid over the Three.js canvas. The wizard has no #background-layer
     // (that element belongs to the student player), so we own our host here.
     let _parallaxMod = null
     let _wizardLayeredScene = null
     let _wizardLayerHost = null
-    let _wizardLayeredRaf = 0
     let _bgSig = null   // skip re-fading the background when only unrelated inspector fields change
-    let _layeredParallax = false   // is the current scene in Parallax mode (drives clipart drift)
 
-    // Ken Burns direction → ParallaxScene motion, so the ANIMATED + direction settings drive
-    // the background pan/zoom on layered scenes too (not just flat ones). Static when off.
-    const kbMotion = (payload) => {
-        // 'contain' is always static, as on a flat scene: a pan would crop the whole-image view.
-        if (payload.kbAnimated === false || normalizeFit(payload.fit) === 'contain') return { panX: 0, panY: 0, zoom: 1 }
-        switch (payload.kbDirection) {
-            case 'left_right': return { panX: 6, panY: 0, zoom: 1.03 }
-            case 'right_left': return { panX: -6, panY: 0, zoom: 1.03 }
-            case 'zoom_in':    return { panX: 0, panY: 0, zoom: 1.09 }
-            case 'zoom_out':   return { panX: 0, panY: 0, zoom: 0.92 }
-            default:           return { panX: -4, panY: 0, zoom: 1.06 }   // Auto (varied pans)
-        }
-    }
     // Editable clipart overlay (separate from the parallax bg): its own host, own module.
     let _artworkMod = null
     let _artworkOverlay = null
     let _artworkHost = null
     let _artworkSig = null   // skip re-seeding the overlay on identical poll re-renders
     let _artworkIdent = null // WHICH layers are on the scene; a change here is the only rebuild
-    // Drawing mode: ink pen engine that draws each clipart stroke-by-stroke.
-    let _inkMod = null
-    let _inkEngines = []
-    let _inkSig = null
+    // Split scene (config.split): its comic panels, SplitStage, the player's own renderer.
+    let _splitMod = null
+    let _splitStage = null
+    let _splitHost = null
+    let _splitSig = null
+    let _splitLinesSig = null
+
+    /** The editor's balloons: in the split panels (SplitStage), or over a standard slide. */
+    function syncBalloons(payload, view) {
+        const split = !!normalizeSplit(payload.split ?? payload.config?.split)
+        const lines = payload.config?.lines || []
+        const shown = view === 'slideshow' && !payload.config?.diorama && !NO_BALLOON_KINDS.includes(payload.kind)
+        setBalloonScene({
+            lines: shown ? lines : [],
+            split,
+            panel: Number.isInteger(payload.activePanel) ? payload.activePanel : 0,
+            panelLayers: (payload.shots || []).slice(0, Math.max(1, paneCount(payload.split ?? payload.config?.split))).map(s => s.layers || []),
+        })
+        // Only the scene editor (step 3) has a text overlay; a preview never edits balloons.
+        if (shown && !split && document.getElementById('lesson-text-overlay')) showStageBalloons(canvasEl.parentElement, lines)
+        else hideStageBalloons()
+    }
+
+    function destroySplitStage() {
+        if (_splitStage) { try { _splitStage.destroy() } catch (_) {} }
+        _splitStage = null
+        _splitHost?.remove()
+        _splitHost = null
+        _splitSig = null
+    }
+
+    async function showSplitStage(payload, isCurrent) {
+        if (!_splitMod) _splitMod = await import('./SplitStage.js')
+        if (!isCurrent()) return
+        const panel = Number.isInteger(payload.activePanel) ? payload.activePanel : 0
+        const stripV = (u) => String(u || '').split('?')[0]
+        const split = payload.split ?? payload.config?.split
+        const shots = (payload.shots || []).slice(0, paneCount(split))
+        // scene:load re-fires on every poll and unrelated edit: rebuild only on a real change, or
+        // a figure mid-drag and every entrance would restart. A panel click only moves the ring.
+        // The split's position and each panel's crop are left OUT of the signature: the divider
+        // and the panes are dragged on the stage itself, and the save's echo must update them in
+        // place. A rebuild would flash the stage and throw away what the hand is holding.
+        const sig = JSON.stringify([payload.sceneId, normalizeSplit(split)?.layout, payload.backgroundColor,
+            shots.map(({ focus, ...s }) => ({ ...s, image_url: stripV(s.image_url), layers: (s.layers || []).map(l => ({ ...l, url: stripV(l.url) })) }))])
+        // The balloons are left out too: a typed word or a dragged tail is redrawn in place.
+        const linesSig = JSON.stringify(payload.config?.lines ?? [])
+        if (_splitStage && sig === _splitSig && _splitHost?.isConnected) {
+            if (linesSig !== _splitLinesSig && !typingIn(_splitHost)) {
+                _splitLinesSig = linesSig
+                _splitStage.setLines(payload.config?.lines || [])
+            }
+            _splitStage.setSplit(split)
+            shots.forEach((s, i) => _splitStage.setFocus(i, s.focus))
+            _splitStage.select(panel)
+            window.__lessonArtworkLayer = _splitStage.overlay(panel)
+            _stageBackgrounds = _splitStage.backgrounds()
+            return
+        }
+        destroyWizardLayers()
+        const parent = canvasEl.parentElement
+        if (!parent) return
+        if (getComputedStyle(parent).position === 'static') parent.style.position = 'relative'
+        if (activePlayer?._skyboxSphere) activePlayer._skyboxSphere.visible = false
+        activePlayer._scene.background = new THREE.Color(payload.backgroundColor || '#0f172a')
+        const host = document.createElement('div')
+        host.className = 'wizard-split-host'
+        // Above the canvas, below the text overlay (z-7). The panels themselves catch the clicks.
+        host.style.cssText = 'position:absolute;inset:0;overflow:hidden;z-index:1;pointer-events:none;'
+        parent.appendChild(host)
+        _splitHost = host
+        _splitStage = new _splitMod.SplitStage(host, {
+            editable: true,
+            onSelect: (i) => window.Livewire?.dispatch('split:panel', { panel: i }),
+            onLayerChange: (i, assetId, t) => window.Livewire?.dispatch('artwork:move', {
+                assetId, x: t.x, y: t.y, scale: t.scale, rotation: t.rotation, panel: i,
+            }),
+            // The divider and the panes, moved on the stage: the same values the sliders set.
+            onSplitChange: (s) => window.Livewire?.dispatch('split:at', { at: s.at }),
+            // A pane panned or zoomed on the stage: its crop, and a key at the playhead when the
+            // timeline animates it (recordCanvasEdit), as a dragged layer gets one.
+            onViewChange: (i, f) => {
+                window.Livewire?.dispatch('split:view', { panel: i, x: f.x, y: f.y, zoom: f.zoom })
+                window.dispatchEvent(new CustomEvent('scene-object-edited', { detail: { target: `bg:${i}`, values: { x: f.x, y: f.y, zoom: f.zoom } } }))
+            },
+            balloons: balloonOptions(),
+        })
+        _splitStage.show({
+            split,
+            shots,
+            lines: payload.config?.lines || [],
+            matte: payload.backgroundColor || null,
+            loop: true,
+            selected: panel,
+        })
+        _splitSig = sig
+        _splitLinesSig = linesSig
+        // The layer list, the inspector and the timeline talk to the active panel's figures.
+        window.__lessonArtworkLayer = _splitStage.overlay(panel)
+        _stageBackgrounds = _splitStage.backgrounds()
+    }
 
     function wizardLayerHost() {
         if (_wizardLayerHost?.isConnected) return _wizardLayerHost
@@ -1003,7 +1033,6 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     }
 
     function destroyWizardLayers() {
-        if (_wizardLayeredRaf) { cancelAnimationFrame(_wizardLayeredRaf); _wizardLayeredRaf = 0 }
         if (_wizardLayeredScene) {
             try { _wizardLayeredScene.destroy() } catch (_) {}
             _wizardLayeredScene = null
@@ -1014,21 +1043,19 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         if (_artworkHost) _artworkHost.style.display = 'none'
         _artworkSig = null
         _artworkIdent = null
-        for (const e of _inkEngines) { try { e.destroy() } catch (_) {} }
-        _inkEngines = []
-        _inkSig = null
+        destroySplitStage()
     }
 
     async function showLayeredSlideshowShot(payload) {
         try {
-            const { layers, parallax = false } = payload
+            const { layers } = payload
             const isCurrent = payload.isCurrent ?? (() => true)
             if (!Array.isArray(layers) || !layers.length) return false
             if (!isCurrent()) return false
 
             // Split: the background plane(s) render as parallax; free clipart (asset_id) is
             // rendered by the editable overlay so teachers can move + scale it directly.
-            const bgLayers = layers.filter(l => !isClipartLayer(l))
+            const bgLayers = backdropLayers(layers)
             const artLayers = layers.filter(isClipartLayer)
 
             if (!_parallaxMod) _parallaxMod = await import('./ParallaxScene.js')
@@ -1037,50 +1064,41 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             if (!host) return false
 
             host.style.display = ''
-            kenBurnsState = null
             if (activePlayer?._skyboxSphere) activePlayer._skyboxSphere.visible = false
 
             // ── Background — only rebuild when the bg actually changes. Re-showing on every
             //    scene:load (a caption toggle, a script edit, a 3s poll) re-runs the 900ms fade =
-            //    the flicker Bart saw. The motion follows the ANIMATED + Ken Burns direction. ──
-            const motion = kbMotion(payload)
-            const animated = payload.kbAnimated !== false && (Math.abs(motion.panX) > 0.01 || Math.abs(motion.zoom - 1) > 0.001)
-            // Module flag so the persistent bg loop drives clipart parallax with the CURRENT mode
-            // (a Standard↔Parallax switch keeps the same motion, so the bg loop isn't rebuilt).
-            _layeredParallax = parallax
+            //    the flicker Bart saw. The shot camera is the ONE background motion: without one
+            //    (Hold) nothing moves, backdrop or figures (Bart, 2026-10-16). ──
+            const motion = { panX: 0, panY: 0, zoom: 1 }
             // Strip the ?v=<updated_at> cache-buster: it changes on EVERY scene save (a caption
             // toggle, a script edit), which would otherwise force a bg re-fade = flicker.
             const stripV = (u) => String(u || '').split('?')[0]
             const fit = normalizeFit(payload.fit)
             const matte = payload.backgroundColor || null
-            const bgSig = JSON.stringify([bgLayers.map(l => stripV(l.url)), motion, animated, fit, matte])
+            // The shot's own camera (camera.js): previewed in a loop, the figures riding along.
+            const camera = cameraSpec(payload.camera)
+            const bgSig = JSON.stringify([bgLayers.map(l => stripV(l.url)), fit, matte, camera, payload.entry ?? null])
             if (bgSig !== _bgSig || !_wizardLayeredScene) {
                 _bgSig = bgSig
-                if (_wizardLayeredRaf) { cancelAnimationFrame(_wizardLayeredRaf); _wizardLayeredRaf = 0 }
                 if (_wizardLayeredScene) { try { _wizardLayeredScene.destroy() } catch (_) {} }
                 _wizardLayeredScene = new _parallaxMod.ParallaxScene(host)
-                _wizardLayeredScene.show({ layers: bgLayers.length ? bgLayers : layers, motion, fit, matte })
-                if (animated) {
-                    // Ping-pong so the pan/zoom previews in a loop (playback drives it monotonically).
-                    const CYCLE_MS = 12000, start = performance.now()
-                    const loop = (now) => {
-                        if (!_wizardLayeredScene) return
-                        const t = ((now - start) % CYCLE_MS) / CYCLE_MS
-                        const prog = t < 0.5 ? t * 2 : (1 - t) * 2
-                        _wizardLayeredScene.update(prog)
-                        // In Parallax mode the clipart follows the camera by its depth (rest at prog 0);
-                        // otherwise it stays flat (prog 0 → no offset).
-                        _artworkOverlay?.setParallax(_layeredParallax ? prog : 0, motion)
-                        _wizardLayeredRaf = requestAnimationFrame(loop)
-                    }
-                    _wizardLayeredRaf = requestAnimationFrame(loop)
-                } else {
+                _wizardLayeredScene.show({
+                    // Backdrop planes only. Falling back to the whole list drew every library
+                    // picture a second time, out of its selection box.
+                    layers: bgLayers, motion, fit, matte,
+                    camera, entry: payload.entry ?? null, loop: true, entryAlong: [_artworkHost],
+                    onCameraFrame: (frameFor) => _artworkOverlay?.setCamera(frameFor),
+                })
+                // A shot camera drives the backdrop and the figures itself. Without one (Hold) both
+                // stand still, and the figures drop any pose a previous camera left on them.
+                if (!camera) {
+                    _artworkOverlay?.setCamera(null)
                     _wizardLayeredScene.update(0.5)   // static, centred pose
                     _artworkOverlay?.setParallax(0, motion)   // no camera motion → clipart at rest
                 }
             }
 
-            const mode = payload.slideshowMode || (parallax ? 'parallax' : 'standard')
             const artHost = wizardArtworkHost()
             // Whole image: the figures share the plate's box, so their x/y stay on the drawn floor.
             if (artHost) {
@@ -1089,33 +1107,8 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                 fitToPlate(artHost, canvasEl.parentElement, aspect)
             }
 
-            if (mode === 'drawing' && artHost && artLayers.length) {
-                // Drawing mode: each clipart draws itself stroke-by-stroke (looped preview). Not
-                // editable here — teachers position it in Standard/Parallax, Drawing is the effect.
-                artHost.style.display = ''
-                if (_artworkOverlay) { try { _artworkOverlay.clear() } catch (_) {} }
-                if (!_inkMod) _inkMod = await import('./InkDrawEngine.js')
-                if (!isCurrent()) return false
-                const sig = JSON.stringify(artLayers.map(l => [l.asset_id, l.x, l.y, l.scale, l.height, String(l.url || '').split('?')[0], l.ink_preset, l.ink_fill, l.draw_time]))
-                if (sig !== _inkSig) {
-                    _inkSig = sig
-                    for (const e of _inkEngines) { try { e.destroy() } catch (_) {} }
-                    _inkEngines = artLayers.map((l) => {
-                        const eng = new _inkMod.InkDrawEngine(artHost)
-                        eng.draw(l.url, { xPct: l.x ?? 50, yPct: l.y ?? 58, scale: l.scale ?? 1, heightPct: l.height ?? 40 }, {
-                            loop: true,
-                            preset: l.ink_preset || undefined,
-                            fillMode: (l.ink_fill && l.ink_fill !== 'auto') ? l.ink_fill : undefined,
-                            durationSec: l.draw_time || undefined,
-                        })
-                        return eng
-                    })
-                    window.__inkEngines = _inkEngines
-                }
-            } else if (artHost) {
-                // Editable clipart overlay (Standard / Parallax).
-                for (const e of _inkEngines) { try { e.destroy() } catch (_) {} }
-                _inkEngines = []; _inkSig = null
+            if (artHost) {
+                // Editable clipart overlay.
                 artHost.style.display = ''
                 if (!_artworkMod) _artworkMod = await import('./ArtworkOverlay.js')
                 if (!isCurrent()) return false
@@ -1135,6 +1128,8 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                 const clipartOnTop = !!payload.clipartOnTop
                 _artworkOverlay.setOnTop(clipartOnTop)
                 _artworkOverlay.setStackLevels(2, 8)   // on the nodes — a z-index here would break blending
+                // The backdrop blend-into-scene samples its colours from.
+                _artworkOverlay.setBackdrop(bgLayers.find(l => (l.kind ?? 'cover') === 'cover')?.url, payload.backdropDepth)
                 // Skip re-seeding on identical poll re-renders (would reset an in-progress edit).
                 const sig = _artworkMod.layersSignature(artLayers)
                 // Re-seed only on a real change, then replay the entrances so the teacher sees
@@ -1155,6 +1150,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                     _artworkIdent = ident
                 }
             }
+            _stageBackgrounds = singleSource({ draw: (c) => cropPlates(host, c), el: () => host })
             return true
         } catch (e) {
             console.warn('[wizard-bridge] layered slideshow failed', e)
@@ -1251,7 +1247,6 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     playerReady  = true
 
     startHandheldVibration(player)
-    startKenBurnsTick()
     // Configure = editable identity: inline-edit + an × to hide it, persisted per scene.
     overlay      = new Scene.SceneOverlay(overlayEl, {
       editable: true,
@@ -1313,8 +1308,6 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             kind:      first.kind,
             duration:  first.duration_seconds,
             backgroundColor: first.background_color,
-            kbAnimated:  first.kb_animated,
-            kbDirection: first.kb_direction,
             focus: first.config?.background_focus,
             fit: first.config?.background_fit,
             // The scene config rides along so first paint honours per-scene flags
@@ -1340,13 +1333,13 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                 location:   scene?.location,
                 kind:       scene?.kind,
                 backgroundColor: scene?.background_color,
-                kbAnimated:  scene?.kb_animated,
-                kbDirection: scene?.kb_direction,
                 focus: scene?.config?.background_focus,
                 fit: scene?.config?.background_fit,
                 // The whole config rides along so a video/3D background plays in Step-4 playback
                 // too — without it every scene change here tore the embed back down.
                 config: scene?.config ?? null,
+                // A split scene needs its two panels to draw them.
+                shots: scene?.config?.split ? (scene?.shots ?? []) : undefined,
                 textsReadonly: scene?.config?.texts || [],
                 dioramaAssets: scene?.dioramaAssets ?? {},
             }),
