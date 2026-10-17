@@ -161,7 +161,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-BrEwV0Tw.js",
+    "file": "assets/app-CPgE64Cw.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -447,7 +447,7 @@
     "isDynamicEntry": true
   },
   "resources/js/test-session/recorder.js": {
-    "file": "assets/recorder-CVRINqQj.js",
+    "file": "assets/recorder-Dn3onjMh.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,
