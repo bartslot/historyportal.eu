@@ -153,7 +153,8 @@ class IconPanelTest extends TestCase
 
         $labels = array_column($this->panel()->call('selectCollection', 'history-line')->instance()->groups(), 'label');
 
-        $this->assertSame(['Characters', 'Nature', 'Architecture', 'Misc', 'Backdrops'], $labels);
+        // By how often a teacher needs them (Bart, 2026-10-17): characters, backgrounds, then the rest.
+        $this->assertSame(['Characters', 'Backdrops', 'Misc', 'Nature', 'Architecture'], $labels);
     }
 
     public function test_an_unknown_collection_is_ignored(): void

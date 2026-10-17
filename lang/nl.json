@@ -2204,5 +2204,6 @@
     "{1} Re-narrate 1 scene (about :chars characters).|[2,*] Re-narrate :count scenes (about :chars characters).": "{1} 1 scène opnieuw inspreken (ongeveer :chars tekens).|[2,*] :count scènes opnieuw inspreken (ongeveer :chars tekens).",
     "{1} Make 1 picture again.|[2,*] Make :count pictures again.": "{1} 1 beeld opnieuw maken.|[2,*] :count beelden opnieuw maken.",
     "{1} Write 1 script again.|[2,*] Write :count scripts again.": "{1} 1 tekst opnieuw schrijven.|[2,*] :count teksten opnieuw schrijven.",
-    "{1} 1 problem needs you.|[2,*] :count problems need you.": "{1} 1 probleem moet je zelf oplossen.|[2,*] :count problemen moet je zelf oplossen."
+    "{1} 1 problem needs you.|[2,*] :count problems need you.": "{1} 1 probleem moet je zelf oplossen.|[2,*] :count problemen moet je zelf oplossen.",
+    "Nothing from this period in this set.": "Niets uit deze tijd in deze set."
 }
