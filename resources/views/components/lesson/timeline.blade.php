@@ -7,6 +7,8 @@
     'payloads'        => [],
     // Configure only: the pinned title screen item, ['title' => string, 'image' => ?string, 'selected' => bool].
     'titleScreen'     => null,
+    // Configure only: LessonProblems per scene id, for the thumbnail's dot.
+    'problems'        => [],
 ])
 
 {{-- Vertical scene rail (LessonUp/Keynote-style): numbered thumbnails down the left edge.
@@ -106,6 +108,7 @@
              @if ($editable) data-sortable="timeline" @endif>
             @foreach ($scenes as $scene)
                 <x-lesson.scene-thumb :scene="$scene"
+                                      :problems="$problems[$scene->id] ?? []"
                                       :selected="$scene->id === $selectedSceneId"
                                       :number="$loop->iteration"
                                       :editable="$editable"

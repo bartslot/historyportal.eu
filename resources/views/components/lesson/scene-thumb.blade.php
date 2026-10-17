@@ -8,6 +8,8 @@
     // the server what it already told us. Configure keeps the Livewire round trip, because
     // selecting a scene there really does change server-side editing state.
     'clientSwitch' => false,
+    // What LessonProblems found on this scene (the editor passes them; null = the old status dot).
+    'problems' => null,
 ])
 
 {{-- data-thumb / data-thumb-selected let the rail's @container "compact" rules (timeline.blade)
@@ -118,8 +120,18 @@
         </span>
     @endif
 
-    @if ($scene->status === 'failed')
-        <span class="absolute top-1 right-1 w-4 h-4 rounded-full bg-error text-white text-3xs flex items-center justify-center">!</span>
+    {{-- The dot explains itself: red when the class will notice, amber when the scene plays but
+         not as the teacher left it (an older voice). The sentence is LessonProblems', never the
+         raw error. Outside the editor (no problems passed) a failed scene keeps its plain dot. --}}
+    @php
+        $worst = $problems === null ? ($scene->status === 'failed' ? \App\Support\LessonProblems::BLOCKS : null) : \App\Support\LessonProblems::worst($problems);
+        $why = $problems ? implode(' ', array_unique(array_column($problems, 'message'))) : null;
+    @endphp
+    @if ($worst)
+        <span data-problem-dot="{{ $worst }}" @if ($why) data-tooltip="{{ $why }}" @endif
+              @class(['pointer-events-auto absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full text-3xs font-bold',
+                      'bg-error text-white' => $worst === \App\Support\LessonProblems::BLOCKS,
+                      'bg-warning text-warning-content' => $worst !== \App\Support\LessonProblems::BLOCKS])>!</span>
     @endif
     </span>
 

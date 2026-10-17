@@ -981,7 +981,10 @@
                   "Transition" read as "RANSITION". Nothing in an inspector wants sideways scroll. --}}
              class="card-body overflow-y-auto overflow-x-hidden p-4"
              :style="inspectorBodyStyle()">
-            @if ($this->titleSelected && $panelView === 'scene')
+            @if ($panelView === 'problems')
+            {{-- The lesson's problems (LessonProblems), opened from the header's warning count. --}}
+            <x-lesson.problems-panel :problems="$this->problems" :plan="$this->fixPlan()" :scenes="$this->scenes" />
+            @elseif ($this->titleSelected && $panelView === 'scene')
             {{-- The pinned title screen's Format: its picture, where the title sits, the QR code. --}}
             <x-lesson.title-screen-inspector :lesson="$lesson" />
             @elseif ($activeTextId && ($activeText = $this->activeText))
@@ -1031,6 +1034,9 @@
                      state on switch, so sliders/tabs show — and can persist — the wrong scene's
                      values. A changing key forces Alpine to reinitialise from the new scene. --}}
                 <div wire:key="scene-inspector-{{ $sceneModel->id }}" x-data="{ tab: 'format' }" class="space-y-3">
+                @foreach ($this->problemsByScene[$sceneModel->id] ?? [] as $problem)
+                    <x-lesson.scene-problem-row :problem="$problem" :scene="$sceneModel" />
+                @endforeach
                 {{-- Same two tabs as a layer, for the same reason: what the scene looks like, and
                      how it arrives. Every scene kind gets Animate — a map or a gallery replaces the
                      scene before it just as a narration scene does. --}}
@@ -1736,6 +1742,20 @@
         <div class="flex items-stretch gap-0.5">
         {{-- Help leaves the lesson (a new tab, the help centre), so a divider keeps it apart from
              the two things you do TO the lesson. Bart tried it centred first: it read as weird. --}}
+        {{-- What is wrong with the lesson (LessonProblems): hidden when nothing is; red when the class
+             will notice, amber when a scene only plays an older voice. Opens the Problems view. --}}
+        @if ($problemCount = count($this->problems))
+            @php $problemSeverity = \App\Support\LessonProblems::worst($this->problems); @endphp
+            <button type="button" wire:click="openProblems"
+                    data-problems-count="{{ $problemCount }}" data-severity="{{ $problemSeverity }}"
+                    data-tooltip="{{ trans_choice('{1} 1 problem in this lesson|[2,*] :count problems in this lesson', $problemCount, ['count' => $problemCount]) }}"
+                    aria-label="{{ trans_choice('{1} 1 problem in this lesson|[2,*] :count problems in this lesson', $problemCount, ['count' => $problemCount]) }}"
+                    @class(['flex h-10 items-center gap-1 self-center rounded-xl px-2 text-sm font-semibold transition hover:bg-slate-800',
+                            'text-error' => $problemSeverity === \App\Support\LessonProblems::BLOCKS,
+                            'text-warning' => $problemSeverity !== \App\Support\LessonProblems::BLOCKS])>
+                <x-icons.exclamation-triangle class="h-6 w-6" /><span>{{ $problemCount }}</span>
+            </button>
+        @endif
         <a href="{{ route('help.index') }}#edit" target="_blank" rel="noopener"
            class="grid h-10 w-10 place-items-center self-center rounded-xl text-slate-400 transition hover:bg-slate-800 hover:text-primary"
            data-tooltip="{{ __('How the editor works') }}" aria-label="{{ __('Help') }}">
@@ -2482,6 +2502,7 @@
 
     {{-- Scene rail (vertical, left edge) --}}
     <x-lesson.timeline :scenes="$this->scenes" :selected-scene-id="$this->titleSelected ? null : $selectedSceneId" editable
+                       :problems="$this->problemsByScene"
                        :title-screen="['title' => $lesson->title, 'image' => $lesson->titleBgUrl(), 'selected' => $this->titleSelected]" />
 
     {{-- Rail resize handle — drag the rail's right edge to resize it; drag it under 24px (near
