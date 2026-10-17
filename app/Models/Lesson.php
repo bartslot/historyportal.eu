@@ -9,6 +9,7 @@ use App\Enums\NarrativeFramework;
 use App\Enums\TitlePosition;
 use App\Models\Concerns\BelongsToTeacher;
 use App\Support\LessonTypes;
+use App\Support\LessonVersion;
 use App\Support\MediaUrl;
 use App\Support\TitlePoster;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -108,6 +109,13 @@ class Lesson extends Model
 
     protected static function booted(): void
     {
+        // A content change is a new version (LessonVersion); a new lesson starts at 1.
+        static::updated(function (Lesson $lesson): void {
+            if (LessonVersion::contentChanged($lesson->getChanges(), LessonVersion::LESSON_IGNORED)) {
+                LessonVersion::changed($lesson->id);
+            }
+        });
+
         static::creating(function (Lesson $lesson): void {
             if (empty($lesson->lesson_code)) {
                 do {
@@ -186,6 +194,8 @@ class Lesson extends Model
             'expect' => 'array',
             'expect_default' => 'array',
             'title_keep_clear' => 'array',
+            'content_version' => 'integer',
+            'content_version_at' => 'datetime',
             'show_lesson_types' => 'boolean',
         ];
     }
@@ -641,14 +651,14 @@ class Lesson extends Model
         return ($this->show_lesson_types ?? true) ? LessonTypes::of($this) : [];
     }
 
-    /** Where the title screen's join QR stands: auto (placed clear of faces and elements), a corner, or hidden. */
+    /**
+     * The title screen's join QR: shown ('auto': its one place, the bottom rail's right end,
+     * title-qr.js) or hidden. A corner stored before 2026-10-17 is ignored (Bart: "you should be
+     * able to hide it only"); show_qr keeps a hidden one hidden.
+     */
     public function qrPosition(): string
     {
-        if (! ($this->show_qr ?? true)) {
-            return 'hidden';
-        }
-
-        return in_array($this->qr_position, TitlePoster::QR_CORNERS, true) ? $this->qr_position : 'auto';
+        return ($this->show_qr ?? true) ? 'auto' : 'hidden';
     }
 
     /**

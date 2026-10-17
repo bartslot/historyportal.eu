@@ -146,6 +146,9 @@ class LessonExportTest extends TestCase
         $lesson = app(LessonComposer::class)->build($spec, $this->teacher, narrate: false);
         $exported = app(LessonExporter::class)->toSpec($lesson->fresh());
 
+        // The version is the lesson's state (LessonVersion), carried on but not authored.
+        $this->assertGreaterThanOrEqual(1, $exported['content_version']);
+        unset($exported['content_version']);
         $this->assertEquals($spec, $exported);
     }
 
@@ -202,7 +205,7 @@ class LessonExportTest extends TestCase
         $exporter = app(LessonExporter::class);
         $lesson = app(LessonComposer::class)->build($spec, $this->teacher, narrate: false);
 
-        $this->assertEquals($spec, $exporter->toSpec($lesson->fresh()));
+        $this->assertEquals($spec, array_diff_key($exporter->toSpec($lesson->fresh()), ['content_version' => true]));
         $this->assertSame([], $exporter->unresolvedImages());
     }
 

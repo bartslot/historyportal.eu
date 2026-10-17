@@ -149,23 +149,12 @@ trait EditsTitleScreen
         $this->refreshTitleFrame();
     }
 
-    /** The join QR: auto (placed clear of faces and the screen's elements), a corner, or hidden. */
-    public function setQrPosition(string $position): void
+    /** The join QR on or off. Its place is not a choice: the bottom rail's right end (title-qr.js). */
+    public function setShowQr(bool $show): void
     {
-        if (! in_array($position, ['auto', 'hidden', ...TitlePoster::QR_CORNERS], true)) {
-            return;
-        }
-        $this->lesson->update([
-            'show_qr' => $position !== 'hidden',
-            'qr_position' => in_array($position, TitlePoster::QR_CORNERS, true) ? $position : null,
-        ]);
+        $this->lesson->update(['show_qr' => $show, 'qr_position' => null]);
         $this->lesson->refresh();
         $this->refreshTitleFrame();
-    }
-
-    public function resetQrPosition(): void
-    {
-        $this->setQrPosition('auto');
     }
 
     /** One of the "what you can expect" lines; an empty line drops out, the rest close up. */

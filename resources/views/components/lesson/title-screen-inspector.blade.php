@@ -127,37 +127,22 @@
         </div>
     </div>
 
-    {{-- The join QR: always bottom right on the title screen (static), or hidden. --}}
-    @php $qr = $lesson->qrPosition(); @endphp
-    <div class="border-t border-slate-700/50 pt-4" data-qr-position="{{ $qr }}">
-        <div class="flex items-center justify-between gap-3">
-            <label for="title-qr-position" class="text-2xs uppercase tracking-widest text-slate-500">{{ __('QR position') }}</label>
-            @if ($qr !== 'auto')
-                <button type="button" wire:click="resetQrPosition" data-qr-reset class="text-2xs text-slate-500 transition-colors hover:text-primary">{{ __('Reset to default') }}</button>
-            @endif
-        </div>
-        <select id="title-qr-position" wire:change="setQrPosition($event.target.value)" class="select select-sm mt-2 w-full">
-            @foreach (['auto' => __('Bottom right'), 'hidden' => __('Hidden')] as $value => $label)
-                <option value="{{ $value }}" @selected($value === 'hidden' ? $qr === 'hidden' : $qr !== 'hidden')>{{ $label }}</option>
-            @endforeach
-        </select>
-    </div>
+    {{-- The join QR: shown or not. Its place follows the title: the bottom rail's right end,
+         opposite Start, clear of every title position (title-qr.js). --}}
+    @php $qrOn = $lesson->qrPosition() !== 'hidden'; @endphp
+    <label class="flex items-center justify-between gap-3 border-t border-slate-700/50 pt-4" data-qr-position="{{ $lesson->qrPosition() }}">
+        <span class="flex items-center gap-2">
+            <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Show QR code') }}</span>
+            {{-- The version the class's screens show under the QR (LessonVersion), and when it was made. --}}
+            <span data-lesson-version class="font-mono text-2xs text-slate-600"
+                  @if ($lesson->content_version_at) data-tooltip="{{ $lesson->content_version_at->isoFormat('D MMM YYYY, HH:mm') }}" @endif>v{{ (int) ($lesson->content_version ?? 1) }}</span>
+        </span>
+        <input type="checkbox" @checked($qrOn) wire:change="setShowQr($event.target.checked)" data-qr-toggle class="toggle toggle-sm shrink-0" />
+    </label>
 
     {{-- Rarely changed: closed until opened (the open state is remembered). --}}
     <x-ui.settings-section :title="__('Advanced')" :open="false" name="title-advanced" class="-mx-4" data-title-advanced>
         <div class="space-y-4 px-4 pb-2">
-    {{-- The lesson-type badges (LessonTypes): shown when true of the lesson, unless hidden here. --}}
-    <div class="flex items-center gap-3">
-        <label class="flex flex-1 items-center justify-between gap-3">
-            <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Lesson type') }}</span>
-            <input type="checkbox" @checked($lesson->show_lesson_types ?? true)
-                   wire:change="setShowLessonTypes($event.target.checked)" data-lesson-types-toggle
-                   class="toggle toggle-sm shrink-0" />
-        </label>
-        @if ($lesson->show_lesson_types === false)
-            <button type="button" wire:click="setShowLessonTypes(true)" data-lesson-types-reset class="text-2xs text-slate-500 transition-colors hover:text-primary">{{ __('Reset to default') }}</button>
-        @endif
-    </div>
 
     {{-- "What you can expect": up to three short lines (the banner's white strip, else under the title). --}}
     @php $expect = array_values((array) ($lesson->expect ?? [])); @endphp
