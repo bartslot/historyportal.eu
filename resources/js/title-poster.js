@@ -13,6 +13,9 @@
  * drops the letters in, then fades the scene up; nothing of it plays under reduced motion.
  */
 import { applyAmbient, trackStage } from './scene/ambient.js'
+import { uprightCover } from './title-upright.js'
+
+export { uprightCover, UPRIGHT } from './title-upright.js'
 
 export const PHONE_GUTTER_PX = 16
 
@@ -59,18 +62,27 @@ export function posterFit (viewW, viewH, poster, gutter = PHONE_GUTTER_PX) {
 /**
  * Pure: a candidate's two variants, split once so each keeps its identity: the landscape poster
  * (its own data, without the portrait) and the upright one (portrait.json beside poster.json in
- * the candidate's folder, App\Support\TitlePoster), or null when it has none.
+ * the candidate's folder, App\Support\TitlePoster), or null when it has none. pictureKeepClear:
+ * the teacher's own title picture's keep_clear, for a derived upright layout (title-upright.js).
  */
-export function posterVariants (poster) {
+export function posterVariants (poster, pictureKeepClear = null) {
   if (!poster) return null
   const { portrait = null, ...landscape } = poster
-  return { landscape, portrait: portrait ? { ...portrait } : null }
+  return { landscape, portrait: portrait ? { ...portrait } : null, pictureKeepClear }
 }
 
-/** Pure: the variant for a view: the portrait in an upright view when there is one, else the landscape. */
+/** Pure: whether an upright view gets a poster of its own: a portrait.json, or one derived from a painted poster. */
+export const hasUpright = (variants) => !!(variants?.portrait || variants?.landscape?.fit === 'cover')
+
+/**
+ * Pure: the variant for a view: in an upright view the portrait when there is one, else a painted
+ * poster's derived upright layout (title-upright.js); any other view the landscape.
+ */
 export function variantFor (variants, viewW, viewH) {
   if (!variants) return null
-  return viewH > viewW && variants.portrait ? variants.portrait : variants.landscape
+  if (!(viewH > viewW)) return variants.landscape
+  if (variants.portrait) return variants.portrait
+  return variants.landscape.fit === 'cover' ? uprightCover(variants.landscape, viewW, viewH, variants.pictureKeepClear) : variants.landscape
 }
 
 // Where a tall phone puts the cover's focus: a little above the middle, clear of the Start bar.

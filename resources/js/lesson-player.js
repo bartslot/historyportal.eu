@@ -57,7 +57,7 @@ import { captionVisible } from './scene/SceneOverlay.js'
 import { gradientCss } from './scene/background-gradient.js'
 import { t } from './i18n.js'
 import { mountBigCountdown } from './big-countdown.js'
-import { mountTitlePoster as mountPoster, posterFit, episodeSize, posterVariants, variantFor } from './title-poster.js'
+import { mountTitlePoster as mountPoster, posterFit, episodeSize, posterVariants, variantFor, hasUpright } from './title-poster.js'
 import { QR, qrOptions, layoutTitleQr, drawQrDebug, coverRect, pictureSize } from './title-qr.js'
 import { placeExpectStrip } from './title-expect.js'
 import { FIT, FIT_START, collisions, nextFit, artHits, calmScale, lettersBox, scaleBoxAbout, titlePieces } from './title-fit.js'
@@ -325,13 +325,15 @@ Alpine.data('lessonGame', (lesson) => ({
       lesson.slideshow_images?.forEach(s => { s.url = fixUrl(s.url) })
 
       // The comic title poster in the view's orientation: a phone held upright gets the candidate's
-      // portrait.json (Bart's upright Tasman poster), anything else the landscape one. Re-chosen
-      // when the view turns; the title screen remounts it then.
-      this._posters = posterVariants(lesson.title_poster)
-      this._posterUpright = innerHeight > innerWidth && !!this._posters?.portrait
+      // portrait.json (Bart's upright Tasman poster) or, for a painted one, an upright layout of its
+      // own assets (title-upright.js); anything else the landscape one. Re-chosen when the view
+      // turns; the title screen remounts it then. The teacher's own picture centres on its subject.
+      const ownPicture = lesson.title_bg_url && lesson.title_poster?.layers?.some(l => l.url === lesson.title_bg_url)
+      this._posters = posterVariants(lesson.title_poster, ownPicture ? lesson.title_keep_clear ?? null : null)
+      this._posterUpright = innerHeight > innerWidth && hasUpright(this._posters)
       lesson.title_poster = variantFor(this._posters, innerWidth, innerHeight)
       addEventListener('resize', () => {
-        const upright = innerHeight > innerWidth && !!this._posters?.portrait
+        const upright = innerHeight > innerWidth && hasUpright(this._posters)
         if (upright === this._posterUpright) return
         this._posterUpright = upright
         this.lesson.title_poster = variantFor(this._posters, innerWidth, innerHeight)
