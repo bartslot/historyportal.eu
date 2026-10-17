@@ -152,10 +152,14 @@ class Step3SceneConfigurator extends Component
     /** Set from ?modal=1 on a preview deep-link — the JS reopens the landfall gallery once mounted. */
     public bool $openModalOnLoad = false;
 
-    public function mount(Lesson $lesson): void
+    /** The real player opens over the editor as soon as it loads (?step=5, the old Preview). */
+    public bool $playOnOpen = false;
+
+    public function mount(Lesson $lesson, bool $playOnOpen = false): void
     {
         abort_unless(auth()->user()?->canManage($lesson), 403);
         $this->lesson = $lesson;
+        $this->playOnOpen = $playOnOpen;
         // Editing is not unpublishing. This used to set Configuring unconditionally, so a teacher
         // who opened a PUBLISHED lesson merely to look at it took it off the air — silently, on a
         // GET — and every student link for it stopped resolving. A live lesson comes down when the
@@ -166,6 +170,9 @@ class Step3SceneConfigurator extends Component
             ...($isPlayable ? [] : ['status' => LessonStatus::Configuring]),
             'wizard_step' => 4,
         ]);
+        if ($playOnOpen) {
+            $this->prepareToPlay();
+        }
 
         // Repair legacy lessons where two voyage scenes shared one leg (older "add leg" reused the
         // last catalog leg) — so editing one leg's destination no longer drags another's.
@@ -5789,16 +5796,23 @@ class Step3SceneConfigurator extends Component
         $this->publishNotice = __('Publish schedule cleared.');
     }
 
+    /**
+     * The editor's Play: the real player (what the class sees) opens over the editor at the
+     * selected scene (the play overlay in step3-scene-configurator.blade.php); X and Esc come back.
+     */
     #[On('lesson:play')]
-    public function continueToPreview(): void
+    public function openPlay(): void
     {
-        $this->lesson->update(['wizard_step' => 5, 'status' => LessonStatus::Previewable]);
-        // Carry the scene the teacher is on → the preview autoplays FROM here, not the first scene.
-        $this->redirectRoute('teacher.lessons.wizard', array_filter([
-            'lesson' => $this->lesson->id,
-            'step' => 5,
-            'scene' => $this->selectedSceneId,
-        ]), navigate: true);
+        $this->prepareToPlay();
+        $this->dispatch('play-lesson-open');
+    }
+
+    /** The player serves Published and Previewable lessons: one being edited becomes Previewable. */
+    public function prepareToPlay(): void
+    {
+        if ($this->lesson->status !== LessonStatus::Published) {
+            $this->lesson->update(['status' => LessonStatus::Previewable]);
+        }
     }
 
     /** Called on every poll tick — pushes updated world status to the canvas. */

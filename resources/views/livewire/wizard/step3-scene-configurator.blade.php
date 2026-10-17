@@ -1660,8 +1660,8 @@
 
         <div class="mx-1 my-1.5 w-px bg-slate-700"></div>
 
-        {{-- Play → open the player (step 5) --}}
-        <button type="button"
+        {{-- Play → the real player over the editor, from the selected scene (the play overlay below) --}}
+        <button type="button" data-play-lesson
                 onclick="Livewire.dispatch('lesson:play')"
                 class="grid h-10 w-10 place-items-center rounded-xl text-slate-300 transition hover:bg-base-200 hover:text-primary"
                 data-tour="play" data-tooltip="{{ __('Play the lesson') }}" aria-label="{{ __('Play the lesson') }}">
@@ -2898,6 +2898,39 @@
         </div>
         <button type="button" class="modal-backdrop" aria-label="Close"
                 wire:click="$set('svgLibraryOpen', false)"></button>
+    </div>
+
+    {{-- Play: the real player (lesson.play, what the class sees) over the whole editor, starting at
+         the selected scene (?scene_id=, mapped to the player's index in player-start.js) and playing
+         at once: the click on Play in this page lets the frame start with sound (mayAutoplay). X and
+         Esc (here or inside the frame) close it; the editor is still on the same scene. Closing
+         removes the frame, so nothing keeps talking. --}}
+    <div x-data="{
+            open: @js($playOnOpen),
+            src: '',
+            base: @js(route('lesson.play', ['lessonCode' => $lesson->lesson_code]).'?embed=1&autoplay=1&scene_id='),
+            init() { if (this.open) this.openAt($wire.selectedSceneId) },
+            openAt(id) { this.src = this.base + encodeURIComponent(id ?? ''); this.open = true },
+            close() { this.open = false; this.src = '' },
+            watchEsc(frame) {
+                try { frame.contentWindow.addEventListener('keydown', (e) => { if (e.key === 'Escape') this.close() }) } catch (_) {}
+                frame.focus()
+            },
+         }"
+         x-on:play-lesson-open.window="openAt($wire.selectedSceneId)"
+         x-on:keydown.escape.window="open && close()"
+         x-show="open" x-cloak wire:ignore
+         data-play-overlay data-play-open="{{ $playOnOpen ? '1' : '0' }}"
+         class="fixed inset-0 z-[300] bg-black" role="dialog" aria-modal="true" aria-label="{{ __('Play the lesson') }}">
+        <template x-if="open && src">
+            <iframe :src="src" x-on:load="watchEsc($el)" allow="autoplay; fullscreen"
+                    class="h-full w-full border-0" title="{{ __('Play the lesson') }}"></iframe>
+        </template>
+        <button type="button" x-on:click="close()" data-play-close
+                class="absolute right-4 top-4 z-10 grid h-10 w-10 place-items-center rounded-full bg-black/60 text-white transition hover:bg-black/80"
+                data-tooltip="{{ __('Close') }}" aria-label="{{ __('Close') }}">
+            <x-icons.x-mark class="h-5 w-5" />
+        </button>
     </div>
 
     {{-- Scenes payload as inert JSON so we don't string-interpolate it into JS. Built in PHP
