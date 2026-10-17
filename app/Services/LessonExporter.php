@@ -96,6 +96,8 @@ class LessonExporter
         if ($lesson->qrPosition() !== 'auto') {
             $spec['qr_position'] = $lesson->qrPosition();
         }
+        // Which state of the lesson this is (LessonVersion); an import carries it on.
+        $spec['content_version'] = (int) ($lesson->content_version ?? 1);
         if ($lesson->expect) {
             $spec['expect'] = array_values($lesson->expect);
         }

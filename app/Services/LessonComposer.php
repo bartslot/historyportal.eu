@@ -172,6 +172,11 @@ class LessonComposer
             }
             $lesson->title_style = $style;
         }
+        // An imported lesson carries its version on, never backwards; this rebuild then counts as a
+        // change of its own (LessonVersion, once for the whole build).
+        if (is_numeric($spec['content_version'] ?? null) && (int) $spec['content_version'] > (int) ($lesson->content_version ?? 1)) {
+            $lesson->content_version = (int) $spec['content_version'];
+        }
         if (array_key_exists('show_lesson_types', $spec)) {
             $lesson->show_lesson_types = (bool) $spec['show_lesson_types'];
         }
@@ -182,7 +187,8 @@ class LessonComposer
                 throw new \InvalidArgumentException("Spec qr_position '{$qr}' must be auto, hidden or one of: ".implode(', ', TitlePoster::QR_CORNERS).'.');
             }
             $lesson->show_qr = $qr !== 'hidden';
-            $lesson->qr_position = in_array($qr, TitlePoster::QR_CORNERS, true) ? $qr : null;
+            // A corner (older specs) means shown: the QR has one place now (Lesson::qrPosition).
+            $lesson->qr_position = null;
         }
         // "What you can expect": 1-3 short lines on the title screen, kept as the default too (the editor's Reset).
         if (array_key_exists('expect', $spec)) {

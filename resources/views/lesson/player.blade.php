@@ -118,6 +118,8 @@
         // The join QR's place (auto, a corner, hidden; resources/js/title-qr.js) and the boxes a
         // logo/plain title picture keeps clear of it (% of the picture; a candidate has its own).
         'qr_position'           => $lesson->qrPosition(),
+        // The version THIS page loaded (LessonVersion), shown under the QR: a stale screen shows a lower one.
+        'content_version'       => (int) ($lesson->content_version ?? 1),
         'title_keep_clear'      => \App\Support\TitlePoster::keepClear($lesson->title_keep_clear),
         // "What you can expect": 1-3 short lines on the title screen.
         'expect'                => array_values((array) ($lesson->expect ?? [])),
@@ -868,11 +870,19 @@
                             class="lp-qr-plate hidden shrink-0 cursor-pointer flex-col items-center pb-1 sm:flex">
                         <canvas id="title-qr-canvas" class="block" style="image-rendering: pixelated; width: 96px; height: 96px;"></canvas>
                         <span class="-mt-0.5 font-mono text-2xs font-bold uppercase tracking-[0.25em]" x-text="lesson.lesson_code"></span>
+                        <span data-title-version class="font-mono text-3xs leading-none text-brand-ink/50" x-text="'v' + lesson.content_version">v{{ (int) ($lesson->content_version ?? 1) }}</span>
                     </button>
                 @endif
+                {{-- On a phone neither the QR nor the code stands here: the version alone, in that corner. --}}
+                <span data-title-version-alone aria-hidden="true"
+                      class="ml-auto self-end pb-1 font-mono text-3xs leading-none text-white/50 sm:hidden"
+                      x-text="'v' + lesson.content_version">v{{ (int) ($lesson->content_version ?? 1) }}</span>
+                {{-- The QR off or made way: the code in its place, the version under it as under the QR. --}}
                 <p x-show="titleCodeInMeta" x-cloak data-title-code data-title-avoid data-title-piece="code" data-title-rail-item
-                   class="title-pill hidden items-center font-mono text-sm font-bold uppercase tracking-[0.2em] text-white/80 sm:flex"
-                   x-text="lesson.lesson_code"></p>
+                   class="title-pill hidden flex-col items-center justify-center font-mono text-sm font-bold uppercase tracking-[0.2em] text-white/80 sm:flex">
+                    <span x-text="lesson.lesson_code"></span>
+                    <span data-title-version class="font-mono text-3xs font-normal normal-case leading-none tracking-normal text-white/50" x-text="'v' + lesson.content_version">v{{ (int) ($lesson->content_version ?? 1) }}</span>
+                </p>
             </div>
 
             {{-- QR modal --}}

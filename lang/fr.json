@@ -2142,5 +2142,7 @@
     "Dense": "Compact",
     "Default": "Par défaut",
     "Spacious": "Aéré",
-    "Subtitle": "Sous-titre"
+    "Subtitle": "Sous-titre",
+    "Lesson type labels": "Étiquettes du type de leçon",
+    "Show QR code": "Afficher le code QR"
 }

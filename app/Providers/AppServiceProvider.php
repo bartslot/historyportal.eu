@@ -16,6 +16,9 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->singleton(\App\Services\ElevenLabsService::class);
 
+        // One content-version bump per request or queued job (forgotten between them).
+        $this->app->scoped(\App\Support\LessonVersion::class);
+
         // Subtitle translation runs on the app's language model; tests swap in the fake.
         $this->app->bind(\App\Services\Captions\TextTranslator::class, \App\Services\Captions\LlmTextTranslator::class);
 

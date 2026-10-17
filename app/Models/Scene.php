@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\LessonVersion;
 use App\Services\Editor\SceneHistory;
 use App\Services\Support\NarrationTiming;
 use Illuminate\Database\Eloquent\Model;
@@ -77,6 +78,14 @@ class Scene extends Model
 
         static::saved($forgetPlayerCache);
         static::deleted($forgetPlayerCache);
+
+        // Its lesson's content version (LessonVersion): a new, changed or deleted scene, not a status flip.
+        static::saved(function (Scene $scene): void {
+            if ($scene->wasRecentlyCreated || LessonVersion::contentChanged($scene->getChanges(), LessonVersion::SCENE_IGNORED)) {
+                LessonVersion::changed($scene->lesson_id);
+            }
+        });
+        static::deleted(fn (Scene $scene) => LessonVersion::changed($scene->lesson_id));
 
         // The editor's undo (SceneHistory): remember the scene as it was before this save.
         static::updating(static fn (Scene $scene) => SceneHistory::remember($scene));

@@ -65,9 +65,10 @@ class TitleScreenInspectorTest extends TestCase
         sort($sorted);
         $this->assertSame($sorted, $positions, 'in this order: '.implode(' > ', $order));
 
-        // Lesson type and What to expect live inside the Advanced fold, which starts closed.
+        // What to expect lives inside the Advanced fold, which starts closed. The lesson-type labels
+        // are not on the title screen, so their switch is not here (LessonTypeLabelsTest).
         $advanced = substr($html, (int) $at('data-title-advanced'));
-        $this->assertStringContainsString('data-lesson-types-toggle', $advanced);
+        $this->assertStringNotContainsString('data-lesson-types-toggle', $html);
         $this->assertStringContainsString('data-title-expect-editor', $advanced);
         $tag = substr($html, (int) strrpos(substr($html, 0, (int) $at('data-title-advanced')), '<div'));
         $this->assertMatchesRegularExpression('#^<div x-data="\{\s*open: false,#', $tag, 'Advanced starts closed');

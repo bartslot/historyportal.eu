@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeAll } from 'vitest'
 import {
-  GRID_KINDS, SRC_STEPS, clampThumb, readThumb, writeThumb, columnWidth, srcStep,
+  GRID_KINDS, SRC_STEPS, clampThumb, readThumb, writeThumb, columnWidth, srcStep, columnStops, nearestStop, sizeControl,
   resizedUrl, srcsetFor, zoomOrigin, initImageZoom, LONG_PRESS_MS,
 } from '../ui/image-grid.js'
 
@@ -158,5 +158,43 @@ describe('delegated zoom + long press', () => {
     el.click()
     expect(picked).toBe(true)
     vi.useRealTimers()
+  })
+})
+
+/**
+ * Bart, 2026-10-17: "voorbeeldgrootte is BS. it's 2 settings and for a slider you would expect more
+ * sizes." The control works in COLUMNS: one stop per column count the grid's width really allows,
+ * a two-icon toggle for exactly two, nothing for one.
+ */
+describe('column stops', () => {
+  it('a wide drawer gets one stop per real column count, smallest tiles first', () => {
+    const stops = columnStops(1000, 'image', 6)
+    expect(stops.map(s => s.cols)).toEqual([9, 8, 7, 6, 5, 4, 3, 2])
+    for (const s of stops) {
+      // that tile width makes exactly that many columns (auto-fill + 1fr)
+      expect(Math.floor((1000 + 6) / (s.thumb + 6))).toBe(s.cols)
+    }
+    expect(sizeControl(stops)).toBe('slider')
+  })
+
+  it('every stop changes the grid: no two stops share a column count', () => {
+    const cols = columnStops(1337, 'icon', 4).map(s => s.cols)
+    expect(new Set(cols).size).toBe(cols.length)
+  })
+
+  it('the narrow inspector has two layouts: a toggle; a strip too narrow for two has none', () => {
+    expect(columnStops(277, 'image', 6).map(s => s.cols)).toEqual([2, 1])
+    expect(sizeControl(columnStops(277, 'image', 6))).toBe('toggle')
+    expect(sizeControl(columnStops(150, 'image', 6))).toBe('none')
+    expect(sizeControl([])).toBe('none')
+    expect(columnStops(0, 'image', 6)).toEqual([])
+  })
+
+  it('a remembered size lands on the nearest real stop', () => {
+    const stops = columnStops(1000, 'image', 6)
+    expect(stops[nearestStop(stops, 200)].cols).toBe(5)
+    expect(stops[nearestStop(stops, 9999)].cols).toBe(2)
+    expect(stops[nearestStop(stops, 10)].cols).toBe(9)
+    expect(nearestStop([], 200)).toBe(-1)
   })
 })

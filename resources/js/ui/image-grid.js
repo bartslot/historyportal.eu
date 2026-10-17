@@ -84,6 +84,36 @@ export function columnWidth (containerWidth, thumb, gap = 0) {
   return (containerWidth - gap * (cols - 1)) / cols
 }
 
+/**
+ * The sizes a grid of `width` px can really show (Bart, 2026-10-17: "it's 2 settings and for a
+ * slider you would expect more sizes"): one stop per column count between the kind's largest and
+ * smallest tile, each with the tile width that makes exactly that many columns. Smallest tiles
+ * (most columns) first, so the slider grows to the right. A strip counts tiles across it.
+ *
+ * @returns {{cols: number, thumb: number}[]}
+ */
+export function columnStops (width, kind, gap = 0) {
+  if (!(width > 0)) return []
+  const { min, max } = kindRange(kind)
+  const most = Math.max(1, Math.floor((width + gap) / (min + gap)))
+  const fewest = Math.max(1, Math.floor((width + gap) / (max + gap)))
+  const stops = []
+  for (let cols = most; cols >= fewest; cols--) stops.push({ cols, thumb: Math.floor((width - gap * (cols - 1)) / cols) })
+  return stops
+}
+
+/** The stop closest to a remembered tile width; -1 when there are none. */
+export function nearestStop (stops, thumb) {
+  let best = -1
+  stops.forEach((s, i) => { if (best < 0 || Math.abs(s.thumb - thumb) < Math.abs(stops[best].thumb - thumb)) best = i })
+  return best
+}
+
+/** What the size control is for these stops: a slider (3+), a two-icon toggle (2), or nothing. */
+export function sizeControl (stops) {
+  return stops.length >= 3 ? 'slider' : stops.length === 2 ? 'toggle' : 'none'
+}
+
 /** The smallest requested width that covers `cssWidth` device pixels, or the largest there is. */
 export function srcStep (cssWidth, dpr = 1) {
   const need = Math.ceil(Math.max(0, cssWidth) * Math.max(1, dpr || 1))
@@ -145,11 +175,19 @@ export function imageGrid ({ id, kind = 'image', initial } = {}) {
     range: kindRange(kind),
     thumb: readThumb(id, kind, globalThis.localStorage, initial),
     colWidth: kindRange(kind).initial,
+    // The control (x-ui.thumb-size) works in real column counts: columnStops for this width.
+    stops: [],
+    stopIndex: -1,
+    sizeMode: 'none',
 
     init () {
       this.$watch('thumb', (value) => {
         writeThumb(id, value)
         this.measure()
+      })
+      this.$watch('stopIndex', (i) => {
+        const stop = this.stops[i]
+        if (stop && stop.thumb !== this.thumb) this.thumb = stop.thumb
       })
       if (typeof ResizeObserver !== 'undefined') {
         this._resize = new ResizeObserver(() => this.measure())
@@ -169,6 +207,7 @@ export function imageGrid ({ id, kind = 'image', initial } = {}) {
     },
 
     measure () {
+      this.measureStops()
       const grid = this.$el.querySelector('.lp-thumb-grid')
       // A strip has no columns to share out: every tile is exactly the slider's width.
       if (!grid) { this.colWidth = this.thumb; return }
@@ -177,6 +216,21 @@ export function imageGrid ({ id, kind = 'image', initial } = {}) {
       if (this._resize && this._watched !== grid) { this._resize.observe(grid); this._watched = grid }
       const gap = parseFloat(getComputedStyle(grid).columnGap) || 0
       this.colWidth = Math.round(columnWidth(grid.clientWidth, this.thumb, gap))
+    },
+
+    /**
+     * The stops this grid's width allows, and the one the tile size stands on: a remembered size
+     * lands on the nearest real stop, so every position of the control changes the grid.
+     */
+    measureStops () {
+      const host = this.$el.querySelector('.lp-thumb-grid, .lp-thumb-strip')
+      if (!host?.clientWidth) return
+      const gap = parseFloat(getComputedStyle(host).columnGap) || 0
+      this.stops = columnStops(host.clientWidth, kind, gap)
+      this.sizeMode = sizeControl(this.stops)
+      const i = nearestStop(this.stops, this.thumb)
+      if (i >= 0 && this.stops[i].thumb !== this.thumb) this.thumb = this.stops[i].thumb
+      this.stopIndex = i
     },
 
     /** On the grid: :style="gridStyle". An object, so Alpine merges it with a static style. */
