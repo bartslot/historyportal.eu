@@ -232,6 +232,41 @@ class GenerateSceneAudioTest extends TestCase
         });
     }
 
+    /**
+     * Prod 2026-10-18: lesson 63's narrator is edge-tts, which Microsoft refuses from SiteGround, so
+     * TtsService reads the SAME voice through Azure (edge voice ids are Azure Neural names). The
+     * Problems view called all 47 scenes "a stand-in voice" and buried the real problems.
+     */
+    public function test_an_edge_narrator_read_by_azure_in_the_same_voice_is_not_a_downgrade(): void
+    {
+        $narrator = Narrator::create([
+            'name' => 'Serge', 'slug' => 'serge-edge', 'gender' => 'male',
+            'voice_provider' => 'edge_tts', 'voice_id' => 'nl-NL-MaartenNeural',
+            'voice_speed' => 1.0, 'is_active' => true, 'sort_order' => 1,
+        ]);
+        $lesson = Lesson::create([
+            'teacher_id' => User::factory()->create()->id, 'avatar_id' => $narrator->id,
+            'topic' => 'X', 'subject' => 'history', 'grade_level' => '9th',
+        ]);
+        $scene = Scene::create([
+            'lesson_id' => $lesson->id, 'order' => 1, 'kind' => 'narration', 'script_segment' => 'Hallo.',
+            'image_path' => 'x.png', 'audio_path' => 'a.mp3', 'status' => 'ready',
+            'audio_provider' => 'azure', 'audio_voice' => 'nl-NL-MaartenNeural',
+        ]);
+
+        $this->assertFalse($scene->fresh()->narrationWasDowngraded());
+
+        // Older runs recorded no voice name (47 of lesson 63's scenes): unknown is no evidence.
+        $scene->update(['audio_voice' => null]);
+        $this->assertFalse($scene->fresh()->narrationWasDowngraded());
+
+        // A different Azure voice, or macOS say, still IS a stand-in.
+        $scene->update(['audio_voice' => 'nl-NL-FennaNeural']);
+        $this->assertTrue($scene->fresh()->narrationWasDowngraded());
+        $scene->update(['audio_provider' => 'macos_say', 'audio_voice' => null]);
+        $this->assertTrue($scene->fresh()->narrationWasDowngraded());
+    }
+
     private function sceneWithElevenLabsNarrator(string $slug): Scene
     {
         $narrator = Narrator::create([

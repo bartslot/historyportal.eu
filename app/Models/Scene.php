@@ -509,8 +509,20 @@ class Scene extends Model
             return false;
         }
 
+        $narrator = $this->lesson->narrator;
         $wanted = (string) config('services.tts.provider_override', '')
-            ?: (string) $this->lesson->narrator->voice_provider;
+            ?: (string) $narrator->voice_provider;
+
+        // edge-tts voices ARE Azure Neural voices, and edge is refused from the server, so an edge
+        // narrator is read through Azure in the same voice (TtsService). That is the narrator, not a
+        // stand-in: calling it one flagged every scene of lesson 63 (2026-10-18).
+        // Older runs stored no voice name: unknown is not evidence of a stand-in, so say nothing.
+        if ($wanted === 'edge_tts' && $provider === 'azure') {
+            $own = array_filter([(string) $narrator->voice_id, ...array_values((array) ($narrator->voice_map ?? []))]);
+            $voice = (string) $this->audio_voice;
+
+            return $voice !== '' && ! in_array($voice, $own, true);
+        }
 
         return $wanted !== '' && $provider !== $wanted;
     }

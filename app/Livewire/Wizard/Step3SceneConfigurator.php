@@ -23,6 +23,7 @@ use App\Livewire\Wizard\Concerns\EditsStoryGame;
 use App\Livewire\Wizard\Concerns\EditsMoment;
 use App\Livewire\Wizard\Concerns\EditsTeamGame;
 use App\Livewire\Wizard\Concerns\EditsTitleScreen;
+use App\Livewire\Wizard\Concerns\FixesLessonProblems;
 use App\Livewire\Wizard\Concerns\UndoesSceneEdits;
 use App\Models\AnimationClip;
 use App\Models\City;
@@ -67,6 +68,7 @@ class Step3SceneConfigurator extends Component
     use EditsDiorama;
     use EditsQuizQuestions;
     use EditsTitleScreen;
+    use FixesLessonProblems;
     use EditsSceneBackground;
     use EditsSceneBalloons;
     use EditsSceneArtwork;
@@ -5696,7 +5698,7 @@ class Step3SceneConfigurator extends Component
         $notReady = $this->lesson->scenes()
             ->where('status', '!=', 'ready')
             ->orderBy('order')
-            ->get(['id', 'order', 'kind', 'game_type', 'status', 'script_segment', 'image_path', 'audio_path']);
+            ->get();
 
         if ($notReady->isNotEmpty()) {
             // Name the offending scenes (and why) so the teacher knows exactly what to fix,
@@ -5705,7 +5707,11 @@ class Step3SceneConfigurator extends Component
                 $kind = $s->kind === 'game'
                     ? ucfirst((string) ($s->game_type ?: 'game'))
                     : ucfirst((string) $s->kind);
-                $why = $this->missingAssetReason($s) ?? match ((string) $s->status) {
+                // Everything a blank scene lacks in one phrase first ("needs a script, a background
+                // image and narration audio"); else the checker's words (LessonProblems) as the dot and
+                // the Problems view say it, without their full stop since the notice adds its own.
+                $checker = \App\Support\LessonProblems::forScene($s)[0]['message'] ?? null;
+                $why = $this->missingAssetReason($s) ?? ($checker !== null ? rtrim($checker, '.') : null) ?? match ((string) $s->status) {
                     'generating' => __('still generating'),
                     'failed' => __('failed, regenerate it'),
                     'pending' => __('not generated yet'),
