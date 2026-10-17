@@ -36,16 +36,19 @@ A new **shot** doesn't need a new painting. Each of these counts as a new image:
 
 ## 3a. Never the same asset twice
 
-Bart: "never the same asset twice.. because it will feel repeated and fake."
-- **MUST:** no image asset appears in two scenes: no reused background, figure, prop, crowd or sky.
-  A new scene means new art.
+Bart: "never the same asset twice.. because it will feel repeated and fake." / "backgrounds can be reused."
+- **Backgrounds MAY be reused**, within a scene and across scenes (the same street, the same arena),
+  ideally with a new framing, time of day or weather.
+- **MUST:** everything placed ON a background is used once: no figure, prop, crowd, animal or object
+  cut-out appears in two shots of different scenes.
 - **MUST:** no copies inside a shot: no cloned crowd figures, no stamped-in duplicate trees, carts or boats.
   Ten people in a crowd are ten different people.
 - A recurring character (the 2-4 people the class follows) keeps their look (face, clothes, colours) but gets
   a **new drawing every time**: a new pose, angle and expression, never the same cut-out again.
 - The only things that may repeat are interface pieces (balloons, the meter, the logo), never the story's
   pictures.
-- Check: the shot log lists every asset file; a file name used in two scenes is a FAIL.
+- Check: the shot log lists every asset file; a foreground file (figure, prop, crowd, object) used in two
+  scenes is a FAIL. Backgrounds are exempt.
 
 ## 4. Words
 
@@ -78,8 +81,8 @@ Bart: "never the same asset twice.. because it will feel repeated and fake."
 Deliver these two tables, made from playing the WHOLE lesson muted in the real browser:
 
 1. **Shot log:** every sentence → its shot (background, camera, foreground change) and its seconds.
-   FAIL if any sentence has no shot of its own, any shot is over 10 s, or any asset file appears in two
-   scenes (rule 3a).
+   FAIL if any sentence has no shot of its own, any shot is over 10 s, or any foreground asset (figure, prop,
+   crowd, object) appears in two scenes (rule 3a; backgrounds may repeat).
 2. **Per minute:** what changes on screen, and what the class does.
    FAIL if any minute is "a picture and a voice", or 3 minutes pass without the class doing something.
 
