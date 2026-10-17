@@ -145,4 +145,14 @@ class TimelineSaveKeepsTheStageTest extends TestCase
             ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
             ->call('selectScene', $this->scene->id);
     }
+
+    /** Bart, 2026-10-17: the loop button's refresh arrows "looks odd": it is Heroicons' repeat icon. */
+    public function test_the_loop_button_shows_the_repeat_icon(): void
+    {
+        $html = $this->editor()->html();
+        $loop = substr($html, strpos($html, 'data-timeline-loop'), 1500);
+
+        $this->assertStringContainsString('M19.5 12c0-1.232-.046-2.453-.138-3.662', $loop);   // arrow-path-rounded-square
+        $this->assertStringNotContainsString('M16.023 9.348', $loop);                         // arrow-path, a refresh
+    }
 }

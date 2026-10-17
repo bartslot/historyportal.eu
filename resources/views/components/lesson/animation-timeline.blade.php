@@ -170,9 +170,8 @@
                 class="grid h-7 w-7 shrink-0 cursor-pointer place-items-center rounded hover:text-white"
                 :data-tooltip="loop ? @js(__('Looping')) : @js(__('Loop'))"
                 :aria-label="loop ? @js(__('Looping')) : @js(__('Loop'))">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992V4.356M20.015 9.348a8.25 8.25 0 0 0-14.03-3.028L3 8.25m0 6.402h4.992v4.992M3 14.652a8.25 8.25 0 0 0 14.03 3.028L21 15.75"/>
-            </svg>
+            {{-- Repeat, not refresh (Bart, 2026-10-17: "isn't there a hero icon for repeating?"). --}}
+            <x-icons.arrow-path-rounded-square class="h-4 w-4" />
         </button>
 
         <span class="h-4 w-px shrink-0 bg-panel-hairline" aria-hidden="true"></span>
