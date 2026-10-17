@@ -2164,5 +2164,6 @@
     "{1} Write 1 script again.|[2,*] Write :count scripts again.": "{1} Riscrivere 1 testo.|[2,*] Riscrivere :count testi.",
     "{1} 1 problem needs you.|[2,*] :count problems need you.": "{1} 1 problema va risolto da te.|[2,*] :count problemi vanno risolti da te.",
     "Lesson type labels": "Etichette del tipo di lezione",
-    "Show QR code": "Mostra il codice QR"
+    "Show QR code": "Mostra il codice QR",
+    "Nothing from this period in this set.": "Niente di questo periodo in questa raccolta."
 }

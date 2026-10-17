@@ -2206,5 +2206,6 @@
     "{1} Write 1 script again.|[2,*] Write :count scripts again.": "{1} 1 tekst opnieuw schrijven.|[2,*] :count teksten opnieuw schrijven.",
     "{1} 1 problem needs you.|[2,*] :count problems need you.": "{1} 1 probleem moet je zelf oplossen.|[2,*] :count problemen moet je zelf oplossen.",
     "Lesson type labels": "Lestype-labels",
-    "Show QR code": "QR-code tonen"
+    "Show QR code": "QR-code tonen",
+    "Nothing from this period in this set.": "Niets uit deze tijd in deze set."
 }

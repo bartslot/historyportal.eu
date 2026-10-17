@@ -22,6 +22,27 @@ final class LibraryEra
         return is_string($era) && self::isKnown($era) ? $era : null;
     }
 
+    /**
+     * The tijdvakken a group covers in a collection whose pictures carry no era (the line-art
+     * icons, config lesson-taxonomy.group_eras): by subcategory, else category. [] is deep time,
+     * null timeless.
+     *
+     * @return list<string>|null
+     */
+    public static function groupEras(string $collection, ?string $category, ?string $subcategory = null): ?array
+    {
+        $map = (array) config('lesson-taxonomy.group_eras.'.$collection);
+        $eras = $map[(string) $subcategory] ?? $map[(string) $category] ?? null;
+
+        return is_array($eras) ? array_values(array_filter($eras, fn ($e) => is_string($e) && self::isKnown($e))) : null;
+    }
+
+    /** Whether a group belongs under an era chip: timeless always, deep time never, else its own. */
+    public static function groupFits(?array $eras, string $era): bool
+    {
+        return $eras === null || in_array($era, $eras, true);
+    }
+
     public static function isKnown(string $era): bool
     {
         return array_key_exists($era, (array) config('lesson-taxonomy.periods'));
