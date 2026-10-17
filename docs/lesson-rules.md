@@ -31,9 +31,21 @@ A new **shot** doesn't need a new painting. Each of these counts as a new image:
    picks up a tool, the sky turns to evening, fire, rain).
 4. **A new background** for a new place or time.
 - Build a scene from **one painted background plus cut-out foreground layers** (figures, props, smoke),
-  never one flat painting per shot. The same background can carry a whole scene.
-- Backgrounds and figures are made once and reused: LEGO logic (memory comic-look-painted-projection.md,
-  one-standard-body-wardrobe.md).
+  never one flat painting per shot. Within ONE scene, that background carries the shots through different
+  framings (wide, medium, close-up).
+
+## 3a. Never the same asset twice
+
+Bart: "never the same asset twice.. because it will feel repeated and fake."
+- **MUST:** no image asset appears in two scenes: no reused background, figure, prop, crowd or sky.
+  A new scene means new art.
+- **MUST:** no copies inside a shot: no cloned crowd figures, no stamped-in duplicate trees, carts or boats.
+  Ten people in a crowd are ten different people.
+- A recurring character (the 2-4 people the class follows) keeps their look (face, clothes, colours) but gets
+  a **new drawing every time**: a new pose, angle and expression, never the same cut-out again.
+- The only things that may repeat are interface pieces (balloons, the meter, the logo), never the story's
+  pictures.
+- Check: the shot log lists every asset file; a file name used in two scenes is a FAIL.
 
 ## 4. Words
 
@@ -66,7 +78,8 @@ A new **shot** doesn't need a new painting. Each of these counts as a new image:
 Deliver these two tables, made from playing the WHOLE lesson muted in the real browser:
 
 1. **Shot log:** every sentence → its shot (background, camera, foreground change) and its seconds.
-   FAIL if any sentence has no shot of its own, or any shot is over 10 s.
+   FAIL if any sentence has no shot of its own, any shot is over 10 s, or any asset file appears in two
+   scenes (rule 3a).
 2. **Per minute:** what changes on screen, and what the class does.
    FAIL if any minute is "a picture and a voice", or 3 minutes pass without the class doing something.
 
