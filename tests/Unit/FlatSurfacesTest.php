@@ -97,4 +97,42 @@ class FlatSurfacesTest extends TestCase
         $css = (string) file_get_contents(dirname(__DIR__, 2).'/resources/css/app.css');
         $this->assertMatchesRegularExpression('/\.modal-box\s*\{[^}]*box-shadow:\s*none[^}]*border:\s*1px solid var\(--color-panel-hairline\)/', $css);
     }
+
+    /** Our stylesheets, comments left out. */
+    private function css(): string
+    {
+        $css = '';
+        foreach (['app.css', 'brand-kit.css'] as $file) {
+            $css .= (string) file_get_contents(dirname(__DIR__, 2).'/resources/css/'.$file);
+        }
+
+        return (string) preg_replace('#/\*.*?\*/#s', '', $css);
+    }
+
+    /** No box-shadow in our CSS but `none` (PM, 2026-10-17): no glows, no depth, white or amber. */
+    public function test_the_stylesheets_cast_no_shadow(): void
+    {
+        preg_match_all('/(?<![\w-])box-shadow\s*:\s*([^;}]+)/', $this->css(), $m);
+        // The one allowed: the landing hero's typing caret is a zero-width box whose 2px line is
+        // this offset (no blur, no spread). A border would give the caret width, and a caret with
+        // width can wrap onto the next line by itself. A line, not a shadow.
+        $allowed = ['2px 0 0 rgba(255, 255, 255, 0.85)'];
+        $cast = array_values(array_filter(array_map('trim', $m[1]),
+            fn (string $v) => ! preg_match('/^none(\s*!important)?$/', $v) && ! in_array($v, $allowed, true)));
+
+        $this->assertSame([], $cast);
+        // No hover lift in CSS either.
+        $this->assertDoesNotMatchRegularExpression('/:hover\s*\{[^}]*transform:\s*translateY\(-/', $this->css());
+    }
+
+    /**
+     * Keyboard focus stays VISIBLE (WCAG 2.4.7), flat: a field's focus is its border turning amber
+     * (well over 3:1 on the dark panel), never a glow; nothing hides a :focus-visible outline.
+     */
+    public function test_focus_is_visible_and_flat(): void
+    {
+        $css = $this->css();
+        $this->assertMatchesRegularExpression('/\.input:focus,\s*\.select:focus,\s*\.textarea:focus,\s*\.input:focus-within[^{]*\{[^}]*border-color:\s*var\(--color-primary\)/', $css);
+        $this->assertDoesNotMatchRegularExpression('/:focus-visible[^{]*\{[^}]*outline:\s*(none|0)\b/', $css);
+    }
 }
