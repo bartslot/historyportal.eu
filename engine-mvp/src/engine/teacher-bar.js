@@ -2,6 +2,7 @@
 // Delete), and a strip of saved shots on the stage. A shot is just a camera view; click it to go back.
 /* global BABYLON */
 'use strict';
+import { __ } from '../i18n';
 
 (() => {
   const mvp = window.__mvp;
@@ -26,9 +27,9 @@
     bar.appendChild(b);
     return b;
   };
-  const dupBtn = button('Duplicate', () => duplicate());
-  const faceBtn = button('Face camera', faceCamera);
-  button('Delete', () => { const a = mvp.getSelected(); if (a) mvp.deleteActor(a); });
+  const dupBtn = button(__('Duplicate'), () => duplicate());
+  const faceBtn = button(__('Face camera'), faceCamera);
+  button(__('Delete'), () => { const a = mvp.getSelected(); if (a) mvp.deleteActor(a); });
   stage.appendChild(bar);
 
   async function duplicate(a = mvp.getSelected()) {
@@ -42,7 +43,7 @@
       mvp.snapToFootprint(copy, a.position.x + dx * DUPLICATE_OFFSET_M, a.position.z + dz * DUPLICATE_OFFSET_M);
       return mvp.fits(copy);
     });
-    if (!free) { mvp.deleteActor(copy); mvp.flash('No room next to it for a copy'); return; }
+    if (!free) { mvp.deleteActor(copy); mvp.flash(__('No room next to it for a copy')); return; }
     mvp.select(copy);
     mvp.autoKey();
   }
@@ -76,7 +77,7 @@
   strip.id = 'shots';
   const add = document.createElement('button');
   add.className = 'add';
-  add.textContent = 'Save shot';
+  add.textContent = __('Save shot');
   add.onclick = saveShot;
   strip.appendChild(add);
   stage.appendChild(strip);
@@ -104,11 +105,11 @@
     tile.className = 'shot';
     const img = document.createElement('img');
     img.src = shot.image;
-    img.alt = 'Shot ' + shots.length;
+    img.alt = __('Shot :n', { n: shots.length });
     img.onclick = () => goToShot(shot);
     const del = document.createElement('button');
     del.textContent = '×';
-    del.setAttribute('aria-label', 'Remove shot');
+    del.setAttribute('aria-label', __('Remove shot'));
     del.onclick = () => { shots.splice(shots.indexOf(shot), 1); tile.remove(); };
     tile.append(img, del);
     strip.insertBefore(tile, add);

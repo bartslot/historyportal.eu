@@ -7,6 +7,7 @@ import * as L from '../lesson/store'
 import * as Tree from '../lesson/tree'
 import * as TL from '../timeline/model'
 import { ICON, Icon } from '../ui/icons'
+import { __ } from '../i18n'
 
 const PX_PER_SECOND = 14
 const MIN_BLOCK_PX = 104
@@ -18,7 +19,7 @@ function Name({ node, className }: { node: Tree.TreeNode; className: string }) {
   const [editing, setEditing] = useState(false)
   if (!editing) return <span className={className} onDoubleClick={(e) => { e.stopPropagation(); setEditing(true) }}>{node.title}</span>
   return (
-    <input autoFocus defaultValue={node.title} aria-label="Name" onClick={(e) => e.stopPropagation()}
+    <input autoFocus defaultValue={node.title} aria-label={__('Name')} onClick={(e) => e.stopPropagation()}
            className="min-w-0 flex-1 rounded bg-panel-hairline px-1 text-xs text-panel-value focus:outline-none"
            onKeyDown={(e) => {
              if (e.key === 'Enter') e.currentTarget.blur()
@@ -56,13 +57,13 @@ export function SceneStrip() {
       return (
         <div key={node.id} role="group" aria-label={node.title} className="flex shrink-0 flex-col gap-1">
           <div {...props(node)} className={`group/g flex items-center gap-1 border-t border-panel-label/50 pt-0.5 ${ring(node.id)}`}>
-            <button type="button" onClick={() => L.editTree((t) => Tree.toggleOpen(t, node.id))} aria-label={node.open ? 'Fold' : 'Unfold'}
+            <button type="button" onClick={() => L.editTree((t) => Tree.toggleOpen(t, node.id))} aria-label={node.open ? __('Fold') : __('Unfold')}
                     className="grid h-4 w-4 place-items-center text-panel-label hover:text-white">
               <Icon d={ICON.chevronRight} className={`h-3 w-3 transition-transform ${node.open ? 'rotate-90' : ''}`} />
             </button>
             <Name node={node} className="truncate text-3xs font-semibold uppercase tracking-wide text-panel-title" />
-            <button type="button" aria-label="Delete group" data-tooltip="Delete group"
-                    onClick={() => { if (confirm(`Delete "${node.title}" and every scene in it?`)) void L.deleteNode(node.id) }}
+            <button type="button" aria-label={__('Delete group')} data-tooltip={__('Delete group')}
+                    onClick={() => { if (confirm(__('Delete ":name" and every scene in it?', { name: node.title }))) void L.deleteNode(node.id) }}
                     className="ml-auto hidden h-4 w-4 place-items-center text-panel-label hover:text-white group-hover/g:grid"><Icon d={ICON.trash} className="h-3 w-3" /></button>
           </div>
           {node.open && <div className="flex gap-1">{render(node.children)}</div>}
@@ -83,9 +84,9 @@ export function SceneStrip() {
           <span className="shrink-0 text-3xs text-panel-label">{Math.round(seconds)} s</span>
         </span>
         <span className="absolute right-0.5 top-0.5 hidden gap-0.5 group-hover/s:flex group-focus-within/s:flex">
-          <button type="button" aria-label="Put in a group" data-tooltip="Put in a group" onClick={(e) => { e.stopPropagation(); L.editTree((t) => Tree.group(t, node.id, 'New group').tree) }}
+          <button type="button" aria-label={__('Put in a group')} data-tooltip={__('Put in a group')} onClick={(e) => { e.stopPropagation(); L.editTree((t) => Tree.group(t, node.id, __('New group')).tree) }}
                   className="grid h-5 w-5 place-items-center rounded bg-base-200/90 text-panel-label hover:text-white"><Icon d={ICON.folder} className="h-3 w-3" /></button>
-          <button type="button" aria-label="Delete scene" data-tooltip="Delete scene" onClick={(e) => { e.stopPropagation(); if (confirm(`Delete "${node.title}"?`)) void L.deleteNode(node.id) }}
+          <button type="button" aria-label={__('Delete scene')} data-tooltip={__('Delete scene')} onClick={(e) => { e.stopPropagation(); if (confirm(__('Delete ":name"?', { name: node.title }))) void L.deleteNode(node.id) }}
                   className="grid h-5 w-5 place-items-center rounded bg-base-200/90 text-panel-label hover:text-white"><Icon d={ICON.trash} className="h-3 w-3" /></button>
         </span>
       </div>
@@ -93,13 +94,13 @@ export function SceneStrip() {
   })
 
   return (
-    <div className="flex shrink-0 items-end gap-1 overflow-x-auto border-b border-panel-hairline px-4 py-2" aria-label="Scenes"
+    <div className="flex shrink-0 items-end gap-1 overflow-x-auto border-b border-panel-hairline px-4 py-2" aria-label={__('Scenes')}
          onDragOver={(e) => { if (e.dataTransfer.types.includes(DRAG_TYPE)) e.preventDefault() }}
          onDrop={(e) => { const id = e.dataTransfer.getData(DRAG_TYPE); if (id) L.editTree((t) => Tree.move(t, id, null)) }}>
       {render(lesson.tree)}
       <div className="ml-1 flex shrink-0 flex-col gap-1">
-        <button type="button" className="btn btn-ghost btn-xs text-panel-value" onClick={() => void L.addScene()}>Add scene</button>
-        <button type="button" className="btn btn-ghost btn-xs text-panel-value" onClick={() => L.addGroup()}>Add group</button>
+        <button type="button" className="btn btn-ghost btn-xs text-panel-value" onClick={() => void L.addScene()}>{__('Add scene')}</button>
+        <button type="button" className="btn btn-ghost btn-xs text-panel-value" onClick={() => L.addGroup()}>{__('Add group')}</button>
       </div>
     </div>
   )

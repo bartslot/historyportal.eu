@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'rea
 import { PANELS, inStep, panels, sameSide, usePanels } from './store'
 import { stepOf, useLesson } from '../lesson/store'
 import { ResizeHandle } from './ResizeHandle'
+import { __ } from '../i18n'
 
 const X_MARK = 'M6 18 18 6M6 6l12 12'
 /** The bottom dock never takes more than this share of the screen height: the canvas keeps the rest. */
@@ -14,7 +15,7 @@ const BOTTOM_MAX_VH = 40
 
 export function CloseButton({ id }: { id: string }) {
   return (
-    <button type="button" aria-label={`Close ${panels.def(id).title}`} data-tooltip="Close" onClick={() => panels.close(id)}
+    <button type="button" aria-label={__('Close :name', { name: panels.def(id).title })} data-tooltip={__('Close')} onClick={() => panels.close(id)}
             className="absolute right-2 top-2 z-10 grid h-7 w-7 cursor-pointer place-items-center rounded text-panel-label hover:bg-white/5 hover:text-white">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-4 w-4" aria-hidden="true">
         <path strokeLinecap="round" strokeLinejoin="round" d={X_MARK} />
@@ -23,9 +24,10 @@ export function CloseButton({ id }: { id: string }) {
   )
 }
 
-type Props = { id: string; children: ReactNode; anchor?: RefObject<HTMLElement | null>; className?: string; style?: React.CSSProperties }
+/** align: a menu lines up with its button's right edge (top bar), or its left edge ('start': a chip in a row) */
+type Props = { id: string; children: ReactNode; anchor?: RefObject<HTMLElement | null>; className?: string; style?: React.CSSProperties; align?: 'start' | 'end' }
 
-export function Panel({ id, children, anchor, className = '', style }: Props) {
+export function Panel({ id, children, anchor, className = '', style, align = 'end' }: Props) {
   const st = usePanels()
   const step = stepOf(useLesson().lesson)
   const d = panels.def(id)
@@ -41,8 +43,8 @@ export function Panel({ id, children, anchor, className = '', style }: Props) {
     if (d.place !== 'menu' || !open || !anchor?.current) return
     const r = anchor.current.getBoundingClientRect()
     const w = body.current?.offsetWidth ?? 220
-    setPos({ top: r.bottom + 6, left: Math.max(8, Math.min(window.innerWidth - w - 8, r.right - w)) })
-  }, [open, d.place, anchor])
+    setPos({ top: r.bottom + 6, left: Math.max(8, Math.min(window.innerWidth - w - 8, align === 'start' ? r.left : r.right - w)) })
+  }, [open, d.place, anchor, align])
 
   // a press outside a menu (and outside its button) closes it
   useEffect(() => {
@@ -65,7 +67,7 @@ export function Panel({ id, children, anchor, className = '', style }: Props) {
       {showX && <CloseButton id={id} />}
       {siblings.length > 1 && (
         <div className="flex shrink-0 items-center border-b border-panel-hairline py-1.5 pl-3 pr-10">
-          <div className="tabs tabs-box tabs-panel" role="tablist" aria-label={`${d.place} panels`}>
+          <div className="tabs tabs-box tabs-panel" role="tablist" aria-label={d.place === 'left' ? __('Left panels') : __('Right panels')}>
             {siblings.map((p) => (
               <input key={p.id} type="radio" name={`side-${id}`} className="tab" role="tab" aria-label={p.title}
                      checked={p.id === id} onChange={() => panels.open(p.id)} />

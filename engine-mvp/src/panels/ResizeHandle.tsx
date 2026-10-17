@@ -2,6 +2,7 @@
 // step it; the width is remembered by the panel store. (The wizard had three hand-written copies.)
 import type { KeyboardEvent, PointerEvent } from 'react'
 import { panels } from './store'
+import { __ } from '../i18n'
 
 const KEY_STEP = 16
 
@@ -37,7 +38,7 @@ export function ResizeHandle({ id }: { id: string }) {
   }
 
   return (
-    <div role="separator" aria-orientation={horizontal ? 'vertical' : 'horizontal'} aria-label={`Resize ${panels.def(id).title}`}
+    <div role="separator" aria-orientation={horizontal ? 'vertical' : 'horizontal'} aria-label={__('Resize :name', { name: panels.def(id).title })}
          tabIndex={0} data-resize={id} data-place={place} className="panel-resize"
          onPointerDown={onPointerDown} onDoubleClick={() => panels.resetSize(id)} onKeyDown={onKeyDown} />
   )

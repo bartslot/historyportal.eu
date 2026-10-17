@@ -5,6 +5,7 @@
 // drawing on the wall. Scale it with the gizmo (R).
 /* global BABYLON */
 'use strict';
+import { __ } from '../i18n';
 
 (() => {
   const mvp = window.__mvp;
@@ -50,7 +51,7 @@
       m.diffuseTexture = tex;
       m.useAlphaFromDiffuseTexture = true;
       plane.scaling.y = CARD_WIDTH * c.height / c.width;           // the picture's own aspect
-    }).catch((err) => { console.warn(err.message); mvp.flash('Could not load that image'); });
+    }).catch((err) => { console.warn(err.message); mvp.flash(__('Could not load that image')); });
     return plane;
   }
 

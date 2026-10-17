@@ -3,6 +3,7 @@
 // gives true parallax: near rings slide faster than far ones, the sky does not move at all.
 /* global BABYLON */
 'use strict';
+import { __ } from '../i18n';
 
 (() => {
   const mvp = window.__mvp;
@@ -190,7 +191,7 @@
   const img = document.createElement('img');
   img.src = plainSky();
   img.dataset.url = img.src;
-  img.title = 'Plain sky';
+  img.title = __('Plain sky');
   img.onclick = usePlainSky;
   skies.appendChild(img);
   skies.addEventListener('click', (e) => { if (e.target !== img) plainActive = false; }, true);

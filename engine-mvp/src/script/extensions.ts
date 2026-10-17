@@ -4,6 +4,7 @@ import { Extension, Mark, Node, mergeAttributes } from '@tiptap/core'
 import Paragraph from '@tiptap/extension-paragraph'
 import { Plugin, PluginKey, type Transaction } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
+import { __ } from '../i18n'
 
 export const newLineId = () => `l-${Math.random().toString(36).slice(2, 10)}`
 
@@ -22,7 +23,7 @@ export const SceneHeading = Node.create({
   },
   parseHTML: () => [{ tag: 'h2[data-scene-id]' }],
   renderHTML({ node, HTMLAttributes }) {
-    return ['h2', mergeAttributes(HTMLAttributes, { class: 'script-scene', contenteditable: 'false' }), node.attrs.title || 'Scene']
+    return ['h2', mergeAttributes(HTMLAttributes, { class: 'script-scene', contenteditable: 'false' }), node.attrs.title || __('Scene')]
   },
 })
 

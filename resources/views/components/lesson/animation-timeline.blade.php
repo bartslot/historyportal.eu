@@ -134,7 +134,7 @@
         {{-- Current time, and the WORD being spoken there, which is the readout that means
              something to a teacher. --}}
         <label class="flex shrink-0 items-center gap-1.5" data-scrub-scope>
-            <span data-scrub class="cursor-col-resize select-none text-3xs uppercase tracking-wide text-panel-label">{{ __('Time') }}</span>
+            <span data-scrub class="cursor-col-resize select-none text-3xs uppercase tracking-wide text-panel-label">{{ __('Current time') }}</span>
             {{-- Bound one way and rounded: x-model showed 10.444200824847092 in a field two
                  digits wide. The model keeps the full precision; the teacher does not need it. --}}
             <input type="number" min="0" step="10" :max="Math.round(duration * 1000)"

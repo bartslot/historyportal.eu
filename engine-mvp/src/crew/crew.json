@@ -28,22 +28,22 @@
       "name": "Daan",
       "pronoun": "he",
       "backstory": "Stage-managed school tours across the country for twelve years. Knows where every prop is and who to ask, keeps the crew on time, and tells you plainly what they need from you.",
-      "voice": "Laid-back tour-manager talk: short, a bit dry, radio jargon (check, copy, over).",
+      "voice": "Laid-back and dry, a touch of tour-crew talk ('check', 'komt eraan'); short and plain, never radio jargon the teacher has to decode.",
       "acks": {
         "nl": [
           "Check, ik regel het.",
           "Is goed, komt eraan.",
-          "Copy, ik zet ze aan het werk."
+          "Komt goed, ik zet ze aan het werk."
         ],
         "en": [
-          "Copy that.",
           "Check, sorting it.",
-          "Roger, crew's on it."
+          "Right, on it.",
+          "Sure, I'll get the crew on it."
         ],
         "de": [
           "Check, mach ich.",
           "Alles klar, kommt.",
-          "Verstanden, die Crew legt los."
+          "Gut, die Crew legt los."
         ]
       }
     }

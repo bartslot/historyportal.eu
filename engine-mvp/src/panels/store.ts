@@ -2,6 +2,7 @@
 // is registered here; open/close, size and the Esc order all go through it, so no panel invents its own.
 import { useSyncExternalStore } from 'react'
 import type { Step } from '../lesson/store'
+import { __ } from '../i18n'
 
 export type Place = 'left' | 'right' | 'bottom' | 'floating' | 'menu'
 export type PanelDef = {
@@ -21,17 +22,19 @@ export type PanelDef = {
 }
 
 export const PANELS: PanelDef[] = [
-  { id: 'objects', title: 'Objects', place: 'left', closable: true, open: true, size: 220, min: 56, max: 360, inView: true, steps: ['visual', 'animate'] },
-  { id: 'inspector', title: 'Settings', place: 'right', closable: true, open: true, size: 310, min: 280, max: 520, inView: true, steps: ['visual', 'animate'] },
-  { id: 'crew', title: 'Crew', place: 'right', closable: true, open: true, size: 340, min: 300, max: 560, inView: true },
-  { id: 'reference', title: 'Reference', place: 'right', column: true, closable: true, open: false, size: 420, min: 240, max: 960, inView: true, steps: ['visual', 'animate'] },
-  { id: 'dock', title: 'Assets & timeline', place: 'bottom', closable: false, open: true, size: 352, inView: true },
-  { id: 'help', title: 'Help', place: 'floating', closable: true, open: false, inView: false },
-  { id: 'notes', title: 'Notes', place: 'floating', closable: true, open: false, inView: true },
-  { id: 'lesson-menu', title: 'Lesson', place: 'menu', closable: true, open: false, inView: false },
-  { id: 'view-menu', title: 'View', place: 'menu', closable: true, open: false, inView: false },
-  { id: 'add-menu', title: 'Add', place: 'menu', closable: true, open: false, inView: false },
-  { id: 'publish-menu', title: 'Publish', place: 'menu', closable: true, open: false, inView: false },
+  { id: 'objects', title: __('Objects'), place: 'left', closable: true, open: true, size: 220, min: 56, max: 360, inView: true, steps: ['visual', 'animate'] },
+  { id: 'inspector', title: __('Settings'), place: 'right', closable: true, open: true, size: 310, min: 280, max: 520, inView: true, steps: ['visual', 'animate'] },
+  { id: 'crew', title: __('Crew'), place: 'right', closable: true, open: true, size: 340, min: 300, max: 560, inView: true },
+  { id: 'reference', title: __('Reference'), place: 'right', column: true, closable: true, open: false, size: 420, min: 240, max: 960, inView: true, steps: ['visual', 'animate'] },
+  { id: 'dock', title: __('Assets & timeline'), place: 'bottom', closable: false, open: true, size: 352, inView: true },
+  { id: 'help', title: __('Help'), place: 'floating', closable: true, open: false, inView: false },
+  { id: 'notes', title: __('Notes'), place: 'floating', closable: true, open: false, inView: true },
+  { id: 'lesson-menu', title: __('Lesson'), place: 'menu', closable: true, open: false, inView: false },
+  { id: 'view-menu', title: __('View'), place: 'menu', closable: true, open: false, inView: false },
+  { id: 'add-menu', title: __('Add'), place: 'menu', closable: true, open: false, inView: false },
+  { id: 'publish-menu', title: __('Publish'), place: 'menu', closable: true, open: false, inView: false },
+  { id: 'kind-menu', title: __('Lesson type'), place: 'menu', closable: true, open: false, inView: false },
+  { id: 'class-menu', title: __('Class'), place: 'menu', closable: true, open: false, inView: false },
 ]
 const def = (id: string) => PANELS.find((p) => p.id === id)!
 export const inStep = (id: string, step: Step) => !def(id).steps || def(id).steps!.includes(step)

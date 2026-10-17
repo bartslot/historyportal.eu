@@ -12,7 +12,8 @@ use Illuminate\Support\Facades\File;
  * Reports how much of the interface each language actually covers.
  *
  * The catalogue is every string the code asks Laravel to translate — `__('…')` and `@lang('…')`
- * across app/ and resources/views. A language is complete when lang/{code}.json has a key for all
+ * across app/ and resources/views — plus the React studio's own `__('…')` calls in engine-mvp/src,
+ * which read the same lang/{code}.json files. A language is complete when lang/{code}.json has a key for all
  * of them; anything missing renders in English, which is the thing this command exists to find.
  *
  *   php artisan lang:audit                 coverage table for every language
@@ -25,14 +26,17 @@ class LangAudit extends Command
 {
     protected $signature = 'lang:audit
         {--locale= : List the missing strings for one language}
-        {--area= : Only strings from one surface (teacher, wizard, player, admin, pdf, email, landing)}
+        {--area= : Only strings from one surface (teacher, wizard, player, admin, pdf, email, landing, studio)}
         {--json : Output JSON instead of a table}
         {--prune : Remove translation keys that no source string uses any more}';
 
     protected $description = 'Report translation coverage per language, and list what is missing';
 
     /** Scanned for translatable strings, in this order. */
-    private const SOURCE_PATHS = ['app', 'resources/views'];
+    private const SOURCE_PATHS = ['app', 'resources/views', 'engine-mvp/src'];
+
+    /** Studio source (engine-mvp/src) is TypeScript and JavaScript; its tests hold no UI strings. */
+    private const STUDIO_EXTENSIONS = ['ts', 'tsx', 'js'];
 
     public function handle(): int
     {
@@ -122,7 +126,7 @@ class LangAudit extends Command
 
         foreach (self::SOURCE_PATHS as $path) {
             foreach (File::allFiles(base_path($path)) as $file) {
-                if (! in_array($file->getExtension(), ['php'], true)) {
+                if (! $this->isSource($path, $file->getExtension(), $file->getFilename())) {
                     continue;
                 }
 
@@ -158,10 +162,20 @@ class LangAudit extends Command
         return $catalogue;
     }
 
+    private function isSource(string $root, string $extension, string $filename): bool
+    {
+        if ($root !== 'engine-mvp/src') {
+            return $extension === 'php';
+        }
+
+        return in_array($extension, self::STUDIO_EXTENSIONS, true) && ! str_contains($filename, '.test.');
+    }
+
     /** Which surface a file belongs to, so coverage can be chased one screen at a time. */
     private function areaFor(string $relativePath): string
     {
         return match (true) {
+            str_starts_with($relativePath, 'engine-mvp/') => 'studio',
             str_contains($relativePath, 'Admin') || str_contains($relativePath, 'views/admin') => 'admin',
             str_contains($relativePath, 'views/pdf') => 'pdf',
             str_contains($relativePath, 'views/emails') || str_contains($relativePath, 'app/Mail') => 'email',

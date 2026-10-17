@@ -5,6 +5,7 @@
 // narration, captions and quizzes stay player layers, so one video serves every language.
 /* global BABYLON, Mp4Muxer */
 'use strict';
+import { __ } from '../i18n';
 
 (() => {
   const mvp = window.__mvp;
@@ -33,7 +34,7 @@
   }
 
   async function publish() {
-    if (!('VideoEncoder' in window)) { status.textContent = 'This browser has no video encoder (use Chrome, Edge or Safari 17+).'; return; }
+    if (!('VideoEncoder' in window)) { status.textContent = __('This browser has no video encoder (use Chrome, Edge or Safari 17+).'); return; }
     const height = Number(resSel.value);
     const width = Math.round(height * 16 / 9 / 2) * 2;
     const frames = Math.round(mvp.getLength() * FPS);
@@ -71,7 +72,7 @@
         frame.close();
         while (encoder.encodeQueueSize > MAX_QUEUE) await new Promise((r) => setTimeout(r, 1));
         if (f % 5 === 0) {
-          status.textContent = `Baking ${f + 1}/${frames} frames…`;
+          status.textContent = __('Baking :frame/:frames frames…', { frame: f + 1, frames });
           await new Promise((r) => setTimeout(r, 0)); // let the progress text paint
         }
       }
@@ -79,18 +80,18 @@
       muxer.finalize();
       const blob = new Blob([muxer.target.buffer], { type: 'video/mp4' });
       const secs = ((performance.now() - started) / 1000).toFixed(1);
-      status.textContent = `Saving ${(blob.size / 1e6).toFixed(1)} MB…`;
+      status.textContent = __('Saving :size MB…', { size: (blob.size / 1e6).toFixed(1) });
       const name = 'scene-' + new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19) + '.mp4';
       const res = await fetch('/bake?name=' + encodeURIComponent(name), { method: 'POST', body: blob });
       if (!res.ok) throw new Error('saving failed (' + res.status + '): is server.py running?');
       const { url } = await res.json();
       status.innerHTML = '';
       const a = document.createElement('a');
-      a.href = url; a.target = '_blank'; a.textContent = `Published: ${name}`;
-      status.append(`Baked ${frames} frames in ${secs} s. `, a);
+      a.href = url; a.target = '_blank'; a.textContent = __('Published: :name', { name });
+      status.append(__('Baked :frames frames in :secs s.', { frames, secs }) + ' ', a);
       showPreview(url);
     } catch (err) {
-      status.textContent = 'Publish failed: ' + (err.message || err);
+      status.textContent = __('Publish failed: :error', { error: err.message || err });
     } finally {
       if (encoder.state !== 'closed') encoder.close();
       restoreSize();
@@ -106,7 +107,7 @@
     if (!dlg) {
       dlg = document.createElement('dialog');
       dlg.id = 'bakePreview';
-      dlg.innerHTML = '<video controls muted style="max-width:80vw;max-height:70vh;display:block"></video><form method="dialog"><button class="btn" style="margin-top:8px">Close</button></form>';
+      dlg.innerHTML = '<video controls muted style="max-width:80vw;max-height:70vh;display:block"></video><form method="dialog"><button class="btn" style="margin-top:8px">' + __('Close') + '</button></form>';
       dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });
       document.body.appendChild(dlg);
     }

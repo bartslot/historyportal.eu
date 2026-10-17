@@ -5,3 +5,4 @@ public/assets/clouds/
 node_modules/
 dist/
 public/assets/models/
+__pycache__/

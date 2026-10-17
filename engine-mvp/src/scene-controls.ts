@@ -1,4 +1,5 @@
 // Generated from the old static page (ids, ranges and defaults unchanged: the engine binds to these ids).
+import { __ } from './i18n'
 export type Control =
   | { type: 'range'; id: string; label: string; min: number; max: number; step: number; default: number }
   | { type: 'toggle'; id: string; label: string; default: boolean }
@@ -12,13 +13,13 @@ export const ADVANCED: { group: string; controls: Control[] }[] = [
         "type": "toggle",
         "id": "lookOn",
         "default": true,
-        "label": "On (2D and 3D alike)"
+        "label": __("On (2D and 3D alike)")
       },
       {
         "type": "toggle",
         "id": "lookToon",
         "default": true,
-        "label": "Toon shading on 3D"
+        "label": __("Toon shading on 3D")
       },
       {
         "type": "range",
@@ -27,7 +28,7 @@ export const ADVANCED: { group: string; controls: Control[] }[] = [
         "max": 2.0,
         "step": 0.05,
         "default": 0.8,
-        "label": "Hand-made bend"
+        "label": __("Hand-made bend")
       },
       {
         "type": "range",
@@ -36,7 +37,7 @@ export const ADVANCED: { group: string; controls: Control[] }[] = [
         "max": 5.0,
         "step": 1.0,
         "default": 2.0,
-        "label": "Wash"
+        "label": __("Wash")
       },
       {
         "type": "range",
@@ -45,7 +46,7 @@ export const ADVANCED: { group: string; controls: Control[] }[] = [
         "max": 1.5,
         "step": 0.05,
         "default": 0.6,
-        "label": "Line wobble"
+        "label": __("Line wobble")
       },
       {
         "type": "range",
@@ -54,7 +55,7 @@ export const ADVANCED: { group: string; controls: Control[] }[] = [
         "max": 1.5,
         "step": 0.05,
         "default": 0.9,
-        "label": "Ink"
+        "label": __("Ink")
       },
       {
         "type": "range",
@@ -63,24 +64,24 @@ export const ADVANCED: { group: string; controls: Control[] }[] = [
         "max": 1.0,
         "step": 0.05,
         "default": 0.85,
-        "label": "Ink opacity"
+        "label": __("Ink opacity")
       },
       {
         "type": "select",
         "id": "lookInkBlend",
-        "label": "Ink blend",
+        "label": __("Ink blend"),
         "options": [
           [
             "0",
-            "Normal"
+            __("Normal")
           ],
           [
             "1",
-            "Multiply"
+            __("Multiply")
           ],
           [
             "2",
-            "Pencil"
+            __("Pencil")
           ]
         ],
         "default": "2"
@@ -92,7 +93,7 @@ export const ADVANCED: { group: string; controls: Control[] }[] = [
         "max": 1.0,
         "step": 0.05,
         "default": 0.3,
-        "label": "Paint over lines"
+        "label": __("Paint over lines")
       },
       {
         "type": "range",
@@ -101,7 +102,7 @@ export const ADVANCED: { group: string; controls: Control[] }[] = [
         "max": 1.0,
         "step": 0.05,
         "default": 1.0,
-        "label": "Ink darkness"
+        "label": __("Ink darkness")
       },
       {
         "type": "select",
@@ -134,7 +135,7 @@ export const ADVANCED: { group: string; controls: Control[] }[] = [
         "max": 3.0,
         "step": 0.1,
         "default": 1.6,
-        "label": "Outline weight"
+        "label": __("Outline weight")
       },
       {
         "type": "range",
@@ -143,7 +144,7 @@ export const ADVANCED: { group: string; controls: Control[] }[] = [
         "max": 3.0,
         "step": 0.1,
         "default": 1.1,
-        "label": "Line width"
+        "label": __("Line width")
       },
       {
         "type": "range",
@@ -152,7 +153,7 @@ export const ADVANCED: { group: string; controls: Control[] }[] = [
         "max": 60.0,
         "step": 1.0,
         "default": 14.0,
-        "label": "Full lines up to (m)"
+        "label": __("Full lines up to (m)")
       },
       {
         "type": "range",
@@ -161,7 +162,7 @@ export const ADVANCED: { group: string; controls: Control[] }[] = [
         "max": 1.0,
         "step": 0.05,
         "default": 0.3,
-        "label": "Far line strength"
+        "label": __("Far line strength")
       },
       {
         "type": "range",
@@ -170,7 +171,7 @@ export const ADVANCED: { group: string; controls: Control[] }[] = [
         "max": 1.0,
         "step": 0.05,
         "default": 0.45,
-        "label": "Lines in images"
+        "label": __("Lines in images")
       },
       {
         "type": "range",
@@ -179,7 +180,7 @@ export const ADVANCED: { group: string; controls: Control[] }[] = [
         "max": 1.5,
         "step": 0.05,
         "default": 0.7,
-        "label": "Wet edges"
+        "label": __("Wet edges")
       },
       {
         "type": "range",
@@ -188,7 +189,7 @@ export const ADVANCED: { group: string; controls: Control[] }[] = [
         "max": 1.5,
         "step": 0.05,
         "default": 0.8,
-        "label": "Stains"
+        "label": __("Stains")
       },
       {
         "type": "range",
@@ -197,7 +198,7 @@ export const ADVANCED: { group: string; controls: Control[] }[] = [
         "max": 1.5,
         "step": 0.05,
         "default": 0.6,
-        "label": "Blooms"
+        "label": __("Blooms")
       },
       {
         "type": "range",
@@ -206,7 +207,7 @@ export const ADVANCED: { group: string; controls: Control[] }[] = [
         "max": 1.5,
         "step": 0.05,
         "default": 0.6,
-        "label": "Dark pigment"
+        "label": __("Dark pigment")
       },
       {
         "type": "range",
@@ -215,7 +216,7 @@ export const ADVANCED: { group: string; controls: Control[] }[] = [
         "max": 1.5,
         "step": 0.05,
         "default": 0.7,
-        "label": "Granulation"
+        "label": __("Granulation")
       },
       {
         "type": "range",
@@ -224,7 +225,7 @@ export const ADVANCED: { group: string; controls: Control[] }[] = [
         "max": 1.0,
         "step": 0.05,
         "default": 0.6,
-        "label": "Own texture"
+        "label": __("Own texture")
       },
       {
         "type": "range",
@@ -233,24 +234,24 @@ export const ADVANCED: { group: string; controls: Control[] }[] = [
         "max": 20.0,
         "step": 0.5,
         "default": 4.0,
-        "label": "Texture size (m)"
+        "label": __("Texture size (m)")
       },
       {
         "type": "select",
         "id": "lookBlend",
-        "label": "Blend",
+        "label": __("Blend"),
         "options": [
           [
             "0",
-            "Multiply"
+            __("Multiply")
           ],
           [
             "1",
-            "Overlay"
+            __("Overlay")
           ],
           [
             "2",
-            "Soft light"
+            __("Soft light")
           ]
         ],
         "default": "0"
@@ -258,19 +259,19 @@ export const ADVANCED: { group: string; controls: Control[] }[] = [
       {
         "type": "select",
         "id": "lookPaletteMode",
-        "label": "Palette",
+        "label": __("Palette"),
         "options": [
           [
             "0",
-            "Natural"
+            __("Natural")
           ],
           [
             "1",
-            "Indigo night"
+            __("Indigo night")
           ],
           [
             "2",
-            "Sepia"
+            __("Sepia")
           ]
         ],
         "default": "0"
@@ -282,7 +283,7 @@ export const ADVANCED: { group: string; controls: Control[] }[] = [
         "max": 1.0,
         "step": 0.05,
         "default": 0.85,
-        "label": "Palette strength"
+        "label": __("Palette strength")
       },
       {
         "type": "range",
@@ -291,7 +292,7 @@ export const ADVANCED: { group: string; controls: Control[] }[] = [
         "max": 1.0,
         "step": 0.05,
         "default": 0.5,
-        "label": "Paper"
+        "label": __("Paper")
       },
       {
         "type": "range",
@@ -300,7 +301,7 @@ export const ADVANCED: { group: string; controls: Control[] }[] = [
         "max": 1.5,
         "step": 0.05,
         "default": 0.6,
-        "label": "Paper edge"
+        "label": __("Paper edge")
       }
     ]
   },
@@ -310,23 +311,23 @@ export const ADVANCED: { group: string; controls: Control[] }[] = [
       {
         "type": "select",
         "id": "cloudSource",
-        "label": "Source",
+        "label": __("Source"),
         "options": [
           [
             "volume",
-            "Volumetric cumulus (Ghibli)"
+            __("Volumetric cumulus (Ghibli)")
           ],
           [
             "cumulus",
-            "Comic cumulus (sunlit)"
+            __("Comic cumulus (sunlit)")
           ],
           [
             "procedural",
-            "Watercolour (metaballs)"
+            __("Watercolour (metaballs)")
           ],
           [
             "painted",
-            "Painted (PNG)"
+            __("Painted (PNG)")
           ]
         ],
         "default": "volume"
@@ -338,7 +339,7 @@ export const ADVANCED: { group: string; controls: Control[] }[] = [
         "max": 1.0,
         "step": 0.05,
         "default": 0.8,
-        "label": "Cloud ink"
+        "label": __("Cloud ink")
       },
       {
         "type": "range",
@@ -347,7 +348,7 @@ export const ADVANCED: { group: string; controls: Control[] }[] = [
         "max": 1.5,
         "step": 0.05,
         "default": 0.6,
-        "label": "Sun glow"
+        "label": __("Sun glow")
       },
       {
         "type": "range",
@@ -356,7 +357,7 @@ export const ADVANCED: { group: string; controls: Control[] }[] = [
         "max": 1.0,
         "step": 0.05,
         "default": 0.5,
-        "label": "Cloud bands"
+        "label": __("Cloud bands")
       },
       {
         "type": "range",
@@ -365,24 +366,24 @@ export const ADVANCED: { group: string; controls: Control[] }[] = [
         "max": 1.0,
         "step": 0.05,
         "default": 0.65,
-        "label": "Cloud volume"
+        "label": __("Cloud volume")
       },
       {
         "type": "select",
         "id": "cloudShot",
-        "label": "Shot",
+        "label": __("Shot"),
         "options": [
           [
             "normal",
-            "Normal (thin)"
+            __("Normal (thin)")
           ],
           [
             "cinematic",
-            "Cinematic (puffy)"
+            __("Cinematic (puffy)")
           ],
           [
             "mixed",
-            "Mixed"
+            __("Mixed")
           ]
         ],
         "default": "normal"
@@ -396,19 +397,19 @@ export const ADVANCED: { group: string; controls: Control[] }[] = [
         "type": "toggle",
         "id": "bd-hills",
         "default": true,
-        "label": "Hills (230 m)"
+        "label": __("Hills (230 m)")
       },
       {
         "type": "toggle",
         "id": "bd-town",
         "default": true,
-        "label": "Town (125 m)"
+        "label": __("Town (125 m)")
       },
       {
         "type": "toggle",
         "id": "bd-trees",
         "default": true,
-        "label": "Tree line (72 m)"
+        "label": __("Tree line (72 m)")
       },
       {
         "type": "range",
@@ -417,7 +418,7 @@ export const ADVANCED: { group: string; controls: Control[] }[] = [
         "max": 1.0,
         "step": 0.05,
         "default": 0.0,
-        "label": "Distance paleness"
+        "label": __("Distance paleness")
       }
     ]
   },
@@ -428,7 +429,7 @@ export const ADVANCED: { group: string; controls: Control[] }[] = [
         "type": "toggle",
         "id": "grid",
         "default": true,
-        "label": "Grid on ground"
+        "label": __("Grid on ground")
       }
     ]
   },
@@ -442,13 +443,13 @@ export const ADVANCED: { group: string; controls: Control[] }[] = [
         "max": 1.0,
         "step": 0.05,
         "default": 0.35,
-        "label": "City size"
+        "label": __("City size")
       },
       {
         "type": "toggle",
         "id": "cityWall",
         "default": true,
-        "label": "Town wall"
+        "label": __("Town wall")
       }
     ]
   }

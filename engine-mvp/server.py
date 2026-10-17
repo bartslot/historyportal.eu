@@ -11,6 +11,7 @@ Models: per member in crew.json, run through `claude -p`. CREW_JEV=0 switches th
 """
 import concurrent.futures
 import json
+import math
 import os
 import pathlib
 import random
@@ -215,21 +216,34 @@ def _obj(props, required):
 
 
 _REPLY = {'type': 'string'}
+# optional in every answer: a decision that is the client's (docs/crew-stream.md "Choices"); clean_choices() guards it
+_CHOICES = _obj({
+    'question': {'type': 'string'},
+    'options': {'type': 'array', 'items': _obj({'label': {'type': 'string'}, 'why': {'type': 'string'},
+                                                'recommended': {'type': 'boolean'}}, ['label', 'why', 'recommended'])},
+    'scope': {'type': 'boolean'},
+}, ['question', 'options'])
 ROUTER_SCHEMA = _obj({
     'reply': _REPLY,
+    'choices': _CHOICES,
     'ask': {'type': 'array', 'items': _obj({'crew': {'type': 'string'}, 'question': {'type': 'string'},
                                             'ack': {'type': 'string'}}, ['crew', 'question', 'ack'])},
 }, ['reply', 'ask'])
 _TITLE = {'type': 'string'}
+_SKETCH = {'type': 'string'}   # one sentence describing a scene the member wrote or changed (<= 300, capped in finish_member)
 _SETTINGS = {'type': 'array', 'items': _obj({'id': {'type': 'string'},
                                               'value': {'type': ['number', 'boolean', 'string']}}, ['id', 'value'])}
 _COMMANDS = {'type': 'array', 'items': {'type': 'object'}}   # free objects: validate() decides what survives
-STAGE_SCHEMA = _obj({'reply': _REPLY, 'settings': _SETTINGS, 'commands': _COMMANDS, 'title': _TITLE},
-                    ['reply', 'settings', 'commands'])
-STAGE_SCHEMA_NO_TITLE = _obj({k: v for k, v in STAGE_SCHEMA['properties'].items() if k != 'title'},
+# the writer's script data (docs/crew-stream.md "Script on the page"): a scene, or the rewritten selected lines
+_SCENE = _obj({'lines': {'type': 'array', 'items': _obj({'speaker': {'type': ['string', 'null']}, 'text': {'type': 'string'}}, ['speaker', 'text'])}}, ['lines'])
+_LINES = {'type': 'array', 'items': _obj({'id': {'type': 'string'}, 'speaker': {'type': ['string', 'null']}, 'text': {'type': 'string'}}, ['id', 'speaker', 'text'])}
+STAGE_SCHEMA = _obj({'reply': _REPLY, 'choices': _CHOICES, 'settings': _SETTINGS, 'commands': _COMMANDS, 'title': _TITLE, 'sketch': _SKETCH,
+                     'scene': _SCENE, 'lines': _LINES}, ['reply', 'settings', 'commands'])
+STAGE_SCHEMA_NO_TITLE = _obj({k: v for k, v in STAGE_SCHEMA['properties'].items() if k not in ('title', 'scene', 'lines')},
                              ['reply', 'settings', 'commands'])
-TALK_SCHEMA = _obj({'reply': _REPLY}, ['reply'])
-TALK_SCHEMA_WRITER = _obj({'reply': _REPLY, 'title': _TITLE}, ['reply'])
+TALK_SCHEMA = _obj({'reply': _REPLY, 'choices': _CHOICES}, ['reply'])
+TALK_SCHEMA_WRITER = _obj({'reply': _REPLY, 'choices': _CHOICES, 'title': _TITLE, 'sketch': _SKETCH, 'scene': _SCENE, 'lines': _LINES}, ['reply'])
+TALK_SCHEMA_MEMBER = _obj({'reply': _REPLY, 'choices': _CHOICES, 'sketch': _SKETCH}, ['reply'])   # the director's TALK_SCHEMA has no sketch
 
 
 def member_schema(m, direct):
@@ -237,7 +251,7 @@ def member_schema(m, direct):
         return TALK_SCHEMA
     if may_change(m, direct):
         return STAGE_SCHEMA if m['id'] == 'writer' else STAGE_SCHEMA_NO_TITLE
-    return TALK_SCHEMA_WRITER if m['id'] == 'writer' else TALK_SCHEMA
+    return TALK_SCHEMA_WRITER if m['id'] == 'writer' else TALK_SCHEMA_MEMBER
 
 
 # ---------- skill packs: house rules appended to each prompt ----------
@@ -281,11 +295,29 @@ teacher builds a narrated, story-driven lesson for their class. The teacher is t
 their final say. A value the client set by hand stays as it is unless the client asks you to change it now.
 Say "your class", never "learners" or "users". Short, plain, concrete; no tagline-style sentences, no
 greetings, no compliments, no introducing yourself unless asked. Plain text, no markdown (no **, no #,
-no bullets with *); at most 120 words.
+no bullets with *); at most 60 words in the chat. A scene or script never goes in your reply text:
+the writer puts it in `scene` (it goes onto the script page); the reply then says in one sentence what you did.
 Never present an invented event as history: say plainly which parts are made up.
+Your own voice is flavour, never a code: plain words a teacher understands at once, no jargon, and never end
+with a question tag like "Copy?", "Over." or "Roger?". No theatre or film jargon either ("plaatsen verdelen", "cue", "places").
 ALWAYS write in the language of the client's last message (Dutch in, Dutch out), whatever language the
 rest of this prompt or the conversation is in. Talk about THIS lesson only; examples below are about other
-lessons and only show the tone: never repeat them."""
+lessons and only show the tone: never repeat them.
+When the client says this, dit, hier, deze, that or "it" without naming something, they mean the SELECTED object,
+else the current scene (see "What the client is doing right now"). Use what they just did to understand the
+request; do not recite that context back to them.
+DECISIONS THAT ARE THE CLIENT'S: when the next step is a choice that belongs to the client (a style, mood, colour or
+look; which angle or story; which character; the length; what to cut), do not guess and do not ask an open question.
+Return "choices": {"question": "<short question>", "options": [{"label": "<2-5 words>", "why": "<one short sentence>",
+"recommended": true|false}]} with 2 to 4 concrete options. Exactly ONE option is recommended and it comes first; its
+"why" is grounded in THIS lesson (its script, period, the age of the class, what they are doing right now), in one
+short sentence, in your own voice and the client's language. For looks, options differ in MOOD and the
+recommendation follows the emotional tone of the script (a dark period asks for a darker, moodier look). Give the other options a short "why" too. Keep "reply"
+to one short lead-in sentence and change nothing yet: wait for the pick.
+RESTYLING (look, colours, palette, style, time of day, mood) ALWAYS starts by asking the scope: choices with
+"scope": true and exactly the two options "Whole lesson" and "This scene" (translated to the client's language), unless
+the context says "Scope chosen by the client" or the client already said it. With the scope known, ask the look
+choices; once the client picked an option, act on it."""
 
 
 def roster(assistant):
@@ -322,21 +354,43 @@ The "ack" of each ask is a fresh line in the voice of the member you ask, never 
 
 How you decide:
 - The client asks for ANY change on the stage (sky, light, time of day, day or night, look, style, objects,
-  people, buildings, town): ask set (Jules) for it. Only set and actors can change the stage.
-- Nothing known yet about the lesson (no topic, no class age): do not ask anyone. Ask the client what kind of
-  lesson or story they want: the topic, the age of their class, a story or a game, and how long.
+  people, buildings, town): ask set (Jules) for it.
+- Use what the client is doing: a selected building plus "klopt dit voor 1642?" means historian (is it right for
+  that year) and set (fix it); put the selected object's name in each question you ask. Only set and actors can change the stage.
+- The brief (topic, class age, story or game, length) is gathered ONE QUESTION PER TURN, never a list of
+  questions: ask only the first thing still missing, in this order: topic, class age, story or game, length.
+  Ask it as `choices` when it has a few natural answers (class age: e.g. "Groep 6 (9-10)", "Groep 7 (10-11)",
+  "Groep 8 (11-12)", "Brugklas (12-13)" in the client's school system; story or game; length: "10 min",
+  "20 min", "45 min"), with the most likely one recommended from what you know. Topic is an open question.
+  Do not ask anyone in the crew until the topic and class age are known. Acknowledge what the client just
+  said in a few words first, then the one question.
+  With `choices`, the question itself lives ONLY in choices.question: your reply text is just the short
+  acknowledgement (never repeat or rephrase the question there). Keep side remarks out (they distract from the question).
 - A question or request for one specialist: ask that one. Facts and sources: historian. Story, angle, script:
   writer. Age, words, outcomes, quiz: learning. Jokes: comedian. Voices, how lines are said, characters moving:
   actors. The stage, objects, sky, light, look, town: set.
+- RESTYLING (look, colours, palette, style, time of day, mood, "andere kleuren"): if the context has no "Scope chosen
+  by the client", YOU ask the scope now: "ask" is [] and "choices" is the scope question ("scope": true, options
+  "Whole lesson" / "This scene", recommend the one that fits what they are doing). With the scope known, ask set and
+  put the scope in your question to them; set then offers the look options. The lesson script is in "Lesson" above:
+  use it for any recommendation you make.
 - At most {MAX_ASKS} crew members per turn. The director only when the client asks for a review of the result
   or says the lesson is finished.
 - If the client just chats or thanks you, answer yourself and ask no one.
-Answer ONLY with JSON: {{"reply": "<what you tell the client>", "ask": [{{"crew": "<id>", "question": "<what you ask them, with the client's context>", "ack": "<that member's one-line 'on it' bubble>"}}]}}
+Answer ONLY with JSON: {{"reply": "<what you tell the client>", "choices": <optional, see DECISIONS THAT ARE THE CLIENT'S>, "ask": [{{"crew": "<id>", "question": "<what you ask them, with the client's context>", "ack": "<that member's one-line 'on it' bubble>"}}]}}
 "ack" is written in THAT member's own voice, first person, in the client's language, at most 12 words, and says
 what they are about to do (e.g. "Ik zoek de data even op."). "ask" is [] when you ask no one.{tasks_and_skills(CREW.get('assistant_tasks'), [])}"""
 
 
 STAGE_OWNERS = {'set', 'actors'}
+SKETCH_RULE = ('When you write or change a scene in the Script step, add "sketch": one English sentence describing the picture '
+               '(who, where, when, what happens, composition), for a quick 3D blockout of the scene.')
+WRITER_RULE = ('SCRIPT ON THE PAGE: when you write or change a scene, put it in "scene": {"lines": [{"speaker": null for the narrator or the '
+               'character\'s name, "text": "..."}]} (2 to 40 lines, each at most 400 characters; characters carry the story: let them speak, the '
+               'narrator only links). It replaces the current scene on the script page, so write the whole scene. Your "reply" is then ONE short '
+               'sentence about what you did, never the scene itself. If the context has a "Selection in the script" with action rewrite, answer '
+               'with "lines": [{"id","speaker","text"}] only: the complete rewritten version of the line(s) the selection sits in, each with the '
+               'id of the line it replaces (only ids from the selection), changing nothing else; reply: one short sentence.')
 TITLE_RULE = 'The lesson title: "title", only when the lesson is still untitled or the client asks for a new one.'
 
 
@@ -350,10 +404,10 @@ def member_prompt(m, assistant, direct=False):
     title = TITLE_RULE if m['id'] == 'writer' else ''
     if m.get('reviews_only'):
         powers = 'You do NOT change anything yourself. Give notes, each to one crew member by name, with one reason.'
-        fmt = '{"reply": "<your notes to the client>"}'
+        fmt = '{"reply": "<your notes to the client>", "choices": <optional, see DECISIONS>}'
     elif not may_change(m, direct):
         powers = f'You do not change the stage or settings: that is for set and actors. {title}'
-        fmt = '{"reply": "<to the client, in your own voice>"' + (', "title": "<only to rename the lesson>"}' if title else '}')
+        fmt = '{"reply": "<to the client, in your own voice>", "choices": <optional, see DECISIONS>' + (', "title": "<only to rename the lesson>"' if title else '') + ', "sketch": <optional>}'
     else:
         powers = f"""You can change every studio setting and the stage, like the client can by hand. Change what the
 request needs, nothing more. Every change is shown to the client and can be undone.
@@ -361,8 +415,12 @@ Settings: the list "settings" below (id, label, type, range or options, current 
 {{"id": "<id>", "value": <number | true/false | option value>}}. {title}
 The stage, with scene commands:
 {SCENE_RULES}"""
-        fmt = ('{"reply": "<to the client, in your own voice>", "settings": [ {"id": "<id>", "value": <value>} ], "commands": [ ... ]'
-               + (', "title": "<only to rename the lesson>"}' if title else '}'))
+        fmt = ('{"reply": "<to the client, in your own voice>", "choices": <optional, see DECISIONS>, "settings": [ {"id": "<id>", "value": <value>} ], "commands": [ ... ]'
+               + (', "title": "<only to rename the lesson>"' if title else '') + ', "sketch": <optional>}')
+    sketch = '' if m.get('reviews_only') else '\n' + SKETCH_RULE
+    if m['id'] == 'writer':
+        sketch += '\n' + WRITER_RULE
+        fmt = fmt.replace(', "sketch": <optional>}', ', "sketch": <optional>, "scene": <optional>, "lines": <optional>}')
     return f"""{SHARED}
 
 You are {m['name']}, the {m['role'].lower()}. {m['backstory']}{voice_line(m)}
@@ -370,7 +428,7 @@ Mission: {m['mission']}
 You own: {m['owns']}
 The set assistant {assistant['name']} brings you the client's request; the client reads your answer directly.
 If the client asks about you, answer as yourself, from your backstory, briefly.
-{powers}
+{powers}{sketch}
 Answer ONLY with JSON: {fmt}{tasks_and_skills(m.get('tasks'), m.get('skills'))}"""
 
 
@@ -400,12 +458,160 @@ def clean_settings(proposed, offered):
     return out
 
 
+def _txt(v, n):
+    return v.strip()[:n] if isinstance(v, str) else ''
+
+
+def _num(v):
+    return round(float(v), 2) if isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) else None
+
+
+MAX_OPTIONS = 4
+MAX_SKETCH = 300
+SCOPES = {'lesson': 'whole lesson', 'scene': 'this scene'}
+
+
+def clean_scope(data):
+    """'lesson' | 'scene' from the request body, else None."""
+    v = data.get('scope')
+    return v if isinstance(v, str) and v in SCOPES else None
+
+
+SCOPE_LABELS = {'nl': ('Hele les', 'Deze scène'), 'en': ('Whole lesson', 'This scene'), 'de': ('Ganze Lektion', 'Diese Szene')}
+WHOLE = re.compile(r'whole|hele|ganze|\ball\b|alle|lesson|\bles\b|lektion', re.I)
+
+
+def scope_labels(opts, lang):
+    """The scope question's two labels in the client's language, whatever the model wrote (it drifts to English)."""
+    whole, scene = SCOPE_LABELS.get(lang, SCOPE_LABELS['en'])
+    return [{**o, 'label': whole if WHOLE.search(o['label']) else scene} for o in opts]
+
+
+def clean_choices(raw, lang=None):
+    """Model output is untrusted: a capped, well-formed `choices` or None. 2-4 options with a label, at most one
+    recommended (the first one flagged wins and moves first), `scope: true` kept only as a real True."""
+    if not isinstance(raw, dict):
+        return None
+    question = _txt(raw.get('question'), 200)
+    opts = [{'label': _txt(o.get('label'), 60), 'why': _txt(o.get('why'), 200), 'recommended': o.get('recommended') is True}
+            for o in (raw.get('options') if isinstance(raw.get('options'), list) else []) if isinstance(o, dict)]
+    opts = [o for o in opts if o['label']]
+    star = next((i for i, o in enumerate(opts) if o['recommended']), None)
+    opts = [{**o, 'recommended': i == star} for i, o in enumerate(opts)]
+    if star:
+        opts.insert(0, opts.pop(star))
+    opts = opts[:MAX_OPTIONS]
+    if not question or len(opts) < 2:
+        return None
+    if raw.get('scope') is True and len(opts) == 2:
+        # the question is written in the client's language, more reliably than a short client message
+        opts = scope_labels(opts, guess_lang(question) if guess_lang(question) != 'en' else (lang or 'en'))
+    return {'question': question, 'options': opts, **({'scope': True} if raw.get('scope') is True else {})}
+
+
+SELECTION_ACTIONS = ('rewrite', 'check', 'ask')
+MAX_SELECTION_LINES = 20
+MAX_SCENE_LINES = 40
+
+
+def clean_selection(raw):
+    """The client's script selection {action, how?, text, lineIds, sceneId, scene[]} or None when it is not well-formed."""
+    if not isinstance(raw, dict) or raw.get('action') not in SELECTION_ACTIONS:
+        return None
+    text, scene_id = _txt(raw.get('text'), 2000), _txt(raw.get('sceneId'), 80)
+    ids = [_txt(i, 80) for i in (raw.get('lineIds') if isinstance(raw.get('lineIds'), list) else [])[:MAX_SELECTION_LINES] if isinstance(i, str)]
+    ids = [i for i in ids if i]
+    if not text or not scene_id or (raw['action'] == 'rewrite' and not ids):
+        return None
+    scene = [{'id': _txt(x.get('id'), 80), 'speaker': _txt(x.get('speaker'), 40) or None, 'text': _txt(x.get('text'), 1000)}
+             for x in (raw.get('scene') if isinstance(raw.get('scene'), list) else [])[:MAX_SCENE_LINES] if isinstance(x, dict)]
+    return {'action': raw['action'], 'how': _txt(raw.get('how'), 60), 'text': text, 'lineIds': ids, 'sceneId': scene_id, 'scene': scene}
+
+
+def selection_block(sel):
+    if not sel:
+        return ''
+    lines = '\n'.join(f"[{x['id']}] {x['speaker'] or 'Narrator'}: {x['text']}" for x in sel['scene'])
+    how = f", how: {sel['how']}" if sel['how'] else ''
+    return (f"Selection in the script (action {sel['action']}{how}; line ids {', '.join(sel['lineIds']) or 'none'}):\n\"{sel['text']}\"\n"
+            f"The scene's lines now:\n{lines or '(none)'}")
+
+
+def clean_scene(raw, limit=MAX_SCENE_LINES):
+    """The writer's scene {lines:[{speaker,text}]} or None: 2-40 lines, text <= 400, speaker <= 40, empty lines dropped."""
+    rows = raw.get('lines') if isinstance(raw, dict) and isinstance(raw.get('lines'), list) else []
+    out = [{'speaker': _txt(x.get('speaker'), 40) or None, 'text': _txt(x.get('text'), 400)} for x in rows if isinstance(x, dict)]
+    out = [x for x in out if x['text']]
+    return {'lines': out[:limit]} if 2 <= len(out) else None
+
+
+def clean_rewrite(raw, sel):
+    """The writer's rewritten lines [{id, speaker, text}]: only ids from the selection, 1-40 lines, or None."""
+    if not sel or sel['action'] != 'rewrite' or not isinstance(raw, list):
+        return None
+    out = [{'id': _txt(x.get('id'), 80), 'speaker': _txt(x.get('speaker'), 40) or None, 'text': _txt(x.get('text'), 400)}
+           for x in raw[:MAX_SCENE_LINES] if isinstance(x, dict)]
+    out = [x for x in out if x['id'] in sel['lineIds'] and x['text']]
+    return out or None
+
+
+def clean_client(raw):
+    """The client's `context` object is untrusted: whitelist the contract keys, cap every string, list and number."""
+    if not isinstance(raw, dict):
+        return {}
+    les = raw.get('lesson') if isinstance(raw.get('lesson'), dict) else {}
+    scenes = [{'id': _txt(x.get('id'), 80), 'title': _txt(x.get('title'), 120)}
+              for x in (les.get('scenes') if isinstance(les.get('scenes'), list) else [])[:40] if isinstance(x, dict)]
+    sel = raw.get('selected') if isinstance(raw.get('selected'), dict) else None
+    sel = ({'name': _txt(sel.get('name'), 80), 'kind': _txt(sel.get('kind'), 80), 'x': _num(sel.get('x')),
+            'z': _num(sel.get('z')), 'yaw': _num(sel.get('yaw'))} if sel and _txt(sel.get('name'), 80) else None)
+    rec = [{'ago': _num(x.get('ago')), 'what': _txt(x.get('what'), 160)}
+           for x in (raw.get('recent') if isinstance(raw.get('recent'), list) else [])[:10] if isinstance(x, dict)]
+    return {'title': _txt(les.get('title'), 120), 'scenes': scenes, 'current': _txt(les.get('current'), 80),
+            'currentTitle': _txt(les.get('currentTitle'), 120), 'scriptWords': _num(les.get('scriptWords')),
+            'step': _txt(raw.get('step'), 40), 'selected': sel,
+            'objects': [_txt(o, 80) for o in (raw.get('objects') if isinstance(raw.get('objects'), list) else [])[:40] if _txt(o, 80)],
+            'time': _num(raw.get('time')), 'recent': [r for r in rec if r['what']]}
+
+
+def client_block(raw):
+    """A compact 'What the client is doing right now' block; '' when the client sent nothing usable."""
+    c = clean_client(raw)
+    lines = []
+    if c.get('title'):
+        lines.append(f"Lesson: {c['title']}")
+    if c.get('scenes') or c.get('currentTitle'):
+        ids = [x['id'] for x in c['scenes']]
+        n = f"scene {ids.index(c['current']) + 1} of {len(ids)}" if c['current'] in ids else f"{len(ids)} scenes, current scene"
+        lines.append(f"{n}: {c['currentTitle']}".rstrip(': '))
+    if c.get('step'):
+        lines.append(f"Step: {c['step']}")
+    sel = c.get('selected')
+    if sel:
+        pos = ', '.join(f"{k}={sel[k]}" for k in ('x', 'z', 'yaw') if sel[k] is not None)
+        lines.append(f"Selected object: {sel['name']} ({sel['kind'] or 'object'}; {pos})" if pos else f"Selected object: {sel['name']}")
+    else:
+        lines.append('Selected object: none')
+    if c.get('objects'):
+        lines.append('On stage: ' + ', '.join(c['objects']))
+    if c.get('time') is not None:
+        lines.append(f"Timeline at {c['time']}s")
+    if c.get('scriptWords') is not None:
+        lines.append(f"Script: {int(c['scriptWords'])} words")
+    if c.get('recent'):
+        lines.append('Just did: ' + '; '.join(f"{r['what']} ({int(r['ago'] or 0)}s ago)" for r in c['recent']))
+    return ('What the client is doing right now:\n' + '\n'.join(lines)) if len(lines) > 1 or sel else ''
+
+
 def context(data):
     hist = [h for h in (data.get('history') if isinstance(data.get('history'), list) else []) if isinstance(h, dict)][-MAX_HISTORY:]
     talk = '\n'.join(f"{str(h.get('who', ''))[:40]}: {str(h.get('text', ''))[:600]}" for h in hist)
     lesson = data.get('lesson', {}) if isinstance(data.get('lesson'), dict) else {}
     return (f"Lesson: {json.dumps(lesson)[:2000]}\nConversation so far:\n{talk or '(none)'}\n"
-            f"Settings: {json.dumps(data.get('settings', []))[:12000]}\nStage: {json.dumps(data.get('scene', {}))[:12000]}")
+            f"Settings: {json.dumps(data.get('settings', []))[:12000]}\nStage: {json.dumps(data.get('scene', {}))[:12000]}"
+            + (f"\n{block}" if (block := client_block(data.get('context'))) else '')
+            + (f"\n{block}" if (block := selection_block(clean_selection(data.get('selection')))) else '')
+            + (f"\nScope chosen by the client: {SCOPES[scope]}." if (scope := clean_scope(data)) else ''))
 
 
 def jev_score(resp):
@@ -473,9 +679,20 @@ def member_request(m, assistant, question, data, direct):
 def finish_member(m, answer, data, direct):
     """The member's raw structured answer -> the guarded message (title, settings, commands)."""
     msg = {'who': m['id'], 'text': str(answer.get('reply', ''))[:MAX_REPLY]}
+    if choices := clean_choices(answer.get('choices'), guess_lang(str(data.get('message', '')))):
+        msg['choices'] = choices
+    if scope := clean_scope(data):
+        msg['scope'] = scope
+    if sketch := _txt(answer.get('sketch'), MAX_SKETCH):
+        msg['sketch'] = sketch
     title = str(answer.get('title') or '').strip()[:80]
     if title and m['id'] == 'writer' and title_open(data):
         msg['title'] = title
+    if m['id'] == 'writer':
+        if scene := clean_scene(answer.get('scene')):
+            msg['scene'] = scene
+        if lines := clean_rewrite(answer.get('lines'), clean_selection(data.get('selection'))):
+            msg['lines'] = lines
     if may_change(m, direct):
         commands, dropped = validate(answer.get('commands') or [])
         msg['settings'] = clean_settings(answer.get('settings'), data.get('settings'))
@@ -484,29 +701,56 @@ def finish_member(m, answer, data, direct):
     return msg
 
 
-def grade_member(m, msg, data, assistant, emit=None):
+def graded_text(msg):
+    """What JEV and the director read: the reply plus the scene or lines it put on the script page."""
+    rows = (msg.get('scene') or {}).get('lines') or msg.get('lines') or []
+    return '\n'.join([msg['text']] + [f"{x['speaker'] or 'Narrator'}: {x['text']}" for x in rows])
+
+
+def grade_member(m, msg, data, assistant, emit=None, review=True):
     """JEV grade, and the director's second opinion when unsure. Adds jev/review to msg; emit gets events."""
-    if not (JEV_ON and m['id'] in JEV_IDS and msg['text'].strip()):
+    text = graded_text(msg)
+    if not (JEV_ON and m['id'] in JEV_IDS and text.strip()):
         return
-    grade = jev_grade(m, msg['text'], data)
+    grade = jev_grade(m, text, data)
     if not grade:
         return
     msg['jev'] = grade
     if emit:
         emit({'type': 'jev', 'who': m['id'], **grade})
-    if grade['score'] < JEV_MIN_SCORE:
+    if review and grade['score'] < JEV_MIN_SCORE:
         try:
-            msg['review'] = {'who': DIRECTOR, 'text': director_review(msg['text'], m['name'], data, assistant)}
+            msg['review'] = {'who': DIRECTOR, 'text': director_review(graded_text(msg), m['name'], data, assistant)}
             if emit:
                 emit({'type': 'review', 'who': m['id'], 'text': msg['review']['text']})
         except Exception as e:  # noqa: BLE001 - the answer stands without its second opinion
             print('director review failed:', repr(e), file=sys.stderr)
 
 
+def revision_user(user, first, note):
+    """The member's revision request: the original call plus their answer and the director's note."""
+    return (f"{user}\n\nYour answer was: {first['text']}\n\nMarten, the director, checked your answer: {note} "
+            "Rewrite your answer so every claim is correct and complete as he says. Keep your voice, keep it short, "
+            "keep your choices/questions if they still apply. Do not mention that you were corrected unless it matters to the client.")
+
+
+def revised_message(m, first, rev_answer, data, direct, assistant, emit=None):
+    """Finish + re-grade the revision (never reviewed again); it carries the original review."""
+    msg = finish_member(m, rev_answer, data, direct)
+    grade_member(m, msg, data, assistant, emit, review=False)
+    return {**msg, 'revised': True, 'review': first['review']}
+
+
 def ask_member(m, assistant, question, data, direct=False):
     system, user, schema = member_request(m, assistant, question, data, direct)
     msg = finish_member(m, ask_claude(m['model'], system, user, schema, MEMBER_EFFORT), data, direct)
     grade_member(m, msg, data, assistant)
+    if msg.get('review'):   # ONE revision, never a review of the revision
+        try:
+            rev = ask_claude(m['model'], system, revision_user(user, msg, msg['review']['text']), schema, MEMBER_EFFORT)
+            return revised_message(m, msg, rev, data, direct, assistant)
+        except Exception as e:  # noqa: BLE001 - the first answer stands
+            print('revision failed:', m['id'], repr(e), file=sys.stderr)
     return msg
 
 
@@ -522,12 +766,16 @@ def crew_turn(data):
     message = str(data.get('message', ''))[:MAX_PROMPT].strip()
     assistant = CREW['assistants'].get(str(data.get('assistant'))) or next(iter(CREW['assistants'].values()))
     to = data.get('to')
+    sel = clean_selection(data.get('selection'))
+    if sel and sel['action'] in SELECTION_ROUTES:
+        return [ask_member(MEMBERS[SELECTION_ROUTES[sel['action']]], assistant, selection_question(sel), data)]
     if isinstance(to, str) and to in MEMBERS:   # the client talks to one crew member directly
         return [ask_member(MEMBERS[to], assistant, message, data, direct=True)]
     plan = ask_claude(ROUTER_MODEL, router_prompt(assistant), context(data) + '\n\nClient: ' + message,
                       ROUTER_SCHEMA, ROUTER_EFFORT)
-    out = [{'who': 'assistant', 'text': str(plan.get('reply', ''))[:800]}]
-    asks = plan.get('ask') if isinstance(plan.get('ask'), list) else []
+    choices = clean_choices(plan.get('choices'), guess_lang(message))
+    out = [{'who': 'assistant', 'text': str(plan.get('reply', ''))[:800], **({'choices': choices} if choices else {})}]
+    asks = [] if choices else plan.get('ask') if isinstance(plan.get('ask'), list) else []   # the client decides first
     asks = [a for a in asks if isinstance(a, dict) and isinstance(a.get('crew'), str) and a['crew'] in MEMBERS][:MAX_ASKS]
     if asks:   # parallel; map keeps the order of the asks
         with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_ASKS) as pool:
@@ -681,7 +929,19 @@ def stream_claude(m, system, user, schema, effort, who, state, emit):
     return answer
 
 
-def stream_member(m, assistant, question, data, direct, state, emit):
+BLOCKOUT_ACKS = {'nl': ['Mouwen omhoog, ik zet een blockout neer.', 'Ik zet er snel een blockout bij.'],
+                 'en': ["Sleeves up, I'll block it out.", "I'll put a quick blockout down."],
+                 'de': ['\u00c4rmel hoch, ich stelle einen Blockout hin.']}
+BLOCKOUT_ASK = ("Build a quick 3D blockout of this scene on the current stage: {sketch}. Use simple stand-in figures "
+                "(the catalog's mannequin/character models) and a few large props/buildings for the setting, placed for the "
+                "camera (one focal point), plus a `camera` command framing the focal figure. Keep it to the essentials "
+                "(max ~8 objects); this is a blockout, not the final set. Add to the stage; never delete or move what is already "
+                "there (the client may have placed it). In your reply, start with one sentence that says what the blockout "
+                "shows (it is the caption under the picture), then quote the scene's key spoken line WORD FOR WORD from "
+                "the writer's scene (who says it); never invent a line.")
+
+
+def stream_member(m, assistant, question, data, direct, state, emit, blockout=False):
     who = m['id']
     try:
         if state.is_stopped(who):
@@ -695,10 +955,43 @@ def stream_member(m, assistant, question, data, direct, state, emit):
         grade_member(m, msg, data, assistant, emit)
         if state.is_stopped(who):
             return emit({'type': 'stopped', 'who': who})
-        emit({'type': 'message', **msg})
+        emit({'type': 'message', **msg, **({'blockout': True} if blockout else {})})
+        final = msg
+        if msg.get('review'):
+            final = stream_revision(m, assistant, data, direct, state, emit, system, user, schema, msg) or msg
+            if state.is_stopped(who):
+                return emit({'type': 'stopped', 'who': who})
+        if not blockout and who != 'set' and final.get('sketch') and not final.get('lines') and clean_client(data.get('context')).get('step') == 'script':
+            stream_blockout(final['sketch'], assistant, data, state, emit)
     except Exception as e:  # noqa: BLE001 - one member failing never ends the turn
         print('crew member failed:', who, repr(e), file=sys.stderr)
         emit({'type': 'error', 'who': who, 'error': 'could not answer this time, ask again'})
+
+
+def stream_revision(m, assistant, data, direct, state, emit, system, user, schema, first):
+    """ONE revision after the director's note; returns the revised message (emitted) or None (kept first answer)."""
+    who = m['id']
+    try:
+        rev = stream_claude(m, system, revision_user(user, first, first['review']['text']), schema, MEMBER_EFFORT,
+                            who, state, lambda ev: None)   # the client sees only the final revised message
+        if rev is None or state.is_stopped(who):
+            return None
+        msg = revised_message(m, first, rev, data, direct, assistant, emit)
+        if state.is_stopped(who):
+            return None
+        emit({'type': 'message', **msg})
+        return msg
+    except Exception as e:  # noqa: BLE001 - the first message stands
+        print('revision failed:', who, repr(e), file=sys.stderr)
+        return None
+
+
+def stream_blockout(sketch, assistant, data, state, emit):
+    """Script step: the set designer builds a quick 3D blockout of the sketched scene (his message carries blockout: true)."""
+    jules = MEMBERS['set']
+    pool = BLOCKOUT_ACKS.get(guess_lang(str(data.get('message', ''))), BLOCKOUT_ACKS['en'])
+    emit({'type': 'routed', 'who': 'set', 'ack': random.choice(pool)})
+    stream_member(jules, assistant, BLOCKOUT_ASK.format(sketch=sketch), data, False, state, emit, blockout=True)
 
 
 DUTCH = re.compile(r'\b(de|het|een|en|ik|je|wat|wanneer|waarom|hoe|maak|kun|kan|dit|dat|niet|voor|met|van)\b', re.I)
@@ -725,18 +1018,35 @@ def with_partial(message, to, partial):
     return message
 
 
+SELECTION_ROUTES = {'rewrite': 'writer', 'check': 'historian'}
+
+
+def selection_question(sel):
+    if sel['action'] == 'rewrite':
+        return (f"Rewrite the selected text of the script{': ' + sel['how'] if sel['how'] else ''}. Answer with `lines` "
+                "(the full rewritten lines, same ids). Do not touch the rest of the scene.")
+    return 'Check the history in the selected text of the script: say in a few words what holds, what does not, and the correction.'
+
+
 def crew_stream(data, emit, state):
     message = str(data.get('message', ''))[:MAX_PROMPT].strip()
     assistant = CREW['assistants'].get(str(data.get('assistant'))) or next(iter(CREW['assistants'].values()))
     to = data.get('to')
+    sel = clean_selection(data.get('selection'))
+    if sel and sel['action'] in SELECTION_ROUTES:   # rewrite -> the writer, check -> the historian, straight away
+        who = SELECTION_ROUTES[sel['action']]
+        emit({'type': 'routed', 'who': who, 'ack': direct_ack(MEMBERS[who], message)})
+        return stream_member(MEMBERS[who], assistant, selection_question(sel), data, False, state, emit)
     if isinstance(to, str) and to in MEMBERS:
         emit({'type': 'routed', 'who': to, 'ack': direct_ack(MEMBERS[to], message)})
         question = with_partial(message, to, data.get('partial'))
         return stream_member(MEMBERS[to], assistant, question, data, True, state, emit)
     plan = ask_claude(ROUTER_MODEL, router_prompt(assistant), context(data) + '\n\nClient: ' + message,
                       ROUTER_SCHEMA, ROUTER_EFFORT)
-    emit({'type': 'assistant', 'as': assistant['name'], 'text': str(plan.get('reply', ''))[:800]})
-    asks = plan.get('ask') if isinstance(plan.get('ask'), list) else []
+    choices = clean_choices(plan.get('choices'), guess_lang(message))
+    emit({'type': 'assistant', 'as': assistant['name'], 'text': str(plan.get('reply', ''))[:800],
+          **({'choices': choices} if choices else {})})
+    asks = [] if choices else plan.get('ask') if isinstance(plan.get('ask'), list) else []   # the client decides first
     asks = [a for a in asks if isinstance(a, dict) and isinstance(a.get('crew'), str) and a['crew'] in MEMBERS][:MAX_ASKS]
     for a in asks:
         emit({'type': 'routed', 'who': a['crew'], 'ack': str(a.get('ack') or direct_ack(MEMBERS[a['crew']], message))[:200]})

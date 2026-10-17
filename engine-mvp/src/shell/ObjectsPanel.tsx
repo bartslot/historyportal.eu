@@ -8,6 +8,7 @@ import { Panel } from '../panels/Panel'
 import { usePanels } from '../panels/store'
 import * as TL from '../timeline/model'
 import { ICON, Icon } from '../ui/icons'
+import { __ } from '../i18n'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const mvp = (): any => (window as any).__mvp
@@ -53,7 +54,7 @@ export function ObjectsPanel() {
   const rows = (parent: string | null, depth: number): React.ReactNode[] => children(parent).flatMap((o) => {
     const actor = () => TL.actorOf(o.target)
     const host = o.parent ? names.get(o.parent) : null
-    const where = host ? `on ${host}` : `${o.x}, ${o.z} m`
+    const where = host ? __('on :name', { name: host }) : `${o.x}, ${o.z} m`
     const active = o.target === activeTarget
     return [
       <li key={o.target} role="treeitem" aria-selected={active} aria-label={names.get(o.target)} data-obj={o.target}
@@ -73,19 +74,19 @@ export function ObjectsPanel() {
           )}
         </button>
         {!compact && o.animated && (
-          <span aria-label="Animated" data-tooltip="Moves on the timeline" className="grid h-6 w-4 shrink-0 place-items-center">
+          <span aria-label={__('Animated')} data-tooltip={__('Moves on the timeline')} className="grid h-6 w-4 shrink-0 place-items-center">
             <span className="-rotate-45 rounded-[1px] border border-panel-label" style={{ width: 7, height: 7 }} />
           </span>
         )}
         {!compact && (
           <span className="hidden gap-0.5 group-hover/row:flex group-focus-within/row:flex">
-            <RowButton label="Find on the stage" d={ICON.find} onClick={() => mvp().locate.frame(actor())} />
-            <RowButton label="Duplicate" d={ICON.duplicate} onClick={() => void mvp().duplicate(actor())} />
-            <RowButton label="Delete" d={ICON.trash} onClick={() => { mvp().locate.highlight(null); mvp().deleteActor(actor()) }} />
+            <RowButton label={__('Find on the stage')} d={ICON.find} onClick={() => mvp().locate.frame(actor())} />
+            <RowButton label={__('Duplicate')} d={ICON.duplicate} onClick={() => void mvp().duplicate(actor())} />
+            <RowButton label={__('Delete')} d={ICON.trash} onClick={() => { mvp().locate.highlight(null); mvp().deleteActor(actor()) }} />
           </span>
         )}
         {!compact && (
-          <RowButton label={o.hidden ? `Show ${names.get(o.target)}` : `Hide ${names.get(o.target)}`} d={o.hidden ? ICON.eyeOff : ICON.eye}
+          <RowButton label={o.hidden ? __('Show :name', { name: names.get(o.target) ?? '' }) : __('Hide :name', { name: names.get(o.target) ?? '' })} d={o.hidden ? ICON.eyeOff : ICON.eye}
                      onClick={() => TL.toggleHidden(o.target)} />
         )}
       </li>,
@@ -95,9 +96,9 @@ export function ObjectsPanel() {
 
   return (
     <Panel id="objects">
-      {!compact && <p className="py-3 pl-4 pr-10 text-2xs font-semibold tracking-wide text-panel-title">Objects</p>}
+      {!compact && <p className="py-3 pl-4 pr-10 text-2xs font-semibold tracking-wide text-panel-title">{__('Objects')}</p>}
       {compact && <div className="h-10 shrink-0" />}
-      <ul ref={list} role="tree" aria-label="Objects" className="min-h-0 flex-1 overflow-y-auto pb-2">{rows(null, 0)}</ul>
+      <ul ref={list} role="tree" aria-label={__('Objects')} className="min-h-0 flex-1 overflow-y-auto pb-2">{rows(null, 0)}</ul>
     </Panel>
   )
 }

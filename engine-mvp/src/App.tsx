@@ -13,6 +13,8 @@ import { ReferenceOverlay, ReferencePanel } from './shell/Reference'
 import { ObjectsPanel } from './shell/ObjectsPanel'
 import { ScriptView, StageCaption } from './shell/ScriptView'
 import { TopBar } from './shell/TopBar'
+import { StartOverlay } from './start/StartOverlay'
+import { useStart } from './start/store'
 
 function Stage() {
   return (
@@ -47,8 +49,10 @@ export function App() {
     return () => window.removeEventListener('keydown', onKey, true)
   }, [])
 
+  const covered = useStart().mode !== 'studio'
   return (
-    <div className="studio grid h-dvh bg-base-200 text-panel-value"
+    <>
+    <div inert={covered} className="studio grid h-dvh bg-base-200 text-panel-value"
          style={{
            gridTemplateColumns: 'auto minmax(0, 1fr) auto auto auto',
            gridTemplateRows: '3rem minmax(0, 1fr) auto',
@@ -63,5 +67,7 @@ export function App() {
       <CrewPanel />
       <Dock />
     </div>
+    <StartOverlay />
+    </>
   )
 }
