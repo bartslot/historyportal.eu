@@ -97,7 +97,12 @@ const applyPresetTo = (group, entry) => {
   }
 }
 
-const loadPresets = () => presetFetch('GET')
+// The presets endpoint exists only on a local install for a signed-in user, and the page says so
+// with <meta name="dev-tuning"> (the dev panel, the player). Everywhere else nobody asks: prod
+// answered 404 to every anonymous page view while this fetch ran unconditionally (2026-10-18).
+const hasPresetEndpoint = () => !!document.querySelector('meta[name="dev-tuning"]')
+
+const loadPresets = () => (hasPresetEndpoint() ? presetFetch('GET') : Promise.reject(new Error('no presets endpoint here')))
   .then((data) => {
     presetStore = { active: data.active ?? null, presets: data.presets ?? {} }
     presetsLoaded = true

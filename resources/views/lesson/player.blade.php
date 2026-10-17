@@ -3,6 +3,10 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    @if (\Illuminate\Support\Facades\Route::has('dev.tuning.index') && auth()->check())
+        {{-- The dev panel's presets endpoint (local only): resources/js/dev/tuner.js asks only when this is here. --}}
+        <meta name="dev-tuning" content="{{ route('dev.tuning.index') }}">
+    @endif
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $lesson->title }} — History Portal</title>
     {{-- lesson-map.js (+ the ~1 MB MapLibre/volcanoes chunk) is loaded on demand by

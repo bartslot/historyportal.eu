@@ -2165,5 +2165,6 @@
     "{1} 1 problem needs you.|[2,*] :count problems need you.": "{1} 1 problème est à régler par toi.|[2,*] :count problèmes sont à régler par toi.",
     "Lesson type labels": "Étiquettes du type de leçon",
     "Show QR code": "Afficher le code QR",
-    "Nothing from this period in this set.": "Rien de cette période dans cette collection."
+    "Nothing from this period in this set.": "Rien de cette période dans cette collection.",
+    "Re-narrating failed: this scene still plays its earlier recording.": "La nouvelle narration a échoué : cette scène joue encore l’enregistrement précédent."
 }

@@ -2207,5 +2207,6 @@
     "{1} 1 problem needs you.|[2,*] :count problems need you.": "{1} 1 probleem moet je zelf oplossen.|[2,*] :count problemen moet je zelf oplossen.",
     "Lesson type labels": "Lestype-labels",
     "Show QR code": "QR-code tonen",
-    "Nothing from this period in this set.": "Niets uit deze tijd in deze set."
+    "Nothing from this period in this set.": "Niets uit deze tijd in deze set.",
+    "Re-narrating failed: this scene still plays its earlier recording.": "Opnieuw inspreken mislukt: deze scène speelt nog de eerdere opname."
 }

@@ -3,6 +3,10 @@
      class="fixed bottom-4 right-4 z-100 print:hidden"
      data-dev-panel
      wire:key="dev-test-panel">
+    {{-- The dev panel's presets endpoint is here (resources/js/dev/tuner.js asks only when this is). --}}
+    @if (\Illuminate\Support\Facades\Route::has('dev.tuning.index'))
+        <meta name="dev-tuning" content="{{ route('dev.tuning.index') }}">
+    @endif
 
     {{-- Toggle button --}}
     <button type="button" @click="open = !open"

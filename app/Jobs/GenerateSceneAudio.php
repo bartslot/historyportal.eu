@@ -117,7 +117,10 @@ class GenerateSceneAudio implements ShouldQueue
 
             $this->maybeMarkReady($scene->fresh());
         } catch (Throwable $e) {
-            $scene->update(['status' => 'failed', 'error_message' => $e->getMessage()]);
+            // A scene that still has its own recording of this text stays playable: a failed
+            // re-narration (a voice change) is not a broken scene. It keeps the error, which
+            // LessonProblems shows in amber (error scan 2026-10-18: 14 such scenes marked failed).
+            $scene->update(['status' => $scene->hasFreshAudio() ? 'ready' : 'failed', 'error_message' => $e->getMessage()]);
             throw $e;
         }
     }
