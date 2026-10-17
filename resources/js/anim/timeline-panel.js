@@ -13,7 +13,7 @@ import { addKeyframe, sortedKeys, sameTime, segmentEasing, easingFn, keyStateAt,
 import { keyId, moveKeys, deleteKeys, snapToNearest } from './timeline-edit.js'
 import { propertiesFor, propertyFor, sampleFrame, kindOfTarget, INTERPOLATE } from './properties.js'
 import { wordSpans, snapTime, wordAt } from './narration-clock.js'
-import { textObjects, artObjects, balloonObjects, dioramaObjects, readObjectProperty, writeObjectProperty, setObjectHidden } from './scene-objects.js'
+import { textObjects, artObjects, balloonObjects, dioramaObjects, backgroundObjects, readObjectProperty, writeObjectProperty, setObjectHidden } from './scene-objects.js'
 import { balloonPatch } from '../scene/BalloonLayer.js'
 import { clipOf, shiftClip, stretchClip } from '../scene/diorama/clip.js'
 
@@ -293,7 +293,8 @@ export const animationTimeline = (config = {}) => ({
   refreshObjects () {
     const cameras = this.targets.filter((t) => kindOfTarget(t) === 'camera')
       .map((target) => ({ target, kind: 'camera', label: 'Camera' }))
-    this.objects = [...cameras, ...balloonObjects(), ...artObjects(), ...textObjects(), ...dioramaObjects()]
+    this.objects = [...cameras, ...balloonObjects(), ...artObjects(), ...textObjects(), ...dioramaObjects(),
+      ...backgroundObjects(config.objectLabels?.background)]   // the back-most, so the last row
     for (const o of this.objects) if (!(o.target in this.openGroups)) this.openGroups[o.target] = true
   },
 

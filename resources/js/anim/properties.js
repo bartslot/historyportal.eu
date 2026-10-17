@@ -105,6 +105,16 @@ const REGISTRY = {
     P('root', 'Tail root', 'linear', ''),
     P('bend', 'Bend', 'linear', ''),
   ],
+  /**
+   * A scene's background picture, or one split panel's (scene/background-crop.js): which point of
+   * it stays in view, as the panel's Uitsnede stores it, its zoom about that point and its opacity.
+   */
+  bg: [
+    P('x', 'X', 'linear', '%'),
+    P('y', 'Y', 'linear', '%'),
+    P('zoom', 'Zoom', 'linear', ''),
+    P('opacity', 'Opacity', 'linear', ''),
+  ],
   /** A diorama item: its place on its floor, in cells. X runs left-right, Z away from the camera.
    *  No Y: nothing leaves the floor. The keys live in the diorama JSON, not in timeline tracks. */
   dio: [

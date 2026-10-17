@@ -26,6 +26,7 @@ import { isTopAnchored, normalizeFit, PORTRAIT_TOP_CSS } from './scene/backgroun
 import { isClipartLayer, backdropLayers } from './scene/layer-filters.js'
 import { fitToPlate, plateAspect } from './scene/plate-box.js'
 import { sceneMode } from './scene/split-layout.js'
+import { singleSource, cropBox, cropPlates } from './scene/background-crop.js'
 import { mountEmbedBg } from './scene/embed-bg.js'
 import { sameOriginMediaUrl } from './media-url.js'
 import { sceneTransitionFrames, easingBezier, EASINGS } from './scene/animations.js'
@@ -695,6 +696,9 @@ Alpine.data('lessonGame', (lesson) => ({
       el.style.backgroundImage = `url(${img.url})`
       el.style.backgroundSize  = fit
       el.style.backgroundColor = ''
+      // A timeline crop from the scene before (background-crop.js cropBox) does not carry over.
+      el.style.scale = ''
+      el.style.filter = ''
 
       // Crop anchor. Centre unless the scene is explicitly marked as having a face up top, in
       // which case the crop starts 20% down — the face, with a little headroom. (Same anchor the
@@ -2205,13 +2209,34 @@ Alpine.data('lessonGame', (lesson) => ({
       const started = performance.now()
       // Balloons keyframed like layers: the full-stage ones, or a split scene's in their panels.
       const balloonSink = { patch: (id, values) => { this._balloons?.applyValues(id, values); _split?.applyBalloonValues(id, values) } }
+      // The background keyed like a layer: a split scene's panels, else the scene's own picture.
+      const single = this._backgroundSource()
+      const bgSink = { patch: (id, values) => (_split ? _split.backgrounds() : single).patch(id, values) }
       const clock = () => (scene.audio_url && this._audio ? this._audio.currentTime : (performance.now() - started) / 1000)
       const step = () => {
         if (epoch !== this._playEpoch) return
-        applyFrameTo(frameAt(timeline, clock()), { art: this._artLayer, text: this._textLayer, bal: balloonSink, map: _mapInstance?.map })
+        applyFrameTo(frameAt(timeline, clock()), { art: this._artLayer, text: this._textLayer, bal: balloonSink, bg: bgSink, map: _mapInstance?.map })
         this._timelineRaf = requestAnimationFrame(step)
       }
       this._timelineRaf = requestAnimationFrame(step)
+    },
+
+    /**
+     * This scene's picture as a background the timeline crops and fades (scene/background-crop.js):
+     * the layered shot's plates when it has them, else the background layer showing now. It starts
+     * where _showBgImage anchors the picture.
+     */
+    _backgroundSource () {
+      const host = document.getElementById('background-layer')
+      const top = isTopAnchored(normalizeFit(this._bgFit), this._bgFocus, 0, 0)
+      return singleSource({
+        base: { y: top ? parseFloat(PORTRAIT_TOP_CSS.split(' ')[1]) : 50 },
+        draw: (crop) => {
+          if (host?.querySelector('.px-layer-bg img')) return cropPlates(host, crop)
+          const el = this._bgActive === 'A' ? this._bgLayerA : this._bgLayerB
+          if (el) cropBox(el, crop)
+        },
+      })
     },
 
     // Quiz segment: step through the lesson's questions in the card overlay, then
