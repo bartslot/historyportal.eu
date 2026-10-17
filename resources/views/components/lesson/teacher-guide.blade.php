@@ -5,7 +5,7 @@
 
 @php
     $guide = (array) $guide;
-    $label = 'text-xs font-semibold uppercase tracking-[0.2em] text-slate-500';
+    $label = 'text-xs font-semibold uppercase tracking-[0.2em] text-slate-300';
     $h2 = 'font-history text-2xl font-light text-white';
 @endphp
 
@@ -13,7 +13,7 @@
     <div>
         <p class="{{ $label }}">{{ __('For the teacher') }}@if (! empty($guide['audience'])) · {{ $guide['audience'] }}@endif</p>
         <h2 class="{{ $h2 }} mt-3">{{ __('The main learning goal') }}</h2>
-        <p class="mt-3 text-lg text-white">{{ $guide['goal'] }}</p>
+        <p class="mt-3 text-lg text-slate-300">{{ $guide['goal'] }}</p>
     </div>
 
     @if (! empty($guide['objectives']))
@@ -22,7 +22,7 @@
             <div class="mt-4 overflow-x-auto">
                 <table class="table table-sm">
                     <thead>
-                        <tr class="border-white/10 text-slate-500">
+                        <tr class="border-white/10 text-slate-300">
                             <th class="w-8">#</th>
                             <th>{{ __('Learning goal') }}</th>
                             <th>{{ __('What do they learn?') }}</th>
@@ -31,8 +31,8 @@
                     <tbody>
                         @foreach ($guide['objectives'] as $objective)
                             <tr class="border-white/10 align-top">
-                                <td class="text-slate-500">{{ $loop->iteration }}</td>
-                                <td class="font-semibold text-white">{{ $objective['question'] }}</td>
+                                <td class="text-slate-300">{{ $loop->iteration }}</td>
+                                <td class="font-semibold text-slate-300">{{ $objective['question'] }}</td>
                                 <td>{{ $objective['learn'] }}</td>
                             </tr>
                         @endforeach
@@ -71,7 +71,7 @@
                     <tbody>
                         @foreach ($guide['curriculum'] as $row)
                             <tr class="border-white/10">
-                                <td class="font-semibold text-white">{{ $row['part'] }}</td>
+                                <td class="font-semibold text-slate-300">{{ $row['part'] }}</td>
                                 <td>{{ $row['link'] }}</td>
                             </tr>
                         @endforeach
@@ -79,7 +79,7 @@
                 </table>
             </div>
             @if (! empty($guide['curriculum_note']))
-                <p class="mt-4 text-sm text-slate-400">
+                <p class="mt-4 text-sm text-slate-300">
                     {{ $guide['curriculum_note'] }}
                     @if (! empty($guide['curriculum_source']))
                         <a href="{{ $guide['curriculum_source']['url'] }}" class="underline hover:text-white" rel="noreferrer" target="_blank">{{ $guide['curriculum_source']['label'] }}</a>
@@ -95,8 +95,8 @@
             <ol class="mt-4 space-y-3">
                 @foreach ($guide['guiding_questions'] as $question)
                     <li class="flex gap-4">
-                        <span class="font-history text-2xl leading-none text-slate-500">{{ $loop->iteration }}</span>
-                        <span class="text-white">{{ $question }}</span>
+                        <span class="font-history text-2xl leading-none text-slate-300">{{ $loop->iteration }}</span>
+                        <span class="text-slate-300">{{ $question }}</span>
                     </li>
                 @endforeach
             </ol>
@@ -116,7 +116,7 @@
                 @foreach ($guide['faq'] as $item)
                     <div class="collapse collapse-arrow rounded-none border-b border-white/10">
                         <input type="checkbox" aria-label="{{ $item['q'] }}">
-                        <div class="collapse-title px-0 font-semibold text-white">{{ $item['q'] }}</div>
+                        <div class="collapse-title px-0 font-semibold text-slate-300">{{ $item['q'] }}</div>
                         <div class="collapse-content px-0"><p>{{ $item['a'] }}</p></div>
                     </div>
                 @endforeach

@@ -124,6 +124,20 @@ class TeacherGuideTest extends TestCase
             ->assertDontSee('storage/https', false);
     }
 
+    /** Bart 2026-10-17: "Meer lessen" on the Dutch Tasman listed untranslated English lessons. */
+    public function test_more_lessons_are_in_the_lessons_own_language(): void
+    {
+        $lesson = $this->lesson(null);
+        $dutch = $this->lesson(null);
+        $dutch->update(['title' => 'De Bataafse Republiek', 'grade_level' => $lesson->grade_level]);
+        $english = $this->lesson(null);
+        $english->update(['title' => 'The Silk Road', 'language' => 'en', 'grade_level' => $lesson->grade_level]);
+
+        $this->page($lesson->refresh())
+            ->assertSee('De Bataafse Republiek')
+            ->assertDontSee('The Silk Road');
+    }
+
     public function test_a_lesson_without_a_guide_shows_no_guide(): void
     {
         $this->page($this->lesson(null))
