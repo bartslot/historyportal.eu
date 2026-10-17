@@ -6,7 +6,6 @@ namespace Tests\Feature\Wizard;
 
 use App\Enums\LessonStatus;
 use App\Livewire\Wizard\Step3SceneConfigurator;
-use App\Livewire\Wizard\Step4Preview;
 use App\Models\Lesson;
 use App\Models\Scene;
 use App\Models\User;
@@ -246,13 +245,15 @@ class StoryGameAuthoringTest extends TestCase
             'branch_effects' => ['deltas' => ['morale' => -10, 'troops' => 0], 'consequence_line' => 'x', 'historical_note' => 'y'],
         ])]);
 
+        // The editor's Publish (the old Preview step is gone).
         $component = Livewire::actingAs($this->teacher)
-            ->test(Step4Preview::class, ['lesson' => $this->lesson])
+            ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
             ->call('publish');
 
-        $component->assertSet('showPublishSplash', false);
+        $component->assertSet('publishOk', false);
         $this->assertNotSame(LessonStatus::Published, $this->lesson->fresh()->status);
-        $this->assertStringContainsString('1', $component->get('publishError'), 'error names the incomplete group');
+        $this->assertStringContainsString('Story game incomplete', (string) $component->get('publishNotice'));
+        $this->assertStringContainsString('1', (string) $component->get('publishNotice'), 'the notice names the incomplete group');
     }
 
     public function test_publish_allows_a_complete_story_game(): void
@@ -262,10 +263,9 @@ class StoryGameAuthoringTest extends TestCase
         $this->optionB->update(['config' => ['branch_effects' => $effects]]);
 
         Livewire::actingAs($this->teacher)
-            ->test(Step4Preview::class, ['lesson' => $this->lesson])
+            ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
             ->call('publish')
-            ->assertSet('publishError', '')
-            ->assertSet('showPublishSplash', true);
+            ->assertSet('publishOk', true);
 
         $this->assertSame(LessonStatus::Published, $this->lesson->fresh()->status);
     }
@@ -276,9 +276,9 @@ class StoryGameAuthoringTest extends TestCase
         $this->lesson->update(['game_type' => 'quiz']);
 
         Livewire::actingAs($this->teacher)
-            ->test(Step4Preview::class, ['lesson' => $this->lesson])
+            ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
             ->call('publish')
-            ->assertSet('publishError', '');
+            ->assertSet('publishOk', true);
 
         $this->assertSame(LessonStatus::Published, $this->lesson->fresh()->status);
     }

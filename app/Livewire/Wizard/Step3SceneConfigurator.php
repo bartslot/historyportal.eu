@@ -5729,6 +5729,16 @@ class Step3SceneConfigurator extends Component
             return;
         }
 
+        // A story game whose choices have no consequences yet is not ready for a class.
+        if (($groups = $this->lesson->incompleteStoryGameGroups()) !== []) {
+            $this->publishOk = false;
+            $this->publishNotice = __('Story game incomplete — choice :groups still missing game effects on an option. Open Configure and fill both options\' meter effects first.', [
+                'groups' => implode(', ', $groups),
+            ]);
+
+            return;
+        }
+
         $this->lesson->update(['status' => LessonStatus::Published, 'scheduled_publish_at' => null]);
 
         // Publishing succeeds either way — a lesson in the wrong voice still teaches, and
