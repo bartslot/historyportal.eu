@@ -180,10 +180,11 @@ class CaptureHelpScreenshots extends Command
                 'url' => $url('teacher.lessons.wizard', ['lesson' => $lesson->id]).'?step=4',
                 'settleMs' => 2500,
             ];
+            // Play is an overlay over the editor now; ?step=5 opens it. The player inside boots first.
             $shots[] = [
                 'key' => 'wizard-play',
                 'url' => $url('teacher.lessons.wizard', ['lesson' => $lesson->id]).'?step=5',
-                'settleMs' => 2500,
+                'settleMs' => 6000,
             ];
         }
 

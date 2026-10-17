@@ -14,7 +14,7 @@ use Tests\TestCase;
 /**
  * A published lesson with no scenes must never reach a class.
  *
- * The wizard checks this once, at the moment of publishing (Step4Preview::allReady). Nothing
+ * The wizard checks this once, at the moment of publishing (Step3SceneConfigurator::publish). Nothing
  * re-checks it afterwards, so a lesson whose scenes are later deleted stays published, stays in the
  * catalogue and still opens — to nothing. That is exactly what lesson FRREV9 was doing: listed in
  * the manifest, 200 from the player, not a single scene to show. The rule belongs at the boundary
