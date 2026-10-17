@@ -46,3 +46,17 @@ describe('the background as a timeline object', () => {
     expect(bg.patch).toHaveBeenCalledWith('1', { x: 30, opacity: 0.5 })
   })
 })
+
+describe('a lesson without background tracks', () => {
+  it('sends nothing to the background: the player leaves the picture exactly as saved', async () => {
+    const { frameAt } = await import('../scene-animation.js')
+    const bg = { patch: vi.fn() }
+    const timeline = { tracks: [
+      { target: 'art:7', property: 'x', keyframes: [{ time: 0, value: 1 }, { time: 2, value: 9 }] },
+      // One key is a stored value, not a movement: even an opacity of 0 never blanks the scene.
+      { target: 'bg:0', property: 'opacity', keyframes: [{ time: 0, value: 0 }] },
+    ] }
+    applyFrameTo(frameAt(timeline, 1), { bg, art: { setLayerProp () {} } })
+    expect(bg.patch).not.toHaveBeenCalled()
+  })
+})

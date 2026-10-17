@@ -20,6 +20,17 @@ function stage () {
 afterEach(() => { document.body.innerHTML = '' })
 
 describe('a split panel\'s background', () => {
+  it('renders an old lesson exactly as before: the saved crop, no zoom, no fade', () => {
+    // A panel with no background tracks: nothing patches it, and the default opacity is 100%,
+    // so it never shows a hole unless the teacher keys one (PM, 2026-10-17).
+    const s = stage()
+    const imgs = s.panels.map((p) => p.plate.querySelector('.px-layer-bg img'))
+    expect(imgs.map((i) => [i.style.objectPosition, i.style.transform, i.style.filter]))
+      .toEqual([['50% 50%', '', ''], ['41% 29%', '', '']])
+    expect(s.panels.map((p) => p.plate.style.filter)).toEqual(['', ''])
+    expect(s.backgrounds().value('0', 'opacity')).toBe(1)
+  })
+
   it('is one background per panel, starting from the panel\'s saved crop', () => {
     const bgs = stage().backgrounds()
     expect(bgs.list()).toEqual([{ id: '0' }, { id: '1' }])
