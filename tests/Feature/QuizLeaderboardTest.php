@@ -44,6 +44,28 @@ class QuizLeaderboardTest extends TestCase
             ->assertJsonPath('top.1.nickname', 'Sofie');
     }
 
+    /**
+     * Infra audit 2026-10-17: two requests for one child (a class submitting together, a wifi retry)
+     * could both insert. The write runs under a lock on the lesson row, so they queue instead.
+     */
+    public function test_a_submission_locks_the_lesson_while_it_writes(): void
+    {
+        $sql = [];
+        \Illuminate\Support\Facades\DB::listen(function ($query) use (&$sql): void {
+            $sql[] = strtolower($query->sql);
+        });
+
+        $this->postJson("/lesson/{$this->lesson->lesson_code}/quiz-score", [
+            'nickname' => 'Sofie', 'score' => 35, 'correct' => 3, 'total' => 5,
+        ])->assertCreated();
+
+        $lock = collect($sql)->search(fn (string $q) => str_contains($q, 'from "lessons"') && str_contains($q, 'for update'));
+        $write = collect($sql)->search(fn (string $q) => str_starts_with($q, 'insert into "quiz_scores"'));
+        $this->assertNotFalse($lock, 'the lesson row is locked');
+        $this->assertNotFalse($write);
+        $this->assertLessThan($write, $lock, 'the lock is taken before the score is written');
+    }
+
     public function test_forged_scores_are_clamped_to_the_earnable_maximum(): void
     {
         $this->postJson("/lesson/{$this->lesson->lesson_code}/quiz-score", [

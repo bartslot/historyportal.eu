@@ -81,6 +81,11 @@ class RateLimitServiceProvider extends ServiceProvider
         RateLimiter::for('leaderboard', fn (Request $request) => Limit::perMinute(120)->by('lb:'.$request->ip()));
         // Subtitle sets: a whole class behind one school IP polls while a language is translating.
         RateLimiter::for('captions', fn (Request $request) => Limit::perMinute(600)->by('cc:'.$request->ip()));
+        // The Flutter catalogue: a class of tablets syncs at once from one school IP. It used to share
+        // the login limiter (5/min), so the sixth tablet got a 429 (infra audit 2026-10-17).
+        RateLimiter::for('catalog', fn (Request $request) => Limit::perMinute(120)->by('catalog:'.$request->ip()));
+        // Player telemetry batches: every pupil's device posts, all behind the same school address.
+        RateLimiter::for('telemetry', fn (Request $request) => Limit::perMinute(600)->by('telemetry:'.$request->ip()));
     }
 
     /**

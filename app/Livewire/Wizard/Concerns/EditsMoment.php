@@ -154,6 +154,10 @@ trait EditsMoment
     /** Record the after line again, in the narrator's voice. Only when the teacher asks: it costs. */
     public function renarrateMomentAfter(): void
     {
+        // Paid narration: a /try guest is fenced like every other spending action.
+        if ($this->guestDemoCannotGenerate()) {
+            return;
+        }
         $scene = $this->momentScene();
         $moment = $scene ? $this->storedMoment($scene) : null;
         if ($moment === null || $moment['after'] === '') {
