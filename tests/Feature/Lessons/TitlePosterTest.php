@@ -92,7 +92,7 @@ class TitlePosterTest extends TestCase
     }
 
     /**
-     * The upright Tasman poster (Bart, 2026-10-17, Figma 2348:1089): portrait.json beside the
+     * The upright Tasman poster (Bart, 2026-10-17, Figma 2353:1311): portrait.json beside the
      * candidate's poster.json, the same data model, read by the same parser. A phone held upright
      * shows it (resources/js/title-poster.js variantFor); the landscape poster is unchanged.
      */
@@ -102,15 +102,15 @@ class TitlePosterTest extends TestCase
         $portrait = $poster['portrait'];
 
         $this->assertNotNull($portrait);
-        $this->assertSame(['w' => 5678.7, 'h' => 8696.2], $portrait['frame']);
+        $this->assertSame(['w' => 1604.0, 'h' => 2456.0], $portrait['frame']);
         $this->assertSame('#F03E4A', $portrait['background']);
         $this->assertSame(['tasman', 'a', 'b', 'e', 'l', 't', 'a2', 's', 'm', 'a1', 'n'], array_column($portrait['layers'], 'id'));
         foreach ($portrait['layers'] as $layer) {
             $this->assertFileExists(public_path(parse_url($layer['url'], PHP_URL_PATH)));
         }
         $this->assertSame(10, count(array_filter($portrait['layers'], fn (array $l) => $l['enter'] === 'drop')));
-        // The subtitle stays live text, so it translates; the same font size as the landscape one.
-        $this->assertEqualsWithDelta(3.522, $portrait['subtitle']['size'], 0.01);
+        // The subtitle stays live text, so it translates; Figma sets it at 42 on the 1604 frame.
+        $this->assertEqualsWithDelta(2.6185, $portrait['subtitle']['size'], 0.001);
         $this->assertArrayNotHasKey('portrait', $portrait);
 
         // The landscape poster is as it was, and a candidate without a portrait has none.
@@ -121,8 +121,8 @@ class TitlePosterTest extends TestCase
 
     /**
      * A tall card (2:3, 5:8) shows the upright poster as a still while the comic poster is the
-     * lesson's title style; a teacher's own poster still wins, and Logo or Plain keep the card as
-     * it was. A link preview stays landscape: the still is a SECOND og:image only (Pinterest-style).
+     * lesson's title style, even over poster_image (decision b, 2026-10-17: the composer fills that
+     * with a landscape photo); Logo or Plain keep the card as it was. A link preview stays landscape: the still is a SECOND og:image only (Pinterest-style).
      */
     public function test_a_tall_card_and_a_tall_share_image_use_the_upright_still(): void
     {
@@ -135,8 +135,12 @@ class TitlePosterTest extends TestCase
         $this->assertNull($lesson->forceFill(['title_style' => TitlePoster::PLAIN])->titlePosterStillUrl());
         $this->assertSame($lesson->cardImageUrl(), $lesson->tallCardImageUrl());
 
-        $lesson->forceFill(['title_style' => null, 'poster_image' => 'https://res.cloudinary.com/demo/image/upload/own.webp']);
-        $this->assertSame($lesson->cardImageUrl(), $lesson->tallCardImageUrl(), "a teacher's own poster wins");
+        $lesson->forceFill(['poster_image' => 'https://res.cloudinary.com/demo/image/upload/own.webp']);
+        $this->assertSame($lesson->cardImageUrl(), $lesson->tallCardImageUrl(), 'Plain keeps the old card');
+
+        $lesson->forceFill(['title_style' => null]);
+        $this->assertSame($still, $lesson->tallCardImageUrl(), 'the comic still outranks poster_image on a tall card');
+        $this->assertStringEndsWith('/own.webp', (string) $lesson->cardImageUrl(), 'the other cards keep poster_image');
 
         $html = (string) $this->blade('<x-seo title="T" description="D" image="https://x.test/wide.png" tall-image="https://x.test/tall.webp" />');
         $this->assertMatchesRegularExpression('#og:image" content="https://x.test/wide.png".*og:image" content="https://x.test/tall.webp">\s*<meta property="og:image:width" content="1000">\s*<meta property="og:image:height" content="1500">#s', $html);

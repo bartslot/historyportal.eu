@@ -594,14 +594,13 @@ class Lesson extends Model
     }
 
     /**
-     * The picture for a tall card (2:3, 5:8): the upright poster's still when the lesson has one,
-     * unless the teacher chose a poster of their own; otherwise the card picture as everywhere.
+     * The picture for a tall card (2:3, 5:8): the upright poster's still while the comic poster is
+     * the title style, even over poster_image (the composer fills that with a landscape photo);
+     * otherwise the card picture as everywhere.
      */
     public function tallCardImageUrl(): ?string
     {
-        $still = $this->posterOverrideUrl() === null ? $this->titlePosterStillUrl() : null;
-
-        return $still ?? $this->cardImageUrl();
+        return $this->titlePosterStillUrl() ?? $this->cardImageUrl();
     }
 
     /** The style the title screen shows: the teacher's choice while the series has it, else the first. */
