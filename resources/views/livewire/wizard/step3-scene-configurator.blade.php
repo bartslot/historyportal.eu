@@ -1779,8 +1779,8 @@
              re-renders; it takes the server's answer, since sharing can be refused. --}}
         <div x-data="{ open: false, when: '', shared: @js((bool) $lesson->is_public) }" class="relative self-center" @click.outside="open = false" @keydown.escape.window="open = false">
             <button type="button" @click="open = !open"
-                    class="grid h-10 place-items-center rounded-full bg-primary px-4 text-primary-content transition hover:bg-primary/85"
-                    :class="open && 'bg-primary/85'"
+                    class="grid h-10 w-10 place-items-center rounded-xl text-primary transition hover:bg-slate-800"
+                    :class="open && 'bg-primary/15'"
                     data-tour="publish"
                     data-tooltip="{{ __('Publish') }}" aria-label="{{ __('Publish') }}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">

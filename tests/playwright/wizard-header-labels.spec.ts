@@ -10,7 +10,7 @@ import { test, expect } from '@playwright/test';
 
 const LESSON = Number(process.env.PW_HEADER_LESSON_ID ?? 6);
 
-test('View, Play, Add, Help, Settings and Publish are icons with a hover description, Publish a filled pill', async ({ page }) => {
+test('View, Play, Add, Help, Settings and Publish are icons with a hover description, Publish amber on its icon only', async ({ page }) => {
   await page.addInitScript(() => {
     HTMLMediaElement.prototype.play = function () { this.muted = true; return Promise.resolve(); };
   });
@@ -38,7 +38,11 @@ test('View, Play, Add, Help, Settings and Publish are icons with a hover descrip
     expect(b.label.length).toBeGreaterThan(0);
     expect(b.title, 'data-tooltip, never title').toBe(false);
   }
-  expect(buttons[5].background, 'Publish is filled').not.toMatch(/rgba\(0, 0, 0, 0\)|transparent/);
+  // Bart, 2026-10-17: "let's get rid of the amber background". An icon button like its
+  // neighbours; amber on the icon's stroke only, so it still reads as the primary action.
+  expect(buttons[5].background, 'Publish has no fill').toMatch(/rgba\(0, 0, 0, 0\)|transparent/);
+  const stroke = await page.evaluate(() => getComputedStyle(document.querySelector('[data-tour="publish"] svg')!).color);
+  expect(stroke, 'its icon is amber').toMatch(/oklch\(0\.769 0\.188 70\.08\)|rgb\(245, 158, 11\)/);
 
   // The tooltip shows on hover, with a real pointer.
   const box = (await publish.boundingBox())!;
