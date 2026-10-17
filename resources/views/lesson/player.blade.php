@@ -756,7 +756,7 @@
                     <h1 class="sr-only" lang="{{ $contentLang }}" x-text="lesson.title"></h1>
                     <div data-poster-stage class="title-poster absolute" aria-hidden="true">
                         <template x-if="lesson.title_poster.subtitle">
-                            <p lang="{{ $contentLang }}" x-text="lesson.title.replace(/^.*?:\s*/, '')" data-title-avoid
+                            <p lang="{{ $contentLang }}" x-text="lesson.title.replace(/^.*?:\s*/, '')" data-title-avoid data-title-subtitle
                                class="absolute flex items-center justify-center whitespace-nowrap text-center leading-none"
                                :style="(({ box, color, font }) => `left:${box.x}%;top:${box.y}%;width:${box.w}%;height:${box.h}%;font-size:${episodeSize(lesson.title_poster)}cqw;color:${color};${font === 'lettering' ? `font-family:'ComicRoma Lettering',var(--font-comic);font-weight:700;text-transform:uppercase` : `font-family:${font === 'comicroma' ? 'ComicRoma' : `'Coming Soon'`},var(--font-comic)`}`)(lesson.title_poster.subtitle)"></p>
                         </template>
@@ -793,7 +793,7 @@
                     <img x-bind:src="lesson.title_logo_url" x-bind:alt="lesson.title" x-on:load="relayoutTitle()"
                          class="block h-auto w-full -rotate-2 origin-bottom-left"
                          style="filter: drop-shadow(0.6rem 0.8rem 0 rgba(0,0,0,0.85));">
-                    <span aria-hidden="true" x-show="titleSplit.episode" x-text="titleSplit.episode"
+                    <span aria-hidden="true" x-show="titleSplit.episode" x-text="titleSplit.episode" data-title-subtitle
                           class="title-episode mt-4 block font-comic text-white/85"></span>
                 </h1>
             </template>
@@ -818,7 +818,7 @@
                 <h1 lang="{{ $contentLang }}" class="min-w-0 max-w-5xl" data-title-avoid data-title-bar>
                     <span class="block text-white" x-text="titleSplit.series" data-title-series
                           :class="titleLettered ? 'title-letters' : 'title-plain font-history font-bold leading-history tracking-tight'"></span>
-                    <span x-show="titleSplit.episode" x-text="titleSplit.episode"
+                    <span x-show="titleSplit.episode" x-text="titleSplit.episode" data-title-subtitle
                           :class="titleLettered ? 'title-letters-episode' : 'font-light'" class="title-episode mt-3 block text-white/80"></span>
                 </h1>
             </div>

@@ -30,6 +30,9 @@ class Lesson extends Model
 
     public const EXPECT_MAX_CHARS = 60;
 
+    /** The title column is a string(255). */
+    public const TITLE_MAX_CHARS = 255;
+
     protected $fillable = [
         'teacher_id',
         'avatar_id',
@@ -556,6 +559,22 @@ class Lesson extends Model
         $choices[] = ['key' => TitlePoster::PLAIN, 'label' => __('Plain title'), 'thumb_url' => $this->titleBgUrl()];
 
         return $choices;
+    }
+
+    /**
+     * The title's two parts as the title screen shows them: the series, and the subtitle after the
+     * first ": " (resources/js/title-letters.js splitTitle).
+     *
+     * @return array{series: string, subtitle: string}
+     */
+    public function titleParts(): array
+    {
+        $title = (string) $this->title;
+        $at = strpos($title, ': ');
+
+        return $at === false
+            ? ['series' => $title, 'subtitle' => '']
+            : ['series' => substr($title, 0, $at), 'subtitle' => substr($title, $at + 2)];
     }
 
     /**

@@ -342,7 +342,7 @@ class TitlePosterTest extends TestCase
         $component->call('selectTitleImage', $url);
 
         $this->assertSame(1, substr_count($component->html(), 'data-chosen'));
-        $this->assertMatchesRegularExpression('#aria-label="Scene 2" aria-pressed="true"\s+data-kind="image" data-zoom\s+data-chosen\s+class="[^"]*ring-2 ring-primary#', $component->html());
+        $this->assertMatchesRegularExpression('#data-zoom\s+data-chosen\s+aria-pressed="true"\s+data-tooltip="Scene 2" aria-label="Scene 2"\s+class="[^"]*ring-2 ring-primary#', $component->html());
     }
 
     public function test_a_style_the_series_cannot_show_is_refused(): void

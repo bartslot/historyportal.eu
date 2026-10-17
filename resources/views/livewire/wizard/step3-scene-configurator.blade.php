@@ -2958,7 +2958,8 @@
     })();
 
     // The title screen on the stage: the REAL player, embedded at its title screen, over the
-    // canvas. Inert (pointer-events-none): it is a picture of the title, edited in Format.
+    // canvas. Inert (pointer-events-none): it is a picture of the title, edited in Format; a click on
+    // its title focuses that field there.
     // Lives inside #lesson-canvas-root so it takes the stage's exact box; that root is
     // wire:ignore, so the frame is managed here rather than rendered by Blade.
     // The frame renders at a full-screen size and is scaled down to the stage, so the title screen
@@ -2984,6 +2985,11 @@
                 stage.appendChild(frame);
                 resize = new ResizeObserver(() => { frame.style.transform = `scale(${stage.clientWidth / FRAME_W})`; });
                 resize.observe(stage);
+            }
+            // A click on the title in the frame opens its field in Format (editor/title-stage-pick.js).
+            if (!stage.dataset.titlePick) {
+                stage.dataset.titlePick = '1';
+                window.installTitleStagePick?.(stage, FRAME_W, () => $wire.titleSelected);
             }
             if (frame.getAttribute('src') !== $wire.titleFrameSrc) frame.setAttribute('src', $wire.titleFrameSrc);
         };
