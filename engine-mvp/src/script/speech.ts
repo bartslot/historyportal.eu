@@ -17,14 +17,49 @@ export function loadVoices(): Promise<SpeechSynthesisVoice[]> {
   })
 }
 
-/** The remembered voice, else a Dutch one, else British English (never an American default). */
-export function pickVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
+// The draft voice speaks the SCRIPT's language, natively (Bart): en = en-GB (never American), nl = nl-NL.
+const REGION: Record<string, string> = { en: 'en-GB', nl: 'nl-NL', de: 'de-DE', fr: 'fr-FR', it: 'it-IT' }
+const NEVER = new Set(['en-us'])
+// the commonest short words of each language: enough to tell five languages apart in a script
+const STOPWORDS: Record<string, string[]> = {
+  en: ['the', 'and', 'of', 'to', 'is', 'you', 'that', 'he', 'it', 'was', 'with', 'his', 'i', 'a'],
+  nl: ['de', 'het', 'een', 'en', 'van', 'is', 'niet', 'dat', 'hij', 'je', 'ik', 'op', 'zijn', 'met'],
+  de: ['der', 'die', 'das', 'und', 'nicht', 'ist', 'ein', 'ich', 'sie', 'mit', 'zu', 'den', 'er'],
+  fr: ['le', 'la', 'les', 'et', 'est', 'un', 'une', 'pas', 'que', 'il', 'je', 'des', 'du'],
+  it: ['il', 'la', 'che', 'e', 'di', 'un', 'una', 'non', 'per', 'sono', 'gli', 'del', 'mi'],
+}
+const MIN_HITS = 3
+
+/** The language a text is written in (en, nl, de, fr, it), or null when there is too little to tell. */
+export function languageOf(text: string): string | null {
+  const words = text.toLowerCase().match(/\p{L}+/gu) ?? []
+  let best: string | null = null
+  let most = MIN_HITS - 1
+  for (const [lang, list] of Object.entries(STOPWORDS)) {
+    const set = new Set(list)
+    const hits = words.filter((w) => set.has(w)).length
+    if (hits > most) { most = hits; best = lang }
+  }
+  return best
+}
+
+/** The browser region tag a language is read in: en -> en-GB. */
+export const regionOf = (lang: string) => REGION[lang] ?? lang
+
+const tag = (v: SpeechSynthesisVoice) => v.lang.replace('_', '-').toLowerCase()
+
+/** A voice for `lang` (en, nl...): the remembered one if it speaks it, else the native region exactly, else any of
+ *  the language (never American English), else none (better silence than the wrong language). */
+export function pickVoice(voices: SpeechSynthesisVoice[], lang: string): SpeechSynthesisVoice | null {
   let saved: string | null = null
   try { saved = localStorage.getItem(VOICE_KEY) } catch { /* private window */ }
-  return voices.find((v) => v.voiceURI === saved)
-    ?? voices.find((v) => v.lang.startsWith('nl'))
-    ?? voices.find((v) => v.lang === 'en-GB')
-    ?? voices[0] ?? null
+  const region = regionOf(lang).toLowerCase()
+  const ofLang = (v: SpeechSynthesisVoice) => tag(v).split('-')[0] === lang && !NEVER.has(tag(v))
+  const mine = voices.find((v) => v.voiceURI === saved)
+  return (mine && ofLang(mine) ? mine : null)
+    ?? voices.find((v) => tag(v) === region)
+    ?? voices.find(ofLang)
+    ?? null
 }
 
 export function rememberVoice(v: SpeechSynthesisVoice) {
@@ -32,11 +67,11 @@ export function rememberVoice(v: SpeechSynthesisVoice) {
 }
 
 /** Speak one line; resolves with how long it took (seconds), or null when it was cut off. */
-export function speak(text: string, voice: SpeechSynthesisVoice | null): Promise<number | null> {
+export function speak(text: string, voice: SpeechSynthesisVoice | null, lang?: string): Promise<number | null> {
   if (!speechAvailable() || !text.trim()) return Promise.resolve(null)
   return new Promise((resolve) => {
     const u = new SpeechSynthesisUtterance(text)
-    if (voice) { u.voice = voice; u.lang = voice.lang }
+    if (voice) { u.voice = voice; u.lang = voice.lang } else if (lang) u.lang = regionOf(lang)
     let t0 = 0
     u.onstart = () => { t0 = performance.now() }
     u.onend = () => resolve(t0 ? (performance.now() - t0) / 1000 : null)

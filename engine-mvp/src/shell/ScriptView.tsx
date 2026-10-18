@@ -13,8 +13,9 @@ import { ActiveLine, activeLineKey, Line, LineIds, SceneHeading, ShotLetters, Su
 import { storyboard } from '../storyboard/store'
 import { inStep, reconcile } from '../script/narration'
 import { fitDurationToNarration, nowSpeaking, placedLines, setVoice } from '../script/player'
-import { loadVoices, pickVoice, rememberVoice, speak, speechAvailable, stopSpeaking } from '../script/speech'
-import { __ } from '../i18n'
+import { languageOf, loadVoices, pickVoice, rememberVoice, speak, speechAvailable, stopSpeaking } from '../script/speech'
+import { nodesOfJson } from '../storyboard/shots'
+import { __, locale } from '../i18n'
 
 const SAVE_DEBOUNCE_MS = 400
 const FOLLOW_SCENE_MS = 400
@@ -108,15 +109,17 @@ export function ScriptView() {
     }
   }, [editor, lesson.tree, lesson.script])
 
-  // voices
+  // voices: the draft voice speaks the script's language (read from its text; the teacher's own UI language until
+  // there is enough text to tell); a voice in another language is replaced when the language changes
+  const lang = languageOf(nodesOfJson(lesson.script).map((n) => n.text).join(' ')) ?? locale()
   useEffect(() => {
     void loadVoices().then((list) => {
       setVoices(list)
-      const v = pickVoice(list)
+      const v = pickVoice(list, lang)
       setVoice(v)
       setVoiceUri(v?.voiceURI ?? '')
     })
-  }, [])
+  }, [lang])
 
   // the line under the playhead is lit (and kept in view while playing)
   useEffect(() => {
@@ -161,7 +164,7 @@ export function ScriptView() {
         const line = placedLines().find((l) => l.id === ids[from])
         if (!line) continue
         TL.seek(line.start)
-        const dur = await speak(line.text, voices.find((v) => v.voiceURI === voiceUri) ?? null)
+        const dur = await speak(line.text, voices.find((v) => v.voiceURI === voiceUri) ?? null, lang)
         if (dur === null || stopRef.current) break
         const pos = findLine(editor, line.id)
         if (pos !== null) editor.view.dispatch(editor.state.tr.setNodeAttribute(pos, 'dur', Math.round(dur * 100) / 100))
