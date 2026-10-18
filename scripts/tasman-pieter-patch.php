@@ -15,8 +15,10 @@
  * Finding the scene: by its panel's plate + the exact set of library layers already on it (the
  * story.json panel), the nearest to the scene number of prod lesson 63 (script-v3/new3.json), at
  * most MAX_DRIFT away. A scene that does not match is skipped and named, never guessed.
- * Idempotent: a scene that already holds a pieter_ layer is left alone (its lines are still
- * pointed at it). Every changed scene's old shots + config are printed as JSON for rollback:
+ * Idempotent: a missing Pieter layer is added; an existing one is left where it stands and only
+ * re-pointed (path + asset_id) at the library's current file when the picture was repainted under
+ * the same name. A scene that is only a picture (no shots) gets the editor's shot: cover + him.
+ * Every changed scene's old shots + config are printed as JSON for rollback:
  *   Scene::find($id)->update(['shots' => <old shots>, 'config' => <old config>]);
  * (then Cache::forget('lesson.player.<CODE>') — the player caches its payload for 30 minutes).
  */
@@ -32,6 +34,17 @@ $PIETER_MAX_DRIFT = 4;
 // order = scene number in prod 63 (new3.json); with = the library layers already on it (basenames);
 // x / ground (feet or cut edge, % of stage) / height (%); mouth = [x, y, facing] on the picture, for his balloon.
 $PIETER_SHOTS = [
+    // Prod 63/71 scenes that differ from story.json (read from the live player payload, 2026-10-18):
+    // an uploaded opening painting, an uploaded bootsman, the repainted storm deck, extra layers.
+    ['order' => 1, 'plate' => 'oWyTZ0q0jy2Rloq7Hd9Ci6GVkUtyPaR59catE5cs', 'with' => ['nuvola-1'], 'fig' => 'cu_squinting_dusk', 'x' => 74, 'ground' => 104, 'height' => 46],
+    ['order' => 4, 'plate' => 'reuse-tHqjkJ9ezt', 'with' => [], 'fig' => 'back_seabag_ship', 'x' => 22, 'ground' => 103, 'height' => 62, 'mouth' => [0.74, 0.25, 'right']],
+    ['order' => 12, 'plate' => 'deck_harbour', 'with' => ['84XjvDVBux3vFKPoVr40jac5Tc2TpCSo0d1JJTWf'], 'fig' => 'pushing_barrel', 'x' => 68, 'ground' => 93, 'height' => 44, 'mouth' => [0.44, 0.15, 'left']],
+    ['order' => 24, 'plate' => 'scene-1609', 'with' => ['tasman_pointing'], 'fig' => 'storm_freezing', 'x' => 70, 'ground' => 93, 'height' => 55],
+    ['order' => 25, 'plate' => 'scene-1610', 'with' => ['sailor_front'], 'fig' => 'holding_rope_wet', 'x' => 22, 'ground' => 93, 'height' => 52, 'mouth' => [0.24, 0.12, 'right']],
+    ['order' => 26, 'plate' => 'scene-1611', 'with' => ['sailor_side'], 'fig' => 'cu_fists_rope', 'x' => 78, 'ground' => 104, 'height' => 64],
+    ['order' => 47, 'plate' => 'figma_stern_night_windows', 'with' => ['visscher_front'], 'fig' => 'night_gripping_rail', 'x' => 80, 'ground' => 104, 'height' => 50, 'mouth' => [0.37, 0.40, 'left']],
+    ['order' => 52, 'plate' => 'scene-1636', 'with' => ['tasman_side'], 'fig' => 'rubbing_hands', 'x' => 90, 'ground' => 86, 'height' => 42],
+    // The story.json panels (the composed lesson).
     ['order' => 1, 'plate' => 'golden_bay_dusk', 'with' => ['figma_ship_moonlit', 'waka_pair'], 'fig' => 'cu_squinting_dusk', 'x' => 12, 'ground' => 104, 'height' => 40],
     ['order' => 2, 'plate' => 'deck_dusk', 'with' => [], 'fig' => 'whisper_dusk', 'x' => 40, 'ground' => 104, 'height' => 64, 'mouth' => [0.77, 0.24, 'right']],
     // Prod-only scene (not in story.json): matched by number alone, and only onto a deck plate.
@@ -182,8 +195,8 @@ foreach ($pieterLessons as $lessonId) {
 
         $shots = (array) $scene->shots;
         $layers = (array) ($shots[0]['layers'] ?? []);
-        if ($layers === []) {
-            echo "  SKIP {$label}: scene #{$scene->order} (id {$scene->id}) has no shot to stand in\n";
+        if ($layers === [] && ! $scene->image_path) {
+            echo "  SKIP {$label}: scene #{$scene->order} (id {$scene->id}) has no picture to stand in\n";
 
             continue;
         }
@@ -194,14 +207,24 @@ foreach ($pieterLessons as $lessonId) {
 
             continue;
         }
+        if ($pieterApply) {
+            app(LibraryCdn::class)->ensure($asset);   // a no-op when cdn.json already gave it a URL
+            $asset->refresh();
+        }
 
         $newShots = $shots;
-        if (! $already) {
+        if ($already) {
+            // The picture was repainted (same name, new file): point the layer at the current file.
+            foreach ($layers as $i => $l) {
+                if ($pieterBase($l['path'] ?? null) === "pieter_{$shot['fig']}" && (($l['path'] ?? null) !== $asset->src() || ($l['asset_id'] ?? null) !== $asset->id)) {
+                    $layers[$i] = ['asset_id' => $asset->id, 'path' => $asset->src()] + $l;
+                    echo "  REPATH {$label} on scene #{$scene->order} (id {$scene->id})\n";
+                }
+            }
+            $newShots[0]['layers'] = $layers;
+        } else {
             if (! $pieterApply) {
-                echo "  ADD  {$label} -> scene #{$scene->order} (id {$scene->id})\n";
-            } else {
-                app(LibraryCdn::class)->ensure($asset);   // a no-op when cdn.json already gave it a URL
-                $asset->refresh();
+                echo "  ADD  {$label} -> scene #{$scene->order} (id {$scene->id})".($layers === [] ? ' (new shot on its picture)' : '')."\n";
             }
             $bottom = $shot['ground'];
             $layer = SceneLayers::figure($asset, [
@@ -217,9 +240,10 @@ foreach ($pieterLessons as $lessonId) {
                 }
             }
             array_splice($layers, $at, 0, [$layer]);
-            $newShots[0]['layers'] = $layers;
-        } else {
-            echo "  HAS  {$label} on scene #{$scene->order} (id {$scene->id})\n";
+            // A scene that is only a picture (no shots yet) gets the editor's shot: picture as cover, then him.
+            $newShots = $shots === [] || ! isset($shots[0]['layers'])
+                ? [SceneLayers::shot($scene->image_path, $layers)]
+                : array_replace($shots, [0 => ['layers' => $layers] + $shots[0]]);
         }
 
         // His silent balloons: the tail points at his mouth (mirrored with the layer).
