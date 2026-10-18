@@ -1980,6 +1980,7 @@
     "Number :n, :role: what could go wrong?": "Numéro :n, :role : qu’est-ce qui pourrait mal tourner ?",
     "Choose within your team who is 1, 2, 3 and 4.": "Choisissez dans votre équipe qui est 1, 2, 3 et 4.",
     "Next turn": "Tour suivant",
+    "Next: :name": "Suivant : :name",
     "Team size": "Taille de l'équipe",
     "Mission": "Mission",
     "Mission (seconds)": "Mission (secondes)",

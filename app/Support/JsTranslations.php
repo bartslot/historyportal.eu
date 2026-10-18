@@ -165,6 +165,7 @@ final class JsTranslations
             'Number :n, :role: what could go wrong?' => __('Number :n, :role: what could go wrong?'),
             'Choose within your team who is 1, 2, 3 and 4.' => __('Choose within your team who is 1, 2, 3 and 4.'),
             'Next turn' => __('Next turn'),
+            'Next: :name' => __('Next: :name'),
             'Team size' => __('Team size'),
             'Ready' => __('Ready'),
             'Not yet confirmed' => __('Not yet confirmed'),
