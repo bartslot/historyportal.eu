@@ -17,3 +17,11 @@ curl -fL -o public/assets/models/xbot.glb https://assets.babylonjs.com/meshes/Xb
 
 The `clay-blockout` MCP server is `mcp/blockout_mcp.py` (needs `pip install mcp`; `STUDIO_SERVER` = the server.py URL).
 Tests: `npm test`, `python3 test_server.py`, `python3 test_blockout_link.py`.
+
+## Script step: scene graph + clay frames (`src/storyboard/`)
+
+One frame per SHOT beside the script (Figma 2087:1059). A line starts a new shot unless **New shot** is switched off
+for it in the script toolbar; letters A, B, C... restart per scene. Each shot is data (`ShotData`: blockout specs,
+camera, needed assets), derived from the script until the teacher directs it (double-click a frame or its slider
+icon: drag figures, drag the frame to turn the camera, wheel = lens), then kept in `lesson.shots`. Frames render in
+their own small Babylon engine (`clay.ts`), cached by their data. Tests: `npx vitest run src/storyboard`.
