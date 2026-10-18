@@ -27,6 +27,8 @@ use Symfony\Component\Finder\Finder;
  *   resources/icons/<collection>/<category>/<subcategory>/*.webp|png  →  art:make packs (stored as-is)
  *   resources/icons/<collection>/.../<name>.depth.webp  →  the depth map of <name> (art:depth): not an icon
  *       of its own, stored beside its picture and recorded on its row (depth_path)
+ *   resources/icons/<collection>/.../<name>.frames.webp  →  the sprite sheet of <name> (LayerFrames): not an
+ *       icon either, copied beside its picture
  *   resources/icons/<collection>/cdn.json  →  pictures already on Cloudinary (LibraryCdn). Their
  *       files are not in git, so a picture listed here is imported from its URL alone.
  *
@@ -129,7 +131,7 @@ class ImportIconLibrary extends Command
     /** @return iterable<SplFileInfo> */
     private function libraryFiles(string $dir): iterable
     {
-        return Finder::create()->files()->in($dir)->name(['*.svg', '*.webp', '*.png'])->notName('*.depth.*')->sortByName();
+        return Finder::create()->files()->in($dir)->name(['*.svg', '*.webp', '*.png'])->notName(['*.depth.*', '*.frames.*'])->sortByName();
     }
 
     private function isRaster(SplFileInfo $file): bool
@@ -167,6 +169,8 @@ class ImportIconLibrary extends Command
 
         [$category, $subcategory] = $this->taxonomy($file->getRelativePath());
 
+        // A sprite sheet beside the picture (LayerFrames) is found by its path, not recorded.
+        $this->storeBeside($ref, $collection, 'frames');
         $this->bundledRow($ref)->fill([
             'collection' => $collection,
             'category' => $category,
@@ -178,7 +182,7 @@ class ImportIconLibrary extends Command
             'license' => (string) $this->option('license'),
             'attribution' => (string) $this->option('attribution') ?: null,
             'svg_path' => $path,
-            'depth_path' => $this->storeDepth($ref, $collection),
+            'depth_path' => $this->storeBeside($ref, $collection, 'depth'),
             // A picture re-exported with the same name keeps its CDN copy only while the manifest
             // still lists it; drop the line from cdn.json to have the next lesson re-upload it.
             ...($this->hasCdnManifest ? ['cdn_url' => $cdnUrl] : []),
@@ -201,6 +205,8 @@ class ImportIconLibrary extends Command
         $rest = substr($ref, strlen($collection) + 1);
         [$category, $subcategory] = $this->taxonomy(dirname($rest) === '.' ? '' : dirname($rest));
 
+        // A sprite sheet beside the picture (LayerFrames) is found by its path, not recorded.
+        $this->storeBeside($ref, $collection, 'frames');
         $this->bundledRow($ref)->fill([
             'collection' => $collection,
             'category' => $category,
@@ -210,7 +216,7 @@ class ImportIconLibrary extends Command
             'license' => (string) $this->option('license'),
             'attribution' => (string) $this->option('attribution') ?: null,
             'svg_path' => self::DISK_ROOT.'/'.$this->diskPath($ref),
-            'depth_path' => $this->storeDepth($ref, $collection),
+            'depth_path' => $this->storeBeside($ref, $collection, 'depth'),
             'cdn_url' => (string) ($entry['url'] ?? ''),
             'width' => isset($entry['width']) ? (int) $entry['width'] : null,
             'height' => isset($entry['height']) ? (int) $entry['height'] : null,
@@ -220,18 +226,19 @@ class ImportIconLibrary extends Command
     }
 
     /**
-     * The picture's depth map (<name>.depth.webp beside it, written by art:depth), copied to the
-     * public disk beside the stored picture. It is committed even when the picture itself lives on
+     * A file beside the picture, copied to the public disk beside the stored picture: its depth map
+     * (<name>.depth.webp, written by art:depth) or its sprite sheet (<name>.frames.webp, LayerFrames,
+     * found by its path and not recorded on the row). It is committed even when the picture itself lives on
      * Cloudinary only, so the player can always read it from our own disk. Null when there is none.
      */
-    private function storeDepth(string $ref, string $collection): ?string
+    private function storeBeside(string $ref, string $collection, string $kind): ?string
     {
         $rest = substr($ref, strlen($collection) + 1);
-        $source = $this->collectionDir.'/'.preg_replace('/\.[^.\/]+$/', '', $rest).'.depth.webp';
+        $source = $this->collectionDir.'/'.preg_replace('/\.[^.\/]+$/', '', $rest).".{$kind}.webp";
         if (! is_file($source)) {
             return null;
         }
-        $path = self::DISK_ROOT.'/'.preg_replace('/\.[^.\/]+$/', '', $this->diskPath($ref)).'.depth.webp';
+        $path = self::DISK_ROOT.'/'.preg_replace('/\.[^.\/]+$/', '', $this->diskPath($ref)).".{$kind}.webp";
         Storage::disk('public')->put($path, (string) file_get_contents($source));
 
         return $path;

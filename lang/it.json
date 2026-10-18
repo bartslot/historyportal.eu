@@ -2167,5 +2167,12 @@
     "Lesson type labels": "Etichette del tipo di lezione",
     "Show QR code": "Mostra il codice QR",
     "Nothing from this period in this set.": "Niente di questo periodo in questa raccolta.",
-    "Re-narrating failed: this scene still plays its earlier recording.": "Nuova narrazione non riuscita: questa scena usa ancora la registrazione precedente."
+    "Re-narrating failed: this scene still plays its earlier recording.": "Nuova narrazione non riuscita: questa scena usa ancora la registrazione precedente.",
+    "The words appear": "Le parole compaiono",
+    "One by one over the picture": "Una alla volta sull'immagine",
+    "All at once on a card": "Tutte insieme su una scheda",
+    "Seconds per word": "Secondi per parola",
+    "Moves forward": "Avanza",
+    "How far the layer moves forward as the meter fills, in % of the picture": "Quanto avanza il livello mentre l'indicatore si riempie, in % dell'immagine",
+    "Follow the wind": "Segue il vento"
 }

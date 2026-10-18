@@ -47,6 +47,16 @@ final class MomentSpec
 
     public const PAYOFFS = ['move', 'camera', 'none'];
 
+    /**
+     * How a words moment shows its words: one at a time over the picture, each for word_seconds
+     * (resources/js/scene/word-stream.js, Bart 2026-10-18), or all at once as buttons on a card.
+     * A moment stored before the stream existed has no key and keeps its card; a new one streams.
+     */
+    public const WORDS_STYLES = ['stream', 'buttons'];
+
+    /** Stage % the reacting layer drifts forward as the wind rises (resources/js/scene/wind-world.js). */
+    public const DRIFT = [0, 30];
+
     public const RIGHT_MAX = 8;
 
     public const WRONG_MAX = 6;
@@ -84,6 +94,8 @@ final class MomentSpec
         'bpm' => [30, 200],
         'beats' => [2, 32],
         'gesture' => ['shake', 'tilt'],
+        // Seconds each word of a word stream stays up.
+        'word_seconds' => [1, 6],
     ];
 
     /**
@@ -118,6 +130,7 @@ final class MomentSpec
             'prompt' => self::text($raw['prompt'] ?? '', self::LINE_MAX),
             'input' => $input,
             'input_options' => self::options($raw['input_options'] ?? []),
+            'words_style' => in_array($raw['words_style'] ?? null, self::WORDS_STYLES, true) ? $raw['words_style'] : 'buttons',
             'words' => [
                 'right' => $right,
                 'wrong' => self::words($raw['words']['wrong'] ?? [], self::WRONG_MAX),
@@ -163,7 +176,7 @@ final class MomentSpec
     /** A blank moment for a panel that never had one: off until the teacher turns it on. */
     public static function blank(): array
     {
-        return self::normalize(['enabled' => false]);
+        return self::normalize(['enabled' => false, 'words_style' => 'stream']);
     }
 
     /**
@@ -187,7 +200,7 @@ final class MomentSpec
         return $raw;
     }
 
-    /** @return array{layer: ?int, ambient: ?string, amount: float} */
+    /** @return array{layer: ?int, ambient: ?string, amount: float, drift: float} */
     private static function react(mixed $raw): array
     {
         $raw = is_array($raw) ? $raw : [];
@@ -197,6 +210,7 @@ final class MomentSpec
             'layer' => self::layer($raw['layer'] ?? null),
             'ambient' => in_array($mode, LayerAmbient::MODES, true) && $mode !== 'none' ? $mode : null,
             'amount' => self::float($raw['amount'] ?? null, LayerAmbient::AMOUNT, 1.6),
+            'drift' => self::float($raw['drift'] ?? null, self::DRIFT, 6.0),
         ];
     }
 

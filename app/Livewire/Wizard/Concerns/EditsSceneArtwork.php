@@ -8,6 +8,7 @@ use App\Models\Scene;
 use App\Models\SvgAsset;
 use App\Services\SceneLayers;
 use App\Services\Support\LayerAmbient;
+use App\Services\Support\LayerFrames;
 use App\Services\Support\LayerSitIn;
 use App\Services\Support\ShotCamera;
 use App\Support\LayerEntrances;
@@ -524,6 +525,9 @@ trait EditsSceneArtwork
             'ambient_amount' => LayerAmbient::AMOUNT,
             // Blend into the scene (LayerSitIn): each a share 0..1, 0 = off.
             ...array_fill_keys(LayerSitIn::KEYS, LayerSitIn::RANGE),
+            // A sprite sheet's playback (LayerFrames): follow the wind, loop, or off; a loop's speed.
+            'frames_play' => LayerFrames::PLAYS,
+            'frames_fps' => LayerFrames::FPS,
         ];
 
         if (! array_key_exists($field, $whitelist)) {
@@ -547,10 +551,10 @@ trait EditsSceneArtwork
         $coercedValue = match ($field) {
             'depth', 'scale', 'opacity', 'blur', 'x', 'y', 'draw_time', 'anim_delay',
             'height', 'width', 'rotation', 'white_key', 'tint_opacity', 'ambient_speed', 'ambient_amount',
-            'waterline', 'reflection', 'contact_shadow', 'color_match', 'foam', 'speed' => (float) $value,
+            'waterline', 'reflection', 'contact_shadow', 'color_match', 'foam', 'speed', 'frames_fps' => (float) $value,
             'wobble' => (int) $value,
             'sway', 'grayscale', 'flip_x', 'flip_y' => (bool) $value,
-            'kind', 'blend', 'ink_preset', 'ink_fill', 'anim', 'anim_ease', 'anim_out', 'anim_out_ease', 'ambient' => (string) $value,
+            'kind', 'blend', 'ink_preset', 'ink_fill', 'anim', 'anim_ease', 'anim_out', 'anim_out_ease', 'ambient', 'frames_play' => (string) $value,
             default => $value,
         };
 
@@ -580,7 +584,7 @@ trait EditsSceneArtwork
         }
 
         // Validate enum-like fields.
-        if (in_array($field, ['kind', 'blend', 'ink_preset', 'ink_fill', 'anim', 'anim_ease', 'anim_out', 'anim_out_ease', 'ambient'], true)) {
+        if (in_array($field, ['kind', 'blend', 'ink_preset', 'ink_fill', 'anim', 'anim_ease', 'anim_out', 'anim_out_ease', 'ambient', 'frames_play'], true)) {
             if (! in_array($coercedValue, $whitelist[$field], true)) {
                 return;
             }

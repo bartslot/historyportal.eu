@@ -66,6 +66,26 @@
             </label>
         </div>
 
+        @if ($input === 'words' && ! $race)
+            {{-- One word at a time over the picture (word-stream.js), or all at once on a card. --}}
+            <div class="grid grid-cols-3 gap-2" data-moment-words-style>
+                <label class="col-span-2 block">
+                    <span class="{{ $label }}">{{ __('The words appear') }}</span>
+                    <select wire:model.change="momentDraft.words_style" wire:change="saveMomentDraft" class="select select-sm mt-1 w-full">
+                        <option value="stream">{{ __('One by one over the picture') }}</option>
+                        <option value="buttons">{{ __('All at once on a card') }}</option>
+                    </select>
+                </label>
+                @if (($draft['words_style'] ?? 'buttons') === 'stream')
+                    <label class="block">
+                        <span class="{{ $label }}">{{ __('Seconds per word') }}</span>
+                        <input type="number" min="1" max="6" step="0.5" placeholder="2.5" wire:model.blur="momentDraft.input_options.word_seconds" wire:change="saveMomentDraft" class="input input-sm mt-1 w-full" />
+                        @error('momentDraft.input_options.word_seconds') <span class="text-2xs text-error">{{ $message }}</span> @enderror
+                    </label>
+                @endif
+            </div>
+        @endif
+
         <x-ui.toggle-row :label="__('Harbour race: a ship per team')" :checked="$race" on-change="toggleMomentRace" />
 
         @foreach ($words as $side => [$heading, $addLabel, $max])
@@ -209,6 +229,12 @@
                             <input type="number" min="0" max="2" step="0.1" wire:model.blur="momentDraft.react.amount" wire:change="saveMomentDraft" class="grow" />
                         </label>
                     </div>
+                    {{-- How far the layer gets going before the meter is full (wind-world.js). --}}
+                    <label class="input input-sm w-full" data-tooltip="{{ __('How far the layer moves forward as the meter fills, in % of the picture') }}">
+                        <span class="{{ $label }}">{{ __('Moves forward') }}</span>
+                        <input type="number" min="0" max="30" step="1" wire:model.blur="momentDraft.react.drift" wire:change="saveMomentDraft" class="grow" />
+                        <span class="text-2xs text-panel-label">%</span>
+                    </label>
                 </div>
 
                 <div class="space-y-2 border-t border-panel-hairline pt-3">

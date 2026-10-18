@@ -2209,5 +2209,12 @@
     "Lesson type labels": "Lestype-labels",
     "Show QR code": "QR-code tonen",
     "Nothing from this period in this set.": "Niets uit deze tijd in deze set.",
-    "Re-narrating failed: this scene still plays its earlier recording.": "Opnieuw inspreken mislukt: deze scène speelt nog de eerdere opname."
+    "Re-narrating failed: this scene still plays its earlier recording.": "Opnieuw inspreken mislukt: deze scène speelt nog de eerdere opname.",
+    "The words appear": "De woorden verschijnen",
+    "One by one over the picture": "Een voor een over de plaat",
+    "All at once on a card": "Allemaal tegelijk op een kaart",
+    "Seconds per word": "Seconden per woord",
+    "Moves forward": "Vaart vooruit",
+    "How far the layer moves forward as the meter fills, in % of the picture": "Hoe ver de laag vooruitgaat terwijl de meter vol loopt, in % van de plaat",
+    "Follow the wind": "Volgt de wind"
 }

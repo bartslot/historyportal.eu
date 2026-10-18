@@ -34,6 +34,7 @@ use App\Services\Billing\NarrationCreditLedger;
 use App\Services\Diorama\LibraryAssets;
 use App\Services\Lessons\TeamGameSpec;
 use App\Services\Support\LayerAmbient;
+use App\Services\Support\LayerFrames;
 use App\Support\LayerEntrances;
 use App\Services\Support\LayerSitIn;
 use App\Services\Support\SceneSplit;
@@ -320,6 +321,8 @@ class Step3SceneConfigurator extends Component
                 ...LayerAmbient::payload($l),
                 // Blend into the scene: waterline, reflection, contact shadow, colour match.
                 ...LayerSitIn::payload($l),
+                // A sprite sheet over the picture (LayerFrames).
+                ...LayerFrames::payload($l, $ts),
                 // Hidden where the backdrop is nearer than the layer (resources/js/scene/occlusion.js).
                 'occlude' => ! empty($l['occlude']),
             ])->filter(fn ($l) => $l['url'] || $l['embed'])->values()->all() ?: null,

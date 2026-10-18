@@ -2358,6 +2358,12 @@ Alpine.data('lessonGame', (lesson) => ({
       const m = mod.readMoment(cfg)
       // In a race the pupil's own lane is the near one and the fleet's the far one.
       const lane = (meter) => (race && this.playSolo ? 1 : meter)
+      // Outside a race the ship gets going with the wind: drift, sails, wake, roll (wind-world.js).
+      const shipId = cfg.react?.layer ?? cfg.payoff?.layer
+      const wind = !race && shipId && this._artLayer
+        ? new (await import('./scene/wind-world.js')).WindWorld({ overlay: this._artLayer, stage: art, layerId: shipId, react: cfg.react || {}, payoff: cfg.payoff || {} })
+        : null
+      if (!current()) return
       // Skipped or full, the story still moves: history decides what happens, the game only when.
       // The race on the teams' phones ends here too, with the server's result.
       const finish = async (outcome) => {
@@ -2368,6 +2374,7 @@ Alpine.data('lessonGame', (lesson) => ({
         // The stage on the water now: the phones' lobby may have rebuilt it for another team count.
         const stage = race ? (this._race ?? race) : null
         const raced = stage && !outcome.skipped && outcome.crew
+        wind?.stop()
         if (raced) this._crownRace(stage, outcome, scene)
         await (stage
           ? stage.sailOut(Number(cfg.payoff?.to_x) || m.race.finishX + 10, Number(cfg.payoff?.duration) || 6)
@@ -2391,7 +2398,9 @@ Alpine.data('lessonGame', (lesson) => ({
         solo: this.playSolo,
         best: race && this.playSolo ? readBest(safeStorage('localStorage'), `${lesson.lesson_code}:${scene.id}`) : null,
         avoid,
-        onReact: (meter) => mod.gust(race ? race.node(lane(meter)) : mod.layerNode(art, cfg.react?.layer), cfg.react || {}),
+        // With the wind driving the ship, its roll follows the level instead of a gust per word.
+        onReact: (meter) => (wind?.base ? null : mod.gust(race ? race.node(lane(meter)) : mod.layerNode(art, cfg.react?.layer), cfg.react || {})),
+        onLevel: wind ? (level) => wind.set(level) : null,
         onProgress: race ? ({ levels, ghost }) => race.update(this.playSolo ? [ghost ?? 0, levels[0] ?? 0] : levels) : null,
         // A teacher's class race can move to the teams' phones before anyone has played.
         onPhones: race && !this.playSolo && lesson.race ? () => this._racePhones(scene, cfg, art, host, avoid, finish, current) : null,

@@ -2167,5 +2167,12 @@
     "Lesson type labels": "Stundentyp-Labels",
     "Show QR code": "QR-Code zeigen",
     "Nothing from this period in this set.": "Nichts aus dieser Zeit in dieser Sammlung.",
-    "Re-narrating failed: this scene still plays its earlier recording.": "Neu vertonen fehlgeschlagen: Diese Szene spielt noch die frühere Aufnahme."
+    "Re-narrating failed: this scene still plays its earlier recording.": "Neu vertonen fehlgeschlagen: Diese Szene spielt noch die frühere Aufnahme.",
+    "The words appear": "Die Wörter erscheinen",
+    "One by one over the picture": "Einzeln über dem Bild",
+    "All at once on a card": "Alle zugleich auf einer Karte",
+    "Seconds per word": "Sekunden pro Wort",
+    "Moves forward": "Fährt voran",
+    "How far the layer moves forward as the meter fills, in % of the picture": "Wie weit die Ebene vorankommt, während sich die Anzeige füllt, in % des Bildes",
+    "Follow the wind": "Folgt dem Wind"
 }

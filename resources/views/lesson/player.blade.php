@@ -205,6 +205,8 @@
                         'flip_x'  => ! empty($l['flip_x']),
                         'flip_y'  => ! empty($l['flip_y']),
                         ...\App\Services\Support\LayerSitIn::payload($l),
+                        // A sprite sheet over the picture (the sails that swell with the wind).
+                        ...\App\Services\Support\LayerFrames::payload($l),
                         'occlude' => ! empty($l['occlude']),
                     ])->filter(fn($l) => $l['url'] || $l['embed'])->values()->all() ?: null,
                     'anchor_sentence' => $shot['anchor_sentence'] ?? null,
