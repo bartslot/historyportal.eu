@@ -140,7 +140,7 @@ export function ScriptView() {
     const onFocus = (e: Event) => {
       const pos = findLine(editor, (e as CustomEvent<string>).detail)
       if (pos === null) return
-      editor.chain().setTextSelection(pos + 1).scrollIntoView().run()
+      editor.chain().focus().setTextSelection(pos + 1).scrollIntoView().run()   // ready to type
     }
     window.addEventListener('script:focus-line', onFocus)
     return () => window.removeEventListener('script:focus-line', onFocus)
