@@ -402,7 +402,8 @@
                  line on screen (a line not translated yet shows in the original). x-text (never
                  x-html): a script is teacher copy and must not inject markup into the player. No
                  x-transition: its leave never applied in a hidden tab and left the bubble up. --}}
-            <div x-show="captionsOn && captionText && (phase === 'INTRO' || phase === 'GAME_ACTIVE')"
+            {{-- Not while a power-meter moment is up: its panel sits where the caption does. --}}
+            <div x-show="captionsOn && captionText && !_momentActive && (phase === 'INTRO' || phase === 'GAME_ACTIVE')"
                  x-cloak
                  class="lp-cc pointer-events-none absolute left-1/2 -translate-x-1/2 text-center"
                  :class="!chromeHidden && 'lp-cc--lifted'"

@@ -204,6 +204,7 @@ Alpine.data('lessonGame', (lesson) => ({
     audioMuted: false,
     volumeLevel: 1.0,  // narration volume (0..1) — the deck's slider; survives scene changes
     playbackPaused: false,  // student paused the stage (narration AND any scene animation)
+    _momentActive: false,   // a power-meter moment is up (the caption steps aside for its panel)
     // The big centre play/pause glyph. It answers a press — it is not a state light. It used to
     // show whenever nothing happened to be playing, which on an interactive scene (a voyage
     // landfall waiting for the class) meant a 96px triangle parked over the map for as long as
