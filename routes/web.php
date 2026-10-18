@@ -484,3 +484,11 @@ if (app()->environment('local')) {
         Route::delete('/', [\App\Http\Controllers\TuningPresetController::class, 'destroy'])->name('destroy');
     });
 }
+
+// historyportal.eu/W24VRI: the code a teacher writes on the board opens the lesson. Registered LAST so
+// every real page keeps its own route; an unknown or deleted code is a 404.
+Route::get('/{code}', function (string $code) {
+    $lesson = \App\Models\Lesson::where('lesson_code', strtoupper($code))->firstOrFail();
+
+    return redirect()->route('lesson.play', ['lessonCode' => $lesson->lesson_code]);
+})->where('code', '[A-Za-z0-9]{6}')->name('lesson.short');
