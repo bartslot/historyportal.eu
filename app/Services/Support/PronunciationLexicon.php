@@ -40,6 +40,12 @@ final class PronunciationLexicon
         ],
     ];
 
+    /** Changes whenever an entry does, so narration URLs move on with the way words are spoken. */
+    public static function version(): string
+    {
+        return substr(md5(serialize(self::LEXICON)), 0, 8);
+    }
+
     public static function apply(string $text, ?string $locale): string
     {
         $entries = self::LEXICON[$locale ?? ''] ?? [];

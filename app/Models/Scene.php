@@ -221,9 +221,9 @@ class Scene extends Model
      * while the database recorded the new script and a matching audio_script_hash. The one thing in
      * this app where being wrong is invisible: the words on screen were right.
      *
-     * The hash is the version rather than a timestamp on purpose — it changes exactly when the audio
-     * changes, so a scene nobody has touched keeps its cache instead of being re-downloaded by every
-     * child in the class on every visit.
+     * The version is built from what made the audio rather than a timestamp on purpose: it changes
+     * when the audio does, so a scene nobody has touched keeps its cache instead of being
+     * re-downloaded by every child in the class on every visit.
      *
      * Six callers built this URL by hand before this existed. If you are adding a seventh, use this.
      */
@@ -233,8 +233,14 @@ class Scene extends Model
             return null;
         }
 
+        // The words, who read them, and how the voice was told to say them: the same script read
+        // again in another voice or after a pronunciation fix is new audio at the same path, and
+        // the files are cached for 30 days (Bart, 2026-10-18: VOC still sounded English).
         $version = $this->audio_script_hash
-            ? substr((string) $this->audio_script_hash, 0, 8)
+            ? substr(sha1(implode('|', [
+                $this->audio_script_hash, $this->audio_provider, $this->audio_voice,
+                \App\Services\Support\PronunciationLexicon::version(),
+            ])), 0, 8)
             : (string) ($this->updated_at?->timestamp ?? '');
 
         return asset('storage/'.$this->audio_path).($version !== '' ? '?v='.$version : '');
