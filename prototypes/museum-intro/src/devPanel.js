@@ -1,7 +1,7 @@
 import GUI from 'lil-gui';
-import { anchors } from './script.js';
+import { WIPE } from './style.js';
 
-// ?dev: scrub the timeline, play/pause, tweak every camera key and the depth, copy the keys out as JSON.
+// ?dev: scrub the timeline, play/pause, tweak every camera key, the look and the wipe, copy the keys out as JSON.
 export function mountDevPanel(api) {
   const { clock, path, PARAMS, BEATS } = api;
   const gui = new GUI({ title: 'Museum intro (dev)', width: 300 });
@@ -24,11 +24,13 @@ export function mountDevPanel(api) {
   };
 
   const look = gui.addFolder('Look');
-  const reanchor = () => Object.assign(api.A, anchors(api.dio));
-  look.add(PARAMS, 'depthFinal', 0, 10, 0.1).name('depth amount').onChange(reanchor);
-  look.add(PARAMS, 'tasmanToEye', 0, 1, 0.01).name('Tasman toward eye').onChange(reanchor);
-  look.add(api.dio.uniforms.uGamma, 'value', 0.3, 3, 0.05).name('depth gamma');
-  look.add(api.dio.uniforms.uCut, 'value', 0, 1, 0.01).name('cut stretched (0 = off)');
+  const wipe = { override: false, amount: 0 };
+  look.add(wipe, 'override').name('hold wipe at').onChange((on) => (api.wipeOverride = on ? wipe.amount : null));
+  look.add(wipe, 'amount', 0, 1, 0.01).name('wipe amount').onChange((x) => wipe.override && (api.wipeOverride = x));
+  look.add(WIPE.uSun.value, 'x', -1, 1, 0.01).name('sun x');
+  look.add(WIPE.uSun.value, 'y', 0, 1, 0.01).name('sun y');
+  const ship = api.world.ship.pivot;
+  look.add(ship.rotation, 'y', -Math.PI, Math.PI, 0.01).name('ship yaw (live only)');
   look.add(PARAMS, 'figureHall', 0.1, 0.6, 0.01).name('figure size (hall)');
   look.add(PARAMS, 'figureWorld', 0.05, 0.5, 0.01).name('figure size (painting)');
   look.close();

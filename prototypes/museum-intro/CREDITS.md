@@ -14,10 +14,21 @@ the VOC was founded (1602) and 43 years before Tasman's first voyage (1642). It 
 type, not literally Tasman's ship. A lesson that needs the exact claim should say so in its
 sourced/inferred/invented ledger.
 
+## 3D model (CC BY 4.0, attribution required)
+
+- `world/ship.glb`: based on "dutch ship large" (https://sketchfab.com/3d-models/dutch-ship-large-8ff8f94903e84131832c35e5371b5d59)
+  by TegnoGenial (https://sketchfab.com/TegnoGenial), licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/).
+  Changed: its textures removed (replaced by our own), extra UV sets/tangents dropped, welded, quantized and
+  meshopt-compressed with gltf-transform 4.2.1 (9.1 MB to 0.67 MB). Set sails are added in code (`src/world.js`).
+  Source copy: render PC `~/artkit/lesson_assets/_sketchfab/8ff8f94903e84131832c35e5371b5d59`.
+
 ## Derived and made for History Portal
 
-- `vroom_depth.webp`: Depth Anything V2 (ViT-L, Apache 2.0) on the render PC's ComfyUI, then a grey opening + blur (`tools/prepare_assets.py`).
-- `vroom_plate*.webp`: the painting with ships inpainted away (OpenCV Telea) and a smooth row depth (`tools/make_plate.py`).
-- `sil_1..7.webp`: museum visitor silhouettes, ChatGPT image generation (2026-10-19), owned by History Portal.
-- `tasman.webp`: Abel Tasman cut-out `resources/icons/history-line/figures/tasman/tasman_side.webp` from the History Portal library.
+- `cards/*.webp` + `cards.json`: the painting's other ships and boats cut out as cards. The cut uses a Depth Anything V2
+  (ViT-L, Apache 2.0) map from the render PC only as a layout reference (`tools/make_cards.py`).
+- `world/{hull,sail,sea,sky}_{paint,lines}.webp`, `world/tasman_paint.webp`, `sil_{point,hat,kid,old}.webp`: ChatGPT image
+  generation 2026-10-19 (prompts in the vault: `Memory/historyportal/assets/museum-intro/v2/PROMPT_LOG.md`).
+  `sil_teen.webp`: ChatGPT, round 1.
+- `world/tasman_lines.webp`, `world/sailor_*.webp`, `world/pieter_looking_up_mast.webp`: History Portal library cut-outs
+  (`resources/icons/history-line/figures/tasman/`).
 - All wall, wood, floor and sparkle textures are painted in code (canvas).

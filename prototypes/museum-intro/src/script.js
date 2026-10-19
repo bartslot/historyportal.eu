@@ -4,10 +4,9 @@ import { POSES, blendPose, walkPose } from './stickFigure.js';
 import { HALL } from './museum.js';
 
 // The intro as data + pure functions of time t. Every beat time lives in BEATS so the dev panel can move them;
-// every place in the painting is a painting uv (v up) resolved through the diorama, so retuning the depth keeps
-// the figure on the sail and Tasman on the deck.
+// places inside the painting come from the 3D world (world.js anchors), never from hand-typed coordinates.
 
-export const DURATION = 34;
+export const DURATION = 36;
 
 export const BEATS = {
   appear: 3.6, // figure draws itself on the rail
@@ -17,70 +16,33 @@ export const BEATS = {
   crouch: 10.85,
   jump: 11.15,
   dive: 11.85, // touches the painting, ink ripple
-  openStart: 12.3,
-  openEnd: 15.6,
-  fallStart: 17.9,
-  land: 18.75,
-  hop: 19.7,
-  slideStart: 20.15,
-  slideEnd: 22.9,
-  shoulderHop: 23.5,
-  shoulderLand: 24.15,
-  notice: 24.6, // Tasman bounces
-  balloon: 25.0,
-  start: 28.2, // the Start affordance
+  swapStart: 13.0, // camera holds at the painter's eye: painting crossfades to the 3D world
+  swapEnd: 14.3,
+  fallStart: 18.0,
+  land: 18.85, // the ink wipe to History Lines starts here
+  wipeEnd: 23.4, // slow enough that the front passes Tasman on screen
+  hop: 19.8,
+  slideStart: 20.25,
+  slideEnd: 23.0,
+  shoulderHop: 23.6,
+  shoulderLand: 24.25,
+  notice: 24.7, // Tasman bounces
+  balloon: 25.1,
+  start: 28.6, // the Start affordance
 };
 
 export const PARAMS = {
-  depthFinal: 2.6, // diorama depth amount when fully open
-  cut: 0.22, // cut triangles whose depth factor jumps more than this (object edges); 0 = rubber sheet
-  figureHall: 0.34, // figure height on the rail (m)
-  figureWorld: 0.095, // figure height inside the painting
-  tasmanH: 0.3,
-  tasmanToEye: 0.2, // pulls Tasman a little in front of the deck so the rail does not cut him
+  figureHall: 0.42, // figure height on the rail (m)
+  figureWorld: 0.08, // set from Tasman's height once the world is built
   railFrom: 4.9,
   railTo: 10.65,
-  stride: 0.19, // metres per step cycle at hall scale
+  stride: 0.22, // metres per step cycle at hall scale
 };
 
-// painting uv anchors (checked on a 3840 px crop of the painting)
-export const UV = {
-  dive: [0.2, 0.42], // the left ship's hull, where the figure jumps in
-  sail: [0.236, 0.682], // top yard of the fore topsail (thin: its depth is read from the sail body below)
-  sailBody: [0.235, 0.64],
-  mastTop: [0.2205, 0.69],
-  deck: [0.214, 0.43],
-  tasman: [0.203, 0.415], // Tasman's feet
-};
-export const TASMAN_SHOULDER = [0.24, 0.785]; // in the card's own uv
-export const TASMAN_MOUTH = [0.86, 0.87];
+export const swapAmount = (t) => span(t, BEATS.swapStart, BEATS.swapEnd, EASE.settle);
+export const wipeAmount = (t) => span(t, BEATS.land - 0.05, BEATS.wipeEnd, EASE.settle);
 
-export function depthAmount(t) {
-  return PARAMS.depthFinal * span(t, BEATS.openStart, BEATS.openEnd, EASE.settle);
-}
-
-const v3 = (a) => new THREE.Vector3(...a);
 const arc = (a, b, h, e) => a.clone().lerp(b, e).add(new THREE.Vector3(0, Math.sin(Math.PI * e) * h, 0));
-
-// world anchors at the final depth (the figure only enters the painting after it has opened)
-export function anchors(dio) {
-  const k = PARAMS.depthFinal;
-  const at = (uv, opts = {}) => dio.worldAt(uv[0], uv[1], { k, ...opts });
-  const dSail = dio.depthAt(...UV.sailBody, 2);
-  const dDeck = dio.depthAt(...UV.deck, 4);
-  const tasmanFeet = at(UV.tasman, { d: dDeck, toEye: PARAMS.tasmanToEye });
-  const card = (cu, cv) => tasmanFeet.clone().add(new THREE.Vector3((cu - 0.5) * PARAMS.tasmanH * (425 / 1400), cv * PARAMS.tasmanH, 0));
-  return {
-    sail: at(UV.sail, { d: dSail, toEye: 0.05 }),
-    mastTop: at(UV.mastTop, { d: dSail, toEye: 0.05 }),
-    mastAt: (e) => at([UV.mastTop[0], lerp(UV.mastTop[1], UV.deck[1], e)], { d: lerp(dSail, dDeck, e), toEye: lerp(0.05, PARAMS.tasmanToEye, e) }),
-    tasmanFeet,
-    shoulder: card(...TASMAN_SHOULDER),
-    mouth: card(...TASMAN_MOUTH),
-    tasmanChest: card(0.5, 0.72),
-    dive: dio.worldAt(...UV.dive, { k: 0 }),
-  };
-}
 
 // where the figure is and what it is doing at time t
 export function figureAt(t, A) {
@@ -117,7 +79,7 @@ export function figureAt(t, A) {
   if (t < B.fallStart) return null;
   if (t < B.hop) {
     const fall = span(t, B.fallStart, B.land, EASE.gravity);
-    const from = A.sail.clone().add(new THREE.Vector3(-0.12, 0.85, 0));
+    const from = A.sail.clone().add(new THREE.Vector3(-0.3 * A.man, 4 * A.man, 0));
     const pos = from.lerp(A.sail, fall);
     const land = t > B.land ? Math.exp(-(t - B.land) * 7) * Math.sin((t - B.land) * 18) : 0;
     const pose = t < B.land ? POSES.fall : blendPose(POSES.land, POSES.idle, span(t, B.land, B.land + 0.5));
@@ -125,18 +87,18 @@ export function figureAt(t, A) {
   }
   if (t < B.slideStart) {
     const e = span(t, B.hop, B.slideStart, EASE.settle);
-    const pos = arc(A.sail, A.mastTop, 0.12, e);
+    const pos = arc(A.sail, A.mastAt(0.06), 0.4 * A.man, e);
     return { ...idle, pose: blendPose(POSES.jump, POSES.slide, e), pos, scale: P.figureWorld, facing: -1, spark: 0.6 };
   }
   if (t < B.shoulderHop) {
     const e = span(t, B.slideStart, B.slideEnd, EASE.settle);
-    const stop = A.mastAt(0.62); // just above Tasman's shoulder
-    const pos = A.mastTop.clone().lerp(stop, e);
+    const stop = A.mastAt(1); // just above Tasman's shoulder
+    const pos = A.mastAt(0.06).clone().lerp(stop, e);
     return { ...idle, pose: POSES.slide, pos, scale: P.figureWorld, facing: -1, spark: 0.55 };
   }
   if (t < B.shoulderLand) {
     const e = span(t, B.shoulderHop, B.shoulderLand, EASE.settle);
-    const pos = arc(A.mastAt(0.62), A.shoulder, 0.1, e);
+    const pos = arc(A.mastAt(1), A.shoulder, 0.35 * A.man, e);
     return { ...idle, pose: blendPose(POSES.jump, POSES.sit, e), pos, scale: P.figureWorld, anchor: e > 0.5 ? 'hip' : 'feet', facing: -1, spark: 0.8 };
   }
   // sitting on the shoulder: legs dangle, the free hand waves now and then

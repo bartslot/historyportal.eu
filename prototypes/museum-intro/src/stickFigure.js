@@ -116,10 +116,12 @@ export class StickFigure {
     g.clearRect(0, 0, CANVAS, CANVAS);
     g.lineCap = g.lineJoin = 'round';
     const reveal = state.reveal ?? 1;
-    // paper edge first (reads on dark hulls), ink on top
-    for (const [color, width] of [['rgba(246,236,214,0.9)', 13], ['#17120d', 6]]) {
+    // warm magic glow + paper edge first (reads on dark walls and hulls), ink on top
+    for (const [color, width, glow] of [['rgba(255,214,140,0.55)', 16, 18], ['rgba(250,240,220,0.95)', 12, 0], ['#17120d', 6.5, 0]]) {
       g.strokeStyle = color;
       g.lineWidth = width;
+      g.shadowColor = 'rgba(255,190,90,0.9)';
+      g.shadowBlur = glow;
       strokes.forEach((pts, si) => {
         const r = Math.min(1, Math.max(0, reveal * 6 - si)); // draw-on, one stroke after another
         if (r <= 0) return;

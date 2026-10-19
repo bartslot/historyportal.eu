@@ -6,10 +6,10 @@ import * as THREE from 'three';
 
 export const HALL = {
   wallX: [-9, 22],
-  wallH: 4.6,
+  wallH: 9, // tall enough that no camera sees over it (the painting world's sky is behind it)
   railY: 1.03, // top of the wainscot rail (stick figure feet)
   railZ: 0.07,
-  voc: { x: 12, y: 2.42, w: 4.4, h: (4.4 * 1770) / 3840 },
+  voc: { x: 12, y: 2.56, w: 4.4, h: (4.4 * 1770) / 3840 },
 };
 
 function canvasTexture(w, h, paint, repeat = [1, 1]) {
@@ -95,22 +95,27 @@ function paintFloor(g, w, h) {
   }
 }
 
-const gilt = new THREE.MeshStandardMaterial({ color: 0xb8913f, metalness: 0.55, roughness: 0.55 });
+const gilt = new THREE.MeshStandardMaterial({ color: 0xb38d45, metalness: 0.8, roughness: 0.4 });
 
+// a real moulding: a rectangle-with-hole extruded with a wide bevel, so the gold catches the spot lights
 export function frame(w, h, depth = 0.1, bar = 0.16) {
-  const g = new THREE.Group();
-  const parts = [
-    [w + 2 * bar, bar, 0, h / 2 + bar / 2],
-    [w + 2 * bar, bar, 0, -h / 2 - bar / 2],
-    [bar, h, -w / 2 - bar / 2, 0],
-    [bar, h, w / 2 + bar / 2, 0],
-  ];
-  for (const [bw, bh, x, y] of parts) {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, depth), gilt);
-    m.position.set(x, y, depth / 2);
-    g.add(m);
-  }
-  return g;
+  const s = new THREE.Shape();
+  s.moveTo(-w / 2 - bar, -h / 2 - bar);
+  s.lineTo(w / 2 + bar, -h / 2 - bar);
+  s.lineTo(w / 2 + bar, h / 2 + bar);
+  s.lineTo(-w / 2 - bar, h / 2 + bar);
+  s.closePath();
+  const hole = new THREE.Path();
+  const i = 0.02; // the bevel grows inwards: keep the sight edge on the canvas
+  hole.moveTo(-w / 2 - i, -h / 2 - i);
+  hole.lineTo(-w / 2 - i, h / 2 + i);
+  hole.lineTo(w / 2 + i, h / 2 + i);
+  hole.lineTo(w / 2 + i, -h / 2 - i);
+  hole.closePath();
+  s.holes.push(hole);
+  const geo = new THREE.ExtrudeGeometry(s, { depth: depth * 0.4, bevelEnabled: true, bevelThickness: depth * 0.6, bevelSize: bar * 0.35, bevelSegments: 3, curveSegments: 1 });
+  geo.translate(0, 0, depth * 0.6);
+  return new THREE.Mesh(geo, gilt);
 }
 
 function wallWithHole() {
@@ -162,30 +167,39 @@ export function buildMuseum(scene, textures) {
 
   // the other paintings (public domain, Rijksmuseum; see CREDITS.md)
   const hung = [
-    { tex: textures.milkmaid, x: -3.2, y: 2.3, h: 1.4 },
-    { tex: textures.avercamp, x: 2.2, y: 2.3, h: 1.35 },
-    { tex: textures.swan, x: 6.9, y: 2.3, h: 1.45 },
+    { tex: textures.milkmaid, x: -3.4, y: 2.45, h: 2.0 },
+    { tex: textures.avercamp, x: 1.9, y: 2.4, h: 1.75 },
+    { tex: textures.swan, x: 6.9, y: 2.45, h: 1.9 },
   ];
   for (const p of hung) {
     const img = p.tex.image;
     const w = (p.h * img.width) / img.height;
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, p.h), new THREE.MeshLambertMaterial({ map: p.tex }));
     m.position.set(p.x, p.y, 0.06);
-    const f = frame(w, p.h, 0.09, 0.12);
+    const f = frame(w, p.h, 0.1, 0.15);
     f.position.set(p.x, p.y, 0);
     group.add(m, f);
   }
-  const vf = frame(HALL.voc.w, HALL.voc.h, 0.12, 0.2);
+  const vf = frame(HALL.voc.w, HALL.voc.h, 0.14, 0.24);
   vf.position.set(HALL.voc.x, HALL.voc.y, 0);
   group.add(vf);
 
   // soft museum light: low warm ambient, one spot pool per painting, no shadows
-  scene.add(new THREE.HemisphereLight(0xfff2dc, 0x3a2a1a, 0.9));
+  scene.add(new THREE.HemisphereLight(0xfff2dc, 0x3a2a1a, 0.55));
   for (const x of [...hung.map((p) => p.x), HALL.voc.x]) {
-    const s = new THREE.SpotLight(0xffe6c0, x === HALL.voc.x ? 20 : 18, 9, 0.62, 0.9, 1.6);
-    s.position.set(x, 4.4, 2.8);
-    s.target.position.set(x, 1.9, 0);
+    const s = new THREE.SpotLight(0xffe2b8, x === HALL.voc.x ? 34 : 26, 10, x === HALL.voc.x ? 0.62 : 0.5, 0.75, 1.5);
+    s.position.set(x, 5.2, 2.6);
+    s.target.position.set(x, 2.3, 0);
     scene.add(s, s.target);
   }
-  return group;
+
+  // the VOC painting itself: unlit, so its colours meet the (unlit) world inside it at the crossfade
+  const voc = new THREE.Mesh(
+    new THREE.PlaneGeometry(HALL.voc.w, HALL.voc.h),
+    new THREE.MeshBasicMaterial({ map: textures.vroom, color: new THREE.Color(0.93, 0.93, 0.93), transparent: true }),
+  );
+  voc.position.set(HALL.voc.x, HALL.voc.y, 0.01);
+  voc.renderOrder = 2;
+  group.add(voc);
+  return { group, voc };
 }

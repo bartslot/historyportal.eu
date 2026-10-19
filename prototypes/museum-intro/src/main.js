@@ -1,18 +1,20 @@
 import * as THREE from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { Clock, EASE, span } from './timeline.js';
 import { CameraPath } from './cameraPath.js';
-import { buildMuseum, HALL } from './museum.js';
+import { buildMuseum } from './museum.js';
 import { buildSilhouettes } from './silhouettes.js';
 import { StickFigure } from './stickFigure.js';
 import { Sparkles } from './sparkles.js';
-import { Diorama } from './diorama.js';
-import { BEATS, DURATION, PARAMS, anchors, depthAmount, figureAt } from './script.js';
+import { buildWorld, EYE } from './world.js';
+import { WIPE } from './style.js';
+import { BEATS, DURATION, PARAMS, figureAt, swapAmount, wipeAmount } from './script.js';
 import { defaultCameraKeys } from './cameraKeys.js';
 
-const ASSETS = ['vroom', 'vroom_depth', 'vroom_plate', 'vroom_plate_depth', 'milkmaid', 'avercamp', 'swan', 'tasman', ...[1, 2, 3, 4, 5, 6, 7].map((i) => `sil_${i}`)];
+const HALL_ASSETS = ['vroom', 'milkmaid', 'avercamp', 'swan', ...['point', 'hat', 'kid', 'old', 'teen'].map((n) => `sil_${n}`)];
+const WORLD_ASSETS = ['hull', 'sail', 'sea', 'sky'].flatMap((n) => [`${n}_paint`, `${n}_lines`]).concat(['tasman_paint', 'tasman_lines', 'sailor_front', 'sailor_threequarter', 'pieter_looking_up_mast']);
 const LINES = { nl: 'Ah, daar ben je!', en: 'Ah, there you are!' };
-const H_FOV = 56; // horizontal field of view we try to keep; phones get a taller vertical one, clamped
-const IN_PAINTING_BG = new THREE.Color(0xc9cdbf);
+const H_FOV = 50; // horizontal field of view we try to keep; phones get a taller vertical one, clamped
 const HALL_BG = new THREE.Color(0x24211d);
 
 const query = new URLSearchParams(location.search);
@@ -24,37 +26,32 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.getElementById('stage').appendChild(renderer.domElement);
 const scene = new THREE.Scene();
-scene.background = HALL_BG.clone();
-const camera = new THREE.PerspectiveCamera(40, 1, 0.03, 80);
+scene.background = HALL_BG;
+scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture; // the gilt needs something to reflect
+const camera = new THREE.PerspectiveCamera(40, 1, 0.02, 200);
+let sparkles;
 
-async function loadTextures() {
+async function loadTextures(cards) {
   const loader = new THREE.TextureLoader();
   const bar = document.getElementById('load-bar');
-  let done = 0;
   // the 7680 px painting only where the GPU takes 8k textures and the screen is big enough to show it
-  const hd = renderer.capabilities.maxTextureSize >= 8192 && Math.max(innerWidth, innerHeight) * devicePixelRatio >= 1600;
-  const file = (name) => (name === 'vroom' && hd && !query.has('sd') ? 'vroom_hd' : name);
+  const hd = renderer.capabilities.maxTextureSize >= 8192 && Math.max(innerWidth, innerHeight) * devicePixelRatio >= 1600 && !query.has('sd');
+  const jobs = [
+    ...HALL_ASSETS.map((n) => [n, `./assets/${n === 'vroom' && hd ? 'vroom_hd' : n}.webp`]),
+    ...WORLD_ASSETS.map((n) => [n, `./assets/world/${n}.webp`]),
+    ...cards.map((c) => [c.file, `./assets/cards/${c.file}`]),
+  ];
+  let done = 0;
   const entries = await Promise.all(
-    ASSETS.map(async (name) => {
-      const tex = await loader.loadAsync(`./assets/${file(name)}.webp`);
-      tex.colorSpace = name.endsWith('depth') ? THREE.NoColorSpace : THREE.SRGBColorSpace;
+    jobs.map(async ([name, url]) => {
+      const tex = await loader.loadAsync(url);
+      tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-      bar.style.transform = `scaleX(${++done / ASSETS.length})`;
+      bar.style.transform = `scaleX(${++done / jobs.length})`;
       return [name, tex];
     }),
   );
   return Object.fromEntries(entries);
-}
-
-function buildTasman(tex) {
-  const w = PARAMS.tasmanH * (tex.image.width / tex.image.height);
-  const geo = new THREE.PlaneGeometry(w, PARAMS.tasmanH);
-  geo.translate(0, PARAMS.tasmanH / 2, 0);
-  // a warm varnish multiply pulls the clean History Lines colours a little towards Vroom's palette
-  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.05, color: new THREE.Color(0xe6d6b8), depthWrite: false });
-  const m = new THREE.Mesh(geo, mat);
-  m.renderOrder = 5;
-  return m;
 }
 
 function resize() {
@@ -63,34 +60,26 @@ function resize() {
   renderer.setSize(w, h);
   camera.aspect = w / h;
   const v = (2 * Math.atan(Math.tan((H_FOV * Math.PI) / 360) / camera.aspect) * 180) / Math.PI;
-  camera.fov = Math.min(72, Math.max(38, v));
+  camera.fov = Math.min(70, Math.max(30, v));
   camera.updateProjectionMatrix();
-  sparkles.resize(h * Math.min(devicePixelRatio, 2), camera.fov);
+  const px = renderer.getDrawingBufferSize(new THREE.Vector2());
+  WIPE.uRes.value.copy(px);
+  sparkles.resize(px.y, camera.fov);
 }
 
-let sparkles;
-
 async function start() {
-  const tex = await loadTextures();
-  buildMuseum(scene, tex);
-  const v = HALL.voc;
-  const eye = new THREE.Vector3(v.x, v.y, 4.3); // the painter's viewpoint the depth is built around
-  const frameAt = { center: new THREE.Vector3(v.x, v.y, 0), size: new THREE.Vector2(v.w, v.h), eye };
-  // the painting, cut at object edges, over a plate with the ships inpainted away (shows through the cuts)
-  const dio = new Diorama({ ...frameAt, map: tex.vroom, depth: tex.vroom_depth, cut: PARAMS.cut });
-  const plate = new Diorama({ ...frameAt, map: tex.vroom_plate, depth: tex.vroom_plate_depth, segments: [200, 92], push: 0.06, over: 1.8 });
-  plate.mesh.renderOrder = -1;
-  scene.add(plate.mesh, dio.mesh);
-  const A = anchors(dio);
-  const tasman = buildTasman(tex.tasman);
-  tasman.position.copy(A.tasmanFeet);
-  scene.add(tasman);
+  const cards = await (await fetch('./assets/cards/cards.json')).json();
+  const tex = await loadTextures(cards);
+  const { voc, group: hall } = buildMuseum(scene, tex);
+  const world = await buildWorld(scene, tex, cards);
+  const A = world.anchors;
+  PARAMS.figureWorld = A.man * 0.36;
   const silhouettes = buildSilhouettes(scene, tex);
   const figure = new StickFigure();
   scene.add(figure.mesh);
   sparkles = new Sparkles();
   scene.add(sparkles.points);
-  const path = new CameraPath(defaultCameraKeys(A, eye));
+  const path = new CameraPath(defaultCameraKeys(A, EYE));
   const clock = new Clock(DURATION);
 
   const balloon = document.getElementById('balloon');
@@ -103,26 +92,34 @@ async function start() {
   addEventListener('resize', resize);
 
   const tmp = new THREE.Vector3();
+  const landCam = camera.clone();
   const toScreen = (p) => {
     tmp.copy(p).project(camera);
     return [(tmp.x * 0.5 + 0.5) * innerWidth, (-tmp.y * 0.5 + 0.5) * innerHeight];
   };
 
   function render(t) {
-    dio.depthAmount = plate.depthAmount = depthAmount(t);
-    plate.mesh.visible = dio.depthAmount > 0.01;
-    plate.uniforms.uBright.value = dio.uniforms.uBright.value;
-    const inside = span(t, BEATS.openStart + 1.2, BEATS.openEnd + 1.0);
-    dio.uniforms.uBright.value = 0.9 + 0.1 * inside;
-    scene.background.copy(HALL_BG).lerp(IN_PAINTING_BG, inside);
     path.apply(camera, t);
+    camera.updateMatrixWorld();
+
+    // the canvas fades out while the camera holds at the painter's eye; the world behind it lines up
+    const swap = swapAmount(t);
+    voc.material.opacity = 1 - swap;
+    voc.visible = swap < 1;
+    world.group.visible = t > BEATS.swapStart - 0.3;
+    hall.visible = camera.position.z > -0.3; // once through the frame the hall is behind us; its back would show
+    world.update(t, camera);
     silhouettes.update(t, camera);
 
-    // Tasman notices: one small bounce
-    const n = t - BEATS.notice;
-    tasman.position.y = A.tasmanFeet.y + (n > 0 ? 0.03 * Math.exp(-n * 5) * Math.abs(Math.sin(n * 11)) : 0);
-    tasman.visible = t > BEATS.openStart;
-    tasman.quaternion.copy(camera.quaternion);
+    // painterly -> History Lines: an ink stain spreading from where the figure lands on the sail
+    WIPE.uWipe.value = api.wipeOverride ?? wipeAmount(t);
+    // the stain starts where the figure lands (seen by the camera AT the landing), then stays put on screen while
+    // it spreads and the camera moves on; computed from the path so scrubbing gives the same frame
+    landCam.copy(camera);
+    path.apply(landCam, BEATS.land);
+    landCam.updateMatrixWorld();
+    tmp.copy(A.sail).project(landCam);
+    WIPE.uWipeOrigin.value.set(tmp.x * 0.5 + 0.5, tmp.y * 0.5 + 0.5);
 
     const f = figureAt(t, A);
     figure.mesh.visible = !!f;
@@ -148,7 +145,9 @@ async function start() {
     // speech balloon: silent text, pops with a small overshoot (content, not UI chrome)
     const b = span(t, BEATS.balloon, BEATS.balloon + 0.45, EASE.pop);
     balloon.style.opacity = String(Math.min(1, b * 2));
-    const [bx, by] = toScreen(A.mouth);
+    const [mx, by] = toScreen(A.mouth);
+    const bw = balloon.firstElementChild.nextElementSibling.offsetWidth + 14;
+    const bx = Math.min(mx, innerWidth - bw - 16); // phones: keep the balloon on screen
     balloon.style.transform = `translate(${bx}px, ${by}px) scale(${0.6 + 0.4 * b})`;
 
     const s = span(t, BEATS.start, BEATS.start + 0.6, EASE.arrive);
@@ -170,7 +169,7 @@ async function start() {
   }
 
   let last = performance.now();
-  const api = { clock, path, dio, render, A, PARAMS, BEATS, rebuildCamera: () => path.rebuild() };
+  const api = { clock, path, world, render, A, PARAMS, BEATS };
   window.__intro = api; // used by the frame-strip capture and the dev panel
   renderer.setAnimationLoop((now) => {
     const dt = Math.min(0.05, (now - last) / 1000);
