@@ -1061,7 +1061,8 @@
                                                   :quiz-draft="$quizDraft" :quiz-errors="$quizErrors" :quiz-saved="$quizSaved"
                                                   :quiz-difficulty="$this->quizDifficulty()" :quiz-scope="$this->quizScope()"
                                                   :quiz-shuffle="$this->quizShuffle()"
-                                                  :team-draft="$teamDraft" :team-is-default="$this->teamGameIsDefault()" />
+                                                  :team-draft="$teamDraft" :team-is-default="$this->teamGameIsDefault()"
+                                                  :predict-draft="$predictDraft" />
                 @elseif ($sceneModel->kind === 'voyage')
                     <x-lesson.scene-inspector-voyage :scene="$sceneModel" :voyage-def="$this->voyageDef()" :route-line="$this->routeLine()" :voyage-map="$this->voyageMap()" :voyage-fog="$this->voyageFog()" :voyage-view="$this->voyageView()" :transports="$this->transports()" :stops="$this->voyageStops()" />
                 @elseif ($sceneModel->kind === 'gallery')
@@ -2607,6 +2608,11 @@
                         class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
                     <x-lesson.scene-type-thumb kind="game" game-type="debate" />
                     <span class="text-sm font-medium text-slate-200">Debate</span>
+                </button>
+                <button type="button" wire:click="addScene('game', 'predict')" data-add-predict
+                        class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
+                    <x-lesson.scene-type-thumb kind="game" game-type="predict" />
+                    <span class="text-sm font-medium text-slate-200">{{ __('Predict moment') }}</span>
                 </button>
                 <button type="button" wire:click="addScene('map')"
                         class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">

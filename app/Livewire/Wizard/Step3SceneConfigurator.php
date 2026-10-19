@@ -21,6 +21,7 @@ use App\Livewire\Wizard\Concerns\EditsSceneBalloons;
 use App\Livewire\Wizard\Concerns\EditsSplitPanels;
 use App\Livewire\Wizard\Concerns\EditsStoryGame;
 use App\Livewire\Wizard\Concerns\EditsMoment;
+use App\Livewire\Wizard\Concerns\EditsPredict;
 use App\Livewire\Wizard\Concerns\EditsTeamGame;
 use App\Livewire\Wizard\Concerns\EditsTitleScreen;
 use App\Livewire\Wizard\Concerns\FixesLessonProblems;
@@ -32,6 +33,7 @@ use App\Models\Scene;
 use App\Models\StrategyGame;
 use App\Services\Billing\NarrationCreditLedger;
 use App\Services\Diorama\LibraryAssets;
+use App\Services\Lessons\PredictSpec;
 use App\Services\Lessons\TeamGameSpec;
 use App\Services\Support\LayerAmbient;
 use App\Services\Support\LayerFrames;
@@ -75,6 +77,7 @@ class Step3SceneConfigurator extends Component
     use EditsSceneArtwork;
     use EditsSplitPanels;
     use EditsStoryGame;
+    use EditsPredict;
     use EditsTeamGame;
     use EditsMoment;
     use UndoesSceneEdits;
@@ -482,6 +485,7 @@ class Step3SceneConfigurator extends Component
         $this->syncStoryGameDraftFor($scene);
         // And for a team game: its texts, items, options and timer.
         $this->syncTeamDraftFor($scene);
+        $this->syncPredictDraftFor($scene);
         // And for a story panel's power-meter moment.
         $this->syncMomentDraftFor($scene);
     }
@@ -613,6 +617,7 @@ class Step3SceneConfigurator extends Component
         }
         $payload = $this->withStoredDiorama($payload, $scene);
         $payload = $this->withCleanTeamGame($payload, $scene);
+        $payload = $this->withCleanPredict($payload);
         $payload = $this->withCleanMoment($payload, $scene);
         $scriptDirty = ($scene->script_segment ?? '') !== ($payload['script_segment'] ?? '');
 
@@ -4941,7 +4946,7 @@ class Step3SceneConfigurator extends Component
 
             return;
         }
-        $gameType = in_array($gameType, ['quiz', 'strategy', 'debate'], true) ? $gameType : null;
+        $gameType = in_array($gameType, ['quiz', 'strategy', 'debate', 'predict'], true) ? $gameType : null;
         $insertAfterSceneId = $this->selectedSceneId;
         $next = ((int) $this->lesson->scenes()->max('order')) + 1;
 
@@ -5054,10 +5059,17 @@ class Step3SceneConfigurator extends Component
                 'strategy_game_id' => $gameType === 'strategy' ? $this->defaultStrategyGameId() : null,
                 'team_count' => $gameType === 'strategy' ? (int) ($this->lesson->team_count ?? 2) : null,
             ];
+            // A predict moment needs nothing generated: the teacher writes the question and rubric.
+            if ($gameType === 'predict') {
+                $payload['config'] = ['predict' => PredictSpec::normalize([])];
+                $payload['duration_seconds'] = 120;
+                $payload['background_color'] = '#0f172a';
+            }
 
             $this->lesson->fill([
                 'include_game' => true,
-                'game_type' => $this->lesson->game_type ?: $gameType,
+                // A predict moment is a moment, not the lesson's game: it never names the lesson's type.
+                'game_type' => $this->lesson->game_type ?: ($gameType === 'predict' ? null : $gameType),
                 'game_split_count' => $gameCount + 1,
             ])->save();
             $this->lesson->refresh();
@@ -5301,7 +5313,7 @@ class Step3SceneConfigurator extends Component
 
     public function setSceneGameType(int $sceneId, string $gameType): void
     {
-        if (! in_array($gameType, ['quiz', 'strategy', 'debate', 'team'], true)) {
+        if (! in_array($gameType, ['quiz', 'strategy', 'debate', 'team', 'predict'], true)) {
             return;
         }
 
@@ -5314,6 +5326,10 @@ class Step3SceneConfigurator extends Component
         // that never had one starts with a blank budget game.
         if ($gameType === 'team' && ! is_array(($scene->config ?? [])['team'] ?? null)) {
             $scene->config = array_merge($scene->config ?? [], ['team' => TeamGameSpec::normalize([])]);
+        }
+        // Same for a predict moment: switching away and back keeps its question and rubric.
+        if ($gameType === 'predict' && ! is_array(($scene->config ?? [])['predict'] ?? null)) {
+            $scene->config = array_merge($scene->config ?? [], ['predict' => PredictSpec::normalize([])]);
         }
 
         $scene->update([

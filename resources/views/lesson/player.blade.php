@@ -138,7 +138,10 @@
                 'id'          => $s->id,   // lets the teacher-preview "Edit scene" deep-link to this exact scene
                 'order'       => $s->order,
                 'kind'        => $s->kind,
-                'config'      => $s->config,
+                // A predict moment's rubric is the grader's business: the class gets the questions only.
+                'config'      => $s->game_type === 'predict' && is_array(($s->config ?? [])['predict'] ?? null)
+                    ? ['predict' => \App\Services\Lessons\PredictSpec::forPlayer($s->config['predict'])] + $s->config
+                    : $s->config,
                 'diorama_assets' => \App\Services\Diorama\LibraryAssets::forScene($s),
                 'chapter_name' => $s->chapterName(),
                 'year'        => $s->year,
@@ -248,6 +251,17 @@
         'estimated_minutes'     => $lesson->relationLoaded('scenes') ? $lesson->estimatedMinutes() : null,
         // A student can't skip a quiz question; the teacher testing their own lesson can.
         'can_skip_quiz'         => (bool) auth()->user()?->canManage($lesson),
+        // Predict moments: where typed answers go, and (for the board) the lesson's classes, each with
+        // its remembered answer to "Devices in class?".
+        'predict'               => [
+            'store_url'  => route('lesson.predictions.store', ['lessonCode' => $lesson->lesson_code]),
+            'mode_url'   => route('lesson.play-mode', ['lessonCode' => $lesson->lesson_code]),
+            'answer_max' => \App\Services\Lessons\PredictSpec::ANSWER_MAX,
+            'classrooms' => auth()->user()?->canManage($lesson)
+                ? $lesson->classrooms()->get(['classrooms.id', 'classrooms.name', 'classrooms.devices_mode'])
+                    ->map(fn ($c) => ['id' => $c->id, 'name' => $c->name, 'devices_mode' => $c->devices_mode])->values()
+                : [],
+        ],
         // Harbour race on the teams' phones (HarbourRace): only a lesson manager opens one.
         'race'                  => auth()->user()?->canManage($lesson) ? [
             'store_url'      => route('race.store', ['lessonCode' => $lesson->lesson_code]),

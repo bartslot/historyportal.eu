@@ -86,6 +86,14 @@ class RateLimitServiceProvider extends ServiceProvider
         RateLimiter::for('catalog', fn (Request $request) => Limit::perMinute(120)->by('catalog:'.$request->ip()));
         // Player telemetry batches: every pupil's device posts, all behind the same school address.
         RateLimiter::for('telemetry', fn (Request $request) => Limit::perMinute(600)->by('telemetry:'.$request->ip()));
+        // Predict-moment answers: a child sends two per moment (a few on a retry), each WHY costs two
+        // grading calls. Per child like the quiz, with the same per-room backstop.
+        RateLimiter::for('predict', fn (Request $request) => [
+            Limit::perMinute(20)->by($request->hasSession() ? 'predict:'.$request->session()->getId() : 'predict-ip:'.$request->ip()),
+            Limit::perMinute(self::QUIZ_SUBMISSIONS_PER_CLASS_PER_MINUTE)->by('predict-room:'.$request->ip()),
+        ]);
+        // Polling for the feedback: every 2 s for under a minute, a whole class behind one address.
+        RateLimiter::for('predict-read', fn (Request $request) => Limit::perMinute(1200)->by('predict-read:'.$request->ip()));
     }
 
     /**

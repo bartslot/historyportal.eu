@@ -107,6 +107,16 @@ Route::get('/lesson/{lessonCode}/leaderboard', [\App\Http\Controllers\QuizLeader
 Route::post('/lesson/{lessonCode}/quiz-score', [\App\Http\Controllers\QuizLeaderboardController::class, 'store'])
     ->middleware('throttle:quiz-score')->name('lesson.quiz-score');
 
+// Predict moment (scene game_type=predict): a typed prediction or WHY, from a pupil's own device or
+// typed by the teacher on the board; the sender reads its feedback back. Public like the quiz score.
+Route::post('/lesson/{lessonCode}/predictions', [\App\Http\Controllers\Predict\PredictionAnswerController::class, 'store'])
+    ->middleware('throttle:predict')->name('lesson.predictions.store');
+Route::get('/lesson/{lessonCode}/predictions/{answer}', [\App\Http\Controllers\Predict\PredictionAnswerController::class, 'show'])
+    ->whereNumber('answer')->middleware('throttle:predict-read')->name('lesson.predictions.show');
+// The board's "Devices in class?", remembered per class (lesson managers only).
+Route::post('/lesson/{lessonCode}/play-mode', [\App\Http\Controllers\Predict\PredictionAnswerController::class, 'playMode'])
+    ->middleware(['auth', 'throttle:30,1'])->name('lesson.play-mode');
+
 // Harbour race on team devices (HarbourRace): the class screen opens and runs it (lesson managers
 // only); the race QR opens the controller page on a team's phone, which joins, pushes and polls.
 Route::middleware(['auth', 'throttle:30,1'])->group(function () {

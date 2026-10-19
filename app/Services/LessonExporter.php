@@ -48,7 +48,7 @@ class LessonExporter
         'gallery' => ['title', 'date_label', 'story', 'fit', 'images'],
         'map' => ['qid', 'fit', 'year', 'projection', 'playback_mode', 'annotations'],
         'voyage' => ['voyage', 'leg', 'view', 'intro', 'stop_images', 'gallery'],
-        'game' => ['quiz_scope', 'quiz_shuffle', 'quiz_difficulty', 'team', 'team_default', 'team_assets'],
+        'game' => ['quiz_scope', 'quiz_shuffle', 'quiz_difficulty', 'team', 'team_default', 'team_assets', 'predict'],
     ];
 
     /** Editor scratch state, not content — undo history should never reach a spec file. */
@@ -158,6 +158,7 @@ class LessonExporter
 
         $spec = match (true) {
             $scene->kind === 'game' && $scene->game_type === 'team' => $this->team($scene, $config),
+            $scene->kind === 'game' && $scene->game_type === 'predict' => $this->predict($scene, $config),
             $scene->kind === 'game' => $this->quiz($scene, $questions),
             $scene->kind === 'gallery' => $this->gallery($scene, $config),
             $scene->kind === 'map' => $this->map($scene, $config),
@@ -379,6 +380,21 @@ class LessonExporter
             'location' => $scene->location,
             'year' => $this->year($scene),
             'script' => $scene->script_segment,
+        ], $this->keep(...));
+    }
+
+    /** A predict moment goes back as its spec (PredictSpec), rubric included. */
+    private function predict(Scene $scene, array $config): array
+    {
+        $predict = (array) ($config['predict'] ?? []);
+
+        return array_filter([
+            'type' => 'predict',
+            ...$predict,
+            'chapter' => $scene->chapter_name,
+            'location' => $scene->location,
+            'year' => $this->year($scene),
+            'script' => $scene->script_segment !== ($predict['question'] ?? null) ? $scene->script_segment : null,
         ], $this->keep(...));
     }
 

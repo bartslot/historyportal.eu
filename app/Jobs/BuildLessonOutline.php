@@ -278,11 +278,24 @@ class BuildLessonOutline implements ShouldQueue
                 $lesson->update(['outline' => $outline]);
             }
 
+            // Predict moments: a brief that asks for one gets its own game brief right after it (2-4
+            // per lesson). Woven into the stored outline, because briefs are matched to scenes by
+            // position downstream (ShotListPrompt::briefFor, GenerateLessonScript).
+            $woven = \App\Services\Lessons\PredictSpec::weaveIntoBriefs($briefs);
+            if ($woven !== $briefs) {
+                $briefs = $woven;
+                $outline['scene_briefs'] = $briefs;
+                $lesson->update(['outline' => $outline]);
+            }
+
             // Ignore any "order" the LLM emitted — assign sequential 1-based positions so
             // we never trip the (lesson_id, order) unique index when the model repeats numbers.
             $scenes = [];
             foreach ($briefs as $idx => $brief) {
                 $branchAttributes = $isStoryGame ? $this->branchAttributes($brief, $meterKeys) : [];
+                $isPredict = ($brief['game_type'] ?? null) === 'predict';
+                // The lesson's own game (quiz, strategy): a predict moment is a game scene, not that game.
+                $isLessonGame = ($brief['kind'] ?? null) === 'game' && ! $isPredict;
                 $scenes[] = Scene::create($branchAttributes + [
                     'lesson_id' => $lesson->id,
                     'order' => $idx + 1,
@@ -292,17 +305,18 @@ class BuildLessonOutline implements ShouldQueue
                     'image_prompt' => $brief['image_prompt_seed'] ?? null,
                     'image_style' => $lesson->image_style,
                     'game_segment_index' => $brief['game_segment_index'] ?? null,
-                    'game_type' => ($brief['kind'] ?? null) === 'game' ? ($lesson->game_type ?? 'strategy') : null,
-                    'quiz_question_count' => ($brief['kind'] ?? null) === 'game' && $lesson->game_type === 'quiz'
+                    'game_type' => $isPredict ? 'predict' : ($isLessonGame ? ($lesson->game_type ?? 'strategy') : null),
+                    'config' => $isPredict ? ['predict' => $brief['predict']] : null,
+                    'quiz_question_count' => $isLessonGame && $lesson->game_type === 'quiz'
                         ? ($lesson->quiz_question_count ?? 4)
                         : null,
-                    'quiz_timing' => ($brief['kind'] ?? null) === 'game' && $lesson->game_type === 'quiz'
+                    'quiz_timing' => $isLessonGame && $lesson->game_type === 'quiz'
                         ? ($lesson->quiz_timing ?? 'after')
                         : null,
-                    'strategy_game_id' => ($brief['kind'] ?? null) === 'game' && ($lesson->game_type ?? null) === 'strategy'
+                    'strategy_game_id' => $isLessonGame && ($lesson->game_type ?? null) === 'strategy'
                         ? $lesson->strategy_game_id
                         : null,
-                    'team_count' => ($brief['kind'] ?? null) === 'game' && ($lesson->game_type ?? null) === 'strategy'
+                    'team_count' => $isLessonGame && ($lesson->game_type ?? null) === 'strategy'
                         ? $lesson->team_count
                         : null,
                     'status' => 'pending',

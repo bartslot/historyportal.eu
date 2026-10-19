@@ -56,6 +56,7 @@ import { Sfx } from './scene/sfx.js'
 import { captionVisible } from './scene/SceneOverlay.js'
 import { gradientCss } from './scene/background-gradient.js'
 import { t } from './i18n.js'
+import { PredictMoment, askDevices, predictSession, DEVICE_MODES } from './scene/PredictMoment.js'
 import { mountBigCountdown } from './big-countdown.js'
 import { startSceneIndex, mayAutoplay } from './player-start.js'
 import { mountTitlePoster as mountPoster, posterFit, episodeSize, posterVariants, variantFor, hasUpright } from './title-poster.js'
@@ -183,8 +184,8 @@ Alpine.data('lessonGame', (lesson) => ({
     get canStart () {
       return !!(lesson.audio_url || (lesson.scenes || []).some(s =>
         s.audio_url || ['map', 'voyage', 'gallery', 'video'].includes(s.kind)
-        // A team game plays on the class screen without a voice of its own.
-        || (s.kind === 'game' && s.game_type === 'team')))
+        // A team game or a predict moment plays on the class screen without a voice of its own.
+        || (s.kind === 'game' && ['team', 'predict'].includes(s.game_type))))
     },
 
     // Location/Year overlay
@@ -262,6 +263,11 @@ Alpine.data('lessonGame', (lesson) => ({
     // Played on a pupil's own device (the join QR opens ?play=solo): no teams, and where they got
     // to is kept in this browser so they can stop and carry on (scene/progress-store.js).
     playSolo:          new URLSearchParams(window.location.search).get('play') === 'solo',
+    // The board's answer to "Devices in class?" (scene/PredictMoment.js DEVICE_MODES), per start.
+    devicesMode:       'paper',
+    _devicesChosen:    false,
+    _classroomId:      null,
+    _pendingDebrief:   null,  // { index, scene, predictions }: the debrief after the consequence scene
     resumable:         null,  // saved progress worth offering "continue" for, else null
     _done:             [],    // scene ids whose power-meter moment has played (never replayed)
     // Who crews the Heemskerck and the Zeehaen after a harbour race, for this run only (race.js).
@@ -525,6 +531,8 @@ Alpine.data('lessonGame', (lesson) => ({
     },
 
     async startLesson () {
+      // On the board, the first Start asks "Devices in class?" (a predict moment needs to know).
+      if (this._needsDevicesChoice()) { this._chooseDevices(); return }
       this._tel.log('lesson_started')
       // Solo "Start lesson" with progress saved = start over: what this device remembered goes.
       if (this.playSolo && !this._resuming) clearProgress(safeStorage('localStorage'), lesson.lesson_code)
@@ -1513,6 +1521,7 @@ Alpine.data('lessonGame', (lesson) => ({
       // through a chapter jump left the card painted over every later scene.
       this._quizOverlay?.hide()
       this._teamGame?.hide()
+      this._predict?.hide()
       this._powerMeter?.hide()
       this._closeRace()
       this._stopMomentAudio()
@@ -2095,6 +2104,11 @@ Alpine.data('lessonGame', (lesson) => ({
         this._beginMoment(index, scene, () => this._afterSceneAudio(index, scene))
         return
       }
+      // The story has shown what happened after a predict moment: now the debrief (why?).
+      if (this._pendingDebrief?.index === index) {
+        this._beginPredictDebrief(() => this._afterSceneAudio(index, scene))
+        return
+      }
       if (scene && scene.kind === 'game') {
         this._gameResumeIndex = index + 1
         this.canResumeAfterGame = this._gameResumeIndex < _sceneQueue.length
@@ -2103,6 +2117,11 @@ Alpine.data('lessonGame', (lesson) => ({
         const segmentQuestions = scene.quiz_questions?.length ? scene.quiz_questions : lesson.quiz_questions
         if (scene.game_type === 'quiz' && segmentQuestions?.length) {
           this._beginQuizFlow(segmentQuestions, scene.quiz_shuffle, scene.id ?? null)
+          return
+        }
+        // Predict moment: the class answers before the next scene shows what happened.
+        if (scene.game_type === 'predict' && scene.config?.predict) {
+          this._beginPredictFlow(index, scene)
           return
         }
         // Team game on the class screen: the teacher enters each team's choice, then the lesson goes on.
@@ -2306,6 +2325,93 @@ Alpine.data('lessonGame', (lesson) => ({
       const interaction = _sceneQueue.slice(0, index).filter(s => s.config?.moment?.race?.enabled
         || (s.kind === 'game' && s.game_type === 'team')).length
       this._teamGame.show({ config: { ...team, ...crewed, interaction }, solo: this.playSolo, onComplete: () => this._resumeAfterQuiz() })
+    },
+
+    // ── Predict moment (scene game_type=predict; scene/PredictMoment.js) ─────────────────
+    // Ask before the story shows what happened; the next scene is the consequence; when it has
+    // played, the debrief compares the prediction with what happened and asks why.
+    _predictor () {
+      const host = document.getElementById('lesson-game-overlay')
+      if (!host) return null
+      const local = safeStorage('localStorage')
+      const read = (k) => { try { return local?.getItem(k) || '' } catch { return '' } }
+      this._predict = this._predict || new PredictMoment(host, {
+        storeUrl: lesson.predict?.store_url,
+        session: predictSession(this.playSolo ? local : safeStorage('sessionStorage'), lesson.lesson_code),
+        solo: this.playSolo,
+        // The pupil's name and class code as the quiz remembers them: names are replaced by child
+        // ids on the server before anything is graded.
+        nickname: this.playSolo ? read('lp_quiz_nickname') : '',
+        classCode: this.playSolo ? read('lp_class_code') : '',
+      })
+      this._predict.opts.devices = this.devicesMode
+      this._predict.opts.classroomId = this._classroomId ?? null
+      return this._predict
+    },
+
+    _beginPredictFlow (index, scene) {
+      const predictor = this._predictor()
+      if (!predictor) { this._resumeAfterQuiz(); return }
+      predictor.ask({
+        sceneId: scene.id,
+        config: scene.config.predict,
+        onDone: (predictions) => {
+          const pending = { index: index + 1, scene, predictions }
+          // The last scene of the lesson: nothing shows what happened, so the debrief follows now.
+          if (pending.index >= _sceneQueue.length) {
+            this._pendingDebrief = pending
+            this._beginPredictDebrief(() => this._resumeAfterQuiz())
+            return
+          }
+          this._pendingDebrief = pending
+          this._resumeAfterQuiz()
+        },
+      })
+    },
+
+    _beginPredictDebrief (then) {
+      const pending = this._pendingDebrief
+      this._pendingDebrief = null
+      const predictor = pending && this._predictor()
+      if (!predictor) { then(); return }
+      predictor.debrief({ sceneId: pending.scene.id, config: pending.scene.config.predict, predictions: pending.predictions, onDone: then })
+    },
+
+    /** The board asks "Devices in class?" once per start, when the lesson has a moment that needs it. */
+    _needsDevicesChoice () {
+      return !this.playSolo && !this._embed && !this._devicesChosen && !!lesson.can_skip_quiz
+        && (lesson.scenes || []).some(s => s.kind === 'game' && s.game_type === 'predict')
+    },
+
+    _chooseDevices () {
+      const classrooms = lesson.predict?.classrooms || []
+      const key = `lp_devices:${lesson.lesson_code}`
+      const local = safeStorage('localStorage')
+      let remembered = null
+      try { remembered = local?.getItem(key) } catch { /* private mode */ }
+      askDevices(document.body, {
+        classrooms,
+        remembered: DEVICE_MODES.includes(remembered) ? remembered : null,
+        onChoose: ({ mode, classroomId }) => {
+          this._devicesChosen = true
+          this.devicesMode = mode
+          this._classroomId = classroomId
+          try { local?.setItem(key, mode) } catch { /* private mode */ }
+          if (classroomId && lesson.predict?.mode_url) {
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.content || ''
+            fetch(lesson.predict.mode_url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, Accept: 'application/json' },
+              body: JSON.stringify({ classroom_id: classroomId, mode }),
+            }).catch(() => {})
+            const c = classrooms.find(r => r.id === classroomId)
+            if (c) c.devices_mode = mode
+          }
+          // Own devices: the children scan the join QR and play on their own; the board stays here.
+          if (mode === 'solo') { document.getElementById('qr-modal')?.showModal?.(); return }
+          this.startLesson()
+        },
+      })
     },
 
     /** A line with the crews' names put in ({crew:heemskerck}); "the crew" when there was no race. */
