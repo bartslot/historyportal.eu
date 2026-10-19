@@ -1,4 +1,4 @@
-import{e as r}from"./dom-DByCrY2T.js";const _=4e3,x=1400,f=["option_a","option_b"],v={option_a:"Optie A",option_b:"Optie B"};let b=!1;function y(){if(b)return;b=!0;const m=document.createElement("style");m.textContent=`
+import{e as r}from"./dom-1akfPxNw.js";const _=4e3,x=1400,f=["option_a","option_b"],v={option_a:"Optie A",option_b:"Optie B"};let b=!1;function y(){if(b)return;b=!0;const m=document.createElement("style");m.textContent=`
     @keyframes sg-slide-in { 0% { transform: translateY(14px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
     @keyframes sg-fade-in { 0% { opacity: 0; } 100% { opacity: 1; } }
     @keyframes sg-chip-up { 0% { transform: translateY(0) scale(0.8); opacity: 0; } 20% { opacity: 1; transform: translateY(-6px) scale(1.1); } 100% { transform: translateY(-34px) scale(1); opacity: 0; } }

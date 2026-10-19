@@ -131,6 +131,7 @@ export class PredictMoment {
 
   /** Step 1: the question, before the story shows what happened. onDone(predictions). */
   ask ({ sceneId, config, onDone }) {
+    this._predictions = []
     this._start(sceneId, config, onDone, 'predict')
   }
 
@@ -155,8 +156,13 @@ export class PredictMoment {
     this._onDone = onDone
     this._phase = phase
     this._saved = []            // [{ label, text, id, feedback }]
-    this._typing = phase === 'predict' ? this.cfg.mode === 'typed' : true
+    // The board's text box starts open when the moment says typed, or when the teacher already typed
+    // the class's prediction (then they will want to type its why too).
+    this._typing = this.cfg.mode === 'typed' || (phase === 'why' && (this._predictions || []).length > 0)
     this._remaining = this.cfg.seconds
+    // Who answers on the board: in the debrief, the team that made the (last) prediction.
+    const lastTeam = String((this._predictions || []).at(-1)?.label ?? '').match(/(\d+)\s*$/)
+    this._who = lastTeam ? lastTeam[1] : '0'
     this.host.style.pointerEvents = 'auto'
     if (!this._solo && this._remaining > 0) this._startClock()
     this._render()
@@ -235,7 +241,7 @@ export class PredictMoment {
     const mine = this._saved[0]
     if (mine) {
       if (this._phase === 'why') body.appendChild(this._feedbackCard(mine))
-      else body.appendChild(el('p', 'text-lg text-base-content/70', t('Your prediction is saved.')))
+      else append(body, this._savedLine({ ...mine, label: t('You thought') }), el('p', 'text-lg text-base-content/70', t('Your prediction is saved.')))
       this._footer(body, button(this._phase === 'why' ? t('Continue the lesson') : t('Show what happened'), 'btn-primary btn-lg', () => this._finish()))
       return
     }
@@ -253,7 +259,7 @@ export class PredictMoment {
   _boardAnswers (body) {
     if (this.opts.devices === 'solo') {
       body.appendChild(el('p', 'text-lg text-base-content/70', t('Everyone answers on their own device.')))
-    } else if (!this._typing || !this._boardTypes) {
+    } else if ((!this._typing || !this._boardTypes) && !this._saved.length) {
       body.appendChild(el('p', 'text-lg text-base-content/70', t('Write your answer on paper.')))
     }
     if (this._saved.length) {
@@ -268,6 +274,8 @@ export class PredictMoment {
       const opt = (value, label) => { const o = el('option', '', label); o.value = value; who.appendChild(o) }
       opt('0', t('Whole class'))
       for (let i = 1; i <= TEAMS_MAX; i++) opt(String(i), t('Team :number', { number: i }))
+      who.value = this._who
+      who.addEventListener('change', () => { this._who = who.value })
       const save = button(t('Save answer'), 'btn-outline', () => this._send(area.value, answererFor(who.value)))
       save.disabled = true
       save.dataset.predictSave = ''
@@ -351,7 +359,9 @@ export class PredictMoment {
       fetchImpl: this.opts.fetchImpl, alive: () => epoch === this._epoch, ...(this.opts.pollOpts || {}),
     })
     if (epoch !== this._epoch) return
-    this._saved = this._saved.map(a => (a === entry ? { ...a, feedback: result.feedback || t('Saved. Your teacher will look at it.') } : a))
+    // By id, not identity: in the player this object sits in Alpine's reactive data, which hands
+    // back a proxy of the entry, never the entry itself.
+    this._saved = this._saved.map(a => (a.id === entry.id ? { ...a, feedback: result.feedback || t('Saved. Your teacher will look at it.') } : a))
     this._render()
   }
 }

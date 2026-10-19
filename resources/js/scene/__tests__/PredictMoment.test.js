@@ -94,6 +94,8 @@ describe('predict moment flows', () => {
     m.debrief({ sceneId: 7, config, predictions: [], onDone: after })
     expect(host.querySelector('[data-predict-compare]').textContent).toContain(config.outcome)
     expect(host.textContent).toContain(config.debrief)
+    expect(host.querySelector('[data-predict-text]')).toBeNull()   // paper again: no box until asked
+    expect(host.querySelector('[data-predict-type]')).not.toBeNull()
     buttonByText(host, 'Continue the lesson').click()
     expect(after).toHaveBeenCalled()
     expect(fetchImpl).not.toHaveBeenCalled()
@@ -119,6 +121,7 @@ describe('predict moment flows', () => {
 
     const after = vi.fn()
     m.debrief({ sceneId: 7, config, predictions: done.mock.calls[0][0], onDone: after })
+    expect(host.querySelector('select').value).toBe('2')   // the debrief starts on the team that predicted
     const compare = host.querySelector('[data-predict-compare]').textContent
     expect(compare).toContain('Team 2 thought')
     expect(compare).toContain('More grain')
@@ -175,6 +178,21 @@ describe('predict moment flows', () => {
     host.querySelector('[data-predict-send]').click()
     await vi.waitFor(() => expect(host.querySelector('[data-predict-feedback="ready"]')?.textContent).toContain('You named the salt'))
     expect(posts[1]).toMatchObject({ phase: 'why', text: 'The salt stayed behind' })
+  })
+
+  it('shows the feedback when the engine sits in reactive data that hands back proxies (Alpine)', async () => {
+    const proxied = new WeakMap()
+    const reactive = (obj) => {
+      if (obj === null || typeof obj !== 'object' || obj instanceof Node) return obj
+      if (!proxied.has(obj)) proxied.set(obj, new Proxy(obj, { get: (o, k) => reactive(Reflect.get(o, k)) }))
+      return proxied.get(obj)
+    }
+    const { fetchImpl } = fakeServer()
+    const m = reactive(new PredictMoment(host, { storeUrl: '/p', session: 'run-0123456789abcdef', solo: true, fetchImpl, pollOpts: poll }))
+    m.debrief({ sceneId: 1, config, predictions: [], onDone: () => {} })
+    type(host, 'Salt')
+    host.querySelector('[data-predict-send]').click()
+    await vi.waitFor(() => expect(host.querySelector('[data-predict-feedback="ready"]')?.textContent).toContain('You named the salt'))
   })
 
   it('when grading never answers, the pupil reads that the teacher will look at it', async () => {

@@ -268,6 +268,7 @@ Alpine.data('lessonGame', (lesson) => ({
     _devicesChosen:    false,
     _classroomId:      null,
     _pendingDebrief:   null,  // { index, scene, predictions }: the debrief after the consequence scene
+    debriefOpen:       false, // a predict debrief owns the stage on a story scene (no deck over its buttons)
     resumable:         null,  // saved progress worth offering "continue" for, else null
     _done:             [],    // scene ids whose power-meter moment has played (never replayed)
     // Who crews the Heemskerck and the Zeehaen after a harbour race, for this run only (race.js).
@@ -1522,6 +1523,7 @@ Alpine.data('lessonGame', (lesson) => ({
       this._quizOverlay?.hide()
       this._teamGame?.hide()
       this._predict?.hide()
+      this.debriefOpen = false
       this._powerMeter?.hide()
       this._closeRace()
       this._stopMomentAudio()
@@ -2374,7 +2376,11 @@ Alpine.data('lessonGame', (lesson) => ({
       this._pendingDebrief = null
       const predictor = pending && this._predictor()
       if (!predictor) { then(); return }
-      predictor.debrief({ sceneId: pending.scene.id, config: pending.scene.config.predict, predictions: pending.predictions, onDone: then })
+      this.debriefOpen = true
+      predictor.debrief({
+        sceneId: pending.scene.id, config: pending.scene.config.predict, predictions: pending.predictions,
+        onDone: () => { this.debriefOpen = false; then() },
+      })
     },
 
     /** The board asks "Devices in class?" once per start, when the lesson has a moment that needs it. */
@@ -2860,7 +2866,7 @@ Alpine.data('lessonGame', (lesson) => ({
      * "that part should hide"). Not idleness: the cursor stays, the class is working.
      */
     get overlayOwnsStage () {
-      return this.readingOverlay || this.currentIsGame
+      return this.readingOverlay || this.currentIsGame || this.debriefOpen
     },
 
     /** True when the player chrome (top bar, deck, scrims, centre glyph) is faded out. */
