@@ -36,9 +36,9 @@ function normalMaterial(id, alphaMap = null, wobble = false) {
 }
 
 export const INK_PARAMS = {
-  width: 2.2, // line radius in screen px at 1 world unit from the camera (falls off as distance^-0.4)
+  width: 2.3, // line radius in screen px at 1 world unit from the camera (falls off as distance^-0.5)
   minPx: 1.0,
-  maxPx: 3.4,
+  maxPx: 4.2,
   depthJump: 0.012, // relative depth step that counts as a silhouette
   crease: 0.5, // normal dot below which a fold is inked
   farFade: [8, 60], // world units: lines lighten from .. to
@@ -89,7 +89,7 @@ export class InkPass {
           float zm = viewZ(texture2D(tDepthM, vUv).r);
           if (zm < zc * 0.995) { gl_FragColor = vec4(col, 1.0); return; } // a cut-out card stands in front
           vec3 nc = c.rgb * 2.0 - 1.0;
-          float r = clamp(uWidth * pow(zc, -0.4), uMinPx, uMaxPx) * uSS; // a ship 70 m off still gets a real line
+          float r = clamp(uWidth * pow(zc, -0.5), uMinPx, uMaxPx) * uSS; // a ship 70 m off still gets a real line
           bool rig = c.a > 0.49;
           vec2 px = gl_FragCoord.xy / uSS;
           vec2 wob = (vec2(vnoise(px * 0.03), vnoise(px * 0.03 + 17.3)) - 0.5) * uWobble * uSS;
@@ -122,6 +122,10 @@ export class InkPass {
           }
           // crisp, not soft: ink is on or off. Silhouettes never break; inner lines lift off now and then (gaps)
           float silGap = smoothstep(0.05, 0.11, vnoise(px * 0.03 + 9.0)); // even an outline lifts off now and then
+          // edges that face the light (upper left) open up in places: the inker leaves lit edges out
+          float litEdge = smoothstep(0.5, 0.7, dot(nc, normalize(vec3(-0.45, 0.75, 0.45))));
+          float open = 1.0 - litEdge * smoothstep(0.42, 0.5, vnoise(px * 0.045 + 21.0));
+          silGap *= open; lift *= open;
           float e = max(smoothstep(0.25, 0.55, eS) * (rig ? lift : silGap), smoothstep(0.25, 0.55, eI) * lift * 0.7);
           // tucked into a corner behind something close (a joint, under a rail, behind a block): a few hatch strokes
           float crev = step(0.45, occ) * (1.0 - smoothstep(1.5, 3.0, zc)); // hard-edged

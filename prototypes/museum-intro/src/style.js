@@ -92,7 +92,7 @@ const DRAWN = /* glsl */ `
   float litStep(vec3 n) { float l = dot(n, uSun); return smoothstep(-0.32, -0.22, l); } // only faces turned well away are shade
 `;
 
-const LINES_VARYINGS = 'varying vec3 vPos; varying vec3 vN; varying vec3 vM; varying vec3 vMN; varying vec2 vUv; varying float vKind; varying vec3 vAxis;';
+const LINES_VARYINGS = 'varying vec3 vPos; varying vec3 vN; varying vec3 vM; varying vec3 vMN; varying vec2 vUv; varying float vKind; varying vec3 vAxis; varying float vPartK;';
 
 // which faces of a v4 ship material go to the shade colour: undersides only (flat wood), undersides + the flat dark
 // band where a round piece turns away from the eye (masts, ropes, barrels), or the sun step (cloth)
@@ -166,9 +166,10 @@ export function styledMaterial({ paint, tintPaint = [1, 1, 1], lit = 0.6, mode =
       vec3 light = uMatL, shade = uMatS;
       ${L.flag ? `// the Prince's flag: orange, white, blue bands down the hoist (uv 0..1)
       light = vUv.y < 0.333 ? uFlagO : (vUv.y < 0.667 ? light : uFlagB); shade = light * 0.86;` : ''}
+      vec2 tuv = vUv + ${L.flag ? 'vec2(0.0)' : 'fract(vPartK * vec2(97.13, 41.7)) * 7.0'};
       ${L.lod
-        ? 'vec3 lod = strokeLod(dist); float ink = mix(inkOf(uTex, vUv * ls * lod.x), inkOf(uTex, vUv * ls * lod.y), lod.z);'
-        : 'float ink = inkOf(uTex, vUv * ls);'}`,
+        ? 'vec3 lod = strokeLod(dist); float ink = mix(inkOf(uTex, tuv * ls * lod.x), inkOf(uTex, tuv * ls * lod.y), lod.z);'
+        : 'float ink = inkOf(uTex, tuv * ls);'}`,
     sail: /* glsl */ `
       vec3 light = uSailL, shade = uSailS;
       float ink = inkTri(uTex, vM * ls, mn);`,
@@ -250,7 +251,7 @@ export function styledMaterial({ paint, tintPaint = [1, 1, 1], lit = 0.6, mode =
       uFlagO: { value: lin(0xe0773c) }, uFlagB: { value: lin(0x3f68a8) },
     },
     vertexShader: /* glsl */ `
-      uniform mat4 uToModel; uniform float uTime; attribute float aKind; attribute vec3 aAxis;
+      uniform mat4 uToModel; uniform float uTime; attribute float aKind; attribute vec3 aAxis; attribute float aPart;
       ${HAND_WOBBLE}
       ${LINES_VARYINGS}
       void main() {
@@ -258,7 +259,7 @@ export function styledMaterial({ paint, tintPaint = [1, 1, 1], lit = 0.6, mode =
         vec3 wn = normalize(mat3(modelMatrix) * normal);
         ${swell}
         ${wobble ? 'wp.xyz += handWobble(wp.xyz, wn, aKind);' : ''}
-        vPos = wp.xyz; vN = wn; vUv = uv; vKind = aKind; vAxis = aAxis;
+        vPos = wp.xyz; vN = wn; vUv = uv; vKind = aKind; vAxis = aAxis; vPartK = aPart;
         vM = (uToModel * wp).xyz; vMN = normalize(mat3(uToModel) * wn);
         gl_Position = projectionMatrix * viewMatrix * wp;
       }`,
@@ -302,13 +303,14 @@ export function styledMaterial({ paint, tintPaint = [1, 1, 1], lit = 0.6, mode =
         float hatch = mix(inkTri(uHatch, vM * ls * 0.7 * hl.x, mn), inkTri(uHatch, vM * ls * 0.7 * hl.y, mn), hl.z);
         hatch = smoothstep(0.3, 0.6, hatch) * max(1.0 - litv, away) * uHatchK;
         // drawn texture in clusters with clean wood between them, the way an inker groups grain
-        float cl0 = ${L.cluster ? 'smoothstep(0.12, 0.22, vnoise(vM.xz * 0.5 + vM.y * 0.37) * 0.7 + vnoise(vM.zy * 1.3) * 0.3)' : '1.0'};
+        float cl0 = ${L.cluster ? `smoothstep(${L.cluster === 2 ? '0.28, 0.38' : '0.12, 0.22'}, vnoise(vM.xz * 0.5 + vM.y * 0.37) * 0.7 + vnoise(vM.zy * 1.3) * 0.3)` : '1.0'};
         // drawn marks are ink or paper, not grey: a filtered (far, small) stroke fades out instead of greying the fill
-        ink = mix(smoothstep(0.3, 0.6, ink), ink * 0.8, smoothstep(2.0, 6.0, dist)); // far: mip-averaged strokes must not sharpen into blobs
+        float t0 = 0.12 + 0.4 * vnoise(vM.xz * 0.9 + vM.y * 0.6 + 5.0);
+        ink = mix(smoothstep(t0, t0 + 0.3, ink), ink * 0.8, smoothstep(2.0, 6.0, dist)); // far: mip-averaged strokes must not sharpen into blobs
         ${L.kind === 'uv' && L.lit === 'round' && !L.rope ? 'ink = max(ink, smoothstep(0.3, 0.6, inkOf(uTex, vUv * ls * vec2(1.0, 2.3) + 0.37)) * (1.0 - litv));' : ''}
-        ${L.rope ? `float ph = 3.0 * (vUv.y + 2.4 * vUv.x); float sp = fract(ph); float fw = fwidth(ph) * 1.3;
+        ${L.rope ? `float fc = abs(dot(n, normalize(cameraPosition - vPos))); float ph = 3.0 * (vUv.y + 2.4 * vUv.x) + fract(vPartK * 53.1) + 0.28 * (1.0 - fc * fc) + 0.12 * vnoise(vUv * vec2(6.0, 3.0)); float sp = fract(ph); float fw = fwidth(ph) * 1.3;
         float seam = 1.0 - smoothstep(fw * 0.6, fw * 1.6, min(sp, 1.0 - sp));
-        fill = mix(fill, shade, step(0.72, sp) * 0.9); ink = max(ink * 0.6, seam * step(fw, 0.4));` : ''}
+        ink = max(ink * 0.5, seam * step(fw, 0.4) * step(0.22, vnoise(vUv * vec2(11.0, 5.0) + 3.0)));` : ''}
         float k = max(ink * uInkK * cl0, hatch) * fade;
         ${L.kind === 'sea' ? 'vec3 cl = mix(fill, uSeaInk, k);' : 'vec3 cl = mix(fill, uInk, k);'}
 

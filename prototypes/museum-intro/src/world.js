@@ -49,7 +49,7 @@ function sky(tex) {
         l = max(l, vec3(0.5, 0.75, 0.93)); // cloud edges: only a slightly darker blue than the sky, never navy (linear rgb)
         // open sky is ONE flat blue (the panorama's own blue had a soft mottle); clouds and their edges stay drawn
         float cloud = smoothstep(0.56, 0.66, l.r);
-        l = mix(vec3(0.52, 0.77, 0.96), l, cloud);
+        l = mix(vec3(0.55, 0.76, 0.92), l, cloud); // soft, not cyan
         l = mix(l, vec3(0.80, 0.91, 0.97), (1.0 - smoothstep(0.0, 0.035, elev)) * 0.6); // soft pale horizon
         vec2 w = wipeMask(cameraPosition + d * 400.0); // the sky turns last; clouds: no ink rim (History Lines rule)
         gl_FragColor = vec4(mix(p, l, w.x), 1.0);
@@ -87,10 +87,10 @@ function sea(tex) {
 // sampled off the anchors, times a hand-drawn ink tile (ChatGPT) laid on the model's UVs. Painterly = Vroom oil.
 // tile: ink tile; scale: tiles per model unit; lit: which faces go to the shade colour (see style.js)
 const SHIP_MATS = {
-  wood_hull: { tile: 'hull', paint: 'hull', scale: 0.5, light: 0xab7647, shade: 0x8b5d36, lit: 'under', hatchK: 0.5 },
-  wood_deck: { tile: 'deck', paint: 'hull', scale: 0.5, light: 0xd8ae74, shade: 0xb88a56, lit: 'under', hatchK: 0 },
-  wood_tar: { tile: 'tar', paint: 'hull', scale: 0.7, light: 0x6e4d32, shade: 0x573b26, lit: 'under', inkK: 0.55, tint: 0.55 },
-  spar: { tile: 'spar2', paint: 'hull', scale: 0.6, light: 0xe0a25a, shade: 0xbb7f45, lit: 'round', lod: true },
+  wood_hull: { tile: 'hull', paint: 'hull', scale: 0.5, light: 0xab7647, shade: 0x8b5d36, lit: 'under', hatchK: 0.5, cluster: 2 },
+  wood_deck: { tile: 'deck', paint: 'hull', scale: 0.5, light: 0xd8ae74, shade: 0xb88a56, lit: 'under', hatchK: 0, cluster: 2 },
+  wood_tar: { tile: 'tar', paint: 'hull', scale: 0.7, light: 0x80603f, shade: 0x67492f, lit: 'under', inkK: 0.55, tint: 0.55 },
+  spar: { tile: 'spar2', paint: 'hull', scale: 0.6, light: 0xdcaa6c, shade: 0xb88650, lit: 'round', lod: true, cluster: 2 },
   iron: { tile: 'iron', paint: 'hull', scale: 1.5, light: 0x67707a, shade: 0x4a5058, lit: 'round', tint: 0.4 },
   rope: { tile: 'rope3', paint: 'hull', scale: 1.6, light: 0xae9877, shade: 0x8a765a, lit: 'round', tint: 0.6, wobble: true },
   block: { tile: 'spar2', paint: 'hull', scale: 2.0, light: 0x84807a, shade: 0x66625e, lit: 'round', tint: 0.5 },
@@ -125,7 +125,7 @@ async function heroShip(tex) {
       paint: tex[`${m.paint}_paint`], scale: (m.paint === 'sail' ? 0.7 : 1.6) / scale / 10, tintPaint: [1.5 * k, 1.6 * k, 1.7 * k], lit: 0.75, toModel,
       side: THREE.DoubleSide, wobble: !!m.wobble,
       lines: { kind: 'uv', ink: tex[`${m.tile}_ink`], hatch: tex.hatch_ink, scale: m.scale, light: m.light, shade: m.shade, lit: m.lit,
-        flag: m.flag, rope: name === 'rope', lod: m.lod, inkK: m.inkK ?? 1.0, hatchK: m.hatchK ?? 0.3, near: 12, far: 40 },
+        flag: m.flag, rope: name === 'rope', lod: m.lod, cluster: m.cluster, inkK: m.inkK ?? 1.0, hatchK: m.hatchK ?? 0.3, near: 12, far: 40 },
     });
     mats[name].userData.wobble = !!m.wobble;
     return mats[name];
