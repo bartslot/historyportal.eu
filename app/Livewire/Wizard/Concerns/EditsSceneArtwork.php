@@ -11,6 +11,7 @@ use App\Services\Support\LayerAmbient;
 use App\Services\Support\LayerFrames;
 use App\Services\Support\LayerSitIn;
 use App\Services\Support\ShotCamera;
+use App\Services\Support\SpeechBalloons;
 use App\Support\LayerEntrances;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
@@ -644,7 +645,13 @@ trait EditsSceneArtwork
             return array_merge($shot, ['layers' => $layers]);
         })->all();
 
-        $scene->update(['shots' => $shots]);   // an unchanged layer is a clean model: no save
+        $update = ['shots' => $shots];
+        // A new picture for the layer (a quick mask) is a new asset id: the balloons this figure
+        // speaks keep pointing at it, in the same save, or their tails lose their speaker.
+        if (is_int($fields['asset_id'] ?? null) && $fields['asset_id'] !== $assetId) {
+            $update['config'] = SpeechBalloons::withSpeakerAsset((array) ($scene->config ?? []), $assetId, $fields['asset_id']);
+        }
+        $scene->update($update);   // an unchanged layer is a clean model: no save
         $this->selectSceneInternal($scene->id);
     }
 
