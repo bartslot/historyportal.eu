@@ -1,12 +1,6 @@
 {
-  "../founding-teachers/node_modules/three/build/three.module.js": {
-    "file": "assets/three.module-CpB-wl7P.js",
-    "name": "three.module",
-    "src": "../founding-teachers/node_modules/three/build/three.module.js",
-    "isDynamicEntry": true
-  },
-  "_BalloonLayer-M5F_yHoh.js": {
-    "file": "assets/BalloonLayer-M5F_yHoh.js",
+  "_BalloonLayer-Bjnwbp4q.js": {
+    "file": "assets/BalloonLayer-Bjnwbp4q.js",
     "name": "BalloonLayer",
     "isDynamicEntry": true,
     "imports": [
@@ -18,7 +12,7 @@
     "file": "assets/GLTFLoader-Et3HGvr1.js",
     "name": "GLTFLoader",
     "imports": [
-      "../founding-teachers/node_modules/three/build/three.module.js"
+      "node_modules/three/build/three.module.js"
     ]
   },
   "_PowerMeter-BolwQuLc.js": {
@@ -146,8 +140,14 @@
       "_easing-HS2C6-zA.js"
     ]
   },
+  "node_modules/three/build/three.module.js": {
+    "file": "assets/three.module-CpB-wl7P.js",
+    "name": "three.module",
+    "src": "node_modules/three/build/three.module.js",
+    "isDynamicEntry": true
+  },
   "resources/css/app.css": {
-    "file": "assets/app-BUdjK3Fw.css",
+    "file": "assets/app-Dq361kJw.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -156,7 +156,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-BuABtY2v.js",
+    "file": "assets/app-BFmZVN9B.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -166,7 +166,7 @@
       "_easing-HS2C6-zA.js",
       "__commonjsHelpers-CqkleIqs.js",
       "_properties-Be9DmDzI.js",
-      "_BalloonLayer-M5F_yHoh.js",
+      "_BalloonLayer-Bjnwbp4q.js",
       "_clip-W780-tgz.js",
       "_tuner-CTMYYJl-.js"
     ],
@@ -174,7 +174,7 @@
       "resources/js/test-session/recorder.js",
       "resources/js/scene/quick-mask.js",
       "resources/js/scene/index.js",
-      "../founding-teachers/node_modules/three/build/three.module.js"
+      "node_modules/three/build/three.module.js"
     ],
     "css": [
       "assets/app-AEfMPvIN.css"
@@ -196,7 +196,7 @@
     "src": "resources/js/avatar-3d.js",
     "isDynamicEntry": true,
     "imports": [
-      "../founding-teachers/node_modules/three/build/three.module.js",
+      "node_modules/three/build/three.module.js",
       "_GLTFLoader-Et3HGvr1.js"
     ]
   },
@@ -224,7 +224,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-BoeLlBKO.js",
+    "file": "assets/lesson-player-CVgGGcje.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -248,7 +248,7 @@
       "resources/js/lesson-map.js",
       "resources/js/voyage-tour.js",
       "resources/js/scene/TextOverlayLayer.js",
-      "_BalloonLayer-M5F_yHoh.js",
+      "_BalloonLayer-Bjnwbp4q.js",
       "resources/js/scene/ArtworkOverlay.js",
       "resources/js/scene/QuizOverlay.js",
       "_TeamGame-DIPdowQj.js",
@@ -317,14 +317,14 @@
     ]
   },
   "resources/js/scene/SplitStage.js": {
-    "file": "assets/SplitStage-CrBYBzZe.js",
+    "file": "assets/SplitStage-BnzL8vjK.js",
     "name": "SplitStage",
     "src": "resources/js/scene/SplitStage.js",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/scene/ParallaxScene.js",
       "resources/js/scene/ArtworkOverlay.js",
-      "_BalloonLayer-M5F_yHoh.js",
+      "_BalloonLayer-Bjnwbp4q.js",
       "_big-countdown-C2dIhksY.js",
       "_ambient-CnaWjG1w.js",
       "_camera-CXpRCYWW.js",
@@ -363,7 +363,7 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-BtLnIIsu.js",
+    "file": "assets/index-CZyU_Hz2.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
@@ -376,8 +376,8 @@
       "_preload-helper-DIdkKO6w.js",
       "resources/js/avatar-3d.js",
       "_camera-CXpRCYWW.js",
-      "_BalloonLayer-M5F_yHoh.js",
-      "../founding-teachers/node_modules/three/build/three.module.js",
+      "_BalloonLayer-Bjnwbp4q.js",
+      "node_modules/three/build/three.module.js",
       "_ambient-CnaWjG1w.js",
       "_easing-HS2C6-zA.js",
       "_properties-Be9DmDzI.js",
@@ -451,7 +451,7 @@
     ]
   },
   "resources/js/test-session/recorder.js": {
-    "file": "assets/recorder-TsKZTHD6.js",
+    "file": "assets/recorder-BuzToetY.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,
@@ -463,7 +463,7 @@
       "_easing-HS2C6-zA.js",
       "__commonjsHelpers-CqkleIqs.js",
       "_properties-Be9DmDzI.js",
-      "_BalloonLayer-M5F_yHoh.js",
+      "_BalloonLayer-Bjnwbp4q.js",
       "_clip-W780-tgz.js",
       "_tuner-CTMYYJl-.js"
     ]
@@ -528,7 +528,7 @@
     "src": "resources/js/timemap/voyage-ships.js",
     "isDynamicEntry": true,
     "imports": [
-      "../founding-teachers/node_modules/three/build/three.module.js",
+      "node_modules/three/build/three.module.js",
       "_GLTFLoader-Et3HGvr1.js",
       "_border-sweep-BHZq13G8.js",
       "_maplibre-compat-BhO3OEJx.js",
@@ -550,7 +550,7 @@
       "__commonjsHelpers-CqkleIqs.js",
       "_map-imagery-U4z06sz1.js",
       "_preload-helper-DIdkKO6w.js",
-      "../founding-teachers/node_modules/three/build/three.module.js",
+      "node_modules/three/build/three.module.js",
       "_GLTFLoader-Et3HGvr1.js",
       "_maplibre-compat-BhO3OEJx.js"
     ]

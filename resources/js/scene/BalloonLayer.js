@@ -43,6 +43,22 @@ const MIN_WIDTH_REF = 300
 const EDGE_REF = 24
 const TAIL_BASE_REF = 34
 
+/**
+ * A balloon is part of the picture: every size is a share of its stage, so the editor (whose stage
+ * grows and shrinks with the panels around it) and the player draw the same balloon in the same
+ * place, and a tail that clears its bubble in one clears it in the other. Px floors here made a
+ * balloon on a small editor stage bigger than in the player, pushed it off the spot it was put on
+ * and swallowed its tail tip (Bart, 2026-10-20: "drifting when you reload ... tails disappearing").
+ *
+ * The one exception: a PLAYER stage narrower than this (a phone held sideways) keeps the words
+ * readable at MIN_FONT_PX and lets the balloon grow from there. The editor never does.
+ */
+export const READABLE_BELOW_PX = 640
+export const MIN_FONT_PX = 13
+/** The widest bubble and the narrowest one kept on the face's side, in ems of its own words. */
+const MAX_WIDTH_EM = MAX_WIDTH_REF / FONT_REF
+const MIN_ROOM_EM = 140 / FONT_REF
+
 const ENTER_MS = 260
 const EXIT_MS = 180
 
@@ -436,7 +452,7 @@ export class BalloonLayer {
     const thought = line.kind === 'thought'
     // Scale grows the words, the box, the tail root and the circles; the ink line stays one pencil.
     const scale = Number.isFinite(line.scale) ? Math.min(MAX_SCALE, Math.max(MIN_SCALE, line.scale)) : 1
-    const font = Math.max(13, FONT_REF * k) * scale
+    const font = this._font(k, scale, w)
     const ink = `${INK_PX}px`
     el.style.opacity = Number.isFinite(line.opacity) ? String(line.opacity) : ''
     for (const node of el.querySelectorAll('.lp-balloon__cloud path, .lp-balloon__tail .ink, .lp-balloon__tail .trail')) node.setAttribute('stroke-width', ink)
@@ -444,7 +460,7 @@ export class BalloonLayer {
     Object.assign(bubble.style, {
       fontSize: `${font}px`,
       borderWidth: ink,
-      maxWidth: `${Math.min(0.8 * (view.x1 - view.x0), Math.max(180, MAX_WIDTH_REF * k) * scale)}px`,
+      maxWidth: `${Math.min(0.8 * (view.x1 - view.x0), MAX_WIDTH_EM * font)}px`,
       // A cloud's scallops eat into its box: the words get more room from the edge.
       padding: thought ? `${0.95 * font}px ${1.3 * font}px` : `${0.55 * font}px ${0.9 * font}px`,
       left: '0px',
@@ -458,7 +474,7 @@ export class BalloonLayer {
     const mouth = this._mouth(line)
     const { side, room } = mouth && !at ? balloonSide(mouth, line.figure?.facing || 0, { w, h }, view) : { side: null, room: Infinity }
     // Narrower (more lines) rather than off the face's side.
-    bubble.style.maxWidth = `${Math.max(140, Math.min(parseFloat(bubble.style.maxWidth), room))}px`
+    bubble.style.maxWidth = `${Math.max(MIN_ROOM_EM * font, Math.min(parseFloat(bubble.style.maxWidth), room))}px`
     const box = { w: bubble.offsetWidth, h: bubble.offsetHeight }
     const { left, top } = at ? this._atPosition(at, box, view, k) : this._autoPosition(el, mouth, box, { w, h }, view, side)
     bubble.style.left = `${left}px`
@@ -481,6 +497,13 @@ export class BalloonLayer {
     this.opts.onPlace?.(el, line, tip, { rect, shape, radius: this._radius(rect, font) })
 
     return shape?.root ?? [left + rect.w / 2, top + rect.h / 2]
+  }
+
+  /** The words' size: a share of the stage (READABLE_BELOW_PX for the phone exception). */
+  _font (k, scale, w) {
+    const font = FONT_REF * k * scale
+
+    return !this.editable && w < READABLE_BELOW_PX ? Math.max(MIN_FONT_PX * scale, font) : font
   }
 
   /** A balloon the teacher put somewhere: its middle on that spot, kept inside the frame. */
