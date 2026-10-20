@@ -3857,7 +3857,7 @@ class Step3SceneConfigurator extends Component
         $this->paintingPickerOpen = true;
         $this->paintingCommonsLoaded = false;
         $this->paintingQuery = '';
-        $this->paintingKind = '';
+        $this->paintingKind = 'library';   // our own pictures first (Bart, 2026-10-20)
         $this->paintingRegion = '';
         $this->matchTarget = [];
         $this->paintingReady = false;   // modal opens instantly; wire:init fills the grid

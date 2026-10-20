@@ -1008,6 +1008,13 @@ class Lesson extends Model
         foreach ($this->scenes()->ordered()->get() as $scene) {
             $push($this->publicMediaUrl($scene->skybox_image_path), 'Scene panorama');
             $push($this->publicMediaUrl($scene->image_path), 'Scene image');
+            // Every shot / split panel holds its own picture; a panel left behind by going back
+            // to one picture is still the teacher's image and must stay findable.
+            foreach (($scene->shots ?? []) as $shot) {
+                foreach (['image_path', 'bg_path', 'hero_path'] as $key) {
+                    $push($this->publicMediaUrl(is_array($shot) ? ($shot[$key] ?? null) : null), 'Scene image');
+                }
+            }
             $cfg = $scene->config ?? [];
             foreach (($cfg['stop_images'] ?? []) as $u) {
                 $push(is_string($u) ? $u : ($u['url'] ?? null), 'Landfall image');

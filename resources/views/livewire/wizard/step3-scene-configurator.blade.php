@@ -2722,7 +2722,7 @@
                     {{-- "Library" is our own imagery: this lesson's pictures plus our Cloudinary
                          collection. It is also what the grid falls back to when the corpus and
                          Commons find nothing, so the teacher is never left with an empty modal. --}}
-                    @foreach (['' => __('Everything'), 'painting' => __('Paintings'), 'city_map' => __('City plans'), 'library' => __('Library')] as $kindVal => $kindLabel)
+                    @foreach (['library' => __('Library'), '' => __('Everything'), 'painting' => __('Paintings'), 'city_map' => __('City plans')] as $kindVal => $kindLabel)
                         <button type="button" wire:click="$set('paintingKind', '{{ $kindVal }}')"
                                 class="btn btn-xs flex-none {{ $paintingKind === $kindVal ? 'bg-primary text-slate-950 border-0 hover:brightness-110' : 'btn-outline border-slate-600 text-slate-400 hover:border-primary hover:text-primary' }}">
                             {{ $kindLabel }}
