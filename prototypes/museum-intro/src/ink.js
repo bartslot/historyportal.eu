@@ -29,8 +29,8 @@ function normalMaterial(id, alphaMap = null, wobble = false) {
       void main() {
         if (uCut > 0.5 && texture2D(uMap, vUv).a < 0.5) discard;
         vec3 n = normalize(vN); if (!gl_FrontFacing) n = -n;
-        // rigging pieces (aPart > 0) get ids 0.5..0.9, one per spar / rope / block, so each meets the next with a line
-        gl_FragColor = vec4(n * 0.5 + 0.5, vPart > 0.0 ? 0.5 + vPart * 0.4 : uId);
+        // ship pieces carry their own id (aPart, tools/build_ship.py): 0.02..0.47 solid, 0.5..0.97 rigging (thin lines)
+        gl_FragColor = vec4(n * 0.5 + 0.5, vPart > 0.0 ? vPart : uId);
       }`,
   });
 }

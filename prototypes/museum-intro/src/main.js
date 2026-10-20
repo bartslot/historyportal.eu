@@ -15,7 +15,7 @@ import { styleShots } from './shots.js';
 
 const HALL_ASSETS = ['vroom', 'milkmaid', 'avercamp', 'swan', ...['point', 'hat', 'kid', 'old', 'teen'].map((n) => `sil_${n}`)];
 const WORLD_ASSETS = ['hull', 'sail', 'sea', 'sky'].map((n) => `${n}_paint`).concat(['sky_flat', 'sea_colour', 'tasman_paint', 'tasman_lines', 'sailor_front', 'sailor_threequarter', 'pieter_looking_up_mast']);
-const INK_TILES = ['deck', 'grain', 'hull', 'sail', 'sailsheet', 'sailsheet2', 'rope', 'sea2', 'hatch', 'canvas', 'grain2'].map((n) => `${n}_ink`); // hand-drawn line tiles, black on white
+const INK_TILES = ['deck', 'grain', 'hull', 'sail', 'sailsheet', 'sailsheet2', 'rope', 'sea2', 'hatch', 'canvas', 'grain2', 'rope2', 'spar2', 'iron', 'barrel', 'sailcloth', 'flag', 'tar', 'crate', 'rope3'].map((n) => `${n}_ink`); // hand-drawn line tiles, black on white
 const LINES = { nl: 'Ah, daar ben je!', en: 'Ah, there you are!' };
 const H_FOV = 50; // horizontal field of view we try to keep; phones get a taller vertical one, clamped
 const HALL_BG = new THREE.Color(0x24211d);

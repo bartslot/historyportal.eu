@@ -94,6 +94,14 @@ const DRAWN = /* glsl */ `
 
 const LINES_VARYINGS = 'varying vec3 vPos; varying vec3 vN; varying vec3 vM; varying vec3 vMN; varying vec2 vUv; varying float vKind; varying vec3 vAxis;';
 
+// which faces of a v4 ship material go to the shade colour: undersides only (flat wood), undersides + the flat dark
+// band where a round piece turns away from the eye (masts, ropes, barrels), or the sun step (cloth)
+const LIT = {
+  under: 'smoothstep(-0.47, -0.43, mn.y)',
+  round: 'min(smoothstep(-0.47, -0.43, mn.y), smoothstep(0.3, 0.36, abs(dot(n, normalize(cameraPosition - vPos)))))',
+  sun: 'litStep(n)',
+};
+
 // paint: oil texture; tint/lit as before. lines: { kind, light, shade, ink, hatch, scale, inkK, hatchK }
 //   kind: 'wood' (hull: deck/side/rail by normal + height), 'spar' (rigging: spars grain / ropes lay, by curvature),
 //         'sail', 'sea'
@@ -153,6 +161,14 @@ export function styledMaterial({ paint, tintPaint = [1, 1, 1], lit = 0.6, mode =
       float thin = (1.0 - smoothstep(1.5, 4.0, radius / max(length(dp), 1e-4))) * isRope;
       vec3 ropeFar = mix(uRopeS, uInk, 0.5);
       light = mix(light, ropeFar, thin); shade = mix(shade, ropeFar, thin);`,
+    uv: /* glsl */ `
+      // the v4 ship: one material per mesh, its hand-drawn tile laid on the model's own UVs (model units)
+      vec3 light = uMatL, shade = uMatS;
+      ${L.flag ? `// the Prince's flag: orange, white, blue bands down the hoist (uv 0..1)
+      light = vUv.y < 0.333 ? uFlagO : (vUv.y < 0.667 ? light : uFlagB); shade = light * 0.86;` : ''}
+      ${L.lod
+        ? 'vec3 lod = strokeLod(dist); float ink = mix(inkOf(uTex, vUv * ls * lod.x), inkOf(uTex, vUv * ls * lod.y), lod.z);'
+        : 'float ink = inkOf(uTex, vUv * ls);'}`,
     sail: /* glsl */ `
       vec3 light = uSailL, shade = uSailS;
       float ink = inkTri(uTex, vM * ls, mn);`,
@@ -230,6 +246,8 @@ export function styledMaterial({ paint, tintPaint = [1, 1, 1], lit = 0.6, mode =
       uSailL: { value: lin(P.sail[0]) }, uSailS: { value: lin(P.sail[1]) },
       uSeaN: { value: lin(P.sea[0]) }, uSeaM: { value: lin(P.sea[1]) }, uSeaF: { value: lin(P.sea[2]) },
       uSeaInk: { value: lin(P.seaInk) },
+      uMatL: { value: lin(L.light ?? 0xffffff) }, uMatS: { value: lin(L.shade ?? 0xffffff) },
+      uFlagO: { value: lin(0xe0773c) }, uFlagB: { value: lin(0x3f68a8) },
     },
     vertexShader: /* glsl */ `
       uniform mat4 uToModel; uniform float uTime; attribute float aKind; attribute vec3 aAxis;
@@ -248,7 +266,7 @@ export function styledMaterial({ paint, tintPaint = [1, 1, 1], lit = 0.6, mode =
       uniform sampler2D uPaint; uniform sampler2D uTex; uniform sampler2D uTex2; uniform sampler2D uHatch; uniform sampler2D uGrain;
       uniform float uScale; uniform float uLScale; uniform vec3 uTintP; uniform float uLit;
       uniform float uInkK; uniform float uHatchK; uniform float uRailY; uniform float uTime;
-      uniform vec3 uHullL, uHullS, uDeckL, uDeckS, uRailL, uRailS, uSparL, uSparS, uRopeL, uRopeS, uBlockL, uBlockS, uSailL, uSailS, uSeaN, uSeaM, uSeaF, uSeaInk;
+      uniform vec3 uHullL, uHullS, uDeckL, uDeckS, uRailL, uRailS, uSparL, uSparS, uRopeL, uRopeS, uBlockL, uBlockS, uSailL, uSailS, uSeaN, uSeaM, uSeaF, uSeaInk, uMatL, uMatS, uFlagO, uFlagB;
       ${LINES_VARYINGS}
       ${WIPE_GLSL}
       ${DRAWN}
@@ -273,7 +291,7 @@ export function styledMaterial({ paint, tintPaint = [1, 1, 1], lit = 0.6, mode =
         ${kindGLSL}
         // wood is one flat colour (no faceted light bands); only the undersides (beneath tops, beams, rails) go
         // to the shade colour and get the shadow hatching, like the TARGET's mast top. Cloth keeps a soft light step.
-        float litv = ${L.kind === 'wood' || L.kind === 'spar' ? (L.kind === 'wood' ? 'smoothstep(-0.47, -0.43, mn.y)' : '1.0') : 'litStep(n)'};
+        float litv = ${L.kind === 'uv' ? LIT[L.lit ?? 'under'] : L.kind === 'wood' || L.kind === 'spar' ? (L.kind === 'wood' ? 'smoothstep(-0.47, -0.43, mn.y)' : '1.0') : 'litStep(n)'};
         // round timber: a flat darker band where the surface turns away from the eye (the TARGET mast's sides)
         ${L.kind === 'spar' ? 'litv = min(litv, smoothstep(0.3, 0.36, abs(dot(n, normalize(cameraPosition - vPos)))) + isBlock);' : ''}
         vec3 fill = mix(shade, light, litv);

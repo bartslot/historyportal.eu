@@ -1,8 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { HALL } from './museum.js';
-import { classifyRigging } from './rigging.js';
+import SHIP_LAYOUT from './ship_layout.json';
 import { WIPE, WIPE_GLSL, styledMaterial, cardMaterial } from './style.js';
 
 // The world inside the painting, built in real 3D. The painting is only the LAYOUT reference: every object is
@@ -12,7 +11,7 @@ import { WIPE, WIPE_GLSL, styledMaterial, cardMaterial } from './style.js';
 export const LAYOUT = {
   horizonV: 0.458, // painting v (up) of the horizon; the painter's eye sits at its height
   eyeAboveSea: 1.15, // world units; sets how far behind the frame everything is
-  hero: { u: 0.215, waterV: 0.322, topV: 0.871, yaw: 0.62, sink: 0.6, modelTop: 27.5, centerX: 2.15, brace: 0.55 },
+  hero: { u: 0.215, waterV: 0.322, topV: 0.871, yaw: 0.62, sink: 0.6, modelTop: 27.5, centerX: 2.15, },
   manHeight: 1.48, // model units (the ship is ~34 model units long, a 1640s ship ~40 m)
   cardMinT: 1.25, // painting cut-outs nearer than this would stand in the hall: dropped
 };
@@ -84,9 +83,26 @@ function sea(tex) {
   return m;
 }
 
+// The ship's materials (tools/build_ship.py names them): History Lines = a flat light/shade fill from colours
+// sampled off the anchors, times a hand-drawn ink tile (ChatGPT) laid on the model's UVs. Painterly = Vroom oil.
+// tile: ink tile; scale: tiles per model unit; lit: which faces go to the shade colour (see style.js)
+const SHIP_MATS = {
+  wood_hull: { tile: 'hull', paint: 'hull', scale: 0.5, light: 0xab7647, shade: 0x8b5d36, lit: 'under', hatchK: 0.5 },
+  wood_deck: { tile: 'deck', paint: 'hull', scale: 0.5, light: 0xd8ae74, shade: 0xb88a56, lit: 'under', hatchK: 0 },
+  wood_tar: { tile: 'tar', paint: 'hull', scale: 0.7, light: 0x6e4d32, shade: 0x573b26, lit: 'under', inkK: 0.55, tint: 0.55 },
+  spar: { tile: 'spar2', paint: 'hull', scale: 0.6, light: 0xe0a25a, shade: 0xbb7f45, lit: 'round', lod: true },
+  iron: { tile: 'iron', paint: 'hull', scale: 1.5, light: 0x67707a, shade: 0x4a5058, lit: 'round', tint: 0.4 },
+  rope: { tile: 'rope3', paint: 'hull', scale: 1.0, light: 0xa3927a, shade: 0x7f705e, lit: 'round', tint: 0.6, wobble: true },
+  block: { tile: 'spar2', paint: 'hull', scale: 2.0, light: 0x84807a, shade: 0x66625e, lit: 'round', tint: 0.5 },
+  sail: { tile: 'sailcloth', paint: 'sail', scale: 0.67, light: 0xfbf7ea, shade: 0xf0e7d2, lit: 'sun', inkK: 0.8 },
+  flag: { tile: 'flag', paint: 'sail', scale: 1.0, light: 0xf6f1e6, shade: 0xe4dccb, lit: 'sun', flag: true },
+  barrel: { tile: 'barrel', paint: 'hull', scale: 1.1, light: 0xc08a50, shade: 0x9c6c3c, lit: 'round' },
+  crate: { tile: 'crate', paint: 'hull', scale: 1.6, light: 0xd2a46a, shade: 0xb08550, lit: 'under' },
+};
+
 async function heroShip(tex) {
-  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
-  const gltf = await loader.loadAsync('./assets/world/ship.glb');
+  const loader = new GLTFLoader();
+  const gltf = await loader.loadAsync('./assets/world/ship_v4.glb');
   const H = LAYOUT.hero;
   const t = tToSea(H.u, H.waterV);
   const heightWorld = (H.topV - H.waterV) * HALL.voc.h * t;
@@ -101,26 +117,30 @@ async function heroShip(tex) {
   pivot.add(model);
 
   const toModel = new THREE.Matrix4(); // world -> ship model frame, filled once the ship is placed
-  const mats = {
-    hull: styledMaterial({ paint: tex.hull_paint, scale: 1.6 / scale / 10, tintPaint: [1.5, 1.6, 1.7], lit: 0.75, toModel,
-      lines: { kind: 'wood', ink: tex.hull_ink, ink2: tex.deck_ink, hatch: tex.hatch_ink, grain: tex.grain2_ink, scale: 1.0, railY: 4.0, inkK: 1.0, cluster: 1, hatchK: 0.5, near: 12, far: 40 } }),
-    sails: styledMaterial({ paint: tex.sail_paint, scale: 0.7 / scale / 10, tintPaint: [0.85, 0.9, 1.0], lit: 0.7, side: THREE.DoubleSide, toModel,
-      lines: { kind: 'sail', ink: tex.sail_ink, hatch: tex.hatch_ink, scale: 0.35, inkK: 0.7, hatchK: 0.0, near: 3, far: 25 } }), // the model's furled sails: no shadow hatch (it read as grey blotches)
-    rigging: styledMaterial({ paint: tex.hull_paint, scale: 4 / scale / 10, tintPaint: [0.7, 0.62, 0.55], lit: 0.4, toModel, wobble: true, side: THREE.DoubleSide, // ratlines are one-sided strips
-      lines: { kind: 'spar', ink: tex.grain_ink, ink2: tex.rope_ink, hatch: tex.hatch_ink, grain: tex.grain2_ink, scale: 1.6, inkK: 1.0, hatchK: 0.5, cluster: 1, near: 12, far: 40 } }),
+  const mats = {};
+  const mat = (name) => {
+    const m = SHIP_MATS[name] ?? SHIP_MATS.wood_hull;
+    const k = m.tint ?? 1;
+    mats[name] ??= styledMaterial({
+      paint: tex[`${m.paint}_paint`], scale: (m.paint === 'sail' ? 0.7 : 1.6) / scale / 10, tintPaint: [1.5 * k, 1.6 * k, 1.7 * k], lit: 0.75, toModel,
+      side: THREE.DoubleSide, wobble: !!m.wobble,
+      lines: { kind: 'uv', ink: tex[`${m.tile}_ink`], hatch: tex.hatch_ink, scale: m.scale, light: m.light, shade: m.shade, lit: m.lit,
+        flag: m.flag, lod: m.lod, inkK: m.inkK ?? 1.0, hatchK: m.hatchK ?? 0.3, near: 12, far: 40 },
+    });
+    mats[name].userData.wobble = !!m.wobble;
+    return mats[name];
   };
-  mats.rigging.userData.wobble = true;
   const parts = {};
   const casters = [];
-  const IDS = { hull: 1, rigging: 2, sails: 3 };
   model.traverse((o) => {
     if (!o.isMesh) return;
-    const key = o.material.name.includes('sails') ? 'sails' : o.material.name.includes('rigging') ? 'rigging' : 'hull';
-    o.material = mats[key];
-    if (key === 'rigging') console.info('rigging parts', JSON.stringify(classifyRigging(o.geometry, o.scale.x)));
-    if (key === 'hull') console.info('hull parts', JSON.stringify(classifyRigging(o.geometry, o.scale.x, { ropeR2: 0.018, blocks: false }).dbg?.filter((d) => d[0] > 200)));
-    if (!parts[key] || o.geometry.attributes.position.count > parts[key].geometry.attributes.position.count) parts[key] = o;
-    casters.push([o, IDS[key]]);
+    const name = o.material.name;
+    o.material = mat(name);
+    // every piece's own id (tools/build_ship.py): the ink pass draws a line where two pieces meet
+    const part = o.geometry.getAttribute('_part');
+    if (part) o.geometry.setAttribute('aPart', part);
+    parts[name] = o;
+    casters.push([o, 1]);
   });
   const sheet = styledMaterial({ paint: tex.sail_paint, scale: 0.7 / scale / 10, tintPaint: [0.85, 0.9, 1.0], lit: 0.7, side: THREE.DoubleSide, toModel,
     lines: { kind: 'sailsheet', ink: tex.sailsheet2_ink, ink2: tex.sailsheet_ink, hatch: tex.canvas_ink, scale: 0.35, inkK: 1.0, hatchK: 0.2, near: 3, far: 25 } });
@@ -132,12 +152,8 @@ async function heroShip(tex) {
 
 // The model's own sails are mostly furled; Vroom's ships sail with full bellied canvas. Courses and topsails on
 // the main (x -1) and fore (x 10) masts, in model units, bellied towards the bow (+x), the foot fuller than the head.
-export const SAILS = [
-  { x: -1, y0: 7.2, y1: 13.2, w0: 8.6, w1: 9.6, belly: 1.6 },
-  { x: -1, y0: 14.0, y1: 19.6, w0: 5.6, w1: 7.6, belly: 1.2 },
-  { x: 10, y0: 7.0, y1: 12.4, w0: 7.6, w1: 8.4, belly: 1.4 },
-  { x: 10, y0: 13.2, y1: 18.0, w0: 4.8, w1: 6.6, belly: 1.0 }, // the fore topsail: the figure lands on its yard
-];
+// the fore topsail (index 3): the figure lands on its yard. Shared with tools/build_ship.py (yards, sheets, buntlines).
+export const SAILS = SHIP_LAYOUT.sails;
 
 function addSetSails(model, mat, casters) {
   for (const s of SAILS) {
@@ -148,7 +164,7 @@ function addSetSails(model, mat, casters) {
       const v = p.getY(i) + 0.5; // 1 = head (yard), 0 = foot
       const w = s.w1 + (s.w0 - s.w1) * v;
       const belly = s.belly * Math.sin(Math.PI * u) * (0.35 + 0.65 * Math.sin(Math.PI * (0.15 + 0.85 * (1 - v)) * 0.6 + 0.35));
-      p.setXYZ(i, 0.25 + belly, s.y0 + (s.y1 - s.y0) * v, (u - 0.5) * w);
+      p.setXYZ(i, s.off + belly, s.y0 + (s.y1 - s.y0) * v, (u - 0.5) * w);
     }
     geo.computeVertexNormals();
     // the same drawn sail on every yard would repeat: mirror every other one and shift its folds
@@ -159,7 +175,7 @@ function addSetSails(model, mat, casters) {
     // braced round the mast, like a ship sailing on a quarter wind (also shows the canvas to the painter's eye)
     const yard = new THREE.Group();
     yard.position.x = s.x;
-    yard.rotation.y = LAYOUT.hero.brace;
+    yard.rotation.y = SHIP_LAYOUT.brace;
     const sail = new THREE.Mesh(geo, mat);
     yard.add(sail);
     model.add(yard);
@@ -229,10 +245,10 @@ export async function buildWorld(scene, tex, cardsJson) {
   // places on the ship, found by dropping a ray: the top of the fore topsail, the deck under it
   const fore = SAILS[3];
   const toWorld = (x, y, z) => new THREE.Vector3(x, y, z).applyMatrix4(ship.model.matrixWorld);
-  const yardPoint = new THREE.Vector3(0.3, fore.y1 + 0.12, 1.1).applyAxisAngle(new THREE.Vector3(0, 1, 0), LAYOUT.hero.brace);
+  const yardPoint = new THREE.Vector3(fore.off - 0.2, fore.y1 + 0.3, 1.1).applyAxisAngle(new THREE.Vector3(0, 1, 0), SHIP_LAYOUT.brace); // on top of the yard
   const landing = toWorld(fore.x + yardPoint.x, yardPoint.y, yardPoint.z); // on the fore topsail's yard, beside the mast
   const local = { x: fore.x };
-  const deckAt = (lx, lz) => dropOnto(ship.parts.hull, ship, lx, lz, 12) ?? toWorld(lx, 4.5, lz);
+  const deckAt = (lx, lz) => dropOnto(ship.parts.wood_deck, ship, lx, lz, 12) ?? toWorld(lx, 4.5, lz);
   const man = LAYOUT.manHeight * ship.scale;
 
   const tasman = standingCard(tex.tasman_paint, tex.tasman_lines, man);
