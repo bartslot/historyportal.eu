@@ -653,7 +653,27 @@ class Lesson extends Model
      */
     public function tallCardImageUrl(): ?string
     {
-        return $this->titlePosterStillUrl() ?? $this->cardImageUrl();
+        return $this->titlePosterStillUrl() ?? $this->seriesPosterStillUrl() ?? $this->cardImageUrl();
+    }
+
+    /**
+     * The series' upright still while a comic style WITHOUT an upright version (the cover, the
+     * banner) is the title style: the tall card still gets the real poster, never a landscape
+     * photo cropped tall (Bart, 2026-10-20). Null for the logo, letters and plain styles.
+     */
+    private function seriesPosterStillUrl(): ?string
+    {
+        if (in_array($this->titleStyle(), TitlePoster::BUILT_IN, true)) {
+            return null;
+        }
+        foreach (TitlePoster::candidates($this->translation_group) as $candidate) {
+            $still = TitlePoster::for($this->translation_group, $candidate['key'])['portrait']['still_url'] ?? null;
+            if (is_string($still)) {
+                return $still;
+            }
+        }
+
+        return null;
     }
 
     /** The style the title screen shows: the teacher's choice while the series has it, else the first. */
