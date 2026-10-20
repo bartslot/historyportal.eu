@@ -74,82 +74,95 @@ class QuizLeaderboardController extends Controller
         $score = min((int) $data['score'], $maxScore);
         $correct = min((int) $data['correct'], (int) $data['total']);
 
-        // Hybrid identity: a class code (from a lesson assigned to that classroom)
-        // attaches the run to a persistent, account-less roster member.
-        $memberId = null;
-        if (filled($data['class_code'] ?? null)) {
-            $classroom = $lesson->classrooms()
-                ->where('join_code', strtoupper(trim($data['class_code'])))
-                ->first();
-            if (! $classroom) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
-                    'class_code' => 'Unknown class code for this lesson.',
+        // One submission per lesson at a time. A class submits together and school wifi retries a
+        // POST, so two requests for the same child could both find no row and both insert: a score
+        // counted twice, or a 500 on the member's unique name (infra audit 2026-10-17). Locking the
+        // lesson row serialises them for a few milliseconds.
+        // ponytail: one lock per lesson; a unique index on the score key if a lesson ever has
+        // hundreds of players submitting in the same second.
+        [$entry, $memberId, $nickname] = \Illuminate\Support\Facades\DB::transaction(function () use ($lesson, $data, $sceneId, $score, $correct): array {
+            \App\Models\Lesson::query()->whereKey($lesson->id)->lockForUpdate()->value('id');
+
+            // Hybrid identity: a class code (from a lesson assigned to that classroom)
+            // attaches the run to a persistent, account-less roster member.
+            $memberId = null;
+            if (filled($data['class_code'] ?? null)) {
+                $classroom = $lesson->classrooms()
+                    ->where('join_code', strtoupper(trim($data['class_code'])))
+                    ->first();
+                if (! $classroom) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'class_code' => 'Unknown class code for this lesson.',
+                    ]);
+                }
+                $name = \App\Services\Support\NameMatcher::canonical((string) $data['member_name']);
+                if (mb_strlen($name) < 2) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'member_name' => 'Enter a real name (first name + first letter of last name).',
+                    ]);
+                }
+                $member = \App\Models\ClassroomMember::whereRaw(
+                    'classroom_id = ? AND lower(display_name) = ?',
+                    [$classroom->id, mb_strtolower($name)],
+                )->first() ?? \App\Models\ClassroomMember::create([
+                    'classroom_id' => $classroom->id, 'display_name' => $name,
+                ]);
+                $memberId = $member->id;
+            }
+
+            $nickname = strip_tags(trim($data['nickname']));
+
+            // ONE ROW PER PLAYER PER QUIZ SCENE.
+            //
+            // A lesson holds several quiz scenes, and QuizOverlay resets its running score to zero at
+            // each one, so the same child submits two or three times under the same name. Creating a row
+            // per submission made them two or three PLAYERS with partial scores, and the board read like
+            // strangers had each done half the work.
+            //
+            // Keyed on the scene, so answering the second quiz ADDS a row while retrying the first
+            // REPLACES its own — otherwise replaying a lesson would inflate a score without limit, which
+            // in a classroom competition is the same as breaking it. The board then sums the rows.
+            //
+            // A submission with no scene (older client, or a lesson whose quiz is not scene-scoped)
+            // falls back to one row for the whole lesson, which is the behaviour those clients expect.
+            $entry = QuizScore::updateOrCreate(
+                [
+                    'lesson_id' => $lesson->id,
+                    'quiz_scene_id' => $sceneId,
+                ] + $this->playerKey($nickname, $memberId),
+                [
+                    'nickname' => $nickname,
+                    'classroom_member_id' => $memberId,
+                    'score' => $score,
+                    'correct' => $correct,
+                    'total' => (int) $data['total'],
+                    'integrity' => collect($data['integrity'] ?? [])
+                        ->only(['avg_ms', 'rapid_guesses', 'same_letter_streak', 'focus_drops'])
+                        ->map(fn ($value) => (int) $value)
+                        ->all() ?: null,
+                ],
+            );
+
+            // A retry replaces this scene's answers as well as its score, or the teacher's report would
+            // show both attempts as if the child had answered twice as many questions.
+            $entry->answers()->delete();
+
+            foreach (array_values($data['answers'] ?? []) as $answer) {
+                \App\Models\QuizAnswer::create([
+                    'quiz_score_id' => $entry->id,
+                    'question_order' => (int) $answer['question_order'],
+                    'question_text' => strip_tags((string) $answer['question_text']),
+                    'chosen_text' => strip_tags((string) $answer['chosen_text']),
+                    'correct_text' => strip_tags((string) $answer['correct_text']),
+                    'was_correct' => (bool) $answer['was_correct'],
+                    'response_ms' => isset($answer['response_ms']) ? (int) $answer['response_ms'] : null,
+                    'asks_ahead' => (bool) ($answer['asks_ahead'] ?? false),
                 ]);
             }
-            $name = \App\Services\Support\NameMatcher::canonical((string) $data['member_name']);
-            if (mb_strlen($name) < 2) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
-                    'member_name' => 'Enter a real name (first name + first letter of last name).',
-                ]);
-            }
-            $member = \App\Models\ClassroomMember::whereRaw(
-                'classroom_id = ? AND lower(display_name) = ?',
-                [$classroom->id, mb_strtolower($name)],
-            )->first() ?? \App\Models\ClassroomMember::create([
-                'classroom_id' => $classroom->id, 'display_name' => $name,
-            ]);
-            $memberId = $member->id;
-        }
 
-        $nickname = strip_tags(trim($data['nickname']));
 
-        // ONE ROW PER PLAYER PER QUIZ SCENE.
-        //
-        // A lesson holds several quiz scenes, and QuizOverlay resets its running score to zero at
-        // each one, so the same child submits two or three times under the same name. Creating a row
-        // per submission made them two or three PLAYERS with partial scores, and the board read like
-        // strangers had each done half the work.
-        //
-        // Keyed on the scene, so answering the second quiz ADDS a row while retrying the first
-        // REPLACES its own — otherwise replaying a lesson would inflate a score without limit, which
-        // in a classroom competition is the same as breaking it. The board then sums the rows.
-        //
-        // A submission with no scene (older client, or a lesson whose quiz is not scene-scoped)
-        // falls back to one row for the whole lesson, which is the behaviour those clients expect.
-        $entry = QuizScore::updateOrCreate(
-            [
-                'lesson_id' => $lesson->id,
-                'quiz_scene_id' => $sceneId,
-            ] + $this->playerKey($nickname, $memberId),
-            [
-                'nickname' => $nickname,
-                'classroom_member_id' => $memberId,
-                'score' => $score,
-                'correct' => $correct,
-                'total' => (int) $data['total'],
-                'integrity' => collect($data['integrity'] ?? [])
-                    ->only(['avg_ms', 'rapid_guesses', 'same_letter_streak', 'focus_drops'])
-                    ->map(fn ($value) => (int) $value)
-                    ->all() ?: null,
-            ],
-        );
-
-        // A retry replaces this scene's answers as well as its score, or the teacher's report would
-        // show both attempts as if the child had answered twice as many questions.
-        $entry->answers()->delete();
-
-        foreach (array_values($data['answers'] ?? []) as $answer) {
-            \App\Models\QuizAnswer::create([
-                'quiz_score_id' => $entry->id,
-                'question_order' => (int) $answer['question_order'],
-                'question_text' => strip_tags((string) $answer['question_text']),
-                'chosen_text' => strip_tags((string) $answer['chosen_text']),
-                'correct_text' => strip_tags((string) $answer['correct_text']),
-                'was_correct' => (bool) $answer['was_correct'],
-                'response_ms' => isset($answer['response_ms']) ? (int) $answer['response_ms'] : null,
-                'asks_ahead' => (bool) ($answer['asks_ahead'] ?? false),
-            ]);
-        }
+            return [$entry, $memberId, $nickname];
+        });
 
         // Rank against TOTALS, not against this one quiz. Ranking a partial score among other
         // players' totals put a child near the bottom the moment they finished the first quiz.

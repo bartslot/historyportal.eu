@@ -78,25 +78,70 @@ class SeoPagesTest extends TestCase
         $response->assertSee('name="robots" content="index, follow', escape: false);
     }
 
-    public function test_every_language_gets_its_own_url_and_the_full_hreflang_set(): void
+    /**
+     * SEO audit 2026-10-14: an English lesson also lived at /nl/, /de/, /fr/ and /it/ with the same
+     * English content, so 13 lessons were 65 near-duplicates. A lesson is one page, in its own
+     * language: every other prefix still renders (its buttons are translated) but names that page
+     * as canonical and claims no alternates.
+     */
+    public function test_a_lesson_has_one_canonical_page_in_its_own_language(): void
     {
-        $lesson = $this->publishedLesson();
+        $lesson = $this->publishedLesson(['language' => 'nl']);
         $slug = Seo::lessonSlug($lesson);
+        $own = Seo::url('lesson', ['slug' => $slug], 'nl');
 
         foreach (Locales::codes() as $code) {
-            $response = $this->get(Seo::url('lesson', ['slug' => $slug], $code))->assertOk();
+            $this->get(Seo::url('lesson', ['slug' => $slug], $code))
+                ->assertOk()
+                ->assertSee('<link rel="canonical" href="'.$own.'"', escape: false)
+                ->assertDontSee('hreflang=', escape: false);
+        }
+    }
 
-            // Each page points at itself as canonical and lists all five languages plus x-default.
-            $response->assertSee('<link rel="canonical" href="'.Seo::url('lesson', ['slug' => $slug], $code).'"', escape: false);
+    public function test_a_lesson_in_an_unshipped_language_is_canonical_in_english(): void
+    {
+        $lesson = $this->publishedLesson(['language' => 'es']);
+        $slug = Seo::lessonSlug($lesson);
 
-            foreach (Locales::codes() as $other) {
-                $response->assertSee(
-                    'hreflang="'.Locales::region($other).'" href="'.Seo::url('lesson', ['slug' => $slug], $other).'"',
-                    escape: false,
-                );
-            }
+        $this->get(Seo::url('lesson', ['slug' => $slug], 'de'))
+            ->assertOk()
+            ->assertSee('<link rel="canonical" href="'.Seo::url('lesson', ['slug' => $slug], 'en').'"', escape: false);
+    }
 
-            $response->assertSee('hreflang="x-default"', escape: false);
+    /** Google cuts a title past ~60 characters: a long one drops the brand rather than get cut. */
+    public function test_a_long_lesson_title_drops_the_brand_suffix(): void
+    {
+        $lesson = $this->publishedLesson(['title' => 'The Haitian Revolution: The Journey of Toussaint Louverture']);
+
+        $this->get(route('public.lesson', ['slug' => Seo::lessonSlug($lesson)]))
+            ->assertOk()
+            ->assertSee('<title>The Haitian Revolution: The Journey of Toussaint Louverture</title>', escape: false);
+    }
+
+    public function test_a_short_title_keeps_the_brand_suffix(): void
+    {
+        $lesson = $this->publishedLesson(['title' => 'Gladiators']);
+
+        $this->get(route('public.lesson', ['slug' => Seo::lessonSlug($lesson)]))
+            ->assertOk()
+            ->assertSee('<title>Gladiators · History Portal</title>', escape: false);
+    }
+
+    public function test_no_public_description_runs_past_160_characters(): void
+    {
+        $lesson = $this->publishedLesson(['title' => 'The Haitian Revolution: The Journey of Toussaint Louverture']);
+        $pages = [route('public.lesson', ['slug' => Seo::lessonSlug($lesson)])];
+
+        foreach (Locales::codes() as $code) {
+            $pages[] = Seo::url('home', [], $code);
+        }
+
+        foreach ($pages as $url) {
+            preg_match('/<meta name="description" content="([^"]*)"/', $this->get($url)->getContent(), $m);
+            $description = html_entity_decode($m[1] ?? '', ENT_QUOTES);
+
+            $this->assertNotSame('', $description, $url);
+            $this->assertLessThanOrEqual(160, mb_strlen($description), "{$url}: {$description}");
         }
     }
 
@@ -123,9 +168,10 @@ class SeoPagesTest extends TestCase
             ->assertRedirect(route('public.lesson', ['slug' => Seo::lessonSlug($lesson)]));
     }
 
-    public function test_the_sitemap_lists_every_page_in_every_language(): void
+    public function test_the_sitemap_lists_pages_in_every_language_and_a_lesson_once(): void
     {
-        $lesson = $this->publishedLesson();
+        $lesson = $this->publishedLesson(['language' => 'en']);
+        $slug = Seo::lessonSlug($lesson);
 
         $response = $this->get(route('sitemap'))->assertOk();
         $response->assertHeader('Content-Type', 'application/xml; charset=UTF-8');
@@ -136,11 +182,11 @@ class SeoPagesTest extends TestCase
         $this->assertInstanceOf(\SimpleXMLElement::class, simplexml_load_string($xml));
 
         foreach (Locales::codes() as $code) {
-            $this->assertStringContainsString(
-                '<loc>'.Seo::url('lesson', ['slug' => Seo::lessonSlug($lesson)], $code).'</loc>',
-                $xml,
-            );
+            $this->assertStringContainsString('<loc>'.Seo::url('lessons', [], $code).'</loc>', $xml);
         }
+
+        $this->assertSame(1, substr_count($xml, $slug), 'a lesson is listed once, in its own language');
+        $this->assertStringContainsString('<loc>'.Seo::url('lesson', ['slug' => $slug], 'en').'</loc>', $xml);
     }
 
     public function test_a_sitemap_rendered_on_another_host_is_never_served_to_the_real_one(): void

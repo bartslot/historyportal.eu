@@ -10,6 +10,8 @@
  * icons, drag-reordering — and should come through here too rather than keep its own copy.
  */
 
+import { DEFAULT_DURATION_MS } from '../scene/animations.js'
+
 /** Text layers, front-most first, in the order the Object list shows them. */
 export const textObjects = () => {
   const texts = window.__lessonTextLayer?._texts ?? []
@@ -29,7 +31,19 @@ export const artObjects = () => {
     target: `art:${l.asset_id}`,
     kind: 'art',
     label: l.title || (l.embed ? (l.embed.type === 'video' ? 'Video' : '3D model') : 'Icon'),
+    entrance: entranceSpan(l),
   }))
+}
+
+/**
+ * When a layer's entrance plays, in scene seconds: from its delay for as long as it takes
+ * (Appear's speed). Null when it has no entrance: it is simply there from the start.
+ */
+export const entranceSpan = (layer) => {
+  if (!layer?.anim || layer.anim === 'none') return null
+  const from = Number(layer.anim_delay) || 0
+  const ms = Number(layer.anim_duration) || DEFAULT_DURATION_MS
+  return { from, to: Math.round((from + ms / 1000) * 1000) / 1000 }
 }
 
 /** Speech and thought balloons (config.lines), as the Object list shows them: `bal_3` → `bal:3`. */
@@ -40,6 +54,19 @@ export const balloonObjects = () => (window.__balloons?.list() ?? []).map((b) =>
   start: b.start,
   end: b.end,
 }))
+
+/**
+ * The scene's background pictures, from whichever renderer is showing them (`window.__backgrounds`,
+ * scene/background-crop.js): one on a single scene, one per panel on a split, numbered there.
+ */
+export const backgroundObjects = (label = 'Background') => {
+  const list = window.__backgrounds?.list() ?? []
+  return list.map((b, i) => ({
+    target: `bg:${b.id}`,
+    kind: 'bg',
+    label: list.length > 1 ? `${label} ${i + 1}` : label,
+  }))
+}
 
 /**
  * Diorama items (config.diorama), front-most last like the stage lists them. They have no property
@@ -69,10 +96,30 @@ export const readObjectProperty = (target, property) => {
   }
 
   if (kind === 'bal') return window.__balloons?.value?.(`bal_${id}`, property) ?? null
+  if (kind === 'bg') return window.__backgrounds?.value?.(id, property) ?? null
   if (kind !== 'text' && kind !== 'rect') return null
   const item = (window.__lessonTextLayer?._texts ?? []).find((t) => String(t.id) === id)
   const value = item?.[property]
-  return Number.isFinite(value) ? value : null
+  if (property === 'color' && kind === 'text') return typeof value === 'string' && value ? value : TEXT_LOOK.color
+  if (Number.isFinite(value)) return value
+  // An unset look reads what it is drawn at: a diamond keys what the row shows, and 0 would key a
+  // text to nothing at scale or opacity.
+  if (kind === 'text' && item && property in TEXT_LOOK) return TEXT_LOOK[property]
+  // No stored width: the box wraps to its content. Read the width it is drawn at.
+  if (kind === 'text' && property === 'w') return measuredWidth(id)
+  return null
+}
+
+/** What TextOverlayLayer draws a text with when the field is not set. */
+const TEXT_LOOK = { color: '#f8fafc', colorOpacity: 1, scale: 1, rotation: 0, blur: 0, opacity: 1 }
+
+/** A text box's drawn width, as a % of the stage, or null while it is not on screen. */
+const measuredWidth = (id) => {
+  const host = window.__lessonTextLayer?.host
+  const node = host?.querySelector?.(`[data-text-id="${CSS.escape(id)}"]`)
+  const w = node?.offsetWidth
+  const hostW = host?.clientWidth
+  return w && hostW ? Math.round((w / hostW) * 1000) / 10 : null
 }
 
 /**
@@ -87,6 +134,8 @@ export const readObjectProperty = (target, property) => {
  */
 export const setObjectHidden = (target, hidden) => {
   const [kind, id] = String(target).split(':')
+  // The background: fade it right out rather than leave the stage blank behind a hidden node.
+  if (kind === 'bg') return void window.__backgrounds?.hide?.(id, hidden)
   const selector = kind === 'art'
     ? `[data-layer-id="art_${id}"], [data-layer-chrome="art_${id}"]`
     : kind === 'bal' ? `[data-balloon-id="bal_${id}"]` : `[data-text-id="${id}"]`
@@ -104,6 +153,7 @@ export const writeObjectProperty = (target, property, value) => {
   // through the helper that reaches both — see resources/js/scene/layer-overlays.js.
   if (kind === 'art') return void window.__setLayerProp?.(id, property, value)
   if (kind === 'bal') return void window.__balloons?.patch?.(`bal_${id}`, { [property]: value })
+  if (kind === 'bg') return void window.__backgrounds?.patch?.(id, { [property]: value })
 
   if (kind !== 'text' && kind !== 'rect') return
   window.__lessonTextLayer?.patch?.(id, { [property]: value })

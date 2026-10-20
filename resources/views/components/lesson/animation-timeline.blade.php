@@ -54,6 +54,7 @@
             'hold'           => __('Hold'),
             'custom'         => __('Custom bezier'),
         ],
+        'objectLabels' => ['background' => __('Background')],
         'propertyLabels' => [
             'x' => 'X', 'y' => 'Y', 'z' => 'Z', 'width' => 'W', 'height' => 'H',
             'scale' => __('Scale'), 'rotation' => __('Angle'), 'blur' => __('Blur'),
@@ -169,9 +170,8 @@
                 class="grid h-7 w-7 shrink-0 cursor-pointer place-items-center rounded hover:text-white"
                 :data-tooltip="loop ? @js(__('Looping')) : @js(__('Loop'))"
                 :aria-label="loop ? @js(__('Looping')) : @js(__('Loop'))">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992V4.356M20.015 9.348a8.25 8.25 0 0 0-14.03-3.028L3 8.25m0 6.402h4.992v4.992M3 14.652a8.25 8.25 0 0 0 14.03 3.028L21 15.75"/>
-            </svg>
+            {{-- Repeat, not refresh (Bart, 2026-10-17: "isn't there a hero icon for repeating?"). --}}
+            <x-icons.arrow-path-rounded-square class="h-4 w-4" />
         </button>
 
         <span class="h-4 w-px shrink-0 bg-panel-hairline" aria-hidden="true"></span>
@@ -215,7 +215,18 @@
     <div class="flex min-h-0 flex-1 overflow-y-auto overflow-x-hidden" data-timeline-tracks>
 
         {{-- Left: the object list, which is the same list the Object list panel shows. --}}
-        <div class="shrink-0 border-r border-panel-hairline" style="width: var(--timeline-label-col)">
+        <div class="relative shrink-0 border-r border-panel-hairline" style="width: var(--timeline-label-col)"
+             :style="labelColW ? { width: labelColW + 'px' } : {}" x-ref="labels" data-timeline-labels>
+
+            {{-- The column's right edge: drag for room for long names and value fields. Arrow
+                 keys step it, Home puts it back. Remembered per teacher. --}}
+            <div class="lp-grip absolute inset-y-0 -right-1 z-10 w-2" :data-dragging="colDrag ? '' : null"
+                 x-on:pointerdown="colStart($event)" x-on:pointermove="colMove($event)"
+                 x-on:pointerup="colEnd()" x-on:pointercancel="colEnd()" x-on:keydown="colKey($event)"
+                 tabindex="0" role="separator" aria-orientation="vertical" data-timeline-col-grip
+                 aria-label="{{ __('Resize the column') }}">
+                <span class="lp-grip-pill" aria-hidden="true"></span>
+            </div>
 
             {{-- Matches the ruler's height on the other side. Without it every lane sits one row
                  below the property it belongs to, and a keyframe on Altitude is drawn beside
@@ -253,7 +264,12 @@
                          :class="activeTarget === object.target && 'bg-white/5'"
                          :data-timeline-active="activeTarget === object.target ? 'true' : 'false'"
                          style="height: 38px">
+                    {{-- Double-click: every property of this object back to what it was before it
+                         was keyed. A gesture rather than a "Reset all" button, which took the room
+                         the name needs (Bart, 2026-10-16). --}}
                     <button type="button" x-on:click="selectObject(object.target)"
+                            x-on:dblclick="canResetObject(object.target) && resetObject(object.target)"
+                            :data-tooltip="canResetObject(object.target) ? @js(__('Double-click to reset all')) : null"
                             class="flex min-w-0 flex-1 cursor-pointer items-center gap-2 pl-4 text-left"
                             style="height: 38px" :data-timeline-group="object.target">
 {{-- The same glyph as the object list (window.__objIcons): T for text, a half for a panel, a
@@ -267,11 +283,6 @@
                         </svg>
                         <span class="truncate text-2xs font-semibold text-panel-value" x-text="object.label"></span>
                     </button>
-                    {{-- Every property of this object back to what it was before it was keyed. --}}
-                    <button type="button" x-show="canResetObject(object.target)" x-cloak
-                            x-on:click="resetObject(object.target)"
-                            :data-timeline-reset-all="object.target"
-                            class="shrink-0 cursor-pointer rounded px-1 text-3xs uppercase tracking-wide text-panel-label hover:bg-white/5 hover:text-white">{{ __('Reset all') }}</button>
                     <button type="button" x-on:click="toggleGroup(object.target)"
                             :data-timeline-toggle="object.target"
                             :aria-expanded="openGroups[object.target] ? 'true' : 'false'"
@@ -318,16 +329,14 @@
                                  hierarchy the moment two objects are open at once. --}}
                             <span class="mb-2 h-2.5 w-2 shrink-0 rounded-bl-[2px] border-b border-l border-panel-hairline"
                                   aria-hidden="true"></span>
+                            {{-- Double-click resets: the keys go and the property returns to what it was
+                                 before it was keyed. A gesture, not a Reset button: the button took
+                                 the width the value field needs (Bart, 2026-10-16). --}}
                             <span data-scrub class="shrink-0 cursor-col-resize select-none text-3xs uppercase tracking-wide text-panel-label"
-                                  style="width: calc(var(--settings-panel-label-w) - 0.75rem)" x-text="propertyLabel(property)"></span>
-                            {{-- Reset: the keys go and the property returns to what it was before it
-                                 was keyed. Only while it is animated; invisible rather than removed
-                                 otherwise, so the value fields stay in one column. --}}
-                            <button type="button" x-on:click.prevent="resetProperty(object.target, property.key)"
-                                    :class="!canReset(object.target, property.key) && 'invisible'"
-                                    :disabled="!canReset(object.target, property.key)"
-                                    :data-timeline-reset="object.target + ':' + property.key"
-                                    class="shrink-0 cursor-pointer rounded px-0.5 text-3xs uppercase tracking-wide text-panel-label hover:bg-white/5 hover:text-white">{{ __('Reset') }}</button>
+                                  style="width: calc(var(--settings-panel-label-w) - 0.75rem)" x-text="propertyLabel(property)"
+                                  x-on:dblclick.prevent="canReset(object.target, property.key) && resetProperty(object.target, property.key)"
+                                  :data-tooltip="canReset(object.target, property.key) ? @js(__('Double-click to reset')) : null"
+                                  :data-timeline-label="object.target + ':' + property.key"></span>
                             <template x-if="property.type === 'color'">
                                 <input type="color" data-timeline-value
                                        :value="valueAt(object.target, property.key) || '#ffffff'"
@@ -437,11 +446,14 @@
                             </div>
                             {{-- A balloon is on screen for a span of the scene: its clip, under its
                                  keyframe bar. The body moves it in time, the ends stretch it. --}}
-                            <template x-if="object.kind === 'bal'">
+                            {{-- The bar: a balloon's time on screen, or a figure's entrance (Appear:
+                                 from its delay, as long as its speed). Drag it to move it, an end to
+                                 stretch it. --}}
+                            <template x-if="object.kind === 'bal' || (object.kind === 'art' && object.entrance)">
                                 <div class="absolute flex cursor-grab items-center justify-between overflow-hidden rounded-[3px] bg-base-content/25"
                                      :data-timeline-span="object.target"
-                                     x-on:pointerdown="startBalloonSpan($event, object.target)"
-                                     :style="barStyle(balloonSpan(object.target)) + '; bottom: 3px; height: 6px'">
+                                     x-on:pointerdown="startBar($event, object.target)"
+                                     :style="barStyle(barOf(object.target)) + '; bottom: 3px; height: 6px'">
                                     <span class="pointer-events-none h-full w-1.5 bg-base-content/50"></span>
                                     <span class="pointer-events-none h-full w-1.5 bg-base-content/50"></span>
                                 </div>

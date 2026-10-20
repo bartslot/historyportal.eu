@@ -8,8 +8,10 @@ use App\Models\Scene;
 use App\Models\SvgAsset;
 use App\Services\SceneLayers;
 use App\Services\Support\LayerAmbient;
+use App\Services\Support\LayerFrames;
 use App\Services\Support\LayerSitIn;
 use App\Services\Support\ShotCamera;
+use App\Support\LayerEntrances;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 
@@ -449,6 +451,22 @@ trait EditsSceneArtwork
         $this->selectSceneInternal($scene->id);
     }
 
+    /** Appear's speed (LayerEntrances::SPEEDS) as the layer's entrance duration; Normal is 600 ms. */
+    public function setLayerSpeed(int $assetId, string $speed): void
+    {
+        if (isset(LayerEntrances::SPEEDS[$speed])) {
+            $natural = LayerEntrances::naturalMs(null, 'art');
+            $this->updateArtworkLayer($assetId, 'anim_duration', LayerEntrances::durationFor($speed, $natural) ?? $natural);
+        }
+    }
+
+    /** The timeline's entrance bar for this layer, moved or stretched: its delay (s) and length (ms). */
+    public function setLayerEntrance(int $assetId, float $delay, int $duration): void
+    {
+        $this->updateArtworkLayer($assetId, 'anim_delay', round($delay, 1));
+        $this->updateArtworkLayer($assetId, 'anim_duration', $duration);
+    }
+
     public function updateArtworkLayer(int $assetId, string $field, mixed $value): void
     {
         // Whitelist allowed fields with clamps.
@@ -507,6 +525,9 @@ trait EditsSceneArtwork
             'ambient_amount' => LayerAmbient::AMOUNT,
             // Blend into the scene (LayerSitIn): each a share 0..1, 0 = off.
             ...array_fill_keys(LayerSitIn::KEYS, LayerSitIn::RANGE),
+            // A sprite sheet's playback (LayerFrames): follow the wind, loop, or off; a loop's speed.
+            'frames_play' => LayerFrames::PLAYS,
+            'frames_fps' => LayerFrames::FPS,
         ];
 
         if (! array_key_exists($field, $whitelist)) {
@@ -530,10 +551,10 @@ trait EditsSceneArtwork
         $coercedValue = match ($field) {
             'depth', 'scale', 'opacity', 'blur', 'x', 'y', 'draw_time', 'anim_delay',
             'height', 'width', 'rotation', 'white_key', 'tint_opacity', 'ambient_speed', 'ambient_amount',
-            'waterline', 'reflection', 'contact_shadow', 'color_match', 'foam', 'speed' => (float) $value,
+            'waterline', 'reflection', 'contact_shadow', 'color_match', 'foam', 'speed', 'frames_fps' => (float) $value,
             'wobble' => (int) $value,
             'sway', 'grayscale', 'flip_x', 'flip_y' => (bool) $value,
-            'kind', 'blend', 'ink_preset', 'ink_fill', 'anim', 'anim_ease', 'anim_out', 'anim_out_ease', 'ambient' => (string) $value,
+            'kind', 'blend', 'ink_preset', 'ink_fill', 'anim', 'anim_ease', 'anim_out', 'anim_out_ease', 'ambient', 'frames_play' => (string) $value,
             default => $value,
         };
 
@@ -563,7 +584,7 @@ trait EditsSceneArtwork
         }
 
         // Validate enum-like fields.
-        if (in_array($field, ['kind', 'blend', 'ink_preset', 'ink_fill', 'anim', 'anim_ease', 'anim_out', 'anim_out_ease', 'ambient'], true)) {
+        if (in_array($field, ['kind', 'blend', 'ink_preset', 'ink_fill', 'anim', 'anim_ease', 'anim_out', 'anim_out_ease', 'ambient', 'frames_play'], true)) {
             if (! in_array($coercedValue, $whitelist[$field], true)) {
                 return;
             }

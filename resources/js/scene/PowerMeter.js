@@ -33,6 +33,8 @@ import { MIC_INPUTS, soundStep, rhythmStep, rhythmStart, registerSoundTuner } fr
 import { shakeStep, shakeStart, tiltStep, needsMotionPermission, requestMotionPermission } from './meter-inputs/motion.js'
 import { placeOverlay } from './card-place.js'
 import { finishOrder, raceDecided, finalOrder, crewFrom, ghostLevel, nextOpen } from './race.js'
+import { WordStream } from './word-stream.js'
+import { meterBar, paintBar } from './meter-bar.js'
 
 /** How long a full meter stays on screen before the payoff, and a gust of the react layer. */
 const FULL_HOLD_MS = 700
@@ -91,6 +93,10 @@ export function readMoment (raw = {}) {
       after: String(raw.race?.after || ''),
       afterSolo: String(raw.race?.after_solo || ''),
     },
+    // Words one by one over the picture (word-stream.js), or all at once on the card. A race keeps
+    // the card: its lanes and crews are built around it.
+    wordsStyle: raw.words_style === 'stream' && input === 'words' && !raw.race?.enabled ? 'stream' : 'buttons',
+    wordSeconds: Number(options.word_seconds) || 0,
     react: raw.react && typeof raw.react === 'object' ? raw.react : {},
     payoff: raw.payoff && typeof raw.payoff === 'object' ? raw.payoff : { type: 'none' },
   }
@@ -279,7 +285,7 @@ export class PowerMeter {
    *           onProgress?: (p: { levels: number[], ghost: ?number }) => void,
    *           onDone?: (outcome: { skipped: boolean, winner: ?number, team: ?string }) => void }} opts
    */
-  show ({ config, solo = false, best = null, skippable = true, onPhones = null, onWord = null, avoid = () => [], listen = null, listenMotion = null, requestMotion = null, onReact = null, onProgress = null, onDone = null }) {
+  show ({ config, solo = false, best = null, skippable = true, onPhones = null, onWord = null, avoid = () => [], listen = null, listenMotion = null, requestMotion = null, onReact = null, onProgress = null, onLevel = null, onDone = null }) {
     this.cfg = readMoment(config || {})
     this._solo = solo
     this._skippable = skippable
@@ -289,6 +295,13 @@ export class PowerMeter {
     this._spot = null
     this._onReact = onReact
     this._onProgress = onProgress
+    this._onLevel = onLevel
+    this._lastLevel = null
+    this._stream?.stop()
+    this._stream = null
+    this._streamLayer = null
+    this._barSlot = null
+    this._barFills = null
     this._onDone = onDone
     this._buttons = wordButtons(this.cfg)
     const race = this.cfg.race.enabled
@@ -351,6 +364,10 @@ export class PowerMeter {
   get names () { return [...this._names] }
 
   hide () {
+    this._stream?.stop()
+    this._stream = null
+    this._streamLayer = null
+    this._barSlot = null
     this._stopClock()
     clearInterval(this._ghostTimer)
     this._ghostTimer = null
@@ -389,8 +406,12 @@ export class PowerMeter {
       // A team's phone tells the server which word it found: each counts once per team.
       if (word.right) this._onWord?.(Number(word.id.slice(1)))
     }
-    if (result === 'full') this._fullTimer = setTimeout(() => this._finish(false), FULL_HOLD_MS)
+    if (result === 'full') {
+      this._stream?.stop()
+      this._fullTimer = setTimeout(() => this._finish(false), FULL_HOLD_MS)
+    }
     if (result !== 'used' && result !== 'done') this._render()
+    return result
   }
 
   // ── Sensing: the microphone (loudness, blow, rhythm, silence) or the phone's motion ──
@@ -535,7 +556,11 @@ export class PowerMeter {
   }
 
   _progress () {
-    this._onProgress?.({ levels: this.state.fills.map(f => Math.min(1, f / this.cfg.goal)), ghost: this._ghost })
+    const levels = this.state.fills.map(f => Math.min(1, f / this.cfg.goal))
+    this._onProgress?.({ levels, ghost: this._ghost })
+    // The wind for the world (wind-world.js): the fullest meter, told only when it changed.
+    const wind = Math.max(0, ...levels)
+    if (wind !== this._lastLevel) { this._lastLevel = wind; this._onLevel?.(wind) }
   }
 
   /** The teacher ends the race: finishers first, the rest by how far they got. */
@@ -546,6 +571,7 @@ export class PowerMeter {
 
   /** In place, many times a second: the meter and the live level, without rebuilding the card. */
   _paint () {
+    if (this._barSlot) paintBar(this._barSlot, this.state.fills, this.cfg.goal)
     this.state.fills.forEach((f, m) => {
       const bar = this.host.querySelector(`[data-meter="${m}"]`)
       if (bar) bar.value = f
@@ -607,6 +633,7 @@ export class PowerMeter {
 
   // ── Frame: a card over the panel where it hides the least of the picture it is about ──
   _render () {
+    if (this.cfg.wordsStyle === 'stream') return this._renderStream()
     const wrap = el('div', 'pointer-events-none absolute inset-0 flex items-end justify-center px-3 pb-28 sm:px-8')
     wrap.setAttribute('role', 'dialog')
     wrap.setAttribute('aria-label', this.cfg.name || this.cfg.meterLabel || t('Power meter'))
@@ -624,6 +651,66 @@ export class PowerMeter {
     this.host.replaceChildren(wrap)
     this._place(card)
     this._progress()
+  }
+
+  /**
+   * The word stream: the meter as a slim bar along the top (meter-bar.js) and the words one at a
+   * time over the picture (word-stream.js). The stream's layer is made once and never rebuilt (its
+   * word is mid-animation); a re-render only rebuilds the bar's turn chips and actions.
+   */
+  _renderStream () {
+    if (!this._streamLayer) {
+      this._barSlot = el('div', 'pointer-events-none absolute inset-x-0 top-0')
+      this._barSlot.setAttribute('role', 'group')
+      this._barSlot.setAttribute('aria-label', this.cfg.name || this.cfg.meterLabel || t('Power meter'))
+      this._streamLayer = el('div', 'pointer-events-none absolute inset-0 overflow-hidden')
+      this.host.replaceChildren(this._streamLayer, this._barSlot)
+      this._barSlot.style.top = `${this._chromeBottom()}px`
+      this._stream = new WordStream(this._streamLayer, {
+        words: this._buttons,
+        isUsed: (word) => isUsed(this.state, word),
+        onPick: (word, node) => this._tap(word, node),
+        seconds: this.cfg.wordSeconds,
+        avoid: () => this._avoidShare(),
+      })
+      this._stream.start()
+    }
+    const clock = this.cfg.seconds ? el('span', 'font-history text-xl font-bold tabular-nums text-primary', this._clockText()) : null
+    if (clock) { clock.dataset.momentClock = ''; clock.setAttribute('role', 'timer') }
+    const bar = meterBar({
+      label: this.cfg.meterLabel || t('Power meter'),
+      names: this._names,
+      meters: this.state.fills.length,
+      goal: this.cfg.goal,
+      prompt: this.cfg.prompt || this.cfg.name,
+      clock,
+      turns: this._turns(),
+      actions: this._foot(),
+    })
+    // The fills start where the last bar left them, then glide to the new state.
+    paintBar(bar, this._barFills ?? this.state.fills.map(() => 0), this.cfg.goal)
+    this._barSlot.replaceChildren(bar)
+    this._barFills = this.state.fills
+    ;(globalThis.requestAnimationFrame ?? setTimeout)(() => paintBar(bar, this.state.fills, this.cfg.goal))
+    this._progress()
+  }
+
+  /**
+   * The bar sits right under the player's top row when that row holds a control (the teacher's
+   * Edit scene), else along the very top: the two never overlap.
+   */
+  _chromeBottom () {
+    const row = document.querySelector('[data-player-chrome="top"]')
+    if (!row?.querySelector('button, a, img')) return 0
+    return Math.max(0, Math.round(row.getBoundingClientRect().bottom - this.host.getBoundingClientRect().top))
+  }
+
+  /** The heavy boxes (the reacting ship) as stage %, for the words to keep clear of. */
+  _avoidShare () {
+    const w = this.host.clientWidth || 1
+    const h = this.host.clientHeight || 1
+    return (this._avoid() || []).filter(a => (a.weight ?? 1) > 1)
+      .map(({ rect: r }) => ({ x: (r.x / w) * 100, y: (r.y / h) * 100, w: (r.w / w) * 100, h: (r.h / h) * 100 }))
   }
 
   /**

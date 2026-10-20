@@ -140,6 +140,20 @@ class MomentEditorTest extends TestCase
         Storage::disk('public')->assertExists(substr($audio, strlen('/storage/')));
     }
 
+    /** Infra audit 2026-10-17: a /try guest could trigger paid narration through this one action. */
+    public function test_a_demo_guest_cannot_renarrate_the_after_line(): void
+    {
+        $scene = $this->compose($this->wind());
+        $this->teacher->update(['is_guest_demo' => true]);
+        $tts = Mockery::mock(TtsService::class)->makePartial();
+        $tts->shouldNotReceive('generateAudioRaw');
+        $this->app->instance(TtsService::class, $tts);
+
+        $this->editor($scene)->call('renarrateMomentAfter')->assertDispatched('toast');
+
+        $this->assertSame('/storage/lessons/1/after.mp3', $scene->fresh()->config['moment']['after_audio']);
+    }
+
     public function test_the_teacher_switches_a_moment_to_the_microphone_and_its_meter_needs_no_words(): void
     {
         $scene = $this->compose($this->wind());

@@ -123,7 +123,7 @@ rsync -az --delete $DRY --stats \
   `# --delete treats the compiled files as removed and takes them. They do regenerate on the next` \
   `# request, but that leaves the first visitor after a deploy paying for package discovery, and` \
   `# a half-written manifest under concurrent requests is a 500 nobody can reproduce afterwards.` \
-  --exclude='vendor/' --exclude='node_modules/' --exclude='.git/' \
+  --exclude='vendor/' --exclude='vendor.prev/' --exclude='vendor.next/' --exclude='node_modules/' --exclude='.git/' \
   --exclude='tests/' --exclude='.claude/' \
   -e "ssh -p $PORT -i $KEY" \
   "$STAGE/" "$HOST:$DEST" | grep -E 'Number of|deleted' || true
@@ -132,6 +132,18 @@ rsync -az --delete $DRY --stats \
 
 echo "▸ post-deploy"
 ssh -p "$PORT" -i "$KEY" "$HOST" "cd $DEST && \
+  `# vendor/ is excluded from the rsync, so a changed composer.lock never reached prod (infra audit` \
+  `# 10-17, opus.4). Install when the lock differs from the one vendor was built from: into a copy,` \
+  `# swapped in only when the install succeeded, so live requests never see a half-updated vendor.` \
+  `# The previous vendor stays as vendor.prev, a one-command rollback.` \
+  if [ \"\$(md5sum composer.lock | cut -d' ' -f1)\" != \"\$(cat vendor/.deployed-lock.md5 2>/dev/null)\" ]; then \
+    echo '  composer.lock changed: installing into vendor.next' && \
+    rm -rf vendor.next && cp -a vendor vendor.next && \
+    COMPOSER_VENDOR_DIR=vendor.next composer install --no-dev --no-interaction --prefer-dist --no-scripts -q && \
+    md5sum composer.lock | cut -d' ' -f1 > vendor.next/.deployed-lock.md5 && \
+    rm -rf vendor.prev && mv vendor vendor.prev && mv vendor.next vendor && \
+    echo '  vendor swapped (previous kept as vendor.prev)' || { echo '  ✗ composer install failed; vendor untouched'; exit 1; }; \
+  fi && \
   composer dump-autoload -o -q && \
   php artisan storage:link && \
   php artisan config:clear -q && \
@@ -141,7 +153,14 @@ ssh -p "$PORT" -i "$KEY" "$HOST" "cd $DEST && \
   `# outlives every deploy. /launch shipped correctly — file present, view present — and 404'd,` \
   `# because routes-v7.php still held the pre-deploy table. A new route would silently never` \
   `# exist. Clearing is cheap; the cache is rebuilt below.` \
+  `# A rollback point before the schema can change: the database as it was (storage/app/snapshots/).` \
+  php artisan db:snapshot pre-deploy-$(git rev-parse --short HEAD) && \
   php artisan migrate --force && \
+  echo $(git rev-parse HEAD) > storage/app/deployed-commit && \
+  php artisan config:cache -q && \
+  `# ^ prod runs thread-safe mod_php, where reading .env per request is not thread-safe: requests` \
+  `# booted on Laravel's defaults (sqlite missing, cache password empty) and 500'd (audit 10-17).` \
+  `# A cached config never reads .env at request time. Shell env overrides no longer apply.` \
   php artisan route:cache -q && \
   php artisan view:cache -q && echo 'caches warmed'"
 

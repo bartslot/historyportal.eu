@@ -123,7 +123,7 @@ class TitleQrAndExpectTest extends TestCase
         $lesson = $this->lesson(['title_style' => 'banner', 'expect' => ['Aan boord', 'Wie woonden er al?'], 'qr_position' => 'top-left']);
 
         $html = $this->get(route('lesson.play', $lesson->lesson_code))->assertOk()->getContent();
-        $this->assertStringContainsString('"qr_position":"top-left"', $html);
+        $this->assertStringContainsString('"qr_position":"auto"', $html, 'a stored corner is ignored: the QR stands in its one place');
         $this->assertStringContainsString('"expect":["Aan boord","Wie woonden er al?"]', $html);
         $this->assertStringContainsString('data-title-expect="strip"', $html);
         $this->assertStringContainsString('data-title-qr', $html);
@@ -136,30 +136,28 @@ class TitleQrAndExpectTest extends TestCase
         $this->assertStringNotContainsString('data-title-qr ', $html);
     }
 
-    public function test_the_teacher_sets_the_qr_place_and_resets_it(): void
+    /**
+     * Bart, 2026-10-17: "plek QR code is 1 choice plus hiding it. you should be able to hide it
+     * only." One switch; the place is the bottom rail's right end (title-qr.js), opposite Start and
+     * clear of every title position preset. A corner stored before is ignored, never a "hidden".
+     */
+    public function test_the_teacher_shows_or_hides_the_qr_with_one_switch(): void
     {
-        $lesson = $this->lesson();
+        $lesson = $this->lesson(['qr_position' => 'top-right']);
         $component = Livewire::actingAs($this->teacher)
             ->test(Step3SceneConfigurator::class, ['lesson' => $lesson])
-            ->assertSeeText('QR position')
-            ->assertSee('data-qr-position="auto"', false);
+            ->assertSee('data-qr-toggle', false)
+            ->assertDontSee('id="title-qr-position"', false);
+        $this->assertSame('auto', $lesson->fresh()->qrPosition(), 'a stored corner is ignored');
         $before = $component->get('titleFrameSrc');
 
-        $component->call('setQrPosition', 'top-right');
-        $this->assertSame(['top-right', true], [$lesson->fresh()->qr_position, $lesson->fresh()->show_qr]);
-        $this->assertNotSame($before, $component->get('titleFrameSrc'));
-        $component->assertSee('data-qr-reset', false);
-
-        $component->call('setQrPosition', 'hidden');
+        $component->call('setShowQr', false);
         $this->assertSame('hidden', $lesson->fresh()->qrPosition());
-        $this->assertNull($lesson->fresh()->qr_position);
+        $this->assertNotSame($before, $component->get('titleFrameSrc'), 'the stage redraws at once');
 
-        $component->call('setQrPosition', 'over-the-face');
-        $this->assertSame('hidden', $lesson->fresh()->qrPosition());
-
-        $component->call('resetQrPosition');
+        $component->call('setShowQr', true);
         $this->assertSame('auto', $lesson->fresh()->qrPosition());
-        $component->assertDontSee('data-qr-reset', false);
+        $this->assertNull($lesson->fresh()->qr_position);
     }
 
     public function test_the_teacher_writes_the_expect_lines_and_resets_them(): void
@@ -219,18 +217,18 @@ class TitleQrAndExpectTest extends TestCase
         $composer = app(LessonComposer::class);
 
         $lesson = $composer->build($spec, $this->teacher, false)->fresh();
-        $this->assertSame('bottom-left', $lesson->qrPosition());
+        $this->assertSame('auto', $lesson->qrPosition(), 'a corner in a spec means: shown');
         $this->assertSame(['Hoe was het aan boord?', 'Een', 'Twee'], $lesson->expect);
         $this->assertCount(1, $lesson->title_keep_clear);
 
         $exported = app(LessonExporter::class)->toSpec($lesson);
-        $this->assertSame('bottom-left', $exported['qr_position']);
+        $this->assertArrayNotHasKey('qr_position', $exported, 'shown is the default: nothing to write');
         $this->assertSame(['Hoe was het aan boord?', 'Een', 'Twee'], $exported['expect']);
         $this->assertSame('face', $exported['title_keep_clear'][0]['kind']);
 
         // Through the exporter and back: the same lesson.
         $composer->build($exported + ['scenes' => $spec['scenes']], $this->teacher, false);
-        $this->assertSame(['bottom-left', ['Hoe was het aan boord?', 'Een', 'Twee']], [$lesson->fresh()->qrPosition(), $lesson->fresh()->expect]);
+        $this->assertSame(['auto', ['Hoe was het aan boord?', 'Een', 'Twee']], [$lesson->fresh()->qrPosition(), $lesson->fresh()->expect]);
 
         // Hidden is show_qr off; a spec without the keys leaves the teacher's choice alone.
         $composer->build(['qr_position' => 'hidden'] + $spec, $this->teacher, false);
@@ -238,7 +236,7 @@ class TitleQrAndExpectTest extends TestCase
         $lesson->refresh()->update(['show_qr' => true, 'qr_position' => 'top-right']);
         unset($spec['qr_position'], $spec['expect']);
         $composer->build($spec, $this->teacher, false);
-        $this->assertSame(['top-right', ['Hoe was het aan boord?', 'Een', 'Twee']], [$lesson->fresh()->qrPosition(), $lesson->fresh()->expect]);
+        $this->assertSame(['auto', true, ['Hoe was het aan boord?', 'Een', 'Twee']], [$lesson->fresh()->qrPosition(), $lesson->fresh()->show_qr, $lesson->fresh()->expect]);
 
         // The defaults export as nothing.
         $lesson->refresh()->update(['qr_position' => null, 'expect' => null, 'title_keep_clear' => null]);

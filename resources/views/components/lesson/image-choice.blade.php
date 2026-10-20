@@ -34,10 +34,12 @@
                 @foreach ($candidates as $cand)
                     @php $isChosen = $isOverride && $chosen === $cand['url']; @endphp
                     <button type="button" wire:click="{{ $select }}(@js($cand['url']))" data-tooltip="{{ $cand['label'] }}"
-                            aria-label="{{ $cand['label'] }}" data-kind="image" data-zoom
+                            aria-label="{{ $cand['label'] }}" aria-pressed="{{ $isChosen ? 'true' : 'false' }}"
+                            data-kind="image" data-zoom @if ($isChosen) data-chosen @endif
                             @class([
-                                'rounded ring-1 transition',
-                                'ring-primary' => $isChosen,
+                                'rounded transition',
+                                'ring-2 ring-primary' => $isChosen,
+                                'ring-1' => ! $isChosen,
                                 'ring-slate-700 hover:ring-slate-400' => ! $isChosen,
                             ])>
                         <img src="{{ $cand['url'] }}" alt="" loading="lazy" decoding="async"

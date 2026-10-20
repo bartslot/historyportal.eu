@@ -15,7 +15,7 @@ return [
     |
     */
 
-    'lesson_title' => env('DEMO_LESSON_TITLE', 'Abel Tasman: two voyages to the unknown south'),
+    'lesson_title' => env('DEMO_LESSON_TITLE', 'Abel Tasman: the voyage into the unknown'),
 
     /*
     |--------------------------------------------------------------------------
@@ -99,7 +99,7 @@ return [
 
         // English lessons (Canon windows written in English keep an English goal: the goal is in
         // the lesson's own language, or the hero promises a language the lesson is not in)
-        'Abel Tasman: two voyages to the unknown south' => 'The VOC and the voyages of discovery',
+        'Abel Tasman: the voyage into the unknown' => 'The VOC and the voyages of discovery',
         'The VOC: the world\'s first multinational' => 'The VOC and world trade',
         'The Hunebedden: the oldest monuments in the Netherlands' => 'The first farmers and their monuments',
         'William of Orange and the Dutch Revolt' => 'The Dutch Revolt',

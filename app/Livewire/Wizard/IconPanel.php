@@ -12,7 +12,6 @@ use Illuminate\Contracts\View\View;
 use InvalidArgumentException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
-use Livewire\Attributes\Session;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use RuntimeException;
@@ -65,24 +64,27 @@ class IconPanel extends Component
         $this->collection = 'history-line';
         $this->category = $asset->category;
         $this->subcategory = '';
+        $this->rememberTab();
         unset($this->icons, $this->groups, $this->eras);
         $this->dispatch('sequence-imported');
         $this->dispatch('toast', message: __(':name is in the library, :m m tall.', ['name' => $asset->title, 'm' => $asset->height_m]), type: 'success');
     }
 
     // The dock is rebuilt whenever the teacher picks another scene, so the filters are kept in
-    // the session — otherwise every scene change would throw them back to the first set.
+    // the session, per lesson: a scene change keeps the teacher's tab, a lesson opened for the
+    // first time starts on the characters of its era (Bart, 2026-10-17: "it's more logical to
+    // place characters in the scene than any other thing").
 
-    /** Top row: which set of icons (line-art | arrows | shapes). */
-    #[Session(key: 'icons.collection')]
-    public string $collection = 'line-art';
+    /** Top row: which set (history-line | line-art | arrows | shapes). */
+    public string $collection = self::OPENS_ON[0];
 
     /** Second row: a whole category, or one subcategory inside it. Empty = the whole collection. */
-    #[Session(key: 'icons.category')]
-    public string $category = '';
+    public string $category = self::OPENS_ON[1];
 
-    #[Session(key: 'icons.subcategory')]
     public string $subcategory = '';
+
+    /** Where a lesson's drawer opens: History line ▸ Characters. */
+    private const OPENS_ON = ['history-line', 'figures'];
 
     /** The lesson being edited: its period is the era the history-line library opens on. */
     #[Locked]
@@ -97,8 +99,35 @@ class IconPanel extends Component
     public function mount(?int $lessonId = null): void
     {
         $this->lessonId = $lessonId;
-        $lesson = $lessonId ? Lesson::find($lessonId) : null;
-        $this->era = (string) session($this->eraKey(), $lesson ? (LibraryEra::forLesson($lesson) ?? '') : '');
+        $tab = session($this->tabKey());
+        if (is_array($tab)) {
+            [$this->collection, $this->category, $this->subcategory] = array_map('strval', array_pad(array_values($tab), 3, ''));
+        }
+        $this->era = (string) session($this->eraKey(), $this->openingEra());
+    }
+
+    /**
+     * The era a lesson's drawer opens on: its own (LibraryEra::forLesson), when the library has
+     * characters of that era; else "All times", so the drawer never opens empty.
+     */
+    private function openingEra(): string
+    {
+        $lesson = $this->lessonId ? Lesson::find($this->lessonId) : null;
+        $era = $lesson ? LibraryEra::forLesson($lesson) : null;
+        $hasCharacters = $era !== null && SvgAsset::query()->bundled()
+            ->where('collection', self::OPENS_ON[0])->where('category', self::OPENS_ON[1])->where('era', $era)->exists();
+
+        return $hasCharacters ? $era : '';
+    }
+
+    private function tabKey(): string
+    {
+        return 'icons.tab.'.($this->lessonId ?? 0);
+    }
+
+    private function rememberTab(): void
+    {
+        session([$this->tabKey() => [$this->collection, $this->category, $this->subcategory]]);
     }
 
     /** "Alle tijden" is '' — the teacher's pick sticks for this lesson across scene changes. */
@@ -113,30 +142,50 @@ class IconPanel extends Component
         return 'icons.era.'.($this->lessonId ?? 0);
     }
 
+    /** A set whose groups carry tijdvakken in config (the line-art icons), rather than its pictures. */
+    private function hasGroupEras(): bool
+    {
+        return is_array(config('lesson-taxonomy.group_eras.'.$this->collection));
+    }
+
     /**
-     * The era chips: every era the library has pictures for, in historical order. Only the
-     * history-line collection has eras; other sets show no chip row.
+     * The era chips: every era the set has pictures for (history-line: the pictures' own era;
+     * line-art: its groups', LibraryEra::groupEras), plus the one chosen, in historical order.
+     * Sets without eras (arrows, shapes) show no chip row.
      *
      * @return list<array{era: string, label: string}>
      */
     #[Computed]
     public function eras(): array
     {
-        if ($this->collection !== self::ERA_COLLECTION) {
+        if ($this->collection === self::ERA_COLLECTION) {
+            $eras = SvgAsset::query()->bundled()->where('collection', $this->collection)->whereNotNull('era')->distinct()->pluck('era')->all();
+        } elseif ($this->hasGroupEras()) {
+            $eras = $this->groupRows()->flatMap(fn ($row) => LibraryEra::groupEras($this->collection, $row->category, $row->subcategory) ?? [])->all();
+        } else {
             return [];
         }
+        if ($this->era !== '' && LibraryEra::isKnown($this->era)) {
+            $eras[] = $this->era;   // the lesson's chip shows even where this set has nothing of it
+        }
 
-        return SvgAsset::query()->bundled()->where('collection', $this->collection)->whereNotNull('era')
-            ->distinct()->pluck('era')
+        return collect($eras)->unique()
             ->sortBy(fn (string $era) => LibraryEra::order($era))
             ->map(fn (string $era) => ['era' => $era, 'label' => LibraryEra::label($era)])
             ->values()->all();
     }
 
-    /** The era the grid filters on: the chip, when the library has pictures for it. */
+    /** The era the grid filters on: the chosen chip, in a set that has eras. */
     public function activeEra(): string
     {
-        return in_array($this->era, array_column($this->eras(), 'era'), true) ? $this->era : '';
+        return $this->era !== '' && LibraryEra::isKnown($this->era) && $this->eras() !== [] ? $this->era : '';
+    }
+
+    /** The set's (category, subcategory) pairs. */
+    private function groupRows(): \Illuminate\Support\Collection
+    {
+        return SvgAsset::query()->bundled()->where('collection', $this->collection)->whereNotNull('category')
+            ->distinct()->orderBy('category')->orderBy('subcategory')->get(['category', 'subcategory']);
     }
 
     /** Icons shown at once. The grid scrolls; the dock is only a few rows tall. */
@@ -147,7 +196,8 @@ class IconPanel extends Component
      * them. Alphabetical would open the panel on Arrows, which is not what anyone came for.
      * A collection missing from this list still shows, after the ones that are in it.
      */
-    private const ORDER = ['line-art', 'arrows', 'shapes'];
+    // By how often a teacher needs them: characters (history-line) first, icons and shapes last.
+    private const ORDER = ['history-line', 'line-art', 'arrows', 'shapes'];
 
     /**
      * Collections whose second row is ONE row of main categories, in this order and under these
@@ -155,7 +205,7 @@ class IconPanel extends Component
      * read as duplicates. Folder names stay as they are: stored paths and CDN URLs depend on them.
      */
     private const MAIN_CATEGORIES = [
-        'history-line' => ['figures' => 'Characters', 'nature' => 'Nature', 'architecture' => 'Architecture', 'props' => 'Misc', 'backdrops' => 'Backdrops'],
+        'history-line' => ['figures' => 'Characters', 'backdrops' => 'Backdrops', 'props' => 'Misc', 'nature' => 'Nature', 'architecture' => 'Architecture'],
     ];
 
     public function selectCollection(string $collection): void
@@ -167,6 +217,7 @@ class IconPanel extends Component
         $this->collection = $collection;
         $this->category = '';
         $this->subcategory = '';
+        $this->rememberTab();
     }
 
     /** A pill in the second row: a category (whole group) or one of its subcategories. */
@@ -174,6 +225,7 @@ class IconPanel extends Component
     {
         $this->category = $category;
         $this->subcategory = $subcategory;
+        $this->rememberTab();
     }
 
     /**
@@ -228,14 +280,15 @@ class IconPanel extends Component
                 ->values()->all();
         }
 
-        $rows = SvgAsset::query()
-            ->bundled()
-            ->where('collection', $this->collection)
-            ->whereNotNull('category')
-            ->distinct()
-            ->orderBy('category')
-            ->orderBy('subcategory')
-            ->get(['category', 'subcategory']);
+        $rows = $this->groupRows();
+        // Under an era chip, a set with group eras shows the groups of that era first, then what is
+        // timeless; deep time (dinosaurs) only under "All times".
+        if ($this->hasGroupEras() && ($era = $this->activeEra()) !== '') {
+            $eras = fn ($row) => LibraryEra::groupEras($this->collection, $row->category, $row->subcategory);
+            $rows = $rows->filter(fn ($row) => LibraryEra::groupFits($eras($row), $era))
+                ->sortBy(fn ($row) => (LibraryEra::groupEras($this->collection, $row->category) === null ? '1' : '0').$row->category."\0".$row->subcategory)
+                ->values();
+        }
 
         $pills = [];
         foreach ($rows as $row) {
@@ -264,8 +317,17 @@ class IconPanel extends Component
             ->where('collection', $this->collection)
             ->when($this->category !== '', fn ($q) => $q->where('category', $this->category))
             ->when($this->subcategory !== '', fn ($q) => $q->where('subcategory', $this->subcategory))
-            // An era AND the category; a timeless picture (no era) fits every era.
-            ->when($this->activeEra() !== '', fn ($q) => $q->where(fn ($q) => $q->where('era', $this->activeEra())->orWhereNull('era')))
+            // An era AND the category; a timeless picture (no era) fits every era. A set with group
+            // eras (line-art) keeps the groups of that era and the timeless ones.
+            ->when($this->activeEra() !== '' && ! $this->hasGroupEras(), fn ($q) => $q->where(fn ($q) => $q->where('era', $this->activeEra())->orWhereNull('era')))
+            ->when($this->activeEra() !== '' && $this->hasGroupEras(), fn ($q) => $q->where(function ($q) {
+                $q->whereRaw('1 = 0');
+                foreach ($this->groupRows() as $row) {
+                    if (LibraryEra::groupFits(LibraryEra::groupEras($this->collection, $row->category, $row->subcategory), $this->activeEra())) {
+                        $q->orWhere(fn ($q) => $q->where('category', $row->category)->where('subcategory', $row->subcategory));
+                    }
+                }
+            }))
             ->orderBy('title')
             ->limit(self::PAGE)
             ->get();

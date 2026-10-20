@@ -6,6 +6,7 @@ namespace App\Livewire\Wizard\Concerns;
 
 use App\Enums\TitlePosition;
 use App\Models\Lesson;
+use App\Services\Support\WebpEncoder;
 use App\Support\TitlePoster;
 
 /**
@@ -25,6 +26,9 @@ trait EditsTitleScreen
      * title setting, so the frame reloads exactly when there is something new to show.
      */
     public string $titleFrameSrc = '';
+
+    /** A picture the teacher uploads for the title screen (the component uses WithFileUploads). */
+    public $titleUpload = null;
 
     public function refreshTitleFrame(): void
     {
@@ -66,6 +70,35 @@ trait EditsTitleScreen
             return;
         }
         $this->lesson->update(['title_image' => preg_replace('#^(?:https?:)?//[^/]+(?=/storage/)#i', '', $url)]);
+        $this->lesson->refresh();
+        $this->refreshTitleFrame();
+    }
+
+    /**
+     * The title text from its two parts as the panel shows them: the series, and the subtitle after
+     * ": " (Lesson::titleParts, the player's splitTitle). This lesson only: each translation is a
+     * lesson of its own with its own title. Never emptied, never cut.
+     */
+    public function setTitleText(string $series, string $subtitle): void
+    {
+        $series = trim($series);
+        $subtitle = trim($subtitle);
+        $title = $subtitle === '' ? $series : "{$series}: {$subtitle}";
+        if ($series === '' || mb_strlen($title) > Lesson::TITLE_MAX_CHARS) {
+            return;
+        }
+        $this->lesson->update(['title' => $title]);
+        $this->lesson->refresh();
+        $this->refreshTitleFrame();
+    }
+
+    /** The teacher's own picture: stored like any upload (WebP), then the title screen's picture. */
+    public function updatedTitleUpload(): void
+    {
+        $this->validate(['titleUpload' => 'image|mimes:jpg,jpeg,png,webp,gif|max:8192']);   // 8 MB
+        $path = WebpEncoder::storeUpload($this->titleUpload, "lessons/{$this->lesson->id}/uploads");
+        $this->reset('titleUpload');
+        $this->lesson->update(['title_image' => '/storage/'.$path]);
         $this->lesson->refresh();
         $this->refreshTitleFrame();
     }
@@ -116,23 +149,12 @@ trait EditsTitleScreen
         $this->refreshTitleFrame();
     }
 
-    /** The join QR: auto (placed clear of faces and the screen's elements), a corner, or hidden. */
-    public function setQrPosition(string $position): void
+    /** The join QR on or off. Its place is not a choice: the bottom rail's right end (title-qr.js). */
+    public function setShowQr(bool $show): void
     {
-        if (! in_array($position, ['auto', 'hidden', ...TitlePoster::QR_CORNERS], true)) {
-            return;
-        }
-        $this->lesson->update([
-            'show_qr' => $position !== 'hidden',
-            'qr_position' => in_array($position, TitlePoster::QR_CORNERS, true) ? $position : null,
-        ]);
+        $this->lesson->update(['show_qr' => $show, 'qr_position' => null]);
         $this->lesson->refresh();
         $this->refreshTitleFrame();
-    }
-
-    public function resetQrPosition(): void
-    {
-        $this->setQrPosition('auto');
     }
 
     /** One of the "what you can expect" lines; an empty line drops out, the rest close up. */

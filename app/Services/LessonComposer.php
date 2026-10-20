@@ -11,6 +11,7 @@ use App\Models\Scene;
 use App\Models\User;
 use App\Services\Lessons\LibraryLayers;
 use App\Services\Lessons\MomentSpec;
+use App\Services\Lessons\PredictSpec;
 use App\Services\Lessons\SceneDialogue;
 use App\Services\Lessons\TeamGameSpec;
 use App\Services\Support\AudioEncoder;
@@ -136,6 +137,9 @@ class LessonComposer
             // Links this lesson to its siblings in other languages (Lesson::translations()). A
             // spec that does not say has none, same as before this key existed.
             'translation_group' => $spec['translation_group'] ?? null,
+            // What the class should learn and how it fits the curriculum, shown on the lesson's
+            // public page. Authored here so a rebuild keeps it.
+            'teacher_guide' => $spec['teacher_guide'] ?? null,
             'grade_level' => (string) ($spec['grade_level'] ?? '6'),
             'tone' => (string) ($spec['tone'] ?? 'storytelling'),
             'source_mode' => 'internet',
@@ -169,6 +173,11 @@ class LessonComposer
             }
             $lesson->title_style = $style;
         }
+        // An imported lesson carries its version on, never backwards; this rebuild then counts as a
+        // change of its own (LessonVersion, once for the whole build).
+        if (is_numeric($spec['content_version'] ?? null) && (int) $spec['content_version'] > (int) ($lesson->content_version ?? 1)) {
+            $lesson->content_version = (int) $spec['content_version'];
+        }
         if (array_key_exists('show_lesson_types', $spec)) {
             $lesson->show_lesson_types = (bool) $spec['show_lesson_types'];
         }
@@ -179,7 +188,8 @@ class LessonComposer
                 throw new \InvalidArgumentException("Spec qr_position '{$qr}' must be auto, hidden or one of: ".implode(', ', TitlePoster::QR_CORNERS).'.');
             }
             $lesson->show_qr = $qr !== 'hidden';
-            $lesson->qr_position = in_array($qr, TitlePoster::QR_CORNERS, true) ? $qr : null;
+            // A corner (older specs) means shown: the QR has one place now (Lesson::qrPosition).
+            $lesson->qr_position = null;
         }
         // "What you can expect": 1-3 short lines on the title screen, kept as the default too (the editor's Reset).
         if (array_key_exists('expect', $spec)) {
@@ -216,6 +226,7 @@ class LessonComposer
             $scene = match ($type) {
                 'quiz' => $this->quizScene($lesson, $sceneSpec, $order, ++$gameIndex),
                 'team' => $this->teamScene($lesson, $sceneSpec, $order, ++$gameIndex),
+                'predict' => $this->predictScene($lesson, $sceneSpec, $order, ++$gameIndex),
                 'gallery' => $this->galleryScene($lesson, $sceneSpec, $order),
                 'map' => $this->mapScene($lesson, $sceneSpec, $order),
                 'voyage' => $this->voyageScene($lesson, $sceneSpec, $order),
@@ -328,8 +339,8 @@ class LessonComposer
     {
         $extra = (array) ($s['extra_config'] ?? []);
         $shots = (array) ($s['shots'] ?? []);
-        // Two comic panels: `split` => ['dir' => 'h'|'v', 'at' => 0.25..0.75], the panels are its
-        // first two `shots` (SceneSplit). Checked before anything is deleted, in preflightCameras.
+        // Comic panels: `split` => ['layout' => SceneSplit::LAYOUTS key, 'at' => [...]] (the first
+        // version's ['dir' => 'h'|'v', 'at' => 0.5] still reads), one `shots` entry per panel. Checked before anything is deleted, in preflightCameras.
         if (array_key_exists('split', $s)) {
             $extra['split'] = SceneSplit::normalize($s['split']);
         }
@@ -360,8 +371,8 @@ class LessonComposer
             $where = 'Spec scene #'.($i + 1).(isset($s['id']) ? " '{$s['id']}'" : '');
             ShotCamera::fromSpec($s['camera'] ?? null, $where);
             ShotCamera::entryFromSpec($s['entry'] ?? null, $where);
-            if (array_key_exists('split', $s) && (SceneSplit::normalize($s['split']) === null || count((array) ($s['shots'] ?? [])) < 2)) {
-                throw new \InvalidArgumentException("{$where}: `split` is ['dir' => 'h'|'v', 'at' => 0.25..0.75] with two `shots`, one per panel.");
+            if (array_key_exists('split', $s) && (SceneSplit::normalize($s['split']) === null || count((array) ($s['shots'] ?? [])) < SceneSplit::panes($s['split']))) {
+                throw new \InvalidArgumentException("{$where}: `split` is ['layout' => one of ".implode(', ', array_keys(SceneSplit::LAYOUTS)).", 'at' => [...]] with one `shots` entry per panel.");
             }
             foreach ((array) ($s['shots'] ?? []) as $j => $shot) {
                 ShotCamera::fromSpec($shot['camera'] ?? null, "{$where}, shot {$j}");
@@ -845,6 +856,39 @@ class LessonComposer
                 'explanation' => $q['e'] ?? null,
                 'points' => 10,
             ]);
+        }
+
+        return $scene;
+    }
+
+    /**
+     * A predict moment (PredictSpec): the narrator asks (`script`, or the question itself), the class
+     * answers on paper, on the board or on their own devices, and a later debrief asks why. The spec
+     * entry is cleaned at this boundary; its rubric stays on the server (the player never gets it).
+     *
+     * @param  array<string,mixed>  $s
+     */
+    private function predictScene(Lesson $lesson, array $s, int $order, int $gameIndex): Scene
+    {
+        $predict = PredictSpec::normalize($s);
+
+        $scene = $lesson->scenes()->create([
+            'order' => $order,
+            'kind' => 'game',
+            'game_type' => 'predict',
+            'game_segment_index' => $gameIndex,
+            'duration_seconds' => max(60, $predict['seconds'] + 60),
+            'background_color' => '#0f172a',
+            'chapter_name' => $s['chapter'] ?? null,
+            'location' => $s['location'] ?? null,
+            'year' => $s['year'] ?? null,
+            'script_segment' => $s['script'] ?? $predict['question'],
+            'status' => 'pending',
+            'config' => ['predict' => $predict],
+        ]);
+
+        if (! empty($s['backdrop'])) {
+            $this->library->attachLibraryBackdrop($scene, (string) $s['backdrop'], $order);
         }
 
         return $scene;

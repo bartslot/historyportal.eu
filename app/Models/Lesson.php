@@ -9,6 +9,7 @@ use App\Enums\NarrativeFramework;
 use App\Enums\TitlePosition;
 use App\Models\Concerns\BelongsToTeacher;
 use App\Support\LessonTypes;
+use App\Support\LessonVersion;
 use App\Support\MediaUrl;
 use App\Support\TitlePoster;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -30,6 +31,9 @@ class Lesson extends Model
 
     public const EXPECT_MAX_CHARS = 60;
 
+    /** The title column is a string(255). */
+    public const TITLE_MAX_CHARS = 255;
+
     protected $fillable = [
         'teacher_id',
         'avatar_id',
@@ -46,6 +50,7 @@ class Lesson extends Model
         'title',
         'language',
         'translation_group',
+        'teacher_guide',
         'narration_edit_characters',
         'topic',
         'topic_id',
@@ -104,6 +109,13 @@ class Lesson extends Model
 
     protected static function booted(): void
     {
+        // A content change is a new version (LessonVersion); a new lesson starts at 1.
+        static::updated(function (Lesson $lesson): void {
+            if (LessonVersion::contentChanged($lesson->getChanges(), LessonVersion::LESSON_IGNORED)) {
+                LessonVersion::changed($lesson->id);
+            }
+        });
+
         static::creating(function (Lesson $lesson): void {
             if (empty($lesson->lesson_code)) {
                 do {
@@ -168,6 +180,7 @@ class Lesson extends Model
             'intel_drop_at_minutes' => 'integer',
             'outline' => 'array',
             'game_config' => 'array',
+            'teacher_guide' => 'array',
             'include_game' => 'boolean',
             'quiz_question_count' => 'integer',
             'team_count' => 'integer',
@@ -181,6 +194,8 @@ class Lesson extends Model
             'expect' => 'array',
             'expect_default' => 'array',
             'title_keep_clear' => 'array',
+            'content_version' => 'integer',
+            'content_version_at' => 'datetime',
             'show_lesson_types' => 'boolean',
         ];
     }
@@ -300,10 +315,9 @@ class Lesson extends Model
     /**
      * Which wizard step a lesson card on the dashboard should open.
      *
-     * Teachers open an existing lesson to WATCH it far more often than to re-edit its settings, so a
-     * lesson that has scenes goes straight to Preview (step 5) instead of resuming wherever the
-     * wizard was last left. Two cases still resume instead, because a preview would be useless:
-     * a lesson mid-generation (its progress bar is the point) and one with no scenes yet.
+     * A lesson that has scenes opens in the editor (step 4) instead of resuming wherever the wizard
+     * was last left: opening a lesson from the dashboard means working on it. Two cases still resume
+     * instead: a lesson mid-generation (its progress bar is the point) and one with no scenes yet.
      *
      * Returns null for "resume at wizard_step", which is what LessonWizard::mount() does with no
      * ?step= in the URL.
@@ -317,7 +331,9 @@ class Lesson extends Model
             return null;
         }
 
-        return $this->firstScene !== null ? 5 : null;
+        // The editor (4), not Preview (5): "edit a lesson, will still go to step 5, and not 4"
+        // (Bart, 2026-10-16). Preview is one click away inside the editor (Play).
+        return $this->firstScene !== null ? 4 : null;
     }
 
     public function firstScene(): \Illuminate\Database\Eloquent\Relations\HasOne
@@ -328,6 +344,16 @@ class Lesson extends Model
     public function source(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
         return $this->hasOne(LessonSource::class)->latestOfMany();
+    }
+
+    /** The kerndoelen, tijdvakken, kenmerkende aspecten and Canon windows this lesson covers. */
+    public function curriculumGoals(): BelongsToMany
+    {
+        return $this->belongsToMany(CurriculumGoal::class)
+            ->withPivot('fit')
+            ->withTimestamps()
+            ->orderByRaw("CASE type WHEN 'canonvenster' THEN 1 WHEN 'tijdvak' THEN 2 WHEN 'kenmerkend_aspect' THEN 3 ELSE 4 END")
+            ->orderBy('sort');
     }
 
     /**
@@ -546,6 +572,46 @@ class Lesson extends Model
     }
 
     /**
+     * Story-game publish gate: every branch OPTION scene must carry meter deltas
+     * (config.branch_effects.deltas) before the lesson can go live, or the player would show a
+     * choice with no consequences. A lesson that is not a story game has none.
+     *
+     * @return list<int> incomplete branch group numbers, ascending
+     */
+    public function incompleteStoryGameGroups(): array
+    {
+        if ($this->game_type !== 'story_game') {
+            return [];
+        }
+
+        return $this->scenes()
+            ->whereIn('branch_role', ['option_a', 'option_b'])
+            ->get()
+            ->filter(fn (Scene $s) => empty((($s->config ?? [])['branch_effects']['deltas'] ?? null)))
+            ->map(fn (Scene $s) => (int) ($s->branch_group ?? 0))
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * The title's two parts as the title screen shows them: the series, and the subtitle after the
+     * first ": " (resources/js/title-letters.js splitTitle).
+     *
+     * @return array{series: string, subtitle: string}
+     */
+    public function titleParts(): array
+    {
+        $title = (string) $this->title;
+        $at = strpos($title, ': ');
+
+        return $at === false
+            ? ['series' => $title, 'subtitle' => '']
+            : ['series' => substr($title, 0, $at), 'subtitle' => substr($title, $at + 2)];
+    }
+
+    /**
      * The poster the title screen draws (a comic candidate), or null for the logo, letters and plain styles.
      *
      * @return array<string, mixed>|null
@@ -554,7 +620,40 @@ class Lesson extends Model
     {
         $style = $this->titleStyle();
 
-        return in_array($style, TitlePoster::BUILT_IN, true) ? null : TitlePoster::for($this->translation_group, $style);
+        $poster = in_array($style, TitlePoster::BUILT_IN, true) ? null : TitlePoster::for($this->translation_group, $style);
+
+        // A picture the teacher picked is the title screen's picture, whichever poster draws it,
+        // upright on a phone as well.
+        if ($poster && trim((string) $this->title_image) !== '') {
+            $picture = (string) $this->titleBgUrl();
+            $poster = TitlePoster::withPicture($poster, $picture);
+            if ($poster['portrait'] ?? null) {
+                $poster['portrait'] = TitlePoster::withPicture($poster['portrait'], $picture);
+            }
+        }
+
+        return $poster;
+    }
+
+    /**
+     * The upright comic poster as one still picture (a tall card, a tall share image), while the
+     * comic poster is this lesson's title style; null for the logo, letters and plain styles.
+     */
+    public function titlePosterStillUrl(): ?string
+    {
+        $still = $this->titlePoster()['portrait']['still_url'] ?? null;
+
+        return is_string($still) ? $still : null;
+    }
+
+    /**
+     * The picture for a tall card (2:3, 5:8): the upright poster's still while the comic poster is
+     * the title style, even over poster_image (the composer fills that with a landscape photo);
+     * otherwise the card picture as everywhere.
+     */
+    public function tallCardImageUrl(): ?string
+    {
+        return $this->titlePosterStillUrl() ?? $this->cardImageUrl();
     }
 
     /** The style the title screen shows: the teacher's choice while the series has it, else the first. */
@@ -576,14 +675,14 @@ class Lesson extends Model
         return ($this->show_lesson_types ?? true) ? LessonTypes::of($this) : [];
     }
 
-    /** Where the title screen's join QR stands: auto (placed clear of faces and elements), a corner, or hidden. */
+    /**
+     * The title screen's join QR: shown ('auto': its one place, the bottom rail's right end,
+     * title-qr.js) or hidden. A corner stored before 2026-10-17 is ignored (Bart: "you should be
+     * able to hide it only"); show_qr keeps a hidden one hidden.
+     */
     public function qrPosition(): string
     {
-        if (! ($this->show_qr ?? true)) {
-            return 'hidden';
-        }
-
-        return in_array($this->qr_position, TitlePoster::QR_CORNERS, true) ? $this->qr_position : 'auto';
+        return ($this->show_qr ?? true) ? 'auto' : 'hidden';
     }
 
     /**
@@ -909,6 +1008,13 @@ class Lesson extends Model
         foreach ($this->scenes()->ordered()->get() as $scene) {
             $push($this->publicMediaUrl($scene->skybox_image_path), 'Scene panorama');
             $push($this->publicMediaUrl($scene->image_path), 'Scene image');
+            // Every shot / split panel holds its own picture; a panel left behind by going back
+            // to one picture is still the teacher's image and must stay findable.
+            foreach (($scene->shots ?? []) as $shot) {
+                foreach (['image_path', 'bg_path', 'hero_path'] as $key) {
+                    $push($this->publicMediaUrl(is_array($shot) ? ($shot[$key] ?? null) : null), 'Scene image');
+                }
+            }
             $cfg = $scene->config ?? [];
             foreach (($cfg['stop_images'] ?? []) as $u) {
                 $push(is_string($u) ? $u : ($u['url'] ?? null), 'Landfall image');

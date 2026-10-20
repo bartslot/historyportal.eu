@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Support;
 
+use App\Support\LayerEntrances;
+
 /**
  * Balloons a teacher adds in the editor: entries in the scene's config.lines, the same list
  * SceneDialogue writes and BalloonLayer.js draws. A balloon is silent text, never spoken (only the
@@ -13,7 +15,7 @@ namespace App\Services\Support;
  * SceneDialogue shape (speaker, text, start, end, figure):
  *   kind   'speech' | 'thought' (a cloud with a trail of circles)
  *   at     [x, y] 0..1 of the stage (a split scene: of its panel), the balloon's middle
- *   tail   {tip: [x, y] 0..1, bend} where the tail points, dragged out on the stage
+ *   tail   {tip: [x, y], bend} where the tail points, dragged out on the stage (past the panel is fine)
  *   panel  0|1 on a split scene, the panel it sits in
  *   scale  size factor (corner handle); opacity 0..1 (keyframed); anim  its entrance
  *   tail.root  where the tail leaves the outline (0..1, clockwise from the top-left), pinned by
@@ -49,10 +51,15 @@ final class SpeechBalloons
     /** The longest a scene runs, s: a balloon's start and end stay inside it. */
     private const MAX_TIME = 3600.0;
 
-    /** A tip may sit a little past the panel edge: the renderer runs it to the edge. */
-    private const TIP_MIN = -0.5;
+    /**
+     * How far past its panel a balloon's middle and its tail tip may sit, in the panel's own
+     * fractions. On a split scene both may cross the panel border into the next panel, the way
+     * comic lettering breaks the frame (Bart, 2026-10-16); a quarter panel reaches three widths
+     * across the stage. The renderer bounds them by the whole stage.
+     */
+    private const REACH_MIN = -4.0;
 
-    private const TIP_MAX = 1.5;
+    private const REACH_MAX = 5.0;
 
     /** Where a new balloon's middle goes: centred, high, clear of the faces below. */
     private const NEW_AT = [0.5, 0.22];
@@ -112,7 +119,7 @@ final class SpeechBalloons
             $line['kind'] = $patch['kind'];
         }
         if (array_key_exists('at', $patch)) {
-            $at = self::point($patch['at'], 0.0, 1.0);
+            $at = self::point($patch['at'], self::REACH_MIN, self::REACH_MAX);
             if ($at !== null) {
                 $line['at'] = $at;
             }
@@ -128,6 +135,14 @@ final class SpeechBalloons
         }
         if (array_key_exists('anim', $patch) && in_array($patch['anim'], self::ENTRANCES, true)) {
             $line['anim'] = $patch['anim'];
+        }
+        // Appear's speed as the entrance's length, ms. Absent: the entrance as it always played.
+        if (array_key_exists('anim_duration', $patch)) {
+            if (is_numeric($patch['anim_duration'])) {
+                $line['anim_duration'] = (int) max(LayerEntrances::MIN_MS, min(LayerEntrances::MAX_MS, (int) round((float) $patch['anim_duration'])));
+            } else {
+                unset($line['anim_duration']);
+            }
         }
 
         return self::withSpan($line, $patch);
@@ -222,7 +237,7 @@ final class SpeechBalloons
             return $line;
         }
         $next = (array) ($line['tail'] ?? []);
-        $tip = self::point($tail['tip'] ?? null, self::TIP_MIN, self::TIP_MAX);
+        $tip = self::point($tail['tip'] ?? null, self::REACH_MIN, self::REACH_MAX);
         if ($tip !== null) {
             $next['tip'] = $tip;
         }

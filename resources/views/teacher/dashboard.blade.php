@@ -43,7 +43,7 @@
                         x-show="open"
                         x-transition.origin.top.right
                         @click.outside="open = false"
-                        class="absolute right-0 top-12 z-30 w-72 rounded-xl border border-slate-700 bg-slate-900 p-4 shadow-2xl"
+                        class="absolute right-0 top-12 z-30 w-72 rounded-xl border border-slate-700 bg-slate-900 p-4"
                         role="dialog"
                         aria-label="{{ __('Your narrator') }}"
                     >
@@ -69,6 +69,10 @@
             </a>
         </div>
     </header>
+
+    @if ($continueLesson)
+        @include('teacher.partials.continue-lesson')
+    @endif
 
     <section aria-labelledby="classes-heading">
         <div class="mb-5 flex items-end justify-between gap-4">
@@ -100,7 +104,7 @@
                     @php $classResult = $classResults[$classroom->id] ?? null; @endphp
                     <a
                         href="{{ route('teacher.classes.manage', $classroom) }}"
-                        class="group rounded-xl border border-slate-800 bg-slate-900/30 p-5 transition hover:-translate-y-0.5 hover:border-primary/30 hover:bg-slate-900/60"
+                        class="group rounded-xl border border-slate-800 bg-slate-900/30 p-5 transition hover:border-primary/30 hover:bg-slate-900/60"
                     >
                         <div class="flex items-start justify-between gap-3">
                             <div class="min-w-0">

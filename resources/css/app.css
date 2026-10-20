@@ -559,7 +559,6 @@
     line-height: 1.22;
     text-align: center;
     text-wrap: balance;
-    box-shadow: 0 0.2em 0.6em rgb(0 0 0 / 0.25);
 }
 .lp-balloon__tail { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 /* A thought: the words sit on a cloud (balloon-shape.js cloudPath) instead of the rounded box. */
@@ -573,18 +572,34 @@
 .lp-balloon[data-selected] .lp-balloon__bubble { outline: 2px solid var(--color-primary); outline-offset: 4px; }
 .lp-balloon[data-kind="thought"][data-selected] .lp-balloon__bubble { outline-offset: 0; }
 
+/* ─── Fields: flat, focus in amber ───────────────────────────────────
+   Keyboard focus stays plainly visible (WCAG 2.4.7) and flat: the field's border turns amber,
+   far over 3:1 on the navy panel. No glow, no ring around it, and no inset shadow under the
+   field either. UNLAYERED on purpose: DaisyUI paints .input/.select/.textarea from a later layer
+   (a white focus outline, an inset highlight), and a layer beats specificity, so a rule inside
+   @layer components never showed. --input-color is DaisyUI's own focus colour; :focus-within
+   covers a label.input wrapper (x-ui.stepper-field). Buttons and links keep their outline. */
+.input, .select, .textarea { box-shadow: none; }
+.input:focus, .select:focus, .textarea:focus,
+.input:focus-within, .select:focus-within, .textarea:focus-within {
+    --input-color: var(--color-primary);
+    border-color: var(--color-primary);
+    outline: none;
+    box-shadow: none;
+}
+
 /* ─── DaisyUI component overrides — Learning Portal brand ───────────── */
 @layer components {
 
-    /* Card: deep gradient surface + subtle amber hover border */
+    /* Card: deep gradient surface and a hairline. FLAT (Bart, 2026-10-02 and 2026-10-17): no
+       drop shadow, no glow, no lift; a hover only brightens the hairline, and not in amber,
+       which belongs to the public site. tests/Unit/FlatSurfacesTest.php keeps it that way. */
     .card {
         background: linear-gradient(145deg, oklch(22% 0.033 264) 0%, oklch(15% 0.032 264) 100%);
         border: 1px solid rgba(255,255,255,0.07);
-        box-shadow: 0 4px 24px rgba(0,0,0,0.55), 0 1px 4px rgba(0,0,0,0.35);
     }
     .card:hover {
-        border-color: color-mix(in oklab, var(--color-primary) 28%, transparent);
-        box-shadow: 0 4px 24px rgba(0,0,0,0.55), 0 0 32px color-mix(in oklab, var(--color-primary) 18%, transparent);
+        border-color: rgba(255,255,255,0.16);
     }
 
     /* The .btn-primary and .btn-ghost overrides that used to sit here — an amber gradient, an
@@ -652,17 +667,12 @@
         border: 1px solid var(--color-dropdown-border) !important;
     }
 
-    .input:focus, .select:focus, .textarea:focus {
-        border-color: color-mix(in oklab, var(--color-primary) 55%, transparent);
-        box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-primary) 18%, transparent);
-        outline: none;
-    }
-
-    /* Modal / drawer backdrop */
+    /* Modal: its own surface and a hairline, never a shadow (flat, 2026-10-17). DaisyUI casts a
+       25px shadow off .modal-box from a later layer, hence !important, as .dropdown-content above. */
     .modal-box {
         background: linear-gradient(145deg, oklch(22% 0.033 264) 0%, oklch(15% 0.032 264) 100%);
-        border: 1px solid rgba(255,255,255,0.08);
-        box-shadow: 0 24px 80px rgba(0,0,0,0.7);
+        box-shadow: none !important;
+        border: 1px solid var(--color-panel-hairline) !important;
     }
 
     /* Navbar: frosted glass bar */
@@ -676,7 +686,6 @@
     /* Progress: amber fill with glow */
     .progress::-webkit-progress-value {
         background: linear-gradient(90deg, var(--color-primary), var(--color-link));
-        box-shadow: 0 0 8px color-mix(in oklab, var(--color-primary) 50%, transparent);
     }
     .progress::-moz-progress-bar {
         background: linear-gradient(90deg, var(--color-primary), var(--color-link));
@@ -1172,7 +1181,7 @@ html[data-inspector-w] aside[data-resizable-drawer] {
     font-weight: 500;
     line-height: 1.3;
     white-space: nowrap;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+    border: 1px solid var(--color-panel-hairline);   /* flat: a hairline, no shadow */
     pointer-events: none;          /* never stands between the pointer and the control */
     opacity: 0;
     transition: opacity 120ms ease-out;
@@ -1299,7 +1308,6 @@ html[data-inspector-w] aside[data-resizable-drawer] {
     width: 10px;
     border-radius: 9999px;
     background: #fff;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.6);
 }
 .lp-volume::-moz-range-track {
     height: 3px;
@@ -1317,7 +1325,6 @@ html[data-inspector-w] aside[data-resizable-drawer] {
     border: none;
     border-radius: 9999px;
     background: #fff;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.6);
 }
 .lp-volume:focus-visible {
     outline: 2px solid rgba(255,255,255,0.7);
@@ -1358,38 +1365,15 @@ html[data-inspector-w] aside[data-resizable-drawer] {
 }
 
 @layer components {
-    /* The dot's glow breathes. Slow and shallow on purpose: it should read as alive at the edge of
-       vision, never as something asking to be looked at. Only the shadow animates — size and
-       position stay put, so nothing about the pointer's precision moves. */
-    @keyframes landing-cursor-breathe {
-        0%, 100% {
-            box-shadow: 0 0 18px rgba(255, 255, 255, 0.42), 0 0 42px rgba(255, 255, 255, 0.16);
-        }
-        50% {
-            box-shadow: 0 0 26px rgba(255, 255, 255, 0.62), 0 0 60px rgba(255, 255, 255, 0.26);
-        }
-    }
-
     .landing-cursor {
         /* Fully white. It was 90% over a near-black page, which reads as slightly grey rather than
-           as a light source. */
+           as a light source. No glow around it: the layout is flat (2026-10-17). */
         opacity: 1;
-        animation: landing-cursor-breathe 3.2s var(--ease-move) infinite;
-    }
-
-    /* A pulsing glow at the centre of vision is exactly what motion sensitivity struggles with, so
-       it holds still at its brightest instead. */
-    @media (prefers-reduced-motion: reduce) {
-        .landing-cursor {
-            animation: none;
-            box-shadow: 0 0 26px rgba(255, 255, 255, 0.62), 0 0 60px rgba(255, 255, 255, 0.26);
-        }
     }
 
     .landing-cursor--portal-bg {
         border-color: rgba(255, 255, 255, 0.98);
         background-color: rgba(255, 255, 255, 0.98);
-        box-shadow: 0 0 32px rgba(255, 255, 255, 0.48);
         -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='black'/%3E%3Ccircle cx='32' cy='32' r='30' fill='white'/%3E%3Cpath d='M24 21 L42 32 L24 43 Z' fill='black'/%3E%3C/svg%3E");
         mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='black'/%3E%3Ccircle cx='32' cy='32' r='30' fill='white'/%3E%3Cpath d='M24 21 L42 32 L24 43 Z' fill='black'/%3E%3C/svg%3E");
         -webkit-mask-size: 100% 100%;
@@ -1693,8 +1677,8 @@ html[data-inspector-w] aside[data-resizable-drawer] {
         box-shadow: 2px 0 0 rgba(255, 255, 255, 0.85);
     }
 
-    /* The two things the hero asks you to do. Both lift on hover and press back down on click,
-       so the pointer always gets an answer; the icons carry the difference between them. */
+    /* The two things the hero asks you to do. Flat: no hover lift (2026-10-17); a press still
+       answers the pointer with a small push in. The icons carry the difference between them. */
     .hero-action {
         display: inline-flex;
         align-items: center;
@@ -1707,12 +1691,7 @@ html[data-inspector-w] aside[data-resizable-drawer] {
         transition:
             transform 160ms var(--ease-enter),
             background-color 220ms var(--ease-enter),
-            border-color 220ms var(--ease-enter),
-            box-shadow 220ms var(--ease-enter);
-    }
-
-    .hero-action:hover {
-        transform: translateY(-1px);
+            border-color 220ms var(--ease-enter);
     }
 
     /* Press is faster than hover — the acknowledgement has to land under the finger. */
@@ -1729,11 +1708,6 @@ html[data-inspector-w] aside[data-resizable-drawer] {
     .hero-action--primary {
         background-color: #fff;
         color: var(--color-base-100);
-        box-shadow: 0 12px 30px -14px rgba(2, 6, 23, 0.95);
-    }
-
-    .hero-action--primary:hover {
-        box-shadow: 0 20px 44px -14px rgba(2, 6, 23, 1);
     }
 
     .hero-action__play {
@@ -1835,9 +1809,6 @@ html[data-inspector-w] aside[data-resizable-drawer] {
         background:
             radial-gradient(circle, rgba(125, 211, 252, 0.96) 0%, rgba(56, 189, 248, 0.45) 24%, rgba(14, 165, 233, 0.08) 58%, transparent 72%);
         filter: blur(2px);
-        box-shadow:
-            0 0 60px rgba(56, 189, 248, 0.6),
-            0 0 140px rgba(14, 165, 233, 0.35);
     }
 
     .hero-portal-ring {
@@ -1849,9 +1820,6 @@ html[data-inspector-w] aside[data-resizable-drawer] {
         translate: -50% -50%;
         border-radius: 9999px;
         border: 1px solid rgba(125, 211, 252, 0.22);
-        box-shadow:
-            inset 0 0 40px rgba(125, 211, 252, 0.1),
-            0 0 80px rgba(56, 189, 248, 0.18);
     }
 
     .hero-portal-halo {
@@ -1873,9 +1841,6 @@ html[data-inspector-w] aside[data-resizable-drawer] {
         top: 0;
         border-radius: 1.1rem;
         border: 1px solid rgba(255, 255, 255, 0.18);
-        box-shadow:
-            0 24px 80px rgba(0, 0, 0, 0.5),
-            0 0 24px rgba(125, 211, 252, 0.16);
         object-fit: cover;
         backface-visibility: hidden;
         transform-style: preserve-3d;
@@ -1909,7 +1874,6 @@ html[data-inspector-w] aside[data-resizable-drawer] {
     font-weight: 600;
     padding: 4px 10px;
     border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
     border: 1px solid rgba(243, 234, 214, 0.15);
 }
 
@@ -1962,7 +1926,7 @@ html[data-inspector-w] aside[data-resizable-drawer] {
     border-radius: 12px;
     background: rgba(15, 23, 42, 0.9);   /* base-100 navy, as the colour slider and the deck */
     color: rgba(243, 234, 214, 0.8);
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(243, 234, 214, 0.15);   /* flat: the same hairline as the territory tag */
 }
 
 .maplibregl-map .maplibregl-ctrl-attrib.maplibregl-compact .maplibregl-ctrl-attrib-inner a {

@@ -36,7 +36,43 @@ final class JsTranslations
     /** @return array<string, string> */
     public static function forBrowser(): array
     {
-        return array_merge(self::quiz(), self::player(), self::editor(), self::teamGame(), self::powerMeter(), self::testSession());
+        return array_merge(self::quiz(), self::player(), self::editor(), self::teamGame(), self::powerMeter(), self::predict(), self::testSession());
+    }
+
+    /**
+     * The predict moment (scene/PredictMoment.js) and the board's "Devices in class?" question.
+     *
+     * @return array<string, string>
+     */
+    private static function predict(): array
+    {
+        return [
+            'Whole class' => __('Whole class'),
+            'Why did it happen?' => __('Why did it happen?'),
+            'What will happen?' => __('What will happen?'),
+            'You thought' => __('You thought'),
+            ':name thought' => __(':name thought'),
+            'What happened' => __('What happened'),
+            'Your prediction is saved.' => __('Your prediction is saved.'),
+            'Show what happened' => __('Show what happened'),
+            'Send my answer' => __('Send my answer'),
+            'Save my prediction' => __('Save my prediction'),
+            'Everyone answers on their own device.' => __('Everyone answers on their own device.'),
+            'Write your answer on paper.' => __('Write your answer on paper.'),
+            'The class\'s answer' => __('The class\'s answer'),
+            'Who answers' => __('Who answers'),
+            'Save answer' => __('Save answer'),
+            'Type the class\'s answer' => __('Type the class\'s answer'),
+            'Reading your answer…' => __('Reading your answer…'),
+            'We could not save it. You can go on.' => __('We could not save it. You can go on.'),
+            'Saved. Your teacher will look at it.' => __('Saved. Your teacher will look at it.'),
+            'No devices' => __('No devices'),
+            'Own devices' => __('Own devices'),
+            'Children write on paper. You can type the class\'s answer.' => __('Children write on paper. You can type the class\'s answer.'),
+            'Every child plays on their own device.' => __('Every child plays on their own device.'),
+            'Devices in class?' => __('Devices in class?'),
+            'Class' => __('Class'),
+        ];
     }
 
     /**
@@ -165,6 +201,7 @@ final class JsTranslations
             'Number :n, :role: what could go wrong?' => __('Number :n, :role: what could go wrong?'),
             'Choose within your team who is 1, 2, 3 and 4.' => __('Choose within your team who is 1, 2, 3 and 4.'),
             'Next turn' => __('Next turn'),
+            'Next: :name' => __('Next: :name'),
             'Team size' => __('Team size'),
             'Ready' => __('Ready'),
             'Not yet confirmed' => __('Not yet confirmed'),

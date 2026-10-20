@@ -23,7 +23,7 @@
  * at a few dozen instructions a pixel.
  */
 
-import maplibregl from 'maplibre-gl'
+import maplibregl from '../maplibre.js'
 import { buildSphereMesh, cameraInPlanetSpace, buildProgram, SHELL_PROJECT_GLSL, SPHERE_SPAN_GLSL } from './planet-mesh.js'
 
 const LAYER_ID = 'tm-atmosphere'
@@ -214,7 +214,8 @@ export const createAtmosphereLayer = ({
   const programFor = (shaderData) => {
     const key = shaderData.variantName
     if (programs.has(key)) return programs.get(key)
-    const program = buildProgram(gl, vertexSource(shaderData), fragmentSource(), 'tm-atmosphere')
+    // ES 3.00: MapLibre 6's globe prelude declares an `out`, which ES 1.00 cannot compile.
+    const program = buildProgram(gl, vertexSource(shaderData), fragmentSource(), 'tm-atmosphere', { es300: true })
     const entry = {
       program,
       attribs: {

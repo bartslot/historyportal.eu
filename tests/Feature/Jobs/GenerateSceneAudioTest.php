@@ -232,6 +232,41 @@ class GenerateSceneAudioTest extends TestCase
         });
     }
 
+    /**
+     * Prod 2026-10-18: lesson 63's narrator is edge-tts, which Microsoft refuses from SiteGround, so
+     * TtsService reads the SAME voice through Azure (edge voice ids are Azure Neural names). The
+     * Problems view called all 47 scenes "a stand-in voice" and buried the real problems.
+     */
+    public function test_an_edge_narrator_read_by_azure_in_the_same_voice_is_not_a_downgrade(): void
+    {
+        $narrator = Narrator::create([
+            'name' => 'Serge', 'slug' => 'serge-edge', 'gender' => 'male',
+            'voice_provider' => 'edge_tts', 'voice_id' => 'nl-NL-MaartenNeural',
+            'voice_speed' => 1.0, 'is_active' => true, 'sort_order' => 1,
+        ]);
+        $lesson = Lesson::create([
+            'teacher_id' => User::factory()->create()->id, 'avatar_id' => $narrator->id,
+            'topic' => 'X', 'subject' => 'history', 'grade_level' => '9th',
+        ]);
+        $scene = Scene::create([
+            'lesson_id' => $lesson->id, 'order' => 1, 'kind' => 'narration', 'script_segment' => 'Hallo.',
+            'image_path' => 'x.png', 'audio_path' => 'a.mp3', 'status' => 'ready',
+            'audio_provider' => 'azure', 'audio_voice' => 'nl-NL-MaartenNeural',
+        ]);
+
+        $this->assertFalse($scene->fresh()->narrationWasDowngraded());
+
+        // Older runs recorded no voice name (47 of lesson 63's scenes): unknown is no evidence.
+        $scene->update(['audio_voice' => null]);
+        $this->assertFalse($scene->fresh()->narrationWasDowngraded());
+
+        // A different Azure voice, or macOS say, still IS a stand-in.
+        $scene->update(['audio_voice' => 'nl-NL-FennaNeural']);
+        $this->assertTrue($scene->fresh()->narrationWasDowngraded());
+        $scene->update(['audio_provider' => 'macos_say', 'audio_voice' => null]);
+        $this->assertTrue($scene->fresh()->narrationWasDowngraded());
+    }
+
     private function sceneWithElevenLabsNarrator(string $slug): Scene
     {
         $narrator = Narrator::create([
@@ -297,5 +332,39 @@ class GenerateSceneAudioTest extends TestCase
         $this->assertSame('azure', $scene->audio_provider);
         $this->assertFalse($scene->narrationWasDowngraded());
         $this->assertNull($scene->error_message);
+    }
+
+    /**
+     * Error scan 2026-10-18: all 14 "failed" scenes on prod still had audio for their current text.
+     * A re-narration of that same text (a voice change) failed, and the scene was marked failed:
+     * a red dot and a publish gate that refused the lesson, while the class heard the right words.
+     * A failed run leaves a scene that still has its own audio playable; it keeps the error.
+     */
+    public function test_a_failed_re_narration_leaves_a_scene_with_its_own_audio_playable(): void
+    {
+        $lesson = Lesson::create(['teacher_id' => User::factory()->create()->id, 'topic' => 'X', 'subject' => 'history', 'grade_level' => '9th']);
+        $make = fn (array $extra) => Scene::create($extra + [
+            'lesson_id' => $lesson->id, 'order' => 1, 'kind' => 'narration', 'script_segment' => 'Hello world.',
+            'image_path' => 'x.png', 'status' => 'generating',
+        ]);
+        $withAudio = $make(['audio_path' => 'a.mp3', 'audio_script_hash' => sha1('Hello world.')]);
+        $olderAudio = $make(['order' => 2, 'audio_path' => 'b.mp3', 'audio_script_hash' => sha1('An older text.')]);
+        $none = $make(['order' => 3]);
+        $this->mock(TtsService::class, function ($mock): void {
+            $mock->shouldReceive('prepareSpeechText')->andReturnUsing(fn ($t) => $t);
+            $mock->shouldReceive('generateAudioRaw')->andReturn(null);
+        });
+
+        foreach ([$withAudio, $olderAudio, $none] as $scene) {
+            try {
+                (new GenerateSceneAudio($scene->id))->handle(app(TtsService::class));
+                $this->fail('the job still fails, so the queue records it');
+            } catch (\RuntimeException) {
+            }
+        }
+
+        $this->assertSame(['ready', 'TTS service returned no audio.'], [$withAudio->fresh()->status, $withAudio->fresh()->error_message]);
+        $this->assertSame('failed', $olderAudio->fresh()->status, 'its audio is for another text: the class would hear the wrong words');
+        $this->assertSame('failed', $none->fresh()->status);
     }
 }

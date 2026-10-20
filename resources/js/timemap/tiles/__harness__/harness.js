@@ -13,7 +13,7 @@
  * the capped run IS the status quo, measured, and the difference between the two is the fix.
  */
 
-import maplibregl from 'maplibre-gl'
+import maplibregl from '../../../maplibre.js'
 import { buildSphereMesh, buildProgram, FACING_CAMERA_GLSL, SHELL_PROJECT_GLSL, cameraInPlanetSpace } from '../../planet-mesh.js'
 import { TERRARIUM_TERRAIN, cameraFromMap, createTilePyramid } from '../index.js'
 

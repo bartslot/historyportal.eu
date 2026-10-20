@@ -66,6 +66,25 @@ return [
     | listed here and a picture without an era are timeless (shown under every era).
     | Values are keys of `periods` above. See App\Support\LibraryEra.
     */
+    /*
+    | The tijdvakken of a group in a collection whose pictures carry no era of their own (the
+    | line-art icons): by subcategory, else category. A list of `periods` keys; [] is deep time
+    | (dinosaurs: no human history, shown only under "All times"); a group not listed is timeless.
+    | Same chips, same filter as the history-line library. See App\Support\LibraryEra::groupEras().
+    */
+    'group_eras' => [
+        'line-art' => [
+            'Dinosaurs' => [],
+            'Prehistoric' => ['hunters-farmers'],
+            'Cave drawings' => ['hunters-farmers'],
+            'Civilisation' => ['hunters-farmers'],
+            'Hunters & Farmers' => ['hunters-farmers'],
+            'Stone Age' => ['hunters-farmers'],
+            'Civilisations' => ['hunters-farmers', 'greeks-romans'],
+            'Egyptians' => ['hunters-farmers', 'greeks-romans'],
+        ],
+    ],
+
     'library_eras' => [
         'tasman' => 'regents-rulers',
         'dante' => 'cities-states',

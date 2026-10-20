@@ -12,8 +12,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * A dashboard lesson card opens straight on Preview (wizard step 5) rather than resuming whatever
- * step the wizard was last left on — teachers open an existing lesson to watch it.
+ * A dashboard lesson card opens the lesson in the editor (wizard step 4) rather than resuming
+ * whatever step the wizard was last left on, and the lesson still being worked on sits big at the
+ * top of the dashboard (Bart, 2026-10-16).
  */
 class LessonCardEntryStepTest extends TestCase
 {
@@ -46,10 +47,11 @@ class LessonCardEntryStepTest extends TestCase
         return $lesson->fresh();
     }
 
-    public function test_a_lesson_with_scenes_opens_on_preview(): void
+    /** Bart, 2026-10-16: "edit a lesson, will still go to step 5, and not 4". Editing = the editor. */
+    public function test_a_lesson_with_scenes_opens_in_the_editor(): void
     {
         foreach ([LessonStatus::Published, LessonStatus::Previewable, LessonStatus::Configuring, LessonStatus::ScenesReady] as $status) {
-            $this->assertSame(5, $this->lesson($status)->cardEntryStep(), $status->value.' should open Preview');
+            $this->assertSame(4, $this->lesson($status)->cardEntryStep(), $status->value.' should open the editor');
         }
     }
 
@@ -72,14 +74,14 @@ class LessonCardEntryStepTest extends TestCase
     }
 
     /** The dashboard must render the step-5 URL, and must not regress into an N+1 per card. */
-    public function test_the_dashboard_links_a_ready_lesson_straight_to_preview(): void
+    public function test_the_dashboard_links_a_ready_lesson_to_the_editor(): void
     {
         $lesson = $this->lesson(LessonStatus::Published);
 
         $this->actingAs($this->teacher)
             ->get(route('teacher.dashboard'))
             ->assertOk()
-            ->assertSee(route('teacher.lessons.wizard', ['lesson' => $lesson->id, 'step' => 5]), escape: false);
+            ->assertSee(route('teacher.lessons.wizard', ['lesson' => $lesson->id, 'step' => 4]), escape: false);
     }
 
     public function test_the_dashboard_links_a_generating_lesson_to_the_resume_url(): void
@@ -102,5 +104,29 @@ class LessonCardEntryStepTest extends TestCase
         \Livewire\Livewire::actingAs($this->teacher)
             ->test(\App\Livewire\LessonWizard::class, ['lesson' => $lesson])
             ->assertSet('step', 4);
+    }
+
+    public function test_the_lesson_being_worked_on_is_big_at_the_top(): void
+    {
+        // Bart: "Continue editing with the lesson big first on dashboard in view, if you are still
+        // working on a lesson."
+        $this->lesson(LessonStatus::Published)->update(['title' => 'Old published lesson']);
+        $working = $this->lesson(LessonStatus::Configuring);
+        $working->update(['title' => 'De reis van Abel Tasman']);
+
+        $this->actingAs($this->teacher)
+            ->get(route('teacher.dashboard'))
+            ->assertOk()
+            ->assertSeeInOrder(['data-continue-lesson', route('teacher.lessons.wizard', ['lesson' => $working->id, 'step' => 4]), 'De reis van Abel Tasman', 'classes-heading'], escape: false);
+    }
+
+    public function test_no_continue_card_when_every_lesson_is_published(): void
+    {
+        $this->lesson(LessonStatus::Published);
+
+        $this->actingAs($this->teacher)
+            ->get(route('teacher.dashboard'))
+            ->assertOk()
+            ->assertDontSee('data-continue-lesson', escape: false);
     }
 }

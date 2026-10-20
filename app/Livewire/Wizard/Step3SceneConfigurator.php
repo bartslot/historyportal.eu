@@ -21,8 +21,10 @@ use App\Livewire\Wizard\Concerns\EditsSceneBalloons;
 use App\Livewire\Wizard\Concerns\EditsSplitPanels;
 use App\Livewire\Wizard\Concerns\EditsStoryGame;
 use App\Livewire\Wizard\Concerns\EditsMoment;
+use App\Livewire\Wizard\Concerns\EditsPredict;
 use App\Livewire\Wizard\Concerns\EditsTeamGame;
 use App\Livewire\Wizard\Concerns\EditsTitleScreen;
+use App\Livewire\Wizard\Concerns\FixesLessonProblems;
 use App\Livewire\Wizard\Concerns\UndoesSceneEdits;
 use App\Models\AnimationClip;
 use App\Models\City;
@@ -31,10 +33,14 @@ use App\Models\Scene;
 use App\Models\StrategyGame;
 use App\Services\Billing\NarrationCreditLedger;
 use App\Services\Diorama\LibraryAssets;
+use App\Services\Lessons\PredictSpec;
 use App\Services\Lessons\TeamGameSpec;
 use App\Services\Support\LayerAmbient;
+use App\Services\Support\LayerFrames;
+use App\Support\LayerEntrances;
 use App\Services\Support\LayerSitIn;
 use App\Services\Support\SceneSplit;
+use App\Services\Support\TextLayerStyle;
 use App\Services\Support\SpeechBalloons;
 use App\Services\Support\ShotCamera;
 use App\Services\Support\WebpEncoder;
@@ -65,11 +71,13 @@ class Step3SceneConfigurator extends Component
     use EditsDiorama;
     use EditsQuizQuestions;
     use EditsTitleScreen;
+    use FixesLessonProblems;
     use EditsSceneBackground;
     use EditsSceneBalloons;
     use EditsSceneArtwork;
     use EditsSplitPanels;
     use EditsStoryGame;
+    use EditsPredict;
     use EditsTeamGame;
     use EditsMoment;
     use UndoesSceneEdits;
@@ -148,18 +156,27 @@ class Step3SceneConfigurator extends Component
     /** Set from ?modal=1 on a preview deep-link — the JS reopens the landfall gallery once mounted. */
     public bool $openModalOnLoad = false;
 
-    public function mount(Lesson $lesson): void
+    /** The real player opens over the editor as soon as it loads (?step=5, the old Preview). */
+    public bool $playOnOpen = false;
+
+    public function mount(Lesson $lesson, bool $playOnOpen = false): void
     {
         abort_unless(auth()->user()?->canManage($lesson), 403);
         $this->lesson = $lesson;
+        $this->playOnOpen = $playOnOpen;
         // Editing is not unpublishing. This used to set Configuring unconditionally, so a teacher
         // who opened a PUBLISHED lesson merely to look at it took it off the air — silently, on a
         // GET — and every student link for it stopped resolving. A live lesson comes down when the
-        // teacher says so, not when they open the editor.
+        // teacher says so, not when they open the editor. Previewable is playable too (the player
+        // serves it), so it stays: demoting it 404'd the Dutch Tasman hero (2026-10-16).
+        $isPlayable = in_array($this->lesson->status, [LessonStatus::Published, LessonStatus::Previewable], true);
         $this->lesson->update([
-            ...($this->lesson->status === LessonStatus::Published ? [] : ['status' => LessonStatus::Configuring]),
+            ...($isPlayable ? [] : ['status' => LessonStatus::Configuring]),
             'wizard_step' => 4,
         ]);
+        if ($playOnOpen) {
+            $this->prepareToPlay();
+        }
 
         // Repair legacy lessons where two voyage scenes shared one leg (older "add leg" reused the
         // last catalog leg) — so editing one leg's destination no longer drags another's.
@@ -281,9 +298,6 @@ class Step3SceneConfigurator extends Component
                 'lng' => isset($l['lng']) ? (float) $l['lng'] : null,
                 'lat' => isset($l['lat']) ? (float) $l['lat'] : null,
                 // Animate tab: entrance movement, its delay in seconds, and the easing key.
-                'anim' => $l['anim'] ?? null,
-                'anim_delay' => isset($l['anim_delay']) ? (float) $l['anim_delay'] : null,
-                'anim_ease' => $l['anim_ease'] ?? null,
                 'wobble' => isset($l['wobble']) ? (int) $l['wobble'] : null,
                 // Colour treatment — knock out the paper, drain the colour, recolour the ink.
                 // Tint reaches a line-art icon too: it floods INTO the source's alpha, which for
@@ -295,11 +309,8 @@ class Step3SceneConfigurator extends Component
                 // on a symmetrical shape and opposite headings on a ship.
                 'flip_x' => ! empty($l['flip_x']),
                 'flip_y' => ! empty($l['flip_y']),
-                'anim_duration' => isset($l['anim_duration']) ? (int) $l['anim_duration'] : null,
-                'anim_out' => $l['anim_out'] ?? null,
-                'anim_out_delay' => isset($l['anim_out_delay']) ? (float) $l['anim_out_delay'] : null,
-                'anim_out_ease' => $l['anim_out_ease'] ?? null,
-                'anim_out_duration' => isset($l['anim_out_duration']) ? (int) $l['anim_out_duration'] : null,
+                // Appear and its exit: the same list the player gets (LayerEntrances::payload).
+                ...LayerEntrances::payload($l),
                 'grayscale' => ! empty($l['grayscale']),
                 'tint' => preg_match('/^#[0-9a-fA-F]{6}$/', (string) ($l['tint'] ?? '')) ? $l['tint'] : null,
                 'z' => isset($l['z']) ? (int) $l['z'] : null,
@@ -313,6 +324,8 @@ class Step3SceneConfigurator extends Component
                 ...LayerAmbient::payload($l),
                 // Blend into the scene: waterline, reflection, contact shadow, colour match.
                 ...LayerSitIn::payload($l),
+                // A sprite sheet over the picture (LayerFrames).
+                ...LayerFrames::payload($l, $ts),
                 // Hidden where the backdrop is nearer than the layer (resources/js/scene/occlusion.js).
                 'occlude' => ! empty($l['occlude']),
             ])->filter(fn ($l) => $l['url'] || $l['embed'])->values()->all() ?: null,
@@ -472,6 +485,7 @@ class Step3SceneConfigurator extends Component
         $this->syncStoryGameDraftFor($scene);
         // And for a team game: its texts, items, options and timer.
         $this->syncTeamDraftFor($scene);
+        $this->syncPredictDraftFor($scene);
         // And for a story panel's power-meter moment.
         $this->syncMomentDraftFor($scene);
     }
@@ -603,6 +617,7 @@ class Step3SceneConfigurator extends Component
         }
         $payload = $this->withStoredDiorama($payload, $scene);
         $payload = $this->withCleanTeamGame($payload, $scene);
+        $payload = $this->withCleanPredict($payload);
         $payload = $this->withCleanMoment($payload, $scene);
         $scriptDirty = ($scene->script_segment ?? '') !== ($payload['script_segment'] ?? '');
 
@@ -1046,25 +1061,32 @@ class Step3SceneConfigurator extends Component
         $isPanel = ($text['kind'] ?? null) === 'rect';
         $valid = $isPanel
             ? ['side', 'color', 'opacity']
-            : ['font', 'size', 'align', 'list', 'bg', 'bgColor', 'bgOpacity', 'x', 'y', 'w'];
+            : ['font', 'size', 'align', 'list', 'bg', 'bgColor', 'bgOpacity', 'x', 'y', 'w', ...TextLayerStyle::FIELDS];
 
         if (! in_array($field, $valid, true)) {
             return;
         }
 
-        $next = match ($field) {
-            'font' => in_array($value, ['sans', 'history', 'cinzel'], true) ? $value : $text['font'] ?? 'sans',
-            'size' => in_array($value, ['sm', 'md', 'lg', 'xl'], true) ? $value : $text['size'] ?? 'md',
-            'align' => in_array($value, ['left', 'center', 'right'], true) ? $value : $text['align'] ?? 'left',
-            'list' => in_array($value, ['none', 'bullet', 'number'], true) ? $value : $text['list'] ?? 'none',
-            'bg' => $value === true || $value === '1' || $value === 1 ? 'glass' : 'none',
-            'bgColor', 'color' => preg_match('/^#[0-9a-fA-F]{6}$/', (string) $value)
+        // A text's colour, scale, rotation, blur, blend, opacity and grayscale (TextLayerStyle).
+        // Anything that is not a value for the field leaves the text as it was.
+        $next = ! $isPanel && in_array($field, TextLayerStyle::FIELDS, true)
+            ? TextLayerStyle::value($field, $value)
+            : match ($field) {
+                'font' => in_array($value, ['sans', 'history', 'cinzel'], true) ? $value : $text['font'] ?? 'sans',
+                'size' => in_array($value, ['sm', 'md', 'lg', 'xl'], true) ? $value : $text['size'] ?? 'md',
+                'align' => in_array($value, ['left', 'center', 'right'], true) ? $value : $text['align'] ?? 'left',
+                'list' => in_array($value, ['none', 'bullet', 'number'], true) ? $value : $text['list'] ?? 'none',
+                'bg' => $value === true || $value === '1' || $value === 1 ? 'glass' : 'none',
+                'bgColor', 'color' => preg_match('/^#[0-9a-fA-F]{6}$/', (string) $value)
                 ? (string) $value : ($text[$field] ?? '#0f172a'),
-            'bgOpacity', 'opacity' => max(0.05, min(0.95, (float) $value)),
-            'side' => $value === 'right' ? 'right' : 'left',
-            'x', 'y' => max(0.0, min(100.0, (float) $value)),
-            'w' => max(5.0, min(95.0, (float) $value)),
-        };
+                'bgOpacity', 'opacity' => max(0.05, min(0.95, (float) $value)),
+                'side' => $value === 'right' ? 'right' : 'left',
+                'x', 'y' => max(0.0, min(100.0, (float) $value)),
+                'w' => max(5.0, min(95.0, (float) $value)),
+            };
+        if ($next === null) {
+            return;
+        }
 
         $text[$field] = $next;
         $texts[$index] = $text;
@@ -1208,6 +1230,9 @@ class Step3SceneConfigurator extends Component
                     'lat' => $anchor === 'map' ? $lat : null,
                     // Stacking order set by drag-reorder in the object list (higher = in front).
                     'z' => (isset($t['z']) && is_numeric($t['z'])) ? (int) $t['z'] : null,
+                    // Colour, scale, rotation, blur, blend, opacity, grayscale: kept through every
+                    // canvas save, or moving a text would throw its look away.
+                    ...TextLayerStyle::of($t),
                 ];
             })
             ->take(12)
@@ -2134,7 +2159,10 @@ class Step3SceneConfigurator extends Component
             // The vocabulary is shared with resources/js/anim/properties.js, which plays it back.
             $allowed = match (strtok($target, ':')) {
                 'camera' => ['lng', 'lat', 'zoom', 'heading', 'tilt'],
-                'text' => ['x', 'y'],
+                // Every row the timeline offers a text (properties.js): X and Y alone dropped its look.
+                'text' => ['x', 'y', 'w', 'scale', 'rotation', 'blur', 'opacity', 'color', 'colorOpacity'],
+                // A background picture, or a split panel's: its crop and opacity (background-crop.js).
+                'bg' => ['x', 'y', 'zoom', 'opacity'],
                 'rect' => ['opacity'],
                 'art' => ['x', 'y', 'width', 'height', 'scale', 'rotation', 'blur', 'opacity', 'tint', 'tint_opacity'],
                 'bal' => SpeechBalloons::TIMELINE_PROPERTIES,
@@ -2145,8 +2173,8 @@ class Step3SceneConfigurator extends Component
                 continue;
             }
 
-            // A colour is '#rrggbb' or '' (no tint); every other property is a number.
-            $value = $property === 'tint'
+            // A colour (a tint, a text colour) is '#rrggbb' or ''; every other property is a number.
+            $value = in_array($property, ['tint', 'color'], true)
                 ? fn ($v): string => is_string($v) && preg_match('/^#[0-9a-f]{6}$/i', $v) ? strtolower($v) : ''
                 : fn ($v): float => is_numeric($v) ? (float) $v : 0.0;
 
@@ -3829,7 +3857,7 @@ class Step3SceneConfigurator extends Component
         $this->paintingPickerOpen = true;
         $this->paintingCommonsLoaded = false;
         $this->paintingQuery = '';
-        $this->paintingKind = '';
+        $this->paintingKind = 'library';   // our own pictures first (Bart, 2026-10-20)
         $this->paintingRegion = '';
         $this->matchTarget = [];
         $this->paintingReady = false;   // modal opens instantly; wire:init fills the grid
@@ -4918,7 +4946,7 @@ class Step3SceneConfigurator extends Component
 
             return;
         }
-        $gameType = in_array($gameType, ['quiz', 'strategy', 'debate'], true) ? $gameType : null;
+        $gameType = in_array($gameType, ['quiz', 'strategy', 'debate', 'predict'], true) ? $gameType : null;
         $insertAfterSceneId = $this->selectedSceneId;
         $next = ((int) $this->lesson->scenes()->max('order')) + 1;
 
@@ -5031,10 +5059,17 @@ class Step3SceneConfigurator extends Component
                 'strategy_game_id' => $gameType === 'strategy' ? $this->defaultStrategyGameId() : null,
                 'team_count' => $gameType === 'strategy' ? (int) ($this->lesson->team_count ?? 2) : null,
             ];
+            // A predict moment needs nothing generated: the teacher writes the question and rubric.
+            if ($gameType === 'predict') {
+                $payload['config'] = ['predict' => PredictSpec::normalize([])];
+                $payload['duration_seconds'] = 120;
+                $payload['background_color'] = '#0f172a';
+            }
 
             $this->lesson->fill([
                 'include_game' => true,
-                'game_type' => $this->lesson->game_type ?: $gameType,
+                // A predict moment is a moment, not the lesson's game: it never names the lesson's type.
+                'game_type' => $this->lesson->game_type ?: ($gameType === 'predict' ? null : $gameType),
                 'game_split_count' => $gameCount + 1,
             ])->save();
             $this->lesson->refresh();
@@ -5278,7 +5313,7 @@ class Step3SceneConfigurator extends Component
 
     public function setSceneGameType(int $sceneId, string $gameType): void
     {
-        if (! in_array($gameType, ['quiz', 'strategy', 'debate', 'team'], true)) {
+        if (! in_array($gameType, ['quiz', 'strategy', 'debate', 'team', 'predict'], true)) {
             return;
         }
 
@@ -5291,6 +5326,10 @@ class Step3SceneConfigurator extends Component
         // that never had one starts with a blank budget game.
         if ($gameType === 'team' && ! is_array(($scene->config ?? [])['team'] ?? null)) {
             $scene->config = array_merge($scene->config ?? [], ['team' => TeamGameSpec::normalize([])]);
+        }
+        // Same for a predict moment: switching away and back keeps its question and rubric.
+        if ($gameType === 'predict' && ! is_array(($scene->config ?? [])['predict'] ?? null)) {
+            $scene->config = array_merge($scene->config ?? [], ['predict' => PredictSpec::normalize([])]);
         }
 
         $scene->update([
@@ -5678,7 +5717,7 @@ class Step3SceneConfigurator extends Component
         $notReady = $this->lesson->scenes()
             ->where('status', '!=', 'ready')
             ->orderBy('order')
-            ->get(['id', 'order', 'kind', 'game_type', 'status', 'script_segment', 'image_path', 'audio_path']);
+            ->get();
 
         if ($notReady->isNotEmpty()) {
             // Name the offending scenes (and why) so the teacher knows exactly what to fix,
@@ -5687,7 +5726,11 @@ class Step3SceneConfigurator extends Component
                 $kind = $s->kind === 'game'
                     ? ucfirst((string) ($s->game_type ?: 'game'))
                     : ucfirst((string) $s->kind);
-                $why = $this->missingAssetReason($s) ?? match ((string) $s->status) {
+                // Everything a blank scene lacks in one phrase first ("needs a script, a background
+                // image and narration audio"); else the checker's words (LessonProblems) as the dot and
+                // the Problems view say it, without their full stop since the notice adds its own.
+                $checker = \App\Support\LessonProblems::forScene($s)[0]['message'] ?? null;
+                $why = $this->missingAssetReason($s) ?? ($checker !== null ? rtrim($checker, '.') : null) ?? match ((string) $s->status) {
                     'generating' => __('still generating'),
                     'failed' => __('failed, regenerate it'),
                     'pending' => __('not generated yet'),
@@ -5700,6 +5743,16 @@ class Step3SceneConfigurator extends Component
             $this->publishOk = false;
             $this->publishNotice = __('These scenes aren\'t ready: :list. Generate or remove them, then publish.', [
                 'list' => implode('; ', $labels),
+            ]);
+
+            return;
+        }
+
+        // A story game whose choices have no consequences yet is not ready for a class.
+        if (($groups = $this->lesson->incompleteStoryGameGroups()) !== []) {
+            $this->publishOk = false;
+            $this->publishNotice = __('Story game incomplete — choice :groups still missing game effects on an option. Open Configure and fill both options\' meter effects first.', [
+                'groups' => implode(', ', $groups),
             ]);
 
             return;
@@ -5775,16 +5828,23 @@ class Step3SceneConfigurator extends Component
         $this->publishNotice = __('Publish schedule cleared.');
     }
 
+    /**
+     * The editor's Play: the real player (what the class sees) opens over the editor at the
+     * selected scene (the play overlay in step3-scene-configurator.blade.php); X and Esc come back.
+     */
     #[On('lesson:play')]
-    public function continueToPreview(): void
+    public function openPlay(): void
     {
-        $this->lesson->update(['wizard_step' => 5, 'status' => LessonStatus::Previewable]);
-        // Carry the scene the teacher is on → the preview autoplays FROM here, not the first scene.
-        $this->redirectRoute('teacher.lessons.wizard', array_filter([
-            'lesson' => $this->lesson->id,
-            'step' => 5,
-            'scene' => $this->selectedSceneId,
-        ]), navigate: true);
+        $this->prepareToPlay();
+        $this->dispatch('play-lesson-open');
+    }
+
+    /** The player serves Published and Previewable lessons: one being edited becomes Previewable. */
+    public function prepareToPlay(): void
+    {
+        if ($this->lesson->status !== LessonStatus::Published) {
+            $this->lesson->update(['status' => LessonStatus::Previewable]);
+        }
     }
 
     /** Called on every poll tick — pushes updated world status to the canvas. */

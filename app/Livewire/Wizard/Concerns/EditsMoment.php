@@ -36,6 +36,8 @@ trait EditsMoment
         'momentDraft.seconds' => 'nullable|integer|min:0|max:'.MomentSpec::TIMER_MAX,
         'momentDraft.teams' => 'nullable|integer|min:0|max:'.MomentSpec::TEAMS_MAX,
         'momentDraft.react.amount' => 'nullable|numeric|min:0|max:2',
+        'momentDraft.react.drift' => 'nullable|numeric|min:0|max:30',
+        'momentDraft.input_options.word_seconds' => 'nullable|numeric|min:1|max:6',
         'momentDraft.payoff.to_x' => 'nullable|numeric|min:-50|max:150',
         'momentDraft.payoff.to_y' => 'nullable|numeric|min:-50|max:150',
         'momentDraft.payoff.duration' => 'nullable|numeric|min:0.3|max:30',
@@ -154,6 +156,10 @@ trait EditsMoment
     /** Record the after line again, in the narrator's voice. Only when the teacher asks: it costs. */
     public function renarrateMomentAfter(): void
     {
+        // Paid narration: a /try guest is fenced like every other spending action.
+        if ($this->guestDemoCannotGenerate()) {
+            return;
+        }
         $scene = $this->momentScene();
         $moment = $scene ? $this->storedMoment($scene) : null;
         if ($moment === null || $moment['after'] === '') {

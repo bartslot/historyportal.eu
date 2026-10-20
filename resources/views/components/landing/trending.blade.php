@@ -53,7 +53,7 @@
                 @foreach ($popular as $item)
                 @php $lesson = $lessons[$item['lesson']] ?? null; @endphp
                 <article class="carousel-cell group relative mx-2 w-[16rem] shrink-0 sm:w-[17rem] lg:w-[18rem]">
-                    <div class="relative aspect-[5/8] overflow-hidden rounded-[1.35rem] border border-white/10 bg-black/40 shadow-[0_16px_34px_rgba(0,0,0,0.35)] transition duration-300 ease-out hover:-translate-y-1 hover:border-sky-400/25 hover:shadow-[0_24px_52px_rgba(0,0,0,0.5)]">
+                    <div class="relative aspect-[5/8] overflow-hidden rounded-[1.35rem] border border-white/10 bg-black/40 transition duration-300 ease-out hover:border-sky-400/25">
                         @if ($lesson)
                             {{-- Overlay link so the whole card is clickable without rewrapping the
                                  markup (which would nest the hover-reveal inside an anchor). --}}
@@ -70,7 +70,7 @@
 
                         <!-- <div class="absolute left-0 right-0 top-0 border border-white/10 bg-black/10 p-2 backdrop-blur">
                             <div class="flex items-center gap-3">
-                                <span class="flex h-10 w-10 flex-none items-center justify-center rounded-full text-4xl text-white shadow-sm font-history">
+                                <span class="flex h-10 w-10 flex-none items-center justify-center rounded-full text-4xl text-white font-history">
                                     {{ $loop->iteration }}
                                 </span>
                                 
@@ -116,7 +116,7 @@
                 <x-carousel aria-label="{{ __('What the hour actually looks like') }}">
                     @foreach ($features as $feature)
                     <article class="carousel-cell group relative mx-2 w-[15rem] shrink-0 sm:w-[16rem] lg:w-[17rem]">
-                        <div class="relative aspect-[5/8] overflow-hidden rounded-[1.35rem] border border-white/10 bg-white/5 shadow-[0_16px_34px_rgba(0,0,0,0.25)] transition duration-300 ease-out hover:-translate-y-1 hover:border-sky-400/20 hover:bg-white/7">
+                        <div class="relative aspect-[5/8] overflow-hidden rounded-[1.35rem] border border-white/10 bg-white/5 transition duration-300 ease-out hover:border-sky-400/20 hover:bg-white/7">
                             <img
                                 src="{{ $feature['image'] }}"
                                 alt="{{ $feature['title'] }}"
@@ -126,7 +126,7 @@
 
                             <div class="absolute left-3 right-3 top-3 rounded-[1rem] border border-white/10 bg-slate-950/70 px-3 py-2 backdrop-blur">
                                 <div class="flex items-center gap-3">
-                                    <span class="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-white text-base font-semibold text-slate-950 shadow-sm">
+                                    <span class="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-white text-base font-semibold text-slate-950">
                                         {{ $loop->iteration }}
                                     </span>
                                     <div class="min-w-0">

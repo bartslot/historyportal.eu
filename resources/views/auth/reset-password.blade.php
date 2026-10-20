@@ -1,6 +1,6 @@
 <x-layouts.guest :title="__('Choose a new password')">
 
-    <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-8 shadow-2xl backdrop-blur-sm">
+    <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-8 backdrop-blur-sm">
         <h1 class="text-xl font-semibold text-slate-100 mb-6 text-center">{{ __('Choose a new password') }}</h1>
 
         @if($errors->any())

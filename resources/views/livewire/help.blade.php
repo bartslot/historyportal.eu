@@ -57,7 +57,7 @@
             <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 @foreach ($shortcuts as $shortcut)
                     <a href="{{ route($shortcut['route']) }}"
-                       class="group flex items-start gap-3 rounded-xl border border-slate-800 bg-slate-900/40 p-4 transition hover:-translate-y-0.5 hover:border-primary/30 hover:bg-slate-900/70">
+                       class="group flex items-start gap-3 rounded-xl border border-slate-800 bg-slate-900/40 p-4 transition hover:border-primary/30 hover:bg-slate-900/70">
                         <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-primary">
                             <x-dynamic-component :component="'icons.'.$shortcut['icon']" class="h-4 w-4" />
                         </span>

@@ -91,6 +91,62 @@ class TitlePosterTest extends TestCase
         $this->assertNull($layers['a']['ambient']);
     }
 
+    /**
+     * The upright Tasman poster (Bart, 2026-10-17, Figma 2353:1311): portrait.json beside the
+     * candidate's poster.json, the same data model, read by the same parser. A phone held upright
+     * shows it (resources/js/title-poster.js variantFor); the landscape poster is unchanged.
+     */
+    public function test_the_tasman_poster_has_an_upright_variant_with_every_file_present(): void
+    {
+        $poster = TitlePoster::for('tasman-standard', 'poster');
+        $portrait = $poster['portrait'];
+
+        $this->assertNotNull($portrait);
+        $this->assertSame(['w' => 1604.0, 'h' => 2456.0], $portrait['frame']);
+        $this->assertSame('#F03E4A', $portrait['background']);
+        $this->assertSame(['tasman', 'a', 'b', 'e', 'l', 't', 'a2', 's', 'm', 'a1', 'n'], array_column($portrait['layers'], 'id'));
+        foreach ($portrait['layers'] as $layer) {
+            $this->assertFileExists(public_path(parse_url($layer['url'], PHP_URL_PATH)));
+        }
+        $this->assertSame(10, count(array_filter($portrait['layers'], fn (array $l) => $l['enter'] === 'drop')));
+        // The subtitle stays live text, so it translates; Figma sets it at 42 on the 1604 frame.
+        $this->assertEqualsWithDelta(2.6185, $portrait['subtitle']['size'], 0.001);
+        $this->assertArrayNotHasKey('portrait', $portrait);
+
+        // The landscape poster is as it was, and a candidate without a portrait has none.
+        $this->assertSame(8696.178, $poster['frame']['w']);
+        $this->assertCount(17, $poster['layers']);
+        $this->assertNull(TitlePoster::for('tasman-standard', 'banner')['portrait']);
+    }
+
+    /**
+     * A tall card (2:3, 5:8) shows the upright poster as a still while the comic poster is the
+     * lesson's title style, even over poster_image (decision b, 2026-10-17: the composer fills that
+     * with a landscape photo); Logo or Plain keep the card as it was. A link preview stays landscape: the still is a SECOND og:image only (Pinterest-style).
+     */
+    public function test_a_tall_card_and_a_tall_share_image_use_the_upright_still(): void
+    {
+        $lesson = $this->lesson('tasman-standard');
+        $still = $lesson->titlePosterStillUrl();
+        $this->assertStringEndsWith('/lesson-titles/tasman-standard/poster/portrait-still.webp', (string) $still);
+        $this->assertFileExists(public_path(parse_url((string) $still, PHP_URL_PATH)));
+        $this->assertSame($still, $lesson->tallCardImageUrl());
+
+        $this->assertNull($lesson->forceFill(['title_style' => TitlePoster::PLAIN])->titlePosterStillUrl());
+        $this->assertSame($lesson->cardImageUrl(), $lesson->tallCardImageUrl());
+
+        $lesson->forceFill(['poster_image' => 'https://res.cloudinary.com/demo/image/upload/own.webp']);
+        $this->assertSame($lesson->cardImageUrl(), $lesson->tallCardImageUrl(), 'Plain keeps the old card');
+
+        $lesson->forceFill(['title_style' => null]);
+        $this->assertSame($still, $lesson->tallCardImageUrl(), 'the comic still outranks poster_image on a tall card');
+        $this->assertStringEndsWith('/own.webp', (string) $lesson->cardImageUrl(), 'the other cards keep poster_image');
+
+        $html = (string) $this->blade('<x-seo title="T" description="D" image="https://x.test/wide.png" tall-image="https://x.test/tall.webp" />');
+        $this->assertMatchesRegularExpression('#og:image" content="https://x.test/wide.png".*og:image" content="https://x.test/tall.webp">\s*<meta property="og:image:width" content="1000">\s*<meta property="og:image:height" content="1500">#s', $html);
+        $this->assertStringContainsString('twitter:image" content="https://x.test/wide.png"', $html);
+    }
+
     public function test_no_folder_or_a_climbing_group_or_candidate_has_no_poster(): void
     {
         $this->assertNull(TitlePoster::for(null, 'poster'));
@@ -242,6 +298,51 @@ class TitlePosterTest extends TestCase
         $component->call('resetTitleStyle');
         $this->assertNull($lesson->fresh()->title_style);
         $this->assertSame('poster', $lesson->fresh()->titleStyle());
+    }
+
+    /**
+     * Bart, 2026-10-16, on W24VRI: "trying to select a new image for the title screen, but it was
+     * not possible". The pick was saved, but the Comic cover's full-bleed plate (the spyglass
+     * coast) painted over it. A picture the teacher chose takes the poster's full-frame picture;
+     * a poster with none gets it underneath its letters.
+     */
+    public function test_the_teachers_picture_replaces_the_posters_full_frame_picture(): void
+    {
+        $picture = '/storage/lessons/1/scenes/4/storm.webp';
+        $cover = $this->lesson('tasman-standard', ['title_style' => 'cover', 'title_image' => $picture]);
+        $plain = TitlePoster::for('tasman-standard', 'cover');
+
+        $poster = $cover->titlePoster();
+        $this->assertSame($cover->titleBgUrl(), $poster['layers'][0]['url']);
+        $this->assertSame('plate', $poster['layers'][0]['id']);
+        $this->assertCount(count($plain['layers']), $poster['layers']);
+        $this->assertSame(['letters'], array_values(array_unique(array_column($poster['keep_clear'], 'kind'))),
+            'faces and figures of the plate are not in the teacher\'s picture');
+
+        $this->assertStringEndsWith('cover-tasman-spyglass-coast-hd.webp', $cover->fresh()->forceFill(['title_image' => null])->titlePoster()['layers'][0]['url'],
+            'without a pick the cover keeps its own plate');
+
+        $poster = $this->lesson('tasman-standard', ['title_style' => 'poster', 'title_image' => $picture])->titlePoster();
+        $this->assertSame(['id' => 'picture', 'box' => ['x' => 0.0, 'y' => 0.0, 'w' => 100.0, 'h' => 100.0]],
+            ['id' => $poster['layers'][0]['id'], 'box' => $poster['layers'][0]['box']]);
+        $this->assertStringEndsWith($picture, $poster['layers'][0]['url']);
+    }
+
+    public function test_the_picked_tile_is_marked_as_chosen(): void
+    {
+        $lesson = $this->lesson('tasman-standard', ['title_style' => 'cover']);
+        // Cloudinary pictures, as every Tasman scene has on production.
+        $lesson->scenes()->first()->update(['image_path' => 'https://res.cloudinary.com/demo/image/upload/coast.webp']);
+        $url = 'https://res.cloudinary.com/demo/image/upload/storm.webp';
+        Scene::create(['lesson_id' => $lesson->id, 'order' => 2, 'kind' => 'narration', 'script_segment' => 'Toen.', 'status' => 'ready', 'image_path' => $url]);
+
+        $component = Livewire::actingAs($this->teacher)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $lesson])
+            ->assertDontSee('data-chosen', false);
+        $component->call('selectTitleImage', $url);
+
+        $this->assertSame(1, substr_count($component->html(), 'data-chosen'));
+        $this->assertMatchesRegularExpression('#data-zoom\s+data-chosen\s+aria-pressed="true"\s+data-tooltip="Scene 2" aria-label="Scene 2"\s+class="[^"]*ring-2 ring-primary#', $component->html());
     }
 
     public function test_a_style_the_series_cannot_show_is_refused(): void

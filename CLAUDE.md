@@ -65,6 +65,10 @@ chain rather than trusting a diagram here; it has changed more than once.
 **Lessons can also be authored as data**, with no AI involved: a spec in `resources/lessons/*.php`
 built by `php artisan lessons:compose`. See `app/Services/LessonComposer.php`.
 
+**Every lesson follows `docs/lesson-rules.md`** (Bart, 2026-10-17): at least one image per sentence, shots of
+3-8 s, zooms and close-ups, moving foregrounds on reused backgrounds, 30-50 scenes, the class doing something
+every 2-3 minutes, and the shot log + per-minute check before anyone calls a lesson ready.
+
 Models live in `app/Models/`; scene media is stored under
 `storage/app/public/lessons/{lesson_id}/scenes/{scene_id}/`.
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\LessonVersion;
 use App\Services\Editor\SceneHistory;
 use App\Services\Support\NarrationTiming;
 use Illuminate\Database\Eloquent\Model;
@@ -77,6 +78,14 @@ class Scene extends Model
 
         static::saved($forgetPlayerCache);
         static::deleted($forgetPlayerCache);
+
+        // Its lesson's content version (LessonVersion): a new, changed or deleted scene, not a status flip.
+        static::saved(function (Scene $scene): void {
+            if ($scene->wasRecentlyCreated || LessonVersion::contentChanged($scene->getChanges(), LessonVersion::SCENE_IGNORED)) {
+                LessonVersion::changed($scene->lesson_id);
+            }
+        });
+        static::deleted(fn (Scene $scene) => LessonVersion::changed($scene->lesson_id));
 
         // The editor's undo (SceneHistory): remember the scene as it was before this save.
         static::updating(static fn (Scene $scene) => SceneHistory::remember($scene));
@@ -212,9 +221,9 @@ class Scene extends Model
      * while the database recorded the new script and a matching audio_script_hash. The one thing in
      * this app where being wrong is invisible: the words on screen were right.
      *
-     * The hash is the version rather than a timestamp on purpose — it changes exactly when the audio
-     * changes, so a scene nobody has touched keeps its cache instead of being re-downloaded by every
-     * child in the class on every visit.
+     * The version is built from what made the audio rather than a timestamp on purpose: it changes
+     * when the audio does, so a scene nobody has touched keeps its cache instead of being
+     * re-downloaded by every child in the class on every visit.
      *
      * Six callers built this URL by hand before this existed. If you are adding a seventh, use this.
      */
@@ -224,8 +233,14 @@ class Scene extends Model
             return null;
         }
 
+        // The words, who read them, and how the voice was told to say them: the same script read
+        // again in another voice or after a pronunciation fix is new audio at the same path, and
+        // the files are cached for 30 days (Bart, 2026-10-18: VOC still sounded English).
         $version = $this->audio_script_hash
-            ? substr((string) $this->audio_script_hash, 0, 8)
+            ? substr(sha1(implode('|', [
+                $this->audio_script_hash, $this->audio_provider, $this->audio_voice,
+                \App\Services\Support\PronunciationLexicon::version(),
+            ])), 0, 8)
             : (string) ($this->updated_at?->timestamp ?? '');
 
         return asset('storage/'.$this->audio_path).($version !== '' ? '?v='.$version : '');
@@ -500,8 +515,20 @@ class Scene extends Model
             return false;
         }
 
+        $narrator = $this->lesson->narrator;
         $wanted = (string) config('services.tts.provider_override', '')
-            ?: (string) $this->lesson->narrator->voice_provider;
+            ?: (string) $narrator->voice_provider;
+
+        // edge-tts voices ARE Azure Neural voices, and edge is refused from the server, so an edge
+        // narrator is read through Azure in the same voice (TtsService). That is the narrator, not a
+        // stand-in: calling it one flagged every scene of lesson 63 (2026-10-18).
+        // Older runs stored no voice name: unknown is not evidence of a stand-in, so say nothing.
+        if ($wanted === 'edge_tts' && $provider === 'azure') {
+            $own = array_filter([(string) $narrator->voice_id, ...array_values((array) ($narrator->voice_map ?? []))]);
+            $voice = (string) $this->audio_voice;
+
+            return $voice !== '' && ! in_array($voice, $own, true);
+        }
 
         return $wanted !== '' && $provider !== $wanted;
     }

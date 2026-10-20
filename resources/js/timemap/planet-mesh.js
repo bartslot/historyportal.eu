@@ -7,7 +7,9 @@
  * what stops the two layers drifting into disagreeing about which way is north.
  */
 
-export const EARTH_RADIUS_M = 6371008.8
+import { EARTH_RADIUS_M, mapTransform } from '../map/maplibre-compat.js'
+
+export { EARTH_RADIUS_M }
 
 /**
  * A point in PLANET SPACE: earth as a unit sphere at the origin, altitude in earth radii, +Y north
@@ -229,7 +231,7 @@ export const FACING_CAMERA_GLSL = /* glsl */`
  * @param {object} maplibregl   the module, for MercatorCoordinate
  */
 export const cameraAltitudeMetres = (map, maplibregl) => {
-  const transform = map?.transform
+  const transform = mapTransform(map)
   const direct = typeof transform?.getCameraAltitude === 'function' ? transform.getCameraAltitude() : null
   if (Number.isFinite(direct)) return direct
 
@@ -258,11 +260,11 @@ export const cameraAltitudeMetres = (map, maplibregl) => {
  * and a too-large horizon reads as a deliberate shadow.
  */
 export const cameraInPlanetSpace = (map, maplibregl) => {
-  const raw = map?.transform?.cameraPosition
+  const raw = mapTransform(map)?.cameraPosition
   if (raw && Number.isFinite(raw[0]) && Number.isFinite(raw[1]) && Number.isFinite(raw[2])) {
     return [raw[2], raw[1], raw[0]]
   }
-  const transform = map?.transform
+  const transform = mapTransform(map)
   const lngLat = typeof transform?.getCameraLngLat === 'function' ? transform.getCameraLngLat() : map.getCenter()
   return planetSpacePosition(lngLat.lng, lngLat.lat, cameraAltitudeMetres(map, maplibregl))
 }

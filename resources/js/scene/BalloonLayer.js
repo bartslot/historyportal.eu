@@ -22,7 +22,7 @@
  * adds and removes balloons whose state changed, so calling it often costs nothing.
  */
 import { EASE } from '../easing.js'
-import { DEFAULT_BEND, clampToView, cloudPath, outlinePoint, outlineT, tailRoot, tailShape, thoughtTrail, tipShortOf } from './balloon-shape.js'
+import { DEFAULT_BEND, clampToView, cloudPath, outlinePoint, outlineT, tailRoot, tailShape, thoughtRoot, thoughtTrail, tipShortOf } from './balloon-shape.js'
 import { playEntrance } from './animations.js'
 
 /** Reference width the house rules are measured at. */
@@ -153,13 +153,32 @@ export const withBalloonIds = (lines) => (Array.isArray(lines) ? lines : [])
 
 /** The corner radius of a bubble (1.4em in app.css) for a given font size. */
 const CORNER_EM = 1.4
-/** The ink line of a balloon at scale 1, px. */
+/**
+ * The ink line of EVERY balloon, px: one pencil, whatever the balloon's size. A bigger balloon
+ * gets bigger words, never a fatter line (Bart, 2026-10-16: "lines should be drawn by the same
+ * pencil so lines don't increase width or stroke size").
+ */
 const INK_PX = 2
 /** A balloon's size, as a factor of the house size: the smallest and largest the editor keeps. */
 export const MIN_SCALE = 0.3
 export const MAX_SCALE = 4
 /** How a balloon arrives when its line names none: the pop it always had. */
 export const DEFAULT_BALLOON_ENTRANCE = 'pop'
+
+/**
+ * How a balloon arrives: its entrance, at its own speed (Appear's Fast / Slow, stored as
+ * anim_duration in ms). Without one it plays as it always did: a pop of ENTER_MS, any other
+ * entrance at the layers' own length.
+ */
+export const balloonEntrance = (line) => {
+  const anim = line?.anim ?? DEFAULT_BALLOON_ENTRANCE
+  const own = Number(line?.anim_duration)
+  return {
+    anim,
+    ease: anim === 'pop' ? 'pop' : 'enter',
+    duration: own > 0 ? own : (anim === 'pop' ? ENTER_MS : undefined),
+  }
+}
 
 const pct = (v) => Math.round(v * 10000) / 100
 
@@ -342,8 +361,7 @@ export class BalloonLayer {
 
     // The layers' own entrances (animations.js), so a balloon arrives the way a figure can.
     el.style.transformOrigin = `${origin[0]}px ${origin[1]}px`
-    const anim = line.anim ?? DEFAULT_BALLOON_ENTRANCE
-    playEntrance(el, { anim, ease: anim === 'pop' ? 'pop' : 'enter', duration: anim === 'pop' ? ENTER_MS : undefined })
+    playEntrance(el, balloonEntrance(line))
   }
 
   _hide (i) {
@@ -380,17 +398,33 @@ export class BalloonLayer {
     return [box.left + fx * box.width - hr.left, box.top + fy * box.height - hr.top]
   }
 
-  /** The on-screen part of the host, in host coordinates (a portrait screen crops the plate). */
+  /**
+   * Where a balloon may go, in host coordinates: the on-screen part of the host (a portrait
+   * screen crops the plate). A split panel's balloons ROAM (opts.roam): they may cross the panel
+   * border into the next panel, so their bounds are the whole stage around the host.
+   */
   _view () {
     const w = this.host.clientWidth
     const h = this.host.clientHeight
     const hr = this.host.getBoundingClientRect()
     const sr = (this.host.parentElement || this.host).getBoundingClientRect()
+    if (this.opts.roam) {
+      return { x0: sr.left - hr.left, y0: sr.top - hr.top, x1: sr.right - hr.left, y1: sr.bottom - hr.top }
+    }
 
     return {
       x0: Math.max(0, sr.left - hr.left), y0: Math.max(0, sr.top - hr.top),
       x1: Math.min(w, sr.right - hr.left), y1: Math.min(h, sr.bottom - hr.top),
     }
+  }
+
+  /** The same bounds as fractions of the host: what a dragged balloon or tail tip may be. */
+  fractionBounds () {
+    const v = this._view()
+    const w = this.host.clientWidth || 1
+    const h = this.host.clientHeight || 1
+
+    return { x: [v.x0 / w, v.x1 / w], y: [v.y0 / h, v.y1 / h] }
   }
 
   /** Size and place one balloon; returns the point it grows from (the tail's root). */
@@ -400,10 +434,10 @@ export class BalloonLayer {
     const k = w / REF_WIDTH
     const view = this._view()
     const thought = line.kind === 'thought'
-    // Scale grows everything the balloon draws: words, box, outline, tail root and circles.
+    // Scale grows the words, the box, the tail root and the circles; the ink line stays one pencil.
     const scale = Number.isFinite(line.scale) ? Math.min(MAX_SCALE, Math.max(MIN_SCALE, line.scale)) : 1
     const font = Math.max(13, FONT_REF * k) * scale
-    const ink = `${INK_PX * scale}px`
+    const ink = `${INK_PX}px`
     el.style.opacity = Number.isFinite(line.opacity) ? String(line.opacity) : ''
     for (const node of el.querySelectorAll('.lp-balloon__cloud path, .lp-balloon__tail .ink, .lp-balloon__tail .trail')) node.setAttribute('stroke-width', ink)
     const bubble = el.querySelector('.lp-balloon__bubble')
@@ -415,6 +449,10 @@ export class BalloonLayer {
       padding: thought ? `${0.95 * font}px ${1.3 * font}px` : `${0.55 * font}px ${0.9 * font}px`,
       left: '0px',
       top: '0px',
+      // Its own width: an absolutely placed box otherwise shrinks to the room left before its
+      // host's edge, and a balloon dragged across a split panel's border wrapped into a column
+      // that ended at the border (Bart, 2026-10-16: "the bubble doesn't pass yet").
+      width: 'max-content',
     })
     const at = fractionPoint(line.at)
     const mouth = this._mouth(line)
@@ -425,20 +463,24 @@ export class BalloonLayer {
     const { left, top } = at ? this._atPosition(at, box, view, k) : this._autoPosition(el, mouth, box, { w, h }, view, side)
     bubble.style.left = `${left}px`
     bubble.style.top = `${top}px`
-    const rect = { left, top, w: box.w, h: box.h }
+    // The box the bubble HAS where it now stands, not the one measured before it moved there. A
+    // bubble that reflows once placed (squeezed against an edge) otherwise left the tail's root on
+    // an outline that was not drawn: the tail came loose (Bart, 2026-10-16: "we are able to
+    // dismantle the tail").
+    const rect = { left, top, w: bubble.offsetWidth || box.w, h: bubble.offsetHeight || box.h }
     this._drawCloud(el, rect, thought)
 
     const tip = this._tip(line, rect, mouth, view, w, h, font)
     const shape = tip ? this._drawTail(el, rect, tip, line, thought, font) : this._drawTail(el, rect, null)
     // What is drawn, as fractions of the host: the timeline reads a balloon nobody keyed from this.
     el._drawn = {
-      center: [(left + box.w / 2) / (w || 1), (top + box.h / 2) / (h || 1)],
+      center: [(left + rect.w / 2) / (w || 1), (top + rect.h / 2) / (h || 1)],
       tip: tip ? [tip[0] / (w || 1), tip[1] / (h || 1)] : null,
       root: shape ? outlineT(rect, shape.root) : null,
     }
     this.opts.onPlace?.(el, line, tip, { rect, shape, radius: this._radius(rect, font) })
 
-    return shape?.root ?? [left + box.w / 2, top + box.h / 2]
+    return shape?.root ?? [left + rect.w / 2, top + rect.h / 2]
   }
 
   /** A balloon the teacher put somewhere: its middle on that spot, kept inside the frame. */
@@ -464,7 +506,8 @@ export class BalloonLayer {
   }
 
   /**
-   * Where the tail points, host px: the tip the teacher dragged (kept on the panel), else the
+   * Where the tail points, host px: the tip the teacher dragged (kept in the view: the panel, or
+   * the whole stage for a roaming split balloon), else the
    * speaker's mouth less the house gap. A speaker beyond the panel's edge: the tail runs to it.
    */
   _tip (line, rect, mouth, view, w, h, font) {
@@ -512,12 +555,12 @@ export class BalloonLayer {
         trail.appendChild(c)
       }
       if (!dots.length) return null
-      // The trail's handles: its root on the outline and the last circle, which is the tip.
-      const root = (pinned === null ? tailRoot(rect, tip) : outlinePoint(rect, pinned))?.point ?? [dots[0].x, dots[0].y]
+      // The trail's handles: its root on the cloud's outline and the last circle, which is the tip.
+      const root = thoughtRoot(rect, tip, pinned) ?? [dots[0].x, dots[0].y]
       return { root, tip, mid: null, dots }
     }
     const bend = Number.isFinite(line?.tail?.bend) ? line.tail.bend : DEFAULT_BEND
-    const shape = tailShape(rect, tip, { bend, radius: this._radius(rect, font), root: pinned })
+    const shape = tailShape(rect, tip, { bend, radius: this._radius(rect, font), root: pinned, ink: INK_PX })
     if (!shape) return null
     fill.setAttribute('d', shape.fill)
     ink.setAttribute('d', shape.ink)

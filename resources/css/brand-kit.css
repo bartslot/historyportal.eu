@@ -42,6 +42,11 @@
   --color-panel-icon: #c7d5e3;     /* object icons in the timeline — the file's own stroke */
   --color-panel-value: #e2e8f0;    /* the numbers, and the active tab */
   --color-panel-title: #c7d5e3;    /* the section headings */
+  /* The layout picker's tiles (Figma 2346:503): a dark tile, a lighter one for the chosen layout. */
+  --color-panel-tile: #0b1528;
+  --color-panel-tile-active: #182537;
+  --color-panel-tile-glyph: #8aa0b9;
+  --color-panel-tile-glyph-active: #d9d9d9;
 
   /* ── Selected surface ─────────────────────────────────────────────────────────────────────── */
   /* Figma's `selected` variable: the one light card on a dark page, the "Continuous practice" outcome

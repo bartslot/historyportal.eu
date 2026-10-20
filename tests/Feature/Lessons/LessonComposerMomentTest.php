@@ -158,4 +158,23 @@ class LessonComposerMomentTest extends TestCase
         $this->assertEquals(['enabled' => true, 'ghost_seconds' => 5.0, 'start_x' => 25.0, 'finish_x' => 150.0, 'after' => '{crew:heemskerck} vaart.', 'after_solo' => ''], $race);
         $this->assertFalse(MomentSpec::blank()['race']['enabled']);
     }
+
+    public function test_the_word_stream_options_are_cleaned_and_a_new_moment_streams(): void
+    {
+        // Stored before the stream existed: no key, so it keeps its card.
+        $old = MomentSpec::normalize($this->moment());
+        $this->assertSame('buttons', $old['words_style']);
+        $this->assertSame(6.0, $old['react']['drift']);
+        $this->assertArrayNotHasKey('word_seconds', $old['input_options']);
+
+        $stream = MomentSpec::normalize($this->moment([
+            'words_style' => 'stream', 'input_options' => ['word_seconds' => 99], 'react' => ['layer' => 7, 'drift' => -4],
+        ]));
+        $this->assertSame('stream', $stream['words_style']);
+        $this->assertSame(6.0, $stream['input_options']['word_seconds']);
+        $this->assertSame(0.0, $stream['react']['drift']);
+        $this->assertSame(1.0, MomentSpec::normalize(['input_options' => ['word_seconds' => 0.2]])['input_options']['word_seconds']);
+        $this->assertSame('buttons', MomentSpec::normalize(['words_style' => '<marquee>'])['words_style']);
+        $this->assertSame('stream', MomentSpec::blank()['words_style']);
+    }
 }

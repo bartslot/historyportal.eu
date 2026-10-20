@@ -13,7 +13,7 @@ import { addKeyframe, sortedKeys, sameTime, segmentEasing, easingFn, keyStateAt,
 import { keyId, moveKeys, deleteKeys, snapToNearest } from './timeline-edit.js'
 import { propertiesFor, propertyFor, sampleFrame, kindOfTarget, INTERPOLATE } from './properties.js'
 import { wordSpans, snapTime, wordAt } from './narration-clock.js'
-import { textObjects, artObjects, balloonObjects, dioramaObjects, readObjectProperty, writeObjectProperty, setObjectHidden } from './scene-objects.js'
+import { textObjects, artObjects, balloonObjects, dioramaObjects, backgroundObjects, readObjectProperty, writeObjectProperty, setObjectHidden } from './scene-objects.js'
 import { balloonPatch } from '../scene/BalloonLayer.js'
 import { clipOf, shiftClip, stretchClip } from '../scene/diorama/clip.js'
 
@@ -25,6 +25,7 @@ import {
   fitZoom, timeAtX, toleranceSeconds, tickStep, ticksFor, formatTime,
   DRAG_THRESHOLD_PX, LANE_PAD_PX, zoomFromSlider, sliderFromZoom,
 } from './timeline-view.js'
+import { labelColumn } from './timeline-label-column.js'
 
 /** Figma's Bézier easing presets, by our easing.js names. 'hold' is Figma's Hold: a cut. */
 const EASING_PRESETS = [
@@ -81,7 +82,8 @@ const DEFAULT_DURATION = 8
 
 /** One decimal on a row that is 115px wide. `30.815` rendered as "30,815" and read as thirty
  *  thousand; the model keeps its precision, the field does not need it. */
-const round1 = (v) => Math.round(v * 10) / 10
+// Two decimals: a factor (scale, opacity) moves in steps of 0.05, and tenths showed 0.25 as 0.3.
+const round2 = (v) => Math.round(v * 100) / 100
 
 /** The map's camera as the five numbers the timeline animates — map-native, so it round-trips. */
 export const cameraFromMap = (map) => {
@@ -112,6 +114,7 @@ export const applyCamera = (map, values) => {
 
 
 export const animationTimeline = (config = {}) => ({
+  ...labelColumn(),
   time: 0,
   duration: Number(config.duration) || DEFAULT_DURATION,
   zoom: 100,
@@ -290,7 +293,8 @@ export const animationTimeline = (config = {}) => ({
   refreshObjects () {
     const cameras = this.targets.filter((t) => kindOfTarget(t) === 'camera')
       .map((target) => ({ target, kind: 'camera', label: 'Camera' }))
-    this.objects = [...cameras, ...balloonObjects(), ...artObjects(), ...textObjects(), ...dioramaObjects()]
+    this.objects = [...cameras, ...balloonObjects(), ...artObjects(), ...textObjects(), ...dioramaObjects(),
+      ...backgroundObjects(config.objectLabels?.background)]   // the back-most, so the last row
     for (const o of this.objects) if (!(o.target in this.openGroups)) this.openGroups[o.target] = true
   },
 
@@ -683,24 +687,26 @@ export const animationTimeline = (config = {}) => ({
     window.addEventListener('pointerup', onUp, { once: true })
   },
 
-  // ── Balloon spans. A balloon is on screen from its start to its end (no end: the scene's end).
-  //    Its row's clip moves it in time and its ends stretch it, like a diorama clip.
+  // ── Bars. A balloon is on screen from its start to its end (no end: the scene's end); a figure's
+  //    entrance plays from its delay for as long as Appear's speed makes it. Its row's bar moves
+  //    it in time and its ends stretch it, like a diorama clip.
 
-  /** The live draft while a span is dragged, else the balloon's own start and end. */
-  balloonSpan (target) {
+  /** The live draft while a bar is dragged, else the object's own. */
+  barOf (target) {
     if (this.spanDraft?.target === target) return this.spanDraft
     const o = this.objects.find((x) => x.target === target)
     if (!o) return null
+    if (o.kind === 'art') return o.entrance ?? null
     return { from: o.start ?? 0, to: Number.isFinite(o.end) ? o.end : this.duration }
   },
 
   spanDraft: null,
 
-  startBalloonSpan (event, target) {
+  startBar (event, target) {
     if (event.button !== 0) return
     event.stopPropagation()
     this.pause()
-    const span0 = this.balloonSpan(target)
+    const span0 = this.barOf(target)
     if (!span0) return
     const keys0 = [{ t: span0.from }, { t: span0.to }]
     const bar = event.currentTarget.getBoundingClientRect()
@@ -720,14 +726,28 @@ export const animationTimeline = (config = {}) => ({
       window.removeEventListener('pointermove', onMove)
       const draft = this.spanDraft
       if (!moved || !draft) { this.spanDraft = null; return }
-      // Up to the timeline's end means up to the scene's end, however long the narration runs.
-      const end = draft.to >= this.duration - 0.01 ? null : draft.to
-      window.Livewire?.dispatch('balloon:change', { id: `bal_${target.slice(4)}`, patch: { start: draft.from, end } })
-      // The row keeps the draft until the save comes back as the scene's new lines.
-      setTimeout(() => { if (this.spanDraft === draft) this.spanDraft = null }, 1500)
+      this.commitBar(target, draft)
     }
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp, { once: true })
+  },
+
+  /** Save a dragged bar: a figure's entrance delay and length, or a balloon's start and end. */
+  commitBar (target, draft) {
+    const o = this.objects.find((x) => x.target === target)
+    if (o?.kind === 'art') {
+      const ms = Math.max(100, Math.round((draft.to - draft.from) * 1000))
+      this.$wire?.setLayerEntrance?.(Number(target.slice(4)), Math.round(draft.from * 10) / 10, ms)
+      // The row shows the new bar now; the layer's own values arrive with the save.
+      o.entrance = { from: draft.from, to: draft.to }
+      this.spanDraft = null
+      return
+    }
+    // Up to the timeline's end means up to the scene's end, however long the narration runs.
+    const end = draft.to >= this.duration - 0.01 ? null : draft.to
+    window.Livewire?.dispatch('balloon:change', { id: `bal_${target.slice(4)}`, patch: { start: draft.from, end } })
+    // The row keeps the draft until the save comes back as the scene's new lines.
+    setTimeout(() => { if (this.spanDraft === draft) this.spanDraft = null }, 1500)
   },
 
   // ── Transport ───────────────────────────────────────────────────────────────────────────
@@ -947,14 +967,14 @@ export const animationTimeline = (config = {}) => ({
       const frame = sampleFrame(this.tracks, this.time)
       const value = frame[target]?.[property]
       if (isColor && typeof value === 'string') return value
-      if (Number.isFinite(value)) return round1(value)
+      if (Number.isFinite(value)) return round2(value)
     }
     if (isColor) { const live = readObjectProperty(target, property); return typeof live === 'string' ? live : '' }
     const map = window.__lessonMap
     const live = kindOfTarget(target) === 'camera'
       ? (map ? cameraFromMap(map)[property] : null)
       : readObjectProperty(target, property)
-    return Number.isFinite(live) ? round1(live) : 0
+    return Number.isFinite(live) ? round2(live) : 0
   },
 
   /**

@@ -49,6 +49,26 @@ class LessonPosterTest extends TestCase
         );
     }
 
+    public function test_a_panel_picture_stays_in_the_library_after_the_scene_goes_back_to_one_picture(): void
+    {
+        // Bart 2026-10-20: a split scene set back to one picture kept its second panel as a shot,
+        // but the Library only listed scene.image_path, so the Terra Australis map was unfindable.
+        $lesson = $this->lesson();
+        Scene::create([
+            'lesson_id' => $lesson->id, 'order' => 1, 'kind' => 'image', 'status' => 'ready',
+            'image_path' => 'https://res.cloudinary.com/demo/image/upload/panel-one.jpg',
+            'shots' => [
+                ['image_path' => 'https://res.cloudinary.com/demo/image/upload/panel-one.jpg'],
+                ['image_path' => 'https://res.cloudinary.com/demo/image/upload/terra-australis.jpg'],
+            ],
+        ]);
+
+        $this->assertContains(
+            'https://res.cloudinary.com/demo/image/upload/terra-australis.jpg',
+            collect($lesson->refresh()->posterCandidates())->pluck('url')->all(),
+        );
+    }
+
     public function test_teacher_override_wins_over_auto_pick(): void
     {
         $lesson = $this->lesson();

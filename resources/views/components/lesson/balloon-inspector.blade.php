@@ -44,15 +44,14 @@
                      keyframe :keyframe-target="$target" keyframe-property="opacity"
                      :on-input="$live('opacity')" :on-change="$save('opacity')" />
 
-    <label class="form-control">
-        <span class="text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Appear') }}</span>
-        <select class="select select-sm select-bordered mt-1 w-full"
-                wire:change="updateBalloon(@js($id), 'anim', $event.target.value)">
-            @foreach (\App\Support\LayerEntrances::labels() as $value => $label)
-                <option value="{{ $value }}" @selected(($balloon['anim'] ?? 'pop') === $value)>{{ $label }}</option>
-            @endforeach
-        </select>
-    </label>
+    {{-- Appear, its speed and its delay: the control a figure's Animate tab uses too. The delay is
+         the balloon's start, the left end of its bar in the timeline. --}}
+    <x-lesson.appear-control :name="'appear-speed-'.$id" :anim="$balloon['anim'] ?? 'pop'"
+                             :natural="\App\Support\LayerEntrances::naturalMs($balloon['anim'] ?? 'pop', 'balloon')"
+                             :duration="$balloon['anim_duration'] ?? null" :delay="(float) ($balloon['start'] ?? 0)"
+                             :on-anim="'updateBalloon('.$jsId.', \'anim\', $event.target.value)'"
+                             :on-speed="'setBalloonSpeed('.$jsId.', $event.target.value)'"
+                             :on-delay="'updateBalloon('.$jsId.', \'start\', $event.target.value)'" />
 
     @if ($speakers !== [])
         <label class="form-control">

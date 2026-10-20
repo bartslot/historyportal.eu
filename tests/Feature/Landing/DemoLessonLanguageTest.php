@@ -46,7 +46,7 @@ class DemoLessonLanguageTest extends TestCase
     private function seedCanon(): void
     {
         $this->lesson('Abel Tasman: De reis naar het onbekende', 'nl');
-        $this->lesson('Abel Tasman: two voyages to the unknown south', 'en');
+        $this->lesson('Abel Tasman: the voyage into the unknown', 'en');
         $this->lesson("La Révolution française et l'ascension de Napoléon", 'fr');
     }
 
@@ -105,7 +105,7 @@ class DemoLessonLanguageTest extends TestCase
 
         $lesson = $this->visit(['Accept-Language' => 'pt-BR,pt;q=0.9', 'CF-IPCountry' => 'BR']);
 
-        $this->assertSame('Abel Tasman: two voyages to the unknown south', $lesson?->title);
+        $this->assertSame('Abel Tasman: the voyage into the unknown', $lesson?->title);
         $this->assertSame('en', $lesson?->language);
     }
 
@@ -123,13 +123,13 @@ class DemoLessonLanguageTest extends TestCase
     {
         // Exactly production's shape: plenty of English lessons, no Dutch one, and one of the
         // English ones is the newest — which is how The Silk Road won.
-        $this->lesson('Abel Tasman: two voyages to the unknown south', 'en');
+        $this->lesson('Abel Tasman: the voyage into the unknown', 'en');
         $this->lesson('The Silk Road', 'en');
 
         $lesson = $this->visit(['Accept-Language' => 'nl-NL,nl;q=0.9', 'CF-IPCountry' => 'NL']);
 
         $this->assertNotSame('The Silk Road', $lesson?->title, 'the newest-lesson fallback is back');
-        $this->assertSame('Abel Tasman: two voyages to the unknown south', $lesson?->title);
+        $this->assertSame('Abel Tasman: the voyage into the unknown', $lesson?->title);
     }
 
     public function test_a_title_match_in_the_wrong_language_is_not_accepted(): void
@@ -137,25 +137,25 @@ class DemoLessonLanguageTest extends TestCase
         // Someone renames the English lesson to the Dutch title. The column is the source of truth,
         // so this must NOT satisfy a Dutch visitor.
         $this->lesson('De reis van Abel Tasman', 'en');
-        $this->lesson('Abel Tasman: two voyages to the unknown south', 'en');
+        $this->lesson('Abel Tasman: the voyage into the unknown', 'en');
 
         $lesson = $this->visit(['Accept-Language' => 'nl-NL,nl;q=0.9']);
 
         $this->assertSame('en', $lesson?->language);
-        $this->assertSame('Abel Tasman: two voyages to the unknown south', $lesson?->title);
+        $this->assertSame('Abel Tasman: the voyage into the unknown', $lesson?->title);
     }
 
     public function test_the_goal_line_describes_the_lesson_that_actually_won(): void
     {
         // Nothing on screen may promise a lesson the visitor is not about to get.
-        $this->lesson('Abel Tasman: two voyages to the unknown south', 'en');
+        $this->lesson('Abel Tasman: the voyage into the unknown', 'en');
 
         DemoLesson::forget();
         $request = \Illuminate\Http\Request::create('/', 'GET');
         $request->headers->set('Accept-Language', 'nl-NL,nl;q=0.9');
 
         $this->assertSame(
-            config('demo.goals')['Abel Tasman: two voyages to the unknown south'],
+            config('demo.goals')['Abel Tasman: the voyage into the unknown'],
             DemoLesson::goal($request),
             'the hero typed a Dutch goal over an English lesson',
         );
@@ -214,7 +214,7 @@ class DemoLessonLanguageTest extends TestCase
 
     public function test_the_url_language_beats_an_english_browser(): void
     {
-        $this->lesson('Abel Tasman: two voyages to the unknown south', 'en');
+        $this->lesson('Abel Tasman: the voyage into the unknown', 'en');
         $this->lesson('De reis van Abel Tasman', 'nl');
 
         $request = \Illuminate\Http\Request::create('/nl', 'GET');

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  tailRoot, tailShape, thoughtTrail, tipShortOf, clampToView, cloudPath, ROOT_SHARE, TRAIL_SHARES,
+  tailRoot, tailShape, thoughtTrail, thoughtRoot, tipShortOf, clampToView, cloudPath, ROOT_SHARE, TRAIL_SHARES,
   outlinePoint, outlineT, bendFromPoint, curveMid, MAX_BEND,
 } from '../balloon-shape.js'
 import { onEdge } from '../balloon-edit.js'
@@ -51,8 +51,14 @@ describe('a pinned tail root (outline position)', () => {
   it('a thought trail leaves from the pinned spot too', () => {
     const pin = outlineT(rect, [100, 170])        // the left edge
     const trail = thoughtTrail(rect, [300, 500], pin)
-    const from = outlinePoint(rect, pin).point
-    expect(Math.hypot(trail[0].x - from[0], trail[0].y - from[1])).toBeCloseTo(TRAIL_SHARES[0] * rect.h * 1.6, 3)
+    // It leaves the CLOUD in the pinned direction (the cloud lies inside the box), and its first
+    // circle touches it (Bart 2026-10-16: "always on the edge/stroke of the balloon").
+    const from = thoughtRoot(rect, [300, 500], pin)
+    const box = outlinePoint(rect, pin).point
+    const centre = [rect.left + rect.w / 2, rect.top + rect.h / 2]
+    const dir = (p) => Math.atan2(p[1] - centre[1], p[0] - centre[0])
+    expect(dir(from)).toBeCloseTo(dir(box), 6)
+    expect(Math.hypot(trail[0].x - from[0], trail[0].y - from[1])).toBeCloseTo(trail[0].r, 6)
   })
 })
 

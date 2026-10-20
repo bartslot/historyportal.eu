@@ -13,7 +13,7 @@
     {{-- Dimmed backdrop over the preview canvas (click to close when dismissible) --}}
     <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" @if($close) wire:click="{{ $close }}" @endif></div>
 
-    <div class="relative mx-4 w-full max-w-lg rounded-3xl border border-primary/30 bg-base-200 p-8 text-center shadow-2xl lp-bg-card space-y-5">
+    <div class="relative mx-4 w-full max-w-lg rounded-3xl border border-primary/30 bg-base-200 p-8 text-center lp-bg-card space-y-5">
         @if($close)
             <button type="button" wire:click="{{ $close }}" aria-label="{{ __('Close') }}"
                     class="btn btn-ghost btn-circle btn-sm absolute right-4 top-4 text-slate-400 hover:text-slate-200">

@@ -146,7 +146,22 @@ class LessonExportTest extends TestCase
         $lesson = app(LessonComposer::class)->build($spec, $this->teacher, narrate: false);
         $exported = app(LessonExporter::class)->toSpec($lesson->fresh());
 
+        // The version is the lesson's state (LessonVersion), carried on but not authored.
+        $this->assertGreaterThanOrEqual(1, $exported['content_version']);
+        unset($exported['content_version']);
         $this->assertEquals($spec, $exported);
+    }
+
+    public function test_a_teacher_guide_survives_compose_and_export(): void
+    {
+        // The guide is authored in the spec; a rebuild from it must not drop what teachers read.
+        $guide = ['goal' => 'Leerlingen begrijpen waarom...', 'faq' => [['q' => 'Hoe lang?', 'a' => 'Een lesuur.']]];
+        $spec = $this->spec() + ['teacher_guide' => $guide];
+
+        $lesson = app(LessonComposer::class)->build($spec, $this->teacher, narrate: false);
+
+        $this->assertSame($guide, $lesson->fresh()->teacher_guide);
+        $this->assertSame($guide, app(LessonExporter::class)->toSpec($lesson->fresh())['teacher_guide']);
     }
 
     public function test_a_lesson_built_from_the_art_library_exports_as_library_refs(): void
@@ -190,7 +205,7 @@ class LessonExportTest extends TestCase
         $exporter = app(LessonExporter::class);
         $lesson = app(LessonComposer::class)->build($spec, $this->teacher, narrate: false);
 
-        $this->assertEquals($spec, $exporter->toSpec($lesson->fresh()));
+        $this->assertEquals($spec, array_diff_key($exporter->toSpec($lesson->fresh()), ['content_version' => true]));
         $this->assertSame([], $exporter->unresolvedImages());
     }
 

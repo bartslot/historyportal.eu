@@ -6,6 +6,7 @@ namespace App\Livewire\Wizard\Concerns;
 
 use App\Services\Support\SceneSplit;
 use App\Services\Support\SpeechBalloons;
+use App\Support\LayerEntrances;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 
@@ -48,6 +49,17 @@ trait EditsSceneBalloons
     public function changeBalloon(string $id, array $patch): void
     {
         $this->storeBalloon($id, fn (array $line): array => SpeechBalloons::patch($line, $patch));
+    }
+
+    /** Appear's speed (LayerEntrances::SPEEDS): a factor on this balloon's own entrance length. */
+    public function setBalloonSpeed(string $id, string $speed): void
+    {
+        if (! isset(LayerEntrances::SPEEDS[$speed])) {
+            return;
+        }
+        $this->storeBalloon($id, fn (array $line): array => SpeechBalloons::patch($line, [
+            'anim_duration' => LayerEntrances::durationFor($speed, LayerEntrances::naturalMs($line['anim'] ?? null, 'balloon')),
+        ]));
     }
 
     /** The inspector: text, kind, or speaker (a figure's asset id on the balloon's panel, '' = nobody). */

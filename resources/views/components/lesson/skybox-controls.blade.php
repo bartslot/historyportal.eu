@@ -110,28 +110,53 @@
 
     {{-- ── Slideshow tab ────────────────────────────────────────────────────── --}}
     <div x-show="view === 'slideshow'" x-cloak class="space-y-2">
-        {{-- Layout — Standard (one picture) | Split (two comic panels with a white gutter between).
-             Split: the direction and where the gutter sits; the panel clicked on the stage is the
-             one the controls below work on. --}}
-        @php
-            // Heroicons' view-columns frame, with no divider, one upright and one level divider.
-            $iconOne = 'M4.125 19.5h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125Z';
-            $iconSideBySide = 'M12 4.5v15m-7.875 0h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125Z';
-            $iconStacked = 'M3 12h18m-16.875 7.5h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125Z';
-        @endphp
-        {{-- Only where the player can draw two panels (SceneSplit::allowedFor): never a quiz, a map or a film. --}}
+        {{-- Layout (Figma 2346:503): one strip of tiles, each a picture of its arrangement, that
+             scrolls sideways to more of them. Single is one picture; every other tile splits the
+             scene into comic panels. The panel clicked on the stage is the one the controls below
+             work on; the dividers drag on the stage, the sliders are the exact fallback. --}}
         @if (\App\Services\Support\SceneSplit::allowedFor($scene->kind))
-        <div x-data="{ mode: @js($split ? 'split' : 'standard'), dir: @js($split['dir'] ?? 'h') }" class="space-y-2" data-split-controls>
-            <x-ui.segmented panel name="scene-layout" model="mode"
-                            :options="[['standard', __('Standard'), $iconOne], ['split', __('Split'), $iconSideBySide]]"
-                            on-change="$wire.call('setSceneLayout', $event.target.value)" />
+        @php
+            $currentLayout = $split['layout'] ?? 'single';
+            $layoutNames = [
+                'single' => __('One picture'),
+                'rows2' => __('Two rows'),
+                'cols2' => __('Two columns'),
+                'diag' => __('Diagonal'),
+                'l1r2' => __('One left, two right'),
+                'rows3' => __('Three rows'),
+                'cols3' => __('Three columns'),
+                'l2r1' => __('Two left, one right'),
+                't1b2' => __('One top, two below'),
+                'grid4' => __('Four squares'),
+            ];
+        @endphp
+        <div class="space-y-2" data-split-controls>
+            <div class="no-scrollbar flex gap-1 overflow-x-auto rounded-lg" data-drag-scroll role="radiogroup" aria-label="{{ __('Layout') }}">
+                @foreach ($layoutNames as $layoutId => $layoutName)
+                    @php $isOn = $currentLayout === $layoutId; @endphp
+                    <button type="button" wire:click="setSplitLayout('{{ $layoutId }}')"
+                            role="radio" aria-checked="{{ $isOn ? 'true' : 'false' }}" aria-label="{{ $layoutName }}"
+                            data-tooltip="{{ $layoutName }}" data-split-layout="{{ $layoutId }}"
+                            class="grid h-8 w-[54px] shrink-0 cursor-pointer place-items-center first:rounded-l-lg last:rounded-r-lg"
+                            style="background: var({{ $isOn ? '--color-panel-tile-active' : '--color-panel-tile' }}); color: var({{ $isOn ? '--color-panel-tile-glyph-active' : '--color-panel-tile-glyph' }})">
+                        <svg viewBox="0 0 42 24" width="42" height="24" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true">
+                            <rect x="0.5" y="0.5" width="41" height="23" rx="3.5"/>
+                            @if ($layoutId !== 'single')
+                                <path d="{{ \App\Services\Support\SceneSplit::glyph($layoutId) }}"/>
+                            @endif
+                        </svg>
+                    </button>
+                @endforeach
+            </div>
             @if ($split)
-                <x-ui.segmented panel name="split-dir" model="dir"
-                                :options="[['h', __('Horizontal'), $iconStacked], ['v', __('Vertical'), $iconSideBySide]]"
-                                on-change="$wire.call('setSplit', $event.target.value, null)" />
-                <x-ui.slider-row :label="__('Position')" :min="25" :max="75" :step="1"
-                                 :value="$split['at'] * 100" :display="(string) round($split['at'] * 100)" unit="%" :default="50"
-                                 on-change="setSplit(null, $event.target.value / 100)" />
+                {{-- One slider per divider; a diagonal's two are where its line meets the top and the bottom. --}}
+                @foreach ($split['at'] as $k => $at)
+                    <x-ui.slider-row :label="$split['layout'] === 'diag' ? ($k === 0 ? __('Top') : __('Bottom')) : (count($split['at']) > 1 ? __('Position').' '.($k + 1) : __('Position'))"
+                                     :min="20" :max="80" :step="1"
+                                     :value="$at * 100" :display="(string) round($at * 100)" unit="%"
+                                     :default="round(\App\Services\Support\SceneSplit::LAYOUTS[$split['layout']]['at'][$k] * 100)"
+                                     :on-change="'setSplitAt(' . $k . ', $event.target.value / 100)'" />
+                @endforeach
                 <span class="block text-2xs font-semibold uppercase tracking-wider text-slate-400" data-split-panel-label>{{ __('Panel') }} {{ $activePanel + 1 }}</span>
             @endif
         </div>
@@ -254,16 +279,22 @@
             @if ($split && $backgroundImageUrl)
                 <div class="space-y-1" data-panel-focus>
                     <span class="block text-2xs font-semibold uppercase tracking-wider text-slate-400">{{ __('Crop') }}</span>
+                    {{-- Each row keys the panel's background on the timeline (bg:<panel>), as a
+                         layer's sliders key the layer. --}}
                     <x-ui.slider-row :label="__('Horizontal')" :min="0" :max="100" :step="1"
-                                     :value="$panelFocus['x']" :display="(string) round($panelFocus['x'])" unit="%" :default="50"
+                                     :value="$panelFocus['x']" :display="(string) round($panelFocus['x'])" unit="%" :display-scale="1" :default="50"
+                                     keyframe :keyframe-target="'bg:'.$activePanel" keyframe-property="x"
                                      on-change="setPanelFocus('x', $event.target.value)" />
                     <x-ui.slider-row :label="__('Vertical')" :min="0" :max="100" :step="1"
-                                     :value="$panelFocus['y']" :display="(string) round($panelFocus['y'])" unit="%" :default="50"
+                                     :value="$panelFocus['y']" :display="(string) round($panelFocus['y'])" unit="%" :display-scale="1" :default="50"
+                                     keyframe :keyframe-target="'bg:'.$activePanel" keyframe-property="y"
                                      on-change="setPanelFocus('y', $event.target.value)" />
-                    {{-- The wheel over the pane on the stage sets the same zoom. --}}
-                    <x-ui.slider-row :label="__('Zoom')" :min="100" :max="400" :step="5"
-                                     :value="($panelFocus['zoom'] ?? 1) * 100" :display="(string) round(($panelFocus['zoom'] ?? 1) * 100)" unit="%" :default="100"
-                                     on-change="setPanelFocus('zoom', $event.target.value / 100)" />
+                    {{-- The wheel over the pane on the stage sets the same zoom: a factor, as the
+                         timeline row has it, shown as a percentage. --}}
+                    <x-ui.slider-row :label="__('Zoom')" :min="1" :max="4" :step="0.05"
+                                     :value="$panelFocus['zoom'] ?? 1" :display="(string) round(($panelFocus['zoom'] ?? 1) * 100)" unit="%" :default="1"
+                                     keyframe :keyframe-target="'bg:'.$activePanel" keyframe-property="zoom"
+                                     on-change="setPanelFocus('zoom', $event.target.value)" />
                 </div>
             @endif
 
@@ -272,43 +303,7 @@
                  URLs downloaded once). Mirrors the Poster picker's "pick from the lesson" idea. --}}
             @php $reuseImages = array_reverse($scene->lesson?->posterCandidates() ?? []); @endphp
             @if (count($reuseImages))
-                {{-- imageGrid (resources/js/ui/image-grid.js): the size slider and the zoom; the inner
-                     x-data only scrolls. --}}
-                <div x-data="imageGrid({ id: 'reuse', kind: 'image', initial: 112 })">
-                <div x-data="{ scroll(d) { const el = $refs.strip; el.scrollBy({ left: d * el.clientWidth * 0.8, behavior: 'smooth' }); } }">
-                    <div class="mb-1 flex items-center justify-between gap-2">
-                        <span class="text-2xs font-semibold uppercase tracking-wider text-slate-400">{{ __('Reuse from this lesson') }}</span>
-                        <x-ui.thumb-size />
-                    </div>
-                    <div class="flex items-center gap-1">
-                        <button type="button" @click="scroll(-1)" aria-label="{{ __('Previous') }}"
-                                class="flex h-8 w-5 shrink-0 items-center justify-center rounded text-slate-400 transition hover:bg-slate-800 hover:text-slate-100">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="h-4 w-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15 6l-6 6 6 6"/></svg>
-                        </button>
-                        <div x-ref="strip" data-drag-scroll :style="gridStyle"
-                             class="lp-thumb-strip flex min-w-0 flex-1 gap-1.5 overflow-x-auto scroll-smooth [&::-webkit-scrollbar]:hidden" style="scrollbar-width:none">
-                            @foreach ($reuseImages as $img)
-                                <button type="button" wire:click="useLessonImageBackground(@js($img['url']))"
-                                        data-kind="image" data-zoom
-                                        data-tooltip="{{ $img['label'] ?? '' }}" aria-label="{{ $img['label'] ?? '' }}"
-                                        @class([
-                                            'overflow-hidden rounded ring-1 transition',
-                                            'ring-base-content' => $backgroundImageUrl === $img['url'],
-                                            'ring-slate-700 hover:ring-base-content/40' => $backgroundImageUrl !== $img['url'],
-                                        ])>
-                                    <img src="{{ $img['url'] }}" alt="{{ $img['label'] ?? '' }}" class="h-full w-full object-cover" loading="lazy" decoding="async"
-                                         :srcset="srcset(@js($img['url']))" :sizes="sizes(@js($img['url']))"
-                                         onerror="this.closest('button').style.display='none'" />
-                                </button>
-                            @endforeach
-                        </div>
-                        <button type="button" @click="scroll(1)" aria-label="{{ __('Next') }}"
-                                class="flex h-8 w-5 shrink-0 items-center justify-center rounded text-slate-400 transition hover:bg-slate-800 hover:text-slate-100">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="h-4 w-4"><path stroke-linecap="round" stroke-linejoin="round" d="M9 6l6 6-6 6"/></svg>
-                        </button>
-                    </div>
-                </div>
-                </div>
+                <x-lesson.picture-strip :images="$reuseImages" select="useLessonImageBackground" :current="$backgroundImageUrl" :label="__('Reuse from this lesson')" />
             @endif
 
             <x-ui.segmented panel name="image-source" model="imgSrc"
@@ -399,7 +394,7 @@
                         <button type="button"
                                 wire:click="selectSkyboxCandidate({{ $scene->id }}, {{ $i }})"
                                 wire:loading.attr="disabled" wire:target="selectSkyboxCandidate,generateSkyboxCandidates"
-                                class="group relative block w-full overflow-hidden rounded ring-1 ring-slate-700 hover:ring-2 hover:ring-base-content/40 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                class="group relative block w-full overflow-hidden rounded ring-1 ring-slate-700 hover:ring-base-content/40 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                 style="aspect-ratio:2/1">
                             <img src="{{ asset('storage/' . $path) }}"
                                  class="w-full h-full object-cover" />

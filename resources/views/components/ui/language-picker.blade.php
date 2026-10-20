@@ -81,7 +81,7 @@
         x-transition:enter-start="opacity-0 -translate-y-1"
         x-transition:leave="transition duration-100 ease-exit"
         x-transition:leave-end="opacity-0"
-        class="absolute z-50 mt-2 w-full overflow-hidden rounded-lg border border-slate-700 bg-slate-900 py-1 shadow-2xl focus:outline-none"
+        class="absolute z-50 mt-2 w-full overflow-hidden rounded-lg border border-slate-700 bg-slate-900 py-1 focus:outline-none"
     >
         @foreach ($options as $index => $option)
             <li

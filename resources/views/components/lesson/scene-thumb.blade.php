@@ -4,10 +4,8 @@
     'wide'     => false,   // vertical rail: fill the rail width instead of fixed w-32
     'number'   => null,    // slide number badge (vertical rail)
     'editable' => false,   // Configure step: show the hover X that deletes the scene
-    // Play step only: switch the stage in the browser from a pre-built payload instead of asking
-    // the server what it already told us. Configure keeps the Livewire round trip, because
-    // selecting a scene there really does change server-side editing state.
-    'clientSwitch' => false,
+    // What LessonProblems found on this scene (the editor passes them; null = the old status dot).
+    'problems' => null,
 ])
 
 {{-- data-thumb / data-thumb-selected let the rail's @container "compact" rules (timeline.blade)
@@ -21,38 +19,25 @@
     // The delete X is a SIBLING of the thumb, never a child: a button inside a button is invalid
     // markup and the inner one stops firing. data-scene-block is what the rail drags and reads the
     // running order from, so the wrapper takes over that job from the button.
-    $canDelete = $editable && ! $clientSwitch;
+    $canDelete = $editable;
 @endphp
 @if ($canDelete)
 <div class="group/thumb relative" data-scene-block="{{ $scene->id }}" wire:key="scene-block-{{ $scene->id }}">
 @endif
 <button type="button"
         wire:key="scene-thumb-{{ $scene->id }}"
-        @if ($clientSwitch)
-            x-on:click="switchScene({{ $scene->id }})"
-        @else
-            wire:click="selectScene({{ $scene->id }})"
-        @endif
+        wire:click="selectScene({{ $scene->id }})"
         data-scene-id="{{ $scene->id }}"
         data-thumb
         aria-label="{{ $sceneAriaLabel }}"
-        @if ($selected && ! $clientSwitch) data-thumb-selected aria-current="true" @endif
-        @if ($clientSwitch)
-            {{-- Alpine owns the highlight here, so the static ring classes are left off to avoid
-                 fighting the binding. data-thumb-selected drives the compact-rail CSS above. --}}
-            x-bind:data-thumb-selected="selected === {{ $scene->id }} ? '' : null"
-            x-bind:aria-current="selected === {{ $scene->id }} ? 'true' : null"
-            x-bind:class="selected === {{ $scene->id }}
-                ? 'ring-2 ring-primary ring-offset-2 ring-offset-slate-900'
-                : '{{ $scene->status === 'failed' ? 'ring-1 ring-error/50' : 'ring-1 ring-slate-700/50 hover:ring-slate-500' }}'"
-        @endif
+        @if ($selected) data-thumb-selected aria-current="true" @endif
         @class([
             'group relative shrink-0 aspect-video rounded-md overflow-hidden transition-all',
             'w-full' => $wide,
             'w-32' => ! $wide,
-            'ring-2 ring-primary ring-offset-2 ring-offset-slate-900'        => $selected && ! $clientSwitch,
-            'ring-1 ring-slate-700/50 hover:ring-slate-500'                    => ! $clientSwitch && ! $selected && $scene->status !== 'failed',
-            'ring-1 ring-error/50'                                          => ! $clientSwitch && $scene->status === 'failed',
+            'ring-2 ring-primary ring-offset-2 ring-offset-slate-900'        => $selected,
+            'ring-1 ring-slate-700/50 hover:ring-slate-500'                    => ! $selected && $scene->status !== 'failed',
+            'ring-1 ring-error/50'                                          => $scene->status === 'failed',
         ])>
     {{-- Full thumbnail (image / year / place / badges). Hidden by the compact @container rule. --}}
     <span data-thumb-full class="contents">
@@ -118,8 +103,18 @@
         </span>
     @endif
 
-    @if ($scene->status === 'failed')
-        <span class="absolute top-1 right-1 w-4 h-4 rounded-full bg-error text-white text-3xs flex items-center justify-center">!</span>
+    {{-- The dot explains itself: red when the class will notice, amber when the scene plays but
+         not as the teacher left it (an older voice). The sentence is LessonProblems', never the
+         raw error. Outside the editor (no problems passed) a failed scene keeps its plain dot. --}}
+    @php
+        $worst = $problems === null ? ($scene->status === 'failed' ? \App\Support\LessonProblems::BLOCKS : null) : \App\Support\LessonProblems::worst($problems);
+        $why = $problems ? implode(' ', array_unique(array_column($problems, 'message'))) : null;
+    @endphp
+    @if ($worst)
+        <span data-problem-dot="{{ $worst }}" @if ($why) data-tooltip="{{ $why }}" @endif
+              @class(['pointer-events-auto absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full text-3xs font-bold',
+                      'bg-error text-white' => $worst === \App\Support\LessonProblems::BLOCKS,
+                      'bg-warning text-warning-content' => $worst !== \App\Support\LessonProblems::BLOCKS])>!</span>
     @endif
     </span>
 
@@ -142,7 +137,7 @@
             title="{{ __('Delete scene') }}"
             aria-label="{{ __('Delete scene') }}"
             class="absolute -right-1.5 -top-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-full
-                   border border-slate-600 bg-slate-900 text-slate-300 opacity-0 shadow-lg transition
+                   border border-slate-600 bg-slate-900 text-slate-300 opacity-0 transition
                    hover:border-error hover:bg-error hover:text-white
                    focus-visible:opacity-100 group-hover/thumb:opacity-100">
         <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">

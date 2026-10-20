@@ -3,6 +3,10 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    @if (\Illuminate\Support\Facades\Route::has('dev.tuning.index') && auth()->check())
+        {{-- The dev panel's presets endpoint (local only): resources/js/dev/tuner.js asks only when this is here. --}}
+        <meta name="dev-tuning" content="{{ route('dev.tuning.index') }}">
+    @endif
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $lesson->title }} — History Portal</title>
     {{-- lesson-map.js (+ the ~1 MB MapLibre/volcanoes chunk) is loaded on demand by
@@ -118,6 +122,8 @@
         // The join QR's place (auto, a corner, hidden; resources/js/title-qr.js) and the boxes a
         // logo/plain title picture keeps clear of it (% of the picture; a candidate has its own).
         'qr_position'           => $lesson->qrPosition(),
+        // The version THIS page loaded (LessonVersion), shown under the QR: a stale screen shows a lower one.
+        'content_version'       => (int) ($lesson->content_version ?? 1),
         'title_keep_clear'      => \App\Support\TitlePoster::keepClear($lesson->title_keep_clear),
         // "What you can expect": 1-3 short lines on the title screen.
         'expect'                => array_values((array) ($lesson->expect ?? [])),
@@ -132,7 +138,10 @@
                 'id'          => $s->id,   // lets the teacher-preview "Edit scene" deep-link to this exact scene
                 'order'       => $s->order,
                 'kind'        => $s->kind,
-                'config'      => $s->config,
+                // A predict moment's rubric is the grader's business: the class gets the questions only.
+                'config'      => $s->game_type === 'predict' && is_array(($s->config ?? [])['predict'] ?? null)
+                    ? ['predict' => \App\Services\Lessons\PredictSpec::forPlayer($s->config['predict'])] + $s->config
+                    : $s->config,
                 'diorama_assets' => \App\Services\Diorama\LibraryAssets::forScene($s),
                 'chapter_name' => $s->chapterName(),
                 'year'        => $s->year,
@@ -191,12 +200,16 @@
                         'embed'   => isset($l['embed']) && is_array($l['embed']) ? $l['embed'] : null,
                         // Ambient motion (drift / breeze / bob / flutter), validated to the known vocabulary.
                         ...\App\Services\Support\LayerAmbient::payload($l),
+                        // How it arrives and leaves (Appear, its speed and delay), as the editor plays it.
+                        ...\App\Support\LayerEntrances::payload($l),
                         // The angle and mirroring the teacher set (a tilt so two copies of one
                         // sprite never look like twins), and how the layer blends into the scene.
                         'rotation' => isset($l['rotation']) ? (float) $l['rotation'] : null,
                         'flip_x'  => ! empty($l['flip_x']),
                         'flip_y'  => ! empty($l['flip_y']),
                         ...\App\Services\Support\LayerSitIn::payload($l),
+                        // A sprite sheet over the picture (the sails that swell with the wind).
+                        ...\App\Services\Support\LayerFrames::payload($l),
                         'occlude' => ! empty($l['occlude']),
                     ])->filter(fn($l) => $l['url'] || $l['embed'])->values()->all() ?: null,
                     'anchor_sentence' => $shot['anchor_sentence'] ?? null,
@@ -238,6 +251,17 @@
         'estimated_minutes'     => $lesson->relationLoaded('scenes') ? $lesson->estimatedMinutes() : null,
         // A student can't skip a quiz question; the teacher testing their own lesson can.
         'can_skip_quiz'         => (bool) auth()->user()?->canManage($lesson),
+        // Predict moments: where typed answers go, and (for the board) the lesson's classes, each with
+        // its remembered answer to "Devices in class?".
+        'predict'               => [
+            'store_url'  => route('lesson.predictions.store', ['lessonCode' => $lesson->lesson_code]),
+            'mode_url'   => route('lesson.play-mode', ['lessonCode' => $lesson->lesson_code]),
+            'answer_max' => \App\Services\Lessons\PredictSpec::ANSWER_MAX,
+            'classrooms' => auth()->user()?->canManage($lesson)
+                ? $lesson->classrooms()->get(['classrooms.id', 'classrooms.name', 'classrooms.devices_mode'])
+                    ->map(fn ($c) => ['id' => $c->id, 'name' => $c->name, 'devices_mode' => $c->devices_mode])->values()
+                : [],
+        ],
         // Harbour race on the teams' phones (HarbourRace): only a lesson manager opens one.
         'race'                  => auth()->user()?->canManage($lesson) ? [
             'store_url'      => route('race.store', ['lessonCode' => $lesson->lesson_code]),
@@ -394,7 +418,8 @@
                  line on screen (a line not translated yet shows in the original). x-text (never
                  x-html): a script is teacher copy and must not inject markup into the player. No
                  x-transition: its leave never applied in a hidden tab and left the bubble up. --}}
-            <div x-show="captionsOn && captionText && (phase === 'INTRO' || phase === 'GAME_ACTIVE')"
+            {{-- Not while a power-meter moment is up: its panel sits where the caption does. --}}
+            <div x-show="captionsOn && captionText && !_momentActive && (phase === 'INTRO' || phase === 'GAME_ACTIVE')"
                  x-cloak
                  class="lp-cc pointer-events-none absolute left-1/2 -translate-x-1/2 text-center"
                  :class="!chromeHidden && 'lp-cc--lifted'"
@@ -629,7 +654,7 @@
                             <button type="button" x-show="_hasSlides" @click="previousSlide()" :disabled="!canSkip || _sceneIndex <= 0"
                                     data-tooltip="{{ __('Previous') }}" data-tooltip-key="←" aria-label="{{ __('Previous') }}"
                                     class="group flex h-10 w-10 items-center justify-center rounded-lg text-white/85 transition hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 disabled:pointer-events-none disabled:opacity-35">
-                                <svg class="h-6 w-6 shadow-sm transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
+                                <svg class="h-6 w-6 transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
                                      viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                                     <g transform="matrix(-1 0 0 1 24 0)">
                                         <path stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" d="M4.5 6.6c0-.87.95-1.4 1.7-.96l8.9 5.4a1.12 1.12 0 0 1 0 1.92l-8.9 5.4c-.75.45-1.7-.09-1.7-.96V6.6Z"/>
@@ -642,11 +667,11 @@
                                     :data-tooltip="playbackPaused ? @js(__('Play')) : @js(__('Pause'))" data-tooltip-key="K"
                                     :aria-label="playbackPaused ? @js(__('Play')) : @js(__('Pause'))"
                                     class="group flex h-11 w-11 items-center justify-center rounded-lg text-white transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70">
-                                <svg x-show="playbackPaused" class="h-8 w-8 shadow-sm transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
+                                <svg x-show="playbackPaused" class="h-8 w-8 transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
                                      viewBox="0 0 24 24" fill="currentColor" stroke-width="1.5" aria-hidden="true">
                                     <path d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z"/>
                                 </svg>
-                                <svg x-show="!playbackPaused" x-cloak class="h-8 w-8 shadow-sm transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
+                                <svg x-show="!playbackPaused" x-cloak class="h-8 w-8 transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
                                      viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5"/>
                                 </svg>
@@ -655,7 +680,7 @@
                                     :data-stage-waiting="showMapContinue"
                                     data-tooltip="{{ __('Next') }}" data-tooltip-key="→" aria-label="{{ __('Next') }}"
                                     class="group flex h-10 w-10 items-center justify-center rounded-lg text-white/85 transition hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 disabled:pointer-events-none disabled:opacity-35">
-                                <svg class="h-6 w-6 shadow-sm transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
+                                <svg class="h-6 w-6 transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
                                      viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                                     <g>
                                         <path stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" d="M4.5 6.6c0-.87.95-1.4 1.7-.96l8.9 5.4a1.12 1.12 0 0 1 0 1.92l-8.9 5.4c-.75.45-1.7-.09-1.7-.96V6.6Z"/>
@@ -675,11 +700,11 @@
                                         :aria-label="audioMuted ? @js(__('Unmute')) : @js(__('Mute'))"
                                         class="group flex h-10 w-10 items-center justify-center rounded-lg transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
                                         :class="audioMuted ? 'text-white/60 hover:text-white' : 'text-white/85 hover:text-white'">
-                                    <svg x-show="!audioMuted" class="h-6 w-6 shadow-sm transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
+                                    <svg x-show="!audioMuted" class="h-6 w-6 transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
                                          viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M19.114 5.636a9 9 0 0 1 0 12.728M16.463 8.288a5.25 5.25 0 0 1 0 7.424M6.75 8.25l4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z"/>
                                     </svg>
-                                    <svg x-show="audioMuted" x-cloak class="h-6 w-6 shadow-sm transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
+                                    <svg x-show="audioMuted" x-cloak class="h-6 w-6 transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
                                          viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 9.75 19.5 12m0 0 2.25 2.25M19.5 12l2.25-2.25M19.5 12l-2.25 2.25m-10.5-6 4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z"/>
                                     </svg>
@@ -702,7 +727,7 @@
                                     aria-label="{{ __('Audio and subtitles') }}"
                                     class="group relative flex h-10 w-10 items-center justify-center rounded-lg transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
                                     :class="captionsOn ? 'bg-white/10 text-white' : 'text-white/85 hover:text-white'">
-                                <svg class="h-6 w-6 shadow-sm transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
+                                <svg class="h-6 w-6 transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
                                      viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                                     <rect x="2.75" y="5.25" width="18.5" height="13.5" rx="2.25"/>
                                     <path stroke-linecap="round" d="M10 10.4a2.4 2.4 0 1 0 0 3.2M18 10.4a2.4 2.4 0 1 0 0 3.2"/>
@@ -718,7 +743,7 @@
                                     :aria-expanded="chaptersOpen"
                                     class="group flex h-10 w-10 items-center justify-center rounded-lg transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
                                     :class="chaptersOpen ? 'text-white' : 'text-white/85 hover:text-white'">
-                                <svg class="h-6 w-6 shadow-sm transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
+                                <svg class="h-6 w-6 transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
                                      viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"/>
                                 </svg>
@@ -754,7 +779,7 @@
                     <h1 class="sr-only" lang="{{ $contentLang }}" x-text="lesson.title"></h1>
                     <div data-poster-stage class="title-poster absolute" aria-hidden="true">
                         <template x-if="lesson.title_poster.subtitle">
-                            <p lang="{{ $contentLang }}" x-text="lesson.title.replace(/^.*?:\s*/, '')" data-title-avoid
+                            <p lang="{{ $contentLang }}" x-text="lesson.title.replace(/^.*?:\s*/, '')" data-title-avoid data-title-subtitle
                                class="absolute flex items-center justify-center whitespace-nowrap text-center leading-none"
                                :style="(({ box, color, font }) => `left:${box.x}%;top:${box.y}%;width:${box.w}%;height:${box.h}%;font-size:${episodeSize(lesson.title_poster)}cqw;color:${color};${font === 'lettering' ? `font-family:'ComicRoma Lettering',var(--font-comic);font-weight:700;text-transform:uppercase` : `font-family:${font === 'comicroma' ? 'ComicRoma' : `'Coming Soon'`},var(--font-comic)`}`)(lesson.title_poster.subtitle)"></p>
                         </template>
@@ -791,7 +816,7 @@
                     <img x-bind:src="lesson.title_logo_url" x-bind:alt="lesson.title" x-on:load="relayoutTitle()"
                          class="block h-auto w-full -rotate-2 origin-bottom-left"
                          style="filter: drop-shadow(0.6rem 0.8rem 0 rgba(0,0,0,0.85));">
-                    <span aria-hidden="true" x-show="titleSplit.episode" x-text="titleSplit.episode"
+                    <span aria-hidden="true" x-show="titleSplit.episode" x-text="titleSplit.episode" data-title-subtitle
                           class="title-episode mt-4 block font-comic text-white/85"></span>
                 </h1>
             </template>
@@ -816,7 +841,7 @@
                 <h1 lang="{{ $contentLang }}" class="min-w-0 max-w-5xl" data-title-avoid data-title-bar>
                     <span class="block text-white" x-text="titleSplit.series" data-title-series
                           :class="titleLettered ? 'title-letters' : 'title-plain font-history font-bold leading-history tracking-tight'"></span>
-                    <span x-show="titleSplit.episode" x-text="titleSplit.episode"
+                    <span x-show="titleSplit.episode" x-text="titleSplit.episode" data-title-subtitle
                           :class="titleLettered ? 'title-letters-episode' : 'font-light'" class="title-episode mt-3 block text-white/80"></span>
                 </h1>
             </div>
@@ -866,11 +891,19 @@
                             class="lp-qr-plate hidden shrink-0 cursor-pointer flex-col items-center pb-1 sm:flex">
                         <canvas id="title-qr-canvas" class="block" style="image-rendering: pixelated; width: 96px; height: 96px;"></canvas>
                         <span class="-mt-0.5 font-mono text-2xs font-bold uppercase tracking-[0.25em]" x-text="lesson.lesson_code"></span>
+                        <span data-title-version class="font-mono text-3xs leading-none text-brand-ink/50" x-text="'v' + lesson.content_version">v{{ (int) ($lesson->content_version ?? 1) }}</span>
                     </button>
                 @endif
+                {{-- On a phone neither the QR nor the code stands here: the version alone, in that corner. --}}
+                <span data-title-version-alone aria-hidden="true"
+                      class="ml-auto self-end pb-1 font-mono text-3xs leading-none text-white/50 sm:hidden"
+                      x-text="'v' + lesson.content_version">v{{ (int) ($lesson->content_version ?? 1) }}</span>
+                {{-- The QR off or made way: the code in its place, the version under it as under the QR. --}}
                 <p x-show="titleCodeInMeta" x-cloak data-title-code data-title-avoid data-title-piece="code" data-title-rail-item
-                   class="title-pill hidden items-center font-mono text-sm font-bold uppercase tracking-[0.2em] text-white/80 sm:flex"
-                   x-text="lesson.lesson_code"></p>
+                   class="title-pill hidden flex-col items-center justify-center font-mono text-sm font-bold uppercase tracking-[0.2em] text-white/80 sm:flex">
+                    <span x-text="lesson.lesson_code"></span>
+                    <span data-title-version class="font-mono text-3xs font-normal normal-case leading-none tracking-normal text-white/50" x-text="'v' + lesson.content_version">v{{ (int) ($lesson->content_version ?? 1) }}</span>
+                </p>
             </div>
 
             {{-- QR modal --}}
@@ -947,10 +980,10 @@
             x-transition:enter-end="opacity-100 scale-100"
             class="absolute inset-0 flex items-center justify-center bg-slate-950/92 backdrop-blur-md pointer-events-auto px-5 py-8 overflow-y-auto"
         >
-            <div class="w-full max-w-2xl rounded-3xl border border-primary/40 bg-slate-950/95 p-7 sm:p-9 shadow-2xl">
+            <div class="w-full max-w-2xl rounded-3xl border border-primary/40 bg-slate-950/95 p-7 sm:p-9">
                 <p class="text-primary text-2xs font-semibold uppercase tracking-[0.3em] mb-3">{{ __('Your Challenge') }}</p>
                 <h2 x-text="lesson.game_title || 'Strategy Challenge'"
-                    class="font-history text-2xl sm:text-4xl font-bold text-[#E1EEF4] leading-tight mb-5 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]"></h2>
+                    class="font-history text-2xl sm:text-4xl font-bold text-[#E1EEF4] leading-tight mb-5"></h2>
                 <div x-text="lesson.game_instructions || 'Work in your teams to decide your strategy, then present it to the class.'"
                      class="whitespace-pre-line text-slate-300 text-sm sm:text-base leading-relaxed max-h-[42vh] overflow-y-auto pr-1"></div>
                 <div class="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-400">
@@ -964,7 +997,7 @@
                     </span>
                 </div>
                 <button @click="beginGame()"
-                    class="mt-7 flex w-full items-center justify-center gap-3 rounded-full bg-primary px-8 py-3.5 text-base font-bold text-slate-950 shadow-[0_0_48px_color-mix(in_oklab,var(--color-primary)_35%,transparent)] transition hover:brightness-110 active:scale-95 sm:w-auto">
+                    class="mt-7 flex w-full items-center justify-center gap-3 rounded-full bg-primary px-8 py-3.5 text-base font-bold text-slate-950 transition hover:brightness-110 active:scale-95 sm:w-auto">
                     <svg class="h-5 w-5 fill-slate-950" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                     <span>{{ __('Begin the challenge') }}</span>
                 </button>
@@ -1019,7 +1052,7 @@
             x-transition:enter-end="opacity-100 translate-y-0"
             class="absolute bottom-16 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 pointer-events-none"
         >
-            <div class="rounded-2xl border border-primary/40 bg-slate-900/90 backdrop-blur-sm px-6 py-4 shadow-2xl">
+            <div class="rounded-2xl border border-primary/40 bg-slate-900/90 backdrop-blur-sm px-6 py-4">
                 <p class="text-primary text-sm font-semibold uppercase tracking-widest mb-1">{{ __('New Intelligence') }}</p>
                 <p x-text="intelDropMessage" class="text-[#E1EEF4] text-base leading-relaxed"></p>
             </div>

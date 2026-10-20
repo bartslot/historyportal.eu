@@ -23,6 +23,7 @@ import { TILE_PYRAMID_GLSL, createTileAtlas } from './atlas.js'
 import { cacheApiStore, createTileCache, memoryStore } from './cache.js'
 import { selectTiles } from './selection.js'
 import { HEIGHT_DECODE, TERRARIUM_TERRAIN, decodeTerrainTile, tileUrl } from './sources.js'
+import { mapTransform } from '../../map/maplibre-compat.js'
 
 export {
   ELEVATION_RANGE_M, HEIGHT_DECODE, HEIGHT_STEPS_PER_M, MAX_ELEVATION_M, MIN_ELEVATION_M,
@@ -46,7 +47,7 @@ export * from './scheme.js'
  */
 export const cameraFromMap = (map, args = {}) => {
   const canvas = map.getCanvas()
-  const altitude = map.transform?.getCameraAltitude?.()
+  const altitude = mapTransform(map)?.getCameraAltitude?.()
   return {
     center: map.getCenter(),
     zoom: map.getZoom(),

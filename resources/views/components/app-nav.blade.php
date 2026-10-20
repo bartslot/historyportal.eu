@@ -124,7 +124,7 @@
                                         <span>{{ __($item['label']) }}</span>
                                         <x-icons.chevron-down class="h-3.5 w-3.5 opacity-60" />
                                     </div>
-                                    <ul tabindex="0" class="dropdown-content menu z-50 mt-3 w-52 rounded-box bg-slate-900/95 p-2 shadow-lg ring-1 ring-white/10 backdrop-blur-sm">
+                                    <ul tabindex="0" class="dropdown-content menu z-50 mt-3 w-52 rounded-box bg-slate-900/95 p-2 backdrop-blur-sm">
                                         @foreach ($item['children'] as $child)
                                             <li>
                                                 <a href="{{ route($child['route']) }}"
@@ -258,7 +258,7 @@
                             </svg>
                         </div>
                         <ul tabindex="0"
-                            class="dropdown-content menu menu-sm mt-3 w-56 rounded-lg border border-slate-800 bg-slate-900 p-2 shadow-lg z-60">
+                            class="dropdown-content menu menu-sm mt-3 w-56 rounded-lg border border-slate-800 bg-slate-900 p-2 z-60">
                             @foreach ($items as $item)
                                 @php $active = request()->routeIs(...(array) $item['pattern']); @endphp
                                 <li>

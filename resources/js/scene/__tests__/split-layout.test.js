@@ -1,22 +1,39 @@
 import { describe, it, expect } from 'vitest'
-import { normalizeSplit, sceneMode, splitLayout, splitStrokes, focusPosition, NARROW_PX, atFromPointer, panFocus, wheelZoom, normalizeFocus } from '../split-layout.js'
+import { normalizeSplit, sceneMode, splitLayout, splitStrokes, focusPosition, panFocus, wheelZoom, normalizeFocus, LAYOUTS, paneCount, moveDivider, stepDivider, MIN_SHARE } from '../split-layout.js'
 import { panelForLine, inkPath } from '../SplitStage.js'
 
 describe('normalizeSplit', () => {
-  it('reads a stored split and clamps the position to 25-75 %', () => {
-    expect(normalizeSplit({ dir: 'v', at: 0.6 })).toEqual({ dir: 'v', at: 0.6 })
-    expect(normalizeSplit({ dir: 'h', at: 0.1 })).toEqual({ dir: 'h', at: 0.25 })
-    expect(normalizeSplit({ dir: 'h', at: 0.99 })).toEqual({ dir: 'h', at: 0.75 })
+  it('reads every layout and clamps its dividers', () => {
+    expect(normalizeSplit({ layout: 'cols3', at: [0.3, 0.7] })).toEqual({ layout: 'cols3', at: [0.3, 0.7] })
+    expect(normalizeSplit({ layout: 'grid4', at: [0.05, 0.99] })).toEqual({ layout: 'grid4', at: [MIN_SHARE, 1 - MIN_SHARE] })
   })
 
-  it('defaults an unknown direction to stacked and a missing position to half', () => {
-    expect(normalizeSplit({ dir: 'diagonal' })).toEqual({ dir: 'h', at: 0.5 })
+  // The first split stored { dir, at }: a scene made then renders exactly as it did.
+  it('reads the old horizontal / vertical split as two rows / two columns', () => {
+    expect(normalizeSplit({ dir: 'h', at: 0.4 })).toEqual({ layout: 'rows2', at: [0.4] })
+    expect(normalizeSplit({ dir: 'v', at: 0.61 })).toEqual({ layout: 'cols2', at: [0.61] })
+  })
+
+  it('fills missing dividers with the layout default', () => {
+    expect(normalizeSplit({ layout: 'rows3' })).toEqual({ layout: 'rows3', at: [0.333, 0.667] })
+    expect(normalizeSplit({ layout: 'nonsense' })).toEqual({ layout: 'rows2', at: [0.5] })
+  })
+
+  it('never lets two dividers along one axis cross or crowd', () => {
+    expect(normalizeSplit({ layout: 'rows3', at: [0.7, 0.6] })).toEqual({ layout: 'rows3', at: [0.6, 0.8] })
   })
 
   it('is no split at all without the key', () => {
     expect(normalizeSplit(null)).toBeNull()
     expect(normalizeSplit(undefined)).toBeNull()
     expect(normalizeSplit('h')).toBeNull()
+  })
+
+  it('knows how many panels each layout has', () => {
+    expect(Object.fromEntries(Object.keys(LAYOUTS).map(k => [k, paneCount({ layout: k })]))).toEqual({
+      rows2: 2, cols2: 2, diag: 2, l1r2: 3, rows3: 3, cols3: 3, l2r1: 3, t1b2: 3, grid4: 4,
+    })
+    expect(paneCount(null)).toBe(0)
   })
 })
 
@@ -53,38 +70,104 @@ describe('splitStrokes: gutter and ink scale with the stage', () => {
 })
 
 describe('splitLayout', () => {
-  it('stacks a horizontal split: full width, gutter between, outer edges bleed', () => {
-    const lay = splitLayout({ dir: 'h', at: 0.5 }, 1920, 1080)
-    expect(lay.dir).toBe('h')
-    expect(lay.panels[0]).toEqual({ x: 0, y: 0, w: 1920, h: 535 })
-    expect(lay.panels[1]).toEqual({ x: 0, y: 545, w: 1920, h: 535 })
-    expect(lay.panels[1].y - (lay.panels[0].y + lay.panels[0].h)).toBe(10)
+  const W = 1920
+  const H = 1080   // gutter 10 px at this width
+  const lay = (layout, at) => splitLayout({ layout, at }, W, H)
+
+  it('two rows: full width, the gutter between, outer edges bleed', () => {
+    expect(lay('rows2', [0.5]).panels).toEqual([{ x: 0, y: 0, w: W, h: 535 }, { x: 0, y: 545, w: W, h: 535 }])
   })
 
-  it('puts a vertical split side by side at its position', () => {
-    const lay = splitLayout({ dir: 'v', at: 0.25 }, 1920, 1080)
-    expect(lay.dir).toBe('v')
-    expect(lay.panels[0]).toEqual({ x: 0, y: 0, w: 475, h: 1080 })
-    expect(lay.panels[1]).toEqual({ x: 485, y: 0, w: 1435, h: 1080 })
+  it('reads an old vertical split side by side at its position', () => {
+    const l = splitLayout({ dir: 'v', at: 0.25 }, W, H)
+    expect(l.panels).toEqual([{ x: 0, y: 0, w: 475, h: H }, { x: 485, y: 0, w: 1435, h: H }])
+    expect(l.dividers).toEqual([{ k: 0, orient: 'v', x: 475, y: 0, w: 10, h: H }])
   })
 
-  it('stacks a vertical split on a narrow stage, so neither panel is a sliver', () => {
-    const lay = splitLayout({ dir: 'v', at: 0.5 }, 375, 812)
-    expect(lay.dir).toBe('h')
-    expect(lay.panels[0].w).toBe(375)
-    expect(lay.panels[1].w).toBe(375)
-    expect(splitLayout({ dir: 'v', at: 0.5 }, NARROW_PX, 400).dir).toBe('v')
+  it('three columns: three panels, two gutters, two dividers', () => {
+    const l = lay('cols3', [0.25, 0.75])
+    expect(l.panels.map(p => [p.x, p.w])).toEqual([[0, 475], [485, 950], [1445, 475]])
+    expect(l.dividers.map(d => [d.k, d.orient, d.x])).toEqual([[0, 'v', 475], [1, 'v', 1435]])
   })
 
-  it('keeps a horizontal split stacked on a phone held upright', () => {
-    const lay = splitLayout({ dir: 'h', at: 0.5 }, 375, 812)
-    expect(lay.dir).toBe('h')
-    expect(lay.panels[0].h + lay.gutter + lay.panels[1].h).toBeCloseTo(812)
+  it('one left, two right: the second divider spans only the right column', () => {
+    const l = lay('l1r2', [0.5, 0.5])
+    expect(l.panels).toEqual([
+      { x: 0, y: 0, w: 955, h: H },
+      { x: 965, y: 0, w: 955, h: 535 },
+      { x: 965, y: 545, w: 955, h: 535 },
+    ])
+    expect(l.dividers[1]).toEqual({ k: 1, orient: 'h', x: 965, y: 535, w: 955, h: 10 })
+  })
+
+  it('two left, one right, and one top, two bottom mirror it', () => {
+    expect(lay('l2r1', [0.5, 0.5]).panels.map(p => [p.x, p.y])).toEqual([[0, 0], [0, 545], [965, 0]])
+    expect(lay('t1b2', [0.5, 0.5]).panels.map(p => [p.x, p.y])).toEqual([[0, 0], [0, 545], [965, 545]])
+  })
+
+  it('four squares: one cross through the whole stage', () => {
+    const l = lay('grid4', [0.5, 0.5])
+    expect(l.panels.map(p => [p.x, p.y])).toEqual([[0, 0], [965, 0], [0, 545], [965, 545]])
+    expect(l.dividers.map(d => [d.orient, d.w, d.h])).toEqual([['v', 10, H], ['h', W, 10]])
+  })
+
+  it('a diagonal: two clipped panels either side of one slanted line', () => {
+    const l = lay('diag', [0.6, 0.4])
+    expect(l.panels[0].clip).toEqual([[0, 0], [1147, 0], [763, H], [0, H]])
+    expect(l.panels[1].clip).toEqual([[1157, 0], [W, 0], [W, H], [773, H]])
+    expect(l.dividers).toEqual([{ k: 0, orient: 'd', x0: 1152, y0: 0, x1: 768, y1: H }])
+  })
+
+  it('stacks columns only on an upright stage (a phone held upright), so no panel is a sliver', () => {
+    expect(splitLayout({ layout: 'cols3' }, 375, 667).layout).toBe('rows3')
+    expect(splitLayout({ layout: 'cols2' }, 375, 667).layout).toBe('rows2')
+    expect(splitLayout({ layout: 'grid4' }, 375, 667).layout).toBe('grid4')
+  })
+
+  // Bart, 2026-10-17: "the column layout is broken". The editor's 16:9 stage in a narrow window
+  // (about 400x225) stacked his Two columns into rows while the inspector still said columns.
+  it('keeps the chosen layout on a landscape stage of any width, as the inspector shows it', () => {
+    for (const [w, h] of [[400, 225], [320, 180], [639, 360], [1920, 1080]]) {
+      expect(splitLayout({ layout: 'cols2' }, w, h).layout).toBe('cols2')
+      expect(splitLayout({ layout: 'cols3' }, w, h).layout).toBe('cols3')
+      const p = splitLayout({ layout: 'cols2' }, w, h).panels
+      expect(p[1].x).toBeGreaterThan(p[0].x)
+      expect(p[1].y).toBe(p[0].y)
+    }
   })
 
   it('has no layout without a split or a stage', () => {
-    expect(splitLayout(null, 1920, 1080)).toBeNull()
-    expect(splitLayout({ dir: 'h' }, 0, 1080)).toBeNull()
+    expect(splitLayout(null, W, H)).toBeNull()
+    expect(splitLayout({ layout: 'rows2' }, 0, H)).toBeNull()
+  })
+})
+
+describe('moveDivider: the divider follows the pointer', () => {
+  const W = 1000
+  const H = 500
+
+  it('a column divider follows x, a row divider follows y', () => {
+    expect(moveDivider({ layout: 'cols2' }, 0, 610, 0, W, H)).toEqual({ layout: 'cols2', at: [0.61] })
+    expect(moveDivider({ layout: 'l1r2' }, 1, 0, 150, W, H)).toEqual({ layout: 'l1r2', at: [0.5, 0.3] })
+  })
+
+  it('snaps to its default when close, and stays inside the stage', () => {
+    expect(moveDivider({ layout: 'cols2' }, 0, 508, 0, W, H).at).toEqual([0.5])
+    expect(moveDivider({ layout: 'cols2' }, 0, 10, 0, W, H).at).toEqual([MIN_SHARE])
+  })
+
+  it('cannot push a divider through its neighbour', () => {
+    expect(moveDivider({ layout: 'cols3', at: [0.3, 0.6] }, 0, 900, 0, W, H).at).toEqual([0.6, 0.8])
+  })
+
+  it('a diagonal moves as a whole', () => {
+    expect(moveDivider({ layout: 'diag', at: [0.6, 0.4] }, 0, 0, 0, W, H, { dx: 100 }).at).toEqual([0.7, 0.5])
+    expect(moveDivider({ layout: 'diag', at: [0.6, 0.4] }, 0, 0, 0, W, H, { dx: 900 }).at).toEqual([0.8, 0.6])
+  })
+
+  it('arrow keys step one divider, a diagonal both ends', () => {
+    expect(stepDivider({ layout: 'grid4', at: [0.5, 0.5] }, 1, 0.01).at).toEqual([0.5, 0.51])
+    expect(stepDivider({ layout: 'diag', at: [0.6, 0.4] }, 0, -0.05).at).toEqual([0.55, 0.35])
   })
 })
 
@@ -129,19 +212,6 @@ describe('inkPath', () => {
 })
 
 // Bart 2026-10-16: the divider on the stage is the Position setting; the panes pan and zoom by hand.
-describe('atFromPointer', () => {
-  it('turns the pointer into the split position along the split', () => {
-    expect(atFromPointer(610, 1000)).toBeCloseTo(0.61)
-  })
-  it('stays inside the allowed range', () => {
-    expect(atFromPointer(10, 1000)).toBe(0.25)
-    expect(atFromPointer(990, 1000)).toBe(0.75)
-  })
-  it('snaps to the middle when it is close', () => {
-    expect(atFromPointer(508, 1000)).toBe(0.5)
-  })
-})
-
 describe('panFocus', () => {
   it('a drag to the right shows more of the left of the picture', () => {
     expect(panFocus({ x: 50, y: 50 }, 100, 0, 1000, 500)).toEqual({ x: 40, y: 50 })

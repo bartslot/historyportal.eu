@@ -25,7 +25,7 @@
  * under globe, mercator z units under mercator. Both are passed and `#ifdef GLOBE` picks.
  */
 
-import maplibregl from 'maplibre-gl'
+import maplibregl from '../maplibre.js'
 import {
   buildSphereMesh, buildProgram, cameraAltitudeMetres, cameraInPlanetSpace, EARTH_RADIUS_M,
   EQUIRECT_GLSL, NOISE_GLSL, SHELL_PROJECT_GLSL, TERMINATOR_GLSL,

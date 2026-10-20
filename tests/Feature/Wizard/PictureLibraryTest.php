@@ -254,6 +254,16 @@ class PictureLibraryTest extends TestCase
         $this->assertContains('/storage/lessons/1/own.jpg', $this->tilesFor('')->pluck('key')->map(fn ($k) => parse_url($k, PHP_URL_PATH))->all());
     }
 
+    public function test_the_picker_opens_on_the_library_tab(): void
+    {
+        $this->fakeCloudinaryLibrary();
+
+        Livewire::actingAs($this->teacher)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
+            ->call('openImageLibrary')
+            ->assertSet('paintingKind', 'library');
+    }
+
     public function test_the_library_tab_shows_only_our_own_pictures(): void
     {
         $tiles = $this->tilesFor('library');

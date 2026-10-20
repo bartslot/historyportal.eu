@@ -127,7 +127,13 @@
          art:make pack) is a picture, not a glyph: inverting it gives its negative, so it sits on a
          paper tile as it is. --}}
     <div class="min-h-0 flex-1 overflow-y-auto">
-        @if ($this->icons()->isEmpty())
+        @if ($this->icons()->isEmpty() && $this->activeEra() !== '')
+            {{-- Nothing of this era in this set: say so, and one click shows every era. --}}
+            <p class="px-1 py-6 text-center text-xs text-slate-500" data-era-empty>
+                {{ __('Nothing from this period in this set.') }}
+                <button type="button" wire:click="selectEra('')" class="ml-1 text-slate-300 underline-offset-2 hover:text-primary hover:underline">{{ __('All times') }}</button>
+            </p>
+        @elseif ($this->icons()->isEmpty())
             <p class="px-1 py-6 text-center text-xs text-slate-500">
                 {{ __('No assets in this set yet.') }}
             </p>
@@ -153,7 +159,7 @@
                             data-tooltip="{{ $icon->title }}"
                             class="flex cursor-grab items-center justify-center rounded-lg
                                    transition-colors active:cursor-grabbing
-                                   {{ $isPicture ? 'lp-paper hover:ring-2 hover:ring-primary' : ($icon->isRaster() ? 'lp-paper p-1 hover:ring-2 hover:ring-primary' : 'p-2 hover:bg-slate-700/60') }}"
+                                   {{ $isPicture ? 'lp-paper ring-1 ring-transparent hover:ring-slate-400' : ($icon->isRaster() ? 'lp-paper p-1 ring-1 ring-transparent hover:ring-slate-400' : 'p-2 hover:bg-slate-700/60') }}"
                             aria-label="{{ $icon->title }}">
                         <img src="{{ $icon->url() }}" alt="" draggable="false" loading="lazy" decoding="async"
                              :srcset="srcset(@js($icon->url()))" :sizes="sizes(@js($icon->url()), {{ $isPicture ? 2 : 1 }})"

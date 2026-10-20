@@ -13,6 +13,9 @@
  * drops the letters in, then fades the scene up; nothing of it plays under reduced motion.
  */
 import { applyAmbient, trackStage } from './scene/ambient.js'
+import { uprightCover } from './title-upright.js'
+
+export { uprightCover, UPRIGHT } from './title-upright.js'
 
 export const PHONE_GUTTER_PX = 16
 
@@ -54,6 +57,32 @@ export function posterFit (viewW, viewH, poster, gutter = PHONE_GUTTER_PX) {
   const cy = portrait ? (f.y + f.h / 2) / 100 : 0.5
 
   return { left: viewW / 2 - cx * width, top: viewH / 2 - cy * height, width, height }
+}
+
+/**
+ * Pure: a candidate's two variants, split once so each keeps its identity: the landscape poster
+ * (its own data, without the portrait) and the upright one (portrait.json beside poster.json in
+ * the candidate's folder, App\Support\TitlePoster), or null when it has none. pictureKeepClear:
+ * the teacher's own title picture's keep_clear, for a derived upright layout (title-upright.js).
+ */
+export function posterVariants (poster, pictureKeepClear = null) {
+  if (!poster) return null
+  const { portrait = null, ...landscape } = poster
+  return { landscape, portrait: portrait ? { ...portrait } : null, pictureKeepClear }
+}
+
+/** Pure: whether an upright view gets a poster of its own: a portrait.json, or one derived from a painted poster. */
+export const hasUpright = (variants) => !!(variants?.portrait || variants?.landscape?.fit === 'cover')
+
+/**
+ * Pure: the variant for a view: in an upright view the portrait when there is one, else a painted
+ * poster's derived upright layout (title-upright.js); any other view the landscape.
+ */
+export function variantFor (variants, viewW, viewH) {
+  if (!variants) return null
+  if (!(viewH > viewW)) return variants.landscape
+  if (variants.portrait) return variants.portrait
+  return variants.landscape.fit === 'cover' ? uprightCover(variants.landscape, viewW, viewH, variants.pictureKeepClear) : variants.landscape
 }
 
 // Where a tall phone puts the cover's focus: a little above the middle, clear of the Start bar.
@@ -227,6 +256,7 @@ function layerEl (layer, groupBox, index) {
 export function mountTitlePoster (host, stage, poster) {
   if (!host || !stage || !poster?.layers?.length) return () => {}
   const before = stage.firstChild
+  const built = []
   const starters = []
   const byId = {}
   let index = 0
@@ -239,6 +269,7 @@ export function mountTitlePoster (host, stage, poster) {
       el.appendChild(made.box)
     }
     stage.insertBefore(el, before)
+    built.push(el)
   }
 
   const fit = () => {
@@ -272,11 +303,14 @@ export function mountTitlePoster (host, stage, poster) {
   const onVisibility = () => stage.classList.toggle('is-paused', document.hidden)
   document.addEventListener('visibilitychange', onVisibility)
 
+  // Stopping also takes the layers out, so a poster mounted again (the view turned upright, a
+  // portrait variant replacing the landscape one) never stacks on the one before it.
   const stop = () => {
     clearTimeout(timer)
     ro?.disconnect()
     stageRo?.disconnect()
     document.removeEventListener('visibilitychange', onVisibility)
+    built.forEach(el => el.remove())
   }
   // Fit now, not on the next resize callback: the title screen measures the frame right after it moves the poster.
   stop.refit = fit

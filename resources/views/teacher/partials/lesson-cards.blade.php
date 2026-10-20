@@ -25,7 +25,7 @@
                     <x-carousel aria-label="{{ __($shelf['label']) }}">
                         @foreach($shelf['lessons'] as $lesson)
                             @php
-                                $cardImage = $lesson->cardImageUrl();
+                                $cardImage = $lesson->tallCardImageUrl();   // a 2:3 card: the upright poster when there is one
                                 $isGenerating = $lesson->status->isGenerating();
                                 // Open an existing lesson on Preview; see Lesson::cardEntryStep().
                                 $entryStep = $lesson->cardEntryStep();
@@ -45,7 +45,7 @@
                             <a href="{{ $entryStep
                                     ? route('teacher.lessons.wizard', ['lesson' => $lesson->id, 'step' => $entryStep])
                                     : route('teacher.lessons.show', $lesson) }}"
-                               class="carousel-cell group relative mx-2 block aspect-2/3 w-52 overflow-hidden rounded-xl border border-slate-800 bg-slate-900 transition duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_18px_40px_rgba(0,0,0,0.5)] sm:w-[15rem]">
+                               class="carousel-cell group relative mx-2 block aspect-2/3 w-52 overflow-hidden rounded-xl border border-slate-800 bg-slate-900 transition duration-300 hover:border-primary/40 sm:w-[15rem]">
                                 @if($cardImage)
                                     <img
                                         src="{{ $cardImage }}"
@@ -68,7 +68,7 @@
                                     <span class="text-2xs text-slate-300">{{ $lesson->status->label() }}</span>
                                 </div>
 
-                                <h4 class="absolute inset-x-0 bottom-0 group-hover:translate-y-[-2em] p-4 text-base font-semibold leading-snug text-slate-100 drop-shadow group-hover:opacity-100 transition-transform">
+                                <h4 class="absolute inset-x-0 bottom-0 group-hover:translate-y-[-2em] p-4 text-base font-semibold leading-snug text-slate-100 group-hover:opacity-100 transition-transform">
                                     {{ $lesson->title ?: $lesson->topic }}
                                 </h4>
                                 <p class="absolute opacity-0 left-3 bottom-3 rounded-full border border-white/20 px-2 py-1 text-xs text-white bg-white/20 backdrop-blur-sm group-hover:opacity-100 transition-opacity">
@@ -108,8 +108,8 @@
                         <a href="{{ route('lesson.play', ['lessonCode' => $lesson->lesson_code]) }}"
                            class="absolute inset-0"
                            aria-label="{{ $lesson->title ?: $lesson->topic }}">
-                            @if($lesson->cardImageUrl())
-                                <img src="{{ $lesson->cardImageUrl() }}" alt=""
+                            @if($lesson->tallCardImageUrl())
+                                <img src="{{ $lesson->tallCardImageUrl() }}" alt=""
                                      class="h-full w-full object-cover transition duration-300 group-hover:scale-105">
                             @endif
                             <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950 via-slate-950/70 to-transparent p-3 pt-10">

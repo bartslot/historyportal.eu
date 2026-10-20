@@ -14,11 +14,12 @@
  */
 
 import { createPausableClock } from '../pausable-clock.js'
+import { mapTransform } from './maplibre-compat.js'
 import { samplePose, trackDuration } from './camera-track.js'
 
 /** Put a camera pose on the map. Falls back to centre+zoom framing on transforms too old to convert. */
 export const applyPose = (map, pose) => {
-  const transform = map.transform
+  const transform = mapTransform(map)
   if (transform && typeof transform.calculateCenterFromCameraLngLatAlt === 'function') {
     const { center, zoom } = transform.calculateCenterFromCameraLngLatAlt(
       [pose.lng, pose.lat], pose.altitude, pose.heading, pose.tilt,
@@ -31,7 +32,7 @@ export const applyPose = (map, pose) => {
 
 /** Read the map's current camera back OUT as a pose, for "add a keyframe here". */
 export const poseFromMap = (map) => {
-  const transform = map.transform
+  const transform = mapTransform(map)
   const lngLat = typeof transform?.getCameraLngLat === 'function' ? transform.getCameraLngLat() : map.getCenter()
   const altitude = typeof transform?.getCameraAltitude === 'function' ? transform.getCameraAltitude() : 0
   return {

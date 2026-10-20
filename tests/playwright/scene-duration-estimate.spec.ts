@@ -159,7 +159,7 @@ test('the wizard script panel prints the real audio length, not the stored estim
   const lines: string[] = [];
 
   for (const s of sample) {
-    // ?step=4 is the scene configurator; ?step=5 is the preview. See lesson-wizard.blade.php.
+    // ?step=4 is the scene configurator (there is no step 5: Play is an overlay). See lesson-wizard.blade.php.
     await page.goto(`/teacher/lessons/39/wizard?step=4&scene=${s.id}`);
 
     const readout = page.locator('span[x-text*="fmt(dur)"]').first();
@@ -188,33 +188,4 @@ test('the wizard script panel prints the real audio length, not the stored estim
   const report = `wizard per-scene readout (French #39)\n${lines.join('\n')}\n`;
   console.log(report);
   await testInfo.attach('wizard-readouts.txt', { body: report, contentType: 'text/plain' });
-});
-
-/**
- * And what the Step-5 preview shows.
- *
- * The preview is not a separate timeline widget — it embeds the real student player
- * (/lesson/{code}?embed=1). The player has no numeric runtime at all: its only duration surface is
- * the segmented chapter bar, whose segments are proportional. So there is no place in the preview
- * where a stored estimate is printed as a time.
- */
-test('the Step-5 preview embeds the student player and prints no runtime', async ({ page }, testInfo) => {
-  await page.goto('/teacher/lessons/39/wizard?step=5');
-
-  const embed = page.frameLocator('iframe').first();
-  await expect(embed.locator('body'), 'the student player is embedded').toBeVisible({ timeout: 30_000 });
-  await expect
-    .poll(() => page.frames().find((f) => f.url().includes('/lesson/'))?.url() ?? '', { timeout: 30_000 })
-    .toContain('embed=1');
-
-  const frame = page.frames().find((f) => f.url().includes('/lesson/'))!;
-  const body = await frame.locator('body').innerText();
-  const times = body.split('\n').filter((l) => /\d+:\d\d/.test(l));
-
-  const shot = testInfo.outputPath('step5-preview.png');
-  await page.screenshot({ path: shot });
-  await testInfo.attach('step5-preview.png', { path: shot, contentType: 'image/png' });
-  console.log(`Step-5 preview frame: ${frame.url()}\n  time-like text: ${JSON.stringify(times)}`);
-
-  expect(times, 'the preview prints no clock a stored estimate could be wrong in').toEqual([]);
 });

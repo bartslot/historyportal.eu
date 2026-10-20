@@ -3,6 +3,7 @@ import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { voyageRoutes, smooth, SAMPLES_PER_SEGMENT } from './voyages.js';
 import transportCatalog from './transports.json';
+import { modelMatrix } from '../map/maplibre-compat.js';
 
 // Tall-ship fleets sailing along each era-visible voyage route. Every vessel is the supplied
 // tall-ship FBX — there is no procedural ship, and no other hull may be substituted. The model is
@@ -551,10 +552,8 @@ export function addVoyageShips(map, { beforeId = 'tm-clouds', only = null, ambie
       if (!renderer) return;
       const active = visibleVoyages();
       if (!active.length) return;
-      const getModelMatrix = map.transform && typeof map.transform.getMatrixForModel === 'function'
-        ? (lngLat, altitude) => map.transform.getMatrixForModel(lngLat, altitude || 0)
-        : null;
-      if (!getModelMatrix) return;
+      const globe = args?.shaderData?.variantName === 'globe';
+      const getModelMatrix = (lngLat, altitude) => modelMatrix(lngLat, altitude || 0, globe);
       // With 3D terrain on, sea level is no longer the ground: a camel placed at altitude 0 walks
       // INSIDE the mountain it is crossing. Every unit is lifted to the height under its own feet.
       // Queried with the wrapped longitude (the DEM lookup is not world-copy aware) while the model

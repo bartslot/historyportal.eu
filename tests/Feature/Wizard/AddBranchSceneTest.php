@@ -191,12 +191,12 @@ class AddBranchSceneTest extends TestCase
             ]));
 
         $preview = fn () => Livewire::actingAs($this->teacher)
-            ->test(\App\Livewire\Wizard\Step4Preview::class, ['lesson' => $lesson->fresh()]);
+            ->test(Step3SceneConfigurator::class, ['lesson' => $lesson->fresh()]);
 
         // Options still carry no meter effects → the story-game gate holds the lesson back.
         $blocked = $preview()->call('publish');
         $this->assertNotSame(LessonStatus::Published, $lesson->fresh()->status);
-        $blocked->assertSet('publishError', fn ($e) => str_contains((string) $e, 'Story game incomplete'));
+        $blocked->assertSet('publishNotice', fn ($e) => str_contains((string) $e, 'Story game incomplete'));
 
         // Fill both options in, exactly as the effects panel does.
         $configurator = Livewire::actingAs($this->teacher)

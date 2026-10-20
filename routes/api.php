@@ -19,7 +19,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
     // Public, like the lessons it lists. Throttled and ETagged: a client that polls for changes
     // and finds none pays for a 304, not the catalogue.
     Route::get('/catalog/manifest', CatalogManifestController::class)
-        ->middleware('throttle:api-login')
+        ->middleware('throttle:catalog')
         ->name('catalog.manifest');
 
     Route::middleware('auth:sanctum')->group(function () {
@@ -47,6 +47,6 @@ Route::prefix('lesson')->name('api.lesson.')->group(function () {
     // Anonymous player telemetry (Phase 0 experiment) — batch ingest, addressed by the same
     // public lesson code students watch with. No auth by design; see LessonTelemetryController.
     Route::post('/{lessonCode}/telemetry', [\App\Http\Controllers\Api\LessonTelemetryController::class, 'store'])
-        ->middleware('throttle:60,1')
+        ->middleware('throttle:telemetry')
         ->name('telemetry.store');
 });

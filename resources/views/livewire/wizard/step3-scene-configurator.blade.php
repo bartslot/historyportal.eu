@@ -932,7 +932,7 @@
            x-on:inspector-state-request.window="window.dispatchEvent(new CustomEvent('inspector-state', { detail: { open: inspectorOpen, view: '{{ $panelView }}' } }))"
            style="right:0; left:auto; top:64px; bottom:0;"
            data-resizable-drawer
-           class="card card-compact fixed z-50 overflow-hidden rounded-none border border-r-0 border-t-0 border-slate-700 bg-base-300 shadow-2xl
+           class="card card-compact fixed z-50 overflow-hidden rounded-none border border-r-0 border-t-0 border-slate-700 bg-base-300
                   {{-- 19.375rem is the Figma panel's 310px. The old 16rem was narrow enough that a
                        row label and its control competed for the same space, which is where the
                        three different label widths came from. --}}
@@ -981,7 +981,10 @@
                   "Transition" read as "RANSITION". Nothing in an inspector wants sideways scroll. --}}
              class="card-body overflow-y-auto overflow-x-hidden p-4"
              :style="inspectorBodyStyle()">
-            @if ($this->titleSelected && $panelView === 'scene')
+            @if ($panelView === 'problems')
+            {{-- The lesson's problems (LessonProblems), opened from the header's warning count. --}}
+            <x-lesson.problems-panel :problems="$this->problems" :plan="$this->fixPlan()" :scenes="$this->scenes" />
+            @elseif ($this->titleSelected && $panelView === 'scene')
             {{-- The pinned title screen's Format: its picture, where the title sits, the QR code. --}}
             <x-lesson.title-screen-inspector :lesson="$lesson" />
             @elseif ($activeTextId && ($activeText = $this->activeText))
@@ -1031,6 +1034,9 @@
                      state on switch, so sliders/tabs show — and can persist — the wrong scene's
                      values. A changing key forces Alpine to reinitialise from the new scene. --}}
                 <div wire:key="scene-inspector-{{ $sceneModel->id }}" x-data="{ tab: 'format' }" class="space-y-3">
+                @foreach ($this->problemsByScene[$sceneModel->id] ?? [] as $problem)
+                    <x-lesson.scene-problem-row :problem="$problem" :scene="$sceneModel" />
+                @endforeach
                 {{-- Same two tabs as a layer, for the same reason: what the scene looks like, and
                      how it arrives. Every scene kind gets Animate — a map or a gallery replaces the
                      scene before it just as a narration scene does. --}}
@@ -1055,7 +1061,8 @@
                                                   :quiz-draft="$quizDraft" :quiz-errors="$quizErrors" :quiz-saved="$quizSaved"
                                                   :quiz-difficulty="$this->quizDifficulty()" :quiz-scope="$this->quizScope()"
                                                   :quiz-shuffle="$this->quizShuffle()"
-                                                  :team-draft="$teamDraft" :team-is-default="$this->teamGameIsDefault()" />
+                                                  :team-draft="$teamDraft" :team-is-default="$this->teamGameIsDefault()"
+                                                  :predict-draft="$predictDraft" />
                 @elseif ($sceneModel->kind === 'voyage')
                     <x-lesson.scene-inspector-voyage :scene="$sceneModel" :voyage-def="$this->voyageDef()" :route-line="$this->routeLine()" :voyage-map="$this->voyageMap()" :voyage-fog="$this->voyageFog()" :voyage-view="$this->voyageView()" :transports="$this->transports()" :stops="$this->voyageStops()" />
                 @elseif ($sceneModel->kind === 'gallery')
@@ -1083,6 +1090,7 @@
 
             @else
             {{-- ══ SETTINGS view — lesson-global Story + class meters + Background Music ══════ --}}
+            <x-lesson.lesson-type-labels-setting :lesson="$lesson" />
             {{-- Class meters (story_game, lesson-level) — a lesson-wide setting, so it lives in
                  Settings, not the per-scene Format panel. --}}
             @if ($this->showsMetersPanel())
@@ -1127,6 +1135,14 @@
                     </div>
                 @endunless
             </div>
+
+            {{-- CURRICULUM: kerndoelen, tijdvakken, kenmerkende aspecten and Canon windows this lesson
+                 covers (Bart, 2026-10-17). wire:ignore for the same reason as the captions above. --}}
+            @unless (auth()->user()?->isGuestDemo())
+                <div class="mt-6 border-t border-slate-700/50 pt-4" wire:ignore>
+                    <livewire:wizard.curriculum-picker :lesson="$lesson" :key="'curriculum-'.$lesson->id" />
+                </div>
+            @endunless
 
             {{-- POSTER — the lesson's cover image (Bart, 2026-09-29): Auto (the first picture the lesson
                  has) | Scene (one scene's picture) | Image (an upload). Never a stand-in portrait:
@@ -1209,7 +1225,7 @@
              wire:key="publish-notice"
              x-data x-init="setTimeout(() => $wire.set('publishNotice', null), 5000)">
             <div @class([
-                'flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm shadow-2xl',
+                'flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm',
                 'border-success/40 bg-success/10 text-success' => $publishOk,
                 'border-primary bg-amber-950 text-amber-200' => ! $publishOk,
             ])>
@@ -1484,7 +1500,7 @@
                     const find = () => panel()?.querySelector(obj.section === 'quiz' ? '[data-quiz-section]' : '[data-bg-section]');
                     const flash = (target) => {
                         target.scrollIntoView({ block: 'center', behavior: 'smooth' });
-                        target.style.transition = 'box-shadow .2s';
+                        target.style.transition = 'box- .2s';
                         target.style.boxShadow = '0 0 0 2px #38bdf8';
                         setTimeout(() => { target.style.boxShadow = ''; }, 900);
                     };
@@ -1593,13 +1609,13 @@
     </script>
     @endpush
 
-    {{-- Top toolbar — Keynote-style: Play + insert tools as stacked icon-over-label buttons.
+    {{-- Top toolbar: icon buttons, each described on hover (data-tooltip) and to screen readers. No text labels (Bart, 2026-10-16).
          Solid background (no opacity/blur) so the composition never shows through. wire:ignore
          keeps the 3s status poll from morphing the strip and snapping the Panel popover shut. --}}
     {{-- z-50: must out-stack the z-40 resize handles (rail + object list) — they are later
          fixed siblings, so at equal z they'd sit above this toolbar's DROPDOWNS and swallow
          clicks on menu items (View ▸ Object list was dead at the default rail width). --}}
-    <div class="fixed right-0 top-0 z-50 flex h-16 items-center justify-between border-b border-slate-800 bg-slate-900 px-3 shadow-lg left-0 pl-16"
+    <div class="fixed right-0 top-0 z-50 flex h-16 items-center justify-between border-b border-slate-800 bg-slate-900 px-3 left-0 pl-16"
          wire:ignore
          {{-- fmtOpen/fmtView mirror the Format panel's state (broadcast by the aside via
               inspector-state) so toolbar buttons can show a proper OPEN state — the toolbar is
@@ -1612,16 +1628,15 @@
         {{-- View menu — show/hide workspace surfaces (Keynote's View) --}}
         <div class="relative">
             <button type="button" @click="viewOpen = !viewOpen"
-                    class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-slate-300 transition hover:bg-slate-800 hover:text-primary"
+                    class="grid h-10 w-10 place-items-center rounded-xl text-slate-300 transition hover:bg-slate-800 hover:text-primary"
                     :class="viewOpen && 'bg-sky-500/15 text-sky-300'"
-                    title="{{ __('Show or hide workspace panels') }}" aria-label="{{ __('View') }}">
+                    data-tour="view" data-tooltip="{{ __('Show or hide workspace panels') }}" aria-label="{{ __('View') }}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25a2.25 2.25 0 0 1-2.25-2.25v-2.25Z" />
                 </svg>
-                <span class="text-2xs font-medium">{{ __('View') }}</span>
             </button>
             <div x-show="viewOpen" x-cloak @click.outside="viewOpen = false" x-transition.opacity.duration.150ms
-                 class="absolute left-0 top-full z-50 mt-1.5 w-56 rounded-xl border border-slate-700 bg-slate-900 p-1.5 shadow-2xl">
+                 class="absolute left-0 top-full z-50 mt-1.5 w-56 rounded-xl border border-slate-700 bg-slate-900 p-1.5">
                 <p class="px-2 py-1 text-2xs uppercase tracking-widest text-slate-500">{{ __('Show') }}</p>
                 <template x-for="item in [
                     { k: 'scenes',  label: @js(__('Scenes')) },
@@ -1647,28 +1662,26 @@
 
         <div class="mx-1 my-1.5 w-px bg-slate-700"></div>
 
-        {{-- Play → open the player (step 5) --}}
-        <button type="button"
+        {{-- Play → the real player over the editor, from the selected scene (the play overlay below) --}}
+        <button type="button" data-play-lesson
                 onclick="Livewire.dispatch('lesson:play')"
-                class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-slate-300 transition hover:bg-base-200 hover:text-primary"
-                title="{{ __('Play the lesson') }}" aria-label="{{ __('Play the lesson') }}">
+                class="grid h-10 w-10 place-items-center rounded-xl text-slate-300 transition hover:bg-base-200 hover:text-primary"
+                data-tour="play" data-tooltip="{{ __('Play the lesson') }}" aria-label="{{ __('Play the lesson') }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 0 1 0 1.971l-11.54 6.347a1.125 1.125 0 0 1-1.667-.985V5.653Z" />
             </svg>
-            <span class="text-2xs font-medium">{{ __('Play') }}</span>
         </button>
 
         <div class="relative">
             <button type="button" @click="addOpen = !addOpen"
-                    class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-slate-300 transition hover:bg-base-200 hover:text-primary"
+                    class="grid h-10 w-10 place-items-center rounded-xl text-slate-300 transition hover:bg-base-200 hover:text-primary"
                     :class="addOpen && 'bg-sky-500/15 text-sky-300'"
                     aria-haspopup="menu" :aria-expanded="addOpen.toString()"
-                    title="{{ __('Add a scene, text, image, or icon') }}" aria-label="{{ __('Add') }}">
+                    data-tour="add" data-tooltip="{{ __('Add a scene, text, image, or icon') }}" aria-label="{{ __('Add') }}">
                 <x-icons.plus class="h-6 w-6" />
-                <span class="text-2xs font-medium">{{ __('Add') }}</span>
             </button>
             <div x-show="addOpen" x-cloak @click.outside="addOpen = false" x-transition.opacity.duration.150ms
-                 class="absolute left-0 top-full z-50 mt-1.5 w-56 rounded-xl border border-slate-700 bg-base-300 p-1.5 shadow-2xl" role="menu">
+                 class="absolute left-0 top-full z-50 mt-1.5 w-56 rounded-xl border border-slate-700 bg-base-300 p-1.5" role="menu">
                 <p class="px-2 py-1 text-2xs uppercase tracking-widest text-slate-500">{{ __('Add Scene') }}</p>
                 <button type="button" @click="Livewire.dispatch('scene:add'); addOpen = false"
                         class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
@@ -1731,36 +1744,49 @@
         <div class="flex items-stretch gap-0.5">
         {{-- Help leaves the lesson (a new tab, the help centre), so a divider keeps it apart from
              the two things you do TO the lesson. Bart tried it centred first: it read as weird. --}}
+        {{-- What is wrong with the lesson (LessonProblems): hidden when nothing is; red when the class
+             will notice, amber when a scene only plays an older voice. Opens the Problems view. --}}
+        @if ($problemCount = count($this->problems))
+            @php $problemSeverity = \App\Support\LessonProblems::worst($this->problems); @endphp
+            <button type="button" wire:click="openProblems"
+                    data-problems-count="{{ $problemCount }}" data-severity="{{ $problemSeverity }}"
+                    data-tooltip="{{ trans_choice('{1} 1 problem in this lesson|[2,*] :count problems in this lesson', $problemCount, ['count' => $problemCount]) }}"
+                    aria-label="{{ trans_choice('{1} 1 problem in this lesson|[2,*] :count problems in this lesson', $problemCount, ['count' => $problemCount]) }}"
+                    @class(['flex h-10 items-center gap-1 self-center rounded-xl px-2 text-sm font-semibold transition hover:bg-slate-800',
+                            'text-error' => $problemSeverity === \App\Support\LessonProblems::BLOCKS,
+                            'text-warning' => $problemSeverity !== \App\Support\LessonProblems::BLOCKS])>
+                <x-icons.exclamation-triangle class="h-6 w-6" /><span>{{ $problemCount }}</span>
+            </button>
+        @endif
         <a href="{{ route('help.index') }}#edit" target="_blank" rel="noopener"
-           class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-primary"
+           class="grid h-10 w-10 place-items-center self-center rounded-xl text-slate-400 transition hover:bg-slate-800 hover:text-primary"
            data-tooltip="{{ __('How the editor works') }}" aria-label="{{ __('Help') }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
             </svg>
-            <span class="text-2xs font-medium">{{ __('Help') }}</span>
-        </a>
+                    </a>
         <div class="mx-1 my-1.5 w-px bg-slate-700"></div>
         {{-- Settings — the one panel. What it shows is picked by the tabs at its top: the
              selection (scene, layer, text, background, quiz, title screen) or the lesson. This
              used to be two buttons, Format and Settings, for one panel. --}}
         <button type="button"
                 @click="window.dispatchEvent(new CustomEvent('inspector-toggle'))"
-                class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-slate-300 transition hover:bg-slate-800 hover:text-primary"
+                class="grid h-10 w-10 place-items-center self-center rounded-xl text-slate-300 transition hover:bg-slate-800 hover:text-primary"
+                data-tour="settings"
                 :class="fmtOpen && 'bg-sky-500/15 text-sky-300'"
                 data-tooltip="{{ __('Settings') }}" aria-label="{{ __('Settings') }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.24-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
             </svg>
-            <span class="text-2xs font-medium">{{ __('Settings') }}</span>
-        </button>
+                    </button>
 
         {{-- Publishing belongs to account holders. A landing-page demo guest is editing a
              throwaway copy (App\Services\GuestDemoSession), so the Publish menu is replaced by
              the one thing that would make their edits keepable. --}}
         @if (auth()->user()?->isGuestDemo())
         <a href="{{ route('login') }}"
-           class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-primary transition hover:bg-slate-800"
+           class="flex min-w-14 flex-col items-center gap-1 whitespace-nowrap rounded-xl px-1.5 py-1.5 text-primary transition hover:bg-slate-800"
            data-tooltip="{{ __('Create an account to keep this lesson') }}" aria-label="{{ __('Create an account') }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM4 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 10.374 21c-2.331 0-4.512-.645-6.374-1.766Z" />
@@ -1773,10 +1799,10 @@
              Publish decides whether a CLASS can play it, Share whether other TEACHERS can find
              and copy it. `shared` is local because the toolbar is wire:ignore and never
              re-renders; it takes the server's answer, since sharing can be refused. --}}
-        <div x-data="{ open: false, when: '', shared: @js((bool) $lesson->is_public) }" class="relative" @click.outside="open = false" @keydown.escape.window="open = false">
+        <div x-data="{ open: false, when: '', shared: @js((bool) $lesson->is_public) }" class="relative self-center" @click.outside="open = false" @keydown.escape.window="open = false">
             <button type="button" @click="open = !open"
-                    class="flex w-14 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-slate-300 transition hover:bg-slate-800 hover:text-primary"
-                    :class="open && 'bg-primary/15 text-primary'"
+                    class="grid h-10 w-10 place-items-center rounded-xl text-primary transition hover:bg-slate-800"
+                    :class="open && 'bg-primary/15'"
                     data-tour="publish"
                     data-tooltip="{{ __('Publish') }}" aria-label="{{ __('Publish') }}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
@@ -1793,10 +1819,9 @@
                             class="{{ $statusColor }} stroke-slate-900"
                             stroke-width="1.5" />
                 </svg>
-                <span class="text-2xs font-medium">{{ __('Publish') }}</span>
-            </button>
+                            </button>
             <div x-show="open" x-transition x-cloak
-                 class="absolute right-0 top-full z-70 mt-1 w-64 rounded-xl border border-slate-700 bg-base-300 p-2 text-left shadow-2xl">
+                 class="absolute right-0 top-full z-70 mt-1 w-64 rounded-xl border border-slate-700 bg-base-300 p-2 text-left">
                 <label class="mb-2 flex cursor-pointer items-center justify-between gap-3 border-b border-slate-700/50 px-1 pb-2">
                     <span class="text-sm text-slate-200">{{ __('Share with every teacher') }}</span>
                     <input type="checkbox" class="toggle toggle-sm shrink-0" :checked="shared"
@@ -2479,6 +2504,7 @@
 
     {{-- Scene rail (vertical, left edge) --}}
     <x-lesson.timeline :scenes="$this->scenes" :selected-scene-id="$this->titleSelected ? null : $selectedSceneId" editable
+                       :problems="$this->problemsByScene"
                        :title-screen="['title' => $lesson->title, 'image' => $lesson->titleBgUrl(), 'selected' => $this->titleSelected]" />
 
     {{-- Rail resize handle — drag the rail's right edge to resize it; drag it under 24px (near
@@ -2582,6 +2608,11 @@
                         class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
                     <x-lesson.scene-type-thumb kind="game" game-type="debate" />
                     <span class="text-sm font-medium text-slate-200">Debate</span>
+                </button>
+                <button type="button" wire:click="addScene('game', 'predict')" data-add-predict
+                        class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
+                    <x-lesson.scene-type-thumb kind="game" game-type="predict" />
+                    <span class="text-sm font-medium text-slate-200">{{ __('Predict moment') }}</span>
                 </button>
                 <button type="button" wire:click="addScene('map')"
                         class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
@@ -2691,7 +2722,7 @@
                     {{-- "Library" is our own imagery: this lesson's pictures plus our Cloudinary
                          collection. It is also what the grid falls back to when the corpus and
                          Commons find nothing, so the teacher is never left with an empty modal. --}}
-                    @foreach (['' => __('Everything'), 'painting' => __('Paintings'), 'city_map' => __('City plans'), 'library' => __('Library')] as $kindVal => $kindLabel)
+                    @foreach (['library' => __('Library'), '' => __('Everything'), 'painting' => __('Paintings'), 'city_map' => __('City plans')] as $kindVal => $kindLabel)
                         <button type="button" wire:click="$set('paintingKind', '{{ $kindVal }}')"
                                 class="btn btn-xs flex-none {{ $paintingKind === $kindVal ? 'bg-primary text-slate-950 border-0 hover:brightness-110' : 'btn-outline border-slate-600 text-slate-400 hover:border-primary hover:text-primary' }}">
                             {{ $kindLabel }}
@@ -2730,7 +2761,7 @@
 
                 {{-- Overlay search bar, revealed by the icon --}}
                 <div x-show="searching" x-cloak x-transition.opacity.duration.150ms
-                     class="absolute inset-x-0 -top-2.5 z-20 flex items-center gap-3 rounded-xl border border-primary/50 bg-base-200 px-4 py-3 shadow-2xl">
+                     class="absolute inset-x-0 -top-2.5 z-20 flex items-center gap-3 rounded-xl border border-primary/50 bg-base-200 px-4 py-3">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5 flex-none text-slate-400">
                         <circle cx="11" cy="11" r="7"/><path stroke-linecap="round" d="m20 20-3.5-3.5"/>
                     </svg>
@@ -2771,7 +2802,7 @@
                                 wire:loading.attr="disabled" wire:target="applyPaintingChoice"
                                 data-kind="image" data-zoom
                                 aria-label="{{ $art['title'] }}"
-                                class="group block rounded-lg ring-1 ring-slate-700 transition hover:ring-2 hover:ring-primary disabled:cursor-wait"
+                                class="group block rounded-lg ring-1 ring-slate-700 transition hover:ring-slate-400 disabled:cursor-wait"
                                 data-tooltip="{{ trim($art['title'].' · '.$art['caption'], ' ·') }}">
                             <img src="{{ $art['thumb'] }}" loading="lazy" decoding="async" alt=""
                                  :srcset="srcset(@js($art['thumb']))" :sizes="sizes(@js($art['thumb']))" />
@@ -2876,6 +2907,39 @@
                 wire:click="$set('svgLibraryOpen', false)"></button>
     </div>
 
+    {{-- Play: the real player (lesson.play, what the class sees) over the whole editor, starting at
+         the selected scene (?scene_id=, mapped to the player's index in player-start.js) and playing
+         at once: the click on Play in this page lets the frame start with sound (mayAutoplay). X and
+         Esc (here or inside the frame) close it; the editor is still on the same scene. Closing
+         removes the frame, so nothing keeps talking. --}}
+    <div x-data="{
+            open: @js($playOnOpen),
+            src: '',
+            base: @js(route('lesson.play', ['lessonCode' => $lesson->lesson_code]).'?embed=1&autoplay=1&scene_id='),
+            init() { if (this.open) this.openAt($wire.selectedSceneId) },
+            openAt(id) { this.src = this.base + encodeURIComponent(id ?? ''); this.open = true },
+            close() { this.open = false; this.src = '' },
+            watchEsc(frame) {
+                try { frame.contentWindow.addEventListener('keydown', (e) => { if (e.key === 'Escape') this.close() }) } catch (_) {}
+                frame.focus()
+            },
+         }"
+         x-on:play-lesson-open.window="openAt($wire.selectedSceneId)"
+         x-on:keydown.escape.window="open && close()"
+         x-show="open" x-cloak wire:ignore
+         data-play-overlay data-play-open="{{ $playOnOpen ? '1' : '0' }}"
+         class="fixed inset-0 z-[300] bg-black" role="dialog" aria-modal="true" aria-label="{{ __('Play the lesson') }}">
+        <template x-if="open && src">
+            <iframe :src="src" x-on:load="watchEsc($el)" allow="autoplay; fullscreen"
+                    class="h-full w-full border-0" title="{{ __('Play the lesson') }}"></iframe>
+        </template>
+        <button type="button" x-on:click="close()" data-play-close
+                class="absolute right-4 top-4 z-10 grid h-10 w-10 place-items-center rounded-full bg-black/60 text-white transition hover:bg-black/80"
+                data-tooltip="{{ __('Close') }}" aria-label="{{ __('Close') }}">
+            <x-icons.x-mark class="h-5 w-5" />
+        </button>
+    </div>
+
     {{-- Scenes payload as inert JSON so we don't string-interpolate it into JS. Built in PHP
          (scenesData(), batched asset titles) and wire:ignore'd — the preview bridge reads it once on
          first paint (live edits flow through scene:load), so the 3s status poll must not re-morph
@@ -2955,7 +3019,8 @@
     })();
 
     // The title screen on the stage: the REAL player, embedded at its title screen, over the
-    // canvas. Inert (pointer-events-none): it is a picture of the title, edited in Format.
+    // canvas. Inert (pointer-events-none): it is a picture of the title, edited in Format; a click on
+    // its title focuses that field there.
     // Lives inside #lesson-canvas-root so it takes the stage's exact box; that root is
     // wire:ignore, so the frame is managed here rather than rendered by Blade.
     // The frame renders at a full-screen size and is scaled down to the stage, so the title screen
@@ -2981,6 +3046,11 @@
                 stage.appendChild(frame);
                 resize = new ResizeObserver(() => { frame.style.transform = `scale(${stage.clientWidth / FRAME_W})`; });
                 resize.observe(stage);
+            }
+            // A click on the title in the frame opens its field in Format (editor/title-stage-pick.js).
+            if (!stage.dataset.titlePick) {
+                stage.dataset.titlePick = '1';
+                window.installTitleStagePick?.(stage, FRAME_W, () => $wire.titleSelected);
             }
             if (frame.getAttribute('src') !== $wire.titleFrameSrc) frame.setAttribute('src', $wire.titleFrameSrc);
         };

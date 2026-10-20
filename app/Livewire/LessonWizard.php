@@ -14,6 +14,9 @@ class LessonWizard extends Component
 
     public int $step = 1;
 
+    /** ?step=5 (the old Preview) opens the editor with the real player over it: there is no step 5. */
+    public bool $playOnOpen = false;
+
     public function mount(?Lesson $lesson = null): void
     {
         // Parse ?step=N from the URL ourselves. Avoid Livewire's #[Url] attribute
@@ -26,10 +29,14 @@ class LessonWizard extends Component
             abort_unless(auth()->user()?->canManage($lesson), 403);
             $this->lesson = $lesson;
 
-            // Resuming never lands on Preview (5): Play stores 5, but "edit the lesson" means the
-            // editor (4). Only an explicit ?step=5 opens Preview.
+            // Resuming lands in the editor (4). The old Preview step (5) is gone: an explicit ?step=5
+            // opens the editor with the real player over it (Step3SceneConfigurator's Play).
             $this->step = $resolvedStep
                 ?? max(1, min(4, (int) ($lesson->wizard_step ?? 1)));
+            if ($this->step === 5) {
+                $this->step = 4;
+                $this->playOnOpen = true;
+            }
 
             // The Generate screen (3) is meaningless for lessons with nothing to generate —
             // e.g. command-built voyage lessons whose scenes are all ready and none narrated.

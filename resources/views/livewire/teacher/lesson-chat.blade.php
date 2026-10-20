@@ -2,7 +2,7 @@
     <h1 class="mb-6 text-3xl font-semibold text-base-content sm:text-4xl">{{ __('New lesson') }}</h1>
 
     <section
-        class="relative flex h-auto max-h-[calc(100vh-11rem)] min-h-88 flex-col overflow-hidden rounded-2xl border border-base-content/10 bg-base-200/70 shadow-2xl shadow-black/20"
+        class="relative flex h-auto max-h-[calc(100vh-11rem)] min-h-88 flex-col overflow-hidden rounded-2xl border border-base-content/10 bg-base-200/70"
         x-data="{
             pinnedToBottom: true,
             transcriptObserver: null,
@@ -244,7 +244,7 @@
             @endif
         </div>
 
-        <div class="shrink-0 border-t border-base-content/10 bg-base-200/95 p-3 shadow-[0_-16px_32px_rgba(2,6,23,0.35)] backdrop-blur sm:p-4">
+        <div class="shrink-0 border-t border-base-content/10 bg-base-200/95 p-3 backdrop-blur sm:p-4">
             @if ($state === 'goal')
                 <form wire:submit="submitGoal" class="space-y-2">
                     <div class="goal-ring-composer">

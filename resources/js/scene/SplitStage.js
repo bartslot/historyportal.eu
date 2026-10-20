@@ -1,6 +1,7 @@
 /**
- * SplitStage: a split scene's two comic panels (split-layout.js), drawn the same way in the
- * editor preview (wizard-bridge.js) and the student player (lesson-player.js).
+ * SplitStage: a split scene's comic panels, two to four of them in any layout (split-layout.js),
+ * drawn the same way in the editor preview (wizard-bridge.js) and the student player
+ * (lesson-player.js).
  *
  * Each panel is its own little stage, clipped to its box: the backdrop planes and the panel's own
  * camera (ParallaxScene), its figures (ArtworkOverlay) and its speech balloons (BalloonLayer).
@@ -11,7 +12,8 @@ import { ParallaxScene } from './ParallaxScene.js'
 import { ArtworkOverlay } from './ArtworkOverlay.js'
 import { BalloonLayer, withBalloonIds } from './BalloonLayer.js'
 import { backdropLayers, isClipartLayer } from './layer-filters.js'
-import { splitLayout, focusPosition, normalizeSplit, normalizeFocus, atFromPointer, panFocus, wheelZoom, panelForLine } from './split-layout.js'
+import { cropImage, fade, backgroundSource } from './background-crop.js'
+import { splitLayout, focusPosition, normalizeSplit, normalizeFocus, paneCount, moveDivider, stepDivider, panFocus, wheelZoom, panelForLine } from './split-layout.js'
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
 /** One wobble point per this many px of edge; the line drifts at most this share of its width. */
@@ -50,7 +52,7 @@ export class SplitStage {
   /**
    * @param {HTMLElement} host  the stage box the two panels fill
    * @param {{editable?: boolean, onSelect?: (i:number)=>void, onLayerChange?: (i:number, assetId:number, t:object)=>void,
-   *          onSplitChange?: (at:number)=>void, onViewChange?: (i:number, focus:{x:number,y:number,zoom:number})=>void,
+   *          onSplitChange?: (split:{layout:string, at:number[]})=>void, onViewChange?: (i:number, focus:{x:number,y:number,zoom:number})=>void,
    *          balloons?: object|null}} opts  balloons: an editable BalloonLayer's options (balloon-edit.js)
    */
   constructor (host, { editable = false, onSelect = null, onLayerChange = null, onSplitChange = null, onViewChange = null, balloons = null } = {}) {
@@ -70,7 +72,7 @@ export class SplitStage {
   }
 
   /**
-   * @param {{split: {dir:string, at:number}, shots: object[], lines?: object[], matte?: string|null,
+   * @param {{split: {layout:string, at:number[]}, shots: object[], lines?: object[], matte?: string|null,
    *          loop?: boolean, selected?: number|null}} scene
    */
   show ({ split, shots = [], lines = [], matte = null, loop = false, selected = null } = {}) {
@@ -83,8 +85,8 @@ export class SplitStage {
     this.host.appendChild(root)
     this._root = root
 
-    this.panels = [0, 1].map(i => this._panel(root, shots[i] || {}, i, matte, loop))
-    if (this.editable) this._divider = this._makeDivider(root)
+    this.panels = Array.from({ length: paneCount(this._split) }, (_, i) => this._panel(root, shots[i] || {}, i, matte, loop))
+    this._dividers = []
     this.setLines(lines)
     this._layout()
     if (typeof ResizeObserver === 'function') {
@@ -108,13 +110,24 @@ export class SplitStage {
     }
     const plate = box()
     const art = box()
-    const talk = box()
-    talk.style.pointerEvents = 'none'
-    talk.style.zIndex = '35'   // above the figures (30/32), like the player's own balloon host
+    // The panel's balloons live ABOVE every panel, its frame and the grips, in a box the size of
+    // the panel (placed in _layout): a balloon or its tail may cross the panel border into the
+    // next panel, the way comic lettering breaks the frame (Bart, 2026-10-16).
+    const talk = document.createElement('div')
+    talk.dataset.splitTalk = String(i)
+    talk.style.cssText = 'position:absolute;pointer-events:none;z-index:50;overflow:visible;'
+    root.appendChild(talk)
     const ink = document.createElementNS(SVG_NS, 'svg')
     ink.setAttribute('aria-hidden', 'true')
     ink.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;z-index:40;'
     el.appendChild(ink)
+    // The ring that marks the panel the editor is working on: a polygon, so a diagonal panel's
+    // ring follows its slanted edge.
+    const ring = document.createElementNS(SVG_NS, 'svg')
+    ring.setAttribute('aria-hidden', 'true')
+    ring.dataset.splitRing = ''
+    ring.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;z-index:41;display:none;'
+    el.appendChild(ring)
     root.appendChild(el)
 
     const layers = Array.isArray(shot.layers) ? shot.layers : []
@@ -133,7 +146,7 @@ export class SplitStage {
     overlay.setBackdrop(planes.find(l => (l.kind ?? 'cover') === 'cover')?.url)
 
     let parallax = null
-    const p = { el, ink, plate, overlay, balloons: null, layers, focus: normalizeFocus(shot.focus), parallax: null }
+    const p = { el, ink, ring, plate, talk, overlay, balloons: null, layers, focus: normalizeFocus(shot.focus), parallax: null }
     if (planes.length) {
       parallax = new ParallaxScene(plate)
       parallax.show({
@@ -156,12 +169,14 @@ export class SplitStage {
     const balloons = new BalloonLayer(talk, (assetId) => {
       const img = el.querySelector(`[data-layer-id="art_${assetId}"] img`)
       return img ? img.getBoundingClientRect() : null
-    }, this.balloonOptions || {})
+    }, { ...(this.balloonOptions || {}), roam: true })
 
     if (this.editable) {
       // A click anywhere in a panel (a figure in it too) makes it the one the inspector edits.
       el.style.pointerEvents = 'auto'
       el.addEventListener('pointerdown', () => { if (this._selected !== i) this.onSelect?.(i) }, true)
+      // A balloon is outside its panel's element now: clicking it still makes its panel the edited one.
+      talk.addEventListener('pointerdown', () => { if (this._selected !== i) this.onSelect?.(i) }, true)
       this._panZoom(p, i)
     }
     p.balloons = balloons
@@ -174,13 +189,22 @@ export class SplitStage {
    * zoomed in, about that same point, so a pan of a zoomed picture moves what you see.
    */
   _applyFocus (p) {
-    const { x, y, zoom } = p.focus
-    const pos = `${x}% ${y}%`
-    for (const img of p.plate.querySelectorAll('.px-layer-bg img')) {
-      img.style.objectPosition = pos
-      img.style.transformOrigin = pos
-      img.style.transform = zoom > 1 ? `scale(${zoom})` : ''
-    }
+    for (const img of p.plate.querySelectorAll('.px-layer-bg img')) cropImage(img, { ...p.focus, opacity: 1 })
+    fade(p.plate, p.opacity ?? 1)
+  }
+
+  /**
+   * Each panel's picture as a background the timeline animates (scene/background-crop.js): its
+   * saved crop is the base, a sampled frame pans, zooms and fades it. A drag or the sliders still
+   * set the base through setFocus.
+   */
+  backgrounds () {
+    return backgroundSource(this.panels.map((p, i) => ({
+      id: String(i),
+      get: () => ({ ...p.focus, opacity: p.opacity ?? 1 }),
+      set: ({ opacity, ...focus }) => { p.focus = focus; p.opacity = opacity; this._applyFocus(p) },
+      el: () => p.plate,
+    })))
   }
 
   /** Editor: drag a pane's picture to move it, wheel over it to zoom. Figures keep their own drag. */
@@ -227,13 +251,14 @@ export class SplitStage {
   }
 
   /**
-   * Editor: the gutter is a handle, the same grip as the dock's top edge (.lp-grip in app.css):
-   * same pill, cursor, hover and held state. Drag it, or use the arrow keys, to move the split.
+   * Editor: every gutter is a handle, the same grip as the dock's top edge (.lp-grip in app.css):
+   * same pill, cursor, hover and held state. Drag it, or use the arrow keys, to move that divider.
+   * A diagonal has one handle in the middle of its line, and moves as a whole.
    */
-  _makeDivider (root) {
+  _makeDivider (root, k) {
     const d = document.createElement('div')
     d.className = 'lp-grip'
-    d.dataset.splitDivider = ''
+    d.dataset.splitDivider = String(k)
     d.tabIndex = 0
     d.setAttribute('role', 'separator')
     d.setAttribute('aria-label', 'Split position')
@@ -242,49 +267,47 @@ export class SplitStage {
     pill.className = 'lp-grip-pill'
     pill.setAttribute('aria-hidden', 'true')
     d.appendChild(pill)
-    const along = (e) => {
-      const r = this.host.getBoundingClientRect()
-      return this._dir === 'h' ? [e.clientY - r.top, r.height] : [e.clientX - r.left, r.width]
-    }
-    let start = null
+    let drag = null
     d.addEventListener('pointerdown', (e) => {
       if (e.button !== 0) return
       e.preventDefault()
       e.stopPropagation()
-      start = this._split.at
+      drag = { split: this._split, x: e.clientX }
       this._dragging = true
       d.dataset.dragging = ''
       try { d.setPointerCapture(e.pointerId) } catch (_) { /* synthetic pointer */ }
     })
     d.addEventListener('pointermove', (e) => {
-      if (start === null) return
-      this._split = { ...this._split, at: atFromPointer(...along(e)) }
+      if (!drag) return
+      const r = this.host.getBoundingClientRect()
+      this._split = moveDivider(drag.split, k, e.clientX - r.left, e.clientY - r.top, r.width, r.height, { dx: e.clientX - drag.x })
       this._layout()
     })
     const end = () => {
-      if (start === null) return
-      const moved = this._split.at !== start
-      start = null
+      if (!drag) return
+      const moved = JSON.stringify(this._split.at) !== JSON.stringify(drag.split.at)
+      drag = null
       this._dragging = false
       delete d.dataset.dragging
-      if (moved) this.onSplitChange?.(this._split.at)
+      if (moved) this.onSplitChange?.({ ...this._split })
     }
     d.addEventListener('pointerup', end)
     d.addEventListener('pointercancel', end)
     d.addEventListener('keydown', (e) => {
-      const step = e.shiftKey ? 0.05 : 0.01
-      const back = this._dir === 'h' ? 'ArrowUp' : 'ArrowLeft'
-      const fwd = this._dir === 'h' ? 'ArrowDown' : 'ArrowRight'
+      const orient = d.dataset.orient
+      const back = orient === 'h' ? 'ArrowUp' : 'ArrowLeft'
+      const fwd = orient === 'h' ? 'ArrowDown' : 'ArrowRight'
       if (e.key !== back && e.key !== fwd) return
       e.preventDefault()
-      const at = normalizeSplit({ ...this._split, at: this._split.at + (e.key === fwd ? step : -step) }).at
-      if (at === this._split.at) return
-      this._split = { ...this._split, at }
+      const step = (e.shiftKey ? 0.05 : 0.01) * (e.key === fwd ? 1 : -1)
+      const next = stepDivider(this._split, k, step)
+      if (JSON.stringify(next.at) === JSON.stringify(this._split.at)) return
+      this._split = next
       this._layout()
-      this.onSplitChange?.(at)
+      this.onSplitChange?.({ ...this._split })
     })
     root.appendChild(d)
-    return { el: d }
+    return d
   }
 
   /** The split from the server (the slider, an undo): applied in place, never mid-drag. */
@@ -307,62 +330,99 @@ export class SplitStage {
     if (!this._root) return
     const lay = splitLayout(this._split, this.host.clientWidth, this.host.clientHeight)
     if (!lay) return
-    this._root.dataset.dir = lay.dir
-    this._dir = lay.dir
+    this._root.dataset.layout = lay.layout
     lay.panels.forEach((b, i) => {
       const p = this.panels[i]
       if (!p) return
       Object.assign(p.el.style, { left: `${b.x}px`, top: `${b.y}px`, width: `${b.w}px`, height: `${b.h}px` })
+      Object.assign(p.talk.style, { left: `${b.x}px`, top: `${b.y}px`, width: `${b.w}px`, height: `${b.h}px` })
+      p.el.style.clipPath = b.clip ? `polygon(${b.clip.map(([x, y]) => `${x}px ${y}px`).join(', ')})` : ''
+      p.shape = b
       this._drawInk(p, b, lay, i)
+      this._drawRing(p)
     })
-    this._placeDivider(lay)
+    this._placeDividers(lay)
   }
 
-  /** The divider handle over the gutter, a little wider than it so it is easy to grab. */
-  _placeDivider (lay) {
-    if (!this._divider) return
-    const { el } = this._divider
-    const [a, b] = lay.panels
-    const pad = DIVIDER_PAD_PX
-    const w = lay.gutter + 2 * pad
-    if (lay.dir === 'h') {
-      Object.assign(el.style, { left: '0px', width: `${b.w}px`, top: `${a.h - pad}px`, height: `${w}px` })
-    } else {
-      Object.assign(el.style, { top: '0px', height: `${a.h}px`, left: `${a.w - pad}px`, width: `${w}px` })
-    }
-    // A stacked split's gutter is a horizontal bar, like the dock's top edge; side by side, upright.
-    el.setAttribute('aria-orientation', lay.dir === 'h' ? 'horizontal' : 'vertical')
-    el.setAttribute('aria-valuenow', String(Math.round(this._split.at * 100)))
+  /** One grip per divider, over its gutter and a little wider than it so it is easy to grab. */
+  _placeDividers (lay) {
+    if (!this.editable || !this._root) return
+    lay.dividers.forEach((dv) => {
+      const d = this._dividers[dv.k] ??= this._makeDivider(this._root, dv.k)
+      const pad = DIVIDER_PAD_PX
+      d.dataset.orient = dv.orient
+      d.style.transform = ''
+      if (dv.orient === 'd') {
+        // The handle sits on the middle of the line, turned with it; it drags sideways.
+        const len = Math.hypot(dv.x1 - dv.x0, dv.y1 - dv.y0)
+        const angle = Math.atan2(dv.y1 - dv.y0, dv.x1 - dv.x0) * 180 / Math.PI
+        const w = lay.gutter + 2 * pad
+        Object.assign(d.style, { left: `${(dv.x0 + dv.x1) / 2 - len / 2}px`, top: `${(dv.y0 + dv.y1) / 2 - w / 2}px`, width: `${len}px`, height: `${w}px`, transform: `rotate(${angle}deg)` })
+        // Turned with the line, so its pill lies along it; it still drags sideways.
+        d.setAttribute('aria-orientation', 'horizontal')
+        d.style.cursor = 'ew-resize'
+      } else {
+        const grow = dv.orient === 'h' ? { top: `${dv.y - pad}px`, height: `${dv.h + 2 * pad}px`, left: `${dv.x}px`, width: `${dv.w}px` }
+          : { left: `${dv.x - pad}px`, width: `${dv.w + 2 * pad}px`, top: `${dv.y}px`, height: `${dv.h}px` }
+        Object.assign(d.style, grow, { cursor: '' })
+        // A gutter between rows is a horizontal bar, like the dock's top edge; between columns, upright.
+        d.setAttribute('aria-orientation', dv.orient === 'h' ? 'horizontal' : 'vertical')
+      }
+      d.setAttribute('aria-valuenow', String(Math.round(this._split.at[dv.k] * 100)))
+    })
   }
 
-  /** The ink line on the panel's gutter edge, drawn inside the panel (the outer edges bleed). */
+  /**
+   * The ink lines on a panel's inner edges, drawn inside the panel (the outer edges bleed). A
+   * rectangle has ink on every edge that does not lie on the stage's own edge; a diagonal panel on
+   * its slanted edge.
+   */
   _drawInk (p, b, lay, i) {
     const w = lay.ink
     const half = w / 2
-    const [x0, y0, x1, y1] = lay.dir === 'h'
-      ? (i === 0 ? [0, b.h - half, b.w, b.h - half] : [0, half, b.w, half])
-      : (i === 0 ? [b.w - half, 0, b.w - half, b.h] : [half, 0, half, b.h])
-    p.ink.setAttribute('viewBox', `0 0 ${b.w} ${b.h}`)
+    const W = this.host.clientWidth
+    const H = this.host.clientHeight
+    const lines = []
+    if (b.clip) {
+      // Panel 0's slanted edge is its 2nd → 3rd point, panel 1's its 4th → 1st (split-layout.js).
+      const [[x0, y0], [x1, y1]] = i === 0 ? [b.clip[1], b.clip[2]] : [b.clip[3], b.clip[0]]
+      const off = i === 0 ? -half : half
+      lines.push([x0 + off, y0, x1 + off, y1])
+      p.ink.setAttribute('viewBox', `0 0 ${b.w} ${b.h}`)
+    } else {
+      const e = 0.5
+      if (b.x > e) lines.push([half, 0, half, b.h])
+      if (b.x + b.w < W - e) lines.push([b.w - half, 0, b.w - half, b.h])
+      if (b.y > e) lines.push([0, half, b.w, half])
+      if (b.y + b.h < H - e) lines.push([0, b.h - half, b.w, b.h - half])
+      p.ink.setAttribute('viewBox', `0 0 ${b.w} ${b.h}`)
+    }
     p.ink.innerHTML = ''
-    const path = document.createElementNS(SVG_NS, 'path')
-    path.setAttribute('d', inkPath(x0, y0, x1, y1, w, 7 + i * 13))
-    path.setAttribute('fill', 'none')
-    path.setAttribute('stroke', 'var(--split-ink,#1d1611)')
-    path.setAttribute('stroke-width', String(w))
-    path.setAttribute('stroke-linecap', 'round')
-    p.ink.appendChild(path)
+    lines.forEach(([x0, y0, x1, y1], j) => {
+      const path = document.createElementNS(SVG_NS, 'path')
+      path.setAttribute('d', inkPath(x0, y0, x1, y1, w, 7 + i * 13 + j * 5))
+      path.setAttribute('fill', 'none')
+      path.setAttribute('stroke', 'var(--split-ink,#1d1611)')
+      path.setAttribute('stroke-width', String(w))
+      path.setAttribute('stroke-linecap', 'round')
+      p.ink.appendChild(path)
+    })
+  }
+
+  /** The selection ring in the panel's own shape. */
+  _drawRing (p) {
+    const b = p.shape
+    if (!b) return
+    const pts = b.clip ?? [[0, 0], [b.w, 0], [b.w, b.h], [0, b.h]]
+    p.ring.setAttribute('viewBox', `0 0 ${b.w} ${b.h}`)
+    p.ring.innerHTML = `<polygon points="${pts.map(([x, y]) => `${x},${y}`).join(' ')}" fill="none" stroke="var(--color-primary,#f59e0b)" stroke-width="4" vector-effect="non-scaling-stroke"/>`
   }
 
   /** The panel the editor is working on: outlined, its overlay the one the layer list talks to. */
   select (i) {
     this._selected = Number.isInteger(i) ? i : null
     this.panels.forEach((p, j) => {
-      p.el.querySelector(':scope > [data-split-selected]')?.remove()
-      if (!this.editable || j !== this._selected) return
-      const ring = document.createElement('div')
-      ring.dataset.splitSelected = ''
-      ring.style.cssText = 'position:absolute;inset:0;border:2px solid var(--color-primary,#f59e0b);pointer-events:none;z-index:41;'
-      p.el.appendChild(ring)
+      p.ring.style.display = this.editable && j === this._selected ? '' : 'none'
     })
   }
 
@@ -408,7 +468,7 @@ export class SplitStage {
       this.onViewChange?.(i, { ...p.focus })
     })
     this.panels = []
-    this._divider = null
+    this._dividers = []
     this._root?.remove()
     this._root = null
   }

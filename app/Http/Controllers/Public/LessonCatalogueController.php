@@ -72,6 +72,8 @@ class LessonCatalogueController extends Controller
                 ->values(),
             'related' => Seo::publicLessons()
                 ->whereKeyNot($lesson->getKey())
+                // Same language as this lesson: a Dutch page listed untranslated English ones.
+                ->when($lesson->language, fn ($q, $language) => $q->where('language', $language))
                 ->when($lesson->grade_level, fn ($q, $grade) => $q->where('grade_level', $grade))
                 ->latest()
                 ->take(3)

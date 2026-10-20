@@ -21,7 +21,7 @@
  * screenshots (`?imagery=1`) but it is scenery, not evidence.
  */
 
-import maplibregl from 'maplibre-gl'
+import maplibregl from '../../maplibre.js'
 import { createDaylightLayer } from '../daylight.js'
 import { createCloudLayer } from '../clouds.js'
 import { createAtmosphereLayer } from '../atmosphere.js'

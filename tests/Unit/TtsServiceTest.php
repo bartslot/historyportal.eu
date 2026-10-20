@@ -33,6 +33,18 @@ TEXT;
         $this->assertStringContainsString('What can we learn today?', $output);
     }
 
+    /** Prod 2026-10-16: a script with a line break crashed the generated edge-tts script ("unterminated string literal"). */
+    public function test_edge_tts_text_literal_survives_line_breaks_and_quotes(): void
+    {
+        $text = "Tasman leest zijn opdracht:\nkusten 'onderzoeken', \\ \"handel\" é";
+        $literal = (new \ReflectionMethod(TtsService::class, 'pythonStringLiteral'))->invoke(new TtsService(), $text);
+
+        exec('python3 -c '.escapeshellarg('import sys; sys.stdout.write('.$literal.')'), $out, $rc);
+
+        $this->assertSame(0, $rc, 'python3 could not parse '.$literal);
+        $this->assertSame($text, implode("\n", $out));
+    }
+
     public function test_single_newline_is_soft_but_blank_line_is_a_paragraph_break(): void
     {
         $service = new TtsService();

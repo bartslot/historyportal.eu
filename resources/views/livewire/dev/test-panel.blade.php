@@ -3,10 +3,14 @@
      class="fixed bottom-4 right-4 z-100 print:hidden"
      data-dev-panel
      wire:key="dev-test-panel">
+    {{-- The dev panel's presets endpoint is here (resources/js/dev/tuner.js asks only when this is). --}}
+    @if (\Illuminate\Support\Facades\Route::has('dev.tuning.index'))
+        <meta name="dev-tuning" content="{{ route('dev.tuning.index') }}">
+    @endif
 
     {{-- Toggle button --}}
     <button type="button" @click="open = !open"
-            class="btn btn-circle btn-sm border-none bg-fuchsia-600 text-white shadow-lg hover:bg-fuchsia-500"
+            class="btn btn-circle btn-sm border-none bg-fuchsia-600 text-white hover:bg-fuchsia-500"
             title="Dev test tools (local only)">
         <span x-show="!open"><x-icons.beaker class="w-5 h-5" /></span>
         <span x-show="open" x-cloak>✕</span>
@@ -14,7 +18,7 @@
 
     {{-- Panel --}}
     <div x-show="open" x-cloak x-transition
-         class="absolute bottom-12 right-0 max-h-[80vh] w-72 overflow-y-auto overscroll-contain rounded-xl border border-fuchsia-700/60 bg-slate-900 p-4 shadow-2xl">
+         class="absolute bottom-12 right-0 max-h-[80vh] w-72 overflow-y-auto overscroll-contain rounded-xl border border-fuchsia-700/60 bg-slate-900 p-4">
 
         <div class="mb-3 flex items-center gap-2">
             <x-icons.beaker class="w-5 h-5 text-fuchsia-400" />

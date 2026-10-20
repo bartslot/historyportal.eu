@@ -29,7 +29,7 @@
             : (auth()->check() ? __('Back to my lessons') : __('Back to the home page'));
     @endphp
 
-    <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-8 text-center shadow-2xl backdrop-blur-sm">
+    <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-8 text-center backdrop-blur-sm">
         <p class="font-history text-5xl text-slate-700">{{ $code }}</p>
 
         <h1 class="mt-4 text-xl font-semibold text-slate-100">{{ $title }}</h1>

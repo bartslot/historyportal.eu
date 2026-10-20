@@ -59,6 +59,20 @@ class User extends Authenticatable
 
     /** Has this account finished (or skipped) the welcome tour? */
     /**
+     * The editor's zoom levels, in percent (Bart, 2026-10-17, after Spotify's Zoom level): Dense at
+     * 70, Default at 100, Spacious at 130. 100 draws the editor exactly as it has always been.
+     */
+    public const UI_SCALES = [70, 80, 90, 100, 110, 120, 130];
+
+    /** The stored zoom as a step of the scale: the nearest one, so an older value still reads. */
+    public function uiScale(): int
+    {
+        $stored = (int) ($this->ui_scale ?? 100);
+
+        return collect(self::UI_SCALES)->sortBy(fn (int $step) => [abs($step - $stored), -$step])->first();
+    }
+
+    /**
      * The language this teacher's LESSONS are in (script + narration voice), as opposed to `locale`,
      * which is the language the interface speaks to them in. A Dutch teacher can write English
      * lessons; before these were separated, her English lesson was narrated by a Dutch voice.

@@ -332,16 +332,16 @@ test('teacher: switching scene, and the idle cost of the editor', async ({ page 
 // 4. Teacher: the preview step
 // ─────────────────────────────────────────────────────────────────────────────
 
-test('teacher: opening the preview step', async ({ page }) => {
+test('teacher: opening Play (the old preview step)', async ({ page }) => {
     test.setTimeout(150_000)
     await page.addInitScript(INSTRUMENT)
     const net = await captureNetwork(page)
 
     await page.goto(`/teacher/lessons/${TEACHER_LESSON}/wizard?step=5`, { waitUntil: 'load' })
 
-    // For a lesson holding map / gallery / voyage scenes the preview is not a canvas rail — it is
-    // the whole student player, embedded in an iframe. The teacher pays for a second player boot.
-    const embedded = page.frameLocator('iframe')
+    // ?step=5 opens the editor with Play's overlay: the whole student player in an iframe over
+    // the editor. The teacher pays for a second player boot.
+    const embedded = page.frameLocator('[data-play-overlay] iframe')
     const start = embedded.getByRole('button', { name: /start lesson/i }).first()
     await expect(start).toBeVisible({ timeout: 90_000 })
     const previewReadyMs = Math.round(await page.evaluate(() => performance.now()))

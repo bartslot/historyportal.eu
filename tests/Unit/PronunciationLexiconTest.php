@@ -31,11 +31,14 @@ class PronunciationLexiconTest extends TestCase
         $this->assertSame('the limes frontier', PronunciationLexicon::apply('the limes frontier', null));
     }
 
-    /** The voices read "VOC" as the word "vok"; a teacher says vee-oh-see. */
+    /**
+     * The voices read "VOC" as the word "vok"; a teacher says the letters. In Dutch letter names
+     * (vee oo cee): "oh see" came out English from the Dutch voice (Bart, 2026-10-18).
+     */
     public function test_the_voc_is_spelled_out_rather_than_read_as_a_word(): void
     {
         $this->assertSame(
-            'De vee oh see was de eerste multinational.',
+            'De vee oo cee was de eerste multinational.',
             PronunciationLexicon::apply('De VOC was de eerste multinational.', 'nl'),
         );
         $this->assertSame(
@@ -52,8 +55,8 @@ class PronunciationLexiconTest extends TestCase
     {
         $spoken = PronunciationLexicon::apply('DE VOC EN DE WIC', 'nl');
 
-        $this->assertStringContainsString('vee oh see', $spoken);
-        $this->assertStringNotContainsString('VEE OH SEE', $spoken);
+        $this->assertStringContainsString('vee oo cee', $spoken);
+        $this->assertStringNotContainsString('VEE OO CEE', $spoken);
     }
 
     /**
@@ -67,6 +70,16 @@ class PronunciationLexiconTest extends TestCase
             "The vee oh see: the world's first multinational.",
             PronunciationLexicon::apply("The voc: the world's first multinational.", 'en'),
         );
+    }
+
+    /** The Dutch voice read "reserve" the English way, also at the start of a compound. */
+    public function test_dutch_reserve_is_respelled_alone_and_in_compounds(): void
+    {
+        $this->assertSame(
+            'Er was nog een rezervezeil, en de Rezerve lag klaar.',
+            PronunciationLexicon::apply('Er was nog een reservezeil, en de Reserve lag klaar.', 'nl'),
+        );
+        $this->assertSame('a reserve sail', PronunciationLexicon::apply('a reserve sail', 'en'));
     }
 
     public function test_the_written_script_is_only_changed_where_the_word_stands_alone(): void

@@ -1,0 +1,187 @@
+{
+  "version": 1,
+  "source": "Figma PrVD4qMyoTtBvF7UV7Yhej node 2353:1311 (B, the upright poster). Hand-made by Bart: titles:make must not overwrite it.",
+  "frame": {
+    "w": 1604,
+    "h": 2456
+  },
+  "background": "#F03E4A",
+  "badges": "column",
+  "badge_style": "dark",
+  "still": "portrait-still.webp",
+  "subtitle": {
+    "box": {
+      "x": 8.3001,
+      "y": 66.4649,
+      "w": 83.3999,
+      "h": 2.7147
+    },
+    "size": 2.6185,
+    "color": "#FFFFFF"
+  },
+  "layers": [
+    {
+      "id": "tasman",
+      "src": "portrait-tasman.webp",
+      "box": {
+        "x": 12.5775,
+        "y": 6.2658,
+        "w": 89.7501,
+        "h": 104.8701
+      },
+      "enter": "fade",
+      "ambient": "breeze",
+      "ambient_speed": 0.5,
+      "ambient_amount": 0.3,
+      "rotate": -5.73
+    },
+    {
+      "id": "a",
+      "src": "portrait-letter-a.svg",
+      "box": {
+        "x": 11.2883,
+        "y": 38.6942,
+        "w": 27.6808,
+        "h": 15.3094
+      },
+      "enter": "drop"
+    },
+    {
+      "id": "b",
+      "src": "portrait-letter-b.svg",
+      "box": {
+        "x": 33.1633,
+        "y": 39.069,
+        "w": 22.818,
+        "h": 15.3094
+      },
+      "enter": "drop"
+    },
+    {
+      "id": "e",
+      "src": "portrait-letter-e.svg",
+      "box": {
+        "x": 50.8929,
+        "y": 38.5276,
+        "w": 22.4439,
+        "h": 15.4723
+      },
+      "enter": "drop"
+    },
+    {
+      "id": "l",
+      "src": "portrait-letter-l.svg",
+      "box": {
+        "x": 65.6888,
+        "y": 38.4859,
+        "w": 22.9426,
+        "h": 15.1873
+      },
+      "enter": "drop"
+    },
+    {
+      "id": "t",
+      "src": "portrait-letter-t.svg",
+      "box": {
+        "x": 9.5026,
+        "y": 51.7311,
+        "w": 18.5162,
+        "h": 10.8306
+      },
+      "enter": "drop"
+    },
+    {
+      "id": "a2",
+      "src": "portrait-letter-a2.svg",
+      "box": {
+        "x": 19.898,
+        "y": 52.0226,
+        "w": 19.1397,
+        "h": 10.4235
+      },
+      "enter": "drop"
+    },
+    {
+      "id": "s",
+      "src": "portrait-letter-s.svg",
+      "box": {
+        "x": 32.1429,
+        "y": 50.8981,
+        "w": 16.3965,
+        "h": 12.2964
+      },
+      "enter": "drop"
+    },
+    {
+      "id": "m",
+      "src": "portrait-letter-m.svg",
+      "box": {
+        "x": 43.3673,
+        "y": 51.1896,
+        "w": 20.3865,
+        "h": 10.5863
+      },
+      "enter": "drop"
+    },
+    {
+      "id": "a1",
+      "src": "portrait-letter-a1.svg",
+      "box": {
+        "x": 59.3112,
+        "y": 50.8981,
+        "w": 17.1446,
+        "h": 10.627
+      },
+      "enter": "drop"
+    },
+    {
+      "id": "n",
+      "src": "portrait-letter-n.svg",
+      "box": {
+        "x": 71.4286,
+        "y": 51.3146,
+        "w": 18.3915,
+        "h": 10.4235
+      },
+      "enter": "drop"
+    }
+  ],
+  "keep_clear": [
+    {
+      "box": [
+        11.29,
+        38.49,
+        77.34,
+        15.89
+      ],
+      "kind": "letters"
+    },
+    {
+      "box": [
+        9.5,
+        50.9,
+        80.32,
+        12.3
+      ],
+      "kind": "letters"
+    },
+    {
+      "box": [
+        43.0,
+        15.0,
+        13.5,
+        9.5
+      ],
+      "kind": "face"
+    },
+    {
+      "box": [
+        21.21,
+        8.85,
+        71.53,
+        91.15
+      ],
+      "kind": "figure"
+    }
+  ]
+}

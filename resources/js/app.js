@@ -27,9 +27,12 @@ import { isTypingTarget } from './ui/keyboard.js';
 import { routePaste, OBJECTS_MARK } from './ui/paste-router.js';
 import { initDragScroll } from './ui/drag-scroll.js';
 import { imageGrid, initImageZoom } from './ui/image-grid.js';
+import { installTitleStagePick } from './editor/title-stage-pick.js';
 import { pendingCode as pendingTestSession } from './test-session/pending.js';
 
 window.Sortable = Sortable;
+// The editor's stage: a click on the title screen's title opens its field (step3 @script).
+window.installTitleStagePick = installTitleStagePick;
 
 // Geometry for <x-ui.floating-window>, exposed as globals for the same reason as the factories
 // below: the component's x-data has to call them without depending on alpine:init ordering. The

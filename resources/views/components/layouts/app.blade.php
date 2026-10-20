@@ -8,7 +8,13 @@
      set: /help is public but wears this shell, and a signed-in teacher reading the marketing home
      page is on the landing shell and should still see amber there. What decides is which app the
      page looks like, which is the thing a teacher can actually see. See app.css, THE BUTTON. --}}
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full" data-theme="learningportal" data-surface="teacher">
+{{-- The editor's zoom level (Settings, User::uiScale): the full-screen editor drawn at the
+     teacher's size by its ROOT FONT SIZE, so everything measured in rem grows or shrinks together.
+     Not CSS zoom: that was tried and reverted (2026-08-24), because a zoomed ancestor gives the
+     stage canvas, the map and every pointer-to-pixel sum two different sizes for one element. --}}
+@php $uiScale = ($hideChrome ?? false) ? (auth()->user()?->uiScale() ?? 100) : 100; @endphp
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full" data-theme="learningportal" data-surface="teacher"
+      @if ($uiScale !== 100) style="font-size: {{ $uiScale }}%" @endif>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">

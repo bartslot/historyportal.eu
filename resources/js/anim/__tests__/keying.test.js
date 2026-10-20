@@ -130,6 +130,13 @@ describe('editing an animated property from the Format panel', () => {
     expect(p.keysOf(ART, 'x').map((k) => [k.time, k.value])).toEqual([[0, 25], [3, 90]])
   })
 
+  it('the timeline row shows a fraction the slider set, not one rounded to tenths', () => {
+    // A balloon's opacity keyed to 0.25 read "0.3" in the row while the inspector said 25%.
+    const p = panel([{ target: 'bal:0', property: 'opacity', keyframes: [{ time: 0, value: 1 }, { time: 2, value: 0.25 }] }])
+    p.time = 2
+    expect(p.valueAt('bal:0', 'opacity')).toBe(0.25)
+  })
+
   it('adds a key between keys (After Effects)', () => {
     const p = panel([track([{ time: 0, value: 25 }, { time: 3, value: 80 }], { base: 25 })])
     p.time = 1.5

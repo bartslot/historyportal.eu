@@ -23,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             \App\Http\Middleware\AutoLoginDev::class,
             \App\Http\Middleware\SetLocale::class,
+            \App\Http\Middleware\SecurityHeaders::class,
         ]);
 
         // Anonymous students submit a quiz score from a player tab that may have been open
@@ -33,6 +34,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // untrusted (see the score clamp in QuizLeaderboardController).
         $middleware->validateCsrfTokens(except: [
             'lesson/*/quiz-score',
+
+            // The player's anonymous telemetry, for the same reasons: public, throttled, untrusted
+            // input, and its exit batch is a sendBeacon, which cannot carry a CSRF header. The
+            // stateful API checks CSRF on same-site requests, so every batch 419'd (PM, 2026-10-18).
+            'api/lesson/*/telemetry',
 
             // Stripe posts from its own servers, so there is no session and no token to send. What
             // replaces CSRF here is the signature check in StripeWebhookController, which verifies

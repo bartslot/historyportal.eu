@@ -1,6 +1,6 @@
 {{-- Module card for the lesson composer list. --}}
 <div
-    class="card bg-base-100 shadow"
+    class="card bg-base-100"
     data-module-id="{{ $module->id }}"
     wire:key="module-card-{{ $module->id }}"
 >

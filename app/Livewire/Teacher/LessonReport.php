@@ -7,11 +7,13 @@ namespace App\Livewire\Teacher;
 use App\Jobs\GenerateLessonQuiz;
 use App\Models\ClassroomMember;
 use App\Models\Lesson;
+use App\Models\PredictionAnswer;
 use App\Models\QuizScore;
 use App\Models\Scene;
 use App\Services\LessonResults;
 use App\Services\OpenAiLlmService;
 use App\Services\PaperSheetExtractor;
+use App\Services\Predict\PredictionResults;
 use App\Services\Support\NameMatcher;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -23,7 +25,7 @@ class LessonReport extends Component
 
     public Lesson $lesson;
 
-    public string $tab = 'overview';           // overview | questions | players
+    public string $tab = 'overview';           // overview | questions | players | predictions
 
     public ?int $classroomId = null;           // filter
 
@@ -93,6 +95,27 @@ class LessonReport extends Component
     public function drilldown(): array
     {
         return $this->openScoreId ? $this->results()->drilldown($this->openScoreId) : [];
+    }
+
+    /** Predict moments: level distribution and every prediction next to its why. */
+    #[Computed]
+    public function predictions(): array
+    {
+        return (new PredictionResults(
+            $this->lesson,
+            $this->classroomId,
+            $this->range === 'all' ? null : now()->subDays((int) $this->range),
+        ))->moments();
+    }
+
+    /** The teacher's level wins over the grader's; an empty choice puts the grader's back. */
+    public function overridePrediction(int $answerId, string $level): void
+    {
+        $answer = PredictionAnswer::where('lesson_id', $this->lesson->id)->where('phase', 'why')->findOrFail($answerId);
+        $answer->update([
+            'teacher_override' => in_array((int) $level, PredictionAnswer::LEVELS, true) && $level !== '' ? (int) $level : null,
+        ]);
+        unset($this->predictions);
     }
 
     #[Computed]
