@@ -6,7 +6,7 @@
   html, body { margin: 0; height: 100%; background: #86d0cf; }
   #map { position: absolute; inset: 0; }
   /* Paper grain over everything, multiplied, so ink and wash both sit IN the paper. */
-  #paper { position: absolute; inset: 0; pointer-events: none; background: url(chart-lab/paper.png); mix-blend-mode: multiply; opacity: .2; }
+  #paper { position: absolute; inset: 0; pointer-events: none; background: url(chart-lab/paper.png); mix-blend-mode: multiply; opacity: .5; }
 </style></head>
 <body><div id="map"></div><div id="paper"></div>
 <script type="module">
@@ -39,24 +39,24 @@ const map = new maplibregl.Map({
       { id: 'halo', type: 'line', source: 'coast', 'source-layer': 'coast', filter: ['<=', ['to-number', ['get', 'echo']], 2], layout: { 'line-join': 'round', 'line-cap': 'round' },
         paint: { 'line-color': '#c4ede4', 'line-opacity': 0.26, 'line-width': ['interpolate', ['linear'], ['zoom'], 2, 10, 5, 34] } },
       { id: 'land', type: 'fill', source: 'land', 'source-layer': 'land', paint: { 'fill-pattern': 'land' } },
-      { id: 'peak-dabs', type: 'symbol', source: 'peaks', minzoom: 3.6, filter: ['<', ['%', ['round', ['*', ['coalesce', ['get', 'rot'], 0], 10]], 5], 1], layout: { 'icon-image': ['concat', 'dab-', ['%', ['round', ['*', ['get', 'sz'], 100]], 3]], 'icon-offset': [14, -6], 'icon-allow-overlap': true, 'icon-size': ['interpolate', ['linear'], ['zoom'], 2, 0.18, 6, 0.6] }, paint: { 'icon-opacity': 0.24 } },
       // The dashed line a fixed few pixels off the shore, so it reads the same at every zoom.
       { id: 'coast-dash', type: 'line', source: 'coastline', layout: { 'line-join': 'round' },
-        paint: { 'line-color': INK, 'line-opacity': 0.9, 'line-width': 1.4, 'line-dasharray': [3, 2.2], 'line-offset': +(q.get('off') ?? 6) } },
+        paint: { 'line-color': INK, 'line-opacity': 0.9, 'line-width': 1.4, 'line-dasharray': [3, 2.2], 'line-offset': +(q.get('off') ?? -6) } },
       { id: 'coast-ink', type: 'line', source: 'coastline', layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: { 'line-color': INK, 'line-width': ['interpolate', ['linear'], ['zoom'], 2, 1.5, 5, 2.4, 7, 3.2] } },
       // Ridges only from the region view in: zoomed out they turn into a crust along the coast. Collision
       // keeps them spaced, so a range reads as a row of peaks instead of a pile.
-      { id: 'peaks', type: 'symbol', source: 'peaks', minzoom: 3.6, layout: { 'icon-image': ['concat', 'ridge-', ['%', ['round', ['*', ['get', 'sz'], 100]], 8]], 'icon-anchor': 'bottom', 'icon-allow-overlap': true, 'icon-ignore-placement': true,
+      { id: 'peaks', type: 'symbol', source: 'peaks', minzoom: 3.6, layout: { 'icon-image': ['concat', 'ridge-art-', ['%', ['round', ['*', ['get', 'sz'], 100]], 12]], 'icon-anchor': 'bottom', 'icon-allow-overlap': true, 'icon-ignore-placement': true,
         'symbol-z-order': 'viewport-y',
-        'icon-size': ['interpolate', ['linear'], ['zoom'], 3.6, ['*', 0.75, ['get', 'sz']], 5, ['*', 1.1, ['get', 'sz']], 7, ['*', 1.5, ['get', 'sz']]] },
+        'icon-size': ['interpolate', ['exponential', 2], ['zoom'], 4, ['min', ['*', 1.0, ['get', 'sz']], ['/', ['get', 'fit'], 190]], 6, ['min', ['*', 1.8, ['get', 'sz']], ['/', ['get', 'fit'], 48]]] },
         paint: { 'icon-opacity': ['interpolate', ['linear'], ['zoom'], 3.6, 0, 4, 1] } },
       // Wave marks thin out as the camera pulls back, so the sea keeps the same density on screen.
       { id: 'waves', type: 'symbol', source: 'marks', filter: ['<', ['%', ['round', ['*', ['get', 'sz'], 100]], 9], 4],
         layout: { 'icon-image': ['get', 'icon'], 'icon-allow-overlap': true,
           // rank r: 0 shows from the continent view, 3 only close in. Size 0 = hidden (zoom may not sit in a filter).
           'icon-size': ['step', ['zoom'],
-            ['case', ['<=', ['get', 'r'], 0], ['*', 1.5, ['get', 'sz']], 0],
+            ['case', ['all', ['<=', ['get', 'r'], 0], ['==', ['%', ['round', ['*', ['get', 'sz'], 100]], 3], 0]], ['*', 1.1, ['get', 'sz']], 0],
+            3.5, ['case', ['<=', ['get', 'r'], 0], ['*', 1.5, ['get', 'sz']], 0],
             4.5, ['case', ['<=', ['get', 'r'], 1], ['*', 1.6, ['get', 'sz']], 0],
             5.5, ['case', ['<=', ['get', 'r'], 2], ['*', 1.7, ['get', 'sz']], 0],
             6.5, ['*', 1.8, ['get', 'sz']]] }, paint: { 'icon-opacity': 0.8 } },
@@ -67,6 +67,7 @@ map.once("load", () => Promise.all([
   img(L + 'sea.png').then((i) => map.addImage('sea', i)),
   img(L + 'land.png').then((i) => map.addImage('land', i)),
   ...[0, 1, 2, 3, 4, 5, 6, 7].map((v) => fetch(L + `ridge-${v}.svg`).then((r) => r.text()).then((t) => { const vb = t.match(/viewBox="([^"]+)"/)[1].split(' ').map(Number); return img('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(t), vb[2] * 4, vb[3] * 4).then((i) => map.addImage(`ridge-${v}`, i, { pixelRatio: 4 })) })),
+  ...[...Array(12).keys()].map((v) => img(L + `ridge-art-${v}.png`).then((i) => map.addImage(`ridge-art-${v}`, i, { pixelRatio: 2 }))),
   ...[0, 1, 2].map((v) => img(L + `dab-${v}.png`).then((i) => map.addImage(`dab-${v}`, i))),
   ...[0, 1, 2, 3].map((v) => img(L + `wave-${v}.svg`, 180, 36).then((i) => i).then((i) => map.addImage(`wave-${v}`, i, { pixelRatio: 4 }))),
   fetch(O + '/timemap/assets/mountains/manifest.json').then((r) => r.json()).then((m) => Promise.all([...new Set(Object.values(m).flat())].map((id) =>
