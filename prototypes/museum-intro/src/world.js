@@ -88,12 +88,12 @@ function sea(tex) {
 // tile: ink tile; scale: tiles per model unit; lit: which faces go to the shade colour (see style.js)
 const SHIP_MATS = {
   wood_hull: { tile: 'hull', paint: 'hull', scale: 0.5, light: 0xab7647, shade: 0x8b5d36, lit: 'under', hatchK: 0.5, cluster: 2 },
-  wood_deck: { tile: 'deck', paint: 'hull', scale: 0.5, light: 0xd8ae74, shade: 0xb88a56, lit: 'under', hatchK: 0, cluster: 2 },
-  wood_tar: { tile: 'tar', paint: 'hull', scale: 0.7, light: 0x80603f, shade: 0x67492f, lit: 'under', inkK: 0.55, tint: 0.55 },
+  wood_deck: { tile: 'deck', paint: 'hull', scale: 0.5, light: 0xddb67f, shade: 0xbd915c, lit: 'under', hatchK: 0, cluster: 2 },
+  wood_tar: { tile: 'tar', paint: 'hull', scale: 0.7, light: 0x8c6a47, shade: 0x735637, lit: 'under', inkK: 0.55, tint: 0.55 },
   spar: { tile: 'spar2', paint: 'hull', scale: 0.6, light: 0xdcaa6c, shade: 0xb88650, lit: 'round', lod: true, cluster: 2 },
   iron: { tile: 'iron', paint: 'hull', scale: 1.5, light: 0x67707a, shade: 0x4a5058, lit: 'round', tint: 0.4 },
-  rope: { tile: 'rope3', paint: 'hull', scale: 1.6, light: 0xae9877, shade: 0x8a765a, lit: 'round', tint: 0.6, wobble: true },
-  block: { tile: 'spar2', paint: 'hull', scale: 2.0, light: 0x84807a, shade: 0x66625e, lit: 'round', tint: 0.5 },
+  rope: { tile: 'rope4', paint: 'hull', scale: 1.4, light: 0xae9877, shade: 0x8a765a, lit: 'round', tint: 0.6, wobble: true },
+  block: { tile: 'spar2', paint: 'hull', scale: 2.0, light: 0x84807a, shade: 0x66625e, lit: 'under', tint: 0.5 },
   sail: { tile: 'sailcloth', paint: 'sail', scale: 0.67, light: 0xfbf7ea, shade: 0xf0e7d2, lit: 'sun', inkK: 0.8 },
   flag: { tile: 'flag', paint: 'sail', scale: 1.0, light: 0xf6f1e6, shade: 0xe4dccb, lit: 'sun', flag: true },
   barrel: { tile: 'barrel', paint: 'hull', scale: 1.1, light: 0xc49a68, shade: 0x9e7650, lit: 'round' },

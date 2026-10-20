@@ -308,9 +308,6 @@ export function styledMaterial({ paint, tintPaint = [1, 1, 1], lit = 0.6, mode =
         float t0 = 0.12 + 0.4 * vnoise(vM.xz * 0.9 + vM.y * 0.6 + 5.0);
         ink = mix(smoothstep(t0, t0 + 0.3, ink), ink * 0.8, smoothstep(2.0, 6.0, dist)); // far: mip-averaged strokes must not sharpen into blobs
         ${L.kind === 'uv' && L.lit === 'round' && !L.rope ? 'ink = max(ink, smoothstep(0.3, 0.6, inkOf(uTex, vUv * ls * vec2(1.0, 2.3) + 0.37)) * (1.0 - litv));' : ''}
-        ${L.rope ? `float fc = abs(dot(n, normalize(cameraPosition - vPos))); float ph = 3.0 * (vUv.y + 2.4 * vUv.x) + fract(vPartK * 53.1) + 0.28 * (1.0 - fc * fc) + 0.12 * vnoise(vUv * vec2(6.0, 3.0)); float sp = fract(ph); float fw = fwidth(ph) * 1.3;
-        float seam = 1.0 - smoothstep(fw * 0.6, fw * 1.6, min(sp, 1.0 - sp));
-        ink = max(ink * 0.5, seam * step(fw, 0.4) * step(0.22, vnoise(vUv * vec2(11.0, 5.0) + 3.0)));` : ''}
         float k = max(ink * uInkK * cl0, hatch) * fade;
         ${L.kind === 'sea' ? 'vec3 cl = mix(fill, uSeaInk, k);' : 'vec3 cl = mix(fill, uInk, k);'}
 

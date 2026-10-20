@@ -490,7 +490,7 @@ def yard(mx, y, L, r, lx, furled=False):
 
 def block(c, axis, size=0.34):
     """Rigging block: dark wooden oval with an iron strap round it."""
-    p = ellipsoid('block', c, axis, size, size * 0.36, 8)
+    p = ellipsoid('block', c, axis, size, size * 0.36, 14)
     e = perp(V(axis))
     ring('iron', c, e, size * 0.42, 0.018, 4, 14)
     return p

@@ -36,9 +36,9 @@ function normalMaterial(id, alphaMap = null, wobble = false) {
 }
 
 export const INK_PARAMS = {
-  width: 2.3, // line radius in screen px at 1 world unit from the camera (falls off as distance^-0.5)
+  width: 2.8, // line radius in screen px at 1 world unit from the camera (falls off as distance^-0.5)
   minPx: 1.0,
-  maxPx: 4.2,
+  maxPx: 5.0,
   depthJump: 0.012, // relative depth step that counts as a silhouette
   crease: 0.5, // normal dot below which a fold is inked
   farFade: [8, 60], // world units: lines lighten from .. to
