@@ -20,7 +20,8 @@ export const BEATS = {
   swapEnd: 14.3,
   fallStart: 18.0,
   land: 18.85, // the ink wipe to History Lines starts here
-  wipeEnd: 23.4, // slow enough that the front passes Tasman on screen
+  wipeTasman: 22.4, // the stain front crosses Tasman's chest, on screen
+  wipeEnd: 25.0,
   hop: 19.8,
   slideStart: 20.25,
   slideEnd: 23.0,

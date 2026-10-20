@@ -8,11 +8,14 @@ import { StickFigure } from './stickFigure.js';
 import { Sparkles } from './sparkles.js';
 import { buildWorld, EYE } from './world.js';
 import { WIPE } from './style.js';
+import { InkPass } from './ink.js';
 import { BEATS, DURATION, PARAMS, figureAt, swapAmount, wipeAmount } from './script.js';
 import { defaultCameraKeys } from './cameraKeys.js';
+import { styleShots } from './shots.js';
 
 const HALL_ASSETS = ['vroom', 'milkmaid', 'avercamp', 'swan', ...['point', 'hat', 'kid', 'old', 'teen'].map((n) => `sil_${n}`)];
-const WORLD_ASSETS = ['hull', 'sail', 'sea', 'sky'].flatMap((n) => [`${n}_paint`, `${n}_lines`]).concat(['tasman_paint', 'tasman_lines', 'sailor_front', 'sailor_threequarter', 'pieter_looking_up_mast']);
+const WORLD_ASSETS = ['hull', 'sail', 'sea', 'sky'].map((n) => `${n}_paint`).concat(['sky_flat', 'sea_colour', 'tasman_paint', 'tasman_lines', 'sailor_front', 'sailor_threequarter', 'pieter_looking_up_mast']);
+const INK_TILES = ['deck', 'grain', 'hull', 'sail', 'sailsheet', 'sailsheet2', 'rope', 'sea2', 'hatch', 'canvas', 'grain2'].map((n) => `${n}_ink`); // hand-drawn line tiles, black on white
 const LINES = { nl: 'Ah, daar ben je!', en: 'Ah, there you are!' };
 const H_FOV = 50; // horizontal field of view we try to keep; phones get a taller vertical one, clamped
 const HALL_BG = new THREE.Color(0x24211d);
@@ -30,6 +33,7 @@ scene.background = HALL_BG;
 scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture; // the gilt needs something to reflect
 const camera = new THREE.PerspectiveCamera(40, 1, 0.02, 200);
 let sparkles;
+const ink = new InkPass(renderer);
 
 async function loadTextures(cards) {
   const loader = new THREE.TextureLoader();
@@ -39,13 +43,14 @@ async function loadTextures(cards) {
   const jobs = [
     ...HALL_ASSETS.map((n) => [n, `./assets/${n === 'vroom' && hd ? 'vroom_hd' : n}.webp`]),
     ...WORLD_ASSETS.map((n) => [n, `./assets/world/${n}.webp`]),
+    ...INK_TILES.map((n) => [n, `./assets/world/ink/${n}.webp`]),
     ...cards.map((c) => [c.file, `./assets/cards/${c.file}`]),
   ];
   let done = 0;
   const entries = await Promise.all(
     jobs.map(async ([name, url]) => {
       const tex = await loader.loadAsync(url);
-      tex.colorSpace = THREE.SRGBColorSpace;
+      if (!name.endsWith('_ink')) tex.colorSpace = THREE.SRGBColorSpace; // ink tiles are data: 0 ink .. 1 paper
       tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
       bar.style.transform = `scaleX(${++done / jobs.length})`;
       return [name, tex];
@@ -64,6 +69,7 @@ function resize() {
   camera.updateProjectionMatrix();
   const px = renderer.getDrawingBufferSize(new THREE.Vector2());
   WIPE.uRes.value.copy(px);
+  ink.setSize(px.x, px.y);
   sparkles.resize(px.y, camera.fov);
 }
 
@@ -73,6 +79,8 @@ async function start() {
   const { voc, group: hall } = buildMuseum(scene, tex);
   const world = await buildWorld(scene, tex, cards);
   const A = world.anchors;
+  for (const [mesh, id, map] of world.casters) ink.addCaster(mesh, id, map);
+  ink.setHatch(tex.hatch_ink);
   PARAMS.figureWorld = A.man * 0.36;
   const silhouettes = buildSilhouettes(scene, tex);
   const figure = new StickFigure();
@@ -92,14 +100,23 @@ async function start() {
   addEventListener('resize', resize);
 
   const tmp = new THREE.Vector3();
-  const landCam = camera.clone();
   const toScreen = (p) => {
     tmp.copy(p).project(camera);
     return [(tmp.x * 0.5 + 0.5) * innerWidth, (-tmp.y * 0.5 + 0.5) * innerHeight];
   };
 
+  // The stain front, in world units from the landing: it runs down the mast with the figure, reaches Tasman's chest
+  // at BEATS.wipeTasman (he is on screen then), then speeds out over the ship, the sea and last the sky (r 400).
+  const toTasman = A.sail.distanceTo(A.tasmanChest);
+  const wipeRadius = (t) =>
+    toTasman * span(t, BEATS.land - 0.05, BEATS.wipeTasman, EASE.settle) + 420 * span(t, BEATS.wipeTasman, BEATS.wipeEnd, EASE.gravity);
+
   function render(t) {
     path.apply(camera, t);
+    if (api.shot) {
+      camera.position.copy(api.shot.pos);
+      camera.lookAt(api.shot.look);
+    }
     camera.updateMatrixWorld();
 
     // the canvas fades out while the camera holds at the painter's eye; the world behind it lines up
@@ -113,16 +130,13 @@ async function start() {
 
     // painterly -> History Lines: an ink stain spreading from where the figure lands on the sail
     WIPE.uWipe.value = api.wipeOverride ?? wipeAmount(t);
-    // the stain starts where the figure lands (seen by the camera AT the landing), then stays put on screen while
-    // it spreads and the camera moves on; computed from the path so scrubbing gives the same frame
-    landCam.copy(camera);
-    path.apply(landCam, BEATS.land);
-    landCam.updateMatrixWorld();
-    tmp.copy(A.sail).project(landCam);
-    WIPE.uWipeOrigin.value.set(tmp.x * 0.5 + 0.5, tmp.y * 0.5 + 0.5);
+    // the stain spreads from where the figure lands and stays pinned to that spot on the sail as the camera follows
+    // the figure down the mast, so its front comes down the screen and crosses Tasman in view (beats: wipeEnd)
+    WIPE.uWipeOrigin.value.copy(A.sail);
+    WIPE.uWipeR.value = wipeRadius(t);
 
     const f = figureAt(t, A);
-    figure.mesh.visible = !!f;
+    figure.mesh.visible = !!f && !api.shot;
     if (f) {
       figure.draw({ pose: f.pose, anchor: f.anchor, facing: f.facing, reveal: +f.reveal.toFixed(3), squash: +f.squash.toFixed(3) }, t);
       figure.mesh.position.copy(f.pos);
@@ -144,19 +158,19 @@ async function start() {
 
     // speech balloon: silent text, pops with a small overshoot (content, not UI chrome)
     const b = span(t, BEATS.balloon, BEATS.balloon + 0.45, EASE.pop);
-    balloon.style.opacity = String(Math.min(1, b * 2));
+    balloon.style.opacity = api.shot ? '0' : String(Math.min(1, b * 2));
     const [mx, by] = toScreen(A.mouth);
     const bw = balloon.firstElementChild.nextElementSibling.offsetWidth + 14;
     const bx = Math.min(mx, innerWidth - bw - 16); // phones: keep the balloon on screen
     balloon.style.transform = `translate(${bx}px, ${by}px) scale(${0.6 + 0.4 * b})`;
 
     const s = span(t, BEATS.start, BEATS.start + 0.6, EASE.arrive);
-    startBtn.style.opacity = String(s);
+    startBtn.style.opacity = api.shot ? '0' : String(s);
     startBtn.style.transform = `translate(-50%, ${(1 - s) * 16}px)`;
     startBtn.style.pointerEvents = s > 0.5 ? 'auto' : 'none';
 
     fade.style.opacity = String(1 - span(t, 0, 1.2, EASE.settle));
-    renderer.render(scene, camera);
+    ink.render(scene, camera);
   }
 
   startBtn.addEventListener('click', () => {
@@ -171,6 +185,15 @@ async function start() {
   let last = performance.now();
   const api = { clock, path, world, render, A, PARAMS, BEATS };
   window.__intro = api; // used by the frame-strip capture and the dev panel
+  if (query.has('shot')) {
+    // style study: one fixed frame, all History Lines, no figure / balloon / credit
+    api.shot = styleShots(A, path)[query.get('shot')];
+    api.wipeOverride = 1;
+    clock.seek(30);
+    clock.playing = false;
+    document.getElementById('credit').style.display = 'none';
+    sparkles.points.visible = false;
+  }
   renderer.setAnimationLoop((now) => {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
