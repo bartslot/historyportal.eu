@@ -71,6 +71,26 @@ class DemoLessonLanguageTest extends TestCase
         $this->assertSame('nl', $lesson?->language);
     }
 
+    /**
+     * Bart 2026-10-20, "on prod we don't have a real poster for Abel Tasman": every visitor who
+     * presses Configure gets a private copy with the same title and language. The pick was
+     * ->first() on the title alone, so a guest's copy (no translation_group, so no Figma poster)
+     * became the homepage demo.
+     */
+    public function test_a_guests_private_copy_never_becomes_the_demo(): void
+    {
+        $this->seedCanon();
+        $original = Lesson::where('language', 'nl')->first();
+        $guest = User::factory()->create(['is_guest_demo' => true]);
+        $copy = app(\App\Services\LessonCopier::class)->copy($original, $guest, ['status' => 'configuring']);
+
+        $this->assertSame($original->id, $this->visit(['Accept-Language' => 'nl-NL,nl;q=0.9'])?->id);
+
+        // Row order is not guaranteed, so prove it without the original: the copy still never wins.
+        $original->delete();
+        $this->assertNotSame($copy->id, $this->visit(['Accept-Language' => 'nl-NL,nl;q=0.9'])?->id);
+    }
+
     public function test_a_teacher_in_the_netherlands_gets_dutch_even_with_an_english_laptop(): void
     {
         // The signal that matters is where they teach, not how their OS shipped.

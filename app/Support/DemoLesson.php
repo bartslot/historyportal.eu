@@ -226,12 +226,14 @@ final class DemoLesson
             return null;
         }
 
-        return Lesson::query()
+        // Every visitor who presses Configure gets a private copy with this same title and
+        // language (GuestDemoSession). An unordered ->first() could hand the homepage a guest's
+        // copy, which has no translation_group and so no poster (Bart, 2026-10-20). No status
+        // filter here: opening the hand-picked lesson in the editor sets it to configuring.
+        return self::openable()
             ->where('title', $title)
             ->where('language', $language)
-            ->whereNotNull('lesson_code')
-            ->whereHas('scenes')
-            ->whereDoesntHave('scenes', fn ($scenes) => $scenes->where('status', '!=', 'ready'))
+            ->orderBy('id')
             ->first();
     }
 
@@ -246,8 +248,15 @@ final class DemoLesson
      */
     private static function playable()
     {
+        return self::openable()
+            ->whereIn('status', [LessonStatus::Published->value, LessonStatus::Previewable->value]);
+    }
+
+    /** Not a guest's sandbox copy, a code to open it by, and every scene finished. */
+    private static function openable()
+    {
         return Lesson::query()
-            ->whereIn('status', [LessonStatus::Published->value, LessonStatus::Previewable->value])
+            ->whereDoesntHave('teacher', fn ($owner) => $owner->where('is_guest_demo', true))
             ->whereNotNull('lesson_code')
             ->whereHas('scenes')
             ->whereDoesntHave('scenes', fn ($scenes) => $scenes->where('status', '!=', 'ready'));
