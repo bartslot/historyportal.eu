@@ -38,7 +38,7 @@ function normalMaterial(id, alphaMap = null, wobble = false) {
 export const INK_PARAMS = {
   width: 2.4, // line radius in screen px at 1 world unit from the camera (falls off as 1/sqrt(distance))
   minPx: 1.5,
-  maxPx: 3.2,
+  maxPx: 2.6,
   depthJump: 0.012, // relative depth step that counts as a silhouette
   crease: 0.5, // normal dot below which a fold is inked
   farFade: [8, 60], // world units: lines lighten from .. to
@@ -95,7 +95,7 @@ export class InkPass {
           vec2 wob = (vec2(vnoise(px * 0.03), vnoise(px * 0.03 + 17.3)) - 0.5) * uWobble * uSS;
           float gaps = smoothstep(0.45, 0.6, vnoise(px * 0.02 + 3.1)); // creases break up, silhouettes do not
           // pen pressure: the line swells and thins along its length, and now and then lifts off (a gap)
-          float press = 0.55 + 0.7 * vnoise(px * 0.022 + 7.7); // swell and thin, but no blunt slabs
+          float press = 0.35 + 1.0 * vnoise(px * 0.016 + 7.7); // swell and thin, but no blunt slabs
           float lift = smoothstep(0.12, 0.22, vnoise(px * 0.05 + 1.3));
           // ropes: thin contours so their fill and twist show close up; far rigging breaks up and lets lines go
           if (rig) { r *= 0.8; lift = mix(1.0, lift, smoothstep(2.0, 6.0, zc)); }
@@ -127,7 +127,7 @@ export class InkPass {
           float crev = step(0.45, occ) * (1.0 - smoothstep(1.5, 3.0, zc)); // hard-edged
           // recesses: a flat, muted darker tone (no hatch pattern: it read as repeated slashes)
           // spot blacks: tucked under an overlap close by, the corner goes solid ink (a BD inker's dark accent)
-          e = max(e, crev);
+          // (v4: spot blacks off, they read as dirty dashed bands under the tops)
           // thin far lines are lighter as well as thinner: a sub-pixel radius draws a fraction of the ink
           float alpha = mix(1.0, uFarAlpha, smoothstep(uFarFade.x, uFarFade.y, zc)) * clamp(r / uSS / 0.9, 0.75, 1.0);
           gl_FragColor = vec4(mix(col, uInk, e * alpha * w), 1.0);

@@ -1,12 +1,12 @@
 """Hand-drawn ink tiles (ChatGPT line passes, black ink on white) -> 1024 px greyscale webp for the shaders.
 The generated squares are only nearly seamless: each is levelled (paper pure white, ink black), then made periodic
 by handing over to its half-offset copy inside a thin band at the seams.
-Usage: python3 tools/prepare_ink.py <src_dir> <out_dir> name1 name2 ...   (name:raw = a whole drawing, not a tile)"""
+Usage: python3 tools/prepare_ink.py <src_dir> <out_dir> name1 name2 ...   (name:raw = a whole drawing, not a tile; name:bold = lines thickened, for tiles seen small)"""
 import sys
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageFilter
 
 SIZE = 1024
 BAND = 0.06  # fraction of the tile at each seam that is repaired
@@ -37,5 +37,7 @@ for arg in sys.argv[3:]:
     a = level(np.asarray(im, dtype=np.float32) / 255)
     if flag != 'raw':
         a = seamless(a)
+    if flag == 'bold':
+        a = np.asarray(Image.fromarray((a * 255).astype(np.uint8)).filter(ImageFilter.MinFilter(3)), dtype=np.float32) / 255
     Image.fromarray((a * 255).astype(np.uint8)).save(out / f'{name}.webp', quality=88)
     print(out / f'{name}.webp', f'ink {(a < 0.5).mean():.1%}')

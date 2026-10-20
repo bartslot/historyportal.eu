@@ -92,12 +92,12 @@ const SHIP_MATS = {
   wood_tar: { tile: 'tar', paint: 'hull', scale: 0.7, light: 0x6e4d32, shade: 0x573b26, lit: 'under', inkK: 0.55, tint: 0.55 },
   spar: { tile: 'spar2', paint: 'hull', scale: 0.6, light: 0xe0a25a, shade: 0xbb7f45, lit: 'round', lod: true },
   iron: { tile: 'iron', paint: 'hull', scale: 1.5, light: 0x67707a, shade: 0x4a5058, lit: 'round', tint: 0.4 },
-  rope: { tile: 'rope3', paint: 'hull', scale: 1.0, light: 0xa3927a, shade: 0x7f705e, lit: 'round', tint: 0.6, wobble: true },
+  rope: { tile: 'rope3', paint: 'hull', scale: 1.6, light: 0xae9877, shade: 0x8a765a, lit: 'round', tint: 0.6, wobble: true },
   block: { tile: 'spar2', paint: 'hull', scale: 2.0, light: 0x84807a, shade: 0x66625e, lit: 'round', tint: 0.5 },
   sail: { tile: 'sailcloth', paint: 'sail', scale: 0.67, light: 0xfbf7ea, shade: 0xf0e7d2, lit: 'sun', inkK: 0.8 },
   flag: { tile: 'flag', paint: 'sail', scale: 1.0, light: 0xf6f1e6, shade: 0xe4dccb, lit: 'sun', flag: true },
-  barrel: { tile: 'barrel', paint: 'hull', scale: 1.1, light: 0xc08a50, shade: 0x9c6c3c, lit: 'round' },
-  crate: { tile: 'crate', paint: 'hull', scale: 1.6, light: 0xd2a46a, shade: 0xb08550, lit: 'under' },
+  barrel: { tile: 'barrel', paint: 'hull', scale: 1.1, light: 0xc49a68, shade: 0x9e7650, lit: 'round' },
+  crate: { tile: 'crate', paint: 'hull', scale: 1.6, light: 0xd8b584, shade: 0xb48e60, lit: 'under' },
 };
 
 async function heroShip(tex) {

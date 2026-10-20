@@ -305,6 +305,7 @@ export function styledMaterial({ paint, tintPaint = [1, 1, 1], lit = 0.6, mode =
         float cl0 = ${L.cluster ? 'smoothstep(0.12, 0.22, vnoise(vM.xz * 0.5 + vM.y * 0.37) * 0.7 + vnoise(vM.zy * 1.3) * 0.3)' : '1.0'};
         // drawn marks are ink or paper, not grey: a filtered (far, small) stroke fades out instead of greying the fill
         ink = mix(smoothstep(0.3, 0.6, ink), ink * 0.8, smoothstep(2.0, 6.0, dist)); // far: mip-averaged strokes must not sharpen into blobs
+        ${L.kind === 'uv' && L.lit === 'round' ? 'ink = max(ink, smoothstep(0.3, 0.6, inkOf(uTex, vUv * ls * vec2(1.0, 2.3) + 0.37)) * (1.0 - litv));' : ''}
         float k = max(ink * uInkK * cl0, hatch) * fade;
         ${L.kind === 'sea' ? 'vec3 cl = mix(fill, uSeaInk, k);' : 'vec3 cl = mix(fill, uInk, k);'}
 

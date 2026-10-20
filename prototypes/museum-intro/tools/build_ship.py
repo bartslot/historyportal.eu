@@ -431,10 +431,11 @@ def mast(name):
     # top: planked platform (planar uv: boards), drum rim, cap rail, trestle + cross trees beneath
     disc_pts = [V((cx + R * math.cos(a), top + 0.13, R * math.sin(a))) for a in [2 * math.pi * i / 32 for i in range(32)]]
     poly('wood_deck', disc_pts, lambda p: (p.x, p.z))
-    poly('wood_deck', [p - V((0, 0.13, 0)) for p in reversed(disc_pts)], lambda p: (p.x, p.z))
-    lathe('wood_deck', (cx, top, 0), (0, 1, 0), [(0, R), (0.55, R)], 32)
+    poly('wood_tar', [p - V((0, 0.13, 0)) for p in reversed(disc_pts)], lambda p: (p.x, p.z))  # dark weathered underside
+    lathe('wood_tar', (cx, top, 0), (0, 1, 0), [(0, R), (0.55, R)], 32)
     lathe('wood_deck', (cx, top + 0.13, 0), (0, 1, 0), [(0, R - 0.08), (0.42, R - 0.08)], 32)
-    ring('spar', (cx, top + 0.56, 0), (0, 1, 0), R - 0.04, 0.06, 6, 32)
+    ring('iron', (cx, top + 0.56, 0), (0, 1, 0), R - 0.04, 0.06, 6, 32)  # iron hoop round the rim
+    ring('iron', (cx, top + 0.03, 0), (0, 1, 0), R + 0.02, 0.04, 6, 32)
     for dz in (-0.42, 0.42):
         box('spar', (cx, top - 0.1, dz), (2 * R * 0.92, 0.18, 0.16))
     for dx in (-0.65, 0.65):
