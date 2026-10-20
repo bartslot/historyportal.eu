@@ -5,7 +5,7 @@ Usage: python3 tools/prepare_assets.py <raw_dir> <figures_dir> <v2_textures_dir>
            sil_7.png (round 1 ChatGPT silhouette)
   figures_dir: resources/icons/history-line/figures/tasman (History Portal library)
   v2_textures_dir: Memory/historyportal/assets/museum-intro/v2/textures (ChatGPT, see ../PROMPT_LOG.md)
-The ship (public/assets/world/ship.glb) is made with gltf-transform, see CREDITS.md.
+The ship (public/assets/world/ship_v4.glb) is built by tools/build_ship.py in Blender, see CREDITS.md.
 """
 import sys
 from pathlib import Path

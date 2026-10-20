@@ -111,56 +111,6 @@ export function styledMaterial({ paint, tintPaint = [1, 1, 1], lit = 0.6, mode =
   for (const k of ['ink', 'ink2', 'hatch', 'grain']) if (L[k]) L[k].wrapS = L[k].wrapT = THREE.RepeatWrapping;
   const P = PALETTE;
   const kindGLSL = {
-    wood: /* glsl */ `
-      // colour by height only, never by face direction (that reads as faceted CG lighting): brown hull up to
-      // the deck, honey deck and upper works. The drawn tile still follows the face: planks on deck, strakes on sides.
-      float up = smoothstep(0.55, 0.8, mn.y);
-      float upper = smoothstep(uRailY - 0.05, uRailY + 0.05, vM.y);
-      vec3 light = mix(uHullL, mix(uRailL, uDeckL, up * 0.5), upper), shade = mix(uHullS, uRailS, upper);
-      // hand colouring: every plank strake its own slightly different flat honey/brown (by plank, never by face)
-      float plank = mix(floor(vM.y * 2.6), floor(vM.z * 2.6) + 31.0, up);
-      float tone = h21(vec2(plank, 7.0)) - 0.5;
-      light *= 1.0 + tone * 0.16; shade *= 1.0 + tone * 0.16;
-      vec3 lod = strokeLod(dist);
-      float inkA = mix(inkTri(uTex, vM * ls * lod.x, mn), inkOf(uTex2, vM.xz * ls * lod.x), up);
-      float inkB = mix(inkTri(uTex, vM * ls * lod.y, mn), inkOf(uTex2, vM.xz * ls * lod.y), up);
-      // two octaves at once: the long grain plus a finer layer between, like the TARGET's mast
-      float ink = max(inkA * (1.0 - 0.5 * lod.z), inkB * (0.55 + 0.45 * lod.z));
-      // dense hand-drawn grain over the planks (long axis of a plank: x on the sides and deck), thinned by the clusters
-      float gr = mix(inkTri(uGrain, vM * vec3(0.6, 3.0, 3.0) * ls * lod.x, mn), inkOf(uGrain, vM.xz * vec2(0.6, 3.0) * ls * lod.x), up);
-      ink = max(ink, gr * 0.85);
-      // shrouds and ratlines that belong to the hull mesh: dark rope, no plank lines
-      float hullRope = step(0.5, vKind) * step(vKind, 1.5);
-      light = mix(light, uRopeL, hullRope); shade = mix(shade, uRopeS, hullRope); ink *= 1.0 - hullRope;`,
-    spar: /* glsl */ `
-      // tube axis and radius from screen derivatives: a cylinder's normal turns only around it
-      vec3 dnx = dFdx(mn), dny = dFdy(mn), dpx = dFdx(vM), dpy = dFdy(vM);
-      bool ux = length(dnx) > length(dny);
-      vec3 dn = ux ? dnx : dny; vec3 dp = ux ? dpx : dpy;
-      float radius = length(dp) / max(length(dn), 1e-4);
-      // the piece's own long axis (rigging.js); around it, the angle of the normal (for the rope's spiral lay)
-      vec3 ax = normalize(vAxis + vec3(0.0, 1e-4, 0.0));
-      vec3 bx = normalize(cross(ax, vec3(0.31, 0.53, 0.79))), cx = cross(ax, bx);
-      float around = atan(dot(mn, cx), dot(mn, bx)) / 6.2832;
-      vec2 tube = vec2(dot(vM, ax), dot(vM, bx));
-      // part kind from the load-time split (rigging.js): 0 spar, 1 rope, 2 block. Stable per piece, never per facet.
-      float isRope = step(0.5, vKind) * step(vKind, 1.5), isBlock = step(1.5, vKind);
-      vec3 light = mix(mix(uSparL, uRopeL, isRope), uBlockL, isBlock), shade = mix(mix(uSparS, uRopeS, isRope), uBlockS, isBlock);
-      vec3 lod = strokeLod(dist);
-      float grain = mix(inkOf(uTex, tube * vec2(ls * 0.5, ls * 3.0) * lod.x), inkOf(uTex, tube * vec2(ls * 0.5, ls * 3.0) * lod.y), lod.z); // long strokes along the spar
-      grain = max(grain, inkOf(uGrain, tube * vec2(ls * 0.35, ls * 1.8) * lod.x + 0.37)); // the dense grain drawing on top
-      // flat faces (caps, cheeks, platform boards) have no tube axis: plain triplanar grain there, else every facet
-      // gets its own random grain direction
-      float curved = smoothstep(0.02, 0.08, length(dn) / max(length(dp), 1e-5) * 0.1);
-      grain = mix(mix(inkTri(uTex, vM * ls * 0.8 * lod.x, mn), inkTri(uTex, vM * ls * 0.8 * lod.y, mn), lod.z), grain, curved);
-      // rope lay: strands spiral round the rope, about one turn per rope diameter
-      // rope lay: the twisted-strand tile laid along the rope (diagonal strokes = the twist), ~1 strand per width
-      float lay = max(inkOf(uTex2, tube * 3.0), inkOf(uTex2, tube * 3.0 + vec2(0.0021, 0.0)));
-      float ink = mix(grain, lay, isRope) * (1.0 - isBlock * 0.6);
-      // a rope too thin to show its fill reads as a thin dark line, like the TARGET's far rigging (by screen size)
-      float thin = (1.0 - smoothstep(1.5, 4.0, radius / max(length(dp), 1e-4))) * isRope;
-      vec3 ropeFar = mix(uRopeS, uInk, 0.5);
-      light = mix(light, ropeFar, thin); shade = mix(shade, ropeFar, thin);`,
     uv: /* glsl */ `
       // the v4 ship: one material per mesh, its hand-drawn tile laid on the model's own UVs (model units)
       vec3 light = uMatL, shade = uMatS;
@@ -170,9 +120,6 @@ export function styledMaterial({ paint, tintPaint = [1, 1, 1], lit = 0.6, mode =
       ${L.lod
         ? 'vec3 lod = strokeLod(dist); float ink = mix(inkOf(uTex, tuv * ls * lod.x), inkOf(uTex, tuv * ls * lod.y), lod.z);'
         : 'float ink = inkOf(uTex, tuv * ls);'}`,
-    sail: /* glsl */ `
-      vec3 light = uSailL, shade = uSailS;
-      float ink = inkTri(uTex, vM * ls, mn);`,
     sailsheet: /* glsl */ `
       vec3 light = uSailL, shade = uSailS;
       bool alt = vUv.y > 1.5;
@@ -292,9 +239,8 @@ export function styledMaterial({ paint, tintPaint = [1, 1, 1], lit = 0.6, mode =
         ${kindGLSL}
         // wood is one flat colour (no faceted light bands); only the undersides (beneath tops, beams, rails) go
         // to the shade colour and get the shadow hatching, like the TARGET's mast top. Cloth keeps a soft light step.
-        float litv = ${L.kind === 'uv' ? LIT[L.lit ?? 'under'] : L.kind === 'wood' || L.kind === 'spar' ? (L.kind === 'wood' ? 'smoothstep(-0.47, -0.43, mn.y)' : '1.0') : 'litStep(n)'};
+        float litv = ${L.kind === 'uv' ? LIT[L.lit ?? 'under'] : 'litStep(n)'};
         // round timber: a flat darker band where the surface turns away from the eye (the TARGET mast's sides)
-        ${L.kind === 'spar' ? 'litv = min(litv, smoothstep(0.3, 0.36, abs(dot(n, normalize(cameraPosition - vPos)))) + isBlock);' : ''}
         vec3 fill = mix(shade, light, litv);
         float fade = drawnFade(dist);
         // shadow hatching: only on faces turned well away from the sun, hard-edged, strokes kept fine by the LOD
