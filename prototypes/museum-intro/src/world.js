@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { HALL } from './museum.js';
-import SHIP_LAYOUT from './ship_layout.json';
+import { prepareSketchfabMesh } from './sketchfabShip.js';
 import { WIPE, WIPE_GLSL, styledMaterial, cardMaterial } from './style.js';
 
 // The world inside the painting, built in real 3D. The painting is only the LAYOUT reference: every object is
@@ -83,7 +84,7 @@ function sea(tex) {
   return m;
 }
 
-// The ship's materials (tools/build_ship.py names them): History Lines = a flat light/shade fill from colours
+// The ship's materials (sketchfabShip.js sorts the Sketchfab meshes into them; tools/build_ship.py names the v4 ship's): History Lines = a flat light/shade fill from colours
 // sampled off the anchors, times a hand-drawn ink tile (ChatGPT) laid on the model's UVs. Painterly = Vroom oil.
 // tile: ink tile; scale: tiles per model unit; lit: which faces go to the shade colour (see style.js)
 const SHIP_MATS = {
@@ -101,8 +102,10 @@ const SHIP_MATS = {
 };
 
 async function heroShip(tex) {
-  const loader = new GLTFLoader();
-  const gltf = await loader.loadAsync('./assets/world/ship_v4.glb');
+  // v5: the Sketchfab ship again (Bart 10-20: "just use the Sketchfab ship and see then what's missing"),
+  // dressed in the v4 material tiles. The v4 Blender ship (ship_v4.glb, tools/build_ship.py) stays in the repo.
+  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  const gltf = await loader.loadAsync('./assets/world/ship.glb');
   const H = LAYOUT.hero;
   const t = tToSea(H.u, H.waterV);
   const heightWorld = (H.topV - H.waterV) * HALL.voc.h * t;
@@ -134,13 +137,12 @@ async function heroShip(tex) {
   const casters = [];
   model.traverse((o) => {
     if (!o.isMesh) return;
-    const name = o.material.name;
-    o.material = mat(name);
-    // every piece's own id (tools/build_ship.py): the ink pass draws a line where two pieces meet
-    const part = o.geometry.getAttribute('_part');
-    if (part) o.geometry.setAttribute('aPart', part);
-    parts[name] = o;
-    casters.push([o, 1]);
+    const { kind, slots } = prepareSketchfabMesh(o);
+    o.material = slots.map(mat);
+    o.userData.wobble = kind === 'rigging'; // ink.js: the line pass bends the rigging like its fill (clones keep it)
+    // the biggest hull mesh carries the deck (Tasman and the crew are dropped onto it)
+    if (kind === 'hull' && !(parts.wood_deck?.geometry.attributes.position.count > o.geometry.attributes.position.count)) parts.wood_deck = o;
+    casters.push([o, kind === 'sails' ? 3 : 1]);
   });
   const sheet = styledMaterial({ paint: tex.sail_paint, scale: 0.7 / scale / 10, tintPaint: [0.85, 0.9, 1.0], lit: 0.7, side: THREE.DoubleSide, toModel,
     lines: { kind: 'sailsheet', ink: tex.sailsheet2_ink, ink2: tex.sailsheet_ink, hatch: tex.canvas_ink, scale: 0.35, inkK: 1.0, hatchK: 0.2, near: 3, far: 25 } });
@@ -152,8 +154,15 @@ async function heroShip(tex) {
 
 // The model's own sails are mostly furled; Vroom's ships sail with full bellied canvas. Courses and topsails on
 // the main (x -1) and fore (x 10) masts, in model units, bellied towards the bow (+x), the foot fuller than the head.
-// the fore topsail (index 3): the figure lands on its yard. Shared with tools/build_ship.py (yards, sheets, buntlines).
-export const SAILS = SHIP_LAYOUT.sails;
+// the fore topsail (index 3): the figure lands on its yard.
+// v3 values for the Sketchfab ship's yards (ship_layout.json holds the v4 ship's); off = sail head in front of the mast
+export const SAILS = [
+  { x: -1, y0: 7.2, y1: 13.2, w0: 8.6, w1: 9.6, belly: 1.6, off: 0.25 },
+  { x: -1, y0: 14.0, y1: 19.6, w0: 5.6, w1: 7.6, belly: 1.2, off: 0.25 },
+  { x: 10, y0: 7.0, y1: 12.4, w0: 7.6, w1: 8.4, belly: 1.4, off: 0.25 },
+  { x: 10, y0: 13.2, y1: 18.0, w0: 4.8, w1: 6.6, belly: 1.0, off: 0.25 },
+];
+const BRACE = 0.55; // yards turned round the mast (rad)
 
 function addSetSails(model, mat, casters) {
   for (const s of SAILS) {
@@ -175,7 +184,7 @@ function addSetSails(model, mat, casters) {
     // braced round the mast, like a ship sailing on a quarter wind (also shows the canvas to the painter's eye)
     const yard = new THREE.Group();
     yard.position.x = s.x;
-    yard.rotation.y = SHIP_LAYOUT.brace;
+    yard.rotation.y = BRACE;
     const sail = new THREE.Mesh(geo, mat);
     yard.add(sail);
     model.add(yard);
@@ -187,10 +196,11 @@ function addSetSails(model, mat, casters) {
 function dropOnto(mesh, ship, lx, lz, fromY = 60) {
   const toWorld = (p) => p.applyMatrix4(ship.pivot.children[0].matrixWorld);
   const from = toWorld(new THREE.Vector3(lx, fromY, lz));
-  const side = mesh.material.side;
-  mesh.material.side = THREE.DoubleSide; // the model's winding is not reliable
+  const mats = [mesh.material].flat();
+  const sides = mats.map((m) => m.side);
+  for (const m of mats) m.side = THREE.DoubleSide; // the model's winding is not reliable
   const hit = new THREE.Raycaster(from, new THREE.Vector3(0, -1, 0)).intersectObject(mesh, false)[0];
-  mesh.material.side = side;
+  mats.forEach((m, i) => (m.side = sides[i]));
   return hit?.point ?? null;
 }
 
@@ -268,7 +278,7 @@ export async function buildWorld(scene, tex, cardsJson) {
   // places on the ship, found by dropping a ray: the top of the fore topsail, the deck under it
   const fore = SAILS[3];
   const toWorld = (x, y, z) => new THREE.Vector3(x, y, z).applyMatrix4(ship.model.matrixWorld);
-  const yardPoint = new THREE.Vector3(fore.off - 0.2, fore.y1 + 0.3, 1.1).applyAxisAngle(new THREE.Vector3(0, 1, 0), SHIP_LAYOUT.brace); // on top of the yard
+  const yardPoint = new THREE.Vector3(fore.off + 0.05, fore.y1 + 0.12, 1.1).applyAxisAngle(new THREE.Vector3(0, 1, 0), BRACE); // on top of the yard
   const landing = toWorld(fore.x + yardPoint.x, yardPoint.y, yardPoint.z); // on the fore topsail's yard, beside the mast
   const local = { x: fore.x };
   const deckAt = (lx, lz) => dropOnto(ship.parts.wood_deck, ship, lx, lz, 12) ?? toWorld(lx, 4.5, lz);

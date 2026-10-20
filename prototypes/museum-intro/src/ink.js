@@ -154,7 +154,7 @@ export class InkPass {
   // meshes that cast lines; id groups parts (same id = no line where they touch)
   addCaster(mesh, id, alphaMap = null) {
     mesh.layers.enable(LAYER);
-    this.casters.push({ mesh, nMat: normalMaterial(id, alphaMap, !!mesh.material.userData.wobble), mat: null });
+    this.casters.push({ mesh, nMat: normalMaterial(id, alphaMap, !!(mesh.userData.wobble ?? mesh.material.userData?.wobble)), mat: null });
   }
 
   setHatch(tex) {

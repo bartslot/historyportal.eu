@@ -14,12 +14,21 @@ the VOC was founded (1602) and 43 years before Tasman's first voyage (1642). It 
 type, not literally Tasman's ship. A lesson that needs the exact claim should say so in its
 sourced/inferred/invented ledger.
 
+## 3D model (CC BY 4.0, attribution required)
+
+- `world/ship.glb` (the hero ship again since v5): based on "dutch ship large" (https://sketchfab.com/3d-models/dutch-ship-large-8ff8f94903e84131832c35e5371b5d59)
+  by TegnoGenial (https://sketchfab.com/TegnoGenial), licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/).
+  Changed: its textures removed (replaced by our own), extra UV sets/tangents dropped, welded, quantized and
+  meshopt-compressed with gltf-transform 4.2.1 (9.1 MB to 0.67 MB). Set sails are added in code (`src/world.js`);
+  at load its meshes are split into materials and given UVs (`src/sketchfabShip.js`).
+  Source copy: render PC `~/artkit/lesson_assets/_sketchfab/8ff8f94903e84131832c35e5371b5d59`.
+
 ## Derived and made for History Portal
 
-- `world/ship_v4.glb`: the hero VOC ship, built from basic shapes in Blender by `tools/build_ship.py` (2026-10-20);
-  its material line tiles `world/ink/{rope2,rope3,rope4,spar2,iron,barrel,sailcloth,flag,tar,crate}_ink.webp` are
+- `world/ship_v4.glb`: the v4 hero VOC ship, built from basic shapes in Blender by `tools/build_ship.py` (2026-10-20),
+  not loaded since v5 (kept for reusable parts); the material line tiles `world/ink/{rope2,rope3,rope4,spar2,iron,barrel,sailcloth,flag,tar,crate}_ink.webp` are
   ChatGPT image generation (prompts: vault `Memory/historyportal/assets/museum-intro/v4-ship-detail/textures/PROMPTS.md`).
-  It replaces the Sketchfab "dutch ship large" (CC BY 4.0, TegnoGenial) used up to v3.
+  They dress the Sketchfab ship too.
 
 - `cards/*.webp` + `cards.json`: the painting's other ships and boats cut out as cards. The cut uses a Depth Anything V2
   (ViT-L, Apache 2.0) map from the render PC only as a layout reference (`tools/make_cards.py`).
