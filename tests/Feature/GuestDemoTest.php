@@ -209,9 +209,13 @@ class GuestDemoTest extends TestCase
         Queue::assertNothingPushed();
     }
 
-    public function test_a_signed_in_teacher_is_sent_to_build_a_real_lesson_instead(): void
+    /**
+     * Bart 2026-10-20: "you can only configure the demo from step 4". A signed-in teacher was sent to
+     * step 1 to build a new lesson; they get their own copy of the demo instead, opened in the editor.
+     */
+    public function test_a_signed_in_teacher_gets_their_own_copy_opened_at_step_4(): void
     {
-        $this->publishedDemoLesson();
+        $demo = $this->publishedDemoLesson();
 
         $teacher = User::create([
             'name' => 'Real',
@@ -220,10 +224,11 @@ class GuestDemoTest extends TestCase
             'role' => 'teacher',
         ]);
 
-        $this->actingAs($teacher)
-            ->get(route('demo.configure'))
-            ->assertRedirect(route('teacher.lessons.create'));
+        $response = $this->actingAs($teacher)->get(route('demo.configure'));
 
+        $copy = Lesson::where('teacher_id', $teacher->id)->sole();
+        $response->assertRedirect(route('teacher.lessons.wizard', ['lesson' => $copy->id, 'step' => 4]));
+        $this->assertNotSame($demo->id, $copy->id);
         $this->assertSame(0, User::where('is_guest_demo', true)->count());
         $this->assertAuthenticatedAs($teacher);
     }
@@ -300,6 +305,47 @@ class GuestDemoTest extends TestCase
     {
         $this->publishedDemoLesson();
         $this->get(route('demo.configure'));
+
+        $this->artisan(PruneGuestDemos::class)->assertSuccessful();
+
+        $this->assertSame(1, User::where('is_guest_demo', true)->count());
+    }
+
+    /** A guest's database session, as SESSION_DRIVER=database writes it. */
+    private function sessionFor(User $guest, \Carbon\CarbonInterface $lastActivity): void
+    {
+        config(['session.driver' => 'database']);   // prod's driver; the suite runs on array
+        \Illuminate\Support\Facades\DB::table(config('session.table') ?: 'sessions')->insert([
+            'id' => \Illuminate\Support\Str::random(40), 'user_id' => $guest->id, 'ip_address' => '127.0.0.1',
+            'user_agent' => 'test', 'payload' => '', 'last_activity' => $lastActivity->getTimestamp(),
+        ]);
+    }
+
+    /**
+     * Bart 2026-10-20: the copy "gets discarded when the user goes away". Gone = no session that is
+     * still alive (session.lifetime); the 24-hour cap stays as the backstop.
+     */
+    public function test_pruning_discards_a_guest_who_went_away(): void
+    {
+        $this->publishedDemoLesson();
+        $this->get(route('demo.configure'));
+        $guest = User::where('is_guest_demo', true)->sole();
+        $guest->forceFill(['created_at' => now()->subHours(3)])->save();
+        $this->sessionFor($guest, now()->subMinutes((int) config('session.lifetime') + 5));
+
+        $this->artisan(PruneGuestDemos::class)->assertSuccessful();
+
+        $this->assertSame(0, User::where('is_guest_demo', true)->count());
+        $this->assertSame(1, Lesson::withTrashed()->count(), 'only the original demo lesson survives');
+    }
+
+    public function test_pruning_keeps_a_guest_whose_session_is_alive(): void
+    {
+        $this->publishedDemoLesson();
+        $this->get(route('demo.configure'));
+        $guest = User::where('is_guest_demo', true)->sole();
+        $guest->forceFill(['created_at' => now()->subHours(3)])->save();
+        $this->sessionFor($guest, now()->subMinutes(5));
 
         $this->artisan(PruneGuestDemos::class)->assertSuccessful();
 
