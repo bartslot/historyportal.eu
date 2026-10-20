@@ -36,9 +36,9 @@ function normalMaterial(id, alphaMap = null, wobble = false) {
 }
 
 export const INK_PARAMS = {
-  width: 2.4, // line radius in screen px at 1 world unit from the camera (falls off as 1/sqrt(distance))
-  minPx: 1.5,
-  maxPx: 2.6,
+  width: 2.2, // line radius in screen px at 1 world unit from the camera (falls off as distance^-0.4)
+  minPx: 1.0,
+  maxPx: 3.4,
   depthJump: 0.012, // relative depth step that counts as a silhouette
   crease: 0.5, // normal dot below which a fold is inked
   farFade: [8, 60], // world units: lines lighten from .. to
@@ -89,7 +89,7 @@ export class InkPass {
           float zm = viewZ(texture2D(tDepthM, vUv).r);
           if (zm < zc * 0.995) { gl_FragColor = vec4(col, 1.0); return; } // a cut-out card stands in front
           vec3 nc = c.rgb * 2.0 - 1.0;
-          float r = clamp(uWidth * pow(zc, -0.22), uMinPx, uMaxPx) * uSS; // a ship 70 m off still gets a real line
+          float r = clamp(uWidth * pow(zc, -0.4), uMinPx, uMaxPx) * uSS; // a ship 70 m off still gets a real line
           bool rig = c.a > 0.49;
           vec2 px = gl_FragCoord.xy / uSS;
           vec2 wob = (vec2(vnoise(px * 0.03), vnoise(px * 0.03 + 17.3)) - 0.5) * uWobble * uSS;
@@ -102,7 +102,7 @@ export class InkPass {
           float eS = 0.0, eI = 0.0, occ = 0.0; // silhouettes, inner lines, crevice (near occluders)
           for (int ring = 0; ring < 2; ring++) {
             // inner ring: every edge, thin. outer ring: only big occlusions (heavy accents), scaled by pressure
-            float rr = ring == 0 ? r * (0.65 + 0.3 * press) : r * press; // both rings swell and thin with the pen
+            float rr = ring == 0 ? r * (0.4 + 0.2 * press) : r * press; // both rings swell and thin with the pen
             for (int k = 0; k < 8; k++) {
               float a = float(k) * 0.785398 + float(ring) * 0.39;
               vec2 o = (vec2(cos(a), sin(a)) * rr + wob) * uTexel;

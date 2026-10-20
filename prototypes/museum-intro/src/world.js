@@ -125,7 +125,7 @@ async function heroShip(tex) {
       paint: tex[`${m.paint}_paint`], scale: (m.paint === 'sail' ? 0.7 : 1.6) / scale / 10, tintPaint: [1.5 * k, 1.6 * k, 1.7 * k], lit: 0.75, toModel,
       side: THREE.DoubleSide, wobble: !!m.wobble,
       lines: { kind: 'uv', ink: tex[`${m.tile}_ink`], hatch: tex.hatch_ink, scale: m.scale, light: m.light, shade: m.shade, lit: m.lit,
-        flag: m.flag, lod: m.lod, inkK: m.inkK ?? 1.0, hatchK: m.hatchK ?? 0.3, near: 12, far: 40 },
+        flag: m.flag, rope: name === 'rope', lod: m.lod, inkK: m.inkK ?? 1.0, hatchK: m.hatchK ?? 0.3, near: 12, far: 40 },
     });
     mats[name].userData.wobble = !!m.wobble;
     return mats[name];
@@ -204,10 +204,30 @@ function standingCard(paint, lines, height) {
   return m;
 }
 
+// painting ships big enough to be seen up close are not cut-outs but copies of the 3D ship, placed where Vroom
+// painted them (file -> extra yaw from stern-on to the eye)
+const CARD_SHIPS = { 'card_09.webp': 0.7 };
+
+function cardShip(ship, c) {
+  const uc = (c.u0 + c.u1) / 2;
+  const t = tToSea(uc, c.water);
+  const pivot = new THREE.Group();
+  pivot.position.copy(along(uc, c.water, t)).setY(SEA_Y);
+  const away = pivot.position.clone().sub(EYE);
+  pivot.rotation.y = Math.atan2(-away.z, away.x) + CARD_SHIPS[c.file]; // bow away from the eye, turned a little
+  pivot.scale.setScalar(((c.v1 - c.water) * HALL.voc.h * t) / LAYOUT.hero.modelTop);
+  const model = ship.model.clone();
+  pivot.add(model);
+  const casters = [];
+  model.traverse((o) => o.isMesh && casters.push([o, 1]));
+  return { pivot, casters };
+}
+
 function paintingCards(tex, cardsJson) {
   const group = new THREE.Group();
   const below = cardsJson.filter((c) => c.water < LAYOUT.horizonV - 0.005);
   for (const c of cardsJson) {
+    if (CARD_SHIPS[c.file]) continue;
     const uc = (c.u0 + c.u1) / 2;
     let t;
     if (c.water < LAYOUT.horizonV - 0.005) t = tToSea(uc, c.water);
@@ -216,6 +236,7 @@ function paintingCards(tex, cardsJson) {
       const overlap = (o) => Math.max(0, Math.min(c.u1, o.u1) - Math.max(c.u0, o.u0));
       const parent = below.reduce((best, o) => (overlap(o) > overlap(best ?? o) || !best ? o : best), null);
       if (!parent || overlap(parent) === 0) continue;
+      if (CARD_SHIPS[parent.file]) continue; // part of a ship that is now the 3D copy
       t = tToSea((parent.u0 + parent.u1) / 2, parent.water);
     }
     if (t < LAYOUT.cardMinT) continue;
@@ -241,6 +262,8 @@ export async function buildWorld(scene, tex, cardsJson) {
   group.add(cards);
   const ship = await heroShip(tex);
   group.add(ship.pivot);
+  const others = cardsJson.filter((c) => CARD_SHIPS[c.file]).map((c) => cardShip(ship, c));
+  for (const o of others) group.add(o.pivot);
 
   // places on the ship, found by dropping a ray: the top of the fore topsail, the deck under it
   const fore = SAILS[3];
@@ -287,7 +310,7 @@ export async function buildWorld(scene, tex, cardsJson) {
   const faceCamera = crew;
   // the figures cast crisp ink outlines too (their own drawn lines stay inside)
   const figures = [tasman, ...crew].map((c, i) => [c, 5 + i, c.material.uniforms.uLines.value]);
-  const casters = [...ship.casters, [seaMesh, 4], ...figures];
+  const casters = [...ship.casters, ...others.flatMap((o) => o.casters), [seaMesh, 4], ...figures];
   return {
     group,
     ship,

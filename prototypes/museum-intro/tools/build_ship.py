@@ -551,7 +551,7 @@ def shrouds(name, info, n):
             for k in (-0.08, 0.0, 0.08):
                 rope(low + V((k, 0.05, 0)), up + V((k, -0.05, 0)), 0.018, 0.0, 2, 4)
             tube('iron', [low - V((0, 0.15, 0)), V((xi, y - 1.6, side * (half(xi, y - 1.6) + 0.08)))], 0.035, 5, caps=True)
-            tube('rope', [up + d * 0.12, masthead], 0.055, 8)
+            tube('rope', [up + d * 0.12, masthead], 0.055, 12)
             heads.append((up + d * 0.12, masthead))
         # ratlines: one rope across all shrouds every 0.42, a knot (clove hitch) at each shroud
         yy = heads[0][0].y + 0.55
