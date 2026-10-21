@@ -1,4 +1,4 @@
-@props(['lesson'])
+@props(['lesson', 'bare' => false])
 
 {{-- The one lesson poster card, app-wide: the landing carousel and the hero's finished lesson
      draw the same thing. Width and row-positioning classes come from the caller, because a
@@ -24,8 +24,10 @@
             </div>
         @endif
 
-        {{-- Legibility scrim --}}
-        <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent"></div>
+        {{-- Legibility scrim for the title block; a bare card (the hero poster) has no title block. --}}
+        @unless ($bare)
+            <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent"></div>
+        @endunless
 
         {{-- Play affordance on hover --}}
         <div class="absolute inset-0 flex items-center justify-center opacity-0 transition duration-300 ease-out group-hover:opacity-100">
@@ -34,14 +36,17 @@
             </span>
         </div>
 
-        {{-- Title block --}}
-        <div class="absolute inset-x-0 bottom-0 p-4 text-white">
-            <p class="truncate text-2xs font-medium uppercase tracking-wide text-primary/90">
-                {{ __(\Illuminate\Support\Str::ucfirst((string) $lesson->subject)) }}@if ($lesson->era) · {{ $lesson->era }}@endif
-            </p>
-            <h3 class="mt-1 text-base font-semibold leading-tight tracking-tight text-white line-clamp-2">
-                {{ $lesson->title ?: $lesson->topic }}
-            </h3>
-        </div>
+        {{-- A bare card is the poster alone (the hero): the poster already carries the name. --}}
+        @unless ($bare)
+            {{-- Title block --}}
+            <div class="absolute inset-x-0 bottom-0 p-4 text-white">
+                <p class="truncate text-2xs font-medium uppercase tracking-wide text-primary/90">
+                    {{ __(\Illuminate\Support\Str::ucfirst((string) $lesson->subject)) }}@if ($lesson->era) · {{ $lesson->era }}@endif
+                </p>
+                <h3 class="mt-1 text-base font-semibold leading-tight tracking-tight text-white line-clamp-2">
+                    {{ $lesson->title ?: $lesson->topic }}
+                </h3>
+            </div>
+        @endunless
     </div>
 </a>

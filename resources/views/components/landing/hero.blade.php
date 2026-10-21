@@ -169,7 +169,7 @@
     {{-- Act two: the lesson exists. This is also the whole hero for anyone with JS off or
          reduced motion on, which is why the h1 and the real links live here. --}}
     <div class="hero-stage pointer-events-none absolute inset-0 z-30 flex items-center justify-center px-4">
-    <div data-demo-reveal class="hero-cta pointer-events-auto flex max-w-4xl flex-col items-center gap-8 text-center sm:flex-row sm:gap-10 sm:text-left">
+    <div data-demo-reveal class="hero-cta pointer-events-auto flex max-w-4xl flex-col items-center gap-6 text-center {{ $isLaunch ? 'sm:flex-row sm:gap-10 sm:text-left' : '' }}">
         @if ($isLaunch)
             {{-- The logo is what arrives out of the tunnel, in the slot the lesson poster occupies
                  in the other script — same stagger, same overshoot, same landing beat. --}}
@@ -206,70 +206,42 @@
                 </div>
             </div>
         @elseif ($demoLesson)
-            {{-- The lesson itself, playable. It is what the demo just built, so it arrives out of
-                 the tunnel ahead of the words. --}}
+            {{-- The poster IS the lesson, and the play button (Bart, 2026-10-21: "get rid of the text,
+                 the poster is enough, they should just play that poster"). data-portal-play:
+                 hero/portal.js opens the page onto the lesson's title screen; without JS, or with
+                 reduced motion, it is an ordinary link. The name stays in the h1 for search engines
+                 and screen readers; on screen the poster already says it. --}}
+            <h1 class="sr-only">{{ $demoLesson->title }}</h1>
             <x-lesson-poster-card
                 data-reveal-item
+                data-portal-play
                 :lesson="$demoLesson"
-                class="w-[11.5rem] shrink-0 sm:w-[13rem]"
+                :bare="true"
+                class="w-[15rem] shrink-0 sm:w-[19rem]"
             />
-        @endif
 
-        @unless ($isLaunch)
-        <div class="flex flex-col items-center sm:items-start">
-            {{-- The lesson's own name, and nothing else. This is the payoff of the whole animation:
-                 the class watched a lesson get built, and here is the thing itself, named.
-
-                 Not run through the translator. It used to be, with a key that was nothing but the
-                 placeholder itself: there is nothing in that to translate, and every language
-                 reported it as a permanently missing string. (Nor can the key be written out here,
-                 even in a comment: lang:audit scans the file as text and would find it again.)
-
-                 The null guard is load-bearing. `$demoLesson->title` was read unguarded, so the
-                 moment DemoLesson::resolve() found nothing playable the ENTIRE LANDING PAGE threw
-                 "Attempt to read property title on null". The front door of the product, 500ing
-                 because a lesson was mid-rebuild. --}}
-            <h1 data-reveal-item class="text-balance text-4xl leading-display tracking-tight text-white sm:text-5xl lg:text-6xl">
-                {{ $demoLesson?->title ?? __('The lesson they talk about after class.') }}
-            </h1>
-
-            {{-- What the product IS, under the name of what it just made. This used to read "Check
-                 out The Punic Wars for Grade 12", which only repeated the title above it and sold
-                 nothing. A visitor who has just watched a lesson assemble itself is at the exact
-                 moment they wonder how, so this is where the answer goes: made with AI, finished by
-                 a teacher, and delivered as pictures, a story and a game. --}}
-            <p data-reveal-item class="mt-5 max-w-md text-balance text-sm leading-relaxed text-white/60 sm:text-base">
-                {{ __('Real paintings, a story your class wants the end of, and a game they finish by themselves. Made with AI, shaped by teachers.') }}
-            </p>
-
-            <div data-reveal-item class="mt-8 flex flex-wrap items-center justify-center gap-3 sm:justify-start">
-                @if ($demoLesson)
-                    {{-- The sliders answer the label: hover, and the two knobs slide along their
-                         tracks. Configuring is what the button does, so that is what it shows. --}}
-                    <a href="{{ route('demo.configure') }}" class="hero-action hero-action--ghost">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
-                            <path stroke-linecap="round" d="M3 8.5h18M3 15.5h18" />
-                            <circle class="hero-action__knob hero-action__knob--a" cx="8.5" cy="8.5" r="2.6" />
-                            <circle class="hero-action__knob hero-action__knob--b" cx="15.5" cy="15.5" r="2.6" />
-                        </svg>
-                        {{ __('Configure') }}
-                    </a>
-                    {{-- data-portal-play: hero/portal.js opens the page onto this lesson's title screen. Without
-                         JS, or with reduced motion, it is an ordinary link. --}}
-                    <a data-portal-play href="{{ route('lesson.play', $demoLesson->lesson_code) }}" class="hero-action hero-action--primary">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="hero-action__play h-4 w-4" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 0 1 0 1.971l-11.54 6.347a1.125 1.125 0 0 1-1.667-.985V5.653Z" />
-                        </svg>
-                        {{ __('Play lesson') }}
-                    </a>
-                @elseif ($isTeacher)
-                    <a href="{{ route('teacher.lessons.create') }}" class="hero-action hero-action--primary">
-                        {{ __('Create a lesson') }}
-                    </a>
-                @endif
+            <div data-reveal-item>
+                {{-- The sliders answer the label: hover, and the two knobs slide along their tracks. --}}
+                <a href="{{ route('demo.configure') }}" class="hero-action hero-action--ghost">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
+                        <path stroke-linecap="round" d="M3 8.5h18M3 15.5h18" />
+                        <circle class="hero-action__knob hero-action__knob--a" cx="8.5" cy="8.5" r="2.6" />
+                        <circle class="hero-action__knob hero-action__knob--b" cx="15.5" cy="15.5" r="2.6" />
+                    </svg>
+                    {{ __('Configure') }}
+                </a>
             </div>
-        </div>
-        @endunless
+        @else
+            {{-- Nothing playable (a lesson mid-rebuild): never a 500 on the front door. --}}
+            <h1 data-reveal-item class="text-balance text-4xl leading-display tracking-tight text-white sm:text-5xl lg:text-6xl">
+                {{ __('The lesson they talk about after class.') }}
+            </h1>
+            @if ($isTeacher)
+                <a data-reveal-item href="{{ route('teacher.lessons.create') }}" class="hero-action hero-action--primary">
+                    {{ __('Create a lesson') }}
+                </a>
+            @endif
+        @endif
     </div>
     </div>
 

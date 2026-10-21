@@ -69,18 +69,19 @@ class HeroCopyTest extends TestCase
         $this->get('/')->assertOk()->assertSee('The lesson they talk about after class.', escape: false);
     }
 
-    public function test_the_line_under_the_title_sells_the_product_rather_than_repeating_it(): void
+    public function test_the_lesson_lands_as_its_poster_alone_and_the_poster_plays(): void
     {
-        // It used to read "Check out The Punic Wars for Grade 12", which only said the headline
-        // again. A visitor is at their most curious in the second the lesson lands, so that is
-        // where the product gets explained: made with AI, finished by a teacher, and delivered as
-        // paintings, a story and a game.
-        $this->playableLesson('The Punic Wars');
+        // Bart 2026-10-21: "get rid of the text - the poster is enough. they should just play that
+        // poster." No sell line, no Play button: the poster is the play link (hero/portal.js), and
+        // the title stays only in the h1 for search engines and screen readers.
+        $lesson = $this->playableLesson('The Punic Wars');
 
-        $response = $this->get('/')->assertOk();
+        $html = $this->get('/')->assertOk()->getContent();
 
-        $response->assertSee('a game they finish by themselves', escape: false);
-        $response->assertDontSee('Check out The Punic Wars for', escape: false);
+        $this->assertStringNotContainsString('a game they finish by themselves', $html);
+        $this->assertMatchesRegularExpression('#<a\s+href="[^"]*/lesson/'.$lesson->lesson_code.'"[^>]*data-portal-play#s', $html);
+        $this->assertSame(1, preg_match_all('#\sdata-portal-play[\s=>]#', $html), 'one way in: the poster');
+        $this->assertMatchesRegularExpression('#<h1 class="sr-only">The Punic Wars</h1>#', $html);
     }
 
     public function test_the_headline_is_not_run_through_the_translator(): void
