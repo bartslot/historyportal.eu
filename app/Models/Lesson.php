@@ -50,6 +50,7 @@ class Lesson extends Model
         'title',
         'language',
         'translation_group',
+        'title_series',
         'teacher_guide',
         'narration_edit_characters',
         'topic',
@@ -537,10 +538,19 @@ class Lesson extends Model
         return file_exists(public_path("flags/{$qid}.png")) ? asset("flags/{$qid}.png") : null;
     }
 
-    /** The series wordmark (public/lesson-logos/{translation_group}.svg), when there is one. */
+    /**
+     * The series whose title posters and wordmark this lesson wears: its own title_series, else its
+     * translation_group. A copy keeps the series without joining the original's language switch.
+     */
+    public function titleSeries(): ?string
+    {
+        return $this->title_series ?: $this->translation_group;
+    }
+
+    /** The series wordmark (public/lesson-logos/{series}.svg), when there is one. */
     public function titleLogoUrl(): ?string
     {
-        $group = (string) $this->translation_group;
+        $group = (string) $this->titleSeries();
 
         return $group !== '' && preg_match('/^[a-z0-9][a-z0-9-]*$/', $group) && is_file(public_path("lesson-logos/{$group}.svg"))
             ? asset("lesson-logos/{$group}.svg")
@@ -559,7 +569,7 @@ class Lesson extends Model
     {
         $choices = array_map(
             fn (array $c): array => ['key' => $c['key'], 'label' => $c['label'], 'thumb_url' => $c['thumb_url']],
-            TitlePoster::candidates($this->translation_group),
+            TitlePoster::candidates($this->titleSeries()),
         );
         $logo = $this->titleLogoUrl();
         if ($logo !== null) {
@@ -620,7 +630,7 @@ class Lesson extends Model
     {
         $style = $this->titleStyle();
 
-        $poster = in_array($style, TitlePoster::BUILT_IN, true) ? null : TitlePoster::for($this->translation_group, $style);
+        $poster = in_array($style, TitlePoster::BUILT_IN, true) ? null : TitlePoster::for($this->titleSeries(), $style);
 
         // A picture the teacher picked is the title screen's picture, whichever poster draws it,
         // upright on a phone as well.
@@ -666,8 +676,8 @@ class Lesson extends Model
         if (in_array($this->titleStyle(), TitlePoster::BUILT_IN, true)) {
             return null;
         }
-        foreach (TitlePoster::candidates($this->translation_group) as $candidate) {
-            $still = TitlePoster::for($this->translation_group, $candidate['key'])['portrait']['still_url'] ?? null;
+        foreach (TitlePoster::candidates($this->titleSeries()) as $candidate) {
+            $still = TitlePoster::for($this->titleSeries(), $candidate['key'])['portrait']['still_url'] ?? null;
             if (is_string($still)) {
                 return $still;
             }

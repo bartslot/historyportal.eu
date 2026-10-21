@@ -101,6 +101,22 @@ class GuestDemoTest extends TestCase
         $this->assertFalse($demo->refresh()->translations()->contains('id', $copy->id));
     }
 
+    /** Bart 2026-10-21: "everything has to have a Figma title poster". A copy keeps the original's. */
+    public function test_a_copy_keeps_the_originals_title_poster(): void
+    {
+        $demo = $this->publishedDemoLesson();
+        $demo->update(['translation_group' => 'tasman-standard']);
+        DemoLesson::forget();
+
+        $this->get(route('demo.configure'));
+
+        $copy = Lesson::where('teacher_id', User::where('is_guest_demo', true)->sole()->id)->sole();
+        $this->assertNull($copy->translation_group, 'still not another language of the original');
+        $this->assertNotNull($demo->refresh()->titlePosterStillUrl());
+        $this->assertSame($demo->titlePosterStillUrl(), $copy->titlePosterStillUrl());
+        $this->assertSame($demo->titleChoices(), $copy->titleChoices());
+    }
+
     public function test_editing_the_copy_leaves_the_original_lesson_alone(): void
     {
         $demo = $this->publishedDemoLesson();

@@ -111,8 +111,8 @@
         'source_attribution'    => $lesson->sourceAttribution(),
         'title_bg_url'          => $lesson->titleBgUrl(),
         // How the title screen draws the name (the teacher's choice or the series' default).
-        // A series wordmark (public/lesson-logos/{translation_group}.svg) replaces the plain title's
-        // lead-in; a comic candidate (public/lesson-titles/{translation_group}/{candidate}/poster.json)
+        // A series wordmark (public/lesson-logos/{series}.svg, Lesson::titleSeries) replaces the plain title's
+        // lead-in; a comic candidate (public/lesson-titles/{series}/{candidate}/poster.json)
         // replaces the whole picture. Each is null unless it is the style in use.
         'title_style'           => $titleStyle,
         'title_logo_url'        => $titleStyle === \App\Support\TitlePoster::LOGO ? $lesson->titleLogoUrl() : null,
