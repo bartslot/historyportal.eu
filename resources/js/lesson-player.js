@@ -2875,10 +2875,13 @@ Alpine.data('lessonGame', (lesson) => ({
       return this.isPlaying && !this.chromeAwake && !this.zoneHover && !this.chromeFocus && !this.chaptersOpen && !this.ccOpen
     },
 
-    /** The centre glyph: up while paused, for a moment after a press, and with the chrome while playing. */
+    /**
+     * The centre glyph: up while paused and for a moment after a press. Never just because the
+     * mouse moved (Bart, 2026-10-21: "only if you click on the story to pause it, then it shows").
+     */
     get centreGlyphShown () {
       if (this.overlayOwnsStage) return false
-      return this.playbackPaused || this.playbackGlyph || (this.isPlaying && !this.chromeHidden)
+      return this.playbackPaused || this.playbackGlyph
     },
 
     /** Any pointer move, tap or key: show the chrome and restart the idle countdown. */

@@ -476,23 +476,23 @@
                  class="pointer-events-none absolute inset-0 flex items-center justify-center lp-chrome-fade"
                  :class="centreGlyphShown ? 'opacity-100' : 'opacity-0'"
                  style="z-index:45">
-                {{-- No data-tooltip here on purpose: a 96px glyph in the middle of the stage says
-                     what it is, and a hover hint floating over the scene is noise. The deck's small
-                     play/pause carries the label and the K shortcut. On a line-art scene a white
-                     glyph on white paper vanishes, so there (only) it sits on the deck's plate. --}}
+                {{-- No data-tooltip here on purpose: a big glyph in the middle of the stage says what
+                     it is, and a hover hint floating over the scene is noise. The deck's small
+                     play/pause carries the label and the K shortcut. No plate behind it (Bart,
+                     2026-10-21): the glyph alone, twice the old size, its shadow keeping it readable
+                     on white paper too. --}}
                 <button type="button" @click="togglePlayback()"
                         :aria-label="playbackPaused ? @js(__('Play')) : @js(__('Pause'))"
-                        class="group flex h-24 w-24 items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
-                        :class="[centreGlyphShown ? 'pointer-events-auto' : 'pointer-events-none',
-                                 !backdropShade && 'border border-white/10 bg-black/70 backdrop-blur-md']">
+                        class="group flex h-48 w-48 items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+                        :class="centreGlyphShown ? 'pointer-events-auto' : 'pointer-events-none'">
 
-                    <svg x-show="playbackPaused" class="h-14 w-14 text-white drop-shadow-[0_4px_14px_rgba(0,0,0,0.8)] transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95" viewBox="0 0 21 23" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <svg x-show="playbackPaused" class="h-28 w-28 text-white drop-shadow-[0_6px_24px_rgba(0,0,0,0.6)] transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95" viewBox="0 0 21 23" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path fill-rule="evenodd" clip-rule="evenodd" d="M0 2.52873C0 0.608107 2.05916 -0.609418 3.74205 0.316169L19.2842 8.86436C21.0285 9.82373 21.0285 12.3301 19.2842 13.2895L3.74205 21.8377C2.05916 22.7633 0 21.5457 0 19.6251V2.52873Z" fill="white"/>
                     </svg>
 
                     {{-- Pause: two bars, drawn to the same weight and corner radius as the play
                          triangle above so the two states feel like one control. --}}
-                    <svg x-show="!playbackPaused" x-cloak class="h-14 w-14 text-white drop-shadow-[0_4px_14px_rgba(0,0,0,0.8)] transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
+                    <svg x-show="!playbackPaused" x-cloak class="h-28 w-28 text-white drop-shadow-[0_6px_24px_rgba(0,0,0,0.6)] transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
                          viewBox="0 0 21 23" fill="currentColor" aria-hidden="true">
                         <rect x="0" y="0" width="6.5" height="23" rx="2.5"/>
                         <rect x="14.5" y="0" width="6.5" height="23" rx="2.5"/>
