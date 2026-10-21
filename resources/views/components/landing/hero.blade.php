@@ -118,7 +118,7 @@
          Both acts are absolutely centred on top of each other, so the hero never reflows as one
          hands over to the other. --}}
     <div class="hero-stage pointer-events-none absolute inset-0 z-30 flex items-center justify-center px-4">
-    <div data-demo-conversation class="hero-copy pointer-events-auto w-full max-w-2xl text-center">
+    <div data-demo-conversation class="hero-copy pointer-events-auto relative w-full max-w-2xl text-center">
         @if ($isLaunch)
             {{-- The same beats as the demo, because the timeline is the same: a quiet question, a
                  typed answer, then a row of chips. Here they name what shipped rather than asking
@@ -159,6 +159,10 @@
                 @endforeach
             </div>
         @endif
+        {{-- The pointer that clicks the age group (hero/lesson-demo.js): an arrow, tip at top left. --}}
+        <svg data-demo-pointer class="hero-pointer" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 2.5v17.2l4.7-4.4 3 6.9 3-1.3-3-6.8h6.5z" fill="#fff" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="round"/>
+        </svg>
     </div>
     </div>
 

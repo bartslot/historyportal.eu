@@ -1768,6 +1768,20 @@ html[data-inspector-w] aside[data-resizable-drawer] {
         color: #fff;
     }
 
+    /* The demo's pointer: it clicks the age group (hero/lesson-demo.js). Its tip is the element's
+       top-left corner, so the timeline moves the tip straight onto the chip. */
+    .hero-pointer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 1.5rem;
+        height: 1.5rem;
+        pointer-events: none;
+        opacity: 0;
+        visibility: hidden;
+        transform-origin: 0 0;
+    }
+
     .hero-portal-scene {
         position: absolute;
         inset: 0;
