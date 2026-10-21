@@ -999,6 +999,7 @@ Alpine.data('lessonGame', (lesson) => ({
     // pattern as the story-game engine) so flat-only lessons never download it.
     async _showLayeredShot (shot) {
       const req = ++this._parallaxReq
+      let outgoing = null
       try {
         if (!_parallaxMod) _parallaxMod = await import('./scene/ParallaxScene.js')
         if (req !== this._parallaxReq) return   // a newer shot superseded this one mid-import
@@ -1018,12 +1019,19 @@ Alpine.data('lessonGame', (lesson) => ({
         const motion = { panX: 0, panY: 0, zoom: 1 }
         const fit = this._bgFit === 'contain' ? 'contain' : 'cover'
 
-        // A panel that slides, wipes or dissolves in keeps the one before it underneath meanwhile.
-        this._destroyParallax(_parallaxMod.entryLingerMs(shot.entry))
+        // The panel before stays on screen until this one is drawn (ParallaxScene `replaces`), and
+        // one that slides, wipes or dissolves in keeps it underneath meanwhile. Removing it first
+        // showed the stale flat picture underneath, full-bleed, for a frame or more (Bart, 10-21).
+        outgoing = _parallax
+        _parallax = null
+        this._destroyParallax(_parallaxMod.entryLingerMs(shot.entry))   // a split stage; the figures' camera pose
         // No camera on this panel: the figures go back to rest (the last panel's may have moved them).
         if (!shot.camera) this._artLayer?.setCamera(null)
         _parallax = new _parallaxMod.ParallaxScene(host)
         _parallax.show({
+          replaces: outgoing,
+          // The flat layers under the panel keep an older picture; hidden once the panel is in.
+          covers: [this._bgLayerA, this._bgLayerB],
           // The panel's own camera move and entry (camera.js). The figures in the clipart overlay
           // get the same frame, so they stay on their spot of the plate through the move.
           camera: shot.camera || null,
@@ -1045,6 +1053,7 @@ Alpine.data('lessonGame', (lesson) => ({
         })
       } catch (e) {
         console.warn('lesson-player: parallax scene failed, falling back to flat', e)
+        try { outgoing?.destroy() } catch (_) { /* already detached */ }
         this._showFlatScene(shot.image_url || shot.url || shot.bg_url)
       }
     },

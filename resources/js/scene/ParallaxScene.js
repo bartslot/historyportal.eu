@@ -37,6 +37,8 @@ const HERO_BASE_SCALE = 1.03
 // Multiplied by a plane's depth (min 1) — faster planes need more headroom.
 const LAYER_BLEED_PCT = 6
 const FADE_IN_MS = 900
+// Longest a new panel waits for its pictures before it comes in anyway (a slow network).
+const READY_MAX_MS = 1500
 
 /**
  * Pure per-plane transform math.
@@ -172,9 +174,15 @@ export class ParallaxScene {
    * fit 'contain' ("Whole image") shows the cover plate whole: every plane lives in the plate's
    * letterboxed box (plate-box.js) on a `matte` colour, and the camera holds still. On a portrait
    * stage that box is cover-fitted around the figures in `subject` (the scene's full layer list) instead.
+   *
+   * The panel comes in only once its pictures are decoded and its plate box is applied, so a
+   * scene change never shows a half-drawn panel or whatever lies under it. `replaces` (the
+   * outgoing ParallaxScene) stays on screen until then; `covers` (elements under the panel holding
+   * an older picture, the player's flat layers) are hidden once it is fully in, so no later gap
+   * shows them. `this.shown` resolves at that moment.
    */
   show ({ bgUrl = null, heroUrl = null, layers = null, motion = null, dof = null, fit = 'cover', matte = null, subject = null,
-    camera = null, entry = null, loop = false, onCameraFrame = null, entryAlong = [] } = {}) {
+    camera = null, entry = null, loop = false, onCameraFrame = null, entryAlong = [], replaces = null, covers = [] } = {}) {
     // Classic form requires a background — a hero floating on nothing is never intended.
     const specs = Array.isArray(layers) && layers.length
       ? layers.filter(l => l && l.url)
@@ -184,11 +192,12 @@ export class ParallaxScene {
               ...(heroUrl ? [{ url: heroUrl, kind: 'figure', depth: HERO_PAN_FACTOR, scale: HERO_BASE_SCALE, sway: true }] : []),
             ]
           : [])
-    if (!specs.length) return
+    if (!specs.length) { replaces?.destroy(); return }
 
     injectStyles()
     // A panel that slides, wipes or dissolves in does so OVER the one before it.
     this.destroy(entryLingerMs(entry))
+    this._replacing = replaces
     const contain = fit === 'contain'
     if (motion) this._motion = { panX: 0, panY: 0, zoom: 1, ...motion }
     if (contain) this._motion = { panX: 0, panY: 0, zoom: 1 }
@@ -202,13 +211,14 @@ export class ParallaxScene {
     root.style.cssText = 'position:absolute;inset:0;overflow:hidden;opacity:0;'
     // The planes' box: the whole stage, or (contain) the plate's letterboxed box on the matte.
     const plate = contain ? document.createElement('div') : root
+    let fitted = null
     if (contain) {
       if (matte) root.style.background = matte
       plate.className = 'px-plate'
       plate.style.cssText = 'position:absolute;inset:0;overflow:hidden;'
       root.appendChild(plate)
       const coverUrl = specs.find(l => (l.kind ?? 'cover') === 'cover')?.url
-      plateAspect(coverUrl).then(aspect => { if (this._root === root) fitToPlate(plate, root, aspect, subject) })
+      fitted = plateAspect(coverUrl).then(aspect => { if (this._root === root) fitToPlate(plate, root, aspect, subject) })
     }
 
     this._planes = specs.map((spec, index) => {
@@ -236,9 +246,19 @@ export class ParallaxScene {
     this._onCameraFrame = onCameraFrame
     if (this._camera) this._applyPose(cameraPose(this._camera, 0))
     else this.update(0)
-    this._enter(root, entry, entryAlong)
-    if (this._camera) this._runCamera(loop)
     window.__parallax = this
+    this.shown = drawn(root, fitted).then(() => {
+      if (this._root !== root) return
+      const out = this._replacing
+      this._replacing = null
+      out?.destroy(entryLingerMs(entry))
+      const ms = this._enter(root, entry, entryAlong)
+      if (this._camera) this._runCamera(loop)
+      return new Promise(resolve => setTimeout(resolve, ms))
+    }).then(() => {
+      if (this._root !== root) return
+      for (const el of covers) if (el) Object.assign(el.style, { transition: 'none', opacity: '0' })
+    })
   }
 
   /**
@@ -250,12 +270,12 @@ export class ParallaxScene {
     let e = cameraEntry(entry)
     if (prefersReducedMotion() && (e === 'slide' || e === 'reveal')) e = 'fade'
     const ms = ENTRY_MS[e]
-    if (e === 'cut' || !ms) { root.style.opacity = '1'; return }
+    if (e === 'cut' || !ms) { root.style.opacity = '1'; return 0 }
     if (e === 'fade') {
       root.style.transition = `opacity ${ms}ms ease-in-out`
       // On the next frame, so the transition actually runs.
       requestAnimationFrame(() => { if (this._root === root) root.style.opacity = '1' })
-      return
+      return ms
     }
     // slide / reveal / match: the figures drawn by the clipart overlay (`along`) come in with the
     // plate, or they would stand still while the panel moves under them.
@@ -266,7 +286,8 @@ export class ParallaxScene {
       match: [{ opacity: 0 }, { opacity: 1 }],
     }[e]
     const timing = { duration: ms, easing: e === 'slide' ? EASE.enter : EASE.move }
-    for (const el of [root, ...along]) el?.animate(frames, timing)
+    for (const el of [root, ...along]) el?.animate?.(frames, timing)
+    return ms
   }
 
   /**
@@ -462,6 +483,9 @@ export class ParallaxScene {
     this._cameraRaf = 0
     this._camera = null
     this._onCameraFrame = null
+    // A panel torn down before it came in hands the stage straight on: the one it was replacing goes too.
+    this._replacing?.destroy()
+    this._replacing = null
     this._stageObserver?.disconnect()
     this._stageObserver = null
     this._root?.querySelector('.px-plate')?.__plateObserver?.disconnect()
@@ -497,6 +521,15 @@ function ambientWrap (img, spec, index) {
   applyAmbient(wrap, spec, index)
 
   return wrap
+}
+
+/**
+ * Resolves once every picture in `root` is decoded and `fitted` (the plate box) is applied, or after
+ * READY_MAX_MS, whichever comes first. A picture that fails to load does not hold the panel back.
+ */
+function drawn (root, fitted) {
+  const decoded = [...root.querySelectorAll('img')].map(img => (typeof img.decode === 'function' ? img.decode().catch(() => {}) : null))
+  return Promise.race([Promise.all([fitted, ...decoded]), new Promise(resolve => setTimeout(resolve, READY_MAX_MS))])
 }
 
 /** No pan, no zoom: the camera holds still for the whole shot. */
