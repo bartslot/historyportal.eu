@@ -3,10 +3,10 @@
 <title>Chart lab</title>
 <link rel="stylesheet" href="chart-lab/ml/maplibre-gl.css">
 <style>
-  html, body { margin: 0; height: 100%; background: #86d0cf; }
+  html, body { margin: 0; height: 100%; background: #bfe6e2; }
   #map { position: absolute; inset: 0; }
   /* Paper grain over everything, multiplied, so ink and wash both sit IN the paper. */
-  #paper { position: absolute; inset: 0; pointer-events: none; background: url(chart-lab/paper.png); mix-blend-mode: multiply; opacity: .5; }
+  #paper { position: absolute; inset: 0; pointer-events: none; background: url(chart-lab/paper.png); mix-blend-mode: multiply; opacity: .06; }
 </style></head>
 <body><div id="map"></div><div id="paper"></div>
 <script type="module">
@@ -14,7 +14,7 @@ import * as maplibregl from './chart-lab/ml/maplibre-gl.mjs'
 maplibregl.setWorkerUrl(new URL('./chart-lab/ml/maplibre-gl-worker.mjs', location.href).href)
 // PROTOTYPE of the watercolour sea chart. Not app code: the real style goes into lesson-map.js.
 const O = location.origin, L = O + '/dev/chart-lab/'
-const INK = '#2f2219'
+const INK = '#3b2a1e'
 const q = new URLSearchParams(location.search)
 const map = new maplibregl.Map({
   container: 'map', attributionControl: false,
@@ -24,31 +24,35 @@ const map = new maplibregl.Map({
       land: { type: 'vector', tiles: [O + '/land-tiles/{z}/{x}/{y}.pbf'], maxzoom: 4 },
       coast: { type: 'vector', tiles: [O + '/coast-echo-tiles/{z}/{x}/{y}.pbf'], maxzoom: 4 },
       coastline: { type: 'geojson', data: O + '/timemap/coastline.geojson' },
+      glaze: { type: 'geojson', data: L + 'coast-glaze.geojson' },  // sea further than d km from land
       dem: { type: 'raster-dem', tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'], encoding: 'terrarium', tileSize: 256, maxzoom: 1 },
       marks: { type: 'geojson', data: L + 'sea-marks.geojson' },
       peaks: { type: 'geojson', data: L + 'peaks.geojson' },  // >= 30 km inland only
-      scatter: { type: 'geojson', data: O + '/timemap/land-scatter.geojson' },
+      tufts: { type: 'geojson', data: L + 'tufts.geojson' },
     },
     layers: [
       { id: 'sea', type: 'background', paint: { 'background-pattern': 'sea' } },
       // Depth as layered washes: the deep basins take an extra glaze, the shelf a pale one.
-      { id: 'depth', type: 'color-relief', source: 'dem', paint: { 'color-relief-opacity': 1, 'color-relief-color': ['interpolate', ['linear'], ['elevation'],
-        -12000, 'rgba(48,150,172,0.45)', -4900, 'rgba(48,150,172,0.45)', -3600, 'rgba(48,150,172,0.0)',
-        -300, 'rgba(255,255,255,0)', -60, 'rgba(184,234,224,0.35)', 0, 'rgba(0,0,0,0)', 9000, 'rgba(0,0,0,0)'] } },
-      // Pale halo hugging every big coast: the coast-echo rings, wide and translucent, stacked.
-      { id: 'halo', type: 'line', source: 'coast', 'source-layer': 'coast', filter: ['<=', ['to-number', ['get', 'echo']], 2], layout: { 'line-join': 'round', 'line-cap': 'round' },
-        paint: { 'line-color': '#c4ede4', 'line-opacity': 0.26, 'line-width': ['interpolate', ['linear'], ['zoom'], 2, 10, 5, 34] } },
+      // Depth as layered watercolour, by distance from land like the reference: every band is the sea further
+      // than d km from a coast, glazed once more. Thin steps = a soft wet edge that follows each coastline.
+      ...[50, 90, 135, 185, 240, 300, 370].map((d) => ({ id: `glaze-${d}`, type: 'fill', source: 'glaze', filter: ['==', ['get', 'd'], d],
+        paint: { 'fill-antialias': false, 'fill-pattern': 'sea-glaze', 'fill-opacity': (d === 50 ? 0.24 : 0.07) * +(q.get('glaze') ?? 1) } })),  // first step = the visible edge of the shallows
       { id: 'land', type: 'fill', source: 'land', 'source-layer': 'land', paint: { 'fill-pattern': 'land' } },
       // The dashed line a fixed few pixels off the shore, so it reads the same at every zoom.
+      { id: 'land-edge', type: 'line', source: 'coastline', layout: { 'line-join': 'round' }, paint: { 'line-color': '#ead0a0', 'line-opacity': 0.3, 'line-width': ['interpolate', ['linear'], ['zoom'], 3, 3, 6, 8], 'line-offset': ['interpolate', ['linear'], ['zoom'], 3, 1.5, 6, 4] } },
+      // Olive foothills: painted tufts around the ranges, never on a ridge, capped by distance to the coast like them.
+      { id: 'tufts', type: 'symbol', source: 'tufts', minzoom: 3.6, layout: { 'icon-image': ['concat', 'tuft-', ['%', ['round', ['*', ['get', 'sz'], 100]], 16]], 'icon-allow-overlap': true,
+        'icon-size': ['interpolate', ['exponential', 2], ['zoom'], 4, ['min', ['*', 0.8, ['get', 'sz']], ['/', ['get', 'fit'], 190]], 6, ['min', ['*', 1.4, ['get', 'sz']], ['/', ['get', 'fit'], 60]]] },
+        paint: { 'icon-opacity': ['interpolate', ['linear'], ['zoom'], 3.6, 0, 4, 0.75] } },
       { id: 'coast-dash', type: 'line', source: 'coastline', layout: { 'line-join': 'round' },
         paint: { 'line-color': INK, 'line-opacity': 0.9, 'line-width': 1.4, 'line-dasharray': [3, 2.2], 'line-offset': +(q.get('off') ?? -6) } },
       { id: 'coast-ink', type: 'line', source: 'coastline', layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': INK, 'line-width': ['interpolate', ['linear'], ['zoom'], 2, 1.5, 5, 2.4, 7, 3.2] } },
+        paint: { 'line-color': INK, 'line-width': ['interpolate', ['linear'], ['zoom'], 2, 1.1, 5, 1.7, 7, 2.4] } },
       // Ridges only from the region view in: zoomed out they turn into a crust along the coast. Collision
       // keeps them spaced, so a range reads as a row of peaks instead of a pile.
-      { id: 'peaks', type: 'symbol', source: 'peaks', minzoom: 3.6, layout: { 'icon-image': ['concat', 'ridge-art-', ['%', ['round', ['*', ['get', 'sz'], 100]], 12]], 'icon-anchor': 'bottom', 'icon-allow-overlap': true, 'icon-ignore-placement': true,
+      { id: 'peaks', type: 'symbol', source: 'peaks', minzoom: 3.6, layout: { 'icon-image': ['concat', 'ridge-art-', ['%', ['round', ['*', ['get', 'sz'], 100]], 12]], 'icon-anchor': 'bottom', 'icon-padding': 0,
         'symbol-z-order': 'viewport-y',
-        'icon-size': ['interpolate', ['exponential', 2], ['zoom'], 4, ['min', ['*', 1.0, ['get', 'sz']], ['/', ['get', 'fit'], 190]], 6, ['min', ['*', 1.8, ['get', 'sz']], ['/', ['get', 'fit'], 48]]] },
+        'icon-size': ['interpolate', ['exponential', 2], ['zoom'], 4, ['min', ['*', 1.4, ['get', 'sz']], ['/', ['get', 'fit'], 200]], 6, ['min', ['*', 1.8, ['get', 'sz']], ['/', ['get', 'fit'], 60]]] },
         paint: { 'icon-opacity': ['interpolate', ['linear'], ['zoom'], 3.6, 0, 4, 1] } },
       // Wave marks thin out as the camera pulls back, so the sea keeps the same density on screen.
       { id: 'waves', type: 'symbol', source: 'marks', filter: ['<', ['%', ['round', ['*', ['get', 'sz'], 100]], 9], 4],
@@ -64,11 +68,11 @@ const map = new maplibregl.Map({
 })
 const img = (src, w, h) => new Promise((ok) => { const i = new Image(w, h); i.onload = () => ok(i); i.src = src })
 map.once("load", () => Promise.all([
-  img(L + 'sea.png').then((i) => map.addImage('sea', i)),
-  img(L + 'land.png').then((i) => map.addImage('land', i)),
-  ...[0, 1, 2, 3, 4, 5, 6, 7].map((v) => fetch(L + `ridge-${v}.svg`).then((r) => r.text()).then((t) => { const vb = t.match(/viewBox="([^"]+)"/)[1].split(' ').map(Number); return img('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(t), vb[2] * 4, vb[3] * 4).then((i) => map.addImage(`ridge-${v}`, i, { pixelRatio: 4 })) })),
+  img(L + 'sea.png').then((i) => map.addImage('sea', i, { pixelRatio: 1 })),
+  img(L + 'sea-glaze.png').then((i) => map.addImage('sea-glaze', i, { pixelRatio: 1 })),
+  img(L + 'land.png').then((i) => map.addImage('land', i, { pixelRatio: 1 })),
+  ...[...Array(16).keys()].map((v) => img(L + `tuft-${v}.png`).then((i) => map.addImage(`tuft-${v}`, i, { pixelRatio: 2 }))),
   ...[...Array(12).keys()].map((v) => img(L + `ridge-art-${v}.png`).then((i) => map.addImage(`ridge-art-${v}`, i, { pixelRatio: 2 }))),
-  ...[0, 1, 2].map((v) => img(L + `dab-${v}.png`).then((i) => map.addImage(`dab-${v}`, i))),
   ...[0, 1, 2, 3].map((v) => img(L + `wave-${v}.svg`, 180, 36).then((i) => i).then((i) => map.addImage(`wave-${v}`, i, { pixelRatio: 4 }))),
   fetch(O + '/timemap/assets/mountains/manifest.json').then((r) => r.json()).then((m) => Promise.all([...new Set(Object.values(m).flat())].map((id) =>
     fetch(O + `/timemap/assets/mountains/${id}.svg`).then((r) => r.text()).then((t) => {
