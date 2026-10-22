@@ -2270,5 +2270,6 @@
     "Seconds per word": "Seconden per woord",
     "Moves forward": "Vaart vooruit",
     "How far the layer moves forward as the meter fills, in % of the picture": "Hoe ver de laag vooruitgaat terwijl de meter vol loopt, in % van de plaat",
-    "Follow the wind": "Volgt de wind"
+    "Follow the wind": "Volgt de wind",
+    "In a split scene the text stays in front of the pictures.": "In een gesplitste scène blijft de tekst voor de afbeeldingen."
 }

@@ -574,6 +574,8 @@
                 sceneId: p.sceneId,   // the copy/paste keys remember which scene an object came from
                 kind: p.kind,
                 gameType: p.gameType || null,   // a quiz lists its Quiz as an object
+                // A split scene draws its figures under the text: the object list can't swap them.
+                split: !!(p.split ?? _vcfg.split),
                 hasGallery: !!(_gal.title || _gal.story || (_gal.images && _gal.images.length) || (_vcfg.stop_images && _vcfg.stop_images.length)),
             }
             try { window.dispatchEvent(new CustomEvent('objscene-changed')) } catch (_) { /* noop */ }
@@ -1412,12 +1414,23 @@
                         // truth (avoids the classic Alpine+Sortable double-move corruption)…
                         evt.from.insertBefore(evt.item, evt.item._objNext || null);
                         // …then restack each layer system and rebuild. Text and clipart are two
-                        // separate overlays, so split the dropped order by type and reorder each.
-                        const isArt = (id) => id.startsWith('art_');
-                        const textIds = ids.filter((id) => !isArt(id) && !id.startsWith('dio_') && !id.startsWith('bal_'));
-                        const artIds = ids.filter(isArt);
-                        if (textIds.length) window.__lessonTextLayer?.reorder(textIds);
-                        if (artIds.length) this.reorderClipart(ids, textIds, artIds);
+                        // separate overlays: split the dropped order by the rows' kind (not their id:
+                        // a balloon's id is whatever its line carries) and let the DRAGGED row decide
+                        // which band is in front (scene/object-list-drop.js).
+                        const kindOf = (id) => {
+                            const it = this.items.find((i) => i.id === id);
+                            return !it || it.bg || it.bal || it.dio ? null : (it.art ? 'art' : 'text');
+                        };
+                        const drop = window.__objectListDrop({
+                            ids, kindOf, movedId: evt.item.dataset.objId,
+                            artOnTop: !!this.artOverlay()?.onTop,
+                            canSwap: !(window.__objScene || {}).split,
+                        });
+                        if (drop.textIds.length) window.__lessonTextLayer?.reorder(drop.textIds);
+                        if (drop.artIds.length) this.reorderClipart(drop.artIds, drop.artOnTop);
+                        if (drop.blocked) {
+                            window.dispatchEvent(new CustomEvent('toast', { detail: { message: @js(__('In a split scene the text stays in front of the pictures.')), type: 'info' } }));
+                        }
                         // _sig is cleared or refresh() would no-op the reordered rows.
                         this._sig = null;
                         this.refresh();
@@ -1425,14 +1438,11 @@
                 });
             },
             // Clipart lives in its own overlay (a single host in one z-band). Reorder the clipart
-            // layers among themselves and, when the clipart block was dragged above/below the text
-            // block, raise/lower the whole overlay past the text layer. Persisted server-side.
-            reorderClipart(allIds, textIds, artRowIds) {
+            // layers among themselves and raise/lower the whole overlay past the text layer as the
+            // drop decided (onTop). Persisted server-side.
+            reorderClipart(artRowIds, onTop) {
                 const layer = this.artOverlay();
                 if (!layer) return;
-                // Did the clipart block land above or below the text block? (compare mean row index)
-                const avg = (list) => list.reduce((s, id) => s + allIds.indexOf(id), 0) / list.length;
-                const onTop = textIds.length ? (avg(artRowIds) < avg(textIds)) : (layer.onTop ?? false);
                 layer.setOnTop(onTop);
                 const paintOrder = layer.reorder(artRowIds.map((id) => Number(id.slice(4))));  // bottom-first
                 // setOnTop above already restacked the layer NODES. The host must stay free of a
@@ -2072,7 +2082,7 @@
                      data-obj-row
                      @click="select(obj)"
                      :class="[
-                        obj.bg ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing',
+                        obj.bg || obj.bal || obj.dio ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing',
                         selectedId === obj.id ? 'bg-sky-500/15 text-sky-100 ring-1 ring-sky-400/50' : 'text-slate-200 hover:bg-slate-800',
                      ]"
                      class="group flex w-full select-none items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-sm">

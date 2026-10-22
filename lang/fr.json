@@ -2228,5 +2228,6 @@
     "Seconds per word": "Secondes par mot",
     "Moves forward": "Avance",
     "How far the layer moves forward as the meter fills, in % of the picture": "Jusqu'où le calque avance pendant que la jauge se remplit, en % de l'image",
-    "Follow the wind": "Suit le vent"
+    "Follow the wind": "Suit le vent",
+    "In a split scene the text stays in front of the pictures.": "Dans une scène partagée, le texte reste devant les images."
 }

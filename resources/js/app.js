@@ -29,8 +29,11 @@ import { initDragScroll } from './ui/drag-scroll.js';
 import { imageGrid, initImageZoom } from './ui/image-grid.js';
 import { installTitleStagePick } from './editor/title-stage-pick.js';
 import { pendingCode as pendingTestSession } from './test-session/pending.js';
+import { resolveDrop } from './scene/object-list-drop.js';
 
 window.Sortable = Sortable;
+// The editor's object list: which band of the stage a dropped row lands in (object-list-drop.test.js).
+window.__objectListDrop = resolveDrop;
 // The editor's stage: a click on the title screen's title opens its field (step3 @script).
 window.installTitleStagePick = installTitleStagePick;
 
