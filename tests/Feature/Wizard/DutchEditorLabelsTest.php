@@ -8,7 +8,9 @@ use App\Enums\LessonStatus;
 use App\Livewire\Wizard\Step3SceneConfigurator;
 use App\Models\Lesson;
 use App\Models\Scene;
+use App\Models\StrategyGame;
 use App\Models\User;
+use App\Services\VoyageLessonBuilder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -68,5 +70,132 @@ class DutchEditorLabelsTest extends TestCase
         $this->assertStringNotContainsString("'Strategy Challenge'", $html);
         $this->assertStringNotContainsString("+ ' minutes'", $html);
         $this->assertStringNotContainsString("+ ' teams'", $html);
+    }
+
+    /** The html of the scene settings panel for `$scene`, rendered in a Dutch session. */
+    private function panelHtml(User $teacher, Lesson $lesson, Scene $scene): string
+    {
+        app()->setLocale('nl');
+
+        return Livewire::actingAs($teacher)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $lesson])
+            ->call('selectScene', $scene->id)
+            ->html();
+    }
+
+    /** English that was on screen in the Dutch editor (pair test round 3). */
+    private function assertNoEnglish(string $html, array $english): void
+    {
+        foreach ($english as $text) {
+            $this->assertDoesNotMatchRegularExpression('/>\s*'.preg_quote($text, '/').'\s*</u', $html, "\"{$text}\" is still English");
+            $this->assertStringNotContainsString('placeholder="'.$text.'"', $html, "placeholder \"{$text}\" is still English");
+        }
+    }
+
+    private function plainLesson(User $teacher): Lesson
+    {
+        return Lesson::create([
+            'teacher_id' => $teacher->id, 'topic' => 'Caesar', 'subject' => 'history', 'language' => 'nl',
+            'grade_level' => '9th', 'image_style' => 'cinematic', 'status' => LessonStatus::ScenesReady,
+        ]);
+    }
+
+    public function test_the_voyage_panel_is_dutch(): void
+    {
+        $teacher = User::factory()->create();
+        $lesson = app(VoyageLessonBuilder::class)->build('columbus-1492', $teacher);
+        $scene = $lesson->scenes()->where('kind', 'voyage')->ordered()->get()
+            ->first(fn ($s) => empty($s->config['overview']));
+
+        $html = $this->panelHtml($teacher, $lesson, $scene);
+
+        $this->assertMatchesRegularExpression('/>\s*Tussenstop \d+ \/ \d+\s*</u', $html);
+        $this->assertNoEnglish($html, [
+            // ("Route" is Dutch too, so it is not listed.)
+            'Waypoint', 'Map', 'Stop title', 'Dates', 'Travelled by', 'By sea', 'Overland', 'Ship', 'Horse',
+            'Gallery / description', 'Projection', 'Flat', 'Globe', 'Visible detail', 'Undiscovered land',
+            'Fleet', 'Route line', 'Curved', 'Straight', 'Reset route to original', 'Delete waypoint',
+            'or paste an image URL', 'Add image',
+        ]);
+        $this->assertStringNotContainsString('Waypoint 1 /', $html);
+    }
+
+    public function test_the_gallery_map_and_game_panels_are_dutch(): void
+    {
+        $teacher = User::factory()->create();
+        $lesson = $this->plainLesson($teacher);
+        $gallery = Scene::create(['lesson_id' => $lesson->id, 'order' => 1, 'kind' => 'gallery', 'status' => 'ready']);
+        $map = Scene::create(['lesson_id' => $lesson->id, 'order' => 2, 'kind' => 'map', 'status' => 'ready']);
+        $quiz = Scene::create(['lesson_id' => $lesson->id, 'order' => 3, 'kind' => 'game', 'game_type' => 'quiz', 'status' => 'ready']);
+        $debate = Scene::create(['lesson_id' => $lesson->id, 'order' => 4, 'kind' => 'game', 'game_type' => 'debate', 'status' => 'ready']);
+
+        $this->assertNoEnglish($this->panelHtml($teacher, $lesson, $gallery), ['Cover', 'Fit', 'Add image', 'or paste an image URL']);
+        $this->assertNoEnglish($this->panelHtml($teacher, $lesson, $map), [
+            'Map block', 'Shows the territory on the historical map, fit to its borders at the chosen year.',
+            "Negative = BCE. Sets the map's time slider.", 'or drop a pin on the map',
+        ]);
+
+        $quizHtml = $this->panelHtml($teacher, $lesson, $quiz);
+        $this->assertStringContainsString('>Quizscène</h3>', $quizHtml);
+        $this->assertStringNotContainsString(' Scene</h3>', $quizHtml);
+        $this->assertNoEnglish($quizHtml, ['Add question', 'Spoken intro']);
+        $this->assertStringNotContainsString('(optional — narrated before the quiz)', $quizHtml);
+
+        $debateHtml = $this->panelHtml($teacher, $lesson, $debate);
+        $this->assertStringContainsString('>Debatscène</h3>', $debateHtml);
+        $this->assertNoEnglish($debateHtml, ['Debate prompt']);
+    }
+
+    private function rubicon(): StrategyGame
+    {
+        return StrategyGame::create([
+            'slug' => 'rubicon', 'title' => 'Cross the Rubicon', 'description' => 'Caesar at the river.', 'subject' => 'history',
+            'topic_keywords' => ['caesar'], 'grade_min' => 1, 'grade_max' => 12,
+            'team_size_min' => 2, 'team_size_max' => 4, 'duration_minutes' => 8,
+            'instructions' => 'Decide as a team.', 'is_active' => true,
+        ]);
+    }
+
+    /** Demo risk: a new Strategiespel scene arrived with "Cross the Rubicon" already chosen. */
+    public function test_a_new_strategy_scene_starts_with_no_game_chosen(): void
+    {
+        $this->rubicon();
+        $teacher = User::factory()->create();
+        $lesson = $this->plainLesson($teacher);
+        $lesson->update(['language' => 'en']);
+        Scene::create(['lesson_id' => $lesson->id, 'order' => 1, 'kind' => 'narration', 'status' => 'ready']);
+
+        $html = Livewire::actingAs($teacher)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $lesson])
+            ->call('addScene', 'game', 'strategy')
+            ->html();
+
+        $scene = $lesson->scenes()->where('game_type', 'strategy')->sole();
+        $this->assertNull($scene->strategy_game_id);
+        // Offered (the lesson is English), never preselected.
+        $this->assertStringContainsString('Cross the Rubicon', $html);
+        $this->assertDoesNotMatchRegularExpression('/<option[^>]*selected[^>]*>\s*Cross the Rubicon/', $html);
+    }
+
+    /** A Dutch class never meets the English Caesar card unasked: not in the editor, not in the player. */
+    public function test_a_dutch_lesson_is_offered_no_english_strategy_game(): void
+    {
+        $game = $this->rubicon();
+        $teacher = User::factory()->create();
+        $lesson = $this->plainLesson($teacher);
+        $strategy = Scene::create(['lesson_id' => $lesson->id, 'order' => 1, 'kind' => 'game', 'game_type' => 'strategy', 'status' => 'ready']);
+
+        $html = $this->panelHtml($teacher, $lesson, $strategy);
+        $this->assertStringNotContainsString('Cross the Rubicon', $html);
+        $this->assertStringContainsString('data-no-strategy-games', $html);
+
+        // The player neither matches it nor shows one pinned before games had a language.
+        $lesson->update(['status' => LessonStatus::Published->value]);
+        $player = fn () => $this->get(route('lesson.play', ['lessonCode' => $lesson->lesson_code]))->assertOk()->getContent();
+        $this->assertStringNotContainsString('Cross the Rubicon', $player());
+        $this->assertNull($lesson->fresh()->strategy_game_id);
+
+        $lesson->update(['strategy_game_id' => $game->id]);
+        $this->assertStringNotContainsString('Cross the Rubicon', $player());
     }
 }

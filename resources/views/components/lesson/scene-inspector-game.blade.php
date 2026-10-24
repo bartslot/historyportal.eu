@@ -3,14 +3,21 @@
 @php
     $isGenerating = $scene->status === 'generating';
     $gameType = $scene->game_type ?? $scene->lesson->game_type ?? 'strategy';
-    $strategyGameId = $scene->strategy_game_id ?? $scene->lesson->strategy_game_id;
+    $strategyGameId = $scene->strategy_game_id;
     $teamCount = $scene->team_count ?? $scene->lesson->team_count ?? 2;
+    $heading = match ($gameType) {
+        'quiz' => __('Quiz scene'),
+        'debate' => __('Debate scene'),
+        'predict' => __('Predict moment'),
+        'team' => __('Team game scene'),
+        default => __('Strategy game scene'),
+    };
 @endphp
 
 <div class="space-y-3 text-sm">
     <header>
-        <h3 class="font-semibold text-base-content">{{ ucfirst($gameType) }} Scene</h3>
-        <p class="text-xs text-slate-400">Game element {{ $scene->game_segment_index ?? 1 }} of {{ $scene->lesson->game_split_count }}</p>
+        <h3 class="font-semibold text-base-content">{{ $heading }}</h3>
+        <p class="text-xs text-slate-400">{{ __('Game element :n of :total', ['n' => $scene->game_segment_index ?? 1, 'total' => $scene->lesson->game_split_count]) }}</p>
     </header>
 
     <div class="space-y-2">
@@ -50,7 +57,7 @@
         <div data-quiz-section class="space-y-3 border-t border-white/10 pt-3">
             <div class="flex items-center justify-between">
                 <p class="text-xs uppercase tracking-wider text-slate-400">{{ __('Quiz questions') }}</p>
-                <span class="text-2xs text-slate-500">{{ count($quizDraft) }} total</span>
+                <span class="text-2xs text-slate-500">{{ __(':count total', ['count' => count($quizDraft)]) }}</span>
             </div>
 
             {{-- Difficulty (1-3 stars) + regenerate-all at that level. Difficulty applies to
@@ -204,7 +211,7 @@
             </div>
 
             <div class="flex flex-wrap items-center gap-2">
-                <button type="button" wire:click="addQuizQuestion" class="btn btn-xs btn-outline">+ Add question</button>
+                <button type="button" wire:click="addQuizQuestion" class="btn btn-xs btn-outline">+ {{ __('Add question') }}</button>
                 {{-- Edits autosave — no manual save button. --}}
                 <span wire:loading wire:target="autosaveQuiz, updatedQuizDraft, removeQuizQuestion, moveQuizOption"
                       class="text-2xs text-slate-400 inline-flex items-center gap-1">
@@ -222,14 +229,18 @@
         <div class="grid grid-cols-1 gap-3 border-t border-white/10 pt-3 sm:grid-cols-2">
             <label class="form-control sm:col-span-2">
                 <span class="text-xs uppercase tracking-wider text-slate-400">{{ __('Strategy game') }}</span>
+                @if ($games->isEmpty())
+                    <p class="mt-1 text-xs text-slate-400" data-no-strategy-games>{{ __('There are no strategy games in this language yet. The class gets a general team challenge instead.') }}</p>
+                @else
                 <select wire:model.live="selectedScene.strategy_game_id"
                         wire:change="saveSelected"
                         class="select select-sm select-bordered bg-slate-900 mt-1">
-                    <option value="">— select a game —</option>
+                    <option value="">{{ __('Choose a game') }}</option>
                     @foreach ($games as $game)
                         <option value="{{ $game->id }}" @selected((int) $strategyGameId === (int) $game->id)>{{ $game->title }}</option>
                     @endforeach
                 </select>
+                @endif
             </label>
             <label class="form-control">
                 <span class="text-xs uppercase tracking-wider text-slate-400">{{ __('Teams') }}</span>
@@ -262,11 +273,11 @@
             @elseif ($gameType === 'team')
                 {{ __('Spoken intro (optional, narrated before the game)') }}
             @elseif ($gameType === 'quiz')
-                Spoken intro <span class="normal-case text-slate-500">(optional — narrated before the quiz)</span>
+                {{ __('Spoken intro') }} <span class="normal-case text-slate-500">{{ __('(optional, narrated before the quiz)') }}</span>
             @elseif ($gameType === 'debate')
-                Debate prompt
+                {{ __('Debate prompt') }}
             @else
-                Segment intro
+                {{ __('Segment intro') }}
             @endif
         </p>
         <textarea wire:model.blur="selectedScene.script_segment" wire:change="saveSelected" rows="6"

@@ -266,6 +266,20 @@ final class JsTranslations
             'Drag to rotate · hold Shift for 15°' => __('Drag to rotate · hold Shift for 15°'),
             'Drag to resize' => __('Drag to resize'),
             'Drag to bend the route around land' => __('Drag to bend the route around land'),
+            "Drag to set this leg's destination" => __("Drag to set this leg's destination"),
+            'Drag to move · double-click to delete' => __('Drag to move · double-click to delete'),
+            'Drag to move this bend' => __('Drag to move this bend'),
+            // MapLibre's own control labels (resources/js/map-locale.js).
+            'Map' => __('Map'),
+            'Map marker' => __('Map marker'),
+            'Drag to rotate map, click to reset north' => __('Drag to rotate map, click to reset north'),
+            'Zoom in' => __('Zoom in'),
+            'Zoom out' => __('Zoom out'),
+            'Enable globe' => __('Enable globe'),
+            'Disable globe' => __('Disable globe'),
+            // Carousel arrows (resources/js/carousel.js).
+            'Previous' => __('Previous'),
+            'Next' => __('Next'),
         ];
     }
 

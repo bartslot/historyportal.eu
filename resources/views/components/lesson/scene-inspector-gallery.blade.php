@@ -48,11 +48,11 @@
         <div class="mt-1 inline-flex overflow-hidden rounded-lg border border-slate-700/60">
             <button type="button" wire:click="setGalleryFit('cover')"
                     class="px-3 py-1 text-xs font-medium transition-colors {{ $fit === 'cover' ? 'bg-primary text-slate-950' : 'bg-slate-800 text-slate-400' }}">
-                Cover
+                {{ __('Cover') }}
             </button>
             <button type="button" wire:click="setGalleryFit('fit')"
                     class="px-3 py-1 text-xs font-medium transition-colors {{ $fit === 'fit' ? 'bg-primary text-slate-950' : 'bg-slate-800 text-slate-400' }}">
-                Fit
+                {{ __('Fit') }}
             </button>
         </div>
         <span class="mt-1 text-2xs text-slate-500">{{ __('Cover fills the frame (may crop). Fit shows the whole image on a blurred backdrop.') }}</span>
@@ -99,10 +99,10 @@
         {{-- Consistent "+ Add image" affordance (same picker as voyage — paintings + upload). --}}
         <button type="button" wire:click="openGalleryImagePicker"
                 class="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-600 py-1.5 text-xs font-medium text-slate-300 hover:border-slate-400 hover:text-slate-100">
-            <span class="text-base leading-none">+</span> Add image
+            <span class="text-base leading-none">+</span> {{ __('Add image') }}
         </button>
         <div class="mt-1.5 flex items-center gap-1.5">
-            <input type="url" x-model="url" placeholder="or paste an image URL"
+            <input type="url" x-model="url" placeholder="{{ __('or paste an image URL') }}"
                    class="input input-xs input-bordered bg-slate-900 flex-1" />
             <button type="button" class="btn btn-xs btn-primary"
                     @click="if (url.trim()) { $wire.addGalleryImage(url); url='' }">{{ __('Add') }}</button>

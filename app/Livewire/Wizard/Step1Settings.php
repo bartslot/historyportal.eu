@@ -442,7 +442,7 @@ class Step1Settings extends Component
     #[Computed]
     public function games()
     {
-        return StrategyGame::active()->orderBy('title')->get();
+        return StrategyGame::active()->forLanguage($this->lesson?->language ?? app()->getLocale())->orderBy('title')->get();
     }
 
     #[Computed]

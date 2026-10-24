@@ -3,19 +3,19 @@
 <div class="space-y-3 text-sm">
     <h3 class="flex items-center gap-2 font-semibold text-sky-300">
         <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
-        Map block
+        {{ __('Map block') }}
     </h3>
 
     <p class="text-xs text-slate-400">
-        Shows the territory on the historical map, fit to its borders at the chosen year.
+        {{ __('Shows the territory on the historical map, fit to its borders at the chosen year.') }}
     </p>
 
     <label class="form-control">
         <span class="text-xs uppercase tracking-wider text-slate-400">{{ __('Year') }}</span>
         <input type="number" wire:model.blur.number="selectedScene.config.year" wire:change="saveSelected"
-               placeholder="e.g. 1600"
+               placeholder="{{ __('e.g. :example', ['example' => '1600']) }}"
                class="input input-sm input-bordered bg-slate-900 mt-1" />
-        <span class="mt-1 text-2xs text-slate-500">Negative = BCE. Sets the map's time slider.</span>
+        <span class="mt-1 text-2xs text-slate-500">{{ __('Negative = BCE. Sets the map\'s time slider.') }}</span>
     </label>
 
     <label class="form-control">
@@ -78,12 +78,12 @@
                 @endforeach
             </ul>
         @elseif (filled($cityQuery))
-            <p class="mt-1 text-2xs text-slate-500">No city matches “{{ $cityQuery }}”. Try a different spelling, or drop a pin below.</p>
+            <p class="mt-1 text-2xs text-slate-500">{{ __('No city matches “:q”. Try a different spelling, or drop a pin below.', ['q' => $cityQuery]) }}</p>
         @endif
 
         <button type="button"
                 onclick="window.dispatchEvent(new CustomEvent('lessonmap:add-focus'))"
-                class="mt-1 text-2xs text-sky-300 underline hover:text-sky-200">or drop a pin on the map</button>
+                class="mt-1 text-2xs text-sky-300 underline hover:text-sky-200">{{ __('or drop a pin on the map') }}</button>
 
         @php $annotations = $scene->config['annotations'] ?? []; @endphp
         @if (count($annotations))
@@ -124,7 +124,7 @@
             <div class="mt-1 flex items-center justify-between gap-2 rounded-lg border border-success/40 bg-success/10 px-2.5 py-1.5">
                 <div class="min-w-0">
                     <p class="truncate text-sm text-success">{{ $scene->location ?? $qid }}</p>
-                    <p class="text-2xs text-slate-500">{{ $qid }} · red boundary, fit at the chosen year</p>
+                    <p class="text-2xs text-slate-500">{{ $qid }} · {{ __('red boundary, fit at the chosen year') }}</p>
                 </div>
                 <button type="button" wire:click="unlinkTerritory"
                         class="shrink-0 text-2xs text-error/80 underline hover:text-error">{{ __('Change') }}</button>
@@ -158,9 +158,9 @@
                 @php $blockYear = $scene->config['year'] ?? null; @endphp
                 <p class="mt-1 text-2xs text-slate-500">
                     @if ($blockYear !== null)
-                        No “{{ $territoryQuery }}” existed around {{ $blockYear < 0 ? abs($blockYear).' BCE' : $blockYear }}. Try the empire that ruled it then (e.g. a larger kingdom or monarchy).
+                        {{ __('No “:q” existed around :year. Try the empire that ruled it then (e.g. a larger kingdom or monarchy).', ['q' => $territoryQuery, 'year' => $blockYear < 0 ? __(':year BCE', ['year' => abs($blockYear)]) : $blockYear]) }}
                     @else
-                        No “{{ $territoryQuery }}” found — try the empire that ruled the region.
+                        {{ __('No “:q” found. Try the empire that ruled the region.', ['q' => $territoryQuery]) }}
                     @endif
                 </p>
             @endif

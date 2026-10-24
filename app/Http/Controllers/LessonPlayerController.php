@@ -69,6 +69,12 @@ class LessonPlayerController extends Controller
             abort(404, 'Lesson not found or not yet published.');
         }
 
+        // A game pinned before games had a language ("Cross the Rubicon" on every lesson) stays
+        // off a lesson in another language: the brief falls back to the general team challenge.
+        if ($lesson->strategyGame && ! $lesson->strategyGame->speaks($lesson)) {
+            $lesson->setRelation('strategyGame', null);
+        }
+
         // The player speaks the LESSON's language (buttons, quiz, pause and score screens), not the
         // visitor's: the class is following an Italian lesson. Unshipped languages keep the UI locale.
         if (Locales::isSupported($lesson->language)) {

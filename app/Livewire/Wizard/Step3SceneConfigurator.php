@@ -214,7 +214,8 @@ class Step3SceneConfigurator extends Component
     #[Computed]
     public function games()
     {
-        return StrategyGame::active()->orderBy('title')->get();
+        // Only games the class can read: every strategy game so far is English.
+        return StrategyGame::active()->forLanguage($this->lesson->language)->orderBy('title')->get();
     }
 
     public function selectScene(int $id): void
@@ -2529,15 +2530,21 @@ class Step3SceneConfigurator extends Component
     public function transports(): array
     {
         $json = json_decode(File::get(resource_path('js/timemap/transports.json')), true);
+        // The catalogue is English data; each word is listed here so lang:audit sees it.
+        $words = [
+            'Ship' => __('Ship'), 'Horse' => __('Horse'), 'Camel' => __('Camel'),
+            'Sailed' => __('Sailed'), 'Rode overland' => __('Rode overland'), 'Crossed desert or steppe' => __('Crossed desert or steppe'),
+        ];
+        $say = fn (string $text) => $words[$text] ?? $text;
 
         return collect($json['transports'] ?? [])
             ->filter(fn ($t) => is_array($t) && ! empty($t['id']))
             ->map(fn ($t) => [
                 'id' => (string) $t['id'],
-                'label' => (string) ($t['label'] ?? $t['id']),
+                'label' => $say((string) ($t['label'] ?? $t['id'])),
                 'terrain' => ($t['terrain'] ?? 'water') === 'land' ? 'land' : 'water',
                 'thumb' => (string) ($t['thumb'] ?? ''),
-                'hint' => (string) ($t['hint'] ?? ''),
+                'hint' => $say((string) ($t['hint'] ?? '')),
             ])
             ->values()
             ->all();
@@ -5092,7 +5099,9 @@ class Step3SceneConfigurator extends Component
                 'duration_seconds' => $gameType === 'strategy' ? 600 : 180,
                 'quiz_question_count' => $gameType === 'quiz' ? (int) ($this->lesson->quiz_question_count ?? 4) : null,
                 'quiz_timing' => $gameType === 'quiz' ? ($this->lesson->quiz_timing ?? 'after') : null,
-                'strategy_game_id' => $gameType === 'strategy' ? $this->defaultStrategyGameId() : null,
+                // No game until the teacher picks one: a preselected "Cross the Rubicon" reached
+                // classes whose teacher never chose it (pair test 2026-10-24).
+                'strategy_game_id' => null,
                 'team_count' => $gameType === 'strategy' ? (int) ($this->lesson->team_count ?? 2) : null,
             ];
             // A predict moment needs nothing generated: the teacher writes the question and rubric.
@@ -5375,7 +5384,7 @@ class Step3SceneConfigurator extends Component
                 : ($scene->duration_seconds ?: 180),
             'quiz_question_count' => $gameType === 'quiz' ? (int) ($scene->quiz_question_count ?? $this->lesson->quiz_question_count ?? 4) : null,
             'quiz_timing' => $gameType === 'quiz' ? ($scene->quiz_timing ?? $this->lesson->quiz_timing ?? 'after') : null,
-            'strategy_game_id' => $gameType === 'strategy' ? ($scene->strategy_game_id ?? $this->defaultStrategyGameId()) : null,
+            'strategy_game_id' => $gameType === 'strategy' ? $scene->strategy_game_id : null,
             'team_count' => $gameType === 'strategy' ? (int) ($scene->team_count ?? $this->lesson->team_count ?? 2) : null,
         ]);
 
@@ -5396,13 +5405,6 @@ class Step3SceneConfigurator extends Component
             'game_split_count' => max(1, $games->count()),
         ]);
         $this->lesson->refresh();
-    }
-
-    private function defaultStrategyGameId(): ?int
-    {
-        return $this->lesson->strategy_game_id
-            ?? StrategyGame::matchForLesson($this->lesson)?->id
-            ?? StrategyGame::active()->orderBy('title')->value('id');
     }
 
     public function saveWorldSettings(float $yOffset, float $scale, float $charScale): void

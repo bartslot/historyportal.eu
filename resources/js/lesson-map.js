@@ -9,6 +9,7 @@
  *   map.setYear(1200); map.destroy()
  */
 import maplibregl from './maplibre.js'
+import { mapLocale } from './map-locale.js'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { renderAnnotations, focusLabelLayout } from './map-annotations.js'
 import { placeLabelLayout, placeLabelPaint } from './map-place-label.js'
@@ -182,6 +183,7 @@ export function renderLessonMap (el, opts = {}) {
   const map = new maplibregl.Map({
     container: el,
     interactive,
+    locale: mapLocale(),
     // MapLibre 6 slices vector tiles past their maxzoom instead of overscaling them, which moves labels.
     // Kept at the v5 behaviour so the upgrade changes nothing on screen.
     zoomLevelsToOverscale: undefined,
