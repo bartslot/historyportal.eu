@@ -141,7 +141,8 @@
                 'id'          => $s->id,   // lets the teacher-preview "Edit scene" deep-link to this exact scene
                 'order'       => $s->order,
                 'kind'        => $s->kind,
-                'status'      => $s->status,   // canStart: a scene still generating holds Start
+                // canStart: a scene whose media is still being made holds Start (Scene::isAwaitingMedia).
+                'awaiting_media' => $s->isAwaitingMedia(),
                 // A predict moment's rubric is the grader's business: the class gets the questions only.
                 'config'      => $s->game_type === 'predict' && is_array(($s->config ?? [])['predict'] ?? null)
                     ? ['predict' => \App\Services\Lessons\PredictSpec::forPlayer($s->config['predict'])] + $s->config

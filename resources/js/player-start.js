@@ -34,9 +34,6 @@ export function mayAutoplay (win) {
   }
 }
 
-/** Scene statuses that mean the pipeline is still making this scene's media. */
-const GENERATING = ['pending', 'generating']
-
 /**
  * Pure: can the class press Start? A lesson whose narration is still being made waits ("Audio
  * generating…"), but a lesson with nothing generating is startable whether or not it is narrated:
@@ -49,7 +46,8 @@ const GENERATING = ['pending', 'generating']
  */
 export function canStartLesson (lesson) {
   const scenes = lesson?.scenes || []
-  const playsWithoutVoice = (s) => ['map', 'voyage', 'gallery', 'video', 'game'].includes(s.kind)
-  const stillMaking = (s) => GENERATING.includes(s.status) && !s.audio_url && !playsWithoutVoice(s)
+  // `awaiting_media` is decided server-side (Scene::isAwaitingMedia): an empty scene the editor
+  // added has nothing to generate and never holds Start (pair test round 7).
+  const stillMaking = (s) => s.awaiting_media && !s.audio_url
   return scenes.length > 0 && !scenes.some(stillMaking)
 }

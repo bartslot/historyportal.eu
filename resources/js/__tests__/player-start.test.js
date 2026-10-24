@@ -46,33 +46,29 @@ describe('mayAutoplay', () => {
   it('a browser without userActivation keeps the old behaviour', () => expect(mayAutoplay(win(undefined))).toBe(true))
 })
 
-/** Pair test round 5: a narration-free lesson showed "Audio wordt gemaakt…" forever. */
+/**
+ * Start waits while a scene's media is still being made. `awaiting_media` is the server's verdict
+ * (Scene::isAwaitingMedia, tested in PHP): round 5 a narration-free lesson waited forever, round 6
+ * a partly narrated one started too early, round 7 an empty editor-added scene held it forever.
+ */
 describe('canStartLesson', () => {
-  test('a lesson with nothing generating can start, narrated or not', () => {
-    expect(canStartLesson({ scenes: [{ kind: 'narration', status: 'ready' }, { kind: 'game', game_type: 'quiz', status: 'ready' }] })).toBe(true)
+  test('a lesson with nothing being made can start, narrated or not', () => {
+    expect(canStartLesson({ scenes: [{ kind: 'narration', awaiting_media: false }, { kind: 'game', awaiting_media: false }] })).toBe(true)
   })
 
-  test('a lesson whose narration is still being made waits', () => {
-    expect(canStartLesson({ scenes: [{ kind: 'narration', status: 'generating' }, { kind: 'narration', status: 'ready' }] })).toBe(false)
-    expect(canStartLesson({ scenes: [{ kind: 'narration', status: 'pending' }] })).toBe(false)
-  })
-
-  test('scenes that play without narration never block, generating or not', () => {
-    expect(canStartLesson({ scenes: [{ kind: 'map', status: 'pending' }, { kind: 'game', game_type: 'quiz', status: 'generating' }, { kind: 'narration', status: 'ready' }] })).toBe(true)
-    // Re-narrating a scene that still has its old recording does not hold the class.
-    expect(canStartLesson({ scenes: [{ kind: 'narration', status: 'generating', audio_url: '/a.m4a' }] })).toBe(true)
-  })
-
-  /** Pair test round 6: Start showed while later scenes were still being narrated. */
-  test('a partly narrated lesson waits until every scene that needs a voice is made', () => {
+  test('a partly narrated lesson waits until every scene still being made is done', () => {
     expect(canStartLesson({
       audio_url: '/lesson.m4a',
       scenes: [
-        { kind: 'narration', status: 'ready', audio_url: '/1.m4a' },
-        { kind: 'map', status: 'ready' },
-        { kind: 'narration', status: 'pending' },
+        { kind: 'narration', awaiting_media: false, audio_url: '/1.m4a' },
+        { kind: 'map', awaiting_media: false },
+        { kind: 'narration', awaiting_media: true },
       ],
     })).toBe(false)
+  })
+
+  test('re-narrating a scene that still has its old recording does not hold the class', () => {
+    expect(canStartLesson({ scenes: [{ kind: 'narration', awaiting_media: true, audio_url: '/a.m4a' }] })).toBe(true)
   })
 
   test('an empty lesson cannot start', () => {

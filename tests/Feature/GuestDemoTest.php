@@ -301,7 +301,7 @@ class GuestDemoTest extends TestCase
         $lesson = $this->publishedDemoLesson();
         // Never generated: no picture, no audio yet (a scene being RE-made keeps its old media and
         // stays on, round 6).
-        $lesson->scenes()->update(['status' => 'pending', 'audio_path' => null, 'image_path' => null, 'shots' => null]);
+        $lesson->scenes()->update(['status' => 'pending', 'script_segment' => 'Once upon a road.', 'audio_path' => null, 'image_path' => null, 'shots' => null]);
 
         DemoLesson::forget();
 
@@ -336,7 +336,7 @@ class GuestDemoTest extends TestCase
         DemoLesson::forget();
         $this->assertNull(DemoLesson::resolve(), 'a random public lesson never becomes the demo');
 
-        $random->update(['title_series' => 'tasman-standard']);
+        $random->update(['translation_group' => 'tasman-standard']);
         DemoLesson::forget();
         $this->assertSame($random->id, DemoLesson::resolve()?->id, 'a lesson with a Figma poster may stand in');
     }

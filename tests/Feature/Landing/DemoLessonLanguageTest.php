@@ -210,7 +210,7 @@ class DemoLessonLanguageTest extends TestCase
     {
         // The configured English lesson had a failed scene, so the Batavian Republic won, and the hero
         // typed "The Batavian Republic: A Quest for Liberty" as if that were a learning goal.
-        $this->lesson('The Batavian Republic: A Quest for Liberty', 'en')->update(['title_series' => 'tasman-standard']);
+        $this->lesson('The Batavian Republic: A Quest for Liberty', 'en')->update(['translation_group' => 'tasman-standard']);
         $request = \Illuminate\Http\Request::create('/', 'GET');
         $request->headers->set('Accept-Language', 'en-GB,en;q=0.9');
         DemoLesson::forget();
@@ -220,7 +220,7 @@ class DemoLessonLanguageTest extends TestCase
 
     public function test_a_dutch_lesson_types_its_canon_leerdoel_not_its_title(): void
     {
-        $this->lesson('De reis van Abel Tasman', 'nl')->update(['title_series' => 'tasman-standard']);
+        $this->lesson('De reis van Abel Tasman', 'nl')->update(['translation_group' => 'tasman-standard']);
 
         DemoLesson::forget();
         $request = \Illuminate\Http\Request::create('/', 'GET');
@@ -307,8 +307,65 @@ class DemoLessonLanguageTest extends TestCase
     {
         $this->lesson('Abel Tasman: the voyage into the unknown', 'en');
         $series = $this->lesson('Tasman, tweede editie', 'nl');
-        $series->update(['title_series' => 'tasman-standard']);
+        $series->update(['translation_group' => 'tasman-standard']);
 
         $this->assertSame($series->id, $this->visit(['Accept-Language' => 'nl-NL,nl;q=0.9'])?->id);
+    }
+
+    /** The official Dutch original: carries the series in translation_group AND title_series. */
+    private function officialDutch(): Lesson
+    {
+        $this->lesson('Abel Tasman: the voyage into the unknown', 'en');
+        $original = $this->lesson('Abel Tasman: De reis naar het onbekende', 'nl');
+        $original->update(['translation_group' => 'tasman-standard', 'title_series' => 'tasman-standard']);
+
+        return $original->fresh();
+    }
+
+    /**
+     * Round 7 (tester): a teacher's renamed, published copy of the demo took over the homepage,
+     * because a copy keeps title_series (and so the poster) and the fallback trusted title_series.
+     */
+    public function test_a_renamed_published_copy_never_takes_the_homepage(): void
+    {
+        $original = $this->officialDutch();
+        $copy = app(\App\Services\LessonCopier::class)->copy($original, User::factory()->create(), ['status' => 'published']);
+        $copy->update(['title' => 'QA story game nl']);
+        $this->assertSame('tasman-standard', $copy->fresh()->title_series, 'precondition: a copy keeps the poster series');
+        $original->update(['status' => 'configuring']);   // the original drops out
+
+        $winner = $this->visit(['Accept-Language' => 'nl-NL,nl;q=0.9']);
+
+        $this->assertNotSame($copy->id, $winner?->id);
+        $this->assertSame('en', $winner?->language, 'the English hand-picked demo stands in');
+    }
+
+    /** ...nor a published copy by another account that kept the demo's exact title. */
+    public function test_a_published_copy_with_the_demos_title_never_stands_in_for_the_original(): void
+    {
+        $original = $this->officialDutch();
+        $copy = app(\App\Services\LessonCopier::class)->copy($original, User::factory()->create(), ['status' => 'published']);
+        $original->update(['status' => 'configuring']);
+
+        $this->assertNotSame($copy->id, $this->visit(['Accept-Language' => 'nl-NL,nl;q=0.9'])?->id);
+    }
+
+    /** Round 7 root cause: an empty game scene added in the editor is `pending` with nothing to make. */
+    public function test_an_editor_added_empty_strategy_scene_keeps_the_original_on_the_homepage(): void
+    {
+        $original = $this->officialDutch();
+        Scene::create(['lesson_id' => $original->id, 'order' => 2, 'kind' => 'game', 'game_type' => 'strategy', 'status' => 'pending']);
+        Scene::create(['lesson_id' => $original->id, 'order' => 3, 'kind' => 'narration', 'status' => 'pending', 'script_segment' => '']);
+
+        $this->assertSame($original->id, $this->visit(['Accept-Language' => 'nl-NL,nl;q=0.9'])?->id);
+    }
+
+    public function test_an_original_whose_real_narration_is_still_being_made_from_scratch_steps_aside(): void
+    {
+        $original = $this->officialDutch();
+        Scene::create(['lesson_id' => $original->id, 'order' => 2, 'kind' => 'narration', 'status' => 'pending',
+            'script_segment' => 'Tasman zeilt uit.']);
+
+        $this->assertNotSame($original->id, $this->visit(['Accept-Language' => 'nl-NL,nl;q=0.9'])?->id);
     }
 }

@@ -111,6 +111,36 @@ class Scene extends Model
         return $query->orderBy('order');
     }
 
+    /** Kinds that play without a voice: the pipeline never narrates them (game intros are the teacher's). */
+    public const NO_VOICE_KINDS = ['map', 'voyage', 'gallery', 'video', 'game'];
+
+    /**
+     * Scenes whose media the pipeline is still making: generating now, or waiting with a script to
+     * narrate. A scene the editor added and left empty (a strategy/debate/predict scene, the three
+     * narration scenes of a fresh Decision point) is `pending` with nothing to generate; counting
+     * it as "being made" dropped the demo off the homepage and held Start forever (pair test round 7).
+     * Same rule as isAwaitingMedia(), for queries.
+     */
+    public function scopeAwaitingMedia($query)
+    {
+        return $query->whereNotIn('kind', self::NO_VOICE_KINDS)
+            ->where(fn ($q) => $q->where('status', 'generating')
+                ->orWhere(fn ($q) => $q->where('status', 'pending')
+                    ->whereNotNull('script_segment')
+                    ->whereRaw("trim(script_segment) <> ''")));
+    }
+
+    /** See scopeAwaitingMedia(): the same rule for one loaded scene (the player's Start check). */
+    public function isAwaitingMedia(): bool
+    {
+        if (in_array($this->kind, self::NO_VOICE_KINDS, true)) {
+            return false;
+        }
+
+        return $this->status === 'generating'
+            || ($this->status === 'pending' && trim((string) $this->script_segment) !== '');
+    }
+
     /**
      * Map-block fields resolved from a lesson's curated topic (polity QID + representative year).
      * Used both by the composer (add Map block) and the pipeline (default map block).

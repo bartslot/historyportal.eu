@@ -161,21 +161,17 @@ final class DemoLesson
     /**
      * The fallback is never "the newest public lesson by anyone": that put a random teacher's
      * lesson, without a Figma poster, on the front door with its title typed as the goal (pair
-     * test round 6). Only a lesson of a series with a Figma title poster, or one of the
-     * hand-picked demo titles, may stand in; otherwise the English hand-picked demo does.
+     * test round 6). Only an OFFICIAL lesson of a series with a Figma title poster may stand in;
+     * otherwise the English hand-picked demo does.
+     *
+     * Official = `translation_group`, which LessonCopier never copies. Not `title_series`: copies
+     * keep that (so they keep the poster), and a teacher's renamed, published copy took over the
+     * homepage through it (round 7). The hand-picked titles need no clause here: configured()
+     * already serves them.
      */
     private static function allowListed($query)
     {
-        $series = TitlePoster::seriesWithPosters();
-        $titles = array_values(array_filter(array_merge(
-            [config('demo.lesson_title')],
-            array_column((array) config('demo.by_language', []), 'title'),
-        )));
-
-        return $query->where(fn ($q) => $q
-            ->whereIn('title_series', $series ?: ['-'])
-            ->orWhere(fn ($q) => $q->whereNull('title_series')->whereIn('translation_group', $series ?: ['-']))
-            ->orWhereIn('title', $titles ?: ['-']));
+        return $query->whereIn('translation_group', TitlePoster::seriesWithPosters() ?: ['-']);
     }
 
     /**
@@ -260,16 +256,26 @@ final class DemoLesson
         //
         // A scene being re-narrated or regenerated is not "every scene ready", but it still has
         // its picture and the lesson still plays: the original must not drop out for that.
-        return self::listed()
+        $query = self::listed()
             ->whereIn('status', self::PUBLIC_STATUSES)
             ->where('title', $title)
             ->where('language', $language)
             ->whereHas('scenes')
-            ->whereDoesntHave('scenes', fn ($scenes) => $scenes->where('status', '!=', 'ready')
+            // A scene still being made with nothing to show yet; an empty scene the editor added
+            // (nothing to generate) does not count (round 7).
+            ->whereDoesntHave('scenes', fn ($scenes) => $scenes->awaitingMedia()
                 ->whereNull('image_path')->whereNull('audio_path')->whereNull('shots'))
-            ->orderByRaw('translation_group IS NULL')
-            ->orderBy('id')
-            ->first();
+            ->whereDoesntHave('scenes', fn ($scenes) => $scenes->where('status', 'failed'));
+
+        // Once the official original exists (it alone carries a translation_group), a copy that
+        // kept its title never stands in for it, even while the original is unavailable (round 7).
+        $hasOriginal = Lesson::where('title', $title)->where('language', $language)
+            ->whereNotNull('translation_group')->exists();
+        if ($hasOriginal) {
+            $query->whereNotNull('translation_group');
+        }
+
+        return $query->orderBy('id')->first();
     }
 
     /**
@@ -288,7 +294,8 @@ final class DemoLesson
             // An untitled lesson has nothing for the hero to type (and took /nl down, round 5).
             ->whereNotNull('title')->where('title', '!=', '')
             ->whereHas('scenes')
-            ->whereDoesntHave('scenes', fn ($scenes) => $scenes->where('status', '!=', 'ready'));
+            ->whereDoesntHave('scenes', fn ($scenes) => $scenes->awaitingMedia())
+            ->whereDoesntHave('scenes', fn ($scenes) => $scenes->where('status', 'failed'));
     }
 
     /** Not a guest's sandbox copy, and a code to open it by. */
