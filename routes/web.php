@@ -63,6 +63,10 @@ Route::get('/nl/curriculum/{slug}', [\App\Http\Controllers\Public\CurriculumCont
     ->where('slug', '[a-z0-9-]+')
     ->name('public.curriculum.goal');
 
+// English lives at the root; /en (what people type for the English site) leads there.
+Route::get('/en/{path?}', fn (?string $path = null) => redirect('/'.ltrim((string) $path, '/'), 301))
+    ->where('path', '.*');
+
 // The other languages, prefixed and locale-aware.
 Route::prefix('{locale}')
     ->whereIn('locale', ['nl', 'de', 'fr', 'it'])
