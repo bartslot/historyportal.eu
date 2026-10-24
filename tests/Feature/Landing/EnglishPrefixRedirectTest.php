@@ -21,4 +21,10 @@ class EnglishPrefixRedirectTest extends TestCase
     {
         $this->get('/en/pricing')->assertRedirect('/pricing')->assertStatus(301);
     }
+
+    public function test_the_query_string_survives_the_redirect(): void
+    {
+        $this->get('/en?utm_source=fb&x=1')->assertRedirect('/?utm_source=fb&x=1');
+        $this->get('/en/pricing?utm_source=fb')->assertRedirect('/pricing?utm_source=fb');
+    }
 }

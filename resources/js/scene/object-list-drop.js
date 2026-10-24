@@ -40,3 +40,16 @@ export function resolveDrop({ ids, kindOf, movedId, artOnTop, canSwap = true }) 
 
   return { textIds, artIds, artOnTop: after, blocked: false }
 }
+
+/**
+ * SortableJS's fallback drag ghost is a cloneNode() of an x-for row, appended to the list. Alpine
+ * sees a new element full of directives and initialises it outside the x-for scope: "obj is not
+ * defined", once per directive, on every drop (pair test 2026-10-24). While a drag runs the list's
+ * own child changes are kept from Alpine; the drop undoes Sortable's move anyway.
+ *
+ * @param {HTMLElement} list  the Sortable root
+ * @param {boolean} dragging
+ */
+export function shieldListFromAlpine (list, dragging) {
+  list._x_ignoreMutationObserver = dragging
+}

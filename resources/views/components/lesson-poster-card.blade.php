@@ -15,7 +15,8 @@
 
         @if ($cover)
             <img src="{{ $cover }}" alt="{{ $lesson->title }}"
-                 loading="lazy" decoding="async"
+                 {{-- The hero poster (bare) is above the fold: load it at once and first. --}}
+                 @if ($bare) loading="eager" fetchpriority="high" @else loading="lazy" @endif decoding="async"
                  width="480" height="768"
                  class="h-full w-full object-cover transition duration-500 ease-out group-hover:scale-[1.04]">
         @else

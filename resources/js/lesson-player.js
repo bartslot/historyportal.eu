@@ -27,6 +27,7 @@ import { isClipartLayer, backdropLayers } from './scene/layer-filters.js'
 import { fitToPlate, plateAspect } from './scene/plate-box.js'
 import { outgoingStages, hideFlatLayers } from './scene/stage-handoff.js'
 import { sceneMode } from './scene/split-layout.js'
+import { gameFlowFor } from './scene/game-flow.js'
 import { singleSource, cropBox, cropPlates } from './scene/background-crop.js'
 import { mountEmbedBg } from './scene/embed-bg.js'
 import { sameOriginMediaUrl } from './media-url.js'
@@ -2129,25 +2130,15 @@ Alpine.data('lessonGame', (lesson) => ({
       if (scene && scene.kind === 'game') {
         this._gameResumeIndex = index + 1
         this.canResumeAfterGame = this._gameResumeIndex < _sceneQueue.length
-        // Quiz segments show the actual questions inline (navigable card overlay);
-        // the timer/teams flow below belongs to strategy games only.
-        const segmentQuestions = scene.quiz_questions?.length ? scene.quiz_questions : lesson.quiz_questions
-        if (scene.game_type === 'quiz' && segmentQuestions?.length) {
-          this._beginQuizFlow(segmentQuestions, scene.quiz_shuffle, scene.id ?? null)
-          return
-        }
-        // Predict moment: the class answers before the next scene shows what happened.
-        if (scene.game_type === 'predict' && scene.config?.predict) {
-          this._beginPredictFlow(index, scene)
-          return
-        }
-        // Team game on the class screen: the teacher enters each team's choice, then the lesson goes on.
-        if (scene.game_type === 'team' && scene.config?.team) {
-          this._beginTeamFlow(scene)
-          return
-        }
-        this._beginGameFlow(scene)
-        return
+        // Quiz segments show the actual questions inline (navigable card overlay); predict and
+        // team moments run on the class screen; the timer/teams brief belongs to strategy games
+        // only. A game scene with nothing to run is skipped (game-flow.js).
+        const { flow, questions } = gameFlowFor(scene, lesson.quiz_questions, lesson.game_type)
+        if (flow === 'quiz') { this._beginQuizFlow(questions, scene.quiz_shuffle, scene.id ?? null); return }
+        if (flow === 'predict') { this._beginPredictFlow(index, scene); return }
+        if (flow === 'team') { this._beginTeamFlow(scene); return }
+        if (flow === 'strategy') { this._beginGameFlow(scene); return }
+        this.canResumeAfterGame = false
       }
       this._tel.log('scene_completed', { sceneIndex: index, sceneId: _sceneQueue[index]?.id })
       const next = index + 1
@@ -3279,13 +3270,6 @@ Alpine.data('lessonGame', (lesson) => ({
 
     /** The episode line's font-size on a comic candidate (cqw of the poster stage). */
     episodeSize (poster) { return episodeSize(poster) },
-
-    /** Down to "About this lesson", under the title screen. */
-    scrollToAbout () {
-      const host = document.querySelector('[data-title-screen]')
-      const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-      host?.scrollTo({ top: host.clientHeight, behavior: reduce ? 'auto' : 'smooth' })
-    },
 
     setCaptions (on) {
       this.captionsOn = !!on

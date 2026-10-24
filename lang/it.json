@@ -995,7 +995,7 @@
     "Route view": "Vista della rotta",
     "Rubric": "Griglia di valutazione",
     "Ruler": "Sovrano",
-    "Rulers": "Sovrani",
+    "Rulers": "Righelli",
     "SCENE": "SCENA",
     "Sail a real expedition on the map. No topic or generation needed, ready to edit in seconds.": "Naviga una vera spedizione sulla mappa. Nessun argomento o generazione necessari, pronta da modificare in pochi secondi.",
     "Same for class (digibord/paper)": "Uguale per la classe (LIM/carta)",
@@ -2229,5 +2229,13 @@
     "Moves forward": "Avanza",
     "How far the layer moves forward as the meter fills, in % of the picture": "Quanto avanza il livello mentre l'indicatore si riempie, in % dell'immagine",
     "Follow the wind": "Segue il vento",
-    "In a split scene the text stays in front of the pictures.": "In una scena divisa il testo resta davanti alle immagini."
+    "In a split scene the text stays in front of the pictures.": "In una scena divisa il testo resta davanti alle immagini.",
+    "Add a scene": "Aggiungi una scena",
+    "Gallery image": "Immagine della galleria",
+    "Landfall image": "Immagine dell'approdo",
+    "Scene image": "Immagine della scena",
+    "Scene panorama": "Panorama della scena",
+    "Slideshow image": "Immagine della presentazione",
+    "Title background": "Sfondo del titolo",
+    "Work in your teams to decide your strategy, then present it to the class.": "In squadra decidete la vostra strategia, poi presentatela alla classe."
 }

@@ -257,6 +257,9 @@ final class JsTranslations
             'This is the correct answer. Editing it changes what counts as right.' => __('This is the correct answer. Editing it changes what counts as right.'),
             'Previous question' => __('Previous question'),
             'Next question' => __('Next question'),
+            // A new text object's starting name (scene/TextOverlayLayer.js addText).
+            'Title' => __('Title'),
+            'Text' => __('Text'),
         ];
     }
 

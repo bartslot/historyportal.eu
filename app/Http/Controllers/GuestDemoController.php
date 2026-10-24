@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Enums\LessonStatus;
+use App\Models\Lesson;
+use App\Models\User;
 use App\Services\GuestDemoSession;
 use App\Services\LessonCopier;
 use App\Support\DemoLesson;
@@ -30,12 +32,30 @@ final class GuestDemoController extends Controller
         // is configured, never started over from step 1 (Bart, 2026-10-20).
         $user = $request->user();
         $sandbox = $user && ! $user->isGuestDemo()
-            ? app(LessonCopier::class)->copy($demo, $user, ['status' => LessonStatus::Configuring, 'wizard_step' => 4])
+            ? $this->openCopyOf($demo, $user)
+                ?? app(LessonCopier::class)->copy($demo, $user, ['status' => LessonStatus::Configuring, 'wizard_step' => 4])
             : $this->guests->start($demo);
 
         return redirect()->route('teacher.lessons.wizard', [
             'lesson' => $sandbox->id,
             'step' => 4,
         ]);
+    }
+
+    /**
+     * The teacher's own unpublished copy of the demo, so a second click reopens it instead of
+     * piling up copies. A copy keeps the demo's title and topic.
+     * ponytail: matched on those columns, not on a copied_from id; add that column if teachers
+     * start keeping unrelated lessons under the demo's exact title.
+     */
+    private function openCopyOf(Lesson $demo, User $teacher): ?Lesson
+    {
+        return Lesson::where('teacher_id', $teacher->id)
+            ->whereKeyNot($demo->id)
+            ->where('title', $demo->title)
+            ->where('topic', $demo->topic)
+            ->where('status', '!=', LessonStatus::Published->value)
+            ->latest('id')
+            ->first();
     }
 }

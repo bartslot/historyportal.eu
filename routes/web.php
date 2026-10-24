@@ -64,7 +64,11 @@ Route::get('/nl/curriculum/{slug}', [\App\Http\Controllers\Public\CurriculumCont
     ->name('public.curriculum.goal');
 
 // English lives at the root; /en (what people type for the English site) leads there.
-Route::get('/en/{path?}', fn (?string $path = null) => redirect('/'.ltrim((string) $path, '/'), 301))
+// The query string rides along: a campaign link to /en?utm_source=... must keep its tracking.
+Route::get('/en/{path?}', fn (\Illuminate\Http\Request $request, ?string $path = null) => redirect(
+    '/'.ltrim((string) $path, '/').($request->getQueryString() ? '?'.$request->getQueryString() : ''),
+    301,
+))
     ->where('path', '.*');
 
 // The other languages, prefixed and locale-aware.

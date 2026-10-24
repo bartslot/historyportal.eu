@@ -1405,9 +1405,12 @@
                     // fixed-position panel and works consistently across browsers.
                     forceFallback: true,
                     fallbackTolerance: 4,
-                    onStart: (evt) => { this.dragging = true; evt.item._objNext = evt.item.nextSibling; },
+                    // The fallback ghost is a clone of an x-for row: kept from Alpine while dragging,
+                    // or it is initialised scopeless ("obj is not defined", object-list-drop.js).
+                    onStart: (evt) => { this.dragging = true; evt.item._objNext = evt.item.nextSibling; window.__objectListShield(list, true); },
                     onEnd: (evt) => {
                         this.dragging = false;
+                        window.__objectListShield(list, false);
                         // Read the new top→bottom order Sortable applied (BG has no data-obj-id).
                         const ids = [...evt.to.querySelectorAll('[data-obj-id]')].map((el) => el.dataset.objId);
                         // Undo Sortable's DOM move so Alpine's keyed x-for stays the single source of
@@ -2345,7 +2348,7 @@
          style="right: var(--work-right, 16rem);">
         <div class="flex items-center justify-between border-b border-slate-700/60 bg-base-200/60 px-3 py-2">
             <span class="text-2xs font-semibold uppercase tracking-widest text-slate-400">{{ __('Internal notes') }}</span>
-            <button type="button" @click="$store.view.hide('notes')" class="text-slate-500 hover:text-slate-200" aria-label="Close">✕</button>
+            <button type="button" @click="$store.view.hide('notes')" class="text-slate-500 hover:text-slate-200" aria-label="{{ __('Close') }}">✕</button>
         </div>
         <textarea x-model="note" @input.debounce.400ms="save()" rows="6"
                   placeholder="{{ __('Private notes for this lesson. Only you can see these.') }}"
@@ -2593,9 +2596,9 @@
          x-data x-on:keydown.escape.window="if ($wire.addSceneOpen) $wire.set('addSceneOpen', false)">
         <div class="modal-box hp-modals max-w-lg border border-slate-700/70">
             <div class="mb-4 flex items-center justify-between">
-                <h2 class="text-lg font-semibold text-slate-100">Add a scene</h2>
+                <h2 class="text-lg font-semibold text-slate-100">{{ __('Add a scene') }}</h2>
                 <button type="button" class="btn btn-ghost btn-sm btn-circle text-slate-400"
-                        aria-label="Close" wire:click="$set('addSceneOpen', false)">✕</button>
+                        aria-label="{{ __('Close') }}" wire:click="$set('addSceneOpen', false)">✕</button>
             </div>
 
             <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -2667,7 +2670,7 @@
                 @endif
             </div>
         </div>
-        <button type="button" class="modal-backdrop" aria-label="Close"
+        <button type="button" class="modal-backdrop" aria-label="{{ __('Close') }}"
                 wire:click="$set('addSceneOpen', false)"></button>
     </div>
 
@@ -2801,6 +2804,7 @@
                 <div class="h-[62vh] overflow-y-auto p-1.5"
                      wire:loading.class="opacity-40"
                      wire:target="paintingQuery, paintingKind, paintingRegion, applyPaintingChoice">
+                @php $collectionPending = ! $libraryCollectionReady && $paintingPickerMode !== 'model3d' && in_array($paintingKind, ['library', ''], true); @endphp
                 <div class="lp-thumb-grid gap-3" :style="gridStyle">
                     @forelse ($this->paintingResults as $art)
                         {{-- @js() escapes the source/key as safe JS literals (titles carry apostrophes,
@@ -2832,6 +2836,9 @@
                             </span>
                         </button>
                     @empty
+                        @if ($collectionPending)
+                            {{-- Our collection is still on its way (tiles below): no "nothing found" yet. --}}
+                        @else
                         {{-- When the curated corpus comes up empty, "try another word" is dead-end advice:
                              the thing that actually finds obscure subjects is the Commons search, which
                              sits in the footer below and went unnoticed. Point at it instead. --}}
@@ -2861,7 +2868,16 @@
                                 </button>
                             @endif
                         </div>
+                        @endif
                     @endforelse
+                    @if ($collectionPending)
+                        {{-- The lesson's own pictures are up; our Cloudinary collection follows. --}}
+                        <div wire:init="loadLibraryCollection" class="contents">
+                            @for ($i = 0; $i < 5; $i++)
+                                <div data-kind="image" class="animate-pulse rounded-lg bg-slate-700/40"></div>
+                            @endfor
+                        </div>
+                    @endif
                 </div>
                 </div>
                 {{-- Wikimedia and image upload belong to the picture modes; a Sketchfab search has
@@ -2895,7 +2911,7 @@
             </div>
             </div>
         </div>
-        <button type="button" class="modal-backdrop" aria-label="Close"
+        <button type="button" class="modal-backdrop" aria-label="{{ __('Close') }}"
                 wire:click="$set('paintingPickerOpen', false)"></button>
     </div>
 
@@ -2907,13 +2923,13 @@
             <div class="mb-3 flex items-center justify-between gap-3">
                 <h2 class="text-lg font-semibold text-slate-100">{{ __('Import icons') }}</h2>
                 <button type="button" class="btn btn-ghost btn-sm btn-circle text-slate-400"
-                        aria-label="Close" wire:click="$set('svgLibraryOpen', false)">✕</button>
+                        aria-label="{{ __('Close') }}" wire:click="$set('svgLibraryOpen', false)">✕</button>
             </div>
             @if ($svgLibraryOpen)
                 <livewire:svg-asset-library :key="'svg-library-'.$lesson->id" />
             @endif
         </div>
-        <button type="button" class="modal-backdrop" aria-label="Close"
+        <button type="button" class="modal-backdrop" aria-label="{{ __('Close') }}"
                 wire:click="$set('svgLibraryOpen', false)"></button>
     </div>
 

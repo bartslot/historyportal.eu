@@ -76,7 +76,10 @@
         'narrator_welcome_lite_url' => $lesson->narrator?->welcomeVideoLiteUrl(),
         'game_duration_seconds' => $lesson->strategyGame ? $lesson->strategyGame->duration_minutes * 60 : 600,
         'game_title'            => $lesson->strategyGame?->title,
-        'game_instructions'     => $lesson->strategyGame?->instructions,
+        // Instructions are written in markdown; the class gets the rendered text, never the ## and **.
+        'game_instructions_html' => $lesson->strategyGame?->instructions
+            ? \Illuminate\Support\Str::markdown($lesson->strategyGame->instructions, ['html_input' => 'strip', 'allow_unsafe_links' => false])
+            : null,
         'era'                   => $lesson->era,
         'region'                => $lesson->region,
 
@@ -847,13 +850,13 @@
             </div>
 
             {{-- The bottom rail: one row on the bottom gutter, every piece's bottom on one baseline.
-                 Start, the language and the way down to "About this lesson" left, the
+                 Start and the language left, the
                  join QR right (static: title-qr.js only sizes or hides it). --}}
             <div class="title-rail flex items-end gap-2" style="z-index:20" data-title-rail>
                 <div class="flex items-end gap-3" data-title-avoid="children" data-title-piece="cta">
                     <template x-if="canStart">
                         <button type="button" @click="startLesson()" data-title-rail-item
-                                class="title-pill flex items-center gap-2.5 rounded-full bg-white px-5 text-sm font-bold text-brand-ink transition-[filter] duration-150 ease-out hover:brightness-95 focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:gap-3 sm:px-8 sm:text-base">
+                                class="title-pill flex shrink-0 items-center gap-2.5 whitespace-nowrap rounded-full bg-white px-5 text-sm font-bold text-brand-ink transition-[filter] duration-150 ease-out hover:brightness-95 focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:gap-3 sm:px-8 sm:text-base">
                             <svg class="h-4 w-4 fill-none stroke-current" viewBox="0 0 16 17" aria-hidden="true">
                                 <path d="M0.75 1.87758C0.75 1.0219 1.6674 0.479469 2.41716 0.891836L13.9577 7.23916C14.7349 7.66657 14.7349 8.78322 13.9577 9.21064L2.41716 15.558C1.6674 15.9703 0.75 15.4279 0.75 14.5722V1.87758Z" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
@@ -875,13 +878,9 @@
                     </template>
                 </div>
 
+                {{-- No "down to About" chevron after it: beside the language's own caret it read as a
+                     stray second chevron (pair test 2026-10-24). About is a scroll away. --}}
                 <x-lesson.language-switch :lesson="$lesson" :translations="$translations" data-title-avoid data-title-piece="language" data-title-rail-item />
-
-                <button type="button" @click="scrollToAbout()" aria-label="{{ __('About this lesson') }}" data-tooltip="{{ __('About this lesson') }}"
-                        data-title-avoid data-title-piece="chevron" data-title-rail-item
-                        class="title-pill flex w-10 shrink-0 items-center justify-center rounded-full text-white/80 transition-colors hover:text-white focus:outline-none focus-visible:outline-2 focus-visible:outline-white">
-                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>
-                </button>
 
                 {{-- The join code: the QR on its white plate with the lesson code under it (a camera reads
                      it on any picture), or the code alone when the QR made way. --}}
@@ -984,8 +983,9 @@
                 <p class="text-primary text-2xs font-semibold uppercase tracking-[0.3em] mb-3">{{ __('Your Challenge') }}</p>
                 <h2 x-text="lesson.game_title || 'Strategy Challenge'"
                     class="font-history text-2xl sm:text-4xl font-bold text-[#E1EEF4] leading-tight mb-5"></h2>
-                <div x-text="lesson.game_instructions || 'Work in your teams to decide your strategy, then present it to the class.'"
-                     class="whitespace-pre-line text-slate-300 text-sm sm:text-base leading-relaxed max-h-[42vh] overflow-y-auto pr-1"></div>
+                <div x-show="lesson.game_instructions_html" x-html="lesson.game_instructions_html"
+                     class="text-slate-300 text-sm sm:text-base leading-relaxed [&_h1,&_h2,&_h3]:font-bold [&_h1,&_h2,&_h3]:text-[#E1EEF4] [&_h1,&_h2,&_h3]:mt-3 [&_p]:mb-2 [&_ul]:list-disc [&_ol]:list-decimal [&_ul,&_ol]:pl-5 [&_li]:mb-1 max-h-[42vh] overflow-y-auto pr-1"></div>
+                <p x-show="!lesson.game_instructions_html" class="text-slate-300 text-sm sm:text-base leading-relaxed">{{ __('Work in your teams to decide your strategy, then present it to the class.') }}</p>
                 <div class="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-400">
                     <span x-show="lesson.team_count" class="flex items-center gap-1.5">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4z"/></svg>

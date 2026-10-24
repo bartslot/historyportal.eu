@@ -1026,7 +1026,7 @@
     "Route view": "Routeweergave",
     "Rubric": "Beoordelingsmodel",
     "Ruler": "Heerser",
-    "Rulers": "Heersers",
+    "Rulers": "Linialen",
     "SCENE": "SCÈNE",
     "Sail a real expedition on the map. No topic or generation needed, ready to edit in seconds.": "Vaar een echte expeditie op de kaart. Geen onderwerp of generatie nodig, in seconden klaar om te bewerken.",
     "Same for class (digibord/paper)": "Zelfde voor de klas (digibord/papier)",
@@ -2271,5 +2271,13 @@
     "Moves forward": "Vaart vooruit",
     "How far the layer moves forward as the meter fills, in % of the picture": "Hoe ver de laag vooruitgaat terwijl de meter vol loopt, in % van de plaat",
     "Follow the wind": "Volgt de wind",
-    "In a split scene the text stays in front of the pictures.": "In een gesplitste scène blijft de tekst voor de afbeeldingen."
+    "In a split scene the text stays in front of the pictures.": "In een gesplitste scène blijft de tekst voor de afbeeldingen.",
+    "Add a scene": "Een scène toevoegen",
+    "Gallery image": "Galerijafbeelding",
+    "Landfall image": "Afbeelding van de landing",
+    "Scene image": "Scèneafbeelding",
+    "Scene panorama": "Scènepanorama",
+    "Slideshow image": "Diavoorstellingsafbeelding",
+    "Title background": "Titelachtergrond",
+    "Work in your teams to decide your strategy, then present it to the class.": "Bepaal in je team je strategie en presenteer die aan de klas."
 }

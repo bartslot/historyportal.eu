@@ -151,7 +151,7 @@
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-BaAXWOMV.css",
+    "file": "assets/app-NjylOrs7.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -160,7 +160,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-TmU7KuSB.js",
+    "file": "assets/app-BGGy6FRn.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -228,7 +228,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-C7T78hIx.js",
+    "file": "assets/lesson-player-C6GF7U5C.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -349,10 +349,13 @@
     ]
   },
   "resources/js/scene/TextOverlayLayer.js": {
-    "file": "assets/TextOverlayLayer-jlNCDYvN.js",
+    "file": "assets/TextOverlayLayer-DXxRV5Rl.js",
     "name": "TextOverlayLayer",
     "src": "resources/js/scene/TextOverlayLayer.js",
-    "isDynamicEntry": true
+    "isDynamicEntry": true,
+    "imports": [
+      "_i18n-DoByrmTl.js"
+    ]
   },
   "resources/js/scene/card-place.js": {
     "file": "assets/card-place-yu01eMnJ.js",
@@ -370,7 +373,7 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-DHT06UM2.js",
+    "file": "assets/index-CR4EVde8.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
@@ -458,7 +461,7 @@
     ]
   },
   "resources/js/test-session/recorder.js": {
-    "file": "assets/recorder-CC3DhbmM.js",
+    "file": "assets/recorder-D_MpE56e.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,

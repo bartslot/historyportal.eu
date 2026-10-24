@@ -3300,6 +3300,9 @@ class Step3SceneConfigurator extends Component
     /** False until the wire:init prep runs — lets the modal paint instantly with a skeleton. */
     public bool $paintingReady = false;
 
+    /** False until the Library shelf's own pictures have painted; then our collection loads. */
+    public bool $libraryCollectionReady = false;
+
     /** Whether the collapsible search bar is open (entangled with Alpine so it survives re-renders). */
     public bool $searchOpen = false;
 
@@ -3861,6 +3864,7 @@ class Step3SceneConfigurator extends Component
         $this->paintingRegion = '';
         $this->matchTarget = [];
         $this->paintingReady = false;   // modal opens instantly; wire:init fills the grid
+        $this->libraryCollectionReady = false;
         $this->searchOpen = false;
         $this->dispatch('painting-picker:open');
     }
@@ -3991,15 +3995,25 @@ class Step3SceneConfigurator extends Component
      */
     public function preparePaintings(): void
     {
-        $scene = $this->selectedSceneModel();
-        if ($scene) {
-            try {
-                $this->matchTarget = app(\App\Services\Corpus\SceneMatchTargetService::class)->for($scene, $this->lesson);
-            } catch (\Throwable $e) {
-                $this->matchTarget = [];
-            }
+        // The Library tab (where the picker opens) scores nothing, so the LLM call waits until
+        // a corpus tab needs it (paintingResults) instead of holding the skeleton up.
+        if ($this->paintingKind !== 'library') {
+            $this->deriveMatchTarget();
         }
         $this->paintingReady = true;
+    }
+
+    private function deriveMatchTarget(): void
+    {
+        $scene = $this->selectedSceneModel();
+        if (! $scene) {
+            return;
+        }
+        try {
+            $this->matchTarget = app(\App\Services\Corpus\SceneMatchTargetService::class)->for($scene, $this->lesson);
+        } catch (\Throwable $e) {
+            $this->matchTarget = [];
+        }
     }
 
     // ── Ink artwork library ──────────────────────────────────────────────
@@ -4064,6 +4078,10 @@ class Step3SceneConfigurator extends Component
         // "Library" is our own imagery — no corpus, no Commons.
         if ($this->paintingKind === 'library') {
             return $this->libraryResults();
+        }
+
+        if ($this->matchTarget === []) {
+            $this->deriveMatchTarget();
         }
 
         try {
@@ -4296,26 +4314,44 @@ class Step3SceneConfigurator extends Component
                 'correctness' => null,
             ]);
 
-        $tiles = $tiles->concat(collect($cloud->library($term))->map(fn (array $img) => [
-            'source' => 'library',
-            'key' => $img['url'],
-            'thumb' => $img['thumb'],
-            'title' => $img['title'],
-            'caption' => __('Our collection'),
-            'kind' => 'library',
-            'provenance' => __('Our collection'),
-            'correctness' => null,
-        ]));
-
         // A lesson image that lives on Cloudinary appears in both shelves under two different
         // delivery transforms, so the same picture would show up twice. The public id (the last
         // path segment) is what identifies it; a local /storage image dedupes on its own URL.
-        return $tiles
-            ->unique(fn (array $t) => str_contains($t['key'], 'res.cloudinary.com')
-                ? pathinfo((string) parse_url($t['key'], PHP_URL_PATH), PATHINFO_FILENAME)
-                : $t['key'])
-            ->take(self::PAINTING_GRID_LIMIT)
-            ->values();
+        $identity = fn (array $t) => str_contains($t['key'], 'res.cloudinary.com')
+            ? pathinfo((string) parse_url($t['key'], PHP_URL_PATH), PATHINFO_FILENAME)
+            : $t['key'];
+        $tiles = $tiles->unique($identity)->values();
+
+        // Our collection is one slow search (up to 20 s on a cold cache), so the lesson's own
+        // shelf renders first and the collection follows via wire:init (loadLibraryCollection).
+        if (! $this->libraryCollectionReady) {
+            return $tiles;
+        }
+
+        // Only the collection is capped: every picture of THIS lesson stays findable.
+        $own = $tiles->map($identity)->flip();
+        $collection = collect($cloud->library($term))
+            ->map(fn (array $img) => [
+                'source' => 'library',
+                'key' => $img['url'],
+                'thumb' => $img['thumb'],
+                'title' => $img['title'],
+                'caption' => __('Our collection'),
+                'kind' => 'library',
+                'provenance' => __('Our collection'),
+                'correctness' => null,
+            ])
+            ->reject(fn (array $t) => $own->has($identity($t)))
+            ->unique($identity)
+            ->take(self::PAINTING_GRID_LIMIT);
+
+        return $tiles->concat($collection)->values();
+    }
+
+    /** wire:init after the lesson's own shelf has painted: now fetch our Cloudinary collection. */
+    public function loadLibraryCollection(): void
+    {
+        $this->libraryCollectionReady = true;
     }
 
     /**

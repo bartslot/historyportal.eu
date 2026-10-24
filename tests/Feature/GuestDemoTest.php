@@ -175,6 +175,9 @@ class GuestDemoTest extends TestCase
         // The way out leads to the public site, not to a workspace page that would 403.
         $wizard->assertSee(route('home'), false)
             ->assertDontSee(route('teacher.lessons.index'), false);
+        // ...and says so: "Back to lessons" on an arrow that goes home misleads (pair test 10-24).
+        $wizard->assertSee(__('Back to the home page'))
+            ->assertDontSee(__('Back to lessons'));
     }
 
     public function test_a_guest_can_open_the_wizard_on_their_own_copy_but_not_on_anybody_elses(): void
@@ -247,6 +250,28 @@ class GuestDemoTest extends TestCase
         $this->assertNotSame($demo->id, $copy->id);
         $this->assertSame(0, User::where('is_guest_demo', true)->count());
         $this->assertAuthenticatedAs($teacher);
+    }
+
+    /** Every click on Configureren used to make yet another copy; the teacher's open copy is reused. */
+    public function test_a_signed_in_teacher_clicking_configure_again_reopens_their_unpublished_copy(): void
+    {
+        $this->publishedDemoLesson();
+        $teacher = User::create([
+            'name' => 'Real', 'email' => 'real@example.com',
+            'password' => 'secret-password', 'role' => 'teacher',
+        ]);
+
+        $this->actingAs($teacher)->get(route('demo.configure'));
+        $copy = Lesson::where('teacher_id', $teacher->id)->sole();
+
+        $this->actingAs($teacher)->get(route('demo.configure'))
+            ->assertRedirect(route('teacher.lessons.wizard', ['lesson' => $copy->id, 'step' => 4]));
+        $this->assertSame(1, Lesson::where('teacher_id', $teacher->id)->count());
+
+        // Once they publish it, it is their lesson; the next click starts a fresh copy.
+        $copy->update(['status' => LessonStatus::Published->value]);
+        $this->actingAs($teacher)->get(route('demo.configure'));
+        $this->assertSame(2, Lesson::where('teacher_id', $teacher->id)->count());
     }
 
     public function test_the_demo_route_404s_when_no_lesson_is_playable(): void

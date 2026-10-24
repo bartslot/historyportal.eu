@@ -994,22 +994,28 @@ class Lesson extends Model
     {
         $out = [];
         foreach ($this->scenes()->ordered()->get() as $i => $scene) {
-            $cfg = $scene->config ?? [];
-            $shot = ($scene->shots ?? [])[0] ?? [];
-            $plate = $cfg['diorama']['plate'] ?? null;
-            $plateUrl = is_array($plate) && ! empty($plate['image'])
-                ? (preg_match('#^(https?:)?//|^/#', $plate['image']) ? $plate['image'] : ($plate['base'] ?? '').$plate['image'])
-                : null;
-            $url = $this->publicMediaUrl($scene->image_path)
-                ?? $this->publicMediaUrl($shot['bg_path'] ?? $shot['image_path'] ?? null)
-                ?? $plateUrl
-                ?? $this->publicMediaUrl($scene->skybox_image_path);
-            if ($url) {
+            if ($url = $this->scenePosterUrl($scene)) {
                 $out[] = ['url' => $url, 'label' => __('Scene :n', ['n' => $i + 1])];
             }
         }
 
         return $out;
+    }
+
+    /** The one picture that stands for a scene: its image, else its first shot, plate or panorama. */
+    private function scenePosterUrl(Scene $scene): ?string
+    {
+        $cfg = $scene->config ?? [];
+        $shot = ($scene->shots ?? [])[0] ?? [];
+        $plate = $cfg['diorama']['plate'] ?? null;
+        $plateUrl = is_array($plate) && ! empty($plate['image'])
+            ? (preg_match('#^(https?:)?//|^/#', $plate['image']) ? $plate['image'] : ($plate['base'] ?? '').$plate['image'])
+            : null;
+
+        return $this->publicMediaUrl($scene->image_path)
+            ?? $this->publicMediaUrl($shot['bg_path'] ?? $shot['image_path'] ?? null)
+            ?? $plateUrl
+            ?? $this->publicMediaUrl($scene->skybox_image_path);
     }
 
     public function posterCandidates(): array
@@ -1024,36 +1030,35 @@ class Lesson extends Model
 
         // Lesson-level imagery.
         if ($u = $this->publicMediaUrl($this->title_bg_path)) {
-            $push($u, 'Title background');
+            $push($u, __('Title background'));
         }
         foreach ($this->slideshowImages() as $img) {
-            $push($img['url'] ?? null, $img['title'] ?? 'Slideshow image');
+            $push($img['url'] ?? null, $img['title'] ?? __('Slideshow image'));
         }
 
-        // One picture per scene (the poster's "Scene" choice), then everything else each scene holds.
-        foreach ($this->scenePosterOptions() as $option) {
-            $push($option['url'], $option['label']);
-        }
-        // Per-scene imagery, in order — includes voyage/gallery config images (URLs already absolute).
-        foreach ($this->scenes()->ordered()->get() as $scene) {
-            $push($this->publicMediaUrl($scene->skybox_image_path), 'Scene panorama');
-            $push($this->publicMediaUrl($scene->image_path), 'Scene image');
+        // Scene by scene: its picture (the poster's "Scene" choice), then everything else that scene
+        // holds, so a split panel sits right after its own scene instead of after every scene's
+        // picture (it fell off the Library shelf in long lessons). Voyage/gallery URLs are absolute.
+        foreach ($this->scenes()->ordered()->get()->values() as $i => $scene) {
+            $push($this->scenePosterUrl($scene), __('Scene :n', ['n' => $i + 1]));
+            $push($this->publicMediaUrl($scene->skybox_image_path), __('Scene panorama'));
+            $push($this->publicMediaUrl($scene->image_path), __('Scene image'));
             // Every shot / split panel holds its own picture; a panel left behind by going back
             // to one picture is still the teacher's image and must stay findable.
             foreach (($scene->shots ?? []) as $shot) {
                 foreach (['image_path', 'bg_path', 'hero_path'] as $key) {
-                    $push($this->publicMediaUrl(is_array($shot) ? ($shot[$key] ?? null) : null), 'Scene image');
+                    $push($this->publicMediaUrl(is_array($shot) ? ($shot[$key] ?? null) : null), __('Scene image'));
                 }
             }
             $cfg = $scene->config ?? [];
             foreach (($cfg['stop_images'] ?? []) as $u) {
-                $push(is_string($u) ? $u : ($u['url'] ?? null), 'Landfall image');
+                $push(is_string($u) ? $u : ($u['url'] ?? null), __('Landfall image'));
             }
             foreach (($cfg['images'] ?? []) as $u) {
-                $push(is_array($u) ? ($u['url'] ?? null) : $u, 'Gallery image');
+                $push(is_array($u) ? ($u['url'] ?? null) : $u, __('Gallery image'));
             }
             foreach ((($cfg['gallery'] ?? [])['images'] ?? []) as $u) {
-                $push(is_array($u) ? ($u['url'] ?? null) : $u, 'Gallery image');
+                $push(is_array($u) ? ($u['url'] ?? null) : $u, __('Gallery image'));
             }
         }
 

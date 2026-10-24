@@ -40,9 +40,12 @@ class LessonPlayerController extends Controller
                 return null;
             }
 
-            // Auto-match a strategy game if none assigned. The update persists to the DB, so
-            // this only runs on the first ever load; thereafter it is part of the cached payload.
-            if (! $lesson->strategy_game_id) {
+            // Auto-match a strategy game if none assigned, but only for a lesson that plays one:
+            // the matcher falls back to the first active game, so every other lesson used to get
+            // "Cross the Rubicon" pinned on it. The update persists, so this runs once.
+            $playsStrategy = $lesson->game_type === 'strategy'
+                || $lesson->scenes->contains(fn ($s) => $s->kind === 'game' && $s->game_type === 'strategy');
+            if (! $lesson->strategy_game_id && $playsStrategy) {
                 $game = StrategyGame::matchForLesson($lesson);
                 if ($game) {
                     $lesson->update(['strategy_game_id' => $game->id]);
