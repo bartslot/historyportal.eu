@@ -93,3 +93,4 @@ harness/**/__pycache__/
 # images, which live on the lesson (Cloudinary), never in the repo.
 /lesson_assets/
 tools/**/__pycache__/
+/storage/demo-check
