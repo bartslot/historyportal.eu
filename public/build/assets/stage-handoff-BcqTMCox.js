@@ -1,0 +1,1 @@
+function s(...o){const t=o.filter(Boolean);return t.length?{destroy(e=0){for(const n of t)e>0?setTimeout(()=>n.destroy(),e):n.destroy()}}:null}function i(o){for(const t of o)t&&Object.assign(t.style,{transition:"none",opacity:"0"})}export{i as h,s as o};

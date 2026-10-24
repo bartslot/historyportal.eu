@@ -1,6 +1,7 @@
 import { filterMarkup, layerFilterId } from './layer-filters.js'
 import { applyAmbient, trackStage } from './ambient.js'
 import { fitToPlate, plateAspect } from './plate-box.js'
+import { hideFlatLayers } from './stage-handoff.js'
 import { cameraSpec, cameraPose, chainPose, cameraFrame, cameraEntry, entryLingerMs, ENTRY_MS, previewCycleS, registerCameraTuner } from './camera.js'
 import { EASE } from '../easing.js'
 
@@ -257,7 +258,7 @@ export class ParallaxScene {
       return new Promise(resolve => setTimeout(resolve, ms))
     }).then(() => {
       if (this._root !== root) return
-      for (const el of covers) if (el) Object.assign(el.style, { transition: 'none', opacity: '0' })
+      hideFlatLayers(covers)
     })
   }
 

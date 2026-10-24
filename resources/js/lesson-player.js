@@ -25,6 +25,7 @@ import { stageAdvance, stageFloorMs } from './scene/stage-auto.js'
 import { isTopAnchored, normalizeFit, PORTRAIT_TOP_CSS } from './scene/background-fit.js'
 import { isClipartLayer, backdropLayers } from './scene/layer-filters.js'
 import { fitToPlate, plateAspect } from './scene/plate-box.js'
+import { outgoingStages, hideFlatLayers } from './scene/stage-handoff.js'
 import { sceneMode } from './scene/split-layout.js'
 import { singleSource, cropBox, cropPlates } from './scene/background-crop.js'
 import { mountEmbedBg } from './scene/embed-bg.js'
@@ -1022,9 +1023,11 @@ Alpine.data('lessonGame', (lesson) => ({
         // The panel before stays on screen until this one is drawn (ParallaxScene `replaces`), and
         // one that slides, wipes or dissolves in keeps it underneath meanwhile. Removing it first
         // showed the stale flat picture underneath, full-bleed, for a frame or more (Bart, 10-21).
-        outgoing = _parallax
+        // A split stage (two or three comic panels) leaves the same way as a single panel.
+        outgoing = outgoingStages(_parallax, _split)
         _parallax = null
-        this._destroyParallax(_parallaxMod.entryLingerMs(shot.entry))   // a split stage; the figures' camera pose
+        _split = null
+        this._destroyParallax(_parallaxMod.entryLingerMs(shot.entry))   // the figures' camera pose
         // No camera on this panel: the figures go back to rest (the last panel's may have moved them).
         if (!shot.camera) this._artLayer?.setCamera(null)
         _parallax = new _parallaxMod.ParallaxScene(host)
@@ -1080,6 +1083,9 @@ Alpine.data('lessonGame', (lesson) => ({
           lines: this._splitLines(scene.config?.lines),
           matte: scene.background_color || null,
         })
+        // The split stage is opaque from its first frame (gutter colour), so the flat layers under
+        // it can go now. Left up, the next scene's fade or crossfade showed their old picture.
+        hideFlatLayers([this._bgLayerA, this._bgLayerB])
       } catch (e) {
         console.warn('lesson-player: split scene failed, falling back to the first panel', e)
         this._showShot(scene.shots?.[0], scene.image_url)
