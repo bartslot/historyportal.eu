@@ -210,7 +210,7 @@ class DemoLessonLanguageTest extends TestCase
     {
         // The configured English lesson had a failed scene, so the Batavian Republic won, and the hero
         // typed "The Batavian Republic: A Quest for Liberty" as if that were a learning goal.
-        $this->lesson('The Batavian Republic: A Quest for Liberty', 'en');
+        $this->lesson('The Batavian Republic: A Quest for Liberty', 'en')->update(['title_series' => 'tasman-standard']);
         $request = \Illuminate\Http\Request::create('/', 'GET');
         $request->headers->set('Accept-Language', 'en-GB,en;q=0.9');
         DemoLesson::forget();
@@ -220,7 +220,7 @@ class DemoLessonLanguageTest extends TestCase
 
     public function test_a_dutch_lesson_types_its_canon_leerdoel_not_its_title(): void
     {
-        $this->lesson('De reis van Abel Tasman', 'nl');
+        $this->lesson('De reis van Abel Tasman', 'nl')->update(['title_series' => 'tasman-standard']);
 
         DemoLesson::forget();
         $request = \Illuminate\Http\Request::create('/', 'GET');
@@ -288,5 +288,27 @@ class DemoLessonLanguageTest extends TestCase
         $this->assertNotSame($untitled->id, $this->visit(['Accept-Language' => 'nl-NL,nl;q=0.9'])?->id);
         DemoLesson::forget();
         $this->withoutVite()->get('/nl')->assertOk();
+    }
+
+    /**
+     * Pair test round 6: with the Dutch hand-picked demo gone, the newest Dutch lesson by anyone
+     * took the front door. A lesson without a Figma poster series never stands in; the English
+     * hand-picked demo does.
+     */
+    public function test_without_its_demo_a_language_falls_back_to_the_english_demo_not_a_random_lesson(): void
+    {
+        $english = $this->lesson('Abel Tasman: the voyage into the unknown', 'en');
+        $this->lesson('Mijn eigen les over de Gouden Eeuw', 'nl');
+
+        $this->assertSame($english->id, $this->visit(['Accept-Language' => 'nl-NL,nl;q=0.9'])?->id);
+    }
+
+    public function test_a_lesson_of_a_series_with_a_figma_poster_may_stand_in(): void
+    {
+        $this->lesson('Abel Tasman: the voyage into the unknown', 'en');
+        $series = $this->lesson('Tasman, tweede editie', 'nl');
+        $series->update(['title_series' => 'tasman-standard']);
+
+        $this->assertSame($series->id, $this->visit(['Accept-Language' => 'nl-NL,nl;q=0.9'])?->id);
     }
 }

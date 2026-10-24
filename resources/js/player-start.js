@@ -41,12 +41,15 @@ const GENERATING = ['pending', 'generating']
  * Pure: can the class press Start? A lesson whose narration is still being made waits ("Audio
  * generating…"), but a lesson with nothing generating is startable whether or not it is narrated:
  * a narration-free lesson used to wait forever (pair test round 5).
+ *
+ * It waits while ANY scene that needs a voice is still being made, not just until the first one is
+ * ready: a partly narrated lesson offered Start and the class then hit silent scenes mid-lesson
+ * (pair test round 6). A scene that plays without narration never blocks, and neither does one
+ * that still has its old recording while it is re-narrated.
  */
 export function canStartLesson (lesson) {
   const scenes = lesson?.scenes || []
-  const carriesItself = (s) => s.audio_url || ['map', 'voyage', 'gallery', 'video'].includes(s.kind)
-    // A team game or a predict moment plays on the class screen without a voice of its own.
-    || (s.kind === 'game' && ['team', 'predict'].includes(s.game_type))
-  if (lesson?.audio_url || scenes.some(carriesItself)) return true
-  return scenes.length > 0 && !scenes.some((s) => GENERATING.includes(s.status))
+  const playsWithoutVoice = (s) => ['map', 'voyage', 'gallery', 'video', 'game'].includes(s.kind)
+  const stillMaking = (s) => GENERATING.includes(s.status) && !s.audio_url && !playsWithoutVoice(s)
+  return scenes.length > 0 && !scenes.some(stillMaking)
 }

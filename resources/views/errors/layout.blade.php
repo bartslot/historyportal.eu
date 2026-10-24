@@ -22,7 +22,8 @@
 
         $back = $sameHost && $notThisPage
             ? $referer
-            : (auth()->check() ? route('teacher.dashboard') : route('home'));
+            // The page's own language home: a Dutch 404 went back to the English / (pair test round 6).
+            : (auth()->check() ? route('teacher.dashboard') : \App\Support\Locales::homeUrl(app()->getLocale()));
 
         $backLabel = $sameHost && $notThisPage
             ? __('Go back')

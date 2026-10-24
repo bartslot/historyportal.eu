@@ -107,6 +107,24 @@ final class TitlePoster
         return $out;
     }
 
+    /**
+     * The series that have at least one Figma title poster (public/lesson-titles/<series>/).
+     *
+     * @return list<string>
+     */
+    public static function seriesWithPosters(): array
+    {
+        $series = [];
+        foreach (glob(public_path(self::DIR.'/*'), GLOB_ONLYDIR) ?: [] as $dir) {
+            $group = basename($dir);
+            if (self::candidates($group) !== []) {
+                $series[] = $group;
+            }
+        }
+
+        return $series;
+    }
+
     public static function exists(?string $group, string $candidate): bool
     {
         return self::path($group, $candidate) !== null;

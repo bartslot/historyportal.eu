@@ -26,6 +26,8 @@ class HeroCopyTest extends TestCase
 
     private function playableLesson(string $title): Lesson
     {
+        // The hand-picked demo: since round 7 the fallback never takes an arbitrary lesson.
+        config(['demo.lesson_title' => $title]);
         $teacher = User::create([
             'name' => 'Owner', 'email' => 'owner@example.com',
             'password' => 'secret-password', 'role' => 'teacher',

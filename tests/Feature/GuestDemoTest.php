@@ -27,6 +27,8 @@ class GuestDemoTest extends TestCase
 
     private function publishedDemoLesson(string $title = 'The Silk Road'): Lesson
     {
+        // The hand-picked demo: since round 7 the fallback never takes an arbitrary lesson.
+        config(['demo.lesson_title' => $title]);
         $teacher = User::create([
             'name' => 'Owner',
             'email' => 'owner@example.com',
@@ -297,7 +299,9 @@ class GuestDemoTest extends TestCase
     public function test_a_lesson_still_waiting_on_the_pipeline_is_not_offered(): void
     {
         $lesson = $this->publishedDemoLesson();
-        $lesson->scenes()->update(['status' => 'pending']);
+        // Never generated: no picture, no audio yet (a scene being RE-made keeps its old media and
+        // stays on, round 6).
+        $lesson->scenes()->update(['status' => 'pending', 'audio_path' => null, 'image_path' => null, 'shots' => null]);
 
         DemoLesson::forget();
 
@@ -320,14 +324,21 @@ class GuestDemoTest extends TestCase
         $this->assertSame($lesson->id, DemoLesson::resolve()?->id);
     }
 
-    public function test_the_demo_lesson_falls_back_to_the_newest_playable_lesson(): void
+    /**
+     * Pair test round 6: the fallback was "the newest public lesson by anyone", which could put a
+     * random teacher's lesson without a Figma poster on the front door. Only a lesson of a series
+     * with a Figma poster may stand in for the hand-picked demo.
+     */
+    public function test_the_demo_falls_back_only_to_a_lesson_with_a_figma_poster(): void
     {
-        $this->publishedDemoLesson('A Lesson With Another Name');
-
+        $random = $this->publishedDemoLesson('A Teacher\'s Own Lesson');
         config(['demo.lesson_title' => 'The Silk Road']);
         DemoLesson::forget();
+        $this->assertNull(DemoLesson::resolve(), 'a random public lesson never becomes the demo');
 
-        $this->assertSame('A Lesson With Another Name', DemoLesson::resolve()?->title);
+        $random->update(['title_series' => 'tasman-standard']);
+        DemoLesson::forget();
+        $this->assertSame($random->id, DemoLesson::resolve()?->id, 'a lesson with a Figma poster may stand in');
     }
 
     public function test_pruning_removes_stale_guests_and_their_copies_only(): void

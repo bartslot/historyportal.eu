@@ -57,9 +57,22 @@ describe('canStartLesson', () => {
     expect(canStartLesson({ scenes: [{ kind: 'narration', status: 'pending' }] })).toBe(false)
   })
 
-  test('a scene that carries itself starts at once, generating or not', () => {
-    expect(canStartLesson({ scenes: [{ kind: 'map', status: 'pending' }, { kind: 'narration', status: 'generating' }] })).toBe(true)
+  test('scenes that play without narration never block, generating or not', () => {
+    expect(canStartLesson({ scenes: [{ kind: 'map', status: 'pending' }, { kind: 'game', game_type: 'quiz', status: 'generating' }, { kind: 'narration', status: 'ready' }] })).toBe(true)
+    // Re-narrating a scene that still has its old recording does not hold the class.
     expect(canStartLesson({ scenes: [{ kind: 'narration', status: 'generating', audio_url: '/a.m4a' }] })).toBe(true)
+  })
+
+  /** Pair test round 6: Start showed while later scenes were still being narrated. */
+  test('a partly narrated lesson waits until every scene that needs a voice is made', () => {
+    expect(canStartLesson({
+      audio_url: '/lesson.m4a',
+      scenes: [
+        { kind: 'narration', status: 'ready', audio_url: '/1.m4a' },
+        { kind: 'map', status: 'ready' },
+        { kind: 'narration', status: 'pending' },
+      ],
+    })).toBe(false)
   })
 
   test('an empty lesson cannot start', () => {

@@ -155,7 +155,27 @@ final class DemoLesson
         $title = self::entryFor($language)['title'] ?? null;
 
         return self::configured($title, $language)
-            ?? self::playable()->where('language', $language)->latest()->first();
+            ?? self::allowListed(self::playable()->where('language', $language))->latest()->first();
+    }
+
+    /**
+     * The fallback is never "the newest public lesson by anyone": that put a random teacher's
+     * lesson, without a Figma poster, on the front door with its title typed as the goal (pair
+     * test round 6). Only a lesson of a series with a Figma title poster, or one of the
+     * hand-picked demo titles, may stand in; otherwise the English hand-picked demo does.
+     */
+    private static function allowListed($query)
+    {
+        $series = TitlePoster::seriesWithPosters();
+        $titles = array_values(array_filter(array_merge(
+            [config('demo.lesson_title')],
+            array_column((array) config('demo.by_language', []), 'title'),
+        )));
+
+        return $query->where(fn ($q) => $q
+            ->whereIn('title_series', $series ?: ['-'])
+            ->orWhere(fn ($q) => $q->whereNull('title_series')->whereIn('translation_group', $series ?: ['-']))
+            ->orWhereIn('title', $titles ?: ['-']));
     }
 
     /**
