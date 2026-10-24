@@ -129,6 +129,10 @@
       "_easing-HS2C6-zA.js"
     ]
   },
+  "_stage-handoff-BcqTMCox.js": {
+    "file": "assets/stage-handoff-BcqTMCox.js",
+    "name": "stage-handoff"
+  },
   "_team-colours-JOtUsqOj.js": {
     "file": "assets/team-colours-JOtUsqOj.js",
     "name": "team-colours"
@@ -156,7 +160,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-BtEZdesl.js",
+    "file": "assets/app-TmU7KuSB.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -224,7 +228,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-D6tMTVKz.js",
+    "file": "assets/lesson-player-C7T78hIx.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -235,6 +239,7 @@
       "_properties-Be9DmDzI.js",
       "resources/js/gallery-scene.js",
       "_big-countdown-C2dIhksY.js",
+      "_stage-handoff-BcqTMCox.js",
       "_i18n-DoByrmTl.js",
       "_ambient-CnaWjG1w.js",
       "_easing-HS2C6-zA.js"
@@ -292,13 +297,14 @@
     ]
   },
   "resources/js/scene/ParallaxScene.js": {
-    "file": "assets/ParallaxScene-C8Q7u7pD.js",
+    "file": "assets/ParallaxScene-21IgStkG.js",
     "name": "ParallaxScene",
     "src": "resources/js/scene/ParallaxScene.js",
     "isDynamicEntry": true,
     "imports": [
       "_big-countdown-C2dIhksY.js",
       "_ambient-CnaWjG1w.js",
+      "_stage-handoff-BcqTMCox.js",
       "_camera-CXpRCYWW.js",
       "_easing-HS2C6-zA.js",
       "_properties-Be9DmDzI.js"
@@ -317,7 +323,7 @@
     ]
   },
   "resources/js/scene/SplitStage.js": {
-    "file": "assets/SplitStage-D6aiZUdA.js",
+    "file": "assets/SplitStage-CBzJtolE.js",
     "name": "SplitStage",
     "src": "resources/js/scene/SplitStage.js",
     "isDynamicEntry": true,
@@ -327,6 +333,7 @@
       "_BalloonLayer-Bjnwbp4q.js",
       "_big-countdown-C2dIhksY.js",
       "_ambient-CnaWjG1w.js",
+      "_stage-handoff-BcqTMCox.js",
       "_camera-CXpRCYWW.js",
       "_properties-Be9DmDzI.js",
       "_easing-HS2C6-zA.js"
@@ -363,7 +370,7 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-CFeO-CmW.js",
+    "file": "assets/index-DHT06UM2.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
@@ -451,7 +458,7 @@
     ]
   },
   "resources/js/test-session/recorder.js": {
-    "file": "assets/recorder-CA_DQl0P.js",
+    "file": "assets/recorder-CC3DhbmM.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,
