@@ -12,6 +12,7 @@ import { SATELLITE_SOURCE, DEM_SOURCE } from './map-imagery.js';
 import { buffer as turfBuffer, lineString as turfLine, simplify as turfSimplify, destination as turfDestination, booleanPointInPolygon as turfPointInPolygon, polygon as turfPolygon, difference as turfDifference, featureCollection as turfFC } from '@turf/turf';
 import { mapTextProjector } from './map-text-projector.js';
 import { createPausableClock } from './pausable-clock.js';
+import { t } from './i18n.js';
 
 // Voyage tour — the whole voyage is ONE persistent map. Legs play via playLeg(): the map, ships,
 // fog and route trail are built once, and moving between scenes eases the camera to the next leg
@@ -574,7 +575,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
     const gInst = renderGallery(box, g, { startIndex, editable, onEdit: onGalleryEdit });
     const close = document.createElement('button');
     close.type = 'button';
-    close.setAttribute('aria-label', 'Sluiten');
+    close.setAttribute('aria-label', t('Close'));
     close.textContent = '✕';
     close.style.cssText = 'position:absolute;top:calc(4% + 10px);right:calc(4% + 14px);z-index:50;width:36px;height:36px;border-radius:9999px;border:none;background:rgba(15,23,42,.92);color:#e2e8f0;font-size:var(--text-lg);line-height:1;cursor:pointer;';
     overlay.appendChild(close);
@@ -961,7 +962,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
         const h = makeDot('insert');
         h.dataset.voyageHandle = 'midpoint';
         h.dataset.afterWpIndex = String(w);
-        h.title = 'Drag to bend the route around land';
+        h.title = t('Drag to bend the route around land');
         makeDraggable(h, {
           describe: () => ({ mode: 'insert', afterWpIndex: w }),
           commit: (d, g) => onWaypointInsert && onWaypointInsert(d.afterWpIndex, g.lng, g.lat),
@@ -974,7 +975,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
       const GRAB_PX = 14;   // how close the cursor must be to the drawn line
       const ghost = makeDot('insert');
       ghost.dataset.voyageHandle = 'ghost';
-      ghost.title = 'Drag to bend the route around land';
+      ghost.title = t('Drag to bend the route around land');
       ghost.style.display = 'none';
       let ghostDesc = null;
       makeDraggable(ghost, {

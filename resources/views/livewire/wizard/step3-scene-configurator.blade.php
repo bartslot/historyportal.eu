@@ -1087,7 +1087,7 @@
                 </div>{{-- /format tab --}}
                 </div>{{-- /scene-inspector-{{ $sceneModel->id }} --}}
             @else
-                <p class="text-sm text-slate-400">No scene selected.</p>
+                <p class="text-sm text-slate-400">{{ __('No scene selected.') }}</p>
             @endif
 
             @else
@@ -1342,8 +1342,8 @@
                 const withZ = texts.map((t, i) => ({ t, i, z: this.effZ(t) }));
                 withZ.sort((a, b) => (b.z - a.z) || (b.i - a.i));
                 const textItems = withZ.map(({ t }) => t.kind === 'rect'
-                    ? { id: t.id, icon: t.side === 'right' ? 'panelR' : 'panelL', label: (t.side || 'left') + ' half', bg: false }
-                    : { id: t.id, icon: 'text', label: (t.text || 'Text').slice(0, 40), bg: false });
+                    ? { id: t.id, icon: t.side === 'right' ? 'panelR' : 'panelL', label: t.side === 'right' ? @js(__('Right half')) : @js(__('Left half')), bg: false }
+                    : { id: t.id, icon: 'text', label: (t.text || @js(__('Text'))).slice(0, 40), bg: false });
                 // Clipart / artwork / embed layers (own overlay, drag-reorderable). _layers is bottom-first
                 // (last painted = on top), so reverse it to list front-most first like the text rows.
                 const objKind = (window.__objScene || {}).kind;
@@ -1354,7 +1354,7 @@
                     ({ id: 'dio_' + i.id, icon: 'photo', label: i.label || i.id, bg: false, dio: true }));
                 const artItems = [...arts].reverse().map((a) =>
                     ({ id: 'art_' + a.asset_id, icon: a.embed ? (a.embed.type === 'video' ? 'photo' : 'map') : 'photo',
-                       label: a.title || (a.embed ? (a.embed.type === 'video' ? 'Video' : '3D model') : @js(__('Icon'))), bg: false, art: true }));
+                       label: a.title || (a.embed ? (a.embed.type === 'video' ? @js(__('Video')) : @js(__('3D model'))) : @js(__('Icon'))), bg: false, art: true }));
                 // The clipart group sits above the text objects only when the teacher dragged it there
                 // (config.clipart_on_top → the overlay host's z-index is raised above the text layer).
                 const onTop = !!(artLayer && artLayer.onTop);
@@ -1370,15 +1370,15 @@
                     // being edited, so none of its objects are listed. (The 2s poll re-reads this.)
                     items.length = 0;
                 } else if (objKind === 'voyage') {
-                    items.push({ id: '__gallery__', icon: 'photo', label: 'Gallery', bg: true, voyage: 'gallery' });
-                    items.push({ id: '__waypoint__', icon: 'map', label: 'Waypoint', bg: true, voyage: 'waypoint' });
+                    items.push({ id: '__gallery__', icon: 'photo', label: @js(__('Gallery')), bg: true, voyage: 'gallery' });
+                    items.push({ id: '__waypoint__', icon: 'map', label: @js(__('Waypoint')), bg: true, voyage: 'waypoint' });
                 } else {
                     // A quiz is an object on its scene too: its row opens the questions. Pinned like
                     // the background (bg: true = no drag, no delete), just above it.
                     if (objKind === 'game' && (window.__objScene || {}).gameType === 'quiz') {
                         items.push({ id: '__quiz__', icon: 'quiz', label: @js(__('Quiz')), bg: true, section: 'quiz' });
                     }
-                    items.push({ id: '__bg__', icon: 'photo', label: objKind === 'gallery' ? 'Slideshow' : @js(__('Background')), bg: true, section: 'bg' });
+                    items.push({ id: '__bg__', icon: 'photo', label: objKind === 'gallery' ? @js(__('Slideshow')) : @js(__('Background')), bg: true, section: 'bg' });
                 }
                 // Skip the re-render (and its churn under SortableJS) when nothing actually changed —
                 // the 2s poll would otherwise rebuild identical rows and fight the drag layer.
@@ -2605,22 +2605,22 @@
                 <button type="button" wire:click="addScene('narration')"
                         class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
                     <x-lesson.scene-type-thumb kind="narration" />
-                    <span class="text-sm font-medium text-slate-200">Story</span>
+                    <span class="text-sm font-medium text-slate-200">{{ __('Story') }}</span>
                 </button>
                 <button type="button" wire:click="addScene('game', 'quiz')"
                         class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
                     <x-lesson.scene-type-thumb kind="game" game-type="quiz" />
-                    <span class="text-sm font-medium text-slate-200">Quiz</span>
+                    <span class="text-sm font-medium text-slate-200">{{ __('Quiz') }}</span>
                 </button>
                 <button type="button" wire:click="addScene('game', 'strategy')"
                         class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
                     <x-lesson.scene-type-thumb kind="game" game-type="strategy" />
-                    <span class="text-sm font-medium text-slate-200">Strategy game</span>
+                    <span class="text-sm font-medium text-slate-200">{{ __('Strategy game') }}</span>
                 </button>
                 <button type="button" wire:click="addScene('game', 'debate')"
                         class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
                     <x-lesson.scene-type-thumb kind="game" game-type="debate" />
-                    <span class="text-sm font-medium text-slate-200">Debate</span>
+                    <span class="text-sm font-medium text-slate-200">{{ __('Debate') }}</span>
                 </button>
                 <button type="button" wire:click="addScene('game', 'predict')" data-add-predict
                         class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
@@ -2630,12 +2630,12 @@
                 <button type="button" wire:click="addScene('map')"
                         class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
                     <x-lesson.scene-type-thumb kind="map" />
-                    <span class="text-sm font-medium text-slate-200">Map</span>
+                    <span class="text-sm font-medium text-slate-200">{{ __('Map') }}</span>
                 </button>
                 <button type="button" wire:click="addScene('gallery')"
                         class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
                     <x-lesson.scene-type-thumb kind="gallery" />
-                    <span class="text-sm font-medium text-slate-200">Gallery</span>
+                    <span class="text-sm font-medium text-slate-200">{{ __('Gallery') }}</span>
                 </button>
                 <button type="button" wire:click="addScene('video')"
                         class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
@@ -2647,7 +2647,7 @@
                     <button type="button" wire:click="addScene('branch')"
                             class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
                         <x-lesson.scene-type-thumb kind="branch" />
-                        <span class="text-sm font-medium text-slate-200">Decision point</span>
+                        <span class="text-sm font-medium text-slate-200">{{ __('Decision point') }}</span>
                     </button>
                 @endif
                 @if (($lesson->game_type ?? null) === 'voyage')

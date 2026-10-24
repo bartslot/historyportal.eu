@@ -19,6 +19,7 @@
  * pan and zoom instead of sliding off it.
  */
 import { playEntrance, playExit } from './animations.js'
+import { t } from '../i18n.js'
 import { applyLayerFilter } from './layer-filters.js'
 import { applyAmbient, trackStage } from './ambient.js'
 import { loadDepth, applyOcclusion, clearOcclusion, fitHeight, OCC } from './occlusion.js'
@@ -960,7 +961,7 @@ export class ArtworkOverlay {
 
     const spin = document.createElement('div')
     spin.dataset.rotateHandle = '1'
-    spin.setAttribute('data-tooltip', 'Drag to rotate · hold Shift for 15°')
+    spin.setAttribute('data-tooltip', t('Drag to rotate · hold Shift for 15°'))
     spin.style.cssText = `position:absolute; left:calc(50% - 6px); top:-34px; width:12px; height:12px;
       border-radius:50%; background:#fff; border:1px solid rgba(15,23,42,0.55); cursor:grab;
       box-shadow:0 1px 3px rgba(0,0,0,0.4); touch-action:none; pointer-events:auto;`
@@ -970,7 +971,7 @@ export class ArtworkOverlay {
     for (const c of HANDLES) {
       const handle = document.createElement('div')
       handle.dataset.scaleHandle = '1'
-      handle.setAttribute('data-tooltip', 'Drag to resize')
+      handle.setAttribute('data-tooltip', t('Drag to resize'))
       handle.style.cssText = handleCss(c.pos, c.cursor)
       chrome.appendChild(handle)
       if (node) this._wireScale(item, node, handle, c)

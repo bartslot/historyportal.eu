@@ -14,7 +14,7 @@
     </header>
 
     <div class="space-y-2">
-        <p class="text-xs uppercase tracking-wider text-slate-400">Element type</p>
+        <p class="text-xs uppercase tracking-wider text-slate-400">{{ __('Element type') }}</p>
         <x-ui.segmented panel class="w-full" name="game-type-{{ $scene->id }}" :value="$gameType"
                         :options="[['quiz', __('Quiz')], ['strategy', __('Strategy')], ['debate', __('Debate')], ['team', __('Team game')], ['predict', __('Predict')]]"
                         tab-class="flex-1"
@@ -24,7 +24,7 @@
     @if ($gameType === 'quiz')
         <div class="grid grid-cols-1 gap-3 border-t border-white/10 pt-3 sm:grid-cols-2">
             <label class="form-control">
-                <span class="text-xs uppercase tracking-wider text-slate-400">Questions</span>
+                <span class="text-xs uppercase tracking-wider text-slate-400">{{ __('Questions') }}</span>
                 <input type="number"
                        wire:model.live="selectedScene.quiz_question_count"
                        wire:change="saveSelected"
@@ -32,13 +32,13 @@
                        class="input input-sm input-bordered bg-slate-900 mt-1" />
             </label>
             <label class="form-control">
-                <span class="text-xs uppercase tracking-wider text-slate-400">Timing</span>
+                <span class="text-xs uppercase tracking-wider text-slate-400">{{ __('Timing') }}</span>
                 <select wire:model.live="selectedScene.quiz_timing"
                         wire:change="saveSelected"
                         class="select select-sm select-bordered bg-slate-900 mt-1">
-                    <option value="during">During lesson</option>
-                    <option value="after">After lesson</option>
-                    <option value="both">Both</option>
+                    <option value="during">{{ __('During lesson') }}</option>
+                    <option value="after">{{ __('After lesson') }}</option>
+                    <option value="both">{{ __('Both') }}</option>
                 </select>
             </label>
         </div>
@@ -49,7 +49,7 @@
         @php $letters = ['A', 'B', 'C', 'D']; $palette = ['#e11d48', '#0284c7', '#f59e0b', '#059669']; @endphp
         <div data-quiz-section class="space-y-3 border-t border-white/10 pt-3">
             <div class="flex items-center justify-between">
-                <p class="text-xs uppercase tracking-wider text-slate-400">Quiz questions</p>
+                <p class="text-xs uppercase tracking-wider text-slate-400">{{ __('Quiz questions') }}</p>
                 <span class="text-2xs text-slate-500">{{ count($quizDraft) }} total</span>
             </div>
 
@@ -221,7 +221,7 @@
     @if ($gameType === 'strategy')
         <div class="grid grid-cols-1 gap-3 border-t border-white/10 pt-3 sm:grid-cols-2">
             <label class="form-control sm:col-span-2">
-                <span class="text-xs uppercase tracking-wider text-slate-400">Strategy game</span>
+                <span class="text-xs uppercase tracking-wider text-slate-400">{{ __('Strategy game') }}</span>
                 <select wire:model.live="selectedScene.strategy_game_id"
                         wire:change="saveSelected"
                         class="select select-sm select-bordered bg-slate-900 mt-1">
@@ -232,7 +232,7 @@
                 </select>
             </label>
             <label class="form-control">
-                <span class="text-xs uppercase tracking-wider text-slate-400">Teams</span>
+                <span class="text-xs uppercase tracking-wider text-slate-400">{{ __('Teams') }}</span>
                 <input type="number"
                        wire:model.live="selectedScene.team_count"
                        wire:change="saveSelected"
@@ -276,7 +276,7 @@
                 <button type="button" wire:click="playSelected"
                         class="btn btn-xs btn-neutral inline-flex items-center gap-1.5">
                     <x-icons.play class="w-3 h-3" />
-                    <span>Play</span>
+                    <span>{{ __('Play') }}</span>
                 </button>
             @else
                 <button type="button"
@@ -286,10 +286,10 @@
                         class="btn btn-xs btn-neutral disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5">
                     @if ($isGenerating)
                         <x-icons.spinner class="w-3 h-3 animate-spin" />
-                        <span>Re-narrating…</span>
+                        <span>{{ __('Re-narrating…') }}</span>
                     @else
                         <x-icons.regenerate class="w-3 h-3" />
-                        <span>Re-narrate</span>
+                        <span>{{ __('Re-narrate') }}</span>
                     @endif
                 </button>
             @endif
@@ -297,7 +297,7 @@
     </div>
 
     <div class="space-y-1">
-        <p class="text-xs uppercase tracking-wider text-slate-400">Background image</p>
+        <p class="text-xs uppercase tracking-wider text-slate-400">{{ __('Background image') }}</p>
         {{-- Image thumbnail, regenerate/delete, and motion controls all live in the shared
              skybox-controls slideshow tab — the old duplicate block here showed a second
              Regenerate button and confused teachers. --}}
@@ -305,7 +305,7 @@
     </div>
 
     <label class="form-control">
-        <span class="text-xs uppercase tracking-wider text-slate-400">Challenge duration (mm:ss)</span>
+        <span class="text-xs uppercase tracking-wider text-slate-400">{{ __('Challenge duration (mm:ss)') }}</span>
         <input type="text"
                x-data="{ v: '{{ sprintf('%d:%02d', intdiv((int) ($scene->duration_seconds ?? 0), 60), ((int) ($scene->duration_seconds ?? 0)) % 60) }}' }"
                x-model="v"
@@ -318,5 +318,5 @@
 
     <button type="button" wire:click="deleteScene({{ $scene->id }})"
             wire:confirm="Delete this game segment?"
-            class="text-error/80 hover:text-error text-xs underline mt-2">Delete segment</button>
+            class="text-error/80 hover:text-error text-xs underline mt-2">{{ __('Delete segment') }}</button>
 </div>

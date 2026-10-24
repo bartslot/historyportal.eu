@@ -1039,15 +1039,19 @@ class Lesson extends Model
         // Scene by scene: its picture (the poster's "Scene" choice), then everything else that scene
         // holds, so a split panel sits right after its own scene instead of after every scene's
         // picture (it fell off the Library shelf in long lessons). Voyage/gallery URLs are absolute.
+        // Every label names its scene ("Scene 5, panel 2"): the shelf dedupes on the URL, so when
+        // scene 5's main picture repeats scene 4's, scene 5's tile drops out and its panels used
+        // to sit under scene 4's tile looking like scene 4's (pair test 2026-10-24).
         foreach ($this->scenes()->ordered()->get()->values() as $i => $scene) {
-            $push($this->scenePosterUrl($scene), __('Scene :n', ['n' => $i + 1]));
-            $push($this->publicMediaUrl($scene->skybox_image_path), __('Scene panorama'));
-            $push($this->publicMediaUrl($scene->image_path), __('Scene image'));
+            $n = $i + 1;
+            $push($this->scenePosterUrl($scene), __('Scene :n', ['n' => $n]));
+            $push($this->publicMediaUrl($scene->skybox_image_path), __('Scene :n, panorama', ['n' => $n]));
+            $push($this->publicMediaUrl($scene->image_path), __('Scene :n', ['n' => $n]));
             // Every shot / split panel holds its own picture; a panel left behind by going back
             // to one picture is still the teacher's image and must stay findable.
-            foreach (($scene->shots ?? []) as $shot) {
+            foreach (array_values($scene->shots ?? []) as $p => $shot) {
                 foreach (['image_path', 'bg_path', 'hero_path'] as $key) {
-                    $push($this->publicMediaUrl(is_array($shot) ? ($shot[$key] ?? null) : null), __('Scene image'));
+                    $push($this->publicMediaUrl(is_array($shot) ? ($shot[$key] ?? null) : null), __('Scene :n, panel :p', ['n' => $n, 'p' => $p + 1]));
                 }
             }
             $cfg = $scene->config ?? [];

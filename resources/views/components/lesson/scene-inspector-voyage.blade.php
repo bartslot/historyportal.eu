@@ -115,13 +115,13 @@
             @if ($legDef)
                 <div class="mt-2 grid grid-cols-2 gap-2">
                     <label class="form-control">
-                        <span class="text-2xs uppercase tracking-wider text-slate-400">Departs</span>
+                        <span class="text-2xs uppercase tracking-wider text-slate-400">{{ __('Departs') }}</span>
                         <input type="date" value="{{ $legDef['depart'] ?? '' }}"
                                wire:change="setLegDepart($event.target.value)"
                                class="input input-xs input-bordered bg-slate-900 mt-1" />
                     </label>
                     <label class="form-control">
-                        <span class="text-2xs uppercase tracking-wider text-slate-400">Arrives</span>
+                        <span class="text-2xs uppercase tracking-wider text-slate-400">{{ __('Arrives') }}</span>
                         <input type="date" value="{{ $legDef['arrive'] ?? '' }}"
                                wire:change="setLegArrive($event.target.value)"
                                class="input input-xs input-bordered bg-slate-900 mt-1" />
@@ -190,12 +190,12 @@
                         <img src="{{ $legMarkerImage }}" alt=""
                              class="h-16 w-16 shrink-0 rounded-full object-cover ring-2 ring-primary" />
                         <div class="min-w-0 flex-1">
-                            <p class="text-2xs text-slate-300">A picture travels this leg.</p>
+                            <p class="text-2xs text-slate-300">{{ __('A picture travels this leg.') }}</p>
                             <div class="mt-1 flex gap-2">
                                 <button type="button" wire:click="openMarkerImagePicker"
-                                        class="text-2xs text-primary underline hover:text-amber-200">Change</button>
+                                        class="text-2xs text-primary underline hover:text-amber-200">{{ __('Change') }}</button>
                                 <button type="button" wire:click="clearLegMarkerImage"
-                                        class="text-2xs text-slate-400 underline hover:text-slate-200">Use a model</button>
+                                        class="text-2xs text-slate-400 underline hover:text-slate-200">{{ __('Use a model') }}</button>
                             </div>
                         </div>
                     @else
@@ -229,38 +229,38 @@
                     {{ trim((string) ($gallery['title'] ?? '')) !== '' ? $gallery['title'] : __('unnamed') }}@if (count($galleryImages)) · {{ count($galleryImages) }} @endif
                 </span>
             </summary>
-            <span class="mt-0.5 block text-2xs text-slate-500">Opens as a modal from the landfall hotspot.</span>
+            <span class="mt-0.5 block text-2xs text-slate-500">{{ __('Opens as a modal from the landfall hotspot.') }}</span>
 
             <label class="form-control mt-2">
-                <span class="text-2xs uppercase tracking-wider text-slate-500">Title</span>
+                <span class="text-2xs uppercase tracking-wider text-slate-500">{{ __('Title') }}</span>
                 <input type="text" wire:model.blur="selectedScene.config.gallery.title" wire:change="saveSelected"
                        placeholder="e.g. Verversingspost" class="input input-sm input-bordered bg-slate-900 mt-1" />
             </label>
             <label class="form-control mt-2">
-                <span class="text-2xs uppercase tracking-wider text-slate-500">Date label</span>
+                <span class="text-2xs uppercase tracking-wider text-slate-500">{{ __('Date label') }}</span>
                 <input type="text" wire:model.blur="selectedScene.config.gallery.date_label" wire:change="saveSelected"
                        placeholder="e.g. 5 september 1642" class="input input-sm input-bordered bg-slate-900 mt-1" />
             </label>
             <label class="form-control mt-2">
-                <span class="text-2xs uppercase tracking-wider text-slate-500">Story</span>
+                <span class="text-2xs uppercase tracking-wider text-slate-500">{{ __('Story') }}</span>
                 <textarea wire:model.blur="selectedScene.config.gallery.story" wire:change="saveSelected" rows="4"
-                          placeholder="What happened at this stop…"
+                          placeholder="{{ __('What happened at this stop…') }}"
                           class="textarea textarea-bordered bg-slate-900 mt-1 leading-relaxed"></textarea>
             </label>
 
             {{-- Image fit — cover (fill, may crop) vs fit (letterbox on a blurred backdrop). --}}
             @php $gfit = ($gallery['fit'] ?? 'fit') === 'cover' ? 'cover' : 'fit'; @endphp
             <div class="mt-3 flex items-center justify-between gap-2">
-                <span class="text-2xs uppercase tracking-wider text-slate-500">Image fit</span>
+                <span class="text-2xs uppercase tracking-wider text-slate-500">{{ __('Image fit') }}</span>
                 <div class="inline-flex overflow-hidden rounded-lg border border-slate-700/60">
                     <button type="button" wire:click="setGalleryFit('cover')"
-                            class="px-2.5 py-1 text-xs font-medium transition-colors {{ $gfit === 'cover' ? 'bg-primary text-slate-950' : 'bg-slate-800 text-slate-400' }}">Cover</button>
+                            class="px-2.5 py-1 text-xs font-medium transition-colors {{ $gfit === 'cover' ? 'bg-primary text-slate-950' : 'bg-slate-800 text-slate-400' }}">{{ __('Cover') }}</button>
                     <button type="button" wire:click="setGalleryFit('fit')"
-                            class="px-2.5 py-1 text-xs font-medium transition-colors {{ $gfit === 'fit' ? 'bg-primary text-slate-950' : 'bg-slate-800 text-slate-400' }}">Fit</button>
+                            class="px-2.5 py-1 text-xs font-medium transition-colors {{ $gfit === 'fit' ? 'bg-primary text-slate-950' : 'bg-slate-800 text-slate-400' }}">{{ __('Fit') }}</button>
                 </div>
             </div>
 
-            <span class="mt-3 block text-2xs uppercase tracking-wider text-slate-500">Images</span>
+            <span class="mt-3 block text-2xs uppercase tracking-wider text-slate-500">{{ __('Images') }}</span>
             <span class="text-2xs text-slate-500">The first three pin as thumbnails on the map; all show in the gallery.</span>
             @if (count($galleryImages))
                 <ul class="mt-1 space-y-2" x-data="{ drag: null }">
@@ -273,21 +273,21 @@
                             x-on:drop.prevent="if (drag !== null && drag !== {{ $i }}) $wire.moveGalleryImage(drag, {{ $i }}); drag = null"
                             class="rounded-lg border border-slate-700/50 bg-slate-900/60 p-1.5 cursor-grab active:cursor-grabbing">
                             <div class="flex items-center gap-2">
-                                <span class="shrink-0 select-none text-slate-600" aria-hidden="true" title="Drag to reorder">⠿</span>
+                                <span class="shrink-0 select-none text-slate-600" aria-hidden="true" title="{{ __('Drag to reorder') }}">⠿</span>
                                 <img src="{{ $gsrc }}" alt="" class="h-9 w-9 shrink-0 rounded object-cover" onerror="this.style.visibility='hidden'" />
                                 <span class="min-w-0 flex-1 truncate text-2xs text-slate-400">{{ $gsrc }}</span>
                                 <button type="button" wire:click="removeGalleryImage({{ $i }})"
-                                        class="shrink-0 px-1 text-error/80 hover:text-error" title="Remove" aria-label="Remove">✕</button>
+                                        class="shrink-0 px-1 text-error/80 hover:text-error" title="{{ __('Remove') }}" aria-label="{{ __('Remove') }}">✕</button>
                             </div>
                             <input type="text" value="{{ is_array($img) ? ($img['credit'] ?? '') : '' }}"
                                    wire:change="setGalleryImageCredit({{ $i }}, $event.target.value)"
-                                   placeholder="Credit / source"
+                                   placeholder="{{ __('Credit / source') }}"
                                    class="input input-xs input-bordered bg-slate-900 mt-1.5 w-full" />
                         </li>
                     @endforeach
                 </ul>
             @else
-                <p class="mt-1 text-2xs text-slate-500">No gallery images yet.</p>
+                <p class="mt-1 text-2xs text-slate-500">{{ __('No gallery images yet.') }}</p>
             @endif
 
             <div x-data="{ url: '' }" class="mt-2">
@@ -299,7 +299,7 @@
                     <input type="url" x-model="url" placeholder="or paste an image URL"
                            class="input input-xs input-bordered bg-slate-900 flex-1" />
                     <button type="button" class="btn btn-xs btn-primary"
-                            @click="if (url.trim()) { $wire.addGalleryImage(url); url='' }">Add</button>
+                            @click="if (url.trim()) { $wire.addGalleryImage(url); url='' }">{{ __('Add') }}</button>
                 </div>
             </div>
         </details>
@@ -313,10 +313,10 @@
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 0 1 3 12c0-1.605.42-3.113 1.157-4.418"/></svg>
                 Projection
             </div>
-            <span class="mt-0.5 block text-2xs text-slate-500">Applies to the whole voyage.</span>
+            <span class="mt-0.5 block text-2xs text-slate-500">{{ __('Applies to the whole voyage.') }}</span>
             <div class="mt-2 flex items-end justify-between gap-3">
                 <div>
-                    <span class="text-2xs uppercase tracking-wider text-slate-400">View</span>
+                    <span class="text-2xs uppercase tracking-wider text-slate-400">{{ __('View') }}</span>
                     <div class="mt-1 inline-flex overflow-hidden rounded-lg border border-slate-700/60">
                         <button type="button" wire:click="setVoyageView('flat')"
                                 class="px-2.5 py-1 text-xs font-medium transition-colors {{ $view === 'globe' ? 'bg-slate-800 text-slate-400' : 'bg-primary text-slate-950' }}">
@@ -329,8 +329,8 @@
                     </div>
                 </div>
                 {{-- INTRO — the "from space" fly-in. Only the first leg plays it. --}}
-                <label class="flex items-center gap-2" title="Fly in from orbit before departure (first leg only)">
-                    <span class="text-2xs uppercase tracking-wider text-slate-400">Space intro</span>
+                <label class="flex items-center gap-2" title="{{ __('Fly in from orbit before departure (first leg only)') }}">
+                    <span class="text-2xs uppercase tracking-wider text-slate-400">{{ __('Space intro') }}</span>
                     <input type="checkbox" @checked($intro)
                            wire:change="setVoyageIntro($event.target.checked)"
                            class="toggle toggle-sm toggle-warning" />
@@ -374,14 +374,14 @@
                 {{-- WAYPOINT TITLES — the landfall names pinned along the route --}}
                 <div class="rounded-lg bg-slate-800/30 p-2">
                     <label class="flex items-center justify-between gap-2">
-                        <span class="text-2xs text-slate-300">Waypoint titles</span>
+                        <span class="text-2xs text-slate-300">{{ __('Waypoint titles') }}</span>
                         <input type="checkbox" @checked($vm('labels', true)) wire:change="setVoyageMap('labels', $event.target.checked)" class="toggle toggle-sm toggle-warning" />
                     </label>
                     @if ($vm('labels', true))
                         <div class="mt-2 flex items-center gap-2">
-                            <input type="color" value="{{ $vm('label_color', '#3a2c1a') }}" wire:change="setVoyageMap('label_color', $event.target.value)" class="{{ $swatch }}" title="Label colour" />
+                            <input type="color" value="{{ $vm('label_color', '#3a2c1a') }}" wire:change="setVoyageMap('label_color', $event.target.value)" class="{{ $swatch }}" title="{{ __('Label colour') }}" />
                             <label class="flex flex-1 items-center gap-1.5">
-                                <span class="text-2xs text-slate-500">Size</span>
+                                <span class="text-2xs text-slate-500">{{ __('Size') }}</span>
                                 <span class="range-panel-knob min-w-0 flex-1">
                                     <input type="range" min="0.5" max="2.2" step="0.1" value="{{ $vm('label_size', 1.0) }}" wire:change="setVoyageMap('label_size', $event.target.value)" class="{{ $mini }}" />
                                 </span>
@@ -393,14 +393,14 @@
                 {{-- CITY NAMES --}}
                 <div class="rounded-lg bg-slate-800/30 p-2">
                     <label class="flex items-center justify-between gap-2">
-                        <span class="text-2xs text-slate-300">City names</span>
+                        <span class="text-2xs text-slate-300">{{ __('City names') }}</span>
                         <input type="checkbox" @checked($vm('cities', true)) wire:change="setVoyageMap('cities', $event.target.checked)" class="toggle toggle-sm toggle-warning" />
                     </label>
                     @if ($vm('cities', true))
                         <div class="mt-2 flex items-center gap-2">
-                            <input type="color" value="{{ $vm('city_color', '#3a2c1a') }}" wire:change="setVoyageMap('city_color', $event.target.value)" class="{{ $swatch }}" title="City name colour" />
+                            <input type="color" value="{{ $vm('city_color', '#3a2c1a') }}" wire:change="setVoyageMap('city_color', $event.target.value)" class="{{ $swatch }}" title="{{ __('City name colour') }}" />
                             <label class="flex flex-1 items-center gap-1.5">
-                                <span class="text-2xs text-slate-500">Size</span>
+                                <span class="text-2xs text-slate-500">{{ __('Size') }}</span>
                                 <span class="range-panel-knob min-w-0 flex-1">
                                     <input type="range" min="0.5" max="2.2" step="0.1" value="{{ $vm('city_size', 1.0) }}" wire:change="setVoyageMap('city_size', $event.target.value)" class="{{ $mini }}" />
                                 </span>
@@ -412,22 +412,22 @@
                 {{-- COUNTRY BORDERS --}}
                 <div class="rounded-lg bg-slate-800/30 p-2">
                     <label class="flex items-center justify-between gap-2">
-                        <span class="text-2xs text-slate-300">Country borders</span>
+                        <span class="text-2xs text-slate-300">{{ __('Country borders') }}</span>
                         <input type="checkbox" @checked($vm('borders', true)) wire:change="setVoyageMap('borders', $event.target.checked)" class="toggle toggle-sm toggle-warning" />
                     </label>
                     @if ($vm('borders', true))
                         <div class="mt-2 space-y-1.5">
                             <div class="flex items-center gap-2">
-                                <input type="color" value="{{ $vm('border_color', '#5b4a36') }}" wire:change="setVoyageMap('border_color', $event.target.value)" class="{{ $swatch }}" title="Border colour" />
+                                <input type="color" value="{{ $vm('border_color', '#5b4a36') }}" wire:change="setVoyageMap('border_color', $event.target.value)" class="{{ $swatch }}" title="{{ __('Border colour') }}" />
                                 <label class="flex flex-1 items-center gap-1.5">
-                                    <span class="text-2xs text-slate-500">Width</span>
+                                    <span class="text-2xs text-slate-500">{{ __('Width') }}</span>
                                     <span class="range-panel-knob min-w-0 flex-1">
                                         <input type="range" min="0.2" max="4" step="0.2" value="{{ $vm('border_width', 0.6) }}" wire:change="setVoyageMap('border_width', $event.target.value)" class="{{ $mini }}" />
                                     </span>
                                 </label>
                             </div>
                             <label class="flex items-center gap-1.5">
-                                <span class="w-9 text-2xs text-slate-500">Opacity</span>
+                                <span class="w-9 text-2xs text-slate-500">{{ __('Opacity') }}</span>
                                 <span class="range-panel-knob min-w-0 flex-1">
                                     <input type="range" min="0" max="1" step="0.05" value="{{ $vm('border_opacity', 0.3) }}" wire:change="setVoyageMap('border_opacity', $event.target.value)" class="{{ $mini }}" />
                                 </span>
@@ -455,7 +455,7 @@
             {{-- AUTO fog-of-war: mask all new land along the route; the ship's range unmasks it on
                  approach and the coastline draws on at landfall. When on, the manual brush is hidden. --}}
             <label class="mt-2 flex items-center justify-between gap-2 rounded-lg bg-slate-800/40 px-2.5 py-2">
-                <span class="text-2xs text-slate-300">Fog undiscovered land automatically</span>
+                <span class="text-2xs text-slate-300">{{ __('Fog undiscovered land automatically') }}</span>
                 <input type="checkbox" @checked($voyageMap['fog_auto'] ?? false)
                        wire:change="setVoyageMap('fog_auto', $event.target.checked)"
                        class="toggle toggle-sm toggle-warning" />
@@ -469,8 +469,8 @@
                         :class="paint ? 'bg-primary text-slate-950' : 'bg-slate-800 text-slate-300 hover:text-slate-100'"
                         class="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-medium transition-colors">
                     <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.53 16.122a3 3 0 0 0-5.78 1.128 2.25 2.25 0 0 1-2.4 2.245 4.5 4.5 0 0 0 8.4-2.245c0-.399-.078-.78-.22-1.128Zm0 0a15.998 15.998 0 0 0 3.388-1.62m-5.043-.025a15.994 15.994 0 0 1 1.622-3.395m3.42 3.42a15.995 15.995 0 0 0 4.764-4.648l3.876-5.814a1.151 1.151 0 0 0-1.597-1.597L14.146 6.32a15.996 15.996 0 0 0-4.649 4.763m3.42 3.42a6.776 6.776 0 0 0-3.42-3.42"/></svg>
-                    <span x-show="!paint">Paint undiscovered land</span>
-                    <span x-show="paint" x-cloak>Painting — click to stop</span>
+                    <span x-show="!paint">{{ __('Paint undiscovered land') }}</span>
+                    <span x-show="paint" x-cloak>{{ __('Painting — click to stop') }}</span>
                 </button>
                 {{-- Paint vs Erase segmented toggle + brush size, only while the tool is active. --}}
                 <div x-show="paint" x-cloak>
@@ -478,16 +478,16 @@
                         <button type="button"
                                 x-on:click="erase = false; window.__voyagePaint.erase = false; window.dispatchEvent(new Event('voyage-paint-changed'))"
                                 :class="!erase ? 'bg-primary text-slate-950' : 'text-slate-300 hover:text-slate-100'"
-                                class="rounded-md py-1 text-2xs font-medium transition-colors">Paint</button>
+                                class="rounded-md py-1 text-2xs font-medium transition-colors">{{ __('Paint') }}</button>
                         <button type="button"
                                 x-on:click="erase = true; window.__voyagePaint.erase = true; window.dispatchEvent(new Event('voyage-paint-changed'))"
                                 :class="erase ? 'bg-error text-slate-950' : 'text-slate-300 hover:text-slate-100'"
-                                class="rounded-md py-1 text-2xs font-medium transition-colors">Erase</button>
+                                class="rounded-md py-1 text-2xs font-medium transition-colors">{{ __('Erase') }}</button>
                     </div>
                     <p class="mt-1 text-2xs text-slate-500" x-text="erase ? 'Drag over masked land to reveal it.' : 'Drag over land to hide it.'"></p>
                     {{-- Brush size — shared between Paint and Erase (the value stays put when you switch). --}}
                     <label class="mt-2 block">
-                        <span class="flex justify-between text-2xs text-slate-300">Brush size <span class="text-slate-500" x-text="brush + ' km'"></span></span>
+                        <span class="flex justify-between text-2xs text-slate-300">{{ __('Brush size') }} <span class="text-slate-500" x-text="brush + ' km'"></span></span>
                         <span class="range-panel-knob min-w-0 mt-1">
                             <input type="range" min="60" max="600" step="20" x-model.number="brush"
                                    x-on:input="window.__voyagePaint.brushKm = brush"
@@ -505,7 +505,7 @@
                         Undo <span class="text-slate-500">(⌘Z)</span>
                     </button>
                     <button type="button" wire:click="clearFog"
-                            class="text-2xs text-error/80 underline hover:text-error">Reset all</button>
+                            class="text-2xs text-error/80 underline hover:text-error">{{ __('Reset all') }}</button>
                 </div>
             @endif
         </section>
@@ -610,7 +610,7 @@
                     @endforeach
                 </div>
             @else
-                <p class="mt-1 text-2xs text-slate-500">This voyage has no fleet data.</p>
+                <p class="mt-1 text-2xs text-slate-500">{{ __('This voyage has no fleet data.') }}</p>
             @endif
         </section>
 
@@ -642,7 +642,7 @@
             </div>
 
             <label class="mt-3 block">
-                <span class="flex justify-between text-2xs text-slate-300">Ship size <span class="text-slate-500">{{ number_format((float) $vmr('ship_scale', 1.0), 1) }}×</span></span>
+                <span class="flex justify-between text-2xs text-slate-300">{{ __('Ship size') }} <span class="text-slate-500">{{ number_format((float) $vmr('ship_scale', 1.0), 1) }}×</span></span>
                 <span class="range-panel-knob min-w-0 mt-1">
                     <input type="range" min="0.4" max="2.5" step="0.1" value="{{ $vmr('ship_scale', 1.0) }}"
                            wire:change="setVoyageMap('ship_scale', $event.target.value)"
@@ -652,7 +652,7 @@
 
             <label class="mt-2 flex items-center justify-between gap-2">
                 <span class="text-2xs text-slate-300">Scale with zoom
-                    <span class="block text-2xs text-slate-500">On: pinned to the map (shrinks as you zoom out). Off: constant size.</span>
+                    <span class="block text-2xs text-slate-500">{{ __('On: pinned to the map (shrinks as you zoom out). Off: constant size.') }}</span>
                 </span>
                 <input type="checkbox" @checked($vmr('ship_anchored', false)) wire:change="setVoyageMap('ship_anchored', $event.target.checked)" class="toggle toggle-sm toggle-warning shrink-0" />
             </label>
@@ -661,34 +661,34 @@
                  read as too much on a big classroom screen, so the swing is adjustable — 0 parks the
                  ship dead still on the water. --}}
             <label class="mt-3 block">
-                <span class="flex justify-between text-2xs text-slate-300">Animation <span class="text-slate-500">{{ (int) $vmr('motion', 100) }}%</span></span>
+                <span class="flex justify-between text-2xs text-slate-300">{{ __('Animation') }} <span class="text-slate-500">{{ (int) $vmr('motion', 100) }}%</span></span>
                 <span class="range-panel-knob min-w-0 mt-1">
                     <input type="range" min="0" max="100" step="5" value="{{ (int) $vmr('motion', 100) }}"
                            wire:change="setVoyageMap('motion', $event.target.value)"
                            class="range range-panel" />
                 </span>
-                <span class="mt-0.5 flex justify-between text-2xs text-slate-500"><span>Still</span><span>Full rock</span></span>
+                <span class="mt-0.5 flex justify-between text-2xs text-slate-500"><span>{{ __('Still') }}</span><span>{{ __('Full rock') }}</span></span>
             </label>
 
             {{-- Sailing zoom: how closely the camera follows the ship. 0 = tight on the ship + a small
                  island; 100 = a continental view (never the whole world). --}}
             <label class="mt-3 block">
-                <span class="flex justify-between text-2xs text-slate-300">Sailing zoom <span class="text-slate-500">{{ (int) $vmr('ocean_zoom', 30) }}%</span></span>
+                <span class="flex justify-between text-2xs text-slate-300">{{ __('Sailing zoom') }} <span class="text-slate-500">{{ (int) $vmr('ocean_zoom', 30) }}%</span></span>
                 <span class="range-panel-knob min-w-0 mt-1">
                     <input type="range" min="0" max="100" step="5" value="{{ (int) $vmr('ocean_zoom', 30) }}"
                            wire:change="setVoyageMap('ocean_zoom', $event.target.value)"
                            class="range range-panel" />
                 </span>
-                <span class="mt-0.5 flex justify-between text-2xs text-slate-500"><span>Ship + island</span><span>Continental</span></span>
+                <span class="mt-0.5 flex justify-between text-2xs text-slate-500"><span>{{ __('Ship + island') }}</span><span>{{ __('Continental') }}</span></span>
             </label>
 
             <label class="mt-3 flex items-center justify-between gap-2">
                 <span class="text-2xs text-slate-300">Dolly in on arrival
-                    <span class="block text-2xs text-slate-500">Zoom in a little more as the ship makes landfall.</span>
+                    <span class="block text-2xs text-slate-500">{{ __('Zoom in a little more as the ship makes landfall.') }}</span>
                 </span>
                 <input type="checkbox" @checked($vmr('cam_dolly_arrival', false)) wire:change="setVoyageMap('cam_dolly_arrival', $event.target.checked)" class="toggle toggle-sm toggle-warning shrink-0" />
             </label>
-            <p class="mt-2 text-2xs text-slate-500">The sail (with these camera moves) plays in Preview and for students — the editor jumps straight to each landfall.</p>
+            <p class="mt-2 text-2xs text-slate-500">{{ __('The sail (with these camera moves) plays in Preview and for students — the editor jumps straight to each landfall.') }}</p>
         </section>
 
         {{-- ROUTE LINE — the sailed (visible) part of the journey. Lesson-wide (one setting for every
@@ -709,7 +709,7 @@
             <div class="mt-2 space-y-2.5" @disabled(! $rl['enabled']) @class(['opacity-40 pointer-events-none' => ! $rl['enabled']])>
                 {{-- Colour (fill) --}}
                 <label class="flex items-center justify-between gap-2">
-                    <span class="text-2xs text-slate-300">Colour</span>
+                    <span class="text-2xs text-slate-300">{{ __('Colour') }}</span>
                     <input type="color" value="{{ $rl['color'] }}"
                            wire:change="setRouteLine('color', $event.target.value)"
                            class="h-6 w-10 cursor-pointer rounded border border-slate-600 bg-slate-900" />
@@ -717,7 +717,7 @@
 
                 {{-- Opacity --}}
                 <label class="block">
-                    <span class="flex justify-between text-2xs text-slate-300">Opacity <span class="text-slate-500">{{ number_format((float) $rl['opacity'], 2) }}</span></span>
+                    <span class="flex justify-between text-2xs text-slate-300">{{ __('Opacity') }} <span class="text-slate-500">{{ number_format((float) $rl['opacity'], 2) }}</span></span>
                     <span class="range-panel-knob min-w-0 mt-1">
                         <input type="range" min="0" max="1" step="0.05" value="{{ $rl['opacity'] }}"
                                wire:change="setRouteLine('opacity', $event.target.value)"
@@ -727,7 +727,7 @@
 
                 {{-- Thickness --}}
                 <label class="block">
-                    <span class="flex justify-between text-2xs text-slate-300">Thickness <span class="text-slate-500">{{ (float) $rl['thickness'] }}px</span></span>
+                    <span class="flex justify-between text-2xs text-slate-300">{{ __('Thickness') }} <span class="text-slate-500">{{ (float) $rl['thickness'] }}px</span></span>
                     <span class="range-panel-knob min-w-0 mt-1">
                         <input type="range" min="0.5" max="12" step="0.5" value="{{ $rl['thickness'] }}"
                                wire:change="setRouteLine('thickness', $event.target.value)"
@@ -737,7 +737,7 @@
 
                 {{-- Wobble --}}
                 <label class="block">
-                    <span class="flex justify-between text-2xs text-slate-300">Wobble <span class="text-slate-500">{{ number_format((float) $rl['wobble'], 2) }}</span></span>
+                    <span class="flex justify-between text-2xs text-slate-300">{{ __('Wobble') }} <span class="text-slate-500">{{ number_format((float) $rl['wobble'], 2) }}</span></span>
                     <span class="range-panel-knob min-w-0 mt-1">
                         <input type="range" min="0" max="1" step="0.05" value="{{ $rl['wobble'] }}"
                                wire:change="setRouteLine('wobble', $event.target.value)"
@@ -747,7 +747,7 @@
 
                 {{-- Curve: straight vs bezier --}}
                 <div>
-                    <span class="text-2xs text-slate-300">Line style</span>
+                    <span class="text-2xs text-slate-300">{{ __('Line style') }}</span>
                     <div class="mt-1 inline-flex overflow-hidden rounded-lg border border-slate-700/60">
                         <button type="button" wire:click="setRouteLine('curve', 'bezier')"
                                 class="px-3 py-1 text-xs font-medium transition-colors {{ ($rl['curve'] ?? 'bezier') === 'straight' ? 'bg-slate-800 text-slate-400' : 'bg-primary text-slate-950' }}">

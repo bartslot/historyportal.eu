@@ -19,6 +19,7 @@ import QRCode from 'qrcode'
 import { resolveAnchorTime, pickShotIndex } from './scene/shot-sync.js'
 import { buildChapters, canSeek, reachedFurther, chapterTooltip, formatClock, formatMinutes } from './scene/chapter-timeline.js'
 import { createTelemetry } from './lesson-telemetry.js'
+import { createPausableTimeout } from './pausable-clock.js'
 import { hasAnimation, frameAt, applyFrameTo } from './anim/scene-animation.js'
 import { renderGallery } from './gallery-scene.js'
 import { stageAdvance, stageFloorMs } from './scene/stage-auto.js'
@@ -1486,7 +1487,7 @@ Alpine.data('lessonGame', (lesson) => ({
       // A pending no-audio scene hold is the same kind of stale timer — cancel it too, along with
       // a scene waiting on its layers to leave: if the student jumps, that wait is now for a scene
       // nobody is looking at, and letting it fire would advance them a second time.
-      clearTimeout(this._noAudioHold)
+      this._noAudioHold?.cancel()
       clearTimeout(this._exitTimer)
       if (!a) return
       try {
@@ -1668,8 +1669,9 @@ Alpine.data('lessonGame', (lesson) => ({
       // (or a short default), then advance — never build `new Audio(null)`, which would hang the queue.
       if (!scene.audio_url) {
         const holdMs = (Number(scene.duration_seconds) > 0 ? Number(scene.duration_seconds) : 4) * 1000
-        clearTimeout(this._noAudioHold)
-        this._noAudioHold = setTimeout(() => this._afterSceneAudio(index, scene), holdMs)
+        // Pausable: a paused class stays on this scene, and resume continues the hold (pair test 10-24).
+        this._noAudioHold?.cancel()
+        this._noAudioHold = createPausableTimeout(() => this._afterSceneAudio(index, scene), holdMs, { paused: this.playbackPaused })
         return
       }
 
@@ -1791,8 +1793,8 @@ Alpine.data('lessonGame', (lesson) => ({
       this.showMapContinue = (mode === 'interactive')
       if (mode === 'timed') {
         const hold = Math.max(2, Number(cfg.hold_seconds) || 7) * 1000
-        clearTimeout(_mapTimer)
-        _mapTimer = setTimeout(() => this._advanceFromMap(index), hold)
+        _mapTimer?.cancel()
+        _mapTimer = createPausableTimeout(() => this._advanceFromMap(index), hold, { paused: this.playbackPaused })
       }
     },
 
@@ -2006,7 +2008,7 @@ Alpine.data('lessonGame', (lesson) => ({
     },
 
     _teardownStageScene (full = false) {
-      clearTimeout(_mapTimer)
+      _mapTimer?.cancel()
       _mapTimer = null
       this._cancelVoyageAuto()
       // Voyage lessons keep ONE persistent map across all legs — between scenes we only stop the
@@ -2940,6 +2942,12 @@ Alpine.data('lessonGame', (lesson) => ({
       // The sailing ship freezes mid-ocean and picks up from the same spot; the landfall's
       // auto-advance countdown stops accumulating (see _startStageAuto).
       try { _voyageInstance?.setPaused?.(this.playbackPaused) } catch (_) { /* map gone */ }
+
+      // A silent scene's hold and a timed map's hold wait with the class instead of moving on.
+      for (const hold of [this._noAudioHold, _mapTimer]) {
+        if (this.playbackPaused) hold?.pause()
+        else hold?.resume()
+      }
 
       // Same for a map block touring its focus cities: a student who pauses on Constantinople must
       // not come back to find the camera two cities further on than the narrator.

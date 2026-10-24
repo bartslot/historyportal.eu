@@ -43,3 +43,37 @@ export function createPausableClock (now = () => performance.now()) {
     },
   }
 }
+
+/**
+ * A setTimeout that pause() holds and resume() continues with only the time that was left.
+ * A silent scene's hold must not run on while the class is paused (pair test 2026-10-24).
+ * `opts` injects now/setTimeout/clearTimeout for tests; `paused: true` starts it held.
+ */
+export function createPausableTimeout (fn, ms, opts = {}) {
+  const set = opts.setTimeout ?? ((f, d) => setTimeout(f, d))
+  const clear = opts.clearTimeout ?? ((h) => clearTimeout(h))
+  const clock = createPausableClock(opts.now)
+  let handle = null
+  let done = false
+
+  const arm = () => { handle = set(() => { done = true; fn() }, Math.max(0, ms - clock.elapsed())) }
+  if (opts.paused) clock.pause()
+  else arm()
+
+  return {
+    pause () {
+      if (done || clock.isPaused) return
+      clear(handle)
+      clock.pause()
+    },
+    resume () {
+      if (done || !clock.isPaused) return
+      clock.resume()
+      arm()
+    },
+    cancel () {
+      done = true
+      clear(handle)
+    },
+  }
+}

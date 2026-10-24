@@ -260,6 +260,12 @@ final class JsTranslations
             // A new text object's starting name (scene/TextOverlayLayer.js addText).
             'Title' => __('Title'),
             'Text' => __('Text'),
+            // Editor handles and hints built in JS (TextOverlayLayer, SplitStage, ArtworkOverlay, voyage-tour).
+            'Type…' => __('Type…'),
+            'Split position' => __('Split position'),
+            'Drag to rotate · hold Shift for 15°' => __('Drag to rotate · hold Shift for 15°'),
+            'Drag to resize' => __('Drag to resize'),
+            'Drag to bend the route around land' => __('Drag to bend the route around land'),
         ];
     }
 

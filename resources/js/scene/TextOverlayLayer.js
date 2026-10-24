@@ -464,7 +464,7 @@ export class TextOverlayLayer {
     }
     edit.contentEditable = 'true'
     edit.spellcheck = false
-    edit.dataset.placeholder = 'Type…'
+    edit.dataset.placeholder = t('Type…')
     return edit
   }
 

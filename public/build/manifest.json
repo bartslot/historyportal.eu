@@ -118,6 +118,10 @@
     "file": "assets/maplibre-compat-BhO3OEJx.js",
     "name": "maplibre-compat"
   },
+  "_pausable-clock-B6VRcHlA.js": {
+    "file": "assets/pausable-clock-B6VRcHlA.js",
+    "name": "pausable-clock"
+  },
   "_preload-helper-DIdkKO6w.js": {
     "file": "assets/preload-helper-DIdkKO6w.js",
     "name": "preload-helper"
@@ -151,7 +155,7 @@
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-NjylOrs7.css",
+    "file": "assets/app-BWVh-yt4.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -160,7 +164,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-BGGy6FRn.js",
+    "file": "assets/app-DY6XLvqh.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -228,7 +232,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-C6GF7U5C.js",
+    "file": "assets/lesson-player-CzmLuy4d.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -236,6 +240,7 @@
       "_preload-helper-DIdkKO6w.js",
       "__commonjsHelpers-CqkleIqs.js",
       "_dom-1akfPxNw.js",
+      "_pausable-clock-B6VRcHlA.js",
       "_properties-Be9DmDzI.js",
       "resources/js/gallery-scene.js",
       "_big-countdown-C2dIhksY.js",
@@ -285,12 +290,13 @@
     ]
   },
   "resources/js/scene/ArtworkOverlay.js": {
-    "file": "assets/ArtworkOverlay-quLkbMdH.js",
+    "file": "assets/ArtworkOverlay-Czxd0EGU.js",
     "name": "ArtworkOverlay",
     "src": "resources/js/scene/ArtworkOverlay.js",
     "isDynamicEntry": true,
     "imports": [
       "_properties-Be9DmDzI.js",
+      "_i18n-DoByrmTl.js",
       "_big-countdown-C2dIhksY.js",
       "_ambient-CnaWjG1w.js",
       "_easing-HS2C6-zA.js"
@@ -323,12 +329,13 @@
     ]
   },
   "resources/js/scene/SplitStage.js": {
-    "file": "assets/SplitStage-CBzJtolE.js",
+    "file": "assets/SplitStage-C2ApAKQP.js",
     "name": "SplitStage",
     "src": "resources/js/scene/SplitStage.js",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/scene/ParallaxScene.js",
+      "_i18n-DoByrmTl.js",
       "resources/js/scene/ArtworkOverlay.js",
       "_BalloonLayer-Bjnwbp4q.js",
       "_big-countdown-C2dIhksY.js",
@@ -349,7 +356,7 @@
     ]
   },
   "resources/js/scene/TextOverlayLayer.js": {
-    "file": "assets/TextOverlayLayer-DXxRV5Rl.js",
+    "file": "assets/TextOverlayLayer-4w9kl1cG.js",
     "name": "TextOverlayLayer",
     "src": "resources/js/scene/TextOverlayLayer.js",
     "isDynamicEntry": true,
@@ -373,7 +380,7 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-CR4EVde8.js",
+    "file": "assets/index-BAbU3Fyu.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
@@ -461,7 +468,7 @@
     ]
   },
   "resources/js/test-session/recorder.js": {
-    "file": "assets/recorder-D_MpE56e.js",
+    "file": "assets/recorder-B3MOMAvS.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,
@@ -546,7 +553,7 @@
     ]
   },
   "resources/js/voyage-tour.js": {
-    "file": "assets/voyage-tour-Dnz6viRr.js",
+    "file": "assets/voyage-tour-Osm8nqxf.js",
     "name": "voyage-tour",
     "src": "resources/js/voyage-tour.js",
     "isEntry": true,
@@ -559,6 +566,8 @@
       "resources/js/timemap/voyage-ships.js",
       "__commonjsHelpers-CqkleIqs.js",
       "_map-imagery-U4z06sz1.js",
+      "_pausable-clock-B6VRcHlA.js",
+      "_i18n-DoByrmTl.js",
       "_preload-helper-DIdkKO6w.js",
       "node_modules/three/build/three.module.js",
       "_GLTFLoader-Et3HGvr1.js",

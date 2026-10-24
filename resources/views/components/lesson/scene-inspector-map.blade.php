@@ -11,7 +11,7 @@
     </p>
 
     <label class="form-control">
-        <span class="text-xs uppercase tracking-wider text-slate-400">Year</span>
+        <span class="text-xs uppercase tracking-wider text-slate-400">{{ __('Year') }}</span>
         <input type="number" wire:model.blur.number="selectedScene.config.year" wire:change="saveSelected"
                placeholder="e.g. 1600"
                class="input input-sm input-bordered bg-slate-900 mt-1" />
@@ -19,17 +19,17 @@
     </label>
 
     <label class="form-control">
-        <span class="text-xs uppercase tracking-wider text-slate-400">Playback</span>
+        <span class="text-xs uppercase tracking-wider text-slate-400">{{ __('Playback') }}</span>
         <select wire:model.live="selectedScene.config.playback_mode" wire:change="saveSelected"
                 class="select select-sm select-bordered bg-slate-900 mt-1">
-            <option value="interactive">Interactive — explore, then Continue</option>
-            <option value="timed">Timed — fly-to, then auto-advance</option>
+            <option value="interactive">{{ __('Interactive — explore, then Continue') }}</option>
+            <option value="timed">{{ __('Timed — fly-to, then auto-advance') }}</option>
         </select>
     </label>
 
     <div x-show="$wire.selectedScene?.config?.playback_mode === 'timed'">
         <label class="form-control">
-            <span class="text-xs uppercase tracking-wider text-slate-400">Hold (seconds)</span>
+            <span class="text-xs uppercase tracking-wider text-slate-400">{{ __('Hold (seconds)') }}</span>
             <input type="number" min="2" max="30" wire:model.blur="selectedScene.config.hold_seconds" wire:change="saveSelected"
                    placeholder="7"
                    class="input input-sm input-bordered bg-slate-900 mt-1" />
@@ -40,7 +40,7 @@
          wire:click persists the choice so it survives a re-mount / reload. --}}
     @php $projection = $scene->config['projection'] ?? 'mercator'; @endphp
     <div class="form-control">
-        <span class="text-xs uppercase tracking-wider text-slate-400">View</span>
+        <span class="text-xs uppercase tracking-wider text-slate-400">{{ __('View') }}</span>
         {{-- The projection flips the live preview instantly (the dispatched event) and persists
              the choice (the wire call) so it survives a re-mount. --}}
         <x-ui.segmented panel class="mt-1" name="map-projection" :value="$projection"
@@ -52,10 +52,10 @@
          + label on the map (annotations[].type === 'focus'). A typeahead leads; dropping a raw pin
          is the secondary path. --}}
     <div class="form-control border-t border-slate-700/50 pt-3">
-        <span class="text-xs uppercase tracking-wider text-slate-400">Focus cities</span>
+        <span class="text-xs uppercase tracking-wider text-slate-400">{{ __('Focus cities') }}</span>
 
         <input type="search" wire:model.live.debounce.350ms="cityQuery"
-               placeholder="Search a city — e.g. Constantinople"
+               placeholder="{{ __('Search a city — e.g. Constantinople') }}"
                class="input input-sm input-bordered bg-slate-900 mt-1" />
 
         @if (filled($cityQuery) && $cityResults && $cityResults->isNotEmpty())
@@ -100,25 +100,25 @@
                             <input type="text"
                                    value="{{ ($isCapital ? '★ ' : '').$rowLabel }}"
                                    wire:change="renameFocus({{ $i }}, $event.target.value)"
-                                   placeholder="Place name"
+                                   placeholder="{{ __('Place name') }}"
                                    class="input input-xs input-bordered bg-slate-900 flex-1"
-                                   @if ($isCapital) title="Territory capital (auto-added)" @endif />
+                                   @if ($isCapital) title="{{ __('Territory capital (auto-added)') }}" @endif />
                             <button type="button" wire:click="removeFocus({{ $i }})"
                                     class="shrink-0 text-error/80 hover:text-error text-xs px-1"
-                                    title="Remove focus city" aria-label="Remove focus city">✕</button>
+                                    title="{{ __('Remove focus city') }}" aria-label="{{ __('Remove focus city') }}">✕</button>
                         </li>
                     @endif
                 @endforeach
             </ul>
         @else
-            <p class="mt-1 text-2xs text-slate-500">No focus cities yet — search above or drop a pin to mark a key place on the map.</p>
+            <p class="mt-1 text-2xs text-slate-500">{{ __('No focus cities yet — search above or drop a pin to mark a key place on the map.') }}</p>
         @endif
     </div>
 
     {{-- Territory picker — link a polity's Wikidata QID for an accurate red boundary. --}}
     @php $qid = $scene->config['qid'] ?? null; @endphp
     <div class="form-control">
-        <span class="text-xs uppercase tracking-wider text-slate-400">Territory</span>
+        <span class="text-xs uppercase tracking-wider text-slate-400">{{ __('Territory') }}</span>
 
         @if ($qid)
             <div class="mt-1 flex items-center justify-between gap-2 rounded-lg border border-success/40 bg-success/10 px-2.5 py-1.5">
@@ -127,14 +127,14 @@
                     <p class="text-2xs text-slate-500">{{ $qid }} · red boundary, fit at the chosen year</p>
                 </div>
                 <button type="button" wire:click="unlinkTerritory"
-                        class="shrink-0 text-2xs text-error/80 underline hover:text-error">Change</button>
+                        class="shrink-0 text-2xs text-error/80 underline hover:text-error">{{ __('Change') }}</button>
             </div>
         @else
             <input type="search" wire:model.live.debounce.400ms="territoryQuery"
-                   placeholder="Search an empire/kingdom — e.g. Byzantine Empire"
+                   placeholder="{{ __('Search an empire/kingdom — e.g. Byzantine Empire') }}"
                    class="input input-sm input-bordered bg-slate-900 mt-1" />
-            <p class="mt-1 text-2xs text-base-content/55">No territory linked — search a polity (cities: link the empire that ruled it).</p>
-            <p class="mt-1 text-2xs text-sky-300/80">Don't know its name? Hover the map to see territory names, then click one to link it.</p>
+            <p class="mt-1 text-2xs text-base-content/55">{{ __('No territory linked — search a polity (cities: link the empire that ruled it).') }}</p>
+            <p class="mt-1 text-2xs text-sky-300/80">{{ __('Don\'t know its name? Hover the map to see territory names, then click one to link it.') }}</p>
 
             @if (filled($territoryQuery) && $territoryResults && $territoryResults->isNotEmpty())
                 <ul class="mt-1 max-h-48 overflow-y-auto rounded-lg border border-slate-700/60 divide-y divide-slate-800 bg-slate-900/95">
@@ -149,7 +149,7 @@
                             <button type="button" wire:click="linkTerritory('{{ $t->qid }}')"
                                     class="flex w-full items-center justify-between gap-2 px-2.5 py-1.5 text-left hover:bg-slate-800/70">
                                 <span class="truncate text-sm text-slate-200">{{ $t->name }}</span>
-                                <span class="shrink-0 text-2xs text-slate-500" title="Active era">{{ $era }}</span>
+                                <span class="shrink-0 text-2xs text-slate-500" title="{{ __('Active era') }}">{{ $era }}</span>
                             </button>
                         </li>
                     @endforeach
@@ -169,5 +169,5 @@
 
     <button type="button" wire:click="deleteScene({{ $scene->id }})"
             wire:confirm="Delete this map block?"
-            class="text-error/80 hover:text-error text-xs underline mt-2">Delete block</button>
+            class="text-error/80 hover:text-error text-xs underline mt-2">{{ __('Delete block') }}</button>
 </div>

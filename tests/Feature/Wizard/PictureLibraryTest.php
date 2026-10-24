@@ -261,6 +261,42 @@ class PictureLibraryTest extends TestCase
         }
     }
 
+    /**
+     * Pair test 2026-10-24: scene 5 reused scene 4's main picture, the shelf dedupes on the URL, so
+     * scene 5's own panels sat under "Scène 4" with no number of their own. Each panel tile says
+     * which scene and which panel it is.
+     */
+    public function test_a_panel_tile_names_its_own_scene_even_when_that_scenes_picture_repeats_the_previous_one(): void
+    {
+        Http::fake();
+        app()->setLocale('nl');
+        $base = 'https://res.cloudinary.com/democloud/image/upload/v1/lessons/77/';
+        foreach ([2, 3, 4] as $order) {
+            Scene::create([
+                'lesson_id' => $this->lesson->id, 'order' => $order, 'kind' => 'narration', 'status' => 'ready',
+                'image_path' => "{$base}scene-{$order}.jpg",
+                'shots' => [['image_path' => "{$base}scene-{$order}.jpg"], ['image_path' => "{$base}panel-{$order}.jpg"]],
+            ]);
+        }
+        Scene::create([
+            'lesson_id' => $this->lesson->id, 'order' => 5, 'kind' => 'narration', 'status' => 'ready',
+            'image_path' => "{$base}scene-4.jpg",   // the same main picture as scene 4
+            'shots' => [['image_path' => "{$base}scene-4.jpg"], ['image_path' => "{$base}panel-5.jpg"]],
+        ]);
+
+        $titles = Livewire::actingAs($this->teacher)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
+            ->call('openImageLibrary')
+            ->call('preparePaintings')
+            ->instance()
+            ->paintingResults
+            ->mapWithKeys(fn ($t) => [basename((string) $t['key']) => $t['title']]);
+
+        $this->assertSame('Scène 4', $titles['scene-4.jpg']);
+        $this->assertSame('Scène 4, paneel 2', $titles['panel-4.jpg']);
+        $this->assertSame('Scène 5, paneel 2', $titles['panel-5.jpg']);
+    }
+
     public function test_the_lesson_shelf_does_not_wait_for_our_cloudinary_collection(): void
     {
         Storage::fake('public');
