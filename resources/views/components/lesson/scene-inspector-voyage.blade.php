@@ -273,11 +273,11 @@
                             x-on:drop.prevent="if (drag !== null && drag !== {{ $i }}) $wire.moveGalleryImage(drag, {{ $i }}); drag = null"
                             class="rounded-lg border border-slate-700/50 bg-slate-900/60 p-1.5 cursor-grab active:cursor-grabbing">
                             <div class="flex items-center gap-2">
-                                <span class="shrink-0 select-none text-slate-600" aria-hidden="true" title="{{ __('Drag to reorder') }}">⠿</span>
+                                <span class="shrink-0 select-none text-slate-600" aria-hidden="true" data-tooltip="{{ __('Drag to reorder') }}">⠿</span>
                                 <img src="{{ $gsrc }}" alt="" class="h-9 w-9 shrink-0 rounded object-cover" onerror="this.style.visibility='hidden'" />
                                 <span class="min-w-0 flex-1 truncate text-2xs text-slate-400">{{ $gsrc }}</span>
                                 <button type="button" wire:click="removeGalleryImage({{ $i }})"
-                                        class="shrink-0 px-1 text-error/80 hover:text-error" title="{{ __('Remove') }}" aria-label="{{ __('Remove') }}">✕</button>
+                                        class="shrink-0 px-1 text-error/80 hover:text-error" data-tooltip="{{ __('Remove') }}" aria-label="{{ __('Remove') }}">✕</button>
                             </div>
                             <input type="text" value="{{ is_array($img) ? ($img['credit'] ?? '') : '' }}"
                                    wire:change="setGalleryImageCredit({{ $i }}, $event.target.value)"
@@ -329,7 +329,7 @@
                     </div>
                 </div>
                 {{-- INTRO — the "from space" fly-in. Only the first leg plays it. --}}
-                <label class="flex items-center gap-2" title="{{ __('Fly in from orbit before departure (first leg only)') }}">
+                <label class="flex items-center gap-2" data-tooltip="{{ __('Fly in from orbit before departure (first leg only)') }}">
                     <span class="text-2xs uppercase tracking-wider text-slate-400">{{ __('Space intro') }}</span>
                     <input type="checkbox" @checked($intro)
                            wire:change="setVoyageIntro($event.target.checked)"
@@ -379,7 +379,7 @@
                     </label>
                     @if ($vm('labels', true))
                         <div class="mt-2 flex items-center gap-2">
-                            <input type="color" value="{{ $vm('label_color', '#3a2c1a') }}" wire:change="setVoyageMap('label_color', $event.target.value)" class="{{ $swatch }}" title="{{ __('Label colour') }}" />
+                            <input type="color" value="{{ $vm('label_color', '#3a2c1a') }}" wire:change="setVoyageMap('label_color', $event.target.value)" class="{{ $swatch }}" data-tooltip="{{ __('Label colour') }}" />
                             <label class="flex flex-1 items-center gap-1.5">
                                 <span class="text-2xs text-slate-500">{{ __('Size') }}</span>
                                 <span class="range-panel-knob min-w-0 flex-1">
@@ -398,7 +398,7 @@
                     </label>
                     @if ($vm('cities', true))
                         <div class="mt-2 flex items-center gap-2">
-                            <input type="color" value="{{ $vm('city_color', '#3a2c1a') }}" wire:change="setVoyageMap('city_color', $event.target.value)" class="{{ $swatch }}" title="{{ __('City name colour') }}" />
+                            <input type="color" value="{{ $vm('city_color', '#3a2c1a') }}" wire:change="setVoyageMap('city_color', $event.target.value)" class="{{ $swatch }}" data-tooltip="{{ __('City name colour') }}" />
                             <label class="flex flex-1 items-center gap-1.5">
                                 <span class="text-2xs text-slate-500">{{ __('Size') }}</span>
                                 <span class="range-panel-knob min-w-0 flex-1">
@@ -418,7 +418,7 @@
                     @if ($vm('borders', true))
                         <div class="mt-2 space-y-1.5">
                             <div class="flex items-center gap-2">
-                                <input type="color" value="{{ $vm('border_color', '#5b4a36') }}" wire:change="setVoyageMap('border_color', $event.target.value)" class="{{ $swatch }}" title="{{ __('Border colour') }}" />
+                                <input type="color" value="{{ $vm('border_color', '#5b4a36') }}" wire:change="setVoyageMap('border_color', $event.target.value)" class="{{ $swatch }}" data-tooltip="{{ __('Border colour') }}" />
                                 <label class="flex flex-1 items-center gap-1.5">
                                     <span class="text-2xs text-slate-500">{{ __('Width') }}</span>
                                     <span class="range-panel-knob min-w-0 flex-1">
@@ -449,7 +449,7 @@
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15a4.5 4.5 0 0 0 4.5 4.5H18a3.75 3.75 0 0 0 1.332-7.257 3 3 0 0 0-3.758-3.848 5.25 5.25 0 0 0-10.233 2.33A4.502 4.502 0 0 0 2.25 15Z"/></svg>
                     {{ __('Undiscovered land') }}
                 </div>
-                <span class="text-2xs text-slate-500">{{ ($voyageMap['fog_auto'] ?? false) ? 'auto' : count($voyageFog).' painted' }}</span>
+                <span class="text-2xs text-slate-500">{{ ($voyageMap['fog_auto'] ?? false) ? __('automatic') : __(':count painted', ['count' => count($voyageFog)]) }}</span>
             </div>
 
             {{-- AUTO fog-of-war: mask all new land along the route; the ship's range unmasks it on
@@ -567,7 +567,7 @@
                                      one, rather than leaving a row that only says something is wrong. --}}
                                 <button type="button" data-nodrag wire:click.stop="addVoyageSceneForLeg({{ $stop['leg'] }})"
                                         class="btn btn-ghost btn-xs shrink-0 gap-1 text-primary hover:text-amber-200"
-                                        title="{{ __('This stop has no scene yet') }}">
+                                        data-tooltip="{{ __('This stop has no scene yet') }}">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-3.5 w-3.5" aria-hidden="true">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                                     </svg>

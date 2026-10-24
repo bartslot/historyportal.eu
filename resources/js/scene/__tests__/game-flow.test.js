@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { gameFlowFor } from '../game-flow.js'
+import { gameFlowFor, playsPredict } from '../game-flow.js'
 
 describe('gameFlowFor', () => {
   it('skips a quiz scene that has no questions instead of showing the lesson-level game', () => {
@@ -26,6 +26,19 @@ describe('gameFlowFor', () => {
     expect(gameFlowFor({ game_type: 'predict', config: {} }).flow).toBe('skip')
     expect(gameFlowFor({ game_type: 'team' }).flow).toBe('skip')
     expect(gameFlowFor({ game_type: 'team', config: { team: {} } }).flow).toBe('team')
+  })
+
+  it('skips a predict moment that has no question yet', () => {
+    expect(gameFlowFor({ game_type: 'predict', config: { predict: { question: '  ' } } }).flow).toBe('skip')
+    expect(gameFlowFor({ game_type: 'predict', config: { predict: { question: 'Wat gebeurt er?' } } }).flow).toBe('predict')
+  })
+
+  it('asks about devices only when a predict moment will really play', () => {
+    const empty = { kind: 'game', game_type: 'predict', config: { predict: { question: '' } } }
+    const bare = { kind: 'game', game_type: 'predict', config: {} }
+    const real = { kind: 'game', game_type: 'predict', config: { predict: { question: 'Wat gebeurt er?' } } }
+    expect(playsPredict([empty, bare, { kind: 'narration' }])).toBe(false)
+    expect(playsPredict([empty, real])).toBe(true)
   })
 
   it('only a strategy or debate scene opens the strategy brief', () => {

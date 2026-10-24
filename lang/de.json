@@ -2393,5 +2393,18 @@
     "Camel": "Kamel",
     "Sailed": "Gesegelt",
     "Rode overland": "Über Land geritten",
-    "Crossed desert or steppe": "Wüste oder Steppe durchquert"
+    "Crossed desert or steppe": "Wüste oder Steppe durchquert",
+    "Option A": "Option A",
+    "Option B": "Option B",
+    "What do you do?": "Was tust du?",
+    "History nearly went differently…": "So wäre die Geschichte fast anders verlaufen…",
+    "What really happened": "Was wirklich geschah",
+    "Start again from this choice": "Ab dieser Entscheidung neu beginnen",
+    "Carry on anyway (teacher)": "Trotzdem weiter (Lehrkraft)",
+    "Your story": "Eure Geschichte",
+    "Survived!": "Überlebt!",
+    "Did not survive": "Nicht überlebt",
+    ":outcome · tried again :count×": ":outcome · :count× neu versucht",
+    ":count painted": ":count gemalt",
+    "automatic": "automatisch"
 }

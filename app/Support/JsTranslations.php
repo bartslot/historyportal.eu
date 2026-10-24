@@ -36,7 +36,30 @@ final class JsTranslations
     /** @return array<string, string> */
     public static function forBrowser(): array
     {
-        return array_merge(self::quiz(), self::player(), self::editor(), self::teamGame(), self::powerMeter(), self::predict(), self::testSession());
+        return array_merge(self::quiz(), self::storyGame(), self::player(), self::editor(), self::teamGame(), self::powerMeter(), self::predict(), self::testSession());
+    }
+
+    /**
+     * The story game's choice card, game-over card and summary (scene/StoryGameEngine.js).
+     * They were written in Dutch, so an English class read Dutch (pair test round 4).
+     *
+     * @return array<string, string>
+     */
+    private static function storyGame(): array
+    {
+        return [
+            'Option A' => __('Option A'),
+            'Option B' => __('Option B'),
+            'What do you do?' => __('What do you do?'),
+            'History nearly went differently…' => __('History nearly went differently…'),
+            'What really happened' => __('What really happened'),
+            'Start again from this choice' => __('Start again from this choice'),
+            'Carry on anyway (teacher)' => __('Carry on anyway (teacher)'),
+            'Your story' => __('Your story'),
+            'Survived!' => __('Survived!'),
+            'Did not survive' => __('Did not survive'),
+            ':outcome · tried again :count×' => __(':outcome · tried again :count×'),
+        ];
     }
 
     /**

@@ -230,7 +230,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-NFA2s6gf.js",
+    "file": "assets/lesson-player-DCWWXASf.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -343,12 +343,13 @@
     ]
   },
   "resources/js/scene/StoryGameEngine.js": {
-    "file": "assets/StoryGameEngine-wWk_wzMS.js",
+    "file": "assets/StoryGameEngine-C7sQD35t.js",
     "name": "StoryGameEngine",
     "src": "resources/js/scene/StoryGameEngine.js",
     "isDynamicEntry": true,
     "imports": [
-      "_dom-1akfPxNw.js"
+      "_dom-1akfPxNw.js",
+      "_i18n-CkfuVFCj.js"
     ]
   },
   "resources/js/scene/TextOverlayLayer.js": {

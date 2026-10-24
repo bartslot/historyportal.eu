@@ -2393,5 +2393,18 @@
     "Camel": "Chameau",
     "Sailed": "Navigué",
     "Rode overland": "Voyagé à cheval",
-    "Crossed desert or steppe": "A traversé désert ou steppe"
+    "Crossed desert or steppe": "A traversé désert ou steppe",
+    "Option A": "Option A",
+    "Option B": "Option B",
+    "What do you do?": "Que fais-tu ?",
+    "History nearly went differently…": "L'histoire a failli tourner autrement…",
+    "What really happened": "Ce qui s'est vraiment passé",
+    "Start again from this choice": "Recommencer à partir de ce choix",
+    "Carry on anyway (teacher)": "Continuer quand même (enseignant)",
+    "Your story": "Votre histoire",
+    "Survived!": "Survécu !",
+    "Did not survive": "N'a pas survécu",
+    ":outcome · tried again :count×": ":outcome · :count× recommencé",
+    ":count painted": ":count peint(s)",
+    "automatic": "automatique"
 }

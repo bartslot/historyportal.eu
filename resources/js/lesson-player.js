@@ -28,7 +28,7 @@ import { isClipartLayer, backdropLayers } from './scene/layer-filters.js'
 import { fitToPlate, plateAspect } from './scene/plate-box.js'
 import { outgoingStages, hideFlatLayers } from './scene/stage-handoff.js'
 import { sceneMode } from './scene/split-layout.js'
-import { gameFlowFor } from './scene/game-flow.js'
+import { gameFlowFor, playsPredict } from './scene/game-flow.js'
 import { singleSource, cropBox, cropPlates } from './scene/background-crop.js'
 import { mountEmbedBg } from './scene/embed-bg.js'
 import { sameOriginMediaUrl } from './media-url.js'
@@ -2394,7 +2394,7 @@ Alpine.data('lessonGame', (lesson) => ({
     /** The board asks "Devices in class?" once per start, when the lesson has a moment that needs it. */
     _needsDevicesChoice () {
       return !this.playSolo && !this._embed && !this._devicesChosen && !!lesson.can_skip_quiz
-        && (lesson.scenes || []).some(s => s.kind === 'game' && s.game_type === 'predict')
+        && playsPredict(lesson.scenes, lesson.quiz_questions, lesson.game_type)
     },
 
     _chooseDevices () {

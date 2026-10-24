@@ -74,16 +74,16 @@
                         x-on:drop.prevent="if (drag !== null && drag !== {{ $i }}) $wire.moveGalleryImage(drag, {{ $i }}); drag = null"
                         class="rounded-lg border border-slate-700/50 bg-slate-900/60 p-1.5 cursor-grab active:cursor-grabbing">
                         <div class="flex items-center gap-2">
-                            <span class="shrink-0 select-none text-slate-600" aria-hidden="true" title="{{ __('Drag to reorder') }}">⠿</span>
+                            <span class="shrink-0 select-none text-slate-600" aria-hidden="true" data-tooltip="{{ __('Drag to reorder') }}">⠿</span>
                             <img src="{{ $src }}" alt="" class="h-9 w-9 shrink-0 rounded object-cover"
                                  onerror="this.style.visibility='hidden'" />
                             <span class="min-w-0 flex-1 truncate text-2xs text-slate-400">{{ $src }}</span>
                             <button type="button" wire:click="moveGalleryImage({{ $i }}, {{ $i - 1 }})" @disabled($i === 0)
-                                    class="shrink-0 px-1 text-slate-400 hover:text-slate-200 disabled:opacity-30" title="{{ __('Move up') }}" aria-label="{{ __('Move up') }}">↑</button>
+                                    class="shrink-0 px-1 text-slate-400 hover:text-slate-200 disabled:opacity-30" data-tooltip="{{ __('Move up') }}" aria-label="{{ __('Move up') }}">↑</button>
                             <button type="button" wire:click="moveGalleryImage({{ $i }}, {{ $i + 1 }})" @disabled($i === count($images) - 1)
-                                    class="shrink-0 px-1 text-slate-400 hover:text-slate-200 disabled:opacity-30" title="{{ __('Move down') }}" aria-label="{{ __('Move down') }}">↓</button>
+                                    class="shrink-0 px-1 text-slate-400 hover:text-slate-200 disabled:opacity-30" data-tooltip="{{ __('Move down') }}" aria-label="{{ __('Move down') }}">↓</button>
                             <button type="button" wire:click="removeGalleryImage({{ $i }})"
-                                    class="shrink-0 px-1 text-error/80 hover:text-error" title="{{ __('Remove') }}" aria-label="{{ __('Remove') }}">✕</button>
+                                    class="shrink-0 px-1 text-error/80 hover:text-error" data-tooltip="{{ __('Remove') }}" aria-label="{{ __('Remove') }}">✕</button>
                         </div>
                         <input type="text" value="{{ is_array($img) ? ($img['credit'] ?? '') : '' }}"
                                wire:change="setGalleryImageCredit({{ $i }}, $event.target.value)"

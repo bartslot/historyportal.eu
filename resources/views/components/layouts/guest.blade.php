@@ -24,6 +24,10 @@
         {{ $slot }}
     </div>
 
+    {{-- Strings the JavaScript renders (carousel arrows among them), translated; without it
+         every t() on this page fell back to English (pair test round 4). --}}
+    <x-js-lang />
+
     @livewireScripts
     <x-playtest-recorder />
 </body>

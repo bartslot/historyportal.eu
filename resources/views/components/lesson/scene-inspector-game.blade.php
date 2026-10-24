@@ -68,7 +68,7 @@
                     @foreach ([1 => __('Easy'), 2 => __('Medium'), 3 => __('Hard')] as $level => $label)
                         <button type="button" wire:click="setQuizDifficulty({{ $level }})"
                                 class="transition {{ $quizDifficulty >= $level ? 'text-primary hover:text-primary' : 'text-slate-600 hover:text-slate-400' }}"
-                                title="{{ $label }}" aria-label="{{ __('Set difficulty to :label', ['label' => $label]) }}"
+                                data-tooltip="{{ $label }}" aria-label="{{ __('Set difficulty to :label', ['label' => $label]) }}"
                                 aria-pressed="{{ $quizDifficulty === $level ? 'true' : 'false' }}">
                             <x-icons.star />
                         </button>
@@ -92,7 +92,7 @@
                 <button type="button" wire:click="regenerateAllQuizQuestions"
                         wire:loading.attr="disabled" wire:target="regenerateAllQuizQuestions"
                         class="btn btn-xs btn-outline gap-1"
-                        title="{{ __('Regenerate every question at the current difficulty') }}">
+                        data-tooltip="{{ __('Regenerate every question at the current difficulty') }}">
                     <span wire:loading.remove wire:target="regenerateAllQuizQuestions"><x-icons.ai-generate class="w-3.5 h-3.5" /></span>
                     <span wire:loading wire:target="regenerateAllQuizQuestions" class="loading loading-spinner loading-xs"></span>
                     {{ __('Regenerate all') }}
@@ -121,7 +121,7 @@
                             <span class="text-2xs font-semibold text-base-content/85">{{ __('Question') }} {{ $i + 1 }}</span>
                             @if (! empty($q['asks_ahead']))
                                 <span class="badge badge-xs badge-warning badge-outline gap-1"
-                                      title="{{ __('Tests material that comes later in the story — students will be guessing (that\'s the point of a prior-knowledge check).') }}">
+                                      data-tooltip="{{ __('Tests material that comes later in the story — students will be guessing (that\'s the point of a prior-knowledge check).') }}">
                                     ⤳ {{ __('asks ahead') }}
                                 </span>
                             @endif
@@ -139,7 +139,7 @@
                         <button type="button" wire:click="generateQuizQuestion({{ $i }})"
                                 wire:loading.attr="disabled" wire:target="generateQuizQuestion({{ $i }})"
                                 class="absolute right-1.5 top-1.5 btn btn-xs btn-square btn-ghost text-base-content/70 hover:text-base-content"
-                                title="{{ __('Generate question + answers with AI (replaces answers too)') }}"
+                                data-tooltip="{{ __('Generate question + answers with AI (replaces answers too)') }}"
                                 aria-label="{{ __('Generate question with AI') }}">
                             <span wire:loading.remove wire:target="generateQuizQuestion({{ $i }})"><x-icons.ai-generate /></span>
                             <span wire:loading wire:target="generateQuizQuestion({{ $i }})" class="loading loading-spinner loading-xs"></span>
@@ -167,7 +167,7 @@
                             @php $isCorrect = (int) ($q['correct_index'] ?? 0) === $oi; @endphp
                             <div class="flex items-center gap-1.5" wire:key="quiz-q-{{ $i }}-opt-{{ $oi }}">
                                 <span class="quiz-drag-handle cursor-grab active:cursor-grabbing text-slate-500 hover:text-slate-300 shrink-0"
-                                      title="{{ __('Drag to reorder') }}"><x-icons.reorder /></span>
+                                      data-tooltip="{{ __('Drag to reorder') }}"><x-icons.reorder /></span>
                                 <span class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-2xs font-bold text-white"
                                       style="background-color: {{ $palette[$oi] }}">{{ $letter }}</span>
 
@@ -177,9 +177,9 @@
                                          silently change what the question tests). --}}
                                     <input type="text" wire:model.blur="quizDraft.{{ $i }}.options.{{ $oi }}" maxlength="60"
                                            class="input input-xs input-bordered flex-1 bg-success/10 border-success/50 text-success"
-                                           title="{{ __('Correct answer. Edit it freely, and drag to reorder.') }}" />
+                                           data-tooltip="{{ __('Correct answer. Edit it freely, and drag to reorder.') }}" />
                                     <span class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-success/20 text-success"
-                                          title="{{ __('Correct answer') }}" aria-label="{{ __('Correct answer') }}">
+                                          data-tooltip="{{ __('Correct answer') }}" aria-label="{{ __('Correct answer') }}">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="w-3.5 h-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                                     </span>
                                 @else
@@ -189,7 +189,7 @@
                                     <button type="button" wire:click="regenerateQuizOption({{ $i }}, {{ $oi }})"
                                             wire:loading.attr="disabled" wire:target="regenerateQuizOption({{ $i }}, {{ $oi }})"
                                             class="btn btn-xs btn-square btn-ghost text-slate-400 hover:text-base-content"
-                                            title="{{ __('Redraw this wrong answer with AI') }}"
+                                            data-tooltip="{{ __('Redraw this wrong answer with AI') }}"
                                             aria-label="{{ __('Redraw answer :letter with AI', ['letter' => $letter]) }}">
                                         <span wire:loading.remove wire:target="regenerateQuizOption({{ $i }}, {{ $oi }})"><x-icons.ai-generate /></span>
                                         <span wire:loading wire:target="regenerateQuizOption({{ $i }}, {{ $oi }})" class="loading loading-spinner loading-xs"></span>

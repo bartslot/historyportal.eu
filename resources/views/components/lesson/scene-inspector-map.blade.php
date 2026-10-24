@@ -102,10 +102,10 @@
                                    wire:change="renameFocus({{ $i }}, $event.target.value)"
                                    placeholder="{{ __('Place name') }}"
                                    class="input input-xs input-bordered bg-slate-900 flex-1"
-                                   @if ($isCapital) title="{{ __('Territory capital (auto-added)') }}" @endif />
+                                   @if ($isCapital) data-tooltip="{{ __('Territory capital (auto-added)') }}" @endif />
                             <button type="button" wire:click="removeFocus({{ $i }})"
                                     class="shrink-0 text-error/80 hover:text-error text-xs px-1"
-                                    title="{{ __('Remove focus city') }}" aria-label="{{ __('Remove focus city') }}">✕</button>
+                                    data-tooltip="{{ __('Remove focus city') }}" aria-label="{{ __('Remove focus city') }}">✕</button>
                         </li>
                     @endif
                 @endforeach
@@ -149,7 +149,7 @@
                             <button type="button" wire:click="linkTerritory('{{ $t->qid }}')"
                                     class="flex w-full items-center justify-between gap-2 px-2.5 py-1.5 text-left hover:bg-slate-800/70">
                                 <span class="truncate text-sm text-slate-200">{{ $t->name }}</span>
-                                <span class="shrink-0 text-2xs text-slate-500" title="{{ __('Active era') }}">{{ $era }}</span>
+                                <span class="shrink-0 text-2xs text-slate-500" data-tooltip="{{ __('Active era') }}">{{ $era }}</span>
                             </button>
                         </li>
                     @endforeach

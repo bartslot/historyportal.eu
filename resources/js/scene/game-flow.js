@@ -17,7 +17,17 @@ export function gameFlowFor (scene, lessonQuestions = [], lessonGameType = null)
     const questions = scene.quiz_questions?.length ? scene.quiz_questions : (lessonQuestions || [])
     return questions.length ? { flow: 'quiz', questions } : { flow: 'skip' }
   }
-  if (type === 'predict') return { flow: scene.config?.predict ? 'predict' : 'skip' }
+  // A predict moment without a question has nothing to ask the class.
+  if (type === 'predict') return { flow: String(scene.config?.predict?.question ?? '').trim() ? 'predict' : 'skip' }
   if (type === 'team') return { flow: scene.config?.team ? 'team' : 'skip' }
   return { flow: STRATEGY_TYPES.includes(type) ? 'strategy' : 'skip' }
+}
+
+/**
+ * Whether the class will actually meet a predict moment, by the same rule the player uses to skip
+ * one. The "Devices in class?" question at Start asked about an empty predict scene the player
+ * then skipped (pair test round 4).
+ */
+export function playsPredict (scenes = [], lessonQuestions = [], lessonGameType = null) {
+  return (scenes || []).some((s) => s?.kind === 'game' && gameFlowFor(s, lessonQuestions, lessonGameType).flow === 'predict')
 }

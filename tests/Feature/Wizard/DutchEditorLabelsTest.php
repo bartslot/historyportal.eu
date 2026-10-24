@@ -118,18 +118,31 @@ class DutchEditorLabelsTest extends TestCase
             'or paste an image URL', 'Add image',
         ]);
         $this->assertStringNotContainsString('Waypoint 1 /', $html);
+        // Round 4: "0 painted" under Onontdekt land, and hints on `title` instead of data-tooltip.
+        $this->assertMatchesRegularExpression('/>\s*\d+ geschilderd\s*</u', $html);
+        $this->assertStringNotContainsString(' painted<', $html);
+        $this->assertStringContainsString('data-tooltip="Vlieg vanuit de ruimte in', $html);
+        $this->assertStringContainsString('data-tooltip="Kleur titels"', $html);
+        $this->assertStringNotContainsString('title="Vlieg vanuit', $html);
+        $this->assertStringNotContainsString('title="Kleur titels"', $html);
     }
 
     public function test_the_gallery_map_and_game_panels_are_dutch(): void
     {
         $teacher = User::factory()->create();
         $lesson = $this->plainLesson($teacher);
-        $gallery = Scene::create(['lesson_id' => $lesson->id, 'order' => 1, 'kind' => 'gallery', 'status' => 'ready']);
+        $gallery = Scene::create(['lesson_id' => $lesson->id, 'order' => 1, 'kind' => 'gallery', 'status' => 'ready',
+            'config' => ['images' => [['url' => 'https://example.org/a.jpg'], ['url' => 'https://example.org/b.jpg']]]]);
         $map = Scene::create(['lesson_id' => $lesson->id, 'order' => 2, 'kind' => 'map', 'status' => 'ready']);
         $quiz = Scene::create(['lesson_id' => $lesson->id, 'order' => 3, 'kind' => 'game', 'game_type' => 'quiz', 'status' => 'ready']);
         $debate = Scene::create(['lesson_id' => $lesson->id, 'order' => 4, 'kind' => 'game', 'game_type' => 'debate', 'status' => 'ready']);
 
-        $this->assertNoEnglish($this->panelHtml($teacher, $lesson, $gallery), ['Cover', 'Fit', 'Add image', 'or paste an image URL']);
+        $galleryHtml = $this->panelHtml($teacher, $lesson, $gallery);
+        $this->assertNoEnglish($galleryHtml, ['Cover', 'Fit', 'Add image', 'or paste an image URL']);
+        foreach (['Sleep om te ordenen', 'Verwijderen', 'Omhoog', 'Omlaag'] as $hint) {
+            $this->assertStringContainsString('data-tooltip="'.$hint.'"', $galleryHtml);
+            $this->assertStringNotContainsString(' title="'.$hint.'"', $galleryHtml);
+        }
         $this->assertNoEnglish($this->panelHtml($teacher, $lesson, $map), [
             'Map block', 'Shows the territory on the historical map, fit to its borders at the chosen year.',
             "Negative = BCE. Sets the map's time slider.", 'or drop a pin on the map',

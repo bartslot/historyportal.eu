@@ -240,7 +240,7 @@
                  x-on:drop.prevent="depth = 0; const f = $event.dataTransfer.files[0]; if (f) $wire.upload('droppedBackground', f)"
                  wire:click="openPaintingPicker" role="button" tabindex="0"
                  x-on:keydown.enter.prevent="$wire.openPaintingPicker()"
-                 title="{{ __('Choose or upload an image') }}"
+                 data-tooltip="{{ __('Choose or upload an image') }}"
                  :class="depth > 0 ? 'border-base-content/40 bg-base-content/5' : 'border-slate-700/70 bg-slate-900/40 hover:border-base-content/30'"
                  class="flex cursor-pointer items-center gap-2.5 rounded-lg border p-1.5 transition-colors">
                 @if ($backgroundImageUrl)

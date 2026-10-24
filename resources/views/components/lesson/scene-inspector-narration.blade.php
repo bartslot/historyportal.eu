@@ -96,7 +96,7 @@
                             wire:loading.attr="disabled" wire:target="summarizeScriptToList"
                             @disabled(empty($scene->script_segment))
                             class="btn btn-xs btn-outline border-slate-600 text-slate-300 hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50 inline-flex items-center gap-1.5"
-                            title="{{ __('Summarize the script into a bullet list over a half-screen backing panel') }}">
+                            data-tooltip="{{ __('Summarize the script into a bullet list over a half-screen backing panel') }}">
                         <span wire:loading wire:target="summarizeScriptToList"><x-icons.spinner class="h-3 w-3 animate-spin" /></span>
                         <svg wire:loading.remove wire:target="summarizeScriptToList" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3 w-3">
                             <path stroke-linecap="round" d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r="1.2" fill="currentColor" stroke="none"/><circle cx="3.5" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="3.5" cy="18" r="1.2" fill="currentColor" stroke="none"/>
