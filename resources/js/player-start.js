@@ -33,3 +33,20 @@ export function mayAutoplay (win) {
     return false
   }
 }
+
+/** Scene statuses that mean the pipeline is still making this scene's media. */
+const GENERATING = ['pending', 'generating']
+
+/**
+ * Pure: can the class press Start? A lesson whose narration is still being made waits ("Audio
+ * generating…"), but a lesson with nothing generating is startable whether or not it is narrated:
+ * a narration-free lesson used to wait forever (pair test round 5).
+ */
+export function canStartLesson (lesson) {
+  const scenes = lesson?.scenes || []
+  const carriesItself = (s) => s.audio_url || ['map', 'voyage', 'gallery', 'video'].includes(s.kind)
+    // A team game or a predict moment plays on the class screen without a voice of its own.
+    || (s.kind === 'game' && ['team', 'predict'].includes(s.game_type))
+  if (lesson?.audio_url || scenes.some(carriesItself)) return true
+  return scenes.length > 0 && !scenes.some((s) => GENERATING.includes(s.status))
+}

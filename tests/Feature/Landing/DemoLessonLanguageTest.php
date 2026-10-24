@@ -243,4 +243,50 @@ class DemoLessonLanguageTest extends TestCase
 
         $this->assertSame('nl', DemoLesson::language($request));
     }
+
+    /**
+     * Pair test round 5 (demo-killer): one scene of the original went `pending` during a
+     * re-narration, the original dropped out, and a teacher's private Configureren copy with the
+     * same title became the homepage link, a 404 for every visitor.
+     */
+    public function test_an_original_mid_regeneration_keeps_the_homepage_and_a_teachers_copy_never_wins(): void
+    {
+        $this->seedCanon();
+        $original = Lesson::where('language', 'nl')->first();
+        $original->update(['translation_group' => 'tasman']);
+        Scene::create(['lesson_id' => $original->id, 'order' => 2, 'kind' => 'narration', 'status' => 'pending',
+            'image_path' => 'lessons/1/scene-2.jpg']);
+        $teacher = User::factory()->create();
+        $copy = app(\App\Services\LessonCopier::class)->copy($original, $teacher, ['status' => 'configuring']);
+        $copy->scenes()->update(['status' => 'ready']);
+
+        $this->assertSame($original->id, $this->visit(['Accept-Language' => 'nl-NL,nl;q=0.9'])?->id);
+
+        // The page itself links the original's code, never the copy's.
+        DemoLesson::forget();
+        $html = $this->withoutVite()->get('/nl')->assertOk()->getContent();
+        $this->assertStringContainsString('/lesson/'.$original->lesson_code, $html);
+        $this->assertStringNotContainsString('/lesson/'.$copy->lesson_code, $html);
+    }
+
+    public function test_a_private_lesson_is_never_the_demo_even_without_the_original(): void
+    {
+        $this->seedCanon();
+        $original = Lesson::where('language', 'nl')->first();
+        $copy = app(\App\Services\LessonCopier::class)->copy($original, User::factory()->create(), ['status' => 'configuring']);
+        $original->delete();
+
+        $this->assertNotSame($copy->id, $this->visit(['Accept-Language' => 'nl-NL,nl;q=0.9'])?->id);
+    }
+
+    /** Pair test round 5: /nl answered 500 because the fallback lesson had no title (typed string). */
+    public function test_an_untitled_lesson_neither_becomes_the_demo_nor_breaks_the_goal(): void
+    {
+        $untitled = $this->lesson('tmp', 'nl');
+        $untitled->forceFill(['title' => null])->save();
+
+        $this->assertNotSame($untitled->id, $this->visit(['Accept-Language' => 'nl-NL,nl;q=0.9'])?->id);
+        DemoLesson::forget();
+        $this->withoutVite()->get('/nl')->assertOk();
+    }
 }

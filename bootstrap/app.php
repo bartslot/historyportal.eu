@@ -60,5 +60,16 @@ return Application::configure(basePath: dirname(__DIR__))
         );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // A request no route matched never ran the locale middleware, so its error page (the
+        // 404 under /nl/...) was English. Pick the language before the page renders; returning
+        // null leaves the rendering itself to Laravel (pair test round 5).
+        $exceptions->render(function (\Throwable $e, \Illuminate\Http\Request $request) {
+            if ($request->route() === null) {
+                $locale = \App\Support\Locales::forUnroutedRequest($request);
+                \Illuminate\Support\Facades\App::setLocale($locale);
+                \Illuminate\Support\Carbon::setLocale($locale);
+            }
+
+            return null;
+        });
     })->create();

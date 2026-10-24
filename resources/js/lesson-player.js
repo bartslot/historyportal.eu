@@ -61,7 +61,7 @@ import { gradientCss } from './scene/background-gradient.js'
 import { t } from './i18n.js'
 import { PredictMoment, askDevices, predictSession, DEVICE_MODES } from './scene/PredictMoment.js'
 import { mountBigCountdown } from './big-countdown.js'
-import { startSceneIndex, mayAutoplay } from './player-start.js'
+import { startSceneIndex, mayAutoplay, canStartLesson } from './player-start.js'
 import { mountTitlePoster as mountPoster, posterFit, episodeSize, posterVariants, variantFor, hasUpright } from './title-poster.js'
 import { QR, qrOptions, layoutTitleQr, drawQrDebug, coverRect, pictureSize } from './title-qr.js'
 import { placeExpectStrip } from './title-expect.js'
@@ -184,12 +184,7 @@ Alpine.data('lessonGame', (lesson) => ({
 
     // Can the lesson start yet? Narration is still being made for a fresh lesson, but a scene that
     // carries itself — a map, a voyage leg, a gallery, a film — needs no audio to be playable.
-    get canStart () {
-      return !!(lesson.audio_url || (lesson.scenes || []).some(s =>
-        s.audio_url || ['map', 'voyage', 'gallery', 'video'].includes(s.kind)
-        // A team game or a predict moment plays on the class screen without a voice of its own.
-        || (s.kind === 'game' && ['team', 'predict'].includes(s.game_type))))
-    },
+    get canStart () { return canStartLesson(lesson) },
 
     // Location/Year overlay
 

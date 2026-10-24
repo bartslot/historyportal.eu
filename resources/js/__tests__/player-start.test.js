@@ -1,4 +1,4 @@
-import { startSceneIndex, mayAutoplay } from '../player-start.js'
+import { startSceneIndex, mayAutoplay, canStartLesson } from '../player-start.js'
 
 /**
  * The editor's Play opens the real player at the scene the teacher has selected (PM, 2026-10-17:
@@ -44,4 +44,25 @@ describe('mayAutoplay', () => {
     expect(mayAutoplay(w)).toBe(false)
   })
   it('a browser without userActivation keeps the old behaviour', () => expect(mayAutoplay(win(undefined))).toBe(true))
+})
+
+/** Pair test round 5: a narration-free lesson showed "Audio wordt gemaakt…" forever. */
+describe('canStartLesson', () => {
+  test('a lesson with nothing generating can start, narrated or not', () => {
+    expect(canStartLesson({ scenes: [{ kind: 'narration', status: 'ready' }, { kind: 'game', game_type: 'quiz', status: 'ready' }] })).toBe(true)
+  })
+
+  test('a lesson whose narration is still being made waits', () => {
+    expect(canStartLesson({ scenes: [{ kind: 'narration', status: 'generating' }, { kind: 'narration', status: 'ready' }] })).toBe(false)
+    expect(canStartLesson({ scenes: [{ kind: 'narration', status: 'pending' }] })).toBe(false)
+  })
+
+  test('a scene that carries itself starts at once, generating or not', () => {
+    expect(canStartLesson({ scenes: [{ kind: 'map', status: 'pending' }, { kind: 'narration', status: 'generating' }] })).toBe(true)
+    expect(canStartLesson({ scenes: [{ kind: 'narration', status: 'generating', audio_url: '/a.m4a' }] })).toBe(true)
+  })
+
+  test('an empty lesson cannot start', () => {
+    expect(canStartLesson({ scenes: [] })).toBe(false)
+  })
 })

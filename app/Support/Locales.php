@@ -37,6 +37,20 @@ final class Locales
         return array_keys(self::SUPPORTED);
     }
 
+    /**
+     * The language of a request no route answered (a 404 under /nl/...): no locale middleware ran
+     * for it, so its error page came out English. The URL prefix first, then the browser.
+     */
+    public static function forUnroutedRequest(\Illuminate\Http\Request $request): string
+    {
+        $prefix = strtolower((string) $request->segment(1));
+        if ($prefix !== '' && self::isSupported($prefix)) {
+            return $prefix;
+        }
+
+        return $request->getPreferredLanguage(self::codes()) ?? (string) config('app.locale', 'en');
+    }
+
     public static function isSupported(?string $locale): bool
     {
         return $locale !== null && array_key_exists($locale, self::SUPPORTED);

@@ -306,10 +306,13 @@ class GuestDemoTest extends TestCase
 
     public function test_the_configured_demo_lesson_survives_being_opened_in_the_editor(): void
     {
-        // Opening a lesson on the Configure step sets status to `configuring`. The demo lesson
-        // was hand-picked in config, so that must not make it vanish from the landing page.
+        // Opening the hand-picked demo in the editor must not make it vanish from the landing page.
+        // It used to be kept even once `configuring`, but a configuring lesson 404s for visitors
+        // (pair test round 5), so the homepage now only links a public lesson; what keeps the demo
+        // there is that the editor no longer unpublishes a playable lesson.
         $lesson = $this->publishedDemoLesson('The Demo Lesson');
-        $lesson->update(['status' => LessonStatus::Configuring]);
+        Livewire::actingAs($lesson->teacher)->test(Step3SceneConfigurator::class, ['lesson' => $lesson]);
+        $this->assertSame(LessonStatus::Published, $lesson->fresh()->status);
 
         config(['demo.lesson_title' => 'The Demo Lesson']);
         DemoLesson::forget();
