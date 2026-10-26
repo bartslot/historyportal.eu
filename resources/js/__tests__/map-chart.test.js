@@ -9,7 +9,7 @@ const ids = (layers) => layers.map((l) => l.id);
 describe('map-chart: the watercolour sea chart', () => {
     it('stacks sea, depth glaze, land, foothills, then ink coast, ridges and waves', () => {
         const { under, over } = chartLayers();
-        expect(ids(under)).toEqual(['bg', 'chart-glaze', 'land', 'chart-lakes', 'chart-land-edge', 'chart-tufts']);
+        expect(ids(under)).toEqual(['bg', 'chart-wash-sea', 'chart-glaze', 'chart-sea-grain', 'chart-bleed', 'land', 'chart-wash-land', 'chart-lakes', 'chart-land-edge', 'chart-tufts']);
         expect(ids(over)).toEqual(['chart-coast-dash', 'coast-bold', 'chart-ridges', 'chart-waves']);
     });
 
@@ -34,13 +34,13 @@ describe('map-chart: the watercolour sea chart', () => {
 
     it('has no photographed ground, relief or globe source', () => {
         const sources = chartSources('');
-        expect(Object.keys(sources).sort()).toEqual(['chart-glaze', 'chart-lakes', 'chart-land', 'chart-peaks', 'chart-tufts', 'chart-waves']);
+        expect(Object.keys(sources).sort()).toEqual(['chart-bleed', 'chart-glaze', 'chart-lakes', 'chart-land', 'chart-peaks', 'chart-tufts', 'chart-wash-land', 'chart-wash-sea', 'chart-waves', 'chart-world']);
         expect(JSON.stringify(sources)).not.toMatch(/gibs|eox|terrarium|raster-dem/);
     });
 
     it('ships every image and tile set it asks for', () => {
         for (const img of chartImages()) expect(existsSync(`${PUBLIC}${img.url}`), img.url).toBe(true);
-        for (const set of ['land.geojson', 'lakes.geojson', 'coast.geojson', 'glaze/0/0/0.webp', 'peaks/3', 'tufts/3', 'waves/0/0/0.pbf']) {
+        for (const set of ['wash-sea/0/0/0.webp', 'wash-land/0/0/0.webp', 'bleed/0/0/0.webp', 'land.geojson', 'lakes.geojson', 'coast.geojson', 'glaze/0/0/0.webp', 'peaks/3', 'tufts/3', 'waves/0/0/0.pbf']) {
             expect(existsSync(`${PUBLIC}/map-chart/${set}`), set).toBe(true);
         }
     });
@@ -64,7 +64,9 @@ describe('map-chart: the watercolour sea chart', () => {
         expect(land).toContain('"k"');                        // story islands are always kept
         expect(ISLET_KM2.at(-1)[1]).toBe(0);                    // close in, every island is drawn
         for (let i = 1; i < ISLET_KM2.length; i++) expect(ISLET_KM2[i][1]).toBeLessThan(ISLET_KM2[i - 1][1]);
-        expect(over.find((l) => l.id === 'chart-coast-dash').filter).toEqual(['!', ['has', 'lake']]);
+        const dash = JSON.stringify(over.find((l) => l.id === 'chart-coast-dash').filter);
+        expect(dash).toContain('["!",["has","lake"]]');      // no dash on lake shores
+        expect(dash).toContain('["get","a"]');               // nor round islets (dash ticks read as sparkles)
     });
 
     it('leaves out the same islands as the baked glaze, so no shallows halo floats on empty sea', () => {

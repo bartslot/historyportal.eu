@@ -14,7 +14,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import { renderAnnotations, focusLabelLayout } from './map-annotations.js'
 import { placeLabelLayout, placeLabelPaint } from './map-place-label.js'
 import { mapTextProjector } from './map-text-projector.js'
-import { CHART, CHART_BASE, chartSources, chartLayers, addChartImages, addChartPaper, chartTunerControls } from './map-chart.js'
+import { CHART, CHART_BASE, GEOJSON_TOLERANCE, chartSources, chartLayers, addChartImages, addChartPaper, chartTunerControls } from './map-chart.js'
 import { mapGone } from './map-alive.js'
 import { boxView, openingView, labelsView } from './map-view.js'
 import { itineraryTour } from './map-itinerary.js'
@@ -169,7 +169,7 @@ export function renderLessonMap (el, opts = {}) {
           promoteId: { boundaries: 'Wikidata' },
         },
         // The ink coastline, and the dashed line offshore of it.
-        coastline: { type: 'geojson', data: `${location.origin}${CHART_BASE}/coast.geojson`, tolerance: 1 },
+        coastline: { type: 'geojson', data: `${location.origin}${CHART_BASE}/coast.geojson`, tolerance: GEOJSON_TOLERANCE },
         ...chartSources(location.origin),
         // Teacher-authored period place labels (voyages) — filled via setLabels()/the `labels` opt.
         'lesson-labels': { type: 'geojson', data: labelsFC(placeLabels) },

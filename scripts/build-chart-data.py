@@ -55,10 +55,11 @@ GLAZE_BANDS_KM = [50, 90, 135, 185, 240, 300, 370]
 GLAZE_FIRST, GLAZE_REST = 0.24, 0.07   # first band = visible edge of the shallows
 GLAZE_TEXTURE = Path('resources/map-chart/sea-glaze.webp')  # the approved lab's glaze paint (ChatGPT, 10-21)
 GLAZE_MAX_Z = 4
+GLAZE_EDGE_PX = 1.2               # feather of each glaze band, in z4 pixels
 
-MIN_RIDGE_KM, RIDGE_SPACING_KM = 55, 105
+MIN_RIDGE_KM, RIDGE_SPACING_KM = 55, 85
 # The lab's 40 km suited the empty Tasman box; across the Mediterranean it carpeted every range.
-TUFT_SPACING_KM, TUFT_CLEAR_KM = 120, 40
+TUFT_SPACING_KM, TUFT_CLEAR_KM = 100, 35
 # Islets smaller than this push no shallows out around them: their glaze halo floated on open sea
 # where the land tiles draw nothing at that zoom (Samoa, Lakshadweep).
 
@@ -318,7 +319,9 @@ def shelf_scaled_km(land: np.ndarray, scale: np.ndarray) -> np.ndarray:
 def glaze_alpha(to_land_km: np.ndarray, size: int) -> Image.Image:
     bands = sum((to_land_km > d).astype(np.uint8) for d in GLAZE_BANDS_KM)
     clear = np.where(bands > 0, (1 - GLAZE_FIRST) * (1 - GLAZE_REST) ** np.maximum(bands - 1, 0), 1.0)
-    return Image.fromarray(((1 - clear) * 255).astype(np.uint8), 'L').resize((size, size), Image.BOX)
+    # each band's edge feathered by about a pixel at z4: a wet edge, not a step (ChatGPT: "stepped halos")
+    alpha = ndimage.gaussian_filter((1 - clear) * 255, sigma=GLAZE_EDGE_PX * 2, mode=('nearest', 'wrap'))
+    return Image.fromarray(alpha.astype(np.uint8), 'L').resize((size, size), Image.BOX)
 
 
 def glaze_tiles(land: np.ndarray, scale: np.ndarray, out: Path) -> int:
@@ -333,10 +336,10 @@ def glaze_tiles(land: np.ndarray, scale: np.ndarray, out: Path) -> int:
             paint.paste(tex, (x, y))
     count = 0
     for z in range(GLAZE_MAX_Z + 1):
-        # a tile of zoom z is on screen from z to z+1; use the strictest rule in that range (at z), so
-        # no shallows are painted round an island the map is not drawing yet
+        # MapLibre rounds raster zooms: a tile of zoom z is on screen from z-0.5 to z+0.5. Use the
+        # strictest rule in that range, so no shallows round an island the map is not drawing yet.
         size = 256 * 2 ** z
-        a = glaze_alpha(shelf_scaled_km(without_islets(land, scale, islet_km2(z)), scale), size)
+        a = glaze_alpha(shelf_scaled_km(without_islets(land, scale, islet_km2(max(0, z - 0.5))), scale), size)
         level = Image.merge('RGBA', [*paint.resize((size, size), Image.BOX).split(), a])
         for x in range(2 ** z):
             for y in range(2 ** z):
@@ -344,6 +347,87 @@ def glaze_tiles(land: np.ndarray, scale: np.ndarray, out: Path) -> int:
                 path.parent.mkdir(parents=True, exist_ok=True)
                 level.crop((x * 256, y * 256, x * 256 + 256, y * 256 + 256)).save(path, quality=80, alpha_quality=85, method=6)
                 count += 1
+    return count
+
+
+# Painted washes (ChatGPT, History Lines, 2026-10-26): Bart, "there should also be lots of watercolour
+# textures that i was missing". Two per surface, laid over the world in big flipped/offset cells and
+# mixed by a slow noise, so no repeat shows at classroom zoom.
+WASH_SOURCES = {'sea': ['wash-sea-1', 'wash-sea-2'], 'land': ['wash-land-1', 'wash-land-2']}
+WASH_BASE = {'sea': 'public/map-chart/art/sea.webp', 'land': 'public/map-chart/art/land.webp'}
+SEA_WASH_SOFTEN_PX = 4.0         # at z4 (~6 km): keeps passes, drops the mottle
+SEA_WASH_CONTRAST = 1.8          # broad, uneven passes across the water (ChatGPT round 8: 'too uniform')
+WASH_CONTRAST = 1.3              # a little more than painted: the washes are seen through the base
+WASH_CELL_PX = 1024              # one painted sheet spans 1024 px at z4 (~2,500 km at 40°)
+WASH_LAND_FADE_KM = 14           # the land wash thins out over the last km before the coast
+BLEED_KM = 9                     # pigment pooling along the shore, on the water side
+BLEED_RGB = (58, 140, 160)
+
+
+def periodic_noise(n: int, scale: float, seed: int) -> np.ndarray:
+    rng = np.random.default_rng(seed)
+    f = np.fft.fft2(rng.standard_normal((n, n)))
+    k = np.sqrt(np.add.outer(np.fft.fftfreq(n) ** 2, np.fft.fftfreq(n) ** 2)) * n
+    f *= np.exp(-(k / scale) ** 2)
+    r = np.real(np.fft.ifft2(f))
+    return (r - r.min()) / (r.max() - r.min())
+
+
+def wash_canvas(names: list, size: int, seed: int, contrast: float = 0) -> np.ndarray:
+    """The painted sheets laid edge to edge in flipped, offset cells, two sheets mixed by noise."""
+    rng = np.random.default_rng(seed)
+    layers = []
+    for name in names:
+        tex = Image.open(Path('resources/map-chart') / f'{name}.webp').convert('RGB').resize((WASH_CELL_PX, WASH_CELL_PX), Image.LANCZOS)
+        canvas = Image.new('RGB', (size, size))
+        # Mirror tiling: every cell is its neighbour's reflection, so each edge meets itself and no
+        # seam can show (random flips left hard lines where two sheets met; tester 10-26).
+        for i, x in enumerate(range(0, size, WASH_CELL_PX)):
+            for j, y in enumerate(range(0, size, WASH_CELL_PX)):
+                t = tex.transpose(Image.FLIP_LEFT_RIGHT) if i % 2 else tex
+                t = t.transpose(Image.FLIP_TOP_BOTTOM) if j % 2 else t
+                canvas.paste(t, (x, y))
+        layers.append(np.roll(np.asarray(canvas, float), (int(rng.integers(size)), int(rng.integers(size))), (0, 1)))
+    mix = periodic_noise(512, 3, seed)
+    mix = np.asarray(Image.fromarray((mix * 255).astype(np.uint8)).resize((size, size), Image.BICUBIC), float)[..., None] / 255
+    out = layers[0] * (1 - mix) + layers[1] * mix
+    # Re-centred on the chart's own base colour: the washes bring their VARIATION (deeper and paler
+    # passages, granulation), not their overall tint, which darkened the sea and yellowed the land.
+    base = np.asarray(Image.open(WASH_BASE[names[0].split('-')[1]]).convert('RGB'), float).reshape(-1, 3).mean(0)
+    return np.clip((out - out.reshape(-1, 3).mean(0)) * (contrast or WASH_CONTRAST) + base, 0, 255)
+
+
+def save_pyramid(rgba: Image.Image, out: Path) -> int:
+    count = 0
+    for z in range(GLAZE_MAX_Z + 1):
+        level = rgba.resize((256 * 2 ** z,) * 2, Image.LANCZOS) if z < GLAZE_MAX_Z else rgba
+        for x in range(2 ** z):
+            for y in range(2 ** z):
+                path = out / str(z) / str(x) / f'{y}.webp'
+                path.parent.mkdir(parents=True, exist_ok=True)
+                level.crop((x * 256, y * 256, x * 256 + 256, y * 256 + 256)).save(path, quality=90, alpha_quality=88, method=6)
+                count += 1
+    return count
+
+
+def wash_tiles(to_land_km: np.ndarray, to_sea_km: np.ndarray, out: Path) -> int:
+    """Three raster sets: sea wash and shore bleed (drawn UNDER the land fill, which clips them
+    exactly at the coast) and the land wash (over the fill, fading out just inside the coast)."""
+    size = 256 * 2 ** GLAZE_MAX_Z
+    down = lambda a: np.asarray(Image.fromarray(a.astype(np.float32)).resize((size, size), Image.BOX))
+    near_land, near_sea = down(to_land_km), down(to_sea_km)
+    count = 0
+    # Only the broad passes of the sea wash: its granulation, magnified past z4, read as chunky digital
+    # mottling (ChatGPT round 6). The fine grain on the water comes from the base paint and the paper.
+    sea = ndimage.gaussian_filter(wash_canvas(WASH_SOURCES['sea'], size, 11, contrast=SEA_WASH_CONTRAST), sigma=(SEA_WASH_SOFTEN_PX, SEA_WASH_SOFTEN_PX, 0), mode='wrap')
+    count += save_pyramid(Image.fromarray(np.dstack([sea, np.full((size, size), 255.)]).astype(np.uint8), 'RGBA'), out / 'wash-sea')
+    land = wash_canvas(WASH_SOURCES['land'], size, 23)
+    fade = np.clip(near_sea / WASH_LAND_FADE_KM, 0, 1) * (near_sea > 0)
+    count += save_pyramid(Image.fromarray(np.dstack([land, fade * 255]).astype(np.uint8), 'RGBA'), out / 'wash-land')
+    wobble = 0.6 + 0.8 * np.asarray(Image.fromarray((periodic_noise(512, 24, 5) * 255).astype(np.uint8)).resize((size, size), Image.BICUBIC), float) / 255
+    bleed = np.exp(-near_land / (BLEED_KM * wobble)) * (near_land > 0)
+    rgb = np.broadcast_to(np.array(BLEED_RGB, float), (size, size, 3))
+    count += save_pyramid(Image.fromarray(np.dstack([rgb, bleed * 255]).astype(np.uint8), 'RGBA'), out / 'bleed')
     return count
 
 
@@ -454,6 +538,7 @@ def build(land_path: Path, peaks_path: Path, out: Path, tiles: bool = True) -> d
                 vector_tiles(src, out / name.removesuffix('.geojson'))
     if tiles:
         print('glaze tiles:', glaze_tiles(land, scale, out / 'glaze'))
+        print('wash tiles:', wash_tiles(to_land_km, to_sea_km, out))
         for name, data in zip(('land', 'lakes', 'coast'), chart_shapes(land_path, lakes_path)):
             text = json.dumps(data, separators=(',', ':'))
             (out / f'{name}.geojson').write_text(text)

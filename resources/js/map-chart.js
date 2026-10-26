@@ -49,22 +49,33 @@ export const CHART = Object.freeze({
   tuftOpacity: 0.55,
   waveOpacity: 0.8,
   waveScale: 1.5,
-  paperOpacity: 0.06,
+  seaWash: 0.6,                // painted sea washes over the base sea (Bart 10-26: "lots of watercolour textures")
+  seaGrain: 0.14,              // the paint's granulation over the water, at screen scale (the baked glaze is too soft for it)
+  shoreBleed: 0.7,            // pigment pooled along the shore, water side
+  landWash: 0.85,              // painted land washes over the base land
+  paperOpacity: 0.35,          // the paper's grain over everything (0.06 was invisible)
 })
 
 // A glyph's half-width is ~45 css px at size 1. At z4 near 40°S that is 337 km; its tapered foothills
 // let the box overhang ~1.7x, so the cap is fit / 200 km at z4, and every km figure halves per zoom.
 const CAP_KM_Z4 = 200
+const DASH_MIN_KM2 = 1200
 const kmAt = (km, z) => km * 2 ** (4 - z)
 
 /** Sources the chart needs on top of the lesson map's own land tiles and coastline. */
 export function chartSources (origin = '') {
+  const raster = (name) => ({ type: 'raster', tiles: [`${origin}${CHART_BASE}/${name}/{z}/{x}/{y}.webp`], tileSize: 256, maxzoom: 4 })
   const tiles = (name) => ({ type: 'vector', tiles: [`${origin}${CHART_BASE}/${name}/{z}/{x}/{y}.pbf`], minzoom: name === 'waves' ? 0 : 3, maxzoom: 5 })
   return {
     // Land, lakes and coast come from ONE set of drawn rings (scripts/build-chart-data.py), so the fill
     // and the ink always agree, and an islet leaves the map whole (fill and outline) as you zoom out.
-    'chart-land': { type: 'geojson', data: `${origin}${CHART_BASE}/land.geojson`, tolerance: 1 },
-    'chart-lakes': { type: 'geojson', data: `${origin}${CHART_BASE}/lakes.geojson`, tolerance: 1 },
+    'chart-land': { type: 'geojson', data: `${origin}${CHART_BASE}/land.geojson`, tolerance: GEOJSON_TOLERANCE },
+    'chart-lakes': { type: 'geojson', data: `${origin}${CHART_BASE}/lakes.geojson`, tolerance: GEOJSON_TOLERANCE },
+    // One rectangle over the whole world, to lay a pattern over the water (the land fill covers it).
+    'chart-world': { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[[-540, -85], [540, -85], [540, 85], [-540, 85], [-540, -85]]] } } },
+    'chart-wash-sea': raster('wash-sea'),
+    'chart-bleed': raster('bleed'),
+    'chart-wash-land': raster('wash-land'),
     'chart-glaze': { type: 'raster', tiles: [`${origin}${CHART_BASE}/glaze/{z}/{x}/{y}.webp`], tileSize: 256, maxzoom: 4 },
     'chart-peaks': tiles('peaks'),
     'chart-tufts': tiles('tufts'),
@@ -96,6 +107,11 @@ const coastWidth = (w) => ['interpolate', ['linear'], ['zoom'], 2, w * 0.35, 3.5
  * Returned as a paint value (opacity), since a zoom expression may not sit inside a filter.
  */
 // MUST equal ISLET_KM2 in scripts/build-chart-data.py (the glaze tiles bake the same rule).
+// The outlines are already simplified and smoothed at build time. MapLibre's own per-tile
+// simplification on top (tolerance 1 px at the tile's zoom) re-cut the curves into steps between
+// whole zooms: stair-stepped coasts at z3.3-3.8, the editor's default framing (tester 10-26).
+export const GEOJSON_TOLERANCE = 0.2
+
 export const ISLET_KM2 = [[0, 20000], [2.5, 3000], [3.5, 800], [4.5, 100], [5.5, 40], [6.5, 0]]
 const shownAtZoom = (on = 1) => ['step', ['zoom'],
   ...ISLET_KM2.flatMap(([z, km2], i) => [...(i ? [z] : []), ['case', ['any', ['==', ['get', 'k'], 1], ['>=', ['get', 'a'], km2]], on, 0]])]
@@ -110,8 +126,15 @@ const fadeIn = (from, to) => ['interpolate', ['linear'], ['zoom'], from, 0, from
 export function chartLayers (cfg = CHART) {
   const under = [
     { id: 'bg', type: 'background', paint: { 'background-color': cfg.seaColor, 'background-pattern': 'chart-sea' } },
+    // The sea wash under the depth glaze (so the pale shallows stay), the shore bleed over it; both UNDER
+    // the land fill, which clips them exactly at the coast.
+    { id: 'chart-wash-sea', type: 'raster', source: 'chart-wash-sea', paint: { 'raster-opacity': cfg.seaWash, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } },
     { id: 'chart-glaze', type: 'raster', source: 'chart-glaze', paint: { 'raster-opacity': cfg.glazeOpacity, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } },
+    { id: 'chart-sea-grain', type: 'fill', source: 'chart-world', paint: { 'fill-pattern': 'chart-sea-grain', 'fill-opacity': cfg.seaGrain } },
+    { id: 'chart-bleed', type: 'raster', source: 'chart-bleed', paint: { 'raster-opacity': cfg.shoreBleed, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } },
     { id: 'land', type: 'fill', source: 'chart-land', paint: { 'fill-pattern': 'chart-land', 'fill-opacity': shownAtZoom() } },
+    // The land wash fades out just inside the coast (baked), so its raster edge never shows.
+    { id: 'chart-wash-land', type: 'raster', source: 'chart-wash-land', paint: { 'raster-opacity': cfg.landWash, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } },
     // Inland water (the IJsselmeer, Lake Geneva, the Great Lakes) painted as the sea: Natural Earth's
     // land has them filled in, and the chart had drawn the Netherlands without its IJsselmeer.
     { id: 'chart-lakes', type: 'fill', source: 'chart-lakes', paint: { 'fill-pattern': 'chart-sea', 'fill-opacity': shownAtZoom() } },
@@ -125,7 +148,8 @@ export function chartLayers (cfg = CHART) {
   const over = [
     // Offset from the same smoothed coast as the ink (one download), so it follows it without scribble.
     // The offshore dash belongs to the sea coast; a lake shore keeps only its ink line.
-    { id: 'chart-coast-dash', type: 'line', source: 'coastline', minzoom: 3.5, filter: ['!', ['has', 'lake']], layout: { 'line-join': 'round' },
+    // Not round islets: a dash ring on a speck read as sparkles (Tonga, the Wadden bars).
+    { id: 'chart-coast-dash', type: 'line', source: 'coastline', minzoom: 3.5, filter: ['all', ['!', ['has', 'lake']], ['>=', ['get', 'a'], DASH_MIN_KM2]], layout: { 'line-join': 'round' },
       paint: { 'line-color': cfg.inkColor, 'line-opacity': shownAtZoom(cfg.dashOpacity), 'line-width': 1.3, 'line-dasharray': [3, 2.2],
         'line-offset': ['interpolate', ['linear'], ['zoom'], 3.5, cfg.dashOffset * 0.6, 5, cfg.dashOffset] } },
     { id: 'coast-bold', type: 'line', source: 'coastline', layout: { 'line-cap': 'round', 'line-join': 'round' },
@@ -148,6 +172,7 @@ export function chartImages () {
   return [
     { id: 'chart-sea', url: art('sea.webp'), pixelRatio: 1 },
     { id: 'chart-land', url: art('land.webp'), pixelRatio: 1 },
+    { id: 'chart-sea-grain', url: art('sea-grain.webp'), pixelRatio: 1 },
     ...Array.from({ length: RIDGE_GLYPHS }, (_, i) => ({ id: `chart-ridge-${i}`, url: art(`ridge-${i}.webp`), pixelRatio: 2 })),
     ...Array.from({ length: TUFT_GLYPHS }, (_, i) => ({ id: `chart-tuft-${i}`, url: art(`tuft-${i}.webp`), pixelRatio: 2 })),
     // The wave strokes are vector; rasterised at 4x so they stay crisp on a projector.
@@ -195,6 +220,10 @@ export function chartTunerControls (map, cfg, paper = null) {
   const range = (key, label, min, max, step) => ({ key, label, min, max, step, value: CHART[key], apply: set(key) })
   const color = (key, label) => ({ key, label, type: 'color', value: CHART[key], apply: set(key) })
   return [
+    range('seaWash', 'Sea washes', 0, 1, 0.05),
+    range('seaGrain', 'Sea granulation', 0, 1, 0.05),
+    range('shoreBleed', 'Shore bleed', 0, 1, 0.05),
+    range('landWash', 'Land washes', 0, 1, 0.05),
     range('glazeOpacity', 'Depth glaze', 0, 2, 0.05),
     range('landEdgeOpacity', 'Warm coast edge', 0, 1, 0.05),
     color('landEdgeColor', 'Coast edge colour'),

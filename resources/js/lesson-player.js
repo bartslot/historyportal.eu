@@ -1840,8 +1840,10 @@ Alpine.data('lessonGame', (lesson) => ({
         stage.appendChild(inner)
         // Period place labels come from the landfalls themselves — each voyage scene's location
         // pinned at its leg's arrival. The teacher hides modern cities/borders via game_config.voyage_map.
+        // Only THIS voyage's scenes: a lesson with Tasman's 1642 and 1644 voyages pinned 1642's
+        // "Tonga" and "Golden Bay" onto legs 2 and 3 of the 1644 route (Arnhem Land, the Gulf).
         const legLabels = _sceneQueue
-          .filter(s => s.kind === 'voyage' && s.location)
+          .filter(s => s.kind === 'voyage' && s.location && ((s.config || {}).voyage ?? cfg.voyage) === cfg.voyage)
           .map(s => ({
             text: s.location,
             leg: Number((s.config || {}).leg) || 0,
