@@ -14,7 +14,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import { renderAnnotations, focusLabelLayout } from './map-annotations.js'
 import { placeLabelLayout, placeLabelPaint } from './map-place-label.js'
 import { mapTextProjector } from './map-text-projector.js'
-import { CHART, chartSources, chartLayers, addChartImages, addChartPaper, chartTunerControls } from './map-chart.js'
+import { CHART, CHART_BASE, chartSources, chartLayers, addChartImages, addChartPaper, chartTunerControls } from './map-chart.js'
 import { mapGone } from './map-alive.js'
 import { boxView, openingView, labelsView } from './map-view.js'
 import { itineraryTour } from './map-itinerary.js'
@@ -82,7 +82,10 @@ const polityFilter = (year) => ['all',
  * @param {{ qid?: string, year?: number, interactive?: boolean }} opts
  */
 export function renderLessonMap (el, opts = {}) {
-  const { qid = null, interactive = true, annotations = [], editable = false, onAnnotationsChange = null, onPolityClick = null, projection = 'mercator' } = opts
+  const { qid = null, interactive = true, annotations = [], editable = false, onAnnotationsChange = null, onPolityClick = null } = opts
+  // Flat, always: the painted chart does not wrap onto a globe (its wave marks stand off the limb and
+  // the sea fill floods the space around it). A stored 'globe' projection on old scenes is ignored.
+  const projection = 'mercator'
   // Voyage maps can hide anachronistic detail (modern city dots/labels + political borders that
   // didn't exist yet) and pin their own period place labels. Defaults keep the normal atlas.
   //
@@ -150,18 +153,10 @@ export function renderLessonMap (el, opts = {}) {
     // Kept at the v5 behaviour so the upgrade changes nothing on screen.
     zoomLevelsToOverscale: undefined,
     attributionControl: false,
-    // Lean the camera over from the start. Set here rather than eased in after load, because the
-    // opening view is fitted to the block's own cities and a pitch applied afterwards re-frames
-    // the shot — the class would watch the map settle instead of arriving already composed.
-    //
-    // Every projection, globe included: MapLibre's globe leans perfectly well, and a voyage seen
-    // over the curve of the earth is the best shot the app has.
     // Flat, always: a chart is read from above, and there is no relief left to lean over.
     pitch: 0,
     style: {
       version: 8,
-      // 2D flat (mercator) vs 3D globe (MapLibre v5) — set on the style at init so the map starts
-      // in the right projection. Calling setProjection mid-load disrupts tile/layer loading.
       projection: { type: projection },
       glyphs: `${location.origin}/fonts/{fontstack}/{range}.pbf`, // calligraphy labels (see build-glyphs.mjs)
       sources: {
@@ -174,7 +169,7 @@ export function renderLessonMap (el, opts = {}) {
           promoteId: { boundaries: 'Wikidata' },
         },
         // The ink coastline, and the dashed line offshore of it.
-        coastline: { type: 'geojson', data: `${location.origin}/timemap/coastline.geojson` },
+        coastline: { type: 'geojson', data: `${location.origin}${CHART_BASE}/coast.geojson` },
         land: { type: 'vector', tiles: [`${location.origin}/land-tiles/{z}/{x}/{y}.pbf`], maxzoom: 4 },
         ...chartSources(location.origin),
         // Teacher-authored period place labels (voyages) — filled via setLabels()/the `labels` opt.
@@ -729,7 +724,8 @@ export function renderLessonMap (el, opts = {}) {
     },
     /** Reveal every label at once (e.g. the editor may prefer to show them all). */
     revealAllLabels: () => { revealAll = true; applyLabelReveal() },
-    setProjection: (type) => { try { map.setProjection({ type }) } catch (_) {} },
+    /** Kept for callers; the chart is always flat (see `projection` above). */
+    setProjection: () => {},
     beginAddFocus: () => anno?.beginAddFocus(),
 
     /**

@@ -23,8 +23,14 @@ describe('map-chart: the watercolour sea chart', () => {
     });
 
     it('draws the dashed line on the sea side of the coast', () => {
-        // Natural Earth runs its coastlines with the land on the right: offshore is a negative offset.
-        expect(CHART.dashOffset).toBeLessThan(0);
+        // The coast rings (scripts/build-chart-data.py) all run counter-clockwise, land on the left, so
+        // the sea is on the right and MapLibre offsets a positive line-offset to the right. Natural Earth's
+        // own coastline lines run either way, which put the dash inland on most of the world.
+        expect(CHART.dashOffset).toBeGreaterThan(0);
+        const { under, over } = chartLayers();
+        expect(JSON.stringify(chartSources('')['chart-coast-simple'])).toContain('/map-chart/coast.geojson');
+        expect(JSON.stringify(under.find((l) => l.id === 'chart-land-edge').paint['line-offset'])).toMatch(/,-\d/);
+        expect(over.find((l) => l.id === 'chart-coast-dash').source).toBe('chart-coast-simple');
     });
 
     it('has no photographed ground, relief or globe source', () => {

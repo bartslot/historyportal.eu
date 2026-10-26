@@ -36,18 +36,6 @@
         </label>
     </div>
 
-    {{-- VIEW — flat 2D (mercator) vs 3D globe. The onclick flips the live preview instantly; the
-         wire:click persists the choice so it survives a re-mount / reload. --}}
-    @php $projection = $scene->config['projection'] ?? 'mercator'; @endphp
-    <div class="form-control">
-        <span class="text-xs uppercase tracking-wider text-slate-400">{{ __('View') }}</span>
-        {{-- The projection flips the live preview instantly (the dispatched event) and persists
-             the choice (the wire call) so it survives a re-mount. --}}
-        <x-ui.segmented panel class="mt-1" name="map-projection" :value="$projection"
-                        :options="[['mercator', __('Flat 2D')], ['globe', __('Globe 3D')]]"
-                        on-change="window.dispatchEvent(new CustomEvent('lessonmap:projection', { detail: { type: $event.target.value } })); $wire.call('setProjection', $event.target.value)" />
-    </div>
-
     {{-- Focus cities — search the cities corpus (modern OR historical name), then drop a red dot
          + label on the map (annotations[].type === 'focus'). A typeahead leads; dropping a raw pin
          is the secondary path. --}}

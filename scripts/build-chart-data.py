@@ -11,6 +11,11 @@ off that field:
                                           of distance from land, the first stronger so the shallows
                                           read as a band. Raster tiles z0-4; MapLibre's linear
                                           resampling gives the bands a soft wet edge.
+  public/map-chart/coast.geojson          the coastline as land outlines that all run the same way round, so a
+                                          fixed line-offset puts the dashed line on the sea side everywhere.
+                                          (Natural Earth's coastline lines run either way: the dash was
+                                          offshore in Australia and inland around all of Afro-Eurasia.)
+                                          Edges along the 180° cut and the south pole are dropped.
   public/map-chart/{peaks,tufts,waves}/   vector tiles (tippecanoe), so a view fetches only its own
                                           points: as GeoJSON the three were 3.3 MB on a school laptop.
 
@@ -52,7 +57,10 @@ GLAZE_RGB = (79, 168, 182)             # the painted sea's own teal (mean of sea
 GLAZE_MAX_Z = 4
 
 MIN_RIDGE_KM, RIDGE_SPACING_KM = 55, 50
-TUFT_SPACING_KM, TUFT_CLEAR_KM = 45, 30
+TUFT_SPACING_KM, TUFT_CLEAR_KM = 70, 30
+# Islets smaller than this push no shallows out around them: their glaze halo floated on open sea
+# where the land tiles draw nothing at that zoom (Samoa, Lakshadweep).
+MIN_GLAZE_ISLAND_PX = 150
 RIDGE_GLYPHS, TUFT_GLYPHS, WAVE_GLYPHS = 12, 16, 4
 WAVE_STEP_DEG, WAVE_CLEAR_KM = 1.5, 45
 SEED = 1642
@@ -80,6 +88,48 @@ def land_mask(land_path: Path) -> np.ndarray:
             for i, ring in enumerate(poly):
                 draw.polygon([merc_px(x, y) for x, y in ring], fill=0 if i else 255)
     return np.asarray(img) > 127
+
+
+def ring_area(ring: list) -> float:
+    return sum(x1 * y2 - x2 * y1 for (x1, y1), (x2, y2) in zip(ring, ring[1:] + ring[:1])) / 2
+
+
+def on_cut(a: list, b: list) -> bool:
+    """An edge Natural Earth added to close a polygon at the antimeridian or the south pole."""
+    return (abs(a[0]) >= 179.999 and abs(b[0]) >= 179.999) or (a[1] <= -89.9 and b[1] <= -89.9)
+
+
+def coast_lines(land_path: Path) -> dict:
+    """Every exterior ring counter-clockwise (land on the left of the direction of travel)."""
+    lines = []
+    for feat in json.loads(land_path.read_text())['features']:
+        geom = feat['geometry']
+        for poly in geom['coordinates'] if geom['type'] == 'MultiPolygon' else [geom['coordinates']]:
+            ring = poly[0][:-1] if poly[0][0] == poly[0][-1] else poly[0]
+            if ring_area(ring) < 0:
+                ring = ring[::-1]
+            ring = ring + ring[:1]
+            run = [ring[0]]
+            for a, b in zip(ring, ring[1:]):
+                if on_cut(a, b):
+                    if len(run) > 1:
+                        lines.append(run)
+                    run = [b]
+                else:
+                    run.append(b)
+            if len(run) > 1:
+                lines.append(run)
+    return {'type': 'FeatureCollection', 'features': [
+        {'type': 'Feature', 'properties': {}, 'geometry': {'type': 'LineString', 'coordinates': [[round(x, 4), round(y, 4)] for x, y in ln]}}
+        for ln in lines]}
+
+
+def without_islets(land: np.ndarray) -> np.ndarray:
+    labels, n = ndimage.label(land)
+    sizes = ndimage.sum(land, labels, range(1, n + 1))
+    keep = np.zeros(n + 1, bool)
+    keep[1:] = sizes >= MIN_GLAZE_ISLAND_PX
+    return keep[labels]
 
 
 def distance_fields(land: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -201,6 +251,7 @@ def build(land_path: Path, peaks_path: Path, out: Path, tiles: bool = True) -> d
     scale = row_scale()
     to_land_km, to_sea_km = to_land * scale, to_sea * scale
     ridges, tufts = ridges_and_tufts(peaks_path, to_sea_km)
+    glaze_km = ndimage.distance_transform_edt(~np.pad(without_islets(land), ((0, 0), (PAD, PAD)), mode='wrap'))[:, PAD:-PAD] * scale
     files = {
         'peaks.geojson': {'type': 'FeatureCollection', 'features': ridges},
         'tufts.geojson': {'type': 'FeatureCollection', 'features': tufts},
@@ -218,7 +269,10 @@ def build(land_path: Path, peaks_path: Path, out: Path, tiles: bool = True) -> d
                 src.write_text(text)
                 vector_tiles(src, out / name.removesuffix('.geojson'))
     if tiles:
-        print('glaze tiles:', glaze_tiles(to_land_km, out / 'glaze'))
+        print('glaze tiles:', glaze_tiles(glaze_km, out / 'glaze'))
+        coast = json.dumps(coast_lines(land_path), separators=(',', ':'))
+        (out / 'coast.geojson').write_text(coast)
+        print(f'coast.geojson: {len(coast) / 1e6:.1f} MB')
     return digests
 
 

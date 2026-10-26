@@ -41,7 +41,7 @@ export const CHART = Object.freeze({
   landEdgeOpacity: 0.3,
   inkColor: '#3b2a1e',
   coastWidth: 1.7,             // px at z5; scales with zoom
-  dashOffset: -6,              // px at z5; sign picks the sea side of the land outline
+  dashOffset: 6,               // px at z5; positive = right of travel = the sea (coast rings run land-on-the-left)
   dashOpacity: 0.9,
   ridgeMinZoom: 3.6,
   ridgeScale: 1.4,             // glyph size at z4 before the distance-to-coast cap
@@ -53,9 +53,12 @@ export const CHART = Object.freeze({
 })
 
 // A glyph's half-width is ~45 css px at size 1. At z4 near 40°S that is 337 km; its tapered foothills
-// let the box overhang ~1.7x, so the cap is fit / 200 km at z4 and halves in km per zoom level.
+// let the box overhang ~1.7x, so the cap is fit / 200 km at z4, and every km figure halves per zoom.
 const CAP_KM_Z4 = 200
-const CAP_KM_Z6 = CAP_KM_Z4 / 4
+// And a ridge or tuft only shows where its distance to the coast is at least ~20 px on screen at that
+// zoom (150 km at z4): a 55 km inland ridge is 6 px from the shore at z3.7, which is "that close".
+const CLEAR_KM_Z4 = 150
+const kmAt = (km, z) => km * 2 ** (4 - z)
 const COAST_SIMPLIFY_PX = 3
 
 /** Sources the chart needs on top of the lesson map's own land tiles and coastline. */
@@ -63,7 +66,7 @@ export function chartSources (origin = '') {
   const tiles = (name) => ({ type: 'vector', tiles: [`${origin}${CHART_BASE}/${name}/{z}/{x}/{y}.pbf`], minzoom: name === 'waves' ? 0 : 3, maxzoom: 5 })
   return {
     // The same coastline the ink line uses, simplified per zoom (tolerance in screen px) for the dash.
-    'chart-coast-simple': { type: 'geojson', data: `${origin}/timemap/coastline.geojson`, tolerance: COAST_SIMPLIFY_PX },
+    'chart-coast-simple': { type: 'geojson', data: `${origin}${CHART_BASE}/coast.geojson`, tolerance: COAST_SIMPLIFY_PX },
     'chart-glaze': { type: 'raster', tiles: [`${origin}${CHART_BASE}/glaze/{z}/{x}/{y}.png`], tileSize: 256, maxzoom: 4 },
     'chart-peaks': tiles('peaks'),
     'chart-tufts': tiles('tufts'),
@@ -71,14 +74,17 @@ export function chartSources (origin = '') {
   }
 }
 
-/** Size capped by distance to the coast, interpolated in map scale so the cap holds at every zoom. */
-const fittedSize = (scale, grow) => ['interpolate', ['exponential', 2], ['zoom'],
-  4, ['min', ['*', scale, ['get', 'sz']], ['/', ['get', 'fit'], CAP_KM_Z4]],
-  6, ['min', ['*', scale * grow, ['get', 'sz']], ['/', ['get', 'fit'], CAP_KM_Z6]]]
+/** Size capped by distance to the coast, and 0 (hidden) until the coast is far enough away on screen. */
+const fittedSize = (scale, grow, clear = 1) => ['interpolate', ['exponential', 2], ['zoom'],
+  ...[3.6, 4, 5, 6].flatMap((z) => [z, ['case', ['<', ['get', 'fit'], kmAt(CLEAR_KM_Z4 * clear, z)], 0,
+    ['min', ['*', scale * grow ** ((z - 4) / 2), ['get', 'sz']], ['/', ['get', 'fit'], kmAt(CAP_KM_Z4, z)]]]])]
 
-/** Rank r: below z3.5 only a third of rank 0, then one more rank per zoom level. Size 0 = hidden. */
+/** Rank r: nothing below z2, a sixth of rank 0 up to z3, a third below z3.5, then one more rank per level. Size 0 = hidden. */
+const someOfRank0 = (every) => ['all', ['==', ['get', 'r'], 0], ['==', ['%', ['round', ['*', ['get', 'sz'], 100]], every], 0]]
 const waveSize = (scale) => ['step', ['zoom'],
-  ['case', ['all', ['==', ['get', 'r'], 0], ['==', ['%', ['round', ['*', ['get', 'sz'], 100]], 3], 0]], ['*', scale * 0.75, ['get', 'sz']], 0],
+  0,  // none on the world view: there the jittered grid reads as rows
+  2, ['case', someOfRank0(6), ['*', scale * 0.7, ['get', 'sz']], 0],
+  3, ['case', someOfRank0(3), ['*', scale * 0.75, ['get', 'sz']], 0],
   3.5, ['case', ['<=', ['get', 'r'], 0], ['*', scale, ['get', 'sz']], 0],
   4.5, ['case', ['<=', ['get', 'r'], 1], ['*', scale * 1.07, ['get', 'sz']], 0],
   5.5, ['case', ['<=', ['get', 'r'], 2], ['*', scale * 1.13, ['get', 'sz']], 0],
@@ -99,9 +105,9 @@ export function chartLayers (cfg = CHART) {
     { id: 'land', type: 'fill', source: 'land', 'source-layer': 'land', paint: { 'fill-pattern': 'chart-land' } },
     { id: 'chart-land-edge', type: 'line', source: 'coastline', layout: { 'line-join': 'round' },
       paint: { 'line-color': cfg.landEdgeColor, 'line-opacity': cfg.landEdgeOpacity,
-        'line-width': ['interpolate', ['linear'], ['zoom'], 3, 3, 6, 8], 'line-offset': ['interpolate', ['linear'], ['zoom'], 3, 1.5, 6, 4] } },
+        'line-width': ['interpolate', ['linear'], ['zoom'], 3, 3, 6, 8], 'line-offset': ['interpolate', ['linear'], ['zoom'], 3, -1.5, 6, -4] } },  // inside the land
     { id: 'chart-tufts', type: 'symbol', source: 'chart-tufts', 'source-layer': 'tufts', minzoom: cfg.ridgeMinZoom,
-      layout: { 'icon-image': ['concat', 'chart-tuft-', ['to-string', ['get', 'g']]], 'icon-allow-overlap': true, 'icon-size': fittedSize(cfg.ridgeScale * 0.57, 1.75) },
+      layout: { 'icon-image': ['concat', 'chart-tuft-', ['to-string', ['get', 'g']]], 'icon-allow-overlap': true, 'icon-size': fittedSize(cfg.ridgeScale * 0.57, 1.75, 0.7) },
       paint: { 'icon-opacity': fadeIn(cfg.ridgeMinZoom, cfg.tuftOpacity) } },
   ]
   const over = [
@@ -181,7 +187,7 @@ export function chartTunerControls (map, cfg, paper = null) {
     color('landEdgeColor', 'Coast edge colour'),
     color('inkColor', 'Ink'),
     range('coastWidth', 'Coast line width', 0.5, 4, 0.1),
-    range('dashOffset', 'Dash offset (px, minus = sea)', -16, 16, 1),
+    range('dashOffset', 'Dash offset (px, plus = sea)', -16, 16, 1),
     range('dashOpacity', 'Dash opacity', 0, 1, 0.05),
     range('ridgeScale', 'Ridge size', 0.4, 3, 0.05),
     range('ridgeWash', 'Ridge opacity', 0, 1, 0.05),
