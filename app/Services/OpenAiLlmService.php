@@ -187,7 +187,9 @@ class OpenAiLlmService
                 // Never on a 429: three more requests a second apart only burn the quota that ran
                 // out (Gemini's free tier is 15 a minute). The caller sees LlmHttpException with
                 // the provider's Retry-After and decides how long to wait.
-                ->retry(times: 3, sleepMilliseconds: 1000, when: fn ($e, $req) => ! ($e instanceof \Illuminate\Http\Client\RequestException && $e->response->status() === 429), throw: false)
+                // A busy model (503 "high demand") needs longer than a second: three tries a
+                // second apart all failed on prod 2026-10-23 and a lesson came out with no scenes.
+                ->retry(times: 4, sleepMilliseconds: fn (int $attempt) => [2000, 8000, 20000][$attempt - 1] ?? 20000, when: fn ($e, $req) => ! ($e instanceof \Illuminate\Http\Client\RequestException && $e->response->status() === 429), throw: false)
                 ->post(rtrim($base, '/') . '/chat/completions', $payload);
         } catch (\Throwable $e) {
             throw new RuntimeException('OpenAI API request failed: ' . $e->getMessage(), previous: $e);

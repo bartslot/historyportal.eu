@@ -24,11 +24,13 @@
  * the network. (Progress POST with answers.game comes in a later segment.)
  */
 import { el } from './dom.js'
+import { t } from '../i18n.js'
 
 const CONSEQUENCE_MS = 4000        // game-master caption auto-dismiss
 const CHIP_MS = 1400               // floating ±N chip lifetime
 const OPTION_ROLES = ['option_a', 'option_b']
-const FALLBACK_LABELS = { option_a: 'Optie A', option_b: 'Optie B' }
+// Read at use, not at import: the lesson-language dictionary is published by the page.
+const fallbackLabel = (role) => (role === 'option_b' ? t('Option B') : t('Option A'))
 
 let stylesInjected = false
 function injectStyles () {
@@ -97,7 +99,7 @@ export class StoryGameEngine {
         entry.options.push({
           index: i,
           role: s.branch_role,
-          label: s.branch_choice_label || FALLBACK_LABELS[s.branch_role],
+          label: s.branch_choice_label || fallbackLabel(s.branch_role),
           effects: s.config?.branch_effects || null,
         })
       } else {
@@ -274,7 +276,7 @@ export class StoryGameEngine {
     wrap.dataset.sgChoice = String(group.id)
 
     const card = el('div', 'sg-card w-full max-w-2xl')
-    card.appendChild(el('p', 'text-center text-xs font-bold uppercase tracking-[0.2em] text-primary mb-4', 'Wat doe je?'))
+    card.appendChild(el('p', 'text-center text-xs font-bold uppercase tracking-[0.2em] text-primary mb-4', t('What do you do?')))
 
     const row = el('div', 'flex flex-col sm:flex-row gap-4')
     for (const option of group.options) {
@@ -360,10 +362,10 @@ export class StoryGameEngine {
     wrap.dataset.sgGameover = '1'
 
     const card = el('div', 'sg-card max-w-xl w-full rounded-2xl bg-slate-900 border border-error/40 shadow-2xl p-8 text-center')
-    card.appendChild(el('h2', 'font-history text-2xl sm:text-3xl font-bold text-error mb-4', 'Zo liep de geschiedenis bijna anders…'))
+    card.appendChild(el('h2', 'font-history text-2xl sm:text-3xl font-bold text-error mb-4', t('History nearly went differently…')))
     if (historicalNote) {
       const note = el('div', 'rounded-xl border border-primary/30 bg-primary/10 px-5 py-4 mb-6')
-      note.appendChild(el('p', 'text-2xs font-bold uppercase tracking-eyebrow text-primary mb-1', 'Wat er echt gebeurde'))
+      note.appendChild(el('p', 'text-2xs font-bold uppercase tracking-eyebrow text-primary mb-1', t('What really happened')))
       note.appendChild(el('p', 'text-slate-200 text-sm leading-relaxed', historicalNote)) // untrusted → textContent
       card.appendChild(note)
     }
@@ -371,13 +373,13 @@ export class StoryGameEngine {
     const restartBtn = el('button',
       'w-full px-6 py-3.5 rounded-xl bg-primary text-slate-950 font-bold text-base cursor-pointer ' +
       'transition-transform hover:scale-[1.02] active:scale-[0.98]',
-      'Opnieuw vanaf dit keuzemoment')
+      t('Start again from this choice'))
     restartBtn.dataset.sgRestart = '1'
     restartBtn.addEventListener('click', () => this._restart(group, wrap))
     card.appendChild(restartBtn)
 
     const override = el('button', 'mt-4 text-xs text-slate-500 underline underline-offset-2 cursor-pointer hover:text-slate-300',
-      'Toch doorgaan (docent)')
+      t('Carry on anyway (teacher)'))
     override.dataset.sgOverride = '1'
     override.addEventListener('click', () => {
       wrap.remove()
@@ -423,10 +425,10 @@ export class StoryGameEngine {
     const card = el('div', 'sg-card max-w-xl w-full rounded-2xl bg-slate-900 border border-primary/30 shadow-2xl p-8')
     card.dataset.sgSummary = '1'
 
-    card.appendChild(el('h2', 'font-history text-2xl font-bold text-primary mb-1 text-center', 'Jullie verhaal'))
-    const outcome = this._survived ? 'Overleefd!' : 'Niet overleefd'
+    card.appendChild(el('h2', 'font-history text-2xl font-bold text-primary mb-1 text-center', t('Your story')))
+    const outcome = this._survived ? t('Survived!') : t('Did not survive')
     const sub = this._restarts > 0
-      ? `${outcome} · ${this._restarts}× opnieuw geprobeerd`
+      ? t(':outcome · tried again :count×', { outcome, count: this._restarts })
       : outcome
     card.appendChild(el('p', `text-center text-sm font-semibold mb-6 ${this._survived ? 'text-success' : 'text-error'}`, sub))
 

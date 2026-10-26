@@ -9,6 +9,7 @@ use App\Models\Scene;
 use App\Models\SvgAsset;
 use App\Services\SceneLayers;
 use App\Services\Support\LayerAmbient;
+use App\Services\Support\LayerFrames;
 use App\Services\Support\LayerSitIn;
 use Illuminate\Support\Facades\Storage;
 
@@ -58,6 +59,8 @@ class LibraryLayers
         'ambient', 'ambient_speed', 'ambient_amount',
         'flip_x', 'flip_y', ...LayerSitIn::KEYS,
         'occlude',
+        // A sprite sheet beside the picture (LayerFrames): {count, columns}; how it plays.
+        'frames', 'frames_play', 'frames_fps',
         'ink_preset', 'ink_fill', 'draw_time',
         'anchor', 'lng', 'lat',
     ];
@@ -253,6 +256,7 @@ class LibraryLayers
                 throw new \InvalidArgumentException("{$where}, layer {$i}: occlude must be 0 or 1.");
             }
             $asset = $this->libraryAsset((string) ($entry['asset'] ?? ''), $where);
+            $entry = $this->withFrames((array) $entry, $asset, "{$where}, layer {$i}");
             if ($upload) {
                 $this->cdn->ensure($asset);   // preflight only resolves; the real build uploads
             }
@@ -260,6 +264,28 @@ class LibraryLayers
         }
 
         return $layers;
+    }
+
+    /**
+     * A layer's sprite sheet: the spec gives its grid, the file is the library's
+     * `<name>.frames.webp` beside the picture. A sheet not painted yet (no file) plays the picture.
+     *
+     * @param  array<string,mixed>  $entry
+     * @return array<string,mixed>
+     */
+    private function withFrames(array $entry, SvgAsset $asset, string $where): array
+    {
+        if (isset($entry['frames_play']) && ! in_array($entry['frames_play'], LayerFrames::PLAYS, true)) {
+            throw new \InvalidArgumentException("{$where}: frames_play must be one of ".implode(', ', LayerFrames::PLAYS).'.');
+        }
+        if (! array_key_exists('frames', $entry)) {
+            return $entry;
+        }
+        $grid = LayerFrames::spec($entry['frames'], $where);
+        $path = LayerFrames::sheetPath((string) $asset->svg_path);
+        unset($entry['frames']);
+
+        return Storage::disk('public')->exists($path) ? $entry + ['frames' => $grid + ['path' => $path]] : $entry;
     }
 
     /**

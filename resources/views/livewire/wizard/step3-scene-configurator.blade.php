@@ -574,6 +574,8 @@
                 sceneId: p.sceneId,   // the copy/paste keys remember which scene an object came from
                 kind: p.kind,
                 gameType: p.gameType || null,   // a quiz lists its Quiz as an object
+                // A split scene draws its figures under the text: the object list can't swap them.
+                split: !!(p.split ?? _vcfg.split),
                 hasGallery: !!(_gal.title || _gal.story || (_gal.images && _gal.images.length) || (_vcfg.stop_images && _vcfg.stop_images.length)),
             }
             try { window.dispatchEvent(new CustomEvent('objscene-changed')) } catch (_) { /* noop */ }
@@ -1061,7 +1063,8 @@
                                                   :quiz-draft="$quizDraft" :quiz-errors="$quizErrors" :quiz-saved="$quizSaved"
                                                   :quiz-difficulty="$this->quizDifficulty()" :quiz-scope="$this->quizScope()"
                                                   :quiz-shuffle="$this->quizShuffle()"
-                                                  :team-draft="$teamDraft" :team-is-default="$this->teamGameIsDefault()" />
+                                                  :team-draft="$teamDraft" :team-is-default="$this->teamGameIsDefault()"
+                                                  :predict-draft="$predictDraft" />
                 @elseif ($sceneModel->kind === 'voyage')
                     <x-lesson.scene-inspector-voyage :scene="$sceneModel" :voyage-def="$this->voyageDef()" :route-line="$this->routeLine()" :voyage-map="$this->voyageMap()" :voyage-fog="$this->voyageFog()" :voyage-view="$this->voyageView()" :transports="$this->transports()" :stops="$this->voyageStops()" />
                 @elseif ($sceneModel->kind === 'gallery')
@@ -1084,11 +1087,12 @@
                 </div>{{-- /format tab --}}
                 </div>{{-- /scene-inspector-{{ $sceneModel->id }} --}}
             @else
-                <p class="text-sm text-slate-400">No scene selected.</p>
+                <p class="text-sm text-slate-400">{{ __('No scene selected.') }}</p>
             @endif
 
             @else
             {{-- ══ SETTINGS view — lesson-global Story + class meters + Background Music ══════ --}}
+            <x-lesson.lesson-type-labels-setting :lesson="$lesson" />
             {{-- Class meters (story_game, lesson-level) — a lesson-wide setting, so it lives in
                  Settings, not the per-scene Format panel. --}}
             @if ($this->showsMetersPanel())
@@ -1338,8 +1342,8 @@
                 const withZ = texts.map((t, i) => ({ t, i, z: this.effZ(t) }));
                 withZ.sort((a, b) => (b.z - a.z) || (b.i - a.i));
                 const textItems = withZ.map(({ t }) => t.kind === 'rect'
-                    ? { id: t.id, icon: t.side === 'right' ? 'panelR' : 'panelL', label: (t.side || 'left') + ' half', bg: false }
-                    : { id: t.id, icon: 'text', label: (t.text || 'Text').slice(0, 40), bg: false });
+                    ? { id: t.id, icon: t.side === 'right' ? 'panelR' : 'panelL', label: t.side === 'right' ? @js(__('Right half')) : @js(__('Left half')), bg: false }
+                    : { id: t.id, icon: 'text', label: (t.text || @js(__('Text'))).slice(0, 40), bg: false });
                 // Clipart / artwork / embed layers (own overlay, drag-reorderable). _layers is bottom-first
                 // (last painted = on top), so reverse it to list front-most first like the text rows.
                 const objKind = (window.__objScene || {}).kind;
@@ -1350,7 +1354,7 @@
                     ({ id: 'dio_' + i.id, icon: 'photo', label: i.label || i.id, bg: false, dio: true }));
                 const artItems = [...arts].reverse().map((a) =>
                     ({ id: 'art_' + a.asset_id, icon: a.embed ? (a.embed.type === 'video' ? 'photo' : 'map') : 'photo',
-                       label: a.title || (a.embed ? (a.embed.type === 'video' ? 'Video' : '3D model') : @js(__('Icon'))), bg: false, art: true }));
+                       label: a.title || (a.embed ? (a.embed.type === 'video' ? @js(__('Video')) : @js(__('3D model'))) : @js(__('Icon'))), bg: false, art: true }));
                 // The clipart group sits above the text objects only when the teacher dragged it there
                 // (config.clipart_on_top → the overlay host's z-index is raised above the text layer).
                 const onTop = !!(artLayer && artLayer.onTop);
@@ -1366,15 +1370,15 @@
                     // being edited, so none of its objects are listed. (The 2s poll re-reads this.)
                     items.length = 0;
                 } else if (objKind === 'voyage') {
-                    items.push({ id: '__gallery__', icon: 'photo', label: 'Gallery', bg: true, voyage: 'gallery' });
-                    items.push({ id: '__waypoint__', icon: 'map', label: 'Waypoint', bg: true, voyage: 'waypoint' });
+                    items.push({ id: '__gallery__', icon: 'photo', label: @js(__('Gallery')), bg: true, voyage: 'gallery' });
+                    items.push({ id: '__waypoint__', icon: 'map', label: @js(__('Waypoint')), bg: true, voyage: 'waypoint' });
                 } else {
                     // A quiz is an object on its scene too: its row opens the questions. Pinned like
                     // the background (bg: true = no drag, no delete), just above it.
                     if (objKind === 'game' && (window.__objScene || {}).gameType === 'quiz') {
                         items.push({ id: '__quiz__', icon: 'quiz', label: @js(__('Quiz')), bg: true, section: 'quiz' });
                     }
-                    items.push({ id: '__bg__', icon: 'photo', label: objKind === 'gallery' ? 'Slideshow' : @js(__('Background')), bg: true, section: 'bg' });
+                    items.push({ id: '__bg__', icon: 'photo', label: objKind === 'gallery' ? @js(__('Slideshow')) : @js(__('Background')), bg: true, section: 'bg' });
                 }
                 // Skip the re-render (and its churn under SortableJS) when nothing actually changed —
                 // the 2s poll would otherwise rebuild identical rows and fight the drag layer.
@@ -1401,21 +1405,35 @@
                     // fixed-position panel and works consistently across browsers.
                     forceFallback: true,
                     fallbackTolerance: 4,
-                    onStart: (evt) => { this.dragging = true; evt.item._objNext = evt.item.nextSibling; },
+                    // The fallback ghost is a clone of an x-for row: kept from Alpine while dragging,
+                    // or it is initialised scopeless ("obj is not defined", object-list-drop.js).
+                    onStart: (evt) => { this.dragging = true; evt.item._objNext = evt.item.nextSibling; window.__objectListShield(list, true); },
                     onEnd: (evt) => {
                         this.dragging = false;
+                        window.__objectListShield(list, false);
                         // Read the new top→bottom order Sortable applied (BG has no data-obj-id).
                         const ids = [...evt.to.querySelectorAll('[data-obj-id]')].map((el) => el.dataset.objId);
                         // Undo Sortable's DOM move so Alpine's keyed x-for stays the single source of
                         // truth (avoids the classic Alpine+Sortable double-move corruption)…
                         evt.from.insertBefore(evt.item, evt.item._objNext || null);
                         // …then restack each layer system and rebuild. Text and clipart are two
-                        // separate overlays, so split the dropped order by type and reorder each.
-                        const isArt = (id) => id.startsWith('art_');
-                        const textIds = ids.filter((id) => !isArt(id) && !id.startsWith('dio_') && !id.startsWith('bal_'));
-                        const artIds = ids.filter(isArt);
-                        if (textIds.length) window.__lessonTextLayer?.reorder(textIds);
-                        if (artIds.length) this.reorderClipart(ids, textIds, artIds);
+                        // separate overlays: split the dropped order by the rows' kind (not their id:
+                        // a balloon's id is whatever its line carries) and let the DRAGGED row decide
+                        // which band is in front (scene/object-list-drop.js).
+                        const kindOf = (id) => {
+                            const it = this.items.find((i) => i.id === id);
+                            return !it || it.bg || it.bal || it.dio ? null : (it.art ? 'art' : 'text');
+                        };
+                        const drop = window.__objectListDrop({
+                            ids, kindOf, movedId: evt.item.dataset.objId,
+                            artOnTop: !!this.artOverlay()?.onTop,
+                            canSwap: !(window.__objScene || {}).split,
+                        });
+                        if (drop.textIds.length) window.__lessonTextLayer?.reorder(drop.textIds);
+                        if (drop.artIds.length) this.reorderClipart(drop.artIds, drop.artOnTop);
+                        if (drop.blocked) {
+                            window.dispatchEvent(new CustomEvent('toast', { detail: { message: @js(__('In a split scene the text stays in front of the pictures.')), type: 'info' } }));
+                        }
                         // _sig is cleared or refresh() would no-op the reordered rows.
                         this._sig = null;
                         this.refresh();
@@ -1423,14 +1441,11 @@
                 });
             },
             // Clipart lives in its own overlay (a single host in one z-band). Reorder the clipart
-            // layers among themselves and, when the clipart block was dragged above/below the text
-            // block, raise/lower the whole overlay past the text layer. Persisted server-side.
-            reorderClipart(allIds, textIds, artRowIds) {
+            // layers among themselves and raise/lower the whole overlay past the text layer as the
+            // drop decided (onTop). Persisted server-side.
+            reorderClipart(artRowIds, onTop) {
                 const layer = this.artOverlay();
                 if (!layer) return;
-                // Did the clipart block land above or below the text block? (compare mean row index)
-                const avg = (list) => list.reduce((s, id) => s + allIds.indexOf(id), 0) / list.length;
-                const onTop = textIds.length ? (avg(artRowIds) < avg(textIds)) : (layer.onTop ?? false);
                 layer.setOnTop(onTop);
                 const paintOrder = layer.reorder(artRowIds.map((id) => Number(id.slice(4))));  // bottom-first
                 // setOnTop above already restacked the layer NODES. The host must stay free of a
@@ -2070,7 +2085,7 @@
                      data-obj-row
                      @click="select(obj)"
                      :class="[
-                        obj.bg ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing',
+                        obj.bg || obj.bal || obj.dio ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing',
                         selectedId === obj.id ? 'bg-sky-500/15 text-sky-100 ring-1 ring-sky-400/50' : 'text-slate-200 hover:bg-slate-800',
                      ]"
                      class="group flex w-full select-none items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-sm">
@@ -2333,7 +2348,7 @@
          style="right: var(--work-right, 16rem);">
         <div class="flex items-center justify-between border-b border-slate-700/60 bg-base-200/60 px-3 py-2">
             <span class="text-2xs font-semibold uppercase tracking-widest text-slate-400">{{ __('Internal notes') }}</span>
-            <button type="button" @click="$store.view.hide('notes')" class="text-slate-500 hover:text-slate-200" aria-label="Close">✕</button>
+            <button type="button" @click="$store.view.hide('notes')" class="text-slate-500 hover:text-slate-200" aria-label="{{ __('Close') }}">✕</button>
         </div>
         <textarea x-model="note" @input.debounce.400ms="save()" rows="6"
                   placeholder="{{ __('Private notes for this lesson. Only you can see these.') }}"
@@ -2581,41 +2596,46 @@
          x-data x-on:keydown.escape.window="if ($wire.addSceneOpen) $wire.set('addSceneOpen', false)">
         <div class="modal-box hp-modals max-w-lg border border-slate-700/70">
             <div class="mb-4 flex items-center justify-between">
-                <h2 class="text-lg font-semibold text-slate-100">Add a scene</h2>
+                <h2 class="text-lg font-semibold text-slate-100">{{ __('Add a scene') }}</h2>
                 <button type="button" class="btn btn-ghost btn-sm btn-circle text-slate-400"
-                        aria-label="Close" wire:click="$set('addSceneOpen', false)">✕</button>
+                        aria-label="{{ __('Close') }}" wire:click="$set('addSceneOpen', false)">✕</button>
             </div>
 
             <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 <button type="button" wire:click="addScene('narration')"
                         class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
                     <x-lesson.scene-type-thumb kind="narration" />
-                    <span class="text-sm font-medium text-slate-200">Story</span>
+                    <span class="text-sm font-medium text-slate-200">{{ __('Story') }}</span>
                 </button>
                 <button type="button" wire:click="addScene('game', 'quiz')"
                         class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
                     <x-lesson.scene-type-thumb kind="game" game-type="quiz" />
-                    <span class="text-sm font-medium text-slate-200">Quiz</span>
+                    <span class="text-sm font-medium text-slate-200">{{ __('Quiz') }}</span>
                 </button>
                 <button type="button" wire:click="addScene('game', 'strategy')"
                         class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
                     <x-lesson.scene-type-thumb kind="game" game-type="strategy" />
-                    <span class="text-sm font-medium text-slate-200">Strategy game</span>
+                    <span class="text-sm font-medium text-slate-200">{{ __('Strategy game') }}</span>
                 </button>
                 <button type="button" wire:click="addScene('game', 'debate')"
                         class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
                     <x-lesson.scene-type-thumb kind="game" game-type="debate" />
-                    <span class="text-sm font-medium text-slate-200">Debate</span>
+                    <span class="text-sm font-medium text-slate-200">{{ __('Debate') }}</span>
+                </button>
+                <button type="button" wire:click="addScene('game', 'predict')" data-add-predict
+                        class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
+                    <x-lesson.scene-type-thumb kind="game" game-type="predict" />
+                    <span class="text-sm font-medium text-slate-200">{{ __('Predict moment') }}</span>
                 </button>
                 <button type="button" wire:click="addScene('map')"
                         class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
                     <x-lesson.scene-type-thumb kind="map" />
-                    <span class="text-sm font-medium text-slate-200">Map</span>
+                    <span class="text-sm font-medium text-slate-200">{{ __('Map') }}</span>
                 </button>
                 <button type="button" wire:click="addScene('gallery')"
                         class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
                     <x-lesson.scene-type-thumb kind="gallery" />
-                    <span class="text-sm font-medium text-slate-200">Gallery</span>
+                    <span class="text-sm font-medium text-slate-200">{{ __('Gallery') }}</span>
                 </button>
                 <button type="button" wire:click="addScene('video')"
                         class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
@@ -2627,7 +2647,7 @@
                     <button type="button" wire:click="addScene('branch')"
                             class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
                         <x-lesson.scene-type-thumb kind="branch" />
-                        <span class="text-sm font-medium text-slate-200">Decision point</span>
+                        <span class="text-sm font-medium text-slate-200">{{ __('Decision point') }}</span>
                     </button>
                 @endif
                 @if (($lesson->game_type ?? null) === 'voyage')
@@ -2650,7 +2670,7 @@
                 @endif
             </div>
         </div>
-        <button type="button" class="modal-backdrop" aria-label="Close"
+        <button type="button" class="modal-backdrop" aria-label="{{ __('Close') }}"
                 wire:click="$set('addSceneOpen', false)"></button>
     </div>
 
@@ -2715,7 +2735,7 @@
                     {{-- "Library" is our own imagery: this lesson's pictures plus our Cloudinary
                          collection. It is also what the grid falls back to when the corpus and
                          Commons find nothing, so the teacher is never left with an empty modal. --}}
-                    @foreach (['' => __('Everything'), 'painting' => __('Paintings'), 'city_map' => __('City plans'), 'library' => __('Library')] as $kindVal => $kindLabel)
+                    @foreach (['library' => __('Library'), '' => __('Everything'), 'painting' => __('Paintings'), 'city_map' => __('City plans')] as $kindVal => $kindLabel)
                         <button type="button" wire:click="$set('paintingKind', '{{ $kindVal }}')"
                                 class="btn btn-xs flex-none {{ $paintingKind === $kindVal ? 'bg-primary text-slate-950 border-0 hover:brightness-110' : 'btn-outline border-slate-600 text-slate-400 hover:border-primary hover:text-primary' }}">
                             {{ $kindLabel }}
@@ -2784,6 +2804,7 @@
                 <div class="h-[62vh] overflow-y-auto p-1.5"
                      wire:loading.class="opacity-40"
                      wire:target="paintingQuery, paintingKind, paintingRegion, applyPaintingChoice">
+                @php $collectionPending = ! $libraryCollectionReady && $paintingPickerMode !== 'model3d' && in_array($paintingKind, ['library', ''], true); @endphp
                 <div class="lp-thumb-grid gap-3" :style="gridStyle">
                     @forelse ($this->paintingResults as $art)
                         {{-- @js() escapes the source/key as safe JS literals (titles carry apostrophes,
@@ -2815,6 +2836,9 @@
                             </span>
                         </button>
                     @empty
+                        @if ($collectionPending)
+                            {{-- Our collection is still on its way (tiles below): no "nothing found" yet. --}}
+                        @else
                         {{-- When the curated corpus comes up empty, "try another word" is dead-end advice:
                              the thing that actually finds obscure subjects is the Commons search, which
                              sits in the footer below and went unnoticed. Point at it instead. --}}
@@ -2844,7 +2868,16 @@
                                 </button>
                             @endif
                         </div>
+                        @endif
                     @endforelse
+                    @if ($collectionPending)
+                        {{-- The lesson's own pictures are up; our Cloudinary collection follows. --}}
+                        <div wire:init="loadLibraryCollection" class="contents">
+                            @for ($i = 0; $i < 5; $i++)
+                                <div data-kind="image" class="animate-pulse rounded-lg bg-slate-700/40"></div>
+                            @endfor
+                        </div>
+                    @endif
                 </div>
                 </div>
                 {{-- Wikimedia and image upload belong to the picture modes; a Sketchfab search has
@@ -2878,7 +2911,7 @@
             </div>
             </div>
         </div>
-        <button type="button" class="modal-backdrop" aria-label="Close"
+        <button type="button" class="modal-backdrop" aria-label="{{ __('Close') }}"
                 wire:click="$set('paintingPickerOpen', false)"></button>
     </div>
 
@@ -2890,13 +2923,13 @@
             <div class="mb-3 flex items-center justify-between gap-3">
                 <h2 class="text-lg font-semibold text-slate-100">{{ __('Import icons') }}</h2>
                 <button type="button" class="btn btn-ghost btn-sm btn-circle text-slate-400"
-                        aria-label="Close" wire:click="$set('svgLibraryOpen', false)">✕</button>
+                        aria-label="{{ __('Close') }}" wire:click="$set('svgLibraryOpen', false)">✕</button>
             </div>
             @if ($svgLibraryOpen)
                 <livewire:svg-asset-library :key="'svg-library-'.$lesson->id" />
             @endif
         </div>
-        <button type="button" class="modal-backdrop" aria-label="Close"
+        <button type="button" class="modal-backdrop" aria-label="{{ __('Close') }}"
                 wire:click="$set('svgLibraryOpen', false)"></button>
     </div>
 

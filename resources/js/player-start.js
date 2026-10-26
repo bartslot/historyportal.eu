@@ -33,3 +33,21 @@ export function mayAutoplay (win) {
     return false
   }
 }
+
+/**
+ * Pure: can the class press Start? A lesson whose narration is still being made waits ("Audio
+ * generating…"), but a lesson with nothing generating is startable whether or not it is narrated:
+ * a narration-free lesson used to wait forever (pair test round 5).
+ *
+ * It waits while ANY scene that needs a voice is still being made, not just until the first one is
+ * ready: a partly narrated lesson offered Start and the class then hit silent scenes mid-lesson
+ * (pair test round 6). A scene that plays without narration never blocks, and neither does one
+ * that still has its old recording while it is re-narrated.
+ */
+export function canStartLesson (lesson) {
+  const scenes = lesson?.scenes || []
+  // `awaiting_media` is decided server-side (Scene::isAwaitingMedia): an empty scene the editor
+  // added has nothing to generate and never holds Start (pair test round 7).
+  const stillMaking = (s) => s.awaiting_media && !s.audio_url
+  return scenes.length > 0 && !scenes.some(stillMaking)
+}

@@ -117,7 +117,10 @@ class GenerateSceneAudio implements ShouldQueue
 
             $this->maybeMarkReady($scene->fresh());
         } catch (Throwable $e) {
-            $scene->update(['status' => 'failed', 'error_message' => $e->getMessage()]);
+            // A scene that still has its own recording of this text stays playable: a failed
+            // re-narration (a voice change) is not a broken scene. It keeps the error, which
+            // LessonProblems shows in amber (error scan 2026-10-18: 14 such scenes marked failed).
+            $scene->update(['status' => $scene->hasFreshAudio() ? 'ready' : 'failed', 'error_message' => $e->getMessage()]);
             throw $e;
         }
     }
@@ -161,8 +164,17 @@ class GenerateSceneAudio implements ShouldQueue
         // Note this is the opposite priority to LessonScriptPrompt::contentLanguage, which asks
         // a different question: what language should we WRITE the next lesson in. That one
         // rightly follows the teacher's teaching language.
+        //
+        // Too short or ambiguous to call, the LESSON decides, not the teacher: the language its
+        // whole script is written in, then its language column (lesson 71, English, from a Dutch
+        // teacher, had a short line read in Dutch, PM 2026-10-18), and only then the teacher's.
+        // The script before the column: lessons 13 and 14 are written in Dutch under the default 'en'.
         $teacher = $scene->lesson->teacher;
-        $locale = ScriptLanguage::detect($text, $teacher?->teachingLocale() ?? 'en');
+        $lessonLocale = ScriptLanguage::detect(
+            $scene->lesson->scenes()->pluck('script_segment')->implode(' '),
+            (string) ($scene->lesson->language ?: ($teacher?->teachingLocale() ?? 'en')),
+        );
+        $locale = ScriptLanguage::detect($text, $lessonLocale);
         $voiceId = match (true) {
             // Self-hosted Piper: pick the voice by language (Dutch pim, English ryan) so an
             // English lesson isn't narrated in a Dutch accent.

@@ -12,10 +12,12 @@
              A plain wire:navigate link (no $wire method call, so it can never 500). --}}
         {{-- A landing-page demo guest has no lesson list to go back to (RestrictGuestDemo);
              their way out is the site they came from. --}}
-        @php($wizardExitUrl = auth()->user()?->isGuestDemo() ? route('home') : route('teacher.lessons.index'))
+        @php($isGuestDemo = (bool) auth()->user()?->isGuestDemo())
+        @php($wizardExitUrl = $isGuestDemo ? route('home') : route('teacher.lessons.index'))
+        @php($wizardExitLabel = $isGuestDemo ? __('Back to the home page') : __('Back to lessons'))
         <a href="{{ $wizardExitUrl }}" wire:navigate
            class="btn btn-circle btn-sm fixed left-3 top-3 z-60 border-0 bg-transparent shadow-none hover:bg-white/10"
-           data-tooltip="{{ __('Back to lessons') }}" aria-label="{{ __('Back to lessons') }}">
+           data-tooltip="{{ $wizardExitLabel }}" aria-label="{{ $wizardExitLabel }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-5 w-5" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
             </svg>

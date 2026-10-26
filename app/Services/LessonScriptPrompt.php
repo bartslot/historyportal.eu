@@ -114,7 +114,13 @@ SYS;
         $sceneLines = $scenes->values()->map(function (Scene $scene, int $index) use ($briefs): string {
             $brief = $briefs[$index] ?? [];
             $parts = [
-                "Scene order={$scene->order}".($scene->kind === 'game' ? ' (GAME — 40-80 word setup only)' : ''),
+                "Scene order={$scene->order}".match (true) {
+                    // A predict moment: the narrator asks, the class answers before the next scene shows it.
+                    $scene->game_type === 'predict' => ' (PREDICT — 15-40 words: the narrator stops the story and asks the class this, '
+                        .'never the answer: "'.(($scene->config['predict'] ?? [])['question'] ?? '').'")',
+                    $scene->kind === 'game' => ' (GAME — 40-80 word setup only)',
+                    default => '',
+                },
                 'beat: '.($brief['beat'] ?? 'continue the story'),
             ];
             if (! empty($brief['conflict'])) {

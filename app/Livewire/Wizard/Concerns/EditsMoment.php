@@ -36,6 +36,8 @@ trait EditsMoment
         'momentDraft.seconds' => 'nullable|integer|min:0|max:'.MomentSpec::TIMER_MAX,
         'momentDraft.teams' => 'nullable|integer|min:0|max:'.MomentSpec::TEAMS_MAX,
         'momentDraft.react.amount' => 'nullable|numeric|min:0|max:2',
+        'momentDraft.react.drift' => 'nullable|numeric|min:0|max:30',
+        'momentDraft.input_options.word_seconds' => 'nullable|numeric|min:1|max:6',
         'momentDraft.payoff.to_x' => 'nullable|numeric|min:-50|max:150',
         'momentDraft.payoff.to_y' => 'nullable|numeric|min:-50|max:150',
         'momentDraft.payoff.duration' => 'nullable|numeric|min:0.3|max:30',

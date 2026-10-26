@@ -38,7 +38,7 @@
     </div>
 
     <div role="tablist" class="tabs tabs-bordered">
-        @foreach (['overview' => __('Overview'), 'questions' => __('Questions'), 'players' => __('Players')] as $key => $label)
+        @foreach (['overview' => __('Overview'), 'questions' => __('Questions'), 'players' => __('Players'), 'predictions' => __('Predictions')] as $key => $label)
             <button role="tab" wire:click="$set('tab', '{{ $key }}')"
                     class="tab {{ $tab === $key ? 'tab-active font-semibold' : '' }}">{{ $label }}</button>
         @endforeach
@@ -125,6 +125,8 @@
                 <p class="text-sm opacity-60">{{ __('No answers recorded yet.') }}</p>
             @endforelse
         </div>
+    @elseif ($tab === 'predictions')
+        <x-results.prediction-moments :moments="$this->predictions" />
     @else
         <div class="space-y-1.5">
             @forelse ($this->players as $row)

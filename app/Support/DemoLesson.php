@@ -41,6 +41,9 @@ final class DemoLesson
     /** The language every visitor can be served, and the only one it is acceptable to fall back to. */
     public const FALLBACK_LANGUAGE = 'en';
 
+    /** The statuses a visitor can open (LessonPlayerController plays only these to the public). */
+    private const PUBLIC_STATUSES = [LessonStatus::Published->value, LessonStatus::Previewable->value];
+
     /**
      * The lesson this visitor's hero should build, or null when even English has nothing playable.
      */
@@ -124,9 +127,12 @@ final class DemoLesson
         }
 
         // English keeps its env override (DEMO_LESSON_GOAL) for the pinned default lesson.
-        return $lesson->title === config('demo.lesson_title') && $lesson->language === self::FALLBACK_LANGUAGE
-            ? (string) config('demo.lesson_goal')
-            : $lesson->title;
+        if ($lesson->title === config('demo.lesson_title') && $lesson->language === self::FALLBACK_LANGUAGE) {
+            return (string) config('demo.lesson_goal');
+        }
+
+        // Null-safe: an untitled lesson took /nl down with a 500 (typed string return, pair test round 5).
+        return filled($lesson->title) ? (string) $lesson->title : __('A history lesson your class plays together');
     }
 
     /** Hand-picked hero footage for the lesson that won, if its language entry names any. */
@@ -149,7 +155,23 @@ final class DemoLesson
         $title = self::entryFor($language)['title'] ?? null;
 
         return self::configured($title, $language)
-            ?? self::playable()->where('language', $language)->latest()->first();
+            ?? self::allowListed(self::playable()->where('language', $language))->latest()->first();
+    }
+
+    /**
+     * The fallback is never "the newest public lesson by anyone": that put a random teacher's
+     * lesson, without a Figma poster, on the front door with its title typed as the goal (pair
+     * test round 6). Only an OFFICIAL lesson of a series with a Figma title poster may stand in;
+     * otherwise the English hand-picked demo does.
+     *
+     * Official = `translation_group`, which LessonCopier never copies. Not `title_series`: copies
+     * keep that (so they keep the poster), and a teacher's renamed, published copy took over the
+     * homepage through it (round 7). The hand-picked titles need no clause here: configured()
+     * already serves them.
+     */
+    private static function allowListed($query)
+    {
+        return $query->whereIn('translation_group', TitlePoster::seriesWithPosters() ?: ['-']);
     }
 
     /**
@@ -214,11 +236,9 @@ final class DemoLesson
      * The lesson named in config/demo.php — trusted because somebody chose it deliberately, but
      * only once its `language` column agrees.
      *
-     * Status is NOT checked here, only that it can be played. Merely opening a lesson in the
-     * Configure editor sets its status to `configuring` (Step3SceneConfigurator::mount), so a
-     * status test meant the hand-picked demo lesson silently vanished from the landing page the
-     * first time anyone looked at it in the wizard. The public-status rule still guards the
-     * fallback below, which nobody chose.
+     * It must be public: the homepage links visitors to it, and a private lesson 404s for them.
+     * (This once skipped the status check because opening a lesson in the editor unpublished it;
+     * Step3SceneConfigurator::mount no longer does that to a playable lesson.)
      */
     private static function configured(?string $title, string $language): ?Lesson
     {
@@ -226,13 +246,36 @@ final class DemoLesson
             return null;
         }
 
-        return Lesson::query()
+        // Every visitor who presses Configure gets a private copy with this same title and
+        // language (GuestDemoSession), and a signed-in teacher keeps theirs (GuestDemoController).
+        // Those copies are never public, so a public status keeps them off the homepage, where a
+        // visitor would 404 on them (pair test round 5). Editing a playable lesson no longer
+        // unpublishes it (Step3SceneConfigurator::mount), so the original keeps its status.
+        // The hand-picked original carries a translation_group (a copy never does) and is the
+        // oldest: it leads, so a teacher's published copy can never win while it is there.
+        //
+        // A scene being re-narrated or regenerated is not "every scene ready", but it still has
+        // its picture and the lesson still plays: the original must not drop out for that.
+        $query = self::listed()
+            ->whereIn('status', self::PUBLIC_STATUSES)
             ->where('title', $title)
             ->where('language', $language)
-            ->whereNotNull('lesson_code')
             ->whereHas('scenes')
-            ->whereDoesntHave('scenes', fn ($scenes) => $scenes->where('status', '!=', 'ready'))
-            ->first();
+            // A scene still being made with nothing to show yet; an empty scene the editor added
+            // (nothing to generate) does not count (round 7).
+            ->whereDoesntHave('scenes', fn ($scenes) => $scenes->awaitingMedia()
+                ->whereNull('image_path')->whereNull('audio_path')->whereNull('shots'))
+            ->whereDoesntHave('scenes', fn ($scenes) => $scenes->where('status', 'failed'));
+
+        // Once the official original exists (it alone carries a translation_group), a copy that
+        // kept its title never stands in for it, even while the original is unavailable (round 7).
+        $hasOriginal = Lesson::where('title', $title)->where('language', $language)
+            ->whereNotNull('translation_group')->exists();
+        if ($hasOriginal) {
+            $query->whereNotNull('translation_group');
+        }
+
+        return $query->orderBy('id')->first();
     }
 
     /**
@@ -246,11 +289,21 @@ final class DemoLesson
      */
     private static function playable()
     {
-        return Lesson::query()
-            ->whereIn('status', [LessonStatus::Published->value, LessonStatus::Previewable->value])
-            ->whereNotNull('lesson_code')
+        return self::listed()
+            ->whereIn('status', self::PUBLIC_STATUSES)
+            // An untitled lesson has nothing for the hero to type (and took /nl down, round 5).
+            ->whereNotNull('title')->where('title', '!=', '')
             ->whereHas('scenes')
-            ->whereDoesntHave('scenes', fn ($scenes) => $scenes->where('status', '!=', 'ready'));
+            ->whereDoesntHave('scenes', fn ($scenes) => $scenes->awaitingMedia())
+            ->whereDoesntHave('scenes', fn ($scenes) => $scenes->where('status', 'failed'));
+    }
+
+    /** Not a guest's sandbox copy, and a code to open it by. */
+    private static function listed()
+    {
+        return Lesson::query()
+            ->whereDoesntHave('teacher', fn ($owner) => $owner->where('is_guest_demo', true))
+            ->whereNotNull('lesson_code');
     }
 
     /** Drop every language's cached pick — a lesson save can change any of them. */

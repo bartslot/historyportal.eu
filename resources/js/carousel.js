@@ -1,5 +1,6 @@
 import Flickity from 'flickity';
 import 'flickity/css/flickity.css';
+import { t } from './i18n.js';
 
 /**
  * The app's one carousel.
@@ -27,6 +28,19 @@ export const CAROUSEL_OPTIONS = {
     groupCells: false,
 };
 
+/**
+ * Flickity hard-codes its arrow labels in English ("Previous" / "Next", on the button and in the
+ * SVG's <title>); a Dutch teacher's screen reader read them out as such (pair test 2026-10-24).
+ */
+export function labelArrows (element) {
+    element.querySelectorAll('.flickity-prev-next-button').forEach((button) => {
+        const label = button.classList.contains('previous') ? t('Previous') : t('Next');
+        button.setAttribute('aria-label', label);
+        const title = button.querySelector('title');
+        if (title) title.textContent = label;
+    });
+}
+
 /** Mount every carousel inside `root` that is not mounted already. */
 export function initCarousels (root = document) {
     root.querySelectorAll('.js-disney-carousel').forEach((element) => {
@@ -37,6 +51,7 @@ export function initCarousels (root = document) {
         }
 
         new Flickity(element, CAROUSEL_OPTIONS);
+        labelArrows(element);
     });
 }
 

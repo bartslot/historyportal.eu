@@ -38,6 +38,10 @@
         aria-hidden="true"
     ></div>
 
+    {{-- Strings the JavaScript renders (carousel arrows among them), translated; without it
+         every t() on this page fell back to English (pair test round 4). --}}
+    <x-js-lang />
+
     {{ $slot }}
 
     {{-- Dev role switching stays reachable here: a student has no workspace of its own and lands on the landing page. --}}

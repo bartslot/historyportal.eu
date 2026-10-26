@@ -9,6 +9,7 @@
  * The outer edges bleed, like the reference page. Flat: no shadow.
  */
 import { ParallaxScene } from './ParallaxScene.js'
+import { t } from '../i18n.js'
 import { ArtworkOverlay } from './ArtworkOverlay.js'
 import { BalloonLayer, withBalloonIds } from './BalloonLayer.js'
 import { backdropLayers, isClipartLayer } from './layer-filters.js'
@@ -261,7 +262,7 @@ export class SplitStage {
     d.dataset.splitDivider = String(k)
     d.tabIndex = 0
     d.setAttribute('role', 'separator')
-    d.setAttribute('aria-label', 'Split position')
+    d.setAttribute('aria-label', t('Split position'))
     d.style.cssText = 'position:absolute;z-index:45;pointer-events:auto;'
     const pill = document.createElement('span')
     pill.className = 'lp-grip-pill'

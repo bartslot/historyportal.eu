@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\LessonVersion;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -49,5 +50,12 @@ class QuizQuestion extends Model
     public function correctAnswer(): string
     {
         return $this->options[$this->correct_index] ?? '';
+    }
+
+    protected static function booted(): void
+    {
+        // A quiz question is lesson content: its lesson's version goes up (LessonVersion).
+        static::saved(fn (QuizQuestion $q) => LessonVersion::changed($q->lesson_id));
+        static::deleted(fn (QuizQuestion $q) => LessonVersion::changed($q->lesson_id));
     }
 }

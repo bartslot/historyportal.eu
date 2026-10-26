@@ -4,11 +4,11 @@ import fs from 'node:fs';
 
 /**
  * The title screen never lets two of its pieces overlap, at any of the sizes a class meets:
- * the top row, the title, Start, the language, the chevron, the QR plate, and the poster's drawn
+ * the top row, the title, Start, the language, the QR plate, and the poster's drawn
  * letters and faces (poster.json keep_clear). The bottom rail sits inside the one gutter with every
  * piece's bottom on one baseline, the QR always bottom right; the hero is one viewport and "About
  * this lesson" follows it. Measured from the render, every candidate × every size, teacher and
- * student view. The chevron stands in the left group, right after the language, never on a face.
+ * student view.
  * A face under the static QR is an art problem: reported, not failed.
  *
  * It switches the lesson's title_style, so it runs only against a THROWAWAY copy:
@@ -103,12 +103,6 @@ async function measure (page: Page) {
     }
     const qrBox = rail.find(p => p.name === 'qr');
     if (qrBox && Math.abs(qrBox.x + qrBox.w - (W - g)) > 2) railIssues.push(`qr not bottom right (right ${Math.round(qrBox.x + qrBox.w)}, gutter ${Math.round(W - g)})`);
-    // The way down: in the left group, after the language (or Start), well clear of the QR.
-    const chevron = rail.find(p => p.name === 'chevron');
-    const before = rail.filter(p => p.name !== 'chevron' && p.name !== 'qr' && p.x < (chevron?.x ?? 0));
-    if (!chevron) railIssues.push('no chevron in the rail');
-    else if (before.some(p => p.x + p.w > chevron.x + 1) || (qrBox && chevron.x + chevron.w > qrBox.x - 16)) railIssues.push('chevron not in the left group');
-    else if (Math.max(...before.map(p => p.x + p.w), g) < chevron.x - 24) railIssues.push('chevron not right after the language');
     const about = host.querySelector('[data-title-about]')?.getBoundingClientRect();
     if (!about || about.top - o.top < H - 1) railIssues.push('About this lesson is not below the hero');
 

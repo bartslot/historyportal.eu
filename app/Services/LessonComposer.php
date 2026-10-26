@@ -11,6 +11,7 @@ use App\Models\Scene;
 use App\Models\User;
 use App\Services\Lessons\LibraryLayers;
 use App\Services\Lessons\MomentSpec;
+use App\Services\Lessons\PredictSpec;
 use App\Services\Lessons\SceneDialogue;
 use App\Services\Lessons\TeamGameSpec;
 use App\Services\Support\AudioEncoder;
@@ -172,6 +173,11 @@ class LessonComposer
             }
             $lesson->title_style = $style;
         }
+        // An imported lesson carries its version on, never backwards; this rebuild then counts as a
+        // change of its own (LessonVersion, once for the whole build).
+        if (is_numeric($spec['content_version'] ?? null) && (int) $spec['content_version'] > (int) ($lesson->content_version ?? 1)) {
+            $lesson->content_version = (int) $spec['content_version'];
+        }
         if (array_key_exists('show_lesson_types', $spec)) {
             $lesson->show_lesson_types = (bool) $spec['show_lesson_types'];
         }
@@ -182,7 +188,8 @@ class LessonComposer
                 throw new \InvalidArgumentException("Spec qr_position '{$qr}' must be auto, hidden or one of: ".implode(', ', TitlePoster::QR_CORNERS).'.');
             }
             $lesson->show_qr = $qr !== 'hidden';
-            $lesson->qr_position = in_array($qr, TitlePoster::QR_CORNERS, true) ? $qr : null;
+            // A corner (older specs) means shown: the QR has one place now (Lesson::qrPosition).
+            $lesson->qr_position = null;
         }
         // "What you can expect": 1-3 short lines on the title screen, kept as the default too (the editor's Reset).
         if (array_key_exists('expect', $spec)) {
@@ -219,6 +226,7 @@ class LessonComposer
             $scene = match ($type) {
                 'quiz' => $this->quizScene($lesson, $sceneSpec, $order, ++$gameIndex),
                 'team' => $this->teamScene($lesson, $sceneSpec, $order, ++$gameIndex),
+                'predict' => $this->predictScene($lesson, $sceneSpec, $order, ++$gameIndex),
                 'gallery' => $this->galleryScene($lesson, $sceneSpec, $order),
                 'map' => $this->mapScene($lesson, $sceneSpec, $order),
                 'voyage' => $this->voyageScene($lesson, $sceneSpec, $order),
@@ -848,6 +856,39 @@ class LessonComposer
                 'explanation' => $q['e'] ?? null,
                 'points' => 10,
             ]);
+        }
+
+        return $scene;
+    }
+
+    /**
+     * A predict moment (PredictSpec): the narrator asks (`script`, or the question itself), the class
+     * answers on paper, on the board or on their own devices, and a later debrief asks why. The spec
+     * entry is cleaned at this boundary; its rubric stays on the server (the player never gets it).
+     *
+     * @param  array<string,mixed>  $s
+     */
+    private function predictScene(Lesson $lesson, array $s, int $order, int $gameIndex): Scene
+    {
+        $predict = PredictSpec::normalize($s);
+
+        $scene = $lesson->scenes()->create([
+            'order' => $order,
+            'kind' => 'game',
+            'game_type' => 'predict',
+            'game_segment_index' => $gameIndex,
+            'duration_seconds' => max(60, $predict['seconds'] + 60),
+            'background_color' => '#0f172a',
+            'chapter_name' => $s['chapter'] ?? null,
+            'location' => $s['location'] ?? null,
+            'year' => $s['year'] ?? null,
+            'script_segment' => $s['script'] ?? $predict['question'],
+            'status' => 'pending',
+            'config' => ['predict' => $predict],
+        ]);
+
+        if (! empty($s['backdrop'])) {
+            $this->library->attachLibraryBackdrop($scene, (string) $s['backdrop'], $order);
         }
 
         return $scene;

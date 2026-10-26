@@ -134,13 +134,16 @@ describe('ParallaxScene + ArtworkOverlay play one camera', () => {
     vi.stubGlobal('cancelAnimationFrame', () => {})
     return q
   }
+  // The panel, and its camera, start once its pictures are drawn (ParallaxScene `shown`).
+  const drawn = () => new Promise(resolve => setTimeout(resolve, 0))
 
-  it('drives the planes from its own clock and ignores narration progress', () => {
+  it('drives the planes from its own clock and ignores narration progress', async () => {
     const q = rafQueue()
     const host = document.createElement('div')
     document.body.appendChild(host)
     const scene = new ParallaxScene(host)
     scene.show({ layers: [{ url: 'sea.png', kind: 'cover', depth: 1 }], camera: { move: 'push', duration: 1 } })
+    await drawn()
     const plane = host.querySelector('.px-layer')
     expect(plane.style.transform).toContain('scale(1)')
 
@@ -154,7 +157,7 @@ describe('ParallaxScene + ArtworkOverlay play one camera', () => {
     vi.unstubAllGlobals()
   })
 
-  it('a finished move applies its last pose once and stops asking for frames; a shake ends at rest', () => {
+  it('a finished move applies its last pose once and stops asking for frames; a shake ends at rest', async () => {
     const q = rafQueue()
     const host = document.createElement('div')
     document.body.appendChild(host)
@@ -165,6 +168,7 @@ describe('ParallaxScene + ArtworkOverlay play one camera', () => {
       camera: { move: 'shake', duration: 1 },
       onCameraFrame: (f) => frames.push(f(1)),
     })
+    await drawn()
     const start = performance.now()
     q.splice(0).forEach(cb => cb(start + 300))      // mid-shake
     expect(q).toHaveLength(1)                       // still moving: one more frame asked for
@@ -175,10 +179,11 @@ describe('ParallaxScene + ArtworkOverlay play one camera', () => {
     vi.unstubAllGlobals()
   })
 
-  it('a looping editor preview keeps asking for frames', () => {
+  it('a looping editor preview keeps asking for frames', async () => {
     const q = rafQueue()
     const host = document.createElement('div')
     new ParallaxScene(host).show({ layers: [{ url: 'sea.png', kind: 'cover' }], camera: { move: 'push', duration: 1 }, loop: true })
+    await drawn()
     const start = performance.now()
     q.splice(0).forEach(cb => cb(start + 5000))
     expect(q).toHaveLength(1)

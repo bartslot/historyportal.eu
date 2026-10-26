@@ -249,10 +249,7 @@ export class HoldScreens {
     // One primary action: "Klaar" for the active team. Under budget it asks first.
     ui.confirm = el('div', 'flex flex-wrap items-center justify-end gap-3')
     this.refresh()
-    this.game._footer(body,
-      this._nextTurn(),
-      button(t('To the results'), 'btn-ghost', () => this.openCompare()),
-      ui.confirm)
+    this.game._footer(body, this._nextTurn(), ui.confirm)
   }
 
   /** Bring the pick screen in line with the data, in place. @returns {string[]} ids new in the hold */
@@ -297,20 +294,33 @@ export class HoldScreens {
     return ui.stage.update({ key: active, cargo: shipCargo(state, this.cat), capacity: this.cat.budget, load })
   }
 
-  /** "Klaar" / "Je hebt nog punten over. Toch klaar?" / the teacher's reopen. */
+  /**
+   * "Klaar" / "Je hebt nog punten over. Toch klaar?" / the teacher's reopen, and always the way on:
+   * a ready team points at the next team still choosing; with every team ready the results are the
+   * one main button (Bart, 10-18: "how do I continue here?").
+   */
   _confirmControls (active, state, load) {
     const store = this.store
     const set = (r) => { if (r.ok) { store.setCargo(active, r.state); store.save() } this.view.confirming = false; this.refresh() }
+    // The next team still choosing, counting on from the active one.
+    const waiting = Array.from({ length: store.count() }, (_, i) => (active + i) % store.count())
+      .find(i => !store.cargo(i).confirmed)
+    const allReady = waiting === undefined
+    const results = button(t('To the results'), allReady ? 'btn-primary btn-lg' : 'btn-ghost', () => this.openCompare())
     if (state.confirmed) {
+      const next = allReady ? results : button(t('Next: :name', { name: store.name(waiting) }), 'btn-primary btn-lg', () => {
+        store.setActive(waiting); this.game._warning = ''; this.view.confirming = false; this.refresh()
+      })
       return [el('span', 'text-lg font-semibold', t('Ready')),
-        button(t('Reopen'), 'btn-outline', () => set(reopenCargo(store.cargo(active))))]
+        button(t('Reopen'), 'btn-outline', () => set(reopenCargo(store.cargo(active)))),
+        ...(allReady ? [] : [results]), next]
     }
     if (this.view.confirming) {
       return [el('span', 'text-lg', t('You still have points left. Ready anyway?')),
         button(t('Back'), 'btn-ghost', () => { this.view.confirming = false; this.refresh() }),
         button(t('Ready anyway'), 'btn-primary btn-lg', () => set(confirmCargo(store.cargo(active), opId('confirm'))))]
     }
-    return [button(t('Ready'), 'btn-primary btn-lg', () => {
+    return [results, button(t('Ready'), 'btn-primary btn-lg', () => {
       if (load < this.cat.budget) { this.view.confirming = true; this.refresh() } else set(confirmCargo(store.cargo(active), opId('confirm')))
     })]
   }

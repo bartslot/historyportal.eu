@@ -28,6 +28,8 @@ class LessonCopier
             // translation_group because a copy is not another language of the original, and a
             // guest's edited sandbox would otherwise be offered in the original's language switch.
             $lesson = $source->replicate(['lesson_code', 'game_pack_path', 'translation_group']);
+            // ...but it keeps the original's title poster: every lesson wears its Figma poster.
+            $lesson->title_series = $source->titleSeries();
             $lesson->teacher_id = $owner->id;
             $lesson->scheduled_publish_at = null;
 

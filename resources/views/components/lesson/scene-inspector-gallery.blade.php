@@ -20,21 +20,21 @@
     </p>
 
     <label class="form-control">
-        <span class="text-xs uppercase tracking-wider text-slate-400">Title</span>
+        <span class="text-xs uppercase tracking-wider text-slate-400">{{ __('Title') }}</span>
         <input type="text" wire:model.blur="selectedScene.config.title" wire:change="saveSelected"
                placeholder="{{ __('e.g. The three ships') }}"
                class="input input-sm input-bordered bg-slate-900 mt-1" />
     </label>
 
     <label class="form-control">
-        <span class="text-xs uppercase tracking-wider text-slate-400">Date label</span>
+        <span class="text-xs uppercase tracking-wider text-slate-400">{{ __('Date label') }}</span>
         <input type="text" wire:model.blur="selectedScene.config.date_label" wire:change="saveSelected"
                placeholder="{{ __('e.g. August 1492') }}"
                class="input input-sm input-bordered bg-slate-900 mt-1" />
     </label>
 
     <label class="form-control">
-        <span class="text-xs uppercase tracking-wider text-slate-400">Story</span>
+        <span class="text-xs uppercase tracking-wider text-slate-400">{{ __('Story') }}</span>
         <textarea wire:model.blur="selectedScene.config.story" wire:change="saveSelected" rows="5"
                   placeholder="{{ __('What are the students looking at…') }}"
                   class="textarea textarea-bordered bg-slate-900 mt-1 leading-relaxed"></textarea>
@@ -44,24 +44,24 @@
          image letterboxed, with a blurred fill behind. --}}
     @php $fit = ($config['fit'] ?? 'fit') === 'cover' ? 'cover' : 'fit'; @endphp
     <div class="form-control border-t border-slate-700/50 pt-3">
-        <span class="text-xs uppercase tracking-wider text-slate-400">Image fit</span>
+        <span class="text-xs uppercase tracking-wider text-slate-400">{{ __('Image fit') }}</span>
         <div class="mt-1 inline-flex overflow-hidden rounded-lg border border-slate-700/60">
             <button type="button" wire:click="setGalleryFit('cover')"
                     class="px-3 py-1 text-xs font-medium transition-colors {{ $fit === 'cover' ? 'bg-primary text-slate-950' : 'bg-slate-800 text-slate-400' }}">
-                Cover
+                {{ __('Cover') }}
             </button>
             <button type="button" wire:click="setGalleryFit('fit')"
                     class="px-3 py-1 text-xs font-medium transition-colors {{ $fit === 'fit' ? 'bg-primary text-slate-950' : 'bg-slate-800 text-slate-400' }}">
-                Fit
+                {{ __('Fit') }}
             </button>
         </div>
-        <span class="mt-1 text-2xs text-slate-500">Cover fills the frame (may crop). Fit shows the whole image on a blurred backdrop.</span>
+        <span class="mt-1 text-2xs text-slate-500">{{ __('Cover fills the frame (may crop). Fit shows the whole image on a blurred backdrop.') }}</span>
     </div>
 
     {{-- IMAGES — [{url, credit}]. Auto-cycling slideshow; drag to reorder, add from paintings, upload, or URL. --}}
     <div class="form-control border-t border-slate-700/50 pt-3" x-data="{ url: '', drag: null }">
-        <span class="text-xs uppercase tracking-wider text-slate-400">Images</span>
-        <span class="mt-0.5 block text-2xs text-slate-500">Shown as a cross-fading slideshow. Drag to reorder.</span>
+        <span class="text-xs uppercase tracking-wider text-slate-400">{{ __('Images') }}</span>
+        <span class="mt-0.5 block text-2xs text-slate-500">{{ __('Shown as a cross-fading slideshow. Drag to reorder.') }}</span>
 
         @if (count($images))
             <ul class="mt-2 space-y-2">
@@ -74,38 +74,38 @@
                         x-on:drop.prevent="if (drag !== null && drag !== {{ $i }}) $wire.moveGalleryImage(drag, {{ $i }}); drag = null"
                         class="rounded-lg border border-slate-700/50 bg-slate-900/60 p-1.5 cursor-grab active:cursor-grabbing">
                         <div class="flex items-center gap-2">
-                            <span class="shrink-0 select-none text-slate-600" aria-hidden="true" title="Drag to reorder">⠿</span>
+                            <span class="shrink-0 select-none text-slate-600" aria-hidden="true" data-tooltip="{{ __('Drag to reorder') }}">⠿</span>
                             <img src="{{ $src }}" alt="" class="h-9 w-9 shrink-0 rounded object-cover"
                                  onerror="this.style.visibility='hidden'" />
                             <span class="min-w-0 flex-1 truncate text-2xs text-slate-400">{{ $src }}</span>
                             <button type="button" wire:click="moveGalleryImage({{ $i }}, {{ $i - 1 }})" @disabled($i === 0)
-                                    class="shrink-0 px-1 text-slate-400 hover:text-slate-200 disabled:opacity-30" title="Move up" aria-label="Move up">↑</button>
+                                    class="shrink-0 px-1 text-slate-400 hover:text-slate-200 disabled:opacity-30" data-tooltip="{{ __('Move up') }}" aria-label="{{ __('Move up') }}">↑</button>
                             <button type="button" wire:click="moveGalleryImage({{ $i }}, {{ $i + 1 }})" @disabled($i === count($images) - 1)
-                                    class="shrink-0 px-1 text-slate-400 hover:text-slate-200 disabled:opacity-30" title="Move down" aria-label="Move down">↓</button>
+                                    class="shrink-0 px-1 text-slate-400 hover:text-slate-200 disabled:opacity-30" data-tooltip="{{ __('Move down') }}" aria-label="{{ __('Move down') }}">↓</button>
                             <button type="button" wire:click="removeGalleryImage({{ $i }})"
-                                    class="shrink-0 px-1 text-error/80 hover:text-error" title="Remove" aria-label="Remove">✕</button>
+                                    class="shrink-0 px-1 text-error/80 hover:text-error" data-tooltip="{{ __('Remove') }}" aria-label="{{ __('Remove') }}">✕</button>
                         </div>
                         <input type="text" value="{{ is_array($img) ? ($img['credit'] ?? '') : '' }}"
                                wire:change="setGalleryImageCredit({{ $i }}, $event.target.value)"
-                               placeholder="Credit / source"
+                               placeholder="{{ __('Credit / source') }}"
                                class="input input-xs input-bordered bg-slate-900 mt-1.5 w-full" />
                     </li>
                 @endforeach
             </ul>
         @else
-            <p class="mt-1 text-2xs text-slate-500">No images yet.</p>
+            <p class="mt-1 text-2xs text-slate-500">{{ __('No images yet.') }}</p>
         @endif
 
         {{-- Consistent "+ Add image" affordance (same picker as voyage — paintings + upload). --}}
         <button type="button" wire:click="openGalleryImagePicker"
                 class="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-600 py-1.5 text-xs font-medium text-slate-300 hover:border-slate-400 hover:text-slate-100">
-            <span class="text-base leading-none">+</span> Add image
+            <span class="text-base leading-none">+</span> {{ __('Add image') }}
         </button>
         <div class="mt-1.5 flex items-center gap-1.5">
-            <input type="url" x-model="url" placeholder="or paste an image URL"
+            <input type="url" x-model="url" placeholder="{{ __('or paste an image URL') }}"
                    class="input input-xs input-bordered bg-slate-900 flex-1" />
             <button type="button" class="btn btn-xs btn-primary"
-                    @click="if (url.trim()) { $wire.addGalleryImage(url); url='' }">Add</button>
+                    @click="if (url.trim()) { $wire.addGalleryImage(url); url='' }">{{ __('Add') }}</button>
         </div>
     </div>
 

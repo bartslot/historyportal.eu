@@ -9,6 +9,7 @@ use App\Enums\NarrativeFramework;
 use App\Enums\TitlePosition;
 use App\Models\Concerns\BelongsToTeacher;
 use App\Support\LessonTypes;
+use App\Support\LessonVersion;
 use App\Support\MediaUrl;
 use App\Support\TitlePoster;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -49,6 +50,7 @@ class Lesson extends Model
         'title',
         'language',
         'translation_group',
+        'title_series',
         'teacher_guide',
         'narration_edit_characters',
         'topic',
@@ -108,6 +110,13 @@ class Lesson extends Model
 
     protected static function booted(): void
     {
+        // A content change is a new version (LessonVersion); a new lesson starts at 1.
+        static::updated(function (Lesson $lesson): void {
+            if (LessonVersion::contentChanged($lesson->getChanges(), LessonVersion::LESSON_IGNORED)) {
+                LessonVersion::changed($lesson->id);
+            }
+        });
+
         static::creating(function (Lesson $lesson): void {
             if (empty($lesson->lesson_code)) {
                 do {
@@ -186,6 +195,8 @@ class Lesson extends Model
             'expect' => 'array',
             'expect_default' => 'array',
             'title_keep_clear' => 'array',
+            'content_version' => 'integer',
+            'content_version_at' => 'datetime',
             'show_lesson_types' => 'boolean',
         ];
     }
@@ -527,10 +538,19 @@ class Lesson extends Model
         return file_exists(public_path("flags/{$qid}.png")) ? asset("flags/{$qid}.png") : null;
     }
 
-    /** The series wordmark (public/lesson-logos/{translation_group}.svg), when there is one. */
+    /**
+     * The series whose title posters and wordmark this lesson wears: its own title_series, else its
+     * translation_group. A copy keeps the series without joining the original's language switch.
+     */
+    public function titleSeries(): ?string
+    {
+        return $this->title_series ?: $this->translation_group;
+    }
+
+    /** The series wordmark (public/lesson-logos/{series}.svg), when there is one. */
     public function titleLogoUrl(): ?string
     {
-        $group = (string) $this->translation_group;
+        $group = (string) $this->titleSeries();
 
         return $group !== '' && preg_match('/^[a-z0-9][a-z0-9-]*$/', $group) && is_file(public_path("lesson-logos/{$group}.svg"))
             ? asset("lesson-logos/{$group}.svg")
@@ -549,7 +569,7 @@ class Lesson extends Model
     {
         $choices = array_map(
             fn (array $c): array => ['key' => $c['key'], 'label' => $c['label'], 'thumb_url' => $c['thumb_url']],
-            TitlePoster::candidates($this->translation_group),
+            TitlePoster::candidates($this->titleSeries()),
         );
         $logo = $this->titleLogoUrl();
         if ($logo !== null) {
@@ -559,6 +579,30 @@ class Lesson extends Model
         $choices[] = ['key' => TitlePoster::PLAIN, 'label' => __('Plain title'), 'thumb_url' => $this->titleBgUrl()];
 
         return $choices;
+    }
+
+    /**
+     * Story-game publish gate: every branch OPTION scene must carry meter deltas
+     * (config.branch_effects.deltas) before the lesson can go live, or the player would show a
+     * choice with no consequences. A lesson that is not a story game has none.
+     *
+     * @return list<int> incomplete branch group numbers, ascending
+     */
+    public function incompleteStoryGameGroups(): array
+    {
+        if ($this->game_type !== 'story_game') {
+            return [];
+        }
+
+        return $this->scenes()
+            ->whereIn('branch_role', ['option_a', 'option_b'])
+            ->get()
+            ->filter(fn (Scene $s) => empty((($s->config ?? [])['branch_effects']['deltas'] ?? null)))
+            ->map(fn (Scene $s) => (int) ($s->branch_group ?? 0))
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
     }
 
     /**
@@ -586,7 +630,7 @@ class Lesson extends Model
     {
         $style = $this->titleStyle();
 
-        $poster = in_array($style, TitlePoster::BUILT_IN, true) ? null : TitlePoster::for($this->translation_group, $style);
+        $poster = in_array($style, TitlePoster::BUILT_IN, true) ? null : TitlePoster::for($this->titleSeries(), $style);
 
         // A picture the teacher picked is the title screen's picture, whichever poster draws it,
         // upright on a phone as well.
@@ -619,7 +663,27 @@ class Lesson extends Model
      */
     public function tallCardImageUrl(): ?string
     {
-        return $this->titlePosterStillUrl() ?? $this->cardImageUrl();
+        return $this->titlePosterStillUrl() ?? $this->seriesPosterStillUrl() ?? $this->cardImageUrl();
+    }
+
+    /**
+     * The series' upright still while a comic style WITHOUT an upright version (the cover, the
+     * banner) is the title style: the tall card still gets the real poster, never a landscape
+     * photo cropped tall (Bart, 2026-10-20). Null for the logo, letters and plain styles.
+     */
+    private function seriesPosterStillUrl(): ?string
+    {
+        if (in_array($this->titleStyle(), TitlePoster::BUILT_IN, true)) {
+            return null;
+        }
+        foreach (TitlePoster::candidates($this->titleSeries()) as $candidate) {
+            $still = TitlePoster::for($this->titleSeries(), $candidate['key'])['portrait']['still_url'] ?? null;
+            if (is_string($still)) {
+                return $still;
+            }
+        }
+
+        return null;
     }
 
     /** The style the title screen shows: the teacher's choice while the series has it, else the first. */
@@ -641,14 +705,14 @@ class Lesson extends Model
         return ($this->show_lesson_types ?? true) ? LessonTypes::of($this) : [];
     }
 
-    /** Where the title screen's join QR stands: auto (placed clear of faces and elements), a corner, or hidden. */
+    /**
+     * The title screen's join QR: shown ('auto': its one place, the bottom rail's right end,
+     * title-qr.js) or hidden. A corner stored before 2026-10-17 is ignored (Bart: "you should be
+     * able to hide it only"); show_qr keeps a hidden one hidden.
+     */
     public function qrPosition(): string
     {
-        if (! ($this->show_qr ?? true)) {
-            return 'hidden';
-        }
-
-        return in_array($this->qr_position, TitlePoster::QR_CORNERS, true) ? $this->qr_position : 'auto';
+        return ($this->show_qr ?? true) ? 'auto' : 'hidden';
     }
 
     /**
@@ -930,22 +994,28 @@ class Lesson extends Model
     {
         $out = [];
         foreach ($this->scenes()->ordered()->get() as $i => $scene) {
-            $cfg = $scene->config ?? [];
-            $shot = ($scene->shots ?? [])[0] ?? [];
-            $plate = $cfg['diorama']['plate'] ?? null;
-            $plateUrl = is_array($plate) && ! empty($plate['image'])
-                ? (preg_match('#^(https?:)?//|^/#', $plate['image']) ? $plate['image'] : ($plate['base'] ?? '').$plate['image'])
-                : null;
-            $url = $this->publicMediaUrl($scene->image_path)
-                ?? $this->publicMediaUrl($shot['bg_path'] ?? $shot['image_path'] ?? null)
-                ?? $plateUrl
-                ?? $this->publicMediaUrl($scene->skybox_image_path);
-            if ($url) {
+            if ($url = $this->scenePosterUrl($scene)) {
                 $out[] = ['url' => $url, 'label' => __('Scene :n', ['n' => $i + 1])];
             }
         }
 
         return $out;
+    }
+
+    /** The one picture that stands for a scene: its image, else its first shot, plate or panorama. */
+    private function scenePosterUrl(Scene $scene): ?string
+    {
+        $cfg = $scene->config ?? [];
+        $shot = ($scene->shots ?? [])[0] ?? [];
+        $plate = $cfg['diorama']['plate'] ?? null;
+        $plateUrl = is_array($plate) && ! empty($plate['image'])
+            ? (preg_match('#^(https?:)?//|^/#', $plate['image']) ? $plate['image'] : ($plate['base'] ?? '').$plate['image'])
+            : null;
+
+        return $this->publicMediaUrl($scene->image_path)
+            ?? $this->publicMediaUrl($shot['bg_path'] ?? $shot['image_path'] ?? null)
+            ?? $plateUrl
+            ?? $this->publicMediaUrl($scene->skybox_image_path);
     }
 
     public function posterCandidates(): array
@@ -960,29 +1030,39 @@ class Lesson extends Model
 
         // Lesson-level imagery.
         if ($u = $this->publicMediaUrl($this->title_bg_path)) {
-            $push($u, 'Title background');
+            $push($u, __('Title background'));
         }
         foreach ($this->slideshowImages() as $img) {
-            $push($img['url'] ?? null, $img['title'] ?? 'Slideshow image');
+            $push($img['url'] ?? null, $img['title'] ?? __('Slideshow image'));
         }
 
-        // One picture per scene (the poster's "Scene" choice), then everything else each scene holds.
-        foreach ($this->scenePosterOptions() as $option) {
-            $push($option['url'], $option['label']);
-        }
-        // Per-scene imagery, in order — includes voyage/gallery config images (URLs already absolute).
-        foreach ($this->scenes()->ordered()->get() as $scene) {
-            $push($this->publicMediaUrl($scene->skybox_image_path), 'Scene panorama');
-            $push($this->publicMediaUrl($scene->image_path), 'Scene image');
+        // Scene by scene: its picture (the poster's "Scene" choice), then everything else that scene
+        // holds, so a split panel sits right after its own scene instead of after every scene's
+        // picture (it fell off the Library shelf in long lessons). Voyage/gallery URLs are absolute.
+        // Every label names its scene ("Scene 5, panel 2"): the shelf dedupes on the URL, so when
+        // scene 5's main picture repeats scene 4's, scene 5's tile drops out and its panels used
+        // to sit under scene 4's tile looking like scene 4's (pair test 2026-10-24).
+        foreach ($this->scenes()->ordered()->get()->values() as $i => $scene) {
+            $n = $i + 1;
+            $push($this->scenePosterUrl($scene), __('Scene :n', ['n' => $n]));
+            $push($this->publicMediaUrl($scene->skybox_image_path), __('Scene :n, panorama', ['n' => $n]));
+            $push($this->publicMediaUrl($scene->image_path), __('Scene :n', ['n' => $n]));
+            // Every shot / split panel holds its own picture; a panel left behind by going back
+            // to one picture is still the teacher's image and must stay findable.
+            foreach (array_values($scene->shots ?? []) as $p => $shot) {
+                foreach (['image_path', 'bg_path', 'hero_path'] as $key) {
+                    $push($this->publicMediaUrl(is_array($shot) ? ($shot[$key] ?? null) : null), __('Scene :n, panel :p', ['n' => $n, 'p' => $p + 1]));
+                }
+            }
             $cfg = $scene->config ?? [];
             foreach (($cfg['stop_images'] ?? []) as $u) {
-                $push(is_string($u) ? $u : ($u['url'] ?? null), 'Landfall image');
+                $push(is_string($u) ? $u : ($u['url'] ?? null), __('Landfall image'));
             }
             foreach (($cfg['images'] ?? []) as $u) {
-                $push(is_array($u) ? ($u['url'] ?? null) : $u, 'Gallery image');
+                $push(is_array($u) ? ($u['url'] ?? null) : $u, __('Gallery image'));
             }
             foreach ((($cfg['gallery'] ?? [])['images'] ?? []) as $u) {
-                $push(is_array($u) ? ($u['url'] ?? null) : $u, 'Gallery image');
+                $push(is_array($u) ? ($u['url'] ?? null) : $u, __('Gallery image'));
             }
         }
 

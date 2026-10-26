@@ -3,6 +3,10 @@
      class="fixed bottom-4 right-4 z-100 print:hidden"
      data-dev-panel
      wire:key="dev-test-panel">
+    {{-- The dev panel's presets endpoint is here (resources/js/dev/tuner.js asks only when this is). --}}
+    @if (\Illuminate\Support\Facades\Route::has('dev.tuning.index'))
+        <meta name="dev-tuning" content="{{ route('dev.tuning.index') }}">
+    @endif
 
     {{-- Toggle button --}}
     <button type="button" @click="open = !open"
@@ -133,6 +137,9 @@
                 ['portalRimPull', 'Rim pulled outward', 0, 1, 0.05, ''],
                 ['portalRimGap', 'Rim gap to hole', -80, 120, 2, 'px'],
                 ['portalReadyTimeout', 'Wait for lesson, max', 1, 15, 0.5, 's'],
+                ['portalPeek', 'Opens this far down', 0, 1, 0.05, 'screen'],
+                ['portalPeekHold', 'Peek hold', 0, 2, 0.05, 's'],
+                ['portalPeekReturn', 'Scroll up to title', 0.2, 3, 0.05, 's'],
             ];
         @endphp
 

@@ -15,12 +15,14 @@ export function sail (node, stage, payoff) {
   const dx = ((Number(payoff.to_x) - from.x) / 100) * stage.clientWidth
   const dy = ((Number(payoff.to_y ?? from.y) - from.y) / 100) * stage.clientHeight
   const end = `${Math.round(dx)}px ${Math.round(dy)}px`
+  // A ship the wind already set drifting (wind-world.js) sails on from where it is now.
+  const start = node.style.translate || '0px 0px'
   if (reducedMotion() || typeof node.animate !== 'function') {
     node.style.translate = end
     return Promise.resolve()
   }
   // On-screen motion from rest to rest: ease in and out (the `move` intent), never linear.
-  const anim = node.animate([{ translate: '0px 0px' }, { translate: end }], {
+  const anim = node.animate([{ translate: start }, { translate: end }], {
     duration: Math.max(300, (Number(payoff.duration) || 4) * 1000), easing: 'cubic-bezier(0.45, 0, 0.25, 1)', fill: 'forwards',
   })
   return anim.finished.then(() => { node.style.translate = end }, () => {})

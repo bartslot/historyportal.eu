@@ -57,9 +57,9 @@ class LessonTaxonomy
      * The tijdvak a lesson sits in, from the first year mentioned in its era, title or topic.
      * Years are read as plain numbers ("1497", "the 1400s"); a BC year is negative.
      */
-    public function period(Lesson $lesson): ?string
+    public function period(Lesson $lesson, bool $withScenes = true): ?string
     {
-        $year = $this->year($lesson);
+        $year = $this->year($lesson, $withScenes);
         if ($year === null) {
             return null;
         }
@@ -216,7 +216,7 @@ class LessonTaxonomy
      * The scenes are consulted too: a voyage's title rarely carries a date ("Marco Polo"), but
      * every stop it sails through is stamped with one.
      */
-    private function year(Lesson $lesson): ?int
+    private function year(Lesson $lesson, bool $withScenes = true): ?int
     {
         $text = implode(' ', array_filter([$lesson->era, $lesson->title, $lesson->topic]));
 
@@ -226,6 +226,10 @@ class LessonTaxonomy
 
         if (preg_match('/\b(\d{3,4})\b/', $text, $m)) {
             return (int) $m[1];
+        }
+
+        if (! $withScenes) {
+            return null;
         }
 
         // Earliest scene year — where the lesson STARTS, which is the period it belongs to.

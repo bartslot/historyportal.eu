@@ -12,6 +12,7 @@ import { SATELLITE_SOURCE, DEM_SOURCE } from './map-imagery.js';
 import { buffer as turfBuffer, lineString as turfLine, simplify as turfSimplify, destination as turfDestination, booleanPointInPolygon as turfPointInPolygon, polygon as turfPolygon, difference as turfDifference, featureCollection as turfFC } from '@turf/turf';
 import { mapTextProjector } from './map-text-projector.js';
 import { createPausableClock } from './pausable-clock.js';
+import { t } from './i18n.js';
 
 // Voyage tour — the whole voyage is ONE persistent map. Legs play via playLeg(): the map, ships,
 // fog and route trail are built once, and moving between scenes eases the camera to the next leg
@@ -574,7 +575,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
     const gInst = renderGallery(box, g, { startIndex, editable, onEdit: onGalleryEdit });
     const close = document.createElement('button');
     close.type = 'button';
-    close.setAttribute('aria-label', 'Sluiten');
+    close.setAttribute('aria-label', t('Close'));
     close.textContent = '✕';
     close.style.cssText = 'position:absolute;top:calc(4% + 10px);right:calc(4% + 14px);z-index:50;width:36px;height:36px;border-radius:9999px;border:none;background:rgba(15,23,42,.92);color:#e2e8f0;font-size:var(--text-lg);line-height:1;cursor:pointer;';
     overlay.appendChild(close);
@@ -895,7 +896,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
         h.type = 'button';
         h.dataset.voyageEndpoint = 'to';
         h.dataset.wpIndex = String(endIdx);
-        h.title = "Drag to set this leg's destination";
+        h.setAttribute('data-tooltip', t("Drag to set this leg's destination"));
         h.style.cssText = 'position:absolute;transform:translate(-50%,-50%);background:none;border:none;padding:0;cursor:grab;pointer-events:auto;touch-action:none;z-index:23;line-height:0;';
         h.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true" style="display:block;filter:drop-shadow(0 1px 2px rgba(0,0,0,.65))">'
           + '<path d="M5 5 19 19M19 5 5 19" fill="none" stroke="#fff" stroke-width="5.5" stroke-linecap="round"/>'
@@ -922,7 +923,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
         const h = makeDot('bend');
         h.dataset.voyageHandle = 'vertex';
         h.dataset.wpIndex = String(w);
-        h.title = onWaypointRemove ? 'Drag to move · double-click to delete' : 'Drag to move this bend';
+        h.setAttribute('data-tooltip', onWaypointRemove ? t('Drag to move · double-click to delete') : t('Drag to move this bend'));
         h._geo = { lng: wp[0], lat: wp[1] };
         makeDraggable(h, {
           describe: () => ({ mode: 'move', wpIndex: w }),
@@ -961,7 +962,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
         const h = makeDot('insert');
         h.dataset.voyageHandle = 'midpoint';
         h.dataset.afterWpIndex = String(w);
-        h.title = 'Drag to bend the route around land';
+        h.setAttribute('data-tooltip', t('Drag to bend the route around land'));
         makeDraggable(h, {
           describe: () => ({ mode: 'insert', afterWpIndex: w }),
           commit: (d, g) => onWaypointInsert && onWaypointInsert(d.afterWpIndex, g.lng, g.lat),
@@ -974,7 +975,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
       const GRAB_PX = 14;   // how close the cursor must be to the drawn line
       const ghost = makeDot('insert');
       ghost.dataset.voyageHandle = 'ghost';
-      ghost.title = 'Drag to bend the route around land';
+      ghost.setAttribute('data-tooltip', t('Drag to bend the route around land'));
       ghost.style.display = 'none';
       let ghostDesc = null;
       makeDraggable(ghost, {

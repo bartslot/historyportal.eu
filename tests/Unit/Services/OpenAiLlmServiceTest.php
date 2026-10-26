@@ -6,6 +6,7 @@ namespace Tests\Unit\Services;
 
 use App\Services\OpenAiLlmService;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Sleep;
 use Tests\TestCase;
 
 class OpenAiLlmServiceTest extends TestCase
@@ -13,6 +14,7 @@ class OpenAiLlmServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        Sleep::fake();
 
         config()->set('services.openai', [
             'api_key'  => 'test-key',
@@ -71,6 +73,19 @@ class OpenAiLlmServiceTest extends TestCase
 
         $this->expectException(\RuntimeException::class);
         app(OpenAiLlmService::class)->text(system: 's', user: 'u');
+    }
+
+    public function test_a_busy_model_is_retried_with_growing_waits(): void
+    {
+        // Prod 2026-10-23: "This model is currently experiencing high demand" (503) three times
+        // in a row a second apart, and a teacher's lesson failed with 0 of 11 scenes.
+        Http::fakeSequence('https://api.openai.com/v1/chat/completions')
+            ->push('busy', 503)
+            ->push('busy', 503)
+            ->push(['choices' => [['message' => ['content' => 'ok'], 'finish_reason' => 'stop']]], 200);
+
+        $this->assertSame('ok', app(OpenAiLlmService::class)->text(system: 's', user: 'u'));
+        Sleep::assertSequence([Sleep::for(2000)->milliseconds(), Sleep::for(8000)->milliseconds()]);
     }
 
     // ── Truncated-JSON recovery (a large outline that hit the token cap) ───

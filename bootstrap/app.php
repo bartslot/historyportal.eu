@@ -35,6 +35,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'lesson/*/quiz-score',
 
+            // The player's anonymous telemetry, for the same reasons: public, throttled, untrusted
+            // input, and its exit batch is a sendBeacon, which cannot carry a CSRF header. The
+            // stateful API checks CSRF on same-site requests, so every batch 419'd (PM, 2026-10-18).
+            'api/lesson/*/telemetry',
+
             // Stripe posts from its own servers, so there is no session and no token to send. What
             // replaces CSRF here is the signature check in StripeWebhookController, which verifies
             // every request against STRIPE_WEBHOOK_SECRET and refuses anything it cannot verify.
@@ -55,5 +60,16 @@ return Application::configure(basePath: dirname(__DIR__))
         );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // A request no route matched never ran the locale middleware, so its error page (the
+        // 404 under /nl/...) was English. Pick the language before the page renders; returning
+        // null leaves the rendering itself to Laravel (pair test round 5).
+        $exceptions->render(function (\Throwable $e, \Illuminate\Http\Request $request) {
+            if ($request->route() === null) {
+                $locale = \App\Support\Locales::forUnroutedRequest($request);
+                \Illuminate\Support\Facades\App::setLocale($locale);
+                \Illuminate\Support\Carbon::setLocale($locale);
+            }
+
+            return null;
+        });
     })->create();
