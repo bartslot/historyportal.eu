@@ -100,7 +100,9 @@ def on_cut(a: list, b: list) -> bool:
     return (abs(a[0]) >= 179.999 and abs(b[0]) >= 179.999) or (a[1] <= -89.9 and b[1] <= -89.9)
 
 
-COAST_SIMPLIFY_DEG = 0.03   # ~3 km, then one Chaikin pass: fjord-level detail read as spiky (prod 10-26)
+COAST_SIMPLIFY_DEG = 0.03   # ~3 km, then corner cutting: fjord-level detail read as spiky (prod 10-26)
+SMOOTH_KEEP_DEG = 0.006     # ~600 m: below a pixel at the closest lesson zoom
+CHAIKIN_PASSES = 3          # one pass still left corners at z5-6 (ChatGPT round 4: 'angular segments')
 
 
 def simplify(line: list, tol: float) -> list:
@@ -136,7 +138,7 @@ def ring_km2(ring: list) -> float:
 
 def chaikin(ring: list, closed: bool = True) -> list:
     """One pass of corner cutting: removes the polygon zig-zag, keeps the shape (a confident stroke)."""
-    pts = ring if closed else ring
+    pts = ring
     out = [] if closed else [pts[0]]
     n = len(pts)
     for i in range(n if closed else n - 1):
@@ -156,10 +158,28 @@ def drawn_ring(ring: list) -> list:
     simple = simplify(ring + ring[:1], COAST_SIMPLIFY_DEG)[:-1]
     if len(simple) < 3:
         return ring
-    # never smooth across the closing edges NE adds at 180° and the south pole
-    if any(on_cut(a, b) for a, b in zip(simple, simple[1:] + simple[:1])):
-        return simple
-    return chaikin(simple)
+    def smooth(pts: list, closed: bool) -> list:
+        for _ in range(CHAIKIN_PASSES):
+            pts = chaikin(pts, closed)
+        # corner cutting multiplies the points 8x; drop the ones a curve does not need (the four
+        # files were 9 MB, a lot for a school laptop on a lesson that is already loading)
+        return simplify(pts + pts[:1], SMOOTH_KEEP_DEG)[:-1] if closed else simplify(pts, SMOOTH_KEEP_DEG)
+    edges = list(zip(simple, simple[1:] + simple[:1]))
+    cuts = [i for i, (a, b) in enumerate(edges) if on_cut(a, b)]
+    if not cuts:
+        return smooth(simple, True)
+    # Eurasia, Antarctica and a few others carry closing edges NE adds at 180° and the south pole:
+    # smooth each run of real coast between them, keep the cut edges straight (they are never drawn).
+    start = (cuts[0] + 1) % len(simple)
+    rot = simple[start:] + simple[:start]
+    out, run = [], [rot[0]]
+    for a, b in zip(rot, rot[1:] + rot[:1]):
+        if on_cut(a, b):
+            out += smooth(run, False) if len(run) > 2 else run
+            run = [b]
+        else:
+            run.append(b)
+    return out
 
 
 def ring_props(ring: list) -> dict:

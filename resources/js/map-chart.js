@@ -98,7 +98,7 @@ const coastWidth = (w) => ['interpolate', ['linear'], ['zoom'], 2, w * 0.35, 3.5
  * bugs"). A ring shows from the zoom where it is big enough to read; the voyages' landfalls (k=1) always.
  * Returned as a paint value (opacity), since a zoom expression may not sit inside a filter.
  */
-export const ISLET_KM2 = [[0, 20000], [2.5, 4000], [3.5, 900], [4.5, 200], [5.5, 40], [6.5, 0]]
+export const ISLET_KM2 = [[0, 20000], [2.5, 5000], [3.5, 1500], [4.5, 500], [5.5, 120], [6.5, 0]]
 const shownAtZoom = (on = 1) => ['step', ['zoom'],
   ...ISLET_KM2.flatMap(([z, km2], i) => [...(i ? [z] : []), ['case', ['any', ['==', ['get', 'k'], 1], ['>=', ['get', 'a'], km2]], on, 0]])]
 
