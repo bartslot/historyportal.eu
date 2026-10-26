@@ -167,7 +167,6 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
     qid: null, year: firstYear, interactive: editable,
     // Only the water this voyage sails. The camera is on rails behind the ship and the student
     // cannot pan away, so anything outside the route's box is a tile nobody will ever see.
-    projection: view === 'flat' ? 'mercator' : 'globe',
     showCities: MO.cities, showBorders: MO.borders, labels: resolveLabels(),
   });
   const map = inst.map;
@@ -1636,10 +1635,8 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
         updateTrail(lastTrailF, ships.pointAt(voyage, lastTrailF));
       } catch (_) { /* map not ready */ }
     },
-    /** Switch the map projection (flat ↔ globe) LIVE, without tearing down the tour. */
-    setView(newView) {
-      try { map.setProjection({ type: newView === 'globe' ? 'globe' : 'mercator' }); } catch (_) { /* older maplibre */ }
-    },
+    /** Kept for the editor; the chart is always flat, so a stored 'globe' view changes nothing. */
+    setView() {},
     /** The current painted regions — the single source the paint overlay reads (never its own copy). */
     getPaintedFog() { return PAINTED.slice(); },
     /**
