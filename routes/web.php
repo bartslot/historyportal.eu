@@ -21,6 +21,17 @@ Route::pattern('lesson', '[0-9]+');
 
 // ── Public ───────────────────────────────────────────────────────────────────
 
+// A vector tile set only holds the tiles that have something in them; MapLibre still asks for
+// the rest. The web server serves every tile that exists, so a request that reaches Laravel is a
+// tile with nothing in it: answer "empty" (204, which MapLibre reads as an empty tile) instead of
+// a 404 that lands in every console and every demo check as a failed request.
+Route::get('/{set}/{z}/{x}/{y}.pbf', fn () => response()->noContent()->header('Cache-Control', 'public, max-age=604800'))
+    ->where([
+        'set' => '(?:river|city|land|lake|cliopatria|coast-echo|ink-border)-tiles|map-chart/(?:peaks|tufts|waves)',
+        'z' => '[0-9]+', 'x' => '[0-9]+', 'y' => '[0-9]+',
+    ])
+    ->name('tiles.empty');
+
 Route::get('/', \App\Http\Controllers\Public\HomeController::class)->name('home');
 
 Route::get('/about', function () {
