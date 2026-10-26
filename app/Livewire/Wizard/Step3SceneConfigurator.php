@@ -1686,9 +1686,6 @@ class Step3SceneConfigurator extends Component
         // known-world set; the ship's range unmasks land as it nears + draws the coastline on landfall.
         // Replaces the manual fog paint. (Render engine: increments 2-4 in voyage-fog-of-war-plan.)
         'fog_auto' => false,
-        // The ground: 'earth' is the photographed globe; 'history-line' a plain drawn chart for lessons
-        // illustrated in history-line ink, so the map is drawn in the same hand as the pictures.
-        'style' => 'earth',
     ];
 
     /** @return array<string,bool> */
@@ -1708,7 +1705,6 @@ class Step3SceneConfigurator extends Component
             in_array($key, ['cities', 'borders', 'labels', 'ship_anchored', 'cam_dolly_arrival', 'fog_auto'], true) => filter_var($value, FILTER_VALIDATE_BOOLEAN),
             in_array($key, ['ocean_zoom', 'motion'], true) => max(0, min(100, (int) $value)),
             $key === 'info_position' => in_array($value, ['bottom', 'top'], true) ? $value : 'bottom',
-            $key === 'style' => in_array($value, ['earth', 'history-line'], true) ? $value : 'earth',
             str_ends_with($key, '_color') => preg_match('/^#[0-9a-fA-F]{6}$/', (string) $value) ? (string) $value : self::VOYAGE_MAP_DEFAULTS[$key],
             $key === 'border_opacity' => max(0.0, min(1.0, (float) $value)),
             in_array($key, ['label_size', 'city_size'], true) => max(0.3, min(3.0, (float) $value)),

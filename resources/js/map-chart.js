@@ -1,0 +1,193 @@
+/**
+ * map-chart.js — the lesson map's one ground: a hand-painted watercolour sea chart.
+ *
+ * Bart, 2026-10-18, pointing at a painted chart of Australia, Tasmania and New Zealand: "when do we
+ * see better map styles?" / "like this" / "but without the ships". And 2026-10-24: "1 style of map,
+ * map is just map, you can add media". So every lesson map and voyage sails on this, and nothing
+ * else: no satellite photo, no 3D relief, no sun, no clouds, no day and night.
+ *
+ * What it is made of, and why (plan + six scored rounds: Memory/historyportal/topics/chart-style):
+ *
+ *   sea     one calm painted turquoise, never blotched: "please don't trouble the water with all
+ *           these splashes of watercolour"
+ *   glaze   pale against every coast and deeper with distance from land, the way the reference is
+ *           painted (real bathymetry read as hard patches). Raster tiles baked by
+ *           scripts/build-chart-data.py: one thin glaze per distance band, the first stronger so the
+ *           shallows read as a band with a soft wet edge.
+ *   land    painted cream with faint ochre drift, a warm pooled edge just inside the coast
+ *   coast   one ink line, and a dashed line a fixed few pixels offshore (constant at every zoom)
+ *   ridges  ChatGPT-drawn History Lines ridges: never overlapping, never near the shore (each one's
+ *           size is capped by its own distance to the coast), absent zoomed out ("they never really
+ *           work zoomed out that much")
+ *   tufts   olive foothills around the ranges, never on a ridge
+ *   waves   ink strokes on open water, thinned by rank so the density on screen holds
+ *   paper   a faint multiplied grain over everything
+ *
+ * Every number lives in CHART and is owned by the dev tuner (Test tools → Settings → Map → Chart):
+ * applyChartPaint is the only writer of these paint properties, and it reads the live config.
+ */
+
+/** Painted assets and baked tiles, all under public/map-chart. */
+export const CHART_BASE = '/map-chart'
+export const RIDGE_GLYPHS = 12
+export const TUFT_GLYPHS = 16
+export const WAVE_GLYPHS = 4
+
+/** The look. Defaults are what shipped; the tuner edits a copy, never this object. */
+export const CHART = Object.freeze({
+  seaColor: '#bfe6e2',         // shows only where a texture has not arrived yet
+  glazeOpacity: 1,             // multiplier over the baked depth glaze
+  landEdgeColor: '#ead0a0',
+  landEdgeOpacity: 0.3,
+  inkColor: '#3b2a1e',
+  coastWidth: 1.7,             // px at z5; scales with zoom
+  dashOffset: -6,              // px at z5; sign picks the sea side of the land outline
+  dashOpacity: 0.9,
+  ridgeMinZoom: 3.6,
+  ridgeScale: 1.4,             // glyph size at z4 before the distance-to-coast cap
+  ridgeWash: 1,                // ridge opacity
+  tuftOpacity: 0.75,
+  waveOpacity: 0.8,
+  waveScale: 1.5,
+  paperOpacity: 0.06,
+})
+
+// A glyph's half-width is ~45 css px at size 1. At z4 near 40°S that is 337 km; its tapered foothills
+// let the box overhang ~1.7x, so the cap is fit / 200 km at z4 and halves in km per zoom level.
+const CAP_KM_Z4 = 200
+const CAP_KM_Z6 = CAP_KM_Z4 / 4
+const COAST_SIMPLIFY_PX = 3
+
+/** Sources the chart needs on top of the lesson map's own land tiles and coastline. */
+export function chartSources (origin = '') {
+  const tiles = (name) => ({ type: 'vector', tiles: [`${origin}${CHART_BASE}/${name}/{z}/{x}/{y}.pbf`], minzoom: name === 'waves' ? 0 : 3, maxzoom: 5 })
+  return {
+    // The same coastline the ink line uses, simplified per zoom (tolerance in screen px) for the dash.
+    'chart-coast-simple': { type: 'geojson', data: `${origin}/timemap/coastline.geojson`, tolerance: COAST_SIMPLIFY_PX },
+    'chart-glaze': { type: 'raster', tiles: [`${origin}${CHART_BASE}/glaze/{z}/{x}/{y}.png`], tileSize: 256, maxzoom: 4 },
+    'chart-peaks': tiles('peaks'),
+    'chart-tufts': tiles('tufts'),
+    'chart-waves': tiles('waves'),
+  }
+}
+
+/** Size capped by distance to the coast, interpolated in map scale so the cap holds at every zoom. */
+const fittedSize = (scale, grow) => ['interpolate', ['exponential', 2], ['zoom'],
+  4, ['min', ['*', scale, ['get', 'sz']], ['/', ['get', 'fit'], CAP_KM_Z4]],
+  6, ['min', ['*', scale * grow, ['get', 'sz']], ['/', ['get', 'fit'], CAP_KM_Z6]]]
+
+/** Rank r: below z3.5 only a third of rank 0, then one more rank per zoom level. Size 0 = hidden. */
+const waveSize = (scale) => ['step', ['zoom'],
+  ['case', ['all', ['==', ['get', 'r'], 0], ['==', ['%', ['round', ['*', ['get', 'sz'], 100]], 3], 0]], ['*', scale * 0.75, ['get', 'sz']], 0],
+  3.5, ['case', ['<=', ['get', 'r'], 0], ['*', scale, ['get', 'sz']], 0],
+  4.5, ['case', ['<=', ['get', 'r'], 1], ['*', scale * 1.07, ['get', 'sz']], 0],
+  5.5, ['case', ['<=', ['get', 'r'], 2], ['*', scale * 1.13, ['get', 'sz']], 0],
+  6.5, ['*', scale * 1.2, ['get', 'sz']]]
+
+const coastWidth = (w) => ['interpolate', ['linear'], ['zoom'], 2, w * 0.65, 5, w, 7, w * 1.4]
+const fadeIn = (from, to) => ['interpolate', ['linear'], ['zoom'], from, 0, from + 0.4, to]
+
+/**
+ * The chart's layers, bottom to top, split around the land so the lesson map can put rivers,
+ * borders and cities between them: `under` sits below everything, `over` goes above the borders.
+ * `land` and `coastline` are the lesson map's existing sources.
+ */
+export function chartLayers (cfg = CHART) {
+  const under = [
+    { id: 'bg', type: 'background', paint: { 'background-color': cfg.seaColor, 'background-pattern': 'chart-sea' } },
+    { id: 'chart-glaze', type: 'raster', source: 'chart-glaze', paint: { 'raster-opacity': cfg.glazeOpacity, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } },
+    { id: 'land', type: 'fill', source: 'land', 'source-layer': 'land', paint: { 'fill-pattern': 'chart-land' } },
+    { id: 'chart-land-edge', type: 'line', source: 'coastline', layout: { 'line-join': 'round' },
+      paint: { 'line-color': cfg.landEdgeColor, 'line-opacity': cfg.landEdgeOpacity,
+        'line-width': ['interpolate', ['linear'], ['zoom'], 3, 3, 6, 8], 'line-offset': ['interpolate', ['linear'], ['zoom'], 3, 1.5, 6, 4] } },
+    { id: 'chart-tufts', type: 'symbol', source: 'chart-tufts', 'source-layer': 'tufts', minzoom: cfg.ridgeMinZoom,
+      layout: { 'icon-image': ['concat', 'chart-tuft-', ['to-string', ['get', 'g']]], 'icon-allow-overlap': true, 'icon-size': fittedSize(cfg.ridgeScale * 0.57, 1.75) },
+      paint: { 'icon-opacity': fadeIn(cfg.ridgeMinZoom, cfg.tuftOpacity) } },
+  ]
+  const over = [
+    // From a heavily simplified copy of the coastline (chart-coast-simple): a fixed offset along every
+    // inlet of the Aegean zigzagged into scribble. Absent on the world view.
+    { id: 'chart-coast-dash', type: 'line', source: 'chart-coast-simple', minzoom: 2.5, layout: { 'line-join': 'round' },
+      paint: { 'line-color': cfg.inkColor, 'line-opacity': fadeIn(2.5, cfg.dashOpacity), 'line-width': 1.4, 'line-dasharray': [3, 2.2],
+        'line-offset': ['interpolate', ['linear'], ['zoom'], 2.5, cfg.dashOffset * 0.5, 5, cfg.dashOffset] } },
+    { id: 'coast-bold', type: 'line', source: 'coastline', layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': cfg.inkColor, 'line-width': coastWidth(cfg.coastWidth) } },
+    // Ridges never overlap: collision keeps them apart, so a range reads as peaks, not a dark mass.
+    { id: 'chart-ridges', type: 'symbol', source: 'chart-peaks', 'source-layer': 'peaks', minzoom: cfg.ridgeMinZoom,
+      layout: { 'icon-image': ['concat', 'chart-ridge-', ['to-string', ['get', 'g']]], 'icon-anchor': 'bottom', 'icon-padding': 0, 'icon-size': fittedSize(cfg.ridgeScale, 1.3) },
+      paint: { 'icon-opacity': fadeIn(cfg.ridgeMinZoom, cfg.ridgeWash) } },
+    { id: 'chart-waves', type: 'symbol', source: 'chart-waves', 'source-layer': 'waves',
+      layout: { 'icon-image': ['concat', 'chart-wave-', ['to-string', ['get', 'g']]], 'icon-allow-overlap': true, 'icon-size': waveSize(cfg.waveScale) },
+      paint: { 'icon-opacity': cfg.waveOpacity } },
+  ]
+  return { under, over }
+}
+
+/** Every image the chart draws, with the pixel ratio it was painted at. */
+export function chartImages () {
+  const art = (file) => `${CHART_BASE}/art/${file}`
+  return [
+    { id: 'chart-sea', url: art('sea.webp'), pixelRatio: 1 },
+    { id: 'chart-land', url: art('land.webp'), pixelRatio: 1 },
+    ...Array.from({ length: RIDGE_GLYPHS }, (_, i) => ({ id: `chart-ridge-${i}`, url: art(`ridge-${i}.webp`), pixelRatio: 2 })),
+    ...Array.from({ length: TUFT_GLYPHS }, (_, i) => ({ id: `chart-tuft-${i}`, url: art(`tuft-${i}.webp`), pixelRatio: 2 })),
+    // The wave strokes are vector; rasterised at 4x so they stay crisp on a projector.
+    ...Array.from({ length: WAVE_GLYPHS }, (_, i) => ({ id: `chart-wave-${i}`, url: art(`wave-${i}.svg`), pixelRatio: 4, raster: [180, 36] })),
+  ]
+}
+
+/** Load the painted images into the map. A missing image costs that element, never the map. */
+export function addChartImages (map, { origin = '', isGone = () => false } = {}) {
+  const load = ({ id, url, pixelRatio, raster }) => new Promise((resolve) => {
+    const img = raster ? new Image(raster[0], raster[1]) : new Image()
+    img.onload = () => {
+      try { if (!isGone() && !map.hasImage(id)) map.addImage(id, img, { pixelRatio }) } catch (_) { /* map torn down */ }
+      resolve()
+    }
+    img.onerror = () => { console.warn(`[map-chart] missing ${url}`); resolve() }
+    img.src = `${origin}${url}`
+  })
+  return Promise.all(chartImages().map(load))
+}
+
+/** The paper grain: one multiplied overlay over the canvas, fixed to the screen (the paper IS the screen). */
+export function addChartPaper (el, cfg = CHART) {
+  const paper = document.createElement('div')
+  paper.className = 'lp-map-paper'
+  paper.style.cssText = `position:absolute;inset:0;pointer-events:none;z-index:1;mix-blend-mode:multiply;opacity:${cfg.paperOpacity};background:url(${CHART_BASE}/art/paper.webp)`
+  el.appendChild(paper)
+  return paper
+}
+
+/** Re-paint every chart property from the live config. The tuner's only way to touch the map. */
+export function applyChartPaint (map, cfg, paper = null) {
+  const { under, over } = chartLayers(cfg)
+  for (const layer of [...under, ...over]) {
+    if (!map.getLayer(layer.id)) continue
+    for (const [k, v] of Object.entries(layer.paint || {})) { try { map.setPaintProperty(layer.id, k, v) } catch (_) { /* not ready */ } }
+    for (const [k, v] of Object.entries(layer.layout || {})) { try { map.setLayoutProperty(layer.id, k, v) } catch (_) { /* not ready */ } }
+  }
+  if (paper) paper.style.opacity = String(cfg.paperOpacity)
+}
+
+/** Dev tuner controls. Each owns its key in `cfg` and repaints through applyChartPaint. */
+export function chartTunerControls (map, cfg, paper = null) {
+  const set = (key) => (v) => { cfg[key] = v; applyChartPaint(map, cfg, paper) }
+  const range = (key, label, min, max, step) => ({ key, label, min, max, step, value: CHART[key], apply: set(key) })
+  const color = (key, label) => ({ key, label, type: 'color', value: CHART[key], apply: set(key) })
+  return [
+    range('glazeOpacity', 'Depth glaze', 0, 2, 0.05),
+    range('landEdgeOpacity', 'Warm coast edge', 0, 1, 0.05),
+    color('landEdgeColor', 'Coast edge colour'),
+    color('inkColor', 'Ink'),
+    range('coastWidth', 'Coast line width', 0.5, 4, 0.1),
+    range('dashOffset', 'Dash offset (px, minus = sea)', -16, 16, 1),
+    range('dashOpacity', 'Dash opacity', 0, 1, 0.05),
+    range('ridgeScale', 'Ridge size', 0.4, 3, 0.05),
+    range('ridgeWash', 'Ridge opacity', 0, 1, 0.05),
+    range('tuftOpacity', 'Tuft opacity', 0, 1, 0.05),
+    range('waveScale', 'Wave size', 0.5, 3, 0.05),
+    range('waveOpacity', 'Wave opacity', 0, 1, 0.05),
+    range('paperOpacity', 'Paper grain', 0, 0.5, 0.01),
+  ]
+}

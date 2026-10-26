@@ -132,19 +132,16 @@
             "port": 5231
         },
         {
-            "//": "Watercolour chart lab (public/dev/chart-lab.html): a static server over public/, no Laravel. Own port, clear of every other session.",
-            "name": "chart-lab",
-            "runtimeExecutable": "python3",
+            "//": "Watercolour chart worktree (heuristic-hamilton-b7b6ba): its own app server. APP_URL in this worktree's .env is pinned to :8271, SESSION_COOKIE hp_chart.",
+            "name": "serve-chart",
+            "runtimeExecutable": "php",
             "runtimeArgs": [
-                "-m",
-                "http.server",
-                "8261",
-                "--bind",
-                "127.0.0.1",
-                "--directory",
-                "public"
+                "artisan",
+                "serve",
+                "--host=127.0.0.1",
+                "--port=8271"
             ],
-            "port": 8261
+            "port": 8271
         }
     ]
 }

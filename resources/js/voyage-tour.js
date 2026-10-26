@@ -24,7 +24,6 @@ import { t } from './i18n.js';
 const TOUR_PACKS = import.meta.glob('./timemap/*-tour.json', { eager: true });
 const MS_PER_MONTH = 2000;
 const MONTH_MS = 30.44 * 24 * 3600 * 1000;
-const VOYAGE_PITCH = 48;   // tilt the camera so the 3D ship is seen at an angle, not top-down
 const LEG_EASE_MS = 1400;  // smooth glide from one leg's arrival to the next leg's departure
 // The voyage's follow zoom is a GLOBAL slider (ocean_zoom 0–100), NOT an auto-fit of the leg span
 // (which zoomed right out to the whole world on ocean crossings). 0% = tight on the ship + a small
@@ -147,8 +146,6 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
   // class should be reading. A teacher who wants the modern atlas back still has the toggle; this
   // only changes what a voyage opens as.
   let MO = Object.assign({ cities: false, borders: true, labels: true }, mapOptions || {});
-  // The drawn chart is read flat, like the paper it imitates; the tilt is for the 3D photo ground.
-  const voyagePitch = () => (MO.style === 'history-line' ? 0 : VOYAGE_PITCH);
   let LL = Array.isArray(legLabels) ? legLabels : [];
   let PAINTED = Array.isArray(paintedFog) ? paintedFog : [];   // teacher-painted "undiscovered" rings
   const resolveLabels = () => {
@@ -166,45 +163,12 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
 
   // interactive only in the EDITOR: the teacher needs to pan/zoom to place a leg's destination dot.
   // The player stays non-interactive (a cinematic sail).
-  /**
-   * The box the voyage lives in, padded — everything the camera can reach, and nothing else.
-   *
-   * Declared HERE, above the map it is passed to: `routeBbox()` further down is a const arrow, and
-   * reading it from up here would throw before the map ever mounted (the exact shape of a bug this
-   * file has already been bitten by once).
-   */
-  const routeTileBounds = () => {
-    let w = Infinity, s = Infinity, e = -Infinity, n = -Infinity;
-    for (const p of (route.waypoints || [])) {
-      if (!Array.isArray(p)) continue;
-      w = Math.min(w, p[0]); e = Math.max(e, p[0]);
-      s = Math.min(s, p[1]); n = Math.max(n, p[1]);
-    }
-    if (!Number.isFinite(w)) return null;
-    const PAD = 12;
-    // A Pacific route is stored UNWRAPPED — Tasman reaches Tonga at 184.8°E — and MapLibre's
-    // `bounds` has no way to express a box that runs past the date line. Clamping east to 180
-    // therefore does not trim the box, it CUTS THE ROUTE IN HALF: everything beyond the meridian
-    // falls outside the bounds and never loads, which is a straight vertical wall of missing
-    // imagery with the ship sailing off the edge of it. So when the route crosses, keep only the
-    // latitude band and leave longitude alone — there is nothing to save there anyway, since the
-    // voyage already spans most of the globe.
-    const crossesDateLine = w < -180 || e > 180;
-    return [
-      crossesDateLine ? -180 : Math.max(-180, w - PAD), Math.max(-85, s - PAD),
-      crossesDateLine ? 180 : Math.min(180, e + PAD), Math.min(85, n + PAD),
-    ];
-  };
-
   const inst = renderLessonMap(mapHost, {
     qid: null, year: firstYear, interactive: editable,
     // Only the water this voyage sails. The camera is on rails behind the ship and the student
     // cannot pan away, so anything outside the route's box is a tile nobody will ever see.
-    tileBounds: routeTileBounds(),
     projection: view === 'flat' ? 'mercator' : 'globe',
     showCities: MO.cities, showBorders: MO.borders, labels: resolveLabels(),
-    // A history-line lesson sails on a drawn chart instead of the photographed globe (lesson-map.js).
-    mapStyle: MO.style,
   });
   const map = inst.map;
   // Project a lng into the SAME world copy the camera is showing (like the ship in voyage-ships.js),
@@ -1208,7 +1172,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
       // Follow the ship at the slider-controlled zoom (L.followZoom). "Dolly in on arrival" adds a
       // little extra zoom over the last 40% of the crossing as the ship makes landfall.
       const arrivalIn = MO.cam_dolly_arrival ? ARRIVAL_ZOOM_DELTA * smoothstep(Math.max(0, (eased - 0.6) / 0.4)) : 0;
-      map.jumpTo({ center: [pos.lng, pos.lat], zoom: L.followZoom + arrivalIn, pitch: voyagePitch() });
+      map.jumpTo({ center: [pos.lng, pos.lat], zoom: L.followZoom + arrivalIn, pitch: 0 });
       setChip(L.departMs + eased * (L.arriveMs - L.departMs), null);
       if (p < 1) { raf = requestAnimationFrame(step); } else { sailing = false; sailStep = null; showArrival(token); }
     };
@@ -1230,7 +1194,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
       // leg's start stays buried under intact fog (the editor preview jumps to arrival without
       // sailing, so nothing else advances the reveal). Matches what the animated sail() does.
       if (fog) fog.revealTo(L.f1, { force: true });
-      map.jumpTo({ center: [L.end.lng, L.end.lat], zoom: L.followZoom, pitch: voyagePitch() });
+      map.jumpTo({ center: [L.end.lng, L.end.lat], zoom: L.followZoom, pitch: 0 });
       showArrival(token);
       return;
     }
@@ -1277,14 +1241,14 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
       setChip(L.departMs, pack.title || '');
       setTimeout(() => {
         if (token !== legToken) return;
-        map.easeTo({ center: [start.lng, start.lat], zoom: L.followZoom, pitch: voyagePitch(), duration: 3200, essential: true });
+        map.easeTo({ center: [start.lng, start.lat], zoom: L.followZoom, pitch: 0, duration: 3200, essential: true });
         map.once('moveend', () => { if (token === legToken) begin(token); });
       }, 900);
     } else if (skipAnim) {
       begin(token);
     } else {
       // Smooth glide to the new leg's departure, THEN sail — no jump/re-fit between scenes.
-      map.easeTo({ center: [start.lng, start.lat], zoom: L.followZoom, pitch: voyagePitch(), duration: LEG_EASE_MS, essential: true });
+      map.easeTo({ center: [start.lng, start.lat], zoom: L.followZoom, pitch: 0, duration: LEG_EASE_MS, essential: true });
       map.once('moveend', () => { if (token === legToken) begin(token); });
     }
   };

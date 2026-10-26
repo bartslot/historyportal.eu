@@ -14,7 +14,8 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import { renderAnnotations, focusLabelLayout } from './map-annotations.js'
 import { placeLabelLayout, placeLabelPaint } from './map-place-label.js'
 import { mapTextProjector } from './map-text-projector.js'
-import { SATELLITE_SOURCE, SATELLITE_DETAIL_SOURCE, DETAIL_FADE_START, DETAIL_FADE_END, DEM_SOURCE, RELIEF, PITCH } from './map-imagery.js'
+import { CHART, chartSources, chartLayers, addChartImages, addChartPaper, chartTunerControls } from './map-chart.js'
+import { mapGone } from './map-alive.js'
 import { boxView, openingView, labelsView } from './map-view.js'
 import { itineraryTour } from './map-itinerary.js'
 import { cityPriority, cityTextSize, cityDotRadius } from './map-city-scale.js'
@@ -24,64 +25,30 @@ const PALETTE = {
   highlightFill: '#c0392b',  // selected-polity red wash, painted over the ground (~0.3 opacity)
 }
 
-// Labels are set in the app sans. The map used to offer four hand-lettered drawn atlases as well,
-// where calligraphy belonged; over satellite photography it reads as a costume rather than a map.
+// Labels are set in the app sans: the chart is the drawing, and a hand-lettered name on top of it
+// reads as a costume rather than a label.
 // The fontstack is built locally by scripts/build-glyphs.mjs and served from /fonts.
 const MODERN_FONT = ['inter']
 // Every label layer that gets the hand: the atlas's own labels plus the teacher's.
 const LABEL_LAYERS = ['city-labels', 'hcity-label', 'lesson-labels', 'focus-label']
 
 /**
- * The ground. There is one, and it is the real earth.
+ * The ground. There is one, and it is the watercolour sea chart (map-chart.js).
  *
- * This used to be a table of five palettes — Soft Atlas, Antique, Tolkien, Night, Satellite — with
- * a swatch picker in the inspector. They are gone, and the teacher no longer chooses. A drawn atlas
- * of 1271 still draws its coastline the way 2026 knows it, so the parchment bought no historical
- * truth; it only added ink hills and hand-lettering a class has to see past. The Tolkien one never
- * looked the way it was meant to at all. Photography of the actual terrain, tilted so the ground
- * has depth, is what makes an army crossing the Alps read as crossing the Alps.
+ * The photographed earth that stood here (satellite imagery, 3D relief, a sun, clouds, day and
+ * night) is gone from lessons: Bart, 2026-10-24, "1 style of map, map is just map, you can add
+ * media". These are the colours the rest of the map writes in on top of it.
  *
- * `fog` — voyage fog-of-war paints undiscovered world black rather than in the sea colour. On a
- * drawn atlas undiscovered world IS blank paper, but over imagery a navy wash still looks like sea
- * and the photo's ocean-depth banding reads straight through the feathered edge. Undiscovered means
- * nothing is there, not "shallower water here".
- *
- * Label ink is dark on a bright halo. Over a photo running from dark ocean to bright desert that is
- * the pairing which stays readable everywhere, and it survives a lesson's own dark label colour,
- * which would vanish into a dark halo.
+ * `fog` — voyage fog-of-war paints undiscovered world in the paper: on a drawn chart, undiscovered
+ * world IS blank paper. Label ink is dark on a light halo, which reads on the pale sea and the cream
+ * land alike.
  */
-const EARTH = {
-  // Focus cities (the teacher's own pins). They stay primary through size and their dot rather than
-  // by shouting: contrast is the halo's job alone. The offset dark copy that used to sit behind each
-  // word is gone — a word cannot collide-avoid against a second copy of itself (see map-annotations).
-  focus: { color: '#fbe9dd', halo: 'rgba(12,9,6,0.55)', haloWidth: 1.2 },
-  fog: '#000000',
-  water: '#08131f',
-  coast: '#f6efdc',
-  line: '#ffd9a0',
-  river: '#8fc3e8',
-  text: '#241a10',
-  halo: '#f2e9d4',
-}
-
-/**
- * The drawn chart, for lessons told in history-line art (fine ink on warm paper).
- *
- * The photographed earth stays the default. But a lesson whose every picture is ink line work
- * cuts from a drawing to a satellite globe with a sun setting over it, and the class sees two
- * different worlds (Bart, 2026-10-16). So these lessons get a chart in their own hand: paper sea,
- * a barely tinted land, one ink coastline, a faint graticule. No hatching, no relief, no tilt, no
- * day and night — the plainness is the point.
- */
-const PAPER = {
+const GROUND = {
   focus: { color: '#1d1712', halo: 'rgba(246,241,228,0.9)', haloWidth: 1.4 },
   fog: '#f6f1e4',
-  water: '#f6f1e4',
-  land: '#ebe1c8',
-  coast: '#1d1712',
-  grid: '#8c8270',
+  water: CHART.seaColor,
   line: '#5b4a36',
-  river: '#6f7f86',
+  river: '#5f97a8',
   text: '#1d1712',
   halo: '#f6f1e4',
 }
@@ -116,9 +83,6 @@ const polityFilter = (year) => ['all',
  */
 export function renderLessonMap (el, opts = {}) {
   const { qid = null, interactive = true, annotations = [], editable = false, onAnnotationsChange = null, onPolityClick = null, projection = 'mercator' } = opts
-  // 'history-line' draws the chart (see PAPER); anything else is the photographed earth.
-  const drawn = opts.mapStyle === 'history-line'
-  const GROUND = drawn ? PAPER : EARTH
   // Voyage maps can hide anachronistic detail (modern city dots/labels + political borders that
   // didn't exist yet) and pin their own period place labels. Defaults keep the normal atlas.
   //
@@ -132,12 +96,6 @@ export function renderLessonMap (el, opts = {}) {
   // showCities from the caller still wins, and a block that pins nothing keeps the full atlas.
   const focusCount = (Array.isArray(annotations) ? annotations : []).filter((a) => a && a.type === 'focus').length
   const { showCities = focusCount < 2, showBorders = true } = opts
-  // A voyage knows where it is going, and the student cannot pan away from it. Bounding the imagery
-  // and elevation sources to the route's box means MapLibre never asks for a tile the lesson will
-  // not show — no requests for the far side of the world when the camera dips wide, and no 404s
-  // from the corners of a sparse tileset. [w, s, e, n]; omitted, the whole world stays available.
-  const tileBounds = Array.isArray(opts.tileBounds) && opts.tileBounds.length === 4 ? opts.tileBounds : null
-  const bounded = (source) => (tileBounds ? { ...source, bounds: tileBounds } : source)
   let layerToggles = { cities: showCities, borders: showBorders }
   let placeLabels = Array.isArray(opts.labels) ? opts.labels : []
   // Coerce — the inspector saves the year through a JSON config, so it can arrive as a string.
@@ -180,6 +138,10 @@ export function renderLessonMap (el, opts = {}) {
     : null
   const opening = labelsFit || openingView({ annotations, labels: placeLabels })
 
+  // The live chart config: the dev tuner edits this copy, never CHART itself.
+  const chartCfg = { ...CHART }
+  const chart = chartLayers(chartCfg)
+
   const map = new maplibregl.Map({
     container: el,
     interactive,
@@ -194,7 +156,8 @@ export function renderLessonMap (el, opts = {}) {
     //
     // Every projection, globe included: MapLibre's globe leans perfectly well, and a voyage seen
     // over the curve of the earth is the best shot the app has.
-    pitch: drawn ? 0 : PITCH,
+    // Flat, always: a chart is read from above, and there is no relief left to lean over.
+    pitch: 0,
     style: {
       version: 8,
       // 2D flat (mercator) vs 3D globe (MapLibre v5) — set on the style at init so the map starts
@@ -202,9 +165,6 @@ export function renderLessonMap (el, opts = {}) {
       projection: { type: projection },
       glyphs: `${location.origin}/fonts/{fontstack}/{range}.pbf`, // calligraphy labels (see build-glyphs.mjs)
       sources: {
-        // No land / lake / graticule tiles: the photograph already shows the land, the lakes and
-        // the sea, and a drawn substitute for any of them sat underneath it doing nothing but
-        // costing a tileset. Rivers stay — they are thin, and the imagery loses the small ones.
         rivers: { type: 'vector', tiles: [`${location.origin}/river-tiles/{z}/{x}/{y}.pbf`], maxzoom: 4 },
         cities: { type: 'vector', tiles: [`${location.origin}/city-tiles/{z}/{x}/{y}.pbf`], maxzoom: 6 },
         cliopatria: {
@@ -213,47 +173,16 @@ export function renderLessonMap (el, opts = {}) {
           maxzoom: 4,
           promoteId: { boundaries: 'Wikidata' },
         },
-        // True coastline, for the faint shore guide over the imagery.
+        // The ink coastline, and the dashed line offshore of it.
         coastline: { type: 'geojson', data: `${location.origin}/timemap/coastline.geojson` },
-        ...(drawn ? {
-          land: { type: 'vector', tiles: [`${location.origin}/land-tiles/{z}/{x}/{y}.pbf`], maxzoom: 4 },
-          graticule: { type: 'geojson', data: `${location.origin}/timemap/graticule.geojson` },
-        } : {}),
-        satellite: bounded(SATELLITE_SOURCE),
-        // Close-range ground: Sentinel-2 at ~10 m/px against Blue Marble's ~500. Its layer's
-        // opacity is a zoom expression, so MapLibre requests nothing from EOX while a lesson stays
-        // at globe zoom — a map that never leans in costs exactly what it did before.
-        'satellite-detail': bounded(SATELLITE_DETAIL_SOURCE),
-        // Height map behind the 3D ground.
-        dem: bounded(DEM_SOURCE),
+        land: { type: 'vector', tiles: [`${location.origin}/land-tiles/{z}/{x}/{y}.pbf`], maxzoom: 4 },
+        ...chartSources(location.origin),
         // Teacher-authored period place labels (voyages) — filled via setLabels()/the `labels` opt.
         'lesson-labels': { type: 'geojson', data: labelsFC(placeLabels) },
       },
       layers: [
-        // Deep ocean, showing wherever a satellite tile has not arrived yet — empty space rather
-        // than a grey plate or a wrong-coloured sea.
-        { id: 'bg', type: 'background', paint: { 'background-color': GROUND.water } },
-        // The ground. Sits directly on the background; everything else draws over it.
-        // `raster-fade-duration` is the only easing MapLibre gives a raster, and it is what stops a
-        // tile popping in. 700ms reads as the photograph developing rather than snapping on.
-        ...(drawn ? [
-          { id: 'land', type: 'fill', source: 'land', 'source-layer': 'land', paint: { 'fill-color': GROUND.land } },
-          { id: 'graticule', type: 'line', source: 'graticule', paint: { 'line-color': GROUND.grid, 'line-width': 0.5, 'line-opacity': 0.35 } },
-        ] : [
-          { id: 'satellite', type: 'raster', source: 'satellite', paint: { 'raster-fade-duration': 700 } },
-          // Sentinel-2 crossfades in OVER Blue Marble across one zoom level, rather than replacing it
-          // at a threshold: the two disagree (no bathymetry, no relief shading in Sentinel), and a
-          // hard swap reads as the earth changing colour instead of as detail arriving.
-          {
-            id: 'satellite-detail',
-            type: 'raster',
-            source: 'satellite-detail',
-            paint: {
-              'raster-fade-duration': 700,
-              'raster-opacity': ['interpolate', ['linear'], ['zoom'], DETAIL_FADE_START, 0, DETAIL_FADE_END, 1],
-            },
-          },
-        ]),
+        // The painted sea, its depth glaze, the land and the olive foothills (map-chart.js).
+        ...chart.under,
         {
           id: 'rivers', type: 'line', source: 'rivers', 'source-layer': 'rivers',
           paint: {
@@ -263,9 +192,6 @@ export function renderLessonMap (el, opts = {}) {
             'line-width': ['interpolate', ['linear'], ['to-number', ['coalesce', ['get', 'scalerank'], 6]], 1, 1.4, 6, 0.4],
           },
         },
-        // Coast guide line. Faint on purpose: a bold ink shore over a real coastline fences the
-        // photograph off from itself, so this only firms up where the land ends.
-        { id: 'coast-bold', type: 'line', source: 'coastline', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': GROUND.coast, 'line-opacity': drawn ? 0.9 : 0.4, 'line-width': ['interpolate', ['linear'], ['zoom'], 1, drawn ? 0.8 : 0.6, 4, drawn ? 1.2 : 1.0, 7, drawn ? 1.8 : 1.6] } },
         {
           // No fill overlay: the selected polity is shown as an amber RING; other territories
           // are just faint 30%-opacity borders so the terrain reads through.
@@ -278,6 +204,7 @@ export function renderLessonMap (el, opts = {}) {
             'line-opacity': ['case', ['boolean', ['feature-state', 'highlight'], false], 1, 0.3],
           },
         },
+        ...chart.over,
         {
           id: 'city-dots', type: 'circle', source: 'cities', 'source-layer': 'cities',
           filter: cityFilter(year),
@@ -503,9 +430,15 @@ export function renderLessonMap (el, opts = {}) {
   }
 
   // Paint the palette the moment the style is parsed, not at 'load' — 'load' also waits on every
-  // source, and a slow (or failing) tileset would leave the map sitting in the raw default colours
-  // with no satellite ground under a voyage. Idempotent, so the 'load' pass below still runs.
-  map.once('styledata', () => { paintLateLayers(); applyRelief(activeRelief); applyGlobe() })
+  // source, and a slow (or failing) tileset would leave the map sitting in the raw default colours.
+  // Idempotent, so the 'load' pass below still runs. The painted images load here too: a pattern or
+  // glyph that arrives late just appears, the map never waits for it.
+  map.once('styledata', () => {
+    paintLateLayers()
+    addChartImages(map, { origin: location.origin, isGone: () => mapGone(map) })
+  })
+  const chartPaper = addChartPaper(el, chartCfg)
+  const untune = window.__tune?.register('Chart', chartTunerControls(map, chartCfg, chartPaper), { tab: 'Map' })
 
   // Anything that wants to move the CAMERA has to wait for the style — MapLibre silently drops an
   // easeTo issued before it, which is a nasty failure mode because every timer still fires on
@@ -524,13 +457,9 @@ export function renderLessonMap (el, opts = {}) {
   map.on('load', () => {
     setYear(year)
     paintLateLayers()
-    applyRelief(activeRelief)
     requestAfterTiles(fitToPolity)
 
-    // The ink hill, forest, peak and volcano glyphs used to be drawn here — the same Tolkien set the
-    // Time-Map has. Over photography of the real mountains they were a drawing of the thing sitting
-    // on top of the thing, so they are gone, and with them the ~1 MB volcanoes chunk every lesson
-    // map used to download.
+    // The mountains are the chart's own painted ridges (map-chart.js), not the Time-Map's ink set.
     Promise.resolve()
       .then(() => {
         // Red territory wash. Only the highlighted (selected) polity is painted; others stay clear.
@@ -732,143 +661,6 @@ export function renderLessonMap (el, opts = {}) {
     try { el.style.backgroundColor = GROUND.water } catch (_) {}
   }
 
-  /**
-   * The globe render, over the one ground there is.
-   *
-   * The sea lit as water, the terminator, the haze band at the limb, the cloud deck, and the sky
-   * bodies behind the planet. On the Time-Map this rides on a style called Earth, chosen from a
-   * palette. Here there is no palette to choose from: the five drawn atlases were removed and the
-   * single remaining ground is photography of the real planet, so the globe is simply what that
-   * ground looks like rather than one option among several.
-   *
-   * Loaded as its own chunk because it carries shaders and texture fields. That is worth keeping
-   * even now that it always runs — it stays out of the main bundle, so the wizard and every page
-   * that never renders a lesson map pay nothing for it.
-   *
-   * The date decides where the sun is, and therefore which half of the planet is in daylight — so a
-   * lesson set in 1600 is lit for 1600. Year alone is enough for the terminator to be somewhere
-   * defensible; it is not a claim about the hour of day, which no scene carries.
-   */
-  let globe = null
-  let globeLoading = false
-  let globeWaiting = false
-
-  /** Midsummer noon UTC of the scene's year — a defensible sun for a lesson that carries no hour. */
-  const globeDate = () => new Date(Date.UTC(Number.isFinite(year) ? year : 2000, 5, 21, 12))
-
-  /**
-   * The device profile, read from THE MAP'S OWN GL CONTEXT.
-   *
-   * Not a throwaway canvas: MAX_TEXTURE_SIZE is a property of the context that will actually hold
-   * the texture, and a second context can be granted different limits — or refused outright once a
-   * browser's WebGL context budget is spent, which would report "no WebGL" on a machine happily
-   * rendering the map behind it.
-   *
-   * webgl2 is asked for first because getContext returns null for a type the canvas was not created
-   * with, and MapLibre v5 takes webgl2 where it can. Reversing these two silently yields null on
-   * every modern browser, and a null context reads as the weakest possible device.
-   */
-  const readGlobeProfile = (quality) => {
-    let gl = null
-    try {
-      const canvas = map.getCanvas()
-      gl = canvas.getContext('webgl2') || canvas.getContext('webgl')
-    } catch (_) { /* a canvas that has gone away; the profile falls back below */ }
-    return quality.readCapabilities({ gl, navigator, window, document })
-  }
-
-  function applyGlobe () {
-    // A drawn chart has no sun, sea glint or cloud deck — that is the day and night it must not have.
-    if (drawn || globe || globeLoading) return
-    // addLayer throws "Style is not done loading" outright rather than queueing, and this is called
-    // from the styledata pass that also runs before the async terrain and city layers arrive.
-    //
-    // A one-shot `once('idle')` was not enough: two identical runs disagreed about whether the
-    // layers arrived at all, because whether that single event lands after the style settles is a
-    // race with the async layers. So subscribe until it works. The guard above makes this
-    // idempotent, so an idle tick once the globe exists costs one comparison.
-    if (!map.isStyleLoaded()) {
-      if (!globeWaiting) {
-        globeWaiting = true
-        map.on('idle', () => applyGlobe())
-      }
-      return
-    }
-    globeLoading = true
-    Promise.all([import('./map-globe-layers.js'), import('./timemap/quality/index.js'), import('./timemap/quality/availability.js')])
-      .then(([{ addGlobeLayers }, quality, availability]) => {
-        globeLoading = false
-
-        /**
-         * WHAT THIS DEVICE CAN AFFORD, before a single texture is requested.
-         *
-         * The lesson map's surface budget is 1.5 MB of assets and 32 MB resident — a tenth of the
-         * Time-Map's, because this map appears inside a lesson a class is already waiting on, and
-         * on the hardware a school actually owns. The cloud atlas alone is 1.8 MB, over the 1 MB
-         * single-asset ceiling on its own, so this is not a theoretical trim: resolveQuality drops
-         * or halves layers until the plan fits, and `permitted` stops the rest being fetched.
-         *
-         * The profile and plan are published for the Globe layers panel, which greys out what is
-         * not on offer and says why. Written before addGlobeLayers so the panel can never read a
-         * plan that disagrees with the map it is looking at.
-         */
-        const profile = readGlobeProfile(quality)
-        const plan = quality.resolveQuality({ profile, surface: 'lessonMap', optIn: true })
-        window.__globeQuality = { profile, plan, surface: 'lessonMap' }
-        // A FUNCTION, not a table: the panel owns its own row keys and they change without this
-        // file knowing. Handing over the plan and letting Blade re-derive the rule would put a
-        // second copy of "what counts as a network problem" in an Alpine expression, where it is
-        // untestable and would drift from availability.test.js the first time either side moved.
-        window.__globeAvailability = (keys) => availability.layerAvailability({ plan, profile, keys })
-        window.dispatchEvent(new CustomEvent('globe-quality', { detail: window.__globeQuality }))
-
-        globe = addGlobeLayers(map, {
-          date: globeDate(),
-          permitted: availability.globeLayerPermitted(plan),
-          reduceMotion: window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true,
-          /**
-           * Everything from the city dots up is annotation and belongs above the planet; everything
-           * below them — imagery, land, coast, borders, the territory wash — is the planet's
-           * surface and belongs under the sea, exactly as on the Time-Map.
-           *
-           * This was missing once, and MapLibre's answer to a missing anchor is "put it on top". So
-           * the sea went over the writing and erased each name where it crossed water:
-           * Constantinople cut in half at the Bosphorus, Carthage stopping at the coast, Athens
-           * down to "Ath".
-           */
-          beforeId: 'city-dots',
-        })
-      })
-      .catch((e) => {
-        globeLoading = false
-        // Loudly: a silent failure here is a lesson that quietly renders as plain imagery, and
-        // plain imagery is close enough to right that nobody would report it.
-        console.error('[lesson-map] Earth layers failed to load — falling back to plain imagery', e)
-      })
-  }
-
-  /**
-   * 3D ground: drape the map over the height map so mountains and valleys stand up.
-   *
-   * MapLibre lifts fills, lines, rasters and labels onto the mesh on its own; the one thing it
-   * cannot do is the voyage's 3D traveller, which is a custom layer and has to be told the ground
-   * height itself (voyage-ships.js reads it back via queryTerrainElevation).
-   */
-  let activeRelief = drawn ? 0 : RELIEF
-  // setTerrain throws while the style is still parsing. Unlike the paint properties there is no
-  // later pass that would set it anyway, so a failed attempt re-arms itself on the next style event
-  // — otherwise a slow style load left the ground permanently flat.
-  const setTerrainNow = () => {
-    try {
-      map.setTerrain(activeRelief > 0 ? { source: 'dem', exaggeration: activeRelief } : null)
-      return true
-    } catch (_) { return false }
-  }
-  function applyRelief (v) {
-    activeRelief = drawn ? 0 : Math.max(0, Number(v) || 0)
-    if (!setTerrainNow()) map.once('styledata', setTerrainNow)
-  }
-
   // Show/hide anachronistic detail. Cities = both the dots and their labels (historical + modern);
   // borders = the political outlines + red fill. Voyages hide these so the map reads as period-blank.
   function applyLayerToggles () {
@@ -896,11 +688,8 @@ export function renderLessonMap (el, opts = {}) {
     setPolity: (id) => setPolity(id),
     /** Colour the voyage fog-of-war paints undiscovered world in. */
     fogColor: () => GROUND.fog,
-    /** Ground height (metres, exaggeration included) under a point — 0 when terrain is off. */
-    groundAt: (lng, lat) => {
-      if (activeRelief <= 0) return 0
-      try { return map.queryTerrainElevation([lng, lat]) || 0 } catch (_) { return 0 }
-    },
+    /** Ground height under a point. The chart is flat, so always 0 (voyage-ships still asks). */
+    groundAt: () => 0,
     /** Toggle anachronistic detail live, e.g. setLayerToggles({ cities:false, borders:false }). */
     setLayerToggles: (t) => { layerToggles = { ...layerToggles, ...(t || {}) }; applyLayerToggles() },
     /**
@@ -978,6 +767,8 @@ export function renderLessonMap (el, opts = {}) {
     destroy: () => {
       try { itinerary?.destroy() } catch (_) {}
       try { anno?.destroy() } catch (_) {}
+      try { untune?.() } catch (_) {}
+      try { chartPaper.remove() } catch (_) {}
       try { map.remove() } catch (_) {}
     },
   }

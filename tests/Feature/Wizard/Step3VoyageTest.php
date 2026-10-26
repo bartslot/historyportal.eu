@@ -228,17 +228,15 @@ class Step3VoyageTest extends TestCase
         $this->assertArrayNotHasKey('evil', $this->lesson->fresh()->game_config['voyage_map']);
     }
 
-    public function test_the_map_ground_is_the_earth_unless_the_drawn_chart_is_chosen(): void
+    public function test_the_map_ground_is_not_an_option(): void
     {
+        // Bart, 2026-10-24: "1 style of map". The watercolour chart is the only ground, so the old
+        // Earth/Drawn switch is gone and a stale 'style' value is ignored like any unknown key.
         $c = $this->wizardOn($this->voyageScene);
-        $this->assertSame('earth', $c->instance()->voyageMap()['style']);
+        $this->assertArrayNotHasKey('style', $c->instance()->voyageMap());
 
         $c->call('setVoyageMap', 'style', 'history-line');
-        $this->assertSame('history-line', $this->lesson->fresh()->game_config['voyage_map']['style']);
-
-        // Only the two named grounds exist; anything else is the earth again.
-        $c->call('setVoyageMap', 'style', 'tolkien');
-        $this->assertSame('earth', $this->lesson->fresh()->game_config['voyage_map']['style']);
+        $this->assertArrayNotHasKey('style', $this->lesson->fresh()->game_config['voyage_map'] ?? []);
     }
 
     public function test_voyage_map_style_values_are_coerced_by_key(): void
