@@ -150,6 +150,10 @@ def islet_km2(zoom: float) -> float:
     return [km2 for z, km2 in ISLET_KM2 if z <= zoom][-1]
 
 
+# the islet rule for a 256-px raster tile of zoom z: strictest map zoom it is shown at (z - 1.5)
+TILE_ZOOM_RULE = lambda z: islet_km2(max(0.0, z - 1.5))
+
+
 # Islands an illustrator would draw even when small: the landfalls of the lessons' voyages.
 # (lng, lat); a ring whose bounding box contains one of these is always kept.
 KEEP_ISLANDS = [(57.55, -20.25), (55.5, -21.1), (63.4, -19.7), (-175.2, -21.2), (-174.0, -18.65), (178.0, -17.8),
@@ -336,10 +340,11 @@ def glaze_tiles(land: np.ndarray, scale: np.ndarray, out: Path) -> int:
             paint.paste(tex, (x, y))
     count = 0
     for z in range(GLAZE_MAX_Z + 1):
-        # MapLibre rounds raster zooms: a tile of zoom z is on screen from z-0.5 to z+0.5. Use the
-        # strictest rule in that range, so no shallows round an island the map is not drawing yet.
+        # MapLibre's zoom is 512-px based and it rounds: a 256-px tile of zoom z is on screen from map
+        # zoom z-1.5 to z-0.5. Use the strictest rule in that range (TILE_ZOOM_RULE), so no shallows are
+        # painted round an island the map is not drawing yet.
         size = 256 * 2 ** z
-        a = glaze_alpha(shelf_scaled_km(without_islets(land, scale, islet_km2(max(0, z - 0.5))), scale), size)
+        a = glaze_alpha(shelf_scaled_km(without_islets(land, scale, TILE_ZOOM_RULE(z)), scale), size)
         level = Image.merge('RGBA', [*paint.resize((size, size), Image.BOX).split(), a])
         for x in range(2 ** z):
             for y in range(2 ** z):
@@ -410,24 +415,46 @@ def save_pyramid(rgba: Image.Image, out: Path) -> int:
     return count
 
 
-def wash_tiles(to_land_km: np.ndarray, to_sea_km: np.ndarray, out: Path) -> int:
+def save_level(img: Image.Image, z: int, out: Path) -> int:
+    for x in range(2 ** z):
+        for y in range(2 ** z):
+            path = out / str(z) / str(x) / f'{y}.webp'
+            path.parent.mkdir(parents=True, exist_ok=True)
+            img.crop((x * 256, y * 256, x * 256 + 256, y * 256 + 256)).save(path, quality=90, alpha_quality=88, method=6)
+    return 4 ** z
+
+
+def wash_tiles(land: np.ndarray, scale: np.ndarray, out: Path) -> int:
     """Three raster sets: sea wash and shore bleed (drawn UNDER the land fill, which clips them
-    exactly at the coast) and the land wash (over the fill, fading out just inside the coast)."""
+    exactly at the coast) and the land wash (over the fill, fading out just inside the coast).
+
+    The land wash and the bleed are baked per zoom with the map's islet rule, like the glaze: baked
+    once, they painted islets the map hides, as pale un-inked "ghost islands" and, from the bleed
+    round them, dark blots that read as splashes on open water (tester round 3, 10-26).
+    """
     size = 256 * 2 ** GLAZE_MAX_Z
-    down = lambda a: np.asarray(Image.fromarray(a.astype(np.float32)).resize((size, size), Image.BOX))
-    near_land, near_sea = down(to_land_km), down(to_sea_km)
     count = 0
     # Only the broad passes of the sea wash: its granulation, magnified past z4, read as chunky digital
     # mottling (ChatGPT round 6). The fine grain on the water comes from the base paint and the paper.
     sea = ndimage.gaussian_filter(wash_canvas(WASH_SOURCES['sea'], size, 11, contrast=SEA_WASH_CONTRAST), sigma=(SEA_WASH_SOFTEN_PX, SEA_WASH_SOFTEN_PX, 0), mode='wrap')
     count += save_pyramid(Image.fromarray(np.dstack([sea, np.full((size, size), 255.)]).astype(np.uint8), 'RGBA'), out / 'wash-sea')
-    land = wash_canvas(WASH_SOURCES['land'], size, 23)
-    fade = np.clip(near_sea / WASH_LAND_FADE_KM, 0, 1) * (near_sea > 0)
-    count += save_pyramid(Image.fromarray(np.dstack([land, fade * 255]).astype(np.uint8), 'RGBA'), out / 'wash-land')
-    wobble = 0.6 + 0.8 * np.asarray(Image.fromarray((periodic_noise(512, 24, 5) * 255).astype(np.uint8)).resize((size, size), Image.BICUBIC), float) / 255
-    bleed = np.exp(-near_land / (BLEED_KM * wobble)) * (near_land > 0)
-    rgb = np.broadcast_to(np.array(BLEED_RGB, float), (size, size, 3))
-    count += save_pyramid(Image.fromarray(np.dstack([rgb, bleed * 255]).astype(np.uint8), 'RGBA'), out / 'bleed')
+    land_paint = Image.fromarray(wash_canvas(WASH_SOURCES['land'], size, 23).astype(np.uint8))
+    wobble_full = Image.fromarray((periodic_noise(512, 24, 5) * 255).astype(np.uint8))
+    for z in range(GLAZE_MAX_Z + 1):
+        n = 256 * 2 ** z
+        shown = without_islets(land, scale, TILE_ZOOM_RULE(z))
+        mask = np.asarray(Image.fromarray(shown.astype(np.uint8) * 255).resize((n, n), Image.BOX)) > 127
+        row_km = scale[:: N // n] * (N // n)
+        pad = max(4, n // 16)
+        to_land = ndimage.distance_transform_edt(~np.pad(mask, ((0, 0), (pad, pad)), mode='wrap'))[:, pad:-pad] * row_km
+        to_sea = ndimage.distance_transform_edt(np.pad(mask, ((0, 0), (pad, pad)), mode='wrap'))[:, pad:-pad] * row_km
+        fade = np.clip(to_sea / WASH_LAND_FADE_KM, 0, 1) * mask
+        paint = np.asarray(land_paint.resize((n, n), Image.LANCZOS), float)
+        count += save_level(Image.fromarray(np.dstack([paint, fade * 255]).astype(np.uint8), 'RGBA'), z, out / 'wash-land')
+        wobble = 0.6 + 0.8 * np.asarray(wobble_full.resize((n, n), Image.BICUBIC), float) / 255
+        bleed = np.exp(-to_land / (BLEED_KM * wobble)) * ~mask
+        rgb = np.broadcast_to(np.array(BLEED_RGB, float), (n, n, 3))
+        count += save_level(Image.fromarray(np.dstack([rgb, bleed * 255]).astype(np.uint8), 'RGBA'), z, out / 'bleed')
     return count
 
 
@@ -538,7 +565,7 @@ def build(land_path: Path, peaks_path: Path, out: Path, tiles: bool = True) -> d
                 vector_tiles(src, out / name.removesuffix('.geojson'))
     if tiles:
         print('glaze tiles:', glaze_tiles(land, scale, out / 'glaze'))
-        print('wash tiles:', wash_tiles(to_land_km, to_sea_km, out))
+        print('wash tiles:', wash_tiles(land, scale, out))
         for name, data in zip(('land', 'lakes', 'coast'), chart_shapes(land_path, lakes_path)):
             text = json.dumps(data, separators=(',', ':'))
             (out / f'{name}.geojson').write_text(text)
