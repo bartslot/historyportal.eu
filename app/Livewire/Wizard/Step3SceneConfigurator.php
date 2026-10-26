@@ -1397,6 +1397,21 @@ class Step3SceneConfigurator extends Component
         $this->dispatch('focusAnnotationsRefresh', annotations: $this->selectedScene['config']['annotations'] ?? []);
     }
 
+    /**
+     * Map block: the atlas's modern place names (show_cities) and the territory borders + fill
+     * (show_borders). Both OFF when absent (Bart 2026-10-26), so every existing block hides them;
+     * the teacher can turn either on, and off again.
+     */
+    public function setMapDetail(string $key, $value): void
+    {
+        if (! $this->selectedScene || ! in_array($key, ['show_cities', 'show_borders'], true)) {
+            return;
+        }
+        $this->selectedScene['config'][$key] = filter_var($value, FILTER_VALIDATE_BOOLEAN);
+        $this->saveSelected();
+        $this->dispatch('mapDetailChanged', key: $key, value: $this->selectedScene['config'][$key]);
+    }
+
     /** Map block: flip the projection between flat 2D (mercator) and 3D globe; persists in scene.config. */
     public function setProjection(string $type): void
     {
@@ -1660,10 +1675,11 @@ class Step3SceneConfigurator extends Component
         }
     }
 
-    // Lesson-wide voyage-map detail: hide anachronistic modern cities/borders and show period place
-    // labels (drawn from the landfalls). Defaults keep the normal atlas so existing lessons don't change.
+    // Lesson-wide voyage-map detail: modern city names and political borders are anachronisms on a
+    // period map, so both are OFF unless the teacher turns them on (Bart 2026-10-26); period place
+    // labels (drawn from the landfalls) stay on.
     private const VOYAGE_MAP_DEFAULTS = [
-        'cities' => true, 'borders' => true, 'labels' => true,
+        'cities' => false, 'borders' => false, 'labels' => true,
         // Per-element style (applied live over the base atlas palette). Defaults match lesson-map.js.
         'label_color' => '#3a2c1a', 'label_size' => 1.0,
         'city_color' => '#3a2c1a', 'city_size' => 1.0,

@@ -37,4 +37,15 @@ describe('lesson-map: one ground, and it is the chart', () => {
         // The Earth/Drawn switch, and before it the five-atlas picker, must not come back.
         expect(SOURCE).not.toMatch(/opts\.mapStyle|MAP_STYLES/);
     });
+
+    it('draws no modern place names or territory unless the scene asks for them', () => {
+        // Bart 2026-10-26: "modern city names ... a switch that is turned off. And territories should
+        // also be auto off." Absent options mean off; the player and the editor pass the scene's own.
+        expect(SOURCE).toContain('const { showCities = false, showBorders = false } = opts');
+        const player = readFileSync(resolve(__dirname, '../lesson-player.js'), 'utf8');
+        expect(player).toContain('showCities: cfg.show_cities === true');
+        expect(player).toContain('showBorders: cfg.show_borders === true');
+        const tour = readFileSync(resolve(__dirname, '../voyage-tour.js'), 'utf8');
+        expect(tour).toMatch(/Object\.assign\(\{ cities: false, borders: false, labels: true \}/);
+    });
 });

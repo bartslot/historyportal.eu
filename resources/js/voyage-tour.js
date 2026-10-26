@@ -145,7 +145,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
   // Indian Ocean. The voyage pins the places it actually visits (`labels`), and those are what the
   // class should be reading. A teacher who wants the modern atlas back still has the toggle; this
   // only changes what a voyage opens as.
-  let MO = Object.assign({ cities: false, borders: true, labels: true }, mapOptions || {});
+  let MO = Object.assign({ cities: false, borders: false, labels: true }, mapOptions || {});   // atlas names + borders off unless asked (Bart 10-26)
   let LL = Array.isArray(legLabels) ? legLabels : [];
   let PAINTED = Array.isArray(paintedFog) ? paintedFog : [];   // teacher-painted "undiscovered" rings
   const resolveLabels = () => {

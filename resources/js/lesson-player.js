@@ -1762,6 +1762,9 @@ Alpine.data('lessonGame', (lesson) => ({
           projection: cfg.projection || 'mercator',
           interactive: mode === 'interactive',
           annotations: cfg.annotations || [],   // read-only focus cities for students
+          // Atlas place names + territory: off unless the teacher turned them on (Bart 10-26).
+          showCities: cfg.show_cities === true,
+          showBorders: cfg.show_borders === true,
         })
 
         // Map-pinned text labels follow the map as the student pans/zooms.

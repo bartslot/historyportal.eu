@@ -95,10 +95,11 @@ export function renderLessonMap (el, opts = {}) {
   // the four that carried the lesson were four labels among thirty. Year-filtering does not help,
   // because those cities really did exist — they are simply not what the scene is about.
   //
-  // So the atlas steps back once a block names two or more cities of its own. An explicit
-  // showCities from the caller still wins, and a block that pins nothing keeps the full atlas.
-  const focusCount = (Array.isArray(annotations) ? annotations : []).filter((a) => a && a.type === 'focus').length
-  const { showCities = focusCount < 2, showBorders = true } = opts
+  // Bart, 2026-10-26: "The map hosts modern city names... this is almost always not wanted. Make that
+  // a switch that is turned off. And territories should also be auto off." So the atlas's own place
+  // names and the territory borders/fill are OFF unless the scene turns them on (showCities /
+  // showBorders). The teacher's own pins (annotations) and place labels always show.
+  const { showCities = false, showBorders = false } = opts
   let layerToggles = { cities: showCities, borders: showBorders }
   let placeLabels = Array.isArray(opts.labels) ? opts.labels : []
   // Coerce — the inspector saves the year through a JSON config, so it can arrive as a string.

@@ -777,6 +777,8 @@
                     fit: cfg.fit || null,
                     year,
                     projection: cfg.projection || 'mercator',
+                    showCities: cfg.show_cities === true,
+                    showBorders: cfg.show_borders === true,
                     interactive: true,
                     annotations: cfg.annotations || [],
                     editable: true,
@@ -797,6 +799,11 @@
 
         // Inspector VIEW toggle (Flat 2D / Globe 3D) → flip the live preview projection immediately.
         window.addEventListener('lessonmap:projection', (e) => inst && inst.setProjection(e.detail.type))
+        // The two atlas switches flip the live preview in place (no re-mount, the camera stays).
+        window.Livewire.on('mapDetailChanged', ({ key, value }) => {
+            if (!inst) return
+            inst.setLayerToggles(key === 'show_cities' ? { cities: !!value } : { borders: !!value })
+        })
 
 
         // Focus-city rename/remove saved server-side → push fresh annotations so marker labels update live.

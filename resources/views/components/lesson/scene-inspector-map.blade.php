@@ -36,6 +36,17 @@
         </label>
     </div>
 
+    {{-- What the atlas draws on its own. Both OFF unless turned on (Bart 2026-10-26): modern place
+         names are an anachronism on a period map, and a territory is shown only when asked for.
+         The teacher's own focus cities below always show. --}}
+    @php $sc = $scene->config ?? []; @endphp
+    <div class="border-t border-slate-700/50 pt-2">
+        <x-ui.toggle-row :label="__('Modern place names')" :checked="(bool) ($sc['show_cities'] ?? false)"
+                         on-change="setMapDetail('show_cities', $event.target.checked)" />
+        <x-ui.toggle-row :label="__('Territory borders')" :checked="(bool) ($sc['show_borders'] ?? false)"
+                         on-change="setMapDetail('show_borders', $event.target.checked)" />
+    </div>
+
     {{-- Focus cities — search the cities corpus (modern OR historical name), then drop a red dot
          + label on the map (annotations[].type === 'focus'). A typeahead leads; dropping a raw pin
          is the secondary path. --}}

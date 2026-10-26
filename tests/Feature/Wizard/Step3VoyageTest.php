@@ -213,11 +213,18 @@ class Step3VoyageTest extends TestCase
 
     public function test_voyage_map_toggles_hide_layers_lesson_wide(): void
     {
-        // Defaults show everything; toggling one option persists it on game_config.voyage_map.
+        // Modern city names and borders are off by default (Bart 2026-10-26); the teacher can turn them
+        // on and off again, and each choice persists on game_config.voyage_map.
         $c = $this->wizardOn($this->voyageScene);
-        $c->call('setVoyageMap', 'cities', false)
-            ->call('setVoyageMap', 'borders', false);
+        $this->assertFalse($c->instance()->voyageMap()['cities']);
+        $this->assertFalse($c->instance()->voyageMap()['borders']);
 
+        $c->call('setVoyageMap', 'cities', true)->call('setVoyageMap', 'borders', true);
+        $map = $this->lesson->fresh()->game_config['voyage_map'];
+        $this->assertTrue($map['cities']);
+        $this->assertTrue($map['borders']);
+
+        $c->call('setVoyageMap', 'cities', false)->call('setVoyageMap', 'borders', false);
         $map = $this->lesson->fresh()->game_config['voyage_map'];
         $this->assertFalse($map['cities']);
         $this->assertFalse($map['borders']);

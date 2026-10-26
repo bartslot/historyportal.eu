@@ -358,9 +358,9 @@
                 <div class="rounded-lg bg-slate-800/30 p-2">
                     <label class="flex items-center justify-between gap-2">
                         <span class="text-2xs text-slate-300">{{ __('City names') }}</span>
-                        <input type="checkbox" @checked($vm('cities', true)) wire:change="setVoyageMap('cities', $event.target.checked)" class="toggle toggle-sm toggle-warning" />
+                        <input type="checkbox" @checked($vm('cities', false)) wire:change="setVoyageMap('cities', $event.target.checked)" class="toggle toggle-sm toggle-warning" />
                     </label>
-                    @if ($vm('cities', true))
+                    @if ($vm('cities', false))
                         <div class="mt-2 flex items-center gap-2">
                             <input type="color" value="{{ $vm('city_color', '#3a2c1a') }}" wire:change="setVoyageMap('city_color', $event.target.value)" class="{{ $swatch }}" data-tooltip="{{ __('City name colour') }}" />
                             <label class="flex flex-1 items-center gap-1.5">
@@ -377,9 +377,9 @@
                 <div class="rounded-lg bg-slate-800/30 p-2">
                     <label class="flex items-center justify-between gap-2">
                         <span class="text-2xs text-slate-300">{{ __('Country borders') }}</span>
-                        <input type="checkbox" @checked($vm('borders', true)) wire:change="setVoyageMap('borders', $event.target.checked)" class="toggle toggle-sm toggle-warning" />
+                        <input type="checkbox" @checked($vm('borders', false)) wire:change="setVoyageMap('borders', $event.target.checked)" class="toggle toggle-sm toggle-warning" />
                     </label>
-                    @if ($vm('borders', true))
+                    @if ($vm('borders', false))
                         <div class="mt-2 space-y-1.5">
                             <div class="flex items-center gap-2">
                                 <input type="color" value="{{ $vm('border_color', '#5b4a36') }}" wire:change="setVoyageMap('border_color', $event.target.value)" class="{{ $swatch }}" data-tooltip="{{ __('Border colour') }}" />
