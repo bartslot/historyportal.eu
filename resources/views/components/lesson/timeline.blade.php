@@ -77,6 +77,19 @@
              class="flex-1 space-y-2 overflow-y-auto p-3"
              @if ($editable) data-sortable="timeline" @endif>
             @foreach ($scenes as $scene)
+                {{-- No gap inside a Decision point: its question and two choices stay together. --}}
+                @if ($editable && ! in_array($scene->branch_role, ['option_a', 'option_b'], true))
+                    {{-- Insert here: after the scene above, or first (0) above scene 1. --}}
+                    <button type="button"
+                            data-no-drag data-rail-gap
+                            wire:click="openAddSceneAfter({{ $loop->first ? 0 : $scenes->values()[$loop->index - 1]->id }})"
+                            class="flex h-5 w-full items-center justify-center text-white/30 transition-colors hover:text-primary"
+                            data-tooltip="{{ __('Add scene here') }}" aria-label="{{ __('Add scene here') }}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3.5 w-3.5" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                        </svg>
+                    </button>
+                @endif
                 <x-lesson.scene-thumb :scene="$scene"
                                       :problems="$problems[$scene->id] ?? []"
                                       :selected="$scene->id === $selectedSceneId"
@@ -86,9 +99,10 @@
             @endforeach
 
             @if ($editable)
+                {{-- At the end, whatever is selected. --}}
                 <button type="button"
                         data-no-drag data-rail-add
-                        wire:click="$set('addSceneOpen', true)"
+                        wire:click="openAddSceneAfter({{ $scenes->last()?->id ?? 0 }})"
                         class="flex aspect-video w-full flex-col items-center justify-center rounded-md border-2 border-dashed border-white/20 text-white/40 transition-all hover:border-primary hover:text-primary"
                         data-tooltip="{{ __('Add scene') }}" aria-label="{{ __('Add scene') }}">
                     {{-- A drawn plus, not the "+" glyph: a font's plus sits off its box's centre. --}}
