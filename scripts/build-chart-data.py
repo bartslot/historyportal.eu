@@ -100,7 +100,7 @@ def on_cut(a: list, b: list) -> bool:
     return (abs(a[0]) >= 179.999 and abs(b[0]) >= 179.999) or (a[1] <= -89.9 and b[1] <= -89.9)
 
 
-COAST_SIMPLIFY_DEG = 0.02   # ~2 km: fjord-level detail made the ink and its offset lines spiky (prod 10-26)
+COAST_SIMPLIFY_DEG = 0.03   # ~3 km, then one Chaikin pass: fjord-level detail read as spiky (prod 10-26)
 
 
 def simplify(line: list, tol: float) -> list:
@@ -123,29 +123,103 @@ def simplify(line: list, tol: float) -> list:
     return pts[keep].tolist()
 
 
-def coast_lines(land_path: Path) -> dict:
-    """Every exterior ring counter-clockwise (land on the left of the direction of travel)."""
-    lines = []
-    for feat in json.loads(land_path.read_text())['features']:
+# Islands an illustrator would draw even when small: the landfalls of the lessons' voyages.
+# (lng, lat); a ring whose bounding box contains one of these is always kept.
+KEEP_ISLANDS = [(57.55, -20.25), (55.5, -21.1), (63.4, -19.7), (-175.2, -21.2), (-174.0, -18.65), (178.0, -17.8),
+                (179.3, -16.6), (-172.5, -13.7), (-171.7, -14.0), (172.6, -40.6), (145.0, -40.8), (148.0, -40.0)]
+
+
+def ring_km2(ring: list) -> float:
+    lat = math.radians(sum(y for _, y in ring) / len(ring))
+    return abs(ring_area(ring)) * (111.32 ** 2) * math.cos(lat)
+
+
+def chaikin(ring: list, closed: bool = True) -> list:
+    """One pass of corner cutting: removes the polygon zig-zag, keeps the shape (a confident stroke)."""
+    pts = ring if closed else ring
+    out = [] if closed else [pts[0]]
+    n = len(pts)
+    for i in range(n if closed else n - 1):
+        (x0, y0), (x1, y1) = pts[i], pts[(i + 1) % n]
+        out += [[0.75 * x0 + 0.25 * x1, 0.75 * y0 + 0.25 * y1], [0.25 * x0 + 0.75 * x1, 0.25 * y0 + 0.75 * y1]]
+    if not closed:
+        out.append(pts[-1])
+    return out
+
+
+def drawn_ring(ring: list) -> list:
+    """Simplified then smoothed: the outline an illustrator would draw, shared by fill and ink."""
+    if ring[0] == ring[-1]:
+        ring = ring[:-1]
+    if len(ring) < 4:
+        return ring
+    simple = simplify(ring + ring[:1], COAST_SIMPLIFY_DEG)[:-1]
+    if len(simple) < 3:
+        return ring
+    # never smooth across the closing edges NE adds at 180° and the south pole
+    if any(on_cut(a, b) for a, b in zip(simple, simple[1:] + simple[:1])):
+        return simple
+    return chaikin(simple)
+
+
+def ring_props(ring: list) -> dict:
+    xs, ys = [x for x, _ in ring], [y for _, y in ring]
+    keep = any(min(xs) - 0.3 <= kx <= max(xs) + 0.3 and min(ys) - 0.3 <= ky <= max(ys) + 0.3 for kx, ky in KEEP_ISLANDS)
+    return {'a': round(ring_km2(ring)), 'k': 1 if keep else 0}
+
+
+def polygons(path: Path):
+    for feat in json.loads(path.read_text())['features']:
         geom = feat['geometry']
-        for poly in geom['coordinates'] if geom['type'] == 'MultiPolygon' else [geom['coordinates']]:
-            ring = poly[0][:-1] if poly[0][0] == poly[0][-1] else poly[0]
-            if ring_area(ring) < 0:
-                ring = ring[::-1]
-            ring = ring + ring[:1]
-            run = [ring[0]]
-            for a, b in zip(ring, ring[1:]):
-                if on_cut(a, b):
-                    if len(run) > 1:
-                        lines.append(run)
-                    run = [b]
-                else:
-                    run.append(b)
-            if len(run) > 1:
-                lines.append(run)
-    return {'type': 'FeatureCollection', 'features': [
-        {'type': 'Feature', 'properties': {}, 'geometry': {'type': 'LineString', 'coordinates': [[round(x, 3), round(y, 3)] for x, y in simplify(ln, COAST_SIMPLIFY_DEG)]}}
-        for ln in lines if len(ln) > 1]}
+        yield from (geom['coordinates'] if geom['type'] == 'MultiPolygon' else [geom['coordinates']])
+
+
+def round_ring(ring: list) -> list:
+    r = [[round(x, 3), round(y, 3)] for x, y in ring]
+    return r + r[:1]
+
+
+def chart_shapes(land_path: Path, lakes_path: Path) -> tuple[dict, dict, dict]:
+    """Land polygons, lake polygons and coast lines, all from the same drawn rings.
+
+    Coast lines run with the land on the left (land rings counter-clockwise, lake rings clockwise), so
+    one line-offset sign puts the dash on the water side everywhere. Every feature carries `a` (km²
+    of its ring) and `k` (a story island to keep), which the layers use to leave islets out by zoom.
+    """
+    land, lakes, lines = [], [], []
+
+    def add_lines(ring: list, props: dict) -> None:
+        ring = ring + ring[:1]
+        run = [ring[0]]
+        for a, b in zip(ring, ring[1:]):
+            if on_cut(a, b):
+                if len(run) > 1:
+                    lines.append((run, props))
+                run = [b]
+            else:
+                run.append(b)
+        if len(run) > 1:
+            lines.append((run, props))
+
+    for poly in polygons(land_path):
+        outer = drawn_ring(poly[0])
+        if ring_area(outer) < 0:
+            outer = outer[::-1]
+        props = ring_props(outer)
+        holes = [drawn_ring(h) for h in poly[1:]]
+        land.append({'type': 'Feature', 'properties': props, 'geometry': {'type': 'Polygon', 'coordinates': [round_ring(outer)] + [round_ring(h) for h in holes if len(h) > 2]}})
+        add_lines(outer, props)
+    for poly in polygons(lakes_path):
+        ring = drawn_ring(poly[0])
+        if ring_area(ring) > 0:
+            ring = ring[::-1]                     # clockwise: the shore runs with land on the left
+        props = ring_props(ring)
+        lakes.append({'type': 'Feature', 'properties': props, 'geometry': {'type': 'Polygon', 'coordinates': [round_ring(ring)]}})
+        add_lines(ring, {**props, 'lake': 1})
+    coast = [{'type': 'Feature', 'properties': pr, 'geometry': {'type': 'LineString', 'coordinates': [[round(x, 3), round(y, 3)] for x, y in ln]}}
+             for ln, pr in lines]
+    fc = lambda f: {'type': 'FeatureCollection', 'features': f}
+    return fc(land), fc(lakes), fc(coast)
 
 
 def without_islets(land: np.ndarray) -> np.ndarray:
@@ -322,9 +396,10 @@ def build(land_path: Path, peaks_path: Path, out: Path, tiles: bool = True) -> d
                 vector_tiles(src, out / name.removesuffix('.geojson'))
     if tiles:
         print('glaze tiles:', glaze_tiles(glaze_km, out / 'glaze'))
-        coast = json.dumps(coast_lines(land_path), separators=(',', ':'))
-        (out / 'coast.geojson').write_text(coast)
-        print(f'coast.geojson: {len(coast) / 1e6:.1f} MB')
+        for name, data in zip(('land', 'lakes', 'coast'), chart_shapes(land_path, land_path.with_name('ne_50m_lakes.geojson'))):
+            text = json.dumps(data, separators=(',', ':'))
+            (out / f'{name}.geojson').write_text(text)
+            print(f'{name}.geojson: {len(data["features"])} features, {len(text) / 1e6:.1f} MB')
     return digests
 
 

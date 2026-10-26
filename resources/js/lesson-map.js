@@ -169,8 +169,7 @@ export function renderLessonMap (el, opts = {}) {
           promoteId: { boundaries: 'Wikidata' },
         },
         // The ink coastline, and the dashed line offshore of it.
-        coastline: { type: 'geojson', data: `${location.origin}${CHART_BASE}/coast.geojson` },
-        land: { type: 'vector', tiles: [`${location.origin}/land-tiles/{z}/{x}/{y}.pbf`], maxzoom: 4 },
+        coastline: { type: 'geojson', data: `${location.origin}${CHART_BASE}/coast.geojson`, tolerance: 1 },
         ...chartSources(location.origin),
         // Teacher-authored period place labels (voyages) — filled via setLabels()/the `labels` opt.
         'lesson-labels': { type: 'geojson', data: labelsFC(placeLabels) },

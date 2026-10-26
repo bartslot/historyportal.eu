@@ -64,6 +64,10 @@ export function chartSources (origin = '') {
   return {
     // The same coastline the ink line uses, simplified per zoom (tolerance in screen px) for the dash.
     'chart-coast-simple': { type: 'geojson', data: `${origin}${CHART_BASE}/coast.geojson`, tolerance: COAST_SIMPLIFY_PX },
+    // Land, lakes and coast come from ONE set of drawn rings (scripts/build-chart-data.py), so the fill
+    // and the ink always agree, and an islet leaves the map whole (fill and outline) as you zoom out.
+    'chart-land': { type: 'geojson', data: `${origin}${CHART_BASE}/land.geojson`, tolerance: 1 },
+    'chart-lakes': { type: 'geojson', data: `${origin}${CHART_BASE}/lakes.geojson`, tolerance: 1 },
     'chart-glaze': { type: 'raster', tiles: [`${origin}${CHART_BASE}/glaze/{z}/{x}/{y}.webp`], tileSize: 256, maxzoom: 4 },
     'chart-peaks': tiles('peaks'),
     'chart-tufts': tiles('tufts'),
@@ -89,20 +93,32 @@ const waveSize = (scale) => ['step', ['zoom'],
 
 // Thin when zoomed out: at the continent view a full-weight line along every fjord read as spiky.
 const coastWidth = (w) => ['interpolate', ['linear'], ['zoom'], 2, w * 0.35, 3.5, w * 0.55, 4.3, w * 0.9, 5, w, 7, w * 1.4]
+/**
+ * An illustrator draws a few meaningful islands, not every speck (Bart 10-26: "small islands … look like
+ * bugs"). A ring shows from the zoom where it is big enough to read; the voyages' landfalls (k=1) always.
+ * Returned as a paint value (opacity), since a zoom expression may not sit inside a filter.
+ */
+export const ISLET_KM2 = [[0, 20000], [2.5, 4000], [3.5, 900], [4.5, 200], [5.5, 40], [6.5, 0]]
+const shownAtZoom = (on = 1) => ['step', ['zoom'],
+  ...ISLET_KM2.flatMap(([z, km2], i) => [...(i ? [z] : []), ['case', ['any', ['==', ['get', 'k'], 1], ['>=', ['get', 'a'], km2]], on, 0]])]
+
 const fadeIn = (from, to) => ['interpolate', ['linear'], ['zoom'], from, 0, from + 0.4, to]
 
 /**
  * The chart's layers, bottom to top, split around the land so the lesson map can put rivers,
  * borders and cities between them: `under` sits below everything, `over` goes above the borders.
- * `land` and `coastline` are the lesson map's existing sources.
+ * `coastline` is the lesson map's own source (the same drawn rings as chart-land).
  */
 export function chartLayers (cfg = CHART) {
   const under = [
     { id: 'bg', type: 'background', paint: { 'background-color': cfg.seaColor, 'background-pattern': 'chart-sea' } },
     { id: 'chart-glaze', type: 'raster', source: 'chart-glaze', paint: { 'raster-opacity': cfg.glazeOpacity, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } },
-    { id: 'land', type: 'fill', source: 'land', 'source-layer': 'land', paint: { 'fill-pattern': 'chart-land' } },
+    { id: 'land', type: 'fill', source: 'chart-land', paint: { 'fill-pattern': 'chart-land', 'fill-opacity': shownAtZoom(), 'fill-antialias': false } },
+    // Inland water (the IJsselmeer, Lake Geneva, the Great Lakes) painted as the sea: Natural Earth's
+    // land has them filled in, and the chart had drawn the Netherlands without its IJsselmeer.
+    { id: 'chart-lakes', type: 'fill', source: 'chart-lakes', paint: { 'fill-pattern': 'chart-sea', 'fill-opacity': shownAtZoom(), 'fill-antialias': false } },
     { id: 'chart-land-edge', type: 'line', source: 'chart-coast-simple', layout: { 'line-join': 'round' },
-      paint: { 'line-color': cfg.landEdgeColor, 'line-opacity': cfg.landEdgeOpacity,
+      paint: { 'line-color': cfg.landEdgeColor, 'line-opacity': shownAtZoom(cfg.landEdgeOpacity),
         'line-width': ['interpolate', ['linear'], ['zoom'], 3, 3, 6, 8], 'line-offset': ['interpolate', ['linear'], ['zoom'], 3, -1.5, 6, -4] } },  // inside the land
     { id: 'chart-tufts', type: 'symbol', source: 'chart-tufts', 'source-layer': 'tufts', minzoom: cfg.ridgeMinZoom,
       layout: { 'icon-image': ['concat', 'chart-tuft-', ['to-string', ['get', 'g']]], 'icon-allow-overlap': true, 'icon-size': fittedSize(cfg.ridgeScale * 0.57, 1.75) },
@@ -111,11 +127,12 @@ export function chartLayers (cfg = CHART) {
   const over = [
     // From a heavily simplified copy of the coastline (chart-coast-simple): a fixed offset along every
     // inlet of the Aegean zigzagged into scribble. Absent on the world view.
-    { id: 'chart-coast-dash', type: 'line', source: 'chart-coast-simple', minzoom: 3.5, layout: { 'line-join': 'round' },
-      paint: { 'line-color': cfg.inkColor, 'line-opacity': fadeIn(3.5, cfg.dashOpacity), 'line-width': 1.3, 'line-dasharray': [3, 2.2],
+    // The offshore dash belongs to the sea coast; a lake shore keeps only its ink line.
+    { id: 'chart-coast-dash', type: 'line', source: 'chart-coast-simple', minzoom: 3.5, filter: ['!', ['has', 'lake']], layout: { 'line-join': 'round' },
+      paint: { 'line-color': cfg.inkColor, 'line-opacity': shownAtZoom(cfg.dashOpacity), 'line-width': 1.3, 'line-dasharray': [3, 2.2],
         'line-offset': ['interpolate', ['linear'], ['zoom'], 3.5, cfg.dashOffset * 0.6, 5, cfg.dashOffset] } },
     { id: 'coast-bold', type: 'line', source: 'coastline', layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': cfg.inkColor, 'line-width': coastWidth(cfg.coastWidth) } },
+      paint: { 'line-color': cfg.inkColor, 'line-width': coastWidth(cfg.coastWidth), 'line-opacity': shownAtZoom() } },
     // Ridges never overlap: collision keeps them apart, so a range reads as peaks, not a dark mass.
     { id: 'chart-ridges', type: 'symbol', source: 'chart-peaks', 'source-layer': 'peaks', minzoom: cfg.ridgeMinZoom,
       layout: { 'icon-image': ['concat', 'chart-ridge-', ['to-string', ['get', 'g']]], 'icon-anchor': 'bottom', 'icon-padding': 0, 'icon-size': fittedSize(cfg.ridgeScale, 1.3) },
