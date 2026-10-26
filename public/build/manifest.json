@@ -205,7 +205,7 @@
     "isEntry": true
   },
   "resources/js/lesson-map.js": {
-    "file": "assets/lesson-map-D9JpQypT.js",
+    "file": "assets/lesson-map-CymEQvVY.js",
     "name": "lesson-map",
     "src": "resources/js/lesson-map.js",
     "isEntry": true,
@@ -217,7 +217,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-CUFskb-_.js",
+    "file": "assets/lesson-player-CTy80pd-.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -501,7 +501,7 @@
     ]
   },
   "resources/js/voyage-tour.js": {
-    "file": "assets/voyage-tour-G3M2o0g7.js",
+    "file": "assets/voyage-tour-BJFIX-Fx.js",
     "name": "voyage-tour",
     "src": "resources/js/voyage-tour.js",
     "isEntry": true,
