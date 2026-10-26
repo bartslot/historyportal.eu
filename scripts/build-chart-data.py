@@ -4,7 +4,7 @@
 One land raster in Web Mercator, one distance field from it, and everything the chart places is read
 off that field:
 
-  public/map-chart/glaze/{z}/{x}/{y}.png  the sea's depth glaze. The reference chart is pale against
+  public/map-chart/glaze/{z}/{x}/{y}.webp the sea's depth glaze. The reference chart is pale against
                                           every coast and deeper with distance from land, whatever the
                                           real sea floor does (real bathymetry contours were tried and
                                           read as hard angular patches). So: one thin glaze per band
@@ -53,11 +53,12 @@ EARTH_KM = 40075.016686
 
 GLAZE_BANDS_KM = [50, 90, 135, 185, 240, 300, 370]
 GLAZE_FIRST, GLAZE_REST = 0.24, 0.07   # first band = visible edge of the shallows
-GLAZE_RGB = (79, 168, 182)             # the painted sea's own teal (mean of sea-glaze)
+GLAZE_TEXTURE = Path('resources/map-chart/sea-glaze.webp')  # the approved lab's glaze paint (ChatGPT, 10-21)
 GLAZE_MAX_Z = 4
 
-MIN_RIDGE_KM, RIDGE_SPACING_KM = 55, 50
-TUFT_SPACING_KM, TUFT_CLEAR_KM = 70, 30
+MIN_RIDGE_KM, RIDGE_SPACING_KM = 55, 105
+# The lab's 40 km suited the empty Tasman box; across the Mediterranean it carpeted every range.
+TUFT_SPACING_KM, TUFT_CLEAR_KM = 120, 40
 # Islets smaller than this push no shallows out around them: their glaze halo floated on open sea
 # where the land tiles draw nothing at that zoom (Samoa, Lakshadweep).
 MIN_GLAZE_ISLAND_PX = 150
@@ -99,6 +100,29 @@ def on_cut(a: list, b: list) -> bool:
     return (abs(a[0]) >= 179.999 and abs(b[0]) >= 179.999) or (a[1] <= -89.9 and b[1] <= -89.9)
 
 
+COAST_SIMPLIFY_DEG = 0.02   # ~2 km: fjord-level detail made the ink and its offset lines spiky (prod 10-26)
+
+
+def simplify(line: list, tol: float) -> list:
+    """Douglas-Peucker, iterative."""
+    pts = np.asarray(line, float)
+    keep = np.zeros(len(pts), bool); keep[[0, -1]] = True
+    stack = [(0, len(pts) - 1)]
+    while stack:
+        a, b = stack.pop()
+        if b <= a + 1:
+            continue
+        seg = pts[b] - pts[a]
+        rel = pts[a + 1:b] - pts[a]
+        norm = np.hypot(*seg)
+        d = np.abs(seg[0] * rel[:, 1] - seg[1] * rel[:, 0]) / norm if norm else np.hypot(rel[:, 0], rel[:, 1])
+        i = int(np.argmax(d))
+        if d[i] > tol:
+            keep[a + 1 + i] = True
+            stack += [(a, a + 1 + i), (a + 1 + i, b)]
+    return pts[keep].tolist()
+
+
 def coast_lines(land_path: Path) -> dict:
     """Every exterior ring counter-clockwise (land on the left of the direction of travel)."""
     lines = []
@@ -120,8 +144,8 @@ def coast_lines(land_path: Path) -> dict:
             if len(run) > 1:
                 lines.append(run)
     return {'type': 'FeatureCollection', 'features': [
-        {'type': 'Feature', 'properties': {}, 'geometry': {'type': 'LineString', 'coordinates': [[round(x, 4), round(y, 4)] for x, y in ln]}}
-        for ln in lines]}
+        {'type': 'Feature', 'properties': {}, 'geometry': {'type': 'LineString', 'coordinates': [[round(x, 3), round(y, 3)] for x, y in simplify(ln, COAST_SIMPLIFY_DEG)]}}
+        for ln in lines if len(ln) > 1]}
 
 
 def without_islets(land: np.ndarray) -> np.ndarray:
@@ -144,21 +168,49 @@ def row_scale() -> np.ndarray:
     return np.array([km_per_px(y + 0.5) for y in range(N)])[:, None]
 
 
+def shelf_scaled_km(land: np.ndarray, scale: np.ndarray) -> np.ndarray:
+    """Distance to land divided by the nearest landmass's shelf factor, at half resolution.
+
+    The approved lab chart widened the shallows around big land and narrowed them round islets
+    (0.7x to 1.6x by log area). Each sea pixel takes the factor of the landmass nearest to it.
+    """
+    half = land.reshape(N // 2, 2, N // 2, 2).any(axis=(1, 3))
+    labels, n = ndimage.label(half)
+    px_km2 = (scale[::2, 0] * 2) ** 2
+    area_km2 = ndimage.sum(np.broadcast_to(px_km2[:, None], half.shape), labels, range(1, n + 1))
+    factor = np.concatenate([[1.0], np.clip(np.log10(area_km2 / 1e3 + 1) / 2.2, 0.7, 1.6)])
+    wrapped = np.pad(~half, ((0, 0), (PAD // 2, PAD // 2)), mode='wrap')
+    dist, (iy, ix) = ndimage.distance_transform_edt(wrapped, return_indices=True)
+    dist, iy, ix = dist[:, PAD // 2:-PAD // 2], iy[:, PAD // 2:-PAD // 2], ix[:, PAD // 2:-PAD // 2]
+    nearest = labels[iy, (ix - PAD // 2) % (N // 2)]
+    # smoothed, or the shallows jump in a straight seam wherever the nearest landmass changes
+    f = ndimage.gaussian_filter(factor[nearest], sigma=(30, 30), mode=('nearest', 'wrap'))
+    km = dist * scale[::2] * 2 / f
+    return np.repeat(np.repeat(km, 2, axis=0), 2, axis=1)
+
+
 def glaze_tiles(to_land_km: np.ndarray, out: Path) -> int:
     bands = sum((to_land_km > d).astype(np.uint8) for d in GLAZE_BANDS_KM)
     clear = np.where(bands > 0, (1 - GLAZE_FIRST) * (1 - GLAZE_REST) ** np.maximum(bands - 1, 0), 1.0)
     alpha = (1 - clear) * 255
     full = 256 * 2 ** GLAZE_MAX_Z
     a = Image.fromarray(alpha.astype(np.uint8), 'L').resize((full, full), Image.BOX)
-    rgba = Image.merge('RGBA', [Image.new('L', a.size, c) for c in GLAZE_RGB] + [a])
+    # glazed with the painted sea, not a flat colour: the texture repeats every 512 px at z4, so
+    # the granulation sits at the same scale as the base sea pattern on screen
+    tex = Image.open(GLAZE_TEXTURE).convert('RGB').resize((512, 512), Image.LANCZOS)
+    paint = Image.new('RGB', a.size)
+    for x in range(0, full, 512):
+        for y in range(0, full, 512):
+            paint.paste(tex, (x, y))
+    rgba = Image.merge('RGBA', [*paint.split(), a])
     count = 0
     for z in range(GLAZE_MAX_Z + 1):
         level = rgba if z == GLAZE_MAX_Z else rgba.resize((256 * 2 ** z,) * 2, Image.BOX)
         for x in range(2 ** z):
             for y in range(2 ** z):
-                path = out / str(z) / str(x) / f'{y}.png'
+                path = out / str(z) / str(x) / f'{y}.webp'
                 path.parent.mkdir(parents=True, exist_ok=True)
-                level.crop((x * 256, y * 256, x * 256 + 256, y * 256 + 256)).save(path, optimize=True)
+                level.crop((x * 256, y * 256, x * 256 + 256, y * 256 + 256)).save(path, quality=80, alpha_quality=85, method=6)
                 count += 1
     return count
 
@@ -251,7 +303,7 @@ def build(land_path: Path, peaks_path: Path, out: Path, tiles: bool = True) -> d
     scale = row_scale()
     to_land_km, to_sea_km = to_land * scale, to_sea * scale
     ridges, tufts = ridges_and_tufts(peaks_path, to_sea_km)
-    glaze_km = ndimage.distance_transform_edt(~np.pad(without_islets(land), ((0, 0), (PAD, PAD)), mode='wrap'))[:, PAD:-PAD] * scale
+    glaze_km = shelf_scaled_km(without_islets(land), scale)
     files = {
         'peaks.geojson': {'type': 'FeatureCollection', 'features': ridges},
         'tufts.geojson': {'type': 'FeatureCollection', 'features': tufts},

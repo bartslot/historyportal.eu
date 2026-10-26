@@ -39,14 +39,14 @@ export const CHART = Object.freeze({
   glazeOpacity: 1,             // multiplier over the baked depth glaze
   landEdgeColor: '#ead0a0',
   landEdgeOpacity: 0.3,
-  inkColor: '#3b2a1e',
-  coastWidth: 1.7,             // px at z5; scales with zoom
+  inkColor: '#4e3a2a',         // the lab's dark sepia, a shade warmer; continent views draw it thin (see coastWidth)
+  coastWidth: 1.9,             // px at z5; scales with zoom
   dashOffset: 6,               // px at z5; positive = right of travel = the sea (coast rings run land-on-the-left)
   dashOpacity: 0.9,
   ridgeMinZoom: 3.6,
   ridgeScale: 1.4,             // glyph size at z4 before the distance-to-coast cap
-  ridgeWash: 1,                // ridge opacity
-  tuftOpacity: 0.75,
+  ridgeWash: 0.8,              // ridge opacity: the ink stays, a touch quieter
+  tuftOpacity: 0.55,
   waveOpacity: 0.8,
   waveScale: 1.5,
   paperOpacity: 0.06,
@@ -55,9 +55,6 @@ export const CHART = Object.freeze({
 // A glyph's half-width is ~45 css px at size 1. At z4 near 40°S that is 337 km; its tapered foothills
 // let the box overhang ~1.7x, so the cap is fit / 200 km at z4, and every km figure halves per zoom.
 const CAP_KM_Z4 = 200
-// And a ridge or tuft only shows where its distance to the coast is at least ~20 px on screen at that
-// zoom (150 km at z4): a 55 km inland ridge is 6 px from the shore at z3.7, which is "that close".
-const CLEAR_KM_Z4 = 150
 const kmAt = (km, z) => km * 2 ** (4 - z)
 const COAST_SIMPLIFY_PX = 3
 
@@ -67,17 +64,17 @@ export function chartSources (origin = '') {
   return {
     // The same coastline the ink line uses, simplified per zoom (tolerance in screen px) for the dash.
     'chart-coast-simple': { type: 'geojson', data: `${origin}${CHART_BASE}/coast.geojson`, tolerance: COAST_SIMPLIFY_PX },
-    'chart-glaze': { type: 'raster', tiles: [`${origin}${CHART_BASE}/glaze/{z}/{x}/{y}.png`], tileSize: 256, maxzoom: 4 },
+    'chart-glaze': { type: 'raster', tiles: [`${origin}${CHART_BASE}/glaze/{z}/{x}/{y}.webp`], tileSize: 256, maxzoom: 4 },
     'chart-peaks': tiles('peaks'),
     'chart-tufts': tiles('tufts'),
     'chart-waves': tiles('waves'),
   }
 }
 
-/** Size capped by distance to the coast, and 0 (hidden) until the coast is far enough away on screen. */
-const fittedSize = (scale, grow, clear = 1) => ['interpolate', ['exponential', 2], ['zoom'],
-  ...[3.6, 4, 5, 6].flatMap((z) => [z, ['case', ['<', ['get', 'fit'], kmAt(CLEAR_KM_Z4 * clear, z)], 0,
-    ['min', ['*', scale * grow ** ((z - 4) / 2), ['get', 'sz']], ['/', ['get', 'fit'], kmAt(CAP_KM_Z4, z)]]]])]
+/** Size capped by each glyph's distance to the coast, so it never reaches the shore (the approved lab rule). */
+const fittedSize = (scale, grow) => ['interpolate', ['exponential', 2], ['zoom'],
+  4, ['min', ['*', scale, ['get', 'sz']], ['/', ['get', 'fit'], kmAt(CAP_KM_Z4, 4)]],
+  6, ['min', ['*', scale * grow, ['get', 'sz']], ['/', ['get', 'fit'], kmAt(CAP_KM_Z4, 6)]]]
 
 /** Rank r: nothing below z2, a sixth of rank 0 up to z3, a third below z3.5, then one more rank per level. Size 0 = hidden. */
 const someOfRank0 = (every) => ['all', ['==', ['get', 'r'], 0], ['==', ['%', ['round', ['*', ['get', 'sz'], 100]], every], 0]]
@@ -90,7 +87,8 @@ const waveSize = (scale) => ['step', ['zoom'],
   5.5, ['case', ['<=', ['get', 'r'], 2], ['*', scale * 1.13, ['get', 'sz']], 0],
   6.5, ['*', scale * 1.2, ['get', 'sz']]]
 
-const coastWidth = (w) => ['interpolate', ['linear'], ['zoom'], 2, w * 0.65, 5, w, 7, w * 1.4]
+// Thin when zoomed out: at the continent view a full-weight line along every fjord read as spiky.
+const coastWidth = (w) => ['interpolate', ['linear'], ['zoom'], 2, w * 0.35, 3.5, w * 0.55, 4.3, w * 0.9, 5, w, 7, w * 1.4]
 const fadeIn = (from, to) => ['interpolate', ['linear'], ['zoom'], from, 0, from + 0.4, to]
 
 /**
@@ -103,26 +101,27 @@ export function chartLayers (cfg = CHART) {
     { id: 'bg', type: 'background', paint: { 'background-color': cfg.seaColor, 'background-pattern': 'chart-sea' } },
     { id: 'chart-glaze', type: 'raster', source: 'chart-glaze', paint: { 'raster-opacity': cfg.glazeOpacity, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } },
     { id: 'land', type: 'fill', source: 'land', 'source-layer': 'land', paint: { 'fill-pattern': 'chart-land' } },
-    { id: 'chart-land-edge', type: 'line', source: 'coastline', layout: { 'line-join': 'round' },
+    { id: 'chart-land-edge', type: 'line', source: 'chart-coast-simple', layout: { 'line-join': 'round' },
       paint: { 'line-color': cfg.landEdgeColor, 'line-opacity': cfg.landEdgeOpacity,
         'line-width': ['interpolate', ['linear'], ['zoom'], 3, 3, 6, 8], 'line-offset': ['interpolate', ['linear'], ['zoom'], 3, -1.5, 6, -4] } },  // inside the land
     { id: 'chart-tufts', type: 'symbol', source: 'chart-tufts', 'source-layer': 'tufts', minzoom: cfg.ridgeMinZoom,
-      layout: { 'icon-image': ['concat', 'chart-tuft-', ['to-string', ['get', 'g']]], 'icon-allow-overlap': true, 'icon-size': fittedSize(cfg.ridgeScale * 0.57, 1.75, 0.7) },
+      layout: { 'icon-image': ['concat', 'chart-tuft-', ['to-string', ['get', 'g']]], 'icon-allow-overlap': true, 'icon-size': fittedSize(cfg.ridgeScale * 0.57, 1.75) },
       paint: { 'icon-opacity': fadeIn(cfg.ridgeMinZoom, cfg.tuftOpacity) } },
   ]
   const over = [
     // From a heavily simplified copy of the coastline (chart-coast-simple): a fixed offset along every
     // inlet of the Aegean zigzagged into scribble. Absent on the world view.
-    { id: 'chart-coast-dash', type: 'line', source: 'chart-coast-simple', minzoom: 2.5, layout: { 'line-join': 'round' },
-      paint: { 'line-color': cfg.inkColor, 'line-opacity': fadeIn(2.5, cfg.dashOpacity), 'line-width': 1.4, 'line-dasharray': [3, 2.2],
-        'line-offset': ['interpolate', ['linear'], ['zoom'], 2.5, cfg.dashOffset * 0.5, 5, cfg.dashOffset] } },
+    { id: 'chart-coast-dash', type: 'line', source: 'chart-coast-simple', minzoom: 3.5, layout: { 'line-join': 'round' },
+      paint: { 'line-color': cfg.inkColor, 'line-opacity': fadeIn(3.5, cfg.dashOpacity), 'line-width': 1.3, 'line-dasharray': [3, 2.2],
+        'line-offset': ['interpolate', ['linear'], ['zoom'], 3.5, cfg.dashOffset * 0.6, 5, cfg.dashOffset] } },
     { id: 'coast-bold', type: 'line', source: 'coastline', layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: { 'line-color': cfg.inkColor, 'line-width': coastWidth(cfg.coastWidth) } },
     // Ridges never overlap: collision keeps them apart, so a range reads as peaks, not a dark mass.
     { id: 'chart-ridges', type: 'symbol', source: 'chart-peaks', 'source-layer': 'peaks', minzoom: cfg.ridgeMinZoom,
       layout: { 'icon-image': ['concat', 'chart-ridge-', ['to-string', ['get', 'g']]], 'icon-anchor': 'bottom', 'icon-padding': 0, 'icon-size': fittedSize(cfg.ridgeScale, 1.3) },
       paint: { 'icon-opacity': fadeIn(cfg.ridgeMinZoom, cfg.ridgeWash) } },
-    { id: 'chart-waves', type: 'symbol', source: 'chart-waves', 'source-layer': 'waves',
+    // 4 in 9 marks, as in the approved lab: the full grid read as a busy sea.
+    { id: 'chart-waves', type: 'symbol', source: 'chart-waves', 'source-layer': 'waves', filter: ['<', ['%', ['round', ['*', ['get', 'sz'], 100]], 9], 4],
       layout: { 'icon-image': ['concat', 'chart-wave-', ['to-string', ['get', 'g']]], 'icon-allow-overlap': true, 'icon-size': waveSize(cfg.waveScale) },
       paint: { 'icon-opacity': cfg.waveOpacity } },
   ]

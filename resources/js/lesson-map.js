@@ -47,8 +47,8 @@ const GROUND = {
   focus: { color: '#1d1712', halo: 'rgba(246,241,228,0.9)', haloWidth: 1.4 },
   fog: '#f6f1e4',
   water: CHART.seaColor,
-  line: '#5b4a36',
-  river: '#5f97a8',
+  line: '#a08868',   // borders: a light pencil line under the coast ink, not a second ink
+  river: '#8cc3cc',   // a pale watercolour line, not an ink one
   text: '#1d1712',
   halo: '#f6f1e4',
 }
@@ -182,7 +182,7 @@ export function renderLessonMap (el, opts = {}) {
           id: 'rivers', type: 'line', source: 'rivers', 'source-layer': 'rivers',
           paint: {
             'line-color': GROUND.river,
-            'line-opacity': 0.7,
+            'line-opacity': 0.55,
             // Thicker for major rivers (low scalerank).
             'line-width': ['interpolate', ['linear'], ['to-number', ['coalesce', ['get', 'scalerank'], 6]], 1, 1.4, 6, 0.4],
           },

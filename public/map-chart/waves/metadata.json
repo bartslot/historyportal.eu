@@ -11,6 +11,6 @@
 "tippecanoe_decisions": "{\"basezoom\":5,\"droprate\":1,\"retain_points_multiplier\":1}",
 "format": "pbf",
 "generator": "tippecanoe v2.79.0",
-"generator_options": "tippecanoe -q -f -e public/map-chart/waves -l waves -r1 --no-feature-limit --no-tile-size-limit --no-tile-compression -Z0 -z5 -j '{\"*\": [\"any\", [\">=\", \"$zoom\", 4], [\"==\", \"r\", 0]]}' /var/folders/0c/p197pgf109d8t2tg1ynybfmh0000gn/T/tmpjiyb7dyt/waves.geojson",
+"generator_options": "tippecanoe -q -f -e public/map-chart/waves -l waves -r1 --no-feature-limit --no-tile-size-limit --no-tile-compression -Z0 -z5 -j '{\"*\": [\"any\", [\">=\", \"$zoom\", 4], [\"==\", \"r\", 0]]}' /var/folders/0c/p197pgf109d8t2tg1ynybfmh0000gn/T/tmpcpi5uma_/waves.geojson",
 "json": "{\"vector_layers\":[{\"id\":\"waves\",\"description\":\"\",\"minzoom\":0,\"maxzoom\":5,\"fields\":{\"g\":\"Number\",\"r\":\"Number\",\"sz\":\"Number\"}}],\"tilestats\":{\"layerCount\":1,\"layers\":[{\"layer\":\"waves\",\"count\":15527,\"geometry\":\"Point\",\"attributeCount\":3,\"attributes\":[{\"attribute\":\"g\",\"count\":4,\"type\":\"number\",\"values\":[0,1,2,3],\"min\":0,\"max\":3},{\"attribute\":\"r\",\"count\":4,\"type\":\"number\",\"values\":[0,1,2,3],\"min\":0,\"max\":3},{\"attribute\":\"sz\",\"count\":41,\"type\":\"number\",\"values\":[0.8,0.81,0.82,0.83,0.84,0.85,0.86,0.87,0.88,0.89,0.9,0.91,0.92,0.93,0.94,0.95,0.96,0.97,0.98,0.99,1,1.01,1.02,1.03,1.04,1.05,1.06,1.07,1.08,1.09,1.1,1.11,1.12,1.13,1.14,1.15,1.16,1.17,1.18,1.19,1.2],\"min\":0.8,\"max\":1.2}]}]}}"
 }
