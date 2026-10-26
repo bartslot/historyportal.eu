@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { CHART, ISLET_KM2, chartLayers, chartSources, chartImages, chartTunerControls } from '../map-chart.js';
 
@@ -28,14 +28,13 @@ describe('map-chart: the watercolour sea chart', () => {
         // own coastline lines run either way, which put the dash inland on most of the world.
         expect(CHART.dashOffset).toBeGreaterThan(0);
         const { under, over } = chartLayers();
-        expect(JSON.stringify(chartSources('')['chart-coast-simple'])).toContain('/map-chart/coast.geojson');
         expect(JSON.stringify(under.find((l) => l.id === 'chart-land-edge').paint['line-offset'])).toMatch(/,-\d/);
-        expect(over.find((l) => l.id === 'chart-coast-dash').source).toBe('chart-coast-simple');
+        expect(over.find((l) => l.id === 'chart-coast-dash').source).toBe('coastline');   // one download, shared with the ink
     });
 
     it('has no photographed ground, relief or globe source', () => {
         const sources = chartSources('');
-        expect(Object.keys(sources).sort()).toEqual(['chart-coast-simple', 'chart-glaze', 'chart-lakes', 'chart-land', 'chart-peaks', 'chart-tufts', 'chart-waves']);
+        expect(Object.keys(sources).sort()).toEqual(['chart-glaze', 'chart-lakes', 'chart-land', 'chart-peaks', 'chart-tufts', 'chart-waves']);
         expect(JSON.stringify(sources)).not.toMatch(/gibs|eox|terrarium|raster-dem/);
     });
 
@@ -66,5 +65,11 @@ describe('map-chart: the watercolour sea chart', () => {
         expect(ISLET_KM2.at(-1)[1]).toBe(0);                    // close in, every island is drawn
         for (let i = 1; i < ISLET_KM2.length; i++) expect(ISLET_KM2[i][1]).toBeLessThan(ISLET_KM2[i - 1][1]);
         expect(over.find((l) => l.id === 'chart-coast-dash').filter).toEqual(['!', ['has', 'lake']]);
+    });
+
+    it('leaves out the same islands as the baked glaze, so no shallows halo floats on empty sea', () => {
+        const py = readFileSync(resolve(__dirname, '../../../scripts/build-chart-data.py'), 'utf8');
+        const baked = JSON.parse(py.match(/^ISLET_KM2 = (\[.*\])$/m)[1].replace(/\(/g, '[').replace(/\)/g, ']'));
+        expect(baked).toEqual(ISLET_KM2);
     });
 });

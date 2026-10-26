@@ -61,7 +61,7 @@ MIN_RIDGE_KM, RIDGE_SPACING_KM = 55, 105
 TUFT_SPACING_KM, TUFT_CLEAR_KM = 120, 40
 # Islets smaller than this push no shallows out around them: their glaze halo floated on open sea
 # where the land tiles draw nothing at that zoom (Samoa, Lakshadweep).
-MIN_GLAZE_ISLAND_PX = 150
+
 RIDGE_GLYPHS, TUFT_GLYPHS, WAVE_GLYPHS = 12, 16, 4
 WAVE_STEP_DEG, WAVE_CLEAR_KM = 1.5, 45
 SEED = 1642
@@ -79,16 +79,30 @@ def km_per_px(y: float) -> float:
     return EARTH_KM / N * math.cos(math.radians(lat))
 
 
-def land_mask(land_path: Path) -> np.ndarray:
+def land_mask(land_path: Path, lakes_path: Path) -> np.ndarray:
+    """Land is land minus its lakes: ridges and tufts measure their distance to any water, so none
+    is ever placed on the Great Lakes (tester 10-26: symbols drawn on Lake Superior)."""
     img = Image.new('L', (N, N), 0)
     draw = ImageDraw.Draw(img)
-    for feat in json.loads(land_path.read_text())['features']:
-        geom = feat['geometry']
-        polys = geom['coordinates'] if geom['type'] == 'MultiPolygon' else [geom['coordinates']]
-        for poly in polys:
-            for i, ring in enumerate(poly):
-                draw.polygon([merc_px(x, y) for x, y in ring], fill=0 if i else 255)
+    for poly in polygons(land_path):
+        for i, ring in enumerate(poly):
+            draw.polygon([merc_px(x, y) for x, y in ring], fill=0 if i else 255)
+    for poly in water_lakes(lakes_path):
+        draw.polygon([merc_px(x, y) for x, y in poly[0]], fill=0)
     return np.asarray(img) > 127
+
+
+def water_lakes(lakes_path: Path):
+    """Lakes that hold water. The salt pans of the Australian outback (Eyre, Torrens, Gairdner) are
+    dry, so they are not painted. Only there: Natural Earth also files the IJsselmeer as 'Alkaline Lake'."""
+    for feat in json.loads(lakes_path.read_text())['features']:
+        geom = feat['geometry']
+        if feat['properties'].get('featurecla') == 'Alkaline Lake':
+            ring = (geom['coordinates'][0] if geom['type'] == 'Polygon' else geom['coordinates'][0][0])
+            lng, lat = sum(x for x, _ in ring) / len(ring), sum(y for _, y in ring) / len(ring)
+            if 112 < lng < 155 and -40 < lat < -10:
+                continue
+        yield from (geom['coordinates'] if geom['type'] == 'MultiPolygon' else [geom['coordinates']])
 
 
 def ring_area(ring: list) -> float:
@@ -123,6 +137,16 @@ def simplify(line: list, tol: float) -> list:
             keep[a + 1 + i] = True
             stack += [(a, a + 1 + i), (a + 1 + i, b)]
     return pts[keep].tolist()
+
+
+# Area (km2) an island needs before it is drawn at a zoom. MUST equal ISLET_KM2 in
+# resources/js/map-chart.js (asserted by map-chart.test.js): the glaze tiles leave out the shallows of
+# exactly the islands the map leaves out, or a pale halo floats on the sea with nothing in it.
+ISLET_KM2 = [(0, 20000), (2.5, 3000), (3.5, 800), (4.5, 100), (5.5, 40), (6.5, 0)]
+
+
+def islet_km2(zoom: float) -> float:
+    return [km2 for z, km2 in ISLET_KM2 if z <= zoom][-1]
 
 
 # Islands an illustrator would draw even when small: the landfalls of the lessons' voyages.
@@ -225,15 +249,18 @@ def chart_shapes(land_path: Path, lakes_path: Path) -> tuple[dict, dict, dict]:
         outer = drawn_ring(poly[0])
         if ring_area(outer) < 0:
             outer = outer[::-1]
-        props = ring_props(outer)
+        props = ring_props(poly[0])            # area of the real outline, not the smoothed one
         holes = [drawn_ring(h) for h in poly[1:]]
         land.append({'type': 'Feature', 'properties': props, 'geometry': {'type': 'Polygon', 'coordinates': [round_ring(outer)] + [round_ring(h) for h in holes if len(h) > 2]}})
         add_lines(outer, props)
-    for poly in polygons(lakes_path):
+        for hole in holes:                     # the Caspian is a hole in Eurasia: it gets its shore too
+            if len(hole) > 2:
+                add_lines(hole[::-1] if ring_area(hole) > 0 else hole, {**props, 'lake': 1})
+    for poly in water_lakes(lakes_path):
         ring = drawn_ring(poly[0])
         if ring_area(ring) > 0:
             ring = ring[::-1]                     # clockwise: the shore runs with land on the left
-        props = ring_props(ring)
+        props = ring_props(poly[0])
         lakes.append({'type': 'Feature', 'properties': props, 'geometry': {'type': 'Polygon', 'coordinates': [round_ring(ring)]}})
         add_lines(ring, {**props, 'lake': 1})
     coast = [{'type': 'Feature', 'properties': pr, 'geometry': {'type': 'LineString', 'coordinates': [[round(x, 3), round(y, 3)] for x, y in ln]}}
@@ -242,11 +269,16 @@ def chart_shapes(land_path: Path, lakes_path: Path) -> tuple[dict, dict, dict]:
     return fc(land), fc(lakes), fc(coast)
 
 
-def without_islets(land: np.ndarray) -> np.ndarray:
+def without_islets(land: np.ndarray, scale: np.ndarray, min_km2: float) -> np.ndarray:
+    """Land with the islands the map does not draw at this zoom removed (story islands stay)."""
     labels, n = ndimage.label(land)
-    sizes = ndimage.sum(land, labels, range(1, n + 1))
+    km2 = ndimage.sum(np.broadcast_to(scale ** 2, land.shape), labels, range(1, n + 1))
     keep = np.zeros(n + 1, bool)
-    keep[1:] = sizes >= MIN_GLAZE_ISLAND_PX
+    keep[1:] = km2 >= min_km2
+    for lng, lat in KEEP_ISLANDS:
+        x, y = merc_px(lng, lat)
+        keep[labels[min(N - 1, int(y)), int(x) % N]] = True
+    keep[0] = False
     return keep[labels]
 
 
@@ -283,23 +315,29 @@ def shelf_scaled_km(land: np.ndarray, scale: np.ndarray) -> np.ndarray:
     return np.repeat(np.repeat(km, 2, axis=0), 2, axis=1)
 
 
-def glaze_tiles(to_land_km: np.ndarray, out: Path) -> int:
+def glaze_alpha(to_land_km: np.ndarray, size: int) -> Image.Image:
     bands = sum((to_land_km > d).astype(np.uint8) for d in GLAZE_BANDS_KM)
     clear = np.where(bands > 0, (1 - GLAZE_FIRST) * (1 - GLAZE_REST) ** np.maximum(bands - 1, 0), 1.0)
-    alpha = (1 - clear) * 255
-    full = 256 * 2 ** GLAZE_MAX_Z
-    a = Image.fromarray(alpha.astype(np.uint8), 'L').resize((full, full), Image.BOX)
+    return Image.fromarray(((1 - clear) * 255).astype(np.uint8), 'L').resize((size, size), Image.BOX)
+
+
+def glaze_tiles(land: np.ndarray, scale: np.ndarray, out: Path) -> int:
+    """One glaze per tile zoom, each with the islands that zoom draws (see ISLET_KM2)."""
     # glazed with the painted sea, not a flat colour: the texture repeats every 512 px at z4, so
     # the granulation sits at the same scale as the base sea pattern on screen
     tex = Image.open(GLAZE_TEXTURE).convert('RGB').resize((512, 512), Image.LANCZOS)
-    paint = Image.new('RGB', a.size)
+    full = 256 * 2 ** GLAZE_MAX_Z
+    paint = Image.new('RGB', (full, full))
     for x in range(0, full, 512):
         for y in range(0, full, 512):
             paint.paste(tex, (x, y))
-    rgba = Image.merge('RGBA', [*paint.split(), a])
     count = 0
     for z in range(GLAZE_MAX_Z + 1):
-        level = rgba if z == GLAZE_MAX_Z else rgba.resize((256 * 2 ** z,) * 2, Image.BOX)
+        # a tile of zoom z is on screen from z to z+1; use the strictest rule in that range (at z), so
+        # no shallows are painted round an island the map is not drawing yet
+        size = 256 * 2 ** z
+        a = glaze_alpha(shelf_scaled_km(without_islets(land, scale, islet_km2(z)), scale), size)
+        level = Image.merge('RGBA', [*paint.resize((size, size), Image.BOX).split(), a])
         for x in range(2 ** z):
             for y in range(2 ** z):
                 path = out / str(z) / str(x) / f'{y}.webp'
@@ -392,12 +430,12 @@ def vector_tiles(src: Path, dest: Path) -> None:
 
 
 def build(land_path: Path, peaks_path: Path, out: Path, tiles: bool = True) -> dict[str, str]:
-    land = land_mask(land_path)
+    lakes_path = land_path.with_name('ne_50m_lakes.geojson')
+    land = land_mask(land_path, lakes_path)
     to_land, to_sea = distance_fields(land)
     scale = row_scale()
     to_land_km, to_sea_km = to_land * scale, to_sea * scale
     ridges, tufts = ridges_and_tufts(peaks_path, to_sea_km)
-    glaze_km = shelf_scaled_km(without_islets(land), scale)
     files = {
         'peaks.geojson': {'type': 'FeatureCollection', 'features': ridges},
         'tufts.geojson': {'type': 'FeatureCollection', 'features': tufts},
@@ -415,8 +453,8 @@ def build(land_path: Path, peaks_path: Path, out: Path, tiles: bool = True) -> d
                 src.write_text(text)
                 vector_tiles(src, out / name.removesuffix('.geojson'))
     if tiles:
-        print('glaze tiles:', glaze_tiles(glaze_km, out / 'glaze'))
-        for name, data in zip(('land', 'lakes', 'coast'), chart_shapes(land_path, land_path.with_name('ne_50m_lakes.geojson'))):
+        print('glaze tiles:', glaze_tiles(land, scale, out / 'glaze'))
+        for name, data in zip(('land', 'lakes', 'coast'), chart_shapes(land_path, lakes_path)):
             text = json.dumps(data, separators=(',', ':'))
             (out / f'{name}.geojson').write_text(text)
             print(f'{name}.geojson: {len(data["features"])} features, {len(text) / 1e6:.1f} MB')

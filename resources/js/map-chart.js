@@ -56,14 +56,11 @@ export const CHART = Object.freeze({
 // let the box overhang ~1.7x, so the cap is fit / 200 km at z4, and every km figure halves per zoom.
 const CAP_KM_Z4 = 200
 const kmAt = (km, z) => km * 2 ** (4 - z)
-const COAST_SIMPLIFY_PX = 3
 
 /** Sources the chart needs on top of the lesson map's own land tiles and coastline. */
 export function chartSources (origin = '') {
   const tiles = (name) => ({ type: 'vector', tiles: [`${origin}${CHART_BASE}/${name}/{z}/{x}/{y}.pbf`], minzoom: name === 'waves' ? 0 : 3, maxzoom: 5 })
   return {
-    // The same coastline the ink line uses, simplified per zoom (tolerance in screen px) for the dash.
-    'chart-coast-simple': { type: 'geojson', data: `${origin}${CHART_BASE}/coast.geojson`, tolerance: COAST_SIMPLIFY_PX },
     // Land, lakes and coast come from ONE set of drawn rings (scripts/build-chart-data.py), so the fill
     // and the ink always agree, and an islet leaves the map whole (fill and outline) as you zoom out.
     'chart-land': { type: 'geojson', data: `${origin}${CHART_BASE}/land.geojson`, tolerance: 1 },
@@ -98,7 +95,8 @@ const coastWidth = (w) => ['interpolate', ['linear'], ['zoom'], 2, w * 0.35, 3.5
  * bugs"). A ring shows from the zoom where it is big enough to read; the voyages' landfalls (k=1) always.
  * Returned as a paint value (opacity), since a zoom expression may not sit inside a filter.
  */
-export const ISLET_KM2 = [[0, 20000], [2.5, 5000], [3.5, 1500], [4.5, 500], [5.5, 120], [6.5, 0]]
+// MUST equal ISLET_KM2 in scripts/build-chart-data.py (the glaze tiles bake the same rule).
+export const ISLET_KM2 = [[0, 20000], [2.5, 3000], [3.5, 800], [4.5, 100], [5.5, 40], [6.5, 0]]
 const shownAtZoom = (on = 1) => ['step', ['zoom'],
   ...ISLET_KM2.flatMap(([z, km2], i) => [...(i ? [z] : []), ['case', ['any', ['==', ['get', 'k'], 1], ['>=', ['get', 'a'], km2]], on, 0]])]
 
@@ -113,11 +111,11 @@ export function chartLayers (cfg = CHART) {
   const under = [
     { id: 'bg', type: 'background', paint: { 'background-color': cfg.seaColor, 'background-pattern': 'chart-sea' } },
     { id: 'chart-glaze', type: 'raster', source: 'chart-glaze', paint: { 'raster-opacity': cfg.glazeOpacity, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } },
-    { id: 'land', type: 'fill', source: 'chart-land', paint: { 'fill-pattern': 'chart-land', 'fill-opacity': shownAtZoom(), 'fill-antialias': false } },
+    { id: 'land', type: 'fill', source: 'chart-land', paint: { 'fill-pattern': 'chart-land', 'fill-opacity': shownAtZoom() } },
     // Inland water (the IJsselmeer, Lake Geneva, the Great Lakes) painted as the sea: Natural Earth's
     // land has them filled in, and the chart had drawn the Netherlands without its IJsselmeer.
-    { id: 'chart-lakes', type: 'fill', source: 'chart-lakes', paint: { 'fill-pattern': 'chart-sea', 'fill-opacity': shownAtZoom(), 'fill-antialias': false } },
-    { id: 'chart-land-edge', type: 'line', source: 'chart-coast-simple', layout: { 'line-join': 'round' },
+    { id: 'chart-lakes', type: 'fill', source: 'chart-lakes', paint: { 'fill-pattern': 'chart-sea', 'fill-opacity': shownAtZoom() } },
+    { id: 'chart-land-edge', type: 'line', source: 'coastline', layout: { 'line-join': 'round' },
       paint: { 'line-color': cfg.landEdgeColor, 'line-opacity': shownAtZoom(cfg.landEdgeOpacity),
         'line-width': ['interpolate', ['linear'], ['zoom'], 3, 3, 6, 8], 'line-offset': ['interpolate', ['linear'], ['zoom'], 3, -1.5, 6, -4] } },  // inside the land
     { id: 'chart-tufts', type: 'symbol', source: 'chart-tufts', 'source-layer': 'tufts', minzoom: cfg.ridgeMinZoom,
@@ -125,10 +123,9 @@ export function chartLayers (cfg = CHART) {
       paint: { 'icon-opacity': fadeIn(cfg.ridgeMinZoom, cfg.tuftOpacity) } },
   ]
   const over = [
-    // From a heavily simplified copy of the coastline (chart-coast-simple): a fixed offset along every
-    // inlet of the Aegean zigzagged into scribble. Absent on the world view.
+    // Offset from the same smoothed coast as the ink (one download), so it follows it without scribble.
     // The offshore dash belongs to the sea coast; a lake shore keeps only its ink line.
-    { id: 'chart-coast-dash', type: 'line', source: 'chart-coast-simple', minzoom: 3.5, filter: ['!', ['has', 'lake']], layout: { 'line-join': 'round' },
+    { id: 'chart-coast-dash', type: 'line', source: 'coastline', minzoom: 3.5, filter: ['!', ['has', 'lake']], layout: { 'line-join': 'round' },
       paint: { 'line-color': cfg.inkColor, 'line-opacity': shownAtZoom(cfg.dashOpacity), 'line-width': 1.3, 'line-dasharray': [3, 2.2],
         'line-offset': ['interpolate', ['linear'], ['zoom'], 3.5, cfg.dashOffset * 0.6, 5, cfg.dashOffset] } },
     { id: 'coast-bold', type: 'line', source: 'coastline', layout: { 'line-cap': 'round', 'line-join': 'round' },
