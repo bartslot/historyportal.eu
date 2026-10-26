@@ -15,14 +15,15 @@
       "node_modules/three/build/three.module.js"
     ]
   },
-  "_PowerMeter-B5ov1aQb.js": {
-    "file": "assets/PowerMeter-B5ov1aQb.js",
+  "_PowerMeter-BolwQuLc.js": {
+    "file": "assets/PowerMeter-BolwQuLc.js",
     "name": "PowerMeter",
     "isDynamicEntry": true,
     "imports": [
-      "_i18n-CkfuVFCj.js",
+      "_preload-helper-DIdkKO6w.js",
+      "_i18n-DoByrmTl.js",
       "_dom-1akfPxNw.js",
-      "_TeamGame-BNHz4wGP.js",
+      "_TeamGame-DIPdowQj.js",
       "_ambient-CnaWjG1w.js",
       "resources/js/scene/card-place.js",
       "_easing-HS2C6-zA.js"
@@ -35,12 +36,12 @@
     "file": "assets/ScrollTrigger-B2uKOqL4.js",
     "name": "ScrollTrigger"
   },
-  "_TeamGame-BNHz4wGP.js": {
-    "file": "assets/TeamGame-BNHz4wGP.js",
+  "_TeamGame-DIPdowQj.js": {
+    "file": "assets/TeamGame-DIPdowQj.js",
     "name": "TeamGame",
     "isDynamicEntry": true,
     "imports": [
-      "_i18n-CkfuVFCj.js",
+      "_i18n-DoByrmTl.js",
       "_dom-1akfPxNw.js",
       "_ambient-CnaWjG1w.js",
       "_team-colours-JOtUsqOj.js"
@@ -62,8 +63,8 @@
       "_easing-HS2C6-zA.js"
     ]
   },
-  "_border-sweep-BHZq13G8.js": {
-    "file": "assets/border-sweep-BHZq13G8.js",
+  "_border-sweep-DD0CkwUG.js": {
+    "file": "assets/border-sweep-DD0CkwUG.js",
     "name": "border-sweep",
     "imports": [
       "_easing-HS2C6-zA.js"
@@ -88,41 +89,31 @@
     "file": "assets/easing-HS2C6-zA.js",
     "name": "easing"
   },
-  "_i18n-CkfuVFCj.js": {
-    "file": "assets/i18n-CkfuVFCj.js",
+  "_i18n-DoByrmTl.js": {
+    "file": "assets/i18n-DoByrmTl.js",
     "name": "i18n"
   },
-  "_map-globe-layers-f74zaqxw.js": {
-    "file": "assets/map-globe-layers-f74zaqxw.js",
-    "name": "map-globe-layers",
-    "isDynamicEntry": true,
+  "_map-imagery-Bp93pHDe.js": {
+    "file": "assets/map-imagery-Bp93pHDe.js",
+    "name": "map-imagery",
     "imports": [
-      "_map-imagery-VNXNcyFM.js",
-      "_maplibre-compat-BhO3OEJx.js",
-      "_tuner-CTMYYJl-.js"
+      "_i18n-DoByrmTl.js"
+    ],
+    "css": [
+      "assets/map-imagery-CEya5O3P.css"
     ]
   },
   "_map-imagery-CEya5O3P.css": {
     "file": "assets/map-imagery-CEya5O3P.css",
     "src": "_map-imagery-CEya5O3P.css"
   },
-  "_map-imagery-VNXNcyFM.js": {
-    "file": "assets/map-imagery-VNXNcyFM.js",
-    "name": "map-imagery",
-    "imports": [
-      "_i18n-CkfuVFCj.js"
-    ],
-    "css": [
-      "assets/map-imagery-CEya5O3P.css"
-    ]
-  },
-  "_maplibre-compat-BhO3OEJx.js": {
-    "file": "assets/maplibre-compat-BhO3OEJx.js",
-    "name": "maplibre-compat"
-  },
   "_pausable-clock-B6VRcHlA.js": {
     "file": "assets/pausable-clock-B6VRcHlA.js",
     "name": "pausable-clock"
+  },
+  "_preload-helper-DIdkKO6w.js": {
+    "file": "assets/preload-helper-DIdkKO6w.js",
+    "name": "preload-helper"
   },
   "_properties-Be9DmDzI.js": {
     "file": "assets/properties-Be9DmDzI.js",
@@ -153,7 +144,7 @@
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-NjylOrs7.css",
+    "file": "assets/app-BWVh-yt4.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -162,15 +153,16 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-CNSpVS-6.js",
+    "file": "assets/app-qVJWD2XX.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
     "imports": [
-      "_i18n-CkfuVFCj.js",
+      "_preload-helper-DIdkKO6w.js",
       "_ScrollTrigger-B2uKOqL4.js",
       "_easing-HS2C6-zA.js",
       "__commonjsHelpers-CqkleIqs.js",
+      "_i18n-DoByrmTl.js",
       "_properties-Be9DmDzI.js",
       "_BalloonLayer-Bjnwbp4q.js",
       "_clip-W780-tgz.js",
@@ -213,29 +205,24 @@
     "isEntry": true
   },
   "resources/js/lesson-map.js": {
-    "file": "assets/lesson-map-DJw3I1kx.js",
+    "file": "assets/lesson-map-jVQYZa7_.js",
     "name": "lesson-map",
     "src": "resources/js/lesson-map.js",
     "isEntry": true,
     "isDynamicEntry": true,
     "imports": [
-      "_i18n-CkfuVFCj.js",
-      "_map-imagery-VNXNcyFM.js",
-      "_easing-HS2C6-zA.js"
-    ],
-    "dynamicImports": [
-      "_map-globe-layers-f74zaqxw.js",
-      "resources/js/timemap/quality/index.js",
-      "resources/js/timemap/quality/availability.js"
+      "_map-imagery-Bp93pHDe.js",
+      "_easing-HS2C6-zA.js",
+      "_i18n-DoByrmTl.js"
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-0nBa8Cxm.js",
+    "file": "assets/lesson-player-CkxgKRWG.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
     "imports": [
-      "_i18n-CkfuVFCj.js",
+      "_preload-helper-DIdkKO6w.js",
       "__commonjsHelpers-CqkleIqs.js",
       "_dom-1akfPxNw.js",
       "_pausable-clock-B6VRcHlA.js",
@@ -243,6 +230,7 @@
       "resources/js/gallery-scene.js",
       "_big-countdown-C2dIhksY.js",
       "_stage-handoff-BcqTMCox.js",
+      "_i18n-DoByrmTl.js",
       "_ambient-CnaWjG1w.js",
       "_easing-HS2C6-zA.js"
     ],
@@ -258,8 +246,8 @@
       "_BalloonLayer-Bjnwbp4q.js",
       "resources/js/scene/ArtworkOverlay.js",
       "resources/js/scene/QuizOverlay.js",
-      "_TeamGame-BNHz4wGP.js",
-      "_PowerMeter-B5ov1aQb.js",
+      "_TeamGame-DIPdowQj.js",
+      "_PowerMeter-BolwQuLc.js",
       "resources/js/scene/card-place.js",
       "resources/js/scene/wind-world.js",
       "resources/js/scene/race-lobby.js",
@@ -268,17 +256,18 @@
     ]
   },
   "resources/js/race-device.js": {
-    "file": "assets/race-device-Cd7zVSWU.js",
+    "file": "assets/race-device-C3Fge-Pp.js",
     "name": "race-device",
     "src": "resources/js/race-device.js",
     "isEntry": true,
     "imports": [
-      "_i18n-CkfuVFCj.js",
+      "_i18n-DoByrmTl.js",
       "_dom-1akfPxNw.js",
-      "_PowerMeter-B5ov1aQb.js",
+      "_PowerMeter-BolwQuLc.js",
       "resources/js/scene/race-sync.js",
       "resources/js/scene/race-stage.js",
-      "_TeamGame-BNHz4wGP.js",
+      "_preload-helper-DIdkKO6w.js",
+      "_TeamGame-DIPdowQj.js",
       "_ambient-CnaWjG1w.js",
       "_team-colours-JOtUsqOj.js",
       "resources/js/scene/card-place.js",
@@ -286,13 +275,13 @@
     ]
   },
   "resources/js/scene/ArtworkOverlay.js": {
-    "file": "assets/ArtworkOverlay-E751kAT8.js",
+    "file": "assets/ArtworkOverlay-Czxd0EGU.js",
     "name": "ArtworkOverlay",
     "src": "resources/js/scene/ArtworkOverlay.js",
     "isDynamicEntry": true,
     "imports": [
       "_properties-Be9DmDzI.js",
-      "_i18n-CkfuVFCj.js",
+      "_i18n-DoByrmTl.js",
       "_big-countdown-C2dIhksY.js",
       "_ambient-CnaWjG1w.js",
       "_easing-HS2C6-zA.js"
@@ -313,25 +302,25 @@
     ]
   },
   "resources/js/scene/QuizOverlay.js": {
-    "file": "assets/QuizOverlay-DsSnMAOJ.js",
+    "file": "assets/QuizOverlay-BuCCaFG_.js",
     "name": "QuizOverlay",
     "src": "resources/js/scene/QuizOverlay.js",
     "isDynamicEntry": true,
     "imports": [
       "_big-countdown-C2dIhksY.js",
-      "_i18n-CkfuVFCj.js",
+      "_i18n-DoByrmTl.js",
       "_ambient-CnaWjG1w.js",
       "_easing-HS2C6-zA.js"
     ]
   },
   "resources/js/scene/SplitStage.js": {
-    "file": "assets/SplitStage-Dbpscmnu.js",
+    "file": "assets/SplitStage-C2ApAKQP.js",
     "name": "SplitStage",
     "src": "resources/js/scene/SplitStage.js",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/scene/ParallaxScene.js",
-      "_i18n-CkfuVFCj.js",
+      "_i18n-DoByrmTl.js",
       "resources/js/scene/ArtworkOverlay.js",
       "_BalloonLayer-Bjnwbp4q.js",
       "_big-countdown-C2dIhksY.js",
@@ -343,22 +332,22 @@
     ]
   },
   "resources/js/scene/StoryGameEngine.js": {
-    "file": "assets/StoryGameEngine-C7sQD35t.js",
+    "file": "assets/StoryGameEngine-C858rkh2.js",
     "name": "StoryGameEngine",
     "src": "resources/js/scene/StoryGameEngine.js",
     "isDynamicEntry": true,
     "imports": [
       "_dom-1akfPxNw.js",
-      "_i18n-CkfuVFCj.js"
+      "_i18n-DoByrmTl.js"
     ]
   },
   "resources/js/scene/TextOverlayLayer.js": {
-    "file": "assets/TextOverlayLayer-5R20eO2E.js",
+    "file": "assets/TextOverlayLayer-4w9kl1cG.js",
     "name": "TextOverlayLayer",
     "src": "resources/js/scene/TextOverlayLayer.js",
     "isDynamicEntry": true,
     "imports": [
-      "_i18n-CkfuVFCj.js"
+      "_i18n-DoByrmTl.js"
     ]
   },
   "resources/js/scene/card-place.js": {
@@ -377,16 +366,17 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-CJaH7JPy.js",
+    "file": "assets/index-BAbU3Fyu.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
     "imports": [
       "_big-countdown-C2dIhksY.js",
       "resources/js/scene/QuizOverlay.js",
-      "_i18n-CkfuVFCj.js",
+      "_i18n-DoByrmTl.js",
       "resources/js/scene/TextOverlayLayer.js",
       "resources/js/scene/ArtworkOverlay.js",
+      "_preload-helper-DIdkKO6w.js",
       "resources/js/avatar-3d.js",
       "_camera-CXpRCYWW.js",
       "_BalloonLayer-Bjnwbp4q.js",
@@ -404,15 +394,16 @@
     ]
   },
   "resources/js/scene/meter-inputs/mic.js": {
-    "file": "assets/mic-C92RMAPG.js",
+    "file": "assets/mic-CTwvkaA_.js",
     "name": "mic",
     "src": "resources/js/scene/meter-inputs/mic.js",
     "isDynamicEntry": true,
     "imports": [
-      "_PowerMeter-B5ov1aQb.js",
-      "_i18n-CkfuVFCj.js",
+      "_PowerMeter-BolwQuLc.js",
+      "_preload-helper-DIdkKO6w.js",
+      "_i18n-DoByrmTl.js",
       "_dom-1akfPxNw.js",
-      "_TeamGame-BNHz4wGP.js",
+      "_TeamGame-DIPdowQj.js",
       "_ambient-CnaWjG1w.js",
       "_team-colours-JOtUsqOj.js",
       "resources/js/scene/card-place.js",
@@ -426,12 +417,12 @@
     "isDynamicEntry": true
   },
   "resources/js/scene/race-lobby.js": {
-    "file": "assets/race-lobby-BL-N22e7.js",
+    "file": "assets/race-lobby-Cr59NTlF.js",
     "name": "race-lobby",
     "src": "resources/js/scene/race-lobby.js",
     "isDynamicEntry": true,
     "imports": [
-      "_i18n-CkfuVFCj.js",
+      "_i18n-DoByrmTl.js",
       "_dom-1akfPxNw.js",
       "resources/js/scene/card-place.js",
       "resources/js/scene/race-sync.js"
@@ -463,13 +454,14 @@
     ]
   },
   "resources/js/test-session/recorder.js": {
-    "file": "assets/recorder-inJA4Oi3.js",
+    "file": "assets/recorder-BJOCUPyF.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,
     "imports": [
-      "_i18n-CkfuVFCj.js",
+      "_i18n-DoByrmTl.js",
       "resources/js/app.js",
+      "_preload-helper-DIdkKO6w.js",
       "_ScrollTrigger-B2uKOqL4.js",
       "_easing-HS2C6-zA.js",
       "__commonjsHelpers-CqkleIqs.js",
@@ -480,74 +472,36 @@
     ]
   },
   "resources/js/timemap/index.js": {
-    "file": "assets/index-DKc6gcu-.js",
+    "file": "assets/index-FxqJD6x9.js",
     "name": "index",
     "src": "resources/js/timemap/index.js",
     "isEntry": true,
     "imports": [
-      "_i18n-CkfuVFCj.js",
-      "_map-imagery-VNXNcyFM.js",
+      "_preload-helper-DIdkKO6w.js",
+      "_map-imagery-Bp93pHDe.js",
       "_easing-HS2C6-zA.js",
-      "_border-sweep-BHZq13G8.js",
-      "_map-globe-layers-f74zaqxw.js",
-      "_maplibre-compat-BhO3OEJx.js",
-      "_tuner-CTMYYJl-.js"
+      "_border-sweep-DD0CkwUG.js",
+      "_tuner-CTMYYJl-.js",
+      "_i18n-DoByrmTl.js"
     ],
     "dynamicImports": [
       "resources/js/timemap/voyage-ships.js"
     ]
   },
-  "resources/js/timemap/quality/availability.js": {
-    "file": "assets/availability-CRYs5nTZ.js",
-    "name": "availability",
-    "src": "resources/js/timemap/quality/availability.js",
-    "isDynamicEntry": true
-  },
-  "resources/js/timemap/quality/index.js": {
-    "file": "assets/index-BghAoljK.js",
-    "name": "index",
-    "src": "resources/js/timemap/quality/index.js",
-    "isDynamicEntry": true,
-    "imports": [
-      "_i18n-CkfuVFCj.js"
-    ],
-    "dynamicImports": [
-      "resources/js/timemap/quality/video-fallback.js"
-    ]
-  },
-  "resources/js/timemap/quality/video-fallback.js": {
-    "file": "assets/video-fallback-0yYv0jTX.js",
-    "name": "video-fallback",
-    "src": "resources/js/timemap/quality/video-fallback.js",
-    "isDynamicEntry": true,
-    "imports": [
-      "_i18n-CkfuVFCj.js"
-    ],
-    "dynamicImports": [
-      "resources/js/timemap/quality/video-unpack.js"
-    ]
-  },
-  "resources/js/timemap/quality/video-unpack.js": {
-    "file": "assets/video-unpack-DxgEhvaQ.js",
-    "name": "video-unpack",
-    "src": "resources/js/timemap/quality/video-unpack.js",
-    "isDynamicEntry": true
-  },
   "resources/js/timemap/voyage-ships.js": {
-    "file": "assets/voyage-ships-GFzvCOtc.js",
+    "file": "assets/voyage-ships-CRI28GFl.js",
     "name": "voyage-ships",
     "src": "resources/js/timemap/voyage-ships.js",
     "isDynamicEntry": true,
     "imports": [
       "node_modules/three/build/three.module.js",
       "_GLTFLoader-Et3HGvr1.js",
-      "_border-sweep-BHZq13G8.js",
-      "_maplibre-compat-BhO3OEJx.js",
+      "_border-sweep-DD0CkwUG.js",
       "_easing-HS2C6-zA.js"
     ]
   },
   "resources/js/voyage-tour.js": {
-    "file": "assets/voyage-tour-BwlPghYA.js",
+    "file": "assets/voyage-tour-DkaP5sDh.js",
     "name": "voyage-tour",
     "src": "resources/js/voyage-tour.js",
     "isEntry": true,
@@ -556,15 +510,14 @@
       "resources/js/lesson-map.js",
       "resources/js/gallery-scene.js",
       "_easing-HS2C6-zA.js",
-      "_border-sweep-BHZq13G8.js",
+      "_border-sweep-DD0CkwUG.js",
       "resources/js/timemap/voyage-ships.js",
       "__commonjsHelpers-CqkleIqs.js",
-      "_map-imagery-VNXNcyFM.js",
+      "_map-imagery-Bp93pHDe.js",
       "_pausable-clock-B6VRcHlA.js",
-      "_i18n-CkfuVFCj.js",
+      "_i18n-DoByrmTl.js",
       "node_modules/three/build/three.module.js",
-      "_GLTFLoader-Et3HGvr1.js",
-      "_maplibre-compat-BhO3OEJx.js"
+      "_GLTFLoader-Et3HGvr1.js"
     ]
   }
 }
