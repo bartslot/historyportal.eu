@@ -16,11 +16,14 @@ export type CardProps = {
   sfx?: (id: string) => void
 }
 
-// sizes follow the frame width (cqw of #wrap): about 30 / 20 / 17 px at 1280, 46 / 30 / 26 at 1920
-const T_TITLE = 'text-[clamp(20px,2.35cqw,48px)]'
-const T_TITLE_LONG = 'text-[clamp(18px,1.95cqw,40px)]'
-const T_BODY = 'text-[clamp(15px,1.6cqw,32px)]'
-const T_SMALL = 'text-[clamp(13px,1.35cqw,26px)]'
+// sizes follow the frame width (cqw of #wrap), from a readable floor up, with no ceiling that would
+// shrink them on a 4K board: about 30 / 20 / 17 px at 1280, 45 / 31 / 26 at 1920, 90 / 61 / 52 at 3840
+const T_TITLE = 'text-[clamp(20px,2.35cqw,160px)]'
+const T_TITLE_LONG = 'text-[clamp(18px,1.95cqw,140px)]'
+const T_BODY = 'text-[clamp(15px,1.6cqw,110px)]'
+const T_SMALL = 'text-[clamp(13px,1.35cqw,90px)]'
+/** More than `max` items go into two columns before the card would ever scroll (PM). */
+const listCols = (n: number, max = 4) => (n > max ? 'grid-cols-2' : 'grid-cols-1')
 const BTN = `btn h-auto min-h-[2.4em] py-[0.35em] ${T_BODY}`
 
 const EXTRA_S = 30
@@ -43,6 +46,7 @@ function Clock({ seconds }: { seconds: number }) {
 function Answer({ q, sfx, done }: { q: Quiz; sfx?: (id: string) => void; done: () => void }) {
   const [picked, setPicked] = useState<number | null>(null)
   const graded = q.correct !== null && q.correct !== undefined // correct: null = no right answer, nothing marked wrong
+  const kept = q.options.filter((_, i) => i === picked || (graded && isCorrect(q, i))).length // what stays after the tap
   const pick = (i: number) => {
     if (picked !== null) return
     setPicked(i)
@@ -51,11 +55,11 @@ function Answer({ q, sfx, done }: { q: Quiz; sfx?: (id: string) => void; done: (
   }
   return (
     <>
-      <div className="grid gap-2" data-testid="options">
+      {/* after the tap only the right answer and the class's pick stay, so the explanation is in view (checker L4) */}
+      <div className={`grid gap-2 ${picked === null ? listCols(q.options.length) : listCols(kept, 2)}`} data-testid="options">
         {q.options.map((o, i) => {
-          const tone = picked === null ? 'btn-outline'
-            : !graded ? (i === picked ? 'btn-primary' : 'btn-ghost opacity-50')
-              : isCorrect(q, i) ? 'btn-success' : i === picked ? 'btn-error btn-outline' : 'btn-ghost opacity-50'
+          if (picked !== null && i !== picked && !(graded && isCorrect(q, i))) return null
+          const tone = picked === null ? 'btn-outline' : !graded ? 'btn-primary' : isCorrect(q, i) ? 'btn-success' : 'btn-error btn-outline'
           return <button key={i} className={`${BTN} justify-start text-left font-normal ${tone}`} onClick={() => pick(i)}>{o}</button>
         })}
       </div>
@@ -69,10 +73,9 @@ function Sort({ q, shown }: { q: Quiz; shown: boolean }) {
   const list = shown ? sortedOptions(q) : q.options
   return (
     <>
-      <ol className={`grid gap-1.5 ${T_BODY}`} data-testid="options">
+      <ol className={`grid gap-1.5 ${listCols(list.length, 3)} ${T_BODY}`} data-testid="options">
         {list.map((o, i) => <li key={o} className="rounded-box bg-base-200 px-3 py-1.5">{shown ? `${i + 1}. ` : ''}{o}</li>)}
       </ol>
-      {shown && <p className={`${T_BODY} leading-snug`}><span className="font-semibold">{__('This is the right order')}.</span> {q.explain}</p>}
     </>
   )
 }
@@ -87,11 +90,12 @@ function Choose({ c, vote, done }: { c: Choice; vote: boolean; done: () => void 
   return (
     <>
       {vote && picked === null && <p className={`${T_BODY} opacity-80`}>{__('Vote with your hands')}. {__('Tap what the class chose')}.</p>}
-      <div className="grid gap-2" data-testid="options">
-        {c.options.map((o, i) => (
-          <button key={i} className={`${BTN} justify-start text-left font-normal ${picked === null ? 'btn-outline' : i === picked ? 'btn-primary' : 'btn-ghost opacity-50'}`}
+      {/* after the tap only the class's choice stays, with what came of it (checker L4) */}
+      <div className={`grid gap-2 ${picked === null ? listCols(c.options.length) : 'grid-cols-1'}`} data-testid="options">
+        {c.options.map((o, i) => (picked !== null && i !== picked ? null : (
+          <button key={i} className={`${BTN} justify-start text-left font-normal ${picked === null ? 'btn-outline' : 'btn-primary'}`}
             onClick={() => { if (picked === null) { setPicked(i); done() } }}>{o.text}</button>
-        ))}
+        )))}
       </div>
       {picked !== null && <p className={`${T_BODY} leading-snug`}>{c.options[picked].outcome}{c.history ? ` ${c.history}` : ''}</p>}
     </>
@@ -154,6 +158,8 @@ export function Card({ interaction: it, seconds, onDone, onPush, sfx }: CardProp
           <Clock seconds={seconds} />
           <h2 className={`${title.length > 110 ? T_TITLE_LONG : T_TITLE} font-semibold leading-tight`}>{title}</h2>
           {it.type === 'power-meter' && <p className={`${T_BODY} leading-snug`}>{it.prompt}</p>}
+          {/* the sort's explanation: under the question, so the right order keeps the right column */}
+          {kind === 'sort' && finished && <p className={`${T_BODY} leading-snug`}><span className="font-semibold">{__('This is the right order')}.</span> {(it as Quiz).explain}</p>}
         </div>
         <div className="flex min-h-0 flex-col gap-2">
           {/* only the content scrolls: the teacher's buttons stay in view */}

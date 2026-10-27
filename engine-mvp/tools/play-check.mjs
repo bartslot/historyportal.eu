@@ -70,7 +70,9 @@ const fit = () => page.evaluate(() => {
   }
   const opts = [...card.querySelectorAll('[data-testid=options] > *')]
   const buttons = [...card.querySelectorAll('footer button')]
-  return { options: opts.length, optionsVisible: opts.filter(inView).length, footer: buttons.map((b) => b.textContent), footerVisible: buttons.every(inView), titlePx: parseFloat(getComputedStyle(card.querySelector('h2')).fontSize) }
+  // anything inside the card that would need scrolling (the PM: everything fits without scroll)
+  const scrolls = [...card.querySelectorAll('*'), card].some((el) => /(auto|scroll)/.test(getComputedStyle(el).overflowY) && el.scrollHeight > el.clientHeight + 1)
+  return { options: opts.length, optionsVisible: opts.filter(inView).length, footer: buttons.map((b) => b.textContent), footerVisible: buttons.every(inView), scrolls, titlePx: parseFloat(getComputedStyle(card.querySelector('h2')).fontSize) }
 })
 for (const k of kinds) {
   await page.evaluate(async ({ i, hold }) => { const p = window.__play; p.player.pause(); await p.player.seek(i, Math.max(0, hold - 1)); p.player.play() }, k)
@@ -84,11 +86,12 @@ for (const k of kinds) {
   else await card.locator('button.btn-primary').first().click()
   await page.waitForTimeout(400)
   await page.locator('#wrap').screenshot({ path: `${out}/card-${k.kind}-after.png` })
+  const fitsAfter = await fit()
   await card.locator('footer button.btn-primary').click()
   await page.waitForSelector('[data-testid=card]', { state: 'detached', timeout: 5000 })
   await page.waitForTimeout(500)
   const after = await page.evaluate(() => ({ mode: window.__play.player.scene().mode, index: window.__play.player.scene().index, held: window.__play.sound.state().held }))
-  cardRuns.push({ ...k, held, after, fits })
+  cardRuns.push({ ...k, held, after, fits, fitsAfter })
 }
 // the kinds no vault lesson has yet (sort, vote, team): three of the lesson's own interaction scenes are
 // given those cards IN MEMORY (the vault is not touched), then played into again (a card plays once per entry)
@@ -98,22 +101,26 @@ const extra = await page.evaluate(() => {
     ['sort', { type: 'quiz', format: 'sort', question: 'Zet de bouw van een hunebed in de goede volgorde.', options: ['Stenen slepen', 'Draagstenen rechtop zetten', 'Deksteen erop', 'Zand eromheen'], correct: [0, 1, 2, 3], explain: 'Eerst de draagstenen, dan pas de deksteen.' }],
     ['vote', { type: 'choice', format: 'vote', prompt: 'Zou jij een hunebed willen bouwen?', options: [{ text: 'Ja, samen lukt het.', outcome: 'Met veel mensen en boomstammen kon het.' }, { text: 'Nee, te zwaar.', outcome: 'Het was ook zwaar werk, maanden lang.' }] }],
     ['team', { type: 'quiz', format: 'team', question: 'Teken in je groepje hoe de deksteen omhoog kwam.', options: [], correct: null, explain: 'Een oprit van zand en rollen van boomstammen.', class_action_s: 90 }],
+    ['answer-6', { type: 'quiz', format: 'mc', question: 'Welke spullen vind je terug in een hunebed?', options: ['Potten van klei', 'Bijlen van vuursteen', 'Kralen van barnsteen', 'Een zwaard van ijzer', 'Munten van zilver', 'Een glazen fles'], correct: [0, 1, 2], bloom: 1, explain: 'Potten, bijlen en kralen: ijzer, munten en glas kwamen pas veel later.' }],
   ]
-  return make.map(([kind, it], k) => { const i = ids[k]; p.lesson.scenes[i].interaction = it; const s = p.lesson.scenes[i]; return { i, id: s.id, kind, hold: s.dur_s - 0.15 } })
+  window.__extraCards = make
+  return make.map(([kind], k) => { const i = ids[k % ids.length], s = p.lesson.scenes[i]; return { i, k, id: s.id, kind, hold: s.dur_s - 0.15 } })
 })
 for (const k of extra) {
-  await page.evaluate(async ({ i, hold }) => { const p = window.__play; p.player.pause(); await p.player.seek(i, Math.max(0, hold - 1)); p.player.play() }, k)
+  // the card is set right before its run: one scene can carry several test cards in turn (a card plays once per entry)
+  await page.evaluate(async ({ i, k, hold }) => { const p = window.__play; p.player.pause(); p.lesson.scenes[i].interaction = window.__extraCards[k][1]; await p.player.seek(i, Math.max(0, hold - 1)); p.player.play() }, k)
   await page.waitForSelector('[data-testid=card]', { timeout: 10000 })
   await page.locator('#wrap').screenshot({ path: `${out}/card-${k.kind}.png` })
   const fits = await fit()
   const card = page.locator('[data-testid=card]')
-  if (k.kind === 'vote') await card.locator('[data-testid=options] button').first().click()
+  if (k.kind === 'vote' || k.kind === 'answer-6') await card.locator('[data-testid=options] button').first().click()
   else await card.locator('button.btn-primary').first().click()
   await page.waitForTimeout(400)
   await page.locator('#wrap').screenshot({ path: `${out}/card-${k.kind}-after.png` })
+  const fitsAfter = await fit()
   await card.locator('footer button.btn-primary').click()
   await page.waitForSelector('[data-testid=card]', { state: 'detached', timeout: 5000 })
-  cardRuns.push({ ...k, extra: true, fits })
+  cardRuns.push({ ...k, extra: true, fits, fitsAfter })
 }
 
 const cardLog = await page.evaluate(() => window.__play.cards.log.map((l) => `${l.scene}:${l.what}`))
