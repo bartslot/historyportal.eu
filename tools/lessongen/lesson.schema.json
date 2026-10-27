@@ -451,7 +451,8 @@
             "mc",
             "true-false",
             "sort",
-            "open"
+            "open",
+            "team"
           ]
         },
         "question": {
@@ -486,7 +487,28 @@
           "minimum": 20,
           "maximum": 180,
           "description": "ignored: timing.json interaction_s decides"
+        },
+        "class_action_s": {
+          "type": "number",
+          "minimum": 20,
+          "maximum": 300,
+          "description": "play time of a team/paper activity (format team)"
         }
+      },
+      "if": {
+        "properties": {
+          "format": {
+            "const": "team"
+          }
+        },
+        "required": [
+          "format"
+        ]
+      },
+      "then": {
+        "required": [
+          "class_action_s"
+        ]
       }
     },
     "power_meter": {
@@ -603,10 +625,32 @@
         "format": {
           "enum": [
             "class",
+            "vote",
             "team"
           ],
-          "description": "team = groups of 3-4 work it out (timing.json choice.team)"
+          "description": "vote = class votes with hands (60 s); team = groups of 3-4 (time = class_action_s)"
+        },
+        "class_action_s": {
+          "type": "number",
+          "minimum": 20,
+          "maximum": 300,
+          "description": "play time of a team/paper activity (format team)"
         }
+      },
+      "if": {
+        "properties": {
+          "format": {
+            "const": "team"
+          }
+        },
+        "required": [
+          "format"
+        ]
+      },
+      "then": {
+        "required": [
+          "class_action_s"
+        ]
       }
     }
   }

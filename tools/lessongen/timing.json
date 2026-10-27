@@ -13,9 +13,9 @@
     "quiz.open": 120,
     "power-meter": 60,
     "choice": 30,
-    "choice.team": 90
+    "choice.vote": 60
   },
   "class_action": "scene.class_action_s, the time written for that class action (hands up, say together), added after the shot",
-  "interaction_rule": "key = type, or type.format when that key exists (an open class discussion, a team activity)",
-  "teacher_card": "the first 'N minuten' in lesson.teacher must be within 1 minute of the model total"
+  "interaction_rule": "key = type.format when that key exists, else type. format 'team' (a team or paper activity) has no fixed time: it plays for the interaction's own class_action_s, which is required for it",
+  "teacher_card": "validate.py --resolve writes the model total into the first 'N minuten' of lesson.teacher; the validator errors when they differ by more than 1 minute"
 }

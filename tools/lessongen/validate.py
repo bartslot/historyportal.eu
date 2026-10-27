@@ -67,9 +67,20 @@ def shot_s(sc: dict) -> float:
 
 
 def interaction_s(it: dict) -> float:
-    """Fixed play time from timing.json, by type.format when that exists (open discussion, team activity)."""
+    """Play time from timing.json, by type.format when that key exists; a team activity plays its own class_action_s."""
+    if it.get("format") == "team":
+        return it["class_action_s"]
     times = TIMING["interaction_s"]
     return times.get(f"{it['type']}.{it.get('format')}", times[it["type"]])
+
+
+def total_s(lesson: dict) -> float:
+    """Lesson length per timing.json: every shot, its class action, its interaction."""
+    return sum(shot_s(sc) + sc.get("class_action_s", 0) + (interaction_s(sc["interaction"]) if sc["interaction"] else 0)
+               for sc in lesson["scenes"])
+
+
+CARD_MINUTES = re.compile(r"(\d+)(\s*minuten)")
 
 
 def all_texts(node: object, where: str = "") -> list[tuple[str, str]]:
@@ -169,6 +180,8 @@ def resolve(lesson: dict, library_root: Path) -> dict:
                 layer["asset"] = hit["id"] if hit else None
             if not hit:
                 needed.setdefault((bundle, layer["need"].strip().lower(), depth), []).append(sc["id"])
+    if lesson.get("teacher"):  # the card's duration is generated, never typed
+        lesson["teacher"] = CARD_MINUTES.sub(lambda m: f"{round(total_s(lesson) / 60)}{m.group(2)}", lesson["teacher"], count=1)
     lesson["needed_assets"] = [
         {"tags": tags, "layer": depth, "why": ", ".join(dict.fromkeys(ids)), **({"bundle": b} if b != lesson["bundle"] else {})}
         for (b, tags, depth), ids in needed.items()
@@ -207,7 +220,7 @@ def check(lesson: dict, corpus_dir: Path = DEFAULT_CORPUS, library_root: Path = 
     stats["total_s"] = round(t)
     stats["story_s"] = round(sum(shot_s(sc) for sc in scenes))
     stats["class_actions_s"] = sum(sc.get("class_action_s", 0) for sc in scenes)
-    card = re.search(r"(\d+)\s*minuten", lesson.get("teacher", ""))
+    card = CARD_MINUTES.search(lesson.get("teacher", ""))
     if card and abs(int(card.group(1)) - t / 60) > CARD_TOLERANCE_MIN:
         errors.append(f"teacher card says {card.group(1)} minuten, the timing model gives {t / 60:.1f}")
     stats["interactions"] = [f"{round(s)}s {sid} {kind}" for s, _, sid, kind in spans]

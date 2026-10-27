@@ -279,11 +279,25 @@ def test_region_names_are_not_singularised():
     assert v.match_asset("coast", "bg", lib) is None
 
 
-def test_open_quiz_and_team_choice_take_longer(lesson):
+def test_play_time_by_format():
     assert v.interaction_s({"type": "quiz", "format": "open"}) == 120
     assert v.interaction_s({"type": "quiz", "format": "mc"}) == 40
-    assert v.interaction_s({"type": "choice", "format": "team"}) == 90
+    assert v.interaction_s({"type": "choice", "format": "vote"}) == 60
     assert v.interaction_s({"type": "choice"}) == 30
+    assert v.interaction_s({"type": "choice", "format": "team", "class_action_s": 150}) == 150
+
+
+def test_team_format_requires_its_class_action_time(lesson):
+    lesson["scenes"][0]["interaction"]["format"] = "team"
+    assert any(e.startswith("schema:") for e in errors_of(lesson))
+    lesson["scenes"][0]["interaction"]["class_action_s"] = 120
+    assert errors_of(lesson) == []
+
+
+def test_resolve_writes_the_card_minutes(lesson):
+    lesson["teacher"] = "Duur: ongeveer 30 minuten. Kort: 2 minuten."
+    out = v.resolve(lesson, NO_LIBRARY)
+    assert out["teacher"] == "Duur: ongeveer 3 minuten. Kort: 2 minuten."
 
 
 def test_teacher_card_minutes_must_match_the_model(lesson):
