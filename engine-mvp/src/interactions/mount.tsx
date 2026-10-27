@@ -24,7 +24,10 @@ const easeOut = (u: number) => 1 - (1 - u) ** 3
 
 export function startInteractions(player: Player, sound: LessonSound | null, lesson: Lesson, host: HTMLElement): Interactions {
   let root: Root | null = null
-  const done = new Set<string>() // a meter scene also reaches its end: that second hold just moves on
+  // once per ENTRY into a scene (S1: each hold fires once per entry): a meter scene's end hold, after
+  // its holdAt card, just moves on; a teacher who seeks back into the scene gets the card again
+  const done = new Set<string>()
+  player.onScene((i) => { const id = lesson.scenes[i]?.id; if (id) done.delete(id) })
   const api: Interactions = { isOpen: () => root !== null, log: [] }
   const note = (scene: Scene, what: Interactions['log'][number]['what']) => api.log.push({ at: performance.now(), scene: scene.id, what })
 
