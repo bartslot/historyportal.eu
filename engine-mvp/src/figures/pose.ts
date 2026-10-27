@@ -130,10 +130,11 @@ export const POSES: Record<'stand' | 'point' | 'kneel' | 'carry', StaticPose> = 
   stand: { arms: { L: HANG, R: HANG } },
   // right arm out at the thing, a touch up; the left hangs
   point: { arms: { L: HANG, R: { upper: [1, 0.12, 0.35], lower: [1, 0.18, 0.12] } }, head: [1, -0.05, -0.12] },
-  // right knee down, left foot planted ahead, back straight
+  // right knee down, left foot planted ahead, back straight. Cartoon legs: shin (0.41) ~ thigh (0.38), so for the
+  // planted foot and the down knee to touch the same ground the front thigh runs level
   kneel: {
     arms: { L: { upper: [0.45, -1, 0.15], lower: [1, -0.3, -0.05] }, R: HANG },
-    legs: { L: { upper: [1, -0.15, 0.08], lower: [0.05, -1, 0] }, R: { upper: [0.25, -1, 0.06], lower: [-1, -0.08, 0] } },
+    legs: { L: { upper: [1, 0.05, 0.1], lower: [0.08, -1, 0] }, R: { upper: [0.08, -1, 0.06], lower: [-1, -0.05, 0] } },
     spine: [0.1, 1, 0],
   },
   // a load held in both arms against the belly (a basket, a sheaf, a pot)
