@@ -236,6 +236,16 @@
                 "--strictPort"
             ],
             "port": 5196
+        },
+        {
+            "//": "S1 2.5D stage dev page (engine-mvp). Own port: 5190 studio, 5191 face-lab, 5192 crew-studio.",
+            "name": "stage25d",
+            "runtimeExecutable": "bash",
+            "runtimeArgs": [
+                "-c",
+                "cd engine-mvp && npx vite --port 5197 --strictPort"
+            ],
+            "port": 5197
         }
     ]
 }

@@ -25,3 +25,38 @@ for it in the script toolbar; letters A, B, C... restart per scene. Each shot is
 camera, needed assets), derived from the script until the teacher directs it (double-click a frame or its slider
 icon: drag figures, drag the frame to turn the camera, wheel = lens), then kept in `lesson.shots`. Frames render in
 their own small Babylon engine (`clay.ts`), cached by their data. Tests: `npx vitest run src/storyboard`.
+
+## 2.5D stage (`src/stage25d/`)
+
+Painted History Lines layers on depth planes in front of a fixed house camera, played scene by scene. Reads the two
+contracts in the vault (`topics/autonomous-lessons/plan.md`): `library.json` and `lesson.json`.
+
+```ts
+import { playLesson } from './src/stage25d/stage'
+const player = await playLesson(lessonOrUrl, libraryUrl?, canvas?)   // library defaults to library/<bundle>/library.json
+player.play(); player.pause(); await player.seek(sceneIndex, t)
+player.doc.set(['scenes', 0, 'camera', 'dur_s'], 12)   // every value: one undo step (player.doc.undo() / redo())
+player.stage.groundPoint(x, 'mid')                       // where a figure stands (x 0..1 across the house view)
+```
+
+Dev page: `npm run dev`, then `/stage25d.html?lesson=<url>&library=<url>` (defaults: `lessons/_placeholder.json`,
+the `_placeholder` bundle). The panel edits every camera, timing and motion value of the scene on screen.
+
+- **Depths**: sky 380 m, bg 70 m, mid 22 m, fg 7 m from the house camera (eye 1.6 m, fov 50, tilted up 2 deg). A layer's
+  `x` 0..1 spans the house view at its depth; its plane is `height_m * scale` tall, origin at the asset's `anchor`.
+  Tileable sky/bg strips stretch past the view (1.6x) and repeat. Draw order = depth, then list order (`alphaIndex`).
+- **Render size**: sharp up to the device pixels, capped on the longest side (`stage.renderCap`, 1920 by default, Sharpness in the panel); a 2 s average under 50 fps drops a quarter of a CSS pixel per notch, never below 1x CSS (`renderScale`, `Stage.tick`).
+- **No halos**: textures are premultiplied on load (`layer.ts`) and blended premultiplied; planes write no depth
+  and stay out of the look's G-buffer (`metadata.noGBuffer`), so the ink pass draws lines only on 3D figures.
+- **Motion** (`asset.motion`, overridden by `layer.motion`: a kind or `{ kind, amount, speed }`): sway bends from
+  the base, drift slides slowly sideways, ripple wobbles the picture, flicker stretches and brightens. In the shader.
+- **Camera**: `{ move, from: {x,y,z,fov}, to: {...}, ease: inOut|in|out|linear, dur_s }`, metres and fov in DEGREES.
+  No camera = hold the house pose for `est_s`. **Layer keys**: `layer.keys: [{ t, x?, scale?, opacity? }]`, t in seconds.
+- **Look**: the studio's post chain (`engine/look-chain.js`, shared with `look.js`) with `STAGE_LOOK` (History Lines
+  pencil + paper grain); `lesson.look` overrides any number.
+- **Library**: `public/library/_placeholder/` is procedural (`python3 scripts/make_placeholder_library.py`), every asset
+  `placeholder: true`. Real bundles: `ln -s ~/BartsMedia/historyportal/library/<bundle> public/library/<bundle>`
+  (git-ignored).
+
+Tests: `npx vitest run src/stage25d`. Real-GPU check (muted, Metal ANGLE, 1080p frames, fps, edit + undo):
+`node scripts/stage25d-check.mjs http://localhost:5197/stage25d.html <outDir>/` (launch config `stage25d`, port 5197) (needs `npx playwright install chromium`).
