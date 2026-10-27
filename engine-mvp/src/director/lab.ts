@@ -2,6 +2,7 @@
 // watched (and the sound graph inspected) before S1's stage plays it. Not the teacher UI.
 //   ?lesson=<url>&library=<url>  a real lesson.json / library.json instead of the fixture
 import { EASING } from '@hp/easing.js'
+import { cameraAt, shotAt } from '../stage25d/layout'
 import { direct } from './direct'
 import { audit } from './audit'
 import { DEPTH_Z, visibleWidth } from './camera'
@@ -22,16 +23,15 @@ const total = starts.at(-1)! + (directed.scenes.at(-1)!.dur_s ?? 0)
 const canvas = document.getElementById('stage') as HTMLCanvasElement
 const g = canvas.getContext('2d')!
 const panel = document.getElementById('panel')!
+const hud = document.getElementById('hud')!
 const ease = (name: string) => (EASING as Record<string, (x: number) => number>)[name] ?? ((x: number) => x)
 const mix = (a: number, b: number, u: number) => a + (b - a) * u
 
+/** The camera exactly as S1's stage poses it (same shotAt, same cameraAt and eases); fov back to degrees. */
 function poseAt(scene: Scene, t: number): CamPose {
-  const shots = [scene.camera, ...(scene.camera_more ?? [])].filter(Boolean) as Camera[]
-  const c = [...shots].reverse().find((s) => (s.at_s ?? 0) <= t) ?? shots[0]
-  const u = ease(c.ease)(Math.min(1, Math.max(0, (t - (c.at_s ?? 0)) / c.dur_s)))
-  const tx = mix(c.from.target?.x ?? c.from.x, c.to.target?.x ?? c.to.x, u)
-  const ty = mix(c.from.target?.y ?? 1.2, c.to.target?.y ?? 1.2, u)
-  return { x: mix(c.from.x, c.to.x, u), y: mix(c.from.y, c.to.y, u), z: mix(c.from.z, c.to.z, u), fov: mix(c.from.fov, c.to.fov, u), target: { x: tx, y: ty, z: 0 } }
+  const shot = shotAt(scene as never, t)
+  const c = cameraAt(shot.cam as never, shot.t, scene.dur_s ?? 8)
+  return { ...c, fov: (c.fov * 180) / Math.PI }
 }
 
 const SHADE: Record<string, string> = { sky: '#cfd9df', bg: '#9fae9a', mid: '#7d8a63', fg: '#4f5a3a' }
@@ -48,8 +48,7 @@ const sample = (scene: Scene, target: string, prop: string, t: number, base: num
 function draw(scene: Scene, t: number) {
   const W = canvas.width, H = canvas.height
   const cam = poseAt(scene, t)
-  const pan = (cam.target!.x - cam.x) * 0.15 // a pan reads as a sideways sweep in 2D
-  const tilt = (cam.target!.y - 1.2) * 0.04
+  const pan = 0, tilt = 0 // the stage aims nowhere: pan and tilt are their positional part only
   g.fillStyle = SHADE.sky; g.fillRect(0, 0, W, H)
   const project = (xFrac: number, yM: number, z: number) => {
     const d = Math.max(0.5, z - cam.z)
@@ -84,9 +83,9 @@ function draw(scene: Scene, t: number) {
   const b = scene.balloons?.find((x) => t >= (x.at_s ?? 0) && t < (x.at_s ?? 0) + (x.dur_s ?? 0))
   if (b) { g.fillStyle = '#fff'; g.fillRect(W * 0.55, H * 0.08, W * 0.4, 48); g.fillStyle = '#1c1418'; g.font = '20px system-ui'; g.fillText(b.text, W * 0.57, H * 0.08 + 31) }
   const silent = scene.sound?.silence && t < scene.sound.silence.at_s + scene.sound.silence.dur_s
-  g.fillStyle = '#1c1418cc'; g.fillRect(0, H - 34, W, 34); g.fillStyle = '#fff'; g.font = '14px system-ui'
-  const c = [scene.camera, ...(scene.camera_more ?? [])].filter(Boolean).reverse().find((s) => (s!.at_s ?? 0) <= t)!
-  g.fillText(`${scene.id} ${scene.beat}  ${c.move}${c.native ? ' (native)' : ''} ${c.ease}  t=${t.toFixed(1)}/${scene.dur_s}s${silent ? '  SILENCE' : ''}  ${scene.narration.slice(0, 80)}`, 12, H - 12)
+  // the HUD is a DOM line under the canvas, so a capture of the canvas (the intro painting) never shows it
+  const c = shotAt(scene as never, t).cam as Camera
+  hud.textContent = `${scene.id} ${scene.beat}  ${c.move}${c.native ? ' (native)' : ''} ${c.ease}  t=${t.toFixed(1)}/${scene.dur_s}s${silent ? '  SILENCE' : ''}  ${scene.narration.slice(0, 80)}`
 }
 
 let sound: LessonSound | null = null

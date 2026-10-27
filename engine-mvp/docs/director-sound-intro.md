@@ -18,8 +18,14 @@ Lab: `director-lab.html` (launch config `studio-director`, port 5291). Silent en
 | `narration_at_s`, `dur_s` | when the narrator starts (after a silence), scene length |
 | `sound` | `{ambience[{id,gain}], lead_in_s (J), tail_s (L), silence, sfx[{id,at_s}], duck_db, by}` |
 
-Rules (all in `audit.ts`, held by `direct.test.ts`): hook move starts at 0 with `easeOutQuart` so it is
-mostly done by 3 s; at least 4 kinds of move (push, pull, truck, pan, tilt, rack) and never the same
+Rules (all in `audit.ts`, held by `direct.test.ts` and `rules.test.ts`, which measures from outside: the
+stage's own ease, the shot on screen at each cut, the schedule's real sound events, and S4's three real
+lessons when the vault is present): the hook move starts at 0 and, with the stage's sine `out` ease, is
+more than half done by 3 s (hook shots at most 8.5 s); moves rotate through each beat's pool of three and
+never repeat across a cut (counting a split scene's last shot); shot length per beat (climax at most 8 s,
+turn 10, hook 8.5, others 12); one silence per ~2.5 min (at least 2) on turns and climaxes, at least 60 s
+apart; minimums scale down for short lessons (`minimums(n)`); a teacher-locked peak moves the native
+move to the next candidate; a balloon a teacher adds is timed after the ones already there; at least 4 kinds of move (push, pull, truck, pan, tilt, rack) and never the same
 move across a cut; exactly one native move (`through`: the camera passes the foreground plane into the
 scene) on the first climax, else the first turn, else at 70 %; only `through` may pass the fg plane;
 at least 2 near-silences (before the turn and the peak, never on the hook); at least 2 cuts carry
@@ -32,14 +38,17 @@ camera x 0, y 1.6, z 0, looking +z; `fov` vertical deg. That stage moves positio
 carry a positional part (a slide, a crane down) and rack a small push; `target` (look-at) and `focus_z`
 ride along for a stage that can aim and focus.
 
+**Place-aware sound:** a `!region` tag in a need or the sky (inherited by scenes without one) that the
+bundle does not cover leaves the bundle's `local` beds out (Dutch heath birds, Dutch bells) and adds
+`scene.sound_note`; the extra bed is sticky within one place and changes only for a clearly better match.
+
 **Teacher owns everything:** the director keeps a fingerprint of each field it wrote in
 `scene.director` (camera, camera_more, sound, balloons, motion, timing, per-layer motion). A re-run
 rewrites a field only while it is empty or unchanged since; anything a teacher changed, by any editor
 or path, is kept. A re-run on an untouched lesson returns it unchanged (tested).
 
-**S1, two one-line asks:** scene length = `scene.dur_s ?? camera.dur_s ?? est_s` (the director's
-`dur_s` covers narration + balloons + silence), and play `camera_more` via `shotAt(scene, t)`. Until
-then a split scene plays its first shot only and ends early.
+**S1 integration:** done on `feat/studio-25d` (03f3f12f): scene length = `scene.dur_s` first, and
+`camera_more` plays through `shotAt`. `rules.test.ts` holds it with the stage's own functions.
 
 ## 2. Sound `src/sound/`
 
@@ -61,7 +70,7 @@ then a split scene plays its first shot only and ends early.
 cancels one still loading. L-cut: `tail_s` on a scene keeps the beds that leave at that cut ringing on. Works on an
   `OfflineAudioContext` too: the lab renders a lesson silently and measures it.
 
-Measured (offline render of the fixture, `tools/director-check.mjs` prints it): ambience about -26 dB between lines, about -35 dB under the
+Decoded peaks are all below 0 dBFS (max -1.2, `tools/soundbank/peaks.sh`). Measured (offline render of the fixture, `tools/director-check.mjs` prints it): ambience about -26 dB between lines, about -35 dB under the
 narrator (the duck), -42 / -46 dB in the two silences; all 20 files load.
 
 ## 3. Intro handoff `src/intro/` + branch `proto/museum-intro-handoff`
@@ -90,7 +99,9 @@ Prototype changes (branch `proto/museum-intro-handoff`, from `proto/museum-intro
 ## Not done / for the PM
 
 - Not wired into the studio: S1's stage should call `direct()` on load, `LessonSound.play` with its
-  clock, and `runIntro({capture, onLessonStart})`; plus the two asks above.
+  clock, and `runIntro({capture, onLessonStart})`.
+- eerste-boeren is set in Mesopotamia/Levant/Egypt but declares `bundle: nl-prehistory` (S4): the
+  director now leaves the Dutch-only beds out and notes it, but a Near-East bed set would be better.
 - Foley is matched by pose (walk, kneel, carry) only; per-action foley wants an action field in lesson.json.
 - On the museum frame the painting fills the screen at 13 s (rect slightly larger than the viewport), so
   the "grow" is short; a wider hold would show the frame opening. Tune `BEATS.swapStart` / the camera key.

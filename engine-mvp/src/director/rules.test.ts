@@ -132,3 +132,12 @@ for (const id of ['eerste-boeren', 'hunebedden', 'voc']) {
     })
   })
 }
+
+describe('with the stage (S1)', () => {
+  it('plays a split scene to its full length and every shot in turn', async () => {
+    const { sceneDuration, shotAt } = await import('../stage25d/layout')
+    const s = direct(LESSON, LIBRARY).scenes[3]
+    expect(sceneDuration(s as never)).toBeCloseTo(s.dur_s!, 2)
+    expect(shotAt(s as never, s.dur_s! - 0.5).cam).toBe(s.camera_more!.at(-1))
+  })
+})

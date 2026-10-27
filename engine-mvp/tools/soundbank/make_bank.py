@@ -223,7 +223,8 @@ def loop(x, d=LOOP_S, xf=XFADE_S):
 
 def write_m4a(x, path: Path, peak=0.7, rms_db=None):
     """Beds are levelled by loudness (rms_db), so bank.json's gains mean the same on every bed;
-    a soft tanh limiter keeps peaks under `peak`. AAC overshoots a little, so peak stays below 1."""
+    a soft tanh limiter keeps peaks under `peak`. AAC rings on hard transients (knocks), so the
+    targets sit well under full scale; tools/soundbank/peaks.sh checks the DECODED peak."""
     path.parent.mkdir(parents=True, exist_ok=True)
     if rms_db is not None:
         x = x * (10 ** (rms_db / 20) / (np.sqrt(np.mean(x ** 2)) + 1e-12))
@@ -244,11 +245,11 @@ def main():
     rows = []
     for b in bank['beds']:
         fn = globals()['bed_' + b['id'].replace('-', '_')]
-        write_m4a(loop(fn(LOOP_S + XFADE_S)), out / b['file'], peak=0.7, rms_db=-20)
+        write_m4a(loop(fn(LOOP_S + XFADE_S)), out / b['file'], peak=0.5, rms_db=-20)
         rows.append((b['file'], 'ambience bed, seamless 24 s loop'))
     for s in bank['sfx']:
         fn = globals()['sfx_' + s['id'].replace('-', '_')]
-        write_m4a(fn(), out / s['file'], peak=0.7)
+        write_m4a(fn(), out / s['file'], peak=0.6)
         rows.append((s['file'], 'one-shot'))
     lines = ['# Sound bank credits', '',
              'Every file below is synthesised by `engine-mvp/tools/soundbank/make_bank.py` (History Portal),',
