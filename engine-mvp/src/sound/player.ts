@@ -31,6 +31,8 @@ export class LessonSound {
   private loose = new Map<string, { src: AudioBufferSourceNode; g: GainNode }>()
   private muted = false
   private origin = 0 // ctx time of lesson time 0
+  private gen = 0 // bumped by every play()/stop(): a play still loading when a newer one starts gives up
+  private cancelled = new Set<string>() // bedOff() before bedOn() finished loading
 
   /** Any BaseAudioContext: an OfflineAudioContext renders a lesson silently (tests, the lab). */
   constructor(ctx: BaseAudioContext, private baseUrl = bank.base_url) {
@@ -68,10 +70,15 @@ export class LessonSound {
    *  preroll: scene 1's ambience starts now and lesson time 0 comes -from seconds later. */
   async play(lesson: Lesson, from = 0): Promise<void> {
     this.stop()
+    const g = this.gen
     await this.preload(lesson)
+    if (g !== this.gen) return
     const now = this.ctx.currentTime + 0.05
     this.origin = now - from
-    for (const ev of schedule(lesson, Math.max(0, -from))) await this.apply(ev, from)
+    for (const ev of schedule(lesson, Math.max(0, -from))) {
+      await this.apply(ev, from) // buffers are cached by now: this awaits no network
+      if (g !== this.gen) return
+    }
     this.note({ kind: 'play', from, scenes: sceneStarts(lesson).length })
   }
 
@@ -144,8 +151,9 @@ export class LessonSound {
 
   /** A bed outside the lesson clock (the museum intro's room): fades in, loops until bedOff(). */
   async bedOn(id: string, fade = 1): Promise<void> {
+    this.cancelled.delete(id)
     const buf = await this.load(id)
-    if (!buf || this.loose.has(id)) return
+    if (!buf || this.loose.has(id) || this.cancelled.delete(id)) return
     const src = this.ctx.createBufferSource(); src.buffer = buf; src.loop = true
     const g = this.ctx.createGain(); g.gain.value = 0
     g.gain.setTargetAtTime(ENTRIES.get(id)?.gain ?? 1, this.ctx.currentTime, fade / 3)
@@ -156,7 +164,7 @@ export class LessonSound {
 
   bedOff(id: string, fade = 1.5): void {
     const b = this.loose.get(id)
-    if (!b) return
+    if (!b) { this.cancelled.add(id); return } // still loading: bedOn() will not start it
     b.g.gain.setTargetAtTime(0, this.ctx.currentTime, fade / 3)
     b.src.stop(this.ctx.currentTime + fade * 2)
     this.loose.delete(id)
@@ -169,6 +177,7 @@ export class LessonSound {
   }
 
   stop(): void {
+    this.gen++
     for (const s of this.live) { try { s.stop() } catch { /* already stopped */ } }
     this.live = []
     for (const g of this.bedGains.values()) { g.gain.cancelScheduledValues(0); g.gain.value = 0 }

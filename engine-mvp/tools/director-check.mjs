@@ -44,5 +44,15 @@ await page.waitForFunction(() => !document.querySelector('#intro-host iframe'), 
 await page.waitForTimeout(1500)
 await shot('5-scene1')
 const state = await page.evaluate(() => ({ sound: window.__lab.sound.state(), log: window.__lab.sound.log.map((l) => l.ev.kind + (l.ev.id ? ':' + l.ev.id : '') + (l.ev.t !== undefined ? '@' + l.ev.t : '')).slice(0, 12), stage: document.getElementById('stage').style.cssText }))
-console.log(JSON.stringify({ audit, handoff, introStoppedAt: await introT(), state, logs: logs.slice(0, 10) }, null, 1))
+// the whole lesson rendered offline (no output device): levels per scene, in dBFS
+const levels = await page.evaluate(async () => {
+  const L = window.__lab, SR = 22050, st = L.starts, sc = L.lesson.scenes
+  const dur = st.at(-1) + sc.at(-1).dur_s
+  const off = new OfflineAudioContext(1, Math.ceil(SR * dur), SR)
+  await new L.LessonSound(off).play(L.lesson, 0)
+  const d = (await off.startRendering()).getChannelData(0)
+  const db = (a, b) => { let x = 0; const i0 = Math.floor(a * SR), i1 = Math.floor(b * SR); for (let i = i0; i < i1; i++) x += d[i] * d[i]; return +(20 * Math.log10(Math.sqrt(x / (i1 - i0)) + 1e-9)).toFixed(1) }
+  return sc.map((x, i) => ({ id: x.id, underNarrator: db(st[i] + (x.narration_at_s || 0) + 1.5, st[i] + (x.narration_at_s || 0) + 3), afterNarrator: db(st[i] + x.dur_s - 0.55, st[i] + x.dur_s - 0.1), silence: x.sound.silence ? db(st[i] + 0.5, st[i] + 1.1) : null }))
+})
+console.log(JSON.stringify({ audit, levels, handoff, introStoppedAt: await introT(), state, logs: logs.slice(0, 10) }, null, 1))
 await browser.close()

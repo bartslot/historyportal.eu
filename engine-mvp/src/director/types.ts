@@ -1,8 +1,8 @@
 // lesson.json as the director reads and writes it (contract 2 in the vault's
 // topics/autonomous-lessons/plan.md). The writer (S4) fills story, set and figures; the director fills
 // `camera`, `camera_more`, `motion`, `balloons[].at_s/dur_s`, `narration_at_s` and `sound`.
-// Everything the director writes carries `by: 'director'`: a teacher's edit drops that mark, and a
-// re-run never overwrites a field without it.
+// The director remembers a fingerprint of every field it wrote (`scene.director`); a re-run replaces a
+// field only while it still matches, so anything a teacher changed (by any editor) stays.
 
 export type Beat = 'hook' | 'setup' | 'cause' | 'effect' | 'turn' | 'climax' | 'recap'
 export type Depth = 'sky' | 'bg' | 'mid' | 'fg'
@@ -12,8 +12,10 @@ export type Depth = 'sky' | 'bg' | 'mid' | 'fg'
 export type CamPose = { x: number; y: number; z: number; fov: number; target?: { x: number; y: number; z: number }; focus_z?: number }
 export type MoveKind = 'push' | 'pull' | 'truck' | 'pan' | 'tilt' | 'rack' | 'through'
 export type Camera = {
-  move: MoveKind; from: CamPose; to: CamPose; ease: string; dur_s: number
-  at_s?: number; native?: boolean; why?: string; by?: 'director'
+  move: MoveKind; from: CamPose; to: CamPose
+  /** The stage's ease (in | out | inOut); `curve` the finer easing.js name by intent. */
+  ease: string; curve?: string; dur_s: number
+  at_s?: number; native?: boolean; why?: string
 }
 
 export type Key = { time: number; value: number; easing?: string }
@@ -31,10 +33,9 @@ export type SoundPlan = {
   sfx: { id: string; at_s: number; gain?: number }[]
   /** Ambience gain under the narrator, in dB (negative). */
   duck_db: number
-  by?: 'director'
 }
 
-export type LayerRef = { need?: string; asset?: string | null; depth: Depth; x?: number; scale?: number }
+export type LayerRef = { need?: string; asset?: string | null; depth: Depth; x?: number; scale?: number; motion?: unknown; keys?: unknown[] }
 export type Figure = { char: string; pose?: string; x?: number; depth?: Depth; facing?: 'left' | 'right'; expression?: string }
 export type Balloon = { char: string; text: string; at_s?: number; dur_s?: number }
 export type Interaction = { type: 'quiz' | 'power-meter' | 'choice'; [k: string]: unknown } | null

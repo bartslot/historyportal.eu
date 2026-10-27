@@ -1,13 +1,15 @@
 // Camera grammar (story-director "Composition", lemo-opuscar DIRECTOR.md camera rules, MIT).
 //
-// Stage frame, in metres: the camera's rest pose sits at x 0, eye height y 1.6 (house camera hp1),
-// z 0, looking down +z. Layers stand at DEPTH_Z. A layer's scene x (0..1 across the frame) maps to
-// world x at its own depth via worldX(). fov is vertical, in degrees. A stage that only reads
-// {x,y,z,fov} still gets push/pull/truck right; pan/tilt need `target`, rack needs `focus_z`.
+// Stage frame = S1's stage (src/stage25d/layout.ts), in metres: the house camera at x 0, eye height
+// 1.6, z 0, looking down +z with a fixed pitch; layers at its DEPTH_Z; a layer's x (0..1) spans the
+// house view at its depth. fov vertical, degrees. That stage moves the camera's POSITION only, so every
+// move here has a positional part: pan and tilt shift and crane a little toward the subject, rack
+// pushes a touch. `target` (look-at) and `focus_z` ride along for a stage that can aim and focus.
+import { DEPTH_Z } from '../stage25d/layout'
 import type { Beat, CamPose, Camera, MoveKind, Scene } from './types'
 import { round } from './timing'
 
-export const DEPTH_Z = { fg: 4, mid: 12, bg: 40, sky: 200 } as const
+export { DEPTH_Z }
 export const EYE_Y = 1.6
 export const BASE_FOV = 50
 /** Metres a plain move keeps in front of the foreground layer. */
@@ -29,8 +31,9 @@ const BY_BEAT: Record<Beat, MoveKind[]> = {
 }
 export const PLAIN_MOVES: MoveKind[] = ['push', 'pull', 'truck', 'pan', 'tilt', 'rack']
 
-/** Ease by intent, never linear (memory ui-standards-visual, easing.js names). */
-const EASE: Record<MoveKind, string> = {
+/** Ease by intent, never linear. `curve` = the easing.js name; `ease` = the stage's four
+ *  (in | out | inOut | linear), the nearest by intent, so S1's player eases it today. */
+const CURVE: Record<MoveKind, string> = {
   push: 'easeInOutCubic', // reposition: slow in, slow out
   pull: 'easeInOutQuart', // a reveal starts slow so the class feels it open
   truck: 'easeInOutCubic',
@@ -40,7 +43,8 @@ const EASE: Record<MoveKind, string> = {
   through: 'easeInOutQuint', // the native move: a held breath, then through the frame
 }
 /** The hook arrives hard and settles: most of the move is done inside the first 3 s. */
-const HOOK_EASE = 'easeOutQuart'
+const HOOK_CURVE = 'easeOutQuart'
+export const stageEase = (curve: string): 'in' | 'out' | 'inOut' => (/^easeInOut/.test(curve) ? 'inOut' : /^easeOut/.test(curve) ? 'out' : /^easeIn/.test(curve) ? 'in' : 'inOut')
 
 const WHY: Record<MoveKind, string> = {
   push: 'closer to what matters now',
@@ -85,11 +89,13 @@ export function frame(move: MoveKind, f: Focus, k = 1): { from: CamPose; to: Cam
       return { from: pose(x0 - d, EYE_Y, 0, BASE_FOV, { ...look, x: f.x - d }), to: pose(x0 + d, EYE_Y, 0, BASE_FOV, { ...look, x: f.x + d * 0.5 }) }
     }
     case 'pan': {
+      // the look sweeps onto the subject; on a position-only stage the camera slides a third of that
       const off = visibleWidth(f.z) * 0.25 * k * -f.dir
-      return { from: pose(x0, EYE_Y, 0, BASE_FOV, { ...look, x: f.x + off }), to: pose(x0, EYE_Y, 0, BASE_FOV, look) }
+      return { from: pose(x0 + off * 0.3, EYE_Y, 0, BASE_FOV, { ...look, x: f.x + off }), to: pose(x0, EYE_Y, 0, BASE_FOV, look) }
     }
-    case 'tilt': return { from: pose(x0, EYE_Y, 0, BASE_FOV, { ...look, y: 6 * k }), to: pose(x0, EYE_Y, 0, BASE_FOV, look) }
-    case 'rack': return { from: pose(x0, EYE_Y, 0, BASE_FOV - 2, look, DEPTH_Z.fg), to: pose(x0, EYE_Y, push * 0.3, BASE_FOV - 4, look, f.z) }
+    // from the sky down to where we are: a crane down plus the look coming down
+    case 'tilt': return { from: pose(x0, EYE_Y + 2.4 * k, 0, BASE_FOV + 2, { ...look, y: 6 * k }), to: pose(x0, EYE_Y, 0, BASE_FOV, look) }
+    case 'rack': return { from: pose(x0, EYE_Y, 0, BASE_FOV - 2, look, DEPTH_Z.fg), to: pose(x0, EYE_Y, push * 0.4, BASE_FOV - 5, look, f.z) }
     case 'through': return { from: pose(x0, EYE_Y, -2, BASE_FOV + 4, look, DEPTH_Z.fg), to: pose(f.x * 0.8, EYE_Y - 0.1, DEPTH_Z.fg + 1.5, BASE_FOV - 8, look, f.z) }
   }
 }
@@ -101,9 +107,9 @@ export function makeCamera(scene: Scene, move: MoveKind, at: number, dur: number
   const { from, to } = frame(move, focusOf(scene), STRENGTH[scene.beat] ?? 1)
   return {
     move, from, to, at_s: round(at), dur_s: round(dur),
-    ease: opts.hook ? HOOK_EASE : EASE[move],
+    ease: stageEase(opts.hook ? HOOK_CURVE : CURVE[move]), curve: opts.hook ? HOOK_CURVE : CURVE[move],
     ...(move === 'through' ? { native: true } : {}),
-    why: WHY[move], by: 'director',
+    why: WHY[move],
   }
 }
 
@@ -121,4 +127,12 @@ export function peakIndex(beats: Beat[]): number {
   const turn = beats.indexOf('turn')
   if (turn >= 0) return turn
   return Math.min(beats.length - 1, Math.floor(beats.length * 0.7))
+}
+
+/** The shot playing `t` s into a scene, with its own clock: for a stage that plays `camera_more`
+ *  (S1: `const { cam, t: local } = shotAt(scene, t)`, then pose `cam` at `local`; length = scene.dur_s). */
+export function shotAt(scene: Scene, t: number): { cam: Camera | null; t: number } {
+  const shots = [scene.camera, ...(scene.camera_more ?? [])].filter(Boolean) as Camera[]
+  const cam = [...shots].reverse().find((c) => (c.at_s ?? 0) <= t) ?? shots[0] ?? null
+  return { cam, t: cam ? t - (cam.at_s ?? 0) : t }
 }

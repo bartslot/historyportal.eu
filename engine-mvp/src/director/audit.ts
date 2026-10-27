@@ -7,6 +7,8 @@ import { BALLOON_GAP_S, SHOT_MAX_S, readTime } from './timing'
 import type { Camera, Lesson } from './types'
 
 export const HOOK_S = 3
+/** The stage's ease names (src/stage25d/layout.ts) as their nearest easing.js curve. */
+const STAGE_EASE: Record<string, string> = { in: 'easeInQuad', out: 'easeOutQuad', inOut: 'easeInOutQuad', linear: 'linear' }
 const EPS = 0.02
 
 const camerasOf = (l: Lesson): Camera[] => l.scenes.flatMap((s) => [s.camera, ...(s.camera_more ?? [])].filter(Boolean) as Camera[])
@@ -14,7 +16,8 @@ const camerasOf = (l: Lesson): Camera[] => l.scenes.flatMap((s) => [s.camera, ..
 /** How far (0..1) an eased move has travelled at time t. */
 export function progressAt(c: Camera, t: number): number {
   const u = Math.min(1, Math.max(0, (t - (c.at_s ?? 0)) / c.dur_s))
-  const fn = (EASING as Record<string, (x: number) => number>)[c.ease]
+  const E = EASING as Record<string, (x: number) => number>
+  const fn = E[c.curve ?? ''] ?? E[STAGE_EASE[c.ease] ?? ''] ?? E[c.ease]
   return fn ? fn(u) : u
 }
 

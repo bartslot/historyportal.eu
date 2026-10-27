@@ -46,6 +46,18 @@ describe('sound schedule', () => {
     expect(whoosh.t).toBeCloseTo(starts[5] + lesson.scenes[5].narration_at_s!, 2)
   })
 
+  it('L-cut: beds that leave ring on past the cut by tail_s', () => {
+    const scenes = lesson.scenes.map((x, i) => (i === 4 ? { ...x, sound: { ...x.sound!, lead_in_s: 0, tail_s: 1 } } : x))
+    const fireOut = schedule({ ...lesson, scenes }).filter((e) => e.kind === 'bed-gain' && e.id === 'camp-fire').at(-1)!
+    expect(fireOut.t).toBeGreaterThan(starts[4] - 0.75) // fade starts after the cut minus half a crossfade + tail
+  })
+
+  it('ends a bed at its last scene even without dur_s', () => {
+    const scenes = lesson.scenes.map(({ dur_s, ...x }) => x)
+    const wind = schedule({ ...lesson, scenes }).find((e) => e.kind === 'bed-start' && e.id === 'heath-wind')!
+    expect(wind.kind === 'bed-start' && wind.stop).toBeGreaterThan(40)
+  })
+
   it('is sorted on the clock', () => {
     ev.slice(1).forEach((e, i) => expect(e.t).toBeGreaterThanOrEqual(ev[i].t))
   })

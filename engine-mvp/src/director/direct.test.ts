@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { direct } from './direct'
 import { audit, progressAt, HOOK_S } from './audit'
 import { readTime } from './timing'
+import { DEPTH_Z } from './camera'
 import { LESSON, LIBRARY } from './fixture'
 import type { Camera, Lesson } from './types'
 
@@ -33,8 +34,8 @@ describe('direct()', () => {
   })
 
   it('only the native move passes through the foreground plane', () => {
-    cams(directed).filter((c) => !c.native).forEach((c) => expect(Math.max(c.from.z, c.to.z)).toBeLessThan(4))
-    expect(directed.scenes.find((s) => s.camera?.native)!.camera!.to.z).toBeGreaterThan(4)
+    cams(directed).filter((c) => !c.native).forEach((c) => expect(Math.max(c.from.z, c.to.z)).toBeLessThan(DEPTH_Z.fg))
+    expect(directed.scenes.find((s) => s.camera?.native)!.camera!.to.z).toBeGreaterThan(DEPTH_Z.fg)
   })
 
   it('puts the one native move on the climax', () => {
@@ -85,12 +86,14 @@ describe('direct()', () => {
   it('eases by intent, never linear', () => {
     cams(directed).forEach((c) => expect(c.ease).not.toBe('linear'))
     directed.scenes.flatMap((s) => s.motion ?? []).flatMap((t) => t.keyframes).forEach((k) => expect(k.easing).not.toBe('linear'))
-    expect(directed.scenes[0].camera!.ease).toBe('easeOutQuart')
+    expect(directed.scenes[0].camera!.curve).toBe('easeOutQuart')
+    cams(directed).forEach((c) => expect(['in', 'out', 'inOut']).toContain(c.ease)) // the stage's names
+    expect(directed.scenes[0].camera!.ease).toBe('out')
   })
 
   it('moves the set: the oak sways, figures never move in step', () => {
-    const m = directed.scenes[0].motion!
-    expect(m.find((t) => t.target === 'layer:2')?.property).toBe('rot')
+    expect(directed.scenes[0].set.layers[2].motion).toMatchObject({ kind: 'sway' })
+    expect(directed.scenes[0].set.layers[0].motion).toBeUndefined() // far heath: nothing to move
     const bobs = directed.scenes[2].motion!.filter((t) => t.target.startsWith('figure:'))
     expect(bobs.length).toBe(2)
     expect(bobs[0].keyframes[1].time).not.toBe(bobs[1].keyframes[1].time)
@@ -102,6 +105,19 @@ describe('direct()', () => {
     expect(directed.scenes[5].sound!.sfx.map((s) => s.id)).toContain('meter-rise')
   })
 
+  it('keeps a teacher edit made by path (the stage editor keeps no marks)', () => {
+    const s2 = directed.scenes[2]
+    const edited = { ...directed, scenes: directed.scenes.map((s, i) => (i === 2 ? {
+      ...s, camera: { ...s2.camera!, from: { ...s2.camera!.from, x: 9 } }, dur_s: 20,
+      set: { ...s.set, layers: s.set.layers.map((l, k) => (k === 2 ? { ...l, motion: { kind: 'sway', amount: 3, speed: 1 } } : l)) },
+    } : s)) }
+    const again = direct(edited, LIBRARY).scenes[2]
+    expect(again.camera!.from.x).toBe(9)
+    expect(again.dur_s).toBe(20)
+    expect(again.set.layers[2].motion).toEqual({ kind: 'sway', amount: 3, speed: 1 })
+    expect(direct(directed, LIBRARY)).toEqual(directed) // untouched: a re-run proposes the same
+  })
+
   it('keeps what the teacher changed on a re-run', () => {
     const teacherCam: Camera = { move: 'pan', from: { x: 0, y: 1.6, z: 0, fov: 50 }, to: { x: 1, y: 1.6, z: 0, fov: 50 }, ease: 'easeInOutCubic', dur_s: 7 }
     const edited = { ...directed, scenes: directed.scenes.map((s, i) => (i === 2 ? { ...s, camera: teacherCam, sound: { ...s.sound!, by: undefined, ambience: [] } } : s)) }
@@ -109,5 +125,16 @@ describe('direct()', () => {
     expect(again.scenes[2].camera).toEqual(teacherCam)
     expect(again.scenes[2].sound!.ambience).toEqual([])
     expect(again.scenes[0].camera).toEqual(directed.scenes[0].camera) // stable: same input, same proposal
+  })
+})
+
+describe('shotAt()', () => {
+  it('hands the stage the shot playing at t, on its own clock', async () => {
+    const { shotAt } = await import('./camera')
+    const s = directed.scenes[3]
+    expect(shotAt(s, 1).cam).toBe(s.camera)
+    const late = shotAt(s, s.dur_s! - 1)
+    expect(late.cam).toBe(s.camera_more![0])
+    expect(late.t).toBeCloseTo(s.dur_s! - 1 - s.camera_more![0].at_s!, 5)
   })
 })

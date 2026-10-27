@@ -65,7 +65,8 @@ function draw(scene: Scene, t: number) {
     if (it.kind === 'layer') {
       const { l, i } = it
       const x = sample(scene, `layer:${i}`, 'x', t, l.x ?? 0.5)
-      const rot = sample(scene, `layer:${i}`, 'rot', t, 0)
+      const lm = l.motion as { kind?: string; amount?: number; speed?: number } | undefined // what S1's stage plays
+      const rot = lm?.kind === 'sway' ? (lm.amount ?? 1) * 1.2 * Math.sin((2 * Math.PI * t * (lm.speed ?? 1)) / 3.2) : 0
       const p = project(x, 0, it.z)
       const h = (l.depth === 'bg' ? 25 : l.depth === 'mid' ? 4 : 5) * p.s, w = l.depth === 'bg' ? W * 3 : h * (l.depth === 'fg' ? 0.2 : 0.8)
       g.save(); g.translate(p.x, p.y); g.rotate((rot * Math.PI) / 180)

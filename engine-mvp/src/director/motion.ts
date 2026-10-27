@@ -1,12 +1,11 @@
 // Layer and figure motion: nothing on screen is ever still, and nothing moves in step with its
-// neighbour (story-director "Performance": avoid twinning). Tracks use the timeline's shape
-// ({target, property, keyframes}); targets are `layer:<index>` / `figure:<index>` in the scene,
-// x/y in scene fractions, rot in degrees, opacity 0..1. The stage maps them; the teacher edits them.
+// neighbour (story-director "Performance": avoid twinning). Layers get the stage's own motion spec;
+// figures get timeline tracks ({target: `figure:<index>`, property x|y, keyframes}, x/y in scene
+// fractions) for whoever poses them (S3). The teacher edits both.
 import type { Library, Scene, Track } from './types'
 import { round } from './timing'
 
 type Motion = 'none' | 'sway' | 'drift' | 'ripple' | 'flicker'
-const SWAY_PERIOD_S = 3.2
 /** Each layer/figure is offset by this fraction of a period from the previous one. */
 const PHASE_STEP = 0.37
 
@@ -33,17 +32,16 @@ function motionOf(need: string | undefined, assetId: string | null | undefined, 
   return 'none'
 }
 
-export function layerTracks(scene: Scene, dur: number, library: Library | null): Track[] {
-  return scene.set.layers.flatMap((l, i): Track[] => {
-    const t = `layer:${i}`
-    const phase = (i * PHASE_STEP) % 1
-    switch (motionOf(l.need, l.asset, library)) {
-      case 'sway': return [oscillate(t, 'rot', 0, l.depth === 'fg' ? 1.6 : 0.8, SWAY_PERIOD_S * (1 + i * 0.13), dur, phase)]
-      case 'drift': return [{ target: t, property: 'x', keyframes: [key(0, l.x ?? 0.5, 'easeInOutQuad'), key(dur, (l.x ?? 0.5) + 0.03)] }]
-      case 'ripple': return [oscillate(t, 'y', 0, 0.004, 2.4, dur, phase)]
-      case 'flicker': return [oscillate(t, 'opacity', 0.92, 0.08, 0.6, dur, phase)]
-      default: return []
-    }
+export type LayerMotion = { kind: Motion; amount: number; speed: number }
+
+/** Per layer, the motion the stage plays (S1 reads set.layers[i].motion = { kind, amount, speed }).
+ *  Foreground moves more than the far planes; each layer gets its own speed so neighbours never
+ *  move in step. null = nothing to move. */
+export function layerMotion(scene: Scene, library: Library | null): (LayerMotion | null)[] {
+  return scene.set.layers.map((l, i) => {
+    const kind = motionOf(l.need, l.asset, library)
+    if (kind === 'none') return null
+    return { kind, amount: l.depth === 'fg' ? 1.2 : l.depth === 'mid' ? 1 : 0.7, speed: round(1 + ((i * PHASE_STEP) % 1) * 0.4) }
   })
 }
 

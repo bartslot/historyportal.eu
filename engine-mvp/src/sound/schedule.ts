@@ -24,7 +24,7 @@ export const sceneStarts = (lesson: Lesson): number[] => {
 /** `preroll_s`: scene 1's beds start that long before lesson time 0 (a J-cut out of the intro). */
 export function schedule(lesson: Lesson, preroll_s = 0): SoundEvent[] {
   const starts = sceneStarts(lesson)
-  const end = (i: number) => starts[i] + (lesson.scenes[i].dur_s ?? 0)
+  const end = (i: number) => starts[i] + (lesson.scenes[i].dur_s ?? narrationSeconds(lesson.scenes[i]))
   const ev: SoundEvent[] = []
 
   // Beds: one looping source per run of consecutive scenes that use it; gain follows each scene.

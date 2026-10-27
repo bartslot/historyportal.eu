@@ -10,9 +10,10 @@ Lab: `director-lab.html` (launch config `studio-director`, port 5291). Silent en
 
 | Field | What |
 |---|---|
-| `camera` | first shot `{move, from, to, ease, dur_s, at_s, native?, why, by}` (the shape agreed with S1) |
-| `camera_more` | further shots when a scene runs past 12 s (shots 6-12 s, cut evenly) |
-| `motion` + `motion_by` | timeline tracks `{target: 'layer:i' \| 'figure:i', property: x\|y\|rot\|opacity, keyframes}` |
+| `camera` | first shot `{move, from, to, ease, curve, dur_s, at_s, native?, why}`: S1's `CameraMove`; `ease` in the stage's names (`in`/`out`/`inOut`), `curve` the finer easing.js name |
+| `camera_more` | further shots when a scene runs past 12 s (shots 6-12 s, cut evenly); `shotAt(scene, t)` picks the one playing |
+| `set.layers[i].motion` | `{kind, amount, speed}`: what S1's stage plays (sway/drift/ripple/flicker), fg stronger, speeds staggered; only where the layer has none |
+| `motion` | figure tracks `{target: 'figure:i', property: x\|y, keyframes}` (walk across, breathing bob), for S3 |
 | `balloons[].at_s/dur_s` | read time letters/15 + 1.5 s, 0.35 s apart, after the narrator's first sentence |
 | `narration_at_s`, `dur_s` | when the narrator starts (after a silence), scene length |
 | `sound` | `{ambience[{id,gain}], lead_in_s (J), tail_s (L), silence, sfx[{id,at_s}], duck_db, by}` |
@@ -26,13 +27,19 @@ sound (J-cut where the place changes, L-cut out of the peak, early foley as a to
 never linear; figures never move in step (phase offsets). Shot length from TTS `timings.duration_s`,
 else `est_s`, else words / 2.5.
 
-**Camera frame (for S1):** metres. Rest pose x 0, y 1.6 (eye), z 0, looking +z; `fov` vertical deg.
-Layers stand at `DEPTH_Z = {fg 4, mid 12, bg 40, sky 200}`; a layer's scene x (0..1) is world
-`worldX(x, z) = (x - 0.5) * visibleWidth(z)`. `target` (look-at) drives pan/tilt, `focus_z` the rack.
-A stage that reads only x/y/z/fov still gets push/pull/truck right.
+**Camera frame = S1's stage** (`src/stage25d/layout.ts`, `DEPTH_Z` imported from there): metres, house
+camera x 0, y 1.6, z 0, looking +z; `fov` vertical deg. That stage moves position only, so pan and tilt
+carry a positional part (a slide, a crane down) and rack a small push; `target` (look-at) and `focus_z`
+ride along for a stage that can aim and focus.
 
-**Teacher owns everything:** whatever the director writes carries `by: 'director'` (`motion_by`,
-`balloons_by`). A teacher edit drops the mark; a re-run keeps every unmarked field as it is.
+**Teacher owns everything:** the director keeps a fingerprint of each field it wrote in
+`scene.director` (camera, camera_more, sound, balloons, motion, timing, per-layer motion). A re-run
+rewrites a field only while it is empty or unchanged since; anything a teacher changed, by any editor
+or path, is kept. A re-run on an untouched lesson returns it unchanged (tested).
+
+**S1, two one-line asks:** scene length = `scene.dur_s ?? camera.dur_s ?? est_s` (the director's
+`dur_s` covers narration + balloons + silence), and play `camera_more` via `shotAt(scene, t)`. Until
+then a split scene plays its first shot only and ends early.
 
 ## 2. Sound `src/sound/`
 
@@ -50,10 +57,11 @@ A stage that reads only x/y/z/fov still gets push/pull/truck right.
   (bus to 0.12), SFX at cue times. `preroll_s` starts scene 1's beds before lesson time 0.
 - `player.ts` `LessonSound`: the Web Audio graph (beds -> ambience bus -> master; SFX bus; optional
   narration bus via `connectNarration(el)`; master mute). `play(lesson, from)`, `playScene`, `hit(id)`,
-  `bedOn/bedOff`, `pause/resume`, `setMuted`, `state()` and `log` for checks. Works on an
+  `bedOn/bedOff`, `pause/resume`, `setMuted`, `state()` and `log` for checks. A newer `play()`/`stop()`
+cancels one still loading. L-cut: `tail_s` on a scene keeps the beds that leave at that cut ringing on. Works on an
   `OfflineAudioContext` too: the lab renders a lesson silently and measures it.
 
-Measured (offline render of the fixture): ambience about -26 dB between lines, about -35 dB under the
+Measured (offline render of the fixture, `tools/director-check.mjs` prints it): ambience about -26 dB between lines, about -35 dB under the
 narrator (the duck), -42 / -46 dB in the two silences; all 20 files load.
 
 ## 3. Intro handoff `src/intro/` + branch `proto/museum-intro-handoff`
@@ -81,8 +89,8 @@ Prototype changes (branch `proto/museum-intro-handoff`, from `proto/museum-intro
 
 ## Not done / for the PM
 
-- S1 must map `camera` (frame above), `camera_more`, `motion` targets `layer:i`/`figure:i`, and call
-  `LessonSound.play` / `runIntro(... capture, onLessonStart)`. Nothing of that is wired into the studio.
+- Not wired into the studio: S1's stage should call `direct()` on load, `LessonSound.play` with its
+  clock, and `runIntro({capture, onLessonStart})`; plus the two asks above.
 - Foley is matched by pose (walk, kneel, carry) only; per-action foley wants an action field in lesson.json.
 - On the museum frame the painting fills the screen at 13 s (rect slightly larger than the viewport), so
   the "grow" is short; a wider hold would show the frame opening. Tune `BEATS.swapStart` / the camera key.
