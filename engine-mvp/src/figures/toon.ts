@@ -5,12 +5,19 @@
 // (the first hulls drew over the cloth because the vendor meshes carry vertex alpha, which made them transparent:
 // figure.ts clears hasVertexAlpha; the nudge keeps a hull behind its own part whatever the winding);
 // (2) fold lines inside = where the surface turns from the eye (N.V small): sleeve, collar, knee.
-import { Color3, Matrix, Vector3, type BaseTexture, type Mesh, type Scene } from '@babylonjs/core'
+import { Color3, Matrix, Vector2, Vector3, type BaseTexture, type Mesh, type Scene } from '@babylonjs/core'
 import { CustomMaterial } from '@babylonjs/materials'
 import { smoothNormals } from '../engine/anime-look'
 
 // the face's middle as an oval stretched down past the mouth to the chin: the parted lips' plug edges lie there
 // and must get neither contour ink nor the stage pencil (check F5a)
+const NOISE3 = `
+float h3(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+float noise3(vec3 p) {
+  vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix(h3(i), h3(i + vec3(1,0,0)), f.x), mix(h3(i + vec3(0,1,0)), h3(i + vec3(1,1,0)), f.x), f.y),
+             mix(mix(h3(i + vec3(0,0,1)), h3(i + vec3(1,0,1)), f.x), mix(h3(i + vec3(0,1,1)), h3(i + vec3(1,1,1)), f.x), f.y), f.z);
+}`
 const FACE_OVAL = 'float faceOval(vec2 p) { return length(vec2(p.x, p.y < 0.0 ? p.y * 0.72 : p.y)); }'
 
 // every number is a knob: the figure lab (figure-lab.ts) puts each on a slider
@@ -19,15 +26,20 @@ export const TOON = {
   step: 0.18,                                         // N.L below this = shade: a HARD two-step, no gradient
   shadeMul: 0.72,                                     // the shade colour of a dye: darker...
   shadeCool: new Color3(-0.02, 0.0, 0.035),           // ...and a touch cooler, never mixed with black
-  ink: Color3.FromHexString('#241912'),               // History Lines ink: near-black warm brown, never #000
-  inkPxMin: 1.6,                                      // contour width in px at 1080p: far figures (the floor)...
-  inkPxMax: 3.0,                                      // ...near figures (the ceiling)
+  ink: Color3.FromHexString('#3b2819'),               // History Lines ink: warm sepia, never #000
+  inkPxMin: 1.2,                                      // contour width in px at 1080p: far figures (the floor)...
+  inkPxMax: 2.2,                                      // ...near figures (the ceiling)
+  inkWobble: 0.75,                                    // 0 = even line .. 1 = a pen line that swells, thins and breaks
+  inkWobbleScale: 9,                                  // its rhythm along the body (per metre)
   inkPxAt: 18,                                        // px = inkPxAt / distance (m), clamped to min..max
   inkPush: 0.02,                                      // m the hull steps back from the camera: never over the cloth
   inkEdge: 0.2,                                       // fold lines: N.V below this = ink
   inkSoft: 0.06,
   paper: new Color3(0.94, 0.91, 0.84),                // the lit side lets this much paper through (paperLift)
-  paperLift: 0.12,
+  paperLift: 0.22,
+  wash: 0.12,                                         // watercolour: pigment thick and thin across a part (0 = flat)
+  washScale: 7,                                       // blotches per metre, anchored to the body
+  wetEdge: 0.35,                                      // darker pigment pooled along the shade line (0 = none)
 }
 
 // The painted face: a projector box in front of the head (unit cube -> world, refreshed per frame from the head
@@ -49,13 +61,16 @@ export function toonMaterial(name: string, dye: Color3, scene: Scene, withZones 
   // 'zone' (0..3 per vertex, see figure.ts paintZones): painted sleeves, tunic, stockings, collar, belt
   if (withZones) {
     m.AddAttribute('zone')
-    m.Vertex_Definitions('attribute float zone;\nvarying float vZone;')
-    m.Vertex_MainEnd('vZone = zone;')
+    m.Vertex_Definitions('attribute float zone;\nvarying float vZone;\nvarying vec3 vBody;')
+    m.Vertex_MainEnd('vZone = zone; vBody = position;')
   } else {
-    m.Vertex_Definitions('varying float vZone;')
-    m.Vertex_MainEnd('vZone = 0.0;')
+    m.Vertex_Definitions('varying float vZone;\nvarying vec3 vBody;')
+    m.Vertex_MainEnd('vZone = 0.0; vBody = position;')
   }
-  m.Fragment_Definitions('varying float vZone;\n' + FACE_OVAL)
+  m.Fragment_Definitions('varying float vZone;\nvarying vec3 vBody;\n' + FACE_OVAL + NOISE3)
+  m.AddUniform('washAmount', 'float', null)
+  m.AddUniform('washScale', 'float', null)
+  m.AddUniform('wetEdge', 'float', null)
   m.AddUniform('shadeMul', 'float', null)
   m.AddUniform('shadeCool', 'vec3', null)
   m.AddUniform('toLight', 'vec3', null)
@@ -84,6 +99,10 @@ export function toonMaterial(name: string, dye: Color3, scene: Scene, withZones 
       nl = length(nh) < 1e-3 ? 1.0 : dot(normalize(nh), lh);
     }
     float lit = step(celStep, nl); // a hard two-step: lit or shade, nothing between
+    // watercolour, anchored to the body (bind-pose position: it moves with the figure, never swims):
+    // the pigment lies thick and thin, and pools darker along the shade line (a wet edge), the step stays hard
+    float wn = noise3(vBody * washScale) * 0.65 + noise3(vBody * washScale * 3.1) * 0.35 - 0.5;
+    float pool = (1.0 - smoothstep(0.0, 0.07, abs(nl - celStep))) * lit;
     float inked = 1.0 - smoothstep(inkEdge - inkSoft, inkEdge, nv);
     float z = floor(vZone + 0.5);
     vec3 base = dye;
@@ -105,6 +124,8 @@ export function toonMaterial(name: string, dye: Color3, scene: Scene, withZones 
     }
     vec3 shadeCol = clamp(base * shadeMul + shadeCool, 0.0, 1.0);
     vec3 paint = mix(shadeCol, mix(base, paperTone, paperLift), lit); // lights go a little pale, as a wash does
+    paint *= 1.0 + wn * washAmount * 2.0;
+    paint = mix(paint, shadeCol * 0.92, pool * wetEdge);
     paint = mix(paint, inkColor, faceInk);
     color = vec4(mix(paint, inkColor, inked), 1.0);
   `)
@@ -123,6 +144,9 @@ export function toonMaterial(name: string, dye: Color3, scene: Scene, withZones 
     e.setFloat('celStep', m.step ?? TOON.step)
     e.setColor3('paperTone', TOON.paper)
     e.setFloat('paperLift', TOON.paperLift)
+    e.setFloat('washAmount', TOON.wash)
+    e.setFloat('washScale', TOON.washScale)
+    e.setFloat('wetEdge', TOON.wetEdge)
     e.setColor3('inkColor', TOON.ink)
     e.setFloat('inkEdge', m.inkEdge ?? TOON.inkEdge)
     e.setFloat('inkSoft', TOON.inkSoft)
@@ -170,11 +194,14 @@ export function addInkHull(mesh: Mesh, scene: Scene): Mesh {
   m.AddUniform('inkPx', 'vec3', null) // min, max, at
   m.AddUniform('inkPush', 'float', null)
   m.AddUniform('inkColor', 'vec3', null)
-  m.Vertex_Definitions('attribute vec3 smoothNormal;')
+  m.AddUniform('inkWobble', 'vec2', null) // amount, scale
+  m.Vertex_Definitions('attribute vec3 smoothNormal;' + NOISE3)
   m.Vertex_After_WorldPosComputed(`
     vec3 toCam = camPos - worldPos.xyz;
     float dist = max(length(toCam), 0.05);
-    float px = clamp(inkPx.z / dist, inkPx.x, inkPx.y);
+    // a pen line: the width swells, thins and now and then breaks, along the body (bind space: no swimming)
+    float wob = noise3(position * inkWobble.y);
+    float px = clamp(inkPx.z / dist, inkPx.x, inkPx.y) * max(0.0, mix(1.0, 0.15 + 1.5 * wob, inkWobble.x));
     vec3 sn = normalize(mat3(finalWorld) * smoothNormal);
     worldPos.xyz += sn * px * inkPxSize * dist - toCam / dist * inkPush;
   `)
@@ -187,6 +214,7 @@ export function addInkHull(mesh: Mesh, scene: Scene): Mesh {
     e.setVector3('inkPx', new Vector3(TOON.inkPxMin, TOON.inkPxMax, TOON.inkPxAt))
     e.setFloat('inkPush', TOON.inkPush)
     e.setColor3('inkColor', TOON.ink)
+    e.setVector2('inkWobble', new Vector2(TOON.inkWobble, TOON.inkWobbleScale))
   })
   hull.material = m
   return hull

@@ -50,10 +50,10 @@ export const RECIPES: Record<string, FigureRecipe> = {
     body: 'man', skin: '#e2b392', hair: 'Hair_03', beard: null, hat: false, expression: 'neutral', scale: 0.95, legs: 'dress', belt: '#4f3a28',
     dyes: { coat: '#9a5c46', trousers: '#84503c', shoes: '#5a4330', hair: '#6b4428' },
   },
-  // VOC, 1640s: black wide-brimmed hat, dark coat, curled moustache (the Tasman look)
+  // VOC, 1640s: black doublet and breeches, white falling collar, grey stockings, wide hat, curled moustache (the Tasman look)
   'voc-schipper': {
     body: 'man', skin: '#e8bf9e', hair: 'Hair_01', beard: 'Facial_Hair_02', hat: true, hatKind: 'Cowboy_Hat', expression: 'neutral', legs: 'breeches', collar: true,
-    dyes: { coat: '#454b5c', trousers: '#4f4034', shoes: '#33291f', hair: '#5c4630', hat: '#2e2925' },
+    dyes: { coat: '#34333a', trousers: '#2d2b2e', shoes: '#2a221c', hair: '#5c4630', hat: '#2e2925' }, stockings: '#8f897e',
   },
   'voc-matroos': {
     body: 'man', skin: '#d6a07a', hair: 'Hair_02', beard: null, hat: true, hatKind: 'Bucket_Hat', expression: 'neutral', legs: 'breeches', stockings: '#a89f8c',
