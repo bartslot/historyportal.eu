@@ -46,8 +46,40 @@ const sound = await page.evaluate(() => {
   return { state: s.state(), kinds, first: s.log.slice(0, 8).map((l) => `${l.ev.kind}${l.ev.id ? ':' + l.ev.id : ''}${l.ev.t !== undefined ? '@' + l.ev.t : ''}`) }
 })
 
+// one card of each kind: seek to a second before its hold point, play into it, take the card, run it
+const kinds = await page.evaluate(() => {
+  const p = window.__play, seen = new Set(), out = []
+  p.lesson.scenes.forEach((s, i) => {
+    const it = s.interaction
+    if (!it) return
+    const kind = it.type === 'power-meter' ? 'meter' : it.format === 'team' ? 'team' : it.type === 'choice' ? (it.format === 'vote' ? 'vote' : 'choose') : it.format === 'open' ? 'discuss' : it.format === 'sort' ? 'sort' : 'answer'
+    if (!seen.has(kind)) { seen.add(kind); out.push({ i, id: s.id, kind, hold: it.type === 'power-meter' ? s.dur_s * 0.55 : s.dur_s - 0.15 }) }
+  })
+  return out
+})
+const cardRuns = []
+for (const k of kinds) {
+  await page.evaluate(async ({ i, hold }) => { const p = window.__play; p.player.pause(); await p.player.seek(i, Math.max(0, hold - 1)); p.player.play() }, k)
+  await page.waitForSelector('[data-testid=card]', { timeout: 10000 })
+  const held = await page.evaluate(() => ({ playing: window.__play.player.scene().playing, t: window.__play.player.scene().t, held: window.__play.sound.state().held }))
+  await page.locator('#wrap').screenshot({ path: `${out}/card-${k.kind}.png` })
+  const card = page.locator('[data-testid=card]')
+  if (k.kind === 'meter') { for (const b of await card.locator('.flex-wrap button').all()) await b.click() }
+  else if (['answer', 'choose', 'vote'].includes(k.kind)) await card.locator('.grid button').first().click()
+  else await card.locator('button.btn-primary').first().click()
+  await page.waitForTimeout(400)
+  await page.locator('#wrap').screenshot({ path: `${out}/card-${k.kind}-after.png` })
+  await card.locator('footer button.btn-primary').click()
+  await page.waitForSelector('[data-testid=card]', { state: 'detached', timeout: 5000 })
+  await page.waitForTimeout(500)
+  const after = await page.evaluate(() => ({ playing: window.__play.player.scene().playing, index: window.__play.player.scene().index, held: window.__play.sound.state().held }))
+  cardRuns.push({ ...k, held, after })
+}
+const cardLog = await page.evaluate(() => window.__play.cards.log.map((l) => `${l.scene}:${l.what}`))
+const soundKinds = await page.evaluate(() => window.__play.sound.log.filter((l) => ['hold', 'release', 'hit'].includes(l.ev.kind)).map((l) => `${l.ev.kind}${l.ev.id ? ':' + l.ev.id : ''}`))
+
 // contact sheet: seek to every STEP s of lesson time, let the scene build, grab the frame
-await page.evaluate(() => window.__play.player.pause())
+await page.evaluate(() => { window.__play.player.pause(); window.__play.cards.enabled = false })
 const shots = []
 for (let at = 0, k = 0; at < info.total; at += STEP, k++) {
   const where = await page.evaluate(async (time) => {
@@ -62,5 +94,5 @@ for (let at = 0, k = 0; at < info.total; at += STEP, k++) {
   await page.locator('#stage').screenshot({ path: `${out}/frames/f${String(k).padStart(3, '0')}.png` })
   shots.push({ at, ...where })
 }
-console.log(JSON.stringify({ info, t0, played, sound, shots: shots.length, misses: shots.reduce((a, s) => a + s.misses, 0), sample: shots.slice(0, 6), errors, failed, warnings: warnings.slice(0, 8) }, null, 1))
+console.log(JSON.stringify({ info, t0, played, sound, cardRuns, cardLog, soundKinds, shots: shots.length, misses: shots.reduce((a, s) => a + s.misses, 0), sample: shots.slice(0, 6), errors, failed, warnings: warnings.slice(0, 8) }, null, 1))
 await browser.close()
