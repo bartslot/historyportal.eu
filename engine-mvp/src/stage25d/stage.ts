@@ -10,7 +10,7 @@ import {
 } from '@babylonjs/core'
 import { createLookChain, PRESETS } from '../engine/look-chain.js'
 import { loadLibrary, resolveAsset } from './library'
-import { ADAPT_MIN_FPS, ADAPT_STALL_MS, ADAPT_UP_FPS, ADAPT_UP_WINDOWS, retryAt, ADAPT_WINDOW_MS, cameraAt, DEPTH_Z, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
+import { ADAPT_STALL_MS, ADAPT_WINDOW_MS, cameraAt, nextTier, shotAt, TIER0, type Tier, DEPTH_Z, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
 import { loadPremultiplied, makeLayer, type LayerHandle } from './layer'
 import { LessonDoc } from './edits'
 import type { Asset, Depth, Lesson, Library, Scene, SceneLayer } from './types'
@@ -63,30 +63,30 @@ export class Stage {
 
   /** Longest render side in device px (1080p by default; Retina at full ratio costs 4x the fill). */
   renderCap = 1920
-  /** Notches the adaptive tier has stepped down: a 2 s average under ADAPT_MIN_FPS drops one, never below 1x CSS. */
-  notches = 0
+  /** The adaptive tier (rules: ADAPT / nextTier in layout.ts): notches stepped down, lock after flip-flops. */
+  tier: Tier = TIER0
+  get notches() { return this.tier.notches }
+  /** Probes force a size: counts as a change, so the 20 s / one-per-minute rules apply to it too. */
+  set notches(n: number) { this.tier = { ...this.tier, notches: n, fast: 0, lastChange: performance.now() } }
   adaptive = true
-  private window = { start: 0, frames: 0, last: 0, fast: 0 }
+  private window = { start: 0, frames: 0, last: 0 }
 
   /** Sharp up to the device's pixels, under the cap, minus the adaptive notches. The painted look hides the rest. */
   fit() {
-    const longest = Math.max(this.canvas.clientWidth, this.canvas.clientHeight, 1)
-    this.engine.setHardwareScalingLevel(1 / renderScale(longest, window.devicePixelRatio || 1, this.renderCap, this.notches))
+    this.engine.setHardwareScalingLevel(1 / this.scaleAt(this.tier.notches))
     this.engine.resize()
   }
 
-  setRenderCap(cap: number) { this.renderCap = cap; this.notches = 0; this.failed.clear(); Object.assign(this.window, { start: 0, fast: 0 }); this.fit() }
-
-  /** Sizes that ran under ADAPT_MIN_FPS (by notch): no step back up to one before its retry time. Without this a
-   *  size that is just too big flips up and down forever (checker N3). */
-  private failed = new Map<number, { count: number; until: number }>()
-  private upAllowed(now: number) {
-    const f = this.failed.get(this.notches - 1)
-    return !f || now >= f.until
+  private scaleAt(notches: number) {
+    const longest = Math.max(this.canvas.clientWidth, this.canvas.clientHeight, 1)
+    return renderScale(longest, window.devicePixelRatio || 1, this.renderCap, notches)
   }
 
-  /** Count a frame; each 2 s window steps one notch down if it averaged too slow, or back up after a run of fast
-   *  ones. A window with a stall (texture upload, hidden tab) says nothing about speed and is dropped. */
+  /** A teacher's Sharpness choice starts the tier afresh (unlocked). */
+  setRenderCap(cap: number) { this.renderCap = cap; this.tier = TIER0; this.window.start = 0; this.fit() }
+
+  /** Count a frame; each finished 2 s window goes through nextTier. A window with a stall (texture upload, hidden
+   *  tab) says nothing about speed and is dropped. */
   tick(now: number) {
     const w = this.window
     const stalled = document.hidden || (w.last && now - w.last > ADAPT_STALL_MS)
@@ -97,19 +97,9 @@ export class Stage {
     const fps = (w.frames * 1000) / (now - w.start)
     Object.assign(w, { start: now, frames: 0 })
     if (!this.adaptive) return
-    if (fps < ADAPT_MIN_FPS) {
-      w.fast = 0
-      const count = (this.failed.get(this.notches)?.count ?? 0) + 1
-      this.failed.set(this.notches, { count, until: retryAt(now, count) })
-      const before = this.engine.getHardwareScalingLevel()
-      this.notches++
-      this.fit()
-      if (this.engine.getHardwareScalingLevel() === before) this.notches--   // already at 1x CSS: nothing left to drop
-    } else if (fps >= ADAPT_UP_FPS && this.notches > 0 && this.upAllowed(now) && ++w.fast >= ADAPT_UP_WINDOWS) {
-      w.fast = 0
-      this.notches--
-      this.fit()
-    } else w.fast = 0
+    const before = this.tier.notches
+    this.tier = nextTier(this.tier, fps, now, this.scaleAt(before + 1) < this.scaleAt(before))
+    if (this.tier.notches !== before) this.fit()
   }
 
   setLook(look: Record<string, number | string> | undefined) { this.look = { ...STAGE_LOOK, ...(look ?? {}) } }
@@ -162,7 +152,8 @@ export class Stage {
 
   /** Pose everything for t seconds into scene s. */
   pose(s: Scene, t: number, clock: number) {
-    const c = cameraAt(s.camera, t, sceneDuration(s))
+    const shot = shotAt(s, t)                       // a directed scene plays camera, then each of camera_more
+    const c = cameraAt(shot.cam, shot.t, sceneDuration(s))
     this.camera.position.set(c.x, c.y, c.z)
     this.camera.fov = c.fov
     for (const b of this.built) {
