@@ -40,7 +40,7 @@ WORD = re.compile(r"[a-zà-ÿ0-9']+")
 
 
 def ui_texts(lesson: dict) -> list[tuple[str, str]]:
-    """Every string the class sees or hears, as (where, text)."""
+    """Every string the class sees or hears (plus teacher-facing why/history), as (where, text)."""
     out: list[tuple[str, str]] = []
     for sc in lesson["scenes"]:
         sid = sc["id"]
@@ -49,7 +49,7 @@ def ui_texts(lesson: dict) -> list[tuple[str, str]]:
             out.append((f"{sid}.on_screen", sc["on_screen"]))
         out += [(f"{sid}.balloon", b["text"]) for b in sc["balloons"]]
         it = sc.get("interaction") or {}
-        for key in ("question", "explain", "prompt", "payoff"):
+        for key in ("question", "explain", "prompt", "payoff", "why", "history"):
             if it.get(key):
                 out.append((f"{sid}.{it['type']}.{key}", it[key]))
         for opt in it.get("options", []):
