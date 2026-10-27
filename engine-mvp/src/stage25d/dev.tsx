@@ -5,7 +5,7 @@ import { StrictMode, useEffect, useState, useSyncExternalStore } from 'react'
 import { createRoot } from 'react-dom/client'
 import { playLesson, type Player } from './stage'
 import { getIn, type Path } from './edits'
-import { RENDER_CAPS, sceneDuration, setShotDuration } from './layout'
+import { RENDER_CAPS, sceneDuration, setShotDuration, shotsEnd } from './layout'
 import type { CameraMove, Ease, MotionSpec } from './types'
 
 const q = new URLSearchParams(location.search)
@@ -87,7 +87,7 @@ function Panel({ player }: { player: Player }) {
       <progress className="progress mt-2 w-full" value={t} max={sceneDuration(s)} />
       <h3 className="mt-3 font-semibold">Camera</h3>
       <div className="mt-1 flex flex-col gap-1">
-        <Range label="Scene length" min={2} max={40} step={0.5} value={sceneDuration(s)} onChange={(v) => player.doc.set([...sp, 'dur_s'], v, 'Scene length')} />
+        <Range label="Scene length" min={Math.max(2, Math.ceil(shotsEnd(s) * 2) / 2)} max={40} step={0.5} value={sceneDuration(s)} onChange={(v) => player.doc.set([...sp, 'dur_s'], v, 'Scene length')} />
       </div>
       {[cam, ...(s.camera_more ?? [])].map((c, k) => (c ? <Shot key={k} player={player} sceneIndex={index} k={k} cam={c} /> : null))}
       {!cam && (

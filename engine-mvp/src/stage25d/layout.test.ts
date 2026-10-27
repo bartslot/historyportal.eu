@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cameraAt, DEPTH_Z, HOUSE, layerAt, motionOf, placeLayer, renderScale, sceneDuration, setShotDuration, shotAt, nextTier, TIER0, ADAPT, viewWidthAt, type Tier } from './layout'
+import { cameraAt, DEPTH_Z, HOUSE, layerAt, motionOf, placeLayer, renderScale, sceneDuration, setShotDuration, shotAt, shotsEnd, nextTier, TIER0, ADAPT, viewWidthAt, type Tier } from './layout'
 import type { Scene } from './types'
 import type { Asset } from './types'
 
@@ -166,5 +166,13 @@ describe('setShotDuration (checker N4)', () => {
     const l = setShotDuration({ id: 's', set: { layers: [] }, est_s: 9, camera: { ...a } }, 0, 10)
     expect(l.dur_s).toBeUndefined()
     expect(sceneDuration(l)).toBe(10)
+  })
+})
+
+describe('shotsEnd (checker N5)', () => {
+  it('is where the last shot stops moving, so Scene length never cuts it', () => {
+    const s: Scene = { id: 's', set: { layers: [] }, dur_s: 14, camera: { from: HOUSE, to: HOUSE, dur_s: 7 }, camera_more: [{ from: HOUSE, to: HOUSE, dur_s: 7, at_s: 7 }] }
+    expect(shotsEnd(s)).toBe(14)
+    expect(shotsEnd({ id: 's', set: { layers: [] } })).toBe(0)
   })
 })

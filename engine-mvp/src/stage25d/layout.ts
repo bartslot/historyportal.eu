@@ -154,3 +154,8 @@ export function setShotDuration(s: Scene, i: number, dur: number): Scene {
     ...(s.dur_s !== undefined ? { dur_s: Math.max(0.5, s.dur_s + delta) } : {}),
   }
 }
+
+/** When the last shot of a scene finishes moving: the shortest the scene may be without cutting a move. */
+export function shotsEnd(s: Scene): number {
+  return [s.camera, ...(s.camera_more ?? [])].reduce((end, c) => (c ? Math.max(end, (c.at_s ?? 0) + (c.dur_s ?? 0)) : end), 0)
+}
