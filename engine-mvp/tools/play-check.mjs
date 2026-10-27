@@ -78,6 +78,21 @@ for (const k of kinds) {
 const cardLog = await page.evaluate(() => window.__play.cards.log.map((l) => `${l.scene}:${l.what}`))
 const soundKinds = await page.evaluate(() => window.__play.sound.log.filter((l) => ['hold', 'release', 'hit'].includes(l.ev.kind)).map((l) => `${l.ev.kind}${l.ev.id ? ':' + l.ev.id : ''}`))
 
+// narration through the real graph, silently: the first 30 s rendered offline (no output device);
+// narration on its own bus vs the whole mix, per 1 s
+const voice = await page.evaluate(async () => {
+  const p = window.__play, SR = 22050, D = 30
+  const L = window.__play.sound.constructor
+  const off = new OfflineAudioContext(1, SR * D, SR)
+  const s = new L(off)
+  s.master.disconnect(); s.narration.connect(off.destination) // the narration bus alone
+  await s.play(p.lesson, 0)
+  const d = (await off.startRendering()).getChannelData(0)
+  const db = (a, b) => { let x = 0; for (let i = a * SR; i < b * SR; i++) x += d[i] * d[i]; return +(20 * Math.log10(Math.sqrt(x / ((b - a) * SR)) + 1e-9)).toFixed(1) }
+  const voices = s.log.filter((l) => l.ev.kind === 'voice').map((l) => l.ev.url.split('/').pop() + '@' + l.ev.t)
+  return { voices, perSecond: Array.from({ length: D }, (_, i) => db(i, i + 1)) }
+})
+
 // the story layer: captions on, a scene with a balloon, at the balloon's time
 await page.click('#captions')
 const storyShot = await page.evaluate(async () => {
@@ -109,5 +124,5 @@ for (let at = 0, k = 0; at < info.total; at += STEP, k++) {
   await page.locator('#stage').screenshot({ path: `${out}/frames/f${String(k).padStart(3, '0')}.png` })
   shots.push({ at, ...where })
 }
-console.log(JSON.stringify({ info, t0, played, sound, cardRuns, cardLog, soundKinds, storyShot, shots: shots.length, misses: shots.reduce((a, s) => a + s.misses, 0), sample: shots.slice(0, 6), errors, failed, warnings: warnings.slice(0, 8) }, null, 1))
+console.log(JSON.stringify({ info, voice, t0, played, sound, cardRuns, cardLog, soundKinds, storyShot, shots: shots.length, misses: shots.reduce((a, s) => a + s.misses, 0), sample: shots.slice(0, 6), errors, failed, warnings: warnings.slice(0, 8) }, null, 1))
 await browser.close()
