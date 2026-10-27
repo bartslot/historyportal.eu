@@ -86,7 +86,12 @@ function partOf(mesh: AbstractMesh): Part | null {
   // under a hat only the scalp cap stays: every hair part pokes through the hat crown or brim (check F6)
   if ((HAIRS as readonly string[]).includes(node)) return { role: 'hair', show: (r) => r.hair === node && !r.hat }
   if ((BEARDS as readonly string[]).includes(node)) return { role: 'hair', show: (r) => r.beard === node }
-  if ((HATS as readonly string[]).includes(node)) return { role: 'hat', show: (r) => r.hat && (r.hatKind ?? 'Cowboy_Hat') === node }
+  if ((HATS as readonly string[]).includes(node)) return { role: 'hat', show: (r) => r.hat && (r.hatKind ?? 'Garment_HatWide') === node }
+  // found garment slots (fit_garments.py): the silhouette a dye cannot give
+  if (node === 'Garment_SkirtKnee') return { role: 'coat', show: (r) => r.legs === 'tunic' }
+  if (node === 'Garment_SkirtLong') return { role: 'coat', show: (r) => r.legs === 'dress' }
+  if (node === 'Garment_Peplum') return { role: 'coat', show: (r) => r.legs === 'breeches' && !!r.collar } // doublet skirts
+  if (node === 'Garment_Breeches') return { role: 'trousers', show: (r) => r.legs === 'breeches' }
   return null
 }
 

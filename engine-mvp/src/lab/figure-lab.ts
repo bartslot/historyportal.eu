@@ -117,6 +117,8 @@ async function main() {
   slider('etching depth', 0, 0.8, 0.01, () => TOON.hatchDeep, (v) => (TOON.hatchDeep = v))
   slider('etching lines / m', 10, 150, 1, () => TOON.hatchScale, (v) => (TOON.hatchScale = v))
   slider('shade threshold', -0.5, 0.8, 0.01, () => TOON.step, (v) => (TOON.step = v))
+  slider('wash edge softness', 0, 0.4, 0.01, () => TOON.washSoft, (v) => (TOON.washSoft = v))
+  slider('light glaze from', 0, 1, 0.01, () => TOON.glaze, (v) => (TOON.glaze = v))
   slider('shade darkness', 0.4, 0.95, 0.01, () => TOON.shadeMul, (v) => (TOON.shadeMul = v))
   slider('shade coolness', 0, 0.1, 0.005, () => TOON.shadeCool.b, (v) => { TOON.shadeCool.b = v; TOON.shadeCool.r = -v * 0.6 })
   slider('paper in the lights', 0, 0.4, 0.01, () => TOON.paperLift, (v) => (TOON.paperLift = v))

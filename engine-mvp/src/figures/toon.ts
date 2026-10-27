@@ -23,7 +23,9 @@ const FACE_OVAL = 'float faceOval(vec2 p) { return length(vec2(p.x, p.y < 0.0 ? 
 // every number is a knob: the figure lab (figure-lab.ts) puts each on a slider
 export const TOON = {
   light: new Vector3(0.55, 0.55, -0.62).normalize(), // toward the light: upper left, in front of the figure
-  step: 0.18,                                         // N.L below this = shade: a HARD two-step, no gradient
+  step: 0.18,                                         // N.L below this = shade
+  washSoft: 0.12,                                     // the shade edge: a soft wash edge, not a printed cel (PM 10-27, Bart's rider)
+  glaze: 0.62,                                        // N.L above this = the lightest wash (a third tone)
   shadeMul: 0.72,                                     // the shade colour of a dye: darker...
   shadeCool: new Color3(-0.02, 0.0, 0.035),           // ...and a touch cooler, never mixed with black
   ink: Color3.FromHexString('#3b2819'),               // History Lines ink: warm sepia, never #000
@@ -75,6 +77,8 @@ export function toonMaterial(name: string, dye: Color3, scene: Scene, withZones 
   m.AddUniform('washAmount', 'float', null)
   m.AddUniform('washScale', 'float', null)
   m.AddUniform('wetEdge', 'float', null)
+  m.AddUniform('washSoft', 'float', null)
+  m.AddUniform('glazeAt', 'float', null)
   m.AddUniform('seamInk', 'float', null)
   m.AddUniform('hatch', 'vec3', null) // amount, depth below the step, lines per metre
   m.AddUniform('shadeMul', 'float', null)
@@ -104,7 +108,9 @@ export function toonMaterial(name: string, dye: Color3, scene: Scene, withZones 
       vec2 lh = normalize(toLight.xz + vec2(1e-4)), nh = n.xz;
       nl = length(nh) < 1e-3 ? 1.0 : dot(normalize(nh), lh);
     }
-    float lit = step(celStep, nl); // a hard two-step: lit or shade, nothing between
+    // a soft 3-tone wash (Bart's rider: washes WITH variation): shade, mid, a light glaze; the ink stays strong
+    float lit = smoothstep(celStep - washSoft, celStep + washSoft, nl);
+    float glazeT = smoothstep(glazeAt - washSoft, glazeAt + washSoft, nl);
     // watercolour, anchored to the body (bind-pose position: it moves with the figure, never swims):
     // the pigment lies thick and thin, and pools darker along the shade line (a wet edge), the step stays hard
     float wn = noise3(vBody * washScale) * 0.65 + noise3(vBody * washScale * 3.1) * 0.35 - 0.5;
@@ -129,7 +135,8 @@ export function toonMaterial(name: string, dye: Color3, scene: Scene, withZones 
       }
     }
     vec3 shadeCol = clamp(base * shadeMul + shadeCool, 0.0, 1.0);
-    vec3 paint = mix(shadeCol, mix(base, paperTone, paperLift), lit); // lights go a little pale, as a wash does
+    vec3 paint = mix(shadeCol, base, lit);
+    paint = mix(paint, mix(base, paperTone, paperLift), glazeT); // the lightest wash lets the paper through
     paint *= 1.0 + wn * washAmount * 2.0;
     paint = mix(paint, shadeCol * 0.92, pool * wetEdge);
     // light etching in the deepest shade only: diagonal strokes in body space, broken by the wash noise
@@ -163,6 +170,8 @@ export function toonMaterial(name: string, dye: Color3, scene: Scene, withZones 
     e.setFloat('washAmount', TOON.wash)
     e.setFloat('washScale', TOON.washScale)
     e.setFloat('wetEdge', TOON.wetEdge)
+    e.setFloat('washSoft', TOON.washSoft)
+    e.setFloat('glazeAt', TOON.glaze)
     e.setFloat('seamInk', TOON.seamInk)
     e.setVector3('hatch', new Vector3(TOON.hatch, TOON.hatchDeep, TOON.hatchScale))
     e.setColor3('inkColor', TOON.ink)
