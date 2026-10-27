@@ -58,6 +58,8 @@ export interface Scene {
   camera?: CameraMove | null
   /** further shots of the same scene (director, S5), each with its at_s */
   camera_more?: CameraMove[]
+  /** a class moment at the END of the scene (quiz, power-meter, choice): the stage holds until it is resolved */
+  interaction?: { type: string; [k: string]: unknown } | null
   /** a scene in another era's library (overrides lesson.bundle) */
   bundle?: string
   /** the scene's length when the director set it (shots + held narration) */
@@ -71,6 +73,8 @@ export interface Lesson {
   bundle?: string
   /** stage look numbers (look-chain.js names); the teacher can change them */
   look?: Record<string, number | string>
+  /** the held frame during an interaction: camera drift in metres and its period (teacher-editable) */
+  hold?: { breath_m?: number; breath_s?: number }
   scenes: Scene[]
   [k: string]: unknown
 }

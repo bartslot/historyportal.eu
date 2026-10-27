@@ -1,11 +1,12 @@
 // Dev page: stage25d.html?lesson=<url>&library=<url>. The stage fills the frame; a small panel holds every
 // motion and timing value of the scene on screen, each change one undo step.
 import '../studio.css'
-import { StrictMode, useEffect, useState, useSyncExternalStore } from 'react'
+import { __, loadLocale } from '../i18n'
+import { StrictMode, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { createRoot } from 'react-dom/client'
 import { playLesson, type Player } from './stage'
 import { getIn, type Path } from './edits'
-import { RENDER_CAPS, sceneDuration, setShotDuration, setShotPose } from './layout'
+import { HOLD_DEFAULTS, RENDER_CAPS, sceneDuration, setShotDuration, setShotPose } from './layout'
 import { Panel } from '../panels/Panel'
 import { panels } from '../panels/store'
 import type { CamPose, CameraMove, Ease, MotionSpec } from './types'
@@ -84,11 +85,17 @@ function Shots({ player, sceneIndex }: { player: Player; sceneIndex: number }) {
   )
 }
 
+const fmt = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`
+
 function ScenePanel({ player }: { player: Player }) {
+  // the dev page's stand-in for S5's interaction card: Continue ends the hold
+  const resumeHold = useRef<(() => void) | null>(null)
+  useEffect(() => player.onInteraction((_, resume) => { resumeHold.current = resume }), [player])
   const lesson = useSyncExternalStore((fn) => player.doc.subscribe(fn), () => player.doc.lesson)
   const [tick, setTick] = useState(0)
   useEffect(() => { const id = setInterval(() => setTick((n) => n + 1), 250); return () => clearInterval(id) }, [])
-  const { index, t, playing } = player.scene()
+  const { index, t, mode } = player.scene()
+  const holding = mode === 'holding'
   const s = lesson.scenes[index]
   const sp: Path = ['scenes', index]
   const cam = s.camera
@@ -98,9 +105,12 @@ function ScenePanel({ player }: { player: Player }) {
     {/* the studio's one panel kit; the column around it does the placing, so the panel itself sits static */}
     <Panel id="stage-scene" className="rounded-box border border-base-300 p-3 text-sm" style={{ position: 'static', width: '100%', minHeight: '100%' }}>
       <div className="flex items-center gap-2">
-        <button className="btn btn-sm btn-primary" onClick={() => (playing ? player.pause() : player.play())}>{playing ? 'Pause' : 'Play'}</button>
+        {holding
+          ? <button className="btn btn-sm btn-primary" data-testid="continue" onClick={() => resumeHold.current?.()}>Continue</button>
+          : <button className="btn btn-sm btn-primary" onClick={() => (mode === 'playing' ? player.pause() : player.resume())}>{mode === 'playing' ? 'Pause' : 'Play'}</button>}
         <button className="btn btn-sm btn-ghost" disabled={!player.doc.history.canUndo()} onClick={() => player.doc.undo()}>Undo</button>
         <button className="btn btn-sm btn-ghost" disabled={!player.doc.history.canRedo()} onClick={() => player.doc.redo()}>Redo</button>
+        {mode === 'paused' && <span className="badge badge-sm badge-ghost" data-testid="paused">{__('Paused')}</span>}
         <span className="ml-auto text-xs tabular-nums opacity-70" data-testid="fps">{player.fps()} fps</span>
       </div>
       <label className="mt-3 flex items-center gap-2 text-xs">
@@ -116,6 +126,13 @@ function ScenePanel({ player }: { player: Player }) {
         ))}
       </div>
       <progress className="progress mt-2 w-full" value={t} max={sceneDuration(s)} />
+      <div className="flex text-xs tabular-nums opacity-70" data-testid="clock"><span>{fmt(player.clock())} / {fmt(player.duration())}</span>{holding && <span className="ml-auto">{s.interaction?.type}</span>}</div>
+      {s.interaction && (
+        <div className="mt-2 flex flex-col gap-1">
+          <Num player={player} path={['hold', 'breath_m']} label="Hold drift" min={0} max={0.3} step={0.01} fallback={HOLD_DEFAULTS.breath_m} />
+          <Num player={player} path={['hold', 'breath_s']} label="Hold tempo" min={2} max={20} step={0.5} fallback={HOLD_DEFAULTS.breath_s} />
+        </div>
+      )}
       <h3 className="mt-3 flex items-baseline font-semibold">Camera<span className="ml-auto text-xs font-normal tabular-nums opacity-70" data-testid="scene-length">{sceneDuration(s).toFixed(1)} s</span></h3>
       <Shots key={index} player={player} sceneIndex={index} />
       <h3 className="mt-3 font-semibold">Layers</h3>
@@ -146,6 +163,8 @@ const Loading = () => (
 )
 
 // wide: the stage left, the panel fixed on the right; narrow (below lg): the panel under the stage, the page scrolls
+let player: Player | null = null
+
 async function main() {
   const root = document.getElementById('root')!
   root.className = 'h-full overflow-y-auto bg-base-200 p-3 lg:overflow-hidden'
@@ -155,9 +174,11 @@ async function main() {
   root.appendChild(canvas)
   const ui = root.appendChild(document.createElement('div'))
   ui.className = 'mt-3 lg:mt-0'
+  canvas.addEventListener('click', () => { if (player?.scene().mode === 'paused') player.resume() })   // the next tap plays
   const app = createRoot(ui)
   app.render(<Loading />)                // the frame and panel show at once; the lesson fills them when it has loaded
-  const player = await playLesson(lessonUrl, libraryUrl, canvas)
+  await loadLocale()
+  player = await playLesson(lessonUrl, libraryUrl, canvas)
   panels.open('stage-scene')
   Object.assign(window, { __stage25d: player })
   app.render(<StrictMode><ScenePanel player={player} /></StrictMode>)
