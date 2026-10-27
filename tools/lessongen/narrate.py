@@ -133,6 +133,9 @@ def narrate(lesson: dict, out_root: Path = OUT_ROOT, synth: Callable[[str, str],
         qa = probe(dest)
         sc["tts_s"], sc["audio"] = qa["tts_s"], f"{lesson['id']}/{dest.name}"  # relative to OUT_ROOT
         report["index"][sc["id"]] = {"text_hash": cached.stem, "chars": len(text), **qa}
+    for old in out.glob("*.mp3"):  # scene ids shift when a shot is split: drop files no scene points at any more
+        if old.stem not in report["index"]:
+            old.unlink()
     lesson["narration"] = {"provider": "azure", "voice": voice, "format": OUTPUT_FORMAT, "root": "~/BartsMedia/historyportal/narration"}
     (out / "index.json").write_text(json.dumps({"lesson": lesson["id"], "voice": voice, "shots": report["index"]}, indent=1) + "\n")
     return lesson, report

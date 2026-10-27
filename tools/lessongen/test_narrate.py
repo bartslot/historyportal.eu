@@ -36,3 +36,11 @@ def test_narrate_writes_lengths_and_never_resends_a_line(tmp_path):
     out2, rep2 = n.narrate(out, tmp_path, fake_synth(calls))
     assert rep2["sent"] == 0 and rep2["cached"] == 3 and len(calls) == 3
     assert json.loads((tmp_path / "fixture-minimal" / "index.json").read_text())["shots"]["sc01"]["max_db"] is not None
+
+
+def test_stale_scene_files_are_removed(tmp_path):
+    lesson = json.loads((HERE / "fixtures" / "minimal.json").read_text())
+    (tmp_path / "fixture-minimal").mkdir()
+    (tmp_path / "fixture-minimal" / "sc99.mp3").write_bytes(b"old")
+    n.narrate(lesson, tmp_path, fake_synth([]))
+    assert not (tmp_path / "fixture-minimal" / "sc99.mp3").exists()
