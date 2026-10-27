@@ -1,7 +1,8 @@
 // The rules measured from outside the director: with the ease the stage plays, the shot on screen at
 // the cut, the sound events the schedule really makes, and real lessons from S4 (when present).
 // Several cases come from the checker session's report (critiques/2026-10-27_check-director.md).
-import { existsSync, readFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { spawnSync } from 'node:child_process'
 import { classActionSeconds, interactionSeconds, lessonSeconds, modelShotSeconds } from './timing'
 import { describe, expect, it } from 'vitest'
@@ -181,8 +182,16 @@ describe('the validator can run', () => {
   })
 })
 
+// One snapshot of the vault lessons, taken once at the start: S4 may rewrite a lesson while the suite
+// runs, and the director and validate.py must read the same bytes.
+const SNAPSHOT = mkdtempSync(`${tmpdir()}/hp-lessons-`)
 for (const id of REAL_LESSONS) {
-  const file = `${VAULT}/${id}/lesson.json`
+  const src = `${VAULT}/${id}/lesson.json`
+  if (existsSync(src)) { mkdirSync(`${SNAPSHOT}/${id}`); copyFileSync(src, `${SNAPSHOT}/${id}/lesson.json`) }
+}
+
+for (const id of REAL_LESSONS) {
+  const file = `${SNAPSHOT}/${id}/lesson.json`
   describe.skipIf(!existsSync(file))(`real lesson ${id}`, () => {
     const lesson = JSON.parse(existsSync(file) ? readFileSync(file, 'utf8') : '{"scenes":[]}') as Lesson
     const d = direct(lesson, null)

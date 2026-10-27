@@ -48,11 +48,13 @@ export class LessonSound {
     this.master.connect(ctx.destination)
   }
 
+  /** A bank id, or (a narration line) a URL of its own. */
   private load(id: string): Promise<AudioBuffer | null> {
     if (!this.buffers.has(id)) {
       const e = ENTRIES.get(id)
-      this.buffers.set(id, !e ? Promise.resolve(null) : fetch(this.baseUrl + e.file)
-        .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(`${r.status} ${e.file}`))))
+      const url = e ? this.baseUrl + e.file : id.includes('/') ? id : null
+      this.buffers.set(id, !url ? Promise.resolve(null) : fetch(url)
+        .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(`${r.status} ${url}`))))
         .then((b) => this.ctx.decodeAudioData(b))
         .catch((err) => { this.note({ kind: 'load-failed', id, err: String(err) }); return null }))
     }
@@ -63,7 +65,8 @@ export class LessonSound {
 
   /** Fetch and decode everything a lesson uses, so play() starts on time. */
   async preload(lesson: Lesson): Promise<void> {
-    const ids = new Set(lesson.scenes.flatMap((s) => [...(s.sound?.ambience.map((a) => a.id) ?? []), ...(s.sound?.sfx.map((x) => x.id) ?? [])]))
+    const ids = new Set(lesson.scenes.flatMap((s) => [...(s.sound?.ambience.map((a) => a.id) ?? []), ...(s.sound?.sfx.map((x) => x.id) ?? []),
+      ...(typeof s.tts_url === 'string' ? [s.tts_url] : [])]))
     await Promise.all([...ids].map((id) => this.load(id)))
   }
 
@@ -98,6 +101,7 @@ export class LessonSound {
 
   private async apply(ev: SoundEvent, from: number) {
     const entry = 'id' in ev ? ENTRIES.get(ev.id) : null
+    if (ev.kind === 'voice') return this.voice(ev.url, ev.t, from)
     switch (ev.kind) {
       case 'bed-start': {
         if (ev.stop <= from) return
@@ -138,6 +142,17 @@ export class LessonSound {
       }
     }
     this.note(ev)
+  }
+
+  /** A narration line at lesson time t; after a seek or a pause it starts mid-line, never skipped. */
+  private async voice(url: string, t: number, from: number) {
+    const buf = await this.load(url)
+    if (!buf || t + buf.duration <= from) return
+    const src = this.ctx.createBufferSource(); src.buffer = buf
+    src.connect(this.narration)
+    src.start(this.at(t), Math.max(0, from - t))
+    this.live.push(src)
+    this.note({ kind: 'voice', url, t })
   }
 
   /** One-shot now (quiz answers, the power meter): outside the lesson clock. */

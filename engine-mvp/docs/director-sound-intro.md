@@ -141,15 +141,21 @@ Data links, all git-ignored: `public/lessons/vault` -> vault `topics/autonomous-
 Check: `node tools/play-check.mjs http://localhost:5291 <outDir> eerste-boeren-1 10`: silent run of the
 intro, the handoff, 12 s of real playback, then a frame every 10 s of lesson time (contact sheet).
 
-**Interactions** (`src/interactions/`): at a scene's hold point the picture holds (`player.pause()`, the
-clock motion keeps breathing) and a card opens; the scene's beds keep looping under it, ducked
+**Interactions** (`src/interactions/`), on S1's player API (`onInteraction`, `holdAt`, `setTime`,
+`resume`, `clock`): a scene with an interaction holds at its end on its own, a power meter at 55 % through
+`holdAt`; the lesson clock stands still, layers move, the camera breathes, and a card opens; the scene's beds keep looping under it, ducked
 (`LessonSound.hold`), and fade out on close (`release`). One card per way the class takes part:
 answer (quiz mc / true-false: the teacher taps what the class said, right/wrong sound, the explanation),
 sort (show the right order), discuss (quiz open: talk with your neighbour, the teacher ends it), team
 (quiz or choice in groups, for class_action_s), choose and vote (the teacher taps the class's choice,
 the outcome follows), meter (power meter: the class calls out words, each right word fills the meter and
-plays the held scene on in a short burst, so the world moves; the payoff closes it). Every card shows its
+eases the held scene on (`setTime`), so the world moves; the payoff closes it). Every card shows its
 timing.json time as a calm clock with +30 s, never a hard stop, and can be skipped. Strings are English
 keys in lang/{nl,de,fr,it}.json; the page speaks the lesson's language (`speakLocale`). A power meter
 holds at 55 % of its scene, every other card just before the cut (`plan.ts`). Played once per run.
-Narration is not played by the player yet, so "narration paused" has nothing to pause.
+**Story layer:** the narrator's recorded line per scene (S4: `scene.tts_file`, relative to the lesson
+folder) plays on the narration bus at `narration_at_s` and starts mid-line after a pause or seek;
+captions of the narration are opt-in (Captions toggle, off by default, remembered per browser); balloons
+are timed silent layers at their `at_s`/`dur_s` over the speaker, no names, never baked. Figures (S3) get
+the `#figures` layer. The sound follows `player.clock()` through the pure `syncAction` (tested). The
+default lesson is hunebedden; `?lesson=` takes only vault lesson ids or paths.
