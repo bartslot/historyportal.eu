@@ -54,7 +54,7 @@ export const sceneDuration = (s: Scene) => s.camera?.dur_s ?? s.est_s ?? 8
 
 /** Camera pose t seconds into a scene; a scene without a move holds the house pose. */
 export function cameraAt(cam: CameraMove | null | undefined, t: number, dur: number): CamPose {
-  if (!cam) return HOUSE
+  if (!cam) return { ...HOUSE, fov: fovRad(HOUSE.fov) }
   const k = ease(cam.ease, dur > 0 ? t / (cam.dur_s ?? dur) : 1)
   const f = { ...HOUSE, ...cam.from }
   const to = { ...f, ...cam.to }

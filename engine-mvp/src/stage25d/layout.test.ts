@@ -31,7 +31,9 @@ describe('placeLayer', () => {
 
 describe('cameraAt', () => {
   const move = { move: 'truck', from: { x: -2, y: 1.6, z: 0, fov: 50 }, to: { x: 2, y: 1.6, z: 0, fov: 40 }, ease: 'inOut' as const, dur_s: 10 }
-  it('holds the house pose without a move', () => expect(cameraAt(null, 3, 8)).toEqual(HOUSE))
+  it('holds the house pose without a move, fov in radians like every pose', () => {
+    expect(cameraAt(null, 3, 8)).toEqual({ ...HOUSE, fov: (HOUSE.fov * Math.PI) / 180 })
+  })
   it('starts at from, ends at to, eases in-out', () => {
     expect(cameraAt(move, 0, 10).x).toBe(-2)
     expect(cameraAt(move, 10, 10).x).toBe(2)
