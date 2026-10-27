@@ -31,6 +31,8 @@ export const PANELS: PanelDef[] = [
   { id: 'help', title: __('Help'), place: 'floating', closable: true, open: false, inView: false },
   { id: 'director', title: __('Direct'), place: 'floating', closable: true, open: false, inView: false, steps: ['script'] },
   { id: 'notes', title: __('Notes'), place: 'floating', closable: true, open: false, inView: true },
+  // the 2.5D stage's scene panel (stage25d.html); floating panels never come back open, so the studio never shows it
+  { id: 'stage-scene', title: __('Scene'), place: 'floating', closable: false, open: false, inView: false },
   { id: 'lesson-menu', title: __('Lesson'), place: 'menu', closable: true, open: false, inView: false },
   { id: 'view-menu', title: __('View'), place: 'menu', closable: true, open: false, inView: false },
   { id: 'add-menu', title: __('Add'), place: 'menu', closable: true, open: false, inView: false },

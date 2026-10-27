@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { cameraAt, DEPTH_Z, HOUSE, layerAt, motionOf, placeLayer, renderScale, sceneDuration, setShotDuration, shotAt, shotsEnd, nextTier, TIER0, ADAPT, viewWidthAt, type Tier } from './layout'
+import { cameraAt, DEPTH_Z, HOUSE, layerAt, motionOf, placeLayer, renderScale, sceneDuration, setShotDuration, setShotPose, shotAt, shotsEnd, nextTier, TIER0, ADAPT, viewWidthAt, type Tier } from './layout'
 import type { Scene } from './types'
+import { LessonDoc } from './edits'
 import type { Asset } from './types'
 
 const tree: Asset = { id: 't', layer: 'fg', tags: [], file: '', w: 1000, h: 2000, anchor: [0.5, 1], height_m: 10, motion: 'sway' }
@@ -174,5 +175,43 @@ describe('shotsEnd (checker N5)', () => {
     const s: Scene = { id: 's', set: { layers: [] }, dur_s: 14, camera: { from: HOUSE, to: HOUSE, dur_s: 7 }, camera_more: [{ from: HOUSE, to: HOUSE, dur_s: 7, at_s: 7 }] }
     expect(shotsEnd(s)).toBe(14)
     expect(shotsEnd({ id: 's', set: { layers: [] } })).toBe(0)
+  })
+})
+
+describe('shots as one scene (PM: sum rule, no jump, undo)', () => {
+  const a = { move: 'push', from: { ...HOUSE, x: 0 }, to: { ...HOUSE, x: 1 }, dur_s: 7, at_s: 0 }
+  const b = { move: 'truck', from: { ...HOUSE, x: 1 }, to: { ...HOUSE, x: -1 }, dur_s: 7, at_s: 7 }
+  const split = (): Scene => ({ id: 's', set: { layers: [] }, camera: a, camera_more: [b] })
+  const sum = (s: Scene) => [s.camera!, ...s.camera_more!].reduce((n, c) => n + c.dur_s!, 0)
+  const pose = (s: Scene, t: number) => { const { cam, t: lt } = shotAt(s, t); return cameraAt(cam, lt, sceneDuration(s)) }
+
+  it('scene length is the sum of its shot durations, after any shot edit', () => {
+    let s = split()
+    expect(sceneDuration(s)).toBe(14)
+    s = setShotDuration(s, 0, 10)
+    s = setShotDuration(s, 1, 4.5)
+    expect(sceneDuration(s)).toBe(sum(s))
+    expect(sceneDuration(s)).toBe(14.5)
+  })
+  it('no camera jump at the boundary after duration and pose edits', () => {
+    let s = setShotDuration(split(), 0, 9)
+    s = setShotPose(s, 0, 'to', 'x', 2.5)            // shot 1 ends elsewhere: shot 2 starts there too
+    expect(s.camera_more![0].from.x).toBe(2.5)
+    const cut = s.camera_more![0].at_s!
+    const before = pose(s, cut - 0.001), after = pose(s, cut)
+    expect(after.x).toBeCloseTo(before.x, 2)
+    expect(after.z).toBeCloseTo(before.z, 2)
+    s = setShotPose(s, 1, 'from', 'z', 3)            // and from the other side
+    expect(s.camera!.to.z).toBe(3)
+  })
+  it('every shot edit is one undo step that restores the scene exactly', () => {
+    const doc = new LessonDoc({ id: 'l', scenes: [split()] })
+    doc.set(['scenes', 0], setShotDuration(doc.lesson.scenes[0], 0, 11), 'Shot length')
+    doc.set(['scenes', 0], setShotPose(doc.lesson.scenes[0], 0, 'to', 'x', 3), 'Shot pose')
+    doc.undo()
+    expect(doc.lesson.scenes[0].camera_more![0].from.x).toBe(1)
+    expect(doc.lesson.scenes[0].camera_more![0].at_s).toBe(11)
+    doc.undo()
+    expect(doc.lesson.scenes[0]).toEqual(split())
   })
 })
