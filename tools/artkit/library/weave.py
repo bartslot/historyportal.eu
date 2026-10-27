@@ -71,7 +71,35 @@ def fetch(job: dict, sid: str, name: str, url: str, credits: str = "?") -> Path:
     return out
 
 
+def grab(bundle: str, sid: str, name: str, urls: list[str]) -> Path | None:
+    """Figma download_assets gives the edited fill plus a thumbnail: keep the widest image."""
+    d = LIB / "_work" / bundle / sid
+    best = None
+    for i, u in enumerate(urls):
+        f = d / f"_raw{i}.png"
+        subprocess.run(["curl", "-sfL", "-o", str(f), u], check=True)
+        im = Image.open(f)
+        if im.width >= 1000 and (best is None or im.width > best.width):
+            best = im.convert("RGBA")
+    for f in d.glob("_raw*.png"):
+        f.unlink()
+    if best is None:
+        print(sid, "no full-size image")
+        return None
+    flat = Image.new("RGBA", best.size, PAPER + (255,))
+    flat.alpha_composite(best)
+    out = d / f"{name}.png"
+    flat.convert("RGB").save(out)
+    with LEDGER.open("a") as f:
+        f.write(f"| {datetime.now():%Y-%m-%d %H:%M} | {bundle} | {sid} | {name} (Figma edit, GPT Image 2.5 Sunburst, 9 refs) | figma-ai |\n")
+    print(sid, "ok", best.size)
+    return out
+
+
 def main() -> None:
+    if sys.argv[1] == "grab":  # grab <bundle> <sheet> <name> <url>...
+        grab(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5:])
+        return
     cmd, jobf, sid, stage = sys.argv[1:5]
     job = json.loads(Path(jobf).read_text())
     if cmd == "req":

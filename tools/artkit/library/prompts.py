@@ -237,3 +237,13 @@ def figma_ink_prompt(template: str, subject: str) -> str:
     if template not in ("sky", "bg"):
         parts.append(LIGHT_LINE.replace("lighter than the anchor", "light"))
     return " ".join(" ".join(parts).split())
+
+
+# Second colour pass for sheets the judge scored < 8 (ChatGPT critiques 2026-10-27: micro-detail, weak contour
+# hierarchy, uniform/saturated washes, speckled stone, realistic 3D shading).
+WEAVE_COLOUR_FIX = (
+    "Make it read like the watercolour references: keep the black ink outlines dark and confident, strongest on "
+    "the outer silhouette of each object; let the watercolour sit in distinct, irregular, transparent patches "
+    "with paper white showing through on the lit sides; simplify texture into a few broad washes; stone stays a "
+    "calm pale grey with soft wash shadows, never speckled; no realistic 3D or anatomical shading."
+)

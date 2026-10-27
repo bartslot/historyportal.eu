@@ -160,12 +160,13 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("job")
     ap.add_argument("--only", nargs="*")
+    ap.add_argument("--variants", default="abcd", help="'g' = the Figma pass")
     a = ap.parse_args()
     job = json.loads(Path(a.job).read_text())
     for s in job["sheets"]:
         if a.only and s["id"] not in a.only:
             continue
-        for v in "abcd":
+        for v in a.variants:
             cut_sheet(job["bundle"], s, v)
 
 

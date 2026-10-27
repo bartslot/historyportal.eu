@@ -44,15 +44,22 @@ def winners(bundle: str) -> dict[str, tuple[str, str]]:
     return out
 
 
-def build(job: dict) -> dict:
+def judge_scores(bundle: str) -> dict[str, int]:
+    """sheet id -> style score 1-10 from the judge (ChatGPT), _work/<bundle>/scores.json; lowest score counts."""
+    f = LIB / "_work" / bundle / "scores.json"
+    return {k: int(min(v)) if isinstance(v, list) else int(v) for k, v in json.loads(f.read_text()).items()} if f.exists() else {}
+
+
+def build(job: dict, variants: str = "abcd") -> dict:
     bundle = job["bundle"]
     dst = LIB / bundle
     dst.mkdir(parents=True, exist_ok=True)
     win = winners(bundle)
+    judged = judge_scores(bundle)
     assets, report = [], []
     for s in job["sheets"]:
-        variant, verdict = win.get(s["id"], ("a", "unranked"))
-        order = [variant] + [v for v in "abcd" if v != variant]
+        variant, verdict = win.get(s["id"], (variants[0], "unranked"))
+        order = [variant] + [v for v in variants if v != variant]
         for item in s["items"]:
             chosen = None
             for v in order:
@@ -83,8 +90,9 @@ def build(job: dict) -> dict:
                 "height_m": item["height_m"], "tileable_x": s["layer"] in ("sky", "bg") or bool(s.get("strip")),
                 "motion": item["motion"],
                 **({"era": item["era"]} if item.get("era") else {}),
-                "qa": {"score": VERDICT_SCORE.get(vd, 6), "alpha_ok": r["alpha_ok"],
-                       "ink_coverage": r["ink_coverage"], "ranked_vs_anchor": vd,
+                "qa": {"score": judged.get(s["id"], VERDICT_SCORE.get(vd, 6)), "alpha_ok": r["alpha_ok"],
+                       "ink_coverage": r["ink_coverage"],
+                       "ranked_vs_anchor": "judged" if s["id"] in judged else vd,
                        "palette_de": r["palette_de"], "sheet": s["id"], "variant": v},
             })
     lib = {"version": 1, "bundle": bundle, "style": "history-lines-v1", "assets": assets}
@@ -149,9 +157,10 @@ def plate(lib: dict, recipe: list[dict], size: tuple[int, int] = (1920, 1080)) -
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("job")
+    ap.add_argument("--variants", default="abcd", help="'g' = the Figma pass")
     a = ap.parse_args()
     job = json.loads(Path(a.job).read_text())
-    lib = build(job)
+    lib = build(job, a.variants)
     print(contact(lib, PAPER, "paper"), contact(lib, DARK, "dark"))
     if job.get("plate"):
         print(plate(lib, job["plate"]))
