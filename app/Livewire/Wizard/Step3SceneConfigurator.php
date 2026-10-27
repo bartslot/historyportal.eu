@@ -58,6 +58,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Attributes\Validate;
@@ -133,6 +134,10 @@ class Step3SceneConfigurator extends Component
     public bool $inspectorOpen = true;
 
     public bool $addSceneOpen = false;
+
+    /** Where the rail's "+" asked the next scene to go: a scene id, 0 = first, null = after the selection. */
+    #[Locked]
+    public ?int $insertAfterId = null;
 
     /**
      * The scene the teacher just deleted, as [id, order], so Cmd-Z (or the Undo in the toast) can put
@@ -239,7 +244,31 @@ class Step3SceneConfigurator extends Component
     #[On('scene:add')]
     public function openAddScenePicker(): void
     {
+        $this->insertAfterId = null;
         $this->addSceneOpen = true;
+    }
+
+    /**
+     * The rail's "+" buttons: between two thumbs (that scene's id), above the first (0), or the
+     * dashed tile at the bottom (the last scene's id). The selection stays put, so cancelling the
+     * picker leaves the stage where it was.
+     */
+    public function openAddSceneAfter(int $sceneId): void
+    {
+        if ($sceneId !== 0 && ! $this->lesson->scenes()->whereKey($sceneId)->exists()) {
+            return;
+        }
+        $this->insertAfterId = $sceneId;
+        $this->addSceneOpen = true;
+    }
+
+    /** Where a new scene goes, read once: the rail's "+" wins, else after the selected scene. */
+    private function takeInsertionPoint(): ?int
+    {
+        $after = $this->insertAfterId ?? $this->selectedSceneId;
+        $this->insertAfterId = null;
+
+        return $after;
     }
 
     /**
@@ -2100,7 +2129,7 @@ class Step3SceneConfigurator extends Component
                 'intro' => false,
             ],
         ]);
-        $this->placeSceneAfterSelected($scene, $this->selectedSceneId);
+        $this->placeSceneAfterSelected($scene, $this->takeInsertionPoint());
         $this->lesson->refresh();
         $this->dispatch('scenesUpdated');
         $this->selectSceneInternal($scene->id);
@@ -5002,7 +5031,7 @@ class Step3SceneConfigurator extends Component
             return;
         }
         $gameType = in_array($gameType, ['quiz', 'strategy', 'debate', 'predict'], true) ? $gameType : null;
-        $insertAfterSceneId = $this->selectedSceneId;
+        $insertAfterSceneId = $this->takeInsertionPoint();
         $next = ((int) $this->lesson->scenes()->max('order')) + 1;
 
         $payload = [
@@ -5181,7 +5210,7 @@ class Step3SceneConfigurator extends Component
         $this->lesson->save();
         $this->lesson->refresh();
 
-        $insertAfterSceneId = $this->selectedSceneId;
+        $insertAfterSceneId = $this->takeInsertionPoint();
         $next = ((int) $this->lesson->scenes()->max('order')) + 1;
 
         $rows = [
@@ -5219,14 +5248,15 @@ class Step3SceneConfigurator extends Component
 
     private function placeSceneAfterSelected(Scene $scene, ?int $afterSceneId): void
     {
-        if (! $afterSceneId) {
+        if ($afterSceneId === null) {
             return;
         }
 
         $sceneIds = $this->lesson->scenes()->ordered()->pluck('id')
             ->map(fn ($id) => (int) $id)
             ->all();
-        $afterIndex = array_search($afterSceneId, $sceneIds, true);
+        // 0 = the "+" above the first scene, straight after the title screen.
+        $afterIndex = $afterSceneId === 0 ? -1 : array_search($afterSceneId, $sceneIds, true);
 
         if ($afterIndex === false) {
             return;
