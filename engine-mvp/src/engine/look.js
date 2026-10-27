@@ -7,14 +7,13 @@
 // Nothing texture-like is tied to the screen, so camera moves never make the paint slide. GLSL: look-shaders.js.
 /* global BABYLON */
 'use strict';
-import { animeMask } from './anime-cast';
+import { createLookChain } from './look-chain';
 import { __ } from '../i18n';
 
 (() => {
   const mvp = window.__mvp;
   const scene = mvp.scene;
   const camera = mvp.camera;
-  const SKY_DEPTH = 450; // metres assumed where nothing was drawn
 
   // ---------- controls ----------
   const $ = (id) => document.getElementById(id);
@@ -29,11 +28,7 @@ import { __ } from '../i18n';
     paper: $('lookPaper'), paperEdge: $('lookEdge'),
   };
   const val = (el) => Number(el.value);
-  // line colours before 'Ink darkness' pulls them toward black; 'pencil' = STYLE.md's thin brown-grey pencil
-  const INK_COLORS = { 'blue-grey': [0.16, 0.17, 0.22], pencil: [0.42, 0.35, 0.29], sepia: [0.35, 0.24, 0.16], graphite: [0.3, 0.3, 0.32] };
   let aquarelTex = null;
-  const blankTex = new BABYLON.RawTexture(new Uint8Array([255, 255, 255, 255]), 1, 1, BABYLON.Engine.TEXTUREFORMAT_RGBA, scene);
-  const blankBlack = new BABYLON.RawTexture(new Uint8Array([0, 0, 0, 255]), 1, 1, BABYLON.Engine.TEXTUREFORMAT_RGBA, scene); // no anime actors
   function useTexture(url) {
     if (aquarelTex) aquarelTex.dispose();
     aquarelTex = null;
@@ -65,72 +60,13 @@ import { __ } from '../i18n';
     });
   }).catch(() => { /* no prepared textures yet: the built-in one stays */ });
 
-  // ---------- post chain ----------
-  let chain = [];
-  let gbrFilter = null;
+  // ---------- post chain (look-chain.js), values read live from the sliders ----------
+  let chain = null;
   function buildChain() {
-    chain.forEach((pp) => pp.dispose(camera));
-    chain = [];
-    if (!ui.on.checked) { scene.disableGeometryBufferRenderer(); return; }
-    const gbr = scene.enableGeometryBufferRenderer();
-    // sky cards (clouds) and painted plates (metadata.noGBuffer) stay out of depth/normals: their edges would get ink
-    if (!gbrFilter) gbrFilter = scene.onBeforeRenderObservable.add(() => {
-      if (scene.geometryBufferRenderer) scene.geometryBufferRenderer.renderList = scene.meshes.filter((m) => m.name !== 'sky-cloud' && !(m.metadata && m.metadata.noGBuffer));
-    });
-    const gb = gbr.getGBuffer().textures;
-    const depth = gb[gbr.getTextureIndex(BABYLON.GeometryBufferRenderer.DEPTH_TEXTURE_TYPE)];
-    const normal = gb[gbr.getTextureIndex(BABYLON.GeometryBufferRenderer.NORMAL_TEXTURE_TYPE)];
-    const texel = (pp) => new BABYLON.Vector2(1 / pp.width, 1 / pp.height);
-    // what every pass needs to rebuild world positions from depth
-    const invView = new BABYLON.Matrix();
-    const WORLD_UNIFORMS = ['invView', 'tanHalf', 'resolution', 'skyDepth'];
-    const WORLD_SAMPLERS = ['depthSampler', 'normalSampler'];
-    function setWorld(fx, pp) {
-      camera.getViewMatrix().invertToRef(invView);
-      const ty = Math.tan(camera.fov / 2);
-      fx.setMatrix('invView', invView);
-      fx.setVector2('tanHalf', new BABYLON.Vector2(ty * pp.width / pp.height, ty));
-      fx.setVector2('resolution', new BABYLON.Vector2(pp.width, pp.height));
-      fx.setFloat('skyDepth', SKY_DEPTH);
-      fx.setTexture('depthSampler', depth);
-      fx.setTexture('normalSampler', normal);
-    }
-
-    const wash = new BABYLON.PostProcess('wash', 'wash', ['texel', 'radius', ...WORLD_UNIFORMS], WORLD_SAMPLERS, 1, camera);
-    wash.onApply = (fx) => {
-      setWorld(fx, wash);
-      fx.setVector2('texel', texel(wash));
-      fx.setFloat('radius', val(ui.wash));
-    };
-
-
-    const PAINT = ['texScale', 'texAmount', 'blendMode', 'stains', 'blooms', 'dark', 'wetEdge', 'granulation', 'palette', 'paletteMode', 'paper', 'paperEdge'];
-    const wc = new BABYLON.PostProcess('watercolor', 'watercolor', ['texel', 'useTex', ...PAINT, ...WORLD_UNIFORMS],
-      ['aquarelSampler', ...WORLD_SAMPLERS], 1, camera);
-    wc.onApply = (fx) => {
-      setWorld(fx, wc);
-      fx.setVector2('texel', texel(wc));
-      fx.setFloat('useTex', aquarelTex ? 1 : 0);
-      fx.setTexture('aquarelSampler', aquarelTex || blankTex);
-      PAINT.forEach((k) => fx.setFloat(k, val(ui[k])));
-    };
-    // ink last: over the finished watercolour, so lines stay black; colour edges come from the clean wash
-    const inkPP = new BABYLON.PostProcess('ink', 'ink',
-      ['texel', 'ink', 'width', 'colorInk', 'nearDist', 'farInk', 'inkColor', 'wobble', 'darkness', 'outline', 'paperEdge', 'inkOpacity', 'inkBlend', 'paintOver', ...WORLD_UNIFORMS],
-      ['washSampler', 'animeSampler', ...WORLD_SAMPLERS], 1, camera);
-    inkPP.onApply = (fx) => {
-      setWorld(fx, inkPP);
-      fx.setTextureFromPostProcessOutput('washSampler', wash);
-      fx.setTexture('animeSampler', animeMask(scene) || blankBlack);
-      fx.setVector2('texel', texel(inkPP));
-      fx.setFloat('ink', val(ui.ink)); fx.setFloat('width', val(ui.width)); fx.setFloat('colorInk', val(ui.colorInk));
-      fx.setFloat('nearDist', val(ui.nearDist)); fx.setFloat('farInk', val(ui.farInk)); fx.setFloat('wobble', val(ui.wobble));
-      fx.setFloat('darkness', val(ui.darkness)); fx.setFloat('outline', val(ui.outline));
-      fx.setFloat('paperEdge', val(ui.paperEdge));
-      fx.setFloat('inkOpacity', val(ui.inkOpacity)); fx.setFloat('inkBlend', val(ui.inkBlend)); fx.setFloat('paintOver', val(ui.paintOver));
-      fx.setColor3('inkColor', BABYLON.Color3.FromArray(INK_COLORS[ui.inkColor.value] || INK_COLORS['blue-grey']));
-    };
-    chain = [wash, wc, inkPP];
+    if (chain) chain.dispose();
+    chain = null;
+    if (!ui.on.checked) return;
+    chain = createLookChain(scene, camera, { num: (k) => val(ui[k]), inkColor: () => ui.inkColor.value, texture: () => aquarelTex });
   }
 
   // ---------- toon (cel) materials on every 3D model, including ones added later ----------

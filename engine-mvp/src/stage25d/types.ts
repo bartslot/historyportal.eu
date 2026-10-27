@@ -1,0 +1,69 @@
+// The two binding contracts (vault topics/autonomous-lessons/plan.md): library.json (S2) and lesson.json (S4/S5).
+// Only the fields the stage reads are typed; everything else rides along untouched.
+
+export type LayerKind = 'sky' | 'bg' | 'mid' | 'fg' | 'prop'
+export type Depth = 'sky' | 'bg' | 'mid' | 'fg'
+export type MotionKind = 'none' | 'sway' | 'drift' | 'ripple' | 'flicker'
+
+export interface Asset {
+  id: string
+  layer: LayerKind
+  tags: string[]
+  file: string
+  w: number
+  h: number
+  anchor: [number, number]
+  height_m: number
+  tileable_x?: boolean
+  motion?: MotionKind
+  placeholder?: boolean
+  qa?: { score?: number }
+}
+
+export interface Library {
+  version: number
+  bundle: string
+  style?: string
+  assets: Asset[]
+}
+
+/** Teacher-editable motion on one layer; a bare kind is the same as { kind }. */
+export interface MotionSpec { kind?: MotionKind; amount?: number; speed?: number }
+
+/** A layer keyframe: t seconds into the scene; missing fields hold the layer's own value. */
+export interface LayerKey { t: number; x?: number; scale?: number; opacity?: number }
+
+export interface SceneLayer {
+  need?: string | string[]
+  asset?: string | null
+  depth: Depth
+  x?: number
+  scale?: number
+  motion?: MotionKind | MotionSpec
+  keys?: LayerKey[]
+}
+
+export interface CamPose { x: number; y: number; z: number; fov: number }
+export type Ease = 'linear' | 'in' | 'out' | 'inOut'
+export interface CameraMove { move?: string; from: CamPose; to: CamPose; ease?: Ease; dur_s?: number }
+
+export interface Scene {
+  id: string
+  beat?: string
+  narration?: string
+  est_s?: number
+  set: { sky?: string | null; ground?: string; layers: SceneLayer[] }
+  figures?: unknown[]
+  camera?: CameraMove | null
+  [k: string]: unknown
+}
+
+export interface Lesson {
+  id: string
+  lang?: string
+  bundle?: string
+  /** stage look numbers (look-chain.js names); the teacher can change them */
+  look?: Record<string, number | string>
+  scenes: Scene[]
+  [k: string]: unknown
+}

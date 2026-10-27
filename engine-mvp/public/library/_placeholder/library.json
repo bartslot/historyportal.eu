@@ -1,0 +1,163 @@
+{
+  "version": 1,
+  "bundle": "_placeholder",
+  "style": "placeholder",
+  "assets": [
+    {
+      "id": "sky-day-01",
+      "layer": "sky",
+      "tags": [
+        "sky",
+        "day",
+        "clear"
+      ],
+      "file": "sky-day-01.png",
+      "w": 2048,
+      "h": 1024,
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "height_m": 400,
+      "tileable_x": true,
+      "motion": "none",
+      "placeholder": true,
+      "qa": {
+        "score": 0,
+        "alpha_ok": true,
+        "ink_coverage": 0,
+        "ranked_vs_anchor": "placeholder"
+      }
+    },
+    {
+      "id": "cloud-01",
+      "layer": "sky",
+      "tags": [
+        "cloud",
+        "sky"
+      ],
+      "file": "cloud-01.png",
+      "w": 1000,
+      "h": 420,
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "height_m": 30,
+      "tileable_x": false,
+      "motion": "drift",
+      "placeholder": true,
+      "qa": {
+        "score": 0,
+        "alpha_ok": true,
+        "ink_coverage": 0,
+        "ranked_vs_anchor": "placeholder"
+      }
+    },
+    {
+      "id": "hills-heath-01",
+      "layer": "bg",
+      "tags": [
+        "hills",
+        "heath",
+        "landscape"
+      ],
+      "file": "hills-heath-01.png",
+      "w": 2400,
+      "h": 700,
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "height_m": 40,
+      "tileable_x": true,
+      "motion": "none",
+      "placeholder": true,
+      "qa": {
+        "score": 0,
+        "alpha_ok": true,
+        "ink_coverage": 0,
+        "ranked_vs_anchor": "placeholder"
+      }
+    },
+    {
+      "id": "hut-farm-01",
+      "layer": "mid",
+      "tags": [
+        "hut",
+        "farm",
+        "house",
+        "prehistory"
+      ],
+      "file": "hut-farm-01.png",
+      "w": 900,
+      "h": 760,
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "height_m": 6,
+      "tileable_x": false,
+      "motion": "none",
+      "placeholder": true,
+      "qa": {
+        "score": 0,
+        "alpha_ok": true,
+        "ink_coverage": 0,
+        "ranked_vs_anchor": "placeholder"
+      }
+    },
+    {
+      "id": "tree-oak-01",
+      "layer": "fg",
+      "tags": [
+        "tree",
+        "oak",
+        "forest"
+      ],
+      "file": "tree-oak-01.png",
+      "w": 1100,
+      "h": 1500,
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "height_m": 12,
+      "tileable_x": false,
+      "motion": "sway",
+      "placeholder": true,
+      "qa": {
+        "score": 0,
+        "alpha_ok": true,
+        "ink_coverage": 0,
+        "ranked_vs_anchor": "placeholder"
+      }
+    },
+    {
+      "id": "reeds-01",
+      "layer": "fg",
+      "tags": [
+        "reeds",
+        "water",
+        "marsh"
+      ],
+      "file": "reeds-01.png",
+      "w": 1200,
+      "h": 600,
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "height_m": 1.6,
+      "tileable_x": false,
+      "motion": "sway",
+      "placeholder": true,
+      "qa": {
+        "score": 0,
+        "alpha_ok": true,
+        "ink_coverage": 0,
+        "ranked_vs_anchor": "placeholder"
+      }
+    }
+  ]
+}
