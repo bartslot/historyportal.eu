@@ -51,7 +51,8 @@ export const EASES: Record<Ease, (k: number) => number> = {
 export const ease = (name: Ease | undefined, k: number) => (EASES[name ?? 'inOut'] ?? EASES.inOut)(Math.min(1, Math.max(0, k)))
 const lerp = (a: number, b: number, k: number) => a + (b - a) * k
 
-export const sceneDuration = (s: Scene) => s.dur_s ?? s.camera?.dur_s ?? s.est_s ?? 8
+/** Scene length: the director's dur_s, else the sum of its shots (where the last one ends), else the writer's estimate. */
+export const sceneDuration = (s: Scene): number => s.dur_s ?? ((s.camera && shotsEnd(s)) || s.est_s || 8)
 
 /** The shot playing t s into a scene, with its own clock (`camera` then `camera_more`, each from its at_s).
  *  Same rule as the director's shotAt (S5, director/camera.ts). */
@@ -158,4 +159,22 @@ export function setShotDuration(s: Scene, i: number, dur: number): Scene {
 /** When the last shot of a scene finishes moving: the shortest the scene may be without cutting a move. */
 export function shotsEnd(s: Scene): number {
   return [s.camera, ...(s.camera_more ?? [])].reduce((end, c) => (c ? Math.max(end, (c.at_s ?? 0) + (c.dur_s ?? 0)) : end), 0)
+}
+
+const shotsOf = (s: Scene) => [s.camera, ...(s.camera_more ?? [])].filter(Boolean) as CameraMove[]
+const withShots = (s: Scene, shots: CameraMove[]): Scene => ({ ...s, camera: shots[0], ...(s.camera_more ? { camera_more: shots.slice(1) } : {}) })
+
+/** A copy of the scene with one pose value of shot i changed. Shot boundaries stay joined: a shot's end pose IS the
+ *  next shot's start pose, so editing either side moves both and the camera never jumps at a cut. */
+export function setShotPose(s: Scene, i: number, end: 'from' | 'to', field: keyof CamPose, v: number): Scene {
+  const shots = shotsOf(s)
+  if (!shots[i]) return s
+  const set = (c: CameraMove, e: 'from' | 'to'): CameraMove => ({ ...c, [e]: { ...HOUSE, ...c[e], [field]: v } })
+  const next = shots.map((c, k) => {
+    if (k === i) return set(c, end)
+    if (end === 'to' && k === i + 1) return set(c, 'from')
+    if (end === 'from' && k === i - 1) return set(c, 'to')
+    return c
+  })
+  return withShots(s, next)
 }
