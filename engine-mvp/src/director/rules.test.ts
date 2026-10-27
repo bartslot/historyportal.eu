@@ -155,16 +155,23 @@ describe('real lessons are where the tests expect them', () => {
   it.runIf(mounted).each(REAL_LESSONS)('%s/lesson.json exists', (id) => expect(existsSync(`${VAULT}/${id}/lesson.json`), `${VAULT}/${id}/lesson.json missing`).toBe(true))
 })
 
-// S4's totals: live from tools/lessongen/validate.py when it is in this checkout (the integration
-// branch). Without it, against the totals S4 reported as stable (8242aa6b). null = no reference.
-const VALIDATE = new URL('../../../tools/lessongen/validate.py', import.meta.url).pathname
-const S4_STABLE_TOTALS: Record<string, number> = { 'eerste-boeren-1': 693, 'eerste-boeren-2': 806, hunebedden: 746, voc: 872 } // S4, feat/lessongen 8242aa6b: all stable
-function s4Total(id: string, file: string): number | null {
-  if (!existsSync(VALIDATE)) return S4_STABLE_TOTALS[id] ?? null
-  const out = spawnSync('python3', [VALIDATE, file], { encoding: 'utf8' })
-  const stats = JSON.parse(out.stdout.split('\n').find((l) => l.startsWith('{')) ?? 'null')
-  if (!stats) throw new Error(`validate.py gave no stats for ${id}: ${out.stderr}`)
-  return stats.total_s
+// S4's length for a lesson, never a number frozen in this test:
+// - live from S4's validate.py: in this checkout (tools/lessongen/, the integration branch) or in
+//   HP_LESSONGEN_DIR (e.g. S4's worktree)
+// - else the lesson's own teacher card ("N minuten", the first one), which validate.py --resolve
+//   writes from the same model and holds to within 1 minute
+const VALIDATE = [process.env.HP_LESSONGEN_DIR && `${process.env.HP_LESSONGEN_DIR}/validate.py`, new URL('../../../tools/lessongen/validate.py', import.meta.url).pathname]
+  .find((p) => p && existsSync(p))
+type S4Length = { exact: number } | { minutes: number } | null
+function s4Length(lesson: Lesson, file: string): S4Length {
+  if (VALIDATE) {
+    const out = spawnSync('python3', [VALIDATE, file], { encoding: 'utf8' })
+    const stats = JSON.parse(out.stdout.split('\n').find((l) => l.startsWith('{')) ?? 'null')
+    if (!stats) throw new Error(`validate.py gave no stats for ${file}: ${out.stderr}`)
+    return { exact: stats.total_s }
+  }
+  const card = JSON.stringify(lesson.teacher ?? '').match(/(\d+) minuten/)
+  return card ? { minutes: Number(card[1]) } : null
 }
 
 for (const id of REAL_LESSONS) {
@@ -178,8 +185,10 @@ for (const id of REAL_LESSONS) {
 
     it('has the same length as S4\'s validate.py (one timing model, tools/lessongen/timing.json)', () => {
       const model = lesson.scenes.reduce((t, s) => t + modelShotSeconds(s) + classActionSeconds(s) + interactionSeconds(s), 0)
-      const s4 = s4Total(id, file)
-      if (s4 !== null) expect(Math.round(model)).toBe(s4)
+      const s4 = s4Length(lesson, file)
+      expect(s4, `${id}: no validate.py and no "N minuten" on the teacher card`).not.toBeNull()
+      if (s4 && 'exact' in s4) expect(Math.round(model)).toBe(s4.exact)
+      if (s4 && 'minutes' in s4) expect(Math.abs(model / 60 - s4.minutes)).toBeLessThanOrEqual(1)
       // the director's own additions: a 1.2 s silence or balloons that need longer than the line; nothing else
       const extras = d.scenes.map((s, i) => s.dur_s! - modelShotSeconds(lesson.scenes[i]) - classActionSeconds(lesson.scenes[i]))
       extras.forEach((x, i) => {

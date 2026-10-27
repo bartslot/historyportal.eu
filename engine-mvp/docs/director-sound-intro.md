@@ -64,6 +64,12 @@ time (quiz 40, power-meter 60, choice 30). `est_s` no longer drives length. The 
 its own silences (1.2 s) and balloon reads longer than the line; `lessonSeconds(lesson)` is the
 played total. Model totals equal validate.py's (eb-1 633, eb-2 577, hunebedden 666, voc 872 s); the
 director's totals are 3.5-13.6 s longer, from those additions.
+`tools/lessongen/timing.json` on this branch is a byte-identical copy of S4's (feat/lessongen 8242aa6b):
+**merge feat/lessongen first**, then this branch; an identical add merges clean. The length test
+compares with S4's `validate.py` live (in this checkout, or `HP_LESSONGEN_DIR`), else with the lesson's
+own teacher card ("N minuten", which validate.py --resolve writes from the same model): no frozen totals.
+Interaction time: `type.format` when timing.json has that key, else `type`; a `team` activity plays
+its own `class_action_s`.
 
 ## 2. Sound `src/sound/`
 
