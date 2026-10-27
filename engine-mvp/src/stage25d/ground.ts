@@ -55,6 +55,10 @@ export function stainSize(asset: Asset, w: number, h: number, z: number): { w: n
   return { w: foot, d: Math.min(Math.max(d, foot * 0.3), foot * 3) }
 }
 
+/** The ground assets a teacher can pick for a scene: from the library that scene is built with (its own bundle, else
+ *  the lesson's), sorted by id. */
+export const groundOptions = (sceneLib: Library): string[] => sceneLib.assets.filter((a) => a.layer === 'ground').map((a) => a.id).sort()
+
 export const hexRgb = (hex: string): [number, number, number] => {
   const n = parseInt(hex.replace('#', '').padEnd(6, '0').slice(0, 6), 16)
   return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255]
