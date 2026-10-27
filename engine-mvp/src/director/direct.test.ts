@@ -32,6 +32,11 @@ describe('direct()', () => {
     firsts.slice(1).forEach((m, i) => expect(m).not.toBe(firsts[i]))
   })
 
+  it('only the native move passes through the foreground plane', () => {
+    cams(directed).filter((c) => !c.native).forEach((c) => expect(Math.max(c.from.z, c.to.z)).toBeLessThan(4))
+    expect(directed.scenes.find((s) => s.camera?.native)!.camera!.to.z).toBeGreaterThan(4)
+  })
+
   it('puts the one native move on the climax', () => {
     const natives = directed.scenes.filter((s) => s.camera?.native)
     expect(natives.map((s) => s.beat)).toEqual(['climax'])

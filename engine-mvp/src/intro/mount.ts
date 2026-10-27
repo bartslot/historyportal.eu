@@ -9,9 +9,12 @@
 //      opens to the full screen (1.3 s, EASE.move) and the lesson clock starts; the iframe goes
 import type { Lesson, Library } from '../director/types'
 import type { LessonSound } from '../sound/player'
-import { INTRO_BED, introPlan, type IntroPlan } from './handoff'
+import { HANDOFF_AT_S, INTRO_BED, introPlan, type IntroPlan } from './handoff'
 
-const HANDOFF_TIMEOUT_MS = 25000
+/** The intro loads a whole museum (~15 MB): wait for it, then for the dive. Either missing = the
+ *  intro broke, and the lesson starts on its own rather than leaving a class in front of nothing. */
+const READY_TIMEOUT_MS = 60000
+const HANDOFF_TIMEOUT_MS = (HANDOFF_AT_S + 10) * 1000
 
 export type IntroOptions = {
   host: HTMLElement // covers the stage; the iframe goes in here
@@ -45,13 +48,14 @@ export async function composePainting(plan: IntroPlan, width = 1920): Promise<st
 type Rect = { x: number; y: number; w: number; h: number }
 const inset = (r: Rect) => `inset(${r.y * 100}% ${(1 - r.x - r.w) * 100}% ${(1 - r.y - r.h) * 100}% ${r.x * 100}%)`
 
-function waitForHandoff(frame: HTMLIFrameElement): Promise<Rect | null> {
+/** The intro's next message of `type` (its data), or null after `ms`. Same-origin frames only. */
+function message(frame: HTMLIFrameElement, type: string, ms: number): Promise<{ rect?: Rect } | null> {
   return new Promise((resolve) => {
-    const done = (r: Rect | null) => { removeEventListener('message', on); clearTimeout(timer); resolve(r) }
+    const done = (d: { rect?: Rect } | null) => { removeEventListener('message', on); clearTimeout(timer); resolve(d) }
     const on = (e: MessageEvent) => {
-      if (e.source === frame.contentWindow && e.origin === location.origin && e.data?.type === 'hp-intro:handoff') done(e.data.rect)
+      if (e.source === frame.contentWindow && e.origin === location.origin && e.data?.type === type) done(e.data)
     }
-    const timer = setTimeout(() => done(null), HANDOFF_TIMEOUT_MS) // intro broke: go straight to the lesson
+    const timer = setTimeout(() => done(null), ms)
     addEventListener('message', on)
   })
 }
@@ -70,8 +74,9 @@ export async function runIntro(o: IntroOptions): Promise<void> {
   Object.assign(o.stage.style, { opacity: '0', clipPath: inset({ x: 0.5, y: 0.5, w: 0, h: 0 }) })
   o.sound?.bedOn(INTRO_BED)
 
-  const rect = await waitForHandoff(frame)
-  const from = rect ?? { x: 0, y: 0, w: 1, h: 1 }
+  const ready = await message(frame, 'hp-intro:ready', READY_TIMEOUT_MS)
+  const handoff = ready && (await message(frame, 'hp-intro:handoff', HANDOFF_TIMEOUT_MS))
+  const from = handoff?.rect ?? { x: 0, y: 0, w: 1, h: 1 }
   o.stage.style.clipPath = inset(from)
   o.sound?.play(o.lesson, -plan.preroll_s) // scene 1's place is heard before we go in
   o.sound?.bedOff(INTRO_BED, plan.preroll_s + plan.grow_s)

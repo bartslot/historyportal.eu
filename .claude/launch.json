@@ -231,6 +231,16 @@
                 "cd engine-mvp && npx vite --port 5197 --strictPort"
             ],
             "port": 5197
+        },
+        {
+            "//": "S5 director/sound lab (engine-mvp/director-lab.html). Own port so it never races the studio on 5190.",
+            "name": "studio-director",
+            "runtimeExecutable": "bash",
+            "runtimeArgs": [
+                "-c",
+                "cd engine-mvp && npx vite --port 5291 --strictPort"
+            ],
+            "port": 5291
         }
     ]
 }

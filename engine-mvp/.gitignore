@@ -7,3 +7,4 @@ dist/
 public/assets/models/
 __pycache__/
 public/sound
+public/intro

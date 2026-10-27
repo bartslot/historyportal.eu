@@ -19,7 +19,7 @@ const ENTRIES = new Map<string, Entry>([...bank.beds, ...bank.sfx].map((e) => [e
 export type LogLine = { at: number; ev: SoundEvent | { kind: string; [k: string]: unknown } }
 
 export class LessonSound {
-  readonly ctx: AudioContext
+  readonly ctx: BaseAudioContext
   readonly master: GainNode
   readonly ambience: GainNode
   readonly sfx: GainNode
@@ -32,7 +32,8 @@ export class LessonSound {
   private muted = false
   private origin = 0 // ctx time of lesson time 0
 
-  constructor(ctx: AudioContext, private baseUrl = bank.base_url) {
+  /** Any BaseAudioContext: an OfflineAudioContext renders a lesson silently (tests, the lab). */
+  constructor(ctx: BaseAudioContext, private baseUrl = bank.base_url) {
     this.ctx = ctx
     this.master = ctx.createGain()
     this.ambience = ctx.createGain()
@@ -164,7 +165,7 @@ export class LessonSound {
 
   /** The narrator's own element, so the master mute covers it too. */
   connectNarration(el: HTMLMediaElement): void {
-    this.ctx.createMediaElementSource(el).connect(this.narration)
+    if (this.ctx instanceof AudioContext) this.ctx.createMediaElementSource(el).connect(this.narration)
   }
 
   stop(): void {
@@ -174,8 +175,8 @@ export class LessonSound {
     this.ambience.gain.cancelScheduledValues(0); this.ambience.gain.value = 1
   }
 
-  pause(): Promise<void> { return this.ctx.suspend() }
-  resume(): Promise<void> { return this.ctx.resume() }
+  pause(): Promise<void> { return this.ctx instanceof AudioContext ? this.ctx.suspend() : Promise.resolve() }
+  resume(): Promise<void> { return this.ctx instanceof AudioContext ? this.ctx.resume() : Promise.resolve() }
 
   setMuted(m: boolean): void {
     this.muted = m

@@ -10,6 +10,8 @@ import { round } from './timing'
 export const DEPTH_Z = { fg: 4, mid: 12, bg: 40, sky: 200 } as const
 export const EYE_Y = 1.6
 export const BASE_FOV = 50
+/** Metres a plain move keeps in front of the foreground layer. */
+export const FG_CLEARANCE = 1.5
 const ASPECT = 16 / 9
 
 export const visibleWidth = (z: number, fov = BASE_FOV): number => 2 * z * Math.tan((fov * Math.PI) / 360) * ASPECT
@@ -73,7 +75,8 @@ const pose = (x: number, y: number, z: number, fov: number, t: { x: number; y: n
 export function frame(move: MoveKind, f: Focus, k = 1): { from: CamPose; to: CamPose } {
   const look = { x: f.x, y: f.y, z: f.z }
   const x0 = f.x * 0.6 // the camera sits a little inside the subject, so it is off-centre (thirds)
-  const push = f.z * 0.3 * k
+  // only the native move ('through') may pass the foreground plane; every other move stays in front of it
+  const push = Math.min(f.z * 0.3 * k, DEPTH_Z.fg - FG_CLEARANCE)
   switch (move) {
     case 'push': return { from: pose(x0, EYE_Y, 0, BASE_FOV, look), to: pose(x0 + (f.x - x0) * 0.3, EYE_Y - 0.1, push, BASE_FOV - 4 * k, look) }
     case 'pull': return { from: pose(x0, EYE_Y - 0.1, push, BASE_FOV - 6 * k, look), to: pose(x0, EYE_Y + 0.2, -push * 0.4, BASE_FOV + 4, look) }
