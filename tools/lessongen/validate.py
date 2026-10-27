@@ -38,7 +38,9 @@ WORDS_PER_S_MAX = 2.6  # Dutch narration for kids runs ~2.2-2.5 words/s
 # Region tags (agreed with the art session). An asset carrying one only serves a need that asks for it.
 REGIONS = {"mideast", "egypt", "mesopotamia", "batavia", "banda", "ocean", "newzealand", "tasmania", "mauritius"}
 # A narrated number, year or amount is a hard fact: it needs a real (non-ledger) source in the scene.
-HARD_FACT = re.compile(r"\d|honderd|duizend|miljoen|miljard", re.I)
+HARD_FACT = re.compile(
+    r"\d|honderd|duizend|miljoen|miljard|\b\w*(?:twintig|dertig|veertig|vijftig|zestig|zeventig|tachtig|negentig)\b"
+    r"|\b(?:der|veer|vijf|zes|zeven|acht|negen)?tien\b|\belf\b|\btwaalf\b", re.I)
 # Keys whose values are ids, enums, tags or paths, not prose.
 NOT_PROSE = {"id", "url", "need", "asset", "sky", "char", "pose", "depth", "facing", "expression", "beat", "type",
              "kind", "input", "format", "lang", "bundle", "canon_venster", "related_venster", "layer", "tags",

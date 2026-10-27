@@ -206,3 +206,16 @@ def test_long_tail_after_last_interaction(lesson):
     filler["interaction"] = None
     lesson["scenes"] += [dict(copy.deepcopy(filler), id=f"sc{10 + i}") for i in range(30)]
     assert any("after the last interaction" in e for e in errors_of(lesson))
+
+
+@pytest.mark.parametrize("said", ["Er waren er zeventig.", "Nog tweeënvijftig staan er.", "Het duurde veertien dagen."])
+def test_number_words_need_a_real_source(lesson, said):
+    lesson["scenes"][1]["narration"] = said
+    lesson["scenes"][1]["fact_refs"] = ["s9"]
+    assert any("sc02: number or year" in e for e in errors_of(lesson))
+
+
+def test_ordinary_words_are_not_numbers(lesson):
+    lesson["scenes"][1]["narration"] = "Dat is lastig en krachtig werk, zelf doen."
+    lesson["scenes"][1]["fact_refs"] = ["s9"]
+    assert errors_of(lesson) == []
