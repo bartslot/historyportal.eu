@@ -3,6 +3,7 @@
 import { ArcRotateCamera, Color4, DirectionalLight, Engine, HemisphericLight, Scene, Vector3 } from '@babylonjs/core'
 import { createFigure, faceHeading, FACE, FACING_TURN_DEG, type Figure } from '../figures/figure'
 import { TOON } from '../figures/toon'
+import { checkPose } from '../figures/pose'
 import { RECIPES, recipeFor, type Expression, type Pose } from '../figures/recipes'
 
 const q = new URLSearchParams(location.search)
@@ -37,7 +38,7 @@ function view(name: string) {
   const face = name === 'face'
   camera.alpha = VIEWS[name] ?? VIEWS.front
   camera.beta = Math.PI / 2 - 0.04
-  camera.radius = face ? 0.8 : chars.length > 1 ? 6 : 3.5
+  camera.radius = face ? 0.8 : chars.length > 1 ? 6 : 4.5
   camera.target = new Vector3(face ? figs[0]?.root.position.x ?? 0 : 0, face ? 1.6 : 0.8, 0)
 }
 function button(label: string, on: () => void, row: HTMLElement) {
@@ -64,6 +65,24 @@ function slider(label: string, min: number, max: number, step: number, get: () =
   ui.append(l)
 }
 
+/** step the walk clip frame by frame and run the pose guards on every frame */
+function walkAudit() {
+  return figs.map((f) => {
+    const g = f.clip
+    if (!g) return 'no clip'
+    const bad: string[] = []
+    let low = Infinity, high = -Infinity
+    for (let fr = g.from; fr <= g.to; fr += 1) {
+      g.goToFrame(fr)
+      scene.render()
+      checkPose(f.rig).forEach((v) => bad.push(`${fr}:${v.limb}:${v.kind}:${v.value.toFixed(3)}`))
+      const foot = Math.min(f.rig.node('toeL').getAbsolutePosition().y, f.rig.node('toeR').getAbsolutePosition().y)
+      low = Math.min(low, foot); high = Math.max(high, foot)
+    }
+    return `${Math.round(g.to - g.from + 1)} frames, ${bad.length} violations ${bad.slice(0, 6).join(' ')}; lower toe y ${low.toFixed(3)}..${high.toFixed(3)}`
+  }).join(' | ')
+}
+
 async function main() {
   for (const [i, c] of chars.entries()) {
     const r = recipeFor(c)
@@ -82,7 +101,7 @@ async function main() {
   setPose((q.get('pose') as Pose) ?? 'stand')
   setExpr((q.get('expr') as Expression) ?? 'neutral')
   view(q.get('view') ?? 'front')
-  Object.assign(window, { __lab: { scene, camera, figs, setPose, setExpr, view, ready: true } })
+  Object.assign(window, { __lab: { scene, camera, figs, setPose, setExpr, view, walkAudit, ready: true } })
 }
 main().catch((e) => { msg.textContent = String(e?.stack ?? e); throw e })
 engine.runRenderLoop(() => scene.render())

@@ -34,6 +34,7 @@ export type Figure = {
   recipe: FigureRecipe
   rig: Rig
   pose: Pose
+  clip: AnimationGroup | null // the playing clip (walk), for audits and the timeline
   setPose(p: Pose): Violation[]
   setExpression(e: Expression): void
   setDye(role: DyeRole, hex: Hex): void
@@ -81,7 +82,7 @@ function colourOf(part: Part, r: FigureRecipe): Hex {
 
 // Skin under the clothes z-fights them and its ink hull covers them: keep only the skin no garment covers
 // (head, neck, hands). A triangle goes when any corner's strongest bone is a covered one.
-const COVERED = /^(root\.x|spine_|shoulder\.|arm_|c_arm_twist|thigh_|leg_|foot\.|toes_)/ // forearms stay: short sleeves
+const COVERED = /^(root\.x|spine_|thigh_|leg_|foot\.|toes_)/ // arms stay: short sleeves, an empty sleeve shows the paper through it
 const trimmed = new WeakSet<object>()
 function trimCoveredSkin(mesh: Mesh) {
   const geo = mesh.geometry
@@ -142,14 +143,14 @@ export async function createFigure(scene: Scene, recipe: FigureRecipe, name = 'f
   let clip: AnimationGroup | null = null
   const clips = new Map<ClipName, Promise<AnimationGroup>>()
   const fig: Figure = {
-    root, recipe, rig, pose: 'stand',
+    root, recipe, rig, pose: 'stand', clip: null,
     setPose(p) {
       fig.pose = p
       clip?.stop()
-      clip = null
+      clip = fig.clip = null
       if (p === 'walk') {
-        if (!clips.has('walk')) clips.set('walk', retarget('walk', rigRoot, scene))
-        void clips.get('walk')!.then((g) => { if (fig.pose === 'walk') { resetToRest(rest); clip = g; g.start(true) } })
+        if (!clips.has('walk')) clips.set('walk', retarget('walk', rig, scene))
+        void clips.get('walk')!.then((g) => { if (fig.pose === 'walk') { resetToRest(rest); clip = fig.clip = g; g.start(true) } })
         return []
       }
       return applyPose(rig, rest, POSES[p])

@@ -40,7 +40,11 @@ export function toonMaterial(name: string, dye: Color3, scene: Scene): ToonMater
   m.AddUniform('faceTex', 'sampler2D', null)
   m.AddUniform('hasFace', 'float', null)
   m.Fragment_Before_FragColor(`
-    vec3 n = normalize(vNormalW);
+    #ifdef NORMAL
+      vec3 n = normalize(vNormalW);
+    #else
+      vec3 n = normalize(cross(dFdx(vPositionW), dFdy(vPositionW))); // a part exported without normals
+    #endif
     vec3 toEye = normalize(vEyePosition.xyz - vPositionW);
     float nv = abs(dot(n, toEye));
     float nl = dot(n, normalize(toLight));
