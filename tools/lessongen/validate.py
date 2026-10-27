@@ -3,7 +3,7 @@
 
   validate.py LESSON.json [--corpus DIR] [--library-root DIR] [--resolve]
 
-Checks: schema, shot length (est_s 6-12, <= 2.6 words/s), interaction spacing (first <= 180 s, then
+Checks: schema, shot length (timing.json model, narration <= 12 s; est_s 6-12), interaction spacing (first <= 180 s, then
 every <= 180 s, also after the last), every scene has fact_refs that resolve to a source and a real
 source when it says a number or year, no verbatim overlap (6-word n-grams) between any prose string and
 any cached LessonUp dump, Bloom mix of the quizzes, 1-4 power meters, text hygiene (no dashes, no emoji,
