@@ -20,7 +20,7 @@ export const LESSON: Lesson = {
       est_s: 9, figures: [{ char: 'boer-vrouw', pose: 'kneel', x: 0.5, depth: 'mid', facing: 'left' }, { char: 'boer-man', pose: 'carry', x: 0.7, depth: 'mid', facing: 'left' }],
     }),
     scene('sc04', 'effect', 'Ze kapten het bos. Ze bouwden huizen van hout en leem. Het vuur bleef branden, dag en nacht.', {
-      est_s: 14, set: { sky: 'sky-evening', layers: [{ need: 'hut fire hearth', asset: null, depth: 'mid', x: 0.5 }, { need: 'reed', asset: null, depth: 'fg', x: 0.8 }] },
+      est_s: 14, tts_s: 14, set: { sky: 'sky-evening', layers: [{ need: 'hut fire hearth', asset: null, depth: 'mid', x: 0.5 }, { need: 'reed', asset: null, depth: 'fg', x: 0.8 }] },
       balloons: [{ char: 'boer-vrouw', text: 'Hout erop, anders gaat hij uit.' }, { char: 'boer-man', text: 'Ja, ja.' }],
     }),
     scene('sc05', 'turn', 'Maar wie stierf, ging niet zomaar weg.', { est_s: 6 }),
