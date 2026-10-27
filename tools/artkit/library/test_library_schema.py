@@ -9,9 +9,9 @@ import json
 from pathlib import Path
 
 LIB = Path.home() / "BartsMedia/historyportal/library"
-LAYERS = {"sky", "bg", "mid", "fg", "prop"}
+LAYERS = {"sky", "bg", "mid", "fg", "prop", "ground"}
 MOTIONS = {"none", "sway", "drift", "ripple", "flicker"}
-VERDICTS = {"alike", "close", "different", "unranked"}
+VERDICTS = {"alike", "close", "different", "unranked", "judged"}
 
 
 def validate(lib: dict, root: Path | None = None) -> list[str]:

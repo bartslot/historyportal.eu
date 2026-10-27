@@ -112,7 +112,7 @@ def build(job: dict, variants: str = "abcd") -> dict:
                 **({"tileable_y": True} if s["layer"] == "ground" else {}),
                 "motion": item["motion"],
                 **({"era": item["era"]} if item.get("era") else {}),
-                "qa": {"score": vscore if jscore is not None else VERDICT_SCORE.get(vd, 6),
+                "qa": {"score": int(vscore) if jscore is not None else VERDICT_SCORE.get(vd, 6),  # contract: int
                        "alpha_ok": r["alpha_ok"], "ink_coverage": r["ink_coverage"],
                        "ranked_vs_anchor": vd,
                        "palette_de": r["palette_de"], "sheet": s["id"], "variant": v},
