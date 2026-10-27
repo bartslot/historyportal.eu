@@ -19,6 +19,7 @@ import type { Asset, Depth, Lesson, Library, Scene, SceneLayer } from './types'
 export const STAGE_LOOK: Record<string, number | string> = { ...PRESETS['History Lines pencil'], paper: 0.35, granulation: 0.2 }
 const PAPER = new Color4(0.937, 0.914, 0.863, 1)
 const GROUND = '#a3a27a'
+export const MAX_RENDER_SIDE = 1920 // device pixels on the longest side: 1080p is the target, Retina would cost 4x the fill
 
 interface Built { layer: SceneLayer; index: number; builtScale: number; handle: LayerHandle; asset: Asset; order: number }  // index -1 = the sky
 
@@ -30,7 +31,9 @@ export class Stage {
   private built: Built[] = []
   private buildToken = 0
   private look: Record<string, number | string> = { ...STAGE_LOOK }
-  misses: { scene: string; need: unknown }[] = []
+  /** per scene: needs no asset matched, and assets whose file did not load (feeds needed_assets) */
+  private missed = new Map<string, { need: unknown; reason: string }[]>()
+  get misses() { return [...this.missed].flatMap(([scene, list]) => list.map((m) => ({ scene, ...m }))) }
 
   constructor(readonly canvas: HTMLCanvasElement, private lib: Library & { base: string }) {
     this.engine = new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true }, true) // device pixels: crisp
@@ -55,7 +58,16 @@ export class Stage {
       inkColor: () => String(this.look.inkColor ?? 'pencil'),
       texture: () => null,
     })
-    window.addEventListener('resize', () => this.engine.resize())
+    this.fit()
+    window.addEventListener('resize', () => this.fit())
+  }
+
+  /** Sharp up to the device's pixels, never more than MAX_RENDER_SIDE on the longest side. */
+  fit() {
+    const longest = Math.max(this.canvas.clientWidth, this.canvas.clientHeight, 1)
+    const dpr = window.devicePixelRatio || 1
+    this.engine.setHardwareScalingLevel(Math.max(1 / dpr, longest / MAX_RENDER_SIDE))
+    this.engine.resize()
   }
 
   setLook(look: Record<string, number | string> | undefined) { this.look = { ...STAGE_LOOK, ...(look ?? {}) } }
@@ -74,12 +86,12 @@ export class Stage {
     if (s.set.sky) wanted.push({ layer: { asset: s.set.sky, depth: 'sky' }, order: 0, index: -1 })
     const perDepth: Record<string, number> = { sky: 1 }
     s.set.layers.forEach((layer, index) => { const d = layer.depth; perDepth[d] = perDepth[d] ?? 0; wanted.push({ layer, order: perDepth[d]++, index }) })
-    const misses: unknown[] = []
+    const misses: { need: unknown; reason: string }[] = []
     await Promise.all(wanted.map(async ({ layer, order, index }) => {
       const asset = resolveAsset(this.lib, layer, layer.depth)
-      if (!asset) { misses.push(layer.need ?? layer.asset); return }
+      if (!asset) { misses.push({ need: layer.need ?? layer.asset, reason: 'no match' }); return }
       let tex
-      try { tex = await loadPremultiplied(this.lib.base + asset.file, this.scene) } catch (err) { console.error(err); return }
+      try { tex = await loadPremultiplied(this.lib.base + asset.file, this.scene) } catch { misses.push({ need: layer.need ?? layer.asset, reason: `file did not load: ${asset.file}` }); return }
       if (token !== this.buildToken) return
       const p = placeLayer(asset, layer, order)
       const handle = makeLayer(asset, tex, p.w, p.h, p.uRepeat, this.scene)
@@ -95,9 +107,9 @@ export class Stage {
     this.built.forEach((b) => { b.handle.mesh.dispose(); b.handle.material.dispose() })
     this.built = next
     ;(this.ground.material as StandardMaterial).emissiveColor = Color3.FromHexString(s.set.ground ?? GROUND)
+    this.missed.set(s.id, misses)   // replaced per scene: a rebuild never doubles them
     if (misses.length) {
-      this.misses.push(...misses.map((need) => ({ scene: s.id, need })))
-      console.warn(`stage25d: ${s.id}: no asset for`, misses)
+      console.warn(`stage25d: ${s.id}: missing`, misses)
     }
   }
 

@@ -35,7 +35,7 @@ function Panel({ player }: { player: Player }) {
   const cam = s.camera
   void tick
   return (
-    <div className="card bg-base-100 fixed right-3 top-3 bottom-3 w-80 overflow-y-auto p-3 text-sm" data-testid="stage-panel">
+    <div className="rounded-box border border-base-300 bg-base-100 p-3 text-sm lg:fixed lg:right-3 lg:top-3 lg:bottom-3 lg:w-80 lg:overflow-y-auto" data-testid="stage-panel">
       <div className="flex items-center gap-2">
         <button className="btn btn-sm btn-primary" onClick={() => (playing ? player.pause() : player.play())}>{playing ? 'Pause' : 'Play'}</button>
         <button className="btn btn-sm btn-ghost" disabled={!player.doc.history.canUndo()} onClick={() => player.doc.undo()}>Undo</button>
@@ -93,17 +93,24 @@ function Panel({ player }: { player: Player }) {
   )
 }
 
+const Loading = () => (
+  <div className="rounded-box border border-base-300 bg-base-100 p-3 lg:fixed lg:right-3 lg:top-3 lg:w-80"><span className="loading loading-dots loading-sm opacity-60" /></div>
+)
+
+// wide: the stage left, the panel fixed on the right; narrow (below lg): the panel under the stage, the page scrolls
 async function main() {
   const root = document.getElementById('root')!
-  root.className = 'relative h-full bg-base-200'
+  root.className = 'h-full overflow-y-auto bg-base-200 p-3 lg:overflow-hidden'
   const canvas = document.createElement('canvas')
-  canvas.className = 'absolute left-3 top-3 outline-none'
-  canvas.style.width = 'calc(100% - 22rem)'
+  canvas.className = 'block w-full outline-none lg:w-[calc(100%-21rem)]'
   canvas.style.aspectRatio = '16 / 9'
   root.appendChild(canvas)
   const ui = root.appendChild(document.createElement('div'))
+  ui.className = 'mt-3 lg:mt-0'
+  const app = createRoot(ui)
+  app.render(<Loading />)                // the frame and panel show at once; the lesson fills them when it has loaded
   const player = await playLesson(lessonUrl, libraryUrl, canvas)
   Object.assign(window, { __stage25d: player })
-  createRoot(ui).render(<StrictMode><Panel player={player} /></StrictMode>)
+  app.render(<StrictMode><Panel player={player} /></StrictMode>)
 }
 main().catch((err) => { console.error(err); document.body.textContent = String(err) })

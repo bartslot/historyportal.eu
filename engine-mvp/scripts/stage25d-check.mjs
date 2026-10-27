@@ -1,14 +1,21 @@
 // Headless check of the 2.5D stage (stage25d.html): muted, Metal ANGLE (real GPU), 1920x1080.
+// The page as shipped on a Retina Mac (deviceScaleFactor 2): the stage caps its own render size.
 // Writes frames for parallax (sc01 start/end), sway (two clocks), and logs fps over 5 s of playback.
 //   node scripts/stage25d-check.mjs http://localhost:5191/stage25d.html outDir/
-import { mkdirSync } from 'node:fs'
-import { chromium } from '../../node_modules/playwright/index.mjs'
+import { execSync } from 'node:child_process'
+import { existsSync, mkdirSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+
+// Playwright lives in the main checkout's node_modules; a fresh worktree has none of its own
+const common = execSync('git rev-parse --path-format=absolute --git-common-dir', { encoding: 'utf8' }).trim()
+const local = new URL('../../node_modules/playwright/index.mjs', import.meta.url).pathname
+const { chromium } = await import(existsSync(local) ? local : join(dirname(common), 'node_modules/playwright/index.mjs'))
 
 const [url = 'http://localhost:5191/stage25d.html', out = 'stage25d-check/'] = process.argv.slice(2)
 mkdirSync(out, { recursive: true })
 const browser = await chromium.launch({ channel: 'chromium', args: ['--mute-audio', '--use-angle=metal', '--ignore-gpu-blocklist', '--enable-gpu'] })
 try {
-  const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } })
+  const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 2 })
   await page.addInitScript(() => {
     const AC = window.AudioContext
     if (AC) window.AudioContext = class extends AC { constructor(...a) { super(...a); this.suspend() } }
@@ -20,13 +27,12 @@ try {
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`))
   await page.goto(url)
   await page.waitForFunction(() => window.__stage25d, null, { timeout: 30000 })
-  // the canvas alone, at 1920x1080 device pixels
+  // the canvas alone, full viewport (CSS 1920x1080 = 3840x2160 device pixels; the stage renders at most 1920 wide)
   await page.evaluate(() => {
     const c = window.__stage25d.stage.canvas
     Object.assign(c.style, { position: 'fixed', left: '0', top: '0', width: '1920px', height: '1080px', zIndex: 10 })
     document.querySelector('[data-testid=stage-panel]')?.style.setProperty('display', 'none')
-    window.__stage25d.stage.engine.setHardwareScalingLevel(1)
-    window.__stage25d.stage.engine.resize()
+    window.__stage25d.stage.fit()
   })
   const info = await page.evaluate(() => ({ gpu: window.__stage25d.stage.engine.getGlInfo().renderer, w: window.__stage25d.stage.engine.getRenderWidth(), h: window.__stage25d.stage.engine.getRenderHeight() }))
   console.log('gpu', info.gpu, `${info.w}x${info.h}`)

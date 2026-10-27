@@ -228,9 +228,9 @@
             "runtimeExecutable": "bash",
             "runtimeArgs": [
                 "-c",
-                "cd engine-mvp && npx vite --port 5191 --strictPort"
+                "cd engine-mvp && npx vite --port 5192 --strictPort"
             ],
-            "port": 5191
+            "port": 5192
         }
     ]
 }
