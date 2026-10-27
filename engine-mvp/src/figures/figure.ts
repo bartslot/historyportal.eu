@@ -19,9 +19,11 @@ export const FACE_URL = (e: Expression) => `figures/faces/${e}.png`
 const EXPRESSIONS: Expression[] = ['neutral', 'happy', 'worried', 'surprised']
 
 // face decal placement, in eye-distances (eyes sit at 30/70 % across and 38 % down the decal art)
-export const FACE = { scale: 2.5, down: 0.12, depth: 0.12 }
+export const FACE = { scale: 2.5, down: 0.12, depth: 0.22 } // depth: nose tip to cheeks, never the back of the head
 // facing: 'left'/'right' turn this far from the camera toward that side (90 = pure profile; 3/4 reads best)
 export const FACING_TURN_DEG = 62
+// skin shades only where it turns fully away: a comic face is lit flat (the modelled lips and sockets would shade as boxes)
+export const SKIN_STEP = -0.3
 
 export type Facing = 'left' | 'right' | 'front' | 'back'
 export type Placement = { x: number; depth: 'bg' | 'mid' | 'fg'; facing: Facing }
@@ -119,7 +121,11 @@ export async function createFigure(scene: Scene, recipe: FigureRecipe, name = 'f
     if (!part || !part.show(recipe)) { m.setEnabled(false); continue }
     if (part.role === 'skin') trimCoveredSkin(m as Mesh)
     const mat = toonMaterial(`${name}_${part.role}_${live.length}`, hexRgb(colourOf(part, recipe)), scene)
-    if (part.role === 'eye') mat.inkEdge = 0 // the eyeballs carry the painted eyes, no contour of their own
+    if (part.role === 'skin' || part.role === 'eye') mat.step = SKIN_STEP
+    if (part.role === 'eye') {
+      mat.inkEdge = 0 // the eyeballs carry the painted eyes, no contour of their own
+      mat.backFaceCulling = false // one eyeball is exported mirrored (flipped winding): culled, the socket shows through
+    }
     m.material = mat
     live.push({ mesh: m, part })
   }
@@ -174,7 +180,7 @@ function faceProjector(rig: Rig, eyes: AbstractMesh[]) {
   const centre = found ? lo.add(hi).scale(0.5) : Vector3.TransformCoordinates(pos(rig, 'head'), world)
   const span = found ? Math.abs(Vector3.Dot(hi.subtract(lo), side)) : 0.1
   const size = span * 0.7 * FACE.scale
-  const at = centre.subtract(up.scale(size * FACE.down)).add(fwd.scale(FACE.depth * 0.25))
+  const at = centre.subtract(up.scale(size * FACE.down)).add(fwd.scale(0.03))
   const axes = Matrix.FromValues(
     side.x, side.y, side.z, 0,
     up.x, up.y, up.z, 0,

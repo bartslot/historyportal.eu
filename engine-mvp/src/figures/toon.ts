@@ -20,7 +20,7 @@ export const TOON = {
 // The painted face: a projector box in front of the head (unit cube -> world, refreshed per frame from the head
 // bone); the expression image is projected onto whatever skin/eyeball lies inside it and faces it.
 export type FaceProjector = { tex: BaseTexture | null; toBox: Matrix; fwd: Vector3 }
-export type ToonMaterial = CustomMaterial & { dye: Color3; inkEdge?: number; face?: FaceProjector }
+export type ToonMaterial = CustomMaterial & { dye: Color3; inkEdge?: number; step?: number; face?: FaceProjector }
 
 export function toonMaterial(name: string, dye: Color3, scene: Scene): ToonMaterial {
   const m = new CustomMaterial(name, scene) as ToonMaterial
@@ -53,7 +53,8 @@ export function toonMaterial(name: string, dye: Color3, scene: Scene): ToonMater
         float facing = smoothstep(0.15, 0.4, abs(dot(n, normalize(faceFwd)))); // abs: the loader's mirror can flip vNormalW
         vec4 f = texture2D(faceTex, fp.xy + 0.5);
         paint = mix(paint, inkColor, smoothstep(0.05, 0.45, f.a) * facing); // the art is pure ink: only its alpha counts
-        inked *= 1.0 - facing; // eye sockets and the nose would ring with contour ink: the painted face draws them
+        // no contour ink on the face's middle (eye sockets, nostrils, the parted lips): the painted face draws it
+        inked *= smoothstep(0.44, 0.5, length(fp.xy));
       }
     }
     color = vec4(mix(paint, inkColor, inked), 1.0);
@@ -64,7 +65,7 @@ export function toonMaterial(name: string, dye: Color3, scene: Scene): ToonMater
     e.setColor3('dye', m.dye)
     e.setColor3('shadeTint', TOON.shade)
     e.setVector3('toLight', TOON.light)
-    e.setFloat('celStep', TOON.step)
+    e.setFloat('celStep', m.step ?? TOON.step)
     e.setFloat('celSoft', TOON.soft)
     e.setColor3('inkColor', TOON.ink)
     e.setFloat('inkEdge', m.inkEdge ?? TOON.inkEdge)

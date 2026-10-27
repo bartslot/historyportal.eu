@@ -20,7 +20,7 @@ camera.minZ = 0.05
 camera.wheelDeltaPercentage = 0.01
 camera.attachControl(canvas, true)
 
-const VIEWS: Record<string, number> = { front: -Math.PI / 2, three: -Math.PI / 2 - 0.6, side: 0, back: Math.PI / 2 }
+const VIEWS: Record<string, number> = { face: -Math.PI / 2, front: -Math.PI / 2, three: -Math.PI / 2 - 0.6, side: 0, back: Math.PI / 2 }
 const figs: Figure[] = []
 const msg = document.getElementById('msg')!
 const ui = document.getElementById('ui')!
@@ -34,8 +34,11 @@ function verdict() {
 function setPose(p: Pose) { figs.forEach((f) => f.setPose(p)); msg.textContent = verdict() }
 function setExpr(e: Expression) { figs.forEach((f) => f.setExpression(e)) }
 function view(name: string) {
+  const face = name === 'face'
   camera.alpha = VIEWS[name] ?? VIEWS.front
   camera.beta = Math.PI / 2 - 0.04
+  camera.radius = face ? 0.8 : chars.length > 1 ? 6 : 3.5
+  camera.target = new Vector3(face ? figs[0]?.root.position.x ?? 0 : 0, face ? 1.6 : 0.8, 0)
 }
 function button(label: string, on: () => void, row: HTMLElement) {
   const b = document.createElement('button')
@@ -63,7 +66,8 @@ function slider(label: string, min: number, max: number, step: number, get: () =
 
 async function main() {
   for (const [i, c] of chars.entries()) {
-    const f = await createFigure(scene, recipeFor(c), c)
+    const r = recipeFor(c)
+    const f = await createFigure(scene, q.get('hair') ? { ...r, hair: q.get('hair') as typeof r.hair } : r, c)
     f.root.position.x = (i - (chars.length - 1) / 2) * 1.1
     faceHeading(f, Math.PI) // facing the camera (front view looks down +z)
     figs.push(f)
