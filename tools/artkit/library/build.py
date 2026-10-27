@@ -82,6 +82,7 @@ def build(job: dict) -> dict:
                 "w": r["w"], "h": r["h"], "anchor": r["anchor"] if s["layer"] != "sky" else [0.5, 1.0],
                 "height_m": item["height_m"], "tileable_x": s["layer"] in ("sky", "bg") or bool(s.get("strip")),
                 "motion": item["motion"],
+                **({"era": item["era"]} if item.get("era") else {}),
                 "qa": {"score": VERDICT_SCORE.get(vd, 6), "alpha_ok": r["alpha_ok"],
                        "ink_coverage": r["ink_coverage"], "ranked_vs_anchor": vd,
                        "palette_de": r["palette_de"], "sheet": s["id"], "variant": v},

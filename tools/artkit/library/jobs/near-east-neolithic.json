@@ -1,0 +1,760 @@
+{
+ "bundle": "near-east-neolithic",
+ "era": "c. 10,000-3000 BCE",
+ "sheets": [
+  {
+   "id": "sky-ne-hot",
+   "layer": "sky",
+   "subject": "ONLY an empty sky, nothing else in the picture: no land, no people, no animals. A hot dry clear midday sky, almost cloudless, two or three thin high wisps of cloud.",
+   "items": [
+    {
+     "id": "sky-hot-01",
+     "tags": [
+      "sky",
+      "hot",
+      "clear",
+      "noon",
+      "mideast",
+      "egypt",
+      "mesopotamia"
+     ],
+     "height_m": 0,
+     "motion": "drift"
+    }
+   ]
+  },
+  {
+   "id": "sky-ne-morning",
+   "layer": "sky",
+   "subject": "ONLY an empty sky, nothing else in the picture: no land, no people, no animals. A soft early morning sky with a few small cumulus clouds.",
+   "items": [
+    {
+     "id": "sky-morning-02",
+     "tags": [
+      "sky",
+      "morning",
+      "mideast",
+      "egypt",
+      "mesopotamia"
+     ],
+     "height_m": 0,
+     "motion": "drift"
+    }
+   ]
+  },
+  {
+   "id": "sky-ne-evening",
+   "layer": "sky",
+   "subject": "ONLY an empty sky, nothing else in the picture: no land, no people, no animals. A calm evening sky with long thin horizontal clouds.",
+   "items": [
+    {
+     "id": "sky-evening-02",
+     "tags": [
+      "sky",
+      "evening",
+      "dusk",
+      "mideast",
+      "egypt",
+      "mesopotamia"
+     ],
+     "height_m": 0,
+     "motion": "drift"
+    }
+   ]
+  },
+  {
+   "id": "bg-levant-hills",
+   "layer": "bg",
+   "subject": "Southern Levant, Natufian and early farming, c. 10,000-8,500 BCE (Ain Mallaha / Eynan in the Hula valley). Dry rolling limestone hills with scattered oak and terebinth trees and patches of wild grass, a far valley floor.",
+   "items": [
+    {
+     "id": "hills-dry-01",
+     "tags": [
+      "hills",
+      "hill",
+      "dry",
+      "mideast"
+     ],
+     "height_m": 300,
+     "motion": "none",
+     "era": "c. 10,000 BCE"
+    }
+   ]
+  },
+  {
+   "id": "bg-nile",
+   "layer": "bg",
+   "subject": "Lower Nile valley, Neolithic farmers, c. 5000-4500 BCE (Merimde Beni Salama and the Fayum). A broad calm Nile river across the strip, a narrow green band of reeds, acacias and small fields along the near and far bank, low red-brown desert cliffs beyond.",
+   "items": [
+    {
+     "id": "river-nile-01",
+     "tags": [
+      "river",
+      "nile",
+      "desert",
+      "egypt"
+     ],
+     "height_m": 60,
+     "motion": "ripple"
+    }
+   ]
+  },
+  {
+   "id": "bg-nile-flood",
+   "layer": "bg",
+   "subject": "Lower Nile valley, Neolithic farmers, c. 5000-4500 BCE (Merimde Beni Salama and the Fayum). The Nile in its yearly flood: wide still water covering the fields, a few palms and acacias standing in the water, low desert cliffs beyond.",
+   "items": [
+    {
+     "id": "river-nile-flood-01",
+     "tags": [
+      "river",
+      "nile",
+      "flood",
+      "egypt"
+     ],
+     "height_m": 60,
+     "motion": "ripple"
+    }
+   ]
+  },
+  {
+   "id": "bg-euphrates",
+   "layer": "bg",
+   "subject": "Southern Mesopotamia, Uruk period, c. 3400-3100 BCE, the city of Uruk and its irrigated plain. A wide slow Euphrates river on a completely flat plain, reed banks and groups of date palms along it.",
+   "items": [
+    {
+     "id": "river-euphrates-01",
+     "tags": [
+      "river",
+      "euphrates",
+      "water",
+      "palm",
+      "mesopotamia"
+     ],
+     "height_m": 40,
+     "motion": "ripple"
+    }
+   ]
+  },
+  {
+   "id": "bg-uruk",
+   "layer": "bg",
+   "subject": "Southern Mesopotamia, Uruk period, c. 3400-3100 BCE, the city of Uruk and its irrigated plain. The skyline of Uruk after archaeological reconstructions: many low flat-roofed mudbrick houses, and on the right a high whitewashed mudbrick platform with the White Temple of Anu on top (plain rectangular temple, buttressed walls).",
+   "items": [
+    {
+     "id": "city-uruk-01",
+     "tags": [
+      "city",
+      "temple",
+      "platform",
+      "mudbrick",
+      "white",
+      "mesopotamia"
+     ],
+     "height_m": 40,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "bg-mes-fields",
+   "layer": "bg",
+   "subject": "Southern Mesopotamia, Uruk period, c. 3400-3100 BCE, the city of Uruk and its irrigated plain. A completely flat plain of irrigated barley fields divided by straight narrow canals with low earth banks, a few date palms, some fields cracked and dry.",
+   "items": [
+    {
+     "id": "field-mes-01",
+     "tags": [
+      "field",
+      "barley",
+      "canal",
+      "dry",
+      "cracked",
+      "mesopotamia"
+     ],
+     "height_m": 20,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "mid-natufian",
+   "layer": "mid",
+   "subject": "Southern Levant, Natufian and early farming, c. 10,000-8,500 BCE (Ain Mallaha / Eynan in the Hula valley). (1) a round house partly sunk into the ground, low stone wall footing, conical roof of brushwood and hides on poles, as excavated at Ain Mallaha; (2) a small lean-to of branches covered with animal hides; (3) a small fire of sticks in a ring of stones with a thin column of smoke; (4) a dense stand of wild barley and wild wheat.",
+   "items": [
+    {
+     "id": "hut-sunken-01",
+     "tags": [
+      "hut",
+      "round",
+      "sunken",
+      "partly",
+      "mideast"
+     ],
+     "height_m": 3,
+     "motion": "none"
+    },
+    {
+     "id": "hut-branch-01",
+     "tags": [
+      "hut",
+      "branches",
+      "hide",
+      "mideast"
+     ],
+     "height_m": 2,
+     "motion": "none"
+    },
+    {
+     "id": "fire-small-01",
+     "tags": [
+      "fire",
+      "smoke",
+      "small",
+      "mideast",
+      "egypt",
+      "mesopotamia"
+     ],
+     "height_m": 1,
+     "motion": "flicker"
+    },
+    {
+     "id": "barley-wild-01",
+     "tags": [
+      "field",
+      "barley",
+      "wild",
+      "grass",
+      "gold",
+      "green",
+      "mideast"
+     ],
+     "height_m": 1,
+     "motion": "sway"
+    }
+   ]
+  },
+  {
+   "id": "mid-nile",
+   "layer": "mid",
+   "subject": "Lower Nile valley, Neolithic farmers, c. 5000-4500 BCE (Merimde Beni Salama and the Fayum). (1) a small oval hut of bundled reeds plastered with Nile mud, as at Merimde; (2) a small boat made of bundled papyrus reeds; (3) a patch of young green barley growing in black Nile mud; (4) a round grain storage pit in the ground lined with coiled basketry, as found in the Fayum.",
+   "items": [
+    {
+     "id": "hut-reed-01",
+     "tags": [
+      "hut",
+      "reed",
+      "round",
+      "egypt"
+     ],
+     "height_m": 2.5,
+     "motion": "none"
+    },
+    {
+     "id": "boat-papyrus-01",
+     "tags": [
+      "boat",
+      "small",
+      "reed",
+      "papyrus",
+      "egypt"
+     ],
+     "height_m": 1,
+     "motion": "none"
+    },
+    {
+     "id": "field-nile-01",
+     "tags": [
+      "field",
+      "barley",
+      "green",
+      "mud",
+      "black",
+      "nile",
+      "egypt"
+     ],
+     "height_m": 1,
+     "motion": "sway"
+    },
+    {
+     "id": "pit-storage-01",
+     "tags": [
+      "pit",
+      "storage",
+      "basket",
+      "egypt"
+     ],
+     "height_m": 1,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "mid-canal",
+   "layer": "mid",
+   "subject": "Southern Mesopotamia, Uruk period, c. 3400-3100 BCE, the city of Uruk and its irrigated plain. (1) a short straight section of irrigation canal with water between low earth banks; (2) a canal being dug: a straight trench with heaps of dug earth beside it and a wooden hoe and a reed basket left on the bank; (3) a small earth dam of packed earth and reed bundles across a ditch; (4) a huge heap of harvested barley grain.",
+   "items": [
+    {
+     "id": "canal-01",
+     "tags": [
+      "canal",
+      "water",
+      "mesopotamia"
+     ],
+     "height_m": 2,
+     "motion": "ripple"
+    },
+    {
+     "id": "canal-dig-01",
+     "tags": [
+      "canal",
+      "dig",
+      "trench",
+      "mesopotamia"
+     ],
+     "height_m": 2,
+     "motion": "none"
+    },
+    {
+     "id": "dam-earth-01",
+     "tags": [
+      "dam",
+      "earth",
+      "small",
+      "mesopotamia"
+     ],
+     "height_m": 1.5,
+     "motion": "none"
+    },
+    {
+     "id": "grain-heap-01",
+     "tags": [
+      "grain",
+      "heap",
+      "huge",
+      "barley",
+      "mesopotamia"
+     ],
+     "height_m": 3,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "mid-uruk",
+   "layer": "mid",
+   "subject": "Southern Mesopotamia, Uruk period, c. 3400-3100 BCE, the city of Uruk and its irrigated plain. After archaeological reconstructions: (1) a cluster of three flat-roofed mudbrick houses with small doorways; (2) a potter's workshop: an open courtyard with a low turntable, unfired pots drying and a round domed kiln; (3) a horizontal ground loom pegged to the ground with a half-woven cloth; (4) a short section of mudbrick wall decorated with a clay cone mosaic in zigzag and diamond patterns, as in the Eanna precinct.",
+   "items": [
+    {
+     "id": "houses-mudbrick-01",
+     "tags": [
+      "city",
+      "houses",
+      "mudbrick",
+      "house",
+      "mesopotamia"
+     ],
+     "height_m": 5,
+     "motion": "none"
+    },
+    {
+     "id": "workshop-potter-01",
+     "tags": [
+      "workshop",
+      "potters",
+      "kiln",
+      "mesopotamia"
+     ],
+     "height_m": 3,
+     "motion": "none"
+    },
+    {
+     "id": "loom-ground-01",
+     "tags": [
+      "loom",
+      "weaving",
+      "mesopotamia"
+     ],
+     "height_m": 0.8,
+     "motion": "none"
+    },
+    {
+     "id": "wall-cone-01",
+     "tags": [
+      "wall",
+      "mudbrick",
+      "cone",
+      "pattern",
+      "mesopotamia"
+     ],
+     "height_m": 3,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "prop-ne-animals",
+   "layer": "prop",
+   "subject": "Near East, early farming. Animals side view, same scale: (1) an early domestic goat with long scimitar horns, (2) an early domestic hairy sheep with horns, (3) a mountain gazelle, (4) a small mixed herd of four sheep and goats.",
+   "items": [
+    {
+     "id": "goat-ne-01",
+     "tags": [
+      "goat",
+      "goats",
+      "animal",
+      "mideast",
+      "egypt",
+      "mesopotamia"
+     ],
+     "height_m": 0.7,
+     "motion": "none"
+    },
+    {
+     "id": "sheep-ne-01",
+     "tags": [
+      "sheep",
+      "animal",
+      "mideast",
+      "egypt",
+      "mesopotamia"
+     ],
+     "height_m": 0.7,
+     "motion": "none"
+    },
+    {
+     "id": "gazelle-01",
+     "tags": [
+      "gazelle",
+      "herd",
+      "animal",
+      "mideast"
+     ],
+     "height_m": 0.8,
+     "motion": "none"
+    },
+    {
+     "id": "herd-01",
+     "tags": [
+      "sheep",
+      "goats",
+      "herd",
+      "mideast",
+      "egypt",
+      "mesopotamia"
+     ],
+     "height_m": 0.8,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "prop-ne-tools",
+   "layer": "prop",
+   "subject": "Southern Levant, Natufian and early farming, c. 10,000-8,500 BCE (Ain Mallaha / Eynan in the Hula valley). Two rows of three, after real finds: (1) a curved bone sickle handle with a row of small flint blades set in it, (2) a basalt saddle quern with its handstone, (3) an open leather bag full of grain, (4) a broken round flat bread, (5) a fishing net with stone sinkers, (6) a Nile fish (tilapia).",
+   "items": [
+    {
+     "id": "sickle-01",
+     "tags": [
+      "sickle",
+      "bone",
+      "flint",
+      "mideast"
+     ],
+     "height_m": 0.4,
+     "motion": "none"
+    },
+    {
+     "id": "quern-ne-01",
+     "tags": [
+      "quern",
+      "stone",
+      "mideast",
+      "egypt"
+     ],
+     "height_m": 0.5,
+     "motion": "none"
+    },
+    {
+     "id": "bag-grain-01",
+     "tags": [
+      "bag",
+      "grain",
+      "leather",
+      "open",
+      "mideast"
+     ],
+     "height_m": 0.5,
+     "motion": "none"
+    },
+    {
+     "id": "bread-flat-01",
+     "tags": [
+      "bread",
+      "flat",
+      "broken",
+      "mideast"
+     ],
+     "height_m": 0.25,
+     "motion": "none"
+    },
+    {
+     "id": "net-fishing-01",
+     "tags": [
+      "net",
+      "fishing",
+      "egypt"
+     ],
+     "height_m": 1,
+     "motion": "none"
+    },
+    {
+     "id": "fish-01",
+     "tags": [
+      "fish",
+      "tilapia",
+      "egypt"
+     ],
+     "height_m": 0.3,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "prop-uruk",
+   "layer": "prop",
+   "subject": "Southern Mesopotamia, Uruk period, c. 3400-3100 BCE, the city of Uruk and its irrigated plain. Two rows of three, after finds from Uruk: (1) a coarse beveled-rim bowl, (2) a stack of beveled-rim bowls, (3) a small clay tablet with proto-cuneiform signs and number marks, (4) a few small clay tokens: cones, spheres and discs, (5) a woven reed basket, (6) a wooden hoe.",
+   "items": [
+    {
+     "id": "bowl-bevel-01",
+     "tags": [
+      "bowl",
+      "beveled",
+      "rim",
+      "mesopotamia"
+     ],
+     "height_m": 0.1,
+     "motion": "none"
+    },
+    {
+     "id": "bowls-bevel-stack-01",
+     "tags": [
+      "bowl",
+      "beveled",
+      "rim",
+      "stack",
+      "mesopotamia"
+     ],
+     "height_m": 0.4,
+     "motion": "none"
+    },
+    {
+     "id": "tablet-clay-01",
+     "tags": [
+      "tablet",
+      "clay",
+      "signs",
+      "mesopotamia"
+     ],
+     "height_m": 0.1,
+     "motion": "none"
+    },
+    {
+     "id": "tokens-clay-01",
+     "tags": [
+      "token",
+      "clay",
+      "small",
+      "mesopotamia"
+     ],
+     "height_m": 0.05,
+     "motion": "none"
+    },
+    {
+     "id": "basket-ne-01",
+     "tags": [
+      "basket",
+      "hoe",
+      "mesopotamia"
+     ],
+     "height_m": 0.4,
+     "motion": "none"
+    },
+    {
+     "id": "hoe-01",
+     "tags": [
+      "hoe",
+      "basket",
+      "tool",
+      "mesopotamia"
+     ],
+     "height_m": 1.2,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "fg-ne-plants",
+   "layer": "fg",
+   "subject": "Near East river valleys, early farming. (1) a tall clump of papyrus reeds, (2) a date palm, (3) a clump of wild grass, (4) a clump of green barley, (5) a long cedar log lying on the ground.",
+   "items": [
+    {
+     "id": "reeds-papyrus-01",
+     "tags": [
+      "reed",
+      "reeds",
+      "papyrus",
+      "egypt",
+      "mesopotamia"
+     ],
+     "height_m": 3,
+     "motion": "sway"
+    },
+    {
+     "id": "palm-date-01",
+     "tags": [
+      "palm",
+      "date",
+      "tree",
+      "mesopotamia",
+      "egypt"
+     ],
+     "height_m": 12,
+     "motion": "sway"
+    },
+    {
+     "id": "grass-wild-01",
+     "tags": [
+      "grass",
+      "wild",
+      "mideast"
+     ],
+     "height_m": 0.8,
+     "motion": "sway"
+    },
+    {
+     "id": "barley-green-01",
+     "tags": [
+      "field",
+      "barley",
+      "green",
+      "mesopotamia",
+      "egypt"
+     ],
+     "height_m": 0.8,
+     "motion": "sway"
+    },
+    {
+     "id": "timber-log-01",
+     "tags": [
+      "timber",
+      "log",
+      "mesopotamia"
+     ],
+     "height_m": 0.6,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "fg-ne-field",
+   "layer": "fg",
+   "strip": true,
+   "subject": "Near East early farming: freshly sown field ground of dark moist earth in long shallow furrows with a few seedlings.",
+   "items": [
+    {
+     "id": "field-sown-01",
+     "tags": [
+      "field",
+      "sown",
+      "mud",
+      "black",
+      "mideast",
+      "egypt",
+      "mesopotamia"
+     ],
+     "height_m": 0.3,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "fg-ne-path",
+   "layer": "fg",
+   "strip": true,
+   "subject": "Near East dry country: a worn dirt path of pale dusty earth with tufts of dry wild grass at its edges.",
+   "items": [
+    {
+     "id": "path-dirt-01",
+     "tags": [
+      "path",
+      "dirt",
+      "grass",
+      "mideast"
+     ],
+     "height_m": 0.3,
+     "motion": "none"
+    }
+   ]
+  }
+ ],
+ "plate": [
+  {
+   "id": "sky-hot-01",
+   "fill": 0.75
+  },
+  {
+   "id": "city-uruk-01",
+   "tile": true,
+   "base": 0.6,
+   "h": 0.24
+  },
+  {
+   "id": "field-mes-01",
+   "tile": true,
+   "base": 0.72,
+   "h": 0.2
+  },
+  {
+   "id": "canal-01",
+   "x": 0.5,
+   "base": 0.8,
+   "h": 0.12
+  },
+  {
+   "id": "houses-mudbrick-01",
+   "x": 0.2,
+   "base": 0.76,
+   "h": 0.18
+  },
+  {
+   "id": "grain-heap-01",
+   "x": 0.72,
+   "base": 0.82,
+   "h": 0.12
+  },
+  {
+   "id": "palm-date-01",
+   "x": 0.9,
+   "base": 1.0,
+   "h": 0.85
+  },
+  {
+   "id": "reeds-papyrus-01",
+   "x": 0.08,
+   "base": 1.02,
+   "h": 0.3
+  },
+  {
+   "id": "basket-ne-01",
+   "x": 0.42,
+   "base": 0.98,
+   "h": 0.07
+  },
+  {
+   "id": "hoe-01",
+   "x": 0.5,
+   "base": 0.99,
+   "h": 0.12
+  }
+ ]
+}

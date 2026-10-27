@@ -573,6 +573,187 @@
      "motion": "sway"
     }
    ]
+  },
+  {
+   "id": "prop-trb",
+   "layer": "prop",
+   "subject": "Northern Netherlands (Drenthe), Neolithic, c. 3400 BCE, Funnelbeaker (TRB) farmers. Arranged in one row of four, after real finds in the Drents Museum: (1) a Funnelbeaker clay pot (trechterbeker): round-bellied pot with a tall flaring funnel-shaped neck, rows of vertical incised grooves and small stab marks on the belly, hand-built, no handle; (2) a polished grey flint axe head fixed in a straight wooden haft, bound with no metal; (3) a single round amber bead with a hole through it, shown large; (4) a small group of five smooth rounded river pebbles.",
+   "items": [
+    {
+     "id": "pot-funnel-01",
+     "tags": [
+      "pot",
+      "funnel",
+      "beaker",
+      "trechterbeker",
+      "clay"
+     ],
+     "height_m": 0.3,
+     "motion": "none"
+    },
+    {
+     "id": "axe-flint-01",
+     "tags": [
+      "axe",
+      "flint",
+      "polished",
+      "tool"
+     ],
+     "height_m": 0.6,
+     "motion": "none"
+    },
+    {
+     "id": "bead-amber-01",
+     "tags": [
+      "bead",
+      "amber",
+      "jewellery"
+     ],
+     "height_m": 0.03,
+     "motion": "none"
+    },
+    {
+     "id": "pebbles-01",
+     "tags": [
+      "pebble",
+      "stone",
+      "pebbles"
+     ],
+     "height_m": 0.15,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "mid-hunebed-build",
+   "layer": "mid",
+   "subject": "Northern Netherlands (Drenthe), Neolithic, c. 3400 BCE, Funnelbeaker (TRB) farmers. Three separate set pieces: (1) a long low ramp of packed sand and turf sloping up from the ground to about two metres high, plain earth, nothing on it; (2) one huge rounded glacial granite boulder (a future capstone) lying on three peeled tree-trunk rollers on the ground; (3) a modern museum display case: a glass vitrine on a plain wooden plinth with one Funnelbeaker pot inside.",
+   "items": [
+    {
+     "id": "ramp-earth-01",
+     "tags": [
+      "ramp",
+      "earth",
+      "mound",
+      "sand"
+     ],
+     "height_m": 2,
+     "motion": "none"
+    },
+    {
+     "id": "stone-chamber-01",
+     "tags": [
+      "stone",
+      "boulder",
+      "capstone",
+      "chamber",
+      "rollers"
+     ],
+     "height_m": 2,
+     "motion": "none"
+    },
+    {
+     "id": "case-museum-01",
+     "tags": [
+      "case",
+      "museum",
+      "display",
+      "vitrine"
+     ],
+     "height_m": 1.8,
+     "motion": "none",
+     "era": "modern"
+    }
+   ]
+  },
+  {
+   "id": "mid-houses",
+   "layer": "mid",
+   "subject": "Two Neolithic farmhouses of the Netherlands drawn after archaeological reconstructions, side by side at the same scale, three-quarter view: (1) LEFT, a Funnelbeaker (TRB) farmhouse, c. 3400-2850 BCE, after the reconstruction at the Hunebedcentrum Borger: a rectangular house about 12 m long and 6 m wide, low walls of wattle-and-daub between upright posts, a gabled thatched roof of reed reaching low, one small doorway in the long side; (2) RIGHT, a Bandkeramiek (Linear Pottery) longhouse, c. 5000 BCE, after the excavated houses at Elsloo and Geleen in Limburg: a very long timber house about 30 m long and 6 m wide, walls of wattle-and-daub plastered with clay, a high steep gabled thatched roof, the long walls slightly bowed, a doorway at the short end.",
+   "items": [
+    {
+     "id": "house-trb-01",
+     "tags": [
+      "house",
+      "trb",
+      "funnelbeaker",
+      "farmhouse",
+      "hut"
+     ],
+     "height_m": 5,
+     "motion": "none",
+     "era": "c. 3400-2850 BCE"
+    },
+    {
+     "id": "longhouse-lbk-01",
+     "tags": [
+      "longhouse",
+      "bandkeramiek",
+      "house",
+      "lbk"
+     ],
+     "height_m": 7,
+     "motion": "none",
+     "era": "c. 5000 BCE"
+    }
+   ]
+  },
+  {
+   "id": "prop-animals2",
+   "layer": "prop",
+   "subject": "Northern Netherlands (Drenthe), Neolithic, c. 3400 BCE, Funnelbeaker (TRB) farmers. Neolithic livestock, side view, same scale: (1) a small brown-grey goat with backward-curving horns and a short beard, (2) a small dark brown short-horned cow, smaller than modern cattle, (3) a small brown sheep with short wool and horns.",
+   "items": [
+    {
+     "id": "goat-01",
+     "tags": [
+      "goat",
+      "animal",
+      "livestock"
+     ],
+     "height_m": 0.7,
+     "motion": "none"
+    },
+    {
+     "id": "cow-02",
+     "tags": [
+      "cattle",
+      "cow",
+      "animal",
+      "livestock"
+     ],
+     "height_m": 1.2,
+     "motion": "none"
+    },
+    {
+     "id": "sheep-02",
+     "tags": [
+      "sheep",
+      "animal",
+      "livestock"
+     ],
+     "height_m": 0.7,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "bg-ice",
+   "layer": "bg",
+   "subject": "Northern Netherlands during the Saalian ice age, about 150,000 years ago: the edge of a vast flat ice sheet (land ice), a low white ice cliff running across the land with large granite boulders frozen into its foot and lying on the bare gravel plain in front of it, no trees, no people.",
+   "items": [
+    {
+     "id": "ice-sheet-01",
+     "tags": [
+      "ice",
+      "sheet",
+      "glacier",
+      "iceage"
+     ],
+     "height_m": 40,
+     "motion": "none",
+     "era": "c. 150,000 years ago"
+    }
+   ]
   }
  ],
  "plate": [

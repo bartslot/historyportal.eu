@@ -108,6 +108,13 @@ PALETTE = {
         "(#7d6752), cool grey granite for boulders (#a9adab, #8e8474), heather mauve only as small accents "
         "(#b39ab0), clay brown for pottery (#b0754f), pale transparent blue sky (#d2e6f2, #a9d7f6)."
     ),
+    "near-east-neolithic": (
+        "sun-bleached sand and pale ochre for dry land and mudbrick (#f4d5a8, #e6ae7c, #d0bba0), warm "
+        "grey-brown earth and dark Nile mud (#a08a6c, #7d6752), restrained olive and sap greens for palms, "
+        "barley and reeds (#8d9a5b, #6f7f45), straw gold for ripe grain (#e3cf9a, #c9a86a), clear muted "
+        "blue-green for rivers and canals (#72a2b5, #98c3d3), whitewash cream for the temple (#f5e6ce), "
+        "clay terracotta for pottery (#c07b57), pale transparent blue sky (#d2e6f2, #a9d7f6)."
+    ),
     "nl-golden-age": (
         "warm brick red and rose for brick walls (#c07b57, #d79a7a), pale sandstone and cream for stone "
         "(#f4d5a8, #f5e6ce), weathered brown for wood, ships, barrels and crates (#7d6752, #b19f86), clear "
@@ -156,3 +163,77 @@ RANK = (
 def rank_prompt(n: int) -> str:
     labels = ", ".join(chr(65 + i) for i in range(n))
     return RANK.format(n1=n + 1, labels=labels)
+
+
+# --- Weave (Figma, GPT Image 2.5) ---------------------------------------------------------------
+# Same templates, minus the codex TOOL line, plus an explicit role for every attached image.
+# Reference order is fixed (weave.REF_ORDER): 4 watercolours, their 4 inks, the texture ref.
+
+WEAVE_REFS = (
+    "Of the nine attached reference images, the first four are finished History Lines watercolour "
+    "illustrations, the next four are the black ink drawings those watercolours were painted over, the last "
+    "one is a watercolour texture reference. They show STYLE only: never copy their subjects, buildings, people or "
+    "composition."
+)
+
+WEAVE_INK_LEAD = (
+    "Draw a NEW black-and-white ink drawing (pass 1 of 2: ink only, colour comes later). Match the line "
+    "quality, line weight and sparing hatching of the ink references exactly."
+)
+
+WEAVE_COLOUR_LEAD = (
+    "The image being edited is the locked ink drawing to colour (pass 2 of 2). Colour it the way the watercolour references "
+    "were painted over their inks: same watercolour handling, transparency, paper tooth, blooms, backruns, "
+    "granulation and colour temperature."
+)
+
+
+# Figma's edit model mottles stone and adds ground patches (consistency check 2026-10-27).
+WEAVE_COLOUR_CALM = (
+    "Keep each wash broad and calm inside its shape: no mottled patches, no lichen or moss spots, no added "
+    "pebbles, dots or ground patches outside the drawn lines. Output the same framing as the ink: no zoom, "
+    "no crop."
+)
+
+
+def _refs_line(first: int = 1) -> str:
+    return WEAVE_REFS
+
+
+def weave_ink_prompt(template: str, subject: str) -> str:
+    parts = [WEAVE_INK_LEAD, _refs_line(1), LAYER[template].format(subject=subject),
+             INK_ESSENCE.format(ink_rule=INK_RULE)]
+    if template not in ("sky", "bg"):
+        parts.append(LIGHT_LINE)
+    return "\n\n".join(parts)
+
+
+def weave_colour_prompt(template: str, bundle: str) -> str:
+    extra = COLOUR_EXTRA.get(template, "")
+    if template == "bg":
+        extra += " " + COLOUR_EXTRA["strip"]
+    body = COLOUR.format(palette=PALETTE[bundle], extra=extra)
+    body = body.replace(
+        "The FIRST attached image is the locked ink drawing to colour. The SECOND attached image is the "
+        "watercolour STYLE reference only (copy its watercolour handling and colour temperature, never its "
+        "content). ", "").replace("Edit the first image", "Edit the ink drawing")
+    return "\n\n".join([WEAVE_COLOUR_LEAD, _refs_line(2), body, WEAVE_COLOUR_CALM])
+
+
+# Figma generate_image is text-only: the ink pass describes the anchor instead of attaching it.
+FIGMA_INK_LEAD = (
+    "A black-and-white ink drawing for a children's history book, pass 1 of 2 (ink only, watercolour comes "
+    "later). The look of a confident European bande-dessinee history illustrator working with a dip pen: "
+    "clean black contours of varying weight, slightly broken where light hits, sparse parallel hatching "
+    "only on shadow sides, large areas of untouched white paper."
+)
+
+
+def figma_ink_prompt(template: str, subject: str) -> str:
+    essence = INK_ESSENCE.format(ink_rule=INK_RULE).replace(
+        " in the style of the attached anchor (match its line quality and hatching, not its content)", "")
+    parts = [FIGMA_INK_LEAD, LAYER[template].format(subject=subject), essence,
+             "No people and no animals unless they are named above; nothing from a later period."]
+    if template not in ("sky", "bg"):
+        parts.append(LIGHT_LINE.replace("lighter than the anchor", "light"))
+    return " ".join(" ".join(parts).split())
