@@ -12,11 +12,13 @@ export const TOON = {
   shade: new Color3(0.74, 0.68, 0.74),                // the shade step multiplies the dye by this
   step: 0.18,                                         // N.L below this = shade
   soft: 0.12,                                         // edge softness: a wash edge, not a razor cel
-  ink: Color3.FromHexString('#3a2a1e'),               // History Lines ink: sepia brown, never black
-  inkEdge: 0.22,                                      // N.V below this = ink (bigger = heavier line)
-  inkSoft: 0.06,
+  ink: Color3.FromHexString('#4a3526'),               // History Lines ink: warm sepia brown, never black
+  inkEdge: 0.2,                                       // N.V below this = ink (bigger = heavier line)
+  inkSoft: 0.1,                                       // a soft edge: no stair-stepped line
   paper: new Color3(0.94, 0.91, 0.84),                // the lit side lets this much paper through (paperLift)
   paperLift: 0.18,
+  wash: 0.1,                                          // watercolour: pigment pools and thins over the paper (0 = flat)
+  washScale: 38,                                      // its blotch size in screen pixels
 }
 
 // The painted face: a projector box in front of the head (unit cube -> world, refreshed per frame from the head
@@ -51,6 +53,8 @@ export function toonMaterial(name: string, dye: Color3, scene: Scene, withZones 
   m.AddUniform('celSoft', 'float', null)
   m.AddUniform('paperTone', 'vec3', null)
   m.AddUniform('paperLift', 'float', null)
+  m.AddUniform('washAmount', 'float', null)
+  m.AddUniform('washScale', 'float', null)
   m.AddUniform('inkColor', 'vec3', null)
   m.AddUniform('inkEdge', 'float', null)
   m.AddUniform('inkSoft', 'float', null)
@@ -67,7 +71,14 @@ export function toonMaterial(name: string, dye: Color3, scene: Scene, withZones 
     vec3 toEye = normalize(vEyePosition.xyz - vPositionW);
     float nv = abs(dot(n, toEye));
     float nl = dot(n, normalize(toLight));
-    float lit = smoothstep(celStep - celSoft, celStep + celSoft, nl);
+    // a watercolour wash: screen-anchored blotches (the paper does not move) darken and thin the pigment and
+    // wander the shade edge, so it reads as a brushed wash, not a printed cel step
+    vec2 wq = gl_FragCoord.xy / washScale;
+    vec2 wi = floor(wq), wf = fract(wq);
+    wf = wf * wf * (3.0 - 2.0 * wf);
+    float wn = mix(mix(fract(sin(dot(wi, vec2(12.9898, 78.233))) * 43758.5453), fract(sin(dot(wi + vec2(1.0, 0.0), vec2(12.9898, 78.233))) * 43758.5453), wf.x),
+                   mix(fract(sin(dot(wi + vec2(0.0, 1.0), vec2(12.9898, 78.233))) * 43758.5453), fract(sin(dot(wi + vec2(1.0, 1.0), vec2(12.9898, 78.233))) * 43758.5453), wf.x), wf.y) - 0.5;
+    float lit = smoothstep(celStep - celSoft, celStep + celSoft, nl + wn * washAmount * 2.0);
     float inked = 1.0 - smoothstep(inkEdge - inkSoft, inkEdge, nv);
     float z = floor(vZone + 0.5);
     vec3 base = dye;
@@ -89,6 +100,7 @@ export function toonMaterial(name: string, dye: Color3, scene: Scene, withZones 
     }
     vec3 paint = mix(base * shadeTint, mix(base, paperTone, paperLift), lit); // lights go pale, as a wash does
     paint = mix(paint, inkColor, faceInk);
+    paint *= 1.0 + wn * washAmount;
     color = vec4(mix(paint, inkColor, inked), 1.0);
   `)
   m.onBindObservable.add(() => {
@@ -106,6 +118,8 @@ export function toonMaterial(name: string, dye: Color3, scene: Scene, withZones 
     e.setFloat('celSoft', TOON.soft)
     e.setColor3('paperTone', TOON.paper)
     e.setFloat('paperLift', TOON.paperLift)
+    e.setFloat('washAmount', TOON.wash)
+    e.setFloat('washScale', TOON.washScale * (scene.getEngine().getRenderHeight() / 1080))
     e.setColor3('inkColor', TOON.ink)
     e.setFloat('inkEdge', m.inkEdge ?? TOON.inkEdge)
     e.setFloat('inkSoft', TOON.inkSoft)

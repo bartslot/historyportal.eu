@@ -15,7 +15,7 @@ import { addMaskMesh } from '../engine/anime-cast'
 import { applyPose, captureRest, frameOf, pos, POSES, resetToRest, rigOf, type Rig, type Violation } from './pose'
 import { BEARDS, DEFAULT_DYES, EXPRESSIONS, HAIRS, HATS, type DyeRole, type Expression, type FigureRecipe, type Hex, type Pose } from './recipes'
 
-export const BODY_URL = 'assets/models/customizable-man/man-wardrobe.glb'
+export const BODY_URL = 'assets/models/customizable-man/man-lite.glb' // export_wardrobe.py: no images, 12.7 MB
 export const FACE_URL = (e: Expression) => `figures/faces/${e}.png`
 
 // face decal placement, in eye-distances (eyes sit at 30/70 % across and 38 % down the decal art)

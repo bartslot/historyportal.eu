@@ -107,7 +107,7 @@ fig.setDye('coat', '#7a4a30'); fig.dispose()
   fix (feet stay on the ground, no crouch, no float), then a guard bake straightens any backward knee in the keys:
   0 violations over 116 frames (figure lab: `__lab.walkAudit()`).
 - **Lab**: `/figure-lab.html?char=boer-man,boer-vrouw&poses=point,carry&view=front|three|side|face&look=stage&ui=0`.
-- **Assets** (git-ignored): `public/assets/models/customizable-man/man-wardrobe.glb` from `src/figures/export_wardrobe.py`
+- **Assets** (git-ignored): `public/assets/models/customizable-man/man-lite.glb` from `src/figures/export_wardrobe.py`
   (Blender, licensed model in `workflows/3D pipeline/customizable-man/`, licence: no AI training) and `clips/`.
 - **Gaps (needed assets)**: female body and a child body (now: the man at 0.95 / 0.68); long hair / braid /
   headscarf / white cap; period SILHOUETTES (the zones give tunic, dress, breeches, collar their colour, the shape is

@@ -7,7 +7,7 @@ import { LoadAssetContainerAsync, NullEngine, Scene, Vector3, type TransformNode
 import '@babylonjs/loaders/glTF'
 import { aim, applyPose, captureRest, checkPose, frameOf, pos, POSES, resetToRest, rigOf, type RestPose, type Rig } from './pose'
 
-const GLB = fileURLToPath(new URL('../../public/assets/models/customizable-man/man-wardrobe.glb', import.meta.url))
+const GLB = fileURLToPath(new URL('../../public/assets/models/customizable-man/man-lite.glb', import.meta.url))
 const have = existsSync(GLB)
 
 describe.skipIf(!have)('standard body poses', () => {
