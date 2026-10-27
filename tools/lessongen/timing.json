@@ -8,6 +8,14 @@
   },
   "shot_min_s": 6,
   "shot_max_s": 12,
-  "interaction_s": { "quiz": 40, "power-meter": 60, "choice": 30 },
-  "class_action": "scene.class_action_s, the time written for that class action (hands up, say together), added after the shot"
+  "interaction_s": {
+    "quiz": 40,
+    "quiz.open": 120,
+    "power-meter": 60,
+    "choice": 30,
+    "choice.team": 90
+  },
+  "class_action": "scene.class_action_s, the time written for that class action (hands up, say together), added after the shot",
+  "interaction_rule": "key = type, or type.format when that key exists (an open class discussion, a team activity)",
+  "teacher_card": "the first 'N minuten' in lesson.teacher must be within 1 minute of the model total"
 }

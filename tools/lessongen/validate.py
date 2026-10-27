@@ -3,7 +3,8 @@
 
   validate.py LESSON.json [--corpus DIR] [--library-root DIR] [--resolve]
 
-Checks: schema, shot length (timing.json model, narration <= 12 s; est_s 6-12), interaction spacing (first <= 180 s, then
+Checks: schema, timeline from timing.json (narration <= 12 s a shot; est_s
+is only the writer's note, still 6-12), the teacher card's minutes match that timeline, interaction spacing (first <= 180 s, then
 every <= 180 s, also after the last), every scene has fact_refs that resolve to a source and a real
 source when it says a number or year, no verbatim overlap (6-word n-grams) between any prose string and
 any cached LessonUp dump, Bloom mix of the quizzes, 1-4 power meters, text hygiene (no dashes, no emoji,
@@ -44,6 +45,7 @@ BUNDLE_REGIONS = {
     "near-east-neolithic": {"mideast", "egypt", "mesopotamia"},
 }
 # A narrated number, year or amount is a hard fact: it needs a real (non-ledger) source in the scene.
+CARD_TOLERANCE_MIN = 1
 HARD_FACT = re.compile(
     r"\d|honderd|duizend|miljoen|miljard|\b\w*(?:twintig|dertig|veertig|vijftig|zestig|zeventig|tachtig|negentig)\b"
     r"|\b(?:der|veer|vijf|zes|zeven|acht|negen)?tien\b|\belf\b|\btwaalf\b", re.I)
@@ -65,7 +67,9 @@ def shot_s(sc: dict) -> float:
 
 
 def interaction_s(it: dict) -> float:
-    return TIMING["interaction_s"][it["type"]]
+    """Fixed play time from timing.json, by type.format when that exists (open discussion, team activity)."""
+    times = TIMING["interaction_s"]
+    return times.get(f"{it['type']}.{it.get('format')}", times[it["type"]])
 
 
 def all_texts(node: object, where: str = "") -> list[tuple[str, str]]:
@@ -203,6 +207,9 @@ def check(lesson: dict, corpus_dir: Path = DEFAULT_CORPUS, library_root: Path = 
     stats["total_s"] = round(t)
     stats["story_s"] = round(sum(shot_s(sc) for sc in scenes))
     stats["class_actions_s"] = sum(sc.get("class_action_s", 0) for sc in scenes)
+    card = re.search(r"(\d+)\s*minuten", lesson.get("teacher", ""))
+    if card and abs(int(card.group(1)) - t / 60) > CARD_TOLERANCE_MIN:
+        errors.append(f"teacher card says {card.group(1)} minuten, the timing model gives {t / 60:.1f}")
     stats["interactions"] = [f"{round(s)}s {sid} {kind}" for s, _, sid, kind in spans]
     if not spans:
         errors.append("no interactions at all")

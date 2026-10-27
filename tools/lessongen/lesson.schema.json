@@ -599,6 +599,13 @@
           "minimum": 20,
           "maximum": 180,
           "description": "ignored: timing.json interaction_s decides"
+        },
+        "format": {
+          "enum": [
+            "class",
+            "team"
+          ],
+          "description": "team = groups of 3-4 work it out (timing.json choice.team)"
         }
       }
     }

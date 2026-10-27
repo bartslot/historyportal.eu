@@ -277,3 +277,17 @@ def test_region_names_are_not_singularised():
     lib = [{"id": "bay-mu", "layer": "bg", "tags": ["coast", "mauritius"]}]
     assert v.match_asset("coast !mauritius", "bg", lib)["id"] == "bay-mu"
     assert v.match_asset("coast", "bg", lib) is None
+
+
+def test_open_quiz_and_team_choice_take_longer(lesson):
+    assert v.interaction_s({"type": "quiz", "format": "open"}) == 120
+    assert v.interaction_s({"type": "quiz", "format": "mc"}) == 40
+    assert v.interaction_s({"type": "choice", "format": "team"}) == 90
+    assert v.interaction_s({"type": "choice"}) == 30
+
+
+def test_teacher_card_minutes_must_match_the_model(lesson):
+    lesson["teacher"] = "Duur: ongeveer 9 minuten."  # model: 152 s = 2.5 min
+    assert any("teacher card says 9 minuten" in e for e in errors_of(lesson))
+    lesson["teacher"] = "Duur: ongeveer 3 minuten."
+    assert errors_of(lesson) == []
