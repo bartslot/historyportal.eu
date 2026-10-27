@@ -36,8 +36,8 @@ export const cameraLocked = (s: Scene): boolean => !owns(s, 'camera', s.camera)
 
 const shotsOf = (s: Scene): Camera[] => [s.camera, ...(s.camera_more ?? [])].filter(Boolean) as Camera[]
 
-/** Silences go on turns and climaxes (never the hook), one per SILENCE_EVERY_S, spaced apart; topped
- *  up from the end when the beats offer too few. `starts` = rough scene start times. */
+/** Silences go on turns and climaxes (never the hook), one per SILENCE_EVERY_S, at least SILENCE_GAP_S
+ *  apart; topped up from the other beats, still spaced. `starts` = rough scene start times. */
 export function silenceIndices(beats: Beat[], starts: number[], total: number): number[] {
   const want = Math.max(minimums(beats.length).silences, Math.round(total / SILENCE_EVERY_S))
   const out: number[] = []
@@ -45,6 +45,9 @@ export function silenceIndices(beats: Beat[], starts: number[], total: number): 
   for (const beat of ['turn', 'climax'] as Beat[]) {
     beats.forEach((b, i) => { if (b === beat && out.length < want && fits(i)) out.push(i) })
   }
+  // too few turns/climaxes that fit: any other scene but the hook, still spaced; only a lesson too short
+  // to space them all gets them closer (from the end)
+  beats.forEach((b, i) => { if (b !== 'hook' && out.length < want && fits(i)) out.push(i) })
   for (let i = beats.length - 2; out.length < want && i > 0; i--) if (!out.includes(i)) out.push(i)
   return out.sort((a, b) => a - b)
 }

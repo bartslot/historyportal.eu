@@ -136,9 +136,21 @@ describe('place-aware sound', () => {
   })
 })
 
-// Real lessons from S4 (vault). Skipped where the vault is not on this machine.
-const VAULT = '/Users/bartslot/BartsAutomation/BartsDev/Memory/historyportal/topics/autonomous-lessons/lessons'
-for (const id of ['eerste-boeren', 'hunebedden', 'voc']) {
+// Real lessons from S4 (vault; HP_LESSONS_DIR overrides the path). Rules:
+// - vault mounted: every lesson below MUST be there; a missing one FAILS (a renamed or split lesson
+//   must be renamed here too, never skipped silently)
+// - vault not mounted: skipped with a warning, except in CI (CI=1), where that fails too
+const VAULT = process.env.HP_LESSONS_DIR ?? '/Users/bartslot/BartsAutomation/BartsDev/Memory/historyportal/topics/autonomous-lessons/lessons'
+const REAL_LESSONS = ['eerste-boeren-1', 'eerste-boeren-2', 'hunebedden', 'voc']
+const mounted = existsSync(VAULT)
+if (!mounted) console.warn(`[rules.test] lesson vault not found at ${VAULT}: real-lesson tests skipped${process.env.CI ? ' (CI: failing)' : ''}`)
+
+describe('real lessons are where the tests expect them', () => {
+  it.runIf(!mounted && !!process.env.CI)('CI has the lesson vault', () => expect(mounted, `no lesson vault at ${VAULT}`).toBe(true))
+  it.runIf(mounted).each(REAL_LESSONS)('%s/lesson.json exists', (id) => expect(existsSync(`${VAULT}/${id}/lesson.json`), `${VAULT}/${id}/lesson.json missing`).toBe(true))
+})
+
+for (const id of REAL_LESSONS) {
   const file = `${VAULT}/${id}/lesson.json`
   describe.skipIf(!existsSync(file))(`real lesson ${id}`, () => {
     const lesson = JSON.parse(existsSync(file) ? readFileSync(file, 'utf8') : '{"scenes":[]}') as Lesson
@@ -156,8 +168,11 @@ for (const id of ['eerste-boeren', 'hunebedden', 'voc']) {
       }
     })
 
-    it('at least one silence per 3 minutes (12 min = 4 or more), spaced apart', () => {
-      expect(d.scenes.filter((s) => s.sound!.silence).length).toBeGreaterThanOrEqual(Math.max(2, Math.floor(total / 180)))
+    it('silences scale with length: at least one per 3 minutes (12 min = 4), never two within 60 s', () => {
+      const starts = sceneStarts(d)
+      const at = d.scenes.map((s, i) => (s.sound!.silence ? starts[i] : -1)).filter((t) => t >= 0)
+      expect(at.length).toBeGreaterThanOrEqual(Math.max(2, Math.floor(total / 180)))
+      at.slice(1).forEach((t, k) => expect(t - at[k]).toBeGreaterThanOrEqual(60))
     })
 
     it('varies the shot scale: all three used, never two of one scale in a row', () => {
