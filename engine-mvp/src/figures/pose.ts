@@ -37,7 +37,7 @@ export function rigOf(rigRoot: TransformNode): Rig {
 }
 
 // ---------- rig-space helpers ----------
-function refresh(rig: Rig) {
+export function refresh(rig: Rig) {
   rig.root.computeWorldMatrix(true)
   rig.root.getDescendants(false).forEach((n) => (n as TransformNode).computeWorldMatrix?.(true))
 }
@@ -88,10 +88,11 @@ export function aim(rig: Rig, j: Joint, child: Joint, dir: Vector3) {
 }
 
 // ---------- guards ----------
-export type Violation = { limb: Limb; kind: 'knee-backwards' | 'elbow-forwards' | 'arm-through-body' | 'hip-overextended'; value: number }
+export type Violation = { limb: Limb; kind: 'knee-backwards' | 'elbow-forwards' | 'arm-through-body' | 'hand-in-body' | 'hip-overextended'; value: number }
 
 const KNEE_TOL = 0.01      // m: knee this far BEHIND the hip-ankle line = bent backwards
-const ELBOW_TOL = 0.03     // m: elbow this far IN FRONT of the shoulder-wrist line = bent the wrong way
+const ELBOW_TOL = 0.08     // share of the upper arm: elbow this far IN FRONT of the shoulder-wrist line = bent the wrong way
+const TORSO = { side: 0.13, front: 0.1, back: 0.12 } // m round the chest joint: a hand in this box is inside the body
 const ARM_CROSSING = -0.1  // upper arm pointing this far toward the other side = through the torso
 const HIP_EXT = Math.cos((45 * Math.PI) / 180)
 
@@ -113,11 +114,19 @@ export function checkPose(rig: Rig, f: Frame = frameOf(rig)): Violation[] {
     const thigh = knee.subtract(hip).normalize()
     if (Vector3.Dot(thigh, f.fwd) < -HIP_EXT) out.push({ limb: `leg${s}`, kind: 'hip-overextended', value: Vector3.Dot(thigh, f.fwd) })
 
-    const sh = pos(rig, `arm${s}`), el = pos(rig, `fore${s}`), wr = pos(rig, `hand${s}`)
-    const e = Vector3.Dot(bulge(sh, el, wr), f.fwd)
-    if (e > ELBOW_TOL) out.push({ limb: `arm${s}`, kind: 'elbow-forwards', value: e })
+    // the shoulder is the twist joint: arm_stretch sits 13 cm down the upper arm (check F3)
+    const sh = pos(rig, `armTwist${s}`), el = pos(rig, `fore${s}`), wr = pos(rig, `hand${s}`)
+    const e = Vector3.Dot(bulge(sh, el, wr), f.fwd) / Math.max(Vector3.Distance(sh, el), 1e-6)
+    // only for an arm that hangs: a raised arm (climb, wave) bends its elbow forward/out by nature
+    const hangs = Vector3.Dot(el.subtract(pos(rig, `arm${s}`)), f.up) < 0
+    if (hangs && e > ELBOW_TOL) out.push({ limb: `arm${s}`, kind: 'elbow-forwards', value: e })
+    // a hand inside the torso (a forearm folded into the chest)
+    const rel = wr.subtract(pos(rig, 'chest'))
+    const side = Math.abs(Vector3.Dot(rel, f.left)), front = Vector3.Dot(rel, f.fwd)
+    const high = Vector3.Dot(wr, f.up), lo = Vector3.Dot(pos(rig, 'hips'), f.up), hi = Vector3.Dot(pos(rig, 'neck'), f.up)
+    if (side < TORSO.side && front < TORSO.front && front > -TORSO.back && high > lo && high < hi) out.push({ limb: `arm${s}`, kind: 'hand-in-body', value: front })
     const outward = s === 'L' ? f.left : f.left.negate()
-    const upper = el.subtract(sh).normalize()
+    const upper = el.subtract(pos(rig, `arm${s}`)).normalize() // crossing: along the aimed upper arm
     if (Vector3.Dot(upper, outward) < ARM_CROSSING) out.push({ limb: `arm${s}`, kind: 'arm-through-body', value: Vector3.Dot(upper, outward) })
   }
   return out

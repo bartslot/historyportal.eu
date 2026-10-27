@@ -10,7 +10,7 @@ import {
   type AnimationGroup, type AssetContainer, type Scene, type TransformNode,
 } from '@babylonjs/core'
 import '@babylonjs/loaders/glTF'
-import { aim, ARP, checkPose, pos, resetToRest, type RestPose, type Rig } from './pose'
+import { aim, ARP, checkPose, frameOf, pos, refresh, resetToRest, type RestPose, type Rig } from './pose'
 
 export const CLIPS = {
   walk: 'assets/models/customizable-man/clips/M_Walk_001.glb',
@@ -46,12 +46,16 @@ function source(url: string, scene: Scene) {
 
 /** retarget one clip onto a figure; returns a stopped, looping group on the figure's own bones */
 export async function retarget(clip: ClipName, rig: Rig, rest: RestPose, scene: Scene): Promise<AnimationGroup> {
+  return retargetFrom(await source(CLIPS[clip], scene), clip, rig, rest)
+}
+
+/** the same from a clip container already in the scene (the vitest loads it from disk) */
+export function retargetFrom(c: AssetContainer, clip: string, rig: Rig, rest: RestPose): AnimationGroup {
   const rigRoot = rig.root
-  const c = await source(CLIPS[clip], scene)
   const src = c.animationGroups[0]
-  const byName = new Map(c.transformNodes.map((n) => [n.name, n]))
   resetToRest(rest) // the ground fix and the in-place hips read the rig as it stands now: make that the rest pose
   const avatar = new AnimatorAvatar(`fig-${clip}`, rigRoot, false, false)
+  avatar.showWarnings = false // the source's finger bones (Thumb2..4 etc.) have no deform bone here: expected
   const tgt = (n: string) => rigRoot.getDescendants(false).find((d) => d.name === n) as TransformNode
   const group = avatar.retargetAnimationGroup(src, {
     animationGroupName: `${rigRoot.name}-${clip}`,
@@ -85,6 +89,15 @@ export async function retarget(clip: ClipName, rig: Rig, rest: RestPose, scene: 
   return group
 }
 
+/** the lowest sole of the two feet above the ground, in rig space (0 = planted); rest = standing on the ground */
+export function soleHeight(rig: Rig, restUp: { toe: number; foot: number }, up: Vector3): number {
+  refresh(rig)
+  return Math.min(...(['L', 'R'] as const).flatMap((s) => [
+    Vector3.Dot(pos(rig, `toe${s}`), up) - restUp.toe,
+    Vector3.Dot(pos(rig, `foot${s}`), up) - restUp.foot,
+  ]))
+}
+
 /** straighten every backward knee in the clip's keys (see header) */
 function guardBake(group: AnimationGroup, rig: Rig, rest: RestPose) {
   group.start(true)
@@ -101,6 +114,23 @@ function guardBake(group: AnimationGroup, rig: Rig, rest: RestPose) {
       k.value = rig.node(`shin${s}`).rotationQuaternion!.clone()
     })
     anim.setKeys(keys)
+  }
+  // planted foot: Babylon's ground fix still lets both feet leave the ground mid-cycle (up to 13 cm, check F1).
+  // Every hips key moves along up so the lower foot's sole sits on the ground. The hips hang from the rig root,
+  // so its position keys are already in rig space.
+  resetToRest(rest)
+  const f = frameOf(rig)
+  const restUp = { toe: Vector3.Dot(pos(rig, 'toeL'), f.up), foot: Vector3.Dot(pos(rig, 'footL'), f.up) }
+  const hipKeys = group.targetedAnimations.find((ta) => ta.target === rig.node('hips') && ta.animation.targetProperty === 'position')?.animation
+  if (hipKeys) {
+    // resampled on EVERY frame: the hips track has fewer keys than the legs, and between keys a foot would lift
+    const hips = rig.node('hips')
+    const keys: { frame: number; value: Vector3 }[] = []
+    for (let fr = Math.floor(group.from); fr <= Math.ceil(group.to); fr += 1) {
+      group.goToFrame(Math.min(fr, group.to))
+      keys.push({ frame: fr, value: hips.position.subtract(f.up.scale(soleHeight(rig, restUp, f.up))) })
+    }
+    hipKeys.setKeys(keys)
   }
   group.stop()
   resetToRest(rest) // goToFrame left the bones on the last key

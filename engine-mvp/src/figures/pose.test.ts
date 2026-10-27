@@ -34,7 +34,7 @@ describe.skipIf(!have)('standard body poses', () => {
 
   for (const name of Object.keys(POSES) as (keyof typeof POSES)[]) {
     it(`${name}: no knee backwards, no arm through the body`, () => {
-      expect(applyPose(rig, rest, POSES[name])).toEqual([])
+      expect(applyPose(rig, rest, POSES[name]).map((v) => `${v.limb} ${v.kind} ${v.value.toFixed(3)}`)).toEqual([])
     })
   }
 
@@ -73,6 +73,16 @@ describe.skipIf(!have)('standard body poses', () => {
     aim(rig, 'shinL', 'footL', f.fwd.scale(0.8).add(f.up.scale(-0.6)))
     const v = checkPose(rig, f)
     expect(v.some((x) => x.limb === 'legL' && x.kind === 'knee-backwards')).toBe(true)
+  })
+
+  // the checker's two escapes (round 1, F3): both must go red
+  it('catches a hyperextended carry forearm (elbow bent the wrong way)', () => {
+    applyPose(rig, rest, { arms: { L: { upper: [0.3, -1, 0.3], lower: [-1, 0.12, -0.12] } } })
+    expect(checkPose(rig).some((x) => x.limb === 'armL' && x.kind === 'elbow-forwards')).toBe(true)
+  })
+  it('catches a forearm folded into the chest', () => {
+    applyPose(rig, rest, { arms: { L: { upper: [0.05, -1, 0.15], lower: [0.2, 0.3, -1] } } })
+    expect(checkPose(rig).some((x) => x.limb === 'armL' && (x.kind === 'hand-in-body' || x.kind === 'arm-through-body'))).toBe(true)
   })
 
   it('catches an arm through the torso', () => {
