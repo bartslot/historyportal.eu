@@ -16,11 +16,19 @@ export function lessonUrlOf(param: string | null): string {
 }
 
 /** A scene's narration file (S4's `scene.audio`, "<lesson id>/<scene id>.mp3", relative to the narration
- *  root ~/BartsMedia/historyportal/narration, served at public/narration) as a URL. Plain path segments
- *  only: nothing outside the root. */
-const AUDIO = /^[a-z0-9][a-z0-9_-]*\/[a-z0-9][a-z0-9_.-]*\.(mp3|m4a)$/i
-export function voiceUrl(audio: unknown): string | undefined {
-  return typeof audio === 'string' && AUDIO.test(audio) && !audio.includes('..') ? `narration/${audio}` : undefined
+ *  root ~/BartsMedia/historyportal/narration, served at public/narration) as a URL, or undefined.
+ *  Confined to the root the way the browser will read it: the path is DECODED first (a %2e%2e is a ..),
+ *  must be two plain segments (no backslash, no dot segment, nothing absolute), and the URL it resolves
+ *  to must still sit under /narration/. */
+const AUDIO = /^[a-z0-9][a-z0-9_-]*\/[a-z0-9][a-z0-9_-]*(\.[a-z0-9_-]+)*\.(mp3|m4a)$/i
+export function voiceUrl(audio: unknown, base = 'http://studio.invalid/play.html'): string | undefined {
+  if (typeof audio !== 'string') return undefined
+  let plain: string
+  try { plain = decodeURIComponent(audio) } catch { return undefined } // a broken %-escape
+  if (plain !== audio || !AUDIO.test(plain)) return undefined // escapes of any kind are refused outright
+  const resolved = new URL(`narration/${plain}`, base)
+  const root = new URL('narration/', base)
+  return resolved.origin === root.origin && resolved.pathname.startsWith(root.pathname) ? `narration/${plain}` : undefined
 }
 
 /** Seconds the sound may drift from the picture before it is re-placed. */

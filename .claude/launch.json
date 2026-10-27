@@ -268,6 +268,16 @@
         "--strictPort"
       ],
       "port": 5196
+    },
+    {
+      "//": "S5's own runs when a checker holds studio-director's port.",
+      "name": "studio-director-alt",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd engine-mvp && npx vite --port 5294 --strictPort"
+      ],
+      "port": 5294
     }
   ]
 }
