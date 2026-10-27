@@ -1,7 +1,7 @@
 // The two binding contracts (vault topics/autonomous-lessons/plan.md): library.json (S2) and lesson.json (S4/S5).
 // Only the fields the stage reads are typed; everything else rides along untouched.
 
-export type LayerKind = 'sky' | 'bg' | 'mid' | 'fg' | 'prop'
+export type LayerKind = 'sky' | 'bg' | 'mid' | 'fg' | 'prop' | 'ground'
 export type Depth = 'sky' | 'bg' | 'mid' | 'fg'
 export type MotionKind = 'none' | 'sway' | 'drift' | 'ripple' | 'flicker'
 
@@ -24,6 +24,8 @@ export interface Library {
   version: number
   bundle: string
   style?: string
+  /** the bundle's paper colour ('#rrggbb'); the ground falls back to it */
+  paper?: string
   assets: Asset[]
 }
 
@@ -41,6 +43,10 @@ export interface SceneLayer {
   scale?: number
   motion?: MotionKind | MotionSpec
   keys?: LayerKey[]
+  /** share of the plane's height (from the bottom) that fades into the ground: bg strips 0.22 by default */
+  feather?: number
+  /** contact stain opacity on the ground under mid/fg assets (0 = none) */
+  shadow?: number
 }
 
 export interface CamPose { x: number; y: number; z: number; fov: number }
@@ -53,7 +59,8 @@ export interface Scene {
   beat?: string
   narration?: string
   est_s?: number
-  set: { sky?: string | null; ground?: string; layers: SceneLayer[] }
+  /** ground: a 'ground' asset id or tags, or '#hex' (a paper wash); horizon: metres the far landscape (bg) sits higher */
+  set: { sky?: string | null; ground?: string; horizon?: number; layers: SceneLayer[] }
   figures?: unknown[]
   camera?: CameraMove | null
   /** further shots of the same scene (director, S5), each with its at_s */

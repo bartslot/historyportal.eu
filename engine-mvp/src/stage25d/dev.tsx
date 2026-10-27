@@ -6,6 +6,7 @@ import { StrictMode, useEffect, useRef, useState, useSyncExternalStore } from 'r
 import { createRoot } from 'react-dom/client'
 import { playLesson, type Player } from './stage'
 import { getIn, type Path } from './edits'
+import { BG_FEATHER, STAIN_DEFAULT } from './ground'
 import { HOLD_DEFAULTS, RENDER_CAPS, sceneDuration, setShotDuration, setShotPose } from './layout'
 import { Panel } from '../panels/Panel'
 import { panels } from '../panels/store'
@@ -133,6 +134,14 @@ function ScenePanel({ player }: { player: Player }) {
           <Num player={player} path={['hold', 'breath_s']} label="Hold tempo" min={2} max={20} step={0.5} fallback={HOLD_DEFAULTS.breath_s} />
         </div>
       )}
+      <h3 className="mt-3 font-semibold">Ground</h3>
+      <div className="mt-1 flex flex-col gap-1">
+        <select className="select select-xs" data-testid="ground" value={s.set.ground ?? ''} onChange={(e) => player.doc.set([...sp, 'set', 'ground'], e.target.value || undefined, 'Ground')}>
+          <option value="">{player.stage.lib.assets.some((a) => a.layer === 'ground') ? 'Ground of the bundle' : 'Paper'}</option>
+          {player.stage.lib.assets.filter((a) => a.layer === 'ground').map((a) => <option key={a.id} value={a.id}>{a.id}</option>)}
+        </select>
+        <Num player={player} path={[...sp, 'set', 'horizon']} label="Horizon" min={-6} max={20} step={0.5} fallback={0} />
+      </div>
       <h3 className="mt-3 flex items-baseline font-semibold">Camera<span className="ml-auto text-xs font-normal tabular-nums opacity-70" data-testid="scene-length">{sceneDuration(s).toFixed(1)} s</span></h3>
       <Shots key={index} player={player} sceneIndex={index} />
       <h3 className="mt-3 font-semibold">Layers</h3>
@@ -150,6 +159,8 @@ function ScenePanel({ player }: { player: Player }) {
             </select>
             <Num player={player} path={[...lp, 'motion', 'amount']} label="Motion" min={0} max={3} step={0.05} fallback={1} />
             <Num player={player} path={[...lp, 'motion', 'speed']} label="Tempo" min={0.1} max={3} step={0.05} fallback={1} />
+            {l.depth === 'bg' && <Num player={player} path={[...lp, 'feather']} label="Soft edge" min={0} max={0.6} step={0.01} fallback={BG_FEATHER} />}
+            {(l.depth === 'mid' || l.depth === 'fg') && <Num player={player} path={[...lp, 'shadow']} label="Shadow" min={0} max={1} step={0.05} fallback={STAIN_DEFAULT} />}
           </div>
         )
       })}

@@ -2,11 +2,13 @@
 // vertex/fragment shader. Textures are uploaded PREMULTIPLIED (rgb * a, done here on the CPU), so filtering and
 // mipmaps never mix the colour of transparent pixels into the edge: no light or dark halos at any size.
 import {
-  Constants, Effect, Mesh, RawTexture, ShaderMaterial, Texture, VertexData,
+  Constants, Effect, Mesh, RawTexture, ShaderMaterial, Texture, Vector3, VertexData,
   type Scene,
 } from '@babylonjs/core'
 import type { Asset, MotionSpec } from './types'
 import { MOTION_CODE } from './layout'
+import { bottomColour } from './ground'
+import { GL_NOISE } from './ground-gl'
 
 Effect.ShadersStore.stageLayerVertexShader = `
   precision highp float;
@@ -38,7 +40,9 @@ Effect.ShadersStore.stageLayerFragmentShader = `
   varying vec2 vUV;
   varying float vH;
   uniform sampler2D tex;
-  uniform float time, kind, amount, speed, phase, opacity, uRepeat;
+  uniform float time, kind, amount, speed, phase, opacity, uRepeat, feather;
+  uniform vec3 featherTint;
+  ${GL_NOISE}
   void main(void) {
     vec2 uv = vec2(vUV.x * uRepeat, vUV.y);
     if (kind == 3.0) {          // ripple: the water surface wobbles, more toward the bottom (nearer)
@@ -48,10 +52,19 @@ Effect.ShadersStore.stageLayerFragmentShader = `
     }
     vec4 c = texture2D(tex, uv);                       // premultiplied
     if (kind == 4.0) c.rgb *= 1.0 + amount * 0.12 * (sin(time * speed * 13.0 + phase) * 0.5 + sin(time * speed * 31.0) * 0.5);
+    // the lower edge is painted over into the ground's own colour along a ragged line (not a blur, not see-through:
+    // behind a far strip's lower part is sky, not floor), so the far landscape meets the floor without a seam
+    if (feather > 0.0) {
+      float rag = feather * 0.45 * (fbm(vec2(uv.x * 14.0, 3.7)) - 0.5);
+      float k = smoothstep(0.0, feather, vH + rag);
+      c = vec4(mix(featherTint * c.a, c.rgb, k), c.a);
+    }
     gl_FragColor = c * opacity;
   }`
 
 const textures = new Map<string, Promise<RawTexture>>()
+/** url -> the colour an image's bottom rows end in (0..1), read while loading: the ground fades into it */
+export const edgeColours = new Map<string, [number, number, number]>()
 
 /** The image as a premultiplied RGBA texture with mipmaps (cached per url and scene). */
 export function loadPremultiplied(url: string, scene: Scene): Promise<RawTexture> {
@@ -67,6 +80,8 @@ export function loadPremultiplied(url: string, scene: Scene): Promise<RawTexture
       const g = c.getContext('2d', { willReadFrequently: true })!
       g.drawImage(img, 0, 0)
       const data = g.getImageData(0, 0, c.width, c.height).data
+      const edge = bottomColour(data, c.width, c.height)
+      if (edge) edgeColours.set(url, edge)
       for (let i = 0; i < data.length; i += 4) {
         const a = data[i + 3] / 255
         data[i] = Math.round(data[i] * a); data[i + 1] = Math.round(data[i + 1] * a); data[i + 2] = Math.round(data[i + 2] * a)
@@ -109,6 +124,8 @@ export interface LayerHandle {
   /** live values: read every frame, so a teacher's edit shows at once */
   setMotion(m: Required<MotionSpec>): void
   setOpacity(o: number): void
+  /** share of the height, from the bottom, that fades into the ground */
+  setFeather(f: number, tint?: [number, number, number]): void
 }
 
 let seed = 0
@@ -117,7 +134,7 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
   const mesh = anchoredPlane(`layer:${asset.id}`, asset, w, h, scene)
   const mat = new ShaderMaterial(`layer:${asset.id}`, scene, 'stageLayer', {
     attributes: ['position', 'uv'],
-    uniforms: ['worldViewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'opacity', 'uRepeat'],
+    uniforms: ['worldViewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'opacity', 'uRepeat', 'feather', 'featherTint'],
     samplers: ['tex'],
     needAlphaBlending: true,
   })
@@ -129,7 +146,7 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
   const phase = (seed++ * 2.39996) % (Math.PI * 2) // golden-angle phases: neighbours never sway in step
   const top = asset.anchor?.[1] ?? 1
   mat.setFloat('phase', phase).setFloat('height', h * top).setFloat('width', w).setFloat('uRepeat', uRepeat).setFloat('opacity', 1)
-  mat.setFloat('kind', 0).setFloat('amount', 1).setFloat('speed', 1).setFloat('time', 0)
+  mat.setFloat('kind', 0).setFloat('amount', 1).setFloat('speed', 1).setFloat('time', 0).setFloat('feather', 0)
   mesh.material = mat
   mesh.metadata = { noGBuffer: true, painted: true } // the look draws no ink on its edges: the art has its own
   mesh.isPickable = false
@@ -137,5 +154,9 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
     mesh, material: mat,
     setMotion: (m) => { mat.setFloat('kind', MOTION_CODE[m.kind] ?? 0).setFloat('amount', m.amount).setFloat('speed', m.speed) },
     setOpacity: (o) => { mat.setFloat('opacity', o); mesh.isVisible = o > 0.001 },
+    setFeather: (f, tint) => {
+      mat.setFloat('feather', Math.max(0, Math.min(1, f)))
+      if (tint) mat.setVector3('featherTint', Vector3.FromArray(tint))
+    },
   }
 }

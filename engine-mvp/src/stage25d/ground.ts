@@ -1,0 +1,61 @@
+// The floor of the stage, pure parts: which ground a scene uses, the colour the far landscape ends in (so the ground
+// fades into it), and how big a contact stain is. The GL side is ground-gl.ts.
+import { resolveAsset } from './library'
+import type { Asset, Library, Scene } from './types'
+
+/** History Lines paper (vault STYLE.md); a bundle may name its own in library.json `paper`. */
+export const PAPER = '#f6f5ee'
+/** The bottom of a bg strip feathers into the ground over this share of its height (layer.feather overrides). */
+export const BG_FEATHER = 0.22
+/** Contact stain opacity under mid/fg assets (layer.shadow overrides; 0 = none). */
+export const STAIN_DEFAULT = 0.6
+/** Metres the ground art repeats over when the asset does not say (asset.height_m = one tile's depth). */
+export const GROUND_TILE_M = 12
+
+export type GroundChoice = { kind: 'asset'; asset: Asset } | { kind: 'paper'; colour: string; reason?: string }
+
+/** set.ground: an asset id or tags (a 'ground' asset), a '#hex' wash, or nothing (the bundle's first ground, else paper). */
+export function resolveGround(set: Scene['set'], lib: Library & { paper?: string }): GroundChoice {
+  const paper = lib.paper ?? PAPER
+  const g = set.ground
+  if (g && g.startsWith('#')) return { kind: 'paper', colour: g }
+  const grounds = lib.assets.filter((a) => a.layer === 'ground')
+  if (!g) return grounds.length ? { kind: 'asset', asset: [...grounds].sort((a, b) => a.id.localeCompare(b.id))[0] } : { kind: 'paper', colour: paper }
+  const asset = resolveAsset({ ...lib, assets: grounds }, { asset: g }, 'ground')
+  return asset ? { kind: 'asset', asset } : { kind: 'paper', colour: paper, reason: `no ground for ${g}` }
+}
+
+/** The colour (0..1) a strip's bottom rows are painted in: the per-channel median of their opaque pixels, so the
+ *  sparse ink and plant marks do not darken it (an average turned a cream heath into a dark sand band). */
+export function bottomColour(data: Uint8ClampedArray | Uint8Array, w: number, h: number, share = 0.08): [number, number, number] | null {
+  const from = Math.floor(h * (1 - share))
+  const ch: number[][] = [[], [], []]
+  const step = Math.max(1, Math.floor((w * (h - from)) / 20000))   // a sample is enough on big images
+  for (let p = from * w; p < h * w; p += step) {
+    const i = p * 4
+    if (data[i + 3] < 200) continue
+    ch[0].push(data[i]); ch[1].push(data[i + 1]); ch[2].push(data[i + 2])
+  }
+  if (!ch[0].length) return null
+  const med = (v: number[]) => { const s = [...v].sort((x, y) => x - y); return s[s.length >> 1] / 255 }
+  return [med(ch[0]), med(ch[1]), med(ch[2])]
+}
+
+/** Eye height of the house camera (layout HOUSE.y): a flat stain is foreshortened by eye / distance. */
+const EYE_M = 1.6
+/** On screen a stain is this share of its width tall, at any distance. */
+const STAIN_SCREEN_RATIO = 0.12
+
+/** The stain under an asset at distance z: as wide as its foot (never wider than half its height), and deep enough
+ *  in metres that, lying flat and seen from eye height, it still reads as a soft foot on screen (a fixed 0.32 x width
+ *  was 2 px tall at 22 m). Most of its depth is hidden behind the asset. */
+export function stainSize(asset: Asset, w: number, h: number, z: number): { w: number; d: number } {
+  const foot = Math.min(w * 0.8, h * 0.55, 6)
+  const d = (foot * STAIN_SCREEN_RATIO * z) / EYE_M
+  return { w: foot, d: Math.min(Math.max(d, foot * 0.3), foot * 3) }
+}
+
+export const hexRgb = (hex: string): [number, number, number] => {
+  const n = parseInt(hex.replace('#', '').padEnd(6, '0').slice(0, 6), 16)
+  return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255]
+}
