@@ -588,7 +588,8 @@
       "mesopotamia"
      ],
      "height_m": 1.2,
-     "motion": "none"
+     "motion": "none",
+     "reject": "grey metal-looking hoe blade: anachronism risk for Uruk farmers"
     }
    ]
   },
@@ -695,6 +696,86 @@
      "motion": "none"
     }
    ]
+  },
+  {
+   "id": "ground-silt-dry",
+   "layer": "ground",
+   "subject": "Southern Mesopotamia: dry pale river silt baked by the sun, cracked into irregular plates, a few dry grass stalks.",
+   "items": [
+    {
+     "id": "ground-silt-dry-01",
+     "tags": [
+      "ground",
+      "silt",
+      "dry",
+      "cracked",
+      "mesopotamia",
+      "mideast",
+      "egypt"
+     ],
+     "height_m": 4,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "ground-field-irrigated",
+   "layer": "ground",
+   "subject": "Southern Mesopotamia, Uruk period: an irrigated barley field seen close, rows of young green barley in damp dark earth with a thin water furrow.",
+   "items": [
+    {
+     "id": "ground-field-irrigated-01",
+     "tags": [
+      "ground",
+      "field",
+      "irrigated",
+      "barley",
+      "mesopotamia",
+      "egypt"
+     ],
+     "height_m": 4,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "ground-yard-mudbrick",
+   "layer": "ground",
+   "subject": "Southern Mesopotamia, Uruk period: a packed earth courtyard floor with a few broken mudbricks, straw and pottery sherds scattered sparsely.",
+   "items": [
+    {
+     "id": "ground-yard-mudbrick-01",
+     "tags": [
+      "ground",
+      "yard",
+      "mudbrick",
+      "earth",
+      "mesopotamia"
+     ],
+     "height_m": 4,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "ground-riverbank",
+   "layer": "ground",
+   "subject": "Nile and Euphrates riverbank: damp grey-brown silt with footprints of birds, short reed stubs and small puddles.",
+   "items": [
+    {
+     "id": "ground-riverbank-01",
+     "tags": [
+      "ground",
+      "riverbank",
+      "silt",
+      "reed",
+      "egypt",
+      "mesopotamia"
+     ],
+     "height_m": 4,
+     "motion": "none"
+    }
+   ]
   }
  ],
  "plate": [
@@ -703,58 +784,52 @@
    "fill": 0.75
   },
   {
-   "id": "city-uruk-01",
+   "id": "ground-yard-mudbrick-01",
    "tile": true,
-   "base": 0.6,
-   "h": 0.24
+   "base": 1.0,
+   "h": 0.55
   },
   {
    "id": "field-mes-01",
    "tile": true,
-   "base": 0.72,
-   "h": 0.2
+   "base": 0.74,
+   "h": 0.36
   },
   {
    "id": "canal-01",
-   "x": 0.5,
-   "base": 0.8,
-   "h": 0.12
+   "x": 0.52,
+   "base": 0.86,
+   "h": 0.13
   },
   {
    "id": "houses-mudbrick-01",
    "x": 0.2,
-   "base": 0.76,
-   "h": 0.18
+   "base": 0.84,
+   "h": 0.2
   },
   {
    "id": "grain-heap-01",
    "x": 0.72,
-   "base": 0.82,
-   "h": 0.12
+   "base": 0.88,
+   "h": 0.11
   },
   {
    "id": "palm-date-01",
    "x": 0.9,
-   "base": 1.0,
+   "base": 1.02,
    "h": 0.85
   },
   {
    "id": "reeds-papyrus-01",
-   "x": 0.08,
-   "base": 1.02,
+   "x": 0.06,
+   "base": 1.03,
    "h": 0.3
   },
   {
    "id": "basket-ne-01",
-   "x": 0.42,
-   "base": 0.98,
-   "h": 0.07
-  },
-  {
-   "id": "hoe-01",
-   "x": 0.5,
+   "x": 0.4,
    "base": 0.99,
-   "h": 0.12
+   "h": 0.08
   }
  ]
 }

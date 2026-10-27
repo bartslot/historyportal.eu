@@ -56,6 +56,13 @@ LAYER = {
         "edge; everything above it is empty white paper. No objects standing up out of it taller than a "
         "tuft. The left edge continues seamlessly into the right edge so the strip can tile. Landscape 3:2."
     ),
+    "ground": (
+        "A seamless ground texture tile seen from above at a low oblique angle, as if looking down at the ground "
+        "a few metres ahead: {subject} The ground fills the whole canvas edge to edge: no sky, no horizon, no "
+        "object taller than a tuft, no single dominant feature. Marks are spread evenly so the tile repeats in "
+        "both directions: the left edge continues into the right edge and the top edge into the bottom edge. "
+        "Square."
+    ),
     "mid": (
         "Middle-distance set pieces, each a separate isolated object: {subject} Seen from slightly above "
         "eye level, three-quarter view, same scale for all. " + ISOLATE + " Landscape 3:2."
@@ -88,6 +95,8 @@ COLOUR = (
 )
 
 COLOUR_EXTRA = {
+    "ground": "This is a repeating ground tile: wash the whole canvas edge to edge with calm, even washes, no "
+              "white paper left, no light falloff or vignette, so the tile repeats without seams.",
     "sky": (
         "This is a sky: fill the whole canvas with a very pale transparent blue watercolour sky with gentle "
         "uneven glazes; clouds stay 80 to 90% white paper with only an extremely pale cool blue-grey wash "

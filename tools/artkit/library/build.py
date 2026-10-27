@@ -47,7 +47,20 @@ def winners(bundle: str) -> dict[str, tuple[str, str]]:
 def judge_scores(bundle: str) -> dict[str, int]:
     """sheet id -> style score 1-10 from the judge (ChatGPT), _work/<bundle>/scores.json; lowest score counts."""
     f = LIB / "_work" / bundle / "scores.json"
-    return {k: int(min(v)) if isinstance(v, list) else int(v) for k, v in json.loads(f.read_text()).items()} if f.exists() else {}
+    return {k: min(v) if isinstance(v, list) else v for k, v in json.loads(f.read_text()).items()} if f.exists() else {}
+
+
+SHIP_SCORE = 8  # judge score an asset needs to go into `assets`; lower ones are listed under `held`
+
+
+def judged_variant(judged: dict, sid: str, variants: str) -> tuple[str | None, float | None]:
+    """Best judged variant of a sheet: key 'sheet:variant', a bare 'sheet' key is the first variant."""
+    best = (None, None)
+    for v in variants:
+        sc = judged.get(f"{sid}:{v}", judged.get(sid) if v == variants[0] else None)
+        if sc is not None and (best[1] is None or sc > best[1]):
+            best = (v, sc)
+    return best
 
 
 def build(job: dict, variants: str = "abcd") -> dict:
@@ -56,11 +69,15 @@ def build(job: dict, variants: str = "abcd") -> dict:
     dst.mkdir(parents=True, exist_ok=True)
     win = winners(bundle)
     judged = judge_scores(bundle)
-    assets, report = [], []
+    assets, report, held = [], [], []
     for s in job["sheets"]:
-        variant, verdict = win.get(s["id"], (variants[0], "unranked"))
+        jv, jscore = judged_variant(judged, s["id"], variants)
+        variant, verdict = (jv, "judged") if jv else win.get(s["id"], (variants[0], "unranked"))
         order = [variant] + [v for v in variants if v != variant]
         for item in s["items"]:
+            if item.get("reject"):  # judged by eye: wrong period or wrong subject; stays out of the library
+                report.append({"id": item["id"], "pass": False, "reject": item["reject"]})
+                continue
             chosen = None
             for v in order:
                 d = LIB / "_work" / bundle / s["id"] / f"cut_{v}"
@@ -69,7 +86,7 @@ def build(job: dict, variants: str = "abcd") -> dict:
                     continue
                 meta = json.loads((d / "cut.json").read_text())
                 paper = np.array(meta["paper"])
-                tile = s["layer"] in ("sky", "bg") or bool(s.get("strip"))
+                tile = s["layer"] in ("sky", "bg", "ground") or bool(s.get("strip"))
                 qa_layer = "bg" if s.get("strip") else s["layer"]  # strips are judged like bg strips
                 r = qa.check(Image.open(f), qa_layer, bundle, tileable=tile, paper=paper)
                 r["ink_sheet"] = meta["ink_sheet"]  # Bart's whole-image rule, on the pass-1 sheet
@@ -82,20 +99,25 @@ def build(job: dict, variants: str = "abcd") -> dict:
             if not chosen:
                 continue
             f, v, r = chosen
+            vscore = judged.get(f"{s['id']}:{v}", judged.get(s["id"]) if v == variants[0] else None)
+            if jscore is not None and (vscore is None or vscore < SHIP_SCORE):  # judged sheet: only >= 8 ships
+                held.append({"id": item["id"], "sheet": s["id"], "variant": v, "score": vscore})
+                continue
             Image.open(f).save(dst / f"{item['id']}.webp", quality=92, method=6)
             vd = verdict if v == variant else "close"
             assets.append({
                 "id": item["id"], "layer": s["layer"], "tags": item["tags"], "file": f"{item['id']}.webp",
-                "w": r["w"], "h": r["h"], "anchor": r["anchor"] if s["layer"] != "sky" else [0.5, 1.0],
-                "height_m": item["height_m"], "tileable_x": s["layer"] in ("sky", "bg") or bool(s.get("strip")),
+                "w": r["w"], "h": r["h"], "anchor": r["anchor"] if s["layer"] not in ("sky", "ground") else [0.5, 1.0],
+                "height_m": item["height_m"], "tileable_x": s["layer"] in ("sky", "bg", "ground") or bool(s.get("strip")),
+                **({"tileable_y": True} if s["layer"] == "ground" else {}),
                 "motion": item["motion"],
                 **({"era": item["era"]} if item.get("era") else {}),
-                "qa": {"score": judged.get(s["id"], VERDICT_SCORE.get(vd, 6)), "alpha_ok": r["alpha_ok"],
-                       "ink_coverage": r["ink_coverage"],
-                       "ranked_vs_anchor": "judged" if s["id"] in judged else vd,
+                "qa": {"score": vscore if jscore is not None else VERDICT_SCORE.get(vd, 6),
+                       "alpha_ok": r["alpha_ok"], "ink_coverage": r["ink_coverage"],
+                       "ranked_vs_anchor": vd,
                        "palette_de": r["palette_de"], "sheet": s["id"], "variant": v},
             })
-    lib = {"version": 1, "bundle": bundle, "style": "history-lines-v1", "assets": assets}
+    lib = {"version": 1, "bundle": bundle, "style": "history-lines-v1", "assets": assets, "held": held}
     (dst / "library.json").write_text(json.dumps(lib, indent=1))
     (dst / "qa_report.json").write_text(json.dumps(report, indent=1))
     n_items = sum(len(s["items"]) for s in job["sheets"])

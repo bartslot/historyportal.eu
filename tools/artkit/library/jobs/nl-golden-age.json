@@ -503,6 +503,61 @@
      "motion": "none"
     }
    ]
+  },
+  {
+   "id": "ground-cobbles",
+   "layer": "ground",
+   "subject": "Amsterdam, c. 1640: a quay paved with rounded cobblestones and a row of yellow-grey brick clinkers, a little straw and a dropped rope end.",
+   "items": [
+    {
+     "id": "ground-cobbles-quay-01",
+     "tags": [
+      "ground",
+      "cobbles",
+      "quay",
+      "street"
+     ],
+     "height_m": 3,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "ground-dune",
+   "layer": "ground",
+   "subject": "Dutch coast, c. 1640: pale dune sand with marram grass tufts and wind ripples.",
+   "items": [
+    {
+     "id": "ground-dune-sand-01",
+     "tags": [
+      "ground",
+      "sand",
+      "dune",
+      "coast"
+     ],
+     "height_m": 4,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "ground-deck",
+   "layer": "ground",
+   "subject": "A 17th-century Dutch East Indiaman: weathered oak deck planks running across the tile, tar caulking lines between them, a few wooden treenail pegs.",
+   "items": [
+    {
+     "id": "ground-deck-planks-01",
+     "tags": [
+      "ground",
+      "deck",
+      "planks",
+      "ship"
+     ],
+     "height_m": 3,
+     "motion": "none",
+     "reject": "rope coil and barrel drawn in the corners: breaks tiling; regenerate"
+    }
+   ]
   }
  ],
  "plate": [

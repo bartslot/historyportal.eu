@@ -27,6 +27,7 @@ ISLAND_DE = qa.PAPER_DE
 SEAM_PX = 96
 MIN_OBJ_FRAC = 0.002  # objects smaller than this share of the sheet are crumbs
 PAD = 6
+FADE_FRAC = 0.12  # bg strips: bottom share that fades out
 
 
 def matte(rgb: np.ndarray, paper: np.ndarray, layer: str) -> np.ndarray:
@@ -66,6 +67,26 @@ def seam_tile(rgba: np.ndarray, band: int = SEAM_PX) -> np.ndarray:
     ramp = (np.arange(band) / band)[None, :, None]
     t[:, :band] = rgba[:, w - band:] * (1 - ramp) + rgba[:, :band] * ramp
     return t.astype(np.uint8)
+
+
+def seam_tile_xy(rgba: np.ndarray, band: int = SEAM_PX) -> np.ndarray:
+    """Ground tiles repeat both ways: crossfade the seams in x, then in y."""
+    return seam_tile(seam_tile(rgba, band).transpose(1, 0, 2), band).transpose(1, 0, 2)
+
+
+def fade_bottom(rgba: np.ndarray, frac: float = FADE_FRAC, seed: int = 7) -> np.ndarray:
+    """bg strips end in a painted fade, not a straight cut: alpha ramps to 0 over the bottom rows, the ramp's
+    start wanders per column (smooth noise) so the edge reads as a wash running out."""
+    h, w = rgba.shape[:2]
+    n = max(8, int(h * frac))
+    rng = np.random.default_rng(seed)
+    wobble = ndimage.gaussian_filter1d(rng.normal(0, 1, w), 40, mode="wrap")
+    wobble = wobble / (np.abs(wobble).max() + 1e-6) * 0.35 * n
+    y = np.arange(h)[:, None] - (h - n + wobble[None, :])
+    ramp = np.clip(1 - y / n, 0, 1)
+    out = rgba.copy()
+    out[..., 3] = (out[..., 3] * ramp).astype(np.uint8)
+    return out
 
 
 def objects(alpha: np.ndarray, n_items: int) -> tuple[list[tuple[slice, slice, np.ndarray]], str]:
@@ -122,15 +143,17 @@ def cut_sheet(bundle: str, sheet: dict, variant: str) -> dict | None:
     if not src.exists():
         return None
     rgb = np.asarray(Image.open(src).convert("RGB"))
-    paper = qa.paper_colour(rgb)
+    layer = "strip" if sheet.get("strip") else sheet["layer"]
+    # bg strips and ground strips run to the side and bottom edges: only the top band is paper
+    paper = np.median(rgb[:8].reshape(-1, 3), 0) if layer in ("bg", "strip") else qa.paper_colour(rgb)
     out = d / f"cut_{variant}"
     out.mkdir(exist_ok=True)
-    layer = "strip" if sheet.get("strip") else sheet["layer"]
     res = {"sheet": sheet["id"], "variant": variant, "paper": paper.tolist(),
            "checkerboard": qa.fake_checkerboard(rgb), "assets": [],
            "ink_sheet": round(qa.ink_coverage(np.asarray(Image.open(d / "ink.png").convert("RGB"))), 4)}
-    if layer == "sky":
-        rgba = seam_tile(np.dstack([rgb, np.full(rgb.shape[:2], 255, np.uint8)]))
+    if layer in ("sky", "ground"):
+        tile = seam_tile_xy if layer == "ground" else seam_tile
+        rgba = tile(np.dstack([rgb, np.full(rgb.shape[:2], 255, np.uint8)]))
         Image.fromarray(rgba).save(out / f"{sheet['items'][0]['id']}.png")
         res["assets"].append(sheet["items"][0]["id"])
     else:
@@ -142,7 +165,10 @@ def cut_sheet(bundle: str, sheet: dict, variant: str) -> dict | None:
             de = np.linalg.norm(qa.rgb2lab(rgba[..., :3]) - qa.rgb2lab(paper[None, None])[0, 0], axis=-1)
             washed = (de >= qa.PAPER_DE).mean(1)
             bottom = len(washed) - int(np.argmax(washed[::-1] > 0.6))  # drop unpainted paper rows
-            Image.fromarray(rgba[max(0, ys[0] - PAD):bottom]).save(out / f"{sheet['items'][0]['id']}.png")
+            rgba = rgba[max(0, ys[0] - PAD):bottom]
+            if layer == "bg":
+                rgba = fade_bottom(rgba)
+            Image.fromarray(rgba).save(out / f"{sheet['items'][0]['id']}.png")
             res["assets"].append(sheet["items"][0]["id"])
         else:
             objs, res["note"] = objects(alpha, len(sheet["items"]))

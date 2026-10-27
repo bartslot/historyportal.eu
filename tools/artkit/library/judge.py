@@ -22,8 +22,27 @@ QUESTION = ("The first image (reference.jpg) is the reference. The second image 
 CELL = (960, 640)
 
 
+def panel(job: dict, sid: str, f: Path) -> Image.Image:
+    """bg strips are judged as they play: over the bundle's first sky (a bare strip reads as 'missing sky')."""
+    sheet = next(s for s in job["sheets"] if s["id"] == sid)
+    im = Image.open(f).convert("RGB")
+    if sheet["layer"] != "bg":
+        return im
+    sky_sheet = next(s for s in job["sheets"] if s["layer"] == "sky")
+    sky = sorted((LIB / "_work" / job["bundle"] / sky_sheet["id"]).glob("cut_*/*.png"))
+    cut = sorted((LIB / "_work" / job["bundle"] / sid).glob(f"cut_{f.stem.split('_')[-1]}/*.png"))
+    if not sky or not cut:
+        return im
+    base = Image.open(sky[0]).convert("RGBA").resize(im.size)
+    strip = Image.open(cut[0]).convert("RGBA")
+    strip = strip.resize((im.width, int(strip.height * im.width / strip.width)))
+    base.alpha_composite(strip, (0, im.height - strip.height))
+    return base.convert("RGB")
+
+
 def grids(job: dict, variant: str, out: Path) -> dict[str, list[str]]:
-    bundle, sheets = job["bundle"], [s["id"] for s in job["sheets"]]
+    bundle = job["bundle"]
+    sheets = [s["id"] for s in job["sheets"] if (LIB / "_work" / bundle / s["id"] / f"colour_{variant}.png").exists()]
     out.mkdir(parents=True, exist_ok=True)
     mapping = {}
     for n in range(0, len(sheets), 4):
@@ -35,11 +54,11 @@ def grids(job: dict, variant: str, out: Path) -> dict[str, list[str]]:
             if not f.exists():
                 continue
             x, y = (i % 2) * CELL[0], (i // 2) * CELL[1]
-            g.paste(Image.open(f).convert("RGB").resize(CELL), (x, y))
+            g.paste(panel(job, sid, f).resize(CELL), (x, y))
             d.rectangle([x + 8, y + 8, x + 48, y + 48], fill="black")
             d.text((x + 22, y + 20), "ABCD"[i], fill="white")
             chunk.append(sid)
-        name = f"{bundle}_{n // 4}.jpg"
+        name = f"{bundle}_{variant}{n // 4}.jpg"
         g.save(out / name, quality=86)
         mapping[name] = chunk
     (out / f"{bundle}_map.json").write_text(json.dumps(mapping, indent=1))

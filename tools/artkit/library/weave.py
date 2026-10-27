@@ -16,6 +16,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+import numpy as np
 from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -74,13 +75,16 @@ def fetch(job: dict, sid: str, name: str, url: str, credits: str = "?") -> Path:
 def grab(bundle: str, sid: str, name: str, urls: list[str]) -> Path | None:
     """Figma download_assets gives the edited fill plus a thumbnail: keep the widest image."""
     d = LIB / "_work" / bundle / sid
-    best = None
+    best, best_chroma = None, -1.0
     for i, u in enumerate(urls):
         f = d / f"_raw{i}.png"
         subprocess.run(["curl", "-sfL", "-o", str(f), u], check=True)
         im = Image.open(f)
-        if im.width >= 1000 and (best is None or im.width > best.width):
-            best = im.convert("RGBA")
+        if im.width < 1000:
+            continue
+        chroma = float(np.asarray(im.convert("HSV"))[..., 1].mean())  # the ink is grey, the edit is coloured
+        if chroma > best_chroma:
+            best, best_chroma = im.convert("RGBA"), chroma
     for f in d.glob("_raw*.png"):
         f.unlink()
     if best is None:

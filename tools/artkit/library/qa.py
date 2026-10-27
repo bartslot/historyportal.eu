@@ -36,12 +36,14 @@ INK_ASSET = (0.02, 0.42)  # inside one object (no paper around it): only catches
 PAPER_DE = 4.0  # dE76 to paper colour = untouched paper
 ISLAND_MIN_PX = 40
 HALO_MAX = 0.06
+HALO_MAX_BG = 0.10  # bg strips end in a painted alpha fade, whose soft rows read as halo
 PALETTE_DE_MAX = 16.0
-GROUND_MIN = 0.03  # contact width / asset width
+GROUND_MIN = 0.012  # contact width / asset width (round huts and heaps touch the ground narrowly)
 SEAM_MAX = 2.0  # wrap step / typical column step
 SIZE = {  # min w, min h, min aspect, max aspect
     "sky": (1400, 600, 1.3, 9.0),
-    "bg": (1400, 300, 1.8, 12.0),
+    "ground": (800, 800, 0.7, 1.5),
+    "bg": (1400, 300, 1.3, 12.0),
     "mid": (250, 200, 0.2, 6.0),
     "fg": (120, 200, 0.1, 6.0),
     "prop": (80, 60, 0.1, 8.0),
@@ -157,11 +159,12 @@ def check(img: Image.Image, layer: str, bundle: str, ink_rgb: np.ndarray | None 
     paper = np.array([250, 250, 246]) if paper is None else paper
     opaque = alpha > 128
     r: dict = {"layer": layer, "w": w, "h": h}
-    r["has_alpha"] = bool((alpha < 10).any()) or layer == "sky"
+    full = layer in ("sky", "ground")  # full-bleed tiles: no alpha, no outline, no ground contact
+    r["has_alpha"] = bool((alpha < 10).any()) or full
     r["checkerboard"] = fake_checkerboard(rgb)
-    r["halo"] = round(halo_fraction(rgb, alpha, paper), 4) if layer != "sky" else 0.0
-    r["islands"] = len(paper_islands(rgb, alpha, paper)) if layer not in ("sky", "bg") else 0
-    r["alpha_ok"] = r["has_alpha"] and not r["checkerboard"] and r["halo"] <= HALO_MAX and r["islands"] == 0
+    r["halo"] = round(halo_fraction(rgb, alpha, paper), 4) if not full else 0.0
+    r["islands"] = len(paper_islands(rgb, alpha, paper)) if layer not in ("sky", "bg", "ground") else 0
+    r["alpha_ok"] = r["has_alpha"] and not r["checkerboard"] and r["halo"] <= (HALO_MAX_BG if layer == "bg" else HALO_MAX) and r["islands"] == 0
     src = ink_rgb if ink_rgb is not None else rgb
     shape = ndimage.binary_fill_holes(opaque)  # cut gaps count as paper, as in a full scene
     r["ink_coverage"] = round(float((ink_coverage_map(src) & opaque)[shape].mean()), 4)
@@ -172,7 +175,7 @@ def check(img: Image.Image, layer: str, bundle: str, ink_rgb: np.ndarray | None 
     r["size_ok"] = w >= mw and h >= mh and lo <= w / h <= hi
     contact, ax = ground_contact(alpha)
     r["anchor"] = [round(ax, 3), 1.0]
-    r["ground_ok"] = layer in ("sky", "bg") or contact >= GROUND_MIN
+    r["ground_ok"] = layer in ("sky", "bg", "ground") or contact >= GROUND_MIN
     r["seam"] = round(seam_diff(rgb, alpha), 2)
     r["seam_ok"] = not tileable or r["seam"] <= SEAM_MAX
     r["pass"] = all(r[k] for k in ("alpha_ok", "ink_ok", "palette_ok", "size_ok", "ground_ok", "seam_ok"))

@@ -754,6 +754,78 @@
      "era": "c. 150,000 years ago"
     }
    ]
+  },
+  {
+   "id": "ground-heath-path",
+   "layer": "ground",
+   "subject": "Northern Netherlands, Neolithic heathland: a worn sandy footpath of pale sand crossing the tile diagonally between low heather and short grass tufts, a few small pebbles.",
+   "items": [
+    {
+     "id": "ground-path-sand-01",
+     "tags": [
+      "ground",
+      "path",
+      "sand",
+      "heath"
+     ],
+     "height_m": 4,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "ground-grass-heather",
+   "layer": "ground",
+   "subject": "Northern Netherlands, Neolithic heathland: short grass mixed with low heather clumps and a few small flowers, evenly spread.",
+   "items": [
+    {
+     "id": "ground-grass-heather-01",
+     "tags": [
+      "ground",
+      "grass",
+      "heather",
+      "heath"
+     ],
+     "height_m": 4,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "ground-peat",
+   "layer": "ground",
+   "subject": "Northern Netherlands, Neolithic bog edge: wet dark peat with shallow puddles, tussocks of grass and tufts of cotton grass.",
+   "items": [
+    {
+     "id": "ground-peat-wet-01",
+     "tags": [
+      "ground",
+      "peat",
+      "wet",
+      "bog"
+     ],
+     "height_m": 4,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "ground-furrows",
+   "layer": "ground",
+   "subject": "Northern Netherlands, Neolithic farmers: a small field scratched with a wooden ard into shallow parallel furrows of dark sandy soil, a few clods and stubble.",
+   "items": [
+    {
+     "id": "ground-field-furrows-01",
+     "tags": [
+      "ground",
+      "field",
+      "furrows",
+      "soil"
+     ],
+     "height_m": 4,
+     "motion": "none"
+    }
+   ]
   }
  ],
  "plate": [
@@ -778,6 +850,12 @@
    "tile": true,
    "base": 1.0,
    "h": 0.42
+  },
+  {
+   "id": "ground-path-sand-01",
+   "tile": true,
+   "base": 1.0,
+   "h": 0.3
   },
   {
    "id": "longhouse-01",
