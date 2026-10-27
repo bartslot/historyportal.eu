@@ -10,7 +10,7 @@
  * fly-to that crosses the Pacific the long way round and hangs in space on the way.
  */
 
-import { sortedKeys, segmentAt, easingFn, lerp, segmentEasing } from './keyframes.js'
+import { sortedKeys, segmentAt, easingFn, lerp, segmentEasing, sameTime } from './keyframes.js'
 import { unwrapAngle, lerpAltitude } from '../map/camera-track.js'
 
 /** How a pair of keyed values becomes every value between them. */
@@ -21,6 +21,12 @@ export const INTERPOLATE = {
   angle: (a, b, t) => lerp(a, unwrapAngle(b, a), t),
   /** Metres above sea level. Halfway between 100 and 10,000 should look halfway, which is 1,000. */
   log: lerpAltitude,
+  /** A position round a closed outline, 0..1 (a balloon tail's root): 0.95 to 0.05 runs through
+   *  the corner at 0, not back round the whole balloon. */
+  loop: (a, b, t) => {
+    const d = ((((b - a) % 1) + 1.5) % 1) - 0.5
+    return (((a + d * t) % 1) + 1) % 1
+  },
   /** '#rrggbb' per channel. A missing colour ('' is "no tint") cannot be mixed, so it cuts at the
    *  end of the segment rather than inventing a colour between nothing and something. */
   color: (a, b, t) => {
@@ -35,7 +41,7 @@ const rgb = (hex) => (/^#[0-9a-f]{6}$/i.test(String(hex ?? ''))
   ? [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
   : null)
 
-const P = (key, label, interpolate, unit = '') => ({ key, label, interpolate, unit, type: interpolate === 'color' ? 'color' : 'number' })
+const P = (key, label, interpolate, unit = '', group = null) => ({ key, label, interpolate, unit, group, type: interpolate === 'color' ? 'color' : 'number' })
 
 /**
  * The animatable properties of each object kind. Adding a kind here is what makes it appear in the
@@ -100,10 +106,10 @@ const REGISTRY = {
     P('y', 'Y', 'linear', '%'),
     P('scale', 'Scale', 'linear', '%'),
     P('opacity', 'Opacity', 'linear', ''),
-    P('tip_x', 'Tail X', 'linear', '%'),
-    P('tip_y', 'Tail Y', 'linear', '%'),
-    P('root', 'Tail root', 'linear', ''),
-    P('bend', 'Bend', 'linear', ''),
+    P('tip_x', 'Tail X', 'linear', '%', 'tail'),
+    P('tip_y', 'Tail Y', 'linear', '%', 'tail'),
+    P('root', 'Tail root', 'loop', '', 'tail'),
+    P('bend', 'Bend', 'linear', '', 'tail'),
   ],
   /**
    * A scene's background picture, or one split panel's (scene/background-crop.js): which point of
@@ -141,6 +147,39 @@ const sampleOne = (track, time, interpolate) => {
   const seg = segmentAt(keys, time)
   const t = easingFn(segmentEasing(seg.a, seg.index, keys.length - 1, track))(seg.u)
   return interpolate(seg.a.value, seg.b.value, t)
+}
+
+/**
+ * Rows that are one thing on screen take their keys together: a balloon's tail is ONE shape (tip,
+ * root, bend). Keyed row by row, Bart keyed the tip at 0 s and the root at 1.2 s; each row held one
+ * key, one key is a stored position, and the tail never moved (2026-10-27, prod scene 1589).
+ *
+ * After `property` of `target` gained a key: every row of its group gets a key at every moment any
+ * of them has one, holding the value it had there before this write (`before`: the tracks then),
+ * or `now(row)` for a row nobody had keyed. Pure: new tracks, the old ones untouched.
+ */
+export const keyGroupTogether = (tracks, before, target, property, now) => {
+  const kind = kindOfTarget(target)
+  const group = propertyFor(kind, property)?.group
+  if (!group) return tracks
+  const rows = propertiesFor(kind).filter((p) => p.group === group)
+  const own = (list, key) => (list ?? []).find((t) => t.target === target && t.property === key) ?? null
+  const times = rows.flatMap((p) => sortedKeys(own(tracks, p.key)).map((k) => k.time))
+  let next = tracks
+  for (const row of rows) {
+    const track = own(next, row.key) ?? { target, property: row.key, keyframes: [] }
+    const missing = times.filter((t, i) => times.findIndex((u) => sameTime(u, t)) === i)
+      .filter((t) => !sortedKeys(track).some((k) => sameTime(k.time, t)))
+    if (!missing.length) continue
+    const old = own(before, row.key)
+    const valueAt = (t) => (sortedKeys(old).length ? sampleOne(old, t, INTERPOLATE[row.interpolate] ?? lerp) : now(row.key))
+    const added = missing.map((time) => ({ time, value: valueAt(time) })).filter((k) => Number.isFinite(k.value))
+    if (!added.length) continue
+    const filled = { ...track, base: track.base ?? now(row.key), keyframes: [...(track.keyframes ?? []), ...added].sort((a, b) => a.time - b.time) }
+    next = own(next, row.key) ? next.map((t) => (t === own(next, row.key) ? filled : t)) : [...next, filled]
+  }
+
+  return next
 }
 
 /**

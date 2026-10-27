@@ -11,7 +11,7 @@
 
 import { addKeyframe, sortedKeys, sameTime, segmentEasing, easingFn, keyStateAt, toggleKeyframe, baseOf } from './keyframes.js'
 import { keyId, moveKeys, deleteKeys, snapToNearest } from './timeline-edit.js'
-import { propertiesFor, propertyFor, sampleFrame, kindOfTarget, INTERPOLATE } from './properties.js'
+import { propertiesFor, propertyFor, sampleFrame, kindOfTarget, INTERPOLATE, keyGroupTogether } from './properties.js'
 import { wordSpans, snapTime, wordAt } from './narration-clock.js'
 import { textObjects, artObjects, balloonObjects, dioramaObjects, backgroundObjects, readObjectProperty, writeObjectProperty, setObjectHidden } from './scene-objects.js'
 import { balloonPatch } from '../scene/BalloonLayer.js'
@@ -1502,11 +1502,15 @@ export const animationTimeline = (config = {}) => ({
 
   /** Every edit replaces the track; nothing here mutates one in place. */
   writeTrack (target, property, mutate) {
+    const before = this.tracks
     const existing = this.trackFor(target, property) ?? { target, property, keyframes: [] }
     const next = { ...mutate(existing), target, property }
     this.tracks = this.trackFor(target, property)
       ? this.tracks.map((t) => (t.target === target && t.property === property ? next : t))
       : [...this.tracks, next]
+    // A key ADDED to a row of a group (a balloon's tail) keys the whole group; a removed one stays gone.
+    const added = sortedKeys(next).some((k) => !sortedKeys(existing).some((o) => sameTime(o.time, k.time)))
+    if (added) this.tracks = keyGroupTogether(this.tracks, before, target, property, (p) => readObjectProperty(target, p))
   },
 
   save () {
