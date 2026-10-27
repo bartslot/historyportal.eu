@@ -24,7 +24,7 @@ export const TOON = {
 export type FaceProjector = { tex: BaseTexture | null; toBox: Matrix; fwd: Vector3 }
 export type ToonMaterial = CustomMaterial & { dye: Color3; sleeve?: Color3; inkEdge?: number; step?: number; face?: FaceProjector }
 
-export function toonMaterial(name: string, dye: Color3, scene: Scene): ToonMaterial {
+export function toonMaterial(name: string, dye: Color3, scene: Scene, withSleeve = false): ToonMaterial {
   const m = new CustomMaterial(name, scene) as ToonMaterial
   m.dye = dye.clone()
   m.specularColor = Color3.Black()
@@ -32,10 +32,15 @@ export function toonMaterial(name: string, dye: Color3, scene: Scene): ToonMater
   m.AddUniform('dye', 'vec3', null)
   m.AddUniform('sleeveDye', 'vec3', null)
   m.AddUniform('hasSleeve', 'float', null)
-  // 'sleeve' (0/1 per vertex, set on the skin): where a long sleeve is painted over the arm
-  m.AddAttribute('sleeve')
-  m.Vertex_Definitions('attribute float sleeve;\nvarying float vSleeve;')
-  m.Vertex_MainEnd('vSleeve = sleeve;')
+  // 'sleeve' (0/1 per vertex, only the skin has it): where a long sleeve is painted over the arm
+  if (withSleeve) {
+    m.AddAttribute('sleeve')
+    m.Vertex_Definitions('attribute float sleeve;\nvarying float vSleeve;')
+    m.Vertex_MainEnd('vSleeve = sleeve;')
+  } else {
+    m.Vertex_Definitions('varying float vSleeve;')
+    m.Vertex_MainEnd('vSleeve = 0.0;')
+  }
   m.Fragment_Definitions('varying float vSleeve;')
   m.AddUniform('shadeTint', 'vec3', null)
   m.AddUniform('toLight', 'vec3', null)

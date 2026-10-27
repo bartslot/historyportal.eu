@@ -56,7 +56,10 @@ export function addMaskMesh(scene: Scene, camera: Camera, mesh: AbstractMesh, ma
   const mask = maskFor(scene, camera)
   mask.rtt.renderList!.push(mesh)
   mask.rtt.setMaterialForRendering(mesh, material)
-  return () => { mask.rtt.renderList = mask.rtt.renderList!.filter((m) => m !== mesh) }
+  return () => {
+    mask.rtt.renderList = mask.rtt.renderList!.filter((m) => m !== mesh)
+    mask.rtt.setMaterialForRendering(mesh, undefined)
+  }
 }
 
 // Adds one actor to the scene's mask; returns its undo (for when the actor is deleted).

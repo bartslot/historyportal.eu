@@ -30,6 +30,19 @@ const FACES = {
   surprised: mirror((x) => dot(x, 39, 1.9, 2.4) + ring(x, 38.6, 5.2, 1.1))
     + mirror((x, s) => crescent([x - 7 * s, 23], [x + 6 * s, 21.5], -s * 3.4, -s * 1.3))
     + `<ellipse cx="50" cy="81" rx="3.2" ry="4.2" fill="none" stroke="${INK}" stroke-width="${1.5 * W}"/>`,
+  // brows' inner ends up, eyes half down, the mouth turned down
+  sad: eyes(2.0, 0.8) + mirror((x, s) => crescent([x - 7 * s, 27], [x + 5 * s, 23.5], s * 0.6, -s * 1.3))
+    + crescent([43, 82.5], [57, 82.5], -2.6, -1.3),
+  // brows' inner ends DOWN in a hard V, a flat tight mouth
+  angry: eyes(2.4, 0.4) + mirror((x, s) => crescent([x - 7 * s, 24.5], [x + 5 * s, 29], s * 0.4, -s * 1.6))
+    + crescent([43, 81], [57, 81], 0.2, 1.5),
+  // calm high brows, eyes a little narrowed, a closed half-smile
+  proud: eyes(2.2, 0.5) + mirror((x, s) => crescent([x - 7 * s, 25.5], [x + 6 * s, 24.5], -s * 1.8, -s * 1.4))
+    + crescent([43, 79.5], [56, 78.5], 2.2, 1.3),
+  // heavy lids (a lid line low over the pupil), brows flat, a small open mouth
+  tired: mirror((x) => dot(x, 40.5, 3, 2.6) + crescent([x - 6.5, 39], [x + 6.5, 39], -1.2, -1.8))
+    + mirror((x, s) => crescent([x - 7 * s, 28], [x + 6 * s, 28], -s * 0.6, -s * 1.3))
+    + `<ellipse cx="50" cy="81" rx="2.4" ry="1.8" fill="none" stroke="${INK}" stroke-width="${1.3 * W}"/>`,
 }
 for (const [name, body] of Object.entries(FACES)) {
   writeFileSync(new URL(`../../public/figures/faces/${name}.svg`, import.meta.url),

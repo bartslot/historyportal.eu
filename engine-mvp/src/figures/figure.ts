@@ -13,11 +13,10 @@ import { retarget, type ClipName } from './clips'
 import { faceMaskMaterial, toonMaterial, type FaceProjector, type ToonMaterial } from './toon'
 import { addMaskMesh } from '../engine/anime-cast'
 import { applyPose, captureRest, frameOf, pos, POSES, resetToRest, rigOf, type Rig, type Violation } from './pose'
-import { BEARDS, DEFAULT_DYES, HAIRS, HATS, type DyeRole, type Expression, type FigureRecipe, type Hex, type Pose } from './recipes'
+import { BEARDS, DEFAULT_DYES, EXPRESSIONS, HAIRS, HATS, type DyeRole, type Expression, type FigureRecipe, type Hex, type Pose } from './recipes'
 
 export const BODY_URL = 'assets/models/customizable-man/man-wardrobe.glb'
 export const FACE_URL = (e: Expression) => `figures/faces/${e}.png`
-const EXPRESSIONS: Expression[] = ['neutral', 'happy', 'worried', 'surprised']
 
 // face decal placement, in eye-distances (eyes sit at 30/70 % across and 38 % down the decal art)
 export const FACE = { scale: 2.5, down: 0.12, depth: 0.22 } // depth: nose tip to cheeks, never the back of the head
@@ -37,6 +36,7 @@ export type Figure = {
   rig: Rig
   pose: Pose
   clip: AnimationGroup | null // the playing clip (walk), for audits and the timeline
+  nativeHeading: number       // the body's own facing at rest (radians about +y), so facing never depends on the pose
   setPose(p: Pose): Violation[]
   setExpression(e: Expression): void
   setDye(role: DyeRole, hex: Hex): void
@@ -44,8 +44,15 @@ export type Figure = {
 }
 
 // ---------- shared loads ----------
-let body: Promise<AssetContainer> | null = null
-const loadBody = (scene: Scene) => (body ??= LoadAssetContainerAsync(BODY_URL, scene, { pluginExtension: '.glb' }))
+const bodies = new Map<string, Promise<AssetContainer>>() // per scene: a container belongs to the scene it loaded into
+function loadBody(scene: Scene) {
+  if (!bodies.has(scene.uid)) {
+    const p = LoadAssetContainerAsync(BODY_URL, scene, { pluginExtension: '.glb' })
+    p.catch(() => bodies.delete(scene.uid)) // a failed load is retried next time, not cached
+    bodies.set(scene.uid, p)
+  }
+  return bodies.get(scene.uid)!
+}
 const faceTex = new Map<string, Texture>()
 function face(e: Expression, scene: Scene) {
   const key = `${scene.uid}:${e}`
@@ -131,14 +138,19 @@ export async function createFigure(scene: Scene, recipe: FigureRecipe, name = 'f
   if (!rigRoot) throw new Error('standard body has no Man_Rig node')
   const rig = rigOf(rigRoot)
   const rest = captureRest(rig)
+  root.computeWorldMatrix(true)
+  meshes.forEach((m) => m.computeWorldMatrix(true)) // the face box reads world bounds: scale is already applied
 
   // flat dye + cel + ink per part (src/figures/toon.ts); 3D brows, teeth, cornea stay hidden
+  const restFwd = Vector3.TransformNormal(frameOf(rig).fwd, rigRoot.getWorldMatrix())
+  const nativeHeading = Math.atan2(restFwd.x, restFwd.z) // facing is measured once, at rest: a kneel re-aims the feet
+
   const live: { mesh: AbstractMesh; part: Part }[] = []
   for (const m of meshes) {
     const part = partOf(m)
     if (!part || !part.show(recipe)) { m.setEnabled(false); continue }
     if (part.role === 'skin') trimCoveredSkin(m as Mesh)
-    const mat = toonMaterial(`${name}_${part.role}_${live.length}`, hexRgb(colourOf(part, recipe)), scene)
+    const mat = toonMaterial(`${name}_${part.role}_${live.length}`, hexRgb(colourOf(part, recipe)), scene, part.role === 'skin')
     if (part.role === 'skin' || part.role === 'eye') mat.step = SKIN_STEP
     if (part.role === 'skin') mat.inkEdge = SKIN_INK // thin fingers would fill with contour ink: a lighter line on skin
     if (part.role === 'skin' && recipe.sleeves !== false) mat.sleeve = hexRgb(recipe.dyes.coat ?? DEFAULT_DYES.coat)
@@ -157,8 +169,9 @@ export async function createFigure(scene: Scene, recipe: FigureRecipe, name = 'f
   const follow = scene.onBeforeRenderObservable.add(projector.update)
   const setExpression = (e: Expression) => { projector.face.tex = face(e, scene) }
   // the stage look's pencil pass leaves the painted face alone (needs a camera: the lab and the stage have one)
+  const maskMat = faceMaskMaterial(`${name}_facemask`, projector.face, scene)
   const unmask = scene.activeCamera
-    ? live.filter((l) => l.part.role === 'skin' || l.part.role === 'eye').map((l) => addMaskMesh(scene, scene.activeCamera!, l.mesh, faceMaskMaterial(`${name}_facemask`, projector.face, scene)))
+    ? live.filter((l) => l.part.role === 'skin' || l.part.role === 'eye').map((l) => addMaskMesh(scene, scene.activeCamera!, l.mesh, maskMat))
     : []
   setExpression(recipe.expression)
   EXPRESSIONS.forEach((e) => face(e, scene)) // preload: a swap mid-scene never blinks
@@ -166,14 +179,17 @@ export async function createFigure(scene: Scene, recipe: FigureRecipe, name = 'f
   let clip: AnimationGroup | null = null
   const clips = new Map<ClipName, Promise<AnimationGroup>>()
   const fig: Figure = {
-    root, recipe, rig, pose: 'stand', clip: null,
+    root, recipe, rig, pose: 'stand', clip: null, nativeHeading,
     setPose(p) {
       fig.pose = p
       clip?.stop()
       clip = fig.clip = null
       if (p === 'walk') {
-        if (!clips.has('walk')) clips.set('walk', retarget('walk', rig, scene))
-        void clips.get('walk')!.then((g) => { if (fig.pose === 'walk') { resetToRest(rest); clip = fig.clip = g; g.start(true) } })
+        if (!clips.has('walk')) { resetToRest(rest); clips.set('walk', retarget('walk', rig, rest, scene)) } // retarget reads the rest pose
+        void clips.get('walk')!.then((g) => {
+          if (fig.pose === 'walk') { resetToRest(rest); clip = fig.clip = g; g.start(true) }
+          else fig.setPose(fig.pose) // the load (and its guard bake) moved the bones meanwhile: pose again
+        })
         return []
       }
       return applyPose(rig, rest, POSES[p])
@@ -187,6 +203,8 @@ export async function createFigure(scene: Scene, recipe: FigureRecipe, name = 'f
       clips.forEach((p) => void p.then((g) => g.dispose()))
       scene.onBeforeRenderObservable.remove(follow)
       unmask.forEach((u) => u())
+      maskMat.dispose()
+      inst.skeletons.forEach((sk) => sk.dispose())
       root.dispose(false, true)
     },
   }
@@ -240,14 +258,10 @@ export function placeFigure(scene: Scene, fig: Figure, at: Placement, stage?: St
   void scene
 }
 
-/** turn the figure so its own forward (from the feet) points along the heading (radians about +y, 0 = +z) */
+/** turn the figure so its own forward (from the feet, at rest) points along the heading (radians about +y, 0 = +z) */
 export function faceHeading(fig: Figure, heading: number) {
   fig.root.rotationQuaternion = null
-  fig.root.rotation.y = 0
-  fig.root.computeWorldMatrix(true)
-  const fwd = Vector3.TransformNormal(frameOf(fig.rig).fwd, fig.rig.root.getWorldMatrix())
-  const native = Math.atan2(fwd.x, fwd.z)
-  fig.root.rotation.y = heading - native
+  fig.root.rotation.y = heading - fig.nativeHeading
 }
 
 // S1's stage maths (src/stage25d/layout.ts), only for when no stage is passed (the figure lab)

@@ -127,11 +127,14 @@ export function checkPose(rig: Rig, f: Frame = frameOf(rig)): Violation[] {
 // a direction in the character's frame: [forward, up, outward] (outward = away from the body's midline)
 export type Dir = [number, number, number]
 export type LimbAim = { upper: Dir; lower: Dir }
-export type StaticPose = { arms?: { L?: LimbAim; R?: LimbAim }; legs?: { L?: LimbAim; R?: LimbAim }; spine?: Dir; head?: Dir; pointWith?: 'L' | 'R' }
+export type StaticPose = { arms?: { L?: LimbAim; R?: LimbAim }; legs?: { L?: LimbAim; R?: LimbAim }; spine?: Dir; head?: Dir; pointWith?: 'L' | 'R'
+  body?: Dir // the whole body tips so hips -> spine points here (lie); legs follow the hips
+}
 
 // Every number here is a knob (Teacher can change everything): the figure lab shows them live.
 const HANG: LimbAim = { upper: [0.06, -1, 0.12], lower: [0.22, -1, 0.04] } // close to the body: no mannequin A-pose
-export const POSES: Record<'stand' | 'point' | 'kneel' | 'carry', StaticPose> = {
+export type StaticName = 'stand' | 'point' | 'kneel' | 'carry' | 'sit' | 'lie' | 'dig' | 'pull' | 'push' | 'climb' | 'row'
+export const POSES: Record<StaticName, StaticPose> = {
   stand: { arms: { L: HANG, R: HANG } },
   // right arm out at the thing, a touch up; the left hangs
   point: { arms: { L: HANG, R: { upper: [1, 0.12, 0.35], lower: [1, 0.18, 0.12] } }, head: [1, -0.05, -0.12], pointWith: 'R' },
@@ -144,6 +147,42 @@ export const POSES: Record<'stand' | 'point' | 'kneel' | 'carry', StaticPose> = 
   },
   // a load held in both arms against the belly (a basket, a sheaf, a pot)
   carry: { arms: { L: { upper: [0.3, -1, 0.3], lower: [1, 0.12, -0.12] }, R: { upper: [0.3, -1, 0.3], lower: [1, 0.12, -0.12] } } },
+  // on a seat at knee height (stone, stool, bench): thighs level, shins down, hands on the knees
+  sit: {
+    arms: { L: { upper: [0.45, -1, 0.15], lower: [1, -0.35, 0] }, R: { upper: [0.45, -1, 0.15], lower: [1, -0.35, 0] } },
+    legs: { L: { upper: [1, -0.02, 0.12], lower: [0.1, -1, 0.02] }, R: { upper: [1, -0.02, 0.12], lower: [0.1, -1, 0.02] } },
+  },
+  // on the back, head toward the camera side it faced, arms along the body
+  lie: { body: [-1, 0, 0], arms: { L: { upper: [1, 0, 0.18], lower: [1, 0, 0.06] }, R: { upper: [1, 0, 0.18], lower: [1, 0, 0.06] } } },
+  // bent over a spade: back forward, both hands low in front
+  dig: {
+    spine: [0.55, 1, 0],
+    arms: { L: { upper: [0.6, -1, 0.1], lower: [0.7, -1, -0.15] }, R: { upper: [0.45, -1, 0.15], lower: [0.5, -1, -0.1] } },
+    legs: { L: { upper: [0.35, -1, 0.06], lower: [0.05, -1, 0] }, R: { upper: [-0.1, -1, 0.06], lower: [-0.12, -1, 0] } },
+  },
+  // hauling a rope: leaning back, arms reaching forward, front foot braced
+  pull: {
+    spine: [-0.3, 1, 0],
+    arms: { L: { upper: [1, -0.25, 0.08], lower: [1, -0.1, -0.05] }, R: { upper: [1, -0.4, 0.1], lower: [1, -0.15, -0.05] } },
+    legs: { L: { upper: [0.4, -1, 0.06], lower: [0.3, -1, 0] }, R: { upper: [-0.2, -1, 0.06], lower: [-0.25, -1, 0] } },
+  },
+  // shoving a stone or a cart: leaning in, arms straight out, back leg driving
+  push: {
+    spine: [0.4, 1, 0],
+    arms: { L: { upper: [1, 0.05, 0.15], lower: [1, 0.1, 0] }, R: { upper: [1, 0.05, 0.15], lower: [1, 0.1, 0] } },
+    legs: { L: { upper: [0.3, -1, 0.06], lower: [0.05, -1, 0] }, R: { upper: [-0.35, -1, 0.06], lower: [-0.4, -1, 0] } },
+  },
+  // going up rigging or a ladder: hands high, one knee up
+  climb: {
+    arms: { L: { upper: [0.25, 1, 0.2], lower: [0.15, 1, 0] }, R: { upper: [0.3, 0.6, 0.2], lower: [0.2, 1, 0] } },
+    legs: { L: { upper: [1, -0.25, 0.1], lower: [0.05, -1, 0] } },
+  },
+  // seated at an oar: the sit legs, leaning back, arms pulling in
+  row: {
+    spine: [-0.2, 1, 0],
+    arms: { L: { upper: [0.6, -1, 0.25], lower: [1, 0.1, 0] }, R: { upper: [0.6, -1, 0.25], lower: [1, 0.1, 0] } },
+    legs: { L: { upper: [1, -0.02, 0.12], lower: [0.1, -1, 0.02] }, R: { upper: [1, -0.02, 0.12], lower: [0.1, -1, 0.02] } },
+  },
 }
 
 const FIST: Dir = [0.25, -1, -0.15] // folded fingers point down and in, under a palm-down pointing hand
@@ -161,9 +200,12 @@ export function resetToRest(rest: RestPose) {
   rest.forEach(({ q, p }, n) => { n.rotationQuaternion = q.clone(); n.position.copyFrom(p) })
 }
 
-/** lowest contact point (feet, toes, knees) along up */
+// what can touch the ground, and how far its surface lies below the joint (m): a lying back, a kneeling knee
+const CONTACTS: [Joint, number][] = [['footL', 0], ['footR', 0], ['toeL', 0], ['toeR', 0], ['shinL', 0.05], ['shinR', 0.05],
+  ['hips', 0.12], ['chest', 0.12], ['head', 0.1], ['handL', 0.03], ['handR', 0.03]]
+/** lowest contact surface along up */
 function lowest(rig: Rig, f: Frame): number {
-  return Math.min(...(['footL', 'footR', 'toeL', 'toeR', 'shinL', 'shinR'] as const).map((j) => Vector3.Dot(pos(rig, j), f.up)))
+  return Math.min(...CONTACTS.map(([j, pad]) => Vector3.Dot(pos(rig, j), f.up) - pad))
 }
 
 /**
@@ -173,6 +215,7 @@ export function applyPose(rig: Rig, rest: RestPose, pose: StaticPose): Violation
   resetToRest(rest)
   const f = frameOf(rig)
   const ground = lowest(rig, f)
+  if (pose.body) aim(rig, 'hips', 'spine', inFrame(f, 'L', pose.body))
   if (pose.spine) aim(rig, 'spine', 'neck', inFrame(f, 'L', pose.spine))
   if (pose.head) aim(rig, 'neck', 'head', inFrame(f, 'L', [pose.head[0] * 0.3, 1, pose.head[2] * 0.3]))
   for (const s of ['L', 'R'] as const) {

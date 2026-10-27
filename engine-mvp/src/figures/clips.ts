@@ -10,7 +10,7 @@ import {
   type AnimationGroup, type AssetContainer, type Scene, type TransformNode,
 } from '@babylonjs/core'
 import '@babylonjs/loaders/glTF'
-import { aim, ARP, checkPose, pos, type Rig } from './pose'
+import { aim, ARP, checkPose, pos, resetToRest, type RestPose, type Rig } from './pose'
 
 export const CLIPS = {
   walk: 'assets/models/customizable-man/clips/M_Walk_001.glb',
@@ -31,23 +31,26 @@ const TWINS: [string, string][] = [[ARP.armL, ARP.armTwistL], [ARP.armR, ARP.arm
 
 const sources = new Map<string, Promise<AssetContainer>>()
 function source(url: string, scene: Scene) {
-  if (!sources.has(url)) {
-    sources.set(url, LoadAssetContainerAsync(url, scene, { pluginExtension: '.glb' }).then((c) => {
+  const key = `${scene.uid}:${url}` // per scene: a container belongs to the scene it loaded into
+  if (!sources.has(key)) {
+    sources.set(key, LoadAssetContainerAsync(url, scene, { pluginExtension: '.glb' }).then((c) => {
       c.animationGroups.forEach((g) => g.stop())
       c.addAllToScene() // retargetAnimationKeys reads the source nodes' world matrices
       c.meshes.forEach((m) => m.setEnabled(false))
       return c
     }))
+    sources.get(key)!.catch(() => sources.delete(key)) // a failed load is retried next time
   }
-  return sources.get(url)!
+  return sources.get(key)!
 }
 
 /** retarget one clip onto a figure; returns a stopped, looping group on the figure's own bones */
-export async function retarget(clip: ClipName, rig: Rig, scene: Scene): Promise<AnimationGroup> {
+export async function retarget(clip: ClipName, rig: Rig, rest: RestPose, scene: Scene): Promise<AnimationGroup> {
   const rigRoot = rig.root
   const c = await source(CLIPS[clip], scene)
   const src = c.animationGroups[0]
   const byName = new Map(c.transformNodes.map((n) => [n.name, n]))
+  resetToRest(rest) // the ground fix and the in-place hips read the rig as it stands now: make that the rest pose
   const avatar = new AnimatorAvatar(`fig-${clip}`, rigRoot, false, false)
   const tgt = (n: string) => rigRoot.getDescendants(false).find((d) => d.name === n) as TransformNode
   const group = avatar.retargetAnimationGroup(src, {
@@ -77,12 +80,13 @@ export async function retarget(clip: ClipName, rig: Rig, scene: Scene): Promise<
     }
   }
   group.loopAnimation = true
-  guardBake(group, rig)
+  avatar.dispose() // made with disposeResources = false: frees the avatar only, never the figure
+  guardBake(group, rig, rest)
   return group
 }
 
 /** straighten every backward knee in the clip's keys (see header) */
-function guardBake(group: AnimationGroup, rig: Rig) {
+function guardBake(group: AnimationGroup, rig: Rig, rest: RestPose) {
   group.start(true)
   group.pause() // goToFrame only moves a started group
   const shinKeys = (n: TransformNode) => group.targetedAnimations.find((ta) => ta.target === n && ta.animation.targetProperty === 'rotationQuaternion')?.animation
@@ -99,4 +103,5 @@ function guardBake(group: AnimationGroup, rig: Rig) {
     anim.setKeys(keys)
   }
   group.stop()
+  resetToRest(rest) // goToFrame left the bones on the last key
 }
