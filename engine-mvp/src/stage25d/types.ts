@@ -45,7 +45,8 @@ export interface SceneLayer {
 
 export interface CamPose { x: number; y: number; z: number; fov: number }
 export type Ease = 'linear' | 'in' | 'out' | 'inOut'
-export interface CameraMove { move?: string; from: CamPose; to: CamPose; ease?: Ease; dur_s?: number }
+/** at_s: when this shot starts within the scene (0 for `camera`; the director sets it on `camera_more`). */
+export interface CameraMove { move?: string; from: CamPose; to: CamPose; ease?: Ease; dur_s?: number; at_s?: number }
 
 export interface Scene {
   id: string
@@ -55,6 +56,12 @@ export interface Scene {
   set: { sky?: string | null; ground?: string; layers: SceneLayer[] }
   figures?: unknown[]
   camera?: CameraMove | null
+  /** further shots of the same scene (director, S5), each with its at_s */
+  camera_more?: CameraMove[]
+  /** a scene in another era's library (overrides lesson.bundle) */
+  bundle?: string
+  /** the scene's length when the director set it (shots + held narration) */
+  dur_s?: number
   [k: string]: unknown
 }
 

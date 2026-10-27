@@ -41,7 +41,8 @@ export function placeLayer(asset: Asset, layer: Pick<SceneLayer, 'depth' | 'x' |
   return { x, y, z, w, h, uRepeat: asset.tileable_x ? w / natW : 1, alphaIndex }
 }
 
-const EASES: Record<Ease, (k: number) => number> = {
+/** Named eases (camera moves, layer keys). Exported: the director adds its named ease here, not a copy. */
+export const EASES: Record<Ease, (k: number) => number> = {
   linear: (k) => k,
   in: (k) => 1 - Math.cos((k * Math.PI) / 2),
   out: (k) => Math.sin((k * Math.PI) / 2),
@@ -50,7 +51,15 @@ const EASES: Record<Ease, (k: number) => number> = {
 export const ease = (name: Ease | undefined, k: number) => (EASES[name ?? 'inOut'] ?? EASES.inOut)(Math.min(1, Math.max(0, k)))
 const lerp = (a: number, b: number, k: number) => a + (b - a) * k
 
-export const sceneDuration = (s: Scene) => s.camera?.dur_s ?? s.est_s ?? 8
+export const sceneDuration = (s: Scene) => s.dur_s ?? s.camera?.dur_s ?? s.est_s ?? 8
+
+/** The shot playing t s into a scene, with its own clock (`camera` then `camera_more`, each from its at_s).
+ *  Same rule as the director's shotAt (S5, director/camera.ts). */
+export function shotAt(scene: Scene, t: number): { cam: CameraMove | null; t: number } {
+  const shots = [scene.camera, ...(scene.camera_more ?? [])].filter(Boolean) as CameraMove[]
+  const cam = [...shots].reverse().find((c) => (c.at_s ?? 0) <= t) ?? shots[0] ?? null
+  return { cam, t: cam ? t - (cam.at_s ?? 0) : t }
+}
 
 /** Camera pose t seconds into a scene; a scene without a move holds the house pose. */
 export function cameraAt(cam: CameraMove | null | undefined, t: number, dur: number): CamPose {
@@ -92,11 +101,37 @@ export function motionOf(asset: Asset, layer: SceneLayer): Required<MotionSpec> 
 export const RENDER_CAPS = [1280, 1920, 2560] as const
 export const RENDER_STEP = 0.25        // one adaptive notch = a quarter of a CSS pixel per pixel
 export const ADAPT_WINDOW_MS = 2000
-export const ADAPT_MIN_FPS = 50
-export const ADAPT_UP_FPS = 58         // this fast for ADAPT_UP_WINDOWS windows in a row: one notch back up,
-export const ADAPT_RETRY_MS = 20000    // but not to a size that fell under ADAPT_MIN_FPS: retry it after this, doubled per failure
-export const ADAPT_UP_WINDOWS = 3
 export const ADAPT_STALL_MS = 250      // a frame gap this long (a load, a hidden tab) voids the window: not slowness
+
+/** Render tier rules (PM 2026-10-27): classroom laptops must never see the sharpness jump back and forth. */
+export const ADAPT = {
+  downFps: 50,          // a window under this steps one notch down
+  upFps: 58,            // up only after `upWindows` windows in a row at this or more,
+  upWindows: 3,
+  upAfterChangeMs: 20000,  // and at least this long since the last change,
+  upEveryMs: 60000,     // and at most one step up per this,
+  lockFlips: 2,         // after this many reversals of direction: locked at the lower tier for the session
+} as const
+
+export interface Tier { notches: number; fast: number; lastChange: number; lastUp: number; lastDir: 0 | 1 | -1; flips: number; locked: boolean }
+export const TIER0: Tier = { notches: 0, fast: 0, lastChange: -Infinity, lastUp: -Infinity, lastDir: 0, flips: 0, locked: false }
+
+/** One finished 2 s window -> the next tier. canDrop: a lower notch still changes the render size. */
+export function nextTier(t: Tier, fps: number, now: number, canDrop: boolean): Tier {
+  const change = (dir: 1 | -1): Tier => {
+    const flips = t.lastDir && t.lastDir !== dir ? t.flips + 1 : t.flips
+    return {
+      ...t, notches: t.notches + dir, fast: 0, lastChange: now, lastDir: dir, flips,
+      lastUp: dir === -1 ? now : t.lastUp, locked: t.locked || (flips >= ADAPT.lockFlips && dir === 1),
+    }
+  }
+  if (fps < ADAPT.downFps) return canDrop ? change(1) : { ...t, fast: 0 }
+  if (fps < ADAPT.upFps) return { ...t, fast: 0 }
+  const fast = t.fast + 1
+  const may = t.notches > 0 && !t.locked && fast >= ADAPT.upWindows
+    && now - t.lastChange >= ADAPT.upAfterChangeMs && now - t.lastUp >= ADAPT.upEveryMs
+  return may ? change(-1) : { ...t, fast }
+}
 
 /** Device pixels per CSS pixel: the device's own, under the cap, minus adaptive notches, never below 1x CSS. */
 export function renderScale(cssLongest: number, dpr: number, cap: number, notches: number): number {
@@ -104,5 +139,23 @@ export function renderScale(cssLongest: number, dpr: number, cap: number, notche
   return Math.max(Math.min(1, dpr), top - notches * RENDER_STEP)
 }
 
-/** When a size that just ran too slow may be tried again: the wait doubles with each failure there. */
-export const retryAt = (now: number, failures: number) => now + ADAPT_RETRY_MS * 2 ** Math.max(0, failures - 1)
+/** A copy of the scene with shot i (0 = camera, then camera_more) lasting `dur` s. Later shots and the scene's own
+ *  length move by the same amount, so no shot is cut mid-move and none starts before the last one ends. */
+export function setShotDuration(s: Scene, i: number, dur: number): Scene {
+  const shots = [s.camera, ...(s.camera_more ?? [])]
+  const shot = shots[i]
+  if (!shot) return s
+  const delta = dur - (shot.dur_s ?? sceneDuration(s))
+  const moved = shots.map((c, k) => (!c ? c : k === i ? { ...c, dur_s: dur } : k > i ? { ...c, at_s: (c.at_s ?? 0) + delta } : c))
+  return {
+    ...s,
+    camera: moved[0] ?? s.camera,
+    ...(s.camera_more ? { camera_more: moved.slice(1) as CameraMove[] } : {}),
+    ...(s.dur_s !== undefined ? { dur_s: Math.max(0.5, s.dur_s + delta) } : {}),
+  }
+}
+
+/** When the last shot of a scene finishes moving: the shortest the scene may be without cutting a move. */
+export function shotsEnd(s: Scene): number {
+  return [s.camera, ...(s.camera_more ?? [])].reduce((end, c) => (c ? Math.max(end, (c.at_s ?? 0) + (c.dur_s ?? 0)) : end), 0)
+}

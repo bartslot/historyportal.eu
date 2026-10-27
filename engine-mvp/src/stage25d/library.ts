@@ -10,6 +10,12 @@ export async function loadLibrary(url: string): Promise<Library & { base: string
   return { ...lib, base: new URL('.', new URL(url, location.href)).href }
 }
 
+/** Which library a scene resolves against: its own bundle wins, then the lesson's (or the URL given to playLesson). */
+export function libraryUrlFor(scene: { bundle?: string }, lesson: { bundle?: string }, override?: string): string {
+  if (scene.bundle) return `library/${scene.bundle}/library.json`
+  return override ?? `library/${lesson.bundle ?? '_placeholder'}/library.json`
+}
+
 export const tagsOf = (need: string | string[]): string[] =>
   (Array.isArray(need) ? need : need.split(/[\s,]+/)).map((t) => t.trim().toLowerCase()).filter(Boolean)
 
