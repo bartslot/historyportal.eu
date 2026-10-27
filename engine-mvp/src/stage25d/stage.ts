@@ -189,6 +189,12 @@ export interface Player {
   play(): void
   seek(index: number, t?: number): Promise<void>
   seekToScene(id: string): Promise<void>
+  /** a guaranteed hold t s into scene i (onInteraction fires; resume plays on from t); returns a remover */
+  holdAt(sceneIndex: number, t: number): () => void
+  /** pose the current scene at t without a rebuild (keeps pause / hold): the power meter */
+  setTime(t: number): void
+  /** the scene on screen changed */
+  onScene(fn: (index: number) => void): () => void
   fps(): number
 }
 
@@ -266,6 +272,9 @@ export async function playLesson(lessonOrUrl: Lesson | string, libraryUrl?: stri
     play: () => tl.resume(),
     seek: (i, at = 0) => tl.enter(i, at),
     seekToScene: (id) => tl.seekToScene(id),
+    holdAt: (i, t) => tl.holdAt(i, t),
+    setTime: (t) => tl.setTime(t),
+    onScene: (fn) => tl.onScene(fn),
     fps: () => frames.length,
   }
 }

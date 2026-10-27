@@ -132,3 +132,57 @@ describe('breathe (the held frame)', () => {
     expect(breathe(HOUSE, 12, { breath_m: 0 })).toEqual(HOUSE)
   })
 })
+
+describe('Timeline: S5 card hooks (holdAt, setTime, onScene)', () => {
+  it('holdAt stops inside a scene, fires the hook, and resume plays on from there', async () => {
+    const { tl } = await make([sc('a', 10), sc('b', 5)])
+    let resume = () => {}
+    const hook = vi.fn((_s: Scene, r: () => void) => { resume = r })
+    tl.onInteraction(hook)
+    tl.holdAt(0, 4)
+    await run(tl, 6)
+    expect([tl.mode, tl.t]).toEqual(['holding', 4])
+    expect(tl.clock()).toBe(4)
+    resume()
+    await run(tl, 1)
+    expect([tl.mode, tl.index]).toEqual(['playing', 0])
+    expect(tl.t).toBeCloseTo(5)
+    expect(hook).toHaveBeenCalledTimes(1)
+  })
+  it('a stop is armed again when its scene is entered again, and a seek past it skips it', async () => {
+    const { tl } = await make([sc('a', 10)])
+    tl.onInteraction((_s, r) => r())
+    const hook = vi.fn(); tl.onInteraction(hook)
+    tl.holdAt(0, 2)
+    await tl.enter(0, 3)
+    await run(tl, 2)
+    expect(hook).toHaveBeenCalledTimes(0)
+    await tl.enter(0, 0)
+    await run(tl, 2.5)
+    expect(hook).toHaveBeenCalledTimes(1)
+  })
+  it('holdAt at the scene end holds a scene without an interaction', async () => {
+    const { tl } = await make([sc('a', 2), sc('b', 2)])
+    tl.holdAt(0, 2)
+    await run(tl, 3)
+    expect([tl.mode, tl.index]).toEqual(['holding', 0])
+  })
+  it('setTime poses the scene at t without a rebuild and keeps the hold', async () => {
+    const { tl, builds } = await make([sc('a', 4, true), sc('b', 4)])
+    await run(tl, 4.05)
+    expect(tl.mode).toBe('holding')
+    const n = builds.length
+    tl.setTime(1.5)
+    expect([tl.t, tl.mode, builds.length]).toEqual([1.5, 'holding', n])
+    tl.setTime(99)
+    expect(tl.t).toBe(4)
+  })
+  it('onScene fires with the new index when the scene on screen changes', async () => {
+    const { tl } = await make([sc('a', 1), sc('b', 1), sc('c', 1)])
+    const seen: number[] = []
+    tl.onScene((i) => seen.push(i))
+    await run(tl, 2.5)
+    await tl.seekToScene('a')
+    expect(seen).toEqual([1, 2, 0])
+  })
+})

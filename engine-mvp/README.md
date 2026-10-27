@@ -37,6 +37,7 @@ const player = await playLesson(lessonOrUrl, libraryUrl?, canvas?)   // library 
 player.pause(); player.resume(); await player.seek(sceneIndex, t); await player.seekToScene('sc04')
 player.onInteraction((scene, resume) => showCard(scene.interaction, resume))  // fires once per held scene
 player.clock()                                           // lesson seconds; stands still while paused or holding
+player.holdAt(sceneIndex, t); player.setTime(t); player.onScene((index) => ...)  // S5 cards + power meter
 player.doc.set(['scenes', 0, 'camera', 'dur_s'], 12)   // every value: one undo step (player.doc.undo() / redo())
 player.stage.groundPoint(x, 'mid')                       // where a figure stands (x 0..1 across the house view)
 ```
