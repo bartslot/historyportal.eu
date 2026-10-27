@@ -2,9 +2,10 @@
   "version": 1,
   "about": "One duration model for lesson.json, read by tools/lessongen/validate.py and the S5 director. PM 2026-10-27.",
   "narration": {
-    "words_per_s": 2.4,
+    "words_per_s": 2.15,
     "breath_s": 0.6,
-    "rule": "shot_s = max(shot_min_s, words / words_per_s + breath_s); a measured scene.tts_s replaces words / words_per_s"
+    "rule": "shot_s = max(shot_min_s, words / words_per_s + breath_s); a measured scene.tts_s replaces words / words_per_s",
+    "measured": "2.15 = median of 282 shots read by Azure nl-NL-FennaNeural, 2026-10-27"
   },
   "shot_min_s": 6,
   "shot_max_s": 12,
@@ -17,5 +18,7 @@
   },
   "class_action": "scene.class_action_s, the time written for that class action (hands up, say together), added after the shot",
   "interaction_rule": "key = type.format when that key exists, else type. format 'team' (a team or paper activity) has no fixed time: it plays for the interaction's own class_action_s, which is required for it",
-  "teacher_card": "lesson.teacher_template holds the card with {total_min}, {story_min} and {min:scA-scB}; validate.py --resolve renders lesson.teacher from it; a typed 'N minuten' anywhere on the card is an error"
+  "teacher_card": "lesson.teacher_template holds the card with {total_min}, {story_min} and {min:scA-scB}; validate.py --resolve renders lesson.teacher from it; a typed 'N minuten' anywhere on the card is an error",
+  "rounding": "half_up_total",
+  "rounding_rule": "sum the raw float seconds of every shot, class action and interaction; round ONCE at the end with floor(x + 0.5); never per shot, never banker's rounding"
 }

@@ -22,6 +22,10 @@ Output per lesson: vault `historyportal/topics/autonomous-lessons/lessons/<id>/`
 6. **Validate**: `python3 validate.py <lesson.json> --resolve` until OK. `--resolve` fills `asset` ids from
    `~/BartsMedia/historyportal/library/<bundle>/library.json` and rebuilds `needed_assets` (feeds the art
    session). Without a library every layer stays `asset: null` and lands in `needed_assets`.
+6b. **Narrate**: `python3 narrate.py <lesson.json>` (Azure, the app's voice for the lesson language from
+   `NarrationVoice.php`; mp3 per shot in `~/BartsMedia/historyportal/narration/<id>/`, cached by text hash so an
+   unchanged line is never re-sent; writes `scene.tts_s` + `scene.audio`). Run after every build.py, then
+   `validate.py --resolve` again: the timeline now uses the real lengths. `--dry-run` counts the characters first.
 7. **Review pass**: three fresh readers (a 12-year-old, a teacher, a historian fact-checking against
    `sources.md`) -> `review.md`; fix; validate again.
 

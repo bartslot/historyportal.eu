@@ -7,7 +7,7 @@
 // ONE mask per scene, shared by all anime actors.
 import {
   Color3, RenderTargetTexture, Vector3,
-  type AbstractMesh, type Camera, type DirectionalLight, type Mesh, type Scene,
+  type AbstractMesh, type Camera, type DirectionalLight, type Material, type Mesh, type Scene,
 } from '@babylonjs/core'
 import { CustomMaterial } from '@babylonjs/materials'
 import { clampPitch, type AnimeHandle } from './anime-look'
@@ -49,6 +49,18 @@ function maskFor(scene: Scene, camera: Camera): Mask {
 }
 
 const isHair = (m: AbstractMesh) => /HAIR/i.test(m.material?.name ?? '') && !/HairBack/i.test(m.material?.name ?? '')
+
+// Adds one mesh to the scene's mask with its own mask material (the figure kit paints only its face blue, so the
+// post ink leaves the painted face alone and still draws the body); returns its undo.
+export function addMaskMesh(scene: Scene, camera: Camera, mesh: AbstractMesh, material: Material): () => void {
+  const mask = maskFor(scene, camera)
+  mask.rtt.renderList!.push(mesh)
+  mask.rtt.setMaterialForRendering(mesh, material)
+  return () => {
+    mask.rtt.renderList = mask.rtt.renderList!.filter((m) => m !== mesh)
+    mask.rtt.setMaterialForRendering(mesh, undefined)
+  }
+}
 
 // Adds one actor to the scene's mask; returns its undo (for when the actor is deleted).
 export function animeCastShadows(look: AnimeHandle, meshes: AbstractMesh[], light: DirectionalLight, camera: Camera, scene: Scene): () => void {

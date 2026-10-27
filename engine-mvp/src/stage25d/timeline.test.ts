@@ -186,3 +186,49 @@ describe('Timeline: S5 card hooks (holdAt, setTime, onScene)', () => {
     expect(seen).toEqual([1, 2, 0])
   })
 })
+
+describe('Timeline: checker findings on ca66cc7e', () => {
+  it('an edit while the next scene loads ends with that scene built from the live lesson, not the old one on screen', async () => {
+    const scenes = [sc('a', 4), sc('b', 4)]
+    const built: string[] = []
+    let release = () => {}
+    const tl = new Timeline(() => scenes, async (i) => {
+      if (i === 1 && !built.includes('b')) await new Promise<void>((r) => { release = r })   // B is slow to load
+      built.push(scenes[i].id)
+    })
+    await tl.enter(0)
+    const going = tl.enter(1)
+    await flush()
+    void tl.rebuild()                                 // the teacher edits while B is loading
+    release()
+    await going
+    expect(tl.index).toBe(1)
+    expect(built[built.length - 1]).toBe('b')        // the last build is B, so the stage shows B
+    expect(built.filter((x) => x === 'a')).toEqual(['a'])  // no racing rebuild of A
+  })
+  it("a teacher's pause during a hold carries into the next scene; the card's resume clears only the hold", async () => {
+    const { tl } = await make([sc('a', 1, true), sc('b', 4)])
+    let resume = () => {}
+    tl.onInteraction((_, r) => { resume = r })
+    await run(tl, 1.05)
+    tl.pause()                                        // the teacher presses pause during the quiz
+    resume()                                          // the card is answered
+    await flush()
+    await run(tl, 2)
+    expect([tl.index, tl.t, tl.mode]).toEqual([1, 0, 'paused'])
+    tl.resume()                                       // the next tap plays
+    await run(tl, 1)
+    expect(tl.mode).toBe('playing')
+    expect(tl.t).toBeCloseTo(1)
+  })
+  it('a card resume without a teacher pause plays straight on (a hold never leaves a pause behind)', async () => {
+    const { tl } = await make([sc('a', 1, true), sc('b', 4)])
+    let resume = () => {}
+    tl.onInteraction((_, r) => { resume = r })
+    await run(tl, 1.05)
+    resume()
+    await flush()
+    await run(tl, 1)
+    expect([tl.index, tl.mode]).toEqual([1, 'playing'])
+  })
+})

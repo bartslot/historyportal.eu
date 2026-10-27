@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 import sys
 from pathlib import Path
@@ -59,6 +60,11 @@ BAD_CHARS = re.compile("[\u2010-\u2015\U0001F000-\U0001FAFF\u2600-\u27BF\uFE0F]|
 WORD = re.compile(r"[a-zà-ÿ0-9']+")
 
 
+def half_up(x: float) -> int:
+    """timing.json "rounding": "half_up_total": sum raw floats, round ONCE at the end, .5 goes up (never banker's)."""
+    return math.floor(x + 0.5)
+
+
 def shot_s(sc: dict) -> float:
     """Shot time per timing.json: narration (measured tts_s, else words / words_per_s) + breath, floor shot_min_s."""
     n = TIMING["narration"]
@@ -93,11 +99,11 @@ def render_teacher(lesson: dict) -> str:
 
     def span(m: re.Match) -> str:
         a, b = ids.index(m.group(1)), ids.index(m.group(2))  # ValueError = a range naming a missing scene
-        return str(round(sum(scene_s(sc) for sc in lesson["scenes"][a:b + 1]) / 60))
+        return str(half_up(sum(scene_s(sc) for sc in lesson["scenes"][a:b + 1]) / 60))
 
     text = MIN_RANGE.sub(span, lesson["teacher_template"])
-    return (text.replace("{total_min}", str(round(total_s(lesson) / 60)))
-                .replace("{story_min}", str(round(sum(shot_s(sc) for sc in lesson["scenes"]) / 60))))
+    return (text.replace("{total_min}", str(half_up(total_s(lesson) / 60)))
+                .replace("{story_min}", str(half_up(sum(shot_s(sc) for sc in lesson["scenes"]) / 60))))
 
 
 def all_texts(node: object, where: str = "") -> list[tuple[str, str]]:
@@ -237,8 +243,8 @@ def check(lesson: dict, corpus_dir: Path = DEFAULT_CORPUS, library_root: Path = 
             play = interaction_s(sc["interaction"])
             spans.append((t, t + play, sc["id"], sc["interaction"]["type"]))
             t += play
-    stats["total_s"] = round(t)
-    stats["story_s"] = round(sum(shot_s(sc) for sc in scenes))
+    stats["total_s"] = half_up(t)
+    stats["story_s"] = half_up(sum(shot_s(sc) for sc in scenes))
     stats["class_actions_s"] = sum(sc.get("class_action_s", 0) for sc in scenes)
     if lesson.get("teacher_template"):
         if TYPED_MINUTES.search(lesson["teacher_template"]):
@@ -358,7 +364,7 @@ def main() -> None:
     ap.add_argument("--json", action="store_true", help="with --totals: one JSON object {lesson_id: total_s}")
     a = ap.parse_args()
     if a.totals:
-        totals = {(lesson := json.loads(p.read_text()))["id"]: round(total_s(lesson)) for p in a.lessons}
+        totals = {(lesson := json.loads(p.read_text()))["id"]: half_up(total_s(lesson)) for p in a.lessons}
         print(json.dumps(totals) if a.json else "\n".join(f"{k} {t}" for k, t in totals.items()))
         return
     failed = False

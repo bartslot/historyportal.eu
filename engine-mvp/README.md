@@ -70,3 +70,59 @@ the `_placeholder` bundle). The panel edits every camera, timing and motion valu
 
 Tests: `npx vitest run src/stage25d`. Real-GPU check (muted, Metal ANGLE, 1080p frames, fps, edit + undo):
 `node scripts/stage25d-check.mjs http://localhost:5197/stage25d.html <outDir>/` (launch config `stage25d`, port 5197) (needs `npx playwright install chromium`).
+
+## Figures (`src/figures/`)
+
+Lesson figures that read as History Lines comic characters: ONE standard body (Customizable Man, Auto-Rig Pro deform
+rig), variety only from dyes, skin, hair part, hat on/off. `lesson.json` `figures[]` maps straight onto it.
+
+```ts
+import { Cast } from './src/figures/cast'
+const cast = new Cast(player.stage.scene, player.stage, lesson)   // the whole lesson cast, one figure per char
+const skipped = await cast.show(lesson.scenes[i])                 // on every scene change; skipped = no body (dog, waka)
+
+// or one figure by hand:
+import { createFigure, placeFigure } from './src/figures/figure'
+import { figureRecipe } from './src/figures/recipes'
+const fig = await createFigure(scene, figureRecipe(f.char, lesson.characters, lesson.bundle)!, f.char)
+fig.setPose(f.pose)            // walk stand point kneel carry sit lie dig pull push climb row; returns the guard verdict
+fig.setExpression(f.expression) // neutral happy worried surprised sad angry proud tired (an image swap, no blink)
+placeFigure(scene, fig, { x: f.x, depth: f.depth, facing: f.facing }, player.stage)   // stage = anything with groundPoint(x, depth)
+fig.setDye('coat', '#7a4a30'); fig.dispose()
+prop.parent = fig.hold   // lesson `holds` (a pot, a basket): a node between the hands, moving with them
+```
+
+- **Any character**: `figureRecipe(char, lesson.characters, bundle)` reads the cast's `look` line: child (drawn at
+  0.68), woman (longest hair, no beard), old (grey hair), VOC officer (black, hat, Tasman moustache), sailor (cap);
+  the id seeds era dyes so no two farmers match. `null` for animals and far-off canoe crews. Unknown poses and
+  expressions fall back (`poseFor`, `expressionFor`). Group chars repeated in one scene get their own dyes.
+- **Contract with the stage**: `placeFigure(scene, fig, { x 0..1, depth: 'bg'|'mid'|'fg', facing: 'left'|'right'|'front'|'back' }, stage?)`.
+  It stands `fig.root` on `stage.groundPoint(x, depth)` (S1's `Stage`); without a stage it uses the same depth maths.
+  `left`/`right` = a 3/4 turn toward that side of the screen (`FACING_TURN_DEG`, 62; 90 = profile). Move `fig.root`
+  for walks; the walk clip plays in place.
+- **Paint** (`toon.ts`): flat dye, one hard cel step lit by the figure's own light (`TOON.light`), ink where the surface
+  turns from the eye (contour + fold lines, thick on round forms, thin on flat). Skin is lit flat (`SKIN_STEP`).
+- **Costume is painted, never modelled**: per-vertex zones by bone weight (`paintZones`) dye parts of the one body's
+  meshes. Recipe words: `sleeves` (long sleeves on the arm skin), `legs: tunic | dress | breeches | trousers` (tunic =
+  coat dye hip to knee over leg wraps; breeches = stockings below the knee), `collar` (white falling collar within
+  `BANDS.collarRadius` of the neck joint), `belt` (a band at the coat's hem). `figureRecipe` picks them by era. The stage look's pencil pass adds its
+  line on top. Every number is a knob in `TOON` / `FACE` / `POSES`.
+- **Face**: the expression PNG (`public/figures/faces/`: a gpt-image-2.5 sheet made in Figma, cut and aligned by
+  `faces_from_sheet.py`; the sheet is in BartsMedia `s3-figures/faces/`) is projected from
+  a box riding the head bone onto skin and eyeballs; no contour ink in the face's middle.
+- **Poses** (`pose.ts`): never Euler offsets. Each limb is AIMED at a direction in the character's own frame
+  (forward from the feet, left from the shoulders), in rig space (below the glTF mirror). `checkPose` = knee never
+  behind the hip-ankle line, elbow never bent forward, upper arm never across the body, hip extension under 45 deg.
+  `npx vitest run src/figures` runs them on the real body (skipped where the GLB is missing) and proves the guards
+  fail a broken knee and an arm through the torso.
+- **Walk** (`clips.ts`): Ready Player Me `M_Walk_001` (Mixamo names) retargeted with `AnimatorAvatar` + root/ground
+  fix (feet stay on the ground, no crouch, no float), then a guard bake straightens any backward knee in the keys:
+  0 violations over 116 frames (figure lab: `__lab.walkAudit()`).
+- **Lab**: `/figure-lab.html?char=boer-man,boer-vrouw&poses=point,carry&view=front|three|side|face&look=stage&ui=0`.
+- **Assets** (git-ignored): `public/assets/models/customizable-man/man-lite.glb` from `src/figures/export_wardrobe.py`
+  (Blender, licensed model in `workflows/3D pipeline/customizable-man/`, licence: no AI training) and `clips/`.
+- **Gaps (needed assets)**: female body and a child body (now: the man at 0.95 / 0.68); long hair / braid /
+  headscarf / white cap; period SILHOUETTES (the zones give tunic, dress, breeches, collar their colour, the shape is
+  still sweater + trousers: a wide tunic skirt, a skirt, a cloak); a 1640s wide flat felt hat (the Cowboy_Hat part
+  stands in); hand props for `carry` / `dig` / `pull` (basket, spade, rope); a seat for `sit` at a table; thin paper
+  slivers at hems where the cloth stands off the trimmed body.
