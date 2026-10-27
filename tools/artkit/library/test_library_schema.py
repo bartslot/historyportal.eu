@@ -56,7 +56,7 @@ def validate(lib: dict, root: Path | None = None) -> list[str]:
             im = Image.open(f)
             if im.size != (a.get("w"), a.get("h")):
                 err.append(f"{p}: size {im.size} != declared")
-            if im.mode != "RGBA":
+            if im.mode != "RGBA" and a.get("layer") not in ("sky", "ground"):  # full-bleed tiles may be opaque
                 err.append(f"{p}: no alpha channel")
     return err
 
