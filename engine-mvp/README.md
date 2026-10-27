@@ -59,4 +59,4 @@ the `_placeholder` bundle). The panel edits every camera, timing and motion valu
   (git-ignored).
 
 Tests: `npx vitest run src/stage25d`. Real-GPU check (muted, Metal ANGLE, 1080p frames, fps, edit + undo):
-`node scripts/stage25d-check.mjs http://localhost:5192/stage25d.html <outDir>/` (launch config `stage25d`, port 5192) (needs `npx playwright install chromium`).
+`node scripts/stage25d-check.mjs http://localhost:5197/stage25d.html <outDir>/` (launch config `stage25d`, port 5197) (needs `npx playwright install chromium`).
