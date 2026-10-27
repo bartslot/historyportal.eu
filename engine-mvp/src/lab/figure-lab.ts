@@ -5,7 +5,7 @@ import { createFigure, faceHeading, FACE, FACING_TURN_DEG, type Figure } from '.
 import { TOON } from '../figures/toon'
 import '../globals' // the look chain reads Babylon from window.BABYLON
 import '../engine/look-shaders.js'
-import { createLookChain } from '../engine/look-chain.js'
+import { createLookChain, PRESETS } from '../engine/look-chain.js'
 import { STAGE_LOOK } from '../stage25d/stage'
 import { checkPose } from '../figures/pose'
 import { RECIPES, recipeFor, type Expression, type Pose } from '../figures/recipes'
@@ -111,9 +111,12 @@ async function main() {
   Object.assign(window, { __lab: { scene, camera, figs, setPose, setExpr, view, walkAudit, createFigure, recipeFor, ready: true } })
 }
 main().catch((e) => { msg.textContent = String(e?.stack ?? e); throw e })
-// ?look=stage: the 2.5D stage's own storybook post chain over the figures, as a lesson will show them
-if (q.get('look') === 'stage') {
-  createLookChain(scene, camera, { num: (k: string) => Number(STAGE_LOOK[k] ?? 0), inkColor: () => String(STAGE_LOOK.inkColor ?? 'pencil'), texture: () => null })
+// ?look=stage: the 2.5D stage's own storybook post chain over the figures, as a lesson will show them;
+// ?look=<preset name>: any look-chain preset (e.g. Natural colour) for comparisons
+const lookName = q.get('look')
+if (lookName) {
+  const look: Record<string, number | string> = lookName === 'stage' ? STAGE_LOOK : (PRESETS as Record<string, Record<string, number | string>>)[lookName] ?? STAGE_LOOK
+  createLookChain(scene, camera, { num: (k: string) => Number(look[k] ?? 0), inkColor: () => String(look.inkColor ?? 'pencil'), texture: () => null })
 }
 engine.runRenderLoop(() => scene.render())
 addEventListener('resize', () => engine.resize())

@@ -60,3 +60,43 @@ the `_placeholder` bundle). The panel edits every camera, timing and motion valu
 
 Tests: `npx vitest run src/stage25d`. Real-GPU check (muted, Metal ANGLE, 1080p frames, fps, edit + undo):
 `node scripts/stage25d-check.mjs http://localhost:5197/stage25d.html <outDir>/` (launch config `stage25d`, port 5197) (needs `npx playwright install chromium`).
+
+## Figures (`src/figures/`)
+
+Lesson figures that read as History Lines comic characters: ONE standard body (Customizable Man, Auto-Rig Pro deform
+rig), variety only from dyes, skin, hair part, hat on/off. `lesson.json` `figures[]` maps straight onto it.
+
+```ts
+import { createFigure, placeFigure } from './src/figures/figure'
+import { recipeFor } from './src/figures/recipes'
+const fig = await createFigure(scene, recipeFor(f.char), f.char)   // char: boer-man | boer-vrouw | voc-schipper | voc-matroos
+fig.setPose(f.pose)                     // walk | stand | point | kneel | carry; returns the guard verdict ([] = passes)
+fig.setExpression(f.expression)         // neutral | happy | worried | surprised (an image swap, no blink)
+placeFigure(scene, fig, { x: f.x, depth: f.depth, facing: f.facing }, player.stage)   // stage = anything with groundPoint(x, depth)
+fig.setDye('coat', '#7a4a30'); fig.dispose()
+```
+
+- **Contract with the stage**: `placeFigure(scene, fig, { x 0..1, depth: 'bg'|'mid'|'fg', facing: 'left'|'right'|'front'|'back' }, stage?)`.
+  It stands `fig.root` on `stage.groundPoint(x, depth)` (S1's `Stage`); without a stage it uses the same depth maths.
+  `left`/`right` = a 3/4 turn toward that side of the screen (`FACING_TURN_DEG`, 62; 90 = profile). Move `fig.root`
+  for walks; the walk clip plays in place.
+- **Paint** (`toon.ts`): flat dye, one hard cel step lit by the figure's own light (`TOON.light`), ink where the surface
+  turns from the eye (contour + fold lines, thick on round forms, thin on flat). Skin is lit flat (`SKIN_STEP`). Long
+  sleeves are painted on the arm skin in the coat dye (no modelled garment). The stage look's pencil pass adds its
+  line on top. Every number is a knob in `TOON` / `FACE` / `POSES`.
+- **Face**: the expression PNG (`public/figures/faces/`, drawn by `faces.mjs`, tapered ink strokes) is projected from
+  a box riding the head bone onto skin and eyeballs; no contour ink in the face's middle.
+- **Poses** (`pose.ts`): never Euler offsets. Each limb is AIMED at a direction in the character's own frame
+  (forward from the feet, left from the shoulders), in rig space (below the glTF mirror). `checkPose` = knee never
+  behind the hip-ankle line, elbow never bent forward, upper arm never across the body, hip extension under 45 deg.
+  `npx vitest run src/figures` runs them on the real body (skipped where the GLB is missing) and proves the guards
+  fail a broken knee and an arm through the torso.
+- **Walk** (`clips.ts`): Ready Player Me `M_Walk_001` (Mixamo names) retargeted with `AnimatorAvatar` + root/ground
+  fix (feet stay on the ground, no crouch, no float), then a guard bake straightens any backward knee in the keys:
+  0 violations over 116 frames (figure lab: `__lab.walkAudit()`).
+- **Lab**: `/figure-lab.html?char=boer-man,boer-vrouw&poses=point,carry&view=front|three|side|face&look=stage&ui=0`.
+- **Assets** (git-ignored): `public/assets/models/customizable-man/man-wardrobe.glb` from `src/figures/export_wardrobe.py`
+  (Blender, licensed model in `workflows/3D pipeline/customizable-man/`, licence: no AI training) and `clips/`.
+- **Gaps (needed assets)**: female body; long hair / braid / headscarf; period garments (knee-length tunic, skirt,
+  doublet, breeches); a 1640s wide-brimmed felt hat (the Cowboy_Hat part stands in); hand props (basket, sheaf,
+  spyglass) for `carry` / `point`; a closed mouth (the body's lips are parted, painted over).
