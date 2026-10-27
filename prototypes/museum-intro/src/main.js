@@ -220,6 +220,9 @@ async function start() {
   });
   document.body.classList.add('ready');
   if (handoff) window.parent?.postMessage({ type: 'hp-intro:ready' }, location.origin);
+  // the lesson's own painting hangs here, and the ship behind it is never seen before the handoff: the credit
+  // line names neither
+  if (paintingUrl) document.getElementById('credit').style.display = 'none';
 
   if (query.has('dev')) (await import('./devPanel.js')).mountDevPanel(api);
 }
