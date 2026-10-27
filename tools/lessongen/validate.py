@@ -37,6 +37,12 @@ BALLOON_WORDS_MAX = 8
 WORDS_PER_S_MAX = 2.6  # Dutch narration for kids runs ~2.2-2.5 words/s
 # Region tags (agreed with the art session). An asset carrying one only serves a need that asks for it.
 REGIONS = {"mideast", "egypt", "mesopotamia", "batavia", "banda", "ocean", "newzealand", "tasmania", "mauritius"}
+# Which regions each art bundle may show. A scene's region tags outside its bundle's set get a warning.
+BUNDLE_REGIONS = {
+    "nl-prehistory": set(),
+    "nl-golden-age": {"batavia", "banda", "ocean", "newzealand", "tasmania", "mauritius"},
+    "near-east-neolithic": {"mideast", "egypt", "mesopotamia"},
+}
 # A narrated number, year or amount is a hard fact: it needs a real (non-ledger) source in the scene.
 HARD_FACT = re.compile(
     r"\d|honderd|duizend|miljoen|miljard|\b\w*(?:twintig|dertig|veertig|vijftig|zestig|zeventig|tachtig|negentig)\b"
@@ -86,13 +92,22 @@ def load_library(root: Path, bundle: str) -> list[dict] | None:
     return json.loads(path.read_text()).get("assets", [])
 
 
+def norm(tag: str) -> str:
+    """Lowercase and fold a plural -s, so a need "reed" meets an asset tagged "reeds"."""
+    tag = tag.lower()
+    if tag in REGIONS:
+        return tag
+    return tag[:-1] if len(tag) > 3 and tag.endswith("s") and not tag.endswith("ss") else tag
+
+
 def split_tags(need: str) -> list[str]:
-    return [t for t in re.split(r"[\s,]+", need.strip().lower()) if t]
+    return [("!" if t.startswith("!") else "") + norm(t.lstrip("!")) for t in re.split(r"[\s,]+", need.strip()) if t]
 
 
 def match_asset(need: str, depth: str, library: list[dict]) -> dict | None:
     """Best library asset for a need. The first tag is the head noun and must match, as must every tag
-    marked "!" (e.g. "hills dry !mideast"); every further tag that matches ranks higher, then same layer,
+    marked "!" (e.g. "hills dry !mideast"); an asset whose FIRST tag is the head noun beats one that only carries it later
+    (a birch tagged "heath" is not heath); then every further tag that matches ranks higher, then same layer,
     then QA score. The asset id counts as a tag. Region tags work both ways: an asset tagged with a region
     only serves a need that requires that region, so Drenthe never gets a Mesopotamian field."""
     want = [t.lstrip("!") for t in split_tags(need)]
@@ -101,27 +116,47 @@ def match_asset(need: str, depth: str, library: list[dict]) -> dict | None:
         return None
 
     def tags_of(a: dict) -> set[str]:
-        return {t.lower() for t in a.get("tags", [])} | {a["id"].lower()}
+        return {norm(t) for t in a.get("tags", [])} | {a["id"].lower()}
 
     hits = [a for a in library if required <= tags_of(a) and tags_of(a) & REGIONS <= required]
-    hits.sort(key=lambda a: (-len(set(want) & tags_of(a)), a.get("layer") != depth, -(a.get("qa") or {}).get("score", 0)))
+    def is_kind(a: dict) -> bool:  # the asset's first tag says what it IS; later tags say where/what with
+        return bool(a.get("tags")) and norm(a["tags"][0]) == want[0]
+
+    hits.sort(key=lambda a: (not is_kind(a), -len(set(want) & tags_of(a)), a.get("layer") != depth,
+                             -(a.get("qa") or {}).get("score", 0)))
     return hits[0] if hits else None
 
 
-def resolve(lesson: dict, library: list[dict] | None) -> dict:
-    """New lesson with asset ids filled from the library and needed_assets rebuilt from the misses."""
+def scene_bundle(lesson: dict, sc: dict) -> str:
+    """A scene's own bundle (e.g. the Near East scenes of a Dutch lesson) overrides the lesson's."""
+    return sc.get("bundle") or lesson["bundle"]
+
+
+def libraries(lesson: dict, root: Path) -> dict[str, list[dict] | None]:
+    return {b: load_library(root, b) for b in {lesson["bundle"]} | {scene_bundle(lesson, sc) for sc in lesson["scenes"]}}
+
+
+def needed_key(bundle: str, tags: str, layer: str, lesson_bundle: str) -> tuple[str, str, str]:
+    return (bundle or lesson_bundle, tags.strip().lower(), layer)
+
+
+def resolve(lesson: dict, library_root: Path) -> dict:
+    """New lesson with asset ids filled from each scene's bundle library and needed_assets rebuilt from the misses."""
     lesson = json.loads(json.dumps(lesson))
-    needed: dict[tuple[str, str], list[str]] = {}
+    libs = libraries(lesson, library_root)
+    needed: dict[tuple[str, str, str], list[str]] = {}
     for sc in lesson["scenes"]:
+        bundle = scene_bundle(lesson, sc)
         wants = [(layer, layer["depth"]) for layer in sc["set"]["layers"]] + [({"need": sc["set"]["sky"]}, "sky")]
         for layer, depth in wants:
-            hit = match_asset(layer["need"], depth, library or [])
+            hit = match_asset(layer["need"], depth, libs[bundle] or [])
             if "asset" in layer and depth != "sky":
                 layer["asset"] = hit["id"] if hit else None
             if not hit:
-                needed.setdefault((layer["need"].strip().lower(), depth), []).append(sc["id"])
+                needed.setdefault((bundle, layer["need"].strip().lower(), depth), []).append(sc["id"])
     lesson["needed_assets"] = [
-        {"tags": tags, "layer": depth, "why": ", ".join(dict.fromkeys(ids))} for (tags, depth), ids in needed.items()
+        {"tags": tags, "layer": depth, "why": ", ".join(dict.fromkeys(ids)), **({"bundle": b} if b != lesson["bundle"] else {})}
+        for (b, tags, depth), ids in needed.items()
     ]
     return lesson
 
@@ -231,18 +266,23 @@ def check(lesson: dict, corpus_dir: Path = DEFAULT_CORPUS, library_root: Path = 
             errors.append(f"{where}: verbatim LessonUp overlap {' '.join(next(iter(shared)))!r}")
 
     # Set layers vs the art library.
-    library = load_library(library_root, lesson["bundle"])
-    stats["library"] = "missing" if library is None else f"{len(library)} assets"
-    lib_ids = {a["id"] for a in library or []}
-    listed = {(n["tags"].strip().lower(), n["layer"]) for n in lesson["needed_assets"]}
+    libs = libraries(lesson, library_root)
+    stats["library"] = {b: "missing" if lib is None else f"{len(lib)} assets" for b, lib in sorted(libs.items())}
+    listed = {needed_key(n.get("bundle", ""), n["tags"], n["layer"], lesson["bundle"]) for n in lesson["needed_assets"]}
     for sc in scenes:
+        bundle = scene_bundle(lesson, sc)
+        library = libs[bundle]
+        needs = [layer["need"] for layer in sc["set"]["layers"]] + [sc["set"]["sky"]]
+        regions = {t.lstrip("!") for n in needs for t in split_tags(n) if t.startswith("!")} & REGIONS
+        if regions - BUNDLE_REGIONS.get(bundle, set()):
+            warnings.append(f"{sc['id']}: place {sorted(regions)} is outside bundle {bundle}: set scene.bundle")
         for layer in sc["set"]["layers"]:
             if layer["asset"]:
-                if library is not None and layer["asset"] not in lib_ids:
-                    errors.append(f"{sc['id']}: asset {layer['asset']!r} not in the {lesson['bundle']} library")
+                if library is not None and layer["asset"] not in {a["id"] for a in library}:
+                    errors.append(f"{sc['id']}: asset {layer['asset']!r} not in the {bundle} library")
                 continue
             hit = match_asset(layer["need"], layer["depth"], library or [])
-            if not hit and (layer["need"].strip().lower(), layer["depth"]) not in listed:
+            if not hit and needed_key(bundle, layer["need"], layer["depth"], lesson["bundle"]) not in listed:
                 errors.append(f"{sc['id']}: need {layer['need']!r} ({layer['depth']}) neither in the library nor in needed_assets")
     return errors, warnings, stats
 
@@ -256,7 +296,7 @@ def main() -> None:
     a = ap.parse_args()
     lesson = json.loads(a.lesson.read_text())
     if a.resolve:
-        lesson = resolve(lesson, load_library(a.library_root, lesson.get("bundle", "")))
+        lesson = resolve(lesson, a.library_root)
         a.lesson.write_text(json.dumps(lesson, ensure_ascii=False, indent=2) + "\n")
     errors, warnings, stats = check(lesson, a.corpus, a.library_root)
     print(json.dumps(stats, ensure_ascii=False))

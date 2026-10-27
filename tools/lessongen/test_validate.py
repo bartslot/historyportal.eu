@@ -125,7 +125,7 @@ def test_resolve_fills_assets_and_rebuilds_needed(lesson, tmp_path):
         {"id": "heath-01", "layer": "bg", "tags": ["heath", "far"], "qa": {"score": 6}},
         {"id": "heath-02", "layer": "bg", "tags": ["heath"], "qa": {"score": 9}},
     ])
-    out = v.resolve(lesson, v.load_library(root, "nl-prehistory"))
+    out = v.resolve(lesson, root)
     assert out["scenes"][0]["set"]["layers"][0]["asset"] == "heath-02"
     assert {"tags": "heath", "layer": "bg", "why": "sc01, sc02"} not in out["needed_assets"]
     assert any(n["tags"] == "hunebed" for n in out["needed_assets"])
@@ -219,3 +219,46 @@ def test_ordinary_words_are_not_numbers(lesson):
     lesson["scenes"][1]["narration"] = "Dat is lastig en krachtig werk, zelf doen."
     lesson["scenes"][1]["fact_refs"] = ["s9"]
     assert errors_of(lesson) == []
+
+
+def test_scene_bundle_overrides_lesson_bundle(lesson, tmp_path):
+    root = _library(tmp_path, [{"id": "heath-01", "layer": "bg", "tags": ["heath"]}])
+    (root / "near-east-neolithic").mkdir()
+    (root / "near-east-neolithic" / "library.json").write_text(json.dumps({"assets": [
+        {"id": "hill-dry-me", "layer": "bg", "tags": ["hill", "dry", "mideast"]}]}))
+    sc = lesson["scenes"][0]
+    sc["set"]["layers"] = [{"need": "hill dry !mideast", "asset": None, "depth": "bg", "x": 0.5, "scale": 1}]
+    errs, warns, _ = v.check(lesson, library_root=root)
+    assert any("outside bundle nl-prehistory" in w for w in warns)
+    sc["bundle"] = "near-east-neolithic"
+    out = v.resolve(lesson, root)
+    assert out["scenes"][0]["set"]["layers"][0]["asset"] == "hill-dry-me"
+    errs, warns, _ = v.check(out, library_root=root)
+    assert errs == [] and not any("outside bundle" in w for w in warns)
+
+
+def test_needed_assets_carry_the_scene_bundle(lesson):
+    lesson["scenes"][2]["bundle"] = "near-east-neolithic"
+    out = v.resolve(lesson, NO_LIBRARY)
+    assert {"tags": "hunebed", "layer": "mid", "why": "sc03", "bundle": "near-east-neolithic"} in out["needed_assets"]
+    assert v.check(out, library_root=NO_LIBRARY)[0] == []
+    assert v.check(lesson, library_root=NO_LIBRARY)[0] != []  # the old, bundle-less wish list no longer covers sc03
+
+
+def test_asset_kind_beats_habitat_tag():
+    lib = [{"id": "tree-birch-01", "layer": "fg", "tags": ["tree", "birch", "heath"]},
+           {"id": "bg-heath-01", "layer": "bg", "tags": ["heath", "open"]}]
+    assert v.match_asset("heath", "fg", lib)["id"] == "bg-heath-01"
+    assert v.match_asset("birch", "fg", lib)["id"] == "tree-birch-01"
+
+
+def test_plural_tags_meet_singular_needs():
+    lib = [{"id": "reeds-01", "layer": "fg", "tags": ["reeds", "water"]}, {"id": "moss-01", "layer": "fg", "tags": ["moss"]}]
+    assert v.match_asset("reed", "fg", lib)["id"] == "reeds-01"
+    assert v.match_asset("moss", "fg", lib)["id"] == "moss-01"
+
+
+def test_region_names_are_not_singularised():
+    lib = [{"id": "bay-mu", "layer": "bg", "tags": ["coast", "mauritius"]}]
+    assert v.match_asset("coast !mauritius", "bg", lib)["id"] == "bay-mu"
+    assert v.match_asset("coast", "bg", lib) is None

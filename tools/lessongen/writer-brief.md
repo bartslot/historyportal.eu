@@ -31,6 +31,8 @@ the lesson's `blueprint.md`, `sources.md`, `ledger.md`. Output: one `lesson.json
   field, hut, longhouse, hunebed, stone, oak, birch, alder, shrub, reeds, fence, cattle, pot, quern, axe, sledge,
   rope, fire; nl-golden-age: sky, sea, coast, harbour, warehouse, ship, quay, barrel, crate, rope, lantern,
   crane, tree, map, chest, spices). `asset: null` (the resolver fills it). Real places only from real sources.
+- A scene set outside the lesson bundle's world gets its own `bundle` (e.g. `near-east-neolithic` for the
+  Natufian/Nile/Uruk scenes of a Dutch prehistory lesson); its art and sound come from that bundle.
 - `camera`, `sound`: `null` (the director fills them).
 
 ## Interactions (`interaction` on the scene after which it plays; one per scene at most)
