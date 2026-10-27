@@ -294,14 +294,33 @@ def test_team_format_requires_its_class_action_time(lesson):
     assert errors_of(lesson) == []
 
 
-def test_resolve_writes_the_card_minutes(lesson):
-    lesson["teacher"] = "Duur: ongeveer 30 minuten. Kort: 2 minuten."
+def test_resolve_renders_every_minute_on_the_card(lesson):
+    lesson["teacher_template"] = "Duur: {total_min} minuten, verhaal {story_min} minuten, kort: {min:sc02-sc03} minuten."
     out = v.resolve(lesson, NO_LIBRARY)
-    assert out["teacher"] == "Duur: ongeveer 3 minuten. Kort: 2 minuten."
+    assert out["teacher"] == "Duur: 3 minuten, verhaal 0 minuten, kort: 2 minuten."  # sc02+sc03 = 6+60+6+40 s
+    assert errors_of(out) == []
+    out["teacher"] = "Duur: 9 minuten."
+    assert any("teacher is stale" in e for e in errors_of(out))
 
 
-def test_teacher_card_minutes_must_match_the_model(lesson):
-    lesson["teacher"] = "Duur: ongeveer 9 minuten."  # model: 152 s = 2.5 min
-    assert any("teacher card says 9 minuten" in e for e in errors_of(lesson))
+def test_typed_minutes_are_rejected(lesson):
     lesson["teacher"] = "Duur: ongeveer 3 minuten."
-    assert errors_of(lesson) == []
+    assert any("teacher card types minutes" in e for e in errors_of(lesson))
+    lesson["teacher_template"] = "Duur: 3 minuten."
+    assert any("teacher_template types a minute figure" in e for e in errors_of(v.resolve(lesson, NO_LIBRARY)))
+
+
+def test_range_must_name_real_scenes(lesson):
+    lesson["teacher_template"] = "Kort: {min:sc02-sc99} minuten."
+    lesson["teacher"] = ""
+    assert any("names a scene that does not exist" in e for e in errors_of(lesson))
+
+
+def test_totals_json_cli(lesson, tmp_path):
+    import subprocess
+    import sys
+    path = tmp_path / "l.json"
+    path.write_text(json.dumps(lesson))
+    out = subprocess.run([sys.executable, str(HERE / "validate.py"), str(path), "--totals", "--json"],
+                         capture_output=True, text=True, check=True).stdout
+    assert json.loads(out) == {"fixture-minimal": round(v.total_s(lesson))}

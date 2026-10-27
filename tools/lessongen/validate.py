@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Validate a lesson.json (contract 2). The validators decide, not the writer.
 
-  validate.py LESSON.json [--corpus DIR] [--library-root DIR] [--resolve]
+  validate.py LESSON.json... [--corpus DIR] [--library-root DIR] [--resolve]
+  validate.py LESSON.json... --totals [--json]   -> {lesson_id: total_s} (the director's parity test calls this)
 
 Checks: schema, timeline from timing.json (narration <= 12 s a shot; est_s
-is only the writer's note, still 6-12), the teacher card's minutes match that timeline, interaction spacing (first <= 180 s, then
+is only the writer's note, still 6-12), every minute figure on the teacher card is rendered from teacher_template, interaction spacing (first <= 180 s, then
 every <= 180 s, also after the last), every scene has fact_refs that resolve to a source and a real
 source when it says a number or year, no verbatim overlap (6-word n-grams) between any prose string and
 any cached LessonUp dump, Bloom mix of the quizzes, 1-4 power meters, text hygiene (no dashes, no emoji,
@@ -45,7 +46,6 @@ BUNDLE_REGIONS = {
     "near-east-neolithic": {"mideast", "egypt", "mesopotamia"},
 }
 # A narrated number, year or amount is a hard fact: it needs a real (non-ledger) source in the scene.
-CARD_TOLERANCE_MIN = 1
 HARD_FACT = re.compile(
     r"\d|honderd|duizend|miljoen|miljard|\b\w*(?:twintig|dertig|veertig|vijftig|zestig|zeventig|tachtig|negentig)\b"
     r"|\b(?:der|veer|vijf|zes|zeven|acht|negen)?tien\b|\belf\b|\btwaalf\b", re.I)
@@ -76,11 +76,28 @@ def interaction_s(it: dict) -> float:
 
 def total_s(lesson: dict) -> float:
     """Lesson length per timing.json: every shot, its class action, its interaction."""
-    return sum(shot_s(sc) + sc.get("class_action_s", 0) + (interaction_s(sc["interaction"]) if sc["interaction"] else 0)
-               for sc in lesson["scenes"])
+    return sum(scene_s(sc) for sc in lesson["scenes"])
 
 
-CARD_MINUTES = re.compile(r"(\d+)(\s*minuten)")
+TYPED_MINUTES = re.compile(r"\d+\s*minuten")
+MIN_RANGE = re.compile(r"\{min:(sc\d+)-(sc\d+)\}")
+
+
+def scene_s(sc: dict) -> float:
+    return shot_s(sc) + sc.get("class_action_s", 0) + (interaction_s(sc["interaction"]) if sc["interaction"] else 0)
+
+
+def render_teacher(lesson: dict) -> str:
+    """The teacher card from teacher_template: {total_min}, {story_min} and {min:scA-scB} come from timing.json."""
+    ids = [sc["id"] for sc in lesson["scenes"]]
+
+    def span(m: re.Match) -> str:
+        a, b = ids.index(m.group(1)), ids.index(m.group(2))  # ValueError = a range naming a missing scene
+        return str(round(sum(scene_s(sc) for sc in lesson["scenes"][a:b + 1]) / 60))
+
+    text = MIN_RANGE.sub(span, lesson["teacher_template"])
+    return (text.replace("{total_min}", str(round(total_s(lesson) / 60)))
+                .replace("{story_min}", str(round(sum(shot_s(sc) for sc in lesson["scenes"]) / 60))))
 
 
 def all_texts(node: object, where: str = "") -> list[tuple[str, str]]:
@@ -180,8 +197,11 @@ def resolve(lesson: dict, library_root: Path) -> dict:
                 layer["asset"] = hit["id"] if hit else None
             if not hit:
                 needed.setdefault((bundle, layer["need"].strip().lower(), depth), []).append(sc["id"])
-    if lesson.get("teacher"):  # the card's duration is generated, never typed
-        lesson["teacher"] = CARD_MINUTES.sub(lambda m: f"{round(total_s(lesson) / 60)}{m.group(2)}", lesson["teacher"], count=1)
+    if lesson.get("teacher_template"):  # every minute figure on the card is generated, never typed
+        try:
+            lesson["teacher"] = render_teacher(lesson)
+        except ValueError:
+            pass  # check() reports the bad {min:scA-scB} range
     lesson["needed_assets"] = [
         {"tags": tags, "layer": depth, "why": ", ".join(dict.fromkeys(ids)), **({"bundle": b} if b != lesson["bundle"] else {})}
         for (b, tags, depth), ids in needed.items()
@@ -220,9 +240,16 @@ def check(lesson: dict, corpus_dir: Path = DEFAULT_CORPUS, library_root: Path = 
     stats["total_s"] = round(t)
     stats["story_s"] = round(sum(shot_s(sc) for sc in scenes))
     stats["class_actions_s"] = sum(sc.get("class_action_s", 0) for sc in scenes)
-    card = CARD_MINUTES.search(lesson.get("teacher", ""))
-    if card and abs(int(card.group(1)) - t / 60) > CARD_TOLERANCE_MIN:
-        errors.append(f"teacher card says {card.group(1)} minuten, the timing model gives {t / 60:.1f}")
+    if lesson.get("teacher_template"):
+        if TYPED_MINUTES.search(lesson["teacher_template"]):
+            errors.append("teacher_template types a minute figure: use {total_min}, {story_min} or {min:scA-scB}")
+        try:
+            if lesson.get("teacher") != render_teacher(lesson):
+                errors.append("teacher is stale: run validate.py --resolve to render it from teacher_template")
+        except ValueError:
+            errors.append("teacher_template names a scene that does not exist in {min:scA-scB}")
+    elif TYPED_MINUTES.search(lesson.get("teacher", "")):
+        errors.append("teacher card types minutes: move it to teacher_template with {total_min}/{story_min}/{min:scA-scB}")
     stats["interactions"] = [f"{round(s)}s {sid} {kind}" for s, _, sid, kind in spans]
     if not spans:
         errors.append("no interactions at all")
@@ -323,23 +350,32 @@ def check(lesson: dict, corpus_dir: Path = DEFAULT_CORPUS, library_root: Path = 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("lesson", type=Path)
+    ap.add_argument("lessons", type=Path, nargs="+")
     ap.add_argument("--corpus", type=Path, default=DEFAULT_CORPUS)
     ap.add_argument("--library-root", type=Path, default=DEFAULT_LIBRARY)
     ap.add_argument("--resolve", action="store_true", help="fill asset ids + rebuild needed_assets, write back")
+    ap.add_argument("--totals", action="store_true", help="only print each lesson's total_s (timing.json model)")
+    ap.add_argument("--json", action="store_true", help="with --totals: one JSON object {lesson_id: total_s}")
     a = ap.parse_args()
-    lesson = json.loads(a.lesson.read_text())
-    if a.resolve:
-        lesson = resolve(lesson, a.library_root)
-        a.lesson.write_text(json.dumps(lesson, ensure_ascii=False, indent=2) + "\n")
-    errors, warnings, stats = check(lesson, a.corpus, a.library_root)
-    print(json.dumps(stats, ensure_ascii=False))
-    for w in warnings:
-        print(f"warn  {w}")
-    for e in errors:
-        print(f"ERROR {e}")
-    print(f"{a.lesson.name}: {'FAIL' if errors else 'OK'} ({len(errors)} errors, {len(warnings)} warnings)")
-    sys.exit(1 if errors else 0)
+    if a.totals:
+        totals = {(lesson := json.loads(p.read_text()))["id"]: round(total_s(lesson)) for p in a.lessons}
+        print(json.dumps(totals) if a.json else "\n".join(f"{k} {t}" for k, t in totals.items()))
+        return
+    failed = False
+    for path in a.lessons:
+        lesson = json.loads(path.read_text())
+        if a.resolve:
+            lesson = resolve(lesson, a.library_root)
+            path.write_text(json.dumps(lesson, ensure_ascii=False, indent=2) + "\n")
+        errors, warnings, stats = check(lesson, a.corpus, a.library_root)
+        print(json.dumps(stats, ensure_ascii=False))
+        for w in warnings:
+            print(f"warn  {w}")
+        for e in errors:
+            print(f"ERROR {e}")
+        print(f"{path.name}: {'FAIL' if errors else 'OK'} ({len(errors)} errors, {len(warnings)} warnings)")
+        failed = failed or bool(errors)
+    sys.exit(1 if failed else 0)
 
 
 if __name__ == "__main__":
