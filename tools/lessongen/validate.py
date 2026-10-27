@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Validate a lesson.json (contract 2). The validators decide, not the writer.
 
-  validate.py LESSON.json [--corpus DIR] [--library-root DIR] [--resolve]
+  validate.py LESSON.json... [--corpus DIR] [--library-root DIR] [--resolve]
+  validate.py LESSON.json... --totals [--json]   -> {lesson_id: total_s} (the director's parity test calls this)
 
 Checks: schema, timeline from timing.json (narration <= 12 s a shot; est_s
 is only the writer's note, still 6-12), every minute figure on the teacher card is rendered from teacher_template, interaction spacing (first <= 180 s, then
@@ -349,23 +350,32 @@ def check(lesson: dict, corpus_dir: Path = DEFAULT_CORPUS, library_root: Path = 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("lesson", type=Path)
+    ap.add_argument("lessons", type=Path, nargs="+")
     ap.add_argument("--corpus", type=Path, default=DEFAULT_CORPUS)
     ap.add_argument("--library-root", type=Path, default=DEFAULT_LIBRARY)
     ap.add_argument("--resolve", action="store_true", help="fill asset ids + rebuild needed_assets, write back")
+    ap.add_argument("--totals", action="store_true", help="only print each lesson's total_s (timing.json model)")
+    ap.add_argument("--json", action="store_true", help="with --totals: one JSON object {lesson_id: total_s}")
     a = ap.parse_args()
-    lesson = json.loads(a.lesson.read_text())
-    if a.resolve:
-        lesson = resolve(lesson, a.library_root)
-        a.lesson.write_text(json.dumps(lesson, ensure_ascii=False, indent=2) + "\n")
-    errors, warnings, stats = check(lesson, a.corpus, a.library_root)
-    print(json.dumps(stats, ensure_ascii=False))
-    for w in warnings:
-        print(f"warn  {w}")
-    for e in errors:
-        print(f"ERROR {e}")
-    print(f"{a.lesson.name}: {'FAIL' if errors else 'OK'} ({len(errors)} errors, {len(warnings)} warnings)")
-    sys.exit(1 if errors else 0)
+    if a.totals:
+        totals = {(lesson := json.loads(p.read_text()))["id"]: round(total_s(lesson)) for p in a.lessons}
+        print(json.dumps(totals) if a.json else "\n".join(f"{k} {t}" for k, t in totals.items()))
+        return
+    failed = False
+    for path in a.lessons:
+        lesson = json.loads(path.read_text())
+        if a.resolve:
+            lesson = resolve(lesson, a.library_root)
+            path.write_text(json.dumps(lesson, ensure_ascii=False, indent=2) + "\n")
+        errors, warnings, stats = check(lesson, a.corpus, a.library_root)
+        print(json.dumps(stats, ensure_ascii=False))
+        for w in warnings:
+            print(f"warn  {w}")
+        for e in errors:
+            print(f"ERROR {e}")
+        print(f"{path.name}: {'FAIL' if errors else 'OK'} ({len(errors)} errors, {len(warnings)} warnings)")
+        failed = failed or bool(errors)
+    sys.exit(1 if failed else 0)
 
 
 if __name__ == "__main__":

@@ -314,3 +314,13 @@ def test_range_must_name_real_scenes(lesson):
     lesson["teacher_template"] = "Kort: {min:sc02-sc99} minuten."
     lesson["teacher"] = ""
     assert any("names a scene that does not exist" in e for e in errors_of(lesson))
+
+
+def test_totals_json_cli(lesson, tmp_path):
+    import subprocess
+    import sys
+    path = tmp_path / "l.json"
+    path.write_text(json.dumps(lesson))
+    out = subprocess.run([sys.executable, str(HERE / "validate.py"), str(path), "--totals", "--json"],
+                         capture_output=True, text=True, check=True).stdout
+    assert json.loads(out) == {"fixture-minimal": round(v.total_s(lesson))}
