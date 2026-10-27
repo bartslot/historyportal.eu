@@ -137,8 +137,8 @@ function ScenePanel({ player }: { player: Player }) {
       <h3 className="mt-3 font-semibold">Ground</h3>
       <div className="mt-1 flex flex-col gap-1">
         <select className="select select-xs" data-testid="ground" value={s.set.ground ?? ''} onChange={(e) => player.doc.set([...sp, 'set', 'ground'], e.target.value || undefined, 'Ground')}>
-          <option value="">{player.stage.lib.assets.some((a) => a.layer === 'ground') ? 'Ground of the bundle' : 'Paper'}</option>
-          {player.stage.lib.assets.filter((a) => a.layer === 'ground').map((a) => <option key={a.id} value={a.id}>{a.id}</option>)}
+          <option value="">{player.stage.sceneLib.assets.some((a) => a.layer === 'ground') ? 'Ground of the bundle' : 'Paper'}</option>
+          {player.stage.sceneLib.assets.filter((a) => a.layer === 'ground').map((a) => <option key={a.id} value={a.id}>{a.id}</option>)}
         </select>
         <Num player={player} path={[...sp, 'set', 'horizon']} label="Horizon" min={-6} max={20} step={0.5} fallback={0} />
       </div>
