@@ -57,6 +57,14 @@ or path, is kept. A re-run on an untouched lesson returns it unchanged (tested).
 **S1 integration:** done on `feat/studio-25d` (03f3f12f): scene length = `scene.dur_s` first, and
 `camera_more` plays through `shotAt`. `rules.test.ts` holds it with the stage's own functions.
 
+**Timing = one shared model:** `tools/lessongen/timing.json` (S4's validate.py reads the same file;
+`HP_TIMING_JSON` overrides it under Node). Shot = max(6 s, spoken + 0.6 s breath), spoken = measured
+`tts_s` (or TTS `timings`) else words / 2.4; then `class_action_s`; an interaction adds its fixed
+time (quiz 40, power-meter 60, choice 30). `est_s` no longer drives length. The director adds only
+its own silences (1.2 s) and balloon reads longer than the line; `lessonSeconds(lesson)` is the
+played total. Model totals equal validate.py's (eb-1 633, eb-2 577, hunebedden 666, voc 872 s); the
+director's totals are 3.5-13.6 s longer, from those additions.
+
 ## 2. Sound `src/sound/`
 
 - `bank.json`: ids, files, default gains, tags (English + Dutch) per bed and SFX. Beds per bundle:
