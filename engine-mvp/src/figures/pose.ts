@@ -17,6 +17,11 @@ export const ARP = {
   shoulderR: 'shoulder.r', armR: 'arm_stretch.r', armTwistR: 'c_arm_twist_offset.r', foreR: 'forearm_stretch.r', handR: 'hand.r',
   thighL: 'thigh_twist.l', shinL: 'leg_stretch.l', footL: 'foot.l', toeL: 'toes_01.l',
   thighR: 'thigh_twist.r', shinR: 'leg_stretch.r', footR: 'foot.r', toeR: 'toes_01.r',
+  indexL1: 'index1.l', indexL2: 'c_index2.l', indexL3: 'c_index3.l',
+  indexR1: 'index1.r', indexR2: 'c_index2.r', indexR3: 'c_index3.r',
+  middleL1: 'middle1.l', middleL2: 'c_middle2.l', middleR1: 'middle1.r', middleR2: 'c_middle2.r',
+  ringL1: 'ring1.l', ringL2: 'c_ring2.l', ringR1: 'ring1.r', ringR2: 'c_ring2.r',
+  pinkyL1: 'pinky1.l', pinkyL2: 'c_pinky2.l', pinkyR1: 'pinky1.r', pinkyR2: 'c_pinky2.r',
 } as const
 export type Joint = keyof typeof ARP
 export type Rig = { root: TransformNode; node: (j: Joint) => TransformNode }
@@ -122,14 +127,14 @@ export function checkPose(rig: Rig, f: Frame = frameOf(rig)): Violation[] {
 // a direction in the character's frame: [forward, up, outward] (outward = away from the body's midline)
 export type Dir = [number, number, number]
 export type LimbAim = { upper: Dir; lower: Dir }
-export type StaticPose = { arms?: { L?: LimbAim; R?: LimbAim }; legs?: { L?: LimbAim; R?: LimbAim }; spine?: Dir; head?: Dir }
+export type StaticPose = { arms?: { L?: LimbAim; R?: LimbAim }; legs?: { L?: LimbAim; R?: LimbAim }; spine?: Dir; head?: Dir; pointWith?: 'L' | 'R' }
 
 // Every number here is a knob (Teacher can change everything): the figure lab shows them live.
 const HANG: LimbAim = { upper: [0.06, -1, 0.12], lower: [0.22, -1, 0.04] } // close to the body: no mannequin A-pose
 export const POSES: Record<'stand' | 'point' | 'kneel' | 'carry', StaticPose> = {
   stand: { arms: { L: HANG, R: HANG } },
   // right arm out at the thing, a touch up; the left hangs
-  point: { arms: { L: HANG, R: { upper: [1, 0.12, 0.35], lower: [1, 0.18, 0.12] } }, head: [1, -0.05, -0.12] },
+  point: { arms: { L: HANG, R: { upper: [1, 0.12, 0.35], lower: [1, 0.18, 0.12] } }, head: [1, -0.05, -0.12], pointWith: 'R' },
   // right knee down, left foot planted ahead, back straight. Cartoon legs: shin (0.41) ~ thigh (0.38), so for the
   // planted foot and the down knee to touch the same ground the front thigh runs level
   kneel: {
@@ -141,6 +146,7 @@ export const POSES: Record<'stand' | 'point' | 'kneel' | 'carry', StaticPose> = 
   carry: { arms: { L: { upper: [0.3, -1, 0.3], lower: [1, 0.12, -0.12] }, R: { upper: [0.3, -1, 0.3], lower: [1, 0.12, -0.12] } } },
 }
 
+const FIST: Dir = [0.25, -1, -0.15] // folded fingers point down and in, under a palm-down pointing hand
 const inFrame = (f: Frame, side: 'L' | 'R', [a, b, c]: Dir) =>
   f.fwd.scale(a).add(f.up.scale(b)).add((side === 'L' ? f.left : f.left.negate()).scale(c))
 
@@ -175,6 +181,12 @@ export function applyPose(rig: Rig, rest: RestPose, pose: StaticPose): Violation
       aim(rig, `arm${s}`, `fore${s}`, inFrame(f, s, a.upper))
       rig.node(`armTwist${s}`).rotationQuaternion = rig.node(`arm${s}`).rotationQuaternion!.clone() // the twist sibling carries upper-arm skin
       aim(rig, `fore${s}`, `hand${s}`, inFrame(f, s, a.lower))
+    }
+    if (pose.pointWith === s && a) {
+      // the index finger straight on along the forearm, the other three folded down: a point, not a flat hand
+      aim(rig, `index${s}1`, `index${s}2`, inFrame(f, s, a.lower))
+      aim(rig, `index${s}2`, `index${s}3`, inFrame(f, s, a.lower))
+      for (const fg of ['middle', 'ring', 'pinky'] as const) aim(rig, `${fg}${s}1`, `${fg}${s}2`, inFrame(f, s, FIST))
     }
     const l = pose.legs?.[s]
     if (l) {

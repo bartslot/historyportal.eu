@@ -25,6 +25,7 @@ export const FACE = { scale: 2.5, down: 0.12, depth: 0.22 } // depth: nose tip t
 export const FACING_TURN_DEG = 62
 // skin shades only where it turns fully away: a comic face is lit flat (the modelled lips and sockets would shade as boxes)
 export const SKIN_STEP = -0.3
+export const SKIN_INK = 0.14
 
 export type Facing = 'left' | 'right' | 'front' | 'back'
 export type Placement = { x: number; depth: 'bg' | 'mid' | 'fg'; facing: Facing }
@@ -139,6 +140,7 @@ export async function createFigure(scene: Scene, recipe: FigureRecipe, name = 'f
     if (part.role === 'skin') trimCoveredSkin(m as Mesh)
     const mat = toonMaterial(`${name}_${part.role}_${live.length}`, hexRgb(colourOf(part, recipe)), scene)
     if (part.role === 'skin' || part.role === 'eye') mat.step = SKIN_STEP
+    if (part.role === 'skin') mat.inkEdge = SKIN_INK // thin fingers would fill with contour ink: a lighter line on skin
     if (part.role === 'skin' && recipe.sleeves !== false) mat.sleeve = hexRgb(recipe.dyes.coat ?? DEFAULT_DYES.coat)
     if (part.role === 'eye') {
       mat.inkEdge = 0 // the eyeballs carry the painted eyes, no contour of their own
