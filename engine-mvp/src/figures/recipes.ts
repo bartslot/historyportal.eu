@@ -104,7 +104,7 @@ export function figureRecipe(char: string, cast: CastEntry[] = [], bundle = 'nl-
   const child = has(text, 'child', 'kind', 'girl', 'boy', 'meisje', 'jongen', 'zusje', 'broertje') || /\b([2-9]|1[0-3])\b/.test(entry?.look ?? '')
   const woman = has(text, 'woman', 'vrouw', 'girl', 'meisje', 'zusje', 'moeder', 'mother', 'oma', 'widow', 'weduwe', 'weefster', 'dress', 'titia')
   const old = has(text, 'old', 'oma', 'opa', 'grey', 'gray', 'white beard')
-  const officer = bundle === 'nl-golden-age' && has(text, 'governor', 'statesman', 'merchant', 'koopman', 'tasman', 'pilot', 'raad', 'clerk', 'klerk', 'doublet', 'gown')
+  const officer = bundle === 'nl-golden-age' && has(text, 'governor', 'statesman', 'merchant', 'koopman', 'tasman', 'pilot', 'raad', 'clerk', 'klerk', 'doublet', 'gown', 'captain', 'kapitein', 'schipper', 'commander', 'commandeur')
   const sailor = bundle === 'nl-golden-age' && !officer && has(text, 'sailor', 'zeelui', 'boatswain', 'bootsman', 'uitkijk', 'ship', 'cap')
   const coat = officer ? '#2e2c2c' : pick(dyes, seed, 0)
   const trousers = officer ? '#3a3330' : pick(dyes, seed, 1)

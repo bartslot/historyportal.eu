@@ -39,6 +39,10 @@ describe('any lesson character gets a recipe', () => {
     const t = figureRecipe('tasman', cast, 'nl-golden-age')!
     expect([t.legs, t.beard, t.scale, t.hatKind]).toEqual(['breeches', 'Facial_Hair_02', 1, 'Cowboy_Hat'])
   })
+  it('dresses a ship's captain as an officer, not a sailor (check re-check B)', () => {
+    const c = figureRecipe('kapitein', [{ id: 'kapitein', look: 'captain of the ship, 40s' }], 'nl-golden-age')!
+    expect([c.hatKind, c.dyes.coat, c.collar]).toEqual(['Cowboy_Hat', '#2e2c2c', true])
+  })
   it('maps unknown poses and expressions to ones the kit has', () => {
     expect([poseFor('dig'), poseFor('run'), poseFor('juggle')]).toEqual(['dig', 'walk', 'stand'])
     expect([expressionFor('tired'), expressionFor('bored'), expressionFor(undefined)]).toEqual(['tired', 'neutral', 'neutral'])
