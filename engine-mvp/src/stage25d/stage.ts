@@ -10,7 +10,7 @@ import {
 } from '@babylonjs/core'
 import { createLookChain, PRESETS } from '../engine/look-chain.js'
 import { loadLibrary, resolveAsset } from './library'
-import { ADAPT_MIN_FPS, ADAPT_WINDOW_MS, cameraAt, DEPTH_Z, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
+import { ADAPT_MIN_FPS, ADAPT_STALL_MS, ADAPT_UP_FPS, ADAPT_UP_WINDOWS, ADAPT_WINDOW_MS, cameraAt, DEPTH_Z, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
 import { loadPremultiplied, makeLayer, type LayerHandle } from './layer'
 import { LessonDoc } from './edits'
 import type { Asset, Depth, Lesson, Library, Scene, SceneLayer } from './types'
@@ -66,7 +66,7 @@ export class Stage {
   /** Notches the adaptive tier has stepped down: a 2 s average under ADAPT_MIN_FPS drops one, never below 1x CSS. */
   notches = 0
   adaptive = true
-  private window = { start: 0, frames: 0 }
+  private window = { start: 0, frames: 0, last: 0, fast: 0 }
 
   /** Sharp up to the device's pixels, under the cap, minus the adaptive notches. The painted look hides the rest. */
   fit() {
@@ -75,20 +75,31 @@ export class Stage {
     this.engine.resize()
   }
 
-  setRenderCap(cap: number) { this.renderCap = cap; this.notches = 0; this.window.start = 0; this.fit() }
+  setRenderCap(cap: number) { this.renderCap = cap; this.notches = 0; Object.assign(this.window, { start: 0, fast: 0 }); this.fit() }
 
-  /** Count a frame; at the end of each 2 s window, step down one notch if it averaged too slow. */
+  /** Count a frame; each 2 s window steps one notch down if it averaged too slow, or back up after a run of fast
+   *  ones. A window with a stall (texture upload, hidden tab) says nothing about speed and is dropped. */
   tick(now: number) {
-    if (!this.window.start) { this.window = { start: now, frames: 0 }; return }
-    this.window.frames++
-    if (now - this.window.start < ADAPT_WINDOW_MS) return
-    const fps = (this.window.frames * 1000) / (now - this.window.start)
-    this.window = { start: now, frames: 0 }
-    if (!this.adaptive || fps >= ADAPT_MIN_FPS) return
-    const before = this.engine.getHardwareScalingLevel()
-    this.notches++
-    this.fit()
-    if (this.engine.getHardwareScalingLevel() === before) this.notches--   // already at 1x CSS: nothing left to drop
+    const w = this.window
+    const stalled = document.hidden || (w.last && now - w.last > ADAPT_STALL_MS)
+    w.last = now
+    if (!w.start || stalled) { Object.assign(w, { start: now, frames: 0 }); return }
+    w.frames++
+    if (now - w.start < ADAPT_WINDOW_MS) return
+    const fps = (w.frames * 1000) / (now - w.start)
+    Object.assign(w, { start: now, frames: 0 })
+    if (!this.adaptive) return
+    if (fps < ADAPT_MIN_FPS) {
+      w.fast = 0
+      const before = this.engine.getHardwareScalingLevel()
+      this.notches++
+      this.fit()
+      if (this.engine.getHardwareScalingLevel() === before) this.notches--   // already at 1x CSS: nothing left to drop
+    } else if (fps >= ADAPT_UP_FPS && this.notches > 0 && ++w.fast >= ADAPT_UP_WINDOWS) {
+      w.fast = 0
+      this.notches--
+      this.fit()
+    } else if (fps < ADAPT_UP_FPS) w.fast = 0
   }
 
   setLook(look: Record<string, number | string> | undefined) { this.look = { ...STAGE_LOOK, ...(look ?? {}) } }

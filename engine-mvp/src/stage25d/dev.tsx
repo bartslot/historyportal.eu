@@ -44,8 +44,8 @@ function Panel({ player }: { player: Player }) {
       </div>
       <label className="mt-3 flex items-center gap-2 text-xs">
         <span className="opacity-70">Sharpness</span>
-        <select className="select select-xs w-28" value={player.stage.renderCap} onChange={(e) => player.stage.setRenderCap(Number(e.target.value))}>
-          {RENDER_CAPS.map((c) => <option key={c} value={c}>{c} px</option>)}
+        <select className="select select-xs w-32" value={player.stage.renderCap} onChange={(e) => player.stage.setRenderCap(Number(e.target.value))}>
+          {RENDER_CAPS.map((c) => <option key={c} value={c}>up to {c} px</option>)}
         </select>
         <span className="ml-auto tabular-nums opacity-70" data-testid="render-size">{player.stage.engine.getRenderWidth()} x {player.stage.engine.getRenderHeight()}</span>
       </label>
