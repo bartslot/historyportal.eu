@@ -20,11 +20,13 @@ export const viewWidthAt = (z: number, fov = HOUSE.fov, aspect = ASPECT) => 2 * 
 export interface Placement { x: number; y: number; z: number; w: number; h: number; uRepeat: number; alphaIndex: number }
 
 /** Where a layer's anchor stands and the plane's size. x 0..1 = left..right edge of the house view at that depth. */
-export function placeLayer(asset: Asset, layer: Pick<SceneLayer, 'depth' | 'x' | 'scale'>, order: number): Placement {
+/** horizon: metres the far landscape (bg) stands higher (set.horizon, teacher-editable). Draw order leaves the even
+ *  slot below each layer for its contact stain (stainIndex), so a stain is drawn after farther layers, before its own. */
+export function placeLayer(asset: Asset, layer: Pick<SceneLayer, 'depth' | 'x' | 'scale'>, order: number, horizon = 0): Placement {
   const depth = layer.depth
   const z = DEPTH_Z[depth] - order * SAME_DEPTH_STEP_M
   const span = viewWidthAt(z)
-  const alphaIndex = DEPTH_RANK[depth] * 1000 + order
+  const alphaIndex = DEPTH_RANK[depth] * 1000 + order * 2 + 1
   if (depth === 'sky' && asset.layer === 'sky' && asset.tileable_x !== false && asset.height_m >= 100) {
     // the backdrop sky: fills the view at its distance, horizon a little below the frame's bottom edge
     const w = span * COVER_MARGIN
@@ -37,9 +39,12 @@ export function placeLayer(asset: Asset, layer: Pick<SceneLayer, 'depth' | 'x' |
   const w = asset.tileable_x ? Math.max(natW, span * COVER_MARGIN) : natW
   const x = asset.tileable_x ? 0 : ((layer.x ?? 0.5) - 0.5) * span
   // sky props (clouds) float: their anchor sits at 30-60 % of the view height at that distance
-  const y = depth === 'sky' ? z * Math.tan(fovRad(HOUSE.fov) / 2) * 0.45 : 0
+  const y = depth === 'sky' ? z * Math.tan(fovRad(HOUSE.fov) / 2) * 0.45 : depth === 'bg' ? horizon : 0
   return { x, y, z, w, h, uRepeat: asset.tileable_x ? w / natW : 1, alphaIndex }
 }
+
+/** The draw slot of a layer's contact stain: just before the layer itself. */
+export const stainIndex = (layerAlphaIndex: number) => layerAlphaIndex - 1
 
 /** Named eases (camera moves, layer keys). Exported: the director adds its named ease here, not a copy. */
 export const EASES: Record<Ease, (k: number) => number> = {

@@ -61,6 +61,13 @@ the `_placeholder` bundle). The panel edits every camera, timing and motion valu
   **Layer keys**: `layer.keys: [{ t, x?, scale?, opacity? }]`, t in seconds.
 - **Look**: the studio's post chain (`engine/look-chain.js`, shared with `look.js`) with `STAGE_LOOK` (History Lines
   pencil + paper grain); `lesson.look` overrides any number.
+- **Ground** (`ground.ts`, `ground-gl.ts`): one floor plane at y 0. `set.ground` = a `layer: "ground"` asset (id or tags;
+  tileable art in world metres, `height_m` = one tile's depth), a `#hex` paper wash, or nothing (the bundle's first ground,
+  else its `paper`, default `#f6f5ee`). Never a flat fill: a world-anchored watercolour grain, and toward the far landscape
+  the floor fades into that landscape's own painted ground colour (`bottomColour`). bg strips paint their lower edge into
+  that colour along a ragged line (`layer.feather`, default 0.22 of their height; not see-through, the sky is behind
+  them). `set.horizon` raises the far landscape in metres. mid/fg assets stand on a soft painted contact stain at their
+  anchor (`layer.shadow`, default 0.6; sized to read the same on screen at any distance). All in the panel, undoable.
 - **Interactions**: a scene with `interaction` holds at its end (`timeline.ts`): the picture keeps its layer motion and
   the camera breathes around the end pose (`lesson.hold = { breath_m, breath_s }`, editable, `breathe()`), until the
   handler calls `resume`. A seek or rebuild never re-fires a hold; a stale `resume` after a seek is ignored.

@@ -158,6 +158,32 @@
         "ink_coverage": 0,
         "ranked_vs_anchor": "placeholder"
       }
+    },
+    {
+      "id": "ground-heath-01",
+      "layer": "ground",
+      "tags": [
+        "ground",
+        "heath",
+        "sand"
+      ],
+      "file": "ground-heath-01.png",
+      "w": 1024,
+      "h": 1024,
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "height_m": 6,
+      "tileable_x": true,
+      "motion": "none",
+      "placeholder": true,
+      "qa": {
+        "score": 0,
+        "alpha_ok": true,
+        "ink_coverage": 0,
+        "ranked_vs_anchor": "placeholder"
+      }
     }
   ]
 }
