@@ -44,3 +44,9 @@ def test_stale_scene_files_are_removed(tmp_path):
     (tmp_path / "fixture-minimal" / "sc99.mp3").write_bytes(b"old")
     n.narrate(lesson, tmp_path, fake_synth([]))
     assert not (tmp_path / "fixture-minimal" / "sc99.mp3").exists()
+
+
+def test_unmapped_language_is_refused_not_a_crash():
+    import pytest
+    with pytest.raises(SystemExit, match="no native voice mapped for 'xx'"):
+        n.voice_for({"lang": "xx"})
