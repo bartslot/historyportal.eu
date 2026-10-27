@@ -1366,9 +1366,16 @@ html[data-inspector-w] aside[data-resizable-drawer] {
 
 @layer components {
     .landing-cursor {
-        /* Fully white. It was 90% over a near-black page, which reads as slightly grey rather than
-           as a light source. No glow around it: the layout is flat (2026-10-17). */
-        opacity: 1;
+        /* Hidden until landing-cursor.js sees a mouse move (it then shows it fully white). Shown
+           by default it sat top-left on every phone and mid-poster on desktop (pair test 10-24). */
+        opacity: 0;
+        visibility: hidden;
+    }
+
+    @media (pointer: coarse), (hover: none) {
+        .landing-cursor {
+            display: none;
+        }
     }
 
     .landing-cursor--portal-bg {
@@ -1594,14 +1601,6 @@ html[data-inspector-w] aside[data-resizable-drawer] {
         opacity: 0;
     }
 
-    .hero-skip {
-        display: none;
-    }
-
-    .js-hero-demo [data-demo]:not(.is-revealed) .hero-skip {
-        display: block;
-    }
-
     /* Blinking insertion point for the typed learning goal. */
     /* The ring of thumbnails goes down the tunnel with everything else and stays gone: the
        finished lesson gets a clean field behind it. !important because the hero's pointer
@@ -1766,6 +1765,20 @@ html[data-inspector-w] aside[data-resizable-drawer] {
         border-color: rgba(255, 255, 255, 0.9);
         background-color: rgba(255, 255, 255, 0.12);
         color: #fff;
+    }
+
+    /* The demo's pointer: it clicks the age group (hero/lesson-demo.js). Its tip is the element's
+       top-left corner, so the timeline moves the tip straight onto the chip. */
+    .hero-pointer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 1.5rem;
+        height: 1.5rem;
+        pointer-events: none;
+        opacity: 0;
+        visibility: hidden;
+        transform-origin: 0 0;
     }
 
     .hero-portal-scene {
@@ -2127,7 +2140,8 @@ html[data-inspector-w] aside[data-resizable-drawer] {
   --title-lang-w: 10rem;      /* the longest endonym on offer ("Nederlands") + the caret */
 }
 @media (max-width: 639.98px) {
-  :root { --title-gutter: 16px; --title-lang-w: 8.25rem; }
+  /* Wide enough for "Nederlands" + the caret at 390 px (it read "Nederlan…", pair test 10-24). */
+  :root { --title-gutter: 16px; --title-lang-w: 9.5rem; }
 }
 .title-screen { scrollbar-width: none; }
 .title-screen::-webkit-scrollbar { display: none; }
@@ -2177,4 +2191,15 @@ html[data-inspector-w] aside[data-resizable-drawer] {
    Unlayered, or the panel's own bottom-4 utility wins. */
 .js-hero-demo [data-dev-panel] {
     bottom: 4rem;
+}
+
+/* Skip only while the intro runs: gone once the hero is revealed, never there with reduced motion
+   (no .js-hero-demo). Unlayered, or DaisyUI's .btn (layered under utilities) keeps it on screen
+   after the intro, which is what the pair test of 2026-10-24 saw. */
+.hero-skip {
+    display: none;
+}
+
+.js-hero-demo [data-demo]:not(.is-revealed) .hero-skip {
+    display: block;
 }

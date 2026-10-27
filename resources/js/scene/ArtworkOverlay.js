@@ -19,10 +19,12 @@
  * pan and zoom instead of sliding off it.
  */
 import { playEntrance, playExit } from './animations.js'
+import { t } from '../i18n.js'
 import { applyLayerFilter } from './layer-filters.js'
 import { applyAmbient, trackStage } from './ambient.js'
 import { loadDepth, applyOcclusion, clearOcclusion, fitHeight, OCC } from './occlusion.js'
 import { SIT_KEYS, sitSpec, renderSitIn, backdropPixels, sampleColours, registerSitTuner, applyFoamSpeed, hullSpan } from './sit-in-scene.js'
+import { mountFrames, showFrame, syncFrames } from './layer-frames.js'
 
 const DRAG_THRESHOLD_PX = 4
 const MIN_SCALE = 0.2
@@ -133,6 +135,7 @@ export function layersSignature(layers) {
     l.anchor, l.lng, l.lat, l.flip_x, l.flip_y,
     l.waterline, l.reflection, l.contact_shadow, l.color_match, l.foam, l.speed, l.occlude,
     l.embed ? JSON.stringify(l.embed.opts || null) : null,
+    l.frames ? JSON.stringify(l.frames) : null,
   ]))
 }
 
@@ -199,6 +202,8 @@ export function normalizeLayer(l) {
         ...Object.fromEntries(SIT_KEYS.map(k => [k, Number.isFinite(l[k]) ? l[k] : null])),
         // Hidden where the backdrop is nearer (occlusion.js): 1 on, 0 off.
         occlude: l.occlude ? 1 : 0,
+        // A sprite sheet over the picture (layer-frames.js): {url, count, columns, play, fps} or null.
+        frames: l.frames && typeof l.frames === 'object' ? l.frames : null,
         // How tall the drawn thing really is, for "fit to this spot" (null: a standing person).
         height_m: Number.isFinite(l.height_m) && l.height_m > 0 ? l.height_m : null,
         anchor: l.anchor === 'map' ? 'map' : 'screen',
@@ -612,6 +617,15 @@ export class ArtworkOverlay {
       case 'ambient_amount':
         applyAmbient(node.querySelector('.art-ambient'), item, this._layers.indexOf(item))
         break
+      // The editor's sprite-sheet controls: how the sheet plays, and how fast a loop runs.
+      case 'frames_play':
+      case 'frames_fps': {
+        const body = node.querySelector(':scope > .art-ambient')
+        if (!item.frames || !body) break
+        item.frames = { ...item.frames, [key === 'frames_play' ? 'play' : 'fps']: key === 'frames_fps' ? Number(value) : value }
+        mountFrames(body, body.querySelector(':scope > img'), item.frames)
+        break
+      }
       case 'x':
       case 'y':
         node.style.left = `${item.x}%`
@@ -645,6 +659,22 @@ export class ArtworkOverlay {
   }
 
   /**
+   * A sprite-sheet layer at a level 0..1 (layer-frames.js 'wind'): the power meter's wind swells
+   * the sails. Nothing is saved.
+   */
+  setFrame(assetId, level) {
+    const item = this._layers.find(l => String(l.asset_id) === String(assetId))
+    const node = item && this._nodeEl(item)
+    showFrame(node?.querySelector(':scope > .art-ambient'), level)
+  }
+
+  /** A copy of one layer as the overlay holds it (the live values a player effect starts from). */
+  layerData(assetId) {
+    const item = this._layers.find(l => String(l.asset_id) === String(assetId))
+    return item ? { ...item } : null
+  }
+
+  /**
    * Blend into the scene: waterline, reflection, contact shadow and colour match (sit-in-scene.js).
    * Drawn at once with the last (or a neutral) colour, then again once the backdrop is sampled
    * under this layer's box.
@@ -657,8 +687,10 @@ export class ArtworkOverlay {
     registerSitTuner(() => { for (const i of this._layers) this._sitIn(i) })
     const wasWashed = !!item.wash
     item.wash = null
+    syncFrames(body, img)
     if (!spec) {
       if (wasWashed) img.style.filter = applyLayerFilter(this.host, item)
+      syncFrames(body, img)
       return
     }
     const decoded = img.complete && img.naturalWidth
@@ -678,6 +710,7 @@ export class ArtworkOverlay {
       renderSitIn(node, body, img, item, colours)
       item.wash = spec.color_match > 0 && colours.around ? { rgb: colours.around, amount: spec.color_match } : null
       img.style.filter = applyLayerFilter(this.host, item)
+      syncFrames(body, img)
     })
   }
 
@@ -928,7 +961,7 @@ export class ArtworkOverlay {
 
     const spin = document.createElement('div')
     spin.dataset.rotateHandle = '1'
-    spin.setAttribute('data-tooltip', 'Drag to rotate · hold Shift for 15°')
+    spin.setAttribute('data-tooltip', t('Drag to rotate · hold Shift for 15°'))
     spin.style.cssText = `position:absolute; left:calc(50% - 6px); top:-34px; width:12px; height:12px;
       border-radius:50%; background:#fff; border:1px solid rgba(15,23,42,0.55); cursor:grab;
       box-shadow:0 1px 3px rgba(0,0,0,0.4); touch-action:none; pointer-events:auto;`
@@ -938,7 +971,7 @@ export class ArtworkOverlay {
     for (const c of HANDLES) {
       const handle = document.createElement('div')
       handle.dataset.scaleHandle = '1'
-      handle.setAttribute('data-tooltip', 'Drag to resize')
+      handle.setAttribute('data-tooltip', t('Drag to resize'))
       handle.style.cssText = handleCss(c.pos, c.cursor)
       chrome.appendChild(handle)
       if (node) this._wireScale(item, node, handle, c)
@@ -1047,6 +1080,7 @@ export class ArtworkOverlay {
     amb.className = 'art-ambient'
     amb.style.cssText = 'height:100%; transform-origin:50% 100%; pointer-events:none;'
     amb.appendChild(img)
+    mountFrames(amb, img, item.frames)
     applyAmbient(amb, item, this._layers.indexOf(item))
     node.appendChild(amb)
     this._sitIn(item, node)

@@ -54,7 +54,7 @@ return function (string $lang, ?array $text = null): array {
                 if ($asset = $ref($ship['file'], 'props')) {
                     // Boats sit IN the water (blend-into-scene boat preset).
                     // The ship's own values (assets.json) first: `+` keeps the left key, so they win over the preset.
-                    $layers[] = array_intersect_key($ship, array_flip(['x', 'y', 'height', 'depth', 'ambient', 'ambient_amount', 'waterline']))
+                    $layers[] = array_intersect_key($ship, array_flip(['x', 'y', 'height', 'depth', 'ambient', 'ambient_amount', 'waterline', 'frames', 'frames_play']))
                         + ['asset' => $asset, 'anim' => 'fade',
                             // Waterline = share of the picture under the sea: the painted hulls run to the keel,
                             // so 0.07 puts the sea at the lower hull curve (0.15 drowned the gun ports).

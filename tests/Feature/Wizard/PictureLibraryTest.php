@@ -70,6 +70,7 @@ class PictureLibraryTest extends TestCase
             ->call('openImageLibrary')
             ->call('preparePaintings')
             ->set('paintingKind', 'library')
+            ->call('loadLibraryCollection')
             ->instance()
             ->paintingResults;
 
@@ -201,6 +202,7 @@ class PictureLibraryTest extends TestCase
             // A term no corpus or Commons search can answer, with Commons already exhausted.
             ->set('paintingQuery', 'zzzzqqqxx')
             ->set('paintingCommonsLoaded', true)
+            ->call('loadLibraryCollection')
             ->instance()
             ->paintingResults;
 
@@ -222,8 +224,94 @@ class PictureLibraryTest extends TestCase
             ->set('paintingQuery', $term)
             ->set('paintingCommonsLoaded', true)
             ->set('paintingKind', $kind)
+            ->call('loadLibraryCollection')
             ->instance()
             ->paintingResults;
+    }
+
+    /**
+     * Pair test 2026-10-24: in a long lesson the shelf listed ~50 per-scene pictures before any
+     * split panel and stopped at 30 tiles, so the panels never showed. Every panel follows its own
+     * scene's picture, and the "In this lesson" shelf is never capped (only our collection is).
+     */
+    public function test_every_split_panel_of_a_long_lesson_is_on_the_library_shelf_after_its_scene(): void
+    {
+        Http::fake();
+        $base = 'https://res.cloudinary.com/democloud/image/upload/v1/lessons/77/';
+        for ($i = 2; $i <= 45; $i++) {
+            Scene::create([
+                'lesson_id' => $this->lesson->id, 'order' => $i, 'kind' => 'narration', 'status' => 'ready',
+                'image_path' => "{$base}scene-{$i}.jpg",
+                'shots' => [['image_path' => "{$base}scene-{$i}.jpg"], ['image_path' => "{$base}panel-{$i}.jpg"]],
+            ]);
+        }
+
+        $keys = Livewire::actingAs($this->teacher)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
+            ->call('openImageLibrary')
+            ->call('preparePaintings')
+            ->instance()
+            ->paintingResults
+            ->pluck('key')->map(fn ($k) => basename((string) $k))->values()->all();
+
+        for ($i = 2; $i <= 45; $i++) {
+            $scene = array_search("scene-{$i}.jpg", $keys, true);
+            $this->assertNotFalse($scene, "scene {$i} picture missing");
+            $this->assertSame("panel-{$i}.jpg", $keys[$scene + 1] ?? null, "scene {$i}'s panel must follow its picture");
+        }
+    }
+
+    /**
+     * Pair test 2026-10-24: scene 5 reused scene 4's main picture, the shelf dedupes on the URL, so
+     * scene 5's own panels sat under "Scène 4" with no number of their own. Each panel tile says
+     * which scene and which panel it is.
+     */
+    public function test_a_panel_tile_names_its_own_scene_even_when_that_scenes_picture_repeats_the_previous_one(): void
+    {
+        Http::fake();
+        app()->setLocale('nl');
+        $base = 'https://res.cloudinary.com/democloud/image/upload/v1/lessons/77/';
+        foreach ([2, 3, 4] as $order) {
+            Scene::create([
+                'lesson_id' => $this->lesson->id, 'order' => $order, 'kind' => 'narration', 'status' => 'ready',
+                'image_path' => "{$base}scene-{$order}.jpg",
+                'shots' => [['image_path' => "{$base}scene-{$order}.jpg"], ['image_path' => "{$base}panel-{$order}.jpg"]],
+            ]);
+        }
+        Scene::create([
+            'lesson_id' => $this->lesson->id, 'order' => 5, 'kind' => 'narration', 'status' => 'ready',
+            'image_path' => "{$base}scene-4.jpg",   // the same main picture as scene 4
+            'shots' => [['image_path' => "{$base}scene-4.jpg"], ['image_path' => "{$base}panel-5.jpg"]],
+        ]);
+
+        $titles = Livewire::actingAs($this->teacher)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
+            ->call('openImageLibrary')
+            ->call('preparePaintings')
+            ->instance()
+            ->paintingResults
+            ->mapWithKeys(fn ($t) => [basename((string) $t['key']) => $t['title']]);
+
+        $this->assertSame('Scène 4', $titles['scene-4.jpg']);
+        $this->assertSame('Scène 4, paneel 2', $titles['panel-4.jpg']);
+        $this->assertSame('Scène 5, paneel 2', $titles['panel-5.jpg']);
+    }
+
+    public function test_the_lesson_shelf_does_not_wait_for_our_cloudinary_collection(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('lessons/1/own.jpg', 'jpeg-bytes');
+        $this->fakeCloudinaryLibrary();
+
+        $component = Livewire::actingAs($this->teacher)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
+            ->call('openImageLibrary')
+            ->call('preparePaintings');
+
+        $this->assertSame(['own.jpg'], $component->instance()->paintingResults->pluck('key')->map(fn ($k) => basename((string) $k))->all());
+        Http::assertNothingSent();
+
+        $this->assertCount(2, $component->call('loadLibraryCollection')->instance()->paintingResults);
     }
 
     /**
@@ -252,6 +340,16 @@ class PictureLibraryTest extends TestCase
         // lesson's picture is checked on the unfiltered grid.
         $this->assertSame(['commons', 'library'], $this->tilesFor('', 'Tasman')->pluck('source')->all(), 'the search result leads, our collection follows');
         $this->assertContains('/storage/lessons/1/own.jpg', $this->tilesFor('')->pluck('key')->map(fn ($k) => parse_url($k, PHP_URL_PATH))->all());
+    }
+
+    public function test_the_picker_opens_on_the_library_tab(): void
+    {
+        $this->fakeCloudinaryLibrary();
+
+        Livewire::actingAs($this->teacher)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
+            ->call('openImageLibrary')
+            ->assertSet('paintingKind', 'library');
     }
 
     public function test_the_library_tab_shows_only_our_own_pictures(): void

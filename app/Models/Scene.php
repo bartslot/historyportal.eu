@@ -111,6 +111,36 @@ class Scene extends Model
         return $query->orderBy('order');
     }
 
+    /** Kinds that play without a voice: the pipeline never narrates them (game intros are the teacher's). */
+    public const NO_VOICE_KINDS = ['map', 'voyage', 'gallery', 'video', 'game'];
+
+    /**
+     * Scenes whose media the pipeline is still making: generating now, or waiting with a script to
+     * narrate. A scene the editor added and left empty (a strategy/debate/predict scene, the three
+     * narration scenes of a fresh Decision point) is `pending` with nothing to generate; counting
+     * it as "being made" dropped the demo off the homepage and held Start forever (pair test round 7).
+     * Same rule as isAwaitingMedia(), for queries.
+     */
+    public function scopeAwaitingMedia($query)
+    {
+        return $query->whereNotIn('kind', self::NO_VOICE_KINDS)
+            ->where(fn ($q) => $q->where('status', 'generating')
+                ->orWhere(fn ($q) => $q->where('status', 'pending')
+                    ->whereNotNull('script_segment')
+                    ->whereRaw("trim(script_segment) <> ''")));
+    }
+
+    /** See scopeAwaitingMedia(): the same rule for one loaded scene (the player's Start check). */
+    public function isAwaitingMedia(): bool
+    {
+        if (in_array($this->kind, self::NO_VOICE_KINDS, true)) {
+            return false;
+        }
+
+        return $this->status === 'generating'
+            || ($this->status === 'pending' && trim((string) $this->script_segment) !== '');
+    }
+
     /**
      * Map-block fields resolved from a lesson's curated topic (polity QID + representative year).
      * Used both by the composer (add Map block) and the pipeline (default map block).
@@ -221,9 +251,9 @@ class Scene extends Model
      * while the database recorded the new script and a matching audio_script_hash. The one thing in
      * this app where being wrong is invisible: the words on screen were right.
      *
-     * The hash is the version rather than a timestamp on purpose — it changes exactly when the audio
-     * changes, so a scene nobody has touched keeps its cache instead of being re-downloaded by every
-     * child in the class on every visit.
+     * The version is built from what made the audio rather than a timestamp on purpose: it changes
+     * when the audio does, so a scene nobody has touched keeps its cache instead of being
+     * re-downloaded by every child in the class on every visit.
      *
      * Six callers built this URL by hand before this existed. If you are adding a seventh, use this.
      */
@@ -233,8 +263,14 @@ class Scene extends Model
             return null;
         }
 
+        // The words, who read them, and how the voice was told to say them: the same script read
+        // again in another voice or after a pronunciation fix is new audio at the same path, and
+        // the files are cached for 30 days (Bart, 2026-10-18: VOC still sounded English).
         $version = $this->audio_script_hash
-            ? substr((string) $this->audio_script_hash, 0, 8)
+            ? substr(sha1(implode('|', [
+                $this->audio_script_hash, $this->audio_provider, $this->audio_voice,
+                \App\Services\Support\PronunciationLexicon::version(),
+            ])), 0, 8)
             : (string) ($this->updated_at?->timestamp ?? '');
 
         return asset('storage/'.$this->audio_path).($version !== '' ? '?v='.$version : '');

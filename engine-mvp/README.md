@@ -45,16 +45,20 @@ the `_placeholder` bundle). The panel edits every camera, timing and motion valu
 - **Depths**: sky 380 m, bg 70 m, mid 22 m, fg 7 m from the house camera (eye 1.6 m, fov 50, tilted up 2 deg). A layer's
   `x` 0..1 spans the house view at its depth; its plane is `height_m * scale` tall, origin at the asset's `anchor`.
   Tileable sky/bg strips stretch past the view (1.6x) and repeat. Draw order = depth, then list order (`alphaIndex`).
-- **Render size**: sharp up to the device pixels, capped on the longest side (`stage.renderCap`, 1920 by default, Sharpness in the panel); a 2 s average under 50 fps drops a quarter of a CSS pixel per notch, never below 1x CSS (`renderScale`, `Stage.tick`).
+- **Render size**: sharp up to the device pixels, capped on the longest side (`stage.renderCap`, 1920 by default, Sharpness in the panel). Adaptive tier (`ADAPT`, `nextTier` in layout.ts): a 2 s window under 50 fps steps a quarter CSS px down (never below 1x CSS); up only after 3 windows at 58+, 20 s after the last change, at most once a minute; two reversals lock the lower size for the session. Windows with a stall or a hidden tab are ignored.
 - **No halos**: textures are premultiplied on load (`layer.ts`) and blended premultiplied; planes write no depth
   and stay out of the look's G-buffer (`metadata.noGBuffer`), so the ink pass draws lines only on 3D figures.
 - **Motion** (`asset.motion`, overridden by `layer.motion`: a kind or `{ kind, amount, speed }`): sway bends from
   the base, drift slides slowly sideways, ripple wobbles the picture, flicker stretches and brightens. In the shader.
 - **Camera**: `{ move, from: {x,y,z,fov}, to: {...}, ease: inOut|in|out|linear, dur_s }`, metres and fov in DEGREES.
-  No camera = hold the house pose for `est_s`. **Layer keys**: `layer.keys: [{ t, x?, scale?, opacity? }]`, t in seconds.
+  Scene length = `dur_s`, else the sum of its shots (where the last ends), else `est_s`. A director-split scene plays
+  `camera`, then each of `camera_more` from its `at_s` (`shotAt`). No camera = hold the house pose. The panel (the
+  studio's `Panel`, id `stage-scene`) lists the shots as tabs; a shot's Duration moves the later shots and `dur_s` with
+  it (`setShotDuration`), and a shot's end pose IS the next one's start (`setShotPose`), so a cut never jumps.
+  **Layer keys**: `layer.keys: [{ t, x?, scale?, opacity? }]`, t in seconds.
 - **Look**: the studio's post chain (`engine/look-chain.js`, shared with `look.js`) with `STAGE_LOOK` (History Lines
   pencil + paper grain); `lesson.look` overrides any number.
-- **Library**: `public/library/_placeholder/` is procedural (`python3 scripts/make_placeholder_library.py`), every asset
+- **Library**: a scene's `bundle` overrides the lesson's (`libraryUrlFor`; a bundle that does not load falls back to the lesson's, warned). `public/library/_placeholder/` is procedural (`python3 scripts/make_placeholder_library.py`), every asset
   `placeholder: true`. Real bundles: `ln -s ~/BartsMedia/historyportal/library/<bundle> public/library/<bundle>`
   (git-ignored).
 

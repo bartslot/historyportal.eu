@@ -105,6 +105,19 @@ describe('De lading on the class screen', () => {
     expect(host.querySelector('[data-team-card][data-active]').textContent).toContain('Not yet confirmed')
   })
 
+  it('a ready team points at the next one; once every team is ready, the results are the main button', () => {
+    const { host, game } = mount()
+    toPick(host)
+    card(host, 'rice').click()
+    btn(host, 'Ready').click(); btn(host, 'Ready anyway').click()
+    expect(btn(host, 'To the results').classList.contains('btn-primary')).toBe(false)
+    btn(host, 'Next: Team 2').click()
+    expect(game.teamStore().active()).toBe(1)
+    btn(host, 'Ready').click(); btn(host, 'Ready anyway').click()
+    expect(host.textContent).not.toContain('Next: ')
+    expect(btn(host, 'To the results').classList.contains('btn-primary')).toBe(true)
+  })
+
   it('names ONE number and role at a time, rotating with the run\'s interaction index', () => {
     const { host } = mount({ interaction: 1 })
     toPick(host)

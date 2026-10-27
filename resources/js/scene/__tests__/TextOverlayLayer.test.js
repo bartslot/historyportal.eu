@@ -140,6 +140,17 @@ describe('TextOverlayLayer editor selection', () => {
     expect(layer._texts[0]).toMatchObject({ font: 'cinzel', size: 'xl' })
     expect(onChange).not.toHaveBeenCalled()
   })
+
+  it('names a new Title and Text box in the interface language (pair test 2026-10-24)', () => {
+    window.__lpLang = { Title: 'Titel', Text: 'Tekst' }
+    const el = host()
+    const layer = new TextOverlayLayer(el, { editable: true })
+    layer.setTexts([])
+    layer.addText()
+    layer.addText()
+    expect(layer._texts.map(t => t.text)).toEqual(['Titel', 'Tekst'])
+    delete window.__lpLang
+  })
 })
 
 // Bart 2026-10-16 (Figma 1674:4695): a text's colour, scale, rotation, blur, blend, opacity and

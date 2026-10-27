@@ -248,6 +248,30 @@
                 </div>
             </div>
 
+            {{-- A sprite sheet over the picture (LayerFrames, resources/js/scene/layer-frames.js):
+                 the sails follow a power-meter moment's wind, or the frames loop. --}}
+            @if (! empty($layer['frames']))
+                <div class="space-y-2" x-data="{ play: @js($val('frames_play', 'wind')) }" data-layer-frames>
+                    <label class="flex items-center justify-between gap-2">
+                        <span style="width: var(--settings-panel-label-w, 3.0625rem)"
+                              class="shrink-0 text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Frames') }}</span>
+                        <div class="min-w-0 flex-1">
+                            <select x-model="play" x-on:input="{{ $live('frames_play') }}" wire:change="{{ $save('frames_play') }}"
+                                    aria-label="{{ __('Frames') }}" style="height: var(--settings-panel-row-h, 2rem)" class="select select-xs w-full text-2xs">
+                                <option value="wind" @selected($val('frames_play', 'wind') === 'wind')>{{ __('Follow the wind') }}</option>
+                                <option value="loop" @selected($val('frames_play', 'wind') === 'loop')>{{ __('Loop') }}</option>
+                                <option value="off" @selected($val('frames_play', 'wind') === 'off')>{{ __('Off') }}</option>
+                            </select>
+                        </div>
+                    </label>
+                    <div x-show="play === 'loop'" x-cloak>
+                        <x-ui.slider-row :label="__('Speed')" :min="1" :max="24" :step="1"
+                                         :value="$val('frames_fps', 8)" :display="(string) (int) $val('frames_fps', 8)" unit="fps" :default="8"
+                                         :on-input="$live('frames_fps')" :on-change="$save('frames_fps')" />
+                    </div>
+                </div>
+            @endif
+
             {{-- Blend into the scene (resources/js/scene/sit-in-scene.js): a waterline, foam, a
                  reflection, a contact shadow and a colour wash from the backdrop, so a cut-out
                  sits IN the painting. The button sets the preset for a boat or a figure; the

@@ -1,4 +1,4 @@
-import { startSceneIndex, mayAutoplay } from '../player-start.js'
+import { startSceneIndex, mayAutoplay, canStartLesson } from '../player-start.js'
 
 /**
  * The editor's Play opens the real player at the scene the teacher has selected (PM, 2026-10-17:
@@ -44,4 +44,34 @@ describe('mayAutoplay', () => {
     expect(mayAutoplay(w)).toBe(false)
   })
   it('a browser without userActivation keeps the old behaviour', () => expect(mayAutoplay(win(undefined))).toBe(true))
+})
+
+/**
+ * Start waits while a scene's media is still being made. `awaiting_media` is the server's verdict
+ * (Scene::isAwaitingMedia, tested in PHP): round 5 a narration-free lesson waited forever, round 6
+ * a partly narrated one started too early, round 7 an empty editor-added scene held it forever.
+ */
+describe('canStartLesson', () => {
+  test('a lesson with nothing being made can start, narrated or not', () => {
+    expect(canStartLesson({ scenes: [{ kind: 'narration', awaiting_media: false }, { kind: 'game', awaiting_media: false }] })).toBe(true)
+  })
+
+  test('a partly narrated lesson waits until every scene still being made is done', () => {
+    expect(canStartLesson({
+      audio_url: '/lesson.m4a',
+      scenes: [
+        { kind: 'narration', awaiting_media: false, audio_url: '/1.m4a' },
+        { kind: 'map', awaiting_media: false },
+        { kind: 'narration', awaiting_media: true },
+      ],
+    })).toBe(false)
+  })
+
+  test('re-narrating a scene that still has its old recording does not hold the class', () => {
+    expect(canStartLesson({ scenes: [{ kind: 'narration', awaiting_media: true, audio_url: '/a.m4a' }] })).toBe(true)
+  })
+
+  test('an empty lesson cannot start', () => {
+    expect(canStartLesson({ scenes: [] })).toBe(false)
+  })
 })

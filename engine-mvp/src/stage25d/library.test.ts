@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolveAsset, tagsOf } from './library'
+import { libraryUrlFor, resolveAsset, tagsOf } from './library'
 import type { Asset, Library } from './types'
 
 const asset = (id: string, layer: Asset['layer'], tags: string[], score = 5): Asset =>
@@ -35,5 +35,16 @@ describe('resolveAsset', () => {
 describe('tagsOf', () => {
   it('splits strings on spaces and commas, lowercases', () => {
     expect(tagsOf('Oak, tree  forest')).toEqual(['oak', 'tree', 'forest'])
+  })
+})
+
+describe('libraryUrlFor', () => {
+  it('lets a scene bundle override the lesson bundle', () => {
+    expect(libraryUrlFor({ bundle: 'nl-golden-age' }, { bundle: 'nl-prehistory' })).toBe('library/nl-golden-age/library.json')
+    expect(libraryUrlFor({}, { bundle: 'nl-prehistory' })).toBe('library/nl-prehistory/library.json')
+  })
+  it('uses the playLesson library URL for scenes without their own bundle', () => {
+    expect(libraryUrlFor({}, { bundle: 'x' }, '/my/library.json')).toBe('/my/library.json')
+    expect(libraryUrlFor({ bundle: 'y' }, { bundle: 'x' }, '/my/library.json')).toBe('library/y/library.json')
   })
 })

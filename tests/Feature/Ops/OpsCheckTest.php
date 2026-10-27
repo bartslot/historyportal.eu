@@ -79,6 +79,21 @@ class OpsCheckTest extends TestCase
         Mail::assertNothingSent();
     }
 
+    /**
+     * A reported problem makes ops:check exit 1, and the scheduler logs THAT as an ERROR. Counted as a
+     * new error it failed the next run, and the next: one Azure 429 mailed Bart every 5 minutes all
+     * night (2026-10-18).
+     */
+    public function test_its_own_scheduler_failure_is_not_a_new_error(): void
+    {
+        $this->artisan('ops:check')->assertSuccessful();
+        File::append($this->log, "[2026-10-18 07:35:01] production.ERROR: Scheduled command ['/usr/local/php84/bin/php-cli' 'artisan' ops:check] failed with exit code [1]. {\"exception\":\"[object] (Exception(code: 0): ...)\"}\n");
+
+        $this->artisan('ops:check')->assertSuccessful();
+
+        Mail::assertNothingSent();
+    }
+
     public function test_new_failed_jobs_are_reported(): void
     {
         $this->artisan('ops:check')->assertSuccessful();

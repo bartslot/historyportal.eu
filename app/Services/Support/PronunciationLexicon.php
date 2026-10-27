@@ -19,29 +19,41 @@ namespace App\Services\Support;
  */
 final class PronunciationLexicon
 {
-    /** locale => [written form => spoken respelling]. Word-boundary matched, case preserved. */
+    /**
+     * locale => [written form => spoken respelling]. Word-boundary matched, case preserved. A
+     * written form ending in `*` also matches as the start of a compound (reserve → reservezeil).
+     */
     private const LEXICON = [
         'nl' => [
             'limes' => 'liemes',
             // Initialisms are read as words unless they are spelled out: the Dutch voices said
-            // "vok" for the VOC. Respelt with the Dutch letter names so it comes out
-            // "vee-oh-see", the way a teacher says it in class. Spaces rather than hyphens —
-            // a hyphen makes the voice run the letters together again.
-            'VOC' => 'vee oh see',
-            'WIC' => 'wee ie see',
+            // "vok" for the VOC. Respelt with the Dutch letter names (vee, oo, cee) so it comes out
+            // the way a teacher says it in class; "vee oh see" sounded English (Bart, 2026-10-18).
+            // Spaces rather than hyphens: a hyphen makes the voice run the letters together again.
+            'VOC' => 'vee oo cee',
+            'WIC' => 'wee ie cee',
+            // The Dutch voice read "reserve" and "reservezeil" the English way (Bart, 2026-10-18).
+            'reserve*' => 'rezerve',
         ],
         'en' => [
             'VOC' => 'vee oh see',
         ],
     ];
 
+    /** Changes whenever an entry does, so narration URLs move on with the way words are spoken. */
+    public static function version(): string
+    {
+        return substr(md5(serialize(self::LEXICON)), 0, 8);
+    }
+
     public static function apply(string $text, ?string $locale): string
     {
         $entries = self::LEXICON[$locale ?? ''] ?? [];
 
         foreach ($entries as $written => $spoken) {
+            $prefix = str_ends_with($written, '*');
             $text = (string) preg_replace_callback(
-                '/\b'.preg_quote($written, '/').'\b/iu',
+                '/\b'.preg_quote(rtrim($written, '*'), '/').($prefix ? '' : '\b').'/iu',
                 fn (array $m) => self::matchCase($m[0], $spoken),
                 $text,
             );

@@ -46,7 +46,7 @@ class DemoLessonLanguageTest extends TestCase
     private function seedCanon(): void
     {
         $this->lesson('Abel Tasman: De reis naar het onbekende', 'nl');
-        $this->lesson('Abel Tasman: two voyages to the unknown south', 'en');
+        $this->lesson('Abel Tasman: the voyage into the unknown', 'en');
         $this->lesson("La Révolution française et l'ascension de Napoléon", 'fr');
     }
 
@@ -69,6 +69,26 @@ class DemoLessonLanguageTest extends TestCase
 
         $this->assertSame('Abel Tasman: De reis naar het onbekende', $lesson?->title);
         $this->assertSame('nl', $lesson?->language);
+    }
+
+    /**
+     * Bart 2026-10-20, "on prod we don't have a real poster for Abel Tasman": every visitor who
+     * presses Configure gets a private copy with the same title and language. The pick was
+     * ->first() on the title alone, so a guest's copy (no translation_group, so no Figma poster)
+     * became the homepage demo.
+     */
+    public function test_a_guests_private_copy_never_becomes_the_demo(): void
+    {
+        $this->seedCanon();
+        $original = Lesson::where('language', 'nl')->first();
+        $guest = User::factory()->create(['is_guest_demo' => true]);
+        $copy = app(\App\Services\LessonCopier::class)->copy($original, $guest, ['status' => 'configuring']);
+
+        $this->assertSame($original->id, $this->visit(['Accept-Language' => 'nl-NL,nl;q=0.9'])?->id);
+
+        // Row order is not guaranteed, so prove it without the original: the copy still never wins.
+        $original->delete();
+        $this->assertNotSame($copy->id, $this->visit(['Accept-Language' => 'nl-NL,nl;q=0.9'])?->id);
     }
 
     public function test_a_teacher_in_the_netherlands_gets_dutch_even_with_an_english_laptop(): void
@@ -105,7 +125,7 @@ class DemoLessonLanguageTest extends TestCase
 
         $lesson = $this->visit(['Accept-Language' => 'pt-BR,pt;q=0.9', 'CF-IPCountry' => 'BR']);
 
-        $this->assertSame('Abel Tasman: two voyages to the unknown south', $lesson?->title);
+        $this->assertSame('Abel Tasman: the voyage into the unknown', $lesson?->title);
         $this->assertSame('en', $lesson?->language);
     }
 
@@ -123,13 +143,13 @@ class DemoLessonLanguageTest extends TestCase
     {
         // Exactly production's shape: plenty of English lessons, no Dutch one, and one of the
         // English ones is the newest — which is how The Silk Road won.
-        $this->lesson('Abel Tasman: two voyages to the unknown south', 'en');
+        $this->lesson('Abel Tasman: the voyage into the unknown', 'en');
         $this->lesson('The Silk Road', 'en');
 
         $lesson = $this->visit(['Accept-Language' => 'nl-NL,nl;q=0.9', 'CF-IPCountry' => 'NL']);
 
         $this->assertNotSame('The Silk Road', $lesson?->title, 'the newest-lesson fallback is back');
-        $this->assertSame('Abel Tasman: two voyages to the unknown south', $lesson?->title);
+        $this->assertSame('Abel Tasman: the voyage into the unknown', $lesson?->title);
     }
 
     public function test_a_title_match_in_the_wrong_language_is_not_accepted(): void
@@ -137,25 +157,25 @@ class DemoLessonLanguageTest extends TestCase
         // Someone renames the English lesson to the Dutch title. The column is the source of truth,
         // so this must NOT satisfy a Dutch visitor.
         $this->lesson('De reis van Abel Tasman', 'en');
-        $this->lesson('Abel Tasman: two voyages to the unknown south', 'en');
+        $this->lesson('Abel Tasman: the voyage into the unknown', 'en');
 
         $lesson = $this->visit(['Accept-Language' => 'nl-NL,nl;q=0.9']);
 
         $this->assertSame('en', $lesson?->language);
-        $this->assertSame('Abel Tasman: two voyages to the unknown south', $lesson?->title);
+        $this->assertSame('Abel Tasman: the voyage into the unknown', $lesson?->title);
     }
 
     public function test_the_goal_line_describes_the_lesson_that_actually_won(): void
     {
         // Nothing on screen may promise a lesson the visitor is not about to get.
-        $this->lesson('Abel Tasman: two voyages to the unknown south', 'en');
+        $this->lesson('Abel Tasman: the voyage into the unknown', 'en');
 
         DemoLesson::forget();
         $request = \Illuminate\Http\Request::create('/', 'GET');
         $request->headers->set('Accept-Language', 'nl-NL,nl;q=0.9');
 
         $this->assertSame(
-            config('demo.goals')['Abel Tasman: two voyages to the unknown south'],
+            config('demo.goals')['Abel Tasman: the voyage into the unknown'],
             DemoLesson::goal($request),
             'the hero typed a Dutch goal over an English lesson',
         );
@@ -190,7 +210,7 @@ class DemoLessonLanguageTest extends TestCase
     {
         // The configured English lesson had a failed scene, so the Batavian Republic won, and the hero
         // typed "The Batavian Republic: A Quest for Liberty" as if that were a learning goal.
-        $this->lesson('The Batavian Republic: A Quest for Liberty', 'en');
+        $this->lesson('The Batavian Republic: A Quest for Liberty', 'en')->update(['translation_group' => 'tasman-standard']);
         $request = \Illuminate\Http\Request::create('/', 'GET');
         $request->headers->set('Accept-Language', 'en-GB,en;q=0.9');
         DemoLesson::forget();
@@ -200,7 +220,7 @@ class DemoLessonLanguageTest extends TestCase
 
     public function test_a_dutch_lesson_types_its_canon_leerdoel_not_its_title(): void
     {
-        $this->lesson('De reis van Abel Tasman', 'nl');
+        $this->lesson('De reis van Abel Tasman', 'nl')->update(['translation_group' => 'tasman-standard']);
 
         DemoLesson::forget();
         $request = \Illuminate\Http\Request::create('/', 'GET');
@@ -214,7 +234,7 @@ class DemoLessonLanguageTest extends TestCase
 
     public function test_the_url_language_beats_an_english_browser(): void
     {
-        $this->lesson('Abel Tasman: two voyages to the unknown south', 'en');
+        $this->lesson('Abel Tasman: the voyage into the unknown', 'en');
         $this->lesson('De reis van Abel Tasman', 'nl');
 
         $request = \Illuminate\Http\Request::create('/nl', 'GET');
@@ -222,5 +242,130 @@ class DemoLessonLanguageTest extends TestCase
         $request->setRouteResolver(fn () => (new \Illuminate\Routing\Route('GET', '{locale}', []))->bind($request));
 
         $this->assertSame('nl', DemoLesson::language($request));
+    }
+
+    /**
+     * Pair test round 5 (demo-killer): one scene of the original went `pending` during a
+     * re-narration, the original dropped out, and a teacher's private Configureren copy with the
+     * same title became the homepage link, a 404 for every visitor.
+     */
+    public function test_an_original_mid_regeneration_keeps_the_homepage_and_a_teachers_copy_never_wins(): void
+    {
+        $this->seedCanon();
+        $original = Lesson::where('language', 'nl')->first();
+        $original->update(['translation_group' => 'tasman']);
+        Scene::create(['lesson_id' => $original->id, 'order' => 2, 'kind' => 'narration', 'status' => 'pending',
+            'image_path' => 'lessons/1/scene-2.jpg']);
+        $teacher = User::factory()->create();
+        $copy = app(\App\Services\LessonCopier::class)->copy($original, $teacher, ['status' => 'configuring']);
+        $copy->scenes()->update(['status' => 'ready']);
+
+        $this->assertSame($original->id, $this->visit(['Accept-Language' => 'nl-NL,nl;q=0.9'])?->id);
+
+        // The page itself links the original's code, never the copy's.
+        DemoLesson::forget();
+        $html = $this->withoutVite()->get('/nl')->assertOk()->getContent();
+        $this->assertStringContainsString('/lesson/'.$original->lesson_code, $html);
+        $this->assertStringNotContainsString('/lesson/'.$copy->lesson_code, $html);
+    }
+
+    public function test_a_private_lesson_is_never_the_demo_even_without_the_original(): void
+    {
+        $this->seedCanon();
+        $original = Lesson::where('language', 'nl')->first();
+        $copy = app(\App\Services\LessonCopier::class)->copy($original, User::factory()->create(), ['status' => 'configuring']);
+        $original->delete();
+
+        $this->assertNotSame($copy->id, $this->visit(['Accept-Language' => 'nl-NL,nl;q=0.9'])?->id);
+    }
+
+    /** Pair test round 5: /nl answered 500 because the fallback lesson had no title (typed string). */
+    public function test_an_untitled_lesson_neither_becomes_the_demo_nor_breaks_the_goal(): void
+    {
+        $untitled = $this->lesson('tmp', 'nl');
+        $untitled->forceFill(['title' => null])->save();
+
+        $this->assertNotSame($untitled->id, $this->visit(['Accept-Language' => 'nl-NL,nl;q=0.9'])?->id);
+        DemoLesson::forget();
+        $this->withoutVite()->get('/nl')->assertOk();
+    }
+
+    /**
+     * Pair test round 6: with the Dutch hand-picked demo gone, the newest Dutch lesson by anyone
+     * took the front door. A lesson without a Figma poster series never stands in; the English
+     * hand-picked demo does.
+     */
+    public function test_without_its_demo_a_language_falls_back_to_the_english_demo_not_a_random_lesson(): void
+    {
+        $english = $this->lesson('Abel Tasman: the voyage into the unknown', 'en');
+        $this->lesson('Mijn eigen les over de Gouden Eeuw', 'nl');
+
+        $this->assertSame($english->id, $this->visit(['Accept-Language' => 'nl-NL,nl;q=0.9'])?->id);
+    }
+
+    public function test_a_lesson_of_a_series_with_a_figma_poster_may_stand_in(): void
+    {
+        $this->lesson('Abel Tasman: the voyage into the unknown', 'en');
+        $series = $this->lesson('Tasman, tweede editie', 'nl');
+        $series->update(['translation_group' => 'tasman-standard']);
+
+        $this->assertSame($series->id, $this->visit(['Accept-Language' => 'nl-NL,nl;q=0.9'])?->id);
+    }
+
+    /** The official Dutch original: carries the series in translation_group AND title_series. */
+    private function officialDutch(): Lesson
+    {
+        $this->lesson('Abel Tasman: the voyage into the unknown', 'en');
+        $original = $this->lesson('Abel Tasman: De reis naar het onbekende', 'nl');
+        $original->update(['translation_group' => 'tasman-standard', 'title_series' => 'tasman-standard']);
+
+        return $original->fresh();
+    }
+
+    /**
+     * Round 7 (tester): a teacher's renamed, published copy of the demo took over the homepage,
+     * because a copy keeps title_series (and so the poster) and the fallback trusted title_series.
+     */
+    public function test_a_renamed_published_copy_never_takes_the_homepage(): void
+    {
+        $original = $this->officialDutch();
+        $copy = app(\App\Services\LessonCopier::class)->copy($original, User::factory()->create(), ['status' => 'published']);
+        $copy->update(['title' => 'QA story game nl']);
+        $this->assertSame('tasman-standard', $copy->fresh()->title_series, 'precondition: a copy keeps the poster series');
+        $original->update(['status' => 'configuring']);   // the original drops out
+
+        $winner = $this->visit(['Accept-Language' => 'nl-NL,nl;q=0.9']);
+
+        $this->assertNotSame($copy->id, $winner?->id);
+        $this->assertSame('en', $winner?->language, 'the English hand-picked demo stands in');
+    }
+
+    /** ...nor a published copy by another account that kept the demo's exact title. */
+    public function test_a_published_copy_with_the_demos_title_never_stands_in_for_the_original(): void
+    {
+        $original = $this->officialDutch();
+        $copy = app(\App\Services\LessonCopier::class)->copy($original, User::factory()->create(), ['status' => 'published']);
+        $original->update(['status' => 'configuring']);
+
+        $this->assertNotSame($copy->id, $this->visit(['Accept-Language' => 'nl-NL,nl;q=0.9'])?->id);
+    }
+
+    /** Round 7 root cause: an empty game scene added in the editor is `pending` with nothing to make. */
+    public function test_an_editor_added_empty_strategy_scene_keeps_the_original_on_the_homepage(): void
+    {
+        $original = $this->officialDutch();
+        Scene::create(['lesson_id' => $original->id, 'order' => 2, 'kind' => 'game', 'game_type' => 'strategy', 'status' => 'pending']);
+        Scene::create(['lesson_id' => $original->id, 'order' => 3, 'kind' => 'narration', 'status' => 'pending', 'script_segment' => '']);
+
+        $this->assertSame($original->id, $this->visit(['Accept-Language' => 'nl-NL,nl;q=0.9'])?->id);
+    }
+
+    public function test_an_original_whose_real_narration_is_still_being_made_from_scratch_steps_aside(): void
+    {
+        $original = $this->officialDutch();
+        Scene::create(['lesson_id' => $original->id, 'order' => 2, 'kind' => 'narration', 'status' => 'pending',
+            'script_segment' => 'Tasman zeilt uit.']);
+
+        $this->assertNotSame($original->id, $this->visit(['Accept-Language' => 'nl-NL,nl;q=0.9'])?->id);
     }
 }

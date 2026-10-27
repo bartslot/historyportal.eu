@@ -59,6 +59,19 @@ class NarrationFreshnessTest extends TestCase
         $this->assertStringContainsString('narration.mp3', (string) $before);
     }
 
+    public function test_the_same_words_in_another_voice_get_a_new_url(): void
+    {
+        // A re-recording of the SAME script (another voice, a pronunciation fix) is new audio too:
+        // the files are cached for 30 days, so the old URL would keep the class on the old clip.
+        $scene = $this->sceneWithAudio(sha1('loopt'));
+        $scene->update(['audio_voice' => 'nl-NL-MaartenNeural']);
+        $before = $scene->fresh()->audioUrl();
+
+        $scene->update(['audio_voice' => 'nl-NL-FennaNeural']);
+
+        $this->assertNotSame($before, $scene->fresh()->audioUrl());
+    }
+
     public function test_an_untouched_scene_keeps_its_url_so_the_cache_still_works(): void
     {
         // The version is the script hash rather than a timestamp precisely so that a scene nobody
@@ -88,7 +101,8 @@ class NarrationFreshnessTest extends TestCase
 
         $this->get(route('lesson.play', $lesson->lesson_code))
             ->assertOk()
-            ->assertSee('narration.mp3?v='.substr(sha1('vaart'), 0, 8), escape: false);
+            ->assertSee(str_replace('/', '\/', (string) parse_url((string) $scene->fresh()->audioUrl(), PHP_URL_QUERY)), escape: false)
+            ->assertSee('narration.mp3?v=', escape: false);
     }
 
     public function test_regenerating_refreshes_the_panel(): void

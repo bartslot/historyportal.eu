@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "about": "One duration model for lesson.json, read by tools/lessongen/validate.py and the S5 director. PM 2026-10-27.",
+  "narration": {
+    "words_per_s": 2.4,
+    "breath_s": 0.6,
+    "rule": "shot_s = max(shot_min_s, words / words_per_s + breath_s); a measured scene.tts_s replaces words / words_per_s"
+  },
+  "shot_min_s": 6,
+  "shot_max_s": 12,
+  "interaction_s": {
+    "quiz": 40,
+    "quiz.open": 120,
+    "power-meter": 60,
+    "choice": 30,
+    "choice.vote": 60
+  },
+  "class_action": "scene.class_action_s, the time written for that class action (hands up, say together), added after the shot",
+  "interaction_rule": "key = type.format when that key exists, else type. format 'team' (a team or paper activity) has no fixed time: it plays for the interaction's own class_action_s, which is required for it",
+  "teacher_card": "lesson.teacher_template holds the card with {total_min}, {story_min} and {min:scA-scB}; validate.py --resolve renders lesson.teacher from it; a typed 'N minuten' anywhere on the card is an error"
+}

@@ -9,8 +9,8 @@ import {
   UniversalCamera, Vector3, type Mesh,
 } from '@babylonjs/core'
 import { createLookChain, PRESETS } from '../engine/look-chain.js'
-import { loadLibrary, resolveAsset } from './library'
-import { ADAPT_MIN_FPS, ADAPT_WINDOW_MS, cameraAt, DEPTH_Z, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
+import { libraryUrlFor, loadLibrary, resolveAsset } from './library'
+import { ADAPT_STALL_MS, ADAPT_WINDOW_MS, cameraAt, nextTier, shotAt, TIER0, type Tier, DEPTH_Z, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
 import { loadPremultiplied, makeLayer, type LayerHandle } from './layer'
 import { LessonDoc } from './edits'
 import type { Asset, Depth, Lesson, Library, Scene, SceneLayer } from './types'
@@ -63,32 +63,43 @@ export class Stage {
 
   /** Longest render side in device px (1080p by default; Retina at full ratio costs 4x the fill). */
   renderCap = 1920
-  /** Notches the adaptive tier has stepped down: a 2 s average under ADAPT_MIN_FPS drops one, never below 1x CSS. */
-  notches = 0
+  /** The adaptive tier (rules: ADAPT / nextTier in layout.ts): notches stepped down, lock after flip-flops. */
+  tier: Tier = TIER0
+  get notches() { return this.tier.notches }
+  /** Probes force a size: counts as a change, so the 20 s / one-per-minute rules apply to it too. */
+  set notches(n: number) { this.tier = { ...this.tier, notches: n, fast: 0, lastChange: performance.now() } }
   adaptive = true
-  private window = { start: 0, frames: 0 }
+  private window = { start: 0, frames: 0, last: 0 }
 
   /** Sharp up to the device's pixels, under the cap, minus the adaptive notches. The painted look hides the rest. */
   fit() {
-    const longest = Math.max(this.canvas.clientWidth, this.canvas.clientHeight, 1)
-    this.engine.setHardwareScalingLevel(1 / renderScale(longest, window.devicePixelRatio || 1, this.renderCap, this.notches))
+    this.engine.setHardwareScalingLevel(1 / this.scaleAt(this.tier.notches))
     this.engine.resize()
   }
 
-  setRenderCap(cap: number) { this.renderCap = cap; this.notches = 0; this.window.start = 0; this.fit() }
+  private scaleAt(notches: number) {
+    const longest = Math.max(this.canvas.clientWidth, this.canvas.clientHeight, 1)
+    return renderScale(longest, window.devicePixelRatio || 1, this.renderCap, notches)
+  }
 
-  /** Count a frame; at the end of each 2 s window, step down one notch if it averaged too slow. */
+  /** A teacher's Sharpness choice starts the tier afresh (unlocked). */
+  setRenderCap(cap: number) { this.renderCap = cap; this.tier = TIER0; this.window.start = 0; this.fit() }
+
+  /** Count a frame; each finished 2 s window goes through nextTier. A window with a stall (texture upload, hidden
+   *  tab) says nothing about speed and is dropped. */
   tick(now: number) {
-    if (!this.window.start) { this.window = { start: now, frames: 0 }; return }
-    this.window.frames++
-    if (now - this.window.start < ADAPT_WINDOW_MS) return
-    const fps = (this.window.frames * 1000) / (now - this.window.start)
-    this.window = { start: now, frames: 0 }
-    if (!this.adaptive || fps >= ADAPT_MIN_FPS) return
-    const before = this.engine.getHardwareScalingLevel()
-    this.notches++
-    this.fit()
-    if (this.engine.getHardwareScalingLevel() === before) this.notches--   // already at 1x CSS: nothing left to drop
+    const w = this.window
+    const stalled = document.hidden || (w.last && now - w.last > ADAPT_STALL_MS)
+    w.last = now
+    if (!w.start || stalled) { Object.assign(w, { start: now, frames: 0 }); return }
+    w.frames++
+    if (now - w.start < ADAPT_WINDOW_MS) return
+    const fps = (w.frames * 1000) / (now - w.start)
+    Object.assign(w, { start: now, frames: 0 })
+    if (!this.adaptive) return
+    const before = this.tier.notches
+    this.tier = nextTier(this.tier, fps, now, this.scaleAt(before + 1) < this.scaleAt(before))
+    if (this.tier.notches !== before) this.fit()
   }
 
   setLook(look: Record<string, number | string> | undefined) { this.look = { ...STAGE_LOOK, ...(look ?? {}) } }
@@ -100,7 +111,7 @@ export class Stage {
   }
 
   /** Build a scene's set hidden, then swap it in whole: the old set stays on screen until every texture is ready. */
-  async build(s: Scene): Promise<void> {
+  async build(s: Scene, lib: Library & { base: string } = this.lib): Promise<void> {
     const token = ++this.buildToken
     const next: Built[] = []
     const wanted: { layer: SceneLayer; order: number; index: number }[] = []
@@ -109,10 +120,10 @@ export class Stage {
     s.set.layers.forEach((layer, index) => { const d = layer.depth; perDepth[d] = perDepth[d] ?? 0; wanted.push({ layer, order: perDepth[d]++, index }) })
     const misses: { need: unknown; reason: string }[] = []
     await Promise.all(wanted.map(async ({ layer, order, index }) => {
-      const asset = resolveAsset(this.lib, layer, layer.depth)
+      const asset = resolveAsset(lib, layer, layer.depth)
       if (!asset) { misses.push({ need: layer.need ?? layer.asset, reason: 'no match' }); return }
       let tex
-      try { tex = await loadPremultiplied(this.lib.base + asset.file, this.scene) } catch { misses.push({ need: layer.need ?? layer.asset, reason: `file did not load: ${asset.file}` }); return }
+      try { tex = await loadPremultiplied(lib.base + asset.file, this.scene) } catch { misses.push({ need: layer.need ?? layer.asset, reason: `file did not load: ${asset.file}` }); return }
       if (token !== this.buildToken) return
       const p = placeLayer(asset, layer, order)
       const handle = makeLayer(asset, tex, p.w, p.h, p.uRepeat, this.scene)
@@ -141,7 +152,8 @@ export class Stage {
 
   /** Pose everything for t seconds into scene s. */
   pose(s: Scene, t: number, clock: number) {
-    const c = cameraAt(s.camera, t, sceneDuration(s))
+    const shot = shotAt(s, t)                       // a directed scene plays camera, then each of camera_more
+    const c = cameraAt(shot.cam, shot.t, sceneDuration(s))
     this.camera.position.set(c.x, c.y, c.z)
     this.camera.fov = c.fov
     for (const b of this.built) {
@@ -176,7 +188,19 @@ async function fetchJson<T>(url: string): Promise<T> {
 export async function playLesson(lessonOrUrl: Lesson | string, libraryUrl?: string, canvas?: HTMLCanvasElement): Promise<Player> {
   const lesson = typeof lessonOrUrl === 'string' ? await fetchJson<Lesson>(lessonOrUrl) : lessonOrUrl
   if (!Array.isArray(lesson.scenes) || !lesson.scenes.length) throw new Error(`lesson ${lesson.id}: no scenes`)
-  const lib = await loadLibrary(libraryUrl ?? `library/${lesson.bundle ?? '_placeholder'}/library.json`)
+  const libraries = new Map<string, Promise<Library & { base: string }>>()
+  const libraryOf = (url: string) => { if (!libraries.has(url)) libraries.set(url, loadLibrary(url)); return libraries.get(url)! }
+  const lessonUrl = libraryUrlFor({}, lesson, libraryUrl)
+  const lib = await libraryOf(lessonUrl)
+  /** a scene's own bundle (scene.bundle); one that does not load falls back to the lesson's, with a warning */
+  async function sceneLibrary(s: Scene) {
+    const url = libraryUrlFor(s, doc.lesson, libraryUrl)
+    try { return await libraryOf(url) } catch (err) {
+      libraries.delete(url)
+      console.warn(`stage25d: ${s.id}: library ${url} did not load, using the lesson's`, err)
+      return lib
+    }
+  }
   const el = canvas ?? document.body.appendChild(document.createElement('canvas'))
   const stage = new Stage(el, lib)
   const doc = new LessonDoc(lesson)
@@ -190,7 +214,7 @@ export async function playLesson(lessonOrUrl: Lesson | string, libraryUrl?: stri
     const target = Math.max(0, Math.min(doc.lesson.scenes.length - 1, i))
     const ticket = ++entering
     const s = doc.lesson.scenes[target]
-    await stage.build(s)
+    await stage.build(s, await sceneLibrary(s))
     if (ticket !== entering) return      // a later seek won
     index = target; t = at; builtScene = s
     entering = 0
@@ -199,7 +223,7 @@ export async function playLesson(lessonOrUrl: Lesson | string, libraryUrl?: stri
   doc.subscribe(() => {
     const s = current()
     stage.setLook(doc.lesson.look)
-    if (!builtScene || s.set.layers.length !== builtScene.set.layers.length || s.set.sky !== builtScene.set.sky
+    if (!builtScene || s.bundle !== builtScene.bundle || s.set.layers.length !== builtScene.set.layers.length || s.set.sky !== builtScene.set.sky
       || s.set.layers.some((l, i) => l.asset !== builtScene!.set.layers[i].asset || l.need !== builtScene!.set.layers[i].need || l.depth !== builtScene!.set.layers[i].depth)) {
       void enter(index, t)
       return

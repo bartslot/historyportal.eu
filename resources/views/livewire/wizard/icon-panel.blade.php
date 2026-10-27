@@ -127,7 +127,13 @@
          art:make pack) is a picture, not a glyph: inverting it gives its negative, so it sits on a
          paper tile as it is. --}}
     <div class="min-h-0 flex-1 overflow-y-auto">
-        @if ($this->icons()->isEmpty())
+        @if ($this->icons()->isEmpty() && $this->activeEra() !== '')
+            {{-- Nothing of this era in this set: say so, and one click shows every era. --}}
+            <p class="px-1 py-6 text-center text-xs text-slate-500" data-era-empty>
+                {{ __('Nothing from this period in this set.') }}
+                <button type="button" wire:click="selectEra('')" class="ml-1 text-slate-300 underline-offset-2 hover:text-primary hover:underline">{{ __('All times') }}</button>
+            </p>
+        @elseif ($this->icons()->isEmpty())
             <p class="px-1 py-6 text-center text-xs text-slate-500">
                 {{ __('No assets in this set yet.') }}
             </p>

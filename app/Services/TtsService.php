@@ -251,6 +251,12 @@ SSML;
             // connect timeout stays short — an unreachable endpoint should still fail fast.
                 ->timeout(180)
                 ->connectTimeout(5)
+                // Azure throttles a burst ("Downstream Service Throttled", 429) after ~25 quick
+                // clips: wait (its Retry-After when it sends one) and try again, twice, instead of
+                // failing the scene. Any other answer is not retried.
+                ->retry(3, fn (int $attempt, \Throwable $e) => self::throttleWaitMs($attempt, $e),
+                    fn (\Throwable $e) => $e instanceof \Illuminate\Http\Client\RequestException && $e->response->status() === 429,
+                    throw: false)
                 ->withBody($ssml, 'application/ssml+xml')
                 ->post("https://{$region}.tts.speech.microsoft.com/cognitiveservices/v1");
 
@@ -270,6 +276,14 @@ SSML;
 
             return null;
         }
+    }
+
+    /** How long to wait before retrying a throttled request: Retry-After when given, else 2 s, 4 s. */
+    private static function throttleWaitMs(int $attempt, \Throwable $e): int
+    {
+        $after = $e instanceof \Illuminate\Http\Client\RequestException ? (int) $e->response->header('Retry-After') : 0;
+
+        return ($after > 0 ? min($after, 30) : 2 ** $attempt) * 1000;
     }
 
     /**

@@ -149,6 +149,30 @@ final class SpeechBalloons
     }
 
     /**
+     * The scene's config with every balloon that speaks from figure $from now speaking from $to:
+     * the same figure, drawn from a new picture (a quick mask makes a new asset). Mouth and facing
+     * stay, they are fractions of the same drawing.
+     *
+     * @param  array<string, mixed>  $config
+     * @return array<string, mixed>
+     */
+    public static function withSpeakerAsset(array $config, int $from, int $to): array
+    {
+        if (! is_array($config['lines'] ?? null)) {
+            return $config;
+        }
+        $config['lines'] = array_map(function (mixed $line) use ($from, $to): mixed {
+            if (is_array($line) && (int) ($line['figure']['asset_id'] ?? 0) === $from) {
+                $line['figure']['asset_id'] = $to;
+            }
+
+            return $line;
+        }, $config['lines']);
+
+        return $config;
+    }
+
+    /**
      * The scene's timeline after line $removed is gone: that balloon's tracks go with it, and the
      * tracks of every balloon after it follow its new place (`bal:<index>` names a place in the list).
      *

@@ -3,6 +3,10 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    @if (\Illuminate\Support\Facades\Route::has('dev.tuning.index') && auth()->check())
+        {{-- The dev panel's presets endpoint (local only): resources/js/dev/tuner.js asks only when this is here. --}}
+        <meta name="dev-tuning" content="{{ route('dev.tuning.index') }}">
+    @endif
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $lesson->title }} — History Portal</title>
     {{-- lesson-map.js (+ the ~1 MB MapLibre/volcanoes chunk) is loaded on demand by
@@ -72,7 +76,10 @@
         'narrator_welcome_lite_url' => $lesson->narrator?->welcomeVideoLiteUrl(),
         'game_duration_seconds' => $lesson->strategyGame ? $lesson->strategyGame->duration_minutes * 60 : 600,
         'game_title'            => $lesson->strategyGame?->title,
-        'game_instructions'     => $lesson->strategyGame?->instructions,
+        // Instructions are written in markdown; the class gets the rendered text, never the ## and **.
+        'game_instructions_html' => $lesson->strategyGame?->instructions
+            ? \Illuminate\Support\Str::markdown($lesson->strategyGame->instructions, ['html_input' => 'strip', 'allow_unsafe_links' => false])
+            : null,
         'era'                   => $lesson->era,
         'region'                => $lesson->region,
 
@@ -107,8 +114,8 @@
         'source_attribution'    => $lesson->sourceAttribution(),
         'title_bg_url'          => $lesson->titleBgUrl(),
         // How the title screen draws the name (the teacher's choice or the series' default).
-        // A series wordmark (public/lesson-logos/{translation_group}.svg) replaces the plain title's
-        // lead-in; a comic candidate (public/lesson-titles/{translation_group}/{candidate}/poster.json)
+        // A series wordmark (public/lesson-logos/{series}.svg, Lesson::titleSeries) replaces the plain title's
+        // lead-in; a comic candidate (public/lesson-titles/{series}/{candidate}/poster.json)
         // replaces the whole picture. Each is null unless it is the style in use.
         'title_style'           => $titleStyle,
         'title_logo_url'        => $titleStyle === \App\Support\TitlePoster::LOGO ? $lesson->titleLogoUrl() : null,
@@ -134,7 +141,12 @@
                 'id'          => $s->id,   // lets the teacher-preview "Edit scene" deep-link to this exact scene
                 'order'       => $s->order,
                 'kind'        => $s->kind,
-                'config'      => $s->config,
+                // canStart: a scene whose media is still being made holds Start (Scene::isAwaitingMedia).
+                'awaiting_media' => $s->isAwaitingMedia(),
+                // A predict moment's rubric is the grader's business: the class gets the questions only.
+                'config'      => $s->game_type === 'predict' && is_array(($s->config ?? [])['predict'] ?? null)
+                    ? ['predict' => \App\Services\Lessons\PredictSpec::forPlayer($s->config['predict'])] + $s->config
+                    : $s->config,
                 'diorama_assets' => \App\Services\Diorama\LibraryAssets::forScene($s),
                 'chapter_name' => $s->chapterName(),
                 'year'        => $s->year,
@@ -201,6 +213,8 @@
                         'flip_x'  => ! empty($l['flip_x']),
                         'flip_y'  => ! empty($l['flip_y']),
                         ...\App\Services\Support\LayerSitIn::payload($l),
+                        // A sprite sheet over the picture (the sails that swell with the wind).
+                        ...\App\Services\Support\LayerFrames::payload($l),
                         'occlude' => ! empty($l['occlude']),
                     ])->filter(fn($l) => $l['url'] || $l['embed'])->values()->all() ?: null,
                     'anchor_sentence' => $shot['anchor_sentence'] ?? null,
@@ -242,6 +256,17 @@
         'estimated_minutes'     => $lesson->relationLoaded('scenes') ? $lesson->estimatedMinutes() : null,
         // A student can't skip a quiz question; the teacher testing their own lesson can.
         'can_skip_quiz'         => (bool) auth()->user()?->canManage($lesson),
+        // Predict moments: where typed answers go, and (for the board) the lesson's classes, each with
+        // its remembered answer to "Devices in class?".
+        'predict'               => [
+            'store_url'  => route('lesson.predictions.store', ['lessonCode' => $lesson->lesson_code]),
+            'mode_url'   => route('lesson.play-mode', ['lessonCode' => $lesson->lesson_code]),
+            'answer_max' => \App\Services\Lessons\PredictSpec::ANSWER_MAX,
+            'classrooms' => auth()->user()?->canManage($lesson)
+                ? $lesson->classrooms()->get(['classrooms.id', 'classrooms.name', 'classrooms.devices_mode'])
+                    ->map(fn ($c) => ['id' => $c->id, 'name' => $c->name, 'devices_mode' => $c->devices_mode])->values()
+                : [],
+        ],
         // Harbour race on the teams' phones (HarbourRace): only a lesson manager opens one.
         'race'                  => auth()->user()?->canManage($lesson) ? [
             'store_url'      => route('race.store', ['lessonCode' => $lesson->lesson_code]),
@@ -398,7 +423,8 @@
                  line on screen (a line not translated yet shows in the original). x-text (never
                  x-html): a script is teacher copy and must not inject markup into the player. No
                  x-transition: its leave never applied in a hidden tab and left the bubble up. --}}
-            <div x-show="captionsOn && captionText && (phase === 'INTRO' || phase === 'GAME_ACTIVE')"
+            {{-- Not while a power-meter moment is up: its panel sits where the caption does. --}}
+            <div x-show="captionsOn && captionText && !_momentActive && (phase === 'INTRO' || phase === 'GAME_ACTIVE')"
                  x-cloak
                  class="lp-cc pointer-events-none absolute left-1/2 -translate-x-1/2 text-center"
                  :class="!chromeHidden && 'lp-cc--lifted'"
@@ -455,23 +481,23 @@
                  class="pointer-events-none absolute inset-0 flex items-center justify-center lp-chrome-fade"
                  :class="centreGlyphShown ? 'opacity-100' : 'opacity-0'"
                  style="z-index:45">
-                {{-- No data-tooltip here on purpose: a 96px glyph in the middle of the stage says
-                     what it is, and a hover hint floating over the scene is noise. The deck's small
-                     play/pause carries the label and the K shortcut. On a line-art scene a white
-                     glyph on white paper vanishes, so there (only) it sits on the deck's plate. --}}
+                {{-- No data-tooltip here on purpose: a big glyph in the middle of the stage says what
+                     it is, and a hover hint floating over the scene is noise. The deck's small
+                     play/pause carries the label and the K shortcut. No plate behind it (Bart,
+                     2026-10-21): the glyph alone, twice the old size, its shadow keeping it readable
+                     on white paper too. --}}
                 <button type="button" @click="togglePlayback()"
                         :aria-label="playbackPaused ? @js(__('Play')) : @js(__('Pause'))"
-                        class="group flex h-24 w-24 items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
-                        :class="[centreGlyphShown ? 'pointer-events-auto' : 'pointer-events-none',
-                                 !backdropShade && 'border border-white/10 bg-black/70 backdrop-blur-md']">
+                        class="group flex h-48 w-48 items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+                        :class="centreGlyphShown ? 'pointer-events-auto' : 'pointer-events-none'">
 
-                    <svg x-show="playbackPaused" class="h-14 w-14 text-white drop-shadow-[0_4px_14px_rgba(0,0,0,0.8)] transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95" viewBox="0 0 21 23" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <svg x-show="playbackPaused" class="h-28 w-28 text-white drop-shadow-[0_6px_24px_rgba(0,0,0,0.6)] transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95" viewBox="0 0 21 23" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path fill-rule="evenodd" clip-rule="evenodd" d="M0 2.52873C0 0.608107 2.05916 -0.609418 3.74205 0.316169L19.2842 8.86436C21.0285 9.82373 21.0285 12.3301 19.2842 13.2895L3.74205 21.8377C2.05916 22.7633 0 21.5457 0 19.6251V2.52873Z" fill="white"/>
                     </svg>
 
                     {{-- Pause: two bars, drawn to the same weight and corner radius as the play
                          triangle above so the two states feel like one control. --}}
-                    <svg x-show="!playbackPaused" x-cloak class="h-14 w-14 text-white drop-shadow-[0_4px_14px_rgba(0,0,0,0.8)] transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
+                    <svg x-show="!playbackPaused" x-cloak class="h-28 w-28 text-white drop-shadow-[0_6px_24px_rgba(0,0,0,0.6)] transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95"
                          viewBox="0 0 21 23" fill="currentColor" aria-hidden="true">
                         <rect x="0" y="0" width="6.5" height="23" rx="2.5"/>
                         <rect x="14.5" y="0" width="6.5" height="23" rx="2.5"/>
@@ -826,13 +852,13 @@
             </div>
 
             {{-- The bottom rail: one row on the bottom gutter, every piece's bottom on one baseline.
-                 Start, the language and the way down to "About this lesson" left, the
+                 Start and the language left, the
                  join QR right (static: title-qr.js only sizes or hides it). --}}
             <div class="title-rail flex items-end gap-2" style="z-index:20" data-title-rail>
                 <div class="flex items-end gap-3" data-title-avoid="children" data-title-piece="cta">
                     <template x-if="canStart">
                         <button type="button" @click="startLesson()" data-title-rail-item
-                                class="title-pill flex items-center gap-2.5 rounded-full bg-white px-5 text-sm font-bold text-brand-ink transition-[filter] duration-150 ease-out hover:brightness-95 focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:gap-3 sm:px-8 sm:text-base">
+                                class="title-pill flex shrink-0 items-center gap-2.5 whitespace-nowrap rounded-full bg-white px-5 text-sm font-bold text-brand-ink transition-[filter] duration-150 ease-out hover:brightness-95 focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:gap-3 sm:px-8 sm:text-base">
                             <svg class="h-4 w-4 fill-none stroke-current" viewBox="0 0 16 17" aria-hidden="true">
                                 <path d="M0.75 1.87758C0.75 1.0219 1.6674 0.479469 2.41716 0.891836L13.9577 7.23916C14.7349 7.66657 14.7349 8.78322 13.9577 9.21064L2.41716 15.558C1.6674 15.9703 0.75 15.4279 0.75 14.5722V1.87758Z" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
@@ -854,13 +880,9 @@
                     </template>
                 </div>
 
+                {{-- No "down to About" chevron after it: beside the language's own caret it read as a
+                     stray second chevron (pair test 2026-10-24). About is a scroll away. --}}
                 <x-lesson.language-switch :lesson="$lesson" :translations="$translations" data-title-avoid data-title-piece="language" data-title-rail-item />
-
-                <button type="button" @click="scrollToAbout()" aria-label="{{ __('About this lesson') }}" data-tooltip="{{ __('About this lesson') }}"
-                        data-title-avoid data-title-piece="chevron" data-title-rail-item
-                        class="title-pill flex w-10 shrink-0 items-center justify-center rounded-full text-white/80 transition-colors hover:text-white focus:outline-none focus-visible:outline-2 focus-visible:outline-white">
-                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>
-                </button>
 
                 {{-- The join code: the QR on its white plate with the lesson code under it (a camera reads
                      it on any picture), or the code alone when the QR made way. --}}
@@ -961,18 +983,19 @@
         >
             <div class="w-full max-w-2xl rounded-3xl border border-primary/40 bg-slate-950/95 p-7 sm:p-9">
                 <p class="text-primary text-2xs font-semibold uppercase tracking-[0.3em] mb-3">{{ __('Your Challenge') }}</p>
-                <h2 x-text="lesson.game_title || 'Strategy Challenge'"
+                <h2 x-text="lesson.game_title || @js(__('Strategy Challenge'))"
                     class="font-history text-2xl sm:text-4xl font-bold text-[#E1EEF4] leading-tight mb-5"></h2>
-                <div x-text="lesson.game_instructions || 'Work in your teams to decide your strategy, then present it to the class.'"
-                     class="whitespace-pre-line text-slate-300 text-sm sm:text-base leading-relaxed max-h-[42vh] overflow-y-auto pr-1"></div>
+                <div x-show="lesson.game_instructions_html" x-html="lesson.game_instructions_html"
+                     class="text-slate-300 text-sm sm:text-base leading-relaxed [&_h1,&_h2,&_h3]:font-bold [&_h1,&_h2,&_h3]:text-[#E1EEF4] [&_h1,&_h2,&_h3]:mt-3 [&_p]:mb-2 [&_ul]:list-disc [&_ol]:list-decimal [&_ul,&_ol]:pl-5 [&_li]:mb-1 max-h-[42vh] overflow-y-auto pr-1"></div>
+                <p x-show="!lesson.game_instructions_html" class="text-slate-300 text-sm sm:text-base leading-relaxed">{{ __('Work in your teams to decide your strategy, then present it to the class.') }}</p>
                 <div class="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-400">
                     <span x-show="lesson.team_count" class="flex items-center gap-1.5">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4z"/></svg>
-                        <span x-text="lesson.team_count + ' teams'"></span>
+                        <span x-text="@js(__(':count teams')).replace(':count', lesson.team_count)"></span>
                     </span>
                     <span class="flex items-center gap-1.5">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        <span x-text="Math.round((lesson.game_duration_seconds || 600) / 60) + ' minutes'"></span>
+                        <span x-text="@js(__(':count minutes')).replace(':count', Math.round((lesson.game_duration_seconds || 600) / 60))"></span>
                     </span>
                 </div>
                 <button @click="beginGame()"

@@ -73,6 +73,10 @@ final class LessonProblems
             $out[] = $problem('audio', __('This scene has no voice yet.'), self::BLOCKS, 'audio');
         } elseif (self::missingFile($scene->audio_path)) {
             $out[] = $problem('audio', __('The voice file is missing.'), self::BLOCKS, 'audio');
+        } elseif ($spoken && $scene->error_message && self::failedStep($scene->error_message) === 'audio'
+            && $scene->hasFreshAudio() && ! $scene->narrationWasDowngraded()) {
+            // A re-narration of this same text failed; the scene still plays its own recording.
+            $out[] = $problem('audio', __('Re-narrating failed: this scene still plays its earlier recording.'), self::OUTDATED, 'audio');
         } elseif ($spoken && $scene->audio_path !== null && ! $scene->hasFreshAudio()) {
             $out[] = $problem('audio', __('The voice belongs to an older text.'), self::OUTDATED, 'audio');
         } elseif ($scene->audio_provider !== null && $scene->narrationWasDowngraded()) {

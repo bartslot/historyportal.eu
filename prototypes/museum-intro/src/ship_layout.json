@@ -1,0 +1,10 @@
+{
+  "_about": "Shared by tools/build_ship.py (Blender) and src/world.js: the set sails, model units, three.js frame (x to the bow, y up). off = how far in front of the mast the sail's head hangs (on its yard). brace = yards turned round the mast (rad).",
+  "brace": 0.55,
+  "sails": [
+    { "x": -1, "y0": 7.2, "y1": 12.6, "w0": 8.6, "w1": 9.6, "belly": 1.6, "off": 0.82 },
+    { "x": -1, "y0": 14.2, "y1": 19.6, "w0": 5.6, "w1": 7.6, "belly": 1.2, "off": 1.32 },
+    { "x": 10, "y0": 7.0, "y1": 11.8, "w0": 7.6, "w1": 8.4, "belly": 1.4, "off": 0.82 },
+    { "x": 10, "y0": 13.2, "y1": 18.0, "w0": 4.8, "w1": 6.6, "belly": 1.0, "off": 1.3 }
+  ]
+}

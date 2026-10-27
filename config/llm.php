@@ -113,6 +113,7 @@ return [
     |   script     the lesson's narration — the thing a class actually hears
     |   mechanical quiz distractors, shot lists, image prompts, alt text
     |   vision     looking at an image and describing it
+    |   feedback   two kind sentences on a child's answer (predict moment)
     |
     */
 
@@ -122,6 +123,9 @@ return [
         'vision' => env('LLM_ROLE_VISION', 'openai'),
         // subtitle translation (App\Services\Captions): cheap and fast is right, it runs once per line
         'translate' => env('LLM_ROLE_TRANSLATE', env('LLM_ROLE_MECHANICAL', 'openai')),
+        // feedback on a child's WHY answer at a predict moment (App\Services\Predict): a small, cheap
+        // model; JEV has already graded, this only writes 1-2 kind sentences
+        'feedback' => env('LLM_ROLE_FEEDBACK', env('LLM_ROLE_MECHANICAL', 'openai')),
     ],
 
     /** Role used when a call site asks for one that isn't configured. */

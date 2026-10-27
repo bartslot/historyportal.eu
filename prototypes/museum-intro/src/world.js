@@ -1,0 +1,336 @@
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import { HALL } from './museum.js';
+import { prepareSketchfabMesh } from './sketchfabShip.js';
+import { WIPE, WIPE_GLSL, styledMaterial, cardMaterial } from './style.js';
+
+// The world inside the painting, built in real 3D. The painting is only the LAYOUT reference: every object is
+// placed on the ray from the painter's eye through the spot where Vroom painted it, at the distance where that
+// ray meets the sea. Seen from the eye at the crossfade, the 3D world therefore lines up with the canvas.
+
+export const LAYOUT = {
+  horizonV: 0.458, // painting v (up) of the horizon; the painter's eye sits at its height
+  eyeAboveSea: 1.15, // world units; sets how far behind the frame everything is
+  hero: { u: 0.215, waterV: 0.322, topV: 0.871, yaw: 0.62, sink: 0.6, modelTop: 27.5, centerX: 2.15, },
+  manHeight: 1.48, // model units (the ship is ~34 model units long, a 1640s ship ~40 m)
+  cardMinT: 1.25, // painting cut-outs nearer than this would stand in the hall: dropped
+};
+
+export const TASMAN_SHOT = [-1.0, 0.98, -2.3]; // closing camera: model units from Tasman's feet, height in men
+
+export const EYE = new THREE.Vector3(HALL.voc.x, HALL.voc.y + (LAYOUT.horizonV - 0.5) * HALL.voc.h, 4.3);
+const planePoint = (u, v) => new THREE.Vector3(HALL.voc.x + (u - 0.5) * HALL.voc.w, HALL.voc.y + (v - 0.5) * HALL.voc.h, 0);
+export const SEA_Y = EYE.y - LAYOUT.eyeAboveSea;
+const ray = (u, v) => planePoint(u, v).sub(EYE);
+const tToSea = (u, v) => (SEA_Y - EYE.y) / ray(u, v).y; // ray parameter (1 = the canvas) where it meets the sea
+const along = (u, v, t) => EYE.clone().add(ray(u, v).multiplyScalar(t));
+
+function sky(tex) {
+  tex.sky_flat.wrapS = THREE.RepeatWrapping;
+  // no mipmaps: the panorama is magnified anyway, and the atan seam would pick a blurred mip (a white column)
+  tex.sky_flat.generateMipmaps = false;
+  tex.sky_flat.minFilter = THREE.LinearFilter;
+  const mat = new THREE.ShaderMaterial({
+    side: THREE.BackSide,
+    depthWrite: false,
+    uniforms: { ...WIPE, uP: { value: tex.sky_paint }, uL: { value: tex.sky_flat } },
+    vertexShader: `varying vec3 vDir; void main() { vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: /* glsl */ `
+      uniform sampler2D uP; uniform sampler2D uL; varying vec3 vDir;
+      ${WIPE_GLSL}
+      void main() {
+        vec3 d = normalize(vDir);
+        float elev = asin(clamp(d.y, -1.0, 1.0));
+        vec2 uv = vec2(atan(d.x, -d.z) / 3.14159 + 0.5, clamp(elev / 0.62, 0.0, 1.0)); // oil panorama spans 0..35 deg
+        vec3 p = texture2D(uP, uv).rgb;
+        // History Lines sky (flat blue, clouds edged a slightly darker blue) spans 0..55 deg, then the flat top blue
+        float vl = elev / 0.96;
+        vec3 l = texture2D(uL, vec2(uv.x * 1.5, clamp(vl, 0.0, 0.985))).rgb; // above the panorama: its own (even) top row
+        l = max(l, vec3(0.5, 0.75, 0.93)); // cloud edges: only a slightly darker blue than the sky, never navy (linear rgb)
+        // open sky is ONE flat blue (the panorama's own blue had a soft mottle); clouds and their edges stay drawn
+        float cloud = smoothstep(0.56, 0.66, l.r);
+        l = mix(vec3(0.55, 0.76, 0.92), l, cloud); // soft, not cyan
+        l = mix(l, vec3(0.80, 0.91, 0.97), (1.0 - smoothstep(0.0, 0.035, elev)) * 0.6); // soft pale horizon
+        vec2 w = wipeMask(cameraPosition + d * 400.0); // the sky turns last; clouds: no ink rim (History Lines rule)
+        gl_FragColor = vec4(mix(p, l, w.x), 1.0);
+        #include <colorspace_fragment>
+      }`,
+  });
+  const m = new THREE.Mesh(new THREE.SphereGeometry(90, 48, 24), mat);
+  m.renderOrder = -100;
+  return m;
+}
+
+function sea(tex) {
+  const geo = new THREE.PlaneGeometry(320, 320, 220, 220);
+  geo.rotateX(-Math.PI / 2);
+  const mat = styledMaterial({
+    paint: tex.sea_paint,
+    mode: 'uv',
+    scale: 70,
+    tintPaint: [2.3, 1.75, 1.7],
+    lit: 0.5,
+    extraPaint: `cp = mix(cp, vec3(0.6, 0.62, 0.58), smoothstep(6.0, 70.0, length(vPos.xz - cameraPosition.xz)));`,
+    lines: { kind: 'sea', ink: tex.sea2_ink, ink2: tex.sea_colour, hatch: tex.hatch_ink, scale: 0.09, inkK: 0.8, hatchK: 0, near: 2.0, far: 20 },
+    // gentle swell: a few long sines, normals from their derivatives
+    swell: `
+      float a = 0.035, k1 = 0.9, k2 = 1.7;
+      wp.y += a * sin(wp.x * k1 + uTime * 0.9) + a * 0.6 * sin(wp.z * k2 - uTime * 1.3 + wp.x * 0.4);
+      wn = normalize(vec3(-a * k1 * cos(wp.x * k1 + uTime * 0.9), 1.0, -a * 0.6 * k2 * cos(wp.z * k2 - uTime * 1.3 + wp.x * 0.4)));`,
+  });
+  const m = new THREE.Mesh(geo, mat);
+  m.position.set(EYE.x, SEA_Y, -161); // ends just behind the wall: it must never reach into the hall
+  return m;
+}
+
+// The ship's materials (sketchfabShip.js sorts the Sketchfab meshes into them; tools/build_ship.py names the v4 ship's): History Lines = a flat light/shade fill from colours
+// sampled off the anchors, times a hand-drawn ink tile (ChatGPT) laid on the model's UVs. Painterly = Vroom oil.
+// tile: ink tile; scale: tiles per model unit; lit: which faces go to the shade colour (see style.js)
+const SHIP_MATS = {
+  wood_hull: { tile: 'hull', paint: 'hull', scale: 0.5, light: 0xab7647, shade: 0x8b5d36, lit: 'under', hatchK: 0.5, cluster: 2 },
+  wood_deck: { tile: 'deck', paint: 'hull', scale: 0.5, light: 0xddb67f, shade: 0xbd915c, lit: 'under', hatchK: 0, cluster: 2 },
+  wood_tar: { tile: 'tar', paint: 'hull', scale: 0.7, light: 0x8c6a47, shade: 0x735637, lit: 'under', inkK: 0.55, tint: 0.55 },
+  spar: { tile: 'spar2', paint: 'hull', scale: 0.6, light: 0xdcaa6c, shade: 0xb88650, lit: 'round', lod: true, cluster: 2 },
+  iron: { tile: 'iron', paint: 'hull', scale: 1.5, light: 0x67707a, shade: 0x4a5058, lit: 'round', tint: 0.4 },
+  rope: { tile: 'rope4', paint: 'hull', scale: 1.4, light: 0xae9877, shade: 0x8a765a, lit: 'round', tint: 0.6, wobble: true },
+  block: { tile: 'spar2', paint: 'hull', scale: 2.0, light: 0x84807a, shade: 0x66625e, lit: 'under', tint: 0.5 },
+  sail: { tile: 'sailcloth', paint: 'sail', scale: 0.67, light: 0xfbf7ea, shade: 0xf0e7d2, lit: 'sun', inkK: 0.8 },
+  flag: { tile: 'flag', paint: 'sail', scale: 1.0, light: 0xf6f1e6, shade: 0xe4dccb, lit: 'sun', flag: true },
+  barrel: { tile: 'barrel', paint: 'hull', scale: 1.1, light: 0xc49a68, shade: 0x9e7650, lit: 'round' },
+  crate: { tile: 'crate', paint: 'hull', scale: 1.6, light: 0xd8b584, shade: 0xb48e60, lit: 'under' },
+};
+
+async function heroShip(tex) {
+  // v5: the Sketchfab ship again (Bart 10-20: "just use the Sketchfab ship and see then what's missing"),
+  // dressed in the v4 material tiles. The v4 Blender ship (ship_v4.glb, tools/build_ship.py) stays in the repo.
+  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  const gltf = await loader.loadAsync('./assets/world/ship.glb');
+  const H = LAYOUT.hero;
+  const t = tToSea(H.u, H.waterV);
+  const heightWorld = (H.topV - H.waterV) * HALL.voc.h * t;
+  const scale = heightWorld / H.modelTop;
+  const pivot = new THREE.Group();
+  pivot.position.copy(along(H.u, H.waterV, t));
+  pivot.position.y = SEA_Y;
+  pivot.rotation.y = H.yaw;
+  pivot.scale.setScalar(scale);
+  const model = gltf.scene;
+  model.position.set(-H.centerX, -H.sink, 0);
+  pivot.add(model);
+
+  const toModel = new THREE.Matrix4(); // world -> ship model frame, filled once the ship is placed
+  const mats = {};
+  const mat = (name) => {
+    const m = SHIP_MATS[name] ?? SHIP_MATS.wood_hull;
+    const k = m.tint ?? 1;
+    mats[name] ??= styledMaterial({
+      paint: tex[`${m.paint}_paint`], scale: (m.paint === 'sail' ? 0.7 : 1.6) / scale / 10, tintPaint: [1.5 * k, 1.6 * k, 1.7 * k], lit: 0.75, toModel,
+      side: THREE.DoubleSide, wobble: !!m.wobble,
+      lines: { kind: 'uv', ink: tex[`${m.tile}_ink`], hatch: tex.hatch_ink, scale: m.scale, light: m.light, shade: m.shade, lit: m.lit,
+        flag: m.flag, rope: name === 'rope', lod: m.lod, cluster: m.cluster, inkK: m.inkK ?? 1.0, hatchK: m.hatchK ?? 0.3, near: 12, far: 40 },
+    });
+    mats[name].userData.wobble = !!m.wobble;
+    return mats[name];
+  };
+  const parts = {};
+  const casters = [];
+  model.traverse((o) => {
+    if (!o.isMesh) return;
+    const { kind, slots } = prepareSketchfabMesh(o);
+    o.material = slots.map(mat);
+    o.userData.wobble = kind === 'rigging'; // ink.js: the line pass bends the rigging like its fill (clones keep it)
+    // the biggest hull mesh carries the deck (Tasman and the crew are dropped onto it)
+    if (kind === 'hull' && !(parts.wood_deck?.geometry.attributes.position.count > o.geometry.attributes.position.count)) parts.wood_deck = o;
+    casters.push([o, kind === 'sails' ? 3 : 1]);
+  });
+  const sheet = styledMaterial({ paint: tex.sail_paint, scale: 0.7 / scale / 10, tintPaint: [0.85, 0.9, 1.0], lit: 0.7, side: THREE.DoubleSide, toModel,
+    lines: { kind: 'sailsheet', ink: tex.sailsheet2_ink, ink2: tex.sailsheet_ink, hatch: tex.canvas_ink, scale: 0.35, inkK: 1.0, hatchK: 0.2, near: 3, far: 25 } });
+  addSetSails(model, sheet, casters);
+  pivot.updateMatrixWorld(true);
+  toModel.copy(model.matrixWorld).invert();
+  return { pivot, parts, scale, t, model, casters };
+}
+
+// The model's own sails are mostly furled; Vroom's ships sail with full bellied canvas. Courses and topsails on
+// the main (x -1) and fore (x 10) masts, in model units, bellied towards the bow (+x), the foot fuller than the head.
+// the fore topsail (index 3): the figure lands on its yard.
+// v3 values for the Sketchfab ship's yards (ship_layout.json holds the v4 ship's); off = sail head in front of the mast
+export const SAILS = [
+  { x: -1, y0: 7.2, y1: 13.2, w0: 8.6, w1: 9.6, belly: 1.6, off: 0.25 },
+  { x: -1, y0: 14.0, y1: 19.6, w0: 5.6, w1: 7.6, belly: 1.2, off: 0.25 },
+  { x: 10, y0: 7.0, y1: 12.4, w0: 7.6, w1: 8.4, belly: 1.4, off: 0.25 },
+  { x: 10, y0: 13.2, y1: 18.0, w0: 4.8, w1: 6.6, belly: 1.0, off: 0.25 },
+];
+const BRACE = 0.55; // yards turned round the mast (rad)
+
+function addSetSails(model, mat, casters) {
+  for (const s of SAILS) {
+    const geo = new THREE.PlaneGeometry(1, 1, 16, 12);
+    const p = geo.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      const u = p.getX(i) + 0.5; // across (ship's z)
+      const v = p.getY(i) + 0.5; // 1 = head (yard), 0 = foot
+      const w = s.w1 + (s.w0 - s.w1) * v;
+      const belly = s.belly * Math.sin(Math.PI * u) * (0.35 + 0.65 * Math.sin(Math.PI * (0.15 + 0.85 * (1 - v)) * 0.6 + 0.35));
+      p.setXYZ(i, s.off + belly, s.y0 + (s.y1 - s.y0) * v, (u - 0.5) * w);
+    }
+    geo.computeVertexNormals();
+    // the same drawn sail on every yard would repeat: mirror every other one and shift its folds
+    const k = SAILS.indexOf(s);
+    const uv = geo.attributes.uv;
+    // odd sails: v shifted by 2, which tells the shader to use the second sail drawing
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, k % 2 ? 1 - uv.getX(i) : uv.getX(i), 0.08 * (k % 3) + uv.getY(i) * 0.9 + (k % 2) * 2);
+    // braced round the mast, like a ship sailing on a quarter wind (also shows the canvas to the painter's eye)
+    const yard = new THREE.Group();
+    yard.position.x = s.x;
+    yard.rotation.y = BRACE;
+    const sail = new THREE.Mesh(geo, mat);
+    yard.add(sail);
+    model.add(yard);
+    casters.push([sail, 10 + casters.length]); // each sail its own id: a line where one overlaps another
+  }
+}
+
+// first hit straight down at a point given in the ship's own (model) frame
+function dropOnto(mesh, ship, lx, lz, fromY = 60) {
+  const toWorld = (p) => p.applyMatrix4(ship.pivot.children[0].matrixWorld);
+  const from = toWorld(new THREE.Vector3(lx, fromY, lz));
+  const mats = [mesh.material].flat();
+  const sides = mats.map((m) => m.side);
+  for (const m of mats) m.side = THREE.DoubleSide; // the model's winding is not reliable
+  const hit = new THREE.Raycaster(from, new THREE.Vector3(0, -1, 0)).intersectObject(mesh, false)[0];
+  mats.forEach((m, i) => (m.side = sides[i]));
+  return hit?.point ?? null;
+}
+
+function standingCard(paint, lines, height) {
+  const img = (lines ?? paint).image;
+  const w = (height * img.width) / img.height;
+  const geo = new THREE.PlaneGeometry(w, height);
+  geo.translate(0, height / 2, 0);
+  const m = new THREE.Mesh(geo, cardMaterial(paint, lines));
+  m.userData.size = [w, height];
+  return m;
+}
+
+// painting ships big enough to be seen up close are not cut-outs but copies of the 3D ship, placed where Vroom
+// painted them (file -> extra yaw from stern-on to the eye)
+const CARD_SHIPS = { 'card_09.webp': 0.7 };
+
+function cardShip(ship, c) {
+  const uc = (c.u0 + c.u1) / 2;
+  const t = tToSea(uc, c.water);
+  const pivot = new THREE.Group();
+  pivot.position.copy(along(uc, c.water, t)).setY(SEA_Y);
+  const away = pivot.position.clone().sub(EYE);
+  pivot.rotation.y = Math.atan2(-away.z, away.x) + CARD_SHIPS[c.file]; // bow away from the eye, turned a little
+  pivot.scale.setScalar(((c.v1 - c.water) * HALL.voc.h * t) / LAYOUT.hero.modelTop);
+  const model = ship.model.clone();
+  pivot.add(model);
+  const casters = [];
+  model.traverse((o) => o.isMesh && casters.push([o, 1]));
+  return { pivot, casters };
+}
+
+function paintingCards(tex, cardsJson) {
+  const group = new THREE.Group();
+  const below = cardsJson.filter((c) => c.water < LAYOUT.horizonV - 0.005);
+  for (const c of cardsJson) {
+    if (CARD_SHIPS[c.file]) continue;
+    const uc = (c.u0 + c.u1) / 2;
+    let t;
+    if (c.water < LAYOUT.horizonV - 0.005) t = tToSea(uc, c.water);
+    else {
+      if (c.u1 < 0.34) continue; // a flag or yard of the hero ship: the 3D model has its own
+      const overlap = (o) => Math.max(0, Math.min(c.u1, o.u1) - Math.max(c.u0, o.u0));
+      const parent = below.reduce((best, o) => (overlap(o) > overlap(best ?? o) || !best ? o : best), null);
+      if (!parent || overlap(parent) === 0) continue;
+      if (CARD_SHIPS[parent.file]) continue; // part of a ship that is now the 3D copy
+      t = tToSea((parent.u0 + parent.u1) / 2, parent.water);
+    }
+    if (t < LAYOUT.cardMinT) continue;
+    const map = tex[c.file];
+    const w = (c.u1 - c.u0) * HALL.voc.w * t;
+    const h = (c.v1 - c.v0) * HALL.voc.h * t;
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), cardMaterial(map, null));
+    m.position.copy(along(uc, (c.v0 + c.v1) / 2, t));
+    m.lookAt(EYE.x, m.position.y, EYE.z);
+    m.userData.t = t;
+    group.add(m);
+  }
+  return group;
+}
+
+export async function buildWorld(scene, tex, cardsJson) {
+  const group = new THREE.Group();
+  scene.add(group);
+  const skyDome = sky(tex);
+  const seaMesh = sea(tex);
+  group.add(skyDome, seaMesh);
+  const cards = paintingCards(tex, cardsJson);
+  group.add(cards);
+  const ship = await heroShip(tex);
+  group.add(ship.pivot);
+  const others = cardsJson.filter((c) => CARD_SHIPS[c.file]).map((c) => cardShip(ship, c));
+  for (const o of others) group.add(o.pivot);
+
+  // places on the ship, found by dropping a ray: the top of the fore topsail, the deck under it
+  const fore = SAILS[3];
+  const toWorld = (x, y, z) => new THREE.Vector3(x, y, z).applyMatrix4(ship.model.matrixWorld);
+  const yardPoint = new THREE.Vector3(fore.off + 0.05, fore.y1 + 0.12, 1.1).applyAxisAngle(new THREE.Vector3(0, 1, 0), BRACE); // on top of the yard
+  const landing = toWorld(fore.x + yardPoint.x, yardPoint.y, yardPoint.z); // on the fore topsail's yard, beside the mast
+  const local = { x: fore.x };
+  const deckAt = (lx, lz) => dropOnto(ship.parts.wood_deck, ship, lx, lz, 12) ?? toWorld(lx, 4.5, lz);
+  const man = LAYOUT.manHeight * ship.scale;
+
+  const tasman = standingCard(tex.tasman_paint, tex.tasman_lines, man);
+  tasman.position.copy(deckAt(local.x - 1.6, 1.8));
+  const crew = [
+    [tex.sailor_front, local.x - 3.6, 0.4, 0.97],
+    [tex.sailor_threequarter, local.x + 1.6, 2.0, 1.0],
+    [tex.pieter_looking_up_mast, local.x - 3.0, 1.2, 0.82],
+  ].map(([map, lx, lz, s]) => {
+    const c = standingCard(null, map, man * s);
+    c.position.copy(deckAt(lx, lz));
+    return c;
+  });
+  group.add(tasman, ...crew);
+
+  // Tasman does not billboard: he faces the closing shot, so points on his card stay on him (and his profile
+  // keeps facing the balloon side). TASMAN_SHOT is that camera spot in the ship's frame, relative to his feet.
+  const tl = ship.model.worldToLocal(tasman.position.clone());
+  const shot = toWorld(tl.x + TASMAN_SHOT[0], tl.y + TASMAN_SHOT[1] * LAYOUT.manHeight, tl.z + TASMAN_SHOT[2]);
+  tasman.rotation.y = Math.atan2(shot.x - tasman.position.x, shot.z - tasman.position.z);
+  tasman.updateMatrixWorld();
+  const shoulder = (cu, cv) => tasman.localToWorld(new THREE.Vector3((cu - 0.5) * tasman.userData.size[0], cv * man, 0.002));
+  const anchors = {
+    sail: landing,
+    mastAt: (e) => landing.clone().lerp(tasman.position.clone().setY(tasman.position.y + man * 0.95), e),
+    shoulder: shoulder(0.3, 0.79), // on the coat, just behind the ruff
+    mouth: shoulder(0.86, 0.87),
+    tasmanChest: shoulder(0.5, 0.7),
+    tasmanFeet: tasman.position.clone(),
+    local: toWorld, // ship model frame -> world, for camera keys on deck
+    tasmanLocal: ship.model.worldToLocal(tasman.position.clone()),
+    dive: planePoint(0.2, 0.42).setZ(0.02), // the hero ship on the canvas, where the figure jumps in
+    man,
+  };
+
+  const faceCamera = crew;
+  // the figures cast crisp ink outlines too (their own drawn lines stay inside)
+  const figures = [tasman, ...crew].map((c, i) => [c, 5 + i, c.material.uniforms.uLines.value]);
+  const casters = [...ship.casters, ...others.flatMap((o) => o.casters), [seaMesh, 4], ...figures];
+  return {
+    group,
+    ship,
+    casters,
+    anchors,
+    update(t, camera) {
+      skyDome.position.copy(camera.position);
+      seaMesh.material.uniforms.uTime.value = t;
+      for (const c of faceCamera) c.rotation.y = Math.atan2(camera.position.x - c.position.x, camera.position.z - c.position.z);
+      for (const c of cards.children) c.visible = c.position.distanceTo(camera.position) > 0.5;
+    },
+  };
+}

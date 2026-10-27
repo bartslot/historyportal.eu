@@ -59,7 +59,7 @@ final class AudioEncoder
             $in = self::level($in, "{$dir}/level.wav") ?? $in;
 
             foreach (self::commands($in, $out) as $command) {
-                @unlink($out);
+                self::remove($out);
                 $run = Process::timeout(120)->run($command);
                 if ($run->successful() && is_file($out) && filesize($out) > 0) {
                     return (string) file_get_contents($out);
@@ -69,11 +69,23 @@ final class AudioEncoder
 
             return null;
         } finally {
-            @unlink($in);
-            @unlink("{$dir}/in.{$inputExtension}");
-            @unlink("{$dir}/level.wav");
-            @unlink($out);
-            @rmdir($dir);
+            foreach ([$in, "{$dir}/in.{$inputExtension}", "{$dir}/level.wav", $out] as $file) {
+                self::remove($file);
+            }
+            if (is_dir($dir) && count(scandir($dir)) === 2) {   // only "." and ".." left
+                rmdir($dir);
+            }
+        }
+    }
+
+    /**
+     * A temp file gone, if it is there. Checked rather than @-silenced: PsySH (tinker) reports a
+     * silenced warning anyway, so a re-narrate run there printed an error per clip (PM, 2026-10-18).
+     */
+    private static function remove(string $file): void
+    {
+        if (is_file($file)) {
+            unlink($file);
         }
     }
 

@@ -142,6 +142,13 @@ class TitlePosterTest extends TestCase
         $this->assertSame($still, $lesson->tallCardImageUrl(), 'the comic still outranks poster_image on a tall card');
         $this->assertStringEndsWith('/own.webp', (string) $lesson->cardImageUrl(), 'the other cards keep poster_image');
 
+        // Bart 2026-10-20, "we don't have a real poster for Abel Tasman": the lesson's title style was
+        // the cover (or the banner), which has no upright version, so the tall card fell back to a
+        // landscape photo cropped tall. Any comic style gets the series' upright poster on a tall card.
+        foreach (['cover', 'banner'] as $style) {
+            $this->assertSame($still, $lesson->forceFill(['title_style' => $style])->tallCardImageUrl(), "{$style} style");
+        }
+
         $html = (string) $this->blade('<x-seo title="T" description="D" image="https://x.test/wide.png" tall-image="https://x.test/tall.webp" />');
         $this->assertMatchesRegularExpression('#og:image" content="https://x.test/wide.png".*og:image" content="https://x.test/tall.webp">\s*<meta property="og:image:width" content="1000">\s*<meta property="og:image:height" content="1500">#s', $html);
         $this->assertStringContainsString('twitter:image" content="https://x.test/wide.png"', $html);

@@ -1,4 +1,5 @@
 import maplibregl from '../maplibre.js';
+import { mapLocale } from '../map-locale.js';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { formatReadout } from './era.js';
 import { mountTimeSlider } from './slider.js';
@@ -53,6 +54,7 @@ window.initTimeMap = function initTimeMap(el, wire, initialYear) {
   // Borders: local Cliopatria vector tiles (Seshat, CC-BY). Land base: OHM osm_land (CC0). z0-4.
   const map = new maplibregl.Map({
     container: el,
+    locale: mapLocale(),
     // MapLibre 6 slices vector tiles past their maxzoom instead of overscaling them, which moves labels.
     // Kept at the v5 behaviour so the upgrade changes nothing on screen.
     zoomLevelsToOverscale: undefined,

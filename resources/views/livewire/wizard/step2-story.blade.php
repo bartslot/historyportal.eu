@@ -31,7 +31,7 @@
     @if ($this->framework()->needsHero())
         <div class="bg-base-300 rounded-2xl p-6 space-y-3">
             <div class="flex items-baseline justify-between">
-                <span class="label-text text-xs uppercase tracking-wider text-slate-400">Choose your hero</span>
+                <span class="label-text text-xs uppercase tracking-wider text-slate-400">{{ __('Choose your hero') }}</span>
                 <span class="text-xs text-slate-500">from the corpus · rulers first</span>
             </div>
 
@@ -58,7 +58,7 @@
                         <span class="flex flex-col min-w-0">
                             <span class="text-sm font-medium text-white truncate">{{ $hero->name }}</span>
                             <span class="text-xs text-slate-400">
-                                @if ($hero->figure_kind === 'ruler')<span class="text-primary/80">Ruler</span> · @endif
+                                @if ($hero->figure_kind === 'ruler')<span class="text-primary/80">{{ __('Ruler') }}</span> · @endif
                                 {{ $hero->era_start ? ($hero->era_start < 0 ? abs($hero->era_start).' BCE' : $hero->era_start.' CE') : '' }}
                             </span>
                         </span>

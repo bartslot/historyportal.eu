@@ -110,6 +110,10 @@ class OpsCheck extends Command
         fseek($handle, $offset);
         $errors = [];
         while (($line = fgets($handle)) !== false) {
+            // Its own exit 1 is logged by the scheduler as an ERROR: counted, it re-fires forever.
+            if (str_contains($line, "'artisan' ops:check] failed")) {
+                continue;
+            }
             if (preg_match('/^\[[^\]]+\] \w+\.(ERROR|CRITICAL|ALERT|EMERGENCY): (.*)$/', rtrim($line), $match)) {
                 $errors[] = Str::limit($match[2], 200);
             }

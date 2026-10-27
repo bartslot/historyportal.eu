@@ -755,7 +755,7 @@
         {{-- Header row: title + toggle --}}
         <div class="flex items-center justify-between px-4 py-3 cursor-pointer select-none"
              x-on:click="if($wire.include_game){ open = !open }">
-            <span class="font-medium text-white text-sm">Game</span>
+            <span class="font-medium text-white text-sm">{{ __('Game') }}</span>
             <div class="flex items-center gap-3">
                 <span class="text-slate-400 text-xs">
                     @if ($include_game && $game_type)
@@ -776,7 +776,7 @@
 
             @if ($include_game)
                 <div class="space-y-2">
-                    <p class="text-xs uppercase tracking-wider text-slate-400">Game type</p>
+                    <p class="text-xs uppercase tracking-wider text-slate-400">{{ __('Game type') }}</p>
                     <div class="flex flex-wrap gap-3">
                         @foreach (['quiz' => 'Quiz', 'strategy' => 'Strategy game', 'debate' => 'Debate'] as $val => $label)
                             <button type="button"
@@ -795,15 +795,15 @@
                         <div class="flex gap-6">
                             {{-- 1/3: number of questions --}}
                             <div class="w-1/3 space-y-2 shrink-0">
-                                <p class="text-xs uppercase tracking-wider text-slate-400">Number of questions</p>
+                                <p class="text-xs uppercase tracking-wider text-slate-400">{{ __('Number of questions') }}</p>
                                 <input type="number" wire:model.live="quiz_question_count"
                                        min="1" max="10"
                                        class="input input-bordered bg-slate-900 w-24 text-center" />
-                                <p class="text-xs text-slate-500">Always multiple choice.</p>
+                                <p class="text-xs text-slate-500">{{ __('Always multiple choice.') }}</p>
                             </div>
                             {{-- 2/3: when to ask --}}
                             <div class="flex-1 space-y-2">
-                                <p class="text-xs uppercase tracking-wider text-slate-400">When to ask</p>
+                                <p class="text-xs uppercase tracking-wider text-slate-400">{{ __('When to ask') }}</p>
                                 <div class="grid grid-cols-3 gap-2">
                                     @foreach (['during' => 'During lesson', 'after' => 'After lesson', 'both' => 'Both'] as $val => $label)
                                         <button type="button"

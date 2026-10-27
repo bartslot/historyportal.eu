@@ -29,7 +29,7 @@ export function cargoTile (item, state = 'plain') {
     img.draggable = false
     tile.appendChild(img)
   } else {
-    tile.appendChild(el('span', 'line-clamp-3 text-center text-[0.65rem] font-semibold leading-tight', item.name))
+    tile.appendChild(el('span', 'line-clamp-3 text-center text-2xs font-semibold leading-tight', item.name))
   }
   if (state === 'off') tile.classList.add('opacity-25', 'grayscale')
   if (state === 'on') {
