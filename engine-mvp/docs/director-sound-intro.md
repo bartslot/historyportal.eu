@@ -125,3 +125,21 @@ Prototype changes (branch `proto/museum-intro-handoff`, from `proto/museum-intro
 - Foley is matched by pose (walk, kneel, carry) only; per-action foley wants an action field in lesson.json.
 - On the museum frame the painting fills the screen at 13 s (rect slightly larger than the viewport), so
   the "grow" is short; a wider hold would show the frame opening. Tune `BEATS.swapStart` / the camera key.
+
+## 4. One playable lesson: `play.html`
+
+`play.html?lesson=<id | vault path | url>` (default `eerste-boeren-1`; `&intro=0` skips the museum):
+lesson.json -> `direct()` -> S1's `playLesson`, held on frame 0 -> that frame, read from the stage canvas
+right after a render, is the museum painting -> `runIntro` -> at the handoff the stage plays and
+`LessonSound` follows the stage's clock (re-placed when they drift > 0.35 s: a slow scene build, a pause).
+Start is a button: browsers want a gesture before audio.
+
+Data links, all git-ignored: `public/lessons/vault` -> vault `topics/autonomous-lessons/lessons`,
+`public/library/nl-prehistory` -> `~/BartsMedia/historyportal/library/nl-prehistory` (S2), and
+`public/library/near-east-neolithic` -> `_placeholder` (S1's tracked placeholders) until S2 has that bundle.
+
+Check: `node tools/play-check.mjs http://localhost:5291 <outDir> eerste-boeren-1 10`: silent run of the
+intro, the handoff, 12 s of real playback, then a frame every 10 s of lesson time (contact sheet).
+
+Not in yet: the stage does not stop for interactions (the 240 s of quizzes/votes in eerste-boeren-1),
+so the picture runs 407 s, not the 693 s validate.py counts; sound and picture agree with each other.

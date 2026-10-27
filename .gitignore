@@ -98,3 +98,4 @@ tools/**/__pycache__/
 /engine-mvp/public/library/*
 !/engine-mvp/public/library/_placeholder/
 /storage/demo-check
+/engine-mvp/public/lessons/vault
