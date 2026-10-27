@@ -11,6 +11,7 @@ use App\Models\Scene;
 use App\Models\User;
 use App\Services\Lessons\LibraryLayers;
 use App\Services\Lessons\MomentSpec;
+use App\Services\Lessons\PredictSpec;
 use App\Services\Lessons\SceneDialogue;
 use App\Services\Lessons\TeamGameSpec;
 use App\Services\Support\AudioEncoder;
@@ -225,6 +226,7 @@ class LessonComposer
             $scene = match ($type) {
                 'quiz' => $this->quizScene($lesson, $sceneSpec, $order, ++$gameIndex),
                 'team' => $this->teamScene($lesson, $sceneSpec, $order, ++$gameIndex),
+                'predict' => $this->predictScene($lesson, $sceneSpec, $order, ++$gameIndex),
                 'gallery' => $this->galleryScene($lesson, $sceneSpec, $order),
                 'map' => $this->mapScene($lesson, $sceneSpec, $order),
                 'voyage' => $this->voyageScene($lesson, $sceneSpec, $order),
@@ -854,6 +856,39 @@ class LessonComposer
                 'explanation' => $q['e'] ?? null,
                 'points' => 10,
             ]);
+        }
+
+        return $scene;
+    }
+
+    /**
+     * A predict moment (PredictSpec): the narrator asks (`script`, or the question itself), the class
+     * answers on paper, on the board or on their own devices, and a later debrief asks why. The spec
+     * entry is cleaned at this boundary; its rubric stays on the server (the player never gets it).
+     *
+     * @param  array<string,mixed>  $s
+     */
+    private function predictScene(Lesson $lesson, array $s, int $order, int $gameIndex): Scene
+    {
+        $predict = PredictSpec::normalize($s);
+
+        $scene = $lesson->scenes()->create([
+            'order' => $order,
+            'kind' => 'game',
+            'game_type' => 'predict',
+            'game_segment_index' => $gameIndex,
+            'duration_seconds' => max(60, $predict['seconds'] + 60),
+            'background_color' => '#0f172a',
+            'chapter_name' => $s['chapter'] ?? null,
+            'location' => $s['location'] ?? null,
+            'year' => $s['year'] ?? null,
+            'script_segment' => $s['script'] ?? $predict['question'],
+            'status' => 'pending',
+            'config' => ['predict' => $predict],
+        ]);
+
+        if (! empty($s['backdrop'])) {
+            $this->library->attachLibraryBackdrop($scene, (string) $s['backdrop'], $order);
         }
 
         return $scene;

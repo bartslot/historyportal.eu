@@ -27,6 +27,8 @@
  * live (and setProjector(null) when it's gone), plus refreshPositions() on map
  * move. Without a projector, map-anchored labels fall back to their stored x/y.
  */
+import { t } from '../i18n.js'
+
 const URL_PATTERN = /^https?:\/\/\S+$/i
 const DRAG_THRESHOLD_PX = 4
 const EDIT_DRAG_THRESHOLD_PX = 14
@@ -269,7 +271,7 @@ export class TextOverlayLayer {
 
     const item = {
       id: `txt_${Math.random().toString(36).slice(2, 9)}`,
-      text: isFirst ? 'Title' : 'Text',   // placeholder, pre-selected so typing replaces it
+      text: isFirst ? t('Title') : t('Text'),   // placeholder, pre-selected so typing replaces it
       x,
       y,
       font: 'sans',
@@ -462,7 +464,7 @@ export class TextOverlayLayer {
     }
     edit.contentEditable = 'true'
     edit.spellcheck = false
-    edit.dataset.placeholder = 'Type…'
+    edit.dataset.placeholder = t('Type…')
     return edit
   }
 

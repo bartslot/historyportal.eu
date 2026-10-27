@@ -36,7 +36,66 @@ final class JsTranslations
     /** @return array<string, string> */
     public static function forBrowser(): array
     {
-        return array_merge(self::quiz(), self::player(), self::editor(), self::teamGame(), self::powerMeter(), self::testSession());
+        return array_merge(self::quiz(), self::storyGame(), self::player(), self::editor(), self::teamGame(), self::powerMeter(), self::predict(), self::testSession());
+    }
+
+    /**
+     * The story game's choice card, game-over card and summary (scene/StoryGameEngine.js).
+     * They were written in Dutch, so an English class read Dutch (pair test round 4).
+     *
+     * @return array<string, string>
+     */
+    private static function storyGame(): array
+    {
+        return [
+            'Option A' => __('Option A'),
+            'Option B' => __('Option B'),
+            'What do you do?' => __('What do you do?'),
+            'History nearly went differently…' => __('History nearly went differently…'),
+            'What really happened' => __('What really happened'),
+            'Start again from this choice' => __('Start again from this choice'),
+            'Carry on anyway (teacher)' => __('Carry on anyway (teacher)'),
+            'Your story' => __('Your story'),
+            'Survived!' => __('Survived!'),
+            'Did not survive' => __('Did not survive'),
+            ':outcome · tried again :count×' => __(':outcome · tried again :count×'),
+        ];
+    }
+
+    /**
+     * The predict moment (scene/PredictMoment.js) and the board's "Devices in class?" question.
+     *
+     * @return array<string, string>
+     */
+    private static function predict(): array
+    {
+        return [
+            'Whole class' => __('Whole class'),
+            'Why did it happen?' => __('Why did it happen?'),
+            'What will happen?' => __('What will happen?'),
+            'You thought' => __('You thought'),
+            ':name thought' => __(':name thought'),
+            'What happened' => __('What happened'),
+            'Your prediction is saved.' => __('Your prediction is saved.'),
+            'Show what happened' => __('Show what happened'),
+            'Send my answer' => __('Send my answer'),
+            'Save my prediction' => __('Save my prediction'),
+            'Everyone answers on their own device.' => __('Everyone answers on their own device.'),
+            'Write your answer on paper.' => __('Write your answer on paper.'),
+            'The class\'s answer' => __('The class\'s answer'),
+            'Who answers' => __('Who answers'),
+            'Save answer' => __('Save answer'),
+            'Type the class\'s answer' => __('Type the class\'s answer'),
+            'Reading your answer…' => __('Reading your answer…'),
+            'We could not save it. You can go on.' => __('We could not save it. You can go on.'),
+            'Saved. Your teacher will look at it.' => __('Saved. Your teacher will look at it.'),
+            'No devices' => __('No devices'),
+            'Own devices' => __('Own devices'),
+            'Children write on paper. You can type the class\'s answer.' => __('Children write on paper. You can type the class\'s answer.'),
+            'Every child plays on their own device.' => __('Every child plays on their own device.'),
+            'Devices in class?' => __('Devices in class?'),
+            'Class' => __('Class'),
+        ];
     }
 
     /**
@@ -165,6 +224,7 @@ final class JsTranslations
             'Number :n, :role: what could go wrong?' => __('Number :n, :role: what could go wrong?'),
             'Choose within your team who is 1, 2, 3 and 4.' => __('Choose within your team who is 1, 2, 3 and 4.'),
             'Next turn' => __('Next turn'),
+            'Next: :name' => __('Next: :name'),
             'Team size' => __('Team size'),
             'Ready' => __('Ready'),
             'Not yet confirmed' => __('Not yet confirmed'),
@@ -220,6 +280,29 @@ final class JsTranslations
             'This is the correct answer. Editing it changes what counts as right.' => __('This is the correct answer. Editing it changes what counts as right.'),
             'Previous question' => __('Previous question'),
             'Next question' => __('Next question'),
+            // A new text object's starting name (scene/TextOverlayLayer.js addText).
+            'Title' => __('Title'),
+            'Text' => __('Text'),
+            // Editor handles and hints built in JS (TextOverlayLayer, SplitStage, ArtworkOverlay, voyage-tour).
+            'Type…' => __('Type…'),
+            'Split position' => __('Split position'),
+            'Drag to rotate · hold Shift for 15°' => __('Drag to rotate · hold Shift for 15°'),
+            'Drag to resize' => __('Drag to resize'),
+            'Drag to bend the route around land' => __('Drag to bend the route around land'),
+            "Drag to set this leg's destination" => __("Drag to set this leg's destination"),
+            'Drag to move · double-click to delete' => __('Drag to move · double-click to delete'),
+            'Drag to move this bend' => __('Drag to move this bend'),
+            // MapLibre's own control labels (resources/js/map-locale.js).
+            'Map' => __('Map'),
+            'Map marker' => __('Map marker'),
+            'Drag to rotate map, click to reset north' => __('Drag to rotate map, click to reset north'),
+            'Zoom in' => __('Zoom in'),
+            'Zoom out' => __('Zoom out'),
+            'Enable globe' => __('Enable globe'),
+            'Disable globe' => __('Disable globe'),
+            // Carousel arrows (resources/js/carousel.js).
+            'Previous' => __('Previous'),
+            'Next' => __('Next'),
         ];
     }
 

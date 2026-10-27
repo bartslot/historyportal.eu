@@ -204,6 +204,7 @@ final class SceneDialogue
         $disk = Storage::disk('public');
         $clips = [];
         $durations = [];
+        $narratorVoice = null;   // the narrator voice that spoke this track (audio_voice)
 
         foreach ($lines as $i => $line) {
             // A character without a voice is a silent balloon: it holds for its reading time and only the
@@ -219,6 +220,7 @@ final class SceneDialogue
             if ($line['speaker'] === 'narrator') {
                 ['provider' => $provider, 'voice' => $voice] = GenerateSceneAudio::narratorVoice($scene, $spoken);
                 $speed = (float) ($scene->lesson->narrator?->voice_speed ?? 1.0);
+                $narratorVoice ??= $voice;
             } else {
                 ['provider' => $provider, 'voice' => $voice] = self::castVoice((string) ($cast[$line['speaker']]['voice'][$lang]
                     ?? throw new InvalidArgumentException("Cast '{$line['speaker']}' has no {$lang} voice.")));
@@ -241,6 +243,9 @@ final class SceneDialogue
             'audio_script_hash' => sha1((string) $scene->script_segment),
             'audio_locale' => $lang,
             'audio_provider' => 'azure',
+            // Who read it, so a re-recorded scene never keeps its old recording's voice and reads as
+            // a stand-in (W24VRI scene 6, PM 2026-10-18).
+            'audio_voice' => $narratorVoice,
             'audio_alignment' => null,
             'duration_seconds' => (int) ceil($total),
         ]);
@@ -270,7 +275,11 @@ final class SceneDialogue
                 ?? throw new RuntimeException("No audio for {$label}, {$voice}.");
             // The provider chain falls through silently; a line in someone else's voice is wrong. That
             // includes the narrator: a refused ElevenLabs voice once fell back to an English default.
-            if ($this->tts->lastProvider() !== $provider) {
+            // Except an edge-tts voice read by Azure in that same voice: edge is refused from the
+            // server and its voice ids are Azure Neural names (TtsService), the rule a plain scene
+            // follows too (Scene::narrationWasDowngraded). That is the narrator, not a stand-in.
+            $sameVoice = $provider === 'edge_tts' && $this->tts->lastProvider() === 'azure' && $this->tts->lastVoice() === $voice;
+            if ($this->tts->lastProvider() !== $provider && ! $sameVoice) {
                 throw new RuntimeException(ucfirst($label).' came from '.($this->tts->lastProvider() ?? 'nothing').", not {$provider}.");
             }
             $disk->put($cached, $audio);

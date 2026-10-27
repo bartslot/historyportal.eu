@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  PROPOSAL, not loaded. Runs the demo route check (scripts/demo-check.mjs) against the live site
+  every day at 07:30 and shows a macOS notification when anything fails or SiteGround blocks it.
+
+  Install (Bart, when happy with it):
+    cp scripts/launchd/eu.historyportal.demo-check.plist ~/Library/LaunchAgents/
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/eu.historyportal.demo-check.plist
+  Run once now:  launchctl kickstart gui/$(id -u)/eu.historyportal.demo-check
+  Remove:        launchctl bootout gui/$(id -u)/eu.historyportal.demo-check
+
+  A Mac asleep at 07:30 runs it on wake. zsh -l so node/npm from Homebrew or nvm are on PATH.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>eu.historyportal.demo-check</string>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/bartslot/BartsAutomation/BartsDev/apps/historyportal.eu</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>-lc</string>
+        <string>npm run --silent demo:check; code=$?; if [ $code -ne 0 ]; then report=$(ls -td storage/demo-check/20*/ | head -1); if [ $code -eq 2 ]; then msg="Blocked by the SiteGround challenge"; else msg="$(grep -c '^## FAIL' "${report}report.md") step(s) failed"; fi; osascript -e "display notification \"$msg. Report: ${report}report.md\" with title \"History Portal demo check\" sound name \"Basso\""; open "${report}report.md"; fi; exit $code</string>
+    </array>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>7</integer>
+        <key>Minute</key>
+        <integer>30</integer>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/bartslot/BartsAutomation/BartsDev/apps/historyportal.eu/storage/demo-check/launchd.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/bartslot/BartsAutomation/BartsDev/apps/historyportal.eu/storage/demo-check/launchd.log</string>
+</dict>
+</plist>

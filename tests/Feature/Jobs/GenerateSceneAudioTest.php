@@ -333,4 +333,38 @@ class GenerateSceneAudioTest extends TestCase
         $this->assertFalse($scene->narrationWasDowngraded());
         $this->assertNull($scene->error_message);
     }
+
+    /**
+     * Error scan 2026-10-18: all 14 "failed" scenes on prod still had audio for their current text.
+     * A re-narration of that same text (a voice change) failed, and the scene was marked failed:
+     * a red dot and a publish gate that refused the lesson, while the class heard the right words.
+     * A failed run leaves a scene that still has its own audio playable; it keeps the error.
+     */
+    public function test_a_failed_re_narration_leaves_a_scene_with_its_own_audio_playable(): void
+    {
+        $lesson = Lesson::create(['teacher_id' => User::factory()->create()->id, 'topic' => 'X', 'subject' => 'history', 'grade_level' => '9th']);
+        $make = fn (array $extra) => Scene::create($extra + [
+            'lesson_id' => $lesson->id, 'order' => 1, 'kind' => 'narration', 'script_segment' => 'Hello world.',
+            'image_path' => 'x.png', 'status' => 'generating',
+        ]);
+        $withAudio = $make(['audio_path' => 'a.mp3', 'audio_script_hash' => sha1('Hello world.')]);
+        $olderAudio = $make(['order' => 2, 'audio_path' => 'b.mp3', 'audio_script_hash' => sha1('An older text.')]);
+        $none = $make(['order' => 3]);
+        $this->mock(TtsService::class, function ($mock): void {
+            $mock->shouldReceive('prepareSpeechText')->andReturnUsing(fn ($t) => $t);
+            $mock->shouldReceive('generateAudioRaw')->andReturn(null);
+        });
+
+        foreach ([$withAudio, $olderAudio, $none] as $scene) {
+            try {
+                (new GenerateSceneAudio($scene->id))->handle(app(TtsService::class));
+                $this->fail('the job still fails, so the queue records it');
+            } catch (\RuntimeException) {
+            }
+        }
+
+        $this->assertSame(['ready', 'TTS service returned no audio.'], [$withAudio->fresh()->status, $withAudio->fresh()->error_message]);
+        $this->assertSame('failed', $olderAudio->fresh()->status, 'its audio is for another text: the class would hear the wrong words');
+        $this->assertSame('failed', $none->fresh()->status);
+    }
 }

@@ -21,6 +21,7 @@ use App\Livewire\Wizard\Concerns\EditsSceneBalloons;
 use App\Livewire\Wizard\Concerns\EditsSplitPanels;
 use App\Livewire\Wizard\Concerns\EditsStoryGame;
 use App\Livewire\Wizard\Concerns\EditsMoment;
+use App\Livewire\Wizard\Concerns\EditsPredict;
 use App\Livewire\Wizard\Concerns\EditsTeamGame;
 use App\Livewire\Wizard\Concerns\EditsTitleScreen;
 use App\Livewire\Wizard\Concerns\FixesLessonProblems;
@@ -32,8 +33,10 @@ use App\Models\Scene;
 use App\Models\StrategyGame;
 use App\Services\Billing\NarrationCreditLedger;
 use App\Services\Diorama\LibraryAssets;
+use App\Services\Lessons\PredictSpec;
 use App\Services\Lessons\TeamGameSpec;
 use App\Services\Support\LayerAmbient;
+use App\Services\Support\LayerFrames;
 use App\Support\LayerEntrances;
 use App\Services\Support\LayerSitIn;
 use App\Services\Support\SceneSplit;
@@ -55,6 +58,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Attributes\Validate;
@@ -74,6 +78,7 @@ class Step3SceneConfigurator extends Component
     use EditsSceneArtwork;
     use EditsSplitPanels;
     use EditsStoryGame;
+    use EditsPredict;
     use EditsTeamGame;
     use EditsMoment;
     use UndoesSceneEdits;
@@ -129,6 +134,10 @@ class Step3SceneConfigurator extends Component
     public bool $inspectorOpen = true;
 
     public bool $addSceneOpen = false;
+
+    /** Where the rail's "+" asked the next scene to go: a scene id, 0 = first, null = after the selection. */
+    #[Locked]
+    public ?int $insertAfterId = null;
 
     /**
      * The scene the teacher just deleted, as [id, order], so Cmd-Z (or the Undo in the toast) can put
@@ -210,7 +219,8 @@ class Step3SceneConfigurator extends Component
     #[Computed]
     public function games()
     {
-        return StrategyGame::active()->orderBy('title')->get();
+        // Only games the class can read: every strategy game so far is English.
+        return StrategyGame::active()->forLanguage($this->lesson->language)->orderBy('title')->get();
     }
 
     public function selectScene(int $id): void
@@ -234,7 +244,31 @@ class Step3SceneConfigurator extends Component
     #[On('scene:add')]
     public function openAddScenePicker(): void
     {
+        $this->insertAfterId = null;
         $this->addSceneOpen = true;
+    }
+
+    /**
+     * The rail's "+" buttons: between two thumbs (that scene's id), above the first (0), or the
+     * dashed tile at the bottom (the last scene's id). The selection stays put, so cancelling the
+     * picker leaves the stage where it was.
+     */
+    public function openAddSceneAfter(int $sceneId): void
+    {
+        if ($sceneId !== 0 && ! $this->lesson->scenes()->whereKey($sceneId)->exists()) {
+            return;
+        }
+        $this->insertAfterId = $sceneId;
+        $this->addSceneOpen = true;
+    }
+
+    /** Where a new scene goes, read once: the rail's "+" wins, else after the selected scene. */
+    private function takeInsertionPoint(): ?int
+    {
+        $after = $this->insertAfterId ?? $this->selectedSceneId;
+        $this->insertAfterId = null;
+
+        return $after;
     }
 
     /**
@@ -320,6 +354,8 @@ class Step3SceneConfigurator extends Component
                 ...LayerAmbient::payload($l),
                 // Blend into the scene: waterline, reflection, contact shadow, colour match.
                 ...LayerSitIn::payload($l),
+                // A sprite sheet over the picture (LayerFrames).
+                ...LayerFrames::payload($l, $ts),
                 // Hidden where the backdrop is nearer than the layer (resources/js/scene/occlusion.js).
                 'occlude' => ! empty($l['occlude']),
             ])->filter(fn ($l) => $l['url'] || $l['embed'])->values()->all() ?: null,
@@ -479,6 +515,7 @@ class Step3SceneConfigurator extends Component
         $this->syncStoryGameDraftFor($scene);
         // And for a team game: its texts, items, options and timer.
         $this->syncTeamDraftFor($scene);
+        $this->syncPredictDraftFor($scene);
         // And for a story panel's power-meter moment.
         $this->syncMomentDraftFor($scene);
     }
@@ -610,6 +647,7 @@ class Step3SceneConfigurator extends Component
         }
         $payload = $this->withStoredDiorama($payload, $scene);
         $payload = $this->withCleanTeamGame($payload, $scene);
+        $payload = $this->withCleanPredict($payload);
         $payload = $this->withCleanMoment($payload, $scene);
         $scriptDirty = ($scene->script_segment ?? '') !== ($payload['script_segment'] ?? '');
 
@@ -1677,9 +1715,6 @@ class Step3SceneConfigurator extends Component
         // known-world set; the ship's range unmasks land as it nears + draws the coastline on landfall.
         // Replaces the manual fog paint. (Render engine: increments 2-4 in voyage-fog-of-war-plan.)
         'fog_auto' => false,
-        // The ground: 'earth' is the photographed globe; 'history-line' a plain drawn chart for lessons
-        // illustrated in history-line ink, so the map is drawn in the same hand as the pictures.
-        'style' => 'earth',
     ];
 
     /** @return array<string,bool> */
@@ -1699,7 +1734,6 @@ class Step3SceneConfigurator extends Component
             in_array($key, ['cities', 'borders', 'labels', 'ship_anchored', 'cam_dolly_arrival', 'fog_auto'], true) => filter_var($value, FILTER_VALIDATE_BOOLEAN),
             in_array($key, ['ocean_zoom', 'motion'], true) => max(0, min(100, (int) $value)),
             $key === 'info_position' => in_array($value, ['bottom', 'top'], true) ? $value : 'bottom',
-            $key === 'style' => in_array($value, ['earth', 'history-line'], true) ? $value : 'earth',
             str_ends_with($key, '_color') => preg_match('/^#[0-9a-fA-F]{6}$/', (string) $value) ? (string) $value : self::VOYAGE_MAP_DEFAULTS[$key],
             $key === 'border_opacity' => max(0.0, min(1.0, (float) $value)),
             in_array($key, ['label_size', 'city_size'], true) => max(0.3, min(3.0, (float) $value)),
@@ -2079,7 +2113,7 @@ class Step3SceneConfigurator extends Component
                 'intro' => false,
             ],
         ]);
-        $this->placeSceneAfterSelected($scene, $this->selectedSceneId);
+        $this->placeSceneAfterSelected($scene, $this->takeInsertionPoint());
         $this->lesson->refresh();
         $this->dispatch('scenesUpdated');
         $this->selectSceneInternal($scene->id);
@@ -2521,15 +2555,21 @@ class Step3SceneConfigurator extends Component
     public function transports(): array
     {
         $json = json_decode(File::get(resource_path('js/timemap/transports.json')), true);
+        // The catalogue is English data; each word is listed here so lang:audit sees it.
+        $words = [
+            'Ship' => __('Ship'), 'Horse' => __('Horse'), 'Camel' => __('Camel'),
+            'Sailed' => __('Sailed'), 'Rode overland' => __('Rode overland'), 'Crossed desert or steppe' => __('Crossed desert or steppe'),
+        ];
+        $say = fn (string $text) => $words[$text] ?? $text;
 
         return collect($json['transports'] ?? [])
             ->filter(fn ($t) => is_array($t) && ! empty($t['id']))
             ->map(fn ($t) => [
                 'id' => (string) $t['id'],
-                'label' => (string) ($t['label'] ?? $t['id']),
+                'label' => $say((string) ($t['label'] ?? $t['id'])),
                 'terrain' => ($t['terrain'] ?? 'water') === 'land' ? 'land' : 'water',
                 'thumb' => (string) ($t['thumb'] ?? ''),
-                'hint' => (string) ($t['hint'] ?? ''),
+                'hint' => $say((string) ($t['hint'] ?? '')),
             ])
             ->values()
             ->all();
@@ -3292,6 +3332,9 @@ class Step3SceneConfigurator extends Component
     /** False until the wire:init prep runs — lets the modal paint instantly with a skeleton. */
     public bool $paintingReady = false;
 
+    /** False until the Library shelf's own pictures have painted; then our collection loads. */
+    public bool $libraryCollectionReady = false;
+
     /** Whether the collapsible search bar is open (entangled with Alpine so it survives re-renders). */
     public bool $searchOpen = false;
 
@@ -3849,10 +3892,11 @@ class Step3SceneConfigurator extends Component
         $this->paintingPickerOpen = true;
         $this->paintingCommonsLoaded = false;
         $this->paintingQuery = '';
-        $this->paintingKind = '';
+        $this->paintingKind = 'library';   // our own pictures first (Bart, 2026-10-20)
         $this->paintingRegion = '';
         $this->matchTarget = [];
         $this->paintingReady = false;   // modal opens instantly; wire:init fills the grid
+        $this->libraryCollectionReady = false;
         $this->searchOpen = false;
         $this->dispatch('painting-picker:open');
     }
@@ -3983,15 +4027,25 @@ class Step3SceneConfigurator extends Component
      */
     public function preparePaintings(): void
     {
-        $scene = $this->selectedSceneModel();
-        if ($scene) {
-            try {
-                $this->matchTarget = app(\App\Services\Corpus\SceneMatchTargetService::class)->for($scene, $this->lesson);
-            } catch (\Throwable $e) {
-                $this->matchTarget = [];
-            }
+        // The Library tab (where the picker opens) scores nothing, so the LLM call waits until
+        // a corpus tab needs it (paintingResults) instead of holding the skeleton up.
+        if ($this->paintingKind !== 'library') {
+            $this->deriveMatchTarget();
         }
         $this->paintingReady = true;
+    }
+
+    private function deriveMatchTarget(): void
+    {
+        $scene = $this->selectedSceneModel();
+        if (! $scene) {
+            return;
+        }
+        try {
+            $this->matchTarget = app(\App\Services\Corpus\SceneMatchTargetService::class)->for($scene, $this->lesson);
+        } catch (\Throwable $e) {
+            $this->matchTarget = [];
+        }
     }
 
     // ── Ink artwork library ──────────────────────────────────────────────
@@ -4056,6 +4110,10 @@ class Step3SceneConfigurator extends Component
         // "Library" is our own imagery — no corpus, no Commons.
         if ($this->paintingKind === 'library') {
             return $this->libraryResults();
+        }
+
+        if ($this->matchTarget === []) {
+            $this->deriveMatchTarget();
         }
 
         try {
@@ -4288,26 +4346,44 @@ class Step3SceneConfigurator extends Component
                 'correctness' => null,
             ]);
 
-        $tiles = $tiles->concat(collect($cloud->library($term))->map(fn (array $img) => [
-            'source' => 'library',
-            'key' => $img['url'],
-            'thumb' => $img['thumb'],
-            'title' => $img['title'],
-            'caption' => __('Our collection'),
-            'kind' => 'library',
-            'provenance' => __('Our collection'),
-            'correctness' => null,
-        ]));
-
         // A lesson image that lives on Cloudinary appears in both shelves under two different
         // delivery transforms, so the same picture would show up twice. The public id (the last
         // path segment) is what identifies it; a local /storage image dedupes on its own URL.
-        return $tiles
-            ->unique(fn (array $t) => str_contains($t['key'], 'res.cloudinary.com')
-                ? pathinfo((string) parse_url($t['key'], PHP_URL_PATH), PATHINFO_FILENAME)
-                : $t['key'])
-            ->take(self::PAINTING_GRID_LIMIT)
-            ->values();
+        $identity = fn (array $t) => str_contains($t['key'], 'res.cloudinary.com')
+            ? pathinfo((string) parse_url($t['key'], PHP_URL_PATH), PATHINFO_FILENAME)
+            : $t['key'];
+        $tiles = $tiles->unique($identity)->values();
+
+        // Our collection is one slow search (up to 20 s on a cold cache), so the lesson's own
+        // shelf renders first and the collection follows via wire:init (loadLibraryCollection).
+        if (! $this->libraryCollectionReady) {
+            return $tiles;
+        }
+
+        // Only the collection is capped: every picture of THIS lesson stays findable.
+        $own = $tiles->map($identity)->flip();
+        $collection = collect($cloud->library($term))
+            ->map(fn (array $img) => [
+                'source' => 'library',
+                'key' => $img['url'],
+                'thumb' => $img['thumb'],
+                'title' => $img['title'],
+                'caption' => __('Our collection'),
+                'kind' => 'library',
+                'provenance' => __('Our collection'),
+                'correctness' => null,
+            ])
+            ->reject(fn (array $t) => $own->has($identity($t)))
+            ->unique($identity)
+            ->take(self::PAINTING_GRID_LIMIT);
+
+        return $tiles->concat($collection)->values();
+    }
+
+    /** wire:init after the lesson's own shelf has painted: now fetch our Cloudinary collection. */
+    public function loadLibraryCollection(): void
+    {
+        $this->libraryCollectionReady = true;
     }
 
     /**
@@ -4938,8 +5014,8 @@ class Step3SceneConfigurator extends Component
 
             return;
         }
-        $gameType = in_array($gameType, ['quiz', 'strategy', 'debate'], true) ? $gameType : null;
-        $insertAfterSceneId = $this->selectedSceneId;
+        $gameType = in_array($gameType, ['quiz', 'strategy', 'debate', 'predict'], true) ? $gameType : null;
+        $insertAfterSceneId = $this->takeInsertionPoint();
         $next = ((int) $this->lesson->scenes()->max('order')) + 1;
 
         $payload = [
@@ -5048,13 +5124,22 @@ class Step3SceneConfigurator extends Component
                 'duration_seconds' => $gameType === 'strategy' ? 600 : 180,
                 'quiz_question_count' => $gameType === 'quiz' ? (int) ($this->lesson->quiz_question_count ?? 4) : null,
                 'quiz_timing' => $gameType === 'quiz' ? ($this->lesson->quiz_timing ?? 'after') : null,
-                'strategy_game_id' => $gameType === 'strategy' ? $this->defaultStrategyGameId() : null,
+                // No game until the teacher picks one: a preselected "Cross the Rubicon" reached
+                // classes whose teacher never chose it (pair test 2026-10-24).
+                'strategy_game_id' => null,
                 'team_count' => $gameType === 'strategy' ? (int) ($this->lesson->team_count ?? 2) : null,
             ];
+            // A predict moment needs nothing generated: the teacher writes the question and rubric.
+            if ($gameType === 'predict') {
+                $payload['config'] = ['predict' => PredictSpec::normalize([])];
+                $payload['duration_seconds'] = 120;
+                $payload['background_color'] = '#0f172a';
+            }
 
             $this->lesson->fill([
                 'include_game' => true,
-                'game_type' => $this->lesson->game_type ?: $gameType,
+                // A predict moment is a moment, not the lesson's game: it never names the lesson's type.
+                'game_type' => $this->lesson->game_type ?: ($gameType === 'predict' ? null : $gameType),
                 'game_split_count' => $gameCount + 1,
             ])->save();
             $this->lesson->refresh();
@@ -5109,7 +5194,7 @@ class Step3SceneConfigurator extends Component
         $this->lesson->save();
         $this->lesson->refresh();
 
-        $insertAfterSceneId = $this->selectedSceneId;
+        $insertAfterSceneId = $this->takeInsertionPoint();
         $next = ((int) $this->lesson->scenes()->max('order')) + 1;
 
         $rows = [
@@ -5147,14 +5232,15 @@ class Step3SceneConfigurator extends Component
 
     private function placeSceneAfterSelected(Scene $scene, ?int $afterSceneId): void
     {
-        if (! $afterSceneId) {
+        if ($afterSceneId === null) {
             return;
         }
 
         $sceneIds = $this->lesson->scenes()->ordered()->pluck('id')
             ->map(fn ($id) => (int) $id)
             ->all();
-        $afterIndex = array_search($afterSceneId, $sceneIds, true);
+        // 0 = the "+" above the first scene, straight after the title screen.
+        $afterIndex = $afterSceneId === 0 ? -1 : array_search($afterSceneId, $sceneIds, true);
 
         if ($afterIndex === false) {
             return;
@@ -5298,7 +5384,7 @@ class Step3SceneConfigurator extends Component
 
     public function setSceneGameType(int $sceneId, string $gameType): void
     {
-        if (! in_array($gameType, ['quiz', 'strategy', 'debate', 'team'], true)) {
+        if (! in_array($gameType, ['quiz', 'strategy', 'debate', 'team', 'predict'], true)) {
             return;
         }
 
@@ -5312,6 +5398,10 @@ class Step3SceneConfigurator extends Component
         if ($gameType === 'team' && ! is_array(($scene->config ?? [])['team'] ?? null)) {
             $scene->config = array_merge($scene->config ?? [], ['team' => TeamGameSpec::normalize([])]);
         }
+        // Same for a predict moment: switching away and back keeps its question and rubric.
+        if ($gameType === 'predict' && ! is_array(($scene->config ?? [])['predict'] ?? null)) {
+            $scene->config = array_merge($scene->config ?? [], ['predict' => PredictSpec::normalize([])]);
+        }
 
         $scene->update([
             'game_type' => $gameType,
@@ -5320,7 +5410,7 @@ class Step3SceneConfigurator extends Component
                 : ($scene->duration_seconds ?: 180),
             'quiz_question_count' => $gameType === 'quiz' ? (int) ($scene->quiz_question_count ?? $this->lesson->quiz_question_count ?? 4) : null,
             'quiz_timing' => $gameType === 'quiz' ? ($scene->quiz_timing ?? $this->lesson->quiz_timing ?? 'after') : null,
-            'strategy_game_id' => $gameType === 'strategy' ? ($scene->strategy_game_id ?? $this->defaultStrategyGameId()) : null,
+            'strategy_game_id' => $gameType === 'strategy' ? $scene->strategy_game_id : null,
             'team_count' => $gameType === 'strategy' ? (int) ($scene->team_count ?? $this->lesson->team_count ?? 2) : null,
         ]);
 
@@ -5341,13 +5431,6 @@ class Step3SceneConfigurator extends Component
             'game_split_count' => max(1, $games->count()),
         ]);
         $this->lesson->refresh();
-    }
-
-    private function defaultStrategyGameId(): ?int
-    {
-        return $this->lesson->strategy_game_id
-            ?? StrategyGame::matchForLesson($this->lesson)?->id
-            ?? StrategyGame::active()->orderBy('title')->value('id');
     }
 
     public function saveWorldSettings(float $yOffset, float $scale, float $charScale): void
@@ -5724,6 +5807,16 @@ class Step3SceneConfigurator extends Component
             $this->publishOk = false;
             $this->publishNotice = __('These scenes aren\'t ready: :list. Generate or remove them, then publish.', [
                 'list' => implode('; ', $labels),
+            ]);
+
+            return;
+        }
+
+        // A story game whose choices have no consequences yet is not ready for a class.
+        if (($groups = $this->lesson->incompleteStoryGameGroups()) !== []) {
+            $this->publishOk = false;
+            $this->publishNotice = __('Story game incomplete — choice :groups still missing game effects on an option. Open Configure and fill both options\' meter effects first.', [
+                'groups' => implode(', ', $groups),
             ]);
 
             return;

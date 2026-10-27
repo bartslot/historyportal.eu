@@ -143,6 +143,24 @@ class SplitPanelsTest extends TestCase
         $this->assertArrayNotHasKey('opacity', $first);
     }
 
+    public function test_the_object_list_restacks_the_active_panels_figures_only(): void
+    {
+        $other = SvgAsset::create([
+            'user_id' => $this->teacher->id, 'source' => 'commons', 'source_ref' => 'boy-2',
+            'source_url' => 'https://example.com/boy.png', 'title' => 'Boy', 'license' => 'CC0', 'svg_path' => 'assets/boy.png',
+        ]);
+        $wizard = $this->split()->call('selectPanel', 1)
+            ->call('attachArtwork', $this->asset->id)->call('attachArtwork', $other->id);
+        $wizard->call('selectPanel', 0)->call('attachArtwork', $other->id);
+        $before = $this->scene->refresh()->shots[0]['layers'];
+
+        $wizard->call('selectPanel', 1)->call('reorderArtworkLayers', [$other->id, $this->asset->id], false);
+
+        $shots = $this->scene->refresh()->shots;
+        $this->assertSame([$other->id, $this->asset->id], array_values(array_filter(array_column($shots[1]['layers'], 'asset_id'))));
+        $this->assertSame($before, $shots[0]['layers']);
+    }
+
     public function test_a_new_picture_on_panel_two_leaves_panel_one_and_the_scene_card_alone(): void
     {
         Storage::fake('public');

@@ -42,5 +42,7 @@ Schedule::command('demo:prune-guests')->hourly()->withoutOverlapping(30);
 // backstop, not the only guard.
 // Test sessions (and everything they recorded, by cascade) after TestSession::RETENTION_DAYS (30).
 Schedule::command('model:prune', ['--model' => [\App\Models\TestSession::class]])->dailyAt('03:30')->withoutOverlapping(30);
+// Typed predict-moment answers after one school year (PredictionAnswer::RETENTION_DAYS, Bart 2026-10-19).
+Schedule::command('model:prune', ['--model' => [\App\Models\PredictionAnswer::class]])->dailyAt('03:40')->withoutOverlapping(30);
 
 Schedule::call(fn () => app(\App\Services\Lessons\HarbourRace::class)->prune())->hourly()->name('races:prune')->withoutOverlapping(30);

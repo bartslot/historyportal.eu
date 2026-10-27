@@ -214,7 +214,7 @@ describe('StoryGameEngine DOM + flow', () => {
     engine.handleSceneEnd(7, scenes[7]) // no consequence_line → straight to game over
     const interstitial = engine.host.querySelector('[data-sg-gameover]')
     expect(interstitial).not.toBeNull()
-    expect(interstitial.textContent).toContain('Zo liep de geschiedenis bijna anders')
+    expect(interstitial.textContent).toContain('History nearly went differently')
     expect(interstitial.textContent).toContain('In werkelijkheid…')
     expect(engine.state.survived).toBe(false)
 
@@ -269,9 +269,29 @@ describe('StoryGameEngine DOM + flow', () => {
     const summary = target.querySelector('[data-sg-summary]')
     expect(summary).not.toBeNull()
     expect(summary.textContent).toContain('Stuur de cavalerie')
-    expect(summary.textContent).toContain('Overleefd!')
+    expect(summary.textContent).toContain('Survived!')
     expect(summary.textContent).toContain('Moreel')
     expect(document.body.querySelector('[data-sg-hud]')).toBeNull() // HUD removed
+  })
+
+  // Pair test round 4: the cards were written in Dutch, so an English class read Dutch.
+  it('speaks the lesson language: English by default, Dutch from the published dictionary', () => {
+    const scenes = buildScenes()
+    const { engine } = makeEngine({ scenes })
+    engine.handleSceneEnd(1, scenes[1])
+    expect(engine.host.textContent).toContain('What do you do?')
+    expect(engine.host.textContent).not.toContain('Wat doe je?')
+    engine.host.querySelector('[data-sg-option="option_a"]').click()
+
+    window.__lpLang = { 'Your story': 'Jullie verhaal', 'Survived!': 'Overleefd!' }
+    try {
+      const target = document.createElement('div')
+      engine.showSummaryInto(target)
+      expect(target.textContent).toContain('Jullie verhaal')
+      expect(target.textContent).toContain('Overleefd!')
+    } finally {
+      delete window.__lpLang
+    }
   })
 
   it('exposes window.__storyGame and a state snapshot', () => {

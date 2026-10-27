@@ -1,0 +1,63 @@
+{
+  "id": "fixture-minimal",
+  "title": "Een steen te zwaar",
+  "lang": "nl",
+  "age": 10,
+  "level": "groep 6",
+  "canon_venster": "hunebedden",
+  "bundle": "nl-prehistory",
+  "characters": [
+    { "id": "meisje", "name": "het meisje", "look": "girl, 10, wool dress, bare feet", "ledger": "invented" },
+    { "id": "boer-man", "name": "haar oom", "look": "farmer, 30s, leather cape", "ledger": "invented" }
+  ],
+  "sources": [
+    { "id": "s1", "kind": "canon", "url": "https://www.canonvannederland.nl/nl/hunebedden", "note": "venster Hunebedden" },
+    { "id": "s9", "kind": "ledger", "url": "ledger.md", "note": "invented family and staging" }
+  ],
+  "blueprint": { "lessonup_ids": [], "begrippen": ["hunebed", "zwerfkei"], "goals": ["Ik weet wat een hunebed is."] },
+  "scenes": [
+    {
+      "id": "sc01", "beat": "hook",
+      "narration": "Midden op de hei ligt een steen zo groot als een koe.",
+      "est_s": 8,
+      "set": { "sky": "sky morning", "layers": [
+        { "need": "heath", "asset": null, "depth": "bg", "x": 0.5, "scale": 1 },
+        { "need": "stone boulder", "asset": null, "depth": "mid", "x": 0.6, "scale": 1 }
+      ] },
+      "figures": [ { "char": "meisje", "pose": "walk", "x": 0.3, "depth": "fg", "facing": "right", "expression": "surprised" } ],
+      "balloons": [ { "char": "meisje", "text": "Wie heeft die hier neergelegd?" } ],
+      "camera": null, "sound": null,
+      "interaction": { "type": "quiz", "format": "mc", "question": "Hoe kwam zo'n grote steen op de hei?", "options": ["Meegebracht door het ijs", "Gebouwd door reuzen"], "correct": 0, "bloom": 2, "explain": "Het ijs schoof de stenen hierheen.", "misconception": "reuzen", "est_s": 45 },
+      "fact_refs": ["s1", "s9"]
+    },
+    {
+      "id": "sc02", "beat": "setup",
+      "narration": "Haar oom wil de steen naar het graf brengen.",
+      "est_s": 7,
+      "set": { "sky": "sky morning", "layers": [ { "need": "heath", "asset": null, "depth": "bg", "x": 0.5, "scale": 1 } ] },
+      "figures": [ { "char": "boer-man", "pose": "point", "x": 0.6, "depth": "mid", "facing": "left", "expression": "neutral" } ],
+      "balloons": [],
+      "camera": null, "sound": null,
+      "interaction": { "type": "power-meter", "name": "Trek de steen", "moves": "the stone slides on the sledge", "input": "woorden", "right": ["touw", "slee", "samen"], "wrong": ["vrachtwagen", "kraan"], "prompt": "Kies de woorden die de steen laten schuiven.", "payoff": "De steen schuift.", "why": "touwen en sleeën: inferred", "dramatisation": true, "est_s": 60 },
+      "fact_refs": ["s1", "s9"]
+    },
+    {
+      "id": "sc03", "beat": "recap",
+      "narration": "Zo werd het een graf van stenen: een hunebed.",
+      "est_s": 7,
+      "set": { "sky": "sky evening", "layers": [ { "need": "hunebed", "asset": null, "depth": "mid", "x": 0.5, "scale": 1 } ] },
+      "figures": [],
+      "balloons": [],
+      "camera": null, "sound": null,
+      "interaction": { "type": "quiz", "format": "true-false", "question": "Een hunebed was een huis.", "options": ["waar", "niet waar"], "correct": 1, "bloom": 1, "explain": "Een hunebed was een graf.", "est_s": 30 },
+      "fact_refs": ["s1"]
+    }
+  ],
+  "needed_assets": [
+    { "tags": "sky morning", "layer": "sky", "why": "sc01, sc02" },
+    { "tags": "heath", "layer": "bg", "why": "sc01, sc02" },
+    { "tags": "stone boulder", "layer": "mid", "why": "sc01" },
+    { "tags": "sky evening", "layer": "sky", "why": "sc03" },
+    { "tags": "hunebed", "layer": "mid", "why": "sc03" }
+  ]
+}

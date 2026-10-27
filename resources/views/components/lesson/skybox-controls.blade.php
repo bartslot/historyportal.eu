@@ -77,7 +77,7 @@
     @if ($isUpscaling)
         <div class="flex items-center gap-2 rounded-lg bg-violet-950/60 border border-violet-700/50 px-3 py-2 text-xs text-violet-300">
             <x-icons.spinner class="w-3.5 h-3.5 animate-spin shrink-0 text-violet-400" />
-            <span>Upscaling with Upscayl… shader will update when done.</span>
+            <span>{{ __('Upscaling with Upscayl… shader will update when done.') }}</span>
         </div>
     @endif
 
@@ -240,7 +240,7 @@
                  x-on:drop.prevent="depth = 0; const f = $event.dataTransfer.files[0]; if (f) $wire.upload('droppedBackground', f)"
                  wire:click="openPaintingPicker" role="button" tabindex="0"
                  x-on:keydown.enter.prevent="$wire.openPaintingPicker()"
-                 title="{{ __('Choose or upload an image') }}"
+                 data-tooltip="{{ __('Choose or upload an image') }}"
                  :class="depth > 0 ? 'border-base-content/40 bg-base-content/5' : 'border-slate-700/70 bg-slate-900/40 hover:border-base-content/30'"
                  class="flex cursor-pointer items-center gap-2.5 rounded-lg border p-1.5 transition-colors">
                 @if ($backgroundImageUrl)
@@ -388,7 +388,7 @@
         @if (count($candidates) && ! $hasSkyboxImage)
             {{-- ── State A: candidates ready, awaiting the teacher's pick ───────── --}}
             <div class="space-y-2">
-                <span class="text-2xs uppercase tracking-widest text-slate-500 block">Pick your panorama</span>
+                <span class="text-2xs uppercase tracking-widest text-slate-500 block">{{ __('Pick your panorama') }}</span>
                 <div class="grid grid-cols-2 gap-1.5">
                     @foreach ($candidates as $i => $path)
                         <button type="button"
@@ -408,7 +408,7 @@
                         class="text-2xs text-slate-400 hover:text-sky-400 underline underline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1">
                     <span wire:loading wire:target="generateSkyboxCandidates"><x-icons.spinner class="w-3 h-3 animate-spin" /></span>
                     <span wire:loading.remove wire:target="generateSkyboxCandidates">↻ Generate 4 new options</span>
-                    <span wire:loading wire:target="generateSkyboxCandidates">Generating…</span>
+                    <span wire:loading wire:target="generateSkyboxCandidates">{{ __('Generating…') }}</span>
                 </button>
             </div>
         @elseif ($hasSkyboxImage)
@@ -419,7 +419,7 @@
                 @if ($isUpscaling)
                     <div class="absolute inset-0 flex items-center justify-center gap-1.5 rounded">
                         <x-icons.spinner class="w-4 h-4 animate-spin text-violet-300" />
-                        <span class="text-2xs text-violet-300 font-medium">Upscaling…</span>
+                        <span class="text-2xs text-violet-300 font-medium">{{ __('Upscaling…') }}</span>
                     </div>
                 @endif
             </div>
@@ -432,7 +432,7 @@
                         class="btn btn-outline btn-sm border-slate-600 text-slate-400 hover:border-sky-500 hover:text-sky-400 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5">
                     <span wire:loading wire:target="generateSkyboxCandidates"><x-icons.spinner class="w-3 h-3 animate-spin" /></span>
                     <span wire:loading.remove wire:target="generateSkyboxCandidates">↻ Regenerate</span>
-                    <span wire:loading wire:target="generateSkyboxCandidates">Generating…</span>
+                    <span wire:loading wire:target="generateSkyboxCandidates">{{ __('Generating…') }}</span>
                 </button>
                 <button type="button"
                         wire:click="enhanceSkybox({{ $scene->id }})"
@@ -441,7 +441,7 @@
                         class="btn btn-xs bg-violet-600 text-white hover:bg-violet-500 border-0 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5">
                     <span wire:loading wire:target="enhanceSkybox"><x-icons.spinner class="w-3 h-3 animate-spin" /></span>
                     <span wire:loading.remove wire:target="enhanceSkybox">Enhance 4×</span>
-                    <span wire:loading wire:target="enhanceSkybox">Enhancing…</span>
+                    <span wire:loading wire:target="enhanceSkybox">{{ __('Enhancing…') }}</span>
                 </button>
             </div>
         @else
@@ -450,7 +450,7 @@
                 @if ($isGenerating)
                     <x-icons.spinner class="w-5 h-5 animate-spin text-slate-500" />
                 @else
-                    <span class="text-xs text-slate-500">No panorama yet</span>
+                    <span class="text-xs text-slate-500">{{ __('No panorama yet') }}</span>
                 @endif
             </div>
 
@@ -461,20 +461,20 @@
                         @disabled($isBusy || ! $scene->image_path)
                         class="btn btn-xs bg-sky-600 text-white hover:bg-sky-500 border-0 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5">
                     <span wire:loading wire:target="generateSkyboxCandidates"><x-icons.spinner class="w-3 h-3 animate-spin" /></span>
-                    <span wire:loading.remove wire:target="generateSkyboxCandidates">Generate 4 panorama options</span>
-                    <span wire:loading wire:target="generateSkyboxCandidates">Generating…</span>
+                    <span wire:loading.remove wire:target="generateSkyboxCandidates">{{ __('Generate 4 panorama options') }}</span>
+                    <span wire:loading wire:target="generateSkyboxCandidates">{{ __('Generating…') }}</span>
                 </button>
             </div>
         @endif
 
         @if (! $scene->image_path)
-            <p class="text-2xs text-slate-500">Generate the flat image first to unlock panorama options.</p>
+            <p class="text-2xs text-slate-500">{{ __('Generate the flat image first to unlock panorama options.') }}</p>
         @endif
 
         {{-- Blur --}}
         <div>
             <div class="flex items-center justify-between mb-1">
-                <label class="text-2xs uppercase tracking-widest text-slate-500">Blur</label>
+                <label class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Blur') }}</label>
                 <span class="text-2xs font-mono text-base-content/85" x-text="Number(blur).toFixed(2)"></span>
             </div>
             <span class="range-panel-knob min-w-0 w-full">
@@ -489,7 +489,7 @@
         {{-- Opacity --}}
         <div>
             <div class="flex items-center justify-between mb-1">
-                <label class="text-2xs uppercase tracking-widest text-slate-500">Opacity</label>
+                <label class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Opacity') }}</label>
                 <span class="text-2xs font-mono text-base-content/85" x-text="Math.round(opacity * 100) + '%'"></span>
             </div>
             <span class="range-panel-knob min-w-0 w-full">
@@ -504,7 +504,7 @@
         {{-- Background color --}}
         <div>
             <div class="flex items-center justify-between mb-1">
-                <label class="text-2xs uppercase tracking-widest text-slate-500">Background</label>
+                <label class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Background') }}</label>
                 <span class="text-2xs font-mono text-base-content/85" x-text="bgColor"></span>
             </div>
             <label class="flex items-center gap-2 cursor-pointer">
@@ -540,7 +540,7 @@
                     Generation failed
                 </div>
                 <button wire:click="generateWorld({{ $scene->id }})"
-                        class="text-warning hover:text-base-content underline underline-offset-2 mt-1">Retry</button>
+                        class="text-warning hover:text-base-content underline underline-offset-2 mt-1">{{ __('Retry') }}</button>
             @else
                 <div class="text-slate-400">Select to start WorldLabs generation</div>
             @endif

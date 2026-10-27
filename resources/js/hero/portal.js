@@ -38,7 +38,17 @@ export const PORTAL_DEFAULTS = {
     portalRimPull: 1, // 0 = the ring stays and is swallowed, 1 = the ring rides the hole's edge outward
     portalRimGap: 16, // px between the hole's edge and the ring's inner edge
     portalReadyTimeout: 6, // s to wait for the title screen before falling back to plain navigation
+    // The hole opens onto the lesson half a screen down, so the information under the title screen
+    // shows, then it glides up to the clean title screen (Bart, 2026-10-21): there is more below.
+    portalPeek: 0.5, // of the screen height scrolled down while the hole opens
+    portalPeekHold: 0.35, // s it stays there once the hole covers the page
+    portalPeekReturn: 1.1, // s gliding up to the title screen
 };
+
+/** How far down the title screen opens: `fraction` of its height, never past what is there. */
+export const peekOffset = (scroller, fraction) => (scroller
+    ? Math.max(0, Math.min(scroller.clientHeight * fraction, scroller.scrollHeight - scroller.clientHeight))
+    : 0);
 
 const FRAME_CLASS = 'lesson-portal-frame';
 const HAS_FRAME = 'has-portal-frame';
@@ -213,6 +223,25 @@ export const setupPortal = (root, { warp, settings }) => {
         }
     };
 
+    /** The title screen's own scroller inside the frame (the about section sits below it). */
+    const titleScroller = (frame) => frame.contentDocument?.querySelector('[data-title-screen]');
+
+    /** The peek ends: a beat on the information, then up to the clean title screen. */
+    const scrollToTitle = (frame) => {
+        const scroller = titleScroller(frame);
+
+        if (!scroller?.scrollTop) {
+            return;
+        }
+
+        gsap.to(scroller, {
+            scrollTop: 0,
+            delay: settings.portalPeekHold,
+            duration: settings.portalPeekReturn,
+            ease: GSAP_EASE.move,
+        });
+    };
+
     /** The hole covers the viewport: the frame becomes the page. */
     const arrive = (frame, viaKeyboard) => {
         const html = document.documentElement;
@@ -288,6 +317,12 @@ export const setupPortal = (root, { warp, settings }) => {
             return;
         }
 
+        // Open half a screen down, onto the start of the information under the title screen.
+        const scroller = titleScroller(frame);
+        if (scroller) {
+            scroller.scrollTop = peekOffset(scroller, settings.portalPeek);
+        }
+
         const inner = innerRadius();
         const hole = { radius: 0 };
         const centre = ringCentre();
@@ -299,7 +334,10 @@ export const setupPortal = (root, { warp, settings }) => {
             duration: settings.portalGrow,
             ease: GSAP_EASE.exit,
             onUpdate: draw,
-            onComplete: () => arrive(frame, viaKeyboard),
+            onComplete: () => {
+                arrive(frame, viaKeyboard);
+                scrollToTitle(frame);
+            },
         });
     };
 

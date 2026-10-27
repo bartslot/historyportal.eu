@@ -529,3 +529,55 @@ describe('a team\'s phone in the race', () => {
     expect([...host.querySelectorAll('button')].map(b => b.textContent)).not.toContain('Skip')
   })
 })
+
+describe('the word stream (one word at a time over the picture)', () => {
+  const streamRaw = { ...raw, words_style: 'stream', input_options: { word_seconds: 2 } }
+
+  it('reads the style: stream only for words outside a race, and the card stays the default', () => {
+    expect(readMoment(streamRaw).wordsStyle).toBe('stream')
+    expect(readMoment(raw).wordsStyle).toBe('buttons')
+    expect(readMoment({ ...streamRaw, race: { enabled: true } }).wordsStyle).toBe('buttons')
+    expect(readMoment({ ...streamRaw, input: 'loudness' }).wordsStyle).toBe('buttons')
+    expect(readMoment(streamRaw).wordSeconds).toBe(2)
+  })
+
+  it('shows the meter as a bar on top, one word at a time, and fills it word by word', () => {
+    vi.useFakeTimers()
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const levels = []
+    const onDone = vi.fn()
+    const meter = new PowerMeter(host)
+    meter.show({ config: streamRaw, onLevel: (l) => levels.push(l), onDone })
+    expect(host.querySelector('.card')).toBeNull()
+    const bar = host.querySelector('[data-meter-bar]')
+    expect(bar.textContent).toContain('Windmeter')
+    expect(bar.textContent).toContain('Roep de woorden')
+    expect(bar.querySelector('[role="meter"]').getAttribute('aria-valuemax')).toBe('4')
+    expect([...bar.querySelectorAll('button')].map(b => b.textContent)).toContain('Skip')
+
+    let guard = 0
+    while (!onDone.mock.calls.length && guard++ < 200) {
+      const words = host.querySelectorAll('[data-stream-word]:not([disabled])')
+      expect(words.length).toBeLessThanOrEqual(1)
+      words[0]?.click()
+      vi.advanceTimersByTime(250)
+    }
+    expect(onDone).toHaveBeenCalledWith(expect.objectContaining({ skipped: false }))
+    // The wind rose a quarter per right word.
+    expect(levels).toEqual([0, 0.25, 0.5, 0.75, 1])
+  })
+
+  it('a wrong word costs nothing and Skip still ends the moment', () => {
+    vi.useFakeTimers()
+    const host = document.createElement('div')
+    const onDone = vi.fn()
+    const meter = new PowerMeter(host)
+    meter.show({ config: { ...streamRaw, words: { right: ['zeilen'], wrong: ['motor'] }, goal: 1 }, onDone })
+    meter.state = press(meter.state, meter.cfg, { id: 'w0', text: 'motor', right: false }).state
+    expect(meter.state.fills).toEqual([0])
+    ;[...host.querySelectorAll('button')].find(b => b.textContent === 'Skip').click()
+    expect(onDone).toHaveBeenCalledWith(expect.objectContaining({ skipped: true }))
+    expect(host.querySelector('[data-stream-word]')).toBeNull()
+  })
+})

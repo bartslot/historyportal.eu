@@ -97,3 +97,4 @@ tools/**/__pycache__/
 # 2.5D stage: real library bundles are symlinks to ~/BartsMedia/historyportal/library/<bundle> (only the placeholder is tracked)
 /engine-mvp/public/library/*
 !/engine-mvp/public/library/_placeholder/
+/storage/demo-check

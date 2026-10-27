@@ -63,6 +63,14 @@ Route::get('/nl/curriculum/{slug}', [\App\Http\Controllers\Public\CurriculumCont
     ->where('slug', '[a-z0-9-]+')
     ->name('public.curriculum.goal');
 
+// English lives at the root; /en (what people type for the English site) leads there.
+// The query string rides along: a campaign link to /en?utm_source=... must keep its tracking.
+Route::get('/en/{path?}', fn (\Illuminate\Http\Request $request, ?string $path = null) => redirect(
+    '/'.ltrim((string) $path, '/').($request->getQueryString() ? '?'.$request->getQueryString() : ''),
+    301,
+))
+    ->where('path', '.*');
+
 // The other languages, prefixed and locale-aware.
 Route::prefix('{locale}')
     ->whereIn('locale', ['nl', 'de', 'fr', 'it'])
@@ -106,6 +114,16 @@ Route::get('/lesson/{lessonCode}/leaderboard', [\App\Http\Controllers\QuizLeader
     ->middleware('throttle:leaderboard')->name('lesson.leaderboard');
 Route::post('/lesson/{lessonCode}/quiz-score', [\App\Http\Controllers\QuizLeaderboardController::class, 'store'])
     ->middleware('throttle:quiz-score')->name('lesson.quiz-score');
+
+// Predict moment (scene game_type=predict): a typed prediction or WHY, from a pupil's own device or
+// typed by the teacher on the board; the sender reads its feedback back. Public like the quiz score.
+Route::post('/lesson/{lessonCode}/predictions', [\App\Http\Controllers\Predict\PredictionAnswerController::class, 'store'])
+    ->middleware('throttle:predict')->name('lesson.predictions.store');
+Route::get('/lesson/{lessonCode}/predictions/{answer}', [\App\Http\Controllers\Predict\PredictionAnswerController::class, 'show'])
+    ->whereNumber('answer')->middleware('throttle:predict-read')->name('lesson.predictions.show');
+// The board's "Devices in class?", remembered per class (lesson managers only).
+Route::post('/lesson/{lessonCode}/play-mode', [\App\Http\Controllers\Predict\PredictionAnswerController::class, 'playMode'])
+    ->middleware(['auth', 'throttle:30,1'])->name('lesson.play-mode');
 
 // Harbour race on team devices (HarbourRace): the class screen opens and runs it (lesson managers
 // only); the race QR opens the controller page on a team's phone, which joins, pushes and polls.
@@ -484,3 +502,11 @@ if (app()->environment('local')) {
         Route::delete('/', [\App\Http\Controllers\TuningPresetController::class, 'destroy'])->name('destroy');
     });
 }
+
+// historyportal.eu/W24VRI: the code a teacher writes on the board opens the lesson. Registered LAST so
+// every real page keeps its own route; an unknown or deleted code is a 404.
+Route::get('/{code}', function (string $code) {
+    $lesson = \App\Models\Lesson::where('lesson_code', strtoupper($code))->firstOrFail();
+
+    return redirect()->route('lesson.play', ['lessonCode' => $lesson->lesson_code]);
+})->where('code', '[A-Za-z0-9]{6}')->name('lesson.short');

@@ -23,6 +23,8 @@ class Classroom extends Model
         'join_code',
         'grade_level',
         'is_active',
+        // The board's answer to "Devices in class?" (paper | solo), remembered for the next lesson.
+        'devices_mode',
     ];
 
     protected function casts(): array

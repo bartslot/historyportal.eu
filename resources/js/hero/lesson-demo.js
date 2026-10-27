@@ -4,10 +4,9 @@
 // finished lesson lands as a card you can play. Show, do not tell — nothing here explains the
 // product in words the visitor has to read.
 //
-// Pacing is the point. Every beat is separated by a real pause (`beat`), because a demo that cuts
-// straight from one answer to the next reads as a loading screen rather than as somebody working.
-// The timeline's timeScale only ramps once the warp is already under way — ramping it during the
-// anticipation compresses the exact beat that makes the warp land.
+// Quick and easy (Bart, 2026-10-21: "much much faster"): about 7 seconds to the lesson, where it was
+// about 21. The beats are short pauses, a pointer clicks the age group the way a teacher would,
+// and the warp is one fast breath in and out.
 //
 // Locally, `window.heroDemo` exposes the settings live so the dev Test tools panel can dial the
 // whole thing in without an edit-and-rebuild — see resources/views/livewire/dev/test-panel.blade.php.
@@ -34,7 +33,7 @@ export const VARIANTS = {
     cardwheel: {
         label: 'Cardwheel',
         field: 'cardwheel',
-        inhale: 1.6, windUp: 3.4, brake: 1.5,
+        inhale: 0.45, windUp: 1.8, brake: 1,
         warpGlow: 0.34, warpScale: 1, warpSpread: 1,
         warpSpin: 0.35,
         // Unused by this field, but the storyboard reads them for every variant.
@@ -84,15 +83,15 @@ export const DEFAULT_VARIANT = 'cardwheel';
 
 /** Every number worth arguing about. The dev panel edits this shape and replays. */
 export const DEFAULTS = {
-    beat: 1.3, // pause between beats, seconds
-    typeSpeed: 22, // characters per second
+    beat: 0.4, // pause between beats, seconds
+    typeSpeed: 40, // characters per second
     inhale: 1.7, // held breath before the warp
     windUp: 1.8, // creeping drift tightening into real speed
     brake: 1.3, // coming out the other side
-    // Both time scales sit below 1 and match: the story never speeds up, it just runs slow and
-    // lets the field do the accelerating. Dialled in on the Test tools panel, 2026-08-01.
-    timeScaleStart: 0.7,
-    timeScaleWarp: 0.7,
+    // Real time: the old 0.7 slowed the whole story down (2026-10-21: "much much faster").
+    timeScaleStart: 1,
+    timeScaleWarp: 1,
+    pointerMove: 0.5, // the pointer gliding to the age group, seconds
     warpRate: 7.4, // depth e-folds per second at full warp
     warpSpin: 3.15, // radians per second the tunnel turns
     warpTrail: 0.16, // lower = longer streaks
@@ -103,7 +102,7 @@ export const DEFAULTS = {
     warpFirstGap: 1.4,
     warpCadence: 0.9,
     // The wheel layer is hidden until its layout is final, then fades in once (see fadeInWheel).
-    wheelFade: 0.9, // seconds
+    wheelFade: 0.6, // seconds
     wheelDelay: 0.1, // seconds after the layout settles
     // "Play lesson" opens a portal in the page into the lesson's title screen (hero/portal.js).
     ...PORTAL_DEFAULTS,
@@ -200,6 +199,7 @@ const heroParts = (root) => ({
     caret: root.querySelector('[data-demo-caret]'),
     chips: Array.from(root.querySelectorAll('[data-demo-chip]')),
     picked: root.querySelector('[data-demo-chip][data-demo-chip-pick]'),
+    pointer: root.querySelector('[data-demo-pointer]'),
     conversation: root.querySelector('[data-demo-conversation]'),
     reveal: root.querySelector('[data-demo-reveal]'),
     revealItems: Array.from(root.querySelectorAll('[data-demo-reveal] [data-reveal-item]')),
@@ -208,9 +208,23 @@ const heroParts = (root) => ({
     wheel: root.querySelector('.wheel'),
 });
 
-const buildStoryboard = (root, warp, settings) => {
+/** Where the pointer's tip lands: a little below and right of the chip's centre, as a hand would. */
+const pointerTarget = (pointer, chip, axis) => {
+    const box = pointer?.parentElement?.getBoundingClientRect();
+    const rect = chip?.getBoundingClientRect();
+
+    if (!box || !rect) {
+        return 0;
+    }
+
+    return axis === 'x'
+        ? rect.left - box.left + rect.width * 0.6
+        : rect.top - box.top + rect.height * 0.62;
+};
+
+export const buildStoryboard = (root, warp, settings) => {
     const {
-        goal, audience, typed, caret, chips, picked,
+        goal, audience, typed, caret, chips, picked, pointer,
         conversation, reveal, revealItems, wheel,
     } = heroParts(root);
 
@@ -219,6 +233,7 @@ const buildStoryboard = (root, warp, settings) => {
 
     gsap.set([goal, audience], { autoAlpha: 0, y: 14 });
     gsap.set(chips, { autoAlpha: 0, y: 10, scale: 0.94 });
+    gsap.set(pointer, { autoAlpha: 0, scale: 1 });
     gsap.set(revealItems, { autoAlpha: 0, y: 26, scale: 1.06 });
     gsap.set(reveal, { autoAlpha: 0 });
     gsap.set(conversation, { autoAlpha: 1, scale: 1 });
@@ -244,31 +259,43 @@ const buildStoryboard = (root, warp, settings) => {
 
     // ── The questions answer themselves ─────────────────────────────────────
     master
-        .to(goal, { autoAlpha: 1, y: 0, duration: 0.6 }, 0.4)
-        // A real pause before anything is typed: somebody is thinking.
+        .to(goal, { autoAlpha: 1, y: 0, duration: 0.35 }, 0.15)
         .add('typing', `>+${beat}`);
 
     typeInto(master, typed, typed.dataset.demoTyped ?? '', 'typing', settings.typeSpeed);
 
     master
-        .to(audience, { autoAlpha: 1, y: 0, duration: 0.5 }, `>+${beat}`)
+        .to(audience, { autoAlpha: 1, y: 0, duration: 0.3 }, `>+${beat}`)
         .to(chips, {
             autoAlpha: 1,
             y: 0,
             scale: 1,
-            duration: 0.45,
-            stagger: 0.09,
+            duration: 0.3,
+            stagger: 0.05,
             ease: GSAP_EASE.pop,
-        }, `>+${beat * 0.6}`)
-        // The choice makes itself, but only after a beat of deliberation.
-        .call(() => picked?.classList.add('is-picked'), null, `>+${beat}`)
-        .to(picked, { scale: 1.06, duration: 0.24, ease: GSAP_EASE.pop }, '<')
+        }, `>+${beat * 0.4}`)
+        // A pointer comes in from below right and clicks the age group, the way a teacher would.
+        .fromTo(pointer, { autoAlpha: 0, x: () => pointerTarget(pointer, picked, 'x') + 140, y: () => pointerTarget(pointer, picked, 'y') + 90 }, {
+            autoAlpha: 1,
+            x: () => pointerTarget(pointer, picked, 'x'),
+            y: () => pointerTarget(pointer, picked, 'y'),
+            duration: settings.pointerMove,
+            ease: GSAP_EASE.move,
+            immediateRender: false,
+        }, '<+0.1')
+        // The press: the pointer dips, the chip is chosen on the way down.
+        .to(pointer, { scale: 0.82, duration: 0.08, ease: GSAP_EASE.exit }, '>')
+        .addLabel('click')
+        .call(() => picked?.classList.add('is-picked'), null, 'click')
+        .to(pointer, { scale: 1, duration: 0.14, ease: GSAP_EASE.enter }, 'click')
+        .to(picked, { scale: 1.06, duration: 0.16, ease: GSAP_EASE.pop }, 'click')
         .to(chips.filter((chip) => chip !== picked), {
             autoAlpha: 0.28,
             scale: 0.96,
-            duration: 0.32,
-        }, '<')
-        .to(picked, { scale: 1, duration: 0.22 }, '>');
+            duration: 0.22,
+        }, 'click')
+        .to(picked, { scale: 1, duration: 0.16 }, '>')
+        .to(pointer, { autoAlpha: 0, duration: 0.25, ease: GSAP_EASE.exit }, 'click+=0.3');
 
     // ── The warp ────────────────────────────────────────────────────────────
     //
@@ -293,7 +320,7 @@ const buildStoryboard = (root, warp, settings) => {
             .to(conversation, {
                 autoAlpha: 0,
                 scale: 0.6,
-                duration: 1.1,
+                duration: 0.6,
                 ease: GSAP_EASE.exit,
             }, launch)
             .to(warp.state, {
@@ -320,8 +347,8 @@ const buildStoryboard = (root, warp, settings) => {
                 ease: GSAP_EASE.exit,
             }, afterWarp(launchAt + settings.windUp * 0.45))
             // The last card goes in and the middle flares.
-            .to(warp.state, { glow: 0.95, duration: 0.3, ease: GSAP_EASE.enter }, brake)
-            .to(warp.state, { glow: 0, duration: 1, ease: GSAP_EASE.enter }, afterWarp(brakeAt + 0.3));
+            .to(warp.state, { glow: 0.95, duration: 0.2, ease: GSAP_EASE.enter }, brake)
+            .to(warp.state, { glow: 0, duration: 0.7, ease: GSAP_EASE.enter }, afterWarp(brakeAt + 0.2));
     } else {
 
         master
@@ -452,7 +479,7 @@ const buildStoryboard = (root, warp, settings) => {
     // It arrives out of the tunnel: the card first, then the words. Slightly overscaled,
     // settling back as the flare dies.
     master
-        .addLabel('reveal', afterWarp(brakeAt + 0.35))
+        .addLabel('reveal', afterWarp(brakeAt + 0.2))
         .set(reveal, { autoAlpha: 1 }, 'reveal')
         // The tunnel closes behind you: everything still in flight is sent back to the far end,
         // so the headline is never read through a card that happens to be passing.
@@ -463,8 +490,8 @@ const buildStoryboard = (root, warp, settings) => {
             autoAlpha: 1,
             y: 0,
             scale: 1,
-            duration: 0.9,
-            stagger: 0.16,
+            duration: 0.6,
+            stagger: 0.1,
             ease: GSAP_EASE.enter,
         }, 'reveal');
 
@@ -474,13 +501,13 @@ const buildStoryboard = (root, warp, settings) => {
         master
             .to(warp.state, {
                 pull: 0,
-                duration: 2.2,
+                duration: 1.4,
                 ease: GSAP_EASE.enter,
             }, 'reveal')
             .to(warp.state, {
                 spin: 0.02,
                 alpha: 0.55,
-                duration: 2,
+                duration: 1.4,
                 ease: GSAP_EASE.enter,
             }, 'reveal');
     }

@@ -22,6 +22,27 @@ final class LibraryEra
         return is_string($era) && self::isKnown($era) ? $era : null;
     }
 
+    /**
+     * The tijdvakken a group covers in a collection whose pictures carry no era (the line-art
+     * icons, config lesson-taxonomy.group_eras): by subcategory, else category. [] is deep time,
+     * null timeless.
+     *
+     * @return list<string>|null
+     */
+    public static function groupEras(string $collection, ?string $category, ?string $subcategory = null): ?array
+    {
+        $map = (array) config('lesson-taxonomy.group_eras.'.$collection);
+        $eras = $map[(string) $subcategory] ?? $map[(string) $category] ?? null;
+
+        return is_array($eras) ? array_values(array_filter($eras, fn ($e) => is_string($e) && self::isKnown($e))) : null;
+    }
+
+    /** Whether a group belongs under an era chip: timeless always, deep time never, else its own. */
+    public static function groupFits(?array $eras, string $era): bool
+    {
+        return $eras === null || in_array($era, $eras, true);
+    }
+
     public static function isKnown(string $era): bool
     {
         return array_key_exists($era, (array) config('lesson-taxonomy.periods'));
@@ -61,6 +82,21 @@ final class LibraryEra
         ];
     }
 
+    /**
+     * The era of the tijdvak a lesson is linked to: tijdvak n is the n-th period of the config (the
+     * same ten), a kenmerkend aspect "n.m" belongs to tijdvak n. The earliest when it has several.
+     */
+    private static function fromTijdvak(Lesson $lesson): ?string
+    {
+        $keys = array_keys((array) config('lesson-taxonomy.periods'));
+        $n = $lesson->curriculumGoals()->whereIn('type', ['tijdvak', 'kenmerkend_aspect'])->pluck('code')
+            ->map(fn ($code) => (int) strtok((string) $code, '.'))
+            ->filter(fn (int $n) => $n >= 1 && $n <= count($keys))
+            ->min();
+
+        return $n ? $keys[$n - 1] : null;
+    }
+
     /** Period keys in historical order, the order of the config. */
     public static function order(string $era): int
     {
@@ -70,13 +106,16 @@ final class LibraryEra
     }
 
     /**
-     * The era a lesson's library opens on: its period (LessonTaxonomy), else the era its own
-     * backdrops come from. A composed lesson such as Tasman names no year anywhere, but every one
-     * of its scenes stands on a history-line backdrop whose folder says which era it is.
+     * The era a lesson's library opens on, ONE derivation: a year it names (era, title, topic),
+     * then the tijdvak it is linked to (curriculum_goal_lesson), then its earliest dated scene
+     * (LessonTaxonomy), then the era its own backdrops come from. A composed lesson such as Tasman
+     * names no year anywhere, but its tijdvak and its history-line backdrops say which era it is.
+     * Null: unknown, every era shown.
      */
     public static function forLesson(Lesson $lesson): ?string
     {
-        $period = app(LessonTaxonomy::class)->period($lesson);
+        $taxonomy = app(LessonTaxonomy::class);
+        $period = $taxonomy->period($lesson, withScenes: false) ?? self::fromTijdvak($lesson) ?? $taxonomy->period($lesson);
         if ($period !== null) {
             return $period;
         }

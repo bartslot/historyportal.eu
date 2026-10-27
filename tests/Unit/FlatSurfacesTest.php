@@ -70,7 +70,8 @@ class FlatSurfacesTest extends TestCase
         'components/wizard/style-picker.blade.php' => ['drop-shadow'],
         'components/lesson-player.blade.php' => ['drop-shadow-lg'],
         'lesson/player.blade.php' => [
-            'drop-shadow-[0_4px_14px_rgba(0,0,0,0.8)]', 'drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]',
+            // The centre play/pause glyph has no plate (Bart 2026-10-21: "add some shadow").
+            'drop-shadow-[0_6px_24px_rgba(0,0,0,0.6)]', 'drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]',
             'drop-shadow-[0_4px_8px_rgba(0,0,0,0.9)]', 'drop-shadow-[0_8px_16px_rgba(0,0,0,0.9)]',
         ],
     ];

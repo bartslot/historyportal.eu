@@ -27,6 +27,8 @@ class GuestDemoTest extends TestCase
 
     private function publishedDemoLesson(string $title = 'The Silk Road'): Lesson
     {
+        // The hand-picked demo: since round 7 the fallback never takes an arbitrary lesson.
+        config(['demo.lesson_title' => $title]);
         $teacher = User::create([
             'name' => 'Owner',
             'email' => 'owner@example.com',
@@ -101,6 +103,22 @@ class GuestDemoTest extends TestCase
         $this->assertFalse($demo->refresh()->translations()->contains('id', $copy->id));
     }
 
+    /** Bart 2026-10-21: "everything has to have a Figma title poster". A copy keeps the original's. */
+    public function test_a_copy_keeps_the_originals_title_poster(): void
+    {
+        $demo = $this->publishedDemoLesson();
+        $demo->update(['translation_group' => 'tasman-standard']);
+        DemoLesson::forget();
+
+        $this->get(route('demo.configure'));
+
+        $copy = Lesson::where('teacher_id', User::where('is_guest_demo', true)->sole()->id)->sole();
+        $this->assertNull($copy->translation_group, 'still not another language of the original');
+        $this->assertNotNull($demo->refresh()->titlePosterStillUrl());
+        $this->assertSame($demo->titlePosterStillUrl(), $copy->titlePosterStillUrl());
+        $this->assertSame($demo->titleChoices(), $copy->titleChoices());
+    }
+
     public function test_editing_the_copy_leaves_the_original_lesson_alone(): void
     {
         $demo = $this->publishedDemoLesson();
@@ -159,6 +177,9 @@ class GuestDemoTest extends TestCase
         // The way out leads to the public site, not to a workspace page that would 403.
         $wizard->assertSee(route('home'), false)
             ->assertDontSee(route('teacher.lessons.index'), false);
+        // ...and says so: "Back to lessons" on an arrow that goes home misleads (pair test 10-24).
+        $wizard->assertSee(__('Back to the home page'))
+            ->assertDontSee(__('Back to lessons'));
     }
 
     public function test_a_guest_can_open_the_wizard_on_their_own_copy_but_not_on_anybody_elses(): void
@@ -209,9 +230,13 @@ class GuestDemoTest extends TestCase
         Queue::assertNothingPushed();
     }
 
-    public function test_a_signed_in_teacher_is_sent_to_build_a_real_lesson_instead(): void
+    /**
+     * Bart 2026-10-20: "you can only configure the demo from step 4". A signed-in teacher was sent to
+     * step 1 to build a new lesson; they get their own copy of the demo instead, opened in the editor.
+     */
+    public function test_a_signed_in_teacher_gets_their_own_copy_opened_at_step_4(): void
     {
-        $this->publishedDemoLesson();
+        $demo = $this->publishedDemoLesson();
 
         $teacher = User::create([
             'name' => 'Real',
@@ -220,12 +245,35 @@ class GuestDemoTest extends TestCase
             'role' => 'teacher',
         ]);
 
-        $this->actingAs($teacher)
-            ->get(route('demo.configure'))
-            ->assertRedirect(route('teacher.lessons.create'));
+        $response = $this->actingAs($teacher)->get(route('demo.configure'));
 
+        $copy = Lesson::where('teacher_id', $teacher->id)->sole();
+        $response->assertRedirect(route('teacher.lessons.wizard', ['lesson' => $copy->id, 'step' => 4]));
+        $this->assertNotSame($demo->id, $copy->id);
         $this->assertSame(0, User::where('is_guest_demo', true)->count());
         $this->assertAuthenticatedAs($teacher);
+    }
+
+    /** Every click on Configureren used to make yet another copy; the teacher's open copy is reused. */
+    public function test_a_signed_in_teacher_clicking_configure_again_reopens_their_unpublished_copy(): void
+    {
+        $this->publishedDemoLesson();
+        $teacher = User::create([
+            'name' => 'Real', 'email' => 'real@example.com',
+            'password' => 'secret-password', 'role' => 'teacher',
+        ]);
+
+        $this->actingAs($teacher)->get(route('demo.configure'));
+        $copy = Lesson::where('teacher_id', $teacher->id)->sole();
+
+        $this->actingAs($teacher)->get(route('demo.configure'))
+            ->assertRedirect(route('teacher.lessons.wizard', ['lesson' => $copy->id, 'step' => 4]));
+        $this->assertSame(1, Lesson::where('teacher_id', $teacher->id)->count());
+
+        // Once they publish it, it is their lesson; the next click starts a fresh copy.
+        $copy->update(['status' => LessonStatus::Published->value]);
+        $this->actingAs($teacher)->get(route('demo.configure'));
+        $this->assertSame(2, Lesson::where('teacher_id', $teacher->id)->count());
     }
 
     public function test_the_demo_route_404s_when_no_lesson_is_playable(): void
@@ -251,7 +299,9 @@ class GuestDemoTest extends TestCase
     public function test_a_lesson_still_waiting_on_the_pipeline_is_not_offered(): void
     {
         $lesson = $this->publishedDemoLesson();
-        $lesson->scenes()->update(['status' => 'pending']);
+        // Never generated: no picture, no audio yet (a scene being RE-made keeps its old media and
+        // stays on, round 6).
+        $lesson->scenes()->update(['status' => 'pending', 'script_segment' => 'Once upon a road.', 'audio_path' => null, 'image_path' => null, 'shots' => null]);
 
         DemoLesson::forget();
 
@@ -260,10 +310,13 @@ class GuestDemoTest extends TestCase
 
     public function test_the_configured_demo_lesson_survives_being_opened_in_the_editor(): void
     {
-        // Opening a lesson on the Configure step sets status to `configuring`. The demo lesson
-        // was hand-picked in config, so that must not make it vanish from the landing page.
+        // Opening the hand-picked demo in the editor must not make it vanish from the landing page.
+        // It used to be kept even once `configuring`, but a configuring lesson 404s for visitors
+        // (pair test round 5), so the homepage now only links a public lesson; what keeps the demo
+        // there is that the editor no longer unpublishes a playable lesson.
         $lesson = $this->publishedDemoLesson('The Demo Lesson');
-        $lesson->update(['status' => LessonStatus::Configuring]);
+        Livewire::actingAs($lesson->teacher)->test(Step3SceneConfigurator::class, ['lesson' => $lesson]);
+        $this->assertSame(LessonStatus::Published, $lesson->fresh()->status);
 
         config(['demo.lesson_title' => 'The Demo Lesson']);
         DemoLesson::forget();
@@ -271,14 +324,21 @@ class GuestDemoTest extends TestCase
         $this->assertSame($lesson->id, DemoLesson::resolve()?->id);
     }
 
-    public function test_the_demo_lesson_falls_back_to_the_newest_playable_lesson(): void
+    /**
+     * Pair test round 6: the fallback was "the newest public lesson by anyone", which could put a
+     * random teacher's lesson without a Figma poster on the front door. Only a lesson of a series
+     * with a Figma poster may stand in for the hand-picked demo.
+     */
+    public function test_the_demo_falls_back_only_to_a_lesson_with_a_figma_poster(): void
     {
-        $this->publishedDemoLesson('A Lesson With Another Name');
-
+        $random = $this->publishedDemoLesson('A Teacher\'s Own Lesson');
         config(['demo.lesson_title' => 'The Silk Road']);
         DemoLesson::forget();
+        $this->assertNull(DemoLesson::resolve(), 'a random public lesson never becomes the demo');
 
-        $this->assertSame('A Lesson With Another Name', DemoLesson::resolve()?->title);
+        $random->update(['translation_group' => 'tasman-standard']);
+        DemoLesson::forget();
+        $this->assertSame($random->id, DemoLesson::resolve()?->id, 'a lesson with a Figma poster may stand in');
     }
 
     public function test_pruning_removes_stale_guests_and_their_copies_only(): void
@@ -300,6 +360,47 @@ class GuestDemoTest extends TestCase
     {
         $this->publishedDemoLesson();
         $this->get(route('demo.configure'));
+
+        $this->artisan(PruneGuestDemos::class)->assertSuccessful();
+
+        $this->assertSame(1, User::where('is_guest_demo', true)->count());
+    }
+
+    /** A guest's database session, as SESSION_DRIVER=database writes it. */
+    private function sessionFor(User $guest, \Carbon\CarbonInterface $lastActivity): void
+    {
+        config(['session.driver' => 'database']);   // prod's driver; the suite runs on array
+        \Illuminate\Support\Facades\DB::table(config('session.table') ?: 'sessions')->insert([
+            'id' => \Illuminate\Support\Str::random(40), 'user_id' => $guest->id, 'ip_address' => '127.0.0.1',
+            'user_agent' => 'test', 'payload' => '', 'last_activity' => $lastActivity->getTimestamp(),
+        ]);
+    }
+
+    /**
+     * Bart 2026-10-20: the copy "gets discarded when the user goes away". Gone = no session that is
+     * still alive (session.lifetime); the 24-hour cap stays as the backstop.
+     */
+    public function test_pruning_discards_a_guest_who_went_away(): void
+    {
+        $this->publishedDemoLesson();
+        $this->get(route('demo.configure'));
+        $guest = User::where('is_guest_demo', true)->sole();
+        $guest->forceFill(['created_at' => now()->subHours(3)])->save();
+        $this->sessionFor($guest, now()->subMinutes((int) config('session.lifetime') + 5));
+
+        $this->artisan(PruneGuestDemos::class)->assertSuccessful();
+
+        $this->assertSame(0, User::where('is_guest_demo', true)->count());
+        $this->assertSame(1, Lesson::withTrashed()->count(), 'only the original demo lesson survives');
+    }
+
+    public function test_pruning_keeps_a_guest_whose_session_is_alive(): void
+    {
+        $this->publishedDemoLesson();
+        $this->get(route('demo.configure'));
+        $guest = User::where('is_guest_demo', true)->sole();
+        $guest->forceFill(['created_at' => now()->subHours(3)])->save();
+        $this->sessionFor($guest, now()->subMinutes(5));
 
         $this->artisan(PruneGuestDemos::class)->assertSuccessful();
 

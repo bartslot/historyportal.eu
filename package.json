@@ -7,7 +7,8 @@
         "dev": "vite",
         "test": "vitest run",
         "test:watch": "vitest",
-        "check:assets": "node scripts/check-asset-budget.mjs"
+        "check:assets": "node scripts/check-asset-budget.mjs",
+        "demo:check": "node scripts/demo-check.mjs"
     },
     "devDependencies": {
         "@mapbox/vector-tile": "^3.0.0",

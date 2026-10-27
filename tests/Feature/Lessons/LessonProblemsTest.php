@@ -217,4 +217,16 @@ class LessonProblemsTest extends TestCase
             ->assertSee('Narration failed: this scene still plays the old voice.');
         $this->assertNotSame(LessonStatus::Published, $lesson->fresh()->status);
     }
+
+    /** A failed re-narration of a scene that still plays its own recording of this text: amber, not red. */
+    public function test_a_failed_re_narration_with_its_own_audio_is_amber_and_does_not_block_publishing(): void
+    {
+        $lesson = $this->lesson();
+        $scene = $this->scene($lesson, 1, ['status' => 'ready', 'error_message' => 'TTS service returned no audio.']);
+
+        $p = $this->only($lesson, $scene);
+        $this->assertSame([LessonProblems::OUTDATED, 'audio', 'Re-narrating failed: this scene still plays its earlier recording.'], [$p['severity'], $p['fix'], $p['message']]);
+
+        Livewire::actingAs($this->teacher)->test(Step3SceneConfigurator::class, ['lesson' => $lesson])->call('publish')->assertSet('publishOk', true);
+    }
 }

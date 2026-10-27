@@ -50,7 +50,17 @@ Return ONLY a JSON object with this exact shape — no markdown, no prose, no ex
       "avoidList": string[] (2-5 anachronisms or objects to explicitly exclude from the image),
       "beat": string (one sentence — what happens in this scene narratively),
       "image_prompt_seed": string (short descriptive phrase for image generation),
-      "game_segment_index": integer | null
+      "game_segment_index": integer | null,
+      "predict": null | {
+        "question": string (the narrator asks the class what will happen next; one short question a child can answer in a sentence),
+        "outcome": string (one sentence: what really happened, shown in the NEXT scene),
+        "debrief": string (the why-question asked after the outcome, e.g. "Why did the harvest fall?"),
+        "rubric": {
+          "key_cause": string (the cause, from the source, in one sentence),
+          "concepts": string[] (2-5 ideas a good answer uses, in any words),
+          "misconceptions": string[] (0-3 tempting wrong causes, e.g. a belief of the time)
+        }
+      }
     }
   ]
 }
@@ -77,6 +87,11 @@ Rules:
 - visualEvidence must be period-accurate: no anachronisms.
 - avoidList must include obvious anachronisms for the period (modern vehicles, electricity, etc.).{$gameNote}
 - Place game scenes at pedagogically sensible points (after a narration has introduced new content).
+- PREDICT MOMENTS: give 2-4 narration briefs a "predict" object (every other brief: "predict": null).
+  Choose briefs that END just before a cause-and-effect turn, where a child can reason about what
+  will happen; the NEXT brief must show that outcome. The class predicts first and explains why
+  afterwards, so the question must not give the answer away. Never on the last brief. Facts in the
+  outcome and rubric come from the source only.
 - Follow the "Narrative arc" in the user message: map the scenes onto its beats in order, connect each
   beat to the previous with "but"/"therefore" (never "and then"), and centre the story on the protagonist when one is named.{$storyGameBlock}
 SYS;

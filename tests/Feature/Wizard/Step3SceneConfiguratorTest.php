@@ -400,7 +400,9 @@ class Step3SceneConfiguratorTest extends TestCase
         $scene = $this->lesson->scenes()->where('game_type', 'strategy')->sole();
         $this->assertSame('game', $scene->kind);
         $this->assertSame('strategy', $scene->game_type);
-        $this->assertSame($game->id, $scene->strategy_game_id);
+        // No game preselected: the teacher picks one (pair test 2026-10-24, "Cross the Rubicon" demo risk).
+        $this->assertNull($scene->strategy_game_id);
+        $this->assertTrue($game->exists);
         $this->assertSame(600, $scene->duration_seconds);
         $this->assertSame(2, $scene->order);
         $this->assertTrue($this->lesson->fresh()->include_game);

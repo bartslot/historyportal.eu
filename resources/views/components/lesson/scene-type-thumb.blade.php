@@ -7,7 +7,7 @@
         'narration' => 'text-primary', 'quiz' => 'text-primary', 'strategy' => 'text-teal-300',
         'debate' => 'text-teal-300', 'story_game' => 'text-teal-300', 'branch' => 'text-teal-300',
         'map' => 'text-sky-300', 'voyage' => 'text-indigo-300', 'gallery' => 'text-violet-300',
-        'video' => 'text-indigo-300',
+        'video' => 'text-indigo-300', 'predict' => 'text-primary',
     ][$key] ?? 'text-slate-300';
 @endphp
 <div class="flex h-16 w-full items-center justify-center overflow-hidden rounded-md bg-base-100 ring-1 ring-slate-700/60 {{ $tint }}">
@@ -21,6 +21,10 @@
         @case('voyage') <x-lesson.icon-voyage class="h-9 w-auto opacity-90" /> @break
         @case('gallery') <x-lesson.icon-slideshow class="h-8 w-auto opacity-90" /> @break
         @case('video') <x-lesson.icon-video class="h-9 w-auto opacity-90" /> @break
+        {{-- Predict: Heroicons outline light-bulb. --}}
+        @case('predict')
+            <svg class="h-8 w-8 opacity-90" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18"/></svg>
+            @break
         @default
             {{-- Quiz — a checklist glyph (no bespoke icon supplied). --}}
             <!-- <svg class="h-8 w-8 opacity-90" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m-9 8h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z"/></svg> -->

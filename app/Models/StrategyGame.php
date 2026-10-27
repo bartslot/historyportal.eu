@@ -12,6 +12,7 @@ class StrategyGame extends Model
     protected $fillable = [
         'slug',
         'title',
+        'language',
         'description',
         'subject',
         'topic_keywords',
@@ -49,6 +50,18 @@ class StrategyGame extends Model
         return $query->where('is_active', true);
     }
 
+    /** Games written in this lesson language (a lesson without one is English). */
+    public function scopeForLanguage($query, ?string $language)
+    {
+        return $query->where('language', $language ?: 'en');
+    }
+
+    /** Whether this game is written in the lesson's language, so the class can read its card. */
+    public function speaks(Lesson $lesson): bool
+    {
+        return ($this->language ?: 'en') === ($lesson->language ?: 'en');
+    }
+
     /**
      * Find the best matching game for a lesson based on keyword overlap.
      * Falls back to the first active game if no keywords match.
@@ -63,13 +76,14 @@ class StrategyGame extends Model
 
         $grade = (int) ($lesson->grade_level ?? 9);
 
-        $games = static::active()
+        // Only games in the lesson's language: none at all beats an English card in a Dutch class.
+        $games = static::active()->forLanguage($lesson->language)
             ->where('grade_min', '<=', $grade)
             ->where('grade_max', '>=', $grade)
             ->get();
 
         if ($games->isEmpty()) {
-            $games = static::active()->get();
+            $games = static::active()->forLanguage($lesson->language)->get();
         }
 
         $bestGame  = null;

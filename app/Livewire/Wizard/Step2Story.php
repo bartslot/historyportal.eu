@@ -114,7 +114,7 @@ class Step2Story extends Component
     #[Computed]
     public function games()
     {
-        return StrategyGame::active()->orderBy('title')->get();
+        return StrategyGame::active()->forLanguage($this->lesson->language)->orderBy('title')->get();
     }
 
     public function selectFramework(string $value): void

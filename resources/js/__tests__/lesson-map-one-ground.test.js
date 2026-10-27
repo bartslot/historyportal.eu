@@ -3,59 +3,38 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 /**
- * The lesson map's ground is the Earth, with one named exception: the drawn history-line chart
- * (Bart, 2026-10-16), for lessons whose pictures are ink line work. Nothing else may switch it off.
+ * The lesson map's ground is the watercolour sea chart (map-chart.js), and nothing else.
  *
- * This replaces MapStyleEarthTest, which asked whether the style picker offered Earth. That
- * question no longer has a subject: the picker and the five drawn atlases were removed, and what
- * took their place is a single photographed ground. The risk moved with it. Nobody can now pick the
- * wrong style, but somebody can quietly reintroduce a style gate, or drop the globe call, and the
- * map would still render — as plain imagery, with no sea lighting, no terminator and no clouds.
- * That failure looks close enough to right that it would not be reported.
+ * Bart, 2026-10-24: "1 style of map, map is just map, you can add media". And on 2026-10-26, about
+ * prod: cloud shadows over the ocean, a day/night terminator across the Indian Ocean and a hard
+ * seam on the Pacific side. All three came from the photographed globe this file used to load
+ * (satellite imagery, the globe layers, route-bounded tiles), which is why the guards below are
+ * about it NOT coming back: it would still render, and render convincingly.
  *
- * Asserted against the SOURCE rather than a running map because the globe is a lazy import of a
- * WebGL module: instantiating it needs a GL context jsdom does not have, and mocking the import
- * away would leave the test asserting the mock. What is worth pinning here is structural — that
- * the call exists and carries no condition — and that is legible in the source.
+ * Asserted against the source because the failure is structural (an import or a source reappearing)
+ * and instantiating MapLibre needs a GL context jsdom does not have.
  */
 const SOURCE = readFileSync(resolve(__dirname, '../lesson-map.js'), 'utf8');
 
-describe('lesson-map: one ground, and it is the Earth', () => {
-    it('loads the globe layers', () => {
-        expect(SOURCE).toContain("import('./map-globe-layers.js')");
+describe('lesson-map: one ground, and it is the chart', () => {
+    it('builds its ground from map-chart.js', () => {
+        expect(SOURCE).toContain("from './map-chart.js'");
+        expect(SOURCE).toContain('...chart.under');
+        expect(SOURCE).toContain('...chart.over');
     });
 
-    it('calls applyGlobe when the style is parsed', () => {
-        // The styledata pass, not 'load': 'load' also waits on every source, and a slow or failing
-        // tileset would leave the map sitting there without a lit planet.
-        expect(SOURCE).toMatch(/map\.once\('styledata',[\s\S]{0,160}?applyGlobe\(\)/);
+    it('never loads the globe layers: no clouds, no sun, no day and night', () => {
+        expect(SOURCE).not.toContain('map-globe-layers');
+        expect(SOURCE).not.toContain('applyGlobe');
     });
 
-    it('takes no argument, because there is no style left to gate it on', () => {
-        // The guard that matters. map-integration's version was `applyGlobe(!!s.globe)`, driven by
-        // the style table. Reintroducing a parameter here means a style gate came back, and the
-        // very next thing to happen is a lesson silently rendering as flat imagery.
-        expect(SOURCE).toMatch(/function applyGlobe\s*\(\s*\)/);
-        expect(SOURCE).not.toMatch(/applyGlobe\(\s*(!!|true|false|s\.)/);
+    it('has no photographed ground, no 3D relief and no tilt', () => {
+        expect(SOURCE).not.toMatch(/SATELLITE|satellite-detail|DEM_SOURCE|setTerrain/);
+        expect(SOURCE).toMatch(/pitch: 0,/);
     });
 
-    it('keeps no MAP_STYLES table', () => {
-        // The five drawn atlases. A reappearance here is the picker coming back by the side door.
-        expect(SOURCE).not.toContain('MAP_STYLES');
-    });
-
-    it('crossfades Sentinel-2 detail in over Blue Marble', () => {
-        // Brought across in the merge and easy to lose again: without it the ground stays at Blue
-        // Marble's ~500 m/px and a lesson that leans into a coastline shows a blur.
-        expect(SOURCE).toContain("'satellite-detail'");
-        expect(SOURCE).toMatch(/DETAIL_FADE_START[\s\S]{0,40}DETAIL_FADE_END/);
-    });
-
-    it('draws the chart only for an explicit history-line style', () => {
-        // The single way off the Earth. Any truthy option, or a second named style, is the picker
-        // creeping back; a lesson must have asked for the drawn chart by name.
-        expect(SOURCE).toMatch(/const drawn = opts\.mapStyle === 'history-line'/);
-        expect(SOURCE).toMatch(/if \(drawn \|\| globe \|\| globeLoading\) return/);
-        expect(SOURCE).toMatch(/pitch: drawn \? 0 : PITCH/);
+    it('offers no style switch', () => {
+        // The Earth/Drawn switch, and before it the five-atlas picker, must not come back.
+        expect(SOURCE).not.toMatch(/opts\.mapStyle|MAP_STYLES/);
     });
 });
