@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { bottomColour, hexRgb, PAPER, resolveGround, stainSize } from './ground'
+import { bottomColour, groundOptions, hexRgb, PAPER, resolveGround, stainSize } from './ground'
+import { libraryUrlFor } from './library'
 import type { Asset, Library } from './types'
 
 const a = (id: string, layer: Asset['layer'], tags: string[]): Asset => ({ id, layer, tags, file: `${id}.webp`, w: 100, h: 100, anchor: [0.5, 1], height_m: 10 })
@@ -79,5 +80,23 @@ describe('teacher edits: ground and horizon (undoable)', () => {
     expect(placeLayer(strip, set().layers[0], 0, set().horizon).y).toBe(6)
     doc.undo(); doc.undo(); doc.undo()
     expect(set()).toEqual({ layers: [{ asset: 'bg-heath', depth: 'bg' }] })
+  })
+})
+
+describe('groundOptions: the panel lists the scene\'s own bundle (PM follow-up)', () => {
+  const libs: Record<string, Library> = {
+    'library/nl-prehistory/library.json': lib([a('ground-heath-01', 'ground', ['ground']), a('bg-heath', 'bg', [])]),
+    'library/nl-golden-age/library.json': lib([a('ground-quay-01', 'ground', ['ground']), a('ground-cobbles-01', 'ground', ['ground'])]),
+  }
+  const lesson = { bundle: 'nl-prehistory' }
+  const options = (scene: { bundle?: string }) => groundOptions(libs[libraryUrlFor(scene, lesson)])
+  it('a scene without a bundle lists the lesson bundle\'s grounds', () => {
+    expect(options({})).toEqual(['ground-heath-01'])
+  })
+  it('a scene with its own bundle lists that bundle\'s grounds, never the lesson\'s', () => {
+    expect(options({ bundle: 'nl-golden-age' })).toEqual(['ground-cobbles-01', 'ground-quay-01'])
+  })
+  it('a bundle without ground art lists none (the panel offers Paper)', () => {
+    expect(groundOptions(lib([a('bg', 'bg', [])]))).toEqual([])
   })
 })

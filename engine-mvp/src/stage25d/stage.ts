@@ -35,6 +35,8 @@ export class Stage {
   private built: Built[] = []
   /** the colour the floor fades into at the horizon; far strips paint their lower edge into it */
   private horizonTint: [number, number, number] = hexRgb(PAPER_HEX)
+  /** the library the scene on screen was built from (its own bundle, else the lesson's) */
+  sceneLib: Library & { base: string }
   private buildToken = 0
   private look: Record<string, number | string> = { ...STAGE_LOOK }
   /** per scene: needs no asset matched, and assets whose file did not load (feeds needed_assets) */
@@ -52,6 +54,7 @@ export class Stage {
     // light for 3D figures (S3); the painted layers are unlit
     new HemisphericLight('sky', new Vector3(0, 1, 0), this.scene).intensity = 0.7
     new DirectionalLight('sun', new Vector3(-0.4, -1, 0.6), this.scene).intensity = 1.2
+    this.sceneLib = lib
     this.ground = makeGround(this.scene)
     this.ground.set(this.groundLook(null, null, lib))
     createLookChain(this.scene, this.camera, {
@@ -156,6 +159,7 @@ export class Stage {
     }
     dispose(this.built)
     this.built = next
+    this.sceneLib = lib
     const look = this.groundLook(choice.kind === 'asset' ? { tex: groundTex, asset: choice.asset } : null, tint, lib, choice.kind === 'paper' ? choice.colour : undefined)
     this.horizonTint = look.tint
     this.ground.set(look)
