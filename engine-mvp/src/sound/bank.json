@@ -210,6 +210,17 @@
         "vaten",
         "kisten"
       ]
+    },
+    {
+      "id": "museum-room",
+      "bundle": "intro",
+      "file": "beds/museum-room.m4a",
+      "gain": 0.35,
+      "tags": [
+        "museum",
+        "room",
+        "intro"
+      ]
     }
   ],
   "sfx": [

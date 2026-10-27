@@ -57,5 +57,8 @@ export type Scene = {
 
 export type Lesson = { id: string; lang: string; bundle: string; scenes: Scene[]; [k: string]: unknown }
 
-export type LibraryAsset = { id: string; layer: string; tags: string[]; motion?: 'none' | 'sway' | 'drift' | 'ripple' | 'flicker'; height_m?: number }
+export type LibraryAsset = {
+  id: string; layer: string; tags: string[]; motion?: 'none' | 'sway' | 'drift' | 'ripple' | 'flicker'; height_m?: number
+  file?: string; w?: number; h?: number; anchor?: [number, number]; tileable_x?: boolean
+}
 export type Library = { bundle: string; assets: LibraryAsset[] }

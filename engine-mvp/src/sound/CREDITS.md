@@ -17,6 +17,7 @@ no recordings or samples used. Licence: **CC0 1.0** (self-generated). Recipe ide
 | `beds/sea-waves.m4a` | ambience bed, seamless 24 s loop | self-generated (make_bank.py) | CC0 1.0 |
 | `beds/town-bells.m4a` | ambience bed, seamless 24 s loop | self-generated (make_bank.py) | CC0 1.0 |
 | `beds/quay-crowd.m4a` | ambience bed, seamless 24 s loop | self-generated (make_bank.py) | CC0 1.0 |
+| `beds/museum-room.m4a` | ambience bed, seamless 24 s loop | self-generated (make_bank.py) | CC0 1.0 |
 | `sfx/answer-correct.m4a` | one-shot | self-generated (make_bank.py) | CC0 1.0 |
 | `sfx/answer-wrong.m4a` | one-shot | self-generated (make_bank.py) | CC0 1.0 |
 | `sfx/meter-rise.m4a` | one-shot | self-generated (make_bank.py) | CC0 1.0 |

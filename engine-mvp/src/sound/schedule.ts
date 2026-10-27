@@ -21,7 +21,8 @@ export const sceneStarts = (lesson: Lesson): number[] => {
   return lesson.scenes.map((s) => { const at = t; t += s.dur_s ?? narrationSeconds(s); return at })
 }
 
-export function schedule(lesson: Lesson): SoundEvent[] {
+/** `preroll_s`: scene 1's beds start that long before lesson time 0 (a J-cut out of the intro). */
+export function schedule(lesson: Lesson, preroll_s = 0): SoundEvent[] {
   const starts = sceneStarts(lesson)
   const end = (i: number) => starts[i] + (lesson.scenes[i].dur_s ?? 0)
   const ev: SoundEvent[] = []
@@ -36,13 +37,13 @@ export function schedule(lesson: Lesson): SoundEvent[] {
       while (i < lesson.scenes.length && lesson.scenes[i].sound?.ambience.some((a) => a.id === id)) i++
       const last = i - 1
       const lead = first > 0 ? lesson.scenes[first].sound?.lead_in_s ?? 0 : 0
-      const inAt = Math.max(0, starts[first] - lead - (first > 0 ? FADE_S / 2 : 0))
+      const inAt = first > 0 ? Math.max(0, starts[first] - lead - FADE_S / 2) : (preroll_s ? -preroll_s : 0)
       const tail = lesson.scenes[last + 1]?.sound?.tail_s ?? 0
       const outAt = end(last) + tail - (last + 1 < lesson.scenes.length ? FADE_S / 2 : 0)
       ev.push({ t: inAt, kind: 'bed-start', id, stop: outAt + FADE_S })
       for (let k = first; k <= last; k++) {
         const gain = lesson.scenes[k].sound!.ambience.find((a) => a.id === id)!.gain
-        ev.push({ t: k === first ? inAt : starts[k], kind: 'bed-gain', id, gain, ramp: k === first ? (first === 0 ? 0.3 : FADE_S) : FADE_S })
+        ev.push({ t: k === first ? inAt : starts[k], kind: 'bed-gain', id, gain, ramp: k === first ? (first === 0 && !preroll_s ? 0.3 : FADE_S) : FADE_S })
       }
       ev.push({ t: outAt, kind: 'bed-gain', id, gain: 0, ramp: FADE_S })
     }

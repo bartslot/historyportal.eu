@@ -176,6 +176,13 @@ def bed_town_bells(d):
 def bed_quay_crowd(d):
     v = sum(voice(d) * rng.uniform(0.3, 1) for _ in range(10))
     return norm(v) + 0.3 * norm(bed_harbour_water(d))
+def bed_museum_room(d):
+    # a big quiet hall: low air, a far door, a few soft footsteps far off in the room
+    x = norm(lp(brown(d), 220)) * 0.6 + 0.08 * norm(bp(noise(d), 2000, 5000)) * slow(d, 0.2)
+    s = np.zeros_like(x)
+    for at in events(d, 5, 9, start=3):
+        for k in range(rng.integers(3, 6)): add(s, lp(bp(noise(0.08), 300, 2500) * env(0.08, 0.005, 0.06), 1200) * 0.3, at + k * 0.55)
+    return x + norm(s) * 0.25
 
 
 # ---------- sfx (one-shots) ----------

@@ -28,6 +28,7 @@ export class LessonSound {
   private buffers = new Map<string, Promise<AudioBuffer | null>>()
   private live: AudioScheduledSourceNode[] = []
   private bedGains = new Map<string, GainNode>()
+  private loose = new Map<string, { src: AudioBufferSourceNode; g: GainNode }>()
   private muted = false
   private origin = 0 // ctx time of lesson time 0
 
@@ -62,13 +63,14 @@ export class LessonSound {
     await Promise.all([...ids].map((id) => this.load(id)))
   }
 
-  /** Play from a lesson time (seconds). Stops whatever was playing first. */
+  /** Play from a lesson time (seconds). Stops whatever was playing first. A negative `from` is a
+   *  preroll: scene 1's ambience starts now and lesson time 0 comes -from seconds later. */
   async play(lesson: Lesson, from = 0): Promise<void> {
     this.stop()
     await this.preload(lesson)
     const now = this.ctx.currentTime + 0.05
     this.origin = now - from
-    for (const ev of schedule(lesson)) await this.apply(ev, from)
+    for (const ev of schedule(lesson, Math.max(0, -from))) await this.apply(ev, from)
     this.note({ kind: 'play', from, scenes: sceneStarts(lesson).length })
   }
 
@@ -103,7 +105,7 @@ export class LessonSound {
       }
       case 'bed-gain': {
         const g = this.bedGain(ev.id).gain
-        const target = ev.gain * (entry?.gain ?? 1)
+        const target = ev.gain // the scene's bed gain (bank default, teacher-editable)
         if (ev.t + ev.ramp <= from) { g.setValueAtTime(target, this.ctx.currentTime); break }
         g.setTargetAtTime(target, this.at(ev.t), ev.ramp / 3)
         break
@@ -139,6 +141,27 @@ export class LessonSound {
     this.note({ kind: 'hit', id })
   }
 
+  /** A bed outside the lesson clock (the museum intro's room): fades in, loops until bedOff(). */
+  async bedOn(id: string, fade = 1): Promise<void> {
+    const buf = await this.load(id)
+    if (!buf || this.loose.has(id)) return
+    const src = this.ctx.createBufferSource(); src.buffer = buf; src.loop = true
+    const g = this.ctx.createGain(); g.gain.value = 0
+    g.gain.setTargetAtTime(ENTRIES.get(id)?.gain ?? 1, this.ctx.currentTime, fade / 3)
+    src.connect(g); g.connect(this.master); src.start()
+    this.loose.set(id, { src, g })
+    this.note({ kind: 'bed-on', id })
+  }
+
+  bedOff(id: string, fade = 1.5): void {
+    const b = this.loose.get(id)
+    if (!b) return
+    b.g.gain.setTargetAtTime(0, this.ctx.currentTime, fade / 3)
+    b.src.stop(this.ctx.currentTime + fade * 2)
+    this.loose.delete(id)
+    this.note({ kind: 'bed-off', id })
+  }
+
   /** The narrator's own element, so the master mute covers it too. */
   connectNarration(el: HTMLMediaElement): void {
     this.ctx.createMediaElementSource(el).connect(this.narration)
@@ -166,7 +189,7 @@ export class LessonSound {
       ctx: this.ctx.state, muted: this.muted, time: this.ctx.currentTime - this.origin,
       master: this.master.gain.value, ambienceBus: this.ambience.gain.value,
       beds: Object.fromEntries([...this.bedGains].map(([id, g]) => [id, Math.round(g.gain.value * 1000) / 1000])),
-      sources: this.live.length, events: this.log.length,
+      sources: this.live.length, events: this.log.length, loose: [...this.loose.keys()],
     }
   }
 }
