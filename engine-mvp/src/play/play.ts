@@ -33,8 +33,8 @@ async function boot() {
   if (!res.ok) throw new Error(`${url}: ${res.status}`)
   const raw = (await res.json()) as DLesson
   await speakLocale(raw.lang)
-  // the narrator's recorded line per scene (S4: scene.tts_file, relative to the lesson folder)
-  const lesson: DLesson = { ...raw, scenes: raw.scenes.map((s) => ({ ...s, tts_url: voiceUrl(url, s.tts_file) })) }
+  // the narrator's recorded line per scene (S4: scene.audio under the narration root; tts_s = its length)
+  const lesson: DLesson = { ...raw, scenes: raw.scenes.map((s) => ({ ...s, tts_url: voiceUrl(s.audio) })) }
   const lib = await loadLibrary(libraryUrlFor({}, lesson))
   const directed = direct(lesson, lib as unknown as DLibrary)
   const problems = audit(directed)

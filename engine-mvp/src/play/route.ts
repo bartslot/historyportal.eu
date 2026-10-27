@@ -15,10 +15,12 @@ export function lessonUrlOf(param: string | null): string {
   return `lessons/vault/${id}/lesson.json`
 }
 
-/** A narration file named in a scene (S4's `tts_file`, relative to the lesson folder) as a URL. */
-export function voiceUrl(lessonUrl: string, file: unknown): string | undefined {
-  if (typeof file !== 'string' || !file || file.includes('..') || file.startsWith('/')) return undefined
-  return lessonUrl.replace(/[^/]+$/, '') + file
+/** A scene's narration file (S4's `scene.audio`, "<lesson id>/<scene id>.mp3", relative to the narration
+ *  root ~/BartsMedia/historyportal/narration, served at public/narration) as a URL. Plain path segments
+ *  only: nothing outside the root. */
+const AUDIO = /^[a-z0-9][a-z0-9_-]*\/[a-z0-9][a-z0-9_.-]*\.(mp3|m4a)$/i
+export function voiceUrl(audio: unknown): string | undefined {
+  return typeof audio === 'string' && AUDIO.test(audio) && !audio.includes('..') ? `narration/${audio}` : undefined
 }
 
 /** Seconds the sound may drift from the picture before it is re-placed. */

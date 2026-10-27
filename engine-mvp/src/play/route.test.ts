@@ -12,11 +12,10 @@ describe('play route', () => {
       expect(() => lessonUrlOf(bad), bad).toThrow()
   })
 
-  it('finds a scene\'s narration file in its lesson folder, never outside it', () => {
-    expect(voiceUrl('lessons/vault/hunebedden/lesson.json', 'audio/sc01.m4a')).toBe('lessons/vault/hunebedden/audio/sc01.m4a')
-    expect(voiceUrl('lessons/vault/hunebedden/lesson.json', '../voc/a.m4a')).toBeUndefined()
-    expect(voiceUrl('lessons/vault/hunebedden/lesson.json', '/etc/a.m4a')).toBeUndefined()
-    expect(voiceUrl('lessons/vault/hunebedden/lesson.json', undefined)).toBeUndefined()
+  it('finds a scene\'s narration (scene.audio) under the narration root, never outside it', () => {
+    expect(voiceUrl('hunebedden/sc01.mp3')).toBe('narration/hunebedden/sc01.mp3')
+    for (const bad of ['../voc/sc01.mp3', '/etc/sc01.mp3', 'hunebedden/../x.mp3', 'hunebedden/sc01.exe', 'sc01.mp3', undefined, ''])
+      expect(voiceUrl(bad), String(bad)).toBeUndefined()
   })
 
   it('re-places the sound only past the drift threshold', () => {

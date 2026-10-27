@@ -153,8 +153,8 @@ eases the held scene on (`setTime`), so the world moves; the payoff closes it). 
 timing.json time as a calm clock with +30 s, never a hard stop, and can be skipped. Strings are English
 keys in lang/{nl,de,fr,it}.json; the page speaks the lesson's language (`speakLocale`). A power meter
 holds at 55 % of its scene, every other card just before the cut (`plan.ts`). Played once per run.
-**Story layer:** the narrator's recorded line per scene (S4: `scene.tts_file`, relative to the lesson
-folder) plays on the narration bus at `narration_at_s` and starts mid-line after a pause or seek;
+**Story layer:** the narrator's recorded line per scene (S4: `scene.audio` = "<lesson>/<scene>.mp3" under
+~/BartsMedia/historyportal/narration, linked git-ignored at public/narration; `tts_s` = its length) plays on the narration bus at `narration_at_s` and starts mid-line after a pause or seek;
 captions of the narration are opt-in (Captions toggle, off by default, remembered per browser); balloons
 are timed silent layers at their `at_s`/`dur_s` over the speaker, no names, never baked. Figures (S3) get
 the `#figures` layer. The sound follows `player.clock()` through the pure `syncAction` (tested). The
