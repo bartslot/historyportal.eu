@@ -82,7 +82,8 @@ function colourOf(part: Part, r: FigureRecipe): Hex {
 
 // Skin under the clothes z-fights them and its ink hull covers them: keep only the skin no garment covers
 // (head, neck, hands). A triangle goes when any corner's strongest bone is a covered one.
-const COVERED = /^(root\.x|spine_|thigh_|leg_|foot\.|toes_)/ // arms stay: short sleeves, an empty sleeve shows the paper through it
+const COVERED = /^(root\.x|spine_|shoulder\.|thigh_|leg_|foot\.|toes_)/ // arms stay: short sleeves, an empty sleeve shows the paper through it
+const SLEEVE = /^(arm_|c_arm_twist|forearm_)/
 const trimmed = new WeakSet<object>()
 function trimCoveredSkin(mesh: Mesh) {
   const geo = mesh.geometry
@@ -99,6 +100,14 @@ function trimCoveredSkin(mesh: Mesh) {
     if (!covered(idx[t]) && !covered(idx[t + 1]) && !covered(idx[t + 2])) keep.push(idx[t], idx[t + 1], idx[t + 2])
   }
   mesh.setIndices(keep) // shared geometry: every figure gets the same trimmed body
+  // long sleeves are painted, not modelled: arm skin (upper arm + forearm, never the hand) takes the coat dye
+  const sleeve = new Float32Array(mi.length / 4)
+  for (let v = 0; v < sleeve.length; v++) {
+    let best = 0
+    for (let k = 1; k < 4; k++) if (mw[v * 4 + k] > mw[v * 4 + best]) best = k
+    sleeve[v] = SLEEVE.test(bones[mi[v * 4 + best]]?.name ?? '') ? 1 : 0
+  }
+  mesh.setVerticesData('sleeve', sleeve, false, 1)
   trimmed.add(geo)
 }
 
@@ -109,6 +118,7 @@ export async function createFigure(scene: Scene, recipe: FigureRecipe, name = 'f
   inst.animationGroups.forEach((g) => g.dispose())
   const root = new TransformNode(name, scene)
   inst.rootNodes.forEach((n) => (n.parent = root))
+  root.scaling.setAll(recipe.scale ?? 1)
   const meshes = inst.rootNodes.flatMap((n) => n.getChildMeshes(false))
   const rigRoot = inst.rootNodes[0].getDescendants(false).find((n) => n.name === 'Man_Rig') as TransformNode
   if (!rigRoot) throw new Error('standard body has no Man_Rig node')
@@ -123,6 +133,7 @@ export async function createFigure(scene: Scene, recipe: FigureRecipe, name = 'f
     if (part.role === 'skin') trimCoveredSkin(m as Mesh)
     const mat = toonMaterial(`${name}_${part.role}_${live.length}`, hexRgb(colourOf(part, recipe)), scene)
     if (part.role === 'skin' || part.role === 'eye') mat.step = SKIN_STEP
+    if (part.role === 'skin' && recipe.sleeves !== false) mat.sleeve = hexRgb(recipe.dyes.coat ?? DEFAULT_DYES.coat)
     if (part.role === 'eye') {
       mat.inkEdge = 0 // the eyeballs carry the painted eyes, no contour of their own
       mat.backFaceCulling = false // one eyeball is exported mirrored (flipped winding): culled, the socket shows through
@@ -158,6 +169,7 @@ export async function createFigure(scene: Scene, recipe: FigureRecipe, name = 'f
     setExpression,
     setDye(role, hex) {
       live.filter((l) => l.part.role === role).forEach((l) => (l.mesh.material as ToonMaterial).dye.copyFrom(hexRgb(hex)))
+      if (role === 'coat') live.forEach((l) => (l.mesh.material as ToonMaterial).sleeve?.copyFrom(hexRgb(hex)))
     },
     dispose() {
       clips.forEach((p) => void p.then((g) => g.dispose()))

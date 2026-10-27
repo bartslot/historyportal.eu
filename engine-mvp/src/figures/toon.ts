@@ -20,7 +20,7 @@ export const TOON = {
 // The painted face: a projector box in front of the head (unit cube -> world, refreshed per frame from the head
 // bone); the expression image is projected onto whatever skin/eyeball lies inside it and faces it.
 export type FaceProjector = { tex: BaseTexture | null; toBox: Matrix; fwd: Vector3 }
-export type ToonMaterial = CustomMaterial & { dye: Color3; inkEdge?: number; step?: number; face?: FaceProjector }
+export type ToonMaterial = CustomMaterial & { dye: Color3; sleeve?: Color3; inkEdge?: number; step?: number; face?: FaceProjector }
 
 export function toonMaterial(name: string, dye: Color3, scene: Scene): ToonMaterial {
   const m = new CustomMaterial(name, scene) as ToonMaterial
@@ -28,6 +28,13 @@ export function toonMaterial(name: string, dye: Color3, scene: Scene): ToonMater
   m.specularColor = Color3.Black()
   m.backFaceCulling = true // garments are closed or doubled shells: drawing the inner side z-fights
   m.AddUniform('dye', 'vec3', null)
+  m.AddUniform('sleeveDye', 'vec3', null)
+  m.AddUniform('hasSleeve', 'float', null)
+  // 'sleeve' (0/1 per vertex, set on the skin): where a long sleeve is painted over the arm
+  m.AddAttribute('sleeve')
+  m.Vertex_Definitions('attribute float sleeve;\nvarying float vSleeve;')
+  m.Vertex_MainEnd('vSleeve = sleeve;')
+  m.Fragment_Definitions('varying float vSleeve;')
   m.AddUniform('shadeTint', 'vec3', null)
   m.AddUniform('toLight', 'vec3', null)
   m.AddUniform('celStep', 'float', null)
@@ -50,7 +57,8 @@ export function toonMaterial(name: string, dye: Color3, scene: Scene): ToonMater
     float nl = dot(n, normalize(toLight));
     float lit = smoothstep(celStep - celSoft, celStep + celSoft, nl);
     float inked = 1.0 - smoothstep(inkEdge - inkSoft, inkEdge, nv);
-    vec3 paint = mix(dye * shadeTint, dye, lit);
+    vec3 base = hasSleeve > 0.5 ? mix(dye, sleeveDye, step(0.5, vSleeve)) : dye;
+    vec3 paint = mix(base * shadeTint, base, lit);
     if (hasFace > 0.5) {
       vec3 fp = (faceBox * vec4(vPositionW, 1.0)).xyz;
       if (abs(fp.x) < 0.5 && abs(fp.y) < 0.5 && abs(fp.z) < 0.5) {
@@ -67,6 +75,8 @@ export function toonMaterial(name: string, dye: Color3, scene: Scene): ToonMater
     const e = m.getEffect()
     if (!e) return
     e.setColor3('dye', m.dye)
+    e.setFloat('hasSleeve', m.sleeve ? 1 : 0)
+    if (m.sleeve) e.setColor3('sleeveDye', m.sleeve)
     e.setColor3('shadeTint', TOON.shade)
     e.setVector3('toLight', TOON.light)
     e.setFloat('celStep', m.step ?? TOON.step)

@@ -138,7 +138,7 @@ export const POSES: Record<'stand' | 'point' | 'kneel' | 'carry', StaticPose> = 
     spine: [0.1, 1, 0],
   },
   // a load held in both arms against the belly (a basket, a sheaf, a pot)
-  carry: { arms: { L: { upper: [0.35, -1, 0.22], lower: [1, 0.25, -0.45] }, R: { upper: [0.35, -1, 0.22], lower: [1, 0.25, -0.45] } } },
+  carry: { arms: { L: { upper: [0.3, -1, 0.3], lower: [1, 0.12, -0.12] }, R: { upper: [0.3, -1, 0.3], lower: [1, 0.12, -0.12] } } },
 }
 
 const inFrame = (f: Frame, side: 'L' | 'R', [a, b, c]: Dir) =>

@@ -3,6 +3,10 @@
 import { ArcRotateCamera, Color4, DirectionalLight, Engine, HemisphericLight, Scene, Vector3 } from '@babylonjs/core'
 import { createFigure, faceHeading, FACE, FACING_TURN_DEG, type Figure } from '../figures/figure'
 import { TOON } from '../figures/toon'
+import '../globals' // the look chain reads Babylon from window.BABYLON
+import '../engine/look-shaders.js'
+import { createLookChain } from '../engine/look-chain.js'
+import { STAGE_LOOK } from '../stage25d/stage'
 import { checkPose } from '../figures/pose'
 import { RECIPES, recipeFor, type Expression, type Pose } from '../figures/recipes'
 
@@ -99,10 +103,17 @@ async function main() {
   slider('face size', 1.5, 4, 0.05, () => FACE.scale, (v) => (FACE.scale = v))
   slider('3/4 turn', 0, 90, 1, () => FACING_TURN_DEG, () => {})
   setPose((q.get('pose') as Pose) ?? 'stand')
+  // ?poses=point,carry,stand: one pose per figure (the review shot)
+  q.get('poses')?.split(',').forEach((p, i) => figs[i]?.setPose(p as Pose))
+  if (q.get('ui') === '0') ui.style.display = 'none'
   setExpr((q.get('expr') as Expression) ?? 'neutral')
   view(q.get('view') ?? 'front')
-  Object.assign(window, { __lab: { scene, camera, figs, setPose, setExpr, view, walkAudit, ready: true } })
+  Object.assign(window, { __lab: { scene, camera, figs, setPose, setExpr, view, walkAudit, createFigure, recipeFor, ready: true } })
 }
 main().catch((e) => { msg.textContent = String(e?.stack ?? e); throw e })
+// ?look=stage: the 2.5D stage's own storybook post chain over the figures, as a lesson will show them
+if (q.get('look') === 'stage') {
+  createLookChain(scene, camera, { num: (k: string) => Number(STAGE_LOOK[k] ?? 0), inkColor: () => String(STAGE_LOOK.inkColor ?? 'pencil'), texture: () => null })
+}
 engine.runRenderLoop(() => scene.render())
 addEventListener('resize', () => engine.resize())

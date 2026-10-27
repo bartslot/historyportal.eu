@@ -15,6 +15,8 @@ export type FigureRecipe = {
   hat: boolean
   hatKind?: HatId          // which hat part when hat is on
   expression: Expression
+  scale?: number           // whole-figure size (1 = the standard body, 1.78 m)
+  sleeves?: boolean        // long sleeves painted on the arms in the coat dye (default true: no period wears a T-shirt)
 }
 
 // parts that exist on the body (export: src/figures/export_wardrobe.py)
@@ -33,14 +35,15 @@ export const DEFAULT_DYES: Record<DyeRole, Hex> = {
 export const RECIPES: Record<string, FigureRecipe> = {
   // eerste boeren, c. 5000 BCE: undyed wool tunic over walnut-brown legs
   'boer-man': {
-    body: 'man', skin: '#d9a77f', hair: 'Hair_03', beard: 'Facial_Hair_01', hat: false, expression: 'neutral',
+    body: 'man', skin: '#d9a77f', hair: 'Hair_04', beard: 'Facial_Hair_01', hat: false, expression: 'neutral',
     dyes: { coat: '#b9a382', trousers: '#6e5236', shoes: '#5a4330', hair: '#5a3f28' },
   },
-  // she does the work: carries, sows, grinds. ONLY a male body exists, so this is the faithful best:
-  // long hair, madder-red wool. Gap: female body + skirt part (see README).
+  // she does the work: carries, sows, grinds. ONLY a male body exists, so this is the faithful best: the
+  // longest hair part (shoulder length), no beard, a touch smaller, tunic and legs in one madder-red wool so
+  // the silhouette reads as one long garment. Gaps: female body, long hair/braid, skirt, headscarf (README).
   'boer-vrouw': {
-    body: 'man', skin: '#e2b392', hair: 'Hair_05', beard: null, hat: false, expression: 'neutral',
-    dyes: { coat: '#a8573e', trousers: '#7a5a3a', shoes: '#5a4330', hair: '#6b4428' },
+    body: 'man', skin: '#e2b392', hair: 'Hair_03', beard: null, hat: false, expression: 'neutral', scale: 0.95,
+    dyes: { coat: '#a8573e', trousers: '#8c4a36', shoes: '#5a4330', hair: '#6b4428' },
   },
   // VOC, 1640s: black wide-brimmed hat, dark coat, curled moustache (the Tasman look)
   'voc-schipper': {
