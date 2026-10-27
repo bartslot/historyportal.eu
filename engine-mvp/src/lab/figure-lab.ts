@@ -8,6 +8,7 @@ import '../engine/look-shaders.js'
 import { createLookChain, PRESETS } from '../engine/look-chain.js'
 import { STAGE_LOOK } from '../stage25d/stage'
 import { checkPose } from '../figures/pose'
+import { STRIDE } from '../figures/clips'
 import { RECIPES, recipeFor, type Expression, type Pose } from '../figures/recipes'
 
 const q = new URLSearchParams(location.search)
@@ -116,6 +117,7 @@ async function main() {
   })
   slider('skin shade threshold', -1, 0.5, 0.01, () => SKIN.step, (v) => (SKIN.step = v)) // new figures
   slider('face size', 1.5, 4, 0.05, () => FACE.scale, (v) => (FACE.scale = v))
+  slider('walk stride (next load)', 0.5, 1, 0.01, () => STRIDE.scale, (v) => (STRIDE.scale = v))
   slider('3/4 turn (deg)', 0, 90, 1, () => FACING.turnDeg, (v) => (FACING.turnDeg = v))
   setPose((q.get('pose') as Pose) ?? 'stand')
   // ?poses=point,carry,stand: one pose per figure (the review shot)
