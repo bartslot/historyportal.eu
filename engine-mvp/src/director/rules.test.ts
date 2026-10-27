@@ -2,6 +2,8 @@
 // the cut, the sound events the schedule really makes, and real lessons from S4 (when present).
 // Several cases come from the checker session's report (critiques/2026-10-27_check-director.md).
 import { existsSync, readFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import { classActionSeconds, interactionSeconds, lessonSeconds, modelShotSeconds } from './timing'
 import { describe, expect, it } from 'vitest'
 import { direct } from './direct'
 import { audit } from './audit'
@@ -153,6 +155,25 @@ describe('real lessons are where the tests expect them', () => {
   it.runIf(mounted).each(REAL_LESSONS)('%s/lesson.json exists', (id) => expect(existsSync(`${VAULT}/${id}/lesson.json`), `${VAULT}/${id}/lesson.json missing`).toBe(true))
 })
 
+// S4's length for a lesson, never a number frozen in this test:
+// - live from S4's validate.py: in this checkout (tools/lessongen/, the integration branch) or in
+//   HP_LESSONGEN_DIR (e.g. S4's worktree)
+// - else the lesson's own teacher card ("N minuten", the first one), which validate.py --resolve
+//   writes from the same model and holds to within 1 minute
+const VALIDATE = [process.env.HP_LESSONGEN_DIR && `${process.env.HP_LESSONGEN_DIR}/validate.py`, new URL('../../../tools/lessongen/validate.py', import.meta.url).pathname]
+  .find((p) => p && existsSync(p))
+type S4Length = { exact: number } | { minutes: number } | null
+function s4Length(lesson: Lesson, file: string): S4Length {
+  if (VALIDATE) {
+    const out = spawnSync('python3', [VALIDATE, file], { encoding: 'utf8' })
+    const stats = JSON.parse(out.stdout.split('\n').find((l) => l.startsWith('{')) ?? 'null')
+    if (!stats) throw new Error(`validate.py gave no stats for ${file}: ${out.stderr}`)
+    return { exact: stats.total_s }
+  }
+  const card = JSON.stringify(lesson.teacher ?? '').match(/(\d+) minuten/)
+  return card ? { minutes: Number(card[1]) } : null
+}
+
 for (const id of REAL_LESSONS) {
   const file = `${VAULT}/${id}/lesson.json`
   describe.skipIf(!existsSync(file))(`real lesson ${id}`, () => {
@@ -161,6 +182,22 @@ for (const id of REAL_LESSONS) {
     const total = d.scenes.reduce((a, s) => a + s.dur_s!, 0)
 
     it('passes every rule', () => expect(audit(d)).toEqual([]))
+
+    it('has the same length as S4\'s validate.py (one timing model, tools/lessongen/timing.json)', () => {
+      const model = lesson.scenes.reduce((t, s) => t + modelShotSeconds(s) + classActionSeconds(s) + interactionSeconds(s), 0)
+      const s4 = s4Length(lesson, file)
+      expect(s4, `${id}: no validate.py and no "N minuten" on the teacher card`).not.toBeNull()
+      if (s4 && 'exact' in s4) expect(Math.round(model)).toBe(s4.exact)
+      if (s4 && 'minutes' in s4) expect(Math.abs(model / 60 - s4.minutes)).toBeLessThanOrEqual(1)
+      // the director's own additions: a 1.2 s silence or balloons that need longer than the line; nothing else
+      const extras = d.scenes.map((s, i) => s.dur_s! - modelShotSeconds(lesson.scenes[i]) - classActionSeconds(lesson.scenes[i]))
+      extras.forEach((x, i) => {
+        expect(x).toBeGreaterThanOrEqual(-0.01)
+        if (x > 0.01) expect(!!d.scenes[i].sound!.silence || !!d.scenes[i].balloons?.length, d.scenes[i].id).toBe(true)
+      })
+      expect(lessonSeconds(d)).toBeCloseTo(model + extras.reduce((a, b) => a + b, 0), 1)
+      expect(lessonSeconds(d) - model).toBeLessThan(model * 0.03)
+    })
 
     it('does not shoot one beat the same way every time', () => {
       const byBeat = new Map<string, Set<string>>()
@@ -222,5 +259,38 @@ describe('with the stage (S1)', () => {
     let t = 0
     const stageStarts = d.scenes.map((x) => { const at = t; t += sceneDuration(x as never); return at })
     sceneStarts(d).forEach((at, i) => expect(at).toBeCloseTo(stageStarts[i], 2)) // the sound clock = the picture clock
+  })
+})
+
+describe('timing model source', () => {
+  it('times interactions as validate.py does: type.format first, a team activity plays its own class_action_s', async () => {
+    const { interactionSeconds } = await import('./timing')
+    const sc = (interaction: unknown) => ({ ...LESSON.scenes[0], interaction }) as never
+    expect(interactionSeconds(sc({ type: 'quiz' }))).toBe(40)
+    expect(interactionSeconds(sc({ type: 'quiz', format: 'open' }))).toBe(120)
+    expect(interactionSeconds(sc({ type: 'choice', format: 'vote' }))).toBe(60)
+    expect(interactionSeconds(sc({ type: 'choice', format: 'other' }))).toBe(30)
+    expect(interactionSeconds(sc({ type: 'quiz', format: 'team', class_action_s: 75 }))).toBe(75)
+    expect(interactionSeconds(sc(null))).toBe(0)
+  })
+
+  it('reads tools/lessongen/timing.json, and HP_TIMING_JSON replaces it', async () => {
+    const { vi } = await import('vitest')
+    const { writeFileSync, mkdtempSync } = await import('node:fs')
+    const shared = JSON.parse(readFileSync(new URL('../../../tools/lessongen/timing.json', import.meta.url), 'utf8'))
+    const t1 = await import('./timing')
+    expect(t1.WORDS_PER_S).toBe(shared.narration.words_per_s)
+    const dir = mkdtempSync('/tmp/hp-timing-')
+    writeFileSync(`${dir}/timing.json`, JSON.stringify({ ...shared, narration: { ...shared.narration, words_per_s: 1 } }))
+    vi.resetModules()
+    process.env.HP_TIMING_JSON = `${dir}/timing.json`
+    try {
+      const t2 = await import('./timing')
+      expect(t2.WORDS_PER_S).toBe(1)
+      expect(t2.modelShotSeconds({ ...LESSON.scenes[0], narration: 'een twee drie vier vijf zes zeven acht' })).toBeCloseTo(8.6, 5)
+    } finally {
+      delete process.env.HP_TIMING_JSON
+      vi.resetModules()
+    }
   })
 })
