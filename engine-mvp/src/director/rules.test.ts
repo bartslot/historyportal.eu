@@ -156,10 +156,9 @@ describe('real lessons are where the tests expect them', () => {
 })
 
 // S4's totals: live from tools/lessongen/validate.py when it is in this checkout (the integration
-// branch). Without it, only voc is compared, against S4's number (S4: stable; the other
-// lessons are still changing, so a frozen number would fail for the wrong reason). null = no reference.
+// branch). Without it, against the totals S4 reported as stable (8242aa6b). null = no reference.
 const VALIDATE = new URL('../../../tools/lessongen/validate.py', import.meta.url).pathname
-const S4_STABLE_TOTALS: Record<string, number> = { voc: 872 } // S4, feat/lessongen 7b529cf0 (the others are still changing)
+const S4_STABLE_TOTALS: Record<string, number> = { 'eerste-boeren-1': 693, 'eerste-boeren-2': 806, hunebedden: 746, voc: 872 } // S4, feat/lessongen 8242aa6b: all stable
 function s4Total(id: string, file: string): number | null {
   if (!existsSync(VALIDATE)) return S4_STABLE_TOTALS[id] ?? null
   const out = spawnSync('python3', [VALIDATE, file], { encoding: 'utf8' })
