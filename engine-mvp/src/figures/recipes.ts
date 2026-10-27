@@ -18,6 +18,10 @@ export type FigureRecipe = {
   expression: Expression
   scale?: number           // whole-figure size (1 = the standard body, 1.78 m)
   sleeves?: boolean        // long sleeves painted on the arms in the coat dye (default true: no period wears a T-shirt)
+  legs?: 'trousers' | 'tunic' | 'breeches' | 'dress' // painted: tunic = coat dye to the knee, breeches = stockings below it
+  stockings?: Hex
+  collar?: boolean         // a painted white falling collar (1600s)
+  belt?: Hex | null        // a painted belt at the coat's hem
 }
 
 // parts that exist on the body (export: src/figures/export_wardrobe.py)
@@ -36,23 +40,23 @@ export const DEFAULT_DYES: Record<DyeRole, Hex> = {
 export const RECIPES: Record<string, FigureRecipe> = {
   // eerste boeren, c. 5000 BCE: undyed wool tunic over walnut-brown legs
   'boer-man': {
-    body: 'man', skin: '#d9a77f', hair: 'Hair_04', beard: 'Facial_Hair_01', hat: false, expression: 'neutral',
+    body: 'man', skin: '#d9a77f', hair: 'Hair_04', beard: 'Facial_Hair_01', hat: false, expression: 'neutral', legs: 'tunic', belt: '#4f3a28',
     dyes: { coat: '#b8a582', trousers: '#76593c', shoes: '#5a4330', hair: '#5a3f28' },
   },
   // she does the work: carries, sows, grinds. ONLY a male body exists, so this is the faithful best: the
   // longest hair part (shoulder length), no beard, a touch smaller, tunic and legs in one madder-red wool so
   // the silhouette reads as one long garment. Gaps: female body, long hair/braid, skirt, headscarf (README).
   'boer-vrouw': {
-    body: 'man', skin: '#e2b392', hair: 'Hair_03', beard: null, hat: false, expression: 'neutral', scale: 0.95,
+    body: 'man', skin: '#e2b392', hair: 'Hair_03', beard: null, hat: false, expression: 'neutral', scale: 0.95, legs: 'dress', belt: '#4f3a28',
     dyes: { coat: '#9a5c46', trousers: '#84503c', shoes: '#5a4330', hair: '#6b4428' },
   },
   // VOC, 1640s: black wide-brimmed hat, dark coat, curled moustache (the Tasman look)
   'voc-schipper': {
-    body: 'man', skin: '#e8bf9e', hair: 'Hair_01', beard: 'Facial_Hair_02', hat: true, hatKind: 'Cowboy_Hat', expression: 'neutral',
+    body: 'man', skin: '#e8bf9e', hair: 'Hair_01', beard: 'Facial_Hair_02', hat: true, hatKind: 'Cowboy_Hat', expression: 'neutral', legs: 'breeches', collar: true,
     dyes: { coat: '#454b5c', trousers: '#4f4034', shoes: '#33291f', hair: '#5c4630', hat: '#2e2925' },
   },
   'voc-matroos': {
-    body: 'man', skin: '#d6a07a', hair: 'Hair_02', beard: null, hat: true, hatKind: 'Bucket_Hat', expression: 'neutral',
+    body: 'man', skin: '#d6a07a', hair: 'Hair_02', beard: null, hat: true, hatKind: 'Bucket_Hat', expression: 'neutral', legs: 'breeches', stockings: '#a89f8c',
     dyes: { coat: '#8a8f86', trousers: '#5b6470', shoes: '#3a2d24', hair: '#3c2c20', hat: '#6e5a44' },
   },
 }
@@ -113,6 +117,11 @@ export function figureRecipe(char: string, cast: CastEntry[] = [], bundle = 'nl-
     expression: 'neutral',
     // a child is drawn smaller, not younger: the gap list asks for a child body
     scale: child ? 0.68 : woman ? 0.95 : 1,
+    // costume by era, all painted on the one body: prehistory wears a belted tunic (a woman a long dress),
+    // the 1600s breeches and stockings, officers and burghers a white falling collar
+    legs: woman ? 'dress' : bundle === 'nl-golden-age' && !has(text, 'enslaved', 'werkers', 'loincloth') ? 'breeches' : 'tunic',
+    collar: bundle === 'nl-golden-age' && (officer || woman || has(text, 'collar', 'ruff')),
+    belt: bundle === 'nl-golden-age' ? null : '#4f3a28',
     dyes: { coat, trousers, shoes: '#4a3526', hair: old ? '#b8b0a4' : pick(HAIR_DYES, seed, 4), hat: officer ? '#262321' : '#6e5a44' },
   }
 }

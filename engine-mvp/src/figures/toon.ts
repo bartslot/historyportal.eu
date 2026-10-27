@@ -22,26 +22,29 @@ export const TOON = {
 // The painted face: a projector box in front of the head (unit cube -> world, refreshed per frame from the head
 // bone); the expression image is projected onto whatever skin/eyeball lies inside it and faces it.
 export type FaceProjector = { tex: BaseTexture | null; toBox: Matrix; fwd: Vector3 }
-export type ToonMaterial = CustomMaterial & { dye: Color3; sleeve?: Color3; inkEdge?: number; step?: number; face?: FaceProjector }
+// zones: the garment's painted parts (per vertex 0 = base dye, 1..3 = zones[0..2]; null = keep the base dye)
+export type ToonMaterial = CustomMaterial & { dye: Color3; zones?: (Color3 | null)[]; inkEdge?: number; step?: number; face?: FaceProjector }
 
-export function toonMaterial(name: string, dye: Color3, scene: Scene, withSleeve = false): ToonMaterial {
+export function toonMaterial(name: string, dye: Color3, scene: Scene, withZones = false): ToonMaterial {
   const m = new CustomMaterial(name, scene) as ToonMaterial
   m.dye = dye.clone()
   m.specularColor = Color3.Black()
-  m.backFaceCulling = true // garments are closed or doubled shells: drawing the inner side z-fights
+  m.backFaceCulling = true // two-sided under the loader's mirror shades in a staircase; the body under a garment fills its gaps
   m.AddUniform('dye', 'vec3', null)
-  m.AddUniform('sleeveDye', 'vec3', null)
-  m.AddUniform('hasSleeve', 'float', null)
-  // 'sleeve' (0/1 per vertex, only the skin has it): where a long sleeve is painted over the arm
-  if (withSleeve) {
-    m.AddAttribute('sleeve')
-    m.Vertex_Definitions('attribute float sleeve;\nvarying float vSleeve;')
-    m.Vertex_MainEnd('vSleeve = sleeve;')
+  m.AddUniform('zoneDye1', 'vec3', null)
+  m.AddUniform('zoneDye2', 'vec3', null)
+  m.AddUniform('zoneDye3', 'vec3', null)
+  m.AddUniform('zoneOn', 'vec3', null)
+  // 'zone' (0..3 per vertex, see figure.ts paintZones): painted sleeves, tunic, stockings, collar, belt
+  if (withZones) {
+    m.AddAttribute('zone')
+    m.Vertex_Definitions('attribute float zone;\nvarying float vZone;')
+    m.Vertex_MainEnd('vZone = zone;')
   } else {
-    m.Vertex_Definitions('varying float vSleeve;')
-    m.Vertex_MainEnd('vSleeve = 0.0;')
+    m.Vertex_Definitions('varying float vZone;')
+    m.Vertex_MainEnd('vZone = 0.0;')
   }
-  m.Fragment_Definitions('varying float vSleeve;')
+  m.Fragment_Definitions('varying float vZone;')
   m.AddUniform('shadeTint', 'vec3', null)
   m.AddUniform('toLight', 'vec3', null)
   m.AddUniform('celStep', 'float', null)
@@ -66,7 +69,11 @@ export function toonMaterial(name: string, dye: Color3, scene: Scene, withSleeve
     float nl = dot(n, normalize(toLight));
     float lit = smoothstep(celStep - celSoft, celStep + celSoft, nl);
     float inked = 1.0 - smoothstep(inkEdge - inkSoft, inkEdge, nv);
-    vec3 base = hasSleeve > 0.5 ? mix(dye, sleeveDye, step(0.5, vSleeve)) : dye;
+    float z = floor(vZone + 0.5);
+    vec3 base = dye;
+    if (z == 1.0 && zoneOn.x > 0.5) base = zoneDye1;
+    if (z == 2.0 && zoneOn.y > 0.5) base = zoneDye2;
+    if (z == 3.0 && zoneOn.z > 0.5) base = zoneDye3;
     float faceInk = 0.0;
     if (hasFace > 0.5) {
       vec3 fp = (faceBox * vec4(vPositionW, 1.0)).xyz;
@@ -88,8 +95,11 @@ export function toonMaterial(name: string, dye: Color3, scene: Scene, withSleeve
     const e = m.getEffect()
     if (!e) return
     e.setColor3('dye', m.dye)
-    e.setFloat('hasSleeve', m.sleeve ? 1 : 0)
-    if (m.sleeve) e.setColor3('sleeveDye', m.sleeve)
+    const zs = m.zones ?? []
+    e.setVector3('zoneOn', new Vector3(zs[0] ? 1 : 0, zs[1] ? 1 : 0, zs[2] ? 1 : 0))
+    e.setColor3('zoneDye1', zs[0] ?? m.dye)
+    e.setColor3('zoneDye2', zs[1] ?? m.dye)
+    e.setColor3('zoneDye3', zs[2] ?? m.dye)
     e.setColor3('shadeTint', TOON.shade)
     e.setVector3('toLight', TOON.light)
     e.setFloat('celStep', m.step ?? TOON.step)

@@ -88,15 +88,34 @@ function partOf(mesh: AbstractMesh): Part | null {
   return null
 }
 
+const COLLAR: Hex = '#e8e2d4' // linen
+const STOCKINGS: Hex = '#cfc8b8'
+/** the painted garment parts of one mesh, from the recipe's costume words */
+function zonesFor(role: Part['role'], r: FigureRecipe): (Color3 | null)[] {
+  const coat = hexRgb(r.dyes.coat ?? DEFAULT_DYES.coat)
+  if (role === 'skin') return [r.sleeves === false ? null : coat]
+  if (role === 'trousers') {
+    const legs = r.legs ?? 'trousers'
+    if (legs === 'tunic') return [coat, null]              // the tunic's skirt to the knee, the base dye = leg wraps
+    if (legs === 'dress') return [coat, coat]
+    if (legs === 'breeches') return [null, hexRgb(r.stockings ?? STOCKINGS)]
+    return [null, null]
+  }
+  if (role === 'coat') return [r.collar ? hexRgb(COLLAR) : null, r.belt ? hexRgb(r.belt) : null]
+  return []
+}
+
 function colourOf(part: Part, r: FigureRecipe): Hex {
   if (part.role === 'skin' || part.role === 'eye') return r.skin
   return r.dyes[part.role] ?? DEFAULT_DYES[part.role]
 }
 
 
-// Skin under the clothes z-fights them and its ink hull covers them: keep only the skin no garment covers
-// (head, neck, hands). A triangle goes when any corner's strongest bone is a covered one.
-const COVERED = /^(root\.x|spine_|shoulder\.|thigh_|leg_|foot\.|toes_)/ // arms stay: short sleeves, an empty sleeve shows the paper through it
+// Skin under the clothes z-fights them: keep only the skin no garment covers (head, neck, arms, hands). A triangle
+// goes when any corner's strongest bone is a covered one. (Pulling it inward does not work: the vendor body sits
+// several cm through its own clothes; the original file hides it with a mask.) Known ceiling: a thin paper sliver
+// can show where a hem stands off the body.
+const COVERED = /^(root\.x|spine_|shoulder\.|thigh_|leg_|foot\.|toes_)/ // arms stay skin: the sleeves are painted on them
 const SLEEVE = /^(arm_|c_arm_twist|forearm_)/
 const trimmed = new WeakSet<object>()
 function trimCoveredSkin(mesh: Mesh) {
@@ -114,15 +133,43 @@ function trimCoveredSkin(mesh: Mesh) {
     if (!covered(idx[t]) && !covered(idx[t + 1]) && !covered(idx[t + 2])) keep.push(idx[t], idx[t + 1], idx[t + 2])
   }
   mesh.setIndices(keep) // shared geometry: every figure gets the same trimmed body
-  // long sleeves are painted, not modelled: arm skin (upper arm + forearm, never the hand) takes the coat dye
-  const sleeve = new Float32Array(mi.length / 4)
-  for (let v = 0; v < sleeve.length; v++) {
+  trimmed.add(geo)
+}
+
+// Garment parts are PAINTED onto the one body's meshes (no modelling): a per-vertex zone the material dyes.
+//   skin      1 = arm (a long sleeve)
+//   trousers  1 = hip to knee (a tunic's skirt), 2 = knee down (leg wraps, stockings)
+//   coat      1 = collar band (a falling collar), 2 = hem band (a belt)
+const ZONED = new WeakSet<object>()
+export const BANDS = { collarRadius: 0.16, belt: 0.06 } // collar: metres round the neck joint; belt: share of the coat's height
+function paintZones(mesh: Mesh, kind: 'skin' | 'trousers' | 'coat') {
+  const geo = mesh.geometry
+  if (!geo || ZONED.has(geo) || !mesh.skeleton) return
+  const mi = mesh.getVerticesData(VertexBuffer.MatricesIndicesKind)!, mw = mesh.getVerticesData(VertexBuffer.MatricesWeightsKind)!
+  const posi = mesh.getVerticesData(VertexBuffer.PositionKind)!
+  const bones = mesh.skeleton.bones
+  const strongest = (v: number) => {
     let best = 0
     for (let k = 1; k < 4; k++) if (mw[v * 4 + k] > mw[v * 4 + best]) best = k
-    sleeve[v] = SLEEVE.test(bones[mi[v * 4 + best]]?.name ?? '') ? 1 : 0
+    return bones[mi[v * 4 + best]]?.name ?? ''
   }
-  mesh.setVerticesData('sleeve', sleeve, false, 1)
-  trimmed.add(geo)
+  const { minimum: lo, maximum: hi } = mesh.getBoundingInfo().boundingBox // bind-pose, mesh space (y up)
+  const h = hi.y - lo.y
+  // the neck joint in the mesh's bind space: a falling collar is everything within a hand's width of it
+  const neckBone = bones.find((b) => b.name === 'neck.x')
+  const neck = neckBone ? Matrix.Invert(neckBone.getInvertedAbsoluteTransform()).getTranslation() : new Vector3(0, hi.y, 0)
+  const zone = new Float32Array(posi.length / 3)
+  for (let v = 0; v < zone.length; v++) {
+    const b = strongest(v), y = posi[v * 3 + 1]
+    if (kind === 'skin') zone[v] = SLEEVE.test(b) ? 1 : 0
+    else if (kind === 'trousers') zone[v] = /^(root\.x|thigh_)/.test(b) ? 1 : /^(leg_|foot\.|toes_)/.test(b) ? 2 : 0
+    else {
+      const d = Math.hypot(posi[v * 3] - neck.x, y - neck.y, posi[v * 3 + 2] - neck.z)
+      zone[v] = d < BANDS.collarRadius ? 1 : y < lo.y + h * BANDS.belt ? 2 : 0
+    }
+  }
+  mesh.setVerticesData('zone', zone, false, 1)
+  ZONED.add(geo)
 }
 
 // ---------- create ----------
@@ -150,10 +197,12 @@ export async function createFigure(scene: Scene, recipe: FigureRecipe, name = 'f
     const part = partOf(m)
     if (!part || !part.show(recipe)) { m.setEnabled(false); continue }
     if (part.role === 'skin') trimCoveredSkin(m as Mesh)
-    const mat = toonMaterial(`${name}_${part.role}_${live.length}`, hexRgb(colourOf(part, recipe)), scene, part.role === 'skin')
+    const zoned = part.role === 'skin' || part.role === 'trousers' || part.role === 'coat'
+    if (zoned) paintZones(m as Mesh, part.role as 'skin' | 'trousers' | 'coat')
+    const mat = toonMaterial(`${name}_${part.role}_${live.length}`, hexRgb(colourOf(part, recipe)), scene, zoned)
+    mat.zones = zonesFor(part.role, recipe)
     if (part.role === 'skin' || part.role === 'eye') mat.step = SKIN_STEP
     if (part.role === 'skin') mat.inkEdge = SKIN_INK // thin fingers would fill with contour ink: a lighter line on skin
-    if (part.role === 'skin' && recipe.sleeves !== false) mat.sleeve = hexRgb(recipe.dyes.coat ?? DEFAULT_DYES.coat)
     if (part.role === 'eye') {
       mat.inkEdge = 0 // the eyeballs carry the painted eyes, no contour of their own
       mat.backFaceCulling = false // one eyeball is exported mirrored (flipped winding): culled, the socket shows through
@@ -197,7 +246,8 @@ export async function createFigure(scene: Scene, recipe: FigureRecipe, name = 'f
     setExpression,
     setDye(role, hex) {
       live.filter((l) => l.part.role === role).forEach((l) => (l.mesh.material as ToonMaterial).dye.copyFrom(hexRgb(hex)))
-      if (role === 'coat') live.forEach((l) => (l.mesh.material as ToonMaterial).sleeve?.copyFrom(hexRgb(hex)))
+      live.forEach((l) => { (l.mesh.material as ToonMaterial).zones = zonesFor(l.part.role, { ...fig.recipe, dyes: { ...fig.recipe.dyes, [role]: hex } }) })
+      fig.recipe = { ...fig.recipe, dyes: { ...fig.recipe.dyes, [role]: hex } }
     },
     dispose() {
       clips.forEach((p) => void p.then((g) => g.dispose()))
