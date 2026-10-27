@@ -36,19 +36,19 @@ export const RECIPES: Record<string, FigureRecipe> = {
   // eerste boeren, c. 5000 BCE: undyed wool tunic over walnut-brown legs
   'boer-man': {
     body: 'man', skin: '#d9a77f', hair: 'Hair_04', beard: 'Facial_Hair_01', hat: false, expression: 'neutral',
-    dyes: { coat: '#b9a382', trousers: '#6e5236', shoes: '#5a4330', hair: '#5a3f28' },
+    dyes: { coat: '#b8a582', trousers: '#76593c', shoes: '#5a4330', hair: '#5a3f28' },
   },
   // she does the work: carries, sows, grinds. ONLY a male body exists, so this is the faithful best: the
   // longest hair part (shoulder length), no beard, a touch smaller, tunic and legs in one madder-red wool so
   // the silhouette reads as one long garment. Gaps: female body, long hair/braid, skirt, headscarf (README).
   'boer-vrouw': {
     body: 'man', skin: '#e2b392', hair: 'Hair_03', beard: null, hat: false, expression: 'neutral', scale: 0.95,
-    dyes: { coat: '#a8573e', trousers: '#8c4a36', shoes: '#5a4330', hair: '#6b4428' },
+    dyes: { coat: '#9a5c46', trousers: '#84503c', shoes: '#5a4330', hair: '#6b4428' },
   },
   // VOC, 1640s: black wide-brimmed hat, dark coat, curled moustache (the Tasman look)
   'voc-schipper': {
     body: 'man', skin: '#e8bf9e', hair: 'Hair_01', beard: 'Facial_Hair_02', hat: true, hatKind: 'Cowboy_Hat', expression: 'neutral',
-    dyes: { coat: '#2f3442', trousers: '#4a3a2e', shoes: '#2a2220', hair: '#5c4630', hat: '#262321' },
+    dyes: { coat: '#454b5c', trousers: '#4f4034', shoes: '#33291f', hair: '#5c4630', hat: '#2e2925' },
   },
   'voc-matroos': {
     body: 'man', skin: '#d6a07a', hair: 'Hair_02', beard: null, hat: true, hatKind: 'Bucket_Hat', expression: 'neutral',

@@ -10,7 +10,8 @@ import {
 } from '@babylonjs/core'
 import '@babylonjs/loaders/glTF'
 import { retarget, type ClipName } from './clips'
-import { toonMaterial, type FaceProjector, type ToonMaterial } from './toon'
+import { faceMaskMaterial, toonMaterial, type FaceProjector, type ToonMaterial } from './toon'
+import { addMaskMesh } from '../engine/anime-cast'
 import { applyPose, captureRest, frameOf, pos, POSES, resetToRest, rigOf, type Rig, type Violation } from './pose'
 import { BEARDS, DEFAULT_DYES, HAIRS, HATS, type DyeRole, type Expression, type FigureRecipe, type Hex, type Pose } from './recipes'
 
@@ -62,7 +63,12 @@ type Part = { role: DyeRole | 'skin' | 'eye'; show: (r: FigureRecipe) => boolean
 function partOf(mesh: AbstractMesh): Part | null {
   const node = mesh.name.replace(/_primitive\d+$/, '')
   const mat = mesh.material?.name ?? ''
-  if (node === 'Geo_Body') return mat.startsWith('Skin') ? { role: 'skin', show: () => true } : null // teeth, gum, 3D brows: painted instead
+  if (node === 'Geo_Body') {
+    if (mat.startsWith('Skin')) return { role: 'skin', show: () => true }
+    // the lips are modelled parted: teeth and gum, dyed skin and unlined like the eyeballs, plug the mouth shut
+    if (mat === 'teeth' || mat === 'gum') return { role: 'eye', show: () => true }
+    return null // 3D brows and lashes: painted instead
+  }
   if (node === 'Geo_Eyes') return mat === 'corneaMAT' ? null : { role: 'eye', show: () => true }  // eyeballs = skin; the eyes are painted on
   if (node === 'Geo_Shirt') return { role: 'coat', show: () => true }
   if (node === 'Geo_Pants') return { role: 'trousers', show: () => true }
@@ -144,10 +150,14 @@ export async function createFigure(scene: Scene, recipe: FigureRecipe, name = 'f
 
   // painted face: one projector box riding the head bone, read by the skin and eyeball materials
   const faceMats = live.filter((l) => l.part.role === 'skin' || l.part.role === 'eye').map((l) => l.mesh.material as ToonMaterial)
-  const projector = faceProjector(rig, live.filter((l) => l.part.role === 'eye').map((l) => l.mesh))
+  const projector = faceProjector(rig, live.filter((l) => l.mesh.name.startsWith('Geo_Eyes')).map((l) => l.mesh))
   faceMats.forEach((m) => (m.face = projector.face))
   const follow = scene.onBeforeRenderObservable.add(projector.update)
   const setExpression = (e: Expression) => { projector.face.tex = face(e, scene) }
+  // the stage look's pencil pass leaves the painted face alone (needs a camera: the lab and the stage have one)
+  const unmask = scene.activeCamera
+    ? live.filter((l) => l.part.role === 'skin' || l.part.role === 'eye').map((l) => addMaskMesh(scene, scene.activeCamera!, l.mesh, faceMaskMaterial(`${name}_facemask`, projector.face, scene)))
+    : []
   setExpression(recipe.expression)
   EXPRESSIONS.forEach((e) => face(e, scene)) // preload: a swap mid-scene never blinks
 
@@ -174,6 +184,7 @@ export async function createFigure(scene: Scene, recipe: FigureRecipe, name = 'f
     dispose() {
       clips.forEach((p) => void p.then((g) => g.dispose()))
       scene.onBeforeRenderObservable.remove(follow)
+      unmask.forEach((u) => u())
       root.dispose(false, true)
     },
   }
