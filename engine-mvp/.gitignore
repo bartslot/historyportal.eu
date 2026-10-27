@@ -6,3 +6,4 @@ node_modules/
 dist/
 public/assets/models/
 __pycache__/
+public/sound
