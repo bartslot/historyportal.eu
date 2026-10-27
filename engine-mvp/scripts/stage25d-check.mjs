@@ -27,6 +27,13 @@ try {
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`))
   await page.goto(url)
   await page.waitForFunction(() => window.__stage25d, null, { timeout: 30000 })
+  // fps of the page as shipped (its own layout and render cap, adaptive tier on), before anything is restyled
+  await page.evaluate(() => window.__stage25d.play())
+  await page.waitForTimeout(5000)                      // let the adaptive tier settle
+  const shipped = []
+  for (let i = 0; i < 4; i++) { await page.waitForTimeout(1000); shipped.push(await page.evaluate(() => window.__stage25d.fps())) }
+  const sz = await page.evaluate(() => { const s = window.__stage25d.stage; return { w: s.engine.getRenderWidth(), h: s.engine.getRenderHeight(), css: s.canvas.clientWidth, notches: s.notches } })
+  console.log(`fps as shipped (dpr 2, canvas ${sz.css} css px, render ${sz.w}x${sz.h}, notches ${sz.notches}):`, shipped.join(' '))
   // the canvas alone, full viewport (CSS 1920x1080 = 3840x2160 device pixels; the stage renders at most 1920 wide)
   await page.evaluate(() => {
     const c = window.__stage25d.stage.canvas
@@ -46,7 +53,7 @@ try {
   await page.evaluate(() => { window.__stage25d.seek(0, 0); window.__stage25d.play() })
   const fps = []
   for (let i = 0; i < 5; i++) { await page.waitForTimeout(1000); fps.push(await page.evaluate(() => window.__stage25d.fps())) }
-  console.log('fps (1 s windows, 1920x1080):', fps.join(' '))
+  console.log('fps full-frame canvas (1920 css px wide, capped render):', fps.join(' '))
   // a teacher edit moves the layer at once; undo puts it back
   const undo = await page.evaluate(async () => {
     const p = window.__stage25d

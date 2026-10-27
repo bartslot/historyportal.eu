@@ -10,7 +10,7 @@ import {
 } from '@babylonjs/core'
 import { createLookChain, PRESETS } from '../engine/look-chain.js'
 import { loadLibrary, resolveAsset } from './library'
-import { cameraAt, DEPTH_Z, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, sceneDuration, viewWidthAt } from './layout'
+import { ADAPT_MIN_FPS, ADAPT_WINDOW_MS, cameraAt, DEPTH_Z, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
 import { loadPremultiplied, makeLayer, type LayerHandle } from './layer'
 import { LessonDoc } from './edits'
 import type { Asset, Depth, Lesson, Library, Scene, SceneLayer } from './types'
@@ -19,7 +19,6 @@ import type { Asset, Depth, Lesson, Library, Scene, SceneLayer } from './types'
 export const STAGE_LOOK: Record<string, number | string> = { ...PRESETS['History Lines pencil'], paper: 0.35, granulation: 0.2 }
 const PAPER = new Color4(0.937, 0.914, 0.863, 1)
 const GROUND = '#a3a27a'
-export const MAX_RENDER_SIDE = 1920 // device pixels on the longest side: 1080p is the target, Retina would cost 4x the fill
 
 interface Built { layer: SceneLayer; index: number; builtScale: number; handle: LayerHandle; asset: Asset; order: number }  // index -1 = the sky
 
@@ -62,12 +61,34 @@ export class Stage {
     window.addEventListener('resize', () => this.fit())
   }
 
-  /** Sharp up to the device's pixels, never more than MAX_RENDER_SIDE on the longest side. */
+  /** Longest render side in device px (1080p by default; Retina at full ratio costs 4x the fill). */
+  renderCap = 1920
+  /** Notches the adaptive tier has stepped down: a 2 s average under ADAPT_MIN_FPS drops one, never below 1x CSS. */
+  notches = 0
+  adaptive = true
+  private window = { start: 0, frames: 0 }
+
+  /** Sharp up to the device's pixels, under the cap, minus the adaptive notches. The painted look hides the rest. */
   fit() {
     const longest = Math.max(this.canvas.clientWidth, this.canvas.clientHeight, 1)
-    const dpr = window.devicePixelRatio || 1
-    this.engine.setHardwareScalingLevel(Math.max(1 / dpr, longest / MAX_RENDER_SIDE))
+    this.engine.setHardwareScalingLevel(1 / renderScale(longest, window.devicePixelRatio || 1, this.renderCap, this.notches))
     this.engine.resize()
+  }
+
+  setRenderCap(cap: number) { this.renderCap = cap; this.notches = 0; this.window.start = 0; this.fit() }
+
+  /** Count a frame; at the end of each 2 s window, step down one notch if it averaged too slow. */
+  tick(now: number) {
+    if (!this.window.start) { this.window = { start: now, frames: 0 }; return }
+    this.window.frames++
+    if (now - this.window.start < ADAPT_WINDOW_MS) return
+    const fps = (this.window.frames * 1000) / (now - this.window.start)
+    this.window = { start: now, frames: 0 }
+    if (!this.adaptive || fps >= ADAPT_MIN_FPS) return
+    const before = this.engine.getHardwareScalingLevel()
+    this.notches++
+    this.fit()
+    if (this.engine.getHardwareScalingLevel() === before) this.notches--   // already at 1x CSS: nothing left to drop
   }
 
   setLook(look: Record<string, number | string> | undefined) { this.look = { ...STAGE_LOOK, ...(look ?? {}) } }
@@ -194,6 +215,7 @@ export async function playLesson(lessonOrUrl: Lesson | string, libraryUrl?: stri
     const dt = Math.min(0.1, (now - last) / 1000)
     last = now
     frames.push(now); while (frames.length && now - frames[0] > 1000) frames.shift()
+    stage.tick(now)
     clock += dt                                  // motion keeps breathing while paused
     if (playing && !entering) {
       t += dt

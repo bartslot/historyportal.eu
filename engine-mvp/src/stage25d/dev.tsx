@@ -5,7 +5,7 @@ import { StrictMode, useEffect, useState, useSyncExternalStore } from 'react'
 import { createRoot } from 'react-dom/client'
 import { playLesson, type Player } from './stage'
 import { getIn, type Path } from './edits'
-import { sceneDuration } from './layout'
+import { RENDER_CAPS, sceneDuration } from './layout'
 import type { Ease, MotionSpec } from './types'
 
 const q = new URLSearchParams(location.search)
@@ -42,6 +42,13 @@ function Panel({ player }: { player: Player }) {
         <button className="btn btn-sm btn-ghost" disabled={!player.doc.history.canRedo()} onClick={() => player.doc.redo()}>Redo</button>
         <span className="ml-auto text-xs tabular-nums opacity-70" data-testid="fps">{player.fps()} fps</span>
       </div>
+      <label className="mt-3 flex items-center gap-2 text-xs">
+        <span className="opacity-70">Sharpness</span>
+        <select className="select select-xs w-28" value={player.stage.renderCap} onChange={(e) => player.stage.setRenderCap(Number(e.target.value))}>
+          {RENDER_CAPS.map((c) => <option key={c} value={c}>{c} px</option>)}
+        </select>
+        <span className="ml-auto tabular-nums opacity-70" data-testid="render-size">{player.stage.engine.getRenderWidth()} x {player.stage.engine.getRenderHeight()}</span>
+      </label>
       <div className="join mt-3 flex flex-wrap">
         {lesson.scenes.map((sc, i) => (
           <button key={sc.id} className={`btn btn-xs join-item ${i === index ? 'btn-active' : ''}`} onClick={() => void player.seek(i)}>{sc.id}</button>

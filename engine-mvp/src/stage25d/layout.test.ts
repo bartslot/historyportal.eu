@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cameraAt, DEPTH_Z, HOUSE, layerAt, motionOf, placeLayer, viewWidthAt } from './layout'
+import { cameraAt, DEPTH_Z, HOUSE, layerAt, motionOf, placeLayer, renderScale, viewWidthAt } from './layout'
 import type { Asset } from './types'
 
 const tree: Asset = { id: 't', layer: 'fg', tags: [], file: '', w: 1000, h: 2000, anchor: [0.5, 1], height_m: 10, motion: 'sway' }
@@ -60,4 +60,14 @@ describe('motionOf', () => {
     expect(motionOf(tree, { depth: 'fg', motion: 'none' }).kind).toBe('none')
     expect(motionOf(tree, { depth: 'fg', motion: { amount: 2 } })).toEqual({ kind: 'sway', amount: 2, speed: 1 })
   })
+})
+
+describe('renderScale', () => {
+  it('uses the device ratio when it fits under the cap', () => expect(renderScale(800, 2, 1920, 0)).toBe(2))
+  it('caps the longest side', () => expect(renderScale(1440, 2, 1920, 0)).toBeCloseTo(1920 / 1440))
+  it('drops a quarter per notch, never below 1x CSS', () => {
+    expect(renderScale(800, 2, 1920, 2)).toBe(1.5)
+    expect(renderScale(800, 2, 1920, 9)).toBe(1)
+  })
+  it('never upsamples a dpr-1 screen', () => expect(renderScale(800, 1, 2560, 0)).toBe(1))
 })

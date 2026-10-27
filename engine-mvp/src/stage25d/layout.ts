@@ -87,3 +87,15 @@ export function motionOf(asset: Asset, layer: SceneLayer): Required<MotionSpec> 
   const o: MotionSpec = typeof layer.motion === 'string' ? { kind: layer.motion } : layer.motion ?? {}
   return { kind: o.kind ?? asset.motion ?? 'none', amount: o.amount ?? 1, speed: o.speed ?? 1 }
 }
+
+/** Render size steps: the cap on the longest side (device px), and the adaptive drop below it. */
+export const RENDER_CAPS = [1280, 1920, 2560] as const
+export const RENDER_STEP = 0.25        // one adaptive notch = a quarter of a CSS pixel per pixel
+export const ADAPT_WINDOW_MS = 2000
+export const ADAPT_MIN_FPS = 50
+
+/** Device pixels per CSS pixel: the device's own, under the cap, minus adaptive notches, never below 1x CSS. */
+export function renderScale(cssLongest: number, dpr: number, cap: number, notches: number): number {
+  const top = Math.min(dpr, cap / Math.max(cssLongest, 1))
+  return Math.max(Math.min(1, dpr), top - notches * RENDER_STEP)
+}
