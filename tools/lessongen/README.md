@@ -29,12 +29,12 @@ Output per lesson: vault `historyportal/topics/autonomous-lessons/lessons/<id>/`
 
 | Check | Rule |
 |---|---|
-| schema | `lesson.schema.json` (contract 2 + interaction shapes) |
-| shots | every scene `est_s` 6-12 |
-| spacing | first interaction <= 180 s, then <= 180 s of story between interactions (warn < 60 s) |
-| facts | every scene has `fact_refs`, each one a `sources[].id`; at least one `canon` source |
-| copyright | no 6-word run shared with the LessonUp slides in `blueprint.lessonup_ids` |
-| Bloom | >= 2 quizzes, <= 50 % recall (Bloom 1), >= 2 Bloom levels |
+| schema | `lesson.schema.json` (contract 2 + interaction shapes; source `url` non-empty) |
+| shots | every scene `est_s` 6-12 and <= 2.6 narrated words/s |
+| spacing | first interaction <= 180 s, <= 180 s of story between interactions and after the last (warn < 60 s) |
+| facts | every scene has `fact_refs`, each one a `sources[].id`; a shot with a number/year needs a non-ledger source; at least one `canon` source |
+| copyright | no 6-word run shared between ANY prose string in the file (title, teacher, goals, notes, ...) and ANY cached LessonUp dump in `.cache/corpus` |
+| Bloom | >= 2 quizzes, <= 50 % recall (Bloom 1), >= 2 Bloom levels (labels are self-declared: the checker re-labels) |
 | power meter | 1-4 `power-meter` moments |
-| text | no em/en dash or emoji in anything the class sees; balloons <= 8 words |
-| art | layer `asset` exists in the library; otherwise its `need` is in `needed_assets` (match = first tag is the head noun and must be an asset tag; more shared tags rank higher) |
+| text | no dash character (U+2010-2015, spaced " - ") or emoji in any prose string; balloons <= 8 words |
+| art | layer `asset` exists in the library; otherwise its `need` is in `needed_assets`. Match: first tag = head noun, required; `!tag` required; other tags rank. Region tags (mideast, egypt, mesopotamia, batavia, banda, ocean, newzealand, tasmania, mauritius) work both ways: a region asset never serves a need without that region |

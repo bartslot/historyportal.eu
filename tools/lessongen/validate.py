@@ -3,10 +3,11 @@
 
   validate.py LESSON.json [--corpus DIR] [--library-root DIR] [--resolve]
 
-Checks: schema, shot length (est_s 6-12), interaction spacing (first <= 180 s, then every <= 180 s),
-every scene has fact_refs that resolve to a source, no verbatim overlap with the LessonUp slides used
-(6-word n-grams), Bloom mix of the quizzes, at least one power-meter, UI text hygiene (no dashes, no
-emoji), set layers resolve against the art library or are listed in needed_assets.
+Checks: schema, shot length (est_s 6-12, <= 2.6 words/s), interaction spacing (first <= 180 s, then
+every <= 180 s, also after the last), every scene has fact_refs that resolve to a source and a real
+source when it says a number or year, no verbatim overlap (6-word n-grams) between any prose string and
+any cached LessonUp dump, Bloom mix of the quizzes, 1-4 power meters, text hygiene (no dashes, no emoji,
+balloons <= 8 words), set layers resolve against the art library or are listed in needed_assets.
 --resolve writes matching library asset ids into the layers and rebuilds needed_assets in place.
 Exit 1 on any error.
 """
@@ -33,30 +34,31 @@ NGRAM = 6
 RECALL_SHARE_MAX = 0.5
 POWER_METERS_MIN, POWER_METERS_MAX = 1, 4
 BALLOON_WORDS_MAX = 8
+WORDS_PER_S_MAX = 2.6  # Dutch narration for kids runs ~2.2-2.5 words/s
+# Region tags (agreed with the art session). An asset carrying one only serves a need that asks for it.
+REGIONS = {"mideast", "egypt", "mesopotamia", "batavia", "banda", "ocean", "newzealand", "tasmania", "mauritius"}
+# A narrated number, year or amount is a hard fact: it needs a real (non-ledger) source in the scene.
+HARD_FACT = re.compile(r"\d|honderd|duizend|miljoen|miljard", re.I)
+# Keys whose values are ids, enums, tags or paths, not prose.
+NOT_PROSE = {"id", "url", "need", "asset", "sky", "char", "pose", "depth", "facing", "expression", "beat", "type",
+             "kind", "input", "format", "lang", "bundle", "canon_venster", "related_venster", "layer", "tags",
+             "fact_refs", "ledger", "level", "camera", "sound", "needed_assets", "lessonup_ids"}
 
-# Em/en dash and the emoji blocks. A plain hyphen inside a word ("VOC-schip") is fine.
-BAD_CHARS = re.compile("[–—―\U0001F000-\U0001FAFF☀-➿️]")
+# Every dash character, a spaced hyphen used as a dash, and the emoji blocks. "VOC-schip" is fine.
+BAD_CHARS = re.compile("[\u2010-\u2015\U0001F000-\U0001FAFF\u2600-\u27BF\uFE0F]|\\s-\\s")
 WORD = re.compile(r"[a-zà-ÿ0-9']+")
 
 
-def ui_texts(lesson: dict) -> list[tuple[str, str]]:
-    """Every string the class sees or hears (plus teacher-facing why/history), as (where, text)."""
-    out: list[tuple[str, str]] = []
-    for sc in lesson["scenes"]:
-        sid = sc["id"]
-        out.append((f"{sid}.narration", sc["narration"]))
-        if sc.get("on_screen"):
-            out.append((f"{sid}.on_screen", sc["on_screen"]))
-        out += [(f"{sid}.balloon", b["text"]) for b in sc["balloons"]]
-        it = sc.get("interaction") or {}
-        for key in ("question", "explain", "prompt", "payoff", "why", "history"):
-            if it.get(key):
-                out.append((f"{sid}.{it['type']}.{key}", it[key]))
-        for opt in it.get("options", []):
-            text = opt if isinstance(opt, str) else f"{opt['text']} {opt['outcome']}"
-            out.append((f"{sid}.{it['type']}.option", text))
-        out += [(f"{sid}.meter.word", w) for w in it.get("right", []) + it.get("wrong", [])]
-    return out
+def all_texts(node: object, where: str = "") -> list[tuple[str, str]]:
+    """Every prose string anywhere in the lesson (title, teacher, goals, notes, ...), as (where, text)."""
+    if isinstance(node, str):
+        return [(where, node)]
+    if isinstance(node, list):
+        return [t for i, x in enumerate(node)
+                for t in all_texts(x, f"{where}.{x['id']}" if isinstance(x, dict) and "id" in x else f"{where}[{i}]")]
+    if isinstance(node, dict):
+        return [t for k, x in node.items() if k not in NOT_PROSE for t in all_texts(x, f"{where}.{k}")]
+    return []
 
 
 def ngrams(text: str, n: int = NGRAM) -> set[tuple[str, ...]]:
@@ -65,12 +67,10 @@ def ngrams(text: str, n: int = NGRAM) -> set[tuple[str, ...]]:
 
 
 def corpus_texts(ids: list[int], corpus_dir: Path) -> tuple[list[str], list[int]]:
-    texts, missing = [], []
-    for lid in ids:
-        path = corpus_dir / f"{lid}.json"
-        if not path.exists():
-            missing.append(lid)
-            continue
+    """Slide texts of every cached dump (not only this blueprint's), plus which blueprint ids are missing."""
+    missing = [lid for lid in ids if not (corpus_dir / f"{lid}.json").exists()]
+    texts: list[str] = []
+    for path in sorted(corpus_dir.glob("*.json")) if corpus_dir.is_dir() else []:
         for s in json.loads(path.read_text())["slides"]:
             parts = [s.get("plain_text"), s.get("body"), s.get("question"), s.get("title")] + (s.get("answers") or [])
             texts.append(" ".join(p for p in parts if p))
@@ -91,7 +91,8 @@ def split_tags(need: str) -> list[str]:
 def match_asset(need: str, depth: str, library: list[dict]) -> dict | None:
     """Best library asset for a need. The first tag is the head noun and must match, as must every tag
     marked "!" (e.g. "hills dry !mideast"); every further tag that matches ranks higher, then same layer,
-    then QA score. The asset id counts as a tag."""
+    then QA score. The asset id counts as a tag. Region tags work both ways: an asset tagged with a region
+    only serves a need that requires that region, so Drenthe never gets a Mesopotamian field."""
     want = [t.lstrip("!") for t in split_tags(need)]
     required = {want[0]} | {t.lstrip("!") for t in split_tags(need) if t.startswith("!")} if want else set()
     if not want:
@@ -100,7 +101,7 @@ def match_asset(need: str, depth: str, library: list[dict]) -> dict | None:
     def tags_of(a: dict) -> set[str]:
         return {t.lower() for t in a.get("tags", [])} | {a["id"].lower()}
 
-    hits = [a for a in library if required <= tags_of(a)]
+    hits = [a for a in library if required <= tags_of(a) and tags_of(a) & REGIONS <= required]
     hits.sort(key=lambda a: (-len(set(want) & tags_of(a)), a.get("layer") != depth, -(a.get("qa") or {}).get("score", 0)))
     return hits[0] if hits else None
 
@@ -143,6 +144,9 @@ def check(lesson: dict, corpus_dir: Path = DEFAULT_CORPUS, library_root: Path = 
     for sc in scenes:
         if not SHOT_MIN_S <= sc["est_s"] <= SHOT_MAX_S:
             errors.append(f"{sc['id']}: est_s {sc['est_s']} outside {SHOT_MIN_S}-{SHOT_MAX_S}")
+        wps = len(sc["narration"].split()) / sc["est_s"]
+        if wps > WORDS_PER_S_MAX:
+            errors.append(f"{sc['id']}: {wps:.1f} words/s, max {WORDS_PER_S_MAX}: raise est_s or split the shot")
         t += sc["est_s"]
         if sc["interaction"]:
             spans.append((t, t + sc["interaction"]["est_s"], sc["id"], sc["interaction"]["type"]))
@@ -161,13 +165,17 @@ def check(lesson: dict, corpus_dir: Path = DEFAULT_CORPUS, library_root: Path = 
             elif gap < INTERACTION_GAP_MIN_S:
                 warnings.append(f"only {round(gap)} s of story before {nxt[2]}: interactions bunch up")
         if t - spans[-1][1] > INTERACTION_GAP_MAX_S:
-            warnings.append(f"{round(t - spans[-1][1])} s of story after the last interaction")
+            errors.append(f"{round(t - spans[-1][1])} s of story after the last interaction")
 
     # Facts.
     source_ids = {s["id"] for s in lesson["sources"]}
     if not any(s["kind"] == "canon" for s in lesson["sources"]):
         errors.append("no canon source")
+    real_sources = {s["id"] for s in lesson["sources"] if s["kind"] != "ledger"}
     for sc in scenes:
+        said = f"{sc['narration']} {sc.get('on_screen', '')}"
+        if HARD_FACT.search(said) and not set(sc["fact_refs"]) & real_sources:
+            errors.append(f"{sc['id']}: number or year in the text but no real (non-ledger) source in fact_refs")
         if not sc["fact_refs"]:
             errors.append(f"{sc['id']}: no fact_refs")
         for ref in sc["fact_refs"]:
@@ -204,8 +212,8 @@ def check(lesson: dict, corpus_dir: Path = DEFAULT_CORPUS, library_root: Path = 
             if known_chars and f["char"] not in known_chars:
                 warnings.append(f"{sc['id']}: figure {f['char']!r} not in characters")
 
-    # UI text hygiene.
-    for where, text in ui_texts(lesson):
+    # Text hygiene: everything a person reads (class or teacher), sources' notes excepted.
+    for where, text in all_texts({k: x for k, x in lesson.items() if k != "sources"}):
         if BAD_CHARS.search(text):
             errors.append(f"{where}: dash or emoji in UI text: {text[:60]!r}")
 
@@ -215,7 +223,7 @@ def check(lesson: dict, corpus_dir: Path = DEFAULT_CORPUS, library_root: Path = 
     if missing:
         errors.append(f"LessonUp dumps missing for {missing}: run corpus.py dump {' '.join(map(str, missing))} --out {corpus_dir}")
     their = set().union(*(ngrams(x) for x in texts)) if texts else set()
-    for where, text in ui_texts(lesson):
+    for where, text in all_texts(lesson):
         shared = ngrams(text) & their
         if shared:
             errors.append(f"{where}: verbatim LessonUp overlap {' '.join(next(iter(shared)))!r}")

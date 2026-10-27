@@ -104,7 +104,8 @@
             ]
           },
           "url": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1
           },
           "note": {
             "type": "string"
@@ -179,6 +180,12 @@
     "teacher": {
       "type": "string",
       "description": "teacher card: goals, duration, warnings (not shown to the class)"
+    },
+    "related_venster": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     }
   },
   "$defs": {

@@ -160,3 +160,49 @@ def test_bang_tag_is_required():
            {"id": "hills-me", "layer": "bg", "tags": ["hills", "mideast"]}]
     assert v.match_asset("hills dry !mideast", "bg", lib)["id"] == "hills-me"
     assert v.match_asset("hills !egypt", "bg", lib) is None
+
+
+def test_region_asset_never_serves_a_plain_need():
+    lib = [{"id": "field-mesopotamia-cracked", "layer": "bg", "tags": ["field", "mesopotamia"], "qa": {"score": 9}},
+           {"id": "hut-natufian", "layer": "mid", "tags": ["hut", "mideast"]}]
+    assert v.match_asset("field", "bg", lib) is None
+    assert v.match_asset("hut round", "mid", lib) is None
+    assert v.match_asset("field !mesopotamia", "bg", lib)["id"] == "field-mesopotamia-cracked"
+
+
+def test_number_needs_a_real_source(lesson):
+    lesson["scenes"][1]["narration"] = "Het grootste hunebed weegt tweehonderdduizend kilo."
+    lesson["scenes"][1]["fact_refs"] = ["s9"]
+    assert any("sc02: number or year" in e for e in errors_of(lesson))
+    lesson["scenes"][1]["fact_refs"] = ["s1", "s9"]
+    assert errors_of(lesson) == []
+
+
+def test_empty_source_url_rejected(lesson):
+    lesson["sources"][0]["url"] = ""
+    assert any(e.startswith("schema:") for e in errors_of(lesson))
+
+
+def test_too_many_words_per_second(lesson):
+    lesson["scenes"][1]["narration"] = " ".join(["woord"] * 25)
+    assert any("sc02: 3.6 words/s" in e for e in errors_of(lesson))
+
+
+def test_overlap_checked_in_every_string_and_every_dump(lesson, tmp_path):
+    (tmp_path / "7.json").write_text(json.dumps({"slides": [{"plain_text": "de boeren bouwden grote graven van stenen"}]}))
+    lesson["teacher"] = "Uitleg: de boeren bouwden grote graven van stenen in Drenthe."
+    errs = errors_of(lesson, corpus_dir=tmp_path)  # 7 is not in blueprint.lessonup_ids
+    assert any(".teacher: verbatim LessonUp overlap" in e for e in errs)
+
+
+@pytest.mark.parametrize("bad", ["Een steen - zwaar.", "Een steen ‐ zwaar."])
+def test_spaced_hyphen_and_unicode_hyphen_rejected_in_title(lesson, bad):
+    lesson["title"] = bad
+    assert any(".title: dash or emoji" in e for e in errors_of(lesson))
+
+
+def test_long_tail_after_last_interaction(lesson):
+    filler = copy.deepcopy(lesson["scenes"][2])
+    filler["interaction"] = None
+    lesson["scenes"] += [dict(copy.deepcopy(filler), id=f"sc{10 + i}") for i in range(30)]
+    assert any("after the last interaction" in e for e in errors_of(lesson))
