@@ -12,6 +12,19 @@
   #wrap { position: relative; width: min(100vw, calc(100vh * 16 / 9)); aspect-ratio: 16 / 9; background: var(--paper); }
   #stage { width: 100%; height: 100%; display: block; outline: none; }
   #intro-host { position: absolute; inset: 0; pointer-events: none; }
+  #figures, #story { position: absolute; inset: 0; pointer-events: none; }
+  /* balloons: silent timed layers over the speaker, never baked into the picture; no names */
+  .story-balloon { position: absolute; top: 10%; transform: translateX(-50%); max-width: 34%; padding: 0.5em 0.8em;
+    background: #fffdf8; color: var(--ink); border: 2px solid var(--ink); border-radius: 1.2em;
+    font: 500 clamp(18px, 2.4vw, 34px)/1.25 system-ui, sans-serif; }
+  .story-balloon::after { content: ''; position: absolute; left: 50%; bottom: -14px; width: 18px; height: 18px;
+    background: #fffdf8; border-right: 2px solid var(--ink); border-bottom: 2px solid var(--ink); transform: translateX(-50%) rotate(45deg); }
+  /* captions: opt-in, big for the digibord */
+  .story-caption { position: absolute; left: 50%; bottom: 4%; transform: translateX(-50%); width: min(86%, 1400px); margin: 0;
+    padding: 0.4em 0.7em; text-align: center; background: rgb(28 20 24 / 0.82); color: #fffdf8; border-radius: 0.5em;
+    font: 500 clamp(20px, 2.6vw, 38px)/1.3 system-ui, sans-serif; }
+  #captions { position: absolute; right: 12px; top: 12px; }
+  #captions[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   #cards { position: absolute; inset: 0; pointer-events: none; }
   #cards > * { pointer-events: auto; }
   #intro-host:has(iframe) { pointer-events: auto; }
@@ -25,9 +38,13 @@
 <body>
 <div id="frame"><div id="wrap">
   <canvas id="stage"></canvas>
+  <!-- figures (S3) get a layer here once they pass their check -->
+  <div id="figures"></div>
+  <div id="story" aria-live="polite"></div>
   <div id="cards"></div>
   <div id="intro-host"></div>
   <button id="start" hidden><span>Start</span></button>
+  <button id="captions" class="btn btn-sm" aria-pressed="false" hidden>Captions</button>
   <div id="error"></div>
 </div></div>
 <script type="module" src="/src/play/play.ts"></script>

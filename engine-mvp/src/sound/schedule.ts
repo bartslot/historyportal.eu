@@ -11,6 +11,8 @@ export type SoundEvent =
   | { t: number; kind: 'bed-start'; id: string; stop: number }
   | { t: number; kind: 'bed-gain'; id: string; gain: number; ramp: number }
   | { t: number; kind: 'sfx'; id: string; gain: number }
+  /** the narrator's recorded line (S4's TTS), on the narration bus */
+  | { t: number; kind: 'voice'; url: string }
   | { t: number; kind: 'amb-bus'; gain: number; ramp: number; why: 'duck' | 'unduck' | 'silence' | 'after-silence' }
 
 export const dbToGain = (db: number): number => 10 ** (db / 20)
@@ -62,6 +64,7 @@ export function schedule(lesson: Lesson, preroll_s = 0): SoundEvent[] {
     } else ev.push({ t: talkAt, kind: 'amb-bus', gain: duck, ramp: 0.25, why: 'duck' })
     ev.push({ t: talkAt + narrationSeconds(s), kind: 'amb-bus', gain: 1, ramp: 0.6, why: 'unduck' })
     for (const x of plan.sfx) ev.push({ t: Math.max(0, t0 + x.at_s), kind: 'sfx', id: x.id, gain: x.gain ?? 1 })
+    if (typeof s.tts_url === 'string') ev.push({ t: talkAt, kind: 'voice', url: s.tts_url })
   })
   return ev.sort((a, b) => a.t - b.t)
 }

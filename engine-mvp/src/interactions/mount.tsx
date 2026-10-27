@@ -1,8 +1,9 @@
-// Runs a lesson's interactions on the player: when the stage clock reaches a scene's hold point the
-// picture holds (the clock motion keeps breathing), the scene's ambience stays on under the card, ducked,
-// and the card opens. A power meter's right words play the held scene onward in short bursts. Next or
-// Skip closes the card and the lesson plays on; each interaction plays once per run.
-// Uses only player.pause()/play()/scene() (S1's API); src/stage25d is not touched.
+// Runs a lesson's interactions on S1's player (stage25d onInteraction / holdAt / setTime / resume):
+// a scene with an interaction holds at its end on its own (a power meter at METER_HOLD of its scene,
+// through holdAt), the clock stands still, layers keep moving and the camera breathes. The scene's
+// ambience stays on under the card, ducked; the card opens. A power meter's right words move the held
+// scene on (setTime, eased), so the world moves as the class calls. Next or Skip resumes the lesson.
+// src/stage25d is not touched.
 import { createRoot, type Root } from 'react-dom/client'
 import type { Lesson, Scene } from '../director/types'
 import type { Player } from '../stage25d/stage'
@@ -13,22 +14,40 @@ import { HOLD_BEFORE_CUT_S, cardSeconds, holdAt, type Interaction } from './plan
 export type Interactions = {
   /** true while a card is up (the player's sound sync stands aside) */
   isOpen: () => boolean
-  /** false = never open a card (a contact-sheet run that seeks through the lesson) */
-  enabled: boolean
   /** what happened, for checks */
   log: { at: number; scene: string; what: 'open' | 'push' | 'close' }[]
 }
 
+/** How long a meter push takes to play the scene on: quick, then settling (ease out). */
+const PUSH_S = 1.2
+const easeOut = (u: number) => 1 - (1 - u) ** 3
+
 export function startInteractions(player: Player, sound: LessonSound | null, lesson: Lesson, host: HTMLElement): Interactions {
-  const done = new Set<number>()
   let root: Root | null = null
-  let burstUntil = -1 // a meter burst: play until the scene clock reaches this, then hold again
-  const api: Interactions = { isOpen: () => root !== null, enabled: true, log: [] }
+  const done = new Set<string>() // a meter scene also reaches its end: that second hold just moves on
+  const api: Interactions = { isOpen: () => root !== null, log: [] }
   const note = (scene: Scene, what: Interactions['log'][number]['what']) => api.log.push({ at: performance.now(), scene: scene.id, what })
 
-  function open(index: number, scene: Scene) {
-    player.pause()
-    done.add(index)
+  lesson.scenes.forEach((s, i) => {
+    if (s.interaction?.type === 'power-meter') player.holdAt(i, holdAt(s, s.dur_s ?? 0))
+  })
+
+  /** Ease the held scene from where it stands to `to` seconds (setTime keeps the hold). */
+  function playOnTo(to: number) {
+    const from = player.scene().t
+    const start = performance.now()
+    const step = (now: number) => {
+      const u = Math.min(1, (now - start) / 1000 / PUSH_S)
+      player.setTime(from + (to - from) * easeOut(u))
+      if (u < 1 && root) requestAnimationFrame(step)
+    }
+    requestAnimationFrame(step)
+  }
+
+  player.onInteraction((stageScene, resume) => {
+    const scene = lesson.scenes.find((s) => s.id === stageScene.id) ?? (stageScene as unknown as Scene)
+    if (done.has(scene.id) || !scene.interaction) { resume(); return }
+    done.add(scene.id)
     if (scene.sound) sound?.hold(scene.sound.ambience, scene.sound.duck_db)
     note(scene, 'open')
     const dur = scene.dur_s ?? 0
@@ -39,32 +58,17 @@ export function startInteractions(player: Player, sound: LessonSound | null, les
         interaction={scene.interaction as unknown as Interaction}
         seconds={cardSeconds(scene)}
         sfx={(id) => void sound?.hit(id)}
-        onPush={(p) => {
-          note(scene, 'push')
-          burstUntil = hold + p * (dur - HOLD_BEFORE_CUT_S - hold)
-          player.play()
+        onPush={(p) => { note(scene, 'push'); playOnTo(hold + p * (dur - HOLD_BEFORE_CUT_S - hold)) }}
+        onDone={() => {
+          root?.unmount()
+          root = null
+          sound?.release()
+          note(scene, 'close')
+          resume()
+          if (sound) void sound.play(lesson, player.clock()) // the timeline back at once, not after the sync's next pass
         }}
-        onDone={() => close(scene)}
       />,
     )
-  }
-
-  function close(scene: Scene) {
-    root?.unmount()
-    root = null
-    burstUntil = -1
-    sound?.release()
-    note(scene, 'close')
-    player.play()
-  }
-
-  const tick = () => {
-    const { index, t } = player.scene()
-    const scene = lesson.scenes[index]
-    if (burstUntil >= 0 && t >= burstUntil) { player.pause(); burstUntil = -1 }
-    if (api.enabled && !root && scene?.interaction && !done.has(index) && t >= holdAt(scene, scene.dur_s ?? 0) - 0.02) open(index, scene)
-    requestAnimationFrame(tick)
-  }
-  requestAnimationFrame(tick)
+  })
   return api
 }

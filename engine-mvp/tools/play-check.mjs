@@ -26,7 +26,7 @@ page.on('response', (r) => { if (r.status() >= 400) failed.push(`${r.status()} $
 
 await page.goto(`${base}/play.html?lesson=${lessonId}`)
 await page.waitForFunction(() => window.__play, null, { timeout: 60000 })
-const info = await page.evaluate(() => ({ id: window.__play.lesson.id, scenes: window.__play.lesson.scenes.length, problems: window.__play.problems, total: window.__play.starts.at(-1) + window.__play.lesson.scenes.at(-1).dur_s }))
+const info = await page.evaluate(() => ({ id: window.__play.lesson.id, scenes: window.__play.lesson.scenes.length, problems: window.__play.problems, total: window.__play.player.duration(), voices: window.__play.lesson.scenes.filter((s) => s.tts_url).length }))
 
 // intro -> handoff -> the lesson plays
 await page.evaluate(() => { window.__msgs = []; addEventListener('message', (e) => window.__msgs.push(e.data?.type)) })
@@ -35,9 +35,9 @@ await page.waitForFunction(() => window.__msgs.includes('hp-intro:ready'), null,
 await page.waitForFunction(() => window.__msgs.includes('hp-intro:handoff'), null, { timeout: 60000 })
 await page.locator('#wrap').screenshot({ path: `${out}/intro-handoff.png` })
 await page.waitForFunction(() => !document.querySelector('#intro-host iframe'), null, { timeout: 15000 })
-const t0 = await page.evaluate(() => window.__play.lessonTime())
+const t0 = await page.evaluate(() => window.__play.player.clock())
 await page.waitForTimeout(12000)
-const played = await page.evaluate(() => ({ t: window.__play.lessonTime(), scene: window.__play.player.scene(), fps: window.__play.player.fps() }))
+const played = await page.evaluate(() => ({ t: window.__play.player.clock(), scene: window.__play.player.scene(), fps: window.__play.player.fps() }))
 await page.locator('#wrap').screenshot({ path: `${out}/playing-12s.png` })
 const sound = await page.evaluate(() => {
   const s = window.__play.sound
@@ -61,7 +61,7 @@ const cardRuns = []
 for (const k of kinds) {
   await page.evaluate(async ({ i, hold }) => { const p = window.__play; p.player.pause(); await p.player.seek(i, Math.max(0, hold - 1)); p.player.play() }, k)
   await page.waitForSelector('[data-testid=card]', { timeout: 10000 })
-  const held = await page.evaluate(() => ({ playing: window.__play.player.scene().playing, t: window.__play.player.scene().t, held: window.__play.sound.state().held }))
+  const held = await page.evaluate(() => ({ mode: window.__play.player.scene().mode, t: window.__play.player.scene().t, clock: window.__play.player.clock(), held: window.__play.sound.state().held }))
   await page.locator('#wrap').screenshot({ path: `${out}/card-${k.kind}.png` })
   const card = page.locator('[data-testid=card]')
   if (k.kind === 'meter') { for (const b of await card.locator('.flex-wrap button').all()) await b.click() }
@@ -72,21 +72,36 @@ for (const k of kinds) {
   await card.locator('footer button.btn-primary').click()
   await page.waitForSelector('[data-testid=card]', { state: 'detached', timeout: 5000 })
   await page.waitForTimeout(500)
-  const after = await page.evaluate(() => ({ playing: window.__play.player.scene().playing, index: window.__play.player.scene().index, held: window.__play.sound.state().held }))
+  const after = await page.evaluate(() => ({ mode: window.__play.player.scene().mode, index: window.__play.player.scene().index, held: window.__play.sound.state().held }))
   cardRuns.push({ ...k, held, after })
 }
 const cardLog = await page.evaluate(() => window.__play.cards.log.map((l) => `${l.scene}:${l.what}`))
 const soundKinds = await page.evaluate(() => window.__play.sound.log.filter((l) => ['hold', 'release', 'hit'].includes(l.ev.kind)).map((l) => `${l.ev.kind}${l.ev.id ? ':' + l.ev.id : ''}`))
 
+// the story layer: captions on, a scene with a balloon, at the balloon's time
+await page.click('#captions')
+const storyShot = await page.evaluate(async () => {
+  const p = window.__play, i = p.lesson.scenes.findIndex((s) => s.balloons?.length)
+  if (i < 0) return null
+  const s = p.lesson.scenes[i], b = s.balloons[0]
+  p.player.pause(); await p.player.seek(i, b.at_s + 0.3)
+  await new Promise((r) => setTimeout(r, 300))
+  return { scene: s.id, balloon: document.querySelector('.story-balloon')?.textContent ?? null, caption: document.querySelector('.story-caption')?.textContent ?? null }
+})
+await page.locator('#wrap').screenshot({ path: `${out}/story-balloon-caption.png` })
+await page.click('#captions')
+
 // contact sheet: seek to every STEP s of lesson time, let the scene build, grab the frame
-await page.evaluate(() => { window.__play.player.pause(); window.__play.cards.enabled = false })
+await page.evaluate(() => window.__play.player.pause())
 const shots = []
 for (let at = 0, k = 0; at < info.total; at += STEP, k++) {
   const where = await page.evaluate(async (time) => {
-    const p = window.__play, i = Math.max(0, p.starts.filter((s) => s <= time).length - 1)
-    await p.player.seek(i, time - p.starts[i])
+    const p = window.__play
+    let i = 0, start = 0
+    while (i < p.lesson.scenes.length - 1 && start + p.lesson.scenes[i].dur_s <= time) { start += p.lesson.scenes[i].dur_s; i++ }
+    await p.player.seek(i, time - start)
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
-    const s = p.lesson.scenes[i], local = time - p.starts[i]
+    const s = p.lesson.scenes[i], local = time - start
     const shots = [s.camera, ...(s.camera_more ?? [])].filter(Boolean)
     const c = [...shots].reverse().find((x) => (x.at_s ?? 0) <= local) ?? shots[0]
     return { i, id: s.id, beat: s.beat, move: c?.move, scale: c?.scale, misses: p.player.stage.misses.filter((m) => m.scene === s.id).length }
@@ -94,5 +109,5 @@ for (let at = 0, k = 0; at < info.total; at += STEP, k++) {
   await page.locator('#stage').screenshot({ path: `${out}/frames/f${String(k).padStart(3, '0')}.png` })
   shots.push({ at, ...where })
 }
-console.log(JSON.stringify({ info, t0, played, sound, cardRuns, cardLog, soundKinds, shots: shots.length, misses: shots.reduce((a, s) => a + s.misses, 0), sample: shots.slice(0, 6), errors, failed, warnings: warnings.slice(0, 8) }, null, 1))
+console.log(JSON.stringify({ info, t0, played, sound, cardRuns, cardLog, soundKinds, storyShot, shots: shots.length, misses: shots.reduce((a, s) => a + s.misses, 0), sample: shots.slice(0, 6), errors, failed, warnings: warnings.slice(0, 8) }, null, 1))
 await browser.close()
