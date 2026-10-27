@@ -1,0 +1,189 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "lesson.json (contract 2, autonomous-lessons plan 2026-10-27)",
+  "type": "object",
+  "required": ["id", "lang", "age", "canon_venster", "bundle", "sources", "blueprint", "scenes", "needed_assets"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+    "title": { "type": "string" },
+    "lang": { "enum": ["nl", "en", "de", "fr", "it"] },
+    "age": { "type": "integer", "minimum": 6, "maximum": 16 },
+    "level": { "type": "string" },
+    "canon_venster": { "type": "string" },
+    "bundle": { "enum": ["nl-prehistory", "nl-golden-age"] },
+    "characters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "ledger"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "look": { "type": "string" },
+          "ledger": { "enum": ["sourced", "inferred", "invented"] }
+        }
+      }
+    },
+    "sources": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "url"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string" },
+          "kind": { "enum": ["canon", "lessonup-blueprint", "wikipedia", "archive", "museum", "scholarly", "ledger"] },
+          "url": { "type": "string" },
+          "note": { "type": "string" }
+        }
+      }
+    },
+    "blueprint": {
+      "type": "object",
+      "required": ["lessonup_ids", "begrippen", "goals"],
+      "properties": {
+        "lessonup_ids": { "type": "array", "items": { "type": "integer" } },
+        "begrippen": { "type": "array", "items": { "type": "string" } },
+        "goals": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "scenes": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/scene" } },
+    "needed_assets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["tags", "layer", "why"],
+        "properties": {
+          "tags": { "type": "string" },
+          "layer": { "enum": ["sky", "bg", "mid", "fg", "prop", "figure"] },
+          "why": { "type": "string" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "scene": {
+      "type": "object",
+      "required": ["id", "beat", "narration", "est_s", "set", "figures", "balloons", "camera", "sound", "interaction", "fact_refs"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^sc[0-9]{2,3}$" },
+        "act": { "type": "string" },
+        "beat": { "enum": ["hook", "setup", "cause", "effect", "turn", "climax", "recap"] },
+        "where_when": { "type": "string" },
+        "on_screen": { "type": "string" },
+        "narration": { "type": "string" },
+        "est_s": { "type": "number" },
+        "set": {
+          "type": "object",
+          "required": ["sky", "layers"],
+          "properties": {
+            "sky": { "type": "string" },
+            "layers": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["need", "asset", "depth", "x", "scale"],
+                "additionalProperties": false,
+                "properties": {
+                  "need": { "type": "string" },
+                  "asset": { "type": ["string", "null"] },
+                  "depth": { "enum": ["bg", "mid", "fg"] },
+                  "x": { "type": "number", "minimum": -0.5, "maximum": 1.5 },
+                  "scale": { "type": "number", "exclusiveMinimum": 0 }
+                }
+              }
+            }
+          }
+        },
+        "figures": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["char", "pose", "x", "depth", "facing", "expression"],
+            "properties": {
+              "char": { "type": "string" },
+              "pose": { "enum": ["walk", "stand", "point", "kneel", "carry", "sit", "pull", "push", "row", "climb", "lie", "dig"] },
+              "x": { "type": "number" },
+              "depth": { "enum": ["bg", "mid", "fg"] },
+              "facing": { "enum": ["left", "right"] },
+              "expression": { "enum": ["neutral", "happy", "worried", "surprised", "angry", "sad", "tired", "proud"] },
+              "holds": { "type": "string" }
+            }
+          }
+        },
+        "balloons": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["char", "text"],
+            "additionalProperties": false,
+            "properties": { "char": { "type": "string" }, "text": { "type": "string", "minLength": 1 } }
+          }
+        },
+        "camera": {},
+        "sound": {},
+        "interaction": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/quiz" },
+            { "$ref": "#/$defs/power_meter" },
+            { "$ref": "#/$defs/choice" }
+          ]
+        },
+        "fact_refs": { "type": "array", "items": { "type": "string" } },
+        "note": { "type": "string" }
+      }
+    },
+    "quiz": {
+      "type": "object",
+      "required": ["type", "question", "options", "correct", "bloom", "explain", "est_s"],
+      "properties": {
+        "type": { "const": "quiz" },
+        "format": { "enum": ["mc", "true-false", "sort", "open"] },
+        "question": { "type": "string" },
+        "options": { "type": "array", "items": { "type": "string" } },
+        "correct": { "type": ["integer", "array", "null"] },
+        "bloom": { "type": "integer", "minimum": 1, "maximum": 6 },
+        "explain": { "type": "string" },
+        "misconception": { "type": "string" },
+        "est_s": { "type": "number", "minimum": 20, "maximum": 180 }
+      }
+    },
+    "power_meter": {
+      "type": "object",
+      "required": ["type", "name", "moves", "input", "right", "wrong", "prompt", "payoff", "why", "est_s"],
+      "properties": {
+        "type": { "const": "power-meter" },
+        "name": { "type": "string" },
+        "moves": { "type": "string" },
+        "input": { "enum": ["woorden", "blazen", "luider", "ritme", "stilte", "schudden"] },
+        "right": { "type": "array", "minItems": 3, "maxItems": 5, "items": { "type": "string" } },
+        "wrong": { "type": "array", "minItems": 2, "maxItems": 4, "items": { "type": "string" } },
+        "prompt": { "type": "string" },
+        "payoff": { "type": "string" },
+        "why": { "type": "string" },
+        "dramatisation": { "type": "boolean" },
+        "est_s": { "type": "number", "minimum": 20, "maximum": 180 }
+      }
+    },
+    "choice": {
+      "type": "object",
+      "required": ["type", "prompt", "options", "est_s"],
+      "properties": {
+        "type": { "const": "choice" },
+        "prompt": { "type": "string" },
+        "options": {
+          "type": "array", "minItems": 2,
+          "items": {
+            "type": "object", "required": ["text", "outcome"],
+            "properties": { "text": { "type": "string" }, "outcome": { "type": "string" } }
+          }
+        },
+        "history": { "type": "string" },
+        "est_s": { "type": "number", "minimum": 20, "maximum": 180 }
+      }
+    }
+  }
+}
