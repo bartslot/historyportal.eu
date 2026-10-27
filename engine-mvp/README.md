@@ -128,6 +128,16 @@ prop.parent = fig.hold   // lesson `holds` (a pot, a basket): a node between the
 - **Lab**: `/figure-lab.html?char=boer-man,boer-vrouw&poses=point,carry&view=front|three|side|face&look=stage&ui=0`.
 - **Assets** (git-ignored): `public/assets/models/customizable-man/man-lite.glb` from `src/figures/export_wardrobe.py`
   (Blender, licensed model in `workflows/3D pipeline/customizable-man/`, licence: no AI training) and `clips/`.
+- **PARKED (look round, check C FAILed 2586b240; the safe base is f867087d, merged)**. Lesson: NEVER TEST AROUND THE
+  REAL ENTRY POINT. `walk.test` loaded the clip into a raw container and called `retargetFrom` directly, so it stayed
+  green while the walk through `createFigure` had 0 tracks; the lab hid the hull bug that the real stage shows.
+  Tests and shots go through `createFigure`/`placeFigure` on `stage25d`, with warnings ON. Open, with leads:
+  C1 the hull blots figures on the stage: its push back (`inkPush`, 2 cm) must exceed its outward push
+  (px x metres-per-px x distance: ~3 cm at 22 m with the stage's fov 0.87), so scale `inkPush` with that width.
+  C2 the walk has 0 tracks with the garment GLB: un-mute `avatar.showWarnings`; suspect the extra skins the garments
+  add (one skeleton per skin after instantiate) so AnimatorAvatar maps the bones to another skeleton.
+  C3 garments tear in kneel (one skirt over two legs), the robe's neck hole shows, the peplum is blocky.
+  C4 the hull closes over thin fingers.
 - **Gaps (needed assets)**: female and child bodies (now the man at 0.95 / 0.68); long hair / braid / headscarf /
   cap; a cloak and a hide cape (no found part fitted yet); hand props for `carry` / `dig` / `pull` (basket, spade,
   rope); simplified comic hands and the base mesh's proportions (accepted for the pilot); thin paper slivers at hems.
