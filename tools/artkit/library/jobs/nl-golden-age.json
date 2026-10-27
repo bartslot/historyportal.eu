@@ -1,0 +1,470 @@
+{
+ "bundle": "nl-golden-age",
+ "era": "Dutch Republic, Golden Age, c. 1640, Amsterdam and the VOC.",
+ "sheets": [
+  {
+   "id": "sky-summer",
+   "layer": "sky",
+   "subject": "Dutch Republic, Golden Age, c. 1640, Amsterdam and the VOC. Bright summer sky over the sea, broad towering cumulus clouds.",
+   "items": [
+    {
+     "id": "sky-summer-01",
+     "tags": [
+      "sky",
+      "summer",
+      "clouds",
+      "day"
+     ],
+     "height_m": 0,
+     "motion": "drift"
+    }
+   ]
+  },
+  {
+   "id": "sky-wind",
+   "layer": "sky",
+   "subject": "Dutch Republic, Golden Age, c. 1640, Amsterdam and the VOC. Windy sky with streaming torn clouds and a few large cumulus, weather coming in from the sea.",
+   "items": [
+    {
+     "id": "sky-wind-01",
+     "tags": [
+      "sky",
+      "wind",
+      "clouds",
+      "storm"
+     ],
+     "height_m": 0,
+     "motion": "drift"
+    }
+   ]
+  },
+  {
+   "id": "bg-sea",
+   "layer": "bg",
+   "subject": "Dutch Republic, Golden Age, c. 1640, Amsterdam and the VOC. Open North Sea seen from a ship: a flat sea horizon with low choppy waves (the water is the 'land' here), two tiny distant three-masted sailing ships.",
+   "items": [
+    {
+     "id": "bg-sea-01",
+     "tags": [
+      "sea",
+      "water",
+      "horizon",
+      "ships"
+     ],
+     "height_m": 10,
+     "motion": "ripple"
+    }
+   ]
+  },
+  {
+   "id": "bg-coast",
+   "layer": "bg",
+   "subject": "Dutch Republic, Golden Age, c. 1640, Amsterdam and the VOC. Flat Dutch coast seen from the water: low dunes with marram grass, a distant windmill and a church tower, a strip of beach.",
+   "items": [
+    {
+     "id": "bg-coast-01",
+     "tags": [
+      "coast",
+      "dunes",
+      "windmill",
+      "beach"
+     ],
+     "height_m": 20,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "bg-city",
+   "layer": "bg",
+   "subject": "Dutch Republic, Golden Age, c. 1640, Amsterdam and the VOC. Distant Amsterdam skyline seen across the IJ: rows of brick houses with stepped and bell gables, two church towers with spires, a windmill on the rampart, a forest of ship masts at the waterline.",
+   "items": [
+    {
+     "id": "bg-city-01",
+     "tags": [
+      "city",
+      "amsterdam",
+      "skyline",
+      "harbour",
+      "masts"
+     ],
+     "height_m": 40,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "mid-ships",
+   "layer": "mid",
+   "subject": "Dutch Republic, Golden Age, c. 1640, Amsterdam and the VOC. (1) a VOC East Indiaman: three-masted, square-rigged, high decorated stern, sails furled, orange-white-blue flag, seen from the side; (2) a smaller fluyt merchant ship with rounded stern; (3) a small rowing sloop.",
+   "items": [
+    {
+     "id": "ship-indiaman-01",
+     "tags": [
+      "ship",
+      "voc",
+      "indiaman",
+      "retourschip",
+      "harbour"
+     ],
+     "height_m": 45,
+     "motion": "ripple"
+    },
+    {
+     "id": "ship-fluyt-01",
+     "tags": [
+      "ship",
+      "fluyt",
+      "merchant",
+      "harbour"
+     ],
+     "height_m": 35,
+     "motion": "ripple"
+    },
+    {
+     "id": "boat-sloop-01",
+     "tags": [
+      "boat",
+      "sloop",
+      "rowing"
+     ],
+     "height_m": 2,
+     "motion": "ripple"
+    }
+   ]
+  },
+  {
+   "id": "mid-buildings",
+   "layer": "mid",
+   "subject": "Dutch Republic, Golden Age, c. 1640, Amsterdam and the VOC. (1) a tall narrow brick warehouse with a stepped gable, wooden shutters and a hoist beam at the top, (2) a brick canal house with a bell gable and tall windows, (3) a wooden harbour crane with a treadwheel.",
+   "items": [
+    {
+     "id": "warehouse-01",
+     "tags": [
+      "warehouse",
+      "pakhuis",
+      "building",
+      "brick",
+      "harbour"
+     ],
+     "height_m": 18,
+     "motion": "none"
+    },
+    {
+     "id": "canalhouse-01",
+     "tags": [
+      "house",
+      "canal",
+      "gable",
+      "building",
+      "brick"
+     ],
+     "height_m": 15,
+     "motion": "none"
+    },
+    {
+     "id": "crane-01",
+     "tags": [
+      "crane",
+      "harbour",
+      "treadwheel",
+      "wood"
+     ],
+     "height_m": 12,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "mid-quay",
+   "layer": "mid",
+   "subject": "Dutch Republic, Golden Age, c. 1640, Amsterdam and the VOC. (1) a straight stretch of brick quay wall with stone coping and three wooden mooring posts, (2) a wooden jetty on piles, (3) a small arched brick canal bridge.",
+   "items": [
+    {
+     "id": "quay-wall-01",
+     "tags": [
+      "quay",
+      "kade",
+      "wall",
+      "harbour"
+     ],
+     "height_m": 2.5,
+     "motion": "none"
+    },
+    {
+     "id": "jetty-01",
+     "tags": [
+      "jetty",
+      "pier",
+      "wood",
+      "harbour"
+     ],
+     "height_m": 2,
+     "motion": "none"
+    },
+    {
+     "id": "bridge-01",
+     "tags": [
+      "bridge",
+      "canal",
+      "brick"
+     ],
+     "height_m": 4,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "fg-trees",
+   "layer": "fg",
+   "subject": "Dutch Republic, Golden Age, c. 1640, Amsterdam and the VOC. (1) a pollarded willow, (2) a tall linden tree as planted along a canal, (3) an elm. Each full figure from roots to crown top, side by side.",
+   "items": [
+    {
+     "id": "tree-willow-01",
+     "tags": [
+      "tree",
+      "willow",
+      "pollard",
+      "polder"
+     ],
+     "height_m": 8,
+     "motion": "sway"
+    },
+    {
+     "id": "tree-linden-01",
+     "tags": [
+      "tree",
+      "linden",
+      "canal",
+      "city"
+     ],
+     "height_m": 16,
+     "motion": "sway"
+    },
+    {
+     "id": "tree-elm-01",
+     "tags": [
+      "tree",
+      "elm"
+     ],
+     "height_m": 18,
+     "motion": "sway"
+    }
+   ]
+  },
+  {
+   "id": "fg-quay",
+   "layer": "fg",
+   "subject": "Dutch Republic, Golden Age, c. 1640, Amsterdam and the VOC. (1) a stack of wooden barrels, (2) a pile of wooden crates, (3) a wooden bollard with a thick coil of rope, (4) a wooden handcart.",
+   "items": [
+    {
+     "id": "barrels-01",
+     "tags": [
+      "barrel",
+      "cargo",
+      "quay"
+     ],
+     "height_m": 2,
+     "motion": "none"
+    },
+    {
+     "id": "crates-01",
+     "tags": [
+      "crate",
+      "cargo",
+      "quay"
+     ],
+     "height_m": 1.8,
+     "motion": "none"
+    },
+    {
+     "id": "bollard-rope-01",
+     "tags": [
+      "rope",
+      "bollard",
+      "quay"
+     ],
+     "height_m": 1,
+     "motion": "none"
+    },
+    {
+     "id": "handcart-01",
+     "tags": [
+      "cart",
+      "handcart",
+      "quay"
+     ],
+     "height_m": 1.2,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "fg-misc",
+   "layer": "fg",
+   "subject": "Dutch Republic, Golden Age, c. 1640, Amsterdam and the VOC. (1) a short wooden picket fence, (2) a clump of reeds, (3) a pile of jute sacks, (4) a wooden wheelbarrow.",
+   "items": [
+    {
+     "id": "fence-wood-01",
+     "tags": [
+      "fence",
+      "wood"
+     ],
+     "height_m": 1.2,
+     "motion": "none"
+    },
+    {
+     "id": "reeds-01",
+     "tags": [
+      "reeds",
+      "water",
+      "polder"
+     ],
+     "height_m": 2,
+     "motion": "sway"
+    },
+    {
+     "id": "sacks-01",
+     "tags": [
+      "sacks",
+      "cargo",
+      "spice",
+      "quay"
+     ],
+     "height_m": 1,
+     "motion": "none"
+    },
+    {
+     "id": "wheelbarrow-01",
+     "tags": [
+      "wheelbarrow",
+      "quay"
+     ],
+     "height_m": 0.9,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "prop-ship",
+   "layer": "prop",
+   "subject": "Dutch Republic, Golden Age, c. 1640, Amsterdam and the VOC. Arranged in two rows of three: (1) a ship's lantern, (2) a brass telescope, (3) a wooden sea chest, (4) a wooden bucket, (5) an iron ship's anchor, (6) a bronze cannon on a wooden carriage.",
+   "items": [
+    {
+     "id": "lantern-01",
+     "tags": [
+      "lantern",
+      "light",
+      "ship"
+     ],
+     "height_m": 0.5,
+     "motion": "flicker"
+    },
+    {
+     "id": "telescope-01",
+     "tags": [
+      "telescope",
+      "kijker",
+      "navigation"
+     ],
+     "height_m": 0.6,
+     "motion": "none"
+    },
+    {
+     "id": "sea-chest-01",
+     "tags": [
+      "chest",
+      "kist",
+      "sailor"
+     ],
+     "height_m": 0.6,
+     "motion": "none"
+    },
+    {
+     "id": "bucket-01",
+     "tags": [
+      "bucket",
+      "emmer"
+     ],
+     "height_m": 0.35,
+     "motion": "none"
+    },
+    {
+     "id": "anchor-01",
+     "tags": [
+      "anchor",
+      "ship"
+     ],
+     "height_m": 2.0,
+     "motion": "none"
+    },
+    {
+     "id": "cannon-01",
+     "tags": [
+      "cannon",
+      "ship",
+      "weapon"
+     ],
+     "height_m": 1.2,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "prop-goods",
+   "layer": "prop",
+   "subject": "Dutch Republic, Golden Age, c. 1640, Amsterdam and the VOC. Arranged in a row: (1) a pewter jug, (2) a blue-and-white Delftware jar, (3) a small bronze ship's bell, (4) rolled sea charts with a pair of brass dividers, (5) a pile of folded cloth bolts.",
+   "items": [
+    {
+     "id": "jug-pewter-01",
+     "tags": [
+      "jug",
+      "pewter",
+      "table"
+     ],
+     "height_m": 0.3,
+     "motion": "none"
+    },
+    {
+     "id": "jar-delft-01",
+     "tags": [
+      "jar",
+      "delftware",
+      "pottery"
+     ],
+     "height_m": 0.35,
+     "motion": "none"
+    },
+    {
+     "id": "bell-01",
+     "tags": [
+      "bell",
+      "ship"
+     ],
+     "height_m": 0.3,
+     "motion": "none"
+    },
+    {
+     "id": "charts-01",
+     "tags": [
+      "charts",
+      "maps",
+      "navigation"
+     ],
+     "height_m": 0.3,
+     "motion": "none"
+    },
+    {
+     "id": "cloth-01",
+     "tags": [
+      "cloth",
+      "textile",
+      "trade"
+     ],
+     "height_m": 0.4,
+     "motion": "none"
+    }
+   ]
+  }
+ ]
+}

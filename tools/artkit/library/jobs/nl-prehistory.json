@@ -1,0 +1,540 @@
+{
+ "bundle": "nl-prehistory",
+ "era": "Northern Netherlands (Drenthe), Neolithic, c. 3400 BCE, Funnelbeaker farmers.",
+ "sheets": [
+  {
+   "id": "sky-summer",
+   "layer": "sky",
+   "subject": "Northern Netherlands (Drenthe), Neolithic, c. 3400 BCE, Funnelbeaker farmers. Bright summer sky over flat land, a few broad cumulus clouds.",
+   "items": [
+    {
+     "id": "sky-summer-01",
+     "tags": [
+      "sky",
+      "summer",
+      "clouds",
+      "day"
+     ],
+     "height_m": 0,
+     "motion": "drift"
+    }
+   ]
+  },
+  {
+   "id": "sky-grey",
+   "layer": "sky",
+   "subject": "Northern Netherlands (Drenthe), Neolithic, c. 3400 BCE, Funnelbeaker farmers. Cool autumn sky with long low layered clouds and a few cumulus, wind coming.",
+   "items": [
+    {
+     "id": "sky-autumn-01",
+     "tags": [
+      "sky",
+      "autumn",
+      "clouds",
+      "overcast"
+     ],
+     "height_m": 0,
+     "motion": "drift"
+    }
+   ]
+  },
+  {
+   "id": "bg-heath",
+   "layer": "bg",
+   "subject": "Northern Netherlands (Drenthe), Neolithic, c. 3400 BCE, Funnelbeaker farmers. Flat open heathland with very gentle low rises, scattered distant birch clumps and juniper bushes.",
+   "items": [
+    {
+     "id": "bg-heath-01",
+     "tags": [
+      "heath",
+      "open",
+      "distant",
+      "drenthe"
+     ],
+     "height_m": 30,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "bg-forest",
+   "layer": "bg",
+   "subject": "Northern Netherlands (Drenthe), Neolithic, c. 3400 BCE, Funnelbeaker farmers. The distant edge of a dense wild deciduous forest of oak, lime and alder, an irregular treeline over flat land.",
+   "items": [
+    {
+     "id": "bg-forest-01",
+     "tags": [
+      "forest",
+      "treeline",
+      "wild",
+      "distant"
+     ],
+     "height_m": 25,
+     "motion": "sway"
+    }
+   ]
+  },
+  {
+   "id": "bg-farmland",
+   "layer": "bg",
+   "subject": "Northern Netherlands (Drenthe), Neolithic, c. 3400 BCE, Funnelbeaker farmers. Distant small cleared fields with tree stumps and low hedges, two tiny long wooden farmhouses with low thatched roofs, a thin line of wood smoke, forest edge behind.",
+   "items": [
+    {
+     "id": "bg-farmland-01",
+     "tags": [
+      "fields",
+      "farm",
+      "village",
+      "distant",
+      "smoke"
+     ],
+     "height_m": 20,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "mid-hunebed",
+   "layer": "mid",
+   "subject": "Northern Netherlands (Drenthe), Neolithic, c. 3400 BCE, Funnelbeaker farmers. (1) a long hunebed (megalithic dolmen): two rows of large rounded glacial granite boulders carrying five huge rough capstones, low entrance on the long side; (2) a short hunebed with two capstones, partly covered by a low grassy earth mound.",
+   "items": [
+    {
+     "id": "hunebed-long-01",
+     "tags": [
+      "hunebed",
+      "dolmen",
+      "megalith",
+      "stones",
+      "grave"
+     ],
+     "height_m": 3,
+     "motion": "none"
+    },
+    {
+     "id": "hunebed-short-01",
+     "tags": [
+      "hunebed",
+      "dolmen",
+      "megalith",
+      "mound",
+      "grave"
+     ],
+     "height_m": 2.5,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "mid-farm",
+   "layer": "mid",
+   "subject": "Northern Netherlands (Drenthe), Neolithic, c. 3400 BCE, Funnelbeaker farmers. (1) a long farmhouse: wattle-and-daub walls between wooden posts, a thick thatched roof reaching low, a small doorway; (2) a small storage hut raised on four posts with a thatched roof; (3) a round wattle cattle pen.",
+   "items": [
+    {
+     "id": "longhouse-01",
+     "tags": [
+      "house",
+      "farmhouse",
+      "longhouse",
+      "thatch",
+      "farm"
+     ],
+     "height_m": 6,
+     "motion": "none"
+    },
+    {
+     "id": "granary-01",
+     "tags": [
+      "granary",
+      "storage",
+      "hut",
+      "farm"
+     ],
+     "height_m": 3.5,
+     "motion": "none"
+    },
+    {
+     "id": "cattle-pen-01",
+     "tags": [
+      "pen",
+      "fence",
+      "wattle",
+      "cattle",
+      "farm"
+     ],
+     "height_m": 1.5,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "mid-field",
+   "layer": "mid",
+   "subject": "Northern Netherlands (Drenthe), Neolithic, c. 3400 BCE, Funnelbeaker farmers. (1) a small patch of ripe emmer wheat with a few poppies at the edge; (2) a freshly cleared patch of ground with three cut tree stumps and a felled trunk; (3) a stone-ringed fire pit with burning logs and a little smoke.",
+   "items": [
+    {
+     "id": "wheat-patch-01",
+     "tags": [
+      "field",
+      "wheat",
+      "emmer",
+      "crop",
+      "farm"
+     ],
+     "height_m": 1.2,
+     "motion": "sway"
+    },
+    {
+     "id": "clearing-stumps-01",
+     "tags": [
+      "clearing",
+      "stumps",
+      "felled",
+      "forest"
+     ],
+     "height_m": 1.5,
+     "motion": "none"
+    },
+    {
+     "id": "fire-pit-01",
+     "tags": [
+      "fire",
+      "hearth",
+      "camp",
+      "smoke"
+     ],
+     "height_m": 1.0,
+     "motion": "flicker"
+    }
+   ]
+  },
+  {
+   "id": "fg-trees",
+   "layer": "fg",
+   "subject": "Northern Netherlands (Drenthe), Neolithic, c. 3400 BCE, Funnelbeaker farmers. (1) a broad old oak, (2) a slender silver birch, (3) a black alder. Each full figure from roots to crown top, side by side.",
+   "items": [
+    {
+     "id": "tree-oak-01",
+     "tags": [
+      "tree",
+      "oak",
+      "forest"
+     ],
+     "height_m": 18,
+     "motion": "sway"
+    },
+    {
+     "id": "tree-birch-01",
+     "tags": [
+      "tree",
+      "birch",
+      "heath",
+      "forest"
+     ],
+     "height_m": 15,
+     "motion": "sway"
+    },
+    {
+     "id": "tree-alder-01",
+     "tags": [
+      "tree",
+      "alder",
+      "wet",
+      "forest"
+     ],
+     "height_m": 14,
+     "motion": "sway"
+    }
+   ]
+  },
+  {
+   "id": "fg-trees2",
+   "layer": "fg",
+   "subject": "Northern Netherlands (Drenthe), Neolithic, c. 3400 BCE, Funnelbeaker farmers. (1) a young lime tree, (2) a gnarled hawthorn, (3) a Scots pine. Each full figure from roots to crown top, side by side.",
+   "items": [
+    {
+     "id": "tree-lime-01",
+     "tags": [
+      "tree",
+      "lime",
+      "linden",
+      "forest"
+     ],
+     "height_m": 12,
+     "motion": "sway"
+    },
+    {
+     "id": "tree-hawthorn-01",
+     "tags": [
+      "tree",
+      "hawthorn",
+      "shrub",
+      "edge"
+     ],
+     "height_m": 5,
+     "motion": "sway"
+    },
+    {
+     "id": "tree-pine-01",
+     "tags": [
+      "tree",
+      "pine",
+      "heath"
+     ],
+     "height_m": 16,
+     "motion": "sway"
+    }
+   ]
+  },
+  {
+   "id": "fg-shrubs",
+   "layer": "fg",
+   "subject": "Northern Netherlands (Drenthe), Neolithic, c. 3400 BCE, Funnelbeaker farmers. (1) a juniper bush, (2) a hazel shrub, (3) a low clump of heather, (4) a bramble patch.",
+   "items": [
+    {
+     "id": "shrub-juniper-01",
+     "tags": [
+      "shrub",
+      "juniper",
+      "heath"
+     ],
+     "height_m": 2.5,
+     "motion": "sway"
+    },
+    {
+     "id": "shrub-hazel-01",
+     "tags": [
+      "shrub",
+      "hazel",
+      "forest",
+      "edge"
+     ],
+     "height_m": 3.5,
+     "motion": "sway"
+    },
+    {
+     "id": "heather-01",
+     "tags": [
+      "heather",
+      "heath",
+      "ground"
+     ],
+     "height_m": 0.5,
+     "motion": "sway"
+    },
+    {
+     "id": "bramble-01",
+     "tags": [
+      "bramble",
+      "shrub",
+      "edge"
+     ],
+     "height_m": 1.2,
+     "motion": "sway"
+    }
+   ]
+  },
+  {
+   "id": "fg-reeds-rocks",
+   "layer": "fg",
+   "subject": "Northern Netherlands (Drenthe), Neolithic, c. 3400 BCE, Funnelbeaker farmers. (1) a clump of tall common reeds, (2) a clump of tall wild grass, (3) a single large rounded glacial granite boulder, (4) a group of three smaller boulders.",
+   "items": [
+    {
+     "id": "reeds-01",
+     "tags": [
+      "reeds",
+      "water",
+      "marsh",
+      "wet"
+     ],
+     "height_m": 2.5,
+     "motion": "sway"
+    },
+    {
+     "id": "grass-tall-01",
+     "tags": [
+      "grass",
+      "meadow",
+      "ground"
+     ],
+     "height_m": 1.0,
+     "motion": "sway"
+    },
+    {
+     "id": "boulder-large-01",
+     "tags": [
+      "rock",
+      "boulder",
+      "granite",
+      "stone"
+     ],
+     "height_m": 2.0,
+     "motion": "none"
+    },
+    {
+     "id": "boulders-small-01",
+     "tags": [
+      "rock",
+      "boulder",
+      "stones"
+     ],
+     "height_m": 0.8,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "fg-fences",
+   "layer": "fg",
+   "subject": "Northern Netherlands (Drenthe), Neolithic, c. 3400 BCE, Funnelbeaker farmers. (1) a short straight section of woven wattle fence (hazel rods woven between upright stakes), (2) a short split-log post-and-rail fence, (3) a fallen dead tree trunk with broken branches lying on the ground.",
+   "items": [
+    {
+     "id": "fence-wattle-01",
+     "tags": [
+      "fence",
+      "wattle",
+      "farm"
+     ],
+     "height_m": 1.2,
+     "motion": "none"
+    },
+    {
+     "id": "fence-rail-01",
+     "tags": [
+      "fence",
+      "rail",
+      "farm"
+     ],
+     "height_m": 1.3,
+     "motion": "none"
+    },
+    {
+     "id": "log-fallen-01",
+     "tags": [
+      "log",
+      "fallen",
+      "deadwood",
+      "forest"
+     ],
+     "height_m": 1.0,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "prop-animals",
+   "layer": "prop",
+   "subject": "Northern Netherlands (Drenthe), Neolithic, c. 3400 BCE, Funnelbeaker farmers. Prehistoric livestock, side view: (1) a small brown cow with short horns, (2) a calf, (3) a small sheep with dark brown primitive fleece, (4) a bristly dark pig.",
+   "items": [
+    {
+     "id": "cow-01",
+     "tags": [
+      "cow",
+      "cattle",
+      "animal",
+      "farm"
+     ],
+     "height_m": 1.3,
+     "motion": "none"
+    },
+    {
+     "id": "calf-01",
+     "tags": [
+      "calf",
+      "cattle",
+      "animal",
+      "farm"
+     ],
+     "height_m": 0.9,
+     "motion": "none"
+    },
+    {
+     "id": "sheep-01",
+     "tags": [
+      "sheep",
+      "animal",
+      "farm"
+     ],
+     "height_m": 0.7,
+     "motion": "none"
+    },
+    {
+     "id": "pig-01",
+     "tags": [
+      "pig",
+      "animal",
+      "farm"
+     ],
+     "height_m": 0.8,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "prop-tools",
+   "layer": "prop",
+   "subject": "Northern Netherlands (Drenthe), Neolithic, c. 3400 BCE, Funnelbeaker farmers. Arranged in two rows of three: (1) a Funnelbeaker clay pot with flared rim and vertical grooves, (2) a saddle quern (flat grinding stone with a rubbing stone on it), (3) a polished flint axe hafted in a wooden handle, (4) a wicker basket, (5) a wooden digging stick, (6) a stack of three clay bowls.",
+   "items": [
+    {
+     "id": "pot-funnelbeaker-01",
+     "tags": [
+      "pot",
+      "pottery",
+      "trechterbeker",
+      "jar"
+     ],
+     "height_m": 0.3,
+     "motion": "none"
+    },
+    {
+     "id": "quern-01",
+     "tags": [
+      "quern",
+      "grinding",
+      "stone",
+      "grain"
+     ],
+     "height_m": 0.15,
+     "motion": "none"
+    },
+    {
+     "id": "axe-flint-01",
+     "tags": [
+      "axe",
+      "flint",
+      "tool"
+     ],
+     "height_m": 0.5,
+     "motion": "none"
+    },
+    {
+     "id": "basket-01",
+     "tags": [
+      "basket",
+      "wicker"
+     ],
+     "height_m": 0.4,
+     "motion": "none"
+    },
+    {
+     "id": "digging-stick-01",
+     "tags": [
+      "stick",
+      "digging",
+      "tool"
+     ],
+     "height_m": 1.4,
+     "motion": "none"
+    },
+    {
+     "id": "bowls-01",
+     "tags": [
+      "bowl",
+      "pottery"
+     ],
+     "height_m": 0.2,
+     "motion": "none"
+    }
+   ]
+  }
+ ]
+}
