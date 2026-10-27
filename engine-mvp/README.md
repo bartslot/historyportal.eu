@@ -102,7 +102,13 @@ prop.parent = fig.hold   // lesson `holds` (a pot, a basket): a node between the
   Root cause of every earlier hull failure: the vendor meshes carry vertex alpha, which put them in the transparent
   pass; `createFigure` clears `hasVertexAlpha`. The stage look's pencil pass adds its line on top. Every value is a
   slider in the figure lab.
-- **Costume is painted, never modelled**: per-vertex zones by bone weight (`paintZones`) dye parts of the one body's
+- **Garment slots from FOUND parts** (`fit_garments.py`, run inside `export_wardrobe.py`; never modelled by hand):
+  CC0 MakeHuman monk robe (Donitz) cut by the body's own landmarks into `Garment_SkirtKnee` (tunic, `legs: tunic`),
+  `Garment_SkirtLong` (`legs: dress`) and `Garment_Peplum` (doublet skirts, `legs: breeches` + `collar`); CC0
+  viking pants (Rehman Polanski) cut into `Garment_Breeches`; CC-BY "Hat Of The Cavalier" (Normal Map Enjoyer,
+  Sketchfab c0a97984) as `Garment_HatWide`. Each is pushed outside the trousers, snugged at the waist, low poly,
+  and skinned to `Man_Rig` with the trousers' weights (skirts hang 75 % from the hips so they do not split).
+- **Costume is also painted**: per-vertex zones by bone weight (`paintZones`) dye parts of the one body's
   meshes. Recipe words: `sleeves` (long sleeves on the arm skin), `legs: tunic | dress | breeches | trousers` (tunic =
   coat dye hip to knee over leg wraps; breeches = stockings below the knee), `collar` (white falling collar within
   `BANDS.collarRadius` of the neck joint), `belt` (a band at the coat's hem). `figureRecipe` picks them by era. The stage look's pencil pass adds its
@@ -122,8 +128,6 @@ prop.parent = fig.hold   // lesson `holds` (a pot, a basket): a node between the
 - **Lab**: `/figure-lab.html?char=boer-man,boer-vrouw&poses=point,carry&view=front|three|side|face&look=stage&ui=0`.
 - **Assets** (git-ignored): `public/assets/models/customizable-man/man-lite.glb` from `src/figures/export_wardrobe.py`
   (Blender, licensed model in `workflows/3D pipeline/customizable-man/`, licence: no AI training) and `clips/`.
-- **Gaps (needed assets)**: female body and a child body (now: the man at 0.95 / 0.68); long hair / braid /
-  headscarf / white cap; period SILHOUETTES (the zones give tunic, dress, breeches, collar their colour, the shape is
-  still sweater + trousers: a wide tunic skirt, a skirt, a cloak); a 1640s wide flat felt hat (the Cowboy_Hat part
-  stands in); hand props for `carry` / `dig` / `pull` (basket, spade, rope); a seat for `sit` at a table; thin paper
-  slivers at hems where the cloth stands off the trimmed body.
+- **Gaps (needed assets)**: female and child bodies (now the man at 0.95 / 0.68); long hair / braid / headscarf /
+  cap; a cloak and a hide cape (no found part fitted yet); hand props for `carry` / `dig` / `pull` (basket, spade,
+  rope); simplified comic hands and the base mesh's proportions (accepted for the pilot); thin paper slivers at hems.
