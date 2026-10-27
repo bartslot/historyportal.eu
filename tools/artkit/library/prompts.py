@@ -118,12 +118,20 @@ PALETTE = {
 }
 
 
+# Near layers only (sky/bg are light by nature). Ranked 1st+2nd vs the canonical ref over the same
+# sheets without it, which the ranker called "dense etched shading" (2026-10-27, _work/exp_rank.log).
+LIGHT_LINE = (
+    "Economical line, lighter than the anchor: fewer, longer strokes. The lit side of every object stays "
+    "open white paper with no hatching at all; hatching only on the shadow side and in the darkest "
+    "crevices. Leaves and grass are suggested by a few contour shapes, not drawn one by one."
+)
+
+
 def ink_prompt(template: str, subject: str, out: str) -> str:
-    return "\n\n".join([
-        TOOL.format(out=out),
-        LAYER[template].format(subject=subject),
-        INK_ESSENCE.format(ink_rule=INK_RULE),
-    ])
+    parts = [TOOL.format(out=out), LAYER[template].format(subject=subject), INK_ESSENCE.format(ink_rule=INK_RULE)]
+    if template not in ("sky", "bg"):
+        parts.append(LIGHT_LINE)
+    return "\n\n".join(parts)
 
 
 def colour_prompt(template: str, bundle: str, out: str) -> str:

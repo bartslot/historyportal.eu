@@ -56,8 +56,6 @@ def ink(bundle: str, sheet: dict, force: bool) -> None:
     if out.exists() and not force:
         return
     p = prompts.ink_prompt(template(sheet), sheet["subject"], out.name)
-    if sheet.get("ink_extra"):
-        p += "\n\n" + sheet["ink_extra"]
     codex(d, p, [INK_ANCHOR], d / "ink.log")
 
 

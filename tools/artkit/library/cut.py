@@ -96,10 +96,24 @@ def objects(alpha: np.ndarray, n_items: int) -> tuple[list[tuple[slice, slice, n
         sl = (slice(ys.min(), ys.max() + 1), slice(xs.min(), xs.max() + 1))
         found.append((sl, own[sl]))
     found = sorted(found, key=lambda f: -f[1].sum())[:n_items]
-    cy = [(f[0][0].start + f[0][0].stop) / 2 for f in found]
-    row_h = h / 2 if len(found) > 4 else h  # specimen sheets have two rows
-    found = sorted(zip(cy, found), key=lambda t: (int(t[0] // row_h), t[1][0][1].start))
-    return [(sl[0], sl[1], own) for _, (sl, own) in found], note
+    return [(sl[0], sl[1], own) for sl, own in reading_order(found)], note
+
+
+def reading_order(found: list) -> list:
+    """Rows = objects whose vertical centres fall inside the row's span; rows top-down, then left-right."""
+    rows: list[list] = []
+    for f in sorted(found, key=lambda f: f[0][0].stop):  # by ground line
+        cy = (f[0][0].start + f[0][0].stop) / 2
+        for row in rows:
+            top = min(g[0][0].start for g in row)
+            bot = max(g[0][0].stop for g in row)
+            if top <= cy <= bot:
+                row.append(f)
+                break
+        else:
+            rows.append([f])
+    rows.sort(key=lambda r: min(g[0][0].start for g in r))
+    return [f for r in rows for f in sorted(r, key=lambda g: g[0][1].start)]
 
 
 def cut_sheet(bundle: str, sheet: dict, variant: str) -> dict | None:
@@ -155,5 +169,19 @@ def main() -> None:
             cut_sheet(job["bundle"], s, v)
 
 
+def _self_check() -> None:
+    s = lambda y0, y1, x0: ((slice(y0, y1), slice(x0, x0 + 10)), None)  # noqa: E731
+    # longhouse top-left, granary top-right, pen lower-right (the mid-farm layout)
+    got = reading_order([s(300, 500, 940), s(0, 230, 0), s(0, 220, 1100)])
+    assert [g[0][1].start for g in got] == [0, 1100, 940], got
+    # two even rows of three
+    got = reading_order([s(500, 900, x) for x in (600, 0, 300)] + [s(0, 400, x) for x in (300, 600, 0)])
+    assert [(g[0][0].start, g[0][1].start) for g in got] == [(0, 0), (0, 300), (0, 600), (500, 0), (500, 300), (500, 600)]
+    print("cut self-check: ok")
+
+
 if __name__ == "__main__":
+    if sys.argv[1:2] == ["--self-check"]:
+        _self_check()
+        sys.exit()
     main()
