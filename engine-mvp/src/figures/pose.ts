@@ -141,7 +141,7 @@ export type StaticPose = { arms?: { L?: LimbAim; R?: LimbAim }; legs?: { L?: Lim
 }
 
 // Every number here is a knob (Teacher can change everything): the figure lab shows them live.
-const HANG: LimbAim = { upper: [0.06, -1, 0.12], lower: [0.22, -1, 0.04] } // close to the body: no mannequin A-pose
+const HANG: LimbAim = { upper: [0.04, -1, 0.04], lower: [0.15, -1, -0.12] } // close to the body: no mannequin A-pose (check F2)
 export type StaticName = 'stand' | 'point' | 'kneel' | 'carry' | 'sit' | 'lie' | 'dig' | 'pull' | 'push' | 'climb' | 'row'
 export const POSES: Record<StaticName, StaticPose> = {
   // contrapposto: weight on the right leg, the left knee eased forward, so no one stands like a mannequin

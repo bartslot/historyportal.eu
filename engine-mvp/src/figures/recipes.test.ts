@@ -34,6 +34,11 @@ describe('any lesson character gets a recipe', () => {
     const coats = new Set(['a', 'b', 'c', 'd', 'e', 'f'].map((id) => figureRecipe(`boer-${id}`)!.dyes.coat))
     expect(coats.size).toBeGreaterThan(2)
   })
+  it('matches whole words only: "dressed in black" is no dress, "captain" wears no cap (check F4)', () => {
+    const cast = [{ id: 'tasman', look: 'ship captain, dressed in black, thin moustache' }]
+    const t = figureRecipe('tasman', cast, 'nl-golden-age')!
+    expect([t.legs, t.beard, t.scale, t.hatKind]).toEqual(['breeches', 'Facial_Hair_02', 1, 'Cowboy_Hat'])
+  })
   it('maps unknown poses and expressions to ones the kit has', () => {
     expect([poseFor('dig'), poseFor('run'), poseFor('juggle')]).toEqual(['dig', 'walk', 'stand'])
     expect([expressionFor('tired'), expressionFor('bored'), expressionFor(undefined)]).toEqual(['tired', 'neutral', 'neutral'])

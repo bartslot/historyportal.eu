@@ -89,7 +89,8 @@ function hash(s: string) {
 }
 const pick = <T>(list: readonly T[], seed: number, salt: number) => list[(seed >>> (salt * 3)) % list.length]
 
-const has = (text: string, ...words: string[]) => words.some((w) => new RegExp(`\\b${w}`, 'i').test(text))
+// whole words (a plural s allowed): 'dress' never matches 'dressed', 'cap' never 'captain' (check F4)
+const has = (text: string, ...words: string[]) => words.some((w) => new RegExp(`\\b${w}s?\\b`, 'i').test(text))
 
 /** null = not a person on the standard body (an animal, a canoe crew seen far off): the stage skips it, the PM logs it */
 /** variant: the n-th of a group in one scene (jagers, zeelui): same look line, other dyes */

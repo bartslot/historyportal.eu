@@ -33,7 +33,10 @@ const ui = document.getElementById('ui')!
 function verdict() {
   return figs.map((f) => {
     const v = f.setPose(f.pose)
-    return `${Object.keys(RECIPES).find((k) => RECIPES[k] === f.recipe)}: ${f.pose} ${v.length ? 'FAIL ' + v.map((x) => `${x.limb} ${x.kind}`).join(', ') : 'guards ok'}`
+    const name = Object.keys(RECIPES).find((k) => RECIPES[k] === f.recipe)
+    // a clip is not one pose: its verdict comes from walkAudit() over every frame (check F10)
+    if (f.pose === 'walk') return `${name}: walk (frame guards: __lab.walkAudit())`
+    return `${name}: ${f.pose} ${v.length ? 'FAIL ' + v.map((x) => `${x.limb} ${x.kind}`).join(', ') : 'guards ok'}`
   }).join(' | ')
 }
 function setPose(p: Pose) { figs.forEach((f) => f.setPose(p)); msg.textContent = verdict() }

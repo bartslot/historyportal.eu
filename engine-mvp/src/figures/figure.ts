@@ -19,7 +19,8 @@ export const BODY_URL = 'assets/models/customizable-man/man-lite.glb' // export_
 export const FACE_URL = (e: Expression) => `figures/faces/${e}.png`
 
 // face decal placement, in eye-distances (eyes sit at 30/70 % across and 38 % down the decal art)
-export const FACE = { scale: 2.5, down: 0.12, depth: 0.22 } // depth: nose tip to cheeks, never the back of the head
+export const FACE = { scale: 2.5, depth: 0.22 } // scale: box width in eye distances; depth: nose tip to cheeks, never the back of the head
+const EYE_Y = 0.38, MOUTH_Y = 0.8 // where faces_from_sheet.py puts the eyes and the mouth (share of the art's height, from the top)
 // facing: 'left'/'right' turn this far from the camera toward that side (90 = pure profile; 3/4 reads best)
 export const FACING_TURN_DEG = 62
 // skin shades only where it turns fully away: a comic face is lit flat (the modelled lips and sockets would shade as boxes)
@@ -83,7 +84,8 @@ function partOf(mesh: AbstractMesh): Part | null {
   if (node === 'Geo_Pants') return { role: 'trousers', show: () => true }
   if (node === 'Geo_Shoes') return { role: 'shoes', show: () => true }
   if (node === 'Geo_Hair_Black_Base') return { role: 'hair', show: (r) => r.hair !== null }
-  if ((HAIRS as readonly string[]).includes(node)) return { role: 'hair', show: (r) => r.hair === node && !(r.hat && r.hatKind === 'Bucket_Hat') }
+  // under a hat only the scalp cap stays: every hair part pokes through the hat crown or brim (check F6)
+  if ((HAIRS as readonly string[]).includes(node)) return { role: 'hair', show: (r) => r.hair === node && !r.hat }
   if ((BEARDS as readonly string[]).includes(node)) return { role: 'hair', show: (r) => r.beard === node }
   if ((HATS as readonly string[]).includes(node)) return { role: 'hat', show: (r) => r.hat && (r.hatKind ?? 'Cowboy_Hat') === node }
   return null
@@ -215,7 +217,8 @@ export async function createFigure(scene: Scene, recipe: FigureRecipe, name = 'f
 
   // painted face: one projector box riding the head bone, read by the skin and eyeball materials
   const faceMats = live.filter((l) => l.part.role === 'skin' || l.part.role === 'eye').map((l) => l.mesh.material as ToonMaterial)
-  const projector = faceProjector(rig, live.filter((l) => l.mesh.name.startsWith('Geo_Eyes')).map((l) => l.mesh))
+  const projector = faceProjector(rig, live.filter((l) => l.mesh.name.startsWith('Geo_Eyes')).map((l) => l.mesh),
+    live.filter((l) => l.mesh.name.startsWith('Geo_Body') && l.part.role === 'eye').map((l) => l.mesh)) // teeth + gum = the mouth
   faceMats.forEach((m) => (m.face = projector.face))
   const hold = new TransformNode(`${name}_hold`, scene)
   hold.parent = root
@@ -273,7 +276,7 @@ export async function createFigure(scene: Scene, recipe: FigureRecipe, name = 'f
   return fig
 }
 
-function faceProjector(rig: Rig, eyes: AbstractMesh[]) {
+function faceProjector(rig: Rig, eyes: AbstractMesh[], mouth: AbstractMesh[]) {
   const f = frameOf(rig)
   const world = rig.root.getWorldMatrix()
   const N = (v: Vector3) => Vector3.TransformNormal(v, world).normalize()
@@ -285,13 +288,19 @@ function faceProjector(rig: Rig, eyes: AbstractMesh[]) {
   const centre = found ? lo.add(hi).scale(0.5) : Vector3.TransformCoordinates(pos(rig, 'head'), world)
   const span = found ? Math.abs(Vector3.Dot(hi.subtract(lo), side)) : 0.1
   const size = span * 0.7 * FACE.scale
-  const at = centre.subtract(up.scale(size * FACE.down)).add(fwd.scale(0.03))
+  // height: the art's eyes (38 %) and mouth (80 %) land on the model's eyes and its real mouth, the teeth plug;
+  // a square box put the painted mouth on the chin (check F13)
+  const mlo = new Vector3(Infinity, Infinity, Infinity), mhi = mlo.negate()
+  mouth.forEach((m) => { const b = m.getBoundingInfo().boundingBox; mlo.minimizeInPlace(b.minimumWorld); mhi.maximizeInPlace(b.maximumWorld) })
+  const drop = mouth.length ? Vector3.Dot(centre.subtract(mlo.add(mhi).scale(0.5)), up) : size * (MOUTH_Y - EYE_Y)
+  const sizeY = drop > 0.01 ? drop / (MOUTH_Y - EYE_Y) : size
+  const at = centre.subtract(up.scale(sizeY * (0.5 - EYE_Y))).add(fwd.scale(0.03))
   const axes = Matrix.FromValues(
     side.x, side.y, side.z, 0,
     up.x, up.y, up.z, 0,
     fwd.x, fwd.y, fwd.z, 0,
     0, 0, 0, 1)
-  const boxToWorld = Matrix.Scaling(size, size, FACE.depth).multiply(axes).multiply(Matrix.Translation(at.x, at.y, at.z))
+  const boxToWorld = Matrix.Scaling(size, sizeY, FACE.depth).multiply(axes).multiply(Matrix.Translation(at.x, at.y, at.z))
   const head = rig.node('head')
   head.computeWorldMatrix(true)
   const boxInHead = boxToWorld.multiply(Matrix.Invert(head.getWorldMatrix())) // fixed: the face moves with the head
@@ -312,11 +321,13 @@ function faceProjector(rig: Rig, eyes: AbstractMesh[]) {
 export function placeFigure(scene: Scene, fig: Figure, at: Placement, stage?: StageLike) {
   const p = stage ? stage.groundPoint(at.x, at.depth) : fallbackGround(at.x, at.depth)
   fig.root.position.copyFrom(p)
-  // the camera looks down +z, so a figure facing the camera faces -z; left on screen = -x
+  // measured from the line to the camera, not from world axes: off-centre in the foreground a fixed world turn
+  // reads frontal and foreshortens a point into the chest (check F8). left on screen = turning toward -x.
+  const cam = scene.activeCamera?.globalPosition ?? new Vector3(0, 1.6, 0)
+  const toCamera = Math.atan2(cam.x - p.x, cam.z - p.z)
   const turn = (FACING_TURN_DEG * Math.PI) / 180
-  const heading = { front: Math.PI, back: 0, left: Math.PI + turn, right: Math.PI - turn }[at.facing]
+  const heading = { front: toCamera, back: toCamera + Math.PI, left: toCamera + turn, right: toCamera - turn }[at.facing]
   faceHeading(fig, heading)
-  void scene
 }
 
 /** turn the figure so its own forward (from the feet, at rest) points along the heading (radians about +y, 0 = +z) */
