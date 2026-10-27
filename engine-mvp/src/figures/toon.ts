@@ -1,26 +1,33 @@
 // The figure's paint: one flat dye, one hard cel step, lit by the figure's OWN light direction (not the
 // scene's lights), so a figure reads the same on every painted set.
-// Ink: where the surface turns away from the eye (N.V small) the pixel is ink. That draws the contour AND the
-// fold lines (sleeve, collar, knee) with a weight that swells on round forms and thins on flat ones.
-// ponytail: anime-look's pixel-width inverted hull covered the garments on this skinned, mirrored rig (the
-// hull drew in front of the cloth at any width); this needs no extra mesh. Upgrade: fix the hull, add it back.
-import { Color3, Matrix, Vector3, type BaseTexture, type Scene } from '@babylonjs/core'
+// Ink, two kinds: (1) the contour = an inverted hull, a copy of each part pushed out by a SCREEN-pixel width
+// (inkPxMin..inkPxMax at 1080p, wider near) and nudged away from the camera so it only shows past the silhouette
+// (the first hulls drew over the cloth because the vendor meshes carry vertex alpha, which made them transparent:
+// figure.ts clears hasVertexAlpha; the nudge keeps a hull behind its own part whatever the winding);
+// (2) fold lines inside = where the surface turns from the eye (N.V small): sleeve, collar, knee.
+import { Color3, Matrix, Vector3, type BaseTexture, type Mesh, type Scene } from '@babylonjs/core'
 import { CustomMaterial } from '@babylonjs/materials'
+import { smoothNormals } from '../engine/anime-look'
 
 // the face's middle as an oval stretched down past the mouth to the chin: the parted lips' plug edges lie there
 // and must get neither contour ink nor the stage pencil (check F5a)
 const FACE_OVAL = 'float faceOval(vec2 p) { return length(vec2(p.x, p.y < 0.0 ? p.y * 0.72 : p.y)); }'
 
+// every number is a knob: the figure lab (figure-lab.ts) puts each on a slider
 export const TOON = {
   light: new Vector3(0.55, 0.55, -0.62).normalize(), // toward the light: upper left, in front of the figure
-  shade: new Color3(0.74, 0.68, 0.74),                // the shade step multiplies the dye by this
-  step: 0.18,                                         // N.L below this = shade
-  soft: 0.03,                                         // a crisp two-step cel; the watercolour comes from the stage post
-  ink: Color3.FromHexString('#33241a'),               // History Lines ink: deep sepia brown, never black
-  inkEdge: 0.32,                                      // N.V below this = ink: heavy enough to hold at lesson distance
-  inkSoft: 0.1,                                       // a soft edge: no stair-stepped line
+  step: 0.18,                                         // N.L below this = shade: a HARD two-step, no gradient
+  shadeMul: 0.72,                                     // the shade colour of a dye: darker...
+  shadeCool: new Color3(-0.02, 0.0, 0.035),           // ...and a touch cooler, never mixed with black
+  ink: Color3.FromHexString('#241912'),               // History Lines ink: near-black warm brown, never #000
+  inkPxMin: 1.6,                                      // contour width in px at 1080p: far figures (the floor)...
+  inkPxMax: 3.0,                                      // ...near figures (the ceiling)
+  inkPxAt: 18,                                        // px = inkPxAt / distance (m), clamped to min..max
+  inkPush: 0.02,                                      // m the hull steps back from the camera: never over the cloth
+  inkEdge: 0.2,                                       // fold lines: N.V below this = ink
+  inkSoft: 0.06,
   paper: new Color3(0.94, 0.91, 0.84),                // the lit side lets this much paper through (paperLift)
-  paperLift: 0.18,
+  paperLift: 0.12,
 }
 
 // The painted face: a projector box in front of the head (unit cube -> world, refreshed per frame from the head
@@ -49,10 +56,10 @@ export function toonMaterial(name: string, dye: Color3, scene: Scene, withZones 
     m.Vertex_MainEnd('vZone = 0.0;')
   }
   m.Fragment_Definitions('varying float vZone;\n' + FACE_OVAL)
-  m.AddUniform('shadeTint', 'vec3', null)
+  m.AddUniform('shadeMul', 'float', null)
+  m.AddUniform('shadeCool', 'vec3', null)
   m.AddUniform('toLight', 'vec3', null)
   m.AddUniform('celStep', 'float', null)
-  m.AddUniform('celSoft', 'float', null)
   m.AddUniform('paperTone', 'vec3', null)
   m.AddUniform('paperLift', 'float', null)
   m.AddUniform('inkColor', 'vec3', null)
@@ -71,8 +78,12 @@ export function toonMaterial(name: string, dye: Color3, scene: Scene, withZones 
     vec3 toEye = normalize(vEyePosition.xyz - vPositionW);
     float nv = abs(dot(n, toEye));
     float nl = dot(n, normalize(toLight));
-    // (no screen-space wash: blocky up close and it swims over moving figures, check F5b; the post paints)
-    float lit = smoothstep(celStep - celSoft, celStep + celSoft, nl);
+    // faces are lit by the light's horizontal angle only (anime/comic rule: no shadow climbing up from the chin)
+    if (hasFace > 0.5) {
+      vec2 lh = normalize(toLight.xz + vec2(1e-4)), nh = n.xz;
+      nl = length(nh) < 1e-3 ? 1.0 : dot(normalize(nh), lh);
+    }
+    float lit = step(celStep, nl); // a hard two-step: lit or shade, nothing between
     float inked = 1.0 - smoothstep(inkEdge - inkSoft, inkEdge, nv);
     float z = floor(vZone + 0.5);
     vec3 base = dye;
@@ -92,7 +103,8 @@ export function toonMaterial(name: string, dye: Color3, scene: Scene, withZones 
         inked *= 1.0 - middle;
       }
     }
-    vec3 paint = mix(base * shadeTint, mix(base, paperTone, paperLift), lit); // lights go pale, as a wash does
+    vec3 shadeCol = clamp(base * shadeMul + shadeCool, 0.0, 1.0);
+    vec3 paint = mix(shadeCol, mix(base, paperTone, paperLift), lit); // lights go a little pale, as a wash does
     paint = mix(paint, inkColor, faceInk);
     color = vec4(mix(paint, inkColor, inked), 1.0);
   `)
@@ -105,10 +117,10 @@ export function toonMaterial(name: string, dye: Color3, scene: Scene, withZones 
     e.setColor3('zoneDye1', zs[0] ?? m.dye)
     e.setColor3('zoneDye2', zs[1] ?? m.dye)
     e.setColor3('zoneDye3', zs[2] ?? m.dye)
-    e.setColor3('shadeTint', TOON.shade)
+    e.setFloat('shadeMul', TOON.shadeMul)
+    e.setColor3('shadeCool', TOON.shadeCool)
     e.setVector3('toLight', TOON.light)
     e.setFloat('celStep', m.step ?? TOON.step)
-    e.setFloat('celSoft', TOON.soft)
     e.setColor3('paperTone', TOON.paper)
     e.setFloat('paperLift', TOON.paperLift)
     e.setColor3('inkColor', TOON.ink)
@@ -139,4 +151,43 @@ export function faceMaskMaterial(name: string, face: FaceProjector, scene: Scene
   `)
   m.onBindObservable.add(() => m.getEffect()?.setMatrix('faceBox', face.toBox))
   return m
+}
+
+/** the contour: an inverted hull of `mesh`, its width in screen pixels (see TOON.inkPx*); shares the skeleton */
+export function addInkHull(mesh: Mesh, scene: Scene): Mesh {
+  if (!mesh.getVerticesData('smoothNormal')) mesh.setVerticesData('smoothNormal', smoothNormals(mesh), false, 3)
+  const hull = mesh.clone(`${mesh.name}_ink`, mesh.parent, true) as Mesh
+  hull.skeleton = mesh.skeleton
+  hull.isPickable = false
+  hull.metadata = { ...(hull.metadata ?? {}), noGBuffer: true, inkHull: true } // the stage post inks the real body
+  const m = new CustomMaterial(`${mesh.name}_ink`, scene)
+  m.disableLighting = true
+  m.specularColor = Color3.Black()
+  m.backFaceCulling = false // the step back from the camera hides it inside the silhouette, whatever the winding
+  m.AddAttribute('smoothNormal')
+  m.AddUniform('camPos', 'vec3', null)
+  m.AddUniform('inkPxSize', 'float', null)
+  m.AddUniform('inkPx', 'vec3', null) // min, max, at
+  m.AddUniform('inkPush', 'float', null)
+  m.AddUniform('inkColor', 'vec3', null)
+  m.Vertex_Definitions('attribute vec3 smoothNormal;')
+  m.Vertex_After_WorldPosComputed(`
+    vec3 toCam = camPos - worldPos.xyz;
+    float dist = max(length(toCam), 0.05);
+    float px = clamp(inkPx.z / dist, inkPx.x, inkPx.y);
+    vec3 sn = normalize(mat3(finalWorld) * smoothNormal);
+    worldPos.xyz += sn * px * inkPxSize * dist - toCam / dist * inkPush;
+  `)
+  m.Fragment_Before_FragColor('color = vec4(inkColor, 1.0);')
+  m.onBindObservable.add(() => {
+    const e = m.getEffect(), cam = scene.activeCamera
+    if (!e || !cam) return
+    e.setVector3('camPos', cam.globalPosition)
+    e.setFloat('inkPxSize', (2 * Math.tan(cam.fov / 2)) / 1080) // metres per 1080p pixel at 1 m
+    e.setVector3('inkPx', new Vector3(TOON.inkPxMin, TOON.inkPxMax, TOON.inkPxAt))
+    e.setFloat('inkPush', TOON.inkPush)
+    e.setColor3('inkColor', TOON.ink)
+  })
+  hull.material = m
+  return hull
 }

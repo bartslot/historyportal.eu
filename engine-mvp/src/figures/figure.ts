@@ -10,7 +10,7 @@ import {
 } from '@babylonjs/core'
 import '@babylonjs/loaders/glTF'
 import { retarget, type ClipName } from './clips'
-import { faceMaskMaterial, toonMaterial, type FaceProjector, type ToonMaterial } from './toon'
+import { addInkHull, faceMaskMaterial, toonMaterial, type FaceProjector, type ToonMaterial } from './toon'
 import { addMaskMesh } from '../engine/anime-cast'
 import { applyPose, captureRest, frameOf, pos, POSES, resetToRest, rigOf, type Rig, type Violation } from './pose'
 import { BEARDS, DEFAULT_DYES, EXPRESSIONS, HAIRS, HATS, type DyeRole, type Expression, type FigureRecipe, type Hex, type Pose } from './recipes'
@@ -22,10 +22,9 @@ export const FACE_URL = (e: Expression) => `figures/faces/${e}.png`
 export const FACE = { scale: 2.5, depth: 0.22 } // scale: box width in eye distances; depth: nose tip to cheeks, never the back of the head
 const EYE_Y = 0.38, MOUTH_Y = 0.8 // where faces_from_sheet.py puts the eyes and the mouth (share of the art's height, from the top)
 // facing: 'left'/'right' turn this far from the camera toward that side (90 = pure profile; 3/4 reads best)
-export const FACING_TURN_DEG = 62
+export const FACING = { turnDeg: 62 }
 // skin shades only where it turns fully away: a comic face is lit flat (the modelled lips and sockets would shade as boxes)
-export const SKIN_STEP = -0.3
-export const SKIN_INK = 0.14
+export const SKIN = { step: -0.3, ink: 0.14 }
 
 export type Facing = 'left' | 'right' | 'front' | 'back'
 export type Placement = { x: number; depth: 'bg' | 'mid' | 'fg'; facing: Facing }
@@ -184,6 +183,9 @@ export async function createFigure(scene: Scene, recipe: FigureRecipe, name = 'f
   inst.rootNodes.forEach((n) => (n.parent = root))
   root.scaling.setAll(recipe.scale ?? 1)
   const meshes = inst.rootNodes.flatMap((n) => n.getChildMeshes(false))
+  // the vendor meshes carry vertex colours WITH alpha: Babylon then draws them in the transparent pass (no depth
+  // write, sorted by distance), so any ink hull or second shell wins over them. They are opaque cloth and skin.
+  meshes.forEach((m) => (m.hasVertexAlpha = false))
   const rigRoot = inst.rootNodes[0].getDescendants(false).find((n) => n.name === 'Man_Rig') as TransformNode
   if (!rigRoot) throw new Error('standard body has no Man_Rig node')
   const rig = rigOf(rigRoot)
@@ -205,8 +207,8 @@ export async function createFigure(scene: Scene, recipe: FigureRecipe, name = 'f
     if (zoned) paintZones(m as Mesh, part.role as 'skin' | 'trousers' | 'coat')
     const mat = toonMaterial(`${name}_${part.role}_${live.length}`, hexRgb(colourOf(part, recipe)), scene, zoned)
     mat.zones = zonesFor(part.role, recipe)
-    if (part.role === 'skin' || part.role === 'eye') mat.step = SKIN_STEP
-    if (part.role === 'skin') mat.inkEdge = SKIN_INK // thin fingers would fill with contour ink: a lighter line on skin
+    if (part.role === 'skin' || part.role === 'eye') mat.step = SKIN.step
+    if (part.role === 'skin') mat.inkEdge = SKIN.ink // thin fingers would fill with contour ink: a lighter line on skin
     if (part.role === 'eye') {
       mat.inkEdge = 0 // the eyeballs carry the painted eyes, no contour of their own
       mat.backFaceCulling = false // one eyeball is exported mirrored (flipped winding): culled, the socket shows through
@@ -214,6 +216,9 @@ export async function createFigure(scene: Scene, recipe: FigureRecipe, name = 'f
     m.material = mat
     live.push({ mesh: m, part })
   }
+
+  // the contour: a screen-pixel ink hull round every part but the eyeballs and the mouth plug
+  live.filter((l) => l.part.role !== 'eye').forEach((l) => addInkHull(l.mesh as Mesh, scene))
 
   // painted face: one projector box riding the head bone, read by the skin and eyeball materials
   const faceMats = live.filter((l) => l.part.role === 'skin' || l.part.role === 'eye').map((l) => l.mesh.material as ToonMaterial)
@@ -325,7 +330,7 @@ export function placeFigure(scene: Scene, fig: Figure, at: Placement, stage?: St
   // reads frontal and foreshortens a point into the chest (check F8). left on screen = turning toward -x.
   const cam = scene.activeCamera?.globalPosition ?? new Vector3(0, 1.6, 0)
   const toCamera = Math.atan2(cam.x - p.x, cam.z - p.z)
-  const turn = (FACING_TURN_DEG * Math.PI) / 180
+  const turn = (FACING.turnDeg * Math.PI) / 180
   const heading = { front: toCamera, back: toCamera + Math.PI, left: toCamera + turn, right: toCamera - turn }[at.facing]
   faceHeading(fig, heading)
 }
