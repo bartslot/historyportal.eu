@@ -42,7 +42,7 @@ function Answer({ q, sfx, done }: { q: Quiz; sfx?: (id: string) => void; done: (
   }
   return (
     <>
-      <div className="grid gap-3">
+      <div className="grid gap-3" data-testid="options">
         {q.options.map((o, i) => {
           const tone = picked === null ? 'btn-outline'
             : !graded ? (i === picked ? 'btn-primary' : 'btn-ghost opacity-50')
@@ -84,7 +84,7 @@ function Choose({ c, vote, done }: { c: Choice; vote: boolean; done: (d: boolean
   return (
     <>
       {vote && picked === null && <p className="text-xl opacity-80">{__('Vote with your hands')}. {__('Tap what the class chose')}.</p>}
-      <div className="grid gap-3">
+      <div className="grid gap-3" data-testid="options">
         {c.options.map((o, i) => (
           <button key={i} className={`btn btn-lg h-auto min-h-12 justify-start py-2 text-left text-xl font-normal ${picked === null ? 'btn-outline' : i === picked ? 'btn-primary' : 'btn-ghost opacity-50'}`}
             onClick={() => { if (picked === null) { setPicked(i); done(true) } }}>{o.text}</button>
@@ -113,7 +113,7 @@ function Meter({ m, onPush, sfx, done }: { m: PowerMeter; onPush?: (p: number) =
     <>
       {!m.prompt && <p className="text-xl opacity-80">{__('Call out the words that help')}.</p>}
       <progress className="progress progress-primary h-5 w-full" value={progress} max={1} />
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-3" data-testid="options">
         {words.map((w) => (
           <button key={w.word} onClick={() => tap(w)}
             className={`btn btn-lg text-xl font-normal ${hit.has(w.word) ? 'btn-success' : missed.has(w.word) ? 'btn-ghost line-through opacity-50' : 'btn-outline'}`}
@@ -143,15 +143,16 @@ export function Card({ interaction: it, seconds, onDone, onPush, sfx }: CardProp
   // the lower 45 % of the frame at most: the held picture (the world the class moves) stays in view above
   return (
     <div className="absolute inset-x-0 bottom-0 flex h-[45%] justify-center px-4 pb-4" data-testid="card" data-kind={kind}>
-      <section className="grid h-full w-full max-w-6xl grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-6 overflow-y-auto rounded-box bg-base-100 p-6 text-base-content">
-        <div className="flex flex-col gap-3">
+      <section className="grid h-full w-full max-w-6xl grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-6 overflow-hidden rounded-box bg-base-100 p-6 text-base-content">
+        <div className="flex min-h-0 flex-col gap-3 overflow-y-auto">
           <Clock seconds={seconds} />
-          <h2 className="text-3xl font-semibold leading-tight">{title}</h2>
+          <h2 className={`${title.length > 110 ? 'text-2xl' : 'text-3xl'} font-semibold leading-tight`}>{title}</h2>
           {it.type === 'power-meter' && <p className="text-xl leading-snug">{it.prompt}</p>}
         </div>
-        <div className="flex flex-col gap-3">
-          {body}
-          <footer className="mt-auto flex justify-end gap-3 pt-1">
+        <div className="flex min-h-0 flex-col gap-3">
+          {/* only the content scrolls: Next / Skip stay in view */}
+          <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">{body}</div>
+          <footer className="flex justify-end gap-3">
             {!finished && <button className="btn btn-ghost btn-lg text-xl" onClick={onDone}>{__('Skip')}</button>}
             {finished && <button className="btn btn-primary btn-lg text-xl" onClick={onDone}>{__('Next')}</button>}
           </footer>

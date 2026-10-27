@@ -64,8 +64,8 @@ for (const k of kinds) {
   const held = await page.evaluate(() => ({ mode: window.__play.player.scene().mode, t: window.__play.player.scene().t, clock: window.__play.player.clock(), held: window.__play.sound.state().held }))
   await page.locator('#wrap').screenshot({ path: `${out}/card-${k.kind}.png` })
   const card = page.locator('[data-testid=card]')
-  if (k.kind === 'meter') { for (const b of await card.locator('.flex-wrap button').all()) await b.click() }
-  else if (['answer', 'choose', 'vote'].includes(k.kind)) await card.locator('.grid button').first().click()
+  if (k.kind === 'meter') { for (const b of await card.locator('[data-testid=options] button').all()) await b.click() }
+  else if (['answer', 'choose', 'vote'].includes(k.kind)) await card.locator('[data-testid=options] button').first().click()
   else await card.locator('button.btn-primary').first().click()
   await page.waitForTimeout(400)
   await page.locator('#wrap').screenshot({ path: `${out}/card-${k.kind}-after.png` })
@@ -91,7 +91,7 @@ for (const k of extra) {
   await page.waitForSelector('[data-testid=card]', { timeout: 10000 })
   await page.locator('#wrap').screenshot({ path: `${out}/card-${k.kind}.png` })
   const card = page.locator('[data-testid=card]')
-  if (k.kind === 'vote') await card.locator('.grid button').first().click()
+  if (k.kind === 'vote') await card.locator('[data-testid=options] button').first().click()
   else await card.locator('button.btn-primary').first().click()
   await page.waitForTimeout(400)
   await page.locator('#wrap').screenshot({ path: `${out}/card-${k.kind}-after.png` })

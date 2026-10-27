@@ -22,7 +22,9 @@ export type Interactions = {
 const PUSH_S = 1.2
 const easeOut = (u: number) => 1 - (1 - u) ** 3
 
-export function startInteractions(player: Player, sound: LessonSound | null, lesson: Lesson, host: HTMLElement): Interactions {
+/** `frame`: the element holding stage + card; it gets `card-open` while a card is up, so the page can
+ *  scale the held picture into the space above the card (play.html), keeping the whole world in view. */
+export function startInteractions(player: Player, sound: LessonSound | null, lesson: Lesson, host: HTMLElement, frame?: HTMLElement): Interactions {
   let root: Root | null = null
   // once per ENTRY into a scene (S1: each hold fires once per entry): a meter scene's end hold, after
   // its holdAt card, just moves on; a teacher who seeks back into the scene gets the card again
@@ -53,6 +55,7 @@ export function startInteractions(player: Player, sound: LessonSound | null, les
     done.add(scene.id)
     if (scene.sound) sound?.hold(scene.sound.ambience, scene.sound.duck_db)
     note(scene, 'open')
+    frame?.classList.add('card-open')
     const dur = scene.dur_s ?? 0
     const hold = holdAt(scene, dur)
     root = createRoot(host)
@@ -65,6 +68,7 @@ export function startInteractions(player: Player, sound: LessonSound | null, les
         onDone={() => {
           root?.unmount()
           root = null
+          frame?.classList.remove('card-open')
           sound?.release()
           note(scene, 'close')
           resume()

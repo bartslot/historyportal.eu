@@ -10,7 +10,11 @@
   html, body { margin: 0; height: 100%; background: var(--ink); overflow: hidden; }
   #frame { position: fixed; inset: 0; display: grid; place-items: center; }
   #wrap { position: relative; width: min(100vw, calc(100vh * 16 / 9)); aspect-ratio: 16 / 9; background: var(--paper); }
-  #stage { width: 100%; height: 100%; display: block; outline: none; }
+  #stage { width: 100%; height: 100%; display: block; outline: none; transform-origin: 50% 0;
+    transition: transform 0.5s cubic-bezier(0.333, 1, 0.667, 1); }
+  /* a card takes the lower 45 %: the held picture scales into the space above it, whole (PM) */
+  #wrap.card-open #stage { transform: scale(0.53); }
+  #wrap.card-open #figures { transform: scale(0.53); transform-origin: 50% 0; }
   #intro-host { position: absolute; inset: 0; pointer-events: none; }
   #figures, #story { position: absolute; inset: 0; pointer-events: none; }
   /* balloons: silent timed layers over the speaker, never baked into the picture; no names */

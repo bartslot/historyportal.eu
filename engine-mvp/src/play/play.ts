@@ -66,7 +66,7 @@ async function boot() {
     startButton.hidden = true
     captionsButton.hidden = false
     sound = new LessonSound(new AudioContext())
-    cards = startInteractions(player, sound, directed, document.getElementById('cards')!)
+    cards = startInteractions(player, sound, directed, document.getElementById('cards')!, document.getElementById('wrap')!)
     follow(player, sound, directed, cards, () => captions)
     const go = () => player.resume()
     if (q.get('intro') === '0') { void sound.play(directed, 0); go(); return }
