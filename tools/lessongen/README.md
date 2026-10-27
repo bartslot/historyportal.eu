@@ -25,7 +25,7 @@ Output per lesson: vault `historyportal/topics/autonomous-lessons/lessons/<id>/`
 7. **Review pass**: three fresh readers (a 12-year-old, a teacher, a historian fact-checking against
    `sources.md`) -> `review.md`; fix; validate again.
 
-## Validators (`validate.py`, tests in `test_validate.py`, run `python3 -m pytest tools/lessongen`)
+## Validators (`validate.py`, tests in `test_validate.py`, run `uv run --with pytest --with jsonschema python -m pytest tools/lessongen`)
 
 | Check | Rule |
 |---|---|
