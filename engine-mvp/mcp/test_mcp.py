@@ -14,7 +14,9 @@ HERE = Path(__file__).parent
 
 FAKE_CODEX = """#!/bin/sh
 cat > /dev/null
+ARGS="$*"
 while [ "$1" != "-C" ]; do shift; done; cd "$2"  # like codex -C
+echo "$ARGS" > args.txt
 echo "thinking noise"
 echo "codex"
 echo "intermediate"
@@ -54,7 +56,7 @@ async def main() -> None:
     assert '1642' in out['messages'][0]['text']
 
     names, out = await call('chatgpt_mcp.py', 'ask_chatgpt', {'prompt': 'Reply with exactly: pong'})
-    assert set(names) == {'ask_chatgpt', 'generate_image'}, names
+    assert set(names) == {'ask_chatgpt', 'generate_image', 'edit_image'}, names
     print('chatgpt:', out['reply'])
     assert 'pong' in out['reply'].lower()
 
@@ -66,8 +68,21 @@ async def main() -> None:
         _, out = await call('chatgpt_mcp.py', 'ask_chatgpt', {'prompt': 'x', 'workdir': str(wd)},
                             {'CODEX_BIN': str(fake)})
         assert out['reply'] == 'all done', out
-        assert [Path(f).name for f in out['files']] == ['made.png'], out
+        assert sorted(Path(f).name for f in out['files']) == ['args.txt', 'made.png'], out
+        assert 'photon' not in (wd / 'args.txt').read_text()
+        _, out = await call('chatgpt_mcp.py', 'ask_chatgpt', {'prompt': 'x', 'workdir': str(wd), 'photon': True},
+                            {'CODEX_BIN': str(fake)})
+        assert 'default_tools_approval_mode' in (wd / 'args.txt').read_text(), out
         print('fake codex ok:', out['reply'], out['files'])
+
+        src = Path(d) / 'src.png'
+        src.write_bytes(b'not really a png')
+        _, out = await call('chatgpt_mcp.py', 'edit_image',
+                            {'source': str(src), 'prompt': 'make it blue', 'out_path': str(Path(d) / 'out' / 'blue.png')},
+                            {'CODEX_BIN': str(fake)})
+        assert out['path'].endswith('/out/blue.png') and out['bytes'] == 0 and 'width' not in out, out
+        assert src.read_bytes() == b'not really a png'
+        print('fake edit_image ok:', out)
     print('ALL PASSED')
 
 
