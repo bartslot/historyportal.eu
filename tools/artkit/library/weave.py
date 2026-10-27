@@ -29,6 +29,7 @@ REF_ORDER = ["wc_caesar", "wc_constantinople", "wc_castle", "wc_crusade",
              "ink_caesar", "ink_constantinople", "ink_castle", "ink_crusade", "texture_tasman"]
 LEDGER = LIB / "LEDGER.md"
 PAPER = (255, 255, 255)
+PAD_FRAC = 0.08  # white added on every side of an ink before the Figma edit (it zooms ~8 % and crops)
 SIZE = {"sky": "landscape_16_9", "bg": "landscape_16_9", "strip": "landscape_16_9"}
 
 
@@ -72,7 +73,7 @@ def fetch(job: dict, sid: str, name: str, url: str, credits: str = "?") -> Path:
     return out
 
 
-def grab(bundle: str, sid: str, name: str, urls: list[str]) -> Path | None:
+def grab(bundle: str, sid: str, name: str, urls: list[str], unpad: bool = True) -> Path | None:
     """Figma download_assets gives the edited fill plus a thumbnail: keep the widest image."""
     d = LIB / "_work" / bundle / sid
     best, best_chroma = None, -1.0
@@ -92,6 +93,10 @@ def grab(bundle: str, sid: str, name: str, urls: list[str]) -> Path | None:
         return None
     flat = Image.new("RGBA", best.size, PAPER + (255,))
     flat.alpha_composite(best)
+    if unpad:  # the ink went in with PAD_FRAC white on every side: crop it back to the ink's own framing
+        w, h = flat.size
+        m = PAD_FRAC / (1 + 2 * PAD_FRAC)
+        flat = flat.crop((round(w * m), round(h * m), round(w * (1 - m)), round(h * (1 - m)))).resize((w, h), Image.LANCZOS)
     out = d / f"{name}.png"
     flat.convert("RGB").save(out)
     with LEDGER.open("a") as f:
@@ -100,7 +105,21 @@ def grab(bundle: str, sid: str, name: str, urls: list[str]) -> Path | None:
     return out
 
 
+def pad_ink(src: Path) -> Path:
+    im = Image.open(src).convert("RGB")
+    px, py = round(im.width * PAD_FRAC), round(im.height * PAD_FRAC)
+    out = Image.new("RGB", (im.width + 2 * px, im.height + 2 * py), PAPER)
+    out.paste(im, (px, py))
+    dst = src.with_name(src.stem + "_pad.png")
+    out.save(dst)
+    return dst
+
+
 def main() -> None:
+    if sys.argv[1] == "pad":  # pad <ink.png>...
+        for f in sys.argv[2:]:
+            print(pad_ink(Path(f)))
+        return
     if sys.argv[1] == "grab":  # grab <bundle> <sheet> <name> <url>...
         grab(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5:])
         return

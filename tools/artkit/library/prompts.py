@@ -265,3 +265,50 @@ STYLE_GAPS = (
     "and do not add interior detail lines. Use the references' wider, warmer palette: clear saturated sky blues, warm "
     "sandstone and ochre, and confident local colour, with generous paper white left on the lit sides."
 )
+
+
+# v3 sparse ink (2026-10-28). Every protocol-2 critique blamed the INK: dense dark shading and interior
+# micro-detail that no colour edit can undo. Same rule, said as drawing instructions the model follows.
+SPARSE_INK = (
+    "SPARSE INK, this matters most: a bold, slightly broken outer contour of varying weight (thick on the shadow "
+    "side and at the base, thinning and breaking open where light hits) carries each object. Inside the contour "
+    "draw only about half the detail you normally would: a few structural lines, no texture marks, no fur, wool, "
+    "bark, leaf, grass, scale, plank-grain, stone-grain or wave micro-strokes; suggest masses of leaves, wool or "
+    "waves by their outline and a few inner shapes only. Medium shadow = a small patch of single-direction "
+    "parallel hatching on the shadow side, nothing else. Deepest shade only (under overhangs, crevices, the "
+    "darkest underside) may use two crossing directions, never three, and cross-hatching stays under one fifth "
+    "of the shaded area. The lit half of every object is open white paper inside its contour. Aim for about "
+    "12% black ink and 70% white paper inside each object."
+)
+
+# Plants measured 28 % black with SPARSE_INK alone (fg-shrubs ink3): foliage needs its own instruction.
+SPARSE_FOLIAGE = (
+    "NOT a botanical engraving and NOT a field-guide plate. Foliage, needles, heather, grass and fleece are drawn "
+    "the picture-book way: each bush or crown is one big silhouette made of 3 to 7 scalloped or spiky lobes, each "
+    "lobe a single closed wobbly contour that is EMPTY white paper inside. A few short marks only along the edge of "
+    "a lobe, never inside it; never draw individual needles, florets or berries in rows. Hatch only a narrow band "
+    "under the lowest lobes. Branches and stems are single strokes."
+)
+FOLIAGE_WORDS = ("tree", "shrub", "bush", "heather", "bramble", "reed", "grass", "hedge", "juniper", "hazel",
+                 "willow", "linden", "elm", "oak", "birch", "palm", "barley", "wheat", "sheep", "wool")
+
+
+def sparse_ink_prompt(template: str, subject: str) -> str:
+    """figma_ink_prompt with the v3 sparse block in place of LIGHT_LINE (all layers, skies keep their own rule)."""
+    essence = INK_ESSENCE.format(ink_rule=INK_RULE).replace(
+        " in the style of the attached anchor (match its line quality and hatching, not its content)", "")
+    parts = [FIGMA_INK_LEAD, LAYER[template].format(subject=subject), essence,
+             "No people and no animals unless they are named above; nothing from a later period."]
+    if template != "sky":
+        parts.append(SPARSE_INK)
+        if any(w in subject.lower() for w in FOLIAGE_WORDS):
+            parts.append(SPARSE_FOLIAGE)
+    return " ".join(" ".join(parts).split())
+
+
+if __name__ == "__main__":  # python3 prompts.py jobs/<bundle>.json <sheet>  -> the v3 sparse ink prompt
+    import json
+    import sys
+    _job = json.loads(open(sys.argv[1]).read())
+    _s = next(x for x in _job["sheets"] if x["id"] == sys.argv[2])
+    print(sparse_ink_prompt("strip" if _s.get("strip") else _s["layer"], _s["subject"]))

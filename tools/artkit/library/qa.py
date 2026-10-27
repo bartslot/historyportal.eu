@@ -265,6 +265,32 @@ def rank_bundle(job: dict, sheets: list[str] | None = None, workers: int = 3) ->
             print(json.dumps({k: r.get(k) for k in ("ranking", "verdict", "why", "error")}), flush=True)
 
 
+# ---- ink sheet rule (Bart: 10-14 % black, 65-75 % white, cross-hatch <= 20 % of the shade) ------
+
+INK_SHEET_BLACK = (0.08, 0.16)  # Bart: 10-14 %; drawn-area black of the approved inks: 0.12-0.23
+INK_SHEET_WHITE = 0.60  # Bart: 65-75 % white space
+DRAWN_WIN = 48  # px windows (at 1536 px wide) ...
+DRAWN_MIN = 0.03  # ... with at least this much ink count as drawn area
+# Measured over the drawn area, not the whole canvas: an isolated object sheet is mostly empty paper, so a
+# whole-canvas share says nothing (shrubs 12 % whole, 23 % drawn). Cross-hatch share is not gated: a
+# gradient-direction estimate scored the approved inks 0.27-0.82 and could not separate them from the dense
+# ones (2026-10-28). It stays a prompt rule and a judge item.
+
+
+def ink_sheet(rgb: np.ndarray) -> dict:
+    """Bart's ink rule on an ink sheet: black and white share inside the drawn area (48 px windows with ink)."""
+    im = Image.fromarray(rgb)
+    rgb = np.asarray(im.resize((1536, round(im.height * 1536 / im.width))))
+    w = DRAWN_WIN
+    h = rgb.shape[0] // w * w
+    blocks = lambda a: a[:h].reshape(h // w, w, 1536 // w, w).mean((1, 3))  # noqa: E731
+    black = blocks(ink_coverage_map(rgb).astype(float))
+    white = blocks((rgb.min(-1) > 225).astype(float))
+    drawn = black > DRAWN_MIN
+    b, wh = float(black[drawn].mean()), float(white[drawn].mean())
+    return {"black": round(b, 3), "white": round(wh, 3), "drawn": round(float(drawn.mean()), 2),
+            "ok": INK_SHEET_BLACK[0] <= b <= INK_SHEET_BLACK[1] and wh >= INK_SHEET_WHITE}
+
 # ---- self-check --------------------------------------------------------------------------------
 
 def self_check() -> None:
@@ -307,6 +333,12 @@ def self_check() -> None:
     ramp = np.dstack([np.tile(np.linspace(0, 250, 300), (400, 1))] * 3).astype(np.uint8)
     assert seam_diff(ramp, np.full((400, 300), 255, np.uint8)) > 100  # a ramp does not wrap
     assert seam_diff(rgb, np.full((400, 300), 255, np.uint8)) < SEAM_MAX
+    sheet = np.full((1024, 1536, 3), 250, np.uint8)
+    sheet[200:600:8, 300:700] = 20  # hatched block: 12.5 % black where drawn
+    r = ink_sheet(sheet)
+    assert r["ok"] and abs(r["black"] - 0.125) < 0.02, r
+    sheet[200:600:3, 300:700] = 20  # dense hatching: 33 %
+    assert not ink_sheet(sheet)["ok"]
     print("qa self-check: ok")
 
 
@@ -315,6 +347,9 @@ if __name__ == "__main__":
         self_check()
     elif sys.argv[1:2] == ["rank-bundle"]:
         rank_bundle(json.loads(Path(sys.argv[2]).read_text()), sys.argv[3:] or None)
+    elif sys.argv[1:2] == ["ink"]:  # ink <png>...
+        for f in sys.argv[2:]:
+            print(Path(f).parent.name + "/" + Path(f).name, json.dumps(ink_sheet(np.asarray(Image.open(f).convert("RGB")))))
     elif sys.argv[1:2] == ["rank"]:
         print(json.dumps(rank(Path(sys.argv[2]), [Path(p) for p in sys.argv[3:]]), indent=1))
     else:
