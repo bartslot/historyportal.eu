@@ -5,7 +5,8 @@
 import { mkdirSync } from 'node:fs'
 import { chromium } from '/Users/bartslot/BartsAutomation/BartsDev/apps/historyportal.eu/node_modules/playwright/index.mjs'
 
-const [base = 'http://localhost:5291', out = '.', lessonId = 'eerste-boeren-1', stepArg = '10'] = process.argv.slice(2)
+const [base = 'http://localhost:5291', out = '.', lessonId = 'hunebedden', stepArg = '10', size = '1280x720'] = process.argv.slice(2)
+const [VW, VH] = size.split('x').map(Number)
 const STEP = Number(stepArg)
 mkdirSync(`${out}/frames`, { recursive: true })
 const SILENT = () => {
@@ -16,7 +17,7 @@ const SILENT = () => {
 }
 
 const browser = await chromium.launch({ args: ['--mute-audio', '--use-gl=angle'] })
-const page = await browser.newPage({ viewport: { width: 1280, height: 720 } })
+const page = await browser.newPage({ viewport: { width: VW, height: VH } })
 await page.addInitScript(SILENT)
 const errors = [], warnings = [], failed = []
 page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); if (m.type() === 'warning') warnings.push(m.text()) })
@@ -58,11 +59,25 @@ const kinds = await page.evaluate(() => {
   return out
 })
 const cardRuns = []
+/** Is everything the teacher needs inside the card's visible area (not under a scroll fold)? */
+const fit = () => page.evaluate(() => {
+  const card = document.querySelector('[data-testid=card] section'), r = card.getBoundingClientRect()
+  const inView = (el) => {
+    const b = el.getBoundingClientRect()
+    let p = el.parentElement, clip = r
+    while (p && p !== card.parentElement) { const s = getComputedStyle(p); if (/(auto|scroll|hidden)/.test(s.overflowY)) { const q = p.getBoundingClientRect(); clip = { top: Math.max(clip.top, q.top), bottom: Math.min(clip.bottom, q.bottom) } } p = p.parentElement }
+    return b.top >= clip.top - 1 && b.bottom <= clip.bottom + 1
+  }
+  const opts = [...card.querySelectorAll('[data-testid=options] > *')]
+  const buttons = [...card.querySelectorAll('footer button')]
+  return { options: opts.length, optionsVisible: opts.filter(inView).length, footer: buttons.map((b) => b.textContent), footerVisible: buttons.every(inView), titlePx: parseFloat(getComputedStyle(card.querySelector('h2')).fontSize) }
+})
 for (const k of kinds) {
   await page.evaluate(async ({ i, hold }) => { const p = window.__play; p.player.pause(); await p.player.seek(i, Math.max(0, hold - 1)); p.player.play() }, k)
   await page.waitForSelector('[data-testid=card]', { timeout: 10000 })
   const held = await page.evaluate(() => ({ mode: window.__play.player.scene().mode, t: window.__play.player.scene().t, clock: window.__play.player.clock(), held: window.__play.sound.state().held }))
   await page.locator('#wrap').screenshot({ path: `${out}/card-${k.kind}.png` })
+  const fits = await fit()
   const card = page.locator('[data-testid=card]')
   if (k.kind === 'meter') { for (const b of await card.locator('[data-testid=options] button').all()) await b.click() }
   else if (['answer', 'choose', 'vote'].includes(k.kind)) await card.locator('[data-testid=options] button').first().click()
@@ -73,7 +88,7 @@ for (const k of kinds) {
   await page.waitForSelector('[data-testid=card]', { state: 'detached', timeout: 5000 })
   await page.waitForTimeout(500)
   const after = await page.evaluate(() => ({ mode: window.__play.player.scene().mode, index: window.__play.player.scene().index, held: window.__play.sound.state().held }))
-  cardRuns.push({ ...k, held, after })
+  cardRuns.push({ ...k, held, after, fits })
 }
 // the kinds no vault lesson has yet (sort, vote, team): three of the lesson's own interaction scenes are
 // given those cards IN MEMORY (the vault is not touched), then played into again (a card plays once per entry)
@@ -90,6 +105,7 @@ for (const k of extra) {
   await page.evaluate(async ({ i, hold }) => { const p = window.__play; p.player.pause(); await p.player.seek(i, Math.max(0, hold - 1)); p.player.play() }, k)
   await page.waitForSelector('[data-testid=card]', { timeout: 10000 })
   await page.locator('#wrap').screenshot({ path: `${out}/card-${k.kind}.png` })
+  const fits = await fit()
   const card = page.locator('[data-testid=card]')
   if (k.kind === 'vote') await card.locator('[data-testid=options] button').first().click()
   else await card.locator('button.btn-primary').first().click()
@@ -97,7 +113,7 @@ for (const k of extra) {
   await page.locator('#wrap').screenshot({ path: `${out}/card-${k.kind}-after.png` })
   await card.locator('footer button.btn-primary').click()
   await page.waitForSelector('[data-testid=card]', { state: 'detached', timeout: 5000 })
-  cardRuns.push({ ...k, extra: true })
+  cardRuns.push({ ...k, extra: true, fits })
 }
 
 const cardLog = await page.evaluate(() => window.__play.cards.log.map((l) => `${l.scene}:${l.what}`))
