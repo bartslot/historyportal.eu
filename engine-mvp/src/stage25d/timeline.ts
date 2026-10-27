@@ -123,7 +123,7 @@ export class Timeline {
     const resume = () => {
       if (this.hold !== ticket || this.ticket !== ticket) return
       this.hold = null
-      this.paused = false                 // the card is done: the lesson goes on, even if someone paused during it
+      // only the hold ends: a pause the teacher pressed during it carries into the next scene (PM 2026-10-27)
       if (atEnd) this.next(); else this.emit()
     }
     this.handlers.forEach((fn) => fn(this.scene, resume))

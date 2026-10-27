@@ -1,6 +1,7 @@
 // Dev page: stage25d.html?lesson=<url>&library=<url>. The stage fills the frame; a small panel holds every
 // motion and timing value of the scene on screen, each change one undo step.
 import '../studio.css'
+import { __, loadLocale } from '../i18n'
 import { StrictMode, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { createRoot } from 'react-dom/client'
 import { playLesson, type Player } from './stage'
@@ -109,6 +110,7 @@ function ScenePanel({ player }: { player: Player }) {
           : <button className="btn btn-sm btn-primary" onClick={() => (mode === 'playing' ? player.pause() : player.resume())}>{mode === 'playing' ? 'Pause' : 'Play'}</button>}
         <button className="btn btn-sm btn-ghost" disabled={!player.doc.history.canUndo()} onClick={() => player.doc.undo()}>Undo</button>
         <button className="btn btn-sm btn-ghost" disabled={!player.doc.history.canRedo()} onClick={() => player.doc.redo()}>Redo</button>
+        {mode === 'paused' && <span className="badge badge-sm badge-ghost" data-testid="paused">{__('Paused')}</span>}
         <span className="ml-auto text-xs tabular-nums opacity-70" data-testid="fps">{player.fps()} fps</span>
       </div>
       <label className="mt-3 flex items-center gap-2 text-xs">
@@ -161,6 +163,8 @@ const Loading = () => (
 )
 
 // wide: the stage left, the panel fixed on the right; narrow (below lg): the panel under the stage, the page scrolls
+let player: Player | null = null
+
 async function main() {
   const root = document.getElementById('root')!
   root.className = 'h-full overflow-y-auto bg-base-200 p-3 lg:overflow-hidden'
@@ -170,9 +174,11 @@ async function main() {
   root.appendChild(canvas)
   const ui = root.appendChild(document.createElement('div'))
   ui.className = 'mt-3 lg:mt-0'
+  canvas.addEventListener('click', () => { if (player?.scene().mode === 'paused') player.resume() })   // the next tap plays
   const app = createRoot(ui)
   app.render(<Loading />)                // the frame and panel show at once; the lesson fills them when it has loaded
-  const player = await playLesson(lessonUrl, libraryUrl, canvas)
+  await loadLocale()
+  player = await playLesson(lessonUrl, libraryUrl, canvas)
   panels.open('stage-scene')
   Object.assign(window, { __stage25d: player })
   app.render(<StrictMode><ScenePanel player={player} /></StrictMode>)

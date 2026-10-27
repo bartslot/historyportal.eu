@@ -206,16 +206,29 @@ describe('Timeline: checker findings on ca66cc7e', () => {
     expect(built[built.length - 1]).toBe('b')        // the last build is B, so the stage shows B
     expect(built.filter((x) => x === 'a')).toEqual(['a'])  // no racing rebuild of A
   })
-  it('a pause during a hold does not leave the next scene paused after the card resumes', async () => {
+  it("a teacher's pause during a hold carries into the next scene; the card's resume clears only the hold", async () => {
     const { tl } = await make([sc('a', 1, true), sc('b', 4)])
     let resume = () => {}
     tl.onInteraction((_, r) => { resume = r })
     await run(tl, 1.05)
-    tl.pause()
+    tl.pause()                                        // the teacher presses pause during the quiz
+    resume()                                          // the card is answered
+    await flush()
+    await run(tl, 2)
+    expect([tl.index, tl.t, tl.mode]).toEqual([1, 0, 'paused'])
+    tl.resume()                                       // the next tap plays
+    await run(tl, 1)
+    expect(tl.mode).toBe('playing')
+    expect(tl.t).toBeCloseTo(1)
+  })
+  it('a card resume without a teacher pause plays straight on (a hold never leaves a pause behind)', async () => {
+    const { tl } = await make([sc('a', 1, true), sc('b', 4)])
+    let resume = () => {}
+    tl.onInteraction((_, r) => { resume = r })
+    await run(tl, 1.05)
     resume()
     await flush()
     await run(tl, 1)
     expect([tl.index, tl.mode]).toEqual([1, 'playing'])
-    expect(tl.t).toBeCloseTo(1)
   })
 })
