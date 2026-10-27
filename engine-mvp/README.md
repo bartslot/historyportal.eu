@@ -67,15 +67,24 @@ Lesson figures that read as History Lines comic characters: ONE standard body (C
 rig), variety only from dyes, skin, hair part, hat on/off. `lesson.json` `figures[]` maps straight onto it.
 
 ```ts
+import { Cast } from './src/figures/cast'
+const cast = new Cast(player.stage.scene, player.stage, lesson)   // the whole lesson cast, one figure per char
+const skipped = await cast.show(lesson.scenes[i])                 // on every scene change; skipped = no body (dog, waka)
+
+// or one figure by hand:
 import { createFigure, placeFigure } from './src/figures/figure'
-import { recipeFor } from './src/figures/recipes'
-const fig = await createFigure(scene, recipeFor(f.char), f.char)   // char: boer-man | boer-vrouw | voc-schipper | voc-matroos
-fig.setPose(f.pose)                     // walk | stand | point | kneel | carry; returns the guard verdict ([] = passes)
-fig.setExpression(f.expression)         // neutral | happy | worried | surprised (an image swap, no blink)
+import { figureRecipe } from './src/figures/recipes'
+const fig = await createFigure(scene, figureRecipe(f.char, lesson.characters, lesson.bundle)!, f.char)
+fig.setPose(f.pose)            // walk stand point kneel carry sit lie dig pull push climb row; returns the guard verdict
+fig.setExpression(f.expression) // neutral happy worried surprised sad angry proud tired (an image swap, no blink)
 placeFigure(scene, fig, { x: f.x, depth: f.depth, facing: f.facing }, player.stage)   // stage = anything with groundPoint(x, depth)
 fig.setDye('coat', '#7a4a30'); fig.dispose()
 ```
 
+- **Any character**: `figureRecipe(char, lesson.characters, bundle)` reads the cast's `look` line: child (drawn at
+  0.68), woman (longest hair, no beard), old (grey hair), VOC officer (black, hat, Tasman moustache), sailor (cap);
+  the id seeds era dyes so no two farmers match. `null` for animals and far-off canoe crews. Unknown poses and
+  expressions fall back (`poseFor`, `expressionFor`). Group chars repeated in one scene get their own dyes.
 - **Contract with the stage**: `placeFigure(scene, fig, { x 0..1, depth: 'bg'|'mid'|'fg', facing: 'left'|'right'|'front'|'back' }, stage?)`.
   It stands `fig.root` on `stage.groundPoint(x, depth)` (S1's `Stage`); without a stage it uses the same depth maths.
   `left`/`right` = a 3/4 turn toward that side of the screen (`FACING_TURN_DEG`, 62; 90 = profile). Move `fig.root`

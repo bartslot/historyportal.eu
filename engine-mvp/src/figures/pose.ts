@@ -147,10 +147,11 @@ export const POSES: Record<StaticName, StaticPose> = {
   },
   // a load held in both arms against the belly (a basket, a sheaf, a pot)
   carry: { arms: { L: { upper: [0.3, -1, 0.3], lower: [1, 0.12, -0.12] }, R: { upper: [0.3, -1, 0.3], lower: [1, 0.12, -0.12] } } },
-  // on a seat at knee height (stone, stool, bench): thighs level, shins down, hands on the knees
+  // on the ground (no seat asset needed): knees up, feet flat in front, hands resting on the knees
   sit: {
-    arms: { L: { upper: [0.45, -1, 0.15], lower: [1, -0.35, 0] }, R: { upper: [0.45, -1, 0.15], lower: [1, -0.35, 0] } },
-    legs: { L: { upper: [1, -0.02, 0.12], lower: [0.1, -1, 0.02] }, R: { upper: [1, -0.02, 0.12], lower: [0.1, -1, 0.02] } },
+    spine: [0.12, 1, 0],
+    arms: { L: { upper: [0.55, -1, 0.2], lower: [1, 0.1, -0.05] }, R: { upper: [0.55, -1, 0.2], lower: [1, 0.1, -0.05] } },
+    legs: { L: { upper: [1, 0.55, 0.14], lower: [1, -0.62, 0.02] }, R: { upper: [1, 0.55, 0.14], lower: [1, -0.62, 0.02] } },
   },
   // on the back, head toward the camera side it faced, arms along the body
   lie: { body: [-1, 0, 0], arms: { L: { upper: [1, 0, 0.18], lower: [1, 0, 0.06] }, R: { upper: [1, 0, 0.18], lower: [1, 0, 0.06] } } },
@@ -215,7 +216,7 @@ export function applyPose(rig: Rig, rest: RestPose, pose: StaticPose): Violation
   resetToRest(rest)
   const f = frameOf(rig)
   const ground = lowest(rig, f)
-  if (pose.body) aim(rig, 'hips', 'spine', inFrame(f, 'L', pose.body))
+  if (pose.body) aim(rig, 'hips', 'chest', inFrame(f, 'L', pose.body)) // chest, not spine_01: that sits on the hip joint
   if (pose.spine) aim(rig, 'spine', 'neck', inFrame(f, 'L', pose.spine))
   if (pose.head) aim(rig, 'neck', 'head', inFrame(f, 'L', [pose.head[0] * 0.3, 1, pose.head[2] * 0.3]))
   for (const s of ['L', 'R'] as const) {

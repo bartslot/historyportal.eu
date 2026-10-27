@@ -48,6 +48,16 @@ describe.skipIf(!have)('standard body poses', () => {
     expect(Vector3.Dot(pos(rig, 'shinR'), f.up)).toBeLessThan(ground + 0.12) // the right knee rests on the ground
   })
 
+  it('sit and lie rest the body on the ground, not in the air', () => {
+    for (const p of ['sit', 'lie'] as const) {
+      resetToRest(rest)
+      const f = frameOf(rig)
+      const ground = Math.min(Vector3.Dot(pos(rig, 'toeL'), f.up), Vector3.Dot(pos(rig, 'toeR'), f.up))
+      applyPose(rig, rest, POSES[p])
+      expect(Vector3.Dot(pos(rig, 'hips'), f.up) - ground, p).toBeLessThan(0.2)
+    }
+  })
+
   it('point aims the right hand ahead of the body at shoulder height', () => {
     applyPose(rig, rest, POSES.point)
     const f = frameOf(rig)
