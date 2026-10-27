@@ -11,7 +11,7 @@ from pathlib import Path
 LIB = Path.home() / "BartsMedia/historyportal/library"
 LAYERS = {"sky", "bg", "mid", "fg", "prop", "ground"}
 MOTIONS = {"none", "sway", "drift", "ripple", "flicker"}
-VERDICTS = {"alike", "close", "different", "unranked", "judged"}
+VERDICTS = {"alike", "close", "different"}
 
 
 def validate(lib: dict, root: Path | None = None) -> list[str]:

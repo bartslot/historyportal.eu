@@ -1,6 +1,6 @@
 {
  "bundle": "nl-golden-age",
- "era": "Dutch Republic, Golden Age, c. 1640, Amsterdam and the VOC.",
+ "era": "c. 1600-1670",
  "sheets": [
   {
    "id": "sky-summer",
@@ -131,7 +131,8 @@
      "height_m": 2,
      "motion": "ripple"
     }
-   ]
+   ],
+   "gaps": "cut"
   },
   {
    "id": "mid-buildings",
@@ -173,7 +174,8 @@
      "height_m": 12,
      "motion": "none"
     }
-   ]
+   ],
+   "gaps": "cut"
   },
   {
    "id": "mid-quay",
@@ -212,7 +214,8 @@
      "height_m": 4,
      "motion": "none"
     }
-   ]
+   ],
+   "gaps": "cut"
   },
   {
    "id": "fg-trees",
@@ -250,7 +253,8 @@
      "height_m": 18,
      "motion": "sway"
     }
-   ]
+   ],
+   "gaps": "cut"
   },
   {
    "id": "fg-quay",
@@ -297,7 +301,8 @@
      "height_m": 1.2,
      "motion": "none"
     }
-   ]
+   ],
+   "gaps": "cut"
   },
   {
    "id": "fg-misc",
@@ -343,7 +348,8 @@
      "height_m": 0.9,
      "motion": "none"
     }
-   ]
+   ],
+   "gaps": "cut"
   },
   {
    "id": "prop-ship",

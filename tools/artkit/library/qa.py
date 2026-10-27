@@ -141,7 +141,9 @@ def ground_contact(alpha: np.ndarray) -> tuple[float, float]:
     cols = rows.any(0)
     if not cols.any():
         return 0.0, 0.5
-    return float(cols.mean()), float(np.nonzero(cols)[0].mean() / w)
+    # anchor = middle of the span the object stands on (bottom 10 %): a lying log's ends both touch the ground
+    span = np.nonzero((alpha[int(h * 0.9):] > 128).any(0))[0]
+    return float(cols.mean()), float((span[0] + span[-1]) / 2 / w)
 
 
 def seam_diff(rgb: np.ndarray, alpha: np.ndarray) -> float:
@@ -151,8 +153,38 @@ def seam_diff(rgb: np.ndarray, alpha: np.ndarray) -> float:
     return float(np.abs(a[:, 0] - a[:, -1]).mean() / typical)
 
 
+HOLE_DEPTH = 12  # px: a see-through region deeper than this inside a solid shape is a punched hole
+INK_STYLE = (0.07, 0.20)  # STYLE.md hard band; reported per asset (props measure 0.2-0.35 today, see notes)
+
+
+def holes(rgb: np.ndarray, alpha: np.ndarray, gaps: str = "fill") -> list[int]:
+    """Enclosed transparent regions (not reachable from the canvas edge) that are punched holes: deeper than
+    HOLE_DEPTH and either not rimmed by ink, or (solid sheets) above the leg zone. Same rule cut.gap_islands uses."""
+    clear = alpha < 128
+    lab, n = ndimage.label(clear)
+    edge = np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]]))
+    ink = ink_coverage_map(rgb) & ~clear
+    ys_obj = np.nonzero((~clear).any(1))[0]
+    top, height = (ys_obj[0], max(1, ys_obj[-1] - ys_obj[0])) if len(ys_obj) else (0, 1)
+    bad = []
+    for i, sl in enumerate(ndimage.find_objects(lab), start=1):
+        if i in edge:
+            continue
+        m = lab[sl] == i
+        if ndimage.distance_transform_edt(m).max() <= HOLE_DEPTH:
+            continue
+        pad = tuple(slice(max(0, s.start - 3), s.stop + 3) for s in sl)
+        mm = lab[pad] == i
+        ring = ndimage.binary_dilation(mm, iterations=3) & ~mm & ~clear[pad]
+        rim_ink = ink[pad][ring].mean() if ring.any() else 0.0
+        in_legs = (np.nonzero(m)[0].mean() + sl[0].start - top) / height >= 0.7
+        if rim_ink < 0.25 or (gaps != "cut" and not in_legs):
+            bad.append(int(m.sum()))
+    return bad
+
+
 def check(img: Image.Image, layer: str, bundle: str, ink_rgb: np.ndarray | None = None,
-          tileable: bool = False, paper: np.ndarray | None = None) -> dict:
+          tileable: bool = False, paper: np.ndarray | None = None, gaps: str = "fill", fades: bool = False) -> dict:
     """All pixel gates for one asset. ink_rgb = same crop of the pass-1 ink, if available."""
     rgb, alpha = split(img)
     h, w = alpha.shape
@@ -164,11 +196,14 @@ def check(img: Image.Image, layer: str, bundle: str, ink_rgb: np.ndarray | None 
     r["checkerboard"] = fake_checkerboard(rgb)
     r["halo"] = round(halo_fraction(rgb, alpha, paper), 4) if not full else 0.0
     r["islands"] = len(paper_islands(rgb, alpha, paper)) if layer not in ("sky", "bg", "ground") else 0
-    r["alpha_ok"] = r["has_alpha"] and not r["checkerboard"] and r["halo"] <= (HALO_MAX_BG if layer == "bg" else HALO_MAX) and r["islands"] == 0
+    r["holes"] = holes(rgb, alpha, gaps) if not full else []
+    r["last_row_clear"] = not fades or int(alpha[-1].max()) == 0  # bg strips fade out to nothing
+    r["alpha_ok"] = r["has_alpha"] and not r["holes"] and r["last_row_clear"] and not r["checkerboard"] and r["halo"] <= (HALO_MAX_BG if layer == "bg" else HALO_MAX) and r["islands"] == 0
     src = ink_rgb if ink_rgb is not None else rgb
     shape = ndimage.binary_fill_holes(opaque)  # cut gaps count as paper, as in a full scene
     r["ink_coverage"] = round(float((ink_coverage_map(src) & opaque)[shape].mean()), 4)
     r["ink_ok"] = layer == "sky" or INK_ASSET[0] <= r["ink_coverage"] <= INK_ASSET[1]
+    r["ink_style_ok"] = full or INK_STYLE[0] <= r["ink_coverage"] <= INK_STYLE[1]
     r["palette_de"] = round(palette_de(rgb, alpha, bundle), 2)
     r["palette_ok"] = r["palette_de"] <= PALETTE_DE_MAX
     mw, mh, lo, hi = SIZE[layer]

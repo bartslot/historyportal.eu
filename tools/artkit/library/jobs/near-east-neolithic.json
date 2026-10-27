@@ -21,7 +21,8 @@
      "height_m": 0,
      "motion": "drift"
     }
-   ]
+   ],
+   "era": "c. 10,000-3000 BCE"
   },
   {
    "id": "sky-ne-morning",
@@ -40,7 +41,8 @@
      "height_m": 0,
      "motion": "drift"
     }
-   ]
+   ],
+   "era": "c. 10,000-3000 BCE"
   },
   {
    "id": "sky-ne-evening",
@@ -60,7 +62,8 @@
      "height_m": 0,
      "motion": "drift"
     }
-   ]
+   ],
+   "era": "c. 10,000-3000 BCE"
   },
   {
    "id": "bg-levant-hills",
@@ -79,7 +82,8 @@
      "motion": "none",
      "era": "c. 10,000 BCE"
     }
-   ]
+   ],
+   "era": "c. 10,000-8,500 BCE"
   },
   {
    "id": "bg-nile",
@@ -97,7 +101,8 @@
      "height_m": 60,
      "motion": "ripple"
     }
-   ]
+   ],
+   "era": "c. 5000-4500 BCE"
   },
   {
    "id": "bg-nile-flood",
@@ -115,7 +120,8 @@
      "height_m": 60,
      "motion": "ripple"
     }
-   ]
+   ],
+   "era": "c. 5000-4500 BCE"
   },
   {
    "id": "bg-euphrates",
@@ -134,7 +140,8 @@
      "height_m": 40,
      "motion": "ripple"
     }
-   ]
+   ],
+   "era": "c. 3500-3100 BCE"
   },
   {
    "id": "bg-uruk",
@@ -154,7 +161,8 @@
      "height_m": 40,
      "motion": "none"
     }
-   ]
+   ],
+   "era": "c. 3500-3100 BCE"
   },
   {
    "id": "bg-mes-fields",
@@ -172,9 +180,11 @@
       "mesopotamia"
      ],
      "height_m": 20,
-     "motion": "none"
+     "motion": "none",
+     "reject": "stepped ziggurat (Ur III, c. 2100 BCE) and a city wall: too late for Uruk"
     }
-   ]
+   ],
+   "era": "c. 3500-3100 BCE"
   },
   {
    "id": "mid-natufian",
@@ -231,7 +241,9 @@
      "height_m": 1,
      "motion": "sway"
     }
-   ]
+   ],
+   "gaps": "cut",
+   "era": "c. 10,000-8,500 BCE"
   },
   {
    "id": "mid-nile",
@@ -286,7 +298,8 @@
      "height_m": 1,
      "motion": "none"
     }
-   ]
+   ],
+   "era": "c. 5000-4500 BCE"
   },
   {
    "id": "mid-canal",
@@ -337,7 +350,8 @@
      "height_m": 3,
      "motion": "none"
     }
-   ]
+   ],
+   "era": "c. 3500-3100 BCE"
   },
   {
    "id": "mid-uruk",
@@ -389,7 +403,9 @@
      "height_m": 3,
      "motion": "none"
     }
-   ]
+   ],
+   "gaps": "cut",
+   "era": "c. 3500-3100 BCE"
   },
   {
    "id": "prop-ne-animals",
@@ -445,7 +461,8 @@
      "height_m": 0.8,
      "motion": "none"
     }
-   ]
+   ],
+   "era": "c. 10,000-3000 BCE"
   },
   {
    "id": "prop-ne-tools",
@@ -517,7 +534,9 @@
      "height_m": 0.3,
      "motion": "none"
     }
-   ]
+   ],
+   "gaps": "cut",
+   "era": "c. 10,000-8,500 BCE"
   },
   {
    "id": "prop-uruk",
@@ -591,7 +610,8 @@
      "motion": "none",
      "reject": "grey metal-looking hoe blade: anachronism risk for Uruk farmers"
     }
-   ]
+   ],
+   "era": "c. 3500-3100 BCE"
   },
   {
    "id": "fg-ne-plants",
@@ -654,7 +674,9 @@
      "height_m": 0.6,
      "motion": "none"
     }
-   ]
+   ],
+   "gaps": "cut",
+   "era": "c. 10,000-3000 BCE"
   },
   {
    "id": "fg-ne-field",
@@ -676,7 +698,8 @@
      "height_m": 0.3,
      "motion": "none"
     }
-   ]
+   ],
+   "era": "c. 10,000-3000 BCE"
   },
   {
    "id": "fg-ne-path",
@@ -695,7 +718,8 @@
      "height_m": 0.3,
      "motion": "none"
     }
-   ]
+   ],
+   "era": "c. 10,000-3000 BCE"
   },
   {
    "id": "ground-silt-dry",
@@ -716,7 +740,8 @@
      "height_m": 4,
      "motion": "none"
     }
-   ]
+   ],
+   "era": "c. 3500-3100 BCE"
   },
   {
    "id": "ground-field-irrigated",
@@ -736,7 +761,8 @@
      "height_m": 4,
      "motion": "none"
     }
-   ]
+   ],
+   "era": "c. 3500-3100 BCE"
   },
   {
    "id": "ground-yard-mudbrick",
@@ -755,7 +781,8 @@
      "height_m": 4,
      "motion": "none"
     }
-   ]
+   ],
+   "era": "c. 3500-3100 BCE"
   },
   {
    "id": "ground-riverbank",
@@ -775,7 +802,8 @@
      "height_m": 4,
      "motion": "none"
     }
-   ]
+   ],
+   "era": "c. 10,000-3000 BCE"
   }
  ],
  "plate": [

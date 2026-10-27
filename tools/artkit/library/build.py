@@ -53,6 +53,13 @@ def judge_scores(bundle: str) -> dict[str, int]:
 SHIP_SCORE = 8  # judge score an asset needs to go into `assets`; lower ones are listed under `held`
 
 
+def contract_verdict(score: float | None, verdict: str) -> str:
+    """Contract 1 enum: alike | close | different."""
+    if score is None:
+        return verdict if verdict in ("alike", "close", "different") else "close"
+    return "alike" if score >= SHIP_SCORE else "close" if score >= 6 else "different"
+
+
 def judged_variant(judged: dict, sid: str, variants: str) -> tuple[str | None, float | None]:
     """Best judged variant of a sheet: key 'sheet:variant', a bare 'sheet' key is the first variant."""
     best = (None, None)
@@ -86,9 +93,10 @@ def build(job: dict, variants: str = "abcd") -> dict:
                     continue
                 meta = json.loads((d / "cut.json").read_text())
                 paper = np.array(meta["paper"])
-                tile = s["layer"] in ("sky", "bg", "ground") or bool(s.get("strip"))
+                tile = meta.get("seam") == "mirror"  # crossfaded seams ghost; only mirrored tiles repeat
                 qa_layer = "bg" if s.get("strip") else s["layer"]  # strips are judged like bg strips
-                r = qa.check(Image.open(f), qa_layer, bundle, tileable=tile, paper=paper)
+                r = qa.check(Image.open(f), qa_layer, bundle, tileable=tile, paper=paper, gaps=s.get("gaps", "fill"),
+                             fades=s["layer"] == "bg" and not s.get("strip"))
                 r["ink_sheet"] = meta["ink_sheet"]  # Bart's whole-image rule, on the pass-1 sheet
                 r["checkerboard"] = r["checkerboard"] or meta["checkerboard"]
                 r["pass"] = r["pass"] and meta["ink_sheet"] <= qa.INK_HARD[1] and not meta["checkerboard"]
@@ -108,13 +116,14 @@ def build(job: dict, variants: str = "abcd") -> dict:
             assets.append({
                 "id": item["id"], "layer": s["layer"], "tags": item["tags"], "file": f"{item['id']}.webp",
                 "w": r["w"], "h": r["h"], "anchor": r["anchor"] if s["layer"] not in ("sky", "ground") else [0.5, 1.0],
-                "height_m": item["height_m"], "tileable_x": s["layer"] in ("sky", "bg", "ground") or bool(s.get("strip")),
+                "height_m": item["height_m"], "tileable_x": tile,
                 **({"tileable_y": True} if s["layer"] == "ground" else {}),
                 "motion": item["motion"],
-                **({"era": item["era"]} if item.get("era") else {}),
+                "era": item.get("era") or s.get("era") or job["era"],
                 "qa": {"score": int(vscore) if jscore is not None else VERDICT_SCORE.get(vd, 6),  # contract: int
                        "alpha_ok": r["alpha_ok"], "ink_coverage": r["ink_coverage"],
-                       "ranked_vs_anchor": vd,
+                       "ranked_vs_anchor": contract_verdict(vscore if jscore is not None else None, vd),
+                       "ink_style_ok": r["ink_style_ok"],
                        "palette_de": r["palette_de"], "sheet": s["id"], "variant": v},
             })
     lib = {"version": 1, "bundle": bundle, "style": "history-lines-v1", "assets": assets, "held": held}

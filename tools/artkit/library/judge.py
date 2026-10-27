@@ -16,9 +16,9 @@ from PIL import Image, ImageDraw
 sys.path.insert(0, str(Path(__file__).parent))
 from gen import LIB  # noqa: E402
 
-QUESTION = ("The first image (reference.jpg) is the reference. The second image holds four candidates, panels A, B, "
-            "C and D. For each panel: score 1-10 how well this matches the History Lines style of the reference; "
-            "name the 3 biggest differences.")
+QUESTION = ("The first image (reference.jpg) is the reference, the second image is the candidate. Name the 3 biggest "
+            "differences in style between them, then score 1-10 how well the candidate matches the History Lines "
+            "style of the reference.")  # one candidate per fresh chat; never earlier scores or template text
 CELL = (960, 640)
 
 

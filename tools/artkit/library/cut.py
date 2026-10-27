@@ -24,14 +24,47 @@ from gen import LIB  # noqa: E402
 
 BG_DE = 7.0  # dE76 to paper: background candidate
 ISLAND_DE = qa.PAPER_DE
-SEAM_PX = 96
 MIN_OBJ_FRAC = 0.002  # objects smaller than this share of the sheet are crumbs
 PAD = 6
 FADE_FRAC = 0.12  # bg strips: bottom share that fades out
 
 
-def matte(rgb: np.ndarray, paper: np.ndarray, layer: str) -> np.ndarray:
-    """Alpha 0-255: background paper cut, enclosed islands cut, soft un-mixable edge."""
+GAP_RING_INK = 0.25  # an enclosed paper island is a see-through gap only if ink draws its rim
+LEG_ZONE = 0.7  # ... or, on solid sheets, if it sits in the bottom 30 % of its object (between legs, rollers)
+
+
+def gap_islands(rgb: np.ndarray, de: np.ndarray, obj: np.ndarray, gaps: str) -> np.ndarray:
+    """Enclosed paper islands to cut. gaps='cut' (trees, reeds, fences, rigging): every island whose rim is ink.
+    gaps='fill' (animals, stones, props, buildings): only islands in the leg zone; white bodies, flag bands,
+    foam and highlights stay opaque (the checker found them punched through, 2026-10-27)."""
+    isl, n = ndimage.label((de < ISLAND_DE) & obj)
+    cut = np.zeros_like(obj)
+    if not n:
+        return cut
+    ink = qa.ink_coverage_map(rgb)
+    comp, _ = ndimage.label(ndimage.binary_closing(obj, iterations=4))
+    boxes = ndimage.find_objects(comp)
+    for i, sl in enumerate(ndimage.find_objects(isl), start=1):
+        m = isl[sl] == i
+        if m.sum() < qa.ISLAND_MIN_PX:
+            continue
+        pad = tuple(slice(max(0, s.start - 3), s.stop + 3) for s in sl)
+        mm = isl[pad] == i
+        ring = ndimage.binary_dilation(mm, iterations=3) & ~mm
+        if ink[pad][ring].mean() < GAP_RING_INK:
+            continue  # rimmed by colour (a flag band, foam): fill
+        if gaps != "cut":
+            ys = np.nonzero(m)[0] + sl[0].start
+            c = comp[sl][m]
+            box = boxes[np.bincount(c[c > 0]).argmax() - 1] if (c > 0).any() else None
+            if box is None or (ys.mean() - box[0].start) / max(1, box[0].stop - box[0].start) < LEG_ZONE:
+                continue
+        cut[sl] |= m
+    return cut
+
+
+def matte(rgb: np.ndarray, paper: np.ndarray, layer: str, gaps: str = "fill") -> np.ndarray:
+    """Alpha 0-255: background paper cut, see-through gaps cut (gap_islands), soft un-mixable edge."""
     de = np.linalg.norm(qa.rgb2lab(rgb) - qa.rgb2lab(paper[None, None])[0, 0], axis=-1)
     cand = de < BG_DE
     lab, _ = ndimage.label(cand)
@@ -41,11 +74,7 @@ def matte(rgb: np.ndarray, paper: np.ndarray, layer: str) -> np.ndarray:
         bg &= ~(np.cumsum(~bg, 0) > 0)
     obj = ~bg
     if layer not in ("bg", "strip"):
-        isl, n = ndimage.label((de < ISLAND_DE) & obj)
-        if n:
-            areas = ndimage.sum(np.ones_like(isl), isl, range(1, n + 1))
-            big = np.nonzero(areas >= qa.ISLAND_MIN_PX)[0] + 1
-            obj &= ~np.isin(isl, big)
+        obj &= ~gap_islands(rgb, de, obj, gaps)
     obj = ndimage.binary_opening(obj, iterations=1) | (obj & (de > 30))  # drop 1px paper whiskers, keep ink
     soft = np.clip((de - 2.0) / 14.0, 0, 1)
     inner = ndimage.binary_erosion(obj, iterations=2)
@@ -54,24 +83,31 @@ def matte(rgb: np.ndarray, paper: np.ndarray, layer: str) -> np.ndarray:
     return (a * 255).astype(np.uint8)
 
 
+GLAZE = np.array([245, 230, 206])  # STYLE.md cream #f5e6ce: white things get a pale glaze, never bare paper
+
+
+def glaze_kept_white(rgb: np.ndarray, paper: np.ndarray, alpha: np.ndarray, k: float = 0.55) -> np.ndarray:
+    """Paper-white areas that stay inside a shape (wool, flag band, foam, highlights) get a pale cream glaze, so
+    they read as painted white and never as a hole or bare paper."""
+    de = np.linalg.norm(qa.rgb2lab(rgb) - qa.rgb2lab(paper[None, None])[0, 0], axis=-1)
+    inner = ndimage.binary_erosion(alpha > 250, iterations=2)
+    m = (de < ISLAND_DE) & inner
+    out = rgb.astype(float)
+    out[m] = out[m] * (1 - k) + GLAZE * k
+    return out.astype(np.uint8)
+
+
 def unmix(rgb: np.ndarray, alpha: np.ndarray, paper: np.ndarray) -> np.ndarray:
     a = alpha[..., None] / 255.0
     f = (rgb.astype(float) - (1 - a) * paper) / np.maximum(a, 1e-3)
     return np.where(a > 0, np.clip(f, 0, 255), 0).astype(np.uint8)
 
 
-def seam_tile(rgba: np.ndarray, band: int = SEAM_PX) -> np.ndarray:
-    """Make tileable_x: crossfade the last `band` columns into the first ones, drop them."""
-    w = rgba.shape[1]
-    t = rgba[:, : w - band].astype(float).copy()
-    ramp = (np.arange(band) / band)[None, :, None]
-    t[:, :band] = rgba[:, w - band:] * (1 - ramp) + rgba[:, :band] * ramp
-    return t.astype(np.uint8)
-
-
-def seam_tile_xy(rgba: np.ndarray, band: int = SEAM_PX) -> np.ndarray:
-    """Ground tiles repeat both ways: crossfade the seams in x, then in y."""
-    return seam_tile(seam_tile(rgba, band).transpose(1, 0, 2), band).transpose(1, 0, 2)
+def mirror_tile(rgba: np.ndarray, both: bool = False) -> np.ndarray:
+    """Seamless by construction: the tile followed by its mirror image. A crossfade of unrelated ends gives
+    double-exposed ghosts (checker 2026-10-27: windmill through a ship, doubled grass bands), mirroring cannot."""
+    t = np.concatenate([rgba, rgba[:, ::-1]], 1)
+    return np.concatenate([t, t[::-1]], 0) if both else t
 
 
 def fade_bottom(rgba: np.ndarray, frac: float = FADE_FRAC, seed: int = 7) -> np.ndarray:
@@ -86,6 +122,7 @@ def fade_bottom(rgba: np.ndarray, frac: float = FADE_FRAC, seed: int = 7) -> np.
     ramp = np.clip(1 - y / n, 0, 1)
     out = rgba.copy()
     out[..., 3] = (out[..., 3] * ramp).astype(np.uint8)
+    out[-2:, :, 3] = 0  # the strip ends in nothing, never a faint line
     return out
 
 
@@ -152,22 +189,27 @@ def cut_sheet(bundle: str, sheet: dict, variant: str) -> dict | None:
            "checkerboard": qa.fake_checkerboard(rgb), "assets": [],
            "ink_sheet": round(qa.ink_coverage(np.asarray(Image.open(d / "ink.png").convert("RGB"))), 4)}
     if layer in ("sky", "ground"):
-        tile = seam_tile_xy if layer == "ground" else seam_tile
-        rgba = tile(np.dstack([rgb, np.full(rgb.shape[:2], 255, np.uint8)]))
+        rgba = np.dstack([rgb, np.full(rgb.shape[:2], 255, np.uint8)])
+        rgba = mirror_tile(rgba, both=layer == "ground")
+        res["seam"] = "mirror"
         Image.fromarray(rgba).save(out / f"{sheet['items'][0]['id']}.png")
         res["assets"].append(sheet["items"][0]["id"])
     else:
-        alpha = matte(rgb, paper, layer)
-        clean = unmix(rgb, alpha, paper)
+        alpha = matte(rgb, paper, layer, sheet.get("gaps", "fill"))
+        clean = unmix(glaze_kept_white(rgb, paper, alpha), alpha, paper)
         if layer in ("bg", "strip"):
-            rgba = seam_tile(np.dstack([clean, alpha]))
+            rgba = np.dstack([clean, alpha])
             ys = np.nonzero((rgba[..., 3] > 0).any(1))[0]
             de = np.linalg.norm(qa.rgb2lab(rgba[..., :3]) - qa.rgb2lab(paper[None, None])[0, 0], axis=-1)
             washed = (de >= qa.PAPER_DE).mean(1)
             bottom = len(washed) - int(np.argmax(washed[::-1] > 0.6))  # drop unpainted paper rows
             rgba = rgba[max(0, ys[0] - PAD):bottom]
-            if layer == "bg":
+            if layer == "bg":  # far land: one painted strip, never crossfaded (no tiling)
                 rgba = fade_bottom(rgba)
+                res["seam"] = "none"
+            else:  # near ground/water strips repeat: mirror, never crossfade
+                rgba = mirror_tile(rgba)
+                res["seam"] = "mirror"
             Image.fromarray(rgba).save(out / f"{sheet['items'][0]['id']}.png")
             res["assets"].append(sheet["items"][0]["id"])
         else:

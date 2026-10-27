@@ -1,6 +1,6 @@
 {
  "bundle": "nl-prehistory",
- "era": "Northern Netherlands (Drenthe), Neolithic, c. 3400 BCE, Funnelbeaker farmers.",
+ "era": "c. 3400-2850 BCE",
  "sheets": [
   {
    "id": "sky-summer",
@@ -136,10 +136,13 @@
       "farmhouse",
       "longhouse",
       "thatch",
-      "farm"
+      "farm",
+      "lbk",
+      "bandkeramiek"
      ],
      "height_m": 6,
-     "motion": "none"
+     "motion": "none",
+     "era": "c. 5000 BCE (LBK type, South Limburg)"
     },
     {
      "id": "granary-01",
@@ -164,7 +167,8 @@
      "height_m": 1.5,
      "motion": "none"
     }
-   ]
+   ],
+   "gaps": "cut"
   },
   {
    "id": "mid-field",
@@ -205,7 +209,8 @@
      "height_m": 1.0,
      "motion": "flicker"
     }
-   ]
+   ],
+   "gaps": "cut"
   },
   {
    "id": "fg-trees",
@@ -244,7 +249,8 @@
      "height_m": 14,
      "motion": "sway"
     }
-   ]
+   ],
+   "gaps": "cut"
   },
   {
    "id": "fg-trees2",
@@ -283,7 +289,8 @@
      "height_m": 16,
      "motion": "sway"
     }
-   ]
+   ],
+   "gaps": "cut"
   },
   {
    "id": "fg-shrubs",
@@ -331,7 +338,8 @@
      "height_m": 1.2,
      "motion": "sway"
     }
-   ]
+   ],
+   "gaps": "cut"
   },
   {
    "id": "fg-reeds-rocks",
@@ -380,7 +388,8 @@
      "height_m": 0.8,
      "motion": "none"
     }
-   ]
+   ],
+   "gaps": "cut"
   },
   {
    "id": "fg-fences",
@@ -418,7 +427,8 @@
      "height_m": 1.0,
      "motion": "none"
     }
-   ]
+   ],
+   "gaps": "cut"
   },
   {
    "id": "prop-animals",
@@ -610,7 +620,8 @@
       "jewellery"
      ],
      "height_m": 0.03,
-     "motion": "none"
+     "motion": "none",
+     "reject": "painted as grey stone (reads as a mace-head), not amber: repaint"
     },
     {
      "id": "pebbles-01",
@@ -826,6 +837,46 @@
      "motion": "none"
     }
    ]
+  },
+  {
+   "id": "prop-amber",
+   "layer": "prop",
+   "subject": "amber bead, dark burnished Funnelbeaker pot, stone mace-head (Drents Museum finds)",
+   "items": [
+    {
+     "id": "bead-amber-02",
+     "tags": [
+      "bead",
+      "amber",
+      "jewellery"
+     ],
+     "height_m": 0.03,
+     "motion": "none"
+    },
+    {
+     "id": "pot-funnel-02",
+     "tags": [
+      "pot",
+      "funnel",
+      "beaker",
+      "trechterbeker",
+      "clay"
+     ],
+     "height_m": 0.3,
+     "motion": "none"
+    },
+    {
+     "id": "mace-head-01",
+     "tags": [
+      "mace",
+      "stone",
+      "weapon",
+      "tool"
+     ],
+     "height_m": 0.1,
+     "motion": "none"
+    }
+   ]
   }
  ],
  "plate": [
@@ -858,7 +909,7 @@
    "h": 0.3
   },
   {
-   "id": "longhouse-01",
+   "id": "house-trb-01",
    "x": 0.26,
    "base": 0.72,
    "h": 0.14

@@ -226,7 +226,7 @@ def weave_colour_prompt(template: str, bundle: str) -> str:
         "The FIRST attached image is the locked ink drawing to colour. The SECOND attached image is the "
         "watercolour STYLE reference only (copy its watercolour handling and colour temperature, never its "
         "content). ", "").replace("Edit the first image", "Edit the ink drawing")
-    return "\n\n".join([WEAVE_COLOUR_LEAD, _refs_line(2), body, WEAVE_COLOUR_CALM])
+    return "\n\n".join([WEAVE_COLOUR_LEAD, _refs_line(2), body, WEAVE_COLOUR_CALM, STYLE_GAPS])
 
 
 # Figma generate_image is text-only: the ink pass describes the anchor instead of attaching it.
@@ -255,4 +255,13 @@ WEAVE_COLOUR_FIX = (
     "the outer silhouette of each object; let the watercolour sit in distinct, irregular, transparent patches "
     "with paper white showing through on the lit sides; simplify texture into a few broad washes; stone stays a "
     "calm pale grey with soft wash shadows, never speckled; no realistic 3D or anatomical shading."
+)
+
+
+# The three gaps the independent checker measured against the references (2026-10-27). Part of every colour pass.
+STYLE_GAPS = (
+    "Match the references' paper and paint: visible cold-press paper tooth in every wash, uneven washes with soft "
+    "blooms, backruns and light granulation, never flat even fills. Keep the outer contour bold and slightly broken "
+    "and do not add interior detail lines. Use the references' wider, warmer palette: clear saturated sky blues, warm "
+    "sandstone and ochre, and confident local colour, with generous paper white left on the lit sides."
 )
