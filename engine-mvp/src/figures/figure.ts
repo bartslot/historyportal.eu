@@ -1,16 +1,16 @@
 // A History Lines comic figure: the standard body, dyed flat, inked with a pixel-width hull, a two-step cel
-// shade, a painted face (decals swapped per expression) and a pose. Lessons ask for one by recipe.
+// shade, a painted face (an expression image projected from the head bone) and a pose. Lessons ask for one by recipe.
 //
 //   const fig = await createFigure(scene, recipeFor('boer-vrouw'))
 //   fig.setPose('carry'); fig.setExpression('worried')
 //   placeFigure(scene, fig, { x: 0.4, depth: 'mid', facing: 'left' }, stage)   // stage = S1's Stage25D
 import {
-  Color3, LoadAssetContainerAsync, MeshBuilder, StandardMaterial, Texture, TransformNode, Vector3, VertexBuffer,
+  Color3, LoadAssetContainerAsync, Matrix, Texture, TransformNode, Vector3, VertexBuffer,
   type AbstractMesh, type AnimationGroup, type AssetContainer, type Mesh, type Scene,
 } from '@babylonjs/core'
 import '@babylonjs/loaders/glTF'
 import { retarget, type ClipName } from './clips'
-import { toonMaterial } from './toon'
+import { toonMaterial, type FaceProjector, type ToonMaterial } from './toon'
 import { applyPose, captureRest, frameOf, pos, POSES, resetToRest, rigOf, type Rig, type Violation } from './pose'
 import { BEARDS, DEFAULT_DYES, HAIRS, HATS, type DyeRole, type Expression, type FigureRecipe, type Hex, type Pose } from './recipes'
 
@@ -19,7 +19,7 @@ export const FACE_URL = (e: Expression) => `figures/faces/${e}.png`
 const EXPRESSIONS: Expression[] = ['neutral', 'happy', 'worried', 'surprised']
 
 // face decal placement, in eye-distances (eyes sit at 30/70 % across and 38 % down the decal art)
-export const FACE = { scale: 2.5, down: 0.3, depth: 0.09 }
+export const FACE = { scale: 2.5, down: 0.12, depth: 0.12 }
 // facing: 'left'/'right' turn this far from the camera toward that side (90 = pure profile; 3/4 reads best)
 export const FACING_TURN_DEG = 62
 
@@ -45,7 +45,7 @@ const faceTex = new Map<string, Texture>()
 function face(e: Expression, scene: Scene) {
   const key = `${scene.uid}:${e}`
   if (!faceTex.has(key)) {
-    const t = new Texture(FACE_URL(e), scene, false, true)
+    const t = new Texture(FACE_URL(e), scene, true, true) // no mipmaps: thin ink lines would average away
     t.hasAlpha = true
     faceTex.set(key, t)
   }
@@ -124,14 +124,12 @@ export async function createFigure(scene: Scene, recipe: FigureRecipe, name = 'f
     live.push({ mesh: m, part })
   }
 
-  // painted face: one projector, decals on the skin and on the eyeballs so the eyes land in the sockets
-  const decals = paintFace(scene, rig, live.filter((l) => l.part.role === 'skin' || l.part.role === 'eye').map((l) => l.mesh as Mesh), name)
-  const setExpression = (e: Expression) => decals.forEach((d) => {
-    const t = face(e, scene)
-    const dm = d.material as StandardMaterial
-    dm.emissiveTexture = t
-    dm.opacityTexture = t
-  })
+  // painted face: one projector box riding the head bone, read by the skin and eyeball materials
+  const faceMats = live.filter((l) => l.part.role === 'skin' || l.part.role === 'eye').map((l) => l.mesh.material as ToonMaterial)
+  const projector = faceProjector(rig, live.filter((l) => l.part.role === 'eye').map((l) => l.mesh))
+  faceMats.forEach((m) => (m.face = projector.face))
+  const follow = scene.onBeforeRenderObservable.add(projector.update)
+  const setExpression = (e: Expression) => { projector.face.tex = face(e, scene) }
   setExpression(recipe.expression)
   EXPRESSIONS.forEach((e) => face(e, scene)) // preload: a swap mid-scene never blinks
 
@@ -152,11 +150,11 @@ export async function createFigure(scene: Scene, recipe: FigureRecipe, name = 'f
     },
     setExpression,
     setDye(role, hex) {
-      live.filter((l) => l.part.role === role).forEach((l) => (l.mesh.material as ReturnType<typeof toonMaterial>).dye.copyFrom(hexRgb(hex)))
+      live.filter((l) => l.part.role === role).forEach((l) => (l.mesh.material as ToonMaterial).dye.copyFrom(hexRgb(hex)))
     },
     dispose() {
       clips.forEach((p) => void p.then((g) => g.dispose()))
-      decals.forEach((d) => d.dispose(false, true))
+      scene.onBeforeRenderObservable.remove(follow)
       root.dispose(false, true)
     },
   }
@@ -164,35 +162,38 @@ export async function createFigure(scene: Scene, recipe: FigureRecipe, name = 'f
   return fig
 }
 
-function paintFace(scene: Scene, rig: Rig, targets: Mesh[], name: string): Mesh[] {
+function faceProjector(rig: Rig, eyes: AbstractMesh[]) {
   const f = frameOf(rig)
   const world = rig.root.getWorldMatrix()
-  const W = (v: Vector3) => Vector3.TransformCoordinates(v, world)
   const N = (v: Vector3) => Vector3.TransformNormal(v, world).normalize()
-  const eyes = targets.find((t) => t.name.startsWith('Geo_Eyes'))
-  // eye centre: the eyeball meshes' box centre; eye distance: their width across the face
-  const box = eyes?.getBoundingInfo().boundingBox
-  const centre = box ? box.centerWorld.clone() : W(pos(rig, 'head'))
-  const side = N(f.left)
-  const span = box ? Math.abs(Vector3.Dot(box.maximumWorld.subtract(box.minimumWorld), side)) : 0.1
-  const eyeDist = span * 0.5 // two eyeballs: centre-to-centre is about half the pair's outer width
-  const size = eyeDist * FACE.scale
-  const up = N(f.up)
-  const at = centre.subtract(up.scale(size * FACE.down))
-  const normal = N(f.fwd)
-  const mat = new StandardMaterial(`${name}_face`, scene)
-  mat.disableLighting = true
-  mat.diffuseColor = Color3.Black()
-  mat.emissiveColor = Color3.Black()
-  mat.zOffset = -2
-  mat.backFaceCulling = true
-  return targets.map((t) => {
-    const d = MeshBuilder.CreateDecal(`${name}_decal_${t.name}`, t, { position: at.add(normal.scale(0.02)), normal, size: new Vector3(size, size, FACE.depth), angle: 0, cullBackFaces: true })
-    d.material = mat
-    d.isPickable = false
-    d.metadata = { anime: true }
-    return d
-  })
+  const side = N(f.left), up = N(f.up), fwd = N(f.fwd)
+  // eyes: the eyeball pair's box gives the centre and, minus one eyeball, the centre-to-centre distance
+  const lo = new Vector3(Infinity, Infinity, Infinity), hi = lo.negate()
+  eyes.forEach((e) => { const b = e.getBoundingInfo().boundingBox; lo.minimizeInPlace(b.minimumWorld); hi.maximizeInPlace(b.maximumWorld) })
+  const found = eyes.length > 0
+  const centre = found ? lo.add(hi).scale(0.5) : Vector3.TransformCoordinates(pos(rig, 'head'), world)
+  const span = found ? Math.abs(Vector3.Dot(hi.subtract(lo), side)) : 0.1
+  const size = span * 0.7 * FACE.scale
+  const at = centre.subtract(up.scale(size * FACE.down)).add(fwd.scale(FACE.depth * 0.25))
+  const axes = Matrix.FromValues(
+    side.x, side.y, side.z, 0,
+    up.x, up.y, up.z, 0,
+    fwd.x, fwd.y, fwd.z, 0,
+    0, 0, 0, 1)
+  const boxToWorld = Matrix.Scaling(size, size, FACE.depth).multiply(axes).multiply(Matrix.Translation(at.x, at.y, at.z))
+  const head = rig.node('head')
+  head.computeWorldMatrix(true)
+  const boxInHead = boxToWorld.multiply(Matrix.Invert(head.getWorldMatrix())) // fixed: the face moves with the head
+  const fwdInHead = Vector3.TransformNormal(fwd, Matrix.Invert(head.getWorldMatrix()))
+  const headToBox = Matrix.Invert(boxInHead)
+  const face: FaceProjector = { tex: null, toBox: Matrix.Identity(), fwd: fwd.clone() }
+  const update = () => {
+    const w = head.getWorldMatrix()
+    Matrix.Invert(w).multiplyToRef(headToBox, face.toBox) // world -> head -> box
+    Vector3.TransformNormalToRef(fwdInHead, w, face.fwd)
+  }
+  update()
+  return { face, update }
 }
 
 // ---------- place ----------

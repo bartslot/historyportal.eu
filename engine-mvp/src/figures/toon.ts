@@ -4,7 +4,7 @@
 // fold lines (sleeve, collar, knee) with a weight that swells on round forms and thins on flat ones.
 // ponytail: anime-look's pixel-width inverted hull covered the garments on this skinned, mirrored rig (the
 // hull drew in front of the cloth at any width); this needs no extra mesh. Upgrade: fix the hull, add it back.
-import { Color3, Vector3, type Scene } from '@babylonjs/core'
+import { Color3, Matrix, Vector3, type BaseTexture, type Scene } from '@babylonjs/core'
 import { CustomMaterial } from '@babylonjs/materials'
 
 export const TOON = {
@@ -17,8 +17,13 @@ export const TOON = {
   inkSoft: 0.06,
 }
 
-export function toonMaterial(name: string, dye: Color3, scene: Scene): CustomMaterial & { dye: Color3; inkEdge?: number } {
-  const m = new CustomMaterial(name, scene) as CustomMaterial & { dye: Color3; inkEdge?: number }
+// The painted face: a projector box in front of the head (unit cube -> world, refreshed per frame from the head
+// bone); the expression image is projected onto whatever skin/eyeball lies inside it and faces it.
+export type FaceProjector = { tex: BaseTexture | null; toBox: Matrix; fwd: Vector3 }
+export type ToonMaterial = CustomMaterial & { dye: Color3; inkEdge?: number; face?: FaceProjector }
+
+export function toonMaterial(name: string, dye: Color3, scene: Scene): ToonMaterial {
+  const m = new CustomMaterial(name, scene) as ToonMaterial
   m.dye = dye.clone()
   m.specularColor = Color3.Black()
   m.backFaceCulling = true // garments are closed or doubled shells: drawing the inner side z-fights
@@ -30,6 +35,10 @@ export function toonMaterial(name: string, dye: Color3, scene: Scene): CustomMat
   m.AddUniform('inkColor', 'vec3', null)
   m.AddUniform('inkEdge', 'float', null)
   m.AddUniform('inkSoft', 'float', null)
+  m.AddUniform('faceBox', 'mat4', null)
+  m.AddUniform('faceFwd', 'vec3', null)
+  m.AddUniform('faceTex', 'sampler2D', null)
+  m.AddUniform('hasFace', 'float', null)
   m.Fragment_Before_FragColor(`
     vec3 n = normalize(vNormalW);
     vec3 toEye = normalize(vEyePosition.xyz - vPositionW);
@@ -37,7 +46,17 @@ export function toonMaterial(name: string, dye: Color3, scene: Scene): CustomMat
     float nl = dot(n, normalize(toLight));
     float lit = smoothstep(celStep - celSoft, celStep + celSoft, nl);
     float inked = 1.0 - smoothstep(inkEdge - inkSoft, inkEdge, nv);
-    color = vec4(mix(mix(dye * shadeTint, dye, lit), inkColor, inked), 1.0);
+    vec3 paint = mix(dye * shadeTint, dye, lit);
+    if (hasFace > 0.5) {
+      vec3 fp = (faceBox * vec4(vPositionW, 1.0)).xyz;
+      if (abs(fp.x) < 0.5 && abs(fp.y) < 0.5 && abs(fp.z) < 0.5) {
+        float facing = smoothstep(0.15, 0.4, abs(dot(n, normalize(faceFwd)))); // abs: the loader's mirror can flip vNormalW
+        vec4 f = texture2D(faceTex, fp.xy + 0.5);
+        paint = mix(paint, inkColor, smoothstep(0.05, 0.45, f.a) * facing); // the art is pure ink: only its alpha counts
+        inked *= 1.0 - facing; // eye sockets and the nose would ring with contour ink: the painted face draws them
+      }
+    }
+    color = vec4(mix(paint, inkColor, inked), 1.0);
   `)
   m.onBindObservable.add(() => {
     const e = m.getEffect()
@@ -50,6 +69,13 @@ export function toonMaterial(name: string, dye: Color3, scene: Scene): CustomMat
     e.setColor3('inkColor', TOON.ink)
     e.setFloat('inkEdge', m.inkEdge ?? TOON.inkEdge)
     e.setFloat('inkSoft', TOON.inkSoft)
+    const f = m.face
+    e.setFloat('hasFace', f?.tex ? 1 : 0)
+    if (f?.tex) {
+      e.setMatrix('faceBox', f.toBox)
+      e.setVector3('faceFwd', f.fwd)
+      e.setTexture('faceTex', f.tex)
+    }
   })
   return m
 }
