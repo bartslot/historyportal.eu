@@ -37,6 +37,7 @@ export type Figure = {
   pose: Pose
   clip: AnimationGroup | null // the playing clip (walk), for audits and the timeline
   nativeHeading: number       // the body's own facing at rest (radians about +y), so facing never depends on the pose
+  hold: TransformNode         // where a held prop goes (lesson `holds`): between the hands, a little in front, every frame
   setPose(p: Pose): Violation[]
   setExpression(e: Expression): void
   setDye(role: DyeRole, hex: Hex): void
@@ -191,6 +192,7 @@ export async function createFigure(scene: Scene, recipe: FigureRecipe, name = 'f
   // flat dye + cel + ink per part (src/figures/toon.ts); 3D brows, teeth, cornea stay hidden
   const restFwd = Vector3.TransformNormal(frameOf(rig).fwd, rigRoot.getWorldMatrix())
   const nativeHeading = Math.atan2(restFwd.x, restFwd.z) // facing is measured once, at rest: a kneel re-aims the feet
+  const restLocalFwd = new Vector3(restFwd.x, 0, restFwd.z).normalize() // root is unrotated here: world = root space
 
   const live: { mesh: AbstractMesh; part: Part }[] = []
   for (const m of meshes) {
@@ -215,7 +217,16 @@ export async function createFigure(scene: Scene, recipe: FigureRecipe, name = 'f
   const faceMats = live.filter((l) => l.part.role === 'skin' || l.part.role === 'eye').map((l) => l.mesh.material as ToonMaterial)
   const projector = faceProjector(rig, live.filter((l) => l.mesh.name.startsWith('Geo_Eyes')).map((l) => l.mesh))
   faceMats.forEach((m) => (m.face = projector.face))
-  const follow = scene.onBeforeRenderObservable.add(projector.update)
+  const hold = new TransformNode(`${name}_hold`, scene)
+  hold.parent = root
+  const toRoot = new Matrix()
+  const follow = scene.onBeforeRenderObservable.add(() => {
+    projector.update()
+    // the hold point in the figure's own space: mid-hands, 8 cm forward of the palms
+    root.getWorldMatrix().invertToRef(toRoot)
+    const mid = rig.node('handL').getAbsolutePosition().add(rig.node('handR').getAbsolutePosition()).scale(0.5)
+    hold.position.copyFrom(Vector3.TransformCoordinates(mid, toRoot).add(restLocalFwd.scale(0.08 / (recipe.scale ?? 1))))
+  })
   const setExpression = (e: Expression) => { projector.face.tex = face(e, scene) }
   // the stage look's pencil pass leaves the painted face alone (needs a camera: the lab and the stage have one)
   const maskMat = faceMaskMaterial(`${name}_facemask`, projector.face, scene)
@@ -228,7 +239,7 @@ export async function createFigure(scene: Scene, recipe: FigureRecipe, name = 'f
   let clip: AnimationGroup | null = null
   const clips = new Map<ClipName, Promise<AnimationGroup>>()
   const fig: Figure = {
-    root, recipe, rig, pose: 'stand', clip: null, nativeHeading,
+    root, recipe, rig, pose: 'stand', clip: null, nativeHeading, hold,
     setPose(p) {
       fig.pose = p
       clip?.stop()

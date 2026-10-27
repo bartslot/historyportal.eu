@@ -79,6 +79,7 @@ fig.setPose(f.pose)            // walk stand point kneel carry sit lie dig pull 
 fig.setExpression(f.expression) // neutral happy worried surprised sad angry proud tired (an image swap, no blink)
 placeFigure(scene, fig, { x: f.x, depth: f.depth, facing: f.facing }, player.stage)   // stage = anything with groundPoint(x, depth)
 fig.setDye('coat', '#7a4a30'); fig.dispose()
+prop.parent = fig.hold   // lesson `holds` (a pot, a basket): a node between the hands, moving with them
 ```
 
 - **Any character**: `figureRecipe(char, lesson.characters, bundle)` reads the cast's `look` line: child (drawn at
