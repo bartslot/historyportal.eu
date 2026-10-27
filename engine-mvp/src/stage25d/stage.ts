@@ -66,12 +66,10 @@ export class Stage {
     return new Vector3((x - 0.5) * viewWidthAt(z), 0, z)
   }
 
-  /** Build a scene's set. Layers whose texture is still loading appear when it arrives. */
+  /** Build a scene's set hidden, then swap it in whole: the old set stays on screen until every texture is ready. */
   async build(s: Scene): Promise<void> {
     const token = ++this.buildToken
-    this.built.forEach((b) => { b.handle.mesh.dispose(); b.handle.material.dispose() })
-    this.built = []
-    ;(this.ground.material as StandardMaterial).emissiveColor = Color3.FromHexString(s.set.ground ?? GROUND)
+    const next: Built[] = []
     const wanted: { layer: SceneLayer; order: number; index: number }[] = []
     if (s.set.sky) wanted.push({ layer: { asset: s.set.sky, depth: 'sky' }, order: 0, index: -1 })
     const perDepth: Record<string, number> = { sky: 1 }
@@ -87,8 +85,16 @@ export class Stage {
       const handle = makeLayer(asset, tex, p.w, p.h, p.uRepeat, this.scene)
       handle.mesh.position.set(p.x, p.y, p.z)
       handle.mesh.alphaIndex = p.alphaIndex
-      this.built.push({ layer, index, builtScale: layer.scale ?? 1, handle, asset, order })
+      handle.mesh.isVisible = false
+      next.push({ layer, index, builtScale: layer.scale ?? 1, handle, asset, order })
     }))
+    if (token !== this.buildToken) {   // a newer build won: this one never shows
+      next.forEach((b) => { b.handle.mesh.dispose(); b.handle.material.dispose() })
+      return
+    }
+    this.built.forEach((b) => { b.handle.mesh.dispose(); b.handle.material.dispose() })
+    this.built = next
+    ;(this.ground.material as StandardMaterial).emissiveColor = Color3.FromHexString(s.set.ground ?? GROUND)
     if (misses.length) {
       this.misses.push(...misses.map((need) => ({ scene: s.id, need })))
       console.warn(`stage25d: ${s.id}: no asset for`, misses)
@@ -145,11 +151,16 @@ export async function playLesson(lessonOrUrl: Lesson | string, libraryUrl?: stri
 
   let index = 0, t = 0, playing = true, last = performance.now(), clock = 0
   let builtScene: Scene | null = null
+  let entering = 0                       // a scene change in flight: the old scene holds its last frame meanwhile
   const current = () => doc.lesson.scenes[index]
   async function enter(i: number, at = 0) {
-    index = Math.max(0, Math.min(doc.lesson.scenes.length - 1, i)); t = at
-    builtScene = current()
-    await stage.build(builtScene)
+    const target = Math.max(0, Math.min(doc.lesson.scenes.length - 1, i))
+    const ticket = ++entering
+    const s = doc.lesson.scenes[target]
+    await stage.build(s)
+    if (ticket !== entering) return      // a later seek won
+    index = target; t = at; builtScene = s
+    entering = 0
   }
   // an edit: a changed set (layers added/removed, asset swapped) rebuilds; everything else is read live
   doc.subscribe(() => {
@@ -172,7 +183,7 @@ export async function playLesson(lessonOrUrl: Lesson | string, libraryUrl?: stri
     last = now
     frames.push(now); while (frames.length && now - frames[0] > 1000) frames.shift()
     clock += dt                                  // motion keeps breathing while paused
-    if (playing) {
+    if (playing && !entering) {
       t += dt
       if (t >= sceneDuration(current())) {
         if (index < doc.lesson.scenes.length - 1) void enter(index + 1)
