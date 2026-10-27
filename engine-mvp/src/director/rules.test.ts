@@ -36,7 +36,8 @@ describe('rules on the stage', () => {
       if (i === 0 || !(s.sound!.lead_in_s > 0 || s.sound!.tail_s > 0)) return
       const cut = starts[i]
       const j = ev.some((e) => e.kind === 'bed-start' && e.t < cut - FADE_S / 2 - 0.01 && e.t > starts[i - 1] && !d.scenes[i - 1].sound!.ambience.some((a) => a.id === e.id))
-        || ev.some((e) => e.kind === 'sfx' && e.t < cut && e.t >= cut - 2)
+        // or one of THIS scene's own sfx cued before its cut (a negative at_s): not any sfx that happens to be near
+        || ev.some((e) => e.kind === 'sfx' && e.t < cut && e.t >= cut - 2 && s.sound!.sfx.some((x) => x.id === e.id && x.at_s < 0))
       const l = ev.some((e) => e.kind === 'bed-gain' && e.gain === 0 && e.t > cut - FADE_S / 2 + 0.01 && e.t < cut + 3 && !s.sound!.ambience.some((a) => a.id === e.id))
       expect(j || l, `cut into ${s.id}`).toBe(true)
     })
