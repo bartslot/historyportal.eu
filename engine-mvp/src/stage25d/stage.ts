@@ -10,7 +10,7 @@ import {
 } from '@babylonjs/core'
 import { createLookChain, PRESETS } from '../engine/look-chain.js'
 import { loadLibrary, resolveAsset } from './library'
-import { ADAPT_MIN_FPS, ADAPT_STALL_MS, ADAPT_UP_FPS, ADAPT_UP_WINDOWS, ADAPT_WINDOW_MS, cameraAt, DEPTH_Z, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
+import { ADAPT_MIN_FPS, ADAPT_STALL_MS, ADAPT_UP_FPS, ADAPT_UP_WINDOWS, retryAt, ADAPT_WINDOW_MS, cameraAt, DEPTH_Z, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
 import { loadPremultiplied, makeLayer, type LayerHandle } from './layer'
 import { LessonDoc } from './edits'
 import type { Asset, Depth, Lesson, Library, Scene, SceneLayer } from './types'
@@ -75,7 +75,15 @@ export class Stage {
     this.engine.resize()
   }
 
-  setRenderCap(cap: number) { this.renderCap = cap; this.notches = 0; Object.assign(this.window, { start: 0, fast: 0 }); this.fit() }
+  setRenderCap(cap: number) { this.renderCap = cap; this.notches = 0; this.failed.clear(); Object.assign(this.window, { start: 0, fast: 0 }); this.fit() }
+
+  /** Sizes that ran under ADAPT_MIN_FPS (by notch): no step back up to one before its retry time. Without this a
+   *  size that is just too big flips up and down forever (checker N3). */
+  private failed = new Map<number, { count: number; until: number }>()
+  private upAllowed(now: number) {
+    const f = this.failed.get(this.notches - 1)
+    return !f || now >= f.until
+  }
 
   /** Count a frame; each 2 s window steps one notch down if it averaged too slow, or back up after a run of fast
    *  ones. A window with a stall (texture upload, hidden tab) says nothing about speed and is dropped. */
@@ -91,15 +99,17 @@ export class Stage {
     if (!this.adaptive) return
     if (fps < ADAPT_MIN_FPS) {
       w.fast = 0
+      const count = (this.failed.get(this.notches)?.count ?? 0) + 1
+      this.failed.set(this.notches, { count, until: retryAt(now, count) })
       const before = this.engine.getHardwareScalingLevel()
       this.notches++
       this.fit()
       if (this.engine.getHardwareScalingLevel() === before) this.notches--   // already at 1x CSS: nothing left to drop
-    } else if (fps >= ADAPT_UP_FPS && this.notches > 0 && ++w.fast >= ADAPT_UP_WINDOWS) {
+    } else if (fps >= ADAPT_UP_FPS && this.notches > 0 && this.upAllowed(now) && ++w.fast >= ADAPT_UP_WINDOWS) {
       w.fast = 0
       this.notches--
       this.fit()
-    } else if (fps < ADAPT_UP_FPS) w.fast = 0
+    } else w.fast = 0
   }
 
   setLook(look: Record<string, number | string> | undefined) { this.look = { ...STAGE_LOOK, ...(look ?? {}) } }

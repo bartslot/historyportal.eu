@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cameraAt, DEPTH_Z, HOUSE, layerAt, motionOf, placeLayer, renderScale, viewWidthAt } from './layout'
+import { cameraAt, DEPTH_Z, HOUSE, layerAt, motionOf, placeLayer, renderScale, retryAt, viewWidthAt } from './layout'
 import type { Asset } from './types'
 
 const tree: Asset = { id: 't', layer: 'fg', tags: [], file: '', w: 1000, h: 2000, anchor: [0.5, 1], height_m: 10, motion: 'sway' }
@@ -70,4 +70,11 @@ describe('renderScale', () => {
     expect(renderScale(800, 2, 1920, 9)).toBe(1)
   })
   it('never upsamples a dpr-1 screen', () => expect(renderScale(800, 1, 2560, 0)).toBe(1))
+})
+
+describe('retryAt', () => {
+  it('waits 20 s after the first failure, doubling after each next one', () => {
+    expect(retryAt(0, 1)).toBe(20000)
+    expect(retryAt(0, 3)).toBe(80000)
+  })
 })

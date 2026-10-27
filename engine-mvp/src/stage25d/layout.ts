@@ -93,7 +93,8 @@ export const RENDER_CAPS = [1280, 1920, 2560] as const
 export const RENDER_STEP = 0.25        // one adaptive notch = a quarter of a CSS pixel per pixel
 export const ADAPT_WINDOW_MS = 2000
 export const ADAPT_MIN_FPS = 50
-export const ADAPT_UP_FPS = 58         // this fast for ADAPT_UP_WINDOWS windows in a row: one notch back up
+export const ADAPT_UP_FPS = 58         // this fast for ADAPT_UP_WINDOWS windows in a row: one notch back up,
+export const ADAPT_RETRY_MS = 20000    // but not to a size that fell under ADAPT_MIN_FPS: retry it after this, doubled per failure
 export const ADAPT_UP_WINDOWS = 3
 export const ADAPT_STALL_MS = 250      // a frame gap this long (a load, a hidden tab) voids the window: not slowness
 
@@ -102,3 +103,6 @@ export function renderScale(cssLongest: number, dpr: number, cap: number, notche
   const top = Math.min(dpr, cap / Math.max(cssLongest, 1))
   return Math.max(Math.min(1, dpr), top - notches * RENDER_STEP)
 }
+
+/** When a size that just ran too slow may be tried again: the wait doubles with each failure there. */
+export const retryAt = (now: number, failures: number) => now + ADAPT_RETRY_MS * 2 ** Math.max(0, failures - 1)
