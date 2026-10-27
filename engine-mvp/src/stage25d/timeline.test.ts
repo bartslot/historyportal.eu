@@ -186,3 +186,36 @@ describe('Timeline: S5 card hooks (holdAt, setTime, onScene)', () => {
     expect(seen).toEqual([1, 2, 0])
   })
 })
+
+describe('Timeline: checker findings on ca66cc7e', () => {
+  it('an edit while the next scene loads ends with that scene built from the live lesson, not the old one on screen', async () => {
+    const scenes = [sc('a', 4), sc('b', 4)]
+    const built: string[] = []
+    let release = () => {}
+    const tl = new Timeline(() => scenes, async (i) => {
+      if (i === 1 && !built.includes('b')) await new Promise<void>((r) => { release = r })   // B is slow to load
+      built.push(scenes[i].id)
+    })
+    await tl.enter(0)
+    const going = tl.enter(1)
+    await flush()
+    void tl.rebuild()                                 // the teacher edits while B is loading
+    release()
+    await going
+    expect(tl.index).toBe(1)
+    expect(built[built.length - 1]).toBe('b')        // the last build is B, so the stage shows B
+    expect(built.filter((x) => x === 'a')).toEqual(['a'])  // no racing rebuild of A
+  })
+  it('a pause during a hold does not leave the next scene paused after the card resumes', async () => {
+    const { tl } = await make([sc('a', 1, true), sc('b', 4)])
+    let resume = () => {}
+    tl.onInteraction((_, r) => { resume = r })
+    await run(tl, 1.05)
+    tl.pause()
+    resume()
+    await flush()
+    await run(tl, 1)
+    expect([tl.index, tl.mode]).toEqual([1, 'playing'])
+    expect(tl.t).toBeCloseTo(1)
+  })
+})
