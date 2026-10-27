@@ -45,7 +45,8 @@
     "bundle": {
       "enum": [
         "nl-prehistory",
-        "nl-golden-age"
+        "nl-golden-age",
+        "near-east-neolithic"
       ]
     },
     "characters": {
@@ -173,6 +174,14 @@
           },
           "why": {
             "type": "string"
+          },
+          "bundle": {
+            "enum": [
+              "nl-prehistory",
+              "nl-golden-age",
+              "near-east-neolithic"
+            ],
+            "description": "absent = the lesson bundle"
           }
         }
       }
@@ -401,6 +410,14 @@
         },
         "note": {
           "type": "string"
+        },
+        "bundle": {
+          "enum": [
+            "nl-prehistory",
+            "nl-golden-age",
+            "near-east-neolithic"
+          ],
+          "description": "overrides the lesson bundle for this scene's art and sound"
         }
       }
     },
