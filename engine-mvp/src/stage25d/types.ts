@@ -58,6 +58,8 @@ export interface Scene {
   camera?: CameraMove | null
   /** further shots of the same scene (director, S5), each with its at_s */
   camera_more?: CameraMove[]
+  /** a scene in another era's library (overrides lesson.bundle) */
+  bundle?: string
   /** the scene's length when the director set it (shots + held narration) */
   dur_s?: number
   [k: string]: unknown

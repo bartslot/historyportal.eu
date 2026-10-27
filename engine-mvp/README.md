@@ -55,7 +55,7 @@ the `_placeholder` bundle). The panel edits every camera, timing and motion valu
   from its `at_s` (`shotAt`). No camera = hold the house pose. **Layer keys**: `layer.keys: [{ t, x?, scale?, opacity? }]`, t in seconds.
 - **Look**: the studio's post chain (`engine/look-chain.js`, shared with `look.js`) with `STAGE_LOOK` (History Lines
   pencil + paper grain); `lesson.look` overrides any number.
-- **Library**: `public/library/_placeholder/` is procedural (`python3 scripts/make_placeholder_library.py`), every asset
+- **Library**: a scene's `bundle` overrides the lesson's (`libraryUrlFor`; a bundle that does not load falls back to the lesson's, warned). `public/library/_placeholder/` is procedural (`python3 scripts/make_placeholder_library.py`), every asset
   `placeholder: true`. Real bundles: `ln -s ~/BartsMedia/historyportal/library/<bundle> public/library/<bundle>`
   (git-ignored).
 

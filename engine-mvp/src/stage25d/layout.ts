@@ -41,7 +41,8 @@ export function placeLayer(asset: Asset, layer: Pick<SceneLayer, 'depth' | 'x' |
   return { x, y, z, w, h, uRepeat: asset.tileable_x ? w / natW : 1, alphaIndex }
 }
 
-const EASES: Record<Ease, (k: number) => number> = {
+/** Named eases (camera moves, layer keys). Exported: the director adds its named ease here, not a copy. */
+export const EASES: Record<Ease, (k: number) => number> = {
   linear: (k) => k,
   in: (k) => 1 - Math.cos((k * Math.PI) / 2),
   out: (k) => Math.sin((k * Math.PI) / 2),
