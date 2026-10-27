@@ -58,6 +58,13 @@ describe('sound schedule', () => {
     expect(wind.kind === 'bed-start' && wind.stop).toBeGreaterThan(40)
   })
 
+  it('plays the narrator\'s line at narration_at_s, after a silence too, and only where there is a file', () => {
+    const withVoice = { ...lesson, scenes: lesson.scenes.map((x, i) => (i === 4 ? { ...x, tts_url: 'lessons/vault/x/audio/sc05.m4a' } : x)) }
+    const voices = schedule(withVoice).filter((e) => e.kind === 'voice')
+    expect(voices).toEqual([{ t: starts[4] + lesson.scenes[4].narration_at_s!, kind: 'voice', url: 'lessons/vault/x/audio/sc05.m4a' }])
+    expect(lesson.scenes[4].narration_at_s).toBeGreaterThan(0) // sc05 waits out its silence
+  })
+
   it('is sorted on the clock', () => {
     ev.slice(1).forEach((e, i) => expect(e.t).toBeGreaterThanOrEqual(ev[i].t))
   })
