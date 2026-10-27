@@ -253,6 +253,21 @@
         "cd engine-mvp && npx vite --port 5291 --strictPort"
       ],
       "port": 5291
+    },
+    {
+      "//": "Figure lab (S3 toon figures): engine-mvp vite on its own port.",
+      "name": "figure-lab",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "--prefix",
+        "engine-mvp",
+        "vite",
+        "engine-mvp",
+        "--port",
+        "5196",
+        "--strictPort"
+      ],
+      "port": 5196
     }
   ]
 }
