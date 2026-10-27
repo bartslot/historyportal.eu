@@ -28,19 +28,32 @@ describe('rules on the stage', () => {
     d.scenes.slice(1).forEach((s, i) => expect(s.camera!.move).not.toBe(shots(d.scenes[i]).at(-1)!.move))
   })
 
-  it('every counted J/L-cut really puts sound across the cut', () => {
-    const d = direct(LESSON, LIBRARY)
-    const ev = schedule(d)
-    const starts = sceneStarts(d)
-    d.scenes.forEach((s, i) => {
-      if (i === 0 || !(s.sound!.lead_in_s > 0 || s.sound!.tail_s > 0)) return
-      const cut = starts[i]
-      const j = ev.some((e) => e.kind === 'bed-start' && e.t < cut - FADE_S / 2 - 0.01 && e.t > starts[i - 1] && !d.scenes[i - 1].sound!.ambience.some((a) => a.id === e.id))
-        // or one of THIS scene's own sfx cued before its cut (a negative at_s): not any sfx that happens to be near
-        || ev.some((e) => e.kind === 'sfx' && e.t < cut && e.t >= cut - 2 && s.sound!.sfx.some((x) => x.id === e.id && x.at_s < 0))
-      const l = ev.some((e) => e.kind === 'bed-gain' && e.gain === 0 && e.t > cut - FADE_S / 2 + 0.01 && e.t < cut + 3 && !s.sound!.ambience.some((a) => a.id === e.id))
-      expect(j || l, `cut into ${s.id}`).toBe(true)
+  // one place all lesson long: no bed changes, so every counted cut comes from the foley top-up
+  const SAME_PLACE: Lesson = { ...LESSON, scenes: LESSON.scenes.map((s) => ({ ...s, set: LESSON.scenes[0].set, narration: 'Hij loopt verder.', figures: LESSON.scenes[0].figures })) }
+
+  for (const [name, lesson] of [['the fixture', LESSON], ['a one-place lesson (foley top-up)', SAME_PLACE]] as const) {
+    it(`every counted J/L-cut really puts sound across the cut: ${name}`, () => {
+      const d = direct(lesson, LIBRARY)
+      const ev = schedule(d)
+      const starts = sceneStarts(d)
+      const counted = d.scenes.filter((s, i) => i > 0 && (s.sound!.lead_in_s > 0 || s.sound!.tail_s > 0))
+      expect(counted.length).toBeGreaterThanOrEqual(2)
+      d.scenes.forEach((s, i) => {
+        if (i === 0 || !(s.sound!.lead_in_s > 0 || s.sound!.tail_s > 0)) return
+        const cut = starts[i]
+        const j = ev.some((e) => e.kind === 'bed-start' && e.t < cut - FADE_S / 2 - 0.01 && e.t > starts[i - 1] && !d.scenes[i - 1].sound!.ambience.some((a) => a.id === e.id))
+          // or one of THIS scene's own sfx cued before its cut (a negative at_s): not any sfx that happens to be near
+          || ev.some((e) => e.kind === 'sfx' && e.t < cut && e.t >= cut - 2 && s.sound!.sfx.some((x) => x.id === e.id && x.at_s < 0))
+        const l = ev.some((e) => e.kind === 'bed-gain' && e.gain === 0 && e.t > cut - FADE_S / 2 + 0.01 && e.t < cut + 3 && !s.sound!.ambience.some((a) => a.id === e.id))
+        expect(j || l, `cut into ${s.id}`).toBe(true)
+      })
     })
+  }
+
+  it('the one-place lesson really takes the top-up path (no bed changes at all)', () => {
+    const d = direct(SAME_PLACE, LIBRARY)
+    d.scenes.slice(1).forEach((s, i) => expect(s.sound!.ambience).toEqual(d.scenes[i].sound!.ambience))
+    expect(d.scenes.filter((s) => s.sound!.sfx.some((x) => x.at_s < 0)).length).toBeGreaterThanOrEqual(2)
   })
 })
 
