@@ -141,5 +141,15 @@ Data links, all git-ignored: `public/lessons/vault` -> vault `topics/autonomous-
 Check: `node tools/play-check.mjs http://localhost:5291 <outDir> eerste-boeren-1 10`: silent run of the
 intro, the handoff, 12 s of real playback, then a frame every 10 s of lesson time (contact sheet).
 
-Not in yet: the stage does not stop for interactions (the 240 s of quizzes/votes in eerste-boeren-1),
-so the picture runs 407 s, not the 693 s validate.py counts; sound and picture agree with each other.
+**Interactions** (`src/interactions/`): at a scene's hold point the picture holds (`player.pause()`, the
+clock motion keeps breathing) and a card opens; the scene's beds keep looping under it, ducked
+(`LessonSound.hold`), and fade out on close (`release`). One card per way the class takes part:
+answer (quiz mc / true-false: the teacher taps what the class said, right/wrong sound, the explanation),
+sort (show the right order), discuss (quiz open: talk with your neighbour, the teacher ends it), team
+(quiz or choice in groups, for class_action_s), choose and vote (the teacher taps the class's choice,
+the outcome follows), meter (power meter: the class calls out words, each right word fills the meter and
+plays the held scene on in a short burst, so the world moves; the payoff closes it). Every card shows its
+timing.json time as a calm clock with +30 s, never a hard stop, and can be skipped. Strings are English
+keys in lang/{nl,de,fr,it}.json; the page speaks the lesson's language (`speakLocale`). A power meter
+holds at 55 % of its scene, every other card just before the cut (`plan.ts`). Played once per run.
+Narration is not played by the player yet, so "narration paused" has nothing to pause.

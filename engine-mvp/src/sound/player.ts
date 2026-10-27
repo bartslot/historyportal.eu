@@ -32,7 +32,8 @@ export class LessonSound {
   private muted = false
   private origin = 0 // ctx time of lesson time 0
   private gen = 0 // bumped by every play()/stop(): a play still loading when a newer one starts gives up
-  private cancelled = new Set<string>() // bedOff() before bedOn() finished loading
+  private cancelled = new Set<string>()
+  private held: string[] = [] // beds playing under an interaction card // bedOff() before bedOn() finished loading
 
   /** Any BaseAudioContext: an OfflineAudioContext renders a lesson silently (tests, the lab). */
   constructor(ctx: BaseAudioContext, private baseUrl = bank.base_url) {
@@ -150,13 +151,13 @@ export class LessonSound {
   }
 
   /** A bed outside the lesson clock (the museum intro's room): fades in, loops until bedOff(). */
-  async bedOn(id: string, fade = 1): Promise<void> {
+  async bedOn(id: string, fade = 1, gain = ENTRIES.get(id)?.gain ?? 1): Promise<void> {
     this.cancelled.delete(id)
     const buf = await this.load(id)
     if (!buf || this.loose.has(id) || this.cancelled.delete(id)) return
     const src = this.ctx.createBufferSource(); src.buffer = buf; src.loop = true
     const g = this.ctx.createGain(); g.gain.value = 0
-    g.gain.setTargetAtTime(ENTRIES.get(id)?.gain ?? 1, this.ctx.currentTime, fade / 3)
+    g.gain.setTargetAtTime(gain, this.ctx.currentTime, fade / 3)
     src.connect(g); g.connect(this.master); src.start()
     this.loose.set(id, { src, g })
     this.note({ kind: 'bed-on', id })
@@ -169,6 +170,22 @@ export class LessonSound {
     b.src.stop(this.ctx.currentTime + fade * 2)
     this.loose.delete(id)
     this.note({ kind: 'bed-off', id })
+  }
+
+  /** An interaction card is up: the lesson timeline stops, the scene's own beds keep looping under the
+   *  card, ducked (`duckDb`), so the place stays while the class talks. release() fades them out; the
+   *  next play() puts the timeline back. */
+  hold(ambience: { id: string; gain: number }[], duckDb = -12): void {
+    this.stop()
+    this.held = ambience.map((a) => a.id)
+    for (const a of ambience) void this.bedOn(a.id, 0.8, a.gain * 10 ** (duckDb / 20))
+    this.note({ kind: 'hold', beds: this.held, duckDb })
+  }
+
+  release(fade = 1): void {
+    for (const id of this.held) this.bedOff(id, fade)
+    this.note({ kind: 'release', beds: this.held })
+    this.held = []
   }
 
   /** The narrator's own element, so the master mute covers it too. */
@@ -199,7 +216,7 @@ export class LessonSound {
       ctx: this.ctx.state, muted: this.muted, time: this.ctx.currentTime - this.origin,
       master: this.master.gain.value, ambienceBus: this.ambience.gain.value,
       beds: Object.fromEntries([...this.bedGains].map(([id, g]) => [id, Math.round(g.gain.value * 1000) / 1000])),
-      sources: this.live.length, events: this.log.length, loose: [...this.loose.keys()],
+      sources: this.live.length, events: this.log.length, loose: [...this.loose.keys()], held: [...this.held],
     }
   }
 }

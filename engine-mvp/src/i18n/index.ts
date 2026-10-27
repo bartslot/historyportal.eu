@@ -54,6 +54,16 @@ export async function loadLocale(): Promise<Locale> {
   return current
 }
 
+/** Speak one language for this page only (the lesson player follows the lesson's language), without
+ *  touching the teacher's stored choice. An unknown code falls back to English. */
+export async function speakLocale(code: string): Promise<Locale> {
+  current = isLocale(code) ? code : 'en'
+  const load = files[`../../../lang/${current}.json`]
+  try { dict = current !== 'en' && load ? await load() : {} } catch { dict = {}; current = 'en' }
+  document.documentElement.lang = LOCALES.find((l) => l.code === current)!.region
+  return current
+}
+
 /** Switch language: remembered in this browser, then a full reload so every screen (and the engine's own
  *  controls) is drawn again in it. The lesson is saved in IndexedDB, so nothing is lost. */
 export function setLocale(code: Locale) {
