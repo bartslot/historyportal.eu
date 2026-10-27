@@ -1,7 +1,8 @@
 // The 2.5D stage: painted layers on depth planes in front of a fixed house camera, the storybook look over the
 // whole frame, and a lesson's scenes played one after another with their camera and layer keyframes.
 //   const player = await playLesson(lessonOrUrl, libraryUrl?, canvas?)
-//   player.play() / pause() / seek(sceneIndex, t) / doc (undoable teacher edits) / groundPoint(x, depth)
+//   player.pause() / resume() / seek(sceneIndex, t) / seekToScene(id) / clock() / onInteraction(fn) / subscribe(fn)
+//   player.doc (undoable teacher edits) / stage.groundPoint(x, depth)
 import '../globals'                    // the engine modules read Babylon from window.BABYLON
 import '../engine/look-shaders.js'
 import {
@@ -10,9 +11,10 @@ import {
 } from '@babylonjs/core'
 import { createLookChain, PRESETS } from '../engine/look-chain.js'
 import { libraryUrlFor, loadLibrary, resolveAsset } from './library'
-import { ADAPT_STALL_MS, ADAPT_WINDOW_MS, cameraAt, nextTier, shotAt, TIER0, type Tier, DEPTH_Z, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
+import { ADAPT_STALL_MS, ADAPT_WINDOW_MS, breathe, cameraAt, nextTier, shotAt, TIER0, type Tier, DEPTH_Z, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
 import { loadPremultiplied, makeLayer, type LayerHandle } from './layer'
 import { LessonDoc } from './edits'
+import { Timeline, type InteractionHandler, type Mode } from './timeline'
 import type { Asset, Depth, Lesson, Library, Scene, SceneLayer } from './types'
 
 /** The stage's own look: History Lines pencil lines on 3D edges, a light paper grain over everything. */
@@ -151,9 +153,10 @@ export class Stage {
   }
 
   /** Pose everything for t seconds into scene s. */
-  pose(s: Scene, t: number, clock: number) {
+  pose(s: Scene, t: number, clock: number, hold?: { t: number; breath_m?: number; breath_s?: number }) {
     const shot = shotAt(s, t)                       // a directed scene plays camera, then each of camera_more
-    const c = cameraAt(shot.cam, shot.t, sceneDuration(s))
+    const end = cameraAt(shot.cam, shot.t, sceneDuration(s))
+    const c = hold ? breathe(end, hold.t, hold) : end   // a held frame breathes around where the shot ended
     this.camera.position.set(c.x, c.y, c.z)
     this.camera.fov = c.fov
     for (const b of this.built) {
@@ -171,10 +174,21 @@ export class Stage {
 export interface Player {
   stage: Stage
   doc: LessonDoc
-  scene: () => { index: number; t: number; playing: boolean }
-  play(): void
+  timeline: Timeline
+  scene: () => { index: number; t: number; playing: boolean; mode: Mode }
+  /** a class moment: fired once when a scene with `interaction` reaches its end; call resume() to move on */
+  onInteraction(fn: InteractionHandler): () => void
+  /** mode, scene or position jumps (pause, resume, hold, seek, next scene) */
+  subscribe(fn: () => void): () => void
+  /** lesson position in seconds; stands still while paused or holding (S5's sound follows this) */
+  clock(): number
+  duration(): number
   pause(): void
+  resume(): void
+  /** same as resume() (the dev panel's Play) */
+  play(): void
   seek(index: number, t?: number): Promise<void>
+  seekToScene(id: string): Promise<void>
   fps(): number
 }
 
@@ -206,33 +220,27 @@ export async function playLesson(lessonOrUrl: Lesson | string, libraryUrl?: stri
   const doc = new LessonDoc(lesson)
   stage.setLook(lesson.look)
 
-  let index = 0, t = 0, playing = true, last = performance.now(), clock = 0
   let builtScene: Scene | null = null
-  let entering = 0                       // a scene change in flight: the old scene holds its last frame meanwhile
-  const current = () => doc.lesson.scenes[index]
-  async function enter(i: number, at = 0) {
-    const target = Math.max(0, Math.min(doc.lesson.scenes.length - 1, i))
-    const ticket = ++entering
-    const s = doc.lesson.scenes[target]
+  const tl = new Timeline(() => doc.lesson.scenes, async (i) => {
+    const s = doc.lesson.scenes[i]
     await stage.build(s, await sceneLibrary(s))
-    if (ticket !== entering) return      // a later seek won
-    index = target; t = at; builtScene = s
-    entering = 0
-  }
-  // an edit: a changed set (layers added/removed, asset swapped) rebuilds; everything else is read live
+    builtScene = s
+  })
+  // an edit: a changed set (layers added/removed, asset swapped) rebuilds in place; everything else is read live
   doc.subscribe(() => {
-    const s = current()
+    const s = tl.scene
     stage.setLook(doc.lesson.look)
     if (!builtScene || s.bundle !== builtScene.bundle || s.set.layers.length !== builtScene.set.layers.length || s.set.sky !== builtScene.set.sky
       || s.set.layers.some((l, i) => l.asset !== builtScene!.set.layers[i].asset || l.need !== builtScene!.set.layers[i].need || l.depth !== builtScene!.set.layers[i].depth)) {
-      void enter(index, t)
+      void tl.rebuild()
       return
     }
     stage.rebind(s)
     builtScene = s
   })
-  await enter(0)
+  await tl.enter(0)
 
+  let last = performance.now(), motionClock = 0
   const frames: number[] = []
   stage.engine.runRenderLoop(() => {
     const now = performance.now()
@@ -240,23 +248,24 @@ export async function playLesson(lessonOrUrl: Lesson | string, libraryUrl?: stri
     last = now
     frames.push(now); while (frames.length && now - frames[0] > 1000) frames.shift()
     stage.tick(now)
-    clock += dt                                  // motion keeps breathing while paused
-    if (playing && !entering) {
-      t += dt
-      if (t >= sceneDuration(current())) {
-        if (index < doc.lesson.scenes.length - 1) void enter(index + 1)
-        else { t = sceneDuration(current()); playing = false }
-      }
-    }
-    stage.pose(current(), t, clock)
+    motionClock += dt                            // layer motion keeps breathing while paused or holding
+    tl.tick(dt)
+    const hold = tl.mode === 'holding' ? { t: tl.holdT, ...doc.lesson.hold } : undefined
+    stage.pose(tl.scene, tl.t, motionClock, hold)
     stage.scene.render()
   })
   return {
-    stage, doc,
-    scene: () => ({ index, t, playing }),
-    play: () => { if (index === doc.lesson.scenes.length - 1 && t >= sceneDuration(current())) void enter(0); playing = true },
-    pause: () => { playing = false },
-    seek: (i, at = 0) => enter(i, at),
+    stage, doc, timeline: tl,
+    scene: () => ({ index: tl.index, t: tl.t, playing: tl.mode === 'playing', mode: tl.mode }),
+    onInteraction: (fn) => tl.onInteraction(fn),
+    subscribe: (fn) => tl.subscribe(fn),
+    clock: () => tl.clock(),
+    duration: () => tl.duration(),
+    pause: () => tl.pause(),
+    resume: () => tl.resume(),
+    play: () => tl.resume(),
+    seek: (i, at = 0) => tl.enter(i, at),
+    seekToScene: (id) => tl.seekToScene(id),
     fps: () => frames.length,
   }
 }

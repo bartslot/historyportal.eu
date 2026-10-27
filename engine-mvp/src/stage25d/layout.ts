@@ -178,3 +178,15 @@ export function setShotPose(s: Scene, i: number, end: 'from' | 'to', field: keyo
   })
   return withShots(s, next)
 }
+
+/** The held frame breathes: a slow, small figure-eight drift around the end pose, faded in over HOLD_FADE_S so the
+ *  hold starts exactly where the shot ended. amp in metres, period in seconds (lesson.hold, teacher-editable). */
+export const HOLD_DEFAULTS = { breath_m: 0.05, breath_s: 7 } as const
+export const HOLD_FADE_S = 1.5
+export function breathe(c: CamPose, holdT: number, hold: { breath_m?: number; breath_s?: number } = {}): CamPose {
+  const amp = hold.breath_m ?? HOLD_DEFAULTS.breath_m
+  const w = (2 * Math.PI) / Math.max(0.5, hold.breath_s ?? HOLD_DEFAULTS.breath_s)
+  const k = Math.min(1, holdT / HOLD_FADE_S)
+  const fade = k * k * (3 - 2 * k)
+  return { ...c, x: c.x + amp * fade * Math.sin(w * holdT), y: c.y + amp * 0.5 * fade * Math.sin(2 * w * holdT) }
+}
