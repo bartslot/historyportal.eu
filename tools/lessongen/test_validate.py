@@ -153,3 +153,10 @@ def test_head_noun_must_match_extra_tags_rank(tmp_path):
     assert v.match_asset("field barley ripe", "bg", lib)["id"] == "field-02"
     assert v.match_asset("field", "bg", lib)["id"] == "field-01"
     assert v.match_asset("hut barley", "bg", lib) is None
+
+
+def test_bang_tag_is_required():
+    lib = [{"id": "hills-nl", "layer": "bg", "tags": ["hills", "dry"]},
+           {"id": "hills-me", "layer": "bg", "tags": ["hills", "mideast"]}]
+    assert v.match_asset("hills dry !mideast", "bg", lib)["id"] == "hills-me"
+    assert v.match_asset("hills !egypt", "bg", lib) is None

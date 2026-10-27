@@ -25,7 +25,8 @@ the lesson's `blueprint.md`, `sources.md`, `ledger.md`. Output: one `lesson.json
 - Change the picture every shot: angle, distance, who is in front. No slideshow: figures do something
   (`pose`: walk, carry, kneel, pull, dig, point, ...), never stand side by side.
 - `set`: `sky` tags, `layers` with `need` tags (FIRST tag = the head noun, required for a library match; further
-  tags only rank, e.g. "field barley ripe") from the bundle vocabulary (nl-prehistory: sky, heath, hills,
+  tags only rank, e.g. "field barley ripe"; prefix a tag with ! to require it too, always for a place outside the
+  bundle's region: "hills dry !mideast", "river !nile") from the bundle vocabulary (nl-prehistory: sky, heath, hills,
   field, hut, longhouse, hunebed, stone, oak, birch, alder, shrub, reeds, fence, cattle, pot, quern, axe, sledge,
   rope, fire; nl-golden-age: sky, sea, coast, harbour, warehouse, ship, quay, barrel, crate, rope, lantern,
   crane, tree, map, chest, spices). `asset: null` (the resolver fills it). Real places only from real sources.
