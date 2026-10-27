@@ -58,7 +58,7 @@ def judged_variant(judged: dict, sid: str, variants: str) -> tuple[str | None, f
     best = (None, None)
     for v in variants:
         sc = judged.get(f"{sid}:{v}", judged.get(sid) if v == variants[0] else None)
-        if sc is not None and (best[1] is None or sc > best[1]):
+        if sc is not None and (best[1] is None or sc >= best[1]):  # tie: the later (fixed) variant
             best = (v, sc)
     return best
 

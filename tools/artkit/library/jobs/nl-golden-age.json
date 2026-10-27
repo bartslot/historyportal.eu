@@ -562,44 +562,44 @@
  ],
  "plate": [
   {
-   "id": "sky-summer-01",
+   "id": "sky-wind-01",
    "fill": 0.75
   },
   {
-   "id": "bg-city-01",
+   "id": "ground-quay-01",
    "tile": true,
-   "base": 0.62,
-   "h": 0.25
-  },
-  {
-   "id": "ship-indiaman-01",
-   "x": 0.62,
-   "base": 0.74,
-   "h": 0.48
-  },
-  {
-   "id": "ship-fluyt-01",
-   "x": 0.32,
-   "base": 0.7,
-   "h": 0.3
-  },
-  {
-   "id": "quay-wall-01",
-   "x": 0.5,
    "base": 1.0,
    "h": 0.24
   },
   {
-   "id": "warehouse-01",
-   "x": 0.07,
-   "base": 0.92,
-   "h": 0.7
+   "id": "water-harbour-01",
+   "tile": true,
+   "base": 0.8,
+   "h": 0.24
   },
   {
-   "id": "tree-linden-01",
-   "x": 0.94,
-   "base": 1.0,
-   "h": 0.85
+   "id": "bg-city-01",
+   "tile": true,
+   "base": 0.6,
+   "h": 0.22
+  },
+  {
+   "id": "ship-indiaman-01",
+   "x": 0.62,
+   "base": 0.76,
+   "h": 0.46
+  },
+  {
+   "id": "ship-fluyt-01",
+   "x": 0.32,
+   "base": 0.72,
+   "h": 0.3
+  },
+  {
+   "id": "warehouse-01",
+   "x": 0.07,
+   "base": 0.95,
+   "h": 0.72
   },
   {
    "id": "barrels-01",
@@ -620,10 +620,10 @@
    "h": 0.1
   },
   {
-   "id": "lantern-01",
-   "x": 0.52,
-   "base": 0.99,
-   "h": 0.07
+   "id": "sacks-01",
+   "x": 0.9,
+   "base": 1.0,
+   "h": 0.12
   }
  ]
 }
