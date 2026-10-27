@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { Clock, EASE, span } from './timeline.js';
 import { CameraPath } from './cameraPath.js';
-import { buildMuseum } from './museum.js';
+import { buildMuseum, HALL } from './museum.js';
 import { buildSilhouettes } from './silhouettes.js';
 import { StickFigure } from './stickFigure.js';
 import { Sparkles } from './sparkles.js';
@@ -22,6 +22,13 @@ const HALL_BG = new THREE.Color(0x24211d);
 
 const query = new URLSearchParams(location.search);
 const lang = query.get('lang') === 'en' ? 'en' : 'nl';
+// Studio handoff (engine-mvp/src/intro, docs/intro-handoff.md): ?painting=<url> hangs the lesson's scene 1 as
+// the VOC painting, ?aspect=<w/h> sizes its frame to the stage, ?handoff=1 stops at the dive and tells the
+// parent page where the painting sits on screen, so the studio grows scene 1 out of it.
+const paintingUrl = query.get('painting');
+const paintingAspect = Number(query.get('aspect')) || 0;
+const handoff = query.has('handoff');
+if (paintingAspect > 0) HALL.voc.h = HALL.voc.w / paintingAspect;
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -41,7 +48,7 @@ async function loadTextures(cards) {
   // the 7680 px painting only where the GPU takes 8k textures and the screen is big enough to show it
   const hd = renderer.capabilities.maxTextureSize >= 8192 && Math.max(innerWidth, innerHeight) * devicePixelRatio >= 1600 && !query.has('sd');
   const jobs = [
-    ...HALL_ASSETS.map((n) => [n, `./assets/${n === 'vroom' && hd ? 'vroom_hd' : n}.webp`]),
+    ...HALL_ASSETS.map((n) => [n, n === 'vroom' && paintingUrl ? paintingUrl : `./assets/${n === 'vroom' && hd ? 'vroom_hd' : n}.webp`]),
     ...WORLD_ASSETS.map((n) => [n, `./assets/world/${n}.webp`]),
     ...INK_TILES.map((n) => [n, `./assets/world/ink/${n}.webp`]),
     ...cards.map((c) => [c.file, `./assets/cards/${c.file}`]),
@@ -199,6 +206,17 @@ async function start() {
     last = now;
     render(clock.tick(dt));
     api.onFrame?.(clock.t);
+    if (handoff && !api.handedOff && clock.t >= BEATS.swapStart) {
+      // the figure is in: freeze on this frame and hand the painting's screen rect (0..1) to the studio
+      api.handedOff = true;
+      clock.playing = false;
+      const box = new THREE.Box3().setFromObject(voc);
+      const pts = [0, 1].flatMap((i) => [0, 1].map((j) => toScreen(new THREE.Vector3(i ? box.max.x : box.min.x, j ? box.max.y : box.min.y, box.max.z))));
+      const xs = pts.map((p) => p[0] / innerWidth);
+      const ys = pts.map((p) => p[1] / innerHeight);
+      const rect = { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) };
+      window.parent?.postMessage({ type: 'hp-intro:handoff', t: clock.t, rect }, location.origin);
+    }
   });
   document.body.classList.add('ready');
 
