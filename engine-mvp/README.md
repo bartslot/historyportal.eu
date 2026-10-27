@@ -97,7 +97,8 @@ prop.parent = fig.hold   // lesson `holds` (a pot, a basket): a node between the
   coat dye hip to knee over leg wraps; breeches = stockings below the knee), `collar` (white falling collar within
   `BANDS.collarRadius` of the neck joint), `belt` (a band at the coat's hem). `figureRecipe` picks them by era. The stage look's pencil pass adds its
   line on top. Every number is a knob in `TOON` / `FACE` / `POSES`.
-- **Face**: the expression PNG (`public/figures/faces/`, drawn by `faces.mjs`, tapered ink strokes) is projected from
+- **Face**: the expression PNG (`public/figures/faces/`: a gpt-image-2.5 sheet made in Figma, cut and aligned by
+  `faces_from_sheet.py`; the sheet is in BartsMedia `s3-figures/faces/`) is projected from
   a box riding the head bone onto skin and eyeballs; no contour ink in the face's middle.
 - **Poses** (`pose.ts`): never Euler offsets. Each limb is AIMED at a direction in the character's own frame
   (forward from the feet, left from the shoulders), in rig space (below the glTF mirror). `checkPose` = knee never
