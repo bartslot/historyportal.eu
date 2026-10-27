@@ -1,7 +1,7 @@
 // What a lesson.json interaction becomes on screen, and when. Pure: the card UI and the player read it.
 // Shapes: tools/lessongen/lesson.schema.json ($defs quiz, choice, power_meter). Time: timing.json via
 // the director's interactionSeconds, so the card's clock is the same model validate.py counts.
-import { interactionSeconds } from '../director/timing'
+import { interactionSeconds, narrationSeconds } from '../director/timing'
 import type { Scene } from '../director/types'
 
 export type Quiz = {
@@ -33,12 +33,17 @@ export function cardKind(it: Interaction): CardKind {
 export const cardSeconds = (scene: Scene): number => interactionSeconds(scene)
 
 /** Where the picture holds for the card, in scene seconds. A power meter holds at 55 %, so the class's
- *  right words play the rest of the scene ("the world moves"); every other card holds on the last
- *  frame, just before the cut. */
+ *  right words play the rest of the scene ("the world moves"), but never before the narrator's line has
+ *  ended (checker N1: the narrator is never cut; the meter then moves what is left of the scene). Every
+ *  other card holds on the last frame, just before the cut. */
 export const METER_HOLD = 0.55
 export const HOLD_BEFORE_CUT_S = 0.15
-export const holdAt = (scene: Scene, dur: number): number =>
-  scene.interaction?.type === 'power-meter' ? dur * METER_HOLD : Math.max(0, dur - HOLD_BEFORE_CUT_S)
+export function holdAt(scene: Scene, dur: number): number {
+  const last = Math.max(0, dur - HOLD_BEFORE_CUT_S)
+  if (scene.interaction?.type !== 'power-meter') return last
+  const lineEnd = scene.narration.trim() || scene.tts_s ? (scene.narration_at_s ?? 0) + narrationSeconds(scene) : 0
+  return Math.min(Math.max(dur * METER_HOLD, lineEnd), last)
+}
 
 /** The right words of a meter, mixed with the wrong ones in a fixed order (the same every time the
  *  lesson plays; no Math.random so a re-run and a test see the same card). */

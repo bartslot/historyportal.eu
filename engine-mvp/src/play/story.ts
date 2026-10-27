@@ -5,18 +5,22 @@
 import { narrationSeconds } from '../director/timing'
 import type { Scene } from '../director/types'
 
-export type StoryFrame = { caption: string | null; balloons: { text: string; x: number }[] }
+/** `tail`: the balloon points at its speaker; false when there is none on screen yet (no figures until
+ *  S3), so it never points at an empty middle. */
+export type StoryFrame = { caption: string | null; balloons: { text: string; x: number; tail: boolean }[] }
 
-/** What is on screen t seconds into a scene. Pure. A balloon stands over its speaker (the figure with
- *  that char, else the scene's middle), kept inside the frame. */
+/** What is on screen t seconds into a scene. Pure. A balloon stands over its speaker: the figure with
+ *  that char, else a set layer whose need or asset names it; with neither it floats in the middle,
+ *  without a tail. Kept inside the frame. */
 export function storyAt(scene: Scene, t: number): StoryFrame {
   const at = scene.narration_at_s ?? 0
   const caption = scene.narration.trim() && t >= at && t < at + narrationSeconds(scene) + 0.6 ? scene.narration : null
   const balloons = (scene.balloons ?? [])
     .filter((b) => b.at_s !== undefined && t >= b.at_s && t < b.at_s + (b.dur_s ?? 0))
     .map((b) => {
-      const who = scene.figures?.find((f) => f.char === b.char)
-      return { text: b.text, x: Math.min(0.8, Math.max(0.2, who?.x ?? 0.5)) }
+      const named = (v: unknown) => typeof v === 'string' && v.toLowerCase().split(/[^a-z0-9-]+/).includes(b.char.toLowerCase())
+      const who = scene.figures?.find((f) => f.char === b.char) ?? scene.set.layers.find((l) => named(l.need) || named(l.asset))
+      return { text: b.text, x: Math.min(0.8, Math.max(0.2, who?.x ?? 0.5)), tail: !!who }
     })
   return { caption, balloons }
 }
@@ -30,7 +34,7 @@ export function drawStory(host: HTMLElement, frame: StoryFrame | null): void {
   if (!frame) return
   for (const b of frame.balloons) {
     const el = document.createElement('div')
-    el.className = 'story-balloon'
+    el.className = b.tail ? 'story-balloon' : 'story-balloon no-tail'
     el.style.left = `${b.x * 100}%`
     el.textContent = b.text
     host.append(el)

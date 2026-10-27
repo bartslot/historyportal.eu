@@ -75,6 +75,31 @@ for (const k of kinds) {
   const after = await page.evaluate(() => ({ mode: window.__play.player.scene().mode, index: window.__play.player.scene().index, held: window.__play.sound.state().held }))
   cardRuns.push({ ...k, held, after })
 }
+// the kinds no vault lesson has yet (sort, vote, team): three of the lesson's own interaction scenes are
+// given those cards IN MEMORY (the vault is not touched), then played into again (a card plays once per entry)
+const extra = await page.evaluate(() => {
+  const p = window.__play, ids = p.lesson.scenes.map((s, i) => (s.interaction && s.interaction.type !== 'power-meter' ? i : -1)).filter((i) => i >= 0)
+  const make = [
+    ['sort', { type: 'quiz', format: 'sort', question: 'Zet de bouw van een hunebed in de goede volgorde.', options: ['Stenen slepen', 'Draagstenen rechtop zetten', 'Deksteen erop', 'Zand eromheen'], correct: [0, 1, 2, 3], explain: 'Eerst de draagstenen, dan pas de deksteen.' }],
+    ['vote', { type: 'choice', format: 'vote', prompt: 'Zou jij een hunebed willen bouwen?', options: [{ text: 'Ja, samen lukt het.', outcome: 'Met veel mensen en boomstammen kon het.' }, { text: 'Nee, te zwaar.', outcome: 'Het was ook zwaar werk, maanden lang.' }] }],
+    ['team', { type: 'quiz', format: 'team', question: 'Teken in je groepje hoe de deksteen omhoog kwam.', options: [], correct: null, explain: 'Een oprit van zand en rollen van boomstammen.', class_action_s: 90 }],
+  ]
+  return make.map(([kind, it], k) => { const i = ids[k]; p.lesson.scenes[i].interaction = it; const s = p.lesson.scenes[i]; return { i, id: s.id, kind, hold: s.dur_s - 0.15 } })
+})
+for (const k of extra) {
+  await page.evaluate(async ({ i, hold }) => { const p = window.__play; p.player.pause(); await p.player.seek(i, Math.max(0, hold - 1)); p.player.play() }, k)
+  await page.waitForSelector('[data-testid=card]', { timeout: 10000 })
+  await page.locator('#wrap').screenshot({ path: `${out}/card-${k.kind}.png` })
+  const card = page.locator('[data-testid=card]')
+  if (k.kind === 'vote') await card.locator('.grid button').first().click()
+  else await card.locator('button.btn-primary').first().click()
+  await page.waitForTimeout(400)
+  await page.locator('#wrap').screenshot({ path: `${out}/card-${k.kind}-after.png` })
+  await card.locator('footer button.btn-primary').click()
+  await page.waitForSelector('[data-testid=card]', { state: 'detached', timeout: 5000 })
+  cardRuns.push({ ...k, extra: true })
+}
+
 const cardLog = await page.evaluate(() => window.__play.cards.log.map((l) => `${l.scene}:${l.what}`))
 const soundKinds = await page.evaluate(() => window.__play.sound.log.filter((l) => ['hold', 'release', 'hit'].includes(l.ev.kind)).map((l) => `${l.ev.kind}${l.ev.id ? ':' + l.ev.id : ''}`))
 

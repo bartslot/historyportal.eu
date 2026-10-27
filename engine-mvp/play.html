@@ -19,6 +19,7 @@
     font: 500 clamp(18px, 2.4vw, 34px)/1.25 system-ui, sans-serif; }
   .story-balloon::after { content: ''; position: absolute; left: 50%; bottom: -14px; width: 18px; height: 18px;
     background: #fffdf8; border-right: 2px solid var(--ink); border-bottom: 2px solid var(--ink); transform: translateX(-50%) rotate(45deg); }
+  .story-balloon.no-tail::after { display: none; } /* nobody on screen to point at yet */
   /* captions: opt-in, big for the digibord */
   .story-caption { position: absolute; left: 50%; bottom: 4%; transform: translateX(-50%); width: min(86%, 1400px); margin: 0;
     padding: 0.4em 0.7em; text-align: center; background: rgb(28 20 24 / 0.82); color: #fffdf8; border-radius: 0.5em;

@@ -47,10 +47,10 @@ function Answer({ q, sfx, done }: { q: Quiz; sfx?: (id: string) => void; done: (
           const tone = picked === null ? 'btn-outline'
             : !graded ? (i === picked ? 'btn-primary' : 'btn-ghost opacity-50')
               : isCorrect(q, i) ? 'btn-success' : i === picked ? 'btn-error btn-outline' : 'btn-ghost opacity-50'
-          return <button key={i} className={`btn btn-lg h-auto min-h-16 justify-start py-3 text-left text-2xl font-normal ${tone}`} onClick={() => pick(i)}>{o}</button>
+          return <button key={i} className={`btn btn-lg h-auto min-h-12 justify-start py-2 text-left text-xl font-normal ${tone}`} onClick={() => pick(i)}>{o}</button>
         })}
       </div>
-      {picked !== null && q.explain && <p className="text-2xl leading-snug">{q.explain}</p>}
+      {picked !== null && q.explain && <p className="text-xl leading-snug">{q.explain}</p>}
     </>
   )
 }
@@ -60,8 +60,8 @@ function Sort({ q, done }: { q: Quiz; done: (d: boolean) => void }) {
   const list = shown ? sortedOptions(q) : q.options
   return (
     <>
-      <ol className="grid gap-2 text-2xl">{list.map((o, i) => <li key={o} className="rounded-box bg-base-200 px-4 py-3">{shown ? `${i + 1}. ` : ''}{o}</li>)}</ol>
-      {shown ? <p className="text-2xl leading-snug"><span className="font-semibold">{__('This is the right order')}.</span> {q.explain}</p>
+      <ol className="grid gap-2 text-xl">{list.map((o, i) => <li key={o} className="rounded-box bg-base-200 px-4 py-3">{shown ? `${i + 1}. ` : ''}{o}</li>)}</ol>
+      {shown ? <p className="text-xl leading-snug"><span className="font-semibold">{__('This is the right order')}.</span> {q.explain}</p>
         : <button className="btn btn-primary btn-lg self-start text-xl" onClick={() => { setShown(true); done(true) }}>{__('Show the answer')}</button>}
     </>
   )
@@ -72,8 +72,8 @@ function Talk({ hint, after, done }: { hint: string; after?: string; done: (d: b
   const [over, setOver] = useState(false)
   return (
     <>
-      <p className="text-2xl opacity-80">{hint}</p>
-      {over ? (after && <p className="text-2xl leading-snug">{after}</p>)
+      <p className="text-xl opacity-80">{hint}</p>
+      {over ? (after && <p className="text-xl leading-snug">{after}</p>)
         : <button className="btn btn-primary btn-lg self-start text-xl" onClick={() => { setOver(true); done(true) }}>{__('Done')}</button>}
     </>
   )
@@ -83,14 +83,14 @@ function Choose({ c, vote, done }: { c: Choice; vote: boolean; done: (d: boolean
   const [picked, setPicked] = useState<number | null>(null)
   return (
     <>
-      {vote && picked === null && <p className="text-2xl opacity-80">{__('Vote with your hands')}. {__('Tap what the class chose')}.</p>}
+      {vote && picked === null && <p className="text-xl opacity-80">{__('Vote with your hands')}. {__('Tap what the class chose')}.</p>}
       <div className="grid gap-3">
         {c.options.map((o, i) => (
-          <button key={i} className={`btn btn-lg h-auto min-h-16 justify-start py-3 text-left text-2xl font-normal ${picked === null ? 'btn-outline' : i === picked ? 'btn-primary' : 'btn-ghost opacity-50'}`}
+          <button key={i} className={`btn btn-lg h-auto min-h-12 justify-start py-2 text-left text-xl font-normal ${picked === null ? 'btn-outline' : i === picked ? 'btn-primary' : 'btn-ghost opacity-50'}`}
             onClick={() => { if (picked === null) { setPicked(i); done(true) } }}>{o.text}</button>
         ))}
       </div>
-      {picked !== null && <p className="text-2xl leading-snug">{c.options[picked].outcome}{c.history ? ` ${c.history}` : ''}</p>}
+      {picked !== null && <p className="text-xl leading-snug">{c.options[picked].outcome}{c.history ? ` ${c.history}` : ''}</p>}
     </>
   )
 }
@@ -111,16 +111,16 @@ function Meter({ m, onPush, sfx, done }: { m: PowerMeter; onPush?: (p: number) =
   }
   return (
     <>
-      {!m.prompt && <p className="text-2xl opacity-80">{__('Call out the words that help')}.</p>}
-      <progress className="progress progress-primary h-6 w-full" value={progress} max={1} />
+      {!m.prompt && <p className="text-xl opacity-80">{__('Call out the words that help')}.</p>}
+      <progress className="progress progress-primary h-5 w-full" value={progress} max={1} />
       <div className="flex flex-wrap gap-3">
         {words.map((w) => (
           <button key={w.word} onClick={() => tap(w)}
-            className={`btn btn-lg text-2xl font-normal ${hit.has(w.word) ? 'btn-success' : missed.has(w.word) ? 'btn-ghost line-through opacity-50' : 'btn-outline'}`}
+            className={`btn btn-lg text-xl font-normal ${hit.has(w.word) ? 'btn-success' : missed.has(w.word) ? 'btn-ghost line-through opacity-50' : 'btn-outline'}`}
             title={missed.has(w.word) ? __('Not this one') : undefined}>{w.word}</button>
         ))}
       </div>
-      {progress >= 1 && <p className="text-2xl leading-snug">{m.payoff}</p>}
+      {progress >= 1 && <p className="text-xl leading-snug">{m.payoff}</p>}
     </>
   )
 }
@@ -140,19 +140,22 @@ export function Card({ interaction: it, seconds, onDone, onPush, sfx }: CardProp
       case 'meter': return <Meter m={it as PowerMeter} onPush={onPush} sfx={sfx} done={setFinished} />
     }
   })()
+  // the lower 45 % of the frame at most: the held picture (the world the class moves) stays in view above
   return (
-    <div className="absolute inset-x-0 bottom-0 flex max-h-full justify-center overflow-y-auto p-6" data-testid="card" data-kind={kind}>
-      <section className="flex w-full max-w-4xl flex-col gap-5 rounded-box bg-base-100 p-8 text-base-content">
-        <header className="flex items-start justify-between gap-6">
-          <h2 className="text-4xl font-semibold leading-tight">{title}</h2>
+    <div className="absolute inset-x-0 bottom-0 flex h-[45%] justify-center px-4 pb-4" data-testid="card" data-kind={kind}>
+      <section className="grid h-full w-full max-w-6xl grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-6 overflow-y-auto rounded-box bg-base-100 p-6 text-base-content">
+        <div className="flex flex-col gap-3">
           <Clock seconds={seconds} />
-        </header>
-        {it.type === 'power-meter' && <p className="text-2xl leading-snug">{it.prompt}</p>}
-        {body}
-        <footer className="flex justify-end gap-3">
-          {!finished && <button className="btn btn-ghost btn-lg text-xl" onClick={onDone}>{__('Skip')}</button>}
-          {finished && <button className="btn btn-primary btn-lg text-xl" onClick={onDone}>{__('Next')}</button>}
-        </footer>
+          <h2 className="text-3xl font-semibold leading-tight">{title}</h2>
+          {it.type === 'power-meter' && <p className="text-xl leading-snug">{it.prompt}</p>}
+        </div>
+        <div className="flex flex-col gap-3">
+          {body}
+          <footer className="mt-auto flex justify-end gap-3 pt-1">
+            {!finished && <button className="btn btn-ghost btn-lg text-xl" onClick={onDone}>{__('Skip')}</button>}
+            {finished && <button className="btn btn-primary btn-lg text-xl" onClick={onDone}>{__('Next')}</button>}
+          </footer>
+        </div>
       </section>
     </div>
   )
