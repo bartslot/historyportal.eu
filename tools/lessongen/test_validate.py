@@ -183,9 +183,24 @@ def test_empty_source_url_rejected(lesson):
     assert any(e.startswith("schema:") for e in errors_of(lesson))
 
 
-def test_too_many_words_per_second(lesson):
-    lesson["scenes"][1]["narration"] = " ".join(["woord"] * 25)
-    assert any("sc02: 3.6 words/s" in e for e in errors_of(lesson))
+def test_too_much_narration_for_one_shot(lesson):
+    lesson["scenes"][1]["narration"] = " ".join(["woord"] * 30)  # 30 / 2.4 + 0.6 = 13.1 s
+    assert any("sc02: narration takes 13.1 s" in e for e in errors_of(lesson))
+
+
+def test_timeline_follows_timing_json(lesson):
+    # sc01: 12 words -> 5.6 s -> floor 6, class action 30, quiz 40; sc02 + sc03: 9 words -> floor 6; meter 60, quiz 40
+    lesson["scenes"][0]["class_action_s"] = 30
+    stats = v.check(lesson, library_root=NO_LIBRARY)[2]
+    assert stats["interactions"] == ["36s sc01 quiz", "82s sc02 power-meter", "148s sc03 quiz"]
+    assert stats["total_s"] == 188 and stats["class_actions_s"] == 30
+
+
+def test_measured_tts_overrides_the_estimate(lesson):
+    lesson["scenes"][0]["tts_s"] = 10.4
+    assert v.shot_s(lesson["scenes"][0]) == pytest.approx(11.0)
+    lesson["scenes"][0]["tts_s"] = 12.0
+    assert any("sc01: narration takes 12.6 s" in e for e in errors_of(lesson))
 
 
 def test_overlap_checked_in_every_string_and_every_dump(lesson, tmp_path):
@@ -204,7 +219,7 @@ def test_spaced_hyphen_and_unicode_hyphen_rejected_in_title(lesson, bad):
 def test_long_tail_after_last_interaction(lesson):
     filler = copy.deepcopy(lesson["scenes"][2])
     filler["interaction"] = None
-    lesson["scenes"] += [dict(copy.deepcopy(filler), id=f"sc{10 + i}") for i in range(30)]
+    lesson["scenes"] += [dict(copy.deepcopy(filler), id=f"sc{10 + i}") for i in range(35)]
     assert any("after the last interaction" in e for e in errors_of(lesson))
 
 

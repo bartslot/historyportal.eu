@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "about": "One duration model for lesson.json, read by tools/lessongen/validate.py and the S5 director. PM 2026-10-27.",
+  "narration": {
+    "words_per_s": 2.4,
+    "breath_s": 0.6,
+    "rule": "shot_s = max(shot_min_s, words / words_per_s + breath_s); a measured scene.tts_s replaces words / words_per_s"
+  },
+  "shot_min_s": 6,
+  "shot_max_s": 12,
+  "interaction_s": { "quiz": 40, "power-meter": 60, "choice": 30 },
+  "class_action": "scene.class_action_s, the time written for that class action (hands up, say together), added after the shot"
+}

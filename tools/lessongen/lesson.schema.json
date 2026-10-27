@@ -418,6 +418,17 @@
             "near-east-neolithic"
           ],
           "description": "overrides the lesson bundle for this scene's art and sound"
+        },
+        "class_action_s": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 180,
+          "description": "time written for a class action in this shot (timing.json)"
+        },
+        "tts_s": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "measured narration seconds; overrides the words/s estimate"
         }
       }
     },
@@ -429,8 +440,7 @@
         "options",
         "correct",
         "bloom",
-        "explain",
-        "est_s"
+        "explain"
       ],
       "properties": {
         "type": {
@@ -474,7 +484,8 @@
         "est_s": {
           "type": "number",
           "minimum": 20,
-          "maximum": 180
+          "maximum": 180,
+          "description": "ignored: timing.json interaction_s decides"
         }
       }
     },
@@ -489,8 +500,7 @@
         "wrong",
         "prompt",
         "payoff",
-        "why",
-        "est_s"
+        "why"
       ],
       "properties": {
         "type": {
@@ -543,7 +553,8 @@
         "est_s": {
           "type": "number",
           "minimum": 20,
-          "maximum": 180
+          "maximum": 180,
+          "description": "ignored: timing.json interaction_s decides"
         }
       }
     },
@@ -552,8 +563,7 @@
       "required": [
         "type",
         "prompt",
-        "options",
-        "est_s"
+        "options"
       ],
       "properties": {
         "type": {
@@ -587,7 +597,8 @@
         "est_s": {
           "type": "number",
           "minimum": 20,
-          "maximum": 180
+          "maximum": 180,
+          "description": "ignored: timing.json interaction_s decides"
         }
       }
     }

@@ -30,8 +30,8 @@ Output per lesson: vault `historyportal/topics/autonomous-lessons/lessons/<id>/`
 | Check | Rule |
 |---|---|
 | schema | `lesson.schema.json` (contract 2 + interaction shapes; source `url` non-empty) |
-| shots | every scene `est_s` 6-12 and <= 2.6 narrated words/s |
-| spacing | first interaction <= 180 s, <= 180 s of story between interactions and after the last (warn < 60 s) |
+| timing | ONE model in `timing.json` (shared with the S5 director): shot = max(6, words / 2.4 + 0.6) s, or measured `tts_s` + 0.6; + `class_action_s`; + quiz 40 / power-meter 60 / choice 30 s. A shot whose narration needs > 12 s is an error; `est_s` stays 6-12 as the writer's note |
+| spacing (on that timeline) | first interaction <= 180 s, <= 180 s of story between interactions and after the last (warn < 60 s) |
 | facts | every scene has `fact_refs`, each one a `sources[].id`; a shot with a number/year needs a non-ledger source; at least one `canon` source |
 | copyright | no 6-word run shared between ANY prose string in the file (title, teacher, goals, notes, ...) and ANY cached LessonUp dump in `.cache/corpus` |
 | Bloom | >= 2 quizzes, <= 50 % recall (Bloom 1), >= 2 Bloom levels (labels are self-declared: the checker re-labels) |
