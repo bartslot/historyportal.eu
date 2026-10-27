@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cameraAt, DEPTH_Z, HOUSE, layerAt, motionOf, placeLayer, renderScale, sceneDuration, setShotDuration, setShotPose, shotAt, shotsEnd, nextTier, TIER0, ADAPT, viewWidthAt, type Tier } from './layout'
+import { cameraAt, DEPTH_Z, HOUSE, stainIndex, layerAt, motionOf, placeLayer, renderScale, sceneDuration, setShotDuration, setShotPose, shotAt, shotsEnd, nextTier, TIER0, ADAPT, viewWidthAt, type Tier } from './layout'
 import type { Scene } from './types'
 import { LessonDoc } from './edits'
 import type { Asset } from './types'
@@ -22,6 +22,15 @@ describe('placeLayer', () => {
     const p = placeLayer(hills, { depth: 'bg' }, 0)
     expect(p.w).toBeGreaterThan(viewWidthAt(DEPTH_Z.bg))
     expect(p.uRepeat).toBeCloseTo(p.w / 160)
+  })
+  it('raises only the far landscape with the horizon', () => {
+    expect(placeLayer(hills, { depth: 'bg' }, 0, 4).y).toBe(4)
+    expect(placeLayer(tree, { depth: 'mid' }, 0, 4).y).toBe(0)
+  })
+  it('a stain draws after farther layers and before its own layer', () => {
+    const far = placeLayer(tree, { depth: 'mid' }, 0), near = placeLayer(tree, { depth: 'mid' }, 1)
+    expect(stainIndex(near.alphaIndex)).toBeGreaterThan(far.alphaIndex)
+    expect(stainIndex(near.alphaIndex)).toBeLessThan(near.alphaIndex)
   })
   it('draws nearer depths later, and later layers at one depth later and nearer', () => {
     const a = placeLayer(tree, { depth: 'mid' }, 0), b = placeLayer(tree, { depth: 'mid' }, 1), c = placeLayer(tree, { depth: 'fg' }, 0)

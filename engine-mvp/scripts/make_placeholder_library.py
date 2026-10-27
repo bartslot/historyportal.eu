@@ -159,6 +159,36 @@ def cloud():
     return finish(img, "cloud-01.png")
 
 
+def ground():
+    """Tileable in both directions: sandy wash with grass tufts and pebbles, drawn wrapped around the edges."""
+    w = h = 1024
+    img = Image.new("RGBA", (w, h), (214, 200, 162, 255))
+    wash = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(wash)
+    for _ in range(60):
+        cx, cy, r = rnd.uniform(0, w), rnd.uniform(0, h), rnd.uniform(40, 140)
+        col = rnd.choice([(170, 168, 110, 70), (226, 212, 176, 80), (190, 170, 130, 60)])
+        for dx in (-w, 0, w):
+            for dy in (-h, 0, h):
+                d.ellipse((cx + dx - r, cy + dy - r * 0.6, cx + dx + r, cy + dy + r * 0.6), fill=col)
+    img.alpha_composite(wash.filter(ImageFilter.GaussianBlur(18)))
+    d = ImageDraw.Draw(img)
+    for _ in range(420):
+        x, y = rnd.uniform(0, w), rnd.uniform(0, h)
+        for dx in (-w, 0, w):
+            for dy in (-h, 0, h):
+                for k in range(3):
+                    a = rnd.uniform(-0.6, 0.6)
+                    d.line([(x + dx + k * 3, y + dy), (x + dx + k * 3 + 10 * a, y + dy - rnd.uniform(6, 14))], fill=(112, 120, 70, 200), width=2)
+    for _ in range(90):
+        x, y, r = rnd.uniform(0, w), rnd.uniform(0, h), rnd.uniform(2, 5)
+        for dx in (-w, 0, w):
+            for dy in (-h, 0, h):
+                d.ellipse((x + dx - r, y + dy - r * 0.7, x + dx + r, y + dy + r * 0.7), fill=(150, 140, 125, 255), outline=INK)
+    img.save(OUT / "ground-heath-01.png", optimize=True)
+    return w, h
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     spec = [
@@ -168,6 +198,7 @@ def main():
         ("hut-farm-01", "mid", ["hut", "farm", "house", "prehistory"], hut, [0.5, 1.0], 6, False, "none"),
         ("tree-oak-01", "fg", ["tree", "oak", "forest"], tree, [0.5, 1.0], 6, False, "sway"),
         ("reeds-01", "fg", ["reeds", "water", "marsh"], reeds, [0.5, 1.0], 1.6, False, "sway"),
+        ("ground-heath-01", "ground", ["ground", "heath", "sand"], ground, [0.5, 1.0], 6, True, "none"),
     ]
     assets = []
     for aid, layer, tags, draw, anchor, height_m, tile, motion in spec:
