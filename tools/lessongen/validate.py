@@ -3,7 +3,8 @@
 
   validate.py LESSON.json [--corpus DIR] [--library-root DIR] [--resolve]
 
-Checks: schema, shot length (est_s 6-12, <= 2.6 words/s), interaction spacing (first <= 180 s, then
+Checks: schema, timeline from timing.json (narration <= 12 s a shot; est_s
+is only the writer's note, still 6-12), the teacher card's minutes match that timeline, interaction spacing (first <= 180 s, then
 every <= 180 s, also after the last), every scene has fact_refs that resolve to a source and a real
 source when it says a number or year, no verbatim overlap (6-word n-grams) between any prose string and
 any cached LessonUp dump, Bloom mix of the quizzes, 1-4 power meters, text hygiene (no dashes, no emoji,
@@ -26,7 +27,8 @@ SCHEMA = json.loads((HERE / "lesson.schema.json").read_text())
 DEFAULT_CORPUS = HERE / ".cache" / "corpus"
 DEFAULT_LIBRARY = Path.home() / "BartsMedia" / "historyportal" / "library"
 
-SHOT_MIN_S, SHOT_MAX_S = 6, 12
+TIMING = json.loads((HERE / "timing.json").read_text())  # shared with the S5 director
+SHOT_MIN_S, SHOT_MAX_S = TIMING["shot_min_s"], TIMING["shot_max_s"]
 FIRST_INTERACTION_MAX_S = 180
 INTERACTION_GAP_MAX_S = 180
 INTERACTION_GAP_MIN_S = 60
@@ -34,7 +36,6 @@ NGRAM = 6
 RECALL_SHARE_MAX = 0.5
 POWER_METERS_MIN, POWER_METERS_MAX = 1, 4
 BALLOON_WORDS_MAX = 8
-WORDS_PER_S_MAX = 2.6  # Dutch narration for kids runs ~2.2-2.5 words/s
 # Region tags (agreed with the art session). An asset carrying one only serves a need that asks for it.
 REGIONS = {"mideast", "egypt", "mesopotamia", "batavia", "banda", "ocean", "newzealand", "tasmania", "mauritius"}
 # Which regions each art bundle may show. A scene's region tags outside its bundle's set get a warning.
@@ -44,6 +45,7 @@ BUNDLE_REGIONS = {
     "near-east-neolithic": {"mideast", "egypt", "mesopotamia"},
 }
 # A narrated number, year or amount is a hard fact: it needs a real (non-ledger) source in the scene.
+CARD_TOLERANCE_MIN = 1
 HARD_FACT = re.compile(
     r"\d|honderd|duizend|miljoen|miljard|\b\w*(?:twintig|dertig|veertig|vijftig|zestig|zeventig|tachtig|negentig)\b"
     r"|\b(?:der|veer|vijf|zes|zeven|acht|negen)?tien\b|\belf\b|\btwaalf\b", re.I)
@@ -55,6 +57,30 @@ NOT_PROSE = {"id", "url", "need", "asset", "sky", "char", "pose", "depth", "faci
 # Every dash character, a spaced hyphen used as a dash, and the emoji blocks. "VOC-schip" is fine.
 BAD_CHARS = re.compile("[\u2010-\u2015\U0001F000-\U0001FAFF\u2600-\u27BF\uFE0F]|\\s-\\s")
 WORD = re.compile(r"[a-zà-ÿ0-9']+")
+
+
+def shot_s(sc: dict) -> float:
+    """Shot time per timing.json: narration (measured tts_s, else words / words_per_s) + breath, floor shot_min_s."""
+    n = TIMING["narration"]
+    spoken = sc["tts_s"] if sc.get("tts_s") else len(sc["narration"].split()) / n["words_per_s"]
+    return max(SHOT_MIN_S, spoken + n["breath_s"]) if sc["narration"].strip() or sc.get("tts_s") else SHOT_MIN_S
+
+
+def interaction_s(it: dict) -> float:
+    """Play time from timing.json, by type.format when that key exists; a team activity plays its own class_action_s."""
+    if it.get("format") == "team":
+        return it["class_action_s"]
+    times = TIMING["interaction_s"]
+    return times.get(f"{it['type']}.{it.get('format')}", times[it["type"]])
+
+
+def total_s(lesson: dict) -> float:
+    """Lesson length per timing.json: every shot, its class action, its interaction."""
+    return sum(shot_s(sc) + sc.get("class_action_s", 0) + (interaction_s(sc["interaction"]) if sc["interaction"] else 0)
+               for sc in lesson["scenes"])
+
+
+CARD_MINUTES = re.compile(r"(\d+)(\s*minuten)")
 
 
 def all_texts(node: object, where: str = "") -> list[tuple[str, str]]:
@@ -154,6 +180,8 @@ def resolve(lesson: dict, library_root: Path) -> dict:
                 layer["asset"] = hit["id"] if hit else None
             if not hit:
                 needed.setdefault((bundle, layer["need"].strip().lower(), depth), []).append(sc["id"])
+    if lesson.get("teacher"):  # the card's duration is generated, never typed
+        lesson["teacher"] = CARD_MINUTES.sub(lambda m: f"{round(total_s(lesson) / 60)}{m.group(2)}", lesson["teacher"], count=1)
     lesson["needed_assets"] = [
         {"tags": tags, "layer": depth, "why": ", ".join(dict.fromkeys(ids)), **({"bundle": b} if b != lesson["bundle"] else {})}
         for (b, tags, depth), ids in needed.items()
@@ -175,20 +203,26 @@ def check(lesson: dict, corpus_dir: Path = DEFAULT_CORPUS, library_root: Path = 
     if len(set(ids)) != len(ids):
         errors.append("scene ids are not unique")
 
-    # Shot length + timeline (narrated shot time, then interaction play time).
+    # Timeline per timing.json: each shot, then its class action, then its interaction.
     t = 0.0
     spans: list[tuple[float, float, str, str]] = []  # (start, end, scene id, type)
     for sc in scenes:
         if not SHOT_MIN_S <= sc["est_s"] <= SHOT_MAX_S:
             errors.append(f"{sc['id']}: est_s {sc['est_s']} outside {SHOT_MIN_S}-{SHOT_MAX_S}")
-        wps = len(sc["narration"].split()) / sc["est_s"]
-        if wps > WORDS_PER_S_MAX:
-            errors.append(f"{sc['id']}: {wps:.1f} words/s, max {WORDS_PER_S_MAX}: raise est_s or split the shot")
-        t += sc["est_s"]
+        shot = shot_s(sc)
+        if shot > SHOT_MAX_S:
+            errors.append(f"{sc['id']}: narration takes {shot:.1f} s, max {SHOT_MAX_S}: split the shot")
+        t += shot + sc.get("class_action_s", 0)
         if sc["interaction"]:
-            spans.append((t, t + sc["interaction"]["est_s"], sc["id"], sc["interaction"]["type"]))
-            t += sc["interaction"]["est_s"]
+            play = interaction_s(sc["interaction"])
+            spans.append((t, t + play, sc["id"], sc["interaction"]["type"]))
+            t += play
     stats["total_s"] = round(t)
+    stats["story_s"] = round(sum(shot_s(sc) for sc in scenes))
+    stats["class_actions_s"] = sum(sc.get("class_action_s", 0) for sc in scenes)
+    card = CARD_MINUTES.search(lesson.get("teacher", ""))
+    if card and abs(int(card.group(1)) - t / 60) > CARD_TOLERANCE_MIN:
+        errors.append(f"teacher card says {card.group(1)} minuten, the timing model gives {t / 60:.1f}")
     stats["interactions"] = [f"{round(s)}s {sid} {kind}" for s, _, sid, kind in spans]
     if not spans:
         errors.append("no interactions at all")

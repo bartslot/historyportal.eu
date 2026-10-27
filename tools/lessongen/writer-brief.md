@@ -20,7 +20,7 @@ the lesson's `blueprint.md`, `sources.md`, `ledger.md`. Output: one `lesson.json
 
 ## Shots and timing
 
-- One scene = one shot. `est_s` 6-12 (at most 2.6 words/s, validator-enforced; a 9 s shot carries ~15-20 words).
+- One scene = one shot. `est_s` 6-12 (timing.json: words / 2.4 + 0.6 s, at least 6 s, at most 12 s, so at most ~27 words a shot).
   Shots without narration are fine (look time, a balloon) if `est_s` >= 6.
 - Change the picture every shot: angle, distance, who is in front. No slideshow: figures do something
   (`pose`: walk, carry, kneel, pull, dig, point, ...), never stand side by side.
@@ -47,7 +47,8 @@ the lesson's `blueprint.md`, `sources.md`, `ledger.md`. Output: one `lesson.json
 - `choice`: a dilemma a character faces; each option has an `outcome` that stays true to history
   (`history`: what really happened).
 - Label `bloom` honestly: the checker re-labels every question, and a recall question labelled 3 counts as recall.
-- `est_s` of an interaction = its play time (quiz 45-90, meter 60-120, choice 45-90).
+- Play time is fixed in `timing.json` (quiz 40, power-meter 60, choice 30 s); an interaction's `est_s` is ignored.
+- A class action inside a shot (hands up, say it together, one child answers) gets `class_action_s` = the time it needs.
 
 ## Facts
 
