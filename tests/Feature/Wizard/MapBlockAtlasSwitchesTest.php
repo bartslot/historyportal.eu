@@ -83,4 +83,19 @@ class MapBlockAtlasSwitchesTest extends TestCase
         $this->wizard()->call('setMapDetail', 'qid', true);
         $this->assertSame('Q55', $this->map->fresh()->config['qid']);
     }
+
+    public function test_dante_maps_of_italy_keep_their_territory(): void
+    {
+        // The red Guelph/Ghibelline shading is the point of those maps; a saved choice is left alone.
+        $italy = Scene::create(['lesson_id' => $this->lesson->id, 'order' => 2, 'kind' => 'map', 'status' => 'ready',
+            'config' => ['qid' => 'Q38', 'year' => 1295]]);
+        $saved = Scene::create(['lesson_id' => $this->lesson->id, 'order' => 3, 'kind' => 'map', 'status' => 'ready',
+            'config' => ['qid' => 'Q38', 'show_borders' => false]]);
+
+        (require database_path('migrations/2026_10_28_000001_keep_territory_on_dante_maps.php'))->up();
+
+        $this->assertTrue($italy->fresh()->config['show_borders']);
+        $this->assertFalse($saved->fresh()->config['show_borders']);
+        $this->assertArrayNotHasKey('show_borders', $this->map->fresh()->config);
+    }
 }

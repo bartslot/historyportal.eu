@@ -85,7 +85,7 @@ return [
         ],
     ],
     'mappa-fazioni' => [
-        'type' => 'map', 'year' => 1295, 'qid' => 'Q38', 'projection' => 'mercator',
+        'type' => 'map', 'year' => 1295, 'qid' => 'Q38', 'projection' => 'mercator', 'borders' => true,
         'labels' => [
             'firenze' => [11.2558, 43.7696],
             'arezzo' => [11.8807, 43.4633],
@@ -119,7 +119,7 @@ return [
         ],
     ],
     'mappa-esilio' => [
-        'type' => 'map', 'year' => 1305, 'qid' => 'Q38', 'projection' => 'mercator',
+        'type' => 'map', 'year' => 1305, 'qid' => 'Q38', 'projection' => 'mercator', 'borders' => true,
         'labels' => [
             'firenze' => [11.2558, 43.7696],
             'verona' => [10.9916, 45.4384],

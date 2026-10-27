@@ -707,6 +707,8 @@ class LessonComposer
                 'fit' => $annotations !== [] ? 'labels' : null,
                 'year' => $s['year'] ?? null,
                 'projection' => (string) ($s['projection'] ?? 'mercator'),
+                // Territory is off unless the spec asks for it (Bart 2026-10-26: "auto off").
+                'show_borders' => isset($s['borders']) ? (bool) $s['borders'] : null,
                 'playback_mode' => 'interactive',
                 'annotations' => $annotations,
             ], fn ($v) => $v !== null && $v !== []),
