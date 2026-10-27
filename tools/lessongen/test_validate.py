@@ -185,8 +185,10 @@ def test_empty_source_url_rejected(lesson):
 
 
 def test_too_much_narration_for_one_shot(lesson):
-    lesson["scenes"][1]["narration"] = " ".join(["woord"] * 30)  # 30 / 2.4 + 0.6 = 13.1 s
-    assert any("sc02: narration takes 13.1 s" in e for e in errors_of(lesson))
+    lesson["scenes"][1]["narration"] = " ".join(["woord"] * 30)
+    n = v.TIMING["narration"]
+    expected = 30 / n["words_per_s"] + n["breath_s"]  # 14.6 s at Fenna's 2.15 words/s
+    assert any(f"sc02: narration takes {expected:.1f} s" in e for e in errors_of(lesson))
 
 
 def test_timeline_follows_timing_json(lesson):

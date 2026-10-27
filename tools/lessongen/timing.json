@@ -2,9 +2,10 @@
   "version": 1,
   "about": "One duration model for lesson.json, read by tools/lessongen/validate.py and the S5 director. PM 2026-10-27.",
   "narration": {
-    "words_per_s": 2.4,
+    "words_per_s": 2.15,
     "breath_s": 0.6,
-    "rule": "shot_s = max(shot_min_s, words / words_per_s + breath_s); a measured scene.tts_s replaces words / words_per_s"
+    "rule": "shot_s = max(shot_min_s, words / words_per_s + breath_s); a measured scene.tts_s replaces words / words_per_s",
+    "measured": "2.15 = median of 282 shots read by Azure nl-NL-FennaNeural, 2026-10-27"
   },
   "shot_min_s": 6,
   "shot_max_s": 12,
