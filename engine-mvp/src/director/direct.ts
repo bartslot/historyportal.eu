@@ -5,7 +5,7 @@
 // replaces a field only while it is empty or still matches that fingerprint. Whatever a teacher
 // changed, by any editor and any path, no longer matches and is kept as it is.
 import { J_CUT_S, L_CUT_S, DUCK_DB, SILENCE_S, isAbroad, pickBeds, pickSfx, regionOf, sameBeds } from './cues'
-import { PLAIN_MOVES, SHOT_MAX_BY_BEAT, makeCamera, peakIndex, pickMove } from './camera'
+import { PLAIN_MOVES, SHOT_MAX_BY_BEAT, makeCamera, pairRepeat, peakIndex, pickMove, pickScale, tripleRepeat, type ShotScale } from './camera'
 import { figureTracks, layerMotion } from './motion'
 import { BALLOON_GAP_S, firstSentenceEnd, round, sceneSeconds, scheduleBalloons, shotStarts } from './timing'
 import type { Balloon, Beat, Camera, Lesson, Library, MoveKind, Scene, SoundPlan } from './types'
@@ -76,21 +76,28 @@ function timeScene(scene: Scene, silent: boolean): Plan {
   return { scene: { ...scene, balloons, narration_at_s: at, dur_s: dur }, dur, narrationAt: at, ownsTiming: mine, ownsBalloons }
 }
 
-/** Every shot of a scene, the first given; later shots avoid the shot before and the next cut's move. */
-function shootScene(p: Plan, first: MoveKind, turn: number, nextLocked: MoveKind | null, native: boolean): Camera[] {
-  const hook = p.scene.beat === 'hook'
-  const starts = shotStarts(p.dur, SHOT_MAX_BY_BEAT[p.scene.beat] ?? 12)
-  const moves: MoveKind[] = []
-  starts.forEach((_, i) => {
+/** Every shot of a scene, in screen order after `seq` (the moves already on screen): a move differs
+ *  from the shot before, never makes an A B A B, and the last avoids a locked next scene's move; a
+ *  scale differs from the shot before. */
+function shootScene(p: Plan, seq: MoveKind[], prevScale: ShotScale | undefined, turn: number, nextLocked: MoveKind | null, native: boolean): Camera[] {
+  const beat = p.scene.beat
+  const starts = shotStarts(p.dur, SHOT_MAX_BY_BEAT[beat] ?? 12)
+  const shots: Camera[] = []
+  starts.forEach((at, i) => {
+    const on = [...seq, ...shots.map((c) => c.move)]
     const last = i === starts.length - 1
-    moves.push(i === 0 ? first : pickMove(p.scene.beat, [moves[i - 1], 'through', last ? nextLocked : null], turn + i))
+    const move = i === 0 && native ? 'through' : pickMove(beat, [on.at(-1), pairRepeat(on), tripleRepeat(on), 'through', last ? nextLocked : null], turn + i)
+    const scale = pickScale(beat, shots.at(-1)?.scale ?? prevScale, turn + i)
+    shots.push(makeCamera(p.scene, move, at, (starts[i + 1] ?? p.dur) - at, { hook: beat === 'hook' && i === 0 && !native, scale }))
   })
-  return starts.map((at, i) => makeCamera(p.scene, moves[i], at, (starts[i + 1] ?? p.dur) - at, { hook: hook && i === 0 && !native }))
+  return shots
 }
 
-function soundFor(p: Plan, lesson: Lesson, library: Library | null, silent: boolean, native: boolean, prev: SoundPlan['ambience']): SoundPlan {
+const bundleOf = (s: Scene, lesson: Lesson): string => s.bundle ?? lesson.bundle
+
+function soundFor(p: Plan, lesson: Lesson, library: Library | null, silent: boolean, native: boolean, prev: SoundPlan['ambience'], region: string | null): SoundPlan {
   return {
-    ambience: pickBeds(p.scene, lesson.bundle, library, prev),
+    ambience: pickBeds(p.scene, bundleOf(p.scene, lesson), library, prev, region),
     lead_in_s: 0, tail_s: 0,
     silence: silent ? { at_s: 0, dur_s: SILENCE_S } : null,
     sfx: pickSfx(p.scene, p.narrationAt, p.dur, native),
@@ -129,10 +136,9 @@ function shootAll(plans: Plan[], locked: boolean[], peak: number): Camera[][] {
     const turn = seen[p.scene.beat] ?? 0
     seen[p.scene.beat] = turn + 1
     if (locked[i]) { all.push(shotsOf(p.scene)); return }
-    const before = all[i - 1]?.at(-1)?.move
+    const seq = all.flat().map((c) => c.move)
     const nextLocked = locked[i + 1] ? plans[i + 1].scene.camera!.move : null
-    const first: MoveKind = i === peak ? 'through' : pickMove(p.scene.beat, [before, nextLocked, 'through'], turn)
-    all.push(shootScene(p, first, turn, nextLocked, i === peak))
+    all.push(shootScene(p, seq, all[i - 1]?.at(-1)?.scale, turn, nextLocked, i === peak))
   })
   return all
 }
@@ -143,11 +149,11 @@ function enforceVariety(all: Camera[][], plans: Plan[], locked: boolean[], min: 
   const kinds = () => new Set(out.flat().map((c) => c.move))
   for (let i = 0; i < out.length && kinds().size < min; i++) {
     if (locked[i] || out[i][0]?.native || !['setup', 'cause', 'effect', 'recap', 'turn'].includes(plans[i].scene.beat)) continue
-    const avoid = [out[i - 1]?.at(-1)?.move, out[i][1]?.move, out[i + 1]?.[0]?.move]
+    const avoid = [out[i - 1]?.at(-1)?.move, out[i][1]?.move, out[i + 1]?.[0]?.move, pairRepeat(out.slice(0, i).flat().map((c) => c.move))]
     const used = kinds()
     const missing = PLAIN_MOVES.find((m) => !used.has(m) && !avoid.includes(m))
     if (!missing || out.flat().filter((c) => c.move === out[i][0].move).length < 2) continue
-    out[i] = [makeCamera(plans[i].scene, missing, 0, out[i][0].dur_s), ...out[i].slice(1)]
+    out[i] = [makeCamera(plans[i].scene, missing, 0, out[i][0].dur_s, { scale: out[i][0].scale }), ...out[i].slice(1)]
   }
   return out
 }
@@ -175,8 +181,15 @@ export function direct(lesson: Lesson, library: Library | null = null): Lesson {
   const proposed: (SoundPlan | null)[] = []
   plans.forEach((p, i) => {
     const prev = i > 0 && regions[i] === regions[i - 1] ? (proposed[i - 1]?.ambience ?? []) : []
-    proposed.push(ours[i] ? soundFor(p, src, library, silences.has(i), i === peak, prev) : p.scene.sound)
+    proposed.push(ours[i] ? soundFor(p, src, library, silences.has(i), i === peak, prev, regions[i]) : p.scene.sound)
   })
+  // a place no bundle covers: a neutral bed plays, and the bed it needs goes on the shopping list (S2)
+  const missing = new Map<string, string[]>()
+  plans.forEach((p, i) => {
+    if (ours[i] && isAbroad(regions[i], bundleOf(p.scene, src))) missing.set(regions[i]!, [...(missing.get(regions[i]!) ?? []), p.scene.id])
+  })
+  const otherNeeds = (src.needed_assets ?? []).filter((n) => n.layer !== 'sound')
+  const needed_assets = [...otherNeeds, ...[...missing].map(([region, ids]) => ({ tags: `ambience bed !${region}`, layer: 'sound', why: ids.join(' ') }))]
   const sounds = linkCuts(proposed, ours, plans.map((_, i) => i === peak), min.cuts)
 
   const scenes = plans.map((p, i): Scene => {
@@ -199,7 +212,7 @@ export function direct(lesson: Lesson, library: Library | null = null): Lesson {
       set: { ...s.set, layers },
       camera, ...(camera_more !== undefined ? { camera_more } : {}),
       motion, sound: sounds[i],
-      ...(ours[i] && isAbroad(s, src.bundle) ? { sound_note: `${src.bundle} has no bed for this place: its local beds are left out` } : {}),
+      ...(ours[i] && isAbroad(regions[i], bundleOf(s, src)) ? { sound_note: `no ambience bed for !${regions[i]} yet: neutral air (see needed_assets)` } : {}),
       // a field the teacher owns keeps its OLD mark, so it stays theirs on every later run
       director: {
         camera: locked[i] ? m.camera : fingerprint(camera),
@@ -212,5 +225,5 @@ export function direct(lesson: Lesson, library: Library | null = null): Lesson {
       },
     }
   })
-  return { ...src, scenes }
+  return { ...src, scenes, ...(needed_assets.length || src.needed_assets ? { needed_assets } : {}) }
 }

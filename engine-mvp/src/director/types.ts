@@ -15,6 +15,8 @@ export type Camera = {
   move: MoveKind; from: CamPose; to: CamPose
   /** The stage's ease (in | out | inOut); `curve` the finer easing.js name by intent. */
   ease: string; curve?: string; dur_s: number
+  /** wide | medium | close: how much the shot shows */
+  scale?: 'wide' | 'medium' | 'close'
   at_s?: number; native?: boolean; why?: string
 }
 
@@ -52,11 +54,13 @@ export type Scene = {
   narration_at_s?: number
   dur_s?: number
   interaction?: Interaction
+  /** a scene in another era's library and sound (overrides lesson.bundle) */
+  bundle?: string
   fact_refs?: string[]
   [k: string]: unknown
 }
 
-export type Lesson = { id: string; lang: string; bundle: string; scenes: Scene[]; [k: string]: unknown }
+export type Lesson = { id: string; lang: string; bundle: string; scenes: Scene[]; needed_assets?: { tags: string; layer: string; why: string }[]; [k: string]: unknown }
 
 export type LibraryAsset = {
   id: string; layer: string; tags: string[]; motion?: 'none' | 'sway' | 'drift' | 'ripple' | 'flicker'; height_m?: number

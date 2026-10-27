@@ -4,11 +4,12 @@
 import { ease as stageEase } from '../stage25d/layout'
 import type { Ease } from '../stage25d/types'
 import { cameraLocked, minimums } from './direct'
-import { peakIndex } from './camera'
+import { pairRepeat, peakIndex } from './camera'
 import { BALLOON_GAP_S, SHOT_MAX_S, readTime } from './timing'
 import type { Camera, Lesson, Scene } from './types'
 
 export const HOOK_S = 3
+const SILENCE_PER_S = 180
 const EPS = 0.02
 
 const shotsOf = (s: Scene): Camera[] => [s.camera, ...(s.camera_more ?? [])].filter(Boolean) as Camera[]
@@ -44,6 +45,9 @@ export function audit(lesson: Lesson): string[] {
     if (c.ease === 'linear' || !c.ease) problems.push(`camera: linear ease on a ${c.move}`)
     if (c.dur_s > SHOT_MAX_S + EPS) problems.push(`camera: a ${c.dur_s}s shot, max ${SHOT_MAX_S}`)
   }
+  const seq = cams.map((c) => c.move)
+  seq.forEach((m, k) => { if (k >= 3 && pairRepeat(seq.slice(0, k)) === m) problems.push(`camera: ${seq.slice(k - 3, k + 1).join(' ')} repeats a pair of moves`) })
+  cams.forEach((c, k) => { if (k > 0 && c.scale && c.scale === cams[k - 1].scale && !c.native && !cams[k - 1].native) problems.push(`camera: two ${c.scale} shots in a row`) })
   scenes.forEach((s, i) => {
     const before = i > 0 ? shotsOf(scenes[i - 1]).at(-1) : null // the shot on screen at the cut
     if (before && s.camera && before.move === s.camera.move) problems.push(`camera: ${s.id} opens on the ${s.camera.move} the cut came out of`)
@@ -60,7 +64,9 @@ export function audit(lesson: Lesson): string[] {
   })
 
   const silences = scenes.filter((s) => (s.sound?.silence?.dur_s ?? 0) >= 1).length
-  if (silences < min.silences) problems.push(`sound: ${silences} silences, need ${min.silences}`)
+  const total = scenes.reduce((a, s) => a + (s.dur_s ?? 0), 0)
+  const wantSilences = Math.max(min.silences, Math.floor(total / SILENCE_PER_S)) // at least one per ~3 min (PM)
+  if (silences < wantSilences) problems.push(`sound: ${silences} silences in ${Math.round(total / 60)} min, need ${wantSilences}`)
   const cuts = scenes.filter((s, i) => i > 0 && s.sound && (s.sound.lead_in_s > 0 || s.sound.tail_s > 0)).length
   if (cuts < min.cuts) problems.push(`sound: ${cuts} J/L-cuts, need ${min.cuts}`)
   return problems

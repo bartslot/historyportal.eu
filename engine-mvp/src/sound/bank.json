@@ -31,7 +31,21 @@
     },
     "intro": {
       "regions": []
+    },
+    "neutral": {
+      "regions": []
     }
+  },
+  "places": {
+    "_note": "a place no bundle covers but the bank can already play: its beds, base first",
+    "ocean": [
+      "sea-waves",
+      "rigging-creak"
+    ],
+    "sea": [
+      "sea-waves",
+      "rigging-creak"
+    ]
   },
   "beds": [
     {
@@ -73,8 +87,7 @@
         "vogel",
         "vogels",
         "ochtend"
-      ],
-      "local": true
+      ]
     },
     {
       "id": "camp-fire",
@@ -93,7 +106,8 @@
         "huizen",
         "avond",
         "nacht"
-      ]
+      ],
+      "universal": true
     },
     {
       "id": "cattle-field",
@@ -112,7 +126,8 @@
         "vee",
         "akker",
         "boeren"
-      ]
+      ],
+      "universal": true
     },
     {
       "id": "hand-tools",
@@ -133,7 +148,8 @@
         "bouwden",
         "kapten",
         "gereedschap"
-      ]
+      ],
+      "universal": true
     },
     {
       "id": "harbour-water",
@@ -170,7 +186,8 @@
         "meeuwen",
         "vis",
         "kust"
-      ]
+      ],
+      "universal": true
     },
     {
       "id": "rigging-creak",
@@ -187,7 +204,8 @@
         "touw",
         "zeil",
         "dek"
-      ]
+      ],
+      "universal": true
     },
     {
       "id": "sea-waves",
@@ -203,7 +221,8 @@
         "zee",
         "golven",
         "reis"
-      ]
+      ],
+      "universal": true
     },
     {
       "id": "town-bells",
@@ -221,8 +240,7 @@
         "klok",
         "pakhuis",
         "straat"
-      ],
-      "local": true
+      ]
     },
     {
       "id": "quay-crowd",
@@ -254,6 +272,18 @@
         "room",
         "intro"
       ]
+    },
+    {
+      "id": "neutral-air",
+      "bundle": "neutral",
+      "base": true,
+      "file": "beds/neutral-air.m4a",
+      "gain": 0.45,
+      "tags": [
+        "air",
+        "outdoor"
+      ],
+      "note": "a soft open-air bed with no landscape in it: under a place no bundle covers yet"
     }
   ],
   "sfx": [

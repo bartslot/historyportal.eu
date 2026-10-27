@@ -176,6 +176,12 @@ def bed_town_bells(d):
 def bed_quay_crowd(d):
     v = sum(voice(d) * rng.uniform(0.3, 1) for _ in range(10))
     return norm(v) + 0.3 * norm(bed_harbour_water(d))
+def bed_neutral_air(d):
+    # open air with no landscape in it: soft broadband, slow gentle swell, no whistle, no birds
+    g = 0.6 + 0.4 * slow(d, 0.08)
+    return norm(lp(brown(d), 500) * g) + 0.15 * norm(bp(noise(d), 800, 2500)) * g
+
+
 def bed_museum_room(d):
     # a big quiet hall: low air, a far door, a few soft footsteps far off in the room
     x = norm(lp(brown(d), 220)) * 0.6 + 0.08 * norm(bp(noise(d), 2000, 5000)) * slow(d, 0.2)

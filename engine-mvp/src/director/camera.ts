@@ -103,13 +103,39 @@ export function frame(move: MoveKind, f: Focus, k = 1): { from: CamPose; to: Cam
   }
 }
 
+/** Shot scale: how much of the world the shot shows. Each beat rotates through its own, and two shots
+ *  in a row never share a scale (story-director: wide = where, medium = who with whom, close = feel). */
+export type ShotScale = 'wide' | 'medium' | 'close'
+const SCALE_BY_BEAT: Record<Beat, ShotScale[]> = {
+  hook: ['close', 'medium'], setup: ['wide', 'medium'], cause: ['medium', 'close'], effect: ['wide', 'medium'],
+  turn: ['close', 'medium'], climax: ['close', 'medium', 'wide'], recap: ['wide', 'medium'],
+}
+export function pickScale(beat: Beat, prev: ShotScale | null | undefined, turn = 0): ShotScale {
+  const pool = SCALE_BY_BEAT[beat] ?? ['medium']
+  const rotated = [...pool.slice(turn % pool.length), ...pool.slice(0, turn % pool.length), 'wide', 'medium', 'close'] as ShotScale[]
+  return rotated.find((s) => s !== prev) ?? pool[0]
+}
+
+/** Reframe a move for a scale: wide steps back and widens, close steps in (never past the fg
+ *  clearance) and narrows; the move itself is unchanged. */
+function scaled(p: { from: CamPose; to: CamPose }, scale: ShotScale): { from: CamPose; to: CamPose } {
+  if (scale === 'medium') return p
+  const room = DEPTH_Z.fg - FG_CLEARANCE - Math.max(p.from.z, p.to.z)
+  const dz = scale === 'wide' ? -3 : Math.max(0, Math.min(3, room))
+  const dfov = scale === 'wide' ? 8 : -10
+  const dy = scale === 'wide' ? 0.3 : -0.1
+  const one = (c: CamPose): CamPose => ({ ...c, z: round(c.z + dz), y: round(c.y + dy), fov: round(c.fov + dfov) })
+  return { from: one(p.from), to: one(p.to) }
+}
+
 /** How strong a beat's move is: calm at the setup, strongest at the hook and the peak. */
 const STRENGTH: Record<Beat, number> = { hook: 1.3, setup: 0.7, cause: 1, effect: 1, turn: 1.1, climax: 1.4, recap: 0.8 }
 
-export function makeCamera(scene: Scene, move: MoveKind, at: number, dur: number, opts: { hook?: boolean } = {}): Camera {
-  const { from, to } = frame(move, focusOf(scene), STRENGTH[scene.beat] ?? 1)
+export function makeCamera(scene: Scene, move: MoveKind, at: number, dur: number, opts: { hook?: boolean; scale?: ShotScale } = {}): Camera {
+  const scale = move === 'through' ? 'medium' : (opts.scale ?? 'medium')
+  const { from, to } = scaled(frame(move, focusOf(scene), STRENGTH[scene.beat] ?? 1), scale)
   return {
-    move, from, to, at_s: round(at), dur_s: round(dur),
+    move, scale, from, to, at_s: round(at), dur_s: round(dur),
     ease: stageEase(opts.hook ? HOOK_CURVE : CURVE[move]), curve: opts.hook ? HOOK_CURVE : CURVE[move],
     ...(move === 'through' ? { native: true } : {}),
     why: WHY[move],
@@ -125,18 +151,20 @@ export function pickMove(beat: Beat, avoid: (MoveKind | null | undefined)[], tur
   return rotated.find((m) => !avoid.includes(m)) ?? pool[0]
 }
 
-/** Index of the peak that gets the one native move: the first climax, else the first turn, else the
- *  scene nearest 70 % of the lesson; scenes whose camera the teacher owns are passed over. -1 = none. */
+/** The one scene that gets the native move: a climax only (PM, 2026-10-27), the one nearest 70 % of
+ *  the lesson (a long lesson has many); a climax whose camera the teacher owns is passed over.
+ *  -1 = no free climax, so no native move. */
 export function peakIndex(beats: Beat[], locked: boolean[] = []): number {
-  const free = (i: number) => i >= 0 && !locked[i]
-  for (const beat of ['climax', 'turn'] as Beat[]) {
-    const i = beats.findIndex((b, k) => b === beat && free(k))
-    if (i >= 0) return i
-  }
-  const target = Math.floor(beats.length * 0.7)
-  const order = beats.map((_, i) => i).sort((a, b) => Math.abs(a - target) - Math.abs(b - target))
-  return order.find(free) ?? -1
+  const target = (beats.length - 1) * 0.7
+  const climaxes = beats.map((b, i) => (b === 'climax' && !locked[i] ? i : -1)).filter((i) => i >= 0)
+  return climaxes.sort((a, b) => Math.abs(a - target) - Math.abs(b - target))[0] ?? -1
 }
+
+/** The move that would repeat the last PAIR of moves (A B A B): avoid it next. */
+export const pairRepeat = (seq: MoveKind[]): MoveKind | null => (seq.length >= 3 && seq.at(-1) === seq.at(-3) ? seq.at(-2)! : null)
+/** The move that would close a repeated TRIPLE (A B C A B C): avoid it next too. */
+export const tripleRepeat = (seq: MoveKind[]): MoveKind | null =>
+  (seq.length >= 5 && seq.at(-1) === seq.at(-4) && seq.at(-2) === seq.at(-5) ? seq.at(-3)! : null)
 
 /** The shot playing `t` s into a scene, with its own clock: for a stage that plays `camera_more`
  *  (S1: `const { cam, t: local } = shotAt(scene, t)`, then pose `cam` at `local`; length = scene.dur_s). */

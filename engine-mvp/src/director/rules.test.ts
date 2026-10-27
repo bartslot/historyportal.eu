@@ -59,13 +59,18 @@ describe('short lessons and teacher edits', () => {
     expect(audit(again).filter((p) => p.includes('cut came out of'))).toEqual([])
   })
 
-  it('a locked camera on the peak: the native move goes to the next candidate', () => {
-    const d = direct(LESSON, LIBRARY)
+  it('a locked camera on the peak: the native move goes to another climax, never to a turn', () => {
+    const two = { ...LESSON, scenes: LESSON.scenes.map((s, i) => (i === 3 ? { ...s, beat: 'climax' as const } : s)) }
+    const d = direct(two, LIBRARY)
+    expect(d.scenes.findIndex((s) => s.camera?.native)).toBe(5) // the climax nearest 70 %
     const plain: Camera = { move: 'push', from: { x: 0, y: 1.6, z: 0, fov: 50 }, to: { x: 0, y: 1.6, z: 2, fov: 46 }, ease: 'inOut', dur_s: 8, at_s: 0 }
     const again = direct({ ...d, scenes: d.scenes.map((s, i) => (i === 5 ? { ...s, camera: plain } : s)) }, LIBRARY)
     expect(again.scenes[5].camera).toEqual(plain)
-    expect(again.scenes.filter((s) => s.camera?.native).map((s) => s.beat)).toEqual(['turn'])
+    expect(again.scenes.findIndex((s) => s.camera?.native)).toBe(3)
     expect(audit(again)).toEqual([])
+    const only = direct({ ...direct(LESSON, LIBRARY), scenes: direct(LESSON, LIBRARY).scenes.map((s, i) => (i === 5 ? { ...s, camera: plain } : s)) }, LIBRARY)
+    expect(only.scenes.filter((s) => s.camera?.native)).toEqual([]) // the only climax is the teacher's
+    expect(audit(only)).toEqual([])
   })
 
   it('a teacher edit stays theirs on every later run, not only the next one', () => {
@@ -89,12 +94,31 @@ describe('short lessons and teacher edits', () => {
 })
 
 describe('place-aware sound', () => {
-  it('reads the !region tag and leaves the Dutch-only beds out abroad', () => {
-    const abroad = { ...LESSON, scenes: LESSON.scenes.map((s) => ({ ...s, set: { ...s.set, sky: 'sky morning !mesopotamia' } })) }
+  it('no Dutch heath under Mesopotamia: a neutral bed, and the missing bed on the shopping list', () => {
+    const abroad = { ...LESSON, scenes: LESSON.scenes.map((s, i) => ({ ...s, set: { ...s.set, sky: i === 2 ? 'sky noon' : 'sky morning !mesopotamia' } })) }
     expect(regionOf(abroad.scenes[0])).toBe('mesopotamia')
     const out = direct(abroad, LIBRARY)
-    out.scenes.forEach((s) => expect(s.sound!.ambience.map((a) => a.id)).not.toContain('heath-birds'))
-    expect(out.scenes[0].sound_note).toBeTruthy()
+    out.scenes.forEach((s) => {
+      const ids = s.sound!.ambience.map((a) => a.id)
+      expect(ids[0]).toBe('neutral-air') // sc03 has no tag: it inherits the place before it
+      expect(ids).not.toContain('heath-wind'); expect(ids).not.toContain('heath-birds')
+    })
+    expect(out.needed_assets).toEqual([{ tags: 'ambience bed !mesopotamia', layer: 'sound', why: out.scenes.map((s) => s.id).join(' ') }])
+    expect(direct(out, LIBRARY).needed_assets).toEqual(out.needed_assets) // a re-run does not pile up
+  })
+
+  it('at sea (!ocean) the sea beds play and nothing goes on the shopping list', () => {
+    const l = { ...LESSON, bundle: 'nl-golden-age', scenes: LESSON.scenes.map((s) => ({ ...s, set: { ...s.set, sky: 'sky !ocean' } })) }
+    const out = direct(l, LIBRARY)
+    expect(out.scenes[0].sound!.ambience.map((a) => a.id)).toEqual(['sea-waves', 'rigging-creak'])
+    expect(out.needed_assets ?? []).toEqual([])
+  })
+
+  it('scene.bundle overrides the lesson bundle for its ambience', () => {
+    const l = { ...LESSON, scenes: LESSON.scenes.map((s, i) => (i === 2 ? { ...s, bundle: 'nl-golden-age' } : s)) }
+    const out = direct(l, LIBRARY)
+    expect(out.scenes[2].sound!.ambience[0].id).toBe('harbour-water')
+    expect(out.scenes[1].sound!.ambience[0].id).toBe('heath-wind')
   })
 })
 
@@ -118,8 +142,26 @@ for (const id of ['eerste-boeren', 'hunebedden', 'voc']) {
       }
     })
 
-    it('scales the silences with length: about one per 2.5 minutes', () => {
-      expect(d.scenes.filter((s) => s.sound!.silence).length).toBeGreaterThanOrEqual(Math.max(2, Math.round(total / 150) - 1))
+    it('at least one silence per 3 minutes (12 min = 4 or more), spaced apart', () => {
+      expect(d.scenes.filter((s) => s.sound!.silence).length).toBeGreaterThanOrEqual(Math.max(2, Math.floor(total / 180)))
+    })
+
+    it('varies the shot scale: all three used, never two of one scale in a row', () => {
+      const all = d.scenes.flatMap(shots)
+      expect(new Set(all.map((c) => c.scale))).toEqual(new Set(['wide', 'medium', 'close']))
+      all.slice(1).forEach((c, k) => { if (!c.native && !all[k].native) expect(c.scale).not.toBe(all[k].scale) })
+    })
+
+    it('never repeats a pair of moves (A B A B) and rarely a triple (A B C A B C)', () => {
+      const seq = d.scenes.flatMap(shots).map((c) => c.move)
+      seq.slice(3).forEach((m, k) => expect(seq[k] === seq[k + 2] && seq[k + 1] === m, seq.slice(k, k + 4).join(' ')).toBe(false))
+      const triples = seq.slice(5).filter((m, k) => seq[k] === seq[k + 3] && seq[k + 1] === seq[k + 4] && seq[k + 2] === m).length
+      expect(triples / seq.length).toBeLessThan(0.05) // only where a locked camera or the native move forces it
+    })
+
+    it('the native move only on a climax, exactly once when there is one', () => {
+      const natives = d.scenes.filter((s) => s.camera?.native)
+      expect(natives.map((s) => s.beat)).toEqual(d.scenes.some((s) => s.beat === 'climax') ? ['climax'] : [])
     })
 
     it('does not flip the ambience on most cuts', () => {
@@ -134,10 +176,16 @@ for (const id of ['eerste-boeren', 'hunebedden', 'voc']) {
 }
 
 describe('with the stage (S1)', () => {
-  it('plays a split scene to its full length and every shot in turn', async () => {
+  // fails on feat/studio-25d 8717525c (stage played sc04 for 7.3 s), passes from 03f3f12f on
+  it('plays a split scene to its full length and every shot in turn, with the sound in sync', async () => {
     const { sceneDuration, shotAt } = await import('../stage25d/layout')
-    const s = direct(LESSON, LIBRARY).scenes[3]
-    expect(sceneDuration(s as never)).toBeCloseTo(s.dur_s!, 2)
+    const d = direct(LESSON, LIBRARY)
+    const s = d.scenes[3]
+    expect(s.camera_more!.length).toBeGreaterThan(0)
+    expect(sceneDuration(s as never)).toBeCloseTo(s.dur_s!, 2) // 14.6 s, not the first shot's 7.3
     expect(shotAt(s as never, s.dur_s! - 0.5).cam).toBe(s.camera_more!.at(-1))
+    let t = 0
+    const stageStarts = d.scenes.map((x) => { const at = t; t += sceneDuration(x as never); return at })
+    sceneStarts(d).forEach((at, i) => expect(at).toBeCloseTo(stageStarts[i], 2)) // the sound clock = the picture clock
   })
 })

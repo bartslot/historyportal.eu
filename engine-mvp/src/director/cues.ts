@@ -4,9 +4,10 @@ import bank from '../sound/bank.json'
 import type { Library, Scene, SoundPlan } from './types'
 import { round } from './timing'
 
-type Bed = { id: string; bundle: string; base?: boolean; local?: boolean; gain: number; tags: string[] }
+type Bed = { id: string; bundle: string; base?: boolean; universal?: boolean; gain: number; tags: string[] }
 const BEDS = bank.beds as Bed[]
 const BUNDLES = bank.bundles as Record<string, { regions: string[] }>
+const PLACES = bank.places as unknown as Record<string, string[]>
 
 export const SILENCE_S = 1.2
 export const J_CUT_S = 1.2
@@ -22,11 +23,9 @@ export function regionOf(scene: Scene): string | null {
   return all.match(/!([a-z][a-z-]*)/i)?.[1].toLowerCase() ?? null
 }
 
-/** True when a scene plays somewhere its bundle's local beds do not belong (Dutch heath birds in Uruk). */
-export const isAbroad = (scene: Scene, bundle: string): boolean => {
-  const r = regionOf(scene)
-  return !!r && !(BUNDLES[bundle]?.regions ?? []).includes(r)
-}
+/** True when a scene's place (its !region, or the one it inherits) is not one its bundle covers. */
+export const isAbroad = (region: string | null, bundle: string): boolean => !!region && !(BUNDLES[bundle]?.regions ?? []).includes(region) && !PLACES[region]
+export const NEUTRAL_BED = 'neutral-air'
 
 /** Everything a scene says about its place: layer needs, the assets' tags, the sky, the narration. */
 function sceneTags(scene: Scene, library: Library | null): Set<string> {
@@ -42,15 +41,22 @@ function sceneTags(scene: Scene, library: Library | null): Set<string> {
   return out
 }
 
-/** The bundle's base bed plus the one extra bed that matches the scene best. Abroad (a `!region` the
- *  bundle does not cover) the local beds are left out. The extra bed is sticky: the previous scene's
- *  stays while it still fits, and changes only for a clearly better match, so the bed does not flip
- *  on every cut (a change of place is what a J-cut is for). */
-export function pickBeds(scene: Scene, bundle: string, library: Library | null, prev: SoundPlan['ambience'] = []): SoundPlan['ambience'] {
-  const abroad = isAbroad(scene, bundle)
-  const beds = BEDS.filter((b) => b.bundle === bundle && !(abroad && b.local))
+/** The bundle's base bed plus the one extra bed that matches the scene best. Abroad (a place the
+ *  bundle does not cover, PM 2026-10-27: no Dutch heath under Mesopotamia) the base is the neutral air
+ *  bed and the extra comes only from the universal beds (fire, tools, cattle, sea, gulls, rigging).
+ *  The extra bed is sticky: the previous scene's stays while it still fits, and changes only for a
+ *  clearly better match, so the bed does not flip on every cut (a change of place is what a J-cut is for). */
+export function pickBeds(scene: Scene, bundle: string, library: Library | null, prev: SoundPlan['ambience'] = [], region: string | null = regionOf(scene)): SoundPlan['ambience'] {
+  const place = region ? PLACES[region] : undefined
+  if (place && !(BUNDLES[bundle]?.regions ?? []).includes(region!)) {
+    return place.map((id) => BEDS.find((b) => b.id === id)!).map((b) => ({ id: b.id, gain: b.gain }))
+  }
+  const abroad = isAbroad(region, bundle)
+  const beds = abroad
+    ? BEDS.filter((b) => b.id === NEUTRAL_BED || b.universal)
+    : BEDS.filter((b) => b.bundle === bundle)
   if (!beds.length) return []
-  const base = beds.find((b) => b.base) ?? beds[0]
+  const base = abroad ? beds.find((b) => b.id === NEUTRAL_BED)! : (beds.find((b) => b.base) ?? beds[0])
   const tags = sceneTags(scene, library)
   const score = (b: Bed) => b.tags.filter((t) => tags.has(t)).length
   const scored = beds

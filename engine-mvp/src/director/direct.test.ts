@@ -44,10 +44,10 @@ describe('direct()', () => {
     expect(natives[0].sound!.sfx.map((s) => s.id)).toContain('ink-whoosh')
   })
 
-  it('finds a peak without a climax beat', () => {
+  it('puts no native move in a lesson without a climax (the native move belongs to the climax)', () => {
     const l = { ...LESSON, scenes: LESSON.scenes.map((s) => ({ ...s, beat: s.beat === 'climax' ? 'effect' as const : s.beat })) }
     const out = direct(l, LIBRARY)
-    expect(out.scenes.filter((s) => s.camera?.native).map((s) => s.beat)).toEqual(['turn'])
+    expect(out.scenes.filter((s) => s.camera?.native)).toEqual([])
     expect(audit(out)).toEqual([])
   })
 

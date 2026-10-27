@@ -20,12 +20,15 @@ Lab: `director-lab.html` (launch config `studio-director`, port 5291). Silent en
 
 Rules (all in `audit.ts`, held by `direct.test.ts` and `rules.test.ts`, which measures from outside: the
 stage's own ease, the shot on screen at each cut, the schedule's real sound events, and S4's three real
-lessons when the vault is present): the hook move starts at 0 and, with the stage's sine `out` ease, is
-more than half done by 3 s (hook shots at most 8.5 s); moves rotate through each beat's pool of three and
-never repeat across a cut (counting a split scene's last shot); shot length per beat (climax at most 8 s,
-turn 10, hook 8.5, others 12); one silence per ~2.5 min (at least 2) on turns and climaxes, at least 60 s
-apart; minimums scale down for short lessons (`minimums(n)`); a teacher-locked peak moves the native
-move to the next candidate; a balloon a teacher adds is timed after the ones already there; at least 4 kinds of move (push, pull, truck, pan, tilt, rack) and never the same
+lessons when the vault is present). The audit measures moves with the stage's own `ease` (one source of
+truth: audit = playback). The hook move starts at 0 and is more than half done by 3 s (hook shots at
+most 8.5 s). Moves rotate through each beat's pool of three, never repeat across a cut (counting a split
+scene's last shot), never make A B A B, and avoid A B C A B C. Shot scale (`scale`: wide / medium /
+close) rotates per beat and never repeats shot to shot. Shot length per beat: climax at most 8 s, turn
+10, hook 8.5, others 12. Silences: one per ~2.5 min on turns and climaxes, 60 s apart; the audit
+demands at least one per 3 min (12 min = 4). The native move only on a climax (the one nearest 70 %, a
+teacher-locked one passed over; no free climax = no native move). Minimums scale down for short lessons
+(`minimums(n)`). A balloon a teacher adds is timed after the ones already there. at least 4 kinds of move (push, pull, truck, pan, tilt, rack) and never the same
 move across a cut; exactly one native move (`through`: the camera passes the foreground plane into the
 scene) on the first climax, else the first turn, else at 70 %; only `through` may pass the fg plane;
 at least 2 near-silences (before the turn and the peak, never on the hook); at least 2 cuts carry
@@ -38,9 +41,12 @@ camera x 0, y 1.6, z 0, looking +z; `fov` vertical deg. That stage moves positio
 carry a positional part (a slide, a crane down) and rack a small push; `target` (look-at) and `focus_z`
 ride along for a stage that can aim and focus.
 
-**Place-aware sound:** a `!region` tag in a need or the sky (inherited by scenes without one) that the
-bundle does not cover leaves the bundle's `local` beds out (Dutch heath birds, Dutch bells) and adds
-`scene.sound_note`; the extra bed is sticky within one place and changes only for a clearly better match.
+**Place-aware sound:** beds come from `scene.bundle ?? lesson.bundle`. The place is the `!region` tag in a
+need or the sky (a scene without one inherits the place before it). A place the bundle does not cover:
+`bank.places` beds when the bank has them (`!ocean`: sea waves + rigging), else the neutral air bed plus
+universal beds only (fire, tools, cattle, sea, gulls, rigging), `scene.sound_note`, and one
+`needed_assets` row per place (`{tags: 'ambience bed !egypt', layer: 'sound', why: scene ids}`) for S2.
+No Dutch heath under Mesopotamia. The extra bed is sticky within one place.
 
 **Teacher owns everything:** the director keeps a fingerprint of each field it wrote in
 `scene.director` (camera, camera_more, sound, balloons, motion, timing, per-layer motion). A re-run
