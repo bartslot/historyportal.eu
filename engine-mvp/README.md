@@ -90,8 +90,11 @@ fig.setDye('coat', '#7a4a30'); fig.dispose()
   `left`/`right` = a 3/4 turn toward that side of the screen (`FACING_TURN_DEG`, 62; 90 = profile). Move `fig.root`
   for walks; the walk clip plays in place.
 - **Paint** (`toon.ts`): flat dye, one hard cel step lit by the figure's own light (`TOON.light`), ink where the surface
-  turns from the eye (contour + fold lines, thick on round forms, thin on flat). Skin is lit flat (`SKIN_STEP`). Long
-  sleeves are painted on the arm skin in the coat dye (no modelled garment). The stage look's pencil pass adds its
+  turns from the eye (contour + fold lines, thick on round forms, thin on flat). Skin is lit flat (`SKIN_STEP`).
+- **Costume is painted, never modelled**: per-vertex zones by bone weight (`paintZones`) dye parts of the one body's
+  meshes. Recipe words: `sleeves` (long sleeves on the arm skin), `legs: tunic | dress | breeches | trousers` (tunic =
+  coat dye hip to knee over leg wraps; breeches = stockings below the knee), `collar` (white falling collar within
+  `BANDS.collarRadius` of the neck joint), `belt` (a band at the coat's hem). `figureRecipe` picks them by era. The stage look's pencil pass adds its
   line on top. Every number is a knob in `TOON` / `FACE` / `POSES`.
 - **Face**: the expression PNG (`public/figures/faces/`, drawn by `faces.mjs`, tapered ink strokes) is projected from
   a box riding the head bone onto skin and eyeballs; no contour ink in the face's middle.
@@ -106,6 +109,8 @@ fig.setDye('coat', '#7a4a30'); fig.dispose()
 - **Lab**: `/figure-lab.html?char=boer-man,boer-vrouw&poses=point,carry&view=front|three|side|face&look=stage&ui=0`.
 - **Assets** (git-ignored): `public/assets/models/customizable-man/man-wardrobe.glb` from `src/figures/export_wardrobe.py`
   (Blender, licensed model in `workflows/3D pipeline/customizable-man/`, licence: no AI training) and `clips/`.
-- **Gaps (needed assets)**: female body; long hair / braid / headscarf; period garments (knee-length tunic, skirt,
-  doublet, breeches); a 1640s wide-brimmed felt hat (the Cowboy_Hat part stands in); hand props (basket, sheaf,
-  spyglass) for `carry` / `point`; a closed mouth (the body's lips are parted, painted over).
+- **Gaps (needed assets)**: female body and a child body (now: the man at 0.95 / 0.68); long hair / braid /
+  headscarf / white cap; period SILHOUETTES (the zones give tunic, dress, breeches, collar their colour, the shape is
+  still sweater + trousers: a wide tunic skirt, a skirt, a cloak); a 1640s wide flat felt hat (the Cowboy_Hat part
+  stands in); hand props for `carry` / `dig` / `pull` (basket, spade, rope); a seat for `sit` at a table; thin paper
+  slivers at hems where the cloth stands off the trimmed body.
