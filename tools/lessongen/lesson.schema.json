@@ -195,6 +195,10 @@
       "items": {
         "type": "string"
       }
+    },
+    "teacher_template": {
+      "type": "string",
+      "description": "teacher card with {total_min}, {story_min}, {min:scA-scB}; --resolve renders `teacher` from it"
     }
   },
   "$defs": {
