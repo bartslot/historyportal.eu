@@ -164,9 +164,9 @@ def main():
     spec = [
         ("sky-day-01", "sky", ["sky", "day", "clear"], sky, [0.5, 1.0], 400, True, "none"),
         ("cloud-01", "sky", ["cloud", "sky"], cloud, [0.5, 1.0], 30, False, "drift"),
-        ("hills-heath-01", "bg", ["hills", "heath", "landscape"], hills, [0.5, 1.0], 40, True, "none"),
+        ("hills-heath-01", "bg", ["hills", "heath", "landscape"], hills, [0.5, 1.0], 16, True, "none"),
         ("hut-farm-01", "mid", ["hut", "farm", "house", "prehistory"], hut, [0.5, 1.0], 6, False, "none"),
-        ("tree-oak-01", "fg", ["tree", "oak", "forest"], tree, [0.5, 1.0], 12, False, "sway"),
+        ("tree-oak-01", "fg", ["tree", "oak", "forest"], tree, [0.5, 1.0], 6, False, "sway"),
         ("reeds-01", "fg", ["reeds", "water", "marsh"], reeds, [0.5, 1.0], 1.6, False, "sway"),
     ]
     assets = []

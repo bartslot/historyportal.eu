@@ -1,0 +1,43 @@
+{
+  "id": "_placeholder", "lang": "nl", "age": 9, "bundle": "_placeholder",
+  "sources": [], "blueprint": { "lessonup_ids": [], "begrippen": [], "goals": [] },
+  "scenes": [
+    {
+      "id": "sc01", "beat": "hook", "narration": "Placeholder: a farm on the heath.", "est_s": 10,
+      "set": { "sky": "sky-day-01", "layers": [
+        { "need": "cloud", "asset": null, "depth": "sky", "x": 0.3, "scale": 1 },
+        { "need": "hills heath", "asset": null, "depth": "bg" },
+        { "need": "hut farm", "asset": null, "depth": "mid", "x": 0.62, "scale": 1 },
+        { "need": "reeds", "asset": null, "depth": "fg", "x": 0.18, "scale": 1 },
+        { "need": "oak tree", "asset": null, "depth": "fg", "x": 0.9, "scale": 0.9 }
+      ] },
+      "figures": [], "balloons": [],
+      "camera": { "move": "truck", "from": { "x": -2.5, "y": 1.6, "z": 0, "fov": 50 }, "to": { "x": 2.5, "y": 1.6, "z": 0, "fov": 50 }, "ease": "inOut", "dur_s": 10 },
+      "sound": null, "interaction": null, "fact_refs": []
+    },
+    {
+      "id": "sc02", "beat": "setup", "narration": "Placeholder: closer to the hut.", "est_s": 8,
+      "set": { "sky": "sky day", "layers": [
+        { "need": "hills", "asset": null, "depth": "bg" },
+        { "need": "hut", "asset": null, "depth": "mid", "x": 0.5, "scale": 1.2 },
+        { "need": "tree", "asset": null, "depth": "fg", "x": 0.08, "scale": 1 },
+        { "need": "reeds marsh", "asset": null, "depth": "fg", "x": 0.75, "scale": 1.2, "motion": { "amount": 1.6 } }
+      ] },
+      "figures": [], "balloons": [],
+      "camera": { "move": "push", "from": { "x": 0, "y": 1.6, "z": 0, "fov": 50 }, "to": { "x": 0.4, "y": 1.4, "z": 6, "fov": 44 }, "ease": "out", "dur_s": 8 },
+      "sound": null, "interaction": null, "fact_refs": []
+    },
+    {
+      "id": "sc03", "beat": "turn", "narration": "Placeholder: a cloud drifts over.", "est_s": 9,
+      "set": { "sky": "sky-day-01", "layers": [
+        { "need": "cloud", "asset": null, "depth": "sky", "x": 0.6, "scale": 1.4, "motion": { "amount": 2, "speed": 2 } },
+        { "need": "hills", "asset": null, "depth": "bg" },
+        { "need": "hut", "asset": null, "depth": "mid", "x": 0.3, "keys": [{ "t": 0, "opacity": 0 }, { "t": 2.5, "opacity": 1 }] },
+        { "need": "oak", "asset": null, "depth": "fg", "x": 0.75, "keys": [{ "t": 0, "x": 0.85 }, { "t": 9, "x": 0.7 }] }
+      ] },
+      "figures": [], "balloons": [], "camera": null,
+      "sound": null, "interaction": null, "fact_refs": []
+    }
+  ],
+  "needed_assets": []
+}

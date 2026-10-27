@@ -1,0 +1,49 @@
+// Headless check of the 2.5D stage (stage25d.html): muted, Metal ANGLE (real GPU), 1920x1080.
+// Writes frames for parallax (sc01 start/end), sway (two clocks), and logs fps over 5 s of playback.
+//   node scripts/stage25d-check.mjs http://localhost:5191/stage25d.html outDir/
+import { mkdirSync } from 'node:fs'
+import { chromium } from '../../node_modules/playwright/index.mjs'
+
+const [url = 'http://localhost:5191/stage25d.html', out = 'stage25d-check/'] = process.argv.slice(2)
+mkdirSync(out, { recursive: true })
+const browser = await chromium.launch({ channel: 'chromium', args: ['--mute-audio', '--use-angle=metal', '--ignore-gpu-blocklist', '--enable-gpu'] })
+try {
+  const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } })
+  await page.addInitScript(() => {
+    const AC = window.AudioContext
+    if (AC) window.AudioContext = class extends AC { constructor(...a) { super(...a); this.suspend() } }
+    HTMLMediaElement.prototype.play = function () { this.muted = true; return Promise.resolve() }
+  })
+  const errors = []
+  page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errors.push(`${m.type()}: ${m.text()}`) })
+  page.on('response', (r) => { if (r.status() >= 400) errors.push(`http ${r.status()}: ${r.url()}`) })
+  page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`))
+  await page.goto(url)
+  await page.waitForFunction(() => window.__stage25d, null, { timeout: 30000 })
+  // the canvas alone, at 1920x1080 device pixels
+  await page.evaluate(() => {
+    const c = window.__stage25d.stage.canvas
+    Object.assign(c.style, { position: 'fixed', left: '0', top: '0', width: '1920px', height: '1080px', zIndex: 10 })
+    document.querySelector('[data-testid=stage-panel]')?.style.setProperty('display', 'none')
+    window.__stage25d.stage.engine.setHardwareScalingLevel(1)
+    window.__stage25d.stage.engine.resize()
+  })
+  const info = await page.evaluate(() => ({ gpu: window.__stage25d.stage.engine.getGlInfo().renderer, w: window.__stage25d.stage.engine.getRenderWidth(), h: window.__stage25d.stage.engine.getRenderHeight() }))
+  console.log('gpu', info.gpu, `${info.w}x${info.h}`)
+  const shot = async (name) => { await page.waitForTimeout(400); await page.locator('canvas').first().screenshot({ path: `${out}${name}.png` }) }
+  const seek = (i, t) => page.evaluate(([i, t]) => { window.__stage25d.pause(); return window.__stage25d.seek(i, t) }, [i, t])
+  await seek(0, 0); await page.waitForTimeout(1500); await shot('sc01-t0')
+  await seek(0, 10); await shot('sc01-t10')
+  await seek(1, 0); await page.waitForTimeout(800); await shot('sc02-sway-a')
+  await page.waitForTimeout(1300); await shot('sc02-sway-b')
+  await seek(2, 1.2); await shot('sc03-t1')
+  await page.evaluate(() => { window.__stage25d.seek(0, 0); window.__stage25d.play() })
+  const fps = []
+  for (let i = 0; i < 5; i++) { await page.waitForTimeout(1000); fps.push(await page.evaluate(() => window.__stage25d.fps())) }
+  console.log('fps (1 s windows, 1920x1080):', fps.join(' '))
+  const misses = await page.evaluate(() => window.__stage25d.stage.misses)
+  console.log('unresolved needs:', JSON.stringify(misses))
+  console.log(errors.length ? errors.join('\n') : 'console: no errors or warnings')
+} finally {
+  await browser.close()
+}

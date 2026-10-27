@@ -221,6 +221,16 @@
                 "cd engine-mvp && STUDIO_API=http://127.0.0.1:8093 npx vite preview --outDir /private/tmp/claude-501/-Users-bartslot-BartsAutomation-BartsDev-apps-historyportal-eu--claude-worktrees-fervent-benz-a50499/577ebb5d-ddea-45cb-b130-0b051d12c288/scratchpad/studio-dist --port 5195 --strictPort"
             ],
             "port": 5195
+        },
+        {
+            "//": "S1 2.5D stage dev page (engine-mvp). Own port: other studio worktrees use 5190.",
+            "name": "stage25d",
+            "runtimeExecutable": "bash",
+            "runtimeArgs": [
+                "-c",
+                "cd engine-mvp && npx vite --port 5191 --strictPort"
+            ],
+            "port": 5191
         }
     ]
 }
