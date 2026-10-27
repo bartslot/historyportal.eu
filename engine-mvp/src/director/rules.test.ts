@@ -156,10 +156,10 @@ describe('real lessons are where the tests expect them', () => {
 })
 
 // S4's totals: live from tools/lessongen/validate.py when it is in this checkout (the integration
-// branch). Without it, only eerste-boeren-1 is compared, against S4's number (S4: stable; the other
-// lessons may still change, so a frozen number would fail for the wrong reason). null = no reference.
+// branch). Without it, only voc is compared, against S4's number (S4: stable; the other
+// lessons are still changing, so a frozen number would fail for the wrong reason). null = no reference.
 const VALIDATE = new URL('../../../tools/lessongen/validate.py', import.meta.url).pathname
-const S4_STABLE_TOTALS: Record<string, number> = { 'eerste-boeren-1': 633 } // S4, feat/lessongen c7d302cc
+const S4_STABLE_TOTALS: Record<string, number> = { voc: 872 } // S4, feat/lessongen 7b529cf0 (the others are still changing)
 function s4Total(id: string, file: string): number | null {
   if (!existsSync(VALIDATE)) return S4_STABLE_TOTALS[id] ?? null
   const out = spawnSync('python3', [VALIDATE, file], { encoding: 'utf8' })
@@ -255,6 +255,17 @@ describe('with the stage (S1)', () => {
 })
 
 describe('timing model source', () => {
+  it('times interactions as validate.py does: type.format first, a team activity plays its own class_action_s', async () => {
+    const { interactionSeconds } = await import('./timing')
+    const sc = (interaction: unknown) => ({ ...LESSON.scenes[0], interaction }) as never
+    expect(interactionSeconds(sc({ type: 'quiz' }))).toBe(40)
+    expect(interactionSeconds(sc({ type: 'quiz', format: 'open' }))).toBe(120)
+    expect(interactionSeconds(sc({ type: 'choice', format: 'vote' }))).toBe(60)
+    expect(interactionSeconds(sc({ type: 'choice', format: 'other' }))).toBe(30)
+    expect(interactionSeconds(sc({ type: 'quiz', format: 'team', class_action_s: 75 }))).toBe(75)
+    expect(interactionSeconds(sc(null))).toBe(0)
+  })
+
   it('reads tools/lessongen/timing.json, and HP_TIMING_JSON replaces it', async () => {
     const { vi } = await import('vitest')
     const { writeFileSync, mkdtempSync } = await import('node:fs')

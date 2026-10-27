@@ -41,8 +41,15 @@ export function modelShotSeconds(scene: Scene): number {
   return Math.max(SHOT_MIN_S, narrationSeconds(scene) + BREATH_S)
 }
 export const classActionSeconds = (scene: Scene): number => (scene.class_action_s as number | undefined) ?? 0
-export const interactionSeconds = (scene: Scene): number =>
-  scene.interaction ? ((TIMING.interaction_s as Record<string, number>)[scene.interaction.type] ?? 0) : 0
+/** An interaction's play time: `type.format` when timing.json has that key, else `type`; a team
+ *  activity (format 'team') plays its own class_action_s (validate.py interaction_s). */
+export function interactionSeconds(scene: Scene): number {
+  const it = scene.interaction as { type: string; format?: string; class_action_s?: number } | null | undefined
+  if (!it) return 0
+  if (it.format === 'team') return it.class_action_s ?? 0
+  const times = TIMING.interaction_s as Record<string, number>
+  return times[`${it.type}.${it.format}`] ?? times[it.type] ?? 0
+}
 
 /** The lesson's length as played: every scene's picture time plus its interaction. */
 export const lessonSeconds = (lesson: Lesson): number =>
