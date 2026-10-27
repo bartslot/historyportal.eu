@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cameraAt, DEPTH_Z, HOUSE, layerAt, motionOf, placeLayer, renderScale, sceneDuration, shotAt, nextTier, TIER0, ADAPT, viewWidthAt, type Tier } from './layout'
+import { cameraAt, DEPTH_Z, HOUSE, layerAt, motionOf, placeLayer, renderScale, sceneDuration, setShotDuration, shotAt, nextTier, TIER0, ADAPT, viewWidthAt, type Tier } from './layout'
 import type { Scene } from './types'
 import type { Asset } from './types'
 
@@ -140,5 +140,31 @@ describe('nextTier (adaptive render size)', () => {
   })
   it('does not count a drop that cannot change the size', () => {
     expect(nextTier(TIER0, 30, 0, false).notches).toBe(0)
+  })
+})
+
+describe('setShotDuration (checker N4)', () => {
+  const a = { from: { ...HOUSE, x: 0 }, to: { ...HOUSE, x: 1 }, dur_s: 7, at_s: 0 }
+  const b = { from: { ...HOUSE, x: 1 }, to: { ...HOUSE, x: -1 }, dur_s: 7, at_s: 7 }
+  const s: Scene = { id: 's', set: { layers: [] }, dur_s: 14, camera: a, camera_more: [b] }
+  it('a longer first shot pushes the second and the scene length along: no jump, nothing cut', () => {
+    const l = setShotDuration(s, 0, 12)
+    expect(l.camera!.dur_s).toBe(12)
+    expect(l.camera_more![0].at_s).toBe(12)
+    expect(sceneDuration(l)).toBe(19)
+    const pose = (t: number) => { const { cam, t: lt } = shotAt(l, t); return cameraAt(cam, lt, sceneDuration(l)) }
+    expect(pose(11.99).x).toBeCloseTo(1, 1)      // shot 1 reaches its end...
+    expect(pose(12).x).toBeCloseTo(1, 5)          // ...where shot 2 starts
+  })
+  it('changes the last shot without touching the ones before', () => {
+    const l = setShotDuration(s, 1, 5)
+    expect(l.camera).toBe(a)
+    expect(l.camera_more![0]).toMatchObject({ dur_s: 5, at_s: 7 })
+    expect(l.dur_s).toBe(12)
+  })
+  it('leaves a scene without dur_s on its derived length', () => {
+    const l = setShotDuration({ id: 's', set: { layers: [] }, est_s: 9, camera: { ...a } }, 0, 10)
+    expect(l.dur_s).toBeUndefined()
+    expect(sceneDuration(l)).toBe(10)
   })
 })

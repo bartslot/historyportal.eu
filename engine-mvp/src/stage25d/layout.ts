@@ -138,3 +138,19 @@ export function renderScale(cssLongest: number, dpr: number, cap: number, notche
   const top = Math.min(dpr, cap / Math.max(cssLongest, 1))
   return Math.max(Math.min(1, dpr), top - notches * RENDER_STEP)
 }
+
+/** A copy of the scene with shot i (0 = camera, then camera_more) lasting `dur` s. Later shots and the scene's own
+ *  length move by the same amount, so no shot is cut mid-move and none starts before the last one ends. */
+export function setShotDuration(s: Scene, i: number, dur: number): Scene {
+  const shots = [s.camera, ...(s.camera_more ?? [])]
+  const shot = shots[i]
+  if (!shot) return s
+  const delta = dur - (shot.dur_s ?? sceneDuration(s))
+  const moved = shots.map((c, k) => (!c ? c : k === i ? { ...c, dur_s: dur } : k > i ? { ...c, at_s: (c.at_s ?? 0) + delta } : c))
+  return {
+    ...s,
+    camera: moved[0] ?? s.camera,
+    ...(s.camera_more ? { camera_more: moved.slice(1) as CameraMove[] } : {}),
+    ...(s.dur_s !== undefined ? { dur_s: Math.max(0.5, s.dur_s + delta) } : {}),
+  }
+}

@@ -5,23 +5,53 @@ import { StrictMode, useEffect, useState, useSyncExternalStore } from 'react'
 import { createRoot } from 'react-dom/client'
 import { playLesson, type Player } from './stage'
 import { getIn, type Path } from './edits'
-import { RENDER_CAPS, sceneDuration } from './layout'
-import type { Ease, MotionSpec } from './types'
+import { RENDER_CAPS, sceneDuration, setShotDuration } from './layout'
+import type { CameraMove, Ease, MotionSpec } from './types'
 
 const q = new URLSearchParams(location.search)
 const lessonUrl = q.get('lesson') ?? 'lessons/_placeholder.json'
 const libraryUrl = q.get('library') ?? undefined
 
-function Num({ player, path, label, min, max, step, fallback }: { player: Player; path: Path; label: string; min: number; max: number; step: number; fallback: number }) {
-  const raw = getIn(player.doc.lesson, path)
-  const v = typeof raw === 'number' ? raw : fallback
+function Range({ label, value, min, max, step, onChange }: { label: string; value: number; min: number; max: number; step: number; onChange: (v: number) => void }) {
   return (
     <label className="grid grid-cols-[5.5rem_1fr_2.5rem] items-center gap-2 text-xs">
       <span className="opacity-70">{label}</span>
-      <input type="range" className="range range-xs" min={min} max={max} step={step} value={v}
-        onChange={(e) => player.doc.set(path, Number(e.target.value), label)} />
-      <span className="tabular-nums text-right">{v.toFixed(step < 1 ? 2 : 0)}</span>
+      <input type="range" className="range range-xs" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} />
+      <span className="tabular-nums text-right">{value.toFixed(step < 1 ? 2 : 0)}</span>
     </label>
+  )
+}
+
+function Num({ player, path, label, min, max, step, fallback }: { player: Player; path: Path; label: string; min: number; max: number; step: number; fallback: number }) {
+  const raw = getIn(player.doc.lesson, path)
+  return <Range label={label} min={min} max={max} step={step} value={typeof raw === 'number' ? raw : fallback} onChange={(v) => player.doc.set(path, v, label)} />
+}
+
+const EASE_LABELS: [Ease, string][] = [['inOut', 'Ease in and out'], ['out', 'Ease out'], ['in', 'Ease in'], ['linear', 'Even']]
+
+/** One shot of the scene (0 = camera, then camera_more). Its length moves the later shots along (setShotDuration). */
+function Shot({ player, sceneIndex, k, cam }: { player: Player; sceneIndex: number; k: number; cam: CameraMove }) {
+  const sp: Path = ['scenes', sceneIndex]
+  const cp: Path = k === 0 ? [...sp, 'camera'] : [...sp, 'camera_more', k - 1]
+  const scene = player.doc.lesson.scenes[sceneIndex]
+  return (
+    <div className="mt-1 flex flex-col gap-1 border-t border-base-300 pt-2">
+      <span className="text-xs font-medium">Shot {k + 1}{cam.move ? <span className="opacity-60"> {cam.move}</span> : null}</span>
+      <Range label="Length" min={2} max={20} step={0.5} value={cam.dur_s ?? sceneDuration(scene)}
+        onChange={(v) => player.doc.set(sp, setShotDuration(player.doc.lesson.scenes[sceneIndex], k, v), 'Shot length')} />
+      {(['from', 'to'] as const).map((end) => (
+        <div key={end} className="flex flex-col gap-1">
+          <span className="text-xs opacity-60">{end === 'from' ? 'Start' : 'End'}</span>
+          <Num player={player} path={[...cp, end, 'x']} label="Sideways" min={-8} max={8} step={0.1} fallback={0} />
+          <Num player={player} path={[...cp, end, 'y']} label="Height" min={0.3} max={6} step={0.1} fallback={1.6} />
+          <Num player={player} path={[...cp, end, 'z']} label="Forward" min={-4} max={15} step={0.1} fallback={0} />
+          <Num player={player} path={[...cp, end, 'fov']} label="Lens" min={20} max={75} step={1} fallback={50} />
+        </div>
+      ))}
+      <select className="select select-xs" value={cam.ease ?? 'inOut'} onChange={(e) => player.doc.set([...cp, 'ease'], e.target.value as Ease, 'Ease')}>
+        {EASE_LABELS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+      </select>
+    </div>
   )
 }
 
@@ -56,27 +86,12 @@ function Panel({ player }: { player: Player }) {
       </div>
       <progress className="progress mt-2 w-full" value={t} max={sceneDuration(s)} />
       <h3 className="mt-3 font-semibold">Camera</h3>
-      {cam ? (
-        <div className="mt-1 flex flex-col gap-1">
-          <Num player={player} path={[...sp, 'camera', 'dur_s']} label="Duration" min={2} max={20} step={0.5} fallback={8} />
-          {(['from', 'to'] as const).map((end) => (
-            <div key={end} className="flex flex-col gap-1">
-              <span className="text-xs opacity-60">{end === 'from' ? 'Start' : 'End'}</span>
-              <Num player={player} path={[...sp, 'camera', end, 'x']} label="Sideways" min={-8} max={8} step={0.1} fallback={0} />
-              <Num player={player} path={[...sp, 'camera', end, 'y']} label="Height" min={0.3} max={6} step={0.1} fallback={1.6} />
-              <Num player={player} path={[...sp, 'camera', end, 'z']} label="Forward" min={-4} max={15} step={0.1} fallback={0} />
-              <Num player={player} path={[...sp, 'camera', end, 'fov']} label="Lens" min={20} max={75} step={1} fallback={50} />
-            </div>
-          ))}
-          <select className="select select-xs" value={cam.ease ?? 'inOut'} onChange={(e) => player.doc.set([...sp, 'camera', 'ease'], e.target.value as Ease, 'Ease')}>
-            <option value="inOut">Ease in and out</option><option value="out">Ease out</option><option value="in">Ease in</option><option value="linear">Even</option>
-          </select>
-        </div>
-      ) : (
-        <div className="mt-1 flex flex-col gap-1">
-          <Num player={player} path={[...sp, 'est_s']} label="Duration" min={2} max={20} step={0.5} fallback={8} />
-          <button className="btn btn-xs" onClick={() => player.doc.set([...sp, 'camera'], { move: 'truck', from: { x: -2, y: 1.6, z: 0, fov: 50 }, to: { x: 2, y: 1.6, z: 0, fov: 50 }, ease: 'inOut', dur_s: s.est_s ?? 8 }, 'Camera move')}>Add a camera move</button>
-        </div>
+      <div className="mt-1 flex flex-col gap-1">
+        <Range label="Scene length" min={2} max={40} step={0.5} value={sceneDuration(s)} onChange={(v) => player.doc.set([...sp, 'dur_s'], v, 'Scene length')} />
+      </div>
+      {[cam, ...(s.camera_more ?? [])].map((c, k) => (c ? <Shot key={k} player={player} sceneIndex={index} k={k} cam={c} /> : null))}
+      {!cam && (
+        <button className="btn btn-xs mt-1" onClick={() => player.doc.set([...sp, 'camera'], { move: 'truck', from: { x: -2, y: 1.6, z: 0, fov: 50 }, to: { x: 2, y: 1.6, z: 0, fov: 50 }, ease: 'inOut', dur_s: sceneDuration(s) }, 'Camera move')}>Add a camera move</button>
       )}
       <h3 className="mt-3 font-semibold">Layers</h3>
       {s.set.layers.map((l, i) => {
