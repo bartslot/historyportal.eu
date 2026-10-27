@@ -7,7 +7,7 @@
   "canon_venster": "hunebedden",
   "bundle": "nl-prehistory",
   "characters": [
-    { "id": "meisje", "name": "Ise", "look": "girl, 10, wool dress, bare feet", "ledger": "invented" },
+    { "id": "meisje", "name": "het meisje", "look": "girl, 10, wool dress, bare feet", "ledger": "invented" },
     { "id": "boer-man", "name": "haar oom", "look": "farmer, 30s, leather cape", "ledger": "invented" }
   ],
   "sources": [

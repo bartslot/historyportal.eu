@@ -137,3 +137,8 @@ def test_asset_not_in_library_is_an_error(lesson, tmp_path):
     root = _library(tmp_path, [{"id": "heath-01", "layer": "bg", "tags": ["heath"]}])
     lesson["scenes"][0]["set"]["layers"][0]["asset"] = "oak-99"
     assert any("asset 'oak-99' not in" in e for e in v.check(lesson, library_root=root)[0])
+
+
+def test_balloon_too_long(lesson):
+    lesson["scenes"][0]["balloons"][0]["text"] = "een twee drie vier vijf zes zeven acht negen"
+    assert any("balloon longer than 8 words" in e for e in errors_of(lesson))

@@ -32,6 +32,7 @@ INTERACTION_GAP_MIN_S = 60
 NGRAM = 6
 RECALL_SHARE_MAX = 0.5
 POWER_METERS_MIN, POWER_METERS_MAX = 1, 4
+BALLOON_WORDS_MAX = 8
 
 # Em/en dash and the emoji blocks. A plain hyphen inside a word ("VOC-schip") is fine.
 BAD_CHARS = re.compile("[–—―\U0001F000-\U0001FAFF☀-➿️]")
@@ -186,6 +187,8 @@ def check(lesson: dict, corpus_dir: Path = DEFAULT_CORPUS, library_root: Path = 
     for sc in scenes:
         here = {f["char"] for f in sc["figures"]}
         for b in sc["balloons"]:
+            if len(b["text"].split()) > BALLOON_WORDS_MAX:
+                errors.append(f"{sc['id']}: balloon longer than {BALLOON_WORDS_MAX} words: {b['text']!r}")
             if b["char"] not in here | known_chars:
                 warnings.append(f"{sc['id']}: balloon by {b['char']!r} who is not in the scene")
         for f in sc["figures"]:

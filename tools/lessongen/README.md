@@ -36,5 +36,5 @@ Output per lesson: vault `historyportal/topics/autonomous-lessons/lessons/<id>/`
 | copyright | no 6-word run shared with the LessonUp slides in `blueprint.lessonup_ids` |
 | Bloom | >= 2 quizzes, <= 50 % recall (Bloom 1), >= 2 Bloom levels |
 | power meter | 1-4 `power-meter` moments |
-| text | no em/en dash or emoji in anything the class sees |
+| text | no em/en dash or emoji in anything the class sees; balloons <= 8 words |
 | art | layer `asset` exists in the library; otherwise its `need` tags are in `needed_assets` |
