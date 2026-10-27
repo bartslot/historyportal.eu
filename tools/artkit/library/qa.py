@@ -2,10 +2,12 @@
 
     python3 qa.py --self-check                    # synthetic tests of every gate
     python3 qa.py rank <ref.png> <cand.png>...    # style gate: neutral side-by-side ranking via codex
+    python3 qa.py rank-bundle jobs/<bundle>.json [sheet ...]   # rank every sheet's colour variants
 
 Gates (numbers calibrated on the approved Verbree inks/watercolours, see STYLE.md):
   alpha     real alpha, no white halo on the edge, no fake checkerboard, no enclosed paper islands
-  ink       black coverage (L*<40) inside the object, target 10-14 %, hard band 7-20 %
+  ink       black coverage (L*<40). Bart's 10-14 % is a whole-image rule: gated on the ink sheet and the
+            composed plate (hard 7-20 %); per asset only 2-42 % (catches empty or black-filled objects)
   palette   mean Lab dE76 of washed pixels to the nearest era palette colour
   size      min size / aspect per layer type
   ground    the asset touches its ground line (fg/mid/prop), sky/bg exempt
@@ -29,13 +31,14 @@ import prompts  # noqa: E402
 
 INK_L = 40.0  # L* below this = ink (approved inks: 11.5-13 % of pixels)
 INK_TARGET = (0.10, 0.14)
-INK_HARD = (0.07, 0.20)
+INK_HARD = (0.07, 0.20)  # whole-image rule: ink sheet and composed plate
+INK_ASSET = (0.02, 0.42)  # inside one object (no paper around it): only catches empty or black-filled
 PAPER_DE = 4.0  # dE76 to paper colour = untouched paper
 ISLAND_MIN_PX = 40
 HALO_MAX = 0.06
 PALETTE_DE_MAX = 16.0
 GROUND_MIN = 0.03  # contact width / asset width
-SEAM_MAX = 12.0  # mean abs RGB diff between first and last column
+SEAM_MAX = 2.0  # wrap step / typical column step
 SIZE = {  # min w, min h, min aspect, max aspect
     "sky": (1400, 600, 1.3, 9.0),
     "bg": (1400, 300, 1.8, 12.0),
@@ -68,8 +71,12 @@ def split(img: Image.Image) -> tuple[np.ndarray, np.ndarray]:
     return a[..., :3], a[..., 3]
 
 
+def ink_coverage_map(rgb: np.ndarray) -> np.ndarray:
+    return rgb2lab(rgb)[..., 0] < INK_L
+
+
 def ink_coverage(rgb: np.ndarray, mask: np.ndarray | None = None) -> float:
-    ink = rgb2lab(rgb)[..., 0] < INK_L
+    ink = ink_coverage_map(rgb)
     return float(ink[mask].mean() if mask is not None else ink.mean())
 
 
@@ -87,12 +94,12 @@ def fake_checkerboard(rgb: np.ndarray, band: int = 24) -> bool:
     if len(v) < 0.8 * len(b):
         return False
     hi, lo = (v > 240).mean(), ((v > 180) & (v < 225)).mean()
-    return hi > 0.2 and lo > 0.2
+    return bool(hi > 0.2 and lo > 0.2)
 
 
 def edge_band(alpha: np.ndarray) -> np.ndarray:
     m = alpha > 0
-    return m & ~ndimage.binary_erosion(m, iterations=2)
+    return m & ~ndimage.binary_erosion(m, iterations=2, border_value=1)  # canvas edge is not an edge
 
 
 def halo_fraction(rgb: np.ndarray, alpha: np.ndarray, paper: np.ndarray | None = None) -> float:
@@ -136,8 +143,10 @@ def ground_contact(alpha: np.ndarray) -> tuple[float, float]:
 
 
 def seam_diff(rgb: np.ndarray, alpha: np.ndarray) -> float:
+    """Wrap-around column step (last -> first) relative to the image's typical column step."""
     a = np.concatenate([rgb, alpha[..., None]], -1).astype(float)
-    return float(np.abs(a[:, 0] - a[:, -1]).mean())
+    typical = np.abs(np.diff(a, axis=1)).mean() + 1e-6
+    return float(np.abs(a[:, 0] - a[:, -1]).mean() / typical)
 
 
 def check(img: Image.Image, layer: str, bundle: str, ink_rgb: np.ndarray | None = None,
@@ -154,9 +163,9 @@ def check(img: Image.Image, layer: str, bundle: str, ink_rgb: np.ndarray | None 
     r["islands"] = len(paper_islands(rgb, alpha, paper)) if layer not in ("sky", "bg") else 0
     r["alpha_ok"] = r["has_alpha"] and not r["checkerboard"] and r["halo"] <= HALO_MAX and r["islands"] == 0
     src = ink_rgb if ink_rgb is not None else rgb
-    r["ink_coverage"] = round(ink_coverage(src, opaque), 4)
-    r["ink_ok"] = layer == "sky" or INK_HARD[0] <= r["ink_coverage"] <= INK_HARD[1]
-    r["ink_in_target"] = INK_TARGET[0] <= r["ink_coverage"] <= INK_TARGET[1]
+    shape = ndimage.binary_fill_holes(opaque)  # cut gaps count as paper, as in a full scene
+    r["ink_coverage"] = round(float((ink_coverage_map(src) & opaque)[shape].mean()), 4)
+    r["ink_ok"] = layer == "sky" or INK_ASSET[0] <= r["ink_coverage"] <= INK_ASSET[1]
     r["palette_de"] = round(palette_de(rgb, alpha, bundle), 2)
     r["palette_ok"] = r["palette_de"] <= PALETTE_DE_MAX
     mw, mh, lo, hi = SIZE[layer]
@@ -190,6 +199,34 @@ def rank(ref: Path, cands: list[Path], log: Path | None = None) -> dict:
     return res
 
 
+RANK_REF = Path.home() / "BartsMedia/historyportal/topics/verbree-book-sample/pass2-watercolour/caesar_r2.png"
+
+
+def rank_bundle(job: dict, sheets: list[str] | None = None, workers: int = 3) -> None:
+    """Style gate for every sheet's colour variants: groups of <= 4 candidates, same question each round."""
+    from concurrent.futures import ThreadPoolExecutor
+    from gen import LIB
+    w = LIB / "_work" / job["bundle"]
+    cands = []
+    for s in job["sheets"]:
+        if sheets and s["id"] not in sheets:
+            continue
+        vs = sorted((w / s["id"]).glob("colour_?.png"))
+        if len(vs) > 1:
+            cands.append(vs)
+    groups, cur = [], []
+    for vs in sorted(cands, key=len, reverse=True):  # 4-variant sheets alone, 2-variant sheets in pairs
+        if len(cur) + len(vs) > 4:
+            groups.append(cur)
+            cur = []
+        cur += vs
+    if cur:
+        groups.append(cur)
+    with ThreadPoolExecutor(workers) as ex:
+        for r in ex.map(lambda g: rank(RANK_REF, g, w / "rank.jsonl"), groups):
+            print(json.dumps({k: r.get(k) for k in ("ranking", "verdict", "why", "error")}), flush=True)
+
+
 # ---- self-check --------------------------------------------------------------------------------
 
 def self_check() -> None:
@@ -202,7 +239,7 @@ def self_check() -> None:
     alpha = np.where(disc, 255, 0).astype(np.uint8)
     good = Image.fromarray(np.dstack([rgb, alpha]))
     r = check(good, "fg", "nl-prehistory", paper=paper)
-    assert r["alpha_ok"] and r["ink_ok"] and r["ink_in_target"] and r["ground_ok"], r
+    assert r["alpha_ok"] and r["ink_ok"] and r["ground_ok"], r
     assert r["palette_ok"], r
 
     island = rgb.copy()
@@ -229,14 +266,17 @@ def self_check() -> None:
     black[:] = 15
     assert not check(Image.fromarray(np.dstack([black, alpha])), "fg", "nl-prehistory")["ink_ok"]
 
-    strip = np.dstack([rgb[:, :1] .repeat(300, 1), np.full((400, 300), 255, np.uint8)])
-    assert seam_diff(strip[..., :3], strip[..., 3]) == 0.0
+    ramp = np.dstack([np.tile(np.linspace(0, 250, 300), (400, 1))] * 3).astype(np.uint8)
+    assert seam_diff(ramp, np.full((400, 300), 255, np.uint8)) > 100  # a ramp does not wrap
+    assert seam_diff(rgb, np.full((400, 300), 255, np.uint8)) < SEAM_MAX
     print("qa self-check: ok")
 
 
 if __name__ == "__main__":
     if sys.argv[1:2] == ["--self-check"]:
         self_check()
+    elif sys.argv[1:2] == ["rank-bundle"]:
+        rank_bundle(json.loads(Path(sys.argv[2]).read_text()), sys.argv[3:] or None)
     elif sys.argv[1:2] == ["rank"]:
         print(json.dumps(rank(Path(sys.argv[2]), [Path(p) for p in sys.argv[3:]]), indent=1))
     else:

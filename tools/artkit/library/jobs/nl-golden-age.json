@@ -136,7 +136,7 @@
   {
    "id": "mid-buildings",
    "layer": "mid",
-   "subject": "Dutch Republic, Golden Age, c. 1640, Amsterdam and the VOC. (1) a tall narrow brick warehouse with a stepped gable, wooden shutters and a hoist beam at the top, (2) a brick canal house with a bell gable and tall windows, (3) a wooden harbour crane with a treadwheel.",
+   "subject": "Dutch Republic, Golden Age, c. 1640, Amsterdam and the VOC. (1) a tall narrow brick warehouse with a stepped gable, wooden shutters and a hoist beam at the top, (2) a brick canal house with a step or neck gable, leaded cross-windows (kruisvensters) with wooden shutters, no sash windows, (3) a wooden harbour crane with a treadwheel.",
    "items": [
     {
      "id": "warehouse-01",
@@ -465,6 +465,110 @@
      "motion": "none"
     }
    ]
+  },
+  {
+   "id": "mid-water",
+   "layer": "mid",
+   "strip": true,
+   "subject": "Dutch Republic, Golden Age, c. 1640, Amsterdam and the VOC. Harbour water of the IJ seen from a quay: calm grey-green water with small choppy ripples and reflections, no boats.",
+   "items": [
+    {
+     "id": "water-harbour-01",
+     "tags": [
+      "water",
+      "harbour",
+      "sea",
+      "ripples"
+     ],
+     "height_m": 2,
+     "motion": "ripple"
+    }
+   ]
+  },
+  {
+   "id": "fg-quay-ground",
+   "layer": "fg",
+   "strip": true,
+   "subject": "Dutch Republic, Golden Age, c. 1640, Amsterdam and the VOC. Near foreground ground of a cobbled harbour quay: rounded cobblestones, a strip of brick paving, a few scattered straw wisps and a puddle.",
+   "items": [
+    {
+     "id": "ground-quay-01",
+     "tags": [
+      "ground",
+      "quay",
+      "cobbles",
+      "street"
+     ],
+     "height_m": 1.5,
+     "motion": "none"
+    }
+   ]
+  }
+ ],
+ "plate": [
+  {
+   "id": "sky-summer-01",
+   "fill": 0.75
+  },
+  {
+   "id": "bg-city-01",
+   "tile": true,
+   "base": 0.62,
+   "h": 0.25
+  },
+  {
+   "id": "ship-indiaman-01",
+   "x": 0.62,
+   "base": 0.74,
+   "h": 0.48
+  },
+  {
+   "id": "ship-fluyt-01",
+   "x": 0.32,
+   "base": 0.7,
+   "h": 0.3
+  },
+  {
+   "id": "quay-wall-01",
+   "x": 0.5,
+   "base": 1.0,
+   "h": 0.24
+  },
+  {
+   "id": "warehouse-01",
+   "x": 0.07,
+   "base": 0.92,
+   "h": 0.7
+  },
+  {
+   "id": "tree-linden-01",
+   "x": 0.94,
+   "base": 1.0,
+   "h": 0.85
+  },
+  {
+   "id": "barrels-01",
+   "x": 0.3,
+   "base": 0.98,
+   "h": 0.16
+  },
+  {
+   "id": "crates-01",
+   "x": 0.44,
+   "base": 0.99,
+   "h": 0.13
+  },
+  {
+   "id": "bollard-rope-01",
+   "x": 0.78,
+   "base": 0.99,
+   "h": 0.1
+  },
+  {
+   "id": "lantern-01",
+   "x": 0.52,
+   "base": 0.99,
+   "h": 0.07
   }
  ]
 }

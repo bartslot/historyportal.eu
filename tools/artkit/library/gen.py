@@ -44,13 +44,20 @@ def codex(workdir: Path, prompt: str, images: list[Path], log: Path) -> bool:
     return ok
 
 
+def template(sheet: dict) -> str:
+    """Prompt template: the layer, or 'strip' for tileable ground/water bands of any layer."""
+    return "strip" if sheet.get("strip") else sheet["layer"]
+
+
 def ink(bundle: str, sheet: dict, force: bool) -> None:
     d = LIB / "_work" / bundle / sheet["id"]
     d.mkdir(parents=True, exist_ok=True)
     out = d / "ink.png"
     if out.exists() and not force:
         return
-    p = prompts.ink_prompt(sheet["layer"], sheet["subject"], out.name)
+    p = prompts.ink_prompt(template(sheet), sheet["subject"], out.name)
+    if sheet.get("ink_extra"):
+        p += "\n\n" + sheet["ink_extra"]
     codex(d, p, [INK_ANCHOR], d / "ink.log")
 
 
@@ -59,7 +66,7 @@ def colour(bundle: str, sheet: dict, variant: str, force: bool) -> None:
     src, out = d / "ink.png", d / f"colour_{variant}.png"
     if not src.exists() or (out.exists() and not force):
         return
-    p = prompts.colour_prompt(sheet["layer"], bundle, out.name)
+    p = prompts.colour_prompt(template(sheet), bundle, out.name)
     codex(d, p, [src, COLOUR_ANCHOR], d / f"colour_{variant}.log")
 
 
@@ -69,6 +76,7 @@ def main() -> None:
     ap.add_argument("--only", nargs="*")
     ap.add_argument("--stage", choices=["ink", "colour", "both"], default="both")
     ap.add_argument("--variants", type=int, default=2)
+    ap.add_argument("--first", type=int, default=0, help="first variant index (2 = start at 'c')")
     ap.add_argument("--force", action="store_true")
     ap.add_argument("-j", type=int, default=3)
     a = ap.parse_args()
@@ -78,7 +86,7 @@ def main() -> None:
         if a.stage in ("ink", "both"):
             list(ex.map(lambda s: ink(job["bundle"], s, a.force), sheets))
         if a.stage in ("colour", "both"):
-            tasks = [(s, chr(97 + v)) for s in sheets for v in range(a.variants)]
+            tasks = [(s, chr(97 + a.first + v)) for s in sheets for v in range(a.variants)]
             list(ex.map(lambda t: colour(job["bundle"], t[0], t[1], a.force), tasks))
 
 

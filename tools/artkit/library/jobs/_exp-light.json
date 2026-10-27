@@ -1,0 +1,78 @@
+{
+ "bundle": "nl-prehistory",
+ "era": "Northern Netherlands (Drenthe), Neolithic, c. 3400 BCE, Funnelbeaker farmers.",
+ "sheets": [
+  {
+   "id": "mid-hunebed-light",
+   "layer": "mid",
+   "subject": "Northern Netherlands (Drenthe), Neolithic, c. 3400 BCE, Funnelbeaker farmers. (1) a long hunebed (megalithic dolmen): two rows of large rounded glacial granite boulders carrying five huge rough capstones, low entrance on the long side; (2) a short hunebed with two capstones, partly covered by a low grassy earth mound.",
+   "items": [
+    {
+     "id": "hunebed-long-01",
+     "tags": [
+      "hunebed",
+      "dolmen",
+      "megalith",
+      "stones",
+      "grave"
+     ],
+     "height_m": 3,
+     "motion": "none"
+    },
+    {
+     "id": "hunebed-short-01",
+     "tags": [
+      "hunebed",
+      "dolmen",
+      "megalith",
+      "mound",
+      "grave"
+     ],
+     "height_m": 2.5,
+     "motion": "none"
+    }
+   ],
+   "ink_extra": "Economical line, lighter than the anchor: fewer, longer strokes. The lit side of every object stays open white paper with no hatching at all; hatching only on the shadow side and in the darkest crevices. Leaves and grass are suggested by a few contour shapes, not drawn one by one."
+  },
+  {
+   "id": "fg-trees-light",
+   "layer": "fg",
+   "subject": "Northern Netherlands (Drenthe), Neolithic, c. 3400 BCE, Funnelbeaker farmers. (1) a broad old oak, (2) a slender silver birch, (3) a black alder. Each full figure from roots to crown top, side by side.",
+   "items": [
+    {
+     "id": "tree-oak-01",
+     "tags": [
+      "tree",
+      "oak",
+      "forest"
+     ],
+     "height_m": 18,
+     "motion": "sway"
+    },
+    {
+     "id": "tree-birch-01",
+     "tags": [
+      "tree",
+      "birch",
+      "heath",
+      "forest"
+     ],
+     "height_m": 15,
+     "motion": "sway"
+    },
+    {
+     "id": "tree-alder-01",
+     "tags": [
+      "tree",
+      "alder",
+      "wet",
+      "forest"
+     ],
+     "height_m": 14,
+     "motion": "sway"
+    }
+   ],
+   "ink_extra": "Economical line, lighter than the anchor: fewer, longer strokes. The lit side of every object stays open white paper with no hatching at all; hatching only on the shadow side and in the darkest crevices. Leaves and grass are suggested by a few contour shapes, not drawn one by one."
+  }
+ ]
+}

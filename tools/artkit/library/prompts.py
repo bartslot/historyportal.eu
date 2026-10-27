@@ -50,6 +50,12 @@ LAYER = {
         "distance: fewer, thinner lines, sparse hatching. The terrain height at the left edge equals the "
         "height at the right edge so the strip can tile. Landscape 3:2."
     ),
+    "strip": (
+        "A ground strip seen from eye level, wide panorama: {subject} The ground runs edge to edge and "
+        "fills the canvas from a gently uneven top edge at about 50% height all the way down to the bottom "
+        "edge; everything above it is empty white paper. No objects standing up out of it taller than a "
+        "tuft. The left edge continues seamlessly into the right edge so the strip can tile. Landscape 3:2."
+    ),
     "mid": (
         "Middle-distance set pieces, each a separate isolated object: {subject} Seen from slightly above "
         "eye level, three-quarter view, same scale for all. " + ISOLATE + " Landscape 3:2."
@@ -87,6 +93,8 @@ COLOUR_EXTRA = {
         "uneven glazes; clouds stay 80 to 90% white paper with only an extremely pale cool blue-grey wash "
         "under selected lower edges."
     ),
+    "strip": "Wash the whole ground band, including its pale parts, down to the bottom edge; the paper "
+             "above the ground stays pure white.",
     "bg": (
         "This is far distance: quieter and less saturated than the foreground, cool and slightly bluish. "
         "The empty paper above the land stays pure white."
@@ -110,16 +118,19 @@ PALETTE = {
 }
 
 
-def ink_prompt(layer: str, subject: str, out: str) -> str:
+def ink_prompt(template: str, subject: str, out: str) -> str:
     return "\n\n".join([
         TOOL.format(out=out),
-        LAYER[layer].format(subject=subject),
+        LAYER[template].format(subject=subject),
         INK_ESSENCE.format(ink_rule=INK_RULE),
     ])
 
 
-def colour_prompt(layer: str, bundle: str, out: str) -> str:
-    body = COLOUR.format(palette=PALETTE[bundle], extra=COLOUR_EXTRA.get(layer, ""))
+def colour_prompt(template: str, bundle: str, out: str) -> str:
+    extra = COLOUR_EXTRA.get(template, "")
+    if template == "bg":
+        extra += " " + COLOUR_EXTRA["strip"]
+    body = COLOUR.format(palette=PALETTE[bundle], extra=extra)
     return "\n\n".join([TOOL.format(out=out), body])
 
 

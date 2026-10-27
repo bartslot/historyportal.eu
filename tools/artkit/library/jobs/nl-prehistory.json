@@ -169,7 +169,7 @@
   {
    "id": "mid-field",
    "layer": "mid",
-   "subject": "Northern Netherlands (Drenthe), Neolithic, c. 3400 BCE, Funnelbeaker farmers. (1) a small patch of ripe emmer wheat with a few poppies at the edge; (2) a freshly cleared patch of ground with three cut tree stumps and a felled trunk; (3) a stone-ringed fire pit with burning logs and a little smoke.",
+   "subject": "Northern Netherlands (Drenthe), Neolithic, c. 3400 BCE, Funnelbeaker farmers. (1) a small patch of ripe emmer wheat with a few poppies at the edge; (2) a freshly cleared patch of ground with three tree stumps chopped by stone axes (rough cone-shaped splintered tops, never flat saw cuts) and a felled trunk with a chopped pointed end; (3) a stone-ringed fire pit with burning logs and a little smoke.",
    "items": [
     {
      "id": "wheat-patch-01",
@@ -535,6 +535,122 @@
      "motion": "none"
     }
    ]
+  },
+  {
+   "id": "fg-ground",
+   "layer": "fg",
+   "strip": true,
+   "subject": "Northern Netherlands (Drenthe), Neolithic, c. 3400 BCE, Funnelbeaker farmers. Near foreground ground of a heath meadow: short grass with tufts, a few heather clumps, small stones and a worn footpath of bare sandy earth.",
+   "items": [
+    {
+     "id": "ground-heath-01",
+     "tags": [
+      "ground",
+      "heath",
+      "grass",
+      "path"
+     ],
+     "height_m": 1.5,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "mid-meadow",
+   "layer": "mid",
+   "strip": true,
+   "subject": "Northern Netherlands (Drenthe), Neolithic, c. 3400 BCE, Funnelbeaker farmers. Middle-distance band of open grassland and a small field of grain, with a low hedge of shrubs and a few young trees along it.",
+   "items": [
+    {
+     "id": "meadow-band-01",
+     "tags": [
+      "meadow",
+      "field",
+      "hedge",
+      "ground"
+     ],
+     "height_m": 6,
+     "motion": "sway"
+    }
+   ]
+  }
+ ],
+ "plate": [
+  {
+   "id": "sky-summer-01",
+   "fill": 0.75
+  },
+  {
+   "id": "bg-forest-01",
+   "tile": true,
+   "base": 0.66,
+   "h": 0.3
+  },
+  {
+   "id": "bg-farmland-01",
+   "tile": true,
+   "base": 0.7,
+   "h": 0.22
+  },
+  {
+   "id": "hunebed-long-01",
+   "x": 0.62,
+   "base": 0.8,
+   "h": 0.2
+  },
+  {
+   "id": "longhouse-01",
+   "x": 0.22,
+   "base": 0.72,
+   "h": 0.17
+  },
+  {
+   "id": "granary-01",
+   "x": 0.36,
+   "base": 0.73,
+   "h": 0.12
+  },
+  {
+   "id": "tree-oak-01",
+   "x": 0.9,
+   "base": 1.02,
+   "h": 0.95
+  },
+  {
+   "id": "tree-birch-01",
+   "x": 0.05,
+   "base": 1.0,
+   "h": 0.85
+  },
+  {
+   "id": "heather-01",
+   "x": 0.4,
+   "base": 0.98,
+   "h": 0.08
+  },
+  {
+   "id": "boulder-large-01",
+   "x": 0.7,
+   "base": 1.0,
+   "h": 0.14
+  },
+  {
+   "id": "cow-01",
+   "x": 0.48,
+   "base": 0.86,
+   "h": 0.1
+  },
+  {
+   "id": "pot-funnelbeaker-01",
+   "x": 0.3,
+   "base": 0.97,
+   "h": 0.08
+  },
+  {
+   "id": "reeds-01",
+   "x": 0.16,
+   "base": 1.02,
+   "h": 0.25
   }
  ]
 }
