@@ -40,6 +40,10 @@ export const TOON = {
   wash: 0.12,                                         // watercolour: pigment thick and thin across a part (0 = flat)
   washScale: 7,                                       // blotches per metre, anchored to the body
   wetEdge: 0.35,                                      // darker pigment pooled along the shade line (0 = none)
+  seamInk: 1,                                         // pen line along every painted seam: hem, cuff, belt, collar (0 = none)
+  hatch: 0.55,                                        // light etching, ONLY in the deepest shade (Bart: little to no etching)
+  hatchDeep: 0.35,                                    // how far below the shade step the etching starts
+  hatchScale: 55,                                     // hatch lines per metre, anchored to the body
 }
 
 // The painted face: a projector box in front of the head (unit cube -> world, refreshed per frame from the head
@@ -71,6 +75,8 @@ export function toonMaterial(name: string, dye: Color3, scene: Scene, withZones 
   m.AddUniform('washAmount', 'float', null)
   m.AddUniform('washScale', 'float', null)
   m.AddUniform('wetEdge', 'float', null)
+  m.AddUniform('seamInk', 'float', null)
+  m.AddUniform('hatch', 'vec3', null) // amount, depth below the step, lines per metre
   m.AddUniform('shadeMul', 'float', null)
   m.AddUniform('shadeCool', 'vec3', null)
   m.AddUniform('toLight', 'vec3', null)
@@ -126,6 +132,16 @@ export function toonMaterial(name: string, dye: Color3, scene: Scene, withZones 
     vec3 paint = mix(shadeCol, mix(base, paperTone, paperLift), lit); // lights go a little pale, as a wash does
     paint *= 1.0 + wn * washAmount * 2.0;
     paint = mix(paint, shadeCol * 0.92, pool * wetEdge);
+    // light etching in the deepest shade only: diagonal strokes in body space, broken by the wash noise
+    float deep = smoothstep(celStep - hatch.y, celStep - hatch.y - 0.15, nl) * (1.0 - lit);
+    float stroke = smoothstep(0.82, 0.92, fract(dot(vBody, vec3(0.7, 0.7, 0.2)) * hatch.z)) * step(0.45, wn + 0.5);
+    paint = mix(paint, inkColor, deep * stroke * hatch.x);
+    // a pen line where one painted part meets the next (zone edges follow the triangles, so the line does too)
+    // only zones that are dyed draw a seam (an unused collar band must not leave a line)
+    float zi = (1.0 - smoothstep(0.3, 0.7, abs(vZone - 1.0))) * zoneOn.x + (1.0 - smoothstep(0.3, 0.7, abs(vZone - 2.0))) * zoneOn.y
+             + (1.0 - smoothstep(0.3, 0.7, abs(vZone - 3.0))) * zoneOn.z;
+    float seam = clamp(fwidth(zi) * 3.0, 0.0, 1.0);
+    inked = max(inked, seam * seamInk);
     paint = mix(paint, inkColor, faceInk);
     color = vec4(mix(paint, inkColor, inked), 1.0);
   `)
@@ -147,6 +163,8 @@ export function toonMaterial(name: string, dye: Color3, scene: Scene, withZones 
     e.setFloat('washAmount', TOON.wash)
     e.setFloat('washScale', TOON.washScale)
     e.setFloat('wetEdge', TOON.wetEdge)
+    e.setFloat('seamInk', TOON.seamInk)
+    e.setVector3('hatch', new Vector3(TOON.hatch, TOON.hatchDeep, TOON.hatchScale))
     e.setColor3('inkColor', TOON.ink)
     e.setFloat('inkEdge', m.inkEdge ?? TOON.inkEdge)
     e.setFloat('inkSoft', TOON.inkSoft)

@@ -145,7 +145,7 @@ const HANG: LimbAim = { upper: [0.04, -1, 0.04], lower: [0.15, -1, -0.12] } // c
 export type StaticName = 'stand' | 'point' | 'kneel' | 'carry' | 'sit' | 'lie' | 'dig' | 'pull' | 'push' | 'climb' | 'row'
 export const POSES: Record<StaticName, StaticPose> = {
   // contrapposto: weight on the right leg, the left knee eased forward, so no one stands like a mannequin
-  stand: { arms: { L: HANG, R: HANG }, legs: { L: { upper: [0.14, -1, 0.07], lower: [-0.03, -1, 0.02] } } },
+  stand: { arms: { L: HANG, R: HANG }, legs: { L: { upper: [0.14, -1, 0.07], lower: [-0.03, -1, 0.02] } }, head: [0.15, 0, 0.25] },
   // right arm out at the thing, a touch up; the left hangs
   point: { arms: { L: HANG, R: { upper: [1, 0.12, 0.35], lower: [1, 0.18, 0.12] } }, head: [1, -0.05, -0.12], pointWith: 'R' },
   // right knee down, left foot planted ahead, back straight. Cartoon legs: shin (0.41) ~ thigh (0.38), so for the
