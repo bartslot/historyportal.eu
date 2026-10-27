@@ -51,6 +51,16 @@ export function interactionSeconds(scene: Scene): number {
   return times[`${it.type}.${it.format}`] ?? times[it.type] ?? 0
 }
 
+/** Rounding of a lesson total (timing.json "rounding": "half_up_total", agreed with S4): sum the raw
+ *  float seconds, round ONCE at the end with floor(x + 0.5); never per shot, never banker's rounding. */
+export const roundTotal = (seconds: number): number => Math.floor(seconds + 0.5)
+const ROUNDING = (TIMING as { rounding?: string }).rounding ?? 'half_up_total'
+if (ROUNDING !== 'half_up_total') throw new Error(`timing.json rounding "${ROUNDING}" is not the one the director implements (half_up_total)`)
+
+/** The shared model's lesson length in whole seconds, as validate.py --totals reports it. */
+export const modelTotal = (lesson: Lesson): number =>
+  roundTotal(lesson.scenes.reduce((t, s) => t + modelShotSeconds(s) + classActionSeconds(s) + interactionSeconds(s), 0))
+
 /** The lesson's length as played: every scene's picture time plus its interaction. */
 export const lessonSeconds = (lesson: Lesson): number =>
   lesson.scenes.reduce((t, s) => t + (s.dur_s ?? modelShotSeconds(s) + classActionSeconds(s)) + interactionSeconds(s), 0)

@@ -33,17 +33,20 @@ function Clock({ seconds }: { seconds: number }) {
 
 function Answer({ q, sfx, done }: { q: Quiz; sfx?: (id: string) => void; done: (d: boolean) => void }) {
   const [picked, setPicked] = useState<number | null>(null)
+  const graded = q.correct !== null && q.correct !== undefined // correct: null = no right answer, nothing marked wrong
   const pick = (i: number) => {
     if (picked !== null) return
     setPicked(i)
-    sfx?.(isCorrect(q, i) ? 'answer-correct' : 'answer-wrong')
+    if (graded) sfx?.(isCorrect(q, i) ? 'answer-correct' : 'answer-wrong')
     done(true)
   }
   return (
     <>
       <div className="grid gap-3">
         {q.options.map((o, i) => {
-          const tone = picked === null ? 'btn-outline' : isCorrect(q, i) ? 'btn-success' : i === picked ? 'btn-error btn-outline' : 'btn-ghost opacity-50'
+          const tone = picked === null ? 'btn-outline'
+            : !graded ? (i === picked ? 'btn-primary' : 'btn-ghost opacity-50')
+              : isCorrect(q, i) ? 'btn-success' : i === picked ? 'btn-error btn-outline' : 'btn-ghost opacity-50'
           return <button key={i} className={`btn btn-lg h-auto min-h-16 justify-start py-3 text-left text-2xl font-normal ${tone}`} onClick={() => pick(i)}>{o}</button>
         })}
       </div>
@@ -108,7 +111,7 @@ function Meter({ m, onPush, sfx, done }: { m: PowerMeter; onPush?: (p: number) =
   }
   return (
     <>
-      <p className="text-2xl opacity-80">{__('Call out the words that help')}.</p>
+      {!m.prompt && <p className="text-2xl opacity-80">{__('Call out the words that help')}.</p>}
       <progress className="progress progress-primary h-6 w-full" value={progress} max={1} />
       <div className="flex flex-wrap gap-3">
         {words.map((w) => (

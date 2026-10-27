@@ -4,7 +4,7 @@
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { spawnSync } from 'node:child_process'
-import { classActionSeconds, interactionSeconds, lessonSeconds, modelShotSeconds } from './timing'
+import { classActionSeconds, interactionSeconds, lessonSeconds, modelShotSeconds, modelTotal, roundTotal } from './timing'
 import { describe, expect, it } from 'vitest'
 import { direct } from './direct'
 import { audit } from './audit'
@@ -201,7 +201,7 @@ for (const id of REAL_LESSONS) {
 
     it.runIf(canValidate)('has the same length as S4\'s validate.py, to the second (one timing model, tools/lessongen/timing.json)', () => {
       const model = lesson.scenes.reduce((t, s) => t + modelShotSeconds(s) + classActionSeconds(s) + interactionSeconds(s), 0)
-      expect(Math.round(model)).toBe(s4Total(id, file))
+      expect(modelTotal(lesson)).toBe(s4Total(id, file))
       // the director's own additions: a 1.2 s silence or balloons that need longer than the line; nothing else
       const extras = d.scenes.map((s, i) => s.dur_s! - modelShotSeconds(lesson.scenes[i]) - classActionSeconds(lesson.scenes[i]))
       extras.forEach((x, i) => {
@@ -285,6 +285,15 @@ describe('timing model source', () => {
     expect(interactionSeconds(sc({ type: 'choice', format: 'other' }))).toBe(30)
     expect(interactionSeconds(sc({ type: 'quiz', format: 'team', class_action_s: 75 }))).toBe(75)
     expect(interactionSeconds(sc(null))).toBe(0)
+  })
+
+  it('rounds a total once, half up (timing.json rounding: half_up_total), never banker\'s', () => {
+    expect(roundTotal(934.5)).toBe(935) // banker's round() gave 934: the voc red of 2026-10-27
+    expect(roundTotal(46.5)).toBe(47)
+    expect(roundTotal(47.49)).toBe(47)
+    // a lesson whose raw total is exactly x.5: one 6 s shot (empty narration) + a 0.5 s class action + a 40 s quiz
+    const half = { ...LESSON, scenes: [{ ...LESSON.scenes[0], narration: '', class_action_s: 0.5, interaction: { type: 'quiz' } }] } as never
+    expect(modelTotal(half)).toBe(47)
   })
 
   it('reads tools/lessongen/timing.json, and HP_TIMING_JSON replaces it', async () => {

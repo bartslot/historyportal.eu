@@ -65,6 +65,7 @@ export function startInteractions(player: Player, sound: LessonSound | null, les
           sound?.release()
           note(scene, 'close')
           resume()
+          if (sound) void sound.play(lesson, player.clock()) // the timeline back at once, not after the sync's next pass
         }}
       />,
     )

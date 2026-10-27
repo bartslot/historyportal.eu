@@ -32,8 +32,8 @@ export class LessonSound {
   private muted = false
   private origin = 0 // ctx time of lesson time 0
   private gen = 0 // bumped by every play()/stop(): a play still loading when a newer one starts gives up
-  private cancelled = new Set<string>()
-  private held: string[] = [] // beds playing under an interaction card // bedOff() before bedOn() finished loading
+  private cancelled = new Set<string>() // bedOff() before bedOn() finished loading
+  private held: string[] = [] // beds playing under an interaction card
 
   /** Any BaseAudioContext: an OfflineAudioContext renders a lesson silently (tests, the lab). */
   constructor(ctx: BaseAudioContext, private baseUrl = bank.base_url) {
