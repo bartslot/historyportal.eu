@@ -89,10 +89,17 @@ def split_tags(need: str) -> list[str]:
 
 
 def match_asset(need: str, depth: str, library: list[dict]) -> dict | None:
-    """Best library asset carrying every needed tag (id counts as a tag); same layer preferred."""
-    want = set(split_tags(need))
-    hits = [a for a in library if want <= set(t.lower() for t in a.get("tags", [])) | {a["id"].lower()}]
-    hits.sort(key=lambda a: (a.get("layer") != depth, -(a.get("qa") or {}).get("score", 0)))
+    """Best library asset for a need. The first tag is the head noun and must match; every further tag
+    that matches ranks higher, then same layer, then QA score. The asset id counts as a tag."""
+    want = split_tags(need)
+    if not want:
+        return None
+
+    def tags_of(a: dict) -> set[str]:
+        return {t.lower() for t in a.get("tags", [])} | {a["id"].lower()}
+
+    hits = [a for a in library if want[0] in tags_of(a)]
+    hits.sort(key=lambda a: (-len(set(want) & tags_of(a)), a.get("layer") != depth, -(a.get("qa") or {}).get("score", 0)))
     return hits[0] if hits else None
 
 

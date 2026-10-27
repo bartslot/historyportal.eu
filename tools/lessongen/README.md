@@ -37,4 +37,4 @@ Output per lesson: vault `historyportal/topics/autonomous-lessons/lessons/<id>/`
 | Bloom | >= 2 quizzes, <= 50 % recall (Bloom 1), >= 2 Bloom levels |
 | power meter | 1-4 `power-meter` moments |
 | text | no em/en dash or emoji in anything the class sees; balloons <= 8 words |
-| art | layer `asset` exists in the library; otherwise its `need` tags are in `needed_assets` |
+| art | layer `asset` exists in the library; otherwise its `need` is in `needed_assets` (match = first tag is the head noun and must be an asset tag; more shared tags rank higher) |

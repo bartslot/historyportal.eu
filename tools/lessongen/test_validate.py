@@ -142,3 +142,14 @@ def test_asset_not_in_library_is_an_error(lesson, tmp_path):
 def test_balloon_too_long(lesson):
     lesson["scenes"][0]["balloons"][0]["text"] = "een twee drie vier vijf zes zeven acht negen"
     assert any("balloon longer than 8 words" in e for e in errors_of(lesson))
+
+
+def test_head_noun_must_match_extra_tags_rank(tmp_path):
+    lib = [
+        {"id": "field-01", "layer": "bg", "tags": ["field"], "qa": {"score": 9}},
+        {"id": "field-02", "layer": "bg", "tags": ["field", "barley"], "qa": {"score": 5}},
+        {"id": "barley-01", "layer": "prop", "tags": ["barley"]},
+    ]
+    assert v.match_asset("field barley ripe", "bg", lib)["id"] == "field-02"
+    assert v.match_asset("field", "bg", lib)["id"] == "field-01"
+    assert v.match_asset("hut barley", "bg", lib) is None
