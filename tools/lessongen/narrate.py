@@ -104,12 +104,16 @@ def text_hash(voice: str, text: str) -> str:
     return hashlib.sha256(f"{voice}\n{text}".encode()).hexdigest()[:20]
 
 
-def narrate(lesson: dict, out_root: Path = OUT_ROOT, synth: Callable[[str, str], bytes] = azure_synth) -> tuple[dict, dict]:
-    """New lesson with tts_s + audio per narrated shot, and a report {sent_chars, cached, sent, index}."""
-    voices = azure_voices()
-    voice = voices.get(lesson["lang"])
+def voice_for(lesson: dict) -> str:
+    voice = azure_voices().get(lesson["lang"])
     if not voice:
         sys.exit(f"narrate: no native voice mapped for {lesson['lang']!r} in NarrationVoice.php (refusing the US fallback)")
+    return voice
+
+
+def narrate(lesson: dict, out_root: Path = OUT_ROOT, synth: Callable[[str, str], bytes] = azure_synth) -> tuple[dict, dict]:
+    """New lesson with tts_s + audio per narrated shot, and a report {sent_chars, cached, sent, index}."""
+    voice = voice_for(lesson)
     lesson = json.loads(json.dumps(lesson))
     cache, out = out_root / "_cache", out_root / lesson["id"]
     cache.mkdir(parents=True, exist_ok=True)
@@ -146,11 +150,10 @@ def main() -> None:
     ap.add_argument("lessons", type=Path, nargs="+")
     ap.add_argument("--dry-run", action="store_true", help="count the characters a run would send, send nothing")
     a = ap.parse_args()
-    voices = azure_voices()
     for path in a.lessons:
         lesson = json.loads(path.read_text())
         if a.dry_run:
-            voice = voices[lesson["lang"]]
+            voice = voice_for(lesson)
             todo = [s["narration"].strip() for s in lesson["scenes"] if s["narration"].strip()
                     and not (OUT_ROOT / "_cache" / f"{text_hash(voice, s['narration'].strip())}.mp3").exists()]
             print(f"{lesson['id']}: {len(todo)} shots, {sum(map(len, todo))} chars to send ({voice})")
