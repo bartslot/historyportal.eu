@@ -24,7 +24,8 @@ lessons when the vault is present). The audit measures moves with the stage's ow
 truth: audit = playback). The hook move starts at 0 and is more than half done by 3 s (hook shots at
 most 8.5 s). Moves rotate through each beat's pool of three, never repeat across a cut (counting a split
 scene's last shot), never make A B A B, and avoid A B C A B C. Shot scale (`scale`: wide / medium /
-close) rotates per beat and never repeats shot to shot. Shot length per beat: climax at most 8 s, turn
+close) rotates per beat and never repeats shot to shot; the native move is exempt (it is its own
+framing: through the foreground into the scene), in the director and in the audit. Shot length per beat: climax at most 8 s, turn
 10, hook 8.5, others 12. Silences: one per ~2.5 min on turns and climaxes, 60 s apart; the audit
 demands at least one per 3 min (12 min = 4). The native move only on a climax (the one nearest 70 %, a
 teacher-locked one passed over; no free climax = no native move). Minimums scale down for short lessons
