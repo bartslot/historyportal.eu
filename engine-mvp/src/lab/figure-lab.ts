@@ -1,7 +1,7 @@
 // Figure lab: the lesson figures on paper, every pose and expression one click away, and the guard verdict.
 // Dev page (figure-lab.html). ?char=boer-man,boer-vrouw&pose=carry&expr=happy&view=side|front|three
 import { ArcRotateCamera, Color4, DirectionalLight, Engine, HemisphericLight, Scene, Vector3 } from '@babylonjs/core'
-import { createFigure, faceHeading, FACE, FACING, SKIN, type Figure } from '../figures/figure'
+import { BODY, createFigure, faceHeading, FACE, FACING, SKIN, type Figure } from '../figures/figure'
 import { TOON } from '../figures/toon'
 import '../globals' // the look chain reads Babylon from window.BABYLON
 import '../engine/look-shaders.js'
@@ -128,6 +128,7 @@ async function main() {
   })
   slider('skin shade threshold', -1, 0.5, 0.01, () => SKIN.step, (v) => (SKIN.step = v)) // new figures
   slider('face size', 1.5, 4, 0.05, () => FACE.scale, (v) => (FACE.scale = v))
+  slider('head size (next figures)', 0.75, 1.1, 0.01, () => BODY.headScale, (v) => (BODY.headScale = v))
   slider('walk stride (next load)', 0.5, 1, 0.01, () => STRIDE.scale, (v) => (STRIDE.scale = v))
   slider('3/4 turn (deg)', 0, 90, 1, () => FACING.turnDeg, (v) => (FACING.turnDeg = v))
   setPose((q.get('pose') as Pose) ?? 'stand')

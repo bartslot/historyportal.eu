@@ -25,6 +25,7 @@ const EYE_Y = 0.38, MOUTH_Y = 0.8 // where faces_from_sheet.py puts the eyes and
 export const FACING = { turnDeg: 62 }
 // skin shades only where it turns fully away: a comic face is lit flat (the modelled lips and sockets would shade as boxes)
 export const SKIN = { step: -0.3, ink: 0.14 }
+export const BODY = { headScale: 0.88 } // the head's size against the body (1 = the vendor's cartoon head)
 
 export type Facing = 'left' | 'right' | 'front' | 'back'
 export type Placement = { x: number; depth: 'bg' | 'mid' | 'fg'; facing: Facing }
@@ -194,6 +195,9 @@ export async function createFigure(scene: Scene, recipe: FigureRecipe, name = 'f
   const rigRoot = inst.rootNodes[0].getDescendants(false).find((n) => n.name === 'Man_Rig') as TransformNode
   if (!rigRoot) throw new Error('standard body has no Man_Rig node')
   const rig = rigOf(rigRoot)
+  // proportion: the vendor body is ~6.5 heads; Bart's rider is 7.5-8. A smaller head (one bone scale, no modelling)
+  // brings it toward that; the face projector and the hats ride the head bone, so they scale with it
+  rig.node('head').scaling.setAll(BODY.headScale)
   const rest = captureRest(rig)
   root.computeWorldMatrix(true)
   meshes.forEach((m) => m.computeWorldMatrix(true)) // the face box reads world bounds: scale is already applied

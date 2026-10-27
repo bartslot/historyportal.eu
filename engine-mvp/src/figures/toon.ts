@@ -29,8 +29,8 @@ export const TOON = {
   shadeMul: 0.72,                                     // the shade colour of a dye: darker...
   shadeCool: new Color3(-0.02, 0.0, 0.035),           // ...and a touch cooler, never mixed with black
   ink: Color3.FromHexString('#3b2819'),               // History Lines ink: warm sepia, never #000
-  inkPxMin: 1.2,                                      // contour width in px at 1080p: far figures (the floor)...
-  inkPxMax: 2.2,                                      // ...near figures (the ceiling)
+  inkPxMin: 1.6,                                      // contour width in px at 1080p: far figures (the floor)...
+  inkPxMax: 3.2,                                      // ...near figures (the ceiling): the rider's dark contour
   inkWobble: 0.75,                                    // 0 = even line .. 1 = a pen line that swells, thins and breaks
   inkWobbleScale: 9,                                  // its rhythm along the body (per metre)
   inkPxAt: 18,                                        // px = inkPxAt / distance (m), clamped to min..max
