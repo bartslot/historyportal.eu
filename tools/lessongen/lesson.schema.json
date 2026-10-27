@@ -199,6 +199,23 @@
     "teacher_template": {
       "type": "string",
       "description": "teacher card with {total_min}, {story_min}, {min:scA-scB}; --resolve renders `teacher` from it"
+    },
+    "narration": {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "type": "string"
+        },
+        "voice": {
+          "type": "string"
+        },
+        "format": {
+          "type": "string"
+        },
+        "root": {
+          "type": "string"
+        }
+      }
     }
   },
   "$defs": {
@@ -433,6 +450,10 @@
           "type": "number",
           "exclusiveMinimum": 0,
           "description": "measured narration seconds; overrides the words/s estimate"
+        },
+        "audio": {
+          "type": "string",
+          "description": "narration mp3, '<lesson id>/<scene id>.mp3' relative to lesson.narration.root (written by narrate.py)"
         }
       }
     },

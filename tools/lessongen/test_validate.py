@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import copy
+import math
 import json
 from pathlib import Path
 
@@ -324,3 +325,13 @@ def test_totals_json_cli(lesson, tmp_path):
     out = subprocess.run([sys.executable, str(HERE / "validate.py"), str(path), "--totals", "--json"],
                          capture_output=True, text=True, check=True).stdout
     assert json.loads(out) == {"fixture-minimal": round(v.total_s(lesson))}
+
+
+def test_total_rounds_half_up_once(lesson):
+    assert v.half_up(934.5) == 935 and v.half_up(934.49) == 934 and v.half_up(2.5) == 3  # round() would give 934 and 2
+    # two shots of 6.3 s each: per-shot rounding gives 12, the rule gives round(12.6) = 13
+    for sc, tts in zip(lesson["scenes"][:2], (5.7, 5.7)):
+        sc["tts_s"] = tts
+    total = v.total_s(lesson)
+    assert v.half_up(total) == math.floor(total + 0.5)
+    assert v.check(lesson, library_root=NO_LIBRARY)[2]["total_s"] == v.half_up(total)
