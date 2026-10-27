@@ -34,7 +34,10 @@ contracts in the vault (`topics/autonomous-lessons/plan.md`): `library.json` and
 ```ts
 import { playLesson } from './src/stage25d/stage'
 const player = await playLesson(lessonOrUrl, libraryUrl?, canvas?)   // library defaults to library/<bundle>/library.json
-player.play(); player.pause(); await player.seek(sceneIndex, t)
+player.pause(); player.resume(); await player.seek(sceneIndex, t); await player.seekToScene('sc04')
+player.onInteraction((scene, resume) => showCard(scene.interaction, resume))  // fires once per held scene
+player.clock()                                           // lesson seconds; stands still while paused or holding
+player.holdAt(sceneIndex, t); player.setTime(t); player.onScene((index) => ...)  // S5 cards + power meter
 player.doc.set(['scenes', 0, 'camera', 'dur_s'], 12)   // every value: one undo step (player.doc.undo() / redo())
 player.stage.groundPoint(x, 'mid')                       // where a figure stands (x 0..1 across the house view)
 ```
@@ -58,6 +61,9 @@ the `_placeholder` bundle). The panel edits every camera, timing and motion valu
   **Layer keys**: `layer.keys: [{ t, x?, scale?, opacity? }]`, t in seconds.
 - **Look**: the studio's post chain (`engine/look-chain.js`, shared with `look.js`) with `STAGE_LOOK` (History Lines
   pencil + paper grain); `lesson.look` overrides any number.
+- **Interactions**: a scene with `interaction` holds at its end (`timeline.ts`): the picture keeps its layer motion and
+  the camera breathes around the end pose (`lesson.hold = { breath_m, breath_s }`, editable, `breathe()`), until the
+  handler calls `resume`. A seek or rebuild never re-fires a hold; a stale `resume` after a seek is ignored.
 - **Library**: a scene's `bundle` overrides the lesson's (`libraryUrlFor`; a bundle that does not load falls back to the lesson's, warned). `public/library/_placeholder/` is procedural (`python3 scripts/make_placeholder_library.py`), every asset
   `placeholder: true`. Real bundles: `ln -s ~/BartsMedia/historyportal/library/<bundle> public/library/<bundle>`
   (git-ignored).

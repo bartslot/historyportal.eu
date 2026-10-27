@@ -136,7 +136,10 @@
         "at_s": 0
       },
       "sound": null,
-      "interaction": null,
+      "interaction": {
+        "type": "quiz",
+        "question": "Placeholder: what is the roof made of?"
+      },
       "fact_refs": [],
       "dur_s": 14,
       "camera_more": [
