@@ -41,6 +41,20 @@ try {
   const fps = []
   for (let i = 0; i < 5; i++) { await page.waitForTimeout(1000); fps.push(await page.evaluate(() => window.__stage25d.fps())) }
   console.log('fps (1 s windows, 1920x1080):', fps.join(' '))
+  // a teacher edit moves the layer at once; undo puts it back
+  const undo = await page.evaluate(async () => {
+    const p = window.__stage25d
+    p.pause(); await p.seek(0, 0)
+    const mesh = () => p.stage.scene.meshes.find((m) => m.name === 'layer:hut-farm-01')
+    const x0 = mesh().position.x
+    p.doc.set(['scenes', 0, 'set', 'layers', 2, 'x'], 0.2, 'Place')
+    await new Promise((r) => setTimeout(r, 200))
+    const x1 = mesh().position.x
+    p.doc.undo()
+    await new Promise((r) => setTimeout(r, 200))
+    return { x0, x1, xUndo: mesh().position.x }
+  })
+  console.log('edit + undo (hut x, metres):', JSON.stringify(undo), undo.x1 !== undo.x0 && undo.xUndo === undo.x0 ? 'OK' : 'FAIL')
   const misses = await page.evaluate(() => window.__stage25d.stage.misses)
   console.log('unresolved needs:', JSON.stringify(misses))
   console.log(errors.length ? errors.join('\n') : 'console: no errors or warnings')
