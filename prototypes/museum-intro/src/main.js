@@ -219,6 +219,7 @@ async function start() {
     }
   });
   document.body.classList.add('ready');
+  if (handoff) window.parent?.postMessage({ type: 'hp-intro:ready' }, location.origin);
 
   if (query.has('dev')) (await import('./devPanel.js')).mountDevPanel(api);
 }
