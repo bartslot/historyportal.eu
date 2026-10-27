@@ -10,8 +10,8 @@ import { figureTracks, layerMotion } from './motion'
 import { BALLOON_GAP_S, firstSentenceEnd, round, sceneSeconds, scheduleBalloons, shotStarts } from './timing'
 import type { Balloon, Beat, Camera, Lesson, Library, MoveKind, Scene, SoundPlan } from './types'
 
-/** One silence per this many seconds of lesson (at least 2), spaced at least SILENCE_GAP_S apart. */
-const SILENCE_EVERY_S = 150
+/** One silence in every window of this many seconds (PM: 1 per ~3 min), spaced at least SILENCE_GAP_S apart. */
+const SILENCE_EVERY_S = 180
 const SILENCE_GAP_S = 60
 
 /** The rule minimums for a lesson of this many scenes: a short one cannot meet a long one's. */
@@ -36,16 +36,26 @@ export const cameraLocked = (s: Scene): boolean => !owns(s, 'camera', s.camera)
 
 const shotsOf = (s: Scene): Camera[] => [s.camera, ...(s.camera_more ?? [])].filter(Boolean) as Camera[]
 
-/** Silences go on turns and climaxes (never the hook), one per SILENCE_EVERY_S, spaced apart; topped
- *  up from the end when the beats offer too few. `starts` = rough scene start times. */
+/** Which beats a silence prefers: before the turn and the peak first (story-director), never the hook. */
+const SILENCE_RANK: Partial<Record<Beat, number>> = { turn: 0, climax: 1, effect: 2, cause: 3, recap: 4, setup: 5 }
+
+/** One silence in every SILENCE_EVERY_S window of the lesson (so they never bunch), each on the best
+ *  beat in its window, at least SILENCE_GAP_S from the one before; at least the minimum in total (a
+ *  short lesson gets them from the end). `starts` = rough scene start times. */
 export function silenceIndices(beats: Beat[], starts: number[], total: number): number[] {
-  const want = Math.max(minimums(beats.length).silences, Math.round(total / SILENCE_EVERY_S))
   const out: number[] = []
-  const fits = (i: number) => i > 0 && !out.includes(i) && out.every((k) => Math.abs(starts[k] - starts[i]) >= SILENCE_GAP_S)
-  for (const beat of ['turn', 'climax'] as Beat[]) {
-    beats.forEach((b, i) => { if (b === beat && out.length < want && fits(i)) out.push(i) })
+  const fits = (i: number) => i > 0 && beats[i] !== 'hook' && !out.includes(i) && out.every((k) => Math.abs(starts[k] - starts[i]) >= SILENCE_GAP_S)
+  const windows = Math.max(1, Math.ceil(total / SILENCE_EVERY_S - 0.25)) // a last window under ~45 s needs none
+  for (let w = 0; w < windows; w++) {
+    const mid = (w + 0.5) * SILENCE_EVERY_S
+    const best = beats
+      .map((b, i) => i)
+      .filter((i) => starts[i] >= w * SILENCE_EVERY_S && starts[i] < (w + 1) * SILENCE_EVERY_S && fits(i))
+      .sort((a, b) => (SILENCE_RANK[beats[a]] ?? 9) - (SILENCE_RANK[beats[b]] ?? 9) || Math.abs(starts[a] - mid) - Math.abs(starts[b] - mid))[0]
+    if (best !== undefined) out.push(best)
   }
-  for (let i = beats.length - 2; out.length < want && i > 0; i--) if (!out.includes(i)) out.push(i)
+  const want = minimums(beats.length).silences
+  for (let i = beats.length - 2; out.length < want && i > 0; i--) if (!out.includes(i) && beats[i] !== 'hook') out.push(i)
   return out.sort((a, b) => a - b)
 }
 

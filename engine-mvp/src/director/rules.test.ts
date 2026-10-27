@@ -136,9 +136,24 @@ describe('place-aware sound', () => {
   })
 })
 
-// Real lessons from S4 (vault). Skipped where the vault is not on this machine.
-const VAULT = '/Users/bartslot/BartsAutomation/BartsDev/Memory/historyportal/topics/autonomous-lessons/lessons'
-for (const id of ['eerste-boeren', 'hunebedden', 'voc']) {
+// Real lessons from S4 (vault; HP_LESSONS_DIR overrides the path). Rules:
+// - vault mounted: every lesson below MUST be there; a missing one FAILS (a renamed or split lesson
+//   must be renamed here too, never skipped silently)
+// - vault not mounted: skipped with a warning, except in CI (CI=1), where that fails too
+const VAULT = process.env.HP_LESSONS_DIR ?? '/Users/bartslot/BartsAutomation/BartsDev/Memory/historyportal/topics/autonomous-lessons/lessons'
+const REAL_LESSONS = ['eerste-boeren-1', 'eerste-boeren-2', 'hunebedden', 'voc']
+const mounted = existsSync(VAULT)
+describe('real lessons are where the tests expect them', () => {
+  // a named test, so an unmounted vault shows up in the output and not only as "N skipped"
+  it.runIf(!mounted && !process.env.CI)(`WARNING: no lesson vault at ${VAULT}, real-lesson tests SKIPPED`, () => {
+    // vitest 4 swallows console output of passing tests: write past it
+    process.stderr.write(`\n[rules.test] WARNING: lesson vault not found at ${VAULT}: real-lesson tests skipped\n`)
+  })
+  it.runIf(!mounted && !!process.env.CI)('CI has the lesson vault', () => expect(mounted, `no lesson vault at ${VAULT}`).toBe(true))
+  it.runIf(mounted).each(REAL_LESSONS)('%s/lesson.json exists', (id) => expect(existsSync(`${VAULT}/${id}/lesson.json`), `${VAULT}/${id}/lesson.json missing`).toBe(true))
+})
+
+for (const id of REAL_LESSONS) {
   const file = `${VAULT}/${id}/lesson.json`
   describe.skipIf(!existsSync(file))(`real lesson ${id}`, () => {
     const lesson = JSON.parse(existsSync(file) ? readFileSync(file, 'utf8') : '{"scenes":[]}') as Lesson
@@ -156,8 +171,14 @@ for (const id of ['eerste-boeren', 'hunebedden', 'voc']) {
       }
     })
 
-    it('at least one silence per 3 minutes (12 min = 4 or more), spaced apart', () => {
-      expect(d.scenes.filter((s) => s.sound!.silence).length).toBeGreaterThanOrEqual(Math.max(2, Math.floor(total / 180)))
+    it('silences scale with length: one in every full 3-minute window (never bunched), never two within 60 s', () => {
+      const starts = sceneStarts(d)
+      const at = d.scenes.map((s, i) => (s.sound!.silence ? starts[i] : -1)).filter((t) => t >= 0)
+      expect(at.length).toBeGreaterThanOrEqual(Math.max(2, Math.floor(total / 180)))
+      at.slice(1).forEach((t, k) => expect(t - at[k]).toBeGreaterThanOrEqual(60))
+      // every full window, measured on the real starts (silences shift the clock a little: 15 s slack)
+      for (let w = 0; (w + 1) * 180 <= total; w++) expect(at.some((t) => t >= w * 180 - 15 && t < (w + 1) * 180 + 15), `window ${w * 3}-${w * 3 + 3} min`).toBe(true)
+      d.scenes.forEach((s) => { if (s.beat === 'hook') expect(s.sound!.silence).toBeNull() })
     })
 
     it('varies the shot scale: all three used, never two of one scale in a row', () => {
