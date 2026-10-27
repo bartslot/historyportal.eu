@@ -155,24 +155,31 @@ describe('real lessons are where the tests expect them', () => {
   it.runIf(mounted).each(REAL_LESSONS)('%s/lesson.json exists', (id) => expect(existsSync(`${VAULT}/${id}/lesson.json`), `${VAULT}/${id}/lesson.json missing`).toBe(true))
 })
 
-// S4's length for a lesson, never a number frozen in this test:
-// - live from S4's validate.py: in this checkout (tools/lessongen/, the integration branch) or in
-//   HP_LESSONGEN_DIR (e.g. S4's worktree)
-// - else the lesson's own teacher card ("N minuten", the first one), which validate.py --resolve
-//   writes from the same model and holds to within 1 minute
-const VALIDATE = [process.env.HP_LESSONGEN_DIR && `${process.env.HP_LESSONGEN_DIR}/validate.py`, new URL('../../../tools/lessongen/validate.py', import.meta.url).pathname]
-  .find((p) => p && existsSync(p))
-type S4Length = { exact: number } | { minutes: number } | null
-function s4Length(lesson: Lesson, file: string): S4Length {
-  if (VALIDATE) {
-    const out = spawnSync('python3', [VALIDATE, file], { encoding: 'utf8' })
-    const stats = JSON.parse(out.stdout.split('\n').find((l) => l.startsWith('{')) ?? 'null')
-    if (!stats) throw new Error(`validate.py gave no stats for ${file}: ${out.stderr}`)
-    return { exact: stats.total_s }
-  }
-  const card = JSON.stringify(lesson.teacher ?? '').match(/(\d+) minuten/)
-  return card ? { minutes: Number(card[1]) } : null
+// S4's length, LIVE from tools/lessongen/validate.py (PM: the director = the validator, to the second).
+// `--totals --json` (S4 e92dbe95) when it has it, else the stats line every validate.py prints.
+// No python3/jsonschema: skipped with a warning, FAIL under CI. Never a number frozen in this test.
+const VALIDATE = new URL('../../../tools/lessongen/validate.py', import.meta.url).pathname
+const python = spawnSync('python3', ['-c', 'import jsonschema'], { encoding: 'utf8' })
+const canValidate = existsSync(VALIDATE) && python.status === 0
+const whyNot = !existsSync(VALIDATE) ? `no ${VALIDATE}` : `python3 with jsonschema not available (${python.error?.message ?? python.stderr.trim()})`
+function s4Total(id: string, file: string): number {
+  const totals = spawnSync('python3', [VALIDATE, file, '--totals', '--json'], { encoding: 'utf8' })
+  try {
+    const t = JSON.parse(totals.stdout) as Record<string, number>
+    if (totals.status === 0 && typeof t[id] === 'number') return t[id]
+  } catch { /* an older validate.py without --totals: read its stats line below */ }
+  const out = spawnSync('python3', [VALIDATE, file], { encoding: 'utf8' })
+  const stats = JSON.parse(out.stdout.split('\n').find((l) => l.startsWith('{')) ?? 'null')
+  if (typeof stats?.total_s !== 'number') throw new Error(`validate.py gave no total for ${id}: ${out.stderr}`)
+  return stats.total_s
 }
+
+describe('the validator can run', () => {
+  it.runIf(!canValidate && !!process.env.CI)('CI can run validate.py', () => expect(canValidate, whyNot).toBe(true))
+  it.runIf(!canValidate && !process.env.CI)(`WARNING: ${whyNot}, timing parity tests SKIPPED`, () => {
+    process.stderr.write(`\n[rules.test] WARNING: ${whyNot}: timing parity with validate.py skipped\n`)
+  })
+})
 
 for (const id of REAL_LESSONS) {
   const file = `${VAULT}/${id}/lesson.json`
@@ -183,12 +190,9 @@ for (const id of REAL_LESSONS) {
 
     it('passes every rule', () => expect(audit(d)).toEqual([]))
 
-    it('has the same length as S4\'s validate.py (one timing model, tools/lessongen/timing.json)', () => {
+    it.runIf(canValidate)('has the same length as S4\'s validate.py, to the second (one timing model, tools/lessongen/timing.json)', () => {
       const model = lesson.scenes.reduce((t, s) => t + modelShotSeconds(s) + classActionSeconds(s) + interactionSeconds(s), 0)
-      const s4 = s4Length(lesson, file)
-      expect(s4, `${id}: no validate.py and no "N minuten" on the teacher card`).not.toBeNull()
-      if (s4 && 'exact' in s4) expect(Math.round(model)).toBe(s4.exact)
-      if (s4 && 'minutes' in s4) expect(Math.abs(model / 60 - s4.minutes)).toBeLessThanOrEqual(1)
+      expect(Math.round(model)).toBe(s4Total(id, file))
       // the director's own additions: a 1.2 s silence or balloons that need longer than the line; nothing else
       const extras = d.scenes.map((s, i) => s.dur_s! - modelShotSeconds(lesson.scenes[i]) - classActionSeconds(lesson.scenes[i]))
       extras.forEach((x, i) => {
