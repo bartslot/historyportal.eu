@@ -21,14 +21,17 @@ export const worldX = (xFrac: number, z: number): number => (xFrac - 0.5) * visi
 
 /** What each beat wants the camera to do, best first. 'through' (the native move) is placed apart. */
 const BY_BEAT: Record<Beat, MoveKind[]> = {
-  hook: ['push', 'truck'],
+  hook: ['push', 'truck', 'pan'],
   setup: ['tilt', 'truck', 'pan'],
   cause: ['push', 'rack', 'pan'],
-  effect: ['pull', 'truck', 'pan'],
+  effect: ['pull', 'truck', 'tilt'],
   turn: ['rack', 'push', 'tilt'],
-  climax: ['push', 'rack'],
-  recap: ['pull', 'truck'],
+  climax: ['push', 'truck', 'rack'],
+  recap: ['pull', 'truck', 'tilt'],
 }
+/** Longest shot per beat: the climax cuts faster (the acceleration), the hook's first move must be well
+ *  under way by 3 s even on the stage's sine ease (sin(pi/2 * 3/8.5) > 0.5), the rest may breathe. */
+export const SHOT_MAX_BY_BEAT: Record<Beat, number> = { hook: 8.5, setup: 12, cause: 12, effect: 12, turn: 10, climax: 8, recap: 12 }
 export const PLAIN_MOVES: MoveKind[] = ['push', 'pull', 'truck', 'pan', 'tilt', 'rack']
 
 /** Ease by intent, never linear. `curve` = the easing.js name; `ease` = the stage's four
@@ -113,20 +116,26 @@ export function makeCamera(scene: Scene, move: MoveKind, at: number, dur: number
   }
 }
 
-/** Pick a move per shot: the beat's favourite that differs from the shot before. */
-export function pickMove(beat: Beat, prev: MoveKind | null, skip: MoveKind[] = []): MoveKind {
+/** Pick a move per shot from the beat's pool, rotating with `turn` (how often this beat came before)
+ *  so the same beat is not shot the same way every time; never a move in `avoid` (the shot on screen
+ *  before the cut, the shot after it). */
+export function pickMove(beat: Beat, avoid: (MoveKind | null | undefined)[], turn = 0): MoveKind {
   const pool = BY_BEAT[beat] ?? PLAIN_MOVES
-  return pool.find((m) => m !== prev && !skip.includes(m)) ?? PLAIN_MOVES.find((m) => m !== prev && !skip.includes(m)) ?? pool[0]
+  const rotated = [...pool.slice(turn % pool.length), ...pool.slice(0, turn % pool.length), ...PLAIN_MOVES]
+  return rotated.find((m) => !avoid.includes(m)) ?? pool[0]
 }
 
-/** Index of the peak beat that gets the one native move: the first climax, else the first turn,
- *  else the scene at 70 % of the lesson. */
-export function peakIndex(beats: Beat[]): number {
-  const climax = beats.indexOf('climax')
-  if (climax >= 0) return climax
-  const turn = beats.indexOf('turn')
-  if (turn >= 0) return turn
-  return Math.min(beats.length - 1, Math.floor(beats.length * 0.7))
+/** Index of the peak that gets the one native move: the first climax, else the first turn, else the
+ *  scene nearest 70 % of the lesson; scenes whose camera the teacher owns are passed over. -1 = none. */
+export function peakIndex(beats: Beat[], locked: boolean[] = []): number {
+  const free = (i: number) => i >= 0 && !locked[i]
+  for (const beat of ['climax', 'turn'] as Beat[]) {
+    const i = beats.findIndex((b, k) => b === beat && free(k))
+    if (i >= 0) return i
+  }
+  const target = Math.floor(beats.length * 0.7)
+  const order = beats.map((_, i) => i).sort((a, b) => Math.abs(a - target) - Math.abs(b - target))
+  return order.find(free) ?? -1
 }
 
 /** The shot playing `t` s into a scene, with its own clock: for a stage that plays `camera_more`

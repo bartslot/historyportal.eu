@@ -53,9 +53,9 @@ export function sceneSeconds(scene: Scene, narrationAt: number, balloons: Balloo
   return round(Math.max(spoken, read, SHOT_MIN_S))
 }
 
-/** Split a scene into shots of SHOT_MIN..SHOT_MAX seconds. Returns the shot start times. */
-export function shotStarts(dur: number): number[] {
-  const n = Math.max(1, Math.ceil(dur / SHOT_MAX_S))
+/** Split a scene into equal shots of at most `max` seconds. Returns the shot start times. */
+export function shotStarts(dur: number, max = SHOT_MAX_S): number[] {
+  const n = Math.max(1, Math.ceil(dur / max - 1e-9))
   return Array.from({ length: n }, (_, i) => round((dur / n) * i))
 }
 
