@@ -98,11 +98,23 @@ prop.parent = fig.hold   // lesson `holds` (a pot, a basket): a node between the
   expressions fall back (`poseFor`, `expressionFor`). Group chars repeated in one scene get their own dyes.
 - **Contract with the stage**: `placeFigure(scene, fig, { x 0..1, depth: 'bg'|'mid'|'fg', facing: 'left'|'right'|'front'|'back' }, stage?)`.
   It stands `fig.root` on `stage.groundPoint(x, depth)` (S1's `Stage`); without a stage it uses the same depth maths.
-  `left`/`right` = a 3/4 turn toward that side of the screen (`FACING_TURN_DEG`, 62; 90 = profile). Move `fig.root`
+  `left`/`right` = a 3/4 turn toward that side of the screen, measured from the line to the camera (`FACING.turnDeg`, 62; 90 = profile). Move `fig.root`
   for walks; the walk clip plays in place.
-- **Paint** (`toon.ts`): flat dye, one hard cel step lit by the figure's own light (`TOON.light`), ink where the surface
-  turns from the eye (contour + fold lines, thick on round forms, thin on flat). Skin is lit flat (`SKIN_STEP`).
-- **Costume is painted, never modelled**: per-vertex zones by bone weight (`paintZones`) dye parts of the one body's
+- **Paint** (`toon.ts`): flat dye with a HARD two-step cel (`TOON.step`), the shade a darker, cooler hue of the dye
+  (`shadeMul`, `shadeCool`), faces lit by the light's horizontal angle; a body-anchored watercolour (pigment thick and
+  thin, a wet edge on the shade line, paper in the lights) that moves with the figure. Ink: an inverted hull in SCREEN
+  pixels (`inkPxMin`..`inkPxMax` at 1080p) that swells, thins and breaks like a pen (`inkWobble`), stepped back from
+  the camera so it only shows past the silhouette, plus fold lines where the surface turns from the eye (`inkEdge`).
+  Root cause of every earlier hull failure: the vendor meshes carry vertex alpha, which put them in the transparent
+  pass; `createFigure` clears `hasVertexAlpha`. The stage look's pencil pass adds its line on top. Every value is a
+  slider in the figure lab.
+- **Garment slots from FOUND parts** (`fit_garments.py`, run inside `export_wardrobe.py`; never modelled by hand):
+  CC0 MakeHuman monk robe (Donitz) cut by the body's own landmarks into `Garment_SkirtKnee` (tunic, `legs: tunic`),
+  `Garment_SkirtLong` (`legs: dress`) and `Garment_Peplum` (doublet skirts, `legs: breeches` + `collar`); CC0
+  viking pants (Rehman Polanski) cut into `Garment_Breeches`; CC-BY "Hat Of The Cavalier" (Normal Map Enjoyer,
+  Sketchfab c0a97984) as `Garment_HatWide`. Each is pushed outside the trousers, snugged at the waist, low poly,
+  and skinned to `Man_Rig` with the trousers' weights (skirts hang 75 % from the hips so they do not split).
+- **Costume is also painted**: per-vertex zones by bone weight (`paintZones`) dye parts of the one body's
   meshes. Recipe words: `sleeves` (long sleeves on the arm skin), `legs: tunic | dress | breeches | trousers` (tunic =
   coat dye hip to knee over leg wraps; breeches = stockings below the knee), `collar` (white falling collar within
   `BANDS.collarRadius` of the neck joint), `belt` (a band at the coat's hem). `figureRecipe` picks them by era. The stage look's pencil pass adds its
@@ -115,14 +127,13 @@ prop.parent = fig.hold   // lesson `holds` (a pot, a basket): a node between the
   behind the hip-ankle line, elbow never bent forward, upper arm never across the body, hip extension under 45 deg.
   `npx vitest run src/figures` runs them on the real body (skipped where the GLB is missing) and proves the guards
   fail a broken knee and an arm through the torso.
-- **Walk** (`clips.ts`): Ready Player Me `M_Walk_001` (Mixamo names) retargeted with `AnimatorAvatar` + root/ground
-  fix (feet stay on the ground, no crouch, no float), then a guard bake straightens any backward knee in the keys:
-  0 violations over 116 frames (figure lab: `__lab.walkAudit()`).
+- **Walk** (`clips.ts`): Ready Player Me `M_Walk_001` (Mixamo names) retargeted with `AnimatorAvatar`, stride scaled
+  to the short legs (`STRIDE.scale`), a guard bake that straightens any backward knee, then the hips resampled per
+  frame so the lower foot's sole stays on the ground. `walk.test.ts`: every frame a foot within 2 cm of the ground, no
+  backward knee, hips bob under 6 cm (figure lab: `__lab.walkAudit()`).
 - **Lab**: `/figure-lab.html?char=boer-man,boer-vrouw&poses=point,carry&view=front|three|side|face&look=stage&ui=0`.
 - **Assets** (git-ignored): `public/assets/models/customizable-man/man-lite.glb` from `src/figures/export_wardrobe.py`
   (Blender, licensed model in `workflows/3D pipeline/customizable-man/`, licence: no AI training) and `clips/`.
-- **Gaps (needed assets)**: female body and a child body (now: the man at 0.95 / 0.68); long hair / braid /
-  headscarf / white cap; period SILHOUETTES (the zones give tunic, dress, breeches, collar their colour, the shape is
-  still sweater + trousers: a wide tunic skirt, a skirt, a cloak); a 1640s wide flat felt hat (the Cowboy_Hat part
-  stands in); hand props for `carry` / `dig` / `pull` (basket, spade, rope); a seat for `sit` at a table; thin paper
-  slivers at hems where the cloth stands off the trimmed body.
+- **Gaps (needed assets)**: female and child bodies (now the man at 0.95 / 0.68); long hair / braid / headscarf /
+  cap; a cloak and a hide cape (no found part fitted yet); hand props for `carry` / `dig` / `pull` (basket, spade,
+  rope); simplified comic hands and the base mesh's proportions (accepted for the pilot); thin paper slivers at hems.

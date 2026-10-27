@@ -27,7 +27,7 @@ export type FigureRecipe = {
 // parts that exist on the body (export: src/figures/export_wardrobe.py)
 export const HAIRS = ['Hair_00', 'Hair_01', 'Hair_02', 'Hair_03', 'Hair_04', 'Hair_05', 'Hair_07'] as const
 export const BEARDS = ['Facial_Hair_01', 'Facial_Hair_02'] as const // 00/03/05-08 export invisible (vendor modifiers)
-export const HATS = ['Cowboy_Hat', 'Bucket_Hat'] as const
+export const HATS = ['Garment_HatWide', 'Cowboy_Hat', 'Bucket_Hat'] as const // HatWide: the 1640s wide felt hat (found part, CC-BY)
 export type HairId = typeof HAIRS[number]
 export type BeardId = typeof BEARDS[number]
 export type HatId = typeof HATS[number]
@@ -50,10 +50,10 @@ export const RECIPES: Record<string, FigureRecipe> = {
     body: 'man', skin: '#e2b392', hair: 'Hair_03', beard: null, hat: false, expression: 'neutral', scale: 0.95, legs: 'dress', belt: '#4f3a28',
     dyes: { coat: '#9a5c46', trousers: '#84503c', shoes: '#5a4330', hair: '#6b4428' },
   },
-  // VOC, 1640s: black wide-brimmed hat, dark coat, curled moustache (the Tasman look)
+  // VOC, 1640s: black doublet and breeches, white falling collar, grey stockings, wide hat, curled moustache (the Tasman look)
   'voc-schipper': {
-    body: 'man', skin: '#e8bf9e', hair: 'Hair_01', beard: 'Facial_Hair_02', hat: true, hatKind: 'Cowboy_Hat', expression: 'neutral', legs: 'breeches', collar: true,
-    dyes: { coat: '#454b5c', trousers: '#4f4034', shoes: '#33291f', hair: '#5c4630', hat: '#2e2925' },
+    body: 'man', skin: '#e8bf9e', hair: 'Hair_01', beard: 'Facial_Hair_02', hat: true, hatKind: 'Garment_HatWide', expression: 'neutral', legs: 'breeches', collar: true,
+    dyes: { coat: '#34333a', trousers: '#2d2b2e', shoes: '#2a221c', hair: '#5c4630', hat: '#2e2925' }, stockings: '#8f897e',
   },
   'voc-matroos': {
     body: 'man', skin: '#d6a07a', hair: 'Hair_02', beard: null, hat: true, hatKind: 'Bucket_Hat', expression: 'neutral', legs: 'breeches', stockings: '#a89f8c',
@@ -104,7 +104,7 @@ export function figureRecipe(char: string, cast: CastEntry[] = [], bundle = 'nl-
   const child = has(text, 'child', 'kind', 'girl', 'boy', 'meisje', 'jongen', 'zusje', 'broertje') || /\b([2-9]|1[0-3])\b/.test(entry?.look ?? '')
   const woman = has(text, 'woman', 'vrouw', 'girl', 'meisje', 'zusje', 'moeder', 'mother', 'oma', 'widow', 'weduwe', 'weefster', 'dress', 'titia')
   const old = has(text, 'old', 'oma', 'opa', 'grey', 'gray', 'white beard')
-  const officer = bundle === 'nl-golden-age' && has(text, 'governor', 'statesman', 'merchant', 'koopman', 'tasman', 'pilot', 'raad', 'clerk', 'klerk', 'doublet', 'gown')
+  const officer = bundle === 'nl-golden-age' && has(text, 'governor', 'statesman', 'merchant', 'koopman', 'tasman', 'pilot', 'raad', 'clerk', 'klerk', 'doublet', 'gown', 'captain', 'kapitein', 'schipper', 'commander', 'commandeur')
   const sailor = bundle === 'nl-golden-age' && !officer && has(text, 'sailor', 'zeelui', 'boatswain', 'bootsman', 'uitkijk', 'ship', 'cap')
   const coat = officer ? '#2e2c2c' : pick(dyes, seed, 0)
   const trousers = officer ? '#3a3330' : pick(dyes, seed, 1)
@@ -114,7 +114,7 @@ export function figureRecipe(char: string, cast: CastEntry[] = [], bundle = 'nl-
     hair: woman ? 'Hair_03' : (['Hair_00', 'Hair_01', 'Hair_02', 'Hair_04', 'Hair_07'] as const)[seed % 5],
     beard: woman || child ? null : old || has(text, 'beard', 'moustache', 'tasman') ? (has(text, 'moustache', 'tasman') ? 'Facial_Hair_02' : 'Facial_Hair_01') : seed % 3 === 0 ? 'Facial_Hair_01' : null,
     hat: officer || sailor || has(text, 'hat', 'cap'),
-    hatKind: sailor || has(text, 'cap') ? 'Bucket_Hat' : 'Cowboy_Hat',
+    hatKind: sailor || has(text, 'cap') ? 'Bucket_Hat' : 'Garment_HatWide',
     expression: 'neutral',
     // a child is drawn smaller, not younger: the gap list asks for a child body
     scale: child ? 0.68 : woman ? 0.95 : 1,
