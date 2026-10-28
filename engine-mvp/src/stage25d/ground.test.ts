@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bottomColour, groundOptions, hexRgb, PAPER, resolveGround, stainSize } from './ground'
+import { BG_FEATHER, bottomColour, featherOf, groundOptions, hexRgb, PAPER, resolveGround, stainSize } from './ground'
 import { libraryUrlFor } from './library'
 import type { Asset, Library } from './types'
 
@@ -98,5 +98,14 @@ describe('groundOptions: the panel lists the scene\'s own bundle (PM follow-up)'
   })
   it('a bundle without ground art lists none (the panel offers Paper)', () => {
     expect(groundOptions(lib([a('bg', 'bg', [])]))).toEqual([])
+  })
+})
+
+describe('featherOf: only bg strips feather (checker sky MEDIUM)', () => {
+  it('a strip feathers by default or as the teacher set it; a prop at depth bg never does', () => {
+    expect(featherOf({ layer: 'bg' }, {})).toBe(BG_FEATHER)
+    expect(featherOf({ layer: 'bg' }, { feather: 0.4 })).toBe(0.4)
+    expect(featherOf({ layer: 'mid' }, {})).toBe(0)                 // tree-oak-01 at depth bg (hunebedden sc22)
+    expect(featherOf({ layer: 'prop' }, { feather: 0.4 })).toBe(0)
   })
 })

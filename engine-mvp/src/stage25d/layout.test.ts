@@ -23,6 +23,29 @@ describe('placeLayer', () => {
     expect(p.w).toBeGreaterThan(viewWidthAt(DEPTH_Z.bg))
     expect(p.uRepeat).toBeCloseTo(p.w / 160)
   })
+  it('an untiled sky painting is the full-frame backdrop, cover-fit and never stretched', () => {
+    const tiled = placeLayer({ ...hills, layer: 'sky', w: 2048, h: 1024, height_m: 400 }, { depth: 'sky' }, 0)
+    for (const [w, h] of [[1536, 1024], [3000, 1000], [1000, 1500]]) {
+      const sky: Asset = { ...tree, layer: 'sky', w, h, height_m: 0, tileable_x: false, motion: 'none' }
+      const p = placeLayer(sky, { depth: 'sky', x: 0.1, scale: 0.2 }, 0)
+      expect(p.w / p.h).toBeCloseTo(w / h)                // never stretched
+      expect(p.w).toBeGreaterThanOrEqual(tiled.w - 1e-6)  // covers the same box as a tiled sky
+      expect(p.h).toBeGreaterThanOrEqual(tiled.h - 1e-6)
+      expect(p.x).toBe(0)                                 // centred: layer x and scale do not shrink a backdrop
+      expect(p.y).toBeCloseTo(tiled.y)                    // horizon at the same place
+      expect(p.uRepeat).toBe(1)
+    }
+  })
+  it('an untiled bg strip is never narrower than the view at its depth', () => {
+    const strip: Asset = { ...hills, w: 1536, h: 475, height_m: 2, tileable_x: false }
+    const p = placeLayer(strip, { depth: 'bg', x: 0.5 }, 0)
+    expect(p.w).toBeCloseTo(viewWidthAt(DEPTH_Z.bg) * 1.6)
+    expect(p.w / p.h).toBeCloseTo(1536 / 475)
+    expect(placeLayer({ ...strip, height_m: 100 }, { depth: 'bg' }, 0).h).toBe(100)  // a taller strip keeps its size
+    expect(placeLayer({ ...tree, height_m: 2 }, { depth: 'mid' }, 0).h).toBe(2)       // props are not covered
+    const longhouse: Asset = { ...tree, layer: 'mid', w: 1200, h: 600, height_m: 6 }      // a prop placed far off (hunebedden sc09)
+    expect(placeLayer(longhouse, { depth: 'bg', x: 0.3 }, 0)).toMatchObject({ h: 6, w: 12 })
+  })
   it('raises only the far landscape with the horizon', () => {
     expect(placeLayer(hills, { depth: 'bg' }, 0, 4).y).toBe(4)
     expect(placeLayer(tree, { depth: 'mid' }, 0, 4).y).toBe(0)

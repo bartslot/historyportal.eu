@@ -7,6 +7,10 @@ import type { Asset, Library, Scene } from './types'
 export const PAPER = '#f6f5ee'
 /** The bottom of a bg strip feathers into the ground over this share of its height (layer.feather overrides). */
 export const BG_FEATHER = 0.22
+/** A layer's soft lower edge: only bg STRIPS feather (the feather is painted opaque, so on a prop's quad, even one
+ *  placed at depth bg, it would turn the see-through part into a solid block). */
+export const featherOf = (asset: { layer: string }, layer: { feather?: number }): number =>
+  asset.layer === 'bg' ? layer.feather ?? BG_FEATHER : 0
 /** Contact stain opacity under mid/fg assets (layer.shadow overrides; 0 = none). */
 export const STAIN_DEFAULT = 0.6
 /** Metres the ground art repeats over when the asset does not say (asset.height_m = one tile's depth). */
