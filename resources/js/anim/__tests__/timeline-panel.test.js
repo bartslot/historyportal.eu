@@ -480,3 +480,28 @@ describe('an unsent live edit survives a reload', () => {
     expect(sessionStorage.length).toBe(0)
   })
 })
+
+describe('a stashed draft expires', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    sessionStorage.clear()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+    sessionStorage.clear()
+  })
+
+  it('ignores a draft written more than ten minutes ago', () => {
+    const target = 'bal:1'
+    const first = panel([{ target, property: 'tip_y', keyframes: [{ time: 1, value: 0 }, { time: 3, value: 1 }] }])
+    first.time = 2
+    first.setValue(target, 'tip_y', 0.5, { flush: false })
+    first.stashDraft()
+
+    vi.advanceTimersByTime(11 * 60 * 1000)
+    const second = panel([])
+    second.restoreDraft()
+    expect(second.tracks).toEqual([])
+    expect(second.$wire.setTimeline).not.toHaveBeenCalled()
+  })
+})

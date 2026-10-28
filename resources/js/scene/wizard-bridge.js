@@ -10,7 +10,7 @@ import { cameraSpec } from './camera.js'
 import { normalizeSplit, paneCount } from './split-layout.js'
 import { singleSource, cropPlates, textureCrop, fade, publishBackgrounds } from './background-crop.js'
 import { balloonOptions, hideStageBalloons, setBalloonScene, showStageBalloons, typingIn } from './editor-balloons.js'
-import { createSaveQueue } from '../anim/save-queue.js'
+import { createKeyedSaveQueue } from '../anim/save-queue.js'
 
 /** Scene kinds the player draws its own way, without balloons (SceneSplit::NO_SPLIT_KINDS). */
 const NO_BALLOON_KINDS = ['game', 'map', 'voyage', 'gallery', 'video']
@@ -980,12 +980,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     // once the teacher pauses, the same pause as the timeline's live rows, latest move wins, so a
     // scrub is one request. An undo or a scene switch sends the pending move first.
     const DIO_MOVE_PAUSE_MS = 400
-    let pendingDioMove = null
-    const dioMoves = createSaveQueue(() => {
-        const move = pendingDioMove
-        pendingDioMove = null
-        if (move) window.Livewire?.dispatch('diorama:move', move)
-    }, DIO_MOVE_PAUSE_MS)
+    const dioMoves = createKeyedSaveQueue((move) => window.Livewire?.dispatch('diorama:move', move), DIO_MOVE_PAUSE_MS)
     window.addEventListener('scene:before-undo', () => dioMoves.flush())
     document.addEventListener('click', (event) => {
         if (event.target.closest?.('[wire\\:click^="selectScene("]')) dioMoves.flush()
@@ -1035,8 +1030,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         _diorama.show(spec, { ...assets, ...(payload.dioramaAssets ?? {}) }, {
             editable: true,
             onMove: ({ itemId, floor, cell, keys }) => {
-                pendingDioMove = { itemId, floor, cell, keys: keys ?? null }
-                dioMoves.schedule()
+                dioMoves.schedule(itemId, { itemId, floor, cell, keys: keys ?? null })
                 // An auto-keyed drag may have given the item its first path: the timeline shows it now.
                 window.dispatchEvent(new CustomEvent('scene-objects-changed'))
                 window.dispatchEvent(new CustomEvent('timeline-changed'))   // the Format panel's diamonds re-read

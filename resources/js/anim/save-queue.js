@@ -40,3 +40,28 @@ export const createSaveQueue = (save, pauseMs) => {
     cancel,
   }
 }
+
+/**
+ * A save queue that keeps the latest value PER KEY: moves of two items inside one pause both go
+ * out, and only the newest move of each. `flush` sends every key's latest value at once.
+ *
+ * @param {(value: unknown) => void} send called once per key that has a pending value
+ * @param {number} pauseMs
+ */
+export const createKeyedSaveQueue = (send, pauseMs) => {
+  const pending = new Map()
+
+  const queue = createSaveQueue(() => {
+    const values = [...pending.values()]
+    pending.clear()
+    values.forEach((value) => send(value))
+  }, pauseMs)
+
+  return {
+    schedule (key, value) {
+      pending.set(key, value)
+      queue.schedule()
+    },
+    flush: () => queue.flush(),
+  }
+}

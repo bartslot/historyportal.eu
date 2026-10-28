@@ -74,6 +74,9 @@ const SESSIONS = new Map()
 /** The sessionStorage key for one scene's unsent live edit. */
 const draftKey = (sceneId) => `timeline-draft:${sceneId}`
 
+/** A draft older than this is left behind: the server may have moved on since it was written. */
+const DRAFT_MAX_AGE_MS = 10 * 60 * 1000
+
 /**
  * How long a new scene's timeline runs, in seconds.
  *
@@ -1561,7 +1564,7 @@ export const animationTimeline = (config = {}) => ({
   stashDraft () {
     if (!this._saves?.isPending()) return
     try {
-      sessionStorage.setItem(draftKey(config.sceneId), JSON.stringify({ tracks: this.tracks, targets: this.targets, duration: this.duration }))
+      sessionStorage.setItem(draftKey(config.sceneId), JSON.stringify({ at: Date.now(), tracks: this.tracks, targets: this.targets, duration: this.duration }))
     } catch (_) { /* storage blocked: the pause is lost, as it was before */ }
   },
 
@@ -1572,7 +1575,7 @@ export const animationTimeline = (config = {}) => ({
       draft = JSON.parse(sessionStorage.getItem(key) ?? 'null')
       sessionStorage.removeItem(key)
     } catch (_) { return }
-    if (!Array.isArray(draft?.tracks)) return
+    if (!Array.isArray(draft?.tracks) || Date.now() - draft.at > DRAFT_MAX_AGE_MS) return
     this.tracks = draft.tracks
     this.applyFrame()
     this.saveSoon()
