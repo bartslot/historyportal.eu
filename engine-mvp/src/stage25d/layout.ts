@@ -20,8 +20,9 @@ export function bandSize(z: number, aspect: number): { w: number; h: number } {
   const w = BAND_VIEWS * viewWidthAt(z)
   return { w, h: w / aspect }
 }
-/** Draw slot of a ground band: by distance, so bands further out draw first and the floor props stay in front. */
-export const bandSlot = (z: number) => 1000 + Math.round((Math.log10(2000) - Math.log10(Math.max(z, 1))) * 300)
+/** Draw slot of anything at distance z (ground bands, props, strips): the further out, the earlier. 1010 at 2000 m,
+ *  about 1900 at 2 m; always above the floor (999) and the decals (1000). */
+export const bandSlot = (z: number) => 1010 + (Math.log10(2000) - Math.log10(Math.max(z, 1))) * 290
 
 /** Draw slot of the floor: after every sky layer (slots 1..999), before the far landscape (1000+). */
 export const GROUND_SLOT = 999
@@ -46,7 +47,9 @@ export function placeLayer(asset: Asset, layer: Pick<SceneLayer, 'depth' | 'x' |
   const depth = layer.depth
   const z = DEPTH_Z[depth] - order * SAME_DEPTH_STEP_M
   const span = viewWidthAt(z)
-  const alphaIndex = DEPTH_RANK[depth] * 1000 + order * 2 + 1
+  // one depth order for everything standing and every ground band (bandSlot): nearer draws later, so grass in front
+  // of a band covers the props behind it, and a prop in front of a band covers the band
+  const alphaIndex = depth === 'sky' ? order * 2 + 1 : bandSlot(z)
   if (asset.layer === 'sky') {
     // the backdrop, ALWAYS (tiled or one painting): covers the view box at its distance, horizon a little below the
     // frame's bottom edge. A tiled sky repeats across the box; one painting is cover-fit, never stretched (the box's
@@ -82,7 +85,9 @@ export function autoHorizon(landTop: number, stripH: number, order = 0, target =
 }
 
 /** The draw slot of a layer's contact stain: just before the layer itself. */
-export const stainIndex = (layerAlphaIndex: number) => layerAlphaIndex - 1
+export const stainIndex = (layerAlphaIndex: number) => layerAlphaIndex - STAIN_SLOT_GAP
+/** How far below its layer a stain draws: less than one layer step (placeLayer's SAME_DEPTH_STEP_M), so it lands between. */
+export const STAIN_SLOT_GAP = 0.002
 
 /** Named eases (camera moves, layer keys). Exported: the director adds its named ease here, not a copy. */
 export const EASES: Record<Ease, (k: number) => number> = {

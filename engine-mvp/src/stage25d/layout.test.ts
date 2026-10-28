@@ -271,6 +271,9 @@ describe('ground bands (set.groundBands): sized by depth, 6:1 pictures, three vi
   it('bands further out draw first (lower slot), and all sit between the floor and the floor props', () => {
     expect(bandSlot(400)).toBeLessThan(bandSlot(2))
     expect(bandSlot(2)).toBeGreaterThan(GROUND_SLOT)
+    // the PM's order: a band at 2 m over a prop at 7 m; a prop at 7 m over a band at 15 m
+    expect(bandSlot(2)).toBeGreaterThan(placeLayer({ ...tree, layer: 'prop' }, { depth: 'fg' }, 0).alphaIndex)
+    expect(placeLayer({ ...tree, layer: 'prop' }, { depth: 'fg' }, 0).alphaIndex).toBeGreaterThan(bandSlot(15))
     expect(bandSlot(2000)).toBeLessThan(placeLayer({ ...tree, layer: 'prop' }, { depth: 'mid' }, 0).alphaIndex)
   })
 })
