@@ -28,10 +28,13 @@ const measure = (page) => page.evaluate((scrollChars) => {
     share: +(card.parentElement.getBoundingClientRect().height / frame.getBoundingClientRect().height).toFixed(3),
     clippedText: texts.filter((el) => el !== note && clipped(el)).map((el) => el.textContent.trim().slice(0, 40)),
     noteLen, noteOverflows,
-    noteOk: !noteOverflows || (noteLen > scrollChars && /gradient/.test(getComputedStyle(note).maskImage || getComputedStyle(note).webkitMaskImage || '')),
+    // overflow only past 400 characters and then WITH the fade; a fade on a note that fits dims text for nothing
+    noteOk: noteOverflows ? noteLen > scrollChars && /gradient/.test(getComputedStyle(note).maskImage || getComputedStyle(note).webkitMaskImage || '')
+      : !note || !/gradient/.test(getComputedStyle(note).maskImage || getComputedStyle(note).webkitMaskImage || ''),
     noteClipped: !!note && clipped(note),
     footerVisible: [...card.querySelectorAll('footer button')].every((b) => !clipped(b)),
     notePx: note ? parseFloat(getComputedStyle(note).fontSize) : null,
+    noteFade: !!note && /gradient/.test(getComputedStyle(note).maskImage || getComputedStyle(note).webkitMaskImage || ''),
   }
 }, NOTE_SCROLL_CHARS)
 
@@ -82,12 +85,13 @@ for (const size of sizesArg.split(',')) {
     const ok = (m) => m.clippedText.length === 0 && m.noteOk && !m.noteClipped && m.footerVisible && m.share <= 0.605
     const pass = ok(before) && ok(after) && !answerError
     const name = fixtures[i].id.replace(/[/+]/g, '_')
-    if (!pass || /\+4kept|rembrandt\/sc34|hunebedden\/sc35/.test(fixtures[i].id)) await page.locator('#wrap').screenshot({ path: `${out}/${size}/${pass ? 'ok' : 'FAIL'}-${name}.png` })
+    if (!pass || /\+4kept|rembrandt\/sc34|hunebedden\/sc35|synthetic\//.test(fixtures[i].id)) await page.locator('#wrap').screenshot({ path: `${out}/${size}/${pass ? 'ok' : 'FAIL'}-${name}.png` })
     rows.push({ ...fixtures[i], pass, before, after, answerError })
   }
-  report[size] = { errors, cards: rows.length, failed: rows.filter((r) => !r.pass).map((r) => ({ id: r.id, answerError: r.answerError, before: r.before, after: r.after })), maxShare: Math.max(...rows.map((r) => r.after.share)), minNotePx: Math.min(...rows.map((r) => r.after.notePx ?? 99)) }
+  report[size] = { errors, outsized: rows.find((r) => r.id === 'synthetic/outsized')?.after, longFits: rows.find((r) => r.id === 'synthetic/long-fits')?.after, cards: rows.length, failed: rows.filter((r) => !r.pass).map((r) => ({ id: r.id, answerError: r.answerError, before: r.before, after: r.after })), maxShare: Math.max(...rows.map((r) => r.after.share)), minNotePx: Math.min(...rows.map((r) => r.after.notePx ?? 99)) }
   await page.close()
 }
 writeFileSync(`${out}/report.json`, JSON.stringify(report, null, 1))
 for (const [size, r] of Object.entries(report)) console.log(`${size}: ${r.cards} cards, ${r.failed.length} failed, max card ${Math.round(r.maxShare * 100)} % of the frame, note >= ${r.minNotePx} px, ${r.errors.length} errors`)
+for (const [size, r] of Object.entries(report)) for (const [k, n] of [['outsized', r.outsized], ['long-fits', r.longFits]]) if (n) console.log(`${size} ${k} note: ${n.noteLen} chars, overflows ${n.noteOverflows}, fade ${n.noteFade}, ok ${n.noteOk}`)
 await browser.close()

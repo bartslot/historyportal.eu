@@ -181,6 +181,16 @@ export function Card({ interaction: it, seconds, onDone, onPush, sfx, onSize }: 
   // the note steps down at most one size (PM): its own density never goes below 0.85
   const kNote = Math.max(0.85, k)
   const scrollNote = (shownNote?.length ?? 0) > NOTE_SCROLL_CHARS
+  // the fade only where text really runs past the box: a note that fits keeps its last line clear
+  const noteRef = useRef<HTMLParagraphElement>(null)
+  const [noteOverflows, setNoteOverflows] = useState(false)
+  useEffect(() => {
+    const el = noteRef.current
+    if (!el || !scrollNote) { setNoteOverflows(false); return }
+    const ro = new ResizeObserver(() => setNoteOverflows(el.scrollHeight > el.clientHeight + 1))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [scrollNote, shownNote])
   // The card is 45 % of the frame and grows with its content up to 60 % (PM); the held picture takes the rest.
   // Asking: question left, answers right. Answered (PM): everything full
   // width, the explanation first in line: the question smaller on top, what stays of the answers as a row
@@ -212,8 +222,8 @@ export function Card({ interaction: it, seconds, onDone, onPush, sfx, onSize }: 
         </div>
         <div style={{ gridArea: 'body', display: hasBody ? undefined : 'none' }} className={`flex min-h-0 flex-col gap-2 ${shownNote ? '' : 'overflow-y-auto'}`}>{body}</div>
         {shownNote && (
-          <p style={{ gridArea: 'note', ...(scrollNote ? { maskImage: 'linear-gradient(to bottom, black calc(100% - 2.5em), transparent)' } : {}) }}
-            className={`${T_BODY} min-h-0 leading-snug ${scrollNote ? 'overflow-y-auto pb-[2em]' : 'overflow-hidden'}`} data-testid="note">{shownNote}</p>
+          <p ref={noteRef} style={{ gridArea: 'note', ...(noteOverflows ? { maskImage: 'linear-gradient(to bottom, black calc(100% - 2.5em), transparent)' } : {}) }}
+            className={`${T_BODY} min-h-0 leading-snug ${scrollNote ? 'overflow-y-auto' : 'overflow-hidden'} ${noteOverflows ? 'pb-[2em]' : ''}`} data-testid="note">{shownNote}</p>
         )}
         <div style={{ gridArea: 'foot' }}>{footer}</div>
       </section>
