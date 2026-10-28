@@ -53,7 +53,7 @@ const DEPTH_NAMES: Record<string, string> = { sky: 'sky', bg: 'far', mid: 'middl
 const LOOK_ROWS: [string, string][] = [
   ['sheetPaper', 'Paper grain'], ['sheetGrain', 'Pigment grain'], ['sheetWash', 'Wash'], ['sheetPatches', 'Wash patches'], ['lineBrown', 'Line brown'], ['lineInk', 'Line value'], ['lineNorm', 'Line match'],
   ['housePitch', 'Camera tilt'], ['groundDetail', 'Ground detail'], ['groundVary', 'Ground wash'], ['groundMix', 'Ground mix'],
-  ['groundScale', 'Ground tile size'], ['nearFar', 'Near ground depth'], ['bandHeight', 'Band height'], ['bandFade', 'Band bottom fade'],
+  ['groundScale', 'Ground tile size'], ['nearFar', 'Near ground depth'], ['bandHeight', 'Band height'], ['bandFade', 'Band bottom fade (m)'],
   ['edgeSoft', 'Soft edges'], ['grounding', 'Grounding'], ['grassOverlap', 'Grass in front'], ['sunLight', 'Sunlight'],
   ['castShadow', 'Cast shadows'], ['cloudDrift', 'Cloud drift'], ['smoke', 'Smoke'], ['birds', 'Birds'],
   ...DEPTHS.flatMap((d): [string, string][] => {

@@ -26,7 +26,7 @@ export const STAGE_SHEET: Record<string, number> = {
   lineFadeFg: 0, lineThinFg: 0, hazeFg: 0,
   lineFadeNear: 0, lineThinNear: 0, hazeNear: 0,
   // no sticker look (Bart 10-28: "dead empty scenes with cutout stickers"): calm defaults
-  bandHeight: 0.15, bandFade: 0.35,
+  bandHeight: 0.15, bandFade: 0.5,
   edgeSoft: 0.8, grounding: 0.8, grassOverlap: 0.6, sunLight: 0.6, castShadow: 0.55,
   cloudDrift: 0.4, smoke: 0.6, birds: 0.4,
 }
@@ -62,7 +62,7 @@ export const lineContrast = (l: { fade: number; haze: number }) => (1 - 0.75 * l
 
 /** Slider ranges for the panel (same order as STAGE_SHEET). */
 const RANGES: Record<string, [number, number, number]> = {
-  groundScale: [0.5, 5, 0.1], nearFar: [4, 40, 0.5], bandHeight: [0.02, 0.6, 0.01], bandFade: [0, 0.8, 0.01], housePitch: [-6, 12, 0.5], lineInk: [0.05, 0.6, 0.01],
+  groundScale: [0.5, 5, 0.1], nearFar: [4, 40, 0.5], bandHeight: [0.02, 0.6, 0.01], bandFade: [0, 3, 0.05], housePitch: [-6, 12, 0.5], lineInk: [0.05, 0.6, 0.01],
 }
 export const LOOK_RANGE: Record<string, [number, number, number]> = Object.fromEntries(Object.keys(STAGE_SHEET).map((k) => [
   k, RANGES[k] ?? (k.startsWith('lineThin') ? [0, 2, 0.05] : [0, 1, 0.01]),

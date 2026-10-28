@@ -6,7 +6,7 @@
 import '../globals'                    // the engine modules read Babylon from window.BABYLON
 import '../engine/look-shaders.js'
 import {
-  Color4, Engine, HemisphericLight, DirectionalLight, Scene as BScene, UniversalCamera, Vector3,
+  Color4, Constants, Engine, HemisphericLight, DirectionalLight, Scene as BScene, UniversalCamera, Vector3,
   type RawTexture,
 } from '@babylonjs/core'
 import { createLookChain, PRESETS } from '../engine/look-chain.js'
@@ -263,6 +263,7 @@ export class Stage {
       // the picture keeps its own proportions: its width is three views, its height follows its aspect
       const w = bandWidth(g.z), h = (w * asset.h) / asset.w
       const handle = makeLayer(asset, tex, w, h, 1, this.scene)
+      handle.material.depthFunction = Constants.ALWAYS   // a band is drawn over the floor: the floor never cuts its body
       handle.mesh.position.set(0, 0, g.z)
       handle.mesh.alphaIndex = bandSlot(g.z)
       out.push({ handle, z: g.z, w, h, skyline: skylines.get(lib.base + asset.file) ?? 0.5 })
@@ -298,7 +299,7 @@ export class Stage {
       b.handle.mesh.position.y = bandBottom(b.z, bandK, b.h, b.skyline)   // its skyline on the crest, k x z up
       const ppm = pxPerMetre(renderH, b.z - HOUSE.z, fovRad(HOUSE.fov))
       b.handle.setOpacity(1)
-      b.handle.setBottomFade(lookNum(this.look, 'bandFade'))
+      b.handle.setBottomFade(Math.min(1, lookNum(this.look, 'bandFade') / b.h))   // the lowest metres only, not a share of the tall picture
       b.handle.setPaper(paper, pxUV(b.w, b.h, 1, ppm, renderH))
       b.handle.setLine(lineOf(this.look, 'bg'), 1, pxUV(b.w, b.h, 1, ppm, renderH), this.hazeTint)
     })
