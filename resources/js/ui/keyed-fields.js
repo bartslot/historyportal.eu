@@ -71,20 +71,46 @@ const showNumber = (el) => {
   if (display) display.textContent = String(Math.round(Number(el.value) * (Number(display.dataset.keyDisplayScale) || 1) * 100) / 100)
 }
 
+/**
+ * Write a keyed field's value at the playhead. `flush: false` is a live step (a keystroke, a spinner
+ * tick, a scrub) and the timeline saves it after a pause; `flush: true` is the teacher settling on it.
+ * @returns {boolean} true when the timeline took the value as a keyframe
+ */
+const commitField = (el, { flush }) => {
+  const key = keyOf(el)
+  if (!key) return false
+  const value = fieldToValue(el.value, key.scale)
+  if (value === null) return false
+  return window.__timelineKeying?.edit?.(key.target, key.property, value, { flush }) ?? false
+}
+
+// One canvas write per frame, however fast the input fires: a scrub or a held arrow key emits many
+// input events between two paints, and only the last value in the frame is worth drawing.
+let liveFrame = 0
+let liveField = null
+
+const commitLive = (el) => {
+  liveField = el
+  if (liveFrame) return
+  liveFrame = requestAnimationFrame(() => {
+    liveFrame = 0
+    commitField(liveField, { flush: false })
+  })
+}
+
 export function initKeyedFields () {
   // Capture phase, so it runs before Livewire's own `wire:change` on the field — and stops it,
   // because the keyframe IS the save; writing the base value as well would move what Reset
   // returns to.
   document.addEventListener('change', (event) => {
-    const key = keyOf(event.target)
-    if (!key) return
-    const value = fieldToValue(event.target.value, key.scale)
-    if (value === null) return
-    if (window.__timelineKeying?.edit?.(key.target, key.property, value)) event.stopImmediatePropagation()
+    if (commitField(event.target, { flush: true })) event.stopImmediatePropagation()
   }, true)
 
+  // The live half: typing, spinner arrows and scrubbing all fire `input` long before `change`
+  // (which waits for blur or release), so the canvas follows them as they happen.
   document.addEventListener('input', (event) => {
     if (event.target.type === 'range' && keyOf(event.target)) showNumber(event.target)
+    if (keyOf(event.target)) commitLive(event.target)
   })
   window.addEventListener('timeline-changed', syncFields)
 

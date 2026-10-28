@@ -1,5 +1,10 @@
-import { describe, it, expect, beforeAll, beforeEach } from 'vitest'
+import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest'
 import { initKeyedFields } from '../ui/keyed-fields.js'
+
+// Frames are queued and run by hand, so a test decides exactly when the canvas is written.
+const frames = []
+window.requestAnimationFrame = (fn) => frames.push(fn)
+const runFrames = () => frames.splice(0).forEach((fn) => fn())
 
 /**
  * A keyed slider is a view of the property AT THE PLAYHEAD, the knob and the number included.
@@ -67,5 +72,29 @@ describe('a keyed slider at the playhead', () => {
     window.__timelineKeying.animated = () => false
     window.dispatchEvent(new CustomEvent('timeline-changed'))
     expect(shown()).toEqual({ value: '1', knob: '100%', number: '100' })
+  })
+})
+
+describe('a keyed field commits as the teacher types, not only on blur', () => {
+  beforeEach(() => {
+    runFrames()   // a frame queued by an earlier test would otherwise hold the next write back
+  })
+
+  it('writes each step once per frame without saving, and the change flushes the last one', () => {
+    const edit = vi.fn(() => true)
+    window.__timelineKeying.edit = edit
+
+    slider().value = '0.4'
+    slider().dispatchEvent(new Event('input', { bubbles: true }))
+    slider().value = '0.6'
+    slider().dispatchEvent(new Event('input', { bubbles: true }))
+    expect(edit).not.toHaveBeenCalled()
+
+    runFrames()
+    expect(edit).toHaveBeenCalledTimes(1)
+    expect(edit).toHaveBeenLastCalledWith('bal:0', 'opacity', 0.6, { flush: false })
+
+    slider().dispatchEvent(new Event('change', { bubbles: true }))
+    expect(edit).toHaveBeenLastCalledWith('bal:0', 'opacity', 0.6, { flush: true })
   })
 })

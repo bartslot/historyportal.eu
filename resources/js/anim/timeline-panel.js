@@ -85,6 +85,9 @@ const DEFAULT_DURATION = 8
 // Two decimals: a factor (scale, opacity) moves in steps of 0.05, and tenths showed 0.25 as 0.3.
 const round2 = (v) => Math.round(v * 100) / 100
 
+/** How long a live keyframe edit waits for the teacher to pause before it saves to the server. */
+const LIVE_SAVE_PAUSE_MS = 400
+
 /** The map's camera as the five numbers the timeline animates — map-native, so it round-trips. */
 export const cameraFromMap = (map) => {
   const centre = map.getCenter()
@@ -155,7 +158,7 @@ export const animationTimeline = (config = {}) => ({
       state: (target, property) => this.keyState(target, property),
       animated: (target, property) => this.isAnimated(target, property),
       value: (target, property) => this.valueAt(target, property),
-      edit: (target, property, value) => this.editKeyed(target, property, value),
+      edit: (target, property, value, options) => this.editKeyed(target, property, value, options),
       reset: (target, property) => this.resetProperty(target, property),
       canResetObject: (target) => this.canResetObject(target),
       resetObject: (target) => this.resetObject(target),
@@ -875,16 +878,17 @@ export const animationTimeline = (config = {}) => ({
    * playhead — updating the key there, or adding one between keys (After Effects). Returns false on
    * a property that is not animated, so the panel saves the plain value as it always did.
    */
-  editKeyed (target, property, value) {
+  editKeyed (target, property, value, { flush = true } = {}) {
     this.stopEasingPreview()   // an edit or the clock takes the stage back from a preview
     if (kindOfTarget(target) === 'dio' || !this.isAnimated(target, property)) return false
     const isColor = propertyFor(kindOfTarget(target), property)?.type === 'color'
     const v = isColor ? String(value ?? '') : Number(value)
     if (!isColor && !Number.isFinite(v)) return true
     if (this.playing) this.pause()
-    writeObjectProperty(target, property, v)
+    writeObjectProperty(target, property, v)   // draws the layer or balloon on the canvas now
     this.writeTrack(target, property, (track) => addKeyframe(track, { time: this.time, value: v }))
-    this.save()
+    if (flush) this.save()
+    else this.saveSoon()
     this.announce()
     return true
   },
@@ -1513,7 +1517,14 @@ export const animationTimeline = (config = {}) => ({
     if (added) this.tracks = keyGroupTogether(this.tracks, before, target, property, (p) => readObjectProperty(target, p))
   },
 
+  /** A live edit (a keystroke, a scrub) waits for a pause; the last value saves at once. */
+  saveSoon () {
+    clearTimeout(this._saveTimer)
+    this._saveTimer = setTimeout(() => this.save(), LIVE_SAVE_PAUSE_MS)
+  },
+
   save () {
+    clearTimeout(this._saveTimer)
     this.remember()   // the client's copy is the newer one until the server renders again
     this.$wire?.setTimeline?.({ duration: this.duration, targets: this.targets, tracks: this.tracks })
   },
