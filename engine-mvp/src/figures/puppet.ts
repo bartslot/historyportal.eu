@@ -47,7 +47,9 @@ export const LIMITS = { armFwd: 150, armBack: 40, elbowMax: 150, hipFwd: 125, hi
 export const PUPPET = {
   walkHip: 24, walkKnee: 48, walkArm: 18, walkElbow: 14, stride: 0.95, bob: 0.012, breathe: 1.5,
   zStep: 0.004, // metres between part layers, toward the camera
-  minForeshorten: 0.3, // front view: a limb pointing at the camera still shows this share (a lap, a knee)
+  seat: 0.11, // m from the hip joints down to the buttocks
+  minForeshorten: 0.3, // front view: an arm pointing at the camera still shows this share
+  minForeshortenLeg: 0.12, // ...a leg (a seated figure's thighs nearly vanish, so it reads low, not short)
   lapThickness: 0.4, // a skirt over seated thighs keeps this share of its hanging depth
 }
 
@@ -60,12 +62,13 @@ export type Angles = {
 }
 const STAND: Angles = { lean: 0, head: 0, sN: 4, eN: 8, sF: -3, eF: 8, hN: 2, kN: -2, hF: -2, kF: -1, aN: 0, aF: 0, handN: 'open', handF: 'open' }
 // a pose = its angles at time t (s); exported so a test can break one and see the guards catch it
-export const POSES: Record<PuppetPose, (t: number) => Angles> = {
+export const POSES: Record<PuppetPose, (t: number, c?: Character) => Angles> = {
   stand: (t) => ({ ...STAND, lean: 0.6 * Math.sin(t * 0.7), head: 1.2 * Math.sin(t * 0.5), sN: STAND.sN + PUPPET.breathe * Math.sin(t * 1.6) }),
   point: (t) => ({ ...POSES.stand(t), sN: 82, eN: 6, handN: 'point', head: 4 }),
   carry: (t) => ({ ...POSES.stand(t), sN: 28, eN: 62, sF: 28, eF: 62, handN: 'grip', handF: 'grip', lean: -3 }),
   kneel: () => ({ ...STAND, lean: 4, head: 6, hF: 88, kF: -88, aF: 0, hN: -4, kN: -100, aN: -40, sN: 18, eN: 40, sF: 10, eF: 30 }),
-  sit: () => ({ ...STAND, lean: -4, head: 2, hN: 86, kN: -84, hF: 82, kF: -80, sN: 22, eN: 48, sF: 18, eF: 50 }),
+  // on the ground (no seat needed): hips down, knees up a little, hands on the knees
+  sit: () => ({ ...STAND, lean: -6, head: 4, hN: 100, kN: -28, aN: -72, hF: 94, kF: -20, aF: -74, sN: 34, eN: 30, sF: 28, eF: 34 }),
   walk: (t) => {
     const ph = t * Math.PI * 2 * PUPPET.stride
     const leg = (p: number) => ({ h: PUPPET.walkHip * Math.sin(p), k: -PUPPET.walkKnee * Math.max(0, Math.sin(p + 1.2)) ** 2 - 4 })
@@ -104,7 +107,13 @@ export function solve(sheet: Sheet, height: number, a: Angles): Rig {
   // rigid limb: front = drawn as hanging, foreshortened; side/3-4 = turned so its drawn axis points at angle A
   const limb = (slot: string, at: P2, A: number): Place => {
     const p = P[slot]
-    if (front) return { at, deg: 0, sy: Math.sign(Math.cos(A * R) || 1) * Math.max(Math.abs(Math.cos(A * R)), PUPPET.minForeshorten), s: sc(slot), pivot: p.pivot }
+    if (front) {
+      // a limb swung toward or away from the camera shortens; only an arm raised past level points up (a leg
+      // swung back is hidden behind the body, it never folds up over itself)
+      const c = Math.cos(A * R), up = c < 0 && /arm/.test(slot)
+      const min = /arm/.test(slot) ? PUPPET.minForeshorten : PUPPET.minForeshortenLeg
+      return { at, deg: 0, sy: (up ? -1 : 1) * Math.max(Math.abs(c), min), s: sc(slot), pivot: p.pivot }
+    }
     const axis = p.end ? sub([p.end[0], -p.end[1]], [p.pivot[0], -p.pivot[1]]) : ([0, -1] as P2)
     const drawn = Math.atan2(axis[0], -axis[1]) / R
     return { at, deg: A - drawn, sy: 1, s: sc(slot), pivot: p.pivot }
@@ -143,8 +152,8 @@ export function solve(sheet: Sheet, height: number, a: Angles): Rig {
   const aN = arm('N', shoulderN, a.sN, a.eN), aF = arm('F', shoulderF, a.sF, a.eF)
   const lN = leg('N', hipN, a.hN, a.kN, a.aN), lF = leg('F', hipF, a.hF, a.kF, a.aF)
   // stand on the ground: the lowest sole or knee touches y = 0
-  const kneeCap = 0.05 * k
-  const low = Math.min(...lN.sole.map((p) => p[1]), ...lF.sole.map((p) => p[1]), lN.knee[1] - kneeCap, lF.knee[1] - kneeCap)
+  const kneeCap = 0.05 * k, seat = PUPPET.seat * k // a seated figure rests on its buttocks, below the hip joints
+  const low = Math.min(...lN.sole.map((p) => p[1]), ...lF.sole.map((p) => p[1]), lN.knee[1] - kneeCap, lF.knee[1] - kneeCap, hip[1] - seat)
   const lift = (p: P2): P2 => [p[0], p[1] - low]
   for (const pl of Object.values(places)) pl.at = lift(pl.at)
   if (P.skirt) places.skirt = { at: lift(waist), deg: 0, sy: 1, s: sc('skirt'), pivot: P.skirt.pivot }
@@ -158,7 +167,9 @@ export function solve(sheet: Sheet, height: number, a: Angles): Rig {
 
 /** the guards, measured on the solved joints (not on the numbers asked for): knees bend back, elbows forward,
  *  shoulders and hips stay in their human range */
-export function violations(j: Joints): string[] {
+// tol: degrees of drawing noise allowed; the front view hangs parts as drawn, so only a fold-over counts there
+export const GUARD_TOL: Record<View, number> = { '34': 3, side: 3, front: 15 }
+export function violations(j: Joints, tol = 3): string[] {
   const out: string[] = []
   const torsoDown = sub(j.hip, j.neck)
   for (const s of ['N', 'F'] as const) {
@@ -166,9 +177,9 @@ export function violations(j: Joints): string[] {
     const thigh = sub(j[`knee${s}`], j[`hip${s}`]), shin = sub(j[`ankle${s}`], j[`knee${s}`])
     const elbow = angleBetween(upper, fore), knee = angleBetween(thigh, shin)
     const shoulder = angleBetween(torsoDown, upper), hipA = angleBetween([0, -1], thigh)
-    if (elbow < -3) out.push(`elbow${s} bends backwards (${elbow.toFixed(0)} deg)`)
+    if (elbow < -tol) out.push(`elbow${s} bends backwards (${elbow.toFixed(0)} deg)`)
     if (elbow > LIMITS.elbowMax) out.push(`elbow${s} folded past ${LIMITS.elbowMax} deg`)
-    if (knee > 3) out.push(`knee${s} bends backwards (${knee.toFixed(0)} deg)`)
+    if (knee > tol) out.push(`knee${s} bends backwards (${knee.toFixed(0)} deg)`)
     if (knee < -LIMITS.kneeMax) out.push(`knee${s} folded past ${LIMITS.kneeMax} deg`)
     if (shoulder > LIMITS.armFwd || shoulder < -LIMITS.armBack) out.push(`shoulder${s} ${shoulder.toFixed(0)} deg outside -${LIMITS.armBack}..${LIMITS.armFwd}`)
     if (hipA > LIMITS.hipFwd || hipA < -LIMITS.hipBack) out.push(`hip${s} ${hipA.toFixed(0)} deg outside -${LIMITS.hipBack}..${LIMITS.hipFwd}`)
@@ -297,11 +308,11 @@ export async function createPuppet(scene: Scene, id: string, opts: PuppetOptions
     }
     return [v, set]
   })) as Record<View, Record<string, PartMesh>>
-  const state = { pose: 'stand' as PuppetPose, t: 0, view: '34' as View, expr: 'neutral' as Expression, hat: character.hat, last: [] as string[] }
+  const state = { pose: 'stand' as PuppetPose, t: 0, view: '34' as View, expr: 'neutral' as Expression, hat: character.hat, last: [] as string[], dist: 10 }
 
   const draw = () => {
     const sheet = sheets[state.view]
-    const a = POSES[state.pose](state.t)
+    const a = POSES[state.pose](state.t, character)
     const rig = solve(sheet, character.height, a)
     const order = ORDER[state.view === 'front' ? 'front' : 'turned']
     const shown = new Set<PartMesh>()
@@ -311,7 +322,7 @@ export async function createPuppet(scene: Scene, id: string, opts: PuppetOptions
       const pl = rig.places[key]
       if (!pm || !pl || (key === 'hat' && !state.hat)) return
       shown.add(pm)
-      const z = -layer * PUPPET.zStep
+      const z = -layer * PUPPET.zStep * Math.max(1, state.dist / 10) // far away the depth buffer is coarser
       const part = sheet.parts[slot]
       const own: Place = { ...pl, pivot: part.pivot } // each hand shape hangs from its own wrist point
       for (let i = 0; i < pm.rest.length; i++) {
@@ -331,6 +342,7 @@ export async function createPuppet(scene: Scene, id: string, opts: PuppetOptions
       root.computeWorldMatrix(true)
       const p = root.getAbsolutePosition(), c = cam.globalPosition
       yaw.rotation.y = Math.atan2(p.x - c.x, p.z - c.z)
+      state.dist = Vector3.Distance(p, c)
     }
     draw()
   })
@@ -341,8 +353,9 @@ export async function createPuppet(scene: Scene, id: string, opts: PuppetOptions
       puppet.pose = state.pose = p
       // check the whole cycle of a moving pose, not one frame
       const found = new Set<string>()
+      // every view on its own sheet (what each view draws), over a whole cycle of a moving pose
       for (const t of p === 'walk' ? Array.from({ length: 24 }, (_, i) => i / 24 / PUPPET.stride) : [0]) {
-        for (const v of violations(solve(sheets['34'], character.height, POSES[p](t)).joints)) found.add(v)
+        for (const v of VIEWS) for (const x of violations(solve(sheets[v], character.height, POSES[p](t, character)).joints, GUARD_TOL[v])) found.add(`${v}: ${x}`)
       }
       state.last = [...found]
       for (const v of state.last) warn(`puppet ${id} ${p}: ${v}`)
@@ -365,32 +378,40 @@ export async function createPuppet(scene: Scene, id: string, opts: PuppetOptions
       const p = sheets['34'].parts
       return (Object.keys(GARMENTS) as Garment[]).filter((g) => GARMENTS[g].some(([slot, ch]) => (p[slot]?.dye?.length ?? 0) > ch))
     },
-    joints() { return solve(sheets[state.view], character.height, POSES[state.pose](state.t)).joints },
+    joints() { return solve(sheets[state.view], character.height, POSES[state.pose](state.t, character)).joints },
     dispose() { scene.onBeforeRenderObservable.remove(tick); root.dispose(false, true) },
   }
   puppet.setPose('stand')
   return puppet
 }
 
-/** a skirt hangs from the waist to the knees, then straight down: sitting, it lies over the thighs */
+/** a skirt: its front half lies over the lap (waist -> knees -> down), its back half hangs straight from the waist,
+ *  so a kneeling or seated figure keeps its back leg covered; below the ground the hem lies on it, trailing back */
 function drape(pl: Place, p: Part, px: P2, d: { waist: P2; knee: P2 }): P2 {
   const s = pl.s
   const along = (px[1] - p.pivot[1]) * s, across = (px[0] - p.pivot[0]) * s
+  const hanging: P2 = add(d.waist, [across, -along])
   const seg = sub(d.knee, d.waist)
   const l1 = Math.hypot(seg[0], seg[1])
+  let lap: P2
   if (along <= l1 && l1 > 1e-6) {
     const dir: P2 = [seg[0] / l1, seg[1] / l1]
     // lying over the thighs the cloth is as thick as a lap, not as deep as the hanging skirt is wide
     const thick = across * (PUPPET.lapThickness + (1 - PUPPET.lapThickness) * Math.abs(dir[1]))
-    return add(add(d.waist, [dir[0] * along, dir[1] * along]), [-dir[1] * thick, dir[0] * thick])
-  }
-  return add(d.knee, [across, -(along - l1)])
+    lap = add(add(d.waist, [dir[0] * along, dir[1] * along]), [-dir[1] * thick, dir[0] * thick])
+  } else lap = add(d.knee, [across, -(along - l1)])
+  const half = (p.w * s) / 2
+  const front = Math.min(1, Math.max(0, (across / half + 0.5))) // 0 at the back edge's half, 1 from the middle forward
+  const q: P2 = [hanging[0] + (lap[0] - hanging[0]) * front, hanging[1] + (lap[1] - hanging[1]) * front]
+  return q[1] >= 0 ? q : [q[0] + q[1], 0]
 }
 
 /** the same contract as placeFigure: stand on the stage; the facing picks the view (left = mirrored art) */
-export function placePuppet(p: Puppet, at: Placement & { view?: '34' | 'side' }, stage?: StageLike) {
+// `behind` (m, default 0) moves the figure back from its layer's plane, so it can stand behind a same-depth layer
+export function placePuppet(p: Puppet, at: Placement & { view?: '34' | 'side'; behind?: number }, stage?: StageLike) {
   const g = stage ? stage.groundPoint(at.x, at.depth) : new Vector3((at.x - 0.5) * 10, 0, { bg: 70, mid: 22, fg: 7 }[at.depth])
   p.root.position.copyFrom(g)
+  p.root.position.z += at.behind ?? 0
   if (at.facing === 'left' || at.facing === 'right') p.setView(at.view ?? '34', at.facing === 'left')
   else p.setView('front')
 }

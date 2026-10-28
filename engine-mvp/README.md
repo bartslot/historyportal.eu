@@ -111,9 +111,16 @@ and stands on the ground; 6 mutations (knee forward, far knee forward, elbow bac
 hip, knee folded flat) are caught. Real stage frames: `node src/figures/capture_puppets.mjs` (silent headless
 Chromium) -> BartsMedia `puppet-parts/stage/` (`contact_all_poses_views.png`).
 
-**Limits**: face-on sit/kneel read as "shorter" without a seat prop; the woman's fur cape dyes with her dress;
-pale socket discs painted into some torsos can show at the near shoulder; the sailor's torso art includes his shirt
-sleeves; no back view (back uses front); no lesson `Cast` wiring yet (the 3D `Cast` still serves `figures[]`).
+**Guards per view**: `setPose` checks every view on its own sheet (`GUARD_TOL`: the front view hangs parts as drawn,
+so only a fold-over counts there); front legs never fold up over themselves. `sit` = on the ground (hips rest on the
+buttocks, no seat prop needed); a skirt's back half hangs straight and pools on the ground, its front half lies over
+the lap. `placePuppet(..., { behind: 0.3 })` stands a figure behind a same-depth layer; the part layer gap grows with
+distance (depth precision).
+
+**Limits**: face-on kneel reads as a shorter standing figure (one knee is hidden behind the body); the woman's fur
+cape dyes with her dress; the sailor's torso art includes his shirt sleeves; no back view (back uses front); no lesson
+`Cast` wiring yet (the 3D `Cast` still serves `figures[]`). Style is one-pass (painted); the library's two-pass ink ->
+colour edit is the lever for the score.
 
 ## Figures, 3D route (`src/figures/`, PARKED look; mechanics kept)
 

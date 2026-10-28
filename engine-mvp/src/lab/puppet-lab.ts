@@ -97,6 +97,7 @@ async function main() {
   slider('steps / s', 0.3, 2, 0.05, () => PUPPET.stride, (v) => (PUPPET.stride = v))
   slider('breathing', 0, 5, 0.1, () => PUPPET.breathe, (v) => (PUPPET.breathe = v))
   slider('front: limb toward camera', 0.05, 0.6, 0.01, () => PUPPET.minForeshorten, (v) => (PUPPET.minForeshorten = v))
+  slider('front: leg toward camera', 0.02, 0.6, 0.01, () => PUPPET.minForeshortenLeg, (v) => (PUPPET.minForeshortenLeg = v))
   slider('skirt on lap', 0.1, 1, 0.05, () => PUPPET.lapThickness, (v) => (PUPPET.lapThickness = v))
   slider('layer gap m', 0, 0.02, 0.001, () => PUPPET.zStep, (v) => (PUPPET.zStep = v))
   apply()

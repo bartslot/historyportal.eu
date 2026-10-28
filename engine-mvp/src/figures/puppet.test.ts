@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { NullEngine, Scene, type Mesh } from '@babylonjs/core'
 import { afterEach, describe, expect, it } from 'vitest'
-import { CHARACTERS, POSES, POSE_NAMES, VIEWS, createPuppet, type Angles, type PuppetPose } from './puppet'
+import { CHARACTERS, POSES, POSE_NAMES, VIEWS, createPuppet, violations, GUARD_TOL, type Angles, type PuppetPose } from './puppet'
 
 const PUBLIC = join(__dirname, '../../public')
 const loadSheet = async (url: string) => JSON.parse(readFileSync(join(PUBLIC, url), 'utf8'))
@@ -25,6 +25,7 @@ describe('puppet figures', () => {
         for (const view of VIEWS) {
           p.setView(view)
           const j = p.joints()
+          expect(violations(j, GUARD_TOL[view]), `${pose} ${view}: the guards on what this view draws`).toEqual([])
           const knees = Math.min(j.kneeN[1], j.kneeF[1]), ankles = Math.min(j.ankleN[1], j.ankleF[1])
           expect(knees, `${pose} ${view}: a knee in the ground`).toBeGreaterThan(0.02)
           expect(ankles, `${pose} ${view}: an ankle in the ground`).toBeGreaterThan(0.03)
@@ -61,7 +62,7 @@ describe('puppet figures', () => {
   describe('the guards catch broken poses', () => {
     const saved = { ...POSES }
     afterEach(() => Object.assign(POSES, saved))
-    const breakPose = (pose: PuppetPose, change: Partial<Angles>) => { POSES[pose] = (t) => ({ ...saved[pose](t), ...change }) }
+    const breakPose = (pose: PuppetPose, change: Partial<Angles>) => { POSES[pose] = (t, c) => ({ ...saved[pose](t, c), ...change }) }
     const cases: [string, PuppetPose, Partial<Angles>, RegExp][] = [
       ['a knee bent forward', 'kneel', { kN: 40 }, /kneeN bends backwards/],
       ['a far knee bent forward', 'sit', { kF: 30 }, /kneeF bends backwards/],
@@ -77,6 +78,8 @@ describe('puppet figures', () => {
         const found = p.setPose(pose)
         expect(found.join('\n')).toMatch(msg)
         expect(warnings.join('\n')).toMatch(msg)
+        // every view is guarded on its own sheet, not only the 3/4 one
+        expect(new Set(found.map((f) => f.split(':')[0]))).toEqual(new Set(['34', 'side', ...(found.some((f) => f.startsWith('front')) ? ['front'] : [])]))
       })
     }
   })

@@ -36,6 +36,7 @@ await page.evaluate(async (cast) => {
     window.__pups.push(p)
   }
   window.__pm = m
+  await P.stage.scene.whenReadyAsync() // every part's texture loaded before the first frame
 }, CAST)
 const canvas = page.locator('canvas').first()
 const frames = []

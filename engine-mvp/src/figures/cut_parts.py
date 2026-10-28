@@ -39,10 +39,12 @@ OPTIONAL = ("skirt", "hat", "foot_far")  # may be missing at a row's end
 # (anthropometric proportions: ankle 0.07 + shin + thigh + torso + head above the neck pivot ~0.28 = 1.70)
 LENGTH = {"head": 0.30, "torso": 0.51, "upper_arm": 0.31, "forearm": 0.25, "hand": 0.18, "thigh": 0.42,
           "shin": 0.41, "foot": 0.25, "foot_front": 0.10, "skirt": 0.84}
-END_KEEP_PX = 3  # a limb keeps this much past its far joint (no hairline gap at a straight joint)
+DISC_DE = 14     # a row this far (Lab) from the painted joint disc's colour is the limb again
+END_KEEP = 0.08  # a limb keeps this share of its length past its far joint: it overlaps the child, no seam
 SHOULDER_DOWN = 0.18  # the shoulder joints sit this far from the neck to the waist
+SHOULDER_IN = (0.16, 0.22)  # turned views: near and far shoulder joints this far in from the torso's edges
 WAIST_BAND = (0.5, 0.8)  # the waist is the narrowest row in this band of the torso height
-THIGH_CAP = 0.35   # a thigh keeps this share of its top disc (a seated hip must not show a bare disc behind it)
+THIGH_CAP = 0.0    # a thigh keeps this share of its top disc: none, its top always hides under the torso or skirt
 WEBP_Q = 88       # the art; the dye masks are lossless
 ANKLE = 0.07     # the ankle joint stands this high above the sole
 CLOTH = {  # the slots that are clothing (a dye mask each); bare arms and legs are not
@@ -51,6 +53,8 @@ CLOTH = {  # the slots that are clothing (a dye mask each); bare arms and legs a
     "voc": ("torso", "upper_arm", "forearm", "thigh", "shin", "foot", "foot_far", "hat"),
 }
 WHITE = 236      # paper: brighter than this (min of r,g,b) and connected to the sheet's edge
+HALO = 175       # light pixels touching the paper are its halo, not the part...
+HALO_PX = 3      # ...up to this far in
 MERGE_PX = 4     # gaps this small join one part (tassels, stray hairs)
 MIN_AREA = 1500  # smaller shapes are specks
 DYES = 3         # dye regions per garment (one per mask channel)
@@ -58,6 +62,7 @@ CLUSTERS = 8     # colour clusters before same-hue clusters merge into one cloth
 L_WEIGHT = 0.35  # lightness counts this much in the clustering: shading is not a new colour
 INK_L = 25       # darker than this (Lab L) is ink, the line between colour areas
 MIN_AREA_PX = 25 # colour areas smaller than this follow their neighbours
+SKIN_SHARE = 0.15  # a skin-coloured cluster bigger than this share of the part is cloth
 SKIN_AB = 5      # Lab a/b distance under which a colour counts as skin (the neck in a collar)
 SAME_AB = 10     # clusters closer than this in a/b and SAME_L in lightness are one cloth (light and shadow)
 SAME_L = 25
@@ -75,6 +80,8 @@ def alpha_of(rgb):
     lab, _ = ndimage.label(paper)
     edge = np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]]))
     bg = np.isin(lab, edge[edge > 0])
+    # the paper's halo around a part (light, but under WHITE) is paper too: grow into it, the ink contour stops it
+    bg = ndimage.binary_dilation(bg, iterations=HALO_PX, mask=bg | (m > HALO))
     soft = np.clip((250 - m) / 22, 0, 1)  # the ink fringe fades into the paper
     return np.where(bg, soft, 1.0)
 
@@ -156,8 +163,8 @@ def landmarks(slot, mask, view):
         shoulder_y = neck[1] + (wy - neck[1]) * SHOULDER_DOWN
         srow = xs[np.abs(ys - shoulder_y) < 3]
         l, r = (srow.min(), srow.max()) if srow.size else (row.min(), row.max())
-        # front: the arms hang at the body's sides; turned: the near shoulder half way out, the far one tucked in
-        sn, sf = (l + (r - l) * 0.1, r - (r - l) * 0.1) if view == "front" else (neck[0] - (r - l) * 0.28, neck[0] + (r - l) * 0.28)
+        # the arms hang at the body's sides, over the armholes the art draws there (turned: the far one tucked in)
+        sn, sf = (l + (r - l) * 0.1, r - (r - l) * 0.1) if view == "front" else (l + (r - l) * SHOULDER_IN[0], r - (r - l) * SHOULDER_IN[1])
         return kind, {"pivot": np.array([cx, hip_y]), "neck": neck, "waist": np.array([cx, wy]),
                       "hip_n": np.array([cx - half * 0.35, hip_y]), "hip_f": np.array([cx + half * 0.35, hip_y]),
                       "shoulder_n": np.array([sn, shoulder_y]), "shoulder_f": np.array([sf, shoulder_y])}, hip_y - neck[1]
@@ -184,8 +191,22 @@ def joint_ends(img, al, kind, marks):
     yy, xx = np.mgrid[0:h, 0:w].astype(float)
     t = (xx - a[0]) * ax[0] + (yy - a[1]) * ax[1]
     img, al = img.copy(), al.copy()
-    if "end" in marks:
-        al[t > np.linalg.norm(marks["end"] - a) + END_KEEP_PX] = 0
+    if "end" in marks:  # cut where the limb itself ends: walk in from the tip while the colour is still the disc's
+        L = np.linalg.norm(marks["end"] - a)
+        tip = t.max() if (al > 0.5).any() else L
+        lab = lab_of(img)
+        solid = al > 0.5
+        rows = np.arange(int(L * 0.6), int(tip))
+        band = lambda r: solid & (np.abs(t - r) < 1.5)
+        disc = np.median(lab[band(tip - 3)], 0) if band(tip - 3).any() else None
+        cut = L * (1 + END_KEEP)
+        if disc is not None:
+            for r in rows[::-1]:
+                b = band(r)
+                if b.sum() > 3 and np.linalg.norm(np.median(lab[b], 0) - disc) > DISC_DE:
+                    cut = min(cut, r + 1)
+                    break
+        al[t > cut] = 0
     if kind == "thigh":
         al[t < -THIGH_CAP * np.linalg.norm(marks["end"] - a) * 0.25] = 0
     above = t < 0  # mirror: the pixel at -t along the axis takes the colour from +t
@@ -193,6 +214,18 @@ def joint_ends(img, al, kind, marks):
     my = np.clip(np.rint(yy - 2 * t * ax[1]), 0, h - 1).astype(int)
     img[above] = img[my[above], mx[above]]
     return img, al
+
+
+def clean_edges(img, al):
+    """the fringe was painted over white paper: un-blend it (a cut edge must not carry the paper), and give every
+    transparent texel its nearest opaque colour, so filtering and mipmaps never pull white or black into the edge"""
+    a = al[..., None]
+    soft = (a > 0.02) & (a < 0.98)
+    unblended = np.clip((img.astype(float) - (1 - a) * 255) / np.maximum(a, 0.02), 0, 255)
+    out = np.where(soft, unblended, img.astype(float))
+    _, (iy, ix) = ndimage.distance_transform_edt(al < 0.5, return_indices=True)
+    out = np.where((al < 0.5)[..., None], out[iy, ix], out)
+    return out.astype(np.uint8)
 
 
 def lab_of(rgb):
@@ -237,7 +270,8 @@ def dye_mask(rgb, alpha, skin_lab):
     total = weight.sum()
     # R = the whole garment (every cluster that is not skin), so any cloth can be dyed, white or black;
     # G and B = accents that clearly differ from the garment's main colour (a belt, a collar, a waistcoat)
-    cloth = [i for i in np.argsort(-weight) if weight[i] > 0 and not is_skin(cmean[i])]
+    # skin is a small patch on a garment (a neck, a socket); a big cluster near skin colour is cloth (a red-brown vest)
+    cloth = [i for i in np.argsort(-weight) if weight[i] > 0 and not (is_skin(cmean[i]) and weight[i] < SKIN_SHARE * total)]
     if not cloth:
         return np.zeros(rgb.shape, np.uint8), []
     main = cmean[cloth[0]]
@@ -299,10 +333,11 @@ def main():
             img = rgb[y0:y1, x0:x1]
             kind, marks, size = landmarks(slot, m, a.view)
             img, al = joint_ends(img, al, kind, marks)
+            img = clean_edges(img, al)
             if slot == "head_neutral":  # the skin colour: the middle of the face
                 h, w = m.shape
                 skin = lab_of(img[int(h * 0.35):int(h * 0.55), int(w * 0.35):int(w * 0.65)].reshape(-1, 3)).mean(0)
-            Image.fromarray(np.dstack([img, (al * 255).astype(np.uint8)])).save(f"{a.out}/{slot}.webp", quality=WEBP_Q, method=6)
+            Image.fromarray(np.dstack([img, (al * 255).astype(np.uint8)])).save(f"{a.out}/{slot}.webp", quality=WEBP_Q, method=6, exact=True)  # exact: keep the padded colour under alpha 0
             entry = {"w": int(x1 - x0), "h": int(y1 - y0), **{k: [round(float(v[0]), 1), round(float(v[1]), 1)] for k, v in marks.items()}}
             if size:
                 entry["m_per_px"] = round(LENGTH[kind] / float(size), 6)
