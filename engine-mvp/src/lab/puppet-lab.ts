@@ -2,6 +2,7 @@
 // the motion knobs on sliders, and the guards' verdict. Dev page (puppet-lab.html).
 // ?char=boer-vrouw,boer-man&pose=kneel&view=side&expr=happy&mirror=1
 import { Color4, Engine, FreeCamera, Scene, Vector3 } from '@babylonjs/core'
+import { EMOTION_NAMES, LIFE } from '../figures/face'
 import {
   CHARACTERS, POSE_NAMES, PUPPET, VIEWS, createPuppet, type Garment, type Puppet, type PuppetPose, type View,
 } from '../figures/puppet'
@@ -68,8 +69,10 @@ async function main() {
   const views = row('view')
   for (const v of VIEWS) button(v === '34' ? '3/4' : v, () => { state.view = v; apply() }, views)
   button('mirror', () => { state.mirror = !state.mirror; apply() }, views)
-  const faces = row('face')
-  for (const e of ['neutral', 'happy', 'worried', 'surprised']) button(e, () => puppets.forEach((p) => p.setExpression(e)), faces)
+  const faces = row('emotion')
+  for (const e of EMOTION_NAMES) button(e, () => puppets.forEach((p) => p.setEmotion(e)), faces)
+  let talking = false
+  button('talk', () => { talking = !talking; puppets.forEach((p) => p.setTalking(talking)) }, faces)
   const hats = row('hat')
   button('on', () => puppets.forEach((p) => p.setHat(true)), hats)
   button('off', () => puppets.forEach((p) => p.setHat(false)), hats)
@@ -89,6 +92,18 @@ async function main() {
     l.style.gridTemplateColumns = '1fr 44px 24px'
     dyes.append(l)
   }
+  row('face life')
+  slider('life on', 0, 1, 1, () => LIFE.on, (v) => (LIFE.on = v))
+  slider('blink min s', 0.5, 6, 0.1, () => LIFE.blinkMin, (v) => (LIFE.blinkMin = v))
+  slider('blink max s', 1, 10, 0.1, () => LIFE.blinkMax, (v) => (LIFE.blinkMax = v))
+  slider('eye darts px', 0, 4, 0.1, () => LIFE.saccadePx, (v) => (LIFE.saccadePx = v))
+  slider('breath amp', 0, 0.03, 0.001, () => LIFE.breathAmp, (v) => (LIFE.breathAmp = v))
+  slider('breath Hz', 0.1, 0.6, 0.01, () => LIFE.breathHz, (v) => (LIFE.breathHz = v))
+  slider('weight shift deg', 0, 4, 0.1, () => LIFE.shiftDeg, (v) => (LIFE.shiftDeg = v))
+  slider('head tilt deg', 0, 5, 0.1, () => LIFE.tiltDeg, (v) => (LIFE.tiltDeg = v))
+  slider('emotion ease ms', 100, 400, 10, () => LIFE.emoMs, (v) => (LIFE.emoMs = v))
+  slider('face stroke px', 0.8, 3, 0.05, () => LIFE.strokePx, (v) => (LIFE.strokePx = v))
+  slider('emotes on', 0, 1, 1, () => LIFE.emotes, (v) => (LIFE.emotes = v))
   row('motion')
   slider('walk hip swing', 0, 40, 1, () => PUPPET.walkHip, (v) => (PUPPET.walkHip = v))
   slider('walk knee lift', 0, 80, 1, () => PUPPET.walkKnee, (v) => (PUPPET.walkKnee = v))
@@ -109,7 +124,7 @@ async function main() {
   slider('skirt on lap', 0.1, 1, 0.05, () => PUPPET.lapThickness, (v) => (PUPPET.lapThickness = v))
   slider('layer gap m', 0, 0.02, 0.001, () => PUPPET.zStep, (v) => (PUPPET.zStep = v))
   apply()
-  ;(window as unknown as Record<string, unknown>).__lab = { scene, puppets, state, apply, camera }
+  ;(window as unknown as Record<string, unknown>).__lab = { scene, puppets, state, apply, camera, LIFE }
 }
 
 main().catch((e) => { msg.textContent = String(e); throw e })

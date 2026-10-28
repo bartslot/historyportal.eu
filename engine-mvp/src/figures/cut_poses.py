@@ -21,6 +21,8 @@ from cut_parts import WEBP_Q, alpha_of, clean_edges, dye_mask, edge_qa, find_par
 
 SLOTS = {"A": ["stand", "walk1", "walk2", "walk3"], "B": ["point", "carry", "kneel", "sit"],
          "H": ["head_neutral", "head_happy", "head_worried", "head_surprised"]}
+HEAD_HOLE_PX = 400 # a head hole smaller than this is a catchlight or a highlight, not the outside
+HEAD_FRAC = 0.19  # the head lies in the top share of a standing figure
 TUFT_BAND = 0.12  # the tuft lies in the bottom share of a figure
 TUFT_A = -3       # Lab a* under this is the grass's green
 BODY_POCKET_PX = 60  # a body painting: paper between the feet, an arm and the dress is background (a head keeps eye whites)
@@ -46,6 +48,67 @@ def strip_tuft(img, al):
     if n > 1:
         sizes = ndimage.sum(np.ones(al.shape), parts, range(1, n + 1))
         al = np.where(np.isin(parts, 1 + np.nonzero(sizes < sizes.max() * 0.02)[0]), 0, al)
+    return al
+
+
+def find_face(img, al):
+    """the face landmarks of a head-on painting, from the paint: the brow+eye is the biggest dark blob enclosed by skin
+    in the head's upper half; the mouth is the strongest reddish-dark line below it (found by row response, so a
+    nostril is not taken for it). Returns px landmarks in the sprite, the face scale s (1 = 38 px eye to mouth) and the
+    local skin colour (for the wipe under the drawn features), or None."""
+    H = al.shape[0]
+    hh = int(H * HEAD_FRAC)
+    rgb, alp = img[:hh], al[:hh] > 0.5
+    lab = lab_of(rgb)
+    L, A, B = lab[..., 0], lab[..., 1], lab[..., 2]
+    skin = ndimage.binary_opening(alp & (L > 62) & (A > 5) & (A < 24) & (B > 14) & (B < 36), iterations=1)
+    lb, n = ndimage.label(ndimage.binary_closing(skin, iterations=3))
+    if not n:
+        return None
+    face = lb == (int(np.argmax(ndimage.sum(skin, lb, range(1, n + 1)))) + 1)
+    hull = ndimage.binary_fill_holes(ndimage.binary_closing(face, iterations=6))
+    feat = ndimage.binary_erosion(hull, iterations=4) & ~skin & (L < 62)
+    lf, m = ndimage.label(ndimage.binary_dilation(feat, iterations=1))
+    blobs = []
+    for i in range(1, m + 1):
+        ys, xs = np.nonzero(lf == i)
+        w, h = int(np.ptp(xs) + 1), int(np.ptp(ys) + 1)
+        if 16 <= w <= 32 and 11 <= h <= 24 and L[lf == i].mean() < 46:
+            blobs.append((len(ys), float(xs.mean()), float(ys.mean())))
+    if not blobs:
+        return None
+    _, bx, by = max(blobs)
+    x0, x1 = int(bx - 4), int(bx + 16)
+    best = (0.0, int(by + 38))
+    for y in range(int(by + 20), min(int(by + 52), hh - 1)):
+        row = lab[y, x0:x1]
+        v = float((np.maximum(0, 80 - row[:, 0]) * (row[:, 1] > 14)).sum())
+        if v > best[0]:
+            best = (v, y)
+    my = best[1]
+    xs = np.arange(x0, x1)
+    resp = np.maximum(0, 80 - lab[my, x0:x1, 0]) * (lab[my, x0:x1, 1] > 14)
+    mx = float((xs * resp).sum() / max(resp.sum(), 1e-3))
+    eye = (bx + 2, by + 5)
+    s = (my - eye[1]) / 33.0  # the eye centre to the mouth line is 33 px at s = 1
+    yy, xx = np.mgrid[0:hh, 0:rgb.shape[1]]
+    near = skin & ((xx - eye[0]) ** 2 + (yy - eye[1]) ** 2 < (24 * s) ** 2)
+    skin_rgb = np.median(rgb[near], axis=0) / 255.0 if near.sum() > 30 else np.array([0.9, 0.78, 0.65])
+    r = lambda p: [round(float(p[0]), 1), round(float(p[1]), 1)]
+    return {"eye": r(eye), "brow": r((bx - 1, by - 3)), "eyeF": r((bx + 17, by + 7)), "mouth": r((mx, my)),
+            "s": round(float(s), 3), "skin": [round(float(v), 3) for v in skin_rgb]}
+
+
+def fill_head_holes(al):
+    """the face has small paper-white spots (an eye's catchlight, a blush highlight): the pocket rule had turned them into
+    holes, and the ink edge then outlined them. Holes in the head rows that are small stay paint."""
+    hh = int(al.shape[0] * HEAD_FRAC)
+    solid = al > 0.5
+    holes, n = ndimage.label(~solid[:hh] & ndimage.binary_fill_holes(solid)[:hh])
+    if n:
+        sizes = ndimage.sum(np.ones(holes.shape), holes, range(1, n + 1))
+        al = al.copy()
+        al[:hh][np.isin(holes, 1 + np.nonzero(sizes < HEAD_HOLE_PX)[0])] = 1.0
     return al
 
 
@@ -87,6 +150,8 @@ def main():
         img = rgb[y0:y1, x0:x1]
         if a.which != "H":
             al = strip_tuft(img, al)
+            if a.head_on:
+                al = fill_head_holes(al)
             m = al > 0.5
         sil = al > 0.5
         img, al = ink_rim(img, al, sil)
@@ -127,12 +192,21 @@ def main():
                          feet=[round(float(feet[0]), 1), round(float(feet[1]), 1)], m_per_px=round(scale, 6))
             if a.head_on:
                 entry["head_on"] = True
+                saved = np.asarray(Image.open(f"{a.out}/{slot}.webp").convert("RGBA"))  # the art the runtime draws
+                face = find_face(saved[..., :3], saved[..., 3] / 255.0)
+                if face:
+                    entry["face"] = face
             skin = np.array(manifest["skin_lab"]) if "skin_lab" in manifest else None
             mask, regions = dye_mask(img, al, skin)
             if regions:
                 Image.fromarray(mask).save(f"{a.out}/{slot}_dye.webp", lossless=True, method=6)
                 entry["dye"] = regions
             manifest["poses"][slot] = entry
+    faces = [e["face"] for e in manifest["poses"].values() if "face" in e]
+    if faces:  # one scale per view: the same head is drawn on every pose, a single mis-picked mouth must not shrink it
+        s_med = round(float(np.median([f["s"] for f in faces])), 3)
+        for f in faces:
+            f["s"] = s_med
     with open(manifest_path, "w") as f:
         json.dump(manifest, f, indent=1)
     print(a.out, names)

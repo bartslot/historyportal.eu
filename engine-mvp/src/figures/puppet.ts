@@ -11,6 +11,7 @@ import {
 import type { Placement, StageLike } from './figure'
 import { STAIN_DEFAULT, stainSize } from '../stage25d/ground'
 import { GL_NOISE, makeStain } from '../stage25d/ground-gl'
+import { EMOTIONS, EMOTION_NAMES, FaceLife, FaceRig, LIFE, seedOf, type BodyOffsets, type FaceMark, type FaceParams } from './face'
 import { LINE_BY_DEPTH_GLSL, PAPER_GLSL } from '../stage25d/layer'
 import { pxPerMetre, pxUV, type Line, type Paper } from '../stage25d/look'
 import type { Asset, Library } from '../stage25d/types'
@@ -107,6 +108,7 @@ export const POSES: Record<PuppetPose, (t: number, c?: Character, seated?: boole
 
 // ---- 2D maths: x forward, y up; angles from straight down, positive toward +x ----
 const R = Math.PI / 180
+const DEG = R
 const rot = (v: P2, deg: number): P2 => { const c = Math.cos(deg * R), s = Math.sin(deg * R); return [v[0] * c - v[1] * s, v[0] * s + v[1] * c] }
 const add = (a: P2, b: P2): P2 => [a[0] + b[0], a[1] + b[1]]
 const sub = (a: P2, b: P2): P2 => [a[0] - b[0], a[1] - b[1]]
@@ -273,11 +275,11 @@ function noStageLook(mat: ShaderMaterial, w: number, h: number) {
 }
 export type StageLook = { line: Line & { tint: [number, number, number] }; paper: Paper }
 
-type PartMesh = { mesh: Mesh; mat: ShaderMaterial; slot: string; rest: P2[]; pos: Float32Array; dyeOn: number[]; size?: P2 }
+type PartMesh = { mesh: Mesh; mat: ShaderMaterial; slot: string; rest: P2[]; pos: Float32Array; dyeOn: number[]; size?: P2; tex?: Texture }
 const SKIRT_NY = 16
 
-function partMesh(scene: Scene, base: string, view: View, slot: string, p: Part, name: string, parent: TransformNode): PartMesh {
-  const ny = slot === 'skirt' ? SKIRT_NY : 1, nx = slot === 'skirt' ? 4 : 1
+function partMesh(scene: Scene, base: string, view: View, slot: string, p: Part, name: string, parent: TransformNode, grid?: [number, number]): PartMesh {
+  const ny = grid ? grid[1] : slot === 'skirt' ? SKIRT_NY : 1, nx = grid ? grid[0] : slot === 'skirt' ? 4 : 1
   const rest: P2[] = [], uvs: number[] = [], idx: number[] = []
   for (let j = 0; j <= ny; j++) for (let i = 0; i <= nx; i++) { rest.push([(i / nx) * p.w, (j / ny) * p.h]); uvs.push(i / nx, 1 - j / ny) }
   for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) { const a = j * (nx + 1) + i, c = a + nx + 1; idx.push(a, c, a + 1, a + 1, c, c + 1) }
@@ -296,7 +298,8 @@ function partMesh(scene: Scene, base: string, view: View, slot: string, p: Part,
     uniforms: ['worldViewProjection', 'hasDye', 'target0', 'target1', 'target2', 'refL', 'dyeOn', 'grade', 'lineFade', 'haze', 'lineBrown', 'hazeTint', 'paper', 'grain', 'patches', 'wash', 'washColour', 'pxSize', 'inkUV', 'inkBelow', 'inkAbove'],
   })
   mat.backFaceCulling = false
-  mat.setTexture('art', new Texture(`${base}/${view}/${slot}.webp`, scene, false, true))
+  const tex = new Texture(`${base}/${view}/${slot}.webp`, scene, false, true)
+  mat.setTexture('art', tex)
   const regions = p.dye ?? []
   mat.setFloat('hasDye', regions.length ? 1 : 0)
   if (regions.length) mat.setTexture('dye', new Texture(`${base}/${view}/${slot}_dye.webp`, scene, false, true, Texture.BILINEAR_SAMPLINGMODE))
@@ -307,7 +310,7 @@ function partMesh(scene: Scene, base: string, view: View, slot: string, p: Part,
   noStageLook(mat, p.w, p.h)
   for (const i of [0, 1, 2]) mat.setVector3(`target${i}`, new Vector3(...hex(regions[i] ?? '#808080')))
   mesh.material = mat
-  return { mesh, mat, slot, rest, pos: new Float32Array(rest.length * 3), dyeOn: [0, 0, 0] }
+  return { mesh, mat, slot, rest, pos: new Float32Array(rest.length * 3), dyeOn: [0, 0, 0], tex }
 }
 
 // back to front; z steps toward the camera
@@ -342,6 +345,14 @@ export type Puppet = {
   joints(): Joints                          // the solved 2D joints right now (figure frame)
   mode(): 'paintings' | 'parts'             // what draws the current pose
   lookFrom(get: (() => StageLook) | null): void // the stage's line + paper for this figure's depth (placePuppet sets it)
+  // faces that live (painted figures): emotion + idle life, all seeded per figure and knobs in face.ts LIFE
+  setEmotion(name: string, ms?: number): void   // one of EMOTION_NAMES, eased in over ms (default LIFE.emoMs)
+  emotions(): string[]
+  emotion(): string
+  setTalking(on: boolean): void                 // the mouth cycles (a silent balloon moment: only the narrator speaks)
+  setEmotionKeys(keys: { t: number; emotion: string }[] | null, clock?: () => number): void // a per-figure emotion keyframe track
+  advance(dt: number): void                     // step the life clock by dt seconds (the render loop calls it; tests too)
+  faceState(): { params: FaceParams; blink: number; body: BodyOffsets; emotion: string; seed: number; emote: { name?: string; amount: number; want: boolean } }
   dispose(): void
 }
 
@@ -349,7 +360,7 @@ export type Seat = { url: string; aspect: number } // a library asset's image an
 
 // --- round 4 (PM option A): whole-figure POSE paintings, one per pose (cut_poses.py -> <view>/poses.json); the cut-out
 // parts stay for what has no painting (front, other characters) and the head swap; the hat part sits on the head
-type Sprite = Part & { neck: P2; feet: P2; head_on?: boolean }
+export type Sprite = Part & { neck: P2; feet: P2; head_on?: boolean; face?: FaceMark }
 type PoseSheet = { poses: Record<string, Sprite>; heads: Record<string, Part & { crown: P2 }> }
 const SPRITE_VIEWS: View[] = ['34', 'side']
 const WALK_FRAMES = ['walk1', 'walk2', 'walk3', 'walk2']
@@ -393,11 +404,16 @@ export async function createPuppet(scene: Scene, id: string, opts: PuppetOptions
   const sprites = Object.fromEntries(SPRITE_VIEWS.map((v) => {
     const ps = poseSheets[v]
     const set: Record<string, PartMesh> = {}
-    for (const [slot, p] of Object.entries({ ...ps?.poses, ...ps?.heads })) set[slot] = partMesh(scene, base, `${v}/poses` as View, slot, p, `${id}_${v}_pose_${slot}`, flip)
+    for (const [slot, p] of Object.entries({ ...ps?.poses, ...ps?.heads })) set[slot] = partMesh(scene, base, `${v}/poses` as View, slot, p, `${id}_${v}_pose_${slot}`, flip, (p as Sprite).head_on ? HEAD_ON_GRID : undefined)
     return [v, set]
   })) as Record<string, Record<string, PartMesh>>
   const hats = Object.fromEntries(SPRITE_VIEWS.filter((v) => sheets[v].parts.hat).map((v) => [v, partMesh(scene, base, v, 'hat', sheets[v].parts.hat, `${id}_${v}_pose_hat`, flip)])) as Record<string, PartMesh>
   let stageLook: (() => StageLook) | null = null
+  const life = new FaceLife(seedOf(id, figureCount++))
+  const rig = new FaceRig(scene, id, flip)
+  let lifeOut = life.step(0)
+  let emotionKeys: { t: number; emotion: string }[] | null = null
+  let keyClock: (() => number) | null = null
   const state = { pose: 'stand' as PuppetPose, t: 0, view: '34' as View, expr: 'neutral' as Expression, hat: character.hat, last: [] as string[], dist: 10, want: '34' as View, seat: null as null | { mesh: Mesh; aspect: number } }
   // the view drawn: the one asked for, unless face-on would hide the pose
   const shownView = () => (state.want === 'front' && !FRONT_POSES.includes(state.pose) ? '34' : state.want)
@@ -415,16 +431,21 @@ export async function createPuppet(scene: Scene, id: string, opts: PuppetOptions
       for (let i = 0; i < pm.rest.length; i++) { const q = f(pm.rest[i]); pm.pos[i * 3] = q[0]; pm.pos[i * 3 + 1] = q[1]; pm.pos[i * 3 + 2] = z }
       pm.mesh.updateVerticesData(VertexBuffer.PositionKind, pm.pos)
     }
-    put(body, (px) => [(px[0] - sp.feet[0]) * s, -(px[1] - sp.feet[1]) * s * breathe], 0)
     body.size = [sp.w * s, sp.h * s]
     body.mat.setFloat('inkAbove', 1 - (sp.neck[1] + NECK_CUT_PX) / sp.h) // the neck stump is a cut: the head covers it
     const shown = new Set<PartMesh>([body])
-    if (sp.head_on) { // painted with its head: no head swap, no seam (expressions are face decals, not yet painted)
+    if (sp.head_on) { // painted with its head: no head swap, no seam; the face is drawn ink over it, the body bends
+      const deform = bodyDeform(sp, s, lifeOut.body)
+      put(body, deform, 0)
+      if (sp.face && body.tex) rig.place(sp.face, body.tex, { w: sp.w, h: sp.h }, lifeOut.face, deform, -PUPPET.zStep * Math.max(1, state.dist / 10))
+      else rig.hide()
       for (const set of [...Object.values(sprites), ...VIEWS.map((x) => meshes[x])]) for (const pm of Object.values(set)) pm.mesh.setEnabled(shown.has(pm))
       for (const h of Object.values(hats)) h.mesh.setEnabled(false)
       state.seat?.mesh.setEnabled(false)
       return
     }
+    rig.hide()
+    put(body, (px) => [(px[0] - sp.feet[0]) * s, -(px[1] - sp.feet[1]) * s * breathe], 0)
     const neck: P2 = [(sp.neck[0] - sp.feet[0]) * s, -(sp.neck[1] - sp.feet[1]) * s * breathe - PUPPET.headSink * k]
     const headSlot = `head_${state.expr}`, hp = ps.heads[headSlot] ?? ps.heads.head_neutral
     const hs = hp.m_per_px * k, step = PUPPET.zStep * Math.max(1, state.dist / 10)
@@ -479,7 +500,8 @@ export async function createPuppet(scene: Scene, id: string, opts: PuppetOptions
 
   const allParts = () => [...VIEWS.flatMap((v) => Object.values(meshes[v])), ...Object.values(sprites).flatMap((x) => Object.values(x)), ...Object.values(hats)]
   const tick = scene.onBeforeRenderObservable.add(() => {
-    state.t += scene.getEngine().getDeltaTime() / 1000
+    const dt = scene.getEngine().getDeltaTime() / 1000
+    state.t += dt
     const cam = scene.activeCamera
     if (cam) { // face the camera, yaw only: a painted figure is a picture plane
       root.computeWorldMatrix(true)
@@ -487,7 +509,7 @@ export async function createPuppet(scene: Scene, id: string, opts: PuppetOptions
       yaw.rotation.y = Math.atan2(p.x - c.x, p.z - c.z)
       state.dist = Vector3.Distance(p, c)
     }
-    draw()
+    puppet.advance(dt)
     const g = new Vector3(PUPPET.saturation, PUPPET.value, PUPPET.cool)
     const look = stageLook?.()
     const renderH = scene.getEngine().getRenderHeight(), ppm = pxPerMetre(renderH, state.dist, cam?.fov ?? 0.8)
@@ -524,7 +546,19 @@ export async function createPuppet(scene: Scene, id: string, opts: PuppetOptions
       draw()
       return state.last
     },
-    setExpression(e) { state.expr = EXPRESSION_OF[e] ?? 'neutral'; draw() },
+    setExpression(e) { state.expr = EXPRESSION_OF[e] ?? 'neutral'; life.setEmotion(EMOTIONS[e] ? e : state.expr); lifeOut = life.step(0, state.pose === 'walk'); draw() },
+    setEmotion(name, ms) { life.setEmotion(name, ms); state.expr = EXPRESSION_OF[name] ?? 'neutral'; lifeOut = life.step(0, state.pose === 'walk'); draw() },
+    emotions: () => EMOTION_NAMES,
+    emotion: () => life.emotion,
+    setTalking(on) { life.talking = on },
+    setEmotionKeys(keys, clock) { emotionKeys = keys; keyClock = clock ?? null },
+    advance(dt) {
+      if (emotionKeys && keyClock) { const now = keyClock(); let cur: string | null = null; for (const k of emotionKeys) if (k.t <= now) cur = k.emotion; if (cur && cur !== life.emotion) life.setEmotion(cur) }
+      lifeOut = life.step(dt, state.pose === 'walk')
+      rig.setEmote(lifeOut.emote, LIFE.emotes > 0, dt)
+      draw()
+    },
+    faceState: () => ({ params: lifeOut.face, blink: lifeOut.blink, body: lifeOut.body, emotion: life.emotion, seed: life.seed, emote: rig.emoteState() }),
     setView(v, mirror = false) {
       state.want = v
       flip.scaling.x = mirror ? -1 : 1
@@ -563,10 +597,31 @@ export async function createPuppet(scene: Scene, id: string, opts: PuppetOptions
     joints() { return solve(sheets[state.view], character.height, POSES[state.pose](state.t, character, seated()), seated() ? PUPPET.seatHeight : 0).joints },
     mode: () => (painting() ? 'paintings' : 'parts'),
     lookFrom(get) { stageLook = get },
-    dispose() { scene.onBeforeRenderObservable.remove(tick); root.dispose(false, true) },
+    dispose() { scene.onBeforeRenderObservable.remove(tick); rig.dispose(); root.dispose(false, true) },
   }
   puppet.setPose('stand')
   return puppet
+}
+
+/** a head-on painting's deformation (painting px -> figure metres): shoulders lift, the head tilts about the neck,
+ *  the whole figure leans about its feet (planted), the breath scales it from the feet. The face rides the same map. */
+export function bodyDeform(sp: Sprite, s: number, o: BodyOffsets): (px: P2) => P2 {
+  const u = sp.m_per_px / 0.002                       // painting px per head-feature unit
+  const crown = sp.neck[1], height = Math.max(1, sp.feet[1] - crown)
+  const px0 = sp.face ? sp.face.eye[0] - 26 * sp.face.s * u : sp.neck[0], py0 = crown + 128 / u
+  const lift = o.shoulder / s
+  const sm = (a: number, b: number, x: number) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t) }
+  const tilt = o.tilt * DEG, lean = o.lean * DEG
+  return (px) => {
+    let x = px[0], y = px[1]
+    y -= lift * sm(py0 + 95 / u, py0 + 35 / u, y)
+    const wt = sm(py0 + 55 / u, py0 - 10 / u, y)
+    if (tilt !== 0 && wt > 0) { const a = tilt * wt, dx = x - px0, dy = y - py0; x = px0 + dx * Math.cos(a) - dy * Math.sin(a); y = py0 + dx * Math.sin(a) + dy * Math.cos(a) }
+    const t = Math.max(0, Math.min(1, (sp.feet[1] - y) / height))
+    if (lean !== 0) { const a = lean * t, dx = x - sp.feet[0], dy = y - sp.feet[1]; x = sp.feet[0] + dx * Math.cos(a) - dy * Math.sin(a); y = sp.feet[1] + dx * Math.sin(a) + dy * Math.cos(a) }
+    y = sp.feet[1] + (y - sp.feet[1]) * o.scaleY
+    return [(x - sp.feet[0]) * s + o.dx, -(y - sp.feet[1]) * s]
+  }
 }
 
 /** a skirt drapes over the legs: its back edge runs from the waist along the back thigh to that knee, its front edge
@@ -629,6 +684,8 @@ export function seatFrom(lib: Library & { base: string }): Seat | null {
 }
 
 /** m from the house camera a placed figure stands at, per depth (knobs; a 1.62 m figure at fg ~43 % of a 1080 frame) */
+const HEAD_ON_GRID: [number, number] = [6, 44] // a head-on painting bends (lean, head tilt, shoulders, breath): a finer mesh
+let figureCount = 0 // seeds each figure's idle life: two figures of one character never move in sync
 const NECK_CUT_PX = 10 // a body painting's top this deep is its neck stump
 
 export const FIGURE_Z: Record<string, number> = { near: 3.2, fg: 4, mid: 8.5, bg: 22 }
@@ -667,4 +724,16 @@ export function placePuppet(p: Puppet, at: Placement & { view?: '34' | 'side'; b
   }
   if (at.facing === 'left' || at.facing === 'right') p.setView(at.view ?? '34', at.facing === 'left')
   else p.setView('front')
+}
+
+/** The director hook: apply one lesson.json scene.figures[] entry at shot start (the stage calls it per figure on a
+ *  scene change). `expression` is the emotion (EMOTION_NAMES, or the lesson's older set), eased in over LIFE.emoMs;
+ *  an unknown pose falls back to stand. Returns what it applied. */
+export type FigureSpec = { pose?: string; expression?: string; x: number; depth: Placement['depth']; facing: Placement['facing']; view?: '34' | 'side'; behind?: number }
+export function applyFigure(p: Puppet, fig: FigureSpec, stage?: Parameters<typeof placePuppet>[2]): { pose: PuppetPose; emotion: string } {
+  const pose = (POSE_NAMES as string[]).includes(fig.pose ?? '') ? (fig.pose as PuppetPose) : 'stand'
+  placePuppet(p, fig, stage)
+  p.setPose(pose)
+  p.setEmotion(fig.expression && (EMOTIONS[fig.expression] || EXPRESSION_OF[fig.expression]) ? fig.expression : 'neutral')
+  return { pose, emotion: p.emotion() }
 }

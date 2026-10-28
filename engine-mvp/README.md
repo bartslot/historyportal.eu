@@ -101,6 +101,8 @@ Tests: `npx vitest run src/stage25d`. Real-GPU check (muted, Metal ANGLE, 1080p 
 
 ## Puppet figures (`src/figures/puppet.ts`, the default route since 10-27)
 
+**Faces (`src/figures/face.ts`).** Eyes, brows and mouth are ink strokes drawn over the painted head-on sprite (3/4 view; side view hides the rig). 11 emotions (`EMOTIONS`), eased `LIFE.emoMs`. Idle life is on by default, seeded per figure: blink, eye darts, breath, weight shift, head tilt. Every amplitude and timing is a `LIFE` knob (lab "face life" sliders; S1's Look panel should bind the same object). Emotes (sweat, !, ?, sparkle) are off by default (`LIFE.emotes`). API: `setEmotion`, `setTalking`, `setEmotionKeys(keys, clock)`, `applyFigure(p, {expression})` for the director. Proof: `capture_faces.mjs` + `faces_sheet.py`.
+
 Painted cut-out characters: the History Lines art itself, moved by 2D bones. Four characters (`CHARACTERS`):
 `boer-vrouw`, `boer-man`, `voc-matroos`, `voc-kapitein` (Tasman look: moustache, 1640s hat).
 
