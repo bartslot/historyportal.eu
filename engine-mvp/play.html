@@ -14,8 +14,9 @@
   #stage { width: 100%; height: 100%; display: block; outline: none; transform-origin: 50% 0;
     transition: transform 0.5s cubic-bezier(0.333, 1, 0.667, 1); }
   /* a card takes the lower 45 %: the held picture scales into the space above it, whole (PM) */
-  #wrap.card-open #stage { transform: scale(0.53); }
-  #wrap.card-open #figures { transform: scale(0.53); transform-origin: 50% 0; }
+  /* the card reports its height (--card-share, 45-60 % of the frame); the picture takes what is left */
+  #wrap.card-open #stage { transform: scale(calc(1 - var(--card-share, 0.47) - 0.02)); }
+  #wrap.card-open #figures { transform: scale(calc(1 - var(--card-share, 0.47) - 0.02)); transform-origin: 50% 0; }
   #intro-host { position: absolute; inset: 0; pointer-events: none; }
   #figures, #story { position: absolute; inset: 0; pointer-events: none; }
   /* balloons: silent timed layers over the speaker, never baked into the picture; no names */
