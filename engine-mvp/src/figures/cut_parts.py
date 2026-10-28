@@ -38,7 +38,7 @@ OPTIONAL = ("skirt", "hat", "foot_far")  # may be missing at a row's end
 # canonical sizes in metres for a 1.70 m adult (scaled by the character's height at runtime)
 # (anthropometric proportions: ankle 0.07 + shin + thigh + torso + head above the neck pivot ~0.28 = 1.70)
 LENGTH = {"head": 0.30, "torso": 0.51, "upper_arm": 0.31, "forearm": 0.25, "hand": 0.18, "thigh": 0.42,
-          "shin": 0.41, "foot": 0.25, "foot_front": 0.10, "skirt": 0.84}
+          "shin": 0.41, "foot": 0.21, "foot_front": 0.10, "skirt": 0.84}
 DISC_DE = 14     # a row this far (Lab) from the painted joint disc's colour is the limb again
 END_KEEP = 0.08  # a limb keeps this share of its length past its far joint: it overlaps the child, no seam
 SHOULDER_DOWN = 0.18  # the shoulder joints sit this far from the neck to the waist
@@ -48,7 +48,7 @@ THIGH_CAP = 0.0    # a thigh keeps this share of its top disc: none, its top alw
 WEBP_Q = 88       # the art; the dye masks are lossless
 ANKLE = 0.07     # the ankle joint stands this high above the sole
 CLOTH = {  # the slots that are clothing (a dye mask each); bare arms and legs are not
-    "woman": ("torso", "skirt", "upper_arm"),
+    "woman": ("torso", "skirt", "upper_arm", "forearm"),
     "man": ("torso", "skirt", "upper_arm", "forearm", "shin", "foot", "foot_far", "hat"),
     "voc": ("torso", "upper_arm", "forearm", "thigh", "shin", "foot", "foot_far", "hat"),
 }

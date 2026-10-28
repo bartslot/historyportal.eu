@@ -23,10 +23,10 @@ export type Sheet = { view: View; kind: string; parts: Record<string, Part> }
 export type PuppetPose = 'stand' | 'walk' | 'point' | 'carry' | 'kneel' | 'sit'
 export type Expression = 'neutral' | 'happy' | 'worried' | 'surprised'
 export type Garment = 'top' | 'accent' | 'skirt' | 'sleeves' | 'breeches' | 'legs' | 'shoes' | 'hat'
-export type Character = { id: string; height: number; hat: boolean }
+export type Character = { id: string; height: number; hat: boolean; step?: number } // step: stride share (a long skirt: short steps)
 
 export const CHARACTERS: Record<string, Character> = {
-  'boer-vrouw': { id: 'boer-vrouw', height: 1.62, hat: false },
+  'boer-vrouw': { id: 'boer-vrouw', height: 1.62, hat: false, step: 0.5 },
   'boer-man': { id: 'boer-man', height: 1.72, hat: true },
   'voc-matroos': { id: 'voc-matroos', height: 1.70, hat: true },
   'voc-kapitein': { id: 'voc-kapitein', height: 1.74, hat: true },
@@ -82,9 +82,10 @@ export const POSES: Record<PuppetPose, (t: number, c?: Character, seated?: boole
   sit: (_t, _c, seated) => seated
     ? { ...STAND, lean: -3, head: 4, hN: 88, kN: -84, aN: -4, hF: 84, kF: -82, aF: -2, sN: 24, eN: 58, sF: 20, eF: 60 }
     : { ...STAND, lean: -6, head: 4, hN: 100, kN: -28, aN: -72, hF: 94, kF: -20, aF: -74, sN: 34, eN: 30, sF: 28, eF: 34 },
-  walk: (t) => {
+  walk: (t, c) => {
     const ph = t * Math.PI * 2 * PUPPET.stride
-    const leg = (p: number) => ({ h: PUPPET.walkHip * Math.sin(p), k: -PUPPET.walkKnee * Math.max(0, Math.sin(p + 1.2)) ** 2 - 4 })
+    const step = c?.step ?? 1
+    const leg = (p: number) => ({ h: PUPPET.walkHip * step * Math.sin(p), k: -PUPPET.walkKnee * step * Math.max(0, Math.sin(p + 1.2)) ** 2 - 4 })
     const n = leg(ph), f = leg(ph + Math.PI)
     return {
       ...STAND, lean: 3, head: -2,
