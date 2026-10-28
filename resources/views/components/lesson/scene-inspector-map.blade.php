@@ -110,7 +110,7 @@
                 @endforeach
             </ul>
         @else
-            <p class="mt-1 text-prose text-panel-hint">{{ __('No focus cities yet — search above or drop a pin to mark a key place on the map.') }}</p>
+            <p class="mt-1 text-prose text-panel-hint">{{ __('No focus cities yet. Search above or drop a pin to mark a key place on the map.') }}</p>
         @endif
     </div>
 
@@ -130,7 +130,7 @@
             </div>
         @else
             <input type="search" wire:model.live.debounce.400ms="territoryQuery"
-                   placeholder="{{ __('Search an empire/kingdom — e.g. Byzantine Empire') }}"
+                   placeholder="{{ __('Search an empire or kingdom, e.g. Byzantine Empire') }}"
                    class="input input-sm input-bordered bg-slate-900 mt-1" />
             <p class="mt-1 text-prose text-panel-hint">{{ __('No territory linked: search a polity (cities: link the empire that ruled it).') }}</p>
             <p class="mt-1 text-prose text-panel-link">{{ __('Don\'t know its name? Hover the map to see territory names, then click one to link it.') }}</p>

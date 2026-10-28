@@ -20,7 +20,7 @@
                     <span class="text-sm font-medium text-white">{{ $fw->label() }}</span>
                     <span class="text-xs text-panel-hint leading-snug">{{ $fw->description() }}</span>
                     @if ($fw === NarrativeFramework::default())
-                        <span class="mt-0.5 text-2xs uppercase tracking-wide text-primary/70">default</span>
+                        <span class="mt-0.5 text-2xs uppercase tracking-wide text-primary">default</span>
                     @endif
                 </button>
             @endforeach
@@ -65,7 +65,7 @@
                     </button>
                 @empty
                     <p class="text-sm text-panel-hint col-span-full py-1">
-                        No catalog figures for this topic yet — type your hero's name below.
+                        No catalog figures for this topic yet. Type your hero's name below.
                     </p>
                 @endforelse
             </div>

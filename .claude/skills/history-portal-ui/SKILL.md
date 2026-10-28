@@ -77,7 +77,12 @@ Two hands, doing different jobs.
   panel row, a toggle, a helper text or a link. Mark each such use `data-micro-label`; the allowlist
   in `tests/Unit/SmallTextFloorTest.php` names every file and count.
 - Colours come from tokens: `text-panel-label` (row labels), `text-panel-hint` (helper prose),
-  `text-panel-link` (links inside a panel). Not `text-slate-500`, not `text-sky-300`.
+  `text-panel-link` (links inside a panel), `text-panel-value`. Not raw `text-slate-400/500/600` or
+  `text-sky-300` on a dark panel. `tests/Unit/TextColourRatchetTest.php` counts the raw ones in the
+  teacher views and may only go down.
+- **No em dash (—) in any UI string**: no labels, options, placeholders, helper text, slider titles,
+  or translations. Use a colon, a comma or a full stop. `tests/Unit/UiDashTest.php` enforces it in
+  `lang/*.json` and in Blade UI strings. Code comments are not UI and are not checked.
 - Sizes are declared only in `resources/css/brand-kit.css`. A second `@theme` that redefines them
   wins silently and has already hidden a fix once.
 - The check: `tests/playwright/small-text-floor.spec.ts` walks the editor's visible text for a

@@ -39,6 +39,6 @@
                         ])>{{ $i }}</button>
             @endfor
         </div>
-        <p class="text-xs text-panel-hint mt-1">Game pauses for narration between segments — useful for drip-feeding new information.</p>
+        <p class="text-xs text-panel-hint mt-1">Game pauses for narration between segments. Useful for drip-feeding new information.</p>
     </div>
 </div>

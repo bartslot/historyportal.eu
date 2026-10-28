@@ -395,7 +395,7 @@
                                 <span @class([
                                     'mt-auto pt-3 text-2xs font-medium',
                                     'text-success' => $option['status'] === 'taught',
-                                    'text-sky-300' => $option['status'] === 'prepared',
+                                    'text-panel-link' => $option['status'] === 'prepared',
                                     'text-primary' => $option['status'] === 'untaught',
                                 ])>
                                     {{ $option['status_label'] }}

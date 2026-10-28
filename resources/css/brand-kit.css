@@ -299,50 +299,33 @@
   }
 
   /**
-   * A lesson-type badge (Figma 2321:1423): a 553x537 rounded square, radius 60, a white line icon
-   * in its upper middle and an Inter SemiBold uppercase label (48px, 0.5px tracking) near the
-   * bottom. Every measure is a share of the badge, so one width class sizes all of it; the label
-   * never drops under 7px, where Figma's share would turn a phone badge's words to dust.
+   * A lesson-type badge on the title screen: a pill, auto width, sized to hold its label at 12px
+   * (the floor) at every size. The label carries the meaning ("Comic", "Interactive"), so it is
+   * never decorative. The Figma tile it replaces was sized as a share of its width, which pushed
+   * the label to 8px on a phone. The icon is the file's own SVG, drawn at one fixed size.
    */
-  .lp-type-badge {
-    position: relative;
-    container-type: inline-size;
-    aspect-ratio: 553 / 537;
-    border-radius: 10.85% / 11.17%;
+  .lp-type-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.625rem 0.25rem 0.4375rem;
+    border-radius: 9999px;
     color: #fff;
+    white-space: nowrap;
   }
 
-  /* The icon's own box in the badge, per icon, as Figma placed it (all three centred across). */
-  .lp-type-badge > img {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
+  .lp-type-pill > img {
+    width: 1rem;
+    height: 1rem;
+    flex: none;
     object-fit: contain;
   }
 
-  .lp-type-badge[data-type='interactive'] > img { top: 27%; width: 52.7%; height: 37.3%; }
-  .lp-type-badge[data-type='comic'] > img { top: 23.2%; width: 45.2%; height: 45.3%; }
-  .lp-type-badge[data-type='teams'] > img { top: 18.1%; width: 61.7%; height: 48.2%; }
-
-  /* The title screen's join QR plate: white paper, the code in brand ink, the badges' corner
-     (10.85% of the 6rem badge). Flat: no shadow, no ring. */
-  .lp-qr-plate {
-    background: #fff;
-    color: var(--color-brand-ink);
-    border-radius: 0.65rem;
-    overflow: hidden;
-  }
-
-  .lp-type-badge > span {
-    position: absolute;
-    inset-inline: 0;
-    top: 78%;
-    text-align: center;
-    white-space: nowrap;
-    font-size: max(8.7cqw, 7px);
+  .lp-type-pill > span {
+    font-size: var(--text-xs);
     font-weight: 600;
     letter-spacing: 0.5px;
-    line-height: 1.2;
+    line-height: 1;
     text-transform: uppercase;
   }
 }

@@ -821,7 +821,14 @@
     scroll-margin-top: 5rem;
     transition: opacity .35s ease, filter .35s ease;
 }
-.wizard-flow-group.flow-dim { opacity: .38; filter: saturate(.55); }
+/* The step that is not active dims its CONTROLS, not its text. Opacity on the group took the labels
+   to 1.9:1 (measured 2026-10-28), so the group keeps full text contrast and the dim reads through
+   icons, borders and fills. */
+.wizard-flow-group.flow-dim { filter: saturate(.55); }
+.wizard-flow-group.flow-dim :is(svg, img) { opacity: .5; }
+.wizard-flow-group.flow-dim :is(.btn, .input, .select, .textarea, .toggle, .checkbox, .radio, .card, .collapse) {
+    border-color: rgb(255 255 255 / .06);
+}
 @media (prefers-reduced-motion: reduce) {
     .wizard-flow-group { transition: none; }
 }

@@ -90,7 +90,7 @@
             </details>
         @else
             <div class="alert alert-info mt-4 text-sm" role="note">
-                <span>{{ __(':label modules aren\'t editable here yet — coming soon.', ['label' => $module->type->label()]) }}</span>
+                <span>{{ __(':label modules aren\'t editable here yet. Coming soon.', ['label' => $module->type->label()]) }}</span>
             </div>
         @endif
 

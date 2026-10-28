@@ -332,7 +332,7 @@
                     <div class="mb-2 flex justify-center">
                         <x-icons.microphone class="w-8 h-8 text-panel-hint" />
                     </div>
-                    <p class="text-sm text-panel-hint">No samples yet — generate one above to start auditioning voices.</p>
+                    <p class="text-sm text-panel-hint">No samples yet. Generate one above to start auditioning voices.</p>
                 </div>
             @endif
         </div>

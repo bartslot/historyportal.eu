@@ -5215,8 +5215,8 @@ class Step3SceneConfigurator extends Component
 
         $rows = [
             ['role' => 'question', 'title' => __('Decision :n', ['n' => $group]), 'label' => null],
-            ['role' => 'option_a', 'title' => __('Decision :n — first choice', ['n' => $group]), 'label' => __('First choice')],
-            ['role' => 'option_b', 'title' => __('Decision :n — second choice', ['n' => $group]), 'label' => __('Second choice')],
+            ['role' => 'option_a', 'title' => __('Decision :n: first choice', ['n' => $group]), 'label' => __('First choice')],
+            ['role' => 'option_b', 'title' => __('Decision :n: second choice', ['n' => $group]), 'label' => __('Second choice')],
         ];
 
         $created = [];
@@ -5831,7 +5831,7 @@ class Step3SceneConfigurator extends Component
         // A story game whose choices have no consequences yet is not ready for a class.
         if (($groups = $this->lesson->incompleteStoryGameGroups()) !== []) {
             $this->publishOk = false;
-            $this->publishNotice = __('Story game incomplete — choice :groups still missing game effects on an option. Open Configure and fill both options\' meter effects first.', [
+            $this->publishNotice = __('Story game incomplete: choice :groups still missing game effects on an option. Open Configure and fill both options\' meter effects first.', [
                 'groups' => implode(', ', $groups),
             ]);
 

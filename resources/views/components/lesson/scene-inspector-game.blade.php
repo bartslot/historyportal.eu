@@ -107,7 +107,7 @@
                 <div class="flex gap-2 rounded-lg border border-base-300/70 border-l-2 border-l-info bg-base-200/60 px-3 py-2 text-xs text-base-content/80">
                     <x-icons.question-mark-circle class="mt-px h-4 w-4 shrink-0 text-info" />
                     <p>
-                    {{ __('Prior-knowledge mode: this quiz may ask about parts of the story the students haven\'t reached yet — great as a "what do you already know?" opener. Questions that reach ahead are marked, and students get gentle feedback instead of being graded on guesswork.') }}</p>
+                    {{ __('Prior-knowledge mode: this quiz may ask about parts of the story the students haven\'t reached yet. It works well as a "what do you already know?" opener. Questions that reach ahead are marked, and students get gentle feedback instead of being graded on guesswork.') }}</p>
                 </div>
             @endif
 
@@ -121,7 +121,7 @@
                             <span class="text-2xs font-semibold text-base-content/85">{{ __('Question') }} {{ $i + 1 }}</span>
                             @if (! empty($q['asks_ahead']))
                                 <span class="badge badge-xs badge-warning badge-outline gap-1"
-                                      data-tooltip="{{ __('Tests material that comes later in the story — students will be guessing (that\'s the point of a prior-knowledge check).') }}">
+                                      data-tooltip="{{ __('Tests material that comes later in the story. Students will be guessing, which is the point of a prior-knowledge check.') }}">
                                     ⤳ {{ __('asks ahead') }}
                                 </span>
                             @endif

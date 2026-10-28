@@ -118,7 +118,7 @@ final class HelpGuide
                             __('Drag the amber Destination X to set where this crossing ends.'),
                             __('Hover the blue sailing line and drag to bend the route around a coast, or drag an existing bend to move it.'),
                             __('Double-click a bend to remove it.'),
-                            __('Travelled by picks the marker for this crossing only — it swaps as the traveller reaches the coast. No model to suit the journey? Use a picture instead.'),
+                            __('Travelled by picks the marker for this crossing only. It swaps as the traveller reaches the coast. No model to suit the journey? Use a picture instead.'),
                             __('Gallery / description is what opens when the class arrives: the story of the stop and its images.'),
                         ],
                     ],

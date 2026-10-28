@@ -107,12 +107,12 @@
                     @if($step['state'] === 'skipped' && ! empty($step['skipReason']))
                         <p class="text-xs text-panel-hint italic">{{ $step['skipReason'] }}</p>
                     @elseif($step['state'] === 'active')
-                        <p class="text-xs text-primary/70"
+                        <p class="text-xs text-primary"
                            x-data="{ elapsed: 0, timer: null }"
                            x-init="timer = setInterval(() => elapsed++, 1000)"
                            x-effect="if (!$el.closest('[wire\\:poll]')) { clearInterval(timer) }"
                         >
-                            {{ $step['description'] }} —
+                            {{ $step['description'] }}:
                             <span x-text="Math.floor(elapsed / 60) > 0 ? Math.floor(elapsed / 60) + 'm ' + (elapsed % 60) + 's' : elapsed + 's'"></span>
                         </p>
                     @else
@@ -130,7 +130,7 @@
            x-data="{ elapsed: 0 }"
            x-init="setInterval(() => elapsed++, 1000)"
         >
-            ⏱ Running for <span x-text="Math.floor(elapsed / 60) > 0 ? Math.floor(elapsed / 60) + 'm ' + (elapsed % 60) + 's' : elapsed + 's'"></span> — average generation time is 2–5 minutes.
+            ⏱ Running for <span x-text="Math.floor(elapsed / 60) > 0 ? Math.floor(elapsed / 60) + 'm ' + (elapsed % 60) + 's' : elapsed + 's'"></span>. Average generation time is 2–5 minutes.
         </p>
     @elseif($lesson->status === \App\Enums\LessonStatus::Failed)
         <div class="rounded-xl border border-error/40 bg-error/10 px-4 py-3 text-xs text-error border-t border-slate-800 mt-4">
@@ -141,7 +141,7 @@
         </div>
     @elseif($this->allStepsComplete)
         <p class="text-xs text-success border-t border-slate-800 pt-4">
-            ✓ All steps complete — lesson is ready to review and publish.
+            ✓ All steps complete. The lesson is ready to review and publish.
         </p>
     @elseif($lesson->status === \App\Enums\LessonStatus::Ready)
         <div class="rounded-xl border border-amber-800 bg-amber-950/40 px-4 py-3 text-xs text-primary border-t border-slate-800 mt-4">

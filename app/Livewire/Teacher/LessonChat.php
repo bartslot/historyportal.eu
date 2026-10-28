@@ -625,7 +625,7 @@ class LessonChat extends Component
             && $this->periodEnd !== null
             && $this->regionLabel !== null
         ) {
-            $message = __('Ah, :subject — :description, from :start to :end in :region.', [
+            $message = __('Ah, :subject: :description, from :start to :end in :region.', [
                 'subject' => $this->topic,
                 'description' => $this->subjectDescription,
                 'start' => $this->periodStart,

@@ -614,7 +614,7 @@
                               x-text="infoPlace || sceneCaption?.place"></span>
                         <span x-show="infoPlace ? infoDate : sceneCaption?.year" class="h-1 w-1 shrink-0 rounded-full bg-slate-400"></span>
                         <span x-show="infoPlace ? infoDate : sceneCaption?.year"
-                              class="shrink-0 text-sm font-medium text-slate-400 drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]"
+                              class="shrink-0 text-sm font-medium text-panel-hint drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]"
                               x-text="infoPlace ? infoDate : sceneCaption?.year"></span>
                     </div>
 
@@ -988,7 +988,7 @@
                 <div x-show="lesson.game_instructions_html" x-html="lesson.game_instructions_html"
                      class="text-slate-300 text-sm sm:text-base leading-relaxed [&_h1,&_h2,&_h3]:font-bold [&_h1,&_h2,&_h3]:text-[#E1EEF4] [&_h1,&_h2,&_h3]:mt-3 [&_p]:mb-2 [&_ul]:list-disc [&_ol]:list-decimal [&_ul,&_ol]:pl-5 [&_li]:mb-1 max-h-[42vh] overflow-y-auto pr-1"></div>
                 <p x-show="!lesson.game_instructions_html" class="text-slate-300 text-sm sm:text-base leading-relaxed">{{ __('Work in your teams to decide your strategy, then present it to the class.') }}</p>
-                <div class="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-400">
+                <div class="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-panel-hint">
                     <span x-show="lesson.team_count" class="flex items-center gap-1.5">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4z"/></svg>
                         <span x-text="@js(__(':count teams')).replace(':count', lesson.team_count)"></span>

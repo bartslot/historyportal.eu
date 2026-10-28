@@ -1664,7 +1664,7 @@
         <div class="relative">
             <button type="button" @click="viewOpen = !viewOpen"
                     class="grid h-10 w-10 place-items-center rounded-xl text-slate-300 transition hover:bg-slate-800 hover:text-primary"
-                    :class="viewOpen && 'bg-sky-500/15 text-sky-300'"
+                    :class="viewOpen && 'bg-sky-500/15 text-panel-link'"
                     data-tour="view" data-tooltip="{{ __('Show or hide workspace panels') }}" aria-label="{{ __('View') }}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25a2.25 2.25 0 0 1-2.25-2.25v-2.25Z" />
@@ -1710,7 +1710,7 @@
         <div class="relative">
             <button type="button" @click="addOpen = !addOpen"
                     class="grid h-10 w-10 place-items-center rounded-xl text-slate-300 transition hover:bg-base-200 hover:text-primary"
-                    :class="addOpen && 'bg-sky-500/15 text-sky-300'"
+                    :class="addOpen && 'bg-sky-500/15 text-panel-link'"
                     aria-haspopup="menu" :aria-expanded="addOpen.toString()"
                     data-tour="add" data-tooltip="{{ __('Add a scene, text, image, or icon') }}" aria-label="{{ __('Add') }}">
                 <x-icons.plus class="h-6 w-6" />
@@ -1808,7 +1808,7 @@
                 @click="window.dispatchEvent(new CustomEvent('inspector-toggle'))"
                 class="grid h-10 w-10 place-items-center self-center rounded-xl text-slate-300 transition hover:bg-slate-800 hover:text-primary"
                 data-tour="settings"
-                :class="fmtOpen && 'bg-sky-500/15 text-sky-300'"
+                :class="fmtOpen && 'bg-sky-500/15 text-panel-link'"
                 data-tooltip="{{ __('Settings') }}" aria-label="{{ __('Settings') }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.24-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
@@ -2501,7 +2501,7 @@
                     <input type="checkbox" class="toggle toggle-xs shrink-0"
                            x-model="state[row.key].visible" @change="push(row.key)"
                            :disabled="!offered(row.key)"
-                           :aria-label="offered(row.key) ? row.label : row.label + ' — ' + why(row.key)">
+                           :aria-label="offered(row.key) ? row.label : row.label + ': ' + why(row.key)">
                     <span class="w-24 shrink-0 truncate text-xs text-slate-300" x-text="row.label"></span>
                     <span class="range-panel-knob min-w-0 grow">
                         <input type="range" min="0" :max="row.max" step="0.05"
@@ -2770,7 +2770,7 @@
                     <div class="hidden flex-none items-center gap-2 {{ $paintingPickerMode === 'model3d' ? 'lg:flex' : '' }}">
                         @foreach (['' => __('Auto'), 'european' => __('Europe'), 'americas' => __('Americas'), 'asia' => __('Asia'), 'africa' => __('Africa'), 'all' => __('All')] as $regVal => $regLabel)
                             <button type="button" wire:click="$set('paintingRegion', '{{ $regVal }}')"
-                                    class="btn btn-xs flex-none {{ $paintingRegion === $regVal ? 'bg-sky-600 text-white border-0 hover:bg-sky-500' : 'btn-outline border-slate-600 text-panel-hint hover:border-sky-400 hover:text-sky-300' }}">
+                                    class="btn btn-xs flex-none {{ $paintingRegion === $regVal ? 'bg-sky-600 text-white border-0 hover:bg-sky-500' : 'btn-outline border-slate-600 text-panel-hint hover:border-sky-400 hover:text-panel-link' }}">
                                 {{ $regLabel }}
                             </button>
                         @endforeach
@@ -2885,7 +2885,7 @@
                             @else
                                 <p>{{ __('Nothing in the curated collection matches that.') }}</p>
                                 <button type="button" wire:click="$set('paintingCommonsLoaded', true)"
-                                        class="btn btn-sm btn-outline mt-3 border-sky-500/60 text-sky-300 hover:border-sky-400 hover:text-sky-200">
+                                        class="btn btn-sm btn-outline mt-3 border-sky-500/60 text-panel-link hover:border-sky-400 hover:text-sky-200">
                                     {{ __('Search all of Wikimedia Commons') }}
                                 </button>
                             @endif
@@ -2909,7 +2909,7 @@
                         <button type="button"
                                 wire:click="$set('paintingCommonsLoaded', true)"
                                 wire:loading.attr="disabled" wire:target="paintingCommonsLoaded"
-                                class="btn btn-sm btn-outline border-slate-600 text-slate-300 hover:border-sky-400 hover:text-sky-300 inline-flex items-center gap-1.5">
+                                class="btn btn-sm btn-outline border-slate-600 text-slate-300 hover:border-sky-400 hover:text-panel-link inline-flex items-center gap-1.5">
                             <span wire:loading wire:target="paintingCommonsLoaded"><x-icons.spinner class="w-3 h-3 animate-spin" /></span>
                             <span wire:loading.remove wire:target="paintingCommonsLoaded">{{ __('More from Wikimedia Commons') }}</span>
                             <span wire:loading wire:target="paintingCommonsLoaded">{{ __('Searching Wikimedia…') }}</span>

@@ -131,7 +131,7 @@
                      a teacher edits the same lesson dozens of times and reads the instructions once. --}}
             @else
                 <p class="mt-2 rounded-lg border border-amber-700/40 bg-amber-950/20 px-2.5 py-1.5 text-prose text-primary/80">
-                    {{ __('This voyage has no waypoint data yet — dates can\'t be edited.') }}
+                    {{ __('This voyage has no waypoint data yet, so dates can\'t be edited.') }}
                 </p>
             @endif
         </section>
@@ -434,7 +434,7 @@
                         class="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-medium transition-colors">
                     <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.53 16.122a3 3 0 0 0-5.78 1.128 2.25 2.25 0 0 1-2.4 2.245 4.5 4.5 0 0 0 8.4-2.245c0-.399-.078-.78-.22-1.128Zm0 0a15.998 15.998 0 0 0 3.388-1.62m-5.043-.025a15.994 15.994 0 0 1 1.622-3.395m3.42 3.42a15.995 15.995 0 0 0 4.764-4.648l3.876-5.814a1.151 1.151 0 0 0-1.597-1.597L14.146 6.32a15.996 15.996 0 0 0-4.649 4.763m3.42 3.42a6.776 6.776 0 0 0-3.42-3.42"/></svg>
                     <span x-show="!paint">{{ __('Paint undiscovered land') }}</span>
-                    <span x-show="paint" x-cloak>{{ __('Painting — click to stop') }}</span>
+                    <span x-show="paint" x-cloak>{{ __('Painting, click to stop') }}</span>
                 </button>
                 {{-- Paint vs Erase segmented toggle + brush size, only while the tool is active. --}}
                 <div x-show="paint" x-cloak>
@@ -652,7 +652,7 @@
                 </span>
                 <input type="checkbox" @checked($vmr('cam_dolly_arrival', false)) wire:change="setVoyageMap('cam_dolly_arrival', $event.target.checked)" class="toggle toggle-sm toggle-warning shrink-0" />
             </label>
-            <p class="mt-2 text-prose text-panel-hint">{{ __('The sail (with these camera moves) plays in Preview and for students — the editor jumps straight to each landfall.') }}</p>
+            <p class="mt-2 text-prose text-panel-hint">{{ __('The sail (with these camera moves) plays in Preview and for students. The editor jumps straight to each landfall.') }}</p>
         </section>
 
         {{-- ROUTE LINE — the sailed (visible) part of the journey. Lesson-wide (one setting for every

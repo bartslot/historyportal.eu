@@ -65,7 +65,7 @@
         @elseif (count($this->storyChoices) > 0)
             <div class="form-control space-y-2">
                 <span class="label-text text-xs uppercase tracking-wider text-panel-hint">
-                    {{ __('Pick a story') }} <span class="text-primary/70 normal-case tracking-normal">· {{ __('curated, with learning goals') }}</span>
+                    {{ __('Pick a story') }} <span class="text-primary normal-case tracking-normal">· {{ __('curated, with learning goals') }}</span>
                 </span>
                 <div class="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-72 overflow-y-auto pr-1">
                     @foreach ($this->storyChoices as $choice)
@@ -83,7 +83,7 @@
                         </button>
                     @endforeach
                 </div>
-                <span class="text-xs text-panel-hint">{{ __('Nothing that fits? Search a free topic below — we\'ll ground it in Wikipedia.') }}</span>
+                <span class="text-xs text-panel-hint">{{ __('Nothing that fits? Search a free topic below. We\'ll ground it in Wikipedia.') }}</span>
             </div>
             <div class="divider my-1 text-xs text-panel-hint">{{ __('or free topic') }}</div>
         @endif
@@ -91,7 +91,7 @@
         {{-- Topic — locked to the curated, Wikipedia-grounded catalog (A1) --}}
         <div x-data="{ open: false }" class="relative form-control" @if($storyId) style="display:none" @endif>
             <span class="label-text text-xs uppercase tracking-wider text-panel-hint">
-                {{ __('Topic') }} <span class="text-primary/70 normal-case tracking-normal">· {{ __('pick from the catalog') }}</span>
+                {{ __('Topic') }} <span class="text-primary normal-case tracking-normal">· {{ __('pick from the catalog') }}</span>
             </span>
             <div class="relative">
                 <input id="lw-topic" name="topic" type="text"
@@ -115,7 +115,7 @@
                     {!! __('Grounded in :link.', ['link' => '<a href="'.e($topicWikipediaUrl).'" target="_blank" rel="noopener" class="underline">'.e(__('this Wikipedia article')).'</a>']) !!}
                 </span>
             @elseif (strlen(trim($topic)) >= 2 && !$topicId)
-                <span class="text-xs text-primary/70 mt-1">{{ __('Select an entry from the list to continue.') }}</span>
+                <span class="text-xs text-primary mt-1">{{ __('Select an entry from the list to continue.') }}</span>
             @endif
 
             {{-- Catalog dropdown --}}
@@ -144,7 +144,7 @@
                                     x-on:click="open = false"
                                     class="flex flex-row items-center gap-2 py-2">
                                 @if ($s['type'] === 'figure')
-                                    <span class="badge badge-sm badge-outline border-sky-500/40 text-sky-300 shrink-0">
+                                    <span class="badge badge-sm badge-outline border-sky-500/40 text-panel-link shrink-0">
                                         {{ $s['figure_kind'] === 'ruler' ? __('Ruler') : __('Person') }}
                                     </span>
                                 @elseif ($s['type'] === 'place')

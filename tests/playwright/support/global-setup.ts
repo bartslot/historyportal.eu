@@ -220,12 +220,31 @@ export default async function globalSetup(config: FullConfig) {
   }
   const mapWizard = `/teacher/lessons/${mapLesson.id}/wizard?step=4&scene=${mapScene.id}`;
 
+  // A game scene (the quiz and strategy-game inspector), the same way. A lesson can hold several
+  // kinds of scene, so the game lookup is its own pass rather than a reuse of the map lesson.
+  const gameCtx = await request.newContext({ baseURL });
+  let gameScene: { id: number; kind: string } | undefined;
+  let gameLesson: Lesson | undefined;
+  for (const candidate of published) {
+    gameScene = (await scenePayload(gameCtx, candidate.code)).find((s) => s.kind === 'game');
+    if (gameScene) { gameLesson = candidate; break; }
+  }
+  await gameCtx.dispose();
+  if (!gameLesson || !gameScene) {
+    throw new Error(
+      'Playwright global setup: no published lesson contains a game scene — the floor spec has no quiz inspector to measure.\n' +
+      'Build one with `php artisan lessons:compose` and publish it.'
+    );
+  }
+  const gameWizard = `/teacher/lessons/${gameLesson.id}/wizard?step=4&scene=${gameScene.id}`;
+
   // An explicit env var always wins, so CI (or a developer chasing one lesson) can still pin a
   // fixture by hand without editing anything.
   const preset = (key: string, value: string) => { process.env[key] ??= value; };
 
   preset('VOYAGE_WIZARD_URL', voyageWizard);
   preset('MAP_WIZARD_URL', mapWizard);
+  preset('GAME_WIZARD_URL', gameWizard);
   preset('VOYAGE_LESSON_CODE', voyage.code);
   preset('VOYAGE_LESSON_ID', String(voyage.id));
   preset('PLAYER_LESSON_CODE', general.code);

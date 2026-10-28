@@ -72,7 +72,7 @@
                 </button>
             </div>
             <p class="mt-2 text-prose leading-snug text-panel-hint">
-                Sheets are a PNG "photo" (Emma all-correct, Liam mixed) — upload it into
+                Sheets are a PNG "photo" (Emma all-correct, Liam mixed). Upload it into
                 <span class="text-panel-hint">Import paper answers</span> to test vision extraction.
             </p>
         @else

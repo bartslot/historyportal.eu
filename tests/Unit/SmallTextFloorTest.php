@@ -61,8 +61,9 @@ class SmallTextFloorTest extends TestCase
             $allowed = self::ALLOWED_MICRO_LABELS[$relative] ?? 0;
 
             $tagged = substr_count((string) file_get_contents($path), 'data-micro-label');
-            if ($tagged !== $allowed) {
-                $offenders[] = "{$relative}: {$tagged} data-micro-label, {$allowed} allowed (the label and its tag must match)";
+            $taggedAllowed = $allowed;
+            if ($tagged !== $taggedAllowed) {
+                $offenders[] = "{$relative}: {$tagged} data-micro-label, {$taggedAllowed} allowed (the label and its tag must match)";
             }
 
             if ($count > $allowed) {

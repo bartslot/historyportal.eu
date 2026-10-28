@@ -1,7 +1,7 @@
 <div class="mx-auto max-w-5xl px-4 py-8 space-y-5">
     <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
-            <h1 class="text-xl font-bold">{{ $lesson->title ?? $lesson->topic }} — {{ __('Results') }}</h1>
+            <h1 class="text-xl font-bold">{{ $lesson->title ?? $lesson->topic }}: {{ __('Results') }}</h1>
             <p class="text-sm opacity-60">{{ __('Lesson code') }} {{ $lesson->lesson_code }}</p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
@@ -196,7 +196,7 @@
                                 @foreach ($row['answers'] as $qi => $answer)
                                     <select wire:model.blur="paperRows.{{ $i }}.answers.{{ $qi }}"
                                             class="select select-xs {{ $answer === null ? 'select-warning' : 'select-bordered' }}">
-                                        <option value="">—</option>
+                                        <option value="">{{ __('None') }}</option>
                                         @foreach (['A','B','C','D'] as $letter)
                                             <option value="{{ $letter }}" @selected($answer === $letter)>{{ $letter }}</option>
                                         @endforeach

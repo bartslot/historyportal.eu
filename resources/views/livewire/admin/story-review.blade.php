@@ -59,7 +59,7 @@
                                     @forelse ($this->openStory->learning_objectives ?? [] as $objective)
                                         <li><span class="opacity-60">{{ $objective['id'] ?? '?' }}:</span> {{ $objective['text'] ?? '' }}</li>
                                     @empty
-                                        <li class="opacity-50">None — run <code>story:draft {{ $story->slug }}</code></li>
+                                        <li class="opacity-50">None. Run <code>story:draft {{ $story->slug }}</code></li>
                                     @endforelse
                                 </ul>
 
@@ -143,7 +143,7 @@
                                     </div>
                                 @else
                                     <p class="text-xs opacity-50">
-                                        No asset pack yet — lessons from this story fall back to live per-scene generation.
+                                        No asset pack yet. Lessons from this story fall back to live per-scene generation.
                                         Generate once here (or <code>story:pack {{ $story->slug }}</code>), review, then publish.
                                     </p>
                                 @endif

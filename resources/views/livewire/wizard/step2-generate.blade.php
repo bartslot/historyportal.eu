@@ -124,7 +124,7 @@ $machineState = $isFailed ? 'error' : ($isStalled ? 'stalled' : ($isDone ? 'read
     @if($this->autoAdvanceActive) wire:poll.2s="checkAndAutoAdvance" @endif
 >
     <header class="mx-auto max-w-2xl text-center">
-        <p class="text-prose font-semibold uppercase tracking-eyebrow text-sky-300/75">
+        <p class="text-prose font-semibold uppercase tracking-eyebrow text-panel-link/75">
             {{ __('History Portal workshop') }}
         </p>
         <h1 class="mt-3 font-history text-3xl font-light tracking-[-0.035em] text-slate-100 sm:text-4xl">

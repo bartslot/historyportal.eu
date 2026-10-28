@@ -6,7 +6,7 @@
     $tint = [
         'narration' => 'text-primary', 'quiz' => 'text-primary', 'strategy' => 'text-teal-300',
         'debate' => 'text-teal-300', 'story_game' => 'text-teal-300', 'branch' => 'text-teal-300',
-        'map' => 'text-sky-300', 'voyage' => 'text-indigo-300', 'gallery' => 'text-violet-300',
+        'map' => 'text-panel-link', 'voyage' => 'text-indigo-300', 'gallery' => 'text-violet-300',
         'video' => 'text-indigo-300', 'predict' => 'text-primary',
     ][$key] ?? 'text-slate-300';
 @endphp
