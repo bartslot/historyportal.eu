@@ -752,6 +752,80 @@
      "motion": "none"
     }
    ]
+  },
+  {
+   "id": "decal-ground",
+   "layer": "decal",
+   "subject": "Dutch Republic, Amsterdam, c. 1640. 6 flat ground patches in two rows: (1) a worn cobblestone path segment, (2) a patch of weeds growing between cobbles, (3) a scatter of loose cobblestones, (4) a patch of wet mud with puddles, (5) a patch of pale dune sand with a few marram tufts, (6) a patch of straw and wood chips.",
+   "items": [
+    {
+     "id": "decal-cobble-path-ga-01",
+     "tags": [
+      "decal",
+      "ground",
+      "cobbles",
+      "path"
+     ],
+     "height_m": 4,
+     "motion": "none"
+    },
+    {
+     "id": "decal-weeds-ga-01",
+     "tags": [
+      "decal",
+      "ground",
+      "weeds",
+      "cobbles"
+     ],
+     "height_m": 3,
+     "motion": "none"
+    },
+    {
+     "id": "decal-stones-ga-01",
+     "tags": [
+      "decal",
+      "ground",
+      "stones",
+      "cobbles"
+     ],
+     "height_m": 3,
+     "motion": "none"
+    },
+    {
+     "id": "decal-mud-ga-01",
+     "tags": [
+      "decal",
+      "ground",
+      "mud",
+      "puddle"
+     ],
+     "height_m": 3,
+     "motion": "none"
+    },
+    {
+     "id": "decal-sand-ga-01",
+     "tags": [
+      "decal",
+      "ground",
+      "sand",
+      "dune"
+     ],
+     "height_m": 4,
+     "motion": "none"
+    },
+    {
+     "id": "decal-straw-ga-01",
+     "tags": [
+      "decal",
+      "ground",
+      "straw",
+      "wood"
+     ],
+     "height_m": 3,
+     "motion": "none"
+    }
+   ],
+   "gaps": "all"
   }
  ],
  "plate": [

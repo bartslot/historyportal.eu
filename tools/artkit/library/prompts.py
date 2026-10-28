@@ -78,6 +78,14 @@ LAYER = {
         "perspective, no horizon, nothing standing up, no cast shadows. Plain untouched white paper around and between "
         "the patches; patches never touch. Landscape 3:2."
     ),
+    "ground_band": (  # stage25d set.groundBands (S1 2026-10-28): 6:1 upright strips at 2..2000 m, tileable x
+        "{subject} Each band is a wide landscape strip about six times as wide as it is tall, stacked top to bottom, "
+        "separated by a clean empty white paper gap. In each band everything above a soft hilly skyline is empty white "
+        "paper (no sky, no clouds); below the skyline the ground runs edge to edge down to the band's bottom edge. The "
+        "skyline lies about one third down from the band's top. The left end of every band continues seamlessly into its "
+        "right end (same skyline height, same marks at the edges) so the band can repeat sideways. Every band has its "
+        "own different skyline. No houses, no people, no animals, no trees. Landscape 3:2."
+    ),
     "mid": (
         "Middle-distance set pieces, each a separate isolated object: {subject} Seen from slightly above "
         "eye level, three-quarter view, same scale for all. " + ISOLATE + " Landscape 3:2."
@@ -121,6 +129,9 @@ COLOUR_EXTRA = {
              "above the ground stays pure white.",
     "near_ground": "Wash both ground bands edge to edge, including their pale parts; the paper strip between and above "
                    "the bands stays pure white.",
+    "ground_band": "Wash each band from its skyline down to its bottom edge with an opaque ground colour (muted olive, straw and "
+                   "sandy earth), edge to edge with no white left inside the ground; the paper above each skyline and in "
+                   "the gaps between bands stays pure white. Keep the left and right ends matching.",
     "decal": "Wash each patch, fading softly to nothing at its ragged edge; the paper around the patches stays pure white.",
     "bg": (
         "This is far distance: quieter and less saturated than the foreground, cool and slightly bluish. "

@@ -1028,6 +1028,79 @@
      "motion": "none"
     }
    ]
+  },
+  {
+   "id": "decal-ground",
+   "layer": "decal",
+   "subject": "Northern Netherlands (Drenthe), Neolithic, c. 3400 BCE. 6 flat ground patches in two rows: (1) a worn sandy footpath segment, (2) a darker patch of short grass with a few heather sprigs, (3) a loose scatter of small grey granite stones, (4) a patch of wet dark mud with two shallow puddles, (5) a patch of trampled bare earth with a few dry grass stalks, (6) a patch of fallen leaves and twigs.",
+   "items": [
+    {
+     "id": "decal-path-sand-nl-01",
+     "tags": [
+      "decal",
+      "ground",
+      "path",
+      "sand"
+     ],
+     "height_m": 4,
+     "motion": "none"
+    },
+    {
+     "id": "decal-grass-dark-nl-01",
+     "tags": [
+      "decal",
+      "ground",
+      "grass",
+      "heath"
+     ],
+     "height_m": 4,
+     "motion": "none"
+    },
+    {
+     "id": "decal-stones-nl-01",
+     "tags": [
+      "decal",
+      "ground",
+      "stones"
+     ],
+     "height_m": 3,
+     "motion": "none"
+    },
+    {
+     "id": "decal-mud-nl-01",
+     "tags": [
+      "decal",
+      "ground",
+      "mud",
+      "puddle"
+     ],
+     "height_m": 3,
+     "motion": "none"
+    },
+    {
+     "id": "decal-earth-nl-01",
+     "tags": [
+      "decal",
+      "ground",
+      "earth",
+      "trampled"
+     ],
+     "height_m": 3,
+     "motion": "none"
+    },
+    {
+     "id": "decal-leaves-nl-01",
+     "tags": [
+      "decal",
+      "ground",
+      "leaves",
+      "forest"
+     ],
+     "height_m": 3,
+     "motion": "none"
+    }
+   ],
+   "gaps": "all"
   }
  ],
  "plate": [

@@ -971,6 +971,79 @@
      "motion": "none"
     }
    ]
+  },
+  {
+   "id": "decal-ground",
+   "layer": "decal",
+   "subject": "Near East river valleys and dry hills, early farming, c. 9000-3500 BCE. 6 flat ground patches in two rows: (1) a worn dusty footpath segment, (2) a darker patch of dry grass, (3) a scatter of small pale sandstone stones, (4) a patch of damp dark river mud with cracks, (5) a patch of trampled earth with straw, (6) a patch of broken mudbrick pieces and potsherds.",
+   "items": [
+    {
+     "id": "decal-path-dust-ne-01",
+     "tags": [
+      "decal",
+      "ground",
+      "path",
+      "dust"
+     ],
+     "height_m": 4,
+     "motion": "none"
+    },
+    {
+     "id": "decal-grass-dry-ne-01",
+     "tags": [
+      "decal",
+      "ground",
+      "grass",
+      "dry"
+     ],
+     "height_m": 4,
+     "motion": "none"
+    },
+    {
+     "id": "decal-stones-ne-01",
+     "tags": [
+      "decal",
+      "ground",
+      "stones"
+     ],
+     "height_m": 3,
+     "motion": "none"
+    },
+    {
+     "id": "decal-mud-ne-01",
+     "tags": [
+      "decal",
+      "ground",
+      "mud",
+      "river"
+     ],
+     "height_m": 3,
+     "motion": "none"
+    },
+    {
+     "id": "decal-earth-ne-01",
+     "tags": [
+      "decal",
+      "ground",
+      "earth",
+      "straw"
+     ],
+     "height_m": 3,
+     "motion": "none"
+    },
+    {
+     "id": "decal-brick-ne-01",
+     "tags": [
+      "decal",
+      "ground",
+      "mudbrick",
+      "sherds"
+     ],
+     "height_m": 3,
+     "motion": "none"
+    }
+   ],
+   "gaps": "all"
   }
  ],
  "plate": [
