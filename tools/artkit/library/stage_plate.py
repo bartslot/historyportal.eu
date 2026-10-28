@@ -102,6 +102,11 @@ def place(canvas: Image.Image, im: Image.Image, depth: str, x: float, scale: flo
         im = Image.fromarray(np.concatenate([rgb, al], -1).clip(0, 255).astype(np.uint8))
     layer = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
     layer.paste(im, (round(left), round(top)))
+    if asset["layer"] == "bg" and y_m < 0:  # the stage floor hides whatever of the strip sinks below it (S1)
+        floor_row = max(0, min(H, round(to_px(0, 0, z)[1])))
+        a = np.asarray(layer).copy()
+        a[floor_row:, :, 3] = 0
+        layer = Image.fromarray(a)
     canvas.alpha_composite(layer)
 
 
