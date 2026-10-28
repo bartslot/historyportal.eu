@@ -17,6 +17,7 @@ from PIL import Image, ImageDraw
 
 sys.path.insert(0, str(Path(__file__).parent))
 import qa  # noqa: E402
+import stage_plate  # noqa: E402
 from gen import LIB  # noqa: E402
 
 VERDICT_SCORE = {"alike": 8, "close": 6, "different": 4}  # style-gate verdict -> qa.score
@@ -119,11 +120,15 @@ def build(job: dict, variants: str = "abcd") -> dict:
                 held.append({"id": item["id"], "sheet": s["id"], "variant": v, "score": vscore})
                 continue
             Image.open(f).save(dst / f"{item['id']}.webp", quality=92, method=6)
+            height_m = item["height_m"]
+            if (s["layer"] == "bg" or s.get("strip")) and not tile:  # one painting must cover its depth's view on
+                height_m = round(stage_plate.span_at(stage_plate.DEPTH_Z[s["layer"]]) * stage_plate.COVER_MARGIN
+                                 * r["h"] / r["w"], 1)  # the stage (layout.ts COVER_MARGIN), never stretched
             vd = verdict if v == variant else "close"
             assets.append({
                 "id": item["id"], "layer": s["layer"], "tags": item["tags"], "file": f"{item['id']}.webp",
                 "w": r["w"], "h": r["h"], "anchor": r["anchor"] if s["layer"] not in ("sky", "ground") else [0.5, 1.0],
-                "height_m": item["height_m"], "tileable_x": tile,
+                "height_m": height_m, "tileable_x": tile,
                 **({"tileable_y": True} if s["layer"] == "ground" else {}),
                 "motion": item["motion"],
                 "era": item.get("era") or s.get("era") or job["era"],
