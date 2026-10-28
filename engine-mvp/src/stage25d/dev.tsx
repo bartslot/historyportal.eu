@@ -4,11 +4,12 @@ import '../studio.css'
 import { __, loadLocale } from '../i18n'
 import { StrictMode, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { createRoot } from 'react-dom/client'
-import { playLesson, type Player } from './stage'
+import { playLesson, STANDING, type Player } from './stage'
 import { resolveAsset } from './library'
+import { DEPTHS, lineKeys, LOOK_RANGE, STAGE_SHEET } from './look'
 import { getIn, type Path } from './edits'
-import { BG_FEATHER, groundOptions, STAIN_DEFAULT } from './ground'
-import { HOLD_DEFAULTS, RENDER_CAPS, sceneDuration, setShotDuration, setShotPose } from './layout'
+import { BG_FEATHER, groundOptions, nearOptions, STAIN_DEFAULT } from './ground'
+import { HOLD_DEFAULTS, LAND_TARGET, RENDER_CAPS, sceneDuration, setShotDuration, setShotPose } from './layout'
 import { Panel } from '../panels/Panel'
 import { panels } from '../panels/store'
 import type { CamPose, CameraMove, Ease, MotionSpec } from './types'
@@ -27,10 +28,37 @@ function Range({ label, value, min, max, step, onChange }: { label: string; valu
   )
 }
 
+/** The lesson's look (lesson.look): one set for every scene, so it lives in its own panel, not the scene's. */
+function LookPanel({ player }: { player: Player }) {
+  useSyncExternalStore((fn) => player.doc.subscribe(fn), () => player.doc.lesson)   // re-render on every edit
+  return (
+    <div className="lg:fixed lg:left-3 lg:top-3 lg:bottom-3 lg:w-72 lg:overflow-y-auto">
+      <Panel id="stage-look" className="rounded-box border border-base-300 p-3 text-sm" style={{ position: 'static', width: '100%' }}>
+        <h3 className="font-semibold">{__('Look')}</h3>
+        <div className="mt-1 flex flex-col gap-1" data-testid="look">
+          {LOOK_ROWS.map(([k, label]) => <Num key={k} player={player} path={['look', k]} label={label} min={LOOK_RANGE[k][0]} max={LOOK_RANGE[k][1]} step={LOOK_RANGE[k][2]} fallback={STAGE_SHEET[k]} />)}
+        </div>
+      </Panel>
+    </div>
+  )
+}
+
 function Num({ player, path, label, min, max, step, fallback }: { player: Player; path: Path; label: string; min: number; max: number; step: number; fallback: number }) {
   const raw = getIn(player.doc.lesson, path)
   return <Range label={label} min={min} max={max} step={step} value={typeof raw === 'number' ? raw : fallback} onChange={(v) => player.doc.set(path, v, label)} />
 }
+
+const DEPTH_NAMES: Record<string, string> = { sky: 'sky', bg: 'far', mid: 'middle', fg: 'front', near: 'nearest' }
+// the stage's paper sheet, then per depth how light, thin and hazy its lines and washes go (look.ts)
+const LOOK_ROWS: [string, string][] = [
+  ['sheetPaper', 'Paper grain'], ['sheetGrain', 'Pigment grain'], ['sheetWash', 'Wash'], ['sheetPatches', 'Wash patches'], ['lineBrown', 'Line brown'], ['lineInk', 'Line value'], ['lineNorm', 'Line match'],
+  ['housePitch', 'Camera tilt'], ['groundDetail', 'Ground detail'], ['groundVary', 'Ground wash'], ['groundMix', 'Ground mix'],
+  ['groundScale', 'Ground tile size'], ['nearFar', 'Near ground depth'],
+  ...DEPTHS.flatMap((d): [string, string][] => {
+    const k = lineKeys(d), n = DEPTH_NAMES[d]
+    return [[k.fade, `Line lighter, ${n}`], [k.thin, `Line thinner, ${n}`], [k.haze, `Haze, ${n}`]]
+  }),
+]
 
 const EASE_LABELS: [Ease, string][] = [['inOut', 'Ease in and out'], ['out', 'Ease out'], ['in', 'Ease in'], ['linear', 'Even']]
 
@@ -113,6 +141,7 @@ function ScenePanel({ player }: { player: Player }) {
         <button className="btn btn-sm btn-ghost" disabled={!player.doc.history.canUndo()} onClick={() => player.doc.undo()}>Undo</button>
         <button className="btn btn-sm btn-ghost" disabled={!player.doc.history.canRedo()} onClick={() => player.doc.redo()}>Redo</button>
         {mode === 'paused' && <span className="badge badge-sm badge-ghost" data-testid="paused">{__('Paused')}</span>}
+        <button className="btn btn-sm btn-ghost" data-testid="open-look" onClick={() => panels.open('stage-look')}>{__('Look')}</button>
         <span className="ml-auto text-xs tabular-nums opacity-70" data-testid="fps">{player.fps()} fps</span>
       </div>
       <label className="mt-3 flex items-center gap-2 text-xs">
@@ -141,7 +170,14 @@ function ScenePanel({ player }: { player: Player }) {
           <option value="">{groundOptions(player.stage.sceneLib).length ? 'Ground of the bundle' : 'Paper'}</option>
           {groundOptions(player.stage.sceneLib).map((id) => <option key={id} value={id}>{id}</option>)}
         </select>
-        <Num player={player} path={[...sp, 'set', 'horizon']} label="Horizon" min={-6} max={20} step={0.5} fallback={0} />
+        <select className="select select-xs" data-testid="near" value={s.set.near ?? ''} onChange={(e) => player.doc.set([...sp, 'set', 'near'], e.target.value || undefined, 'Near ground')}>
+          <option value="">No near ground</option>
+          {nearOptions(player.stage.sceneLib).map((id) => <option key={id} value={id}>{id}</option>)}
+        </select>
+        <Num player={player} path={[...sp, 'set', 'horizon']} label="Horizon" min={-80} max={30} step={0.1} fallback={player.stage.horizonOf(s)} />
+        {typeof s.set.horizon === 'number'
+          ? <button type="button" className="btn btn-ghost btn-xs self-start" data-testid="horizon-auto" onClick={() => player.doc.set([...sp, 'set', 'horizon'], 'auto', 'Horizon')}>Auto horizon</button>
+          : <Num player={player} path={[...sp, 'set', 'land_target']} label="Land line" min={0.2} max={0.7} step={0.01} fallback={LAND_TARGET} />}
       </div>
       <h3 className="mt-3 flex items-baseline font-semibold">Camera<span className="ml-auto text-xs font-normal tabular-nums opacity-70" data-testid="scene-length">{sceneDuration(s).toFixed(1)} s</span></h3>
       <Shots key={index} player={player} sceneIndex={index} />
@@ -161,7 +197,13 @@ function ScenePanel({ player }: { player: Player }) {
             <Num player={player} path={[...lp, 'motion', 'amount']} label="Motion" min={0} max={3} step={0.05} fallback={1} />
             <Num player={player} path={[...lp, 'motion', 'speed']} label="Tempo" min={0.1} max={3} step={0.05} fallback={1} />
             {resolveAsset(player.stage.sceneLib, l, l.depth)?.layer === 'bg' && <Num player={player} path={[...lp, 'feather']} label="Soft edge" min={0} max={0.6} step={0.01} fallback={BG_FEATHER} />}
-            {(l.depth === 'mid' || l.depth === 'fg') && <Num player={player} path={[...lp, 'shadow']} label="Shadow" min={0} max={1} step={0.05} fallback={STAIN_DEFAULT} />}
+            {l.depth !== 'sky' && l.depth !== 'bg' && (
+              <label className="label cursor-pointer justify-start gap-2 py-0 text-xs">
+                <input type="checkbox" className="toggle toggle-xs" checked={!!l.flat} onChange={(e) => player.doc.set([...lp, 'flat'], e.target.checked || undefined, 'Flat on the ground')} />
+                Flat on the ground
+              </label>
+            )}
+            {STANDING.includes(l.depth) && !l.flat && <Num player={player} path={[...lp, 'shadow']} label="Shadow" min={0} max={1} step={0.05} fallback={STAIN_DEFAULT} />}
           </div>
         )
       })}
@@ -193,6 +235,6 @@ async function main() {
   player = await playLesson(lessonUrl, libraryUrl, canvas)
   panels.open('stage-scene')
   Object.assign(window, { __stage25d: player })
-  app.render(<StrictMode><ScenePanel player={player} /></StrictMode>)
+  app.render(<StrictMode><ScenePanel player={player} /><LookPanel player={player} /></StrictMode>)
 }
 main().catch((err) => { console.error(err); document.body.textContent = String(err) })

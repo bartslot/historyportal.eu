@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cameraAt, DEPTH_Z, HOUSE, stainIndex, layerAt, motionOf, placeLayer, renderScale, sceneDuration, setShotDuration, setShotPose, shotAt, shotsEnd, nextTier, TIER0, ADAPT, viewWidthAt, type Tier } from './layout'
+import { autoHorizon, cameraAt, DEPTH_Z, HOUSE, stainIndex, layerAt, motionOf, placeLayer, renderScale, sceneDuration, setShotDuration, setShotPose, shotAt, shotsEnd, nextTier, TIER0, ADAPT, viewWidthAt, type Tier } from './layout'
 import type { Scene } from './types'
 import { LessonDoc } from './edits'
 import type { Asset } from './types'
@@ -245,5 +245,18 @@ describe('shots as one scene (PM: sum rule, no jump, undo)', () => {
     expect(doc.lesson.scenes[0].camera_more![0].at_s).toBe(11)
     doc.undo()
     expect(doc.lesson.scenes[0]).toEqual(split())
+  })
+})
+
+describe('autoHorizon (set.horizon "auto", art v3 stage_plate.py auto_horizon)', () => {
+  // land tops measured on art v3's strips (first row where most of the width is opaque / height)
+  it('matches art v3 on its three plates (house pitch 2 deg up)', () => {
+    expect(autoHorizon(121 / 646, 78.1, 0, 0.42, -2)).toBeCloseTo(-54.2)   // nl-prehistory bg-farmland-01, hunebedden sc13
+    expect(autoHorizon(121 / 518, 62.6, 0, 0.38, -2)).toBeCloseTo(-36.1)   // near-east hills-dry-01, eerste-boeren-1 sc28
+    expect(autoHorizon(227 / 355, 42.9, 0, 0.3, -2)).toBeCloseTo(1.6)      // nl-golden-age bg-city-01, voc sc14 (land_target 0.3)
+  })
+  it('a land line lower in the frame needs the strip lower; a later bg slot stands nearer', () => {
+    expect(autoHorizon(0.2, 50, 0, 0.5)).toBeLessThan(autoHorizon(0.2, 50, 0, 0.4))
+    expect(autoHorizon(0.2, 50, 40)).not.toBe(autoHorizon(0.2, 50, 0))
   })
 })
