@@ -3,8 +3,9 @@
 import type { Asset, CamPose, CameraMove, Depth, Ease, LayerKey, MotionKind, MotionSpec, Scene, SceneLayer } from './types'
 
 /** Distance from the house camera to each depth plane. Wide gaps between them = strong parallax on a truck. */
-export const DEPTH_Z: Record<Depth, number> = { sky: 380, bg: 70, mid: 22, fg: 7 }
-export const DEPTH_RANK: Record<Depth, number> = { sky: 0, bg: 1, mid: 2, fg: 3 }
+/** near: framing tufts, reeds and stones at the frame's bottom edge (partly out of frame), in front of fg */
+export const DEPTH_Z: Record<Depth, number> = { sky: 380, bg: 70, mid: 22, fg: 7, near: 3.5 }
+export const DEPTH_RANK: Record<Depth, number> = { sky: 0, bg: 1, mid: 2, fg: 3, near: 4 }
 export const HOUSE: CamPose = { x: 0, y: 1.6, z: 0, fov: 50 }
 export const HOUSE_PITCH_DEG = -2           // looking up a touch: more sky, the near ground line low in the frame
 export const ASPECT = 16 / 9

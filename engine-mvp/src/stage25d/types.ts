@@ -1,8 +1,8 @@
 // The two binding contracts (vault topics/autonomous-lessons/plan.md): library.json (S2) and lesson.json (S4/S5).
 // Only the fields the stage reads are typed; everything else rides along untouched.
 
-export type LayerKind = 'sky' | 'bg' | 'mid' | 'fg' | 'prop' | 'ground'
-export type Depth = 'sky' | 'bg' | 'mid' | 'fg'
+export type LayerKind = 'sky' | 'bg' | 'mid' | 'fg' | 'prop' | 'ground' | 'near_ground' | 'decal'
+export type Depth = 'sky' | 'bg' | 'mid' | 'fg' | 'near'
 export type MotionKind = 'none' | 'sway' | 'drift' | 'ripple' | 'flicker'
 
 export interface Asset {

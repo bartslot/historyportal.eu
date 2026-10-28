@@ -71,10 +71,14 @@ the `_placeholder` bundle). The panel edits every camera, timing and motion valu
   that colour along a ragged line (`layer.feather`, default 0.22 of their height; not see-through, the sky is behind
   them). `set.horizon` raises the far landscape in metres. mid/fg assets stand on a soft painted contact stain at their
   anchor (`layer.shadow`, default 0.6; sized to read the same on screen at any distance). All in the panel, undoable.
-- **Paper and line** (`look.ts`, `sheet.ts`; keys of `lesson.look`, sliders in the panel, undoable): what makes separately
-  painted layers one picture. A screen-space paper sheet after the post chain (`sheetPaper` tooth, `sheetGrain` pigment
-  grain in the darker washes, `sheetWash` + `sheetPatches` one warm wash in big soft patches); per depth the art's own
-  ink goes lighter (`lineFade*`), thinner (`lineThin*`, in 1080p px, outlines too) and into the sky's haze (`haze*`);
+- **Paper and line** (`look.ts`, `layer.ts` PAPER_GLSL / LINE_BY_DEPTH_GLSL, `sheet.ts`; keys of `lesson.look`, the
+  **Look** panel, undoable): what makes separately painted layers one picture. Each picture carries the paper's tooth
+  (`sheetPaper`), pigment grain (`sheetGrain`) and wash patches (`sheetPatches`) in its own space, so the grain moves
+  with it (no shower-door); `sheetWash` is one even warm wash after the chain. Per depth the art's own ink goes lighter
+  (`lineFade*`), thinner (`lineThin*`, 1080p px, outlines too; never fg/near) and into the sky's haze (`haze*`); the
+  defaults keep far ink at >= 65 % of the near contrast (`lineContrast`, Bart: everything drawn, never blur).
+  Depth `near` (3.5 m) holds framing tufts and stones at the frame's bottom edge. Puppets reuse the GLSL with
+  `stage.depthLine(depth)`, `stage.paper()` and `stage.sunDir`;
   `lineBrown` turns black ink toward the book's brown; `groundDetail` blends the floor tile toward its own soft wash.
   The floor draws after the sky (`GROUND_SLOT`), and the sky below the eye line is painted as the far floor.
   The floor: `set.near` lays a wide strip painted from eye height on the floor out to `nearFar` m, projected from the

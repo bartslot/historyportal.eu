@@ -103,7 +103,7 @@ export function stainSize(asset: Asset, w: number, h: number, z: number): { w: n
  *  the lesson's), sorted by id. */
 /** Near ground choices in the scene's own bundle: the wide painted strips that are not sky, far landscape or floor tile. */
 export const nearOptions = (sceneLib: Library): string[] =>
-  sceneLib.assets.filter((a) => !['sky', 'bg', 'ground'].includes(a.layer) && !a.tileable_x && a.w / a.h >= NEAR_MIN_RATIO).map((a) => a.id).sort()
+  sceneLib.assets.filter((a) => a.layer === 'near_ground' || (!['sky', 'bg', 'ground', 'decal'].includes(a.layer) && !a.tileable_x && a.w / a.h >= NEAR_MIN_RATIO)).map((a) => a.id).sort()
 /** A near band is wide: at least this many times as wide as it is tall. */
 export const NEAR_MIN_RATIO = 2.2
 export const groundOptions = (sceneLib: Library): string[] => sceneLib.assets.filter((a) => a.layer === 'ground').map((a) => a.id).sort()

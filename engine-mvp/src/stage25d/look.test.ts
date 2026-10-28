@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEPTHS, houseProjection, inkScale, lineOf, lineKeys, LOOK_RANGE, pxPerMetre, pxUV, STAGE_SHEET } from './look'
+import { DEPTHS, houseProjection, INK_FLOOR, inkScale, lineContrast, lineOf, paperOf, lineKeys, LOOK_RANGE, pxPerMetre, pxUV, STAGE_SHEET } from './look'
 import { autoHorizon, DECAL_SLOT, GROUND_SLOT, placeLayer } from './layout'
 import type { Asset } from './types'
 
@@ -74,5 +74,27 @@ describe('decals draw right after the floor, before anything standing', () => {
     expect(GROUND_SLOT).toBeLessThan(DECAL_SLOT)
     const a: Asset = { id: 'a', layer: 'bg', tags: [], file: '', w: 100, h: 100, anchor: [0.5, 1], height_m: 2, motion: 'none' }
     expect(DECAL_SLOT).toBeLessThan(placeLayer(a, { depth: 'bg' }, 0).alphaIndex)
+  })
+})
+
+describe("Bart's rule: everything drawn, never blur (PM 10-28)", () => {
+  it('far ink keeps at least INK_FLOOR of the near contrast at the defaults; near outlines are not thinned', () => {
+    for (const d of DEPTHS) expect(lineContrast(lineOf({}, d))).toBeGreaterThanOrEqual(INK_FLOOR)
+    expect(lineOf({}, 'fg').thin).toBe(0)
+    expect(lineOf({}, 'near').thin).toBe(0)
+    expect(lineOf({}, 'mid').thin).toBeGreaterThan(0)
+    expect(lineOf({}, 'bg').thin).toBeGreaterThanOrEqual(lineOf({}, 'mid').thin)
+  })
+  it('the paper follows the sliders', () => {
+    expect(paperOf({ sheetPaper: 0.2 })).toMatchObject({ paper: 0.2, grain: STAGE_SHEET.sheetGrain })
+  })
+})
+
+describe('the near depth (S5 set dresser)', () => {
+  it('stands in front of fg and draws after it', () => {
+    const a: Asset = { id: 'a', layer: 'fg', tags: [], file: '', w: 100, h: 100, anchor: [0.5, 1], height_m: 0.5, motion: 'none' }
+    const fg = placeLayer(a, { depth: 'fg' }, 9), near = placeLayer(a, { depth: 'near' }, 0)
+    expect(near.z).toBeLessThan(fg.z)
+    expect(near.alphaIndex - 1).toBeGreaterThan(fg.alphaIndex)   // its stain too
   })
 })

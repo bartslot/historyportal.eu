@@ -4,7 +4,7 @@ import '../studio.css'
 import { __, loadLocale } from '../i18n'
 import { StrictMode, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { createRoot } from 'react-dom/client'
-import { playLesson, type Player } from './stage'
+import { playLesson, STANDING, type Player } from './stage'
 import { resolveAsset } from './library'
 import { DEPTHS, lineKeys, LOOK_RANGE, STAGE_SHEET } from './look'
 import { getIn, type Path } from './edits'
@@ -28,12 +28,27 @@ function Range({ label, value, min, max, step, onChange }: { label: string; valu
   )
 }
 
+/** The lesson's look (lesson.look): one set for every scene, so it lives in its own panel, not the scene's. */
+function LookPanel({ player }: { player: Player }) {
+  useSyncExternalStore((fn) => player.doc.subscribe(fn), () => player.doc.lesson)   // re-render on every edit
+  return (
+    <div className="lg:fixed lg:left-3 lg:top-3 lg:bottom-3 lg:w-72 lg:overflow-y-auto">
+      <Panel id="stage-look" className="rounded-box border border-base-300 p-3 text-sm" style={{ position: 'static', width: '100%' }}>
+        <h3 className="font-semibold">{__('Look')}</h3>
+        <div className="mt-1 flex flex-col gap-1" data-testid="look">
+          {LOOK_ROWS.map(([k, label]) => <Num key={k} player={player} path={['look', k]} label={label} min={LOOK_RANGE[k][0]} max={LOOK_RANGE[k][1]} step={LOOK_RANGE[k][2]} fallback={STAGE_SHEET[k]} />)}
+        </div>
+      </Panel>
+    </div>
+  )
+}
+
 function Num({ player, path, label, min, max, step, fallback }: { player: Player; path: Path; label: string; min: number; max: number; step: number; fallback: number }) {
   const raw = getIn(player.doc.lesson, path)
   return <Range label={label} min={min} max={max} step={step} value={typeof raw === 'number' ? raw : fallback} onChange={(v) => player.doc.set(path, v, label)} />
 }
 
-const DEPTH_NAMES: Record<string, string> = { sky: 'sky', bg: 'far', mid: 'middle', fg: 'near' }
+const DEPTH_NAMES: Record<string, string> = { sky: 'sky', bg: 'far', mid: 'middle', fg: 'front', near: 'nearest' }
 // the stage's paper sheet, then per depth how light, thin and hazy its lines and washes go (look.ts)
 const LOOK_ROWS: [string, string][] = [
   ['sheetPaper', 'Paper grain'], ['sheetGrain', 'Pigment grain'], ['sheetWash', 'Wash'], ['sheetPatches', 'Wash patches'], ['lineBrown', 'Line brown'], ['lineInk', 'Line value'], ['lineNorm', 'Line match'],
@@ -126,6 +141,7 @@ function ScenePanel({ player }: { player: Player }) {
         <button className="btn btn-sm btn-ghost" disabled={!player.doc.history.canUndo()} onClick={() => player.doc.undo()}>Undo</button>
         <button className="btn btn-sm btn-ghost" disabled={!player.doc.history.canRedo()} onClick={() => player.doc.redo()}>Redo</button>
         {mode === 'paused' && <span className="badge badge-sm badge-ghost" data-testid="paused">{__('Paused')}</span>}
+        <button className="btn btn-sm btn-ghost" data-testid="open-look" onClick={() => panels.open('stage-look')}>{__('Look')}</button>
         <span className="ml-auto text-xs tabular-nums opacity-70" data-testid="fps">{player.fps()} fps</span>
       </div>
       <label className="mt-3 flex items-center gap-2 text-xs">
@@ -163,10 +179,6 @@ function ScenePanel({ player }: { player: Player }) {
           ? <button type="button" className="btn btn-ghost btn-xs self-start" data-testid="horizon-auto" onClick={() => player.doc.set([...sp, 'set', 'horizon'], 'auto', 'Horizon')}>Auto horizon</button>
           : <Num player={player} path={[...sp, 'set', 'land_target']} label="Land line" min={0.2} max={0.7} step={0.01} fallback={LAND_TARGET} />}
       </div>
-      <h3 className="mt-3 font-semibold">Paper and line</h3>
-      <div className="mt-1 flex flex-col gap-1" data-testid="look">
-        {LOOK_ROWS.map(([k, label]) => <Num key={k} player={player} path={['look', k]} label={label} min={LOOK_RANGE[k][0]} max={LOOK_RANGE[k][1]} step={LOOK_RANGE[k][2]} fallback={STAGE_SHEET[k]} />)}
-      </div>
       <h3 className="mt-3 flex items-baseline font-semibold">Camera<span className="ml-auto text-xs font-normal tabular-nums opacity-70" data-testid="scene-length">{sceneDuration(s).toFixed(1)} s</span></h3>
       <Shots key={index} player={player} sceneIndex={index} />
       <h3 className="mt-3 font-semibold">Layers</h3>
@@ -191,7 +203,7 @@ function ScenePanel({ player }: { player: Player }) {
                 Flat on the ground
               </label>
             )}
-            {(l.depth === 'mid' || l.depth === 'fg') && !l.flat && <Num player={player} path={[...lp, 'shadow']} label="Shadow" min={0} max={1} step={0.05} fallback={STAIN_DEFAULT} />}
+            {STANDING.includes(l.depth) && !l.flat && <Num player={player} path={[...lp, 'shadow']} label="Shadow" min={0} max={1} step={0.05} fallback={STAIN_DEFAULT} />}
           </div>
         )
       })}
@@ -223,6 +235,6 @@ async function main() {
   player = await playLesson(lessonUrl, libraryUrl, canvas)
   panels.open('stage-scene')
   Object.assign(window, { __stage25d: player })
-  app.render(<StrictMode><ScenePanel player={player} /></StrictMode>)
+  app.render(<StrictMode><ScenePanel player={player} /><LookPanel player={player} /></StrictMode>)
 }
 main().catch((err) => { console.error(err); document.body.textContent = String(err) })

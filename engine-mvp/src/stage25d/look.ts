@@ -10,19 +10,31 @@ import { Matrix, Vector3 } from '@babylonjs/core'
 import { fovRad, HOUSE } from './layout'
 import type { Depth } from './types'
 
-export const DEPTHS: Depth[] = ['sky', 'bg', 'mid', 'fg']
+export const DEPTHS: Depth[] = ['sky', 'bg', 'mid', 'fg', 'near']
 const cap = (d: Depth) => d[0].toUpperCase() + d.slice(1)
 export const lineKeys = (d: Depth) => ({ fade: `lineFade${cap(d)}`, thin: `lineThin${cap(d)}`, haze: `haze${cap(d)}` })
 
-/** Defaults: tuned on art v3's plates against the Verbree pass-2 refs. thin is in screen px (1080p). */
+/** Defaults: tuned on art v3's plates against the Verbree pass-2 refs. thin is in screen px (1080p).
+ *  Bart's rule (everything drawn, never blur): far ink keeps at least INK_FLOOR of the near contrast (lineContrast),
+ *  and near outlines are never thinned: thinning starts at mid. */
 export const STAGE_SHEET: Record<string, number> = {
   sheetPaper: 1, sheetGrain: 0.7, sheetWash: 0.12, sheetPatches: 0.5, lineBrown: 0.6, groundDetail: 0.45,
   groundVary: 0.6, groundMix: 0.7, groundScale: 2.5, nearFar: 16, housePitch: 4, lineInk: 0.3, lineNorm: 0.8,
   lineFadeSky: 0.3, lineThinSky: 0, hazeSky: 0,
-  lineFadeBg: 0.45, lineThinBg: 0.6, hazeBg: 0.22,
-  lineFadeMid: 0.2, lineThinMid: 0.4, hazeMid: 0.06,
-  lineFadeFg: 0.05, lineThinFg: 0.5, hazeFg: 0,
+  lineFadeBg: 0.3, lineThinBg: 0.5, hazeBg: 0.12,
+  lineFadeMid: 0.15, lineThinMid: 0.3, hazeMid: 0.04,
+  lineFadeFg: 0, lineThinFg: 0, hazeFg: 0,
+  lineFadeNear: 0, lineThinNear: 0, hazeNear: 0,
 }
+export const INK_FLOOR = 0.65
+/** The warm raw-sienna wash the whole picture is painted over (sheet.ts even part, PAPER_GLSL patches). */
+export const WASH_COLOUR: [number, number, number] = [0.93, 0.86, 0.74]
+export interface Paper { paper: number; grain: number; patches: number; wash: number; washColour: [number, number, number] }
+export const paperOf = (look: Record<string, unknown>): Paper =>
+  ({ paper: num(look, 'sheetPaper'), grain: num(look, 'sheetGrain'), patches: num(look, 'sheetPatches'), wash: num(look, 'sheetWash'), washColour: WASH_COLOUR })
+/** Share of the art's own line contrast a depth keeps (lineFade takes a line 75 % of the way to the haze, haze takes
+ *  the whole layer that way): (1 - 0.75 fade)(1 - haze). */
+export const lineContrast = (l: { fade: number; haze: number }) => (1 - 0.75 * l.fade) * (1 - l.haze)
 
 /** Slider ranges for the panel (same order as STAGE_SHEET). */
 const RANGES: Record<string, [number, number, number]> = {

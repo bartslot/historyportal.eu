@@ -10,10 +10,10 @@ import {
   type RawTexture,
 } from '@babylonjs/core'
 import { createLookChain, PRESETS } from '../engine/look-chain.js'
-import { houseProjection, inkScale, lineOf, lookNum, pxPerMetre, pxUV, STAGE_SHEET } from './look'
+import { houseProjection, inkScale, lineOf, lookNum, paperOf, type Line, type Paper, pxPerMetre, pxUV, STAGE_SHEET } from './look'
 import { makeSheet } from './sheet'
 import { libraryUrlFor, loadLibrary, resolveAsset } from './library'
-import { ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, DECAL_LIFT_M, DECAL_SLOT, LAND_TARGET, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
+import { ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, DECAL_LIFT_M, DECAL_SLOT, LAND_TARGET, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
 import { bandColours, edgeColours, inkLevels, landTops, loadPremultiplied, makeLayer, type LayerHandle } from './layer'
 import { bandAt, featherOf, GROUND_TILE_M, hexRgb, PAPER as PAPER_HEX, resolveGround, STAIN_DEFAULT, stainSize } from './ground'
 import { makeGround, makeStain, type GroundLook } from './ground-gl'
@@ -61,7 +61,7 @@ export class Stage {
     this.camera.maxZ = 2000
     // light for 3D figures (S3); the painted layers are unlit
     new HemisphericLight('sky', new Vector3(0, 1, 0), this.scene).intensity = 0.7
-    new DirectionalLight('sun', new Vector3(-0.4, -1, 0.6), this.scene).intensity = 1.2
+    new DirectionalLight('sun', this.sunDir, this.scene).intensity = 1.2
     this.sceneLib = lib
     this.ground = makeGround(this.scene)
     this.ground.set(this.groundLook(null, null, lib))
@@ -147,7 +147,7 @@ export class Stage {
       handle.mesh.isVisible = false
       // a contact stain on the ground under standing things (not under far strips or floating sky props)
       let stain: Stain | undefined
-      if ((layer.depth === 'mid' || layer.depth === 'fg') && !asset.tileable_x && !layer.flat) {
+      if (STANDING.includes(layer.depth) && !asset.tileable_x && !layer.flat) {
         const sz = stainSize(asset, p.w, p.h, p.z)
         stain = makeStain(handle.mesh, sz.w, sz.d, this.scene)
         stain.mesh.alphaIndex = stainIndex(p.alphaIndex)
@@ -212,6 +212,16 @@ export class Stage {
     this.built.forEach((b) => { if (b.index >= 0) b.layer = s.set.layers[b.index] })
   }
 
+  /** Where the light comes from (S3: puppets cast their contact shadow along it). */
+  readonly sunDir = new Vector3(-0.4, -1, 0.6).normalize()
+
+  /** A depth's line values with the haze colour, following the teacher's look sliders (S3: puppets draw their line
+   *  with LINE_BY_DEPTH_GLSL from these). Read it every frame or on each pose. */
+  depthLine(depth: Depth): Line & { tint: [number, number, number] } { return { ...lineOf(this.look, depth), tint: this.hazeTint } }
+
+  /** The paper every picture is painted on (PAPER_GLSL), from the look sliders. */
+  paper(): Paper { return paperOf(this.look) }
+
   /** Metres the far landscape stands higher: the scene's own number, else 'auto' (also when unset): the first strip's
    *  land line at set.land_target of the frame (layout.ts autoHorizon). For the scene on screen. */
   horizonOf(s: Scene): number {
@@ -234,6 +244,7 @@ export class Stage {
     this.ground.live({ detail: L('groundDetail'), vary: L('groundVary'), mixTile: L('groundMix'), tileScale: L('groundScale') })
     this.ground.near(this.nearTex ? { tex: this.nearTex, ...houseProjection(pitch, this.engine.getAspectRatio(this.camera), L('nearFar')), span: NEAR_SPAN } : null)
     const renderH = this.engine.getRenderHeight()
+    const paper = paperOf(this.look)
     for (const b of this.built) {
       const k = layerAt(b.layer, t)
       const p = placeLayer(b.asset, { ...b.layer, x: k.x, scale: 1 }, b.order, this.horizonOf(s))
@@ -245,6 +256,8 @@ export class Stage {
       if (b.asset.layer === 'sky') b.handle.setGroundLine((c.y - p.y) / (p.h * k.scale))
       const ppm = pxPerMetre(renderH, p.z - c.z, this.camera.fov)
       const line = lineOf(this.look, b.layer.depth)
+      // the paper's grain at the scale it has from the house camera, fixed to the picture (moves and zooms with it)
+      b.handle.setPaper(paper, pxUV(p.w * k.scale, p.h * k.scale, p.uRepeat, pxPerMetre(1080, p.z - HOUSE.z, fovRad(HOUSE.fov)), 1080))
       b.handle.setLine(line, b.ink === undefined ? 1 : inkScale(b.ink, line.ink, line.norm), pxUV(p.w * k.scale, p.h * k.scale, p.uRepeat, ppm, renderH), this.hazeTint)
       b.stain?.setOpacity((b.layer.shadow ?? STAIN_DEFAULT) * k.opacity)
       b.handle.setMotion(motionOf(b.asset, b.layer))
@@ -255,6 +268,9 @@ export class Stage {
 
 /** The near band spans this much of the frame's width, so a sideways camera move still finds it painted. */
 const NEAR_SPAN = 1.3
+
+/** Depths where things stand on the floor (and get a contact stain). */
+export const STANDING: Depth[] = ['mid', 'fg', 'near']
 
 export interface Player {
   stage: Stage
