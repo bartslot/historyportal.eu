@@ -79,7 +79,7 @@ export function inkLevel(data: Uint8ClampedArray | Uint8Array, w: number, h: num
 export function skylineRow(data: Uint8ClampedArray | Uint8Array, w: number, h: number): number {
   const tops: number[] = []
   for (let x = 0; x < w; x++) {
-    for (let y = 0; y < h; y++) if (data[(y * w + x) * 4 + 3] > 128) { tops.push(y / h); break }
+    for (let y = 0; y < h; y++) if (data[(y * w + x) * 4 + 3] > 128) { tops.push(y / h); break }   // columns with no opaque pixel are skipped
   }
   if (!tops.length) return 0
   tops.sort((a, b) => a - b)

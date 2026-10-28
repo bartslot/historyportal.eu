@@ -82,6 +82,7 @@ Effect.ShadersStore.stageLayerFragmentShader = `
   uniform vec2 grainUV;                        // texture uv per 1080p px at the house pose (fixed: grain never swims)
   // no sticker look (look.ts): a painted edge instead of a scissor cut, a foot that sinks into the floor, one light
   uniform float edgeSoft, footM, grounding, grass, light, sunSide, drift, height;
+  uniform float bottomFade;                    // ground bands: alpha ramps to 0 over this share of the height, from the bottom
   uniform vec3 footTint, sunColour, shadeColour;
   ${GL_NOISE}
   ${LINE_BY_DEPTH_GLSL}
@@ -162,6 +163,7 @@ Effect.ShadersStore.stageLayerFragmentShader = `
     }
     // the floor plane ends 1200 m out, a pixel or two short of the horizon: there the sky would show as a pale line
     if (vH < groundLine) c = vec4(featherTint, 1.0);
+    if (bottomFade > 0.0) c *= smoothstep(0.0, bottomFade, vH);   // melts into the floor and the band behind: no hard bottom edge
     gl_FragColor = c * opacity;
   }`
 
@@ -244,6 +246,8 @@ export interface LayerHandle {
   setFeather(f: number, tint?: [number, number, number]): void
   /** the paper under this picture (look.ts paperOf) and its grain scale (uv per 1080p px at the house pose) */
   setPaper(p: Paper, grainUV: readonly [number, number]): void
+  /** ground bands: the share of the height (from the bottom) whose alpha ramps to 0 */
+  setBottomFade(f: number): void
   /** no sticker look: painted edge, grounding (footM 0 = none: not standing), shared light (look.ts aliveOf) */
   setAlive(a: Alive): void
   /** sky only: share of the plane's height, from the bottom, below the eye line (painted as the far floor) */
@@ -258,7 +262,7 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
   const mesh = anchoredPlane(`layer:${asset.id}`, asset, w, h, scene)
   const mat = new ShaderMaterial(`layer:${asset.id}`, scene, 'stageLayer', {
     attributes: ['position', 'uv'],
-    uniforms: ['worldViewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'opacity', 'uRepeat', 'feather', 'featherTint', 'groundLine', 'lineFade', 'lineThin', 'haze', 'lineBrown', 'inkMul', 'pxUV', 'hazeTint', 'paper', 'grain', 'patches', 'wash', 'washColour', 'grainUV', 'edgeSoft', 'footM', 'grounding', 'grass', 'light', 'sunSide', 'drift', 'footTint', 'sunColour', 'shadeColour'],
+    uniforms: ['worldViewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'opacity', 'uRepeat', 'feather', 'featherTint', 'groundLine', 'lineFade', 'lineThin', 'haze', 'lineBrown', 'inkMul', 'pxUV', 'hazeTint', 'paper', 'grain', 'patches', 'wash', 'washColour', 'grainUV', 'bottomFade', 'edgeSoft', 'footM', 'grounding', 'grass', 'light', 'sunSide', 'drift', 'footTint', 'sunColour', 'shadeColour'],
     samplers: ['tex'],
     needAlphaBlending: true,
   })
@@ -272,7 +276,7 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
   mat.setFloat('phase', phase).setFloat('height', h * top).setFloat('width', w).setFloat('uRepeat', uRepeat).setFloat('opacity', 1)
   mat.setFloat('kind', 0).setFloat('amount', 1).setFloat('speed', 1).setFloat('time', 0).setFloat('feather', 0)
   mat.setFloat('groundLine', -1).setFloat('lineFade', 0).setFloat('lineThin', 0).setFloat('haze', 0).setFloat('lineBrown', 0).setFloat('inkMul', 1).setFloat('paper', 0).setFloat('grain', 0).setFloat('patches', 0)
-  mat.setFloat('edgeSoft', 0).setFloat('footM', 0).setFloat('grounding', 0).setFloat('grass', 0).setFloat('light', 0).setFloat('sunSide', 1).setFloat('drift', 0)
+  mat.setFloat('edgeSoft', 0).setFloat('bottomFade', 0).setFloat('footM', 0).setFloat('grounding', 0).setFloat('grass', 0).setFloat('light', 0).setFloat('sunSide', 1).setFloat('drift', 0)
   mesh.material = mat
   mesh.metadata = { noGBuffer: true, painted: true } // the look draws no ink on its edges: the art has its own
   mesh.isPickable = false
@@ -288,6 +292,7 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
       mat.setFloat('paper', pp.paper).setFloat('grain', pp.grain).setFloat('patches', pp.patches).setFloat('wash', pp.wash)
       mat.setVector3('washColour', Vector3.FromArray(pp.washColour)).setVector2('grainUV', new Vector2(g[0], g[1]))
     },
+    setBottomFade: (f) => { mat.setFloat('bottomFade', f) },
     setAlive: (a) => {
       mat.setFloat('edgeSoft', a.edgeSoft).setFloat('footM', a.footM).setFloat('grounding', a.grounding).setFloat('grass', a.grass)
         .setFloat('light', a.light).setFloat('sunSide', a.sunSide).setFloat('drift', a.drift)

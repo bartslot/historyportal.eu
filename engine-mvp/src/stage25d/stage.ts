@@ -298,6 +298,7 @@ export class Stage {
       b.handle.mesh.position.y = bandBottom(b.z, bandK, b.h, b.skyline)   // its skyline on the crest, k x z up
       const ppm = pxPerMetre(renderH, b.z - HOUSE.z, fovRad(HOUSE.fov))
       b.handle.setOpacity(1)
+      b.handle.setBottomFade(lookNum(this.look, 'bandFade'))
       b.handle.setPaper(paper, pxUV(b.w, b.h, 1, ppm, renderH))
       b.handle.setLine(lineOf(this.look, 'bg'), 1, pxUV(b.w, b.h, 1, ppm, renderH), this.hazeTint)
     })
