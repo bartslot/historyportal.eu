@@ -12,7 +12,7 @@ import type { Placement, StageLike } from './figure'
 import { STAIN_DEFAULT, stainSize } from '../stage25d/ground'
 import { GL_NOISE, makeStain } from '../stage25d/ground-gl'
 import { LINE_BY_DEPTH_GLSL, PAPER_GLSL } from '../stage25d/layer'
-import type { Line, Paper } from '../stage25d/look'
+import { pxPerMetre, pxUV, type Line, type Paper } from '../stage25d/look'
 import type { Asset, Library } from '../stage25d/types'
 
 type P2 = [number, number]
@@ -54,13 +54,14 @@ export const LIMITS = { armFwd: 150, armBack: 40, elbowMax: 150, hipFwd: 125, hi
 export const PUPPET = {
   walkHip: 24, walkKnee: 48, walkArm: 18, walkElbow: 14, stride: 0.95, bob: 0.012, breathe: 1.5, idleRate: 0.45,
   zStep: 0.004, // metres between part layers, toward the camera
+  inkPx: 2, // the contour's width in 1080p px, at any size (0 = the painted line only)
   saturation: 0.85, value: 1.04, cool: 0.35, // the figure's grade toward the scene's palette
   contactShadow: 1.4, // x the stage's stain strength under the feet
   castShadow: 0.45,   // the cast shadow along the scene's sun (0 = none)
   castLength: 0.9, castWidth: 0.55, castDepth: 0.35, // in heights / metres / share of the length into depth
   contactWidth: 0.9, // m (for 1.70 m): the stain under the feet
   paintedBreath: 0.004, // a pose painting breathes: its height grows by this share and back
-  headSink: 0.0, // m the head's neck sinks below the painting's neck stump (into its collar)
+  headSink: 0.03, // m the head's neck sinks below the painting's neck stump: it covers the stump's painted cut
   seat: 0.11, // m from the hip joints down to the buttocks
   seatHeight: 0.43, // m, a seat's top (for a 1.70 m figure)
   minForeshorten: 0.3, // front view: an arm pointing at the camera still shows this share
@@ -223,6 +224,9 @@ ${LINE_BY_DEPTH_GLSL}
 ${PAPER_GLSL}
 uniform float lineFade; uniform float haze; uniform float lineBrown; uniform vec3 hazeTint;
 uniform float paper; uniform float grain; uniform float patches; uniform float wash; uniform vec3 washColour; uniform vec2 pxSize;
+uniform vec2 inkUV;     // the contour's width in this part's uv (PUPPET.inkPx at 1080p, whatever the figure's size)
+uniform float inkBelow; // uv v under which an edge is a cut, not a contour (a head's neck): no ink there
+uniform float inkAbove; // uv v over which an edge is a cut (a painted body's neck stump): no ink there
 varying vec2 vUV; uniform sampler2D art; uniform sampler2D dye; uniform float hasDye;
 uniform vec3 target0; uniform vec3 target1; uniform vec3 target2; uniform vec3 refL; uniform vec3 dyeOn;
 uniform vec3 grade; // saturation, value, cool: the figure toward the scene's palette
@@ -230,6 +234,18 @@ vec3 dyed(vec3 t, float l, float r) { return clamp(t * min(l / max(r, 0.02), 2.0
 void main() {
   vec4 c = texture2D(art, vUV);
   if (c.a < 0.5) discard;
+  // the contour at screen weight: an opaque pixel within inkUV of the outside is ink (painted big, shown small, the
+  // drawn line would shrink to a hairline); lineByDepth below browns and fades it like the scene's own ink
+  if (inkUV.x > 0.0) {
+    float edge = 0.0;
+    for (int i = 0; i < 8; i++) {
+      float a = float(i) * 0.7853982;
+      vec2 q = vUV + vec2(cos(a), sin(a)) * inkUV;
+      float na = (q.x < 0.0 || q.y < 0.0 || q.x > 1.0 || q.y > 1.0) ? 0.0 : texture2D(art, q).a;
+      if (na < 0.5 && q.y >= inkBelow && q.y <= inkAbove) edge = 1.0;
+    }
+    c.rgb = mix(c.rgb, vec3(0.08, 0.07, 0.06), edge);
+  }
   if (hasDye > 0.5) {
     vec3 m = texture2D(dye, vUV).rgb * dyeOn;
     float l = dot(c.rgb, vec3(0.299, 0.587, 0.114));
@@ -253,10 +269,11 @@ function noStageLook(mat: ShaderMaterial, w: number, h: number) {
   mat.setFloat('lineFade', 0).setFloat('haze', 0).setFloat('lineBrown', 0).setVector3('hazeTint', new Vector3(1, 1, 1))
   mat.setFloat('paper', 0).setFloat('grain', 0).setFloat('patches', 0).setFloat('wash', 0).setVector3('washColour', new Vector3(1, 1, 1))
   mat.setVector2('pxSize', new Vector2(w, h)) // the part's own pixels: the grain moves with the figure
+  mat.setVector2('inkUV', Vector2.Zero()).setFloat('inkBelow', -1).setFloat('inkAbove', 2)
 }
 export type StageLook = { line: Line & { tint: [number, number, number] }; paper: Paper }
 
-type PartMesh = { mesh: Mesh; mat: ShaderMaterial; slot: string; rest: P2[]; pos: Float32Array; dyeOn: number[] }
+type PartMesh = { mesh: Mesh; mat: ShaderMaterial; slot: string; rest: P2[]; pos: Float32Array; dyeOn: number[]; size?: P2 }
 const SKIRT_NY = 16
 
 function partMesh(scene: Scene, base: string, view: View, slot: string, p: Part, name: string, parent: TransformNode): PartMesh {
@@ -276,7 +293,7 @@ function partMesh(scene: Scene, base: string, view: View, slot: string, p: Part,
   mesh.metadata = { noGBuffer: true } // painted art: the stage's post ink must not outline it again
   const mat = new ShaderMaterial(name, scene, 'puppet', {
     attributes: ['position', 'uv'], samplers: ['art', 'dye'],
-    uniforms: ['worldViewProjection', 'hasDye', 'target0', 'target1', 'target2', 'refL', 'dyeOn', 'grade', 'lineFade', 'haze', 'lineBrown', 'hazeTint', 'paper', 'grain', 'patches', 'wash', 'washColour', 'pxSize'],
+    uniforms: ['worldViewProjection', 'hasDye', 'target0', 'target1', 'target2', 'refL', 'dyeOn', 'grade', 'lineFade', 'haze', 'lineBrown', 'hazeTint', 'paper', 'grain', 'patches', 'wash', 'washColour', 'pxSize', 'inkUV', 'inkBelow', 'inkAbove'],
   })
   mat.backFaceCulling = false
   mat.setTexture('art', new Texture(`${base}/${view}/${slot}.webp`, scene, false, true))
@@ -399,11 +416,15 @@ export async function createPuppet(scene: Scene, id: string, opts: PuppetOptions
       pm.mesh.updateVerticesData(VertexBuffer.PositionKind, pm.pos)
     }
     put(body, (px) => [(px[0] - sp.feet[0]) * s, -(px[1] - sp.feet[1]) * s * breathe], 0)
+    body.size = [sp.w * s, sp.h * s]
+    body.mat.setFloat('inkAbove', 1 - (sp.neck[1] + NECK_CUT_PX) / sp.h) // the neck stump is a cut: the head covers it
     const neck: P2 = [(sp.neck[0] - sp.feet[0]) * s, -(sp.neck[1] - sp.feet[1]) * s * breathe - PUPPET.headSink * k]
     const headSlot = `head_${state.expr}`, hp = ps.heads[headSlot] ?? ps.heads.head_neutral
     const hs = hp.m_per_px * k, step = PUPPET.zStep * Math.max(1, state.dist / 10)
     const head = sprites[v][headSlot] ?? sprites[v].head_neutral
     put(head, (px) => add(neck, [(px[0] - hp.pivot[0]) * hs, -(px[1] - hp.pivot[1]) * hs]), -step)
+    head.size = [hp.w * hs, hp.h * hs]
+    head.mat.setFloat('inkBelow', 1 - (hp.pivot[1] - 2) / hp.h) // the neck cut joins the body: no contour there
     const shown = new Set<PartMesh>([body, head])
     const hat = hats[v], hatPart = sheets[v].parts.hat
     if (hat && hatPart && state.hat) {
@@ -442,12 +463,14 @@ export async function createPuppet(scene: Scene, id: string, opts: PuppetOptions
         pm.pos[i * 3] = q[0]; pm.pos[i * 3 + 1] = q[1]; pm.pos[i * 3 + 2] = z
       }
       pm.mesh.updateVerticesData(VertexBuffer.PositionKind, pm.pos)
+      pm.size = [part.w * pl.s, part.h * pl.s]
     })
     for (const v of VIEWS) for (const pm of Object.values(meshes[v])) pm.mesh.setEnabled(shown.has(pm))
     state.seat?.mesh.setEnabled(seated())
     return rig
   }
 
+  const allParts = () => [...VIEWS.flatMap((v) => Object.values(meshes[v])), ...Object.values(sprites).flatMap((x) => Object.values(x)), ...Object.values(hats)]
   const tick = scene.onBeforeRenderObservable.add(() => {
     state.t += scene.getEngine().getDeltaTime() / 1000
     const cam = scene.activeCamera
@@ -460,6 +483,12 @@ export async function createPuppet(scene: Scene, id: string, opts: PuppetOptions
     draw()
     const g = new Vector3(PUPPET.saturation, PUPPET.value, PUPPET.cool)
     const look = stageLook?.()
+    const renderH = scene.getEngine().getRenderHeight(), ppm = pxPerMetre(renderH, state.dist, cam?.fov ?? 0.8)
+    for (const pm of allParts()) {
+      if (!pm.size || !pm.mesh.isEnabled()) continue
+      const uv = pxUV(pm.size[0], pm.size[1], 1, ppm, renderH)
+      pm.mat.setVector2('inkUV', new Vector2(uv[0] * PUPPET.inkPx, uv[1] * PUPPET.inkPx))
+    }
     for (const m of scene.meshes) {
       if (!m.material?.name || !m.isEnabled() || m.parent !== flip) continue
       const mat = (m.material as ShaderMaterial).setVector3('grade', g)
@@ -569,7 +598,7 @@ function seatMesh(scene: Scene, url: string, name: string, parent: TransformNode
   mesh.isPickable = false
   mesh.alwaysSelectAsActiveMesh = true
   mesh.metadata = { noGBuffer: true }
-  const mat = new ShaderMaterial(name, scene, 'puppet', { attributes: ['position', 'uv'], samplers: ['art', 'dye'], uniforms: ['worldViewProjection', 'hasDye', 'target0', 'target1', 'target2', 'refL', 'dyeOn', 'grade', 'lineFade', 'haze', 'lineBrown', 'hazeTint', 'paper', 'grain', 'patches', 'wash', 'washColour', 'pxSize'] })
+  const mat = new ShaderMaterial(name, scene, 'puppet', { attributes: ['position', 'uv'], samplers: ['art', 'dye'], uniforms: ['worldViewProjection', 'hasDye', 'target0', 'target1', 'target2', 'refL', 'dyeOn', 'grade', 'lineFade', 'haze', 'lineBrown', 'hazeTint', 'paper', 'grain', 'patches', 'wash', 'washColour', 'pxSize', 'inkUV', 'inkBelow', 'inkAbove'] })
   mat.backFaceCulling = false
   mat.setTexture('art', new Texture(url, scene, false, true))
   mat.setFloat('hasDye', 0)
@@ -592,14 +621,21 @@ export function seatFrom(lib: Library & { base: string }): Seat | null {
   return a ? { url: lib.base + a.file, aspect: a.w / a.h } : null
 }
 
+/** m from the house camera a placed figure stands at, per depth (knobs; a 1.62 m figure at fg ~43 % of a 1080 frame) */
+const NECK_CUT_PX = 10 // a body painting's top this deep is its neck stump
+
+export const FIGURE_Z: Record<string, number> = { near: 3.2, fg: 4, mid: 8.5, bg: 22 }
+
 const stains = new WeakMap<Puppet, ReturnType<typeof makeStain>[]>()
 
 /** the same contract as placeFigure: stand on the stage; the facing picks the view (left = mirrored art) */
 // `behind` (m, default 0) moves the figure back from its layer's plane, so it can stand behind a same-depth layer
 export function placePuppet(p: Puppet, at: Placement & { view?: '34' | 'side'; behind?: number }, stage?: StageLike & { lib?: Library & { base: string }; depthLine?(d: Placement['depth']): StageLook['line']; paper?(): Paper; sunDir?: Vector3 }) {
   const g = stage ? stage.groundPoint(at.x, at.depth) : new Vector3((at.x - 0.5) * 10, 0, { bg: 70, mid: 22, fg: 7 }[at.depth])
-  p.root.position.copyFrom(g)
-  p.root.position.z += at.behind ?? 0
+  // a figure stands nearer than its depth's painted layer: at fg it fills ~35-55 % of the frame (a face to read), at mid
+  // ~20 %; same place on screen (the house camera looks down +z from x 0)
+  const z = (FIGURE_Z[at.depth] ?? g.z) + (at.behind ?? 0)
+  p.root.position.set(g.x * (z / Math.max(g.z, 0.1)), g.y, z)
   if (stage?.lib) p.setSeat(seatFrom(stage.lib))
   // the stage's line by depth and paper, the same as its painted layers (read every frame: they follow the Look sliders)
   if (stage?.depthLine && stage.paper) p.lookFrom(() => ({ line: stage.depthLine!(at.depth), paper: stage.paper!() }))

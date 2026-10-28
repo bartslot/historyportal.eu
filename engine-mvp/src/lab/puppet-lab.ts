@@ -98,6 +98,7 @@ async function main() {
   slider('breathing', 0, 5, 0.1, () => PUPPET.breathe, (v) => (PUPPET.breathe = v))
   slider('front: limb toward camera', 0.05, 0.6, 0.01, () => PUPPET.minForeshorten, (v) => (PUPPET.minForeshorten = v))
   slider('front: leg toward camera', 0.02, 0.6, 0.01, () => PUPPET.minForeshortenLeg, (v) => (PUPPET.minForeshortenLeg = v))
+  slider('contour px (1080p)', 0, 4, 0.1, () => PUPPET.inkPx, (v) => (PUPPET.inkPx = v))
   slider('saturation', 0.4, 1.3, 0.01, () => PUPPET.saturation, (v) => (PUPPET.saturation = v))
   slider('value', 0.7, 1.3, 0.01, () => PUPPET.value, (v) => (PUPPET.value = v))
   slider('cool', 0, 1, 0.01, () => PUPPET.cool, (v) => (PUPPET.cool = v))

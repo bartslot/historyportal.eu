@@ -21,11 +21,31 @@ from cut_parts import WEBP_Q, alpha_of, clean_edges, dye_mask, edge_qa, find_par
 
 SLOTS = {"A": ["stand", "walk1", "walk2", "walk3"], "B": ["point", "carry", "kneel", "sit"],
          "H": ["head_neutral", "head_happy", "head_worried", "head_surprised"]}
+TUFT_BAND = 0.12  # the tuft lies in the bottom share of a figure
+TUFT_A = -3       # Lab a* under this is the grass's green
 BODY_POCKET_PX = 60  # a body painting: paper between the feet, an arm and the dress is background (a head keeps eye whites)
 NECK_M = 1.41    # feet to the base of the neck, standing, for a 1.70 m figure
 HEAD_M = 0.27    # crown to the base of the neck
 COLLAR_FLARE = 1.3  # the outline this much wider than the neck is the collar
-NECK_KEEP_PX = 6  # a head keeps this much neck below its narrowest row (it tucks under the body's collar)
+NECK_KEEP_PX = -8  # cut this far below (negative: above) the narrowest neck row: clear of the painted collar line
+
+
+def strip_tuft(img, al):
+    """the painted grass tuft under the feet read as a figurine base (the stage's stain and cast shadow ground the
+    figure now): its green goes, and what is left detached from the figure (straw blades) goes with it"""
+    solid = al > 0.5
+    ys, _ = np.nonzero(solid)
+    lab = lab_of(img)
+    band = np.zeros_like(solid)
+    band[int(ys.max() - (ys.max() - ys.min()) * TUFT_BAND):] = True
+    green = band & solid & (lab[..., 1] < TUFT_A) & (lab[..., 2] > 4)
+    green = ndimage.binary_dilation(green, iterations=2) & band & (lab[..., 1] < 6)  # their ink edges, never skin
+    al = np.where(green, 0, al)
+    parts, n = ndimage.label(al > 0.5)
+    if n > 1:
+        sizes = ndimage.sum(np.ones(al.shape), parts, range(1, n + 1))
+        al = np.where(np.isin(parts, 1 + np.nonzero(sizes < sizes.max() * 0.02)[0]), 0, al)
+    return al
 
 
 def neck_point(mask):
@@ -63,6 +83,9 @@ def main():
         m = p["mask"][y0:y1, x0:x1]
         al = alpha[y0:y1, x0:x1] * ndimage.binary_dilation(m, iterations=3)
         img = rgb[y0:y1, x0:x1]
+        if a.which != "H":
+            al = strip_tuft(img, al)
+            m = al > 0.5
         sil = al > 0.5
         img, al = ink_rim(img, al, sil)
         img = clean_edges(img, al)

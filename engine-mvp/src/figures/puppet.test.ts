@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { FreeCamera, NullEngine, Scene, Vector3, type Mesh } from '@babylonjs/core'
 import { afterEach, describe, expect, it } from 'vitest'
-import { CHARACTERS, POSES, POSE_NAMES, VIEWS, createPuppet, placePuppet, seatFrom, spriteOf, PUPPET, violations, FRONT_POSES, GUARD_TOL, type Angles, type PuppetPose } from './puppet'
+import { HOUSE, fovRad } from '../stage25d/layout'
+import { CHARACTERS, POSES, POSE_NAMES, VIEWS, createPuppet, placePuppet, seatFrom, FIGURE_Z, spriteOf, PUPPET, violations, FRONT_POSES, GUARD_TOL, type Angles, type PuppetPose } from './puppet'
 
 const PUBLIC = join(__dirname, '../../public')
 const loadSheet = async (url: string) => JSON.parse(readFileSync(join(PUBLIC, url), 'utf8'))
@@ -220,5 +221,20 @@ describe('puppet figures', () => {
     expect(floats.lineBrown).toBeCloseTo(0.6)
     expect(floats.grain).toBeCloseTo(0.7)
     expect(scene.getMeshByName('stain-cast:boer-vrouw')).not.toBeNull()
+  })
+
+  it('a placed figure fills a readable share of the frame: fg 35-55 %, mid about 20 % (house camera)', async () => {
+    const fov = fovRad(HOUSE.fov) // the house camera's vertical fov
+    const share = (depth: 'fg' | 'mid', h: number) => h / (2 * FIGURE_Z[depth] * Math.tan(fov / 2))
+    for (const id of Object.keys(CHARACTERS)) {
+      const h = CHARACTERS[id].height
+      expect(share('fg', h), id).toBeGreaterThan(0.35)
+      expect(share('fg', h), id).toBeLessThan(0.55)
+      expect(share('mid', h), id).toBeGreaterThan(0.15)
+      expect(share('mid', h), id).toBeLessThan(0.25)
+    }
+    const { p } = await make('boer-vrouw')
+    placePuppet(p, { x: 0.5, depth: 'fg', facing: 'right' }, STAGE)
+    expect(p.root.position.z).toBeCloseTo(FIGURE_Z.fg)
   })
 })
