@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { NullEngine, Scene, Vector3, type Mesh } from '@babylonjs/core'
 import { afterEach, describe, expect, it } from 'vitest'
-import { CHARACTERS, POSES, POSE_NAMES, VIEWS, createPuppet, placePuppet, seatFrom, violations, FRONT_POSES, GUARD_TOL, type Angles, type PuppetPose } from './puppet'
+import { CHARACTERS, POSES, POSE_NAMES, VIEWS, createPuppet, placePuppet, seatFrom, spriteOf, PUPPET, violations, FRONT_POSES, GUARD_TOL, type Angles, type PuppetPose } from './puppet'
 
 const PUBLIC = join(__dirname, '../../public')
 const loadSheet = async (url: string) => JSON.parse(readFileSync(join(PUBLIC, url), 'utf8'))
@@ -27,6 +27,10 @@ describe('puppet figures', () => {
         expect(p.setPose(pose), pose).toEqual([])
         for (const view of VIEWS) {
           p.setView(view)
+          if (p.mode() === 'paintings') { // a pose painting: body + head drawn, standing on its own feet
+            expect(shown(scene).length, `${pose} ${view}: painting + head`).toBeGreaterThanOrEqual(2)
+            continue
+          }
           const j = p.joints()
           expect(violations(j, GUARD_TOL[view]), `${pose} ${view}: the guards on what this view draws`).toEqual([])
           const knees = Math.min(j.kneeN[1], j.kneeF[1]), ankles = Math.min(j.ankleN[1], j.ankleF[1])
@@ -104,11 +108,46 @@ describe('puppet figures', () => {
     expect(scene.getTransformNodeByName('voc-kapitein_flip')!.scaling.x).toBe(-1)
   })
 
-  it('the woman has no hat to put on, and her legs exist under the skirt', async () => {
+  it("the woman has no hat to put on; the farmer's legs exist under his tunic", async () => {
     const { p, scene } = await make('boer-vrouw')
     p.setHat(true)
     expect(scene.getMeshByName('boer-vrouw_34_hat_hat')).toBeNull()
-    expect(scene.getMeshByName('boer-vrouw_34_thigh_N_thigh')!.isEnabled()).toBe(true)
+    const man = await make('boer-man')
+    expect(man.scene.getMeshByName('boer-man_34_thigh_N_thigh')!.isEnabled()).toBe(true)
+    void scene
+  })
+
+  describe('pose paintings (round 4: the woman)', () => {
+    it('draws every pose as one painting with the head at its neck, in 3/4 and side; face-on falls back to 3/4', async () => {
+      const { p, scene, warnings } = await make('boer-vrouw')
+      for (const pose of POSE_NAMES) {
+        expect(p.setPose(pose)).toEqual([])
+        for (const view of ['34', 'side', 'front'] as const) {
+          p.setView(view)
+          expect(p.mode(), `${pose} ${view}`).toBe('paintings')
+          expect(p.view, `${pose} ${view}`).toBe(view === 'front' ? '34' : view)
+          const on = shown(scene).map((m) => m.name)
+          const want = `boer-vrouw_${p.view}_pose_${pose === 'walk' ? 'walk' : pose}`
+          expect(on.some((n) => n.startsWith(want)), `${pose} ${view}: ${on}`).toBe(true)
+          expect(on.some((n) => n.includes('_pose_head_')), `${pose} ${view}: a head`).toBe(true)
+        }
+      }
+      expect(warnings).toEqual([])
+    })
+    it('walks through its frames, swaps the head for the expression, dyes the painted dress', async () => {
+      const { p, scene } = await make('boer-vrouw')
+      p.setPose('walk')
+      const cycle = Array.from({ length: 8 }, (_, i) => spriteOf('walk', (i + 0.5) / 8 / PUPPET.stride)) // mid-frame samples
+      expect(new Set(cycle)).toEqual(new Set(['walk1', 'walk2', 'walk3']))
+      expect(cycle.slice(0, 4)).toEqual(['walk1', 'walk1', 'walk2', 'walk2'])
+      for (const f of ['walk1', 'walk2', 'walk3']) expect(scene.getMeshByName(`boer-vrouw_34_pose_${f}`), f).not.toBeNull()
+      p.setExpression('surprised')
+      expect(shown(scene).some((m) => m.name === 'boer-vrouw_34_pose_head_surprised')).toBe(true)
+      expect(p.garments()).toContain('top')
+      p.setDye('top', '#2b4a7a')
+      const mat = scene.getMeshByName('boer-vrouw_34_pose_walk1')!.material!
+      expect(mat.name).toBe('boer-vrouw_34_pose_walk1')
+    })
   })
 
   it('face-on, a pose that would read as standing shows in 3/4, and says so', async () => {
@@ -123,7 +162,7 @@ describe('puppet figures', () => {
 
   it('sits on a seat from the stage library, the seat under the hips; without one, on the ground', async () => {
     expect(seatFrom(LIB)).not.toBeNull()
-    const { p, scene, warnings } = await make('boer-vrouw')
+    const { p, scene, warnings } = await make('voc-matroos')
     p.setPose('sit')
     const onGround = p.joints().hip[1]
     placePuppet(p, { x: 0.4, depth: 'fg', facing: 'right' }, STAGE)
@@ -131,9 +170,9 @@ describe('puppet figures', () => {
     const j = p.joints()
     expect(j.hip[1]).toBeGreaterThan(onGround + 0.25)
     expect(Math.min(j.ankleN[1], j.ankleF[1])).toBeLessThan(0.15) // feet down on the ground
-    expect(scene.getMeshByName('boer-vrouw_seat')!.isEnabled()).toBe(true)
+    expect(scene.getMeshByName('voc-matroos_seat')!.isEnabled()).toBe(true)
     p.setPose('stand')
-    expect(scene.getMeshByName('boer-vrouw_seat')!.isEnabled()).toBe(false)
+    expect(scene.getMeshByName('voc-matroos_seat')!.isEnabled()).toBe(false)
     expect(warnings).toEqual([])
   })
 

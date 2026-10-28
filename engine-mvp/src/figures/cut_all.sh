@@ -13,4 +13,12 @@ for c in boer-vrouw:woman boer-man:man voc-matroos:voc voc-kapitein:voc; do
     python3 src/figures/cut_parts.py "$sheet" "public/figures/puppets/$id/$v" --kind "$kind" --view "$v" >/dev/null
   done
 done
+# round 4 pose paintings (whole figures; H first, it gives the skin colour), where they exist
+for id in boer-vrouw boer-man voc-matroos voc-kapitein; do
+  for v in 34 side; do
+    [ -f "$SRC/v4/${id}_${v}_A.png" ] || continue
+    rm -rf "public/figures/puppets/$id/$v/poses.json" "public/figures/puppets/$id/$v/poses"
+    for s in H A B; do python3 src/figures/cut_poses.py "$SRC/v4/${id}_${v}_$s.png" "public/figures/puppets/$id/$v/poses" --sheet "$s" >/dev/null; done
+  done
+done
 echo cut: $(ls -d public/figures/puppets/*/* | wc -l) sheets

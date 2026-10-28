@@ -95,7 +95,63 @@ def colour_prompt(cid: str) -> str:
                      + GARMENTS[cid] + " Every part keeps a crisp outline; the white paper between the parts stays pure white.").split())
 
 
+# --- round 4 (PM 10-28, option A): whole-figure POSE paintings, one per pose (Bart's LEGO rule: drawn once, reused);
+# cut-out stays only for the head (4 expressions), a breathing sway and the hat
+POSE_SHEETS = {
+    "A": ["standing at ease, relaxed contrapposto, weight on one leg, arms hanging loosely",
+          "walking, first step: the near leg forward with the heel down, the far leg behind, arms swinging opposite",
+          "walking, passing: the legs together under the body, one foot lifted a little, arms close to the body",
+          "walking, second step: the far leg forward with the heel down, the near leg behind, arms swinging opposite"],
+    "B": ["pointing ahead with the near arm stretched out at shoulder height, the index finger pointing, body leaning a little into it",
+          "carrying a basket in front of the body with both hands, elbows bent, leaning back a little against the weight",
+          "kneeling on one knee: the far knee up with that foot flat on the ground, the near knee on the ground, hands resting on the raised knee, the long dress falling over the legs to the ground",
+          "sitting on a low rough stone, knees bent, feet flat on the ground, hands in the lap, the dress falling over the knees"],
+}
+STYLISED_FACE = ("Faces are STYLISED like a European history comic: almond eyes drawn with one line and a dot for the pupil, "
+                 "simple brows, a nose drawn as one line, the mouth one short line, no realistic modelling, no wrinkles, no "
+                 "skin texture; the expression reads from the brows and the mouth.")
+GROUND_TUFT = "Each figure stands on a small loose tuft of heath grass under its feet (drawn, not a ground plane)."
+VALUE = ("The garment is a mid-value colour, clearly darker than pale sand, so the figure separates from a pale ground; "
+         "never a light outline around the figure.")
+
+
+def pose_ink_prompt(cid: str, view: str, sheet: str) -> str:
+    desc = CHAR[cid][0]
+    v = VIEW[view]
+    if sheet == "H":
+        body = (f"A sheet of FOUR heads of the same character on pure flat white paper, in one row, same scale, each separate "
+                f"with wide white space: the head and neck only, the neck ending in a clean straight cut at the collar line. "
+                f"The character: {desc}. All drawn in {v}. (1) neutral, calm; (2) happy, a smile; (3) worried; (4) surprised, "
+                f"brows up, mouth a little open. Bare-headed. No labels, no text.")
+    else:
+        poses = " ".join(f"({i + 1}) {p};" for i, p in enumerate(POSE_SHEETS[sheet]))
+        body = (f"A sheet of FOUR full figures of the same character on pure flat white paper, in one row from left to right, "
+                f"all at the SAME scale and standing on the same baseline, each separate with wide white space, never touching. "
+                f"The character: {desc}. All drawn in {v}. WITHOUT THE HEAD: each figure ends at the top of the neck in a clean "
+                f"straight cut at the collar line (the heads are drawn on another sheet). The poses: {poses} "
+                f"{GROUND_TUFT} No labels, no text, no numbers.")
+    return " ".join(" ".join([body, FIGURE_INK, STYLISED_FACE if sheet == "H" else "", "Realistic adult proportions, 7.5 heads tall."]).split())
+
+
+def pose_colour_prompt(cid: str) -> str:
+    return " ".join((COLOUR.replace("Restrained palette", "Palette").replace("restrained ", "") + " " + REF_COLOUR
+                     + " Granulated washes like the scene paintings: pigment settling in the paper tooth, never smooth gradients. "
+                     + VALUE + " This sheet shows one character: the same thing gets the same colour on every figure. "
+                     + POSE_GARMENTS.get(cid, GARMENTS[cid]) + " Every figure keeps a crisp drawn outline; the white paper "
+                     + "between the figures stays pure white.").split())
+
+
+POSE_GARMENTS = {
+    "boer-vrouw": "The wool dress a natural mid-brown sheep's wool with warm ochre in the lights; the short cape a darker brown hide; the woven belt red-brown clay; skin a warm flesh tone; hair warm mid brown; the grass tuft olive and straw.",
+}
+
+
 if __name__ == "__main__":
     # python3 parts_prompts.py ink boer-vrouw_side | colour boer-vrouw | v1 boer-vrouw_side
     kind, key = sys.argv[1], sys.argv[2]
-    print(ink_prompt(*key.split("_")) if kind == "ink" else colour_prompt(key) if kind == "colour" else prompt(*key.split("_")))
+    if kind == "pose-ink":  # boer-vrouw_34_A
+        print(pose_ink_prompt(*key.split("_")))
+    elif kind == "pose-colour":
+        print(pose_colour_prompt(key))
+    else:
+        print(ink_prompt(*key.split("_")) if kind == "ink" else colour_prompt(key) if kind == "colour" else prompt(*key.split("_")))

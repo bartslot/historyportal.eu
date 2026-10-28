@@ -52,6 +52,8 @@ export const LIMITS = { armFwd: 150, armBack: 40, elbowMax: 150, hipFwd: 125, hi
 export const PUPPET = {
   walkHip: 24, walkKnee: 48, walkArm: 18, walkElbow: 14, stride: 0.95, bob: 0.012, breathe: 1.5, idleRate: 0.45,
   zStep: 0.004, // metres between part layers, toward the camera
+  paintedBreath: 0.004, // a pose painting breathes: its height grows by this share and back
+  headSink: 0.0, // m the head's neck sinks below the painting's neck stump (into its collar)
   seat: 0.11, // m from the hip joints down to the buttocks
   seatHeight: 0.43, // m, a seat's top (for a 1.70 m figure)
   minForeshorten: 0.3, // front view: an arm pointing at the camera still shows this share
@@ -292,10 +294,21 @@ export type Puppet = {
   setDye(g: Garment, color: string | null): void  // null = the painted colour
   garments(): Garment[]
   joints(): Joints                          // the solved 2D joints right now (figure frame)
+  mode(): 'paintings' | 'parts'             // what draws the current pose
   dispose(): void
 }
 
 export type Seat = { url: string; aspect: number } // a library asset's image and its width / height
+
+// --- round 4 (PM option A): whole-figure POSE paintings, one per pose (cut_poses.py -> <view>/poses.json); the cut-out
+// parts stay for what has no painting (front, other characters) and the head swap; the hat part sits on the head
+type Sprite = Part & { neck: P2; feet: P2 }
+type PoseSheet = { poses: Record<string, Sprite>; heads: Record<string, Part & { crown: P2 }> }
+const SPRITE_VIEWS: View[] = ['34', 'side']
+const WALK_FRAMES = ['walk1', 'walk2', 'walk3', 'walk2']
+export const spriteOf = (pose: PuppetPose, t: number): string => (pose === 'walk' ? WALK_FRAMES[Math.floor(t * PUPPET.stride * WALK_FRAMES.length) % WALK_FRAMES.length] : pose)
+// a painted garment is one dye region (R) plus its accent (G)
+const SPRITE_CH: Partial<Record<Garment, number>> = { top: 0, skirt: 0, sleeves: 0, breeches: 0, legs: 0, accent: 1 }
 
 export type PuppetOptions = {
   base?: string                                      // where the cut parts live (default figures/puppets/<id>)
@@ -328,12 +341,55 @@ export async function createPuppet(scene: Scene, id: string, opts: PuppetOptions
     }
     return [v, set]
   })) as Record<View, Record<string, PartMesh>>
+  const poseSheets = Object.fromEntries(await Promise.all(SPRITE_VIEWS.map(async (v) =>
+    [v, await (load(`${base}/${v}/poses.json`) as unknown as Promise<PoseSheet>).catch(() => null)] as const))) as Record<string, PoseSheet | null>
+  const sprites = Object.fromEntries(SPRITE_VIEWS.map((v) => {
+    const ps = poseSheets[v]
+    const set: Record<string, PartMesh> = {}
+    for (const [slot, p] of Object.entries({ ...ps?.poses, ...ps?.heads })) set[slot] = partMesh(scene, base, `${v}/poses` as View, slot, p, `${id}_${v}_pose_${slot}`, flip)
+    return [v, set]
+  })) as Record<string, Record<string, PartMesh>>
+  const hats = Object.fromEntries(SPRITE_VIEWS.filter((v) => sheets[v].parts.hat).map((v) => [v, partMesh(scene, base, v, 'hat', sheets[v].parts.hat, `${id}_${v}_pose_hat`, flip)])) as Record<string, PartMesh>
   const state = { pose: 'stand' as PuppetPose, t: 0, view: '34' as View, expr: 'neutral' as Expression, hat: character.hat, last: [] as string[], dist: 10, want: '34' as View, seat: null as null | { mesh: Mesh; aspect: number } }
   // the view drawn: the one asked for, unless face-on would hide the pose
   const shownView = () => (state.want === 'front' && !FRONT_POSES.includes(state.pose) ? '34' : state.want)
   const seated = () => state.pose === 'sit' && !!state.seat
+  const paintingView = () => (state.want === 'front' ? '34' : state.want) // the paintings are 3/4 and side
+  const painting = (pose = state.pose, t = state.t) => poseSheets[paintingView()]?.poses[spriteOf(pose, t)]
+
+  /** a pose painting: the figure stands on its own feet, the head hangs at its neck, the hat sits on the head */
+  const drawPainting = (sp: Sprite) => {
+    const v = paintingView(), ps = poseSheets[v]!, k = character.height / 1.7
+    const s = sp.m_per_px * k
+    const breathe = state.pose === 'walk' ? 1 : 1 + PUPPET.paintedBreath * Math.sin(state.t * 1.6)
+    const body = sprites[v][spriteOf(state.pose, state.t)]
+    const put = (pm: PartMesh, f: (px: P2) => P2, z: number) => {
+      for (let i = 0; i < pm.rest.length; i++) { const q = f(pm.rest[i]); pm.pos[i * 3] = q[0]; pm.pos[i * 3 + 1] = q[1]; pm.pos[i * 3 + 2] = z }
+      pm.mesh.updateVerticesData(VertexBuffer.PositionKind, pm.pos)
+    }
+    put(body, (px) => [(px[0] - sp.feet[0]) * s, -(px[1] - sp.feet[1]) * s * breathe], 0)
+    const neck: P2 = [(sp.neck[0] - sp.feet[0]) * s, -(sp.neck[1] - sp.feet[1]) * s * breathe - PUPPET.headSink * k]
+    const headSlot = `head_${state.expr}`, hp = ps.heads[headSlot] ?? ps.heads.head_neutral
+    const hs = hp.m_per_px * k, step = PUPPET.zStep * Math.max(1, state.dist / 10)
+    const head = sprites[v][headSlot] ?? sprites[v].head_neutral
+    put(head, (px) => add(neck, [(px[0] - hp.pivot[0]) * hs, -(px[1] - hp.pivot[1]) * hs]), -step)
+    const shown = new Set<PartMesh>([body, head])
+    const hat = hats[v], hatPart = sheets[v].parts.hat
+    if (hat && hatPart && state.hat) {
+      const crown = add(neck, [(hp.crown[0] - hp.pivot[0]) * hs, -(hp.crown[1] - hp.pivot[1]) * hs])
+      put(hat, (px) => add(crown, [(px[0] - hatPart.pivot[0]) * hatPart.m_per_px * k, -(px[1] - hatPart.pivot[1]) * hatPart.m_per_px * k]), -2 * step)
+      shown.add(hat)
+    }
+    for (const set of [...Object.values(sprites), ...VIEWS.map((x) => meshes[x])]) for (const pm of Object.values(set)) pm.mesh.setEnabled(shown.has(pm))
+    for (const h of Object.values(hats)) h.mesh.setEnabled(shown.has(h))
+    state.seat?.mesh.setEnabled(false) // a painted sit brings its own stone
+  }
 
   const draw = () => {
+    const sp = painting()
+    if (sp) { state.view = puppet.view = paintingView(); drawPainting(sp); return null }
+    for (const set of Object.values(sprites)) for (const pm of Object.values(set)) pm.mesh.setEnabled(false)
+    for (const h of Object.values(hats)) h.mesh.setEnabled(false)
     state.view = puppet.view = shownView()
     const sheet = sheets[state.view]
     const a = POSES[state.pose](state.t, character, seated())
@@ -379,6 +435,7 @@ export async function createPuppet(scene: Scene, id: string, opts: PuppetOptions
       puppet.pose = state.pose = p
       // check the whole cycle of a moving pose, not one frame
       const found = new Set<string>()
+      if (painting(p, 0)) { state.last = []; draw(); return [] } // a painted pose is drawn human; no rig to guard
       // every view on its own sheet (what each view draws), over a whole cycle of a moving pose
       for (const t of p === 'walk' ? Array.from({ length: 24 }, (_, i) => i / 24 / PUPPET.stride) : [0]) {
         for (const v of VIEWS) for (const x of violations(solve(sheets[v], character.height, POSES[p](t, character, seated()), seated() ? PUPPET.seatHeight : 0).joints, GUARD_TOL[v])) found.add(`${v}: ${x}`)
@@ -403,6 +460,14 @@ export async function createPuppet(scene: Scene, id: string, opts: PuppetOptions
     },
     setHat(on) { state.hat = on && !!sheets['34'].parts.hat; draw() },
     setDye(g, color) {
+      const ch = SPRITE_CH[g]
+      if (ch !== undefined) for (const v of SPRITE_VIEWS) for (const [slot, sp] of Object.entries(poseSheets[v]?.poses ?? {})) {
+        const pm = sprites[v][slot]
+        if (!pm || (sp.dye?.length ?? 0) <= ch) continue
+        pm.dyeOn = pm.dyeOn.map((on, i) => (i === ch ? (color ? 1 : 0) : on))
+        pm.mat.setVector3('dyeOn', Vector3.FromArray(pm.dyeOn))
+        if (color) pm.mat.setVector3(`target${ch}`, new Vector3(...hex(color)))
+      }
       for (const v of VIEWS) for (const [slot, ch] of GARMENTS[g]) for (const pm of Object.values(meshes[v]).filter((m) => m.slot === slot)) {
         const regions = sheets[v].parts[slot]?.dye
         if (!regions || ch >= regions.length) continue
@@ -412,10 +477,13 @@ export async function createPuppet(scene: Scene, id: string, opts: PuppetOptions
       }
     },
     garments() {
+      const painted = poseSheets['34']?.poses.stand?.dye?.length ?? 0
+      if (painted) return (Object.keys(SPRITE_CH) as Garment[]).filter((g) => SPRITE_CH[g]! < painted)
       const p = sheets['34'].parts
       return (Object.keys(GARMENTS) as Garment[]).filter((g) => GARMENTS[g].some(([slot, ch]) => (p[slot]?.dye?.length ?? 0) > ch))
     },
     joints() { return solve(sheets[state.view], character.height, POSES[state.pose](state.t, character, seated()), seated() ? PUPPET.seatHeight : 0).joints },
+    mode: () => (painting() ? 'paintings' : 'parts'),
     dispose() { scene.onBeforeRenderObservable.remove(tick); root.dispose(false, true) },
   }
   puppet.setPose('stand')
