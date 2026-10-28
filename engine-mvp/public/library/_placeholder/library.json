@@ -31,7 +31,7 @@
     },
     {
       "id": "cloud-01",
-      "layer": "sky",
+      "layer": "prop",
       "tags": [
         "cloud",
         "sky"

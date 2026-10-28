@@ -47,7 +47,10 @@ the `_placeholder` bundle). The panel edits every camera, timing and motion valu
 
 - **Depths**: sky 380 m, bg 70 m, mid 22 m, fg 7 m from the house camera (eye 1.6 m, fov 50, tilted up 2 deg). A layer's
   `x` 0..1 spans the house view at its depth; its plane is `height_m * scale` tall, origin at the asset's `anchor`.
-  Tileable sky/bg strips stretch past the view (1.6x) and repeat. Draw order = depth, then list order (`alphaIndex`).
+  A `layer: "sky"` asset is ALWAYS the full-frame backdrop: tiled = repeats across 1.6x the view, one painting =
+  cover-fit to that box, never stretched (clouds that float are `layer: "prop"` at depth sky). Tileable bg strips span
+  1.6x the view and repeat; an untiled bg strip is never narrower than that (its `height_m` is raised to cover).
+  Draw order = depth, then list order (`alphaIndex`).
 - **Render size**: sharp up to the device pixels, capped on the longest side (`stage.renderCap`, 1920 by default, Sharpness in the panel). Adaptive tier (`ADAPT`, `nextTier` in layout.ts): a 2 s window under 50 fps steps a quarter CSS px down (never below 1x CSS); up only after 3 windows at 58+, 20 s after the last change, at most once a minute; two reversals lock the lower size for the session. Windows with a stall or a hidden tab are ignored.
 - **No halos**: textures are premultiplied on load (`layer.ts`) and blended premultiplied; planes write no depth
   and stay out of the look's G-buffer (`metadata.noGBuffer`), so the ink pass draws lines only on 3D figures.

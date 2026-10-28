@@ -27,18 +27,24 @@ export function placeLayer(asset: Asset, layer: Pick<SceneLayer, 'depth' | 'x' |
   const z = DEPTH_Z[depth] - order * SAME_DEPTH_STEP_M
   const span = viewWidthAt(z)
   const alphaIndex = DEPTH_RANK[depth] * 1000 + order * 2 + 1
-  if (depth === 'sky' && asset.layer === 'sky' && asset.tileable_x !== false && asset.height_m >= 100) {
-    // the backdrop sky: fills the view at its distance, horizon a little below the frame's bottom edge
-    const w = span * COVER_MARGIN
-    const h = w / ASPECT
-    const tileW = h * (asset.w / asset.h)
-    return { x: 0, y: -h * 0.12, z, w, h, uRepeat: asset.tileable_x ? w / tileW : 1, alphaIndex }
+  if (asset.layer === 'sky') {
+    // the backdrop, ALWAYS (tiled or one painting): covers the view box at its distance, horizon a little below the
+    // frame's bottom edge. A tiled sky repeats across the box; one painting is cover-fit, never stretched (the box's
+    // bottom edge stays put, the spare height goes up into the sky, the spare width splits left and right).
+    const boxW = span * COVER_MARGIN
+    const boxH = boxW / ASPECT
+    const y = -boxH * 0.12
+    if (asset.tileable_x) return { x: 0, y, z, w: boxW, h: boxH, uRepeat: boxW / (boxH * (asset.w / asset.h)), alphaIndex }
+    const k = Math.max(boxW / asset.w, boxH / asset.h)
+    return { x: 0, y, z, w: asset.w * k, h: asset.h * k, uRepeat: 1, alphaIndex }
   }
-  const h = asset.height_m * (layer.scale ?? 1)
+  // an untiled bg strip is one painting that must cover its depth's view (COVER_MARGIN wide); never narrower
+  const coverH = depth === 'bg' && !asset.tileable_x ? (span * COVER_MARGIN * asset.h) / asset.w : 0
+  const h = Math.max(asset.height_m * (layer.scale ?? 1), coverH)
   const natW = h * (asset.w / asset.h)
   const w = asset.tileable_x ? Math.max(natW, span * COVER_MARGIN) : natW
   const x = asset.tileable_x ? 0 : ((layer.x ?? 0.5) - 0.5) * span
-  // sky props (clouds) float: their anchor sits at 30-60 % of the view height at that distance
+  // sky-depth props (clouds) float: their anchor sits at 30-60 % of the view height at that distance
   const y = depth === 'sky' ? z * Math.tan(fovRad(HOUSE.fov) / 2) * 0.45 : depth === 'bg' ? horizon : 0
   return { x, y, z, w, h, uRepeat: asset.tileable_x ? w / natW : 1, alphaIndex }
 }

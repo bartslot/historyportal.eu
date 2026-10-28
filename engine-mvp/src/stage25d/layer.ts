@@ -53,11 +53,12 @@ Effect.ShadersStore.stageLayerFragmentShader = `
     vec4 c = texture2D(tex, uv);                       // premultiplied
     if (kind == 4.0) c.rgb *= 1.0 + amount * 0.12 * (sin(time * speed * 13.0 + phase) * 0.5 + sin(time * speed * 31.0) * 0.5);
     // the lower edge is painted over into the ground's own colour along a ragged line (not a blur, not see-through:
-    // behind a far strip's lower part is sky, not floor), so the far landscape meets the floor without a seam
+    // behind a far strip's lower part is sky, not floor), so the far landscape meets the floor without a seam. Opaque
+    // even where the painting itself fades out at the bottom (art v3 strips do), else the sky shows through
     if (feather > 0.0) {
       float rag = feather * 0.45 * (fbm(vec2(uv.x * 14.0, 3.7)) - 0.5);
       float k = smoothstep(0.0, feather, vH + rag);
-      c = vec4(mix(featherTint * c.a, c.rgb, k), c.a);
+      c = mix(vec4(featherTint, 1.0), c, k);
     }
     gl_FragColor = c * opacity;
   }`

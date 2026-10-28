@@ -193,7 +193,7 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     spec = [
         ("sky-day-01", "sky", ["sky", "day", "clear"], sky, [0.5, 1.0], 400, True, "none"),
-        ("cloud-01", "sky", ["cloud", "sky"], cloud, [0.5, 1.0], 30, False, "drift"),
+        ("cloud-01", "prop", ["cloud", "sky"], cloud, [0.5, 1.0], 30, False, "drift"),
         ("hills-heath-01", "bg", ["hills", "heath", "landscape"], hills, [0.5, 1.0], 16, True, "none"),
         ("hut-farm-01", "mid", ["hut", "farm", "house", "prehistory"], hut, [0.5, 1.0], 6, False, "none"),
         ("tree-oak-01", "fg", ["tree", "oak", "forest"], tree, [0.5, 1.0], 6, False, "sway"),
