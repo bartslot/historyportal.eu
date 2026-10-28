@@ -86,7 +86,7 @@ the `_placeholder` bundle). The panel edits every camera, timing and motion valu
   repeats, one painting mirrors; trucks past ~4 m lean its strokes, the projection is from the house eye); the tile behind it breaks its
   repeat (`groundMix`, a turned second read) and drifts in value and hue (`groundVary`), `groundScale` x its height_m.
   `layer.flat` lays any picture flat on the floor (a path, a patch, stones), drawn right after it (`DECAL_SLOT`).
-  `housePitch` tilts the house camera down (4 deg). `lineInk` + `lineNorm` bring every layer's ink to one value (each
+  `housePitch` tilts the house camera (degrees down; default the house pitch, 2 deg up). `lineInk` + `lineNorm` bring every layer's ink to one value (each
   picture's own ink level is measured on load). `set.horizon` 'auto' (the default) puts the first strip's land line at
   `set.land_target` (0.42) of the frame (`autoHorizon`, the same maths as art v3's stage_plate.py).
   Art plates through the real stage: `node scripts/stage25d-plates.mjs http://localhost:5197 <specsDir> <outDir>`.

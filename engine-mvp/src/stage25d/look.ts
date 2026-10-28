@@ -7,7 +7,7 @@
 //          line-weight mismatch between layers reads as distance, not as a cut-out.
 // Every value is a key of lesson.look (teacher-editable, undoable, a slider in the panel).
 import { Matrix, Vector3 } from '@babylonjs/core'
-import { fovRad, HOUSE } from './layout'
+import { fovRad, HOUSE, HOUSE_PITCH_DEG } from './layout'
 import type { Depth } from './types'
 
 export const DEPTHS: Depth[] = ['sky', 'bg', 'mid', 'fg', 'near']
@@ -19,7 +19,7 @@ export const lineKeys = (d: Depth) => ({ fade: `lineFade${cap(d)}`, thin: `lineT
  *  and near outlines are never thinned: thinning starts at mid. */
 export const STAGE_SHEET: Record<string, number> = {
   sheetPaper: 1, sheetGrain: 0.7, sheetWash: 0.12, sheetPatches: 0.5, lineBrown: 0.6, groundDetail: 0.45,
-  groundVary: 0.6, groundMix: 0.7, groundScale: 2.5, nearFar: 16, housePitch: 4, lineInk: 0.3, lineNorm: 0.8,
+  groundVary: 0.6, groundMix: 0.7, groundScale: 2.5, nearFar: 16, housePitch: HOUSE_PITCH_DEG, lineInk: 0.3, lineNorm: 0.8,
   lineFadeSky: 0.3, lineThinSky: 0, hazeSky: 0,
   lineFadeBg: 0.3, lineThinBg: 0.5, hazeBg: 0.12,
   lineFadeMid: 0.15, lineThinMid: 0.3, hazeMid: 0.04,
