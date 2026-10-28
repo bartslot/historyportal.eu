@@ -1,0 +1,44 @@
+{
+ "bundle": "nl-prehistory",
+ "out": "plate_hunebedden-sc13.png",
+ "lesson": "hunebedden sc13: field, farmhouse, fire (+ the new trees)",
+ "set": {
+  "sky": "sky-summer-01",
+  "ground": "ground-grass-heather-01",
+  "horizon": "auto",
+  "layers": [
+   {
+    "asset": "bg-farmland-01",
+    "depth": "bg",
+    "x": 0.5
+   },
+   {
+    "asset": "house-trb-01",
+    "depth": "mid",
+    "x": 0.5
+   },
+   {
+    "asset": "tree-alder-01",
+    "depth": "mid",
+    "x": 0.82,
+    "scale": 1,
+    "src": "nl-prehistory/fg-trees/cut_t/tree-alder-01.png",
+    "height_m": 14
+   },
+   {
+    "asset": "fire-pit-01",
+    "depth": "fg",
+    "x": 0.2,
+    "scale": 0.6
+   },
+   {
+    "asset": "tree-oak-01",
+    "depth": "fg",
+    "x": 0.95,
+    "scale": 0.45,
+    "src": "nl-prehistory/fg-trees/cut_t/tree-oak-01.png",
+    "height_m": 18
+   }
+  ]
+ }
+}

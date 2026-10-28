@@ -330,6 +330,19 @@ def ink_sheet(rgb: np.ndarray) -> dict:
     return {"black": round(b, 3), "white": round(wh, 3), "drawn": round(float(drawn.mean()), 2),
             "ok": INK_SHEET_BLACK[0] <= b <= INK_SHEET_BLACK[1] and wh >= INK_SHEET_WHITE}
 
+def ink_kept(ink: np.ndarray, colour: np.ndarray) -> float:
+    """Share of the ink drawing's lines that are still lines in the colour edit (same framing). The edit model must
+    colour the ink, not redraw it (PM 2026-10-28: >= 0.80, else redo or hold)."""
+    h, w = colour.shape[:2]
+    ink = np.asarray(Image.fromarray(ink).resize((w, h)))
+    lines = ink_coverage_map(ink)
+    dark = ndimage.binary_dilation(rgb2lab(colour.astype(float))[..., 0] < 50, iterations=1)  # 1 px tolerance
+    return float(dark[lines].mean()) if lines.any() else 0.0
+
+
+INK_KEPT_MIN = 0.80
+
+
 # ---- self-check --------------------------------------------------------------------------------
 
 def self_check() -> None:
@@ -396,6 +409,9 @@ if __name__ == "__main__":
     elif sys.argv[1:2] == ["ink"]:  # ink <png>...
         for f in sys.argv[2:]:
             print(Path(f).parent.name + "/" + Path(f).name, json.dumps(ink_sheet(np.asarray(Image.open(f).convert("RGB")))))
+    elif sys.argv[1:2] == ["kept"]:  # kept <ink.png> <colour.png>
+        k = ink_kept(np.asarray(Image.open(sys.argv[2]).convert("RGB")), np.asarray(Image.open(sys.argv[3]).convert("RGB")))
+        print(json.dumps({"ink_kept": round(k, 3), "ok": k >= INK_KEPT_MIN}))
     elif sys.argv[1:2] == ["rank"]:
         print(json.dumps(rank(Path(sys.argv[2]), [Path(p) for p in sys.argv[3:]]), indent=1))
     else:

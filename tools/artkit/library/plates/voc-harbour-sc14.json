@@ -1,0 +1,36 @@
+{
+ "bundle": "nl-golden-age",
+ "out": "plate_voc-harbour-sc14.png",
+ "lesson": "voc sc14: Amsterdam harbour (bg-city: quay, ships, water), barrels + crates on the quay, a linden",
+ "set": {
+  "sky": "sky-summer-01",
+  "horizon": "auto",
+  "layers": [
+   {
+    "asset": "bg-city-01",
+    "depth": "bg",
+    "x": 0.5
+   },
+   {
+    "asset": "tree-linden-01",
+    "depth": "fg",
+    "x": 0.9,
+    "scale": 0.5,
+    "src": "nl-golden-age/fg-trees/cut_t/tree-linden-01.png",
+    "height_m": 16
+   },
+   {
+    "asset": "barrels-01",
+    "depth": "fg",
+    "x": 0.2
+   },
+   {
+    "asset": "crates-01",
+    "depth": "fg",
+    "x": 0.33
+   }
+  ],
+  "ground": "ground-dune-sand-01",
+  "land_target": 0.2
+ }
+}

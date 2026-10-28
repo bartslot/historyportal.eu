@@ -85,14 +85,14 @@ def place(canvas: Image.Image, im: Image.Image, depth: str, x: float, scale: flo
 LAND_TARGET = 0.42  # PM: horizon ~0.40-0.45 of the frame, sky <= 40 %
 
 
-def auto_horizon(lib_dir: Path, a: dict, order: int = 0) -> float:
+def auto_horizon(lib_dir: Path, a: dict, order: int = 0, target: float = LAND_TARGET) -> float:
     """set.horizon (metres the bg stands higher; negative = lower) that puts the bg strip's land top at LAND_TARGET."""
-    al = np.asarray(Image.open(lib_dir / a["file"]).convert("RGBA"))[..., 3]
+    al = np.asarray(Image.open(lib_dir / a["file"] if not Path(a["file"]).is_absolute() else Path(a["file"])).convert("RGBA"))[..., 3]
     rows = np.nonzero((al > 128).mean(1) > 0.5)[0]  # first row where most of the width is land
     top_frac = rows[0] / al.shape[0] if len(rows) else 0.0
     z = DEPTH_Z["bg"] - order * SAME_DEPTH_STEP_M
     land_top_m = a["height_m"] * (1 - top_frac)  # metres above the strip's bottom
-    want_y = EYE + (CY - LAND_TARGET * H) * z / F  # world height that projects to the target row
+    want_y = EYE + (CY - target * H) * z / F  # world height that projects to the target row
     return round(want_y - land_top_m, 1)
 
 
@@ -101,6 +101,11 @@ def plate(spec: dict) -> dict:
     lib = json.loads((lib_dir / "library.json").read_text())
     by = {a["id"]: a for a in lib["assets"]}
     s = spec["set"]
+    for l in s["layers"]:  # a candidate not shipped yet (the plate is its gate): {"asset", "src": cut png, "height_m"}
+        if l.get("src"):
+            im = Image.open(LIB / "_work" / l["src"])
+            by[l["asset"]] = {"id": l["asset"], "layer": l["depth"], "height_m": l["height_m"], "w": im.width,
+                              "h": im.height, "file": str(LIB / "_work" / l["src"])}
     ids = [s["sky"], s.get("ground")] + [l["asset"] for l in s["layers"]]
     missing = [i for i in ids if i and i not in by]
     if missing:
@@ -115,13 +120,14 @@ def plate(spec: dict) -> dict:
     canvas = Image.fromarray(canvas_arr)
     if s.get("horizon") == "auto":
         bgs = [l for l in s["layers"] if l["depth"] == "bg"]
-        s = {**s, "horizon": auto_horizon(lib_dir, by[bgs[-1]["asset"]], len(bgs) - 1) if bgs else 0.0}
+        s = {**s, "horizon": auto_horizon(lib_dir, by[bgs[0]["asset"]], 0, s.get("land_target", LAND_TARGET))
+             if bgs else 0.0}  # the first bg is the landscape; later bg layers (a far ship) stand on it
     order = {d: 0 for d in DEPTH_Z}
     cover = np.zeros((H, W), bool)
     for l in sorted(s["layers"], key=lambda l: -DEPTH_Z[l["depth"]]):
         a = by[l["asset"]]
         before = np.asarray(canvas)[..., :3].copy()
-        place(canvas, Image.open(lib_dir / a["file"]).convert("RGBA"), l["depth"], l.get("x", 0.5), l.get("scale", 1),
+        place(canvas, Image.open(lib_dir / a["file"] if not Path(a["file"]).is_absolute() else Path(a["file"])).convert("RGBA"), l["depth"], l.get("x", 0.5), l.get("scale", 1),
               order[l["depth"]], s.get("horizon", 0.0), a)
         cover |= (np.asarray(canvas)[..., :3] != before).any(-1)
         order[l["depth"]] += 1

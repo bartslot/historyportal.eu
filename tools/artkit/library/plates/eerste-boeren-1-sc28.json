@@ -1,0 +1,29 @@
+{
+ "bundle": "near-east-neolithic",
+ "out": "plate_eerste-boeren-1-sc28.png",
+ "lesson": "eerste-boeren-1 sc28: dry hills, sunken round hut, sown field, fire (sown field = the ground tile; a near strip cannot stand as a plane)",
+ "set": {
+  "sky": "sky-morning-02",
+  "horizon": "auto",
+  "layers": [
+   {
+    "asset": "hills-dry-01",
+    "depth": "bg",
+    "x": 0.5
+   },
+   {
+    "asset": "hut-sunken-01",
+    "depth": "mid",
+    "x": 0.4
+   },
+   {
+    "asset": "fire-small-01",
+    "depth": "mid",
+    "x": 0.55,
+    "scale": 0.5
+   }
+  ],
+  "ground": "ground-field-irrigated-01",
+  "land_target": 0.38
+ }
+}
