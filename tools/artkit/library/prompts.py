@@ -273,9 +273,9 @@ WEAVE_COLOUR_FIX = (
 # The three gaps the independent checker measured against the references (2026-10-27). Part of every colour pass.
 STYLE_GAPS = (
     "Match the references' paper and paint: visible cold-press paper tooth in every wash, uneven washes with soft "
-    "blooms, backruns and light granulation, never flat even fills. Keep the outer contour bold and slightly broken "
-    "and do not add interior detail lines. Use the references' wider, warmer palette: clear saturated sky blues, warm "
-    "sandstone and ochre, and confident local colour, with generous paper white left on the lit sides."
+    "blooms, backruns and light granulation, never flat even fills. Keep the outer contour thin-to-medium and broken "
+    "and do not add interior detail lines. Use the references' palette: soft sky blues, warm "
+    "sandstone and ochre, muted local colour, with generous paper white left on the lit sides."
 )
 
 
