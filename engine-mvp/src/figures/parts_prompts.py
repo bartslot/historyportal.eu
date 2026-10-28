@@ -127,10 +127,9 @@ def pose_ink_prompt(cid: str, view: str, sheet: str) -> str:
         poses = " ".join(f"({i + 1}) {p};" for i, p in enumerate(POSE_SHEETS[sheet]))
         body = (f"A sheet of FOUR full figures of the same character on pure flat white paper, in one row from left to right, "
                 f"all at the SAME scale and standing on the same baseline, each separate with wide white space, never touching. "
-                f"The character: {desc}. All drawn in {v}. WITHOUT THE HEAD: each figure ends at the top of the neck in a clean "
-                f"straight cut at the collar line (the heads are drawn on another sheet). The poses: {poses} "
-                f"{GROUND_TUFT} No labels, no text, no numbers.")
-    return " ".join(" ".join([body, FIGURE_INK, STYLISED_FACE if sheet == "H" else "", "Realistic adult proportions, 7.5 heads tall."]).split())
+                f"The character: {desc}. All drawn in {v}, each WITH the head, a calm neutral face. The poses: {poses} "
+                f"The bare feet stand directly on the white paper: no grass, no ground, no shadow. No labels, no text, no numbers.")
+    return " ".join(" ".join([body, FIGURE_INK, STYLISED_FACE, "Realistic adult proportions, 7.5 heads tall."]).split())
 
 
 def pose_colour_prompt(cid: str) -> str:

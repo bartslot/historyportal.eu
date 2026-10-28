@@ -24,6 +24,7 @@ SLOTS = {"A": ["stand", "walk1", "walk2", "walk3"], "B": ["point", "carry", "kne
 TUFT_BAND = 0.12  # the tuft lies in the bottom share of a figure
 TUFT_A = -3       # Lab a* under this is the grass's green
 BODY_POCKET_PX = 60  # a body painting: paper between the feet, an arm and the dress is background (a head keeps eye whites)
+FULL_M = 1.70    # feet to crown, standing, painted with the head
 NECK_M = 1.41    # feet to the base of the neck, standing, for a 1.70 m figure
 HEAD_M = 0.27    # crown to the base of the neck
 COLLAR_FLARE = 1.3  # the outline this much wider than the neck is the collar
@@ -65,6 +66,7 @@ def main():
     ap.add_argument("sheet")
     ap.add_argument("out")
     ap.add_argument("--sheet", dest="which", required=True, choices=SLOTS)
+    ap.add_argument("--head-on", action="store_true", help="the figures are painted with their heads (no head swap)")
     a = ap.parse_args()
     rgb = np.asarray(Image.open(a.sheet).convert("RGB"))
     alpha = alpha_of(rgb, None if a.which == "H" else BODY_POCKET_PX)
@@ -119,10 +121,12 @@ def main():
                 manifest["skin_lab"] = [round(float(v), 1) for v in lab_of(img[int(h * 0.35):int(h * 0.55), int(w * 0.35):int(w * 0.65)].reshape(-1, 3)).mean(0)]
         else:
             neck, feet = neck_point(m), feet_point(m)
-            if scale is None:  # the first figure of a sheet stands: its feet-to-neck sets the sheet's scale
-                scale = NECK_M / float(feet[1] - neck[1])
+            if scale is None:  # the first figure of a sheet stands: its feet-to-neck (or crown) sets the sheet's scale
+                scale = (FULL_M if a.head_on else NECK_M) / float(feet[1] - neck[1])
             entry.update(neck=[round(float(neck[0]), 1), round(float(neck[1]), 1)],
                          feet=[round(float(feet[0]), 1), round(float(feet[1]), 1)], m_per_px=round(scale, 6))
+            if a.head_on:
+                entry["head_on"] = True
             skin = np.array(manifest["skin_lab"]) if "skin_lab" in manifest else None
             mask, regions = dye_mask(img, al, skin)
             if regions:

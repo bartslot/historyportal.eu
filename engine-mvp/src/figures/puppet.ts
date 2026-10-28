@@ -349,7 +349,7 @@ export type Seat = { url: string; aspect: number } // a library asset's image an
 
 // --- round 4 (PM option A): whole-figure POSE paintings, one per pose (cut_poses.py -> <view>/poses.json); the cut-out
 // parts stay for what has no painting (front, other characters) and the head swap; the hat part sits on the head
-type Sprite = Part & { neck: P2; feet: P2 }
+type Sprite = Part & { neck: P2; feet: P2; head_on?: boolean }
 type PoseSheet = { poses: Record<string, Sprite>; heads: Record<string, Part & { crown: P2 }> }
 const SPRITE_VIEWS: View[] = ['34', 'side']
 const WALK_FRAMES = ['walk1', 'walk2', 'walk3', 'walk2']
@@ -418,6 +418,13 @@ export async function createPuppet(scene: Scene, id: string, opts: PuppetOptions
     put(body, (px) => [(px[0] - sp.feet[0]) * s, -(px[1] - sp.feet[1]) * s * breathe], 0)
     body.size = [sp.w * s, sp.h * s]
     body.mat.setFloat('inkAbove', 1 - (sp.neck[1] + NECK_CUT_PX) / sp.h) // the neck stump is a cut: the head covers it
+    const shown = new Set<PartMesh>([body])
+    if (sp.head_on) { // painted with its head: no head swap, no seam (expressions are face decals, not yet painted)
+      for (const set of [...Object.values(sprites), ...VIEWS.map((x) => meshes[x])]) for (const pm of Object.values(set)) pm.mesh.setEnabled(shown.has(pm))
+      for (const h of Object.values(hats)) h.mesh.setEnabled(false)
+      state.seat?.mesh.setEnabled(false)
+      return
+    }
     const neck: P2 = [(sp.neck[0] - sp.feet[0]) * s, -(sp.neck[1] - sp.feet[1]) * s * breathe - PUPPET.headSink * k]
     const headSlot = `head_${state.expr}`, hp = ps.heads[headSlot] ?? ps.heads.head_neutral
     const hs = hp.m_per_px * k, step = PUPPET.zStep * Math.max(1, state.dist / 10)
@@ -425,7 +432,7 @@ export async function createPuppet(scene: Scene, id: string, opts: PuppetOptions
     put(head, (px) => add(neck, [(px[0] - hp.pivot[0]) * hs, -(px[1] - hp.pivot[1]) * hs]), -step)
     head.size = [hp.w * hs, hp.h * hs]
     head.mat.setFloat('inkBelow', 1 - (hp.pivot[1] - 2) / hp.h) // the neck cut joins the body: no contour there
-    const shown = new Set<PartMesh>([body, head])
+    shown.add(head)
     const hat = hats[v], hatPart = sheets[v].parts.hat
     if (hat && hatPart && state.hat) {
       const crown = add(neck, [(hp.crown[0] - hp.pivot[0]) * hs, -(hp.crown[1] - hp.pivot[1]) * hs])

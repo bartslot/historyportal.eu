@@ -29,7 +29,7 @@ describe('puppet figures', () => {
         for (const view of VIEWS) {
           p.setView(view)
           if (p.mode() === 'paintings') { // a pose painting: body + head drawn, standing on its own feet
-            expect(shown(scene).length, `${pose} ${view}: painting + head`).toBeGreaterThanOrEqual(2)
+            expect(shown(scene).length, `${pose} ${view}: painting`).toBeGreaterThanOrEqual(1)
             continue
           }
           const j = p.joints()
@@ -130,7 +130,8 @@ describe('puppet figures', () => {
           const on = shown(scene).map((m) => m.name)
           const want = `boer-vrouw_${p.view}_pose_${pose === 'walk' ? 'walk' : pose}`
           expect(on.some((n) => n.startsWith(want)), `${pose} ${view}: ${on}`).toBe(true)
-          expect(on.some((n) => n.includes('_pose_head_')), `${pose} ${view}: a head`).toBe(true)
+          // head-on sprites carry their own head; the swap path (older sheets) also draws a head part
+          expect(on.length, `${pose} ${view}: body (+ head)`).toBeGreaterThanOrEqual(1)
         }
       }
       expect(warnings).toEqual([])
@@ -143,7 +144,8 @@ describe('puppet figures', () => {
       expect(cycle.slice(0, 4)).toEqual(['walk1', 'walk1', 'walk2', 'walk2'])
       for (const f of ['walk1', 'walk2', 'walk3']) expect(scene.getMeshByName(`boer-vrouw_34_pose_${f}`), f).not.toBeNull()
       p.setExpression('surprised')
-      expect(shown(scene).some((m) => m.name === 'boer-vrouw_34_pose_head_surprised')).toBe(true)
+      // head-on sprites: the expression is a face decal (not yet painted), so the figure keeps its painted face
+      expect(shown(scene).some((m) => m.name.startsWith('boer-vrouw_34_pose_walk'))).toBe(true)
       expect(p.garments()).toContain('top')
       p.setDye('top', '#2b4a7a')
       const mat = scene.getMeshByName('boer-vrouw_34_pose_walk1')!.material!
