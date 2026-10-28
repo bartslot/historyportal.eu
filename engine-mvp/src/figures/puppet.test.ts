@@ -1,7 +1,7 @@
 // Through the real entry point (createPuppet, warnings on), on the real cut parts in public/figures/puppets.
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { NullEngine, Scene, Vector3, type Mesh } from '@babylonjs/core'
+import { FreeCamera, NullEngine, Scene, Vector3, type Mesh } from '@babylonjs/core'
 import { afterEach, describe, expect, it } from 'vitest'
 import { CHARACTERS, POSES, POSE_NAMES, VIEWS, createPuppet, placePuppet, seatFrom, spriteOf, PUPPET, violations, FRONT_POSES, GUARD_TOL, type Angles, type PuppetPose } from './puppet'
 
@@ -199,5 +199,26 @@ describe('puppet figures', () => {
         expect(e.edge_fringe, `${id} ${view} ${slot}`).toBeLessThan(0.03) // the fde8a591 assets measure 0.29-0.48 (mean 0.36)
       }
     }
+  })
+
+  it("a placed figure takes the stage's own line by depth and paper (S1's values, every frame)", async () => {
+    const { p, scene } = await make('boer-vrouw')
+    new FreeCamera('cam', new Vector3(0, 1.6, -1), scene)
+    const asked: string[] = []
+    const stage = {
+      ...STAGE,
+      depthLine: (d: string) => { asked.push(d); return { fade: 0.2, thin: 0.4, haze: 0.06, brown: 0.6, ink: 1, norm: 1, tint: [0.9, 0.92, 0.95] as [number, number, number] } },
+      paper: () => ({ paper: 1, grain: 0.7, patches: 0.5, wash: 0.12, washColour: [0.98, 0.95, 0.9] as [number, number, number] }),
+      sunDir: new Vector3(-0.4, -1, 0.6).normalize(),
+    }
+    placePuppet(p, { x: 0.5, depth: 'mid', facing: 'right' }, stage)
+    scene.render()
+    expect(asked).toContain('mid')
+    const body = scene.getMeshByName('boer-vrouw_34_pose_stand')!
+    const floats = (body.material as unknown as { _floats: Record<string, number> })._floats
+    expect(floats.haze).toBeCloseTo(0.06)
+    expect(floats.lineBrown).toBeCloseTo(0.6)
+    expect(floats.grain).toBeCloseTo(0.7)
+    expect(scene.getMeshByName('stain-cast:boer-vrouw')).not.toBeNull()
   })
 })
