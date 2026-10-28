@@ -55,7 +55,9 @@
                     <span class="text-primary font-semibold">{{ __($label) }}</span>
                 </div>
             @else
-                <div class="flex items-center gap-2 opacity-40 cursor-not-allowed" title="{{ __('Not yet available') }}">
+                {{-- Inactive: the circle is quiet and the label keeps full contrast. Opacity on the whole
+                     step took the label to ~2.2:1 (re-check, 2026-10-28). --}}
+                <div class="flex items-center gap-2 cursor-not-allowed" title="{{ __('Not yet available') }}">
                     <span class="w-7 h-7 rounded-full flex items-center justify-center font-semibold bg-slate-800 text-panel-hint">{{ $n }}</span>
                     <span class="hidden sm:inline text-panel-hint">{{ __($label) }}</span>
                 </div>

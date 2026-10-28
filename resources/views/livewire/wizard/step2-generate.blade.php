@@ -214,7 +214,7 @@ $machineState = $isFailed ? 'error' : ($isStalled ? 'stalled' : ($isDone ? 'read
                                 'text-panel-hint' => $task['state'] === 'done',
                                 'text-panel-hint' => $task['state'] === 'pending',
                             ])>{{ $task['label'] }}</p>
-                            <p class="mt-0.5 text-xs leading-5 text-panel-hint">{{ $task['detail'] }}</p>
+                            <p class="mt-0.5 text-prose leading-5 text-panel-hint">{{ $task['detail'] }}</p>
                         </div>
                     </li>
                 @endforeach

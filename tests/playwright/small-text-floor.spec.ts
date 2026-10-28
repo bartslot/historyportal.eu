@@ -134,6 +134,10 @@ const STATES: State[] = [
 ];
 
 test.describe('Small-text floor and contrast', () => {
+  // Serial, so the matrix does not flake on a shared dev server under two workers. Three tests
+  // failed on a 2-worker run and passed alone (re-check, 2026-10-28).
+  test.describe.configure({ mode: 'serial' });
+
   for (const viewport of VIEWPORTS) {
     test.describe(`at ${viewport.name}`, () => {
       test.use({ viewport: { width: viewport.width, height: viewport.height } });
