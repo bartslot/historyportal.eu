@@ -5,7 +5,8 @@
 import { mkdirSync } from 'node:fs'
 import { chromium } from '/Users/bartslot/BartsAutomation/BartsDev/apps/historyportal.eu/node_modules/playwright/index.mjs'
 
-const [base = 'http://localhost:5291', out = '.', lessonId = 'eerste-boeren-1', stepArg = '10'] = process.argv.slice(2)
+const [base = 'http://localhost:5291', out = '.', lessonId = 'hunebedden', stepArg = '10', size = '1280x720'] = process.argv.slice(2)
+const [VW, VH] = size.split('x').map(Number)
 const STEP = Number(stepArg)
 mkdirSync(`${out}/frames`, { recursive: true })
 const SILENT = () => {
@@ -16,7 +17,7 @@ const SILENT = () => {
 }
 
 const browser = await chromium.launch({ args: ['--mute-audio', '--use-gl=angle'] })
-const page = await browser.newPage({ viewport: { width: 1280, height: 720 } })
+const page = await browser.newPage({ viewport: { width: VW, height: VH } })
 await page.addInitScript(SILENT)
 const errors = [], warnings = [], failed = []
 page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); if (m.type() === 'warning') warnings.push(m.text()) })
@@ -58,23 +59,86 @@ const kinds = await page.evaluate(() => {
   return out
 })
 const cardRuns = []
+/** Is everything the teacher needs inside the card's visible area (not under a scroll fold)? */
+const fit = () => page.evaluate(() => {
+  const card = document.querySelector('[data-testid=card] section'), r = card.getBoundingClientRect()
+  const inView = (el) => {
+    const b = el.getBoundingClientRect()
+    let p = el.parentElement, clip = r
+    while (p && p !== card.parentElement) { const s = getComputedStyle(p); if (/(auto|scroll|hidden)/.test(s.overflowY)) { const q = p.getBoundingClientRect(); clip = { top: Math.max(clip.top, q.top), bottom: Math.min(clip.bottom, q.bottom) } } p = p.parentElement }
+    return b.top >= clip.top - 1 && b.bottom <= clip.bottom + 1
+  }
+  const opts = [...card.querySelectorAll('[data-testid=options] > *')]
+  const buttons = [...card.querySelectorAll('footer button')]
+  // anything inside the card that would need scrolling (the PM: everything fits without scroll)
+  const scrolls = [...card.querySelectorAll('*'), card].some((el) => /(auto|scroll)/.test(getComputedStyle(el).overflowY) && el.scrollHeight > el.clientHeight + 1)
+  // every element holding text, against EVERY clipping ancestor (hidden too: that is how a card clips)
+  const clippedBy = (el) => {
+    const b = el.getBoundingClientRect()
+    for (let p = el.parentElement; p && p !== card.parentElement; p = p.parentElement) {
+      if (getComputedStyle(p).overflowY === 'visible') continue
+      const q = p.getBoundingClientRect()
+      if (b.top < q.top - 1 || b.bottom > q.bottom + 1) return true
+    }
+    return false
+  }
+  const texts = [...card.querySelectorAll('*')].filter((el) => [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()))
+  const clippedText = texts.filter(clippedBy).map((el) => el.textContent.trim().slice(0, 40))
+  return { options: opts.length, optionsVisible: opts.filter(inView).length, footer: buttons.map((b) => b.textContent), footerVisible: buttons.every(inView), scrolls, clippedText, titlePx: parseFloat(getComputedStyle(card.querySelector('h2')).fontSize) }
+})
 for (const k of kinds) {
   await page.evaluate(async ({ i, hold }) => { const p = window.__play; p.player.pause(); await p.player.seek(i, Math.max(0, hold - 1)); p.player.play() }, k)
   await page.waitForSelector('[data-testid=card]', { timeout: 10000 })
   const held = await page.evaluate(() => ({ mode: window.__play.player.scene().mode, t: window.__play.player.scene().t, clock: window.__play.player.clock(), held: window.__play.sound.state().held }))
   await page.locator('#wrap').screenshot({ path: `${out}/card-${k.kind}.png` })
+  const fits = await fit()
   const card = page.locator('[data-testid=card]')
-  if (k.kind === 'meter') { for (const b of await card.locator('.flex-wrap button').all()) await b.click() }
-  else if (['answer', 'choose', 'vote'].includes(k.kind)) await card.locator('.grid button').first().click()
+  if (k.kind === 'meter') { for (const b of await card.locator('[data-testid=options] button').all()) await b.click() }
+  else if (['answer', 'choose', 'vote'].includes(k.kind)) await card.locator('[data-testid=options] button').first().click()
   else await card.locator('button.btn-primary').first().click()
   await page.waitForTimeout(400)
   await page.locator('#wrap').screenshot({ path: `${out}/card-${k.kind}-after.png` })
+  const fitsAfter = await fit()
   await card.locator('footer button.btn-primary').click()
   await page.waitForSelector('[data-testid=card]', { state: 'detached', timeout: 5000 })
   await page.waitForTimeout(500)
   const after = await page.evaluate(() => ({ mode: window.__play.player.scene().mode, index: window.__play.player.scene().index, held: window.__play.sound.state().held }))
-  cardRuns.push({ ...k, held, after })
+  cardRuns.push({ ...k, held, after, fits, fitsAfter })
 }
+// the kinds no vault lesson has yet (sort, vote, team): three of the lesson's own interaction scenes are
+// given those cards IN MEMORY (the vault is not touched), then played into again (a card plays once per entry)
+const extra = await page.evaluate(() => {
+  const p = window.__play, ids = p.lesson.scenes.map((s, i) => (s.interaction && s.interaction.type !== 'power-meter' ? i : -1)).filter((i) => i >= 0)
+  const make = [
+    ['sort', { type: 'quiz', format: 'sort', question: 'Zet de bouw van een hunebed in de goede volgorde.', options: ['Stenen slepen', 'Draagstenen rechtop zetten', 'Deksteen erop', 'Zand eromheen'], correct: [0, 1, 2, 3], explain: 'Eerst de draagstenen, dan pas de deksteen.' }],
+    ['vote', { type: 'choice', format: 'vote', prompt: 'Zou jij een hunebed willen bouwen?', options: [{ text: 'Ja, samen lukt het.', outcome: 'Met veel mensen en boomstammen kon het.' }, { text: 'Nee, te zwaar.', outcome: 'Het was ook zwaar werk, maanden lang.' }] }],
+    ['team', { type: 'quiz', format: 'team', question: 'Teken in je groepje hoe de deksteen omhoog kwam.', options: [], correct: null, explain: 'Een oprit van zand en rollen van boomstammen.', class_action_s: 90 }],
+    ['answer-6', { type: 'quiz', format: 'mc', question: 'Welke spullen vind je terug in een hunebed?', options: ['Potten van klei', 'Bijlen van vuursteen', 'Kralen van barnsteen', 'Een zwaard van ijzer', 'Munten van zilver', 'Een glazen fles'], correct: [0, 1, 2], bloom: 1, explain: 'Potten, bijlen en kralen hebben archeologen in veel hunebedden gevonden. IJzer, munten en glas kwamen pas duizenden jaren later. Daarom vind je die niet in een hunebed.' }],
+    // real lengths (checker L5): the vault's p90 question (~180 chars) and its longest explanation (~283)
+    ['answer-long', { type: 'quiz', format: 'mc', question: 'Titia vindt onder de stenen van het hunebed botten, as en scherven van potten. Ze vraagt zich af wat dit voor een plek was. Wat weet ze nu zeker, denk je?', options: ['Hier zijn mensen begraven: het is een graf.', 'Hier stond vroeger een huis met een haard.', 'Hier hebben reuzen gewoond.', 'Deze stenen komen uit Scandinavië.'], correct: 0, bloom: 2, explain: 'Botten en as van mensen, met potten en bijlen ernaast: zo begroeven boeren hun doden, vaak in de loop van vele jaren in hetzelfde hunebed. Een huis had een haard en afval van eten, geen botten van mensen. En de reuzen uit oude verhalen bestonden niet: mensen bouwden het zelf, samen.' }],
+    ['choose-long', { type: 'choice', prompt: 'Wat geeft het meisje aan opa mee in zijn graf?', options: [{ text: 'Haar eigen trechterbeker', outcome: 'Ze zet haar beker naast opa. Zulke potten zijn later in bijna elk hunebed gevonden, soms tientallen in één graf. Wat dit meisje gaf, weet niemand: zij is verzonnen, maar de potten zijn echt en je kunt ze in het museum in Borger zien.' }, { text: 'Opa\'s bijl van vuursteen', outcome: 'Kort.' }] }],
+  ]
+  window.__extraCards = make
+  return make.map(([kind], k) => { const i = ids[k % ids.length], s = p.lesson.scenes[i]; return { i, k, id: s.id, kind, hold: s.dur_s - 0.15 } })
+})
+for (const k of extra) {
+  // the card is set right before its run: one scene can carry several test cards in turn (a card plays once per entry)
+  await page.evaluate(async ({ i, k, hold }) => { const p = window.__play; p.player.pause(); p.lesson.scenes[i].interaction = window.__extraCards[k][1]; await p.player.seek(i, Math.max(0, hold - 1)); p.player.play() }, k)
+  await page.waitForSelector('[data-testid=card]', { timeout: 10000 })
+  await page.locator('#wrap').screenshot({ path: `${out}/card-${k.kind}.png` })
+  const fits = await fit()
+  const card = page.locator('[data-testid=card]')
+  if (k.kind === 'vote' || k.kind === 'choose-long') await card.locator('[data-testid=options] button').first().click()
+  else if (k.kind === 'answer-6' || k.kind === 'answer-long') await card.locator('[data-testid=options] button').last().click() // a WRONG pick: two options stay
+  else await card.locator('button.btn-primary').first().click()
+  await page.waitForTimeout(400)
+  await page.locator('#wrap').screenshot({ path: `${out}/card-${k.kind}-after.png` })
+  const fitsAfter = await fit()
+  await card.locator('footer button.btn-primary').click()
+  await page.waitForSelector('[data-testid=card]', { state: 'detached', timeout: 5000 })
+  cardRuns.push({ ...k, extra: true, fits, fitsAfter })
+}
+
 const cardLog = await page.evaluate(() => window.__play.cards.log.map((l) => `${l.scene}:${l.what}`))
 const soundKinds = await page.evaluate(() => window.__play.sound.log.filter((l) => ['hold', 'release', 'hit'].includes(l.ev.kind)).map((l) => `${l.ev.kind}${l.ev.id ? ':' + l.ev.id : ''}`))
 

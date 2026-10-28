@@ -6,13 +6,14 @@
 import '../globals'                    // the engine modules read Babylon from window.BABYLON
 import '../engine/look-shaders.js'
 import {
-  Color3, Color4, Engine, HemisphericLight, DirectionalLight, MeshBuilder, Scene as BScene, StandardMaterial,
-  UniversalCamera, Vector3, type Mesh,
+  Color4, Engine, HemisphericLight, DirectionalLight, Scene as BScene, UniversalCamera, Vector3,
 } from '@babylonjs/core'
 import { createLookChain, PRESETS } from '../engine/look-chain.js'
 import { libraryUrlFor, loadLibrary, resolveAsset } from './library'
-import { ADAPT_STALL_MS, ADAPT_WINDOW_MS, breathe, cameraAt, nextTier, shotAt, TIER0, type Tier, DEPTH_Z, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
-import { loadPremultiplied, makeLayer, type LayerHandle } from './layer'
+import { ADAPT_STALL_MS, ADAPT_WINDOW_MS, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
+import { edgeColours, loadPremultiplied, makeLayer, type LayerHandle } from './layer'
+import { BG_FEATHER, GROUND_TILE_M, hexRgb, PAPER as PAPER_HEX, resolveGround, STAIN_DEFAULT, stainSize } from './ground'
+import { makeGround, makeStain, type GroundLook } from './ground-gl'
 import { LessonDoc } from './edits'
 import { Timeline, type InteractionHandler, type Mode } from './timeline'
 import type { Asset, Depth, Lesson, Library, Scene, SceneLayer } from './types'
@@ -20,23 +21,29 @@ import type { Asset, Depth, Lesson, Library, Scene, SceneLayer } from './types'
 /** The stage's own look: History Lines pencil lines on 3D edges, a light paper grain over everything. */
 export const STAGE_LOOK: Record<string, number | string> = { ...PRESETS['History Lines pencil'], paper: 0.35, granulation: 0.2 }
 const PAPER = new Color4(0.937, 0.914, 0.863, 1)
-const GROUND = '#a3a27a'
-
-interface Built { layer: SceneLayer; index: number; builtScale: number; handle: LayerHandle; asset: Asset; order: number }  // index -1 = the sky
+type Stain = ReturnType<typeof makeStain>
+interface Built { layer: SceneLayer; index: number; builtScale: number; handle: LayerHandle; asset: Asset; order: number; stain?: Stain }  // index -1 = the sky
+/** How far the paper wash floor is tinted toward the far landscape's own ground colour */
+const GROUND_WASH = 0.7
+const mix3 = (a: number[], b: number[], k: number) => a.map((v, i) => v + (b[i] - v) * k) as [number, number, number]
 
 export class Stage {
   readonly engine: Engine
   readonly scene: BScene
   readonly camera: UniversalCamera
-  private ground: Mesh
+  private ground: ReturnType<typeof makeGround>
   private built: Built[] = []
+  /** the colour the floor fades into at the horizon; far strips paint their lower edge into it */
+  private horizonTint: [number, number, number] = hexRgb(PAPER_HEX)
+  /** the library the scene on screen was built from (its own bundle, else the lesson's) */
+  sceneLib: Library & { base: string }
   private buildToken = 0
   private look: Record<string, number | string> = { ...STAGE_LOOK }
   /** per scene: needs no asset matched, and assets whose file did not load (feeds needed_assets) */
   private missed = new Map<string, { need: unknown; reason: string }[]>()
   get misses() { return [...this.missed].flatMap(([scene, list]) => list.map((m) => ({ scene, ...m }))) }
 
-  constructor(readonly canvas: HTMLCanvasElement, private lib: Library & { base: string }) {
+  constructor(readonly canvas: HTMLCanvasElement, readonly lib: Library & { base: string }) {
     this.engine = new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true }, true) // device pixels: crisp
     this.scene = new BScene(this.engine)
     this.scene.clearColor = PAPER
@@ -47,13 +54,9 @@ export class Stage {
     // light for 3D figures (S3); the painted layers are unlit
     new HemisphericLight('sky', new Vector3(0, 1, 0), this.scene).intensity = 0.7
     new DirectionalLight('sun', new Vector3(-0.4, -1, 0.6), this.scene).intensity = 1.2
-    this.ground = MeshBuilder.CreateGround('ground', { width: 2400, height: 2400 }, this.scene)
-    const gm = new StandardMaterial('ground', this.scene)
-    gm.disableLighting = true
-    gm.emissiveColor = Color3.FromHexString(GROUND)
-    this.ground.material = gm
-    this.ground.metadata = { noGBuffer: true }
-    this.ground.isPickable = false
+    this.sceneLib = lib
+    this.ground = makeGround(this.scene)
+    this.ground.set(this.groundLook(null, null, lib))
     createLookChain(this.scene, this.camera, {
       num: (k: string) => Number(this.look[k] ?? 0),
       inkColor: () => String(this.look.inkColor ?? 'pencil'),
@@ -127,23 +130,55 @@ export class Stage {
       let tex
       try { tex = await loadPremultiplied(lib.base + asset.file, this.scene) } catch { misses.push({ need: layer.need ?? layer.asset, reason: `file did not load: ${asset.file}` }); return }
       if (token !== this.buildToken) return
-      const p = placeLayer(asset, layer, order)
+      const p = placeLayer(asset, layer, order, s.set.horizon ?? 0)
       const handle = makeLayer(asset, tex, p.w, p.h, p.uRepeat, this.scene)
       handle.mesh.position.set(p.x, p.y, p.z)
       handle.mesh.alphaIndex = p.alphaIndex
       handle.mesh.isVisible = false
-      next.push({ layer, index, builtScale: layer.scale ?? 1, handle, asset, order })
+      // a contact stain on the ground under standing things (not under far strips or floating sky props)
+      let stain: Stain | undefined
+      if ((layer.depth === 'mid' || layer.depth === 'fg') && !asset.tileable_x) {
+        const sz = stainSize(asset, p.w, p.h, p.z)
+        stain = makeStain(handle.mesh, sz.w, sz.d, this.scene)
+        stain.mesh.alphaIndex = stainIndex(p.alphaIndex)
+      }
+      next.push({ layer, index, builtScale: layer.scale ?? 1, handle, asset, order, stain })
     }))
+    // the floor: the scene's ground art (or the bundle paper), fading into where the far landscape ends
+    const choice = resolveGround(s.set, lib)
+    let groundTex = null
+    if (choice.kind === 'asset') {
+      try { groundTex = await loadPremultiplied(lib.base + choice.asset.file, this.scene) } catch { misses.push({ need: s.set.ground ?? 'ground', reason: `file did not load: ${choice.asset.file}` }) }
+    } else if (choice.reason) misses.push({ need: s.set.ground, reason: choice.reason })
+    const far = next.find((b) => b.layer.depth === 'bg')
+    const tint = far ? edgeColours.get(lib.base + far.asset.file) ?? null : null
+    const dispose = (list: Built[]) => list.forEach((b) => { b.stain?.mesh.material?.dispose(); b.handle.mesh.dispose(); b.handle.material.dispose() })
     if (token !== this.buildToken) {   // a newer build won: this one never shows
-      next.forEach((b) => { b.handle.mesh.dispose(); b.handle.material.dispose() })
+      dispose(next)
       return
     }
-    this.built.forEach((b) => { b.handle.mesh.dispose(); b.handle.material.dispose() })
+    dispose(this.built)
     this.built = next
-    ;(this.ground.material as StandardMaterial).emissiveColor = Color3.FromHexString(s.set.ground ?? GROUND)
+    this.sceneLib = lib
+    const look = this.groundLook(choice.kind === 'asset' ? { tex: groundTex, asset: choice.asset } : null, tint, lib, choice.kind === 'paper' ? choice.colour : undefined)
+    this.horizonTint = look.tint
+    this.ground.set(look)
     this.missed.set(s.id, misses)   // replaced per scene: a rebuild never doubles them
     if (misses.length) {
       console.warn(`stage25d: ${s.id}: missing`, misses)
+    }
+  }
+
+  /** The floor's look: art tiled in world metres (or a paper wash), fading toward the far landscape into the colour
+   *  that landscape's own ground is painted in. The wash is mostly that colour already: perspective squeezes the far
+   *  half of the floor into a thin line, so a pale floor fading to a dark horizon reads as a band. */
+  private groundLook(art: { tex: GroundLook['tex']; asset: Asset } | null, tint: [number, number, number] | null, lib: Library, wash?: string): GroundLook {
+    const paper = hexRgb(wash ?? lib.paper ?? PAPER_HEX)
+    const horizon = tint ?? paper
+    return {
+      tex: art?.tex ?? null, tile: art?.asset.height_m || GROUND_TILE_M,
+      base: mix3(paper, horizon, GROUND_WASH), tint: horizon,
+      fadeNear: DEPTH_Z.fg, fadeFar: DEPTH_Z.bg * 0.75, grain: art?.tex ? 0.5 : 1,   // flat tint before the strip: no step at its edge
     }
   }
 
@@ -159,12 +194,16 @@ export class Stage {
     const c = hold ? breathe(end, hold.t, hold) : end   // a held frame breathes around where the shot ended
     this.camera.position.set(c.x, c.y, c.z)
     this.camera.fov = c.fov
+    this.ground.follow(this.camera.position)
     for (const b of this.built) {
       const k = layerAt(b.layer, t)
-      const p = placeLayer(b.asset, { ...b.layer, x: k.x, scale: 1 }, b.order)
+      const p = placeLayer(b.asset, { ...b.layer, x: k.x, scale: 1 }, b.order, s.set.horizon ?? 0)
       b.handle.mesh.position.x = p.x
+      b.handle.mesh.position.y = p.y
       b.handle.mesh.scaling.setAll(k.scale / b.builtScale)   // grows from the ground point
       b.handle.setOpacity(k.opacity)
+      b.handle.setFeather(b.layer.feather ?? (b.layer.depth === 'bg' ? BG_FEATHER : 0), this.horizonTint)
+      b.stain?.setOpacity((b.layer.shadow ?? STAIN_DEFAULT) * k.opacity)
       b.handle.setMotion(motionOf(b.asset, b.layer))
       b.handle.material.setFloat('time', clock)
     }
@@ -236,7 +275,7 @@ export async function playLesson(lessonOrUrl: Lesson | string, libraryUrl?: stri
   doc.subscribe(() => {
     const s = tl.scene
     stage.setLook(doc.lesson.look)
-    if (!builtScene || s.bundle !== builtScene.bundle || s.set.layers.length !== builtScene.set.layers.length || s.set.sky !== builtScene.set.sky
+    if (!builtScene || s.bundle !== builtScene.bundle || s.set.ground !== builtScene.set.ground || s.set.layers.length !== builtScene.set.layers.length || s.set.sky !== builtScene.set.sky
       || s.set.layers.some((l, i) => l.asset !== builtScene!.set.layers[i].asset || l.need !== builtScene!.set.layers[i].need || l.depth !== builtScene!.set.layers[i].depth)) {
       void tl.rebuild()
       return

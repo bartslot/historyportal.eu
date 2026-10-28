@@ -9,21 +9,27 @@
   :root { --paper: #efe9dc; --ink: #1c1418; }
   html, body { margin: 0; height: 100%; background: var(--ink); overflow: hidden; }
   #frame { position: fixed; inset: 0; display: grid; place-items: center; }
-  #wrap { position: relative; width: min(100vw, calc(100vh * 16 / 9)); aspect-ratio: 16 / 9; background: var(--paper); }
-  #stage { width: 100%; height: 100%; display: block; outline: none; }
+  #wrap { position: relative; width: min(100vw, calc(100vh * 16 / 9)); aspect-ratio: 16 / 9; background: var(--paper);
+    container-type: inline-size; } /* the cards size their type in cqw of the frame */
+  #stage { width: 100%; height: 100%; display: block; outline: none; transform-origin: 50% 0;
+    transition: transform 0.5s cubic-bezier(0.333, 1, 0.667, 1); }
+  /* a card takes the lower 45 %: the held picture scales into the space above it, whole (PM) */
+  #wrap.card-open #stage { transform: scale(0.53); }
+  #wrap.card-open #figures { transform: scale(0.53); transform-origin: 50% 0; }
   #intro-host { position: absolute; inset: 0; pointer-events: none; }
   #figures, #story { position: absolute; inset: 0; pointer-events: none; }
   /* balloons: silent timed layers over the speaker, never baked into the picture; no names */
   .story-balloon { position: absolute; top: 10%; transform: translateX(-50%); max-width: 34%; padding: 0.5em 0.8em;
     background: #fffdf8; color: var(--ink); border: 2px solid var(--ink); border-radius: 1.2em;
-    font: 500 clamp(18px, 2.4vw, 34px)/1.25 system-ui, sans-serif; }
+    font: 500 clamp(18px, 2.4cqw, 40px)/1.25 system-ui, sans-serif; }
   .story-balloon::after { content: ''; position: absolute; left: 50%; bottom: -14px; width: 18px; height: 18px;
     background: #fffdf8; border-right: 2px solid var(--ink); border-bottom: 2px solid var(--ink); transform: translateX(-50%) rotate(45deg); }
+  .story-balloon.no-tail::after { display: none; } /* nobody on screen to point at yet */
   /* captions: opt-in, big for the digibord */
   .story-caption { position: absolute; left: 50%; bottom: 4%; transform: translateX(-50%); width: min(86%, 1400px); margin: 0;
     padding: 0.4em 0.7em; text-align: center; background: rgb(28 20 24 / 0.82); color: #fffdf8; border-radius: 0.5em;
-    font: 500 clamp(20px, 2.6vw, 38px)/1.3 system-ui, sans-serif; }
-  #captions { position: absolute; right: 12px; top: 12px; }
+    font: 500 clamp(20px, 2.6cqw, 46px)/1.3 system-ui, sans-serif; }
+  #captions { position: absolute; right: 1cqw; top: 1cqw; height: auto; min-height: 2.2em; font-size: clamp(12px, 1.1cqw, 80px); }
   #captions[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   #cards { position: absolute; inset: 0; pointer-events: none; }
   #cards > * { pointer-events: auto; }

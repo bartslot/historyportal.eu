@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { cardKind, cardSeconds, holdAt, isCorrect, meterWords, sortedOptions, type PowerMeter, type Quiz } from './plan'
 import { LESSON } from '../director/fixture'
 
-const scene = (interaction: unknown) => ({ ...LESSON.scenes[0], interaction }) as never
+const scene = (interaction: unknown) => ({ ...LESSON.scenes[0], narration: '', interaction }) as never
 
 describe('interaction plan', () => {
   it('picks one card per way the class takes part', () => {
@@ -26,6 +26,16 @@ describe('interaction plan', () => {
   it('holds a meter mid-scene (the class moves the rest) and every other card on the last frame', () => {
     expect(holdAt(scene({ type: 'power-meter' }), 10)).toBeCloseTo(5.5, 5)
     expect(holdAt(scene({ type: 'quiz' }), 10)).toBeCloseTo(9.85, 5)
+  })
+
+  it('never cuts the narrator: a meter holds after the line, still leaving the class some of the scene', () => {
+    // checker N1: sc28 held at 3.30 s while the line ran to 4.06 s
+    const sc28 = { ...LESSON.scenes[0], narration: 'x', tts_s: 3.46, narration_at_s: 0.6, interaction: { type: 'power-meter' } } as never
+    expect(holdAt(sc28, 6)).toBeCloseTo(4.06, 5)
+    const long = { ...LESSON.scenes[0], narration: 'x', tts_s: 9, narration_at_s: 0, interaction: { type: 'power-meter' } } as never
+    expect(holdAt(long, 10)).toBeCloseTo(9, 5) // the line runs long: it is never cut; the meter moves the last second
+    const over = { ...LESSON.scenes[0], narration: 'x', tts_s: 12, narration_at_s: 0, interaction: { type: 'power-meter' } } as never
+    expect(holdAt(over, 10)).toBeCloseTo(9.85, 5) // never past the cut
   })
 
   it('mixes a meter\'s words the same way every time, all of them', () => {
