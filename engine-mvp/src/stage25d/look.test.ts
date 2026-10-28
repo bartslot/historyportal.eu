@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { Texture } from '@babylonjs/core'
+import { nearWrapU } from './ground-gl'
 import { DEPTHS, houseProjection, INK_FLOOR, inkScale, lineContrast, lineOf, paperOf, lineKeys, LOOK_RANGE, pxPerMetre, pxUV, STAGE_SHEET } from './look'
 import { autoHorizon, DECAL_SLOT, GROUND_SLOT, placeLayer } from './layout'
 import type { Asset } from './types'
@@ -96,5 +98,14 @@ describe('the near depth (S5 set dresser)', () => {
     const fg = placeLayer(a, { depth: 'fg' }, 9), near = placeLayer(a, { depth: 'near' }, 0)
     expect(near.z).toBeLessThan(fg.z)
     expect(near.alphaIndex - 1).toBeGreaterThan(fg.alphaIndex)   // its stain too
+  })
+})
+
+
+describe('the near band never runs out on a camera move (checker floor HIGH)', () => {
+  it('repeats tileable art, mirrors one painting, never clamps', () => {
+    expect(nearWrapU(true)).toBe(Texture.WRAP_ADDRESSMODE)
+    expect(nearWrapU(false)).toBe(Texture.MIRROR_ADDRESSMODE)
+    expect([nearWrapU(true), nearWrapU(false)]).not.toContain(Texture.CLAMP_ADDRESSMODE)
   })
 })

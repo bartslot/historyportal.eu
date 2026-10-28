@@ -59,7 +59,9 @@ Effect.ShadersStore.stageGroundFragmentShader = `
         vec2 n = cl.xy / cl.w;
         float t = (n.y + 1.0) / max(nearTop + 1.0, 1e-3);
         vec4 b = texture2D(nearTex, vec2(n.x / nearSpan * 0.5 + 0.5, 1.0 - clamp(t, 0.0, 1.0)));   // premultiplied
-        float k = 1.0 - smoothstep(0.7, 1.0, t);
+        // fades out at its far edge (t) and below its bottom edge (a camera behind the house sees nearer floor); across
+        // it never ends: u runs on and the texture repeats (tileable) or mirrors (one painting)
+        float k = (1.0 - smoothstep(0.7, 1.0, t)) * smoothstep(-0.08, 0.0, t);
         c = b.rgb * k + c * (1.0 - b.a * k);
       }
     }
@@ -91,7 +93,10 @@ Effect.ShadersStore.stageStainFragmentShader = `
 
 export interface GroundLook { tex: RawTexture | null; tile: number; base: [number, number, number]; tint: [number, number, number]; fadeNear: number; fadeFar: number; grain: number }
 /** The near band (set.near): its texture and the house camera's view-projection it is projected from. */
-export interface NearBand { tex: RawTexture; vp: Matrix; top: number; span: number }
+export interface NearBand { tex: RawTexture; vp: Matrix; top: number; span: number; tileable: boolean }
+/** Across the near band never ends: tileable art repeats, one painting mirrors (never CLAMP: its last column would
+ *  smear across the floor on a sideways move). */
+export const nearWrapU = (tileable: boolean) => (tileable ? Texture.WRAP_ADDRESSMODE : Texture.MIRROR_ADDRESSMODE)
 /** Live floor values (lesson.look): read every frame. */
 export interface FloorLive { detail: number; vary: number; mixTile: number; tileScale: number }
 
@@ -132,7 +137,7 @@ export function makeGround(scene: Scene): { mesh: Mesh; set(look: GroundLook): v
     near(b) {
       mat.setFloat('useNear', b ? 1 : 0)
       if (!b) return
-      b.tex.wrapU = Texture.CLAMP_ADDRESSMODE; b.tex.wrapV = Texture.CLAMP_ADDRESSMODE
+      b.tex.wrapU = nearWrapU(b.tileable); b.tex.wrapV = Texture.CLAMP_ADDRESSMODE
       mat.setTexture('nearTex', b.tex).setMatrix('nearVP', b.vp).setFloat('nearTop', b.top).setFloat('nearSpan', b.span)
     },
   }

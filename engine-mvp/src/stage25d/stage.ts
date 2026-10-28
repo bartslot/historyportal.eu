@@ -41,6 +41,7 @@ export class Stage {
   /** the scene's first far strip: where its land starts, its placed height, its slot (set.horizon 'auto') */
   private strip: { top: number; h: number; order: number } | null = null
   private nearTex: RawTexture | null = null
+  private nearAsset: Asset | null = null
   /** the sky's own colour where it meets the floor: far layers' lines and washes go toward it (look.ts haze) */
   private hazeTint: [number, number, number] = hexRgb(PAPER_HEX)
   /** the library the scene on screen was built from (its own bundle, else the lesson's) */
@@ -186,6 +187,7 @@ export class Stage {
     this.horizonTint = look.tint
     this.strip = strip
     this.nearTex = nearTex
+    this.nearAsset = nearAsset
     this.hazeTint = skyHaze ?? look.tint
     this.ground.set(look)
     this.missed.set(s.id, misses)   // replaced per scene: a rebuild never doubles them
@@ -242,7 +244,7 @@ export class Stage {
     this.ground.follow(this.camera.position)
     const L = (k: string) => lookNum(this.look, k)
     this.ground.live({ detail: L('groundDetail'), vary: L('groundVary'), mixTile: L('groundMix'), tileScale: L('groundScale') })
-    this.ground.near(this.nearTex ? { tex: this.nearTex, ...houseProjection(pitch, this.engine.getAspectRatio(this.camera), L('nearFar')), span: NEAR_SPAN } : null)
+    this.ground.near(this.nearTex ? { tex: this.nearTex, ...houseProjection(pitch, this.engine.getAspectRatio(this.camera), L('nearFar')), span: NEAR_SPAN, tileable: !!this.nearAsset?.tileable_x } : null)
     const renderH = this.engine.getRenderHeight()
     const paper = paperOf(this.look)
     for (const b of this.built) {
@@ -266,7 +268,8 @@ export class Stage {
   }
 }
 
-/** The near band spans this much of the frame's width, so a sideways camera move still finds it painted. */
+/** The near band spans this much of the frame's width; past its sides it repeats (tileable art) or mirrors (one
+ *  painting), so no camera move ever runs out of it or smears its last column (checker floor HIGH). */
 const NEAR_SPAN = 1.3
 
 /** Depths where things stand on the floor (and get a contact stain). */

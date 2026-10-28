@@ -79,3 +79,4 @@ export function houseProjection(pitchDeg: number, aspect: number, nearFar: numbe
   const vp = view.multiply(Matrix.PerspectiveFovLH(fovRad(HOUSE.fov), aspect, 0.1, 2000))
   return { vp, top: Vector3.TransformCoordinates(new Vector3(0, 0, nearFar), vp).y }
 }
+

@@ -82,7 +82,8 @@ the `_placeholder` bundle). The panel edits every camera, timing and motion valu
   `lineBrown` turns black ink toward the book's brown; `groundDetail` blends the floor tile toward its own soft wash.
   The floor draws after the sky (`GROUND_SLOT`), and the sky below the eye line is painted as the far floor.
   The floor: `set.near` lays a wide strip painted from eye height on the floor out to `nearFar` m, projected from the
-  house camera (it looks as painted, lies on the ground, fades into the far floor); the tile behind it breaks its
+  house camera (it looks as painted, lies on the ground, fades into the far floor; across it never ends: tileable art
+  repeats, one painting mirrors; trucks past ~4 m lean its strokes, the projection is from the house eye); the tile behind it breaks its
   repeat (`groundMix`, a turned second read) and drifts in value and hue (`groundVary`), `groundScale` x its height_m.
   `layer.flat` lays any picture flat on the floor (a path, a patch, stones), drawn right after it (`DECAL_SLOT`).
   `housePitch` tilts the house camera down (4 deg). `lineInk` + `lineNorm` bring every layer's ink to one value (each
