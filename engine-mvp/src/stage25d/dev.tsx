@@ -177,6 +177,7 @@ function ScenePanel({ player }: { player: Player }) {
           <option value="none">No near ground</option>
           {nearOptions(player.stage.sceneLib).map((id) => <option key={id} value={id}>{id}</option>)}
         </select>
+        {(s.set.groundBands ?? []).map((g, i) => <Num key={i} player={player} path={[...sp, 'set', 'groundBands', i, 'z']} label={`Band ${g.asset}`} min={1} max={2000} step={1} fallback={g.z} />)}
         <Num player={player} path={[...sp, 'set', 'horizon']} label="Horizon" min={-80} max={30} step={0.1} fallback={player.stage.horizonOf(s)} />
         {typeof s.set.horizon === 'number'
           ? <button type="button" className="btn btn-ghost btn-xs self-start" data-testid="horizon-auto" onClick={() => player.doc.set([...sp, 'set', 'horizon'], 'auto', 'Horizon')}>Auto horizon</button>

@@ -14,7 +14,7 @@ import { makeBirds, makeSmoke, smokes } from './life'
 import { aliveOf, houseProjection, inkScale, lineOf, lookNum, paperOf, type Line, type Paper, pxPerMetre, pxUV, STAGE_SHEET } from './look'
 import { makeSheet } from './sheet'
 import { libraryUrlFor, loadLibrary, resolveAsset } from './library'
-import { ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, DECAL_LIFT_M, DECAL_SLOT, LAND_TARGET, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
+import { ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandSize, bandSlot, DECAL_LIFT_M, DECAL_SLOT, LAND_TARGET, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
 import { bandColours, edgeColours, inkLevels, landTops, loadPremultiplied, makeLayer, type LayerHandle } from './layer'
 import { bandAt, defaultNear, featherOf, GROUND_TILE_M, hexRgb, PAPER as PAPER_HEX, resolveGround, STAIN_DEFAULT, stainSize } from './ground'
 import { makeGround, makeStain, type GroundLook } from './ground-gl'
@@ -26,6 +26,7 @@ import type { Asset, Depth, Lesson, Library, Scene, SceneLayer } from './types'
 export const STAGE_LOOK: Record<string, number | string> = { ...PRESETS['History Lines pencil'], paper: 0.35, granulation: 0.2, ...STAGE_SHEET }
 const PAPER = new Color4(0.937, 0.914, 0.863, 1)
 type Stain = ReturnType<typeof makeStain>
+interface Band { handle: LayerHandle; z: number; w: number; h: number }
 interface Built { layer: SceneLayer; index: number; builtScale: number; handle: LayerHandle; asset: Asset; order: number; stain?: Stain; cast?: Stain; ink?: number }  // index -1 = the sky
 /** How far the paper wash floor is tinted toward the far landscape's own ground colour */
 const GROUND_WASH = 0.7
@@ -42,6 +43,7 @@ export class Stage {
   /** the scene's first far strip: where its land starts, its placed height, its slot (set.horizon 'auto') */
   private strip: { top: number; h: number; order: number } | null = null
   private nearTex: RawTexture | null = null
+  private bands: Band[] = []
   private smoke: ReturnType<typeof makeSmoke>[] = []
   private birds: ReturnType<typeof makeBirds>
   private footTint: [number, number, number] = hexRgb(PAPER_HEX)
@@ -184,17 +186,22 @@ export class Stage {
     const skyP = sky && placeLayer(sky.asset, sky.layer, sky.order)
     const skyHaze = sky && skyP ? bandAt(bandColours.get(lib.base + sky.asset.file) ?? [], (HOUSE.y - skyP.y) / skyP.h) : null
     const tint = far ? edgeColours.get(lib.base + far.asset.file) ?? null : skyHaze
+    const bandsNext = await this.loadBands(s, lib)
     const dispose = (list: Built[]) => list.forEach((b) => { b.stain?.mesh.material?.dispose(); b.cast?.mesh.material?.dispose(); b.handle.mesh.dispose(); b.handle.material.dispose() })
     if (token !== this.buildToken) {   // a newer build won: this one never shows
       dispose(next)
+      bandsNext.forEach((b) => { b.handle.mesh.dispose(); b.handle.material.dispose() })
       return
     }
     dispose(this.built)
+    this.bands.forEach((b) => { b.handle.mesh.dispose(); b.handle.material.dispose() })
+    this.bands = bandsNext
     this.built = next
     this.sceneLib = lib
     // the colour a standing thing's foot sinks into: the floor art's own average, else the floor's wash
     const tileBands = choice.kind === 'asset' ? (bandColours.get(lib.base + choice.asset.file) ?? []).filter((c): c is [number, number, number] => !!c) : []
-    const look = this.groundLook(choice.kind === 'asset' ? { tex: groundTex, asset: choice.asset } : null, tint, lib, choice.kind === 'paper' ? choice.colour : undefined)
+    // with ground bands the floor is only the paper behind them: no tile can show between the painted strips
+    const look = this.groundLook(choice.kind === 'asset' && !s.set.groundBands?.length ? { tex: groundTex, asset: choice.asset } : null, tint, lib, choice.kind === 'paper' ? choice.colour : undefined)
     this.horizonTint = look.tint
     this.strip = strip
     // smoke from every fire in the scene, rebuilt with it
@@ -244,6 +251,23 @@ export class Stage {
   /** The paper every picture is painted on (PAPER_GLSL), from the look sliders. */
   paper(): Paper { return paperOf(this.look) }
 
+  /** The scene's ground bands: painted strips at their metres, each sized by bandSize and drawn by distance. */
+  private async loadBands(s: Scene, lib: Library & { base: string }): Promise<Band[]> {
+    const out: Band[] = []
+    for (const g of s.set.groundBands ?? []) {
+      const asset = resolveAsset(lib, { asset: g.asset }, 'ground_band')
+      if (!asset) { console.warn(`stage25d: ${s.id}: no ground band ${g.asset}`); continue }
+      const tex = await loadPremultiplied(lib.base + asset.file, this.scene).catch(() => null)
+      if (!tex) { console.warn(`stage25d: ${s.id}: ground band ${asset.file} did not load`); continue }
+      const { w, h } = bandSize(g.z, asset.w / asset.h)
+      const handle = makeLayer(asset, tex, w, h, 1, this.scene)
+      handle.mesh.position.set(0, 0, g.z)
+      handle.mesh.alphaIndex = bandSlot(g.z)
+      out.push({ handle, z: g.z, w, h })
+    }
+    return out
+  }
+
   /** Metres the far landscape stands higher: the scene's own number, else 'auto' (also when unset): the first strip's
    *  land line at set.land_target of the frame (layout.ts autoHorizon). For the scene on screen. */
   horizonOf(s: Scene): number {
@@ -266,6 +290,12 @@ export class Stage {
     this.ground.live({ detail: L('groundDetail'), vary: L('groundVary'), mixTile: L('groundMix'), tileScale: L('groundScale') })
     this.ground.near(this.nearTex ? { tex: this.nearTex, ...houseProjection(pitch, this.engine.getAspectRatio(this.camera), L('nearFar')), span: NEAR_SPAN, tileable: !!this.nearAsset?.tileable_x } : null)
     const renderH = this.engine.getRenderHeight()
+    this.bands.forEach((b) => {
+      const ppm = pxPerMetre(renderH, b.z - HOUSE.z, fovRad(HOUSE.fov))
+      b.handle.setOpacity(1)
+      b.handle.setPaper(paper, pxUV(b.w, b.h, 1, ppm, renderH))
+      b.handle.setLine(lineOf(this.look, 'bg'), 1, pxUV(b.w, b.h, 1, ppm, renderH), this.hazeTint)
+    })
     this.smoke.forEach((m) => m.update(clock, lookNum(this.look, 'smoke')))
     this.birds.update(clock, lookNum(this.look, 'birds'))
     const paper = paperOf(this.look)

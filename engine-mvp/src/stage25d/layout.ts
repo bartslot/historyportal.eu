@@ -13,6 +13,16 @@ export const ASPECT = 16 / 9
  *  sky takes at most ~40 % and the floor never takes over (art v3's stage_plate.py auto_horizon, same maths) */
 export const LAND_TARGET = 0.42
 export const COVER_MARGIN = 1.6             // wide strips (sky, tileable bg) span this much of the view, for camera moves
+/** A ground band (set.groundBands) is wide enough for a truck of about ±5 m to find it painted at any depth: three
+ *  views wide, its height from the picture's own aspect. */
+export const BAND_VIEWS = 3
+export function bandSize(z: number, aspect: number): { w: number; h: number } {
+  const w = BAND_VIEWS * viewWidthAt(z)
+  return { w, h: w / aspect }
+}
+/** Draw slot of a ground band: by distance, so bands further out draw first and the floor props stay in front. */
+export const bandSlot = (z: number) => 1000 + Math.round((Math.log10(2000) - Math.log10(Math.max(z, 1))) * 300)
+
 /** Draw slot of the floor: after every sky layer (slots 1..999), before the far landscape (1000+). */
 export const GROUND_SLOT = 999
 /** Ground decals (layer.flat) draw right after the floor, before the far landscape and everything standing. */

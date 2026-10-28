@@ -1,7 +1,7 @@
 // The two binding contracts (vault topics/autonomous-lessons/plan.md): library.json (S2) and lesson.json (S4/S5).
 // Only the fields the stage reads are typed; everything else rides along untouched.
 
-export type LayerKind = 'sky' | 'bg' | 'mid' | 'fg' | 'prop' | 'ground' | 'near_ground' | 'decal'
+export type LayerKind = 'sky' | 'bg' | 'mid' | 'fg' | 'prop' | 'ground' | 'near_ground' | 'ground_band' | 'decal'
 export type Depth = 'sky' | 'bg' | 'mid' | 'fg' | 'near'
 export type MotionKind = 'none' | 'sway' | 'drift' | 'ripple' | 'flicker'
 
@@ -65,7 +65,8 @@ export interface Scene {
   /** ground: a 'ground' asset id or tags, or '#hex' (a paper wash); horizon: metres the far landscape (bg) sits higher,
    *  'auto' or unset = its land line at land_target of the frame (layout.ts autoHorizon, default LAND_TARGET 0.42);
    *  near: an asset id, a wide strip painted from eye height, laid on the floor out to look.nearFar (stage.ts) */
-  set: { sky?: string | null; ground?: string; horizon?: number | 'auto'; land_target?: number; near?: string; layers: SceneLayer[] }
+  /** layered ground: painted bands standing on the floor at metres z (2..2000), each drawn over the one behind */
+  set: { sky?: string | null; ground?: string; horizon?: number | 'auto'; land_target?: number; near?: string; groundBands?: { asset: string; z: number }[]; layers: SceneLayer[] }
   figures?: unknown[]
   camera?: CameraMove | null
   /** further shots of the same scene (director, S5), each with its at_s */

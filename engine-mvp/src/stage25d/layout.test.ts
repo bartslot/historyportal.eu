@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { autoHorizon, cameraAt, DEPTH_Z, HOUSE, stainIndex, layerAt, motionOf, placeLayer, renderScale, sceneDuration, setShotDuration, setShotPose, shotAt, shotsEnd, nextTier, TIER0, ADAPT, viewWidthAt, type Tier } from './layout'
+import { autoHorizon, bandSize, bandSlot, GROUND_SLOT, cameraAt, DEPTH_Z, HOUSE, stainIndex, layerAt, motionOf, placeLayer, renderScale, sceneDuration, setShotDuration, setShotPose, shotAt, shotsEnd, nextTier, TIER0, ADAPT, viewWidthAt, type Tier } from './layout'
 import type { Scene } from './types'
 import { LessonDoc } from './edits'
 import type { Asset } from './types'
@@ -258,5 +258,19 @@ describe('autoHorizon (set.horizon "auto", art v3 stage_plate.py auto_horizon)',
   it('a land line lower in the frame needs the strip lower; a later bg slot stands nearer', () => {
     expect(autoHorizon(0.2, 50, 0, 0.5)).toBeLessThan(autoHorizon(0.2, 50, 0, 0.4))
     expect(autoHorizon(0.2, 50, 40)).not.toBe(autoHorizon(0.2, 50, 0))
+  })
+})
+
+describe('ground bands (set.groundBands): sized by depth, 6:1 pictures, three views wide', () => {
+  it('a band is three views wide at its depth, and its height follows the picture aspect', () => {
+    const b = bandSize(40, 6)
+    expect(b.w).toBeCloseTo(3 * viewWidthAt(40))
+    expect(b.h).toBeCloseTo(b.w / 6)
+    expect(bandSize(400, 6).w).toBeCloseTo(10 * bandSize(40, 6).w)   // further out, proportionally larger
+  })
+  it('bands further out draw first (lower slot), and all sit between the floor and the floor props', () => {
+    expect(bandSlot(400)).toBeLessThan(bandSlot(2))
+    expect(bandSlot(2)).toBeGreaterThan(GROUND_SLOT)
+    expect(bandSlot(2000)).toBeLessThan(placeLayer({ ...tree, layer: 'prop' }, { depth: 'mid' }, 0).alphaIndex)
   })
 })
