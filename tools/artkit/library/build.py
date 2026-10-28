@@ -46,12 +46,17 @@ def winners(bundle: str) -> dict[str, tuple[str, str]]:
 
 
 def judge_scores(bundle: str) -> dict[str, int]:
-    """sheet id -> style score 1-10 from the judge (ChatGPT), _work/<bundle>/scores.json; lowest score counts."""
-    f = LIB / "_work" / bundle / "scores.json"
-    return {k: min(v) if isinstance(v, list) else v for k, v in json.loads(f.read_text()).items()} if f.exists() else {}
+    """sheet id -> style score 1-10 from the judge (ChatGPT); lowest score counts. scores_kind.json (protocol 2 against
+    a same-kind reference, PM 2026-10-28) replaces the older scores.json for every key it has."""
+    out = {}
+    for name in ("scores.json", "scores_kind.json"):
+        f = LIB / "_work" / bundle / name
+        if f.exists():
+            out.update({k: min(v) if isinstance(v, list) else v for k, v in json.loads(f.read_text()).items()})
+    return out
 
 
-SHIP_SCORE = 8  # judge score an asset needs to go into `assets`; lower ones are listed under `held`
+SHIP_SCORE = 7.5  # PM 2026-10-28: a sheet ships into plates at 7.5 vs its same-kind ref; the composed plate is the 8 gate
 
 
 def contract_verdict(score: float | None, verdict: str) -> str:
@@ -116,7 +121,7 @@ def build(job: dict, variants: str = "abcd") -> dict:
                 continue
             f, v, r = chosen
             vscore = judged.get(f"{s['id']}:{v}", judged.get(s["id"]) if v == variants[0] else None)
-            if jscore is not None and (vscore is None or vscore < SHIP_SCORE):  # judged sheet: only >= 8 ships
+            if jscore is not None and (vscore is None or vscore < SHIP_SCORE):  # judged sheet: only >= SHIP_SCORE ships
                 held.append({"id": item["id"], "sheet": s["id"], "variant": v, "score": vscore})
                 continue
             Image.open(f).save(dst / f"{item['id']}.webp", quality=92, method=6)
@@ -132,7 +137,7 @@ def build(job: dict, variants: str = "abcd") -> dict:
                 **({"tileable_y": True} if s["layer"] == "ground" else {}),
                 "motion": item["motion"],
                 "era": item.get("era") or s.get("era") or job["era"],
-                "qa": {"score": int(vscore) if jscore is not None else VERDICT_SCORE.get(vd, 6),  # contract: int
+                "qa": {"score": int(vscore + 0.5) if jscore is not None else VERDICT_SCORE.get(vd, 6),  # contract: int
                        "alpha_ok": r["alpha_ok"], "ink_coverage": r["ink_coverage"],
                        "ranked_vs_anchor": contract_verdict(vscore if jscore is not None else None, vd),
                        "ink_style_ok": r["ink_style_ok"],
