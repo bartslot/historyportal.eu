@@ -63,6 +63,21 @@ LAYER = {
         "both directions: the left edge continues into the right edge and the top edge into the bottom edge. "
         "Square."
     ),
+    "near_ground": (  # stage25d set.near (S1 feat/stage-look-plates): eye 1.6 m, pitch 4, floor 2.9 m -> 16 m, ~4.9:1
+        "Two separate wide bands of near ground, one in the upper half and one in the lower half of the canvas, divided "
+        "by a clean strip of empty white paper; both bands show the same kind of ground but different marks: {subject} "
+        "Each band is seen from standing eye height, looking ahead and slightly down: the bottom edge of a band is the "
+        "ground about three metres in front of you, its top edge the ground about sixteen metres away, so tufts, stones "
+        "and marks are large near the bottom of the band and become small, flatter and closer together toward its top. "
+        "No horizon, no sky, nothing standing taller than a tuft, no single dominant feature. Each band runs edge to edge "
+        "across the full width; its top edge is a soft uneven line. Landscape 3:2."
+    ),
+    "decal": (  # stage25d layer.flat: lies flat on the floor, painted straight from above
+        "Ground patches seen straight from above, like looking down at the ground at your feet, each a separate "
+        "isolated patch with soft ragged edges that fade into the white paper: {subject} Flat on the ground, no "
+        "perspective, no horizon, nothing standing up, no cast shadows. Plain untouched white paper around and between "
+        "the patches; patches never touch. Landscape 3:2."
+    ),
     "mid": (
         "Middle-distance set pieces, each a separate isolated object: {subject} Seen from slightly above "
         "eye level, three-quarter view, same scale for all. " + ISOLATE + " Landscape 3:2."
@@ -104,6 +119,9 @@ COLOUR_EXTRA = {
     ),
     "strip": "Wash the whole ground band, including its pale parts, down to the bottom edge; the paper "
              "above the ground stays pure white.",
+    "near_ground": "Wash both ground bands edge to edge, including their pale parts; the paper strip between and above "
+                   "the bands stays pure white.",
+    "decal": "Wash each patch, fading softly to nothing at its ragged edge; the paper around the patches stays pure white.",
     "bg": (
         "This is far distance: quieter and less saturated than the foreground, cool and slightly bluish. "
         "The empty paper above the land stays pure white."

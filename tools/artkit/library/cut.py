@@ -223,9 +223,10 @@ def cut_sheet(bundle: str, sheet: dict, variant: str) -> dict | None:
     paper = np.median(rgb[:8].reshape(-1, 3), 0) if layer in ("bg", "strip") else qa.paper_colour(rgb)
     out = d / f"cut_{variant}"
     out.mkdir(exist_ok=True)
+    ink = next(f for f in (d / "ink4.png", d / "ink3.png", d / "ink.png") if f.exists())  # the newest pass-1 ink
     res = {"sheet": sheet["id"], "variant": variant, "paper": paper.tolist(),
            "checkerboard": qa.fake_checkerboard(rgb), "assets": [],
-           "ink_sheet": round(qa.ink_coverage(np.asarray(Image.open(d / "ink.png").convert("RGB"))), 4)}
+           "ink_sheet": round(qa.ink_coverage(np.asarray(Image.open(ink).convert("RGB"))), 4)}
     if layer in ("sky", "ground"):
         rgba = np.dstack([rgb, np.full(rgb.shape[:2], 255, np.uint8)])
         # Never mirrored (checker re-check 2026-10-27: butterfly clouds, Rorschach grounds). A sky is one painting

@@ -898,6 +898,136 @@
      "motion": "flicker"
     }
    ]
+  },
+  {
+   "id": "fg-dress",
+   "layer": "fg",
+   "gaps": "all",
+   "subject": "Northern Netherlands (Drenthe), Neolithic, c. 3400 BCE, Funnelbeaker farmers. Small ground dressing pieces, six separate low objects in two rows: (1) a low tuft of grass, (2) a small clump of heather, (3) a low rounded juniper shrub, (4) three small grey granite stones together, (5) a low clump of rushes, (6) a fern clump.",
+   "items": [
+    {
+     "id": "tuft-grass-nl-01",
+     "tags": [
+      "tuft",
+      "grass",
+      "dressing"
+     ],
+     "height_m": 0.35,
+     "motion": "sway"
+    },
+    {
+     "id": "heather-clump-01",
+     "tags": [
+      "heather",
+      "tuft",
+      "heath",
+      "dressing"
+     ],
+     "height_m": 0.4,
+     "motion": "sway"
+    },
+    {
+     "id": "shrub-juniper-low-01",
+     "tags": [
+      "shrub",
+      "juniper",
+      "dressing"
+     ],
+     "height_m": 0.9,
+     "motion": "sway"
+    },
+    {
+     "id": "stones-granite-01",
+     "tags": [
+      "stones",
+      "rock",
+      "dressing"
+     ],
+     "height_m": 0.35,
+     "motion": "none"
+    },
+    {
+     "id": "rushes-01",
+     "tags": [
+      "reeds",
+      "rushes",
+      "wet",
+      "dressing"
+     ],
+     "height_m": 0.7,
+     "motion": "sway"
+    },
+    {
+     "id": "fern-01",
+     "tags": [
+      "fern",
+      "forest",
+      "dressing"
+     ],
+     "height_m": 0.6,
+     "motion": "sway"
+    }
+   ]
+  },
+  {
+   "id": "near-field-sown",
+   "layer": "near_ground",
+   "subject": "Northern Netherlands (Drenthe), Neolithic, c. 3400 BCE: a freshly sown small field of dark sandy soil scratched into shallow furrows by an ard, a few clods and stones, thin green shoots in rows.",
+   "items": [
+    {
+     "id": "near-field-sown-01",
+     "tags": [
+      "near",
+      "ground",
+      "field",
+      "sown",
+      "furrows",
+      "farm"
+     ],
+     "height_m": 13.1,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "near-heath-path",
+   "layer": "near_ground",
+   "subject": "Northern Netherlands (Drenthe), Neolithic, c. 3400 BCE: open heathland with low heather clumps and short grass, crossed by a worn sandy footpath of pale sand, a few small pebbles.",
+   "items": [
+    {
+     "id": "near-heath-path-01",
+     "tags": [
+      "near",
+      "ground",
+      "heath",
+      "path",
+      "sand",
+      "grass"
+     ],
+     "height_m": 13.1,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "near-peat",
+   "layer": "near_ground",
+   "subject": "Northern Netherlands (Drenthe), Neolithic, c. 3400 BCE: a bog edge of wet dark brown peat with shallow puddles reflecting the sky, cotton grass tufts and sphagnum moss.",
+   "items": [
+    {
+     "id": "near-peat-01",
+     "tags": [
+      "near",
+      "ground",
+      "peat",
+      "bog",
+      "wet",
+      "puddle"
+     ],
+     "height_m": 13.1,
+     "motion": "none"
+    }
+   ]
   }
  ],
  "plate": [

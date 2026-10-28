@@ -621,6 +621,137 @@
      "motion": "none"
     }
    ]
+  },
+  {
+   "id": "fg-ga-dress",
+   "layer": "fg",
+   "gaps": "all",
+   "subject": "Dutch Republic, Golden Age, c. 1640, Amsterdam quays and the dune coast. Small ground dressing pieces, six separate low objects in two rows: (1) a tuft of marram grass, (2) a low clump of weeds and dock leaves, (3) a few loose grey cobblestones together, (4) a low clump of reeds, (5) a small elder shrub, (6) a coil of old rope with a few wood chips.",
+   "items": [
+    {
+     "id": "tuft-marram-01",
+     "tags": [
+      "tuft",
+      "grass",
+      "dune",
+      "dressing"
+     ],
+     "height_m": 0.5,
+     "motion": "sway"
+    },
+    {
+     "id": "weeds-dock-01",
+     "tags": [
+      "tuft",
+      "weeds",
+      "quay",
+      "dressing"
+     ],
+     "height_m": 0.4,
+     "motion": "sway"
+    },
+    {
+     "id": "cobbles-loose-01",
+     "tags": [
+      "stones",
+      "cobbles",
+      "quay",
+      "dressing"
+     ],
+     "height_m": 0.2,
+     "motion": "none"
+    },
+    {
+     "id": "reeds-ga-01",
+     "tags": [
+      "reeds",
+      "water",
+      "dressing"
+     ],
+     "height_m": 0.9,
+     "motion": "sway"
+    },
+    {
+     "id": "shrub-elder-01",
+     "tags": [
+      "shrub",
+      "elder",
+      "dressing"
+     ],
+     "height_m": 1.4,
+     "motion": "sway"
+    },
+    {
+     "id": "rope-coil-01",
+     "tags": [
+      "rope",
+      "quay",
+      "dressing"
+     ],
+     "height_m": 0.25,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "near-quay-cobbles",
+   "layer": "near_ground",
+   "subject": "Dutch Republic, Amsterdam, c. 1640: a harbour quay paved with rounded grey-brown cobblestones laid in rows, a few loose stones, straw and rope ends between them.",
+   "items": [
+    {
+     "id": "near-quay-cobbles-01",
+     "tags": [
+      "near",
+      "ground",
+      "quay",
+      "cobbles",
+      "harbour",
+      "street"
+     ],
+     "height_m": 13.1,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "near-dune",
+   "layer": "near_ground",
+   "subject": "Dutch Republic, Amsterdam, c. 1640: pale dune sand rippled by the wind, with tufts of marram grass and a few shells and bits of driftwood.",
+   "items": [
+    {
+     "id": "near-dune-01",
+     "tags": [
+      "near",
+      "ground",
+      "dune",
+      "sand",
+      "coast",
+      "beach"
+     ],
+     "height_m": 13.1,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "near-deck",
+   "layer": "near_ground",
+   "subject": "Dutch Republic, Amsterdam, c. 1640: the weathered oak deck planks of an East Indiaman running away from you, with tarred seams, a few coils of rope and a wooden bucket lying flat.",
+   "items": [
+    {
+     "id": "near-deck-01",
+     "tags": [
+      "near",
+      "ground",
+      "deck",
+      "planks",
+      "ship",
+      "wood"
+     ],
+     "height_m": 13.1,
+     "motion": "none"
+    }
+   ]
   }
  ],
  "plate": [

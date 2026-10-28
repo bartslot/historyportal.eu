@@ -4,6 +4,8 @@ script builds the exact request and stores what comes back, so every call carrie
     python3 weave.py req jobs/nl-prehistory.json fg-trees ink          # -> JSON input for weave_run_model
     python3 weave.py req jobs/nl-prehistory.json fg-trees colour <ink_url>
     python3 weave.py fetch jobs/nl-prehistory.json fg-trees colour_w <url> [credits]
+    python3 weave.py align <ink.png> <colour.png>   # undo the edit's zoom/shift before qa.py kept
+    python3 weave.py inkover <ink.png> <colour.png> <out.png>   # the locked ink multiplied back over the colour
 
 Files land where gen.py puts them (_work/<bundle>/<sheet>/<name>.png), so cut.py + build.py work unchanged.
 Transparent outputs are flattened onto paper white (our matting then cuts paper + enclosed islands).
@@ -115,10 +117,62 @@ def pad_ink(src: Path) -> Path:
     return dst
 
 
+def align_to_ink(ink: Path, colour: Path) -> tuple[float, int, int]:
+    """Undo the edit's own zoom/shift: fit the colour's dark lines onto the ink's (scale 0.80-1.10, shift +-16 px at
+    768 px wide), then rewrite the colour at that fit, new margins in paper white. Returns (scale, dx, dy) at full size."""
+    from scipy import ndimage
+    w0 = 768
+    def lines(p: Path) -> np.ndarray:
+        im = Image.open(p).convert("L")
+        return np.asarray(im.resize((w0, round(w0 * im.height / im.width)))) < 70
+    a, b = lines(ink), lines(colour)
+    a_n = max(a.sum(), 1)
+    def fit(s: float, dx: int, dy: int) -> float:
+        h, w = a.shape
+        z = ndimage.zoom(b.astype(np.uint8), s, order=0).astype(bool)
+        out = np.zeros_like(a)
+        zy, zx = (z.shape[0] - h) // 2 - dy, (z.shape[1] - w) // 2 - dx
+        ys, xs = max(0, -zy), max(0, -zx)
+        src = z[max(0, zy):max(0, zy) + h - ys, max(0, zx):max(0, zx) + w - xs]
+        out[ys:ys + src.shape[0], xs:xs + src.shape[1]] = src
+        return (ndimage.binary_dilation(out, iterations=2) & a).sum() / a_n
+    best = max((fit(s, 0, 0), s) for s in np.arange(0.80, 1.101, 0.01))[1]
+    k, s, dx, dy = max((fit(s, dx, dy), s, dx, dy) for s in (best - 0.005, best, best + 0.005)
+                       for dx in range(-16, 17, 2) for dy in range(-16, 17, 2))
+    im, iw = Image.open(colour).convert("RGB"), Image.open(ink).size
+    f = iw[0] / w0
+    z = im.resize((round(iw[0] * s), round(iw[1] * s)), Image.LANCZOS)
+    out = Image.new("RGB", iw, PAPER)
+    out.paste(z, ((iw[0] - z.width) // 2 + round(dx * f), (iw[1] - z.height) // 2 + round(dy * f)))
+    out.save(colour)
+    return float(s), round(dx * f), round(dy * f)
+
+
+def ink_over(ink: Path, colour: Path, out: Path) -> Path:
+    """The locked ink multiplied back over its (aligned) colour edit, the way ink sits on top of watercolour. The edit's own
+    dark lines that are not the ink's (redrawn or shifted contours) are first filled with the wash around them."""
+    from scipy import ndimage
+    c = np.asarray(Image.open(colour).convert("RGB")).astype(float)
+    k = np.asarray(Image.open(ink).convert("L").resize((c.shape[1], c.shape[0]), Image.LANCZOS)).astype(float) / 255
+    stray = (c.mean(2) < 110) & ~ndimage.binary_dilation(k < 0.45, iterations=2)
+    stray = ndimage.binary_dilation(stray, iterations=1)
+    wash = np.stack([ndimage.median_filter(c[..., i], size=9) for i in range(3)], -1)
+    c = np.where(stray[..., None], np.maximum(wash, c), c)
+    k = np.where(k < 0.3, k, np.sqrt(k))  # line cores stay black, their grey fringe lightens (per-asset ink cap)
+    Image.fromarray(np.clip(c * k[..., None], 0, 255).astype(np.uint8)).save(out)
+    return out
+
+
 def main() -> None:
     if sys.argv[1] == "pad":  # pad <ink.png>...
         for f in sys.argv[2:]:
             print(pad_ink(Path(f)))
+        return
+    if sys.argv[1] == "align":  # align <ink.png> <colour.png>  (rewrites the colour in place)
+        print(align_to_ink(Path(sys.argv[2]), Path(sys.argv[3])))
+        return
+    if sys.argv[1] == "inkover":  # inkover <ink.png> <colour.png> <out.png>
+        print(ink_over(Path(sys.argv[2]), Path(sys.argv[3]), Path(sys.argv[4])))
         return
     if sys.argv[1] == "grab":  # grab <bundle> <sheet> <name> <url>...
         grab(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5:])

@@ -840,6 +840,137 @@
     }
    ],
    "gaps": "cut"
+  },
+  {
+   "id": "fg-ne-dress",
+   "layer": "fg",
+   "gaps": "all",
+   "subject": "Near East river valleys and dry hills, early farming, c. 9000-3500 BCE. Small ground dressing pieces, six separate low objects in two rows: (1) a low tuft of dry wild grass, (2) a small spiny thorn shrub, (3) three pale sandstone stones together, (4) a low clump of young reeds, (5) a small tamarisk bush, (6) a clump of wild barley stalks.",
+   "items": [
+    {
+     "id": "tuft-grass-dry-01",
+     "tags": [
+      "tuft",
+      "grass",
+      "dry",
+      "dressing"
+     ],
+     "height_m": 0.35,
+     "motion": "sway"
+    },
+    {
+     "id": "shrub-thorn-01",
+     "tags": [
+      "shrub",
+      "thorn",
+      "dry",
+      "dressing"
+     ],
+     "height_m": 0.8,
+     "motion": "sway"
+    },
+    {
+     "id": "stones-sand-01",
+     "tags": [
+      "stones",
+      "rock",
+      "dressing"
+     ],
+     "height_m": 0.35,
+     "motion": "none"
+    },
+    {
+     "id": "reeds-young-01",
+     "tags": [
+      "reeds",
+      "water",
+      "dressing"
+     ],
+     "height_m": 0.8,
+     "motion": "sway"
+    },
+    {
+     "id": "shrub-tamarisk-01",
+     "tags": [
+      "shrub",
+      "tamarisk",
+      "dressing"
+     ],
+     "height_m": 1.2,
+     "motion": "sway"
+    },
+    {
+     "id": "barley-clump-01",
+     "tags": [
+      "grass",
+      "barley",
+      "wild",
+      "dressing"
+     ],
+     "height_m": 0.6,
+     "motion": "sway"
+    }
+   ]
+  },
+  {
+   "id": "near-field-irrigated",
+   "layer": "near_ground",
+   "subject": "Southern Mesopotamia, Uruk period, c. 3400 BCE: an irrigated barley field of young green barley in rows with a narrow muddy irrigation channel of water running across.",
+   "items": [
+    {
+     "id": "near-field-irrigated-01",
+     "tags": [
+      "near",
+      "ground",
+      "field",
+      "irrigated",
+      "barley",
+      "canal"
+     ],
+     "height_m": 13.1,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "near-silt-bank",
+   "layer": "near_ground",
+   "subject": "Southern Mesopotamia, Uruk period, c. 3400 BCE: a river bank of damp grey-brown silt with footprints, cracked drying mud and a few reed stubs.",
+   "items": [
+    {
+     "id": "near-silt-bank-01",
+     "tags": [
+      "near",
+      "ground",
+      "riverbank",
+      "silt",
+      "mud",
+      "river"
+     ],
+     "height_m": 13.1,
+     "motion": "none"
+    }
+   ]
+  },
+  {
+   "id": "near-yard-mudbrick",
+   "layer": "near_ground",
+   "subject": "Southern Mesopotamia, Uruk period, c. 3400 BCE: a packed earth courtyard with scattered broken mudbrick pieces, straw and potsherds, worn smooth by feet.",
+   "items": [
+    {
+     "id": "near-yard-mudbrick-01",
+     "tags": [
+      "near",
+      "ground",
+      "yard",
+      "mudbrick",
+      "earth",
+      "city"
+     ],
+     "height_m": 13.1,
+     "motion": "none"
+    }
+   ]
   }
  ],
  "plate": [
