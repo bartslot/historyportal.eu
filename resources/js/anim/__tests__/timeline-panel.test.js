@@ -443,3 +443,40 @@ describe('every keyframeable row saves live while it is typed or dragged', () =>
     }
   }
 })
+
+/**
+ * A live edit still waiting for its pause survives a reload: the draft is stashed on pagehide and
+ * comes back, and saves, on the next init. Scene-scoped, so another scene never picks it up.
+ */
+describe('an unsent live edit survives a reload', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    sessionStorage.clear()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+    sessionStorage.clear()
+  })
+
+  it('stashes the pending draft, restores it on the next panel, and saves it', () => {
+    const target = 'bal:1'
+    const tracks = [{ target, property: 'tip_y', keyframes: [{ time: 1, value: 0 }, { time: 3, value: 1 }] }]
+    const first = panel(tracks)
+    first.time = 2
+    first.setValue(target, 'tip_y', 0.5, { flush: false })
+    first.stashDraft()
+
+    const second = panel([])
+    second.restoreDraft()
+    expect(second.tracks).toEqual(first.tracks)
+
+    vi.advanceTimersByTime(1000)
+    expect(second.$wire.setTimeline).toHaveBeenCalledTimes(1)
+    expect(sessionStorage.length).toBe(0)
+  })
+
+  it('stashes nothing when no live edit is waiting', () => {
+    panel([]).stashDraft()
+    expect(sessionStorage.length).toBe(0)
+  })
+})

@@ -71,6 +71,9 @@ const dragMemory = new WeakMap()
  */
 const SESSIONS = new Map()
 
+/** The sessionStorage key for one scene's unsent live edit. */
+const draftKey = (sceneId) => `timeline-draft:${sceneId}`
+
 /**
  * How long a new scene's timeline runs, in seconds.
  *
@@ -135,6 +138,7 @@ export const animationTimeline = (config = {}) => ({
   hiddenObjects: {},         // objects the author has taken off the canvas while working
 
   zoomIsMine: false,          // true once the teacher has touched the zoom control
+  _saves: null,               // the live save queue, made by saves() on first use
 
   /** Selected keyframes, as keyId strings. Figma: click selects, Shift+click adds, Delete removes. */
   selected: [],
@@ -156,10 +160,14 @@ export const animationTimeline = (config = {}) => ({
     document.addEventListener('click', (event) => {
       if (event.target.closest?.('[wire\\:click^="selectScene("]')) flushBeforeRequest()
     }, true)
-    window.addEventListener('pagehide', flushBeforeRequest)
+    window.addEventListener('pagehide', () => {
+      this.stashDraft()
+      flushBeforeRequest()
+    })
 
     const saved = SESSIONS.get(config.sceneId)
     if (saved) Object.assign(this, saved)
+    this.restoreDraft()
 
     // The Format panel's diamonds live in a different component, so the timeline publishes the
     // two things they need. Without this they were drawn but unpressable — which is what the
@@ -1544,6 +1552,30 @@ export const animationTimeline = (config = {}) => ({
   /** Send a live edit that is still waiting for its pause. */
   flushSave () {
     this._saves?.flush()
+  },
+
+  /**
+   * A live edit still waiting for its pause, kept across a reload. The page closing can cancel the
+   * request in flight, so the unsent draft goes to this tab's sessionStorage and comes back on init.
+   */
+  stashDraft () {
+    if (!this._saves?.isPending()) return
+    try {
+      sessionStorage.setItem(draftKey(config.sceneId), JSON.stringify({ tracks: this.tracks, targets: this.targets, duration: this.duration }))
+    } catch (_) { /* storage blocked: the pause is lost, as it was before */ }
+  },
+
+  restoreDraft () {
+    let draft = null
+    try {
+      const key = draftKey(config.sceneId)
+      draft = JSON.parse(sessionStorage.getItem(key) ?? 'null')
+      sessionStorage.removeItem(key)
+    } catch (_) { return }
+    if (!Array.isArray(draft?.tracks)) return
+    this.tracks = draft.tracks
+    this.applyFrame()
+    this.saveSoon()
   },
 
   save () {
