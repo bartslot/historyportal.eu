@@ -174,7 +174,7 @@ function celMaterial(name: string, base: BaseTexture | null, alphaCut: boolean, 
 // ---------- 2 ink hull ----------
 // Smoothed normals: vertices split at UV seams / hard edges would tear the hull apart; average the
 // normals of every vertex sharing a position and push along that instead.
-function smoothNormals(mesh: Mesh): Float32Array {
+export function smoothNormals(mesh: Mesh): Float32Array {
   const pos = mesh.getVerticesData(VertexBuffer.PositionKind)!
   let nor = mesh.getVerticesData(VertexBuffer.NormalKind)
   if (!nor) { nor = new Float32Array(pos.length); VertexData.ComputeNormals(pos, mesh.getIndices()!, nor) }

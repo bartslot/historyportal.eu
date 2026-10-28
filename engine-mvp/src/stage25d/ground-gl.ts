@@ -1,7 +1,7 @@
 // The floor and its contact stains on the GPU. The ground is one big plane at y 0: its art tiles in world metres
 // (so perspective is real), a watercolour grain sits on world positions (it never slides when the camera moves), and
 // toward the horizon it fades into the colour the far landscape ends in, so the bg strip's feathered edge meets it.
-import { Constants, Effect, MeshBuilder, RawTexture, ShaderMaterial, Texture, Vector3, type Mesh, type Scene } from '@babylonjs/core'
+import { Constants, Effect, MeshBuilder, RawTexture, ShaderMaterial, Texture, Vector3, type Mesh, type Scene, type TransformNode } from '@babylonjs/core'
 
 const NOISE = `
   float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -90,7 +90,7 @@ export function makeGround(scene: Scene): { mesh: Mesh; set(look: GroundLook): v
 let stainSeed = 0
 
 /** A soft painted stain lying on the ground, centred on `parent`'s origin (its anchor), w x d metres. */
-export function makeStain(parent: Mesh, w: number, d: number, scene: Scene): { mesh: Mesh; setOpacity(o: number): void } {
+export function makeStain(parent: TransformNode, w: number, d: number, scene: Scene): { mesh: Mesh; setOpacity(o: number): void } {
   const mesh = MeshBuilder.CreatePlane(`stain:${parent.name}`, { width: w, height: d }, scene)
   mesh.rotation.x = Math.PI / 2                 // flat on the floor
   mesh.position.set(0, 0.02, -d * 0.18)         // a little toward the camera: the dark core shows in front of the foot

@@ -1,5 +1,5 @@
 // The retargeted walk on the real body (git-ignored GLBs: skipped where missing): every frame keeps one foot on the
-// ground (within 2 cm) and no knee bends backwards.
+// ground (within 2 cm), no knee bends backwards and the hips bob at most 6 cm.
 import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { beforeAll, describe, expect, it } from 'vitest'
@@ -38,14 +38,18 @@ describe.skipIf(!existsSync(BODY) || !existsSync(WALK))('walk clip on the standa
     walk.pause()
     const lifts: number[] = []
     const knees: string[] = []
+    const hips: number[] = []
     for (let fr = walk.from; fr <= walk.to; fr += 1) {
       walk.goToFrame(fr)
       lifts.push(soleHeight(rig, restUp, f.up))
+      hips.push(Vector3.Dot(pos(rig, 'hips'), f.up))
       checkPose(rig, f).filter((v) => v.kind === 'knee-backwards').forEach((v) => knees.push(`${fr} ${v.limb}`))
     }
     walk.stop()
     expect(lifts.length).toBeGreaterThan(60)
     expect(Math.max(...lifts.map(Math.abs))).toBeLessThan(0.02)
     expect(knees).toEqual([])
+    // no float and no bounce: the hips rise and fall at most 6 cm over the cycle (PM)
+    expect(Math.max(...hips) - Math.min(...hips)).toBeLessThan(0.06)
   })
 })

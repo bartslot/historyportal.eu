@@ -78,7 +78,69 @@ the `_placeholder` bundle). The panel edits every camera, timing and motion valu
 Tests: `npx vitest run src/stage25d`. Real-GPU check (muted, Metal ANGLE, 1080p frames, fps, edit + undo):
 `node scripts/stage25d-check.mjs http://localhost:5197/stage25d.html <outDir>/` (launch config `stage25d`, port 5197) (needs `npx playwright install chromium`).
 
-## Figures (`src/figures/`)
+## Puppet figures (`src/figures/puppet.ts`, the default route since 10-27)
+
+Painted cut-out characters: the History Lines art itself, moved by 2D bones. Four characters (`CHARACTERS`):
+`boer-vrouw`, `boer-man`, `voc-matroos`, `voc-kapitein` (Tasman look: moustache, 1640s hat).
+
+```ts
+import { createPuppet, placePuppet } from './src/figures/puppet'
+const p = await createPuppet(player.stage.scene, 'voc-kapitein')     // warnings on: a broken pose is console.warned
+placePuppet(p, { x: 0.6, depth: 'fg', facing: 'left' }, player.stage) // left = the art mirrored; { view: 'side' } for profile
+p.setPose('kneel')           // stand walk point carry kneel sit; returns the guards' findings ([] = human)
+p.setExpression('worried')   // 4 drawn heads; the lesson's 8 expressions map onto them (EXPRESSION_OF)
+p.setHat(false)              // the hat is its own part
+p.setDye('top', '#2b4a7a')   // garments(): top accent skirt sleeves breeches legs shoes hat; null = painted colour
+```
+
+**Art**: one PARTS SHEET per character and view (3/4, side, front; 12 sheets), Figma `generate_image`
+(gpt-image-2.5-sunburst) in the Art library file `ULbjXnT1DAatLTQLwWLHTE` (node ids in BartsMedia
+`topics/autonomous-lessons/puppet-parts/SOURCES.txt`). A fixed 6x3 grid: 4 expression heads, torso, skirt or hat /
+upper arm, forearm, 3 hands (open, grip, point), hat / thigh, shin, 2 feet. Legs exist under every skirt. The prompts
+(dark variable-weight contour, face detail, library palette): `python3 src/figures/parts_prompts.py voc-kapitein_side`.
+
+**Cut** (`src/figures/cut_all.sh` -> `cut_parts.py`, nothing hand-set): parts are found as shapes and get their slot
+by row and order (a merged or split shape stops the run); joints come from the shape (limb end caps by PCA, wrist and
+ankle caps, waist = narrowest row, crown for the hat); every part is scaled to an anthropometric length (the model keeps
+style, not scale); the painted joint discs are handled the cut-out way (a parent's far disc is cut, a child's near disc
+refilled with the limb mirrored across the joint, the child drawn under the parent); dye masks are colouring-book
+regions between the ink lines, clustered: R = the whole garment, G/B = clearly different accents (belt, collar,
+waistcoat). Output WebP in `public/figures/puppets/<id>/<view>/` (4.5 MB for all four).
+
+**Motion**: `solve()` places every part in the figure's own 2D frame (x forward, y up); side and 3/4 turn limbs in the
+picture plane, front foreshortens them (`PUPPET.minForeshorten`). The vertices are computed there, so the guards in
+`violations()` (knee bends back, elbow forward, shoulder and hip ranges) measure exactly what is drawn. A skirt drapes
+waist -> knees -> down. Dye = target colour x the paint's own luminance (ink, wash, paper texture stay).
+Knobs on sliders in `puppet-lab.html` (walk swing, knee lift, arm swing, steps/s, breathing, lap, front foreshortening).
+
+**Evidence**: `puppet.test.ts` through `createPuppet` with warnings captured: every character x pose x view is human
+and stands on the ground; 6 mutations (knee forward, far knee forward, elbow back, arm through the back, leg past the
+hip, knee folded flat) are caught. Real stage frames: `node src/figures/capture_puppets.mjs` (silent headless
+Chromium) -> BartsMedia `puppet-parts/stage/` (`contact_all_poses_views.png`).
+
+**Guards per view**: `setPose` checks every view on its own sheet (`GUARD_TOL`: the front view hangs parts as drawn,
+so only a fold-over counts there). Face-on, point/carry/kneel/sit would read as standing: they show in 3/4
+(`FRONT_POSES`, logged). `placePuppet` with a stage gives the figure S1's contact stain and, from the stage library, a
+seat (a rock, log, stump, stool...) that `sit` uses; with no seat the figure sits on the ground. Stand is a contrapposto
+with a slow weight shift. A skirt drapes: each edge runs to its knee once that knee leaves the hanging cloth (a lap,
+a kneel), and pools on the ground. `placePuppet(..., { behind })` stands a figure behind a same-depth layer.
+
+**Edges** (asset pipeline, `cut_parts.py`): paper pockets near the outline (between hair strands, fingers) count as
+background; the silhouette loses its 1 px fringe, the band the edge keeps takes the paint from just inside (no traced
+rim: an even dark rim read as a sticker), and the alpha gets a soft sub-pixel edge, so the shader's 0.5 cut is smooth.
+The painted joint disc past a sleeve is cut where the limb's own paint ends. Every part's `edge_fringe` (bright outer
+pixel over dark paint just inside) is in its `parts.json` and tested < 0.03 (the fde8a591 assets measure 0.29-0.48).
+Tests run on a clean checkout: the seat test uses the committed fixture `src/figures/__fixtures__/library.json`.
+
+**Art, round 2**: the farmer woman is two-pass (art v3 sparse ink via `generate_image`, then Figma "Edit with prompt"
+colour with the 9 library refs; `parts_prompts.py ink|colour`); `cut_all.sh` prefers `puppet-parts/v2/` sheets. Two
+fresh reviewers scored her 4 and 4 vs the rider target (one-pass: 4): they ask for a heavier contour, more hatching
+and stronger washes than the library's sparse-ink rule gives. The other three are still one-pass.
+
+**Limits**: the woman's fur cape dyes with her dress; the sailor's torso art includes his shirt sleeves; no back view;
+no lesson `Cast` wiring yet.
+
+## Figures, 3D route (`src/figures/`, PARKED look; mechanics kept)
 
 Lesson figures that read as History Lines comic characters: ONE standard body (Customizable Man, Auto-Rig Pro deform
 rig), variety only from dyes, skin, hair part, hat on/off. `lesson.json` `figures[]` maps straight onto it.
@@ -105,11 +167,23 @@ prop.parent = fig.hold   // lesson `holds` (a pot, a basket): a node between the
   expressions fall back (`poseFor`, `expressionFor`). Group chars repeated in one scene get their own dyes.
 - **Contract with the stage**: `placeFigure(scene, fig, { x 0..1, depth: 'bg'|'mid'|'fg', facing: 'left'|'right'|'front'|'back' }, stage?)`.
   It stands `fig.root` on `stage.groundPoint(x, depth)` (S1's `Stage`); without a stage it uses the same depth maths.
-  `left`/`right` = a 3/4 turn toward that side of the screen (`FACING_TURN_DEG`, 62; 90 = profile). Move `fig.root`
+  `left`/`right` = a 3/4 turn toward that side of the screen, measured from the line to the camera (`FACING.turnDeg`, 62; 90 = profile). Move `fig.root`
   for walks; the walk clip plays in place.
-- **Paint** (`toon.ts`): flat dye, one hard cel step lit by the figure's own light (`TOON.light`), ink where the surface
-  turns from the eye (contour + fold lines, thick on round forms, thin on flat). Skin is lit flat (`SKIN_STEP`).
-- **Costume is painted, never modelled**: per-vertex zones by bone weight (`paintZones`) dye parts of the one body's
+- **Paint** (`toon.ts`): flat dye with a HARD two-step cel (`TOON.step`), the shade a darker, cooler hue of the dye
+  (`shadeMul`, `shadeCool`), faces lit by the light's horizontal angle; a body-anchored watercolour (pigment thick and
+  thin, a wet edge on the shade line, paper in the lights) that moves with the figure. Ink: an inverted hull in SCREEN
+  pixels (`inkPxMin`..`inkPxMax` at 1080p) that swells, thins and breaks like a pen (`inkWobble`), stepped back from
+  the camera so it only shows past the silhouette, plus fold lines where the surface turns from the eye (`inkEdge`).
+  Root cause of every earlier hull failure: the vendor meshes carry vertex alpha, which put them in the transparent
+  pass; `createFigure` clears `hasVertexAlpha`. The stage look's pencil pass adds its line on top. Every value is a
+  slider in the figure lab.
+- **Garment slots from FOUND parts** (`fit_garments.py`, run inside `export_wardrobe.py`; never modelled by hand):
+  CC0 MakeHuman monk robe (Donitz) cut by the body's own landmarks into `Garment_SkirtKnee` (tunic, `legs: tunic`),
+  `Garment_SkirtLong` (`legs: dress`) and `Garment_Peplum` (doublet skirts, `legs: breeches` + `collar`); CC0
+  viking pants (Rehman Polanski) cut into `Garment_Breeches`; CC-BY "Hat Of The Cavalier" (Normal Map Enjoyer,
+  Sketchfab c0a97984) as `Garment_HatWide`. Each is pushed outside the trousers, snugged at the waist, low poly,
+  and skinned to `Man_Rig` with the trousers' weights (skirts hang 75 % from the hips so they do not split).
+- **Costume is also painted**: per-vertex zones by bone weight (`paintZones`) dye parts of the one body's
   meshes. Recipe words: `sleeves` (long sleeves on the arm skin), `legs: tunic | dress | breeches | trousers` (tunic =
   coat dye hip to knee over leg wraps; breeches = stockings below the knee), `collar` (white falling collar within
   `BANDS.collarRadius` of the neck joint), `belt` (a band at the coat's hem). `figureRecipe` picks them by era. The stage look's pencil pass adds its
@@ -122,14 +196,23 @@ prop.parent = fig.hold   // lesson `holds` (a pot, a basket): a node between the
   behind the hip-ankle line, elbow never bent forward, upper arm never across the body, hip extension under 45 deg.
   `npx vitest run src/figures` runs them on the real body (skipped where the GLB is missing) and proves the guards
   fail a broken knee and an arm through the torso.
-- **Walk** (`clips.ts`): Ready Player Me `M_Walk_001` (Mixamo names) retargeted with `AnimatorAvatar` + root/ground
-  fix (feet stay on the ground, no crouch, no float), then a guard bake straightens any backward knee in the keys:
-  0 violations over 116 frames (figure lab: `__lab.walkAudit()`).
+- **Walk** (`clips.ts`): Ready Player Me `M_Walk_001` (Mixamo names) retargeted with `AnimatorAvatar`, stride scaled
+  to the short legs (`STRIDE.scale`), a guard bake that straightens any backward knee, then the hips resampled per
+  frame so the lower foot's sole stays on the ground. `walk.test.ts`: every frame a foot within 2 cm of the ground, no
+  backward knee, hips bob under 6 cm (figure lab: `__lab.walkAudit()`).
 - **Lab**: `/figure-lab.html?char=boer-man,boer-vrouw&poses=point,carry&view=front|three|side|face&look=stage&ui=0`.
 - **Assets** (git-ignored): `public/assets/models/customizable-man/man-lite.glb` from `src/figures/export_wardrobe.py`
   (Blender, licensed model in `workflows/3D pipeline/customizable-man/`, licence: no AI training) and `clips/`.
-- **Gaps (needed assets)**: female body and a child body (now: the man at 0.95 / 0.68); long hair / braid /
-  headscarf / white cap; period SILHOUETTES (the zones give tunic, dress, breeches, collar their colour, the shape is
-  still sweater + trousers: a wide tunic skirt, a skirt, a cloak); a 1640s wide flat felt hat (the Cowboy_Hat part
-  stands in); hand props for `carry` / `dig` / `pull` (basket, spade, rope); a seat for `sit` at a table; thin paper
-  slivers at hems where the cloth stands off the trimmed body.
+- **PARKED (look round, check C FAILed 2586b240; the safe base is f867087d, merged)**. Lesson: NEVER TEST AROUND THE
+  REAL ENTRY POINT. `walk.test` loaded the clip into a raw container and called `retargetFrom` directly, so it stayed
+  green while the walk through `createFigure` had 0 tracks; the lab hid the hull bug that the real stage shows.
+  Tests and shots go through `createFigure`/`placeFigure` on `stage25d`, with warnings ON. Open, with leads:
+  C1 the hull blots figures on the stage: its push back (`inkPush`, 2 cm) must exceed its outward push
+  (px x metres-per-px x distance: ~3 cm at 22 m with the stage's fov 0.87), so scale `inkPush` with that width.
+  C2 the walk has 0 tracks with the garment GLB: un-mute `avatar.showWarnings`; suspect the extra skins the garments
+  add (one skeleton per skin after instantiate) so AnimatorAvatar maps the bones to another skeleton.
+  C3 garments tear in kneel (one skirt over two legs), the robe's neck hole shows, the peplum is blocky.
+  C4 the hull closes over thin fingers.
+- **Gaps (needed assets)**: female and child bodies (now the man at 0.95 / 0.68); long hair / braid / headscarf /
+  cap; a cloak and a hide cape (no found part fitted yet); hand props for `carry` / `dig` / `pull` (basket, spade,
+  rope); simplified comic hands and the base mesh's proportions (accepted for the pilot); thin paper slivers at hems.

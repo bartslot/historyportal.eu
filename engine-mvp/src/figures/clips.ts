@@ -6,7 +6,7 @@
 // Guard bake: a frame where a knee bends backwards (retargeted hyperextension) gets that shin aimed straight
 // along the thigh, written back into the keys. The walk ships with zero guard violations.
 import {
-  Animation, AnimatorAvatar, LoadAssetContainerAsync, Vector3,
+  Animation, AnimatorAvatar, LoadAssetContainerAsync, Quaternion, Vector3,
   type AnimationGroup, type AssetContainer, type Scene, type TransformNode,
 } from '@babylonjs/core'
 import '@babylonjs/loaders/glTF'
@@ -28,6 +28,11 @@ export const MIXAMO_TO_ARP = new Map<string, string>([
 // ARP keeps a twist sibling beside the upper arm (same rest); it must follow or the sleeve tears
 const TWINS: [string, string][] = [[ARP.armL, ARP.armTwistL], [ARP.armR, ARP.armTwistR]]
 
+
+/** stride: the leg swing scaled toward rest (1 = the source's long-legged stride; shorter legs, shorter steps,
+ *  and the hips bob less: at 1 the cartoon body bobs 7 cm, the limit is 6) */
+export const STRIDE = { scale: 0.8 }
+const LEGS = new Set<string>([ARP.thighL, ARP.thighR, ARP.shinL, ARP.shinR])
 
 const sources = new Map<string, Promise<AssetContainer>>()
 function source(url: string, scene: Scene) {
@@ -82,6 +87,13 @@ export function retargetFrom(c: AssetContainer, clip: string, rig: Rig, rest: Re
       a.setKeys(ta.animation.getKeys().map((k) => ({ ...k })))
       group.addTargetedAnimation(a, tgt(twin))
     }
+  }
+  // shorter steps for shorter legs: every leg rotation key is pulled toward the rest pose
+  for (const ta of group.targetedAnimations) {
+    const node = ta.target as TransformNode
+    if (!LEGS.has(node.name) || ta.animation.targetProperty !== 'rotationQuaternion') continue
+    const restQ = rest.get(node)!.q
+    ta.animation.setKeys(ta.animation.getKeys().map((k) => ({ ...k, value: Quaternion.Slerp(restQ, k.value as Quaternion, STRIDE.scale) })))
   }
   group.loopAnimation = true
   avatar.dispose() // made with disposeResources = false: frees the avatar only, never the figure
