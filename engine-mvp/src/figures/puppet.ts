@@ -9,6 +9,9 @@ import {
   Effect, Mesh, ShaderMaterial, Texture, TransformNode, Vector3, VertexBuffer, VertexData, type Scene,
 } from '@babylonjs/core'
 import type { Placement, StageLike } from './figure'
+import { STAIN_DEFAULT, stainSize } from '../stage25d/ground'
+import { makeStain } from '../stage25d/ground-gl'
+import type { Asset, Library } from '../stage25d/types'
 
 type P2 = [number, number]
 type Part = {
@@ -29,6 +32,8 @@ export const CHARACTERS: Record<string, Character> = {
   'voc-kapitein': { id: 'voc-kapitein', height: 1.74, hat: true },
 }
 export const VIEWS: View[] = ['34', 'side', 'front']
+// face-on, these poses foreshorten into a standing figure (a point becomes a hand on the chest): they show in 3/4
+export const FRONT_POSES: PuppetPose[] = ['stand', 'walk']
 export const POSE_NAMES: PuppetPose[] = ['stand', 'walk', 'point', 'carry', 'kneel', 'sit']
 // the lesson's eight expressions onto the four drawn heads
 export const EXPRESSION_OF: Record<string, Expression> = {
@@ -45,9 +50,10 @@ const GARMENTS: Record<Garment, [string, number][]> = {
 export const LIMITS = { armFwd: 150, armBack: 40, elbowMax: 150, hipFwd: 125, hipBack: 35, kneeMax: 150 }
 // look + motion knobs (dev panel): degrees, metres, Hz
 export const PUPPET = {
-  walkHip: 24, walkKnee: 48, walkArm: 18, walkElbow: 14, stride: 0.95, bob: 0.012, breathe: 1.5,
+  walkHip: 24, walkKnee: 48, walkArm: 18, walkElbow: 14, stride: 0.95, bob: 0.012, breathe: 1.5, idleRate: 0.45,
   zStep: 0.004, // metres between part layers, toward the camera
   seat: 0.11, // m from the hip joints down to the buttocks
+  seatHeight: 0.43, // m, a seat's top (for a 1.70 m figure)
   minForeshorten: 0.3, // front view: an arm pointing at the camera still shows this share
   minForeshortenLeg: 0.12, // ...a leg (a seated figure's thighs nearly vanish, so it reads low, not short)
   lapThickness: 0.4, // a skirt over seated thighs keeps this share of its hanging depth
@@ -60,15 +66,22 @@ export type Angles = {
   aN: number; aF: number                         // ankle, added to the shin's angle (toes up +)
   handN: 'open' | 'grip' | 'point'; handF: 'open' | 'grip' | 'point'
 }
-const STAND: Angles = { lean: 0, head: 0, sN: 4, eN: 8, sF: -3, eF: 8, hN: 2, kN: -2, hF: -2, kF: -1, aN: 0, aF: 0, handN: 'open', handF: 'open' }
+// contrapposto: the weight on the far leg, the near knee eased forward, the body leaning a touch back over it
+const STAND: Angles = { lean: -1.5, head: 2, sN: 5, eN: 12, sF: -4, eF: 10, hN: 7, kN: -14, hF: -3, kF: -1, aN: 7, aF: 4, handN: 'open', handF: 'open' }
 // a pose = its angles at time t (s); exported so a test can break one and see the guards catch it
-export const POSES: Record<PuppetPose, (t: number, c?: Character) => Angles> = {
-  stand: (t) => ({ ...STAND, lean: 0.6 * Math.sin(t * 0.7), head: 1.2 * Math.sin(t * 0.5), sN: STAND.sN + PUPPET.breathe * Math.sin(t * 1.6) }),
+export const POSES: Record<PuppetPose, (t: number, c?: Character, seated?: boolean) => Angles> = {
+  stand: (t) => {
+    const shift = Math.sin(t * PUPPET.idleRate) // a slow weight shift: the free knee eases and settles
+    return { ...STAND, lean: STAND.lean + 0.8 * shift, head: STAND.head + 1.5 * Math.sin(t * 0.5),
+      hN: STAND.hN + 2 * shift, kN: STAND.kN - 4 * shift, sN: STAND.sN + PUPPET.breathe * Math.sin(t * 1.6) }
+  },
   point: (t) => ({ ...POSES.stand(t), sN: 82, eN: 6, handN: 'point', head: 4 }),
   carry: (t) => ({ ...POSES.stand(t), sN: 28, eN: 62, sF: 28, eF: 62, handN: 'grip', handF: 'grip', lean: -3 }),
   kneel: () => ({ ...STAND, lean: 4, head: 6, hF: 88, kF: -88, aF: 0, hN: -4, kN: -100, aN: -40, sN: 18, eN: 40, sF: 10, eF: 30 }),
-  // on the ground (no seat needed): hips down, knees up a little, hands on the knees
-  sit: () => ({ ...STAND, lean: -6, head: 4, hN: 100, kN: -28, aN: -72, hF: 94, kF: -20, aF: -74, sN: 34, eN: 30, sF: 28, eF: 34 }),
+  // on a seat (placePuppet gives one from the stage's library), else on the ground: hips down, knees up a little
+  sit: (_t, _c, seated) => seated
+    ? { ...STAND, lean: -3, head: 4, hN: 88, kN: -84, aN: -4, hF: 84, kF: -82, aF: -2, sN: 24, eN: 58, sF: 20, eF: 60 }
+    : { ...STAND, lean: -6, head: 4, hN: 100, kN: -28, aN: -72, hF: 94, kF: -20, aF: -74, sN: 34, eN: 30, sF: 28, eF: 34 },
   walk: (t) => {
     const ph = t * Math.PI * 2 * PUPPET.stride
     const leg = (p: number) => ({ h: PUPPET.walkHip * Math.sin(p), k: -PUPPET.walkKnee * Math.max(0, Math.sin(p + 1.2)) ** 2 - 4 })
@@ -99,7 +112,7 @@ export type Joints = Record<'hip' | 'neck' | 'shoulderN' | 'shoulderF' | 'elbowN
 type Rig = { places: Record<string, Place>; joints: Joints; drape: { waist: P2; knee: P2 } }
 
 /** forward kinematics: every part's placement for these angles, standing on y = 0 */
-export function solve(sheet: Sheet, height: number, a: Angles): Rig {
+export function solve(sheet: Sheet, height: number, a: Angles, seatTop = 0): Rig {
   const P = sheet.parts, front = sheet.view === 'front', k = height / 1.7
   const sc = (slot: string) => P[slot].m_per_px * k
   const places: Record<string, Place> = {}
@@ -153,7 +166,7 @@ export function solve(sheet: Sheet, height: number, a: Angles): Rig {
   const lN = leg('N', hipN, a.hN, a.kN, a.aN), lF = leg('F', hipF, a.hF, a.kF, a.aF)
   // stand on the ground: the lowest sole or knee touches y = 0
   const kneeCap = 0.05 * k, seat = PUPPET.seat * k // a seated figure rests on its buttocks, below the hip joints
-  const low = Math.min(...lN.sole.map((p) => p[1]), ...lF.sole.map((p) => p[1]), lN.knee[1] - kneeCap, lF.knee[1] - kneeCap, hip[1] - seat)
+  const low = Math.min(...lN.sole.map((p) => p[1]), ...lF.sole.map((p) => p[1]), lN.knee[1] - kneeCap, lF.knee[1] - kneeCap, hip[1] - seat - seatTop * k)
   const lift = (p: P2): P2 => [p[0], p[1] - low]
   for (const pl of Object.values(places)) pl.at = lift(pl.at)
   if (P.skirt) places.skirt = { at: lift(waist), deg: 0, sy: 1, s: sc('skirt'), pivot: P.skirt.pivot }
@@ -273,16 +286,20 @@ export type Puppet = {
   setExpression(e: string): void
   setView(v: View, mirror?: boolean): void
   setHat(on: boolean): void
+  setSeat(seat: Seat | null): void          // something to sit on (a sit without one is on the ground)
   setDye(g: Garment, color: string | null): void  // null = the painted colour
   garments(): Garment[]
   joints(): Joints                          // the solved 2D joints right now (figure frame)
   dispose(): void
 }
 
+export type Seat = { url: string; aspect: number } // a library asset's image and its width / height
+
 export type PuppetOptions = {
   base?: string                                      // where the cut parts live (default figures/puppets/<id>)
   loadSheet?: (url: string) => Promise<Sheet>        // default fetch; a test passes a file reader
   warn?: (msg: string) => void                       // default console.warn; never silence it in a test
+  log?: (msg: string) => void                        // default console.info (a view fallback)
 }
 
 export async function createPuppet(scene: Scene, id: string, opts: PuppetOptions = {}): Promise<Puppet> {
@@ -291,6 +308,7 @@ export async function createPuppet(scene: Scene, id: string, opts: PuppetOptions
   const base = opts.base ?? `figures/puppets/${id}`
   const load = opts.loadSheet ?? (async (url: string) => { const r = await fetch(url); if (!r.ok) throw new Error(`${url}: ${r.status}`); return r.json() as Promise<Sheet> })
   const warn = opts.warn ?? ((m: string) => console.warn(m))
+  const log = opts.log ?? ((m: string) => console.info(m))
   const sheets = Object.fromEntries(await Promise.all(VIEWS.map(async (v) => [v, await load(`${base}/${v}/parts.json`)] as const))) as Record<View, Sheet>
   const root = new TransformNode(id, scene)
   const yaw = new TransformNode(`${id}_yaw`, scene)
@@ -308,12 +326,17 @@ export async function createPuppet(scene: Scene, id: string, opts: PuppetOptions
     }
     return [v, set]
   })) as Record<View, Record<string, PartMesh>>
-  const state = { pose: 'stand' as PuppetPose, t: 0, view: '34' as View, expr: 'neutral' as Expression, hat: character.hat, last: [] as string[], dist: 10 }
+  const state = { pose: 'stand' as PuppetPose, t: 0, view: '34' as View, expr: 'neutral' as Expression, hat: character.hat, last: [] as string[], dist: 10, want: '34' as View, seat: null as null | { mesh: Mesh; aspect: number } }
+  // the view drawn: the one asked for, unless face-on would hide the pose
+  const shownView = () => (state.want === 'front' && !FRONT_POSES.includes(state.pose) ? '34' : state.want)
+  const seated = () => state.pose === 'sit' && !!state.seat
 
   const draw = () => {
+    state.view = puppet.view = shownView()
     const sheet = sheets[state.view]
-    const a = POSES[state.pose](state.t, character)
-    const rig = solve(sheet, character.height, a)
+    const a = POSES[state.pose](state.t, character, seated())
+    const rig = solve(sheet, character.height, a, seated() ? PUPPET.seatHeight : 0)
+    if (state.seat) placeSeat(state.seat, rig, character.height)
     const order = ORDER[state.view === 'front' ? 'front' : 'turned']
     const shown = new Set<PartMesh>()
     order.forEach((key, layer) => {
@@ -332,6 +355,7 @@ export async function createPuppet(scene: Scene, id: string, opts: PuppetOptions
       pm.mesh.updateVerticesData(VertexBuffer.PositionKind, pm.pos)
     })
     for (const v of VIEWS) for (const pm of Object.values(meshes[v])) pm.mesh.setEnabled(shown.has(pm))
+    state.seat?.mesh.setEnabled(seated())
     return rig
   }
 
@@ -355,15 +379,26 @@ export async function createPuppet(scene: Scene, id: string, opts: PuppetOptions
       const found = new Set<string>()
       // every view on its own sheet (what each view draws), over a whole cycle of a moving pose
       for (const t of p === 'walk' ? Array.from({ length: 24 }, (_, i) => i / 24 / PUPPET.stride) : [0]) {
-        for (const v of VIEWS) for (const x of violations(solve(sheets[v], character.height, POSES[p](t, character)).joints, GUARD_TOL[v])) found.add(`${v}: ${x}`)
+        for (const v of VIEWS) for (const x of violations(solve(sheets[v], character.height, POSES[p](t, character, seated()), seated() ? PUPPET.seatHeight : 0).joints, GUARD_TOL[v])) found.add(`${v}: ${x}`)
       }
       state.last = [...found]
+      if (state.want === 'front' && !FRONT_POSES.includes(p)) log(`puppet ${id} ${p}: face-on would hide the pose, shown in 3/4`)
       for (const v of state.last) warn(`puppet ${id} ${p}: ${v}`)
       draw()
       return state.last
     },
     setExpression(e) { state.expr = EXPRESSION_OF[e] ?? 'neutral'; draw() },
-    setView(v, mirror = false) { puppet.view = state.view = v; flip.scaling.x = mirror ? -1 : 1; draw() },
+    setView(v, mirror = false) {
+      state.want = v
+      flip.scaling.x = mirror ? -1 : 1
+      if (v === 'front' && !FRONT_POSES.includes(state.pose)) log(`puppet ${id} ${state.pose}: face-on would hide the pose, shown in 3/4`)
+      draw()
+    },
+    setSeat(seat) {
+      state.seat?.mesh.dispose(false, true)
+      state.seat = seat ? { mesh: seatMesh(scene, seat.url, `${id}_seat`, flip), aspect: seat.aspect } : null
+      draw()
+    },
     setHat(on) { state.hat = on && !!sheets['34'].parts.hat; draw() },
     setDye(g, color) {
       for (const v of VIEWS) for (const [slot, ch] of GARMENTS[g]) for (const pm of Object.values(meshes[v]).filter((m) => m.slot === slot)) {
@@ -378,7 +413,7 @@ export async function createPuppet(scene: Scene, id: string, opts: PuppetOptions
       const p = sheets['34'].parts
       return (Object.keys(GARMENTS) as Garment[]).filter((g) => GARMENTS[g].some(([slot, ch]) => (p[slot]?.dye?.length ?? 0) > ch))
     },
-    joints() { return solve(sheets[state.view], character.height, POSES[state.pose](state.t, character)).joints },
+    joints() { return solve(sheets[state.view], character.height, POSES[state.pose](state.t, character, seated()), seated() ? PUPPET.seatHeight : 0).joints },
     dispose() { scene.onBeforeRenderObservable.remove(tick); root.dispose(false, true) },
   }
   puppet.setPose('stand')
@@ -406,12 +441,55 @@ function drape(pl: Place, p: Part, px: P2, d: { waist: P2; knee: P2 }): P2 {
   return q[1] >= 0 ? q : [q[0] + q[1], 0]
 }
 
+function seatMesh(scene: Scene, url: string, name: string, parent: TransformNode): Mesh {
+  const mesh = new Mesh(name, scene)
+  const vd = new VertexData()
+  vd.positions = new Float32Array(12)
+  vd.indices = [0, 2, 1, 1, 2, 3]
+  vd.uvs = [0, 1, 1, 1, 0, 0, 1, 0]
+  vd.applyToMesh(mesh, true)
+  mesh.parent = parent
+  mesh.isPickable = false
+  mesh.alwaysSelectAsActiveMesh = true
+  mesh.metadata = { noGBuffer: true }
+  const mat = new ShaderMaterial(name, scene, 'puppet', { attributes: ['position', 'uv'], samplers: ['art', 'dye'], uniforms: ['worldViewProjection', 'hasDye', 'target0', 'target1', 'target2', 'refL', 'dyeOn'] })
+  mat.backFaceCulling = false
+  mat.setTexture('art', new Texture(url, scene, false, true))
+  mat.setFloat('hasDye', 0)
+  mesh.material = mat
+  return mesh
+}
+
+/** the seat under the buttocks: its top at the seat height, behind every part */
+function placeSeat(seat: { mesh: Mesh; aspect: number }, rig: Rig, height: number) {
+  const k = height / 1.7, h = PUPPET.seatHeight * k, w = h * seat.aspect, x = rig.joints.hip[0] - 0.06 * k, z = PUPPET.zStep
+  seat.mesh.updateVerticesData(VertexBuffer.PositionKind, new Float32Array([x - w / 2, h, z, x + w / 2, h, z, x - w / 2, 0, z, x + w / 2, 0, z]))
+}
+
+const SEATS = /\b(stool|bench|chest|barrel|crate|stump|stumps|log|boulders?|rock|stones?)\b/
+/** something to sit on from a library: a low prop or rock (a seat is drawn in the same style as the scene) */
+export function seatFrom(lib: Library & { base: string }): Seat | null {
+  const a = lib.assets.find((x) => (x.layer === 'fg' || x.layer === 'prop') && !x.tileable_x && x.height_m <= 1.2 && SEATS.test([x.id, ...(x.tags ?? [])].join(' ')))
+  return a ? { url: lib.base + a.file, aspect: a.w / a.h } : null
+}
+
+const stains = new WeakMap<Puppet, ReturnType<typeof makeStain>>()
+
 /** the same contract as placeFigure: stand on the stage; the facing picks the view (left = mirrored art) */
 // `behind` (m, default 0) moves the figure back from its layer's plane, so it can stand behind a same-depth layer
-export function placePuppet(p: Puppet, at: Placement & { view?: '34' | 'side'; behind?: number }, stage?: StageLike) {
+export function placePuppet(p: Puppet, at: Placement & { view?: '34' | 'side'; behind?: number }, stage?: StageLike & { lib?: Library & { base: string } }) {
   const g = stage ? stage.groundPoint(at.x, at.depth) : new Vector3((at.x - 0.5) * 10, 0, { bg: 70, mid: 22, fg: 7 }[at.depth])
   p.root.position.copyFrom(g)
   p.root.position.z += at.behind ?? 0
+  if (stage?.lib) p.setSeat(seatFrom(stage.lib))
+  // the stage's contact stain, as under a boulder: the figure stands on the painted ground, not over it
+  if (stage && !stains.has(p)) {
+    const k = p.character.height / 1.7
+    const sz = stainSize({} as Asset, 0.6 * k, p.character.height, Math.max(1, p.root.position.z))
+    const stain = makeStain(p.root, sz.w, sz.d, p.root.getScene())
+    stain.setOpacity(STAIN_DEFAULT)
+    stains.set(p, stain)
+  }
   if (at.facing === 'left' || at.facing === 'right') p.setView(at.view ?? '34', at.facing === 'left')
   else p.setView('front')
 }

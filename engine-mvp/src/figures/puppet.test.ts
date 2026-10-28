@@ -1,19 +1,21 @@
 // Through the real entry point (createPuppet, warnings on), on the real cut parts in public/figures/puppets.
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { NullEngine, Scene, type Mesh } from '@babylonjs/core'
+import { NullEngine, Scene, Vector3, type Mesh } from '@babylonjs/core'
 import { afterEach, describe, expect, it } from 'vitest'
-import { CHARACTERS, POSES, POSE_NAMES, VIEWS, createPuppet, violations, GUARD_TOL, type Angles, type PuppetPose } from './puppet'
+import { CHARACTERS, POSES, POSE_NAMES, VIEWS, createPuppet, placePuppet, seatFrom, violations, FRONT_POSES, GUARD_TOL, type Angles, type PuppetPose } from './puppet'
 
 const PUBLIC = join(__dirname, '../../public')
 const loadSheet = async (url: string) => JSON.parse(readFileSync(join(PUBLIC, url), 'utf8'))
 
 async function make(id: string) {
-  const warnings: string[] = []
+  const warnings: string[] = [], logs: string[] = []
   const scene = new Scene(new NullEngine())
-  const p = await createPuppet(scene, id, { loadSheet, warn: (m) => warnings.push(m) })
-  return { scene, p, warnings }
+  const p = await createPuppet(scene, id, { loadSheet, warn: (m) => warnings.push(m), log: (m) => logs.push(m) })
+  return { scene, p, warnings, logs }
 }
+const LIB = { version: 1, bundle: 'nl-prehistory', base: 'library/nl-prehistory/', assets: JSON.parse(readFileSync(join(PUBLIC, 'library/nl-prehistory/library.json'), 'utf8')).assets }
+const STAGE = { groundPoint: (x: number) => new Vector3((x - 0.5) * 10, 0, 7), lib: LIB }
 const shown = (scene: Scene) => scene.meshes.filter((m) => m.isEnabled()) as Mesh[]
 
 describe('puppet figures', () => {
@@ -106,5 +108,47 @@ describe('puppet figures', () => {
     p.setHat(true)
     expect(scene.getMeshByName('boer-vrouw_34_hat_hat')).toBeNull()
     expect(scene.getMeshByName('boer-vrouw_34_thigh_N_thigh')!.isEnabled()).toBe(true)
+  })
+
+  it('face-on, a pose that would read as standing shows in 3/4, and says so', async () => {
+    const { p, logs } = await make('voc-matroos')
+    for (const pose of POSE_NAMES) {
+      p.setPose(pose)
+      p.setView('front')
+      expect(p.view, pose).toBe(FRONT_POSES.includes(pose) ? 'front' : '34')
+    }
+    expect(logs.join('\n')).toMatch(/point: face-on would hide the pose, shown in 3\/4/)
+  })
+
+  it('sits on a seat from the stage library, the seat under the hips; without one, on the ground', async () => {
+    expect(seatFrom(LIB)).not.toBeNull()
+    const { p, scene, warnings } = await make('boer-vrouw')
+    p.setPose('sit')
+    const onGround = p.joints().hip[1]
+    placePuppet(p, { x: 0.4, depth: 'fg', facing: 'right' }, STAGE)
+    expect(p.setPose('sit')).toEqual([])
+    const j = p.joints()
+    expect(j.hip[1]).toBeGreaterThan(onGround + 0.25)
+    expect(Math.min(j.ankleN[1], j.ankleF[1])).toBeLessThan(0.15) // feet down on the ground
+    expect(scene.getMeshByName('boer-vrouw_seat')!.isEnabled()).toBe(true)
+    p.setPose('stand')
+    expect(scene.getMeshByName('boer-vrouw_seat')!.isEnabled()).toBe(false)
+    expect(warnings).toEqual([])
+  })
+
+  it('stands in contrapposto: weight on one leg, the other knee eased', async () => {
+    const { p } = await make('voc-kapitein')
+    const a = POSES.stand(0)
+    expect(a.kN).toBeLessThan(-8)
+    expect(Math.abs(a.kF)).toBeLessThan(3)
+    expect(p.setPose('stand')).toEqual([])
+  })
+
+  it('placePuppet lays the stage contact stain under the figure', async () => {
+    const { p, scene } = await make('voc-kapitein')
+    placePuppet(p, { x: 0.5, depth: 'fg', facing: 'left' }, STAGE)
+    const stain = scene.getMeshByName('stain:voc-kapitein')!
+    expect(stain.parent).toBe(p.root)
+    expect(stain.isVisible).toBe(true)
   })
 })
