@@ -6,6 +6,7 @@ import { StrictMode, useEffect, useRef, useState, useSyncExternalStore } from 'r
 import { createRoot } from 'react-dom/client'
 import { playLesson, type Player } from './stage'
 import { resolveAsset } from './library'
+import { DEPTHS, lineKeys, LOOK_RANGE, STAGE_SHEET } from './look'
 import { getIn, type Path } from './edits'
 import { BG_FEATHER, groundOptions, STAIN_DEFAULT } from './ground'
 import { HOLD_DEFAULTS, RENDER_CAPS, sceneDuration, setShotDuration, setShotPose } from './layout'
@@ -31,6 +32,16 @@ function Num({ player, path, label, min, max, step, fallback }: { player: Player
   const raw = getIn(player.doc.lesson, path)
   return <Range label={label} min={min} max={max} step={step} value={typeof raw === 'number' ? raw : fallback} onChange={(v) => player.doc.set(path, v, label)} />
 }
+
+const DEPTH_NAMES: Record<string, string> = { sky: 'sky', bg: 'far', mid: 'middle', fg: 'near' }
+// the stage's paper sheet, then per depth how light, thin and hazy its lines and washes go (look.ts)
+const LOOK_ROWS: [string, string][] = [
+  ['sheetPaper', 'Paper grain'], ['sheetGrain', 'Pigment grain'], ['sheetWash', 'Wash'], ['sheetPatches', 'Wash patches'], ['lineBrown', 'Line brown'], ['groundDetail', 'Ground detail'],
+  ...DEPTHS.flatMap((d): [string, string][] => {
+    const k = lineKeys(d), n = DEPTH_NAMES[d]
+    return [[k.fade, `Line lighter, ${n}`], [k.thin, `Line thinner, ${n}`], [k.haze, `Haze, ${n}`]]
+  }),
+]
 
 const EASE_LABELS: [Ease, string][] = [['inOut', 'Ease in and out'], ['out', 'Ease out'], ['in', 'Ease in'], ['linear', 'Even']]
 
@@ -142,6 +153,10 @@ function ScenePanel({ player }: { player: Player }) {
           {groundOptions(player.stage.sceneLib).map((id) => <option key={id} value={id}>{id}</option>)}
         </select>
         <Num player={player} path={[...sp, 'set', 'horizon']} label="Horizon" min={-6} max={20} step={0.5} fallback={0} />
+      </div>
+      <h3 className="mt-3 font-semibold">Paper and line</h3>
+      <div className="mt-1 flex flex-col gap-1" data-testid="look">
+        {LOOK_ROWS.map(([k, label]) => <Num key={k} player={player} path={['look', k]} label={label} min={LOOK_RANGE[k][0]} max={LOOK_RANGE[k][1]} step={LOOK_RANGE[k][2]} fallback={STAGE_SHEET[k]} />)}
       </div>
       <h3 className="mt-3 flex items-baseline font-semibold">Camera<span className="ml-auto text-xs font-normal tabular-nums opacity-70" data-testid="scene-length">{sceneDuration(s).toFixed(1)} s</span></h3>
       <Shots key={index} player={player} sceneIndex={index} />

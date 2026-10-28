@@ -9,6 +9,8 @@ import {
   Color4, Engine, HemisphericLight, DirectionalLight, Scene as BScene, UniversalCamera, Vector3,
 } from '@babylonjs/core'
 import { createLookChain, PRESETS } from '../engine/look-chain.js'
+import { lineOf, pxPerMetre, pxUV, STAGE_SHEET } from './look'
+import { makeSheet } from './sheet'
 import { libraryUrlFor, loadLibrary, resolveAsset } from './library'
 import { ADAPT_STALL_MS, ADAPT_WINDOW_MS, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
 import { bandColours, edgeColours, loadPremultiplied, makeLayer, type LayerHandle } from './layer'
@@ -19,7 +21,7 @@ import { Timeline, type InteractionHandler, type Mode } from './timeline'
 import type { Asset, Depth, Lesson, Library, Scene, SceneLayer } from './types'
 
 /** The stage's own look: History Lines pencil lines on 3D edges, a light paper grain over everything. */
-export const STAGE_LOOK: Record<string, number | string> = { ...PRESETS['History Lines pencil'], paper: 0.35, granulation: 0.2 }
+export const STAGE_LOOK: Record<string, number | string> = { ...PRESETS['History Lines pencil'], paper: 0.35, granulation: 0.2, ...STAGE_SHEET }
 const PAPER = new Color4(0.937, 0.914, 0.863, 1)
 type Stain = ReturnType<typeof makeStain>
 interface Built { layer: SceneLayer; index: number; builtScale: number; handle: LayerHandle; asset: Asset; order: number; stain?: Stain }  // index -1 = the sky
@@ -35,6 +37,8 @@ export class Stage {
   private built: Built[] = []
   /** the colour the floor fades into at the horizon; far strips paint their lower edge into it */
   private horizonTint: [number, number, number] = hexRgb(PAPER_HEX)
+  /** the sky's own colour where it meets the floor: far layers' lines and washes go toward it (look.ts haze) */
+  private hazeTint: [number, number, number] = hexRgb(PAPER_HEX)
   /** the library the scene on screen was built from (its own bundle, else the lesson's) */
   sceneLib: Library & { base: string }
   private buildToken = 0
@@ -62,6 +66,7 @@ export class Stage {
       inkColor: () => String(this.look.inkColor ?? 'pencil'),
       texture: () => null,
     })
+    makeSheet(this.camera, (k) => Number(this.look[k] ?? 0))   // after the chain: the one paper sheet under it all
     this.fit()
     window.addEventListener('resize', () => this.fit())
   }
@@ -155,8 +160,8 @@ export class Stage {
     // meets the floor (eye height on the sky plane), so the sky never ends on a hard line against a paper band
     const sky = next.find((b) => b.index === -1)
     const skyP = sky && placeLayer(sky.asset, sky.layer, sky.order)
-    const tint = far ? edgeColours.get(lib.base + far.asset.file) ?? null
-      : sky && skyP ? bandAt(bandColours.get(lib.base + sky.asset.file) ?? [], (HOUSE.y - skyP.y) / skyP.h) : null
+    const skyHaze = sky && skyP ? bandAt(bandColours.get(lib.base + sky.asset.file) ?? [], (HOUSE.y - skyP.y) / skyP.h) : null
+    const tint = far ? edgeColours.get(lib.base + far.asset.file) ?? null : skyHaze
     const dispose = (list: Built[]) => list.forEach((b) => { b.stain?.mesh.material?.dispose(); b.handle.mesh.dispose(); b.handle.material.dispose() })
     if (token !== this.buildToken) {   // a newer build won: this one never shows
       dispose(next)
@@ -167,6 +172,7 @@ export class Stage {
     this.sceneLib = lib
     const look = this.groundLook(choice.kind === 'asset' ? { tex: groundTex, asset: choice.asset } : null, tint, lib, choice.kind === 'paper' ? choice.colour : undefined)
     this.horizonTint = look.tint
+    this.hazeTint = skyHaze ?? look.tint
     this.ground.set(look)
     this.missed.set(s.id, misses)   // replaced per scene: a rebuild never doubles them
     if (misses.length) {
@@ -200,6 +206,8 @@ export class Stage {
     this.camera.position.set(c.x, c.y, c.z)
     this.camera.fov = c.fov
     this.ground.follow(this.camera.position)
+    this.ground.setDetail(Number(this.look.groundDetail ?? STAGE_SHEET.groundDetail))
+    const renderH = this.engine.getRenderHeight()
     for (const b of this.built) {
       const k = layerAt(b.layer, t)
       const p = placeLayer(b.asset, { ...b.layer, x: k.x, scale: 1 }, b.order, s.set.horizon ?? 0)
@@ -208,6 +216,9 @@ export class Stage {
       b.handle.mesh.scaling.setAll(k.scale / b.builtScale)   // grows from the ground point
       b.handle.setOpacity(k.opacity)
       b.handle.setFeather(featherOf(b.asset, b.layer), this.horizonTint)
+      if (b.asset.layer === 'sky') b.handle.setGroundLine((c.y - p.y) / (p.h * k.scale))
+      const ppm = pxPerMetre(renderH, p.z - c.z, this.camera.fov)
+      b.handle.setLine(lineOf(this.look, b.layer.depth), pxUV(p.w * k.scale, p.h * k.scale, p.uRepeat, ppm, renderH), this.hazeTint)
       b.stain?.setOpacity((b.layer.shadow ?? STAIN_DEFAULT) * k.opacity)
       b.handle.setMotion(motionOf(b.asset, b.layer))
       b.handle.material.setFloat('time', clock)

@@ -9,6 +9,8 @@ export const HOUSE: CamPose = { x: 0, y: 1.6, z: 0, fov: 50 }
 export const HOUSE_PITCH_DEG = -2           // looking up a touch: more sky, the near ground line low in the frame
 export const ASPECT = 16 / 9
 export const COVER_MARGIN = 1.6             // wide strips (sky, tileable bg) span this much of the view, for camera moves
+/** Draw slot of the floor: after every sky layer (slots 1..999), before the far landscape (1000+). */
+export const GROUND_SLOT = 999
 export const SAME_DEPTH_STEP_M = 0.05       // later layers at one depth stand this much nearer, so geometry agrees with draw order
 
 /** fov in degrees (human-editable); a value that can only be radians is converted. */
