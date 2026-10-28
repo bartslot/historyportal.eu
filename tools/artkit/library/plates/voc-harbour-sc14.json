@@ -4,7 +4,7 @@
  "lesson": "voc sc14: Amsterdam harbour (bg-city: quay, ships, water), barrels + crates on the quay, a linden",
  "set": {
   "sky": "sky-summer-01",
-  "horizon": "auto",
+  "horizon": 1.6,
   "layers": [
    {
     "asset": "bg-city-01",
@@ -30,7 +30,6 @@
     "x": 0.33
    }
   ],
-  "ground": "ground-dune-sand-01",
-  "land_target": 0.3
+  "ground": "ground-dune-sand-01"
  }
 }

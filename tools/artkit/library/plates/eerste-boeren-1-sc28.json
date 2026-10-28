@@ -4,7 +4,7 @@
  "lesson": "eerste-boeren-1 sc28: dry hills, sunken round hut, sown field, fire (sown field = the ground tile; a near strip cannot stand as a plane)",
  "set": {
   "sky": "sky-morning-02",
-  "horizon": "auto",
+  "horizon": -36.1,
   "layers": [
    {
     "asset": "hills-dry-01",
@@ -23,7 +23,6 @@
     "scale": 0.5
    }
   ],
-  "ground": "ground-field-irrigated-01",
-  "land_target": 0.38
+  "ground": "ground-field-irrigated-01"
  }
 }

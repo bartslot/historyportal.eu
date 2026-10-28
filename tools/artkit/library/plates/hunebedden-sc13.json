@@ -5,7 +5,7 @@
  "set": {
   "sky": "sky-summer-01",
   "ground": "ground-grass-heather-01",
-  "horizon": "auto",
+  "horizon": -54.2,
   "layers": [
    {
     "asset": "bg-farmland-01",
