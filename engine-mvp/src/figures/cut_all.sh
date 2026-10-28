@@ -7,8 +7,9 @@ for c in boer-vrouw:woman boer-man:man voc-matroos:voc voc-kapitein:voc; do
   id=${c%%:*}; kind=${c##*:}
   for v in 34 side front; do
     rm -rf "public/figures/puppets/$id/$v"
-    sheet="$SRC/v2/${id}_${v}_parts.png"   # the two-pass sheet (ink, then colour edit) when there is one
-    [ -f "$sheet" ] || sheet="$SRC/${id}_${v}_parts.png"
+    # the newest art round that has this sheet: v3 figure ink, v2 sparse ink, v1 text-only
+    sheet="$SRC/${id}_${v}_parts.png"
+    for r in v2 v3; do [ -f "$SRC/$r/${id}_${v}_parts.png" ] && sheet="$SRC/$r/${id}_${v}_parts.png"; done
     python3 src/figures/cut_parts.py "$sheet" "public/figures/puppets/$id/$v" --kind "$kind" --view "$v" >/dev/null
   done
 done

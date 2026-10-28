@@ -48,23 +48,50 @@ FACES = ("Faces: a few precise ink lines for brows, eyelids, the nose ridge and 
          "read clearly. The figure has realistic adult proportions, a long face.")
 COLOUR = "The image being edited is the locked ink drawing to colour (pass 2 of 2). Colour it the way the watercolour references were painted over their inks: same watercolour handling, transparency, paper tooth, blooms, backruns, granulation and colour temperature. Of the nine attached reference images, four are finished History Lines watercolour illustrations, four are the black ink drawings those watercolours were painted over, and one is a watercolour texture reference. They show STYLE only: never copy their subjects, buildings, people or composition. Edit the ink drawing: keep the exact canvas size, framing, positions, every black line, hatch and cross-hatch. Do not add, remove, move or redraw anything. Colour only things already drawn. Colour it as a clean educational historical illustration with real transparent watercolour beneath the ink: visible paper tooth inside the washes, soft blooms and backruns at wash edges, light granulation in earth and stone colours, uneven layered glazes, colour pooling darker at the shadow side. Washes stay transparent so the ink stays dominant and black. Restrained palette: restrained olive and sap greens for vegetation (#8d9a5b, #6f7f45), pale straw and ochre for grass and reeds (#e3cf9a, #c9a86a), warm grey-brown earth (#a08a6c), weathered brown wood and bark (#7d6752), cool grey granite for boulders (#a9adab, #8e8474), heather mauve only as small accents (#b39ab0), clay brown for pottery (#b0754f), pale transparent blue sky (#d2e6f2, #a9d7f6). Every drawn surface gets at least a very faint wash (white things such as birch bark, wool, linen or white stone get a pale cream or cool grey glaze), but the paper AROUND and BETWEEN objects, and the gaps between branches and leaves, stay pure untouched white paper with no wash, no tint, no shadow and no texture. No blur, no airbrush gradients, no speckle or dot noise, no stippling, no antique or sepia filter, no muddy wash, no glossy 3D rendering, no repainting of the linework. Keep each wash broad and calm inside its shape: no mottled patches, no lichen or moss spots, no added pebbles, dots or ground patches outside the drawn lines. Output the same framing as the ink: no zoom, no crop. Match the references' paper and paint: visible cold-press paper tooth in every wash, uneven washes with soft blooms, backruns and light granulation, never flat even fills. Keep the outer contour bold and slightly broken and do not add interior detail lines. Use the references' wider, warmer palette: clear saturated sky blues, warm sandstone and ochre, and confident local colour, with generous paper white left on the lit sides."
 GARMENTS = {
-    "boer-vrouw": "The wool dress (torso, skirt, sleeves) undyed warm straw and pale ochre; the short cape a soft brown hide; the woven belt red-brown clay; skin a warm light flesh tone with a little rose on the cheeks; hair warm mid brown.",
+    "boer-vrouw": "The wool dress (torso, skirt, sleeves) undyed warm straw and pale ochre; the short cape a soft brown hide; the woven belt red-brown clay; skin a warm light flesh tone with a little rose on the cheeks, on every head, hand, bare leg and foot (the thighs and lower legs are BARE SKIN, not cloth); hair warm mid brown.",
     "boer-man": "The wool tunic (torso, skirt, sleeves) olive green; the belt and the shoes brown leather; the leg wraps pale hide with dark cord; the cap brown hide; skin weathered warm; hair and beard dark brown.",
     "voc-matroos": "The shirt off-white linen; the waistcoat brick red-brown wool; the breeches slate blue canvas; the stockings grey wool; the shoes black leather; the cap red-brown knitted wool; skin weathered warm; hair mid brown.",
     "voc-kapitein": "The doublet, sleeves and breeches black wool shown as deep blue-black washes, never flat black; the falling collar and cuffs cream linen; the stockings dark grey; the shoes black with a brass buckle; the hat black felt; skin warm; hair, moustache and chin tuft dark brown.",
 }
 
 
+# Bart's FIGURE rules (round 3, PM 10-28): the background coverage rule and the sparse template are for scenery. A
+# figure is carried by a dark, variable-weight contour and drawn fold lines; no hatching, only light etching in the
+# darkest spots.
+FIGURE_INK = (
+    "A black-and-white ink drawing for a children's history book, pass 1 of 2 (ink only, watercolour comes later), in "
+    "the manner of a confident European bande-dessinee history illustrator working with a dip pen. FIGURE INK, this "
+    "matters most: every part is carried by a DARK, BOLD contour of strongly varying weight, thick and black on the "
+    "shadow side, at the base and where one form overlaps another, thinning to a fine line and breaking open where light "
+    "hits. Draw the folds of the cloth as confident ink fold lines (a few long strokes that follow how the cloth hangs "
+    "and bunches), the seams, hems and the edges of the garments, the hair as a few flowing strokes, the face with a few "
+    "precise lines. NO hatching and no cross-hatching anywhere, no stippling, no texture marks; only in the very darkest "
+    "spots (deep under a fold, under the chin, inside a sleeve opening) a few short light etched strokes. Leave the "
+    "inside of every form open white paper for the watercolour. No colour, no grey wash, no solid black fills, no text, "
+    "no labels, no border, no frame, no signature."
+)
+SNUG = ("The cape or any outer garment sits snug on the torso part and ends above the elbow; nothing hangs off the edge "
+        "of a part as a loose flap.")
+
+
 def ink_prompt(cid: str, view: str) -> str:
     body = prompt(cid, view).split("\nEach limb part")[0].replace(
         "Cut-out puppet PARTS SHEET for a children's history book animation, on pure flat white paper. ", "A puppet PARTS SHEET on pure flat white paper. ")
-    parts = [FIGMA_INK_LEAD, body, "Each limb part slightly longer at its joint ends with a rounded overlap so pieces can rotate under each other.",
-             INK_ESSENCE, SPARSE_INK, FACES]
+    parts = [body, "Each limb part slightly longer at its joint ends with a rounded overlap so pieces can rotate under each other.",
+             FIGURE_INK, SNUG, FACES]
     return " ".join(" ".join(parts).split())
 
 
+# the 4 watercolour refs, painted area only (Lab; measured 10-28, numbers sent to art-library-v3): median chroma 9-20,
+# p90 28-34, lightness spread (std) 20-26, 4-8 percent dark accents under L 25
+REF_COLOUR = ("Match the references' measured colour: in the painted areas a median chroma around 16 with the strongest "
+              "washes reaching about 33, a full value range (lightness spread like the references, deep shadows next to "
+              "pale lights) and 5 to 8 percent dark accents in the deepest shade. Washes vary inside every shape: wetter "
+              "and darker on the shadow side, lifting to near paper on the lit side, with soft blooms where two washes meet.")
+
+
 def colour_prompt(cid: str) -> str:
-    return " ".join((COLOUR + " This is a cut-out PARTS SHEET of one character: give the same thing the same colour on every part. "
+    return " ".join((COLOUR.replace("Restrained palette", "Palette").replace("restrained ", "") + " " + REF_COLOUR + " This is a cut-out PARTS SHEET of one character: give the same thing the same colour on every part. "
                      + GARMENTS[cid] + " Every part keeps a crisp outline; the white paper between the parts stays pure white.").split())
 
 
