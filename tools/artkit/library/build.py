@@ -103,7 +103,7 @@ def build(job: dict, variants: str = "abcd") -> dict:
                 tile = meta.get("seam") == "wrap"  # only an offset-and-repainted ground tile repeats (seam.py)
                 qa_layer = "bg" if s.get("strip") else s["layer"]  # strips are judged like bg strips
                 r = qa.check(Image.open(f), qa_layer, bundle, tileable=tile, paper=paper, gaps=item.get("gaps", s.get("gaps", "fill")),
-                             fades=s["layer"] == "bg" and not s.get("strip"))
+                             fades=False)  # strips end opaque now
                 r["ink_sheet"] = meta["ink_sheet"]  # Bart's whole-image rule, on the pass-1 sheet
                 r["checkerboard"] = r["checkerboard"] or meta["checkerboard"]
                 if item.get("slab_ok") and r["pale_slabs"] and not r["holes"]:  # reviewed by eye, reason in the job

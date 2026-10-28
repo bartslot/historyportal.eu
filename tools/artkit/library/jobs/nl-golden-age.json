@@ -92,7 +92,7 @@
      "motion": "none"
     }
    ],
-   "crop_bottom": 0.4
+   "crop_bottom": 0.15
   },
   {
    "id": "mid-ships",

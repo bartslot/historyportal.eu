@@ -250,7 +250,8 @@ def cut_sheet(bundle: str, sheet: dict, variant: str) -> dict | None:
             if sheet.get("crop_bottom"):  # a far strip with a deep foreground band (bg-city's harbour water): trim it
                 rgba = rgba[: int(len(rgba) * (1 - sheet["crop_bottom"]))]
             if layer == "bg":  # far land: one painted strip, never crossfaded (no tiling)
-                rgba = fade_bottom(rgba)
+                # no painted fade: the strip stays opaque to its last row; the stage feathers it OPAQUE toward
+                # the horizon tint (S1 2026-10-28), our alpha fade showed a faint band of sky inside that feather
                 res["seam"] = "none"
             else:  # near ground/water strips: one painting, never mirrored or crossfaded
                 res["seam"] = "none"
