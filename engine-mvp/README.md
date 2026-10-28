@@ -125,9 +125,12 @@ seat (a rock, log, stump, stool...) that `sit` uses; with no seat the figure sit
 with a slow weight shift. A skirt drapes: each edge runs to its knee once that knee leaves the hanging cloth (a lap,
 a kneel), and pools on the ground. `placePuppet(..., { behind })` stands a figure behind a same-depth layer.
 
-**Edges** (asset pipeline, `cut_parts.py ink_rim`): the silhouette loses its 1 px paper fringe and its outer 2 px take
-the contour's ink; joint cuts are left alone. Every part's `edge_fringe` (bright outer pixel over dark paint) is in its
-`parts.json` and tested < 0.03 (the fde8a591 assets measured 0.23 on average).
+**Edges** (asset pipeline, `cut_parts.py`): paper pockets near the outline (between hair strands, fingers) count as
+background; the silhouette loses its 1 px fringe, the band the edge keeps takes the paint from just inside (no traced
+rim: an even dark rim read as a sticker), and the alpha gets a soft sub-pixel edge, so the shader's 0.5 cut is smooth.
+The painted joint disc past a sleeve is cut where the limb's own paint ends. Every part's `edge_fringe` (bright outer
+pixel over dark paint just inside) is in its `parts.json` and tested < 0.03 (the fde8a591 assets measure 0.29-0.48).
+Tests run on a clean checkout: the seat test uses the committed fixture `src/figures/__fixtures__/library.json`.
 
 **Art, round 2**: the farmer woman is two-pass (art v3 sparse ink via `generate_image`, then Figma "Edit with prompt"
 colour with the 9 library refs; `parts_prompts.py ink|colour`); `cut_all.sh` prefers `puppet-parts/v2/` sheets. Two

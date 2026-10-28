@@ -14,7 +14,8 @@ async function make(id: string) {
   const p = await createPuppet(scene, id, { loadSheet, warn: (m) => warnings.push(m), log: (m) => logs.push(m) })
   return { scene, p, warnings, logs }
 }
-const LIB = { version: 1, bundle: 'nl-prehistory', base: 'library/nl-prehistory/', assets: JSON.parse(readFileSync(join(PUBLIC, 'library/nl-prehistory/library.json'), 'utf8')).assets }
+// a committed fixture (3 assets of the nl-prehistory library): the real library is git-ignored
+const LIB = { ...JSON.parse(readFileSync(join(__dirname, '__fixtures__/library.json'), 'utf8')), base: 'library/fixture/' }
 const STAGE = { groundPoint: (x: number) => new Vector3((x - 0.5) * 10, 0, 7), lib: LIB }
 const shown = (scene: Scene) => scene.meshes.filter((m) => m.isEnabled()) as Mesh[]
 
@@ -156,7 +157,7 @@ describe('puppet figures', () => {
     for (const id of Object.keys(CHARACTERS)) for (const view of VIEWS) {
       const parts = JSON.parse(readFileSync(join(PUBLIC, `figures/puppets/${id}/${view}/parts.json`), 'utf8')).parts
       for (const [slot, e] of Object.entries(parts) as [string, { edge_fringe: number }][]) {
-        expect(e.edge_fringe, `${id} ${view} ${slot}`).toBeLessThan(0.03) // fde8a591 assets: mean 0.23, max 0.39
+        expect(e.edge_fringe, `${id} ${view} ${slot}`).toBeLessThan(0.03) // the fde8a591 assets measure 0.29-0.48 (mean 0.36)
       }
     }
   })

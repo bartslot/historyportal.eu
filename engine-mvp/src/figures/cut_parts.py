@@ -47,8 +47,8 @@ WAIST_BAND = (0.5, 0.8)  # the waist is the narrowest row in this band of the to
 THIGH_CAP = 0.0    # a thigh keeps this share of its top disc: none, its top always hides under the torso or skirt
 WEBP_Q = 88       # the art; the dye masks are lossless
 EDGE_ERODE_PX = 1  # the silhouette's outermost pixels are paper fringe: dropped
-RIM_PX = 2         # then this ring takes the contour's ink
-RIM_REACH = 5      # px window the ink is taken from
+RIM_PX = 2         # then this ring takes the paint from just inside it
+EDGE_SOFT = 0.8    # px: the alpha edge's softness (sub-pixel, no stair steps)
 ANKLE = 0.07     # the ankle joint stands this high above the sole
 CLOTH = {  # the slots that are clothing (a dye mask each); bare arms and legs are not
     "woman": ("torso", "skirt", "upper_arm", "forearm"),
@@ -57,6 +57,7 @@ CLOTH = {  # the slots that are clothing (a dye mask each); bare arms and legs a
 }
 WHITE = 236      # paper: brighter than this (min of r,g,b) and connected to the sheet's edge
 HALO = 175       # light pixels touching the paper are its halo, not the part...
+ENCLOSED_PX = 14  # paper pockets this close to the outside are background
 HALO_PX = 3      # ...up to this far in
 MERGE_PX = 4     # gaps this small join one part (tassels, stray hairs)
 MIN_AREA = 1500  # smaller shapes are specks
@@ -85,6 +86,10 @@ def alpha_of(rgb):
     bg = np.isin(lab, edge[edge > 0])
     # the paper's halo around a part (light, but under WHITE) is paper too: grow into it, the ink contour stops it
     bg = ndimage.binary_dilation(bg, iterations=HALO_PX, mask=bg | (m > HALO))
+    # paper caught between hair strands or fingers near the outline is background too (an eye white, far inside, is not)
+    near = ndimage.binary_dilation(bg, iterations=ENCLOSED_PX)
+    pockets, _ = ndimage.label(paper & ~bg)
+    bg |= np.isin(pockets, np.unique(pockets[near & (pockets > 0)]))
     soft = np.clip((250 - m) / 22, 0, 1)  # the ink fringe fades into the paper
     return np.where(bg, soft, 1.0)
 
@@ -196,12 +201,13 @@ def joint_ends(img, al, kind, marks):
     img, al = img.copy(), al.copy()
     if "end" in marks:  # cut where the limb itself ends: walk in from the tip while the colour is still the disc's
         L = np.linalg.norm(marks["end"] - a)
-        tip = t.max() if (al > 0.5).any() else L
-        lab = lab_of(img)
         solid = al > 0.5
-        rows = np.arange(int(L * 0.6), int(tip))
+        tip = t[solid].max() if solid.any() else L  # the part's own far end (not the image corner)
+        lab = lab_of(img)
+        rows = np.arange(int(L * 0.6), int(tip) - 5)  # from inside the disc (its own outline is ink, not limb)
         band = lambda r: solid & (np.abs(t - r) < 1.5)
-        disc = np.median(lab[band(tip - 3)], 0) if band(tip - 3).any() else None
+        cap = solid & (t > tip - 16) & (t < tip - 5)  # the disc's own paint, inside its outline
+        disc = np.median(lab[cap], 0) if cap.sum() > 10 else None
         cut = L * (1 + END_KEEP)
         if disc is not None:
             for r in rows[::-1]:
@@ -232,17 +238,21 @@ def clean_edges(img, al):
 
 
 def ink_rim(img, al, sil):
-    """the silhouette (not a joint cut) loses EDGE_ERODE_PX of its paper-tinted fringe, and the outer RIM_PX of what
-    is left takes the darkest colour around it (the drawn contour): a cut-out edge reads as ink, never as paper"""
+    """the silhouette (not a joint cut) loses EDGE_ERODE_PX of its paper-tinted fringe; the outer RIM_PX of what is
+    left takes the paint from just inside it (the drawn contour where there is one, the wash where there is none: a
+    traced rim of even weight read as a sticker edge), and the alpha gets a soft sub-pixel edge, so the 0.5 cut the
+    shader makes is smooth under filtering instead of stair-stepped"""
     keep = ndimage.binary_erosion(sil, iterations=EDGE_ERODE_PX)
-    al = np.where(keep, al, 0)
-    solid = al > 0.5
-    rim = solid & ~ndimage.binary_erosion(keep, iterations=RIM_PX)
-    inner = np.where(solid[..., None], img, 255).astype(float)
-    dark = np.stack([ndimage.minimum_filter(inner[..., i], size=RIM_REACH) for i in range(3)], -1)
-    out = img.astype(float)
-    out[rim] = np.minimum(out[rim], dark[rim])
-    return out.astype(np.uint8), al
+    solid = (al > 0.5) & keep
+    inner = ndimage.binary_erosion(solid, iterations=RIM_PX)
+    soft = ndimage.gaussian_filter(solid.astype(float), EDGE_SOFT)
+    soft = np.where(sil, np.clip((soft - 0.5) * 1.6 + 0.5, 0, 1), 0)  # the 0.5 line stays where the cut is
+    out = img.copy()
+    if inner.any():  # every pixel the edge keeps outside the core takes the paint just inside
+        band = ~inner & (soft > 0)
+        _, (iy, ix) = ndimage.distance_transform_edt(~inner, return_indices=True)
+        out[band] = img[iy[band], ix[band]]
+    return out, soft
 
 
 def edge_qa(img, al):
@@ -251,7 +261,7 @@ def edge_qa(img, al):
     collar is bright inside too and does not count."""
     solid = al > 0.5
     ring = solid & ~ndimage.binary_erosion(solid, iterations=1)
-    inner = ndimage.binary_erosion(solid, iterations=4)
+    inner = ndimage.binary_erosion(solid, iterations=2)  # just inside: a thin white collar is its own inside
     if not ring.any() or not inner.any():
         return 0.0
     L = img.astype(float) @ [0.299, 0.587, 0.114]

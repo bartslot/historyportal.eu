@@ -92,7 +92,7 @@
    ],
    "m_per_px": 0.002092,
    "dye": [
-    "#d7be88",
+    "#d6be88",
     "#b88c5f",
     "#9c573e"
    ]
@@ -128,7 +128,7 @@
    ]
   },
   "forearm": {
-   "edge_fringe": 0.008,
+   "edge_fringe": 0.0,
    "w": 86,
    "h": 225,
    "pivot": [
@@ -141,7 +141,7 @@
    ],
    "m_per_px": 0.001661,
    "dye": [
-    "#e6d09d"
+    "#e6cf9d"
    ]
   },
   "hand_open": {
@@ -175,7 +175,7 @@
    "m_per_px": 0.000915
   },
   "thigh": {
-   "edge_fringe": 0.001,
+   "edge_fringe": 0.0,
    "w": 133,
    "h": 345,
    "pivot": [
@@ -189,7 +189,7 @@
    "m_per_px": 0.001765
   },
   "shin": {
-   "edge_fringe": 0.006,
+   "edge_fringe": 0.0,
    "w": 96,
    "h": 296,
    "pivot": [

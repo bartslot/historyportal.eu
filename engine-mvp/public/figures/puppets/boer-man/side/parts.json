@@ -3,7 +3,7 @@
  "kind": "man",
  "parts": {
   "head_neutral": {
-   "edge_fringe": 0.0,
+   "edge_fringe": 0.001,
    "w": 205,
    "h": 233,
    "pivot": [
@@ -11,13 +11,13 @@
     214.6
    ],
    "crown": [
-    113.8,
+    113.7,
     42.1
    ],
    "m_per_px": 0.001339
   },
   "head_happy": {
-   "edge_fringe": 0.0,
+   "edge_fringe": 0.004,
    "w": 205,
    "h": 234,
    "pivot": [
@@ -31,7 +31,7 @@
    "m_per_px": 0.001339
   },
   "head_worried": {
-   "edge_fringe": 0.0,
+   "edge_fringe": 0.001,
    "w": 206,
    "h": 235,
    "pivot": [
@@ -45,7 +45,7 @@
    "m_per_px": 0.001339
   },
   "head_surprised": {
-   "edge_fringe": 0.0,
+   "edge_fringe": 0.001,
    "w": 207,
    "h": 233,
    "pivot": [
@@ -106,11 +106,11 @@
    ],
    "m_per_px": 0.003268,
    "dye": [
-    "#887750"
+    "#887751"
    ]
   },
   "upper_arm": {
-   "edge_fringe": 0.006,
+   "edge_fringe": 0.0,
    "w": 135,
    "h": 308,
    "pivot": [
@@ -123,11 +123,11 @@
    ],
    "m_per_px": 0.001526,
    "dye": [
-    "#80724d"
+    "#7f714d"
    ]
   },
   "forearm": {
-   "edge_fringe": 0.008,
+   "edge_fringe": 0.0,
    "w": 102,
    "h": 276,
    "pivot": [
@@ -140,7 +140,7 @@
    ],
    "m_per_px": 0.001365,
    "dye": [
-    "#7a6c49"
+    "#7a6c48"
    ]
   },
   "hand_open": {
@@ -187,7 +187,7 @@
    "m_per_px": 0.001339
   },
   "thigh": {
-   "edge_fringe": 0.009,
+   "edge_fringe": 0.0,
    "w": 134,
    "h": 321,
    "pivot": [
@@ -201,11 +201,11 @@
    "m_per_px": 0.001985
   },
   "shin": {
-   "edge_fringe": 0.017,
+   "edge_fringe": 0.0,
    "w": 115,
    "h": 315,
    "pivot": [
-    58.0,
+    57.9,
     50.0
    ],
    "end": [
@@ -214,7 +214,7 @@
    ],
    "m_per_px": 0.001876,
    "dye": [
-    "#9c8264"
+    "#9c8263"
    ]
   },
   "foot": {
@@ -227,7 +227,7 @@
    ],
    "m_per_px": 0.001071,
    "dye": [
-    "#94795c"
+    "#957a5c"
    ]
   },
   "foot_far": {
