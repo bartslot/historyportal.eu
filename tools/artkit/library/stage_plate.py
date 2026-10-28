@@ -55,16 +55,35 @@ def ground(lib_dir: Path, asset: dict | None, paper: tuple[int, int, int]) -> np
     return out
 
 
+def bottom_tint(im: Image.Image) -> np.ndarray:
+    """ground.ts bottomColour (S1 fix/stage-sky-backdrop): the strip's lower 30 %, opaque pixels, the colour at the
+    80th percentile of lum - 1.5 * chroma (light and unsaturated: the land's own pale tone, not its ink or plants)."""
+    a = np.asarray(im.convert("RGBA")).astype(float)
+    low = a[int(a.shape[0] * 0.7):].reshape(-1, 4)
+    low = low[low[:, 3] > 200][:, :3] / 255
+    if not len(low):
+        return np.array([246, 245, 238], float)
+    lum = low @ np.array([0.299, 0.587, 0.114])
+    score = lum - 1.5 * (low.max(1) - low.min(1))
+    near = np.abs(score - np.percentile(score, 80)) <= 0.02
+    return np.median(low[near] if near.any() else low, 0) * 255
+
+
 def place(canvas: Image.Image, im: Image.Image, depth: str, x: float, scale: float, order: int, horizon: float,
-          asset: dict) -> None:
+          asset: dict, tint: np.ndarray | None = None, feather: float = BG_FEATHER) -> None:
+    """layout.ts placeLayer (S1 fix/stage-sky-backdrop @6512ee81): cover keyed on the ASSET, never on the depth."""
     z = DEPTH_Z[depth] - order * SAME_DEPTH_STEP_M
     span = span_at(z)
-    if asset["layer"] == "sky":  # the backdrop: covers the view at its distance, horizon a little below the frame
-        w_m = span * COVER_MARGIN
-        h_m = w_m / (W / H)
-        x0, y_m = -w_m / 2, -h_m * 0.12
+    if asset["layer"] == "sky":  # any sky = the full-frame backdrop; one painting is COVER-FIT, never stretched
+        box_w = span * COVER_MARGIN
+        box_h = box_w / (W / H)
+        k = max(box_w / im.width, box_h / im.height)
+        w_m, h_m = im.width * k, im.height * k
+        x0, y_m = -w_m / 2, -box_h * 0.12  # bottom edge fixed; spare height goes up, spare width splits evenly
     else:
         h_m = asset["height_m"] * scale
+        if asset["layer"] == "bg" and not asset.get("tileable_x"):
+            h_m = max(h_m, span * COVER_MARGIN * im.height / im.width)
         w_m = h_m * im.width / im.height  # uniform: the asset is never stretched
         x0 = (x - 0.5) * span - w_m / 2
         y_m = horizon if depth == "bg" else 0.0
@@ -72,11 +91,15 @@ def place(canvas: Image.Image, im: Image.Image, depth: str, x: float, scale: flo
     right, bottom = to_px(x0 + w_m, y_m, z)
     pw, ph = max(1, round(right - left)), max(1, round(bottom - top))
     im = im.resize((pw, ph), Image.LANCZOS)
-    if depth == "bg" and asset["layer"] != "sky":  # feather the bottom into the ground
-        a = np.asarray(im).copy()
-        n = max(1, int(ph * BG_FEATHER))
-        a[-n:, :, 3] = (a[-n:, :, 3] * np.linspace(1, 0, n)[:, None]).astype(np.uint8)
-        im = Image.fromarray(a)
+    if asset["layer"] == "bg" and tint is not None:  # feather OPAQUE toward the horizon tint: mix(vec4(tint,1), c, k)
+        a = np.asarray(im).astype(float)
+        n = max(1, int(ph * feather))
+        k = np.ones(ph)
+        k[-n:] = np.linspace(1, 0, n)
+        k = k[:, None, None]
+        rgb = a[..., :3] * k + tint[None, None, :] * (1 - k)
+        al = a[..., 3:] * k + 255 * (1 - k)
+        im = Image.fromarray(np.concatenate([rgb, al], -1).clip(0, 255).astype(np.uint8))
     layer = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
     layer.paste(im, (round(left), round(top)))
     canvas.alpha_composite(layer)
@@ -122,13 +145,15 @@ def plate(spec: dict) -> dict:
         bgs = [l for l in s["layers"] if l["depth"] == "bg"]
         s = {**s, "horizon": auto_horizon(lib_dir, by[bgs[0]["asset"]], 0, s.get("land_target", LAND_TARGET))
              if bgs else 0.0}  # the first bg is the landscape; later bg layers (a far ship) stand on it
+    strips = [l for l in s["layers"] if by[l["asset"]]["layer"] == "bg"]
+    tint = bottom_tint(Image.open(lib_dir / by[strips[0]["asset"]]["file"])) if strips else None
     order = {d: 0 for d in DEPTH_Z}
     cover = np.zeros((H, W), bool)
     for l in sorted(s["layers"], key=lambda l: -DEPTH_Z[l["depth"]]):
         a = by[l["asset"]]
         before = np.asarray(canvas)[..., :3].copy()
         place(canvas, Image.open(lib_dir / a["file"] if not Path(a["file"]).is_absolute() else Path(a["file"])).convert("RGBA"), l["depth"], l.get("x", 0.5), l.get("scale", 1),
-              order[l["depth"]], s.get("horizon", 0.0), a)
+              order[l["depth"]], s.get("horizon", 0.0), a, tint, l.get("feather", BG_FEATHER))
         cover |= (np.asarray(canvas)[..., :3] != before).any(-1)
         order[l["depth"]] += 1
     rows = np.arange(H)[:, None] < CY

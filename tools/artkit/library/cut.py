@@ -63,7 +63,7 @@ def gap_islands(rgb: np.ndarray, de: np.ndarray, obj: np.ndarray, gaps: str,
         m = isl[sl] == i
         if m.sum() < qa.ISLAND_MIN_PX:
             continue
-        if gaps in ("all", "rim"):
+        if gaps in ("all", "rim", "sky"):
             if keep is not None and keep[sl][m].any():
                 continue
             if gaps == "rim" and not paper[sl][m].mean() > 0.5:  # a pale wash, not paper: only a gap if ink draws its rim (a
@@ -112,7 +112,7 @@ def matte(rgb: np.ndarray, paper: np.ndarray, layer: str, gaps: str = "fill",
         line = land_line(bg)[None, :]
         bg &= rows < line
         upper = rows < line + LAND_TOP * (bg.shape[0] - line)  # sky pockets between crowns, masts, spires
-        bg |= gap_islands(rgb, de, ~bg & upper, "all")
+        bg |= gap_islands(rgb, de, ~bg & upper, "sky")  # paper only: pale sails and walls stay
     obj = ~bg
     if layer not in ("bg", "strip"):
         obj &= ~gap_islands(rgb, de, obj, gaps, keep)
@@ -247,6 +247,8 @@ def cut_sheet(bundle: str, sheet: dict, variant: str) -> dict | None:
             washed = (de >= qa.PAPER_DE).mean(1)
             bottom = len(washed) - int(np.argmax(washed[::-1] > 0.6))  # drop unpainted paper rows
             rgba = rgba[max(0, ys[0] - PAD):bottom]
+            if sheet.get("crop_bottom"):  # a far strip with a deep foreground band (bg-city's harbour water): trim it
+                rgba = rgba[: int(len(rgba) * (1 - sheet["crop_bottom"]))]
             if layer == "bg":  # far land: one painted strip, never crossfaded (no tiling)
                 rgba = fade_bottom(rgba)
                 res["seam"] = "none"
