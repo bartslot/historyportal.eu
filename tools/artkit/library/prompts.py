@@ -85,7 +85,7 @@ COLOUR = (
     "Colour it as a clean educational historical illustration with real transparent watercolour beneath "
     "the ink: visible paper tooth inside the washes, soft blooms and backruns at wash edges, light "
     "granulation in earth and stone colours, uneven layered glazes, colour pooling darker at the shadow "
-    "side. Washes stay transparent so the ink stays dominant and black. Restrained palette: {palette} "
+    "side. Washes stay transparent so the ink stays dominant and black. Palette: {palette} "
     "Every drawn surface gets at least a very faint wash (white things such as birch bark, wool, linen or "
     "white stone get a pale cream or cool grey glaze), but the paper AROUND and BETWEEN objects, and the "
     "gaps between branches and leaves, stay pure untouched white paper with no wash, no tint, no shadow and "
@@ -112,14 +112,14 @@ COLOUR_EXTRA = {
 
 PALETTE = {
     "nl-prehistory": (
-        "restrained olive and sap greens for vegetation (#8d9a5b, #6f7f45), pale straw and ochre for grass "
+        "olive and sap greens for vegetation (#8d9a5b, #6f7f45), pale straw and ochre for grass "
         "and reeds (#e3cf9a, #c9a86a), warm grey-brown earth (#a08a6c), weathered brown wood and bark "
         "(#7d6752), cool grey granite for boulders (#a9adab, #8e8474), heather mauve only as small accents "
         "(#b39ab0), clay brown for pottery (#b0754f), pale transparent blue sky (#d2e6f2, #a9d7f6)."
     ),
     "near-east-neolithic": (
         "sun-bleached sand and pale ochre for dry land and mudbrick (#f4d5a8, #e6ae7c, #d0bba0), warm "
-        "grey-brown earth and dark Nile mud (#a08a6c, #7d6752), restrained olive and sap greens for palms, "
+        "grey-brown earth and dark Nile mud (#a08a6c, #7d6752), olive and sap greens for palms, "
         "barley and reeds (#8d9a5b, #6f7f45), straw gold for ripe grain (#e3cf9a, #c9a86a), clear muted "
         "blue-green for rivers and canals (#72a2b5, #98c3d3), whitewash cream for the temple (#f5e6ce), "
         "clay terracotta for pottery (#c07b57), pale transparent blue sky (#d2e6f2, #a9d7f6)."
@@ -128,7 +128,7 @@ PALETTE = {
         "warm brick red and rose for brick walls (#c07b57, #d79a7a), pale sandstone and cream for stone "
         "(#f4d5a8, #f5e6ce), weathered brown for wood, ships, barrels and crates (#7d6752, #b19f86), clear "
         "muted blue-green for water (#72a2b5, #98c3d3), slate blue-grey for roofs (#4a728c, #aab1b3), "
-        "restrained olive for trees (#8d9a5b), off-white canvas for sails (#f6f5ee), pale transparent blue "
+        "olive for trees (#8d9a5b), off-white canvas for sails (#f6f5ee), pale transparent blue "
         "sky (#d2e6f2, #a9d7f6)."
     ),
 }
@@ -217,6 +217,18 @@ def weave_ink_prompt(template: str, subject: str) -> str:
     return "\n\n".join(parts)
 
 
+# Measured on the 4 approved watercolours with refs_kind.stats (2026-10-28): wash chroma C* mean 13-22 (p90 30-37),
+# darkest washes L* ~47-51, lightest ~92-96, dark washes (L* 40-60) on 9-19 % of the painted area. PM: drop
+# "restrained", ask for the refs' saturated, high-contrast washes and their darker accents.
+REF_COLOUR = (
+    "Colour strength like the watercolour references: clear, saturated, high-contrast washes, not pale or "
+    "restrained; the darkest washes go about half way to black on the shadow sides (never as dark as the ink), "
+    "the lightest stay near paper white on the lit sides, and darker accent washes cover roughly an eighth of the "
+    "painted area, in creases, under overhangs and on the shadow side. Give each material its own confident local "
+    "colour, with a clear contrast between warm and cool where the subject allows."
+)
+
+
 def weave_colour_prompt(template: str, bundle: str) -> str:
     extra = COLOUR_EXTRA.get(template, "")
     if template == "bg":
@@ -226,7 +238,7 @@ def weave_colour_prompt(template: str, bundle: str) -> str:
         "The FIRST attached image is the locked ink drawing to colour. The SECOND attached image is the "
         "watercolour STYLE reference only (copy its watercolour handling and colour temperature, never its "
         "content). ", "").replace("Edit the first image", "Edit the ink drawing")
-    return "\n\n".join([WEAVE_COLOUR_LEAD, _refs_line(2), body, WEAVE_COLOUR_CALM, STYLE_GAPS])
+    return "\n\n".join([WEAVE_COLOUR_LEAD, _refs_line(2), body, REF_COLOUR, WEAVE_COLOUR_CALM, STYLE_GAPS])
 
 
 # Figma generate_image is text-only: the ink pass describes the anchor instead of attaching it.
