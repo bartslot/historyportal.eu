@@ -5,6 +5,7 @@ import { __, loadLocale } from '../i18n'
 import { StrictMode, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { createRoot } from 'react-dom/client'
 import { playLesson, type Player } from './stage'
+import { resolveAsset } from './library'
 import { getIn, type Path } from './edits'
 import { BG_FEATHER, groundOptions, STAIN_DEFAULT } from './ground'
 import { HOLD_DEFAULTS, RENDER_CAPS, sceneDuration, setShotDuration, setShotPose } from './layout'
@@ -159,7 +160,7 @@ function ScenePanel({ player }: { player: Player }) {
             </select>
             <Num player={player} path={[...lp, 'motion', 'amount']} label="Motion" min={0} max={3} step={0.05} fallback={1} />
             <Num player={player} path={[...lp, 'motion', 'speed']} label="Tempo" min={0.1} max={3} step={0.05} fallback={1} />
-            {l.depth === 'bg' && <Num player={player} path={[...lp, 'feather']} label="Soft edge" min={0} max={0.6} step={0.01} fallback={BG_FEATHER} />}
+            {resolveAsset(player.stage.sceneLib, l, l.depth)?.layer === 'bg' && <Num player={player} path={[...lp, 'feather']} label="Soft edge" min={0} max={0.6} step={0.01} fallback={BG_FEATHER} />}
             {(l.depth === 'mid' || l.depth === 'fg') && <Num player={player} path={[...lp, 'shadow']} label="Shadow" min={0} max={1} step={0.05} fallback={STAIN_DEFAULT} />}
           </div>
         )

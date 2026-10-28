@@ -43,6 +43,8 @@ describe('placeLayer', () => {
     expect(p.w / p.h).toBeCloseTo(1536 / 475)
     expect(placeLayer({ ...strip, height_m: 100 }, { depth: 'bg' }, 0).h).toBe(100)  // a taller strip keeps its size
     expect(placeLayer({ ...tree, height_m: 2 }, { depth: 'mid' }, 0).h).toBe(2)       // props are not covered
+    const longhouse: Asset = { ...tree, layer: 'mid', w: 1200, h: 600, height_m: 6 }      // a prop placed far off (hunebedden sc09)
+    expect(placeLayer(longhouse, { depth: 'bg', x: 0.3 }, 0)).toMatchObject({ h: 6, w: 12 })
   })
   it('raises only the far landscape with the horizon', () => {
     expect(placeLayer(hills, { depth: 'bg' }, 0, 4).y).toBe(4)

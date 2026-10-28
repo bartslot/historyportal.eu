@@ -38,8 +38,9 @@ export function placeLayer(asset: Asset, layer: Pick<SceneLayer, 'depth' | 'x' |
     const k = Math.max(boxW / asset.w, boxH / asset.h)
     return { x: 0, y, z, w: asset.w * k, h: asset.h * k, uRepeat: 1, alphaIndex }
   }
-  // an untiled bg strip is one painting that must cover its depth's view (COVER_MARGIN wide); never narrower
-  const coverH = depth === 'bg' && !asset.tileable_x ? (span * COVER_MARGIN * asset.h) / asset.w : 0
+  // an untiled bg STRIP (asset layer bg, not a prop placed at depth bg) is one painting that must cover its depth's
+  // view (COVER_MARGIN wide); never narrower
+  const coverH = asset.layer === 'bg' && !asset.tileable_x ? (span * COVER_MARGIN * asset.h) / asset.w : 0
   const h = Math.max(asset.height_m * (layer.scale ?? 1), coverH)
   const natW = h * (asset.w / asset.h)
   const w = asset.tileable_x ? Math.max(natW, span * COVER_MARGIN) : natW

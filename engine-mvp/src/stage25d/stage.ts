@@ -12,7 +12,7 @@ import { createLookChain, PRESETS } from '../engine/look-chain.js'
 import { libraryUrlFor, loadLibrary, resolveAsset } from './library'
 import { ADAPT_STALL_MS, ADAPT_WINDOW_MS, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
 import { edgeColours, loadPremultiplied, makeLayer, type LayerHandle } from './layer'
-import { BG_FEATHER, GROUND_TILE_M, hexRgb, PAPER as PAPER_HEX, resolveGround, STAIN_DEFAULT, stainSize } from './ground'
+import { featherOf, GROUND_TILE_M, hexRgb, PAPER as PAPER_HEX, resolveGround, STAIN_DEFAULT, stainSize } from './ground'
 import { makeGround, makeStain, type GroundLook } from './ground-gl'
 import { LessonDoc } from './edits'
 import { Timeline, type InteractionHandler, type Mode } from './timeline'
@@ -150,7 +150,7 @@ export class Stage {
     if (choice.kind === 'asset') {
       try { groundTex = await loadPremultiplied(lib.base + choice.asset.file, this.scene) } catch { misses.push({ need: s.set.ground ?? 'ground', reason: `file did not load: ${choice.asset.file}` }) }
     } else if (choice.reason) misses.push({ need: s.set.ground, reason: choice.reason })
-    const far = next.find((b) => b.layer.depth === 'bg')
+    const far = next.find((b) => b.asset.layer === 'bg')   // a strip, not a prop placed far off
     const tint = far ? edgeColours.get(lib.base + far.asset.file) ?? null : null
     const dispose = (list: Built[]) => list.forEach((b) => { b.stain?.mesh.material?.dispose(); b.handle.mesh.dispose(); b.handle.material.dispose() })
     if (token !== this.buildToken) {   // a newer build won: this one never shows
@@ -202,7 +202,7 @@ export class Stage {
       b.handle.mesh.position.y = p.y
       b.handle.mesh.scaling.setAll(k.scale / b.builtScale)   // grows from the ground point
       b.handle.setOpacity(k.opacity)
-      b.handle.setFeather(b.layer.feather ?? (b.layer.depth === 'bg' ? BG_FEATHER : 0), this.horizonTint)
+      b.handle.setFeather(featherOf(b.asset, b.layer), this.horizonTint)
       b.stain?.setOpacity((b.layer.shadow ?? STAIN_DEFAULT) * k.opacity)
       b.handle.setMotion(motionOf(b.asset, b.layer))
       b.handle.material.setFloat('time', clock)
