@@ -5,7 +5,7 @@
             <h1>
                 {{ __('Lessons') }}
             </h1>
-            <p class="mt-4 text-sm text-slate-400">
+            <p class="mt-4 text-sm text-panel-hint">
                 {{ trans_choice(':count lesson|:count lessons', $lessonCount, ['count' => $lessonCount]) }}
             </p>
         </div>

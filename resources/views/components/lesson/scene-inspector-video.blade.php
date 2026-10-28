@@ -14,7 +14,7 @@
     </h3>
 
     <div x-data="{ link: '' }">
-        <span class="mb-1 block text-2xs font-semibold uppercase tracking-wider text-slate-400">{{ __('Video link or embed code') }}</span>
+        <span class="mb-1 block text-2xs font-semibold uppercase tracking-wider text-panel-hint">{{ __('Video link or embed code') }}</span>
         <div class="flex gap-1.5">
             <input type="text" x-model="link" placeholder="https://youtu.be/… · vimeo.com/… · &lt;iframe …&gt;"
                    @keydown.enter.prevent="if (link.trim()) { $wire.setVideoEmbed(link); link = '' }"
@@ -50,17 +50,17 @@
             <div class="flex items-center justify-between gap-2">
                 <span class="text-2xs text-slate-300">{{ __('Fit') }}</span>
                 <div class="inline-flex overflow-hidden rounded-lg border border-slate-700/60">
-                    <button type="button" @click="fit = 'cover'; save()" :class="fit === 'cover' ? 'bg-primary text-slate-950' : 'bg-slate-800 text-slate-400'" class="px-2.5 py-1 text-xs font-medium">{{ __('Cover') }}</button>
-                    <button type="button" @click="fit = 'fit'; save()" :class="fit === 'fit' ? 'bg-primary text-slate-950' : 'bg-slate-800 text-slate-400'" class="px-2.5 py-1 text-xs font-medium">{{ __('Fit') }}</button>
+                    <button type="button" @click="fit = 'cover'; save()" :class="fit === 'cover' ? 'bg-primary text-slate-950' : 'bg-slate-800 text-panel-hint'" class="px-2.5 py-1 text-xs font-medium">{{ __('Cover') }}</button>
+                    <button type="button" @click="fit = 'fit'; save()" :class="fit === 'fit' ? 'bg-primary text-slate-950' : 'bg-slate-800 text-panel-hint'" class="px-2.5 py-1 text-xs font-medium">{{ __('Fit') }}</button>
                 </div>
             </div>
             <div class="grid grid-cols-2 gap-2">
                 <label class="form-control">
-                    <span class="text-2xs uppercase tracking-wider text-slate-500">{{ __('Start (s)') }}</span>
+                    <span class="text-2xs uppercase tracking-wider text-panel-hint">{{ __('Start (s)') }}</span>
                     <input type="number" min="0" x-model="start" @change="save()" class="input input-xs input-bordered bg-slate-900 mt-1" />
                 </label>
                 <label class="form-control">
-                    <span class="text-2xs uppercase tracking-wider text-slate-500">{{ __('End (s)') }}</span>
+                    <span class="text-2xs uppercase tracking-wider text-panel-hint">{{ __('End (s)') }}</span>
                     <input type="number" min="0" x-model="end" @change="save()" class="input input-xs input-bordered bg-slate-900 mt-1" />
                 </label>
             </div>

@@ -1,5 +1,5 @@
 <div class="space-y-2" data-curriculum-picker>
-    <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Curriculum') }}</span>
+    <span class="text-2xs uppercase tracking-widest text-panel-hint">{{ __('Curriculum') }}</span>
 
     @if ($linked->isNotEmpty())
         <ul class="space-y-1.5">
@@ -16,7 +16,7 @@
                         <option value="partial" @selected($goal->pivot->fit === 'partial')>{{ __('Partly') }}</option>
                     </select>
                     <button type="button" wire:click="detach({{ $goal->id }})"
-                            class="grid h-6 w-6 shrink-0 place-items-center rounded text-slate-400 hover:text-error"
+                            class="grid h-6 w-6 shrink-0 place-items-center rounded text-panel-hint hover:text-error"
                             data-tooltip="{{ __('Remove') }}" aria-label="{{ __('Remove') }}">
                         <x-icons.x-mark class="h-4 w-4" />
                     </button>

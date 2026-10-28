@@ -9,7 +9,7 @@
             <nav aria-label="Narrator setup progress" class="mt-10 grid grid-cols-4 border-b border-slate-800">
                 @foreach([1 => 'Identity', 2 => 'Portrait', 3 => 'Voice', 4 => 'Review'] as $number => $label)
                     <button type="button" wire:click="goToStep({{ $number }})" @disabled($number > $step)
-                            class="relative pb-3 text-left text-xs font-semibold uppercase tracking-wider {{ $step === $number ? 'text-primary' : ($number < $step ? 'text-slate-300' : 'text-slate-600') }} disabled:cursor-not-allowed">
+                            class="relative pb-3 text-left text-xs font-semibold uppercase tracking-wider {{ $step === $number ? 'text-primary' : ($number < $step ? 'text-slate-300' : 'text-panel-hint') }} disabled:cursor-not-allowed">
                         <span class="mr-1.5">0{{ $number }}</span> {{ $label }}
                         @if($step === $number)<span class="absolute inset-x-0 -bottom-px h-0.5 bg-primary"></span>@endif
                     </button>
@@ -19,7 +19,7 @@
             <form wire:submit="createNarrator" class="mt-9 min-h-[28rem]">
                 @if($step === 1)
                     <section wire:key="identity" class="max-w-2xl space-y-6">
-                        <div><h2 class="text-2xl font-semibold text-slate-100">Who is joining the cast?</h2><p class="mt-1 text-sm text-slate-500">Give teachers enough context to choose this narrator with confidence.</p></div>
+                        <div><h2 class="text-2xl font-semibold text-slate-100">Who is joining the cast?</h2><p class="mt-1 text-sm text-panel-hint">Give teachers enough context to choose this narrator with confidence.</p></div>
                         <div class="grid gap-5 sm:grid-cols-2">
                             <fieldset class="fieldset sm:col-span-2"><legend class="fieldset-legend">Display name</legend><input wire:model="name" autofocus placeholder="e.g. Dr. Maya Okafor" class="input w-full">@error('name')<p class="label text-error">{{ $message }}</p>@enderror</fieldset>
                             <fieldset class="fieldset"><legend class="fieldset-legend">Short name <span class="font-normal text-base-content/40">optional</span></legend><input wire:model="short_name" placeholder="Maya" class="input w-full"></fieldset>
@@ -30,7 +30,7 @@
                     </section>
                 @elseif($step === 2)
                     <section wire:key="portrait" class="max-w-2xl space-y-6">
-                        <div><h2 class="text-2xl font-semibold text-slate-100">Choose a strong portrait.</h2><p class="mt-1 text-sm text-slate-500">Use a square image with a clear face. It appears beside lessons while the narrator speaks.</p></div>
+                        <div><h2 class="text-2xl font-semibold text-slate-100">Choose a strong portrait.</h2><p class="mt-1 text-sm text-panel-hint">Use a square image with a clear face. It appears beside lessons while the narrator speaks.</p></div>
                         <label class="card group grid min-h-72 cursor-pointer place-items-center overflow-hidden border-dashed transition hover:border-primary/70">
                             @if($portrait)
                                 <img src="{{ $portrait->temporaryUrl() }}" alt="Portrait preview" class="h-72 w-72 object-contain aspect-square">
@@ -67,7 +67,7 @@
                     </section>
                 @elseif($step === 3)
                     <section wire:key="voice" class="space-y-6">
-                        <div><h2 class="text-2xl font-semibold text-slate-100">{{ __("Set the narrator’s voice.") }}</h2><p class="mt-1 text-sm text-slate-500">{{ __('More languages and fine controls are available in the Studio.') }}</p></div>
+                        <div><h2 class="text-2xl font-semibold text-slate-100">{{ __("Set the narrator’s voice.") }}</h2><p class="mt-1 text-sm text-panel-hint">{{ __('More languages and fine controls are available in the Studio.') }}</p></div>
 
                         {{-- Which service speaks. ElevenLabs first: it is what every narrator in the
                              catalogue already uses, and the only one that can carry a cloned voice. --}}
@@ -107,8 +107,8 @@
                     </section>
                 @else
                     <section wire:key="review" class="max-w-2xl space-y-7">
-                        <div><h2 class="text-2xl font-semibold text-slate-100">Ready for the first lesson?</h2><p class="mt-1 text-sm text-slate-500">The narrator can stay backstage until you finish testing the voice.</p></div>
-                        <div class="flex items-center gap-5 border-y border-slate-800 py-6">@if($portrait)<img src="{{ $portrait->temporaryUrl() }}" alt="" class="h-24 w-24 rounded-2xl object-cover">@endif<div><p class="text-xl font-semibold text-slate-100">{{ $name }}</p><p class="text-sm text-primary">{{ $avatar_title ?: 'Narrator' }} · {{ ucfirst($subject === 'all' ? 'all subjects' : $subject) }}</p><p class="mt-2 text-sm text-slate-500">{{ $description ?: 'No description added.' }}</p>@if($intro_video)<span class="badge badge-success badge-outline mt-3">Introduction video ready</span>@else<span class="badge badge-ghost mt-3">No introduction video</span>@endif</div></div>
+                        <div><h2 class="text-2xl font-semibold text-slate-100">Ready for the first lesson?</h2><p class="mt-1 text-sm text-panel-hint">The narrator can stay backstage until you finish testing the voice.</p></div>
+                        <div class="flex items-center gap-5 border-y border-slate-800 py-6">@if($portrait)<img src="{{ $portrait->temporaryUrl() }}" alt="" class="h-24 w-24 rounded-2xl object-cover">@endif<div><p class="text-xl font-semibold text-slate-100">{{ $name }}</p><p class="text-sm text-primary">{{ $avatar_title ?: 'Narrator' }} · {{ ucfirst($subject === 'all' ? 'all subjects' : $subject) }}</p><p class="mt-2 text-sm text-panel-hint">{{ $description ?: 'No description added.' }}</p>@if($intro_video)<span class="badge badge-success badge-outline mt-3">Introduction video ready</span>@else<span class="badge badge-ghost mt-3">No introduction video</span>@endif</div></div>
                         <label class="card flex cursor-pointer flex-row items-start gap-3 p-4"><input wire:model="is_active" type="checkbox" class="checkbox checkbox-primary checkbox-sm mt-0.5"><span><span class="block text-sm font-semibold text-base-content">Make available to teachers now</span><span class="mt-0.5 block text-xs text-base-content/50">Leave this off if you want to test and refine the narrator first.</span></span></label>
                     </section>
                 @endif
@@ -120,6 +120,6 @@
             </form>
         </main>
 
-        <aside class="hidden border-l border-slate-800 pl-8 lg:block"><div class="sticky top-8"><p class="text-xs font-semibold uppercase tracking-widest text-slate-600">Cast note</p><blockquote class="mt-4 font-history text-2xl leading-snug text-slate-300">“A narrator is the thread students follow through the story.”</blockquote><div class="mt-8 h-px bg-gradient-to-r from-primary/60 to-transparent"></div><p class="mt-5 text-sm leading-6 text-slate-500">New narrators begin inactive by default. Preview the portrait and voice in the Studio before introducing them to teachers.</p></div></aside>
+        <aside class="hidden border-l border-slate-800 pl-8 lg:block"><div class="sticky top-8"><p class="text-xs font-semibold uppercase tracking-widest text-panel-hint">Cast note</p><blockquote class="mt-4 font-history text-2xl leading-snug text-slate-300">“A narrator is the thread students follow through the story.”</blockquote><div class="mt-8 h-px bg-gradient-to-r from-primary/60 to-transparent"></div><p class="mt-5 text-sm leading-6 text-panel-hint">New narrators begin inactive by default. Preview the portrait and voice in the Studio before introducing them to teachers.</p></div></aside>
     </div>
 </div>

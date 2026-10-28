@@ -55,37 +55,51 @@ async function smallTextOutsideStage(page: Page): Promise<Array<{ text: string; 
   }, MIN_FONT_PX);
 }
 
-test.describe('Small-text floor in the editor', () => {
+/**
+ * Every state the check flagged as unmeasured lives here: the map inspector (the editor default),
+ * the wizard's create page, and the lesson player. Each is loaded fresh, with nothing opened.
+ * Menus and dialogs are still NOT opened by this spec; that is a known gap, not a pass.
+ */
+const STATES = [
+  { name: 'editor: map inspector', url: () => MAP_WIZARD_URL, ready: '#lesson-canvas-root', stage: true },
+  { name: 'wizard: create', url: () => '/teacher/lessons/create', ready: 'body', stage: false },
+  { name: 'player', url: () => `/lesson/${process.env.PLAYER_LESSON_CODE ?? ''}`, ready: 'body', stage: false },
+] as const;
+
+test.describe('Small-text floor', () => {
   for (const viewport of VIEWPORTS) {
     test.describe(`at ${viewport.name}`, () => {
       test.use({ viewport: { width: viewport.width, height: viewport.height } });
 
-      test('no teacher-facing text is under 12px', async ({ page }) => {
-        await loginAsTeacher(page);
-        await page.goto(MAP_WIZARD_URL, { waitUntil: 'networkidle' });
-        await expect(page.locator('#lesson-canvas-root')).toBeVisible({ timeout: 20_000 });
+      for (const state of STATES) {
+        test.describe(state.name, () => {
+          const open = async (page: Page) => {
+            await loginAsTeacher(page);
+            await page.goto(state.url(), { waitUntil: 'networkidle' });
+            await expect(page.locator(state.ready).first()).toBeVisible({ timeout: 20_000 });
+          };
 
-        // The map inspector, the layer panel and the timeline are all mounted on this step.
-        const small = await smallTextOutsideStage(page);
+          test('no teacher-facing text is under 12px', async ({ page }) => {
+            await open(page);
 
-        expect(small, `text under ${MIN_FONT_PX}px:\n${small.map((s) => `  ${s.px}px  "${s.text}"`).join('\n')}`).toEqual([]);
-      });
+            const small = await smallTextOutsideStage(page);
 
-      test('text contrast meets WCAG AA (4.5:1) on the editor, zero violations', async ({ page }) => {
-        await loginAsTeacher(page);
-        await page.goto(MAP_WIZARD_URL, { waitUntil: 'networkidle' });
-        await expect(page.locator('#lesson-canvas-root')).toBeVisible({ timeout: 20_000 });
+            expect(small, `text under ${MIN_FONT_PX}px:\n${small.map((s) => `  ${s.px}px  "${s.text}"`).join('\n')}`).toEqual([]);
+          });
 
-        const results = await new AxeBuilder({ page })
-          .withRules(['color-contrast'])
-          .exclude('#lesson-canvas-root')
-          .analyze();
+          test('text contrast meets WCAG AA (4.5:1), zero violations', async ({ page }) => {
+            await open(page);
 
-        const summary = results.violations.flatMap((v) =>
-          v.nodes.map((n) => `  ${n.target.join(' ')}: ${n.failureSummary ?? v.help}`),
-        );
-        expect(results.violations, `contrast violations:\n${summary.join('\n')}`).toEqual([]);
-      });
+            const builder = new AxeBuilder({ page }).withRules(['color-contrast']);
+            const results = await (state.stage ? builder.exclude('#lesson-canvas-root') : builder).analyze();
+
+            const summary = results.violations.flatMap((v) =>
+              v.nodes.map((n) => `  ${n.target.join(' ')}: ${n.failureSummary ?? v.help}`),
+            );
+            expect(results.violations, `contrast violations:\n${summary.join('\n')}`).toEqual([]);
+          });
+        });
+      }
     });
   }
 });

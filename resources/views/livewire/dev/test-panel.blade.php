@@ -33,7 +33,7 @@
         @endif
 
         @if ($lessonId)
-            <div class="mb-3 text-xs text-slate-400">
+            <div class="mb-3 text-xs text-panel-hint">
                 This lesson: <span class="font-mono text-slate-200">{{ $lessonLabel }}</span>
                 · <span class="text-slate-300">{{ $resultCount }}</span> results
             </div>
@@ -71,19 +71,19 @@
                     Clear results
                 </button>
             </div>
-            <p class="mt-2 text-prose leading-snug text-slate-500">
+            <p class="mt-2 text-prose leading-snug text-panel-hint">
                 Sheets are a PNG "photo" (Emma all-correct, Liam mixed) — upload it into
-                <span class="text-slate-400">Import paper answers</span> to test vision extraction.
+                <span class="text-panel-hint">Import paper answers</span> to test vision extraction.
             </p>
         @else
-            <div class="mb-3 rounded-lg border border-slate-700 bg-slate-800/60 px-3 py-2 text-xs text-slate-400">
+            <div class="mb-3 rounded-lg border border-slate-700 bg-slate-800/60 px-3 py-2 text-xs text-panel-hint">
                 Open a lesson's Results page to seed data for it.
             </div>
         @endif
 
         <div class="mt-3 border-t border-slate-800 pt-3">
-            <div class="mb-1.5 text-2xs font-semibold uppercase tracking-wide text-slate-500">Signed in as</div>
-            <div class="mb-2 text-xs text-slate-400">
+            <div class="mb-1.5 text-2xs font-semibold uppercase tracking-wide text-panel-hint">Signed in as</div>
+            <div class="mb-2 text-xs text-panel-hint">
                 <span class="text-slate-200">{{ $currentUserName }}</span>
                 <span class="badge badge-xs ml-1 border-slate-700 bg-slate-800 text-slate-300">{{ $currentRole ?: 'no role' }}</span>
             </div>
@@ -98,7 +98,7 @@
                     </button>
                 @endforeach
             </div>
-            <p class="mt-1.5 text-prose leading-snug text-slate-500">
+            <p class="mt-1.5 text-prose leading-snug text-panel-hint">
                 Switches account instantly, no logout needed. Switching back returns to the same account.
             </p>
         </div>
@@ -164,9 +164,9 @@
              }"
              x-show="ready" x-cloak>
             <div class="mb-1.5 flex items-center justify-between">
-                <span class="text-2xs font-semibold uppercase tracking-wide text-slate-500">Hero demo</span>
+                <span class="text-2xs font-semibold uppercase tracking-wide text-panel-hint">Hero demo</span>
                 <button type="button" @click="window.heroDemo.reset(); s = window.heroDemo.settings; scrub = 0"
-                        class="text-2xs text-slate-500 underline hover:text-slate-300">reset</button>
+                        class="text-2xs text-panel-hint underline hover:text-slate-300">reset</button>
             </div>
 
             {{-- The four warp characters. Scored in resources/js/hero/__tests__/variants.bench.test.js
@@ -184,7 +184,7 @@
             <div class="space-y-2">
                 @foreach ($heroDials as [$key, $label, $min, $max, $step, $unit])
                     <label class="block">
-                        <span class="flex items-baseline justify-between text-2xs text-slate-400">
+                        <span class="flex items-baseline justify-between text-2xs text-panel-hint">
                             {{ $label }}
                             <span class="font-mono text-slate-200"
                                   x-text="Number(s.{{ $key }}).toFixed({{ $step < 1 ? 2 : 0 }}) + '{{ $unit }}'"></span>
@@ -198,11 +198,11 @@
                 @endforeach
             </div>
 
-            <div class="mt-3 mb-1.5 text-2xs font-semibold uppercase tracking-wide text-slate-500">Portal into the lesson</div>
+            <div class="mt-3 mb-1.5 text-2xs font-semibold uppercase tracking-wide text-panel-hint">Portal into the lesson</div>
             <div class="space-y-2">
                 @foreach ($portalDials as [$key, $label, $min, $max, $step, $unit])
                     <label class="block">
-                        <span class="flex items-baseline justify-between text-2xs text-slate-400">
+                        <span class="flex items-baseline justify-between text-2xs text-panel-hint">
                             {{ $label }}
                             <span class="font-mono text-slate-200"
                                   x-text="Number(s.{{ $key }}).toFixed({{ $step < 1 ? 2 : 0 }}) + '{{ $unit }}'"></span>
@@ -220,7 +220,7 @@
             </button>
 
             <label class="mt-3 block">
-                <span class="text-2xs text-slate-400">Scrub</span>
+                <span class="text-2xs text-panel-hint">Scrub</span>
                 <span class="range-panel-knob min-w-0 mt-0.5 w-full">
                     <input type="range" min="0" max="100" step="0.5"
                            x-model.number="scrub" @input="onScrub()"
@@ -233,9 +233,9 @@
                 <button type="button" @click="window.heroDemo.play()" class="btn btn-xs btn-outline">Play</button>
                 <button type="button" @click="window.heroDemo.pause()" class="btn btn-xs btn-outline">Pause</button>
             </div>
-            <p class="mt-1.5 text-prose leading-snug text-slate-500">
+            <p class="mt-1.5 text-prose leading-snug text-panel-hint">
                 Saved in this browser. Once it feels right, tell Claude the numbers and they become
-                the defaults in <span class="text-slate-400 font-mono">hero/lesson-demo.js</span>.
+                the defaults in <span class="text-panel-hint font-mono">hero/lesson-demo.js</span>.
             </p>
         </div>
         {{-- Settings — sliders for whatever this screen has registered as tunable. Live, never
@@ -252,7 +252,7 @@
         </div>
 
         <div class="mt-3 border-t border-slate-800 pt-3">
-            <div class="mb-1.5 text-2xs font-semibold uppercase tracking-wide text-slate-500">Jump to</div>
+            <div class="mb-1.5 text-2xs font-semibold uppercase tracking-wide text-panel-hint">Jump to</div>
             <div class="flex flex-wrap gap-1.5">
                 <a href="{{ route('teacher.results.hub') }}" class="btn btn-xs btn-ghost">Results hub</a>
                 <a href="{{ route('teacher.dashboard') }}" class="btn btn-xs btn-ghost">Lessons</a>

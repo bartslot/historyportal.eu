@@ -1,7 +1,7 @@
 {{-- Lesson settings > Subtitle languages (App\Livewire\Wizard\CaptionTranslations). --}}
 @php $rtl = in_array($language, \App\Services\Captions\CaptionTranslator::RTL, true); @endphp
 <div class="space-y-3">
-    <span class="block text-2xs uppercase tracking-widest text-slate-500">{{ __('Subtitle languages') }}</span>
+    <span class="block text-2xs uppercase tracking-widest text-panel-hint">{{ __('Subtitle languages') }}</span>
 
     <div class="flex items-center gap-2">
         <select wire:model.live="language" aria-label="{{ __('Subtitle language') }}"
@@ -18,21 +18,21 @@
         </button>
     </div>
 
-    <p class="text-xs tabular-nums text-slate-400">{{ __(':done of :total lines translated', ['done' => $translated, 'total' => count($rows)]) }}</p>
+    <p class="text-xs tabular-nums text-panel-hint">{{ __(':done of :total lines translated', ['done' => $translated, 'total' => count($rows)]) }}</p>
 
     @if ($translated > 0)
         <ul class="max-h-[28rem] space-y-3 overflow-y-auto pr-1">
             @foreach ($rows as $row)
                 @continue($row['machine'] === null)
                 <li wire:key="cc-{{ $language }}-{{ $row['hash'] }}" class="space-y-1">
-                    <p class="text-prose leading-snug text-slate-500" lang="{{ $lesson->language }}">{{ $row['source'] }}</p>
+                    <p class="text-prose leading-snug text-panel-hint" lang="{{ $lesson->language }}">{{ $row['source'] }}</p>
                     <textarea rows="2" lang="{{ $language }}" dir="{{ $rtl ? 'rtl' : 'ltr' }}"
                               aria-label="{{ __('Translated line') }}"
                               wire:change="saveLine(@js($row['hash']), $event.target.value)"
                               class="textarea textarea-sm w-full leading-snug">{{ $row['teacher'] ?? $row['machine'] }}</textarea>
                     @if ($row['teacher'] !== null)
                         <button type="button" wire:click="resetLine(@js($row['hash']))"
-                                class="btn btn-ghost btn-xs text-slate-400 hover:text-primary">
+                                class="btn btn-ghost btn-xs text-panel-hint hover:text-primary">
                             {{ __('Reset to the machine translation') }}
                         </button>
                     @endif

@@ -112,13 +112,13 @@
                 <button type="button" role="tab" @click="build = '{{ $key }}'"
                         :class="build === '{{ $key }}'
                             ? 'bg-slate-700 text-primary'
-                            : 'text-slate-400 hover:text-slate-200'"
+                            : 'text-panel-hint hover:text-slate-200'"
                         class="flex-1 rounded-md px-2 py-1 font-medium transition">{{ $label }}</button>
             @endforeach
         </div>
     @endif
 
-    <p class="text-prose leading-tight text-slate-500">
+    <p class="text-prose leading-tight text-panel-hint">
         @if ($isLayer)
             <span x-show="build === 'in'">{{ __('How this layer arrives when the scene starts.') }}</span>
             <span x-show="build === 'out'" x-cloak>{{ __('How this layer leaves at the end of the scene.') }}</span>
@@ -133,7 +133,7 @@
              else in this tab (a choice, then a time), so it reads as one panel. --}}
         <section class="space-y-2 rounded-lg border border-slate-700/60 bg-slate-900/40 p-2">
             <label class="block space-y-1">
-                <span class="block text-2xs uppercase tracking-wide text-slate-500">{{ __('Route') }}</span>
+                <span class="block text-2xs uppercase tracking-wide text-panel-hint">{{ __('Route') }}</span>
                 <select class="select select-xs select-bordered w-full border-slate-700 bg-slate-900 text-slate-300"
                         wire:change="setOverviewAnim('route', $event.target.value)">
                     @foreach ($routeReveals as $value => $label)
@@ -172,7 +172,7 @@
         </div>
     @endif
     <label class="block space-y-1" @if ($isLayer) x-show="build === 'out'" x-cloak @endif>
-        <span class="block text-2xs uppercase tracking-wide text-slate-500">
+        <span class="block text-2xs uppercase tracking-wide text-panel-hint">
             {{ $isLayer ? __('Disappear') : __('Transition') }}
         </span>
         @if ($isLayer)
@@ -228,7 +228,7 @@
 
     {{-- Easing, chosen from live curves rather than a list of names --}}
     <div class="space-y-1.5" wire:ignore>
-        <span class="block text-2xs uppercase tracking-wide text-slate-500">{{ __('Easing') }}</span>
+        <span class="block text-2xs uppercase tracking-wide text-panel-hint">{{ __('Easing') }}</span>
         {{-- auto-fit rather than a fixed 3 columns: the panel is resizable, and three fixed columns
              overflowed it at narrow widths, which is what pushed the whole tab sideways. --}}
         <div x-data="easingPreview(@js($current['ease']))" x-init="init()" x-on:destroy="destroy()"
@@ -238,7 +238,7 @@
                         @click="choose(opt.key, (k) => $wire.{{ $isLayer ? "updateArtworkLayer($aid, build === 'out' ? 'anim_out_ease' : 'anim_ease', k)" : "setSceneTransition('ease', k)" }})"
                         :class="selected === opt.key
                             ? 'border-primary bg-slate-900 text-primary'
-                            : 'border-slate-700 bg-slate-900/60 text-slate-400 hover:border-slate-500'"
+                            : 'border-slate-700 bg-slate-900/60 text-panel-hint hover:border-slate-500'"
                         class="flex flex-col items-center gap-0.5 rounded-lg border p-1 transition">
                     <svg viewBox="0 0 72 44" class="h-8 w-full" aria-hidden="true">
                         {{-- Rest line: where the value starts and ends, so the curve has a frame of reference. --}}

@@ -6,7 +6,7 @@
             <h1>
                 {{ __('Overview') }}
             </h1>
-            <div class="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-slate-400">
+            <div class="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-panel-hint">
                 <span>{{ trans_choice(':count active class|:count active classes', $classCount, ['count' => $classCount]) }}</span>
                 <span class="hidden h-1 w-1 rounded-full bg-slate-700 sm:block"></span>
                 <span>{{ trans_choice(':count lesson|:count lessons', $lessonCount, ['count' => $lessonCount]) }}</span>
@@ -55,7 +55,7 @@
                                 <p class="text-xs uppercase tracking-wider text-primary">{{ __('Your narrator') }}</p>
                                 <p class="mt-1 truncate text-sm font-semibold text-slate-100">{{ $narrator->name }}</p>
                                 @if($narrator->avatar_title || $narrator->era)
-                                    <p class="truncate text-xs text-slate-400">{{ $narrator->avatar_title ?: $narrator->era }}</p>
+                                    <p class="truncate text-xs text-panel-hint">{{ $narrator->avatar_title ?: $narrator->era }}</p>
                                 @endif
                             </div>
                         </div>
@@ -82,7 +82,7 @@
                 </span>
                 <div>
                     <h2 id="classes-heading" class="font-history text-2xl font-light text-slate-100">{{ __('Classes') }}</h2>
-                    <p class="mt-1 text-sm text-slate-500">{{ __('Roster, assigned lessons and recent performance.') }}</p>
+                    <p class="mt-1 text-sm text-panel-hint">{{ __('Roster, assigned lessons and recent performance.') }}</p>
                 </div>
             </div>
             <a href="{{ route('teacher.classes.index') }}" class="btn btn-link btn-sm px-0">
@@ -92,7 +92,7 @@
 
         @if($classrooms->isEmpty())
             <div class="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-800 px-6 py-10 text-center">
-                <x-icons.users class="h-7 w-7 text-slate-600" />
+                <x-icons.users class="h-7 w-7 text-panel-hint" />
                 <p class="mt-3 text-sm font-medium text-slate-300">{{ __('No active classes yet') }}</p>
                 <a href="{{ route('teacher.classes.index') }}" class="mt-3 text-sm text-primary hover:text-primary">
                     {{ __('Create a class') }}
@@ -111,14 +111,14 @@
                                 <h3 class="truncate text-sm font-semibold text-slate-100 group-hover:text-primary">
                                     {{ $classroom->name }}
                                 </h3>
-                                <p class="mt-1 text-xs text-slate-500">
+                                <p class="mt-1 text-xs text-panel-hint">
                                     @if($classroom->grade_level)
                                         {{ __('Grade :grade', ['grade' => $classroom->grade_level]) }} ·
                                     @endif
                                     {{ trans_choice(':count student|:count students', $classroom->members_count, ['count' => $classroom->members_count]) }}
                                 </p>
                             </div>
-                            <span class="rounded-md border border-slate-700 px-2 py-1 font-mono text-2xs text-slate-400">
+                            <span class="rounded-md border border-slate-700 px-2 py-1 font-mono text-2xs text-panel-hint">
                                 {{ $classroom->join_code }}
                             </span>
                         </div>
@@ -127,15 +127,15 @@
                             <div>
                                 @if($classResult)
                                     <p class="font-history text-2xl font-light text-slate-100">{{ $classResult['average'] }}%</p>
-                                    <p class="mt-1 text-xs text-slate-500">
+                                    <p class="mt-1 text-xs text-panel-hint">
                                         {{ trans_choice(':count recent attempt|:count recent attempts', $classResult['attempts'], ['count' => $classResult['attempts']]) }}
                                     </p>
                                 @else
-                                    <p class="text-sm text-slate-400">{{ __('No results yet') }}</p>
-                                    <p class="mt-1 text-xs text-slate-600">{{ __('Results appear after a quiz.') }}</p>
+                                    <p class="text-sm text-panel-hint">{{ __('No results yet') }}</p>
+                                    <p class="mt-1 text-xs text-panel-hint">{{ __('Results appear after a quiz.') }}</p>
                                 @endif
                             </div>
-                            <span class="text-xs text-slate-500">
+                            <span class="text-xs text-panel-hint">
                                 {{ trans_choice(':count lesson|:count lessons', $classroom->lessons_count, ['count' => $classroom->lessons_count]) }}
                             </span>
                         </div>
@@ -153,7 +153,7 @@
                 </span>
                 <div>
                     <h2 id="results-heading" class="font-history text-2xl font-light text-slate-100">{{ __('Results') }}</h2>
-                    <p class="mt-1 text-sm text-slate-500">{{ __('Quiz performance over the last 30 days.') }}</p>
+                    <p class="mt-1 text-sm text-panel-hint">{{ __('Quiz performance over the last 30 days.') }}</p>
                 </div>
             </div>
             <a href="{{ route('teacher.results.hub') }}" class="btn btn-link btn-sm px-0">
@@ -167,17 +167,17 @@
                 <div class="flex flex-wrap gap-x-10 gap-y-5">
                     <div>
                         <p class="font-history text-3xl font-light text-primary">{{ $results['average'] }}%</p>
-                        <p class="mt-1 text-xs text-slate-500">{{ __('Average correct') }}</p>
+                        <p class="mt-1 text-xs text-panel-hint">{{ __('Average correct') }}</p>
                     </div>
                     <div>
                         <p class="font-history text-3xl font-light text-slate-100">{{ $results['attempts'] }}</p>
-                        <p class="mt-1 text-xs text-slate-500">{{ __('Attempts') }}</p>
+                        <p class="mt-1 text-xs text-panel-hint">{{ __('Attempts') }}</p>
                     </div>
                     <div>
                         <p class="font-history text-3xl font-light {{ $results['needs_attention'] > 0 ? 'text-error' : 'text-slate-100' }}">
                             {{ $results['needs_attention'] }}
                         </p>
-                        <p class="mt-1 text-xs text-slate-500">{{ __('Below 50%') }}</p>
+                        <p class="mt-1 text-xs text-panel-hint">{{ __('Below 50%') }}</p>
                     </div>
                 </div>
 
@@ -211,7 +211,7 @@
                             <path d="M4 38H96" fill="none" stroke="rgba(148,163,184,.45)" stroke-width=".8" stroke-dasharray="2 2" />
                         @endif
                     </svg>
-                    <div class="mt-1 flex justify-between text-2xs text-slate-600">
+                    <div class="mt-1 flex justify-between text-2xs text-panel-hint">
                         @foreach($results['chart_labels'] as $label)
                             <span>{{ $label }}</span>
                         @endforeach
@@ -221,13 +221,13 @@
 
             <div class="border-slate-800 lg:border-l lg:pl-8">
                 <h3 class="text-sm font-semibold text-slate-200">{{ __('Recent lessons') }}</h3>
-                <p class="mt-1 text-xs text-slate-500">{{ __('Most-played lessons this month.') }}</p>
+                <p class="mt-1 text-xs text-panel-hint">{{ __('Most-played lessons this month.') }}</p>
 
                 <div class="mt-6 space-y-5">
                     @forelse($results['recent_lessons'] as $lessonResult)
                         <a href="{{ route('teacher.lessons.results', $lessonResult['lesson']) }}" class="group block">
                             <div class="flex items-center justify-between gap-4 text-xs">
-                                <span class="truncate text-slate-400 group-hover:text-slate-200">
+                                <span class="truncate text-panel-hint group-hover:text-slate-200">
                                     {{ $lessonResult['lesson']->title ?: $lessonResult['lesson']->topic }}
                                 </span>
                                 <span class="shrink-0 font-medium text-slate-200">{{ $lessonResult['average'] }}%</span>
@@ -235,13 +235,13 @@
                             <div class="mt-2 h-1 overflow-hidden rounded-full bg-slate-800">
                                 <span class="block h-full rounded-full bg-success/80" style="width: {{ $lessonResult['average'] }}%"></span>
                             </div>
-                            <p class="mt-1.5 text-prose text-slate-600">
+                            <p class="mt-1.5 text-prose text-panel-hint">
                                 {{ trans_choice(':count attempt|:count attempts', $lessonResult['attempts'], ['count' => $lessonResult['attempts']]) }}
                             </p>
                         </a>
                     @empty
                         <div class="rounded-lg border border-dashed border-slate-800 px-4 py-7 text-center">
-                            <p class="text-xs text-slate-500">{{ __('No quiz activity yet.') }}</p>
+                            <p class="text-xs text-panel-hint">{{ __('No quiz activity yet.') }}</p>
                         </div>
                     @endforelse
                 </div>

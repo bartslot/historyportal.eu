@@ -5,7 +5,7 @@
     {{-- Header --}}
     <div class="flex items-center justify-between gap-4">
         <h2 class="text-sm font-semibold text-slate-100 uppercase tracking-widest">Generation pipeline</h2>
-        <span class="text-xs text-slate-400">{{ $this->completedCount }}/5 steps</span>
+        <span class="text-xs text-panel-hint">{{ $this->completedCount }}/5 steps</span>
     </div>
 
     {{-- Progress bar --}}
@@ -81,7 +81,7 @@
                         @else
                             {{-- Slate dash — skipped, not retryable --}}
                             <span class="flex h-6 w-6 items-center justify-center rounded-full border border-slate-700 bg-slate-800/60">
-                                <svg class="h-3 w-3 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <svg class="h-3 w-3 text-panel-hint" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14" />
                                 </svg>
                             </span>
@@ -101,11 +101,11 @@
                         {{ $step['state'] === 'done'    ? 'text-success' : '' }}
                         {{ $step['state'] === 'active'  ? 'text-primary'   : '' }}
                         {{ $step['state'] === 'failed'  ? 'text-error'    : '' }}
-                        {{ $step['state'] === 'skipped' ? 'text-slate-500'   : '' }}
-                        {{ $step['state'] === 'pending' ? 'text-slate-400'   : '' }}
+                        {{ $step['state'] === 'skipped' ? 'text-panel-hint'   : '' }}
+                        {{ $step['state'] === 'pending' ? 'text-panel-hint'   : '' }}
                     ">{{ $step['label'] }}</p>
                     @if($step['state'] === 'skipped' && ! empty($step['skipReason']))
-                        <p class="text-xs text-slate-500 italic">{{ $step['skipReason'] }}</p>
+                        <p class="text-xs text-panel-hint italic">{{ $step['skipReason'] }}</p>
                     @elseif($step['state'] === 'active')
                         <p class="text-xs text-primary/70"
                            x-data="{ elapsed: 0, timer: null }"
@@ -116,7 +116,7 @@
                             <span x-text="Math.floor(elapsed / 60) > 0 ? Math.floor(elapsed / 60) + 'm ' + (elapsed % 60) + 's' : elapsed + 's'"></span>
                         </p>
                     @else
-                        <p class="text-xs text-slate-400">{{ $step['description'] }}</p>
+                        <p class="text-xs text-panel-hint">{{ $step['description'] }}</p>
                     @endif
                 </div>
 
@@ -126,7 +126,7 @@
 
     {{-- Status footer --}}
     @if($lesson->isGenerating())
-        <p class="text-xs text-slate-400 border-t border-slate-800 pt-4"
+        <p class="text-xs text-panel-hint border-t border-slate-800 pt-4"
            x-data="{ elapsed: 0 }"
            x-init="setInterval(() => elapsed++, 1000)"
         >

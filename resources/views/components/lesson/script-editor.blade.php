@@ -89,7 +89,7 @@
          teacher asks for it rather than after a round trip. --}}
     <div x-show="!paras.length" x-cloak
          class="flex min-h-0 flex-1 flex-col items-center justify-center gap-2.5 px-4 py-6 text-center">
-        <p class="max-w-sm text-xs leading-relaxed text-panel-hint">
+        <p class="max-w-sm text-prose leading-relaxed text-panel-hint">
             {{ __('No narration yet. Write a few lines here and they will be read aloud over this scene.') }}
         </p>
         <button type="button" x-on:click="addNarration()"
@@ -116,7 +116,7 @@
                     <div class="flex gap-3">
                         {{-- Timecode seeks; the paragraph is editable in place. --}}
                         <button type="button" x-on:click="seek(i)"
-                                class="mt-0.5 w-9 shrink-0 cursor-pointer text-right font-mono text-2xs tabular-nums text-slate-500 transition hover:text-primary"
+                                class="mt-0.5 w-9 shrink-0 cursor-pointer text-right font-mono text-2xs tabular-nums text-panel-hint transition hover:text-primary"
                                 x-text="fmt(starts[i] ?? 0)"></button>
                         {{-- contenteditable paragraph. white-space:pre-wrap keeps soft newlines (single
                              Enter). Double Enter splits into a new box; Backspace at start merges up.
@@ -148,7 +148,7 @@
         <div x-show="focusedPara !== null" x-cloak
              class="flex shrink-0 flex-wrap items-center gap-2 border-t border-slate-700/60 bg-base-200/40 px-3"
              x-on:mousedown="$event.target.closest('input, textarea, [contenteditable]') || $event.preventDefault()">
-            <span class="text-2xs font-semibold uppercase tracking-widest text-slate-500">{{ __('Paragraph') }}</span>
+            <span class="text-2xs font-semibold uppercase tracking-widest text-panel-hint">{{ __('Paragraph') }}</span>
             {{-- Regenerate with a prompt (inline expanding input). --}}
             <div class="flex items-center gap-1" x-show="!promptOpen">
                 <button type="button" x-on:click="openPrompt()"
@@ -167,11 +167,11 @@
                        x-on:keydown.enter.stop.prevent="submitPrompt()"
                        x-on:keydown.escape.stop.prevent="closePrompt()"
                        placeholder="{{ __('e.g. make it shorter and more dramatic') }}"
-                       class="min-w-0 flex-1 rounded-md border border-slate-600/70 bg-base-300 px-2 py-1 text-xs text-slate-100 placeholder:text-slate-500 focus:border-primary focus:outline-none" />
+                       class="min-w-0 flex-1 rounded-md border border-slate-600/70 bg-base-300 px-2 py-1 text-xs text-slate-100 placeholder:text-panel-hint focus:border-primary focus:outline-none" />
                 <button type="button" x-on:click="submitPrompt()" :disabled="regenPara"
                         class="rounded-md bg-primary px-2 py-1 text-2xs font-semibold text-slate-950 transition hover:brightness-110 disabled:opacity-40">{{ __('Rewrite') }}</button>
                 <button type="button" x-on:click="closePrompt()"
-                        class="rounded-md px-1.5 py-1 text-2xs text-slate-400 hover:text-slate-200">✕</button>
+                        class="rounded-md px-1.5 py-1 text-2xs text-panel-hint hover:text-slate-200">✕</button>
             </div>
             {{-- Summarize the whole scene to an on-slide bullet list. --}}
             <button type="button" x-on:click="summarizeToList()" :disabled="summarizing"
@@ -213,7 +213,7 @@
             <span x-show="!hasAudio && !regenerating" class="min-w-0 flex-1 truncate text-2xs text-panel-hint">
                 {{ __('No narration yet') }}
             </span>
-            <span class="shrink-0 font-mono text-2xs tabular-nums text-slate-400"
+            <span class="shrink-0 font-mono text-2xs tabular-nums text-panel-hint"
                   x-text="regenerating ? @js(__('recording…')) : (hasAudio ? (fmt(t) + ' / ' + fmt(dur)) : '–:––')"></span>
         </div>
     </div>

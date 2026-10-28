@@ -130,7 +130,7 @@ $machineState = $isFailed ? 'error' : ($isStalled ? 'stalled' : ($isDone ? 'read
         <h1 class="mt-3 font-history text-3xl font-light tracking-[-0.035em] text-slate-100 sm:text-4xl">
             {{ $step['label'] }}
         </h1>
-        <p class="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-400">
+        <p class="mx-auto mt-3 max-w-xl text-sm leading-6 text-panel-hint">
             {{ $step['detail'] }}
         </p>
     </header>
@@ -145,7 +145,7 @@ $machineState = $isFailed ? 'error' : ($isStalled ? 'stalled' : ($isDone ? 'read
                         <p class="truncate text-sm font-medium text-slate-200">
                             {{ $lesson->title ?: $lesson->topic }}
                         </p>
-                        <p class="mt-1 text-xs text-slate-500">
+                        <p class="mt-1 text-xs text-panel-hint">
                             {{ $isDone ? __('Ready to configure') : __('Travelling backwards through the source material') }}
                         </p>
                     </div>
@@ -167,13 +167,13 @@ $machineState = $isFailed ? 'error' : ($isStalled ? 'stalled' : ($isDone ? 'read
         <section class="min-w-0" aria-labelledby="generation-process-title">
             <div class="flex items-end justify-between gap-4 border-b border-slate-800 pb-4">
                 <div>
-                    <p class="text-prose uppercase tracking-[0.16em] text-slate-500">{{ __('Live process') }}</p>
+                    <p class="text-prose uppercase tracking-[0.16em] text-panel-hint">{{ __('Live process') }}</p>
                     <h2 id="generation-process-title" class="mt-1 text-base font-semibold text-slate-100">
                         {{ __('What the workshop is doing') }}
                     </h2>
                 </div>
                 @unless ($isDone || $isFailed)
-                    <span class="inline-flex items-center gap-1 text-xs text-slate-500" aria-label="{{ __('Thinking') }}">
+                    <span class="inline-flex items-center gap-1 text-xs text-panel-hint" aria-label="{{ __('Thinking') }}">
                         <span>{{ __('Thinking') }}</span>
                         <span class="inline-flex w-5 justify-start gap-0.5" aria-hidden="true">
                             <span class="h-1 w-1 animate-pulse rounded-full bg-primary"></span>
@@ -211,10 +211,10 @@ $machineState = $isFailed ? 'error' : ($isStalled ? 'stalled' : ($isDone ? 'read
                             <p @class([
                                 'text-sm',
                                 'font-medium text-slate-200' => $task['state'] === 'active',
-                                'text-slate-400' => $task['state'] === 'done',
-                                'text-slate-600' => $task['state'] === 'pending',
+                                'text-panel-hint' => $task['state'] === 'done',
+                                'text-panel-hint' => $task['state'] === 'pending',
                             ])>{{ $task['label'] }}</p>
-                            <p class="mt-0.5 text-xs leading-5 text-slate-500">{{ $task['detail'] }}</p>
+                            <p class="mt-0.5 text-xs leading-5 text-panel-hint">{{ $task['detail'] }}</p>
                         </div>
                     </li>
                 @endforeach
@@ -239,7 +239,7 @@ $machineState = $isFailed ? 'error' : ($isStalled ? 'stalled' : ($isDone ? 'read
                     <h2 class="font-semibold text-slate-100">
                         {{ $isFailed ? __('Lesson generation stopped') : __('This step is taking longer than expected') }}
                     </h2>
-                    <p class="mt-1 text-sm leading-6 text-slate-400">
+                    <p class="mt-1 text-sm leading-6 text-panel-hint">
                         @if ($isFailed)
                             {{-- Translate the worker's raw exception into something a teacher can act on.
                                  "OpenAI API returned 429" tells them nothing about what to do next. --}}
@@ -286,15 +286,15 @@ $machineState = $isFailed ? 'error' : ($isStalled ? 'stalled' : ($isDone ? 'read
 
     @if ($generatable->isNotEmpty())
         <details class="mx-auto mt-8 max-w-3xl border-y border-slate-800 py-1">
-            <summary class="flex cursor-pointer list-none items-center justify-between gap-4 py-3 text-sm text-slate-400 transition hover:text-slate-200">
+            <summary class="flex cursor-pointer list-none items-center justify-between gap-4 py-3 text-sm text-panel-hint transition hover:text-slate-200">
                 <span>{{ __('Scene details') }}</span>
-                <span class="text-xs text-slate-600">{{ trans_choice(':count scene|:count scenes', $generatable->count(), ['count' => $generatable->count()]) }}</span>
+                <span class="text-xs text-panel-hint">{{ trans_choice(':count scene|:count scenes', $generatable->count(), ['count' => $generatable->count()]) }}</span>
             </summary>
             <div class="divide-y divide-slate-800">
                 @foreach ($generatable as $scene)
                     <div class="py-4">
                         <div class="flex items-start gap-4">
-                            <div class="w-16 shrink-0 text-xs font-medium text-slate-400">
+                            <div class="w-16 shrink-0 text-xs font-medium text-panel-hint">
                                 {{ __('Scene :number', ['number' => $loop->iteration]) }}
                             </div>
                             <div class="grid min-w-0 flex-1 grid-cols-1 gap-3 text-xs sm:grid-cols-3">
@@ -313,7 +313,7 @@ $machineState = $isFailed ? 'error' : ($isStalled ? 'stalled' : ($isDone ? 'read
                                             'bg-error' => ! $has && $scene->status === 'failed',
                                             'animate-pulse bg-primary' => ! $has && $scene->status !== 'failed',
                                         ])></span>
-                                        <span class="text-slate-400">{{ $label }}</span>
+                                        <span class="text-panel-hint">{{ $label }}</span>
                                         @if (! $has && $scene->status === 'failed')
                                             <button
                                                 type="button"

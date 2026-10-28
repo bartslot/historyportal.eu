@@ -6,7 +6,7 @@
         {{ __('Map block') }}
     </h3>
 
-    <p class="text-xs text-panel-hint">
+    <p class="text-prose text-panel-hint">
         {{ __('Shows the territory on the historical map, fit to its borders at the chosen year.') }}
     </p>
 
@@ -22,8 +22,8 @@
         <span class="text-xs uppercase tracking-wider text-panel-hint">{{ __('Playback') }}</span>
         <select wire:model.live="selectedScene.config.playback_mode" wire:change="saveSelected"
                 class="select select-sm select-bordered bg-slate-900 mt-1">
-            <option value="interactive">{{ __('Interactive — explore, then Continue') }}</option>
-            <option value="timed">{{ __('Timed — fly-to, then auto-advance') }}</option>
+            <option value="interactive">{{ __('Interactive: explore, then Continue') }}</option>
+            <option value="timed">{{ __('Timed: fly-to, then auto-advance') }}</option>
         </select>
     </label>
 
@@ -54,7 +54,7 @@
         <span class="text-xs uppercase tracking-wider text-panel-hint">{{ __('Focus cities') }}</span>
 
         <input type="search" wire:model.live.debounce.350ms="cityQuery"
-               placeholder="{{ __('Search a city — e.g. Constantinople') }}"
+               placeholder="{{ __('Search a city, e.g. Constantinople') }}"
                class="input input-sm input-bordered bg-slate-900 mt-1" />
 
         @if (filled($cityQuery) && $cityResults && $cityResults->isNotEmpty())
@@ -132,7 +132,7 @@
             <input type="search" wire:model.live.debounce.400ms="territoryQuery"
                    placeholder="{{ __('Search an empire/kingdom — e.g. Byzantine Empire') }}"
                    class="input input-sm input-bordered bg-slate-900 mt-1" />
-            <p class="mt-1 text-prose text-panel-hint">{{ __('No territory linked — search a polity (cities: link the empire that ruled it).') }}</p>
+            <p class="mt-1 text-prose text-panel-hint">{{ __('No territory linked: search a polity (cities: link the empire that ruled it).') }}</p>
             <p class="mt-1 text-prose text-panel-link">{{ __('Don\'t know its name? Hover the map to see territory names, then click one to link it.') }}</p>
 
             @if (filled($territoryQuery) && $territoryResults && $territoryResults->isNotEmpty())

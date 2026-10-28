@@ -13,9 +13,9 @@
     @if (count($choices) > 1)
         <div data-title-style="{{ $style }}">
             <div class="flex items-center justify-between">
-                <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Title style') }}</span>
+                <span class="text-2xs uppercase tracking-widest text-panel-hint">{{ __('Title style') }}</span>
                 @if ($lesson->title_style !== null)
-                    <button type="button" wire:click="resetTitleStyle" class="text-2xs text-slate-500 transition-colors hover:text-primary">{{ __('Reset to default') }}</button>
+                    <button type="button" wire:click="resetTitleStyle" class="text-2xs text-panel-hint transition-colors hover:text-primary">{{ __('Reset to default') }}</button>
                 @endif
             </div>
             <div class="mt-2 grid grid-cols-3 gap-2" role="radiogroup" aria-label="{{ __('Title style') }}">
@@ -34,7 +34,7 @@
                                      @class(['h-full w-full', 'object-contain p-2' => $choice['key'] === \App\Support\TitlePoster::LOGO, 'object-cover' => $choice['key'] !== \App\Support\TitlePoster::LOGO])>
                             @endif
                         </span>
-                        <span @class(['mt-1 block truncate text-2xs', 'text-primary' => $isOn, 'text-slate-400' => ! $isOn])>{{ $choice['label'] }}</span>
+                        <span @class(['mt-1 block truncate text-2xs', 'text-primary' => $isOn, 'text-panel-hint' => ! $isOn])>{{ $choice['label'] }}</span>
                     </button>
                 @endforeach
             </div>
@@ -48,12 +48,12 @@
          x-data="{ series: @js($parts['series']), subtitle: @js($parts['subtitle']), save() { $wire.setTitleText(this.series, this.subtitle) } }"
          x-on:title-edit-field.window="const el = $refs[$event.detail]; el?.focus(); el?.select()">
         <label class="block">
-            <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Title') }}</span>
+            <span class="text-2xs uppercase tracking-widest text-panel-hint">{{ __('Title') }}</span>
             <input type="text" value="{{ $parts['series'] }}" x-model="series" x-on:change="save()" required
                    maxlength="{{ \App\Models\Lesson::TITLE_MAX_CHARS }}" x-ref="title" data-title-field="title" class="input input-sm mt-1 w-full" />
         </label>
         <label class="block">
-            <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Subtitle') }}</span>
+            <span class="text-2xs uppercase tracking-widest text-panel-hint">{{ __('Subtitle') }}</span>
             <input type="text" value="{{ $parts['subtitle'] }}" x-model="subtitle" x-on:change="save()"
                    maxlength="{{ \App\Models\Lesson::TITLE_MAX_CHARS }}" x-ref="subtitle" data-title-field="subtitle" class="input input-sm mt-1 w-full" />
         </label>
@@ -63,11 +63,11 @@
     @php $ownPicture = trim((string) $lesson->title_image) !== ''; $titleBg = $lesson->titleBgUrl(); @endphp
     <div class="border-t border-slate-700/50 pt-4" data-title-picture x-data="{ changing: false }">
         <div class="flex items-center justify-between gap-3">
-            <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Picture') }}</span>
+            <span class="text-2xs uppercase tracking-widest text-panel-hint">{{ __('Picture') }}</span>
             @if ($ownPicture)
-                <button type="button" wire:click="resetTitleImage" class="text-2xs text-slate-500 transition-colors hover:text-primary">{{ __('Reset to default') }}</button>
+                <button type="button" wire:click="resetTitleImage" class="text-2xs text-panel-hint transition-colors hover:text-primary">{{ __('Reset to default') }}</button>
             @else
-                <span class="text-2xs text-slate-600">{{ __('auto-picked') }}</span>
+                <span class="text-2xs text-panel-hint">{{ __('auto-picked') }}</span>
             @endif
         </div>
         <div class="mt-2 flex items-center gap-3">
@@ -87,7 +87,7 @@
                 </label>
             </div>
         </div>
-        <div wire:loading wire:target="titleUpload" class="mt-1 text-2xs text-slate-500">{{ __('Uploading…') }}</div>
+        <div wire:loading wire:target="titleUpload" class="mt-1 text-2xs text-panel-hint">{{ __('Uploading…') }}</div>
         @error('titleUpload') <p class="mt-1 text-prose text-error">{{ $message }}</p> @enderror
         @if (count($lesson->posterCandidates()))
             <div x-show="changing" x-cloak class="mt-3">
@@ -99,7 +99,7 @@
 
     {{-- Where the title sits: a small frame per preset with the block drawn in its place. --}}
     <div class="border-t border-slate-700/50 pt-4">
-        <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Title position') }}</span>
+        <span class="text-2xs uppercase tracking-widest text-panel-hint">{{ __('Title position') }}</span>
         <div class="mt-2 grid max-w-72 grid-cols-3 gap-2" role="radiogroup" aria-label="{{ __('Title position') }}">
             @foreach (\App\Enums\TitlePosition::cases() as $case)
                 @php
@@ -132,9 +132,9 @@
     @php $qrOn = $lesson->qrPosition() !== 'hidden'; @endphp
     <label class="flex items-center justify-between gap-3 border-t border-slate-700/50 pt-4" data-qr-position="{{ $lesson->qrPosition() }}">
         <span class="flex items-center gap-2">
-            <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Show QR code') }}</span>
+            <span class="text-2xs uppercase tracking-widest text-panel-hint">{{ __('Show QR code') }}</span>
             {{-- The version the class's screens show under the QR (LessonVersion), and when it was made. --}}
-            <span data-lesson-version class="font-mono text-2xs text-slate-600"
+            <span data-lesson-version class="font-mono text-2xs text-panel-hint"
                   @if ($lesson->content_version_at) data-tooltip="{{ $lesson->content_version_at->isoFormat('D MMM YYYY, HH:mm') }}" @endif>v{{ (int) ($lesson->content_version ?? 1) }}</span>
         </span>
         <input type="checkbox" @checked($qrOn) wire:change="setShowQr($event.target.checked)" data-qr-toggle class="toggle toggle-sm shrink-0" />
@@ -148,9 +148,9 @@
     @php $expect = array_values((array) ($lesson->expect ?? [])); @endphp
     <div data-title-expect-editor>
         <div class="flex items-center justify-between gap-3">
-            <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('What to expect') }}</span>
+            <span class="text-2xs uppercase tracking-widest text-panel-hint">{{ __('What to expect') }}</span>
             @if ($expect !== array_values((array) ($lesson->expect_default ?? [])))
-                <button type="button" wire:click="resetExpect" data-expect-reset class="text-2xs text-slate-500 transition-colors hover:text-primary">{{ __('Reset to default') }}</button>
+                <button type="button" wire:click="resetExpect" data-expect-reset class="text-2xs text-panel-hint transition-colors hover:text-primary">{{ __('Reset to default') }}</button>
             @endif
         </div>
         <div class="mt-2 space-y-2">

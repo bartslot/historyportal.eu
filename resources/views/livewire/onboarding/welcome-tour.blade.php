@@ -69,7 +69,7 @@
                  :style="arrowStyle"></div>
 
             <button type="button" wire:click="dismiss({{ $startStep }})" aria-label="{{ __('Close') }}"
-                    class="btn btn-ghost btn-circle btn-sm absolute right-3 top-3 text-slate-400 hover:text-slate-200">
+                    class="btn btn-ghost btn-circle btn-sm absolute right-3 top-3 text-panel-hint hover:text-slate-200">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5" aria-hidden="true">
                     <path stroke-linecap="round" d="M6 6l12 12M18 6 6 18" />
                 </svg>
@@ -77,7 +77,7 @@
 
             <p class="pr-8 text-xs font-medium uppercase tracking-eyebrow text-primary">
                 {{ __('Getting started') }}
-                <span class="ml-2 text-slate-500" aria-live="polite"
+                <span class="ml-2 text-panel-hint" aria-live="polite"
                       x-text="`${index + 1} / ${total}`"></span>
             </p>
 
@@ -96,7 +96,7 @@
                     @if (! empty($step['bullets']))
                         <ul class="mt-3 space-y-1.5">
                             @foreach ($step['bullets'] as $bullet)
-                                <li class="flex items-start gap-2.5 text-sm text-slate-400">
+                                <li class="flex items-start gap-2.5 text-sm text-panel-hint">
                                     <span class="mt-[0.45rem] h-1 w-1 shrink-0 rounded-full bg-primary"></span>
                                     <span>{{ $bullet }}</span>
                                 </li>
@@ -123,7 +123,7 @@
             @endforeach
 
             <div class="mt-7 flex items-center justify-between gap-3 border-t border-slate-800 pt-4">
-                <button type="button" @click="dismiss()" class="btn btn-ghost btn-xs text-slate-500 hover:text-slate-300">
+                <button type="button" @click="dismiss()" class="btn btn-ghost btn-xs text-panel-hint hover:text-slate-300">
                     {{ __('Skip the tour') }}
                 </button>
 

@@ -19,7 +19,7 @@
                     class="rounded-full px-3 py-1 text-2xs font-medium transition-colors
                            {{ $collection === $set
                                ? 'bg-base-content text-base-100'
-                               : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200' }}">
+                               : 'bg-slate-800 text-panel-hint hover:bg-slate-700 hover:text-slate-200' }}">
                 {{ $collectionLabels[$set] ?? ucfirst(str_replace('-', ' ', $set)) }}
             </button>
         @endforeach
@@ -27,7 +27,7 @@
         {{-- The teacher's own SVG imports still live in their library modal — one way in, kept
              out of the pill row because it is not another set of icons. --}}
         <button type="button" x-on:click="Livewire.dispatch('open-svg-library')"
-                class="ml-auto rounded-full px-3 py-1 text-2xs font-medium text-slate-500 transition-colors hover:text-slate-200">
+                class="ml-auto rounded-full px-3 py-1 text-2xs font-medium text-panel-hint transition-colors hover:text-slate-200">
             {{ __('Import…') }}
         </button>
 
@@ -36,7 +36,7 @@
         @if (auth()->user()?->isAdmin())
             <span x-data x-on:sequence-imported.window="$refs.sequenceDialog.close()">
                 <button type="button" x-on:click="$refs.sequenceDialog.showModal()"
-                        class="rounded-full px-3 py-1 text-2xs font-medium text-slate-500 transition-colors hover:text-slate-200">
+                        class="rounded-full px-3 py-1 text-2xs font-medium text-panel-hint transition-colors hover:text-slate-200">
                     {{ __('Import sequence…') }}
                 </button>
                 <dialog x-ref="sequenceDialog" class="modal" wire:ignore.self>
@@ -89,7 +89,7 @@
                         class="shrink-0 rounded-full px-3 py-1 text-2xs font-medium transition-colors
                                {{ $this->activeEra() === $chip['era']
                                    ? 'bg-base-content text-base-100'
-                                   : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200' }}">
+                                   : 'bg-slate-800 text-panel-hint hover:bg-slate-700 hover:text-slate-200' }}">
                     {{ $chip['label'] }}
                 </button>
             @endforeach
@@ -104,7 +104,7 @@
                     class="shrink-0 rounded-full px-3 py-1 text-2xs font-medium transition-colors
                            {{ $category === ''
                                ? 'bg-base-content text-base-100'
-                               : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200' }}">
+                               : 'bg-slate-800 text-panel-hint hover:bg-slate-700 hover:text-slate-200' }}">
                 {{ __('All') }}
             </button>
             @foreach ($this->groups() as $group)
@@ -115,7 +115,7 @@
                                {{ $group['subcategory'] === '' ? 'font-semibold' : 'font-medium' }}
                                {{ $active
                                    ? 'bg-base-content text-base-100'
-                                   : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200' }}">
+                                   : 'bg-slate-800 text-panel-hint hover:bg-slate-700 hover:text-slate-200' }}">
                     {{ $group['label'] }}
                 </button>
             @endforeach
@@ -129,12 +129,12 @@
     <div class="min-h-0 flex-1 overflow-y-auto">
         @if ($this->icons()->isEmpty() && $this->activeEra() !== '')
             {{-- Nothing of this era in this set: say so, and one click shows every era. --}}
-            <p class="px-1 py-6 text-center text-xs text-slate-500" data-era-empty>
+            <p class="px-1 py-6 text-center text-xs text-panel-hint" data-era-empty>
                 {{ __('Nothing from this period in this set.') }}
                 <button type="button" wire:click="selectEra('')" class="ml-1 text-slate-300 underline-offset-2 hover:text-primary hover:underline">{{ __('All times') }}</button>
             </p>
         @elseif ($this->icons()->isEmpty())
-            <p class="px-1 py-6 text-center text-xs text-slate-500">
+            <p class="px-1 py-6 text-center text-xs text-panel-hint">
                 {{ __('No assets in this set yet.') }}
             </p>
         @else

@@ -23,7 +23,7 @@
                             <li>{{ trans_choice('{1} Write 1 script again.|[2,*] Write :count scripts again.', $plan['scripts'], ['count' => $plan['scripts']]) }}</li>
                         @endif
                         @if ($plan['manual'])
-                            <li class="text-slate-500">{{ trans_choice('{1} 1 problem needs you.|[2,*] :count problems need you.', $plan['manual'], ['count' => $plan['manual']]) }}</li>
+                            <li class="text-panel-hint">{{ trans_choice('{1} 1 problem needs you.|[2,*] :count problems need you.', $plan['manual'], ['count' => $plan['manual']]) }}</li>
                         @endif
                     </ul>
                     <div class="mt-3 flex justify-end gap-2">
@@ -37,12 +37,12 @@
 
     @forelse ($byScene as $sceneId => $rows)
         <div class="space-y-1.5">
-            <p class="text-prose uppercase tracking-widest text-slate-500">{{ __('Scene') }} {{ $rows->first()['order'] }}</p>
+            <p class="text-prose uppercase tracking-widest text-panel-hint">{{ __('Scene') }} {{ $rows->first()['order'] }}</p>
             @foreach ($rows as $problem)
                 <x-lesson.scene-problem-row :problem="$problem" :scene="$scenes->firstWhere('id', $sceneId)" jump />
             @endforeach
         </div>
     @empty
-        <p class="text-xs text-slate-400">{{ __('No problems.') }}</p>
+        <p class="text-xs text-panel-hint">{{ __('No problems.') }}</p>
     @endforelse
 </div>

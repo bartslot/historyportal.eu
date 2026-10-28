@@ -3,7 +3,7 @@
 
     {{-- ═══════════════════════════════════ STORY ARC ═══════════════════════════════════ --}}
     <div class="bg-base-300 rounded-2xl p-6 space-y-4" data-tour="story-arc">
-        <span class="label-text text-xs uppercase tracking-wider text-slate-400">
+        <span class="label-text text-xs uppercase tracking-wider text-panel-hint">
             Choose your story arc
         </span>
 
@@ -18,7 +18,7 @@
                         ])>
                     <i class="ti {{ $fw->icon() }} text-xl @if($narrative_framework === $fw->value) text-primary @else text-slate-300 @endif"></i>
                     <span class="text-sm font-medium text-white">{{ $fw->label() }}</span>
-                    <span class="text-xs text-slate-400 leading-snug">{{ $fw->description() }}</span>
+                    <span class="text-xs text-panel-hint leading-snug">{{ $fw->description() }}</span>
                     @if ($fw === NarrativeFramework::default())
                         <span class="mt-0.5 text-2xs uppercase tracking-wide text-primary/70">default</span>
                     @endif
@@ -31,8 +31,8 @@
     @if ($this->framework()->needsHero())
         <div class="bg-base-300 rounded-2xl p-6 space-y-3">
             <div class="flex items-baseline justify-between">
-                <span class="label-text text-xs uppercase tracking-wider text-slate-400">{{ __('Choose your hero') }}</span>
-                <span class="text-xs text-slate-500">from the corpus · rulers first</span>
+                <span class="label-text text-xs uppercase tracking-wider text-panel-hint">{{ __('Choose your hero') }}</span>
+                <span class="text-xs text-panel-hint">from the corpus · rulers first</span>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -52,19 +52,19 @@
                                  onerror="this.style.display='none'" />
                         @else
                             <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-700">
-                                <i class="ti ti-user text-slate-400"></i>
+                                <i class="ti ti-user text-panel-hint"></i>
                             </span>
                         @endif
                         <span class="flex flex-col min-w-0">
                             <span class="text-sm font-medium text-white truncate">{{ $hero->name }}</span>
-                            <span class="text-xs text-slate-400">
+                            <span class="text-xs text-panel-hint">
                                 @if ($hero->figure_kind === 'ruler')<span class="text-primary/80">{{ __('Ruler') }}</span> · @endif
                                 {{ $hero->era_start ? ($hero->era_start < 0 ? abs($hero->era_start).' BCE' : $hero->era_start.' CE') : '' }}
                             </span>
                         </span>
                     </button>
                 @empty
-                    <p class="text-sm text-slate-400 col-span-full py-1">
+                    <p class="text-sm text-panel-hint col-span-full py-1">
                         No catalog figures for this topic yet — type your hero's name below.
                     </p>
                 @endforelse

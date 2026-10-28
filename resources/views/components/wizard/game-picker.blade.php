@@ -8,7 +8,7 @@
 
 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
     <div>
-        <label class="text-xs uppercase tracking-wider text-slate-400">Strategy game</label>
+        <label class="text-xs uppercase tracking-wider text-panel-hint">Strategy game</label>
         <select id="lw-strategy-game" name="strategy_game_id"
                 wire:model.live="strategy_game_id"
                 class="select select-bordered w-full bg-slate-900 mt-1">
@@ -20,14 +20,14 @@
     </div>
 
     <div>
-        <label class="text-xs uppercase tracking-wider text-slate-400">Teams</label>
+        <label class="text-xs uppercase tracking-wider text-panel-hint">Teams</label>
         <input id="lw-team-count" name="team_count" type="number"
                wire:model="team_count" min="1" max="8"
                class="input input-bordered w-full bg-slate-900 mt-1" />
     </div>
 
     <div class="md:col-span-2">
-        <label class="text-xs uppercase tracking-wider text-slate-400">Split game into segments</label>
+        <label class="text-xs uppercase tracking-wider text-panel-hint">Split game into segments</label>
         <div class="flex gap-2 mt-1">
             @for ($i = 1; $i <= $maxSplit; $i++)
                 <button type="button"
@@ -39,6 +39,6 @@
                         ])>{{ $i }}</button>
             @endfor
         </div>
-        <p class="text-xs text-slate-500 mt-1">Game pauses for narration between segments — useful for drip-feeding new information.</p>
+        <p class="text-xs text-panel-hint mt-1">Game pauses for narration between segments — useful for drip-feeding new information.</p>
     </div>
 </div>

@@ -1109,7 +1109,7 @@
                 </div>{{-- /format tab --}}
                 </div>{{-- /scene-inspector-{{ $sceneModel->id }} --}}
             @else
-                <p class="text-sm text-slate-400">{{ __('No scene selected.') }}</p>
+                <p class="text-sm text-panel-hint">{{ __('No scene selected.') }}</p>
             @endif
 
             @else
@@ -1128,8 +1128,8 @@
                  looking at. A button that appears to do nothing is worse than no button. --}}
             @unless (auth()->user()?->isGuestDemo())
             <div class="space-y-1.5">
-                <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Story') }}</span>
-                <p class="text-xs text-slate-400">{{ __('The narrative arc and framework this lesson is built on.') }}</p>
+                <span class="text-2xs uppercase tracking-widest text-panel-hint">{{ __('Story') }}</span>
+                <p class="text-xs text-panel-hint">{{ __('The narrative arc and framework this lesson is built on.') }}</p>
                 <a href="{{ route('teacher.lessons.wizard', ['lesson' => $lesson->id, 'step' => 2]) }}" wire:navigate
                    class="btn btn-sm btn-outline mt-1 border-slate-600 text-slate-200 hover:border-primary hover:text-primary">
                     {{ __('Edit story') }}
@@ -1143,8 +1143,8 @@
             <div class="mt-6 border-t border-slate-700/50 pt-4">
                 <label class="flex items-center justify-between gap-3">
                     <span>
-                        <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Subtitles') }}</span>
-                        <span class="mt-0.5 block text-xs text-slate-400">{{ __('Show the narration as text while it plays.') }}</span>
+                        <span class="text-2xs uppercase tracking-widest text-panel-hint">{{ __('Subtitles') }}</span>
+                        <span class="mt-0.5 block text-xs text-panel-hint">{{ __('Show the narration as text while it plays.') }}</span>
                     </span>
                     <input type="checkbox" @checked($lesson->subtitles)
                            wire:change="setSubtitles($event.target.checked)"
@@ -1180,7 +1180,7 @@
                 $posterShown = $override ?? $autoPick;
             @endphp
             <div class="mt-6 pt-4 border-t border-slate-700/50" x-data="{ mode: @js($posterMode) }">
-                <span class="mb-2 block text-2xs uppercase tracking-widest text-slate-500">{{ __('Poster') }}</span>
+                <span class="mb-2 block text-2xs uppercase tracking-widest text-panel-hint">{{ __('Poster') }}</span>
                 <x-ui.segmented panel name="poster-mode" model="mode"
                                 :options="[['auto', __('Auto')], ['scene', __('Scene')], ['image', __('Image')]]"
                                 on-change="$event.target.value === 'auto' && $wire.call('resetPoster')" />
@@ -1204,7 +1204,7 @@
                                 <img src="{{ $option['url'] }}" alt="{{ $option['label'] }}" class="h-full w-full object-cover" onerror="this.closest('button').style.display='none'" />
                             </button>
                         @empty
-                            <p class="col-span-4 self-center text-prose text-slate-500">{{ __('No scene has a picture yet.') }}</p>
+                            <p class="col-span-4 self-center text-prose text-panel-hint">{{ __('No scene has a picture yet.') }}</p>
                         @endforelse
                     </div>
 
@@ -1227,8 +1227,8 @@
             <div class="mt-6 border-t border-slate-700/50 pt-4">
                 <label class="flex items-center justify-between gap-3">
                     <span>
-                        <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Background music') }}</span>
-                        <span class="mt-0.5 block text-xs text-slate-400">{{ __('Play a quiet music bed under the narration.') }}</span>
+                        <span class="text-2xs uppercase tracking-widest text-panel-hint">{{ __('Background music') }}</span>
+                        <span class="mt-0.5 block text-xs text-panel-hint">{{ __('Play a quiet music bed under the narration.') }}</span>
                     </span>
                     <input type="checkbox" @checked($lesson->background_music)
                            wire:change="setBackgroundMusic($event.target.checked)"
@@ -1672,7 +1672,7 @@
             </button>
             <div x-show="viewOpen" x-cloak @click.outside="viewOpen = false" x-transition.opacity.duration.150ms
                  class="absolute left-0 top-full z-50 mt-1.5 w-56 rounded-xl border border-slate-700 bg-slate-900 p-1.5">
-                <p class="px-2 py-1 text-prose uppercase tracking-widest text-slate-500">{{ __('Show') }}</p>
+                <p class="px-2 py-1 text-prose uppercase tracking-widest text-panel-hint">{{ __('Show') }}</p>
                 <template x-for="item in [
                     { k: 'scenes',  label: @js(__('Scenes')) },
                     { k: 'script',  label: @js(__('Assets & Script')) },
@@ -1717,35 +1717,35 @@
             </button>
             <div x-show="addOpen" x-cloak @click.outside="addOpen = false" x-transition.opacity.duration.150ms
                  class="absolute left-0 top-full z-50 mt-1.5 w-56 rounded-xl border border-slate-700 bg-base-300 p-1.5" role="menu">
-                <p class="px-2 py-1 text-prose uppercase tracking-widest text-slate-500">{{ __('Add Scene') }}</p>
+                <p class="px-2 py-1 text-prose uppercase tracking-widest text-panel-hint">{{ __('Add Scene') }}</p>
                 <button type="button" @click="Livewire.dispatch('scene:add'); addOpen = false"
                         class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
                     <x-icons.plus class="h-4 w-4 shrink-0 text-primary" />
                     <span class="flex-1 font-medium">{{ __('Add Scene') }}</span>
-                    <span class="text-xs text-slate-500">{{ __('Below current') }}</span>
+                    <span class="text-xs text-panel-hint">{{ __('Below current') }}</span>
                 </button>
                 <div class="my-1 border-t border-slate-700" role="separator"></div>
-                <p class="px-2 py-1 text-prose uppercase tracking-widest text-slate-500">{{ __('Add Layer') }}</p>
+                <p class="px-2 py-1 text-prose uppercase tracking-widest text-panel-hint">{{ __('Add Layer') }}</p>
                 <button type="button" @click="window.dispatchEvent(new CustomEvent('lesson:add-text')); addOpen = false"
                         class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
-                    <x-icons.pencil class="h-4 w-4 shrink-0 text-slate-400" />
+                    <x-icons.pencil class="h-4 w-4 shrink-0 text-panel-hint" />
                     <span>{{ __('Text') }}</span>
                 </button>
                 <button type="button" @click="$wire.addBalloon(); addOpen = false"
                         class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 0 1-.923 1.785A5.969 5.969 0 0 0 6 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337Z"/></svg>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4 shrink-0 text-panel-hint" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 0 1-.923 1.785A5.969 5.969 0 0 0 6 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337Z"/></svg>
                     <span>{{ __('Speech balloon') }}</span>
                 </button>
                 <button type="button" @click="Livewire.dispatch('open-image-library'); addOpen = false"
                         class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
-                    <x-icons.photo class="h-4 w-4 shrink-0 text-slate-400" />
+                    <x-icons.photo class="h-4 w-4 shrink-0 text-panel-hint" />
                     <span>{{ __('Image') }}</span>
                 </button>
                 {{-- Icons open the dock's Icons tab rather than a modal: the whole point of the
                      panel is that the scene stays visible while you pick and drag. --}}
                 <button type="button" @click="$store.view.showTab('icons'); addOpen = false"
                         class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
-                    <x-icons.puzzle-piece class="h-4 w-4 shrink-0 text-slate-400" />
+                    <x-icons.puzzle-piece class="h-4 w-4 shrink-0 text-panel-hint" />
                     <span>{{ __('Assets') }}</span>
                 </button>
                 {{-- 3D model / video AS A LAYER (an iframe layer on top of the scene, like clipart). --}}
@@ -1753,16 +1753,16 @@
                      prompt that asked the teacher to go and find a link somewhere else. --}}
                 <button type="button" @click="$wire.openModelPicker(); addOpen = false"
                         class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"/></svg>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4 shrink-0 text-panel-hint" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"/></svg>
                     <span>{{ __('3D model') }}</span>
                 </button>
                 <button type="button" @click="const l = window.prompt(@js(__('Paste a YouTube / Vimeo link'))); if (l) $wire.addEmbedLayer(l, 'video'); addOpen = false"
                         class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h8.25a2.25 2.25 0 0 0 2.25-2.25V7.5a2.25 2.25 0 0 0-2.25-2.25H4.5A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z"/></svg>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4 shrink-0 text-panel-hint" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h8.25a2.25 2.25 0 0 0 2.25-2.25V7.5a2.25 2.25 0 0 0-2.25-2.25H4.5A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z"/></svg>
                     <span>{{ __('Video') }}</span>
                 </button>
                 <div class="flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-slate-200 hover:bg-base-200" role="group" aria-label="{{ __('Add panel') }}">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4 shrink-0 text-panel-hint" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 4.5v15m-4.875 0h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125Z" />
                     </svg>
                     <span class="flex-1">{{ __('Panel') }}</span>
@@ -1794,7 +1794,7 @@
             </button>
         @endif
         <a href="{{ route('help.index') }}#edit" target="_blank" rel="noopener"
-           class="grid h-10 w-10 place-items-center self-center rounded-xl text-slate-400 transition hover:bg-slate-800 hover:text-primary"
+           class="grid h-10 w-10 place-items-center self-center rounded-xl text-panel-hint transition hover:bg-slate-800 hover:text-primary"
            data-tooltip="{{ __('How the editor works') }}" aria-label="{{ __('Help') }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
@@ -1868,7 +1868,7 @@
                     {{ __('Publish now') }}
                 </button>
                 <div class="mt-2 border-t border-slate-700/50 pt-2">
-                    <span class="mb-1 block text-2xs font-semibold uppercase tracking-wider text-slate-400">{{ __('Schedule for later') }}</span>
+                    <span class="mb-1 block text-2xs font-semibold uppercase tracking-wider text-panel-hint">{{ __('Schedule for later') }}</span>
                     <input type="datetime-local" x-model="when"
                            class="input input-xs input-bordered w-full bg-slate-900" />
                     <button type="button" x-bind:disabled="!when"
@@ -2111,7 +2111,7 @@
                         selectedId === obj.id ? 'bg-sky-500/15 text-sky-100 ring-1 ring-sky-400/50' : 'text-slate-200 hover:bg-slate-800',
                      ]"
                      class="group flex w-full select-none items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-sm">
-                    <span class="shrink-0 text-slate-400" x-html="iconSvg(obj)" aria-hidden="true" :title="obj.label"></span>
+                    <span class="shrink-0 text-panel-hint" x-html="iconSvg(obj)" aria-hidden="true" :title="obj.label"></span>
                     <span data-obj-label class="flex-1 truncate" x-text="obj.label"></span>
                     {{-- Row actions (hover-revealed, Keynote-style). HIDDEN until hover, not transparent:
                          an invisible button still took the label's room, so a wide list read "Be...".
@@ -2369,8 +2369,8 @@
          class="fixed bottom-0 z-40 w-72 overflow-hidden border-l border-t border-slate-700 bg-base-300"
          style="right: var(--work-right, 16rem);">
         <div class="flex items-center justify-between border-b border-slate-700/60 bg-base-200/60 px-3 py-2">
-            <span class="text-2xs font-semibold uppercase tracking-widest text-slate-400">{{ __('Internal notes') }}</span>
-            <button type="button" @click="$store.view.hide('notes')" class="text-slate-500 hover:text-slate-200" aria-label="{{ __('Close') }}">✕</button>
+            <span class="text-2xs font-semibold uppercase tracking-widest text-panel-hint">{{ __('Internal notes') }}</span>
+            <button type="button" @click="$store.view.hide('notes')" class="text-panel-hint hover:text-slate-200" aria-label="{{ __('Close') }}">✕</button>
         </div>
         <textarea x-model="note" @input.debounce.400ms="save()" rows="6"
                   placeholder="{{ __('Private notes for this lesson. Only you can see these.') }}"
@@ -2509,7 +2509,7 @@
                                x-model.number="state[row.key].value"
                                :disabled="!offered(row.key) || !state[row.key].visible"
                                @input="push(row.key)"
-                               :aria-label="row.label + ' — {{ __('opacity') }}'">
+                               :aria-label="row.label + ': {{ __('opacity') }}'">
                     </span>
                 </div>
             </template>
@@ -2530,7 +2530,7 @@
                            x-model.number="state[reference.key].value"
                            :disabled="!state[reference.key].visible"
                            @input="push(reference.key)"
-                           :aria-label="reference.label + ' — {{ __('opacity') }}'">
+                           :aria-label="reference.label + ': {{ __('opacity') }}'">
                 </span>
             </div>
         </div>
@@ -2619,7 +2619,7 @@
         <div class="modal-box hp-modals max-w-lg border border-slate-700/70">
             <div class="mb-4 flex items-center justify-between">
                 <h2 class="text-lg font-semibold text-slate-100">{{ __('Add a scene') }}</h2>
-                <button type="button" class="btn btn-ghost btn-sm btn-circle text-slate-400"
+                <button type="button" class="btn btn-ghost btn-sm btn-circle text-panel-hint"
                         aria-label="{{ __('Close') }}" wire:click="$set('addSceneOpen', false)">✕</button>
             </div>
 
@@ -2719,7 +2719,7 @@
                         @default {{ __('Set the scene background') }}
                     @endswitch
                 </h2>
-                <button type="button" class="btn btn-ghost btn-sm btn-circle text-slate-400"
+                <button type="button" class="btn btn-ghost btn-sm btn-circle text-panel-hint"
                         aria-label="{{ __('Close') }}" wire:click="$set('paintingPickerOpen', false)">✕</button>
             </div>
 
@@ -2740,10 +2740,10 @@
                         <x-icons.spinner class="h-4 w-4 animate-spin" /> {{ __('Uploading…') }}
                     </span>
                     {{-- ⌘V on a Mac, Ctrl+V elsewhere; the paste itself is handled editor-wide (see Cmd-V). --}}
-                    <span class="text-sm text-slate-400"
+                    <span class="text-sm text-panel-hint"
                           x-data="{ key: /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘V' : 'Ctrl+V' }"
                           x-text="@js(__('Drop a picture here, click to choose one or paste with :key')).replace(':key', key)">{{ __('Drop a picture here, click to choose one or paste with :key', ['key' => '⌘V']) }}</span>
-                    <span class="text-2xs text-slate-500">{{ __('JPG, PNG or WebP, up to 8 MB') }}</span>
+                    <span class="text-2xs text-panel-hint">{{ __('JPG, PNG or WebP, up to 8 MB') }}</span>
                     <input type="file" wire:model="uploadImage" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden" />
                 </label>
             @endunless
@@ -2759,18 +2759,18 @@
                          Commons find nothing, so the teacher is never left with an empty modal. --}}
                     @foreach (['library' => __('Library'), '' => __('Everything'), 'painting' => __('Paintings'), 'city_map' => __('City plans')] as $kindVal => $kindLabel)
                         <button type="button" wire:click="$set('paintingKind', '{{ $kindVal }}')"
-                                class="btn btn-xs flex-none {{ $paintingKind === $kindVal ? 'bg-primary text-slate-950 border-0 hover:brightness-110' : 'btn-outline border-slate-600 text-slate-400 hover:border-primary hover:text-primary' }}">
+                                class="btn btn-xs flex-none {{ $paintingKind === $kindVal ? 'bg-primary text-slate-950 border-0 hover:brightness-110' : 'btn-outline border-slate-600 text-panel-hint hover:border-primary hover:text-primary' }}">
                             {{ $kindLabel }}
                         </button>
                     @endforeach
 
-                    <span class="hidden flex-none text-2xs font-semibold uppercase tracking-wider text-slate-500 {{ $paintingPickerMode === 'model3d' ? 'lg:block' : '' }}">{{ __('Region') }}</span>
+                    <span class="hidden flex-none text-2xs font-semibold uppercase tracking-wider text-panel-hint {{ $paintingPickerMode === 'model3d' ? 'lg:block' : '' }}">{{ __('Region') }}</span>
                     {{-- Region chips need ~26rem — on smaller screens they overflowed the modal,
                          so below lg they collapse into a compact dropdown. --}}
                     <div class="hidden flex-none items-center gap-2 {{ $paintingPickerMode === 'model3d' ? 'lg:flex' : '' }}">
                         @foreach (['' => __('Auto'), 'european' => __('Europe'), 'americas' => __('Americas'), 'asia' => __('Asia'), 'africa' => __('Africa'), 'all' => __('All')] as $regVal => $regLabel)
                             <button type="button" wire:click="$set('paintingRegion', '{{ $regVal }}')"
-                                    class="btn btn-xs flex-none {{ $paintingRegion === $regVal ? 'bg-sky-600 text-white border-0 hover:bg-sky-500' : 'btn-outline border-slate-600 text-slate-400 hover:border-sky-400 hover:text-sky-300' }}">
+                                    class="btn btn-xs flex-none {{ $paintingRegion === $regVal ? 'bg-sky-600 text-white border-0 hover:bg-sky-500' : 'btn-outline border-slate-600 text-panel-hint hover:border-sky-400 hover:text-sky-300' }}">
                                 {{ $regLabel }}
                             </button>
                         @endforeach
@@ -2786,7 +2786,7 @@
                     <x-ui.thumb-size class="ml-auto" />
                     <button type="button" x-show="!searching"
                             @click="searching = true; $nextTick(() => $refs.psearch.focus())"
-                            class="btn btn-xs btn-circle btn-ghost flex-none text-slate-400 hover:text-primary"
+                            class="btn btn-xs btn-circle btn-ghost flex-none text-panel-hint hover:text-primary"
                             aria-label="{{ __('Search paintings') }}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-4 w-4">
                             <circle cx="11" cy="11" r="7"/><path stroke-linecap="round" d="m20 20-3.5-3.5"/>
@@ -2797,13 +2797,13 @@
                 {{-- Overlay search bar, revealed by the icon --}}
                 <div x-show="searching" x-cloak x-transition.opacity.duration.150ms
                      class="absolute inset-x-0 -top-2.5 z-20 flex items-center gap-3 rounded-xl border border-primary/50 bg-base-200 px-4 py-3">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5 flex-none text-slate-400">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5 flex-none text-panel-hint">
                         <circle cx="11" cy="11" r="7"/><path stroke-linecap="round" d="m20 20-3.5-3.5"/>
                     </svg>
                     <input x-ref="psearch" type="search"
                            wire:model.live.debounce.400ms="paintingQuery"
                            placeholder="{{ __('Search paintings or painters (e.g. Caesar, Rembrandt)…') }}"
-                           class="grow bg-transparent text-sm outline-none placeholder:text-slate-500"
+                           class="grow bg-transparent text-sm outline-none placeholder:text-panel-hint"
                            @keydown.escape="searching = false; $wire.set('paintingQuery', '')" />
                 </div>
             </div>
@@ -2864,7 +2864,7 @@
                         {{-- When the curated corpus comes up empty, "try another word" is dead-end advice:
                              the thing that actually finds obscure subjects is the Commons search, which
                              sits in the footer below and went unnoticed. Point at it instead. --}}
-                        <div class="col-span-full py-10 text-center text-sm text-slate-400">
+                        <div class="col-span-full py-10 text-center text-sm text-panel-hint">
                             @if ($paintingPickerMode === 'model3d')
                                 {{-- Sketchfab, not the corpus: the advice that helps here is a
                                      different search term, never "try Wikimedia". --}}
@@ -2875,7 +2875,7 @@
                                 {{-- Wikimedia throttled us. Saying "not found" here would be a lie about
                                      an archive that may well hold the painting. --}}
                                 <p>{{ __('Wikimedia is busy right now and asked us to slow down.') }}</p>
-                                <p class="mt-1 text-xs text-slate-500">{{ __('Give it a few seconds, then search again.') }}</p>
+                                <p class="mt-1 text-xs text-panel-hint">{{ __('Give it a few seconds, then search again.') }}</p>
                             @elseif ($paintingKind === 'city_map')
                                 {{-- City plans are the curated Braun & Hogenberg set only: Commons is
                                      never searched for them, so offering it here would do nothing. --}}
@@ -2920,7 +2920,7 @@
                 @error('uploadImage')
                     <p class="mt-1 text-prose text-error">{{ $message }}</p>
                 @enderror
-                <p class="mt-3 text-prose text-slate-500">
+                <p class="mt-3 text-prose text-panel-hint">
                     {{-- Not "public-domain works": the license filter admits CC BY and CC BY-SA too
                          (it only rejects NC/ND), so the grid genuinely serves openly licensed
                          photographs alongside public-domain art. Saying "public domain" told
@@ -2944,7 +2944,7 @@
         <div class="modal-box hp-modals max-w-4xl border border-slate-700/70">
             <div class="mb-3 flex items-center justify-between gap-3">
                 <h2 class="text-lg font-semibold text-slate-100">{{ __('Import icons') }}</h2>
-                <button type="button" class="btn btn-ghost btn-sm btn-circle text-slate-400"
+                <button type="button" class="btn btn-ghost btn-sm btn-circle text-panel-hint"
                         aria-label="{{ __('Close') }}" wire:click="$set('svgLibraryOpen', false)">✕</button>
             </div>
             @if ($svgLibraryOpen)

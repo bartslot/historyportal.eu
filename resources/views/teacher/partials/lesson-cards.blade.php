@@ -5,9 +5,9 @@
 <div class="space-y-10">
     @if(empty($shelves))
         <div class="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-800 px-6 py-12 text-center">
-            <x-icons.building-library class="h-8 w-8 text-slate-600" />
+            <x-icons.building-library class="h-8 w-8 text-panel-hint" />
             <p class="mt-3 text-sm font-medium text-slate-300">{{ __('No lessons yet') }}</p>
-            <p class="mt-1 text-sm text-slate-500">{{ __('Create a lesson to get started.') }}</p>
+            <p class="mt-1 text-sm text-panel-hint">{{ __('Create a lesson to get started.') }}</p>
             <a href="{{ route('teacher.lessons.chat') }}" class="btn btn-primary btn-sm mt-5">
                 <x-icons.sparkles class="h-4 w-4" />
                 {{ __('Create lesson') }}
@@ -56,7 +56,7 @@
                                     >
                                 @else
                                     <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-950">
-                                        <x-icons.building-library class="h-10 w-10 text-slate-600" />
+                                        <x-icons.building-library class="h-10 w-10 text-panel-hint" />
                                     </div>
                                 @endif
 
@@ -85,7 +85,7 @@
         @endforeach
 
         @if($lessonCount > $lessonLimit)
-            <p class="text-right text-xs text-slate-600">
+            <p class="text-right text-xs text-panel-hint">
                 {{ __('Showing the :count most recent lessons.', ['count' => $lessonLimit]) }}
             </p>
         @endif
@@ -97,7 +97,7 @@
 @if(!empty($sharedLessons) && count($sharedLessons))
     <section aria-label="{{ __('Shared by other teachers') }}" class="mt-10">
         <h2 class="mb-1 font-history text-xl font-light text-slate-100">{{ __('Shared by other teachers') }}</h2>
-        <p class="mb-4 text-sm text-slate-400">
+        <p class="mb-4 text-sm text-panel-hint">
             {{ __('Take a copy to change one for your own class. The original stays with its author.') }}
         </p>
 
@@ -114,7 +114,7 @@
                             @endif
                             <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950 via-slate-950/70 to-transparent p-3 pt-10">
                                 <p class="line-clamp-2 text-sm font-semibold text-slate-100">{{ $lesson->title ?: $lesson->topic }}</p>
-                                <p class="mt-0.5 text-prose text-slate-400">{{ $lesson->teacher?->name }}</p>
+                                <p class="mt-0.5 text-prose text-panel-hint">{{ $lesson->teacher?->name }}</p>
                             </div>
                         </a>
 

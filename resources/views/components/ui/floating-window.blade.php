@@ -125,17 +125,17 @@
      x-effect="{{ $show }} && onShow()"
      @keydown.escape.window="{{ $show }} && ({{ $onClose }})"
      :style="`left:${pos.left}px; top:${pos.top}px; width: {{ $width }};`"
-     class="fixed z-50 overflow-hidden rounded-box border border-slate-700 bg-base-300"
+     class="fixed z-50 overflow-hidden rounded-box border border-panel-hairline bg-base-300"
      role="dialog" aria-label="{{ $title }}">
 
     {{-- Title bar: the drag handle. `touch-none` stops a touch drag scrolling the page instead. --}}
-    <div class="flex cursor-move touch-none select-none items-center justify-between border-b border-slate-700/60 bg-base-200/60 px-3 py-2"
+    <div class="flex cursor-move touch-none select-none items-center justify-between border-b border-panel-hairline/60 bg-base-200/60 px-3 py-2"
          @pointerdown="start($event)">
-        <span class="text-2xs font-semibold uppercase tracking-widest text-slate-400">{{ $title }}</span>
+        <span class="text-2xs font-semibold uppercase tracking-widest text-panel-label">{{ $title }}</span>
         {{-- The close button must not start a drag, or a click that moves one pixel becomes a drag
              and never closes. --}}
         <button type="button" @pointerdown.stop @click="{{ $onClose }}"
-                class="btn btn-ghost btn-circle btn-xs text-slate-500 hover:text-slate-200" aria-label="{{ __('Close') }}">&times;</button>
+                class="btn btn-ghost btn-circle btn-xs text-panel-label hover:text-panel-value" aria-label="{{ __('Close') }}">&times;</button>
     </div>
 
     {{ $slot }}

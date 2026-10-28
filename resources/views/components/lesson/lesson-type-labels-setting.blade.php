@@ -10,9 +10,9 @@
 @if ($types !== [])
     <div class="mb-6 space-y-2" data-lesson-types-setting>
         <div class="flex items-center justify-between gap-3">
-            <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('About this lesson') }}</span>
+            <span class="text-2xs uppercase tracking-widest text-panel-hint">{{ __('About this lesson') }}</span>
             @if (! $on)
-                <button type="button" wire:click="setShowLessonTypes(true)" data-lesson-types-reset class="text-2xs text-slate-500 transition-colors hover:text-primary">{{ __('Reset to default') }}</button>
+                <button type="button" wire:click="setShowLessonTypes(true)" data-lesson-types-reset class="text-2xs text-panel-hint transition-colors hover:text-primary">{{ __('Reset to default') }}</button>
             @endif
         </div>
         <label class="flex items-center justify-between gap-3">

@@ -17,14 +17,14 @@
                 <x-lesson.icon-voyage class="h-7 w-7 text-indigo-300" />
                 <span class="flex-1">
                     <span class="block text-sm font-semibold text-base-content">{{ __('Start from a historical voyage') }}</span>
-                    <span class="block text-xs text-slate-400">{{ __('Sail a real expedition on the map. No topic or generation needed, ready to edit in seconds.') }}</span>
+                    <span class="block text-xs text-panel-hint">{{ __('Sail a real expedition on the map. No topic or generation needed, ready to edit in seconds.') }}</span>
                 </span>
-                <svg class="h-4 w-4 text-slate-400 transition-transform" :class="open && 'rotate-90'" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m9 5 7 7-7 7"/></svg>
+                <svg class="h-4 w-4 text-panel-hint transition-transform" :class="open && 'rotate-90'" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m9 5 7 7-7 7"/></svg>
             </button>
 
             <div x-show="open" x-collapse class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
                 <label class="form-control flex-1">
-                    <span class="text-2xs uppercase tracking-wider text-slate-400">{{ __('Voyage') }}</span>
+                    <span class="text-2xs uppercase tracking-wider text-panel-hint">{{ __('Voyage') }}</span>
                     <select x-model="pick" class="select select-sm select-bordered bg-slate-900 mt-1">
                         <option value="">{{ __('Choose a voyage…') }}</option>
                         @foreach ($this->voyageOptions as $id => $name)
@@ -55,7 +55,7 @@
             <div class="alert bg-success/10 border border-success/40 flex items-center justify-between">
                 <div class="flex flex-col gap-0.5">
                     <span class="text-sm text-success font-semibold">{{ __('Story') }}: {{ $chosen['title'] ?? $topic }}</span>
-                    <span class="text-xs text-slate-400">
+                    <span class="text-xs text-panel-hint">
                         {{ collect([$chosen['era'] ?? null, $chosen['region'] ?? null, $chosen['grade_band'] ?? null])->filter()->implode(' · ') }}
                         · {{ __('curated: objectives and sources included') }}
                     </span>
@@ -64,7 +64,7 @@
             </div>
         @elseif (count($this->storyChoices) > 0)
             <div class="form-control space-y-2">
-                <span class="label-text text-xs uppercase tracking-wider text-slate-400">
+                <span class="label-text text-xs uppercase tracking-wider text-panel-hint">
                     {{ __('Pick a story') }} <span class="text-primary/70 normal-case tracking-normal">· {{ __('curated, with learning goals') }}</span>
                 </span>
                 <div class="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-72 overflow-y-auto pr-1">
@@ -74,23 +74,23 @@
                             <div class="card-body p-3 gap-1">
                                 <span class="text-sm text-white font-medium leading-tight">{{ $choice['title'] }}</span>
                                 @if ($choice['subtitle'])
-                                    <span class="text-xs text-slate-400 leading-tight">{{ $choice['subtitle'] }}</span>
+                                    <span class="text-xs text-panel-hint leading-tight">{{ $choice['subtitle'] }}</span>
                                 @endif
-                                <span class="text-2xs text-slate-500">
+                                <span class="text-2xs text-panel-hint">
                                     {{ collect([$choice['era'], $choice['region'], $choice['grade_band']])->filter()->implode(' · ') }}
                                 </span>
                             </div>
                         </button>
                     @endforeach
                 </div>
-                <span class="text-xs text-slate-500">{{ __('Nothing that fits? Search a free topic below — we\'ll ground it in Wikipedia.') }}</span>
+                <span class="text-xs text-panel-hint">{{ __('Nothing that fits? Search a free topic below — we\'ll ground it in Wikipedia.') }}</span>
             </div>
-            <div class="divider my-1 text-xs text-slate-500">{{ __('or free topic') }}</div>
+            <div class="divider my-1 text-xs text-panel-hint">{{ __('or free topic') }}</div>
         @endif
 
         {{-- Topic — locked to the curated, Wikipedia-grounded catalog (A1) --}}
         <div x-data="{ open: false }" class="relative form-control" @if($storyId) style="display:none" @endif>
-            <span class="label-text text-xs uppercase tracking-wider text-slate-400">
+            <span class="label-text text-xs uppercase tracking-wider text-panel-hint">
                 {{ __('Topic') }} <span class="text-primary/70 normal-case tracking-normal">· {{ __('pick from the catalog') }}</span>
             </span>
             <div class="relative">
@@ -159,7 +159,7 @@
                                 <span class="flex flex-col items-start gap-0.5">
                                     <span class="text-sm text-white">{{ $s['name'] }}</span>
                                     @if ($s['era'] || $s['region'])
-                                        <span class="text-xs text-slate-400">{{ collect([$s['era'] ?: null, $s['region'] ?: null])->filter()->implode(' · ') }}</span>
+                                        <span class="text-xs text-panel-hint">{{ collect([$s['era'] ?: null, $s['region'] ?: null])->filter()->implode(' · ') }}</span>
                                     @endif
                                 </span>
                             </button>
@@ -188,7 +188,7 @@
         @endphp
         <div class="form-control">
             <div class="flex items-center justify-between gap-3 mb-2">
-                <span class="label-text text-xs uppercase tracking-wider text-slate-400">
+                <span class="label-text text-xs uppercase tracking-wider text-panel-hint">
                     {{ __('Pick a focus (optional)') }}
                 </span>
                 {{-- Three slots: fill as you pick (up to 3). Click a filled slot to clear it. --}}
@@ -205,7 +205,7 @@
                                 </svg>
                             </button>
                         @else
-                            <span class="inline-flex h-[26px] w-12 items-center justify-center rounded-md border border-dashed border-slate-600/70 text-slate-600" aria-hidden="true">
+                            <span class="inline-flex h-[26px] w-12 items-center justify-center rounded-md border border-dashed border-slate-600/70 text-panel-hint" aria-hidden="true">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-3.5 w-3.5">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                                 </svg>
@@ -234,7 +234,7 @@
                     @endforeach
                 </div>
             @else
-                <span class="text-xs text-slate-500">{{ __('3 of 3 chosen. Clear a slot above to swap.') }}</span>
+                <span class="text-xs text-panel-hint">{{ __('3 of 3 chosen. Clear a slot above to swap.') }}</span>
             @endif
         </div>
 
@@ -253,8 +253,8 @@
             ];
         @endphp
         <div class="form-control relative" x-data="{ open: false }">
-            <span class="label-text text-xs uppercase tracking-wider text-slate-400">
-                {{ __('Anything specific?') }} <span class="normal-case tracking-normal text-slate-500">· {{ __('optional') }}</span>
+            <span class="label-text text-xs uppercase tracking-wider text-panel-hint">
+                {{ __('Anything specific?') }} <span class="normal-case tracking-normal text-panel-hint">· {{ __('optional') }}</span>
             </span>
             <input type="text" name="focus"
                    wire:model.blur="focus"
@@ -273,7 +273,7 @@
                  x-transition:enter-start="opacity-0 -translate-y-1"
                  x-transition:enter-end="opacity-100 translate-y-0"
                  class="absolute z-50 top-full mt-1 w-full rounded-box border border-white/10 bg-base-200 p-2">
-                <p class="px-1 pb-1.5 text-prose uppercase tracking-wider text-slate-500">{{ __('Popular angles') }}</p>
+                <p class="px-1 pb-1.5 text-prose uppercase tracking-wider text-panel-hint">{{ __('Popular angles') }}</p>
                 <div class="flex flex-wrap gap-1.5">
                     @foreach ($angleSuggestions as $angle)
                         <button type="button"
@@ -293,14 +293,14 @@
             @if (!$show_region_era)
                 <button type="button"
                         wire:click="$set('show_region_era', true)"
-                        class="btn btn-ghost btn-xs text-slate-400 hover:text-white pl-0 gap-1.5">
+                        class="btn btn-ghost btn-xs text-panel-hint hover:text-white pl-0 gap-1.5">
                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                     {{ __('Add region & era') }}
                 </button>
             @else
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
                     <div class="form-control">
-                        <span class="label-text text-xs uppercase tracking-wider text-slate-400 mb-1">{{ __('Region') }}</span>
+                        <span class="label-text text-xs uppercase tracking-wider text-panel-hint mb-1">{{ __('Region') }}</span>
                         <x-ui.combobox
                             :options="$this->regionOptions"
                             wire-model="region"
@@ -310,7 +310,7 @@
                     </div>
 
                     <div class="form-control">
-                        <span class="label-text text-xs uppercase tracking-wider text-slate-400 mb-1">{{ __('Era') }}</span>
+                        <span class="label-text text-xs uppercase tracking-wider text-panel-hint mb-1">{{ __('Era') }}</span>
                         @if ($region)
                             <x-ui.combobox
                                 :options="$this->eraOptions"
@@ -327,7 +327,7 @@
 
                     <button type="button"
                             wire:click="$set('show_region_era', false)"
-                            class="btn btn-ghost btn-xs text-slate-500 hover:text-slate-300 col-span-full w-fit pl-0">
+                            class="btn btn-ghost btn-xs text-panel-hint hover:text-slate-300 col-span-full w-fit pl-0">
                         ✕ {{ __('Hide') }}
                     </button>
                 </div>
@@ -340,7 +340,7 @@
     ════════════════════════════════════════════════ --}}
     <div data-flow-group class="wizard-flow-group bg-base-300 rounded-2xl p-6">
         <div class="form-control">
-            <span class="label-text text-xs uppercase tracking-wider text-slate-400 mb-2">
+            <span class="label-text text-xs uppercase tracking-wider text-panel-hint mb-2">
                 {{ __('Target audience') }}
             </span>
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 gap-4 content-start">
@@ -370,10 +370,10 @@
                                 min="{{ \App\Livewire\Wizard\Step1Settings::AGE_MIN }}"
                                 max="{{ \App\Livewire\Wizard\Step1Settings::AGE_MAX }}"
                                 class="input input-bordered bg-slate-900 w-20 text-center" />
-                            <span class="text-slate-400 text-sm">{{ __('years old') }}</span>
+                            <span class="text-panel-hint text-sm">{{ __('years old') }}</span>
                         </div>
                         @else
-                        <p class="text-xs text-slate-500 mt-2">
+                        <p class="text-xs text-panel-hint mt-2">
                             {!! __('Not your system? Switch to :age instead.', ['age' => '<button type="button" wire:click="setAudienceSystem(\'age\')" class="underline hover:text-slate-300">'.e(__('Age')).'</button>']) !!}
                         </p>
                     @endif
@@ -524,7 +524,7 @@
                                         {{-- Display only — the SAVED value keeps the literal ' Jaar ' format
                                              (built in get value(), parsed back in init()), so never localize that. --}}
                                         <div x-show="track" class="flex items-center gap-3">
-                                            <span class="text-xs uppercase tracking-wider text-slate-400">{{ __('Year') }}</span>
+                                            <span class="text-xs uppercase tracking-wider text-panel-hint">{{ __('Year') }}</span>
                                             <select x-model="jaar" class="select select-bordered select-sm bg-slate-900">
                                                 <template x-for="j in jaarOptions" :key="j">
                                                     <option :value="j" x-text="@js(__('Year')) + ' ' + j"></option>
@@ -578,7 +578,7 @@
         <input type="checkbox" />
         <div class="collapse-title flex items-center justify-between pr-10">
             <span class="font-medium text-white text-sm">{{ __('Tone & details') }}</span>
-            <span class="text-slate-400 text-xs">
+            <span class="text-panel-hint text-xs">
                 @php
                     $toneLabel = $tone && isset($this->tones[$tone])
                         ? $this->tones[$tone]['label']
@@ -591,7 +591,7 @@
 
             {{-- Tone pill picker --}}
             <div>
-                <span class="label-text text-xs uppercase tracking-wider text-slate-400 mb-2 block">{{ __('Tone') }}</span>
+                <span class="label-text text-xs uppercase tracking-wider text-panel-hint mb-2 block">{{ __('Tone') }}</span>
                 <div class="flex flex-wrap gap-2">
                     @foreach ($this->tones as $key => $t)
                         @php $isRec = in_array($key, $this->recommendedTones); @endphp
@@ -603,7 +603,7 @@
                                     'flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm transition-all duration-150 cursor-pointer',
                                     'bg-primary text-black font-bold border-2 border-primary'   => $tone === $key,
                                     'bg-slate-800 border-2 border-primary text-primary font-semibold' => $tone !== $key && $isRec,
-                                    'bg-slate-800 border border-slate-600 text-slate-400'            => $tone !== $key && !$isRec,
+                                    'bg-slate-800 border border-slate-600 text-panel-hint'            => $tone !== $key && !$isRec,
                                 ])
                             >
                                 <x-dynamic-component :component="'icons.'.$t['icon']" class="w-3.5 h-3.5" />
@@ -634,7 +634,7 @@
                             @class([
                                 'flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm transition-all duration-150 cursor-pointer',
                                 'bg-primary text-black font-bold border-2 border-primary'   => $tone === '',
-                                'bg-slate-800 border border-slate-600 text-slate-400'            => $tone !== '',
+                                'bg-slate-800 border border-slate-600 text-panel-hint'            => $tone !== '',
                             ])
                         >
                             <span>{{ __('No preference') }}</span>
@@ -658,7 +658,7 @@
 
             {{-- Teacher details --}}
             <label class="form-control flex flex-col gap-2" for="lw-details">
-                <span class="label-text text-xs uppercase tracking-wider text-slate-400">{{ __('Teacher details (optional)') }}</span>
+                <span class="label-text text-xs uppercase tracking-wider text-panel-hint">{{ __('Teacher details (optional)') }}</span>
                 <textarea id="lw-details" wire:model="details" rows="3"
                           placeholder="{{ __('Extra context, learning goals, things to emphasise…') }}"
                           class="textarea textarea-bordered bg-slate-900 mt-1 w-full"></textarea>
@@ -671,9 +671,9 @@
         <input type="checkbox" />
         <div class="collapse-title flex items-center justify-between pr-10">
             <span class="font-medium text-white text-sm">{{ __('Source') }}</span>
-            <span class="text-slate-400 text-xs">
+            <span class="text-panel-hint text-xs">
                 @if ($source_mode === 'internet')
-                    {{ __('Internet') }} <span class="text-slate-600">(worldhistory.org / wikipedia)</span>
+                    {{ __('Internet') }} <span class="text-panel-hint">(worldhistory.org / wikipedia)</span>
                 @else
                     {{ __('Local source') }}
                 @endif
@@ -689,7 +689,7 @@
                             'border-slate-600 text-slate-300 hover:border-slate-400' => $source_mode !== 'internet',
                         ])>
                     {{ __('Internet') }}
-                    <span class="text-xs opacity-60 ml-1">worldhistory.org / wikipedia</span>
+                    <span class="text-xs text-panel-hint ml-1">worldhistory.org / wikipedia</span>
                 </button>
                 <button type="button"
                         wire:click="$set('source_mode', 'local')"
@@ -699,7 +699,7 @@
                             'border-slate-600 text-slate-300 hover:border-slate-400' => $source_mode !== 'local',
                         ])>
                     {{ __('Local source') }}
-                    <span class="text-xs opacity-60 ml-1">{{ __('link or PDF') }}</span>
+                    <span class="text-xs text-panel-hint ml-1">{{ __('link or PDF') }}</span>
                 </button>
             </div>
 
@@ -708,7 +708,7 @@
                     <input type="url" wire:model.live="source_url"
                            placeholder="{{ __('https://drive.google.com/… (optional)') }}"
                            class="input input-bordered bg-slate-900 w-full text-sm" />
-                    <p class="text-xs text-slate-500">{{ __('Or upload a document:') }}</p>
+                    <p class="text-xs text-panel-hint">{{ __('Or upload a document:') }}</p>
                     <input id="lw-source-upload" type="file"
                            wire:model="sourceUpload" accept=".pdf,.docx"
                            class="file-input file-input-bordered w-full bg-slate-900" />
@@ -723,7 +723,7 @@
         <input type="checkbox" />
         <div class="collapse-title flex items-center justify-between pr-10">
             <span class="font-medium text-white text-sm">{{ __('Visual style') }}</span>
-            <span class="text-slate-400 text-xs">{{ \App\Services\Support\ImageStyleTemplate::label($image_style) }}</span>
+            <span class="text-panel-hint text-xs">{{ \App\Services\Support\ImageStyleTemplate::label($image_style) }}</span>
         </div>
         <div class="collapse-content pt-2">
             <x-wizard.style-picker :styles="$this->styleOptions"
@@ -737,7 +737,7 @@
         <input type="checkbox" />
         <div class="collapse-title flex items-center justify-between pr-10">
             <span class="font-medium text-white text-sm">{{ __('Narrator') }}</span>
-            <span class="text-slate-400 text-xs">
+            <span class="text-panel-hint text-xs">
                 {{ $this->narrators->firstWhere('id', $avatar_id)?->name ?? __('None selected') }}
             </span>
         </div>
@@ -757,7 +757,7 @@
              x-on:click="if($wire.include_game){ open = !open }">
             <span class="font-medium text-white text-sm">{{ __('Game') }}</span>
             <div class="flex items-center gap-3">
-                <span class="text-slate-400 text-xs">
+                <span class="text-panel-hint text-xs">
                     @if ($include_game && $game_type)
                         {{ ['quiz' => 'Quiz', 'strategy' => 'Strategy game', 'debate' => 'Debate'][$game_type] ?? $game_type }}
                     @elseif (! $include_game)
@@ -776,7 +776,7 @@
 
             @if ($include_game)
                 <div class="space-y-2">
-                    <p class="text-xs uppercase tracking-wider text-slate-400">{{ __('Game type') }}</p>
+                    <p class="text-xs uppercase tracking-wider text-panel-hint">{{ __('Game type') }}</p>
                     <div class="flex flex-wrap gap-3">
                         @foreach (['quiz' => 'Quiz', 'strategy' => 'Strategy game', 'debate' => 'Debate'] as $val => $label)
                             <button type="button"
@@ -795,15 +795,15 @@
                         <div class="flex gap-6">
                             {{-- 1/3: number of questions --}}
                             <div class="w-1/3 space-y-2 shrink-0">
-                                <p class="text-xs uppercase tracking-wider text-slate-400">{{ __('Number of questions') }}</p>
+                                <p class="text-xs uppercase tracking-wider text-panel-hint">{{ __('Number of questions') }}</p>
                                 <input type="number" wire:model.live="quiz_question_count"
                                        min="1" max="10"
                                        class="input input-bordered bg-slate-900 w-24 text-center" />
-                                <p class="text-xs text-slate-500">{{ __('Always multiple choice.') }}</p>
+                                <p class="text-xs text-panel-hint">{{ __('Always multiple choice.') }}</p>
                             </div>
                             {{-- 2/3: when to ask --}}
                             <div class="flex-1 space-y-2">
-                                <p class="text-xs uppercase tracking-wider text-slate-400">{{ __('When to ask') }}</p>
+                                <p class="text-xs uppercase tracking-wider text-panel-hint">{{ __('When to ask') }}</p>
                                 <div class="grid grid-cols-3 gap-2">
                                     @foreach (['during' => 'During lesson', 'after' => 'After lesson', 'both' => 'Both'] as $val => $label)
                                         <button type="button"

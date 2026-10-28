@@ -66,7 +66,7 @@
                         </span>
                     </span>
                     <span data-thumb-compact aria-hidden="true"
-                          class="pointer-events-none absolute inset-0 hidden items-center justify-center font-mono text-sm font-semibold text-slate-400">T</span>
+                          class="pointer-events-none absolute inset-0 hidden items-center justify-center font-mono text-sm font-semibold text-panel-hint">T</span>
                 </button>
             </div>
         @endif

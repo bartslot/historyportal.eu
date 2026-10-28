@@ -232,7 +232,7 @@
 <div class="space-y-3 text-sm" wire:key="text-inspector-{{ $id }}">
     <button type="button" wire:click="clearActiveText"
             x-on:click="window.__lessonTextLayer?.select?.(null); window.__clearLayerGuard?.()"
-            class="inline-flex items-center gap-1 text-xs text-slate-400 transition hover:text-primary">
+            class="inline-flex items-center gap-1 text-xs text-panel-hint transition hover:text-primary">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3.5 w-3.5" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
         </svg>
@@ -242,11 +242,11 @@
     @if ($isPanel)
         <div>
             <h3 class="font-semibold text-primary">{{ __('Background panel') }}</h3>
-            <p class="mt-1 text-prose leading-tight text-slate-500">{{ __('A readable backing panel behind the scene text.') }}</p>
+            <p class="mt-1 text-prose leading-tight text-panel-hint">{{ __('A readable backing panel behind the scene text.') }}</p>
         </div>
 
         <label class="form-control">
-            <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Side') }}</span>
+            <span class="text-2xs uppercase tracking-widest text-panel-hint">{{ __('Side') }}</span>
             <select class="select select-sm select-bordered mt-1 bg-slate-900"
                     wire:change="updateSceneText(@js($id), 'side', $event.target.value)">
                 <option value="left" @selected(($text['side'] ?? 'left') === 'left')>{{ __('Left') }}</option>
@@ -255,7 +255,7 @@
         </label>
 
         <div class="flex items-center justify-between gap-3">
-            <span class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Color') }}</span>
+            <span class="text-2xs uppercase tracking-widest text-panel-hint">{{ __('Color') }}</span>
             {{-- @input patches the canvas overlay instantly while the picker is open;
                  wire:change persists once the teacher commits. --}}
             <input type="color" value="{{ $text['color'] ?? '#0f172a' }}"

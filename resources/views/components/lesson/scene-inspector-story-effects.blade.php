@@ -5,11 +5,11 @@
 <div class="mt-4 space-y-3 rounded-box border border-primary/30 bg-base-200/60 p-3">
     <div>
         <h4 class="text-xs font-semibold uppercase tracking-widest text-primary">{{ __('Game effects') }}</h4>
-        <p class="mt-1 text-prose text-slate-500">{{ __('What this choice does to the class meters, and what the game master says next.') }}</p>
+        <p class="mt-1 text-prose text-panel-hint">{{ __('What this choice does to the class meters, and what the game master says next.') }}</p>
     </div>
 
     <label class="form-control">
-        <span class="text-xs uppercase tracking-wider text-slate-400">{{ __('Choice label') }}</span>
+        <span class="text-xs uppercase tracking-wider text-panel-hint">{{ __('Choice label') }}</span>
         <input type="text" maxlength="60"
                wire:model.blur="storyEffectsDraft.branch_choice_label"
                wire:change="saveStoryEffectsDraft"
@@ -18,7 +18,7 @@
     </label>
 
     <div class="space-y-2">
-        <span class="text-xs uppercase tracking-wider text-slate-400">{{ __('Meter effects (−25 to +25)') }}</span>
+        <span class="text-xs uppercase tracking-wider text-panel-hint">{{ __('Meter effects (−25 to +25)') }}</span>
         @foreach ($meters as $meter)
             <label class="flex items-center justify-between gap-2">
                 <span class="truncate text-sm text-slate-300">{{ $meter['icon'] }} {{ $meter['label'] }}</span>
@@ -32,7 +32,7 @@
     </div>
 
     <label class="form-control">
-        <span class="text-xs uppercase tracking-wider text-slate-400">{{ __('Consequence line') }}</span>
+        <span class="text-xs uppercase tracking-wider text-panel-hint">{{ __('Consequence line') }}</span>
         <textarea rows="2" maxlength="240"
                   wire:model.blur="storyEffectsDraft.consequence_line"
                   wire:change="saveStoryEffectsDraft"
@@ -41,7 +41,7 @@
     </label>
 
     <label class="form-control">
-        <span class="text-xs uppercase tracking-wider text-slate-400">{{ __('Historical note') }}</span>
+        <span class="text-xs uppercase tracking-wider text-panel-hint">{{ __('Historical note') }}</span>
         <textarea rows="2" maxlength="240"
                   wire:model.blur="storyEffectsDraft.historical_note"
                   wire:change="saveStoryEffectsDraft"

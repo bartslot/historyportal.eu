@@ -13,14 +13,14 @@
 @php $isOverride = trim((string) $chosen) !== ''; @endphp
 <div {{ $attributes }} x-data="imageGrid({ id: 'image-choice', kind: 'image', initial: 96 })">
     <div class="mb-2 flex items-center gap-2">
-        <span class="mr-auto text-2xs uppercase tracking-widest text-slate-500">{{ $label }}</span>
+        <span class="mr-auto text-2xs uppercase tracking-widest text-panel-hint">{{ $label }}</span>
         @if (count($candidates))
             <x-ui.thumb-size />
         @endif
         @if ($isOverride)
-            <button type="button" wire:click="{{ $reset }}" class="text-2xs text-slate-500 transition-colors hover:text-primary">↺ {{ __('auto') }}</button>
+            <button type="button" wire:click="{{ $reset }}" class="text-2xs text-panel-hint transition-colors hover:text-primary">↺ {{ __('auto') }}</button>
         @else
-            <span class="text-2xs text-slate-600">{{ __('auto-picked') }}</span>
+            <span class="text-2xs text-panel-hint">{{ __('auto-picked') }}</span>
         @endif
     </div>
     <div @class(['gap-3', 'flex' => $portrait, 'space-y-2' => ! $portrait])>
@@ -48,7 +48,7 @@
                 @endforeach
             </div>
         @else
-            <p class="self-center text-prose text-slate-500">{{ __('Add images to the lesson to choose one.') }}</p>
+            <p class="self-center text-prose text-panel-hint">{{ __('Add images to the lesson to choose one.') }}</p>
         @endif
     </div>
 </div>

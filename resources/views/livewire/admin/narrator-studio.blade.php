@@ -28,17 +28,17 @@
             <div>
                 <p class="text-xs uppercase tracking-widest text-primary">Narrator Studio · Admin</p>
                 <h1 class="mt-1 text-3xl font-semibold text-slate-100">{{ $narrator->name }}</h1>
-                <p class="mt-1 text-sm text-slate-400">{{ $narrator->description }}</p>
+                <p class="mt-1 text-sm text-panel-hint">{{ $narrator->description }}</p>
             </div>
         </div>
 
         <div class="flex items-center gap-2">
             <span class="rounded-full px-3 py-1 text-xs font-medium border
-                {{ $narrator->is_active ? 'bg-success/10 border-success/40 text-success' : 'bg-slate-900 border-slate-700 text-slate-500' }}">
+                {{ $narrator->is_active ? 'bg-success/10 border-success/40 text-success' : 'bg-slate-900 border-slate-700 text-panel-hint' }}">
                 {{ $narrator->is_active ? 'Active' : 'Inactive' }}
             </span>
-            <span class="text-xs text-slate-600">·</span>
-            <span class="text-xs text-slate-500 capitalize">{{ $narrator->subject === 'all' ? 'All subjects' : $narrator->subject }}</span>
+            <span class="text-xs text-panel-hint">·</span>
+            <span class="text-xs text-panel-hint capitalize">{{ $narrator->subject === 'all' ? 'All subjects' : $narrator->subject }}</span>
         </div>
     </div>
     
@@ -60,7 +60,7 @@
                     @click="activeTab = '{{ $tab }}'"
                     :class="activeTab === '{{ $tab }}'
                         ? 'border-primary text-primary'
-                        : 'border-transparent text-slate-500 hover:text-slate-300'"
+                        : 'border-transparent text-panel-hint hover:text-slate-300'"
                     class="border-b-2 px-4 py-3 text-sm font-medium transition-colors -mb-px"
                 >{{ $label }}</button>
             @endforeach
@@ -78,7 +78,7 @@
                      class="h-32 w-32 rounded-2xl object-cover border-2 border-primary/30">
                 <div class="space-y-1">
                     <p class="text-sm font-medium text-slate-200">Current image</p>
-                    <p class="text-xs text-slate-500">512 × 512 px recommended. Shown while the ElevenLabs voice speaks.</p>
+                    <p class="text-xs text-panel-hint">512 × 512 px recommended. Shown while the ElevenLabs voice speaks.</p>
                 </div>
             </div>
 
@@ -86,7 +86,7 @@
                 <div>
                     <label class="block text-sm font-medium text-slate-300 mb-2">Upload new image</label>
                     <input type="file" wire:model="portraitUpload" accept="image/*"
-                           class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-medium file:bg-primary/10 file:text-primary hover:file:bg-primary/20">
+                           class="block w-full text-sm text-panel-hint file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-medium file:bg-primary/10 file:text-primary hover:file:bg-primary/20">
                     @error('portraitUpload') <p class="mt-1 text-xs text-error">{{ $message }}</p> @enderror
                 </div>
                 <button type="submit"
@@ -128,7 +128,7 @@
                     <p class="text-xs text-primary uppercase tracking-widest mb-0.5">Active voice</p>
                     <p class="text-sm font-medium text-slate-100">
                         {{ $this->voices[$voice_id] ?? $voice_id }}
-                        <span class="text-slate-500">· speed {{ $voice_speed }}×</span>
+                        <span class="text-panel-hint">· speed {{ $voice_speed }}×</span>
                     </p>
                 </div>
             </div>
@@ -174,7 +174,7 @@
                      wire:key="voice-table-{{ $previewProvider }}">
                     <table class="table table-zebra table-sm table-pin-rows">
                         <thead>
-                            <tr class="bg-slate-900 text-slate-400">
+                            <tr class="bg-slate-900 text-panel-hint">
                                 <th class="w-10"></th>
                                 @foreach([['name', __('Voice')], ['language', __('Language')], ['gender', __('Gender')]] as [$col, $label])
                                     <th wire:click="sortTable('{{ $col }}')" class="cursor-pointer select-none whitespace-nowrap hover:text-slate-200">
@@ -202,7 +202,7 @@
                                         @endif
                                     </td>
                                     <td class="font-medium text-slate-100 whitespace-nowrap">{{ $row['name'] }}
-                                        @if($row['note'] !== '')<span class="ml-1 text-xs text-slate-500">{{ $row['note'] }}</span>@endif
+                                        @if($row['note'] !== '')<span class="ml-1 text-xs text-panel-hint">{{ $row['note'] }}</span>@endif
                                     </td>
                                     <td class="whitespace-nowrap">{{ $row['flag'] }} {{ $row['language'] }}</td>
                                     <td>{{ $row['gender'] }}</td>
@@ -211,7 +211,7 @@
                                     <td x-on:click.stop class="text-right">
                                         @if($previewProvider === 'edge_tts')
                                             {{-- Edge voice: tick = use for ITS language --}}
-                                            <label class="flex items-center justify-end gap-1.5 cursor-pointer text-xs {{ ($narrator->voice_map[$row['lang']] ?? null) === $row['id'] ? 'text-primary font-medium' : 'text-slate-400' }}">
+                                            <label class="flex items-center justify-end gap-1.5 cursor-pointer text-xs {{ ($narrator->voice_map[$row['lang']] ?? null) === $row['id'] ? 'text-primary font-medium' : 'text-panel-hint' }}">
                                                 <input type="checkbox" class="checkbox checkbox-xs checkbox-warning"
                                                        wire:click="useVoice('{{ $row['lang'] }}', '{{ $row['id'] }}')"
                                                        @checked(($narrator->voice_map[$row['lang']] ?? null) === $row['id'])>
@@ -232,7 +232,7 @@
                                     </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="5" class="py-8 text-center text-sm text-slate-500">{{ __('No voices for this filter.') }}</td></tr>
+                                <tr><td colspan="5" class="py-8 text-center text-sm text-panel-hint">{{ __('No voices for this filter.') }}</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -242,7 +242,7 @@
                 {{-- Voice selector + speed --}}
                 <div class="grid gap-4 sm:grid-cols-2">
                     <div>
-                        <label class="mb-1.5 block text-xs font-medium uppercase tracking-wider text-slate-400">
+                        <label class="mb-1.5 block text-xs font-medium uppercase tracking-wider text-panel-hint">
                             Speed: <span class="text-primary">{{ $previewVoiceSpeed }}×</span>
                         </label>
                         <input
@@ -251,7 +251,7 @@
                             min="0.5" max="1.5" step="0.05"
                             class="w-full accent-primary"
                         >
-                        <div class="flex justify-between text-xs text-slate-600 mt-1">
+                        <div class="flex justify-between text-xs text-panel-hint mt-1">
                             <span>0.5× slow</span><span>1.0× normal</span><span>1.5× fast</span>
                         </div>
                     </div>
@@ -263,7 +263,7 @@
 
                 {{-- Custom phrase --}}
                 <div class="border-t border-slate-800 pt-5 space-y-3">
-                    <p class="text-xs font-medium uppercase tracking-wider text-slate-500">Custom phrase</p>
+                    <p class="text-xs font-medium uppercase tracking-wider text-panel-hint">Custom phrase</p>
                     <div class="flex gap-3">
                         <input
                             wire:model="customPhrase"
@@ -294,7 +294,7 @@
                         >
                             <div class="flex items-start justify-between gap-4">
                                 <div class="min-w-0">
-                                    <p class="text-xs font-medium text-slate-400">{{ $sample->label() }}</p>
+                                    <p class="text-xs font-medium text-panel-hint">{{ $sample->label() }}</p>
                                     <p class="text-sm text-slate-300 mt-0.5 truncate">{{ $sample->phrase }}</p>
                                 </div>
                                 <div class="flex items-center gap-2 flex-shrink-0">
@@ -310,7 +310,7 @@
                                     <button
                                         wire:click="deleteSample({{ $sample->id }})"
                                         wire:confirm="Delete this sample?"
-                                        class="rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-500
+                                        class="rounded-lg border border-slate-700 px-2 py-1 text-xs text-panel-hint
                                             hover:border-error/40 hover:text-error transition-colors"
                                     >✕</button>
                                 </div>
@@ -330,9 +330,9 @@
             @else
                 <div class="rounded-2xl border border-dashed border-slate-700 p-8 text-center">
                     <div class="mb-2 flex justify-center">
-                        <x-icons.microphone class="w-8 h-8 text-slate-500" />
+                        <x-icons.microphone class="w-8 h-8 text-panel-hint" />
                     </div>
-                    <p class="text-sm text-slate-400">No samples yet — generate one above to start auditioning voices.</p>
+                    <p class="text-sm text-panel-hint">No samples yet — generate one above to start auditioning voices.</p>
                 </div>
             @endif
         </div>
@@ -346,14 +346,14 @@
                 <h3 class="text-sm font-semibold text-slate-300 mb-3">Greeting</h3>
                 <div class="space-y-3">
                     <div>
-                        <label class="text-xs text-slate-400 mb-1 block">Greeting script</label>
+                        <label class="text-xs text-panel-hint mb-1 block">Greeting script</label>
                         <textarea wire:model="greetingScript" rows="3"
                                   class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200 resize-none focus:border-indigo-500 focus:outline-none"
                                   placeholder="Hello, I am {{ $narrator->short_name ?? 'your guide' }}…"></textarea>
                     </div>
                     <div class="flex gap-2">
                         <div class="flex-1">
-                            <label class="text-xs text-slate-400 mb-1 block">Voice provider</label>
+                            <label class="text-xs text-panel-hint mb-1 block">Voice provider</label>
                             <select wire:model="voice_provider"
                                     class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200">
                                 <option value="elevenlabs">ElevenLabs</option>
@@ -371,7 +371,7 @@
 
                 {{-- Name --}}
                 <div>
-                    <label class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400">Full name</label>
+                    <label class="mb-2 block text-xs font-medium uppercase tracking-wider text-panel-hint">Full name</label>
                     <input wire:model="name" type="text"
                         class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100
                                 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
@@ -382,31 +382,31 @@
                 {{-- Short name + title (greeting) --}}
                 <div class="grid gap-4 sm:grid-cols-2">
                     <div>
-                        <label class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400">
-                            Short name <span class="text-slate-600 normal-case font-normal tracking-normal">(greeting)</span>
+                        <label class="mb-2 block text-xs font-medium uppercase tracking-wider text-panel-hint">
+                            Short name <span class="text-panel-hint normal-case font-normal tracking-normal">(greeting)</span>
                         </label>
                         <input wire:model.live="short_name" type="text"
                             class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100
                                     focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                             placeholder="The Professor">
-                        <p class="mt-1 text-xs text-slate-600">"I am <em>{{ $short_name ?: $name }}</em>"</p>
+                        <p class="mt-1 text-xs text-panel-hint">"I am <em>{{ $short_name ?: $name }}</em>"</p>
                     </div>
                     <div>
-                        <label class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400">
-                            Narrator title <span class="text-slate-600 normal-case font-normal tracking-normal">(greeting)</span>
+                        <label class="mb-2 block text-xs font-medium uppercase tracking-wider text-panel-hint">
+                            Narrator title <span class="text-panel-hint normal-case font-normal tracking-normal">(greeting)</span>
                         </label>
                         <input wire:model.live="avatar_title" type="text"
                             class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100
                                     focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                             placeholder="History Professor">
-                        <p class="mt-1 text-xs text-slate-600">"a <em>{{ $avatar_title ?: 'Professor' }}</em> here at…"</p>
+                        <p class="mt-1 text-xs text-panel-hint">"a <em>{{ $avatar_title ?: 'Professor' }}</em> here at…"</p>
                     </div>
                 </div>
 
                 {{-- Description --}}
                 <div>
-                    <label class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400">
-                        Description <span class="text-slate-600 normal-case font-normal tracking-normal">(shown to teachers)</span>
+                    <label class="mb-2 block text-xs font-medium uppercase tracking-wider text-panel-hint">
+                        Description <span class="text-panel-hint normal-case font-normal tracking-normal">(shown to teachers)</span>
                     </label>
                     <textarea wire:model="description" rows="2"
                             class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100
@@ -416,7 +416,7 @@
 
                 {{-- Subject --}}
                 <div>
-                    <label class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400">Subject</label>
+                    <label class="mb-2 block text-xs font-medium uppercase tracking-wider text-panel-hint">Subject</label>
                     <select wire:model="subject"
                             class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100
                                 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary">
@@ -430,7 +430,7 @@
 
                 {{-- Voice provider --}}
                 <div>
-                    <label class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400">Voice provider</label>
+                    <label class="mb-2 block text-xs font-medium uppercase tracking-wider text-panel-hint">Voice provider</label>
                     <select wire:model.live="voice_provider"
                             class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100
                                 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary">
@@ -443,23 +443,23 @@
 
                 {{-- Voice ID --}}
                 <div>
-                    <label class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400">Voice ID</label>
+                    <label class="mb-2 block text-xs font-medium uppercase tracking-wider text-panel-hint">Voice ID</label>
                     <input wire:model="voice_id" type="text"
                         class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100
                                 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                         placeholder="e.g. ElevenLabs voice ID or edge-tts locale">
-                    <p class="mt-1.5 text-xs text-slate-600">Use the Voice Studio tab to audition and select a voice.</p>
+                    <p class="mt-1.5 text-xs text-panel-hint">Use the Voice Studio tab to audition and select a voice.</p>
                 </div>
 
                 {{-- Speed --}}
                 <div>
-                    <label class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400">
+                    <label class="mb-2 block text-xs font-medium uppercase tracking-wider text-panel-hint">
                         Narration speed: <span class="text-primary">{{ $voice_speed }}×</span>
                     </label>
                     <input type="range" wire:model.live="voice_speed"
                         min="0.5" max="1.5" step="0.05"
                         class="w-full accent-primary">
-                    <div class="flex justify-between text-xs text-slate-600 mt-1">
+                    <div class="flex justify-between text-xs text-panel-hint mt-1">
                         <span>0.5× (slow)</span><span>0.9× (professor)</span><span>1.5× (fast)</span>
                     </div>
                 </div>
@@ -494,9 +494,9 @@
                         >
                             <div class="flex items-start justify-between gap-4">
                                 <div class="min-w-0">
-                                    <p class="text-xs font-medium text-slate-400">{{ $sample->label() }}</p>
+                                    <p class="text-xs font-medium text-panel-hint">{{ $sample->label() }}</p>
                                     <p class="text-sm text-slate-300 mt-0.5">{{ $sample->phrase }}</p>
-                                    <p class="text-xs text-slate-600 mt-1">{{ $sample->created_at->diffForHumans() }}</p>
+                                    <p class="text-xs text-panel-hint mt-1">{{ $sample->created_at->diffForHumans() }}</p>
                                 </div>
                                 <div class="flex gap-2 flex-shrink-0">
                                     @if($sample->voice_id !== $narrator->voice_id || round($sample->voice_speed, 2) !== round($narrator->voice_speed, 2))
@@ -507,7 +507,7 @@
                                     @endif
                                     <button wire:click="deleteSample({{ $sample->id }})"
                                             wire:confirm="Delete this sample?"
-                                            class="rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-500 hover:border-error/40 hover:text-error transition-colors">
+                                            class="rounded-lg border border-slate-700 px-2 py-1 text-xs text-panel-hint hover:border-error/40 hover:text-error transition-colors">
                                         ✕
                                     </button>
                                 </div>
@@ -525,7 +525,7 @@
                     @endforeach
                 </div>
             @else
-                <p class="text-sm text-slate-500 text-center py-12">No samples generated yet.</p>
+                <p class="text-sm text-panel-hint text-center py-12">No samples generated yet.</p>
             @endif
         </div>
     </div>

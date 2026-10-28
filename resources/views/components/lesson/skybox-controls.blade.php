@@ -84,7 +84,7 @@
     {{-- ── Scene view — a dropdown (Figma): Slideshow · Panorama · 3D World. Keeps the
          lesson:scene:view dispatch + setSceneView/generateWorld wiring. ─────────────── --}}
     <div class="relative">
-        <span class="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-slate-400">
+        <span class="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-panel-hint">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
                 <rect x="3" y="6" width="14" height="10" rx="1.5" /><path stroke-linecap="round" d="M20 8v8M17 6.5v11" />
             </svg>
@@ -157,7 +157,7 @@
                                      :default="round(\App\Services\Support\SceneSplit::LAYOUTS[$split['layout']]['at'][$k] * 100)"
                                      :on-change="'setSplitAt(' . $k . ', $event.target.value / 100)'" />
                 @endforeach
-                <span class="block text-2xs font-semibold uppercase tracking-wider text-slate-400" data-split-panel-label>{{ __('Panel') }} {{ $activePanel + 1 }}</span>
+                <span class="block text-2xs font-semibold uppercase tracking-wider text-panel-hint" data-split-panel-label>{{ __('Panel') }} {{ $activePanel + 1 }}</span>
             @endif
         </div>
         @endif
@@ -183,7 +183,7 @@
                 <input type="color" value="{{ $fillColor }}" aria-label="{{ __('Colour') }}" x-ref="fillColor"
                        @change="$wire.setBackgroundColor($event.target.value)"
                        class="h-8 w-12 cursor-pointer rounded border border-slate-600 bg-transparent" />
-                <span class="font-mono text-xs text-slate-400">{{ $fillColor }}</span>
+                <span class="font-mono text-xs text-panel-hint">{{ $fillColor }}</span>
                 {{-- Picking the colour already shown fires no change, so while something else fills
                      the backdrop a button applies it. Never the dropdown itself: a mis-click keeps the picture. --}}
                 @if ($bgType !== 'color')
@@ -202,7 +202,7 @@
                            class="h-8 w-10 cursor-pointer rounded border border-slate-600 bg-transparent" />
                     <input type="range" min="0" max="359" step="1" x-model.number="g.angle" @change="save()"
                            aria-label="{{ __('Angle') }}" class="range range-xs flex-1" />
-                    <span class="w-10 text-right font-mono text-xs text-slate-400" x-text="`${g.angle}°`"></span>
+                    <span class="w-10 text-right font-mono text-xs text-panel-hint" x-text="`${g.angle}°`"></span>
                 </div>
             </div>
 
@@ -248,13 +248,13 @@
                          class="h-14 w-24 shrink-0 rounded object-cover ring-1 ring-slate-700"
                          alt="{{ __('Current scene background') }}" />
                 @else
-                    <div class="flex h-14 w-24 shrink-0 items-center justify-center rounded bg-slate-800 text-2xs font-medium uppercase tracking-wider text-slate-500 ring-1 ring-dashed ring-slate-600">
+                    <div class="flex h-14 w-24 shrink-0 items-center justify-center rounded bg-slate-800 text-2xs font-medium uppercase tracking-wider text-panel-hint ring-1 ring-dashed ring-slate-600">
                         {{ __('none') }}
                     </div>
                 @endif
                 <div class="min-w-0 leading-tight">
-                    <span class="block text-2xs font-semibold uppercase tracking-wider text-slate-400">{{ __('Current image') }}</span>
-                    <span class="block truncate text-2xs text-slate-500">{{ $backgroundImageUrl ? __('Scene background') : __('No background selected') }}</span>
+                    <span class="block text-2xs font-semibold uppercase tracking-wider text-panel-hint">{{ __('Current image') }}</span>
+                    <span class="block truncate text-2xs text-panel-hint">{{ $backgroundImageUrl ? __('Scene background') : __('No background selected') }}</span>
                 </div>
             </div>
 
@@ -262,14 +262,14 @@
                  portrait to the top so the face survives); Contain shows the whole work. --}}
             @if ($backgroundImageUrl && ! $split)
                 <div x-data="{ fit: @js($backgroundFit) }">
-                    <span class="mb-1 block text-2xs font-semibold uppercase tracking-wider text-slate-400">{{ __('Fit') }}</span>
+                    <span class="mb-1 block text-2xs font-semibold uppercase tracking-wider text-panel-hint">{{ __('Fit') }}</span>
                     <x-ui.segmented panel name="background-fit" model="fit"
                                     :options="[['cover', __('Fill frame')], ['contain', __('Whole image')]]"
                                     on-change="$wire.call('setBackgroundFit', $event.target.value)" />
-                    <p class="mt-1 text-prose leading-tight text-slate-500" x-show="fit === 'cover'" x-cloak>
+                    <p class="mt-1 text-prose leading-tight text-panel-hint" x-show="fit === 'cover'" x-cloak>
                         {{ __('Fills the frame. Portraits are cropped from the top so faces stay in shot.') }}
                     </p>
-                    <p class="mt-1 text-prose leading-tight text-slate-500" x-show="fit === 'contain'" x-cloak>
+                    <p class="mt-1 text-prose leading-tight text-panel-hint" x-show="fit === 'contain'" x-cloak>
                         {{ __('Shows the whole picture, with bars where it does not reach the edges.') }}
                     </p>
                 </div>
@@ -278,7 +278,7 @@
             {{-- Split panel: which part of its picture the crop keeps. --}}
             @if ($split && $backgroundImageUrl)
                 <div class="space-y-1" data-panel-focus>
-                    <span class="block text-2xs font-semibold uppercase tracking-wider text-slate-400">{{ __('Crop') }}</span>
+                    <span class="block text-2xs font-semibold uppercase tracking-wider text-panel-hint">{{ __('Crop') }}</span>
                     {{-- Each row keys the panel's background on the timeline (bg:<panel>), as a
                          layer's sliders key the layer. --}}
                     <x-ui.slider-row :label="__('Horizontal')" :min="0" :max="100" :step="1"
@@ -353,7 +353,7 @@
                     </svg>
                     <span>{{ __('Browse paintings') }}</span>
                 </button>
-                <p class="text-prose text-slate-500">{{ __('Public-domain paintings & museum works, matched to the scene’s era and place.') }}</p>
+                <p class="text-prose text-panel-hint">{{ __('Public-domain paintings & museum works, matched to the scene’s era and place.') }}</p>
             </div>
 
           </div>{{-- /image sub-sources --}}
@@ -361,14 +361,14 @@
             {{-- 3D — Sketchfab model as the scene background --}}
             <div x-show="bgType === '3d'" x-cloak class="space-y-2">
                 <div x-data="{ link: '' }">
-                    <span class="mb-1 block text-2xs font-semibold uppercase tracking-wider text-slate-400">{{ __('Sketchfab model link or embed code') }}</span>
+                    <span class="mb-1 block text-2xs font-semibold uppercase tracking-wider text-panel-hint">{{ __('Sketchfab model link or embed code') }}</span>
                     <div class="flex gap-1.5">
                         <input type="text" x-model="link" placeholder="https://sketchfab.com/3d-models/…"
                                class="input input-xs input-bordered flex-1 bg-slate-900" />
                         <button type="button" @click="if (link.trim()) { $wire.setSketchfabEmbed(link); link = '' }"
                                 class="btn btn-xs btn-neutral">{{ __('Set') }}</button>
                     </div>
-                    <p class="mt-1 text-prose text-slate-500">{{ __('Paste a Sketchfab model URL or its <iframe> embed code.') }}</p>
+                    <p class="mt-1 text-prose text-panel-hint">{{ __('Paste a Sketchfab model URL or its <iframe> embed code.') }}</p>
                 </div>
 
                 @if ($bgEmbed && ($bgEmbed['kind'] ?? '') === 'sketchfab')
@@ -388,7 +388,7 @@
         @if (count($candidates) && ! $hasSkyboxImage)
             {{-- ── State A: candidates ready, awaiting the teacher's pick ───────── --}}
             <div class="space-y-2">
-                <span class="text-2xs uppercase tracking-widest text-slate-500 block">{{ __('Pick your panorama') }}</span>
+                <span class="text-2xs uppercase tracking-widest text-panel-hint block">{{ __('Pick your panorama') }}</span>
                 <div class="grid grid-cols-2 gap-1.5">
                     @foreach ($candidates as $i => $path)
                         <button type="button"
@@ -405,7 +405,7 @@
                         wire:click="generateSkyboxCandidates({{ $scene->id }})"
                         wire:loading.attr="disabled" wire:target="generateSkyboxCandidates"
                         @disabled($isBusy)
-                        class="text-2xs text-slate-400 hover:text-sky-400 underline underline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1">
+                        class="text-2xs text-panel-hint hover:text-sky-400 underline underline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1">
                     <span wire:loading wire:target="generateSkyboxCandidates"><x-icons.spinner class="w-3 h-3 animate-spin" /></span>
                     <span wire:loading.remove wire:target="generateSkyboxCandidates">↻ Generate 4 new options</span>
                     <span wire:loading wire:target="generateSkyboxCandidates">{{ __('Generating…') }}</span>
@@ -429,7 +429,7 @@
                         wire:click="generateSkyboxCandidates({{ $scene->id }})"
                         wire:loading.attr="disabled" wire:target="generateSkyboxCandidates"
                         @disabled($isBusy)
-                        class="btn btn-outline btn-sm border-slate-600 text-slate-400 hover:border-sky-500 hover:text-sky-400 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5">
+                        class="btn btn-outline btn-sm border-slate-600 text-panel-hint hover:border-sky-500 hover:text-sky-400 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5">
                     <span wire:loading wire:target="generateSkyboxCandidates"><x-icons.spinner class="w-3 h-3 animate-spin" /></span>
                     <span wire:loading.remove wire:target="generateSkyboxCandidates">↻ Regenerate</span>
                     <span wire:loading wire:target="generateSkyboxCandidates">{{ __('Generating…') }}</span>
@@ -448,9 +448,9 @@
             {{-- ── State C: nothing generated yet ──────────────────────────────── --}}
             <div class="w-full rounded bg-slate-800 border border-dashed border-slate-600 flex items-center justify-center" style="aspect-ratio:2/1">
                 @if ($isGenerating)
-                    <x-icons.spinner class="w-5 h-5 animate-spin text-slate-500" />
+                    <x-icons.spinner class="w-5 h-5 animate-spin text-panel-hint" />
                 @else
-                    <span class="text-xs text-slate-500">{{ __('No panorama yet') }}</span>
+                    <span class="text-xs text-panel-hint">{{ __('No panorama yet') }}</span>
                 @endif
             </div>
 
@@ -468,13 +468,13 @@
         @endif
 
         @if (! $scene->image_path)
-            <p class="text-prose text-slate-500">{{ __('Generate the flat image first to unlock panorama options.') }}</p>
+            <p class="text-prose text-panel-hint">{{ __('Generate the flat image first to unlock panorama options.') }}</p>
         @endif
 
         {{-- Blur --}}
         <div>
             <div class="flex items-center justify-between mb-1">
-                <label class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Blur') }}</label>
+                <label class="text-2xs uppercase tracking-widest text-panel-hint">{{ __('Blur') }}</label>
                 <span class="text-2xs font-mono text-base-content/85" x-text="Number(blur).toFixed(2)"></span>
             </div>
             <span class="range-panel-knob min-w-0 w-full">
@@ -489,7 +489,7 @@
         {{-- Opacity --}}
         <div>
             <div class="flex items-center justify-between mb-1">
-                <label class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Opacity') }}</label>
+                <label class="text-2xs uppercase tracking-widest text-panel-hint">{{ __('Opacity') }}</label>
                 <span class="text-2xs font-mono text-base-content/85" x-text="Math.round(opacity * 100) + '%'"></span>
             </div>
             <span class="range-panel-knob min-w-0 w-full">
@@ -504,7 +504,7 @@
         {{-- Background color --}}
         <div>
             <div class="flex items-center justify-between mb-1">
-                <label class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Background') }}</label>
+                <label class="text-2xs uppercase tracking-widest text-panel-hint">{{ __('Background') }}</label>
                 <span class="text-2xs font-mono text-base-content/85" x-text="bgColor"></span>
             </div>
             <label class="flex items-center gap-2 cursor-pointer">
@@ -542,7 +542,7 @@
                 <button wire:click="generateWorld({{ $scene->id }})"
                         class="text-warning hover:text-base-content underline underline-offset-2 mt-1">{{ __('Retry') }}</button>
             @else
-                <div class="text-slate-400">Select to start WorldLabs generation</div>
+                <div class="text-panel-hint">Select to start WorldLabs generation</div>
             @endif
         </div>
 
@@ -564,7 +564,7 @@
                  }
              }">
             <button @click="open = !open"
-                    class="flex items-center justify-between w-full text-2xs uppercase tracking-widest text-slate-400 hover:text-slate-200 transition-colors">
+                    class="flex items-center justify-between w-full text-2xs uppercase tracking-widest text-panel-hint hover:text-slate-200 transition-colors">
                 <span>World Settings</span>
                 <svg class="w-3 h-3 transition-transform duration-200" :class="open ? 'rotate-180' : ''"
                      fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -574,40 +574,40 @@
             <div x-show="open" class="mt-2 space-y-3">
                 <div>
                     <div class="flex items-center justify-between mb-1">
-                        <label class="text-2xs uppercase tracking-widest text-slate-500">World Y</label>
+                        <label class="text-2xs uppercase tracking-widest text-panel-hint">World Y</label>
                         <span class="text-2xs font-mono text-base-content/85" x-text="(charYOffset >= 0 ? '+' : '') + Number(charYOffset).toFixed(2)"></span>
                     </div>
                     <span class="range-panel-knob min-w-0 w-full">
                         <input type="range" min="-3" max="3" step="0.01" x-model.number="charYOffset"
                                @input="emitCharY()" class="range range-panel" />
                     </span>
-                    <button @click="charYOffset = 0; emitCharY()" class="text-2xs text-slate-500 hover:text-slate-300 mt-1">reset</button>
+                    <button @click="charYOffset = 0; emitCharY()" class="text-2xs text-panel-hint hover:text-slate-300 mt-1">reset</button>
                 </div>
                 <div>
                     <div class="flex items-center justify-between mb-1">
-                        <label class="text-2xs uppercase tracking-widest text-slate-500">World Scale</label>
+                        <label class="text-2xs uppercase tracking-widest text-panel-hint">World Scale</label>
                         <span class="text-2xs font-mono text-base-content/85" x-text="Number(worldScale).toFixed(2) + '×'"></span>
                     </div>
                     <span class="range-panel-knob min-w-0 w-full">
                         <input type="range" min="0.1" max="5" step="0.01" x-model.number="worldScale"
                                @input="emitWorldScale()" class="range range-panel" />
                     </span>
-                    <button @click="worldScale = 1; emitWorldScale()" class="text-2xs text-slate-500 hover:text-slate-300 mt-1">reset</button>
+                    <button @click="worldScale = 1; emitWorldScale()" class="text-2xs text-panel-hint hover:text-slate-300 mt-1">reset</button>
                 </div>
                 <div>
                     <div class="flex items-center justify-between mb-1">
-                        <label class="text-2xs uppercase tracking-widest text-slate-500">Char Scale</label>
+                        <label class="text-2xs uppercase tracking-widest text-panel-hint">Char Scale</label>
                         <span class="text-2xs font-mono text-base-content/85" x-text="Number(charScale).toFixed(2) + '×'"></span>
                     </div>
                     <span class="range-panel-knob min-w-0 w-full">
                         <input type="range" min="0.1" max="3" step="0.01" x-model.number="charScale"
                                @input="emitCharScale()" class="range range-panel" />
                     </span>
-                    <button @click="charScale = 1; emitCharScale()" class="text-2xs text-slate-500 hover:text-slate-300 mt-1">reset</button>
+                    <button @click="charScale = 1; emitCharScale()" class="text-2xs text-panel-hint hover:text-slate-300 mt-1">reset</button>
                 </div>
                 <button @click="dirty && save()"
                         :disabled="!dirty"
-                        :class="dirty ? 'bg-slate-600 hover:bg-slate-500 text-white cursor-pointer' : 'bg-slate-800 text-slate-600 cursor-not-allowed'"
+                        :class="dirty ? 'bg-slate-600 hover:bg-slate-500 text-white cursor-pointer' : 'bg-slate-800 text-panel-hint cursor-not-allowed'"
                         class="w-full rounded px-2 py-1 text-2xs uppercase tracking-widest transition-colors">
                     Save world settings
                 </button>

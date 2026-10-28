@@ -7,7 +7,7 @@
 
      :max comes BEFORE x-model on purpose: Alpine applies bindings in attribute order, and a value
      set while max is still the default would be clamped. --}}
-<div {{ $attributes->class('flex shrink-0 items-center gap-1 text-slate-500') }}
+<div {{ $attributes->class('flex shrink-0 items-center gap-1 text-panel-hint') }}
      x-show="sizeMode !== 'none'" x-cloak data-thumb-size :data-size-mode="sizeMode" wire:ignore>
     <template x-if="sizeMode === 'slider'">
         <div class="flex items-center gap-1" data-tooltip="{{ __('Preview size') }}">

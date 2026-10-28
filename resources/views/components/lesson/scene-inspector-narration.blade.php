@@ -22,7 +22,7 @@
     {{-- Blade has @checked/@selected/@disabled but NO @open directive — it would emit a literal
          `@open(...)` attribute and the disclosure would stay shut. --}}
     <details wire:ignore.self @if ($needsScript) open @endif class="border-t border-slate-700/50 pt-2">
-        <summary class="cursor-pointer list-none text-2xs font-semibold uppercase tracking-widest text-slate-500 transition hover:text-slate-300">
+        <summary class="cursor-pointer list-none text-2xs font-semibold uppercase tracking-widest text-panel-hint transition hover:text-slate-300">
             {{ __('Scene details') }}
             @if ($needsScript)
                 <span class="ml-1 normal-case tracking-normal text-primary/80">{{ __('add the story text') }}</span>
@@ -30,35 +30,35 @@
         </summary>
         <div class="mt-3 space-y-3">
             <label class="form-control">
-                <span class="text-xs uppercase tracking-wider text-slate-400">{{ __('Chapter name') }}</span>
+                <span class="text-xs uppercase tracking-wider text-panel-hint">{{ __('Chapter name') }}</span>
                 <input type="text" wire:model.blur="selectedScene.chapter_name" wire:change="saveSelected"
                        placeholder="{{ $scene->chapterName() }}"
                        class="input input-sm input-bordered bg-slate-900 mt-1" />
-                <span class="mt-1 text-2xs text-slate-500">{{ __('Shown in the player chapter bar. Auto-named from the narration; edit to taste.') }}</span>
+                <span class="mt-1 text-2xs text-panel-hint">{{ __('Shown in the player chapter bar. Auto-named from the narration; edit to taste.') }}</span>
             </label>
 
             <label class="form-control">
-                <span class="text-xs uppercase tracking-wider text-slate-400">{{ __('Era') }}</span>
+                <span class="text-xs uppercase tracking-wider text-panel-hint">{{ __('Era') }}</span>
                 <input type="text" wire:model.blur="selectedScene.year" wire:change="saveSelected"
                        class="input input-sm input-bordered bg-slate-900 mt-1" />
             </label>
 
             <label class="form-control">
-                <span class="text-xs uppercase tracking-wider text-slate-400">{{ __('Caption location') }}</span>
+                <span class="text-xs uppercase tracking-wider text-panel-hint">{{ __('Caption location') }}</span>
                 <input type="text" wire:model.blur="selectedScene.location" wire:change="saveSelected"
                        class="input input-sm input-bordered bg-slate-900 mt-1" />
             </label>
 
             {{-- Show/hide the on-canvas caption (flag · title · year · location) for this scene. --}}
             <label class="my-1 flex cursor-pointer items-center justify-between gap-2 rounded-lg bg-slate-800/40 px-3 py-2">
-                <span class="text-xs uppercase tracking-wider text-slate-400">{{ __('Caption') }}</span>
+                <span class="text-xs uppercase tracking-wider text-panel-hint">{{ __('Caption') }}</span>
                 <input type="checkbox" class="toggle toggle-sm toggle-warning shrink-0"
                        @checked((bool) ($scene->config['show_caption'] ?? false))
                        wire:click="toggleCaption" />
             </label>
 
             <div class="space-y-1">
-                <p class="text-xs uppercase tracking-wider text-slate-400">{{ __('Script') }}</p>
+                <p class="text-xs uppercase tracking-wider text-panel-hint">{{ __('Script') }}</p>
                 <textarea wire:model.blur="selectedScene.script_segment" wire:change="saveSelected" rows="8"
                           class="textarea textarea-sm textarea-bordered bg-slate-900 w-full"></textarea>
                 <div class="flex flex-wrap gap-2">
@@ -86,7 +86,7 @@
                             @endif
                         </button>
                         @if ($scene->script_segment && $scene->audio_path && ! $isGenerating)
-                            <span class="self-center text-xs text-slate-400">{{ __('script changed, re-narrate to refresh the audio') }}</span>
+                            <span class="self-center text-xs text-panel-hint">{{ __('script changed, re-narrate to refresh the audio') }}</span>
                         @endif
                     @endif
 

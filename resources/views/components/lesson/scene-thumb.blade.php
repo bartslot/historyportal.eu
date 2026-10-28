@@ -83,7 +83,7 @@
         {{-- Placeholder sits underneath; a present image covers it. If the image 404s
              (generation failed / file removed) onerror hides it, revealing the placeholder
              instead of the browser's broken-image glyph. --}}
-        <div class="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-slate-800/60 text-slate-500">
+        <div class="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-slate-800/60 text-panel-hint">
             <x-lesson.icon-story class="h-6 w-6 opacity-80" />
             <span class="text-2xs tracking-widest">{{ __('SCENE') }} {{ $scene->order }}</span>
         </div>
@@ -121,7 +121,7 @@
     {{-- Compact: just the scene number, centered on a transparent background. Revealed by the
          rail's @container rule when the rail is dragged narrow; amber when this scene is selected. --}}
     <span data-thumb-compact aria-hidden="true"
-          class="pointer-events-none absolute inset-0 hidden items-center justify-center font-mono text-sm font-semibold tabular-nums text-slate-400">
+          class="pointer-events-none absolute inset-0 hidden items-center justify-center font-mono text-sm font-semibold tabular-nums text-panel-hint">
         {{ $number ?? $scene->order }}
     </span>
 </button>

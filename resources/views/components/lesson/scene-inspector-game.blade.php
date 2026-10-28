@@ -17,11 +17,11 @@
 <div class="space-y-3 text-sm">
     <header>
         <h3 class="font-semibold text-base-content">{{ $heading }}</h3>
-        <p class="text-xs text-slate-400">{{ __('Game element :n of :total', ['n' => $scene->game_segment_index ?? 1, 'total' => $scene->lesson->game_split_count]) }}</p>
+        <p class="text-xs text-panel-hint">{{ __('Game element :n of :total', ['n' => $scene->game_segment_index ?? 1, 'total' => $scene->lesson->game_split_count]) }}</p>
     </header>
 
     <div class="space-y-2">
-        <p class="text-xs uppercase tracking-wider text-slate-400">{{ __('Element type') }}</p>
+        <p class="text-xs uppercase tracking-wider text-panel-hint">{{ __('Element type') }}</p>
         <x-ui.segmented panel class="w-full" name="game-type-{{ $scene->id }}" :value="$gameType"
                         :options="[['quiz', __('Quiz')], ['strategy', __('Strategy')], ['debate', __('Debate')], ['team', __('Team game')], ['predict', __('Predict')]]"
                         tab-class="flex-1"
@@ -31,7 +31,7 @@
     @if ($gameType === 'quiz')
         <div class="grid grid-cols-1 gap-3 border-t border-white/10 pt-3 sm:grid-cols-2">
             <label class="form-control">
-                <span class="text-xs uppercase tracking-wider text-slate-400">{{ __('Questions') }}</span>
+                <span class="text-xs uppercase tracking-wider text-panel-hint">{{ __('Questions') }}</span>
                 <input type="number"
                        wire:model.live="selectedScene.quiz_question_count"
                        wire:change="saveSelected"
@@ -39,7 +39,7 @@
                        class="input input-sm input-bordered bg-slate-900 mt-1" />
             </label>
             <label class="form-control">
-                <span class="text-xs uppercase tracking-wider text-slate-400">{{ __('Timing') }}</span>
+                <span class="text-xs uppercase tracking-wider text-panel-hint">{{ __('Timing') }}</span>
                 <select wire:model.live="selectedScene.quiz_timing"
                         wire:change="saveSelected"
                         class="select select-sm select-bordered bg-slate-900 mt-1">
@@ -56,33 +56,33 @@
         @php $letters = ['A', 'B', 'C', 'D']; $palette = ['#e11d48', '#0284c7', '#f59e0b', '#059669']; @endphp
         <div data-quiz-section class="space-y-3 border-t border-white/10 pt-3">
             <div class="flex items-center justify-between">
-                <p class="text-xs uppercase tracking-wider text-slate-400">{{ __('Quiz questions') }}</p>
-                <span class="text-2xs text-slate-500">{{ __(':count total', ['count' => count($quizDraft)]) }}</span>
+                <p class="text-xs uppercase tracking-wider text-panel-hint">{{ __('Quiz questions') }}</p>
+                <span class="text-2xs text-panel-hint">{{ __(':count total', ['count' => count($quizDraft)]) }}</span>
             </div>
 
             {{-- Difficulty (1-3 stars) + regenerate-all at that level. Difficulty applies to
                  every AI generation: per-question sparkles and the full regenerate. --}}
             <div class="flex flex-wrap items-center justify-between gap-2">
                 <div class="flex items-center gap-1.5">
-                    <span class="text-2xs text-slate-400">{{ __('Difficulty') }}</span>
+                    <span class="text-2xs text-panel-hint">{{ __('Difficulty') }}</span>
                     @foreach ([1 => __('Easy'), 2 => __('Medium'), 3 => __('Hard')] as $level => $label)
                         <button type="button" wire:click="setQuizDifficulty({{ $level }})"
-                                class="transition {{ $quizDifficulty >= $level ? 'text-primary hover:text-primary' : 'text-slate-600 hover:text-slate-400' }}"
+                                class="transition {{ $quizDifficulty >= $level ? 'text-primary hover:text-primary' : 'text-panel-hint hover:text-panel-hint' }}"
                                 data-tooltip="{{ $label }}" aria-label="{{ __('Set difficulty to :label', ['label' => $label]) }}"
                                 aria-pressed="{{ $quizDifficulty === $level ? 'true' : 'false' }}">
                             <x-icons.star />
                         </button>
                     @endforeach
-                    <span class="text-2xs text-slate-500 ml-1">{{ [1 => __('Easy'), 2 => __('Medium'), 3 => __('Hard')][$quizDifficulty] ?? __('Medium') }}</span>
+                    <span class="text-2xs text-panel-hint ml-1">{{ [1 => __('Easy'), 2 => __('Medium'), 3 => __('Hard')][$quizDifficulty] ?? __('Medium') }}</span>
                 </div>
                 <div class="flex items-center gap-1.5">
-                    <span class="text-2xs text-slate-400">{{ __('Scope') }}</span>
+                    <span class="text-2xs text-panel-hint">{{ __('Scope') }}</span>
                     <x-ui.segmented panel name="quiz-scope-{{ $scene->id }}" :value="$quizScope"
                                     :options="[['taught', __('Taught so far')], ['full', __('Whole story')]]"
                                     on-change="$wire.call('setQuizScope', $event.target.value)" />
                 </div>
                 <div class="flex items-center gap-1.5">
-                    <span class="text-2xs text-slate-400">{{ __('Shuffle') }}</span>
+                    <span class="text-2xs text-panel-hint">{{ __('Shuffle') }}</span>
                     <select wire:change="setQuizShuffle($event.target.value)" class="select select-xs select-bordered bg-slate-900">
                         <option value="per_player" @selected($quizShuffle === 'per_player')>{{ __('Per player') }}</option>
                         <option value="once" @selected($quizShuffle === 'once')>{{ __('Same for class (digibord/paper)') }}</option>
@@ -166,7 +166,7 @@
                         @foreach ($letters as $oi => $letter)
                             @php $isCorrect = (int) ($q['correct_index'] ?? 0) === $oi; @endphp
                             <div class="flex items-center gap-1.5" wire:key="quiz-q-{{ $i }}-opt-{{ $oi }}">
-                                <span class="quiz-drag-handle cursor-grab active:cursor-grabbing text-slate-500 hover:text-slate-300 shrink-0"
+                                <span class="quiz-drag-handle cursor-grab active:cursor-grabbing text-panel-hint hover:text-slate-300 shrink-0"
                                       data-tooltip="{{ __('Drag to reorder') }}"><x-icons.reorder /></span>
                                 <span class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-2xs font-bold text-white"
                                       style="background-color: {{ $palette[$oi] }}">{{ $letter }}</span>
@@ -188,7 +188,7 @@
                                            class="input input-xs input-bordered bg-slate-900 flex-1" />
                                     <button type="button" wire:click="regenerateQuizOption({{ $i }}, {{ $oi }})"
                                             wire:loading.attr="disabled" wire:target="regenerateQuizOption({{ $i }}, {{ $oi }})"
-                                            class="btn btn-xs btn-square btn-ghost text-slate-400 hover:text-base-content"
+                                            class="btn btn-xs btn-square btn-ghost text-panel-hint hover:text-base-content"
                                             data-tooltip="{{ __('Redraw this wrong answer with AI') }}"
                                             aria-label="{{ __('Redraw answer :letter with AI', ['letter' => $letter]) }}">
                                         <span wire:loading.remove wire:target="regenerateQuizOption({{ $i }}, {{ $oi }})"><x-icons.ai-generate /></span>
@@ -206,7 +206,7 @@
                     @endif
                 </div>
             @empty
-                <p class="text-xs text-slate-500 md:col-span-2">{{ __('No questions yet. Add one below, then hit the sparkle to draft it.') }}</p>
+                <p class="text-xs text-panel-hint md:col-span-2">{{ __('No questions yet. Add one below, then hit the sparkle to draft it.') }}</p>
             @endforelse
             </div>
 
@@ -214,7 +214,7 @@
                 <button type="button" wire:click="addQuizQuestion" class="btn btn-xs btn-outline">+ {{ __('Add question') }}</button>
                 {{-- Edits autosave — no manual save button. --}}
                 <span wire:loading wire:target="autosaveQuiz, updatedQuizDraft, removeQuizQuestion, moveQuizOption"
-                      class="text-2xs text-slate-400 inline-flex items-center gap-1">
+                      class="text-2xs text-panel-hint inline-flex items-center gap-1">
                     <span class="loading loading-spinner loading-xs"></span> {{ __('Saving…') }}
                 </span>
                 @if ($quizSaved)
@@ -228,9 +228,9 @@
     @if ($gameType === 'strategy')
         <div class="grid grid-cols-1 gap-3 border-t border-white/10 pt-3 sm:grid-cols-2">
             <label class="form-control sm:col-span-2">
-                <span class="text-xs uppercase tracking-wider text-slate-400">{{ __('Strategy game') }}</span>
+                <span class="text-xs uppercase tracking-wider text-panel-hint">{{ __('Strategy game') }}</span>
                 @if ($games->isEmpty())
-                    <p class="mt-1 text-xs text-slate-400" data-no-strategy-games>{{ __('There are no strategy games in this language yet. The class gets a general team challenge instead.') }}</p>
+                    <p class="mt-1 text-xs text-panel-hint" data-no-strategy-games>{{ __('There are no strategy games in this language yet. The class gets a general team challenge instead.') }}</p>
                 @else
                 <select wire:model.live="selectedScene.strategy_game_id"
                         wire:change="saveSelected"
@@ -243,7 +243,7 @@
                 @endif
             </label>
             <label class="form-control">
-                <span class="text-xs uppercase tracking-wider text-slate-400">{{ __('Teams') }}</span>
+                <span class="text-xs uppercase tracking-wider text-panel-hint">{{ __('Teams') }}</span>
                 <input type="number"
                        wire:model.live="selectedScene.team_count"
                        wire:change="saveSelected"
@@ -267,13 +267,13 @@
     @endif
 
     <div class="space-y-1">
-        <p class="text-xs uppercase tracking-wider text-slate-400">
+        <p class="text-xs uppercase tracking-wider text-panel-hint">
             @if ($gameType === 'predict')
                 {{ __('Spoken question (narrated before the class answers)') }}
             @elseif ($gameType === 'team')
                 {{ __('Spoken intro (optional, narrated before the game)') }}
             @elseif ($gameType === 'quiz')
-                {{ __('Spoken intro') }} <span class="normal-case text-slate-500">{{ __('(optional, narrated before the quiz)') }}</span>
+                {{ __('Spoken intro') }} <span class="normal-case text-panel-hint">{{ __('(optional, narrated before the quiz)') }}</span>
             @elseif ($gameType === 'debate')
                 {{ __('Debate prompt') }}
             @else
@@ -308,7 +308,7 @@
     </div>
 
     <div class="space-y-1">
-        <p class="text-xs uppercase tracking-wider text-slate-400">{{ __('Background image') }}</p>
+        <p class="text-xs uppercase tracking-wider text-panel-hint">{{ __('Background image') }}</p>
         {{-- Image thumbnail, regenerate/delete, and motion controls all live in the shared
              skybox-controls slideshow tab — the old duplicate block here showed a second
              Regenerate button and confused teachers. --}}
@@ -316,7 +316,7 @@
     </div>
 
     <label class="form-control">
-        <span class="text-xs uppercase tracking-wider text-slate-400">{{ __('Challenge duration (mm:ss)') }}</span>
+        <span class="text-xs uppercase tracking-wider text-panel-hint">{{ __('Challenge duration (mm:ss)') }}</span>
         <input type="text"
                x-data="{ v: '{{ sprintf('%d:%02d', intdiv((int) ($scene->duration_seconds ?? 0), 60), ((int) ($scene->duration_seconds ?? 0)) % 60) }}' }"
                x-model="v"

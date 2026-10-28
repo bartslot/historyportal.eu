@@ -25,11 +25,11 @@
             <p class="text-xs text-base-content">{{ $problem['message'] }}</p>
         @endif
         @if ($scene?->status === 'failed' && $scene->updated_at)
-            <p class="mt-0.5 text-prose text-slate-500" data-tooltip="{{ $scene->updated_at->isoFormat('D MMM YYYY, HH:mm') }}">{{ $scene->updated_at->diffForHumans() }}</p>
+            <p class="mt-0.5 text-prose text-panel-hint" data-tooltip="{{ $scene->updated_at->isoFormat('D MMM YYYY, HH:mm') }}">{{ $scene->updated_at->diffForHumans() }}</p>
         @endif
     </div>
     @if ($busy)
-        <span class="flex shrink-0 items-center gap-1 text-2xs text-slate-400"><x-icons.spinner class="h-3.5 w-3.5 animate-spin" />{{ __('Generating…') }}</span>
+        <span class="flex shrink-0 items-center gap-1 text-2xs text-panel-hint"><x-icons.spinner class="h-3.5 w-3.5 animate-spin" />{{ __('Generating…') }}</span>
     @elseif ($label)
         <button type="button" wire:click="fixProblem({{ $problem['scene_id'] }}, '{{ $problem['fix'] }}')"
                 wire:loading.attr="disabled" class="btn btn-ghost btn-xs shrink-0">{{ $label }}</button>

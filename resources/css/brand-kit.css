@@ -389,3 +389,13 @@
   }
   .lp-succession { opacity: 1; }
 }
+
+/* DaisyUI's -xs controls set their text at 11px. They are teacher controls (Re-narrate, Add camera,
+   the topic chips, the map place-name field), so they take the floor. Unlayered, so this beats the
+   DaisyUI component layer. Found by the 2026-10-28 check, which measured them at 11px. */
+.btn-xs,
+.input-xs,
+.select-xs,
+.textarea-xs {
+  font-size: var(--text-xs);
+}

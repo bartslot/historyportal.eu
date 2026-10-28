@@ -22,7 +22,7 @@
         <div class="flex shrink-0 items-start justify-between gap-4 pb-3">
             <p class="text-sm text-slate-300" x-text="caption"></p>
             <button type="button" @click="open = false" aria-label="{{ __('Close') }}"
-                    class="btn btn-ghost btn-circle btn-sm shrink-0 text-slate-400 hover:text-slate-200">
+                    class="btn btn-ghost btn-circle btn-sm shrink-0 text-panel-hint hover:text-slate-200">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-5 w-5" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
                 </svg>
