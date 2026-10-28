@@ -75,6 +75,17 @@ export function inkLevel(data: Uint8ClampedArray | Uint8Array, w: number, h: num
   return v[v.length >> 1]
 }
 
+/** A band's skyline: the median, over its columns, of the first opaque row (share of the height from the top). */
+export function skylineRow(data: Uint8ClampedArray | Uint8Array, w: number, h: number): number {
+  const tops: number[] = []
+  for (let x = 0; x < w; x++) {
+    for (let y = 0; y < h; y++) if (data[(y * w + x) * 4 + 3] > 128) { tops.push(y / h); break }
+  }
+  if (!tops.length) return 0
+  tops.sort((a, b) => a - b)
+  return tops[tops.length >> 1]
+}
+
 /** Where a strip's land starts: the first row (share of the height, from the top) that is mostly opaque. */
 export function landTop(data: Uint8ClampedArray | Uint8Array, w: number, h: number): number {
   for (let y = 0; y < h; y++) {

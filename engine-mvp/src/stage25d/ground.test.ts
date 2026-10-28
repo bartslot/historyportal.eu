@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bandAt, bandColour, BG_FEATHER, bottomColour, featherOf, groundOptions, defaultNear, hexRgb, inkLevel, landTop, nearOptions, PAPER, resolveGround, rowBands, SKY_BANDS, stainSize } from './ground'
+import { bandAt, bandColour, BG_FEATHER, bottomColour, featherOf, groundOptions, defaultNear, hexRgb, inkLevel, landTop, nearOptions, skylineRow, PAPER, resolveGround, rowBands, SKY_BANDS, stainSize } from './ground'
 import { libraryUrlFor } from './library'
 import type { Asset, Library } from './types'
 
@@ -160,5 +160,14 @@ describe('defaultNear: a scene without set.near gets the bundle near ground', ()
     expect(defaultNear('quay', lib)).toBe('quay')
     expect(defaultNear('none', lib)).toBeNull()
     expect(defaultNear(undefined, { ...lib, assets: [a('quay', 'fg')] })).toBeNull()
+  })
+})
+
+describe('skylineRow: a band\'s crest is the median of its columns\' first opaque row', () => {
+  it('reads the skyline, not the transparent sky above it', () => {
+    const w = 4, h = 10, d = new Uint8ClampedArray(w * h * 4)
+    for (let x = 0; x < w; x++) for (let y = 3; y < h; y++) d[(y * w + x) * 4 + 3] = 255   // opaque from row 3 (0.3)
+    expect(skylineRow(d, w, h)).toBeCloseTo(0.3)
+    expect(skylineRow(new Uint8ClampedArray(w * h * 4), w, h)).toBe(0)
   })
 })

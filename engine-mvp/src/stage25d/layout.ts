@@ -20,6 +20,9 @@ export const bandWidth = (z: number) => BAND_VIEWS * viewWidthAt(z)
 /** A band's height in metres: the look's band height (k, a share of its distance) times its distance. Stands the hill
  *  crest a little above the one behind (k ~0.15), so the hunebed at 22 m shows and the 40 m crest sits near the horizon. */
 export const bandHeight = (z: number, k: number) => k * z
+/** Where a band's picture stands: its skyline (share of its height from the top, f) sits at the crest, bandHeight above the
+ *  floor; the body below the skyline runs toward the camera (covered by the nearer bands, or off the frame bottom). */
+export const bandBottom = (z: number, k: number, h: number, f: number) => bandHeight(z, k) - (1 - f) * h
 /** Draw slot of anything at distance z (ground bands, props, strips): the further out, the earlier. 1010 at 2000 m,
  *  about 1900 at 2 m; always above the floor (999) and the decals (1000). */
 export const bandSlot = (z: number) => 1010 + (Math.log10(2000) - Math.log10(Math.max(z, 1))) * 290

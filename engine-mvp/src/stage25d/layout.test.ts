@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { autoHorizon, bandHeight, bandSlot, bandWidth, GROUND_SLOT, cameraAt, DEPTH_Z, HOUSE, stainIndex, layerAt, motionOf, placeLayer, renderScale, sceneDuration, setShotDuration, setShotPose, shotAt, shotsEnd, nextTier, TIER0, ADAPT, viewWidthAt, type Tier } from './layout'
+import { autoHorizon, bandBottom, bandHeight, bandSlot, bandWidth, GROUND_SLOT, cameraAt, DEPTH_Z, HOUSE, stainIndex, layerAt, motionOf, placeLayer, renderScale, sceneDuration, setShotDuration, setShotPose, shotAt, shotsEnd, nextTier, TIER0, ADAPT, viewWidthAt, type Tier } from './layout'
 import type { Scene } from './types'
 import { LessonDoc } from './edits'
 import type { Asset } from './types'
@@ -275,5 +275,13 @@ describe('ground bands (set.groundBands): three views wide, height k times dista
     expect(bandSlot(2)).toBeGreaterThan(placeLayer({ ...tree, layer: 'prop' }, { depth: 'fg' }, 0).alphaIndex)
     expect(placeLayer({ ...tree, layer: 'prop' }, { depth: 'fg' }, 0).alphaIndex).toBeGreaterThan(bandSlot(15))
     expect(bandSlot(2000)).toBeLessThan(placeLayer({ ...tree, layer: 'prop' }, { depth: 'mid' }, 0).alphaIndex)
+  })
+})
+
+describe('ground band crest: the skyline sits bandHeight above the floor; the body runs toward the camera', () => {
+  it('the skyline lands on the crest at any picture height; the 2 m band body runs off the frame bottom', () => {
+    const z = 15, k = 0.15, h = 12, f = 0.4   // skyline 40 % down the picture
+    expect(bandBottom(z, k, h, f) + (1 - f) * h).toBeCloseTo(bandHeight(z, k))
+    expect(bandBottom(2, 0.15, 1.65, 0.5)).toBeLessThan(0)   // bottom under the floor: off the frame bottom
   })
 })

@@ -8,7 +8,7 @@ import {
 import type { Asset, MotionSpec } from './types'
 import { SHADE_COLOUR, SUN_COLOUR, type Alive, type Paper } from './look'
 import { MOTION_CODE } from './layout'
-import { bottomColour, inkLevel, landTop, rowBands } from './ground'
+import { bottomColour, inkLevel, landTop, rowBands, skylineRow } from './ground'
 import { GL_NOISE } from './ground-gl'
 
 /** Line by depth (look.ts), shared with the puppet figures (S3): `lineByDepth` takes a STRAIGHT colour, how much of
@@ -170,6 +170,8 @@ const textures = new Map<string, Promise<RawTexture>>()
 export const edgeColours = new Map<string, [number, number, number]>()
 /** Per url: where its land starts (landTop), for set.horizon 'auto'. */
 export const landTops = new Map<string, number>()
+/** Per url: a ground band's skyline (skylineRow), where its crest is measured from. */
+export const skylines = new Map<string, number>()
 /** Per url: how dark its ink is (inkLevel), for line normalisation (look.ts inkScale). */
 export const inkLevels = new Map<string, number>()
 /** Per url: the picture's colour per band of rows (rowBands), for a sky's colour where it meets the floor. */
@@ -193,6 +195,7 @@ export function loadPremultiplied(url: string, scene: Scene): Promise<RawTexture
       if (edge) edgeColours.set(url, edge)
       bandColours.set(url, rowBands(data, c.width, c.height))
       landTops.set(url, landTop(data, c.width, c.height))
+      skylines.set(url, skylineRow(data, c.width, c.height))
       const ink = inkLevel(data, c.width, c.height)
       if (ink !== null) inkLevels.set(url, ink)
       for (let i = 0; i < data.length; i += 4) {
