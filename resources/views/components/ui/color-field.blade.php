@@ -65,7 +65,7 @@
         </span>
         <span class="flex min-w-0 items-baseline gap-0.5">
             @if ($isSet)
-                <span class="text-3xs font-semibold text-panel-label">#</span>
+                <span class="text-xs font-semibold text-panel-label">#</span>
                 <span class="truncate text-xs tracking-wide text-panel-value">{{ $hex }}</span>
             @else
                 <span class="truncate text-xs tracking-wide text-panel-label">{{ __('None') }}</span>
@@ -81,7 +81,7 @@
                @if ($keyframeTarget) data-key-target="{{ $keyframeTarget }}" data-key-property="{{ $opacityProperty }}" data-key-scale="100" @endif
                class="w-7 border-0 bg-transparent p-0 text-right text-xs outline-none
                       [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
-        <span class="text-3xs font-semibold text-panel-label">%</span>
+        <span class="text-xs font-semibold text-panel-label">%</span>
     </label>
 
     <span class="flex shrink-0 border-l border-panel-hairline pl-1"><x-ui.keyframe-diamond :target="$keyframeTarget" :property="$keyframeTarget ? $colorProperty.' '.$opacityProperty : null" /></span>

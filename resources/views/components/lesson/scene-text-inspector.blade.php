@@ -29,7 +29,7 @@
         'center' => 'M3.75 6.75h16.5M6.75 12h10.5M3.75 17.25h16.5',
         'right' => 'M3.75 6.75h16.5M9.75 12h10.5M3.75 17.25h16.5',
     ];
-    $labelCol = 'style="width: var(--settings-panel-label-w, 3.0625rem)" class="shrink-0 text-3xs font-semibold uppercase tracking-wide text-panel-label"';
+    $labelCol = 'style="width: var(--settings-panel-label-w, 3.0625rem)" class="shrink-0 text-xs font-semibold uppercase tracking-wide text-panel-label"';
 @endphp
 
 @if (! $isPanel)
@@ -56,7 +56,7 @@
         </span>
         <div class="min-w-0 flex-1">
             <h2 class="truncate text-lg font-bold text-base-content">{{ $title }}</h2>
-            <p class="text-2xs tracking-wide text-base-content">{{ __('Text layer') }}</p>
+            <p class="text-prose tracking-wide text-base-content">{{ __('Text layer') }}</p>
         </div>
         <button type="button" wire:click="deleteSceneText(@js($id))"
                 wire:confirm="{{ __('Remove this text?') }}"
@@ -99,7 +99,7 @@
 
                 <div class="flex items-center gap-2">
                     <span {!! $labelCol !!}>{{ __('Size') }}</span>
-                    <x-ui.segmented panel name="text-size-{{ $id }}" class="min-w-0 flex-1" tab-class="flex-1 !text-3xs !font-semibold uppercase tracking-wide" :value="$val('size', 'md')"
+                    <x-ui.segmented panel name="text-size-{{ $id }}" class="min-w-0 flex-1" tab-class="flex-1 !text-xs !font-semibold uppercase tracking-wide" :value="$val('size', 'md')"
                                     :options="[['sm', __('Small')], ['md', __('Medium')], ['lg', __('Large')]]"
                                     on-change="$wire.call('updateSceneText', {{ $tid }}, 'size', $event.target.value)" />
                 </div>
@@ -120,7 +120,7 @@
 
         <x-ui.settings-section :title="__('Appearance')" name="text-appearance">
             <div class="space-y-2">
-                <span class="block text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Colour') }}</span>
+                <span class="block text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Colour') }}</span>
                 <x-ui.color-field
                     :color="$val('color', '#f8fafc')"
                     :opacity="$val('colorOpacity', 1)"
@@ -242,7 +242,7 @@
     @if ($isPanel)
         <div>
             <h3 class="font-semibold text-primary">{{ __('Background panel') }}</h3>
-            <p class="mt-1 text-2xs leading-tight text-slate-500">{{ __('A readable backing panel behind the scene text.') }}</p>
+            <p class="mt-1 text-prose leading-tight text-slate-500">{{ __('A readable backing panel behind the scene text.') }}</p>
         </div>
 
         <label class="form-control">

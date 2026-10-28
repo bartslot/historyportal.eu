@@ -118,7 +118,7 @@ for (const locale of ['fr', 'de']) {
 
         return size;
       });
-      expect(step, `${name}: text-2xs must still be the 11px step`).toBe('11px');
+      expect(step, `${name}: text-2xs must still be the 12px floor step`).toBe('12px');
 
       const hits = await clipped(page);
       hits.forEach((h) => all.push(`${name}: "${h.text}" ${h.sw}/${h.cw}w ${h.sh}/${h.ch}h @${h.fs} [${h.cls}]`));
@@ -153,7 +153,7 @@ test('the clipping detector reports a clip it is given', async ({ page }) => {
 
   const found = await clipped(page);
   expect(found.length, 'the planted clip should be reported').toBe(1);
-  expect(found[0].fs, 'and it should be measured at the step under test').toBe('11px');
+  expect(found[0].fs, 'and it should be measured at the step under test').toBe('12px');
 });
 
 test('the scrubber century labels do not collide at 11px', async ({ page }) => {
@@ -192,7 +192,7 @@ test('the scrubber century labels do not collide at 11px', async ({ page }) => {
 
   // This is the assertion that moves with this change, and the one that caught it when the token
   // was forced to 20px in the RED proof.
-  expect(report.size, 'the scrubber year should be on the merged step').toBe('11px');
+  expect(report.size, 'the scrubber year should be on the merged step').toBe('12px');
 
   // Not a type-size guard — a ruler-density one. 346.6px of clear air at 11px, so this fires only
   // if century ticks are ever packed an order of magnitude tighter, which is worth knowing about.

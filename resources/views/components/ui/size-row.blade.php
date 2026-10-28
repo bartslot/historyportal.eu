@@ -35,7 +35,7 @@
      x-on:timeline-changed.window="syncKeyed()">
 
     <span style="width: var(--settings-panel-label-w, 3.0625rem)"
-          class="shrink-0 text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ $label ?? __('Size') }}</span>
+          class="shrink-0 text-xs font-semibold uppercase tracking-wide text-panel-label">{{ $label ?? __('Size') }}</span>
 
     {{-- DaisyUI `join` glues the pair into one control, which is what the design draws. --}}
     <div class="join min-w-0 flex-1">
@@ -49,7 +49,7 @@
                      through the component that knows how to derive it. --}}
                 <span data-scrub aria-hidden="true"
                       @if ($side === 'w') x-on:dblclick.prevent="resetWidth()" @endif
-                      class="shrink-0 cursor-col-resize select-none text-3xs font-semibold text-panel-label">{{ $glyph }}</span>
+                      class="shrink-0 cursor-col-resize select-none text-xs font-semibold text-panel-label">{{ $glyph }}</span>
                 {{-- ONE writer. `x-model` plus an input handler that also assigns to the same
                      property is two of them, and they disagree the moment the handler derives a
                      value rather than echoing one: the lock would set h to 10, x-model would put

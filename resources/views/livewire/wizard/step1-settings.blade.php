@@ -273,7 +273,7 @@
                  x-transition:enter-start="opacity-0 -translate-y-1"
                  x-transition:enter-end="opacity-100 translate-y-0"
                  class="absolute z-50 top-full mt-1 w-full rounded-box border border-white/10 bg-base-200 p-2">
-                <p class="px-1 pb-1.5 text-2xs uppercase tracking-wider text-slate-500">{{ __('Popular angles') }}</p>
+                <p class="px-1 pb-1.5 text-prose uppercase tracking-wider text-slate-500">{{ __('Popular angles') }}</p>
                 <div class="flex flex-wrap gap-1.5">
                     @foreach ($angleSuggestions as $angle)
                         <button type="button"

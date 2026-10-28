@@ -88,7 +88,7 @@
             </div>
         </div>
         <div wire:loading wire:target="titleUpload" class="mt-1 text-2xs text-slate-500">{{ __('Uploading…') }}</div>
-        @error('titleUpload') <p class="mt-1 text-2xs text-error">{{ $message }}</p> @enderror
+        @error('titleUpload') <p class="mt-1 text-prose text-error">{{ $message }}</p> @enderror
         @if (count($lesson->posterCandidates()))
             <div x-show="changing" x-cloak class="mt-3">
                 <x-lesson.picture-strip :images="$lesson->posterCandidates()" select="selectTitleImage" id="title-picture"

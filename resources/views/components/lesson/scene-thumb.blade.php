@@ -98,7 +98,7 @@
     @endif
 
     @if ($number !== null)
-        <span class="absolute left-1.5 top-1 text-3xs font-semibold leading-none text-white/75 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
+        <span data-micro-label class="absolute left-1.5 top-1 text-3xs font-semibold leading-none text-white/75 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
             {{ $number }}
         </span>
     @endif
@@ -111,7 +111,7 @@
         $why = $problems ? implode(' ', array_unique(array_column($problems, 'message'))) : null;
     @endphp
     @if ($worst)
-        <span data-problem-dot="{{ $worst }}" @if ($why) data-tooltip="{{ $why }}" @endif
+        <span data-problem-dot="{{ $worst }}" data-micro-label @if ($why) data-tooltip="{{ $why }}" @endif
               @class(['pointer-events-auto absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full text-3xs font-bold',
                       'bg-error text-white' => $worst === \App\Support\LessonProblems::BLOCKS,
                       'bg-warning text-warning-content' => $worst !== \App\Support\LessonProblems::BLOCKS])>!</span>

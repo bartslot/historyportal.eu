@@ -63,10 +63,28 @@ Two hands, doing different jobs.
 
 - **Body** says something: 13px on a 310px card, generous line height, `--color-card-body`. Size
   follows the measure, not a house number — 13px is what keeps a narrow panel readable.
-- **Label** names something: `.lp-card-label` (Inter SemiBold, uppercase, 0.5 tracking, 8 or 11px).
+- **Label** names something: `.lp-card-label` (Inter SemiBold, uppercase, 0.5 tracking, 12px in a
+  panel; 8px only on a card, see the floor below).
+
+**The floor (PM decision, 2026-10-28, applies to the whole app UI):**
+
+- Any text a teacher reads or clicks in a panel, inspector, toolbar, toggle, helper text, link,
+  menu or dialog is **at least 12px** (`text-xs`, or `text-2xs` which is now 12px too).
+- Helper and body prose is **at least 13px** (`text-prose`).
+- Text contrast is **WCAG AA, 4.5:1**, against its real background, and measured, not eyeballed.
+- **8px (`text-3xs`) is allowed only** for a decorative micro-label painted on stage art, a poster
+  or a card: a scene number on a thumbnail, a "Title" tag on a title screen. Never in a control, a
+  panel row, a toggle, a helper text or a link. Mark each such use `data-micro-label`; the allowlist
+  in `tests/Unit/SmallTextFloorTest.php` names every file and count.
+- Colours come from tokens: `text-panel-label` (row labels), `text-panel-hint` (helper prose),
+  `text-panel-link` (links inside a panel). Not `text-slate-500`, not `text-sky-300`.
+- Sizes are declared only in `resources/css/brand-kit.css`. A second `@theme` that redefines them
+  wins silently and has already hidden a fix once.
+- The check: `tests/playwright/small-text-floor.spec.ts` walks the editor's visible text for a
+  computed size under 12px and runs axe colour-contrast, at 1440x900 and 1024x700.
 
 Small grey body text is a label wearing the wrong clothes. `.lp-card-label` carries **type only** —
-the 8px era and footer links wear it in white, the 11px section label in muted.
+the 8px era and footer links wear it in white, the 12px section label in muted.
 
 ## 4. Fade, do not clip
 

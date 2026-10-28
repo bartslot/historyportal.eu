@@ -44,7 +44,7 @@
 
      WHERE IT DIVERGES FROM THE FILE, and why, so the next person does not "fix" it back:
 
-     * Row labels ARE the file's 8px LABEL_SMALL_UI (`text-3xs`), and the label column is the
+     * Row labels ARE the file's 8px LABEL_SMALL_UI (`text-xs`), and the label column is the
        file's 49px. An earlier pass rendered them at 11px on the reading that there was one small
        type step; there are two in the file, and at 11px every label sat too heavy and the column
        had to grow 23px to fit.
@@ -80,7 +80,7 @@
     {{-- ── Appearance: colour, where it sits, how big, how turned, how soft ────────────────── --}}
     <x-ui.settings-section :title="__('Appearance')" name="appearance">
         <div class="space-y-2">
-            <span class="block text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Colour') }}</span>
+            <span class="block text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Colour') }}</span>
 
             <x-ui.color-field
                 :color="$val('tint', '')"
@@ -103,7 +103,7 @@
             {{-- Position: two fields on one row, X and Y, both stage percentages. --}}
             <div class="flex items-center gap-2">
                 <span style="width: var(--settings-panel-label-w, 3.0625rem)"
-                      class="shrink-0 text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Position') }}</span>
+                      class="shrink-0 text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Position') }}</span>
                 <x-ui.stepper-field glyph="X" :label="__('Horizontal position')" :min="0" :max="100" :step="1"
                                     :value="$num($val('x', 50), 0)" :default="50" :keyframe-target="'art:'.$aid" keyframe-property="x"
                                     :on-input="$live('x')" :on-change="$save('x')" class="min-w-0 flex-1" />
@@ -155,7 +155,7 @@
         <div class="space-y-2">
             <label class="flex items-center justify-between gap-2">
                 <span style="width: var(--settings-panel-label-w, 3.0625rem)"
-                      class="shrink-0 text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Blend') }}</span>
+                      class="shrink-0 text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Blend') }}</span>
                 {{-- Multiply is the one that earns its keep: it drops the white paper out of an
                      engraving or a scanned map so the artwork sits ON the scene instead of in a box
                      on top of it. The blend applies to the layer's CONTENT, never to this panel. --}}
@@ -202,7 +202,7 @@
         <div class="space-y-2" x-data="{ amb: @js($val('ambient', 'none')) }">
             <label class="flex items-center justify-between gap-2">
                 <span style="width: var(--settings-panel-label-w, 3.0625rem)"
-                      class="shrink-0 text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Motion') }}</span>
+                      class="shrink-0 text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Motion') }}</span>
                 <div class="min-w-0 flex-1">
                     <select x-model="amb" x-on:input="{{ $live('ambient') }}" wire:change="{{ $save('ambient') }}"
                             aria-label="{{ __('Motion') }}"
@@ -254,7 +254,7 @@
                 <div class="space-y-2" x-data="{ play: @js($val('frames_play', 'wind')) }" data-layer-frames>
                     <label class="flex items-center justify-between gap-2">
                         <span style="width: var(--settings-panel-label-w, 3.0625rem)"
-                              class="shrink-0 text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Frames') }}</span>
+                              class="shrink-0 text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Frames') }}</span>
                         <div class="min-w-0 flex-1">
                             <select x-model="play" x-on:input="{{ $live('frames_play') }}" wire:change="{{ $save('frames_play') }}"
                                     aria-label="{{ __('Frames') }}" style="height: var(--settings-panel-row-h, 2rem)" class="select select-xs w-full text-2xs">
@@ -356,7 +356,7 @@
 
                 <div class="flex items-center gap-2">
                     <span style="width: var(--settings-panel-label-w, 3.0625rem)"
-                      class="shrink-0 text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Backdrop') }}</span>
+                      class="shrink-0 text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Backdrop') }}</span>
                     <div class="flex min-w-0 flex-1 gap-1">
                         @foreach ([['none', __('None')], ['glass', __('Glass')], ['#0f172a', __('Solid')]] as [$bgVal, $bgLabel])
                             <button type="button" wire:click="setEmbedOption({{ $aid }}, 'bg', '{{ $bgVal }}')"
@@ -383,7 +383,7 @@
 
             {{-- The one sentence that survives the no-prose-in-the-editor rule, because it is not
                  how-to: it is what the switch currently MEANS, and it changes when you flip it. --}}
-            <p class="mt-1 text-2xs leading-snug text-base-content/40">
+            <p class="mt-1 text-prose leading-snug text-base-content/40">
                 {{ $isPinned
                     ? __('Stays on this place as the map pans and zooms.')
                     : __('Sits at a fixed spot on the screen.') }}

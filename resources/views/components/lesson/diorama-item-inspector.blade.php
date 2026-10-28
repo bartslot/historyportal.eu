@@ -15,7 +15,7 @@
         <span class="min-w-0 flex-1 truncate text-sm font-semibold text-base-content" x-text="label"></span>
     </div>
 
-    <p class="mt-3 text-2xs leading-snug text-panel-label" x-show="description" x-text="description"></p>
+    <p class="mt-3 text-prose leading-snug text-panel-label" x-show="description" x-text="description"></p>
 
     <div class="mt-3 space-y-1">
         <x-ui.panel-row :label="__('Height')">
@@ -27,7 +27,7 @@
             <x-ui.panel-row :label="$loop->first ? __('Position') : null" keyframe
                             :keyframe-target="'dio:'.$itemId" :keyframe-property="$axis">
                 <label class="input input-xs flex w-full items-center gap-1.5 px-2" style="height: var(--settings-panel-row-h, 2rem)">
-                    <span aria-hidden="true" class="shrink-0 select-none text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ $glyph }}</span>
+                    <span aria-hidden="true" class="shrink-0 select-none text-xs font-semibold uppercase tracking-wide text-panel-label">{{ $glyph }}</span>
                     <input type="number" step="0.25" aria-label="{{ $aria }}"
                            data-diorama-field="{{ $axis }}"
                            :value="{{ $axis }}" x-on:change="set({{ $loop->index }}, $event.target.value)"

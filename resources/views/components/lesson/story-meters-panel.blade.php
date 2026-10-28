@@ -27,6 +27,6 @@
                        class="input input-sm input-bordered w-20 shrink-0 bg-slate-900 text-right" />
             </div>
         @endforeach
-        <p class="text-2xs text-slate-600">{{ __('Icon (emoji), label and start value (0–100). Meters can’t be added or removed.') }}</p>
+        <p class="text-prose text-slate-600">{{ __('Icon (emoji), label and start value (0–100). Meters can’t be added or removed.') }}</p>
     </div>
 </div>

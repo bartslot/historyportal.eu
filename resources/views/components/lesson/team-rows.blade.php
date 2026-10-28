@@ -10,7 +10,7 @@
      and an add button. Items, dossier cards, options, evidence, prompts and roles all edit alike. --}}
 @php
     [$heading, $addLabel, $columns] = $list;
-    $label = 'text-3xs font-semibold uppercase tracking-wide text-panel-label';
+    $label = 'text-xs font-semibold uppercase tracking-wide text-panel-label';
     $max = \App\Services\Lessons\TeamGameSpec::maxRows($field);
 @endphp
 

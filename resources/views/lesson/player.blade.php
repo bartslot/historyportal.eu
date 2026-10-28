@@ -539,7 +539,7 @@
                          role="dialog" aria-label="{{ __('Audio and subtitles') }}"
                          class="mb-3 ml-auto flex max-h-[60vh] w-full flex-col overflow-y-auto rounded-xl border border-white/10 bg-black/70 p-2 backdrop-blur-md sm:w-fit sm:flex-row sm:gap-2">
                         <div class="sm:w-44" role="group" aria-labelledby="cc-audio-heading">
-                            <p id="cc-audio-heading" class="px-3 pb-1 pt-2 text-2xs font-semibold uppercase tracking-widest text-white/50">{{ __('Audio') }}</p>
+                            <p id="cc-audio-heading" class="px-3 pb-1 pt-2 text-prose font-semibold uppercase tracking-widest text-white/50">{{ __('Audio') }}</p>
                             <template x-for="(row, i) in ccAudioRows" :key="row.code">
                                 <button type="button" @click="selectAudio(row)" :data-cc-col="0" :data-cc-row="i"
                                         :aria-pressed="row.current" @focus="ccFocus = { col: 0, row: i }"
@@ -552,7 +552,7 @@
                             </template>
                         </div>
                         <div class="mt-2 border-t border-white/10 pt-1 sm:mt-0 sm:w-64 sm:border-l sm:border-t-0 sm:pl-2 sm:pt-0" role="group" aria-labelledby="cc-subs-heading">
-                            <p id="cc-subs-heading" class="px-3 pb-1 pt-2 text-2xs font-semibold uppercase tracking-widest text-white/50">{{ __('Subtitles') }}</p>
+                            <p id="cc-subs-heading" class="px-3 pb-1 pt-2 text-prose font-semibold uppercase tracking-widest text-white/50">{{ __('Subtitles') }}</p>
                             <template x-for="(row, i) in ccSubtitleRows" :key="row.code || 'off'">
                                 <button type="button" @click="selectSubtitle(row.code)" :data-cc-col="1" :data-cc-row="i"
                                         :aria-pressed="ccSelectedSubtitle() === row.code" @focus="ccFocus = { col: 1, row: i }"
@@ -892,18 +892,18 @@
                             class="lp-qr-plate hidden shrink-0 cursor-pointer flex-col items-center pb-1 sm:flex">
                         <canvas id="title-qr-canvas" class="block" style="image-rendering: pixelated; width: 96px; height: 96px;"></canvas>
                         <span class="-mt-0.5 font-mono text-2xs font-bold uppercase tracking-[0.25em]" x-text="lesson.lesson_code"></span>
-                        <span data-title-version class="font-mono text-3xs leading-none text-brand-ink/50" x-text="'v' + lesson.content_version">v{{ (int) ($lesson->content_version ?? 1) }}</span>
+                        <span data-title-version class="font-mono text-xs leading-none text-brand-ink/50" x-text="'v' + lesson.content_version">v{{ (int) ($lesson->content_version ?? 1) }}</span>
                     </button>
                 @endif
                 {{-- On a phone neither the QR nor the code stands here: the version alone, in that corner. --}}
                 <span data-title-version-alone aria-hidden="true"
-                      class="ml-auto self-end pb-1 font-mono text-3xs leading-none text-white/50 sm:hidden"
+                      class="ml-auto self-end pb-1 font-mono text-xs leading-none text-white/50 sm:hidden"
                       x-text="'v' + lesson.content_version">v{{ (int) ($lesson->content_version ?? 1) }}</span>
                 {{-- The QR off or made way: the code in its place, the version under it as under the QR. --}}
                 <p x-show="titleCodeInMeta" x-cloak data-title-code data-title-avoid data-title-piece="code" data-title-rail-item
                    class="title-pill hidden flex-col items-center justify-center font-mono text-sm font-bold uppercase tracking-[0.2em] text-white/80 sm:flex">
                     <span x-text="lesson.lesson_code"></span>
-                    <span data-title-version class="font-mono text-3xs font-normal normal-case leading-none tracking-normal text-white/50" x-text="'v' + lesson.content_version">v{{ (int) ($lesson->content_version ?? 1) }}</span>
+                    <span data-title-version class="font-mono text-xs font-normal normal-case leading-none tracking-normal text-white/50" x-text="'v' + lesson.content_version">v{{ (int) ($lesson->content_version ?? 1) }}</span>
                 </p>
             </div>
 
@@ -968,7 +968,7 @@
                         </button>
                     </template>
 
-                    <p x-show="attributionLine" x-text="attributionLine" class="mt-16 text-2xs text-base-content/40"></p>
+                    <p x-show="attributionLine" x-text="attributionLine" class="mt-16 text-prose text-base-content/40"></p>
                 </div>
             </section>
         </div>
@@ -982,7 +982,7 @@
             class="absolute inset-0 flex items-center justify-center bg-slate-950/92 backdrop-blur-md pointer-events-auto px-5 py-8 overflow-y-auto"
         >
             <div class="w-full max-w-2xl rounded-3xl border border-primary/40 bg-slate-950/95 p-7 sm:p-9">
-                <p class="text-primary text-2xs font-semibold uppercase tracking-[0.3em] mb-3">{{ __('Your Challenge') }}</p>
+                <p class="text-primary text-prose font-semibold uppercase tracking-[0.3em] mb-3">{{ __('Your Challenge') }}</p>
                 <h2 x-text="lesson.game_title || @js(__('Strategy Challenge'))"
                     class="font-history text-2xl sm:text-4xl font-bold text-[#E1EEF4] leading-tight mb-5"></h2>
                 <div x-show="lesson.game_instructions_html" x-html="lesson.game_instructions_html"

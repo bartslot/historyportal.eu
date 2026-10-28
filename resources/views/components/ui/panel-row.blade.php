@@ -36,7 +36,7 @@
 <div {{ $attributes->class(['flex items-center gap-2']) }} style="min-height: var(--settings-panel-row-h, 2rem)">
     <span @if ($default !== null) data-scrub @endif
           @class([
-              'shrink-0 select-none text-3xs font-semibold uppercase leading-tight tracking-wide text-panel-label',
+              'shrink-0 select-none text-xs font-semibold uppercase leading-tight tracking-wide text-panel-label',
               'cursor-col-resize' => $default !== null,
           ])
           style="width: var(--settings-panel-label-w, 3.0625rem)">{{ $label }}</span>

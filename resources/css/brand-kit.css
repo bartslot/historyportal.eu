@@ -47,6 +47,10 @@
   --color-panel-tile-active: #182537;
   --color-panel-tile-glyph: #8aa0b9;
   --color-panel-tile-glyph-active: #d9d9d9;
+  /* Helper prose and muted readouts in a panel. --color-panel-label (#7e8b9c) is for row labels and
+     is too dim for a sentence. slate-500 was the old helper grey and fails AA on the navy. */
+  --color-panel-hint: #94a3b8;     /* helper prose — AA on the panel navy, measured in the Playwright spec */
+  --color-panel-link: #7dd3fc;     /* links and "or drop a pin"-style actions inside a panel */
 
   /* ── Selected surface ─────────────────────────────────────────────────────────────────────── */
   /* Figma's `selected` variable: the one light card on a dark page, the "Continuous practice" outcome
@@ -97,6 +101,8 @@
      one wizard screen carried SIX different sizes under 12px at once: 9, 9.6, 10, 10.4, 11, 12.
      They are now two named steps, and nothing outside this file sets a font size.
      Guarded by tests/Unit/TypeScaleTest.php, which fails on a new arbitrary size.
+     SUPERSEDED 2026-10-28: the 11px step below is now 12px, the PM floor. The reasoning that follows is
+     the record of how the scale was merged, not the current size. See THE FLOOR further down.
 
      WHY 11px AND NOT 10px. Bart: "the ~11px band... let's combine it with the 10px. Use tailwind
      sizing for this." Both values were in play and 11 wins on every count that has an authority
@@ -115,8 +121,20 @@
      at 11px on the 128×72 scene thumbnails that carry most of it (86 elements on one screen),
      nothing clipped and the tile still held the label comfortably. 8px stays what Figma made it —
      a micro-label on a card, not a general small size. */
-  --text-2xs: 0.6875rem;             /* 11px — small text you READ: helper prose, readouts, labels */
-  --text-3xs: 0.5rem;                /* 8px  — a micro-label on a tile or a card. Figma's floor. */
+  /* THE FLOOR (2026-10-28, PM decision). Any text a teacher reads or clicks — panels, inspectors,
+     toolbars, toggles, helper text, links, menus, dialogs — is at least 12px. Helper/body prose is
+     at least 13px (--text-prose). Text contrast is WCAG AA (4.5:1) against its real background.
+     Bart, on a 2026-10-28 map inspector: "I can barely read this. We have rules for this no?" The
+     8px toggle labels and 11px helper text had been OK'd by nothing: no check measured rendered size.
+     tests/Unit/SmallTextFloorTest.php and tests/playwright/small-text-floor.spec.ts now do.
+     --text-2xs is 12px, not 11: every 11px call site (readouts, helper text, card labels) lifts to the
+     floor by changing this one token, and nothing is left to drift. */
+  --text-2xs: 0.75rem;               /* 12px — the floor. Labels, readouts, helper text in panels. */
+  --text-prose: 0.8125rem;           /* 13px — helper and body prose in an inspector or dialog. */
+  /* 8px is ONLY for decorative micro-labels painted on stage art, posters or cards (a scene-number
+     badge on a thumbnail). Never in a control, a panel row, a toggle, a helper text or a link.
+     The allowlist lives in tests/Unit/SmallTextFloorTest.php and must name every use. */
+  --text-3xs: 0.5rem;                /* 8px  — decorative micro-label on stage art/posters/cards ONLY. */
 
   /* Tracking and leading were invented in brackets for the same reason and are fixed the same way.
      Only the values Tailwind has no step for are named; `tracking-[0.1em]` was simply

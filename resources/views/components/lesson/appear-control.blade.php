@@ -38,7 +38,7 @@
 @endphp
 <div {{ $attributes->class(['space-y-2']) }} data-appear-control>
     <div class="space-y-1">
-        <span class="block text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Appear') }}</span>
+        <span class="block text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Appear') }}</span>
         <div class="flex items-center gap-2">
             <select class="select select-sm select-bordered min-w-0 flex-1" wire:change="{{ $onAnim }}">
                 @foreach (\App\Support\LayerEntrances::labels() as $value => $label)
@@ -56,7 +56,7 @@
                    data-appear-delay wire:change="{{ $onDelay }}"
                    class="w-full min-w-0 border-0 bg-transparent p-0 text-right text-xs outline-none
                           [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
-            <span class="text-3xs font-semibold uppercase tracking-wide text-panel-label">s</span>
+            <span class="text-xs font-semibold uppercase tracking-wide text-panel-label">s</span>
         </label>
     </x-ui.panel-row>
 </div>

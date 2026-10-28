@@ -114,7 +114,7 @@
                             @endif
                             <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950 via-slate-950/70 to-transparent p-3 pt-10">
                                 <p class="line-clamp-2 text-sm font-semibold text-slate-100">{{ $lesson->title ?: $lesson->topic }}</p>
-                                <p class="mt-0.5 text-2xs text-slate-400">{{ $lesson->teacher?->name }}</p>
+                                <p class="mt-0.5 text-prose text-slate-400">{{ $lesson->teacher?->name }}</p>
                             </div>
                         </a>
 

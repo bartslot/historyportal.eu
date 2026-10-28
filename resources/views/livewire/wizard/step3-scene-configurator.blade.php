@@ -1204,7 +1204,7 @@
                                 <img src="{{ $option['url'] }}" alt="{{ $option['label'] }}" class="h-full w-full object-cover" onerror="this.closest('button').style.display='none'" />
                             </button>
                         @empty
-                            <p class="col-span-4 self-center text-2xs text-slate-500">{{ __('No scene has a picture yet.') }}</p>
+                            <p class="col-span-4 self-center text-prose text-slate-500">{{ __('No scene has a picture yet.') }}</p>
                         @endforelse
                     </div>
 
@@ -1215,7 +1215,7 @@
                             <span wire:loading wire:target="posterUpload">{{ __('Uploading…') }}</span>
                             <input type="file" accept="image/*" wire:model="posterUpload" class="hidden" />
                         </label>
-                        @error('posterUpload') <p class="text-2xs text-error">{{ $message }}</p> @enderror
+                        @error('posterUpload') <p class="text-prose text-error">{{ $message }}</p> @enderror
                     </div>
                 </div>
             </div>
@@ -1672,7 +1672,7 @@
             </button>
             <div x-show="viewOpen" x-cloak @click.outside="viewOpen = false" x-transition.opacity.duration.150ms
                  class="absolute left-0 top-full z-50 mt-1.5 w-56 rounded-xl border border-slate-700 bg-slate-900 p-1.5">
-                <p class="px-2 py-1 text-2xs uppercase tracking-widest text-slate-500">{{ __('Show') }}</p>
+                <p class="px-2 py-1 text-prose uppercase tracking-widest text-slate-500">{{ __('Show') }}</p>
                 <template x-for="item in [
                     { k: 'scenes',  label: @js(__('Scenes')) },
                     { k: 'script',  label: @js(__('Assets & Script')) },
@@ -1717,7 +1717,7 @@
             </button>
             <div x-show="addOpen" x-cloak @click.outside="addOpen = false" x-transition.opacity.duration.150ms
                  class="absolute left-0 top-full z-50 mt-1.5 w-56 rounded-xl border border-slate-700 bg-base-300 p-1.5" role="menu">
-                <p class="px-2 py-1 text-2xs uppercase tracking-widest text-slate-500">{{ __('Add Scene') }}</p>
+                <p class="px-2 py-1 text-prose uppercase tracking-widest text-slate-500">{{ __('Add Scene') }}</p>
                 <button type="button" @click="Livewire.dispatch('scene:add'); addOpen = false"
                         class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
                     <x-icons.plus class="h-4 w-4 shrink-0 text-primary" />
@@ -1725,7 +1725,7 @@
                     <span class="text-xs text-slate-500">{{ __('Below current') }}</span>
                 </button>
                 <div class="my-1 border-t border-slate-700" role="separator"></div>
-                <p class="px-2 py-1 text-2xs uppercase tracking-widest text-slate-500">{{ __('Add Layer') }}</p>
+                <p class="px-2 py-1 text-prose uppercase tracking-widest text-slate-500">{{ __('Add Layer') }}</p>
                 <button type="button" @click="window.dispatchEvent(new CustomEvent('lesson:add-text')); addOpen = false"
                         class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
                     <x-icons.pencil class="h-4 w-4 shrink-0 text-slate-400" />
@@ -1924,8 +1924,8 @@
             let html = '';
             for (let n = 0; n <= len; n += 100) {
                 html += axis === 'x'
-                    ? `<span style="position:absolute;left:${n + 2}px;bottom:1px;font-size:var(--text-3xs);line-height:1;color:#94a3b8;font-variant-numeric:tabular-nums">${n}</span>`
-                    : `<span style="position:absolute;top:${n + 1}px;left:2px;font-size:var(--text-3xs);line-height:1;color:#94a3b8;font-variant-numeric:tabular-nums">${n}</span>`;
+                    ? `<span style="position:absolute;left:${n + 2}px;bottom:1px;font-size:var(--text-2xs);line-height:1;color:#94a3b8;font-variant-numeric:tabular-nums">${n}</span>`
+                    : `<span style="position:absolute;top:${n + 1}px;left:2px;font-size:var(--text-2xs);line-height:1;color:#94a3b8;font-variant-numeric:tabular-nums">${n}</span>`;
             }
             layer.innerHTML = html;
         };
@@ -2843,12 +2843,12 @@
                             <img src="{{ $art['thumb'] }}" loading="lazy" decoding="async" alt=""
                                  :srcset="srcset(@js($art['thumb']))" :sizes="sizes(@js($art['thumb']))" />
                             @if (($art['kind'] ?? 'painting') === 'city_map')
-                                <span class="absolute right-1 top-1 rounded bg-sky-600/90 px-1 text-3xs font-semibold uppercase tracking-wider text-white">
+                                <span data-micro-label class="absolute right-1 top-1 rounded bg-sky-600/90 px-1 text-3xs font-semibold uppercase tracking-wider text-white">
                                     {{ __('plan') }}
                                 </span>
                             @endif
                             @if (! empty($art['correctness']))
-                                <span class="absolute left-1 top-1 rounded bg-success px-1 text-3xs font-semibold uppercase tracking-wider text-white"
+                                <span data-micro-label class="absolute left-1 top-1 rounded bg-success px-1 text-3xs font-semibold uppercase tracking-wider text-white"
                                       title="{{ __('Match correctness: soft criteria met') }}">
                                     ✓ {{ $art['correctness'] }}
                                 </span>
@@ -2918,9 +2918,9 @@
 
                 </div>
                 @error('uploadImage')
-                    <p class="mt-1 text-2xs text-error">{{ $message }}</p>
+                    <p class="mt-1 text-prose text-error">{{ $message }}</p>
                 @enderror
-                <p class="mt-3 text-2xs text-slate-500">
+                <p class="mt-3 text-prose text-slate-500">
                     {{-- Not "public-domain works": the license filter admits CC BY and CC BY-SA too
                          (it only rejects NC/ND), so the grid genuinely serves openly licensed
                          photographs alongside public-domain art. Saying "public domain" told

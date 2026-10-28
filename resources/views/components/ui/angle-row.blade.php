@@ -29,7 +29,7 @@
 
     <div class="flex items-center gap-2">
         <span style="width: var(--settings-panel-label-w, 3.0625rem)"
-              class="shrink-0 text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Angle') }}</span>
+              class="shrink-0 text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Angle') }}</span>
 
         {{-- The dial. Pointer position relative to the centre IS the angle, so a drag crosses
              0/360 without any special case. --}}
@@ -54,7 +54,7 @@
                    style="height: var(--settings-panel-row-h, 2rem)">
                 {{-- data-scrub: drag this label sideways to change the number. See scrub.js. --}}
                 <span data-scrub aria-hidden="true"
-                      class="shrink-0 cursor-col-resize select-none text-3xs font-semibold text-panel-label">&deg;</span>
+                      class="shrink-0 cursor-col-resize select-none text-xs font-semibold text-panel-label">&deg;</span>
                 <input type="number" min="0" max="360" step="1"
                        aria-label="{{ __('Angle') }}" data-default="0"
                        :value="deg"

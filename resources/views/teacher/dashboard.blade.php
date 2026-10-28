@@ -235,7 +235,7 @@
                             <div class="mt-2 h-1 overflow-hidden rounded-full bg-slate-800">
                                 <span class="block h-full rounded-full bg-success/80" style="width: {{ $lessonResult['average'] }}%"></span>
                             </div>
-                            <p class="mt-1.5 text-2xs text-slate-600">
+                            <p class="mt-1.5 text-prose text-slate-600">
                                 {{ trans_choice(':count attempt|:count attempts', $lessonResult['attempts'], ['count' => $lessonResult['attempts']]) }}
                             </p>
                         </a>

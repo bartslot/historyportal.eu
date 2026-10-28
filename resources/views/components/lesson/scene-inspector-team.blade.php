@@ -23,7 +23,7 @@
         'roles' => [__('Roles in each team'), __('Add role'), []],
     ];
     $modeLists = ['budget' => ['fixed', 'items'], 'choose' => ['cards', 'options'], 'discuss' => ['prompts', 'evidence']][$mode] ?? [];
-    $label = 'text-3xs font-semibold uppercase tracking-wide text-panel-label';
+    $label = 'text-xs font-semibold uppercase tracking-wide text-panel-label';
 @endphp
 
 <div class="space-y-3" data-team-inspector>

@@ -96,7 +96,7 @@
         <span class="text-xs font-medium text-panel-value" data-key-display
               @if ((float) $displayScale !== 1.0) data-key-display-scale="{{ $displayScale }}" @endif>{{ $display ?? $value }}</span>
         @if ($unit)
-            <span class="text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ $unit }}</span>
+            <span class="text-xs font-semibold uppercase tracking-wide text-panel-label">{{ $unit }}</span>
         @endif
     </span>
 </x-ui.panel-row>

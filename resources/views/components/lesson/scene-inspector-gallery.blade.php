@@ -93,7 +93,7 @@
                 @endforeach
             </ul>
         @else
-            <p class="mt-1 text-2xs text-slate-500">{{ __('No images yet.') }}</p>
+            <p class="mt-1 text-prose text-slate-500">{{ __('No images yet.') }}</p>
         @endif
 
         {{-- Consistent "+ Add image" affordance (same picker as voyage — paintings + upload). --}}

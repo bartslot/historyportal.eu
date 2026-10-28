@@ -139,19 +139,10 @@
     --color-dropdown: #18293f;
     --color-dropdown-border: #2e425a;
 
-    /* The panels had drifted into text-[10px] and text-[11px] used interchangeably for the same
-       kind of label, which is two names for one intention; they are merged here at 11px, the size
-       Figma's LABEL_BIGGER carries. This is the SECTION-TITLE step — the row labels under it are
-       text-3xs below, which is a different style in the file, not a rounding of this one. */
-    --text-2xs: 0.6875rem;        /* 11px — Figma's LABEL_BIGGER (section titles) */
+    /* The small-text SIZES (--text-2xs, --text-3xs) live in brand-kit.css, the one place they are
+       decided. They were redefined here at 11px and 8px, and this later @theme block won, so the
+       floor fix in brand-kit did nothing until these were removed. Only the leading stays here. */
     --text-2xs--line-height: 1.1;
-
-    /* Figma's LABEL_SMALL_UI: the uppercase row labels in a settings panel.
-       This is a SECOND small step, and it is deliberate. An earlier pass merged everything small
-       into text-2xs on the reading that the file had one band; it has two — LABEL_SMALL_UI at 8
-       and LABEL_BIGGER at 11 — and collapsing them made every row label sit three pixels too
-       heavy and forced the label column 23px wider than the design to fit. */
-    --text-3xs: 0.5rem;           /* 8px */
     --text-3xs--line-height: 1.2;
 
     /* Slider parts, measured off `row-rotate` (1471:2104). Named here rather than written as hex

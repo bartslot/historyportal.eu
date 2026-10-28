@@ -4,7 +4,7 @@
      save is a Scene save, so Cmd-Z undoes it. The rubric grades the WHY answers and never reaches the
      player. Lists use the team game's row markup (team-rows.blade.php). --}}
 @php
-    $label = 'text-3xs font-semibold uppercase tracking-wide text-panel-label';
+    $label = 'text-xs font-semibold uppercase tracking-wide text-panel-label';
     $mode = $draft['mode'] ?? 'paper';
     $lists = [
         'concepts' => [__('Ideas that count'), __('Add idea'), \App\Services\Lessons\PredictSpec::CONCEPTS_MAX],

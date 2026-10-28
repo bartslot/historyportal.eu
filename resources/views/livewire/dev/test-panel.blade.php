@@ -71,7 +71,7 @@
                     Clear results
                 </button>
             </div>
-            <p class="mt-2 text-2xs leading-snug text-slate-500">
+            <p class="mt-2 text-prose leading-snug text-slate-500">
                 Sheets are a PNG "photo" (Emma all-correct, Liam mixed) — upload it into
                 <span class="text-slate-400">Import paper answers</span> to test vision extraction.
             </p>
@@ -98,7 +98,7 @@
                     </button>
                 @endforeach
             </div>
-            <p class="mt-1.5 text-2xs leading-snug text-slate-500">
+            <p class="mt-1.5 text-prose leading-snug text-slate-500">
                 Switches account instantly, no logout needed. Switching back returns to the same account.
             </p>
         </div>
@@ -233,7 +233,7 @@
                 <button type="button" @click="window.heroDemo.play()" class="btn btn-xs btn-outline">Play</button>
                 <button type="button" @click="window.heroDemo.pause()" class="btn btn-xs btn-outline">Pause</button>
             </div>
-            <p class="mt-1.5 text-2xs leading-snug text-slate-500">
+            <p class="mt-1.5 text-prose leading-snug text-slate-500">
                 Saved in this browser. Once it feels right, tell Claude the numbers and they become
                 the defaults in <span class="text-slate-400 font-mono">hero/lesson-demo.js</span>.
             </p>

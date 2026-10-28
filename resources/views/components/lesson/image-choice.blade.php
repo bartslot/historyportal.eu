@@ -48,7 +48,7 @@
                 @endforeach
             </div>
         @else
-            <p class="self-center text-2xs text-slate-500">{{ __('Add images to the lesson to choose one.') }}</p>
+            <p class="self-center text-prose text-slate-500">{{ __('Add images to the lesson to choose one.') }}</p>
         @endif
     </div>
 </div>

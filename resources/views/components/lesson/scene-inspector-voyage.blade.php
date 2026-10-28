@@ -130,7 +130,7 @@
                 {{-- How to drag the Destination X and bend the sailing line lives in Help, not here:
                      a teacher edits the same lesson dozens of times and reads the instructions once. --}}
             @else
-                <p class="mt-2 rounded-lg border border-amber-700/40 bg-amber-950/20 px-2.5 py-1.5 text-2xs text-primary/80">
+                <p class="mt-2 rounded-lg border border-amber-700/40 bg-amber-950/20 px-2.5 py-1.5 text-prose text-primary/80">
                     {{ __('This voyage has no waypoint data yet — dates can\'t be edited.') }}
                 </p>
             @endif
@@ -190,7 +190,7 @@
                         <img src="{{ $legMarkerImage }}" alt=""
                              class="h-16 w-16 shrink-0 rounded-full object-cover ring-2 ring-primary" />
                         <div class="min-w-0 flex-1">
-                            <p class="text-2xs text-slate-300">{{ __('A picture travels this leg.') }}</p>
+                            <p class="text-prose text-slate-300">{{ __('A picture travels this leg.') }}</p>
                             <div class="mt-1 flex gap-2">
                                 <button type="button" wire:click="openMarkerImagePicker"
                                         class="text-2xs text-primary underline hover:text-amber-200">{{ __('Change') }}</button>
@@ -287,7 +287,7 @@
                     @endforeach
                 </ul>
             @else
-                <p class="mt-1 text-2xs text-slate-500">{{ __('No gallery images yet.') }}</p>
+                <p class="mt-1 text-prose text-slate-500">{{ __('No gallery images yet.') }}</p>
             @endif
 
             <div x-data="{ url: '' }" class="mt-2">
@@ -448,7 +448,7 @@
                                 :class="erase ? 'bg-error text-slate-950' : 'text-slate-300 hover:text-slate-100'"
                                 class="rounded-md py-1 text-2xs font-medium transition-colors">{{ __('Erase') }}</button>
                     </div>
-                    <p class="mt-1 text-2xs text-slate-500" x-text="erase ? @js(__('Drag over masked land to reveal it.')) : @js(__('Drag over land to hide it.'))"></p>
+                    <p class="mt-1 text-prose text-slate-500" x-text="erase ? @js(__('Drag over masked land to reveal it.')) : @js(__('Drag over land to hide it.'))"></p>
                     {{-- Brush size — shared between Paint and Erase (the value stays put when you switch). --}}
                     <label class="mt-2 block">
                         <span class="flex justify-between text-2xs text-slate-300">{{ __('Brush size') }} <span class="text-slate-500" x-text="brush + ' km'"></span></span>
@@ -574,7 +574,7 @@
                     @endforeach
                 </div>
             @else
-                <p class="mt-1 text-2xs text-slate-500">{{ __('This voyage has no fleet data.') }}</p>
+                <p class="mt-1 text-prose text-slate-500">{{ __('This voyage has no fleet data.') }}</p>
             @endif
         </section>
 
@@ -602,7 +602,7 @@
                                 ])>{{ $label }}</button>
                     @endforeach
                 </div>
-                <p class="mt-1 text-2xs text-slate-500">{{ __('One line in the corner, or the date chip above the map.') }}</p>
+                <p class="mt-1 text-prose text-slate-500">{{ __('One line in the corner, or the date chip above the map.') }}</p>
             </div>
 
             <label class="mt-3 block">
@@ -652,7 +652,7 @@
                 </span>
                 <input type="checkbox" @checked($vmr('cam_dolly_arrival', false)) wire:change="setVoyageMap('cam_dolly_arrival', $event.target.checked)" class="toggle toggle-sm toggle-warning shrink-0" />
             </label>
-            <p class="mt-2 text-2xs text-slate-500">{{ __('The sail (with these camera moves) plays in Preview and for students — the editor jumps straight to each landfall.') }}</p>
+            <p class="mt-2 text-prose text-slate-500">{{ __('The sail (with these camera moves) plays in Preview and for students — the editor jumps straight to each landfall.') }}</p>
         </section>
 
         {{-- ROUTE LINE — the sailed (visible) part of the journey. Lesson-wide (one setting for every

@@ -143,7 +143,7 @@
         {{-- Current time, and the WORD being spoken there, which is the readout that means
              something to a teacher. --}}
         <label class="flex shrink-0 items-center gap-1.5" data-scrub-scope>
-            <span data-scrub class="cursor-col-resize select-none text-3xs uppercase tracking-wide text-panel-label">{{ __('Time') }}</span>
+            <span data-scrub class="cursor-col-resize select-none text-xs uppercase tracking-wide text-panel-label">{{ __('Time') }}</span>
             {{-- Bound one way and rounded: x-model showed 10.444200824847092 in a field two
                  digits wide. The model keeps the full precision; the teacher does not need it. --}}
             <input type="number" min="0" step="10" :max="Math.round(duration * 1000)"
@@ -151,16 +151,16 @@
                    x-on:change="seek(Number($event.target.value) / 1000)"
                    data-timeline-time
                    class="h-7 w-16 rounded bg-panel-hairline px-1.5 text-right font-mono text-2xs text-panel-value focus:outline-none" />
-            <span class="text-3xs text-panel-label">ms</span>
+            <span class="text-xs text-panel-label">ms</span>
         </label>
 
         <label class="flex shrink-0 items-center gap-1.5" data-scrub-scope>
-            <span data-scrub class="cursor-col-resize select-none text-3xs uppercase tracking-wide text-panel-label">{{ __('Length') }}</span>
+            <span data-scrub class="cursor-col-resize select-none text-xs uppercase tracking-wide text-panel-label">{{ __('Length') }}</span>
             <input type="number" min="100" step="100" :value="Math.round(duration * 1000)"
                    x-on:change="setDuration(Number($event.target.value) / 1000)"
                    data-timeline-duration
                    class="h-7 w-16 rounded bg-panel-hairline px-1.5 text-right font-mono text-2xs text-panel-value focus:outline-none" />
-            <span class="text-3xs text-panel-label">ms</span>
+            <span class="text-xs text-panel-label">ms</span>
         </label>
 
         {{-- Loop, which is how you watch a two-second build twenty times while tuning it. --}}
@@ -245,7 +245,7 @@
                  button, denying what the panel was offering in the same breath. --}}
             <template x-if="!objects.length && !canHaveCamera">
                 <div class="px-4 pb-3">
-                    <p class="text-2xs text-panel-label">{{ __('Nothing on this scene can be animated yet.') }}</p>
+                    <p class="text-prose text-panel-label">{{ __('Nothing on this scene can be animated yet.') }}</p>
                 </div>
             </template>
 
@@ -332,7 +332,7 @@
                             {{-- Double-click resets: the keys go and the property returns to what it was
                                  before it was keyed. A gesture, not a Reset button: the button took
                                  the width the value field needs (Bart, 2026-10-16). --}}
-                            <span data-scrub class="shrink-0 cursor-col-resize select-none text-3xs uppercase tracking-wide text-panel-label"
+                            <span data-scrub class="shrink-0 cursor-col-resize select-none text-xs uppercase tracking-wide text-panel-label"
                                   style="width: calc(var(--settings-panel-label-w) - 0.75rem)" x-text="propertyLabel(property)"
                                   x-on:dblclick.prevent="canReset(object.target, property.key) && resetProperty(object.target, property.key)"
                                   :data-tooltip="canReset(object.target, property.key) ? @js(__('Double-click to reset')) : null"
@@ -349,7 +349,7 @@
                                        :value="valueAt(object.target, property.key)"
                                        x-on:input="setValue(object.target, property.key, Number($event.target.value), { flush: false })"
                                        x-on:change="setValue(object.target, property.key, Number($event.target.value))"
-                                       class="h-[21px] min-w-0 flex-1 rounded bg-panel-hairline px-1.5 text-right font-mono text-3xs text-panel-value focus:outline-none" />
+                                       class="h-[21px] min-w-0 flex-1 rounded bg-panel-hairline px-1.5 text-right font-mono text-xs text-panel-value focus:outline-none" />
                             </template>
                             {{-- < diamond > — the diamond keys THIS property at the playhead, the
                                  arrows step the playhead to this object's previous and next
@@ -413,7 +413,7 @@
                 <div class="relative shrink-0 cursor-col-resize select-none" style="height: 38px"
                      data-timeline-ruler x-on:pointerdown="startScrub($event)">
                     <template x-for="t in ticks" :key="t">
-                        <span class="absolute top-1.5 text-3xs text-panel-label"
+                        <span class="absolute top-1.5 text-xs text-panel-label"
                               :style="`left: ${xOf(t)}px`" x-text="Math.round(t * 1000)"></span>
                     </template>
                     {{-- Word marks: faint, because they are somewhere to land, not something to read. --}}
@@ -440,7 +440,7 @@
                                 <template x-if="object.kind === 'dio'">
                                     <div class="pointer-events-none absolute inset-0 flex items-center justify-between overflow-hidden">
                                         <span class="h-full w-1.5 cursor-ew-resize rounded-l-[3px] bg-base-content/40"></span>
-                                        <span class="truncate px-1 text-3xs text-base-content/80"
+                                        <span class="truncate px-1 text-xs text-base-content/80"
                                               x-text="dioramaWalks(object.target) ? @js(__('Walk')) : @js(__('Move'))"></span>
                                         <span class="h-full w-1.5 cursor-ew-resize rounded-r-[3px] bg-base-content/40"></span>
                                     </div>
@@ -475,7 +475,7 @@
                                      class="pointer-events-none absolute grid place-items-center overflow-hidden rounded-[2px]"
                                      :data-timeline-bar="object.target + ':' + property.key"
                                      :style="barStyle(spanOf(object.target, property.key)) + '; top: 0; height: var(--timeline-lane-h); background: var(--color-timeline-bar)'">
-                                    <span class="select-none truncate px-2 text-3xs font-medium text-white/90"
+                                    <span class="select-none truncate px-2 text-xs font-medium text-white/90"
                                           x-text="property.label"></span>
                                 </div>
                                 {{-- One hit area per stretch between two keys, over the bar. Click:
@@ -600,7 +600,7 @@
                        :value="bezierText"
                        x-on:change="typeBezier($event.target.value); $event.target.value = bezierText"
                        x-on:keydown.escape.stop="$event.target.value = bezierText; $event.target.blur()"
-                       class="input input-xs mt-1 w-full font-mono text-3xs" />
+                       class="input input-xs mt-1 w-full font-mono text-xs" />
             </div>
         </div>
     </template>

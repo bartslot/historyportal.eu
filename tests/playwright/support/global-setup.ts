@@ -200,11 +200,32 @@ export default async function globalSetup(config: FullConfig) {
     console.warn(`[fixtures] no voyage scene found in ${voyage.code}; specs will open its first scene`);
   }
 
+  // A lesson that CONTAINS a map scene, for the small-text floor spec. Same rule as the voyage:
+  // ask the scenes, not the lesson-level label. Without one the spec has no inspector to measure,
+  // so say so here rather than let it pass on an empty page.
+  // `ctx` is disposed above, so the map lookup gets its own context.
+  const mapCtx = await request.newContext({ baseURL });
+  let mapLesson: Lesson | undefined;
+  let mapScene: { id: number; kind: string } | undefined;
+  for (const candidate of published) {
+    mapScene = (await scenePayload(mapCtx, candidate.code)).find((s) => s.kind === 'map');
+    if (mapScene) { mapLesson = candidate; break; }
+  }
+  await mapCtx.dispose();
+  if (!mapLesson || !mapScene) {
+    throw new Error(
+      'Playwright global setup: no published lesson contains a map scene — the small-text floor spec has no inspector to measure.\n' +
+      'Build one with `php artisan lessons:compose` and publish it.'
+    );
+  }
+  const mapWizard = `/teacher/lessons/${mapLesson.id}/wizard?step=4&scene=${mapScene.id}`;
+
   // An explicit env var always wins, so CI (or a developer chasing one lesson) can still pin a
   // fixture by hand without editing anything.
   const preset = (key: string, value: string) => { process.env[key] ??= value; };
 
   preset('VOYAGE_WIZARD_URL', voyageWizard);
+  preset('MAP_WIZARD_URL', mapWizard);
   preset('VOYAGE_LESSON_CODE', voyage.code);
   preset('VOYAGE_LESSON_ID', String(voyage.id));
   preset('PLAYER_LESSON_CODE', general.code);

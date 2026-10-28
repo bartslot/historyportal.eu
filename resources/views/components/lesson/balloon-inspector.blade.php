@@ -28,7 +28,7 @@
                     on-change="$wire.updateBalloon({{ \Illuminate\Support\Js::from($id) }}, 'kind', $event.target.value)" />
 
     <label class="form-control">
-        <span class="text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Text') }}</span>
+        <span class="text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Text') }}</span>
         <textarea rows="3" maxlength="{{ \App\Services\Support\SpeechBalloons::MAX_TEXT }}"
                   class="textarea textarea-bordered textarea-sm mt-1 w-full"
                   wire:change="updateBalloon(@js($id), 'text', $event.target.value)">{{ $balloon['text'] ?? '' }}</textarea>
@@ -55,7 +55,7 @@
 
     @if ($speakers !== [])
         <label class="form-control">
-            <span class="text-3xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Speaker') }}</span>
+            <span class="text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Speaker') }}</span>
             <select class="select select-sm select-bordered mt-1 w-full"
                     wire:change="updateBalloon(@js($id), 'speaker', $event.target.value)">
                 <option value="" @selected($speaker === null)>{{ __('None') }}</option>

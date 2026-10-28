@@ -213,7 +213,7 @@ class TypeScaleTest extends TestCase
     {
         $css = file_get_contents(dirname(__DIR__, 2).'/resources/css/brand-kit.css');
 
-        $this->assertMatchesRegularExpression('/--text-2xs:\s*0\.6875rem/', $css, '--text-2xs must be 11px');
+        $this->assertMatchesRegularExpression('/--text-2xs:\s*0\.75rem/', $css, '--text-2xs must be 12px (the floor)');
         $this->assertMatchesRegularExpression('/--text-3xs:\s*0\.5rem/', $css, '--text-3xs must be 8px');
         $this->assertMatchesRegularExpression('/--tracking-eyebrow:\s*0\.18em/', $css);
         $this->assertMatchesRegularExpression('/--leading-display:\s*1\.05/', $css);

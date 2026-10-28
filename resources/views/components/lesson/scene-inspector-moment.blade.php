@@ -6,7 +6,7 @@
      the reaction and the payoff sit under a closed Advanced. --}}
 @php
     $on = (bool) ($draft['enabled'] ?? false);
-    $label = 'text-3xs font-semibold uppercase tracking-wide text-panel-label';
+    $label = 'text-xs font-semibold uppercase tracking-wide text-panel-label';
     $payoff = $draft['payoff']['type'] ?? 'none';
     $input = $draft['input'] ?? 'words';
     $sound = in_array($input, \App\Services\Lessons\MomentSpec::WORDLESS_INPUTS, true);

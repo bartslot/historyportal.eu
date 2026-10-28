@@ -89,7 +89,7 @@
          teacher asks for it rather than after a round trip. --}}
     <div x-show="!paras.length" x-cloak
          class="flex min-h-0 flex-1 flex-col items-center justify-center gap-2.5 px-4 py-6 text-center">
-        <p class="max-w-sm text-xs leading-relaxed text-slate-500">
+        <p class="max-w-sm text-xs leading-relaxed text-panel-hint">
             {{ __('No narration yet. Write a few lines here and they will be read aloud over this scene.') }}
         </p>
         <button type="button" x-on:click="addNarration()"
@@ -210,7 +210,7 @@
             {{-- wire:ignore so Livewire morphs never wipe WaveSurfer's rendered canvas. --}}
             <div x-ref="waveform" wire:ignore x-show="hasAudio" class="h-7 min-w-0 flex-1 cursor-pointer transition-opacity"
                  :class="dirty && 'pointer-events-none opacity-40'"></div>
-            <span x-show="!hasAudio && !regenerating" class="min-w-0 flex-1 truncate text-2xs text-slate-500">
+            <span x-show="!hasAudio && !regenerating" class="min-w-0 flex-1 truncate text-2xs text-panel-hint">
                 {{ __('No narration yet') }}
             </span>
             <span class="shrink-0 font-mono text-2xs tabular-nums text-slate-400"

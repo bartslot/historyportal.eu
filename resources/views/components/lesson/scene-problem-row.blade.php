@@ -25,7 +25,7 @@
             <p class="text-xs text-base-content">{{ $problem['message'] }}</p>
         @endif
         @if ($scene?->status === 'failed' && $scene->updated_at)
-            <p class="mt-0.5 text-2xs text-slate-500" data-tooltip="{{ $scene->updated_at->isoFormat('D MMM YYYY, HH:mm') }}">{{ $scene->updated_at->diffForHumans() }}</p>
+            <p class="mt-0.5 text-prose text-slate-500" data-tooltip="{{ $scene->updated_at->isoFormat('D MMM YYYY, HH:mm') }}">{{ $scene->updated_at->diffForHumans() }}</p>
         @endif
     </div>
     @if ($busy)

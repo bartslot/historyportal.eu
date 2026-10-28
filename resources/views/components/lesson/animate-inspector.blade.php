@@ -118,7 +118,7 @@
         </div>
     @endif
 
-    <p class="text-2xs leading-tight text-slate-500">
+    <p class="text-prose leading-tight text-slate-500">
         @if ($isLayer)
             <span x-show="build === 'in'">{{ __('How this layer arrives when the scene starts.') }}</span>
             <span x-show="build === 'out'" x-cloak>{{ __('How this layer leaves at the end of the scene.') }}</span>

@@ -25,7 +25,7 @@
             @foreach ($rows as $row)
                 @continue($row['machine'] === null)
                 <li wire:key="cc-{{ $language }}-{{ $row['hash'] }}" class="space-y-1">
-                    <p class="text-2xs leading-snug text-slate-500" lang="{{ $lesson->language }}">{{ $row['source'] }}</p>
+                    <p class="text-prose leading-snug text-slate-500" lang="{{ $lesson->language }}">{{ $row['source'] }}</p>
                     <textarea rows="2" lang="{{ $language }}" dir="{{ $rtl ? 'rtl' : 'ltr' }}"
                               aria-label="{{ __('Translated line') }}"
                               wire:change="saveLine(@js($row['hash']), $event.target.value)"

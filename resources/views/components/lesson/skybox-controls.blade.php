@@ -266,10 +266,10 @@
                     <x-ui.segmented panel name="background-fit" model="fit"
                                     :options="[['cover', __('Fill frame')], ['contain', __('Whole image')]]"
                                     on-change="$wire.call('setBackgroundFit', $event.target.value)" />
-                    <p class="mt-1 text-2xs leading-tight text-slate-500" x-show="fit === 'cover'" x-cloak>
+                    <p class="mt-1 text-prose leading-tight text-slate-500" x-show="fit === 'cover'" x-cloak>
                         {{ __('Fills the frame. Portraits are cropped from the top so faces stay in shot.') }}
                     </p>
-                    <p class="mt-1 text-2xs leading-tight text-slate-500" x-show="fit === 'contain'" x-cloak>
+                    <p class="mt-1 text-prose leading-tight text-slate-500" x-show="fit === 'contain'" x-cloak>
                         {{ __('Shows the whole picture, with bars where it does not reach the edges.') }}
                     </p>
                 </div>
@@ -353,7 +353,7 @@
                     </svg>
                     <span>{{ __('Browse paintings') }}</span>
                 </button>
-                <p class="text-2xs text-slate-500">{{ __('Public-domain paintings & museum works, matched to the scene’s era and place.') }}</p>
+                <p class="text-prose text-slate-500">{{ __('Public-domain paintings & museum works, matched to the scene’s era and place.') }}</p>
             </div>
 
           </div>{{-- /image sub-sources --}}
@@ -368,7 +368,7 @@
                         <button type="button" @click="if (link.trim()) { $wire.setSketchfabEmbed(link); link = '' }"
                                 class="btn btn-xs btn-neutral">{{ __('Set') }}</button>
                     </div>
-                    <p class="mt-1 text-2xs text-slate-500">{{ __('Paste a Sketchfab model URL or its <iframe> embed code.') }}</p>
+                    <p class="mt-1 text-prose text-slate-500">{{ __('Paste a Sketchfab model URL or its <iframe> embed code.') }}</p>
                 </div>
 
                 @if ($bgEmbed && ($bgEmbed['kind'] ?? '') === 'sketchfab')
@@ -468,7 +468,7 @@
         @endif
 
         @if (! $scene->image_path)
-            <p class="text-2xs text-slate-500">{{ __('Generate the flat image first to unlock panorama options.') }}</p>
+            <p class="text-prose text-slate-500">{{ __('Generate the flat image first to unlock panorama options.') }}</p>
         @endif
 
         {{-- Blur --}}

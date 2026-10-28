@@ -37,7 +37,7 @@
 
     @forelse ($byScene as $sceneId => $rows)
         <div class="space-y-1.5">
-            <p class="text-2xs uppercase tracking-widest text-slate-500">{{ __('Scene') }} {{ $rows->first()['order'] }}</p>
+            <p class="text-prose uppercase tracking-widest text-slate-500">{{ __('Scene') }} {{ $rows->first()['order'] }}</p>
             @foreach ($rows as $problem)
                 <x-lesson.scene-problem-row :problem="$problem" :scene="$scenes->firstWhere('id', $sceneId)" jump />
             @endforeach
