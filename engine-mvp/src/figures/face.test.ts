@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { NullEngine, Scene, VertexBuffer } from '@babylonjs/core'
 import { afterEach, describe, expect, it } from 'vitest'
-import { EMOTIONS, EMOTION_NAMES, FaceLife, LIFE, easeInOut } from './face'
+import { EMOTIONS, EMOTION_NAMES, FaceLife, FaceRig, LIFE, easeInOut, type FaceMeta } from './face'
 import { CHARACTERS, applyFigure, bodyDeform, createPuppet, type Sprite } from './puppet'
 
 const PUBLIC = join(__dirname, '../../public')
@@ -17,6 +17,7 @@ async function make(id = 'boer-vrouw') {
   const p = await createPuppet(scene, id, { loadSheet, warn: (m) => warnings.push(m) })
   return { scene, p, warnings }
 }
+const faceMeta = () => JSON.parse(readFileSync(join(PUBLIC, 'figures/puppets/boer-vrouw/34/face/face.json'), 'utf8')) as FaceMeta
 const sheet = () => JSON.parse(readFileSync(join(PUBLIC, 'figures/puppets/boer-vrouw/34/poses.json'), 'utf8')) as { poses: Record<string, Sprite> }
 
 describe('emotions', () => {
@@ -134,8 +135,8 @@ describe('the drawn face on the painted figure (createPuppet)', () => {
       const deform = bodyDeform(sp, s, o)
       const want = deform(sp.face!.eye)
       const pos = scene.getMeshByName('boer-vrouw_face')!.getVerticesData(VertexBuffer.PositionKind)!
-      const f = sp.face!, sc = f.s
-      const x0 = f.eye[0] - 26 * sc, x1 = f.eye[0] + 34 * sc, y0 = f.eye[1] - 26 * sc, y1 = f.mouth[1] + 14 * sc
+      const f = sp.face!
+      const [x0, y0, x1, y1] = FaceRig.rect(faceMeta()) // stand is the reference painting: the similarity is the identity
       const u = (f.eye[0] - x0) / (x1 - x0), v = (f.eye[1] - y0) / (y1 - y0) // bilinear fraction inside the quad
       const lerp = (a: number, b: number, t: number) => a + (b - a) * t
       const at = (k: number) => [pos[k * 3], pos[k * 3 + 1]]
@@ -173,3 +174,38 @@ describe('the drawn face on the painted figure (createPuppet)', () => {
     expect(applyFigure(p, { pose: 'dig', expression: 'nope', x: 0.4, depth: 'mid', facing: 'right' })).toEqual({ pose: 'stand', emotion: 'neutral' })
   })
 })
+
+describe('the painted face parts', () => {
+  it('has a painted state for every emotion, a blink (half, closed) and the talking mouths', () => {
+    const m = faceMeta()
+    for (const e of EMOTION_NAMES) { expect(m.eyes.states, e).toContain(e); expect(m.mouth.states, e).toContain(e) }
+    for (const st of ['half', 'closed']) expect(m.eyes.states).toContain(st)
+    for (const st of ['talk_a', 'talk_ah', 'talk_wide']) expect(m.mouth.states).toContain(st)
+  })
+  it('cross-fades the paintings over the emotion tween and settles on the new one', () => {
+    LIFE.on = 0
+    const l = new FaceLife(7)
+    l.setEmotion('sad', 200)
+    const mid = l.step(0.1).paint
+    expect(mid.eyes[0]).toBe('neutral'); expect(mid.eyes[1]).toBe('sad'); expect(mid.eyes[2]).toBeGreaterThan(0.2); expect(mid.eyes[2]).toBeLessThan(0.8)
+    const done = l.step(0.5).paint
+    expect(done.eyes[0]).toBe('sad'); expect(done.eyes[2]).toBe(0)
+  })
+  it('a blink runs open, half, closed and back', () => {
+    LIFE.blinkMin = LIFE.blinkMax = 0.1; LIFE.blinkMs = 400; LIFE.doubleBlink = 0
+    const l = new FaceLife(3)
+    const seen = new Set<string>()
+    for (let i = 0; i < 60; i++) { const e = l.step(0.01).paint.eyes; if (e[2] > 0.9) seen.add(e[1]) }
+    expect(seen.has('half')).toBe(true); expect(seen.has('closed')).toBe(true)
+  })
+  it('walks the mouth through painted open states only while talking', () => {
+    LIFE.on = 0
+    const l = new FaceLife(5)
+    expect(l.step(0.1).paint.mouth).toEqual(['neutral', 'neutral', 0])
+    l.talking = true
+    const used = new Set<string>()
+    for (let i = 0; i < 120; i++) { const m = l.step(1 / 60).paint.mouth; used.add(m[0]); used.add(m[1]) }
+    expect([...used].some((n) => n.startsWith('talk_'))).toBe(true)
+  })
+})
+

@@ -1,10 +1,9 @@
 // Faces that live (PM 10-28, Bart: "animate our characters' faces ... characters that are moving in the scene").
-// The principle (ClaudeAnimationBase), not its look: emotion is a few ink strokes (eyes, brows, mouth) plus tiny emotes,
-// and idle life never stops (blink, eye darts, breathing, weight shift, head tilt). Here the strokes are drawn in the
-// figure's own History Lines ink over the painted head: a small shader quad whose strokes are analytic (no texture to
-// repaint), with a wipe that covers only the DARK painted features (the painted eyes/brows/mouth) in the local skin
-// colour, so nothing is doubled and nothing outside the head is touched. The quad rides the head through every
-// deformation (lean, tilt, breath), so the eyes stay on the head. Everything is a knob (LIFE) and seeded per figure.
+// The principle (ClaudeAnimationBase), not its look: emotion is a few strokes (eyes, brows, mouth) plus tiny emotes, and idle
+// life never stops (blink, breathing, weight shift, head tilt). Code animates, art paints: the eyes+brows and the mouth are
+// PAINTED parts (cut_face_parts.py: Figma edits of the same face-free head, one per state, in the head's own hand), swapped
+// and cross-faded on a quad that rides the head through every deformation (lean, tilt, breath). Everything is a knob (LIFE)
+// and seeded per figure.
 import { Effect, Mesh, ShaderMaterial, Texture, TransformNode, Vector2, Vector3, Vector4, VertexBuffer, VertexData, type Scene } from '@babylonjs/core'
 import { GL_NOISE } from '../stage25d/ground-gl'
 import { LINE_BY_DEPTH_GLSL, PAPER_GLSL } from '../stage25d/layer'
@@ -66,6 +65,8 @@ export function mulberry32(seed: number) {
 export const seedOf = (text: string, n = 0) => { let h = 2166136261 ^ n; for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619); return h >>> 0 }
 
 /** the numbers the shader draws */
+/** which painted states to show: [from, to, mix 0..1] for the eyes+brows and for the mouth (state names of face.json) */
+export type Paint = { eyes: [string, string, number]; mouth: [string, string, number] }
 export type FaceParams = {
   eyeOpen: number; eyeOpenF: number; gaze: P2
   brow: [number, number, number, number]; mouth: [number, number, number, number]
@@ -86,6 +87,7 @@ export class FaceLife {
   private tweenT = 1
   private tweenMs = 220
   emotion = 'neutral'
+  private prev = 'neutral'
   talking = false
   private blinkAt: number; private blinkT = -1; private blinkAgain = false
   private gazeAt: number; private gaze: P2 = [0, 0]; private gazeTo: P2 = [0, 0]
@@ -106,6 +108,7 @@ export class FaceLife {
   setEmotion(name: string, ms = LIFE.emoMs) {
     const e = EMOTIONS[name]
     if (!e || name === this.emotion) return
+    this.prev = this.emotion
     this.emotion = name
     this.from = [...this.cur]
     this.to = flat(e)
@@ -114,7 +117,7 @@ export class FaceLife {
   }
 
   /** advance dt seconds; walking calms the weight shift and tilt */
-  step(dt: number, walking = false): { face: FaceParams; blink: number; body: BodyOffsets; emote: EmotionDef['emote'] } {
+  step(dt: number, walking = false): { face: FaceParams; blink: number; body: BodyOffsets; emote: EmotionDef['emote']; paint: Paint } {
     this.t += dt
     if (this.tweenT < 1) this.tweenT = Math.min(1, this.tweenT + (dt * 1000) / this.tweenMs)
     const k = easeInOut(this.tweenT)
@@ -166,7 +169,19 @@ export class FaceLife {
     let mouthOpen = c[8 + 1]
     if (this.talking) mouthOpen += LIFE.talkOpen * (0.5 + 0.5 * Math.sin(this.t * Math.PI * 2 * LIFE.talkHz + this.phase)) * (0.6 + 0.4 * Math.sin(this.t * 3.1))
     const open = clamp(c[0], 0, 1.5), openF = clamp(c[1], 0, 1.5)
+    // the painted states: the emotion tween cross-fades the two paintings; a blink runs open -> half -> closed; talking walks
+    // the mouth through painted open states
+    const settling = this.tweenT < 1
+    let eyes: Paint['eyes'] = settling ? [this.prev, this.emotion, k] : [this.emotion, this.emotion, 0]
+    if (blink > 0.02) eyes = blink < 0.5 ? [this.emotion, 'half', blink * 2] : ['half', 'closed', (blink - 0.5) * 2]
+    let mouth: Paint['mouth'] = settling ? [this.prev, this.emotion, k] : [this.emotion, this.emotion, 0]
+    const talk = this.talking ? clamp((mouthOpen - c[9]) / Math.max(LIFE.talkOpen, 0.01), 0, 1) : 0
+    if (talk > 0.02) {
+      const T = [this.emotion, 'talk_a', 'talk_ah', 'talk_wide'], at = talk * 3, i = Math.min(2, Math.floor(at))
+      mouth = [T[i], T[i + 1], at - i]
+    }
     return {
+      paint: { eyes, mouth },
       face: {
         eyeOpen: open * (1 - blink), eyeOpenF: openF * (1 - blink), gaze: [c[2] + this.gaze[0], c[3] + this.gaze[1]],
         brow: [c[4], c[5], c[6], c[7]], mouth: [c[8], mouthOpen, c[10], c[11]],
@@ -204,101 +219,32 @@ attribute vec3 position; attribute vec2 uv; uniform mat4 worldViewProjection; va
 void main() { vUV = uv; gl_Position = worldViewProjection * vec4(position, 1.0); }`
 Effect.ShadersStore.puppetEmoteVertexShader = Effect.ShadersStore.puppetFaceVertexShader
 Effect.ShadersStore.puppetFaceFragmentShader = `${COMMON}
-uniform sampler2D art;
-uniform vec2 quadSize; uniform vec2 spriteSize; uniform vec2 spriteOrg;
-uniform vec2 eyeN; uniform vec2 eyeF; uniform vec2 browN; uniform vec2 browF; uniform vec2 mouthC;
-uniform vec4 eyeP;   // open near, open far, gaze x, gaze y (px)
-uniform vec4 browP;  // angle (rad, + inner end up), lift px, length scale, far brow extra lift px
-uniform vec4 mouthP; // curve px (+ smile), open px, half width px, skew px
-uniform vec3 skin; uniform float stroke; uniform float s;
-vec2 suv(vec2 px) { vec2 sp = spriteOrg + px; return vec2(sp.x / spriteSize.x, 1.0 - sp.y / spriteSize.y); }
-float lumaOf(vec3 c) { return dot(c, vec3(0.299, 0.587, 0.114)); }
-float darkAt(vec2 px) {
-  vec4 t = texture2D(art, suv(px));
-  return t.a < 0.5 ? 0.0 : smoothstep(0.17, 0.3, lumaOf(skin) - lumaOf(t.rgb));
+uniform sampler2D eyesTex; uniform sampler2D mouthTex;
+uniform vec2 quadOrg; uniform vec2 quadSize;
+uniform vec4 eyeRect; uniform vec4 mouthRect;          // origin + size in the reference painting's px
+uniform vec4 eyeGrid; uniform vec4 mouthGrid;          // cols, rows, state A, state B
+uniform vec2 mix2;                                     // eyes mix, mouth mix
+uniform vec4 simM; uniform vec3 simT;                  // reference px -> this sprite's px (a similarity), and the sprite height
+vec2 cuv(float idx, vec2 loc, vec2 grid) {
+  float col = mod(idx, grid.x), row = floor(idx / grid.x);
+  return vec2((col + clamp(loc.x, 0.002, 0.998)) / grid.x, 1.0 - (row + clamp(loc.y, 0.002, 0.998)) / grid.y);
 }
-float darkPooled(vec2 px) {
-  float d = darkAt(px);
-  d = max(d, darkAt(px + vec2(1.6, 0.0))); d = max(d, darkAt(px - vec2(1.6, 0.0)));
-  d = max(d, darkAt(px + vec2(0.0, 1.6))); d = max(d, darkAt(px - vec2(0.0, 1.6)));
-  return d;
-}
-float ell(vec2 p, vec2 c, vec2 r) { return length((p - c) / r); }
-// the painted skin around a point: the average of the nearby samples that are not themselves a dark feature, so the
-// wipe keeps the local shading (blush, shadow) instead of a flat patch
-vec3 localSkin(vec2 p) {
-  vec3 acc = vec3(0.0); float ws = 0.0;
-  for (int i = 0; i < 8; i++) {
-    float a = float(i) * 0.7853982;
-    vec2 q = p + vec2(cos(a), sin(a)) * 10.0;
-    vec4 t = texture2D(art, suv(q));
-    float k = t.a >= 0.5 ? 1.0 - smoothstep(0.1, 0.2, lumaOf(skin) - lumaOf(t.rgb)) : 0.0;
-    acc += t.rgb * k; ws += k;
-  }
-  return ws > 0.5 ? acc / ws : skin;
-}
-float eyeCov(vec2 p, vec2 c, float rx, float open, vec2 gz, float w) {
-  vec2 q = p - c;
-  float u = clamp(q.x / rx, -1.0, 1.0), sh = 1.0 - u * u;
-  float outside = max(abs(q.x) - rx, 0.0);
-  if (open < 0.14) {                        // closed: one lid line, curving down
-    return cov(max(abs(q.y - rx * 0.2 * sh) * 0.9, outside), w * 1.3);
-  }
-  // an almond: a heavy upper lid, a light lower lid (not a ring), the iris a dark disc the lids cut off
-  float up = -open * rx * 0.5 * pow(sh, 0.85), lo = open * rx * 0.3 * sh;
-  float lidU = cov(max(abs(q.y - up) * 0.9, outside), w * 1.7);
-  float lidL = cov(max(abs(q.y - lo) * 0.9, outside * 1.0), w * 0.7) * smoothstep(0.0, 0.25, open);
-  float inside = step(up, q.y) * step(q.y, lo) * step(abs(q.x), rx);
-  vec2 pc = vec2(clamp(gz.x, -rx * 0.32, rx * 0.32), clamp(gz.y, -1.5, 1.5));
-  float iris = cov(length(q - pc - vec2(0.0, -0.05 * rx)) - min(rx * 0.36, open * rx * 0.5), 0.0) * inside;
-  return max(max(lidU, lidL), iris);
-}
-float browCov(vec2 p, vec2 c, float L, float ang, float lift, float w) {
-  float sn = sin(ang), cs = cos(ang);
-  vec2 outer = c + vec2(-cs * L, sn * L - lift), inner = c + vec2(cs * L, -sn * L - lift);
-  vec2 ba = inner - outer;
-  float t = clamp(dot(p - outer, ba) / dot(ba, ba), 0.0, 1.0);
-  vec2 q = p - vec2(0.0, -0.09 * L * (1.0 - pow(2.0 * t - 1.0, 2.0)));
-  return cov(sdSeg(q, outer, inner), w * (0.9 + 0.5 * t));
-}
-vec2 mouthCov(vec2 p, vec2 c, float hw, float curve, float open, float skew, float w) {
-  vec2 q = p - c;
-  float ua = clamp(q.x / hw, -1.0, 1.0), shape = 1.0 - ua * ua;
-  float yu = curve * shape + skew * ua * 0.6;
-  float yl = yu + open * pow(max(shape, 0.0), 0.7);
-  float outside = max(abs(q.x) - hw, 0.0);
-  float line = cov(max(abs(q.y - yu) * 0.9, outside), w * 1.1);
-  float fill = 0.0;
-  if (open > 0.4) {
-    line = max(line, cov(max(abs(q.y - yl) * 0.9, outside), w * 0.9));
-    fill = step(yu, q.y) * step(q.y, yl) * step(abs(q.x), hw);
-  }
-  return vec2(line, fill);
+vec4 part(sampler2D tex, vec2 p, vec4 rect, vec4 grid, float m) {
+  vec2 loc = (p - rect.xy) / rect.zw;
+  if (loc.x < 0.0 || loc.y < 0.0 || loc.x > 1.0 || loc.y > 1.0) return vec4(0.0);
+  return mix(texture2D(tex, cuv(grid.z, loc, grid.xy)), texture2D(tex, cuv(grid.w, loc, grid.xy)), m);
 }
 void main() {
-  vec2 p = vec2(vUV.x * quadSize.x, (1.0 - vUV.y) * quadSize.y);
-  vec4 base = texture2D(art, suv(p));
-  float inHead = base.a >= 0.5 ? 1.0 : 0.0;          // nothing leaks into the air around the head
-  float w = stroke * s * 0.5;
-  float ink = max(eyeCov(p, eyeN, 7.6 * s, eyeP.x, eyeP.zw * s, w), eyeCov(p, eyeF, 3.6 * s, eyeP.y, eyeP.zw * s * 0.6, w * 0.9));
-  float L = 11.0 * s * browP.z;
-  ink = max(ink, browCov(p, browN, L, browP.x, browP.y * s, w));
-  ink = max(ink, browCov(p, browF, L * 0.42, browP.x * 0.6, (browP.y + browP.w) * s, w * 0.9));
-  vec2 m = mouthCov(p, mouthC, mouthP.z * s, mouthP.x * s, mouthP.y * s, mouthP.w * s, w);
-  ink = max(ink, m.x);
-  // the wipe: the painted features (dark pixels inside these ellipses) go to the local skin colour
-  float we = max(1.0 - smoothstep(0.8, 1.0, ell(p, (eyeN + browN) * 0.5 + vec2(1.0, 0.0), vec2(17.0, 14.0) * s)),
-                 1.0 - smoothstep(0.8, 1.0, ell(p, eyeF + vec2(0.0, -2.0), vec2(9.0, 11.0) * s)));
-  float wm = 1.0 - smoothstep(0.8, 1.0, ell(p, mouthC, vec2(14.0, 7.0) * s));
-  float wipe = max(we, wm) * darkPooled(p);
-  vec3 col = wipe > 0.01 ? localSkin(p) : skin;
-  col = mix(col, vec3(0.36, 0.15, 0.14), m.y * 0.9);
-  col = mix(col, vec3(0.09, 0.07, 0.06), ink);                       // the stroke is ink
-  col = lineByDepth(gradeOf(col), ink, lineFade, haze, lineBrown, hazeTint);
-  vec2 gp = vec2((spriteOrg + p).x, spriteSize.y - (spriteOrg + p).y);
+  vec2 p = quadOrg + vec2(vUV.x, 1.0 - vUV.y) * quadSize;
+  vec4 e = part(eyesTex, p, eyeRect, eyeGrid, mix2.x);
+  vec4 m = part(mouthTex, p, mouthRect, mouthGrid, mix2.y);
+  vec4 t = e.a >= m.a ? e : m;
+  float ink = 1.0 - smoothstep(0.1, 0.4, dot(t.rgb, vec3(0.299, 0.587, 0.114)));   // the painted lines fade with depth like the body's
+  vec3 col = lineByDepth(gradeOf(t.rgb), ink, lineFade, haze, lineBrown, hazeTint);
+  vec2 sp = vec2(simM.x * p.x + simM.y * p.y, simM.z * p.x + simM.w * p.y) + simT.xy;   // the figure's own pixels: the grain matches the body
+  vec2 gp = vec2(sp.x, simT.z - sp.y);
   col = paperOn(col, gp, paper, grain, patches, wash, washColour);
-  float a = max(wipe, max(ink, m.y)) * inHead;
-  gl_FragColor = vec4(clamp(col, 0.0, 1.0), a);
+  gl_FragColor = vec4(clamp(col, 0.0, 1.0), t.a);
 }`
 // emotes: small ink marks near the head, off by default
 Effect.ShadersStore.puppetEmoteFragmentShader = `${COMMON}
@@ -333,7 +279,7 @@ void main() {
   gl_FragColor = vec4(clamp(col, 0.0, 1.0), a);
 }`
 
-const FACE_UNIFORMS = ['worldViewProjection', 'quadSize', 'spriteSize', 'spriteOrg', 'eyeN', 'eyeF', 'browN', 'browF', 'mouthC', 'eyeP', 'browP', 'mouthP', 'skin', 'stroke', 's',
+const FACE_UNIFORMS = ['worldViewProjection', 'quadOrg', 'quadSize', 'eyeRect', 'mouthRect', 'eyeGrid', 'mouthGrid', 'mix2', 'simM', 'simT',
   'grade', 'lineFade', 'haze', 'lineBrown', 'hazeTint', 'paper', 'grain', 'patches', 'wash', 'washColour']
 const EMOTE_UNIFORMS = ['worldViewProjection', 'kind', 'amount', 'stroke', 'grade', 'lineFade', 'haze', 'lineBrown', 'hazeTint', 'paper', 'grain', 'patches', 'wash', 'washColour']
 const KIND: Record<string, number> = { sweat: 1, exclaim: 2, question: 3, sparkle: 4 }
@@ -357,15 +303,35 @@ function setCorners(mesh: Mesh, c: P2[], z: number, out = new Float32Array(12)) 
   mesh.updateVerticesData(VertexBuffer.PositionKind, out)
 }
 
-/** The drawn face on one painted figure: a quad (and an emote quad) that follow the head's deformation. */
+/** the painted parts of one character (cut_face_parts.py): rects in the reference painting's px, one cell per state */
+export type FaceMeta = {
+  ref: { eye: P2; mouth: P2 }
+  eyes: { rect: number[]; px: number[]; cols: number; states: string[] }
+  mouth: { rect: number[]; px: number[]; cols: number; states: string[] }
+}
+export type FaceAtlas = { meta: FaceMeta; eyes: Texture; mouth: Texture }
+export const loadFaceAtlas = (scene: Scene, base: string, meta: FaceMeta): FaceAtlas =>
+  ({ meta, eyes: new Texture(`${base}/eyes.webp`, scene, true, true), mouth: new Texture(`${base}/mouth.webp`, scene, true, true) })
+
+/** a reference landmark pair onto this sprite's: the similarity that carries the painted parts to another pose's head */
+function similarity(ref: FaceMeta['ref'], mark: FaceMark) {
+  const u0: P2 = [ref.mouth[0] - ref.eye[0], ref.mouth[1] - ref.eye[1]], u1: P2 = [mark.mouth[0] - mark.eye[0], mark.mouth[1] - mark.eye[1]]
+  const k = Math.hypot(...u1) / Math.hypot(...u0), a = Math.atan2(u1[1], u1[0]) - Math.atan2(u0[1], u0[0])
+  const c = k * Math.cos(a), sn = k * Math.sin(a)
+  const at = (q: P2): P2 => [mark.eye[0] + c * (q[0] - ref.eye[0]) - sn * (q[1] - ref.eye[1]), mark.eye[1] + sn * (q[0] - ref.eye[0]) + c * (q[1] - ref.eye[1])]
+  return { at, m: [c, -sn, sn, c] as [number, number, number, number], t: [mark.eye[0] - c * ref.eye[0] + sn * ref.eye[1], mark.eye[1] - sn * ref.eye[0] - c * ref.eye[1]] as P2 }
+}
+
+/** The painted face on one figure: a quad (and an emote quad) that follow the head's deformation. */
 export class FaceRig {
   readonly face: Mesh; readonly emote: Mesh
   private fm: ShaderMaterial; private em: ShaderMaterial
+  private atlas: FaceAtlas | null = null
   private emoteAmount = 0; private emoteName: EmotionDef['emote'] = undefined; private emoteWant = false
   constructor(scene: Scene, readonly name: string, parent: TransformNode) {
     this.face = quad(scene, `${name}_face`, parent)
     this.emote = quad(scene, `${name}_emote`, parent)
-    this.fm = new ShaderMaterial(`${name}_face`, scene, 'puppetFace', { attributes: ['position', 'uv'], samplers: ['art'], uniforms: FACE_UNIFORMS, needAlphaBlending: true })
+    this.fm = new ShaderMaterial(`${name}_face`, scene, 'puppetFace', { attributes: ['position', 'uv'], samplers: ['eyesTex', 'mouthTex'], uniforms: FACE_UNIFORMS, needAlphaBlending: true })
     this.em = new ShaderMaterial(`${name}_emote`, scene, 'puppetEmote', { attributes: ['position', 'uv'], samplers: [], uniforms: EMOTE_UNIFORMS, needAlphaBlending: true })
     for (const [m, mat] of [[this.face, this.fm], [this.emote, this.em]] as const) {
       mat.backFaceCulling = false
@@ -377,6 +343,10 @@ export class FaceRig {
     this.emote.setEnabled(false)
     this.face.setEnabled(false)
   }
+  setAtlas(a: FaceAtlas | null) {
+    this.atlas = a
+    if (a) this.fm.setTexture('eyesTex', a.eyes).setTexture('mouthTex', a.mouth)
+  }
   /** the visible emote's opacity eases in and out (the puppet calls step each frame) */
   setEmote(name: EmotionDef['emote'], want: boolean, dt: number) {
     this.emoteName = name ?? this.emoteName
@@ -385,24 +355,29 @@ export class FaceRig {
     this.emote.setEnabled(this.emoteAmount > 0.01 && !!this.emoteName)
     if (this.emoteName) this.em.setFloat('kind', KIND[this.emoteName]).setFloat('amount', easeInOut(this.emoteAmount)).setFloat('stroke', LIFE.strokePx)
   }
-  /** place and draw: `world` maps a painting px to figure metres through the current deformation */
-  place(mark: FaceMark, tex: Texture, sprite: { w: number; h: number }, p: FaceParams, world: (px: P2) => P2, z: number) {
+  /** the quad's rectangle in the reference painting (eyes and mouth together) */
+  static rect(meta: FaceMeta): [number, number, number, number] {
+    const e = meta.eyes.rect, m = meta.mouth.rect
+    const x0 = Math.min(e[0], m[0]), y0 = Math.min(e[1], m[1]), x1 = Math.max(e[0] + e[2], m[0] + m[2]), y1 = Math.max(e[1] + e[3], m[1] + m[3])
+    return [x0, y0, x1, y1]
+  }
+  /** place and draw: `world` maps a painting px to figure metres through the current deformation. False = nothing to draw. */
+  place(mark: FaceMark, sprite: { w: number; h: number }, paint: Paint, world: (px: P2) => P2, z: number): boolean {
+    const a = this.atlas
+    if (!a) { this.face.setEnabled(false); return false }
+    const [x0, y0, x1, y1] = FaceRig.rect(a.meta), sim = similarity(a.meta.ref, mark)
+    setCorners(this.face, [[x0, y0], [x1, y0], [x0, y1], [x1, y1]].map((q) => world(sim.at(q as P2))), z)
     const s = mark.s
-    const x0 = mark.eye[0] - 26 * s, x1 = mark.eye[0] + 34 * s, y0 = mark.eye[1] - 26 * s, y1 = mark.mouth[1] + 14 * s
-    setCorners(this.face, [world([x0, y0]), world([x1, y0]), world([x0, y1]), world([x1, y1])], z)
-    // emote: beside the head, up and to the nose side
-    const ex = mark.eye[0] + 36 * s, ey = mark.eye[1] - 44 * s
+    const ex = mark.eye[0] + 36 * s, ey = mark.eye[1] - 44 * s // emote: beside the head, up and to the nose side
     setCorners(this.emote, [world([ex - 22, ey - 22]), world([ex + 22, ey - 22]), world([ex - 22, ey + 22]), world([ex + 22, ey + 22])], z)
-    const m = this.fm
-    const rel = (q: P2): Vector2 => new Vector2(q[0] - x0, q[1] - y0)
-    m.setTexture('art', tex)
-    m.setVector2('quadSize', new Vector2(x1 - x0, y1 - y0)).setVector2('spriteSize', new Vector2(sprite.w, sprite.h)).setVector2('spriteOrg', new Vector2(x0, y0))
-    m.setVector2('eyeN', rel(mark.eye)).setVector2('eyeF', rel(mark.eyeF)).setVector2('browN', rel(mark.brow)).setVector2('browF', rel([mark.brow[0] + 18 * s, mark.brow[1] + 3 * s])).setVector2('mouthC', rel(mark.mouth))
-    m.setVector4('eyeP', new Vector4(p.eyeOpen, p.eyeOpenF, p.gaze[0], p.gaze[1]))
-    m.setVector4('browP', new Vector4(p.brow[0] * DEG, p.brow[1], p.brow[2], p.brow[3]))
-    m.setVector4('mouthP', new Vector4(p.mouth[0], p.mouth[1], p.mouth[2], p.mouth[3]))
-    m.setVector3('skin', new Vector3(...mark.skin)).setFloat('stroke', LIFE.strokePx).setFloat('s', s)
+    const m = this.fm, { eyes, mouth } = a.meta
+    const grid = (part: FaceMeta['eyes'], pa: [string, string, number]) => new Vector4(part.cols, Math.ceil(part.states.length / part.cols), Math.max(0, part.states.indexOf(pa[0])), Math.max(0, part.states.indexOf(pa[1])))
+    m.setVector2('quadOrg', new Vector2(x0, y0)).setVector2('quadSize', new Vector2(x1 - x0, y1 - y0))
+    m.setVector4('eyeRect', new Vector4(...(eyes.rect as [number, number, number, number]))).setVector4('mouthRect', new Vector4(...(mouth.rect as [number, number, number, number])))
+    m.setVector4('eyeGrid', grid(eyes, paint.eyes)).setVector4('mouthGrid', grid(mouth, paint.mouth)).setVector2('mix2', new Vector2(paint.eyes[2], paint.mouth[2]))
+    m.setVector4('simM', new Vector4(...sim.m)).setVector3('simT', new Vector3(sim.t[0], sim.t[1], sprite.h))
     this.face.setEnabled(true)
+    return true
   }
   emoteState() { return { name: this.emoteName, amount: this.emoteAmount, want: this.emoteWant } }
   hide() { this.face.setEnabled(false); this.emote.setEnabled(false) }

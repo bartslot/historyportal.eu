@@ -1,0 +1,77 @@
+{
+ "k": 2.9,
+ "ref": {
+  "eye": [
+   166.5,
+   60.8
+  ],
+  "mouth": [
+   174.6,
+   94.0
+  ]
+ },
+ "match": 0.982,
+ "origin": [
+  47,
+  -8
+ ],
+ "eyes": {
+  "rect": [
+   143.9,
+   36.48,
+   53.45,
+   44.83
+  ],
+  "px": [
+   155,
+   130
+  ],
+  "cols": 5,
+  "states": [
+   "neutral",
+   "happy",
+   "worried",
+   "surprised",
+   "sad",
+   "angry",
+   "determined",
+   "thinking",
+   "scared",
+   "proud",
+   "tired",
+   "closed",
+   "half"
+  ]
+ },
+ "mouth": {
+  "rect": [
+   157.69,
+   84.76,
+   39.66,
+   37.93
+  ],
+  "px": [
+   115,
+   110
+  ],
+  "cols": 4,
+  "states": [
+   "neutral",
+   "happy",
+   "worried",
+   "surprised",
+   "sad",
+   "angry",
+   "determined",
+   "thinking",
+   "scared",
+   "proud",
+   "tired",
+   "talk_a",
+   "talk_ah",
+   "talk_wide",
+   "talk_oo",
+   "talk_smile"
+  ]
+ }
+}

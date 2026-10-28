@@ -11,7 +11,7 @@ import {
 import type { Placement, StageLike } from './figure'
 import { STAIN_DEFAULT, stainSize } from '../stage25d/ground'
 import { GL_NOISE, makeStain } from '../stage25d/ground-gl'
-import { EMOTIONS, EMOTION_NAMES, FaceLife, FaceRig, LIFE, seedOf, type BodyOffsets, type FaceMark, type FaceParams } from './face'
+import { EMOTIONS, EMOTION_NAMES, FaceLife, FaceRig, LIFE, loadFaceAtlas, seedOf, type BodyOffsets, type FaceMark, type FaceMeta, type FaceParams } from './face'
 import { LINE_BY_DEPTH_GLSL, PAPER_GLSL } from '../stage25d/layer'
 import { pxPerMetre, pxUV, type Line, type Paper } from '../stage25d/look'
 import type { Asset, Library } from '../stage25d/types'
@@ -411,6 +411,8 @@ export async function createPuppet(scene: Scene, id: string, opts: PuppetOptions
   let stageLook: (() => StageLook) | null = null
   const life = new FaceLife(seedOf(id, figureCount++))
   const rig = new FaceRig(scene, id, flip)
+  const faceMeta = await (load(`${base}/34/face/face.json`) as unknown as Promise<FaceMeta>).catch(() => null) // painted faces: only where the character has them
+  if (faceMeta) rig.setAtlas(loadFaceAtlas(scene, `${base}/34/face`, faceMeta))
   let lifeOut = life.step(0)
   let emotionKeys: { t: number; emotion: string }[] | null = null
   let keyClock: (() => number) | null = null
@@ -437,8 +439,7 @@ export async function createPuppet(scene: Scene, id: string, opts: PuppetOptions
     if (sp.head_on) { // painted with its head: no head swap, no seam; the face is drawn ink over it, the body bends
       const deform = bodyDeform(sp, s, lifeOut.body)
       put(body, deform, 0)
-      if (sp.face && body.tex) rig.place(sp.face, body.tex, { w: sp.w, h: sp.h }, lifeOut.face, deform, -PUPPET.zStep * Math.max(1, state.dist / 10))
-      else rig.hide()
+      if (!sp.face || !rig.place(sp.face, { w: sp.w, h: sp.h }, lifeOut.paint, deform, -PUPPET.zStep * Math.max(1, state.dist / 10))) rig.hide()
       for (const set of [...Object.values(sprites), ...VIEWS.map((x) => meshes[x])]) for (const pm of Object.values(set)) pm.mesh.setEnabled(shown.has(pm))
       for (const h of Object.values(hats)) h.mesh.setEnabled(false)
       state.seat?.mesh.setEnabled(false)
