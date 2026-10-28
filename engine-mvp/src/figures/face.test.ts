@@ -182,20 +182,23 @@ describe('the painted face parts', () => {
     for (const st of ['half', 'closed']) expect(m.eyes.states).toContain(st)
     for (const st of ['talk_a', 'talk_ah', 'talk_wide']) expect(m.mouth.states).toContain(st)
   })
-  it('cross-fades the paintings over the emotion tween and settles on the new one', () => {
+  it('changes the painted face behind a blink (half, closed = the swap, half, open), never a mix, mouth cut on the swap frame', () => {
     LIFE.on = 0
     const l = new FaceLife(7)
     l.setEmotion('sad', 200)
-    const mid = l.step(0.1).paint
-    expect(mid.eyes[0]).toBe('neutral'); expect(mid.eyes[1]).toBe('sad'); expect(mid.eyes[2]).toBeGreaterThan(0.2); expect(mid.eyes[2]).toBeLessThan(0.8)
-    const done = l.step(0.5).paint
-    expect(done.eyes[0]).toBe('sad'); expect(done.eyes[2]).toBe(0)
+    const seen: string[] = [], mouths: string[] = []
+    for (let i = 0; i < 20; i++) { const p = l.step(0.01).paint; expect(p.eyes[2]).toBe(0); expect(p.mouth[2]).toBe(0); seen.push(p.eyes[0]); mouths.push(p.mouth[0]) }
+    expect(seen[0]).toBe('neutral'); expect(seen).toContain('half'); expect(seen).toContain('closed'); expect(seen[seen.length - 1]).toBe('sad')
+    expect(seen.indexOf('closed')).toBeGreaterThan(seen.indexOf('half'))
+    expect(mouths[0]).toBe('neutral'); expect(mouths[mouths.length - 1]).toBe('sad')
+    const cut = mouths.indexOf('sad'); expect(seen[cut]).toBe('closed') // the mouth changes while the lids are shut
+    expect(l.step(0.5).paint.eyes[0]).toBe('sad')
   })
-  it('a blink runs open, half, closed and back', () => {
+  it('a plain blink runs open, half, closed and back', () => {
     LIFE.blinkMin = LIFE.blinkMax = 0.1; LIFE.blinkMs = 400; LIFE.doubleBlink = 0
     const l = new FaceLife(3)
     const seen = new Set<string>()
-    for (let i = 0; i < 60; i++) { const e = l.step(0.01).paint.eyes; if (e[2] > 0.9) seen.add(e[1]) }
+    for (let i = 0; i < 60; i++) seen.add(l.step(0.01).paint.eyes[0])
     expect(seen.has('half')).toBe(true); expect(seen.has('closed')).toBe(true)
   })
   it('walks the mouth through painted open states only while talking', () => {
@@ -204,7 +207,7 @@ describe('the painted face parts', () => {
     expect(l.step(0.1).paint.mouth).toEqual(['neutral', 'neutral', 0])
     l.talking = true
     const used = new Set<string>()
-    for (let i = 0; i < 120; i++) { const m = l.step(1 / 60).paint.mouth; used.add(m[0]); used.add(m[1]) }
+    for (let i = 0; i < 120; i++) { const m = l.step(1 / 60).paint.mouth; used.add(m[0]) }
     expect([...used].some((n) => n.startsWith('talk_'))).toBe(true)
   })
 })

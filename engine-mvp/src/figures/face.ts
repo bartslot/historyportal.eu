@@ -21,7 +21,8 @@ export const LIFE = {
   breathAmp: 0.01, breathHz: 0.25,            // +-1 % of the height: a 2 % bob at 0.25 Hz
   shiftMin: 4, shiftMax: 8, shiftDeg: 1.2, shiftM: 0.012,
   tiltMin: 3, tiltMax: 6, tiltDeg: 1.5,
-  emoMs: 220,                                  // 150-300: an emotion eases in over this long
+  emoMs: 220,                                  // 150-300: the body (lean, tilt, shoulders) eases into an emotion over this long
+  swapMs: 120,                                 // the painted face changes behind a blink: half lid, closed (the swap), half, open
   strokePx: 1.7,                               // the face strokes' width in painting px (the figure's own line is ~2)
   emotes: 0,                                   // 0 = off (small ink marks near the head)
   walkCalm: 0.3,                               // share of the weight shift/tilt kept while walking
@@ -65,7 +66,7 @@ export function mulberry32(seed: number) {
 export const seedOf = (text: string, n = 0) => { let h = 2166136261 ^ n; for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619); return h >>> 0 }
 
 /** the numbers the shader draws */
-/** which painted states to show: [from, to, mix 0..1] for the eyes+brows and for the mouth (state names of face.json) */
+/** which painted state to show: [from, to, mix 0..1] for the eyes+brows and for the mouth (state names of face.json); the mix is always 0, a state is never half of two expressions (the shader can still mix) */
 export type Paint = { eyes: [string, string, number]; mouth: [string, string, number] }
 export type FaceParams = {
   eyeOpen: number; eyeOpenF: number; gaze: P2
@@ -88,6 +89,7 @@ export class FaceLife {
   private tweenMs = 220
   emotion = 'neutral'
   private prev = 'neutral'
+  private swapT = -1                          // 0..1 while the painted face swaps behind a blink, -1 idle
   talking = false
   private blinkAt: number; private blinkT = -1; private blinkAgain = false
   private gazeAt: number; private gaze: P2 = [0, 0]; private gazeTo: P2 = [0, 0]
@@ -110,6 +112,7 @@ export class FaceLife {
     if (!e || name === this.emotion) return
     this.prev = this.emotion
     this.emotion = name
+    this.swapT = 0
     this.from = [...this.cur]
     this.to = flat(e)
     this.tweenT = 0
@@ -169,19 +172,22 @@ export class FaceLife {
     let mouthOpen = c[8 + 1]
     if (this.talking) mouthOpen += LIFE.talkOpen * (0.5 + 0.5 * Math.sin(this.t * Math.PI * 2 * LIFE.talkHz + this.phase)) * (0.6 + 0.4 * Math.sin(this.t * 3.1))
     const open = clamp(c[0], 0, 1.5), openF = clamp(c[1], 0, 1.5)
-    // the painted states: the emotion tween cross-fades the two paintings; a blink runs open -> half -> closed; talking walks
-    // the mouth through painted open states
-    const settling = this.tweenT < 1
-    let eyes: Paint['eyes'] = settling ? [this.prev, this.emotion, k] : [this.emotion, this.emotion, 0]
-    if (blink > 0.02) eyes = blink < 0.5 ? [this.emotion, 'half', blink * 2] : ['half', 'closed', (blink - 0.5) * 2]
-    let mouth: Paint['mouth'] = settling ? [this.prev, this.emotion, k] : [this.emotion, this.emotion, 0]
+    // the painted states are never a mix of two expressions: an emotion change swaps behind a blink (prev open, half, closed
+    // = the swap, half, new open) and the mouth cuts on that same frame; a plain blink is half then closed; talking cuts
+    // between painted mouths
+    let eye = this.emotion, mouth = this.emotion
+    if (this.swapT >= 0) {
+      const u = this.swapT
+      mouth = u < 0.5 ? this.prev : this.emotion
+      eye = u < 0.2 ? this.prev : u < 0.4 ? 'half' : u < 0.6 ? 'closed' : u < 0.8 ? 'half' : this.emotion
+      this.swapT += (dt * 1000) / Math.max(LIFE.swapMs, 1)
+      if (this.swapT >= 1) this.swapT = -1
+    } else if (blink > 0.02) eye = blink < 0.25 ? this.emotion : blink < 0.8 ? 'half' : 'closed'
     const talk = this.talking ? clamp((mouthOpen - c[9]) / Math.max(LIFE.talkOpen, 0.01), 0, 1) : 0
-    if (talk > 0.02) {
-      const T = [this.emotion, 'talk_a', 'talk_ah', 'talk_wide'], at = talk * 3, i = Math.min(2, Math.floor(at))
-      mouth = [T[i], T[i + 1], at - i]
-    }
+    if (talk > 0.02) mouth = [this.emotion, 'talk_a', 'talk_ah', 'talk_wide'][Math.round(talk * 3)]
+    const eyes: Paint['eyes'] = [eye, eye, 0], mouthP: Paint['mouth'] = [mouth, mouth, 0]
     return {
-      paint: { eyes, mouth },
+      paint: { eyes, mouth: mouthP },
       face: {
         eyeOpen: open * (1 - blink), eyeOpenF: openF * (1 - blink), gaze: [c[2] + this.gaze[0], c[3] + this.gaze[1]],
         brow: [c[4], c[5], c[6], c[7]], mouth: [c[8], mouthOpen, c[10], c[11]],
