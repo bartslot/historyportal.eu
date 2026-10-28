@@ -32,10 +32,15 @@ export function resolveGround(set: Scene['set'], lib: Library & { paper?: string
 /** The colour (0..1) a strip's bottom rows are painted in: the per-channel median of their opaque pixels, so the
  *  sparse ink and plant marks do not darken it (an average turned a cream heath into a dark sand band). */
 export function bottomColour(data: Uint8ClampedArray | Uint8Array, w: number, h: number, share = 0.08): [number, number, number] | null {
-  const from = Math.floor(h * (1 - share))
+  return bandColour(data, w, h, 1 - share, 1)
+}
+
+/** The same median colour for the rows between from and to (0 = top, 1 = bottom of the picture). */
+export function bandColour(data: Uint8ClampedArray | Uint8Array, w: number, h: number, from: number, to: number): [number, number, number] | null {
+  const r0 = Math.max(0, Math.floor(h * from)), r1 = Math.min(h, Math.max(r0 + 1, Math.ceil(h * to)))
   const ch: number[][] = [[], [], []]
-  const step = Math.max(1, Math.floor((w * (h - from)) / 20000))   // a sample is enough on big images
-  for (let p = from * w; p < h * w; p += step) {
+  const step = Math.max(1, Math.floor((w * (r1 - r0)) / 20000))   // a sample is enough on big images
+  for (let p = r0 * w; p < r1 * w; p += step) {
     const i = p * 4
     if (data[i + 3] < 200) continue
     ch[0].push(data[i]); ch[1].push(data[i + 1]); ch[2].push(data[i + 2])
@@ -44,6 +49,16 @@ export function bottomColour(data: Uint8ClampedArray | Uint8Array, w: number, h:
   const med = (v: number[]) => { const s = [...v].sort((x, y) => x - y); return s[s.length >> 1] / 255 }
   return [med(ch[0]), med(ch[1]), med(ch[2])]
 }
+
+/** A picture's colour per band of rows, top to bottom (SKY_BANDS bands): where a sky meets the floor is only known
+ *  once it is placed, so the loader keeps the bands and the stage picks one. */
+export const SKY_BANDS = 32
+export const rowBands = (data: Uint8ClampedArray | Uint8Array, w: number, h: number) =>
+  Array.from({ length: SKY_BANDS }, (_, b) => bandColour(data, w, h, b / SKY_BANDS, (b + 1) / SKY_BANDS))
+
+/** The band at height f of a placed picture (0 = its bottom edge, 1 = its top): a sky's colour at the horizon. */
+export const bandAt = (bands: ([number, number, number] | null)[], f: number) =>
+  bands[Math.min(SKY_BANDS - 1, Math.max(0, Math.floor((1 - f) * SKY_BANDS)))] ?? null
 
 /** Eye height of the house camera (layout HOUSE.y): a flat stain is foreshortened by eye / distance. */
 const EYE_M = 1.6

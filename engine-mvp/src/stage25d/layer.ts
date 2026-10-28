@@ -7,7 +7,7 @@ import {
 } from '@babylonjs/core'
 import type { Asset, MotionSpec } from './types'
 import { MOTION_CODE } from './layout'
-import { bottomColour } from './ground'
+import { bottomColour, rowBands } from './ground'
 import { GL_NOISE } from './ground-gl'
 
 Effect.ShadersStore.stageLayerVertexShader = `
@@ -66,6 +66,8 @@ Effect.ShadersStore.stageLayerFragmentShader = `
 const textures = new Map<string, Promise<RawTexture>>()
 /** url -> the colour an image's bottom rows end in (0..1), read while loading: the ground fades into it */
 export const edgeColours = new Map<string, [number, number, number]>()
+/** Per url: the picture's colour per band of rows (rowBands), for a sky's colour where it meets the floor. */
+export const bandColours = new Map<string, ([number, number, number] | null)[]>()
 
 /** The image as a premultiplied RGBA texture with mipmaps (cached per url and scene). */
 export function loadPremultiplied(url: string, scene: Scene): Promise<RawTexture> {
@@ -83,6 +85,7 @@ export function loadPremultiplied(url: string, scene: Scene): Promise<RawTexture
       const data = g.getImageData(0, 0, c.width, c.height).data
       const edge = bottomColour(data, c.width, c.height)
       if (edge) edgeColours.set(url, edge)
+      bandColours.set(url, rowBands(data, c.width, c.height))
       for (let i = 0; i < data.length; i += 4) {
         const a = data[i + 3] / 255
         data[i] = Math.round(data[i] * a); data[i + 1] = Math.round(data[i + 1] * a); data[i + 2] = Math.round(data[i + 2] * a)
