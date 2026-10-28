@@ -2143,6 +2143,8 @@ html[data-inspector-w] aside[data-resizable-drawer] {
   /* Wide enough for "Nederlands" + the caret at 390 px (it read "Nederlan…", pair test 10-24). */
   :root { --title-gutter: 16px; --title-lang-w: 9.5rem; }
 }
+/* The bars either side of the 16:9 lesson stage (editor + player). Pure black, one place. */
+:root { --stage-letterbox: #000; }
 .title-screen { scrollbar-width: none; }
 .title-screen::-webkit-scrollbar { display: none; }
 .title-gutter-x { padding-inline: var(--title-gutter); }
