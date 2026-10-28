@@ -6,7 +6,7 @@ import {
   type Scene,
 } from '@babylonjs/core'
 import type { Asset, MotionSpec } from './types'
-import type { Paper } from './look'
+import { SHADE_COLOUR, SUN_COLOUR, type Alive, type Paper } from './look'
 import { MOTION_CODE } from './layout'
 import { bottomColour, inkLevel, landTop, rowBands } from './ground'
 import { GL_NOISE } from './ground-gl'
@@ -80,11 +80,15 @@ Effect.ShadersStore.stageLayerFragmentShader = `
   uniform float paper, grain, patches, wash;   // the paper (look.ts sheet*), anchored to this picture
   uniform vec3 washColour;
   uniform vec2 grainUV;                        // texture uv per 1080p px at the house pose (fixed: grain never swims)
+  // no sticker look (look.ts): a painted edge instead of a scissor cut, a foot that sinks into the floor, one light
+  uniform float edgeSoft, footM, grounding, grass, light, sunSide, drift, height;
+  uniform vec3 footTint, sunColour, shadeColour;
   ${GL_NOISE}
   ${LINE_BY_DEPTH_GLSL}
   ${PAPER_GLSL}
   void main(void) {
     vec2 uv = vec2(vUV.x * uRepeat, vUV.y);
+    uv.x += drift * 0.03 * sin(time * 0.009 + phase);     // the backdrop sky's clouds travel, too slow to see turn
     if (kind == 3.0) {          // ripple: the water surface wobbles, more toward the bottom (nearer)
       float k = amount * (0.3 + 0.7 * (1.0 - vH));
       uv.x += k * 0.004 * sin(uv.y * 70.0 + time * speed * 2.2 + phase);
@@ -114,6 +118,40 @@ Effect.ShadersStore.stageLayerFragmentShader = `
       c.rgb = s * c.a;
     }
     if (c.a > 0.004 && paper + grain + patches > 0.0) c.rgb = paperOn(c.rgb / c.a, uv / grainUV, paper, grain, patches, wash, washColour) * c.a;
+    vec2 px = uv / grainUV;                              // 1080p px in the picture's own space
+    // one light for every picture: the side toward the sun warmer and lighter, the far side cooler, the top a touch up
+    if (light > 0.0 && c.a > 0.004) {
+      vec3 s = c.rgb / c.a;
+      float side = (vUV.x - 0.5) * sunSide;              // -0.5 .. 0.5, + toward the sun
+      s *= 1.0 + light * (0.4 * side + 0.08 * (vH - 0.5));
+      s = mix(s, s * sunColour, light * max(side, 0.0) * 1.2);
+      s = mix(s, s * shadeColour, light * max(-side, 0.0) * 1.2);
+      c.rgb = clamp(s, 0.0, 1.0) * c.a;
+    }
+    // grounding: the foot takes the floor's colour along a ragged line, and a few blades of the floor stand in front
+    if (grounding + grass > 0.0 && footM > 0.0 && c.a > 0.004) {
+      float foot = clamp(footM / max(height, 0.01), 0.03, 0.12);
+      float rag = 0.35 * foot * (fbm(vec2(px.x / 9.0, 1.3)) - 0.5);
+      float k = 1.0 - smoothstep(0.0, foot, vH + rag);
+      c.rgb = mix(c.rgb / c.a, footTint, k * 0.75 * grounding) * c.a;
+      float blade = smoothstep(0.4, 0.95, fbm(vec2(px.x / 2.2, 7.0)));
+      if (vH < grass * foot * 1.4 * blade) c *= 1.0 - 0.85 * grass;
+    }
+    // a painted edge, never a scissor cut: the rim breaks up in the paper's grain and bleeds a little outward
+    if (edgeSoft > 0.0) {
+      float amin = 1.0; vec4 acc = vec4(0.0);
+      for (int k = 0; k < 8; k++) {
+        float a = float(k) * 0.785398;
+        vec4 n = texture2D(tex, uv + vec2(cos(a), sin(a)) * grainUV * 2.5);
+        amin = min(amin, n.a); acc += n;
+      }
+      acc /= 8.0;
+      float rim = (1.0 - amin) * step(0.004, c.a);       // this pixel is on the cut
+      float nz = fbm(px / 2.0 + 41.0);
+      c *= 1.0 - edgeSoft * rim * 0.85 * smoothstep(0.35, 0.75, nz);
+      float bleed = edgeSoft * 0.3 * acc.a * smoothstep(0.45, 0.8, nz) * (1.0 - c.a);
+      c += vec4(acc.rgb / max(acc.a, 1e-3), 1.0) * bleed;
+    }
     // the lower edge is painted over into the ground's own colour along a ragged line (not a blur, not see-through:
     // behind a far strip's lower part is sky, not floor), so the far landscape meets the floor without a seam. Opaque
     // even where the painting itself fades out at the bottom (art v3 strips do), else the sky shows through
@@ -203,6 +241,8 @@ export interface LayerHandle {
   setFeather(f: number, tint?: [number, number, number]): void
   /** the paper under this picture (look.ts paperOf) and its grain scale (uv per 1080p px at the house pose) */
   setPaper(p: Paper, grainUV: readonly [number, number]): void
+  /** no sticker look: painted edge, grounding (footM 0 = none: not standing), shared light (look.ts aliveOf) */
+  setAlive(a: Alive): void
   /** sky only: share of the plane's height, from the bottom, below the eye line (painted as the far floor) */
   setGroundLine(f: number): void
   /** line by depth (look.ts lineOf) and the texture uv per 1080p screen px (look.ts pxUV) */
@@ -215,7 +255,7 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
   const mesh = anchoredPlane(`layer:${asset.id}`, asset, w, h, scene)
   const mat = new ShaderMaterial(`layer:${asset.id}`, scene, 'stageLayer', {
     attributes: ['position', 'uv'],
-    uniforms: ['worldViewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'opacity', 'uRepeat', 'feather', 'featherTint', 'groundLine', 'lineFade', 'lineThin', 'haze', 'lineBrown', 'inkMul', 'pxUV', 'hazeTint', 'paper', 'grain', 'patches', 'wash', 'washColour', 'grainUV'],
+    uniforms: ['worldViewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'opacity', 'uRepeat', 'feather', 'featherTint', 'groundLine', 'lineFade', 'lineThin', 'haze', 'lineBrown', 'inkMul', 'pxUV', 'hazeTint', 'paper', 'grain', 'patches', 'wash', 'washColour', 'grainUV', 'edgeSoft', 'footM', 'grounding', 'grass', 'light', 'sunSide', 'drift', 'footTint', 'sunColour', 'shadeColour'],
     samplers: ['tex'],
     needAlphaBlending: true,
   })
@@ -229,6 +269,7 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
   mat.setFloat('phase', phase).setFloat('height', h * top).setFloat('width', w).setFloat('uRepeat', uRepeat).setFloat('opacity', 1)
   mat.setFloat('kind', 0).setFloat('amount', 1).setFloat('speed', 1).setFloat('time', 0).setFloat('feather', 0)
   mat.setFloat('groundLine', -1).setFloat('lineFade', 0).setFloat('lineThin', 0).setFloat('haze', 0).setFloat('lineBrown', 0).setFloat('inkMul', 1).setFloat('paper', 0).setFloat('grain', 0).setFloat('patches', 0)
+  mat.setFloat('edgeSoft', 0).setFloat('footM', 0).setFloat('grounding', 0).setFloat('grass', 0).setFloat('light', 0).setFloat('sunSide', 1).setFloat('drift', 0)
   mesh.material = mat
   mesh.metadata = { noGBuffer: true, painted: true } // the look draws no ink on its edges: the art has its own
   mesh.isPickable = false
@@ -243,6 +284,11 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
     setPaper: (pp, g) => {
       mat.setFloat('paper', pp.paper).setFloat('grain', pp.grain).setFloat('patches', pp.patches).setFloat('wash', pp.wash)
       mat.setVector3('washColour', Vector3.FromArray(pp.washColour)).setVector2('grainUV', new Vector2(g[0], g[1]))
+    },
+    setAlive: (a) => {
+      mat.setFloat('edgeSoft', a.edgeSoft).setFloat('footM', a.footM).setFloat('grounding', a.grounding).setFloat('grass', a.grass)
+        .setFloat('light', a.light).setFloat('sunSide', a.sunSide).setFloat('drift', a.drift)
+      mat.setVector3('footTint', Vector3.FromArray(a.footTint)).setVector3('sunColour', Vector3.FromArray(SUN_COLOUR)).setVector3('shadeColour', Vector3.FromArray(SHADE_COLOUR))
     },
     setGroundLine: (f) => { mat.setFloat('groundLine', f) },
     setFeather: (f, tint) => {

@@ -25,8 +25,31 @@ export const STAGE_SHEET: Record<string, number> = {
   lineFadeMid: 0.15, lineThinMid: 0.3, hazeMid: 0.04,
   lineFadeFg: 0, lineThinFg: 0, hazeFg: 0,
   lineFadeNear: 0, lineThinNear: 0, hazeNear: 0,
+  // no sticker look (Bart 10-28: "dead empty scenes with cutout stickers"): calm defaults
+  edgeSoft: 0.8, grounding: 0.8, grassOverlap: 0.6, sunLight: 0.6, castShadow: 0.55,
+  cloudDrift: 0.4, smoke: 0.6, birds: 0.4,
 }
 export const INK_FLOOR = 0.65
+/** The one light every picture is lit by: warm on the sun's side, cool in the shade. */
+export const SUN_COLOUR: [number, number, number] = [1.05, 1.0, 0.9]
+export const SHADE_COLOUR: [number, number, number] = [0.88, 0.93, 1.05]
+/** Height of an asset's foot that sinks into the floor, metres (clamped in the shader to 3-12 % of its height). */
+export const FOOT_M = 0.35
+export interface Alive { edgeSoft: number; footM: number; grounding: number; grass: number; light: number; sunSide: number; drift: number; footTint: [number, number, number] }
+/** The no-sticker values for one picture: kind = what it is (a standing thing gets a foot; sky gets drift, no edge or
+ *  light; far strips half the light). sunX = the light's direction across the screen (sunDir.x: + travels right). */
+export function aliveOf(look: Record<string, unknown>, kind: 'sky' | 'strip' | 'standing' | 'other', sunX: number, footTint: [number, number, number]): Alive {
+  const sky = kind === 'sky'
+  return {
+    edgeSoft: sky ? 0 : num(look, 'edgeSoft'),
+    footM: kind === 'standing' ? FOOT_M : 0,
+    grounding: num(look, 'grounding'), grass: num(look, 'grassOverlap'),
+    light: sky ? 0 : num(look, 'sunLight') * (kind === 'strip' ? 0.5 : 1),
+    sunSide: sunX > 0 ? -1 : 1,                        // light travelling right comes from the left
+    drift: sky ? num(look, 'cloudDrift') : 0,
+    footTint,
+  }
+}
 /** The warm raw-sienna wash the whole picture is painted over (sheet.ts even part, PAPER_GLSL patches). */
 export const WASH_COLOUR: [number, number, number] = [0.93, 0.86, 0.74]
 export interface Paper { paper: number; grain: number; patches: number; wash: number; washColour: [number, number, number] }

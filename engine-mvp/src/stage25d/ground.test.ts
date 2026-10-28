@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bandAt, bandColour, BG_FEATHER, bottomColour, featherOf, groundOptions, hexRgb, inkLevel, landTop, nearOptions, PAPER, resolveGround, rowBands, SKY_BANDS, stainSize } from './ground'
+import { bandAt, bandColour, BG_FEATHER, bottomColour, featherOf, groundOptions, defaultNear, hexRgb, inkLevel, landTop, nearOptions, PAPER, resolveGround, rowBands, SKY_BANDS, stainSize } from './ground'
 import { libraryUrlFor } from './library'
 import type { Asset, Library } from './types'
 
@@ -149,5 +149,16 @@ describe('inkLevel and nearOptions', () => {
     const a = (id: string, layer: Asset['layer'], w: number, h: number, tileable_x = false): Asset => ({ id, layer, tags: [], file: '', w, h, anchor: [0.5, 1], height_m: 5, motion: 'none', tileable_x })
     const lib = { version: 1, bundle: 'b', style: '', assets: [a('quay', 'fg', 1536, 667), a('meadow', 'mid', 1536, 599), a('barrel', 'fg', 400, 500), a('city', 'bg', 1536, 355), a('sky', 'sky', 1536, 512), a('tile', 'ground', 1024, 1024, true)] } as Library
     expect(nearOptions(lib)).toEqual(['meadow', 'quay'])
+  })
+})
+
+describe('defaultNear: a scene without set.near gets the bundle near ground', () => {
+  const a = (id: string, layer: Asset['layer']): Asset => ({ id, layer, tags: [], file: '', w: 4096, h: 630, anchor: [0.5, 1], height_m: 5, motion: 'none' })
+  const lib = { version: 1, bundle: 'b', style: '', assets: [a('z-heath', 'near_ground'), a('a-meadow', 'near_ground'), a('quay', 'fg')] } as Library
+  it('first near_ground by id; its own choice wins; none = none', () => {
+    expect(defaultNear(undefined, lib)).toBe('a-meadow')
+    expect(defaultNear('quay', lib)).toBe('quay')
+    expect(defaultNear('none', lib)).toBeNull()
+    expect(defaultNear(undefined, { ...lib, assets: [a('quay', 'fg')] })).toBeNull()
   })
 })

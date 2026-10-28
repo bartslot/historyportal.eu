@@ -54,6 +54,8 @@ const LOOK_ROWS: [string, string][] = [
   ['sheetPaper', 'Paper grain'], ['sheetGrain', 'Pigment grain'], ['sheetWash', 'Wash'], ['sheetPatches', 'Wash patches'], ['lineBrown', 'Line brown'], ['lineInk', 'Line value'], ['lineNorm', 'Line match'],
   ['housePitch', 'Camera tilt'], ['groundDetail', 'Ground detail'], ['groundVary', 'Ground wash'], ['groundMix', 'Ground mix'],
   ['groundScale', 'Ground tile size'], ['nearFar', 'Near ground depth'],
+  ['edgeSoft', 'Soft edges'], ['grounding', 'Grounding'], ['grassOverlap', 'Grass in front'], ['sunLight', 'Sunlight'],
+  ['castShadow', 'Cast shadows'], ['cloudDrift', 'Cloud drift'], ['smoke', 'Smoke'], ['birds', 'Birds'],
   ...DEPTHS.flatMap((d): [string, string][] => {
     const k = lineKeys(d), n = DEPTH_NAMES[d]
     return [[k.fade, `Line lighter, ${n}`], [k.thin, `Line thinner, ${n}`], [k.haze, `Haze, ${n}`]]
@@ -171,7 +173,8 @@ function ScenePanel({ player }: { player: Player }) {
           {groundOptions(player.stage.sceneLib).map((id) => <option key={id} value={id}>{id}</option>)}
         </select>
         <select className="select select-xs" data-testid="near" value={s.set.near ?? ''} onChange={(e) => player.doc.set([...sp, 'set', 'near'], e.target.value || undefined, 'Near ground')}>
-          <option value="">No near ground</option>
+          <option value="">Near ground of the bundle</option>
+          <option value="none">No near ground</option>
           {nearOptions(player.stage.sceneLib).map((id) => <option key={id} value={id}>{id}</option>)}
         </select>
         <Num player={player} path={[...sp, 'set', 'horizon']} label="Horizon" min={-80} max={30} step={0.1} fallback={player.stage.horizonOf(s)} />

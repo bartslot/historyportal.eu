@@ -10,12 +10,13 @@ import {
   type RawTexture,
 } from '@babylonjs/core'
 import { createLookChain, PRESETS } from '../engine/look-chain.js'
-import { houseProjection, inkScale, lineOf, lookNum, paperOf, type Line, type Paper, pxPerMetre, pxUV, STAGE_SHEET } from './look'
+import { makeBirds, makeSmoke, smokes } from './life'
+import { aliveOf, houseProjection, inkScale, lineOf, lookNum, paperOf, type Line, type Paper, pxPerMetre, pxUV, STAGE_SHEET } from './look'
 import { makeSheet } from './sheet'
 import { libraryUrlFor, loadLibrary, resolveAsset } from './library'
 import { ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, DECAL_LIFT_M, DECAL_SLOT, LAND_TARGET, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
 import { bandColours, edgeColours, inkLevels, landTops, loadPremultiplied, makeLayer, type LayerHandle } from './layer'
-import { bandAt, featherOf, GROUND_TILE_M, hexRgb, PAPER as PAPER_HEX, resolveGround, STAIN_DEFAULT, stainSize } from './ground'
+import { bandAt, defaultNear, featherOf, GROUND_TILE_M, hexRgb, PAPER as PAPER_HEX, resolveGround, STAIN_DEFAULT, stainSize } from './ground'
 import { makeGround, makeStain, type GroundLook } from './ground-gl'
 import { LessonDoc } from './edits'
 import { Timeline, type InteractionHandler, type Mode } from './timeline'
@@ -25,7 +26,7 @@ import type { Asset, Depth, Lesson, Library, Scene, SceneLayer } from './types'
 export const STAGE_LOOK: Record<string, number | string> = { ...PRESETS['History Lines pencil'], paper: 0.35, granulation: 0.2, ...STAGE_SHEET }
 const PAPER = new Color4(0.937, 0.914, 0.863, 1)
 type Stain = ReturnType<typeof makeStain>
-interface Built { layer: SceneLayer; index: number; builtScale: number; handle: LayerHandle; asset: Asset; order: number; stain?: Stain; ink?: number }  // index -1 = the sky
+interface Built { layer: SceneLayer; index: number; builtScale: number; handle: LayerHandle; asset: Asset; order: number; stain?: Stain; cast?: Stain; ink?: number }  // index -1 = the sky
 /** How far the paper wash floor is tinted toward the far landscape's own ground colour */
 const GROUND_WASH = 0.7
 const mix3 = (a: number[], b: number[], k: number) => a.map((v, i) => v + (b[i] - v) * k) as [number, number, number]
@@ -41,6 +42,9 @@ export class Stage {
   /** the scene's first far strip: where its land starts, its placed height, its slot (set.horizon 'auto') */
   private strip: { top: number; h: number; order: number } | null = null
   private nearTex: RawTexture | null = null
+  private smoke: ReturnType<typeof makeSmoke>[] = []
+  private birds: ReturnType<typeof makeBirds>
+  private footTint: [number, number, number] = hexRgb(PAPER_HEX)
   private nearAsset: Asset | null = null
   /** the sky's own colour where it meets the floor: far layers' lines and washes go toward it (look.ts haze) */
   private hazeTint: [number, number, number] = hexRgb(PAPER_HEX)
@@ -66,6 +70,7 @@ export class Stage {
     this.sceneLib = lib
     this.ground = makeGround(this.scene)
     this.ground.set(this.groundLook(null, null, lib))
+    this.birds = makeBirds(this.scene, BIRD_Z_M, viewWidthAt(BIRD_Z_M), BIRD_SLOT)
     createLookChain(this.scene, this.camera, {
       num: (k: string) => Number(this.look[k] ?? 0),
       inkColor: () => String(this.look.inkColor ?? 'pencil'),
@@ -147,20 +152,24 @@ export class Stage {
       if (layer.flat) handle.mesh.rotation.x = Math.PI / 2   // its top edge points away from the camera, along the floor
       handle.mesh.isVisible = false
       // a contact stain on the ground under standing things (not under far strips or floating sky props)
-      let stain: Stain | undefined
+      let stain: Stain | undefined, cast: Stain | undefined
       if (STANDING.includes(layer.depth) && !asset.tileable_x && !layer.flat) {
         const sz = stainSize(asset, p.w, p.h, p.z)
         stain = makeStain(handle.mesh, sz.w, sz.d, this.scene)
         stain.mesh.alphaIndex = stainIndex(p.alphaIndex)
+        // and its shadow, cast along the one sun (S3's makeStain cast: puppets and props share the light)
+        cast = makeStain(handle.mesh, sz.w, sz.d, this.scene, { dir: [this.sunDir.x, this.sunDir.z], length: p.h * castLength(this.sunDir) })
+        cast.mesh.alphaIndex = stainIndex(p.alphaIndex)
       }
-      next.push({ layer, index, builtScale: layer.scale ?? 1, handle, asset, order, stain, ink: inkLevels.get(lib.base + asset.file) })
+      next.push({ layer, index, builtScale: layer.scale ?? 1, handle, asset, order, stain, cast, ink: inkLevels.get(lib.base + asset.file) })
     }))
     // the floor: the scene's ground art (or the bundle paper), fading into where the far landscape ends
     const choice = resolveGround(s.set, lib)
     let groundTex = null
     // the near band (set.near): a wide strip painted from eye height, laid on the floor out to look.nearFar
     let nearTex: RawTexture | null = null
-    const nearAsset = s.set.near ? resolveAsset(lib, { asset: s.set.near }) : null
+    const nearId = defaultNear(s.set.near, lib)
+    const nearAsset = nearId ? resolveAsset(lib, { asset: nearId }) : null
     if (s.set.near && !nearAsset) misses.push({ need: s.set.near, reason: 'no near band' })
     if (nearAsset) { try { nearTex = await loadPremultiplied(lib.base + nearAsset.file, this.scene) } catch { misses.push({ need: s.set.near, reason: `file did not load: ${nearAsset.file}` }) } }
     if (choice.kind === 'asset') {
@@ -175,7 +184,7 @@ export class Stage {
     const skyP = sky && placeLayer(sky.asset, sky.layer, sky.order)
     const skyHaze = sky && skyP ? bandAt(bandColours.get(lib.base + sky.asset.file) ?? [], (HOUSE.y - skyP.y) / skyP.h) : null
     const tint = far ? edgeColours.get(lib.base + far.asset.file) ?? null : skyHaze
-    const dispose = (list: Built[]) => list.forEach((b) => { b.stain?.mesh.material?.dispose(); b.handle.mesh.dispose(); b.handle.material.dispose() })
+    const dispose = (list: Built[]) => list.forEach((b) => { b.stain?.mesh.material?.dispose(); b.cast?.mesh.material?.dispose(); b.handle.mesh.dispose(); b.handle.material.dispose() })
     if (token !== this.buildToken) {   // a newer build won: this one never shows
       dispose(next)
       return
@@ -183,9 +192,18 @@ export class Stage {
     dispose(this.built)
     this.built = next
     this.sceneLib = lib
+    // the colour a standing thing's foot sinks into: the floor art's own average, else the floor's wash
+    const tileBands = choice.kind === 'asset' ? (bandColours.get(lib.base + choice.asset.file) ?? []).filter((c): c is [number, number, number] => !!c) : []
     const look = this.groundLook(choice.kind === 'asset' ? { tex: groundTex, asset: choice.asset } : null, tint, lib, choice.kind === 'paper' ? choice.colour : undefined)
     this.horizonTint = look.tint
     this.strip = strip
+    // smoke from every fire in the scene, rebuilt with it
+    this.smoke.forEach((m) => m.dispose())
+    this.smoke = next.filter((b) => smokes(b.asset) && STANDING.includes(b.layer.depth) && !b.layer.flat).map((b) => {
+      const p = placeLayer(b.asset, b.layer, b.order)
+      return makeSmoke(this.scene, new Vector3(b.handle.mesh.position.x, p.h * 0.6, p.z), Math.min(Math.max(p.h * 0.8, 0.5), 3), p.alphaIndex)
+    })
+    this.footTint = tileBands.length ? mean3(tileBands) : look.base
     this.nearTex = nearTex
     this.nearAsset = nearAsset
     this.hazeTint = skyHaze ?? look.tint
@@ -215,7 +233,9 @@ export class Stage {
   }
 
   /** Where the light comes from (S3: puppets cast their contact shadow along it). */
-  readonly sunDir = new Vector3(-0.4, -1, 0.6).normalize()
+  // from the upper left and a little behind the camera, as in a picture book: lit left sides, shadows falling right and
+  // toward the viewer, where they show (a light into the picture hid every shadow behind its prop)
+  readonly sunDir = new Vector3(0.55, -1, -0.3).normalize()
 
   /** A depth's line values with the haze colour, following the teacher's look sliders (S3: puppets draw their line
    *  with LINE_BY_DEPTH_GLSL from these). Read it every frame or on each pose. */
@@ -246,6 +266,8 @@ export class Stage {
     this.ground.live({ detail: L('groundDetail'), vary: L('groundVary'), mixTile: L('groundMix'), tileScale: L('groundScale') })
     this.ground.near(this.nearTex ? { tex: this.nearTex, ...houseProjection(pitch, this.engine.getAspectRatio(this.camera), L('nearFar')), span: NEAR_SPAN, tileable: !!this.nearAsset?.tileable_x } : null)
     const renderH = this.engine.getRenderHeight()
+    this.smoke.forEach((m) => m.update(clock, lookNum(this.look, 'smoke')))
+    this.birds.update(clock, lookNum(this.look, 'birds'))
     const paper = paperOf(this.look)
     for (const b of this.built) {
       const k = layerAt(b.layer, t)
@@ -262,6 +284,9 @@ export class Stage {
       b.handle.setPaper(paper, pxUV(p.w * k.scale, p.h * k.scale, p.uRepeat, pxPerMetre(1080, p.z - HOUSE.z, fovRad(HOUSE.fov)), 1080))
       b.handle.setLine(line, b.ink === undefined ? 1 : inkScale(b.ink, line.ink, line.norm), pxUV(p.w * k.scale, p.h * k.scale, p.uRepeat, ppm, renderH), this.hazeTint)
       b.stain?.setOpacity((b.layer.shadow ?? STAIN_DEFAULT) * k.opacity)
+      b.cast?.setOpacity(lookNum(this.look, 'castShadow') * ((b.layer.shadow ?? STAIN_DEFAULT) / STAIN_DEFAULT) * k.opacity)
+      const kind = b.asset.layer === 'sky' ? 'sky' : b.asset.layer === 'bg' ? 'strip' : STANDING.includes(b.layer.depth) && !b.layer.flat ? 'standing' : 'other'
+      b.handle.setAlive(aliveOf(this.look, kind, this.sunDir.x, this.footTint))
       b.handle.setMotion(motionOf(b.asset, b.layer))
       b.handle.material.setFloat('time', clock)
     }
@@ -271,6 +296,13 @@ export class Stage {
 /** The near band spans this much of the frame's width; past its sides it repeats (tileable art) or mirrors (one
  *  painting), so no camera move ever runs out of it or smears its last column (checker floor HIGH). */
 const NEAR_SPAN = 1.3
+
+/** A cast shadow's length per metre of height: the sun's run over its fall. */
+/** Birds cross the far sky just beyond the far landscape, drawn with the sky (before the floor and the strips). */
+const BIRD_Z_M = 110
+const BIRD_SLOT = 900
+const castLength = (d: Vector3) => Math.min(1.5, Math.hypot(d.x, d.z) / Math.max(-d.y, 0.2))
+const mean3 = (cs: [number, number, number][]): [number, number, number] => [0, 1, 2].map((i) => cs.reduce((s, c) => s + c[i], 0) / cs.length) as [number, number, number]
 
 /** Depths where things stand on the floor (and get a contact stain). */
 export const STANDING: Depth[] = ['mid', 'fg', 'near']
