@@ -144,7 +144,7 @@
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-E0ExBKum.css",
+    "file": "assets/app-BxQY2tjW.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -153,7 +153,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-CPpU7HXP.js",
+    "file": "assets/app-CZ_dRxzG.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -366,7 +366,7 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-LKE3ZDEI.js",
+    "file": "assets/index-DP32i_-h.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
@@ -380,11 +380,16 @@
       "resources/js/avatar-3d.js",
       "_camera-D-2eXvUg.js",
       "_BalloonLayer-Bx7CXJud.js",
+      "resources/js/app.js",
       "node_modules/three/build/three.module.js",
       "_ambient-CnaWjG1w.js",
       "_easing-HS2C6-zA.js",
       "_properties-GGiIKp16.js",
-      "_GLTFLoader-Et3HGvr1.js"
+      "_GLTFLoader-Et3HGvr1.js",
+      "_ScrollTrigger-B2uKOqL4.js",
+      "__commonjsHelpers-CqkleIqs.js",
+      "_clip-W780-tgz.js",
+      "_tuner-CTMYYJl-.js"
     ],
     "dynamicImports": [
       "resources/js/scene/SplitStage.js",
@@ -454,7 +459,7 @@
     ]
   },
   "resources/js/test-session/recorder.js": {
-    "file": "assets/recorder-kdY5g6QO.js",
+    "file": "assets/recorder-BzBjCuVS.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,
