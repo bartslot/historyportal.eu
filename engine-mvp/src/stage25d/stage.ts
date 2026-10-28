@@ -290,6 +290,7 @@ export class Stage {
     this.ground.live({ detail: L('groundDetail'), vary: L('groundVary'), mixTile: L('groundMix'), tileScale: L('groundScale') })
     this.ground.near(this.nearTex ? { tex: this.nearTex, ...houseProjection(pitch, this.engine.getAspectRatio(this.camera), L('nearFar')), span: NEAR_SPAN, tileable: !!this.nearAsset?.tileable_x } : null)
     const renderH = this.engine.getRenderHeight()
+    const paper = paperOf(this.look)
     this.bands.forEach((b) => {
       const ppm = pxPerMetre(renderH, b.z - HOUSE.z, fovRad(HOUSE.fov))
       b.handle.setOpacity(1)
@@ -298,7 +299,6 @@ export class Stage {
     })
     this.smoke.forEach((m) => m.update(clock, lookNum(this.look, 'smoke')))
     this.birds.update(clock, lookNum(this.look, 'birds'))
-    const paper = paperOf(this.look)
     for (const b of this.built) {
       const k = layerAt(b.layer, t)
       const p = placeLayer(b.asset, { ...b.layer, x: k.x, scale: 1 }, b.order, this.horizonOf(s))
