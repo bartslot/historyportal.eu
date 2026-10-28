@@ -31,6 +31,8 @@ FADE_FRAC = 0.12  # bg strips: bottom share that fades out
 LAND_WIN = 0.15
 LAND_TOP = 0.3  # ... and paper pockets in the top share of the land (below that line) are sky, not land  # bg strips: the land line is the running median of the land top over this share of the width
 
+KEEP_CLOSE = 4  # px: a protected flag/sail is closed over small outline breaks before its holes are filled
+PALE_L, PALE_C = 85.0, 18.0  # L*/C* of a pale wash the edit model left between stalks (checker re-check 2)
 GAP_RING_INK = 0.25  # an enclosed paper island is a see-through gap only if ink draws its rim
 LEG_ZONE = 0.7  # ... or, on solid sheets, if it sits in the bottom 30 % of its object (between legs, rollers)
 
@@ -43,8 +45,15 @@ def gap_islands(rgb: np.ndarray, de: np.ndarray, obj: np.ndarray, gaps: str,
     island whose rim is ink.
     gaps='fill' (animals, stones, props, buildings): only islands in the leg zone; white bodies, flag bands,
     foam and highlights stay opaque (the checker found them punched through, 2026-10-27)."""
-    isl, n = ndimage.label((de < ISLAND_DE) & obj)
     cut = np.zeros_like(obj)
+    if gaps == "none":  # water, foam: nothing inside is see-through
+        return cut
+    paper = de < ISLAND_DE
+    pale = paper.copy()
+    if gaps in ("all", "rim"):  # thin-thing items: a pale, low-chroma wash between stalks is sky too (re-check 2: cream slabs)
+        lab = qa.rgb2lab(rgb.astype(float))
+        pale |= (lab[..., 0] > PALE_L) & (np.hypot(lab[..., 1], lab[..., 2]) < PALE_C)
+    isl, n = ndimage.label(pale & obj)
     if not n:
         return cut
     ink = qa.ink_coverage_map(rgb)
@@ -54,9 +63,16 @@ def gap_islands(rgb: np.ndarray, de: np.ndarray, obj: np.ndarray, gaps: str,
         m = isl[sl] == i
         if m.sum() < qa.ISLAND_MIN_PX:
             continue
-        if gaps == "all":
-            if keep is None or not keep[sl][m].any():
-                cut[sl] |= m
+        if gaps in ("all", "rim"):
+            if keep is not None and keep[sl][m].any():
+                continue
+            if gaps == "rim" and not paper[sl][m].mean() > 0.5:  # a pale wash, not paper: only a gap if ink draws its rim (a
+                pad = tuple(slice(max(0, s.start - 3), s.stop + 3) for s in sl)  # highlight on pewter is not)
+                mm = isl[pad] == i
+                ring = ndimage.binary_dilation(mm, iterations=3) & ~mm
+                if ink[pad][ring].mean() < GAP_RING_INK:
+                    continue
+            cut[sl] |= m
             continue
         pad = tuple(slice(max(0, s.start - 3), s.stop + 3) for s in sl)
         mm = isl[pad] == i
@@ -101,6 +117,10 @@ def matte(rgb: np.ndarray, paper: np.ndarray, layer: str, gaps: str = "fill",
     if layer not in ("bg", "strip"):
         obj &= ~gap_islands(rgb, de, obj, gaps, keep)
     obj = ndimage.binary_opening(obj, iterations=1) | (obj & (de > 30))  # drop 1px paper whiskers, keep ink
+    if keep is not None and keep.any():  # protected (flags, sails, water under hulls): never see-through inside
+        lab_k, nk = ndimage.label(keep)
+        for sl in ndimage.find_objects(lab_k):
+            obj[sl] |= ndimage.binary_fill_holes(ndimage.binary_closing(obj[sl], iterations=KEEP_CLOSE))
     soft = np.clip((de - 2.0) / 14.0, 0, 1)
     inner = ndimage.binary_erosion(obj, iterations=2)
     ring = ndimage.binary_dilation(obj, iterations=1)
@@ -214,7 +234,11 @@ def cut_sheet(bundle: str, sheet: dict, variant: str) -> dict | None:
         Image.fromarray(rgba).save(out / f"{sheet['items'][0]['id']}.png")
         res["assets"].append(sheet["items"][0]["id"])
     else:
-        alpha = matte(rgb, paper, layer, sheet.get("gaps", "fill"))
+        h, w = rgb.shape[:2]
+        keep = np.zeros((h, w), bool)
+        for x0, y0, x1, y1 in sheet.get("keep", []):  # fractions of the sheet: flag bands, sails, water under hulls
+            keep[int(y0 * h):int(y1 * h), int(x0 * w):int(x1 * w)] = True
+        alpha = matte(rgb, paper, layer, sheet.get("gaps", "fill"), keep)
         clean = unmix(glaze_kept_white(rgb, paper, alpha), alpha, paper)
         if layer in ("bg", "strip"):
             rgba = np.dstack([clean, alpha])
@@ -232,15 +256,9 @@ def cut_sheet(bundle: str, sheet: dict, variant: str) -> dict | None:
             res["assets"].append(sheet["items"][0]["id"])
         else:
             objs, res["note"] = objects(alpha, len(sheet["items"]))
-            thin = None
-            if any(i.get("gaps") == "all" for i in sheet["items"]):
-                keep = np.zeros(alpha.shape, bool)
-                for x0, y0, x1, y1 in sheet.get("keep", []):  # fractions of the sheet: flag bands etc.
-                    h, w = alpha.shape
-                    keep[int(y0 * h):int(y1 * h), int(x0 * w):int(x1 * w)] = True
-                thin = matte(rgb, paper, layer, "all", keep)
+            thin = {g: matte(rgb, paper, layer, g, keep) for g in {i.get("gaps") for i in sheet["items"]} & {"all", "rim"}}
             for item, (sy, sx, own) in zip(sheet["items"], objs):
-                src_a = thin if item.get("gaps") == "all" else alpha
+                src_a = thin.get(item.get("gaps"), alpha)
                 a = np.where(own, src_a[sy, sx], 0).astype(np.uint8)
                 crop = np.pad(np.dstack([clean[sy, sx], a]), ((PAD, 0), (PAD, PAD), (0, 0)))
                 Image.fromarray(crop).save(out / f"{item['id']}.png")

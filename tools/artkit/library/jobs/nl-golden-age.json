@@ -110,7 +110,8 @@
      "height_m": 45,
      "motion": "ripple",
      "gaps": "all",
-     "variant": "n"
+     "variant": "n",
+     "slab_ok": "cream canvas sails are pale and flat by nature"
     },
     {
      "id": "ship-fluyt-01",
@@ -122,7 +123,8 @@
      ],
      "height_m": 35,
      "motion": "ripple",
-     "gaps": "all"
+     "gaps": "all",
+     "slab_ok": "cream canvas sails are pale and flat by nature"
     },
     {
      "id": "boat-sloop-01",
@@ -133,7 +135,8 @@
      ],
      "height_m": 2,
      "motion": "ripple",
-     "gaps": "all"
+     "gaps": "all",
+     "slab_ok": "cream canvas sails are pale and flat by nature"
     }
    ],
    "gaps": "cut",
@@ -461,7 +464,8 @@
       "table"
      ],
      "height_m": 0.3,
-     "motion": "none"
+     "motion": "none",
+     "gaps": "rim"
     },
     {
      "id": "jar-delft-01",
@@ -521,7 +525,8 @@
      "height_m": 2,
      "motion": "ripple"
     }
-   ]
+   ],
+   "gaps": "none"
   },
   {
    "id": "fg-quay-ground",

@@ -167,6 +167,25 @@ def mirror_corr(rgb: np.ndarray) -> float:
         if g.std() > 0 else 0.0
 
 
+SLAB_L, SLAB_C, SLAB_STD = 85.0, 18.0, 2.5  # pale, low-chroma, flat: what an unpainted gap looks like
+SLAB_MIN = 0.005  # share of the opaque area
+
+
+def pale_slabs(rgb: np.ndarray, alpha: np.ndarray) -> list[int]:
+    """Opaque regions that are pale, low-chroma and texture-free (re-check 2: cream wash slabs between stalks that
+    the paper-based gates cannot see). Returns the sizes of the ones larger than SLAB_MIN of the opaque area."""
+    opaque = alpha > 250
+    if not opaque.any():
+        return []
+    lab = rgb2lab(rgb.astype(float))
+    L, C = lab[..., 0], np.hypot(lab[..., 1], lab[..., 2])
+    std = np.sqrt(np.maximum(ndimage.uniform_filter(L ** 2, 7) - ndimage.uniform_filter(L, 7) ** 2, 0))
+    flat = ndimage.binary_opening(opaque & (L > SLAB_L) & (C < SLAB_C) & (std < SLAB_STD), iterations=2)
+    lab_, n = ndimage.label(flat)
+    sizes = ndimage.sum(flat, lab_, range(1, n + 1)) if n else []
+    return [int(v) for v in sizes if v >= SLAB_MIN * opaque.sum() and v >= 400]
+
+
 HOLE_DEPTH = 12  # px: a see-through region deeper than this inside a solid shape is a punched hole
 INK_STYLE = (0.07, 0.20)  # STYLE.md hard band; reported per asset (props measure 0.2-0.35 today, see notes)
 
@@ -175,7 +194,7 @@ def holes(rgb: np.ndarray, alpha: np.ndarray, gaps: str = "fill") -> list[int]:
     """Enclosed transparent regions (not reachable from the canvas edge) that are punched holes: deeper than
     HOLE_DEPTH and either not rimmed by ink, or (solid sheets) above the leg zone. Same rule cut.gap_islands uses.
     gaps='all' (reeds, nets, rigging): every enclosed region is a see-through gap by definition."""
-    if gaps == "all":
+    if gaps in ("all", "rim"):
         return []
     clear = alpha < 128
     lab, n = ndimage.label(clear)
@@ -214,8 +233,9 @@ def check(img: Image.Image, layer: str, bundle: str, ink_rgb: np.ndarray | None 
     r["halo"] = round(halo_fraction(rgb, alpha, paper), 4) if not full else 0.0
     r["islands"] = len(paper_islands(rgb, alpha, paper)) if layer not in ("sky", "bg", "ground") else 0
     r["holes"] = holes(rgb, alpha, gaps) if not full else []
+    r["pale_slabs"] = pale_slabs(rgb, alpha) if not full else []  # reported on every asset; fails thin-thing items
     r["last_row_clear"] = not fades or int(alpha[-1].max()) == 0  # bg strips fade out to nothing
-    r["alpha_ok"] = r["has_alpha"] and not r["holes"] and r["last_row_clear"] and not r["checkerboard"] and r["halo"] <= (HALO_MAX_BG if layer == "bg" else HALO_MAX) and r["islands"] == 0
+    r["alpha_ok"] = r["has_alpha"] and not r["holes"] and not (gaps == "all" and r["pale_slabs"]) and r["last_row_clear"] and not r["checkerboard"] and r["halo"] <= (HALO_MAX_BG if layer == "bg" else HALO_MAX) and r["islands"] == 0
     src = ink_rgb if ink_rgb is not None else rgb
     shape = ndimage.binary_fill_holes(opaque)  # cut gaps count as paper, as in a full scene
     r["ink_coverage"] = round(float((ink_coverage_map(src) & opaque)[shape].mean()), 4)
@@ -361,6 +381,10 @@ def self_check() -> None:
     painted = np.random.default_rng(1).integers(0, 255, (200, 300, 3)).astype(np.uint8)  # a painting: no symmetry
     assert mirror_corr(painted) < MIRROR_MAX
     assert mirror_corr(np.concatenate([painted, painted[:, ::-1]], 1)) > 0.99
+    slab = np.random.default_rng(2).integers(60, 140, (300, 300, 3)).astype(np.uint8)  # textured body
+    slab[100:200, 100:200] = [240, 232, 214]  # a flat cream wedge
+    a255 = np.full((300, 300), 255, np.uint8)
+    assert pale_slabs(slab, a255) and not pale_slabs(slab[:90], a255[:90])
     print("qa self-check: ok")
 
 

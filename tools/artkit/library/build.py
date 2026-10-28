@@ -100,6 +100,10 @@ def build(job: dict, variants: str = "abcd") -> dict:
                              fades=s["layer"] == "bg" and not s.get("strip"))
                 r["ink_sheet"] = meta["ink_sheet"]  # Bart's whole-image rule, on the pass-1 sheet
                 r["checkerboard"] = r["checkerboard"] or meta["checkerboard"]
+                if item.get("slab_ok") and r["pale_slabs"] and not r["holes"]:  # reviewed by eye, reason in the job
+                    r["alpha_ok"] = r["has_alpha"] and not r["checkerboard"] and r["islands"] == 0
+                    r["pass"] = all(r[k] for k in ("alpha_ok", "ink_ok", "palette_ok", "size_ok", "ground_ok", "seam_ok",
+                                                   "mirror_ok"))
                 r["pass"] = r["pass"] and meta["ink_sheet"] <= qa.INK_HARD[1] and not meta["checkerboard"]
                 if s["layer"] == "ground" and not tile:  # a ground tile has to repeat: only seam.py wraps ship
                     r["pass"], r["reason"] = False, "ground tile without a repainted wrap"
@@ -130,6 +134,13 @@ def build(job: dict, variants: str = "abcd") -> dict:
                        "palette_de": r["palette_de"], "sheet": s["id"], "variant": v},
             })
     lib = {"version": 1, "bundle": bundle, "style": "history-lines-v1", "assets": assets, "held": held}
+    shipped = {a["file"] for a in assets}
+    for f in shipped:
+        (dst / "_held" / f).unlink(missing_ok=True)
+    for f in dst.glob("*.webp"):  # held, vetoed or stale files never lie next to what ships (re-check 2)
+        if f.name not in shipped:
+            (dst / "_held").mkdir(exist_ok=True)
+            f.replace(dst / "_held" / f.name)
     (dst / "library.json").write_text(json.dumps(lib, indent=1))
     (dst / "qa_report.json").write_text(json.dumps(report, indent=1))
     n_items = sum(len(s["items"]) for s in job["sheets"])

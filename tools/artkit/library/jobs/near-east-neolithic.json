@@ -653,7 +653,8 @@
       "mideast"
      ],
      "height_m": 0.8,
-     "motion": "sway"
+     "motion": "sway",
+     "gaps": "all"
     },
     {
      "id": "barley-green-01",
@@ -665,7 +666,8 @@
       "egypt"
      ],
      "height_m": 0.8,
-     "motion": "sway"
+     "motion": "sway",
+     "gaps": "all"
     },
     {
      "id": "timber-log-01",
