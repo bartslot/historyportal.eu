@@ -3,6 +3,7 @@
  "kind": "woman",
  "parts": {
   "head_neutral": {
+   "edge_fringe": 0.01,
    "w": 165,
    "h": 278,
    "pivot": [
@@ -16,6 +17,7 @@
    "m_per_px": 0.001115
   },
   "head_happy": {
+   "edge_fringe": 0.0,
    "w": 164,
    "h": 278,
    "pivot": [
@@ -29,6 +31,7 @@
    "m_per_px": 0.001115
   },
   "head_worried": {
+   "edge_fringe": 0.0,
    "w": 164,
    "h": 278,
    "pivot": [
@@ -42,6 +45,7 @@
    "m_per_px": 0.001115
   },
   "head_surprised": {
+   "edge_fringe": 0.0,
    "w": 165,
    "h": 277,
    "pivot": [
@@ -55,6 +59,7 @@
    "m_per_px": 0.001115
   },
   "torso": {
+   "edge_fringe": 0.0,
    "w": 243,
    "h": 352,
    "pivot": [
@@ -87,11 +92,12 @@
    ],
    "m_per_px": 0.002025,
    "dye": [
-    "#dbbb85",
-    "#a15d40"
+    "#dfbf87",
+    "#9d5a3e"
    ]
   },
   "skirt": {
+   "edge_fringe": 0.0,
    "w": 206,
    "h": 428,
    "pivot": [
@@ -100,10 +106,11 @@
    ],
    "m_per_px": 0.002005,
    "dye": [
-    "#e0c18b"
+    "#e1c28b"
    ]
   },
   "upper_arm": {
+   "edge_fringe": 0.021,
    "w": 106,
    "h": 249,
    "pivot": [
@@ -116,10 +123,11 @@
    ],
    "m_per_px": 0.00192,
    "dye": [
-    "#e3c691"
+    "#e5c790"
    ]
   },
   "forearm": {
+   "edge_fringe": 0.002,
    "w": 84,
    "h": 255,
    "pivot": [
@@ -132,10 +140,11 @@
    ],
    "m_per_px": 0.001305,
    "dye": [
-    "#e0bd8f"
+    "#e2be8f"
    ]
   },
   "hand_open": {
+   "edge_fringe": 0.0,
    "w": 104,
    "h": 247,
    "pivot": [
@@ -145,6 +154,7 @@
    "m_per_px": 0.00083
   },
   "hand_grip": {
+   "edge_fringe": 0.0,
    "w": 119,
    "h": 193,
    "pivot": [
@@ -154,6 +164,7 @@
    "m_per_px": 0.00083
   },
   "hand_point": {
+   "edge_fringe": 0.0,
    "w": 99,
    "h": 234,
    "pivot": [
@@ -163,6 +174,7 @@
    "m_per_px": 0.00083
   },
   "thigh": {
+   "edge_fringe": 0.022,
    "w": 116,
    "h": 308,
    "pivot": [
@@ -176,6 +188,7 @@
    "m_per_px": 0.001968
   },
   "shin": {
+   "edge_fringe": 0.01,
    "w": 94,
    "h": 284,
    "pivot": [
@@ -189,6 +202,7 @@
    "m_per_px": 0.001933
   },
   "foot": {
+   "edge_fringe": 0.0,
    "w": 95,
    "h": 230,
    "pivot": [
@@ -198,6 +212,7 @@
    "m_per_px": 0.001163
   },
   "foot_far": {
+   "edge_fringe": 0.0,
    "w": 95,
    "h": 230,
    "pivot": [

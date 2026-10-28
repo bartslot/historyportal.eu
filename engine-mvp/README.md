@@ -119,15 +119,23 @@ hip, knee folded flat) are caught. Real stage frames: `node src/figures/capture_
 Chromium) -> BartsMedia `puppet-parts/stage/` (`contact_all_poses_views.png`).
 
 **Guards per view**: `setPose` checks every view on its own sheet (`GUARD_TOL`: the front view hangs parts as drawn,
-so only a fold-over counts there); front legs never fold up over themselves. `sit` = on the ground (hips rest on the
-buttocks, no seat prop needed); a skirt's back half hangs straight and pools on the ground, its front half lies over
-the lap. `placePuppet(..., { behind: 0.3 })` stands a figure behind a same-depth layer; the part layer gap grows with
-distance (depth precision).
+so only a fold-over counts there). Face-on, point/carry/kneel/sit would read as standing: they show in 3/4
+(`FRONT_POSES`, logged). `placePuppet` with a stage gives the figure S1's contact stain and, from the stage library, a
+seat (a rock, log, stump, stool...) that `sit` uses; with no seat the figure sits on the ground. Stand is a contrapposto
+with a slow weight shift. A skirt drapes: each edge runs to its knee once that knee leaves the hanging cloth (a lap,
+a kneel), and pools on the ground. `placePuppet(..., { behind })` stands a figure behind a same-depth layer.
 
-**Limits**: face-on kneel reads as a shorter standing figure (one knee is hidden behind the body); the woman's fur
-cape dyes with her dress; the sailor's torso art includes his shirt sleeves; no back view (back uses front); no lesson
-`Cast` wiring yet (the 3D `Cast` still serves `figures[]`). Style is one-pass (painted); the library's two-pass ink ->
-colour edit is the lever for the score.
+**Edges** (asset pipeline, `cut_parts.py ink_rim`): the silhouette loses its 1 px paper fringe and its outer 2 px take
+the contour's ink; joint cuts are left alone. Every part's `edge_fringe` (bright outer pixel over dark paint) is in its
+`parts.json` and tested < 0.03 (the fde8a591 assets measured 0.23 on average).
+
+**Art, round 2**: the farmer woman is two-pass (art v3 sparse ink via `generate_image`, then Figma "Edit with prompt"
+colour with the 9 library refs; `parts_prompts.py ink|colour`); `cut_all.sh` prefers `puppet-parts/v2/` sheets. Two
+fresh reviewers scored her 4 and 4 vs the rider target (one-pass: 4): they ask for a heavier contour, more hatching
+and stronger washes than the library's sparse-ink rule gives. The other three are still one-pass.
+
+**Limits**: the woman's fur cape dyes with her dress; the sailor's torso art includes his shirt sleeves; no back view;
+no lesson `Cast` wiring yet.
 
 ## Figures, 3D route (`src/figures/`, PARKED look; mechanics kept)
 

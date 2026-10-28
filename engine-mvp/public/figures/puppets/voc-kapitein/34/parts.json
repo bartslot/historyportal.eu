@@ -3,6 +3,7 @@
  "kind": "voc",
  "parts": {
   "head_neutral": {
+   "edge_fringe": 0.0,
    "w": 208,
    "h": 262,
    "pivot": [
@@ -16,6 +17,7 @@
    "m_per_px": 0.001186
   },
   "head_happy": {
+   "edge_fringe": 0.0,
    "w": 209,
    "h": 261,
    "pivot": [
@@ -29,6 +31,7 @@
    "m_per_px": 0.001186
   },
   "head_worried": {
+   "edge_fringe": 0.0,
    "w": 209,
    "h": 261,
    "pivot": [
@@ -42,6 +45,7 @@
    "m_per_px": 0.001186
   },
   "head_surprised": {
+   "edge_fringe": 0.0,
    "w": 210,
    "h": 261,
    "pivot": [
@@ -55,6 +59,7 @@
    "m_per_px": 0.001186
   },
   "torso": {
+   "edge_fringe": 0.0,
    "w": 239,
    "h": 332,
    "pivot": [
@@ -87,11 +92,12 @@
    ],
    "m_per_px": 0.001874,
    "dye": [
-    "#292722",
-    "#e3d8c4"
+    "#33312b",
+    "#ebe0cc"
    ]
   },
   "hat": {
+   "edge_fringe": 0.0,
    "w": 270,
    "h": 122,
    "pivot": [
@@ -99,12 +105,12 @@
     71.0
    ],
    "dye": [
-    "#2b2a27",
-    "#cccccc"
+    "#262622"
    ],
    "m_per_px": 0.001186
   },
   "upper_arm": {
+   "edge_fringe": 0.0,
    "w": 126,
    "h": 320,
    "pivot": [
@@ -117,11 +123,11 @@
    ],
    "m_per_px": 0.001338,
    "dye": [
-    "#302e27",
-    "#cccdcc"
+    "#2d2b24"
    ]
   },
   "forearm": {
+   "edge_fringe": 0.0,
    "w": 104,
    "h": 306,
    "pivot": [
@@ -134,11 +140,13 @@
    ],
    "m_per_px": 0.001089,
    "dye": [
-    "#3a362e",
-    "#ddd1ba"
+    "#7c7464",
+    "#23221d",
+    "#49463b"
    ]
   },
   "hand_open": {
+   "edge_fringe": 0.0,
    "w": 121,
    "h": 243,
    "pivot": [
@@ -148,6 +156,7 @@
    "m_per_px": 0.000851
   },
   "hand_grip": {
+   "edge_fringe": 0.006,
    "w": 132,
    "h": 198,
    "pivot": [
@@ -157,6 +166,7 @@
    "m_per_px": 0.000851
   },
   "hand_point": {
+   "edge_fringe": 0.002,
    "w": 123,
    "h": 247,
    "pivot": [
@@ -166,6 +176,7 @@
    "m_per_px": 0.000851
   },
   "thigh": {
+   "edge_fringe": 0.0,
    "w": 162,
    "h": 327,
    "pivot": [
@@ -178,10 +189,11 @@
    ],
    "m_per_px": 0.001918,
    "dye": [
-    "#2d2b26"
+    "#2b2923"
    ]
   },
   "shin": {
+   "edge_fringe": 0.0,
    "w": 107,
    "h": 319,
    "pivot": [
@@ -194,12 +206,12 @@
    ],
    "m_per_px": 0.001751,
    "dye": [
-    "#504b40",
-    "#26241e",
-    "#656465"
+    "#494338",
+    "#23201b"
    ]
   },
   "foot": {
+   "edge_fringe": 0.0,
    "w": 194,
    "h": 243,
    "pivot": [
@@ -208,11 +220,11 @@
    ],
    "m_per_px": 0.001135,
    "dye": [
-    "#3c372e",
-    "#cecfce"
+    "#39342b"
    ]
   },
   "foot_far": {
+   "edge_fringe": 0.0,
    "w": 218,
    "h": 238,
    "pivot": [
@@ -221,8 +233,7 @@
    ],
    "m_per_px": 0.001135,
    "dye": [
-    "#3f3b34",
-    "#c2c3c3"
+    "#3b3830"
    ]
   }
  }

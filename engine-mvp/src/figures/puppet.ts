@@ -110,7 +110,7 @@ const local = (pl: Place, px: P2): P2 => [(px[0] - pl.pivot[0]) * pl.s, -(px[1] 
 const toFig = (pl: Place, px: P2): P2 => add(pl.at, rot(local(pl, px), pl.deg))
 
 export type Joints = Record<'hip' | 'neck' | 'shoulderN' | 'shoulderF' | 'elbowN' | 'elbowF' | 'wristN' | 'wristF' | 'hipN' | 'hipF' | 'kneeN' | 'kneeF' | 'ankleN' | 'ankleF', P2>
-type Rig = { places: Record<string, Place>; joints: Joints; drape: { waist: P2; knee: P2 } }
+type Rig = { places: Record<string, Place>; joints: Joints; drape: { waist: P2; back: P2; front: P2 } }
 
 /** forward kinematics: every part's placement for these angles, standing on y = 0 */
 export function solve(sheet: Sheet, height: number, a: Angles, seatTop = 0): Rig {
@@ -176,7 +176,8 @@ export function solve(sheet: Sheet, height: number, a: Angles, seatTop = 0): Rig
     elbowN: lift(aN.elbow), elbowF: lift(aF.elbow), wristN: lift(aN.wrist), wristF: lift(aF.wrist),
     hipN: lift(hipN), hipF: lift(hipF), kneeN: lift(lN.knee), kneeF: lift(lF.knee), ankleN: lift(lN.ankle), ankleF: lift(lF.ankle),
   }
-  return { places, joints, drape: { waist: lift(waist), knee: lift([(lN.knee[0] + lF.knee[0]) / 2, (lN.knee[1] + lF.knee[1]) / 2]) } }
+  const [kBack, kFront] = lN.knee[0] <= lF.knee[0] ? [lN.knee, lF.knee] : [lF.knee, lN.knee]
+  return { places, joints, drape: { waist: lift(waist), back: lift(kBack), front: lift(kFront) } }
 }
 
 /** the guards, measured on the solved joints (not on the numbers asked for): knees bend back, elbows forward,
@@ -421,24 +422,28 @@ export async function createPuppet(scene: Scene, id: string, opts: PuppetOptions
   return puppet
 }
 
-/** a skirt: its front half lies over the lap (waist -> knees -> down), its back half hangs straight from the waist,
- *  so a kneeling or seated figure keeps its back leg covered; below the ground the hem lies on it, trailing back */
-function drape(pl: Place, p: Part, px: P2, d: { waist: P2; knee: P2 }): P2 {
+/** a skirt drapes over the legs: its back edge runs from the waist along the back thigh to that knee, its front edge
+ *  over the lap to the front knee, and from a knee the cloth hangs straight down; below the ground the hem lies on
+ *  it, trailing back. Standing, both knees are under the hips and the skirt hangs as drawn. */
+function drape(pl: Place, p: Part, px: P2, d: { waist: P2; back: P2; front: P2 }): P2 {
   const s = pl.s
   const along = (px[1] - p.pivot[1]) * s, across = (px[0] - p.pivot[0]) * s
-  const hanging: P2 = add(d.waist, [across, -along])
-  const seg = sub(d.knee, d.waist)
-  const l1 = Math.hypot(seg[0], seg[1])
-  let lap: P2
-  if (along <= l1 && l1 > 1e-6) {
+  const half = (p.w * s) / 2
+  const over = (k: P2): P2 => {
+    // a knee swinging inside the hanging skirt (a step) leaves it hanging as drawn; out of it (a lap, a kneel) it pulls
+    const reach = Math.hypot(k[0] - d.waist[0], k[1] - d.waist[1])
+    const pull = Math.min(1, Math.max(0, (Math.abs(k[0] - d.waist[0]) - 0.5 * half) / half))
+    const knee: P2 = [d.waist[0] + (k[0] - d.waist[0]) * pull, d.waist[1] - reach + (k[1] - d.waist[1] + reach) * pull]
+    const seg = sub(knee, d.waist), l1 = Math.hypot(seg[0], seg[1])
+    if (along > l1 || l1 < 1e-6) return add(knee, [across, -(along - l1)])
     const dir: P2 = [seg[0] / l1, seg[1] / l1]
     // lying over the thighs the cloth is as thick as a lap, not as deep as the hanging skirt is wide
     const thick = across * (PUPPET.lapThickness + (1 - PUPPET.lapThickness) * Math.abs(dir[1]))
-    lap = add(add(d.waist, [dir[0] * along, dir[1] * along]), [-dir[1] * thick, dir[0] * thick])
-  } else lap = add(d.knee, [across, -(along - l1)])
-  const half = (p.w * s) / 2
-  const front = Math.min(1, Math.max(0, (across / half + 0.5))) // 0 at the back edge's half, 1 from the middle forward
-  const q: P2 = [hanging[0] + (lap[0] - hanging[0]) * front, hanging[1] + (lap[1] - hanging[1]) * front]
+    return add(add(d.waist, [dir[0] * along, dir[1] * along]), [-dir[1] * thick, dir[0] * thick])
+  }
+  const b = over(d.back), f = over(d.front)
+  const t = Math.min(1, Math.max(0, across / half + 0.5)) // 0 behind the middle, 1 in front of it
+  const q: P2 = [b[0] + (f[0] - b[0]) * t, b[1] + (f[1] - b[1]) * t]
   return q[1] >= 0 ? q : [q[0] + q[1], 0]
 }
 

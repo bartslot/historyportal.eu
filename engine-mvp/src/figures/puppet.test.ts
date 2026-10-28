@@ -151,4 +151,13 @@ describe('puppet figures', () => {
     expect(stain.parent).toBe(p.root)
     expect(stain.isVisible).toBe(true)
   })
+
+  it('cut-out edges read as ink, not paper: no paper fringe around dark paint (measured at cut time)', () => {
+    for (const id of Object.keys(CHARACTERS)) for (const view of VIEWS) {
+      const parts = JSON.parse(readFileSync(join(PUBLIC, `figures/puppets/${id}/${view}/parts.json`), 'utf8')).parts
+      for (const [slot, e] of Object.entries(parts) as [string, { edge_fringe: number }][]) {
+        expect(e.edge_fringe, `${id} ${view} ${slot}`).toBeLessThan(0.03) // fde8a591 assets: mean 0.23, max 0.39
+      }
+    }
+  })
 })

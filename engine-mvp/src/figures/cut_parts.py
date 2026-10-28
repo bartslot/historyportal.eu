@@ -46,6 +46,9 @@ SHOULDER_IN = (0.16, 0.22)  # turned views: near and far shoulder joints this fa
 WAIST_BAND = (0.5, 0.8)  # the waist is the narrowest row in this band of the torso height
 THIGH_CAP = 0.0    # a thigh keeps this share of its top disc: none, its top always hides under the torso or skirt
 WEBP_Q = 88       # the art; the dye masks are lossless
+EDGE_ERODE_PX = 1  # the silhouette's outermost pixels are paper fringe: dropped
+RIM_PX = 2         # then this ring takes the contour's ink
+RIM_REACH = 5      # px window the ink is taken from
 ANKLE = 0.07     # the ankle joint stands this high above the sole
 CLOTH = {  # the slots that are clothing (a dye mask each); bare arms and legs are not
     "woman": ("torso", "skirt", "upper_arm", "forearm"),
@@ -228,6 +231,35 @@ def clean_edges(img, al):
     return out.astype(np.uint8)
 
 
+def ink_rim(img, al, sil):
+    """the silhouette (not a joint cut) loses EDGE_ERODE_PX of its paper-tinted fringe, and the outer RIM_PX of what
+    is left takes the darkest colour around it (the drawn contour): a cut-out edge reads as ink, never as paper"""
+    keep = ndimage.binary_erosion(sil, iterations=EDGE_ERODE_PX)
+    al = np.where(keep, al, 0)
+    solid = al > 0.5
+    rim = solid & ~ndimage.binary_erosion(keep, iterations=RIM_PX)
+    inner = np.where(solid[..., None], img, 255).astype(float)
+    dark = np.stack([ndimage.minimum_filter(inner[..., i], size=RIM_REACH) for i in range(3)], -1)
+    out = img.astype(float)
+    out[rim] = np.minimum(out[rim], dark[rim])
+    return out.astype(np.uint8), al
+
+
+def edge_qa(img, al):
+    """the check the asset must pass: the share of the silhouette's outer pixels that are bright (L > 150) while the
+    paint just inside them is dark (L < 110): paper fringe around dark cloth, the dotted white edge. A white cuff or
+    collar is bright inside too and does not count."""
+    solid = al > 0.5
+    ring = solid & ~ndimage.binary_erosion(solid, iterations=1)
+    inner = ndimage.binary_erosion(solid, iterations=4)
+    if not ring.any() or not inner.any():
+        return 0.0
+    L = img.astype(float) @ [0.299, 0.587, 0.114]
+    _, (iy, ix) = ndimage.distance_transform_edt(~inner, return_indices=True)
+    fringe = ring & (L > 150) & (L[iy, ix] < 110)
+    return round(float(fringe.sum() / ring.sum()), 3)
+
+
 def lab_of(rgb):
     """sRGB 0..255 -> CIE Lab (D65)"""
     c = rgb.astype(float) / 255
@@ -332,13 +364,15 @@ def main():
             al = alpha[y0:y1, x0:x1] * ndimage.binary_dilation(m, iterations=3)
             img = rgb[y0:y1, x0:x1]
             kind, marks, size = landmarks(slot, m, a.view)
+            sil = al > 0.5  # the drawn silhouette, before any joint is cut
             img, al = joint_ends(img, al, kind, marks)
+            img, al = ink_rim(img, al, sil)
             img = clean_edges(img, al)
             if slot == "head_neutral":  # the skin colour: the middle of the face
                 h, w = m.shape
                 skin = lab_of(img[int(h * 0.35):int(h * 0.55), int(w * 0.35):int(w * 0.65)].reshape(-1, 3)).mean(0)
             Image.fromarray(np.dstack([img, (al * 255).astype(np.uint8)])).save(f"{a.out}/{slot}.webp", quality=WEBP_Q, method=6, exact=True)  # exact: keep the padded colour under alpha 0
-            entry = {"w": int(x1 - x0), "h": int(y1 - y0), **{k: [round(float(v[0]), 1), round(float(v[1]), 1)] for k, v in marks.items()}}
+            entry = {"edge_fringe": edge_qa(img, al), "w": int(x1 - x0), "h": int(y1 - y0), **{k: [round(float(v[0]), 1), round(float(v[1]), 1)] for k, v in marks.items()}}
             if size:
                 entry["m_per_px"] = round(LENGTH[kind] / float(size), 6)
             if slot in CLOTH[a.kind]:
