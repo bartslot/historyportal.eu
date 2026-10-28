@@ -6,7 +6,7 @@
 // The figure stands at its 3D depth and turns its face to the camera (yaw only); facing left = the art mirrored.
 // Garments re-colour per dye region (the masks from cut_parts.py) and keep their ink and wash: target x luminance.
 import {
-  Effect, Mesh, ShaderMaterial, Texture, TransformNode, Vector3, VertexBuffer, VertexData, type Scene,
+  DirectionalLight, Effect, Mesh, ShaderMaterial, Texture, TransformNode, Vector3, VertexBuffer, VertexData, type Scene,
 } from '@babylonjs/core'
 import type { Placement, StageLike } from './figure'
 import { STAIN_DEFAULT, stainSize } from '../stage25d/ground'
@@ -52,6 +52,11 @@ export const LIMITS = { armFwd: 150, armBack: 40, elbowMax: 150, hipFwd: 125, hi
 export const PUPPET = {
   walkHip: 24, walkKnee: 48, walkArm: 18, walkElbow: 14, stride: 0.95, bob: 0.012, breathe: 1.5, idleRate: 0.45,
   zStep: 0.004, // metres between part layers, toward the camera
+  saturation: 0.85, value: 1.04, cool: 0.35, // the figure's grade toward the scene's palette
+  contactShadow: 1.4, // x the stage's stain strength under the feet
+  castShadow: 0.45,   // the cast shadow along the scene's sun (0 = none)
+  castLength: 0.9, castWidth: 0.55, castDepth: 0.35, // in heights / metres / share of the length into depth
+  contactWidth: 0.9, // m (for 1.70 m): the stain under the feet
   paintedBreath: 0.004, // a pose painting breathes: its height grows by this share and back
   headSink: 0.0, // m the head's neck sinks below the painting's neck stump (into its collar)
   seat: 0.11, // m from the hip joints down to the buttocks
@@ -212,6 +217,7 @@ void main() { vUV = uv; gl_Position = worldViewProjection * vec4(position, 1.0);
 Effect.ShadersStore.puppetFragmentShader = `precision highp float;
 varying vec2 vUV; uniform sampler2D art; uniform sampler2D dye; uniform float hasDye;
 uniform vec3 target0; uniform vec3 target1; uniform vec3 target2; uniform vec3 refL; uniform vec3 dyeOn;
+uniform vec3 grade; // saturation, value, cool: the figure toward the scene's palette
 vec3 dyed(vec3 t, float l, float r) { return clamp(t * min(l / max(r, 0.02), 2.0), 0.0, 1.0); }
 void main() {
   vec4 c = texture2D(art, vUV);
@@ -223,7 +229,10 @@ void main() {
     c.rgb = mix(c.rgb, dyed(target1, l, refL.y), m.g);
     c.rgb = mix(c.rgb, dyed(target2, l, refL.z), m.b);
   }
-  gl_FragColor = vec4(c.rgb, 1.0);
+  float l = dot(c.rgb, vec3(0.299, 0.587, 0.114));
+  c.rgb = mix(vec3(l), c.rgb, grade.x) * grade.y;
+  c.rgb *= vec3(1.0 - 0.07 * grade.z, 1.0 - 0.02 * grade.z, 1.0 + 0.05 * grade.z);
+  gl_FragColor = vec4(clamp(c.rgb, 0.0, 1.0), 1.0);
 }`
 
 const hex = (h: string): [number, number, number] => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255) as [number, number, number]
@@ -249,7 +258,7 @@ function partMesh(scene: Scene, base: string, view: View, slot: string, p: Part,
   mesh.metadata = { noGBuffer: true } // painted art: the stage's post ink must not outline it again
   const mat = new ShaderMaterial(name, scene, 'puppet', {
     attributes: ['position', 'uv'], samplers: ['art', 'dye'],
-    uniforms: ['worldViewProjection', 'hasDye', 'target0', 'target1', 'target2', 'refL', 'dyeOn'],
+    uniforms: ['worldViewProjection', 'hasDye', 'target0', 'target1', 'target2', 'refL', 'dyeOn', 'grade'],
   })
   mat.backFaceCulling = false
   mat.setTexture('art', new Texture(`${base}/${view}/${slot}.webp`, scene, false, true))
@@ -259,6 +268,7 @@ function partMesh(scene: Scene, base: string, view: View, slot: string, p: Part,
   const refs = [0, 1, 2].map((i) => luma(hex(regions[i] ?? '#808080')))
   mat.setVector3('refL', new Vector3(refs[0], refs[1], refs[2]))
   mat.setVector3('dyeOn', Vector3.Zero())
+  mat.setVector3('grade', new Vector3(1, 1, 0))
   for (const i of [0, 1, 2]) mat.setVector3(`target${i}`, new Vector3(...hex(regions[i] ?? '#808080')))
   mesh.material = mat
   return { mesh, mat, slot, rest, pos: new Float32Array(rest.length * 3), dyeOn: [0, 0, 0] }
@@ -427,6 +437,8 @@ export async function createPuppet(scene: Scene, id: string, opts: PuppetOptions
       state.dist = Vector3.Distance(p, c)
     }
     draw()
+    const g = new Vector3(PUPPET.saturation, PUPPET.value, PUPPET.cool)
+    for (const m of scene.meshes) if (m.material?.name && m.isEnabled() && m.parent === flip) (m.material as ShaderMaterial).setVector3('grade', g)
   })
 
   const puppet: Puppet = {
@@ -526,10 +538,11 @@ function seatMesh(scene: Scene, url: string, name: string, parent: TransformNode
   mesh.isPickable = false
   mesh.alwaysSelectAsActiveMesh = true
   mesh.metadata = { noGBuffer: true }
-  const mat = new ShaderMaterial(name, scene, 'puppet', { attributes: ['position', 'uv'], samplers: ['art', 'dye'], uniforms: ['worldViewProjection', 'hasDye', 'target0', 'target1', 'target2', 'refL', 'dyeOn'] })
+  const mat = new ShaderMaterial(name, scene, 'puppet', { attributes: ['position', 'uv'], samplers: ['art', 'dye'], uniforms: ['worldViewProjection', 'hasDye', 'target0', 'target1', 'target2', 'refL', 'dyeOn', 'grade'] })
   mat.backFaceCulling = false
   mat.setTexture('art', new Texture(url, scene, false, true))
   mat.setFloat('hasDye', 0)
+  mat.setVector3('grade', new Vector3(1, 1, 0))
   mesh.material = mat
   return mesh
 }
@@ -547,7 +560,7 @@ export function seatFrom(lib: Library & { base: string }): Seat | null {
   return a ? { url: lib.base + a.file, aspect: a.w / a.h } : null
 }
 
-const stains = new WeakMap<Puppet, ReturnType<typeof makeStain>>()
+const stains = new WeakMap<Puppet, ReturnType<typeof makeStain>[]>()
 
 /** the same contract as placeFigure: stand on the stage; the facing picks the view (left = mirrored art) */
 // `behind` (m, default 0) moves the figure back from its layer's plane, so it can stand behind a same-depth layer
@@ -558,11 +571,23 @@ export function placePuppet(p: Puppet, at: Placement & { view?: '34' | 'side'; b
   if (stage?.lib) p.setSeat(seatFrom(stage.lib))
   // the stage's contact stain, as under a boulder: the figure stands on the painted ground, not over it
   if (stage && !stains.has(p)) {
-    const k = p.character.height / 1.7
-    const sz = stainSize({} as Asset, 0.6 * k, p.character.height, Math.max(1, p.root.position.z))
-    const stain = makeStain(p.root, sz.w, sz.d, p.root.getScene())
-    stain.setOpacity(STAIN_DEFAULT)
-    stains.set(p, stain)
+    const k = p.character.height / 1.7, scene = p.root.getScene()
+    const sz = stainSize({} as Asset, PUPPET.contactWidth * k, p.character.height, Math.max(1, p.root.position.z))
+    const contact = makeStain(p.root, sz.w, sz.d, scene)
+    contact.setOpacity(Math.min(1, STAIN_DEFAULT * PUPPET.contactShadow))
+    const list = [contact]
+    // and a cast shadow from the scene's sun. Seen from eye height a shadow running away from the camera is a sliver
+    // behind the feet, so on this stage it runs mostly sideways (the sun's side), PUPPET.castDepth of it into depth
+    const sun = scene.lights.find((l): l is DirectionalLight => l instanceof DirectionalLight)
+    if (sun && PUPPET.castShadow > 0) {
+      const d = sun.direction
+      const dir: [number, number] = [Math.sign(d.x || 1), Math.sign(d.z || 1) * PUPPET.castDepth]
+      const length = p.character.height * PUPPET.castLength
+      const cast = makeStain(p.root, PUPPET.castWidth * k, length, scene, { dir, length })
+      cast.setOpacity(PUPPET.castShadow)
+      list.push(cast)
+    }
+    stains.set(p, list)
   }
   if (at.facing === 'left' || at.facing === 'right') p.setView(at.view ?? '34', at.facing === 'left')
   else p.setView('front')

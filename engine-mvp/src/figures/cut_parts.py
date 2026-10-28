@@ -78,7 +78,7 @@ SAME_SCALE = {"head_happy": "head_neutral", "head_worried": "head_neutral", "hea
               "hand_grip": "hand_open", "hand_point": "hand_open", "foot_far": "foot", "hat": "head_neutral"}
 
 
-def alpha_of(rgb):
+def alpha_of(rgb, enclosed=None):
     m = rgb.min(axis=2).astype(float)
     paper = m > WHITE
     lab, _ = ndimage.label(paper)
@@ -87,7 +87,7 @@ def alpha_of(rgb):
     # the paper's halo around a part (light, but under WHITE) is paper too: grow into it, the ink contour stops it
     bg = ndimage.binary_dilation(bg, iterations=HALO_PX, mask=bg | (m > HALO))
     # paper caught between hair strands or fingers near the outline is background too (an eye white, far inside, is not)
-    near = ndimage.binary_dilation(bg, iterations=ENCLOSED_PX)
+    near = ndimage.binary_dilation(bg, iterations=enclosed or ENCLOSED_PX)
     pockets, _ = ndimage.label(paper & ~bg)
     bg |= np.isin(pockets, np.unique(pockets[near & (pockets > 0)]))
     soft = np.clip((250 - m) / 22, 0, 1)  # the ink fringe fades into the paper

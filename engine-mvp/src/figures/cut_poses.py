@@ -21,6 +21,7 @@ from cut_parts import WEBP_Q, alpha_of, clean_edges, dye_mask, edge_qa, find_par
 
 SLOTS = {"A": ["stand", "walk1", "walk2", "walk3"], "B": ["point", "carry", "kneel", "sit"],
          "H": ["head_neutral", "head_happy", "head_worried", "head_surprised"]}
+BODY_POCKET_PX = 60  # a body painting: paper between the feet, an arm and the dress is background (a head keeps eye whites)
 NECK_M = 1.41    # feet to the base of the neck, standing, for a 1.70 m figure
 HEAD_M = 0.27    # crown to the base of the neck
 COLLAR_FLARE = 1.3  # the outline this much wider than the neck is the collar
@@ -46,7 +47,7 @@ def main():
     ap.add_argument("--sheet", dest="which", required=True, choices=SLOTS)
     a = ap.parse_args()
     rgb = np.asarray(Image.open(a.sheet).convert("RGB"))
-    alpha = alpha_of(rgb)
+    alpha = alpha_of(rgb, None if a.which == "H" else BODY_POCKET_PX)
     parts = sorted(find_parts(alpha), key=lambda p: p["cx"])
     names = SLOTS[a.which]
     if len(parts) != len(names):  # a merged or split figure shifts every name after it: stop
