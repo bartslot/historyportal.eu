@@ -35,6 +35,13 @@
          runs out first, and the width follows it (--stw) instead of staying full width, which
          stretched the stage wider than 16:9 and cropped the picture differently at every drawer
          height (Bart, 2026-10-16). The leftover width is letterbox, centred. --}}
+    {{-- Black letterbox behind the 16:9 stage: fills the whole work area, so the bars beside
+         the stage are black for every scene kind, not the page slate. Same box as the stage's
+         work area (rail, ruler, inspector, toolbar). --}}
+    <div id="lesson-stage-letterbox" class="fixed z-0" wire:ignore
+         style="left: calc(var(--rail-w, 11rem) + var(--objlist-w, 0px) + var(--ruler-w, 0px));
+                right: var(--work-right, 16rem); top: calc(4rem + var(--ruler-w, 0px)); bottom: 0;
+                background: var(--stage-letterbox);"></div>
     <div class="fixed z-0 bg-slate-950" id="lesson-canvas-root"
          style="--work-left: calc(var(--rail-w, 11rem) + var(--objlist-w, 0px) + var(--ruler-w, 0px)); --work-bottom: 0px;
                 --top-inset: calc(4rem + var(--ruler-w, 0px));
@@ -60,14 +67,12 @@
         {{-- Teacher text annotations (Freeform-style, draggable). z-[7]: above scene art + map. --}}
         <div id="lesson-text-overlay" class="absolute inset-0 z-7"></div>
         {{-- Map block preview — overlays the canvas when a map/voyage/gallery scene is selected.
-             Bounded to the WORK AREA (between the rail and the docked inspector) so the scene is
-             fully visible and never slides under either panel — the gallery's side text stays on
-             screen. Fixed positioning with all four edges set keeps an explicit box, so MapLibre's
-             `position:relative` stamp on its inner child can't collapse the host to height 0. --}}
-        <div id="lesson-map-preview" class="fixed z-5" wire:ignore
-             style="display:none;
-                    left: var(--work-left); right: var(--work-right, 16rem);
-                    top: var(--top-inset); bottom: var(--work-bottom, 0px);"></div>
+             It fills the 16:9 STAGE, not the work area: a fixed child of this fixed stage escaped
+             the stage and painted the map into the black bars. absolute inset-0 + overflow-hidden
+             clips the map and its controls to the frame. MapLibre's `position:relative` stamp on
+             its inner child is fine: the host keeps its explicit box. --}}
+        <div id="lesson-map-preview" class="absolute inset-0 z-5 overflow-hidden" wire:ignore
+             style="display:none;"></div>
         {{-- Editable clipart layers a teacher drops ON TOP of a Route waypoint (voyage) map. Same
              letterboxed coordinate box as the text overlay (and the student player), so a layer's
              %-position matches between editor and playback. z-6: above the map (z-5), below text
@@ -409,6 +414,9 @@
             hideMapArt()
             lastKey = null; lastVoyageId = null; lastMapStyle = null; lastVoyageDefStr = null; lastLeg = null; lastGalleryId = null; lastOverview = false
         }
+        // The title screen takes the stage: tear the map down so none is left mounted behind it.
+        // Selecting the title sends no scene:load, so nothing else would destroy it.
+        window.addEventListener('scene:title', () => { destroy(); wireMapProjectors() })
 
         // A re-mount key for voyage/gallery scenes: only scene-DEFINING bits belong in it, so the
         // 3s status poll (which re-fires scene:load) doesn't restart the sail / slideshow mid-view.
@@ -579,6 +587,10 @@
                 hasGallery: !!(_gal.title || _gal.story || (_gal.images && _gal.images.length) || (_vcfg.stop_images && _vcfg.stop_images.length)),
             }
             try { window.dispatchEvent(new CustomEvent('objscene-changed')) } catch (_) { /* noop */ }
+
+            // The 3s status poll re-fires scene:load for the last selected scene, even while the
+            // title screen is up. No map may mount behind the title, so stop here.
+            if (window.__stageOnTitle) { destroy(); wireMapProjectors(); return }
 
             // Voyage tour + image gallery are map-family stage scenes — preview them in the same
             // #lesson-map-preview host, reusing the student player's renderers so the wizard shows
@@ -3062,6 +3074,9 @@
         const FRAME_W = 1600, FRAME_H = 900;   // the stage is 16:9, so one scale fits both ways
         let resize = null;
         const showTitleFrame = () => {
+            // Read by the map's scene:load handler: while the title is up, no map mounts behind it.
+            window.__stageOnTitle = !!$wire.titleSelected
+            if (window.__stageOnTitle) window.dispatchEvent(new CustomEvent('scene:title'))
             const stage = document.getElementById('lesson-canvas-root');
             if (!stage) return;
             let frame = stage.querySelector('iframe[data-title-frame]');
