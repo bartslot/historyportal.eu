@@ -1,6 +1,7 @@
 // The floor and its contact stains on the GPU. The ground is one big plane at y 0: its art tiles in world metres
 // (so perspective is real), a watercolour grain sits on world positions (it never slides when the camera moves), and
 // toward the horizon it fades into the colour the far landscape ends in, so the bg strip's feathered edge meets it.
+import { GROUND_SLOT } from './layout'
 import { Constants, Effect, MeshBuilder, RawTexture, ShaderMaterial, Texture, Vector3, type Mesh, type Scene, type TransformNode } from '@babylonjs/core'
 
 const NOISE = `
@@ -23,11 +24,13 @@ Effect.ShadersStore.stageGroundFragmentShader = `
   precision highp float;
   varying vec3 vW;
   uniform sampler2D tex;
-  uniform float useTex, tile, grain, fadeNear, fadeFar;
+  uniform float useTex, tile, grain, fadeNear, fadeFar, detail;
   uniform vec3 base, horizonTint, camPos;
   ${NOISE}
   void main(void) {
-    vec3 c = useTex > 0.5 ? texture2D(tex, vW.xz / tile).rgb : base;
+    // detail: the tile as painted (1) or its own soft wash (0, a blurred mip): a sharp tile repeating across the whole
+    // floor reads as a digital texture next to the painted layers
+    vec3 c = useTex > 0.5 ? mix(texture2D(tex, vW.xz / tile, 4.0).rgb, texture2D(tex, vW.xz / tile).rgb, detail) : base;
     // watercolour on the floor: broad wash variation, then fine granulation, both fixed to the world
     float wash = fbm(vW.xz * 0.18), gran = fbm(vW.xz * 2.7);
     // pigment pools in the wash (broad, +-18 %) and settles in the paper tooth (fine, up to 12 % darker)
@@ -62,17 +65,23 @@ Effect.ShadersStore.stageStainFragmentShader = `
 
 export interface GroundLook { tex: RawTexture | null; tile: number; base: [number, number, number]; tint: [number, number, number]; fadeNear: number; fadeFar: number; grain: number }
 
-export function makeGround(scene: Scene): { mesh: Mesh; set(look: GroundLook): void; follow(cam: Vector3): void } {
+export function makeGround(scene: Scene): { mesh: Mesh; set(look: GroundLook): void; follow(cam: Vector3): void; setDetail(d: number): void } {
   const mesh = MeshBuilder.CreateGround('ground', { width: 2400, height: 2400 }, scene)
   const mat = new ShaderMaterial('ground', scene, 'stageGround', {
     attributes: ['position'],
-    uniforms: ['world', 'viewProjection', 'useTex', 'tile', 'grain', 'fadeNear', 'fadeFar', 'base', 'horizonTint', 'camPos'],
+    uniforms: ['world', 'viewProjection', 'useTex', 'tile', 'grain', 'fadeNear', 'fadeFar', 'detail', 'base', 'horizonTint', 'camPos'],
     samplers: ['tex'],
+    needAlphaBlending: true,   // sorted with the layers (it outputs alpha 1): see GROUND_SLOT
   })
   const blank = new RawTexture(new Uint8Array([255, 255, 255, 255]), 1, 1, Constants.TEXTUREFORMAT_RGBA, scene)
   mat.setTexture('tex', blank)
+  mat.setFloat('detail', 1)
   mesh.material = mat
   mesh.metadata = { noGBuffer: true }   // no ink line where the floor meets the far landscape
+  // drawn after the sky, before the far landscape: the sky plane (380 m) is nearer than the floor beyond 380 m, so an
+  // opaque floor drawn first let the sky's lower part show over it as a pale line under a raised strip
+  mesh.alphaIndex = GROUND_SLOT
+  mat.forceDepthWrite = true   // still hides what stands below the floor (a far strip lowered by set.horizon)
   mesh.isPickable = false
   return {
     mesh,
@@ -84,6 +93,7 @@ export function makeGround(scene: Scene): { mesh: Mesh; set(look: GroundLook): v
         .setVector3('base', Vector3.FromArray(l.base)).setVector3('horizonTint', Vector3.FromArray(l.tint))
     },
     follow(cam) { mat.setVector3('camPos', cam) },
+    setDetail(d) { mat.setFloat('detail', d) },
   }
 }
 

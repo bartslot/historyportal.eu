@@ -2,7 +2,7 @@
 // vertex/fragment shader. Textures are uploaded PREMULTIPLIED (rgb * a, done here on the CPU), so filtering and
 // mipmaps never mix the colour of transparent pixels into the edge: no light or dark halos at any size.
 import {
-  Constants, Effect, Mesh, RawTexture, ShaderMaterial, Texture, Vector3, VertexData,
+  Constants, Effect, Mesh, RawTexture, ShaderMaterial, Texture, Vector2, Vector3, VertexData,
   type Scene,
 } from '@babylonjs/core'
 import type { Asset, MotionSpec } from './types'
@@ -42,7 +42,16 @@ Effect.ShadersStore.stageLayerFragmentShader = `
   uniform sampler2D tex;
   uniform float time, kind, amount, speed, phase, opacity, uRepeat, feather;
   uniform vec3 featherTint;
+  uniform float groundLine;                  // sky only: below this height of the plane (the eye line) it is floor
+  uniform float lineFade, lineThin, haze;   // line by depth (look.ts): lighter, thinner, into the sky's haze
+  uniform float lineBrown;                  // all depths: black lines toward a warm brown
+  const vec3 LINE_BROWN = vec3(0.42, 0.31, 0.22);
+  uniform vec2 pxUV;                         // texture uv per 1080p screen px
+  uniform vec3 hazeTint;
   ${GL_NOISE}
+  float lum(vec3 c) { return dot(c, vec3(0.299, 0.587, 0.114)); }
+  // ink = the dark line pixels of the art (1 on a line, 0 on a wash)
+  float inkOf(vec3 s) { return smoothstep(0.5, 0.2, lum(s)); }
   void main(void) {
     vec2 uv = vec2(vUV.x * uRepeat, vUV.y);
     if (kind == 3.0) {          // ripple: the water surface wobbles, more toward the bottom (nearer)
@@ -52,6 +61,28 @@ Effect.ShadersStore.stageLayerFragmentShader = `
     }
     vec4 c = texture2D(tex, uv);                       // premultiplied
     if (kind == 4.0) c.rgb *= 1.0 + amount * 0.12 * (sin(time * speed * 13.0 + phase) * 0.5 + sin(time * speed * 31.0) * 0.5);
+    if (c.a > 0.004 && (lineFade + lineThin + haze + lineBrown) > 0.0) {
+      vec3 s = c.rgb / c.a;                            // straight colour
+      float ink = inkOf(s);
+      // thinner: a line pixel takes its lightest opaque neighbour lineThin px away (an opening of the dark lines);
+      // a line pixel next to the air loses its alpha instead, so the silhouette outline thins the same way
+      if (lineThin > 0.0 && ink > 0.0) {
+        vec3 best = s; float bl = lum(s), edge = 1.0;
+        for (int k = 0; k < 4; k++) {
+          vec2 d = k == 0 ? vec2(1, 0) : k == 1 ? vec2(-1, 0) : k == 2 ? vec2(0, 1) : vec2(0, -1);
+          vec4 n = texture2D(tex, uv + d * pxUV * lineThin);
+          if (n.a > 0.9) { vec3 ns = n.rgb / n.a; float nl = lum(ns); if (nl > bl) { best = ns; bl = nl; } }
+          else edge = min(edge, n.a);
+        }
+        s = mix(s, best, ink);
+        c.a *= mix(1.0, edge, ink);   // the outline against the air thins too: its outer line pixels go
+        ink = inkOf(s);
+      }
+      s = mix(s, LINE_BROWN * (0.55 + lum(s)), ink * lineBrown);   // black ink becomes the book's brown pencil
+      s = mix(s, mix(s, hazeTint, 0.75), ink * lineFade);  // lighter: the line goes toward the air's colour
+      s = mix(s, hazeTint, haze);                          // aerial perspective over the whole layer
+      c.rgb = s * c.a;
+    }
     // the lower edge is painted over into the ground's own colour along a ragged line (not a blur, not see-through:
     // behind a far strip's lower part is sky, not floor), so the far landscape meets the floor without a seam. Opaque
     // even where the painting itself fades out at the bottom (art v3 strips do), else the sky shows through
@@ -60,6 +91,8 @@ Effect.ShadersStore.stageLayerFragmentShader = `
       float k = smoothstep(0.0, feather, vH + rag);
       c = mix(vec4(featherTint, 1.0), c, k);
     }
+    // the floor plane ends 1200 m out, a pixel or two short of the horizon: there the sky would show as a pale line
+    if (vH < groundLine) c = vec4(featherTint, 1.0);
     gl_FragColor = c * opacity;
   }`
 
@@ -130,6 +163,10 @@ export interface LayerHandle {
   setOpacity(o: number): void
   /** share of the height, from the bottom, that fades into the ground */
   setFeather(f: number, tint?: [number, number, number]): void
+  /** sky only: share of the plane's height, from the bottom, below the eye line (painted as the far floor) */
+  setGroundLine(f: number): void
+  /** line by depth (look.ts lineOf) and the texture uv per 1080p screen px (look.ts pxUV) */
+  setLine(l: { fade: number; thin: number; haze: number; brown: number }, uvPerPx: readonly [number, number], hazeTint: [number, number, number]): void
 }
 
 let seed = 0
@@ -138,7 +175,7 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
   const mesh = anchoredPlane(`layer:${asset.id}`, asset, w, h, scene)
   const mat = new ShaderMaterial(`layer:${asset.id}`, scene, 'stageLayer', {
     attributes: ['position', 'uv'],
-    uniforms: ['worldViewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'opacity', 'uRepeat', 'feather', 'featherTint'],
+    uniforms: ['worldViewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'opacity', 'uRepeat', 'feather', 'featherTint', 'groundLine', 'lineFade', 'lineThin', 'haze', 'lineBrown', 'pxUV', 'hazeTint'],
     samplers: ['tex'],
     needAlphaBlending: true,
   })
@@ -151,6 +188,7 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
   const top = asset.anchor?.[1] ?? 1
   mat.setFloat('phase', phase).setFloat('height', h * top).setFloat('width', w).setFloat('uRepeat', uRepeat).setFloat('opacity', 1)
   mat.setFloat('kind', 0).setFloat('amount', 1).setFloat('speed', 1).setFloat('time', 0).setFloat('feather', 0)
+  mat.setFloat('groundLine', -1).setFloat('lineFade', 0).setFloat('lineThin', 0).setFloat('haze', 0).setFloat('lineBrown', 0)
   mesh.material = mat
   mesh.metadata = { noGBuffer: true, painted: true } // the look draws no ink on its edges: the art has its own
   mesh.isPickable = false
@@ -158,6 +196,11 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
     mesh, material: mat,
     setMotion: (m) => { mat.setFloat('kind', MOTION_CODE[m.kind] ?? 0).setFloat('amount', m.amount).setFloat('speed', m.speed) },
     setOpacity: (o) => { mat.setFloat('opacity', o); mesh.isVisible = o > 0.001 },
+    setLine: (l, uvPerPx, tint) => {
+      mat.setFloat('lineFade', l.fade).setFloat('lineThin', l.thin).setFloat('haze', l.haze).setFloat('lineBrown', l.brown)
+      mat.setVector2('pxUV', new Vector2(uvPerPx[0], uvPerPx[1])).setVector3('hazeTint', Vector3.FromArray(tint))
+    },
+    setGroundLine: (f) => { mat.setFloat('groundLine', f) },
     setFeather: (f, tint) => {
       mat.setFloat('feather', Math.max(0, Math.min(1, f)))
       if (tint) mat.setVector3('featherTint', Vector3.FromArray(tint))

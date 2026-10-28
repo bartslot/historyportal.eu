@@ -71,6 +71,13 @@ the `_placeholder` bundle). The panel edits every camera, timing and motion valu
   that colour along a ragged line (`layer.feather`, default 0.22 of their height; not see-through, the sky is behind
   them). `set.horizon` raises the far landscape in metres. mid/fg assets stand on a soft painted contact stain at their
   anchor (`layer.shadow`, default 0.6; sized to read the same on screen at any distance). All in the panel, undoable.
+- **Paper and line** (`look.ts`, `sheet.ts`; keys of `lesson.look`, sliders in the panel, undoable): what makes separately
+  painted layers one picture. A screen-space paper sheet after the post chain (`sheetPaper` tooth, `sheetGrain` pigment
+  grain in the darker washes, `sheetWash` + `sheetPatches` one warm wash in big soft patches); per depth the art's own
+  ink goes lighter (`lineFade*`), thinner (`lineThin*`, in 1080p px, outlines too) and into the sky's haze (`haze*`);
+  `lineBrown` turns black ink toward the book's brown; `groundDetail` blends the floor tile toward its own soft wash.
+  The floor draws after the sky (`GROUND_SLOT`), and the sky below the eye line is painted as the far floor.
+  Art plates through the real stage: `node scripts/stage25d-plates.mjs http://localhost:5197 <specsDir> <outDir>`.
 - **Interactions**: a scene with `interaction` holds at its end (`timeline.ts`): the picture keeps its layer motion and
   the camera breathes around the end pose (`lesson.hold = { breath_m, breath_s }`, editable, `breathe()`), until the
   handler calls `resume`. A seek or rebuild never re-fires a hold; a stale `resume` after a seek is ignored.
