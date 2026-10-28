@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bandAt, bandColour, BG_FEATHER, bottomColour, featherOf, groundOptions, hexRgb, PAPER, resolveGround, rowBands, SKY_BANDS, stainSize } from './ground'
+import { bandAt, bandColour, BG_FEATHER, bottomColour, featherOf, groundOptions, hexRgb, landTop, PAPER, resolveGround, rowBands, SKY_BANDS, stainSize } from './ground'
 import { libraryUrlFor } from './library'
 import type { Asset, Library } from './types'
 
@@ -77,7 +77,7 @@ describe('teacher edits: ground and horizon (undoable)', () => {
     doc.set(['scenes', 0, 'set', 'ground'], '#e8dcc0', 'Ground wash')
     expect(resolveGround(set(), L)).toEqual({ kind: 'paper', colour: '#e8dcc0' })
     doc.set(['scenes', 0, 'set', 'horizon'], 6, 'Horizon')
-    expect(placeLayer(strip, set().layers[0], 0, set().horizon).y).toBe(6)
+    expect(placeLayer(strip, set().layers[0], 0, set().horizon as number).y).toBe(6)
     doc.undo(); doc.undo(); doc.undo()
     expect(set()).toEqual({ layers: [{ asset: 'bg-heath', depth: 'bg' }] })
   })
@@ -125,5 +125,15 @@ describe('sky colour at the horizon (checker sky LOW: no paper band under the sk
     expect(bandAt(bands, 0.9)).toEqual([90 / 255, 140 / 255, 220 / 255])
     expect(bandAt(bands, -1)).toEqual(bands[SKY_BANDS - 1])  // clamped
     expect(bandAt([], 0.5)).toBeNull()
+  })
+})
+
+describe('landTop: where the land of a strip starts', () => {
+  it('is the first mostly-opaque row', () => {
+    const w = 4, h = 10, d = new Uint8ClampedArray(w * h * 4)
+    for (let y = 3; y < h; y++) for (let x = 0; x < w; x++) d[(y * w + x) * 4 + 3] = x < 3 ? 255 : 0   // 3 of 4 opaque from row 3
+    d[(1 * w) * 4 + 3] = 255                                                                           // a lone tree top in row 1
+    expect(landTop(d, w, h)).toBe(0.3)
+    expect(landTop(new Uint8ClampedArray(w * h * 4), w, h)).toBe(0)
   })
 })

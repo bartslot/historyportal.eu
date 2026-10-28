@@ -59,8 +59,9 @@ export interface Scene {
   beat?: string
   narration?: string
   est_s?: number
-  /** ground: a 'ground' asset id or tags, or '#hex' (a paper wash); horizon: metres the far landscape (bg) sits higher */
-  set: { sky?: string | null; ground?: string; horizon?: number; layers: SceneLayer[] }
+  /** ground: a 'ground' asset id or tags, or '#hex' (a paper wash); horizon: metres the far landscape (bg) sits higher,
+   *  'auto' or unset = its land line at land_target of the frame (layout.ts autoHorizon, default LAND_TARGET 0.42) */
+  set: { sky?: string | null; ground?: string; horizon?: number | 'auto'; land_target?: number; layers: SceneLayer[] }
   figures?: unknown[]
   camera?: CameraMove | null
   /** further shots of the same scene (director, S5), each with its at_s */

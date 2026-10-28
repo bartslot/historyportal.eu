@@ -8,6 +8,9 @@ export const DEPTH_RANK: Record<Depth, number> = { sky: 0, bg: 1, mid: 2, fg: 3 
 export const HOUSE: CamPose = { x: 0, y: 1.6, z: 0, fov: 50 }
 export const HOUSE_PITCH_DEG = -2           // looking up a touch: more sky, the near ground line low in the frame
 export const ASPECT = 16 / 9
+/** set.horizon 'auto' (the default): the far strip's land line stands at this share of the frame from the top, so the
+ *  sky takes at most ~40 % and the floor never takes over (art v3's stage_plate.py auto_horizon, same maths) */
+export const LAND_TARGET = 0.42
 export const COVER_MARGIN = 1.6             // wide strips (sky, tileable bg) span this much of the view, for camera moves
 /** Draw slot of the floor: after every sky layer (slots 1..999), before the far landscape (1000+). */
 export const GROUND_SLOT = 999
@@ -50,6 +53,17 @@ export function placeLayer(asset: Asset, layer: Pick<SceneLayer, 'depth' | 'x' |
   // sky-depth props (clouds) float: their anchor sits at 30-60 % of the view height at that distance
   const y = depth === 'sky' ? z * Math.tan(fovRad(HOUSE.fov) / 2) * 0.45 : depth === 'bg' ? horizon : 0
   return { x, y, z, w, h, uRepeat: asset.tileable_x ? w / natW : 1, alphaIndex }
+}
+
+/** set.horizon for 'auto': metres the far strip moves up (down if negative) so its land line (landTop: share of the
+ *  picture's height, from the top, where its land starts) lands at `target` of the house frame. stripH = the strip's
+ *  placed height in metres; order = its slot among the bg layers. Frame size cancels out; rounded to 0.1 m. */
+export function autoHorizon(landTop: number, stripH: number, order = 0, target = LAND_TARGET, pitchDeg = HOUSE_PITCH_DEG): number {
+  const f = 0.5 / Math.tan(fovRad(HOUSE.fov) / 2)                              // focal length in frame heights
+  const cy = 0.5 + f * Math.tan((-pitchDeg * Math.PI) / 180)                   // the eye line, from the top (pitch + = down)
+  const z = DEPTH_Z.bg - order * SAME_DEPTH_STEP_M
+  const want = HOUSE.y + ((cy - target) * z) / f                              // world height seen at the target row
+  return Math.round((want - stripH * (1 - landTop)) * 10) / 10
 }
 
 /** The draw slot of a layer's contact stain: just before the layer itself. */

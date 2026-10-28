@@ -60,6 +60,16 @@ export const rowBands = (data: Uint8ClampedArray | Uint8Array, w: number, h: num
 export const bandAt = (bands: ([number, number, number] | null)[], f: number) =>
   bands[Math.min(SKY_BANDS - 1, Math.max(0, Math.floor((1 - f) * SKY_BANDS)))] ?? null
 
+/** Where a strip's land starts: the first row (share of the height, from the top) that is mostly opaque. */
+export function landTop(data: Uint8ClampedArray | Uint8Array, w: number, h: number): number {
+  for (let y = 0; y < h; y++) {
+    let n = 0
+    for (let x = 0; x < w; x++) if (data[(y * w + x) * 4 + 3] > 128) n++
+    if (n / w > 0.5) return y / h
+  }
+  return 0
+}
+
 /** Eye height of the house camera (layout HOUSE.y): a flat stain is foreshortened by eye / distance. */
 const EYE_M = 1.6
 /** On screen a stain is this share of its width tall, at any distance. */

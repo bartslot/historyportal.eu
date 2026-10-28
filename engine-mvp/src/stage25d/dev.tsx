@@ -9,7 +9,7 @@ import { resolveAsset } from './library'
 import { DEPTHS, lineKeys, LOOK_RANGE, STAGE_SHEET } from './look'
 import { getIn, type Path } from './edits'
 import { BG_FEATHER, groundOptions, STAIN_DEFAULT } from './ground'
-import { HOLD_DEFAULTS, RENDER_CAPS, sceneDuration, setShotDuration, setShotPose } from './layout'
+import { HOLD_DEFAULTS, LAND_TARGET, RENDER_CAPS, sceneDuration, setShotDuration, setShotPose } from './layout'
 import { Panel } from '../panels/Panel'
 import { panels } from '../panels/store'
 import type { CamPose, CameraMove, Ease, MotionSpec } from './types'
@@ -152,7 +152,10 @@ function ScenePanel({ player }: { player: Player }) {
           <option value="">{groundOptions(player.stage.sceneLib).length ? 'Ground of the bundle' : 'Paper'}</option>
           {groundOptions(player.stage.sceneLib).map((id) => <option key={id} value={id}>{id}</option>)}
         </select>
-        <Num player={player} path={[...sp, 'set', 'horizon']} label="Horizon" min={-6} max={20} step={0.5} fallback={0} />
+        <Num player={player} path={[...sp, 'set', 'horizon']} label="Horizon" min={-80} max={30} step={0.1} fallback={player.stage.horizonOf(s)} />
+        {typeof s.set.horizon === 'number'
+          ? <button type="button" className="btn btn-ghost btn-xs self-start" data-testid="horizon-auto" onClick={() => player.doc.set([...sp, 'set', 'horizon'], 'auto', 'Horizon')}>Auto horizon</button>
+          : <Num player={player} path={[...sp, 'set', 'land_target']} label="Land line" min={0.2} max={0.7} step={0.01} fallback={LAND_TARGET} />}
       </div>
       <h3 className="mt-3 font-semibold">Paper and line</h3>
       <div className="mt-1 flex flex-col gap-1" data-testid="look">

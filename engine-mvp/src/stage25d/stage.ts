@@ -12,8 +12,8 @@ import { createLookChain, PRESETS } from '../engine/look-chain.js'
 import { lineOf, pxPerMetre, pxUV, STAGE_SHEET } from './look'
 import { makeSheet } from './sheet'
 import { libraryUrlFor, loadLibrary, resolveAsset } from './library'
-import { ADAPT_STALL_MS, ADAPT_WINDOW_MS, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
-import { bandColours, edgeColours, loadPremultiplied, makeLayer, type LayerHandle } from './layer'
+import { ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, LAND_TARGET, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
+import { bandColours, edgeColours, landTops, loadPremultiplied, makeLayer, type LayerHandle } from './layer'
 import { bandAt, featherOf, GROUND_TILE_M, hexRgb, PAPER as PAPER_HEX, resolveGround, STAIN_DEFAULT, stainSize } from './ground'
 import { makeGround, makeStain, type GroundLook } from './ground-gl'
 import { LessonDoc } from './edits'
@@ -37,6 +37,8 @@ export class Stage {
   private built: Built[] = []
   /** the colour the floor fades into at the horizon; far strips paint their lower edge into it */
   private horizonTint: [number, number, number] = hexRgb(PAPER_HEX)
+  /** the scene's first far strip: where its land starts, its placed height, its slot (set.horizon 'auto') */
+  private strip: { top: number; h: number; order: number } | null = null
   /** the sky's own colour where it meets the floor: far layers' lines and washes go toward it (look.ts haze) */
   private hazeTint: [number, number, number] = hexRgb(PAPER_HEX)
   /** the library the scene on screen was built from (its own bundle, else the lesson's) */
@@ -135,7 +137,7 @@ export class Stage {
       let tex
       try { tex = await loadPremultiplied(lib.base + asset.file, this.scene) } catch { misses.push({ need: layer.need ?? layer.asset, reason: `file did not load: ${asset.file}` }); return }
       if (token !== this.buildToken) return
-      const p = placeLayer(asset, layer, order, s.set.horizon ?? 0)
+      const p = placeLayer(asset, layer, order)   // y is set in pose(): the auto horizon needs the strip loaded first
       const handle = makeLayer(asset, tex, p.w, p.h, p.uRepeat, this.scene)
       handle.mesh.position.set(p.x, p.y, p.z)
       handle.mesh.alphaIndex = p.alphaIndex
@@ -155,7 +157,9 @@ export class Stage {
     if (choice.kind === 'asset') {
       try { groundTex = await loadPremultiplied(lib.base + choice.asset.file, this.scene) } catch { misses.push({ need: s.set.ground ?? 'ground', reason: `file did not load: ${choice.asset.file}` }) }
     } else if (choice.reason) misses.push({ need: s.set.ground, reason: choice.reason })
-    const far = next.find((b) => b.asset.layer === 'bg')   // a strip, not a prop placed far off
+    // the first strip in the scene's own order (loads finish in any order), not a prop placed far off
+    const far = next.filter((b) => b.asset.layer === 'bg').sort((a, b) => a.index - b.index)[0]
+    const strip = far ? { top: landTops.get(lib.base + far.asset.file) ?? 0, h: placeLayer(far.asset, far.layer, far.order).h, order: far.order } : null
     // under a strip the floor fades into the strip's own ground colour; with no strip, into the sky's colour where it
     // meets the floor (eye height on the sky plane), so the sky never ends on a hard line against a paper band
     const sky = next.find((b) => b.index === -1)
@@ -172,6 +176,7 @@ export class Stage {
     this.sceneLib = lib
     const look = this.groundLook(choice.kind === 'asset' ? { tex: groundTex, asset: choice.asset } : null, tint, lib, choice.kind === 'paper' ? choice.colour : undefined)
     this.horizonTint = look.tint
+    this.strip = strip
     this.hazeTint = skyHaze ?? look.tint
     this.ground.set(look)
     this.missed.set(s.id, misses)   // replaced per scene: a rebuild never doubles them
@@ -198,6 +203,14 @@ export class Stage {
     this.built.forEach((b) => { if (b.index >= 0) b.layer = s.set.layers[b.index] })
   }
 
+  /** Metres the far landscape stands higher: the scene's own number, else 'auto' (also when unset): the first strip's
+   *  land line at set.land_target of the frame (layout.ts autoHorizon). For the scene on screen. */
+  horizonOf(s: Scene): number {
+    const h = s.set.horizon
+    if (typeof h === 'number') return h
+    return this.strip ? autoHorizon(this.strip.top, this.strip.h, this.strip.order, s.set.land_target ?? LAND_TARGET) : 0
+  }
+
   /** Pose everything for t seconds into scene s. */
   pose(s: Scene, t: number, clock: number, hold?: { t: number; breath_m?: number; breath_s?: number }) {
     const shot = shotAt(s, t)                       // a directed scene plays camera, then each of camera_more
@@ -210,7 +223,7 @@ export class Stage {
     const renderH = this.engine.getRenderHeight()
     for (const b of this.built) {
       const k = layerAt(b.layer, t)
-      const p = placeLayer(b.asset, { ...b.layer, x: k.x, scale: 1 }, b.order, s.set.horizon ?? 0)
+      const p = placeLayer(b.asset, { ...b.layer, x: k.x, scale: 1 }, b.order, this.horizonOf(s))
       b.handle.mesh.position.x = p.x
       b.handle.mesh.position.y = p.y
       b.handle.mesh.scaling.setAll(k.scale / b.builtScale)   // grows from the ground point
