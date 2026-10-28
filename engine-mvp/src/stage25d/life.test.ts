@@ -19,6 +19,8 @@ describe('life: smoke and birds follow the lesson clock (a seek shows the same f
     expect(smokes({ id: 'fire-pit-01', tags: [] })).toBe(true)
     expect(smokes({ id: 'house-01', tags: ['chimney'] })).toBe(true)
     expect(smokes({ id: 'barrels-01', tags: ['barrel'] })).toBe(false)
+    expect(smokes({ id: 'firewood-stack-01', tags: ['firewood'] })).toBe(false)
+    expect(smokes({ id: 'fireflies-01', tags: [] })).toBe(false)
   })
 })
 

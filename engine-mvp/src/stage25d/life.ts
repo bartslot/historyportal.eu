@@ -114,5 +114,7 @@ export function makeBirds(scene: Scene, z: number, width: number, alphaIndex: nu
   }
 }
 
-/** Does this asset make smoke (a fire, a hearth, a chimney)? */
-export const smokes = (asset: { id: string; tags: string[] }) => /fire|hearth|chimney|smoke/.test([asset.id, ...asset.tags].join(' '))
+const SMOKING = ['fire', 'hearth', 'chimney', 'smoke']
+/** Does this asset make smoke (a fire, a hearth, a chimney)? Whole words only: 'firewood' or 'fireflies' do not smoke. */
+export const smokes = (asset: { id: string; tags: string[] }) =>
+  asset.id.split(/[-_]/).some((w) => SMOKING.includes(w)) || asset.tags.some((t) => SMOKING.includes(t.toLowerCase()))
