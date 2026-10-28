@@ -145,13 +145,19 @@ export function makeGround(scene: Scene): { mesh: Mesh; set(look: GroundLook): v
 
 let stainSeed = 0
 
-/** A soft painted stain lying on the ground, centred on `parent`'s origin (its anchor), w x d metres. */
-export function makeStain(parent: TransformNode, w: number, d: number, scene: Scene): { mesh: Mesh; setOpacity(o: number): void } {
-  const mesh = MeshBuilder.CreatePlane(`stain:${parent.name}`, { width: w, height: d }, scene)
+/** A soft painted stain lying on the ground, centred on `parent`'s origin (its anchor), w x d metres. With `cast`,
+ *  it is a cast shadow instead: `length` metres long from the anchor along `dir` (the light's direction on the ground,
+ *  x and z), w wide. */
+export function makeStain(parent: TransformNode, w: number, d: number, scene: Scene, cast?: { dir: [number, number]; length: number }): { mesh: Mesh; setOpacity(o: number): void } {
+  const mesh = MeshBuilder.CreatePlane(`stain${cast ? '-cast' : ''}:${parent.name}`, { width: w, height: cast ? cast.length : d }, scene)
   mesh.rotation.x = Math.PI / 2                 // flat on the floor
-  mesh.position.set(0, 0.02, -d * 0.18)         // a little toward the camera: the dark core shows in front of the foot
+  if (cast) {                                   // turned along the light, starting at the anchor
+    const [dx, dz] = cast.dir, n = Math.hypot(dx, dz) || 1
+    mesh.rotation.y = Math.atan2(dx / n, dz / n)
+    mesh.position.set((dx / n) * cast.length * 0.42, 0.015, (dz / n) * cast.length * 0.42)
+  } else mesh.position.set(0, 0.02, -d * 0.18)  // a little toward the camera: the dark core shows in front of the foot
   mesh.parent = parent
-  const mat = new ShaderMaterial(`stain:${parent.name}`, scene, 'stageStain', {
+  const mat = new ShaderMaterial(mesh.name, scene, 'stageStain', {
     attributes: ['position', 'uv'], uniforms: ['worldViewProjection', 'opacity', 'seed'], needAlphaBlending: true,
   })
   mat.alphaMode = Constants.ALPHA_PREMULTIPLIED
