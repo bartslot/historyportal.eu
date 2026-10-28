@@ -880,6 +880,24 @@
      "motion": "none"
     }
    ]
+  },
+  {
+   "id": "mid-firepit",
+   "layer": "mid",
+   "subject": "Northern Netherlands (Drenthe), Neolithic, c. 3400 BCE, Funnelbeaker farmers. (1) an open fire pit in a ring of field stones with flames and a line of smoke, a few logs beside it. Each object must read clearly when it is shown small, about a tenth of the screen height: one bold, closed, slightly broken outer contour, a simple silhouette, a few large inner shapes, and its own small patch of ground under it that ends in a few short strokes.",
+   "items": [
+    {
+     "id": "fire-pit-02",
+     "tags": [
+      "fire",
+      "fire pit",
+      "smoke",
+      "camp"
+     ],
+     "height_m": 1.2,
+     "motion": "flicker"
+    }
+   ]
   }
  ],
  "plate": [

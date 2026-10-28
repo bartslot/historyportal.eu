@@ -602,6 +602,25 @@
      "reject": "rope coil and barrel drawn in the corners: breaks tiling; regenerate"
     }
    ]
+  },
+  {
+   "id": "ground-quay-tile",
+   "layer": "ground",
+   "subject": "Dutch Republic, Amsterdam quay, c. 1640: small rounded grey-brown cobblestones (keien), each about a hand wide, laid in loose rows, with a few worn darker stones and thin lines of earth and moss between them; no barrels, no objects, no puddles, no single large stone.",
+   "items": [
+    {
+     "id": "ground-quay-cobbles-01",
+     "tags": [
+      "ground",
+      "quay",
+      "cobbles",
+      "street",
+      "harbour"
+     ],
+     "height_m": 4,
+     "motion": "none"
+    }
+   ]
   }
  ],
  "plate": [

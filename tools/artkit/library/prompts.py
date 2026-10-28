@@ -220,12 +220,12 @@ def weave_ink_prompt(template: str, subject: str) -> str:
 # Measured on the 4 approved watercolours with refs_kind.stats (2026-10-28): wash chroma C* mean 13-22 (p90 30-37),
 # darkest washes L* ~47-51, lightest ~92-96, dark washes (L* 40-60) on 9-19 % of the painted area. PM: drop
 # "restrained", ask for the refs' saturated, high-contrast washes and their darker accents.
-REF_COLOUR = (
-    "Colour strength like the watercolour references: clear, saturated, high-contrast washes, not pale or "
-    "restrained; the darkest washes go about half way to black on the shadow sides (never as dark as the ink), "
-    "the lightest stay near paper white on the lit sides, and darker accent washes cover roughly an eighth of the "
-    "painted area, in creases, under overhangs and on the shadow side. Give each material its own confident local "
-    "colour, with a clear contrast between warm and cool where the subject allows."
+REF_COLOUR = (  # PM 2026-10-28 (2nd): the "saturated" push made greens too bright; match the refs, not more
+    "Colour strength like the watercolour references, not more: muted earth tones, clear but never bright or "
+    "candy-coloured washes (the references' wash chroma is low to moderate, about C* 13 to 22); the darkest washes "
+    "go about half way to black on the shadow sides (never as dark as the ink), the lightest stay near paper white "
+    "on the lit sides, and darker accent washes cover roughly an eighth of the painted area. Greens stay olive and "
+    "sage, never lime or emerald."
 )
 
 
@@ -282,8 +282,8 @@ STYLE_GAPS = (
 # v3 sparse ink (2026-10-28). Every protocol-2 critique blamed the INK: dense dark shading and interior
 # micro-detail that no colour edit can undo. Same rule, said as drawing instructions the model follows.
 SPARSE_INK = (
-    "SPARSE INK, this matters most: a bold, slightly broken outer contour of varying weight (thick on the shadow "
-    "side and at the base, thinning and breaking open where light hits) carries each object. Inside the contour "
+    "SPARSE INK, this matters most: a thin-to-medium, broken, varied outer contour (a little heavier on the shadow "
+    "side and at the base, thinning and breaking open where light hits, never a uniform heavy outline) carries each object. Inside the contour "
     "draw only about half the detail you normally would: a few structural lines, no texture marks, no fur, wool, "
     "bark, leaf, grass, scale, plank-grain, stone-grain or wave micro-strokes; suggest masses of leaves, wool or "
     "waves by their outline and a few inner shapes only. Medium shadow = a small patch of single-direction "

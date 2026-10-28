@@ -809,6 +809,37 @@
     }
    ],
    "era": "c. 10,000-3000 BCE"
+  },
+  {
+   "id": "mid-hut-fire",
+   "layer": "mid",
+   "subject": "Near East, early farming village (PPNA, c. 9000 BCE). (1) a round partly sunken hut: a low stone footing, a conical roof of reeds and brushwood, a small low doorway; (2) a small open cooking fire in a ring of stones with a thin line of smoke. Each object must read clearly when it is shown small, about a tenth of the screen height: one bold, closed, slightly broken outer contour, a simple silhouette, a few large inner shapes, and its own small patch of ground under it that ends in a few short strokes.",
+   "items": [
+    {
+     "id": "hut-sunken-02",
+     "tags": [
+      "hut",
+      "house",
+      "round",
+      "mideast",
+      "village"
+     ],
+     "height_m": 3,
+     "motion": "none"
+    },
+    {
+     "id": "fire-small-02",
+     "tags": [
+      "fire",
+      "smoke",
+      "cooking",
+      "mideast"
+     ],
+     "height_m": 1.2,
+     "motion": "flicker"
+    }
+   ],
+   "gaps": "cut"
   }
  ],
  "plate": [
