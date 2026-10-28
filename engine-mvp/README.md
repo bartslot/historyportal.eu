@@ -71,7 +71,51 @@ the `_placeholder` bundle). The panel edits every camera, timing and motion valu
 Tests: `npx vitest run src/stage25d`. Real-GPU check (muted, Metal ANGLE, 1080p frames, fps, edit + undo):
 `node scripts/stage25d-check.mjs http://localhost:5197/stage25d.html <outDir>/` (launch config `stage25d`, port 5197) (needs `npx playwright install chromium`).
 
-## Figures (`src/figures/`)
+## Puppet figures (`src/figures/puppet.ts`, the default route since 10-27)
+
+Painted cut-out characters: the History Lines art itself, moved by 2D bones. Four characters (`CHARACTERS`):
+`boer-vrouw`, `boer-man`, `voc-matroos`, `voc-kapitein` (Tasman look: moustache, 1640s hat).
+
+```ts
+import { createPuppet, placePuppet } from './src/figures/puppet'
+const p = await createPuppet(player.stage.scene, 'voc-kapitein')     // warnings on: a broken pose is console.warned
+placePuppet(p, { x: 0.6, depth: 'fg', facing: 'left' }, player.stage) // left = the art mirrored; { view: 'side' } for profile
+p.setPose('kneel')           // stand walk point carry kneel sit; returns the guards' findings ([] = human)
+p.setExpression('worried')   // 4 drawn heads; the lesson's 8 expressions map onto them (EXPRESSION_OF)
+p.setHat(false)              // the hat is its own part
+p.setDye('top', '#2b4a7a')   // garments(): top accent skirt sleeves breeches legs shoes hat; null = painted colour
+```
+
+**Art**: one PARTS SHEET per character and view (3/4, side, front; 12 sheets), Figma `generate_image`
+(gpt-image-2.5-sunburst) in the Art library file `ULbjXnT1DAatLTQLwWLHTE` (node ids in BartsMedia
+`topics/autonomous-lessons/puppet-parts/SOURCES.txt`). A fixed 6x3 grid: 4 expression heads, torso, skirt or hat /
+upper arm, forearm, 3 hands (open, grip, point), hat / thigh, shin, 2 feet. Legs exist under every skirt. The prompts
+(dark variable-weight contour, face detail, library palette): `python3 src/figures/parts_prompts.py voc-kapitein_side`.
+
+**Cut** (`src/figures/cut_all.sh` -> `cut_parts.py`, nothing hand-set): parts are found as shapes and get their slot
+by row and order (a merged or split shape stops the run); joints come from the shape (limb end caps by PCA, wrist and
+ankle caps, waist = narrowest row, crown for the hat); every part is scaled to an anthropometric length (the model keeps
+style, not scale); the painted joint discs are handled the cut-out way (a parent's far disc is cut, a child's near disc
+refilled with the limb mirrored across the joint, the child drawn under the parent); dye masks are colouring-book
+regions between the ink lines, clustered: R = the whole garment, G/B = clearly different accents (belt, collar,
+waistcoat). Output WebP in `public/figures/puppets/<id>/<view>/` (4.5 MB for all four).
+
+**Motion**: `solve()` places every part in the figure's own 2D frame (x forward, y up); side and 3/4 turn limbs in the
+picture plane, front foreshortens them (`PUPPET.minForeshorten`). The vertices are computed there, so the guards in
+`violations()` (knee bends back, elbow forward, shoulder and hip ranges) measure exactly what is drawn. A skirt drapes
+waist -> knees -> down. Dye = target colour x the paint's own luminance (ink, wash, paper texture stay).
+Knobs on sliders in `puppet-lab.html` (walk swing, knee lift, arm swing, steps/s, breathing, lap, front foreshortening).
+
+**Evidence**: `puppet.test.ts` through `createPuppet` with warnings captured: every character x pose x view is human
+and stands on the ground; 6 mutations (knee forward, far knee forward, elbow back, arm through the back, leg past the
+hip, knee folded flat) are caught. Real stage frames: `node src/figures/capture_puppets.mjs` (silent headless
+Chromium) -> BartsMedia `puppet-parts/stage/` (`contact_all_poses_views.png`).
+
+**Limits**: face-on sit/kneel read as "shorter" without a seat prop; the woman's fur cape dyes with her dress;
+pale socket discs painted into some torsos can show at the near shoulder; the sailor's torso art includes his shirt
+sleeves; no back view (back uses front); no lesson `Cast` wiring yet (the 3D `Cast` still serves `figures[]`).
+
+## Figures, 3D route (`src/figures/`, PARKED look; mechanics kept)
 
 Lesson figures that read as History Lines comic characters: ONE standard body (Customizable Man, Auto-Rig Pro deform
 rig), variety only from dyes, skin, hair part, hat on/off. `lesson.json` `figures[]` maps straight onto it.
