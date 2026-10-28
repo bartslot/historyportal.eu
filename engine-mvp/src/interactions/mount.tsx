@@ -65,6 +65,7 @@ export function startInteractions(player: Player, sound: LessonSound | null, les
         seconds={cardSeconds(scene)}
         sfx={(id) => void sound?.hit(id)}
         onPush={(p) => { note(scene, 'push'); playOnTo(hold + p * (dur - HOLD_BEFORE_CUT_S - hold)) }}
+        onSize={(share) => frame?.style.setProperty('--card-share', share.toFixed(3))}
         onDone={() => {
           root?.unmount()
           root = null

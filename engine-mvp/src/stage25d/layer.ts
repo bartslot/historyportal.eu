@@ -7,7 +7,7 @@ import {
 } from '@babylonjs/core'
 import type { Asset, MotionSpec } from './types'
 import { MOTION_CODE } from './layout'
-import { bottomColour } from './ground'
+import { bottomColour, rowBands } from './ground'
 import { GL_NOISE } from './ground-gl'
 
 Effect.ShadersStore.stageLayerVertexShader = `
@@ -53,11 +53,12 @@ Effect.ShadersStore.stageLayerFragmentShader = `
     vec4 c = texture2D(tex, uv);                       // premultiplied
     if (kind == 4.0) c.rgb *= 1.0 + amount * 0.12 * (sin(time * speed * 13.0 + phase) * 0.5 + sin(time * speed * 31.0) * 0.5);
     // the lower edge is painted over into the ground's own colour along a ragged line (not a blur, not see-through:
-    // behind a far strip's lower part is sky, not floor), so the far landscape meets the floor without a seam
+    // behind a far strip's lower part is sky, not floor), so the far landscape meets the floor without a seam. Opaque
+    // even where the painting itself fades out at the bottom (art v3 strips do), else the sky shows through
     if (feather > 0.0) {
       float rag = feather * 0.45 * (fbm(vec2(uv.x * 14.0, 3.7)) - 0.5);
       float k = smoothstep(0.0, feather, vH + rag);
-      c = vec4(mix(featherTint * c.a, c.rgb, k), c.a);
+      c = mix(vec4(featherTint, 1.0), c, k);
     }
     gl_FragColor = c * opacity;
   }`
@@ -65,6 +66,8 @@ Effect.ShadersStore.stageLayerFragmentShader = `
 const textures = new Map<string, Promise<RawTexture>>()
 /** url -> the colour an image's bottom rows end in (0..1), read while loading: the ground fades into it */
 export const edgeColours = new Map<string, [number, number, number]>()
+/** Per url: the picture's colour per band of rows (rowBands), for a sky's colour where it meets the floor. */
+export const bandColours = new Map<string, ([number, number, number] | null)[]>()
 
 /** The image as a premultiplied RGBA texture with mipmaps (cached per url and scene). */
 export function loadPremultiplied(url: string, scene: Scene): Promise<RawTexture> {
@@ -82,6 +85,7 @@ export function loadPremultiplied(url: string, scene: Scene): Promise<RawTexture
       const data = g.getImageData(0, 0, c.width, c.height).data
       const edge = bottomColour(data, c.width, c.height)
       if (edge) edgeColours.set(url, edge)
+      bandColours.set(url, rowBands(data, c.width, c.height))
       for (let i = 0; i < data.length; i += 4) {
         const a = data[i + 3] / 255
         data[i] = Math.round(data[i] * a); data[i + 1] = Math.round(data[i + 1] * a); data[i + 2] = Math.round(data[i + 2] * a)

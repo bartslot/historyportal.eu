@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bottomColour, groundOptions, hexRgb, PAPER, resolveGround, stainSize } from './ground'
+import { bandAt, bandColour, BG_FEATHER, bottomColour, featherOf, groundOptions, hexRgb, PAPER, resolveGround, rowBands, SKY_BANDS, stainSize } from './ground'
 import { libraryUrlFor } from './library'
 import type { Asset, Library } from './types'
 
@@ -98,5 +98,32 @@ describe('groundOptions: the panel lists the scene\'s own bundle (PM follow-up)'
   })
   it('a bundle without ground art lists none (the panel offers Paper)', () => {
     expect(groundOptions(lib([a('bg', 'bg', [])]))).toEqual([])
+  })
+})
+
+describe('featherOf: only bg strips feather (checker sky MEDIUM)', () => {
+  it('a strip feathers by default or as the teacher set it; a prop at depth bg never does', () => {
+    expect(featherOf({ layer: 'bg' }, {})).toBe(BG_FEATHER)
+    expect(featherOf({ layer: 'bg' }, { feather: 0.4 })).toBe(0.4)
+    expect(featherOf({ layer: 'mid' }, {})).toBe(0)                 // tree-oak-01 at depth bg (hunebedden sc22)
+    expect(featherOf({ layer: 'prop' }, { feather: 0.4 })).toBe(0)
+  })
+})
+
+describe('sky colour at the horizon (checker sky LOW: no paper band under the sky)', () => {
+  // a sky: blue on top, pale haze in the lower half
+  const w = 8, h = 64, data = new Uint8ClampedArray(w * h * 4)
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) data.set(y < 32 ? [90, 140, 220, 255] : [200, 215, 225, 255], (y * w + x) * 4)
+  it('bandColour reads the rows asked for; bottomColour is its bottom band', () => {
+    expect(bandColour(data, w, h, 0, 0.25)).toEqual([90 / 255, 140 / 255, 220 / 255])
+    expect(bottomColour(data, w, h)).toEqual(bandColour(data, w, h, 0.92, 1))
+  })
+  it('bandAt picks the band at a height of the placed picture (0 = its bottom)', () => {
+    const bands = rowBands(data, w, h)
+    expect(bands).toHaveLength(SKY_BANDS)
+    expect(bandAt(bands, 0.1)).toEqual([200 / 255, 215 / 255, 225 / 255])
+    expect(bandAt(bands, 0.9)).toEqual([90 / 255, 140 / 255, 220 / 255])
+    expect(bandAt(bands, -1)).toEqual(bands[SKY_BANDS - 1])  // clamped
+    expect(bandAt([], 0.5)).toBeNull()
   })
 })
