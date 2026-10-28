@@ -23,6 +23,7 @@ NAMES = [['neutral', 'happy', 'worried', 'surprised', 'sad', 'angry'],
          ['determined', 'thinking', 'scared', 'proud', 'tired', 'closed'],
          ['half', 'talk_a', 'talk_ah', 'talk_wide', 'talk_oo', 'talk_smile']]
 S4 = ['happy', 'angry', 'determined', 'proud', 'worried', 'sad']                # round 3: re-edited from the original with stronger expressions (s4_export.png), they replace the same names above
+S5 = {'happy': 2, 'angry': 5}   # round 4 (s5_export.png, 6 candidates): the chosen cells for happy (quiet symmetric smile) and angry (her own brow weight)
 EYE_STATES = ['neutral', 'happy', 'worried', 'surprised', 'sad', 'angry', 'determined', 'thinking', 'scared', 'proud',
               'tired', 'closed', 'half']
 MOUTH_STATES = ['neutral', 'happy', 'worried', 'surprised', 'sad', 'angry', 'determined', 'thinking', 'scared', 'proud',
@@ -109,6 +110,10 @@ def main(paint, out, stand_png):
     if s4.exists():
         for i, n in enumerate(S4):
             gen[n] = cell(rd(s4), i)
+    s5 = paint / 's5_export.png'
+    if s5.exists():
+        for n, i in S5.items():
+            gen[n] = cell(rd(s5), i)
     tone = np.clip(cv2.GaussianBlur(src - control, (0, 0), TONE_SIGMA), -TONE_MAX, TONE_MAX)   # original minus the re-render, low frequency
     cells = {n: (src if n == 'neutral' else np.clip(c + tone, 0, 255)) for n, c in gen.items()}
     ci = contour_ink(src)
