@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { autoHorizon, bandSize, bandSlot, GROUND_SLOT, cameraAt, DEPTH_Z, HOUSE, stainIndex, layerAt, motionOf, placeLayer, renderScale, sceneDuration, setShotDuration, setShotPose, shotAt, shotsEnd, nextTier, TIER0, ADAPT, viewWidthAt, type Tier } from './layout'
+import { autoHorizon, bandHeight, bandSlot, bandWidth, GROUND_SLOT, cameraAt, DEPTH_Z, HOUSE, stainIndex, layerAt, motionOf, placeLayer, renderScale, sceneDuration, setShotDuration, setShotPose, shotAt, shotsEnd, nextTier, TIER0, ADAPT, viewWidthAt, type Tier } from './layout'
 import type { Scene } from './types'
 import { LessonDoc } from './edits'
 import type { Asset } from './types'
@@ -261,12 +261,12 @@ describe('autoHorizon (set.horizon "auto", art v3 stage_plate.py auto_horizon)',
   })
 })
 
-describe('ground bands (set.groundBands): sized by depth, 6:1 pictures, three views wide', () => {
-  it('a band is three views wide at its depth, and its height follows the picture aspect', () => {
-    const b = bandSize(40, 6)
-    expect(b.w).toBeCloseTo(3 * viewWidthAt(40))
-    expect(b.h).toBeCloseTo(b.w / 6)
-    expect(bandSize(400, 6).w).toBeCloseTo(10 * bandSize(40, 6).w)   // further out, proportionally larger
+describe('ground bands (set.groundBands): three views wide, height k times distance', () => {
+  it('a band is three views wide at its depth, and its height is k times its distance', () => {
+    expect(bandWidth(40)).toBeCloseTo(3 * viewWidthAt(40))
+    expect(bandWidth(400)).toBeCloseTo(10 * bandWidth(40))   // further out, proportionally wider
+    expect(bandHeight(40, 0.15)).toBeCloseTo(6)               // the PM's rule: height = k x z
+    expect(bandHeight(2, 0.15)).toBeCloseTo(0.3)
   })
   it('bands further out draw first (lower slot), and all sit between the floor and the floor props', () => {
     expect(bandSlot(400)).toBeLessThan(bandSlot(2))

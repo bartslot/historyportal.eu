@@ -16,10 +16,10 @@ export const COVER_MARGIN = 1.6             // wide strips (sky, tileable bg) sp
 /** A ground band (set.groundBands) is wide enough for a truck of about ±5 m to find it painted at any depth: three
  *  views wide, its height from the picture's own aspect. */
 export const BAND_VIEWS = 3
-export function bandSize(z: number, aspect: number): { w: number; h: number } {
-  const w = BAND_VIEWS * viewWidthAt(z)
-  return { w, h: w / aspect }
-}
+export const bandWidth = (z: number) => BAND_VIEWS * viewWidthAt(z)
+/** A band's height in metres: the look's band height (k, a share of its distance) times its distance. Stands the hill
+ *  crest a little above the one behind (k ~0.15), so the hunebed at 22 m shows and the 40 m crest sits near the horizon. */
+export const bandHeight = (z: number, k: number) => k * z
 /** Draw slot of anything at distance z (ground bands, props, strips): the further out, the earlier. 1010 at 2000 m,
  *  about 1900 at 2 m; always above the floor (999) and the decals (1000). */
 export const bandSlot = (z: number) => 1010 + (Math.log10(2000) - Math.log10(Math.max(z, 1))) * 290
