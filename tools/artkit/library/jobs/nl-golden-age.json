@@ -108,7 +108,9 @@
       "harbour"
      ],
      "height_m": 45,
-     "motion": "ripple"
+     "motion": "ripple",
+     "gaps": "all",
+     "variant": "n"
     },
     {
      "id": "ship-fluyt-01",
@@ -119,7 +121,8 @@
       "harbour"
      ],
      "height_m": 35,
-     "motion": "ripple"
+     "motion": "ripple",
+     "gaps": "all"
     },
     {
      "id": "boat-sloop-01",
@@ -129,10 +132,37 @@
       "rowing"
      ],
      "height_m": 2,
-     "motion": "ripple"
+     "motion": "ripple",
+     "gaps": "all"
     }
    ],
-   "gaps": "cut"
+   "gaps": "cut",
+   "keep": [
+    [
+     0,
+     0.249,
+     0.03,
+     0.352
+    ],
+    [
+     0.905,
+     0.24,
+     0.995,
+     0.385
+    ],
+    [
+     0.485,
+     0.67,
+     0.59,
+     0.715
+    ],
+    [
+     0,
+     0.635,
+     1,
+     1
+    ]
+   ]
   },
   {
    "id": "mid-buildings",
@@ -326,7 +356,8 @@
       "polder"
      ],
      "height_m": 2,
-     "motion": "sway"
+     "motion": "sway",
+     "gaps": "all"
     },
     {
      "id": "sacks-01",
@@ -402,7 +433,8 @@
       "ship"
      ],
      "height_m": 2.0,
-     "motion": "none"
+     "motion": "none",
+     "gaps": "all"
     },
     {
      "id": "cannon-01",
@@ -572,34 +604,34 @@
    "fill": 0.75
   },
   {
+   "id": "bg-city-01",
+   "tile": true,
+   "base": 0.6,
+   "h": 0.2
+  },
+  {
+   "id": "water-harbour-01",
+   "tile": true,
+   "base": 0.9,
+   "h": 0.2
+  },
+  {
    "id": "ground-quay-01",
    "tile": true,
    "base": 1.0,
    "h": 0.24
   },
   {
-   "id": "water-harbour-01",
-   "tile": true,
-   "base": 0.8,
-   "h": 0.24
-  },
-  {
-   "id": "bg-city-01",
-   "tile": true,
-   "base": 0.6,
-   "h": 0.22
-  },
-  {
-   "id": "ship-indiaman-01",
-   "x": 0.62,
-   "base": 0.76,
-   "h": 0.46
-  },
-  {
    "id": "ship-fluyt-01",
-   "x": 0.32,
-   "base": 0.72,
-   "h": 0.3
+   "x": 0.6,
+   "base": 0.8,
+   "h": 0.42
+  },
+  {
+   "id": "boat-sloop-01",
+   "x": 0.33,
+   "base": 0.79,
+   "h": 0.14
   },
   {
    "id": "warehouse-01",

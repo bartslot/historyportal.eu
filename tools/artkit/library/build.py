@@ -86,20 +86,23 @@ def build(job: dict, variants: str = "abcd") -> dict:
                 report.append({"id": item["id"], "pass": False, "reject": item["reject"]})
                 continue
             chosen = None
-            for v in order:
+            # an item may come from another variant of its sheet (the indiaman from the outpaint n, 2026-10-28)
+            for v in ([item["variant"]] if item.get("variant") else order):
                 d = LIB / "_work" / bundle / s["id"] / f"cut_{v}"
                 f = d / f"{item['id']}.png"
                 if not f.exists():
                     continue
                 meta = json.loads((d / "cut.json").read_text())
                 paper = np.array(meta["paper"])
-                tile = meta.get("seam") == "mirror"  # crossfaded seams ghost; only mirrored tiles repeat
+                tile = meta.get("seam") == "wrap"  # only an offset-and-repainted ground tile repeats (seam.py)
                 qa_layer = "bg" if s.get("strip") else s["layer"]  # strips are judged like bg strips
-                r = qa.check(Image.open(f), qa_layer, bundle, tileable=tile, paper=paper, gaps=s.get("gaps", "fill"),
+                r = qa.check(Image.open(f), qa_layer, bundle, tileable=tile, paper=paper, gaps=item.get("gaps", s.get("gaps", "fill")),
                              fades=s["layer"] == "bg" and not s.get("strip"))
                 r["ink_sheet"] = meta["ink_sheet"]  # Bart's whole-image rule, on the pass-1 sheet
                 r["checkerboard"] = r["checkerboard"] or meta["checkerboard"]
                 r["pass"] = r["pass"] and meta["ink_sheet"] <= qa.INK_HARD[1] and not meta["checkerboard"]
+                if s["layer"] == "ground" and not tile:  # a ground tile has to repeat: only seam.py wraps ship
+                    r["pass"], r["reason"] = False, "ground tile without a repainted wrap"
                 report.append({"id": item["id"], "variant": v, **r})
                 if r["pass"]:
                     chosen = (f, v, r)
@@ -162,22 +165,28 @@ def place(canvas: Image.Image, im: Image.Image, x: float, base: float, height: f
 def plate(lib: dict, recipe: list[dict], size: tuple[int, int] = (1920, 1080)) -> Path:
     """Stack sky + bg + mid + fg + props per recipe [{id, x, base, h}] (fractions of the canvas)."""
     by = {a["id"]: a for a in lib["assets"]}
+    missing = [r["id"] for r in recipe if r["id"] not in by]
+    if missing:  # a plate that silently drops layers is no evidence (checker re-check 2026-10-27)
+        raise SystemExit(f"plate {lib['bundle']}: not shipped, fix the recipe: {', '.join(missing)}")
     c = Image.new("RGBA", size, PAPER + (255,))
     for r in recipe:
-        a = by.get(r["id"])
-        if not a:
-            continue
+        a = by[r["id"]]
         im = Image.open(LIB / lib["bundle"] / a["file"]).convert("RGBA")
         if r.get("fill"):  # sky: cover the canvas
             s = max(size[0] / im.width, size[1] * r["fill"] / im.height)
             im = im.resize((int(im.width * s) + 1, int(im.height * s) + 1), Image.LANCZOS)
             c.alpha_composite(im.crop((0, 0, size[0], min(im.height, size[1]))), (0, 0))
             continue
-        if r.get("tile"):  # bg strip: tile across at the given height
+        if r.get("tile"):  # strip across the canvas: repeat only what tiles, else one copy wide enough
             s = r["h"] * size[1] / im.height
-            im = im.resize((int(im.width * s), int(r["h"] * size[1])), Image.LANCZOS)
-            for x0 in range(0, size[0], im.width):
-                c.alpha_composite(im, (x0, int(r["base"] * size[1] - im.height)))
+            y = None
+            if not a["tileable_x"] and im.width * s < size[0]:  # one painting: cover the width, top edge where
+                s = size[0] / im.width  # the recipe puts it, the rest runs out below the frame
+                y = int((r["base"] - r["h"]) * size[1])
+            im = im.resize((int(im.width * s) + 1, int(im.height * s) + 1), Image.LANCZOS)
+            y = int(r["base"] * size[1] - im.height) if y is None else y
+            for x0 in range(0, size[0], im.width) if a["tileable_x"] else [0]:
+                c.alpha_composite(im, (x0, y))
             continue
         place(c, im, r["x"], r["base"], r["h"] * size[1], a["anchor"][0])
     out = LIB / lib["bundle"] / "plate.png"

@@ -28,13 +28,19 @@ MIN_OBJ_FRAC = 0.002  # objects smaller than this share of the sheet are crumbs
 PAD = 6
 FADE_FRAC = 0.12  # bg strips: bottom share that fades out
 
+LAND_WIN = 0.15
+LAND_TOP = 0.3  # ... and paper pockets in the top share of the land (below that line) are sky, not land  # bg strips: the land line is the running median of the land top over this share of the width
 
 GAP_RING_INK = 0.25  # an enclosed paper island is a see-through gap only if ink draws its rim
 LEG_ZONE = 0.7  # ... or, on solid sheets, if it sits in the bottom 30 % of its object (between legs, rollers)
 
 
-def gap_islands(rgb: np.ndarray, de: np.ndarray, obj: np.ndarray, gaps: str) -> np.ndarray:
-    """Enclosed paper islands to cut. gaps='cut' (trees, reeds, fences, rigging): every island whose rim is ink.
+def gap_islands(rgb: np.ndarray, de: np.ndarray, obj: np.ndarray, gaps: str,
+                keep: np.ndarray | None = None) -> np.ndarray:
+    """Enclosed paper islands to cut. gaps='all' (an item made of thin things: reeds, grass, nets, an anchor's
+    arms, rigging): every island, except inside `keep` (flag bands). The checker found the rim rule left the sky
+    between stalks as opaque cream slabs (re-check 2026-10-27). gaps='cut' (trees, fences, mixed sheets): every
+    island whose rim is ink.
     gaps='fill' (animals, stones, props, buildings): only islands in the leg zone; white bodies, flag bands,
     foam and highlights stay opaque (the checker found them punched through, 2026-10-27)."""
     isl, n = ndimage.label((de < ISLAND_DE) & obj)
@@ -47,6 +53,10 @@ def gap_islands(rgb: np.ndarray, de: np.ndarray, obj: np.ndarray, gaps: str) -> 
     for i, sl in enumerate(ndimage.find_objects(isl), start=1):
         m = isl[sl] == i
         if m.sum() < qa.ISLAND_MIN_PX:
+            continue
+        if gaps == "all":
+            if keep is None or not keep[sl][m].any():
+                cut[sl] |= m
             continue
         pad = tuple(slice(max(0, s.start - 3), s.stop + 3) for s in sl)
         mm = isl[pad] == i
@@ -63,18 +73,33 @@ def gap_islands(rgb: np.ndarray, de: np.ndarray, obj: np.ndarray, gaps: str) -> 
     return cut
 
 
-def matte(rgb: np.ndarray, paper: np.ndarray, layer: str, gaps: str = "fill") -> np.ndarray:
+
+def land_line(bg: np.ndarray) -> np.ndarray:
+    """Per column, the row where the land starts: the running median of the first non-paper row, so a tree or
+    mast that rises above the land does not drag the paper beside it into the land (paper boxes at the frame,
+    checker re-check 2026-10-27: hills-dry-01, bg-city-01)."""
+    h, w = bg.shape
+    first = np.where((~bg).any(0), np.argmax(~bg, 0), h)
+    return ndimage.median_filter(first, size=max(3, int(w * LAND_WIN)), mode="nearest")
+
+
+def matte(rgb: np.ndarray, paper: np.ndarray, layer: str, gaps: str = "fill",
+          keep: np.ndarray | None = None) -> np.ndarray:
     """Alpha 0-255: background paper cut, see-through gaps cut (gap_islands), soft un-mixable edge."""
     de = np.linalg.norm(qa.rgb2lab(rgb) - qa.rgb2lab(paper[None, None])[0, 0], axis=-1)
     cand = de < BG_DE
     lab, _ = ndimage.label(cand)
     border = np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]]))
     bg = np.isin(lab, border[border > 0])
-    if layer in ("bg", "strip"):  # a strip: everything below the land silhouette is land
-        bg &= ~(np.cumsum(~bg, 0) > 0)
+    if layer in ("bg", "strip"):  # a strip: everything below the land line is land
+        rows = np.arange(bg.shape[0])[:, None]
+        line = land_line(bg)[None, :]
+        bg &= rows < line
+        upper = rows < line + LAND_TOP * (bg.shape[0] - line)  # sky pockets between crowns, masts, spires
+        bg |= gap_islands(rgb, de, ~bg & upper, "all")
     obj = ~bg
     if layer not in ("bg", "strip"):
-        obj &= ~gap_islands(rgb, de, obj, gaps)
+        obj &= ~gap_islands(rgb, de, obj, gaps, keep)
     obj = ndimage.binary_opening(obj, iterations=1) | (obj & (de > 30))  # drop 1px paper whiskers, keep ink
     soft = np.clip((de - 2.0) / 14.0, 0, 1)
     inner = ndimage.binary_erosion(obj, iterations=2)
@@ -101,13 +126,6 @@ def unmix(rgb: np.ndarray, alpha: np.ndarray, paper: np.ndarray) -> np.ndarray:
     a = alpha[..., None] / 255.0
     f = (rgb.astype(float) - (1 - a) * paper) / np.maximum(a, 1e-3)
     return np.where(a > 0, np.clip(f, 0, 255), 0).astype(np.uint8)
-
-
-def mirror_tile(rgba: np.ndarray, both: bool = False) -> np.ndarray:
-    """Seamless by construction: the tile followed by its mirror image. A crossfade of unrelated ends gives
-    double-exposed ghosts (checker 2026-10-27: windmill through a ship, doubled grass bands), mirroring cannot."""
-    t = np.concatenate([rgba, rgba[:, ::-1]], 1)
-    return np.concatenate([t, t[::-1]], 0) if both else t
 
 
 def fade_bottom(rgba: np.ndarray, frac: float = FADE_FRAC, seed: int = 7) -> np.ndarray:
@@ -190,8 +208,9 @@ def cut_sheet(bundle: str, sheet: dict, variant: str) -> dict | None:
            "ink_sheet": round(qa.ink_coverage(np.asarray(Image.open(d / "ink.png").convert("RGB"))), 4)}
     if layer in ("sky", "ground"):
         rgba = np.dstack([rgb, np.full(rgb.shape[:2], 255, np.uint8)])
-        rgba = mirror_tile(rgba, both=layer == "ground")
-        res["seam"] = "mirror"
+        # Never mirrored (checker re-check 2026-10-27: butterfly clouds, Rorschach grounds). A sky is one painting
+        # wider than the stage; a ground tile repeats only when seam.py repainted its wrap (colour_<v> from merge).
+        res["seam"] = "wrap" if layer == "ground" and (d / f"seam_{variant}.json").exists() else "none"
         Image.fromarray(rgba).save(out / f"{sheet['items'][0]['id']}.png")
         res["assets"].append(sheet["items"][0]["id"])
     else:
@@ -207,15 +226,22 @@ def cut_sheet(bundle: str, sheet: dict, variant: str) -> dict | None:
             if layer == "bg":  # far land: one painted strip, never crossfaded (no tiling)
                 rgba = fade_bottom(rgba)
                 res["seam"] = "none"
-            else:  # near ground/water strips repeat: mirror, never crossfade
-                rgba = mirror_tile(rgba)
-                res["seam"] = "mirror"
+            else:  # near ground/water strips: one painting, never mirrored or crossfaded
+                res["seam"] = "none"
             Image.fromarray(rgba).save(out / f"{sheet['items'][0]['id']}.png")
             res["assets"].append(sheet["items"][0]["id"])
         else:
             objs, res["note"] = objects(alpha, len(sheet["items"]))
+            thin = None
+            if any(i.get("gaps") == "all" for i in sheet["items"]):
+                keep = np.zeros(alpha.shape, bool)
+                for x0, y0, x1, y1 in sheet.get("keep", []):  # fractions of the sheet: flag bands etc.
+                    h, w = alpha.shape
+                    keep[int(y0 * h):int(y1 * h), int(x0 * w):int(x1 * w)] = True
+                thin = matte(rgb, paper, layer, "all", keep)
             for item, (sy, sx, own) in zip(sheet["items"], objs):
-                a = np.where(own, alpha[sy, sx], 0).astype(np.uint8)
+                src_a = thin if item.get("gaps") == "all" else alpha
+                a = np.where(own, src_a[sy, sx], 0).astype(np.uint8)
                 crop = np.pad(np.dstack([clean[sy, sx], a]), ((PAD, 0), (PAD, PAD), (0, 0)))
                 Image.fromarray(crop).save(out / f"{item['id']}.png")
                 res["assets"].append(item["id"])

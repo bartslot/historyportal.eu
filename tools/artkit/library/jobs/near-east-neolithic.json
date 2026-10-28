@@ -239,7 +239,8 @@
       "mideast"
      ],
      "height_m": 1,
-     "motion": "sway"
+     "motion": "sway",
+     "gaps": "all"
     }
    ],
    "gaps": "cut",
@@ -522,7 +523,8 @@
       "egypt"
      ],
      "height_m": 1,
-     "motion": "none"
+     "motion": "none",
+     "gaps": "all"
     },
     {
      "id": "fish-01",
@@ -628,7 +630,8 @@
       "mesopotamia"
      ],
      "height_m": 3,
-     "motion": "sway"
+     "motion": "sway",
+     "gaps": "all"
     },
     {
      "id": "palm-date-01",
@@ -812,34 +815,28 @@
    "fill": 0.75
   },
   {
-   "id": "ground-yard-mudbrick-01",
-   "tile": true,
-   "base": 1.0,
-   "h": 0.55
-  },
-  {
-   "id": "field-mes-01",
+   "id": "hills-dry-01",
    "tile": true,
    "base": 0.74,
-   "h": 0.36
+   "h": 0.3
   },
   {
-   "id": "canal-01",
-   "x": 0.52,
-   "base": 0.86,
-   "h": 0.13
+   "id": "field-sown-01",
+   "tile": true,
+   "base": 1.0,
+   "h": 0.34
   },
   {
    "id": "houses-mudbrick-01",
-   "x": 0.2,
-   "base": 0.84,
+   "x": 0.22,
+   "base": 0.8,
    "h": 0.2
   },
   {
-   "id": "grain-heap-01",
-   "x": 0.72,
-   "base": 0.88,
-   "h": 0.11
+   "id": "workshop-potter-01",
+   "x": 0.55,
+   "base": 0.82,
+   "h": 0.16
   },
   {
    "id": "palm-date-01",
@@ -854,8 +851,14 @@
    "h": 0.3
   },
   {
-   "id": "basket-ne-01",
+   "id": "bag-grain-01",
    "x": 0.4,
+   "base": 0.99,
+   "h": 0.08
+  },
+  {
+   "id": "basket-ne-01",
+   "x": 0.7,
    "base": 0.99,
    "h": 0.08
   }

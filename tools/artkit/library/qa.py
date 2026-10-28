@@ -153,13 +153,30 @@ def seam_diff(rgb: np.ndarray, alpha: np.ndarray) -> float:
     return float(np.abs(a[:, 0] - a[:, -1]).mean() / typical)
 
 
+MIRROR_MAX = 0.9  # left half vs flipped right half (or top vs flipped bottom): above = a mirror tile
+
+
+def mirror_corr(rgb: np.ndarray) -> float:
+    """Highest correlation of one half with the other half flipped, across x and y. A painting scores ~0-0.4,
+    a mirrored tile ~1 (checker re-check 2026-10-27: butterfly skies, Rorschach ground tiles)."""
+    g = rgb.mean(-1)
+    g = g - ndimage.gaussian_filter(g, 12)  # detail only: a sky's smooth gradient is symmetric by nature
+    h, w = g.shape
+    pairs = [(g[:, :w // 2], g[:, w - w // 2:][:, ::-1]), (g[:h // 2], g[h - h // 2:][::-1])]
+    return max(float(np.corrcoef(a.ravel(), b.ravel())[0, 1]) for a, b in pairs if a.std() > 0 and b.std() > 0) \
+        if g.std() > 0 else 0.0
+
+
 HOLE_DEPTH = 12  # px: a see-through region deeper than this inside a solid shape is a punched hole
 INK_STYLE = (0.07, 0.20)  # STYLE.md hard band; reported per asset (props measure 0.2-0.35 today, see notes)
 
 
 def holes(rgb: np.ndarray, alpha: np.ndarray, gaps: str = "fill") -> list[int]:
     """Enclosed transparent regions (not reachable from the canvas edge) that are punched holes: deeper than
-    HOLE_DEPTH and either not rimmed by ink, or (solid sheets) above the leg zone. Same rule cut.gap_islands uses."""
+    HOLE_DEPTH and either not rimmed by ink, or (solid sheets) above the leg zone. Same rule cut.gap_islands uses.
+    gaps='all' (reeds, nets, rigging): every enclosed region is a see-through gap by definition."""
+    if gaps == "all":
+        return []
     clear = alpha < 128
     lab, n = ndimage.label(clear)
     edge = np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]]))
@@ -213,7 +230,9 @@ def check(img: Image.Image, layer: str, bundle: str, ink_rgb: np.ndarray | None 
     r["ground_ok"] = layer in ("sky", "bg", "ground") or contact >= GROUND_MIN
     r["seam"] = round(seam_diff(rgb, alpha), 2)
     r["seam_ok"] = not tileable or r["seam"] <= SEAM_MAX
-    r["pass"] = all(r[k] for k in ("alpha_ok", "ink_ok", "palette_ok", "size_ok", "ground_ok", "seam_ok"))
+    r["mirror"] = round(mirror_corr(rgb), 3)
+    r["mirror_ok"] = r["mirror"] <= MIRROR_MAX
+    r["pass"] = all(r[k] for k in ("alpha_ok", "ink_ok", "palette_ok", "size_ok", "ground_ok", "seam_ok", "mirror_ok"))
     return r
 
 
@@ -339,6 +358,9 @@ def self_check() -> None:
     assert r["ok"] and abs(r["black"] - 0.125) < 0.02, r
     sheet[200:600:3, 300:700] = 20  # dense hatching: 33 %
     assert not ink_sheet(sheet)["ok"]
+    painted = np.random.default_rng(1).integers(0, 255, (200, 300, 3)).astype(np.uint8)  # a painting: no symmetry
+    assert mirror_corr(painted) < MIRROR_MAX
+    assert mirror_corr(np.concatenate([painted, painted[:, ::-1]], 1)) > 0.99
     print("qa self-check: ok")
 
 

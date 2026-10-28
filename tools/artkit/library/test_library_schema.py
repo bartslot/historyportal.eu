@@ -58,6 +58,13 @@ def validate(lib: dict, root: Path | None = None) -> list[str]:
                 err.append(f"{p}: size {im.size} != declared")
             if im.mode != "RGBA" and a.get("layer") not in ("sky", "ground"):  # full-bleed tiles may be opaque
                 err.append(f"{p}: no alpha channel")
+            if a.get("layer") in ("sky", "ground") or a.get("tileable_x"):
+                import sys
+                import numpy as np
+                sys.path.insert(0, str(Path(__file__).parent))
+                import qa
+                if qa.mirror_corr(np.asarray(im.convert("RGB"))) > qa.MIRROR_MAX:
+                    err.append(f"{p}: mirrored tile (halves are flipped copies)")
     return err
 
 
