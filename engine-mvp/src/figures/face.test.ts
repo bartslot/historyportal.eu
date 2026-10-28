@@ -194,6 +194,15 @@ describe('the painted face parts', () => {
     const cut = mouths.indexOf('sad'); expect(seen[cut]).toBe('closed') // the mouth changes while the lids are shut
     expect(l.step(0.5).paint.eyes[0]).toBe('sad')
   })
+  it('exposes the swap phase through faceState (0..1 while the face swaps behind a blink, -1 at rest)', async () => {
+    LIFE.on = 0
+    const { p } = await make()
+    p.advance(0.5); p.advance(0.5); expect(p.faceState().swap).toBe(-1)
+    p.setEmotion('angry', 220); p.advance(0.02)
+    const sw = p.faceState().swap; expect(sw).toBeGreaterThanOrEqual(0); expect(sw).toBeLessThan(1)
+    expect(['neutral', 'half', 'closed', 'angry']).toContain(p.faceState().paint.eyes[0])
+    p.advance(0.5); p.advance(0.5); expect(p.faceState().swap).toBe(-1)
+  })
   it('a plain blink runs open, half, closed and back', () => {
     LIFE.blinkMin = LIFE.blinkMax = 0.1; LIFE.blinkMs = 400; LIFE.doubleBlink = 0
     const l = new FaceLife(3)

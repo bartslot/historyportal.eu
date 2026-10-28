@@ -15,13 +15,14 @@ from pathlib import Path
 
 CELL, K, HEAD_AT, HEAD_BOX = 512, 2.9, (9, 31), (70, 45)     # head_src = sheet crop (70,45)+ at 2.9x, pasted at (9,31)
 EYES = (290, 160, 155, 130)                                  # x, y, w, h in cell px
-MOUTH = (322, 298, 128, 142)
+MOUTH = (322, 298, 128, 112)   # ends above the chin: a dropped jaw stays the sprite's own
 FEATHER = 3.5
 DIFF_THR, GROW, TONE_SIGMA, TONE_MAX = 44, 6, 14, 28
 EDGE = 16                                                   # px the patch fades out before the rect's own border
 NAMES = [['neutral', 'happy', 'worried', 'surprised', 'sad', 'angry'],
          ['determined', 'thinking', 'scared', 'proud', 'tired', 'closed'],
          ['half', 'talk_a', 'talk_ah', 'talk_wide', 'talk_oo', 'talk_smile']]
+S4 = ['happy', 'angry', 'determined', 'proud', 'worried', 'sad']                # round 3: re-edited from the original with stronger expressions (s4_export.png), they replace the same names above
 EYE_STATES = ['neutral', 'happy', 'worried', 'surprised', 'sad', 'angry', 'determined', 'thinking', 'scared', 'proud',
               'tired', 'closed', 'half']
 MOUTH_STATES = ['neutral', 'happy', 'worried', 'surprised', 'sad', 'angry', 'determined', 'thinking', 'scared', 'proud',
@@ -104,10 +105,14 @@ def main(paint, out, stand_png):
     h = rd(paint / 'head_src.png'); src[HEAD_AT[1]:HEAD_AT[1] + h.shape[0], HEAD_AT[0]:HEAD_AT[0] + h.shape[1]] = h
     gen = {n: cell(s, i) for s, row in zip(sheets, NAMES) for i, n in enumerate(row)}
     control = gen['neutral']
+    s4 = paint / 's4_export.png'
+    if s4.exists():
+        for i, n in enumerate(S4):
+            gen[n] = cell(rd(s4), i)
     tone = np.clip(cv2.GaussianBlur(src - control, (0, 0), TONE_SIGMA), -TONE_MAX, TONE_MAX)   # original minus the re-render, low frequency
     cells = {n: (src if n == 'neutral' else np.clip(c + tone, 0, 255)) for n, c in gen.items()}
     ci = contour_ink(src)
-    hm, hm_mouth = head_mask(src) * (1 - ci), head_mask(src, 21)   # an open mouth drops the jaw past the sprite's chin: the patch stops inside the contour
+    hm, hm_mouth = head_mask(src) * (1 - ci), head_mask(src, 21) * (1 - contour_ink(src, 16))   # an open mouth drops the jaw past the sprite's chin: the patch stops inside the contour
     ew, eh, mw, mh = EYES[2], EYES[3], MOUTH[2], MOUTH[3]
     ea, ma = region_alpha(gen, control, EYES, hm), region_alpha(gen, control, MOUTH, hm_mouth)
 

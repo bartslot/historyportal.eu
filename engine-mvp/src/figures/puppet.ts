@@ -11,7 +11,7 @@ import {
 import type { Placement, StageLike } from './figure'
 import { STAIN_DEFAULT, stainSize } from '../stage25d/ground'
 import { GL_NOISE, makeStain } from '../stage25d/ground-gl'
-import { EMOTIONS, EMOTION_NAMES, FaceLife, FaceRig, LIFE, loadFaceAtlas, seedOf, type BodyOffsets, type FaceMark, type FaceMeta, type FaceParams } from './face'
+import { EMOTIONS, EMOTION_NAMES, FaceLife, FaceRig, LIFE, loadFaceAtlas, seedOf, type BodyOffsets, type FaceMark, type FaceMeta, type FaceParams, type Paint } from './face'
 import { LINE_BY_DEPTH_GLSL, PAPER_GLSL } from '../stage25d/layer'
 import { pxPerMetre, pxUV, type Line, type Paper } from '../stage25d/look'
 import type { Asset, Library } from '../stage25d/types'
@@ -352,7 +352,7 @@ export type Puppet = {
   setTalking(on: boolean): void                 // the mouth cycles (a silent balloon moment: only the narrator speaks)
   setEmotionKeys(keys: { t: number; emotion: string }[] | null, clock?: () => number): void // a per-figure emotion keyframe track
   advance(dt: number): void                     // step the life clock by dt seconds (the render loop calls it; tests too)
-  faceState(): { params: FaceParams; blink: number; body: BodyOffsets; emotion: string; seed: number; emote: { name?: string; amount: number; want: boolean } }
+  faceState(): { params: FaceParams; paint: Paint; swap: number; blink: number; body: BodyOffsets; emotion: string; seed: number; emote: { name?: string; amount: number; want: boolean } }
   dispose(): void
 }
 
@@ -559,7 +559,7 @@ export async function createPuppet(scene: Scene, id: string, opts: PuppetOptions
       rig.setEmote(lifeOut.emote, LIFE.emotes > 0, dt)
       draw()
     },
-    faceState: () => ({ params: lifeOut.face, blink: lifeOut.blink, body: lifeOut.body, emotion: life.emotion, seed: life.seed, emote: rig.emoteState() }),
+    faceState: () => ({ params: lifeOut.face, paint: lifeOut.paint, swap: lifeOut.swap, blink: lifeOut.blink, body: lifeOut.body, emotion: life.emotion, seed: life.seed, emote: rig.emoteState() }),
     setView(v, mirror = false) {
       state.want = v
       flip.scaling.x = mirror ? -1 : 1

@@ -120,7 +120,7 @@ export class FaceLife {
   }
 
   /** advance dt seconds; walking calms the weight shift and tilt */
-  step(dt: number, walking = false): { face: FaceParams; blink: number; body: BodyOffsets; emote: EmotionDef['emote']; paint: Paint } {
+  step(dt: number, walking = false): { face: FaceParams; blink: number; body: BodyOffsets; emote: EmotionDef['emote']; paint: Paint; swap: number } {
     this.t += dt
     if (this.tweenT < 1) this.tweenT = Math.min(1, this.tweenT + (dt * 1000) / this.tweenMs)
     const k = easeInOut(this.tweenT)
@@ -176,6 +176,7 @@ export class FaceLife {
     // = the swap, half, new open) and the mouth cuts on that same frame; a plain blink is half then closed; talking cuts
     // between painted mouths
     let eye = this.emotion, mouth = this.emotion
+    const swap = this.swapT // 0..1 while the face swaps behind a blink (the checkers read it), -1 otherwise
     if (this.swapT >= 0) {
       const u = this.swapT
       mouth = u < 0.5 ? this.prev : this.emotion
@@ -187,7 +188,7 @@ export class FaceLife {
     if (talk > 0.02) mouth = [this.emotion, 'talk_a', 'talk_ah', 'talk_wide'][Math.round(talk * 3)]
     const eyes: Paint['eyes'] = [eye, eye, 0], mouthP: Paint['mouth'] = [mouth, mouth, 0]
     return {
-      paint: { eyes, mouth: mouthP },
+      paint: { eyes, mouth: mouthP }, swap,
       face: {
         eyeOpen: open * (1 - blink), eyeOpenF: openF * (1 - blink), gaze: [c[2] + this.gaze[0], c[3] + this.gaze[1]],
         brow: [c[4], c[5], c[6], c[7]], mouth: [c[8], mouthOpen, c[10], c[11]],
