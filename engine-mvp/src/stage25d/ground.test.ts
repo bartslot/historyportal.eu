@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bandAt, bandColour, BG_FEATHER, bottomColour, featherOf, groundOptions, hexRgb, landTop, PAPER, resolveGround, rowBands, SKY_BANDS, stainSize } from './ground'
+import { bandAt, bandColour, BG_FEATHER, bottomColour, featherOf, groundOptions, hexRgb, inkLevel, landTop, nearOptions, PAPER, resolveGround, rowBands, SKY_BANDS, stainSize } from './ground'
 import { libraryUrlFor } from './library'
 import type { Asset, Library } from './types'
 
@@ -135,5 +135,19 @@ describe('landTop: where the land of a strip starts', () => {
     d[(1 * w) * 4 + 3] = 255                                                                           // a lone tree top in row 1
     expect(landTop(d, w, h)).toBe(0.3)
     expect(landTop(new Uint8ClampedArray(w * h * 4), w, h)).toBe(0)
+  })
+})
+
+describe('inkLevel and nearOptions', () => {
+  it('inkLevel is the median of the dark opaque pixels; null without lines', () => {
+    const n = 100, d = new Uint8ClampedArray(n * 4)
+    for (let i = 0; i < n; i++) { const v = i < 40 ? 51 : 230; d.set([v, v, v, 255], i * 4) }   // 40 % ink at 0.2
+    expect(inkLevel(d, n, 1)).toBeCloseTo(0.2, 2)
+    expect(inkLevel(new Uint8ClampedArray(n * 4).fill(255), n, 1)).toBeNull()
+  })
+  it('near ground choices are the wide painted strips, not skies, far strips or floor tiles', () => {
+    const a = (id: string, layer: Asset['layer'], w: number, h: number, tileable_x = false): Asset => ({ id, layer, tags: [], file: '', w, h, anchor: [0.5, 1], height_m: 5, motion: 'none', tileable_x })
+    const lib = { version: 1, bundle: 'b', style: '', assets: [a('quay', 'fg', 1536, 667), a('meadow', 'mid', 1536, 599), a('barrel', 'fg', 400, 500), a('city', 'bg', 1536, 355), a('sky', 'sky', 1536, 512), a('tile', 'ground', 1024, 1024, true)] } as Library
+    expect(nearOptions(lib)).toEqual(['meadow', 'quay'])
   })
 })

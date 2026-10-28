@@ -8,7 +8,7 @@ import { playLesson, type Player } from './stage'
 import { resolveAsset } from './library'
 import { DEPTHS, lineKeys, LOOK_RANGE, STAGE_SHEET } from './look'
 import { getIn, type Path } from './edits'
-import { BG_FEATHER, groundOptions, STAIN_DEFAULT } from './ground'
+import { BG_FEATHER, groundOptions, nearOptions, STAIN_DEFAULT } from './ground'
 import { HOLD_DEFAULTS, LAND_TARGET, RENDER_CAPS, sceneDuration, setShotDuration, setShotPose } from './layout'
 import { Panel } from '../panels/Panel'
 import { panels } from '../panels/store'
@@ -36,7 +36,9 @@ function Num({ player, path, label, min, max, step, fallback }: { player: Player
 const DEPTH_NAMES: Record<string, string> = { sky: 'sky', bg: 'far', mid: 'middle', fg: 'near' }
 // the stage's paper sheet, then per depth how light, thin and hazy its lines and washes go (look.ts)
 const LOOK_ROWS: [string, string][] = [
-  ['sheetPaper', 'Paper grain'], ['sheetGrain', 'Pigment grain'], ['sheetWash', 'Wash'], ['sheetPatches', 'Wash patches'], ['lineBrown', 'Line brown'], ['groundDetail', 'Ground detail'],
+  ['sheetPaper', 'Paper grain'], ['sheetGrain', 'Pigment grain'], ['sheetWash', 'Wash'], ['sheetPatches', 'Wash patches'], ['lineBrown', 'Line brown'], ['lineInk', 'Line value'], ['lineNorm', 'Line match'],
+  ['housePitch', 'Camera tilt'], ['groundDetail', 'Ground detail'], ['groundVary', 'Ground wash'], ['groundMix', 'Ground mix'],
+  ['groundScale', 'Ground tile size'], ['nearFar', 'Near ground depth'],
   ...DEPTHS.flatMap((d): [string, string][] => {
     const k = lineKeys(d), n = DEPTH_NAMES[d]
     return [[k.fade, `Line lighter, ${n}`], [k.thin, `Line thinner, ${n}`], [k.haze, `Haze, ${n}`]]
@@ -152,6 +154,10 @@ function ScenePanel({ player }: { player: Player }) {
           <option value="">{groundOptions(player.stage.sceneLib).length ? 'Ground of the bundle' : 'Paper'}</option>
           {groundOptions(player.stage.sceneLib).map((id) => <option key={id} value={id}>{id}</option>)}
         </select>
+        <select className="select select-xs" data-testid="near" value={s.set.near ?? ''} onChange={(e) => player.doc.set([...sp, 'set', 'near'], e.target.value || undefined, 'Near ground')}>
+          <option value="">No near ground</option>
+          {nearOptions(player.stage.sceneLib).map((id) => <option key={id} value={id}>{id}</option>)}
+        </select>
         <Num player={player} path={[...sp, 'set', 'horizon']} label="Horizon" min={-80} max={30} step={0.1} fallback={player.stage.horizonOf(s)} />
         {typeof s.set.horizon === 'number'
           ? <button type="button" className="btn btn-ghost btn-xs self-start" data-testid="horizon-auto" onClick={() => player.doc.set([...sp, 'set', 'horizon'], 'auto', 'Horizon')}>Auto horizon</button>
@@ -179,7 +185,13 @@ function ScenePanel({ player }: { player: Player }) {
             <Num player={player} path={[...lp, 'motion', 'amount']} label="Motion" min={0} max={3} step={0.05} fallback={1} />
             <Num player={player} path={[...lp, 'motion', 'speed']} label="Tempo" min={0.1} max={3} step={0.05} fallback={1} />
             {resolveAsset(player.stage.sceneLib, l, l.depth)?.layer === 'bg' && <Num player={player} path={[...lp, 'feather']} label="Soft edge" min={0} max={0.6} step={0.01} fallback={BG_FEATHER} />}
-            {(l.depth === 'mid' || l.depth === 'fg') && <Num player={player} path={[...lp, 'shadow']} label="Shadow" min={0} max={1} step={0.05} fallback={STAIN_DEFAULT} />}
+            {l.depth !== 'sky' && l.depth !== 'bg' && (
+              <label className="label cursor-pointer justify-start gap-2 py-0 text-xs">
+                <input type="checkbox" className="toggle toggle-xs" checked={!!l.flat} onChange={(e) => player.doc.set([...lp, 'flat'], e.target.checked || undefined, 'Flat on the ground')} />
+                Flat on the ground
+              </label>
+            )}
+            {(l.depth === 'mid' || l.depth === 'fg') && !l.flat && <Num player={player} path={[...lp, 'shadow']} label="Shadow" min={0} max={1} step={0.05} fallback={STAIN_DEFAULT} />}
           </div>
         )
       })}

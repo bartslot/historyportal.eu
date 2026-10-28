@@ -7,7 +7,7 @@ import {
 } from '@babylonjs/core'
 import type { Asset, MotionSpec } from './types'
 import { MOTION_CODE } from './layout'
-import { bottomColour, landTop, rowBands } from './ground'
+import { bottomColour, inkLevel, landTop, rowBands } from './ground'
 import { GL_NOISE } from './ground-gl'
 
 Effect.ShadersStore.stageLayerVertexShader = `
@@ -45,6 +45,7 @@ Effect.ShadersStore.stageLayerFragmentShader = `
   uniform float groundLine;                  // sky only: below this height of the plane (the eye line) it is floor
   uniform float lineFade, lineThin, haze;   // line by depth (look.ts): lighter, thinner, into the sky's haze
   uniform float lineBrown;                  // all depths: black lines toward a warm brown
+  uniform float inkMul;                     // this layer's line colour scale, so every layer's ink reaches one value
   const vec3 LINE_BROWN = vec3(0.42, 0.31, 0.22);
   uniform vec2 pxUV;                         // texture uv per 1080p screen px
   uniform vec3 hazeTint;
@@ -61,7 +62,7 @@ Effect.ShadersStore.stageLayerFragmentShader = `
     }
     vec4 c = texture2D(tex, uv);                       // premultiplied
     if (kind == 4.0) c.rgb *= 1.0 + amount * 0.12 * (sin(time * speed * 13.0 + phase) * 0.5 + sin(time * speed * 31.0) * 0.5);
-    if (c.a > 0.004 && (lineFade + lineThin + haze + lineBrown) > 0.0) {
+    if (c.a > 0.004 && (lineFade + lineThin + haze + lineBrown + abs(inkMul - 1.0)) > 0.0) {
       vec3 s = c.rgb / c.a;                            // straight colour
       float ink = inkOf(s);
       // thinner: a line pixel takes its lightest opaque neighbour lineThin px away (an opening of the dark lines);
@@ -78,6 +79,7 @@ Effect.ShadersStore.stageLayerFragmentShader = `
         c.a *= mix(1.0, edge, ink);   // the outline against the air thins too: its outer line pixels go
         ink = inkOf(s);
       }
+      s = mix(s, clamp(s * inkMul, 0.0, 1.0), ink);                  // one ink value for every layer
       s = mix(s, LINE_BROWN * (0.55 + lum(s)), ink * lineBrown);   // black ink becomes the book's brown pencil
       s = mix(s, mix(s, hazeTint, 0.75), ink * lineFade);  // lighter: the line goes toward the air's colour
       s = mix(s, hazeTint, haze);                          // aerial perspective over the whole layer
@@ -101,6 +103,8 @@ const textures = new Map<string, Promise<RawTexture>>()
 export const edgeColours = new Map<string, [number, number, number]>()
 /** Per url: where its land starts (landTop), for set.horizon 'auto'. */
 export const landTops = new Map<string, number>()
+/** Per url: how dark its ink is (inkLevel), for line normalisation (look.ts inkScale). */
+export const inkLevels = new Map<string, number>()
 /** Per url: the picture's colour per band of rows (rowBands), for a sky's colour where it meets the floor. */
 export const bandColours = new Map<string, ([number, number, number] | null)[]>()
 
@@ -122,6 +126,8 @@ export function loadPremultiplied(url: string, scene: Scene): Promise<RawTexture
       if (edge) edgeColours.set(url, edge)
       bandColours.set(url, rowBands(data, c.width, c.height))
       landTops.set(url, landTop(data, c.width, c.height))
+      const ink = inkLevel(data, c.width, c.height)
+      if (ink !== null) inkLevels.set(url, ink)
       for (let i = 0; i < data.length; i += 4) {
         const a = data[i + 3] / 255
         data[i] = Math.round(data[i] * a); data[i + 1] = Math.round(data[i + 1] * a); data[i + 2] = Math.round(data[i + 2] * a)
@@ -169,7 +175,7 @@ export interface LayerHandle {
   /** sky only: share of the plane's height, from the bottom, below the eye line (painted as the far floor) */
   setGroundLine(f: number): void
   /** line by depth (look.ts lineOf) and the texture uv per 1080p screen px (look.ts pxUV) */
-  setLine(l: { fade: number; thin: number; haze: number; brown: number }, uvPerPx: readonly [number, number], hazeTint: [number, number, number]): void
+  setLine(l: { fade: number; thin: number; haze: number; brown: number }, inkMul: number, uvPerPx: readonly [number, number], hazeTint: [number, number, number]): void
 }
 
 let seed = 0
@@ -178,7 +184,7 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
   const mesh = anchoredPlane(`layer:${asset.id}`, asset, w, h, scene)
   const mat = new ShaderMaterial(`layer:${asset.id}`, scene, 'stageLayer', {
     attributes: ['position', 'uv'],
-    uniforms: ['worldViewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'opacity', 'uRepeat', 'feather', 'featherTint', 'groundLine', 'lineFade', 'lineThin', 'haze', 'lineBrown', 'pxUV', 'hazeTint'],
+    uniforms: ['worldViewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'opacity', 'uRepeat', 'feather', 'featherTint', 'groundLine', 'lineFade', 'lineThin', 'haze', 'lineBrown', 'inkMul', 'pxUV', 'hazeTint'],
     samplers: ['tex'],
     needAlphaBlending: true,
   })
@@ -191,7 +197,7 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
   const top = asset.anchor?.[1] ?? 1
   mat.setFloat('phase', phase).setFloat('height', h * top).setFloat('width', w).setFloat('uRepeat', uRepeat).setFloat('opacity', 1)
   mat.setFloat('kind', 0).setFloat('amount', 1).setFloat('speed', 1).setFloat('time', 0).setFloat('feather', 0)
-  mat.setFloat('groundLine', -1).setFloat('lineFade', 0).setFloat('lineThin', 0).setFloat('haze', 0).setFloat('lineBrown', 0)
+  mat.setFloat('groundLine', -1).setFloat('lineFade', 0).setFloat('lineThin', 0).setFloat('haze', 0).setFloat('lineBrown', 0).setFloat('inkMul', 1)
   mesh.material = mat
   mesh.metadata = { noGBuffer: true, painted: true } // the look draws no ink on its edges: the art has its own
   mesh.isPickable = false
@@ -199,8 +205,8 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
     mesh, material: mat,
     setMotion: (m) => { mat.setFloat('kind', MOTION_CODE[m.kind] ?? 0).setFloat('amount', m.amount).setFloat('speed', m.speed) },
     setOpacity: (o) => { mat.setFloat('opacity', o); mesh.isVisible = o > 0.001 },
-    setLine: (l, uvPerPx, tint) => {
-      mat.setFloat('lineFade', l.fade).setFloat('lineThin', l.thin).setFloat('haze', l.haze).setFloat('lineBrown', l.brown)
+    setLine: (l, inkMul, uvPerPx, tint) => {
+      mat.setFloat('inkMul', inkMul).setFloat('lineFade', l.fade).setFloat('lineThin', l.thin).setFloat('haze', l.haze).setFloat('lineBrown', l.brown)
       mat.setVector2('pxUV', new Vector2(uvPerPx[0], uvPerPx[1])).setVector3('hazeTint', Vector3.FromArray(tint))
     },
     setGroundLine: (f) => { mat.setFloat('groundLine', f) },

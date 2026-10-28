@@ -7,13 +7,14 @@ import '../globals'                    // the engine modules read Babylon from w
 import '../engine/look-shaders.js'
 import {
   Color4, Engine, HemisphericLight, DirectionalLight, Scene as BScene, UniversalCamera, Vector3,
+  type RawTexture,
 } from '@babylonjs/core'
 import { createLookChain, PRESETS } from '../engine/look-chain.js'
-import { lineOf, pxPerMetre, pxUV, STAGE_SHEET } from './look'
+import { houseProjection, inkScale, lineOf, lookNum, pxPerMetre, pxUV, STAGE_SHEET } from './look'
 import { makeSheet } from './sheet'
 import { libraryUrlFor, loadLibrary, resolveAsset } from './library'
-import { ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, LAND_TARGET, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
-import { bandColours, edgeColours, landTops, loadPremultiplied, makeLayer, type LayerHandle } from './layer'
+import { ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, DECAL_LIFT_M, DECAL_SLOT, LAND_TARGET, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
+import { bandColours, edgeColours, inkLevels, landTops, loadPremultiplied, makeLayer, type LayerHandle } from './layer'
 import { bandAt, featherOf, GROUND_TILE_M, hexRgb, PAPER as PAPER_HEX, resolveGround, STAIN_DEFAULT, stainSize } from './ground'
 import { makeGround, makeStain, type GroundLook } from './ground-gl'
 import { LessonDoc } from './edits'
@@ -24,7 +25,7 @@ import type { Asset, Depth, Lesson, Library, Scene, SceneLayer } from './types'
 export const STAGE_LOOK: Record<string, number | string> = { ...PRESETS['History Lines pencil'], paper: 0.35, granulation: 0.2, ...STAGE_SHEET }
 const PAPER = new Color4(0.937, 0.914, 0.863, 1)
 type Stain = ReturnType<typeof makeStain>
-interface Built { layer: SceneLayer; index: number; builtScale: number; handle: LayerHandle; asset: Asset; order: number; stain?: Stain }  // index -1 = the sky
+interface Built { layer: SceneLayer; index: number; builtScale: number; handle: LayerHandle; asset: Asset; order: number; stain?: Stain; ink?: number }  // index -1 = the sky
 /** How far the paper wash floor is tinted toward the far landscape's own ground colour */
 const GROUND_WASH = 0.7
 const mix3 = (a: number[], b: number[], k: number) => a.map((v, i) => v + (b[i] - v) * k) as [number, number, number]
@@ -39,6 +40,7 @@ export class Stage {
   private horizonTint: [number, number, number] = hexRgb(PAPER_HEX)
   /** the scene's first far strip: where its land starts, its placed height, its slot (set.horizon 'auto') */
   private strip: { top: number; h: number; order: number } | null = null
+  private nearTex: RawTexture | null = null
   /** the sky's own colour where it meets the floor: far layers' lines and washes go toward it (look.ts haze) */
   private hazeTint: [number, number, number] = hexRgb(PAPER_HEX)
   /** the library the scene on screen was built from (its own bundle, else the lesson's) */
@@ -140,20 +142,26 @@ export class Stage {
       const p = placeLayer(asset, layer, order)   // y is set in pose(): the auto horizon needs the strip loaded first
       const handle = makeLayer(asset, tex, p.w, p.h, p.uRepeat, this.scene)
       handle.mesh.position.set(p.x, p.y, p.z)
-      handle.mesh.alphaIndex = p.alphaIndex
+      handle.mesh.alphaIndex = layer.flat ? DECAL_SLOT : p.alphaIndex
+      if (layer.flat) handle.mesh.rotation.x = Math.PI / 2   // its top edge points away from the camera, along the floor
       handle.mesh.isVisible = false
       // a contact stain on the ground under standing things (not under far strips or floating sky props)
       let stain: Stain | undefined
-      if ((layer.depth === 'mid' || layer.depth === 'fg') && !asset.tileable_x) {
+      if ((layer.depth === 'mid' || layer.depth === 'fg') && !asset.tileable_x && !layer.flat) {
         const sz = stainSize(asset, p.w, p.h, p.z)
         stain = makeStain(handle.mesh, sz.w, sz.d, this.scene)
         stain.mesh.alphaIndex = stainIndex(p.alphaIndex)
       }
-      next.push({ layer, index, builtScale: layer.scale ?? 1, handle, asset, order, stain })
+      next.push({ layer, index, builtScale: layer.scale ?? 1, handle, asset, order, stain, ink: inkLevels.get(lib.base + asset.file) })
     }))
     // the floor: the scene's ground art (or the bundle paper), fading into where the far landscape ends
     const choice = resolveGround(s.set, lib)
     let groundTex = null
+    // the near band (set.near): a wide strip painted from eye height, laid on the floor out to look.nearFar
+    let nearTex: RawTexture | null = null
+    const nearAsset = s.set.near ? resolveAsset(lib, { asset: s.set.near }) : null
+    if (s.set.near && !nearAsset) misses.push({ need: s.set.near, reason: 'no near band' })
+    if (nearAsset) { try { nearTex = await loadPremultiplied(lib.base + nearAsset.file, this.scene) } catch { misses.push({ need: s.set.near, reason: `file did not load: ${nearAsset.file}` }) } }
     if (choice.kind === 'asset') {
       try { groundTex = await loadPremultiplied(lib.base + choice.asset.file, this.scene) } catch { misses.push({ need: s.set.ground ?? 'ground', reason: `file did not load: ${choice.asset.file}` }) }
     } else if (choice.reason) misses.push({ need: s.set.ground, reason: choice.reason })
@@ -177,6 +185,7 @@ export class Stage {
     const look = this.groundLook(choice.kind === 'asset' ? { tex: groundTex, asset: choice.asset } : null, tint, lib, choice.kind === 'paper' ? choice.colour : undefined)
     this.horizonTint = look.tint
     this.strip = strip
+    this.nearTex = nearTex
     this.hazeTint = skyHaze ?? look.tint
     this.ground.set(look)
     this.missed.set(s.id, misses)   // replaced per scene: a rebuild never doubles them
@@ -208,7 +217,7 @@ export class Stage {
   horizonOf(s: Scene): number {
     const h = s.set.horizon
     if (typeof h === 'number') return h
-    return this.strip ? autoHorizon(this.strip.top, this.strip.h, this.strip.order, s.set.land_target ?? LAND_TARGET) : 0
+    return this.strip ? autoHorizon(this.strip.top, this.strip.h, this.strip.order, s.set.land_target ?? LAND_TARGET, lookNum(this.look, 'housePitch')) : 0
   }
 
   /** Pose everything for t seconds into scene s. */
@@ -218,26 +227,34 @@ export class Stage {
     const c = hold ? breathe(end, hold.t, hold) : end   // a held frame breathes around where the shot ended
     this.camera.position.set(c.x, c.y, c.z)
     this.camera.fov = c.fov
+    const pitch = lookNum(this.look, 'housePitch')                 // degrees down (a teacher slider)
+    this.camera.rotation.x = (pitch * Math.PI) / 180
     this.ground.follow(this.camera.position)
-    this.ground.setDetail(Number(this.look.groundDetail ?? STAGE_SHEET.groundDetail))
+    const L = (k: string) => lookNum(this.look, k)
+    this.ground.live({ detail: L('groundDetail'), vary: L('groundVary'), mixTile: L('groundMix'), tileScale: L('groundScale') })
+    this.ground.near(this.nearTex ? { tex: this.nearTex, ...houseProjection(pitch, this.engine.getAspectRatio(this.camera), L('nearFar')), span: NEAR_SPAN } : null)
     const renderH = this.engine.getRenderHeight()
     for (const b of this.built) {
       const k = layerAt(b.layer, t)
       const p = placeLayer(b.asset, { ...b.layer, x: k.x, scale: 1 }, b.order, this.horizonOf(s))
       b.handle.mesh.position.x = p.x
-      b.handle.mesh.position.y = p.y
+      b.handle.mesh.position.y = b.layer.flat ? DECAL_LIFT_M : p.y
       b.handle.mesh.scaling.setAll(k.scale / b.builtScale)   // grows from the ground point
       b.handle.setOpacity(k.opacity)
       b.handle.setFeather(featherOf(b.asset, b.layer), this.horizonTint)
       if (b.asset.layer === 'sky') b.handle.setGroundLine((c.y - p.y) / (p.h * k.scale))
       const ppm = pxPerMetre(renderH, p.z - c.z, this.camera.fov)
-      b.handle.setLine(lineOf(this.look, b.layer.depth), pxUV(p.w * k.scale, p.h * k.scale, p.uRepeat, ppm, renderH), this.hazeTint)
+      const line = lineOf(this.look, b.layer.depth)
+      b.handle.setLine(line, b.ink === undefined ? 1 : inkScale(b.ink, line.ink, line.norm), pxUV(p.w * k.scale, p.h * k.scale, p.uRepeat, ppm, renderH), this.hazeTint)
       b.stain?.setOpacity((b.layer.shadow ?? STAIN_DEFAULT) * k.opacity)
       b.handle.setMotion(motionOf(b.asset, b.layer))
       b.handle.material.setFloat('time', clock)
     }
   }
 }
+
+/** The near band spans this much of the frame's width, so a sideways camera move still finds it painted. */
+const NEAR_SPAN = 1.3
 
 export interface Player {
   stage: Stage
@@ -304,7 +321,7 @@ export async function playLesson(lessonOrUrl: Lesson | string, libraryUrl?: stri
   doc.subscribe(() => {
     const s = tl.scene
     stage.setLook(doc.lesson.look)
-    if (!builtScene || s.bundle !== builtScene.bundle || s.set.ground !== builtScene.set.ground || s.set.layers.length !== builtScene.set.layers.length || s.set.sky !== builtScene.set.sky
+    if (!builtScene || s.bundle !== builtScene.bundle || s.set.ground !== builtScene.set.ground || s.set.layers.length !== builtScene.set.layers.length || s.set.sky !== builtScene.set.sky || s.set.near !== builtScene.set.near
       || s.set.layers.some((l, i) => l.asset !== builtScene!.set.layers[i].asset || l.need !== builtScene!.set.layers[i].need || l.depth !== builtScene!.set.layers[i].depth)) {
       void tl.rebuild()
       return

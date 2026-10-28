@@ -47,6 +47,9 @@ export interface SceneLayer {
   feather?: number
   /** contact stain opacity on the ground under mid/fg assets (0 = none) */
   shadow?: number
+  /** a ground decal: the picture lies flat on the floor at its depth (a worn path, a darker grass patch, stones),
+   *  its height_m along the floor, drawn right after the floor and under everything that stands */
+  flat?: boolean
 }
 
 export interface CamPose { x: number; y: number; z: number; fov: number }
@@ -60,8 +63,9 @@ export interface Scene {
   narration?: string
   est_s?: number
   /** ground: a 'ground' asset id or tags, or '#hex' (a paper wash); horizon: metres the far landscape (bg) sits higher,
-   *  'auto' or unset = its land line at land_target of the frame (layout.ts autoHorizon, default LAND_TARGET 0.42) */
-  set: { sky?: string | null; ground?: string; horizon?: number | 'auto'; land_target?: number; layers: SceneLayer[] }
+   *  'auto' or unset = its land line at land_target of the frame (layout.ts autoHorizon, default LAND_TARGET 0.42);
+   *  near: an asset id, a wide strip painted from eye height, laid on the floor out to look.nearFar (stage.ts) */
+  set: { sky?: string | null; ground?: string; horizon?: number | 'auto'; land_target?: number; near?: string; layers: SceneLayer[] }
   figures?: unknown[]
   camera?: CameraMove | null
   /** further shots of the same scene (director, S5), each with its at_s */

@@ -14,6 +14,10 @@ export const LAND_TARGET = 0.42
 export const COVER_MARGIN = 1.6             // wide strips (sky, tileable bg) span this much of the view, for camera moves
 /** Draw slot of the floor: after every sky layer (slots 1..999), before the far landscape (1000+). */
 export const GROUND_SLOT = 999
+/** Ground decals (layer.flat) draw right after the floor, before the far landscape and everything standing. */
+export const DECAL_SLOT = 1000
+/** ...lifted this much off the floor so they never flicker into it */
+export const DECAL_LIFT_M = 0.02
 export const SAME_DEPTH_STEP_M = 0.05       // later layers at one depth stand this much nearer, so geometry agrees with draw order
 
 /** fov in degrees (human-editable); a value that can only be radians is converted. */

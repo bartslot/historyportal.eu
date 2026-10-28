@@ -60,6 +60,21 @@ export const rowBands = (data: Uint8ClampedArray | Uint8Array, w: number, h: num
 export const bandAt = (bands: ([number, number, number] | null)[], f: number) =>
   bands[Math.min(SKY_BANDS - 1, Math.max(0, Math.floor((1 - f) * SKY_BANDS)))] ?? null
 
+/** How dark this picture's ink is: the median brightness (0..1) of its opaque line pixels (null: no line pixels). */
+export function inkLevel(data: Uint8ClampedArray | Uint8Array, w: number, h: number): number | null {
+  const v: number[] = []
+  const step = Math.max(1, Math.floor((w * h) / 60000))
+  for (let p = 0; p < w * h; p += step) {
+    const i = p * 4
+    if (data[i + 3] < 230) continue
+    const l = (0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]) / 255
+    if (l < 0.45) v.push(l)
+  }
+  if (v.length < 20) return null
+  v.sort((a, b) => a - b)
+  return v[v.length >> 1]
+}
+
 /** Where a strip's land starts: the first row (share of the height, from the top) that is mostly opaque. */
 export function landTop(data: Uint8ClampedArray | Uint8Array, w: number, h: number): number {
   for (let y = 0; y < h; y++) {
@@ -86,6 +101,11 @@ export function stainSize(asset: Asset, w: number, h: number, z: number): { w: n
 
 /** The ground assets a teacher can pick for a scene: from the library that scene is built with (its own bundle, else
  *  the lesson's), sorted by id. */
+/** Near ground choices in the scene's own bundle: the wide painted strips that are not sky, far landscape or floor tile. */
+export const nearOptions = (sceneLib: Library): string[] =>
+  sceneLib.assets.filter((a) => !['sky', 'bg', 'ground'].includes(a.layer) && !a.tileable_x && a.w / a.h >= NEAR_MIN_RATIO).map((a) => a.id).sort()
+/** A near band is wide: at least this many times as wide as it is tall. */
+export const NEAR_MIN_RATIO = 2.2
 export const groundOptions = (sceneLib: Library): string[] => sceneLib.assets.filter((a) => a.layer === 'ground').map((a) => a.id).sort()
 
 export const hexRgb = (hex: string): [number, number, number] => {

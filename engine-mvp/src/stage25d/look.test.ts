@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { DEPTHS, lineOf, lineKeys, LOOK_RANGE, pxPerMetre, pxUV, STAGE_SHEET } from './look'
-import { GROUND_SLOT, placeLayer } from './layout'
+import { DEPTHS, houseProjection, inkScale, lineOf, lineKeys, LOOK_RANGE, pxPerMetre, pxUV, STAGE_SHEET } from './look'
+import { autoHorizon, DECAL_SLOT, GROUND_SLOT, placeLayer } from './layout'
 import type { Asset } from './types'
 
 describe('look: line by depth', () => {
@@ -41,5 +41,38 @@ describe('ground draw slot', () => {
     expect(placeLayer({ ...a, layer: 'sky' }, { depth: 'sky' }, 0).alphaIndex).toBeLessThan(GROUND_SLOT)
     expect(placeLayer(a, { depth: 'sky' }, 40).alphaIndex).toBeLessThan(GROUND_SLOT)   // even the 40th cloud
     expect(placeLayer({ ...a, layer: 'bg' }, { depth: 'bg' }, 0).alphaIndex - 1).toBeGreaterThan(GROUND_SLOT) // and a stain before it
+  })
+})
+
+describe('ink normalisation (one line value for every layer)', () => {
+  it('lightens a layer drawn darker than the shared value, darkens a fainter one, by norm', () => {
+    expect(inkScale(0.1, 0.3, 1)).toBeCloseTo(2.5)        // 3x would be too much: clamped
+    expect(inkScale(0.2, 0.3, 1)).toBeCloseTo(1.5)
+    expect(inkScale(0.4, 0.3, 1)).toBeCloseTo(0.75)
+    expect(inkScale(0.2, 0.3, 0)).toBe(1)                // norm 0 = as painted
+    expect(inkScale(0.2, 0.3, 0.5)).toBeCloseTo(1.25)
+  })
+})
+
+describe('houseProjection: the near band is projected from the house camera', () => {
+  it('the floor nearFar out lands on the eye line minus eye/nearFar, and higher on screen the farther it is', () => {
+    const t = Math.tan((25 * Math.PI) / 180)
+    expect(houseProjection(0, 16 / 9, 16).top).toBeCloseTo(-(1.6 / 16) / t, 3)
+    expect(houseProjection(0, 16 / 9, 30).top).toBeGreaterThan(houseProjection(0, 16 / 9, 16).top)
+    expect(houseProjection(4, 16 / 9, 16).top).toBeGreaterThan(houseProjection(0, 16 / 9, 16).top)   // tilted down: the floor rises in the frame
+  })
+})
+
+describe('camera tilt and the auto horizon', () => {
+  it('tilting down moves the eye line up the frame, so the strip goes lower for the same land line', () => {
+    expect(autoHorizon(0.2, 60, 0, 0.42, 4)).toBeLessThan(autoHorizon(0.2, 60, 0, 0.42, -2))
+  })
+})
+
+describe('decals draw right after the floor, before anything standing', () => {
+  it('slots: sky < floor < decal < far landscape', () => {
+    expect(GROUND_SLOT).toBeLessThan(DECAL_SLOT)
+    const a: Asset = { id: 'a', layer: 'bg', tags: [], file: '', w: 100, h: 100, anchor: [0.5, 1], height_m: 2, motion: 'none' }
+    expect(DECAL_SLOT).toBeLessThan(placeLayer(a, { depth: 'bg' }, 0).alphaIndex)
   })
 })

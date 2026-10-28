@@ -77,6 +77,13 @@ the `_placeholder` bundle). The panel edits every camera, timing and motion valu
   ink goes lighter (`lineFade*`), thinner (`lineThin*`, in 1080p px, outlines too) and into the sky's haze (`haze*`);
   `lineBrown` turns black ink toward the book's brown; `groundDetail` blends the floor tile toward its own soft wash.
   The floor draws after the sky (`GROUND_SLOT`), and the sky below the eye line is painted as the far floor.
+  The floor: `set.near` lays a wide strip painted from eye height on the floor out to `nearFar` m, projected from the
+  house camera (it looks as painted, lies on the ground, fades into the far floor); the tile behind it breaks its
+  repeat (`groundMix`, a turned second read) and drifts in value and hue (`groundVary`), `groundScale` x its height_m.
+  `layer.flat` lays any picture flat on the floor (a path, a patch, stones), drawn right after it (`DECAL_SLOT`).
+  `housePitch` tilts the house camera down (4 deg). `lineInk` + `lineNorm` bring every layer's ink to one value (each
+  picture's own ink level is measured on load). `set.horizon` 'auto' (the default) puts the first strip's land line at
+  `set.land_target` (0.42) of the frame (`autoHorizon`, the same maths as art v3's stage_plate.py).
   Art plates through the real stage: `node scripts/stage25d-plates.mjs http://localhost:5197 <specsDir> <outDir>`.
 - **Interactions**: a scene with `interaction` holds at its end (`timeline.ts`): the picture keeps its layer motion and
   the camera breathes around the end pose (`lesson.hold = { breath_m, breath_s }`, editable, `breathe()`), until the
