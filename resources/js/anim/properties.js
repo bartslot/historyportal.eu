@@ -132,6 +132,9 @@ const REGISTRY = {
 /** The properties of an object kind, or an empty list for one that cannot be animated yet. */
 export const propertiesFor = (kind) => REGISTRY[kind] ?? []
 
+/** Every object kind that can be keyed. A new kind added to the registry is covered without a change here. */
+export const keyframeKinds = () => Object.keys(REGISTRY)
+
 /** A property descriptor by kind and key, or null when the registry has never heard of it. */
 export const propertyFor = (kind, key) => propertiesFor(kind).find((p) => p.key === key) ?? null
 

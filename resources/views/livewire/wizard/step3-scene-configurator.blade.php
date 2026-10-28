@@ -135,6 +135,9 @@
     window.__undoLastEdit = () => {
         const w = window.__step3Wire();
         if (!w) return;
+        // A timeline edit still waiting for its save goes out first, so the undo reverts it, not
+        // the save that lands after it (timeline-panel.js flushes on this event).
+        window.dispatchEvent(new CustomEvent('scene:before-undo'));
 
         const inst = window.__voyageTour;
         if (window.__voyagePaint && window.__voyagePaint.active && inst && typeof inst.getPaintedFog === 'function') {

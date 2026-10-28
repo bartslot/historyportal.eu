@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest'
 import { initKeyedFields } from '../ui/keyed-fields.js'
+import { keyframeKinds, propertiesFor } from '../anim/properties.js'
 
 // Frames are queued and run by hand, so a test decides exactly when the canvas is written.
 const frames = []
@@ -97,4 +98,37 @@ describe('a keyed field commits as the teacher types, not only on blur', () => {
     slider().dispatchEvent(new Event('change', { bubbles: true }))
     expect(edit).toHaveBeenLastCalledWith('bal:0', 'opacity', 0.6, { flush: true })
   })
+})
+
+// Every keyframeable property of every kind, so a property added to the registry is covered for free.
+describe('every keyframeable property goes live as it is dragged', () => {
+  const fieldFor = (kind, prop) => {
+    document.body.innerHTML = `<input type="number" value="0.25"
+      data-key-target="${kind}:1" data-key-property="${prop.key}">`
+    return document.querySelector('input')
+  }
+
+  for (const kind of keyframeKinds()) {
+    for (const prop of propertiesFor(kind)) {
+      it(`${kind}.${prop.key} is written once per frame, saved only on change`, () => {
+        const edit = vi.fn(() => true)
+        window.__timelineKeying.edit = edit
+        const field = fieldFor(kind, prop)
+        const value = prop.type === 'color' ? '#abcdef' : '0.6'
+
+        // A drag: several input events between two paints.
+        field.value = value
+        field.dispatchEvent(new Event('input', { bubbles: true }))
+        field.dispatchEvent(new Event('input', { bubbles: true }))
+        expect(edit).not.toHaveBeenCalled()
+
+        runFrames()
+        expect(edit).toHaveBeenCalledTimes(1)
+        expect(edit.mock.calls[0][3]).toEqual({ flush: false })
+
+        field.dispatchEvent(new Event('change', { bubbles: true }))
+        expect(edit).toHaveBeenLastCalledWith(`${kind}:1`, prop.key, edit.mock.calls[0][2], { flush: true })
+      })
+    }
+  }
 })

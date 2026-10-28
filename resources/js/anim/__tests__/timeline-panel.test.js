@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { animationTimeline } from '../timeline-panel.js'
+import { keyframeKinds, propertiesFor } from '../properties.js'
 
 /**
  * Auto-keying: typing a number at the playhead records it.
@@ -409,4 +410,36 @@ describe('diorama items have X and Z rows (their path in the diorama JSON)', () 
     p.deleteSelected()
     expect(calls).toEqual([['remove', 'sailor_1', [2]]])
   })
+})
+
+/**
+ * A timeline row's number field is a live view too: every keystroke and scrub step writes the
+ * object at once, and the save waits for a pause; the value the teacher settles on saves now.
+ *
+ * Looped over every keyframeable property, so a property added to the registry is covered for free.
+ * A diorama item is left out: its keys live in its own JSON, not in these tracks.
+ */
+describe('every keyframeable row saves live while it is typed or dragged', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  for (const kind of keyframeKinds().filter((k) => k !== 'dio')) {
+    for (const prop of propertiesFor(kind)) {
+      it(`${kind}.${prop.key}: the pause saves a live edit, a settled value saves at once`, () => {
+        const target = `${kind}:1`
+        const p = panel([{ target, property: prop.key, keyframes: [{ time: 1, value: 0 }, { time: 3, value: 1 }] }])
+        p.time = 2
+
+        p.setValue(target, prop.key, 0.5, { flush: false })
+        vi.advanceTimersByTime(300)
+        expect(p.$wire.setTimeline).not.toHaveBeenCalled()
+
+        vi.advanceTimersByTime(1000)
+        expect(p.$wire.setTimeline).toHaveBeenCalledTimes(1)
+
+        p.setValue(target, prop.key, 0.7)
+        expect(p.$wire.setTimeline).toHaveBeenCalledTimes(2)
+      })
+    }
+  }
 })

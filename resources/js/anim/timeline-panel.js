@@ -14,6 +14,7 @@ import { keyId, moveKeys, deleteKeys, snapToNearest } from './timeline-edit.js'
 import { propertiesFor, propertyFor, sampleFrame, kindOfTarget, INTERPOLATE, keyGroupTogether } from './properties.js'
 import { wordSpans, snapTime, wordAt } from './narration-clock.js'
 import { textObjects, artObjects, balloonObjects, dioramaObjects, backgroundObjects, readObjectProperty, writeObjectProperty, setObjectHidden } from './scene-objects.js'
+import { createSaveQueue } from './save-queue.js'
 import { balloonPatch } from '../scene/BalloonLayer.js'
 import { clipOf, shiftClip, stretchClip } from '../scene/diorama/clip.js'
 
@@ -145,6 +146,17 @@ export const animationTimeline = (config = {}) => ({
   init () {
     this.spans = wordSpans(config.alignment ?? [])
     this.refreshObjects()
+
+    // A live edit still waiting for its pause goes out BEFORE an action that moves the scene on: an
+    // undo (fired before its server call) and a scene switch (a capture listener, so it runs before
+    // Livewire sends the request). Sent after, the stale tracks would land on the new state. The
+    // page closing gets the same flush, best effort.
+    const flushBeforeRequest = () => this.flushSave()
+    window.addEventListener('scene:before-undo', flushBeforeRequest)
+    document.addEventListener('click', (event) => {
+      if (event.target.closest?.('[wire\\:click^="selectScene("]')) flushBeforeRequest()
+    }, true)
+    window.addEventListener('pagehide', flushBeforeRequest)
 
     const saved = SESSIONS.get(config.sceneId)
     if (saved) Object.assign(this, saved)
@@ -1003,7 +1015,7 @@ export const animationTimeline = (config = {}) => ({
    * one, and "the same moment" is the epsilon test, not `===`, because a playhead dropped by
    * clicking the lane is a float. That is the whole of *"not same as previous keyframe"*.
    */
-  setValue (target, property, value) {
+  setValue (target, property, value, { flush = true } = {}) {
     const isColor = propertyFor(kindOfTarget(target), property)?.type === 'color'
     if (!isColor && !Number.isFinite(value)) return
     if (kindOfTarget(target) === 'dio') {
@@ -1020,7 +1032,8 @@ export const animationTimeline = (config = {}) => ({
 
     if (!this.autoKey || !this.isAnimated(target, property)) return
     this.writeTrack(target, property, (track) => addKeyframe(track, { time: this.time, value }))
-    this.save()
+    if (flush) this.save()
+    else this.saveSoon()
     this.announce()
   },
 
@@ -1518,13 +1531,23 @@ export const animationTimeline = (config = {}) => ({
   },
 
   /** A live edit (a keystroke, a scrub) waits for a pause; the last value saves at once. */
+  /** The live save queue, made on first use so it exists whether or not init() has run. */
+  saves () {
+    this._saves ??= createSaveQueue(() => this.save(), LIVE_SAVE_PAUSE_MS)
+    return this._saves
+  },
+
   saveSoon () {
-    clearTimeout(this._saveTimer)
-    this._saveTimer = setTimeout(() => this.save(), LIVE_SAVE_PAUSE_MS)
+    this.saves().schedule()
+  },
+
+  /** Send a live edit that is still waiting for its pause. */
+  flushSave () {
+    this._saves?.flush()
   },
 
   save () {
-    clearTimeout(this._saveTimer)
+    this._saves?.cancel()
     this.remember()   // the client's copy is the newer one until the server renders again
     this.$wire?.setTimeline?.({ duration: this.duration, targets: this.targets, tracks: this.tracks })
   },

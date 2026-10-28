@@ -340,12 +340,14 @@
                             <template x-if="property.type === 'color'">
                                 <input type="color" data-timeline-value
                                        :value="valueAt(object.target, property.key) || '#ffffff'"
+                                       x-on:input="setValue(object.target, property.key, $event.target.value, { flush: false })"
                                        x-on:change="setValue(object.target, property.key, $event.target.value)"
                                        class="h-[21px] min-w-0 flex-1 cursor-pointer rounded bg-panel-hairline px-0.5" />
                             </template>
                             <template x-if="property.type !== 'color'">
                                 <input type="number" step="any" data-timeline-value
                                        :value="valueAt(object.target, property.key)"
+                                       x-on:input="setValue(object.target, property.key, Number($event.target.value), { flush: false })"
                                        x-on:change="setValue(object.target, property.key, Number($event.target.value))"
                                        class="h-[21px] min-w-0 flex-1 rounded bg-panel-hairline px-1.5 text-right font-mono text-3xs text-panel-value focus:outline-none" />
                             </template>
