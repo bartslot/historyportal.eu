@@ -41,20 +41,40 @@ def cut(bundle: str, sheet: str, variant: str, zs: list[int]) -> list[Path]:
     out_dir.mkdir(exist_ok=True)
     outs = []
     ph = round(w / 6)
+    prev_stop = 0
     for seg, z in zip(segs, zs):
         bottom = seg.stop
         top = bottom - ph
+        lo = max(top, prev_stop + 2)  # never reach into the band above (its ground is not this band's sky)
+        prev_stop = bottom
         a = np.zeros((ph, w, 4), np.uint8)
-        y0 = max(top, 0)
-        a[y0 - top:, :, :3] = rgb[y0:bottom]
-        a[y0 - top:, :, 3] = np.where(m[y0:bottom], 255, 0)
-        a[..., 3] = ndimage.gaussian_filter(a[..., 3].astype(float), 1.2).clip(0, 255).astype(np.uint8)
+        a[lo - top:, :, :3] = rgb[lo:bottom]
+        mm = np.zeros((ph, w), bool)
+        mm[lo - top:] = m[lo:bottom]
+        # keep only ground that is connected to the band's bottom row: loose marks above the skyline are not ground
+        lab2, _ = ndimage.label(mm)
+        keep = np.unique(lab2[-1][lab2[-1] > 0])
+        mm = np.isin(lab2, keep)
+        mm[: ph // 5 + 1] = False  # contract: the top fifth is sky; the tips of the tallest blades are clipped there
+        first0 = np.where(mm.any(0), mm.argmax(0), ph)
+        if (np.percentile(first0, 95) - np.percentile(first0, 5)) / ph < 0.18:  # flat skyline: carve rolling hills
+            x = np.arange(w) / w * 2 * np.pi
+            hill = (np.sin(2 * x + 0.7) + 0.6 * np.sin(3 * x + 2.1) + 0.35 * np.sin(5 * x + 4.0)) / 1.95  # periodic in x
+            curve = np.percentile(first0, 5) + (hill * 0.5 + 0.5) * 0.34 * ph
+            mm &= np.arange(ph)[:, None] >= curve[None, :]
+        a[..., 3] = np.where(mm, 255, 0)
+        a[..., 3] = ndimage.gaussian_filter(a[..., 3].astype(float), 1.0).clip(0, 255).astype(np.uint8)
         a[a[..., 3] == 0, :3] = 0
         edge = float(np.abs(a[:, 0, :3].astype(int) - a[:, -1, :3].astype(int)).mean())
-        sky_top = (seg.start - top) / ph
+        opaque = a[..., 3] > 127
+        first = np.where(opaque.any(0), opaque.argmax(0), ph)
+        top20 = float((~opaque[: ph // 5]).all(0).mean())
+        spread = float((np.percentile(first, 95) - np.percentile(first, 5)) / ph)
         f = out_dir / f"ground_band_{z}m.png"
         Image.fromarray(a).save(f)
-        print(f"ground_band_{z}m {w}x{ph} skyline {sky_top:.2f} from top, edge diff {edge:.1f}")
+        print(f"ground_band_{z}m {w}x{ph} skyline mean {first.mean() / ph:.2f} spread {spread:.2f} top20_clear {top20:.3f} edge diff {edge:.1f}")
+        mg = Image.new("RGBA", (w, ph), (255, 0, 255, 255)); mg.alpha_composite(Image.fromarray(a))
+        mg.convert("RGB").save(out_dir / f"_magenta_{z}m.jpg", quality=85)
         outs.append(f)
     if len(segs) != len(zs):
         print(f"WARNING {sheet}: found {len(segs)} bands for {len(zs)} depths")
