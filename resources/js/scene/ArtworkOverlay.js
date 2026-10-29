@@ -25,8 +25,25 @@ import { applyAmbient, trackStage } from './ambient.js'
 import { loadDepth, applyOcclusion, clearOcclusion, fitHeight, OCC } from './occlusion.js'
 import { SIT_KEYS, sitSpec, renderSitIn, backdropPixels, sampleColours, registerSitTuner, applyFoamSpeed, hullSpan } from './sit-in-scene.js'
 import { mountFrames, showFrame, syncFrames } from './layer-frames.js'
+import { ARROW_KEYS, ARROW_LIMITS, arrowParams, arrowPaths, arrowHandles, bendFromPoint, shaftFromPoint, headFromPoint } from './arrow-shape.js'
 
 const DRAG_THRESHOLD_PX = 4
+const SVG_NS = 'http://www.w3.org/2000/svg'
+/** The arrow's handles: name, tooltip, cursor. Start and end are the dots; the rest shape the arrow. */
+const ARROW_HANDLES = [
+  ['start', 'Drag to move the start', 'move'],
+  ['end', 'Drag to move the end', 'move'],
+  ['bend', 'Drag to bend the arrow', 'ns-resize'],
+  ['shaft', 'Drag to change the width', 'ew-resize'],
+  ['head', 'Drag to change the head size', 'nwse-resize'],
+]
+const clampRange = (v, [lo, hi]) => Math.min(hi, Math.max(lo, v))
+const roundTo = (v, scale) => Math.round(v * scale) / scale
+const svgPath = (attrs) => {
+  const el = document.createElementNS(SVG_NS, 'path')
+  for (const [k, v] of Object.entries({ 'stroke-linecap': 'round', 'stroke-linejoin': 'round', ...attrs })) el.setAttribute(k, v)
+  return el
+}
 const MIN_SCALE = 0.2
 // A layer may be blown up to 6x its base height — a teacher zooming into one detail of a
 // painting, or filling the stage with a single figure. The cap only exists to stop a runaway
@@ -90,7 +107,7 @@ export const artObjId = (assetId) => `art_${assetId}`
 const SYNCABLE = [
   'x', 'y', 'scale', 'height', 'width', 'rotation', 'opacity', 'blur', 'blend',
   'white_key', 'grayscale', 'tint', 'tint_opacity', 'flip_x', 'flip_y',
-  ...SIT_KEYS, 'occlude',
+  ...SIT_KEYS, 'occlude', ...ARROW_KEYS,
 ]
 
 /**
@@ -107,7 +124,7 @@ const SYNCABLE = [
  */
 const WATCHED = [
   ...SYNCABLE,
-  'depth', 'anchor', 'lng', 'lat',
+  'depth', 'anchor', 'lng', 'lat', 'arrow_style',
   'anim', 'anim_delay', 'anim_ease', 'anim_duration',
   'anim_out', 'anim_out_delay', 'anim_out_ease', 'anim_out_duration',
 ]
@@ -134,6 +151,7 @@ export function layersSignature(layers) {
     l.ambient, l.ambient_speed, l.ambient_amount,
     l.anchor, l.lng, l.lat, l.flip_x, l.flip_y,
     l.waterline, l.reflection, l.contact_shadow, l.color_match, l.foam, l.speed, l.occlude,
+    l.end_x, l.end_y, l.bend, l.shaft, l.head, l.arrow_style,
     l.embed ? JSON.stringify(l.embed.opts || null) : null,
     l.frames ? JSON.stringify(l.frames) : null,
   ]))
@@ -206,9 +224,12 @@ export function normalizeLayer(l) {
         frames: l.frames && typeof l.frames === 'object' ? l.frames : null,
         // How tall the drawn thing really is, for "fit to this spot" (null: a standing person).
         height_m: Number.isFinite(l.height_m) && l.height_m > 0 ? l.height_m : null,
-        anchor: l.anchor === 'map' ? 'map' : 'screen',
+        // An arrow is never pinned to a place: its two ends and its bend cannot all follow one point.
+        anchor: l.anchor === 'map' && l.kind !== 'arrow' ? 'map' : 'screen',
         lng: Number.isFinite(l.lng) ? l.lng : null,
         lat: Number.isFinite(l.lat) ? l.lat : null,
+        // A vector arrow (arrow-shape.js): its end and its shape. Every other kind ignores these.
+        ...(l.kind === 'arrow' ? arrowParams(l) : {}),
         title: l.title || (l.embed && l.embed.title) || 'Icon',
   }
 }
@@ -237,7 +258,11 @@ export class ArtworkOverlay {
     if (typeof ResizeObserver === 'function') {
       this._occResize = new ResizeObserver(() => {
         cancelAnimationFrame(this._occRaf)
-        this._occRaf = requestAnimationFrame(() => { for (const i of this._layers) if (i.occlude) this._occlude(i) })
+        this._occRaf = requestAnimationFrame(() => {
+          for (const i of this._layers) if (i.occlude) this._occlude(i)
+          // A vector arrow is drawn in stage units, so a new stage shape means a new drawing.
+          for (const i of this._layers) if (i.kind === 'arrow') { this._paintArrow(i); this._placeArrowHandles(i) }
+        })
       })
       this._occResize.observe(this.host)
     }
@@ -353,7 +378,7 @@ export class ArtworkOverlay {
   setLayers(layers) {
     this._layers = (Array.isArray(layers) ? layers : [])
       // A layer is renderable if it has an image url OR an iframe embed (3D / video).
-      .filter(l => l && (l.url || l.embed) && (l.asset_id != null))
+      .filter(l => l && (l.url || l.embed || l.kind === 'arrow') && (l.asset_id != null))
       .map(normalizeLayer)
     this._projectPinned()
     this._render()
@@ -441,6 +466,9 @@ export class ArtworkOverlay {
   // The layer's *scale* is applied to the node HEIGHT, not here — so the node's border-box
   // equals the on-screen image box and the selection ring never scales with it.
   _transform(item, dx = 0, dy = 0) {
+    // An arrow is drawn in stage units across the whole stage: it has no box to centre, so no
+    // centring translate, parallax drift or turn applies to it.
+    if (item.kind === 'arrow') return 'none'
     // Rotation AFTER the centring translate, so the layer turns about its own middle rather than
     // swinging around the stage origin.
     const spin = item.rotation ? ` rotate(${item.rotation}deg)` : ''
@@ -568,9 +596,17 @@ export class ArtworkOverlay {
     const node = item && this._nodeEl(item)
     if (!item || !node) return
 
-    const NUMERIC = ['x', 'y', 'scale', 'height', 'width', 'opacity', 'blur', 'white_key', 'depth', 'rotation', 'tint_opacity', 'occlude', ...SIT_KEYS]
+    const NUMERIC = ['x', 'y', 'scale', 'height', 'width', 'opacity', 'blur', 'white_key', 'depth', 'rotation', 'tint_opacity', 'occlude', ...SIT_KEYS, ...ARROW_KEYS]
     const BOOLEAN = ['grayscale', 'flip_x', 'flip_y']
     item[key] = NUMERIC.includes(key) ? Number(value) : (BOOLEAN.includes(key) ? !!value : value)
+    // An arrow has no box to move or scale: its geometry and ink are repainted from its values.
+    if (item.kind === 'arrow') {
+      if (ARROW_KEYS.includes(key) || ['x', 'y', 'tint', 'opacity'].includes(key)) {
+        this._paintArrow(item)
+        this._placeArrowHandles(item)
+      }
+      return
+    }
 
     switch (key) {
       case 'tint':
@@ -916,6 +952,7 @@ export class ArtworkOverlay {
    * because the node is width:max-content — it sizes itself to the image's aspect.
    */
   _syncChrome(item) {
+    if (item.kind === 'arrow') return this._placeArrowHandles(item)
     const node = this._nodeEl(item)
     const chrome = this._chromeEl(item)
     if (!node || !chrome) return
@@ -945,6 +982,7 @@ export class ArtworkOverlay {
    * never carries the layer's blend, opacity or blur. Playback gets none of this.
    */
   _chrome(item) {
+    if (item.kind === 'arrow') return this._arrowChrome(item)
     const chrome = document.createElement('div')
     chrome.dataset.layerChrome = artObjId(item.asset_id)
     chrome.style.cssText = `position:absolute; display:none; pointer-events:none; box-sizing:border-box;
@@ -981,6 +1019,7 @@ export class ArtworkOverlay {
   }
 
   _node(item) {
+    if (item.kind === 'arrow') return this._arrowNode(item)
     const node = document.createElement('div')
     node.dataset.layerId = artObjId(item.asset_id)
     // width:max-content so the node sizes to the image's natural aspect at the given height.
@@ -1090,6 +1129,181 @@ export class ArtworkOverlay {
     return node
   }
 
+
+  /** The overlay's box in stage units' aspect (w / h). A stage with no size yet reads as 16:9. */
+  _aspect() {
+    const w = this.host?.clientWidth || 0
+    const h = this.host?.clientHeight || 0
+    return w && h ? w / h : 16 / 9
+  }
+
+  /**
+   * A vector arrow's node: one full-stage SVG, transparent to the pointer except its own paths, so
+   * the picture under it and the other layers stay usable. Playback paints the same paths inert.
+   */
+  _arrowNode(item) {
+    const node = document.createElement('div')
+    node.dataset.layerId = artObjId(item.asset_id)
+    node.style.cssText = `position:absolute; inset:0; width:100%; height:100%; pointer-events:none;
+      z-index:${this.onTop ? this._zTop : this._zNormal};`
+    const svg = document.createElementNS(SVG_NS, 'svg')
+    svg.setAttribute('preserveAspectRatio', 'none')
+    svg.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none;'
+    const editable = !this.readonly
+    // The hit path is wider than the shaft, so a thin arrow is easy to grab. Transparent, not hidden.
+    const hit = svgPath({ stroke: 'transparent', fill: 'none', 'pointer-events': editable ? 'stroke' : 'none' })
+    const shaft = svgPath({ fill: 'none', 'pointer-events': 'none' })
+    const head = svgPath({ 'pointer-events': editable ? 'visiblePainted' : 'none' })
+    svg.append(hit, shaft, head)
+    node.appendChild(svg)
+    if (editable) {
+      this._wireArrowBody(item, hit)
+      this._wireArrowBody(item, head)
+    }
+    this._paintArrow(item, svg)
+    return node
+  }
+
+  /** Repaint an arrow's three paths in place (its shaft, head and hit area), from its values. */
+  _paintArrow(item, svg = this._nodeEl(item)?.querySelector(':scope > svg')) {
+    if (!svg) return
+    const { viewBox, shaft, head, width, fill } = arrowPaths(item, this._aspect())
+    const ink = item.tint || '#000'
+    const [hit, body, tip] = svg.querySelectorAll('path')
+    svg.setAttribute('viewBox', viewBox)
+    svg.style.opacity = item.opacity < 1 ? String(Math.max(0.05, item.opacity)) : ''
+    hit.setAttribute('d', shaft)
+    hit.setAttribute('stroke-width', String(width + 2))
+    body.setAttribute('d', shaft)
+    body.setAttribute('stroke', ink)
+    body.setAttribute('stroke-width', String(width))
+    tip.setAttribute('d', head)
+    tip.setAttribute('stroke', ink)
+    tip.setAttribute('stroke-width', String(width))
+    tip.setAttribute('fill', fill ? ink : 'none')
+  }
+
+  /** The editor's handles for an arrow: five dots, placed by _placeArrowHandles. Nothing boxes it. */
+  _arrowChrome(item) {
+    const chrome = document.createElement('div')
+    chrome.dataset.layerChrome = artObjId(item.asset_id)
+    chrome.style.cssText = `position:absolute; inset:0; display:none; pointer-events:none; z-index:${this._zTop + 1};`
+    for (const [name, tip, cursor] of ARROW_HANDLES) {
+      const handle = document.createElement('div')
+      handle.dataset.arrowHandle = name
+      handle.setAttribute('data-tooltip', t(tip))
+      handle.style.cssText = `${handleCss('top:0; left:0;', cursor)} transform:translate(-50%, -50%);`
+      chrome.appendChild(handle)
+      this._wireArrowHandle(item, handle, name)
+    }
+    return chrome
+  }
+
+  _placeArrowHandles(item) {
+    const chrome = this._chromeEl(item)
+    if (!chrome) return
+    const at = arrowHandles(item, this._aspect())
+    for (const handle of chrome.querySelectorAll('[data-arrow-handle]')) {
+      const [x, y] = at[handle.dataset.arrowHandle]
+      handle.style.left = `${x}%`
+      handle.style.top = `${y}%`
+    }
+  }
+
+  /** A press in % of the stage. */
+  _pointPct(ev) {
+    const r = this.host.getBoundingClientRect()
+    return [((ev.clientX - r.left) / r.width) * 100, ((ev.clientY - r.top) / r.height) * 100]
+  }
+
+  /** Drag the arrow's body: the whole arrow moves, start and end together. */
+  _wireArrowBody(item, el) {
+    el.addEventListener('pointerdown', (e) => {
+      this.select(artObjId(item.asset_id))
+      const [sx, sy] = this._pointPct(e)
+      const origin = { x: item.x, y: item.y, ex: item.end_x, ey: item.end_y }
+      let dragging = false
+      const onMove = (ev) => {
+        if (!dragging && Math.hypot(ev.clientX - e.clientX, ev.clientY - e.clientY) < DRAG_THRESHOLD_PX) return
+        dragging = true
+        const [px, py] = this._pointPct(ev)
+        const dx = px - sx
+        const dy = py - sy
+        item.x = clampRange(origin.x + dx, [0, 100])
+        item.y = clampRange(origin.y + dy, [0, 100])
+        item.end_x = clampRange(origin.ex + dx, ARROW_LIMITS.end_x)
+        item.end_y = clampRange(origin.ey + dy, ARROW_LIMITS.end_y)
+        this._paintArrow(item)
+        this._placeArrowHandles(item)
+      }
+      const onUp = () => {
+        window.removeEventListener('pointermove', onMove)
+        window.removeEventListener('pointerup', onUp)
+        if (dragging) this._emitArrow(item)
+      }
+      window.addEventListener('pointermove', onMove)
+      window.addEventListener('pointerup', onUp)
+    })
+  }
+
+  /** Drag one handle: the dot moves a point, the others set their own value from where the hand is. */
+  _wireArrowHandle(item, el, name) {
+    el.addEventListener('pointerdown', (e) => {
+      e.stopPropagation()
+      this.select(artObjId(item.asset_id))
+      let moved = false
+      const onMove = (ev) => {
+        if (!moved && Math.hypot(ev.clientX - e.clientX, ev.clientY - e.clientY) < DRAG_THRESHOLD_PX) return
+        moved = true
+        this._setArrowHandle(item, name, this._pointPct(ev))
+        this._paintArrow(item)
+        this._placeArrowHandles(item)
+      }
+      const onUp = () => {
+        window.removeEventListener('pointermove', onMove)
+        window.removeEventListener('pointerup', onUp)
+        // A press that does not move only selects: nothing is written.
+        if (moved) this._emitArrow(item)
+      }
+      window.addEventListener('pointermove', onMove)
+      window.addEventListener('pointerup', onUp)
+    })
+  }
+
+  _setArrowHandle(item, name, [px, py]) {
+    const aspect = this._aspect()
+    if (name === 'start') {
+      item.x = clampRange(px, [0, 100])
+      item.y = clampRange(py, [0, 100])
+    } else if (name === 'end') {
+      item.end_x = clampRange(px, ARROW_LIMITS.end_x)
+      item.end_y = clampRange(py, ARROW_LIMITS.end_y)
+    } else if (name === 'bend') {
+      item.bend = bendFromPoint(item, [px, py], aspect)
+    } else if (name === 'shaft') {
+      item.shaft = shaftFromPoint(item, [px, py], aspect)
+    } else if (name === 'head') {
+      item.head = headFromPoint(item, [px, py], aspect)
+    }
+  }
+
+  /**
+   * The end of an arrow gesture: the values go to the server as one save (the arrow's own keys,
+   * so the bridge can tell them from a picture's move), and the timeline keys them if animated.
+   */
+  _emitArrow(item) {
+    const values = {
+      x: roundTo(item.x, 100),
+      y: roundTo(item.y, 100),
+      end_x: roundTo(item.end_x, 100),
+      end_y: roundTo(item.end_y, 100),
+      bend: roundTo(item.bend, 1000),
+      shaft: roundTo(item.shaft, 1000),
+      head: roundTo(item.head, 1000),
+    }
+    this.onChange?.(item.asset_id, values)
+    window.dispatchEvent(new CustomEvent('scene-object-edited', { detail: { target: `arw:${item.asset_id}`, values } }))
+  }
 
   // Drag anywhere on the layer to move it; a press that doesn't move just selects.
   _wireDrag(item, node) {

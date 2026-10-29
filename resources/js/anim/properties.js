@@ -112,6 +112,19 @@ const REGISTRY = {
     P('bend', 'Bend', 'linear', '', 'tail'),
   ],
   /**
+   * A vector arrow (scene/arrow-shape.js): its start is the layer's X / Y, and its end, bend,
+   * shaft width and head size are one row each, keyed together as one arrow (group 'arrow').
+   */
+  arw: [
+    P('x', 'X', 'linear', '%'),
+    P('y', 'Y', 'linear', '%'),
+    P('end_x', 'End X', 'linear', '%', 'arrow'),
+    P('end_y', 'End Y', 'linear', '%', 'arrow'),
+    P('bend', 'Bend', 'linear', '', 'arrow'),
+    P('shaft', 'Width', 'linear', '', 'arrow'),
+    P('head', 'Head', 'linear', '', 'arrow'),
+  ],
+  /**
    * A scene's background picture, or one split panel's (scene/background-crop.js): which point of
    * it stays in view, as the panel's Uitsnede stores it, its zoom about that point and its opacity.
    */

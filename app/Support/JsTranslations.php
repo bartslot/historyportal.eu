@@ -292,6 +292,11 @@ final class JsTranslations
             "Drag to set this leg's destination" => __("Drag to set this leg's destination"),
             'Drag to move · double-click to delete' => __('Drag to move · double-click to delete'),
             'Drag to move this bend' => __('Drag to move this bend'),
+            'Drag to move the start' => __('Drag to move the start'),
+            'Drag to move the end' => __('Drag to move the end'),
+            'Drag to bend the arrow' => __('Drag to bend the arrow'),
+            'Drag to change the width' => __('Drag to change the width'),
+            'Drag to change the head size' => __('Drag to change the head size'),
             // MapLibre's own control labels (resources/js/map-locale.js).
             'Map' => __('Map'),
             'Map marker' => __('Map marker'),
