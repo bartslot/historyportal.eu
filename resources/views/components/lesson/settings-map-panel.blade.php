@@ -279,7 +279,7 @@
                  four values are under Advanced. Mirror and tilt are the Angle row above. --}}
             @php $sitOn = collect(\App\Services\Support\LayerSitIn::KEYS)->contains(fn ($k) => (float) ($layer[$k] ?? 0) > 0); @endphp
             <div class="divider my-0" role="presentation"></div>
-            <div class="flex items-center gap-2" data-sit-in>
+            <div class="flex flex-wrap items-center gap-x-2 gap-y-1" data-sit-in>
                 <button type="button" wire:click="blendLayerIntoScene({{ $aid }})"
                         data-tooltip="{{ __('Waterline, reflection, shadow and colour from the backdrop') }}"
                         @class(['btn btn-xs flex-1 rounded-full', 'btn-primary' => ! $sitOn, 'btn-ghost' => $sitOn])>
@@ -305,7 +305,8 @@
                         'foam' => __('Foam'),
                         'speed' => __('Headway'),
                     ] as $sk => $sl)
-                        <x-ui.slider-row :label="$sl" :min="0" :max="1" :step="0.05"
+                        {{-- Stacked: inside the Advanced group the label column left these sliders at 52px. --}}
+                        <x-ui.slider-row :label="$sl" :min="0" :max="1" :step="0.05" stacked
                                          :value="$val($sk, 0)" :display="$pct($val($sk, 0))" unit="%" :default="0"
                                          :on-input="$live($sk)" :on-change="$save($sk)" />
                     @endforeach
@@ -318,7 +319,7 @@
             @if (! empty($scene->config['backdrop_depth']))
                 @php $occludeOn = ! empty($layer['occlude']); @endphp
                 <div class="divider my-0" role="presentation"></div>
-                <div class="flex items-center gap-2" data-occlude>
+                <div class="flex flex-wrap items-center gap-x-2 gap-y-1" data-occlude>
                     <x-ui.toggle-row class="flex-1" :label="__('Behind objects')" :checked="$occludeOn"
                                      :on-toggle="'window.__setLayerProp?.(' . $aid . ', \'occlude\', $event.target.checked ? 1 : 0)'"
                                      :on-change="'setLayerOcclude(' . $aid . ', $event.target.checked)'" />

@@ -8,7 +8,15 @@
     'keyframe' => false,
     'keyframeTarget' => null,
     'keyframeProperty' => null,
+    /** Label ABOVE the control, full width below. For a control that needs more room than the label
+     *  column leaves (a slider in the Advanced group, a segmented choice). The label still never wraps
+     *  or clips; it takes its own line, the same stacked shape the appear control uses. */
+    'stacked' => false,
 ])
+
+@php
+    $labelClasses = 'select-none whitespace-nowrap text-xs font-semibold uppercase leading-tight tracking-wide text-panel-label';
+@endphp
 
 {{-- ONE row shell for every control in a settings panel.
 
@@ -33,12 +41,23 @@
      Reserving the third column is what makes the right edge straight. A row that simply omitted it
      pulled its content 13px wider than its neighbours, which is the ragged edge in Bart's
      screenshot — and it is why Figma's own inspector puts every diamond in one column. --}}
+@if ($stacked)
+<div {{ $attributes->class(['space-y-1']) }}>
+    <span @if ($default !== null) data-scrub @endif
+          @class([$labelClasses, 'block', 'cursor-col-resize' => $default !== null])>{{ $label }}</span>
+    <div class="flex items-center gap-2" style="min-height: var(--settings-panel-row-h, 2rem)">
+        <div class="flex min-w-0 flex-1 items-center gap-1.5">{{ $slot }}</div>
+        <span class="flex shrink-0 items-center justify-center" style="width: 13px">
+            @if ($keyframe)
+                <x-ui.keyframe-diamond :target="$keyframeTarget" :property="$keyframeProperty" />
+            @endif
+        </span>
+    </div>
+</div>
+@else
 <div {{ $attributes->class(['flex items-center gap-2']) }} style="min-height: var(--settings-panel-row-h, 2rem)">
     <span @if ($default !== null) data-scrub @endif
-          @class([
-              'shrink-0 select-none whitespace-nowrap text-xs font-semibold uppercase leading-tight tracking-wide text-panel-label',
-              'cursor-col-resize' => $default !== null,
-          ])
+          @class([$labelClasses, 'shrink-0', 'cursor-col-resize' => $default !== null])
           style="width: var(--settings-panel-label-w, 7.5rem)">{{ $label }}</span>
 
     <div class="flex min-w-0 flex-1 items-center gap-1.5">{{ $slot }}</div>
@@ -49,3 +68,4 @@
         @endif
     </span>
 </div>
+@endif

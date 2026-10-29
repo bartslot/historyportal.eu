@@ -4,107 +4,155 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 /**
- * Inspector row labels must sit in their own column: one line, never under a control, never clipped.
+ * Inspector rows must hold their label and their control side by side, or stack the label above.
+ * Nothing wraps, nothing overlaps, nothing is clipped by its panel, and no slider or number field
+ * shrinks below what it needs.
  *
- * Every label the shared row shells draw (`.text-panel-label` inside panel-row, slider-row, size-row,
- * the text inspector's label column) is measured against its row. The check is generic on purpose:
- * it does not know which panel it is looking at, so a new row that breaks the rule fails here too.
+ * Every check is generic (it does not know which panel it is looking at), so a new row that breaks
+ * the rule fails here too. The text layer fixture is a throwaway copy of a dev lesson with one text
+ * annotation added, so the run never edits a lesson a teacher owns.
  *
- * The user's locale is read from the account the dev auto-login signs in as, so each locale run
- * writes that one value and the afterAll puts it back to 'en'. The browser runs muted: the page is
- * opened with the AudioContext and media playback stubbed before any script of the app runs.
+ * Set PW_OLD_LABEL_TOKEN=1 to put the pre-fix 49px label column back on the page: the spec must then
+ * FAIL for every kind. That is the proof that the checks can see the bug.
  */
 
 const DEV_EMAIL = 'teacher@example.com';
-const LOCALES = (process.env.INSPECTOR_LOCALES ?? 'nl,de').split(',');
+const LOCALES = (process.env.INSPECTOR_LOCALES ?? 'nl,de,fr').split(',');
 const VIEWPORTS = [
   { width: 1440, height: 900 },
   { width: 1024, height: 700 },
 ];
+const OLD_TOKEN = process.env.PW_OLD_LABEL_TOKEN === '1';
 
-// Fixtures from the local catalogue (see tests/playwright/support/global-setup.ts for why these are
-// overridable). Map block: scene 640 (lesson 5). Figure layers: scene 1425 (lesson 18). Balloons: 663 (lesson 8).
-// Each lesson must belong to the dev auto-login teacher, or the wizard answers 404.
-const MAP_SCENE = Number(process.env.PW_INSPECTOR_MAP_SCENE ?? 640);
-const MAP_LESSON = Number(process.env.PW_INSPECTOR_MAP_LESSON ?? 5);
-const FIGURE_SCENE = Number(process.env.PW_INSPECTOR_FIGURE_SCENE ?? 1425);
-const FIGURE_LESSON = Number(process.env.PW_INSPECTOR_FIGURE_LESSON ?? 18);
-const BALLOON_SCENE = Number(process.env.PW_INSPECTOR_BALLOON_SCENE ?? 663);
-const BALLOON_LESSON = Number(process.env.PW_INSPECTOR_BALLOON_LESSON ?? 8);
+/** A slider narrower than this is too short to drag. */
+const MIN_SLIDER_PX = 64;
+/** A number field narrower than this cannot show three digits ("360") at 12px. */
+const MIN_FIELD_PX = 28;
+
+// Fixtures: lessons must belong to the dev auto-login teacher or the wizard answers 404.
+const MAP = { lesson: Number(process.env.PW_INSPECTOR_MAP_LESSON ?? 5), scene: Number(process.env.PW_INSPECTOR_MAP_SCENE ?? 640) };
+const IMAGE = { lesson: Number(process.env.PW_INSPECTOR_FIGURE_LESSON ?? 18), scene: Number(process.env.PW_INSPECTOR_FIGURE_SCENE ?? 1425) };
+const BALLOON = { lesson: Number(process.env.PW_INSPECTOR_BALLOON_LESSON ?? 8), scene: Number(process.env.PW_INSPECTOR_BALLOON_SCENE ?? 663) };
+const TEXT_PARENT_LESSON = BALLOON.lesson;
 
 const SILENCE = `
   (() => {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (AC) AC.prototype.resume = function () { return Promise.resolve(); };
-    HTMLMediaElement.prototype.play = function () { this.muted = true; return Promise.resolve(); };
+    HTMLMediaElement.prototype.play = function () { this.muted = true; this.volume = 0; return Promise.resolve(); };
   })();`;
 
-/**
- * The narrowest a number field may get before its value stops fitting: three digits ("360", "100")
- * at 12px. The colour strength field is a fixed w-7 (28px) by design, so this is a floor, not a size.
- */
-const MIN_FIELD_PX = 28;
+const OLD_TOKEN_SCRIPT = `
+  document.addEventListener('DOMContentLoaded', () => {
+    document.documentElement.style.setProperty('--settings-panel-label-w', '3.0625rem');
+  });`;
+
+function php(args: string[]): string {
+  return execFileSync('php', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+}
 
 function setLocale(locale: string) {
-  execFileSync('php', ['artisan', 'tinker', `--execute=App\\Models\\User::where('email','${DEV_EMAIL}')->update(['locale'=>'${locale}']);`], {
-    stdio: ['ignore', 'ignore', 'pipe'],
-  });
+  php(['artisan', 'tinker', `--execute=App\\Models\\User::where('email','${DEV_EMAIL}')->update(['locale'=>'${locale}']);`]);
+}
+
+/**
+ * A throwaway copy of the balloon lesson with one text annotation on its first narration scene. The
+ * copy is made by the same command the other specs use, so it lives on the dev teacher's account.
+ */
+function textFixture(): { lesson: number; scene: number } {
+  const copy = JSON.parse(php(['artisan', 'lessons:test-copy', String(TEXT_PARENT_LESSON), '--json']).trim().split('\n').pop() ?? '{}') as { id?: number };
+  if (!copy.id) throw new Error('lessons:test-copy returned no lesson id');
+  const scene = php([
+    'artisan', 'tinker',
+    `--execute=$l=\\App\\Models\\Lesson::findOrFail(${copy.id}); $s=$l->scenes()->orderBy('order')->first(); $c=$s->config ?? []; $c['texts']=[['id'=>'txt_fixture','text'=>'Fixture text','x'=>10,'y'=>12,'font'=>'sans','size'=>'md','bg'=>'none','anchor'=>'screen']]; $s->config=$c; $s->save(); echo 'SCENE='.$s->id;`,
+  ]).match(/SCENE=(\d+)/);
+  if (!scene) throw new Error('could not add the text fixture');
+
+  return { lesson: copy.id, scene: Number(scene[1]) };
 }
 
 function tabNames(locale: string): { format: string; animate: string } {
-  const file = path.resolve(process.cwd(), 'lang', `${locale}.json`);
-  const dict = JSON.parse(fs.readFileSync(file, 'utf8')) as Record<string, string>;
+  const dict = JSON.parse(fs.readFileSync(path.resolve(process.cwd(), 'lang', `${locale}.json`), 'utf8')) as Record<string, string>;
 
   return { format: dict['Format'], animate: dict['Animate'] };
 }
 
-/** Every visible panel label that breaks the rule, with the reason. Empty array = clean. */
-async function labelViolations(page: Page): Promise<string[]> {
-  return page.evaluate((MIN_FIELD_PX: number) => {
-    const isVisible = (el: Element) => {
-      const r = el.getBoundingClientRect();
-      return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden';
-    };
-    const problems: string[] = [];
-    const labels = [...document.querySelectorAll<HTMLElement>('.text-panel-label')].filter(isVisible);
-    for (const label of labels) {
-      const text = label.textContent?.trim() ?? '';
-      if (!text) continue;
-      const row = label.parentElement;
-      if (!row) continue;
-      // The text's own extent, not the box: a label that spills out of a 49px box still paints over
-      // its control even though the box itself does not overlap.
-      const range = document.createRange();
-      range.selectNodeContents(label);
-      const tr = range.getBoundingClientRect();
-      const lineHeight = parseFloat(getComputedStyle(label).lineHeight) || 16;
-      if (label.scrollWidth > label.clientWidth + 1) {
-        problems.push(`"${text}" overflows its box (${label.scrollWidth} > ${label.clientWidth})`);
-      }
-      if (tr.height > lineHeight * 1.5) {
-        problems.push(`"${text}" wraps onto ${Math.round(tr.height / lineHeight)} lines`);
-      }
-      for (const sib of [...row.children]) {
-        if (sib === label || !isVisible(sib)) continue;
-        const sr = sib.getBoundingClientRect();
-        const overlaps = tr.left < sr.right && sr.left < tr.right && tr.top < sr.bottom && sr.top < tr.bottom;
-        if (overlaps) problems.push(`"${text}" collides with ${sib.tagName.toLowerCase()} in its row`);
-      }
-    }
+/** Every problem the inspector shows right now, across labels, clipping, sliders and number fields. */
+async function inspectorProblems(page: Page): Promise<string[]> {
+  return page.evaluate(
+    ({ minSlider, minField }) => {
+      const isVisible = (el: Element) => {
+        const r = el.getBoundingClientRect();
 
-    // A label that fits is no use if the field beside it has shrunk until its value is clipped.
-    for (const field of [...document.querySelectorAll<HTMLInputElement>('input[type="number"]')].filter(isVisible)) {
-      const width = field.getBoundingClientRect().width;
-      if (width < MIN_FIELD_PX) problems.push(`number field "${field.getAttribute('aria-label') ?? '?'}" is ${Math.round(width)}px wide`);
-    }
+        return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden';
+      };
+      /** The nearest ancestor that clips its children: the card or panel the row sits in. */
+      const clipperOf = (el: Element): Element | null => {
+        for (let e = el.parentElement; e && e !== document.body; e = e.parentElement) {
+          const ox = getComputedStyle(e).overflowX;
+          if (ox === 'hidden' || ox === 'auto' || ox === 'scroll' || ox === 'clip') return e;
+        }
 
-    return problems;
-  }, MIN_FIELD_PX);
+        return null;
+      };
+      const problems: string[] = [];
+      const labels = [...document.querySelectorAll<HTMLElement>('.text-panel-label')].filter(isVisible);
+      const checkedClippers = new Set<Element>();
+
+      for (const label of labels) {
+        const text = label.textContent?.trim() ?? '';
+        if (!text) continue;
+        const row = label.parentElement;
+        if (!row) continue;
+        const range = document.createRange();
+        range.selectNodeContents(label);
+        const tr = range.getBoundingClientRect();
+        const lineHeight = parseFloat(getComputedStyle(label).lineHeight) || 16;
+        if (label.scrollWidth > label.clientWidth + 1) {
+          problems.push(`"${text}" overflows its box (${label.scrollWidth} > ${label.clientWidth})`);
+        }
+        if (tr.height > lineHeight * 1.5) {
+          problems.push(`"${text}" wraps onto ${Math.round(tr.height / lineHeight)} lines`);
+        }
+        for (const sib of [...row.children]) {
+          if (sib === label || !isVisible(sib)) continue;
+          const sr = sib.getBoundingClientRect();
+          const overlaps = tr.left < sr.right && sr.left < tr.right && tr.top < sr.bottom && sr.top < tr.bottom;
+          if (overlaps) problems.push(`"${text}" collides with ${sib.tagName.toLowerCase()} in its row`);
+        }
+        // Clipped sibling: anything in the row that sticks out of the card it sits in. A nowrap
+        // label can push a trailing Reset button past the edge, where the card hides it.
+        const clip = clipperOf(label);
+        if (clip && !checkedClippers.has(clip)) {
+          checkedClippers.add(clip);
+          const cr = clip.getBoundingClientRect();
+          for (const el of [...row.querySelectorAll<HTMLElement>('*')].filter(isVisible)) {
+            const er = el.getBoundingClientRect();
+            if (er.right > cr.right + 1 || er.left < cr.left - 1) {
+              problems.push(`"${text}" row: ${el.tagName.toLowerCase()} runs past its card (${Math.round(er.right)} > ${Math.round(cr.right)})`);
+              break;
+            }
+          }
+        }
+      }
+
+      for (const slider of [...document.querySelectorAll<HTMLInputElement>('input[type="range"]')].filter(isVisible)) {
+        const width = slider.getBoundingClientRect().width;
+        if (width < minSlider) problems.push(`slider "${slider.getAttribute('aria-label') ?? '?'}" is ${Math.round(width)}px wide (< ${minSlider})`);
+      }
+      for (const field of [...document.querySelectorAll<HTMLInputElement>('input[type="number"]')].filter(isVisible)) {
+        const width = field.getBoundingClientRect().width;
+        if (width < minField) problems.push(`number field "${field.getAttribute('aria-label') ?? '?'}" is ${Math.round(width)}px wide (< ${minField})`);
+      }
+
+      return problems;
+    },
+    { minSlider: MIN_SLIDER_PX, minField: MIN_FIELD_PX },
+  );
 }
 
-/** Click a segmented tab (Format / Animate) by its visible text inside the inspector. */
-async function openTab(page: Page, name: string) {
-  // The segmented tabs are radio inputs labelled by aria-label (see ui/segmented.blade.php).
+/** Click a segmented tab (Format / Animate) by its aria-label; false when this scene has no such tab. */
+async function openTab(page: Page, name: string): Promise<boolean> {
   const tab = page.locator(`input[type="radio"][aria-label="${name}"]:visible`).first();
   if ((await tab.count()) === 0) return false;
   await tab.check({ force: true });
@@ -120,57 +168,64 @@ async function openScene(page: Page, lesson: number, scene: number) {
   await page.waitForTimeout(4000);
 }
 
-const cases: { kind: string; open: (page: Page) => Promise<void>; lesson: number; scene: number }[] = [
-  {
-    kind: 'map',
-    lesson: MAP_LESSON,
-    scene: MAP_SCENE,
-    open: async () => {},
-  },
+/** Real pointer clicks on the stage. */
+async function clickStage(page: Page, selector: string) {
+  await page.locator(selector).first().click();
+  await page.waitForTimeout(600);
+}
+
+const CASES: { kind: string; open: (page: Page, fixture: { lesson: number; scene: number }) => Promise<void>; scene: (f: { lesson: number; scene: number }) => { lesson: number; scene: number } }[] = [
+  { kind: 'map', scene: () => MAP, open: async () => {} },
+  // The scene itself (nothing selected): its Power-meter moment row carries a trailing Reset.
+  { kind: 'scene', scene: () => BALLOON, open: async () => {} },
   {
     kind: 'image',
-    lesson: FIGURE_LESSON,
-    scene: FIGURE_SCENE,
+    scene: () => IMAGE,
     open: async (page) => {
-      await page.locator('[data-layer-id^="art_"]').first().click({ force: true });
-      await page.waitForTimeout(500);
+      await clickStage(page, '[data-layer-id^="art_"]');
+      // The water sliders live in a collapsed Advanced group; open it so they are measured too.
+      const advanced = page.locator('[data-sit-advanced] > summary').first();
+      if ((await advanced.count()) > 0) await advanced.click();
+      await page.waitForTimeout(300);
     },
   },
-  {
-    kind: 'balloon',
-    lesson: BALLOON_LESSON,
-    scene: BALLOON_SCENE,
-    open: async (page) => {
-      await page.locator('[data-balloon-id]').first().click({ force: true });
-      await page.waitForTimeout(500);
-    },
-  },
+  { kind: 'balloon', scene: () => BALLOON, open: (page) => clickStage(page, '[data-balloon-id="bal_0"] .lp-balloon__bubble') },
+  { kind: 'text', scene: (f) => f, open: (page) => clickStage(page, '[data-text-id="txt_fixture"]') },
 ];
+
+let textScene: { lesson: number; scene: number } | null = null;
 
 for (const locale of LOCALES) {
   test.describe(`locale ${locale}`, () => {
-    test.beforeAll(() => setLocale(locale));
+    test.beforeAll(() => {
+      setLocale(locale);
+      textScene ??= textFixture();
+    });
     test.afterAll(() => setLocale('en'));
 
     for (const viewport of VIEWPORTS) {
-      for (const c of cases) {
-        test(`${c.kind} at ${viewport.width}x${viewport.height}: every tab's labels fit their row`, async ({ page }) => {
-          test.setTimeout(120_000);
+      for (const c of CASES) {
+        test(`${c.kind} at ${viewport.width}x${viewport.height}: every tab fits its rows`, async ({ page }) => {
+          test.setTimeout(150_000);
           await page.setViewportSize(viewport);
           await page.addInitScript(SILENCE);
+          if (OLD_TOKEN) await page.addInitScript(OLD_TOKEN_SCRIPT);
           const errors: string[] = [];
           page.on('pageerror', (e) => errors.push(String(e)));
 
-          await openScene(page, c.lesson, c.scene);
-          await c.open(page);
+          const fixture = c.scene(textScene ?? BALLOON);
+          await openScene(page, fixture.lesson, fixture.scene);
+          await c.open(page, fixture);
 
           const names = tabNames(locale);
-          const failures: string[] = (await labelViolations(page)).map((p) => `[as opened] ${p}`);
-          for (const tab of [names.format, names.animate]) {
+          const failures: string[] = (await inspectorProblems(page)).map((p) => `[as opened] ${p}`);
+          for (const [name, tab] of [
+            ['Format', names.format],
+            ['Animate', names.animate],
+          ] as const) {
             // A scene kind may have only one of the two tabs; check what it actually shows.
             if (!(await openTab(page, tab))) continue;
-            const problems = await labelViolations(page);
-            for (const p of problems) failures.push(`[${tab}] ${p}`);
+            for (const p of await inspectorProblems(page)) failures.push(`[${name}] ${p}`);
           }
 
           expect(failures, failures.join('\n')).toEqual([]);

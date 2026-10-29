@@ -90,19 +90,19 @@
                     </div>
                 </label>
 
-                <div class="flex items-center gap-2">
-                    <span {!! $labelCol !!}>{{ __('Align') }}</span>
-                    <x-ui.segmented panel name="text-align-{{ $id }}" :value="$val('align', 'left')"
+                {{-- Segmented choices stack their label above: three buttons plus a label beside them
+                     wrapped onto two rows at the panel's narrow width. --}}
+                <x-ui.panel-row :label="__('Align')" stacked>
+                    <x-ui.segmented panel name="text-align-{{ $id }}" class="w-full" tab-class="flex-1" :value="$val('align', 'left')"
                                     :options="[['left', __('Left'), $alignIcons['left']], ['center', __('Center'), $alignIcons['center']], ['right', __('Right'), $alignIcons['right']]]"
                                     on-change="$wire.call('updateSceneText', {{ $tid }}, 'align', $event.target.value)" />
-                </div>
+                </x-ui.panel-row>
 
-                <div class="flex items-center gap-2">
-                    <span {!! $labelCol !!}>{{ __('Size') }}</span>
-                    <x-ui.segmented panel name="text-size-{{ $id }}" class="min-w-0 flex-1" tab-class="flex-1 !text-xs !font-semibold uppercase tracking-wide" :value="$val('size', 'md')"
+                <x-ui.panel-row :label="__('Size')" stacked>
+                    <x-ui.segmented panel name="text-size-{{ $id }}" class="w-full" tab-class="flex-1 !text-xs !font-semibold uppercase tracking-wide" :value="$val('size', 'md')"
                                     :options="[['sm', __('Small')], ['md', __('Medium')], ['lg', __('Large')]]"
                                     on-change="$wire.call('updateSceneText', {{ $tid }}, 'size', $event.target.value)" />
-                </div>
+                </x-ui.panel-row>
 
                 <label class="flex items-center justify-between gap-2">
                     <span {!! $labelCol !!}>{{ __('List') }}</span>

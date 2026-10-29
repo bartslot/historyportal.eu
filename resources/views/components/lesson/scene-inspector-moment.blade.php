@@ -37,7 +37,9 @@
 @endphp
 
 <section class="space-y-3 border-t border-panel-hairline pt-3" data-moment-inspector>
-    <div class="flex items-center justify-between gap-2">
+    {{-- Wraps: the toggle label never breaks, so in a long language the Reset button drops to its own
+         line instead of running off the panel. --}}
+    <div class="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
         <x-ui.toggle-row class="flex-1" :label="__('Power-meter moment')" :checked="$on" on-change="toggleMoment" />
         <button type="button" wire:click="resetMoment" @disabled($isDefault)
                 class="btn btn-ghost btn-xs gap-1" data-tooltip="{{ __('Put back the moment as the lesson was built. Cmd-Z undoes single edits.') }}">
