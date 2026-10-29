@@ -7,7 +7,8 @@
   axis="y": a horizontal divider, drags up and down (row-resize).
 
   The handle fills the box you give it (position, size and id come from the caller); its line runs
-  the full length of that box. Styles: .lp-resize in resources/css/app.css.
+  the full length of that box. Styles: .lp-resize in resources/css/app.css. The box is the gap
+  between two panels (--editor-gap wide), so its line sits in the middle of the black gap.
 --}}
 @props(['axis' => 'x', 'label'])
 <div x-data="resizeHandle('{{ $axis }}')"
@@ -26,5 +27,4 @@
      aria-label="{{ $label }}"
      {{ $attributes->class(['lp-resize']) }}>
     <span class="lp-resize-line" aria-hidden="true"></span>
-    <span class="lp-resize-pill" aria-hidden="true"></span>
 </div>

@@ -34,12 +34,13 @@
 <div x-show="$store.view.script" x-cloak
      {{ $attributes }}
      x-data="scriptEditor(@js($audioUrl), @js($paragraphs), {{ $scene?->id ?? 'null' }}, @js($narrating))"
-     class="fixed bottom-0 z-30 flex flex-col overflow-hidden border-t border-slate-700/70 bg-base-300"
+     class="fixed bottom-0 z-30 flex flex-col overflow-hidden"
      :style="`left:var(--rail-w,11rem);right:var(--work-right,16rem);height:${panelH}px`">
+    <div class="lp-panel-surface" aria-hidden="true"></div>
 
     {{-- The resize handle along the dock's top edge: drag up for more room. Keyboard: arrows,
          Home resets. The shared handle (x-ui.resize-handle) reports the pointer; the dock sizes. --}}
-    <x-ui.resize-handle axis="y" class="shrink-0" data-dock-resize
+    <x-ui.resize-handle axis="y" class="shrink-0 -mt-1" data-dock-resize
                         label="{{ __('Resize the panel') }}"
                         x-on:resize-start="dragStart($event.detail)"
                         x-on:resize-drag="dragMove($event.detail)"
@@ -221,6 +222,7 @@
     @push('scripts')
     <script>
         const SCRIPT_DEF_H = 240;   // px — the dock's default height
+        const SHELL_GAP_HALF = 4;   // half of --editor-gap: the stage stops this far above the dock's box
         const SCRIPT_MIN_H = 160;   // px — tabs, the timeline's transport and a row stay usable
         const STAGE_MIN_H = 200;    // px — the stage above never gets less than this
         const TOP_BAR_H = 64;       // px — the wizard's top bar
@@ -779,7 +781,7 @@
                     const root = document.getElementById('lesson-canvas-root');
                     if (!root) return;
                     const shown = !!this.$store.view.script;
-                    const h = shown ? Math.round(this.$el.getBoundingClientRect().height) : 0;
+                    const h = shown ? Math.round(this.$el.getBoundingClientRect().height) + SHELL_GAP_HALF : 0;
                     // Only write + nudge when the value actually changes, so the ResizeObserver
                     // can't churn a resize-dispatch loop.
                     if (root.style.getPropertyValue('--work-bottom') === h + 'px') return;

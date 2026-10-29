@@ -34,8 +34,9 @@
         [data-rail-col] [data-rail-add] { aspect-ratio: auto !important; height: 2.1rem !important; border-radius: 0.5rem !important; }
     }
 </style>
-<aside {{ $attributes->merge(['class' => 'fixed left-0 top-0 bottom-0 z-30 overflow-hidden border-r border-slate-700 bg-base-300']) }}
+<aside {{ $attributes->merge(['class' => 'fixed left-0 top-0 bottom-0 z-30 overflow-hidden']) }}
        style="width: var(--rail-w, 11rem)">
+    <div class="lp-panel-surface" aria-hidden="true"></div>
     <div class="flex h-full flex-col pt-20" data-rail-col>
         {{-- The title screen: always first, never deleted or dragged. It sits OUTSIDE the sortable
              track, so no scene can be dropped above it and it stays put while the scenes scroll. --}}

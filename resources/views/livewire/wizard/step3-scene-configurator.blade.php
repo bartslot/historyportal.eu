@@ -35,15 +35,18 @@
          runs out first, and the width follows it (--stw) instead of staying full width, which
          stretched the stage wider than 16:9 and cropped the picture differently at every drawer
          height (Bart, 2026-10-16). The leftover width is letterbox, centred. --}}
+    {{-- The editor's shell (Spotify layout): pure black behind and between the panels. The gap
+         between two panels is this black, so the panels are inset from it and never touch it. --}}
+    <div class="fixed inset-0 z-0" style="background: var(--color-shell)" aria-hidden="true"></div>
     {{-- Black letterbox behind the 16:9 stage: fills the whole work area, so the bars beside
          the stage are black for every scene kind, not the page slate. Same box as the stage's
          work area (rail, ruler, inspector, toolbar). --}}
     <div id="lesson-stage-letterbox" class="fixed z-0" wire:ignore
-         style="left: calc(var(--rail-w, 11rem) + var(--objlist-w, 0px) + var(--ruler-w, 0px));
+         style="left: calc(var(--rail-w, 11rem) + var(--objlist-w, 0px) + var(--ruler-w, 0px) + var(--editor-gap) / 2);
                 right: var(--work-right, 16rem); top: calc(4rem + var(--ruler-w, 0px)); bottom: 0;
                 background: var(--stage-letterbox);"></div>
     <div class="fixed z-0 bg-slate-950" id="lesson-canvas-root"
-         style="--work-left: calc(var(--rail-w, 11rem) + var(--objlist-w, 0px) + var(--ruler-w, 0px)); --work-bottom: 0px;
+         style="--work-left: calc(var(--rail-w, 11rem) + var(--objlist-w, 0px) + var(--ruler-w, 0px) + var(--editor-gap) / 2); --work-bottom: 0px;
                 --top-inset: calc(4rem + var(--ruler-w, 0px));
                 --lbw: calc(100vw - var(--work-left) - var(--work-right, 16rem));
                 --lbh: min(calc(var(--lbw) * 0.5625), calc(100vh - var(--top-inset) - var(--work-bottom)));
@@ -95,13 +98,14 @@
             const aside = document.querySelector('aside[x-ref="inspectorPanel"]')
             if (!aside) { requestAnimationFrame(boot); return }
             let raf = 0
+            const SHELL_GAP_HALF = 4   // half of --editor-gap: the stage stops this far short of the panel's box
             const sync = () => {
                 raf = 0
                 const r = aside.getBoundingClientRect()
                 // Docked panel → reserve its width; hidden (x-show off → 0 width) → reserve nothing.
                 // Set it on <html> so the sibling script/notes panels inherit it (the canvas-root
                 // is not their ancestor); the canvas-root inherits it too.
-                document.documentElement.style.setProperty('--work-right', r.width > 0 ? `${Math.round(r.width)}px` : '0px')
+                document.documentElement.style.setProperty('--work-right', r.width > 0 ? `${Math.round(r.width) + SHELL_GAP_HALF}px` : '0px')
                 window.dispatchEvent(new Event('resize'))   // nudge the scene renderer to refit
             }
             const schedule = () => { if (!raf) raf = requestAnimationFrame(sync) }
@@ -956,17 +960,18 @@
            x-on:inspector-state-request.window="window.dispatchEvent(new CustomEvent('inspector-state', { detail: { open: inspectorOpen, view: '{{ $panelView }}' } }))"
            style="right:0; left:auto; top:64px; bottom:0;"
            data-resizable-drawer
-           class="card card-compact fixed z-50 overflow-hidden rounded-none border border-r-0 border-t-0 border-slate-700 bg-base-300
+           class="card card-compact fixed z-50 rounded-none border-0 bg-transparent
                   {{-- 19.375rem is the Figma panel's 310px. The old 16rem was narrow enough that a
                        row label and its control competed for the same space, which is where the
                        three different label widths came from. --}}
                   {{ $inspectorSceneModel?->kind === 'game' ? 'w-[min(48rem,calc(100vw-1rem))]' : 'w-[min(19.375rem,calc(100vw-1rem))]' }}">
+        <div class="lp-panel-surface" aria-hidden="true"></div>
         {{-- Drag the left edge to resize the drawer; double-click it for the default width again.
              The width lives on <html> (--inspector-w, remembered per browser), not on this aside:
              every Livewire morph rewrites the aside's own style attribute. The stage follows by
              itself (the --work-right sync measures the aside). The events are wired in the script
              below. --}}
-        <x-ui.resize-handle axis="x" id="inspector-resize" class="absolute inset-y-0 left-0 z-20"
+        <x-ui.resize-handle axis="x" id="inspector-resize" class="absolute inset-y-0 -left-1 z-20"
                             label="{{ __('Resize the inspector') }}" />
     @push('scripts')
     <script>
@@ -2108,8 +2113,9 @@
          @scene-objects-changed.window="refresh()"
          @scene-object-selected.window="selectedId = $event.detail.id"
          data-objlist-col :data-compact="$data.compact ? '1' : null"
-         class="fixed z-30 overflow-hidden border-r border-slate-700 bg-slate-900"
+         class="fixed z-30 overflow-hidden"
          style="left: var(--rail-w, 11rem); width: var(--objlist-w, 13rem); top: 4rem; bottom: 0;">
+        <div class="lp-panel-surface" aria-hidden="true"></div>
         <div x-ref="list" class="h-full space-y-0.5 overflow-y-auto p-1.5">
             <template x-for="obj in items" :key="obj.id">
                 {{-- The whole row is the drag handle (grab cursor); only the adjust button opts out.
