@@ -24,7 +24,7 @@
      its own. Until then it has only a height and takes its width from the image's aspect, so the
      field is seeded from what the overlay actually rendered rather than from a stored value that
      is not there. --}}
-<div class="flex items-center gap-2" wire:key="size-row-{{ (int) $assetId }}"
+<div class="space-y-1" wire:key="size-row-{{ (int) $assetId }}"
      x-data="layerSizeRow({
         assetId: {{ (int) $assetId }},
         height: {{ (float) ($height ?? 40) }},
@@ -34,10 +34,10 @@
      x-on:layer-fitted.window="fitted($event.detail)"
      x-on:timeline-changed.window="syncKeyed()">
 
-    <span style="width: var(--settings-panel-label-w, 3.0625rem)"
-          class="shrink-0 text-xs font-semibold uppercase tracking-wide text-panel-label">{{ $label ?? __('Size') }}</span>
+    <span class="block whitespace-nowrap text-xs font-semibold uppercase tracking-wide text-panel-label">{{ $label ?? __('Size') }}</span>
 
     {{-- DaisyUI `join` glues the pair into one control, which is what the design draws. --}}
+    <div class="flex items-center gap-2">
     <div class="join min-w-0 flex-1">
         @foreach ([['w', 'W', __('Width'), 'width'], ['h', 'H', __('Height'), 'height']] as [$side, $glyph, $name, $prop])
             <label class="input input-xs join-item flex min-w-0 flex-1 items-center gap-1.5 px-2"
@@ -79,4 +79,5 @@
             :aria-label="locked ? @js(__('Aspect held')) : @js(__('Aspect free'))">
         <x-icons.aspect-ratio class="h-4 w-4" />
     </button>
+    </div>
 </div>

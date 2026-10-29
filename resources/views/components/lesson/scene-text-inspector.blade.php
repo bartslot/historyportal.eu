@@ -29,7 +29,7 @@
         'center' => 'M3.75 6.75h16.5M6.75 12h10.5M3.75 17.25h16.5',
         'right' => 'M3.75 6.75h16.5M9.75 12h10.5M3.75 17.25h16.5',
     ];
-    $labelCol = 'style="width: var(--settings-panel-label-w, 3.0625rem)" class="shrink-0 text-xs font-semibold uppercase tracking-wide text-panel-label"';
+    $labelCol = 'style="width: var(--settings-panel-label-w, 7.5rem)" class="shrink-0 text-xs font-semibold uppercase tracking-wide text-panel-label"';
 @endphp
 
 @if (! $isPanel)
@@ -134,14 +134,18 @@
                 <div class="divider my-0" role="presentation"></div>
 
                 @unless ($isPinned)
-                    <div class="flex items-center gap-2">
-                        <span {!! $labelCol !!}>{{ __('Position') }}</span>
-                        <x-ui.stepper-field glyph="X" :label="__('Horizontal position')" :min="0" :max="100" :step="1"
-                                            :value="$num($val('x', 40), 0)" :default="40" :keyframe-target="$target" keyframe-property="x"
-                                            :on-input="$live('x')" :on-change="$save('x')" class="min-w-0 flex-1" />
-                        <x-ui.stepper-field glyph="Y" :label="__('Vertical position')" :min="0" :max="100" :step="1"
-                                            :value="$num($val('y', 40), 0)" :default="40" :keyframe-target="$target" keyframe-property="y"
-                                            :on-input="$live('y')" :on-change="$save('y')" class="min-w-0 flex-1" />
+                    {{-- Two fields share one row, so the label stacks above them: beside them the
+                         X and Y fields were left too narrow to show their values. --}}
+                    <div class="space-y-1">
+                        <span class="block whitespace-nowrap text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Position') }}</span>
+                        <div class="flex items-center gap-2">
+                            <x-ui.stepper-field glyph="X" :label="__('Horizontal position')" :min="0" :max="100" :step="1"
+                                                :value="$num($val('x', 40), 0)" :default="40" :keyframe-target="$target" keyframe-property="x"
+                                                :on-input="$live('x')" :on-change="$save('x')" class="min-w-0 flex-1" />
+                            <x-ui.stepper-field glyph="Y" :label="__('Vertical position')" :min="0" :max="100" :step="1"
+                                                :value="$num($val('y', 40), 0)" :default="40" :keyframe-target="$target" keyframe-property="y"
+                                                :on-input="$live('y')" :on-change="$save('y')" class="min-w-0 flex-1" />
+                        </div>
                     </div>
                 @endunless
 

@@ -24,7 +24,7 @@
      * Defaults to the panel's own variable so the dev tuner moves every row at
      * once; pass a literal only where a row is outside the settings panel.
      */
-    'labelWidth' => 'var(--settings-panel-label-w, 3.0625rem)',
+    'labelWidth' => 'var(--settings-panel-label-w, 7.5rem)',
     /** Livewire expression for `wire:change` — the value the teacher settles on. */
     'onChange' => null,
     /** Alpine expression for `@input` — the live drag, applied locally without a round trip. */

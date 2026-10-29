@@ -101,15 +101,16 @@
             <div class="divider my-0" role="presentation"></div>
 
             {{-- Position: two fields on one row, X and Y, both stage percentages. --}}
-            <div class="flex items-center gap-2">
-                <span style="width: var(--settings-panel-label-w, 3.0625rem)"
-                      class="shrink-0 text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Position') }}</span>
-                <x-ui.stepper-field glyph="X" :label="__('Horizontal position')" :min="0" :max="100" :step="1"
-                                    :value="$num($val('x', 50), 0)" :default="50" :keyframe-target="'art:'.$aid" keyframe-property="x"
-                                    :on-input="$live('x')" :on-change="$save('x')" class="min-w-0 flex-1" />
-                <x-ui.stepper-field glyph="Y" :label="__('Vertical position')" :min="0" :max="100" :step="1"
-                                    :value="$num($val('y', 58), 0)" :default="58" :keyframe-target="'art:'.$aid" keyframe-property="y"
-                                    :on-input="$live('y')" :on-change="$save('y')" class="min-w-0 flex-1" />
+            <div class="space-y-1">
+                <span class="block whitespace-nowrap text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Position') }}</span>
+                <div class="flex items-center gap-2">
+                    <x-ui.stepper-field glyph="X" :label="__('Horizontal position')" :min="0" :max="100" :step="1"
+                                        :value="$num($val('x', 50), 0)" :default="50" :keyframe-target="'art:'.$aid" keyframe-property="x"
+                                        :on-input="$live('x')" :on-change="$save('x')" class="min-w-0 flex-1" />
+                    <x-ui.stepper-field glyph="Y" :label="__('Vertical position')" :min="0" :max="100" :step="1"
+                                        :value="$num($val('y', 58), 0)" :default="58" :keyframe-target="'art:'.$aid" keyframe-property="y"
+                                        :on-input="$live('y')" :on-change="$save('y')" class="min-w-0 flex-1" />
+                </div>
             </div>
 
             <x-ui.size-row :asset-id="$aid" :label="__('Size')"
@@ -154,7 +155,7 @@
     <x-ui.settings-section :title="__('Layer')" name="layer">
         <div class="space-y-2">
             <label class="flex items-center justify-between gap-2">
-                <span style="width: var(--settings-panel-label-w, 3.0625rem)"
+                <span style="width: var(--settings-panel-label-w, 7.5rem)"
                       class="shrink-0 text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Blend') }}</span>
                 {{-- Multiply is the one that earns its keep: it drops the white paper out of an
                      engraving or a scanned map so the artwork sits ON the scene instead of in a box
@@ -201,7 +202,7 @@
     <x-ui.settings-section :title="__('Motion')" name="motion">
         <div class="space-y-2" x-data="{ amb: @js($val('ambient', 'none')) }">
             <label class="flex items-center justify-between gap-2">
-                <span style="width: var(--settings-panel-label-w, 3.0625rem)"
+                <span style="width: var(--settings-panel-label-w, 7.5rem)"
                       class="shrink-0 text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Motion') }}</span>
                 <div class="min-w-0 flex-1">
                     <select x-model="amb" x-on:input="{{ $live('ambient') }}" wire:change="{{ $save('ambient') }}"
@@ -253,7 +254,7 @@
             @if (! empty($layer['frames']))
                 <div class="space-y-2" x-data="{ play: @js($val('frames_play', 'wind')) }" data-layer-frames>
                     <label class="flex items-center justify-between gap-2">
-                        <span style="width: var(--settings-panel-label-w, 3.0625rem)"
+                        <span style="width: var(--settings-panel-label-w, 7.5rem)"
                               class="shrink-0 text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Frames') }}</span>
                         <div class="min-w-0 flex-1">
                             <select x-model="play" x-on:input="{{ $live('frames_play') }}" wire:change="{{ $save('frames_play') }}"
@@ -355,7 +356,7 @@
                                  :on-change="'setEmbedOption(' . $aid . ', \'autospin\', $event.target.checked)'" />
 
                 <div class="flex items-center gap-2">
-                    <span style="width: var(--settings-panel-label-w, 3.0625rem)"
+                    <span style="width: var(--settings-panel-label-w, 7.5rem)"
                       class="shrink-0 text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Backdrop') }}</span>
                     <div class="flex min-w-0 flex-1 gap-1">
                         @foreach ([['none', __('None')], ['glass', __('Glass')], ['#0f172a', __('Solid')]] as [$bgVal, $bgLabel])

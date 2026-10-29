@@ -28,7 +28,7 @@
      x-on:timeline-changed.window="syncKeyed()">
 
     <div class="flex items-center gap-2">
-        <span style="width: var(--settings-panel-label-w, 3.0625rem)"
+        <span style="width: var(--settings-panel-label-w, 7.5rem)"
               class="shrink-0 text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Angle') }}</span>
 
         {{-- The dial. Pointer position relative to the centre IS the angle, so a drag crosses

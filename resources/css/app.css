@@ -161,7 +161,11 @@
        and moves them live by rewriting these properties, which only works while the panel READS
        them. Hard-coding any of these back into a class is what silently unhooks the control. */
     --settings-panel-w: 19.375rem;      /* 310px */
-    --settings-panel-label-w: 3.0625rem;   /* 49px — the file's, and 8px labels fit it */
+    /* 120px: the widest slider or panel label in any locale at 12px uppercase is "Weiß entfernen"
+       (de, 118px). The old 49px fitted only the English labels, so every other language ran into
+       its field. Labels are nowrap, so this number is the whole fit: a longer label must widen the
+       column here, or get its own stacked row, never a wrap. */
+    --settings-panel-label-w: 7.5rem;
     --settings-panel-thumb-h: 4rem;     /* 64px map-style card */
     --settings-panel-row-h: 2rem;       /* 32px field height */
     --settings-panel-pad: 1rem;         /* 16px side padding */
