@@ -1,5 +1,8 @@
 @props(['lesson'])
 
+{{-- The player frame the picker's miniatures render at (the stage's own frame size, scaled down). --}}
+@php $frameW = 1600; $frameH = 900; @endphp
+
 {{-- Format for the pinned title screen (EditsTitleScreen), in the order a teacher changes it: the
      style, the words, the picture, where the title and the QR sit; the rarely used under Advanced.
      The stage shows the real player's title screen, reloaded after each change. --}}
@@ -24,15 +27,17 @@
                     <button type="button" role="radio" aria-checked="{{ $isOn ? 'true' : 'false' }}"
                             wire:click="setTitleStyle(@js($choice['key']))" data-title-choice="{{ $choice['key'] }}"
                             class="group text-left">
+                        {{-- A miniature of the whole title screen in this style (the real player, scaled to the tile
+                             like the stage's frame), so the background, the words and the logo all show. --}}
                         <span @class([
                             'relative block aspect-video overflow-hidden rounded-md bg-base-300 ring-1 transition',
                             'ring-2 ring-primary' => $isOn,
                             'ring-slate-700 group-hover:ring-slate-500' => ! $isOn,
-                        ])>
-                            @if ($choice['thumb_url'])
-                                <img src="{{ $choice['thumb_url'] }}" alt="" loading="lazy"
-                                     @class(['h-full w-full', 'object-contain p-2' => $choice['key'] === \App\Support\TitlePoster::LOGO, 'object-cover' => $choice['key'] !== \App\Support\TitlePoster::LOGO])>
-                            @endif
+                        ]) x-data="{ scale: 0 }"
+                           x-init="const observer = new ResizeObserver(() => scale = $el.clientWidth / {{ $frameW }}); observer.observe($el); $cleanup(() => observer.disconnect())">
+                            <iframe src="{{ $lesson->titlePreviewSrc($choice['key']) }}" title="{{ $choice['label'] }}" tabindex="-1" aria-hidden="true" loading="lazy"
+                                    class="pointer-events-none absolute left-0 top-0 origin-top-left border-0 bg-slate-950"
+                                    :style="`width: {{ $frameW }}px; height: {{ $frameH }}px; transform: scale(${scale})`"></iframe>
                         </span>
                         <span @class(['mt-1 block truncate text-2xs', 'text-primary' => $isOn, 'text-panel-hint' => ! $isOn])>{{ $choice['label'] }}</span>
                     </button>

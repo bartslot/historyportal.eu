@@ -32,14 +32,7 @@ trait EditsTitleScreen
 
     public function refreshTitleFrame(): void
     {
-        $version = substr(md5(implode('|', [
-            $this->lesson->title_image, $this->lesson->title_position?->value, (int) $this->lesson->show_qr,
-            $this->lesson->title_style, (int) ($this->lesson->show_lesson_types ?? true),
-            $this->lesson->title, $this->lesson->qrPosition(), json_encode($this->lesson->expect),
-            $this->lesson->updated_at?->getTimestampMs(),
-        ])), 0, 10);
-
-        $this->titleFrameSrc = route('lesson.play', $this->lesson->lesson_code).'?embed=1&title_preview=1&v='.$version;
+        $this->titleFrameSrc = $this->lesson->titlePreviewSrc();
     }
 
     public function selectTitle(): void
