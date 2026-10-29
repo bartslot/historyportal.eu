@@ -16,6 +16,10 @@
     <x-audio-manifest />
     <x-js-lang />
     @php
+        // The title-style picker's miniatures: the real title screen in the style asked for, never saved.
+        if (request()->boolean('title_preview') && request()->filled('title_style')) {
+            $lesson = $lesson->withTitleStyle((string) request('title_style'));
+        }
         // The title screen: a comic candidate's poster (TitlePoster), or null for the logo / letters / plain title.
         $titleStyle = $lesson->titleStyle();
         $titlePoster = $lesson->titlePoster();
