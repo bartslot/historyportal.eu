@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full" data-theme="learningportal">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full" data-theme="learningportal" data-surface="auth">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -13,11 +13,9 @@
 <body class="flex min-h-screen h-full items-center justify-center bg-slate-950 text-slate-100 antialiased">
     <div class="w-full max-w-md px-4">
         <div class="mb-8 text-center">
-            <a href="{{ route('home') }}" class="inline-flex flex-col items-center gap-2">
+            {{-- The logo carries the "History portal" wordmark itself, so it is the only mark here. --}}
+            <a href="{{ route('home') }}" class="inline-flex flex-col items-center" aria-label="History Portal">
                 <x-logo class="h-14 w-14" />
-                <span class="font-cinzel text-2xl font-bold tracking-wide text-primary">
-                    History Portal
-                </span>
             </a>
         </div>
 
